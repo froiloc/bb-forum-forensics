@@ -1,0 +1,67 @@
+# =============================================================================
+# config.yaml — IT-Forensisches Ermittlungswerkzeug · Baustelle 2
+# =============================================================================
+# Konfigurationsdatei für den Python-Webserver.
+# Entwicklungsumgebung: Linux (DEV)
+# Produktionsumgebung:  Windows 11 Cloud (PROD) — separate config.yaml
+#
+# Eskalationskette: CLI-Argument > dieser Wert > Coded Default in config_loader.py
+# Alle Pfade können per CLI-Argument überschrieben werden.
+#
+# Version: 0.1 · Build: 001 · 2026-04-10
+# =============================================================================
+
+server:
+  host: "127.0.0.2"
+  port: 8080            # DEV: 8080 (kein root nötig). PROD: 80.
+  mode: "job"           # Startmodus: job | cli | support
+                        # job     = Job aus coordinator.db anhand Systembenutzer
+                        # cli     = User-ID/Username per CLI-Argument
+                        # support = alle DBs read-only außer coordinator.db
+
+paths:
+  # Pfade zu den Datenbanken. Alle Pfade sind relativ zum Arbeitsverzeichnis
+  # oder absolut. Nutzerspezifische DBs (forensic_<uid>.db, evidence_<uid>.db)
+  # werden intern aus Verzeichnis + User-ID zusammengesetzt — niemals direkt
+  # als Dateipfad angeben.
+  coordinator_db:   "./data/coordinator.db"
+  forensic_db_dir:  "./data/forensic/"
+  default_db:       "./data/default.db"
+  evidence_db_dir:  "./data/evidence/"
+
+hosts_management:
+  enabled: false          # DEV: false — hosts-Eintrag wird manuell gesetzt.
+                          # PROD/Windows: true — automatische Manipulation.
+  forum_hostname: ""      # Hostname des ursprünglichen Forums, z.B. "forum.example.org"
+  target_ip: "127.0.0.2"
+
+logging:
+  level: "debug"          # DEV: debug. PROD: info.
+  logfile: "./logs/forensic_server.log"
+  max_bytes: 10485760     # 10 MB pro Logdatei
+  backup_count: 5         # 5 Rotationsdateien vorhalten
+
+support:
+  # Verhalten der TEMP-Datenbank im support-Modus.
+  # memory = In-Memory SQLite3 (schnell, verschwindet bei Session-Ende)
+  # file   = Datei in /tmp bzw. %TEMP% (persistent für Session-Dauer)
+  temp_db: "memory"
+
+url_patterns:
+  # Präfixe für statische Assets — Requests auf diese URLs werden an
+  # asset_handler.py weitergeleitet, nicht an blob_handler.py.
+  # Diese Liste ist konfigurierbar, um das Werkzeug bei späteren Einsätzen
+  # mit anderen Forum-Strukturen ohne Code-Änderung anpassen zu können.
+  asset_prefixes:
+    - "/forum/style/"
+    - "/forum/img/"
+    - "/forum/extensions/"
+
+  # Parameter- und Fragment-Muster für die URL-Alias-Auflösung.
+  # post_id_param: Query-Parameter, der eine Post-ID trägt (?pid=12345)
+  # notify_param:  Query-Parameter für Benachrichtigungs-IDs (?notify=99)
+  # fragment_post: Präfix im Fragment-Anker für Posts (#p12345)
+  alias_patterns:
+    post_id_param: "pid"
+    notify_param:  "notify"
+    fragment_post: "p"
