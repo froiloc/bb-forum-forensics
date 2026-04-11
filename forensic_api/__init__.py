@@ -4,18 +4,22 @@
 # =============================================================================
 # Zweck:
 #   Registriert alle forensic_api-Endpunkte und stellt die dispatch()-Funktion
-#   bereit, die router.py aufruft.
+#   bereit, die router.py aufruft. Alle Endpunkte werden per Dependency
+#   Injection mit Bundle/Context/Config versorgt — kein globaler State.
 #
-# Stand Build 008: Platzhalter — alle Endpunkte werden in Phase 3 implementiert.
-# Bekannte Endpunkte:
-#   /_forensic/page        → page.py
-#   /_forensic/annotate    → annotate.py
-#   /_forensic/status      → status.py
-#   /_forensic/viewport    → viewport.py
-#   /_forensic/toolbar.js  → static.py
-#   /_forensic/toolbar.css → static.py
+# Endpunkte:
+#   /_forensic/page        (GET)  → PageEndpoint
+#   /_forensic/annotate    (POST) → AnnotateEndpoint
+#   /_forensic/status      (GET)  → StatusEndpoint
+#   /_forensic/viewport    (POST) → ViewportEndpoint
+#   /_forensic/toolbar.js  (GET)  → StaticEndpoint
+#   /_forensic/toolbar.css (GET)  → StaticEndpoint
 #
-# Version: v0.1.0 · Build: 008 · 2026-04-10
+# Request-Body-Lesen:
+#   POST-Requests lesen ihren Body über handler.rfile mit Content-Length.
+#   Maximal 1 MB Body — groessere Requests werden mit 413 abgelehnt.
+#
+# Version: v0.1.0 · Build: 010 · 2026-04-10
 # =============================================================================
 
 from __future__ import annotations
@@ -32,11 +36,14 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
+# Maximale Request-Body-Groesse fuer POST-Endpunkte (1 MB)
+_MAX_BODY_SIZE = 1 * 1024 * 1024
+
 
 class ForensicApi:
     """
-    Dispatch-Klasse für alle /_forensic/-Endpunkte.
-    Phase 3 erweitert diese Klasse mit den eigentlichen Endpunkt-Handlern.
+    Dispatch-Klasse fuer alle /_forensic/-Endpunkte.
+    Instanziiert Endpunkt-Handler lazy beim ersten Aufruf.
     """
 
     def __init__(
@@ -49,6 +56,13 @@ class ForensicApi:
         self._context = context
         self._config  = config
 
+        # Lazy-initialisierte Endpunkt-Instanzen
+        self._page     = None
+        self._annotate = None
+        self._status   = None
+        self._viewport = None
+        self._static   = None
+
     def dispatch(
         self,
         handler: "ForensicRequestHandler",
@@ -58,81 +72,143 @@ class ForensicApi:
         is_ajax: bool,
     ) -> None:
         """
-        Leitet /_forensic/-Requests an den zuständigen Endpunkt-Handler weiter.
+        Leitet /_forensic/-Requests an den zustaendigen Endpunkt-Handler weiter.
+
+        Args:
+            handler:  ForensicRequestHandler-Instanz.
+            method:   HTTP-Methode ("GET", "POST").
+            url_path: URL-Pfad (z.B. "/_forensic/page").
+            query:    Query-String (z.B. "url=/forum/viewtopic.php?id=42").
+            is_ajax:  True wenn X-Forensic-Request: ajax Header gesetzt.
         """
         import urllib.parse
         params = urllib.parse.parse_qs(query, keep_blank_values=False)
 
-        # /_forensic/page → BlobHandler (AJAX-Auslieferung)
+        # /_forensic/page (GET)
         if url_path == "/_forensic/page":
-            target_url = self._get_param(params, "url")
-            if not target_url:
-                handler.send_response_body(
-                    400,
-                    b'{"error": "Parameter url fehlt"}',
-                    content_type="application/json",
-                )
+            if method not in ("GET", "HEAD"):
+                self._method_not_allowed(handler)
                 return
-            import urllib.parse as _up
-            parsed    = _up.urlparse(target_url)
-            fragment  = parsed.fragment or None
-            clean_url = _up.urlunparse(parsed._replace(fragment=""))
-            from server.blob_handler import BlobHandler
-            bh = BlobHandler(self._bundle, self._context, self._config)
-            bh.handle_with_fragment(handler, clean_url, fragment)
+            self._get_page().handle(handler, params)
             return
 
-        # /_forensic/status
+        # /_forensic/annotate (POST)
+        if url_path == "/_forensic/annotate":
+            if method != "POST":
+                self._method_not_allowed(handler)
+                return
+            body = self._read_body(handler)
+            if body is None:
+                return  # Fehler bereits gesendet
+            self._get_annotate().handle(handler, body)
+            return
+
+        # /_forensic/status (GET)
         if url_path == "/_forensic/status":
-            self._handle_status(handler)
+            if method not in ("GET", "HEAD"):
+                self._method_not_allowed(handler)
+                return
+            self._get_status().handle(handler)
             return
 
-        # /_forensic/toolbar.css und /_forensic/toolbar.js
-        if url_path in ("/_forensic/toolbar.css", "/_forensic/toolbar.js"):
-            self._handle_static(handler, url_path)
+        # /_forensic/viewport (POST)
+        if url_path == "/_forensic/viewport":
+            if method != "POST":
+                self._method_not_allowed(handler)
+                return
+            body = self._read_body(handler)
+            if body is None:
+                return
+            self._get_viewport().handle(handler, body)
             return
 
-        # Alle anderen /_forensic/-Endpunkte: noch nicht implementiert
-        logger.debug(
-            "/_forensic/-Endpunkt noch nicht implementiert: '%s'", url_path
-        )
-        handler.send_response_body(
-            501,
-            f'{{"error": "Endpunkt {url_path} noch nicht implementiert"}}'
-            .encode("utf-8"),
-            content_type="application/json",
-        )
+        # /_forensic/toolbar.js und /_forensic/toolbar.css (GET)
+        if url_path in ("/_forensic/toolbar.js", "/_forensic/toolbar.css"):
+            if method not in ("GET", "HEAD"):
+                self._method_not_allowed(handler)
+                return
+            self._get_static().handle(handler, url_path)
+            return
 
-    def _handle_status(self, handler: "ForensicRequestHandler") -> None:
-        """Liefert einen minimalen Serverstatus als JSON."""
+        # Unbekannter Endpunkt
+        logger.warning("Unbekannter /_forensic/-Endpunkt: '%s'", url_path)
         import json
-        import time
-        status = {
-            "mode":     self._context.mode,
-            "user_id":  self._context.user_id,
-            "username": self._context.username,
-            "ts":       int(time.time()),
-            "version":  "v0.1.0-build008",
-        }
-        body = json.dumps(status, ensure_ascii=False).encode("utf-8")
-        handler.send_response_body(200, body, content_type="application/json")
+        body_out = json.dumps(
+            {"error": f"Endpunkt '{url_path}' nicht bekannt"}
+        ).encode("utf-8")
+        handler.send_response_body(
+            404, body_out, content_type="application/json; charset=utf-8"
+        )
 
-    def _handle_static(
-        self, handler: "ForensicRequestHandler", url_path: str
-    ) -> None:
+    # ------------------------------------------------------------------
+    # Request-Body lesen
+    # ------------------------------------------------------------------
+
+    def _read_body(self, handler: "ForensicRequestHandler") -> bytes | None:
         """
-        Liefert toolbar.js und toolbar.css aus.
-        Phase 3 ersetzt diese Platzhalter durch echte Inhalte.
+        Liest den Request-Body aus handler.rfile.
+        Begrenzt auf _MAX_BODY_SIZE. Gibt None zurueck und sendet 413
+        wenn der Body zu gross ist.
         """
-        if url_path.endswith(".css"):
-            body = "/* toolbar.css - Platzhalter, wird in Phase 3 befüllt */".encode("utf-8")
-            mime = "text/css; charset=utf-8"
-        else:
-            body = "/* toolbar.js - Platzhalter, wird in Phase 3 befüllt */".encode("utf-8")
-            mime = "application/javascript; charset=utf-8"
-        handler.send_response_body(200, body, content_type=mime)
+        try:
+            content_length = int(handler.headers.get("Content-Length", 0))
+        except (ValueError, TypeError):
+            content_length = 0
+
+        if content_length > _MAX_BODY_SIZE:
+            handler.send_response_body(
+                413,
+                b'{"error": "Request-Body zu gro\xc3\x9f (max. 1 MB)"}',
+                content_type="application/json; charset=utf-8",
+            )
+            return None
+
+        if content_length > 0:
+            return handler.rfile.read(content_length)
+        return b""
+
+    # ------------------------------------------------------------------
+    # Fehler-Antworten
+    # ------------------------------------------------------------------
 
     @staticmethod
-    def _get_param(params: dict, key: str):
-        values = params.get(key)
-        return values[0] if values else None
+    def _method_not_allowed(handler: "ForensicRequestHandler") -> None:
+        handler.send_response_body(
+            405,
+            b'{"error": "Methode nicht erlaubt"}',
+            content_type="application/json; charset=utf-8",
+        )
+
+    # ------------------------------------------------------------------
+    # Lazy Endpunkt-Initialisierung
+    # ------------------------------------------------------------------
+
+    def _get_page(self):
+        if self._page is None:
+            from forensic_api.page import PageEndpoint
+            self._page = PageEndpoint(self._bundle, self._context, self._config)
+        return self._page
+
+    def _get_annotate(self):
+        if self._annotate is None:
+            from forensic_api.annotate import AnnotateEndpoint
+            self._annotate = AnnotateEndpoint(self._bundle, self._context, self._config)
+        return self._annotate
+
+    def _get_status(self):
+        if self._status is None:
+            from forensic_api.status import StatusEndpoint
+            self._status = StatusEndpoint(self._bundle, self._context, self._config)
+        return self._status
+
+    def _get_viewport(self):
+        if self._viewport is None:
+            from forensic_api.viewport import ViewportEndpoint
+            self._viewport = ViewportEndpoint(self._bundle, self._context, self._config)
+        return self._viewport
+
+    def _get_static(self):
+        if self._static is None:
+            from forensic_api.static import StaticEndpoint
+            self._static = StaticEndpoint()
+        return self._static

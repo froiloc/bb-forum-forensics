@@ -1,0 +1,45 @@
+/**
+ * toolbar.css — Forensischer Werkzeugbalken (Stub)
+ * IT-Forensisches Ermittlungswerkzeug · Baustelle 2
+ *
+ * Stand Build 010: Minimales Styling für den Two-Phase-Load-Stub.
+ * Die vollständige Gestaltung erfolgt in Baustelle 3.
+ */
+
+/* Shell-Grundlayout */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding-top: 46px; /* Platz für den Toolbar */
+}
+
+/* Toolbar — fest oben */
+#forensic-toolbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 46px;
+  z-index: 9999;
+  background: #1a1f2e;
+  border-bottom: 2px solid #2d3550;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Viewport — scrollbarer Bereich */
+#forensic-viewport {
+  min-height: calc(100vh - 46px);
+}
+
+/* Lade-Indikator */
+#forensic-viewport:empty::after {
+  content: "Lade Seite…";
+  display: block;
+  padding: 40px;
+  color: #888;
+  font-family: monospace;
+  font-size: 14px;
+}
