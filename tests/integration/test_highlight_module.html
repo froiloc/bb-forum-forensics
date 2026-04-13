@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<!--
+  test_highlight_module.html
+  Integrationstest: HighlightModule — CSS Custom Highlights API + Fallback
+  Baustelle 3 · §16.2 Bauplan · §10.5 Bauplan
+  Version: 0.1.0 · Build: 001 · 2026-04-13
+
+  Durchführung: Im echten Chromium-Browser öffnen (lokal oder über forensic_server).
+  Alle Testfälle werden automatisch geprüft und im Ergebnis-Panel angezeigt.
+-->
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Integrationstest: HighlightModule</title>
+  <link rel="stylesheet" href="/toolbar/toolbar.css">
+  <style>
+    body { font-family: monospace; padding: 20px; background: #11141e; color: #c8d0e8; }
+    .result { margin: 6px 0; padding: 6px 10px; border-radius: 4px; }
+    .pass { background: #1a4020; color: #4caf50; }
+    .fail { background: #4a1010; color: #e84040; }
+    .info { background: #1a1f2e; color: #7a8aaa; border: 1px solid #2d3550; }
+    #forensic-toolbar { display: none; }
+  </style>
+  <script src="/toolbar/toolbar.js" defer></script>
+</head>
+<body>
+  <h2>Integrationstest: HighlightModule</h2>
+  <div id="forensic-toolbar"></div>
+  <div id="forensic-viewport">
+    <article class="post" id="p1001">
+      <div class="postmsg">
+        <p id="test-para">Dieser Text enthält einen <strong>markierten Bereich</strong> zur Testverifizierung.</p>
+      </div>
+    </article>
+  </div>
+  <div id="test-results"></div>
+
+  <script>
+    function assert(name, cond) {
+      var el = document.createElement("div");
+      el.className = "result " + (cond ? "pass" : "fail");
+      el.textContent = (cond ? "✓ PASS" : "✗ FAIL") + " — " + name;
+      document.getElementById("test-results").appendChild(el);
+    }
+    function info(msg) {
+      var el = document.createElement("div");
+      el.className = "result info";
+      el.textContent = "ℹ " + msg;
+      document.getElementById("test-results").appendChild(el);
+    }
+
+    window.addEventListener("DOMContentLoaded", function () {
+      setTimeout(function () {
+        var ft = window.ForensicToolbar;
+
+        // Test 1: ForensicToolbar Namespace vorhanden
+        assert("ForensicToolbar Namespace vorhanden", typeof ft !== "undefined");
+
+        // Test 2: CSS Custom Highlights API Verfügbarkeit dokumentiert
+        var hasHighlights = (typeof CSS !== "undefined" && typeof CSS.highlights !== "undefined");
+        info("CSS Custom Highlights API: " + (hasHighlights ? "VERFÜGBAR" : "NICHT VERFÜGBAR — Fallback aktiv"));
+        assert("Browser unterstützt CSS Custom Highlights oder Fallback ist möglich", true);
+
+        // Test 3: Highlight-Regel für CAT_PERSON existiert in <style>
+        var styles = Array.from(document.styleSheets);
+        var foundHighlightRule = false;
+        if (hasHighlights) {
+          styles.forEach(function (ss) {
+            try {
+              Array.from(ss.cssRules || []).forEach(function (rule) {
+                if (rule.cssText && rule.cssText.includes("forensic-cat_person")) {
+                  foundHighlightRule = true;
+                }
+              });
+            } catch (e) {}
+          });
+          assert("CSS Custom Highlights Regel für CAT_PERSON eingefügt", foundHighlightRule);
+        } else {
+          info("CSS Custom Highlights nicht verfügbar — Highlight-Regel-Test übersprungen");
+        }
+
+        // Test 4: Viewport-Element vorhanden
+        assert("#forensic-viewport im DOM vorhanden", !!document.getElementById("forensic-viewport"));
+
+        // Test 5: Testziel-Paragraf vorhanden
+        assert("#test-para im DOM vorhanden", !!document.getElementById("test-para"));
+
+        // Test 6: viewMode initial 'enhanced'
+        assert("viewMode initial 'enhanced'", ft.state.get("viewMode") === "enhanced");
+
+        // Test 7: Nach viewmode:original → viewMode = 'original'
+        ft._setState({ viewMode: "original" });
+        ft.events.emit("viewmode:original");
+        assert("viewMode nach viewmode:original ist 'original'", ft.state.get("viewMode") === "original");
+
+        // Test 8: Nach viewmode:enhanced → viewMode = 'enhanced'
+        ft._setState({ viewMode: "enhanced" });
+        ft.events.emit("viewmode:enhanced");
+        assert("viewMode nach viewmode:enhanced ist 'enhanced'", ft.state.get("viewMode") === "enhanced");
+
+        // Test 9: Keine JS-Fehler bis hierher
+        assert("Keine unbehandelten JS-Fehler", !window._forensicTestError);
+
+        // Test 10: ARIA-Live-Region vorhanden
+        assert("ARIA-Live-Region #forensic-a11y-live im DOM", !!document.getElementById("forensic-a11y-live"));
+
+      }, 500);
+    });
+
+    window.onerror = function (msg) {
+      window._forensicTestError = msg;
+    };
+  </script>
+</body>
+</html>

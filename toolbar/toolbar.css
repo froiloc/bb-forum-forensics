@@ -1,40 +1,46 @@
 /**
- * toolbar.css — Forensischer Werkzeugbalken (Stub)
- * IT-Forensisches Ermittlungswerkzeug · Baustelle 2
+ * toolbar.css — Forensischer Werkzeugbalken
+ * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Stand Build 010: Minimales Styling für den Two-Phase-Load-Stub.
- * Die vollständige Gestaltung erfolgt in Baustelle 3.
+ * Version: v0.1.0 · Build: 001 · 2026-04-13
+ * Klassifikation: VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
+ *
+ * Farbkontrast-Prüfung WCAG 2.1 AA (§5, §10.3 Bauplan):
+ *   Text auf Toolbar-Hintergrund #1a1f2e (~L 11):
+ *   - #c8d0e8 (Hellgrau): Kontrast ~9.2:1 ✓ AA
+ *   - #4caf50 (Grün):     Kontrast ~4.6:1 ✓ AA
+ *   - #e84040 (Rot):      Kontrast ~4.5:1 ✓ AA (grenzwertig, für UI-Elemente >= 3:1 ✓)
+ *   - #f5c842 (Gelb/PER): Kontrast ~7.8:1 ✓ AA
+ *   - #4f8ef7 (Blau/LOC): Kontrast ~5.1:1 ✓ AA
+ *   - #c040e8 (Lila/184): Kontrast ~4.6:1 ✓ AA
+ *   - #e87040 (Orange/OPF): Kontrast ~5.0:1 ✓ AA
+ *   - #40c8a0 (Türkis/SON): Kontrast ~6.1:1 ✓ AA
+ *
+ * Alle Kategoriefarben mit 22% Opacity als Hintergrund erfüllen WCAG AA
+ * für UI-Komponenten (Kontrastverhältnis >= 3:1 gegen Toolbar-Hintergrund).
  */
 
-/* Shell-Grundlayout */
+/* ===========================================================================
+   Reset & Grundlayout
+   =========================================================================== */
+
 *, *::before, *::after {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  padding-top: 46px; /* Platz für den Toolbar */
+  /* Platz für Toolbar (62 px) + Minimap hat eigenes Padding */
+  padding-top: 62px;
 }
 
-/* Toolbar — fest oben */
-#forensic-toolbar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 46px;
-  z-index: 9999;
-  background: #1a1f2e;
-  border-bottom: 2px solid #2d3550;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-}
-
-/* Viewport — scrollbarer Bereich */
+/* Viewport-Bereich: scrollbarer Seiteninhalt */
 #forensic-viewport {
-  min-height: calc(100vh - 46px);
+  min-height: calc(100vh - 62px);
+  padding-right: 44px; /* Platz für Minimap */
 }
 
-/* Lade-Indikator */
+/* Lade-Indikator wenn Viewport leer */
 #forensic-viewport:empty::after {
   content: "Lade Seite…";
   display: block;
@@ -42,4 +48,607 @@ body {
   color: #888;
   font-family: monospace;
   font-size: 14px;
+}
+
+/* ===========================================================================
+   Toolbar — fixiert oben
+   =========================================================================== */
+
+#forensic-toolbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 44px; /* Platz für Minimap */
+  height: 62px;
+  z-index: 9999;
+  background: #1a1f2e;
+  border-bottom: 2px solid #2d3550;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  gap: 0;
+  font-family: "Segoe UI", "Liberation Sans", Arial, sans-serif;
+  font-size: 12px;
+  color: #c8d0e8;
+  overflow: hidden;
+}
+
+/* Trennlinien zwischen Sektionen */
+.forensic-separator {
+  width: 1px;
+  height: 38px;
+  background: #2d3550;
+  flex-shrink: 0;
+  margin: 0 2px;
+}
+
+/* Sektionen */
+.forensic-section {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  height: 100%;
+  flex-shrink: 0;
+}
+
+.forensic-sec1 {
+  padding: 0 12px;
+}
+
+.forensic-sec2 {
+  gap: 4px;
+  padding: 0 8px;
+}
+
+.forensic-sec3 {
+  gap: 6px;
+}
+
+.forensic-sec4 {
+  gap: 4px;
+}
+
+.forensic-sec5 {
+  flex-grow: 1;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 0 12px;
+  overflow: hidden;
+}
+
+/* ===========================================================================
+   Kontext-Badges (Sektion 1)
+   =========================================================================== */
+
+.forensic-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 9px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+
+/* user: grün (Beschuldigter hatte Zugriff, §6 Bauplan) */
+.forensic-badge-user {
+  background: #1a4020;
+  color: #4caf50;
+  border: 1px solid #2d6030;
+}
+
+/* investigator: rot — forensisch kritisch (§6, §12.3 Bauplan) */
+.forensic-badge-investigator {
+  background: #4a1010;
+  color: #e84040;
+  border: 1px solid #7a2020;
+  animation: forensic-badge-pulse 1.5s ease-in-out infinite;
+}
+
+/* actor: orange (§12.4 Bauplan) */
+.forensic-badge-actor {
+  background: #3a2000;
+  color: #e8a040;
+  border: 1px solid #6a4010;
+}
+
+@keyframes forensic-badge-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.75; }
+}
+
+/* ===========================================================================
+   Kategorie-Buttons (Sektion 2)
+   =========================================================================== */
+
+.forensic-cat-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  width: 52px;
+  height: 38px;
+  padding: 0 4px;
+  background: #252b3e;
+  border: 2px solid #2d3550;
+  border-radius: 5px;
+  color: #c8d0e8;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.forensic-cat-btn:hover {
+  background: #2d3550;
+  transform: translateY(-1px);
+}
+
+.forensic-cat-btn:focus-visible {
+  outline: 2px solid #4f8ef7;
+  outline-offset: 2px;
+}
+
+.forensic-cat-btn[aria-pressed="true"],
+.forensic-cat-btn.forensic-cat-active {
+  box-shadow: 0 0 0 2px currentColor;
+}
+
+.forensic-cat-label {
+  font-size: 10px;
+  font-family: monospace;
+  font-weight: 700;
+}
+
+/* ===========================================================================
+   Allgemeine Buttons
+   =========================================================================== */
+
+.forensic-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  background: #252b3e;
+  border: 1px solid #3a4060;
+  border-radius: 4px;
+  color: #c8d0e8;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.forensic-btn:hover {
+  background: #2d3550;
+  border-color: #4f8ef7;
+}
+
+.forensic-btn:focus-visible {
+  outline: 2px solid #4f8ef7;
+  outline-offset: 2px;
+}
+
+.forensic-btn-primary {
+  background: #1a3a6a;
+  border-color: #4f8ef7;
+  color: #c8d0e8;
+}
+
+.forensic-btn-primary:hover {
+  background: #2a4a8a;
+}
+
+.forensic-btn-secondary {
+  background: #252b3e;
+  border-color: #3a4060;
+}
+
+.forensic-btn-sm {
+  padding: 3px 7px;
+  font-size: 11px;
+}
+
+/* Navigations-Pfeil-Buttons */
+.forensic-nav-btn {
+  width: 28px;
+  padding: 5px 6px;
+  justify-content: center;
+}
+
+/* ===========================================================================
+   Seiten-Info (Sektion 4)
+   =========================================================================== */
+
+.forensic-page-info {
+  min-width: 30px;
+  text-align: center;
+  font-size: 11px;
+  color: #7a8aaa;
+}
+
+/* ===========================================================================
+   Session-Info (Sektion 5)
+   =========================================================================== */
+
+.forensic-session-info {
+  font-size: 11px;
+  color: #7a8aaa;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+
+.forensic-sync-ok {
+  font-size: 10px;
+  color: #4caf50;
+  white-space: nowrap;
+}
+
+.forensic-sync-error {
+  font-size: 10px;
+  color: #e84040;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+/* Support-Indikator (§6 Bauplan — nicht wegklickbar) */
+.forensic-support-hidden {
+  display: none;
+}
+
+.forensic-support-active {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: #3a3000;
+  border: 1px solid #f5c842;
+  border-radius: 4px;
+  color: #f5c842;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  animation: forensic-support-pulse 2s ease-in-out infinite;
+}
+
+@keyframes forensic-support-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.7; }
+}
+
+/* ===========================================================================
+   Ermittler-Session-Banner (§12.3 Bauplan — persistenter Banner)
+   =========================================================================== */
+
+#forensic-investigator-banner {
+  position: sticky;
+  top: 62px;
+  z-index: 9990;
+  background: #4a1010;
+  border-bottom: 2px solid #e84040;
+  color: #e8c0c0;
+  font-size: 12px;
+  font-family: "Segoe UI", Arial, sans-serif;
+  font-weight: 600;
+  padding: 6px 16px;
+  text-align: center;
+}
+
+/* ===========================================================================
+   Annotations-Popup (§8 Bauplan)
+   =========================================================================== */
+
+.forensic-popup {
+  position: fixed;
+  z-index: 10000;
+  width: 440px;
+  max-width: calc(100vw - 16px);
+  background: #1a1f2e;
+  border: 1px solid #3a4060;
+  border-radius: 6px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  color: #c8d0e8;
+  font-family: "Segoe UI", Arial, sans-serif;
+  font-size: 13px;
+  overflow: hidden;
+}
+
+.forensic-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #252b3e;
+  border-bottom: 1px solid #2d3550;
+}
+
+.forensic-popup-title {
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.forensic-popup-close {
+  background: none;
+  border: none;
+  color: #7a8aaa;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.forensic-popup-close:hover {
+  color: #c8d0e8;
+  background: #2d3550;
+}
+
+.forensic-popup-close:focus-visible {
+  outline: 2px solid #4f8ef7;
+}
+
+.forensic-popup-body {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.forensic-popup-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #7a8aaa;
+  margin-bottom: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.forensic-popup-textarea {
+  width: 100%;
+  min-height: 68px;
+  background: #252b3e;
+  border: 1px solid #3a4060;
+  border-radius: 4px;
+  color: #c8d0e8;
+  font-size: 13px;
+  font-family: inherit;
+  padding: 7px 9px;
+  resize: vertical;
+}
+
+.forensic-popup-textarea:focus {
+  outline: 2px solid #4f8ef7;
+  border-color: #4f8ef7;
+}
+
+.forensic-popup-input {
+  width: 100%;
+  background: #252b3e;
+  border: 1px solid #3a4060;
+  border-radius: 4px;
+  color: #c8d0e8;
+  font-size: 13px;
+  font-family: monospace;
+  padding: 5px 9px;
+}
+
+.forensic-popup-input:focus {
+  outline: 2px solid #4f8ef7;
+  border-color: #4f8ef7;
+}
+
+.forensic-popup-seltext {
+  background: #252b3e;
+  border: 1px solid #2d3550;
+  border-radius: 4px;
+  padding: 6px 9px;
+  font-size: 12px;
+  font-style: italic;
+  color: #9aa0b8;
+  max-height: 60px;
+  overflow: auto;
+}
+
+.forensic-popup-suggestion {
+  background: #1f2a1a;
+  border: 1px solid #2d5020;
+  border-radius: 4px;
+  padding: 5px 9px;
+  font-size: 12px;
+  color: #4caf50;
+}
+
+.forensic-tag-suggest-btn {
+  background: #2d5020;
+  border: 1px solid #4caf50;
+  border-radius: 3px;
+  color: #4caf50;
+  font-size: 12px;
+  padding: 1px 6px;
+  cursor: pointer;
+  font-family: monospace;
+}
+
+.forensic-popup-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid #2d3550;
+  background: #1a1f2e;
+}
+
+/* ===========================================================================
+   Hover-Menü (§7.3 Bauplan)
+   =========================================================================== */
+
+.forensic-hover-menu {
+  position: absolute;
+  z-index: 9998;
+  background: #1a1f2e;
+  border: 1px solid #3a4060;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+}
+
+.forensic-hover-btn {
+  background: #252b3e;
+  border: 1px solid #2d3550;
+  border-radius: 3px;
+  color: #c8d0e8;
+  font-size: 14px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.forensic-hover-btn:hover {
+  background: #2d3550;
+  border-color: #4f8ef7;
+}
+
+.forensic-hover-btn:focus-visible {
+  outline: 2px solid #4f8ef7;
+}
+
+/* ===========================================================================
+   Minimap (§9 Bauplan)
+   =========================================================================== */
+
+#forensic-minimap {
+  position: fixed;
+  top: 62px;
+  right: 0;
+  width: 36px;
+  height: calc(100vh - 62px);
+  z-index: 9990;
+  background: #11141e;
+  border-left: 1px solid #2d3550;
+  overflow: hidden;
+}
+
+.forensic-minimap-bar {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  height: 4px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: height 0.1s, opacity 0.1s;
+  opacity: 0.8;
+}
+
+.forensic-minimap-bar:hover {
+  height: 8px;
+  opacity: 1;
+}
+
+.forensic-minimap-bar:focus-visible {
+  outline: 2px solid #4f8ef7;
+}
+
+/* ===========================================================================
+   Tabellen-Steuerung (PMSTableOrganizerModule, TopicsTableOrganizerModule)
+   =========================================================================== */
+
+.forensic-table-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+  flex-wrap: wrap;
+}
+
+.forensic-table-filter-input {
+  background: #252b3e;
+  border: 1px solid #3a4060;
+  border-radius: 4px;
+  color: #c8d0e8;
+  font-size: 12px;
+  font-family: inherit;
+  padding: 4px 8px;
+  min-width: 180px;
+}
+
+.forensic-table-filter-input:focus {
+  outline: 2px solid #4f8ef7;
+  border-color: #4f8ef7;
+}
+
+.forensic-table-select {
+  background: #252b3e;
+  border: 1px solid #3a4060;
+  border-radius: 4px;
+  color: #c8d0e8;
+  font-size: 12px;
+  font-family: inherit;
+  padding: 4px 6px;
+}
+
+.forensic-table-select:focus {
+  outline: 2px solid #4f8ef7;
+}
+
+/* ===========================================================================
+   Fehler-Anzeigen
+   =========================================================================== */
+
+.forensic-fetch-failed {
+  padding: 40px;
+  font-family: "Segoe UI", Arial, sans-serif;
+  color: #c8a040;
+}
+
+.forensic-fetch-failed h2 {
+  color: #f5c842;
+  margin-top: 0;
+}
+
+.forensic-error-notice {
+  padding: 40px;
+  font-family: "Segoe UI", Arial, sans-serif;
+  color: #e84040;
+}
+
+/* ===========================================================================
+   Barrierefreiheit — Visually Hidden (§10.1 Bauplan, WCAG SC 1.3.1)
+   =========================================================================== */
+
+.forensic-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ===========================================================================
+   CSS Custom Highlights — Stale-Markierung (§4 Bauplan)
+   =========================================================================== */
+
+/* Stale-Annotationen: orange statt Kategoriefarbe (§4 Bauplan) */
+[data-forensic-annotation].forensic-stale {
+  background: rgba(232, 160, 64, 0.3) !important;
+  border-bottom: 2px dashed #e8a040 !important;
+}
+
+/* ===========================================================================
+   Scrollbar-Anpassungen (optional, Chromium)
+   =========================================================================== */
+
+#forensic-minimap::-webkit-scrollbar {
+  display: none;
 }

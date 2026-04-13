@@ -19,8 +19,20 @@
 # T13 — get_all_annotations() gibt alle Annotationen zurück
 # T14 — annotation_count() korrekt
 # T15 — Init ist idempotent (mehrfaches Anlegen des Schemas kein Fehler)
+# --- Baustelle 3 — Build 011: neue Felder ---
+# T16 — annotations-Tabelle enthält alle Baustelle-3-Spalten
+# T17 — save_annotation(): selection_json korrekt gespeichert/gelesen
+# T18 — save_annotation(): tags_json korrekt gespeichert/gelesen
+# T19 — save_annotation(): local_id korrekt gespeichert/gelesen
+# T20 — save_annotation(): post_id korrekt gespeichert/gelesen
+# T21 — save_annotation(): created_by korrekt gespeichert/gelesen
+# T22 — alle neuen Felder kombinierbar in einer Annotation
+# T23 — neue Felder sind None/'' wenn nicht übergeben (Rückwärtskompatibilität)
+# T24 — _migrate_schema() ergänzt fehlende Spalten in einer alten DB
+# T25 — _migrate_schema() ist idempotent
+# T26 — get_all_annotations() liefert neue Felder korrekt zurück
 #
-# Version: v0.1.0 · Build: 007 · 2026-04-10
+# Version: v0.1.0 · Build: 011 · 2026-04-13
 # =============================================================================
 
 import sys, os, sqlite3, tempfile, textwrap, unittest
@@ -209,6 +221,232 @@ class TestEvidenceDb(unittest.TestCase):
         """T15: Mehrfaches Anlegen des Schemas wirft keine Exception."""
         EvidenceDb(self.con)  # Zweite Instanz auf derselben Verbindung
         EvidenceDb(self.con)  # Dritte Instanz
+
+    # ------------------------------------------------------------------
+    # T16–T26: Neue Felder Baustelle 3 (selection_json, tags_json,
+    #          local_id, post_id, created_by) und Schema-Migration
+    # ------------------------------------------------------------------
+
+    def test_T16_neue_spalten_im_schema(self):
+        """T16: annotations-Tabelle enthält alle Baustelle-3-Spalten."""
+        cols = {r[1] for r in self.con.execute(
+            "PRAGMA table_info(annotations)"
+        ).fetchall()}
+        for expected in ("selection_json", "tags_json", "local_id", "post_id", "created_by"):
+            self.assertIn(expected, cols,
+                msg=f"Spalte '{expected}' fehlt in annotations")
+
+    def test_T17_save_annotation_mit_selection_json(self):
+        """T17: selection_json wird korrekt gespeichert und zurückgelesen."""
+        import json
+        sel = {
+            "xpathStart": "//article[1]/p[1]",
+            "offsetStart": 5,
+            "xpathEnd": "//article[1]/p[1]",
+            "offsetEnd": 20,
+            "textContent": "BirnenKenner99",
+        }
+        row_id = self.edb.save_annotation(
+            page_url="/forum/viewtopic.php?id=42",
+            category="CAT_PERSON",
+            text="Benutzername gefunden",
+            selection_json=json.dumps(sel),
+        )
+        anns = self.edb.get_annotations("/forum/viewtopic.php?id=42")
+        self.assertEqual(len(anns), 1)
+        self.assertIsNotNone(anns[0].selection_json)
+        restored = json.loads(anns[0].selection_json)
+        self.assertEqual(restored["textContent"], "BirnenKenner99")
+        self.assertEqual(restored["offsetStart"], 5)
+
+    def test_T18_save_annotation_mit_tags_json(self):
+        """T18: tags_json wird korrekt gespeichert und zurückgelesen."""
+        import json
+        tags = ["pgp", "username", "email"]
+        row_id = self.edb.save_annotation(
+            page_url="/forum/viewtopic.php?id=43",
+            category="CAT_PERSON",
+            text="Mehrere Identifikatoren",
+            tags_json=json.dumps(tags),
+        )
+        anns = self.edb.get_annotations("/forum/viewtopic.php?id=43")
+        self.assertEqual(len(anns), 1)
+        self.assertIsNotNone(anns[0].tags_json)
+        restored = json.loads(anns[0].tags_json)
+        self.assertEqual(restored, ["pgp", "username", "email"])
+
+    def test_T19_save_annotation_mit_local_id(self):
+        """T19: local_id (Browser-UUID) wird gespeichert und zurückgelesen."""
+        local_id = "550e8400-e29b-41d4-a716-446655440000"
+        self.edb.save_annotation(
+            page_url="/forum/viewtopic.php?id=44",
+            category="CAT_OTHER",
+            text="",
+            local_id=local_id,
+        )
+        anns = self.edb.get_annotations("/forum/viewtopic.php?id=44")
+        self.assertEqual(anns[0].local_id, local_id)
+
+    def test_T20_save_annotation_mit_post_id(self):
+        """T20: post_id (ganzer Post markiert) wird gespeichert und zurückgelesen."""
+        self.edb.save_annotation(
+            page_url="/forum/viewtopic.php?id=45",
+            category="CAT_176",
+            text="Ganzer Post markiert",
+            element_id="p98765",
+            post_id=98765,
+        )
+        anns = self.edb.get_annotations("/forum/viewtopic.php?id=45")
+        self.assertEqual(anns[0].post_id, 98765)
+        self.assertIsNone(anns[0].selection_json)  # Post-Markierung → kein selection
+
+    def test_T21_save_annotation_mit_created_by(self):
+        """T21: created_by (SAMAccountName) wird gespeichert und zurückgelesen."""
+        self.edb.save_annotation(
+            page_url="/forum/viewtopic.php?id=46",
+            category="CAT_LOCATION",
+            text="Stadtname erwähnt",
+            created_by="h012345",
+        )
+        anns = self.edb.get_annotations("/forum/viewtopic.php?id=46")
+        self.assertEqual(anns[0].created_by, "h012345")
+
+    def test_T22_save_annotation_alle_neuen_felder(self):
+        """T22: Alle neuen Baustelle-3-Felder in einer Annotation kombinierbar."""
+        import json
+        sel = {"xpathStart": "//p", "offsetStart": 0,
+               "xpathEnd": "//p", "offsetEnd": 5, "textContent": "Hallo"}
+        self.edb.save_annotation(
+            page_url="/forum/viewtopic.php?id=47",
+            category="CAT_VICTIM",
+            text="Opferhinweis",
+            element_id="p55555",
+            selection_json=json.dumps(sel),
+            tags_json=json.dumps(["opfer", "alter"]),
+            local_id="aaaabbbb-cccc-dddd-eeee-ffffffffffff",
+            post_id=None,  # Textmarkierung → kein post_id
+            created_by="h099999",
+        )
+        anns = self.edb.get_annotations("/forum/viewtopic.php?id=47")
+        ann = anns[0]
+        self.assertEqual(ann.category,    "CAT_VICTIM")
+        self.assertEqual(ann.created_by,  "h099999")
+        self.assertEqual(ann.local_id,    "aaaabbbb-cccc-dddd-eeee-ffffffffffff")
+        self.assertIsNone(ann.post_id)
+        restored_tags = json.loads(ann.tags_json)
+        self.assertIn("opfer", restored_tags)
+
+    def test_T23_neue_felder_default_none(self):
+        """T23: Neue Felder sind None wenn nicht übergeben (Rückwärtskompatibilität)."""
+        self.edb.save_annotation(
+            page_url="/forum/viewtopic.php?id=48",
+            category="CAT_OTHER",
+            text="Einfache Annotation ohne neue Felder",
+        )
+        anns = self.edb.get_annotations("/forum/viewtopic.php?id=48")
+        ann = anns[0]
+        self.assertIsNone(ann.selection_json)
+        self.assertIsNone(ann.tags_json)
+        self.assertIsNone(ann.local_id)
+        self.assertIsNone(ann.post_id)
+        self.assertEqual(ann.created_by, "")  # Default leerer String
+
+    def test_T24_migration_aeltere_db(self):
+        """T24: _migrate_schema() ergänzt fehlende Spalten in einer alten DB (Build <= 010).
+
+        Simuliert eine evidence_db ohne die Baustelle-3-Spalten (wie vor Build 011).
+        EvidenceDb.__init__() muss die Spalten per ALTER TABLE nachrüsten.
+        """
+        # Alte DB-Struktur ohne neue Spalten anlegen
+        old_con = sqlite3.connect(":memory:")
+        old_con.row_factory = sqlite3.Row
+        old_con.executescript("""
+            CREATE TABLE IF NOT EXISTS annotations (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                page_url        TEXT NOT NULL,
+                element_id      TEXT,
+                category        TEXT NOT NULL,
+                text            TEXT NOT NULL DEFAULT '',
+                ts              INTEGER NOT NULL,
+                investigator_id INTEGER
+            );
+            CREATE TABLE IF NOT EXISTS page_visits (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                page_url        TEXT NOT NULL,
+                scrape_context  TEXT NOT NULL,
+                ts              INTEGER NOT NULL,
+                investigator_id INTEGER
+            );
+            CREATE TABLE IF NOT EXISTS viewport_events (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                page_url        TEXT NOT NULL,
+                element_id      TEXT,
+                visible_ms      INTEGER NOT NULL,
+                ts_enter        INTEGER NOT NULL,
+                ts_leave        INTEGER NOT NULL,
+                investigator_id INTEGER
+            );
+        """)
+        old_con.commit()
+
+        # Alten Datensatz einfügen (ohne neue Spalten)
+        old_con.execute(
+            "INSERT INTO annotations (page_url, category, text, ts) "
+            "VALUES ('/forum/old', 'CAT_OTHER', 'alter Eintrag', 1700000000)"
+        )
+        old_con.commit()
+
+        # EvidenceDb initialisieren → _migrate_schema() läuft durch
+        migrated_edb = EvidenceDb(old_con)
+
+        # Neue Spalten müssen jetzt vorhanden sein
+        cols = {r[1] for r in old_con.execute(
+            "PRAGMA table_info(annotations)"
+        ).fetchall()}
+        for expected in ("selection_json", "tags_json", "local_id", "post_id", "created_by"):
+            self.assertIn(expected, cols,
+                msg=f"Migration: Spalte '{expected}' fehlt nach Migration")
+
+        # Alter Datensatz muss noch lesbar sein und neue Felder als None zurückgeben
+        anns = migrated_edb.get_annotations("/forum/old")
+        self.assertEqual(len(anns), 1)
+        self.assertEqual(anns[0].text, "alter Eintrag")
+        self.assertIsNone(anns[0].selection_json)
+        self.assertIsNone(anns[0].tags_json)
+        self.assertEqual(anns[0].created_by, "")
+
+        old_con.close()
+
+    def test_T25_migration_idempotent(self):
+        """T25: _migrate_schema() auf einer bereits migrierten DB wirft keine Exception."""
+        # Zweimal EvidenceDb auf derselben Verbindung → zweifache Migration
+        edb2 = EvidenceDb(self.con)
+        edb3 = EvidenceDb(self.con)
+        # Kein Fehler → Test bestanden
+
+    def test_T26_get_all_annotations_neue_felder(self):
+        """T26: get_all_annotations() liefert neue Felder korrekt zurück."""
+        import json
+        self.edb.save_annotation(
+            "/forum/a", "CAT_PERSON", "Notiz A",
+            tags_json=json.dumps(["username"]),
+            created_by="h001",
+        )
+        self.edb.save_annotation(
+            "/forum/b", "CAT_184", "Notiz B",
+            post_id=12345,
+            created_by="h002",
+        )
+        all_anns = self.edb.get_all_annotations()
+        self.assertEqual(len(all_anns), 2)
+
+        ann_a = next(a for a in all_anns if a.page_url == "/forum/a")
+        ann_b = next(a for a in all_anns if a.page_url == "/forum/b")
+
+        self.assertEqual(json.loads(ann_a.tags_json), ["username"])
+        self.assertEqual(ann_a.created_by, "h001")
+        self.assertEqual(ann_b.post_id, 12345)
+        self.assertEqual(ann_b.created_by, "h002")
 
 
 if __name__ == "__main__":

@@ -4,8 +4,7 @@
 # =============================================================================
 # Zweck:
 #   Registriert alle forensic_api-Endpunkte und stellt die dispatch()-Funktion
-#   bereit, die router.py aufruft. Alle Endpunkte werden per Dependency
-#   Injection mit Bundle/Context/Config versorgt — kein globaler State.
+#   bereit, die router.py aufruft.
 #
 # Endpunkte:
 #   /_forensic/page        (GET)  → PageEndpoint
@@ -14,12 +13,10 @@
 #   /_forensic/viewport    (POST) → ViewportEndpoint
 #   /_forensic/toolbar.js  (GET)  → StaticEndpoint
 #   /_forensic/toolbar.css (GET)  → StaticEndpoint
+#   /_forensic/annotations (GET)  → AnnotationsEndpoint  [NEU Build 011 / Baustelle 3]
+#   /_forensic/events      (GET)  → EventsEndpoint       [NEU Build 011 / Baustelle 3]
 #
-# Request-Body-Lesen:
-#   POST-Requests lesen ihren Body über handler.rfile mit Content-Length.
-#   Maximal 1 MB Body — groessere Requests werden mit 413 abgelehnt.
-#
-# Version: v0.1.0 · Build: 010 · 2026-04-10
+# Version: v0.1.0 · Build: 011 · 2026-04-13
 # =============================================================================
 
 from __future__ import annotations
@@ -57,11 +54,13 @@ class ForensicApi:
         self._config  = config
 
         # Lazy-initialisierte Endpunkt-Instanzen
-        self._page     = None
-        self._annotate = None
-        self._status   = None
-        self._viewport = None
-        self._static   = None
+        self._page        = None
+        self._annotate    = None
+        self._status      = None
+        self._viewport    = None
+        self._static      = None
+        self._annotations = None  # [NEU Build 011]
+        self._events      = None  # [NEU Build 011]
 
     def dispatch(
         self,
@@ -73,13 +72,6 @@ class ForensicApi:
     ) -> None:
         """
         Leitet /_forensic/-Requests an den zustaendigen Endpunkt-Handler weiter.
-
-        Args:
-            handler:  ForensicRequestHandler-Instanz.
-            method:   HTTP-Methode ("GET", "POST").
-            url_path: URL-Pfad (z.B. "/_forensic/page").
-            query:    Query-String (z.B. "url=/forum/viewtopic.php?id=42").
-            is_ajax:  True wenn X-Forensic-Request: ajax Header gesetzt.
         """
         import urllib.parse
         params = urllib.parse.parse_qs(query, keep_blank_values=False)
@@ -99,7 +91,7 @@ class ForensicApi:
                 return
             body = self._read_body(handler)
             if body is None:
-                return  # Fehler bereits gesendet
+                return
             self._get_annotate().handle(handler, body)
             return
 
@@ -130,6 +122,22 @@ class ForensicApi:
             self._get_static().handle(handler, url_path)
             return
 
+        # /_forensic/annotations (GET) — [NEU Build 011 / Baustelle 3]
+        if url_path == "/_forensic/annotations":
+            if method not in ("GET", "HEAD"):
+                self._method_not_allowed(handler)
+                return
+            self._get_annotations().handle(handler, params)
+            return
+
+        # /_forensic/events (GET, SSE) — [NEU Build 011 / Baustelle 3]
+        if url_path == "/_forensic/events":
+            if method not in ("GET", "HEAD"):
+                self._method_not_allowed(handler)
+                return
+            self._get_events().handle(handler)
+            return
+
         # Unbekannter Endpunkt
         logger.warning("Unbekannter /_forensic/-Endpunkt: '%s'", url_path)
         import json
@@ -145,11 +153,6 @@ class ForensicApi:
     # ------------------------------------------------------------------
 
     def _read_body(self, handler: "ForensicRequestHandler") -> bytes | None:
-        """
-        Liest den Request-Body aus handler.rfile.
-        Begrenzt auf _MAX_BODY_SIZE. Gibt None zurueck und sendet 413
-        wenn der Body zu gross ist.
-        """
         try:
             content_length = int(handler.headers.get("Content-Length", 0))
         except (ValueError, TypeError):
@@ -212,3 +215,17 @@ class ForensicApi:
             from forensic_api.static import StaticEndpoint
             self._static = StaticEndpoint()
         return self._static
+
+    def _get_annotations(self):
+        """[NEU Build 011] Lazy-Init für AnnotationsEndpoint."""
+        if self._annotations is None:
+            from forensic_api.annotations import AnnotationsEndpoint
+            self._annotations = AnnotationsEndpoint(self._bundle, self._context, self._config)
+        return self._annotations
+
+    def _get_events(self):
+        """[NEU Build 011] Lazy-Init für EventsEndpoint (SSE)."""
+        if self._events is None:
+            from forensic_api.events import EventsEndpoint
+            self._events = EventsEndpoint(self._bundle, self._context, self._config)
+        return self._events

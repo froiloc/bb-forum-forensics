@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<!--
+  test_keyboard_navigation.html
+  Integrationstest: Tab-Reihenfolge, Focus-Trap im Popup, Keyboard-Shortcuts
+  Baustelle 3 · §16.2 Bauplan · §10.2 Bauplan
+  Version: 0.1.0 · Build: 001 · 2026-04-13
+-->
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Integrationstest: Keyboard-Navigation</title>
+  <link rel="stylesheet" href="/toolbar/toolbar.css">
+  <style>
+    body { font-family: monospace; padding: 20px; background: #11141e; color: #c8d0e8; }
+    .result { margin: 6px 0; padding: 6px 10px; border-radius: 4px; }
+    .pass { background: #1a4020; color: #4caf50; }
+    .fail { background: #4a1010; color: #e84040; }
+    .info { background: #1a1f2e; color: #7a8aaa; border: 1px solid #2d3550; }
+  </style>
+</head>
+<body>
+  <h2>Integrationstest: Keyboard-Navigation</h2>
+  <div id="forensic-toolbar"></div>
+  <div id="forensic-viewport"><article class="post" id="p5001"><div class="postmsg"><p>Text</p></div></article></div>
+  <div id="test-results"></div>
+
+  <script>
+    window.fetch = function (url) {
+      if (url.includes("/_forensic/page")) {
+        return Promise.resolve({ json: () => Promise.resolve({
+          html: '<article class="post" id="p5001"><div class="postmsg"><p>Text</p></div></article>',
+          scrape_context: "user", fetch_failed: false, in_scope: true,
+          url_canonical: "/test/", fragment: null,
+        })});
+      }
+      if (url.includes("/_forensic/annotations")) {
+        return Promise.resolve({ json: () => Promise.resolve({ annotations: [], status: "ok" }) });
+      }
+      return Promise.resolve({ json: () => Promise.resolve({}) });
+    };
+
+    function assert(name, cond) {
+      var el = document.createElement("div");
+      el.className = "result " + (cond ? "pass" : "fail");
+      el.textContent = (cond ? "✓ PASS" : "✗ FAIL") + " — " + name;
+      document.getElementById("test-results").appendChild(el);
+    }
+    function info(msg) {
+      var el = document.createElement("div");
+      el.className = "result info";
+      el.textContent = "ℹ " + msg;
+      document.getElementById("test-results").appendChild(el);
+    }
+
+    function fireKey(target, key, opts) {
+      opts = opts || {};
+      target.dispatchEvent(new KeyboardEvent("keydown", Object.assign(
+        { key: key, bubbles: true, cancelable: true }, opts
+      )));
+    }
+  </script>
+  <script src="/toolbar/toolbar.js" defer></script>
+  <script>
+    window.addEventListener("load", function () {
+      setTimeout(function () {
+        var ft = window.ForensicToolbar;
+        assert("ForensicToolbar vorhanden", typeof ft !== "undefined");
+
+        // Test: Kategorie-Buttons haben tabindex oder sind per default fokussierbar
+        setTimeout(function () {
+          var cat1 = document.getElementById("forensic-cat-CAT_PERSON");
+          assert("Kategorie-Button CAT_PERSON im DOM", !!cat1);
+          if (cat1) {
+            assert("Kategorie-Button ist fokussierbar (kein tabindex=-1)",
+              cat1.getAttribute("tabindex") !== "-1");
+            assert("aria-pressed initial false",
+              cat1.getAttribute("aria-pressed") === "false");
+          }
+
+          // Test: Taste '1' aktiviert CAT_PERSON
+          fireKey(document.body, "1");
+          assert("Taste '1' aktiviert CAT_PERSON",
+            ft.state.get("activeCategory") === "CAT_PERSON");
+
+          // Test: Taste '1' erneut → deaktiviert
+          fireKey(document.body, "1");
+          assert("Taste '1' erneut → deaktiviert (toggle)",
+            ft.state.get("activeCategory") === null);
+
+          // Test: Taste '3' aktiviert CAT_176
+          fireKey(document.body, "3");
+          assert("Taste '3' aktiviert CAT_176",
+            ft.state.get("activeCategory") === "CAT_176");
+
+          // Test: Escape deaktiviert aktive Kategorie
+          fireKey(document.body, "Escape");
+          assert("Escape deaktiviert aktive Kategorie",
+            ft.state.get("activeCategory") === null);
+
+          // Test: Alle 6 Kategorie-Buttons vorhanden
+          var catIds = ["CAT_PERSON","CAT_LOCATION","CAT_176","CAT_184","CAT_VICTIM","CAT_OTHER"];
+          var allPresent = catIds.every(function (id) {
+            return !!document.getElementById("forensic-cat-" + id);
+          });
+          assert("Alle 6 Kategorie-Buttons im DOM", allPresent);
+
+          // Test: ARIA-Live-Region vorhanden
+          var live = document.getElementById("forensic-a11y-live");
+          assert("ARIA-Live-Region vorhanden", !!live);
+          if (live) {
+            assert("aria-live='polite'", live.getAttribute("aria-live") === "polite");
+            assert("role='status'", live.getAttribute("role") === "status");
+          }
+
+          // Test: Nutzerinfo-Button vorhanden
+          assert("Nutzerinfo-Button #forensic-btn-userinfo vorhanden",
+            !!document.getElementById("forensic-btn-userinfo"));
+
+          // Test: Viewmode-Button vorhanden
+          assert("Viewmode-Button #forensic-btn-viewmode vorhanden",
+            !!document.getElementById("forensic-btn-viewmode"));
+
+          info("Manuelle Tests: Tab-Reihenfolge und Focus-Trap im Popup " +
+               "müssen per Hand im Browser verifiziert werden (echte Tastatureingabe erforderlich).");
+
+        }, 800);
+      }, 200);
+    });
+  </script>
+</body>
+</html>

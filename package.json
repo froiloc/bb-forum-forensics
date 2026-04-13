@@ -1,0 +1,20 @@
+{
+  "name": "aiw-forensic-toolbar",
+  "version": "0.1.0",
+  "description": "IT-Forensisches Ermittlungswerkzeug — Toolbar Unit-Tests (Baustelle 3)",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run tests/unit/",
+    "test:watch": "vitest tests/unit/"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^1.6.1",
+    "jsdom": "^24.1.3",
+    "vitest": "^1.6.1"
+  },
+  "vitest": {
+    "environment": "jsdom",
+    "globals": true
+  }
+}

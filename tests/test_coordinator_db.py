@@ -240,6 +240,90 @@ class TestCoordinatorDb(unittest.TestCase):
         job = self.cdb.get_job_by_id(self.job_id)
         self.assertIsNone(job.output_path)
 
+    def test_T15_get_support_status_kein_support_nutzer(self):
+        """T15: get_support_status() → inactive wenn kein Support-Nutzer aktiv."""
+        # Fixture hat keinen Support-Nutzer (is_support=0) und keinen running-Job
+        result = self.cdb.get_support_status()
+        self.assertFalse(result.active)
+        self.assertIsNone(result.username)
+        self.assertIsNone(result.since_ms)
+
+    def test_T16_get_support_status_support_nutzer_aktiv(self):
+        """T16: get_support_status() → active wenn Support-Nutzer running-Job hat."""
+        # Support-Nutzer anlegen
+        self.con.execute(
+            "INSERT INTO cdb.investigators "
+            "(system_username, display_name, is_investigator, is_supervisor, is_support, created_at) "
+            "VALUES ('h067890', 'Support User', 0, 0, 1, 1700000010)"
+        )
+        support_id = self.con.execute(
+            "SELECT id FROM cdb.investigators WHERE system_username='h067890'"
+        ).fetchone()[0]
+        # running-Job für Support-Nutzer
+        self.con.execute(
+            "INSERT INTO cdb.scrape_jobs "
+            "(user_id, username, priority, status, assigned_to, created_at, started_at) "
+            "VALUES (999, 'testuser', 3, 'running', ?, 1700000000, 1744300000)",
+            (support_id,),
+        )
+        self.con.commit()
+
+        result = self.cdb.get_support_status()
+        self.assertTrue(result.active)
+        self.assertEqual(result.username, "h067890")
+        self.assertEqual(result.since_ms, 1744300000 * 1000)
+
+        # Aufräumen
+        self.con.execute(
+            "DELETE FROM cdb.scrape_jobs WHERE assigned_to=?", (support_id,)
+        )
+        self.con.execute(
+            "DELETE FROM cdb.investigators WHERE id=?", (support_id,)
+        )
+        self.con.commit()
+
+    def test_T17_get_support_status_support_nutzer_done(self):
+        """T17: Support-Nutzer mit status='done' gilt nicht als aktiv."""
+        self.con.execute(
+            "INSERT INTO cdb.investigators "
+            "(system_username, display_name, is_investigator, is_supervisor, is_support, created_at) "
+            "VALUES ('h077777', 'Inactive Support', 0, 0, 1, 1700000020)"
+        )
+        support_id = self.con.execute(
+            "SELECT id FROM cdb.investigators WHERE system_username='h077777'"
+        ).fetchone()[0]
+        # Nur done-Job → nicht aktiv
+        self.con.execute(
+            "INSERT INTO cdb.scrape_jobs "
+            "(user_id, username, priority, status, assigned_to, created_at) "
+            "VALUES (998, 'doneuser', 3, 'done', ?, 1700000000)",
+            (support_id,),
+        )
+        self.con.commit()
+
+        result = self.cdb.get_support_status()
+        self.assertFalse(result.active)
+
+        # Aufräumen
+        self.con.execute(
+            "DELETE FROM cdb.scrape_jobs WHERE assigned_to=?", (support_id,)
+        )
+        self.con.execute(
+            "DELETE FROM cdb.investigators WHERE id=?", (support_id,)
+        )
+        self.con.commit()
+
+    def test_T18_support_status_record_felder(self):
+        """T18: SupportStatusRecord-Datenklasse hat korrekte Felder."""
+        from db.coordinator_db import SupportStatusRecord
+        rec = SupportStatusRecord(active=True, username="h099", since_ms=1234567890000)
+        self.assertTrue(rec.active)
+        self.assertEqual(rec.username, "h099")
+        self.assertEqual(rec.since_ms, 1234567890000)
+        # frozen=True → Zuweisung wirft Fehler
+        with self.assertRaises((AttributeError, TypeError)):
+            rec.active = False
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

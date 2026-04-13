@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<!--
+  test_server_sync.html
+  Integrationstest: Ende-zu-Ende — Annotation erstellen, speichern, wiederherstellen
+  Baustelle 3 · §16.2 Bauplan · §7, §8, §11 Bauplan
+  Version: 0.1.0 · Build: 001 · 2026-04-13
+
+  Für diesen Test muss der echte forensic_server laufen.
+  URL: http://localhost:8080/_forensic/... (oder konfigurierter Host)
+-->
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Integrationstest: Server-Sync (Ende-zu-Ende)</title>
+  <link rel="stylesheet" href="/toolbar/toolbar.css">
+  <style>
+    body { font-family: monospace; padding: 20px; background: #11141e; color: #c8d0e8; }
+    .result { margin: 6px 0; padding: 6px 10px; border-radius: 4px; }
+    .pass { background: #1a4020; color: #4caf50; }
+    .fail { background: #4a1010; color: #e84040; }
+    .info { background: #1a1f2e; color: #7a8aaa; border: 1px solid #2d3550; }
+    .warn { background: #3a2000; color: #f5c842; }
+    button.test-btn {
+      margin: 4px 4px 4px 0;
+      padding: 6px 14px;
+      background: #252b3e;
+      border: 1px solid #3a4060;
+      border-radius: 4px;
+      color: #c8d0e8;
+      font-family: monospace;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h2>Integrationstest: Ende-zu-Ende Server-Sync</h2>
+  <p style="color:#7a8aaa">Dieser Test läuft gegen den echten forensic_server.
+  <strong>Voraussetzung:</strong> Server gestartet, Test-forensic_db vorhanden.</p>
+
+  <div>
+    <button class="test-btn" onclick="runAutoTests()">▶ Automatische Tests starten</button>
+    <button class="test-btn" onclick="runManualAnnotation()">✏ Manuelle Annotation testen</button>
+    <button class="test-btn" onclick="runManualRestore()">♻ Wiederherstellung testen</button>
+  </div>
+
+  <div id="forensic-toolbar"></div>
+  <div id="forensic-viewport"></div>
+  <div id="test-results"></div>
+
+  <script src="/toolbar/toolbar.js" defer></script>
+  <script>
+    function assert(name, cond) {
+      var el = document.createElement("div");
+      el.className = "result " + (cond ? "pass" : "fail");
+      el.textContent = (cond ? "✓ PASS" : "✗ FAIL") + " — " + name;
+      document.getElementById("test-results").appendChild(el);
+      return cond;
+    }
+    function info(msg) {
+      var el = document.createElement("div");
+      el.className = "result info";
+      el.textContent = "ℹ " + msg;
+      document.getElementById("test-results").appendChild(el);
+    }
+    function warn(msg) {
+      var el = document.createElement("div");
+      el.className = "result warn";
+      el.textContent = "⚠ " + msg;
+      document.getElementById("test-results").appendChild(el);
+    }
+
+    function runAutoTests() {
+      var ft = window.ForensicToolbar;
+      if (!ft) { warn("ForensicToolbar nicht initialisiert — Seite neu laden"); return; }
+
+      // Test 1: Status-Endpunkt erreichbar
+      fetch("/_forensic/status", { headers: { "X-Forensic-Request": "ajax" } })
+        .then(function (r) { return r.json(); })
+        .then(function (s) {
+          assert("/_forensic/status erreichbar", s && s.status !== "error");
+          info("Server-Modus: " + (s.mode || "—") + " | Version: " + (s.version || "—"));
+        })
+        .catch(function (e) {
+          assert("/_forensic/status erreichbar", false);
+          warn("Fehler: " + e.message);
+        });
+
+      // Test 2: Annotations-Endpunkt erreichbar
+      fetch("/_forensic/annotations?url=/forum/", { headers: { "X-Forensic-Request": "ajax" } })
+        .then(function (r) { return r.json(); })
+        .then(function (r) {
+          assert("/_forensic/annotations erreichbar", r && Array.isArray(r.annotations));
+          info("Annotationen für /forum/: " + ((r.annotations || []).length) + " Einträge");
+        })
+        .catch(function (e) {
+          assert("/_forensic/annotations erreichbar", false);
+          warn("Fehler: " + e.message);
+        });
+
+      // Test 3: Annotate-Endpunkt — Test-Annotation senden
+      fetch("/_forensic/annotate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Forensic-Request": "ajax" },
+        body: JSON.stringify({
+          page_url:   "/test/integration/server_sync",
+          category:   "CAT_OTHER",
+          text:       "Integrationstest-Annotation " + new Date().toISOString(),
+          tags:       ["test"],
+          local_id:   "test-" + Date.now(),
+        }),
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (r) {
+          assert("/_forensic/annotate: Annotation gespeichert", r.status === "ok" && r.id > 0);
+          if (r.id) info("Neue Annotation-ID: " + r.id);
+        })
+        .catch(function (e) {
+          assert("/_forensic/annotate erreichbar", false);
+          warn("Fehler: " + e.message);
+        });
+    }
+
+    function runManualAnnotation() {
+      var ft = window.ForensicToolbar;
+      if (!ft) { warn("ForensicToolbar nicht initialisiert"); return; }
+      ft._setState({ activeCategory: "CAT_PERSON" });
+      info("CAT_PERSON aktiv — jetzt Text im Viewport markieren um Annotation zu erstellen.");
+    }
+
+    function runManualRestore() {
+      info("Seite wird neu geladen — Annotationen sollten wiederhergestellt werden.");
+      window.location.reload();
+    }
+  </script>
+</body>
+</html>

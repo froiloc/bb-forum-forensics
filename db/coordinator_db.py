@@ -24,7 +24,12 @@
 #   verfälschten Beweisen.
 #
 # Abhängigkeiten: sqlite3, time — ausschließlich Stdlib
-# Version: v0.1.0 · Build: 007 · 2026-04-10
+# Version: v0.1.0 · Build: 008 · 2026-04-13
+# Änderungen gegenüber Build 007 (Baustelle 3 — §11.5 Bauplan):
+#   - SupportStatusRecord: Neues Dataclass für SSE-Support-Status.
+#   - get_support_status(): Liest aktiven Support-Nutzer aus
+#     investigators JOIN scrape_jobs. Gibt SupportStatusRecord zurück.
+#     Fehlerbehandlung: Bei Exception → inactive-Status statt Absturz.
 # =============================================================================
 
 from __future__ import annotations
@@ -41,6 +46,25 @@ logger = get_logger(__name__)
 # Retry-Konfiguration für Netzlaufwerk-Zugriffe
 _RETRY_COUNT   = 3
 _RETRY_DELAY_S = 0.5   # Sekunden zwischen Versuchen
+
+
+@dataclass(frozen=True)
+class SupportStatusRecord:
+    """
+    Repräsentiert den aktuellen Support-Verbindungsstatus.
+
+    Wird von get_support_status() zurückgegeben und von forensic_api/events.py
+    als SSE-Nutzlast verwendet (§11.5 Bauplan Baustelle 3).
+
+    Felder:
+        active    — True wenn mindestens ein Support-Nutzer gerade aktiv ist
+        username  — SAMAccountName des aktiven Support-Nutzers (oder None)
+        since_ms  — Unix-Timestamp ms seit wann der Support-Nutzer aktiv ist
+                    (None wenn active=False)
+    """
+    active:    bool
+    username:  Optional[str]
+    since_ms:  Optional[int]
 
 
 @dataclass(frozen=True)
@@ -112,6 +136,61 @@ class CoordinatorDb:
         """
         self._con = con
         self._con.row_factory = sqlite3.Row
+
+    # ------------------------------------------------------------------
+    # Support-Status (§11.5 Bauplan Baustelle 3)
+    # ------------------------------------------------------------------
+
+    def get_support_status(self) -> SupportStatusRecord:
+        """
+        Liest den aktuellen Support-Status aus coordinator.db.
+
+        Ein Support-Nutzer gilt als aktiv, wenn:
+          1. Er in cdb.investigators mit is_support=1 eingetragen ist UND
+          2. Er einen Job im Status 'running' in cdb.scrape_jobs hat.
+
+        Gibt bei Fehler oder fehlendem Support-Nutzer einen inaktiven Status
+        zurück — kein Absturz, kein stilles Versagen (Grundregel 1).
+
+        Rückgabe:
+            SupportStatusRecord mit active=False wenn kein Support-Nutzer aktiv.
+        """
+        try:
+            return self._retry(self._get_support_status_once)
+        except Exception as exc:
+            logger.warning(
+                "get_support_status(): Fehler beim Lesen — gebe inactive zurück: %s",
+                exc,
+            )
+            return SupportStatusRecord(active=False, username=None, since_ms=None)
+
+    def _get_support_status_once(self) -> SupportStatusRecord:
+        """Einmaliger Versuch für get_support_status(). Wird durch _retry() wiederholt."""
+        try:
+            row = self._con.execute(
+                """
+                SELECT i.system_username, j.started_at
+                FROM cdb.investigators AS i
+                JOIN cdb.scrape_jobs   AS j ON j.assigned_to = i.id
+                WHERE i.is_support = 1
+                  AND j.status = 'running'
+                ORDER BY j.started_at DESC
+                LIMIT 1
+                """
+            ).fetchone()
+        except sqlite3.OperationalError as exc:
+            raise exc  # Retry übernimmt
+
+        if row is None:
+            return SupportStatusRecord(active=False, username=None, since_ms=None)
+
+        # started_at ist Unix-Timestamp in Sekunden → JS erwartet ms
+        started_at_s = row["started_at"] if row["started_at"] is not None else 0
+        return SupportStatusRecord(
+            active=True,
+            username=str(row["system_username"]),
+            since_ms=int(started_at_s) * 1000,
+        )
 
     # ------------------------------------------------------------------
     # Ermittler-Abfragen

@@ -9,17 +9,34 @@
 #
 # Erwarteter Request-Body (JSON):
 #   {
-#     "page_url":    "/forum/viewtopic.php?id=42",
-#     "element_id":  "p12345",          (optional)
-#     "category":    "CAT_PERSON",
-#     "text":        "Erwähnt Vorname Klaus"
+#     "page_url":      "/forum/viewtopic.php?id=42",   (Pflicht)
+#     "category":      "CAT_PERSON",                   (Pflicht)
+#     "text":          "Erwähnt Vorname Klaus",         (optional, Default "")
+#     "element_id":    "p12345",                        (optional)
+#     "local_id":      "uuid-v4-string",                (optional, Browser-UUID)
+#     "post_id":       12345,                           (optional, Post-Markierung)
+#     "tags":          ["pgp", "username"],             (optional, Array)
+#     "selection": {                                    (optional, Textmarkierung)
+#       "xpathStart":  "...",
+#       "offsetStart": 14,
+#       "xpathEnd":    "...",
+#       "offsetEnd":   32,
+#       "textContent": "BirnenKenner99"
+#     }
 #   }
 #
 # Response:
 #   200 OK:  {"id": <annotation_id>, "status": "ok"}
 #   400 Bad: {"error": "<Fehlermeldung>"}
 #
-# Version: v0.1.0 · Build: 010 · 2026-04-10
+# Änderungen gegenüber Build 010 (Baustelle 3 — §11.2 Bauplan):
+#   - Neue optionale Felder: selection (XPath-Objekt), tags (Array),
+#     local_id (Browser-UUID), post_id (Post-Markierung).
+#   - selection wird als JSON-String in selection_json gespeichert.
+#   - tags wird als JSON-Array-String in tags_json gespeichert.
+#   - created_by wird aus dem Kontext (context.username) befüllt.
+#
+# Version: v0.1.0 · Build: 011 · 2026-04-13
 # =============================================================================
 
 from __future__ import annotations
@@ -90,6 +107,38 @@ class AnnotateEndpoint:
             return
 
         element_id = data.get("element_id") or None
+        local_id   = data.get("local_id") or None
+
+        # post_id: numerisch oder None
+        post_id_raw = data.get("post_id")
+        try:
+            post_id = int(post_id_raw) if post_id_raw is not None else None
+        except (TypeError, ValueError):
+            post_id = None
+
+        # selection: Objekt → JSON-String
+        selection_raw = data.get("selection")
+        selection_json = None
+        if selection_raw is not None and isinstance(selection_raw, dict):
+            # Pflichtfelder des selection-Objekts prüfen
+            required_sel = {"xpathStart", "offsetStart", "xpathEnd", "offsetEnd", "textContent"}
+            if required_sel.issubset(selection_raw.keys()):
+                selection_json = json.dumps(selection_raw, ensure_ascii=False)
+            else:
+                logger.warning(
+                    "selection-Objekt unvollständig (Felder fehlen): %s", selection_raw
+                )
+
+        # tags: Array → JSON-String
+        tags_raw = data.get("tags")
+        tags_json = None
+        if tags_raw is not None and isinstance(tags_raw, list):
+            # Nur Strings übernehmen, leere herausfiltern
+            clean_tags = [str(t).strip() for t in tags_raw if str(t).strip()]
+            tags_json = json.dumps(clean_tags, ensure_ascii=False)
+
+        # created_by aus Kontext (SAMAccountName des Ermittlers)
+        created_by = getattr(self._context, "username", "") or ""
 
         # Annotation speichern
         try:
@@ -99,6 +148,11 @@ class AnnotateEndpoint:
                 text=str(text),
                 element_id=element_id,
                 investigator_id=self._context.investigator_id,
+                selection_json=selection_json,
+                tags_json=tags_json,
+                local_id=local_id,
+                post_id=post_id,
+                created_by=created_by,
             )
         except EvidenceDbError as exc:
             self._error(handler, str(exc))
@@ -109,8 +163,8 @@ class AnnotateEndpoint:
             return
 
         logger.info(
-            "Annotation gespeichert: id=%d, page='%s', cat=%s, element=%s",
-            annotation_id, page_url, category, element_id,
+            "Annotation gespeichert: id=%d, page='%s', cat=%s, element=%s, post_id=%s",
+            annotation_id, page_url, category, element_id, post_id,
         )
 
         body_out = json.dumps(

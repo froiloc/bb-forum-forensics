@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<!--
+  test_annotation_restore.html
+  Integrationstest: Wiederherstellung von Annotationen auf Mock-BLOB
+  Baustelle 3 · §16.2 Bauplan · §4 Bauplan
+  Version: 0.1.0 · Build: 001 · 2026-04-13
+
+  Testet: Nach Laden einer Seite werden Annotationen vom Server geladen
+  und korrekt als Highlights wiederhergestellt. Nutzt Mock-Server-Antworten.
+-->
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Integrationstest: Annotation Restore</title>
+  <link rel="stylesheet" href="/toolbar/toolbar.css">
+  <style>
+    body { font-family: monospace; padding: 20px; background: #11141e; color: #c8d0e8; }
+    .result { margin: 6px 0; padding: 6px 10px; border-radius: 4px; }
+    .pass { background: #1a4020; color: #4caf50; }
+    .fail { background: #4a1010; color: #e84040; }
+    .info { background: #1a1f2e; color: #7a8aaa; border: 1px solid #2d3550; }
+    #forensic-toolbar { position: static !important; }
+  </style>
+</head>
+<body>
+  <h2>Integrationstest: Annotation Restore</h2>
+  <div id="forensic-toolbar"></div>
+  <div id="forensic-viewport"></div>
+  <div id="test-results"></div>
+
+  <script>
+    // Mock fetch: simuliert Server-Antworten
+    var _mockAnnotations = [
+      {
+        id: 1, localId: "uuid-test-1", pageUrl: "/forum/viewtopic.php?id=99",
+        category: "CAT_PERSON", text: "Testnotiz", tags: ["username"],
+        elementId: "p9001", selection: null, postId: null,
+        createdAt: 1744300000000, createdBy: "h012345", syncState: "synced",
+      }
+    ];
+
+    window.fetch = function (url, opts) {
+      if (url.includes("/_forensic/page")) {
+        return Promise.resolve({ json: () => Promise.resolve({
+          html: '<article class="post" id="p9001"><div class="postmsg"><p>Testbeitrag</p></div></article>',
+          scrape_context: "user", fetch_failed: false, in_scope: true,
+          url_canonical: "/forum/viewtopic.php?id=99", fragment: null,
+        })});
+      }
+      if (url.includes("/_forensic/annotations")) {
+        return Promise.resolve({ json: () => Promise.resolve({
+          annotations: _mockAnnotations, status: "ok",
+        })});
+      }
+      if (url.includes("/_forensic/status")) {
+        return Promise.resolve({ json: () => Promise.resolve({
+          mode: "job", user_id: 42, username: "TestUser", version: "test",
+          page_count: 1, annotation_count: 1,
+        })});
+      }
+      return Promise.resolve({ json: () => Promise.resolve({}) });
+    };
+
+    function assert(name, cond) {
+      var el = document.createElement("div");
+      el.className = "result " + (cond ? "pass" : "fail");
+      el.textContent = (cond ? "✓ PASS" : "✗ FAIL") + " — " + name;
+      document.getElementById("test-results").appendChild(el);
+    }
+    function info(msg) {
+      var el = document.createElement("div");
+      el.className = "result info";
+      el.textContent = "ℹ " + msg;
+      document.getElementById("test-results").appendChild(el);
+    }
+  </script>
+  <script src="/toolbar/toolbar.js" defer></script>
+  <script>
+    window.addEventListener("load", function () {
+      setTimeout(function () {
+        var ft = window.ForensicToolbar;
+        assert("ForensicToolbar vorhanden", typeof ft !== "undefined");
+
+        // Warten bis Seite geladen und Annotationen wiederhergestellt
+        setTimeout(function () {
+          // Test: Viewport hat BLOB-Inhalt
+          var vp = document.getElementById("forensic-viewport");
+          assert("Viewport hat Inhalt (BLOB injiziert)", vp && vp.innerHTML.includes("p9001"));
+
+          // Test: Post-Element ist im DOM
+          assert("Post-Element #p9001 im DOM", !!document.getElementById("p9001"));
+
+          // Test: State enthält geladene Annotation
+          var anns = ft.state.get("annotations");
+          assert("Annotation aus Server geladen (Map nicht leer)", anns && anns.size > 0);
+
+          if (anns && anns.size > 0) {
+            var ann = Array.from(anns.values())[0];
+            assert("Annotation hat Kategorie CAT_PERSON", ann.category === "CAT_PERSON");
+            assert("Annotation syncState ist 'synced'", ann.syncState === "synced");
+            assert("Annotation hat tags ['username']",
+              JSON.stringify(ann.tags) === '["username"]');
+          }
+
+          // Test: SessionUser aus Status gesetzt
+          assert("Ermittler-Username gesetzt",
+            ft.state.get("investigatorUsername") === "TestUser");
+
+          // Test: viewMode noch 'enhanced'
+          assert("viewMode bleibt 'enhanced' nach Load", ft.state.get("viewMode") === "enhanced");
+
+        }, 1000);
+      }, 200);
+    });
+  </script>
+</body>
+</html>
