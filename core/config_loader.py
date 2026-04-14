@@ -18,8 +18,20 @@
 #   auffindbare Konfiguration führt zu einem harten Abbruch — kein stiller
 #   Betrieb mit unbekannten Defaults ist zulässig (Grundregel 1).
 #
+# Änderungen gegenüber Build 001 (Build 013):
+#   - ConfigLoaderError: Neue benannte Exception für alle Fehler beim Laden.
+#     main.py importiert und fängt diese Exception. Zuvor wurden
+#     FileNotFoundError und ValueError geworfen — beide sind jetzt Subklassen
+#     von ConfigLoaderError, damit bestehende except-Zweige weiterhin greifen.
+#   - ConfigLoader.__init__: Neuer optionaler Parameter cli_overrides (dict).
+#     Entspricht dem bisherigen apply_cli_overrides()-Aufruf, aber inline im
+#     Konstruktor, wie main.py es erwartet. apply_cli_overrides() bleibt
+#     zusätzlich erhalten (rückwärtskompatibel).
+#   - _validate() und _resolve_config_path() werfen nun ConfigLoaderError
+#     statt ValueError / FileNotFoundError.
+#
 # Abhängigkeiten: yaml (PyYAML), os, pathlib — ausschließlich Stdlib + PyYAML
-# Version: v0.1.0 · Build: 001 · 2026-04-10
+# Version: v0.1.0 · Build: 013 · 2026-04-14
 # =============================================================================
 
 import os
@@ -31,10 +43,31 @@ import yaml
 
 
 # ---------------------------------------------------------------------------
-# Coded Defaults
-# Jeder Default ist hier dokumentiert. Ein Wert, der weder per CLI noch per
-# config.yaml gesetzt wird, fällt auf diesen Wert zurück.
+# Benannte Exception (NEU Build 013)
 # ---------------------------------------------------------------------------
+
+class ConfigLoaderError(Exception):
+    """
+    Wird geworfen bei allen Fehlern beim Laden oder Validieren der
+    Konfiguration. Subklassen für spezifische Fehlerfälle:
+      ConfigFileNotFoundError — config.yaml nicht vorhanden
+      ConfigValueError        — ungültiger Konfigurationswert
+    main.py fängt ConfigLoaderError als einzige Klasse ab.
+    """
+
+
+class ConfigFileNotFoundError(ConfigLoaderError, FileNotFoundError):
+    """config.yaml nicht gefunden (ist gleichzeitig FileNotFoundError)."""
+
+
+class ConfigValueError(ConfigLoaderError, ValueError):
+    """Ungültiger Konfigurationswert (ist gleichzeitig ValueError)."""
+
+
+# ---------------------------------------------------------------------------
+# Coded Defaults
+# ---------------------------------------------------------------------------
+
 _DEFAULTS: dict[str, Any] = {
     "server": {
         "host": "127.0.0.2",
@@ -53,9 +86,9 @@ _DEFAULTS: dict[str, Any] = {
         "target_ip":      "127.0.0.2",
     },
     "logging": {
-        "level":        "info",             # info | debug
+        "level":        "info",
         "logfile":      "./logs/forensic_server.log",
-        "max_bytes":    10 * 1024 * 1024,   # 10 MB
+        "max_bytes":    10 * 1024 * 1024,
         "backup_count": 5,
     },
     "support": {
@@ -80,41 +113,46 @@ class ConfigLoader:
     """
     Lädt config.yaml und stellt alle Konfigurationsparameter bereit.
 
-    Verwendung:
-        cfg = ConfigLoader(config_path="/pfad/zu/config.yaml")
-        host = cfg.get("server.host")           # "127.0.0.2"
-        port = cfg.get("server.port")           # 80
-        mode = cfg.get("server.mode")           # "job"
+    Verwendung (Build 013 — cli_overrides im Konstruktor):
+        cfg = ConfigLoader(
+            config_path="./config.yaml",
+            cli_overrides={"server.mode": "cli", "server.port": 8080},
+        )
+        host = cfg.get("server.host")   # "127.0.0.2"
 
-    Die Eskalationskette wird in dieser Klasse für alle Werte eingehalten.
-    CLI-Overrides werden nach dem Laden per apply_cli_overrides() aufgebracht.
+    Rückwärtskompatibilität:
+        cfg = ConfigLoader(config_path="./config.yaml")
+        cfg.apply_cli_overrides({"server.mode": "cli"})
+
+    Raises:
+        ConfigLoaderError (oder Subklassen) bei Fehler.
     """
 
-    def __init__(self, config_path: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        config_path: Optional[str] = None,
+        cli_overrides: Optional[dict[str, Any]] = None,
+    ) -> None:
         """
         Initialisiert den ConfigLoader.
 
         Args:
-            config_path: Pfad zur config.yaml. Wenn None, wird ./config.yaml
-                         relativ zum aufrufenden Skript gesucht.
+            config_path:   Pfad zur config.yaml. None → ./config.yaml.
+            cli_overrides: Dict mit CLI-Overrides (Punkt-separierte Schlüssel).
+                           Wird nach dem Laden der YAML-Datei angewendet.
+                           None-Werte im Dict werden ignoriert.
 
         Raises:
-            FileNotFoundError: Wenn die config.yaml nicht gefunden wurde.
-            yaml.YAMLError:    Wenn die config.yaml nicht geparst werden kann.
-            ValueError:        Wenn ein Pflichtfeld fehlt oder einen ungültigen
-                               Wert enthält.
+            ConfigFileNotFoundError: Wenn die config.yaml nicht gefunden wurde.
+            ConfigValueError:        Wenn ein Wert ungültig ist.
         """
-        # Tiefen-Kopie der Defaults als Ausgangsbasis — niemals die Defaults
-        # direkt mutieren, damit Tests unabhängig voneinander laufen können.
         self._config: dict[str, Any] = copy.deepcopy(_DEFAULTS)
-
-        # Pfad zur config.yaml auflösen
         self._config_path: Path = self._resolve_config_path(config_path)
-
-        # config.yaml laden und über Defaults mergen
         self._load_yaml()
 
-        # Validierung der geladenen Konfiguration
+        if cli_overrides:
+            self.apply_cli_overrides(cli_overrides)
+
         self._validate()
 
     # ------------------------------------------------------------------
@@ -127,18 +165,8 @@ class ConfigLoader:
         zurück.
 
         Beispiele:
-            cfg.get("server.host")                    → "127.0.0.2"
-            cfg.get("url_patterns.asset_prefixes")    → ["/forum/style/", ...]
-            cfg.get("logging.level")                  → "info"
-
-        Args:
-            key:     Punkt-separierter Pfad zum Wert, z.B. "server.host"
-            default: Rückgabewert, wenn der Schlüssel nicht existiert.
-                     Normalerweise nicht nötig, da alle bekannten Schlüssel
-                     durch Coded Defaults abgedeckt sind.
-
-        Returns:
-            Den Konfigurationswert oder default.
+            cfg.get("server.host")
+            cfg.get("url_patterns.asset_prefixes")
         """
         parts = key.split(".")
         node: Any = self._config
@@ -151,27 +179,11 @@ class ConfigLoader:
     def apply_cli_overrides(self, overrides: dict[str, Any]) -> None:
         """
         Wendet CLI-Argumente als Overrides auf die geladene Konfiguration an.
-        CLI-Argumente haben höchste Priorität (Eskalationskette: CLI > yaml > Default).
-
-        Erwartet ein flaches Dict mit Punkt-separierten Schlüsseln:
-
-            overrides = {
-                "server.mode":        "cli",
-                "paths.forensic_db_dir": "/mnt/nrw/forensic/",
-                "logging.level":      "debug",
-            }
-
-        Unbekannte Schlüssel werden ignoriert — Grundregel: kein stiller Fehler
-        bei bekannten Schlüsseln, aber fremde Schlüssel werfen keine Exception,
-        da zukünftige CLI-Argumente rückwärtskompatibel sein müssen.
-
-        Args:
-            overrides: Dict mit Punkt-Schlüsseln und Überschreibwerten.
-                       None-Werte werden ignoriert (CLI-Argument nicht gesetzt).
+        CLI hat höchste Priorität (CLI > yaml > Default).
+        None-Werte werden ignoriert (Argument nicht gesetzt).
         """
         for dotted_key, value in overrides.items():
             if value is None:
-                # CLI-Argument wurde nicht angegeben — überspringen
                 continue
             self._set(dotted_key, value)
 
@@ -181,10 +193,7 @@ class ConfigLoader:
         return self._config_path
 
     def as_dict(self) -> dict[str, Any]:
-        """
-        Gibt eine Tiefen-Kopie der vollständigen Konfiguration zurück.
-        Für Logging und Diagnosezwecke.
-        """
+        """Gibt eine Tiefen-Kopie der vollständigen Konfiguration zurück."""
         return copy.deepcopy(self._config)
 
     # ------------------------------------------------------------------
@@ -195,21 +204,13 @@ class ConfigLoader:
         """
         Löst den Pfad zur config.yaml auf.
 
-        Priorität:
-        1. Explizit übergebener config_path (entspricht --config CLI-Argument)
-        2. ./config.yaml relativ zum aktuellen Arbeitsverzeichnis
-
         Raises:
-            FileNotFoundError: Wenn die Datei am aufgelösten Pfad nicht existiert.
+            ConfigFileNotFoundError: Wenn die Datei nicht existiert.
         """
-        if config_path is not None:
-            path = Path(config_path)
-        else:
-            # Coded Default: config.yaml neben dem Skript / im CWD
-            path = Path("config.yaml")
+        path = Path(config_path) if config_path is not None else Path("config.yaml")
 
         if not path.exists():
-            raise FileNotFoundError(
+            raise ConfigFileNotFoundError(
                 f"config.yaml nicht gefunden: '{path.resolve()}'\n"
                 f"Bitte --config <pfad> angeben oder config.yaml im "
                 f"Arbeitsverzeichnis ablegen."
@@ -220,34 +221,34 @@ class ConfigLoader:
     def _load_yaml(self) -> None:
         """
         Liest die config.yaml ein und mergt sie über die Coded Defaults.
-        Felder, die in config.yaml fehlen, behalten ihren Default-Wert.
 
         Raises:
-            yaml.YAMLError: Wenn die Datei nicht geparst werden kann.
-            ValueError:     Wenn die YAML-Wurzel kein Dict ist.
+            ConfigValueError: Wenn die YAML-Wurzel kein Dict ist.
+            ConfigLoaderError: Wenn die YAML-Datei nicht geparst werden kann.
         """
-        with open(self._config_path, encoding="utf-8") as fh:
-            raw = yaml.safe_load(fh)
+        try:
+            with open(self._config_path, encoding="utf-8") as fh:
+                raw = yaml.safe_load(fh)
+        except yaml.YAMLError as exc:
+            raise ConfigLoaderError(
+                f"config.yaml konnte nicht geparst werden: {exc}"
+            ) from exc
 
         if raw is None:
-            # Leere config.yaml ist erlaubt — alle Defaults greifen
-            return
+            return  # Leere config.yaml — alle Defaults greifen
 
         if not isinstance(raw, dict):
-            raise ValueError(
+            raise ConfigValueError(
                 f"config.yaml muss ein YAML-Mapping (Dict) auf oberster Ebene "
                 f"sein. Gefunden: {type(raw).__name__}"
             )
 
-        # Rekursives tiefes Merge: YAML-Werte überschreiben Defaults,
-        # aber fehlende YAML-Schlüssel behalten ihren Default.
         self._deep_merge(self._config, raw)
 
     def _deep_merge(self, base: dict, override: dict) -> None:
         """
         Mergt 'override' rekursiv in 'base'. Modifiziert 'base' in-place.
-        Nur Dict-Werte werden rekursiv gemergt; alle anderen Typen werden
-        direkt überschrieben.
+        Dict-Werte werden rekursiv gemergt; alle anderen Typen direkt überschrieben.
         """
         for key, value in override.items():
             if (
@@ -260,10 +261,7 @@ class ConfigLoader:
                 base[key] = value
 
     def _set(self, dotted_key: str, value: Any) -> None:
-        """
-        Setzt einen Wert anhand eines Punkt-separierten Schlüssels in-place.
-        Zwischenknoten werden als leere Dicts angelegt, falls sie fehlen.
-        """
+        """Setzt einen Wert anhand eines Punkt-separierten Schlüssels in-place."""
         parts = dotted_key.split(".")
         node = self._config
         for part in parts[:-1]:
@@ -276,29 +274,20 @@ class ConfigLoader:
         """
         Prüft die Konfiguration auf Gültigkeit.
 
-        Geprüfte Invarianten:
-        - server.mode muss einer der drei zulässigen Werte sein
-        - server.port muss eine positive Ganzzahl sein
-        - logging.level muss 'info' oder 'debug' sein
-        - support.temp_db muss 'memory' oder 'file' sein
-        - paths.forensic_db_dir und paths.evidence_db_dir müssen Strings sein
-          (Existenz der Verzeichnisse wird erst in startup_checks.py geprüft,
-           da sie beim Laden der Config noch nicht zwingend existieren müssen)
-
         Raises:
-            ValueError: Bei ungültigem Konfigurationswert.
+            ConfigValueError: Bei ungültigem Konfigurationswert.
         """
         valid_modes = {"job", "cli", "support"}
         mode = self.get("server.mode")
         if mode not in valid_modes:
-            raise ValueError(
+            raise ConfigValueError(
                 f"server.mode='{mode}' ist ungültig. "
                 f"Zulässige Werte: {sorted(valid_modes)}"
             )
 
         port = self.get("server.port")
         if not isinstance(port, int) or port < 1 or port > 65535:
-            raise ValueError(
+            raise ConfigValueError(
                 f"server.port='{port}' ist ungültig. "
                 f"Muss eine Ganzzahl zwischen 1 und 65535 sein."
             )
@@ -306,7 +295,7 @@ class ConfigLoader:
         valid_log_levels = {"info", "debug"}
         level = self.get("logging.level")
         if level not in valid_log_levels:
-            raise ValueError(
+            raise ConfigValueError(
                 f"logging.level='{level}' ist ungültig. "
                 f"Zulässige Werte: {sorted(valid_log_levels)}"
             )
@@ -314,16 +303,18 @@ class ConfigLoader:
         valid_temp_db = {"memory", "file"}
         temp_db = self.get("support.temp_db")
         if temp_db not in valid_temp_db:
-            raise ValueError(
+            raise ConfigValueError(
                 f"support.temp_db='{temp_db}' ist ungültig. "
                 f"Zulässige Werte: {sorted(valid_temp_db)}"
             )
 
-        for path_key in ("paths.forensic_db_dir", "paths.evidence_db_dir",
-                         "paths.coordinator_db", "paths.default_db"):
+        for path_key in (
+            "paths.forensic_db_dir", "paths.evidence_db_dir",
+            "paths.coordinator_db",  "paths.default_db",
+        ):
             val = self.get(path_key)
             if not isinstance(val, str) or not val.strip():
-                raise ValueError(
+                raise ConfigValueError(
                     f"'{path_key}' muss ein nicht-leerer String sein. "
                     f"Gefunden: {val!r}"
                 )
