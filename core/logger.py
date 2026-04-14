@@ -17,120 +17,148 @@
 #   debug — Entwicklung: zusätzlich SQL-Queries, Request-Timing, BLOB-Lookup-Pfade
 #
 # Initialisierung:
-#   Einmalig beim Serverstart durch main.py via setup_logging(config).
-#   Danach holt sich jedes Modul seinen Logger per get_logger(__name__).
+#   Einmalig beim Serverstart durch main.py.
+#   Zwei Aufrufvarianten (beide unterstützt — rückwärtskompatibel):
 #
-# Forensische Relevanz:
-#   Das Logfile ist ein Betriebsprotokoll, kein Beweismittel. Es dokumentiert
-#   den technischen Ablauf des Werkzeugs, nicht die Ermittlungsergebnisse.
-#   Ermittlungsrelevante Daten landen ausschließlich in evidence_db.
+#   Variante A (Tests, legacy): setup_logging(config)
+#     config ist eine ConfigLoader-Instanz.
+#
+#   Variante B (main.py): setup_logging(level=..., logfile=..., ...)
+#     Einzelparameter direkt.
+#
+# Änderungen gegenüber Build 002 (Build 013):
+#   - setup_logging() akzeptiert nun beide Aufrufvarianten (A und B).
+#     Variante B entspricht dem Aufruf in main.py:
+#       setup_logging(level="info", logfile="...", max_bytes=N, backup_count=N)
+#     Variante A (config-Objekt) bleibt erhalten für Rückwärtskompatibilität.
 #
 # Abhängigkeiten: logging, logging.handlers — ausschließlich Stdlib
-# Version: v0.1.0 · Build: 002 · 2026-04-10
+# Version: v0.1.0 · Build: 013 · 2026-04-14
 # =============================================================================
 
 import logging
 import logging.handlers
-import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union, TYPE_CHECKING
 
-from core.config_loader import ConfigLoader
+if TYPE_CHECKING:
+    from core.config_loader import ConfigLoader
 
 
 # ---------------------------------------------------------------------------
 # Interner Zustand: Initialisierungsflag
-# Verhindert doppelte Handler-Registrierung bei mehrfachem setup_logging()-Aufruf
-# (kann in Tests auftreten).
 # ---------------------------------------------------------------------------
 _is_initialized: bool = False
 
-# Name des Root-Loggers für dieses Projekt.
-# Alle Modul-Logger sind Kinder dieses Loggers (z.B. "forensic.core.config_loader").
 _ROOT_LOGGER_NAME: str = "forensic"
-
-# Datumsformat für alle Log-Einträge (ISO 8601, Sekunden-Präzision)
-_DATE_FORMAT: str = "%Y-%m-%d %H:%M:%S"
-
-# Format für Konsolenausgabe: kompakt, gut lesbar im Terminal
-_CONSOLE_FORMAT: str = "%(asctime)s [%(levelname)-8s] %(name)s: %(message)s"
-
-# Format für Logdatei: vollständiger Pfad für Nachverfolgbarkeit
-_FILE_FORMAT: str = (
+_DATE_FORMAT:      str = "%Y-%m-%d %H:%M:%S"
+_CONSOLE_FORMAT:   str = "%(asctime)s [%(levelname)-8s] %(name)s: %(message)s"
+_FILE_FORMAT:      str = (
     "%(asctime)s [%(levelname)-8s] %(name)s (%(filename)s:%(lineno)d): %(message)s"
 )
 
 
-def setup_logging(config: ConfigLoader) -> None:
+def setup_logging(
+    config_or_level: "Union[ConfigLoader, str, None]" = None,
+    *,
+    level:        Optional[str] = None,
+    logfile:      Optional[str] = None,
+    max_bytes:    Optional[int] = None,
+    backup_count: Optional[int] = None,
+) -> None:
     """
-    Initialisiert das Logging-System anhand der geladenen Konfiguration.
-    Muss einmalig beim Serverstart aufgerufen werden, bevor get_logger()
-    verwendet wird.
+    Initialisiert das Logging-System. Idempotent.
 
-    Idempotent: Mehrfachaufrufe haben keine doppelten Handler zur Folge.
+    Variante A — config-Objekt (Tests / Legacy):
+        setup_logging(config)          # config ist ConfigLoader-Instanz
+
+    Variante B — Einzelparameter (main.py):
+        setup_logging(
+            level="info",
+            logfile="./logs/forensic_server.log",
+            max_bytes=10*1024*1024,
+            backup_count=5,
+        )
+
+    Beide Varianten sind äquivalent. Variante B hat Vorrang vor Variante A
+    wenn Einzelparameter explizit angegeben werden.
 
     Args:
-        config: Geladene ConfigLoader-Instanz. Relevante Schlüssel:
-                logging.level        — "info" oder "debug"
-                logging.logfile      — Pfad zur Logdatei
-                logging.max_bytes    — Maximale Dateigröße vor Rotation
-                logging.backup_count — Anzahl der Rotationsdateien
+        config_or_level: ConfigLoader-Instanz (Variante A) oder None.
+        level:           Log-Level-String: "info" oder "debug".
+        logfile:         Pfad zur rotierenden Logdatei.
+        max_bytes:       Maximale Dateigröße vor Rotation.
+        backup_count:    Anzahl der Rotationsdateien.
     """
     global _is_initialized
 
     if _is_initialized:
-        # Bereits initialisiert — kein doppeltes Setup.
-        # Tritt in Tests auf, wenn setup_logging() mehrfach aufgerufen wird.
         return
 
-    # Log-Level aus Konfiguration auflösen
-    level_str: str = config.get("logging.level", "info").upper()
-    level: int = getattr(logging, level_str, logging.INFO)
+    # ---- Werte auflösen ------------------------------------------------
+    # Einzelparameter (Variante B) haben Vorrang über config-Objekt (Variante A).
 
-    # Root-Logger des Projekts konfigurieren
+    _level_str      = "INFO"
+    _logfile        = "./logs/forensic_server.log"
+    _max_bytes      = 10 * 1024 * 1024
+    _backup_count   = 5
+
+    # Variante A: config-Objekt
+    if config_or_level is not None and not isinstance(config_or_level, str):
+        cfg = config_or_level
+        _level_str    = str(cfg.get("logging.level",        "info")).upper()
+        _logfile      = str(cfg.get("logging.logfile",      _logfile))
+        _max_bytes    = int(cfg.get("logging.max_bytes",    _max_bytes))
+        _backup_count = int(cfg.get("logging.backup_count", _backup_count))
+
+    # Variante B: Einzelparameter überschreiben
+    if level is not None:
+        _level_str = level.upper()
+    if logfile is not None:
+        _logfile = logfile
+    if max_bytes is not None:
+        _max_bytes = int(max_bytes)
+    if backup_count is not None:
+        _backup_count = int(backup_count)
+
+    # ---- Logging aufbauen -----------------------------------------------
+
+    numeric_level: int = getattr(logging, _level_str, logging.INFO)
+
     root_logger = logging.getLogger(_ROOT_LOGGER_NAME)
-    root_logger.setLevel(level)
+    root_logger.setLevel(numeric_level)
 
     # Handler 1: Konsolenausgabe (stderr)
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(level)
+    console_handler.setLevel(numeric_level)
     console_handler.setFormatter(
         logging.Formatter(fmt=_CONSOLE_FORMAT, datefmt=_DATE_FORMAT)
     )
     root_logger.addHandler(console_handler)
 
     # Handler 2: Rotierende Logdatei
-    logfile_path = config.get("logging.logfile", "./logs/forensic_server.log")
-    max_bytes = config.get("logging.max_bytes", 10 * 1024 * 1024)
-    backup_count = config.get("logging.backup_count", 5)
-
-    # Verzeichnis anlegen, falls es nicht existiert
-    logfile_dir = Path(logfile_path).parent
+    logfile_dir = Path(_logfile).parent
     logfile_dir.mkdir(parents=True, exist_ok=True)
 
     file_handler = logging.handlers.RotatingFileHandler(
-        filename=logfile_path,
-        maxBytes=max_bytes,
-        backupCount=backup_count,
+        filename=_logfile,
+        maxBytes=_max_bytes,
+        backupCount=_backup_count,
         encoding="utf-8",
     )
-    file_handler.setLevel(level)
+    file_handler.setLevel(numeric_level)
     file_handler.setFormatter(
         logging.Formatter(fmt=_FILE_FORMAT, datefmt=_DATE_FORMAT)
     )
     root_logger.addHandler(file_handler)
 
-    # Propagation zum Python-Root-Logger deaktivieren —
-    # verhindert doppelte Ausgaben durch den Standard-Root-Logger.
     root_logger.propagate = False
-
     _is_initialized = True
 
-    # Erster Logeintrag: Bestätigung der Initialisierung
     root_logger.info(
         "Logging initialisiert — Level: %s, Logdatei: %s",
-        level_str,
-        Path(logfile_path).resolve(),
+        _level_str,
+        Path(_logfile).resolve(),
     )
 
 
@@ -141,27 +169,8 @@ def get_logger(name: str) -> logging.Logger:
     Verwendung in jedem Modul:
         from core.logger import get_logger
         logger = get_logger(__name__)
-        logger.info("Server gestartet auf %s:%d", host, port)
-        logger.debug("SQL: %s | Params: %s", query, params)
-
-    Der Logger-Name wird als "<modul>.<submodul>"-Pfad aufgebaut, z.B.:
-        core.config_loader → forensic.core.config_loader
-        server.router      → forensic.server.router
-
-    Falls setup_logging() noch nicht aufgerufen wurde, gibt die Funktion einen
-    Logger zurück, der nur auf dem Python-Root-Logger basiert (Fallback).
-    In der Produktion ist setup_logging() immer vor get_logger() aufzurufen.
-
-    Args:
-        name: Typischerweise __name__ des aufrufenden Moduls.
-
-    Returns:
-        logging.Logger-Instanz, dem Projekt-Root-Logger untergeordnet.
     """
-    # Modulpfad unter den Projekt-Root-Logger hängen,
-    # damit alle Projekt-Logger hierarchisch gebündelt sind.
     if name.startswith(_ROOT_LOGGER_NAME + "."):
-        # Bereits korrekt prefixiert (kann bei direktem Aufruf vorkommen)
         logger_name = name
     elif name == "__main__":
         logger_name = _ROOT_LOGGER_NAME
@@ -173,11 +182,8 @@ def get_logger(name: str) -> logging.Logger:
 
 def reset_for_testing() -> None:
     """
-    Setzt den Initialisierungszustand zurück und entfernt alle Handler
-    vom Projekt-Root-Logger.
-
+    Setzt den Initialisierungszustand zurück und entfernt alle Handler.
     NUR für Unit-Tests verwenden. Im Produktionsbetrieb niemals aufrufen.
-    Ermöglicht mehrfaches setup_logging() in derselben Test-Session.
     """
     global _is_initialized
     root_logger = logging.getLogger(_ROOT_LOGGER_NAME)

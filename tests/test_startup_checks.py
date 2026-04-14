@@ -207,7 +207,7 @@ class TestStartupChecksSuccess(unittest.TestCase):
         """T01: Korrekte DB-Umgebung → run_all() läuft ohne Ausnahme durch."""
         ctx, forensic_db = _make_resolved_context(self.tmp)
         cfg = ConfigLoader.__new__(ConfigLoader)
-        checker = StartupChecker(cfg, ctx)
+        checker = StartupChecker(ctx, cfg)
         # Sollte keine Exception werfen
         checker.run_all()
 
@@ -225,7 +225,7 @@ class TestStartupChecksFileMissing(unittest.TestCase):
     def _make_checker(self, **kwargs) -> StartupChecker:
         ctx, _ = _make_resolved_context(self.tmp, **kwargs)
         cfg = ConfigLoader.__new__(ConfigLoader)
-        return StartupChecker(cfg, ctx)
+        return StartupChecker(ctx, cfg)
 
     def test_T02_forensic_db_fehlt(self):
         """T02: forensic_db nicht vorhanden → StartupCheckError."""
@@ -261,7 +261,7 @@ class TestStartupChecksFileMissing(unittest.TestCase):
             self.tmp, mode="support", coordinator_db_exists=False
         )
         cfg = ConfigLoader.__new__(ConfigLoader)
-        checker = StartupChecker(cfg, ctx)
+        checker = StartupChecker(ctx, cfg)
         # Darf keine StartupCheckError werfen
         checker.run_all()
 
@@ -307,7 +307,7 @@ class TestStartupChecksSchema(unittest.TestCase):
             default_db=default_db, coordinator_db=coord_db,
             investigator_id=1,
         )
-        checker = StartupChecker(ConfigLoader.__new__(ConfigLoader), ctx)
+        checker = StartupChecker(ctx, ConfigLoader.__new__(ConfigLoader))
         with self.assertRaises(StartupCheckError) as cm:
             checker.run_all()
         self.assertIn("schema_version", str(cm.exception))
@@ -331,7 +331,7 @@ class TestStartupChecksSchema(unittest.TestCase):
             default_db=default_db, coordinator_db=coord_db,
             investigator_id=1,
         )
-        checker = StartupChecker(ConfigLoader.__new__(ConfigLoader), ctx)
+        checker = StartupChecker(ctx, ConfigLoader.__new__(ConfigLoader))
         with self.assertRaises(StartupCheckError) as cm:
             checker.run_all()
         self.assertIn("99", str(cm.exception))
@@ -374,7 +374,7 @@ class TestStartupChecksIntegrity(unittest.TestCase):
         con.close()
 
         ctx = self._base_context(forensic_db)
-        checker = StartupChecker(ConfigLoader.__new__(ConfigLoader), ctx)
+        checker = StartupChecker(ctx, ConfigLoader.__new__(ConfigLoader))
         with self.assertRaises(StartupCheckError) as cm:
             checker.run_all()
         self.assertIn("sha256", str(cm.exception).lower())
@@ -394,7 +394,7 @@ class TestStartupChecksIntegrity(unittest.TestCase):
         con.close()
 
         ctx = self._base_context(forensic_db)
-        checker = StartupChecker(ConfigLoader.__new__(ConfigLoader), ctx)
+        checker = StartupChecker(ctx, ConfigLoader.__new__(ConfigLoader))
         with self.assertRaises(StartupCheckError) as cm:
             checker.run_all()
         msg = str(cm.exception)
@@ -421,7 +421,7 @@ class TestStartupChecksIntegrity(unittest.TestCase):
         # mit einem Pfad der über eine normale (nicht-URI) Verbindung beschreibbar ist.
 
         ctx = self._base_context(forensic_db)
-        checker = StartupChecker(ConfigLoader.__new__(ConfigLoader), ctx)
+        checker = StartupChecker(ctx, ConfigLoader.__new__(ConfigLoader))
 
         # Direkt _check_forensic_db_readonly aufrufen — mit echter DB die
         # den URI-mode=ro Schreibschutz hat → kein Fehler erwartet
@@ -441,7 +441,7 @@ class TestStartupChecksIntegrity(unittest.TestCase):
         _create_valid_forensic_db(forensic_db)
 
         ctx = self._base_context(forensic_db)
-        checker = StartupChecker(ConfigLoader.__new__(ConfigLoader), ctx)
+        checker = StartupChecker(ctx, ConfigLoader.__new__(ConfigLoader))
         # Darf keine Exception werfen
         checker._check_forensic_db_readonly()
 
@@ -462,7 +462,7 @@ class TestStartupChecksUtil(unittest.TestCase):
         expected_hash = _create_valid_forensic_db(forensic_db)
 
         ctx, _ = _make_resolved_context(self.tmp)
-        checker = StartupChecker(ConfigLoader.__new__(ConfigLoader), ctx)
+        checker = StartupChecker(ctx, ConfigLoader.__new__(ConfigLoader))
         result = checker.compute_sha256_for_sealing(forensic_db)
 
         self.assertEqual(result, expected_hash)

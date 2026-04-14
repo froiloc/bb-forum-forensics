@@ -371,7 +371,7 @@ class _ServerFixture(unittest.TestCase):
             investigator_id=1,
         )
 
-        cls.bundle = ConnectionManager(cls.config, cls.context).open()
+        cls.bundle = ConnectionManager(cls.context, cls.config).open()
         cls.server = ForensicHTTPServer(
             _TEST_HOST, 0,  # Port 0 → OS wählt freien Port (Config-Port 8080 ignoriert)
             cls.bundle, cls.context, cls.config,
@@ -695,7 +695,7 @@ class TestIntegrationShutdown(unittest.TestCase):
             investigator_id=None,
         )
 
-        bundle = ConnectionManager(config, context).open()
+        bundle = ConnectionManager(context, config).open()
         server = ForensicHTTPServer(
             _TEST_HOST, 0, bundle, context, config  # Port 0 → OS wählt freien Port
         )

@@ -73,9 +73,10 @@ class StartupChecker:
 
     def __init__(
         self,
-        config: ConfigLoader,
         context: ResolvedContext,
+        config: ConfigLoader,
     ) -> None:
+        # Reihenfolge (context, config) entspricht dem Aufruf in main.py.
         self._config = config
         self._ctx = context
 

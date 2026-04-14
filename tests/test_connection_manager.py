@@ -175,7 +175,7 @@ class TestConnectionManagerNormal(unittest.TestCase):
     def test_T01_bundle_aufgebaut(self):
         """T01: DatabaseBundle wird korrekt aufgebaut (Normalmodus)."""
         ctx, cfg = _make_context(self.tmp)
-        mgr = ConnectionManager(cfg, ctx)
+        mgr = ConnectionManager(ctx, cfg)
         self.bundle = mgr.open()
         self.assertIsNotNone(self.bundle.forensic)
         self.assertIsNotNone(self.bundle.default)
@@ -185,7 +185,7 @@ class TestConnectionManagerNormal(unittest.TestCase):
     def test_T02_fdb_readonly(self):
         """T02: fdb ist READ-ONLY — Schreibversuch wirft OperationalError."""
         ctx, cfg = _make_context(self.tmp)
-        self.bundle = ConnectionManager(cfg, ctx).open()
+        self.bundle = ConnectionManager(ctx, cfg).open()
         with self.assertRaises(sqlite3.OperationalError):
             self.bundle.connection.execute(
                 "INSERT INTO fdb.pages "
@@ -195,7 +195,7 @@ class TestConnectionManagerNormal(unittest.TestCase):
     def test_T03_ddb_readonly(self):
         """T03: ddb ist READ-ONLY — Schreibversuch wirft OperationalError."""
         ctx, cfg = _make_context(self.tmp)
-        self.bundle = ConnectionManager(cfg, ctx).open()
+        self.bundle = ConnectionManager(ctx, cfg).open()
         with self.assertRaises(sqlite3.OperationalError):
             self.bundle.connection.execute(
                 "INSERT INTO ddb.default_meta VALUES ('test', 'val')"
@@ -205,24 +205,24 @@ class TestConnectionManagerNormal(unittest.TestCase):
         """T04: Fehlende forensic_db → ConnectionManagerError."""
         ctx, cfg = _make_context(self.tmp, forensic_exists=False)
         with self.assertRaises(ConnectionManagerError):
-            ConnectionManager(cfg, ctx).open()
+            ConnectionManager(ctx, cfg).open()
 
     def test_T05_default_db_fehlt(self):
         """T05: Fehlende default_db → ConnectionManagerError."""
         ctx, cfg = _make_context(self.tmp, default_exists=False)
         with self.assertRaises(ConnectionManagerError):
-            ConnectionManager(cfg, ctx).open()
+            ConnectionManager(ctx, cfg).open()
 
     def test_T06_coordinator_fehlt_kein_fehler(self):
         """T06: Fehlende coordinator.db → Warnung, kein Fehler."""
         ctx, cfg = _make_context(self.tmp, coordinator_exists=False)
-        self.bundle = ConnectionManager(cfg, ctx).open()
+        self.bundle = ConnectionManager(ctx, cfg).open()
         self.assertIsNotNone(self.bundle)
 
     def test_T12_forensic_db_funktionsfaehig(self):
         """T12: ForensicDb-Instanz ist nach open() funktionsfähig."""
         ctx, cfg = _make_context(self.tmp)
-        self.bundle = ConnectionManager(cfg, ctx).open()
+        self.bundle = ConnectionManager(ctx, cfg).open()
         page = self.bundle.forensic.get_page("/forum/test")
         self.assertIsNotNone(page)
         self.assertEqual(page.scrape_context, "user")
@@ -230,7 +230,7 @@ class TestConnectionManagerNormal(unittest.TestCase):
     def test_T13_attach_aliases(self):
         """T13: fdb, ddb, cdb sind als korrekte ATTACH-Aliases angebunden."""
         ctx, cfg = _make_context(self.tmp)
-        self.bundle = ConnectionManager(cfg, ctx).open()
+        self.bundle = ConnectionManager(ctx, cfg).open()
         con = self.bundle.connection
         # fdb erreichbar
         con.execute("SELECT COUNT(*) FROM fdb.pages").fetchone()
@@ -289,7 +289,7 @@ class TestConnectionManagerSupport(unittest.TestCase):
             default_db=default_db, coordinator_db=coordinator,
             investigator_id=1,
         )
-        self.bundle = ConnectionManager(cfg, ctx).open()
+        self.bundle = ConnectionManager(ctx, cfg).open()
         self.assertIsNotNone(self.bundle)
         self.assertIsNone(self.bundle.temp_db_path)  # memory → kein Pfad
 
@@ -311,7 +311,7 @@ class TestConnectionManagerSupport(unittest.TestCase):
             default_db=default_db, coordinator_db=coordinator,
             investigator_id=1,
         )
-        self.bundle = ConnectionManager(cfg, ctx).open()
+        self.bundle = ConnectionManager(ctx, cfg).open()
         self.assertIsNotNone(self.bundle.temp_db_path)
         self.assertTrue(Path(self.bundle.temp_db_path).exists())
 
@@ -333,7 +333,7 @@ class TestConnectionManagerSupport(unittest.TestCase):
             default_db=default_db, coordinator_db=coordinator,
             investigator_id=1,
         )
-        self.bundle = ConnectionManager(cfg, ctx).open()
+        self.bundle = ConnectionManager(ctx, cfg).open()
         self.bundle.evidence.log_page_visit("/forum/test", "user")
 
         # edb (echte evidence_db) darf keine page_visits-Tabelle haben
@@ -365,7 +365,7 @@ class TestConnectionManagerClose(unittest.TestCase):
     def test_T10_close_schliesst_verbindung(self):
         """T10: bundle.close() schließt die Verbindung."""
         ctx, cfg = _make_context(self.tmp)
-        bundle = ConnectionManager(cfg, ctx).open()
+        bundle = ConnectionManager(ctx, cfg).open()
         bundle.close()
         # Verbindung sollte nach close() nicht mehr nutzbar sein
         with self.assertRaises(Exception):
@@ -408,7 +408,7 @@ class TestConnectionManagerClose(unittest.TestCase):
             default_db=default_db, coordinator_db=coordinator,
             investigator_id=1,
         )
-        bundle = ConnectionManager(cfg, ctx).open()
+        bundle = ConnectionManager(ctx, cfg).open()
         temp_path = bundle.temp_db_path
         self.assertTrue(Path(temp_path).exists())
 
