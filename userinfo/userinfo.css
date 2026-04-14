@@ -1,0 +1,626 @@
+/* =============================================================================
+   userinfo/userinfo.css
+   IT-Forensisches Ermittlungswerkzeug — Baustelle 4: Nutzerinfo-Tab
+   =============================================================================
+   Zweck:
+     Stylesheet für Fenster 2 (Nutzerinfo) und Fenster 3 (Bericht-Editor).
+     Alle Fenster verwenden dieselbe CSS-Datei (/_forensic/userinfo.css).
+
+   Design-Grundsätze:
+     - Sachliches, behördenkonformes Layout (keine dekorativen Elemente)
+     - Hoher Kontrast, WCAG 2.1 AA-konform (BFSG, BGG NRW §10, BITV 2.0)
+     - Aufklappbare Blöcke via <details>/<summary>
+     - Ampel-Pills für Strafrechtsrelevanz (rot/orange/gelb)
+     - Heatmap: 7×24-Raster, Weiß→Hellblau→Dunkelblau
+
+   Version: v0.1.0 · Build: 012 · 2026-04-14
+   ============================================================================= */
+
+/* ------------------------------------------------------------------ */
+/* Basis-Reset & Typografie                                             */
+/* ------------------------------------------------------------------ */
+
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #1a1a1a;
+    background: #f5f5f5;
+}
+
+/* ------------------------------------------------------------------ */
+/* Seitenlayout                                                         */
+/* ------------------------------------------------------------------ */
+
+#userinfo-static,
+#userinfo-dynamic,
+#userinfo-report-readonly,
+#report-editor-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 12px 16px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Kopfbereich (§7.0 Bauplan B4)                                       */
+/* ------------------------------------------------------------------ */
+
+#userinfo-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 12px;
+    margin-bottom: 12px;
+}
+
+#userinfo-avatar {
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
+    border: 1px solid #aaa;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+#userinfo-avatar-placeholder {
+    width: 64px;
+    height: 64px;
+    background: #ddd;
+    border: 1px solid #aaa;
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #888;
+    font-size: 11px;
+    flex-shrink: 0;
+}
+
+#userinfo-header-main {
+    flex: 1;
+}
+
+#userinfo-username {
+    font-size: 20px;
+    font-weight: bold;
+    margin: 0 0 2px 0;
+}
+
+#userinfo-meta {
+    color: #555;
+    font-size: 12px;
+    margin-bottom: 6px;
+}
+
+/* Ampel-Pills (§7.0 Bauplan B4) */
+.pill-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 6px 0;
+}
+
+.pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.pill-red    { background: #d32f2f; color: #fff; }
+.pill-orange { background: #e65100; color: #fff; }
+.pill-yellow { background: #f9a825; color: #1a1a1a; }
+.pill-warn   { background: #795548; color: #fff; }
+.pill-green  { background: #388e3c; color: #fff; }
+.pill-grey   { background: #757575; color: #fff; }
+
+/* Kennzahlen-Raster unter Kopfbereich */
+#userinfo-stats-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 24px;
+    font-size: 13px;
+    padding-top: 8px;
+    border-top: 1px solid #e0e0e0;
+    margin-top: 8px;
+}
+
+.stat-item {
+    white-space: nowrap;
+}
+
+.stat-discrepancy {
+    color: #b71c1c;
+    font-weight: bold;
+    cursor: help;
+}
+
+/* ------------------------------------------------------------------ */
+/* Aufklappbare Blöcke (<details>/<summary>)                           */
+/* ------------------------------------------------------------------ */
+
+.info-section {
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+.info-section > summary {
+    padding: 8px 12px;
+    font-weight: bold;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #f0f0f0;
+    border-radius: 4px 4px 0 0;
+}
+
+.info-section > summary::-webkit-details-marker { display: none; }
+
+.info-section > summary::before {
+    content: "▶";
+    font-size: 11px;
+    transition: transform 0.15s;
+    flex-shrink: 0;
+}
+
+.info-section[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+.info-section-body {
+    padding: 10px 12px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Datentabellen                                                        */
+/* ------------------------------------------------------------------ */
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.data-table th,
+.data-table td {
+    text-align: left;
+    padding: 4px 8px;
+    border-bottom: 1px solid #e8e8e8;
+    vertical-align: top;
+}
+
+.data-table th {
+    background: #f5f5f5;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.data-table tr:last-child td { border-bottom: none; }
+
+.data-table tr:hover td { background: #fafafa; }
+
+/* Paginierungskontrolle */
+.pagination {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    font-size: 12px;
+    margin-top: 8px;
+}
+
+.pagination button {
+    padding: 2px 8px;
+    cursor: pointer;
+    border: 1px solid #aaa;
+    background: #fff;
+    border-radius: 2px;
+}
+
+.pagination button:disabled { opacity: 0.4; cursor: default; }
+
+/* ------------------------------------------------------------------ */
+/* Strafrechtsrelevante Blöcke (§7.2 Bauplan B4)                       */
+/* ------------------------------------------------------------------ */
+
+.criminal-relevance-box {
+    border: 2px solid #d32f2f;
+    border-radius: 4px;
+    padding: 8px 12px;
+    background: #ffebee;
+    margin-bottom: 8px;
+}
+
+.criminal-relevance-box h4 {
+    margin: 0 0 4px 0;
+    color: #b71c1c;
+    font-size: 13px;
+}
+
+.aoa-value {
+    font-size: 20px;
+    font-weight: bold;
+    color: #b71c1c;
+}
+
+.code-value {
+    font-family: "Courier New", Courier, monospace;
+    background: #f5f5f5;
+    padding: 2px 6px;
+    border: 1px solid #ccc;
+    border-radius: 2px;
+    font-size: 13px;
+    word-break: break-all;
+}
+
+.copy-btn {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 6px;
+    font-size: 11px;
+    cursor: pointer;
+    border: 1px solid #aaa;
+    background: #fff;
+    border-radius: 2px;
+    vertical-align: middle;
+}
+
+.copy-btn:active { background: #e0e0e0; }
+
+.negativ-befund {
+    color: #555;
+    font-style: italic;
+}
+
+/* ------------------------------------------------------------------ */
+/* Heatmap 7×24 (§7.7 Bauplan B4)                                      */
+/* ------------------------------------------------------------------ */
+
+#heatmap-container {
+    overflow-x: auto;
+}
+
+#heatmap-table {
+    border-collapse: collapse;
+    font-size: 11px;
+}
+
+#heatmap-table th,
+#heatmap-table td {
+    padding: 2px 3px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+#heatmap-table .heatmap-cell {
+    width: 26px;
+    height: 20px;
+    border: 1px solid #e0e0e0;
+    cursor: default;
+}
+
+/* Farb-Klassen für Intensitätsstufen (Weiß → Dunkelblau) */
+.hm-0  { background: #ffffff; }
+.hm-1  { background: #e3f0fa; }
+.hm-2  { background: #c6e2f5; }
+.hm-3  { background: #96cbe9; }
+.hm-4  { background: #63b0dc; }
+.hm-5  { background: #3690c0; }
+.hm-6  { background: #0570b0; }
+.hm-7  { background: #034e7b; }
+
+.heatmap-timezone-note {
+    font-size: 11px;
+    color: #666;
+    margin-top: 4px;
+}
+
+.heatmap-offset-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+    font-size: 12px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Admin-Notiz (§7.1 Bauplan B4)                                       */
+/* ------------------------------------------------------------------ */
+
+.admin-note-box {
+    border: 2px solid #b71c1c;
+    border-radius: 4px;
+    padding: 6px 10px;
+    background: #ffebee;
+    font-size: 13px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Passwort-Sharing-Warnkasten (§7.6 Bauplan B4)                       */
+/* ------------------------------------------------------------------ */
+
+.sharing-warning {
+    border: 1px solid #f9a825;
+    border-radius: 4px;
+    padding: 6px 10px;
+    background: #fffde7;
+    font-size: 12px;
+    margin-bottom: 6px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Dynamischer Ermittlungsstand (§7.9 Bauplan B4)                      */
+/* ------------------------------------------------------------------ */
+
+#userinfo-dynamic {
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+}
+
+.annotation-count-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 6px 0;
+}
+
+.annotation-count-item {
+    padding: 4px 10px;
+    background: #e8f5e9;
+    border: 1px solid #a5d6a7;
+    border-radius: 12px;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.unreferenced-warning {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 12px;
+    margin-top: 6px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Read-Only-Berichtsreiter (§8 Bauplan B4)                            */
+/* ------------------------------------------------------------------ */
+
+#userinfo-report-readonly {
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+}
+
+#userinfo-report-readonly h3 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.report-actions {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.report-actions button {
+    padding: 4px 12px;
+    cursor: pointer;
+    border: 1px solid #aaa;
+    background: #fff;
+    border-radius: 2px;
+    font-size: 12px;
+}
+
+.report-actions button:hover { background: #f0f0f0; }
+
+.report-paragraph {
+    border-left: 3px solid #1565c0;
+    padding: 6px 10px;
+    margin-bottom: 8px;
+    background: #f9f9f9;
+    font-size: 13px;
+}
+
+.report-paragraph-author {
+    font-size: 11px;
+    color: #666;
+    margin-bottom: 4px;
+}
+
+/* Beweisanker-Chips (§8.3 Bauplan B4) */
+.anchor-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 1px 6px;
+    background: #e3f2fd;
+    border: 1px solid #90caf9;
+    border-radius: 10px;
+    font-size: 11px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.anchor-chip:hover { background: #bbdefb; }
+
+/* ------------------------------------------------------------------ */
+/* Bericht-Editor (Fenster 3, §8 Bauplan B4)                           */
+/* ------------------------------------------------------------------ */
+
+#report-editor-container {
+    background: #f5f5f5;
+    min-height: 100vh;
+}
+
+#report-editor-toolbar {
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+#report-lock-status {
+    font-size: 12px;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-weight: bold;
+}
+
+.lock-mine    { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+.lock-other   { background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; }
+.lock-none    { background: #f5f5f5; color: #757575; border: 1px solid #ccc; }
+.lock-frozen  { background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; }
+
+#report-frozen-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(255, 243, 224, 0.92);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    text-align: center;
+    color: #e65100;
+}
+
+#report-frozen-overlay.visible { display: flex; }
+
+.editor-btn {
+    padding: 4px 12px;
+    cursor: pointer;
+    border: 1px solid #aaa;
+    background: #fff;
+    border-radius: 2px;
+    font-size: 12px;
+}
+
+.editor-btn:hover:not(:disabled) { background: #f0f0f0; }
+.editor-btn:disabled { opacity: 0.4; cursor: default; }
+
+.editor-btn-primary {
+    background: #1565c0;
+    color: #fff;
+    border-color: #1565c0;
+}
+
+.editor-btn-primary:hover:not(:disabled) { background: #0d47a1; }
+
+#report-paragraphs-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.editor-paragraph {
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    padding: 10px 12px;
+}
+
+.editor-paragraph-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: #666;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+}
+
+.editor-paragraph-content {
+    font-size: 13px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+}
+
+.editor-paragraph-actions {
+    margin-top: 8px;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.editor-new-paragraph {
+    background: #e8f5e9;
+    border: 1px dashed #a5d6a7;
+    border-radius: 4px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+}
+
+.editor-new-paragraph textarea {
+    width: 100%;
+    min-height: 80px;
+    font-size: 13px;
+    font-family: inherit;
+    border: 1px solid #ccc;
+    border-radius: 2px;
+    padding: 6px;
+    resize: vertical;
+}
+
+/* ------------------------------------------------------------------ */
+/* Ladeindikator                                                        */
+/* ------------------------------------------------------------------ */
+
+.loading-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid #ccc;
+    border-top-color: #1565c0;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    vertical-align: middle;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ------------------------------------------------------------------ */
+/* Statusmeldungen                                                      */
+/* ------------------------------------------------------------------ */
+
+.status-msg {
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    margin-bottom: 6px;
+}
+
+.status-msg-ok    { background: #e8f5e9; border: 1px solid #a5d6a7; color: #2e7d32; }
+.status-msg-warn  { background: #fff3e0; border: 1px solid #ffcc80; color: #e65100; }
+.status-msg-error { background: #ffebee; border: 1px solid #ef9a9a; color: #c62828; }
