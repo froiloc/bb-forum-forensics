@@ -2,7 +2,7 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 005 · 2026-04-15
+ * Version: v0.1.0 · Build: 006 · 2026-04-15
  * Klassifikation: VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
  *
  * Architektur: Modularer Aufbau über ForensicToolbar-Namespace.
@@ -919,31 +919,28 @@
         }
 
         a.addEventListener("click", function (e) {
-          var href = a.getAttribute("href") || "";
-          if (!href || href.startsWith("#") || href.startsWith("javascript:")) return;
+          // a.href (Property, nicht Attribut) — der Browser hat <base href>
+          // bereits berücksichtigt und liefert die vollständig aufgelöste
+          // absolute URL.
+          // Beispiel: <base href="/forum/beginner/">,
+          //           <a href="viewforum.php?f=406">
+          //           → a.href = "http://127.0.0.2:8080/forum/beginner/viewforum.php?f=406"
+          var raw  = a.getAttribute("href") || "";
+          var href = a.href || raw;
 
-          // Absolute externe URLs: erlaubt wenn Ziel unser lokaler Server
-          // (127.0.0.2) oder der originale Forum-Hostname ist.
-          // Alle anderen absoluten URLs (fremde Domains) werden nicht abgefangen.
-          if (href.startsWith("http")) {
-            var isLocal  = href.includes(location.hostname);
-            var isForum  = forumHost && href.includes(forumHost);
-            if (!isLocal && !isForum) return;
+          if (!raw || raw.startsWith("#") || raw.startsWith("javascript:")) return;
 
-            // Absoluten URL auf Pfad reduzieren für den AJAX-Request
-            try {
-              var parsed = new URL(href);
-              href = parsed.pathname + parsed.search + parsed.hash;
-            } catch (ex) {
-              // URL nicht parsebar — unverändert weiterverwenden
-            }
+          // Nur abfangen wenn lokaler Server oder Forum-Hostname
+          var isLocal = href.includes(location.hostname);
+          var isForum = forumHost && href.includes(forumHost);
+          if (!isLocal && !isForum) return;
 
-          } else if (!href.startsWith("/")) {
-            // Relative URL (ohne führenden Slash) anhand des Basispfads
-            // der aktuellen Seite auflösen.
-            // Beispiel: href="viewtopic.php?id=42", basePath="/forum/"
-            //           → "/forum/viewtopic.php?id=42"
-            href = basePath + href;
+          // Protokoll und Host entfernen — nur Pfad an loadPage übergeben
+          try {
+            var parsed = new URL(href);
+            href = parsed.pathname + parsed.search + parsed.hash;
+          } catch (ex) {
+            href = raw;
           }
 
           e.preventDefault();
