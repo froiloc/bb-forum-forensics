@@ -2,7 +2,7 @@
  * toolbar.css — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 001 · 2026-04-13
+ * Version: v0.1.0 · Build: 002 · 2026-04-15
  * Klassifikation: VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
  *
  * Farbkontrast-Prüfung WCAG 2.1 AA (§5, §10.3 Bauplan):
@@ -36,7 +36,8 @@ body {
 
 /* Viewport-Bereich: scrollbarer Seiteninhalt */
 #forensic-viewport {
-  min-height: calc(100vh - 62px);
+  margin-top: 64px; /* Toolbar-Höhe (62px) + Border (2px) */
+  min-height: calc(100vh - 64px);
   padding-right: 44px; /* Platz für Minimap */
 }
 

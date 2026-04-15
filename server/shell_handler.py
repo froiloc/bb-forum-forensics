@@ -30,7 +30,7 @@
 # toolbar.js den BLOB erfolgreich geladen hat (in blob_handler.py).
 #
 # Abhängigkeiten: server/head_extractor — internes Modul
-# Version: v0.1.0 · Build: 008 · 2026-04-10
+# Version: v0.1.0 · Build: 021 · 2026-04-15
 # =============================================================================
 
 from __future__ import annotations
@@ -149,8 +149,11 @@ class ShellHandler:
             .replace(">", "&gt;")
         )
 
-        # Extrahierte <head>-Elemente
-        head_content = extracted.to_html()
+        # Extrahierte <head>-Elemente — ohne CSS, da dieses ausschließlich
+        # via _updateHead() in toolbar.js nach dem AJAX-Load eingefügt wird.
+        # Würde CSS hier eingebettet, entstünde eine Dopplung: einmal in der
+        # Shell-HTML und nochmals nach jedem AJAX-Load.
+        head_content = extracted.to_html(include_css=False)
 
         return f"""<!DOCTYPE html>
 <html>

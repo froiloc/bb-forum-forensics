@@ -38,7 +38,7 @@
 #   BLOB selbst.
 #
 # Abhängigkeiten: html.parser — ausschließlich Stdlib
-# Version: v0.1.0 · Build: 005 · 2026-04-10
+# Version: v0.1.0 · Build: 021 · 2026-04-15
 # =============================================================================
 
 from __future__ import annotations
@@ -72,16 +72,21 @@ class ExtractedHead:
     inline_styles:   list[str]           = field(default_factory=list)
     refresh_removed: bool                = False
 
-    def to_html(self) -> str:
+    def to_html(self, include_css: bool = True) -> str:
         """
         Gibt die extrahierten <head>-Elemente als HTML-Fragment zurück.
-        Dieses Fragment wird in den Shell-<head> eingebettet.
 
         Die Reihenfolge ist semantisch korrekt:
         1. <base> muss vor allen relativen URLs stehen
         2. <title>
-        3. <link rel="stylesheet"> (externe CSS)
-        4. <style> (inline CSS)
+        3. <link rel="stylesheet"> (externe CSS) — nur wenn include_css=True
+        4. <style> (inline CSS)                  — nur wenn include_css=True
+
+        Args:
+            include_css: Wenn False, werden <link rel="stylesheet"> und <style>
+                         weggelassen. Wird vom shell_handler verwendet, da CSS
+                         ausschließlich via _updateHead() in toolbar.js
+                         nachgeladen wird und sonst doppelt im <head> landet.
 
         Returns:
             HTML-String der extrahierten Elemente (ohne <head>-Tags).
@@ -103,12 +108,13 @@ class ExtractedHead:
             )
             parts.append(f"<title>{safe_title}</title>")
 
-        for href in self.stylesheets:
-            safe_href = href.replace('"', '&quot;')
-            parts.append(f'<link rel="stylesheet" href="{safe_href}">')
+        if include_css:
+            for href in self.stylesheets:
+                safe_href = href.replace('"', '&quot;')
+                parts.append(f'<link rel="stylesheet" href="{safe_href}">')
 
-        for style_content in self.inline_styles:
-            parts.append(f"<style>\n{style_content}\n</style>")
+            for style_content in self.inline_styles:
+                parts.append(f"<style>\n{style_content}\n</style>")
 
         return "\n".join(parts)
 
