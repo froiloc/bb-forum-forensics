@@ -17,7 +17,7 @@
 # T11 — _extract_body(): HTML ohne <body>-Tag wird vollständig zurückgegeben
 # T12 — JSON-Envelope ist valides JSON
 #
-# Version: v0.1.0 · Build: 024 · 2026-04-15
+# Version: v0.1.0 · Build: 025 · 2026-04-15
 # =============================================================================
 
 import sys
@@ -70,13 +70,18 @@ def _setup_logging_and_config() -> ConfigLoader:
 
 def _make_page(
     url="/forum/viewtopic.php?id=100",
+    canonical_url=None,
     html=b"<html><body><p>Inhalt</p></body></html>",
     scrape_context="user",
     http_status=200,
 ) -> PageRecord:
+    # Wenn kein canonical_url angegeben, Verzeichnispfad aus url ableiten
+    if canonical_url is None:
+        canonical_url = url
     return PageRecord(
         page_id=1,
         url=url,
+        canonical_url=canonical_url,
         html=html,
         fetched_at=1700000000,
         http_status=http_status,
@@ -355,24 +360,26 @@ class TestBlobHandlerHead(unittest.TestCase):
         self.assertEqual(env["head"]["base_href"], "/forum/")
 
     def test_T18b_base_href_fallback_auf_page_url(self):
-        """T18b: Fehlt <base href> im BLOB, wird Verzeichnispfad von page.url
-        als Fallback verwendet."""
+        """T18b: Fehlt <base href> im BLOB, wird Pfad aus canonical_url (pages.url_canonical)
+        verwendet — Protokoll/Domain werden abgeschnitten."""
         page = _make_page(
             url="/forum/viewtopic.php?id=100",
+            canonical_url="http://alice4nonion.onion/forum/viewtopic.php?id=100",
             html=b"<html><head><title>X</title></head><body>x</body></html>"
         )
         env = self._call(_make_bundle(page=page), "/forum/viewtopic.php?id=100")
-        # Verzeichnispfad von "/forum/viewtopic.php?id=100" → "/forum/"
         self.assertEqual(env["head"]["base_href"], "/forum/")
 
-    def test_T18c_base_href_fallback_root(self):
-        """T18c: page.url='/' ohne <base href> → base_href='/'."""
+    def test_T18c_base_href_fallback_alias(self):
+        """T18c: Alias-Auflösung: url='/', canonical_url='.../forum/beginner/'
+        → base_href='/forum/beginner/'."""
         page = _make_page(
             url="/",
+            canonical_url="http://alice4nonion.onion/forum/beginner/",
             html=b"<html><head><title>X</title></head><body>x</body></html>"
         )
         env = self._call(_make_bundle(page=page), "/")
-        self.assertEqual(env["head"]["base_href"], "/")
+        self.assertEqual(env["head"]["base_href"], "/forum/beginner/")
 
 
 if __name__ == "__main__":

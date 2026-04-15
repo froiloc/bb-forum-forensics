@@ -43,7 +43,7 @@
 #   Alle drei Zustände sind für toolbar.js sichtbar und werden angezeigt.
 #
 # Abhängigkeiten: json, urllib.parse — Stdlib + interne Module
-# Version: v0.1.0 · Build: 023 · 2026-04-15
+# Version: v0.1.0 · Build: 025 · 2026-04-15
 # =============================================================================
 
 from __future__ import annotations
@@ -200,17 +200,19 @@ class BlobHandler:
             extracted = self._head_extractor.extract(page.html)
 
             # base_href: explizites <base href> aus BLOB hat Vorrang.
-            # Fallback: Verzeichnispfad der DB-URL des BLOBs (page.url).
-            # Dieser Wert ist nach Alias-Auflösung die tatsächliche Dokument-URL
-            # und damit die zuverlässigste Basis für relative Link-Auflösung —
-            # auch wenn kein <base>-Tag im Dokument vorhanden ist.
-            # Beispiel: page.url = "/forum/index.php"  → base_href = "/forum/"
-            #           page.url = "/"                 → base_href = "/"
+            # Fallback: Pfad aus pages.url_canonical (immer die echte Dokument-URL,
+            # auch bei Alias-Auflösung). Protokoll und Domain werden abgeschnitten.
+            # Beispiel: canonical_url = 'http://alice4n...onion/forum/beginner/'
+            #           → base_href   = '/forum/beginner/'
+            #           canonical_url = 'http://alice4n...onion/forum/viewtopic.php?id=42'
+            #           → base_href   = '/forum/'
             if extracted.base_href is not None:
                 base_href = extracted.base_href
             else:
-                last_slash = page.url.rfind("/")
-                base_href = page.url[:last_slash + 1] if last_slash >= 0 else "/"
+                parsed_canonical = urllib.parse.urlparse(page.canonical_url)
+                canon_path = parsed_canonical.path or "/"
+                last_slash = canon_path.rfind("/")
+                base_href = canon_path[:last_slash + 1] if last_slash >= 0 else "/"
 
             head_data = {
                 "title":         extracted.title,

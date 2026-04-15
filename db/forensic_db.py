@@ -35,7 +35,7 @@
 #   hier INSERT/UPDATE/DELETE-Statements.
 #
 # Abhängigkeiten: sqlite3 — ausschließlich Stdlib
-# Version: v0.1.0 · Build: 018 · 2026-04-15
+# Version: v0.1.0 · Build: 025 · 2026-04-15
 # =============================================================================
 
 from __future__ import annotations
@@ -52,10 +52,11 @@ logger = get_logger(__name__)
 # Wird beim Initialisieren der Klasse einmalig ausgeführt.
 # TEMP VIEW liegt in der Haupt-DB (evidence_db) — berührt fdb nicht.
 _CREATE_BLOB_LOOKUP_VIEW = """
-CREATE TEMP VIEW IF NOT EXISTS blob_lookup AS
+CREATE TEMP VIEW blob_lookup AS
     SELECT
         p.id             AS page_id,
         p.url_canonical  AS url,
+        p.url_canonical  AS canonical_url,
         p.html           AS html,
         p.fetched_at     AS fetched_at,
         p.http_status    AS http_status,
@@ -65,6 +66,7 @@ CREATE TEMP VIEW IF NOT EXISTS blob_lookup AS
     SELECT
         p.id             AS page_id,
         pa.url_raw       AS url,
+        p.url_canonical  AS canonical_url,
         p.html           AS html,
         p.fetched_at     AS fetched_at,
         p.http_status    AS http_status,
@@ -80,17 +82,21 @@ class PageRecord:
     Ergebnisobjekt eines BLOB-Lookups.
 
     Felder:
-        page_id       — Primärschlüssel in fdb.pages
-        url           — URL unter der diese Seite gefunden wurde
-                        (kann url_canonical oder url_raw aus page_aliases sein)
-        html          — HTML-BLOB als bytes, oder None wenn Abruf fehlschlug
-        fetched_at    — Unix-Timestamp des Abrufs durch Stage 2
-        http_status   — HTTP-Statuscode des Abrufs (200=OK, 0=Verbindungsfehler)
+        page_id        — Primärschlüssel in fdb.pages
+        url            — URL unter der diese Seite gefunden wurde
+                         (kann url_canonical oder url_raw aus page_aliases sein)
+        canonical_url  — Immer pages.url_canonical — die echte URL des Dokuments,
+                         unabhängig davon ob via Alias oder direkt gefunden.
+                         Beispiel: url='/', canonical_url='http://alice4n...onion/forum/beginner/'
+        html           — HTML-BLOB als bytes, oder None wenn Abruf fehlschlug
+        fetched_at     — Unix-Timestamp des Abrufs durch Stage 2
+        http_status    — HTTP-Statuscode des Abrufs (200=OK, 0=Verbindungsfehler)
         scrape_context — Session-Kontext: 'user', 'investigator', 'actor:<uid>'
-        fetch_failed  — True wenn html IS NULL (Abruf fehlgeschlagen)
+        fetch_failed   — True wenn html IS NULL (Abruf fehlgeschlagen)
     """
     page_id:       int
     url:           str
+    canonical_url: str
     html:          Optional[bytes]
     fetched_at:    int
     http_status:   int
@@ -161,9 +167,11 @@ class ForensicDb:
     def _setup_view(self) -> None:
         """
         Legt den temporären BLOB-Lookup-View an.
-        Idempotent durch IF NOT EXISTS.
+        Bestehender View wird zuerst gedroppt, damit Schemaänderungen
+        (z.B. neue Spalten) auch in laufenden Sessions wirksam werden.
         """
         try:
+            self._con.execute("DROP VIEW IF EXISTS blob_lookup")
             self._con.execute(_CREATE_BLOB_LOOKUP_VIEW)
             self._con.commit()
             logger.debug("blob_lookup TEMP VIEW angelegt (oder bereits vorhanden)")
@@ -193,7 +201,7 @@ class ForensicDb:
         """
         try:
             row = self._con.execute(
-                "SELECT page_id, url, html, fetched_at, http_status, scrape_context "
+                "SELECT page_id, url, canonical_url, html, fetched_at, http_status, scrape_context "
                 "FROM blob_lookup WHERE url = ? LIMIT 1",
                 (url,),
             ).fetchone()
@@ -208,6 +216,7 @@ class ForensicDb:
         record = PageRecord(
             page_id=int(row["page_id"]),
             url=str(row["url"]),
+            canonical_url=str(row["canonical_url"]),
             html=row["html"],   # bytes oder None
             fetched_at=int(row["fetched_at"]),
             http_status=int(row["http_status"]),
@@ -231,7 +240,8 @@ class ForensicDb:
         """
         try:
             row = self._con.execute(
-                "SELECT id AS page_id, url_canonical AS url, html, "
+                "SELECT id AS page_id, url_canonical AS url, "
+                "url_canonical AS canonical_url, html, "
                 "fetched_at, http_status, scrape_context "
                 "FROM fdb.pages WHERE id = ?",
                 (page_id,),
@@ -246,6 +256,7 @@ class ForensicDb:
         return PageRecord(
             page_id=int(row["page_id"]),
             url=str(row["url"]),
+            canonical_url=str(row["canonical_url"]),
             html=row["html"],
             fetched_at=int(row["fetched_at"]),
             http_status=int(row["http_status"]),

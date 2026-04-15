@@ -31,7 +31,7 @@
 #   T19 — ForensicDb ist READ-ONLY: kein Schreiben in fdb möglich
 #   T20 — blob_lookup vereinheitlicht: url_canonical und url_raw beide abrufbar
 #
-# Version: v0.1.0 · Build: 024 · 2026-04-15
+# Version: v0.1.0 · Build: 025 · 2026-04-15
 # =============================================================================
 
 import sys
@@ -406,30 +406,35 @@ class TestForensicDbReadOnly(unittest.TestCase):
             pass
 
     def test_T19_kein_schreiben_in_fdb(self):
-        """T19: Schreibversuch auf fdb.pages schlägt fehl (fdb ist READ-ONLY angebunden)."""
-        # In dieser Test-Konfiguration ist fdb nicht URI mode=ro angebunden —
-        # das ist Aufgabe von connection_manager.py in der Produktion.
-        # Wir prüfen hier, dass ForensicDb selbst keine Schreibmethoden hat.
-        # Alle öffentlichen Methoden sind: get_page, get_page_by_id,
-        # resolve_*_alias, get_meta, get_scrape_context, page_count.
-        # Keine davon enthält INSERT/UPDATE/DELETE.
+        """T19: ForensicDb enthält keine Schreiboperationen auf fdb.
+        Erlaubt sind: CREATE TEMP VIEW und DROP VIEW IF EXISTS blob_lookup
+        (beide operieren auf dem TEMP-Schema, nicht auf fdb)."""
         import inspect
         source = inspect.getsource(type(self.fdb))
-        forbidden = ["INSERT", "UPDATE", "DELETE", "DROP", "CREATE TABLE"]
+        forbidden = ["INSERT", "UPDATE", "DELETE", "CREATE TABLE"]
         for stmt in forbidden:
-            # Erlaubt ist CREATE TEMP VIEW (für den blob_lookup-View)
             if stmt == "CREATE TABLE":
                 self.assertNotIn(stmt + " ", source,
                     f"ForensicDb enthält '{stmt}' — Schreiboperation verboten")
             else:
                 self.assertNotIn(stmt, source,
                     f"ForensicDb enthält '{stmt}' — Schreiboperation verboten")
+        # DROP ist nur für TEMP VIEW erlaubt — nicht für fdb-Tabellen
+        self.assertNotIn("DROP TABLE", source,
+            "ForensicDb enthält 'DROP TABLE' — Schreiboperation verboten")
+        self.assertNotIn("DROP INDEX", source,
+            "ForensicDb enthält 'DROP INDEX' — Schreiboperation verboten")
+        # DROP VIEW IF EXISTS blob_lookup ist erlaubt (TEMP-Schema)
+        self.assertIn("DROP VIEW IF EXISTS blob_lookup", source)
 
     def test_T20_blob_lookup_beide_quellen(self):
-        """T20: blob_lookup liefert sowohl url_canonical als auch url_raw-Treffer."""
+        """T20: blob_lookup liefert sowohl url_canonical als auch url_raw-Treffer.
+        canonical_url ist immer pages.url_canonical, url ist die gesuchte URL."""
         # Direkte URL
         page_direct = self.fdb.get_page("/forum/viewtopic.php?id=100")
         self.assertIsNotNone(page_direct)
+        # Bei direktem Treffer: url == canonical_url
+        self.assertEqual(page_direct.url, page_direct.canonical_url)
 
         # Alias-URL (url_raw aus page_aliases)
         page_alias1 = self.fdb.get_page("/forum/viewtopic.php?id=100#p12345")
@@ -441,6 +446,10 @@ class TestForensicDbReadOnly(unittest.TestCase):
         # Alle drei zeigen auf dieselbe Seite
         self.assertEqual(page_direct.page_id, page_alias1.page_id)
         self.assertEqual(page_direct.page_id, page_alias2.page_id)
+
+        # Bei Alias-Treffer: url = url_raw, canonical_url = pages.url_canonical
+        self.assertEqual(page_alias1.url, "/forum/viewtopic.php?id=100#p12345")
+        self.assertEqual(page_alias1.canonical_url, page_direct.canonical_url)
 
         # Inhalt ist identisch
         self.assertEqual(page_direct.html, page_alias1.html)
