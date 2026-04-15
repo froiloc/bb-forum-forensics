@@ -23,7 +23,7 @@
 # T17 — AnnotateEndpoint: alle sechs Kategorien werden akzeptiert
 # T18 — ViewportEndpoint: ungültige Events im Batch werden übersprungen
 #
-# Version: v0.1.0 · Build: 010 · 2026-04-10
+# Version: v0.1.0 · Build: 026 · 2026-04-15
 # =============================================================================
 
 import sys
@@ -80,7 +80,7 @@ def _setup_logging_and_config() -> ConfigLoader:
 
 def _make_page(url="/forum/test", html=b"<html><body><p>X</p></body></html>"):
     return PageRecord(
-        page_id=1, url=url, html=html,
+        page_id=1, url=url, canonical_url=url, html=html,
         fetched_at=1700000000, http_status=200, scrape_context="user"
     )
 
@@ -90,6 +90,7 @@ def _make_bundle(page=None, annotation_id=1, viewport_saved=2):
     bundle.forensic.get_page.return_value        = page
     bundle.forensic.resolve_post_alias.return_value  = None
     bundle.forensic.resolve_notify_alias.return_value = None
+    bundle.forensic.get_meta.return_value        = None   # forum_hostname → None
     bundle.forensic.page_count.return_value      = 100
     bundle.evidence.save_annotation.return_value = annotation_id
     bundle.evidence.save_viewport_batch.return_value = viewport_saved

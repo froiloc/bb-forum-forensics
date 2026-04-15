@@ -16,7 +16,7 @@
 # T10 — Shell enthält Forum-CSS-Link aus BLOB
 # T11 — page_visit wird NICHT in shell_handler protokolliert
 #
-# Version: v0.1.0 · Build: 008 · 2026-04-10
+# Version: v0.1.0 · Build: 026 · 2026-04-15
 # =============================================================================
 
 import sys
@@ -72,6 +72,7 @@ def _make_page(html=_SAMPLE_HTML, scrape_context="user"):
     return PageRecord(
         page_id=1,
         url="/forum/viewtopic.php?id=100",
+        canonical_url="/forum/viewtopic.php?id=100",
         html=html,
         fetched_at=1700000000,
         http_status=200,
@@ -187,9 +188,14 @@ class TestShellHandlerStructure(unittest.TestCase):
         """T09: Shell enthält <base href> aus dem BLOB."""
         self.assertIn("forum.example.org", self._get_html())
 
-    def test_T10_css_link_aus_blob(self):
-        """T10: Shell enthält Forum-CSS-Link aus dem BLOB."""
-        self.assertIn("/forum/style/main.css", self._get_html())
+    def test_T10_css_link_nicht_in_shell(self):
+        """T10: Shell enthält Forum-CSS-Link NICHT mehr direkt (Build 021).
+        CSS wird ausschließlich via _updateHead() nach dem AJAX-Load eingefügt,
+        um Dopplung zu vermeiden. Die Shell liefert nur <base> und <title>."""
+        html = self._get_html()
+        self.assertNotIn("/forum/style/main.css", html)
+        # toolbar.css ist weiterhin in der Shell
+        self.assertIn("/_forensic/toolbar.css", html)
 
 
 class TestShellHandlerNoPageVisit(unittest.TestCase):
