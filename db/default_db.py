@@ -23,7 +23,7 @@
 #   forensischen Beweismitteln in forensic_<uid>.db gespeichert.
 #
 # Abhängigkeiten: sqlite3 — ausschließlich Stdlib
-# Version: v0.1.0 · Build: 007 · 2026-04-10
+# Version: v0.1.0 · Build: 018 · 2026-04-15
 # =============================================================================
 
 from __future__ import annotations
@@ -76,18 +76,32 @@ class DefaultDb:
     übergebenen Verbindung von connection_manager.py.
     """
 
-    def __init__(self, con: sqlite3.Connection) -> None:
+    def __init__(
+        self,
+        con: sqlite3.Connection,
+        forum_base_url: Optional[str] = None,
+    ) -> None:
         """
         Initialisiert DefaultDb.
 
         Args:
-            con: Geöffnete sqlite3.Connection mit angebundener ddb.
+            con:            Geöffnete sqlite3.Connection mit angebundener ddb.
+            forum_base_url: Vollständige Basis-URL des Original-Forums, z.B.
+                            'http://alice4n...onion' (ohne abschließenden Slash).
+                            Wird beim Asset-Lookup als Präfix vor den URL-Pfad
+                            gestellt, falls default_urls ebenfalls vollständige
+                            Onion-URLs als Schlüssel speichert.
+                            Wenn None, wird der Pfad unverändert gesucht.
 
         Raises:
             sqlite3.OperationalError: Wenn ddb nicht angebunden ist.
         """
         self._con = con
         self._con.row_factory = sqlite3.Row
+        # Abschließenden Slash entfernen für saubere Konkatenation
+        self._forum_base_url: Optional[str] = (
+            forum_base_url.rstrip("/") if forum_base_url else None
+        )
         self._verify_attachment()
 
     # ------------------------------------------------------------------
@@ -118,16 +132,29 @@ class DefaultDb:
         """
         Sucht ein Asset anhand seiner URL.
 
+        URL-Normalisierung:
+          Der eingehende url-Parameter ist ein URL-Pfad ohne Protokoll/Domain,
+          z.B. '/forum/style/oxygen/main.css'. Falls default_urls vollständige
+          Onion-URLs als Schlüssel speichert, wird self._forum_base_url als
+          Präfix vorangestellt.
+
         Lookup-Pfad:
           ddb.default_urls (url) → ddb.default_assets (data, mime_type)
 
         Args:
-            url: URL des Assets, z.B. '/forum/style/oxygen/main.css'
+            url: URL-Pfad des Assets, z.B. '/forum/style/oxygen/main.css'
 
         Returns:
             AssetRecord wenn die URL bekannt ist (auch wenn data=None),
             None wenn die URL nicht in default_urls eingetragen ist.
         """
+        # Onion-Präfix voranstellen wenn bekannt
+        lookup_url = (
+            f"{self._forum_base_url}{url}"
+            if self._forum_base_url
+            else url
+        )
+
         try:
             row = self._con.execute(
                 """
@@ -141,7 +168,7 @@ class DefaultDb:
                 WHERE du.url = ?
                 LIMIT 1
                 """,
-                (url,),
+                (lookup_url,),
             ).fetchone()
         except sqlite3.OperationalError as exc:
             logger.error("Asset-Lookup fehlgeschlagen für '%s': %s", url, exc)
@@ -171,16 +198,23 @@ class DefaultDb:
         Prüft ob eine URL in default_urls bekannt ist (ohne Daten zu laden).
         Effizienter als get_asset() wenn nur die Existenz geprüft werden soll.
 
+        Wendet dieselbe URL-Normalisierung an wie get_asset() (Onion-Präfix).
+
         Args:
-            url: URL des Assets.
+            url: URL-Pfad des Assets.
 
         Returns:
             True wenn die URL in default_urls eingetragen ist.
         """
+        lookup_url = (
+            f"{self._forum_base_url}{url}"
+            if self._forum_base_url
+            else url
+        )
         try:
             row = self._con.execute(
                 "SELECT 1 FROM ddb.default_urls WHERE url = ? LIMIT 1",
-                (url,),
+                (lookup_url,),
             ).fetchone()
             return row is not None
         except sqlite3.OperationalError:

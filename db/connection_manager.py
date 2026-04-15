@@ -37,7 +37,7 @@
 #   Jede Verbindungsöffnung wird im Log protokolliert (mit Pfaden).
 #
 # Abhängigkeiten: sqlite3, time, os — Stdlib + interne DB-Module
-# Version: v0.1.0 · Build: 017 · 2026-04-15
+# Version: v0.1.0 · Build: 018 · 2026-04-15
 # =============================================================================
 
 from __future__ import annotations
@@ -215,10 +215,13 @@ class ConnectionManager:
 
             # DB-Instanzen initialisieren
             forensic    = ForensicDb(con)
-            default     = DefaultDb(con)
+            # forum_base_url aus forensic_meta lesen — wird für Asset-URL-Lookup
+            # benötigt, da asset_urls vollständige Onion-URLs als Schlüssel speichert
+            forum_base_url = forensic.get_forum_base_url()
+            default     = DefaultDb(con, forum_base_url=forum_base_url)
             evidence    = EvidenceDb(con)
             coordinator = CoordinatorDb(con)
-            assets      = AssetsDb(assets_con)   # NEU Build 017
+            assets      = AssetsDb(assets_con, forum_base_url=forum_base_url)   # NEU Build 017
 
             logger.info(
                 "Alle Verbindungen aufgebaut (Normalmodus). "
@@ -333,11 +336,14 @@ class ConnectionManager:
             # DB-Instanzen initialisieren
             # ForensicDb und DefaultDb wie im Normalmodus
             forensic    = ForensicDb(con)
-            default     = DefaultDb(con)
+            # forum_base_url aus forensic_meta lesen — wird für Asset-URL-Lookup
+            # benötigt, da asset_urls vollständige Onion-URLs als Schlüssel speichert
+            forum_base_url = forensic.get_forum_base_url()
+            default     = DefaultDb(con, forum_base_url=forum_base_url)
             # EvidenceDb schreibt in die TEMP-Haupt-DB
             evidence    = EvidenceDb(con)
             coordinator = CoordinatorDb(con)
-            assets      = AssetsDb(assets_con)   # NEU Build 017
+            assets      = AssetsDb(assets_con, forum_base_url=forum_base_url)   # NEU Build 017
 
             logger.info(
                 "Alle Verbindungen aufgebaut (Support-Modus). "

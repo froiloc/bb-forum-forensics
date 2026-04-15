@@ -35,7 +35,7 @@
 #   hier INSERT/UPDATE/DELETE-Statements.
 #
 # Abhängigkeiten: sqlite3 — ausschließlich Stdlib
-# Version: v0.1.0 · Build: 006 · 2026-04-10
+# Version: v0.1.0 · Build: 018 · 2026-04-15
 # =============================================================================
 
 from __future__ import annotations
@@ -366,6 +366,32 @@ class ForensicDb:
         except sqlite3.OperationalError as exc:
             logger.error("get_meta('%s') fehlgeschlagen: %s", key, exc)
             return None
+
+    def get_forum_base_url(self) -> Optional[str]:
+        """
+        Liest 'protocol' und 'domainname' aus fdb.forensic_meta und gibt die
+        vollständige Basis-URL zurück, z.B. 'http://alice4n...onion'.
+
+        Wird vom connection_manager genutzt, um AssetsDb und DefaultDb mit dem
+        Onion-Präfix zu versorgen, der in asset_urls als URL-Präfix gespeichert ist.
+
+        Returns:
+            Basis-URL als String (ohne abschließenden Slash), z.B.
+            'http://alice4n4kd5gga3xqggygi6r7q7l7bb2wg5lcykh22ilxomk2jmpcbyd.onion',
+            oder None wenn 'protocol' oder 'domainname' nicht in forensic_meta
+            eingetragen sind.
+        """
+        protocol = self.get_meta("protocol")
+        domainname = self.get_meta("domainname")
+        if not protocol or not domainname:
+            logger.warning(
+                "get_forum_base_url(): 'protocol' oder 'domainname' fehlt in "
+                "forensic_meta — Asset-Lookup ohne URL-Präfix."
+            )
+            return None
+        base_url = f"{protocol}://{domainname}"
+        logger.debug("get_forum_base_url(): '%s'", base_url)
+        return base_url
 
     def get_scrape_context(self, url: str) -> Optional[str]:
         """

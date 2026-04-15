@@ -35,7 +35,7 @@
 #   default.db gespeichert.
 #
 # Abhängigkeiten: sqlite3 — ausschließlich Stdlib
-# Version: v0.1.0 · Build: 017 · 2026-04-15
+# Version: v0.1.0 · Build: 018 · 2026-04-15
 # =============================================================================
 
 from __future__ import annotations
@@ -96,19 +96,34 @@ class AssetsDb:
     übergebenen Verbindung von connection_manager.py.
     """
 
-    def __init__(self, con: Optional[sqlite3.Connection]) -> None:
+    def __init__(
+        self,
+        con: Optional[sqlite3.Connection],
+        forum_base_url: Optional[str] = None,
+    ) -> None:
         """
         Initialisiert AssetsDb.
 
         Args:
-            con: Geöffnete sqlite3.Connection mit angebundener adb,
-                 oder None wenn assets_<uid>.db nicht existiert.
+            con:            Geöffnete sqlite3.Connection mit angebundener adb,
+                            oder None wenn assets_<uid>.db nicht existiert.
+            forum_base_url: Vollständige Basis-URL des Original-Forums, z.B.
+                            'http://alice4n...onion' (ohne abschließenden Slash).
+                            Wird beim Asset-Lookup als Präfix vor den URL-Pfad
+                            gestellt, da asset_urls die vollständige Onion-URL
+                            als Schlüssel speichert.
+                            Wenn None, wird der Pfad unverändert gesucht (Fallback,
+                            z.B. wenn forensic_meta noch nicht befüllt ist).
 
         Raises:
             sqlite3.OperationalError: Wenn con gesetzt ist, aber adb nicht
                                       korrekt angebunden ist.
         """
         self._con = con
+        # Abschließenden Slash entfernen für saubere Konkatenation
+        self._forum_base_url: Optional[str] = (
+            forum_base_url.rstrip("/") if forum_base_url else None
+        )
         self._available = False
 
         if con is not None:
@@ -156,11 +171,19 @@ class AssetsDb:
         """
         Sucht ein Asset anhand seiner URL.
 
+        URL-Normalisierung:
+          Der eingehende url-Parameter ist ein URL-Pfad ohne Protokoll/Domain,
+          z.B. '/forum/img/avatars/18.jpg'. In adb.asset_urls ist die vollständige
+          Onion-URL gespeichert, z.B.
+          'http://alice4n...onion/forum/img/avatars/18.jpg'.
+          Wenn self._forum_base_url gesetzt ist, wird der Präfix vor den Pfad
+          gestellt. Ohne Präfix (Fallback) wird der Pfad unverändert gesucht.
+
         Lookup-Pfad:
           adb.asset_urls (url) → adb.assets (data, mime_type)
 
         Args:
-            url: URL des Assets, z.B. '/forum/img/avatars/18.jpg'
+            url: URL-Pfad des Assets, z.B. '/forum/img/avatars/18.jpg'
 
         Returns:
             AssetRecord wenn die URL bekannt ist (auch wenn data=None),
@@ -169,6 +192,13 @@ class AssetsDb:
         """
         if not self._available:
             return None
+
+        # Onion-Präfix voranstellen wenn bekannt
+        lookup_url = (
+            f"{self._forum_base_url}{url}"
+            if self._forum_base_url
+            else url
+        )
 
         try:
             row = self._con.execute(
@@ -183,7 +213,7 @@ class AssetsDb:
                 WHERE au.url = ?
                 LIMIT 1
                 """,
-                (url,),
+                (lookup_url,),
             ).fetchone()
         except sqlite3.OperationalError as exc:
             logger.error("Asset-Lookup fehlgeschlagen für '%s': %s", url, exc)
@@ -213,8 +243,10 @@ class AssetsDb:
         Prüft ob eine URL in asset_urls bekannt ist (ohne Daten zu laden).
         Effizienter als get_asset() wenn nur die Existenz geprüft werden soll.
 
+        Wendet dieselbe URL-Normalisierung an wie get_asset() (Onion-Präfix).
+
         Args:
-            url: URL des Assets.
+            url: URL-Pfad des Assets.
 
         Returns:
             True wenn die URL in asset_urls eingetragen ist.
@@ -222,10 +254,16 @@ class AssetsDb:
         if not self._available:
             return False
 
+        lookup_url = (
+            f"{self._forum_base_url}{url}"
+            if self._forum_base_url
+            else url
+        )
+
         try:
             row = self._con.execute(
                 "SELECT 1 FROM adb.asset_urls WHERE url = ? LIMIT 1",
-                (url,),
+                (lookup_url,),
             ).fetchone()
             return row is not None
         except sqlite3.OperationalError:
