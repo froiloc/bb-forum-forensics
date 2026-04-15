@@ -2,7 +2,7 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 001 · 2026-04-13
+ * Version: v0.1.0 · Build: 003 · 2026-04-15
  * Klassifikation: VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
  *
  * Architektur: Modularer Aufbau über ForensicToolbar-Namespace.
@@ -167,6 +167,7 @@
     },
     // Session-Daten (aus /_forensic/status)
     investigatorUsername: "",
+    forumHostname:        "",   // Original-Hostname des Forums, z.B. 'alice4n...onion'
     lastSaveTs:           null,
     syncErrorCount:       0,
   };
@@ -780,6 +781,11 @@
       // BLOB-Inhalt injizieren (erlaubter DOM-Eingriff: Navigation)
       viewport.innerHTML = envelope.html;
 
+      // <head>-Elemente aus Envelope in Shell-<head> übernehmen
+      // Wird bei jeder AJAX-Navigation aktualisiert, da jede Seite
+      // eigene CSS-Dateien und einen eigenen Titel haben kann.
+      _updateHead(envelope.head);
+
       // Fragment-Scroll
       if (envelope.fragment) {
         var target = document.getElementById(envelope.fragment) ||
@@ -818,12 +824,92 @@
       AccessibilityModule.announce("Seite geladen: " + _state.currentUrl);
     }
 
+    function _updateHead(head) {
+      // Aktualisiert <title> und CSS-Elemente im Shell-<head> anhand der
+      // head-Daten aus dem JSON-Envelope.
+      //
+      // Strategie CSS:
+      //   Alle <link rel="stylesheet">- und <style>-Elemente, die beim
+      //   vorherigen Seitenaufruf eingefügt wurden (erkennbar am Attribut
+      //   data-forensic-page-css), werden entfernt. Dann werden die neuen
+      //   Elemente der aktuellen Seite eingefügt.
+      //   Forum-CSS aus dem initialen Shell-Load (kein data-forensic-page-css)
+      //   bleibt unangetastet — das verhindert, dass /_forensic/toolbar.css
+      //   oder andere Shell-eigene Styles entfernt werden.
+      //
+      // Strategie <title>:
+      //   Wird direkt überschrieben wenn vorhanden. Fehlt der Titel im
+      //   Envelope (null), bleibt der bisherige Titel erhalten.
+
+      if (!head) return;
+
+      var docHead = document.head;
+
+      // Alte seitenspezifische CSS-Elemente entfernen
+      docHead.querySelectorAll("[data-forensic-page-css]").forEach(function (el) {
+        el.parentNode.removeChild(el);
+      });
+
+      // Neue externe Stylesheets einfügen
+      if (head.stylesheets && head.stylesheets.length) {
+        head.stylesheets.forEach(function (href) {
+          var link = document.createElement("link");
+          link.rel  = "stylesheet";
+          link.href = href;
+          link.setAttribute("data-forensic-page-css", "1");
+          docHead.appendChild(link);
+        });
+      }
+
+      // Neue Inline-Styles einfügen
+      if (head.inline_styles && head.inline_styles.length) {
+        head.inline_styles.forEach(function (css) {
+          var style = document.createElement("style");
+          style.setAttribute("data-forensic-page-css", "1");
+          style.textContent = css;
+          docHead.appendChild(style);
+        });
+      }
+
+      // <title> aktualisieren
+      if (head.title !== null && head.title !== undefined) {
+        document.title = head.title;
+      }
+    }
+
     function _interceptLinks(container) {
+      // Forum-Hostname aus State: Links mit diesem Host sind interne Links
+      // und müssen per AJAX abgerufen werden, auch wenn sie absolut formuliert
+      // sind (z.B. href="http://alice4n...onion/forum/viewtopic.php?id=42").
+      var forumHost = ForensicToolbar.state.forumHostname || "";
+
       container.querySelectorAll("a[href]").forEach(function (a) {
+        // target="_blank" entfernen — alle Navigationen bleiben im Shell-Frame
+        if (a.getAttribute("target")) {
+          a.removeAttribute("target");
+        }
+
         a.addEventListener("click", function (e) {
           var href = a.getAttribute("href") || "";
           if (!href || href.startsWith("#") || href.startsWith("javascript:")) return;
-          if (href.startsWith("http") && !href.includes(location.hostname)) return;
+
+          // Absolute externe URLs: erlaubt wenn Ziel unser lokaler Server
+          // (127.0.0.2) oder der originale Forum-Hostname ist.
+          // Alle anderen absoluten URLs (fremde Domains) werden nicht abgefangen.
+          if (href.startsWith("http")) {
+            var isLocal  = href.includes(location.hostname);
+            var isForum  = forumHost && href.includes(forumHost);
+            if (!isLocal && !isForum) return;
+
+            // Absoluten URL auf Pfad reduzieren für den AJAX-Request
+            try {
+              var parsed = new URL(href);
+              href = parsed.pathname + parsed.search + parsed.hash;
+            } catch (ex) {
+              // URL nicht parsebar — unverändert weiterverwenden
+            }
+          }
+
           e.preventDefault();
           loadPage(href, true);
         });
@@ -1992,6 +2078,7 @@
       .then(function (s) {
         ForensicToolbar._setState({
           investigatorUsername: s.username || s.user_id || "—",
+          forumHostname:        s.forum_hostname || "",
         });
         ToolbarUIModule.updateSessionInfo();
         console.info(

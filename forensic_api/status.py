@@ -20,7 +20,7 @@
 #     "version":          "v0.1.0-build010"
 #   }
 #
-# Version: v0.1.0 · Build: 010 · 2026-04-10
+# Version: v0.1.0 · Build: 020 · 2026-04-15
 # =============================================================================
 
 from __future__ import annotations
@@ -71,6 +71,7 @@ class StatusEndpoint:
             "investigator_id":   self._context.investigator_id,
             "page_count":        page_count,
             "annotation_count":  annotation_count,
+            "forum_hostname":    self._bundle.forensic.get_meta("domainname") or "",
             "ts":                int(time.time()),
             "version":           SERVER_VERSION,
         }
