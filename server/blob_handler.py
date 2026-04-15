@@ -43,7 +43,7 @@
 #   Alle drei Zustände sind für toolbar.js sichtbar und werden angezeigt.
 #
 # Abhängigkeiten: json, urllib.parse — Stdlib + interne Module
-# Version: v0.1.0 · Build: 019 · 2026-04-15
+# Version: v0.1.0 · Build: 023 · 2026-04-15
 # =============================================================================
 
 from __future__ import annotations
@@ -199,8 +199,9 @@ class BlobHandler:
         if page.html:
             extracted = self._head_extractor.extract(page.html)
             head_data = {
-                "title":        extracted.title,
-                "stylesheets":  extracted.stylesheets,
+                "title":         extracted.title,
+                "base_href":     extracted.base_href,
+                "stylesheets":   extracted.stylesheets,
                 "inline_styles": extracted.inline_styles,
             }
 

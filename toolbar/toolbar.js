@@ -2,7 +2,7 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 003 · 2026-04-15
+ * Version: v0.1.0 · Build: 005 · 2026-04-15
  * Klassifikation: VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
  *
  * Architektur: Modularer Aufbau über ForensicToolbar-Namespace.
@@ -151,6 +151,7 @@
   // ---------------------------------------------------------------------------
   var _state = {
     currentUrl:          "",
+    baseHref:            null,   // <base href> des aktuellen BLOBs, oder null
     scrapeContext:       "user",
     fetchFailed:         false,
     inScope:             true,
@@ -758,6 +759,7 @@
 
       ForensicToolbar._setState({
         currentUrl:    envelope.url_canonical || url,
+        baseHref:      (envelope.head && envelope.head.base_href) || null,
         scrapeContext: envelope.scrape_context || "user",
         fetchFailed:   !!envelope.fetch_failed,
         inScope:       !!envelope.in_scope,
@@ -841,9 +843,25 @@
       //   Wird direkt überschrieben wenn vorhanden. Fehlt der Titel im
       //   Envelope (null), bleibt der bisherige Titel erhalten.
 
+      // Strategie <base href>:
+      //   Wird aktualisiert wenn base_href im Envelope vorhanden ist.
+      //   Existiert noch kein <base>-Element, wird es neu erstellt.
+      //   Fehlt base_href (null), bleibt ein vorhandenes <base>-Element erhalten.
+
       if (!head) return;
 
       var docHead = document.head;
+
+      // <base href> aktualisieren oder anlegen
+      if (head.base_href !== null && head.base_href !== undefined) {
+        var baseEl = docHead.querySelector("base");
+        if (!baseEl) {
+          baseEl = document.createElement("base");
+          // <base> muss erstes Element im <head> sein
+          docHead.insertBefore(baseEl, docHead.firstChild);
+        }
+        baseEl.setAttribute("href", head.base_href);
+      }
 
       // Alte seitenspezifische CSS-Elemente entfernen
       docHead.querySelectorAll("[data-forensic-page-css]").forEach(function (el) {
@@ -883,6 +901,17 @@
       // sind (z.B. href="http://alice4n...onion/forum/viewtopic.php?id=42").
       var forumHost = ForensicToolbar.state.forumHostname || "";
 
+      // Basispfad für relative URL-Auflösung.
+      // Vorrang hat base_href aus dem BLOB-<head> — der Server kennt nach
+      // Alias-Auflösung den tatsächlichen Dokumentpfad (z.B. liefert '/'
+      // das Dokument aus '/forum/', dessen <base href="/forum/"> das korrekt
+      // ausdrückt). Fallback: Verzeichnispfad von url_canonical.
+      var basePath = ForensicToolbar.state.baseHref ||
+        (function () {
+          var cu = ForensicToolbar.state.currentUrl || "/";
+          return cu.substring(0, cu.lastIndexOf("/") + 1) || "/";
+        }());
+
       container.querySelectorAll("a[href]").forEach(function (a) {
         // target="_blank" entfernen — alle Navigationen bleiben im Shell-Frame
         if (a.getAttribute("target")) {
@@ -908,6 +937,13 @@
             } catch (ex) {
               // URL nicht parsebar — unverändert weiterverwenden
             }
+
+          } else if (!href.startsWith("/")) {
+            // Relative URL (ohne führenden Slash) anhand des Basispfads
+            // der aktuellen Seite auflösen.
+            // Beispiel: href="viewtopic.php?id=42", basePath="/forum/"
+            //           → "/forum/viewtopic.php?id=42"
+            href = basePath + href;
           }
 
           e.preventDefault();
