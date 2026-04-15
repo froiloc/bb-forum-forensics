@@ -41,12 +41,13 @@
 #   abgeschlossen sind.
 #
 # Abhängigkeiten: argparse, sys — Stdlib + alle core/db/server-Module
-# Version: v0.1.0 · Build: 011 · 2026-04-11
+# Version: v0.1.0 · Build: 017 · 2026-04-15
 # =============================================================================
 
 from __future__ import annotations
 
 import argparse
+import atexit
 import sys
 from pathlib import Path
 
@@ -307,6 +308,16 @@ def main() -> None:
         sys.exit(1)
 
     # ------------------------------------------------------------------
+    # atexit-Handler: Sicherheitsnetz für unerwartetes Prozessende
+    # (z.B. SIGTERM, Konsolenfenster schließen, Task-Manager-Kill).
+    # Stellt sicher, dass der hosts-Eintrag auch dann entfernt wird,
+    # wenn der finally-Block in serve_forever_logged() nicht erreicht wird.
+    # Idempotent: HostsManager.cleanup() prüft intern ob dieser Run
+    # den Eintrag gesetzt hat (_entry_added_by_us).
+    # ------------------------------------------------------------------
+    atexit.register(hosts_manager.cleanup)
+
+    # ------------------------------------------------------------------
     # Schritt 8: ConnectionManager — alle DB-Verbindungen aufbauen
     # ------------------------------------------------------------------
     from db.connection_manager import ConnectionManager
@@ -328,13 +339,22 @@ def main() -> None:
     # ------------------------------------------------------------------
     # Schritt 9: ForensicHTTPServer starten
     # ------------------------------------------------------------------
-    from server.http_server import ForensicHTTPServer
+    from server.http_server import ForensicHTTPServer, ForensicHTTPServerBindError
 
     host = str(config.get("server.host", "127.0.0.2"))
     port = int(config.get("server.port", 80))
 
     try:
         server = ForensicHTTPServer(host, port, bundle, context, config)
+    except ForensicHTTPServerBindError as exc:
+        # Differenzierte Fehlermeldung: Port belegt, kein Zugriff, ungültige Adresse.
+        # Die Meldung enthält bereits konkrete Handlungshinweise für den Ermittler.
+        logger.error("Server-Socket konnte nicht gebunden werden: %s", exc)
+        print(f"\n[FEHLER] Server konnte nicht gestartet werden:\n\n{exc}\n",
+              file=sys.stderr)
+        bundle.close()
+        hosts_manager.cleanup()
+        sys.exit(1)
     except Exception as exc:
         logger.error("Server konnte nicht initialisiert werden: %s",
                      exc, exc_info=True)
@@ -366,6 +386,16 @@ def main() -> None:
             hosts_manager.cleanup()
         except Exception as exc:
             logger.warning("Fehler beim HostsManager-Cleanup: %s", exc)
+            # Auch auf stderr ausgeben — der Ermittler muss den hosts-Eintrag
+            # manuell entfernen, wenn das automatische Cleanup fehlschlägt.
+            print(
+                f"\n[WARNUNG] hosts-Eintrag konnte nicht automatisch entfernt werden:\n"
+                f"  {exc}\n"
+                f"Bitte den Eintrag manuell aus der hosts-Datei löschen:\n"
+                f"  C:\\Windows\\System32\\drivers\\etc\\hosts\n"
+                f"  (Zeilen mit dem Kommentar '# forensic-tool' entfernen)\n",
+                file=sys.stderr,
+            )
         logger.info("=== Forensischer Webserver beendet. ===")
 
 

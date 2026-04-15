@@ -16,10 +16,10 @@ do
     cd "${p}"
     md5sum "${file}"
 done < <(find . -type f -not \( \
-        -regex './.\(venv\|git\).*' -or \
+        -regex './.\(venv\|git\|pytest_cache\).*' -or \
         -regex '.*__pycache__.*' -or \
-        -regex '.*\.\(zip\|log\|base64\|md\|chksum\|org\)$' -or \
-        -regex '.*forensik.*' -or \
+        -regex '.*\.\(zip\|log\|base64\|md\|chksum\|org\|pdf\)$' -or \
+	-regex './\(logs\|node_modules\|forensik\|data\)/.*' -or \
         -regex '.*.env$' -or \
         -regex '$^' \) \
     ) | sort -k2,2 | tee "${md5}"
