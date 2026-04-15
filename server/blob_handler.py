@@ -12,6 +12,11 @@
 # JSON-Envelope:
 #   {
 #     "html":           "<body-Inhalt oder null>",
+#     "head": {
+#       "title":         "<Seitentitel oder null>",
+#       "stylesheets":   ["<href1>", "<href2>", ...],
+#       "inline_styles": ["<CSS-Inhalt>", ...]
+#     },
 #     "scrape_context": "user|investigator|actor:<uid>",
 #     "http_status":    200,
 #     "fetch_failed":   false,
@@ -38,7 +43,7 @@
 #   Alle drei Zustände sind für toolbar.js sichtbar und werden angezeigt.
 #
 # Abhängigkeiten: json, urllib.parse — Stdlib + interne Module
-# Version: v0.1.0 · Build: 008 · 2026-04-10
+# Version: v0.1.0 · Build: 019 · 2026-04-15
 # =============================================================================
 
 from __future__ import annotations
@@ -49,6 +54,7 @@ import urllib.parse
 from typing import TYPE_CHECKING, Optional
 
 from core.logger import get_logger
+from server.head_extractor import HeadExtractor
 
 if TYPE_CHECKING:
     from server.http_server import ForensicRequestHandler
@@ -89,6 +95,7 @@ class BlobHandler:
         self._post_id_param  = config.get("url_patterns.alias_patterns.post_id_param",  "pid")
         self._notify_param   = config.get("url_patterns.alias_patterns.notify_param",    "notify")
         self._fragment_post  = config.get("url_patterns.alias_patterns.fragment_post",   "p")
+        self._head_extractor = HeadExtractor()
 
     def handle(
         self,
@@ -178,12 +185,23 @@ class BlobHandler:
             logger.debug("BlobHandler: NOT_IN_SCOPE für '%s'", resolved_url)
             return {
                 "html":           None,
+                "head":           None,
                 "scrape_context": "unknown",
                 "http_status":    0,
                 "fetch_failed":   True,
                 "in_scope":       False,
                 "url_canonical":  resolved_url,
                 "fragment":       fragment,
+            }
+
+        # <head>-Elemente aus BLOB extrahieren
+        head_data = None
+        if page.html:
+            extracted = self._head_extractor.extract(page.html)
+            head_data = {
+                "title":        extracted.title,
+                "stylesheets":  extracted.stylesheets,
+                "inline_styles": extracted.inline_styles,
             }
 
         # <body>-Inhalt aus BLOB extrahieren
@@ -196,6 +214,7 @@ class BlobHandler:
 
         return {
             "html":           body_html,
+            "head":           head_data,
             "scrape_context": page.scrape_context,
             "http_status":    page.http_status,
             "fetch_failed":   page.fetch_failed,
