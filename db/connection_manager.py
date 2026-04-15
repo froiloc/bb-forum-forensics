@@ -37,7 +37,7 @@
 #   Jede Verbindungsöffnung wird im Log protokolliert (mit Pfaden).
 #
 # Abhängigkeiten: sqlite3, time, os — Stdlib + interne DB-Module
-# Version: v0.1.0 · Build: 007 · 2026-04-10
+# Version: v0.1.0 · Build: 017 · 2026-04-15
 # =============================================================================
 
 from __future__ import annotations
@@ -57,6 +57,7 @@ from db.forensic_db import ForensicDb
 from db.default_db import DefaultDb
 from db.evidence_db import EvidenceDb
 from db.coordinator_db import CoordinatorDb
+from db.assets_db import AssetsDb          # NEU Build 017
 
 logger = get_logger(__name__)
 
@@ -72,6 +73,9 @@ class DatabaseBundle:
         default      — DefaultDb  (READ-ONLY, statische Assets)
         evidence     — EvidenceDb (READ-WRITE oder Support-TEMP)
         coordinator  — CoordinatorDb (READ-WRITE außer in Sonderfällen)
+        assets       — AssetsDb  (READ-ONLY, nutzerspezifische Bilder/Avatare)
+                       Kann intern None-Verbindung haben wenn assets_<uid>.db
+                       noch nicht existiert (vor erstem asset_importer-Lauf).
         temp_db_path — Pfad zur Support-TEMP-DB-Datei, oder None
                        (None = In-Memory oder Normalmodus)
     """
@@ -80,6 +84,7 @@ class DatabaseBundle:
     default:      DefaultDb
     evidence:     EvidenceDb
     coordinator:  CoordinatorDb
+    assets:       AssetsDb            # NEU Build 017
     temp_db_path: Optional[str] = None
 
     def close(self) -> None:
@@ -193,11 +198,27 @@ class ConnectionManager:
                     coordinator_path,
                 )
 
+            # adb: assets_db READ-ONLY (optional — existiert erst nach asset_importer)
+            # NEU Build 017
+            assets_path = self._ctx.assets_db
+            assets_con: Optional[sqlite3.Connection] = None
+            if assets_path.exists():
+                self._attach_readonly(con, assets_path, "adb")
+                assets_con = con
+                logger.debug("adb angebunden (READ-ONLY): '%s'", assets_path)
+            else:
+                logger.info(
+                    "assets_<uid>.db nicht gefunden — adb nicht angebunden: '%s'. "
+                    "Asset-Lookup fällt vollständig auf default.db zurück.",
+                    assets_path,
+                )
+
             # DB-Instanzen initialisieren
             forensic    = ForensicDb(con)
             default     = DefaultDb(con)
             evidence    = EvidenceDb(con)
             coordinator = CoordinatorDb(con)
+            assets      = AssetsDb(assets_con)   # NEU Build 017
 
             logger.info(
                 "Alle Verbindungen aufgebaut (Normalmodus). "
@@ -212,6 +233,7 @@ class ConnectionManager:
                 default=default,
                 evidence=evidence,
                 coordinator=coordinator,
+                assets=assets,    # NEU Build 017
             )
 
         except sqlite3.OperationalError as exc:
@@ -293,6 +315,21 @@ class ConnectionManager:
                     coordinator_path,
                 )
 
+            # adb: assets_db READ-ONLY (optional — existiert erst nach asset_importer)
+            # NEU Build 017
+            assets_path = self._ctx.assets_db
+            assets_con: Optional[sqlite3.Connection] = None
+            if assets_path.exists():
+                self._attach_readonly(con, assets_path, "adb")
+                assets_con = con
+                logger.debug("adb angebunden (READ-ONLY, Support): '%s'", assets_path)
+            else:
+                logger.info(
+                    "assets_<uid>.db nicht gefunden — adb nicht angebunden: '%s'. "
+                    "Asset-Lookup fällt vollständig auf default.db zurück.",
+                    assets_path,
+                )
+
             # DB-Instanzen initialisieren
             # ForensicDb und DefaultDb wie im Normalmodus
             forensic    = ForensicDb(con)
@@ -300,6 +337,7 @@ class ConnectionManager:
             # EvidenceDb schreibt in die TEMP-Haupt-DB
             evidence    = EvidenceDb(con)
             coordinator = CoordinatorDb(con)
+            assets      = AssetsDb(assets_con)   # NEU Build 017
 
             logger.info(
                 "Alle Verbindungen aufgebaut (Support-Modus). "
@@ -313,6 +351,7 @@ class ConnectionManager:
                 default=default,
                 evidence=evidence,
                 coordinator=coordinator,
+                assets=assets,        # NEU Build 017
                 temp_db_path=temp_db_path,
             )
 

@@ -31,7 +31,7 @@
 #     statt ValueError / FileNotFoundError.
 #
 # Abhängigkeiten: yaml (PyYAML), os, pathlib — ausschließlich Stdlib + PyYAML
-# Version: v0.1.0 · Build: 013 · 2026-04-14
+# Version: v0.1.0 · Build: 017 · 2026-04-15
 # =============================================================================
 
 import os
@@ -79,6 +79,7 @@ _DEFAULTS: dict[str, Any] = {
         "forensic_db_dir":  "./data/forensic/",
         "default_db":       "./data/default.db",
         "evidence_db_dir":  "./data/evidence/",
+        "assets_db_dir":    "./data/assets/",    # NEU Build 017
     },
     "hosts_management": {
         "enabled":        False,
@@ -311,6 +312,7 @@ class ConfigLoader:
         for path_key in (
             "paths.forensic_db_dir", "paths.evidence_db_dir",
             "paths.coordinator_db",  "paths.default_db",
+            "paths.assets_db_dir",   # NEU Build 017
         ):
             val = self.get(path_key)
             if not isinstance(val, str) or not val.strip():

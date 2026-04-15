@@ -184,6 +184,7 @@ def _make_resolved_context(
         evidence_db=evidence_db,
         default_db=default_db,
         coordinator_db=coord_db,
+        assets_db=Path(coord_db).parent / "assets_42.db",
         investigator_id=1,
     )
     return ctx, forensic_db
@@ -305,6 +306,7 @@ class TestStartupChecksSchema(unittest.TestCase):
             mode="job", user_id=42, username="test",
             forensic_db=forensic_db, evidence_db=evidence_db,
             default_db=default_db, coordinator_db=coord_db,
+            assets_db=Path(coord_db).parent / "assets_42.db",
             investigator_id=1,
         )
         checker = StartupChecker(ctx, ConfigLoader.__new__(ConfigLoader))
@@ -329,6 +331,7 @@ class TestStartupChecksSchema(unittest.TestCase):
             mode="job", user_id=42, username="test",
             forensic_db=forensic_db, evidence_db=evidence_db,
             default_db=default_db, coordinator_db=coord_db,
+            assets_db=Path(coord_db).parent / "assets_42.db",
             investigator_id=1,
         )
         checker = StartupChecker(ctx, ConfigLoader.__new__(ConfigLoader))
@@ -359,6 +362,7 @@ class TestStartupChecksIntegrity(unittest.TestCase):
             mode="job", user_id=42, username="test",
             forensic_db=forensic_db, evidence_db=evidence_db,
             default_db=default_db, coordinator_db=coord_db,
+            assets_db=Path(coord_db).parent / "assets_42.db",
             investigator_id=1,
         )
 

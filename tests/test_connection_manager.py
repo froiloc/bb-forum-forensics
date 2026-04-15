@@ -156,6 +156,7 @@ def _make_context(
         mode=mode, user_id=42, username="testuser",
         forensic_db=forensic_db, evidence_db=evidence_db,
         default_db=default_db, coordinator_db=coordinator,
+        assets_db=Path(coordinator).parent / "assets_42.db",
         investigator_id=1,
     )
     cfg = _setup_test_logging()
@@ -287,6 +288,7 @@ class TestConnectionManagerSupport(unittest.TestCase):
             mode="support", user_id=42, username="testuser",
             forensic_db=forensic_db, evidence_db=evidence_db,
             default_db=default_db, coordinator_db=coordinator,
+            assets_db=Path(coordinator).parent / "assets_42.db",
             investigator_id=1,
         )
         self.bundle = ConnectionManager(ctx, cfg).open()
@@ -309,6 +311,7 @@ class TestConnectionManagerSupport(unittest.TestCase):
             mode="support", user_id=42, username="testuser",
             forensic_db=forensic_db, evidence_db=evidence_db,
             default_db=default_db, coordinator_db=coordinator,
+            assets_db=Path(coordinator).parent / "assets_42.db",
             investigator_id=1,
         )
         self.bundle = ConnectionManager(ctx, cfg).open()
@@ -331,6 +334,7 @@ class TestConnectionManagerSupport(unittest.TestCase):
             mode="support", user_id=42, username="testuser",
             forensic_db=forensic_db, evidence_db=evidence_db,
             default_db=default_db, coordinator_db=coordinator,
+            assets_db=Path(coordinator).parent / "assets_42.db",
             investigator_id=1,
         )
         self.bundle = ConnectionManager(ctx, cfg).open()
@@ -406,6 +410,7 @@ class TestConnectionManagerClose(unittest.TestCase):
             mode="support", user_id=42, username="testuser",
             forensic_db=forensic_db, evidence_db=evidence_db,
             default_db=default_db, coordinator_db=coordinator,
+            assets_db=Path(coordinator).parent / "assets_42.db",
             investigator_id=1,
         )
         bundle = ConnectionManager(ctx, cfg).open()

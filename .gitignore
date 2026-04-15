@@ -8,6 +8,13 @@ nohup.out
 *.xlsx
 *.zip
 *.base64
+*.pdf
+*.md
+*.html.org
+aiw*.html
+data/
+md5.chksum
+package-lock.json
 
 # Environments
 .env

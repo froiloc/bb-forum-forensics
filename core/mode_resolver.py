@@ -39,7 +39,7 @@
 #   zuordnen. Daher: harter Abbruch bei jeder Unklarheit.
 #
 # Abhängigkeiten: sqlite3, os, pathlib — Stdlib + core-Module
-# Version: v0.1.0 · Build: 004 · 2026-04-10
+# Version: v0.1.0 · Build: 017 · 2026-04-15
 # =============================================================================
 
 import os
@@ -100,6 +100,7 @@ class ResolvedContext:
     evidence_db:     Path
     default_db:      Path
     coordinator_db:  Path
+    assets_db:       Path           # NEU Build 017 — assets_<uid>.db (READ-ONLY, optional)
     investigator_id: Optional[int]
 
 
@@ -243,6 +244,7 @@ class ModeResolver:
             evidence_db=evidence_db,
             default_db=self._resolve_default_db_path(),
             coordinator_db=coordinator_db,
+            assets_db=self._build_assets_db_path(user_id),   # NEU Build 017
             investigator_id=investigator_id,
         )
 
@@ -349,6 +351,7 @@ class ModeResolver:
             evidence_db=evidence_db,
             default_db=self._resolve_default_db_path(),
             coordinator_db=coordinator_db,
+            assets_db=self._build_assets_db_path(user_id),   # NEU Build 017
             investigator_id=investigator_id,
         )
 
@@ -499,3 +502,15 @@ class ModeResolver:
     def _resolve_coordinator_db_path(self) -> Path:
         """Gibt den aufgelösten Pfad zur coordinator.db zurück."""
         return Path(self._config.get("paths.coordinator_db")).resolve()
+
+    def _build_assets_db_path(self, user_id: int) -> Path:
+        """
+        Setzt den Pfad zur assets_<uid>.db aus Verzeichnis + user_id zusammen.
+        Dateinamensschema: assets_<uid>.db
+        Die Datei muss nicht existieren — sie entsteht erst nach dem
+        asset_importer-Lauf. ConnectionManager prüft die Existenz selbst.
+
+        NEU Build 017
+        """
+        directory = Path(self._config.get("paths.assets_db_dir"))
+        return (directory / f"assets_{user_id}.db").resolve()

@@ -12,13 +12,14 @@ while IFS= read -r file
 do
     p="${PWD}"
     cd ..
-    zip -u1 "${p##*/}/${zip}" "${p##*/}/${file#*/}" >/dev/null 2>&1
+    zip -u -9 "${p##*/}/${zip}" "${p##*/}/${file#*/}" >/dev/null 2>&1
     cd "${p}"
     md5sum "${file}"
 done < <(find . -type f -not \( \
         -regex './.\(venv\|git\|pytest_cache\).*' -or \
         -regex '.*__pycache__.*' -or \
-        -regex '.*\.\(zip\|log\|base64\|md\|chksum\|org\|pdf\)$' -or \
+        -regex '.*\.\(zip\|log\|base64\|md\|chksum\|org\|pdf\|sw[po]\)$' -or \
+	-regex './package-lock\.json' -or \
 	-regex './\(logs\|node_modules\|forensik\|data\)/.*' -or \
         -regex '.*.env$' -or \
         -regex '$^' \) \
@@ -29,7 +30,7 @@ if [ -f "${md5}" ]
 then
     p="${PWD}"
     cd ..
-    zip -u1 "${p##*/}/${zip}" "${p##*/}/${md5}" >/dev/null 2>&1
+    zip -u -9 "${p##*/}/${zip}" "${p##*/}/${md5}" >/dev/null 2>&1
     cd "${p}"
 fi
 

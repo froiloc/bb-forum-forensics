@@ -368,6 +368,7 @@ class _ServerFixture(unittest.TestCase):
             evidence_db=cls.evidence_path,
             default_db=cls.default_path,
             coordinator_db=cls.coordinator_path,
+            assets_db=Path(cls.tmp) / "assets_42.db",
             investigator_id=1,
         )
 
@@ -692,6 +693,7 @@ class TestIntegrationShutdown(unittest.TestCase):
             mode="cli", user_id=99, username="shutdown_test",
             forensic_db=forensic_path, evidence_db=evidence_path,
             default_db=default_path, coordinator_db=coordinator_path,
+            assets_db=Path(coordinator_path).parent / "assets_42.db",
             investigator_id=None,
         )
 
