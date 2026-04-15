@@ -35,7 +35,7 @@
 #   hier INSERT/UPDATE/DELETE-Statements.
 #
 # Abhängigkeiten: sqlite3 — ausschließlich Stdlib
-# Version: v0.1.0 · Build: 025 · 2026-04-15
+# Version: v0.1.0 · Build: 028 · 2026-04-15
 # =============================================================================
 
 from __future__ import annotations
@@ -51,11 +51,36 @@ logger = get_logger(__name__)
 # SQL für den temporären BLOB-Lookup-View.
 # Wird beim Initialisieren der Klasse einmalig ausgeführt.
 # TEMP VIEW liegt in der Haupt-DB (evidence_db) — berührt fdb nicht.
-_CREATE_BLOB_LOOKUP_VIEW = """
+def _make_blob_lookup_sql(forum_base_url: str = "") -> str:
+    """
+    Erzeugt das CREATE TEMP VIEW SQL für blob_lookup.
+
+    url_raw in page_aliases kann vollständige Onion-URLs enthalten
+    (z.B. 'http://alice4n...onion/forum/beginner/index.php').
+    Wenn forum_base_url bekannt ist, wird er per REPLACE() entfernt,
+    sodass der View nur den Pfad liefert ('/forum/beginner/index.php').
+
+    pages.url_canonical wird ebenfalls bereinigt — es enthält ebenfalls
+    die vollständige Onion-URL.
+
+    Args:
+        forum_base_url: Vollständige Basis-URL ohne abschließenden Slash,
+                        z.B. 'http://alice4n...onion'. Leerstring = kein REPLACE.
+    """
+    if forum_base_url:
+        # Einfaches Anführungszeichen escapen für SQL-String-Literal
+        safe = forum_base_url.replace("'", "''")
+        url_canonical_expr = f"REPLACE(p.url_canonical, '{safe}', '')"
+        url_raw_expr       = f"REPLACE(pa.url_raw, '{safe}', '')"
+    else:
+        url_canonical_expr = "p.url_canonical"
+        url_raw_expr       = "pa.url_raw"
+
+    return f"""
 CREATE TEMP VIEW blob_lookup AS
     SELECT
         p.id             AS page_id,
-        p.url_canonical  AS url,
+        {url_canonical_expr} AS url,
         p.url_canonical  AS canonical_url,
         p.html           AS html,
         p.fetched_at     AS fetched_at,
@@ -65,7 +90,7 @@ CREATE TEMP VIEW blob_lookup AS
     UNION ALL
     SELECT
         p.id             AS page_id,
-        pa.url_raw       AS url,
+        {url_raw_expr}   AS url,
         p.url_canonical  AS canonical_url,
         p.html           AS html,
         p.fetched_at     AS fetched_at,
@@ -169,12 +194,21 @@ class ForensicDb:
         Legt den temporären BLOB-Lookup-View an.
         Bestehender View wird zuerst gedroppt, damit Schemaänderungen
         (z.B. neue Spalten) auch in laufenden Sessions wirksam werden.
+
+        Liest forum_base_url aus forensic_meta um Onion-Präfixe aus
+        url_canonical und url_raw zu entfernen.
         """
         try:
+            # forum_base_url aus forensic_meta lesen (kann None sein)
+            forum_base_url = self.get_forum_base_url() or ""
+            view_sql = _make_blob_lookup_sql(forum_base_url)
             self._con.execute("DROP VIEW IF EXISTS blob_lookup")
-            self._con.execute(_CREATE_BLOB_LOOKUP_VIEW)
+            self._con.execute(view_sql)
             self._con.commit()
-            logger.debug("blob_lookup TEMP VIEW angelegt (oder bereits vorhanden)")
+            logger.debug(
+                "blob_lookup TEMP VIEW angelegt (forum_base_url='%s')",
+                forum_base_url or "(leer)",
+            )
         except sqlite3.OperationalError as exc:
             raise sqlite3.OperationalError(
                 f"blob_lookup-View konnte nicht angelegt werden. "

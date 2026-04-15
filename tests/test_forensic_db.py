@@ -31,7 +31,7 @@
 #   T19 — ForensicDb ist READ-ONLY: kein Schreiben in fdb möglich
 #   T20 — blob_lookup vereinheitlicht: url_canonical und url_raw beide abrufbar
 #
-# Version: v0.1.0 · Build: 025 · 2026-04-15
+# Version: v0.1.0 · Build: 028 · 2026-04-15
 # =============================================================================
 
 import sys
@@ -512,6 +512,80 @@ class TestForensicDbForumBaseUrl(unittest.TestCase):
         self._set_meta("domainname", "secure.example.onion")
         result = self.fdb.get_forum_base_url()
         self.assertEqual(result, "https://secure.example.onion")
+
+
+class TestForensicDbBlobLookupOnionPrefix(unittest.TestCase):
+    """T26–T28: blob_lookup-View entfernt Onion-Präfix aus url_canonical und url_raw (Build 028)"""
+
+    BASE_URL = "http://alice4nonion.onion"
+
+    def setUp(self):
+        _setup_test_logging()
+        # Eigene DB mit Onion-URLs in pages und page_aliases anlegen
+        self.fdb_path = tempfile.mktemp(suffix=".db")
+        raw = sqlite3.connect(self.fdb_path)
+        raw.executescript(f"""
+            CREATE TABLE forensic_meta (key TEXT PRIMARY KEY, value TEXT);
+            CREATE TABLE pages (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                url_canonical TEXT NOT NULL UNIQUE,
+                html          BLOB,
+                fetched_at    INTEGER NOT NULL DEFAULT 0,
+                http_status   INTEGER NOT NULL DEFAULT 0,
+                scrape_context TEXT NOT NULL DEFAULT 'user'
+            );
+            CREATE TABLE page_aliases (
+                url_raw  TEXT NOT NULL PRIMARY KEY,
+                page_id  INTEGER NOT NULL REFERENCES pages(id)
+            );
+            INSERT INTO forensic_meta VALUES ('schema_version', '1');
+            INSERT INTO forensic_meta VALUES ('protocol', 'http');
+            INSERT INTO forensic_meta VALUES ('domainname', 'alice4nonion.onion');
+            INSERT INTO pages (url_canonical, html, fetched_at, http_status, scrape_context)
+            VALUES
+                ('{self.BASE_URL}/forum/beginner/', X'3C68746D6C3E583C2F68746D6C3E',
+                 1700000000, 200, 'user'),
+                ('{self.BASE_URL}/forum/viewtopic.php?id=200',
+                 X'3C68746D6C3E593C2F68746D6C3E',
+                 1700000001, 200, 'user');
+            INSERT INTO page_aliases (url_raw, page_id) VALUES
+                ('{self.BASE_URL}/forum/beginner/index.php', 1),
+                ('{self.BASE_URL}/', 1);
+        """)
+        raw.commit()
+        raw.close()
+        self.con = _make_attached_connection(self.fdb_path)
+        self.fdb = ForensicDb(self.con)
+
+    def tearDown(self):
+        self.con.close()
+        reset_for_testing()
+        try:
+            os.unlink(self.fdb_path)
+        except OSError:
+            pass
+
+    def test_T26_url_canonical_ohne_praefix(self):
+        """T26: Direkter Treffer über url_canonical — Onion-Präfix wird entfernt."""
+        page = self.fdb.get_page("/forum/beginner/")
+        self.assertIsNotNone(page)
+        self.assertEqual(page.url, "/forum/beginner/")
+        # canonical_url bleibt vollständig (wird von blob_handler für base_href genutzt)
+        self.assertIn("alice4nonion.onion", page.canonical_url)
+
+    def test_T27_url_raw_alias_ohne_praefix(self):
+        """T27: Alias-Treffer über url_raw — Onion-Präfix wird entfernt."""
+        page = self.fdb.get_page("/forum/beginner/index.php")
+        self.assertIsNotNone(page)
+        self.assertEqual(page.url, "/forum/beginner/index.php")
+
+    def test_T28_slash_alias_ohne_praefix(self):
+        """T28: Alias '/' (url_raw=Onion+'/') wird auf '/' reduziert."""
+        page = self.fdb.get_page("/")
+        self.assertIsNotNone(page)
+        self.assertEqual(page.url, "/")
+        # canonical_url zeigt auf /forum/beginner/
+        self.assertIn("/forum/beginner/", page.canonical_url)
 
 
 if __name__ == "__main__":

@@ -34,7 +34,7 @@
 #   einheitlich mit benutzerfreundlicher Konsolenausgabe.
 #
 # Abhängigkeiten: http.server, socketserver, errno — ausschließlich Stdlib
-# Version: v0.1.0 · Build: 015 · 2026-04-15
+# Version: v0.1.0 · Build: 028 · 2026-04-15
 # =============================================================================
 
 from __future__ import annotations
@@ -97,6 +97,18 @@ class ForensicRequestHandler(http.server.BaseHTTPRequestHandler):
 
     def log_error(self, format: str, *args) -> None:
         logger.warning("HTTP-Fehler: %s", format % args)
+
+    def address_string(self) -> str:
+        """
+        Überschreibt BaseHTTPRequestHandler.address_string() um den
+        Reverse-DNS-Lookup zu deaktivieren.
+
+        Der Standard-Handler macht einen PTR-Lookup auf die Client-IP.
+        Bei 127.0.0.2 gibt es keinen PTR-Record — das führt zu einem
+        ~20s Timeout beim ersten Request bis der negative Cache-Eintrag
+        gesetzt ist. Wir geben direkt die IP zurück.
+        """
+        return self.client_address[0]
 
     def do_GET(self) -> None:
         """Beantwortet GET-Requests."""
