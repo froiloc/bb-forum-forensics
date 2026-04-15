@@ -17,7 +17,7 @@
 # T11 — _extract_body(): HTML ohne <body>-Tag wird vollständig zurückgegeben
 # T12 — JSON-Envelope ist valides JSON
 #
-# Version: v0.1.0 · Build: 008 · 2026-04-10
+# Version: v0.1.0 · Build: 024 · 2026-04-15
 # =============================================================================
 
 import sys
@@ -289,6 +289,90 @@ class TestBlobHandlerExtractBody(unittest.TestCase):
         self.assertIn("in_scope", envelope)
         self.assertIn("html", envelope)
         self.assertIn("scrape_context", envelope)
+
+
+class TestBlobHandlerHead(unittest.TestCase):
+    """T13–T18: head-Feld im JSON-Envelope (Build 019/023)"""
+
+    def setUp(self):
+        self.cfg = _setup_logging_and_config()
+        self.ctx = _make_context()
+
+    def tearDown(self):
+        reset_for_testing()
+
+    def _call(self, bundle, url):
+        bh = BlobHandler(bundle, self.ctx, self.cfg)
+        handler = _make_handler()
+        bh.handle(handler, url)
+        return json.loads(handler._captured["body"])
+
+    def test_T13_head_feld_vorhanden(self):
+        """T13: Envelope enthält 'head'-Feld bei bekannter Seite."""
+        page = _make_page(
+            html=b"<html><head><title>Test</title></head><body>x</body></html>"
+        )
+        env = self._call(_make_bundle(page=page), "/forum/viewtopic.php?id=100")
+        self.assertIn("head", env)
+        self.assertIsNotNone(env["head"])
+
+    def test_T14_head_title(self):
+        """T14: head.title wird korrekt extrahiert."""
+        page = _make_page(
+            html=b"<html><head><title>Mein Titel</title></head><body>x</body></html>"
+        )
+        env = self._call(_make_bundle(page=page), "/forum/viewtopic.php?id=100")
+        self.assertEqual(env["head"]["title"], "Mein Titel")
+
+    def test_T15_head_stylesheet(self):
+        """T15: head.stylesheets enthält CSS-Pfade."""
+        page = _make_page(
+            html=b'<html><head><link rel="stylesheet" href="/forum/style/test.css"></head><body>x</body></html>'
+        )
+        env = self._call(_make_bundle(page=page), "/forum/viewtopic.php?id=100")
+        self.assertIn("/forum/style/test.css", env["head"]["stylesheets"])
+
+    def test_T16_head_inline_style(self):
+        """T16: head.inline_styles enthält <style>-Inhalte."""
+        page = _make_page(
+            html=b"<html><head><style>body{color:red}</style></head><body>x</body></html>"
+        )
+        env = self._call(_make_bundle(page=page), "/forum/viewtopic.php?id=100")
+        self.assertIn("body{color:red}", env["head"]["inline_styles"])
+
+    def test_T17_head_null_bei_not_in_scope(self):
+        """T17: head ist None wenn Seite nicht im Scope."""
+        env = self._call(_make_bundle(page=None), "/forum/viewtopic.php?id=9999")
+        self.assertIsNone(env["head"])
+
+    def test_T18_base_href_explizit(self):
+        """T18a: Explizites <base href> aus BLOB wird in head.base_href übernommen."""
+        page = _make_page(
+            url="/forum/viewtopic.php?id=100",
+            html=b'<html><head><base href="/forum/"></head><body>x</body></html>'
+        )
+        env = self._call(_make_bundle(page=page), "/forum/viewtopic.php?id=100")
+        self.assertEqual(env["head"]["base_href"], "/forum/")
+
+    def test_T18b_base_href_fallback_auf_page_url(self):
+        """T18b: Fehlt <base href> im BLOB, wird Verzeichnispfad von page.url
+        als Fallback verwendet."""
+        page = _make_page(
+            url="/forum/viewtopic.php?id=100",
+            html=b"<html><head><title>X</title></head><body>x</body></html>"
+        )
+        env = self._call(_make_bundle(page=page), "/forum/viewtopic.php?id=100")
+        # Verzeichnispfad von "/forum/viewtopic.php?id=100" → "/forum/"
+        self.assertEqual(env["head"]["base_href"], "/forum/")
+
+    def test_T18c_base_href_fallback_root(self):
+        """T18c: page.url='/' ohne <base href> → base_href='/'."""
+        page = _make_page(
+            url="/",
+            html=b"<html><head><title>X</title></head><body>x</body></html>"
+        )
+        env = self._call(_make_bundle(page=page), "/")
+        self.assertEqual(env["head"]["base_href"], "/")
 
 
 if __name__ == "__main__":

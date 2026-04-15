@@ -31,7 +31,7 @@
 #   T19 — ForensicDb ist READ-ONLY: kein Schreiben in fdb möglich
 #   T20 — blob_lookup vereinheitlicht: url_canonical und url_raw beide abrufbar
 #
-# Version: v0.1.0 · Build: 006 · 2026-04-10
+# Version: v0.1.0 · Build: 024 · 2026-04-15
 # =============================================================================
 
 import sys
@@ -444,6 +444,65 @@ class TestForensicDbReadOnly(unittest.TestCase):
 
         # Inhalt ist identisch
         self.assertEqual(page_direct.html, page_alias1.html)
+
+
+class TestForensicDbForumBaseUrl(unittest.TestCase):
+    """T21–T25: ForensicDb.get_forum_base_url() (Build 018)"""
+
+    def setUp(self):
+        _setup_test_logging()
+        self.fdb_path = _create_fdb_in_memory()
+        self.con = _make_attached_connection(self.fdb_path)
+        self.fdb = ForensicDb(self.con)
+
+    def tearDown(self):
+        self.con.close()
+        reset_for_testing()
+        try:
+            os.unlink(self.fdb_path)
+        except OSError:
+            pass
+
+    def _set_meta(self, key: str, value: str) -> None:
+        """Schreibt einen forensic_meta-Eintrag direkt in die Test-DB."""
+        raw = sqlite3.connect(self.fdb_path)
+        raw.execute(
+            "INSERT OR REPLACE INTO forensic_meta (key, value) VALUES (?, ?)",
+            (key, value),
+        )
+        raw.commit()
+        raw.close()
+
+    def test_T21_beide_felder_gesetzt(self):
+        """T21: protocol + domainname → vollständige Basis-URL."""
+        self._set_meta("protocol", "http")
+        self._set_meta("domainname", "alice4nonion.onion")
+        result = self.fdb.get_forum_base_url()
+        self.assertEqual(result, "http://alice4nonion.onion")
+
+    def test_T22_fehlendes_protocol(self):
+        """T22: Fehlt 'protocol' → None."""
+        self._set_meta("domainname", "alice4nonion.onion")
+        result = self.fdb.get_forum_base_url()
+        self.assertIsNone(result)
+
+    def test_T23_fehlendes_domainname(self):
+        """T23: Fehlt 'domainname' → None."""
+        self._set_meta("protocol", "http")
+        result = self.fdb.get_forum_base_url()
+        self.assertIsNone(result)
+
+    def test_T24_beide_felder_fehlen(self):
+        """T24: Fehlen beide Felder → None."""
+        result = self.fdb.get_forum_base_url()
+        self.assertIsNone(result)
+
+    def test_T25_https_protokoll(self):
+        """T25: protocol='https' wird korrekt zusammengesetzt."""
+        self._set_meta("protocol", "https")
+        self._set_meta("domainname", "secure.example.onion")
+        result = self.fdb.get_forum_base_url()
+        self.assertEqual(result, "https://secure.example.onion")
 
 
 if __name__ == "__main__":

@@ -20,7 +20,7 @@
 # T14 — AssetHandler: beide DBs leer → HTTP 404
 # T15 — ConnectionManager: fehlende assets_<uid>.db → kein Absturz beim Open
 #
-# Version: v0.1.0 · Build: 017 · 2026-04-15
+# Version: v0.1.0 · Build: 024 · 2026-04-15
 # =============================================================================
 
 import os
@@ -437,6 +437,106 @@ class TestConnectionManagerOhneAssetsDb(unittest.TestCase):
         self.assertFalse(bundle.assets.has_asset("/forum/img/avatars/1.png"))
 
         bundle.close()
+
+
+# ---------------------------------------------------------------------------
+# T16–T21: URL-Normalisierung mit forum_base_url (Build 018)
+# ---------------------------------------------------------------------------
+
+class TestAssetsDbForumBaseUrl(unittest.TestCase):
+    """T16–T21: AssetsDb.get_asset() und has_asset() mit forum_base_url."""
+
+    def setUp(self):
+        _setup_test_logging()
+        # DB mit Onion-URL als Schlüssel anlegen
+        path = tempfile.mktemp(suffix=".db")
+        raw = sqlite3.connect(path)
+        raw.executescript("""
+            CREATE TABLE assets_meta (key TEXT NOT NULL PRIMARY KEY, value TEXT);
+            CREATE TABLE assets (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                content_hash TEXT NOT NULL UNIQUE,
+                data         BLOB,
+                mime_type    TEXT,
+                file_size    INTEGER,
+                source_note  TEXT NOT NULL DEFAULT ''
+            );
+            CREATE TABLE asset_urls (
+                url         TEXT NOT NULL PRIMARY KEY,
+                asset_id    INTEGER NOT NULL REFERENCES assets(id),
+                url_context TEXT NOT NULL DEFAULT 'unknown',
+                page_id     INTEGER,
+                url_hash    TEXT NOT NULL DEFAULT ''
+            );
+            INSERT INTO assets (content_hash, data, mime_type, file_size, source_note)
+                VALUES ('abc', X'89504E47', 'image/png', 4, 'test');
+            INSERT INTO asset_urls (url, asset_id, url_context, url_hash)
+                VALUES (
+                    'http://alice4nonion.onion/forum/img/test.png',
+                    1, 'static', 'h1'
+                );
+        """)
+        raw.commit()
+        raw.close()
+        self._path = path
+        con = sqlite3.connect(":memory:")
+        con.row_factory = sqlite3.Row
+        uri = Path(path).as_uri() + "?mode=ro"
+        con.execute(f"ATTACH DATABASE '{uri}' AS adb")
+        self._con = con
+
+    def tearDown(self):
+        self._con.close()
+        Path(self._path).unlink(missing_ok=True)
+        reset_for_testing()
+
+    def test_T16_ohne_base_url_kein_treffer(self):
+        """T16: Ohne forum_base_url findet get_asset() Onion-URL nicht über Pfad."""
+        adb = AssetsDb(self._con, forum_base_url=None)
+        result = adb.get_asset("/forum/img/test.png")
+        self.assertIsNone(result)
+
+    def test_T17_mit_base_url_treffer(self):
+        """T17: Mit forum_base_url wird Pfad korrekt zu Onion-URL expandiert."""
+        adb = AssetsDb(
+            self._con,
+            forum_base_url="http://alice4nonion.onion"
+        )
+        result = adb.get_asset("/forum/img/test.png")
+        self.assertIsNotNone(result)
+        self.assertTrue(result.available)
+        self.assertEqual(result.mime_type, "image/png")
+
+    def test_T18_trailing_slash_wird_entfernt(self):
+        """T18: Abschließender Slash in forum_base_url wird korrekt entfernt."""
+        adb = AssetsDb(
+            self._con,
+            forum_base_url="http://alice4nonion.onion/"  # Slash am Ende
+        )
+        result = adb.get_asset("/forum/img/test.png")
+        self.assertIsNotNone(result)
+
+    def test_T19_has_asset_mit_base_url(self):
+        """T19: has_asset() findet Eintrag mit forum_base_url."""
+        adb = AssetsDb(
+            self._con,
+            forum_base_url="http://alice4nonion.onion"
+        )
+        self.assertTrue(adb.has_asset("/forum/img/test.png"))
+
+    def test_T20_has_asset_ohne_base_url(self):
+        """T20: has_asset() findet keinen Eintrag ohne forum_base_url."""
+        adb = AssetsDb(self._con, forum_base_url=None)
+        self.assertFalse(adb.has_asset("/forum/img/test.png"))
+
+    def test_T21_unbekannter_pfad_gibt_none(self):
+        """T21: Pfad der nicht in asset_urls liegt → None auch mit base_url."""
+        adb = AssetsDb(
+            self._con,
+            forum_base_url="http://alice4nonion.onion"
+        )
+        result = adb.get_asset("/forum/img/does_not_exist.png")
+        self.assertIsNone(result)
 
 
 # ---------------------------------------------------------------------------
