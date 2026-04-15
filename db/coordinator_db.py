@@ -24,7 +24,7 @@
 #   verfälschten Beweisen.
 #
 # Abhängigkeiten: sqlite3, time — ausschließlich Stdlib
-# Version: v0.1.0 · Build: 008 · 2026-04-13
+# Version: v0.1.0 · Build: 029 · 2026-04-15
 # Änderungen gegenüber Build 007 (Baustelle 3 — §11.5 Bauplan):
 #   - SupportStatusRecord: Neues Dataclass für SSE-Support-Status.
 #   - get_support_status(): Liest aktiven Support-Nutzer aus
@@ -179,7 +179,11 @@ class CoordinatorDb:
                 """
             ).fetchone()
         except sqlite3.OperationalError as exc:
-            raise exc  # Retry übernimmt
+            # Fehlende Tabelle ist ein dauerhafter Schemakonflikt — kein Retry
+            # sinnvoll, sofort weiterwerfen ohne Zeit zu verlieren
+            if "no such table" in str(exc):
+                raise exc
+            raise exc  # Andere OperationalErrors: Retry übernimmt
 
         if row is None:
             return SupportStatusRecord(active=False, username=None, since_ms=None)
@@ -418,6 +422,13 @@ class CoordinatorDb:
             try:
                 return func(*args)
             except sqlite3.OperationalError as exc:
+                # Strukturelle Fehler (fehlende Tabellen/Spalten) sind dauerhaft —
+                # Retries mit Wartezeit helfen nicht, sofort abbrechen.
+                if "no such table" in str(exc) or "no such column" in str(exc):
+                    logger.error(
+                        "coordinator.db: Strukturfehler (kein Retry): %s", exc
+                    )
+                    raise exc
                 last_exc = exc
                 if attempt < _RETRY_COUNT:
                     logger.warning(

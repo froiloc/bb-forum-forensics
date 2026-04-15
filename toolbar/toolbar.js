@@ -2,7 +2,7 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 006 · 2026-04-15
+ * Version: v0.1.0 · Build: 029 · 2026-04-15
  * Klassifikation: VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
  *
  * Architektur: Modularer Aufbau über ForensicToolbar-Namespace.
@@ -767,16 +767,22 @@
       });
 
       if (!envelope.in_scope) {
-        viewport.innerHTML =
-          '<div class="forensic-error-notice" role="alert">' +
-          '<p>⚠ Diese Seite liegt nicht im Umfang der Ermittlungen.</p>' +
-          '<small>URL: ' + _esc(url) + '</small></div>';
+        ToastModule.show(
+          "⚠ Diese Seite liegt nicht im Umfang der Ermittlungen: " + _esc(url),
+          "warning",
+          0   // bleibt bis manuelles Schließen
+        );
         AccessibilityModule.announce("Seite nicht im Ermittlungsumfang.");
         return;
       }
 
       if (envelope.fetch_failed || !envelope.html) {
         FetchFailedModule.show(viewport, url, envelope.http_status);
+        ToastModule.show(
+          "⚠ Seitenabruf fehlgeschlagen (HTTP " + _esc(String(envelope.http_status || "—")) + "): " + _esc(url),
+          "error",
+          8000
+        );
         return;
       }
 
@@ -2074,6 +2080,97 @@
     });
 
     return { init: init };
+  })();
+
+  // ===========================================================================
+  // PHASE 13: ToastModule — nicht-invasive Hinweis-Meldungen
+  // ===========================================================================
+  // Zeigt selbst verschwindende Toast-Nachrichten rechts unten an.
+  // Kein globales LOG-Objekt erforderlich — in sich geschlossen.
+  // Wird für NOT_IN_SCOPE, fetch_failed und andere Systemhinweise verwendet.
+  // ===========================================================================
+  var ToastModule = (function () {
+
+    var _container = null;
+    var _active    = [];          // Liste aktiver Toast-Elemente
+    var MAX_TOASTS = 4;
+
+    var TYPES = {
+      info:    "forensic-toast--info",
+      warning: "forensic-toast--warning",
+      error:   "forensic-toast--error",
+      success: "forensic-toast--success",
+    };
+
+    function _ensureContainer() {
+      if (_container) return;
+      _container = document.createElement("div");
+      _container.id = "forensic-toast-container";
+      _container.setAttribute("aria-live", "polite");
+      _container.setAttribute("aria-atomic", "false");
+      document.body.appendChild(_container);
+    }
+
+    function _remove(el) {
+      el.classList.remove("forensic-toast--visible");
+      setTimeout(function () {
+        if (el.parentNode) el.parentNode.removeChild(el);
+        var idx = _active.indexOf(el);
+        if (idx !== -1) _active.splice(idx, 1);
+      }, 300);  // CSS-Transition-Dauer
+    }
+
+    /**
+     * Zeigt eine Toast-Nachricht an.
+     * @param {string} message  — Anzuzeigende Nachricht (wird escaped)
+     * @param {string} type     — 'info' | 'warning' | 'error' | 'success'
+     * @param {number} duration — Anzeigedauer ms (0 = bleibt bis Schließen)
+     */
+    function show(message, type, duration) {
+      _ensureContainer();
+      type     = TYPES[type] ? type : "info";
+      duration = (duration === undefined) ? 6000 : duration;
+
+      // Ältesten Toast entfernen wenn Maximum erreicht
+      if (_active.length >= MAX_TOASTS) {
+        _remove(_active[0]);
+      }
+
+      var toast = document.createElement("div");
+      toast.className = "forensic-toast " + TYPES[type];
+      toast.setAttribute("role", "alert");
+
+      var msgEl = document.createElement("span");
+      msgEl.className   = "forensic-toast__msg";
+      msgEl.textContent = message;
+
+      var closeBtn = document.createElement("button");
+      closeBtn.className        = "forensic-toast__close";
+      closeBtn.textContent      = "✕";
+      closeBtn.setAttribute("aria-label", "Meldung schließen");
+      closeBtn.addEventListener("click", function () { _remove(toast); });
+
+      toast.appendChild(msgEl);
+      toast.appendChild(closeBtn);
+      _container.appendChild(toast);
+      _active.push(toast);
+
+      // Animation einschalten (nächster Frame damit Transition greift)
+      requestAnimationFrame(function () {
+        toast.classList.add("forensic-toast--visible");
+      });
+
+      // Automatisch entfernen
+      if (duration > 0) {
+        setTimeout(function () {
+          if (_active.indexOf(toast) !== -1) _remove(toast);
+        }, duration);
+      }
+
+      return toast;
+    }
+
+    return { show: show, TYPES: Object.keys(TYPES) };
   })();
 
   // ===========================================================================

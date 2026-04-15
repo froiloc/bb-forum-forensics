@@ -34,7 +34,7 @@
 #   einheitlich mit benutzerfreundlicher Konsolenausgabe.
 #
 # Abhängigkeiten: http.server, socketserver, errno — ausschließlich Stdlib
-# Version: v0.1.0 · Build: 028 · 2026-04-15
+# Version: v0.1.0 · Build: 029 · 2026-04-15
 # =============================================================================
 
 from __future__ import annotations
@@ -212,7 +212,10 @@ class ForensicHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
     Fehler beim Binden des Sockets werden als ForensicHTTPServerBindError
     mit benutzerfreundlicher Diagnose weitergegeben (nie als nackte OSError).
     """
-    daemon_threads = True  # Threads enden automatisch wenn Hauptprozess endet
+    daemon_threads  = True   # Threads enden automatisch wenn Hauptprozess endet
+    block_on_close  = False  # Nicht auf SSE-Threads warten beim Schließen —
+                             # verhindert Hänger beim ersten Browser-Request wenn
+                             # ein SSE-Stream-Thread offen ist
 
     def __init__(
         self,
