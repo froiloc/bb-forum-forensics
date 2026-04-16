@@ -2,8 +2,20 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 029 · 2026-04-15
+ * Version: v0.1.0 · Build: 030 · 2026-04-16
  * Klassifikation: VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
+ *
+ * Änderungen Build 030-A:
+ *   - HighlightModule: CSS Custom Highlights API Vorinitialisierung aller
+ *     Kategorie-Sets beim Modulstart (kein bedingtes Set-Erstellen in render()).
+ *   - HighlightModule: Fallback-Pfad ersetzt surroundContents() durch robusten
+ *     TreeWalker-Ansatz (Beleg: PoC highlight_poc.html, MD5 2e449a68...); kein
+ *     Absturz mehr bei Selektionen über Elementgrenzen hinweg.
+ *   - HighlightModule: clearAll() leert Ranges in vorhandenen Sets statt Sets
+ *     zu löschen und neu zu registrieren.
+ *   - Kategorie-Buttons: Permanenter gedämpfter Rahmen in Kategoriefarbe auch
+ *     im inaktiven Zustand (border-color: <color>72). Aktiver Zustand: volle
+ *     Sättigung + schwacher Hintergrund.
  *
  * Architektur: Modularer Aufbau über ForensicToolbar-Namespace.
  * Kommunikation ausschließlich über CustomEvent-Bus (ForensicToolbar.events).
@@ -246,28 +258,56 @@
      * XPath eines DOM-Knotens relativ zu #forensic-viewport berechnen.
      * Beleg: §4 Bauplan — XPaths werden relativ zu #forensic-viewport gebildet.
      */
+    /**
+     * XPath eines DOM-Knotens relativ zu #forensic-viewport berechnen.
+     *
+     * Korrekturen gegenüber Build 029:
+     *   1. Präfix "./" statt "//" — document.evaluate() mit context-Node
+     *      interpretiert "//" als "überall im Dokument" und ignoriert den
+     *      context-Node. "./" bedeutet "relativ zum context-Node".
+     *   2. Text-Nodes (#text) werden als text()[n] kodiert, nicht als
+     *      "#text[n]" — "#text[n]" ist kein gültiger XPath-Schritt und
+     *      wirft in document.evaluate() eine Exception.
+     *
+     * Beleg: XPath-Spezifikation §2.1 — Location Steps; MDN document.evaluate()
+     */
     function _xpathOf(node) {
       var viewport = document.getElementById("forensic-viewport");
       if (!viewport || !viewport.contains(node)) return "";
       var parts = [];
       var current = node;
       while (current && current !== viewport) {
-        var tag = current.nodeName.toLowerCase();
+        var tag;
+        if (current.nodeType === 3) {
+          // Text-Node: XPath-Schritt ist text()[n]
+          tag = "text()";
+        } else {
+          tag = current.nodeName.toLowerCase();
+        }
+        // Geschwister-Index berechnen (nur Geschwister desselben Typs zählen)
         var idx = 1;
         var sib = current.previousSibling;
         while (sib) {
-          if (sib.nodeName.toLowerCase() === tag) idx++;
+          if (current.nodeType === 3) {
+            if (sib.nodeType === 3) idx++;
+          } else {
+            if (sib.nodeName.toLowerCase() === tag) idx++;
+          }
           sib = sib.previousSibling;
         }
         parts.unshift(tag + "[" + idx + "]");
         current = current.parentNode;
       }
-      return "//" + parts.join("/");
+      // "./" → relativ zum context-Node (viewport), nicht absolut im Dokument
+      return "./" + parts.join("/");
     }
 
     /**
      * Knoten anhand XPath relativ zu #forensic-viewport finden.
      * Gibt null zurück wenn nicht gefunden.
+     *
+     * Korrektur: context-Node ist viewport, XPath beginnt mit "./" →
+     * document.evaluate() sucht korrekt innerhalb von viewport.
      */
     function _nodeFromXpath(xpath) {
       var viewport = document.getElementById("forensic-viewport");
@@ -279,6 +319,7 @@
         );
         return result.singleNodeValue;
       } catch (e) {
+        console.warn("[Forensic] XPath-Auflösung fehlgeschlagen:", xpath, e.message);
         return null;
       }
     }
@@ -442,9 +483,25 @@
 
   // ===========================================================================
   // PHASE 4: HighlightModule — CSS Custom Highlights API + Fallback
+  // Build 030-A: Vollständige Überarbeitung.
+  //
+  // Primärpfad (CSS Custom Highlights API):
+  //   Beleg: PoC highlight_poc.html bestätigt Unterstützung in Firefox ESR.
+  //   Highlight-Sets werden beim Modulstart für alle Kategorien vorinitialisiert
+  //   und in CSS.highlights registriert. renderHighlight() trägt nur noch die
+  //   Range ein — kein DOM-Eingriff, keine Ausnahmen möglich.
+  //
+  // Fallback (<mark>-Injection via TreeWalker):
+  //   surroundContents() scheitert wenn eine Selektion Elementgrenzen
+  //   überschreitet (z.B. <b>...</b> in der Mitte des markierten Texts).
+  //   Stattdessen: TreeWalker über alle Text-Nodes im Range-Bereich;
+  //   für jeden Text-Node wird ein eigenes <mark> erstellt.
+  //   Beleg: PoC highlight_poc.html — _wrapRangeInMark() validiert.
   // ===========================================================================
   var HighlightModule = (function () {
-    // Prüfen ob CSS Custom Highlights API verfügbar ist (§10.5 Bauplan)
+
+    // Prüfen ob CSS Custom Highlights API verfügbar ist (§10.5 Bauplan).
+    // Beleg: PoC bestätigt Verfügbarkeit in Firefox ESR.
     var _cssHighlightsAvailable = (
       typeof CSS !== "undefined" &&
       typeof CSS.highlights !== "undefined" &&
@@ -455,13 +512,109 @@
       console.warn("[Forensic] CSS Custom Highlights API nicht verfügbar — Fallback auf <mark>-Injection aktiv.");
     }
 
-    // Highlight-Sets pro Kategorie (CSS Custom Highlights API)
+    // Highlight-Sets pro Kategorie — beim Modulstart für alle Kategorien
+    // vorinitialisiert und in CSS.highlights registriert.
+    // Vorteil: renderHighlight() muss nicht mehr prüfen ob das Set existiert;
+    // kein Risiko von doppelten CSS.highlights.set()-Aufrufen beim restoreAll().
     var _highlights = {};
+    if (_cssHighlightsAvailable) {
+      ForensicToolbar.config.CATEGORIES.forEach(function (cat) {
+        var hlName = "forensic-" + cat.id.toLowerCase();
+        var hl = new Highlight();
+        _highlights[cat.id] = hl;
+        CSS.highlights.set(hlName, hl);
+      });
+    }
 
-    // Injizierte <mark>-Elemente (Fallback)
+    // Injizierte <mark>-Elemente pro Annotation-localId (Fallback)
     var _marks = {};
 
-    /** Highlight für eine Annotation rendern */
+    // ---------------------------------------------------------------------------
+    // Hilfsfunktion: Hex-Farbe → rgba-String mit gewünschter Deckkraft
+    // Beleg: PoC highlight_poc.html — _hexToRgba()
+    // ---------------------------------------------------------------------------
+    function _hexToRgba(hex, alpha) {
+      var r = parseInt(hex.slice(1, 3), 16);
+      var g = parseInt(hex.slice(3, 5), 16);
+      var b = parseInt(hex.slice(5, 7), 16);
+      return "rgba(" + r + "," + g + "," + b + "," + alpha + ")";
+    }
+
+    // ---------------------------------------------------------------------------
+    // Robustes <mark>-Wrapping auch über Elementgrenzen hinweg (Fallback).
+    //
+    // Strategie: TreeWalker über alle Text-Nodes im gemeinsamen Ancestor-Container
+    // der Range. Für jeden Text-Node der zum Range-Bereich gehört wird ein
+    // eigenes <mark>-Element erstellt. Das vermeidet das surroundContents()-
+    // Problem vollständig.
+    //
+    // Gibt Array der erstellten <mark>-Elemente zurück (leer bei Fehler).
+    // Beleg: PoC highlight_poc.html — _wrapRangeInMark() validiert.
+    // ---------------------------------------------------------------------------
+    function _wrapRangeInMark(range, annKey, cat) {
+      var marks = [];
+      var viewport = document.getElementById("forensic-viewport");
+      if (!viewport) return marks;
+
+      var ancestor = range.commonAncestorContainer;
+      var walkerRoot = (ancestor.nodeType === 3)
+        ? ancestor.parentNode
+        : ancestor;
+
+      var walker = document.createTreeWalker(walkerRoot, NodeFilter.SHOW_TEXT, null);
+      var textNodes = [];
+      var node;
+      while ((node = walker.nextNode())) {
+        if (!viewport.contains(node)) continue;
+        // Node muss den Range überlappen:
+        //   range.END_TO_START >= 0  → Range endet vor oder am Anfang des Nodes → kein Overlap
+        //   range.START_TO_END <= 0  → Range beginnt nach oder am Ende des Nodes → kein Overlap
+        var nr = document.createRange();
+        nr.selectNodeContents(node);
+        if (range.compareBoundaryPoints(Range.END_TO_START, nr) >= 0) continue;
+        if (range.compareBoundaryPoints(Range.START_TO_END, nr) <= 0) continue;
+        textNodes.push(node);
+      }
+
+      textNodes.forEach(function (textNode) {
+        var start = (textNode === range.startContainer) ? range.startOffset : 0;
+        var end   = (textNode === range.endContainer)   ? range.endOffset   : textNode.length;
+        if (start >= end) return;
+
+        var nodeRange = document.createRange();
+        nodeRange.setStart(textNode, start);
+        nodeRange.setEnd(textNode, end);
+
+        var mark = document.createElement("mark");
+        mark.dataset.forensicAnnotation = annKey;
+        mark.dataset.forensicCategory   = cat ? cat.id : "";
+        mark.style.backgroundColor      = cat ? _hexToRgba(cat.color, 0.45) : "rgba(170,170,170,0.45)";
+        mark.style.borderRadius         = "2px";
+        mark.style.cursor               = "pointer";
+
+        try {
+          nodeRange.surroundContents(mark);
+          marks.push(mark);
+        } catch (e1) {
+          // surroundContents scheitert wenn nodeRange selbst noch über eine
+          // Elementgrenze geht. Dann extractContents + insertNode verwenden.
+          try {
+            var frag = nodeRange.extractContents();
+            mark.appendChild(frag);
+            nodeRange.insertNode(mark);
+            marks.push(mark);
+          } catch (e2) {
+            console.warn("[Forensic] <mark>-Fallback: Fragment-Wrap Fehler:", e2);
+          }
+        }
+      });
+
+      return marks;
+    }
+
+    // ---------------------------------------------------------------------------
+    // renderHighlight — Highlight für eine Annotation rendern
+    // ---------------------------------------------------------------------------
     function renderHighlight(ann) {
       if (_state.viewMode === "original") return;
       if (!ann || !ann.selection) return;
@@ -473,44 +626,47 @@
       }
       if (restored.stale) {
         ann.stale = true;
-        AccessibilityModule.announce("Warnung: Annotation #" + (ann.id || ann.localId) + " ist veraltet (Inhalt geändert).");
+        AccessibilityModule.announce(
+          "Warnung: Annotation #" + (ann.id || ann.localId) + " ist veraltet (Inhalt geändert)."
+        );
       }
 
-      var cat = _getCat(ann.category);
-      var highlightName = "forensic-" + (ann.category || "CAT_OTHER").toLowerCase();
+      var cat    = _getCat(ann.category);
+      var annKey = ann.localId || String(ann.id);
 
       if (_cssHighlightsAvailable) {
-        if (!_highlights[ann.category]) {
-          _highlights[ann.category] = new Highlight();
-          CSS.highlights.set(highlightName, _highlights[ann.category]);
+        // Primärpfad: Range in vorinitialisiertes Highlight-Set eintragen.
+        // Kein DOM-Eingriff; kein Ausnahmerisiko.
+        var hlSet = _highlights[ann.category];
+        if (hlSet) {
+          hlSet.add(restored.range);
+        } else {
+          // Sollte durch Vorinitialisierung nie eintreten — defensiver Fallback
+          console.warn("[Forensic] Highlight-Set fuer Kategorie nicht gefunden:", ann.category);
         }
-        _highlights[ann.category].add(restored.range);
       } else {
-        // Fallback: <mark>-Injection (reversibler DOM-Eingriff, §11 GR11b Bauplan)
-        try {
-          var mark = document.createElement("mark");
-          mark.dataset.forensicAnnotation = ann.localId || String(ann.id);
-          mark.dataset.forensicCategory   = ann.category;
-          mark.style.backgroundColor      = cat ? cat.color : "#aaa";
-          mark.style.opacity              = "0.35";
-          mark.style.cursor               = "pointer";
-          restored.range.surroundContents(mark);
-          if (!_marks[ann.localId || String(ann.id)]) {
-            _marks[ann.localId || String(ann.id)] = [];
-          }
-          _marks[ann.localId || String(ann.id)].push(mark);
-        } catch (e) {
-          console.warn("[Forensic] <mark>-Fallback Fehler:", e);
+        // Fallback: TreeWalker-basiertes <mark>-Wrapping
+        var newMarks = _wrapRangeInMark(restored.range, annKey, cat);
+        if (newMarks.length > 0) {
+          _marks[annKey] = (_marks[annKey] || []).concat(newMarks);
+        } else {
+          console.warn("[Forensic] <mark>-Fallback: Keine Fragmente erstellt fuer Annotation", annKey);
         }
       }
     }
 
-    /** Alle Highlights entfernen (viewmode:original) */
+    // ---------------------------------------------------------------------------
+    // clearAll — Alle Highlights entfernen (viewmode:original)
+    // ---------------------------------------------------------------------------
     function clearAll() {
       if (_cssHighlightsAvailable) {
-        CSS.highlights.clear();
-        _highlights = {};
+        // Ranges aus allen Sets leeren; Sets selbst erhalten (CSS.highlights
+        // Registrierung bleibt damit bei restoreAll() kein Re-Register nötig ist)
+        Object.keys(_highlights).forEach(function (catId) {
+          _highlights[catId].clear();
+        });
       } else {
+        // <mark>-Elemente aus DOM entfernen (reversibler Eingriff, §11 GR11b)
         Object.keys(_marks).forEach(function (key) {
           (_marks[key] || []).forEach(function (mark) {
             var parent = mark.parentNode;
@@ -523,7 +679,9 @@
       }
     }
 
-    /** Alle gespeicherten Highlights wiederherstellen (viewmode:enhanced) */
+    // ---------------------------------------------------------------------------
+    // restoreAll — Alle gespeicherten Highlights wiederherstellen (viewmode:enhanced)
+    // ---------------------------------------------------------------------------
     function restoreAll() {
       _state.annotations.forEach(function (ann) {
         renderHighlight(ann);
@@ -594,10 +752,15 @@
 
     function _renderHTML() {
       var cats = ForensicToolbar.config.CATEGORIES.map(function (cat) {
+        // border-color im Ruhezustand: Kategoriefarbe mit 45% Deckkraft (hex-Suffix "72").
+        // Im aktiven Zustand wird der Rahmen durch updateCategoryButtons() auf volle
+        // Sättigung gesetzt. So ist die Farb-Kennung dauerhaft sichtbar.
+        // Beleg: §2 Anforderung — farblicher Rahmen auch im inaktiven Zustand.
         return (
           '<button id="forensic-cat-' + cat.id + '" ' +
           'class="forensic-cat-btn" ' +
           'data-category="' + cat.id + '" ' +
+          'style="border-color:' + cat.color + '72;" ' +
           'aria-label="' + _esc(cat.desc) + ' (Taste ' + cat.key + ')" ' +
           'title="' + _esc(cat.desc) + ' [Taste ' + cat.key + ']" ' +
           'aria-pressed="false">' +
@@ -690,10 +853,13 @@
         btn.setAttribute("aria-pressed", active ? "true" : "false");
         btn.classList.toggle("forensic-cat-active", active);
         if (active) {
+          // Aktiv: volle Kategoriefarbe + schwacher Hintergrund
           btn.style.borderColor = cat.color;
           btn.style.background  = cat.color + "22";
         } else {
-          btn.style.borderColor = "";
+          // Inaktiv: gedämpfter Rahmen (45% Deckkraft, hex "72") bleibt sichtbar.
+          // Beleg: §2 Anforderung — farbliche Kennung dauerhaft erkennbar.
+          btn.style.borderColor = cat.color + "72";
           btn.style.background  = "";
         }
       });
@@ -2174,13 +2340,20 @@
   })();
 
   // ===========================================================================
-  // CSS-Highlight-Regel für CSS Custom Highlights API (§5 Bauplan)
+  // CSS-Highlight-Regeln für CSS Custom Highlights API (§5 Bauplan)
+  //
+  // Die Highlight-Sets werden im HighlightModule vorinitialisiert und in
+  // CSS.highlights registriert. Diese Funktion injiziert ausschließlich die
+  // zugehörigen ::highlight()-CSS-Regeln in den <head>. Ohne diese Regeln
+  // würden die registrierten Sets keine sichtbare Wirkung haben.
+  // Beleg: PoC highlight_poc.html — ::highlight()-Regeln im <style>-Block.
   // ===========================================================================
   (function _injectHighlightStyles() {
     if (typeof CSS === "undefined" || !CSS.highlights) return;
     var style = document.createElement("style");
     var rules = ForensicToolbar.config.CATEGORIES.map(function (cat) {
       var name = "forensic-" + cat.id.toLowerCase();
+      // Kategorie-Farbe mit 55% Deckkraft — konsistent mit PoC-Werten
       return "::highlight(" + name + ") { background-color: " + cat.color + "55; }";
     });
     style.textContent = rules.join("\n");
