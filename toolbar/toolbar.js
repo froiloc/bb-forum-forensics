@@ -278,10 +278,6 @@
 
     /**
      * XPath eines DOM-Knotens relativ zu #forensic-viewport berechnen.
-     * Beleg: §4 Bauplan — XPaths werden relativ zu #forensic-viewport gebildet.
-     */
-    /**
-     * XPath eines DOM-Knotens relativ zu #forensic-viewport berechnen.
      *
      * Korrekturen gegenüber Build 029:
      *   1. Präfix "./" statt "//" — document.evaluate() mit context-Node
@@ -328,20 +324,33 @@
      * Knoten anhand XPath relativ zu #forensic-viewport finden.
      * Gibt null zurück wenn nicht gefunden.
      *
-     * Korrektur: context-Node ist viewport, XPath beginnt mit "./" →
-     * document.evaluate() sucht korrekt innerhalb von viewport.
+     * Migration alter XPath-Formate (Build 029 → 030):
+     *   Build 029 speicherte XPaths mit zwei Fehlern:
+     *     1. Präfix "//" statt "./" → wird on-the-fly ersetzt
+     *     2. Text-Nodes als "#text[n]" statt "text()[n]" → wird ersetzt
+     *   Beide Korrekturen erlauben das Wiederherstellen alter Annotationen
+     *   ohne Datenverlust. Beleg: Fehlermeldung in Konsole Build 030-C.
      */
     function _nodeFromXpath(xpath) {
       var viewport = document.getElementById("forensic-viewport");
       if (!viewport) return null;
+
+      // Migration: altes "//" → "./"
+      var migrated = xpath;
+      if (migrated.substring(0, 2) === "//") {
+        migrated = "./" + migrated.substring(2);
+      }
+      // Migration: "#text[n]" → "text()[n]" (ungültiger XPath-Schritt)
+      migrated = migrated.replace(/\/#text\[(\d+)\]/g, "/text()[$1]");
+
       try {
         var result = document.evaluate(
-          xpath, viewport, null,
+          migrated, viewport, null,
           XPathResult.FIRST_ORDERED_NODE_TYPE, null
         );
         return result.singleNodeValue;
       } catch (e) {
-        console.warn("[Forensic] XPath-Auflösung fehlgeschlagen:", xpath, e.message);
+        console.warn("[Forensic] XPath-Auflösung fehlgeschlagen:", migrated, e.message);
         return null;
       }
     }
