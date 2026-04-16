@@ -3,6 +3,15 @@
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
  * Version: v0.1.0 · Build: 030 · 2026-04-16
+ *
+ * Änderungen Build 030-B:
+ *   - #forensic-toolbar: right: 0 (Minimap liegt über Toolbar, nicht daneben).
+ *   - Drei-Zonen-Layout: .forensic-zone-left / -center / -right.
+ *   - .forensic-sec5: flex-grow entfernt (Zone-right übernimmt Positionierung).
+ *   - .forensic-select: Seitenkontext-Dropdown-Styling.
+ *   - .forensic-trace-input / .forensic-trace-total / .forensic-trace-row:
+ *     Spurennummer-Eingabe-Styling.
+ *   - .forensic-sec-label: Beschriftungs-Labels über Werkzeugen (IBM Plex Mono).
  * Klassifikation: VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
  *
  * Farbkontrast-Prüfung WCAG 2.1 AA (§5, §10.3 Bauplan):
@@ -59,19 +68,53 @@ body {
   position: fixed;
   top: 0;
   left: 0;
-  right: 44px; /* Platz für Minimap */
+  right: 0; /* #9: Toolbar geht bis zum rechten Rand; Minimap liegt darunter */
   height: 62px;
   z-index: 9999;
   background: #1a1f2e;
   border-bottom: 2px solid #2d3550;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 0;
   font-family: "Segoe UI", "Liberation Sans", Arial, sans-serif;
   font-size: 12px;
   color: #c8d0e8;
   overflow: hidden;
+}
+
+/* ===========================================================================
+   Drei-Zonen-Layout (Build 030-B, #10)
+   Links: Kontext-Badge — fest, nicht wachsend
+   Mitte: Werkzeuge — flex-grow:1, Inhalt zentriert
+   Rechts: Navigation + Session — fest, nicht wachsend
+   =========================================================================== */
+
+.forensic-zone {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  flex-shrink: 0;
+}
+
+/* Zone links: Badge bleibt am linken Rand */
+.forensic-zone-left {
+  flex-shrink: 0;
+}
+
+/* Zone Mitte: wächst auf verfügbare Breite, zentriert seinen Inhalt */
+.forensic-zone-center {
+  flex: 1 1 0;
+  justify-content: center;
+  overflow: hidden;
+  /* Minimale Breite damit die Werkzeuge nicht kollabieren */
+  min-width: 0;
+}
+
+/* Zone rechts: Navigation + Session, am rechten Rand */
+.forensic-zone-right {
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 /* Trennlinien zwischen Sektionen */
@@ -110,12 +153,40 @@ body {
   gap: 4px;
 }
 
+/* Session-Info: kein flex-grow mehr — Zone-right übernimmt die Positionierung */
 .forensic-sec5 {
-  flex-grow: 1;
-  justify-content: flex-end;
   gap: 8px;
   padding: 0 12px;
   overflow: hidden;
+}
+
+/* Seitenkontext-Dropdown (§OP-6) */
+.forensic-sec-context {
+  gap: 5px;
+  padding: 0 8px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+/* Spurennummer-Navigation (§OP-5) */
+.forensic-sec-trace {
+  gap: 4px;
+  padding: 0 8px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+/* Beschriftungs-Label über Werkzeugen (wie im Mockup tb-label) */
+.forensic-sec-label {
+  font-size: 9px;
+  color: #4a5570;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  white-space: nowrap;
+  font-family: "IBM Plex Mono", "Courier New", monospace;
 }
 
 /* ===========================================================================
@@ -260,6 +331,83 @@ body {
   width: 28px;
   padding: 5px 6px;
   justify-content: center;
+}
+
+/* ===========================================================================
+   Seitenkontext-Dropdown (§OP-6, Dummy Build 030-B)
+   =========================================================================== */
+
+.forensic-select {
+  background: #0e1220;
+  border: 1px solid #3d4a6a;
+  border-radius: 3px;
+  color: #c8d0e8;
+  font-family: "IBM Plex Mono", "Courier New", monospace;
+  font-size: 11px;
+  padding: 3px 6px;
+  max-width: 190px;
+  cursor: pointer;
+}
+
+.forensic-select:focus {
+  outline: 2px solid #4f8ef7;
+  border-color: #4f8ef7;
+}
+
+/* Deaktivierter Zustand (Dummy) */
+.forensic-select:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ===========================================================================
+   Spurennummer-Navigation (§OP-5, Dummy Build 030-B)
+   =========================================================================== */
+
+.forensic-trace-input {
+  width: 52px;
+  background: #0e1220;
+  border: 1px solid #3d4a6a;
+  border-radius: 3px;
+  color: #f5c842;
+  font-family: "IBM Plex Mono", "Courier New", monospace;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  padding: 3px 4px;
+  /* Firefox: Spinner ausblenden */
+  -moz-appearance: textfield;
+}
+
+/* Chrome/Edge: Spinner ausblenden */
+.forensic-trace-input::-webkit-inner-spin-button,
+.forensic-trace-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.forensic-trace-input:focus {
+  outline: 2px solid #4f8ef7;
+  border-color: #4f8ef7;
+}
+
+.forensic-trace-input:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.forensic-trace-total {
+  font-size: 12px;
+  color: #4a5570;
+  font-family: "IBM Plex Mono", "Courier New", monospace;
+  white-space: nowrap;
+}
+
+/* Inline-Wrapper für Pfeil + Eingabe + Gesamt + Pfeil */
+.forensic-trace-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
 }
 
 /* ===========================================================================

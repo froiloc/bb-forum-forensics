@@ -16,6 +16,16 @@
  *   - Kategorie-Buttons: Permanenter gedämpfter Rahmen in Kategoriefarbe auch
  *     im inaktiven Zustand (border-color: <color>72). Aktiver Zustand: volle
  *     Sättigung + schwacher Hintergrund.
+ *   - XPath: _xpathOf() Präfix "./" statt "//" (relativ zum context-Node);
+ *     Text-Nodes korrekt als text()[n] kodiert statt "#text[n]".
+ *
+ * Änderungen Build 030-B:
+ *   - Toolbar: right: 0 statt right: 44px (#9 — Minimap liegt über Toolbar).
+ *   - Toolbar: Drei-Zonen-Layout [Links: Badge] [Mitte: Werkzeuge] [Rechts:
+ *     Navigation + Session] (#10 — Werkzeuge über Forum-Inhalt zentriert).
+ *   - Seitenkontext-Dropdown (§OP-6): Dummy-Implementierung, deaktiviert.
+ *   - Spurennummer-Eingabe (§OP-5): Dummy-Implementierung mit ◀/Eingabe/▶,
+ *     deaktiviert — Funktionalität folgt in späterem Build.
  *
  * Architektur: Modularer Aufbau über ForensicToolbar-Namespace.
  * Kommunikation ausschließlich über CustomEvent-Bus (ForensicToolbar.events).
@@ -771,56 +781,111 @@
       }).join("");
 
       return (
-        // Sektion 1: Kontext-Badge
-        '<div class="forensic-section forensic-sec1" aria-label="Ermittlungskontext">' +
-        '<span id="forensic-context-badge" role="status" aria-live="polite" ' +
-        'class="forensic-badge forensic-badge-user">Nutzersicht</span>' +
-        '</div>' +
-        '<div class="forensic-separator" aria-hidden="true"></div>' +
+        // =====================================================================
+        // ZONE LINKS — Kontext-Badge, fest am linken Rand
+        // =====================================================================
+        '<div class="forensic-zone forensic-zone-left">' +
 
-        // Sektion 2: Markier-Werkzeuge
-        '<div class="forensic-section forensic-sec2" role="group" aria-label="Markierungskategorien">' +
-        cats +
-        '</div>' +
-        '<div class="forensic-separator" aria-hidden="true"></div>' +
+          // Sektion 1: Kontext-Badge
+          '<div class="forensic-section forensic-sec1" aria-label="Ermittlungskontext">' +
+          '<span id="forensic-context-badge" role="status" aria-live="polite" ' +
+          'class="forensic-badge forensic-badge-user">Nutzersicht</span>' +
+          '</div>' +
 
-        // Sektion 3: Aktionen
-        '<div class="forensic-section forensic-sec3">' +
-        '<button id="forensic-btn-userinfo" class="forensic-btn" ' +
-        'aria-label="Nutzerinfo-Tab öffnen (Alt+U)" title="Nutzerinfo öffnen [Alt+U]">' +
-        '👤 Nutzerinfo</button>' +
-        '<button id="forensic-btn-next-ann" class="forensic-btn" ' +
-        'aria-label="Zur nächsten unkommentierten Annotation springen" ' +
-        'title="Nächste Annotation">' +
-        '▶ Nächste</button>' +
-        '<button id="forensic-btn-viewmode" class="forensic-btn" ' +
-        'aria-label="Ansicht wechseln: Original oder Angepasst" ' +
-        'title="Ansicht wechseln [Original / Angepasst]" ' +
-        'data-viewmode="enhanced">' +
-        '⊞ Angepasst</button>' +
-        '</div>' +
-        '<div class="forensic-separator" aria-hidden="true"></div>' +
+        '</div>' + // /zone-left
 
-        // Sektion 4: Navigation
-        '<div class="forensic-section forensic-sec4" aria-label="Seitennavigation">' +
-        '<button id="forensic-btn-nav-prev" class="forensic-btn forensic-nav-btn" ' +
-        'aria-label="Vorherige Seite (Alt+Pfeil links)" title="Vorherige Seite [Alt+←]">◀</button>' +
-        '<span id="forensic-page-info" class="forensic-page-info" aria-label="Seitenposition">—</span>' +
-        '<button id="forensic-btn-nav-next" class="forensic-btn forensic-nav-btn" ' +
-        'aria-label="Nächste Seite (Alt+Pfeil rechts)" title="Nächste Seite [Alt+→]">▶</button>' +
-        '</div>' +
-        '<div class="forensic-separator" aria-hidden="true"></div>' +
+        // =====================================================================
+        // ZONE MITTE — zentriert über die gesamte verbleibende Breite
+        // Enthält: Seitenkontext-Dropdown | Marker-Buttons | Aktionen
+        // =====================================================================
+        '<div class="forensic-zone forensic-zone-center">' +
 
-        // Sektion 5: Session-Info
-        '<div class="forensic-section forensic-sec5" aria-label="Sitzungsinformationen">' +
-        '<span id="forensic-session-user" class="forensic-session-info">…</span>' +
-        '<span id="forensic-annotation-count" class="forensic-session-info" ' +
-        'aria-label="Anzahl Annotationen auf dieser Seite">0 Ann.</span>' +
-        '<span id="forensic-sync-status" class="forensic-sync-ok" aria-live="polite" ' +
-        'aria-label="Synchronisierungsstatus"></span>' +
-        '<span id="forensic-support-indicator" class="forensic-support-hidden" ' +
-        'role="status" aria-live="assertive"></span>' +
-        '</div>'
+          // Sektion 2a: Seitenkontext-Dropdown (§OP-6, Dummy Build 030-B)
+          // Ermöglicht Sprung zu anderen Seiten des Benutzers.
+          // Funktionalität wird in späterem Build ergänzt.
+          '<div class="forensic-section forensic-sec-context" aria-label="Seitenkontext">' +
+          '<span class="forensic-sec-label">Kontext</span>' +
+          '<select id="forensic-context-select" class="forensic-select" ' +
+          'aria-label="Seitenkontext wählen" title="Seite direkt auswählen" disabled>' +
+          '<option value="">— Seite wählen —</option>' +
+          '</select>' +
+          '</div>' +
+          '<div class="forensic-separator" aria-hidden="true"></div>' +
+
+          // Sektion 2b: Markier-Werkzeuge
+          '<div class="forensic-section forensic-sec2" role="group" aria-label="Markierungskategorien">' +
+          cats +
+          '</div>' +
+          '<div class="forensic-separator" aria-hidden="true"></div>' +
+
+          // Sektion 3: Aktionen
+          '<div class="forensic-section forensic-sec3">' +
+          '<button id="forensic-btn-userinfo" class="forensic-btn" ' +
+          'aria-label="Nutzerinfo-Tab öffnen (Alt+U)" title="Nutzerinfo öffnen [Alt+U]">' +
+          '👤 Nutzerinfo</button>' +
+          '<button id="forensic-btn-next-ann" class="forensic-btn" ' +
+          'aria-label="Zur nächsten unkommentierten Annotation springen" ' +
+          'title="Nächste Annotation">' +
+          '▶ Nächste</button>' +
+          '<button id="forensic-btn-viewmode" class="forensic-btn" ' +
+          'aria-label="Ansicht wechseln: Original oder Angepasst" ' +
+          'title="Ansicht wechseln [Original / Angepasst]" ' +
+          'data-viewmode="enhanced">' +
+          '⊞ Angepasst</button>' +
+          '</div>' +
+
+        '</div>' + // /zone-center
+
+        // =====================================================================
+        // ZONE RECHTS — Navigation, Spurennummer, Session-Info
+        // =====================================================================
+        '<div class="forensic-zone forensic-zone-right">' +
+
+          '<div class="forensic-separator" aria-hidden="true"></div>' +
+
+          // Sektion 4: Seitennavigation mit Spurennummer-Eingabe (§OP-5, Dummy Build 030-B)
+          // Das Eingabefeld ermöglicht direktes Anspringen einer Spur per Nummer.
+          // Funktionalität wird in späterem Build ergänzt (Annotation-Navigation).
+          '<div class="forensic-section forensic-sec4" aria-label="Seitennavigation">' +
+          '<button id="forensic-btn-nav-prev" class="forensic-btn forensic-nav-btn" ' +
+          'aria-label="Vorherige Seite (Alt+Pfeil links)" title="Vorherige Seite [Alt+←]">◀</button>' +
+          '<span id="forensic-page-info" class="forensic-page-info" aria-label="Seitenposition">—</span>' +
+          '<button id="forensic-btn-nav-next" class="forensic-btn forensic-nav-btn" ' +
+          'aria-label="Nächste Seite (Alt+Pfeil rechts)" title="Nächste Seite [Alt+→]">▶</button>' +
+          '</div>' +
+          '<div class="forensic-separator" aria-hidden="true"></div>' +
+
+          // Spurennummer-Eingabe (Dummy)
+          '<div class="forensic-section forensic-sec-trace" aria-label="Spurennavigation">' +
+          '<span class="forensic-sec-label">Spur</span>' +
+          '<div class="forensic-trace-row">' +
+          '<button class="forensic-btn forensic-nav-btn" id="forensic-btn-trace-prev" ' +
+          'aria-label="Vorherige Spur" title="Vorherige Spur" disabled>◀</button>' +
+          '<input id="forensic-trace-input" type="number" min="1" ' +
+          'class="forensic-trace-input" ' +
+          'aria-label="Spurennummer direkt eingeben" ' +
+          'title="Spurennummer eingeben und Enter drücken" ' +
+          'placeholder="—" disabled>' +
+          '<span class="forensic-trace-total" id="forensic-trace-total" ' +
+          'aria-label="Gesamtanzahl Spuren">/ 0</span>' +
+          '<button class="forensic-btn forensic-nav-btn" id="forensic-btn-trace-next" ' +
+          'aria-label="Nächste Spur" title="Nächste Spur" disabled>▶</button>' +
+          '</div>' +
+          '</div>' +
+          '<div class="forensic-separator" aria-hidden="true"></div>' +
+
+          // Sektion 5: Session-Info
+          '<div class="forensic-section forensic-sec5" aria-label="Sitzungsinformationen">' +
+          '<span id="forensic-session-user" class="forensic-session-info">…</span>' +
+          '<span id="forensic-annotation-count" class="forensic-session-info" ' +
+          'aria-label="Anzahl Annotationen auf dieser Seite">0 Ann.</span>' +
+          '<span id="forensic-sync-status" class="forensic-sync-ok" aria-live="polite" ' +
+          'aria-label="Synchronisierungsstatus"></span>' +
+          '<span id="forensic-support-indicator" class="forensic-support-hidden" ' +
+          'role="status" aria-live="assertive"></span>' +
+          '</div>' +
+
+        '</div>' // /zone-right
       );
     }
 
