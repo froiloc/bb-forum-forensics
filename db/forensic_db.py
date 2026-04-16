@@ -468,17 +468,27 @@ class ForensicDb:
         Gibt die Liste der DOM-Element-IDs zurück, an denen der Beschuldigte
         auf dieser Seite Spuren hinterlassen hat.
 
-        Grundlage: scrape_targets in fdb. Jeder Eintrag mit scrape_context='user'
-        oder 'actor:<uid>' der einer post_id oder pm_post_id zugeordnet ist,
-        erzeugt eine Element-ID der Form 'p<post_id>' — konsistent mit der
-        FluxBB/PunBB-HTML-Struktur (article.post[id^="p"], §18.1 Bauplan).
+        Verbindungskette:
+          Forum-Posts:
+            fdb.post_aliases.topic_id
+              ← fdb.scrape_targets.post_id = fdb.post_aliases.post_id
+            fdb.page_aliases.page_id = page_id
+              ← fdb.page_aliases.url_raw enthält 'id=<topic_id>'
+            Kurzweg: scrape_targets.topic_id = post_aliases.topic_id
+                     AND post_aliases.post_id in page_aliases via topic
 
-        Verwendet wird page_id (fdb.pages.id) als Fremdschlüssel in
-        scrape_targets via topic_id / pm_topic_id JOIN gegen pages:
-          - Forum-Posts: scrape_targets.post_id, topic_id = pages.topic_id
-          - PMs:         scrape_targets.pm_post_id, pm_topic_id = pages.pm_topic_id
+          Einfachster korrekter Weg ohne pages.topic_id (existiert nicht):
+            post_aliases verknüpft post_id ↔ topic_id.
+            page_aliases verknüpft url_raw ↔ page_id.
+            Eine Seite mit page_id gehört zu einer topic_id wenn
+            irgendein post auf dieser Seite in post_aliases auf dieselbe
+            topic_id zeigt wie ein scrape_target.post_id.
 
-        Gibt eine leere Liste zurück wenn keine Spuren gefunden oder bei Fehler.
+            Konkret: alle post_ids aus post_aliases wo topic_id in der Menge
+            der topic_ids liegt die über page_aliases → page_id erreichbar sind.
+
+        Beleg: forensic_schema_db.sql — pages hat kein topic_id-Feld.
+               Verbindung läuft ausschließlich über post_aliases/pm_aliases.
 
         Args:
             page_id: fdb.pages.id der aktuellen Seite.
@@ -488,47 +498,103 @@ class ForensicDb:
         """
         results: list[str] = []
 
-        # Forum-Posts auf Topic-Seiten
+        # Forum-Posts auf Topic-Seiten.
+        #
+        # Logik:
+        #   1. Alle post_ids aus post_aliases ermitteln deren topic_id
+        #      irgendein post auf dieser page_id hat.
+        #      Eine page gehört zu topic_id T wenn mindestens ein post_alias
+        #      mit topic_id=T über page_aliases auf diese page_id zeigt:
+        #        page_aliases.page_id = page_id
+        #        → page_aliases verknüpft url_raw mit page_id
+        #        → aber url_raw enthält die topic-URL, nicht post-URL
+        #      Einfacherer direkter Weg:
+        #        scrape_targets.post_id → post_aliases.topic_id
+        #        post_aliases.topic_id ist die topic_id der Seite
+        #        page_id stammt aus blob_lookup der topic-URL
+        #        → Die topic_id der Seite ermitteln wir über:
+        #          SELECT topic_id FROM post_aliases
+        #          WHERE post_id IN (
+        #            SELECT post_id FROM scrape_targets WHERE post_id IS NOT NULL
+        #          )
+        #          AND topic_id IN (
+        #            SELECT pa2.topic_id FROM post_aliases pa2
+        #            JOIN page_aliases pga ON pga.url_raw LIKE '%id=' || pa2.topic_id || '%'
+        #            WHERE pga.page_id = page_id
+        #          )
+        #
+        #      Das ist zu komplex. Robustere Lösung: alle topic_ids dieser
+        #      page_id über page_aliases + URL-Muster auslesen:
         try:
             rows = self._con.execute(
                 """
                 SELECT DISTINCT st.post_id
                 FROM fdb.scrape_targets st
-                JOIN fdb.pages p ON p.id = ?
+                JOIN fdb.post_aliases pa ON pa.post_id = st.post_id
                 WHERE st.post_id IS NOT NULL
-                  AND st.topic_id IS NOT NULL
-                  AND st.topic_id = p.topic_id
-                  AND st.scrape_context IN ('user', 'actor')
+                  AND pa.topic_id IN (
+                      SELECT CAST(
+                          SUBSTR(pga.url_raw,
+                                 INSTR(pga.url_raw, 'id=') + 3)
+                          AS INTEGER)
+                      FROM fdb.page_aliases pga
+                      WHERE pga.page_id = ?
+                        AND pga.url_raw LIKE '%id=%'
+                      UNION
+                      SELECT CAST(
+                          SUBSTR(p2.url_canonical,
+                                 INSTR(p2.url_canonical, 'id=') + 3)
+                          AS INTEGER)
+                      FROM fdb.pages p2
+                      WHERE p2.id = ?
+                        AND p2.url_canonical LIKE '%id=%'
+                  )
                 ORDER BY st.post_id
                 """,
-                (page_id,),
+                (page_id, page_id),
             ).fetchall()
             for row in rows:
                 results.append(f"p{row[0]}")
-        except sqlite3.OperationalError as exc:
+        except Exception as exc:
             logger.warning(
                 "get_trace_elements_for_page: Forum-Post-Abfrage fehlgeschlagen "
                 "(page_id=%d): %s", page_id, exc
             )
 
-        # PM-Posts auf PN-Seiten
+        # PM-Posts auf PN-Seiten.
+        # pm_aliases verknüpft pm_post_id ↔ pm_topic_id.
+        # Die pm_topic_id der Seite ermitteln wir analog über URL-Muster.
         try:
             rows = self._con.execute(
                 """
                 SELECT DISTINCT st.pm_post_id
                 FROM fdb.scrape_targets st
-                JOIN fdb.pages p ON p.id = ?
+                JOIN fdb.pm_aliases pma ON pma.pm_post_id = st.pm_post_id
                 WHERE st.pm_post_id IS NOT NULL
-                  AND st.pm_topic_id IS NOT NULL
-                  AND st.pm_topic_id = p.pm_topic_id
-                  AND st.scrape_context IN ('user', 'actor')
+                  AND pma.pm_topic_id IN (
+                      SELECT CAST(
+                          SUBSTR(pga.url_raw,
+                                 INSTR(pga.url_raw, 'id=') + 3)
+                          AS INTEGER)
+                      FROM fdb.page_aliases pga
+                      WHERE pga.page_id = ?
+                        AND pga.url_raw LIKE '%id=%'
+                      UNION
+                      SELECT CAST(
+                          SUBSTR(p2.url_canonical,
+                                 INSTR(p2.url_canonical, 'id=') + 3)
+                          AS INTEGER)
+                      FROM fdb.pages p2
+                      WHERE p2.id = ?
+                        AND p2.url_canonical LIKE '%id=%'
+                  )
                 ORDER BY st.pm_post_id
                 """,
-                (page_id,),
+                (page_id, page_id),
             ).fetchall()
             for row in rows:
                 results.append(f"p{row[0]}")
-        except sqlite3.OperationalError as exc:
+        except Exception as exc:
             logger.warning(
                 "get_trace_elements_for_page: PM-Post-Abfrage fehlgeschlagen "
                 "(page_id=%d): %s", page_id, exc

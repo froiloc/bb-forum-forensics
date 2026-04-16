@@ -1796,32 +1796,44 @@
   var TraceNavigationModule = (function () {
     var _currentIdx = -1; // 0-basiert; -1 = keine Spur angesprungen
 
+    // Listener-Referenzen für sauberes Entfernen ohne cloneNode
+    var _prevListener = null;
+    var _nextListener = null;
+    var _inputKeyListener = null;
+    var _inputBlurListener = null;
+
     // -------------------------------------------------------------------------
     // _update — UI-Elemente auf aktuellen Index synchronisieren
     // -------------------------------------------------------------------------
     function _update() {
-      var traces = _state.traceElements;
-      var total  = traces.length;
+      var traces  = _state.traceElements;
+      var total   = traces.length;
 
-      var inputEl  = document.getElementById("forensic-trace-input");
-      var totalEl  = document.getElementById("forensic-trace-total");
-      var prevBtn  = document.getElementById("forensic-btn-trace-prev");
-      var nextBtn  = document.getElementById("forensic-btn-trace-next");
+      var inputEl = document.getElementById("forensic-trace-input");
+      var totalEl = document.getElementById("forensic-trace-total");
+      var prevBtn = document.getElementById("forensic-btn-trace-prev");
+      var nextBtn = document.getElementById("forensic-btn-trace-next");
 
-      if (!inputEl || !totalEl || !prevBtn || !nextBtn) return;
+      // Elemente müssen existieren — Toolbar ist permanent im DOM
+      if (!inputEl || !totalEl || !prevBtn || !nextBtn) {
+        console.warn("[Forensic] TraceNavigation: UI-Elemente nicht gefunden.");
+        return;
+      }
 
       var hasTraces = total > 0;
+
+      // Gesamtanzahl immer aktualisieren
+      totalEl.textContent = "/ " + total;
 
       // Buttons und Eingabe aktivieren/deaktivieren
       inputEl.disabled = !hasTraces;
       prevBtn.disabled = !hasTraces || _currentIdx <= 0;
       nextBtn.disabled = !hasTraces || _currentIdx >= total - 1;
 
-      // Anzeige
-      totalEl.textContent = "/ " + total;
+      // Eingabefeld
       inputEl.max         = String(total);
-      inputEl.value       = hasTraces && _currentIdx >= 0
-        ? String(_currentIdx + 1)  // 1-basiert für die UI
+      inputEl.value       = (hasTraces && _currentIdx >= 0)
+        ? String(_currentIdx + 1)  // 1-basiert in der UI
         : "";
       inputEl.placeholder = hasTraces ? "1" : "—";
     }
@@ -1835,12 +1847,20 @@
       idx = Math.max(0, Math.min(traces.length - 1, idx));
       _currentIdx = idx;
 
-      var el = document.getElementById(traces[idx]);
+      var elemId = traces[idx];
+      var el = document.getElementById(elemId);
+
+      // Diagnose-Log: immer ausgeben damit das Problem in der Konsole sichtbar ist
+      console.info(
+        "[Forensic] TraceNav.jumpTo(" + idx + "): elemId='" + elemId +
+        "' el=" + (el ? el.tagName + "#" + el.id : "NULL") +
+        " traceElements=" + JSON.stringify(traces)
+      );
+
       if (el) {
         el.scrollIntoView({ behavior: "smooth", block: "center" });
-        // Kurzes visuelles Aufblitzen damit der Ermittler den Post sofort findet
-        el.style.transition  = "outline 0.1s";
-        el.style.outline     = "3px solid #4f8ef7";
+        el.style.transition = "outline 0.1s";
+        el.style.outline    = "3px solid #4f8ef7";
         setTimeout(function () { el.style.outline = ""; }, 1200);
         AccessibilityModule.announce(
           "Spur " + (idx + 1) + " von " + traces.length + ": " + traces[idx]
@@ -1850,63 +1870,70 @@
     }
 
     // -------------------------------------------------------------------------
-    // init — Wird nach jedem Seitenload aufgerufen
+    // init — Wird nach jedem Seitenload aufgerufen.
+    // Setzt Listener neu (ohne cloneNode — über gespeicherte Referenzen).
     // -------------------------------------------------------------------------
     function init() {
       _currentIdx = -1;
-      _update();
 
       var prevBtn = document.getElementById("forensic-btn-trace-prev");
       var nextBtn = document.getElementById("forensic-btn-trace-next");
       var input   = document.getElementById("forensic-trace-input");
 
-      if (prevBtn) {
-        // Alten Listener entfernen (nach Reload neu gesetzt)
-        prevBtn.replaceWith(prevBtn.cloneNode(true));
-        prevBtn = document.getElementById("forensic-btn-trace-prev");
-        prevBtn.addEventListener("click", function () {
-          jumpTo(_currentIdx <= 0 ? 0 : _currentIdx - 1);
-        });
+      // Alte Listener sauber entfernen bevor neue gesetzt werden
+      if (prevBtn && _prevListener) {
+        prevBtn.removeEventListener("click", _prevListener);
+      }
+      if (nextBtn && _nextListener) {
+        nextBtn.removeEventListener("click", _nextListener);
+      }
+      if (input && _inputKeyListener) {
+        input.removeEventListener("keydown", _inputKeyListener);
+        input.removeEventListener("blur",    _inputBlurListener);
       }
 
-      if (nextBtn) {
-        nextBtn.replaceWith(nextBtn.cloneNode(true));
-        nextBtn = document.getElementById("forensic-btn-trace-next");
-        nextBtn.addEventListener("click", function () {
-          var traces = _state.traceElements;
-          jumpTo(_currentIdx < 0 ? 0 : _currentIdx + 1);
-        });
-      }
+      // Neue Listener anlegen und Referenzen speichern
+      _prevListener = function () {
+        jumpTo(_currentIdx <= 0 ? 0 : _currentIdx - 1);
+      };
+      _nextListener = function () {
+        jumpTo(_currentIdx < 0 ? 0 : _currentIdx + 1);
+      };
+      _inputKeyListener = function (e) {
+        if (e.key !== "Enter") return;
+        var val = parseInt(input.value, 10);
+        if (!isNaN(val)) jumpTo(val - 1);
+      };
+      _inputBlurListener = function () {
+        var val = parseInt(input.value, 10);
+        var max = _state.traceElements.length;
+        if (!isNaN(val) && val >= 1 && val <= max) {
+          jumpTo(val - 1);
+        } else {
+          _update();
+        }
+      };
 
+      if (prevBtn) prevBtn.addEventListener("click", _prevListener);
+      if (nextBtn) nextBtn.addEventListener("click", _nextListener);
       if (input) {
-        input.replaceWith(input.cloneNode(true));
-        input = document.getElementById("forensic-trace-input");
-        input.addEventListener("keydown", function (e) {
-          if (e.key !== "Enter") return;
-          var val = parseInt(input.value, 10);
-          if (!isNaN(val)) jumpTo(val - 1); // UI ist 1-basiert
-        });
-        // Clamp bei blur
-        input.addEventListener("blur", function () {
-          var val = parseInt(input.value, 10);
-          var max = _state.traceElements.length;
-          if (!isNaN(val) && val >= 1 && val <= max) {
-            jumpTo(val - 1);
-          } else {
-            _update(); // Ungültigen Wert zurücksetzen
-          }
-        });
+        input.addEventListener("keydown", _inputKeyListener);
+        input.addEventListener("blur",    _inputBlurListener);
       }
+
+      // UI-Zustand setzen — traceElements sind zu diesem Zeitpunkt im State
+      _update();
     }
 
-    // Nach Seitenload neu initialisieren (traceElements sind dann gesetzt)
+    // Nach Seitenload neu initialisieren.
+    // traceElements wurden bereits via _setState() in _handleEnvelope gesetzt,
+    // bevor page:loaded emittiert wird — _update() in init() liest den
+    // korrekten Wert.
     ForensicToolbar.events.on("page:loaded", function () {
-      // traceElements kommen im setState vor page:loaded — kurz warten
-      // bis DOM und State vollständig sind
       setTimeout(init, 0);
     });
 
-    // State-Änderung an traceElements → UI aktualisieren
+    // State-Änderung an traceElements → Anzeige aktualisieren
     ForensicToolbar.events.on("state:changed", function (updates) {
       if ("traceElements" in updates) {
         _currentIdx = -1;
