@@ -22,7 +22,8 @@
 #     "fetch_failed":   false,
 #     "in_scope":       true,
 #     "url_canonical":  "/forum/viewtopic.php?id=42",
-#     "fragment":       "p12345"   (oder null)
+#     "fragment":       "p12345"   (oder null),
+#     "trace_elements": ["p1891354", "p1903927"]   (Build 030-C)
 #   }
 #
 # URL-Auflösung (Reihenfolge):
@@ -43,7 +44,10 @@
 #   Alle drei Zustände sind für toolbar.js sichtbar und werden angezeigt.
 #
 # Abhängigkeiten: json, urllib.parse — Stdlib + interne Module
-# Version: v0.1.0 · Build: 025 · 2026-04-15
+# Version: v0.1.0 · Build: 030 · 2026-04-16
+# Änderungen Build 030-C:
+#   - Envelope: trace_elements ["p<id>", ...] aus get_trace_elements_for_page().
+#   - Beide Envelope-Zweige (in_scope + NOT_IN_SCOPE) enthalten trace_elements.
 # =============================================================================
 
 from __future__ import annotations
@@ -192,6 +196,7 @@ class BlobHandler:
                 "in_scope":       False,
                 "url_canonical":  resolved_url,
                 "fragment":       fragment,
+                "trace_elements": [],
             }
 
         # <head>-Elemente aus BLOB extrahieren
@@ -229,15 +234,24 @@ class BlobHandler:
             resolved_url, page.page_id, page.scrape_context, page.fetch_failed,
         )
 
+        # Benutzer-Spuren für diese Seite ermitteln (Build 030-C).
+        # Liefert DOM-Element-IDs aller Posts/PMs des Beschuldigten auf dieser
+        # Seite — für die Minimap in toolbar.js (MinimapModule).
+        # Gibt leere Liste zurück wenn keine Spuren vorhanden oder bei Fehler.
+        trace_elements = self._bundle.forensic.get_trace_elements_for_page(
+            page.page_id
+        )
+
         return {
-            "html":           body_html,
-            "head":           head_data,
-            "scrape_context": page.scrape_context,
-            "http_status":    page.http_status,
-            "fetch_failed":   page.fetch_failed,
-            "in_scope":       True,
-            "url_canonical":  page.url,
-            "fragment":       fragment,
+            "html":            body_html,
+            "head":            head_data,
+            "scrape_context":  page.scrape_context,
+            "http_status":     page.http_status,
+            "fetch_failed":    page.fetch_failed,
+            "in_scope":        True,
+            "url_canonical":   page.url,
+            "fragment":        fragment,
+            "trace_elements":  trace_elements,  # z.B. ["p1891354", "p1903927"]
         }
 
     def _resolve_aliases(

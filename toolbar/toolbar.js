@@ -27,6 +27,15 @@
  *   - Spurennummer-Eingabe (§OP-5): Dummy-Implementierung mit ◀/Eingabe/▶,
  *     deaktiviert — Funktionalität folgt in späterem Build.
  *
+ * Änderungen Build 030-C:
+ *   - State: traceElements[] aus envelope.trace_elements.
+ *   - MinimapModule: Zwei Marker-Typen — Spur-Marker (traceElements, grau-blau,
+ *     sofort beim Laden) und Annotations-Marker (Kategoriefarbe).
+ *     Textmarkierungs-Annotationen werden über XPath-Range positioniert.
+ *   - TraceNavigationModule (neu): Aktiviert Spurennummer-Eingabe und ◀/▶-
+ *     Buttons; springt zu traceElements[idx] mit visuell. Aufblitzen.
+ *   - _handleEnvelope: traceElements aus Envelope in State übernehmen.
+ *
  * Architektur: Modularer Aufbau über ForensicToolbar-Namespace.
  * Kommunikation ausschließlich über CustomEvent-Bus (ForensicToolbar.events).
  * State ist nur über definierte Mutationsfunktionen änderbar.
@@ -173,7 +182,7 @@
   // ---------------------------------------------------------------------------
   var _state = {
     currentUrl:          "",
-    baseHref:            null,   // <base href> des aktuellen BLOBs, oder null
+    baseHref:            null,
     scrapeContext:       "user",
     fetchFailed:         false,
     inScope:             true,
@@ -183,14 +192,17 @@
     hoveredAnnotationId: null,
     serverReachable:     true,
     viewMode:            "enhanced",
+    // Benutzer-Spuren auf der aktuellen Seite (DOM-Element-IDs, Build 030-C).
+    // Befüllt vom Server via envelope.trace_elements.
+    // Wird von MinimapModule und TraceNavigationModule verwendet.
+    traceElements:       [],
     supportStatus: {
       active:   false,
       username: null,
       since:    null,
     },
-    // Session-Daten (aus /_forensic/status)
     investigatorUsername: "",
-    forumHostname:        "",   // Original-Hostname des Forums, z.B. 'alice4n...onion'
+    forumHostname:        "",
     lastSaveTs:           null,
     syncErrorCount:       0,
   };
@@ -995,6 +1007,11 @@
         fetchFailed:   !!envelope.fetch_failed,
         inScope:       !!envelope.in_scope,
         fragment:      envelope.fragment || null,
+        // Build 030-C: Benutzer-Spuren aus Envelope übernehmen.
+        // Leeres Array wenn Server keine Spuren liefert (älterer Build,
+        // NOT_IN_SCOPE, oder tatsächlich keine Spuren auf dieser Seite).
+        traceElements: Array.isArray(envelope.trace_elements)
+          ? envelope.trace_elements : [],
       });
 
       if (!envelope.in_scope) {
@@ -1049,10 +1066,15 @@
         html:   envelope.html,
       });
 
-      // Annotationen laden und Highlights wiederherstellen
+      // Annotationen laden, Highlights + Minimap (inkl. Spuren) wiederherstellen
       AnnotationStoreModule.loadAnnotations(_state.currentUrl).then(function () {
         HighlightModule.restoreAll();
+        // MinimapModule.refresh() rendert sowohl Spur-Marker (traceElements)
+        // als auch Annotations-Marker — traceElements sind zu diesem Zeitpunkt
+        // bereits im State (setState in _handleEnvelope oben).
         MinimapModule.refresh();
+        // TraceNavigationModule.init() aktiviert Spurennummer-Eingabe + ◀/▶
+        TraceNavigationModule.init();
         ViewportTrackerModule.start(viewport, _state.currentUrl);
         PMSTableOrganizerModule.init(viewport);
         TopicsTableOrganizerModule.init(viewport);
@@ -1630,6 +1652,20 @@
 
   // ===========================================================================
   // PHASE 7: MinimapModule — Seitenleiste mit Positions-Markern
+  //
+  // Build 030-C: Zwei Marker-Typen:
+  //   1. Spur-Marker (forensic-minimap-trace): Positionen aus traceElements.
+  //      Werden beim Laden der Seite sofort gerendert — unabhängig davon ob
+  //      der Ermittler bereits annotiert hat. Farbe: gedämpftes Grau-Blau.
+  //      Zeigen dem Ermittler auf einen Blick wo der Beschuldigte aktiv war.
+  //   2. Annotations-Marker (forensic-minimap-bar): Positionen von Annotationen.
+  //      Farbe: Kategoriefarbe. Werden nach jeder Annotationsaktion aktualisiert.
+  //
+  // Beide Typen können gleichzeitig an derselben Position liegen (Post
+  // annotiert UND Spur vorhanden) — Annotations-Marker liegt dann obendrauf.
+  //
+  // Position: Y-Prozent = (Element.top + scrollY) / body.scrollHeight.
+  // Beleg: §9 Bauplan — Minimap zeigt Benutzer-Spuren und Annotationen.
   // ===========================================================================
   var MinimapModule = (function () {
     var _minimapEl = null;
@@ -1637,52 +1673,248 @@
     function init() {
       _minimapEl = document.createElement("div");
       _minimapEl.id = "forensic-minimap";
-      _minimapEl.setAttribute("aria-label", "Annotationskarte");
+      _minimapEl.setAttribute("aria-label", "Spurenkarte");
       _minimapEl.setAttribute("role", "navigation");
       document.body.appendChild(_minimapEl);
     }
 
+    // -------------------------------------------------------------------------
+    // _pctOf — Y-Position eines Elements als Prozentwert der Seitenhöhe
+    // -------------------------------------------------------------------------
+    function _pctOf(el) {
+      var totalH = Math.max(document.body.scrollHeight, 1);
+      var pct = ((el.getBoundingClientRect().top + window.scrollY) / totalH) * 100;
+      return Math.max(0, Math.min(99, pct));
+    }
+
+    // -------------------------------------------------------------------------
+    // _makeBar — Minimap-Balken erstellen und einfügen
+    // -------------------------------------------------------------------------
+    function _makeBar(pct, color, label, onClick) {
+      var bar = document.createElement("div");
+      bar.style.top        = pct + "%";
+      bar.style.background = color;
+      bar.title            = label;
+      bar.setAttribute("aria-label", label);
+      bar.setAttribute("tabindex", "0");
+      bar.addEventListener("click", onClick);
+      bar.addEventListener("keypress", function (e) {
+        if (e.key === "Enter") onClick();
+      });
+      return bar;
+    }
+
+    // -------------------------------------------------------------------------
+    // refresh — Minimap neu aufbauen
+    // Wird nach Seitenload, nach jeder Annotationsaktion und nach
+    // viewmode-Wechsel aufgerufen.
+    // -------------------------------------------------------------------------
     function refresh() {
       if (!_minimapEl) return;
       _minimapEl.innerHTML = "";
-      var totalH = document.body.scrollHeight || 1;
 
+      // --- Typ 1: Spur-Marker (traceElements aus Envelope) ---
+      // Sofort beim Laden sichtbar; zeigen Aktivität des Beschuldigten.
+      _state.traceElements.forEach(function (elemId) {
+        var el = document.getElementById(elemId);
+        if (!el) return;
+        var pct = _pctOf(el);
+        var bar = _makeBar(
+          pct,
+          "#3a5a8a",   // gedämpftes Grau-Blau — neutral, nicht kategorisiert
+          "Spur: " + elemId,
+          function () { el.scrollIntoView({ behavior: "smooth", block: "center" }); }
+        );
+        bar.className = "forensic-minimap-trace";
+        _minimapEl.appendChild(bar);
+      });
+
+      // --- Typ 2: Annotations-Marker ---
+      // Überlagern ggf. vorhandene Spur-Marker an derselben Position.
       _state.annotations.forEach(function (ann) {
-        var el = ann.elementId
-          ? document.getElementById(ann.elementId)
-          : null;
+        // Position: bevorzugt elementId (Post-Markierung), sonst XPath-Range
+        var el = ann.elementId ? document.getElementById(ann.elementId) : null;
+
+        // Für Textmarkierungen: Element über XPath-Range ermitteln
+        if (!el && ann.selection) {
+          var restored = AnnotationStoreModule.rangeFromSelection(ann.selection);
+          if (restored && restored.range) {
+            var container = restored.range.startContainer;
+            el = (container.nodeType === 3)
+              ? container.parentElement
+              : container;
+          }
+        }
         if (!el) return;
 
-        var pct = ((el.getBoundingClientRect().top + window.scrollY) / totalH) * 100;
+        var pct = _pctOf(el);
         var cat = _getCat(ann.category);
-        var bar = document.createElement("div");
+        var preview = (ann.text || (ann.selection && ann.selection.textContent) || "—")
+          .substring(0, 60);
+
+        var bar = _makeBar(
+          pct,
+          cat ? cat.color : "#aaa",
+          (cat ? cat.label : "?") + ": " + preview,
+          function () { el.scrollIntoView({ behavior: "smooth", block: "center" }); }
+        );
         bar.className = "forensic-minimap-bar";
-        bar.style.top   = Math.max(0, Math.min(99, pct)) + "%";
-        bar.style.background = cat ? cat.color : "#aaa";
-        if (ann.stale) bar.style.border = "1px dashed #aaa";
-
-        var preview = (ann.text || (ann.selection && ann.selection.textContent) || "—").substring(0, 60);
-        bar.title = (cat ? cat.label : "?") + ": " + preview;
-        bar.setAttribute("aria-label", "Annotation " + (ann.id || ann.localId) + ": " + preview);
-        bar.setAttribute("tabindex", "0");
-
-        bar.addEventListener("click", function () {
-          el.scrollIntoView({ behavior: "smooth", block: "center" });
-        });
-        bar.addEventListener("keypress", function (e) {
-          if (e.key === "Enter") el.scrollIntoView({ behavior: "smooth", block: "center" });
-        });
-
+        if (ann.stale) bar.style.outline = "1px dashed #aaa";
         _minimapEl.appendChild(bar);
       });
     }
 
+    // Ereignisse die eine Minimap-Aktualisierung auslösen
     ForensicToolbar.events.on("annotation:created", refresh);
     ForensicToolbar.events.on("annotation:deleted", refresh);
     ForensicToolbar.events.on("annotation:synced",  refresh);
     ForensicToolbar.events.on("annotations:loaded", refresh);
+    // Spur-Marker nach viewmode-Wechsel wiederherstellen
+    ForensicToolbar.events.on("viewmode:enhanced",  refresh);
+    ForensicToolbar.events.on("viewmode:original",  function () {
+      if (!_minimapEl) return;
+      _minimapEl.innerHTML = "";
+    });
 
     return { init: init, refresh: refresh };
+  })();
+
+  // ===========================================================================
+  // PHASE 7b: TraceNavigationModule — Navigation zwischen Benutzer-Spuren
+  //
+  // Build 030-C: Aktiviert die in Build 030-B als Dummy eingebauten Elemente:
+  //   - #forensic-trace-input   (Direkteingabe Spurennummer)
+  //   - #forensic-btn-trace-prev / -next  (◀/▶-Buttons)
+  //   - #forensic-trace-total   (Gesamtanzahl "/ N")
+  //
+  // Navigation erfolgt über _state.traceElements (DOM-Element-IDs).
+  // Index ist 1-basiert in der UI, 0-basiert intern.
+  //
+  // Beleg: §OP-4 Anforderung — Navigation zwischen Spuren per Pfeiltasten
+  //        und Direkteingabe.
+  // ===========================================================================
+  var TraceNavigationModule = (function () {
+    var _currentIdx = -1; // 0-basiert; -1 = keine Spur angesprungen
+
+    // -------------------------------------------------------------------------
+    // _update — UI-Elemente auf aktuellen Index synchronisieren
+    // -------------------------------------------------------------------------
+    function _update() {
+      var traces = _state.traceElements;
+      var total  = traces.length;
+
+      var inputEl  = document.getElementById("forensic-trace-input");
+      var totalEl  = document.getElementById("forensic-trace-total");
+      var prevBtn  = document.getElementById("forensic-btn-trace-prev");
+      var nextBtn  = document.getElementById("forensic-btn-trace-next");
+
+      if (!inputEl || !totalEl || !prevBtn || !nextBtn) return;
+
+      var hasTraces = total > 0;
+
+      // Buttons und Eingabe aktivieren/deaktivieren
+      inputEl.disabled = !hasTraces;
+      prevBtn.disabled = !hasTraces || _currentIdx <= 0;
+      nextBtn.disabled = !hasTraces || _currentIdx >= total - 1;
+
+      // Anzeige
+      totalEl.textContent = "/ " + total;
+      inputEl.max         = String(total);
+      inputEl.value       = hasTraces && _currentIdx >= 0
+        ? String(_currentIdx + 1)  // 1-basiert für die UI
+        : "";
+      inputEl.placeholder = hasTraces ? "1" : "—";
+    }
+
+    // -------------------------------------------------------------------------
+    // jumpTo — Zu einer Spur springen (0-basierter Index)
+    // -------------------------------------------------------------------------
+    function jumpTo(idx) {
+      var traces = _state.traceElements;
+      if (!traces.length) return;
+      idx = Math.max(0, Math.min(traces.length - 1, idx));
+      _currentIdx = idx;
+
+      var el = document.getElementById(traces[idx]);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        // Kurzes visuelles Aufblitzen damit der Ermittler den Post sofort findet
+        el.style.transition  = "outline 0.1s";
+        el.style.outline     = "3px solid #4f8ef7";
+        setTimeout(function () { el.style.outline = ""; }, 1200);
+        AccessibilityModule.announce(
+          "Spur " + (idx + 1) + " von " + traces.length + ": " + traces[idx]
+        );
+      }
+      _update();
+    }
+
+    // -------------------------------------------------------------------------
+    // init — Wird nach jedem Seitenload aufgerufen
+    // -------------------------------------------------------------------------
+    function init() {
+      _currentIdx = -1;
+      _update();
+
+      var prevBtn = document.getElementById("forensic-btn-trace-prev");
+      var nextBtn = document.getElementById("forensic-btn-trace-next");
+      var input   = document.getElementById("forensic-trace-input");
+
+      if (prevBtn) {
+        // Alten Listener entfernen (nach Reload neu gesetzt)
+        prevBtn.replaceWith(prevBtn.cloneNode(true));
+        prevBtn = document.getElementById("forensic-btn-trace-prev");
+        prevBtn.addEventListener("click", function () {
+          jumpTo(_currentIdx <= 0 ? 0 : _currentIdx - 1);
+        });
+      }
+
+      if (nextBtn) {
+        nextBtn.replaceWith(nextBtn.cloneNode(true));
+        nextBtn = document.getElementById("forensic-btn-trace-next");
+        nextBtn.addEventListener("click", function () {
+          var traces = _state.traceElements;
+          jumpTo(_currentIdx < 0 ? 0 : _currentIdx + 1);
+        });
+      }
+
+      if (input) {
+        input.replaceWith(input.cloneNode(true));
+        input = document.getElementById("forensic-trace-input");
+        input.addEventListener("keydown", function (e) {
+          if (e.key !== "Enter") return;
+          var val = parseInt(input.value, 10);
+          if (!isNaN(val)) jumpTo(val - 1); // UI ist 1-basiert
+        });
+        // Clamp bei blur
+        input.addEventListener("blur", function () {
+          var val = parseInt(input.value, 10);
+          var max = _state.traceElements.length;
+          if (!isNaN(val) && val >= 1 && val <= max) {
+            jumpTo(val - 1);
+          } else {
+            _update(); // Ungültigen Wert zurücksetzen
+          }
+        });
+      }
+    }
+
+    // Nach Seitenload neu initialisieren (traceElements sind dann gesetzt)
+    ForensicToolbar.events.on("page:loaded", function () {
+      // traceElements kommen im setState vor page:loaded — kurz warten
+      // bis DOM und State vollständig sind
+      setTimeout(init, 0);
+    });
+
+    // State-Änderung an traceElements → UI aktualisieren
+    ForensicToolbar.events.on("state:changed", function (updates) {
+      if ("traceElements" in updates) {
+        _currentIdx = -1;
+        _update();
+      }
+    });
+
+    return { jumpTo: jumpTo, init: init };
   })();
 
   // ===========================================================================

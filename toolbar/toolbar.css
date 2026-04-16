@@ -12,6 +12,10 @@
  *   - .forensic-trace-input / .forensic-trace-total / .forensic-trace-row:
  *     Spurennummer-Eingabe-Styling.
  *   - .forensic-sec-label: Beschriftungs-Labels über Werkzeugen (IBM Plex Mono).
+ *
+ * Änderungen Build 030-C:
+ *   - .forensic-minimap-trace: Spur-Marker für Benutzeraktivität ohne Annotation.
+ *   - .forensic-minimap-bar: z-index:2 — liegt über Spur-Markern.
  * Klassifikation: VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
  *
  * Farbkontrast-Prüfung WCAG 2.1 AA (§5, §10.3 Bauplan):
@@ -703,6 +707,36 @@ body {
 
 .forensic-minimap-bar:focus-visible {
   outline: 2px solid #4f8ef7;
+}
+
+/* Spur-Marker (Build 030-C): Benutzeraktivität ohne Annotation.
+   Schmaler und gedämpfter als Annotations-Marker — zeigt Relevanz,
+   nicht Befund. Annotations-Marker (forensic-minimap-bar) liegt
+   z-index-höher und überlagert ggf. denselben Ort. */
+.forensic-minimap-trace {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  height: 3px;
+  border-radius: 2px;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: height 0.1s, opacity 0.1s;
+  z-index: 1;
+}
+
+.forensic-minimap-trace:hover {
+  height: 6px;
+  opacity: 0.85;
+}
+
+.forensic-minimap-trace:focus-visible {
+  outline: 2px solid #4f8ef7;
+}
+
+/* Annotations-Marker liegen über Spur-Markern */
+.forensic-minimap-bar {
+  z-index: 2;
 }
 
 /* ===========================================================================

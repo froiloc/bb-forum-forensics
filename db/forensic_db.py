@@ -35,7 +35,10 @@
 #   hier INSERT/UPDATE/DELETE-Statements.
 #
 # Abhängigkeiten: sqlite3 — ausschließlich Stdlib
-# Version: v0.1.0 · Build: 028 · 2026-04-15
+# Version: v0.1.0 · Build: 030 · 2026-04-16
+# Änderungen Build 030-C:
+#   - get_trace_elements_for_page(): Liefert DOM-Element-IDs aller Benutzer-
+#     Spuren auf einer Seite (Forum-Posts + PM-Posts) aus scrape_targets.
 # =============================================================================
 
 from __future__ import annotations
@@ -459,6 +462,79 @@ class ForensicDb:
         except sqlite3.OperationalError as exc:
             logger.error("get_scrape_context('%s') fehlgeschlagen: %s", url, exc)
             return None
+
+    def get_trace_elements_for_page(self, page_id: int) -> list[str]:
+        """
+        Gibt die Liste der DOM-Element-IDs zurück, an denen der Beschuldigte
+        auf dieser Seite Spuren hinterlassen hat.
+
+        Grundlage: scrape_targets in fdb. Jeder Eintrag mit scrape_context='user'
+        oder 'actor:<uid>' der einer post_id oder pm_post_id zugeordnet ist,
+        erzeugt eine Element-ID der Form 'p<post_id>' — konsistent mit der
+        FluxBB/PunBB-HTML-Struktur (article.post[id^="p"], §18.1 Bauplan).
+
+        Verwendet wird page_id (fdb.pages.id) als Fremdschlüssel in
+        scrape_targets via topic_id / pm_topic_id JOIN gegen pages:
+          - Forum-Posts: scrape_targets.post_id, topic_id = pages.topic_id
+          - PMs:         scrape_targets.pm_post_id, pm_topic_id = pages.pm_topic_id
+
+        Gibt eine leere Liste zurück wenn keine Spuren gefunden oder bei Fehler.
+
+        Args:
+            page_id: fdb.pages.id der aktuellen Seite.
+
+        Returns:
+            Sortierte Liste von Element-IDs, z.B. ['p1891354', 'p1903927'].
+        """
+        results: list[str] = []
+
+        # Forum-Posts auf Topic-Seiten
+        try:
+            rows = self._con.execute(
+                """
+                SELECT DISTINCT st.post_id
+                FROM fdb.scrape_targets st
+                JOIN fdb.pages p ON p.id = ?
+                WHERE st.post_id IS NOT NULL
+                  AND st.topic_id IS NOT NULL
+                  AND st.topic_id = p.topic_id
+                  AND st.scrape_context IN ('user', 'actor')
+                ORDER BY st.post_id
+                """,
+                (page_id,),
+            ).fetchall()
+            for row in rows:
+                results.append(f"p{row[0]}")
+        except sqlite3.OperationalError as exc:
+            logger.warning(
+                "get_trace_elements_for_page: Forum-Post-Abfrage fehlgeschlagen "
+                "(page_id=%d): %s", page_id, exc
+            )
+
+        # PM-Posts auf PN-Seiten
+        try:
+            rows = self._con.execute(
+                """
+                SELECT DISTINCT st.pm_post_id
+                FROM fdb.scrape_targets st
+                JOIN fdb.pages p ON p.id = ?
+                WHERE st.pm_post_id IS NOT NULL
+                  AND st.pm_topic_id IS NOT NULL
+                  AND st.pm_topic_id = p.pm_topic_id
+                  AND st.scrape_context IN ('user', 'actor')
+                ORDER BY st.pm_post_id
+                """,
+                (page_id,),
+            ).fetchall()
+            for row in rows:
+                results.append(f"p{row[0]}")
+        except sqlite3.OperationalError as exc:
+            logger.warning(
+                "get_trace_elements_for_page: PM-Post-Abfrage fehlgeschlagen "
+                "(page_id=%d): %s", page_id, exc
+            )
+
+        return results
 
     def page_count(self) -> int:
         """
