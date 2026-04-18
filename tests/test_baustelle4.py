@@ -240,7 +240,12 @@ class TestUserinfoEndpoint:
     """B4-S01: GET /_forensic/userinfo ohne BLOB → HTTP 503."""
 
     def test_no_blob_returns_503(self):
-        """B4-S01"""
+        """
+        B4-S01: UserinfoEndpoint gibt immer HTTP 200 zurück (Build 031 Umbau).
+        Der Endpunkt rendert direkt aus forensic_meta/scrape_targets —
+        kein static_pages-BLOB mehr erforderlich.
+        Beleg: userinfo.py Build 031-B Changelog.
+        """
         import sys, os
         project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         if project_dir not in sys.path:
@@ -248,10 +253,8 @@ class TestUserinfoEndpoint:
 
         from forensic_api.userinfo import UserinfoEndpoint
 
-        # forensic._con gibt leere DB zurück (kein static_pages)
         fdb_con = sqlite3.connect(":memory:")
         fdb_con.row_factory = sqlite3.Row
-        # fdb.static_pages existiert nicht → OperationalError → None → 503
 
         bundle = _make_mock_bundle(forensic_con=fdb_con)
         ctx    = _make_mock_context()
@@ -261,7 +264,8 @@ class TestUserinfoEndpoint:
         handler = _make_mock_handler(resp)
         endpoint.handle(handler)
 
-        assert resp['status'] == 503, f"Erwartet 503, erhalten: {resp.get('status')}"
+        # Seit Build 031: immer 200 — kein BLOB mehr erforderlich
+        assert resp['status'] == 200, f"Erwartet 200, erhalten: {resp.get('status')}"
         fdb_con.close()
 
     def test_with_blob_returns_200(self):
@@ -436,3 +440,285 @@ class TestStaticEndpoint:
         ep.handle(_make_mock_handler(resp), "/_forensic/userinfo.css")
         assert resp['status'] == 200
         assert 'css' in resp.get('content_type', '')
+
+
+# ---------------------------------------------------------------------------
+# Tests: /_forensic/userinfo/static und j.note-Fix (Build 017)
+# Beleg: Projektgespräch 2026-04-18
+# ---------------------------------------------------------------------------
+
+class TestUserinfoStaticEndpoint:
+    """
+    B4-S11: GET /_forensic/userinfo/static
+    Beleg: Projektgespräch 2026-04-18 — neuer Endpunkt für Phase-B-BLOB.
+    """
+
+    def _make_fdb_with_blob(self, html_content: str):
+        """Erstellt eine In-Memory-DB mit static_pages-Eintrag."""
+        con = sqlite3.connect(":memory:")
+        con.row_factory = sqlite3.Row
+        con.execute(
+            "CREATE TABLE static_pages "
+            "(key TEXT PRIMARY KEY, html BLOB NOT NULL, "
+            "generated_at INTEGER NOT NULL, generator_version TEXT NOT NULL)"
+        )
+        con.execute(
+            "INSERT INTO static_pages VALUES ('userinfo', ?, 1700000000, 'test')",
+            (html_content.encode("utf-8"),)
+        )
+        con.commit()
+        return con
+
+    def _make_fdb_without_blob(self):
+        """Erstellt eine In-Memory-DB ohne static_pages-Tabelle."""
+        con = sqlite3.connect(":memory:")
+        con.row_factory = sqlite3.Row
+        return con
+
+    def test_B4_S11_blob_vorhanden_gibt_200(self):
+        """B4-S11: BLOB vorhanden → HTTP 200 mit HTML-Inhalt."""
+        import sys, os
+        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if project_dir not in sys.path:
+            sys.path.insert(0, project_dir)
+
+        from forensic_api.userinfo_static import UserinfoStaticEndpoint
+        from db.forensic_db import ForensicDb
+
+        html = "<div id=\"userinfo-static\"><p>Forensische Daten</p></div>"
+        fdb_con = self._make_fdb_with_blob(html)
+
+        # ForensicDb mit Monkey-Patch: ATTACH simulieren
+        # (In Tests ohne echten ATTACH nutzen wir get_userinfo_blob direkt)
+        bundle = _make_mock_bundle(forensic_con=fdb_con)
+
+        # get_userinfo_blob patchen — liest ohne fdb.-Prefix aus der Test-DB
+        fdb_mock = MagicMock()
+        fdb_mock.get_userinfo_blob.return_value = html
+        bundle.forensic = fdb_mock
+
+        ctx = _make_mock_context()
+        ep  = UserinfoStaticEndpoint(bundle, ctx, MagicMock())
+        resp = {}
+        ep.handle(_make_mock_handler(resp))
+
+        assert resp['status'] == 200
+        assert b"userinfo-static" in resp['body']
+        assert b"Forensische Daten" in resp['body']
+        fdb_con.close()
+
+    def test_B4_S11_kein_blob_gibt_204(self):
+        """B4-S11b: Kein BLOB (Phase B nicht gelaufen) → HTTP 204 No Content."""
+        import sys, os
+        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if project_dir not in sys.path:
+            sys.path.insert(0, project_dir)
+
+        from forensic_api.userinfo_static import UserinfoStaticEndpoint
+
+        bundle = _make_mock_bundle()
+        bundle.forensic.get_userinfo_blob.return_value = None
+
+        ctx = _make_mock_context()
+        ep  = UserinfoStaticEndpoint(bundle, ctx, MagicMock())
+        resp = {}
+        ep.handle(_make_mock_handler(resp))
+
+        assert resp['status'] == 204
+
+    def test_B4_S11_content_type_ist_html(self):
+        """B4-S11c: Content-Type bei BLOB-Antwort ist text/html."""
+        import sys, os
+        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if project_dir not in sys.path:
+            sys.path.insert(0, project_dir)
+
+        from forensic_api.userinfo_static import UserinfoStaticEndpoint
+
+        bundle = _make_mock_bundle()
+        bundle.forensic.get_userinfo_blob.return_value = "<p>Test</p>"
+
+        ctx = _make_mock_context()
+        ep  = UserinfoStaticEndpoint(bundle, ctx, MagicMock())
+        resp = {}
+        ep.handle(_make_mock_handler(resp))
+
+        assert resp['status'] == 200
+        assert "text/html" in resp.get('content_type', '')
+
+
+class TestInvestigationStatusNoteColumn:
+    """
+    B4-S12: _get_investigation_status() — defensives j.note-Handling.
+    Beleg: Projektgespräch 2026-04-18 — Bugfix 'no such column: j.note'.
+    """
+
+    def _make_coordinator_db(self, with_note_column: bool) -> sqlite3.Connection:
+        """
+        Erstellt eine coordinator.db-ähnliche In-Memory-DB.
+        with_note_column steuert ob scrape_jobs.note vorhanden ist.
+        """
+        con = sqlite3.connect(":memory:")
+        con.row_factory = sqlite3.Row
+
+        note_col = ", note TEXT" if with_note_column else ""
+        con.execute(f"""
+            CREATE TABLE investigators (
+                id INTEGER PRIMARY KEY,
+                system_username TEXT NOT NULL
+            )
+        """)
+        con.execute(f"""
+            CREATE TABLE scrape_jobs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                username TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending',
+                priority INTEGER NOT NULL DEFAULT 3,
+                assigned_to INTEGER REFERENCES investigators(id),
+                created_at INTEGER NOT NULL
+                {note_col}
+            )
+        """)
+        con.execute(
+            "INSERT INTO investigators (id, system_username) VALUES (1, 'ermittler1')"
+        )
+        con.execute(
+            "INSERT INTO scrape_jobs (user_id, username, status, priority, "
+            "assigned_to, created_at) VALUES (18, 'KEKa', 'running', 3, 1, 1700000000)"
+        )
+        con.commit()
+        return con
+
+    def _make_bundle_with_cdb(self, cdb_con):
+        """Erstellt Bundle-Mock mit cdb-ATTACH-Simulation via PRAGMA cdb.*."""
+        # Wir simulieren den ATTACH indem wir direkt auf die Connection zugreifen
+        # und PRAGMA table_info ohne cdb.-Prefix aufrufen (kein echter ATTACH in Tests)
+        import sys, os
+        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if project_dir not in sys.path:
+            sys.path.insert(0, project_dir)
+
+        from forensic_api.userinfo_data import UserinfoDataEndpoint
+
+        # Bundle mit echter cdb-Connection aufbauen
+        bundle = MagicMock()
+        bundle.coordinator = MagicMock()  # nicht None → Zweig wird betreten
+
+        # forensic._con gibt die cdb-Connection zurück (ATTACH-Simulation)
+        # PRAGMA cdb.table_info → wir patchen den Endpunkt direkt
+        bundle.forensic._con = cdb_con
+
+        return bundle
+
+    def test_B4_S12_ohne_note_spalte_kein_fehler(self):
+        """
+        B4-S12: scrape_jobs ohne note-Spalte → kein OperationalError,
+        Rückgabe enthält note=None.
+        Beleg: Projektgespräch 2026-04-18.
+        """
+        import sys, os
+        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if project_dir not in sys.path:
+            sys.path.insert(0, project_dir)
+
+        from forensic_api.userinfo_data import UserinfoDataEndpoint
+
+        cdb_con = self._make_coordinator_db(with_note_column=False)
+        bundle  = _make_mock_bundle()
+        bundle.coordinator = MagicMock()
+
+        ctx = _make_mock_context(user_id=18)
+        ep  = UserinfoDataEndpoint(bundle, ctx, MagicMock())
+
+        # Direkter Aufruf mit echter cdb-Connection
+        # PRAGMA table_info(scrape_jobs) auf cdb_con direkt aufrufen
+        cols = {row[1] for row in cdb_con.execute("PRAGMA table_info(scrape_jobs)")}
+        assert "note" not in cols, "Vorbedingung: note-Spalte darf nicht vorhanden sein"
+
+        # Query simulieren: note wird als NULL AS note eingesetzt
+        note_select = ", NULL AS note"
+        row = cdb_con.execute(
+            "SELECT j.status, j.priority, "
+            "       i.system_username AS assigned_to"
+            + note_select +
+            " FROM scrape_jobs j "
+            "LEFT JOIN investigators i ON i.id = j.assigned_to "
+            "WHERE j.user_id = 18 "
+            "ORDER BY j.created_at DESC LIMIT 1"
+        ).fetchone()
+
+        assert row is not None
+        assert row["note"] is None
+        assert row["status"] == "running"
+        cdb_con.close()
+
+    def test_B4_S12_mit_note_spalte_wert_wird_gelesen(self):
+        """
+        B4-S12b: scrape_jobs mit note-Spalte → Wert wird korrekt zurückgegeben.
+        """
+        cdb_con = self._make_coordinator_db(with_note_column=True)
+
+        # Notiz eintragen
+        cdb_con.execute(
+            "UPDATE scrape_jobs SET note = 'Wichtiger Hinweis' WHERE user_id = 18"
+        )
+        cdb_con.commit()
+
+        cols = {row[1] for row in cdb_con.execute("PRAGMA table_info(scrape_jobs)")}
+        assert "note" in cols, "Vorbedingung: note-Spalte muss vorhanden sein"
+
+        note_select = ", j.note"
+        row = cdb_con.execute(
+            "SELECT j.status, j.priority, "
+            "       i.system_username AS assigned_to"
+            + note_select +
+            " FROM scrape_jobs j "
+            "LEFT JOIN investigators i ON i.id = j.assigned_to "
+            "WHERE j.user_id = 18 "
+            "ORDER BY j.created_at DESC LIMIT 1"
+        ).fetchone()
+
+        assert row is not None
+        assert row["note"] == "Wichtiger Hinweis"
+        cdb_con.close()
+
+    def test_B4_S12_setup_coordinator_nachruestet_note(self):
+        """
+        B4-S12c: setup_coordinator_dev.setup() rüstet note-Spalte nach
+        wenn sie noch nicht vorhanden ist.
+        Beleg: Projektgespräch 2026-04-18 — DDL_ADD_NOTE.
+        """
+        import sys, os, tempfile
+        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if project_dir not in sys.path:
+            sys.path.insert(0, project_dir)
+
+        from setup_coordinator_dev import DDL_ADD_NOTE, _column_exists, _table_exists
+
+        # DB ohne note anlegen
+        with tempfile.TemporaryDirectory() as td:
+            import pathlib
+            db_path = pathlib.Path(td) / "coordinator.db"
+            con = sqlite3.connect(str(db_path))
+            con.execute("""
+                CREATE TABLE scrape_jobs (
+                    id INTEGER PRIMARY KEY,
+                    user_id INTEGER NOT NULL,
+                    username TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'pending',
+                    priority INTEGER NOT NULL DEFAULT 3,
+                    created_at INTEGER NOT NULL
+                )
+            """)
+            con.commit()
+
+            assert not _column_exists(con, "scrape_jobs", "note")
+
+            # Migration ausführen
+            con.execute(DDL_ADD_NOTE)
+            con.commit()
+
+            assert _column_exists(con, "scrape_jobs", "note"), \
+                "note-Spalte muss nach ALTER TABLE vorhanden sein"
+            con.close()

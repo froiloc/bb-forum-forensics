@@ -291,7 +291,10 @@ class UserinfoEndpoint:
 
   </div>
 
-  <div id="userinfo-static" style="display:none"></div>
+  <div id="userinfo-static">
+    <p style="color:#9aa0b8;font-size:12px;padding:12px 28px">
+      Lade forensische Nutzerdaten…</p>
+  </div>
   <div id="userinfo-report-readonly" style="display:none"></div>
 
   <div class="ui-footer">

@@ -588,5 +588,86 @@ class TestForensicDbBlobLookupOnionPrefix(unittest.TestCase):
         self.assertIn("/forum/beginner/", page.canonical_url)
 
 
-if __name__ == "__main__":
+class TestForensicDbUserinfoBlob(unittest.TestCase):
+    """T29–T32: get_userinfo_blob() — Lesen des Phase-B-HTML-BLOBs.
+    Beleg: Projektgespräch 2026-04-18.
+    """
+
+    def setUp(self):
+        _setup_test_logging()
+        self.fdb_path = _create_fdb_in_memory()
+        self.con = _make_attached_connection(self.fdb_path)
+        self.fdb = ForensicDb(self.con)
+
+    def tearDown(self):
+        self.con.close()
+        reset_for_testing()
+        try:
+            os.unlink(self.fdb_path)
+        except OSError:
+            pass
+
+    def test_T29_keine_static_pages_tabelle_gibt_none(self):
+        """T29: Wenn static_pages nicht existiert, gibt get_userinfo_blob() None zurück."""
+        # Standard-Testdatenbank hat keine static_pages-Tabelle
+        result = self.fdb.get_userinfo_blob()
+        self.assertIsNone(result)
+
+    def test_T30_kein_userinfo_eintrag_gibt_none(self):
+        """T30: Tabelle vorhanden aber kein 'userinfo'-Eintrag → None."""
+        # static_pages in fdb anlegen, aber leer lassen
+        fdb_con = sqlite3.connect(self.fdb_path)
+        fdb_con.execute(
+            "CREATE TABLE IF NOT EXISTS static_pages "
+            "(key TEXT PRIMARY KEY, html BLOB NOT NULL, "
+            "generated_at INTEGER NOT NULL, generator_version TEXT NOT NULL)"
+        )
+        fdb_con.commit()
+        fdb_con.close()
+
+        result = self.fdb.get_userinfo_blob()
+        self.assertIsNone(result)
+
+    def test_T31_blob_als_bytes_wird_decoded(self):
+        """T31: BLOB als bytes-Objekt wird korrekt als UTF-8 dekodiert."""
+        html_content = "<div id=\"userinfo-static\"><p>Testinhalt</p></div>"
+        fdb_con = sqlite3.connect(self.fdb_path)
+        fdb_con.execute(
+            "CREATE TABLE IF NOT EXISTS static_pages "
+            "(key TEXT PRIMARY KEY, html BLOB NOT NULL, "
+            "generated_at INTEGER NOT NULL, generator_version TEXT NOT NULL)"
+        )
+        fdb_con.execute(
+            "INSERT INTO static_pages VALUES ('userinfo', ?, 1700000000, 'test')",
+            (html_content.encode("utf-8"),)
+        )
+        fdb_con.commit()
+        fdb_con.close()
+
+        result = self.fdb.get_userinfo_blob()
+        self.assertIsNotNone(result)
+        self.assertIn("userinfo-static", result)
+        self.assertIn("Testinhalt", result)
+
+    def test_T32_blob_als_string_wird_direkt_zurueckgegeben(self):
+        """T32: BLOB als TEXT-Objekt wird direkt zurückgegeben."""
+        html_content = "<div id=\"userinfo-static\"><p>String-Inhalt</p></div>"
+        fdb_con = sqlite3.connect(self.fdb_path)
+        fdb_con.execute(
+            "CREATE TABLE IF NOT EXISTS static_pages "
+            "(key TEXT PRIMARY KEY, html BLOB NOT NULL, "
+            "generated_at INTEGER NOT NULL, generator_version TEXT NOT NULL)"
+        )
+        fdb_con.execute(
+            "INSERT INTO static_pages VALUES ('userinfo', ?, 1700000000, 'test')",
+            (html_content,)
+        )
+        fdb_con.commit()
+        fdb_con.close()
+
+        result = self.fdb.get_userinfo_blob()
+        self.assertIsNotNone(result)
+        self.assertIn("String-Inhalt", result)
+
+if __name__ == '__main__':
     unittest.main(verbosity=2)

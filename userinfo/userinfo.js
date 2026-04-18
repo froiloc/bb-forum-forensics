@@ -36,9 +36,10 @@
 // ---------------------------------------------------------------------------
 
 const FORENSIC_API = {
-    USERINFO_DATA: '/_forensic/userinfo/data',
-    REPORT:        '/_forensic/report',
-    EVENTS:        '/_forensic/events',
+    USERINFO_DATA:   '/_forensic/userinfo/data',
+    USERINFO_STATIC: '/_forensic/userinfo/static',
+    REPORT:          '/_forensic/report',
+    EVENTS:          '/_forensic/events',
 };
 
 // Regex für Beweisanker-Syntax [BELEG:annotation_id=N] im Berichtstext
@@ -155,6 +156,48 @@ function initAnchorNavigation(container) {
 // ===========================================================================
 // FENSTER 2 — Nutzerinfo-Tab
 // ===========================================================================
+
+/**
+ * Statischen Phase-B-BLOB laden und in #userinfo-static einsetzen.
+ *
+ * Ruft /_forensic/userinfo/static ab. Bei HTTP 204 (Phase B noch nicht
+ * gelaufen) wird ein Hinweistext angezeigt. Bei Fehler wird eine
+ * Warnung ausgegeben ohne den restlichen Tab zu blockieren.
+ *
+ * Beleg: Projektgespräch 2026-04-18 — uid_*-Tabellen persistent,
+ *        BLOB in static_pages['userinfo'].
+ */
+async function loadStaticBlob() {
+    const container = document.getElementById('userinfo-static');
+    if (!container) return;
+
+    try {
+        const resp = await fetch(FORENSIC_API.USERINFO_STATIC, {
+            headers: { 'X-Forensic-Request': 'ajax' }
+        });
+
+        if (resp.status === 204) {
+            container.innerHTML =
+                '<p style="color:#9aa0b8;font-size:12px;padding:12px 0">' +
+                'Forensische Nutzerdaten (Phase B) noch nicht verfügbar. ' +
+                'Bitte scraper_stage1.py --only-phase-b ausführen.</p>';
+            return;
+        }
+
+        if (!resp.ok) {
+            throw new Error(`HTTP ${resp.status}`);
+        }
+
+        const html = await resp.text();
+        container.innerHTML = html;
+
+    } catch (err) {
+        container.innerHTML =
+            `<div class="status-msg status-msg-warn">` +
+            `Forensische Nutzerdaten konnten nicht geladen werden: ${esc(String(err))}` +
+            `</div>`;
+    }
+}
 
 /**
  * Dynamische Blöcke laden und in #userinfo-dynamic einsetzen.
@@ -750,6 +793,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (isNutzerinfo) {
         // Fenster 2: Nutzerinfo-Tab
         initCopyButtons();
+        loadStaticBlob();       // Phase-B-BLOB in #userinfo-static (Build 037)
         loadDynamicBlocks();
         initSSEWindow2();
     }

@@ -86,6 +86,10 @@ CREATE INDEX IF NOT EXISTS scrape_jobs_user_idx ON scrape_jobs (user_id)
 # Beleg: Bauplan_Baustelle2_Webserver_v0_4.md § 9.1 (ALTER TABLE scrape_jobs)
 DDL_ADD_ASSIGNED_TO = "ALTER TABLE scrape_jobs ADD COLUMN assigned_to INTEGER REFERENCES investigators(id)"
 
+# ALTER TABLE: note nachrüsten — freies Notizfeld für Ermittler.
+# Beleg: Projektgespräch 2026-04-18 — Bugfix 'no such column: j.note'
+DDL_ADD_NOTE = "ALTER TABLE scrape_jobs ADD COLUMN note TEXT"
+
 
 def _column_exists(con: sqlite3.Connection, table: str, column: str) -> bool:
     """Prüft ob eine Spalte in einer Tabelle existiert."""
@@ -140,6 +144,16 @@ def setup(db_path: Path) -> None:
             print("[setup_coordinator_dev] scrape_jobs.assigned_to: Spalte nachgerüstet (ALTER TABLE)")
         else:
             print("[setup_coordinator_dev] scrape_jobs.assigned_to: bereits vorhanden — kein ALTER TABLE nötig")
+
+        # ------------------------------------------------------------------
+        # Migration: note nachrüsten
+        # Beleg: Projektgespräch 2026-04-18 — Bugfix 'no such column: j.note'
+        # ------------------------------------------------------------------
+        if _table_exists(con, "scrape_jobs") and not _column_exists(con, "scrape_jobs", "note"):
+            con.execute(DDL_ADD_NOTE)
+            print("[setup_coordinator_dev] scrape_jobs.note: Spalte nachgerüstet (ALTER TABLE)")
+        else:
+            print("[setup_coordinator_dev] scrape_jobs.note: bereits vorhanden — kein ALTER TABLE nötig")
 
         # ------------------------------------------------------------------
         # DEV-Dummy-Ermittler einfügen

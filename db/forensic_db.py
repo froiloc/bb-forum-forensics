@@ -612,3 +612,30 @@ class ForensicDb:
             return int(row[0]) if row else 0
         except sqlite3.OperationalError:
             return 0
+
+    def get_userinfo_blob(self) -> "str | None":
+        """
+        Liest den statischen HTML-BLOB für den Nutzerinfo-Tab aus
+        fdb.static_pages WHERE key='userinfo'.
+
+        Gibt den HTML-String zurück, oder None wenn die Tabelle nicht
+        existiert oder kein Eintrag vorhanden ist.
+
+        Beleg: phase_b_exporter.py _step7_html_blob — schreibt BLOB als
+        UTF-8-kodiertes bytes-Objekt in static_pages.html.
+        Beleg: Projektgespräch 2026-04-18.
+        """
+        try:
+            row = self._con.execute(
+                "SELECT html FROM fdb.static_pages WHERE key = 'userinfo'"
+            ).fetchone()
+            if row is None:
+                return None
+            blob = row[0]
+            # BLOB wird als bytes gespeichert (phase_b_exporter Schritt 7)
+            if isinstance(blob, (bytes, bytearray)):
+                return blob.decode("utf-8")
+            return str(blob)
+        except sqlite3.OperationalError:
+            # Tabelle existiert noch nicht (ältere forensic_db ohne Phase B)
+            return None

@@ -103,17 +103,30 @@ class UserinfoDataEndpoint:
         """
         Liest den Ermittlungsstatus für den aktuellen Nutzer aus coordinator.db.
         Gibt None zurück wenn coordinator.db nicht verfügbar.
+
+        Die Spalte 'note' in scrape_jobs ist optional (ALTER TABLE nachgerüstet).
+        Die Query wird defensiv aufgebaut: note wird nur selektiert wenn die
+        Spalte existiert.
+        Beleg: Projektgespräch 2026-04-18 — Bugfix 'no such column: j.note'.
         """
         if self._bundle.coordinator is None:
             return None
 
         try:
-            # Aktiven Job für diesen Nutzer lesen
             con = self._bundle.forensic._con  # Verbindung mit cdb-ATTACH
+
+            # Prüfen ob 'note'-Spalte in scrape_jobs existiert
+            cols = {
+                row[1]
+                for row in con.execute("PRAGMA cdb.table_info(scrape_jobs)")
+            }
+            note_select = ", j.note" if "note" in cols else ", NULL AS note"
+
             row = con.execute(
-                "SELECT j.status, j.priority, i.system_username AS assigned_to, "
-                "       j.note "
-                "FROM cdb.scrape_jobs j "
+                "SELECT j.status, j.priority, "
+                "       i.system_username AS assigned_to"
+                + note_select +
+                " FROM cdb.scrape_jobs j "
                 "LEFT JOIN cdb.investigators i ON i.id = j.assigned_to "
                 "WHERE j.user_id = ? "
                 "ORDER BY j.created_at DESC LIMIT 1",
