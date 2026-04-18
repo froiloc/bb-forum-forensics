@@ -16,6 +16,9 @@ data/
 md5.chksum
 package-lock.json
 
+# Log files
+logs/
+
 # Environments
 .env
 .envrc

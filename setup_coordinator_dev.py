@@ -4,10 +4,11 @@
 # IT-Forensisches Ermittlungswerkzeug — coordinator.db DEV-Bootstrap
 # =============================================================================
 # Zweck:
-#   Legt die minimal notwendigen Tabellen in coordinator.db an und fügt
-#   einen DEV-Dummy-Ermittler ein, damit der Webserver (Build 029+) keine
-#   "no such table: cdb.investigators"- oder
-#   "no such column: j.assigned_to"-Warnungen mehr ausgibt.
+#   Legt die minimal notwendigen Tabellen in coordinator.db an, fügt
+#   DEV-Dummy-Ermittler ein und legt einen DEV-Job für user_id=18 an,
+#   damit der Webserver (Build 030+) im Modus --mode=job für den
+#   Systembenutzer 'paul' (id=3) startet und keine Struktur-Warnungen
+#   ausgibt.
 #
 # WICHTIG: Dies ist KEIN permanenter Fix.
 #   Der vollständige coordinator.db-Aufbau (inkl. Audit-Log, Hash-Chaining,
@@ -149,6 +150,8 @@ def setup(db_path: Path) -> None:
         dev_users = [
             ("dev",    "DEV-Ermittler (lokal)", 1, 1, 0),
             ("claude", "DEV-Testnutzer (CI)",   1, 0, 0),
+            # paul: lokaler Systembenutzer laut Serverlog 2026-04-18
+            ("paul",   "Paul (DEV-Systembenutzer)", 1, 1, 0),
         ]
         inserted = 0
         for username, display, is_inv, is_sup_v, is_sup_p in dev_users:
@@ -169,6 +172,40 @@ def setup(db_path: Path) -> None:
         con.commit()
 
         # ------------------------------------------------------------------
+        # DEV-Job: user_id=18 für 'paul' (id=3) anlegen
+        # Wird für --mode=job benötigt: mode_resolver sucht einen offenen
+        # Job in scrape_jobs WHERE assigned_to = investigators.id
+        #   AND status IN ('pending', 'running').
+        # Beleg: Serverlog 2026-04-18, core/mode_resolver.py _query_job()
+        # ------------------------------------------------------------------
+        paul_row = con.execute(
+            "SELECT id FROM investigators WHERE system_username = 'paul'"
+        ).fetchone()
+        if paul_row:
+            paul_id = paul_row[0] if not hasattr(paul_row, 'keys') else paul_row["id"]
+            # Prüfen ob DEV-Job bereits vorhanden
+            existing = con.execute(
+                "SELECT id FROM scrape_jobs "
+                "WHERE user_id=18 AND assigned_to=? AND status='pending'",
+                (paul_id,),
+            ).fetchone()
+            if not existing:
+                con.execute(
+                    """
+                    INSERT INTO scrape_jobs
+                        (user_id, username, priority, status, assigned_to, created_at)
+                    VALUES (18, 'DEV-Beschuldigter-uid18', 2, 'pending', ?, ?)
+                    """,
+                    (paul_id, int(time.time())),
+                )
+                print(f"[setup_coordinator_dev] DEV-Job user_id=18 für 'paul' (id={paul_id}) angelegt")
+            else:
+                print(f"[setup_coordinator_dev] DEV-Job user_id=18 bereits vorhanden — übersprungen")
+            con.commit()
+        else:
+            print("[setup_coordinator_dev] WARNING: 'paul' nicht in investigators — kein Job angelegt")
+
+        # ------------------------------------------------------------------
         # Abschlussprüfung
         # ------------------------------------------------------------------
         rows = con.execute(
@@ -182,6 +219,12 @@ def setup(db_path: Path) -> None:
 
         cols = [r[1] for r in con.execute("PRAGMA table_info(scrape_jobs)").fetchall()]
         assert "assigned_to" in cols, "FEHLER: assigned_to fehlt nach Migration!"
+        jobs = con.execute(
+            "SELECT id, user_id, username, status, assigned_to FROM scrape_jobs"
+        ).fetchall()
+        print(f"\n[setup_coordinator_dev] scrape_jobs ({len(jobs)} Einträge):")
+        for j in jobs:
+            print(f"  id={j[0]}  user_id={j[1]}  username={j[2]}  status={j[3]}  assigned_to={j[4]}")
         print(f"\n[setup_coordinator_dev] scrape_jobs.assigned_to: vorhanden ✓")
         print("[setup_coordinator_dev] Abgeschlossen — keine Fehler.")
 
