@@ -17,7 +17,7 @@
 #   /_forensic/events           (GET, SSE)  → EventsEndpoint       [B3, Build 011]
 #   /_forensic/userinfo         (GET)       → UserinfoEndpoint      [B4, Build 012]
 #   /_forensic/userinfo/data    (GET)       → UserinfoDataEndpoint  [B4, Build 012]
-#   /_forensic/userinfo/static  (GET)       → UserinfoStaticEndpoint [B4, Build 017]
+#   /_forensic/userinfo/static  (GET)       → UserinfoStaticEndpoint [B4, Build 037]
 #   /_forensic/userinfo.js      (GET)       → StaticEndpoint        [B4, Build 012]
 #   /_forensic/userinfo.css     (GET)       → StaticEndpoint        [B4, Build 012]
 #   /_forensic/report           (GET, POST) → ReportEndpoint        [B4, Build 012]
@@ -70,7 +70,7 @@ class ForensicApi:
         self._events        = None  # [B3, Build 011]
         self._userinfo        = None  # [B4, Build 012]
         self._userinfo_data   = None  # [B4, Build 012]
-        self._userinfo_static = None  # [B4, Build 017]
+        self._userinfo_static = None  # [B4, Build 037]
         self._report          = None  # [B4, Build 012]
 
     def dispatch(
@@ -154,7 +154,7 @@ class ForensicApi:
             self._get_events().handle(handler)
             return
 
-        # /_forensic/userinfo/static (GET) — [B4, Build 017]
+        # /_forensic/userinfo/static (GET) — [B4, Build 037]
         # Reihenfolge: vor /data und /userinfo prüfen (längster Pfad zuerst)
         if url_path == "/_forensic/userinfo/static":
             if method not in ("GET", "HEAD"):
@@ -288,7 +288,7 @@ class ForensicApi:
         return self._events
 
     def _get_userinfo_static(self):
-        """[B4, Build 017] Lazy-Init für UserinfoStaticEndpoint."""
+        """[B4, Build 037] Lazy-Init für UserinfoStaticEndpoint."""
         if self._userinfo_static is None:
             from forensic_api.userinfo_static import UserinfoStaticEndpoint
             self._userinfo_static = UserinfoStaticEndpoint(self._bundle, self._context, self._config)

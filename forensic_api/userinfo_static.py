@@ -25,7 +25,7 @@
 #   Kein Schreibzugriff.
 #
 # Beleg: Projektgespräch 2026-04-18
-# Version: v0.1.0 · Build: 017 · 2026-04-18
+# Version: v0.1.0 · Build: 037 · 2026-04-18
 # =============================================================================
 
 from __future__ import annotations

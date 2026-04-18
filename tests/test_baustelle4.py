@@ -443,7 +443,7 @@ class TestStaticEndpoint:
 
 
 # ---------------------------------------------------------------------------
-# Tests: /_forensic/userinfo/static und j.note-Fix (Build 017)
+# Tests: /_forensic/userinfo/static und j.note-Fix (Build 037)
 # Beleg: Projektgespräch 2026-04-18
 # ---------------------------------------------------------------------------
 
