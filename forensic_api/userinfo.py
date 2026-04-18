@@ -3,27 +3,22 @@
 # IT-Forensisches Ermittlungswerkzeug — Baustelle 4: Nutzerinfo-Tab
 # =============================================================================
 # Zweck:
-#   Endpunkt GET /_forensic/userinfo — Auslieferung des Nutzerinfo-Tabs (Fenster 2).
+#   Endpunkt GET /_forensic/userinfo — Auslieferung des Nutzerinfo-Tabs.
 #
-# Ablauf (§5.1 Bauplan B4):
-#   1. BLOB aus forensic_<uid>.db → static_pages WHERE key='userinfo' lesen
-#      (Zugriff via ATTACH-Alias fdb auf der Haupt-Verbindung).
-#   2. Vollständigen HTML-Rahmen aufbauen (inkl. <head> mit userinfo.css/js).
-#   3. BLOB-Inhalt in <div id="userinfo-static"> einsetzen.
-#   4. Leere Container für dynamische Bereiche und Read-Only-Berichtsreiter
-#      vor </body> einsetzen.
-#   5. HTTP 200 mit Content-Type: text/html; charset=utf-8 antworten.
+# Build 031-B: Komplette Überarbeitung.
+#   Vorher: Abhängigkeit von fdb.static_pages (Tabelle existiert nicht →
+#           immer HTTP 503). Kein Nutzerdaten-Anzeige möglich.
+#   Jetzt:  Seite wird direkt aus verfügbaren DB-Daten gerendert:
+#             - forensic_meta: user_id, username, domainname, schema_version
+#             - scrape_targets: Post-, PM-, Forum-Zähler
+#             - evidence_db:    Annotationszähler, letzter Eintrag
+#           Kein statischer BLOB erforderlich. Immer aufrufbar.
 #
-# Fehlerfall:
-#   BLOB fehlt in static_pages → HTTP 503 mit Fehlermeldung.
-#   Kein stilles Versagen — forensische Grundregel 1.
+# Forensische Relevanz:
+#   Alle angezeigten Daten stammen aus READ-ONLY-Quellen.
+#   Keine Schreibzugriffe — forensische Integrität gewahrt.
 #
-# Datenbankzugriff:
-#   fdb (forensic_<uid>.db, READ-ONLY) via ATTACH auf bundle.forensic._con.
-#   Keine Schreibzugriffe — forensische Integrität (Grundregel 10 Bauplan B4).
-#
-# Neue Datei — Baustelle 4.
-# Version: v0.1.0 · Build: 012 · 2026-04-14
+# Version: v0.1.0 · Build: 031 · 2026-04-16
 # =============================================================================
 
 from __future__ import annotations
@@ -42,53 +37,23 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-# HTML-Rahmen für Fenster 2 (§6.1 Bauplan B4).
-# Platzhalter: {username}, {user_id}, {static_content}
-_HTML_TEMPLATE = """\
-<!DOCTYPE html>
-<html lang="de">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Nutzerinfo \u00b7 {username} \u00b7 ID: {user_id}</title>
-    <link rel="stylesheet" href="/_forensic/userinfo.css">
-  </head>
-  <body>
-    <div id="userinfo-static">
-{static_content}
-    </div>
-
-    <!-- Chirurgisch eingesetzt beim Ausliefern \u2014 nicht im BLOB (§6.1 Bauplan B4) -->
-    <div id="userinfo-dynamic" aria-live="polite">
-      <!-- Ermittlungsstand \u2014 per AJAX/SSE bef\u00fcllt (§7.9 Bauplan B4) -->
-    </div>
-    <div id="userinfo-report-readonly">
-      <!-- Read-Only-Reiter: gerenderter Berichtsstand (§8 Bauplan B4) -->
-    </div>
-    <script src="/_forensic/userinfo.js" defer></script>
-  </body>
-</html>"""
-
-# Fehlermeldung wenn BLOB noch nicht generiert wurde (§5.1 Bauplan B4)
-_ERROR_BLOB_MISSING = """\
-<!DOCTYPE html>
-<html lang="de">
-  <head><meta charset="utf-8"><title>Nutzerinfo \u2014 Fehler</title></head>
-  <body>
-    <h1>Nutzerinfo-BLOB nicht generiert</h1>
-    <p>B0-Phase-B f\u00fcr diesen Nutzer ausf\u00fchren.</p>
-    <p>Benutzer-ID: {user_id}</p>
-  </body>
-</html>"""
+# Kategorien-Labels für die Annotationsanzeige
+_CAT_LABELS = {
+    "CAT_PERSON":   "👤 Persönliche Merkmale",
+    "CAT_LOCATION": "📍 Ortsangaben",
+    "CAT_176":      "⚖️ §§ 176, 176a StGB",
+    "CAT_184":      "🔴 §§ 184b, 184c StGB",
+    "CAT_VICTIM":   "🛡️ Hinweise auf Opfer",
+    "CAT_OTHER":    "📎 Sonstige Relevanz",
+}
 
 
 class UserinfoEndpoint:
     """
     Endpunkt GET /_forensic/userinfo
 
-    Liefert den statischen HTML-Rahmen mit eingebettetem BLOB aus
-    forensic_<uid>.db → static_pages['userinfo'].
-    Schreibt nicht — forensische Integrität gewahrt (Grundregel 10 Bauplan B4).
+    Liefert eine vollständige Nutzerinfo-Seite aus forensic_meta,
+    scrape_targets und evidence_db. Kein statischer BLOB erforderlich.
     """
 
     def __init__(
@@ -102,70 +67,239 @@ class UserinfoEndpoint:
         self._config  = config
 
     def handle(self, handler: "ForensicRequestHandler") -> None:
-        """
-        Verarbeitet GET /_forensic/userinfo.
-
-        Args:
-            handler: ForensicRequestHandler-Instanz.
-        """
         user_id  = self._context.user_id
-        username = self._context.username
+        username = self._context.username or f"uid_{user_id}"
 
-        # BLOB aus fdb.static_pages lesen
-        blob_html = self._load_blob()
+        # Alle Daten sammeln
+        meta       = self._load_meta()
+        stats      = self._load_scrape_stats()
+        ann_counts = self._load_annotation_counts()
+        last_ann   = self._load_last_annotation()
+        page_count = self._bundle.forensic.page_count()
 
-        if blob_html is None:
-            # 503: BLOB nicht vorhanden — B0-Phase-B noch nicht ausgeführt
-            logger.warning(
-                "userinfo BLOB fehlt für user_id=%d — HTTP 503 gesendet", user_id
-            )
-            body = _ERROR_BLOB_MISSING.format(user_id=user_id).encode("utf-8")
-            handler.send_response_body(
-                503, body, content_type="text/html; charset=utf-8"
-            )
-            return
-
-        # Vollständige HTML-Seite zusammenbauen
-        safe_username = html_module.escape(username or f"uid_{user_id}")
-        page_html = _HTML_TEMPLATE.format(
-            username=safe_username,
-            user_id=user_id,
-            static_content=blob_html,
+        page_html = self._render(
+            user_id, username, meta, stats, ann_counts, last_ann, page_count
         )
-
         body = page_html.encode("utf-8")
         handler.send_response_body(200, body, content_type="text/html; charset=utf-8")
-        logger.debug(
-            "/_forensic/userinfo ausgeliefert: user_id=%d (%d bytes)", user_id, len(body)
-        )
+        logger.debug("/_forensic/userinfo ausgeliefert: user_id=%d", user_id)
 
-    def _load_blob(self) -> "str | None":
+    # ------------------------------------------------------------------
+    # Daten laden
+    # ------------------------------------------------------------------
+
+    def _load_meta(self) -> dict:
+        """Liest relevante Schlüssel aus fdb.forensic_meta."""
+        keys = ("schema_version", "domainname", "protocol",
+                "created_at", "scraper_version")
+        result = {}
+        for k in keys:
+            result[k] = self._bundle.forensic.get_meta(k)
+        return result
+
+    def _load_scrape_stats(self) -> dict:
         """
-        Liest den HTML-BLOB aus fdb.static_pages (key='userinfo').
-
-        Zugriff erfolgt über die ATTACH-Verbindung von ForensicDb._con,
-        die das Alias fdb für forensic_<uid>.db enthält.
-
-        Gibt None zurück wenn Tabelle fehlt oder kein Eintrag vorhanden.
-        Kein stilles Versagen — None wird als HTTP 503 gemeldet (Grundregel 1).
+        Zählt Posts, PMs, Foren und Seiten aus fdb.scrape_targets.
+        Gibt Dict mit Zählern zurück; bei Fehler alle Zähler 0.
         """
+        stats = {
+            "posts":      0,
+            "pm_posts":   0,
+            "forums":     0,
+            "topics":     0,
+            "thanks":     0,
+        }
         try:
-            # Zugriff via fdb-Alias der ATTACH-Verbindung
             con: sqlite3.Connection = self._bundle.forensic._con
-            row = con.execute(
-                "SELECT html FROM fdb.static_pages WHERE key = 'userinfo'"
+            rows = con.execute(
+                """
+                SELECT
+                  COUNT(DISTINCT post_id)       AS posts,
+                  COUNT(DISTINCT pm_post_id)    AS pm_posts,
+                  COUNT(DISTINCT forum_id)      AS forums,
+                  COUNT(DISTINCT topic_id)      AS topics,
+                  COUNT(DISTINCT thanks_post_id) AS thanks
+                FROM fdb.scrape_targets
+                WHERE scrape_context IN ('user', 'actor')
+                """
             ).fetchone()
-            if row is None:
-                logger.info("fdb.static_pages: kein 'userinfo'-Eintrag für user_id=%d",
-                            self._context.user_id)
-                return None
-            return str(row[0]) if row[0] else None
-        except sqlite3.OperationalError as exc:
-            # Tabelle static_pages existiert noch nicht (B0-Phase-B nicht ausgeführt)
-            logger.warning(
-                "fdb.static_pages nicht lesbar (B0-Phase-B ausstehend?): %s", exc
-            )
-            return None
+            if rows:
+                stats["posts"]    = int(rows["posts"]    or 0)
+                stats["pm_posts"] = int(rows["pm_posts"] or 0)
+                stats["forums"]   = int(rows["forums"]   or 0)
+                stats["topics"]   = int(rows["topics"]   or 0)
+                stats["thanks"]   = int(rows["thanks"]   or 0)
         except Exception as exc:
-            logger.error("_load_blob: unerwarteter Fehler: %s", exc)
+            logger.warning("_load_scrape_stats fehlgeschlagen: %s", exc)
+        return stats
+
+    def _load_annotation_counts(self) -> dict:
+        """Liest Annotationszähler je Kategorie aus evidence_db."""
+        try:
+            return self._bundle.evidence.get_annotation_counts_by_category()
+        except Exception as exc:
+            logger.warning("_load_annotation_counts fehlgeschlagen: %s", exc)
+            return {}
+
+    def _load_last_annotation(self) -> "dict | None":
+        """Liest Info zur letzten Annotation aus evidence_db."""
+        try:
+            return self._bundle.evidence.get_last_annotation_info()
+        except Exception as exc:
+            logger.warning("_load_last_annotation fehlgeschlagen: %s", exc)
             return None
+
+    # ------------------------------------------------------------------
+    # HTML-Rendering
+    # ------------------------------------------------------------------
+
+    def _render(
+        self,
+        user_id: int,
+        username: str,
+        meta: dict,
+        stats: dict,
+        ann_counts: dict,
+        last_ann: "dict | None",
+        page_count: int,
+    ) -> str:
+        e = html_module.escape
+        u = e(username)
+        domain = e(meta.get("domainname") or "—")
+
+        # Annotationstabelle
+        ann_rows = ""
+        ann_total = 0
+        for cat_id, label in _CAT_LABELS.items():
+            cnt = ann_counts.get(cat_id, 0)
+            ann_total += cnt
+            ann_rows += (
+                f'<tr><td>{e(label)}</td>'
+                f'<td class="ui-num">{cnt}</td></tr>\n'
+            )
+
+        last_ann_html = "—"
+        if last_ann:
+            import datetime
+            ts = last_ann.get("ts", 0)
+            dt = datetime.datetime.fromtimestamp(ts).strftime("%d.%m.%Y %H:%M")
+            inv = e(last_ann.get("investigator") or "—")
+            last_ann_html = f"{dt} · {inv}"
+
+        return f"""<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nutzerinfo · {u} · ID: {user_id}</title>
+  <link rel="stylesheet" href="/_forensic/userinfo.css">
+  <style>
+    body {{ font-family: "Segoe UI", Arial, sans-serif; background: #f4f6fa;
+            color: #1a1f2e; margin: 0; padding: 0; }}
+    .ui-header {{ background: #1a1f2e; color: #c8d0e8; padding: 18px 28px;
+                  display: flex; align-items: center; gap: 16px; }}
+    .ui-header h1 {{ margin: 0; font-size: 18px; font-weight: 700; }}
+    .ui-header .ui-uid {{ font-size: 12px; color: #4f8ef7; font-family: monospace; }}
+    .ui-body {{ padding: 24px 28px; display: grid;
+                grid-template-columns: 1fr 1fr; gap: 20px; max-width: 1100px; }}
+    .ui-card {{ background: #fff; border: 1px solid #d0d8e8;
+                border-radius: 6px; padding: 16px 20px; }}
+    .ui-card h2 {{ font-size: 13px; font-weight: 700; color: #4f8ef7;
+                   text-transform: uppercase; letter-spacing: .05em;
+                   margin: 0 0 12px 0; border-bottom: 1px solid #e8edf4;
+                   padding-bottom: 8px; }}
+    table {{ width: 100%; border-collapse: collapse; font-size: 13px; }}
+    td {{ padding: 5px 4px; border-bottom: 1px solid #f0f2f8; }}
+    td.ui-label {{ color: #5a6a8a; width: 55%; }}
+    td.ui-num {{ text-align: right; font-weight: 700; font-family: monospace;
+                 font-size: 14px; color: #1a1f2e; }}
+    td.ui-val {{ font-family: monospace; font-size: 12px; }}
+    .ui-total {{ font-size: 13px; font-weight: 700; margin-top: 10px;
+                 text-align: right; color: #1a1f2e; }}
+    .ui-badge {{ display: inline-block; background: #e8f0fe; color: #1a56db;
+                 border-radius: 3px; padding: 2px 7px; font-size: 11px;
+                 font-weight: 700; font-family: monospace; }}
+    .ui-domain {{ font-size: 11px; color: #7a8aaa; font-family: monospace;
+                  word-break: break-all; }}
+    .ui-footer {{ padding: 12px 28px; font-size: 11px; color: #9aa0b8;
+                  border-top: 1px solid #e0e4f0; margin-top: 8px; }}
+  </style>
+</head>
+<body>
+  <div class="ui-header">
+    <div>
+      <div class="ui-uid">Benutzer-ID: {user_id}</div>
+      <h1>{u}</h1>
+      <div class="ui-domain">{domain}</div>
+    </div>
+  </div>
+
+  <div class="ui-body">
+
+    <!-- Aktivitätsstatistik -->
+    <div class="ui-card">
+      <h2>Aktivität im Forum</h2>
+      <table>
+        <tr><td class="ui-label">Beiträge (Posts)</td>
+            <td class="ui-num">{stats["posts"]}</td></tr>
+        <tr><td class="ui-label">Private Nachrichten</td>
+            <td class="ui-num">{stats["pm_posts"]}</td></tr>
+        <tr><td class="ui-label">Themen (Topics)</td>
+            <td class="ui-num">{stats["topics"]}</td></tr>
+        <tr><td class="ui-label">Unterforen</td>
+            <td class="ui-num">{stats["forums"]}</td></tr>
+        <tr><td class="ui-label">Danksagungen</td>
+            <td class="ui-num">{stats["thanks"]}</td></tr>
+        <tr><td class="ui-label">Gesicherte Seiten</td>
+            <td class="ui-num">{page_count}</td></tr>
+      </table>
+    </div>
+
+    <!-- Annotationsstand -->
+    <div class="ui-card">
+      <h2>Ermittlungsstand · Annotationen</h2>
+      <table>
+        {ann_rows}
+      </table>
+      <div class="ui-total">Gesamt: {ann_total}</div>
+      <table style="margin-top:12px">
+        <tr><td class="ui-label">Letzte Annotation</td>
+            <td class="ui-val">{last_ann_html}</td></tr>
+      </table>
+    </div>
+
+    <!-- Technische Metadaten -->
+    <div class="ui-card">
+      <h2>Forensische Metadaten</h2>
+      <table>
+        <tr><td class="ui-label">Schema-Version</td>
+            <td class="ui-val">{e(meta.get("schema_version") or "—")}</td></tr>
+        <tr><td class="ui-label">Protokoll</td>
+            <td class="ui-val">{e(meta.get("protocol") or "—")}</td></tr>
+        <tr><td class="ui-label">Domain</td>
+            <td class="ui-val">{e(meta.get("domainname") or "—")}</td></tr>
+        <tr><td class="ui-label">Scraper-Version</td>
+            <td class="ui-val">{e(meta.get("scraper_version") or "—")}</td></tr>
+      </table>
+    </div>
+
+    <!-- Dynamischer Block (userinfo.js) -->
+    <div class="ui-card" id="userinfo-dynamic" aria-live="polite">
+      <h2>Ermittlungskoordination</h2>
+      <span style="color:#9aa0b8;font-size:12px">Lade…</span>
+    </div>
+
+  </div>
+
+  <div id="userinfo-static" style="display:none"></div>
+  <div id="userinfo-report-readonly" style="display:none"></div>
+
+  <div class="ui-footer">
+    Klassifikation: VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH ·
+    Benutzer-ID: {user_id} · {u}
+  </div>
+
+  <script src="/_forensic/userinfo.js" defer></script>
+</body>
+</html>"""
+

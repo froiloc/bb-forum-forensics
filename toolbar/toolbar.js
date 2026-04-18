@@ -1038,7 +1038,7 @@
         ToastModule.show(
           "⚠ Seitenabruf fehlgeschlagen (HTTP " + _esc(String(envelope.http_status || "—")) + "): " + _esc(url),
           "error",
-          8000
+          10000
         );
         return;
       }
@@ -1858,13 +1858,6 @@
 
       var elemId = traces[idx];
       var el = document.getElementById(elemId);
-
-      // Diagnose-Log: immer ausgeben damit das Problem in der Konsole sichtbar ist
-      console.info(
-        "[Forensic] TraceNav.jumpTo(" + idx + "): elemId='" + elemId +
-        "' el=" + (el ? el.tagName + "#" + el.id : "NULL") +
-        " traceElements=" + JSON.stringify(traces)
-      );
 
       if (el) {
         el.scrollIntoView({ behavior: "smooth", block: "center" });
