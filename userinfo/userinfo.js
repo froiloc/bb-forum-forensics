@@ -512,18 +512,28 @@ async function initSSEWindow3() {
             if (!resolved) { resolved = true; resolve(); }
         });
 
-        evtSrc.addEventListener('editor_lock_acquired', evt => {
+        evtSrc.addEventListener('editor_lock_acquired', async evt => {
             try {
-                const { locked_by } = JSON.parse(evt.data);
-                // data-username (nicht data-investigator) — Beleg: AP-E4 Bugfix 2026-04-19
+                const { locked_by, lock_id } = JSON.parse(evt.data);
                 const ownName = document.getElementById('report-editor-body')?.dataset?.username || '';
                 if (locked_by === ownName) {
+                    // Lock gehoert uns — in EditorState eintragen.
+                    // Noetig wenn Lock aus vorheriger Session stammt und
+                    // beim SSE-Aufbau zurueckgemeldet wird.
+                    // Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19
+                    if (!EditorState.lockId && lock_id) {
+                        EditorState.lockId = lock_id;
+                        sessionStorage.setItem('forensic_lock_id', lock_id);
+                    }
                     updateLockStatus('lock-mine', 'Lock: ich');
-                    // Buttons korrekt setzen — auch wenn Lock via SSE bestaetigt wird
                     const btnAcquire = document.getElementById('btn-acquire-lock');
                     const btnRelease = document.getElementById('btn-release-lock');
                     if (btnAcquire) btnAcquire.disabled = true;
                     if (btnRelease) btnRelease.disabled = false;
+                    // Editor aus readOnly befreien falls noch nicht schreibbar
+                    if (window._editor?.readOnly?.isEnabled && window._reinitWithLock) {
+                        await window._reinitWithLock();
+                    }
                 } else {
                     updateLockStatus('lock-other', `Lock belegt: ${esc(locked_by)}`);
                     disableEditorControls(true);
@@ -609,14 +619,9 @@ async function acquireLock() {
             updateLockStatus('lock-mine', 'Lock: ich');
             document.getElementById('btn-acquire-lock').disabled = true;
             document.getElementById('btn-release-lock').disabled = false;
-            showStatusMsg('Lock erworben — Editor wird aktiviert…', 'ok');
-            // Editor neu initialisieren mit readOnly: false.
-            // _reinitWithLock() ist in editor.js definiert.
+            showStatusMsg('Lock erworben.', 'ok');
+            // Editor-Reinit erfolgt via SSE editor_lock_acquired-Handler.
             // Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19
-            if (window._reinitWithLock) {
-                await window._reinitWithLock();
-                showStatusMsg('Lock erworben — Editor aktiv.', 'ok');
-            }
         } else if (resp.status === 423) {
             updateLockStatus('lock-other', `Belegt: ${esc(data.locked_by || '?')}`);
             showStatusMsg(`Lock bereits belegt von: ${esc(data.locked_by || '?')}`, 'warn');
@@ -652,8 +657,11 @@ function releaseLock(sync = false) {
             updateLockStatus('lock-none', 'Kein Lock');
             document.getElementById('btn-acquire-lock').disabled = false;
             document.getElementById('btn-release-lock').disabled = true;
-            document.getElementById('report-new-paragraph').style.display = 'none';
             showStatusMsg('Lock freigegeben.', 'ok');
+            // Editor in readOnly versetzen
+            if (window._editor?.readOnly) {
+                window._editor.readOnly.toggle().catch(() => {});
+            }
         }).catch(err => {
             showStatusMsg(`Fehler beim Freigeben: ${esc(String(err))}`, 'error');
         });
@@ -756,11 +764,7 @@ async function saveNewParagraph() {
     }
 }
 
-function cancelNewParagraph() {
-    const textarea = document.getElementById('report-new-content');
-    if (textarea) textarea.value = '';
-    document.getElementById('report-new-paragraph').style.display = 'none';
-}
+// cancelNewParagraph() entfernt in AP-E4 — durch Editor.js ersetzt.
 
 /**
  * Einfacher Änderungsvorschlags-Dialog (inline, kein Modal-Framework).
