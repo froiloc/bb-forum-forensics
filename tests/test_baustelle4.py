@@ -1233,8 +1233,21 @@ class TestEditorStaticEndpoint:
         assert b"console.log" in resp['body']
         assert "javascript" in resp.get('content_type', '')
 
-    def test_fehlende_datei_returns_503(self):
-        """Datei fehlt (Bundle nicht installiert) -> HTTP 503."""
+    def test_fehlende_datei_returns_503(self, tmp_path, monkeypatch):
+        """Datei fehlt (Bundle nicht installiert) -> HTTP 503.
+        monkeypatch isoliert den Test vom realen static/editor/-Verzeichnis:
+        Auf Produktionssystemen mit installiertem Bundle schlug der Test
+        vorher fehl. Beleg: Bugfix Build 045b, Projektgespraech 2026-04-19
+        """
+        import sys, os
+        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if project_dir not in sys.path:
+            sys.path.insert(0, project_dir)
+        from forensic_api import static as static_mod
+        empty_dir = tmp_path / "empty_editor"
+        empty_dir.mkdir()
+        monkeypatch.setattr(static_mod, "_EDITOR_DIR", empty_dir)
+
         ep   = self._make_ep()
         resp = {}
         ep.handle_editor_asset(
