@@ -16,6 +16,9 @@ beforeAll(() => {
     runScripts: "dangerously",
     url: "http://localhost",
   });
+  // Stubs fuer toolbar.js DOMContentLoaded-Handler (fetch + rAF nicht in JSDOM)
+  dom.window.fetch = () => Promise.resolve({ ok: false, json: () => ({}) });
+  dom.window.requestAnimationFrame = (cb) => setTimeout(cb, 0);
   dom.window.eval(src);
   ft = dom.window.ForensicToolbar;
 });
