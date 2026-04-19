@@ -291,11 +291,15 @@ class UserinfoEndpoint:
 
   </div>
 
+  <!-- Berichtsreiter: wird von loadDynamicBlocks() befuellt (AP-E4).
+       Erscheint oberhalb des langen Forum-Inhalts fuer schnellen Zugriff.
+       Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19 -->
+  <div id="userinfo-report-readonly"></div>
+
   <div id="userinfo-static">
     <p style="color:#9aa0b8;font-size:12px;padding:12px 28px">
       Lade forensische Nutzerdaten…</p>
   </div>
-  <div id="userinfo-report-readonly" style="display:none"></div>
 
   <div class="ui-footer">
     Klassifikation: VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH ·

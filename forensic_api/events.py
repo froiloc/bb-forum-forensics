@@ -179,17 +179,32 @@ class EventsEndpoint:
     def _send_lock_status(self, send_fn) -> bool:
         """
         Sendet den aktuellen Editor-Lock-Status.
-        Gibt False zurück wenn Verbindung abgebrochen ist.
+        Gibt False zurueck wenn Verbindung abgebrochen ist.
+
+        Defensiv gegen korrupte Altdatensaetze mit locked_at=NULL:
+        int(None) wuerde TypeError werfen — wird abgefangen.
+        Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19
         """
         try:
             lock = self._bundle.evidence.get_lock()
-            if lock:
+            if lock and lock.locked_by and lock.lock_id:
                 return send_fn(
                     "editor_lock_acquired",
                     {"locked_by": lock.locked_by, "lock_id": lock.lock_id},
                 )
             else:
                 return send_fn("editor_lock_released", {})
+        except (TypeError, ValueError) as exc:
+            # Korrupter Lock-Datensatz (z.B. locked_at=NULL) — als 'kein Lock' behandeln
+            logger.warning("_send_lock_status: Korrupter Lock-Datensatz — bereinige: %s", exc)
+            try:
+                self._bundle.evidence._con.execute(
+                    "DELETE FROM editor_locks WHERE locked_at IS NULL"
+                )
+                self._bundle.evidence._con.commit()
+            except Exception:
+                pass
+            return send_fn("editor_lock_released", {})
         except Exception as exc:
             logger.warning("_send_lock_status: Fehler: %s", exc)
             return True  # Kein Verbindungsabbruch — anderer Fehler

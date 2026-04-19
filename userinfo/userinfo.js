@@ -42,6 +42,15 @@ const FORENSIC_API = {
     EVENTS:          '/_forensic/events',
 };
 
+/**
+ * DEV_LOCK_UI: Lock-Schaltflächen sichtbar machen.
+ * true  = DEV: Buttons 'Lock erwerben' / 'Lock freigeben' sichtbar.
+ * false = PROD: Lock wird automatisch erworben und freigegeben;
+ *               Buttons werden ausgeblendet, Aktionen via console.log.
+ * Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19
+ */
+const DEV_LOCK_UI = true;
+
 // Regex für Beweisanker-Syntax [BELEG:annotation_id=N] im Berichtstext
 const ANCHOR_PATTERN = /\[BELEG:annotation_id=(\d+)\]/g;
 
@@ -275,9 +284,12 @@ function renderDynamicBlocks(container, data) {
         <div class="annotation-count-grid">${countsHtml}</div>
         ${unrefHtml}`;
 
-    // Read-Only-Berichtsreiter
+    // Read-Only-Berichtsreiter sichtbar schalten und befuellen.
+    // style="display:none" wird hier explizit entfernt.
+    // Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19
     const roContainer = document.getElementById('userinfo-report-readonly');
     if (roContainer) {
+        roContainer.style.display = '';
         roContainer.innerHTML = `
             <h3>Bericht <span id="report-draft-badge"></span></h3>
             <div class="report-actions">${refreshBtn} ${editBtn}</div>
@@ -386,33 +398,30 @@ async function initEditor() {
             return id;
         })();
 
-    // Editor-HTML-Grundstruktur aufbauen
+    // Editor-HTML-Grundstruktur aufbauen (AP-E4: Editor.js-Container).
+    // Beleg: AP-E4, Projektgespraech 2026-04-19
     const container = document.getElementById('report-editor-container');
     if (container) {
         container.innerHTML = `
             <div id="report-editor-toolbar">
-                <span id="report-lock-status" class="lock-none">Kein Lock</span>
+                <span id="report-lock-status" class="lock-status lock-none">Kein Lock</span>
                 <button class="editor-btn editor-btn-primary" id="btn-acquire-lock"
-                    title="Editor-Lock erwerben um schreiben zu können">Lock erwerben</button>
+                    title="Editor-Lock erwerben">Lock erwerben</button>
                 <button class="editor-btn" id="btn-release-lock" disabled
                     title="Editor-Lock freigeben">Lock freigeben</button>
-                <button class="editor-btn" id="btn-reload-paragraphs">Aktualisieren</button>
+                <button class="editor-btn" id="btn-annotations-sidebar"
+                    title="Annotations-Sidebar ein/ausblenden">⚖ Belege</button>
+                <span id="editor-save-indicator"
+                    style="font-size:11px;color:#4caf50;opacity:0;transition:opacity 1s"></span>
+                <span id="editor-report-title"
+                    style="font-size:11px;color:#555;margin-left:auto"></span>
             </div>
             <div id="report-status-msg"></div>
-            <ul id="report-paragraphs-list" aria-label="Berichtsparagraphen"></ul>
-            <div id="report-new-paragraph" class="editor-new-paragraph" style="display:none">
-                <textarea id="report-new-content"
-                    placeholder="Neuer Paragraph (Beweisanker: [BELEG:annotation_id=N])"
-                    aria-label="Neuer Paragraph"></textarea>
-                <div style="margin-top:6px;display:flex;gap:6px">
-                    <button class="editor-btn editor-btn-primary" id="btn-save-paragraph">Speichern</button>
-                    <button class="editor-btn" id="btn-cancel-paragraph">Abbrechen</button>
-                </div>
-            </div>
+            <div id="editorjs-holder" class="editorjs-holder"></div>
             <div id="report-frozen-overlay">
                 <div>
-                    <strong>Dieser Editor ist bereits in einem anderen Fenster geöffnet.</strong><br>
-                    Dieses Fenster ist schreibgeschützt.
+                    <strong>Dieser Editor ist bereits in einem anderen Fenster geoeffnet.</strong><br>
+                    Dieses Fenster ist schreibgeschuetzt.
                 </div>
             </div>`;
     }
@@ -423,22 +432,32 @@ async function initEditor() {
     // SSE-Verbindung aufbauen — Client-ID empfangen
     await initSSEWindow3();
 
-    // Paragraphen laden
-    await reloadParagraphs();
-
-    // Buttons verdrahten
-    document.getElementById('btn-acquire-lock')?.addEventListener('click', acquireLock);
-    document.getElementById('btn-release-lock')?.addEventListener('click', releaseLock);
-    document.getElementById('btn-reload-paragraphs')?.addEventListener('click', reloadParagraphs);
-    document.getElementById('btn-save-paragraph')?.addEventListener('click', saveNewParagraph);
-    document.getElementById('btn-cancel-paragraph')?.addEventListener('click', cancelNewParagraph);
+    // Lock-Buttons verdrahten / ausblenden je nach DEV_LOCK_UI
+    // Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19
+    if (!DEV_LOCK_UI) {
+        // PROD: Buttons ausblenden, Lock automatisch erwerben
+        document.getElementById('btn-acquire-lock')?.remove();
+        document.getElementById('btn-release-lock')?.remove();
+        // Lock sofort automatisch erwerben (wenn SSE-Client-ID bereit)
+        setTimeout(acquireLock, 200);
+    } else {
+        document.getElementById('btn-acquire-lock')?.addEventListener('click', acquireLock);
+        document.getElementById('btn-release-lock')?.addEventListener('click', releaseLock);
+    }
+    document.getElementById('btn-annotations-sidebar')?.addEventListener('click', () => {
+        if (window.toggleAnnotationSidebar) toggleAnnotationSidebar();
+    });
 
     // Lock bei Seitenentladung freigeben (§8.6 Bauplan B4 — beforeunload)
     window.addEventListener('beforeunload', () => {
-        if (EditorState.lockId) {
-            releaseLock(true); // synchron via sendBeacon
-        }
+        if (EditorState.lockId) releaseLock(true);
     });
+
+    // Editor.js-Modul initialisieren (editor.js).
+    // Beleg: AP-E4, Projektgespraech 2026-04-19
+    if (window.initEditorModule) {
+        await window.initEditorModule();
+    }
 }
 
 /**
@@ -496,19 +515,33 @@ async function initSSEWindow3() {
         evtSrc.addEventListener('editor_lock_acquired', evt => {
             try {
                 const { locked_by } = JSON.parse(evt.data);
-                if (locked_by === (document.getElementById('report-editor-body')?.dataset?.investigator || '')) {
-                    updateLockStatus('lock-mine', `Lock: ich`);
+                // data-username (nicht data-investigator) — Beleg: AP-E4 Bugfix 2026-04-19
+                const ownName = document.getElementById('report-editor-body')?.dataset?.username || '';
+                if (locked_by === ownName) {
+                    updateLockStatus('lock-mine', 'Lock: ich');
                 } else {
-                    updateLockStatus('lock-other', `Lock: ${esc(locked_by)}`);
+                    updateLockStatus('lock-other', `Lock belegt: ${esc(locked_by)}`);
                     disableEditorControls(true);
                 }
             } catch (_) {}
         });
 
         evtSrc.addEventListener('editor_lock_released', () => {
-            if (!EditorState.lockId) {
-                updateLockStatus('lock-none', 'Kein Lock');
+            // SSE-Verbindungsabriss hat den Lock freigegeben.
+            // Zustand vollstaendig zuruecksetzen — Beleg: AP-E4 Bugfix 2026-04-19
+            EditorState.lockId = null;
+            sessionStorage.removeItem('forensic_lock_id');
+            updateLockStatus('lock-none', 'Kein Lock');
+            // Buttons zuruecksetzen
+            const btnAcquire = document.getElementById('btn-acquire-lock');
+            const btnRelease = document.getElementById('btn-release-lock');
+            if (btnAcquire) btnAcquire.disabled = false;
+            if (btnRelease) btnRelease.disabled = true;
+            // Editor in readOnly-Modus versetzen
+            if (window._editor) {
+                window._editor.readOnly.toggle().catch(() => {});
             }
+            showStatusMsg('SSE-Verbindung unterbrochen — Lock freigegeben. Bitte Lock neu erwerben.', 'warn');
         });
 
         evtSrc.addEventListener('report_updated', () => {
