@@ -12,15 +12,14 @@ while IFS= read -r file
 do
     p="${PWD}"
     cd ..
-    zip -u -9 "${p##*/}/${zip}" "${p##*/}/${file#*/}" >/dev/null 2>&1
+    zip -u1 "${p##*/}/${zip}" "${p##*/}/${file#*/}" >/dev/null 2>&1
     cd "${p}"
     md5sum "${file}"
 done < <(find . -type f -not \( \
-        -regex './.\(venv\|git\|pytest_cache\).*' -or \
+        -regex './.\(venv\|git\).*' -or \
         -regex '.*__pycache__.*' -or \
-        -regex '.*\.\(zip\|log\|base64\|md\|chksum\|org\|pdf\|sw[po]\)$' -or \
-	-regex './package-lock\.json' -or \
-	-regex './\(logs\|node_modules\|forensik\|data\)/.*' -or \
+        -regex '.*\.\(zip\|log\|base64\|md\|chksum\)$' -or \
+        -regex '.*forensik.*' -or \
         -regex '.*.env$' -or \
         -regex '$^' \) \
     ) | sort -k2,2 | tee "${md5}"
@@ -30,9 +29,12 @@ if [ -f "${md5}" ]
 then
     p="${PWD}"
     cd ..
-    zip -u -9 "${p##*/}/${zip}" "${p##*/}/${md5}" >/dev/null 2>&1
+    zip -u1 "${p##*/}/${zip}" "${p##*/}/${md5}" >/dev/null 2>&1
     cd "${p}"
 fi
 
 # Create a base64 encoded version of the archive
 [ -f "${zip}" ] && base64 < "${zip}" > "${zip%*.zip}.base64"
+
+echo ""
+echo "Created '${zip%*.zip}.base64'. Please upload to claude.ai."

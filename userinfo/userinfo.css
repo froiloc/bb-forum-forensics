@@ -943,3 +943,293 @@ span.forensic-passive {
 .forensic-hm-cell[data-level="5"]  { background: #3a7add; }
 .forensic-hm-cell[data-level="6"]  { background: #1c5fcc; }
 .forensic-hm-cell[data-level="7"]  { background: #1048b0; }
+
+/* ================================================================== */
+/* Abstimmungen (uid_poll_votes) — Build 039                          */
+/* Beleg: Projektgespräch 2026-04-18                                  */
+/* ================================================================== */
+
+.forensic-poll-block {
+    border: 1px solid #d0d8e8;
+    border-radius: 4px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    background: #fafbfe;
+}
+
+.forensic-poll-header {
+    margin-bottom: 8px;
+    font-size: 12px;
+}
+
+.forensic-poll-question {
+    margin: 6px 0 0 8px;
+    padding-left: 8px;
+    border-left: 2px solid #d0d8e8;
+}
+
+.forensic-poll-question p {
+    margin: 0 0 4px 0;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.forensic-poll-question label {
+    display: block;
+    font-size: 12px;
+    padding: 2px 0;
+    color: #3a3a5a;
+}
+
+.forensic-poll-selected {
+    font-weight: 700;
+    color: #1565c0;
+}
+
+.forensic-poll-selected input {
+    accent-color: #1565c0;
+}
+
+/* ================================================================== */
+/* §7.11 Vollständiger Zeitstrahl — Build 040                         */
+/* Beleg: Projektgespräch 2026-04-18                                  */
+/* ================================================================== */
+
+/* Toolbar ----------------------------------------------------------- */
+#tl-toolbar {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 0 10px 0;
+    flex-wrap: wrap;
+}
+
+.tl-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #5a6a8a;
+    padding-top: 4px;
+    white-space: nowrap;
+}
+
+.tl-multiselect {
+    font-size: 11px;
+    border: 1px solid #d0d8e8;
+    border-radius: 4px;
+    padding: 2px 4px;
+    background: #fff;
+    color: #1a1f2e;
+    min-width: 200px;
+    max-width: 320px;
+}
+
+.tl-btn {
+    font-size: 11px;
+    padding: 3px 10px;
+    border: 1px solid #d0d8e8;
+    border-radius: 3px;
+    background: #f4f6fa;
+    color: #1a1f2e;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.tl-btn:hover { background: #e8edf4; }
+
+.tl-count {
+    font-size: 11px;
+    color: #8a8aaa;
+    padding-top: 4px;
+    white-space: nowrap;
+}
+
+/* Zeitstrahl-Container ---------------------------------------------- */
+.tl-container {
+    position: relative;
+    padding-left: 140px;    /* Platz für Datum/Zeit links */
+    margin-top: 4px;
+}
+
+/* Vertikale Linie */
+.tl-container::before {
+    content: "";
+    position: absolute;
+    left: 132px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #d0d8e8;
+}
+
+/* Einzelnes Ereignis ------------------------------------------------ */
+.tl-event {
+    position: relative;
+    margin-bottom: 6px;
+    min-height: 32px;
+    display: flex;
+    align-items: flex-start;
+}
+
+.tl-event.tl-hidden { display: none; }
+
+/* Datum/Zeit (links der Linie) */
+.tl-datetime {
+    position: absolute;
+    left: -140px;
+    width: 128px;
+    text-align: right;
+    font-size: 10px;
+    line-height: 1.4;
+    color: #6a7a9a;
+    padding-top: 6px;
+    font-family: monospace;
+}
+
+.tl-date { display: block; font-weight: 600; }
+.tl-time { display: block; color: #9aabb8; }
+
+/* Verbindungslinie zum Knoten */
+.tl-connector {
+    position: absolute;
+    left: -8px;
+    top: 10px;
+    width: 16px;
+    height: 2px;
+    background: #d0d8e8;
+}
+
+/* Icon-Knoten (auf der Linie) */
+.tl-node {
+    position: absolute;
+    left: -16px;
+    top: 4px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid #d0d8e8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    z-index: 1;
+}
+
+/* Inhalt (rechts der Linie) */
+.tl-body {
+    padding: 4px 8px 4px 12px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    max-width: 520px;
+    background: #f9fafb;
+}
+
+.tl-type-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 1px;
+}
+
+.tl-detail {
+    font-size: 11px;
+    color: #3a3a5a;
+    word-break: break-word;
+}
+
+.tl-link {
+    font-size: 10px;
+    color: #4f8ef7;
+    cursor: pointer;
+    margin-left: 4px;
+    text-decoration: none;
+}
+
+.tl-link:hover { text-decoration: underline; }
+
+/* Farbgebung nach Ereignistyp --------------------------------------- */
+.tl-reg    .tl-node { border-color: #4caf50; background: #e8f5e9; }
+.tl-reg    .tl-body { border-color: #c8e6c9; background: #f1f8f1; }
+.tl-reg    .tl-type-label { color: #2e7d32; }
+
+.tl-post-a .tl-node { border-color: #1565c0; background: #e3f2fd; }
+.tl-post-a .tl-body { border-color: #bbdefb; background: #f0f7ff; }
+.tl-post-a .tl-type-label { color: #1565c0; }
+
+.tl-post-p .tl-node { border-color: #90a4ae; background: #f5f7f8; }
+.tl-post-p .tl-body { border-color: #e0e6ea; background: #f8f9fa; }
+.tl-post-p .tl-type-label { color: #5a6a7a; }
+
+.tl-pm-a   .tl-node { border-color: #7b1fa2; background: #f3e5f5; }
+.tl-pm-a   .tl-body { border-color: #e1bee7; background: #faf0ff; }
+.tl-pm-a   .tl-type-label { color: #7b1fa2; }
+
+.tl-pm-p   .tl-node { border-color: #b39ddb; background: #f8f5ff; }
+.tl-pm-p   .tl-body { border-color: #e8e0f0; background: #faf8ff; }
+.tl-pm-p   .tl-type-label { color: #8a6aaa; }
+
+.tl-ban    .tl-node { border-color: #c62828; background: #ffebee; }
+.tl-ban    .tl-body { border-color: #ffcdd2; background: #fff5f5; }
+.tl-ban    .tl-type-label { color: #c62828; }
+
+.tl-prom   .tl-node { border-color: #f57c00; background: #fff3e0; }
+.tl-prom   .tl-body { border-color: #ffe0b2; background: #fff8f0; }
+.tl-prom   .tl-type-label { color: #e65100; }
+
+.tl-login  .tl-node { border-color: #455a64; background: #eceff1; }
+.tl-login  .tl-body { border-color: #cfd8dc; background: #f5f7f8; }
+.tl-login  .tl-type-label { color: #37474f; }
+
+.tl-thk-g  .tl-node { border-color: #388e3c; background: #e8f5e9; }
+.tl-thk-g  .tl-body { border-color: #c8e6c9; background: #f4fbf4; }
+.tl-thk-g  .tl-type-label { color: #2e7d32; }
+
+.tl-thk-r  .tl-node { border-color: #f9a825; background: #fffde7; }
+.tl-thk-r  .tl-body { border-color: #fff9c4; background: #fffef5; }
+.tl-thk-r  .tl-type-label { color: #f57f17; }
+
+.tl-warn   .tl-node { border-color: #f44336; background: #ffebee; }
+.tl-warn   .tl-body { border-color: #ffcdd2; background: #fff5f5; }
+.tl-warn   .tl-type-label { color: #c62828; }
+
+.tl-rep    .tl-node { border-color: #e91e63; background: #fce4ec; }
+.tl-rep    .tl-body { border-color: #f8bbd0; background: #fff5f8; }
+.tl-rep    .tl-type-label { color: #ad1457; }
+
+.tl-dl     .tl-node { border-color: #0097a7; background: #e0f7fa; }
+.tl-dl     .tl-body { border-color: #b2ebf2; background: #f0fbfc; }
+.tl-dl     .tl-type-label { color: #00838f; }
+
+.tl-inv    .tl-node { border-color: #5c6bc0; background: #e8eaf6; }
+.tl-inv    .tl-body { border-color: #c5cae9; background: #f5f6ff; }
+.tl-inv    .tl-type-label { color: #3949ab; }
+
+.tl-poll   .tl-node { border-color: #00897b; background: #e0f2f1; }
+.tl-poll   .tl-body { border-color: #b2dfdb; background: #f0faf9; }
+.tl-poll   .tl-type-label { color: #00695c; }
+
+.tl-alias  .tl-node { border-color: #8d6e63; background: #efebe9; }
+.tl-alias  .tl-body { border-color: #d7ccc8; background: #faf8f7; }
+.tl-alias  .tl-type-label { color: #6d4c41; }
+
+/* Jahres-Trennlinie ------------------------------------------------- */
+.tl-year-marker {
+    position: relative;
+    margin: 12px 0 8px -140px;
+    padding-left: 140px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #4f8ef7;
+    letter-spacing: 0.05em;
+}
+
+.tl-year-marker::after {
+    content: "";
+    display: inline-block;
+    margin-left: 8px;
+    width: 60px;
+    height: 1px;
+    background: #d0d8e8;
+    vertical-align: middle;
+}

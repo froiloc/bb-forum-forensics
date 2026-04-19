@@ -191,6 +191,7 @@ async function loadStaticBlob() {
         const html = await resp.text();
         container.innerHTML = html;
         initHeatmap(container);
+        initTimeline(container);
 
     } catch (err) {
         container.innerHTML =
@@ -800,6 +801,191 @@ document.addEventListener('DOMContentLoaded', () => {
         initForensicLinks();    // navigate_to_url via postMessage (Build 038)
     }
 });
+
+// ===========================================================================
+// FENSTER 2 — Vollständiger Zeitstrahl §7.11
+// ===========================================================================
+
+/**
+ * Initialisiert den interaktiven Zeitstrahl im #forensic-timeline-ui.
+ *
+ * Liest Ereignis-JSON aus <script id="forensic-timeline-data">,
+ * rendert die Zeitleiste und verbindet Filter-Dropdown + Buttons.
+ * Jahreszahl-Trennlinien werden automatisch eingefügt.
+ * navigate_to_url via postMessage für verlinkbare Ereignisse.
+ *
+ * Beleg: Projektgespräch 2026-04-18 — §7.11 Zeitstrahl Cellebrite-Stil.
+ *
+ * @param {HTMLElement} container — Wurzelelement (#userinfo-static)
+ */
+function initTimeline(container) {
+    if (!container) return;
+
+    const dataEl = container.querySelector('#forensic-timeline-data');
+    const ui     = container.querySelector('#forensic-timeline-ui');
+    if (!dataEl || !ui) return;
+
+    let payload;
+    try {
+        payload = JSON.parse(dataEl.textContent);
+    } catch (e) {
+        console.warn('[Forensic] Zeitstrahl: JSON-Parse fehlgeschlagen', e);
+        return;
+    }
+
+    const events    = payload.events  || [];
+    const typesMeta = payload.types   || [];
+    if (events.length === 0) return;
+
+    const tlContainer = ui.querySelector('#tl-container');
+    const filterSel   = ui.querySelector('#tl-filter');
+    const btnAll      = ui.querySelector('#tl-filter-all');
+    const btnNone     = ui.querySelector('#tl-filter-none');
+    const countEl     = ui.querySelector('#tl-count');
+
+    // ---------------------------------------------------------------
+    // Filter-Dropdown aufbauen
+    // ---------------------------------------------------------------
+    typesMeta.forEach(tm => {
+        const opt = document.createElement('option');
+        opt.value    = tm.type;
+        opt.selected = true;
+        opt.textContent = `${tm.icon} ${tm.label} (${tm.count})`;
+        filterSel.appendChild(opt);
+    });
+
+    // ---------------------------------------------------------------
+    // Ereignis-Nodes rendern
+    // ---------------------------------------------------------------
+    function formatDatetime(ts) {
+        const d = new Date(ts * 1000);
+        const date = d.toISOString().slice(0, 10);
+        const time = d.toISOString().slice(11, 19) + ' UTC';
+        return { date, time, year: d.getUTCFullYear() };
+    }
+
+    function buildEventEl(evt) {
+        const { date, time } = formatDatetime(evt.ts);
+        const el = document.createElement('div');
+        el.className = `tl-event ${evt.css}`;
+        el.dataset.type = evt.type;
+
+        let linkHtml = '';
+        if (evt.url) {
+            linkHtml = `<span class="tl-link" data-forensic-url="${_escAttr(evt.url)}">↗</span>`;
+        }
+
+        el.innerHTML = `
+            <div class="tl-datetime">
+                <span class="tl-date">${date}</span>
+                <span class="tl-time">${time}</span>
+            </div>
+            <div class="tl-connector"></div>
+            <div class="tl-node" title="${_escAttr(evt.label)}">${evt.icon}</div>
+            <div class="tl-body">
+                <div class="tl-type-label">${_escHtml(evt.label)}</div>
+                <div class="tl-detail">${_escHtml(evt.detail)}${linkHtml}</div>
+            </div>`;
+        return el;
+    }
+
+    function _escHtml(s) {
+        return String(s || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+    function _escAttr(s) { return _escHtml(s); }
+
+    // Alle Ereignis-Elemente vorab erzeugen (für schnelles Ein-/Ausblenden)
+    let lastYear = null;
+    const eventEls = [];
+
+    events.forEach(evt => {
+        const { year } = formatDatetime(evt.ts);
+
+        // Jahres-Trennlinie
+        if (year !== lastYear) {
+            const marker = document.createElement('div');
+            marker.className = 'tl-year-marker';
+            marker.textContent = String(year);
+            marker.dataset.year = String(year);
+            tlContainer.appendChild(marker);
+            lastYear = year;
+        }
+
+        const el = buildEventEl(evt);
+        tlContainer.appendChild(el);
+        eventEls.push(el);
+    });
+
+    // ---------------------------------------------------------------
+    // Filterlogik
+    // ---------------------------------------------------------------
+    function getSelectedTypes() {
+        return Array.from(filterSel.selectedOptions).map(o => o.value);
+    }
+
+    function applyFilter() {
+        const selected = new Set(getSelectedTypes());
+        let visible = 0;
+
+        eventEls.forEach(el => {
+            const show = selected.has(el.dataset.type);
+            el.classList.toggle('tl-hidden', !show);
+            if (show) visible++;
+        });
+
+        // Jahres-Trennlinien ausblenden wenn kein sichtbares Ereignis im Jahr
+        tlContainer.querySelectorAll('.tl-year-marker').forEach(marker => {
+            const yr = marker.dataset.year;
+            // Suche nächstes sichtbares tl-event mit passendem Jahr
+            let next = marker.nextElementSibling;
+            let hasVisible = false;
+            while (next && !next.classList.contains('tl-year-marker')) {
+                if (next.classList.contains('tl-event') && !next.classList.contains('tl-hidden')) {
+                    hasVisible = true;
+                    break;
+                }
+                next = next.nextElementSibling;
+            }
+            marker.classList.toggle('tl-hidden', !hasVisible);
+        });
+
+        countEl.textContent = `${visible} von ${events.length} Ereignissen`;
+    }
+
+    filterSel.addEventListener('change', applyFilter);
+
+    btnAll.addEventListener('click', () => {
+        Array.from(filterSel.options).forEach(o => { o.selected = true; });
+        applyFilter();
+    });
+
+    btnNone.addEventListener('click', () => {
+        Array.from(filterSel.options).forEach(o => { o.selected = false; });
+        applyFilter();
+    });
+
+    // ---------------------------------------------------------------
+    // navigate_to_url für Zeitleisten-Links
+    // ---------------------------------------------------------------
+    tlContainer.addEventListener('click', evt => {
+        const link = evt.target.closest('[data-forensic-url]');
+        if (!link) return;
+        evt.preventDefault();
+        const url = link.dataset.forensicUrl;
+        if (!url) return;
+        const target = window.opener || window.parent;
+        if (target && target !== window) {
+            target.postMessage({ type: 'navigate_to_url', url }, window.location.origin);
+        }
+    });
+
+    // Initialzähler setzen
+    applyFilter();
+}
 
 // ===========================================================================
 // FENSTER 2 — Grafische Heatmap
