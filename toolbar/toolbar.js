@@ -1248,6 +1248,26 @@
   })();
 
   // ===========================================================================
+  // postMessage-Empfänger: Navigation aus Nutzerinfo-Tab und anderen Fenstern
+  // ===========================================================================
+  // Empfängt navigate_to_url-Nachrichten von Fenstern die dieses Hauptfenster
+  // als opener oder parent haben (z.B. Nutzerinfo-Tab).
+  // Beleg: Projektgespräch 2026-04-18 — Links in uid_aliases sollen im
+  // Hauptfenster die AJAX-Navigation auslösen, nicht per <a href> navigieren.
+  window.addEventListener("message", function (evt) {
+    // Sicherheitsprüfung: nur Same-Origin-Nachrichten akzeptieren
+    if (evt.origin !== window.location.origin) return;
+    if (!evt.data || typeof evt.data !== "object") return;
+
+    if (evt.data.type === "navigate_to_url") {
+      var url = evt.data.url;
+      if (typeof url === "string" && url.length > 0) {
+        NavigationModule.loadPage(url, true);
+      }
+    }
+  });
+
+  // ===========================================================================
   // PHASE 5: MarkerToolModule — Textmarkierungs-Workflow
   // ===========================================================================
   var MarkerToolModule = (function () {

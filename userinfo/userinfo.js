@@ -796,5 +796,49 @@ document.addEventListener('DOMContentLoaded', () => {
         loadStaticBlob();       // Phase-B-BLOB in #userinfo-static (Build 037)
         loadDynamicBlocks();
         initSSEWindow2();
+        initForensicLinks();    // navigate_to_url via postMessage (Build 038)
     }
 });
+
+// ===========================================================================
+// FENSTER 2 — Forensische Links (navigate_to_url)
+// ===========================================================================
+
+/**
+ * Fängt Klicks auf [data-forensic-url]-Elemente im #userinfo-static-Bereich ab
+ * und sendet eine navigate_to_url-Nachricht an das Hauptfenster (opener/parent).
+ *
+ * Hintergrund: Der BLOB läuft in einem eingebetteten Kontext (iframe-ähnlich
+ * oder separates Fenster). <a href target="_parent"> funktioniert nicht
+ * zuverlässig für AJAX-Navigation im Hauptfenster. Stattdessen wird
+ * postMessage verwendet, das NavigationModule.loadPage() im Hauptfenster aufruft.
+ * Beleg: Projektgespräch 2026-04-18.
+ *
+ * Elemente mit data-forensic-url werden vom phase_b_html_renderer.py erzeugt,
+ * z.B. in _render_aliases für source_url-Links.
+ */
+function initForensicLinks() {
+    const container = document.getElementById('userinfo-static');
+    if (!container) return;
+
+    container.addEventListener('click', function (evt) {
+        const link = evt.target.closest('[data-forensic-url]');
+        if (!link) return;
+        evt.preventDefault();
+        evt.stopPropagation();
+
+        const url = link.dataset.forensicUrl;
+        if (!url) return;
+
+        const target = window.opener || window.parent;
+        if (target && target !== window) {
+            target.postMessage(
+                { type: 'navigate_to_url', url: url },
+                window.location.origin
+            );
+        } else {
+            // Fallback: direkte Navigation wenn kein opener/parent (z.B. standalone)
+            window.location.href = url;
+        }
+    });
+}

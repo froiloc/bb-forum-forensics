@@ -234,7 +234,7 @@ def main() -> None:
     logger = get_logger(__name__)
 
     logger.info(
-        "=== Forensischer Webserver startet — Build 011 · 2026-04-11 ==="
+        "=== Forensischer Webserver startet — Build 038 · 2026-04-18 ==="
     )
     logger.info("Config geladen: '%s'", config_path)
 
