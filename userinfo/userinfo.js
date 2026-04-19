@@ -519,6 +519,11 @@ async function initSSEWindow3() {
                 const ownName = document.getElementById('report-editor-body')?.dataset?.username || '';
                 if (locked_by === ownName) {
                     updateLockStatus('lock-mine', 'Lock: ich');
+                    // Buttons korrekt setzen — auch wenn Lock via SSE bestaetigt wird
+                    const btnAcquire = document.getElementById('btn-acquire-lock');
+                    const btnRelease = document.getElementById('btn-release-lock');
+                    if (btnAcquire) btnAcquire.disabled = true;
+                    if (btnRelease) btnRelease.disabled = false;
                 } else {
                     updateLockStatus('lock-other', `Lock belegt: ${esc(locked_by)}`);
                     disableEditorControls(true);

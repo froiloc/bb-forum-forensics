@@ -261,9 +261,29 @@ async function loadReport(report) {
     }
 
     // Bestehenden Editor zerstoeren
+    // WICHTIG: Editor.js destroy() entfernt den holder-DOM-Knoten.
+    // Daher muss er danach neu angelegt werden, sonst findet
+    // _initEditorJs() via getElementById('editorjs-holder') nichts.
+    // Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19
     if (_editor) {
         try { await _editor.destroy(); } catch (_) {}
         _editor = null;
+        window._editor = null;
+    }
+    // editorjs-holder neu anlegen falls destroy() ihn entfernt hat
+    const editorContainer = document.getElementById('report-editor-container');
+    if (editorContainer && !document.getElementById('editorjs-holder')) {
+        // Toolbar, Status-Msg und Frozen-Overlay bleiben erhalten —
+        // nur den Holder neu einfuegen
+        const statusEl = document.getElementById('report-status-msg');
+        const newHolder = document.createElement('div');
+        newHolder.id = 'editorjs-holder';
+        newHolder.className = 'editorjs-holder';
+        if (statusEl && statusEl.nextSibling) {
+            editorContainer.insertBefore(newHolder, statusEl.nextSibling);
+        } else {
+            editorContainer.appendChild(newHolder);
+        }
     }
 
     // Bloecke laden
