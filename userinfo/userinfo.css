@@ -624,3 +624,322 @@ html, body {
 .status-msg-ok    { background: #e8f5e9; border: 1px solid #a5d6a7; color: #2e7d32; }
 .status-msg-warn  { background: #fff3e0; border: 1px solid #ffcc80; color: #e65100; }
 .status-msg-error { background: #ffebee; border: 1px solid #ef9a9a; color: #c62828; }
+
+/* ================================================================== */
+/* forensic-* Klassen — statischer Phase-B-BLOB (Build 039)           */
+/* Erzeugt von phase_b_html_renderer.py. Beleg: Projektgespräch       */
+/* 2026-04-18.                                                         */
+/* ================================================================== */
+
+/* Äußerer Container ------------------------------------------------- */
+.forensic-userinfo {
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 13px;
+    color: #1a1f2e;
+    padding: 8px 0;
+}
+
+.forensic-userinfo-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1a1f2e;
+    margin: 0 0 12px 0;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #4f8ef7;
+}
+
+.forensic-uid {
+    font-size: 11px;
+    color: #4f8ef7;
+    font-family: monospace;
+    font-weight: 400;
+    margin-left: 8px;
+}
+
+/* Aufklappbare Abschnitte ------------------------------------------- */
+details.forensic-section {
+    margin-bottom: 8px;
+    border: 1px solid #d0d8e8;
+    border-radius: 4px;
+    background: #fff;
+}
+
+summary.forensic-section-title {
+    padding: 8px 12px;
+    font-weight: 600;
+    font-size: 12px;
+    cursor: pointer;
+    color: #1a1f2e;
+    background: #f4f6fa;
+    border-radius: 4px;
+    user-select: none;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+summary.forensic-section-title:hover {
+    background: #e8edf4;
+}
+
+.forensic-section-body {
+    padding: 10px 12px;
+}
+
+/* Schlüssel-Wert-Tabelle -------------------------------------------- */
+table.forensic-kv {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+table.forensic-kv th {
+    width: 40%;
+    text-align: left;
+    padding: 4px 6px;
+    color: #5a6a8a;
+    font-weight: 500;
+    vertical-align: top;
+    border-bottom: 1px solid #f0f2f8;
+}
+
+table.forensic-kv td {
+    padding: 4px 6px;
+    color: #1a1f2e;
+    border-bottom: 1px solid #f0f2f8;
+    word-break: break-word;
+}
+
+/* Datentabellen (uid_posts, uid_pms_posts, uid_aliases etc.) -------- */
+table.forensic-data {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    margin-top: 6px;
+}
+
+table.forensic-data thead tr {
+    background: #f4f6fa;
+}
+
+table.forensic-data th {
+    padding: 5px 8px;
+    text-align: left;
+    font-weight: 600;
+    color: #5a6a8a;
+    border-bottom: 2px solid #d0d8e8;
+    white-space: nowrap;
+}
+
+table.forensic-data td {
+    padding: 4px 8px;
+    border-bottom: 1px solid #f0f2f8;
+    vertical-align: top;
+    word-break: break-word;
+}
+
+table.forensic-data tr:hover td {
+    background: #f8f9fc;
+}
+
+/* Alert-Badges ------------------------------------------------------ */
+.forensic-alert {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 700;
+    margin-right: 4px;
+    vertical-align: middle;
+}
+
+.forensic-alert-critical {
+    background: #c62828;
+    color: #fff;
+}
+
+.forensic-alert-high {
+    background: #e65100;
+    color: #fff;
+}
+
+.forensic-alert-medium {
+    background: #f57f17;
+    color: #fff;
+}
+
+.forensic-alert-low {
+    background: #1565c0;
+    color: #fff;
+}
+
+/* Aktiv / Passiv-Kennzeichnung ------------------------------------- */
+/* Beleg: Projektgespräch 2026-04-18 — §7.9 Beiträge aktiv/passiv   */
+h4.forensic-active {
+    color: #1565c0;
+    font-size: 12px;
+    font-weight: 700;
+    margin: 12px 0 4px 0;
+}
+
+h4.forensic-passive {
+    color: #6a6a8a;
+    font-size: 12px;
+    font-weight: 700;
+    margin: 12px 0 4px 0;
+}
+
+span.forensic-active {
+    color: #1565c0;
+    font-weight: 600;
+}
+
+span.forensic-passive {
+    color: #6a6a8a;
+    font-weight: 600;
+}
+
+/* Badge-Darstellung ------------------------------------------------- */
+/* Beleg: Projektgespräch 2026-04-18 — Badge mit Hover-Tooltip       */
+.forensic-badge {
+    display: inline-block;
+    background: #e3f2fd;
+    color: #1565c0;
+    border: 1px solid #90caf9;
+    border-radius: 3px;
+    padding: 2px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    margin: 1px 3px 1px 0;
+    cursor: default;
+}
+
+.forensic-badge[title] {
+    border-style: dashed;
+}
+
+/* Quell-Link in uid_aliases (postMessage-Navigation) ---------------- */
+/* Beleg: Projektgespräch 2026-04-18                                   */
+.forensic-source-link {
+    display: inline-block;
+    color: #4f8ef7;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 0 3px;
+    border-radius: 2px;
+    transition: background 0.15s;
+}
+
+.forensic-source-link:hover {
+    background: #e3f2fd;
+    color: #1565c0;
+}
+
+.forensic-source-link:focus {
+    outline: 2px solid #4f8ef7;
+    outline-offset: 1px;
+}
+
+/* Hilfstexte / Hinweise --------------------------------------------- */
+.forensic-note {
+    font-size: 11px;
+    color: #8a8aaa;
+    font-style: italic;
+}
+
+.forensic-missing {
+    font-size: 11px;
+    color: #c62828;
+    font-style: italic;
+}
+
+.forensic-generated-at {
+    font-size: 10px;
+    color: #aaa;
+    margin-top: 12px;
+    padding-top: 8px;
+    border-top: 1px solid #e8edf4;
+    text-align: right;
+}
+
+/* Signatur-Block ---------------------------------------------------- */
+.forensic-signature {
+    background: #f9f9fb;
+    border-left: 3px solid #d0d8e8;
+    padding: 6px 10px;
+    margin: 4px 0;
+    border-radius: 0 4px 4px 0;
+}
+
+.forensic-signature pre {
+    margin: 0;
+    font-size: 11px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: #3a3a5a;
+}
+
+/* Statistik-Einträge ------------------------------------------------ */
+.forensic-ok         { color: #2e7d32; font-weight: 600; }
+.forensic-fail       { color: #c62828; font-weight: 600; }
+.forensic-reported   { color: #5a6a8a; }
+
+/* Heatmap ----------------------------------------------------------- */
+/* Basis-Stile; Farben werden von initHeatmap() in userinfo.js gesetzt */
+.forensic-heatmap {
+    overflow-x: auto;
+    margin-top: 6px;
+}
+
+.forensic-heatmap table {
+    border-collapse: collapse;
+    font-size: 11px;
+}
+
+.forensic-hm-day {
+    font-weight: 600;
+    color: #5a6a8a;
+    padding: 2px 8px 2px 4px;
+    font-size: 11px;
+    white-space: nowrap;
+    text-align: right;
+}
+
+.forensic-hm-hour {
+    font-size: 10px;
+    color: #8a8aaa;
+    text-align: center;
+    padding: 2px 0 4px 0;
+    min-width: 24px;
+    width: 24px;
+}
+
+.forensic-hm-cell {
+    width: 24px;
+    min-width: 24px;
+    height: 20px;
+    text-align: center;
+    font-size: 0;           /* Zahl ausblenden — Farbe trägt Info */
+    padding: 0;
+    border: 1px solid #e8edf4;
+    border-radius: 2px;
+    cursor: default;
+    transition: opacity 0.1s;
+    background: #eef2fb;    /* Fallback wenn JS nicht läuft */
+}
+
+.forensic-hm-cell:hover {
+    outline: 2px solid #4f8ef7;
+    outline-offset: -1px;
+    z-index: 1;
+    position: relative;
+}
+
+/* Intensitätsstufen — werden von initHeatmap() per data-intensity gesetzt */
+.forensic-hm-cell[data-intensity="0"]  { background: #f0f4ff; }
+.forensic-hm-cell[data-level="1"]  { background: #dce8fb; }
+.forensic-hm-cell[data-level="2"]  { background: #b8d0f7; }
+.forensic-hm-cell[data-level="3"]  { background: #90b8f0; }
+.forensic-hm-cell[data-level="4"]  { background: #6098e8; }
+.forensic-hm-cell[data-level="5"]  { background: #3a7add; }
+.forensic-hm-cell[data-level="6"]  { background: #1c5fcc; }
+.forensic-hm-cell[data-level="7"]  { background: #1048b0; }

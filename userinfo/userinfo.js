@@ -190,6 +190,7 @@ async function loadStaticBlob() {
 
         const html = await resp.text();
         container.innerHTML = html;
+        initHeatmap(container);
 
     } catch (err) {
         container.innerHTML =
@@ -799,6 +800,58 @@ document.addEventListener('DOMContentLoaded', () => {
         initForensicLinks();    // navigate_to_url via postMessage (Build 038)
     }
 });
+
+// ===========================================================================
+// FENSTER 2 — Grafische Heatmap
+// ===========================================================================
+
+/**
+ * Färbt die Heatmap-Zellen im gegebenen Container anhand von data-intensity.
+ *
+ * Der BLOB enthält data-intensity="0..100" pro Zelle (berechnet vom
+ * phase_b_html_renderer.py). initHeatmap() setzt data-level="0..7"
+ * und einen Tooltip mit dem exakten Wert aus dem title-Attribut.
+ *
+ * Farbskala: weiß → tiefblau (7 Stufen + 0 = leer).
+ * Beleg: Projektgespräch 2026-04-18.
+ *
+ * @param {HTMLElement} container — Wurzelelement des BLOBs (#userinfo-static)
+ */
+function initHeatmap(container) {
+    if (!container) return;
+
+    const cells = container.querySelectorAll('.forensic-hm-cell');
+    if (cells.length === 0) return;
+
+    // Maximalen intensity-Wert bestimmen (für relative Skalierung)
+    let maxIntensity = 0;
+    cells.forEach(cell => {
+        const v = parseInt(cell.dataset.intensity || '0', 10);
+        if (v > maxIntensity) maxIntensity = v;
+    });
+
+    if (maxIntensity === 0) return;   // Keine Aktivität — nichts zu färben
+
+    cells.forEach(cell => {
+        const intensity = parseInt(cell.dataset.intensity || '0', 10);
+
+        // Stufe 0..7: 0 = leer, 1..7 = aufsteigende Intensität
+        let level;
+        if (intensity === 0) {
+            level = 0;
+        } else {
+            // Gleichmäßige Verteilung auf Stufen 1–7
+            level = Math.max(1, Math.min(7, Math.ceil((intensity / maxIntensity) * 7)));
+        }
+
+        cell.dataset.level = String(level);
+
+        // Tooltip: exakten Wert aus title-Attribut (vom Renderer gesetzt) behalten
+        // Stufe und Farb-Feedback in aria-label für Barrierefreiheit
+        const title = cell.getAttribute('title') || '';
+        cell.setAttribute('aria-label', title);
+    });
+}
 
 // ===========================================================================
 // FENSTER 2 — Forensische Links (navigate_to_url)

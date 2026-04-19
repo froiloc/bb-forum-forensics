@@ -140,6 +140,10 @@ class ForensicRequestHandler(http.server.BaseHTTPRequestHandler):
                 path=self.path,
                 is_ajax=is_ajax,
             )
+        except (BrokenPipeError, ConnectionResetError):
+            # Client hat die Verbindung vorzeitig getrennt — kein Fehler.
+            # Beleg: TODO-001, Projektgespräch 2026-04-18.
+            pass
         except Exception as exc:
             logger.error(
                 "Unbehandelte Ausnahme bei Request %s %s: %s",
@@ -175,7 +179,13 @@ class ForensicRequestHandler(http.server.BaseHTTPRequestHandler):
                 self.send_header(key, value)
         self.end_headers()
         if self.command != "HEAD":
-            self.wfile.write(body)
+            try:
+                self.wfile.write(body)
+            except (BrokenPipeError, ConnectionResetError):
+                # Client hat die Verbindung vor Abschluss getrennt (Tab
+                # geschlossen, schnelle Navigation). Kein Fehler — erwartet.
+                # Beleg: TODO-001, Projektgespräch 2026-04-18.
+                pass
 
     def send_not_in_scope(self) -> None:
         """
