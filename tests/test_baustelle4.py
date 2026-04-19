@@ -748,3 +748,627 @@ class TestInvestigationStatusNoteColumn:
             con.commit()
             assert _column_exists(con, "scrape_jobs", "note")
             con.close()
+
+
+# =============================================================================
+# AP-E3: Tests fuer neue Editor-Endpunkte
+# Beleg: AP-E3, Projektgespraech 2026-04-19
+# =============================================================================
+
+def _make_endpoint_bundle(edb=None):
+    """Mock-Bundle mit evidence_db fuer Endpunkt-Tests."""
+    bundle = MagicMock()
+    if edb is not None:
+        bundle.evidence = edb
+    bundle.coordinator = None
+    return bundle
+
+
+def _make_context_with_name(username="h012345", investigator_id=1):
+    ctx = MagicMock()
+    ctx.username       = username
+    ctx.investigator_id = investigator_id
+    return ctx
+
+
+def _post(endpoint_fn, edb, body_dict, username="h012345", lock_id=None):
+    """
+    Hilfsfunktion: ruft einen POST-Endpunkt auf und gibt Response zurueck.
+    lock_id wird als Header und als Body-Feld gesetzt.
+    """
+    import sys, os
+    project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if project_dir not in sys.path:
+        sys.path.insert(0, project_dir)
+
+    bundle  = _make_endpoint_bundle(edb)
+    ctx     = _make_context_with_name(username)
+    resp    = {}
+    handler = _make_mock_handler(resp)
+    if lock_id:
+        handler.headers = {"X-Forensic-Lock-Id": lock_id}
+        body_dict = {**body_dict, "lock_id": lock_id}
+    else:
+        handler.headers = {}
+
+    body_bytes = json.dumps(body_dict).encode("utf-8")
+    endpoint_fn(bundle, ctx, handler, body_bytes)
+    return resp
+
+
+# ---------------------------------------------------------------------------
+# TestReportsEndpoint
+# ---------------------------------------------------------------------------
+
+class TestReportsEndpoint:
+    """AP-E3: GET und POST /_forensic/reports."""
+
+    def _make_ep(self, edb):
+        import sys, os
+        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if project_dir not in sys.path:
+            sys.path.insert(0, project_dir)
+        from forensic_api.reports import ReportsEndpoint
+        bundle = _make_endpoint_bundle(edb)
+        ctx    = _make_context_with_name()
+        return ReportsEndpoint(bundle, ctx, MagicMock())
+
+    def test_get_leere_liste(self, in_memory_evidence_db):
+        """GET ohne Berichte -> leere Liste."""
+        ep   = self._make_ep(in_memory_evidence_db)
+        resp = {}
+        ep.handle_get(_make_mock_handler(resp))
+        assert resp['status'] == 200
+        data = json.loads(resp['body'])
+        assert data['reports'] == []
+
+    def test_get_mit_berichten(self, in_memory_evidence_db):
+        """GET mit Berichten -> korrekte Metadaten, keine Bloecke."""
+        edb = in_memory_evidence_db
+        edb.create_report("interim", "1. Zwischenbericht", "h001")
+        edb.create_report("addendum", "1. Nachtrag", "h002")
+        ep   = self._make_ep(edb)
+        resp = {}
+        ep.handle_get(_make_mock_handler(resp))
+        assert resp['status'] == 200
+        data = json.loads(resp['body'])
+        assert len(data['reports']) == 2
+        # Keine Bloecke in der Metadaten-Liste
+        for r in data['reports']:
+            assert 'blocks' not in r
+
+    def test_post_neuer_bericht(self, in_memory_evidence_db):
+        """POST mit gueltigen Daten -> HTTP 201, id in Antwort."""
+        ep   = self._make_ep(in_memory_evidence_db)
+        resp = {}
+        body = json.dumps({
+            "report_type": "interim", "title": "1. Zwischenbericht"
+        }).encode()
+        ep.handle_post(_make_mock_handler(resp), body)
+        assert resp['status'] == 201
+        data = json.loads(resp['body'])
+        assert 'id' in data
+        assert data['report_type'] == 'interim'
+
+    def test_post_ungültiger_typ(self, in_memory_evidence_db):
+        """POST mit unbekanntem report_type -> HTTP 400."""
+        ep   = self._make_ep(in_memory_evidence_db)
+        resp = {}
+        body = json.dumps({"report_type": "invalid", "title": "Test"}).encode()
+        ep.handle_post(_make_mock_handler(resp), body)
+        assert resp['status'] == 400
+
+    def test_post_doppelter_abschlussbericht(self, in_memory_evidence_db):
+        """POST zweiter Abschlussbericht -> HTTP 409 Conflict."""
+        edb = in_memory_evidence_db
+        edb.create_report("final", "Abschlussbericht", "h001")
+        ep   = self._make_ep(edb)
+        resp = {}
+        body = json.dumps({"report_type": "final", "title": "Zweiter"}).encode()
+        ep.handle_post(_make_mock_handler(resp), body)
+        assert resp['status'] == 409
+
+    def test_post_fehlender_title(self, in_memory_evidence_db):
+        """POST ohne title -> HTTP 400."""
+        ep   = self._make_ep(in_memory_evidence_db)
+        resp = {}
+        body = json.dumps({"report_type": "interim"}).encode()
+        ep.handle_post(_make_mock_handler(resp), body)
+        assert resp['status'] == 400
+
+
+# ---------------------------------------------------------------------------
+# TestEditorBlockEndpoint
+# ---------------------------------------------------------------------------
+
+class TestEditorBlockEndpoint:
+    """AP-E3: POST /_forensic/editor/block."""
+
+    def _make_ep(self, edb):
+        import sys, os
+        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if project_dir not in sys.path:
+            sys.path.insert(0, project_dir)
+        from forensic_api.editor_block import EditorBlockEndpoint
+        bundle = _make_endpoint_bundle(edb)
+        ctx    = _make_context_with_name()
+        return EditorBlockEndpoint(bundle, ctx, MagicMock())
+
+    def _acquire(self, edb):
+        return edb.acquire_lock("h012345", "test-sse")
+
+    def _make_report(self, edb):
+        return edb.create_report("interim", "Test", "h001")
+
+    def test_save_ohne_lock_returns_423(self, in_memory_evidence_db):
+        ep   = self._make_ep(in_memory_evidence_db)
+        resp = {}
+        handler = _make_mock_handler(resp)
+        handler.headers = {}
+        body = json.dumps({
+            "action": "save", "block_id": "b1", "report_id": 1,
+            "block_type": "paragraph", "block_data": {}, "owner": "h001",
+        }).encode()
+        ep.handle(handler, body)
+        assert resp['status'] == 423
+
+    def test_save_mit_lock_returns_200(self, in_memory_evidence_db):
+        edb  = in_memory_evidence_db
+        rid  = self._make_report(edb)
+        lock = self._acquire(edb)
+        ep   = self._make_ep(edb)
+        resp = {}
+        handler = _make_mock_handler(resp)
+        handler.headers = {"X-Forensic-Lock-Id": lock}
+        body = json.dumps({
+            "action": "save", "block_id": "b1", "report_id": rid,
+            "block_type": "paragraph",
+            "block_data": {"text": "Forensischer Befund"},
+            "owner": "h012345", "sort_index": "a0",
+            "lock_id": lock,
+        }).encode()
+        ep.handle(handler, body)
+        assert resp['status'] == 200
+        data = json.loads(resp['body'])
+        assert data['status'] == 'saved'
+        # Block wirklich gespeichert
+        assert edb.get_block("b1") is not None
+
+    def test_delete_ohne_lock_returns_423(self, in_memory_evidence_db):
+        ep   = self._make_ep(in_memory_evidence_db)
+        resp = {}
+        handler = _make_mock_handler(resp)
+        handler.headers = {}
+        body = json.dumps({"action": "delete", "block_id": "b1"}).encode()
+        ep.handle(handler, body)
+        assert resp['status'] == 423
+
+    def test_delete_fremder_block_returns_403(self, in_memory_evidence_db):
+        """Nicht-Owner versucht zu loeschen -> HTTP 403."""
+        edb  = in_memory_evidence_db
+        rid  = self._make_report(edb)
+        lock = self._acquire(edb)
+        # Block von h001 anlegen
+        edb.save_block("b-owned", rid, "paragraph", {}, "h001", "a0")
+        # h012345 versucht zu loeschen
+        ep   = self._make_ep(edb)  # context.username = h012345
+        resp = {}
+        handler = _make_mock_handler(resp)
+        handler.headers = {"X-Forensic-Lock-Id": lock}
+        body = json.dumps({
+            "action": "delete", "block_id": "b-owned", "lock_id": lock
+        }).encode()
+        ep.handle(handler, body)
+        assert resp['status'] == 403
+
+    def test_delete_eigener_block_returns_200(self, in_memory_evidence_db):
+        """Owner loescht eigenen Block -> HTTP 200."""
+        edb  = in_memory_evidence_db
+        rid  = self._make_report(edb)
+        lock = self._acquire(edb)
+        # Block von h012345 anlegen (gleiche wie context.username)
+        edb.save_block("b-own", rid, "paragraph", {}, "h012345", "a0")
+        ep   = self._make_ep(edb)
+        resp = {}
+        handler = _make_mock_handler(resp)
+        handler.headers = {"X-Forensic-Lock-Id": lock}
+        body = json.dumps({
+            "action": "delete", "block_id": "b-own", "lock_id": lock
+        }).encode()
+        ep.handle(handler, body)
+        assert resp['status'] == 200
+        assert edb.get_block("b-own") is None
+
+    def test_delete_nicht_gefunden_returns_404(self, in_memory_evidence_db):
+        edb  = in_memory_evidence_db
+        lock = self._acquire(edb)
+        ep   = self._make_ep(edb)
+        resp = {}
+        handler = _make_mock_handler(resp)
+        handler.headers = {"X-Forensic-Lock-Id": lock}
+        body = json.dumps({
+            "action": "delete", "block_id": "nicht-vorhanden", "lock_id": lock
+        }).encode()
+        ep.handle(handler, body)
+        assert resp['status'] == 404
+
+    def test_unbekannte_aktion_returns_400(self, in_memory_evidence_db):
+        edb  = in_memory_evidence_db
+        lock = self._acquire(edb)
+        ep   = self._make_ep(edb)
+        resp = {}
+        handler = _make_mock_handler(resp)
+        handler.headers = {"X-Forensic-Lock-Id": lock}
+        body = json.dumps({
+            "action": "unbekannt", "block_id": "b1", "lock_id": lock
+        }).encode()
+        ep.handle(handler, body)
+        assert resp['status'] == 400
+
+
+# ---------------------------------------------------------------------------
+# TestEditorOrderEndpoint
+# ---------------------------------------------------------------------------
+
+class TestEditorOrderEndpoint:
+    """AP-E3: POST /_forensic/editor/order."""
+
+    def _make_ep(self, edb, username="h012345"):
+        import sys, os
+        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if project_dir not in sys.path:
+            sys.path.insert(0, project_dir)
+        from forensic_api.editor_order import EditorOrderEndpoint
+        bundle = _make_endpoint_bundle(edb)
+        ctx    = _make_context_with_name(username)
+        return EditorOrderEndpoint(bundle, ctx, MagicMock())
+
+    def test_order_ohne_lock_returns_423(self, in_memory_evidence_db):
+        ep   = self._make_ep(in_memory_evidence_db)
+        resp = {}
+        handler = _make_mock_handler(resp)
+        handler.headers = {}
+        body = json.dumps({
+            "report_id": 1,
+            "order": [{"block_id": "b1", "sort_index": "a0"}],
+        }).encode()
+        ep.handle(handler, body)
+        assert resp['status'] == 423
+
+    def test_order_mit_lock_returns_200(self, in_memory_evidence_db):
+        edb  = in_memory_evidence_db
+        rid  = edb.create_report("interim", "Test", "h001")
+        lock = edb.acquire_lock("h012345", "test-sse")
+        edb.save_block("b1", rid, "paragraph", {}, "h001", "a0")
+        edb.save_block("b2", rid, "paragraph", {}, "h001", "b0")
+        ep   = self._make_ep(edb)
+        resp = {}
+        handler = _make_mock_handler(resp)
+        handler.headers = {"X-Forensic-Lock-Id": lock}
+        body = json.dumps({
+            "report_id": rid,
+            "order": [
+                {"block_id": "b2", "sort_index": "a0"},
+                {"block_id": "b1", "sort_index": "b0"},
+            ],
+            "lock_id": lock,
+        }).encode()
+        ep.handle(handler, body)
+        assert resp['status'] == 200
+        data = json.loads(resp['body'])
+        assert 'updated' in data
+        # Reihenfolge tatsaechlich aktualisiert
+        order = edb.get_block_order(rid)
+        idx = {o.block_id: o.sort_index for o in order}
+        assert idx["b2"] == "a0"
+        assert idx["b1"] == "b0"
+
+    def test_order_fehlende_report_id_returns_400(self, in_memory_evidence_db):
+        edb  = in_memory_evidence_db
+        lock = edb.acquire_lock("h012345", "test-sse")
+        ep   = self._make_ep(edb)
+        resp = {}
+        handler = _make_mock_handler(resp)
+        handler.headers = {"X-Forensic-Lock-Id": lock}
+        body = json.dumps({
+            "order": [{"block_id": "b1", "sort_index": "a0"}],
+            "lock_id": lock,
+        }).encode()
+        ep.handle(handler, body)
+        assert resp['status'] == 400
+
+    def test_order_leere_liste_returns_400(self, in_memory_evidence_db):
+        edb  = in_memory_evidence_db
+        lock = edb.acquire_lock("h012345", "test-sse")
+        ep   = self._make_ep(edb)
+        resp = {}
+        handler = _make_mock_handler(resp)
+        handler.headers = {"X-Forensic-Lock-Id": lock}
+        body = json.dumps({"report_id": 1, "order": [], "lock_id": lock}).encode()
+        ep.handle(handler, body)
+        assert resp['status'] == 400
+
+
+# ---------------------------------------------------------------------------
+# TestEditorEvidenceEndpoint
+# ---------------------------------------------------------------------------
+
+class TestEditorEvidenceEndpoint:
+    """AP-E3: POST /_forensic/editor/evidence."""
+
+    def _make_ep(self, edb, username="h012345"):
+        import sys, os
+        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if project_dir not in sys.path:
+            sys.path.insert(0, project_dir)
+        from forensic_api.editor_evidence import EditorEvidenceEndpoint
+        bundle = _make_endpoint_bundle(edb)
+        ctx    = _make_context_with_name(username)
+        return EditorEvidenceEndpoint(bundle, ctx, MagicMock())
+
+    def test_add_ohne_lock_returns_423(self, in_memory_evidence_db):
+        ep   = self._make_ep(in_memory_evidence_db)
+        resp = {}
+        handler = _make_mock_handler(resp)
+        handler.headers = {}
+        body = json.dumps({
+            "action": "add", "block_id": "b1", "evidence_id": 1
+        }).encode()
+        ep.handle(handler, body)
+        assert resp['status'] == 423
+
+    def test_add_mit_lock_returns_200(self, in_memory_evidence_db):
+        edb  = in_memory_evidence_db
+        rid  = edb.create_report("interim", "Test", "h001")
+        lock = edb.acquire_lock("h012345", "test-sse")
+        ann_id = edb.save_annotation("/test", "CAT_OTHER", "Beleg")
+        edb.save_block("b1", rid, "paragraph", {}, "h001")
+        ep   = self._make_ep(edb)
+        resp = {}
+        handler = _make_mock_handler(resp)
+        handler.headers = {"X-Forensic-Lock-Id": lock}
+        body = json.dumps({
+            "action": "add", "block_id": "b1",
+            "evidence_id": ann_id, "lock_id": lock,
+        }).encode()
+        ep.handle(handler, body)
+        assert resp['status'] == 200
+        data = json.loads(resp['body'])
+        assert data['status'] == 'linked'
+        assert 'affected_block_ids' in data
+        assert 'b1' in data['affected_block_ids']
+
+    def test_remove_mit_lock_returns_200(self, in_memory_evidence_db):
+        edb  = in_memory_evidence_db
+        rid  = edb.create_report("interim", "Test", "h001")
+        lock = edb.acquire_lock("h012345", "test-sse")
+        ann_id = edb.save_annotation("/test", "CAT_OTHER", "Beleg")
+        edb.save_block("b1", rid, "paragraph", {}, "h001")
+        edb.add_block_evidence("b1", ann_id, 1)
+        ep   = self._make_ep(edb)
+        resp = {}
+        handler = _make_mock_handler(resp)
+        handler.headers = {"X-Forensic-Lock-Id": lock}
+        body = json.dumps({
+            "action": "remove", "block_id": "b1",
+            "evidence_id": ann_id, "lock_id": lock,
+        }).encode()
+        ep.handle(handler, body)
+        assert resp['status'] == 200
+        data = json.loads(resp['body'])
+        assert data['status'] == 'unlinked'
+
+    def test_remove_nicht_gefunden_returns_404(self, in_memory_evidence_db):
+        edb  = in_memory_evidence_db
+        lock = edb.acquire_lock("h012345", "test-sse")
+        ep   = self._make_ep(edb)
+        resp = {}
+        handler = _make_mock_handler(resp)
+        handler.headers = {"X-Forensic-Lock-Id": lock}
+        body = json.dumps({
+            "action": "remove", "block_id": "b-missing",
+            "evidence_id": 999, "lock_id": lock,
+        }).encode()
+        ep.handle(handler, body)
+        assert resp['status'] == 404
+
+    def test_add_idempotent(self, in_memory_evidence_db):
+        """Doppeltes add derselben Verknuepfung -> HTTP 200, kein Fehler."""
+        edb  = in_memory_evidence_db
+        rid  = edb.create_report("interim", "Test", "h001")
+        lock = edb.acquire_lock("h012345", "test-sse")
+        ann_id = edb.save_annotation("/test", "CAT_OTHER", "Beleg")
+        edb.save_block("b1", rid, "paragraph", {}, "h001")
+        ep   = self._make_ep(edb)
+        for _ in range(2):
+            resp = {}
+            handler = _make_mock_handler(resp)
+            handler.headers = {"X-Forensic-Lock-Id": lock}
+            body = json.dumps({
+                "action": "add", "block_id": "b1",
+                "evidence_id": ann_id, "lock_id": lock,
+            }).encode()
+            ep.handle(handler, body)
+            assert resp['status'] == 200
+        # Wirklich nur ein Eintrag
+        links = edb.get_evidence_for_block("b1")
+        assert len(links) == 1
+
+
+# ---------------------------------------------------------------------------
+# TestEditorStaticEndpoint
+# ---------------------------------------------------------------------------
+
+class TestEditorStaticEndpoint:
+    """AP-E3: GET /_forensic/static/editor/*."""
+
+    def _make_ep(self):
+        import sys, os
+        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if project_dir not in sys.path:
+            sys.path.insert(0, project_dir)
+        from forensic_api.static import StaticEndpoint
+        return StaticEndpoint()
+
+    def test_vorhandene_datei_returns_200(self, tmp_path, monkeypatch):
+        """Vorhandene Datei in static/editor/ -> HTTP 200."""
+        import sys, os
+        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if project_dir not in sys.path:
+            sys.path.insert(0, project_dir)
+        from forensic_api import static as static_mod
+        # EDITOR_DIR temporaer umbiegen
+        editor_dir = tmp_path / "editor"
+        editor_dir.mkdir()
+        (editor_dir / "editor.bundle.js").write_bytes(b"console.log('editor');")
+        monkeypatch.setattr(static_mod, "_EDITOR_DIR", editor_dir)
+
+        ep   = self._make_ep()
+        resp = {}
+        ep.handle_editor_asset(
+            _make_mock_handler(resp),
+            "/_forensic/static/editor/editor.bundle.js",
+        )
+        assert resp['status'] == 200
+        assert b"console.log" in resp['body']
+        assert "javascript" in resp.get('content_type', '')
+
+    def test_fehlende_datei_returns_503(self):
+        """Datei fehlt (Bundle nicht installiert) -> HTTP 503."""
+        ep   = self._make_ep()
+        resp = {}
+        ep.handle_editor_asset(
+            _make_mock_handler(resp),
+            "/_forensic/static/editor/editor.bundle.js",
+        )
+        assert resp['status'] == 503
+        data = json.loads(resp['body'])
+        assert data['code'] == 'EDITOR_BUNDLE_MISSING'
+
+    def test_pfad_traversal_returns_400(self):
+        """Pfad-Traversal-Versuch -> HTTP 400."""
+        ep   = self._make_ep()
+        resp = {}
+        ep.handle_editor_asset(
+            _make_mock_handler(resp),
+            "/_forensic/static/editor/../../../etc/passwd",
+        )
+        assert resp['status'] == 400
+
+    def test_css_datei_korrekte_content_type(self, tmp_path, monkeypatch):
+        """CSS-Datei -> text/css Content-Type."""
+        import sys, os
+        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if project_dir not in sys.path:
+            sys.path.insert(0, project_dir)
+        from forensic_api import static as static_mod
+        editor_dir = tmp_path / "editor"
+        editor_dir.mkdir()
+        (editor_dir / "editor.bundle.css").write_bytes(b".ce-block{}")
+        monkeypatch.setattr(static_mod, "_EDITOR_DIR", editor_dir)
+        ep   = self._make_ep()
+        resp = {}
+        ep.handle_editor_asset(
+            _make_mock_handler(resp),
+            "/_forensic/static/editor/editor.bundle.css",
+        )
+        assert resp['status'] == 200
+        assert "text/css" in resp.get('content_type', '')
+
+
+# ---------------------------------------------------------------------------
+# TestDispatchEditorRoutes (Integration: __init__.py dispatch)
+# ---------------------------------------------------------------------------
+
+class TestDispatchEditorRoutes:
+    """AP-E3: Routing-Tests fuer neue Endpunkte in ForensicApi.dispatch()."""
+
+    def _make_api(self, edb):
+        import sys, os
+        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if project_dir not in sys.path:
+            sys.path.insert(0, project_dir)
+        from forensic_api import ForensicApi
+        from tests.test_forensic_api import _setup_logging_and_config
+        cfg    = _setup_logging_and_config()
+        bundle = _make_endpoint_bundle(edb)
+        ctx    = _make_context_with_name()
+        return ForensicApi(bundle, ctx, cfg)
+
+    def _dispatch(self, api, method, path, body=b"", lock_id=None):
+        import io
+        handler = MagicMock()
+        handler.command = method
+        headers = {"Content-Length": str(len(body))}
+        if lock_id:
+            headers["X-Forensic-Lock-Id"] = lock_id
+        handler.headers = headers
+        handler.rfile   = io.BytesIO(body)
+        captured = {}
+        def capture(status, body, content_type=None, extra_headers=None):
+            captured['status']       = status
+            captured['body']         = body
+            captured['content_type'] = content_type
+        handler.send_response_body.side_effect = capture
+        api.dispatch(handler, method, path, "", is_ajax=True)
+        return captured
+
+    def test_get_reports_erreichbar(self, in_memory_evidence_db):
+        """GET /_forensic/reports -> erreichbar (200)."""
+        api  = self._make_api(in_memory_evidence_db)
+        resp = self._dispatch(api, "GET", "/_forensic/reports")
+        assert resp['status'] == 200
+
+    def test_post_reports_erreichbar(self, in_memory_evidence_db):
+        """POST /_forensic/reports -> erreichbar."""
+        api  = self._make_api(in_memory_evidence_db)
+        body = json.dumps({"report_type": "interim", "title": "Test"}).encode()
+        resp = self._dispatch(api, "POST", "/_forensic/reports", body)
+        assert resp['status'] == 201
+
+    def test_post_editor_block_ohne_lock_423(self, in_memory_evidence_db):
+        """POST /_forensic/editor/block ohne Lock -> 423."""
+        api  = self._make_api(in_memory_evidence_db)
+        body = json.dumps({
+            "action": "save", "block_id": "b1", "report_id": 1,
+            "block_type": "paragraph", "block_data": {}, "owner": "h001",
+        }).encode()
+        resp = self._dispatch(api, "POST", "/_forensic/editor/block", body)
+        assert resp['status'] == 423
+
+    def test_post_editor_order_ohne_lock_423(self, in_memory_evidence_db):
+        """POST /_forensic/editor/order ohne Lock -> 423."""
+        api  = self._make_api(in_memory_evidence_db)
+        body = json.dumps({
+            "report_id": 1,
+            "order": [{"block_id": "b1", "sort_index": "a0"}],
+        }).encode()
+        resp = self._dispatch(api, "POST", "/_forensic/editor/order", body)
+        assert resp['status'] == 423
+
+    def test_post_editor_evidence_ohne_lock_423(self, in_memory_evidence_db):
+        """POST /_forensic/editor/evidence ohne Lock -> 423."""
+        api  = self._make_api(in_memory_evidence_db)
+        body = json.dumps({
+            "action": "add", "block_id": "b1", "evidence_id": 1,
+        }).encode()
+        resp = self._dispatch(api, "POST", "/_forensic/editor/evidence", body)
+        assert resp['status'] == 423
+
+    def test_get_editor_static_fehlend_503(self, in_memory_evidence_db):
+        """GET /_forensic/static/editor/fehlend.js -> 503."""
+        api  = self._make_api(in_memory_evidence_db)
+        resp = self._dispatch(api, "GET", "/_forensic/static/editor/fehlend.js")
+        assert resp['status'] == 503
+
+    def test_reports_vor_report_routing(self, in_memory_evidence_db):
+        """/_forensic/reports und /_forensic/report werden korrekt getrennt geroutet."""
+        api = self._make_api(in_memory_evidence_db)
+        # /reports -> ReportsEndpoint (200 mit reports-Liste)
+        resp_reports = self._dispatch(api, "GET", "/_forensic/reports")
+        assert resp_reports['status'] == 200
+        data = json.loads(resp_reports['body'])
+        assert 'reports' in data
+        # /report -> ReportEndpoint (200 mit HTML oder JSON)
+        resp_report = self._dispatch(api, "GET", "/_forensic/report")
+        assert resp_report['status'] == 200
