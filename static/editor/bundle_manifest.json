@@ -1,0 +1,20 @@
+{
+  "built_at": 1776612240,
+  "packages": [
+    "@editorjs/editorjs",
+    "@editorjs/header",
+    "@editorjs/paragraph",
+    "@editorjs/nested-list",
+    "@editorjs/table",
+    "@cychann/editorjs-quote",
+    "@editorjs/simple-image",
+    "@editorjs/marker",
+    "editorjs-annotation",
+    "editorjs-undo",
+    "@coolbytes/editorjs-delimiter"
+  ],
+  "files": {
+    "editor.bundle.js": "669dc1faf0b279966a108ef3cbae4b59",
+    "editor.bundle.js.map": "d2c147ed4c273d75a9c7c54b38843f2e"
+  }
+}

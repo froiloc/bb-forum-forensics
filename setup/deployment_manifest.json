@@ -1,0 +1,21 @@
+{
+  "created_at": 1776612244,
+  "files": {
+    "setup/win64/.gitkeep": "d41d8cd98f00b204e9800998ecf8427e",
+    "setup/win64/README.txt": "79c286a51ba79a852fd9d8006fffce2d",
+    "setup/win64/wheels/lxml-6.1.0-cp314-cp314-win_amd64.whl": "912f1a7bad392789f9c2957a35983cf4",
+    "setup/win64/wheels/pytest-9.0.3-py3-none-any.whl": "d788336513a6f224d94a5f4e13a42507",
+    "setup/win64/wheels/pytest_asyncio-1.3.0-py3-none-any.whl": "02728221b99001f0f224b438774af91f",
+    "setup/win64/wheels/pyyaml-6.0.3-cp314-cp314-win_amd64.whl": "17e9f7ea1c6d95cf186341a89ab9b7f1",
+    "setup/linux64/.gitkeep": "d41d8cd98f00b204e9800998ecf8427e",
+    "setup/linux64/README.txt": "8293c1bd2cbfbdd893d115a7f291ea8a",
+    "setup/linux64/wheels/lxml-6.1.0-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.whl": "eb8b4c2de2bb98488a52319dd0705454",
+    "setup/linux64/wheels/pytest-9.0.3-py3-none-any.whl": "d788336513a6f224d94a5f4e13a42507",
+    "setup/linux64/wheels/pytest_asyncio-1.3.0-py3-none-any.whl": "02728221b99001f0f224b438774af91f",
+    "setup/linux64/wheels/pyyaml-6.0.3-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl": "97f0dcb70cfa36b342945cde67d47c9c",
+    "static/editor/.gitkeep": "d41d8cd98f00b204e9800998ecf8427e",
+    "static/editor/bundle_manifest.json": "7a0ef236562857f714cf205cace21c6c",
+    "static/editor/editor.bundle.js": "669dc1faf0b279966a108ef3cbae4b59",
+    "static/editor/editor.bundle.js.map": "d2c147ed4c273d75a9c7c54b38843f2e"
+  }
+}
