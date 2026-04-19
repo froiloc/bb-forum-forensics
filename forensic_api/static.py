@@ -55,6 +55,8 @@ _RESOURCES: dict[str, tuple[str, str, Path]] = {
     "/_forensic/toolbar.css":  ("toolbar.css",  "text/css; charset=utf-8",               _TOOLBAR_DIR),
     "/_forensic/userinfo.js":  ("userinfo.js",  "application/javascript; charset=utf-8", _USERINFO_DIR),
     "/_forensic/userinfo.css": ("userinfo.css", "text/css; charset=utf-8",               _USERINFO_DIR),
+    # AP-E4: Editor.js-Modul liegt im userinfo/-Verzeichnis
+    "/_forensic/editor.js":    ("editor.js",    "application/javascript; charset=utf-8", _USERINFO_DIR),
 }
 
 # MIME-Types fuer Editor.js-Bundle-Dateien (AP-E3)

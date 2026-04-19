@@ -76,15 +76,21 @@ _EDITOR_HTML = """\
     <title>Bericht-Editor \u00b7 {username} \u00b7 ID: {user_id}</title>
     <link rel="stylesheet" href="/_forensic/userinfo.css">
   </head>
-  <body id="report-editor-body" data-user-id="{user_id}" data-username="{username}">
+  <body id="report-editor-body"
+        data-user-id="{user_id}"
+        data-username="{username}"
+        data-autosave-debounce-ms="{autosave_debounce_ms}">
     <div id="report-selector-container">
-      <!-- Berichtsauswahl — per editor.js initialisiert (AP-E4) -->
+      <!-- Berichtsauswahl wird von editor.js/initReportSelector() befuellt -->
     </div>
     <div id="report-editor-container">
-      <!-- Editor.js wird hier initialisiert (AP-E4) -->
+      <!-- Editor-Toolbar und editorjs-holder werden von userinfo.js/initEditor() erzeugt -->
     </div>
-    <!-- Editor.js-Bundle wird in AP-E4 eingebunden -->
-    <!-- <script src="/_forensic/static/editor/editor.bundle.js" defer></script> -->
+    <!-- 1) Editor.js-Bundle (AP-E2: build_editor_bundle.py ausfuehren falls fehlend) -->
+    <script src="/_forensic/static/editor/editor.bundle.js"></script>
+    <!-- 2) Editor-Modul: initReportSelector, EvidenceBlock, toggleAnnotationSidebar -->
+    <script src="/_forensic/editor.js" defer></script>
+    <!-- 3) userinfo.js: initEditor(), Lock/SSE — last, weil es editor.js benoetigt -->
     <script src="/_forensic/userinfo.js" defer></script>
   </body>
 </html>"""
@@ -146,9 +152,15 @@ class ReportEndpoint:
         safe_username = html_module.escape(
             self._context.username or f"uid_{self._context.user_id}"
         )
+        autosave_ms = int(
+            getattr(self._config, "get", lambda k, d: d)(
+                "editor.autosave_debounce_ms", 1500
+            )
+        )
         page_html = _EDITOR_HTML.format(
             username=safe_username,
             user_id=self._context.user_id,
+            autosave_debounce_ms=autosave_ms,
         )
         body = page_html.encode("utf-8")
         handler.send_response_body(

@@ -158,6 +158,7 @@ class ForensicApi:
             "/_forensic/toolbar.css",
             "/_forensic/userinfo.js",
             "/_forensic/userinfo.css",
+            "/_forensic/editor.js",      # AP-E4
         ):
             if method not in ("GET", "HEAD"):
                 self._method_not_allowed(handler)
