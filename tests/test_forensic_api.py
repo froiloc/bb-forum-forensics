@@ -90,6 +90,7 @@ def _make_bundle(page=None, annotation_id=1, viewport_saved=2):
     bundle.forensic.get_page.return_value        = page
     bundle.forensic.resolve_post_alias.return_value  = None
     bundle.forensic.resolve_notify_alias.return_value = None
+    bundle.forensic.get_trace_elements_for_page.return_value = []
     bundle.forensic.get_meta.return_value        = None   # forum_hostname → None
     bundle.forensic.page_count.return_value      = 100
     bundle.evidence.save_annotation.return_value = annotation_id

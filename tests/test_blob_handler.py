@@ -94,6 +94,7 @@ def _make_bundle(page=None, post_alias=None, notify_alias=None):
     bundle.forensic.get_page.return_value = page
     bundle.forensic.resolve_post_alias.return_value = post_alias
     bundle.forensic.resolve_notify_alias.return_value = notify_alias
+    bundle.forensic.get_trace_elements_for_page.return_value = []
     bundle.evidence.log_page_visit.return_value = 1
     return bundle
 
@@ -187,6 +188,7 @@ class TestBlobHandlerAliases(unittest.TestCase):
         bundle = MagicMock()
         bundle.forensic.resolve_post_alias.return_value = post_alias
         bundle.forensic.get_page.return_value = page
+        bundle.forensic.get_trace_elements_for_page.return_value = []
         bundle.evidence.log_page_visit.return_value = 1
 
         bh      = BlobHandler(bundle, self.ctx, self.cfg)
@@ -209,6 +211,7 @@ class TestBlobHandlerAliases(unittest.TestCase):
         bundle.forensic.resolve_notify_alias.return_value = notify_alias
         bundle.forensic.resolve_post_alias.return_value   = post_alias
         bundle.forensic.get_page.return_value = page
+        bundle.forensic.get_trace_elements_for_page.return_value = []
         bundle.evidence.log_page_visit.return_value = 1
 
         bh      = BlobHandler(bundle, self.ctx, self.cfg)
