@@ -74,6 +74,7 @@ def _make_page(
     html=b"<html><body><p>Inhalt</p></body></html>",
     scrape_context="user",
     http_status=200,
+    method="GET",
 ) -> PageRecord:
     # Wenn kein canonical_url angegeben, Verzeichnispfad aus url ableiten
     if canonical_url is None:
@@ -86,6 +87,7 @@ def _make_page(
         fetched_at=1700000000,
         http_status=http_status,
         scrape_context=scrape_context,
+        method=method,
     )
 
 
@@ -196,8 +198,9 @@ class TestBlobHandlerAliases(unittest.TestCase):
         bh.handle(handler, "/forum/viewtopic.php?pid=12345")
         env = json.loads(handler._captured["body"])
 
-        # get_page sollte mit der aufgelösten Topic-URL aufgerufen worden sein
-        bundle.forensic.get_page.assert_called_with("/forum/viewtopic.php?id=100")
+        # get_page sollte mit der aufgelösten Topic-URL und method='GET' aufgerufen worden sein
+        # Beleg: Projektgespräch 2026-04-19 — get_page() hat neuen method-Parameter.
+        bundle.forensic.get_page.assert_called_with("/forum/viewtopic.php?id=100", method="GET")
         self.assertEqual(env["fragment"], "p12345")
 
     def test_T06_notify_aufloesen(self):
@@ -387,3 +390,65 @@ class TestBlobHandlerHead(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+# ===========================================================================
+# Tests: BlobHandler — original_method / Poll-Unterstützung
+# Build 042 · Beleg: Projektgespräch 2026-04-19
+# ===========================================================================
+
+class TestBlobHandlerOriginalMethod(unittest.TestCase):
+    """T19–T22: original_method-Parameter — GET/POST-Routing für Poll-Seiten."""
+
+    def setUp(self):
+        self.cfg = _setup_logging_and_config()
+        self.ctx = _make_context()
+
+    def tearDown(self):
+        reset_for_testing()
+
+    def _call_with_method(self, bundle, url, method="GET"):
+        handler  = _make_handler()
+        bh = BlobHandler(bundle, self.ctx, self.cfg)
+        bh.handle(handler, url, original_method=method)
+        return json.loads(handler._captured["body"].decode("utf-8"))
+
+    def test_T19_get_liefert_get_blob(self):
+        """T19: handle() mit original_method='GET' ruft get_page(url, method='GET').
+        Beleg: Projektgespräch 2026-04-19."""
+        page   = _make_page(method="GET")
+        bundle = _make_bundle(page=page)
+        self._call_with_method(bundle, "/forum/viewtopic.php?id=42", method="GET")
+        bundle.forensic.get_page.assert_called_with(
+            "/forum/viewtopic.php?id=42", method="GET"
+        )
+
+    def test_T20_post_liefert_post_blob(self):
+        """T20: handle() mit original_method='POST' ruft get_page(url, method='POST').
+        Beleg: Projektgespräch 2026-04-19."""
+        page   = _make_page(method="POST")
+        bundle = _make_bundle(page=page)
+        self._call_with_method(bundle, "/forum/viewtopic.php?id=42", method="POST")
+        bundle.forensic.get_page.assert_called_with(
+            "/forum/viewtopic.php?id=42", method="POST"
+        )
+
+    def test_T21_default_method_ist_get(self):
+        """T21: handle() ohne method-Argument → get_page mit method='GET'.
+        Beleg: Projektgespräch 2026-04-19."""
+        page   = _make_page(method="GET")
+        bundle = _make_bundle(page=page)
+        handler = _make_handler()
+        bh = BlobHandler(bundle, self.ctx, self.cfg)
+        bh.handle(handler, "/forum/viewtopic.php?id=42")
+        bundle.forensic.get_page.assert_called_with(
+            "/forum/viewtopic.php?id=42", method="GET"
+        )
+
+    def test_T22_post_not_in_scope_gibt_not_in_scope_envelope(self):
+        """T22: POST-Request auf URL ohne POST-BLOB → in_scope=False.
+        Beleg: Projektgespräch 2026-04-19."""
+        bundle = _make_bundle(page=None)  # kein POST-BLOB vorhanden
+        env = self._call_with_method(
+            bundle, "/forum/viewtopic.php?id=42", method="POST"
+        )
+        self.assertFalse(env["in_scope"])

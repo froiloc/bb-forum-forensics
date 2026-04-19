@@ -138,11 +138,13 @@ def _create_forensic_db(path: Path) -> None:
         );
         CREATE TABLE pages (
             id             INTEGER PRIMARY KEY AUTOINCREMENT,
-            url_canonical  TEXT    NOT NULL UNIQUE,
+            url_canonical  TEXT    NOT NULL,
             html           BLOB,
             fetched_at     INTEGER NOT NULL,
             http_status    INTEGER NOT NULL,
-            scrape_context TEXT    NOT NULL DEFAULT 'user'
+            scrape_context TEXT    NOT NULL DEFAULT 'user',
+            method         TEXT    NOT NULL DEFAULT 'GET',
+            UNIQUE(url_canonical, method)
         );
         CREATE TABLE page_aliases (
             url_raw  TEXT PRIMARY KEY,
@@ -191,20 +193,20 @@ def _create_forensic_db(path: Path) -> None:
     pages = [
         ('/forum/viewtopic.php?id=1',
          b'<html><head><title>Thread 1</title></head><body><p id="p10">Beitrag</p></body></html>',
-         1700000001, 200, 'user'),
+         1700000001, 200, 'user', 'GET'),
         ('/forum/viewtopic.php?id=2',
          b'<html><head><title>Gesperrt</title></head><body><p>Gesperrter Inhalt</p></body></html>',
-         1700000002, 200, 'investigator'),
+         1700000002, 200, 'investigator', 'GET'),
         ('/forum/viewtopic.php?id=3',
          None,   # html=NULL — fetch_failed-Fall
-         1700000003, 404, 'user'),
+         1700000003, 404, 'user', 'GET'),
         ('/forum/viewtopic.php?id=4',
          b'<html><head><title>Thread 4</title></head><body><p id="p99">Post 99</p></body></html>',
-         1700000004, 200, 'user'),
+         1700000004, 200, 'user', 'GET'),
     ]
     con.executemany(
-        "INSERT INTO pages (url_canonical, html, fetched_at, http_status, scrape_context) "
-        "VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO pages (url_canonical, html, fetched_at, http_status, scrape_context, method) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
         pages,
     )
 

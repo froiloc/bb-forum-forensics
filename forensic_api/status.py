@@ -39,7 +39,7 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-SERVER_VERSION = "v0.1.0-build010"
+SERVER_VERSION = "v0.1.0-build042"
 
 
 class StatusEndpoint:

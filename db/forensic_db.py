@@ -35,10 +35,15 @@
 #   hier INSERT/UPDATE/DELETE-Statements.
 #
 # Abhängigkeiten: sqlite3 — ausschließlich Stdlib
-# Version: v0.1.0 · Build: 030 · 2026-04-16
-# Änderungen Build 030-C:
-#   - get_trace_elements_for_page(): Liefert DOM-Element-IDs aller Benutzer-
-#     Spuren auf einer Seite (Forum-Posts + PM-Posts) aus scrape_targets.
+# Version: v0.1.0 · Build: 042 · 2026-04-19
+# Änderungen Build 042:
+#   - blob_lookup VIEW: method-Spalte aus fdb.pages einbezogen.
+#   - get_page(): neuer optionaler Parameter method (Default 'GET').
+#     Bei method='POST' wird der POST-BLOB der Seite geliefert
+#     (Poll-Abstimmungsergebnis). Beleg: Projektgespräch 2026-04-19.
+#   - PageRecord: neues Feld method.
+#   - Änderungen Build 030-C (erhalten):
+#     get_trace_elements_for_page() liefert DOM-Element-IDs.
 # =============================================================================
 
 from __future__ import annotations
@@ -88,7 +93,8 @@ CREATE TEMP VIEW blob_lookup AS
         p.html           AS html,
         p.fetched_at     AS fetched_at,
         p.http_status    AS http_status,
-        p.scrape_context AS scrape_context
+        p.scrape_context AS scrape_context,
+        p.method         AS method
     FROM fdb.pages p
     UNION ALL
     SELECT
@@ -98,7 +104,8 @@ CREATE TEMP VIEW blob_lookup AS
         p.html           AS html,
         p.fetched_at     AS fetched_at,
         p.http_status    AS http_status,
-        p.scrape_context AS scrape_context
+        p.scrape_context AS scrape_context,
+        p.method         AS method
     FROM fdb.pages p
     JOIN fdb.page_aliases pa ON pa.page_id = p.id
 """
@@ -129,6 +136,9 @@ class PageRecord:
     fetched_at:    int
     http_status:   int
     scrape_context: str
+    method:        str = "GET"
+    # HTTP-Methode mit der diese Seite gespeichert wurde ('GET' oder 'POST').
+    # 'POST' = Poll-Abstimmungsergebnis. Beleg: Projektgespräch 2026-04-19.
 
     @property
     def fetch_failed(self) -> bool:
@@ -223,7 +233,7 @@ class ForensicDb:
     # BLOB-Lookup
     # ------------------------------------------------------------------
 
-    def get_page(self, url: str) -> Optional[PageRecord]:
+    def get_page(self, url: str, method: str = "GET") -> Optional[PageRecord]:
         """
         Sucht eine Seite anhand ihrer URL im blob_lookup-View.
 
@@ -231,23 +241,27 @@ class ForensicDb:
         als auch Alias-Treffer (page_aliases.url_raw) ab.
 
         Args:
-            url: Normalisierte Forum-URL (ohne Fragment-Anker).
+            url:    Normalisierte Forum-URL (ohne Fragment-Anker).
+            method: HTTP-Methode des Originalrequests ('GET' oder 'POST').
+                    Default 'GET'. 'POST' liefert den Poll-Ergebnis-BLOB.
+                    Beleg: Projektgespräch 2026-04-19.
 
         Returns:
             PageRecord wenn gefunden, None wenn die URL nicht im Scope liegt.
         """
         try:
             row = self._con.execute(
-                "SELECT page_id, url, canonical_url, html, fetched_at, http_status, scrape_context "
-                "FROM blob_lookup WHERE url = ? LIMIT 1",
-                (url,),
+                "SELECT page_id, url, canonical_url, html, fetched_at, http_status, "
+                "scrape_context, method "
+                "FROM blob_lookup WHERE url = ? AND method = ? LIMIT 1",
+                (url, method.upper()),
             ).fetchone()
         except sqlite3.OperationalError as exc:
             logger.error("BLOB-Lookup fehlgeschlagen für '%s': %s", url, exc)
             return None
 
         if row is None:
-            logger.debug("Seite nicht im Scope: '%s'", url)
+            logger.debug("Seite nicht im Scope: '%s' (method=%s)", url, method)
             return None
 
         record = PageRecord(
@@ -258,10 +272,11 @@ class ForensicDb:
             fetched_at=int(row["fetched_at"]),
             http_status=int(row["http_status"]),
             scrape_context=str(row["scrape_context"]),
+            method=str(row["method"]),
         )
         logger.debug(
-            "Seite gefunden: '%s' → page_id=%d, context=%s, fetch_failed=%s",
-            url, record.page_id, record.scrape_context, record.fetch_failed,
+            "Seite gefunden: '%s' [%s] → page_id=%d, context=%s, fetch_failed=%s",
+            url, method, record.page_id, record.scrape_context, record.fetch_failed,
         )
         return record
 

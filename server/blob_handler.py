@@ -44,7 +44,13 @@
 #   Alle drei Zustände sind für toolbar.js sichtbar und werden angezeigt.
 #
 # Abhängigkeiten: json, urllib.parse — Stdlib + interne Module
-# Version: v0.1.0 · Build: 030 · 2026-04-16
+# Version: v0.1.0 · Build: 042 · 2026-04-19
+# Änderungen Build 042:
+#   - handle(): neuer Parameter original_method (Default 'GET').
+#   - handle_with_fragment(): neuer Parameter original_method (Default 'GET').
+#   - _resolve_and_build(): original_method an get_page() weitergeleitet.
+#     'POST' liefert den Poll-Abstimmungsergebnis-BLOB.
+#     Beleg: Projektgespräch 2026-04-19.
 # Änderungen Build 030-C:
 #   - Envelope: trace_elements ["p<id>", ...] aus get_trace_elements_for_page().
 #   - Beide Envelope-Zweige (in_scope + NOT_IN_SCOPE) enthalten trace_elements.
@@ -105,31 +111,39 @@ class BlobHandler:
         self,
         handler: "ForensicRequestHandler",
         canonical_url: str,
+        original_method: str = "GET",
     ) -> None:
         """
         Verarbeitet einen AJAX-Request für eine Forum-URL.
 
         Args:
-            handler:       ForensicRequestHandler-Instanz.
-            canonical_url: Normalisierte URL (ohne Fragment).
+            handler:         ForensicRequestHandler-Instanz.
+            canonical_url:   Normalisierte URL (ohne Fragment).
+            original_method: HTTP-Methode des Originalrequests ('GET' oder 'POST').
+                             Default 'GET'. 'POST' für Poll-Ergebnisseiten.
+                             Beleg: Projektgespräch 2026-04-19.
         """
-        self.handle_with_fragment(handler, canonical_url, fragment=None)
+        self.handle_with_fragment(handler, canonical_url, fragment=None,
+                                  original_method=original_method)
 
     def handle_with_fragment(
         self,
         handler: "ForensicRequestHandler",
         url: str,
         fragment: Optional[str],
+        original_method: str = "GET",
     ) -> None:
         """
         Verarbeitet einen AJAX-Request mit optionalem Fragment-Anker.
 
         Args:
-            handler:  ForensicRequestHandler-Instanz.
-            url:      URL (ohne Fragment).
-            fragment: Fragment-Anker ohne #, z.B. "p12345", oder None.
+            handler:         ForensicRequestHandler-Instanz.
+            url:             URL (ohne Fragment).
+            fragment:        Fragment-Anker ohne #, z.B. "p12345", oder None.
+            original_method: HTTP-Methode des Originalrequests ('GET' oder 'POST').
+                             Default 'GET'. Beleg: Projektgespräch 2026-04-19.
         """
-        envelope = self._resolve_and_build(url, fragment)
+        envelope = self._resolve_and_build(url, fragment, original_method)
         body = json.dumps(envelope, ensure_ascii=False).encode("utf-8")
 
         # page_visit protokollieren wenn Seite im Scope und BLOB vorhanden
@@ -155,10 +169,16 @@ class BlobHandler:
     # ------------------------------------------------------------------
 
     def _resolve_and_build(
-        self, url: str, fragment: Optional[str]
+        self, url: str, fragment: Optional[str], original_method: str = "GET"
     ) -> dict:
         """
         Löst die URL auf und baut den JSON-Envelope auf.
+
+        Args:
+            original_method: HTTP-Methode des Originalrequests ('GET'/'POST').
+                             Wird an get_page() weitergeleitet, damit der
+                             korrekte BLOB (GET=Formular, POST=Ergebnis)
+                             geladen wird. Beleg: Projektgespräch 2026-04-19.
 
         Returns:
             Dict mit allen Envelope-Feldern.
@@ -181,8 +201,10 @@ class BlobHandler:
             url_no_fragment, url_path, params, fragment
         )
 
-        # Schritt 3: BLOB-Lookup
-        page = self._bundle.forensic.get_page(resolved_url)
+        # Schritt 3: BLOB-Lookup — original_method bestimmt welcher BLOB geladen wird.
+        # Bei GET: Abstimmungsformular. Bei POST: Abstimmungsergebnis.
+        # Beleg: Projektgespräch 2026-04-19.
+        page = self._bundle.forensic.get_page(resolved_url, method=original_method)
 
         # Schritt 4: Envelope zusammenbauen
         if page is None:

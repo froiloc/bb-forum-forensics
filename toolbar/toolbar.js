@@ -2,10 +2,19 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 030 · 2026-04-16
+ * Version: v0.1.0 · Build: 042 · 2026-04-19
  * Klassifikation: VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
  *
- * Änderungen Build 030-A:
+ * Änderungen Build 042:
+ *   - loadPage(url, pushState, method): neuer optionaler method-Parameter.
+ *     'POST' → API-URL enthält &original_method=POST für Poll-Ergebnisseiten.
+ *     Default 'GET' wenn weggelassen. Beleg: Projektgespräch 2026-04-19.
+ *   - _interceptLinks(): Form-Submit abfangen. form.method wird als
+ *     original_method an loadPage weitergegeben. Nur lokale/Forum-Forms
+ *     werden abgefangen. Beleg: Projektgespräch 2026-04-19.
+ *   - ForensicToolbar.navigation: NavigationModule öffentlich exponiert
+ *     für Tests und externe Aufrufer.
+ *
  *   - HighlightModule: CSS Custom Highlights API Vorinitialisierung aller
  *     Kategorie-Sets beim Modulstart (kein bedingtes Set-Erstellen in render()).
  *   - HighlightModule: Fallback-Pfad ersetzt surroundContents() durch robusten
@@ -992,9 +1001,16 @@
     var _prevUrl = null;
     var _nextUrl = null;
 
-    function loadPage(url, pushState) {
+    function loadPage(url, pushState, method) {
+      // method: HTTP-Methode des Originalrequests ('GET' oder 'POST').
+      // Default 'GET'. 'POST' für Poll-Abstimmungsergebnisse.
+      // Beleg: Projektgespräch 2026-04-19.
+      var originalMethod = (method && method.toUpperCase() === "POST") ? "POST" : "GET";
       AccessibilityModule.announce("Lade Seite…");
-      ajaxGet(ForensicToolbar.config.API_PAGE + "?url=" + encodeURIComponent(url))
+      var apiUrl = ForensicToolbar.config.API_PAGE
+        + "?url=" + encodeURIComponent(url)
+        + (originalMethod === "POST" ? "&original_method=POST" : "");
+      ajaxGet(apiUrl)
         .then(function (envelope) {
           _handleEnvelope(envelope, url, pushState);
         })
@@ -1212,7 +1228,58 @@
           }
 
           e.preventDefault();
-          loadPage(href, true);
+          loadPage(href, true, "GET");
+        });
+      });
+
+      // Form-Submit abfangen.
+      // Das Forum sendet Poll-Abstimmungen als POST-Request über ein
+      // <form method="post"> auf viewtopic.php. Damit der Webserver den
+      // Poll-Ergebnis-BLOB ausliefert, muss original_method='POST' an
+      // /_forensic/page übermittelt werden.
+      // Alle anderen Forms (Antworten schreiben etc.) werden blockiert —
+      // Ermittler nehmen keine aktiven Aktionen im Forum vor.
+      //
+      // Logik:
+      //   - form.action wird wie ein Link aufgelöst (a.href-Equivalent)
+      //   - form.method wird als original_method übergeben
+      //   - Nur lokale/Forum-Forms werden abgefangen
+      // Beleg: Projektgespräch 2026-04-19.
+      container.querySelectorAll("form[action]").forEach(function (form) {
+        form.addEventListener("submit", function (e) {
+          e.preventDefault();
+
+          // Action-URL vollständig auflösen (analog zu a.href)
+          var actionRaw = form.getAttribute("action") || "";
+          var actionHref;
+          try {
+            // Temporäres Anker-Element zur URL-Auflösung — nutzt <base href>
+            var tmpA = document.createElement("a");
+            tmpA.href = actionRaw;
+            actionHref = tmpA.href;
+          } catch (ex) {
+            actionHref = actionRaw;
+          }
+
+          // Nur lokale oder Forum-URLs abfangen
+          var isLocal = actionHref.includes(location.hostname);
+          var isForum = forumHost && actionHref.includes(forumHost);
+          if (!isLocal && !isForum) return;
+
+          // Protokoll und Host entfernen
+          var actionPath;
+          try {
+            var parsedAction = new URL(actionHref);
+            actionPath = parsedAction.pathname + parsedAction.search;
+          } catch (ex) {
+            actionPath = actionRaw;
+          }
+
+          // form.method auslesen — 'post' oder 'get' (HTML-Standard, lowercase)
+          // Beleg: Projektgespräch 2026-04-19.
+          var formMethod = (form.method || "get").toUpperCase();
+
+          loadPage(actionPath, true, formMethod);
         });
       });
     }
@@ -1246,6 +1313,10 @@
       navigateNext: navigateNext,
     };
   })();
+
+  // NavigationModule öffentlich exponieren — für Tests und externe Aufrufer.
+  // Beleg: Projektgespräch 2026-04-19 — vitest-Tests benötigen Zugriff auf loadPage.
+  ForensicToolbar.navigation = NavigationModule;
 
   // ===========================================================================
   // postMessage-Empfänger: Navigation aus Nutzerinfo-Tab und anderen Fenstern

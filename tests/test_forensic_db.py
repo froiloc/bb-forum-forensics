@@ -92,11 +92,13 @@ def _create_fdb_in_memory() -> sqlite3.Connection:
         );
         CREATE TABLE pages (
             id             INTEGER PRIMARY KEY AUTOINCREMENT,
-            url_canonical  TEXT NOT NULL UNIQUE,
+            url_canonical  TEXT NOT NULL,
             html           BLOB,
             fetched_at     INTEGER NOT NULL,
             http_status    INTEGER NOT NULL,
-            scrape_context TEXT NOT NULL DEFAULT 'user'
+            scrape_context TEXT NOT NULL DEFAULT 'user',
+            method         TEXT NOT NULL DEFAULT 'GET',
+            UNIQUE(url_canonical, method)
         );
         CREATE TABLE page_aliases (
             url_raw TEXT NOT NULL PRIMARY KEY,
@@ -121,20 +123,20 @@ def _create_fdb_in_memory() -> sqlite3.Connection:
         INSERT INTO forensic_meta VALUES ('username', 'testnutzer');
         INSERT INTO forensic_meta VALUES ('sha256', 'abc123');
 
-        INSERT INTO pages (url_canonical, html, fetched_at, http_status, scrape_context)
+        INSERT INTO pages (url_canonical, html, fetched_at, http_status, scrape_context, method)
         VALUES
             ('/forum/viewtopic.php?id=100',
              X'3C68746D6C3E546F706963313C2F68746D6C3E',
-             1700000000, 200, 'user'),
+             1700000000, 200, 'user', 'GET'),
             ('/forum/viewtopic.php?id=200',
              NULL,
-             1700000001, 403, 'investigator'),
+             1700000001, 403, 'investigator', 'GET'),
             ('/forum/profile.php?id=42',
              X'3C68746D6C3E50726F66696C653C2F68746D6C3E',
-             1700000002, 200, 'user'),
+             1700000002, 200, 'user', 'GET'),
             ('/forum/viewtopic.php?id=300',
              X'3C68746D6C3E546F706963333C2F68746D6C3E',
-             1700000003, 200, 'actor:99');
+             1700000003, 200, 'actor:99', 'GET');
 
         INSERT INTO page_aliases VALUES
             ('/forum/viewtopic.php?id=100#p12345', 1),
@@ -528,11 +530,13 @@ class TestForensicDbBlobLookupOnionPrefix(unittest.TestCase):
             CREATE TABLE forensic_meta (key TEXT PRIMARY KEY, value TEXT);
             CREATE TABLE pages (
                 id            INTEGER PRIMARY KEY AUTOINCREMENT,
-                url_canonical TEXT NOT NULL UNIQUE,
+                url_canonical TEXT NOT NULL,
                 html          BLOB,
                 fetched_at    INTEGER NOT NULL DEFAULT 0,
                 http_status   INTEGER NOT NULL DEFAULT 0,
-                scrape_context TEXT NOT NULL DEFAULT 'user'
+                scrape_context TEXT NOT NULL DEFAULT 'user',
+                method        TEXT NOT NULL DEFAULT 'GET',
+                UNIQUE(url_canonical, method)
             );
             CREATE TABLE page_aliases (
                 url_raw  TEXT NOT NULL PRIMARY KEY,
@@ -541,13 +545,13 @@ class TestForensicDbBlobLookupOnionPrefix(unittest.TestCase):
             INSERT INTO forensic_meta VALUES ('schema_version', '1');
             INSERT INTO forensic_meta VALUES ('protocol', 'http');
             INSERT INTO forensic_meta VALUES ('domainname', 'alice4nonion.onion');
-            INSERT INTO pages (url_canonical, html, fetched_at, http_status, scrape_context)
+            INSERT INTO pages (url_canonical, html, fetched_at, http_status, scrape_context, method)
             VALUES
                 ('{self.BASE_URL}/forum/beginner/', X'3C68746D6C3E583C2F68746D6C3E',
-                 1700000000, 200, 'user'),
+                 1700000000, 200, 'user', 'GET'),
                 ('{self.BASE_URL}/forum/viewtopic.php?id=200',
                  X'3C68746D6C3E593C2F68746D6C3E',
-                 1700000001, 200, 'user');
+                 1700000001, 200, 'user', 'GET');
             INSERT INTO page_aliases (url_raw, page_id) VALUES
                 ('{self.BASE_URL}/forum/beginner/index.php', 1),
                 ('{self.BASE_URL}/', 1);

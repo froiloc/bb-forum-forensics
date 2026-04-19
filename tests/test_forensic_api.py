@@ -81,7 +81,8 @@ def _setup_logging_and_config() -> ConfigLoader:
 def _make_page(url="/forum/test", html=b"<html><body><p>X</p></body></html>"):
     return PageRecord(
         page_id=1, url=url, canonical_url=url, html=html,
-        fetched_at=1700000000, http_status=200, scrape_context="user"
+        fetched_at=1700000000, http_status=200, scrape_context="user",
+        method="GET",
     )
 
 
@@ -366,6 +367,66 @@ class TestForensicApiMethodChecks(unittest.TestCase):
         api    = ForensicApi(bundle, self.ctx, self.cfg)
         resp   = _dispatch(api, "GET", "/_forensic/nichtvorhanden")
         self.assertEqual(resp["status"], 404)
+
+
+# ===========================================================================
+# Tests: PageEndpoint — original_method-Parameter
+# Build 042 · Beleg: Projektgespräch 2026-04-19
+# ===========================================================================
+
+class TestForensicApiPageOriginalMethod(unittest.TestCase):
+    """T18–T21: /_forensic/page mit original_method-Parameter."""
+
+    def setUp(self):
+        self.cfg = _setup_logging_and_config()
+        self.ctx = _make_context()
+
+    def tearDown(self):
+        reset_for_testing()
+
+    def test_T18_original_method_get_default(self):
+        """T18: Kein original_method → get_page mit method='GET'.
+        Beleg: Projektgespräch 2026-04-19."""
+        bundle = _make_bundle(page=_make_page())
+        api    = ForensicApi(bundle, self.ctx, self.cfg)
+        _dispatch(api, "GET", "/_forensic/page", "url=%2Fforum%2Ftest")
+        bundle.forensic.get_page.assert_called_with("/forum/test", method="GET")
+
+    def test_T19_original_method_post(self):
+        """T19: original_method=POST → get_page mit method='POST'.
+        Beleg: Projektgespräch 2026-04-19."""
+        page   = _make_page()
+        page   = PageRecord(
+            page_id=page.page_id, url=page.url, canonical_url=page.canonical_url,
+            html=page.html, fetched_at=page.fetched_at,
+            http_status=page.http_status, scrape_context=page.scrape_context,
+            method="POST",
+        )
+        bundle = _make_bundle(page=page)
+        api    = ForensicApi(bundle, self.ctx, self.cfg)
+        _dispatch(api, "GET", "/_forensic/page",
+                  "url=%2Fforum%2Fviewtopic.php%3Fid%3D42&original_method=POST")
+        bundle.forensic.get_page.assert_called_with(
+            "/forum/viewtopic.php?id=42", method="POST"
+        )
+
+    def test_T20_original_method_ungueltig_faellt_auf_get(self):
+        """T20: Ungültiger original_method-Wert → Fallback auf 'GET'.
+        Beleg: Projektgespräch 2026-04-19."""
+        bundle = _make_bundle(page=_make_page())
+        api    = ForensicApi(bundle, self.ctx, self.cfg)
+        _dispatch(api, "GET", "/_forensic/page",
+                  "url=%2Fforum%2Ftest&original_method=DELETE")
+        bundle.forensic.get_page.assert_called_with("/forum/test", method="GET")
+
+    def test_T21_original_method_post_lowercase(self):
+        """T21: original_method=post (lowercase) → normalisiert zu 'POST'.
+        Beleg: Projektgespräch 2026-04-19."""
+        bundle = _make_bundle(page=_make_page())
+        api    = ForensicApi(bundle, self.ctx, self.cfg)
+        _dispatch(api, "GET", "/_forensic/page",
+                  "url=%2Fforum%2Ftest&original_method=post")
+        bundle.forensic.get_page.assert_called_with("/forum/test", method="POST")
 
 
 if __name__ == "__main__":

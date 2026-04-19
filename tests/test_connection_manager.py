@@ -62,11 +62,13 @@ def _create_forensic_db(path: Path) -> None:
         CREATE TABLE forensic_meta (key TEXT PRIMARY KEY, value TEXT);
         CREATE TABLE pages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            url_canonical TEXT NOT NULL UNIQUE,
+            url_canonical TEXT NOT NULL,
             html BLOB,
             fetched_at INTEGER NOT NULL,
             http_status INTEGER NOT NULL,
-            scrape_context TEXT NOT NULL DEFAULT 'user'
+            scrape_context TEXT NOT NULL DEFAULT 'user',
+            method TEXT NOT NULL DEFAULT 'GET',
+            UNIQUE(url_canonical, method)
         );
         CREATE TABLE page_aliases (url_raw TEXT PRIMARY KEY, page_id INTEGER);
         CREATE TABLE post_aliases (post_id INTEGER PRIMARY KEY, topic_id INTEGER, forum_id INTEGER);
@@ -76,8 +78,8 @@ def _create_forensic_db(path: Path) -> None:
         INSERT INTO forensic_meta VALUES ('user_id', '42');
         INSERT INTO forensic_meta VALUES ('username', 'testuser');
         INSERT INTO forensic_meta VALUES ('sha256', 'placeholder');
-        INSERT INTO pages (url_canonical, html, fetched_at, http_status)
-            VALUES ('/forum/test', X'3C703E54657374203C2F703E', 1700000000, 200);
+        INSERT INTO pages (url_canonical, html, fetched_at, http_status, method)
+            VALUES ('/forum/test', X'3C703E54657374203C2F703E', 1700000000, 200, 'GET');
     """)
     con.commit()
     con.close()
