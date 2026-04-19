@@ -13,3 +13,4 @@ lxml>=5.0
 # Node.js (nur DEV, fuer JavaScript-Tests via vitest):
 # Nicht als pip-Paket — separat installieren: https://nodejs.org/
 # Beleg: AP-E2, Projektgespraech 2026-04-19
+pyeditorjs>=1.0.0b0  # AP-E5: serverseitiger Editor.js-HTML-Export, Beleg: AP-E5 Projektgespraech 2026-04-19

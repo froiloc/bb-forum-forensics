@@ -48,6 +48,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 RUNTIME_PACKAGES = [
     "pyyaml",
     "lxml",
+    "pyeditorjs",   # AP-E5: serverseitiger Editor.js-HTML-Export
 ]
 
 # Nur-DEV-Abhaengigkeiten
