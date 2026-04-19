@@ -13,11 +13,6 @@ paths:
 hosts_management:
   enabled: false
 
-# Editor-Einstellungen (AP-E4)
-# Beleg: AP-E4, Projektgespraech 2026-04-19
-editor:
-  autosave_debounce_ms: 1500  # Auto-Save-Debounce in ms (Standard: 1500)
-
 logging:
   level: "debug"
   logfile: "./logs/forensic_server.log"

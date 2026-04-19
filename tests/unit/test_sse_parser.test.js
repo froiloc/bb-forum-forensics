@@ -45,8 +45,6 @@ beforeAll(() => {
   dom.window.fetch = vi.fn().mockResolvedValue({
     json: () => Promise.resolve({ status: "ok" }),
   });
-  // requestAnimationFrame-Stub (nicht in JSDOM)
-  dom.window.requestAnimationFrame = (cb) => setTimeout(cb, 0);
 
   dom.window.eval(src);
   ft = dom.window.ForensicToolbar;

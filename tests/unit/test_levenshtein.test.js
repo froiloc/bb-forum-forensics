@@ -17,8 +17,6 @@ beforeAll(() => {
     runScripts: "dangerously",
     url: "http://localhost",
   });
-  dom.window.fetch = () => Promise.resolve({ ok: false, json: () => ({}) });
-  dom.window.requestAnimationFrame = (cb) => setTimeout(cb, 0);
   dom.window.eval(src);
   ForensicToolbar = dom.window.ForensicToolbar;
 });

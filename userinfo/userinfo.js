@@ -296,8 +296,6 @@ function renderDynamicBlocks(container, data) {
  * Berichtsinhalt in Read-Only-Reiter laden.
  */
 async function loadReadonlyReport() {
-    // AP-E4: Umgestellt von data.paragraphs auf data.reports[].blocks
-    // Beleg: AP-E4, Projektgespraech 2026-04-19
     const container = document.getElementById('report-readonly-content');
     if (!container) return;
 
@@ -307,13 +305,7 @@ async function loadReadonlyReport() {
         });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
-        // Neues Format: { reports: [ { id, title, blocks: [...] } ] }
-        const reports = data.reports || [];
-        if (!reports.length) {
-            container.innerHTML = '<p class="negativ-befund">Noch kein Bericht vorhanden.</p>';
-            return;
-        }
-        renderReadonlyReports(container, reports);
+        renderReadonlyParagraphs(container, data.paragraphs || []);
     } catch (err) {
         container.innerHTML = `<div class="status-msg status-msg-warn">
             Bericht konnte nicht geladen werden: ${esc(String(err))}</div>`;
@@ -321,84 +313,24 @@ async function loadReadonlyReport() {
 }
 
 /**
- * Berichte mit ihren Editor.js-Bloecken im Read-Only-Reiter rendern.
- * AP-E4: Ersetzt renderReadonlyParagraphs() (altes Paragraph-Modell).
- * Beleg: AP-E4, Projektgespraech 2026-04-19
+ * Paragraphen im Read-Only-Reiter rendern.
  * @param {HTMLElement} container
- * @param {Array} reports  Array von ReportRecord mit blocks[]
+ * @param {Array} paragraphs
  */
-function renderReadonlyReports(container, reports) {
-    const typeLabels = { interim: 'Zwischenbericht', final: 'Abschlussbericht', addendum: 'Nachtrag' };
-    let html = '';
-    for (const report of reports) {
-        const blocks = report.blocks || [];
-        html += `<details class="readonly-report" open>
-            <summary class="readonly-report-title">
-                ${report.sequence_nr}. ${typeLabels[report.report_type] || report.report_type}:
-                ${esc(report.title)}
-                <span class="report-status-pill">${esc(report.status)}</span>
-            </summary>
-            <div class="readonly-report-body">
-                ${blocks.length
-                    ? blocks.map(b => _renderReadonlyBlock(b)).join('')
-                    : '<p class="negativ-befund">Noch keine Bloecke vorhanden.</p>'}
+function renderReadonlyParagraphs(container, paragraphs) {
+    if (!paragraphs.length) {
+        container.innerHTML = '<p class="negativ-befund">Noch kein Berichtstext vorhanden.</p>';
+        return;
+    }
+    container.innerHTML = paragraphs.map(p => `
+        <div class="report-paragraph">
+            <div class="report-paragraph-author">
+                ${esc(p.author)} · ${formatTs(p.created_at)}
+                ${p.updated_at !== p.created_at ? ` (geändert: ${formatTs(p.updated_at)})` : ''}
             </div>
-        </details>`;
-    }
-    container.innerHTML = html || '<p class="negativ-befund">Noch kein Bericht vorhanden.</p>';
-}
-
-/**
- * Einzelnen Editor.js-Block im Read-Only-Reiter rendern.
- * Unterstuetzt: paragraph, header, list, table, delimiter, quote, evidence.
- * Beleg: AP-E4, Projektgespraech 2026-04-19
- * @param {object} block  { block_id, block_type, block_data, owner }
- */
-function _renderReadonlyBlock(block) {
-    const data = typeof block.block_data === 'string'
-        ? JSON.parse(block.block_data)
-        : (block.block_data || {});
-
-    let inner = '';
-    switch (block.block_type) {
-        case 'paragraph':
-            inner = `<p class="ro-paragraph">${data.text || ''}</p>`;
-            break;
-        case 'header':
-            const lvl = data.level || 2;
-            inner = `<h${lvl} class="ro-header">${esc(data.text || '')}</h${lvl}>`;
-            break;
-        case 'list': {
-            const tag  = (data.style === 'ordered') ? 'ol' : 'ul';
-            const items = (data.items || []).map(item => {
-                const text = typeof item === 'string' ? item : (item.content || '');
-                return `<li>${text}</li>`;
-            }).join('');
-            inner = `<${tag} class="ro-list">${items}</${tag}>`;
-            break;
-        }
-        case 'delimiter':
-            inner = '<hr class="ro-delimiter">';
-            break;
-        case 'quote':
-            inner = `<blockquote class="ro-quote">${esc(data.text || '')}</blockquote>`;
-            break;
-        case 'evidence':
-            const ids = (data.evidence_ids || []);
-            inner = `<div class="ro-evidence">
-                <span class="evidence-block-icon">⚖</span>
-                ${data.group_label ? `<strong>${esc(data.group_label)}</strong> ` : ''}
-                ${ids.map(id => `<span class="evidence-id-chip">Beleg #${id}</span>`).join(' ')}
-            </div>`;
-            break;
-        default:
-            inner = `<div class="ro-unknown">[${esc(block.block_type)}]</div>`;
-    }
-
-    return `<div class="ro-block ro-block-${esc(block.block_type)}" data-owner="${esc(block.owner || '')}">
-        ${inner}
-        <div class="ro-block-meta">${esc(block.owner || '')}</div>
-    </div>`;
+            <div class="report-paragraph-content">${renderAnchors(p.content)}</div>
+        </div>`).join('');
+    initAnchorNavigation(container);
 }
 
 /**
@@ -454,28 +386,33 @@ async function initEditor() {
             return id;
         })();
 
-    // Editor-HTML-Grundstruktur aufbauen (AP-E4: Editor.js-Container)
-    // Beleg: AP-E4, Projektgespraech 2026-04-19
+    // Editor-HTML-Grundstruktur aufbauen
     const container = document.getElementById('report-editor-container');
     if (container) {
         container.innerHTML = `
             <div id="report-editor-toolbar">
                 <span id="report-lock-status" class="lock-none">Kein Lock</span>
                 <button class="editor-btn editor-btn-primary" id="btn-acquire-lock"
-                    title="Editor-Lock erwerben um schreiben zu koennen">Lock erwerben</button>
+                    title="Editor-Lock erwerben um schreiben zu können">Lock erwerben</button>
                 <button class="editor-btn" id="btn-release-lock" disabled
                     title="Editor-Lock freigeben">Lock freigeben</button>
-                <button class="editor-btn" id="btn-annotations-sidebar"
-                    title="Annotations-Sidebar ein/ausblenden">⚖ Belege</button>
-                <span id="editor-save-indicator" style="font-size:11px;color:#4caf50;opacity:0;transition:opacity 1s"></span>
-                <span id="editor-report-title" style="font-size:11px;color:#555;margin-left:auto"></span>
+                <button class="editor-btn" id="btn-reload-paragraphs">Aktualisieren</button>
             </div>
             <div id="report-status-msg"></div>
-            <div id="editorjs-holder" class="editorjs-holder"></div>
+            <ul id="report-paragraphs-list" aria-label="Berichtsparagraphen"></ul>
+            <div id="report-new-paragraph" class="editor-new-paragraph" style="display:none">
+                <textarea id="report-new-content"
+                    placeholder="Neuer Paragraph (Beweisanker: [BELEG:annotation_id=N])"
+                    aria-label="Neuer Paragraph"></textarea>
+                <div style="margin-top:6px;display:flex;gap:6px">
+                    <button class="editor-btn editor-btn-primary" id="btn-save-paragraph">Speichern</button>
+                    <button class="editor-btn" id="btn-cancel-paragraph">Abbrechen</button>
+                </div>
+            </div>
             <div id="report-frozen-overlay">
                 <div>
-                    <strong>Dieser Editor ist bereits in einem anderen Fenster geoeffnet.</strong><br>
-                    Dieses Fenster ist schreibgeschuetzt.
+                    <strong>Dieser Editor ist bereits in einem anderen Fenster geöffnet.</strong><br>
+                    Dieses Fenster ist schreibgeschützt.
                 </div>
             </div>`;
     }
@@ -486,12 +423,15 @@ async function initEditor() {
     // SSE-Verbindung aufbauen — Client-ID empfangen
     await initSSEWindow3();
 
-    // Buttons verdrahten (Lock-Steuerung unveraendert)
+    // Paragraphen laden
+    await reloadParagraphs();
+
+    // Buttons verdrahten
     document.getElementById('btn-acquire-lock')?.addEventListener('click', acquireLock);
     document.getElementById('btn-release-lock')?.addEventListener('click', releaseLock);
-    document.getElementById('btn-annotations-sidebar')?.addEventListener('click', () => {
-        if (window.toggleAnnotationSidebar) toggleAnnotationSidebar();
-    });
+    document.getElementById('btn-reload-paragraphs')?.addEventListener('click', reloadParagraphs);
+    document.getElementById('btn-save-paragraph')?.addEventListener('click', saveNewParagraph);
+    document.getElementById('btn-cancel-paragraph')?.addEventListener('click', cancelNewParagraph);
 
     // Lock bei Seitenentladung freigeben (§8.6 Bauplan B4 — beforeunload)
     window.addEventListener('beforeunload', () => {
@@ -499,12 +439,6 @@ async function initEditor() {
             releaseLock(true); // synchron via sendBeacon
         }
     });
-
-    // Editor.js-Modul initialisieren (editor.js)
-    // Beleg: AP-E4, Projektgespraech 2026-04-19
-    if (window.initEditorModule) {
-        await window.initEditorModule();
-    }
 }
 
 /**
@@ -577,14 +511,9 @@ async function initSSEWindow3() {
             }
         });
 
-        // block_updated wird von editor.js (initBlockUpdatedListener) behandelt.
-        // report_updated bleibt fuer rueckwaertskompatible Events.
         evtSrc.addEventListener('report_updated', () => {
-            // Editor.js handhabt Updates intern via block_updated
+            reloadParagraphs();
         });
-
-        // SSE-Quelle global bereitstellen fuer editor.js
-        window._forensicEvtSrc = evtSrc;
 
         // Timeout: nach 3s auch ohne client_id fortfahren
         setTimeout(() => {
@@ -642,8 +571,14 @@ async function acquireLock() {
             updateLockStatus('lock-mine', 'Lock: ich');
             document.getElementById('btn-acquire-lock').disabled = true;
             document.getElementById('btn-release-lock').disabled = false;
-            document.getElementById('report-new-paragraph').style.display = '';
-            showStatusMsg('Lock erworben.', 'ok');
+            showStatusMsg('Lock erworben — Editor wird aktiviert…', 'ok');
+            // Editor neu initialisieren mit readOnly: false.
+            // _reinitWithLock() ist in editor.js definiert.
+            // Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19
+            if (window._reinitWithLock) {
+                await window._reinitWithLock();
+                showStatusMsg('Lock erworben — Editor aktiv.', 'ok');
+            }
         } else if (resp.status === 423) {
             updateLockStatus('lock-other', `Belegt: ${esc(data.locked_by || '?')}`);
             showStatusMsg(`Lock bereits belegt von: ${esc(data.locked_by || '?')}`, 'warn');
@@ -690,11 +625,157 @@ function releaseLock(sync = false) {
     sessionStorage.removeItem('forensic_lock_id');
 }
 
-// reloadParagraphs(), renderEditorParagraphs(), saveNewParagraph(),
-// cancelNewParagraph(), openSuggestDialog() wurden in AP-E4 entfernt.
-// Diese Funktionen sind durch Editor.js (editor.js) ersetzt.
-// Beleg: AP-E4, Projektgespraech 2026-04-19
+/**
+ * Paragraphen laden und rendern.
+ */
+async function reloadParagraphs() {
+    const list = document.getElementById('report-paragraphs-list');
+    if (!list) return;
 
+    try {
+        const resp = await fetch(FORENSIC_API.REPORT + '?format=json', {
+            headers: { 'X-Forensic-Request': 'ajax' }
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        renderEditorParagraphs(list, data.paragraphs || []);
+    } catch (err) {
+        list.innerHTML = `<li><div class="status-msg status-msg-warn">
+            Paragraphen konnten nicht geladen werden: ${esc(String(err))}</div></li>`;
+    }
+}
+
+/**
+ * Paragraphen im Editor rendern.
+ * @param {HTMLElement} list
+ * @param {Array} paragraphs
+ */
+function renderEditorParagraphs(list, paragraphs) {
+    if (!paragraphs.length) {
+        list.innerHTML = '<li><p class="negativ-befund">Noch kein Berichtstext. Lock erwerben und ersten Paragraph anlegen.</p></li>';
+        return;
+    }
+    list.innerHTML = paragraphs.map(p => `
+        <li class="editor-paragraph" data-id="${p.id}">
+            <div class="editor-paragraph-header">
+                <strong>${esc(p.author)}</strong>
+                <span>${formatTs(p.created_at)}</span>
+                ${p.status === 'superseded'
+                    ? '<span style="color:#e65100">[überarbeitet]</span>'
+                    : ''}
+            </div>
+            <div class="editor-paragraph-content">${renderAnchors(p.content)}</div>
+            <div class="editor-paragraph-actions">
+                <button class="editor-btn btn-suggest" data-id="${p.id}"
+                    title="Änderungsvorschlag einreichen">Vorschlag</button>
+            </div>
+        </li>`).join('');
+
+    // Anker-Navigation
+    initAnchorNavigation(list);
+
+    // Vorschlags-Buttons
+    list.querySelectorAll('.btn-suggest').forEach(btn => {
+        btn.addEventListener('click', () => openSuggestDialog(parseInt(btn.dataset.id, 10)));
+    });
+}
+
+/**
+ * Neuen Paragraph speichern.
+ */
+async function saveNewParagraph() {
+    if (!EditorState.lockId) {
+        showStatusMsg('Lock erforderlich.', 'warn');
+        return;
+    }
+    const textarea = document.getElementById('report-new-content');
+    const content = (textarea?.value || '').trim();
+    if (!content) {
+        showStatusMsg('Inhalt darf nicht leer sein.', 'warn');
+        return;
+    }
+
+    try {
+        const resp = await fetch(FORENSIC_API.REPORT, {
+            method: 'POST',
+            headers: {
+                'Content-Type':        'application/json',
+                'X-Forensic-Lock-Id':  EditorState.lockId,
+            },
+            body: JSON.stringify({ action: 'add_paragraph', content }),
+        });
+        const data = await resp.json();
+
+        if (resp.ok) {
+            if (textarea) textarea.value = '';
+            showStatusMsg('Paragraph gespeichert.', 'ok');
+            await reloadParagraphs();
+        } else {
+            showStatusMsg(`Fehler: ${esc(data.error || resp.status)}`, 'error');
+        }
+    } catch (err) {
+        showStatusMsg(`Netzwerkfehler: ${esc(String(err))}`, 'error');
+    }
+}
+
+function cancelNewParagraph() {
+    const textarea = document.getElementById('report-new-content');
+    if (textarea) textarea.value = '';
+    document.getElementById('report-new-paragraph').style.display = 'none';
+}
+
+/**
+ * Einfacher Änderungsvorschlags-Dialog (inline, kein Modal-Framework).
+ */
+function openSuggestDialog(paragraphId) {
+    // Vorhandenen Dialog schließen
+    document.getElementById('suggest-dialog')?.remove();
+
+    const li = document.querySelector(`.editor-paragraph[data-id="${paragraphId}"]`);
+    if (!li) return;
+
+    const origContent = li.querySelector('.editor-paragraph-content')?.textContent || '';
+    const dialog = document.createElement('div');
+    dialog.id = 'suggest-dialog';
+    dialog.style.cssText = 'margin-top:8px;background:#fff3e0;border:1px solid #ffcc80;border-radius:4px;padding:10px';
+    dialog.innerHTML = `
+        <div style="font-size:12px;margin-bottom:6px">Änderungsvorschlag für Paragraph #${paragraphId}:</div>
+        <textarea id="suggest-content" style="width:100%;min-height:60px;font-size:13px;font-family:inherit;
+            border:1px solid #ccc;border-radius:2px;padding:4px"
+            aria-label="Vorschlag">${esc(origContent)}</textarea>
+        <div style="margin-top:6px;display:flex;gap:6px">
+            <button class="editor-btn editor-btn-primary" id="btn-submit-suggest">Einreichen</button>
+            <button class="editor-btn" id="btn-cancel-suggest">Abbrechen</button>
+        </div>`;
+
+    li.appendChild(dialog);
+
+    document.getElementById('btn-cancel-suggest')?.addEventListener('click', () => dialog.remove());
+    document.getElementById('btn-submit-suggest')?.addEventListener('click', async () => {
+        const content = (document.getElementById('suggest-content')?.value || '').trim();
+        if (!content) return;
+        try {
+            const resp = await fetch(FORENSIC_API.REPORT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action:            'suggest_change',
+                    paragraph_id:      paragraphId,
+                    suggested_content: content,
+                }),
+            });
+            const data = await resp.json();
+            dialog.remove();
+            if (resp.ok) {
+                showStatusMsg('Vorschlag eingereicht.', 'ok');
+            } else {
+                showStatusMsg(`Fehler: ${esc(data.error || resp.status)}`, 'error');
+            }
+        } catch (err) {
+            showStatusMsg(`Netzwerkfehler: ${esc(String(err))}`, 'error');
+        }
+    });
+}
 
 /**
  * Statusmeldung anzeigen (auto-fade nach 4s).

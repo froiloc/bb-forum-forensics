@@ -77,25 +77,29 @@ class AnnotationsEndpoint:
         params: dict,
     ) -> None:
         """
-        Verarbeitet GET /_forensic/annotations?url=<url>
+        Verarbeitet GET /_forensic/annotations[?url=<url>]
+
+        Ohne url-Parameter: alle Annotationen des Benutzers (fuer
+        die Annotations-Sidebar in editor.js, AP-E4).
+        Mit url-Parameter: nur Annotationen zur angegebenen Seite.
 
         Args:
             handler: ForensicRequestHandler-Instanz.
             params:  URL-Query-Parameter (aus urllib.parse.parse_qs).
+
+        Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19
         """
-        # url-Parameter extrahieren
+        # url-Parameter extrahieren — optional (AP-E4 Bugfix)
         url_values = params.get("url", [])
-        if not url_values:
-            self._error(handler, "Feld 'url' fehlt")
-            return
-        page_url = url_values[0].strip()
-        if not page_url:
-            self._error(handler, "Feld 'url' ist leer")
-            return
+        page_url   = url_values[0].strip() if url_values else None
 
         # Annotationen aus DB laden
         try:
-            records = self._bundle.evidence.get_annotations(page_url)
+            if page_url:
+                records = self._bundle.evidence.get_annotations(page_url)
+            else:
+                # Alle Annotationen — fuer editor.js Sidebar
+                records = self._bundle.evidence.get_all_annotations()
         except Exception as exc:
             logger.error("Annotationen konnten nicht geladen werden: %s", exc)
             self._error(handler, "Interner Fehler beim Laden der Annotationen", status=500)

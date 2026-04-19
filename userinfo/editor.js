@@ -311,11 +311,19 @@ function _initEditorJs(blocks, reportId) {
         })),
     };
 
+    // readOnly: Lock-Zustand zum Zeitpunkt der Initialisierung.
+    // Nach Lock-Erwerb wird der Editor via _reinitWithLock() neu
+    // initialisiert — dann mit readOnly: false.
+    // Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19
+    const hasLock = !!(window.EditorState?.lockId);
+
     _editor = new window.EditorJS({
         holder: 'editorjs-holder',
         data:   editorData,
-        placeholder: 'Lock erwerben und mit dem Schreiben beginnen…',
-        readOnly: !window.EditorState?.lockId,
+        placeholder: hasLock
+            ? 'Schreiben beginnen…'
+            : 'Lock erwerben um zu schreiben…',
+        readOnly: !hasLock,
 
         tools: {
             header:     { class: window.EditorTools?.Header,     inlineToolbar: true },
@@ -338,7 +346,10 @@ function _initEditorJs(blocks, reportId) {
                 new window.EditorTools.Undo({ editor: _editor });
             }
             _applyOwnershipStyles(blocks, username);
-            console.debug('editor.js: Editor bereit, report_id=', reportId);
+            // Global bereitstellen fuer Debugging und Reinit
+            window._editor = _editor;
+            console.debug('editor.js: Editor bereit, report_id=', reportId,
+                          '| readOnly=', !hasLock);
         },
     });
 }
@@ -828,6 +839,23 @@ async function initEditorModule() {
     initBlockUpdatedListener();
 }
 
+/**
+ * Editor nach Lock-Erwerb neu initialisieren (readOnly: false).
+ * Wird von userinfo.js nach erfolgreichem acquireLock() aufgerufen.
+ * Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19
+ */
+async function _reinitWithLock() {
+    if (!_currentReport) return;
+    // Bestehenden Editor zerstoeren
+    if (_editor) {
+        try { await _editor.destroy(); } catch (_) {}
+        _editor = null;
+        window._editor = null;
+    }
+    // Neu laden — jetzt mit gesetztem lockId
+    await loadReport(_currentReport);
+}
+
 // Im globalen Scope bereitstellen
 window.initEditorModule            = initEditorModule;
 window.injectInsertInReportButtons = injectInsertInReportButtons;
@@ -836,3 +864,4 @@ window.EvidenceBlock               = EvidenceBlock;
 // Konstante exportieren fuer Tests und externe Konfigurationspruefung
 // Beleg: AP-E4, Projektgespraech 2026-04-19
 window.AUTOSAVE_DEBOUNCE_MS        = AUTOSAVE_DEBOUNCE_MS;
+window._reinitWithLock             = _reinitWithLock;

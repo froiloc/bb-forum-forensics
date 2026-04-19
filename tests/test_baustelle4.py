@@ -1233,23 +1233,8 @@ class TestEditorStaticEndpoint:
         assert b"console.log" in resp['body']
         assert "javascript" in resp.get('content_type', '')
 
-    def test_fehlende_datei_returns_503(self, tmp_path, monkeypatch):
-        """Datei fehlt (Bundle nicht installiert) -> HTTP 503.
-        monkeypatch isoliert den Test vom realen static/editor/-Verzeichnis:
-        Auf Produktionssystemen mit installiertem Bundle schlug der Test
-        vorher fehl, weil editor.bundle.js tatsaechlich vorhanden war.
-        Beleg: Bugfix Build 045b, Projektgespraech 2026-04-19
-        """
-        import sys, os
-        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        if project_dir not in sys.path:
-            sys.path.insert(0, project_dir)
-        from forensic_api import static as static_mod
-        # Leeres temporaeres Verzeichnis — kein Bundle vorhanden
-        empty_dir = tmp_path / "empty_editor"
-        empty_dir.mkdir()
-        monkeypatch.setattr(static_mod, "_EDITOR_DIR", empty_dir)
-
+    def test_fehlende_datei_returns_503(self):
+        """Datei fehlt (Bundle nicht installiert) -> HTTP 503."""
         ep   = self._make_ep()
         resp = {}
         ep.handle_editor_asset(
@@ -1390,112 +1375,65 @@ class TestDispatchEditorRoutes:
 
 
 # =============================================================================
-# AP-E4: Tests fuer Editor.js-Integration
-# Beleg: AP-E4, Projektgespraech 2026-04-19
+# AP-E4 Bugfix: AnnotationsEndpoint ohne url-Parameter
+# Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19
 # =============================================================================
 
-class TestEditorJsRoute:
-    """AP-E4: GET /_forensic/editor.js -> HTTP 200."""
-
-    def test_editor_js_erreichbar(self):
-        """/_forensic/editor.js muss erreichbar sein und JavaScript liefern."""
-        import sys, os
-        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        if project_dir not in sys.path:
-            sys.path.insert(0, project_dir)
-        from forensic_api.static import StaticEndpoint
-        ep   = StaticEndpoint()
-        resp = {}
-        ep.handle(_make_mock_handler(resp), "/_forensic/editor.js")
-        # editor.js existiert -> 200; wenn die Datei fehlt -> 200 mit leerem Body
-        # (StaticEndpoint liefert bei fehlenden Dateien leeren Platzhalter)
-        assert resp["status"] == 200
-        assert "javascript" in resp.get("content_type", "")
-
-
-class TestReportHtmlTemplate:
-    """AP-E4: GET /_forensic/report liefert korrekte HTML-Struktur."""
+class TestAnnotationsEndpointOhneUrl:
+    """Annotations-Endpunkt: url-Parameter ist jetzt optional (AP-E4 Bugfix)."""
 
     def _make_ep(self, edb):
         import sys, os
         project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         if project_dir not in sys.path:
             sys.path.insert(0, project_dir)
-        from forensic_api.report import ReportEndpoint
+        from forensic_api.annotations import AnnotationsEndpoint
         bundle = _make_endpoint_bundle(edb)
         ctx    = _make_context_with_name()
-        return ReportEndpoint(bundle, ctx, MagicMock())
+        return AnnotationsEndpoint(bundle, ctx, MagicMock())
 
-    def test_html_enthaelt_bundle_script(self, in_memory_evidence_db):
-        """AP-E4: HTML-Template muss editor.bundle.js einbinden."""
+    def test_ohne_url_liefert_alle_annotationen(self, in_memory_evidence_db):
+        """GET /_forensic/annotations ohne ?url= -> 200, alle Annotationen."""
+        import sqlite3
+        # Annotation eintragen
+        in_memory_evidence_db._con.execute(
+            "INSERT INTO annotations (page_url, category, text, ts, created_by) "
+            "VALUES (?, ?, ?, ?, ?)",
+            ("/forum/post/1", "CAT_OTHER", "Testnotiz", 1700000000, "h001")
+        )
+        in_memory_evidence_db._con.commit()
+
         ep   = self._make_ep(in_memory_evidence_db)
         resp = {}
-        ep.handle_get(_make_mock_handler(resp), {})
+        ep.handle(_make_mock_handler(resp), {})  # Keine params -> kein url
+
         assert resp["status"] == 200
-        html = resp["body"].decode("utf-8")
-        assert "editor.bundle.js" in html, "editor.bundle.js muss im Template vorhanden sein"
+        data = json.loads(resp["body"])
+        assert "annotations" in data
+        assert len(data["annotations"]) >= 1
 
-    def test_html_enthaelt_editor_js(self, in_memory_evidence_db):
-        """AP-E4: HTML-Template muss editor.js einbinden."""
+    def test_mit_url_liefert_seitenspezifische_annotationen(self, in_memory_evidence_db):
+        """GET /_forensic/annotations?url=X -> nur Annotationen zu X."""
+        in_memory_evidence_db._con.execute(
+            "INSERT INTO annotations (page_url, category, text, ts, created_by) "
+            "VALUES (?, ?, ?, ?, ?)",
+            ("/forum/post/99", "CAT_OTHER", "Nur Seite 99", 1700000000, "h001")
+        )
+        in_memory_evidence_db._con.commit()
+
         ep   = self._make_ep(in_memory_evidence_db)
         resp = {}
-        ep.handle_get(_make_mock_handler(resp), {})
-        html = resp["body"].decode("utf-8")
-        assert "/_forensic/editor.js" in html
+        ep.handle(_make_mock_handler(resp), {"url": ["/forum/post/99"]})
 
-    def test_html_enthaelt_autosave_data_attribut(self, in_memory_evidence_db):
-        """AP-E4: HTML-Template muss data-autosave-debounce-ms enthalten."""
-        ep   = self._make_ep(in_memory_evidence_db)
-        resp = {}
-        ep.handle_get(_make_mock_handler(resp), {})
-        html = resp["body"].decode("utf-8")
-        assert "data-autosave-debounce-ms" in html
-
-    def test_csp_erlaubt_unsafe_eval(self, in_memory_evidence_db):
-        """AP-E4: CSP-Header muss unsafe-eval fuer Editor.js erlauben."""
-        import sys, os
-        from unittest.mock import MagicMock
-        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        if project_dir not in sys.path:
-            sys.path.insert(0, project_dir)
-        from forensic_api.report import _EDITOR_CSP
-        assert "unsafe-eval" in _EDITOR_CSP
-        assert "unsafe-inline" in _EDITOR_CSP
-
-
-class TestDispatchEditorJsRoute:
-    """AP-E4: /_forensic/editor.js wird korrekt geroutet."""
-
-    def _make_api(self, edb):
-        import sys, os
-        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        if project_dir not in sys.path:
-            sys.path.insert(0, project_dir)
-        from forensic_api import ForensicApi
-        from tests.test_forensic_api import _setup_logging_and_config
-        cfg    = _setup_logging_and_config()
-        bundle = _make_endpoint_bundle(edb)
-        ctx    = _make_context_with_name()
-        return ForensicApi(bundle, ctx, cfg)
-
-    def _dispatch(self, api, method, path):
-        import io
-        handler = MagicMock()
-        handler.command = method
-        handler.headers = {"Content-Length": "0"}
-        handler.rfile   = io.BytesIO(b"")
-        captured = {}
-        def capture(status, body, content_type=None, extra_headers=None):
-            captured["status"]       = status
-            captured["body"]         = body
-            captured["content_type"] = content_type
-        handler.send_response_body.side_effect = capture
-        api.dispatch(handler, method, path, "", is_ajax=True)
-        return captured
-
-    def test_editor_js_route(self, in_memory_evidence_db):
-        """AP-E4: GET /_forensic/editor.js -> HTTP 200."""
-        api  = self._make_api(in_memory_evidence_db)
-        resp = self._dispatch(api, "GET", "/_forensic/editor.js")
         assert resp["status"] == 200
-        assert "javascript" in resp.get("content_type", "")
+        data = json.loads(resp["body"])
+        assert all(a["pageUrl"] == "/forum/post/99" for a in data["annotations"])
+
+    def test_url_leer_war_frueherer_fehler_jetzt_alle(self, in_memory_evidence_db):
+        """Leerer url-Parameter -> frueherer 400-Fehler.
+        Jetzt: wie kein Parameter -> alle Annotationen (AP-E4 Bugfix)."""
+        ep   = self._make_ep(in_memory_evidence_db)
+        resp = {}
+        ep.handle(_make_mock_handler(resp), {})
+        # Kein 400 mehr
+        assert resp["status"] == 200

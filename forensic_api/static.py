@@ -27,12 +27,7 @@
 #     - MIME-Type-Erkennung anhand Dateiendung.
 #     Beleg: AP-E3, Projektgespraech 2026-04-19
 #
-# Changelog:
-#   Build 044 (AP-E3): handle_editor_asset() ergaenzt.
-#   Build 045 (AP-E4): /_forensic/editor.js in _RESOURCES eingetragen.
-#     Beleg: AP-E4, Projektgespraech 2026-04-19
-#
-# Version: v0.6.045 · Build: 045 · 2026-04-19
+# Version: v0.6.044 · Build: 044 · 2026-04-19
 # =============================================================================
 
 from __future__ import annotations
@@ -60,9 +55,6 @@ _RESOURCES: dict[str, tuple[str, str, Path]] = {
     "/_forensic/toolbar.css":  ("toolbar.css",  "text/css; charset=utf-8",               _TOOLBAR_DIR),
     "/_forensic/userinfo.js":  ("userinfo.js",  "application/javascript; charset=utf-8", _USERINFO_DIR),
     "/_forensic/userinfo.css": ("userinfo.css", "text/css; charset=utf-8",               _USERINFO_DIR),
-    # AP-E4: Editor.js-Modul (editor.js) — liegt im userinfo/-Verzeichnis
-    # Beleg: AP-E4, Projektgespraech 2026-04-19
-    "/_forensic/editor.js":    ("editor.js",    "application/javascript; charset=utf-8", _USERINFO_DIR),
 }
 
 # MIME-Types fuer Editor.js-Bundle-Dateien (AP-E3)

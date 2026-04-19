@@ -41,12 +41,7 @@
 #     EditorEvidenceEndpoint, StaticEndpoint.handle_editor_asset.
 #     Beleg: AP-E3, Projektgespraech 2026-04-19
 #
-# Changelog:
-#   Build 044 (AP-E3): Fuenf neue Endpunkte ergaenzt.
-#   Build 045 (AP-E4): /_forensic/editor.js in statische Ressourcen eingetragen.
-#     Beleg: AP-E4, Projektgespraech 2026-04-19
-#
-# Version: v0.6.045 · Build: 045 · 2026-04-19
+# Version: v0.6.044 · Build: 044 · 2026-04-19
 # =============================================================================
 
 from __future__ import annotations
@@ -163,7 +158,6 @@ class ForensicApi:
             "/_forensic/toolbar.css",
             "/_forensic/userinfo.js",
             "/_forensic/userinfo.css",
-            "/_forensic/editor.js",      # AP-E4, Beleg: Projektgespraech 2026-04-19
         ):
             if method not in ("GET", "HEAD"):
                 self._method_not_allowed(handler)
