@@ -43,7 +43,13 @@
 #     - CSP-Header ergaenzt.
 #     Beleg: AP-E1, Projektgespraech 2026-04-19
 #
-# Version: v0.6.043 · Build: 043 · 2026-04-19
+# Changelog:
+#   Build 043 (AP-E1): Umgeschrieben auf Editor.js-Block-Modell.
+#   Build 045 (AP-E4): HTML-Template: Bundle-Script + editor.js eingebunden.
+#     autosave_debounce_ms aus config.yaml als data-Attribut eingebettet.
+#     Beleg: AP-E4, Projektgespraech 2026-04-19
+#
+# Version: v0.6.045 · Build: 045 · 2026-04-19
 # =============================================================================
 
 from __future__ import annotations
@@ -76,15 +82,21 @@ _EDITOR_HTML = """\
     <title>Bericht-Editor \u00b7 {username} \u00b7 ID: {user_id}</title>
     <link rel="stylesheet" href="/_forensic/userinfo.css">
   </head>
-  <body id="report-editor-body" data-user-id="{user_id}" data-username="{username}">
+  <body id="report-editor-body"
+        data-user-id="{user_id}"
+        data-username="{username}"
+        data-autosave-debounce-ms="{autosave_debounce_ms}">
     <div id="report-selector-container">
-      <!-- Berichtsauswahl — per editor.js initialisiert (AP-E4) -->
+      <!-- Berichtsauswahl per editor.js initialisiert (AP-E4) -->
     </div>
     <div id="report-editor-container">
       <!-- Editor.js wird hier initialisiert (AP-E4) -->
     </div>
-    <!-- Editor.js-Bundle wird in AP-E4 eingebunden -->
-    <!-- <script src="/_forensic/static/editor/editor.bundle.js" defer></script> -->
+    <!-- Editor.js-Bundle (AP-E2: build_editor_bundle.py ausfuehren) -->
+    <script src="/_forensic/static/editor/editor.bundle.js"></script>
+    <!-- Editor-Modul (AP-E4) -->
+    <script src="/_forensic/editor.js" defer></script>
+    <!-- userinfo.js: Lock/SSE/Fenster-3-Basislogik -->
     <script src="/_forensic/userinfo.js" defer></script>
   </body>
 </html>"""
@@ -142,13 +154,23 @@ class ReportEndpoint:
             self._handle_get_html(handler)
 
     def _handle_get_html(self, handler: "ForensicRequestHandler") -> None:
-        """Liefert die Editor-Shell-HTML mit CSP-Header aus."""
+        """
+        Liefert die Editor-Shell-HTML mit CSP-Header aus.
+        Bettet autosave_debounce_ms aus config.yaml als data-Attribut ein.
+        Beleg: AP-E4, Projektgespraech 2026-04-19
+        """
         safe_username = html_module.escape(
             self._context.username or f"uid_{self._context.user_id}"
+        )
+        autosave_ms = int(
+            getattr(self._config, "get", lambda k, d: d)(
+                "editor.autosave_debounce_ms", 1500
+            )
         )
         page_html = _EDITOR_HTML.format(
             username=safe_username,
             user_id=self._context.user_id,
+            autosave_debounce_ms=autosave_ms,
         )
         body = page_html.encode("utf-8")
         handler.send_response_body(

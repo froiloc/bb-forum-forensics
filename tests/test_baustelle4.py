@@ -1372,3 +1372,115 @@ class TestDispatchEditorRoutes:
         # /report -> ReportEndpoint (200 mit HTML oder JSON)
         resp_report = self._dispatch(api, "GET", "/_forensic/report")
         assert resp_report['status'] == 200
+
+
+# =============================================================================
+# AP-E4: Tests fuer Editor.js-Integration
+# Beleg: AP-E4, Projektgespraech 2026-04-19
+# =============================================================================
+
+class TestEditorJsRoute:
+    """AP-E4: GET /_forensic/editor.js -> HTTP 200."""
+
+    def test_editor_js_erreichbar(self):
+        """/_forensic/editor.js muss erreichbar sein und JavaScript liefern."""
+        import sys, os
+        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if project_dir not in sys.path:
+            sys.path.insert(0, project_dir)
+        from forensic_api.static import StaticEndpoint
+        ep   = StaticEndpoint()
+        resp = {}
+        ep.handle(_make_mock_handler(resp), "/_forensic/editor.js")
+        # editor.js existiert -> 200; wenn die Datei fehlt -> 200 mit leerem Body
+        # (StaticEndpoint liefert bei fehlenden Dateien leeren Platzhalter)
+        assert resp["status"] == 200
+        assert "javascript" in resp.get("content_type", "")
+
+
+class TestReportHtmlTemplate:
+    """AP-E4: GET /_forensic/report liefert korrekte HTML-Struktur."""
+
+    def _make_ep(self, edb):
+        import sys, os
+        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if project_dir not in sys.path:
+            sys.path.insert(0, project_dir)
+        from forensic_api.report import ReportEndpoint
+        bundle = _make_endpoint_bundle(edb)
+        ctx    = _make_context_with_name()
+        return ReportEndpoint(bundle, ctx, MagicMock())
+
+    def test_html_enthaelt_bundle_script(self, in_memory_evidence_db):
+        """AP-E4: HTML-Template muss editor.bundle.js einbinden."""
+        ep   = self._make_ep(in_memory_evidence_db)
+        resp = {}
+        ep.handle_get(_make_mock_handler(resp), {})
+        assert resp["status"] == 200
+        html = resp["body"].decode("utf-8")
+        assert "editor.bundle.js" in html, "editor.bundle.js muss im Template vorhanden sein"
+
+    def test_html_enthaelt_editor_js(self, in_memory_evidence_db):
+        """AP-E4: HTML-Template muss editor.js einbinden."""
+        ep   = self._make_ep(in_memory_evidence_db)
+        resp = {}
+        ep.handle_get(_make_mock_handler(resp), {})
+        html = resp["body"].decode("utf-8")
+        assert "/_forensic/editor.js" in html
+
+    def test_html_enthaelt_autosave_data_attribut(self, in_memory_evidence_db):
+        """AP-E4: HTML-Template muss data-autosave-debounce-ms enthalten."""
+        ep   = self._make_ep(in_memory_evidence_db)
+        resp = {}
+        ep.handle_get(_make_mock_handler(resp), {})
+        html = resp["body"].decode("utf-8")
+        assert "data-autosave-debounce-ms" in html
+
+    def test_csp_erlaubt_unsafe_eval(self, in_memory_evidence_db):
+        """AP-E4: CSP-Header muss unsafe-eval fuer Editor.js erlauben."""
+        import sys, os
+        from unittest.mock import MagicMock
+        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if project_dir not in sys.path:
+            sys.path.insert(0, project_dir)
+        from forensic_api.report import _EDITOR_CSP
+        assert "unsafe-eval" in _EDITOR_CSP
+        assert "unsafe-inline" in _EDITOR_CSP
+
+
+class TestDispatchEditorJsRoute:
+    """AP-E4: /_forensic/editor.js wird korrekt geroutet."""
+
+    def _make_api(self, edb):
+        import sys, os
+        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if project_dir not in sys.path:
+            sys.path.insert(0, project_dir)
+        from forensic_api import ForensicApi
+        from tests.test_forensic_api import _setup_logging_and_config
+        cfg    = _setup_logging_and_config()
+        bundle = _make_endpoint_bundle(edb)
+        ctx    = _make_context_with_name()
+        return ForensicApi(bundle, ctx, cfg)
+
+    def _dispatch(self, api, method, path):
+        import io
+        handler = MagicMock()
+        handler.command = method
+        handler.headers = {"Content-Length": "0"}
+        handler.rfile   = io.BytesIO(b"")
+        captured = {}
+        def capture(status, body, content_type=None, extra_headers=None):
+            captured["status"]       = status
+            captured["body"]         = body
+            captured["content_type"] = content_type
+        handler.send_response_body.side_effect = capture
+        api.dispatch(handler, method, path, "", is_ajax=True)
+        return captured
+
+    def test_editor_js_route(self, in_memory_evidence_db):
+        """AP-E4: GET /_forensic/editor.js -> HTTP 200."""
+        api  = self._make_api(in_memory_evidence_db)
+        resp = self._dispatch(api, "GET", "/_forensic/editor.js")
+        assert resp["status"] == 200
+        assert "javascript" in resp.get("content_type", "")
