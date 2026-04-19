@@ -1,0 +1,15 @@
+# =============================================================================
+# requirements.txt
+# IT-Forensisches Ermittlungswerkzeug — aiw_webserver
+# =============================================================================
+# Laufzeit-Abhaengigkeiten (PROD + DEV):
+pyyaml>=6.0
+lxml>=5.0
+
+# Nur DEV (Tests):
+# pytest>=8.0
+# pytest-asyncio>=0.23
+#
+# Node.js (nur DEV, fuer JavaScript-Tests via vitest):
+# Nicht als pip-Paket — separat installieren: https://nodejs.org/
+# Beleg: AP-E2, Projektgespraech 2026-04-19
