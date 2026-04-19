@@ -158,6 +158,15 @@ class EventsEndpoint:
         # Sofort: aktuellen Lock-Status senden (Fenster 3 informieren)
         self._send_lock_status(_send_event)
 
+        # Letzten gesendeten Lock-Zustand merken — nur bei Aenderung senden.
+        # Verhindert dass editor_lock_released periodisch gesendet wird
+        # wenn schlicht kein Lock vorhanden ist.
+        # Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19
+        _last_lock_id: str | None = (
+            self._bundle.evidence.get_lock().lock_id
+            if self._bundle.evidence.get_lock() else None
+        )
+
         # Polling-Schleife
         try:
             while True:
@@ -168,9 +177,13 @@ class EventsEndpoint:
                 if not _send_event("support_status", status):
                     break
 
-                # Lock-Status periodisch senden
-                if not self._send_lock_status(_send_event):
-                    break
+                # Lock-Status nur bei Aenderung senden
+                current_lock = self._bundle.evidence.get_lock()
+                current_lock_id = current_lock.lock_id if current_lock else None
+                if current_lock_id != _last_lock_id:
+                    _last_lock_id = current_lock_id
+                    if not self._send_lock_status(_send_event):
+                        break
 
         finally:
             # Verbindung abgerissen: Lock des Clients freigeben (Schicht 2, §8.6 B4)

@@ -449,8 +449,18 @@ async function initEditor() {
     });
 
     // Lock bei Seitenentladung freigeben (§8.6 Bauplan B4 — beforeunload)
+    // Vor dem Lock-Freigeben noch den aktuellen Editor-Zustand speichern.
+    // Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19
     window.addEventListener('beforeunload', () => {
-        if (EditorState.lockId) releaseLock(true);
+        if (EditorState.lockId) {
+            // Auto-Save-Timer sofort ausloesen (Debounce umgehen)
+            if (window._editor && window._currentReportId) {
+                window._editor.save().then(data => {
+                    // Kein await moeglich in beforeunload — Fire-and-forget
+                }).catch(() => {});
+            }
+            releaseLock(true);
+        }
     });
 
     // Editor.js-Modul initialisieren (editor.js).
@@ -552,11 +562,14 @@ async function initSSEWindow3() {
             const btnRelease = document.getElementById('btn-release-lock');
             if (btnAcquire) btnAcquire.disabled = false;
             if (btnRelease) btnRelease.disabled = true;
-            // Editor in readOnly-Modus versetzen
-            if (window._editor) {
+            // Editor in readOnly-Modus versetzen (nur wenn noch schreibbar)
+            if (window._editor && !window._editor.readOnly.isEnabled) {
                 window._editor.readOnly.toggle().catch(() => {});
             }
-            showStatusMsg('SSE-Verbindung unterbrochen — Lock freigegeben. Bitte Lock neu erwerben.', 'warn');
+            // Nachricht nur zeigen wenn Lock wirklich verloren ging (nicht beim Start)
+            if (EditorState.lockId === null) {
+                showStatusMsg('Lock freigegeben — bitte neu erwerben.', 'warn');
+            }
         });
 
         evtSrc.addEventListener('report_updated', () => {
@@ -658,8 +671,8 @@ function releaseLock(sync = false) {
             document.getElementById('btn-acquire-lock').disabled = false;
             document.getElementById('btn-release-lock').disabled = true;
             showStatusMsg('Lock freigegeben.', 'ok');
-            // Editor in readOnly versetzen
-            if (window._editor?.readOnly) {
+            // Editor in readOnly versetzen (nur wenn noch schreibbar)
+            if (window._editor && !window._editor.readOnly.isEnabled) {
                 window._editor.readOnly.toggle().catch(() => {});
             }
         }).catch(err => {

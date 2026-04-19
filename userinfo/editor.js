@@ -707,13 +707,20 @@ async function toggleAnnotationSidebar(targetBlock = null) {
             });
         });
 
-        // Direkt-Einfuegen-Buttons
+        // Direkt-Einfuegen-Buttons — Sidebar bleibt offen fuer mehrfaches Einfuegen
+        // Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19
         if (targetBlock) {
             sidebar.querySelectorAll('.sidebar-add-btn').forEach(btn => {
                 btn.addEventListener('click', async () => {
-                    await targetBlock._addEvidence(parseInt(btn.dataset.id, 10));
-                    _sidebarVisible = false;
-                    sidebar.remove();
+                    const annId = parseInt(btn.dataset.id, 10);
+                    await targetBlock._addEvidence(annId);
+                    // Visuelles Feedback: Button kurz markieren, Sidebar bleibt offen
+                    btn.textContent = '✓ Eingefügt';
+                    btn.disabled = true;
+                    setTimeout(() => {
+                        btn.textContent = '+ Einfügen';
+                        btn.disabled = false;
+                    }, 1500);
                 });
             });
         }
@@ -866,12 +873,28 @@ async function initEditorModule() {
  */
 async function _reinitWithLock() {
     if (!_currentReport) return;
+
+    // Lock-ID vor dem destroy() sichern — nach await koennte EditorState
+    // durch einen parallel eintreffenden SSE-Event zurueckgesetzt worden sein.
+    // Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19
+    const lockIdSnapshot = window.EditorState?.lockId;
+    if (!lockIdSnapshot) {
+        console.debug('editor.js: _reinitWithLock: kein Lock — abgebrochen');
+        return;
+    }
+
     // Bestehenden Editor zerstoeren
     if (_editor) {
         try { await _editor.destroy(); } catch (_) {}
         _editor = null;
         window._editor = null;
     }
+
+    // Sicherstellen dass lockId nach dem destroy() noch gesetzt ist
+    if (window.EditorState && !window.EditorState.lockId) {
+        window.EditorState.lockId = lockIdSnapshot;
+    }
+
     // Neu laden — jetzt mit gesetztem lockId
     await loadReport(_currentReport);
 }
