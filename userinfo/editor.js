@@ -882,6 +882,8 @@ async function _reinitWithLock() {
         console.debug('editor.js: _reinitWithLock: kein Lock — abgebrochen');
         return;
     }
+    // Flag setzen: verhindert doppelten Aufruf via SSE-Handler
+    window._reinitInProgress = true;
 
     // Bestehenden Editor zerstoeren
     if (_editor) {
@@ -896,7 +898,11 @@ async function _reinitWithLock() {
     }
 
     // Neu laden — jetzt mit gesetztem lockId
-    await loadReport(_currentReport);
+    try {
+        await loadReport(_currentReport);
+    } finally {
+        window._reinitInProgress = false;
+    }
 }
 
 // Im globalen Scope bereitstellen

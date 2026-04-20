@@ -543,8 +543,15 @@ async function initSSEWindow3() {
                     const btnRelease = document.getElementById('btn-release-lock');
                     if (btnAcquire) btnAcquire.disabled = true;
                     if (btnRelease) btnRelease.disabled = false;
-                    // Editor aus readOnly befreien falls noch nicht schreibbar
-                    if (window._editor?.readOnly?.isEnabled && window._reinitWithLock) {
+                    // Editor aus readOnly befreien — nur wenn:
+                    // a) Editor noch readOnly ist, UND
+                    // b) acquireLock() _reinitWithLock noch nicht aufgerufen hat.
+                    //    Erkennbar daran ob _reinitWithLock gerade laeuft
+                    //    (lock_id kam via SSE, nicht via direktem acquire).
+                    // Hauptfall: Lock aus vorheriger Session (Seitenstart).
+                    // Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-20
+                    if (window._editor?.readOnly?.isEnabled && window._reinitWithLock
+                            && !window._reinitInProgress) {
                         await window._reinitWithLock();
                     }
                 } else {
@@ -635,9 +642,14 @@ async function acquireLock() {
             updateLockStatus('lock-mine', 'Lock: ich');
             document.getElementById('btn-acquire-lock').disabled = true;
             document.getElementById('btn-release-lock').disabled = false;
-            showStatusMsg('Lock erworben.', 'ok');
-            // Editor-Reinit erfolgt via SSE editor_lock_acquired-Handler.
-            // Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19
+            showStatusMsg('Lock erworben — Editor wird aktiviert…', 'ok');
+            // Direkt reinitieren — nicht auf SSE warten (SSE-Interval = 15s).
+            // SSE editor_lock_acquired bleibt als Backup fuer externe Events.
+            // Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-20
+            if (window._reinitWithLock) {
+                await window._reinitWithLock();
+                showStatusMsg('Editor aktiv.', 'ok');
+            }
         } else if (resp.status === 423) {
             updateLockStatus('lock-other', `Belegt: ${esc(data.locked_by || '?')}`);
             showStatusMsg(`Lock bereits belegt von: ${esc(data.locked_by || '?')}`, 'warn');
