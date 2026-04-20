@@ -562,6 +562,11 @@ async function initSSEWindow3() {
         });
 
         evtSrc.addEventListener('editor_lock_released', () => {
+            // Ignorieren wenn _reinitWithLock() gerade laeuft —
+            // der Lock ist noch gueltig, nur der Editor wird neu gebaut.
+            // Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-20
+            if (window._reinitInProgress) return;
+
             // SSE-Verbindungsabriss hat den Lock freigegeben.
             // Zustand vollstaendig zuruecksetzen — Beleg: AP-E4 Bugfix 2026-04-19
             EditorState.lockId = null;
