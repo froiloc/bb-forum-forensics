@@ -379,6 +379,9 @@ const EditorState = {
     frozen:     false,  // true wenn Editor eingefroren (Duplikat-Fenster)
     instanceId: null,   // Zufällige ID für BroadcastChannel-Mechanismus
 };
+// Auf window exportieren damit editor.js (anderer Scope) darauf zugreifen kann.
+// Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-20 — PoC bestaetigt
+window.EditorState = EditorState;
 
 /** BroadcastChannel für Schicht 1 des Lock-Mechanismus (§8.6 Bauplan B4). */
 let _broadcastChannel = null;
