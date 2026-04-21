@@ -414,6 +414,9 @@ async function initEditor() {
                     title="Editor-Lock freigeben">Lock freigeben</button>
                 <button class="editor-btn" id="btn-annotations-sidebar"
                     title="Annotations-Sidebar ein/ausblenden">⚖ Belege</button>
+                <button class="editor-btn" id="btn-request-takeover"
+                    title="Lock von anderem Ermittler anfordern" style="display:none"
+                    >🔔 Lock anfordern</button>
                 <span id="editor-save-indicator"
                     style="font-size:11px;color:#4caf50;opacity:0;transition:opacity 1s"></span>
                 <span id="editor-report-title"
@@ -450,6 +453,7 @@ async function initEditor() {
     document.getElementById('btn-annotations-sidebar')?.addEventListener('click', () => {
         if (window.toggleAnnotationSidebar) toggleAnnotationSidebar();
     });
+    document.getElementById('btn-request-takeover')?.addEventListener('click', requestTakeover);
 
     // Lock bei Seitenentladung freigeben (§8.6 Bauplan B4 — beforeunload)
     // Vor dem Lock-Freigeben noch den aktuellen Editor-Zustand speichern.
@@ -514,44 +518,101 @@ function freezeEditor() {
  */
 async function initSSEWindow3() {
     return new Promise(resolve => {
-        const evtSrc = new EventSource(FORENSIC_API.EVENTS);
+        // V1: resume_lock_id mitsenden falls Lock gehalten wird.
+        // Der Server bindet den Lock an die neue SSE-client_id.
+        // Beleg: Lock-System v2 V1, Projektgespraech 2026-04-21
+        const resumeParam = EditorState.lockId
+            ? `?resume_lock_id=${encodeURIComponent(EditorState.lockId)}`
+            : '';
+        const evtSrc = new EventSource(FORENSIC_API.EVENTS + resumeParam);
         let resolved = false;
 
-        evtSrc.addEventListener('client_id', evt => {
+        // SSE-Stream auf window exportieren fuer editor.js
+        window._forensicEvtSrc = evtSrc;
+
+        // Verbindungsabbruch — Benutzer informieren
+        evtSrc.onerror = () => {
+            if (evtSrc.readyState === EventSource.CLOSED) {
+                showStatusMsg('SSE-Verbindung getrennt — wird wiederhergestellt…', 'warn');
+            }
+        };
+
+        evtSrc.addEventListener('client_id', async evt => {
             try {
                 const { client_id } = JSON.parse(evt.data);
+                const isReconnect = !!EditorState.sseClientId;  // schon gesetzt?
                 EditorState.sseClientId = client_id;
+
+                if (isReconnect && EditorState.lockId) {
+                    // SSE-Reconnect waehrend Lock gehalten wird.
+                    // Lock-Bindung in DB auf neue SSE-client_id aktualisieren.
+                    // Beleg: Lock-System v2 V1, Projektgespraech 2026-04-21
+                    try {
+                        const resp = await fetch(FORENSIC_API.REPORT, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                action: 'resume_lock',
+                                lock_id: EditorState.lockId,
+                                sse_client_id: client_id,
+                            }),
+                        });
+                        const data = await resp.json();
+                        if (data.ok) {
+                            showStatusMsg('Verbindung wiederhergestellt.', 'ok');
+                            console.debug('SSE-Reconnect: Lock erneuert', EditorState.lockId);
+                        } else {
+                            // Lock abgelaufen — aufräumen
+                            EditorState.lockId = null;
+                            sessionStorage.removeItem('forensic_lock_id');
+                            updateLockStatus('lock-none', 'Kein Lock');
+                            document.getElementById('btn-acquire-lock').disabled = false;
+                            document.getElementById('btn-release-lock').disabled = true;
+                            if (window._editor && !window._editor.readOnly.isEnabled) {
+                                window._editor.readOnly.toggle().catch(() => {});
+                            }
+                            showStatusMsg('Verbindung wiederhergestellt — Lock abgelaufen. Bitte neu erwerben.', 'warn');
+                        }
+                    } catch (err) {
+                        console.warn('SSE-Reconnect: resume_lock fehlgeschlagen:', err);
+                    }
+                } else if (isReconnect) {
+                    showStatusMsg('Verbindung wiederhergestellt.', 'ok');
+                }
             } catch (_) {}
             if (!resolved) { resolved = true; resolve(); }
         });
 
         evtSrc.addEventListener('editor_lock_acquired', async evt => {
-            // Redesign: _reinitWithLock() nur beim Seitenstart (Lock aus
-            // vorheriger Session). acquireLock() ruft _reinitWithLock()
-            // bereits direkt auf — kein zweiter Aufruf via SSE.
-            // Beleg: Redesign Projektgespraech 2026-04-20
             try {
                 const { locked_by, lock_id } = JSON.parse(evt.data);
                 const ownName = document.getElementById('report-editor-body')?.dataset?.username || '';
                 if (locked_by === ownName) {
-                    // Buttons und Status setzen
+                    // Lock gehoert uns — in EditorState eintragen.
+                    // Noetig wenn Lock aus vorheriger Session stammt und
+                    // beim SSE-Aufbau zurueckgemeldet wird.
+                    // Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19
+                    if (!EditorState.lockId && lock_id) {
+                        EditorState.lockId = lock_id;
+                        sessionStorage.setItem('forensic_lock_id', lock_id);
+                    }
                     updateLockStatus('lock-mine', 'Lock: ich');
                     const btnAcquire = document.getElementById('btn-acquire-lock');
                     const btnRelease = document.getElementById('btn-release-lock');
                     if (btnAcquire) btnAcquire.disabled = true;
                     if (btnRelease) btnRelease.disabled = false;
-
-                    // _reinitWithLock nur beim Seitenstart:
-                    // lockId ist null (Lock kam aus DB, nicht von Button)
-                    if (!EditorState.lockId && lock_id) {
-                        EditorState.lockId = lock_id;
-                        sessionStorage.setItem('forensic_lock_id', lock_id);
-                        if (window._editor?.readOnly?.isEnabled && window._reinitWithLock) {
-                            await window._reinitWithLock();
-                        }
+                    // Editor aus readOnly befreien — nur wenn:
+                    // a) Editor noch readOnly ist, UND
+                    // b) acquireLock() _reinitWithLock noch nicht aufgerufen hat.
+                    //    Erkennbar daran ob _reinitWithLock gerade laeuft
+                    //    (lock_id kam via SSE, nicht via direktem acquire).
+                    // Hauptfall: Lock aus vorheriger Session (Seitenstart).
+                    // Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-20
+                    if (window._editor?.readOnly?.isEnabled && window._reinitWithLock
+                            && !window._reinitInProgress) {
+                        await window._reinitWithLock();
                     }
                 } else {
-                    // Externer Lock — Editor sperren, UI informieren
                     updateLockStatus('lock-other', `Lock belegt: ${esc(locked_by)}`);
                     disableEditorControls(true);
                 }
@@ -559,27 +620,46 @@ async function initSSEWindow3() {
         });
 
         evtSrc.addEventListener('editor_lock_released', () => {
-            // Redesign: Dieser Handler reagiert NUR auf externe Lock-Freigaben
-            // (anderer Ermittler, Server-Timeout, SSE-Abriss).
-            // Wenn releaseLock() selbst aufgerufen wurde, ist lockId bereits
-            // null — dann ist hier nichts mehr zu tun.
-            // Beleg: Redesign Projektgespraech 2026-04-20
-            if (!EditorState.lockId) return;  // Wir haben keinen Lock — ignorieren
-
-            // Externer Lock-Verlust: Zustand zuruecksetzen
+            // SSE-Verbindungsabriss hat den Lock freigegeben.
+            // Zustand vollstaendig zuruecksetzen — Beleg: AP-E4 Bugfix 2026-04-19
             EditorState.lockId = null;
             sessionStorage.removeItem('forensic_lock_id');
             updateLockStatus('lock-none', 'Kein Lock');
-            document.getElementById('btn-acquire-lock').disabled = false;
-            document.getElementById('btn-release-lock').disabled = true;
+            // Buttons zuruecksetzen
+            const btnAcquire = document.getElementById('btn-acquire-lock');
+            const btnRelease = document.getElementById('btn-release-lock');
+            if (btnAcquire) btnAcquire.disabled = false;
+            if (btnRelease) btnRelease.disabled = true;
+            // Editor in readOnly-Modus versetzen (nur wenn noch schreibbar)
             if (window._editor && !window._editor.readOnly.isEnabled) {
                 window._editor.readOnly.toggle().catch(() => {});
             }
-            showStatusMsg('Lock verloren — bitte neu erwerben.', 'warn');
+            // Nachricht nur zeigen wenn Lock wirklich verloren ging (nicht beim Start)
+            if (EditorState.lockId === null) {
+                showStatusMsg('Lock freigegeben — bitte neu erwerben.', 'warn');
+            }
         });
 
         evtSrc.addEventListener('report_updated', () => {
             reloadParagraphs();
+        });
+
+        // V3: Takeover-Anfrage empfangen (bei Ermittler A = Lock-Inhaber)
+        // Beleg: Lock-System v2 V3, Projektgespraech 2026-04-21
+        evtSrc.addEventListener('lock_takeover_request', evt => {
+            try {
+                const { request_id, requested_by, countdown } = JSON.parse(evt.data);
+                if (!EditorState.lockId) return;  // Nur wenn wir den Lock haben
+                _showTakeoverDialog(request_id, requested_by, countdown ?? 60);
+            } catch (_) {}
+        });
+
+        // V3: Takeover-Ergebnis empfangen (bei Ermittler B = Anfragender)
+        evtSrc.addEventListener('lock_takeover_result', evt => {
+            try {
+                const { status, requested_by } = JSON.parse(evt.data);
+                _handleTakeoverResult(status, requested_by);
+            } catch (_) {}
         });
 
         // Timeout: nach 3s auch ohne client_id fortfahren
@@ -597,6 +677,11 @@ function updateLockStatus(cssClass, text) {
     if (!el) return;
     el.className = `lock-status ${cssClass}`;
     el.textContent = text;
+    // V3: 'Lock anfordern'-Button nur bei fremdem Lock anzeigen
+    const btnTakeover = document.getElementById('btn-request-takeover');
+    if (btnTakeover) {
+        btnTakeover.style.display = cssClass === 'lock-other' ? '' : 'none';
+    }
 }
 
 /**
@@ -661,46 +746,185 @@ async function acquireLock() {
  * Lock freigeben (§8.5 Bauplan B4 — release_lock).
  * @param {boolean} sync - true = synchron via sendBeacon (beforeunload)
  */
+// ==========================================================================
+// V3: Lock-Übernahme-Dialog
+// Beleg: Lock-System v2 V3, Projektgespraech 2026-04-21
+// ==========================================================================
+
+let _takeoverCountdownTimer = null;
+
+/**
+ * Dialog bei Ermittler A anzeigen: jemand möchte den Lock übernehmen.
+ * @param {number} requestId
+ * @param {string} requestedBy  Benutzername des Anfragenden
+ * @param {number} countdown    Sekunden bis zur automatischen Übergabe
+ */
+function _showTakeoverDialog(requestId, requestedBy, countdown) {
+    // Bestehenden Dialog entfernen
+    document.getElementById('takeover-dialog')?.remove();
+    if (_takeoverCountdownTimer) clearInterval(_takeoverCountdownTimer);
+
+    let remaining = countdown;
+    const dialog = document.createElement('div');
+    dialog.id = 'takeover-dialog';
+    dialog.className = 'takeover-dialog';
+    dialog.innerHTML = `
+        <div class="takeover-dialog-inner">
+            <div class="takeover-icon">🔔</div>
+            <div class="takeover-text">
+                <strong>${esc(requestedBy)}</strong> möchte den Lock übernehmen.<br>
+                Übergabe in <span id="takeover-countdown">${remaining}</span>s.
+            </div>
+            <div class="takeover-actions">
+                <button class="editor-btn editor-btn-primary" id="btn-takeover-grant">Jetzt übergeben</button>
+                <button class="editor-btn" id="btn-takeover-deny">Ablehnen</button>
+            </div>
+        </div>`;
+
+    document.getElementById('report-editor-body')?.appendChild(dialog);
+
+    // Countdown
+    _takeoverCountdownTimer = setInterval(() => {
+        remaining--;
+        const el = document.getElementById('takeover-countdown');
+        if (el) el.textContent = remaining;
+        if (remaining <= 0) {
+            clearInterval(_takeoverCountdownTimer);
+            dialog.remove();
+            // Automatische Übergabe: Lock freigeben
+            _respondTakeover(requestId, 'grant');
+        }
+    }, 1000);
+
+    document.getElementById('btn-takeover-grant')?.addEventListener('click', () => {
+        clearInterval(_takeoverCountdownTimer);
+        dialog.remove();
+        _respondTakeover(requestId, 'grant');
+    });
+
+    document.getElementById('btn-takeover-deny')?.addEventListener('click', () => {
+        clearInterval(_takeoverCountdownTimer);
+        dialog.remove();
+        _respondTakeover(requestId, 'deny');
+    });
+}
+
+/**
+ * Auf Takeover-Anfrage antworten.
+ * @param {number} requestId
+ * @param {'grant'|'deny'} response
+ */
+async function _respondTakeover(requestId, response) {
+    try {
+        const lockId = EditorState.lockId;
+        if (!lockId) return;
+        await fetch(FORENSIC_API.REPORT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'respond_takeover',
+                request_id: requestId,
+                response,
+                lock_id: lockId,
+            }),
+        });
+        if (response === 'grant') {
+            // Lock wurde übergeben — releaseLock() aufräumen
+            releaseLock();
+        }
+    } catch (err) {
+        console.warn('_respondTakeover Fehler:', err);
+    }
+}
+
+/**
+ * Takeover-Ergebnis bei Ermittler B verarbeiten.
+ * @param {'granted'|'denied'|'expired'} status
+ * @param {string} requestedBy  eigener Username (zur Verifikation)
+ */
+function _handleTakeoverResult(status, requestedBy) {
+    document.getElementById('takeover-waiting-msg')?.remove();
+    if (status === 'granted' || status === 'expired') {
+        showStatusMsg('Lock freigegeben — jetzt erwerben.', 'ok');
+        // btn-acquire-lock aktivieren
+        document.getElementById('btn-acquire-lock').disabled = false;
+    } else {
+        showStatusMsg('Anfrage abgelehnt.', 'warn');
+    }
+}
+
+/**
+ * Lock-Übernahme anfragen (bei Ermittler B = kein Lock).
+ */
+async function requestTakeover() {
+    const lock = await fetch(FORENSIC_API.REPORT + '?format=json', {
+        headers: { 'X-Forensic-Request': 'ajax' }
+    }).then(r => r.json()).then(d => d.lock).catch(() => null);
+
+    if (!lock) {
+        showStatusMsg('Kein Lock vorhanden — direkt erwerben.', 'ok');
+        return;
+    }
+
+    try {
+        const resp = await fetch(FORENSIC_API.REPORT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'request_takeover' }),
+        });
+        const data = await resp.json();
+        if (data.queued) {
+            showStatusMsg(
+                `Anfrage gesendet — Lock-Inhaber hat ${data.countdown}s Zeit zu antworten.`,
+                'ok'
+            );
+            // Warte-Hinweis
+            const msg = document.createElement('div');
+            msg.id = 'takeover-waiting-msg';
+            msg.className = 'status-msg status-msg-ok';
+            msg.style.cssText = 'margin:8px 0;font-size:12px';
+            msg.textContent = `Warte auf Antwort von ${esc(lock.locked_by)}…`;
+            document.getElementById('report-status-msg')?.appendChild(msg);
+        } else {
+            showStatusMsg(data.error || 'Anfrage fehlgeschlagen.', 'error');
+        }
+    } catch (err) {
+        showStatusMsg('Netzwerkfehler bei Takeover-Anfrage.', 'error');
+    }
+}
+
 function releaseLock(sync = false) {
-    // Redesign: lockId und Editor-Zustand werden SOFORT und SYNCHRON
-    // zurueckgesetzt — bevor der HTTP-Request abgeht.
-    // Damit gibt es keine Race-Condition mit SSE-Events.
-    // Der HTTP-Request ist fire-and-forget.
-    // Beleg: Redesign Projektgespraech 2026-04-20
     const lockId = EditorState.lockId || sessionStorage.getItem('forensic_lock_id');
     if (!lockId) return;
 
-    // 1. Zustand sofort zuruecksetzen (synchron)
-    EditorState.lockId = null;
-    sessionStorage.removeItem('forensic_lock_id');
-    updateLockStatus('lock-none', 'Kein Lock');
-    document.getElementById('btn-acquire-lock').disabled = false;
-    document.getElementById('btn-release-lock').disabled = true;
-    showStatusMsg('Lock freigegeben.', 'ok');
-
-    // 2. Editor sofort auf readOnly setzen (direkt, kein toggle())
-    if (window._editor) {
-        window._editor.readOnly.toggle().then(isReadOnly => {
-            if (!isReadOnly) {
-                // toggle() hat den falschen Zustand — nochmal
-                window._editor.readOnly.toggle().catch(() => {});
-            }
-        }).catch(() => {});
-    }
-
-    // 3. HTTP-Request: fire-and-forget
     const body = JSON.stringify({ action: 'release_lock', lock_id: lockId });
+
     if (sync) {
+        // beforeunload: sendBeacon ist einzige zuverlässige synchrone Methode
         navigator.sendBeacon(FORENSIC_API.REPORT, new Blob([body], { type: 'application/json' }));
     } else {
         fetch(FORENSIC_API.REPORT, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body,
+        }).then(() => {
+            EditorState.lockId = null;
+            sessionStorage.removeItem('forensic_lock_id');
+            updateLockStatus('lock-none', 'Kein Lock');
+            document.getElementById('btn-acquire-lock').disabled = false;
+            document.getElementById('btn-release-lock').disabled = true;
+            showStatusMsg('Lock freigegeben.', 'ok');
+            // Editor in readOnly versetzen (nur wenn noch schreibbar)
+            if (window._editor && !window._editor.readOnly.isEnabled) {
+                window._editor.readOnly.toggle().catch(() => {});
+            }
         }).catch(err => {
-            console.warn('releaseLock: HTTP-Fehler (Lock bereits freigegeben):', err);
+            showStatusMsg(`Fehler beim Freigeben: ${esc(String(err))}`, 'error');
         });
     }
+
+    EditorState.lockId = null;
+    sessionStorage.removeItem('forensic_lock_id');
 }
 
 /**

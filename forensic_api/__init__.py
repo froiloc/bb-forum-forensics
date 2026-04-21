@@ -179,7 +179,7 @@ class ForensicApi:
             if method not in ("GET", "HEAD"):
                 self._method_not_allowed(handler)
                 return
-            self._get_events().handle(handler)
+            self._get_events().handle(handler, params)
             return
 
         # /_forensic/static/editor/* (GET) [AP-E3]

@@ -103,18 +103,47 @@ class EventsEndpoint:
             getattr(config, "get", lambda k, d: d)("sse_interval_sec", _DEFAULT_INTERVAL_SEC)
         )
 
-    def handle(self, handler: "ForensicRequestHandler") -> None:
+    def handle(
+        self,
+        handler: "ForensicRequestHandler",
+        params: dict | None = None,
+    ) -> None:
         """
         Verarbeitet GET /_forensic/events.
-        Öffnet SSE-Stream, sendet sofort erste Events, dann im Intervall.
+        Oeffnet SSE-Stream, sendet sofort erste Events, dann im Intervall.
 
         Args:
             handler: ForensicRequestHandler-Instanz.
+            params:  URL-Query-Parameter (aus urllib.parse.parse_qs).
+                     resume_lock_id: Lock-ID fuer SSE-Reconnect (V1).
         """
         wfile = handler.wfile
 
-        # Eindeutige SSE-Client-ID für diesen Verbindungsaufbau (§8.6 Bauplan B4)
+        # Eindeutige SSE-Client-ID fuer diesen Verbindungsaufbau (§8.6 Bauplan B4)
         client_id = str(uuid.uuid4())
+
+        # V1: Resume-Lock — Browser reconnected nach SSE-Abriss und moechte
+        # seinen Lock an die neue client_id binden.
+        # Query-Parameter: ?resume_lock_id=<lock_id>
+        # Beleg: Lock-System v2 V1, Projektgespraech 2026-04-21
+        resume_lock_id = (params or {}).get("resume_lock_id", [None])[0]
+        if resume_lock_id:
+            username = self._context.username or f"uid_{self._context.user_id}"
+            resumed = self._bundle.evidence.resume_lock(
+                lock_id=resume_lock_id,
+                locked_by=username,
+                new_sse_client=client_id,
+            )
+            if resumed:
+                logger.info(
+                    "SSE-Resume: Lock wiederhergestellt fuer '%s' (lock_id=%s)",
+                    username, resume_lock_id,
+                )
+            else:
+                logger.debug(
+                    "SSE-Resume: Lock nicht wiederherstellbar (lock_id=%s)",
+                    resume_lock_id,
+                )
 
         # SSE-Header senden
         try:
@@ -167,22 +196,52 @@ class EventsEndpoint:
             if self._bundle.evidence.get_lock() else None
         )
 
+        # Warte-Event vom EvidenceDb — wird bei Lock-Aenderungen sofort gesetzt.
+        # Beleg: Lock-System v2, Projektgespraech 2026-04-21
+        lock_event = self._bundle.evidence.lock_change_event
+
         # Polling-Schleife
         try:
             while True:
-                for _ in range(self._interval):
-                    time.sleep(1)
+                # Schlaeft interval Sekunden ODER wird sofort geweckt
+                # wenn acquire_lock() / release_lock() aufgerufen wird.
+                lock_event.wait(timeout=self._interval)
 
+                # Lock-Zustand lesen, DANN Event loeschen.
+                # Reihenfolge wichtig: zwischen clear() und get_lock() koennte
+                # sonst eine Aenderung verloren gehen.
+                current_lock = self._bundle.evidence.get_lock()
+                lock_event.clear()
+
+                # Support-Status senden
                 status = _get_support_status(self._bundle)
                 if not _send_event("support_status", status):
                     break
 
                 # Lock-Status nur bei Aenderung senden
-                current_lock = self._bundle.evidence.get_lock()
                 current_lock_id = current_lock.lock_id if current_lock else None
                 if current_lock_id != _last_lock_id:
                     _last_lock_id = current_lock_id
                     if not self._send_lock_status(_send_event):
+                        break
+
+                # V3: Takeover-Event senden falls pending
+                # Beleg: Lock-System v2 V3, Projektgespraech 2026-04-21
+                pending = getattr(
+                    self._bundle.evidence, '_pending_takeover', None
+                )
+                if pending:
+                    self._bundle.evidence._pending_takeover = None
+                    if not _send_event("lock_takeover_request", pending):
+                        break
+
+                # V3: Takeover-Ergebnis senden (granted/denied)
+                takeover_result = getattr(
+                    self._bundle.evidence, '_takeover_result', None
+                )
+                if takeover_result:
+                    self._bundle.evidence._takeover_result = None
+                    if not _send_event("lock_takeover_result", takeover_result):
                         break
 
         finally:

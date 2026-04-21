@@ -45,6 +45,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import threading
 import time
 import uuid
 from dataclasses import dataclass
@@ -204,6 +205,17 @@ CREATE TABLE IF NOT EXISTS editor_locks (
     lock_id     TEXT    NOT NULL,
     locked_at   INTEGER NOT NULL,
     sse_client  TEXT    NOT NULL
+);
+
+-- Lock-Übernahme-Anfragen (V3: Lock-Übernahme-Dialog)
+-- Beleg: Lock-System v2 V3, Projektgespraech 2026-04-21
+CREATE TABLE IF NOT EXISTS lock_takeover_requests (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    lock_id      TEXT    NOT NULL,
+    requested_by TEXT    NOT NULL,
+    requested_at INTEGER NOT NULL,
+    status       TEXT    NOT NULL DEFAULT 'pending'
+                 CHECK (status IN ('pending', 'granted', 'denied', 'expired'))
 );
 
 -- Indizes: Seitenbesuche, Viewport, Annotationen
@@ -376,6 +388,11 @@ class EvidenceDb:
         self._con.row_factory = sqlite3.Row
         self._setup_schema()
         self._migrate_schema()
+        # Event-Signal fuer Lock-Aenderungen.
+        # SSE-Threads warten darauf — werden sofort geweckt wenn
+        # acquire_lock() / release_lock() aufgerufen wird.
+        # Beleg: Lock-System v2, Projektgespraech 2026-04-21
+        self._lock_change_event = threading.Event()
 
     # ------------------------------------------------------------------
     # Setup & Migration
@@ -1088,6 +1105,11 @@ class EvidenceDb:
     # Editor-Lock (§8.6 Bauplan B4) — unveraendert gegenueber Build 012
     # ------------------------------------------------------------------
 
+    @property
+    def lock_change_event(self) -> threading.Event:
+        """Event-Signal das bei jeder Lock-Aenderung gesetzt wird."""
+        return self._lock_change_event
+
     def acquire_lock(self, locked_by: str, sse_client: str) -> Optional[str]:
         now = int(time.time())
         new_lock_id = str(uuid.uuid4())
@@ -1099,6 +1121,7 @@ class EvidenceDb:
                 (self._LOCK_RESOURCE, locked_by, new_lock_id, now, sse_client),
             )
             self._con.commit()
+            self._lock_change_event.set()  # SSE-Threads sofort aufwecken
             logger.info(
                 "Editor-Lock erworben: '%s' (lock_id=%s)", locked_by, new_lock_id
             )
@@ -1117,6 +1140,7 @@ class EvidenceDb:
         self._con.commit()
         freed = cursor.rowcount > 0
         if freed:
+            self._lock_change_event.set()  # SSE-Threads sofort aufwecken
             logger.info("Editor-Lock freigegeben (lock_id=%s)", lock_id)
         return freed
 
@@ -1128,11 +1152,108 @@ class EvidenceDb:
         self._con.commit()
         freed = cursor.rowcount > 0
         if freed:
+            self._lock_change_event.set()  # SSE-Threads sofort aufwecken
             logger.info(
                 "Editor-Lock durch SSE-Abriss freigegeben (sse_client=%s)",
                 sse_client,
             )
         return freed
+
+    def resume_lock(self, lock_id: str, locked_by: str, new_sse_client: str) -> bool:
+        """
+        Bindet einen bestehenden Lock an eine neue SSE-client_id.
+        Wird aufgerufen wenn ein Browser nach SSE-Abriss reconnected
+        und seinen Lock wiederherstellen moechte.
+
+        Nur erlaubt wenn lock_id UND locked_by uebereinstimmen —
+        verhindert dass ein fremder Benutzer einen Lock uebernimmt.
+
+        Returns True wenn der Lock erfolgreich aktualisiert wurde.
+        Beleg: Lock-System v2 V1, Projektgespraech 2026-04-21
+        """
+        try:
+            cursor = self._con.execute(
+                "UPDATE editor_locks "
+                "SET sse_client = ?, locked_at = ? "
+                "WHERE resource = ? AND lock_id = ? AND locked_by = ?",
+                (
+                    new_sse_client,
+                    int(time.time()),
+                    self._LOCK_RESOURCE,
+                    lock_id,
+                    locked_by,
+                ),
+            )
+            self._con.commit()
+            if cursor.rowcount > 0:
+                logger.info(
+                    "Lock-Resume: '%s' (lock_id=%s, neue sse_client=%s)",
+                    locked_by, lock_id, new_sse_client,
+                )
+                return True
+            logger.debug("Lock-Resume: Lock nicht gefunden oder falscher Benutzer")
+            return False
+        except sqlite3.OperationalError as exc:
+            logger.warning("resume_lock fehlgeschlagen: %s", exc)
+            return False
+
+    def request_takeover(self, lock_id: str, requested_by: str) -> int:
+        """
+        Legt eine Lock-Übernahme-Anfrage an.
+        Returns die request_id.
+        Beleg: Lock-System v2 V3, Projektgespraech 2026-04-21
+        """
+        now = int(time.time())
+        # Bestehende pending-Anfragen dieses Benutzers loeschen
+        self._con.execute(
+            "DELETE FROM lock_takeover_requests "
+            "WHERE lock_id=? AND requested_by=? AND status='pending'",
+            (lock_id, requested_by),
+        )
+        cursor = self._con.execute(
+            "INSERT INTO lock_takeover_requests "
+            "(lock_id, requested_by, requested_at, status) VALUES (?,?,?,'pending')",
+            (lock_id, requested_by, now),
+        )
+        self._con.commit()
+        return cursor.lastrowid
+
+    def resolve_takeover(
+        self, request_id: int, status: str
+    ) -> bool:
+        """
+        Setzt den Status einer Takeover-Anfrage (granted/denied/expired).
+        Beleg: Lock-System v2 V3, Projektgespraech 2026-04-21
+        """
+        cursor = self._con.execute(
+            "UPDATE lock_takeover_requests SET status=? "
+            "WHERE id=? AND status='pending'",
+            (status, request_id),
+        )
+        self._con.commit()
+        return cursor.rowcount > 0
+
+    def get_pending_takeover(self, lock_id: str) -> Optional[dict]:
+        """
+        Gibt die aelteste pending Takeover-Anfrage fuer diesen Lock zurueck.
+        Beleg: Lock-System v2 V3, Projektgespraech 2026-04-21
+        """
+        try:
+            row = self._con.execute(
+                "SELECT id, lock_id, requested_by, requested_at FROM lock_takeover_requests "
+                "WHERE lock_id=? AND status='pending' ORDER BY requested_at ASC LIMIT 1",
+                (lock_id,),
+            ).fetchone()
+            if row:
+                return {
+                    "id": row["id"],
+                    "lock_id": row["lock_id"],
+                    "requested_by": row["requested_by"],
+                    "requested_at": row["requested_at"],
+                }
+        except sqlite3.OperationalError:
+            pass
+        return None
 
     def get_lock(self) -> Optional[EditorLockRecord]:
         try:

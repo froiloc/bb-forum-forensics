@@ -116,6 +116,10 @@ def _json_err(msg: str, code: str = "ERROR") -> bytes:
     return json.dumps({"error": msg, "code": code}, ensure_ascii=False).encode("utf-8")
 
 
+def _json_ok(data: dict) -> bytes:
+    return json.dumps(data, ensure_ascii=False).encode("utf-8")
+
+
 class ReportEndpoint:
     """
     Endpunkt /_forensic/report — GET und POST (Fenster 3).
@@ -244,6 +248,22 @@ class ReportEndpoint:
             self._action_acquire_lock(handler, data, investigator)
         elif action == "release_lock":
             self._action_release_lock(handler, data)
+        elif action == "heartbeat":
+            # V2: Heartbeat — locked_at aktualisieren
+            # Beleg: Lock-System v2 V2, Projektgespraech 2026-04-21
+            self._action_heartbeat(handler, data, investigator)
+        elif action == "resume_lock":
+            # V1: Lock nach SSE-Reconnect an neue client_id binden
+            # Beleg: Lock-System v2 V1, Projektgespraech 2026-04-21
+            self._action_resume_lock(handler, data, investigator)
+        elif action == "request_takeover":
+            # V3: Lock-Übernahme anfragen
+            # Beleg: Lock-System v2 V3, Projektgespraech 2026-04-21
+            self._action_request_takeover(handler, data, investigator)
+        elif action == "respond_takeover":
+            # V3: Auf Takeover-Anfrage antworten (grant/deny)
+            # Beleg: Lock-System v2 V3, Projektgespraech 2026-04-21
+            self._action_respond_takeover(handler, data, investigator)
         else:
             # Weitere schreibende Aktionen werden in AP-E3 ergaenzt.
             # Bis dahin: 400 mit Hinweis.
@@ -302,6 +322,170 @@ class ReportEndpoint:
             "acquire_lock: '%s' hat Lock erworben (sse_client=%s)",
             investigator, sse_client,
         )
+
+    def _action_request_takeover(
+        self,
+        handler: "ForensicRequestHandler",
+        data: dict,
+        investigator: str,
+    ) -> None:
+        """
+        Lock-Übernahme anfragen. Jeder Ermittler darf anfragen.
+        Sendet SSE lock_takeover_request an alle Clients.
+        Beleg: Lock-System v2 V3, Projektgespraech 2026-04-21
+        """
+        lock = self._bundle.evidence.get_lock()
+        if not lock:
+            handler.send_response_body(
+                404, _json_err("Kein Lock vorhanden", "NO_LOCK")
+            )
+            return
+        if lock.locked_by == investigator:
+            handler.send_response_body(
+                400, _json_err("Du hast den Lock bereits", "OWN_LOCK")
+            )
+            return
+        request_id = self._bundle.evidence.request_takeover(
+            lock_id=lock.lock_id,
+            requested_by=investigator,
+        )
+        # SSE-Event an alle senden — lock_change_event weckt SSE-Threads
+        # Wir senden ein dediziertes Takeover-Event via _send_takeover_event()
+        self._bundle.evidence.lock_change_event.set()
+        # Request-Info im Bundle zwischenspeichern fuer SSE-Handler
+        self._bundle.evidence._pending_takeover = {
+            "request_id": request_id,
+            "requested_by": investigator,
+            "lock_id": lock.lock_id,
+            "countdown": 60,
+        }
+        handler.send_response_body(200, _json_ok({
+            "queued": True,
+            "request_id": request_id,
+            "countdown": 60,
+        }))
+        logger.info(
+            "Takeover angefragt: '%s' -> '%s' (request_id=%d)",
+            investigator, lock.locked_by, request_id,
+        )
+
+    def _action_respond_takeover(
+        self,
+        handler: "ForensicRequestHandler",
+        data: dict,
+        investigator: str,
+    ) -> None:
+        """
+        Auf Takeover-Anfrage antworten: grant oder deny.
+        Nur der Lock-Inhaber darf antworten.
+        Beleg: Lock-System v2 V3, Projektgespraech 2026-04-21
+        """
+        lock = self._bundle.evidence.get_lock()
+        if not lock or lock.locked_by != investigator:
+            handler.send_response_body(
+                423, _json_err("Nur der Lock-Inhaber darf antworten", "NOT_LOCK_OWNER")
+            )
+            return
+        request_id = int(data.get("request_id", 0))
+        response   = data.get("response", "")  # 'grant' oder 'deny'
+        if response not in ("grant", "deny"):
+            handler.send_response_body(
+                400, _json_err("response muss 'grant' oder 'deny' sein", "INVALID_RESPONSE")
+            )
+            return
+        if response == "grant":
+            # Lock freigeben — Browser-seitiges releaseLock()
+            self._bundle.evidence.resolve_takeover(request_id, "granted")
+            self._bundle.evidence.release_lock(lock.lock_id)  # setzt lock_change_event
+            handler.send_response_body(200, _json_ok({"granted": True}))
+            logger.info(
+                "Takeover gewaehrt: '%s' gibt Lock frei (request_id=%d)",
+                investigator, request_id,
+            )
+        else:
+            self._bundle.evidence.resolve_takeover(request_id, "denied")
+            self._bundle.evidence.lock_change_event.set()  # SSE-Threads aufwecken
+            handler.send_response_body(200, _json_ok({"denied": True}))
+            logger.info(
+                "Takeover abgelehnt: '%s' (request_id=%d)",
+                investigator, request_id,
+            )
+
+    def _action_resume_lock(
+        self,
+        handler: "ForensicRequestHandler",
+        data: dict,
+        investigator: str,
+    ) -> None:
+        """
+        Bindet einen bestehenden Lock nach SSE-Reconnect an die aktuelle
+        SSE-client_id. Wird vom Browser nach jedem Reconnect aufgerufen.
+        Beleg: Lock-System v2 V1, Projektgespraech 2026-04-21
+        """
+        lock_id = data.get("lock_id", "")
+        if not lock_id:
+            handler.send_response_body(
+                400, _json_err("lock_id fehlt", "MISSING_LOCK_ID")
+            )
+            return
+        # sse_client kommt aus dem SSE-Aufbau — der Browser kennt ihn nicht.
+        # Wir lesen den aktuellen Lock aus der DB und prüfen ob er uns gehoert.
+        lock = self._bundle.evidence.get_lock()
+        if lock and lock.lock_id == lock_id and lock.locked_by == investigator:
+            # Lock gehoert uns — sse_client unverändert (Browser hat keine neue SSE-ID)
+            # Eigentlich wird sse_client bei events.py beim SSE-Aufbau gesetzt.
+            # resume_lock() über evidence_db stellt die Bindung her.
+            # Der sse_client der neuen SSE-Verbindung ist in EditorState.sseClientId.
+            new_sse = data.get("sse_client_id", lock.sse_client)
+            self._bundle.evidence.resume_lock(
+                lock_id=lock_id,
+                locked_by=investigator,
+                new_sse_client=new_sse,
+            )
+            handler.send_response_body(200, _json_ok({"ok": True}))
+            logger.info(
+                "resume_lock: Lock erneuert fuer '%s' (lock_id=%s)",
+                investigator, lock_id,
+            )
+        else:
+            # Lock nicht gefunden oder abgelaufen
+            handler.send_response_body(
+                423, _json_err(
+                    "Lock nicht gefunden — bitte neu erwerben",
+                    "LOCK_NOT_FOUND"
+                )
+            )
+
+    def _action_heartbeat(
+        self,
+        handler: "ForensicRequestHandler",
+        data: dict,
+        investigator: str,
+    ) -> None:
+        """
+        Aktualisiert locked_at des Locks (Heartbeat).
+        Beleg: Lock-System v2 V2, Projektgespraech 2026-04-21
+        """
+        lock_id = data.get("lock_id", "")
+        if not lock_id:
+            handler.send_response_body(400, _json_err("lock_id fehlt", "MISSING_LOCK_ID"))
+            return
+        # resume_lock() aktualisiert locked_at — gleiche Methode wie V1
+        # Wir uebergeben die bestehende sse_client-ID, die unveraendert bleibt.
+        lock = self._bundle.evidence.get_lock()
+        if lock and lock.lock_id == lock_id and lock.locked_by == investigator:
+            self._bundle.evidence.resume_lock(
+                lock_id=lock_id,
+                locked_by=investigator,
+                new_sse_client=lock.sse_client,  # unveraendert
+            )
+            handler.send_response_body(200, _json_ok({"ok": True}))
+            logger.debug("Heartbeat: Lock erneuert fuer '%s'", investigator)
+        else:
+            handler.send_response_body(
+                423, _json_err("Lock nicht gefunden oder falscher Benutzer",
+                               "LOCK_NOT_FOUND")
+            )
 
     def _action_release_lock(
         self,

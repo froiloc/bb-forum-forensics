@@ -1525,3 +1525,51 @@ span.forensic-passive {
     .editorjs-holder { border: none !important; padding: 0 !important; }
     body { font-size: 11pt; color: #000; }
 }
+
+/* ==========================================================================
+   Lock-System v2: Takeover-Dialog
+   Beleg: Lock-System v2 V3, Projektgespraech 2026-04-21
+   ========================================================================== */
+
+.takeover-dialog {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    max-width: 340px;
+    animation: takeover-slide-in 0.2s ease-out;
+}
+
+@keyframes takeover-slide-in {
+    from { opacity: 0; transform: translateX(30px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+.takeover-dialog-inner {
+    background: #fff3e0;
+    border: 2px solid #f57c00;
+    border-radius: 6px;
+    padding: 14px 16px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.takeover-icon {
+    font-size: 22px;
+    text-align: center;
+}
+
+.takeover-text {
+    font-size: 13px;
+    line-height: 1.5;
+    color: #333;
+    text-align: center;
+}
+
+.takeover-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
