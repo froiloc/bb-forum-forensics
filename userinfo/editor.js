@@ -74,6 +74,12 @@ let _saveTimer = null;
 /** Sidebar-Zustand */
 let _sidebarVisible = false;
 
+/** Guard gegen parallele loadReport()-Aufrufe.
+ * Verhindert doppelte Editor-Instanzen im #editorjs-holder.
+ * Beleg: Bugfix Build 051b, Projektgespraech 2026-04-21
+ */
+let _loadInProgress = false;
+
 // ---------------------------------------------------------------------------
 // Hilfsfunktion: fetch mit Lock-Header
 // ---------------------------------------------------------------------------
@@ -250,7 +256,39 @@ function _selectorStatus(msg, level) {
  * Laedt einen Bericht und (re-)initialisiert den Editor.
  * @param {object} report  ReportRecord
  */
+/**
+ * Entfernt doppelte .codex-editor-Instanzen aus dem #editorjs-holder.
+ * Wird defensiv aufgerufen bevor ein neuer Editor initialisiert wird.
+ * Beleg: Bugfix Build 051b, Projektgespraech 2026-04-21
+ */
+function _cleanupDuplicateEditors() {
+    const holder = document.getElementById('editorjs-holder');
+    if (!holder) return;
+    const instances = holder.querySelectorAll('.codex-editor');
+    if (instances.length <= 1) return;
+    // Alle ausser dem ersten entfernen
+    for (let i = 1; i < instances.length; i++) {
+        instances[i].remove();
+        console.warn('editor.js: doppelte codex-editor-Instanz entfernt');
+    }
+}
+
 async function loadReport(report) {
+    // Guard: verhindert parallele Ausfuehrung (z.B. initEditorModule + _reinitWithLock)
+    // Beleg: Bugfix Build 051b, Projektgespraech 2026-04-21
+    if (_loadInProgress) {
+        console.debug('editor.js: loadReport() bereits aktiv — übersprungen');
+        return;
+    }
+    _loadInProgress = true;
+    try {
+        await _loadReportImpl(report);
+    } finally {
+        _loadInProgress = false;
+    }
+}
+
+async function _loadReportImpl(report) {
     _currentReport = report;
 
     // Titel aktualisieren
@@ -296,6 +334,10 @@ async function loadReport(report) {
         const found = (data.reports || []).find(r => r.id === report.id);
         if (found) existingBlocks = found.blocks || [];
     }
+
+    // Defensive Bereinigung: doppelte Editor-Instanzen entfernen
+    // falls ein paralleler Aufruf die erste Instanz schon gerendert hat.
+    _cleanupDuplicateEditors();
 
     // Auf Bundle warten
     if (!window.EditorJS) {
