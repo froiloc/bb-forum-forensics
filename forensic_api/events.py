@@ -191,10 +191,8 @@ class EventsEndpoint:
         # Verhindert dass editor_lock_released periodisch gesendet wird
         # wenn schlicht kein Lock vorhanden ist.
         # Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19
-        _last_lock_id: str | None = (
-            self._bundle.evidence.get_lock().lock_id
-            if self._bundle.evidence.get_lock() else None
-        )
+        _initial_lock = self._bundle.evidence.get_lock()
+        _last_lock_id: str | None = _initial_lock.lock_id if _initial_lock else None
 
         # Warte-Event vom EvidenceDb — wird bei Lock-Aenderungen sofort gesetzt.
         # Beleg: Lock-System v2, Projektgespraech 2026-04-21

@@ -321,14 +321,20 @@ function _initEditorJs(blocks, reportId) {
 
     const username = document.getElementById('report-editor-body')?.dataset?.username || '';
 
-    // Editor.js-Datenformat aus gespeicherten block_data aufbauen
+    // Editor.js-Datenformat aus gespeicherten block_data aufbauen.
+    // Leere paragraph-Bloecke werden normalisiert damit Editor.js sie
+    // nicht als 'saved data is invalid' verwirft.
+    // Beleg: Bugfix Build 050, Projektgespraech 2026-04-21
     const editorData = {
         time:   Date.now(),
-        blocks: blocks.map(b => ({
-            id:   b.block_id,
-            type: b.block_type,
-            data: typeof b.block_data === 'string' ? JSON.parse(b.block_data) : b.block_data,
-        })),
+        blocks: blocks.map(b => {
+            const raw = typeof b.block_data === 'string'
+                ? JSON.parse(b.block_data)
+                : (b.block_data || {});
+            // paragraph ohne text-Feld: Editor.js wuerde Block verwerfen
+            if (b.block_type === 'paragraph' && !raw.text) raw.text = '';
+            return { id: b.block_id, type: b.block_type, data: raw };
+        }),
     };
 
     // readOnly: Lock-Zustand zum Zeitpunkt der Initialisierung.
@@ -913,4 +919,23 @@ window.EvidenceBlock               = EvidenceBlock;
 // Konstante exportieren fuer Tests und externe Konfigurationspruefung
 // Beleg: AP-E4, Projektgespraech 2026-04-19
 window.AUTOSAVE_DEBOUNCE_MS        = AUTOSAVE_DEBOUNCE_MS;
+
+/**
+ * Placeholder im Editor aktualisieren nach readOnly-Aenderung.
+ * Wird von userinfo.js nach releaseLock() / _reinitWithLock() aufgerufen.
+ * Beleg: Bugfix Build 050, Projektgespraech 2026-04-21
+ * @param {boolean} hasLock
+ */
+window.updateEditorPlaceholder = function(hasLock) {
+    const text = hasLock
+        ? 'Schreiben beginnen…'
+        : 'Lock erwerben um zu schreiben…';
+    // Editor.js setzt den Placeholder als data-placeholder auf .ce-paragraph
+    document.querySelectorAll('.ce-paragraph[data-placeholder-active]').forEach(el => {
+        el.setAttribute('data-placeholder-active', text);
+    });
+    document.querySelectorAll('.ce-paragraph[data-placeholder]').forEach(el => {
+        el.setAttribute('data-placeholder', text);
+    });
+};
 window._reinitWithLock             = _reinitWithLock;

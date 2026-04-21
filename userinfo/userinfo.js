@@ -916,7 +916,12 @@ function releaseLock(sync = false) {
             showStatusMsg('Lock freigegeben.', 'ok');
             // Editor in readOnly versetzen (nur wenn noch schreibbar)
             if (window._editor && !window._editor.readOnly.isEnabled) {
-                window._editor.readOnly.toggle().catch(() => {});
+                window._editor.readOnly.toggle().then(() => {
+                    // Placeholder zuruecksetzen
+                    if (window.updateEditorPlaceholder) updateEditorPlaceholder(false);
+                }).catch(() => {});
+            } else if (window.updateEditorPlaceholder) {
+                updateEditorPlaceholder(false);
             }
         }).catch(err => {
             showStatusMsg(`Fehler beim Freigeben: ${esc(String(err))}`, 'error');

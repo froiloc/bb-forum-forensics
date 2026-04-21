@@ -1110,9 +1110,25 @@ class EvidenceDb:
         """Event-Signal das bei jeder Lock-Aenderung gesetzt wird."""
         return self._lock_change_event
 
+    # Lock-Timeout: nach dieser Zeit gilt ein Lock als abgelaufen.
+    # Schuetzt gegen Deadlock bei Browser-Absturz.
+    # Beleg: Lock-System v2, Projektgespraech 2026-04-21
+    _LOCK_TIMEOUT_SEC = 90
+
     def acquire_lock(self, locked_by: str, sse_client: str) -> Optional[str]:
         now = int(time.time())
         new_lock_id = str(uuid.uuid4())
+        # Abgelaufene Locks loeschen bevor neuer Lock angelegt wird.
+        # Verhindert Deadlock wenn Browser abgestuerzt ist und SSE-Cleanup
+        # nicht rechtzeitig lief.
+        # Beleg: Lock-System v2, Projektgespraech 2026-04-21
+        try:
+            self._con.execute(
+                "DELETE FROM editor_locks WHERE resource=? AND locked_at < ?",
+                (self._LOCK_RESOURCE, now - self._LOCK_TIMEOUT_SEC),
+            )
+        except sqlite3.OperationalError:
+            pass  # Tabellle noch nicht vorhanden — ignorieren
         try:
             self._con.execute(
                 "INSERT INTO editor_locks "
@@ -1270,8 +1286,13 @@ class EvidenceDb:
                     locked_at=int(row["locked_at"]),
                     sse_client=str(row["sse_client"]),
                 )
-        except (sqlite3.OperationalError, sqlite3.ProgrammingError) as exc:
-            logger.warning("get_lock fehlgeschlagen: %s", exc)
+        except (sqlite3.OperationalError, sqlite3.ProgrammingError,
+                sqlite3.InterfaceError) as exc:
+            # InterfaceError: 'bad parameter or other API misuse' tritt auf wenn
+            # die Verbindung in einem inkonsistenten Zustand ist (z.B. nach commit()
+            # in einem anderen Thread). Kein Lock verfuegbar — None zurueckgeben.
+            # Beleg: Bugfix Build 050, Projektgespraech 2026-04-21
+            logger.debug("get_lock fehlgeschlagen (ignoriert): %s", exc)
         return None
 
     def validate_lock(self, lock_id: str) -> bool:

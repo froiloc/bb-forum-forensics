@@ -153,6 +153,12 @@ class EditorBlockEndpoint:
             )
             return
 
+        # Normalisierung: leere Paragraph-Bloecke behalten ein minimales
+        # data-Objekt damit Editor.js sie nicht als 'invalid' verwirft.
+        # Beleg: Bugfix Build 050, Projektgespraech 2026-04-21
+        if block_type == "paragraph" and not block_data.get("text"):
+            block_data = {"text": ""}
+
         try:
             report_id = int(report_id_raw) if report_id_raw is not None else None
         except (TypeError, ValueError):
