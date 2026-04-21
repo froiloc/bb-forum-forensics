@@ -526,35 +526,32 @@ async function initSSEWindow3() {
         });
 
         evtSrc.addEventListener('editor_lock_acquired', async evt => {
+            // Redesign: _reinitWithLock() nur beim Seitenstart (Lock aus
+            // vorheriger Session). acquireLock() ruft _reinitWithLock()
+            // bereits direkt auf — kein zweiter Aufruf via SSE.
+            // Beleg: Redesign Projektgespraech 2026-04-20
             try {
                 const { locked_by, lock_id } = JSON.parse(evt.data);
                 const ownName = document.getElementById('report-editor-body')?.dataset?.username || '';
                 if (locked_by === ownName) {
-                    // Lock gehoert uns — in EditorState eintragen.
-                    // Noetig wenn Lock aus vorheriger Session stammt und
-                    // beim SSE-Aufbau zurueckgemeldet wird.
-                    // Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19
-                    if (!EditorState.lockId && lock_id) {
-                        EditorState.lockId = lock_id;
-                        sessionStorage.setItem('forensic_lock_id', lock_id);
-                    }
+                    // Buttons und Status setzen
                     updateLockStatus('lock-mine', 'Lock: ich');
                     const btnAcquire = document.getElementById('btn-acquire-lock');
                     const btnRelease = document.getElementById('btn-release-lock');
                     if (btnAcquire) btnAcquire.disabled = true;
                     if (btnRelease) btnRelease.disabled = false;
-                    // Editor aus readOnly befreien — nur wenn:
-                    // a) Editor noch readOnly ist, UND
-                    // b) acquireLock() _reinitWithLock noch nicht aufgerufen hat.
-                    //    Erkennbar daran ob _reinitWithLock gerade laeuft
-                    //    (lock_id kam via SSE, nicht via direktem acquire).
-                    // Hauptfall: Lock aus vorheriger Session (Seitenstart).
-                    // Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-20
-                    if (window._editor?.readOnly?.isEnabled && window._reinitWithLock
-                            && !window._reinitInProgress) {
-                        await window._reinitWithLock();
+
+                    // _reinitWithLock nur beim Seitenstart:
+                    // lockId ist null (Lock kam aus DB, nicht von Button)
+                    if (!EditorState.lockId && lock_id) {
+                        EditorState.lockId = lock_id;
+                        sessionStorage.setItem('forensic_lock_id', lock_id);
+                        if (window._editor?.readOnly?.isEnabled && window._reinitWithLock) {
+                            await window._reinitWithLock();
+                        }
                     }
                 } else {
+                    // Externer Lock — Editor sperren, UI informieren
                     updateLockStatus('lock-other', `Lock belegt: ${esc(locked_by)}`);
                     disableEditorControls(true);
                 }
@@ -562,29 +559,23 @@ async function initSSEWindow3() {
         });
 
         evtSrc.addEventListener('editor_lock_released', () => {
-            // Ignorieren wenn _reinitWithLock() gerade laeuft —
-            // der Lock ist noch gueltig, nur der Editor wird neu gebaut.
-            // Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-20
-            if (window._reinitInProgress) return;
+            // Redesign: Dieser Handler reagiert NUR auf externe Lock-Freigaben
+            // (anderer Ermittler, Server-Timeout, SSE-Abriss).
+            // Wenn releaseLock() selbst aufgerufen wurde, ist lockId bereits
+            // null — dann ist hier nichts mehr zu tun.
+            // Beleg: Redesign Projektgespraech 2026-04-20
+            if (!EditorState.lockId) return;  // Wir haben keinen Lock — ignorieren
 
-            // SSE-Verbindungsabriss hat den Lock freigegeben.
-            // Zustand vollstaendig zuruecksetzen — Beleg: AP-E4 Bugfix 2026-04-19
+            // Externer Lock-Verlust: Zustand zuruecksetzen
             EditorState.lockId = null;
             sessionStorage.removeItem('forensic_lock_id');
             updateLockStatus('lock-none', 'Kein Lock');
-            // Buttons zuruecksetzen
-            const btnAcquire = document.getElementById('btn-acquire-lock');
-            const btnRelease = document.getElementById('btn-release-lock');
-            if (btnAcquire) btnAcquire.disabled = false;
-            if (btnRelease) btnRelease.disabled = true;
-            // Editor in readOnly-Modus versetzen (nur wenn noch schreibbar)
+            document.getElementById('btn-acquire-lock').disabled = false;
+            document.getElementById('btn-release-lock').disabled = true;
             if (window._editor && !window._editor.readOnly.isEnabled) {
                 window._editor.readOnly.toggle().catch(() => {});
             }
-            // Nachricht nur zeigen wenn Lock wirklich verloren ging (nicht beim Start)
-            if (EditorState.lockId === null) {
-                showStatusMsg('Lock freigegeben — bitte neu erwerben.', 'warn');
-            }
+            showStatusMsg('Lock verloren — bitte neu erwerben.', 'warn');
         });
 
         evtSrc.addEventListener('report_updated', () => {
@@ -671,37 +662,45 @@ async function acquireLock() {
  * @param {boolean} sync - true = synchron via sendBeacon (beforeunload)
  */
 function releaseLock(sync = false) {
+    // Redesign: lockId und Editor-Zustand werden SOFORT und SYNCHRON
+    // zurueckgesetzt — bevor der HTTP-Request abgeht.
+    // Damit gibt es keine Race-Condition mit SSE-Events.
+    // Der HTTP-Request ist fire-and-forget.
+    // Beleg: Redesign Projektgespraech 2026-04-20
     const lockId = EditorState.lockId || sessionStorage.getItem('forensic_lock_id');
     if (!lockId) return;
 
-    const body = JSON.stringify({ action: 'release_lock', lock_id: lockId });
+    // 1. Zustand sofort zuruecksetzen (synchron)
+    EditorState.lockId = null;
+    sessionStorage.removeItem('forensic_lock_id');
+    updateLockStatus('lock-none', 'Kein Lock');
+    document.getElementById('btn-acquire-lock').disabled = false;
+    document.getElementById('btn-release-lock').disabled = true;
+    showStatusMsg('Lock freigegeben.', 'ok');
 
+    // 2. Editor sofort auf readOnly setzen (direkt, kein toggle())
+    if (window._editor) {
+        window._editor.readOnly.toggle().then(isReadOnly => {
+            if (!isReadOnly) {
+                // toggle() hat den falschen Zustand — nochmal
+                window._editor.readOnly.toggle().catch(() => {});
+            }
+        }).catch(() => {});
+    }
+
+    // 3. HTTP-Request: fire-and-forget
+    const body = JSON.stringify({ action: 'release_lock', lock_id: lockId });
     if (sync) {
-        // beforeunload: sendBeacon ist einzige zuverlässige synchrone Methode
         navigator.sendBeacon(FORENSIC_API.REPORT, new Blob([body], { type: 'application/json' }));
     } else {
         fetch(FORENSIC_API.REPORT, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body,
-        }).then(() => {
-            EditorState.lockId = null;
-            sessionStorage.removeItem('forensic_lock_id');
-            updateLockStatus('lock-none', 'Kein Lock');
-            document.getElementById('btn-acquire-lock').disabled = false;
-            document.getElementById('btn-release-lock').disabled = true;
-            showStatusMsg('Lock freigegeben.', 'ok');
-            // Editor in readOnly versetzen (nur wenn noch schreibbar)
-            if (window._editor && !window._editor.readOnly.isEnabled) {
-                window._editor.readOnly.toggle().catch(() => {});
-            }
         }).catch(err => {
-            showStatusMsg(`Fehler beim Freigeben: ${esc(String(err))}`, 'error');
+            console.warn('releaseLock: HTTP-Fehler (Lock bereits freigegeben):', err);
         });
     }
-
-    EditorState.lockId = null;
-    sessionStorage.removeItem('forensic_lock_id');
 }
 
 /**
