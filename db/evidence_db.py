@@ -1279,15 +1279,31 @@ class EvidenceDb:
                 (self._LOCK_RESOURCE,),
             ).fetchone()
             if row:
+                # Defensiv gegen NULL-Werte in Pflichtfeldern (alte Datensaetze)
+                # Beleg: Bugfix Build 051c, Projektgespraech 2026-04-21
+                if row["locked_at"] is None or row["lock_id"] is None:
+                    logger.warning(
+                        "get_lock: korrupter Datensatz (NULL in Pflichtfeld) — bereinige"
+                    )
+                    try:
+                        self._con.execute(
+                            "DELETE FROM editor_locks WHERE resource=? "
+                            "AND (locked_at IS NULL OR lock_id IS NULL)",
+                            (self._LOCK_RESOURCE,),
+                        )
+                        self._con.commit()
+                    except Exception:
+                        pass
+                    return None
                 return EditorLockRecord(
                     resource=str(row["resource"]),
-                    locked_by=str(row["locked_by"]),
+                    locked_by=str(row["locked_by"] or ""),
                     lock_id=str(row["lock_id"]),
                     locked_at=int(row["locked_at"]),
-                    sse_client=str(row["sse_client"]),
+                    sse_client=str(row["sse_client"] or ""),
                 )
         except (sqlite3.OperationalError, sqlite3.ProgrammingError,
-                sqlite3.InterfaceError) as exc:
+                sqlite3.InterfaceError, TypeError) as exc:
             # InterfaceError: 'bad parameter or other API misuse' tritt auf wenn
             # die Verbindung in einem inkonsistenten Zustand ist (z.B. nach commit()
             # in einem anderen Thread). Kein Lock verfuegbar — None zurueckgeben.
