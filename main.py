@@ -41,7 +41,7 @@
 #   abgeschlossen sind.
 #
 # Abhängigkeiten: argparse, sys — Stdlib + alle core/db/server-Module
-# Version: v0.1.0 · Build: 017 · 2026-04-15
+# Version: v0.1.0 · Build: 018 · 2026-04-23
 # =============================================================================
 
 from __future__ import annotations
@@ -368,6 +368,61 @@ def main() -> None:
     logger.info(
         "Ermittlung: user_id=%d ('%s'), Modus='%s'",
         context.user_id, context.username, context.mode,
+    )
+
+    # ------------------------------------------------------------------
+    # Schritt 9b: Watchdog-Thread für Freeze-Diagnose
+    # ------------------------------------------------------------------
+    # Zweck: Wenn der Server einfriert, enthält freeze_dump.txt den
+    # Stack-Trace aller Threads zum Zeitpunkt des letzten Watchdog-Zyklus.
+    # So kann nachvollzogen werden, welcher Thread blockiert ist.
+    #
+    # Mechanismus:
+    #   - Watchdog-Thread schreibt alle _WATCHDOG_INTERVAL_SEC einen
+    #     Heartbeat-Log-Eintrag und einen faulthandler-Dump in eine Datei.
+    #   - faulthandler.dump_traceback() schreibt Stack-Traces aller Threads,
+    #     auch wenn der Hauptprozess eingefroren ist (läuft im Watchdog-Thread).
+    #   - Wenn der Heartbeat im Log ausbleibt, ist der Watchdog-Thread selbst
+    #     blockiert — das deutet auf einen GIL-Deadlock hin.
+    #   - Wenn der Heartbeat läuft aber der Dump leer ist, blockiert etwas
+    #     unterhalb des GIL (Kernel-Wait, I/O, SQLite-C-Layer).
+    #
+    # Die Datei wird bei jedem Zyklus überschrieben — enthält immer den
+    # letzten bekannten Zustand vor dem Einfrieren.
+    #
+    # Beleg: Projektgespräch 2026-04-23 — Freeze-Diagnose PROD
+    import faulthandler as _faulthandler
+    import threading as _threading
+    import time as _time
+
+    _WATCHDOG_INTERVAL_SEC = 30
+    _watchdog_dump_path = (
+        Path(config.get("logging.logfile", str(_PROJECT_ROOT / "data" / "logs" / "forensic_server.log")))
+        .parent / "freeze_dump.txt"
+    )
+
+    def _watchdog_loop() -> None:
+        """Watchdog: Heartbeat + faulthandler-Dump alle 30 Sekunden."""
+        while True:
+            _time.sleep(_WATCHDOG_INTERVAL_SEC)
+            logger.debug(
+                "Watchdog: Heartbeat (Dump: '%s')", _watchdog_dump_path
+            )
+            try:
+                with open(_watchdog_dump_path, "w", encoding="utf-8") as _f:
+                    _faulthandler.dump_traceback(_f, all_threads=True)
+            except Exception as _exc:
+                logger.warning("Watchdog: Dump fehlgeschlagen: %s", _exc)
+
+    _watchdog_thread = _threading.Thread(
+        target=_watchdog_loop,
+        name="forensic-watchdog",
+        daemon=True,
+    )
+    _watchdog_thread.start()
+    logger.info(
+        "Watchdog gestartet (Intervall: %ds, Dump: '%s')",
+        _WATCHDOG_INTERVAL_SEC, _watchdog_dump_path,
     )
 
     # ------------------------------------------------------------------

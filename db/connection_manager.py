@@ -37,7 +37,7 @@
 #   Jede Verbindungsöffnung wird im Log protokolliert (mit Pfaden).
 #
 # Abhängigkeiten: sqlite3, time, os — Stdlib + interne DB-Module
-# Version: v0.1.0 · Build: 020 · 2026-04-22
+# Version: v0.1.0 · Build: 021 · 2026-04-22
 # =============================================================================
 
 from __future__ import annotations
@@ -223,6 +223,17 @@ class ConnectionManager:
             coordinator = CoordinatorDb(con)
             assets      = AssetsDb(assets_con, forum_base_url=forum_base_url)   # NEU Build 017
 
+            # Authorizer nach vollständigem ATTACH-Aufbau deaktivieren.
+            # Hintergrund (Build 021): set_authorizer() ist nicht thread-safe
+            # wenn check_same_thread=False — auf Windows führt das zu Deadlocks
+            # wenn SSE-Thread und Request-Threads gleichzeitig die Connection
+            # nutzen. Der Schreibschutz auf fdb/ddb/adb ist durch
+            # startup_checks._check_forensic_db_readonly() und das
+            # Dateisystem (Stage-2 setzt chmod/NTFS-readonly) gewährleistet.
+            # Beleg: webserver_freeze.txt, Projektgespräch 2026-04-22.
+            con.set_authorizer(None)
+            logger.debug("Authorizer deaktiviert — Schreibschutz via Dateisystem/startup_checks.")
+
             logger.info(
                 "Alle Verbindungen aufgebaut (Normalmodus). "
                 "forensic_db: %d Seiten, evidence_db: %d Annotationen",
@@ -344,6 +355,17 @@ class ConnectionManager:
             evidence    = EvidenceDb(con)
             coordinator = CoordinatorDb(con)
             assets      = AssetsDb(assets_con, forum_base_url=forum_base_url)   # NEU Build 017
+
+            # Authorizer nach vollständigem ATTACH-Aufbau deaktivieren.
+            # Hintergrund (Build 021): set_authorizer() ist nicht thread-safe
+            # wenn check_same_thread=False — auf Windows führt das zu Deadlocks
+            # wenn SSE-Thread und Request-Threads gleichzeitig die Connection
+            # nutzen. Der Schreibschutz auf fdb/ddb/adb ist durch
+            # startup_checks._check_forensic_db_readonly() und das
+            # Dateisystem (Stage-2 setzt chmod/NTFS-readonly) gewährleistet.
+            # Beleg: webserver_freeze.txt, Projektgespräch 2026-04-22.
+            con.set_authorizer(None)
+            logger.debug("Authorizer deaktiviert — Schreibschutz via Dateisystem/startup_checks.")
 
             logger.info(
                 "Alle Verbindungen aufgebaut (Support-Modus). "
