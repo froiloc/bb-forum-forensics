@@ -1611,3 +1611,40 @@ span.forensic-passive {
     margin-top: 4px;
     font-family: monospace;
 }
+
+/* ==========================================================================
+   Gruppenänderungslog — Build 013
+   Beleg: Projektgespräch 2026-04-22, OP-28.
+   Farbcodierung für Übergänge in/aus Sperrgruppen.
+   ========================================================================== */
+
+/* Übergang IN Sperrgruppe — roter Rahmen */
+.forensic-data tr.forensic-row-ban td {
+    background: #fff0f0;
+    border-left: 3px solid #c0392b;
+}
+
+/* Übergang AUS Sperrgruppe — grüner Rahmen */
+.forensic-data tr.forensic-row-unban td {
+    background: #f0fff4;
+    border-left: 3px solid #27ae60;
+}
+
+/* Legende-Spans in der Erklärungszeile */
+.forensic-row-ban-legend {
+    color: #c0392b;
+    font-weight: bold;
+}
+
+.forensic-row-unban-legend {
+    color: #27ae60;
+    font-weight: bold;
+}
+
+/* Unterabschnitt-Titel im Bearbeitungslog */
+.forensic-section-subtitle {
+    font-size: 12px;
+    font-weight: 600;
+    color: #4a5568;
+    margin: 8px 0 4px 0;
+}
