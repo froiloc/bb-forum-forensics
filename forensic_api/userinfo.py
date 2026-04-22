@@ -14,11 +14,16 @@
 #             - evidence_db:    Annotationszähler, letzter Eintrag
 #           Kein statischer BLOB erforderlich. Immer aufrufbar.
 #
+# Build 052: Sperrstatus-Banner für wiederhergestellte Konten.
+#   Liest user_is_restricted und user_original_group aus forensic_meta.
+#   Zeigt blauen Infokasten wenn user_is_restricted='1'.
+#   Beleg: Bauplan Baustelle4 v0.3 Build 004, §7.0; Projektgespräch 2026-04-22, OP-30.
+#
 # Forensische Relevanz:
 #   Alle angezeigten Daten stammen aus READ-ONLY-Quellen.
 #   Keine Schreibzugriffe — forensische Integrität gewahrt.
 #
-# Version: v0.1.0 · Build: 031 · 2026-04-16
+# Version: v0.1.0 · Build: 052 · 2026-04-22
 # =============================================================================
 
 from __future__ import annotations
@@ -45,6 +50,17 @@ _CAT_LABELS = {
     "CAT_184":      "🔴 §§ 184b, 184c StGB",
     "CAT_VICTIM":   "🛡️ Hinweise auf Opfer",
     "CAT_OTHER":    "📎 Sonstige Relevanz",
+}
+
+# Gruppen-IDs die als Sperrgruppen gelten — für Gruppenname-Anzeige im Banner.
+# Beleg: Analyse groups-Tabelle, Projektgespräch 2026-04-22.
+_RESTRICTED_GROUP_NAMES: dict[int, str] = {
+    30: "Archive",
+    32: "Suspended",
+    39: "Muted",
+    43: "Inactive",
+    46: "Delete",
+    47: "Troll_autodetect",
 }
 
 
@@ -89,9 +105,18 @@ class UserinfoEndpoint:
     # ------------------------------------------------------------------
 
     def _load_meta(self) -> dict:
-        """Liest relevante Schlüssel aus fdb.forensic_meta."""
-        keys = ("schema_version", "domainname", "protocol",
-                "created_at", "scraper_version")
+        """
+        Liest relevante Schlüssel aus fdb.forensic_meta.
+
+        Neu Build 052: user_is_restricted und user_original_group.
+        Beleg: Projektgespräch 2026-04-22, OP-30.
+        """
+        keys = (
+            "schema_version", "domainname", "protocol",
+            "created_at", "scraper_version",
+            # Sperrstatus — Beleg: forensic_db_writer.py Build 012, OP-30
+            "user_is_restricted", "user_original_group",
+        )
         result = {}
         for k in keys:
             result[k] = self._bundle.forensic.get_meta(k)
@@ -167,6 +192,46 @@ class UserinfoEndpoint:
         u = e(username)
         domain = e(meta.get("domainname") or "—")
 
+        # Sperrstatus-Banner berechnen
+        # Beleg: Bauplan Baustelle4 v0.3 Build 004 §7.0, Projektgespräch 2026-04-22, OP-30.
+        is_restricted  = meta.get("user_is_restricted") == "1"
+        orig_group_raw = meta.get("user_original_group") or ""
+        restricted_banner_html = ""
+        if is_restricted:
+            # Gruppenname aus bekannter Mapping-Tabelle oder ID als Fallback
+            try:
+                orig_group_id = int(orig_group_raw) if orig_group_raw else None
+            except ValueError:
+                orig_group_id = None
+
+            if orig_group_id is not None:
+                group_name = _RESTRICTED_GROUP_NAMES.get(
+                    orig_group_id,
+                    f"Unbekannte Gruppe"
+                )
+                group_display = e(f"{group_name} (ID: {orig_group_id})")
+            else:
+                group_display = "unbekannt"
+
+            restricted_banner_html = (
+                f'<div class="ui-restricted-banner" role="note" '
+                f'aria-label="Gesperrtes Konto">'
+                f'<span class="ui-restricted-banner__icon">ℹ</span>'
+                f'<div>'
+                f'<strong>Dieses Benutzerkonto existiert nicht mehr.</strong> '
+                f'Der Zugriff wurde mit forensischen Mitteln wiederhergestellt.'
+                f'<div class="ui-restricted-banner__detail">'
+                f'Ursprüngliche Gruppe: {group_display}'
+                f'</div>'
+                f'</div>'
+                f'</div>'
+            )
+            logger.debug(
+                "/_forensic/userinfo: Sperrstatus-Banner aktiv für user_id=%d "
+                "(original_group=%s).",
+                user_id, orig_group_raw or "unbekannt"
+            )
+
         # Annotationstabelle
         ann_rows = ""
         ann_total = 0
@@ -223,6 +288,21 @@ class UserinfoEndpoint:
                   word-break: break-all; }}
     .ui-footer {{ padding: 12px 28px; font-size: 11px; color: #9aa0b8;
                   border-top: 1px solid #e0e4f0; margin-top: 8px; }}
+    /* Sperrstatus-Banner — Beleg: Bauplan B4 v0.3 Build 004 §7.0, OP-30 */
+    .ui-restricted-banner {{
+      display: flex; align-items: flex-start; gap: 12px;
+      background: #e8f4fc; border: 1px solid #1a6fa8;
+      border-left: 4px solid #1a6fa8;
+      border-radius: 4px; padding: 12px 20px;
+      margin: 0 28px 0 28px; font-size: 13px; color: #0d3a5c;
+    }}
+    .ui-restricted-banner__icon {{
+      font-size: 18px; color: #1a6fa8; flex-shrink: 0; line-height: 1.3;
+    }}
+    .ui-restricted-banner__detail {{
+      font-size: 11px; color: #3a6080; margin-top: 4px;
+      font-family: monospace;
+    }}
   </style>
 </head>
 <body>
@@ -233,6 +313,8 @@ class UserinfoEndpoint:
       <div class="ui-domain">{domain}</div>
     </div>
   </div>
+
+  {restricted_banner_html}
 
   <div class="ui-body">
 

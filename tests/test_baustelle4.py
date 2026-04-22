@@ -431,6 +431,39 @@ class TestAnnotationCounts:
 class TestUserinfoEndpoint:
     """B4-S01: GET /_forensic/userinfo -> HTTP 200 (seit Build 031)."""
 
+    def _make_endpoint_with_meta(self, meta_values: dict):
+        """
+        Hilfsmethode: Erstellt UserinfoEndpoint mit gemockter forensic_meta.
+        meta_values: Dict mit Key→Value wie in forensic_meta.
+        """
+        import sys, os
+        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if project_dir not in sys.path:
+            sys.path.insert(0, project_dir)
+        from forensic_api.userinfo import UserinfoEndpoint
+        fdb_con = sqlite3.connect(":memory:")
+        fdb_con.row_factory = sqlite3.Row
+        fdb_con.execute(
+            "CREATE TABLE forensic_meta (key TEXT PRIMARY KEY, value TEXT)"
+        )
+        fdb_con.executemany(
+            "INSERT INTO forensic_meta (key, value) VALUES (?, ?)",
+            meta_values.items()
+        )
+        fdb_con.commit()
+        bundle = _make_mock_bundle(forensic_con=fdb_con)
+        # get_meta über die echte SQLite-Verbindung leiten
+        bundle.forensic.get_meta = lambda k: (
+            row["value"]
+            if (row := fdb_con.execute(
+                "SELECT value FROM forensic_meta WHERE key=?", (k,)
+            ).fetchone())
+            else None
+        )
+        ctx = _make_mock_context()
+        ep  = UserinfoEndpoint(bundle, ctx, MagicMock())
+        return ep, fdb_con
+
     def test_no_blob_returns_200(self):
         import sys, os
         project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -449,8 +482,147 @@ class TestUserinfoEndpoint:
             f"Erwartet 200, erhalten: {resp.get('status')}"
         fdb_con.close()
 
+    # Banner-DIV-Sentinel — prüft das HTML-Element, nicht die CSS-Klasse im <style>
+    # Beleg: _render() in userinfo.py Build 052
+    _BANNER_DIV = '<div class="ui-restricted-banner"'
 
-class TestReportEndpoint:
+    def test_normal_user_no_banner(self):
+        """B4-S01-B1: Normales Konto (user_is_restricted='0') → kein Banner-DIV.
+        Beleg: Bauplan B4 v0.3 Build 004 §7.0, OP-30."""
+        ep, fdb_con = self._make_endpoint_with_meta({
+            "user_is_restricted":  "0",
+            "user_original_group": "",
+        })
+        resp = {}
+        ep.handle(_make_mock_handler(resp))
+        fdb_con.close()
+        html = resp['body'].decode("utf-8")
+        assert resp['status'] == 200
+        assert self._BANNER_DIV not in html, \
+            "Normales Konto darf kein Banner-DIV anzeigen"
+
+    def test_missing_meta_no_banner(self):
+        """B4-S01-B2: Fehlende user_is_restricted-Metadaten (ältere DB) → kein Banner-DIV.
+        Beleg: Rückwärtskompatibilität mit Schema v2."""
+        ep, fdb_con = self._make_endpoint_with_meta({})
+        resp = {}
+        ep.handle(_make_mock_handler(resp))
+        fdb_con.close()
+        assert self._BANNER_DIV not in resp['body'].decode("utf-8")
+
+    def test_restricted_user_shows_banner(self):
+        """B4-S01-B3: Gesperrtes Konto (user_is_restricted='1') → Banner sichtbar.
+        Beleg: Bauplan B4 v0.3 Build 004 §7.0, OP-30."""
+        ep, fdb_con = self._make_endpoint_with_meta({
+            "user_is_restricted":  "1",
+            "user_original_group": "32",
+        })
+        resp = {}
+        ep.handle(_make_mock_handler(resp))
+        fdb_con.close()
+        html = resp['body'].decode("utf-8")
+        assert resp['status'] == 200
+        assert self._BANNER_DIV in html, \
+            "Gesperrtes Konto muss Sperrstatus-Banner-DIV anzeigen"
+
+    def test_banner_contains_recovery_text(self):
+        """B4-S01-B4: Banner enthält spezifizierten forensischen Hinweistext.
+        Beleg: Bauplan B4 v0.3 Build 004 §7.0."""
+        ep, fdb_con = self._make_endpoint_with_meta({
+            "user_is_restricted":  "1",
+            "user_original_group": "32",
+        })
+        resp = {}
+        ep.handle(_make_mock_handler(resp))
+        fdb_con.close()
+        html = resp['body'].decode("utf-8")
+        assert "forensischen Mitteln wiederhergestellt" in html, \
+            "Banner muss forensischen Hinweistext enthalten"
+        assert "existiert nicht mehr" in html
+
+    def test_banner_shows_known_group_name(self):
+        """B4-S01-B5: Banner löst bekannte group_id in Gruppenname auf.
+        Beleg: Bauplan B4 v0.3 Build 004 §7.0 — JOIN auf default_groups.g_title."""
+        ep, fdb_con = self._make_endpoint_with_meta({
+            "user_is_restricted":  "1",
+            "user_original_group": "32",
+        })
+        resp = {}
+        ep.handle(_make_mock_handler(resp))
+        fdb_con.close()
+        html = resp['body'].decode("utf-8")
+        # group_id=32 = "Suspended"
+        assert "Suspended" in html, \
+            "Banner muss Gruppenname 'Suspended' für group_id=32 anzeigen"
+        assert "ID: 32" in html
+
+    def test_banner_fallback_for_unknown_group(self):
+        """B4-S01-B6: Unbekannte group_id → Fallback 'Unbekannte Gruppe'.
+        Beleg: Bauplan B4 v0.3 Build 004 §7.0."""
+        ep, fdb_con = self._make_endpoint_with_meta({
+            "user_is_restricted":  "1",
+            "user_original_group": "999",
+        })
+        resp = {}
+        ep.handle(_make_mock_handler(resp))
+        fdb_con.close()
+        html = resp['body'].decode("utf-8")
+        assert "Unbekannte Gruppe" in html
+        assert "ID: 999" in html
+
+    def test_banner_without_original_group(self):
+        """B4-S01-B7: user_original_group leer → Banner ohne Gruppenangabe.
+        Beleg: Fallback wenn kein Logeintrag in logs_group_id (OP-30)."""
+        ep, fdb_con = self._make_endpoint_with_meta({
+            "user_is_restricted":  "1",
+            "user_original_group": "",
+        })
+        resp = {}
+        ep.handle(_make_mock_handler(resp))
+        fdb_con.close()
+        html = resp['body'].decode("utf-8")
+        assert self._BANNER_DIV in html
+        assert "unbekannt" in html
+
+    def test_banner_all_restricted_group_ids(self):
+        """B4-S01-B8: Alle sechs Sperrgruppen erzeugen jeweils ein Banner.
+        Beleg: RESTRICTED_GROUP_NAMES in userinfo.py, OP-30."""
+        import sys, os
+        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if project_dir not in sys.path:
+            sys.path.insert(0, project_dir)
+        from forensic_api.userinfo import _RESTRICTED_GROUP_NAMES
+        expected_ids = {30, 32, 39, 43, 46, 47}
+        assert set(_RESTRICTED_GROUP_NAMES.keys()) == expected_ids, \
+            f"_RESTRICTED_GROUP_NAMES muss genau {expected_ids} enthalten"
+        for gid in expected_ids:
+            ep, fdb_con = self._make_endpoint_with_meta({
+                "user_is_restricted":  "1",
+                "user_original_group": str(gid),
+            })
+            resp = {}
+            ep.handle(_make_mock_handler(resp))
+            fdb_con.close()
+            html = resp['body'].decode("utf-8")
+            assert self._BANNER_DIV in html, \
+                f"group_id={gid} muss Banner-DIV erzeugen"
+
+    def test_banner_xss_escaping(self):
+        """B4-S01-B9: XSS-gefährliche Zeichen in group_id werden escaped.
+        Beleg: html.escape in _render(), forensische Integrität."""
+        ep, fdb_con = self._make_endpoint_with_meta({
+            "user_is_restricted":  "1",
+            "user_original_group": "<script>alert(1)</script>",
+        })
+        resp = {}
+        ep.handle(_make_mock_handler(resp))
+        fdb_con.close()
+        html = resp['body'].decode("utf-8")
+        assert "<script>" not in html, \
+            "XSS-Payload darf nicht unescaped in HTML erscheinen"
+
+
+
     """B4-S03–S08: Report-Endpunkt-Tests."""
 
     def _make_endpoint(self, edb):
