@@ -37,7 +37,7 @@
 #   Jede Verbindungsöffnung wird im Log protokolliert (mit Pfaden).
 #
 # Abhängigkeiten: sqlite3, time, os — Stdlib + interne DB-Module
-# Version: v0.1.0 · Build: 018 · 2026-04-15
+# Version: v0.1.0 · Build: 020 · 2026-04-22
 # =============================================================================
 
 from __future__ import annotations
@@ -371,25 +371,81 @@ class ConnectionManager:
     # Hilfsmethoden
     # ------------------------------------------------------------------
 
+
+    # Aliases die niemals beschreibbar sein dürfen.
+    # Wird vom Authorizer ausgewertet. Beleg: Projektgespräch 2026-04-22 PROD.
+    _READONLY_ALIASES: frozenset = frozenset({"fdb", "ddb", "adb", "edb"})
+
+    # SQLite action codes für Schreiboperationen.
+    # Beleg: https://www.sqlite.org/c3ref/c_alter_table.html
+    _WRITE_ACTION_CODES: frozenset = frozenset({
+        1,   # SQLITE_CREATE_TABLE
+        3,   # SQLITE_CREATE_INDEX
+        7,   # SQLITE_CREATE_VIEW
+        9,   # SQLITE_DELETE
+        11,  # SQLITE_DROP_TABLE
+        13,  # SQLITE_DROP_INDEX
+        17,  # SQLITE_DROP_VIEW
+        18,  # SQLITE_INSERT
+        23,  # SQLITE_UPDATE
+        26,  # SQLITE_ALTER_TABLE
+    })
+
+    @classmethod
+    def _make_authorizer(cls):
+        """
+        Erzeugt einen SQLite-Authorizer der Schreibzugriffe auf READ-ONLY-
+        Aliases (fdb, ddb, adb, edb) blockiert.
+
+        Hintergrund (Build 020): SQLite URI-Syntax mit mode=ro funktioniert
+        auf Windows nicht für UNC-Pfade (\\\\server\\share\\...) — weder mit
+        file:////server/... (RFC 8089, Build 019) noch in anderer Form.
+        Fehler in PROD: "unable to open database: file:////prod01/..."
+        Beleg: webserver_error.txt, Projektgespräch 2026-04-22.
+
+        Lösung: ATTACH mit normalem Pfad-String (kein URI), Schreibschutz
+        über Python-seitigen sqlite3.set_authorizer().
+
+        TEMP-Operationen (blob_lookup TEMP VIEW, db_name='temp') sind nie
+        in _READONLY_ALIASES — werden immer erlaubt. Das ist der entscheidende
+        Unterschied zu PRAGMA query_only = ON (wirkt global, blockiert TEMP VIEW).
+        Beleg: set_authorizer()-Doku, empirisch verifiziert Build 020.
+        """
+        readonly  = cls._READONLY_ALIASES
+        write_ops = cls._WRITE_ACTION_CODES
+
+        def authorizer(action_code, arg1, arg2, db_name, trigger_name):
+            if action_code in write_ops and db_name in readonly:
+                return 1   # SQLITE_DENY
+            return 0       # SQLITE_OK
+
+        return authorizer
+
     def _attach_readonly(
         self, con: sqlite3.Connection, path: Path, alias: str
     ) -> None:
         """
         Bindet eine DB im READ-ONLY-Modus per ATTACH an.
-        Verwendet SQLite URI-Syntax mit mode=ro.
+
+        Schreibschutz (Build 020): URI mode=ro ist auf Windows für UNC-Pfade
+        nicht verwendbar. ATTACH verwendet normalen Pfad-String, Schreibschutz
+        wird über set_authorizer() sichergestellt.
+        Beleg: Projektgespräch 2026-04-22 — UNC-Pfad-Problem PROD.
+
+        set_authorizer() wird nach jedem ATTACH neu gesetzt, da SQLite pro
+        Connection nur einen Authorizer kennt.
 
         Args:
             con:   Geöffnete Hauptverbindung.
             path:  Absoluter Pfad zur anzubindenden DB.
-            alias: ATTACH-Alias-Name (fdb, ddb, edb).
+            alias: ATTACH-Alias-Name (fdb, ddb, adb, edb).
 
         Raises:
             sqlite3.OperationalError: Wenn ATTACH fehlschlägt.
         """
-        uri = path.as_uri() + "?mode=ro"
-        con.execute(f"ATTACH DATABASE '{uri}' AS {alias}")
-        logger.debug("ATTACH %s (READ-ONLY): '%s'", alias, path)
-
+        con.execute("ATTACH DATABASE ? AS " + alias, (str(path),))
+        con.set_authorizer(self._make_authorizer())
+        logger.debug("ATTACH %s (READ-ONLY via Authorizer): '%s'", alias, path)
     def _attach_readwrite(
         self, con: sqlite3.Connection, path: Path, alias: str
     ) -> None:

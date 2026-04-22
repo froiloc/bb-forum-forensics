@@ -28,7 +28,7 @@
 #   von Stage 2 beim Versiegeln.
 #
 # Abhängigkeiten: sqlite3, hashlib, pathlib — ausschließlich Stdlib
-# Version: v0.1.0 · Build: 005 · 2026-04-10
+# Version: v0.1.0 · Build: 6 · 2026-04-10
 # =============================================================================
 
 import hashlib
@@ -41,6 +41,39 @@ from core.logger import get_logger
 from core.mode_resolver import ResolvedContext
 
 logger = get_logger(__name__)
+
+
+def _path_to_sqlite_uri(path: Path, mode: str = "ro") -> str:
+    """
+    Konvertiert einen Pfad in eine SQLite-kompatible URI mit ?mode=<mode>.
+
+    Hintergrund (Build 019): Path.as_uri() erzeugt auf Windows UNC-Pfaden
+    (\\\\server\\share\\...) eine file://server/...-URI. SQLite lehnt die
+    Authority "server" ab (nur "localhost" oder leer erlaubt) —
+    Fehler: "invalid uri authority: <servername>".
+    Beleg: RFC 8089 §2, SQLite URI-Doku (https://www.sqlite.org/uri.html)
+    Beleg: Projektgespräch 2026-04-22 — UNC-Pfad-Problem PROD
+
+    Lösung: RFC-8089-konforme UNC-URI mit 4 Schrägstrichen:
+      \\\\server\\share\\path → file:////server/share/path?mode=ro
+
+    Typen:
+      Windows UNC:    \\\\srv\\share\\f → file:////srv/share/f?mode=ro
+      Windows lokal:  C:\\foo\\bar → file:///C:/foo/bar?mode=ro
+      Unix/Linux:     /opt/f → file:///opt/f?mode=ro
+    """
+    import urllib.parse as _up
+    p = str(path)
+    if p.startswith("\\\\") or (p.startswith("//") and not p.startswith("///")):
+        normalized = p.replace("\\", "/")
+        uri_base = "file://" + normalized
+    elif len(p) >= 2 and p[1] == ":":
+        normalized = p.replace("\\", "/")
+        uri_base = "file:///" + _up.quote(normalized, safe="/:")
+    else:
+        uri_base = path.as_uri()
+    return uri_base + f"?mode={mode}"
+
 
 # Erwartete Schema-Version in forensic_meta.
 # Muss mit FORENSIC_DB_SCHEMA_VERSION in scraper_stage2.py übereinstimmen.
@@ -186,7 +219,7 @@ class StartupChecker:
         path = self._ctx.forensic_db
         try:
             # URI-Modus mit mode=ro erzwingt READ-ONLY-Öffnung
-            uri = path.as_uri() + "?mode=ro"
+            uri = _path_to_sqlite_uri(path, mode="ro")
             con = sqlite3.connect(uri, uri=True, timeout=5.0)
             con.row_factory = sqlite3.Row
             try:
@@ -250,7 +283,7 @@ class StartupChecker:
         path = self._ctx.forensic_db
 
         try:
-            uri = path.as_uri() + "?mode=ro"
+            uri = _path_to_sqlite_uri(path, mode="ro")
             con = sqlite3.connect(uri, uri=True, timeout=5.0)
             con.row_factory = sqlite3.Row
             try:
@@ -308,7 +341,7 @@ class StartupChecker:
         """
         path = self._ctx.forensic_db
         try:
-            uri = path.as_uri() + "?mode=ro"
+            uri = _path_to_sqlite_uri(path, mode="ro")
             con = sqlite3.connect(uri, uri=True, timeout=5.0)
             try:
                 # Schreibversuch — muss OperationalError werfen

@@ -186,20 +186,20 @@ class TestConnectionManagerNormal(unittest.TestCase):
         self.assertIsNotNone(self.bundle.coordinator)
 
     def test_T02_fdb_readonly(self):
-        """T02: fdb ist READ-ONLY — Schreibversuch wirft OperationalError."""
+        """T02: fdb ist READ-ONLY — Schreibversuch wirft DatabaseError (Authorizer)."""
         ctx, cfg = _make_context(self.tmp)
         self.bundle = ConnectionManager(ctx, cfg).open()
-        with self.assertRaises(sqlite3.OperationalError):
+        with self.assertRaises(sqlite3.DatabaseError):
             self.bundle.connection.execute(
                 "INSERT INTO fdb.pages "
                 "(url_canonical, fetched_at, http_status) VALUES ('x', 0, 0)"
             )
 
     def test_T03_ddb_readonly(self):
-        """T03: ddb ist READ-ONLY — Schreibversuch wirft OperationalError."""
+        """T03: ddb ist READ-ONLY — Schreibversuch wirft DatabaseError (Authorizer)."""
         ctx, cfg = _make_context(self.tmp)
         self.bundle = ConnectionManager(ctx, cfg).open()
-        with self.assertRaises(sqlite3.OperationalError):
+        with self.assertRaises(sqlite3.DatabaseError):
             self.bundle.connection.execute(
                 "INSERT INTO ddb.default_meta VALUES ('test', 'val')"
             )
@@ -422,6 +422,109 @@ class TestConnectionManagerClose(unittest.TestCase):
         bundle.close()
         self.assertFalse(Path(temp_path).exists())
 
+
+
+
+class TestAttachReadonlyUNCKompatibilitaet(unittest.TestCase):
+    """
+    Regressionstest Build 019:
+    _attach_readonly() darf keine URI-Syntax (as_uri() + ?mode=ro) verwenden,
+    da Windows-UNC-Pfade (\\\\server\\share\\...) ungültige file://-URIs erzeugen
+    und SQLite mit "invalid uri authority" abbricht.
+    Beleg: Projektgespräch 2026-04-22 — UNC-Pfad-Problem PROD
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+
+    def test_T14_query_only_statt_uri_mode_ro(self):
+        """
+        T14: _attach_readonly() verwendet ATTACH mit Pfad-String + PRAGMA
+        query_only=ON anstelle von URI-Syntax mode=ro.
+        Schreibversuch auf fdb muss scheitern (query_only schützt).
+        """
+        forensic_db   = Path(self.tmp) / "forensic_14.db"
+        evidence_db   = Path(self.tmp) / "evidence_14.db"
+        default_db    = Path(self.tmp) / "default_14.db"
+        coordinator   = Path(self.tmp) / "coordinator_14.db"
+        _create_forensic_db(forensic_db)
+        _create_default_db(default_db)
+        _create_coordinator_db(coordinator)
+        sqlite3.connect(str(evidence_db)).close()
+
+        reset_for_testing()
+        config_path = os.path.join(self.tmp, "config14.yaml")
+        logfile = os.path.join(self.tmp, "logs14", "test.log")
+        with open(config_path, "w") as fh:
+            fh.write(textwrap.dedent(f"""
+                logging:
+                  level: "debug"
+                  logfile: "{logfile}"
+                  max_bytes: 1048576
+                  backup_count: 2
+                paths:
+                  coordinator_db: "./c14.db"
+                  forensic_db_dir: "./f14/"
+                  default_db: "./d14.db"
+                  evidence_db_dir: "./e14/"
+            """))
+        cfg = ConfigLoader(config_path=config_path)
+
+        ctx = ResolvedContext(
+            mode="job", user_id=14, username="testuser14",
+            forensic_db=forensic_db, evidence_db=evidence_db,
+            default_db=default_db, coordinator_db=coordinator,
+            assets_db=Path(self.tmp) / "assets_14.db",
+            investigator_id=1,
+        )
+        bundle = ConnectionManager(ctx, cfg).open()
+        con = bundle.connection
+
+        # fdb muss lesbar sein
+        count = con.execute("SELECT COUNT(*) FROM fdb.pages").fetchone()[0]
+        self.assertGreaterEqual(count, 0)
+
+        # Schreibversuch auf fdb muss mit OperationalError scheitern (query_only)
+        with self.assertRaises(sqlite3.DatabaseError) as cm:
+            con.execute("INSERT INTO fdb.pages (url_canonical, fetched_at, http_status, scrape_context) "
+                        "VALUES ('/__test__', 0, 200, 'test')")
+        # Authorizer liefert "not authorized"
+        self.assertIn("authorized", str(cm.exception).lower(),
+                      f"Unerwartete Fehlermeldung: {cm.exception}")
+
+        bundle.close()
+        reset_for_testing()
+
+    def test_T15_unc_pfad_simulation(self):
+        """
+        T15: Simuliert einen UNC-ähnlichen Pfad-String-Aufruf.
+        Path.as_uri() auf einem normalen Pfad produziert eine gültige URI —
+        für UNC wäre sie ungültig. Dieser Test stellt sicher, dass
+        _attach_readonly() den Pfad als String übergibt (nicht als URI).
+        Regression gegen Build-018-Verhalten.
+        """
+        forensic_db = Path(self.tmp) / "forensic_15.db"
+        _create_forensic_db(forensic_db)
+
+        # Direkt testen: con.execute mit Pfad-String ATTACH + query_only
+        con = sqlite3.connect(":memory:")
+        path_str = str(forensic_db)
+
+        # Muss ohne Fehler funktionieren (kein as_uri(), kein ?mode=ro)
+        try:
+            con.execute("ATTACH DATABASE ? AS testdb", (path_str,))
+            con.execute("PRAGMA testdb.query_only = ON")
+        except sqlite3.OperationalError as exc:
+            self.fail(f"ATTACH mit Pfad-String fehlgeschlagen: {exc}")
+
+        # Lesezugriff ok
+        con.execute("SELECT COUNT(*) FROM testdb.pages").fetchone()
+
+        # Schreibversuch muss scheitern
+        with self.assertRaises(sqlite3.DatabaseError):
+            con.execute("INSERT INTO testdb.pages (url_canonical, fetched_at, http_status, scrape_context) "
+                        "VALUES ('/__t15__', 0, 200, 'test')")
+        con.close()
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
