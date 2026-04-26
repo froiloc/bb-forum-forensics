@@ -40,6 +40,7 @@
 
 from __future__ import annotations
 
+import time
 import sqlite3
 from dataclasses import dataclass
 from typing import Optional
@@ -167,76 +168,75 @@ class AssetsDb:
     # Asset-Lookup
     # ------------------------------------------------------------------
 
+    def _retryable_query(self, sql: str, params=(), max_retries: int = 3) -> Optional[sqlite3.Row]:
+        delay = 0.1
+        for attempt in range(max_retries):
+            cursor = None
+            try:
+                cursor = self._con.cursor()
+                cursor.row_factory = sqlite3.Row
+                cursor.execute(sql, params)
+                row = cursor.fetchone()
+                # Prüfe auf leeres Row-Objekt (Länge 0)
+                if row is not None and hasattr(row, "__len__") and len(row) == 0:
+                    raise IndexError("Leeres Row-Objekt (Länge 0)")
+                return row
+            except (sqlite3.InterfaceError, sqlite3.OperationalError, IndexError, TypeError) as exc:
+                logger.warning(
+                    "Query fehlgeschlagen (Versuch %d/%d): %s - %s",
+                    attempt + 1, max_retries, sql[:80], exc
+                )
+                if cursor:
+                    try:
+                        cursor.close()
+                    except Exception:
+                        pass
+                try:
+                    self._con.rollback()
+                except Exception:
+                    pass
+                if attempt == max_retries - 1:
+                    logger.error("Query nach %d Versuchen aufgegeben: %s", max_retries, sql[:80])
+                    return None
+                time.sleep(delay)
+                delay *= 2
+        return None
+
     def get_asset(self, url: str) -> Optional[AssetRecord]:
-        """
-        Sucht ein Asset anhand seiner URL.
-
-        URL-Normalisierung:
-          Der eingehende url-Parameter ist ein URL-Pfad ohne Protokoll/Domain,
-          z.B. '/forum/img/avatars/18.jpg'. In adb.asset_urls ist die vollständige
-          Onion-URL gespeichert, z.B.
-          'http://alice4n...onion/forum/img/avatars/18.jpg'.
-          Wenn self._forum_base_url gesetzt ist, wird der Präfix vor den Pfad
-          gestellt. Ohne Präfix (Fallback) wird der Pfad unverändert gesucht.
-
-        Lookup-Pfad:
-          adb.asset_urls (url) → adb.assets (data, mime_type)
-
-        Args:
-            url: URL-Pfad des Assets, z.B. '/forum/img/avatars/18.jpg'
-
-        Returns:
-            AssetRecord wenn die URL bekannt ist (auch wenn data=None),
-            None wenn die URL nicht in asset_urls eingetragen ist oder
-            assets_<uid>.db nicht verfügbar ist.
-        """
         if not self._available:
             return None
+        lookup_url = f"{self._forum_base_url}{url}" if self._forum_base_url else url
 
-        # Onion-Präfix voranstellen wenn bekannt
-        lookup_url = (
-            f"{self._forum_base_url}{url}"
-            if self._forum_base_url
-            else url
+        row = self._retryable_query(
+            """
+            SELECT au.url, a.data, a.mime_type, a.file_size
+            FROM adb.asset_urls au
+            LEFT JOIN adb.assets a ON a.id = au.asset_id
+            WHERE au.url = ? LIMIT 1
+            """,
+            (lookup_url,)
         )
-
-        try:
-            row = self._con.execute(
-                """
-                SELECT
-                    au.url,
-                    a.data,
-                    a.mime_type,
-                    a.file_size
-                FROM adb.asset_urls au
-                LEFT JOIN adb.assets a ON a.id = au.asset_id
-                WHERE au.url = ?
-                LIMIT 1
-                """,
-                (lookup_url,),
-            ).fetchone()
-        except sqlite3.OperationalError as exc:
-            logger.error("Asset-Lookup fehlgeschlagen für '%s': %s", url, exc)
-            return None
 
         if row is None:
             logger.debug("Asset nicht in assets_<uid>.db: '%s'", url)
             return None
 
-        mime_type = str(row["mime_type"]) if row["mime_type"] else _DEFAULT_MIME_TYPE
-        record = AssetRecord(
-            url=str(row["url"]),
-            data=row["data"],    # bytes oder None
+        # row ist garantiert ein gültiges sqlite3.Row (Länge >= 4)
+        try:
+            asset_url = str(row[0])
+            data = row[1]
+            mime_type = str(row[2]) if row[2] else _DEFAULT_MIME_TYPE
+            file_size = int(row[3]) if row[3] is not None else None
+        except (IndexError, TypeError) as exc:
+            logger.error("Unerwarteter Extraktionsfehler für '%s': %s (row: %r)", url, exc, row)
+            return None
+
+        return AssetRecord(
+            url=asset_url,
+            data=data,
             mime_type=mime_type,
-            file_size=int(row["file_size"]) if row["file_size"] is not None else None,
+            file_size=file_size,
         )
-        logger.debug(
-            "Asset gefunden (assets_db): '%s' → %s, %s bytes, available=%s",
-            url, mime_type,
-            record.file_size if record.file_size is not None else "?",
-            record.available,
-        )
-        return record
 
     def has_asset(self, url: str) -> bool:
         """
