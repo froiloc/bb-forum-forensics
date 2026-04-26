@@ -248,6 +248,12 @@ CREATE INDEX IF NOT EXISTS ra_report_idx    ON report_approvals (report_id);
 CREATE UNIQUE INDEX IF NOT EXISTS reports_one_final_idx
     ON reports (report_type)
     WHERE report_type = 'final';
+
+-- HINWEIS: annotations_local_id_uniq wird NICHT hier im DDL angelegt,
+-- sondern in _migrate_schema() nach der Spalten-Migration.
+-- Grund: local_id-Spalte kann in älteren DBs fehlen; DDL wird via
+-- executescript() auf bestehenden DBs ausgeführt bevor die Spalte ergänzt wird.
+-- Beleg: Build 061, Test-Fehler test_T24.
 """
 
 # Spalten, die in aelteren evidence_db-Instanzen fehlen koennen.
@@ -429,6 +435,21 @@ class EvidenceDb:
                 else:
                     raise
 
+        # Index-Migrationen: Idempotent durch CREATE ... IF NOT EXISTS.
+        # Build 061: annotations_local_id_uniq für Upsert via ON CONFLICT(local_id).
+        # Beleg: save_annotation() ohne UNIQUE-Index auf local_id legt bei jeder
+        # Bearbeitung eine neue Zeile an statt die bestehende zu aktualisieren.
+        try:
+            self._con.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS annotations_local_id_uniq "
+                "ON annotations (local_id) "
+                "WHERE local_id IS NOT NULL"
+            )
+            self._con.commit()
+            logger.debug("evidence_db Migration: annotations_local_id_uniq sichergestellt")
+        except sqlite3.OperationalError as exc:
+            logger.warning("evidence_db Migration: annotations_local_id_uniq fehlgeschlagen: %s", exc)
+
     # ------------------------------------------------------------------
     # Seitenbesuche
     # ------------------------------------------------------------------
@@ -565,6 +586,38 @@ class EvidenceDb:
             )
         if ts is None:
             ts = int(time.time())
+
+        # Manuelles UPSERT: SELECT → UPDATE wenn local_id existiert, sonst INSERT.
+        # SQLite ON CONFLICT(col) DO UPDATE benötigt einen regulären UNIQUE-Constraint
+        # auf der Tabelle selbst. Ein Partial-UNIQUE-Index (WHERE local_id IS NOT NULL)
+        # ist dafür nicht ausreichend (OperationalError: ON CONFLICT clause does not
+        # match any PRIMARY KEY or UNIQUE constraint).
+        # Beleg: Build 061 — ohne Upsert-Logik legt jeder syncAnnotation()-Aufruf
+        # beim Bearbeiten eine neue Zeile an. loadAnnotations() liest ORDER BY ts ASC,
+        # zeigt also die älteste (ursprüngliche) statt der aktuellsten Annotation.
+        if local_id is not None:
+            existing = self._con.execute(
+                "SELECT id FROM annotations WHERE local_id = ?", (local_id,)
+            ).fetchone()
+            if existing:
+                self._con.execute(
+                    "UPDATE annotations SET"
+                    "  page_url = ?, element_id = ?, category = ?, text = ?,"
+                    "  ts = ?, investigator_id = ?, selection_json = ?,"
+                    "  tags_json = ?, post_id = ?, created_by = ?"
+                    " WHERE local_id = ?",
+                    (page_url, element_id, category, text, ts, investigator_id,
+                     selection_json, tags_json, post_id, created_by, local_id),
+                )
+                self._con.commit()
+                row_id = int(existing["id"])
+                logger.debug(
+                    "Annotation aktualisiert: '%s' [%s] local_id=%s → id=%d",
+                    page_url, category, local_id, row_id,
+                )
+                return row_id
+
+        # Kein existing local_id-Eintrag oder local_id ist None: normaler INSERT
         cursor = self._con.execute(
             "INSERT INTO annotations "
             "(page_url, element_id, category, text, ts, investigator_id, "
@@ -574,11 +627,12 @@ class EvidenceDb:
              selection_json, tags_json, local_id, post_id, created_by),
         )
         self._con.commit()
+        row_id = cursor.lastrowid
         logger.debug(
-            "Annotation gespeichert: '%s' [%s] element=%s post_id=%s",
-            page_url, category, element_id, post_id,
+            "Annotation eingefügt: '%s' [%s] element=%s post_id=%s local_id=%s → id=%d",
+            page_url, category, element_id, post_id, local_id, row_id,
         )
-        return cursor.lastrowid
+        return row_id
 
     def delete_annotation(self, annotation_id: int) -> bool:
         """

@@ -2,8 +2,22 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 060 · 2026-04-26
+ * Version: v0.1.0 · Build: 061 · 2026-04-26
  * Klassifikation: VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
+ *
+ * Änderungen Build 061:
+ *
+ *   Fix 3 — HoverMenu-Position: Menü erschien in rechter oberer Post-Ecke.
+ *     _lastMouseX/_lastMouseY-Tracker via mousemove auf dem Viewport. setTimeout-
+ *     Callback liest diese statt veraltete mouseover-Event-Koordinaten.
+ *     Position: _lastMouseX + 12px, _lastMouseY - 36px (leicht rechts über Cursor).
+ *
+ *   Fix 4 — Debugging-Mode:
+ *     _dbg()-Hilfsfunktion: aktivierbar per window.forensicDebug = true in der
+ *     Browser-Console (kein Reload nötig, wirkt ab nächstem page:loaded-Event).
+ *     ForensicToolbar.config.DEBUG: statisches Flag (Standard: false).
+ *     Instrumentiert: rangeFromSelection(), restoreAll(), loadAnnotations-Callback,
+ *     requestAnimationFrame-Callback. Ausgabe als console.groupCollapsed.
  *
  * Änderungen Build 060 (Bugfixes: Highlights + HoverMenu):
  *
@@ -148,6 +162,13 @@
     // Hover-Delay für HoverMenuModule (ms)
     HOVER_DELAY_MS: 600,
 
+    // Debug-Modus: Ausführliche Console-Ausgabe für Diagnose.
+    // Im Produktivbetrieb auf false setzen oder window.forensicDebug = false.
+    // Build 061: Aktivierbar per window.forensicDebug = true in der Browser-Console.
+    // Beleg: Highlight-Restore nach Reload nicht sichtbar — Debugging-Mode
+    // zur Diagnose von rangeFromSelection() und restoreAll() eingeführt.
+    DEBUG: (typeof window !== "undefined" && window.forensicDebug === true),
+
     // Viewport-Flush-Intervall (ms)
     VIEWPORT_FLUSH_MS: 2000,
 
@@ -284,6 +305,22 @@
       var r = Math.random() * 16 | 0;
       return (c === "x" ? r : (r & 0x3 | 0x8)).toString(16);
     });
+  }
+
+  /**
+   * Debug-Logging-Hilfsfunktion.
+   * Gibt nur aus wenn ForensicToolbar.config.DEBUG oder window.forensicDebug true ist.
+   * Aufruf: _dbg("label", obj1, obj2, ...)
+   * Aktivierung in der Browser-Console: window.forensicDebug = true; (kein Reload nötig,
+   * wirkt aber erst ab dem nächsten page:loaded-Event für restoreAll)
+   * Build 061: Eingeführt zur Diagnose von Highlight-Restore-Problemen.
+   */
+  function _dbg(label) {
+    if (!ForensicToolbar.config.DEBUG && !window.forensicDebug) return;
+    var args = Array.prototype.slice.call(arguments, 1);
+    console.groupCollapsed("[Forensic DEBUG] " + label);
+    args.forEach(function(a) { console.log(a); });
+    console.groupEnd();
   }
 
   /** AJAX-GET → Promise<Object> */
@@ -439,10 +476,26 @@
      * Bei textContent-Abweichung → stale (§4 Bauplan).
      */
     function rangeFromSelection(sel) {
-      if (!sel) return null;
+      if (!sel) {
+        _dbg("rangeFromSelection: sel ist null/undefined");
+        return null;
+      }
       var startNode = _nodeFromXpath(sel.xpathStart);
       var endNode   = _nodeFromXpath(sel.xpathEnd);
-      if (!startNode || !endNode) return null;
+      _dbg("rangeFromSelection",
+        { xpathStart: sel.xpathStart, xpathEnd: sel.xpathEnd,
+          textContent: sel.textContent,
+          startNode: startNode, endNode: endNode }
+      );
+      if (!startNode || !endNode) {
+        _dbg("rangeFromSelection: XPath-Auflösung fehlgeschlagen",
+          { startNode: startNode, endNode: endNode,
+            viewportExists: !!document.getElementById("forensic-viewport"),
+            viewportChildren: document.getElementById("forensic-viewport")
+              ? document.getElementById("forensic-viewport").children.length : 0 }
+        );
+        return null;
+      }
       try {
         var range = document.createRange();
         range.setStart(startNode, sel.offsetStart);
@@ -451,8 +504,12 @@
         var actual = range.toString().trim();
         var stored = (sel.textContent || "").trim();
         var stale  = (actual !== stored);
+        _dbg("rangeFromSelection: Erfolg",
+          { actual: actual, stored: stored, stale: stale, range: range.toString() }
+        );
         return { range: range, stale: stale };
       } catch (e) {
+        _dbg("rangeFromSelection: Ausnahme", e);
         return null;
       }
     }
@@ -769,9 +826,26 @@
     // restoreAll — Alle gespeicherten Highlights wiederherstellen (viewmode:enhanced)
     // ---------------------------------------------------------------------------
     function restoreAll() {
+      var count = _state.annotations.size;
+      _dbg("HighlightModule.restoreAll: START",
+        { annotationCount: count,
+          viewMode: _state.viewMode,
+          cssHighlightsAvailable: _cssHighlightsAvailable,
+          viewportExists: !!document.getElementById("forensic-viewport"),
+          viewportChildCount: document.getElementById("forensic-viewport")
+            ? document.getElementById("forensic-viewport").children.length : 0
+        }
+      );
+      var restored = 0;
       _state.annotations.forEach(function (ann) {
+        _dbg("restoreAll: Annotation", {
+          id: ann.id, localId: ann.localId, category: ann.category,
+          hasSelection: !!ann.selection, postId: ann.postId, stale: ann.stale
+        });
         renderHighlight(ann);
+        restored++;
       });
+      _dbg("HighlightModule.restoreAll: DONE", { attempted: count, processed: restored });
     }
 
     return {
@@ -1139,6 +1213,10 @@
 
       // Annotationen laden, Highlights + Minimap (inkl. Spuren) wiederherstellen
       AnnotationStoreModule.loadAnnotations(_state.currentUrl).then(function () {
+        _dbg("loadAnnotations.then: Annotationen geladen",
+          { url: _state.currentUrl, count: _state.annotations.size,
+            viewMode: _state.viewMode }
+        );
         // requestAnimationFrame stellt sicher, dass das Browser-Rendering nach
         // viewport.innerHTML abgeschlossen ist, bevor XPath-Lookups für Highlights
         // ausgeführt werden.
@@ -1149,6 +1227,11 @@
         // wiederhergestellt. Annotations existieren (Minimap zeigt sie), aber
         // XPath-Auflösung über #forensic-viewport erfordert fertigen Layout-Tree.
         requestAnimationFrame(function () {
+          _dbg("requestAnimationFrame: Callback feuert",
+            { annotationCount: _state.annotations.size,
+              viewportChildCount: document.getElementById("forensic-viewport")
+                ? document.getElementById("forensic-viewport").children.length : 0 }
+          );
           HighlightModule.restoreAll();
           // MinimapModule.refresh() rendert sowohl Spur-Marker (traceElements)
           // als auch Annotations-Marker — traceElements sind zu diesem Zeitpunkt
@@ -1719,9 +1802,14 @@
   // PHASE 6: HoverMenuModule — Mini-Werkzeugleiste beim Hover
   // ===========================================================================
   var HoverMenuModule = (function () {
-    var _timer   = null;
-    var _menuEl  = null;
-    var _targetAnn = null;
+    var _timer      = null;
+    var _menuEl     = null;
+    var _targetAnn  = null;
+    // Letzte bekannte Mausposition — wird bei mousemove auf dem Viewport aktuell gehalten.
+    // Beleg: Build 061 — setTimeout-Callback liest e.pageX/Y aus vergangenem mouseover-
+    // Event, das veraltet ist. _lastMousePos gibt die aktuelle Position zum Feuerzeitpunkt.
+    var _lastMouseX = 0;
+    var _lastMouseY = 0;
 
     function _findAnnotationAtElement(el) {
       // Annotation über element_id oder data-forensic-annotation finden
@@ -1835,6 +1923,15 @@
       var vp = document.getElementById("forensic-viewport");
       if (!vp) return;
 
+      // Mausposition kontinuierlich aktualisieren, damit der setTimeout-Callback
+      // die aktuelle (nicht die veraltete mouseover-Event) Position nutzen kann.
+      // Beleg: Build 061 — getBoundingClientRect-Position war "rechts oben" und
+      // entsprach nicht der Erwartung des Ermittlers (nahe Mauszeiger).
+      vp.addEventListener("mousemove", function (e) {
+        _lastMouseX = e.pageX;
+        _lastMouseY = e.pageY;
+      });
+
       vp.addEventListener("mouseover", function (e) {
         // Delegation: Post-Container finden, nicht Kind-Elemente direkt
         var postEl = e.target.closest
@@ -1851,11 +1948,10 @@
 
         clearTimeout(_timer);
         _timer = setTimeout(function () {
-          // Position: rechte obere Ecke des Post-Containers (stabil, unabhängig von Mauspos)
-          var rect = postEl.getBoundingClientRect();
-          var x = rect.right + window.scrollX - 80; // 80px vom rechten Rand
-          var y = rect.top  + window.scrollY + 4;
-          _showMenu(ann, x, y);
+          // Position: aktuelle Mausposition (aus _lastMouseX/Y), leicht versetzt,
+          // damit das Menü nicht direkt unter dem Cursor erscheint.
+          // Beleg: Build 061 — getBoundingClientRect war "rechts oben", nicht mausnah.
+          _showMenu(ann, _lastMouseX + 12, _lastMouseY - 36);
         }, ForensicToolbar.config.HOVER_DELAY_MS);
       });
 
