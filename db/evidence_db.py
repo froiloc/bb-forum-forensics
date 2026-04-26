@@ -580,6 +580,31 @@ class EvidenceDb:
         )
         return cursor.lastrowid
 
+    def delete_annotation(self, annotation_id: int) -> bool:
+        """
+        Löscht eine Annotation anhand ihrer Server-ID.
+
+        Gibt True zurück wenn eine Zeile gelöscht wurde, False wenn keine
+        Annotation mit dieser ID existierte.
+
+        Beleg: OP-KN-9 — HoverMenuModule Delete-Pfad benötigt Server-seitige
+        Persistenz des Löschvorgangs. Ohne diesen Aufruf taucht die Annotation
+        beim nächsten loadAnnotations() wieder auf.
+        """
+        cursor = self._con.execute(
+            "DELETE FROM annotations WHERE id = ?",
+            (annotation_id,),
+        )
+        self._con.commit()
+        deleted = cursor.rowcount > 0
+        if deleted:
+            logger.debug("Annotation gelöscht: id=%d", annotation_id)
+        else:
+            logger.warning(
+                "delete_annotation: Keine Annotation mit id=%d gefunden", annotation_id
+            )
+        return deleted
+
     def get_annotations(self, page_url: str) -> list[AnnotationRecord]:
         rows = self._con.execute(
             "SELECT id, page_url, element_id, category, text, ts, investigator_id, "

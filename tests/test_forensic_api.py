@@ -242,6 +242,71 @@ class TestForensicApiAnnotate(unittest.TestCase):
             )
 
 
+# ===========================================================================
+# Tests: AnnotateEndpoint DELETE — OP-KN-9, Build 059
+# T59a — DELETE /_forensic/annotate mit gültiger ID → HTTP 200, deleted=true
+# T59b — DELETE /_forensic/annotate mit unbekannter ID → HTTP 200, deleted=false
+# T59c — DELETE /_forensic/annotate ohne 'id'-Feld → HTTP 400
+# T59d — DELETE /_forensic/annotate mit nicht-numerischer ID → HTTP 400
+# T59e — GET auf /_forensic/annotate bleibt HTTP 405 (Regressionssicherung)
+# ===========================================================================
+
+class TestForensicApiAnnotateDelete(unittest.TestCase):
+    """T59a–T59e: DELETE /_forensic/annotate (OP-KN-9, Build 059)."""
+
+    def setUp(self):
+        self.cfg = _setup_logging_and_config()
+        self.ctx = _make_context()
+
+    def tearDown(self):
+        reset_for_testing()
+
+    def _delete_annotation(self, data: dict, deleted_return: bool = True):
+        """Hilfsmethode: sendet DELETE und gibt Response-Dict zurück."""
+        bundle = _make_bundle()
+        bundle.evidence.delete_annotation.return_value = deleted_return
+        api    = ForensicApi(bundle, self.ctx, self.cfg)
+        body   = json.dumps(data).encode("utf-8")
+        return _dispatch(api, "DELETE", "/_forensic/annotate", "", body)
+
+    def test_T59a_delete_gueltige_id(self):
+        """T59a: DELETE mit gültiger ID → HTTP 200, status=ok, deleted=true."""
+        resp = self._delete_annotation({"id": 42}, deleted_return=True)
+        self.assertEqual(resp["status"], 200)
+        result = json.loads(resp["body"])
+        self.assertEqual(result["status"], "ok")
+        self.assertTrue(result["deleted"])
+
+    def test_T59b_delete_unbekannte_id(self):
+        """T59b: DELETE mit unbekannter ID → HTTP 200, status=not_found, deleted=false."""
+        resp = self._delete_annotation({"id": 9999}, deleted_return=False)
+        self.assertEqual(resp["status"], 200)
+        result = json.loads(resp["body"])
+        self.assertEqual(result["status"], "not_found")
+        self.assertFalse(result["deleted"])
+
+    def test_T59c_delete_id_fehlt(self):
+        """T59c: DELETE ohne 'id'-Feld → HTTP 400."""
+        resp = self._delete_annotation({})
+        self.assertEqual(resp["status"], 400)
+        result = json.loads(resp["body"])
+        self.assertIn("error", result)
+
+    def test_T59d_delete_id_nicht_numerisch(self):
+        """T59d: DELETE mit nicht-numerischer ID → HTTP 400."""
+        resp = self._delete_annotation({"id": "kein_int"})
+        self.assertEqual(resp["status"], 400)
+        result = json.loads(resp["body"])
+        self.assertIn("error", result)
+
+    def test_T59e_get_auf_annotate_regression(self):
+        """T59e: GET auf /_forensic/annotate bleibt HTTP 405 (Regression B059)."""
+        bundle = _make_bundle()
+        api    = ForensicApi(bundle, self.ctx, self.cfg)
+        resp   = _dispatch(api, "GET", "/_forensic/annotate")
+        self.assertEqual(resp["status"], 405)
+
+
 class TestForensicApiStatus(unittest.TestCase):
     """T08: /_forensic/status"""
 

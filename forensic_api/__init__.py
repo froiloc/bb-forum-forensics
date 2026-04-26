@@ -121,9 +121,9 @@ class ForensicApi:
             self._get_page().handle(handler, params)
             return
 
-        # /_forensic/annotate (POST)
+        # /_forensic/annotate (POST → anlegen, DELETE → löschen)
         if url_path == "/_forensic/annotate":
-            if method != "POST":
+            if method not in ("POST", "DELETE"):
                 self._method_not_allowed(handler)
                 return
             body = self._read_body(handler)

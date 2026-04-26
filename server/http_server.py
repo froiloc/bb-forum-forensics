@@ -121,6 +121,14 @@ class ForensicRequestHandler(http.server.BaseHTTPRequestHandler):
         """
         self._handle_request("POST")
 
+    def do_DELETE(self) -> None:
+        """
+        Beantwortet DELETE-Requests.
+        Außerhalb von /_forensic/ immer HTTP 404.
+        Derzeit genutzt: DELETE /_forensic/annotate (OP-KN-9, Build 059).
+        """
+        self._handle_request("DELETE")
+
     def do_HEAD(self) -> None:
         """HEAD-Requests werden wie GET behandelt, aber ohne Body."""
         self._handle_request("HEAD")

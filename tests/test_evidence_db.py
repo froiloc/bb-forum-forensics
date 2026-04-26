@@ -412,6 +412,51 @@ class TestEvidenceDb(unittest.TestCase):
         self.assertEqual(ann_b.post_id, 12345)
         self.assertEqual(ann_b.created_by, "h002")
 
+    # -----------------------------------------------------------------------
+    # delete_annotation() — OP-KN-9, Build 059
+    # T59f — delete_annotation(): bekannte ID → True, Annotation nicht mehr abrufbar
+    # T59g — delete_annotation(): unbekannte ID → False, kein Fehler
+    # T59h — delete_annotation(): andere Annotations bleiben erhalten (kein Kollateral)
+    # -----------------------------------------------------------------------
+
+    def test_T59f_delete_annotation_bekannte_id(self):
+        """T59f: delete_annotation() mit bekannter ID → True, Annotation weg."""
+        ann_id = self.edb.save_annotation(
+            "/forum/viewtopic.php?id=1", "CAT_PERSON", "Zu löschen"
+        )
+        # Vor dem Löschen: muss abrufbar sein
+        before = self.edb.get_annotations("/forum/viewtopic.php?id=1")
+        self.assertEqual(len(before), 1)
+
+        result = self.edb.delete_annotation(ann_id)
+        self.assertTrue(result, "delete_annotation() muss True zurückgeben bei bekannter ID")
+
+        # Nach dem Löschen: nicht mehr abrufbar
+        after = self.edb.get_annotations("/forum/viewtopic.php?id=1")
+        self.assertEqual(len(after), 0,
+            "Annotation muss nach delete_annotation() aus DB verschwunden sein")
+
+    def test_T59g_delete_annotation_unbekannte_id(self):
+        """T59g: delete_annotation() mit nicht existierender ID → False, kein Fehler."""
+        result = self.edb.delete_annotation(99999)
+        self.assertFalse(result,
+            "delete_annotation() muss False zurückgeben wenn ID nicht existiert")
+
+    def test_T59h_delete_annotation_kein_kollateral(self):
+        """T59h: delete_annotation() löscht nur die Ziel-Annotation, nicht andere."""
+        id1 = self.edb.save_annotation("/forum/a", "CAT_PERSON", "Bleibt")
+        id2 = self.edb.save_annotation("/forum/a", "CAT_176",   "Wird gelöscht")
+        id3 = self.edb.save_annotation("/forum/b", "CAT_OTHER", "Auch erhalten")
+
+        self.edb.delete_annotation(id2)
+
+        remaining = self.edb.get_all_annotations()
+        remaining_ids = [a.id for a in remaining]
+        self.assertIn(id1, remaining_ids, "Annotation id1 muss erhalten bleiben")
+        self.assertIn(id3, remaining_ids, "Annotation id3 muss erhalten bleiben")
+        self.assertNotIn(id2, remaining_ids, "Annotation id2 muss gelöscht sein")
+        self.assertEqual(len(remaining), 2)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

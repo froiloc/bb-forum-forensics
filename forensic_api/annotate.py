@@ -3,11 +3,12 @@
 # IT-Forensisches Ermittlungswerkzeug — Baustelle 2: Python-Webserver
 # =============================================================================
 # Zweck:
-#   Endpunkt /_forensic/annotate (POST)
-#   Nimmt Annotationen vom Werkzeugbalken entgegen und speichert sie
-#   in evidence_db.
+#   Endpunkt /_forensic/annotate
 #
-# Erwarteter Request-Body (JSON):
+#   POST  — Annotation anlegen / aktualisieren (upsert via local_id)
+#   DELETE — Annotation löschen (anhand Server-ID)
+#
+# POST Request-Body (JSON):
 #   {
 #     "page_url":      "/forum/viewtopic.php?id=42",   (Pflicht)
 #     "category":      "CAT_PERSON",                   (Pflicht)
@@ -24,19 +25,24 @@
 #       "textContent": "BirnenKenner99"
 #     }
 #   }
+#   Response: 200 {"id": <annotation_id>, "status": "ok"}
 #
-# Response:
-#   200 OK:  {"id": <annotation_id>, "status": "ok"}
-#   400 Bad: {"error": "<Fehlermeldung>"}
+# DELETE Request-Body (JSON):
+#   { "id": <annotation_id> }          (Pflicht — Server-ID aus POST-Response)
+#   Response: 200 {"status": "ok", "deleted": true}
+#            oder {"status": "not_found", "deleted": false} (id existiert nicht)
 #
-# Änderungen gegenüber Build 010 (Baustelle 3 — §11.2 Bauplan):
-#   - Neue optionale Felder: selection (XPath-Objekt), tags (Array),
-#     local_id (Browser-UUID), post_id (Post-Markierung).
-#   - selection wird als JSON-String in selection_json gespeichert.
-#   - tags wird als JSON-Array-String in tags_json gespeichert.
-#   - created_by wird aus dem Kontext (context.username) befüllt.
+# Error-Response (beide Methoden):
+#   400 {"error": "<Fehlermeldung>"}
 #
-# Version: v0.1.0 · Build: 011 · 2026-04-13
+# Änderungen:
+#   Build 011 (2026-04-13): POST implementiert (Baustelle 3, §11.2 Bauplan).
+#   Build 059 (2026-04-26): DELETE implementiert (OP-KN-9 — HoverMenuModule
+#     löscht Annotationen ohne Server-Call, sie erscheinen nach Reload wieder).
+#     Beleg: Analyse annotate.py + evidence_db.py — kein delete_annotation()
+#     vorhanden. delete_annotation() in evidence_db.py gleichzeitig ergänzt.
+#
+# Version: v0.1.0 · Build: 059 · 2026-04-26
 # =============================================================================
 
 from __future__ import annotations
@@ -74,12 +80,20 @@ class AnnotateEndpoint:
         body: bytes,
     ) -> None:
         """
-        Verarbeitet POST /_forensic/annotate
+        Verarbeitet POST und DELETE /_forensic/annotate
+
+        POST  → Annotation speichern (upsert via local_id)
+        DELETE → Annotation löschen (anhand Server-ID)
 
         Args:
             handler: ForensicRequestHandler-Instanz.
             body:    Request-Body als bytes (JSON).
         """
+        if handler.command == "DELETE":
+            self._handle_delete(handler, body)
+            return
+
+        # --- POST-Pfad (unverändert) ---
         # JSON parsen
         try:
             data = json.loads(body.decode("utf-8", errors="replace"))
@@ -169,6 +183,59 @@ class AnnotateEndpoint:
 
         body_out = json.dumps(
             {"id": annotation_id, "status": "ok"}, ensure_ascii=False
+        ).encode("utf-8")
+        handler.send_response_body(
+            200, body_out, content_type="application/json; charset=utf-8"
+        )
+
+    def _handle_delete(
+        self,
+        handler: "ForensicRequestHandler",
+        body: bytes,
+    ) -> None:
+        """
+        Verarbeitet DELETE /_forensic/annotate
+
+        Erwartet JSON-Body: {"id": <annotation_id>}
+
+        Gibt {"status": "ok", "deleted": true} zurück wenn erfolgreich,
+        {"status": "not_found", "deleted": false} wenn ID nicht existiert.
+
+        Beleg: OP-KN-9 — ohne Server-DELETE erscheinen gelöschte Annotationen
+        nach jedem loadAnnotations()-Aufruf wieder.
+        """
+        try:
+            data = json.loads(body.decode("utf-8", errors="replace"))
+        except (json.JSONDecodeError, ValueError) as exc:
+            self._error(handler, f"Ungültiges JSON: {exc}")
+            return
+
+        ann_id_raw = data.get("id")
+        if ann_id_raw is None:
+            self._error(handler, "Feld 'id' fehlt")
+            return
+        try:
+            ann_id = int(ann_id_raw)
+        except (TypeError, ValueError):
+            self._error(handler, f"Feld 'id' muss eine Ganzzahl sein, erhalten: {ann_id_raw!r}")
+            return
+
+        try:
+            deleted = self._bundle.evidence.delete_annotation(ann_id)
+        except Exception as exc:
+            logger.error("Annotation konnte nicht gelöscht werden: %s", exc)
+            self._error(handler, "Interner Fehler beim Löschen")
+            return
+
+        if deleted:
+            logger.info("Annotation gelöscht: id=%d", ann_id)
+            status = "ok"
+        else:
+            logger.warning("DELETE /_forensic/annotate: id=%d nicht gefunden", ann_id)
+            status = "not_found"
+
+        body_out = json.dumps(
+            {"status": status, "deleted": deleted}, ensure_ascii=False
         ).encode("utf-8")
         handler.send_response_body(
             200, body_out, content_type="application/json; charset=utf-8"

@@ -104,10 +104,11 @@ class Router:
         )
 
         # ----------------------------------------------------------------
-        # Regel 1: POST außerhalb /_forensic/ → 404
+        # Regel 1: POST/DELETE außerhalb /_forensic/ → 404
+        # DELETE wird nur für /_forensic/annotate (OP-KN-9, Build 059) genutzt.
         # ----------------------------------------------------------------
-        if method == "POST" and not url_path.startswith(FORENSIC_API_PREFIX):
-            logger.debug("POST außerhalb /_forensic/ blockiert: '%s'", url_path)
+        if method in ("POST", "DELETE") and not url_path.startswith(FORENSIC_API_PREFIX):
+            logger.debug("%s außerhalb /_forensic/ blockiert: '%s'", method, url_path)
             handler.send_response_body(
                 404,
                 b"",

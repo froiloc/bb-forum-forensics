@@ -2,10 +2,22 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 042 · 2026-04-19
+ * Version: v0.1.0 · Build: 059 · 2026-04-26
  * Klassifikation: VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
  *
- * Änderungen Build 042:
+ * Änderungen Build 059 (OP-KN-9 — Annotation Hover-Menü Delete-Fix):
+ *   - ajaxDelete(): neue AJAX-Hilfsfunktion für HTTP DELETE mit JSON-Body.
+ *     Beleg: Server-Endpunkt annotate.py Build 059 unterstützt jetzt DELETE.
+ *   - HoverMenuModule: Delete-Pfad ergänzt um Server-Call via ajaxDelete().
+ *     Optimistic update: Client entfernt Annotation sofort, Server-Call erfolgt
+ *     asynchron. Bei Fehler: Konsolenwarnung + ARIA-Announce. Keine Server-ID
+ *     (syncState==="pending") → kein Server-Call nötig (nie persistiert).
+ *     Beleg: OP-KN-9 — ohne diesen Fix erscheinen gelöschte Annotationen nach
+ *     loadAnnotations() wieder (clientseitiger delete() ohne Server-Persistenz).
+ *   - AnnotationPopupModule.close(true): Event "annotation:created" durch
+ *     "annotation:updated" ersetzt wenn Annotation bereits Server-ID hat.
+ *     Beleg: Semantische Korrektur für korrekte KN-Fortschrittsberechnung.
+ *
  *   - loadPage(url, pushState, method): neuer optionaler method-Parameter.
  *     'POST' → API-URL enthält &original_method=POST für Poll-Ergebnisseiten.
  *     Default 'GET' wenn weggelassen. Beleg: Projektgespräch 2026-04-19.
@@ -267,6 +279,22 @@
   function ajaxPost(url, data) {
     return fetch(url, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Forensic-Request": "ajax",
+      },
+      body: JSON.stringify(data),
+    }).then(function (r) { return r.json(); });
+  }
+
+  /**
+   * AJAX-DELETE mit JSON-Body → Promise<Object>
+   * Beleg: OP-KN-9 — Server-seitiges Löschen von Annotationen erfordert
+   * HTTP DELETE (annotate.py Build 059).
+   */
+  function ajaxDelete(url, data) {
+    return fetch(url, {
+      method: "DELETE",
       headers: {
         "Content-Type": "application/json",
         "X-Forensic-Request": "ajax",
@@ -1514,7 +1542,12 @@
         _currentAnn.text = _getFieldValue("forensic-popup-text");
         _currentAnn.tags = _parseTags(_getFieldValue("forensic-popup-tags"));
         AnnotationStoreModule.syncAnnotation(_currentAnn);
-        ForensicToolbar.events.emit("annotation:created", _currentAnn);
+        // Semantisch korrekt: "created" nur bei neuen Annotationen (noch keine
+        // Server-ID), "updated" bei bereits persistierten.
+        // Beleg: OP-KN-9 Build 059 — Korrektur für konsistente Event-Semantik.
+        // Faktischer Unterschied: KN-Fortschrittsberechnung unterscheidet beide.
+        var evtName = _currentAnn.id ? "annotation:updated" : "annotation:created";
+        ForensicToolbar.events.emit(evtName, _currentAnn);
       } else if (!save && _currentAnn && _currentAnn.syncState === "pending") {
         // Abbrechen: pending-Annotation entfernen
         _state.annotations.delete(_currentAnn.localId || String(_currentAnn.id));
@@ -1706,14 +1739,46 @@
           AnnotationPopupModule.open(_targetAnn);
         } else if (btn.dataset.action === "delete") {
           _hideMenu();
-          _state.annotations.delete(_targetAnn.localId || String(_targetAnn.id));
+          var annToDelete = _targetAnn;
+          // Sofort clientseitig entfernen (optimistic update) —
+          // Benutzer sieht keine Verzögerung.
+          _state.annotations.delete(annToDelete.localId || String(annToDelete.id));
           HighlightModule.clearAll();
           HighlightModule.restoreAll();
           PostMarkerModule.clearAll();
           PostMarkerModule.restoreAll();
           MinimapModule.refresh();
-          ForensicToolbar.events.emit("annotation:deleted", _targetAnn);
+          ForensicToolbar.events.emit("annotation:deleted", annToDelete);
           ToolbarUIModule.updateSessionInfo();
+
+          // Server-Call: Annotation persistent löschen.
+          // Beleg: OP-KN-9 — ohne diesen Call erscheint die Annotation nach
+          // loadAnnotations() wieder. Build 059: annotate.py unterstützt jetzt
+          // DELETE /_forensic/annotate.
+          var serverId = annToDelete.id;
+          if (serverId) {
+            ajaxDelete(ForensicToolbar.config.API_ANNOTATE, { id: serverId })
+              .then(function (r) {
+                if (r.status !== "ok") {
+                  console.warn(
+                    "[Forensic] Server konnte Annotation nicht löschen:",
+                    r.status, serverId
+                  );
+                  AccessibilityModule.announce(
+                    "Warnung: Annotation #" + serverId + " konnte nicht dauerhaft gelöscht werden."
+                  );
+                }
+              })
+              .catch(function (e) {
+                console.error("[Forensic] Netzwerkfehler beim Löschen der Annotation:", e);
+                AccessibilityModule.announce(
+                  "Netzwerkfehler: Annotation nicht dauerhaft gelöscht."
+                );
+              });
+          } else {
+            // Noch keine Server-ID (syncState === "pending") → kein Server-Call
+            // nötig, die Annotation wurde noch nie persistiert.
+          }
         }
       });
 
