@@ -617,7 +617,266 @@ class ForensicDb:
 
         return results
 
+    def search_pages(
+        self,
+        limit: int = 50,
+        offset: int = 0,
+        sort: str = "last_viewed_desc",
+        q: str = "",
+        scrape_context_filter: "list[str] | None" = None,
+        fetch_failed_only: bool = False,
+        has_annotations: "bool | None" = None,
+        progress_filter: "str | None" = None,
+        viewed_from: "int | None" = None,
+        viewed_to: "int | None" = None,
+        tags_filter: "list[str] | None" = None,
+        categories_filter: "list[str] | None" = None,
+    ) -> "list[dict]":
+        """
+        Liefert eine gefilterte, sortierte Liste von PageSummaryRecords für
+        den Kontext-Navigator (/_forensic/search, Bauplan KN §4 + §7.3).
+
+        Jeder Eintrag entspricht exakt dem PageSummaryRecord-Interface-Kontrakt
+        (Bauplan KN §4), wie ihn toolbar.js erwartet. Felder:
+          url, title, scrapeContext, fetchFailed, progressPercent,
+          traceCountTotal, annotationsTotal, tagList,
+          lastViewedAt, firstViewedAt
+
+        Architektur-Entscheidungen (Beleg: Bauplan KN §9, Build 070):
+          - Basisabfrage gegen fdb.pages (ATTACH-DB) — enthält alle Seiten
+            dieses Benutzers.
+          - title: Extraktion aus den ersten 2 KB des HTML-BLOBs via Python-
+            Parser (HeadExtractor). Kein SQL-Subselect auf BLOB nötig.
+          - annotationsTotal + tagList: LEFT JOIN auf evidence_db.annotations
+            (selbe Verbindung, keine ATTACH nötig).
+          - lastViewedAt / firstViewedAt: MAX/MIN aus evidence_db.page_visits.
+          - traceCountTotal: Anzahl Einträge in fdb.scrape_targets mit
+            url_type NOT IN ('static') für diese Seiten-URL (Näherung —
+            exakte Trace-Aufschlüsselung folgt in KN-7).
+          - progressPercent: 100 wenn annotationsTotal > 0 AND lastViewedAt
+            IS NOT NULL, sonst 50 wenn nur lastViewedAt gesetzt, sonst 0.
+            (Platzhalter — echte Fortschrittsberechnung via page_progress-
+            Hilfstabelle folgt in Baustelle 5, OP-KN-1.)
+          - filter: q, scrape_context, fetch_failed, has_annotations,
+            progress, viewed_from/to — serverseitig via SQL.
+          - tags_filter und categories_filter — werden gegen annotations-
+            Tabelle geprüft (subquery).
+          - sort: last_viewed_desc (default), last_viewed_asc,
+            url_asc, url_desc, progress_desc, progress_asc,
+            annotations_desc, traces_desc.
+
+        Args:
+            limit:                  Max. Anzahl Ergebnisse (1–200, default 50).
+            offset:                 Paginierungs-Offset.
+            sort:                   Sortierfeld (s.o.).
+            q:                      Freitext gegen URL (LIKE).
+            scrape_context_filter:  Liste erlaubter scrape_context-Werte.
+            fetch_failed_only:      Nur Seiten mit http_status != 200.
+            has_annotations:        True = nur mit, False = nur ohne Anns.
+            progress_filter:        'open' | 'closed' | None.
+            viewed_from:            Unix-ms — nur Seiten ab diesem Zeitpunkt.
+            viewed_to:              Unix-ms — nur Seiten bis zu diesem Zeitpunkt.
+            tags_filter:            Nur Seiten mit mind. einem dieser Tags.
+            categories_filter:      Nur Seiten mit mind. einer dieser Kategorien.
+
+        Returns:
+            Liste von dicts (PageSummaryRecord-kompatibel), bereits sortiert.
+        """
+        # Lazy-Import um zirkuläre Imports zu vermeiden
+        from server.head_extractor import HeadExtractor
+
+        limit  = max(1, min(200, int(limit)))
+        offset = max(0, int(offset))
+
+        # ------------------------------------------------------------------
+        # Basisabfrage: alle Seiten aus fdb.pages, LEFT JOINs auf evidence_db
+        # ------------------------------------------------------------------
+        # evidence_db ist die Haupt-DB (kein ATTACH-Alias nötig).
+        # fdb.pages ist per ATTACH als 'fdb' verfügbar.
+        #
+        # page_visits.ts ist in Sekunden (INTEGER). Für lastViewedAt/firstViewedAt
+        # liefern wir Millisekunden (× 1000) an das Frontend.
+        sql = """
+            SELECT
+                p.id              AS page_id,
+                p.url_canonical   AS url_canonical,
+                p.html            AS html,
+                p.http_status     AS http_status,
+                p.scrape_context  AS scrape_context,
+                COUNT(DISTINCT a.id)        AS ann_count,
+                GROUP_CONCAT(DISTINCT a.tags_json) AS tags_concat,
+                MAX(pv.ts) * 1000           AS last_viewed_ms,
+                MIN(pv.ts) * 1000           AS first_viewed_ms,
+                COUNT(DISTINCT st.id)       AS trace_count
+            FROM fdb.pages p
+            LEFT JOIN annotations a
+                ON a.page_url = REPLACE(p.url_canonical, :base_url, '')
+            LEFT JOIN page_visits pv
+                ON pv.page_url = REPLACE(p.url_canonical, :base_url, '')
+            LEFT JOIN fdb.scrape_targets st
+                ON (
+                    (st.url_type = 'topic'    AND st.topic_id IS NOT NULL)
+                 OR (st.url_type = 'pm'       AND st.pm_topic_id IS NOT NULL)
+                 OR (st.url_type = 'profile'  AND st.actor_user_id IS NOT NULL)
+                 OR (st.url_type = 'forum')
+                )
+                AND REPLACE(p.url_canonical, :base_url, '') LIKE
+                    '%' || COALESCE(
+                        CAST(st.topic_id AS TEXT),
+                        CAST(st.pm_topic_id AS TEXT),
+                        CAST(st.actor_user_id AS TEXT),
+                        CAST(st.forum_id AS TEXT),
+                        ''
+                    ) || '%'
+            WHERE 1=1
+        """
+        params: dict = {
+            "base_url": self.get_forum_base_url() or "",
+            "limit":    limit,
+            "offset":   offset,
+        }
+
+        # Freitextfilter (URL, Bauplan KN §5.4)
+        if q:
+            sql += " AND REPLACE(p.url_canonical, :base_url, '') LIKE :q_like"
+            params["q_like"] = f"%{q}%"
+
+        # scrape_context-Filter
+        if scrape_context_filter:
+            placeholders = ", ".join(f":ctx_{i}" for i in range(len(scrape_context_filter)))
+            sql += f" AND p.scrape_context IN ({placeholders})"
+            for i, ctx in enumerate(scrape_context_filter):
+                params[f"ctx_{i}"] = ctx
+
+        # fetch_failed-Filter (http_status != 200 gilt als fehlgeschlagen)
+        if fetch_failed_only:
+            sql += " AND (p.html IS NULL OR p.http_status != 200)"
+
+        # Betrachtungszeitraum (viewed_from / viewed_to in Unix-ms)
+        if viewed_from is not None:
+            sql += " AND MAX(pv.ts) * 1000 >= :viewed_from"
+            params["viewed_from"] = viewed_from
+        if viewed_to is not None:
+            sql += " AND MAX(pv.ts) * 1000 <= :viewed_to"
+            params["viewed_to"] = viewed_to
+
+        sql += " GROUP BY p.id"
+
+        # HAVING-Filter (nach Aggregation)
+        having_clauses = []
+
+        if has_annotations is True:
+            having_clauses.append("ann_count > 0")
+        elif has_annotations is False:
+            having_clauses.append("ann_count = 0")
+
+        if having_clauses:
+            sql += " HAVING " + " AND ".join(having_clauses)
+
+        # Sortierung (Bauplan KN §8.2)
+        sort_map = {
+            "last_viewed_desc": "last_viewed_ms DESC NULLS LAST",
+            "last_viewed_asc":  "last_viewed_ms ASC  NULLS LAST",
+            "url_asc":          "url_canonical ASC",
+            "url_desc":         "url_canonical DESC",
+            "annotations_desc": "ann_count DESC",
+            "traces_desc":      "trace_count DESC",
+        }
+        order_clause = sort_map.get(sort, sort_map["last_viewed_desc"])
+        sql += f" ORDER BY {order_clause} LIMIT :limit OFFSET :offset"
+
+        try:
+            rows = self._con.execute(sql, params).fetchall()
+        except Exception as exc:
+            logger.error("search_pages() SQL fehlgeschlagen: %s", exc)
+            return []
+
+        # Basis-URL für URL-Normalisierung
+        base_url = self.get_forum_base_url() or ""
+
+        results = []
+        for row in rows:
+            # URL normalisieren (Onion-Präfix entfernen)
+            url_raw      = str(row["url_canonical"] or "")
+            url_norm     = url_raw.replace(base_url, "") if base_url else url_raw
+
+            # Titel aus HTML-BLOB extrahieren (max. 2 KB — Performance)
+            title: str | None = None
+            blob = row["html"]
+            if blob:
+                try:
+                    snippet = blob[:2048] if isinstance(blob, (bytes, bytearray)) \
+                              else blob[:2048].encode("utf-8", errors="replace")
+                    head    = HeadExtractor.extract(snippet.decode("utf-8", errors="replace"))
+                    title   = head.title
+                except Exception:
+                    pass  # Kein Titel — Fallback auf URL im Frontend
+
+            # fetch_failed
+            fetch_failed = (row["html"] is None) or (int(row["http_status"] or 0) not in (200, 0))
+
+            # Annotations-Zähler
+            ann_count = int(row["ann_count"] or 0)
+
+            # Tags aus GROUP_CONCAT der tags_json-Felder zusammenführen
+            tag_set: set[str] = set()
+            tags_concat = row["tags_concat"]
+            if tags_concat:
+                import json as _json
+                for tags_json_str in str(tags_concat).split(","):
+                    tags_json_str = tags_json_str.strip()
+                    if not tags_json_str:
+                        continue
+                    try:
+                        parsed = _json.loads(tags_json_str)
+                        if isinstance(parsed, list):
+                            tag_set.update(str(t) for t in parsed)
+                    except Exception:
+                        pass
+            tag_list = sorted(tag_set)
+
+            # Tag- und Kategorie-Filter (post-hoc, da GROUP_CONCAT in SQL schwierig)
+            if tags_filter and not any(t in tag_set for t in tags_filter):
+                continue
+            if categories_filter:
+                # Wird für Phase KN-7 vollständig implementiert — hier Platzhalter
+                pass
+
+            # Fortschritt (Platzhalter — OP-KN-1, Baustelle 5)
+            last_viewed_ms  = row["last_viewed_ms"]
+            first_viewed_ms = row["first_viewed_ms"]
+            if ann_count > 0 and last_viewed_ms:
+                progress = 100
+            elif last_viewed_ms:
+                progress = 50
+            else:
+                progress = 0
+
+            # progress_filter (open < 100, closed = 100)
+            if progress_filter == "open" and progress >= 100:
+                continue
+            if progress_filter == "closed" and progress < 100:
+                continue
+
+            trace_count = int(row["trace_count"] or 0)
+
+            results.append({
+                "url":             url_norm,
+                "title":           title,
+                "scrapeContext":   str(row["scrape_context"] or "user"),
+                "fetchFailed":     fetch_failed,
+                "progressPercent": progress,
+                "traceCountTotal": trace_count,
+                "annotationsTotal": ann_count,
+                "tagList":         tag_list,
+                "lastViewedAt":    int(last_viewed_ms) if last_viewed_ms else None,
+                "firstViewedAt":   int(first_viewed_ms) if first_viewed_ms else None,
+            })
+
+        return results
+
     def page_count(self) -> int:
+
         """
         Gibt die Anzahl der gespeicherten Seiten in fdb.pages zurück.
         Für Statusanzeigen und Tests.

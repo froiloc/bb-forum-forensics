@@ -20,7 +20,7 @@
 #   /_forensic/userinfo/static   (GET)        -> UserinfoStaticEndpoint [B4]
 #   /_forensic/userinfo.js       (GET)        -> StaticEndpoint        [B4]
 #   /_forensic/userinfo.css      (GET)        -> StaticEndpoint        [B4]
-#   /_forensic/report            (GET, POST)  -> ReportEndpoint        [B4]
+#   /_forensic/search            (GET)        -> SearchEndpoint        [KN-3]
 #   /_forensic/reports           (GET, POST)  -> ReportsEndpoint       [AP-E3]
 #   /_forensic/editor/block      (POST)       -> EditorBlockEndpoint   [AP-E3]
 #   /_forensic/editor/order      (POST)       -> EditorOrderEndpoint   [AP-E3]
@@ -41,7 +41,9 @@
 #     EditorEvidenceEndpoint, StaticEndpoint.handle_editor_asset.
 #     Beleg: AP-E3, Projektgespraech 2026-04-19
 #
-# Version: v0.6.044 · Build: 044 · 2026-04-19
+#   Build 070 (KN-3): SearchEndpoint ergaenzt (/_forensic/search).
+#
+# Version: v0.6.070 · Build: 070 · 2026-04-26
 # =============================================================================
 
 from __future__ import annotations
@@ -101,6 +103,7 @@ class ForensicApi:
         self._editor_block     = None  # [AP-E3]
         self._editor_order     = None  # [AP-E3]
         self._editor_evidence  = None  # [AP-E3]
+        self._search           = None  # [KN-3]
 
     def dispatch(
         self,
@@ -255,6 +258,16 @@ class ForensicApi:
             else:
                 self._method_not_allowed(handler)
                 return
+
+        # /_forensic/search (GET) [KN-3]
+        # Kontext-Navigator: gefilterte Seitenliste für Dropdown + Modal.
+        # Beleg: Bauplan KN v0.6 §7.3, Build 070.
+        if url_path == "/_forensic/search":
+            if method not in ("GET", "HEAD"):
+                self._method_not_allowed(handler)
+                return
+            self._get_search().handle(handler, params)
+            return
 
         # Unbekannter Endpunkt
         logger.warning("Unbekannter /_forensic/-Endpunkt: '%s'", url_path)
@@ -447,3 +460,10 @@ class ForensicApi:
             from forensic_api.editor_evidence import EditorEvidenceEndpoint
             self._editor_evidence = EditorEvidenceEndpoint(self._bundle, self._context, self._config)
         return self._editor_evidence
+
+    def _get_search(self):
+        """[KN-3] Lazy-Init fuer SearchEndpoint. Beleg: Bauplan KN v0.6 §12 Phase KN-3."""
+        if self._search is None:
+            from forensic_api.search import SearchEndpoint
+            self._search = SearchEndpoint(self._bundle, self._context, self._config)
+        return self._search

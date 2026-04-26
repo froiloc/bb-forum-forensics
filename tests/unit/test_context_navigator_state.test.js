@@ -2,8 +2,8 @@
  * test_context_navigator_state.test.js
  * Unit-Tests: ContextNavigatorModule — State-Erweiterung, Event-Routing,
  *             Cache-Invalidierung
- * Bauplan: Baustelle 3 Ergänzung Kontext-Navigator v0.6, §3 + §12 Phase KN-1
- * Version: 0.1.0 · Build: 066 · 2026-04-26
+ * Bauplan: Baustelle 3 Ergänzung Kontext-Navigator v0.6, §3 + §12 Phase KN-1+KN-3
+ * Version: 0.1.0 · Build: 070 · 2026-04-26
  * Klassifikation: VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
  */
 
@@ -12,6 +12,20 @@ import { readFileSync } from "fs";
 import { JSDOM } from "jsdom";
 
 let dom, ft, nav;
+
+// Stub-Seiten — entsprechen dem PageSummaryRecord-Interface (Bauplan KN §4).
+// Werden vom fetch-Stub als Server-Antwort auf /_forensic/search geliefert.
+// Build 070: Stub angepasst von Mock-Daten auf Server-Response-Simulation.
+const STUB_PAGES = [
+  { url: "/forum/viewtopic.php?id=7",   title: "Thema: Tauschangebot",
+    scrapeContext: "user", fetchFailed: false, progressPercent: 52,
+    traceCountTotal: 15, annotationsTotal: 3, tagList: ["username","pgp"],
+    lastViewedAt: Date.now() - 86400000, firstViewedAt: null },
+  { url: "/forum/profile.php?id=18",    title: "Profil: Beschuldigter",
+    scrapeContext: "investigator", fetchFailed: true, progressPercent: 30,
+    traceCountTotal: 4, annotationsTotal: 1, tagList: ["foto"],
+    lastViewedAt: Date.now() - 86400000 * 3, firstViewedAt: null },
+];
 
 beforeAll(() => {
   const src = readFileSync("toolbar/toolbar.js", "utf-8");
@@ -22,9 +36,17 @@ beforeAll(() => {
     "</body></html>",
     { runScripts: "dangerously", url: "http://aiw.local/forum/index.php" }
   );
-  // Stubs — JSDOM unterstützt kein fetch/rAF
-  dom.window.fetch = () =>
-    Promise.resolve({ ok: true, json: () => ({ status: "ok", version: "test" }) });
+  // Stubs — JSDOM unterstützt kein echtes fetch/rAF.
+  // /_forensic/search → STUB_PAGES; alle anderen Aufrufe → generische Antwort.
+  dom.window.fetch = (url) => {
+    if (url && url.includes("/_forensic/search")) {
+      return Promise.resolve({
+        ok: true,
+        json: () => ({ pages: STUB_PAGES, total: STUB_PAGES.length, status: "ok" }),
+      });
+    }
+    return Promise.resolve({ ok: true, json: () => ({ status: "ok", version: "test" }) });
+  };
   dom.window.requestAnimationFrame = (cb) => setTimeout(cb, 0);
   dom.window.EventSource = function () {
     return { addEventListener: () => {}, close: () => {} };
@@ -85,7 +107,7 @@ describe("ContextNavigatorModule — Cache-Verwaltung", () => {
     nav.invalidateCache();
   });
 
-  it("getPages() liefert ein Array zurück (Phase KN-2: Mock-Daten)", async () => {
+  it("getPages() liefert ein Array zurück (Phase KN-3: Server-Anbindung)", async () => {
     const pages = await nav.getPages();
     expect(Array.isArray(pages)).toBe(true);
     expect(pages.length).toBeGreaterThan(0);
@@ -125,13 +147,17 @@ describe("ContextNavigatorModule — Cache-Verwaltung", () => {
   });
 
   it("invalidateCache() + getPages() lädt neu (kein Cache-Hit nach Invalidierung)", async () => {
+    // Erster Ladevorgang — befüllt den Cache
     const first = await nav.getPages();
+    expect(first.length).toBeGreaterThan(0);
+    // Cache invalidieren
     nav.invalidateCache();
+    // contextSearchResults muss jetzt leer sein
+    expect(ft.state.get("contextSearchResults")).toEqual([]);
+    // Zweiter Aufruf — löst neuen Fetch aus
     const second = await nav.getPages();
-    // Neues Array-Objekt nach Invalidierung
-    expect(first).not.toBe(second);
-    // Inhalt aber gleich (Mock-Daten unverändert)
-    expect(first.length).toBe(second.length);
+    // Inhalt wieder vorhanden (Server antwortet erneut)
+    expect(second.length).toBeGreaterThan(0);
   });
 });
 

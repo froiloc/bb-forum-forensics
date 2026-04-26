@@ -2,7 +2,16 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 069 · 2026-04-26
+ * Version: v0.1.0 · Build: 070 · 2026-04-26
+ *
+ * Änderungen Build 070 (Phase KN-3 — Server-Anbindung Kontext-Navigator):
+ *   ContextNavigatorModule.getPages(): Mock-Daten ersetzt durch echten
+ *   AJAX-Call an /_forensic/search?limit=50&sort=last_viewed_desc.
+ *   MOCK_PAGES-Array bleibt im Code als Dokumentation erhalten, wird aber
+ *   nicht mehr aufgerufen. Server liefert ausschließlich Seiten des aktuellen
+ *   Benutzers (aus forensic_<uid>.db).
+ *   Fehlerfall: leeres Array, kein Absturz.
+ *   Beleg: Bauplan KN v0.6 §5.6 + §12 Phase KN-3.
  * Klassifikation: VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
  *
  * Änderungen Build 069 (Dropdown UX — Titel, Sortierung):
@@ -3390,8 +3399,8 @@
 
     /**
      * Liefert den Cache als Promise<PageSummaryRecord[]>.
-     * Phase KN-2: liefert sofort Mock-Daten.
-     * Phase KN-3: ersetzt durch Server-Anfrage an API_SEARCH.
+     * Phase KN-3: Echter Server-Aufruf an /_forensic/search.
+     * Beleg: Bauplan KN v0.6 §5.6 + §12 Phase KN-3.
      */
     function getPages() {
       if (_cache !== null) {
@@ -3400,21 +3409,21 @@
       if (_loadingPromise) {
         return _loadingPromise;
       }
-      // KN-2: Mock-Daten simulieren async-Ladezeit (50 ms)
-      // Sortierung: last_viewed_desc — entspricht dem späteren Server-Default
-      // (Bauplan KN §5.6: GET /_forensic/search?sort=last_viewed_desc).
-      // Seiten ohne lastViewedAt ans Ende.
-      _loadingPromise = new Promise(function (resolve) {
-        setTimeout(function () {
-          _cache = MOCK_PAGES.slice().sort(function (a, b) {
-            var ta = a.lastViewedAt || 0;
-            var tb = b.lastViewedAt || 0;
-            return tb - ta;  // desc
-          });
-          ForensicToolbar._setState({ contextSearchResults: _cache });
-          _loadingPromise = null;
-          resolve(_cache);
-        }, 50);
+      // KN-3: Echter Server-Aufruf — zuletzt betrachtete 50 Seiten des
+      // aktuellen Benutzers (Daten stammen ausschließlich aus forensic_<uid>.db).
+      _loadingPromise = ajaxGet(
+        ForensicToolbar.config.API_SEARCH + "?limit=50&sort=last_viewed_desc"
+      ).then(function (data) {
+        var pages = (data && Array.isArray(data.pages)) ? data.pages : [];
+        _cache = pages;
+        ForensicToolbar._setState({ contextSearchResults: _cache });
+        _loadingPromise = null;
+        return _cache;
+      }).catch(function (err) {
+        _dbg("ContextNavigatorModule.getPages() Fehler", err);
+        _loadingPromise = null;
+        _cache = [];
+        return _cache;
       });
       return _loadingPromise;
     }
