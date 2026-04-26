@@ -2,15 +2,22 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 062 · 2026-04-26
+ * Version: v0.1.0 · Build: 063 · 2026-04-26
  * Klassifikation: VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
  *
- * Änderungen Build 062:
- *   PostMarkerModule.restoreAll() in requestAnimationFrame-Callback ergänzt.
- *   Beleg: Post-Markierungen (postId ohne XPath) wurden nach Reload nicht
- *   wiederhergestellt — fehlten seit Build 059/060 im post-load Callback.
+ * Änderungen Build 063:
+ *   Fix HoverMenu-Retrigger: Mousemove-Debounce (_dwellTimer) — wenn die Maus
+ *   nach Schließen des Menüs im Post verbleibt, öffnet Verweilen (HOVER_DELAY_MS)
+ *   das Menü erneut, ohne dass die Maus das Post-Element verlassen muss.
+ *   clearTimeout(_dwellTimer) auch in mouseout.
  *
- * Änderungen Build 061:
+ *   Diagnose-Hilfsfunktionen (global, aufrufbar in Browser-Console):
+ *   - window.forensicTestHighlight(): Testet XPath-Auflösung aller Annotations
+ *   - window.forensicForceRestoreAll(): Erzwingt clearAll + restoreAll sofort
+ *   Beleg: Textmarkierungen nach Reload unsichtbar — Diagnose-Tools zur Isolation
+ *   des Problems (viewMode? rangeFromSelection-Fehler? CSS Highlights API?).
+ *
+ * Änderungen Build 062:
  *
  *   Fix 3 — HoverMenu-Position: Menü erschien in rechter oberer Post-Ecke.
  *     _lastMouseX/_lastMouseY-Tracker via mousemove auf dem Viewport. setTimeout-
@@ -1937,9 +1944,43 @@
       // die aktuelle (nicht die veraltete mouseover-Event) Position nutzen kann.
       // Beleg: Build 061 — getBoundingClientRect-Position war "rechts oben" und
       // entsprach nicht der Erwartung des Ermittlers (nahe Mauszeiger).
+      //
+      // Build 063: mousemove löst zusätzlich einen Dwell-Timer aus (Verweilzeit).
+      // Problem: Nach Schließen des Menüs verbleibt die Maus im Post-Container —
+      // kein mouseover feuert mehr, also kein Retrigger. Lösung: mousemove prüft
+      // ob die Maus über einem annotierten Post verweilt und kein Menü aktiv ist.
+      // Der Dwell-Timer wird bei jeder Mausbewegung zurückgesetzt (Debounce),
+      // öffnet das Menü nach HOVER_DELAY_MS Stillstand.
+      var _dwellTimer = null;
       vp.addEventListener("mousemove", function (e) {
         _lastMouseX = e.pageX;
         _lastMouseY = e.pageY;
+
+        // Dwell-Logik: Nur wenn kein Menü aktiv und kein normaler Timer läuft
+        if (_menuEl) return; // Menü bereits offen
+
+        var postEl = e.target.closest ? e.target.closest("[data-forensic-cat]") : null;
+        if (!postEl) {
+          clearTimeout(_dwellTimer);
+          _dwellTimer = null;
+          return;
+        }
+
+        var ann = _findAnnotationAtElement(postEl);
+        if (!ann) {
+          clearTimeout(_dwellTimer);
+          _dwellTimer = null;
+          return;
+        }
+
+        // Debounce: Bei jeder Bewegung neuen Timer setzen
+        clearTimeout(_dwellTimer);
+        _dwellTimer = setTimeout(function () {
+          if (!_menuEl) { // Noch kein Menü offen (Doppel-Check)
+            _showMenu(ann, _lastMouseX + 12, _lastMouseY - 36);
+          }
+          _dwellTimer = null;
+        }, ForensicToolbar.config.HOVER_DELAY_MS);
       });
 
       vp.addEventListener("mouseover", function (e) {
@@ -1974,7 +2015,9 @@
         if (fromPost && related && fromPost.contains(related)) return;
         // Andernfalls: Timer abbrechen und Menü schließen
         clearTimeout(_timer);
+        clearTimeout(_dwellTimer);
         _timer = null;
+        _dwellTimer = null;
         if (!(_menuEl && _menuEl.matches(":hover"))) _hideMenu();
       });
     });
@@ -3047,5 +3090,62 @@
       location.pathname + location.search, false
     );
   });
+
+  // ---------------------------------------------------------------------------
+  // Diagnose-Hilfsfunktionen (Build 063)
+  // Aufruf in der Browser-Console — kein Reload erforderlich.
+  // ---------------------------------------------------------------------------
+
+  /**
+   * window.forensicTestHighlight()
+   * Testet die Highlight-Wiederherstellung für alle Annotationen im aktuellen State.
+   * Gibt eine Übersicht in der Console aus.
+   *
+   * Anleitung:
+   *   1. Seite mit einer Annotation aufrufen (AJAX-Navigation)
+   *   2. In der Browser-Console eingeben: forensicTestHighlight()
+   *   3. Ausgabe zeigt für jede Annotation ob XPath auflösbar ist
+   */
+  window.forensicTestHighlight = function () {
+    var anns = _state.annotations;
+    console.group("[Forensic Diagnose] forensicTestHighlight() — " + anns.size + " Annotations");
+    console.log("viewMode:", _state.viewMode);
+    console.log("cssHighlightsAvailable:", typeof CSS !== "undefined" && typeof CSS.highlights !== "undefined");
+    var vp = document.getElementById("forensic-viewport");
+    console.log("viewport exists:", !!vp, "children:", vp ? vp.children.length : 0);
+
+    anns.forEach(function (ann, key) {
+      console.group("Annotation " + key + " (id=" + ann.id + ", cat=" + ann.category + ")");
+      console.log("hasSelection:", !!ann.selection);
+      console.log("postId:", ann.postId);
+      console.log("syncState:", ann.syncState);
+      if (ann.selection) {
+        console.log("selection:", ann.selection);
+        var restored = AnnotationStoreModule.rangeFromSelection(ann.selection);
+        console.log("rangeFromSelection result:", restored);
+        if (restored) {
+          console.log("range text:", restored.range.toString().substring(0, 80));
+          console.log("stale:", restored.stale);
+        }
+      }
+      console.groupEnd();
+    });
+    console.groupEnd();
+  };
+
+  /**
+   * window.forensicForceRestoreAll()
+   * Erzwingt restoreAll() für Highlights und PostMarker sofort.
+   * Nützlich um zu testen ob der Timing-Fix wirkt.
+   */
+  window.forensicForceRestoreAll = function () {
+    console.log("[Forensic Diagnose] forensicForceRestoreAll() — forciere Highlight-Restore");
+    HighlightModule.clearAll();
+    HighlightModule.restoreAll();
+    PostMarkerModule.clearAll();
+    PostMarkerModule.restoreAll();
+    MinimapModule.refresh();
+    console.log("[Forensic Diagnose] Done. Annotations im State:", _state.annotations.size);
+  };
 
 })();
