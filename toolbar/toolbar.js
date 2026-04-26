@@ -2,8 +2,22 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 067 · 2026-04-26
+ * Version: v0.1.0 · Build: 068 · 2026-04-26
  * Klassifikation: VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
+ *
+ * Änderungen Build 068 (Fix — Panel-Positionierung ContextDropdownModule):
+ *   Das Panel verdrängte beim Öffnen den gesamten Toolbar-Inhalt nach oben,
+ *   weil es als Kind von #forensic-toolbar eingefügt wurde, das overflow:hidden
+ *   und height:62px hat. Das Panel wurde dadurch in den normalen Dokumentfluss
+ *   eingebettet und schob den Toolbar-Inhalt über den Rand.
+ *   Fix 1: Panel wird jetzt an document.body angehängt (außerhalb aller
+ *     overflow:hidden-Ketten).
+ *   Fix 2: CSS geändert von position:absolute+top:44px auf position:fixed
+ *     (top/left ohne Wert — werden per JS gesetzt).
+ *   Fix 3: _open() berechnet Position via _btn.getBoundingClientRect():
+ *     top = rect.bottom + 4px, left = rect.left. Dadurch sitzt das Panel
+ *     immer direkt unterhalb des Buttons, unabhängig von DOM-Kontext.
+ *   Beleg: Screenshots Build 066/067 — Seitensuche verdrängte Toolbar-Inhalt.
  *
  * Änderungen Build 067 (Fix — Null-Guard in ContextDropdownModule._bindEvents):
  *   _bindEvents() crashte in JSDOM-Testumgebungen ohne vollständiges Shell-HTML
@@ -3529,10 +3543,14 @@
         "</div>";
 
       sec1.appendChild(_btn);
-      // Panel als direktes Kind des toolbar-div (nicht sec1), damit es über
-      // anderen Elementen schwebt und nicht durch overflow:hidden abgeschnitten wird.
-      var toolbar = document.getElementById("forensic-toolbar");
-      if (toolbar) toolbar.appendChild(_panel);
+      // Panel an document.body hängen — NICHT an #forensic-toolbar.
+      // #forensic-toolbar hat overflow:hidden und height:62px, was das Panel
+      // abschneidet oder den Toolbar-Inhalt verdrängt.
+      // position:fixed in der CSS-Klasse + dynamische Top/Left-Berechnung
+      // in _open() via getBoundingClientRect() positioniert das Panel
+      // korrekt unterhalb des Buttons, unabhängig vom DOM-Kontext.
+      // Beleg: Build 067-Fix — Panel verdrängte Toolbar-Inhalt nach oben.
+      document.body.appendChild(_panel);
 
       _search = document.getElementById("forensic-ctx-search");
       _list   = document.getElementById("forensic-ctx-list");
@@ -3649,6 +3667,13 @@
     // -----------------------------------------------------------------------
     function _open() {
       _isOpen = true;
+      // Panel unterhalb des Buttons positionieren (position:fixed im Body).
+      // getBoundingClientRect() liefert viewport-relative Koordinaten.
+      // Beleg: Build 067-Fix — Panel liegt jetzt im Body-DOM, braucht
+      // explizite Positionierung statt CSS-Relative zum Toolbar.
+      var rect = _btn.getBoundingClientRect();
+      _panel.style.top  = (rect.bottom + 4) + "px";
+      _panel.style.left = rect.left + "px";
       _panel.hidden = false;
       _btn.setAttribute("aria-expanded", "true");
       _btn.classList.add("forensic-ctx-dropdown-btn--open");

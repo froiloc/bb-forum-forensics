@@ -2,7 +2,13 @@
  * toolbar.css — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 066 · 2026-04-26
+ * Version: v0.1.0 · Build: 068 · 2026-04-26
+ *
+ * Änderungen Build 068:
+ *   - .forensic-ctx-panel: position:fixed (war absolute+top:44px).
+ *     top/left werden jetzt per JS in _open() via getBoundingClientRect() gesetzt.
+ *     Panel liegt im document.body, außerhalb der overflow:hidden-Kette der Toolbar.
+ *     Beleg: Build 067 — Panel schob Toolbar-Inhalt nach oben.
  *
  * Änderungen Build 066:
  *   - .forensic-ctx-dropdown-btn: Dropdown-Button in Zone Links / Sektion 1.
@@ -1053,10 +1059,9 @@ body {
 /* --- Dropdown-Panel --- */
 
 .forensic-ctx-panel {
-  position: absolute;
-  top: 44px;              /* unterhalb der Toolbar */
-  left: 0;
-  z-index: 1100;
+  position: fixed;         /* Im Body-DOM, außerhalb jeder overflow:hidden-Kette */
+  /* top und left werden per JS via getBoundingClientRect() gesetzt (_open()) */
+  z-index: 10000; /* above toolbar */
   width: 360px;
   max-width: calc(100vw - 16px);
   background: #1a2035;
