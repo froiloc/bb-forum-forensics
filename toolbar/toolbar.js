@@ -2,8 +2,13 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 061 · 2026-04-26
+ * Version: v0.1.0 · Build: 062 · 2026-04-26
  * Klassifikation: VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
+ *
+ * Änderungen Build 062:
+ *   PostMarkerModule.restoreAll() in requestAnimationFrame-Callback ergänzt.
+ *   Beleg: Post-Markierungen (postId ohne XPath) wurden nach Reload nicht
+ *   wiederhergestellt — fehlten seit Build 059/060 im post-load Callback.
  *
  * Änderungen Build 061:
  *
@@ -1233,6 +1238,11 @@
                 ? document.getElementById("forensic-viewport").children.length : 0 }
           );
           HighlightModule.restoreAll();
+          // PostMarkerModule.restoreAll() stellt Post-Markierungen (ohne XPath/Selection,
+          // nur postId) wieder her — wurde in Build 059/060 fälschlicherweise ausgelassen.
+          // Beleg: Build 062 — nach Reload fehlten Post-Markierungen (Seitenneuladen
+          // zeigte leeren Viewport-Inhalt ohne farbige Post-Hervorhebungen).
+          PostMarkerModule.restoreAll();
           // MinimapModule.refresh() rendert sowohl Spur-Marker (traceElements)
           // als auch Annotations-Marker — traceElements sind zu diesem Zeitpunkt
           // bereits im State (setState in _handleEnvelope oben).
