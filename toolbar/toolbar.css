@@ -2,7 +2,12 @@
  * toolbar.css — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 068 · 2026-04-26
+ * Version: v0.1.0 · Build: 069 · 2026-04-26
+ *
+ * Änderungen Build 069:
+ *   - .forensic-ctx-url ersetzt durch .forensic-ctx-title (Hauptzeile, heller)
+ *     und .forensic-ctx-url-sub (Subzeile, Monospace, gedimmt).
+ *     Titel wird jetzt primär angezeigt; URL erscheint als zweite Zeile.
  *
  * Änderungen Build 068:
  *   - .forensic-ctx-panel: position:fixed (war absolute+top:44px).
@@ -1061,7 +1066,7 @@ body {
 .forensic-ctx-panel {
   position: fixed;         /* Im Body-DOM, außerhalb jeder overflow:hidden-Kette */
   /* top und left werden per JS via getBoundingClientRect() gesetzt (_open()) */
-  z-index: 10000; /* above toolbar */
+  z-index: 10000;  /* über der Toolbar */
   width: 360px;
   max-width: calc(100vw - 16px);
   background: #1a2035;
@@ -1236,12 +1241,23 @@ body {
   flex-shrink: 0;
 }
 
-.forensic-ctx-url {
+.forensic-ctx-title {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #b0c0e0;
+  color: #c8d8f0;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* URL als gedimmte Subzeile in der Meta-Zeile */
+.forensic-ctx-url-sub {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #4a5a7a;
   font-family: "IBM Plex Mono", monospace;
   font-size: 10px;
 }

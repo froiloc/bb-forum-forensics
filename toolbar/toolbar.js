@@ -2,8 +2,24 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 068 · 2026-04-26
+ * Version: v0.1.0 · Build: 069 · 2026-04-26
  * Klassifikation: VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
+ *
+ * Änderungen Build 069 (Dropdown UX — Titel, Sortierung):
+ *   1. Titel statt URL als primäre Anzeige (§5.3 Bauplan KN):
+ *      _renderList() zeigt p.title als Hauptzeile (forensic-ctx-title,
+ *      12px, heller). Die gekürzte URL erscheint als Subzeile in der
+ *      Meta-Zeile (forensic-ctx-url-sub, 10px Monospace, gedimmt).
+ *      Die volle URL bleibt als title-Attribut (Tooltip) erhalten.
+ *      Fallback: wenn kein Titel vorhanden, wird die URL als Hauptzeile
+ *      angezeigt (identisches Verhalten zur Vorgängerversion).
+ *   2. Default-Sortierung last_viewed_desc für Mock-Daten:
+ *      getPages() sortiert die Mock-Daten nach lastViewedAt absteigend,
+ *      entsprechend dem späteren Server-Default (Bauplan KN §5.6:
+ *      GET /_forensic/search?sort=last_viewed_desc). Seiten ohne
+ *      lastViewedAt erscheinen am Ende.
+ *   Beleg: Rückmeldung Build 068 — URL-Darstellung zu abstrakt,
+ *   Reihenfolge nicht explizit.
  *
  * Änderungen Build 068 (Fix — Panel-Positionierung ContextDropdownModule):
  *   Das Panel verdrängte beim Öffnen den gesamten Toolbar-Inhalt nach oben,
@@ -3385,9 +3401,16 @@
         return _loadingPromise;
       }
       // KN-2: Mock-Daten simulieren async-Ladezeit (50 ms)
+      // Sortierung: last_viewed_desc — entspricht dem späteren Server-Default
+      // (Bauplan KN §5.6: GET /_forensic/search?sort=last_viewed_desc).
+      // Seiten ohne lastViewedAt ans Ende.
       _loadingPromise = new Promise(function (resolve) {
         setTimeout(function () {
-          _cache = MOCK_PAGES.slice();
+          _cache = MOCK_PAGES.slice().sort(function (a, b) {
+            var ta = a.lastViewedAt || 0;
+            var tb = b.lastViewedAt || 0;
+            return tb - ta;  // desc
+          });
           ForensicToolbar._setState({ contextSearchResults: _cache });
           _loadingPromise = null;
           resolve(_cache);
@@ -3757,6 +3780,9 @@
           segments += "<span class=\"forensic-ctx-seg" + (i < filled ? " forensic-ctx-seg--on" : "") + "\"></span>";
         }
         var urlShort  = _shortenUrl(p.url);
+        // Anzeigename: Titel bevorzugt (Themenbetreff, PN-Betreff, Profilname),
+        // Fallback auf gekürzte URL. Bauplan KN §5.3 — URL als Tooltip.
+        var displayTitle = (p.title && p.title.trim()) ? p.title.trim() : urlShort;
         var failIcon  = p.fetchFailed ? " <span class=\"forensic-ctx-fail\" aria-label=\"Abruf fehlgeschlagen\">⚠️</span>" : "";
         var lastViewed = p.lastViewedAt ? _relativeTime(p.lastViewedAt) : "—";
 
@@ -3768,10 +3794,14 @@
             "<span class=\"forensic-ctx-pct\">" + pct + "%</span>" +
             "<span class=\"forensic-ctx-traces\" title=\"Spuren\">🔗 " + (p.traceCountTotal || 0) + "</span>" +
             "<span class=\"forensic-ctx-anns\"   title=\"Annotationen\">📌 " + (p.annotationsTotal || 0) + "</span>" +
-            "<span class=\"forensic-ctx-url\" title=\"" + _esc(p.url) + "\">" + _esc(urlShort) + failIcon + "</span>" +
+            // Titel + ggf. Fehlerindikator; volle URL im title-Attribut als Tooltip
+            "<span class=\"forensic-ctx-title\" title=\"" + _esc(p.url) + "\">" + _esc(displayTitle) + failIcon + "</span>" +
           "</div>" +
           "<div class=\"forensic-ctx-item-meta\">" +
             "<span class=\"forensic-ctx-badge " + badge.cls + "\" title=\"" + badge.title + "\">" + badge.label + "</span>" +
+            // URL als Subzeile (klein, gedimmt) — gibt technischen Kontext ohne
+            // die lesbare Titelzeile zu überladen
+            "<span class=\"forensic-ctx-url-sub\" title=\"" + _esc(p.url) + "\">" + _esc(urlShort) + "</span>" +
             "<span class=\"forensic-ctx-time\">" + _esc(lastViewed) + "</span>" +
           "</div>";
 
