@@ -2,7 +2,24 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 071 · 2026-04-26
+ * Version: v0.1.0 · Build: 072 · 2026-04-26
+ *
+ * Änderungen Build 072 (OP-KN-7 — Spur-Navigation seitenübergreifend):
+ *   TraceNavigationModule: Intra-page Navigation (Build 030-C) um
+ *   seitenübergreifende Navigation erweitert.
+ *   - Sequenz via /_forensic/trace_sequence beim ersten Seitenload laden.
+ *   - Reihenfolge: Profil → PM → Posts → Sonstiges, innerhalb Gruppe
+ *     chronologisch (scrape_targets.id ASC).
+ *   - Buttons zeigen ◄/► (gleiche Seite) oder ◄◄/▶▶ (Seitenwechsel).
+ *     title/aria-label nennen den Zieltitel bei Seitenwechsel.
+ *   - Gruppenwechsel: kurzer Toast.
+ *   - Einstiegspunkt: aktuell geladene Seite.
+ *   - Kein Bestätigungs-Toast vor Seitenwechsel (sofortiger Load).
+ *   AnnotationsNavigation: Buttons ◄/► Ann. jetzt in Sektion 3 neben
+ *   Marker-Buttons (thematische Nähe). _jumpToPrevAnnotation() ergänzt.
+ *   State: traceSequence[], traceSeqIndex hinzugefügt.
+ *   Config: API_TRACE_SEQUENCE hinzugefügt.
+ *   Neue Dateien: forensic_api/trace_sequence.py, db.get_trace_sequence().
  *
  * Änderungen Build 071:
  *   ContextNavigatorModule — kein funktionaler JS-Change.
@@ -279,7 +296,9 @@
     API_EVENTS:      "/_forensic/events",
     API_USERINFO:    "/_forensic/userinfo",
     // Kontext-Navigator (Build 066, Bauplan KN §7.3)
-    API_SEARCH:      "/_forensic/search",
+    API_SEARCH:           "/_forensic/search",
+    // Spur-Navigation (Build 072, OP-KN-7)
+    API_TRACE_SEQUENCE:   "/_forensic/trace_sequence",
 
     // Annotationskategorien (Reihenfolge = Tastenkürzel 1-6)
     CATEGORIES: [
@@ -416,6 +435,11 @@
     contextDropdownOpen:   false,
     contextModalOpen:      false,
     contextSearchResults:  [],
+    // Spur-Navigation seitenübergreifend (Build 072, OP-KN-7)
+    // traceSequence:  Array<{url, title, group, trace_id}> — geordnete Spurenliste
+    // traceSeqIndex:  Index in traceSequence der aktuell betrachteten Seite (-1 = unbekannt)
+    traceSequence:         [],
+    traceSeqIndex:         -1,
   };
 
   // Öffentlicher Read-only-Zugriff auf State
@@ -1045,6 +1069,13 @@
           _jumpToNextAnnotation();
         });
       }
+      // Vorherige Annotation (Build 072 — Button jetzt in Sektion 3 neben Marker-Buttons)
+      var prevAnnBtn = document.getElementById("forensic-btn-prev-ann");
+      if (prevAnnBtn) {
+        prevAnnBtn.addEventListener("click", function () {
+          _jumpToPrevAnnotation();
+        });
+      }
 
       // Ansichtswechsel
       var vmBtn = document.getElementById("forensic-btn-viewmode");
@@ -1109,14 +1140,18 @@
           '<div class="forensic-separator" aria-hidden="true"></div>' +
 
           // Sektion 3: Aktionen
+          // Annotations-Navigation (◄/►) steht direkt neben den Marker-Buttons,
+          // damit der thematische Zusammenhang sichtbar ist (Build 072, OP-KN-7).
           '<div class="forensic-section forensic-sec3">' +
           '<button id="forensic-btn-userinfo" class="forensic-btn" ' +
           'aria-label="Nutzerinfo-Tab öffnen (Alt+U)" title="Nutzerinfo öffnen [Alt+U]">' +
           '👤 Nutzerinfo</button>' +
-          '<button id="forensic-btn-next-ann" class="forensic-btn" ' +
+          '<button id="forensic-btn-prev-ann" class="forensic-btn forensic-ann-nav-btn" ' +
+          'aria-label="Zur vorherigen Annotation springen" ' +
+          'title="Vorherige Annotation">◀ Ann.</button>' +
+          '<button id="forensic-btn-next-ann" class="forensic-btn forensic-ann-nav-btn" ' +
           'aria-label="Zur nächsten unkommentierten Annotation springen" ' +
-          'title="Nächste Annotation">' +
-          '▶ Nächste</button>' +
+          'title="Nächste Annotation">▶ Ann.</button>' +
           '<button id="forensic-btn-viewmode" class="forensic-btn" ' +
           'aria-label="Ansicht wechseln: Original oder Angepasst" ' +
           'title="Ansicht wechseln [Original / Angepasst]" ' +
@@ -1145,7 +1180,9 @@
           '</div>' +
           '<div class="forensic-separator" aria-hidden="true"></div>' +
 
-          // Spurennummer-Eingabe (Dummy)
+          // Spurennummer-Eingabe + seitenübergreifende Spurennavigation (OP-KN-7, Build 072)
+          // Buttons zeigen ◄/► wenn Ziel auf gleicher Seite, ◄◄/▶▶ wenn Seitenwechsel nötig.
+          // Beschriftung wird von TraceNavigationModule dynamisch gesetzt.
           '<div class="forensic-section forensic-sec-trace" aria-label="Spurennavigation">' +
           '<span class="forensic-sec-label">Spur</span>' +
           '<div class="forensic-trace-row">' +
@@ -1162,7 +1199,6 @@
           'aria-label="Nächste Spur" title="Nächste Spur" disabled>▶</button>' +
           '</div>' +
           '</div>' +
-          '<div class="forensic-separator" aria-hidden="true"></div>' +
 
           // Sektion 5: Session-Info
           '<div class="forensic-section forensic-sec5" aria-label="Sitzungsinformationen">' +
@@ -1231,6 +1267,20 @@
       if (!first) return;
       var el = first.elementId
         ? document.getElementById(first.elementId)
+        : null;
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    // Rückwärts zur letzten Annotation (Build 072 — Buttons in Sektion 3).
+    // Navigiert zur letzten Annotation in _state.annotations (mit Text = bearbeitet).
+    function _jumpToPrevAnnotation() {
+      var last = null;
+      _state.annotations.forEach(function (ann) {
+        if (ann.text) last = ann;
+      });
+      if (!last) return;
+      var el = last.elementId
+        ? document.getElementById(last.elementId)
         : null;
       if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
     }
@@ -2432,14 +2482,23 @@
   //   - #forensic-btn-trace-prev / -next  (◀/▶-Buttons)
   //   - #forensic-trace-total   (Gesamtanzahl "/ N")
   //
-  // Navigation erfolgt über _state.traceElements (DOM-Element-IDs).
-  // Index ist 1-basiert in der UI, 0-basiert intern.
+  // Navigation erfolgt über _state.traceElements (DOM-Element-IDs)
+  // für Spuren auf der AKTUELLEN Seite.
   //
-  // Beleg: §OP-4 Anforderung — Navigation zwischen Spuren per Pfeiltasten
-  //        und Direkteingabe.
+  // Build 072 (OP-KN-7): Seitenübergreifende Navigation ergänzt.
+  //   - Beim Start: Sequenz via /_forensic/trace_sequence laden.
+  //   - Buttons zeigen ◄/► wenn Ziel auf gleicher Seite (Scroll),
+  //     ◄◄/▶▶ wenn Ziel auf anderer Seite (Seitenwechsel).
+  //   - Reihenfolge: Profil → PM → Posts → Sonstiges, innerhalb
+  //     Gruppe: scrape_targets.id ASC (chronologisch).
+  //   - Einstiegspunkt: aktuell geladene Seite. Nach Seitenload wird
+  //     traceSeqIndex auf die aktuelle Seite gesetzt.
+  //   - Gruppenwechsel: Toast-Benachrichtigung.
+  //
+  // Beleg: §OP-4 (intra-page), OP-KN-7 (inter-page), Build 072.
   // ===========================================================================
   var TraceNavigationModule = (function () {
-    var _currentIdx = -1; // 0-basiert; -1 = keine Spur angesprungen
+    var _currentIdx = -1; // 0-basiert; -1 = keine Spur angesprungen (intra-page)
 
     // Listener-Referenzen für sauberes Entfernen ohne cloneNode
     var _prevListener = null;
@@ -2448,43 +2507,145 @@
     var _inputBlurListener = null;
 
     // -------------------------------------------------------------------------
+    // _getSeq — Sequenz aus State holen
+    // -------------------------------------------------------------------------
+    function _getSeq() {
+      return _state.traceSequence || [];
+    }
+
+    // -------------------------------------------------------------------------
+    // _currentUrl — normalisierte URL der aktuellen Seite
+    // -------------------------------------------------------------------------
+    function _currentUrl() {
+      return _state.currentUrl || "";
+    }
+
+    // -------------------------------------------------------------------------
+    // _seqIndexForUrl — Index in traceSequence für eine URL (-1 wenn nicht gefunden)
+    // -------------------------------------------------------------------------
+    function _seqIndexForUrl(url) {
+      var seq = _getSeq();
+      for (var i = 0; i < seq.length; i++) {
+        if (seq[i].url === url) return i;
+      }
+      return -1;
+    }
+
+    // -------------------------------------------------------------------------
+    // _nextTargetForDirection — liefert {seqIdx, intraIdx} oder null
+    //
+    // Logik:
+    //   1. Gibt es noch unbesuchte Spuren auf der aktuellen Seite (intra)?
+    //      → intra-page Sprung
+    //   2. Sonst: nächste Seite in traceSequence
+    // -------------------------------------------------------------------------
+    function _nextTargetForDirection(dir) {
+      var traces  = _state.traceElements || [];
+      var seq     = _getSeq();
+      var seqIdx  = _state.traceSeqIndex;
+      if (seqIdx < 0) seqIdx = _seqIndexForUrl(_currentUrl());
+
+      // Intra-page Sprung?
+      if (dir === "next") {
+        var nextIntra = _currentIdx + 1;
+        if (nextIntra < traces.length) {
+          return { seqIdx: seqIdx, intraIdx: nextIntra, crossPage: false };
+        }
+        // Nächste Seite in Sequenz
+        var nextSeq = seqIdx + 1;
+        if (nextSeq < seq.length) {
+          return { seqIdx: nextSeq, intraIdx: 0, crossPage: true };
+        }
+        return null; // Ende der Sequenz
+      } else {
+        var prevIntra = _currentIdx - 1;
+        if (prevIntra >= 0) {
+          return { seqIdx: seqIdx, intraIdx: prevIntra, crossPage: false };
+        }
+        // Vorherige Seite in Sequenz
+        var prevSeq = seqIdx - 1;
+        if (prevSeq >= 0) {
+          return { seqIdx: prevSeq, intraIdx: -1, crossPage: true }; // -1 = letzte Spur der Seite
+        }
+        return null; // Anfang der Sequenz
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // _updateButtonLabels — ◄/► oder ◄◄/▶▶ je nach nächstem Ziel
+    // -------------------------------------------------------------------------
+    function _updateButtonLabels() {
+      var prevBtn = document.getElementById("forensic-btn-trace-prev");
+      var nextBtn = document.getElementById("forensic-btn-trace-next");
+      if (!prevBtn || !nextBtn) return;
+
+      var prevTarget = _nextTargetForDirection("prev");
+      var nextTarget = _nextTargetForDirection("next");
+
+      // Beschriftung: ◄◄/▶▶ signalisiert Seitenwechsel
+      prevBtn.textContent = (prevTarget && prevTarget.crossPage) ? "◄◄" : "◄";
+      nextBtn.textContent = (nextTarget && nextTarget.crossPage) ? "▶▶" : "▶";
+
+      // ARIA-Labels mitpflegen
+      if (prevTarget && prevTarget.crossPage) {
+        var seq = _getSeq();
+        var prevTitle = seq[prevTarget.seqIdx] ? (seq[prevTarget.seqIdx].title || seq[prevTarget.seqIdx].url) : "";
+        prevBtn.setAttribute("title", "Vorherige Spur — Seitenwechsel zu: " + prevTitle);
+        prevBtn.setAttribute("aria-label", "Vorherige Spur (andere Seite): " + prevTitle);
+      } else {
+        prevBtn.setAttribute("title", "Vorherige Spur");
+        prevBtn.setAttribute("aria-label", "Vorherige Spur");
+      }
+      if (nextTarget && nextTarget.crossPage) {
+        var seq = _getSeq();
+        var nextTitle = seq[nextTarget.seqIdx] ? (seq[nextTarget.seqIdx].title || seq[nextTarget.seqIdx].url) : "";
+        nextBtn.setAttribute("title", "Nächste Spur — Seitenwechsel zu: " + nextTitle);
+        nextBtn.setAttribute("aria-label", "Nächste Spur (andere Seite): " + nextTitle);
+      } else {
+        nextBtn.setAttribute("title", "Nächste Spur");
+        nextBtn.setAttribute("aria-label", "Nächste Spur");
+      }
+    }
+
+    // -------------------------------------------------------------------------
     // _update — UI-Elemente auf aktuellen Index synchronisieren
     // -------------------------------------------------------------------------
     function _update() {
       var traces  = _state.traceElements;
       var total   = traces.length;
+      var seq     = _getSeq();
+      var seqIdx  = _state.traceSeqIndex;
+      if (seqIdx < 0) seqIdx = _seqIndexForUrl(_currentUrl());
 
       var inputEl = document.getElementById("forensic-trace-input");
       var totalEl = document.getElementById("forensic-trace-total");
       var prevBtn = document.getElementById("forensic-btn-trace-prev");
       var nextBtn = document.getElementById("forensic-btn-trace-next");
 
-      // Elemente müssen existieren — Toolbar ist permanent im DOM
       if (!inputEl || !totalEl || !prevBtn || !nextBtn) {
         console.warn("[Forensic] TraceNavigation: UI-Elemente nicht gefunden.");
         return;
       }
 
-      var hasTraces = total > 0;
+      var hasTraces    = total > 0;
+      var hasSeqPrev   = seqIdx > 0;
+      var hasSeqNext   = seqIdx >= 0 && seqIdx < seq.length - 1;
+      var canGoPrev    = hasTraces ? (_currentIdx > 0 || hasSeqPrev) : hasSeqPrev;
+      var canGoNext    = hasTraces ? (_currentIdx < total - 1 || hasSeqNext) : hasSeqNext;
 
-      // Gesamtanzahl immer aktualisieren
-      totalEl.textContent = "/ " + total;
-
-      // Buttons und Eingabe aktivieren/deaktivieren
-      inputEl.disabled = !hasTraces;
-      prevBtn.disabled = !hasTraces || _currentIdx <= 0;
-      nextBtn.disabled = !hasTraces || _currentIdx >= total - 1;
-
-      // Eingabefeld
+      totalEl.textContent = "/ " + (hasTraces ? total : (seq.length > 0 ? "?" : "0"));
+      inputEl.disabled    = !hasTraces;
+      prevBtn.disabled    = !canGoPrev;
+      nextBtn.disabled    = !canGoNext;
       inputEl.max         = String(total);
-      inputEl.value       = (hasTraces && _currentIdx >= 0)
-        ? String(_currentIdx + 1)  // 1-basiert in der UI
-        : "";
+      inputEl.value       = (hasTraces && _currentIdx >= 0) ? String(_currentIdx + 1) : "";
       inputEl.placeholder = hasTraces ? "1" : "—";
+
+      _updateButtonLabels();
     }
 
     // -------------------------------------------------------------------------
-    // jumpTo — Zu einer Spur springen (0-basierter Index)
+    // jumpTo — Zu einer Spur springen (0-basierter Index, intra-page)
     // -------------------------------------------------------------------------
     function jumpTo(idx) {
       var traces = _state.traceElements;
@@ -2508,8 +2669,73 @@
     }
 
     // -------------------------------------------------------------------------
+    // _navigate — Hauptnavigationslogik (intra + inter-page)
+    // -------------------------------------------------------------------------
+    function _navigate(dir) {
+      var target = _nextTargetForDirection(dir);
+      if (!target) return;
+
+      if (!target.crossPage) {
+        // Intra-page Sprung
+        jumpTo(target.intraIdx);
+        return;
+      }
+
+      // Seitenübergreifend: sofort laden (OP-KN-7 — kein Bestätigungs-Toast)
+      var seq  = _getSeq();
+      var dest = seq[target.seqIdx];
+      if (!dest) return;
+
+      // Gruppe ankündigen wenn Gruppenwechsel
+      var curSeqIdx = _state.traceSeqIndex >= 0
+        ? _state.traceSeqIndex : _seqIndexForUrl(_currentUrl());
+      var curGroup  = curSeqIdx >= 0 ? seq[curSeqIdx].group : null;
+      if (curGroup && dest.group !== curGroup) {
+        var groupLabels = {
+          "profile": "Profilseiten",
+          "pm":      "Private Nachrichten",
+          "topic":   "Beiträge",
+          "other":   "Sonstige Seiten",
+        };
+        ToastModule.show(
+          "Gruppe: " + (groupLabels[dest.group] || dest.group),
+          ToastModule.TYPES[0]
+        );
+      }
+
+      // traceSeqIndex vorab setzen — wird nach page:loaded von _update() genutzt
+      _ForensicToolbar_setState({ traceSeqIndex: target.seqIdx });
+
+      // Seitenload anstoßen
+      ForensicToolbar.navigation.loadPage(dest.url, true);
+    }
+
+    // -------------------------------------------------------------------------
+    // _loadSequence — Sequenz vom Server laden und in State schreiben
+    // -------------------------------------------------------------------------
+    function _loadSequence() {
+      ajaxGet(ForensicToolbar.config.API_TRACE_SEQUENCE)
+        .then(function (data) {
+          var seq = (data && Array.isArray(data.sequence)) ? data.sequence : [];
+          _ForensicToolbar_setState({ traceSequence: seq });
+          // Initialen seqIndex anhand der aktuellen Seite setzen
+          var idx = _seqIndexForUrl(_currentUrl());
+          _ForensicToolbar_setState({ traceSeqIndex: idx });
+          _update();
+          _dbg("TraceSequence geladen: " + seq.length + " Einträge, seqIdx=" + idx);
+        })
+        .catch(function (err) {
+          _dbg("TraceSequence Ladefehler", err);
+        });
+    }
+
+    // Hilfsfunktion: _setState ohne Namenskonflikt mit lokalem Scope
+    function _ForensicToolbar_setState(obj) {
+      ForensicToolbar._setState(obj);
+    }
+
+    // -------------------------------------------------------------------------
     // init — Wird nach jedem Seitenload aufgerufen.
-    // Setzt Listener neu (ohne cloneNode — über gespeicherte Referenzen).
     // -------------------------------------------------------------------------
     function init() {
       _currentIdx = -1;
@@ -2518,25 +2744,16 @@
       var nextBtn = document.getElementById("forensic-btn-trace-next");
       var input   = document.getElementById("forensic-trace-input");
 
-      // Alte Listener sauber entfernen bevor neue gesetzt werden
-      if (prevBtn && _prevListener) {
-        prevBtn.removeEventListener("click", _prevListener);
-      }
-      if (nextBtn && _nextListener) {
-        nextBtn.removeEventListener("click", _nextListener);
-      }
+      // Alte Listener sauber entfernen
+      if (prevBtn && _prevListener) prevBtn.removeEventListener("click", _prevListener);
+      if (nextBtn && _nextListener) nextBtn.removeEventListener("click", _nextListener);
       if (input && _inputKeyListener) {
         input.removeEventListener("keydown", _inputKeyListener);
         input.removeEventListener("blur",    _inputBlurListener);
       }
 
-      // Neue Listener anlegen und Referenzen speichern
-      _prevListener = function () {
-        jumpTo(_currentIdx <= 0 ? 0 : _currentIdx - 1);
-      };
-      _nextListener = function () {
-        jumpTo(_currentIdx < 0 ? 0 : _currentIdx + 1);
-      };
+      _prevListener = function () { _navigate("prev"); };
+      _nextListener = function () { _navigate("next"); };
       _inputKeyListener = function (e) {
         if (e.key !== "Enter") return;
         var val = parseInt(input.value, 10);
@@ -2559,15 +2776,27 @@
         input.addEventListener("blur",    _inputBlurListener);
       }
 
-      // UI-Zustand setzen — traceElements sind zu diesem Zeitpunkt im State
+      // seqIndex auf aktuelle Seite setzen (Sequenz bereits geladen)
+      var idx = _seqIndexForUrl(_currentUrl());
+      if (idx >= 0) {
+        _ForensicToolbar_setState({ traceSeqIndex: idx });
+      }
+
       _update();
     }
 
-    // Nach Seitenload neu initialisieren.
-    // traceElements wurden bereits via _setState() in _handleEnvelope gesetzt,
-    // bevor page:loaded emittiert wird — _update() in init() liest den
-    // korrekten Wert.
+    // Nach erstem Seitenload Sequenz laden
+    var _seqLoaded = false;
     ForensicToolbar.events.on("page:loaded", function () {
+      if (!_seqLoaded) {
+        _seqLoaded = true;
+        _loadSequence();
+      } else {
+        // Sequenz-Cache ist stabil (Server-Daten ändern sich nicht während Session)
+        // Nur seqIndex neu bestimmen
+        var idx = _seqIndexForUrl(_currentUrl());
+        _ForensicToolbar_setState({ traceSeqIndex: idx });
+      }
       setTimeout(init, 0);
     });
 
@@ -2575,6 +2804,9 @@
     ForensicToolbar.events.on("state:changed", function (updates) {
       if ("traceElements" in updates) {
         _currentIdx = -1;
+        _update();
+      }
+      if ("traceSequence" in updates || "traceSeqIndex" in updates) {
         _update();
       }
     });

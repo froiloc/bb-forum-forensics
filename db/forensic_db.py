@@ -866,6 +866,125 @@ class ForensicDb:
 
         return results
 
+    def get_trace_sequence(self) -> "list[dict]":
+        """
+        Liefert die geordnete Spurensequenz aller Seiten mit Spuren des
+        Beschuldigten für die seitenübergreifende Spur-Navigation (OP-KN-7).
+
+        Reihenfolge: Gruppe (profile → pm → topic → other),
+        innerhalb Gruppe: scrape_targets.id ASC (= Autoincrement =
+        chronologische Erfassungsreihenfolge).
+
+        Nur Seiten die in fdb.pages existieren (gescrapte Seiten mit BLOB)
+        werden geliefert — Scrape-Targets ohne zugehörige Seite werden
+        übersprungen.
+
+        Returns:
+            Liste von dicts mit den Feldern:
+              url      — normalisierte Seiten-URL (ohne Onion-Präfix)
+              title    — Seitentitel aus fdb.pages.title (kann None sein)
+              group    — Navigationsgruppe: 'profile'|'pm'|'topic'|'other'
+              trace_id — scrape_targets.id (für Debugging + Paginierung)
+
+        Beleg: OP-KN-7, Projektgespräch 2026-04-26, Build 072.
+        """
+        base_url = self.get_forum_base_url() or ""
+
+        # Alle scrape_targets mit zugehöriger fdb.pages-Seite.
+        # LEFT JOIN auf pages über blob_lookup (normalisierte URL).
+        # url_type='static' wird ausgeschlossen — statische Seiten sind
+        # keine Spuren des Beschuldigten.
+        # Beleg: scrape_targets.url_type-Werte aus forensic_schema_db.sql.
+        sql = """
+            SELECT
+                st.id           AS trace_id,
+                st.url_type     AS url_type,
+                bl.url          AS url,
+                p.title         AS title
+            FROM fdb.scrape_targets st
+            -- URL der Spur aus url_type und zugehöriger ID ableiten:
+            -- Wir joinen auf pages über die URL aus blob_lookup.
+            -- Da blob_lookup die normalisierten URLs enthält, können wir
+            -- direkt matchen.
+            JOIN blob_lookup bl ON (
+                -- topic: viewtopic.php?id=<topic_id>
+                (st.url_type = 'topic'
+                    AND bl.url LIKE '%viewtopic.php?id=' || st.topic_id || '%')
+                -- pm: pmsnew.php?mdl=topic&tid=<pm_topic_id>
+                OR (st.url_type = 'pm'
+                    AND bl.url LIKE '%pmsnew.php%tid=' || st.pm_topic_id || '%')
+                -- profile: profile.php?id=<actor_user_id>
+                OR (st.url_type = 'profile'
+                    AND bl.url LIKE '%profile.php?id=' || st.actor_user_id || '%')
+                -- forum: viewforum.php?id=<forum_id>
+                OR (st.url_type = 'forum'
+                    AND bl.url LIKE '%viewforum.php?id=' || st.forum_id || '%')
+                -- thanks: thanks.php?id=<thanks_post_id>
+                OR (st.url_type = 'thanks'
+                    AND bl.url LIKE '%thanks.php%' || st.thanks_post_id || '%')
+                -- poll: viewtopic.php?id=<poll_topic_id> (gleiche Seite wie topic)
+                OR (st.url_type = 'poll'
+                    AND bl.url LIKE '%viewtopic.php?id=' || st.poll_topic_id || '%')
+            )
+            -- pages direkt für title (blob_lookup enthält keinen title)
+            JOIN fdb.pages p ON p.id = (
+                SELECT page_id FROM blob_lookup WHERE url = bl.url LIMIT 1
+            )
+            WHERE st.url_type != 'static'
+            ORDER BY st.id ASC
+        """
+
+        try:
+            rows = self._con.execute(sql).fetchall()
+        except Exception as exc:
+            logger.error("get_trace_sequence() SQL fehlgeschlagen: %s", exc)
+            return []
+
+        # Gruppieren und sortieren: profile(0) → pm(1) → topic(2) → other(3)
+        group_order = {"profile": 0, "pm": 1, "topic": 2, "other": 3}
+
+        def _to_group(url_type: str) -> str:
+            if url_type == "profile":
+                return "profile"
+            if url_type in ("pm", "pmsnew"):
+                return "pm"
+            if url_type in ("topic", "post", "poll", "thanks"):
+                return "topic"
+            return "other"
+
+        # Deduplizieren: gleiche URL nur einmal (mehrere scrape_targets können
+        # dieselbe Seite referenzieren — z.B. topic + poll auf viewtopic.php).
+        seen_urls: set[str] = set()
+        raw_entries = []
+        for row in rows:
+            url_norm = str(row["url"] or "")
+            if url_norm in seen_urls:
+                continue
+            seen_urls.add(url_norm)
+            group = _to_group(str(row["url_type"] or ""))
+            raw_entries.append({
+                "url":      url_norm,
+                "title":    str(row["title"]).strip() if row["title"] else None,
+                "group":    group,
+                "trace_id": int(row["trace_id"]),
+                "_sort_key": group_order.get(group, 3),
+            })
+
+        # Stabile Sortierung: Gruppe zuerst, dann trace_id (Autoincrement)
+        raw_entries.sort(key=lambda e: (e["_sort_key"], e["trace_id"]))
+
+        # _sort_key aus Output entfernen
+        result = []
+        for e in raw_entries:
+            result.append({
+                "url":      e["url"],
+                "title":    e["title"],
+                "group":    e["group"],
+                "trace_id": e["trace_id"],
+            })
+
+        return result
+
     def page_count(self) -> int:
 
         """

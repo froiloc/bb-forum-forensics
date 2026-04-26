@@ -20,7 +20,7 @@
 #   /_forensic/userinfo/static   (GET)        -> UserinfoStaticEndpoint [B4]
 #   /_forensic/userinfo.js       (GET)        -> StaticEndpoint        [B4]
 #   /_forensic/userinfo.css      (GET)        -> StaticEndpoint        [B4]
-#   /_forensic/search            (GET)        -> SearchEndpoint        [KN-3]
+#   /_forensic/trace_sequence    (GET)        -> TraceSequenceEndpoint  [KN-7]
 #   /_forensic/reports           (GET, POST)  -> ReportsEndpoint       [AP-E3]
 #   /_forensic/editor/block      (POST)       -> EditorBlockEndpoint   [AP-E3]
 #   /_forensic/editor/order      (POST)       -> EditorOrderEndpoint   [AP-E3]
@@ -41,9 +41,9 @@
 #     EditorEvidenceEndpoint, StaticEndpoint.handle_editor_asset.
 #     Beleg: AP-E3, Projektgespraech 2026-04-19
 #
-#   Build 070 (KN-3): SearchEndpoint ergaenzt (/_forensic/search).
+#   Build 072 (KN-7): TraceSequenceEndpoint ergaenzt (/_forensic/trace_sequence).
 #
-# Version: v0.6.070 · Build: 070 · 2026-04-26
+# Version: v0.6.072 · Build: 072 · 2026-04-26
 # =============================================================================
 
 from __future__ import annotations
@@ -104,6 +104,7 @@ class ForensicApi:
         self._editor_order     = None  # [AP-E3]
         self._editor_evidence  = None  # [AP-E3]
         self._search           = None  # [KN-3]
+        self._trace_sequence   = None  # [KN-7]
 
     def dispatch(
         self,
@@ -258,6 +259,14 @@ class ForensicApi:
             else:
                 self._method_not_allowed(handler)
                 return
+
+        # /_forensic/trace_sequence (GET) [KN-7]
+        if url_path == "/_forensic/trace_sequence":
+            if method not in ("GET", "HEAD"):
+                self._method_not_allowed(handler)
+                return
+            self._get_trace_sequence().handle(handler, params)
+            return
 
         # /_forensic/search (GET) [KN-3]
         # Kontext-Navigator: gefilterte Seitenliste für Dropdown + Modal.
@@ -467,3 +476,10 @@ class ForensicApi:
             from forensic_api.search import SearchEndpoint
             self._search = SearchEndpoint(self._bundle, self._context, self._config)
         return self._search
+
+    def _get_trace_sequence(self):
+        """[KN-7] Lazy-Init fuer TraceSequenceEndpoint. Beleg: OP-KN-7, Build 072."""
+        if self._trace_sequence is None:
+            from forensic_api.trace_sequence import TraceSequenceEndpoint
+            self._trace_sequence = TraceSequenceEndpoint(self._bundle, self._context, self._config)
+        return self._trace_sequence
