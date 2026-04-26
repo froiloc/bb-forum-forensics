@@ -2,8 +2,26 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 059 · 2026-04-26
+ * Version: v0.1.0 · Build: 060 · 2026-04-26
  * Klassifikation: VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
+ *
+ * Änderungen Build 060 (Bugfixes: Highlights + HoverMenu):
+ *
+ *   Fix 1 — Highlights nach Reload unsichtbar:
+ *     HighlightModule.restoreAll() und alle post-load Module werden jetzt
+ *     in requestAnimationFrame() verzögert. Beleg: Nach viewport.innerHTML
+ *     ist das Browser-Rendering asynchron — XPath-Auflösung über
+ *     #forensic-viewport schlug fehl weil der Layout-Tree noch nicht fertig
+ *     war. Symptom: Minimap zeigte Annotations, <mark>-Tags fehlten.
+ *
+ *   Fix 2 — HoverMenu: Position instabil, Menü unerreichbar:
+ *     Event-Delegation auf Post-Container-Ebene ([data-forensic-cat]) statt
+ *     beliebige Kind-Elemente. Menüposition jetzt relativ zu getBoundingClientRect()
+ *     des Post-Containers (stabil), nicht zur Mausposition (instabil).
+ *     mouseout schließt das Menü nicht mehr wenn Maus noch im Post-Container
+ *     oder im Menü selbst verbleibt.
+ *     Beleg: mouseover auf Kind-Element + mouseout beim Verlassen in Richtung
+ *     Menü führte zum sofortigen Schließen des Menüs.
  *
  * Änderungen Build 059 (OP-KN-9 — Annotation Hover-Menü Delete-Fix):
  *   - ajaxDelete(): neue AJAX-Hilfsfunktion für HTTP DELETE mit JSON-Body.
@@ -1121,17 +1139,28 @@
 
       // Annotationen laden, Highlights + Minimap (inkl. Spuren) wiederherstellen
       AnnotationStoreModule.loadAnnotations(_state.currentUrl).then(function () {
-        HighlightModule.restoreAll();
-        // MinimapModule.refresh() rendert sowohl Spur-Marker (traceElements)
-        // als auch Annotations-Marker — traceElements sind zu diesem Zeitpunkt
-        // bereits im State (setState in _handleEnvelope oben).
-        MinimapModule.refresh();
-        // TraceNavigationModule.init() aktiviert Spurennummer-Eingabe + ◀/▶
-        TraceNavigationModule.init();
-        ViewportTrackerModule.start(viewport, _state.currentUrl);
-        PMSTableOrganizerModule.init(viewport);
-        TopicsTableOrganizerModule.init(viewport);
-        ToolbarUIModule.updateSessionInfo();
+        // requestAnimationFrame stellt sicher, dass das Browser-Rendering nach
+        // viewport.innerHTML abgeschlossen ist, bevor XPath-Lookups für Highlights
+        // ausgeführt werden.
+        //
+        // Beleg: Fehler "Highlights nach Reload unsichtbar" — rangeFromSelection()
+        // schlug fehl weil der DOM nach innerHTML noch nicht vollständig gerendert
+        // war. Fix Build 060: Highlights werden erst nach nächstem Paint-Frame
+        // wiederhergestellt. Annotations existieren (Minimap zeigt sie), aber
+        // XPath-Auflösung über #forensic-viewport erfordert fertigen Layout-Tree.
+        requestAnimationFrame(function () {
+          HighlightModule.restoreAll();
+          // MinimapModule.refresh() rendert sowohl Spur-Marker (traceElements)
+          // als auch Annotations-Marker — traceElements sind zu diesem Zeitpunkt
+          // bereits im State (setState in _handleEnvelope oben).
+          MinimapModule.refresh();
+          // TraceNavigationModule.init() aktiviert Spurennummer-Eingabe + ◀/▶
+          TraceNavigationModule.init();
+          ViewportTrackerModule.start(viewport, _state.currentUrl);
+          PMSTableOrganizerModule.init(viewport);
+          TopicsTableOrganizerModule.init(viewport);
+          ToolbarUIModule.updateSessionInfo();
+        }); // END requestAnimationFrame
       });
 
       ContextBadgeModule.update(_state.scrapeContext);
@@ -1790,25 +1819,57 @@
     }
 
     // Viewport-Event-Listener
+    //
+    // Beleg: Fehler "HoverMenu unerreichbar" — Build 059 delegierte mouseover/
+    // mouseout auf beliebige Kind-Elemente. Beim Verlassen eines Kind-Elements
+    // in Richtung Menü feuerte mouseout → Menü verschwand.
+    //
+    // Fix Build 060: Event-Delegation auf Post-Ebene ([data-forensic-cat] oder
+    // Post-ID-Anker [id^="p"]). Das Menü öffnet erst, wenn die Maus mindestens
+    // HOVER_DELAY_MS auf dem Post-Container verbleibt. mouseout prüft ob das
+    // relatedTarget noch im selben Post-Container liegt — wenn ja, kein Schließen.
+    // Zusätzlich: _showMenu() positioniert das Menü relativ zum Post-Container
+    // (getBoundingClientRect), nicht zur aktuellen Mausposition, damit die
+    // Position stabil und vorhersehbar ist.
     ForensicToolbar.events.on("page:loaded", function () {
       var vp = document.getElementById("forensic-viewport");
       if (!vp) return;
 
       vp.addEventListener("mouseover", function (e) {
-        var ann = _findAnnotationAtElement(e.target);
+        // Delegation: Post-Container finden, nicht Kind-Elemente direkt
+        var postEl = e.target.closest
+          ? e.target.closest("[data-forensic-cat]")
+          : null;
+        if (!postEl) return;
+
+        // Annotation für diesen Post-Container suchen
+        var ann = _findAnnotationAtElement(postEl);
         if (!ann) return;
+
+        // Bereits im gleichen Post → Timer nicht neu starten
+        if (_timer && _targetAnn && _targetAnn === ann) return;
+
         clearTimeout(_timer);
         _timer = setTimeout(function () {
-          _showMenu(ann, e.pageX, e.pageY - 40);
+          // Position: rechte obere Ecke des Post-Containers (stabil, unabhängig von Mauspos)
+          var rect = postEl.getBoundingClientRect();
+          var x = rect.right + window.scrollX - 80; // 80px vom rechten Rand
+          var y = rect.top  + window.scrollY + 4;
+          _showMenu(ann, x, y);
         }, ForensicToolbar.config.HOVER_DELAY_MS);
       });
 
       vp.addEventListener("mouseout", function (e) {
         var related = e.relatedTarget;
-        if (!related || !related.closest || !related.closest(".forensic-hover-menu")) {
-          clearTimeout(_timer);
-          if (!(_menuEl && _menuEl.matches(":hover"))) _hideMenu();
-        }
+        // Wenn Maus zu Menü-Element wechselt → nicht schließen
+        if (related && related.closest && related.closest(".forensic-hover-menu")) return;
+        // Wenn Maus noch im selben Post-Container bleibt → nicht schließen
+        var fromPost = e.target.closest ? e.target.closest("[data-forensic-cat]") : null;
+        if (fromPost && related && fromPost.contains(related)) return;
+        // Andernfalls: Timer abbrechen und Menü schließen
+        clearTimeout(_timer);
+        _timer = null;
+        if (!(_menuEl && _menuEl.matches(":hover"))) _hideMenu();
       });
     });
 
