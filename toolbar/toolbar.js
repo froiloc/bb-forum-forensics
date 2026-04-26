@@ -2,8 +2,19 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 063 · 2026-04-26
+ * Version: v0.1.0 · Build: 064 · 2026-04-26
  * Klassifikation: VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
+ *
+ * Änderungen Build 064:
+ *   Fix Race-Condition Textmarkierung vs. Post-Markierung:
+ *   mouseup → _onMouseUp erstellt Textmarkierung + öffnet Popup + removeAllRanges().
+ *   click → _onPostClick: Selektion ist durch removeAllRanges() bereits kollabiert,
+ *   bisheriger Guard (sel.isCollapsed) reichte nicht — _onPostClick behandelte die
+ *   Annotation als Post-Markierung und überschrieb selection=null + post_id gesetzt.
+ *   Fix: AnnotationPopupModule.isOpen() — wenn Popup bereits offen, bricht
+ *   _onPostClick sofort ab. isOpen() als neue öffentliche Methode ergänzt.
+ *   Beleg: DB-Einträge zeigten selection_json=NULL + post_id gesetzt bei
+ *   expliziter Textselektion.
  *
  * Änderungen Build 063:
  *   Fix HoverMenu-Retrigger: Mousemove-Debounce (_dwellTimer) — wenn die Maus
@@ -1563,6 +1574,16 @@
       if (!activeCat) return;
       if (_state.viewMode === "original") return;
 
+      // Race-Condition-Guard: mouseup → _onMouseUp öffnet Popup für Textmarkierung,
+      // dann feuert click → _onPostClick. _onMouseUp ruft removeAllRanges() auf,
+      // deshalb ist die Selektion hier bereits kollabiert — der bisherige Guard
+      // if (sel && !sel.isCollapsed) return  reichte nicht aus.
+      // Lösung: Wenn das Popup bereits offen ist (von _onMouseUp geöffnet), nicht
+      // als Post-Markierung behandeln.
+      // Beleg: Build 063 — Textmarkierung wurde durch nachfolgenden click-Event als
+      // Post-Markierung überschrieben (selection=null, post_id gesetzt).
+      if (AnnotationPopupModule.isOpen()) return;
+
       // Nächsten Post-Container finden
       var target = e.target;
       var postEl = target.closest ? target.closest(POST_SELECTOR) : null;
@@ -1812,7 +1833,7 @@
         .filter(function (t) { return t.length > 0; });
     }
 
-    return { open: open, close: close };
+    return { open: open, close: close, isOpen: function () { return !!_popupEl; } };
   })();
 
   // ===========================================================================
