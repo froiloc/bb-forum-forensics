@@ -645,8 +645,9 @@ class ForensicDb:
         Architektur-Entscheidungen (Beleg: Bauplan KN §9, Build 070):
           - Basisabfrage gegen fdb.pages (ATTACH-DB) — enthält alle Seiten
             dieses Benutzers.
-          - title: Extraktion aus den ersten 2 KB des HTML-BLOBs via Python-
-            Parser (HeadExtractor). Kein SQL-Subselect auf BLOB nötig.
+          - title: Direkt aus fdb.pages.title (Build 071 — Spalte pages.title
+            verfügbar seit aiw_sqlite_prepper Build 010). Kein BLOB-Parsing
+            mehr nötig. Beleg: forensic_2948078_db.sql — pages.title TEXT.
           - annotationsTotal + tagList: LEFT JOIN auf evidence_db.annotations
             (selbe Verbindung, keine ATTACH nötig).
           - lastViewedAt / firstViewedAt: MAX/MIN aus evidence_db.page_visits.
@@ -682,9 +683,6 @@ class ForensicDb:
         Returns:
             Liste von dicts (PageSummaryRecord-kompatibel), bereits sortiert.
         """
-        # Lazy-Import um zirkuläre Imports zu vermeiden
-        from server.head_extractor import HeadExtractor
-
         limit  = max(1, min(200, int(limit)))
         offset = max(0, int(offset))
 
@@ -700,7 +698,7 @@ class ForensicDb:
             SELECT
                 p.id              AS page_id,
                 p.url_canonical   AS url_canonical,
-                p.html            AS html,
+                p.title           AS title,
                 p.http_status     AS http_status,
                 p.scrape_context  AS scrape_context,
                 COUNT(DISTINCT a.id)        AS ann_count,
@@ -800,20 +798,13 @@ class ForensicDb:
             url_raw      = str(row["url_canonical"] or "")
             url_norm     = url_raw.replace(base_url, "") if base_url else url_raw
 
-            # Titel aus HTML-BLOB extrahieren (max. 2 KB — Performance)
-            title: str | None = None
-            blob = row["html"]
-            if blob:
-                try:
-                    snippet = blob[:2048] if isinstance(blob, (bytes, bytearray)) \
-                              else blob[:2048].encode("utf-8", errors="replace")
-                    head    = HeadExtractor.extract(snippet.decode("utf-8", errors="replace"))
-                    title   = head.title
-                except Exception:
-                    pass  # Kein Titel — Fallback auf URL im Frontend
+            # fetch_failed: html IS NULL oder http_status nicht 200
+            # html wird nicht mehr geladen — fetch_failed via http_status
+            fetch_failed = int(row["http_status"] or 0) not in (200, 0)
 
-            # fetch_failed
-            fetch_failed = (row["html"] is None) or (int(row["http_status"] or 0) not in (200, 0))
+            # Titel direkt aus pages.title (Build 071 — kein BLOB-Parsing mehr)
+            title_raw = row["title"]
+            title = str(title_raw).strip() if title_raw else None
 
             # Annotations-Zähler
             ann_count = int(row["ann_count"] or 0)

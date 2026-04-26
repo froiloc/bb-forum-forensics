@@ -2,9 +2,14 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 070 · 2026-04-26
+ * Version: v0.1.0 · Build: 071 · 2026-04-26
  *
- * Änderungen Build 070 (Phase KN-3 — Server-Anbindung Kontext-Navigator):
+ * Änderungen Build 071:
+ *   ContextNavigatorModule — kein funktionaler JS-Change.
+ *   Datenbankschicht: search_pages() liest pages.title direkt aus der
+ *   DB-Spalte (Build 071 — forensic_2948078_db.sql bestätigt pages.title TEXT).
+ *   HeadExtractor-Import und BLOB-Parsing entfernt. Sauberer und schneller.
+ *   Beleg: forensic_2948078_db.sql, Rückmeldung Build 070.
  *   ContextNavigatorModule.getPages(): Mock-Daten ersetzt durch echten
  *   AJAX-Call an /_forensic/search?limit=50&sort=last_viewed_desc.
  *   MOCK_PAGES-Array bleibt im Code als Dokumentation erhalten, wird aber

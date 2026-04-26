@@ -34,3 +34,7 @@ node_modules
 tools/validation/__pycache__
 
 *__pycache__
+
+anon_html.py
+highlight_poc.html
+
