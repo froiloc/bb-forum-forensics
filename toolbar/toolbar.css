@@ -2,7 +2,22 @@
  * toolbar.css — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 030 · 2026-04-16
+ * Version: v0.1.0 · Build: 066 · 2026-04-26
+ *
+ * Änderungen Build 066:
+ *   - .forensic-ctx-dropdown-btn: Dropdown-Button in Zone Links / Sektion 1.
+ *   - .forensic-ctx-badge / --user / --investigator / --actor: Kontext-Badge
+ *     im Button (ersetzt .forensic-badge in Sektion 1).
+ *   - .forensic-ctx-panel: Dropdown-Panel (schwebt unterhalb Sektion 1).
+ *   - .forensic-ctx-search-row / .forensic-ctx-search: Suchzeile.
+ *   - .forensic-ctx-chips / .forensic-ctx-chip / --active: Schnellfilter.
+ *   - .forensic-ctx-list / .forensic-ctx-item / -row / -meta: Seitenliste.
+ *   - .forensic-ctx-bar-wrap / .forensic-ctx-seg / --on / --green/yellow/red:
+ *     Fortschrittsbalken-Segmente.
+ *   - .forensic-ctx-footer / .forensic-ctx-modal-link: Panel-Footer.
+ *   - .forensic-ctx-loading / .forensic-ctx-empty: Lade- und Leer-Zustände.
+ *   - .forensic-sec-context, .forensic-select: als obsolet markiert
+ *     (Dummy-Select entfernt in Build 066).
  *
  * Änderungen Build 030-B:
  *   - #forensic-toolbar: right: 0 (Minimap liegt über Toolbar, nicht daneben).
@@ -948,3 +963,336 @@ body {
 .forensic-toast__close:hover {
   color: #c8d0e8;
 }
+
+/* ==========================================================================
+   Kontext-Navigator Dropdown (Build 066)
+   Bauplan: Baustelle 3 Ergänzung Kontext-Navigator v0.6, §5
+   ========================================================================== */
+
+/* --- Dropdown-Button (ersetzt forensic-context-badge in Sektion 1) --- */
+
+.forensic-ctx-dropdown-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 5px;
+  color: #c8d0e8;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+  min-width: 110px;
+}
+
+.forensic-ctx-dropdown-btn:hover,
+.forensic-ctx-dropdown-btn--open {
+  background: rgba(255,255,255,0.13);
+  border-color: rgba(255,255,255,0.3);
+}
+
+.forensic-ctx-dropdown-btn:focus-visible {
+  outline: 2px solid #4f8ef7;
+  outline-offset: 2px;
+}
+
+.forensic-ctx-btn-icon {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.forensic-ctx-btn-label {
+  font-size: 11px;
+  color: #8a9abf;
+  letter-spacing: 0.03em;
+}
+
+.forensic-ctx-btn-arrow {
+  font-size: 10px;
+  color: #6a80b0;
+  margin-left: 2px;
+  transition: transform 0.15s;
+}
+
+.forensic-ctx-dropdown-btn--open .forensic-ctx-btn-arrow {
+  transform: rotate(180deg);
+}
+
+/* --- Kontext-Badge im Button --- */
+
+.forensic-ctx-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  letter-spacing: 0;
+  flex-shrink: 0;
+}
+
+.forensic-ctx-badge--user {
+  background: #1e7e34;
+  color: #e0ffe0;
+}
+
+.forensic-ctx-badge--investigator {
+  background: #c0392b;
+  color: #fff0f0;
+}
+
+.forensic-ctx-badge--actor {
+  background: #c07020;
+  color: #fff8e0;
+}
+
+/* --- Dropdown-Panel --- */
+
+.forensic-ctx-panel {
+  position: absolute;
+  top: 44px;              /* unterhalb der Toolbar */
+  left: 0;
+  z-index: 1100;
+  width: 360px;
+  max-width: calc(100vw - 16px);
+  background: #1a2035;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 7px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  overflow: hidden;
+}
+
+/* --- Suchzeile --- */
+
+.forensic-ctx-search-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.forensic-ctx-search-icon {
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.forensic-ctx-search {
+  flex: 1;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 4px;
+  color: #c8d0e8;
+  font-size: 12px;
+  padding: 4px 7px;
+  outline: none;
+}
+
+.forensic-ctx-search:focus {
+  border-color: #4f8ef7;
+  background: rgba(79,142,247,0.08);
+}
+
+.forensic-ctx-search::placeholder {
+  color: #4a5a7a;
+}
+
+/* --- Schnellfilter-Chips --- */
+
+.forensic-ctx-chips {
+  display: flex;
+  gap: 4px;
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  flex-wrap: wrap;
+}
+
+.forensic-ctx-chip {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  color: #8a9abf;
+  font-size: 11px;
+  padding: 2px 9px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.forensic-ctx-chip:hover {
+  background: rgba(255,255,255,0.12);
+  color: #c8d0e8;
+}
+
+.forensic-ctx-chip--active {
+  background: rgba(79,142,247,0.2);
+  border-color: #4f8ef7;
+  color: #a0c0ff;
+}
+
+.forensic-ctx-chip:focus-visible {
+  outline: 2px solid #4f8ef7;
+  outline-offset: 1px;
+}
+
+/* --- Seitenliste --- */
+
+.forensic-ctx-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  max-height: 320px;     /* ca. 8 Einträge — Bauplan KN §5.3 */
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #2a3555 transparent;
+}
+
+.forensic-ctx-list::-webkit-scrollbar {
+  width: 5px;
+}
+.forensic-ctx-list::-webkit-scrollbar-thumb {
+  background: #2a3555;
+  border-radius: 3px;
+}
+
+/* --- Einzelner Seiteneintrag --- */
+
+.forensic-ctx-item {
+  padding: 5px 10px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  transition: background 0.1s;
+}
+
+.forensic-ctx-item:hover,
+.forensic-ctx-item:focus {
+  background: rgba(255,255,255,0.07);
+  outline: none;
+}
+
+.forensic-ctx-item:focus-visible {
+  outline: 2px solid #4f8ef7;
+  outline-offset: -2px;
+}
+
+.forensic-ctx-item-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.forensic-ctx-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  font-size: 10px;
+  color: #5a6a8a;
+}
+
+/* --- Fortschrittsbalken-Segmente --- */
+
+.forensic-ctx-bar-wrap {
+  display: flex;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.forensic-ctx-seg {
+  width: 6px;
+  height: 8px;
+  border-radius: 1px;
+  background: rgba(255,255,255,0.1);
+}
+
+/* Farbe der gefüllten Segmente je Klasse */
+.forensic-ctx-bar--green  .forensic-ctx-seg--on { background: #3cb55a; }
+.forensic-ctx-bar--yellow .forensic-ctx-seg--on { background: #c8a020; }
+.forensic-ctx-bar--red    .forensic-ctx-seg--on { background: #c04040; }
+
+.forensic-ctx-pct {
+  font-size: 10px;
+  color: #6a80b0;
+  width: 30px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.forensic-ctx-traces,
+.forensic-ctx-anns {
+  font-size: 11px;
+  color: #7a8aaa;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.forensic-ctx-url {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #b0c0e0;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+}
+
+.forensic-ctx-fail {
+  font-size: 11px;
+  margin-left: 2px;
+}
+
+.forensic-ctx-time {
+  font-size: 10px;
+  color: #4a5a7a;
+}
+
+/* --- Lade- und Leer-Zustand --- */
+
+.forensic-ctx-loading,
+.forensic-ctx-empty {
+  padding: 12px 10px;
+  font-size: 12px;
+  color: #5a6a8a;
+  text-align: center;
+  list-style: none;
+}
+
+/* --- Panel-Footer --- */
+
+.forensic-ctx-footer {
+  padding: 6px 10px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.forensic-ctx-modal-link {
+  background: none;
+  border: none;
+  color: #6a8abf;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 0;
+  width: 100%;
+  text-align: left;
+  transition: color 0.15s;
+}
+
+.forensic-ctx-modal-link:hover {
+  color: #a0c0ff;
+}
+
+.forensic-ctx-modal-link:focus-visible {
+  outline: 2px solid #4f8ef7;
+  outline-offset: 2px;
+}
+
+/* --- Obsolete Klassen (Build 066: Dummy-Select entfernt) ---
+   Behalten für Rückwärtskompatibilität falls externe HTML-Stubs existieren.
+   Werden in einer späteren Aufräumversion entfernt.
+   .forensic-sec-context { ... }   obsolet
+   .forensic-select { ... }        obsolet
+   ---------------------------------------------------------------- */

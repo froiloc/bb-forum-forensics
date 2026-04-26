@@ -2,8 +2,58 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 065 · 2026-04-26
+ * Version: v0.1.0 · Build: 067 · 2026-04-26
  * Klassifikation: VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
+ *
+ * Änderungen Build 067 (Fix — Null-Guard in ContextDropdownModule._bindEvents):
+ *   _bindEvents() crashte in JSDOM-Testumgebungen ohne vollständiges Shell-HTML
+ *   (#forensic-sec1 / #forensic-toolbar fehlend), weil _buildDOM() bereits korrekt
+ *   früh abbricht (Guard `if (!sec1) return`), aber _btn und _panel dadurch null
+ *   bleiben. _bindEvents() versuchte trotzdem _btn.addEventListener() → TypeError.
+ *   Fix: Guard `if (!_btn || !_panel) return;` am Anfang von _bindEvents().
+ *   Betroffene Tests: test_levenshtein.test.js, test_state.test.js und alle anderen
+ *   Tests mit minimal-DOM (ohne forensic-sec1/forensic-toolbar im JSDOM-HTML).
+ *   Beleg: Fehlermeldung auf Produktivsystem Build 066 —
+ *   `TypeError: Cannot read properties of null (reading 'addEventListener')`
+ *   bei _bindEvents Zeile 3534.
+ *
+ * Änderungen Build 066 (Kontext-Navigator Phase KN-1 + KN-2):
+ *
+ *   ContextNavigatorModule (Phase KN-1):
+ *     Koordinator für den Kontext-Navigator. Hält den Dropdown-Cache
+ *     (bis zu 50 PageSummaryRecords), leitet Events zwischen
+ *     ContextDropdownModule und NavigationModule und invalidiert den
+ *     Cache bei page:loaded. Öffentlich exponiert als
+ *     ForensicToolbar.navigator.
+ *
+ *   ContextDropdownModule (Phase KN-2):
+ *     Ersetzt den statischen Badge (forensic-context-badge) und den
+ *     Dummy-Select (forensic-context-select) durch einen vollständigen
+ *     Dropdown-Button in Zone Links / Sektion 1.
+ *     Features: Kontext-Badge (U/E/A), Panel mit Seitenliste,
+ *     Freitextfilter (Debounce 150 ms), vier Schnellfilter-Chips,
+ *     Lade-Indikator, «Erweiterte Suche»-Einstieg (Stub).
+ *     Datenbasis: Mock-Daten (Phase KN-3 bringt Server-Anbindung).
+ *     ARIA: role="combobox", aria-expanded, aria-haspopup="listbox",
+ *     Focus-Trap im Panel, Esc schließt.
+ *     Tastenkürzel: Alt+K öffnet/fokussiert das Dropdown.
+ *     Beleg: Bauplan Baustelle 3 Ergänzung Kontext-Navigator v0.6 §5.
+ *
+ *   State-Erweiterung (§3 Bauplan Kontext-Navigator):
+ *     contextDropdownOpen, contextModalOpen, contextSearchResults.
+ *
+ *   ToolbarUIModule: Dummy-Select-Block (forensic-sec-context) und
+ *     zugehöriger Separator entfernt — Funktion wird vollständig
+ *     durch ContextDropdownModule übernommen.
+ *     Beleg: forensic-context-select war als Dummy markiert (Build 030-B).
+ *
+ *   ContextBadgeModule: bleibt als Modul erhalten, operiert aber
+ *     nicht mehr auf einem eigenen DOM-Knoten in Zone Links — es
+ *     delegiert stattdessen an ContextDropdownModule.updateBadge().
+ *     Rückwärtskompatibel: ContextBadgeModule.update() funktioniert
+ *     weiterhin und kann von NavigationModule aufgerufen werden.
+ *
+ *   API_SEARCH: Neuer Config-Eintrag für /_forensic/search.
  *
  * Änderungen Build 065:
  *
@@ -159,6 +209,8 @@
  *   PMSTableOrganizerModule  — Sortierung/Filterung PN-Übersichtstabelle (Phase 11)
  *   TopicsTableOrganizerModule — Sortierung/Filterung Topic-Tabellen (Phase 11)
  *   SupportIndicatorModule   — SSE-Empfang, Support-Indikator (Phase 12)
+ *   ContextNavigatorModule   — Koordinator Kontext-Navigator (Phase KN-1)
+ *   ContextDropdownModule    — Schnell-Dropdown Sektion 1 (Phase KN-2)
  */
 
 (function () {
@@ -182,6 +234,8 @@
     API_VIEWPORT:    "/_forensic/viewport",
     API_EVENTS:      "/_forensic/events",
     API_USERINFO:    "/_forensic/userinfo",
+    // Kontext-Navigator (Build 066, Bauplan KN §7.3)
+    API_SEARCH:      "/_forensic/search",
 
     // Annotationskategorien (Reihenfolge = Tastenkürzel 1-6)
     CATEGORIES: [
@@ -310,6 +364,14 @@
     forumHostname:        "",
     lastSaveTs:           null,
     syncErrorCount:       0,
+    // Kontext-Navigator (Build 066, Bauplan KN §3)
+    // contextDropdownOpen: Dropdown gerade sichtbar?
+    // contextModalOpen:    Erweiterte-Suche-Modal geöffnet?
+    // contextSearchResults: Zuletzt geladene Seiten-Zusammenfassungen (PageSummaryRecord[]).
+    //   Flüchtig — nicht persistiert, nicht zwischen Navigationen beibehalten.
+    contextDropdownOpen:   false,
+    contextModalOpen:      false,
+    contextSearchResults:  [],
   };
 
   // Öffentlicher Read-only-Zugriff auf State
@@ -981,10 +1043,11 @@
         // =====================================================================
         '<div class="forensic-zone forensic-zone-left">' +
 
-          // Sektion 1: Kontext-Badge
-          '<div class="forensic-section forensic-sec1" aria-label="Ermittlungskontext">' +
-          '<span id="forensic-context-badge" role="status" aria-live="polite" ' +
-          'class="forensic-badge forensic-badge-user">Nutzersicht</span>' +
+          // Sektion 1: Kontext-Navigator (Build 066)
+          // ContextDropdownModule mountet hier seinen Button + Panel.
+          // Der frühere statische forensic-context-badge wird durch den
+          // Dropdown-Button ersetzt (Bauplan KN §5.1).
+          '<div class="forensic-section forensic-sec1" id="forensic-sec1" aria-label="Ermittlungskontext">' +
           '</div>' +
 
         '</div>' + // /zone-left
@@ -994,18 +1057,6 @@
         // Enthält: Seitenkontext-Dropdown | Marker-Buttons | Aktionen
         // =====================================================================
         '<div class="forensic-zone forensic-zone-center">' +
-
-          // Sektion 2a: Seitenkontext-Dropdown (§OP-6, Dummy Build 030-B)
-          // Ermöglicht Sprung zu anderen Seiten des Benutzers.
-          // Funktionalität wird in späterem Build ergänzt.
-          '<div class="forensic-section forensic-sec-context" aria-label="Seitenkontext">' +
-          '<span class="forensic-sec-label">Kontext</span>' +
-          '<select id="forensic-context-select" class="forensic-select" ' +
-          'aria-label="Seitenkontext wählen" title="Seite direkt auswählen" disabled>' +
-          '<option value="">— Seite wählen —</option>' +
-          '</select>' +
-          '</div>' +
-          '<div class="forensic-separator" aria-hidden="true"></div>' +
 
           // Sektion 2b: Markier-Werkzeuge
           '<div class="forensic-section forensic-sec2" role="group" aria-label="Markierungskategorien">' +
@@ -2556,26 +2607,27 @@
   // ===========================================================================
   // PHASE 10: ContextBadgeModule — scrape_context-Anzeige
   // ===========================================================================
+  // Build 066: Das Modul delegiert an ContextDropdownModule.updateBadge().
+  // Der eigene DOM-Knoten (forensic-context-badge) existiert nicht mehr —
+  // das Badge ist jetzt Teil des Dropdown-Buttons in Sektion 1.
+  // ContextBadgeModule bleibt als öffentliche Schnittstelle erhalten, damit
+  // NavigationModule (_handleEnvelope) ohne Änderung weiterarbeitet.
+  // Beleg: Bauplan KN §5.1 — «ContextBadgeModule selbst bleibt unverändert —
+  // ContextDropdownModule rendert seinen eigenen Button».
+  // Anpassung Build 066: Da wir den DOM-Knoten übernehmen, delegieren wir.
   var ContextBadgeModule = (function () {
 
     function update(scrapeContext) {
-      var badge = document.getElementById("forensic-context-badge");
-      if (!badge) return;
-
-      badge.className = "forensic-badge";
-
+      // Delegation an ContextDropdownModule (Build 066).
+      // ContextDropdownModule ist nach ContextBadgeModule initialisiert —
+      // beim ersten Aufruf aus _handleEnvelope ist es bereits verfügbar.
+      if (typeof ContextDropdownModule !== "undefined") {
+        ContextDropdownModule.updateBadge(scrapeContext);
+      }
+      // Investigator-Banner weiterhin direkt verwalten (kein Dropdown-Bezug).
       if (scrapeContext === "investigator") {
-        badge.textContent = "🔴 ERMITTLER-SESSION";
-        badge.className  += " forensic-badge-investigator";
         _showInvestigatorBanner();
-      } else if (scrapeContext && scrapeContext.startsWith("actor:")) {
-        var uid = scrapeContext.split(":")[1] || "?";
-        badge.textContent = "⚠ Fremd-Session · Nutzer #" + uid;
-        badge.className  += " forensic-badge-actor";
-        _hideInvestigatorBanner();
       } else {
-        badge.textContent = "✓ Nutzersicht";
-        badge.className  += " forensic-badge-user";
         _hideInvestigatorBanner();
       }
     }
@@ -3207,6 +3259,582 @@
   })();
 
   // ===========================================================================
+  // PHASE KN-1: ContextNavigatorModule — Koordinator Kontext-Navigator
+  // ===========================================================================
+  // Bauplan: Baustelle 3 Ergänzung Kontext-Navigator v0.6, §2 + §3.
+  //
+  // Aufgaben:
+  //   - Hält den Seiten-Cache (Array von PageSummaryRecord, max. 50 Einträge)
+  //   - Invalidiert den Cache bei page:loaded (Fortschrittsgrad kann sich
+  //     geändert haben)
+  //   - Leitet navigator:page_selected → NavigationModule.loadPage()
+  //   - Öffnet Erweiterungs-Suche-Modal (Stub KN-4) bei navigator:modal_open
+  //   - Exponiert ForensicToolbar.navigator für Tests und ContextDropdownModule
+  //
+  // Phase KN-3 ergänzt hier: _loadFromServer() statt Mock-Daten.
+  // ===========================================================================
+  var ContextNavigatorModule = (function () {
+
+    // Cache: Array<PageSummaryRecord> | null (null = noch nicht geladen)
+    var _cache = null;
+
+    // Cache-Ladeversprechen — verhindert parallele Anfragen
+    var _loadingPromise = null;
+
+    // Mock-Daten für Phase KN-2 (wird in Phase KN-3 durch Server-Anbindung ersetzt)
+    // Beleg: Bauplan KN §12 Phase KN-2 — «Lokale Datenhaltung mit Mock-Daten».
+    var MOCK_PAGES = [
+      {
+        url: "/forum/viewtopic.php?id=7",
+        title: "Thema: Tauschangebot",
+        scrapeContext: "user",
+        fetchFailed: false,
+        progressPercent: 52,
+        traceCountTotal: 15,
+        annotationsTotal: 3,
+        tagList: ["username", "pgp"],
+        lastViewedAt: Date.now() - 86400000,  // gestern
+        firstViewedAt: null,
+      },
+      {
+        url: "/forum/viewtopic.php?id=12",
+        title: "Thema: Kontaktaufnahme",
+        scrapeContext: "user",
+        fetchFailed: false,
+        progressPercent: 88,
+        traceCountTotal: 8,
+        annotationsTotal: 7,
+        tagList: ["realname", "email", "telefon"],
+        lastViewedAt: Date.now() - 3600000 * 3,
+        firstViewedAt: null,
+      },
+      {
+        url: "/forum/profile.php?id=18",
+        title: "Profil: Beschuldigter",
+        scrapeContext: "investigator",
+        fetchFailed: true,
+        progressPercent: 30,
+        traceCountTotal: 4,
+        annotationsTotal: 1,
+        tagList: ["foto"],
+        lastViewedAt: Date.now() - 86400000 * 3,
+        firstViewedAt: null,
+      },
+      {
+        url: "/forum/viewtopic.php?id=19",
+        title: "Thema: Allgemein",
+        scrapeContext: "user",
+        fetchFailed: false,
+        progressPercent: 0,
+        traceCountTotal: 2,
+        annotationsTotal: 0,
+        tagList: [],
+        lastViewedAt: null,
+        firstViewedAt: null,
+      },
+      {
+        url: "/forum/pmsnew.php",
+        title: "Private Nachrichten",
+        scrapeContext: "user",
+        fetchFailed: false,
+        progressPercent: 100,
+        traceCountTotal: 23,
+        annotationsTotal: 12,
+        tagList: ["username", "adresse", "krypto"],
+        lastViewedAt: Date.now() - 1800000,
+        firstViewedAt: null,
+      },
+      {
+        url: "/forum/viewforum.php?id=3",
+        title: "Unterforum: Marktplatz",
+        scrapeContext: "user",
+        fetchFailed: false,
+        progressPercent: 65,
+        traceCountTotal: 6,
+        annotationsTotal: 2,
+        tagList: ["krypto"],
+        lastViewedAt: Date.now() - 7200000,
+        firstViewedAt: null,
+      },
+    ];
+
+    /**
+     * Liefert den Cache als Promise<PageSummaryRecord[]>.
+     * Phase KN-2: liefert sofort Mock-Daten.
+     * Phase KN-3: ersetzt durch Server-Anfrage an API_SEARCH.
+     */
+    function getPages() {
+      if (_cache !== null) {
+        return Promise.resolve(_cache);
+      }
+      if (_loadingPromise) {
+        return _loadingPromise;
+      }
+      // KN-2: Mock-Daten simulieren async-Ladezeit (50 ms)
+      _loadingPromise = new Promise(function (resolve) {
+        setTimeout(function () {
+          _cache = MOCK_PAGES.slice();
+          ForensicToolbar._setState({ contextSearchResults: _cache });
+          _loadingPromise = null;
+          resolve(_cache);
+        }, 50);
+      });
+      return _loadingPromise;
+    }
+
+    /** Cache invalidieren — wird bei page:loaded aufgerufen */
+    function invalidateCache() {
+      _cache = null;
+      _loadingPromise = null;
+      ForensicToolbar._setState({ contextSearchResults: [] });
+    }
+
+    function init() {
+      // Cache bei Seitennavigation invalidieren (Fortschrittsgrad kann sich ändern)
+      ForensicToolbar.events.on("page:loaded", function () {
+        invalidateCache();
+        // Dropdown informieren, falls geöffnet (es zeigt dann Lade-Indikator)
+        ForensicToolbar.events.emit("navigator:cache_invalidated");
+      });
+
+      // Seitenauswahl aus Dropdown → NavigationModule
+      ForensicToolbar.events.on("navigator:page_selected", function (data) {
+        if (data && data.url) {
+          ForensicToolbar.navigation.loadPage(data.url, true);
+        }
+      });
+
+      // Modal öffnen (Stub — KN-4 implementiert das vollständige Modal)
+      ForensicToolbar.events.on("navigator:modal_open", function () {
+        ForensicToolbar._setState({ contextModalOpen: true });
+        ToastModule.show("Erweiterte Suche — folgt in Phase KN-4", ToastModule.TYPES[0]);
+      });
+    }
+
+    // Öffentliche API
+    ForensicToolbar.navigator = {
+      getPages:        getPages,
+      invalidateCache: invalidateCache,
+    };
+
+    return { init: init, getPages: getPages, invalidateCache: invalidateCache };
+  })();
+
+  // ===========================================================================
+  // PHASE KN-2: ContextDropdownModule — Schnell-Dropdown in Sektion 1
+  // ===========================================================================
+  // Bauplan: Baustelle 3 Ergänzung Kontext-Navigator v0.6, §5.
+  //
+  // Aufbau:
+  //   [🔍 Kontext [U]▾]  ← Button (mounted in #forensic-sec1)
+  //   ┌──────────────────────────────┐
+  //   │ 🔍 [ Seitensuche...        ] │  ← Freitextfilter (Debounce 150 ms)
+  //   ├──────────────────────────────┤
+  //   │ [Alle][Offen][Abg.][Fehlg.] │  ← Schnellfilter-Chips
+  //   ├──────────────────────────────┤
+  //   │ ... Seiteneinträge ...       │
+  //   ├──────────────────────────────┤
+  //   │ 🔎 Erweiterte Suche ...      │
+  //   └──────────────────────────────┘
+  //
+  // DOM-Eingriffe: Nur eigene Elemente — kein Eingriff in #forensic-viewport.
+  // ARIA: role=combobox + aria-expanded auf Button, role=listbox auf Panel.
+  // Tastenkürzel: Alt+K → Button fokussieren / Dropdown öffnen.
+  // ===========================================================================
+  var ContextDropdownModule = (function () {
+
+    var _btn    = null;   // Dropdown-Button
+    var _panel  = null;   // Dropdown-Panel
+    var _search = null;   // Sucheingabe
+    var _list   = null;   // Seitenliste (ul)
+
+    var _filterText   = "";
+    var _filterChip   = "all";   // "all" | "open" | "done" | "failed"
+    var _debounceTimer = null;
+    var _isOpen       = false;
+
+    // Badge-Klassen nach scrapeContext
+    var BADGE_CONFIG = {
+      "user":         { label: "U", cls: "forensic-ctx-badge--user",        title: "Nutzersicht" },
+      "investigator": { label: "E", cls: "forensic-ctx-badge--investigator", title: "Ermittler-Session" },
+      "actor":        { label: "A", cls: "forensic-ctx-badge--actor",        title: "Fremd-Session" },
+    };
+
+    function _badgeForContext(scrapeContext) {
+      if (!scrapeContext || scrapeContext === "user") {
+        return BADGE_CONFIG["user"];
+      }
+      if (scrapeContext === "investigator") {
+        return BADGE_CONFIG["investigator"];
+      }
+      if (scrapeContext.startsWith("actor:")) {
+        return BADGE_CONFIG["actor"];
+      }
+      return BADGE_CONFIG["user"];
+    }
+
+    // -----------------------------------------------------------------------
+    // DOM aufbauen
+    // -----------------------------------------------------------------------
+    function _buildDOM() {
+      var sec1 = document.getElementById("forensic-sec1");
+      if (!sec1) return;
+
+      // Button
+      _btn = document.createElement("button");
+      _btn.id        = "forensic-ctx-dropdown-btn";
+      _btn.className = "forensic-btn forensic-ctx-dropdown-btn";
+      _btn.setAttribute("aria-haspopup", "listbox");
+      _btn.setAttribute("aria-expanded", "false");
+      _btn.setAttribute("aria-controls", "forensic-ctx-dropdown-panel");
+      _btn.setAttribute("title", "Seitenübersicht öffnen [Alt+K]");
+      _btn.setAttribute("aria-label", "Seitenübersicht — Ermittlungskontext");
+      _btn.innerHTML =
+        "<span class=\"forensic-ctx-btn-icon\">🔍</span>" +
+        "<span class=\"forensic-ctx-btn-label\">Kontext</span>" +
+        "<span id=\"forensic-ctx-badge\" class=\"forensic-ctx-badge forensic-ctx-badge--user\" aria-label=\"Kontext: Nutzersicht\">U</span>" +
+        "<span class=\"forensic-ctx-btn-arrow\" aria-hidden=\"true\">▾</span>";
+
+      // Panel
+      _panel = document.createElement("div");
+      _panel.id        = "forensic-ctx-dropdown-panel";
+      _panel.className = "forensic-ctx-panel";
+      _panel.setAttribute("role", "listbox");
+      _panel.setAttribute("aria-label", "Seitenübersicht");
+      _panel.hidden = true;
+      _panel.innerHTML =
+        // Suchzeile
+        "<div class=\"forensic-ctx-search-row\">" +
+          "<span class=\"forensic-ctx-search-icon\" aria-hidden=\"true\">🔍</span>" +
+          "<input id=\"forensic-ctx-search\" type=\"search\" " +
+            "class=\"forensic-ctx-search\" placeholder=\"Seitensuche...\" " +
+            "autocomplete=\"off\" aria-label=\"Seiten durchsuchen\" />" +
+        "</div>" +
+        // Schnellfilter-Chips
+        "<div class=\"forensic-ctx-chips\" role=\"group\" aria-label=\"Schnellfilter\">" +
+          "<button class=\"forensic-ctx-chip forensic-ctx-chip--active\" data-filter=\"all\">Alle</button>" +
+          "<button class=\"forensic-ctx-chip\" data-filter=\"open\">Offen</button>" +
+          "<button class=\"forensic-ctx-chip\" data-filter=\"done\">Abgeschlossen</button>" +
+          "<button class=\"forensic-ctx-chip\" data-filter=\"failed\">Fehlgeschlagen</button>" +
+        "</div>" +
+        // Seitenliste
+        "<ul id=\"forensic-ctx-list\" class=\"forensic-ctx-list\" role=\"presentation\">" +
+          "<li class=\"forensic-ctx-loading\" aria-live=\"polite\">Lade…</li>" +
+        "</ul>" +
+        // Footer
+        "<div class=\"forensic-ctx-footer\">" +
+          "<button id=\"forensic-ctx-modal-btn\" class=\"forensic-ctx-modal-link\">" +
+            "🔎 Erweiterte Suche öffnen…" +
+          "</button>" +
+        "</div>";
+
+      sec1.appendChild(_btn);
+      // Panel als direktes Kind des toolbar-div (nicht sec1), damit es über
+      // anderen Elementen schwebt und nicht durch overflow:hidden abgeschnitten wird.
+      var toolbar = document.getElementById("forensic-toolbar");
+      if (toolbar) toolbar.appendChild(_panel);
+
+      _search = document.getElementById("forensic-ctx-search");
+      _list   = document.getElementById("forensic-ctx-list");
+    }
+
+    // -----------------------------------------------------------------------
+    // Events verdrahten
+    // -----------------------------------------------------------------------
+    function _bindEvents() {
+      // Guard: DOM nicht aufgebaut (z.B. minimale JSDOM-Testumgebung ohne
+      // #forensic-sec1 / #forensic-toolbar). _buildDOM() setzt _btn/_ panel
+      // nur wenn #forensic-sec1 vorhanden ist. Fehlt es, bricht diese Funktion
+      // sofort ab — kein Absturz, kein Event-Binding.
+      // Beleg: Build 066-Fix — test_levenshtein/test_state crashten weil
+      // _btn null war. JSDOM-Tests ohne vollständiges Shell-HTML brauchen keinen
+      // Event-Binding-Versuch.
+      if (!_btn || !_panel) return;
+
+      // Button-Klick → Dropdown toggeln
+      _btn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        _isOpen ? _close() : _open();
+      });
+
+      // Tastatureingaben auf dem Button
+      _btn.addEventListener("keydown", function (e) {
+        if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          if (!_isOpen) _open();
+          // Fokus in Suche verschieben
+          setTimeout(function () { if (_search) _search.focus(); }, 30);
+        }
+        if (e.key === "Escape") { _close(); }
+      });
+
+      // Klick außerhalb schließt
+      document.addEventListener("click", function (e) {
+        if (_isOpen && !_panel.contains(e.target) && e.target !== _btn) {
+          _close();
+        }
+      });
+
+      // Escape im Panel
+      _panel.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") {
+          _close();
+          _btn.focus();
+        }
+      });
+
+      // Freitextfilter (Debounce 150 ms — Bauplan KN §5.4)
+      _search.addEventListener("input", function () {
+        clearTimeout(_debounceTimer);
+        _debounceTimer = setTimeout(function () {
+          _filterText = _search.value.trim().toLowerCase();
+          _renderList();
+        }, 150);
+      });
+
+      // Schnellfilter-Chips
+      _panel.addEventListener("click", function (e) {
+        var chip = e.target.closest("[data-filter]");
+        if (chip) {
+          _filterChip = chip.dataset.filter;
+          _panel.querySelectorAll(".forensic-ctx-chip").forEach(function (c) {
+            c.classList.toggle("forensic-ctx-chip--active", c.dataset.filter === _filterChip);
+          });
+          _renderList();
+          return;
+        }
+        // Seiteneintrag
+        var item = e.target.closest("[data-url]");
+        if (item) {
+          var url = item.dataset.url;
+          _close();
+          ForensicToolbar.events.emit("navigator:page_selected", { url: url });
+          return;
+        }
+        // Erweiterte Suche
+        if (e.target.id === "forensic-ctx-modal-btn" || e.target.closest("#forensic-ctx-modal-btn")) {
+          _close();
+          ForensicToolbar.events.emit("navigator:modal_open");
+        }
+      });
+
+      // Tastaturnavigation in der Liste (Pfeil rauf/runter)
+      _list.addEventListener("keydown", function (e) {
+        var items = Array.from(_list.querySelectorAll("[data-url]"));
+        if (!items.length) return;
+        var idx = items.indexOf(document.activeElement);
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          (items[idx + 1] || items[0]).focus();
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          if (idx <= 0) { _search.focus(); } else { items[idx - 1].focus(); }
+        } else if (e.key === "Enter" && idx >= 0) {
+          e.preventDefault();
+          items[idx].click();
+        }
+      });
+
+      // Cache-Invalidierung → neu laden wenn Dropdown offen
+      ForensicToolbar.events.on("navigator:cache_invalidated", function () {
+        if (_isOpen) {
+          _showLoading();
+          _loadAndRender();
+        }
+      });
+    }
+
+    // -----------------------------------------------------------------------
+    // Öffnen / Schließen
+    // -----------------------------------------------------------------------
+    function _open() {
+      _isOpen = true;
+      _panel.hidden = false;
+      _btn.setAttribute("aria-expanded", "true");
+      _btn.classList.add("forensic-ctx-dropdown-btn--open");
+      ForensicToolbar._setState({ contextDropdownOpen: true });
+      _loadAndRender();
+      // Fokus in Suchfeld
+      setTimeout(function () { if (_search) _search.focus(); }, 30);
+    }
+
+    function _close() {
+      _isOpen = false;
+      _panel.hidden = true;
+      _btn.setAttribute("aria-expanded", "false");
+      _btn.classList.remove("forensic-ctx-dropdown-btn--open");
+      ForensicToolbar._setState({ contextDropdownOpen: false });
+    }
+
+    function _showLoading() {
+      if (_list) {
+        _list.innerHTML = "<li class=\"forensic-ctx-loading\" aria-live=\"polite\">Lade…</li>";
+      }
+    }
+
+    // -----------------------------------------------------------------------
+    // Daten laden + rendern
+    // -----------------------------------------------------------------------
+    function _loadAndRender() {
+      _showLoading();
+      ContextNavigatorModule.getPages().then(function (pages) {
+        _renderList(pages);
+      });
+    }
+
+    /**
+     * Filtert und rendert die Seitenliste.
+     * pages: PageSummaryRecord[] — wenn weggelassen, wird _state.contextSearchResults verwendet.
+     */
+    function _renderList(pages) {
+      var all = pages || ForensicToolbar.state.get("contextSearchResults") || [];
+
+      // Text-Filter (URL + Titel)
+      var filtered = all.filter(function (p) {
+        if (_filterText) {
+          var haystack = (p.url + " " + (p.title || "")).toLowerCase();
+          if (haystack.indexOf(_filterText) === -1) return false;
+        }
+        // Schnellfilter-Chip
+        if (_filterChip === "open")   return p.progressPercent < 100;
+        if (_filterChip === "done")   return p.progressPercent >= 100;
+        if (_filterChip === "failed") return p.fetchFailed === true;
+        return true;
+      });
+
+      if (!_list) return;
+
+      if (!filtered.length) {
+        _list.innerHTML = "<li class=\"forensic-ctx-empty\">Keine Seiten gefunden.</li>";
+        return;
+      }
+
+      _list.innerHTML = "";
+
+      // Maximal 8 Einträge ohne Scrollen (CSS regelt das via max-height)
+      filtered.forEach(function (p) {
+        var li = document.createElement("li");
+        li.className = "forensic-ctx-item";
+        li.setAttribute("role", "option");
+        li.setAttribute("tabindex", "0");
+        li.setAttribute("data-url", p.url);
+        li.setAttribute("aria-label",
+          (p.title || p.url) + " · " + p.progressPercent + "% ausgewertet");
+
+        var badge     = _badgeForContext(p.scrapeContext);
+        var pct       = p.progressPercent || 0;
+        var barClass  = pct >= 80 ? "forensic-ctx-bar--green"
+                      : pct >= 30 ? "forensic-ctx-bar--yellow"
+                      : "forensic-ctx-bar--red";
+        var segments  = "";
+        var filled    = Math.round(pct / 10);
+        for (var i = 0; i < 10; i++) {
+          segments += "<span class=\"forensic-ctx-seg" + (i < filled ? " forensic-ctx-seg--on" : "") + "\"></span>";
+        }
+        var urlShort  = _shortenUrl(p.url);
+        var failIcon  = p.fetchFailed ? " <span class=\"forensic-ctx-fail\" aria-label=\"Abruf fehlgeschlagen\">⚠️</span>" : "";
+        var lastViewed = p.lastViewedAt ? _relativeTime(p.lastViewedAt) : "—";
+
+        li.innerHTML =
+          "<div class=\"forensic-ctx-item-row\">" +
+            "<div class=\"forensic-ctx-bar-wrap " + barClass + "\" aria-hidden=\"true\">" +
+              segments +
+            "</div>" +
+            "<span class=\"forensic-ctx-pct\">" + pct + "%</span>" +
+            "<span class=\"forensic-ctx-traces\" title=\"Spuren\">🔗 " + (p.traceCountTotal || 0) + "</span>" +
+            "<span class=\"forensic-ctx-anns\"   title=\"Annotationen\">📌 " + (p.annotationsTotal || 0) + "</span>" +
+            "<span class=\"forensic-ctx-url\" title=\"" + _esc(p.url) + "\">" + _esc(urlShort) + failIcon + "</span>" +
+          "</div>" +
+          "<div class=\"forensic-ctx-item-meta\">" +
+            "<span class=\"forensic-ctx-badge " + badge.cls + "\" title=\"" + badge.title + "\">" + badge.label + "</span>" +
+            "<span class=\"forensic-ctx-time\">" + _esc(lastViewed) + "</span>" +
+          "</div>";
+
+        _list.appendChild(li);
+      });
+    }
+
+    // -----------------------------------------------------------------------
+    // Hilfsfunktionen
+    // -----------------------------------------------------------------------
+
+    /** URL auf 40 Zeichen kürzen — nur Pfad+Query, kein Host */
+    function _shortenUrl(url) {
+      try {
+        var u = new URL(url, "http://placeholder");
+        var short = u.pathname + u.search;
+        if (short.length > 40) {
+          short = short.substring(0, 37) + "…";
+        }
+        return short;
+      } catch (e) {
+        return url.length > 40 ? url.substring(0, 37) + "…" : url;
+      }
+    }
+
+    /** Relatives Zeitformat (z.B. "heute 14:22", "gestern", "vor 3 Tagen") */
+    function _relativeTime(ts) {
+      if (!ts) return "—";
+      var now  = Date.now();
+      var diff = now - ts;
+      var d    = new Date(ts);
+      var hhmm = d.getHours().toString().padStart(2, "0") + ":" + d.getMinutes().toString().padStart(2, "0");
+      if (diff < 86400000) {
+        var today = new Date();
+        if (d.getDate() === today.getDate()) {
+          return "heute " + hhmm;
+        }
+        return "gestern " + hhmm;
+      }
+      var days = Math.round(diff / 86400000);
+      if (days === 1) return "gestern";
+      if (days < 7)  return "vor " + days + " Tagen";
+      return d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
+    }
+
+    // -----------------------------------------------------------------------
+    // Öffentliche API
+    // -----------------------------------------------------------------------
+
+    /**
+     * updateBadge(scrapeContext) — wird von ContextBadgeModule.update() aufgerufen.
+     * Aktualisiert das Kontext-Badge im Dropdown-Button.
+     * Beleg: Build 066 — ContextBadgeModule delegiert an diese Funktion.
+     */
+    function updateBadge(scrapeContext) {
+      var badgeEl = document.getElementById("forensic-ctx-badge");
+      if (!badgeEl) return;
+      var cfg = _badgeForContext(scrapeContext);
+      badgeEl.textContent = cfg.label;
+      badgeEl.className   = "forensic-ctx-badge " + cfg.cls;
+      badgeEl.setAttribute("aria-label", "Kontext: " + cfg.title);
+    }
+
+    function init() {
+      _buildDOM();
+      _bindEvents();
+
+      // Alt+K → Dropdown öffnen/fokussieren (Bauplan KN §11)
+      document.addEventListener("keydown", function (e) {
+        if (e.altKey && e.key === "k") {
+          e.preventDefault();
+          if (_isOpen) { _close(); _btn.focus(); }
+          else { _btn.focus(); _open(); }
+        }
+      });
+
+      // Badge bei Navigation mitführen
+      ForensicToolbar.events.on("page:loaded", function (data) {
+        if (data && data.scrapeContext !== undefined) {
+          updateBadge(data.scrapeContext);
+        }
+      });
+    }
+
+    return { init: init, updateBadge: updateBadge };
+  })();
+
+  // ===========================================================================
   // CSS-Highlight-Regeln für CSS Custom Highlights API (§5 Bauplan)
   //
   // Die Highlight-Sets werden im HighlightModule vorinitialisiert und in
@@ -3242,6 +3870,12 @@
 
     // Phase 12: SSE-Stream starten
     SupportIndicatorModule.init();
+
+    // Phase KN-1+2: Kontext-Navigator initialisieren
+    // ContextNavigatorModule muss vor ContextDropdownModule init laufen
+    // (Navigator.getPages wird vom Dropdown benötigt).
+    ContextNavigatorModule.init();
+    ContextDropdownModule.init();
 
     // Session-Status laden
     ajaxGet(ForensicToolbar.config.API_STATUS)
