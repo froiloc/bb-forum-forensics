@@ -2,8 +2,30 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 064 · 2026-04-26
+ * Version: v0.1.0 · Build: 065 · 2026-04-26
  * Klassifikation: VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
+ *
+ * Änderungen Build 065:
+ *
+ *   Fix A — Falsche page_url nach 404-Navigation:
+ *     _state.currentUrl wurde in _handleEnvelope() vor den in_scope/fetch_failed-
+ *     Prüfungen gesetzt. Nach einem 404 blieb der Viewport unverändert, aber
+ *     currentUrl zeigte die neue URL — alle folgenden Annotationen erhielten
+ *     falsche page_url. Fix: currentUrl erst nach erfolgreichem Scope+HTML-Check,
+ *     direkt vor viewport.innerHTML = envelope.html.
+ *
+ *   Fix B — HoverMenu für Textmarkierungen (CSS Custom Highlights):
+ *     Neue Funktion _findAnnotationsAtPoint(clientX, clientY): findet alle
+ *     Annotationen an einem Dokumentpunkt via caretRangeFromPoint/
+ *     caretPositionFromPoint + Range-Boundary-Vergleich. Dwell-Timer nutzt
+ *     jetzt diese Funktion statt Post-Container-Delegation.
+ *     Neue Funktion _showMenuForList(anns, x, y): Multi-Annotation-Listenmenü
+ *     mit Kategorie-Icon, Textkürzel (40 Zeichen), Edit/Delete pro Zeile.
+ *     _deleteAnnotation() als extrahierte Hilfsfunktion (war dupliziert).
+ *     AnnotationPopupModule.isOpen() als neue öffentliche Methode.
+ *     Neue CSS-Klassen in toolbar.css: forensic-hover-menu--list,
+ *     forensic-hover-list-header, forensic-hover-list-row,
+ *     forensic-hover-list-cat, forensic-hover-list-label.
  *
  * Änderungen Build 064:
  *   Fix Race-Condition Textmarkierung vs. Post-Markierung:
@@ -1168,16 +1190,19 @@
       var viewport = document.getElementById("forensic-viewport");
       if (!viewport) return;
 
+      // currentUrl nur aktualisieren wenn die Seite tatsächlich geladen wird.
+      // Beleg: Build 064 — bei NOT_IN_SCOPE oder fetch_failed (z.B. 404) wurde
+      // currentUrl bereits auf die neue URL gesetzt bevor der Fehler erkannt wurde.
+      // Folge: Alle nachfolgenden Annotationen erhielten die falsche page_url.
+      // Fix: currentUrl wird nur gesetzt wenn in_scope=true und fetch_failed=false.
+      // scrapeContext, fetchFailed, inScope, fragment, traceElements immer setzen
+      // (für Toast/FetchFailedModule-Anzeige).
       ForensicToolbar._setState({
-        currentUrl:    envelope.url_canonical || url,
         baseHref:      (envelope.head && envelope.head.base_href) || null,
         scrapeContext: envelope.scrape_context || "user",
         fetchFailed:   !!envelope.fetch_failed,
         inScope:       !!envelope.in_scope,
         fragment:      envelope.fragment || null,
-        // Build 030-C: Benutzer-Spuren aus Envelope übernehmen.
-        // Leeres Array wenn Server keine Spuren liefert (älterer Build,
-        // NOT_IN_SCOPE, oder tatsächlich keine Spuren auf dieser Seite).
         traceElements: Array.isArray(envelope.trace_elements)
           ? envelope.trace_elements : [],
       });
@@ -1201,6 +1226,12 @@
         );
         return;
       }
+
+      // Seite ist in_scope und html vorhanden: currentUrl jetzt setzen.
+      // Beleg: Build 064 Fix A — currentUrl erst hier setzen, nicht vor den
+      // Fehlerchecks. Andernfalls übernimmt _state.currentUrl die neue URL auch
+      // bei 404/NOT_IN_SCOPE, und nachfolgende Annotationen erhalten falsche page_url.
+      ForensicToolbar._setState({ currentUrl: envelope.url_canonical || url });
 
       // BLOB-Inhalt injizieren (erlaubter DOM-Eingriff: Navigation)
       viewport.innerHTML = envelope.html;
@@ -1874,6 +1905,93 @@
       return null;
     }
 
+    /**
+     * Alle Annotationen ermitteln die einen bestimmten Dokumentpunkt (pageX/Y)
+     * abdecken. Berücksichtigt:
+     *   - CSS Custom Highlights: Range-Vergleich via caretRangeFromPoint/
+     *     caretPositionFromPoint
+     *   - <mark>-Fallback: data-forensic-annotation am Element
+     *   - Post-Markierungen: data-forensic-cat am Container
+     *
+     * Beleg: Build 064 — Textmarkierungen haben im CSS-Highlights-Pfad keine
+     * DOM-Elemente, daher keine mouseover-Events. Lösung: Punkttest gegen
+     * gespeicherte Ranges beim Mousemove/Mouseover.
+     */
+    function _findAnnotationsAtPoint(clientX, clientY) {
+      var found = [];
+
+      // 1. Fallback-Pfad: <mark>-Elemente mit data-forensic-annotation
+      var el = document.elementFromPoint(clientX, clientY);
+      if (el) {
+        var markEl = el.closest ? el.closest("[data-forensic-annotation]") : null;
+        if (markEl) {
+          var annId = markEl.dataset.forensicAnnotation;
+          _state.annotations.forEach(function (ann) {
+            var key = ann.localId || String(ann.id);
+            if (key === annId) found.push(ann);
+          });
+        }
+
+        // Post-Markierung am Container
+        var postEl = el.closest ? el.closest("[data-forensic-cat]") : null;
+        if (postEl) {
+          var pid = parseInt((postEl.id || "").substring(1), 10);
+          if (!isNaN(pid)) {
+            _state.annotations.forEach(function (ann) {
+              if (ann.postId === pid) {
+                // Nur wenn noch nicht aus mark-Suche vorhanden
+                var alreadyFound = false;
+                found.forEach(function (a) { if (a === ann) alreadyFound = true; });
+                if (!alreadyFound) found.push(ann);
+              }
+            });
+          }
+        }
+      }
+
+      // 2. CSS Custom Highlights Primärpfad: Range-Punkttest
+      // Prüft ob der Punkt innerhalb einer der gespeicherten Annotation-Ranges liegt.
+      // Methode: caretRangeFromPoint (Chrome/FF) oder caretPositionFromPoint (Firefox)
+      if (found.length === 0) {
+        var caretRange = null;
+        if (document.caretRangeFromPoint) {
+          caretRange = document.caretRangeFromPoint(clientX, clientY);
+        } else if (document.caretPositionFromPoint) {
+          var pos = document.caretPositionFromPoint(clientX, clientY);
+          if (pos) {
+            caretRange = document.createRange();
+            caretRange.setStart(pos.offsetNode, pos.offset);
+            caretRange.setEnd(pos.offsetNode, pos.offset);
+          }
+        }
+
+        if (caretRange) {
+          _state.annotations.forEach(function (ann) {
+            if (!ann.selection) return;
+            var restored = AnnotationStoreModule.rangeFromSelection(ann.selection);
+            if (!restored) return;
+            var r = restored.range;
+            // Punkt ist in Range wenn: range.START_TO_START <= 0 UND range.END_TO_END >= 0
+            try {
+              var cmp1 = r.compareBoundaryPoints(Range.START_TO_START, caretRange);
+              var cmp2 = r.compareBoundaryPoints(Range.END_TO_END, caretRange);
+              if (cmp1 <= 0 && cmp2 >= 0) found.push(ann);
+            } catch (ex) { /* Range ungültig — überspringen */ }
+          });
+        }
+      }
+
+      return found;
+    }
+
+    /**
+     * Menü anzeigen. Unterstützt einzelne Annotation und Liste.
+     * Bei mehreren Annotationen (Textmarkierungen + Post, oder überlappende Texte):
+     * Vertikale Liste mit Identifikation (Kategorie-Icon, Textkürzel) + Edit/Delete.
+     *
+     * Beleg: Build 064 — Textmarkierungen haben keinen HoverMenu-Trigger über
+     * Post-Container-Delegation. Multi-Annotation-Ansicht löst auch Überlappungen.
+     */
     function _showMenu(ann, x, y) {
       _hideMenu();
       _targetAnn = ann;
@@ -1894,50 +2012,93 @@
           AnnotationPopupModule.open(_targetAnn);
         } else if (btn.dataset.action === "delete") {
           _hideMenu();
-          var annToDelete = _targetAnn;
-          // Sofort clientseitig entfernen (optimistic update) —
-          // Benutzer sieht keine Verzögerung.
-          _state.annotations.delete(annToDelete.localId || String(annToDelete.id));
-          HighlightModule.clearAll();
-          HighlightModule.restoreAll();
-          PostMarkerModule.clearAll();
-          PostMarkerModule.restoreAll();
-          MinimapModule.refresh();
-          ForensicToolbar.events.emit("annotation:deleted", annToDelete);
-          ToolbarUIModule.updateSessionInfo();
-
-          // Server-Call: Annotation persistent löschen.
-          // Beleg: OP-KN-9 — ohne diesen Call erscheint die Annotation nach
-          // loadAnnotations() wieder. Build 059: annotate.py unterstützt jetzt
-          // DELETE /_forensic/annotate.
-          var serverId = annToDelete.id;
-          if (serverId) {
-            ajaxDelete(ForensicToolbar.config.API_ANNOTATE, { id: serverId })
-              .then(function (r) {
-                if (r.status !== "ok") {
-                  console.warn(
-                    "[Forensic] Server konnte Annotation nicht löschen:",
-                    r.status, serverId
-                  );
-                  AccessibilityModule.announce(
-                    "Warnung: Annotation #" + serverId + " konnte nicht dauerhaft gelöscht werden."
-                  );
-                }
-              })
-              .catch(function (e) {
-                console.error("[Forensic] Netzwerkfehler beim Löschen der Annotation:", e);
-                AccessibilityModule.announce(
-                  "Netzwerkfehler: Annotation nicht dauerhaft gelöscht."
-                );
-              });
-          } else {
-            // Noch keine Server-ID (syncState === "pending") → kein Server-Call
-            // nötig, die Annotation wurde noch nie persistiert.
-          }
+          _deleteAnnotation(_targetAnn);
         }
       });
 
       _menuEl.addEventListener("mouseleave", _hideMenu);
+    }
+
+    /**
+     * Menü für eine Liste von Annotationen — erscheint wenn mehrere Annotations
+     * an einem Punkt vorliegen (Textmarkierungen, Überlappungen, gemischt).
+     *
+     * Layout: Pro Annotation eine Zeile mit:
+     *   [Kategorie-Icon] [Textkürzel 40 Zeichen] [✏️] [🗑️]
+     *
+     * Beleg: Build 064 — Textmarkierungen (CSS Custom Highlights) haben keine
+     * DOM-Elemente für mouseover. Multi-Annotation-View als Workaround.
+     */
+    function _showMenuForList(anns, x, y) {
+      _hideMenu();
+      if (anns.length === 1) {
+        _showMenu(anns[0], x, y);
+        return;
+      }
+      _targetAnn = anns[0]; // Fallback
+      _menuEl = document.createElement("div");
+      _menuEl.className = "forensic-hover-menu forensic-hover-menu--list";
+      _menuEl.style.left = x + "px";
+      _menuEl.style.top  = y + "px";
+
+      var html = '<div class="forensic-hover-list-header">Annotationen (' + anns.length + ')</div>';
+      anns.forEach(function (ann, idx) {
+        var cat = _getCat(ann.category);
+        var icon = cat ? cat.icon : "📎";
+        var label = ann.selection
+          ? (ann.selection.textContent || "").substring(0, 40).replace(/\s+/g, " ").trim()
+          : (ann.text || "Post #" + ann.postId || "—").substring(0, 40);
+        if (label.length === 40) label += "…";
+        html +=
+          '<div class="forensic-hover-list-row" data-ann-idx="' + idx + '">' +
+          '<span class="forensic-hover-list-cat" title="' + _esc(ann.category) + '">' + icon + '</span>' +
+          '<span class="forensic-hover-list-label">' + _esc(label) + '</span>' +
+          '<button class="forensic-hover-btn" data-action="edit" data-ann-idx="' + idx + '" aria-label="Bearbeiten">✏️</button>' +
+          '<button class="forensic-hover-btn" data-action="delete" data-ann-idx="' + idx + '" aria-label="Löschen">🗑️</button>' +
+          '</div>';
+      });
+      _menuEl.innerHTML = html;
+      document.body.appendChild(_menuEl);
+
+      _menuEl.addEventListener("click", function (e) {
+        var btn = e.target.closest("[data-action]");
+        if (!btn) return;
+        var idx = parseInt(btn.dataset.annIdx, 10);
+        var ann = anns[idx];
+        if (!ann) return;
+        if (btn.dataset.action === "edit") {
+          _hideMenu();
+          AnnotationPopupModule.open(ann);
+        } else if (btn.dataset.action === "delete") {
+          _hideMenu();
+          _deleteAnnotation(ann);
+        }
+      });
+
+      _menuEl.addEventListener("mouseleave", _hideMenu);
+    }
+
+    /** Annotation löschen: clientseitig + Server. Extrahiert aus _showMenu. */
+    function _deleteAnnotation(ann) {
+      _state.annotations.delete(ann.localId || String(ann.id));
+      HighlightModule.clearAll();
+      HighlightModule.restoreAll();
+      PostMarkerModule.clearAll();
+      PostMarkerModule.restoreAll();
+      MinimapModule.refresh();
+      ForensicToolbar.events.emit("annotation:deleted", ann);
+      ToolbarUIModule.updateSessionInfo();
+      if (ann.id) {
+        ajaxDelete(ForensicToolbar.config.API_ANNOTATE, { id: ann.id })
+          .then(function (r) {
+            if (r.status !== "ok") {
+              console.warn("[Forensic] Server konnte Annotation nicht löschen:", r.status, ann.id);
+            }
+          })
+          .catch(function (e) {
+            console.error("[Forensic] Netzwerkfehler beim Löschen:", e);
+          });
+      }
     }
 
     function _hideMenu() {
@@ -1972,23 +2133,19 @@
       // ob die Maus über einem annotierten Post verweilt und kein Menü aktiv ist.
       // Der Dwell-Timer wird bei jeder Mausbewegung zurückgesetzt (Debounce),
       // öffnet das Menü nach HOVER_DELAY_MS Stillstand.
+      // Build 064: Dwell-Timer nutzt _findAnnotationsAtPoint() statt nur Post-Container —
+      // damit werden auch Textmarkierungen (CSS Custom Highlights, kein DOM-Element)
+      // im Dwell-Pfad erkannt.
       var _dwellTimer = null;
       vp.addEventListener("mousemove", function (e) {
         _lastMouseX = e.pageX;
         _lastMouseY = e.pageY;
 
-        // Dwell-Logik: Nur wenn kein Menü aktiv und kein normaler Timer läuft
-        if (_menuEl) return; // Menü bereits offen
+        // Dwell-Logik: Nur wenn kein Menü aktiv
+        if (_menuEl) return;
 
-        var postEl = e.target.closest ? e.target.closest("[data-forensic-cat]") : null;
-        if (!postEl) {
-          clearTimeout(_dwellTimer);
-          _dwellTimer = null;
-          return;
-        }
-
-        var ann = _findAnnotationAtElement(postEl);
-        if (!ann) {
+        var anns = _findAnnotationsAtPoint(e.clientX, e.clientY);
+        if (anns.length === 0) {
           clearTimeout(_dwellTimer);
           _dwellTimer = null;
           return;
@@ -1996,22 +2153,22 @@
 
         // Debounce: Bei jeder Bewegung neuen Timer setzen
         clearTimeout(_dwellTimer);
+        var capturedAnns = anns.slice();
         _dwellTimer = setTimeout(function () {
-          if (!_menuEl) { // Noch kein Menü offen (Doppel-Check)
-            _showMenu(ann, _lastMouseX + 12, _lastMouseY - 36);
+          if (!_menuEl) {
+            _showMenuForList(capturedAnns, _lastMouseX + 12, _lastMouseY - 36);
           }
           _dwellTimer = null;
         }, ForensicToolbar.config.HOVER_DELAY_MS);
       });
 
       vp.addEventListener("mouseover", function (e) {
-        // Delegation: Post-Container finden, nicht Kind-Elemente direkt
+        // Delegation: Post-Container finden (Post-Markierungen)
         var postEl = e.target.closest
           ? e.target.closest("[data-forensic-cat]")
           : null;
         if (!postEl) return;
 
-        // Annotation für diesen Post-Container suchen
         var ann = _findAnnotationAtElement(postEl);
         if (!ann) return;
 
@@ -2020,10 +2177,7 @@
 
         clearTimeout(_timer);
         _timer = setTimeout(function () {
-          // Position: aktuelle Mausposition (aus _lastMouseX/Y), leicht versetzt,
-          // damit das Menü nicht direkt unter dem Cursor erscheint.
-          // Beleg: Build 061 — getBoundingClientRect war "rechts oben", nicht mausnah.
-          _showMenu(ann, _lastMouseX + 12, _lastMouseY - 36);
+          _showMenuForList([ann], _lastMouseX + 12, _lastMouseY - 36);
         }, ForensicToolbar.config.HOVER_DELAY_MS);
       });
 

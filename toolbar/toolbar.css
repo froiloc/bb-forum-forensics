@@ -654,6 +654,53 @@ body {
   padding: 3px;
 }
 
+/* Listenansicht für mehrere Annotationen (Build 064 — Textmarkierungen) */
+.forensic-hover-menu--list {
+  flex-direction: column;
+  gap: 0;
+  padding: 4px;
+  min-width: 240px;
+  max-width: 360px;
+}
+
+.forensic-hover-list-header {
+  font-size: 10px;
+  color: #6a7090;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 4px 4px;
+  border-bottom: 1px solid #2d3550;
+  margin-bottom: 2px;
+}
+
+.forensic-hover-list-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 2px;
+  border-radius: 3px;
+}
+
+.forensic-hover-list-row:hover {
+  background: #252b3e;
+}
+
+.forensic-hover-list-cat {
+  font-size: 13px;
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+}
+
+.forensic-hover-list-label {
+  flex: 1;
+  font-size: 11px;
+  color: #c8d0e8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .forensic-hover-btn {
   background: #252b3e;
   border: 1px solid #2d3550;
