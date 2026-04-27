@@ -2,7 +2,7 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 075 · 2026-04-27
+ * Version: v0.1.0 · Build: 076 · 2026-04-27
  *
  * Änderungen Build 075 (OP-KN-8 — Hinweiszeile):
  *   HintsModule: Neue kontextsensitive Hinweiszeile unterhalb der Toolbar.
@@ -1235,10 +1235,10 @@
           '<span id="forensic-support-indicator" class="forensic-support-hidden" ' +
           'role="status" aria-live="assertive"></span>' +
           // Hinweiszeile Toggle (Build 075, OP-KN-8)
-          // ⍏ = eingeklappt (Zeile versteckt), ⍖ = ausgeklappt (Zeile sichtbar)
+          // 🛈▲ = sichtbar (Klick blendet aus), 🛈▼ = versteckt (Klick blendet ein)
           '<button id="forensic-hints-toggle" class="forensic-btn forensic-hints-toggle-btn" ' +
-          'aria-label="Hinweiszeile ein-/ausblenden" title="Hinweiszeile ein-/ausblenden" ' +
-          'aria-expanded="true">⍖</button>' +
+          'aria-label="Hinweiszeile ausblenden" title="Hinweiszeile ausblenden" ' +
+          'aria-expanded="true">🛈▲</button>' +
           '</div>' +
 
         '</div>' // /zone-right
@@ -4214,10 +4214,12 @@
       _bar.setAttribute("role", "status");
       _bar.setAttribute("aria-live", "polite");
       _bar.setAttribute("aria-label", "Kontextsensitiver Hinweis");
+      _bar.setAttribute("aria-atomic", "true");
 
       _textEl = document.createElement("span");
       _textEl.id        = "forensic-hint-text";
       _textEl.className = "forensic-hint-text";
+      _textEl.setAttribute("aria-label", "Hinweistext");
       _textEl.textContent = _currentText;
 
       _bar.appendChild(_textEl);
@@ -4237,9 +4239,14 @@
     // -----------------------------------------------------------------------
     function _syncToggleBtn() {
       if (!_toggleBtn) return;
-      _toggleBtn.textContent    = _visible ? "⍖" : "⍏";
+      // 🛈▲ = Zeile sichtbar → Klick blendet aus (Pfeil nach oben = einfahren)
+      // 🛈▼ = Zeile versteckt → Klick blendet ein (Pfeil nach unten = ausfahren)
+      // Beleg: Projektgespräch 2026-04-27 — Symbole korrigiert.
+      _toggleBtn.textContent = _visible ? "🛈▲" : "🛈▼";
       _toggleBtn.setAttribute("aria-expanded", _visible ? "true" : "false");
-      _toggleBtn.title          = _visible ? "Hinweiszeile verbergen" : "Hinweiszeile einblenden";
+      _toggleBtn.setAttribute("aria-label",
+        _visible ? "Hinweiszeile ausblenden" : "Hinweiszeile einblenden");
+      _toggleBtn.title = _visible ? "Hinweiszeile ausblenden" : "Hinweiszeile einblenden";
     }
 
     // -----------------------------------------------------------------------

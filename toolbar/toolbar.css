@@ -2,7 +2,7 @@
  * toolbar.css — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 075 · 2026-04-27
+ * Version: v0.1.0 · Build: 076 · 2026-04-27
  *
  * Änderungen Build 071:
  *   - .forensic-ctx-panel: z-index: 10000 (war 1100, überblendet jetzt
@@ -1341,7 +1341,7 @@ body {
    ---------------------------------------------------------------- */
 
 /* ==========================================================================
-   Hinweiszeile (Build 075, OP-KN-8)
+   Hinweiszeile (Build 075, OP-KN-8 — korrigiert Build 076)
    ========================================================================== */
 
 #forensic-hintbar {
@@ -1355,6 +1355,7 @@ body {
   border-bottom: 1px solid #2a3555;
   display: flex;
   align-items: center;
+  justify-content: center; /* Text zentriert (Punkt 1) */
   padding: 0 12px;
   overflow: hidden;
   /* Einblend-Animation */
@@ -1371,33 +1372,30 @@ body {
 
 .forensic-hint-text {
   font-size: 11px;
-  color: #7a8aaa;
+  /* Kontrast erhöht: #b8c4de statt #7a8aaa — erfüllt WCAG AA auf #141828 (Punkt 4) */
+  color: #b8c4de;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-align: center;
   flex: 1;
   font-style: italic;
   letter-spacing: 0.01em;
 }
 
-/* Toggle-Button in Sektion 5 */
+/* Toggle-Button — wie .forensic-btn gestylt (Punkt 3) */
 .forensic-hints-toggle-btn {
-  font-size: 13px;
-  padding: 1px 5px;
-  background: none;
-  border: none;
-  color: #5a6a8a;
-  cursor: pointer;
-  transition: color 0.15s;
-  line-height: 1;
+  /* Erbt .forensic-btn: background #252b3e, border #3a4060, border-radius 4px */
+  font-size: 12px;
+  padding: 2px 6px;
+  flex-shrink: 0;
+  /* Überschreibungen für kompakte Darstellung in Sektion 5 */
+  line-height: 1.2;
 }
-
-.forensic-hints-toggle-btn:hover {
-  color: #a0b0d0;
-}
-
-.forensic-hints-toggle-btn:focus-visible {
-  outline: 2px solid #4f8ef7;
-  outline-offset: 2px;
-  border-radius: 2px;
+/* Hover: hellblauer dünner Rahmen — wie .forensic-btn:hover (bereits geerbt) */
+/* focus-visible: hellblauer dicker Rahmen — wie .forensic-btn:focus-visible (bereits geerbt) */
+/* aria-expanded="true" → selected-Stil */
+.forensic-hints-toggle-btn[aria-expanded="true"] {
+  border-color: #4f8ef7;
+  background: #1e2d50;
 }
