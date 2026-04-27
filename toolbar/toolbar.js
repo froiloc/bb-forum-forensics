@@ -2,7 +2,7 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 079 · 2026-04-27
+ * Version: v0.1.0 · Build: 080 · 2026-04-27
  *
  * Änderungen Build 077:
  *   Sektion 2: Label "Markierung" ergänzt. Ann.-Buttons (◄/►) von Sektion 3
@@ -1350,9 +1350,11 @@
       var scrollTarget = null;
       if (ann.selection) {
         try {
-          var range = AnnotationStoreModule.rangeFromSelection(ann.selection);
-          if (range) {
-            var node = range.startContainer;
+          var result = AnnotationStoreModule.rangeFromSelection(ann.selection);
+          // rangeFromSelection gibt {range, stale} zurück — nicht die Range direkt.
+          // Beleg: Build 079-Fix — range.startContainer war undefined.
+          if (result && result.range) {
+            var node = result.range.startContainer;
             scrollTarget = (node.nodeType === 3) ? node.parentElement : node;
           }
         } catch (e) { /* Range nicht auflösbar */ }
