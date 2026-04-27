@@ -2,7 +2,19 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 074 · 2026-04-27
+ * Version: v0.1.0 · Build: 075 · 2026-04-27
+ *
+ * Änderungen Build 075 (OP-KN-8 — Hinweiszeile):
+ *   HintsModule: Neue kontextsensitive Hinweiszeile unterhalb der Toolbar.
+ *   - Position: fixed, top:62px (direkt unter Toolbar), height:28px.
+ *   - Viewport-Verschiebung via CSS-Variable --forensic-hintbar-height.
+ *   - Toggle-Button in Sektion 5: ⍖ (sichtbar) / ⍏ (versteckt).
+ *   - Sanfte Ein-/Ausblend-Animation (CSS max-height + opacity).
+ *   - Sichtbarkeitszustand in sessionStorage persistiert.
+ *   - Kategorie-Aktivierung → kategoriespezifischer Hinweistext.
+ *   - page:loaded mit fetchFailed/investigator → Warntext.
+ *   - ForensicToolbar.hints exponiert (set/clear/show/hide).
+ *   - Jedes Modul kann HintsModule.set(text) aufrufen.
  *
  * Änderungen Build 074: keine JS-Änderungen.
  *   Serverseite: get_trace_sequence() url_type-Mapping korrigiert.
@@ -1222,6 +1234,11 @@
           'aria-label="Synchronisierungsstatus"></span>' +
           '<span id="forensic-support-indicator" class="forensic-support-hidden" ' +
           'role="status" aria-live="assertive"></span>' +
+          // Hinweiszeile Toggle (Build 075, OP-KN-8)
+          // ⍏ = eingeklappt (Zeile versteckt), ⍖ = ausgeklappt (Zeile sichtbar)
+          '<button id="forensic-hints-toggle" class="forensic-btn forensic-hints-toggle-btn" ' +
+          'aria-label="Hinweiszeile ein-/ausblenden" title="Hinweiszeile ein-/ausblenden" ' +
+          'aria-expanded="true">⍖</button>' +
           '</div>' +
 
         '</div>' // /zone-right
@@ -4147,6 +4164,195 @@
   })();
 
   // ===========================================================================
+  // PHASE KN-8: HintsModule — Kontextsensitive Hinweiszeile (OP-KN-8)
+  // ===========================================================================
+  // Bauplan: OP-KN-8, Build 075.
+  //
+  // Aufbau:
+  //   [forensic-toolbar]  (fixed, top:0, height:62px)
+  //   [forensic-hintbar]  (fixed, top:62px, height:28px, animiert)
+  //   [body / viewport]   verschiebt sich dynamisch per CSS-Variable
+  //                       --forensic-hintbar-height (0 oder 28px)
+  //
+  // API:
+  //   HintsModule.set(text)     — Text setzen (Modul bringt eigenen Text)
+  //   HintsModule.clear()       — Standardtext wiederherstellen
+  //   HintsModule.show()        — Zeile einblenden (falls manuell versteckt)
+  //   HintsModule.hide()        — Zeile ausblenden
+  //
+  // Toggle-Button (#forensic-hints-toggle):
+  //   ⍖ = Zeile sichtbar (aria-expanded="true")
+  //   ⍏ = Zeile versteckt (aria-expanded="false")
+  //
+  // Persistenz: Sichtbarkeitszustand in sessionStorage gespeichert
+  //   (bleibt während der Ermittlungssitzung erhalten, Reset bei Neustart).
+  //
+  // Beleg: OP-KN-8, Projektgespräch 2026-04-27.
+  // ===========================================================================
+  var HintsModule = (function () {
+
+    // Standardtext wenn kein Modul aktiv ist
+    var DEFAULT_TEXT =
+      "Kategorie wählen und Textstelle markieren — oder auf einen Beitrag klicken für Post-Markierung.";
+
+    var _currentText = DEFAULT_TEXT;
+    var _visible     = true;  // Startzustand: sichtbar
+    var _bar         = null;  // DOM-Element #forensic-hintbar
+    var _textEl      = null;  // DOM-Element #forensic-hint-text
+    var _toggleBtn   = null;  // DOM-Element #forensic-hints-toggle
+
+    // SessionStorage-Key für Persistenz
+    var STORAGE_KEY = "forensic_hintbar_visible";
+
+    // -----------------------------------------------------------------------
+    // DOM aufbauen (wird in init() aufgerufen)
+    // -----------------------------------------------------------------------
+    function _buildBar() {
+      _bar = document.createElement("div");
+      _bar.id        = "forensic-hintbar";
+      _bar.className = "forensic-hintbar";
+      _bar.setAttribute("role", "status");
+      _bar.setAttribute("aria-live", "polite");
+      _bar.setAttribute("aria-label", "Kontextsensitiver Hinweis");
+
+      _textEl = document.createElement("span");
+      _textEl.id        = "forensic-hint-text";
+      _textEl.className = "forensic-hint-text";
+      _textEl.textContent = _currentText;
+
+      _bar.appendChild(_textEl);
+      document.body.appendChild(_bar);
+    }
+
+    // -----------------------------------------------------------------------
+    // CSS-Variable aktualisieren → verschiebt Viewport
+    // -----------------------------------------------------------------------
+    function _updateOffset() {
+      var h = _visible ? "28px" : "0px";
+      document.documentElement.style.setProperty("--forensic-hintbar-height", h);
+    }
+
+    // -----------------------------------------------------------------------
+    // Toggle-Button-Icon synchronisieren
+    // -----------------------------------------------------------------------
+    function _syncToggleBtn() {
+      if (!_toggleBtn) return;
+      _toggleBtn.textContent    = _visible ? "⍖" : "⍏";
+      _toggleBtn.setAttribute("aria-expanded", _visible ? "true" : "false");
+      _toggleBtn.title          = _visible ? "Hinweiszeile verbergen" : "Hinweiszeile einblenden";
+    }
+
+    // -----------------------------------------------------------------------
+    // Sichtbarkeit anwenden (mit Animation via CSS-Klasse)
+    // -----------------------------------------------------------------------
+    function _applyVisibility() {
+      if (!_bar) return;
+      if (_visible) {
+        _bar.classList.remove("forensic-hintbar--hidden");
+      } else {
+        _bar.classList.add("forensic-hintbar--hidden");
+      }
+      _updateOffset();
+      _syncToggleBtn();
+      // Persistenz
+      try { sessionStorage.setItem(STORAGE_KEY, _visible ? "1" : "0"); } catch (e) {}
+    }
+
+    // -----------------------------------------------------------------------
+    // Öffentliche API
+    // -----------------------------------------------------------------------
+
+    /** Text setzen — Modul bringt eigenen Hinweistext */
+    function set(text) {
+      _currentText = text || DEFAULT_TEXT;
+      if (_textEl) _textEl.textContent = _currentText;
+    }
+
+    /** Standardtext wiederherstellen */
+    function clear() {
+      _currentText = DEFAULT_TEXT;
+      if (_textEl) _textEl.textContent = _currentText;
+    }
+
+    /** Zeile einblenden */
+    function show() {
+      _visible = true;
+      _applyVisibility();
+    }
+
+    /** Zeile ausblenden */
+    function hide() {
+      _visible = false;
+      _applyVisibility();
+    }
+
+    /** Toggle */
+    function toggle() {
+      _visible = !_visible;
+      _applyVisibility();
+    }
+
+    // -----------------------------------------------------------------------
+    // Init
+    // -----------------------------------------------------------------------
+    function init() {
+      // Sichtbarkeitszustand aus sessionStorage wiederherstellen
+      try {
+        var stored = sessionStorage.getItem(STORAGE_KEY);
+        if (stored === "0") _visible = false;
+      } catch (e) {}
+
+      _buildBar();
+      _updateOffset();
+
+      // Toggle-Button verdrahten
+      _toggleBtn = document.getElementById("forensic-hints-toggle");
+      if (_toggleBtn) {
+        _toggleBtn.addEventListener("click", function () { toggle(); });
+      }
+
+      _applyVisibility();
+
+      // Kategorie-Aktivierung → Hinweistext anpassen
+      ForensicToolbar.events.on("state:changed", function (updates) {
+        if ("activeCategory" in updates) {
+          var cat = updates.activeCategory;
+          if (!cat) {
+            clear();
+            return;
+          }
+          // Kategorie-spezifische Texte (Beleg: §19 Bauplan B3 — Kategoriensystem)
+          var CAT_HINTS = {
+            CAT_PERSON:   "👤 PER aktiv — Textstelle mit persönlichem Identifikationsmerkmal auswählen (Name, Alias, Kontaktdaten…)",
+            CAT_LOCATION: "📍 LOC aktiv — Textstelle mit Ortsangabe oder geografischem Hinweis auswählen",
+            CAT_176:      "⚖️ §176 aktiv — Textstelle mit Relevanz für §§ 176, 176a StGB auswählen",
+            CAT_184:      "🔴 §184 aktiv — Textstelle mit Relevanz für §§ 184b, 184c StGB auswählen",
+            CAT_VICTIM:   "🛡️ OPF aktiv — Textstelle mit Hinweis auf mögliche Opfer auswählen",
+            CAT_OTHER:    "📎 SON aktiv — Textstelle mit sonstiger Ermittlungsrelevanz auswählen",
+          };
+          set(CAT_HINTS[cat] || ("Kategorie " + cat + " aktiv — Textstelle auswählen"));
+        }
+      });
+
+      // Fetch-Fehler → Warnung
+      ForensicToolbar.events.on("page:loaded", function (data) {
+        if (data && data.fetchFailed) {
+          set("⚠️ Diese Seite konnte beim Abruf nicht geladen werden — der angezeigte Inhalt ist möglicherweise unvollständig.");
+        } else if (data && data.scrapeContext === "investigator") {
+          set("🔴 Ermittler-Session — diese Seite wurde mit dem Ermittler-Account abgerufen. Der Beschuldigte hatte möglicherweise keinen Zugriff.");
+        } else {
+          clear();
+        }
+      });
+    }
+
+    // Öffentlich exponieren für andere Module
+    ForensicToolbar.hints = { set: set, clear: clear, show: show, hide: hide };
+
+    return { init: init, set: set, clear: clear, show: show, hide: hide };
+  })();
+
+  // ===========================================================================
   // CSS-Highlight-Regeln für CSS Custom Highlights API (§5 Bauplan)
   //
   // Die Highlight-Sets werden im HighlightModule vorinitialisiert und in
@@ -4179,6 +4385,9 @@
 
     // Phase 7: Minimap initialisieren
     MinimapModule.init();
+
+    // Phase KN-8: Hinweiszeile
+    HintsModule.init();
 
     // Phase 12: SSE-Stream starten
     SupportIndicatorModule.init();

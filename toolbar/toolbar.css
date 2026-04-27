@@ -2,7 +2,7 @@
  * toolbar.css — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 071 · 2026-04-26
+ * Version: v0.1.0 · Build: 075 · 2026-04-27
  *
  * Änderungen Build 071:
  *   - .forensic-ctx-panel: z-index: 10000 (war 1100, überblendet jetzt
@@ -75,17 +75,24 @@
   box-sizing: border-box;
 }
 
+/* CSS-Variable für dynamische Hinweiszeilen-Höhe (Build 075, OP-KN-8) */
+:root {
+  --forensic-hintbar-height: 28px;
+}
+
 body {
   margin: 0;
-  /* Platz für Toolbar (62 px) + Minimap hat eigenes Padding */
-  padding-top: 62px;
+  /* Platz für Toolbar (62 px) + Hinweiszeile (var) */
+  padding-top: calc(62px + var(--forensic-hintbar-height));
+  transition: padding-top 0.25s ease;
 }
 
 /* Viewport-Bereich: scrollbarer Seiteninhalt */
 #forensic-viewport {
-  margin-top: 64px; /* Toolbar-Höhe (62px) + Border (2px) */
-  min-height: calc(100vh - 64px);
+  margin-top: calc(64px + var(--forensic-hintbar-height));
+  min-height: calc(100vh - 64px - var(--forensic-hintbar-height));
   padding-right: 44px; /* Platz für Minimap */
+  transition: margin-top 0.25s ease;
 }
 
 /* Lade-Indikator wenn Viewport leer */
@@ -1332,3 +1339,65 @@ body {
    .forensic-sec-context { ... }   obsolet
    .forensic-select { ... }        obsolet
    ---------------------------------------------------------------- */
+
+/* ==========================================================================
+   Hinweiszeile (Build 075, OP-KN-8)
+   ========================================================================== */
+
+#forensic-hintbar {
+  position: fixed;
+  top: 62px;               /* direkt unter der Toolbar */
+  left: 0;
+  right: 0;
+  height: 28px;
+  z-index: 9998;           /* unter Toolbar (9999), über Viewport */
+  background: #141828;
+  border-bottom: 1px solid #2a3555;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  overflow: hidden;
+  /* Einblend-Animation */
+  max-height: 28px;
+  opacity: 1;
+  transition: max-height 0.25s ease, opacity 0.2s ease;
+}
+
+#forensic-hintbar.forensic-hintbar--hidden {
+  max-height: 0;
+  opacity: 0;
+  border-bottom-color: transparent;
+}
+
+.forensic-hint-text {
+  font-size: 11px;
+  color: #7a8aaa;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  font-style: italic;
+  letter-spacing: 0.01em;
+}
+
+/* Toggle-Button in Sektion 5 */
+.forensic-hints-toggle-btn {
+  font-size: 13px;
+  padding: 1px 5px;
+  background: none;
+  border: none;
+  color: #5a6a8a;
+  cursor: pointer;
+  transition: color 0.15s;
+  line-height: 1;
+}
+
+.forensic-hints-toggle-btn:hover {
+  color: #a0b0d0;
+}
+
+.forensic-hints-toggle-btn:focus-visible {
+  outline: 2px solid #4f8ef7;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
