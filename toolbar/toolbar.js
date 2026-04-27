@@ -2,7 +2,15 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 072 · 2026-04-26
+ * Version: v0.1.0 · Build: 073 · 2026-04-27
+ *
+ * Änderungen Build 073 (Fix — TraceNavigationModule ReferenceError):
+ *   _ForensicToolbar_setState() war ein undefinierter lokaler Alias auf
+ *   ForensicToolbar._setState(). Alle Aufrufe direkt auf
+ *   ForensicToolbar._setState() umgestellt. Der ReferenceError verhinderte
+ *   in Build 072 jeden Klick auf ◄◄/▶▶ (Seitenwechsel) und die
+ *   Sequenz-Initialisierung.
+ *   Beleg: Screenshot Build 072 — Buttons aktiv aber ohne Funktion.
  *
  * Änderungen Build 072 (OP-KN-7 — Spur-Navigation seitenübergreifend):
  *   TraceNavigationModule: Intra-page Navigation (Build 030-C) um
@@ -2704,7 +2712,7 @@
       }
 
       // traceSeqIndex vorab setzen — wird nach page:loaded von _update() genutzt
-      _ForensicToolbar_setState({ traceSeqIndex: target.seqIdx });
+      ForensicToolbar._setState({ traceSeqIndex: target.seqIdx });
 
       // Seitenload anstoßen
       ForensicToolbar.navigation.loadPage(dest.url, true);
@@ -2717,10 +2725,10 @@
       ajaxGet(ForensicToolbar.config.API_TRACE_SEQUENCE)
         .then(function (data) {
           var seq = (data && Array.isArray(data.sequence)) ? data.sequence : [];
-          _ForensicToolbar_setState({ traceSequence: seq });
+          ForensicToolbar._setState({ traceSequence: seq });
           // Initialen seqIndex anhand der aktuellen Seite setzen
           var idx = _seqIndexForUrl(_currentUrl());
-          _ForensicToolbar_setState({ traceSeqIndex: idx });
+          ForensicToolbar._setState({ traceSeqIndex: idx });
           _update();
           _dbg("TraceSequence geladen: " + seq.length + " Einträge, seqIdx=" + idx);
         })
@@ -2729,10 +2737,8 @@
         });
     }
 
-    // Hilfsfunktion: _setState ohne Namenskonflikt mit lokalem Scope
-    function _ForensicToolbar_setState(obj) {
-      ForensicToolbar._setState(obj);
-    }
+    // Hilfsfunktion entfernt — ForensicToolbar._setState direkt verwenden.
+    // Build 072-Fix: _ForensicToolbar_setState war undefinierter Alias.
 
     // -------------------------------------------------------------------------
     // init — Wird nach jedem Seitenload aufgerufen.
@@ -2779,7 +2785,7 @@
       // seqIndex auf aktuelle Seite setzen (Sequenz bereits geladen)
       var idx = _seqIndexForUrl(_currentUrl());
       if (idx >= 0) {
-        _ForensicToolbar_setState({ traceSeqIndex: idx });
+        ForensicToolbar._setState({ traceSeqIndex: idx });
       }
 
       _update();
@@ -2795,7 +2801,7 @@
         // Sequenz-Cache ist stabil (Server-Daten ändern sich nicht während Session)
         // Nur seqIndex neu bestimmen
         var idx = _seqIndexForUrl(_currentUrl());
-        _ForensicToolbar_setState({ traceSeqIndex: idx });
+        ForensicToolbar._setState({ traceSeqIndex: idx });
       }
       setTimeout(init, 0);
     });
