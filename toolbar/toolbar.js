@@ -2,7 +2,7 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 078 · 2026-04-27
+ * Version: v0.1.0 · Build: 079 · 2026-04-27
  *
  * Änderungen Build 077:
  *   Sektion 2: Label "Markierung" ergänzt. Ann.-Buttons (◄/►) von Sektion 3
@@ -1306,44 +1306,37 @@
       if (vp) vp.style.cursor = activeCatId ? "crosshair" : "";
     }
 
-    // Annotation-Navigation — sequenzieller Index (Build 077, fix Build 078)
+    // Annotation-Navigation — sequenzieller Index (Build 078, fix Build 079)
     // _state.annotations ist eine Map<localId, AnnotationRecord>.
     // Annotationen haben kein elementId bei Textmarkierungen — die Position
     // wird über selection.xpathStart/End wiederhergestellt via
-    // AnnotationStoreModule.rangeFromSelection(). Nur Post-Markierungen
-    // haben eine elementId (postId gesetzt).
-    // Beleg: Build 078 — elementId:null, XPath-basierte Wiederherstellung.
+    // AnnotationStoreModule.rangeFromSelection().
+    //
+    // WICHTIG: _state.annotations wird per .set()/.clear() direkt mutiert —
+    // _setState() wird NICHT aufgerufen, also feuert "state:changed" mit
+    // "annotations" NIE. Stattdessen auf "annotations:loaded" und
+    // "annotation:synced" / "annotation:deleted" hören.
+    // Beleg: Build 079 — Diagnose ergab annotations:loaded als korrektes Event.
     var _annIdx = -1;
 
     function _annArray() {
-      // Map → Array, sortiert nach Dokumentreihenfolge via Range-Vergleich
+      // Map-Insertion-Order entspricht Lade-Reihenfolge (ausreichend für Navigation).
+      // Kein Range-Vergleich im Comparator — zu teuer bei vielen Annotationen.
       var arr = [];
       _state.annotations.forEach(function (ann) { arr.push(ann); });
-      // Sortierung: post-Markierungen ans Ende, Textmarkierungen nach
-      // Dokumentreihenfolge (DOM-Position des startContainer)
-      arr.sort(function (a, b) {
-        if (!a.selection && !b.selection) return 0;
-        if (!a.selection) return 1;
-        if (!b.selection) return -1;
-        try {
-          var ra = AnnotationStoreModule.rangeFromSelection(a.selection);
-          var rb = AnnotationStoreModule.rangeFromSelection(b.selection);
-          if (!ra || !rb) return 0;
-          var cmp = ra.compareBoundaryPoints(Range.START_TO_START, rb);
-          return cmp;
-        } catch (e) { return 0; }
-      });
       return arr;
     }
 
-    function _annCount() { return _state.annotations ? _state.annotations.size : 0; }
+    function _annCount() {
+      return _state.annotations ? _state.annotations.size : 0;
+    }
 
     function _updateAnnButtons() {
       var prevBtn = document.getElementById("forensic-btn-prev-ann");
       var nextBtn = document.getElementById("forensic-btn-next-ann");
       var n = _annCount();
       if (prevBtn) prevBtn.disabled = (n === 0 || _annIdx <= 0);
-      if (nextBtn) nextBtn.disabled = (n === 0 || (_annIdx >= n - 1));
+      if (nextBtn) nextBtn.disabled = (n === 0 || _annIdx >= n - 1);
     }
 
     function _jumpToAnn(idx) {
@@ -1353,18 +1346,21 @@
       _annIdx = idx;
       var ann = arr[idx];
 
-      // Scrollziel ermitteln: XPath-Range oder elementId (Post-Markierung)
+      // Scrollziel: XPath-Range (Textmarkierung) oder Post-ID
       var scrollTarget = null;
       if (ann.selection) {
-        var range = AnnotationStoreModule.rangeFromSelection(ann.selection);
-        if (range) {
-          // startContainer ist ein TextNode — parentElement für scrollIntoView
-          var node = range.startContainer;
-          scrollTarget = (node.nodeType === 3) ? node.parentElement : node;
-        }
-      } else if (ann.elementId) {
+        try {
+          var range = AnnotationStoreModule.rangeFromSelection(ann.selection);
+          if (range) {
+            var node = range.startContainer;
+            scrollTarget = (node.nodeType === 3) ? node.parentElement : node;
+          }
+        } catch (e) { /* Range nicht auflösbar */ }
+      }
+      if (!scrollTarget && ann.elementId) {
         scrollTarget = document.getElementById(ann.elementId);
-      } else if (ann.postId) {
+      }
+      if (!scrollTarget && ann.postId) {
         scrollTarget = document.getElementById("p" + ann.postId);
       }
 
@@ -1378,7 +1374,9 @@
       AccessibilityModule.announce(
         "Annotation " + (idx + 1) + " von " + arr.length +
         (ann.category ? " · " + ann.category : "") +
-        (ann.selection ? " · \"" + (ann.selection.textContent || "").substring(0, 30) + "\"" : "")
+        (ann.selection && ann.selection.textContent
+          ? " · \"" + ann.selection.textContent.substring(0, 30) + "\""
+          : "")
       );
       _updateAnnButtons();
     }
@@ -1393,16 +1391,20 @@
       _jumpToAnn(_annIdx <= 0 ? 0 : _annIdx - 1);
     }
 
-    // Bei neuem Seitenload Index zurücksetzen
-    ForensicToolbar.events.on("page:loaded", function () {
+    // Buttons aktualisieren wenn Annotationen geladen/geändert/gelöscht werden.
+    // NICHT auf "state:changed" mit "annotations" — die Map wird direkt mutiert.
+    ForensicToolbar.events.on("annotations:loaded",  function () {
       _annIdx = -1;
       _updateAnnButtons();
     });
-    ForensicToolbar.events.on("state:changed", function (updates) {
-      if ("annotations" in updates) {
-        _annIdx = -1;
-        _updateAnnButtons();
-      }
+    ForensicToolbar.events.on("annotation:synced",   function () { _updateAnnButtons(); });
+    ForensicToolbar.events.on("annotation:deleted",  function () {
+      _annIdx = -1;
+      _updateAnnButtons();
+    });
+    ForensicToolbar.events.on("page:loaded", function () {
+      _annIdx = -1;
+      _updateAnnButtons();
     });
 
     // Event-Listener registrieren
