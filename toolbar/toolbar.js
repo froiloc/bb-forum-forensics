@@ -2,7 +2,19 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 076 · 2026-04-27
+ * Version: v0.1.0 · Build: 077 · 2026-04-27
+ *
+ * Änderungen Build 077:
+ *   Sektion 2: Label "Markierung" ergänzt. Ann.-Buttons (◄/►) von Sektion 3
+ *     hierher verschoben, "Ann."-Text entfernt, initial disabled.
+ *     Rechts-Ausrichtung via margin-left:auto auf erstem Ann.-Button.
+ *   Sektion 3: Ann.-Buttons entfernt.
+ *   Sektion 4: Label "Seite" ergänzt. Buttons initial disabled — werden
+ *     von _detectPagination() aktiviert wenn rel="prev"/"next" gefunden.
+ *     page-info zeigt Seitenzahl "N / M" oder ist leer (kein "—" mehr).
+ *   Annotations-Navigation: echter _annIdx-Counter, sequenziell durch alle
+ *     Annotationen der Seite. _updateAnnButtons() hält disabled-Zustand aktuell.
+ *     Highlight-Outline bei Sprung (gelb, 1.2s). AccessibilityModule.announce().
  *
  * Änderungen Build 075 (OP-KN-8 — Hinweiszeile):
  *   HintsModule: Neue kontextsensitive Hinweiszeile unterhalb der Toolbar.
@@ -1158,25 +1170,28 @@
         // =====================================================================
         '<div class="forensic-zone forensic-zone-center">' +
 
-          // Sektion 2b: Markier-Werkzeuge
+          // Sektion 2: Markier-Werkzeuge + Annotations-Navigation rechts
+          // Label "Markierung" links, Kategorie-Buttons mittig,
+          // ◄/► Annotations-Navigation am rechten Rand.
+          // Build 077: Ann.-Buttons von Sektion 3 hierher verschoben,
+          // "Ann."-Text entfernt, Label ergänzt.
           '<div class="forensic-section forensic-sec2" role="group" aria-label="Markierungskategorien">' +
+          '<span class="forensic-sec-label">Markierung</span>' +
           cats +
+          '<button id="forensic-btn-prev-ann" class="forensic-btn forensic-ann-nav-btn" ' +
+          'aria-label="Zur vorherigen Annotation springen" ' +
+          'title="Vorherige Annotation" disabled>◀</button>' +
+          '<button id="forensic-btn-next-ann" class="forensic-btn forensic-ann-nav-btn" ' +
+          'aria-label="Zur nächsten Annotation springen" ' +
+          'title="Nächste Annotation" disabled>▶</button>' +
           '</div>' +
           '<div class="forensic-separator" aria-hidden="true"></div>' +
 
           // Sektion 3: Aktionen
-          // Annotations-Navigation (◄/►) steht direkt neben den Marker-Buttons,
-          // damit der thematische Zusammenhang sichtbar ist (Build 072, OP-KN-7).
           '<div class="forensic-section forensic-sec3">' +
           '<button id="forensic-btn-userinfo" class="forensic-btn" ' +
           'aria-label="Nutzerinfo-Tab öffnen (Alt+U)" title="Nutzerinfo öffnen [Alt+U]">' +
           '👤 Nutzerinfo</button>' +
-          '<button id="forensic-btn-prev-ann" class="forensic-btn forensic-ann-nav-btn" ' +
-          'aria-label="Zur vorherigen Annotation springen" ' +
-          'title="Vorherige Annotation">◀ Ann.</button>' +
-          '<button id="forensic-btn-next-ann" class="forensic-btn forensic-ann-nav-btn" ' +
-          'aria-label="Zur nächsten unkommentierten Annotation springen" ' +
-          'title="Nächste Annotation">▶ Ann.</button>' +
           '<button id="forensic-btn-viewmode" class="forensic-btn" ' +
           'aria-label="Ansicht wechseln: Original oder Angepasst" ' +
           'title="Ansicht wechseln [Original / Angepasst]" ' +
@@ -1193,15 +1208,17 @@
 
           '<div class="forensic-separator" aria-hidden="true"></div>' +
 
-          // Sektion 4: Seitennavigation mit Spurennummer-Eingabe (§OP-5, Dummy Build 030-B)
-          // Das Eingabefeld ermöglicht direktes Anspringen einer Spur per Nummer.
-          // Funktionalität wird in späterem Build ergänzt (Annotation-Navigation).
+          // Sektion 4: Seitennavigation (Pagination)
+          // Label "Seite" links. Buttons sind initial disabled — NavigationModule
+          // aktiviert sie sobald rel="prev"/"next"-Links auf der Seite gefunden werden.
+          // Build 077: Label ergänzt, initial disabled.
           '<div class="forensic-section forensic-sec4" aria-label="Seitennavigation">' +
+          '<span class="forensic-sec-label">Seite</span>' +
           '<button id="forensic-btn-nav-prev" class="forensic-btn forensic-nav-btn" ' +
-          'aria-label="Vorherige Seite (Alt+Pfeil links)" title="Vorherige Seite [Alt+←]">◀</button>' +
-          '<span id="forensic-page-info" class="forensic-page-info" aria-label="Seitenposition">—</span>' +
+          'aria-label="Vorherige Seite (Alt+Pfeil links)" title="Vorherige Seite [Alt+←]" disabled>◀</button>' +
+          '<span id="forensic-page-info" class="forensic-page-info" aria-label="Seitenposition" aria-live="polite"></span>' +
           '<button id="forensic-btn-nav-next" class="forensic-btn forensic-nav-btn" ' +
-          'aria-label="Nächste Seite (Alt+Pfeil rechts)" title="Nächste Seite [Alt+→]">▶</button>' +
+          'aria-label="Nächste Seite (Alt+Pfeil rechts)" title="Nächste Seite [Alt+→]" disabled>▶</button>' +
           '</div>' +
           '<div class="forensic-separator" aria-hidden="true"></div>' +
 
@@ -1289,31 +1306,63 @@
       if (vp) vp.style.cursor = activeCatId ? "crosshair" : "";
     }
 
-    function _jumpToNextAnnotation() {
-      var first = null;
-      _state.annotations.forEach(function (ann) {
-        if (!ann.text && !first) first = ann;
-      });
-      if (!first) return;
-      var el = first.elementId
-        ? document.getElementById(first.elementId)
-        : null;
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    // Annotation-Navigation — sequenzieller Index (Build 077)
+    // _annIdx: aktuell angezeigte Annotation (0-basiert), -1 = keine
+    var _annIdx = -1;
+
+    function _annCount() { return (_state.annotations || []).length; }
+
+    function _updateAnnButtons() {
+      var prevBtn = document.getElementById("forensic-btn-prev-ann");
+      var nextBtn = document.getElementById("forensic-btn-next-ann");
+      var n = _annCount();
+      if (prevBtn) prevBtn.disabled = (n === 0 || _annIdx <= 0);
+      if (nextBtn) nextBtn.disabled = (n === 0 || _annIdx >= n - 1);
     }
 
-    // Rückwärts zur letzten Annotation (Build 072 — Buttons in Sektion 3).
-    // Navigiert zur letzten Annotation in _state.annotations (mit Text = bearbeitet).
-    function _jumpToPrevAnnotation() {
-      var last = null;
-      _state.annotations.forEach(function (ann) {
-        if (ann.text) last = ann;
-      });
-      if (!last) return;
-      var el = last.elementId
-        ? document.getElementById(last.elementId)
-        : null;
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    function _jumpToAnn(idx) {
+      var anns = _state.annotations || [];
+      if (!anns.length) return;
+      idx = Math.max(0, Math.min(anns.length - 1, idx));
+      _annIdx = idx;
+      var ann = anns[idx];
+      var el  = ann.elementId ? document.getElementById(ann.elementId) : null;
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.style.transition = "outline 0.1s";
+        el.style.outline    = "3px solid #f5c842";
+        setTimeout(function () { el.style.outline = ""; }, 1200);
+      }
+      AccessibilityModule.announce(
+        "Annotation " + (idx + 1) + " von " + anns.length +
+        (ann.category ? " · " + ann.category : "")
+      );
+      _updateAnnButtons();
     }
+
+    function _jumpToNextAnnotation() {
+      var n = _annCount();
+      if (!n) return;
+      _jumpToAnn(_annIdx < 0 ? 0 : Math.min(_annIdx + 1, n - 1));
+    }
+
+    function _jumpToPrevAnnotation() {
+      var n = _annCount();
+      if (!n) return;
+      _jumpToAnn(_annIdx <= 0 ? 0 : _annIdx - 1);
+    }
+
+    // Bei neuem Seitenload Index zurücksetzen
+    ForensicToolbar.events.on("page:loaded", function () {
+      _annIdx = -1;
+      _updateAnnButtons();
+    });
+    ForensicToolbar.events.on("state:changed", function (updates) {
+      if ("annotations" in updates) {
+        _annIdx = -1;
+        _updateAnnButtons();
+      }
+    });
 
     // Event-Listener registrieren
     ForensicToolbar.events.on("state:changed", function (updates) {
@@ -1660,13 +1709,40 @@
 
     function _detectPagination(viewport, envelope) {
       _prevUrl = null; _nextUrl = null;
-      // FluxBB-Paginierung: Links mit rel="prev"/"next" oder Klasse "paged-num"
+      // FluxBB-Paginierung: Links mit rel="prev"/"next"
       var prevA = viewport.querySelector("a[rel='prev']");
       var nextA = viewport.querySelector("a[rel='next']");
       _prevUrl = prevA ? prevA.getAttribute("href") : null;
       _nextUrl = nextA ? nextA.getAttribute("href") : null;
+
+      // Buttons aktivieren/deaktivieren je nach verfügbarer Paginierung
+      var prevBtn  = document.getElementById("forensic-btn-nav-prev");
+      var nextBtn  = document.getElementById("forensic-btn-nav-next");
       var pageInfo = document.getElementById("forensic-page-info");
-      if (pageInfo) pageInfo.textContent = (_prevUrl || _nextUrl) ? "Paginierung aktiv" : "—";
+      if (prevBtn)  prevBtn.disabled  = !_prevUrl;
+      if (nextBtn)  nextBtn.disabled  = !_nextUrl;
+
+      // Seiteninfo: "2 / 5" wenn Paginierung erkennbar, sonst leer
+      if (pageInfo) {
+        if (_prevUrl || _nextUrl) {
+          // Seitenzahl aus URL extrahieren (?p=N) wenn vorhanden
+          var curPage = null, totalPages = null;
+          var pageLinks = viewport.querySelectorAll("a.paged-num, .pagination a, a[class*='page']");
+          pageLinks.forEach(function (a) {
+            var m = a.href && a.href.match(/[?&]p=(\d+)/);
+            if (m) totalPages = Math.max(totalPages || 0, parseInt(m[1], 10));
+          });
+          var curM = (location.search || "").match(/[?&]p=(\d+)/);
+          curPage  = curM ? parseInt(curM[1], 10) : (_prevUrl ? null : 1);
+          if (curPage && totalPages) {
+            pageInfo.textContent = curPage + " / " + totalPages;
+          } else {
+            pageInfo.textContent = _prevUrl ? "›" : "1";
+          }
+        } else {
+          pageInfo.textContent = "";
+        }
+      }
     }
 
     function navigatePrev() {

@@ -2,7 +2,7 @@
  * toolbar.css — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 076 · 2026-04-27
+ * Version: v0.1.0 · Build: 077 · 2026-04-27
  *
  * Änderungen Build 071:
  *   - .forensic-ctx-panel: z-index: 10000 (war 1100, überblendet jetzt
@@ -188,6 +188,17 @@ body {
 .forensic-sec2 {
   gap: 4px;
   padding: 0 8px;
+  /* Ann.-Buttons am rechten Rand via spacer — label links, cats mittig, buttons rechts */
+  position: relative;
+}
+
+/* Spacer schiebt Ann.-Buttons an den rechten Rand von Sektion 2 */
+.forensic-ann-nav-btn {
+  margin-left: auto;
+}
+/* Nur der erste Ann.-Button bekommt margin-left:auto (schiebt beide nach rechts) */
+.forensic-ann-nav-btn + .forensic-ann-nav-btn {
+  margin-left: 2px;
 }
 
 .forensic-sec3 {
