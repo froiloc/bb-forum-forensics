@@ -2,7 +2,7 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 077 · 2026-04-27
+ * Version: v0.1.0 · Build: 078 · 2026-04-27
  *
  * Änderungen Build 077:
  *   Sektion 2: Label "Markierung" ergänzt. Ann.-Buttons (◄/►) von Sektion 3
@@ -1306,49 +1306,90 @@
       if (vp) vp.style.cursor = activeCatId ? "crosshair" : "";
     }
 
-    // Annotation-Navigation — sequenzieller Index (Build 077)
-    // _annIdx: aktuell angezeigte Annotation (0-basiert), -1 = keine
+    // Annotation-Navigation — sequenzieller Index (Build 077, fix Build 078)
+    // _state.annotations ist eine Map<localId, AnnotationRecord>.
+    // Annotationen haben kein elementId bei Textmarkierungen — die Position
+    // wird über selection.xpathStart/End wiederhergestellt via
+    // AnnotationStoreModule.rangeFromSelection(). Nur Post-Markierungen
+    // haben eine elementId (postId gesetzt).
+    // Beleg: Build 078 — elementId:null, XPath-basierte Wiederherstellung.
     var _annIdx = -1;
 
-    function _annCount() { return (_state.annotations || []).length; }
+    function _annArray() {
+      // Map → Array, sortiert nach Dokumentreihenfolge via Range-Vergleich
+      var arr = [];
+      _state.annotations.forEach(function (ann) { arr.push(ann); });
+      // Sortierung: post-Markierungen ans Ende, Textmarkierungen nach
+      // Dokumentreihenfolge (DOM-Position des startContainer)
+      arr.sort(function (a, b) {
+        if (!a.selection && !b.selection) return 0;
+        if (!a.selection) return 1;
+        if (!b.selection) return -1;
+        try {
+          var ra = AnnotationStoreModule.rangeFromSelection(a.selection);
+          var rb = AnnotationStoreModule.rangeFromSelection(b.selection);
+          if (!ra || !rb) return 0;
+          var cmp = ra.compareBoundaryPoints(Range.START_TO_START, rb);
+          return cmp;
+        } catch (e) { return 0; }
+      });
+      return arr;
+    }
+
+    function _annCount() { return _state.annotations ? _state.annotations.size : 0; }
 
     function _updateAnnButtons() {
       var prevBtn = document.getElementById("forensic-btn-prev-ann");
       var nextBtn = document.getElementById("forensic-btn-next-ann");
       var n = _annCount();
       if (prevBtn) prevBtn.disabled = (n === 0 || _annIdx <= 0);
-      if (nextBtn) nextBtn.disabled = (n === 0 || _annIdx >= n - 1);
+      if (nextBtn) nextBtn.disabled = (n === 0 || (_annIdx >= n - 1));
     }
 
     function _jumpToAnn(idx) {
-      var anns = _state.annotations || [];
-      if (!anns.length) return;
-      idx = Math.max(0, Math.min(anns.length - 1, idx));
+      var arr = _annArray();
+      if (!arr.length) return;
+      idx = Math.max(0, Math.min(arr.length - 1, idx));
       _annIdx = idx;
-      var ann = anns[idx];
-      var el  = ann.elementId ? document.getElementById(ann.elementId) : null;
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-        el.style.transition = "outline 0.1s";
-        el.style.outline    = "3px solid #f5c842";
-        setTimeout(function () { el.style.outline = ""; }, 1200);
+      var ann = arr[idx];
+
+      // Scrollziel ermitteln: XPath-Range oder elementId (Post-Markierung)
+      var scrollTarget = null;
+      if (ann.selection) {
+        var range = AnnotationStoreModule.rangeFromSelection(ann.selection);
+        if (range) {
+          // startContainer ist ein TextNode — parentElement für scrollIntoView
+          var node = range.startContainer;
+          scrollTarget = (node.nodeType === 3) ? node.parentElement : node;
+        }
+      } else if (ann.elementId) {
+        scrollTarget = document.getElementById(ann.elementId);
+      } else if (ann.postId) {
+        scrollTarget = document.getElementById("p" + ann.postId);
       }
+
+      if (scrollTarget) {
+        scrollTarget.scrollIntoView({ behavior: "smooth", block: "center" });
+        scrollTarget.style.transition = "outline 0.1s";
+        scrollTarget.style.outline    = "3px solid #f5c842";
+        setTimeout(function () { scrollTarget.style.outline = ""; }, 1200);
+      }
+
       AccessibilityModule.announce(
-        "Annotation " + (idx + 1) + " von " + anns.length +
-        (ann.category ? " · " + ann.category : "")
+        "Annotation " + (idx + 1) + " von " + arr.length +
+        (ann.category ? " · " + ann.category : "") +
+        (ann.selection ? " · \"" + (ann.selection.textContent || "").substring(0, 30) + "\"" : "")
       );
       _updateAnnButtons();
     }
 
     function _jumpToNextAnnotation() {
-      var n = _annCount();
-      if (!n) return;
-      _jumpToAnn(_annIdx < 0 ? 0 : Math.min(_annIdx + 1, n - 1));
+      if (!_annCount()) return;
+      _jumpToAnn(_annIdx < 0 ? 0 : _annIdx + 1);
     }
 
     function _jumpToPrevAnnotation() {
-      var n = _annCount();
-      if (!n) return;
+      if (!_annCount()) return;
       _jumpToAnn(_annIdx <= 0 ? 0 : _annIdx - 1);
     }
 
