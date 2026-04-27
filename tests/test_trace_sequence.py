@@ -220,14 +220,14 @@ class TestGetTraceSequence(unittest.TestCase):
         self.assertEqual(result, [])
 
     def test_T02_topic_spur_wird_geliefert(self):
-        """T02 — topic-Spur mit zugehöriger pages-Zeile wird geliefert."""
+        """T02 — viewtopic-Spur mit zugehöriger pages-Zeile wird geliefert."""
         con = _create_attached_db(
             pages=[{
                 "url_canonical": "/forum/viewtopic.php?id=42",
                 "title": "Thema 42",
             }],
             scrape_targets=[{
-                "id": 1, "url_type": "topic", "topic_id": 42,
+                "id": 1, "url_type": "viewtopic", "topic_id": 42,
             }],
         )
         fdb = ForensicDb(con)
@@ -255,14 +255,14 @@ class TestGetTraceSequence(unittest.TestCase):
         self.assertIn("profile.php", result[0]["url"])
 
     def test_T04_pm_spur_wird_geliefert(self):
-        """T04 — pm-Spur wird korrekt einer pmsnew-Seite zugeordnet."""
+        """T04 — pmsnew_topic-Spur wird korrekt einer pmsnew-Seite zugeordnet."""
         con = _create_attached_db(
             pages=[{
                 "url_canonical": "/forum/pmsnew.php?mdl=topic&tid=7",
                 "title": "PN: Kontakt",
             }],
             scrape_targets=[{
-                "id": 1, "url_type": "pm", "pm_topic_id": 7,
+                "id": 1, "url_type": "pmsnew_topic", "pm_topic_id": 7,
             }],
         )
         fdb = ForensicDb(con)
@@ -281,10 +281,10 @@ class TestGetTraceSequence(unittest.TestCase):
                 {"url_canonical": "/forum/viewforum.php?id=3", "title": "Forum3"},
             ],
             scrape_targets=[
-                {"id": 1, "url_type": "topic",   "topic_id": 10},
-                {"id": 2, "url_type": "pm",      "pm_topic_id": 5},
+                {"id": 1, "url_type": "viewtopic",   "topic_id": 10},
+                {"id": 2, "url_type": "pmsnew_topic",      "pm_topic_id": 5},
                 {"id": 3, "url_type": "profile", "actor_user_id": 2948078},
-                {"id": 4, "url_type": "forum",   "forum_id": 3},
+                {"id": 4, "url_type": "viewforum",   "forum_id": 3},
             ],
         )
         fdb = ForensicDb(con)
@@ -303,8 +303,8 @@ class TestGetTraceSequence(unittest.TestCase):
                 "title": "Thema 42",
             }],
             scrape_targets=[
-                {"id": 1, "url_type": "topic", "topic_id": 42},
-                {"id": 2, "url_type": "poll",  "poll_topic_id": 42},
+                {"id": 1, "url_type": "viewtopic", "topic_id": 42},
+                {"id": 2, "url_type": "viewtopic",  "poll_topic_id": 42},
             ],
         )
         fdb = ForensicDb(con)
@@ -331,7 +331,7 @@ class TestGetTraceSequence(unittest.TestCase):
         con = _create_attached_db(
             pages=[],  # Keine Seite in DB
             scrape_targets=[{
-                "id": 1, "url_type": "topic", "topic_id": 99,
+                "id": 1, "url_type": "viewtopic", "topic_id": 99,
             }],
         )
         fdb = ForensicDb(con)
@@ -347,9 +347,9 @@ class TestGetTraceSequence(unittest.TestCase):
                 {"url_canonical": "/forum/viewtopic.php?id=3", "title": "Spät"},
             ],
             scrape_targets=[
-                {"id": 10, "url_type": "topic", "topic_id": 3},
-                {"id": 5,  "url_type": "topic", "topic_id": 1},
-                {"id": 7,  "url_type": "topic", "topic_id": 2},
+                {"id": 10, "url_type": "viewtopic", "topic_id": 3},
+                {"id": 5,  "url_type": "viewtopic", "topic_id": 1},
+                {"id": 7,  "url_type": "viewtopic", "topic_id": 2},
             ],
         )
         fdb = ForensicDb(con)
@@ -363,7 +363,7 @@ class TestGetTraceSequence(unittest.TestCase):
         """T10 — Jeder Eintrag hat url, title, group, trace_id."""
         con = _create_attached_db(
             pages=[{"url_canonical": "/forum/viewtopic.php?id=1", "title": "X"}],
-            scrape_targets=[{"id": 1, "url_type": "topic", "topic_id": 1}],
+            scrape_targets=[{"id": 1, "url_type": "viewtopic", "topic_id": 1}],
         )
         fdb = ForensicDb(con)
         result = fdb.get_trace_sequence()

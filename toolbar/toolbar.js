@@ -2,7 +2,12 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 073 · 2026-04-27
+ * Version: v0.1.0 · Build: 074 · 2026-04-27
+ *
+ * Änderungen Build 074: keine JS-Änderungen.
+ *   Serverseite: get_trace_sequence() url_type-Mapping korrigiert.
+ *   Beleg: reale forensic_2948078.db — url_type-Werte weichen von
+ *   Build 072-Annahmen ab (viewtopic statt topic, pmsnew_topic statt pm usw.).
  *
  * Änderungen Build 073 (Fix — TraceNavigationModule ReferenceError):
  *   _ForensicToolbar_setState() war ein undefinierter lokaler Alias auf

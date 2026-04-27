@@ -879,111 +879,137 @@ class ForensicDb:
         werden geliefert — Scrape-Targets ohne zugehörige Seite werden
         übersprungen.
 
-        Returns:
-            Liste von dicts mit den Feldern:
-              url      — normalisierte Seiten-URL (ohne Onion-Präfix)
-              title    — Seitentitel aus fdb.pages.title (kann None sein)
-              group    — Navigationsgruppe: 'profile'|'pm'|'topic'|'other'
-              trace_id — scrape_targets.id (für Debugging + Paginierung)
+        url_type-Mapping (Beleg: reale forensic_2948078.db, 2026-04-27):
+          viewtopic        → Gruppe 'topic',   JOIN auf topic_id
+          viewforum        → Gruppe 'other',   JOIN auf forum_id
+          pmsnew_topic     → Gruppe 'pm',      JOIN auf pm_topic_id
+          pmsnew_post      → Gruppe 'pm',      JOIN auf pm_topic_id
+          pms_partner      → Gruppe 'pm',      JOIN auf actor_user_id (sid=)
+          pms_overview     → Gruppe 'pm',      keine ID (fixe URL pmsnew.php)
+          profile          → Gruppe 'profile', JOIN auf actor_user_id
+          other_profile    → Gruppe 'profile', JOIN auf actor_user_id
+          wholikes         → Gruppe 'other',   JOIN auf post_id
+          notifications    → Gruppe 'other',   keine ID (fixe URL)
+          notification_item→ Gruppe 'other',   keine ID (fixe URL)
+          pgp_probe        → Gruppe 'other',   JOIN auf actor_user_id
+          static           → übersprungen
 
-        Beleg: OP-KN-7, Projektgespräch 2026-04-26, Build 072.
+        Returns:
+            Liste von dicts: url, title, group, trace_id
+        Beleg: OP-KN-7, Build 074 — Korrektur der url_type-Werte.
         """
         base_url = self.get_forum_base_url() or ""
 
-        # Alle scrape_targets mit zugehöriger fdb.pages-Seite.
-        # LEFT JOIN auf pages über blob_lookup (normalisierte URL).
-        # url_type='static' wird ausgeschlossen — statische Seiten sind
-        # keine Spuren des Beschuldigten.
-        # Beleg: scrape_targets.url_type-Werte aus forensic_schema_db.sql.
-        sql = """
-            SELECT
-                st.id           AS trace_id,
-                st.url_type     AS url_type,
-                bl.url          AS url,
-                p.title         AS title
-            FROM fdb.scrape_targets st
-            -- URL der Spur aus url_type und zugehöriger ID ableiten:
-            -- Wir joinen auf pages über die URL aus blob_lookup.
-            -- Da blob_lookup die normalisierten URLs enthält, können wir
-            -- direkt matchen.
-            JOIN blob_lookup bl ON (
-                -- topic: viewtopic.php?id=<topic_id>
-                (st.url_type = 'topic'
-                    AND bl.url LIKE '%viewtopic.php?id=' || st.topic_id || '%')
-                -- pm: pmsnew.php?mdl=topic&tid=<pm_topic_id>
-                OR (st.url_type = 'pm'
-                    AND bl.url LIKE '%pmsnew.php%tid=' || st.pm_topic_id || '%')
-                -- profile: profile.php?id=<actor_user_id>
-                OR (st.url_type = 'profile'
-                    AND bl.url LIKE '%profile.php?id=' || st.actor_user_id || '%')
-                -- forum: viewforum.php?id=<forum_id>
-                OR (st.url_type = 'forum'
-                    AND bl.url LIKE '%viewforum.php?id=' || st.forum_id || '%')
-                -- thanks: thanks.php?id=<thanks_post_id>
-                OR (st.url_type = 'thanks'
-                    AND bl.url LIKE '%thanks.php%' || st.thanks_post_id || '%')
-                -- poll: viewtopic.php?id=<poll_topic_id> (gleiche Seite wie topic)
-                OR (st.url_type = 'poll'
-                    AND bl.url LIKE '%viewtopic.php?id=' || st.poll_topic_id || '%')
-            )
-            -- pages direkt für title (blob_lookup enthält keinen title)
-            JOIN fdb.pages p ON p.id = (
-                SELECT page_id FROM blob_lookup WHERE url = bl.url LIMIT 1
-            )
-            WHERE st.url_type != 'static'
-            ORDER BY st.id ASC
-        """
+        # url_type → (navigationsgruppe, id_spalte_in_scrape_targets, url_fragment_template)
+        # id_spalte None = fixe URL ohne ID-Parameter (pms_overview, notifications)
+        # url_fragment None = nur LIKE '%<url_type_keyword>%' Matching
+        TYPE_MAP = {
+            "viewtopic":        ("topic",   "topic_id",      "viewtopic.php?id="),
+            "viewforum":        ("other",   "forum_id",      "viewforum.php?id="),
+            "pmsnew_topic":     ("pm",      "pm_topic_id",   "pmsnew.php?mdl=topic&tid="),
+            "pmsnew_post":      ("pm",      "pm_topic_id",   "pmsnew.php?mdl=topic&tid="),
+            "pms_partner":      ("pm",      "actor_user_id", "pmsnew.php?mdl=list&sid="),
+            "pms_overview":     ("pm",      None,            "pmsnew.php?mdl=list"),
+            "profile":          ("profile", "actor_user_id", "profile.php?id="),
+            "other_profile":    ("profile", "actor_user_id", "profile.php?id="),
+            "wholikes":         ("other",   "post_id",       "wholikes.php?pid="),
+            "notifications":    ("other",   None,            "notifications.php"),
+            "notification_item":("other",   None,            "notifications.php"),
+            "pgp_probe":        ("other",   "actor_user_id", "profile.php?id="),
+            # static → nicht gelistet, wird unten übersprungen
+        }
+
+        GROUP_ORDER = {"profile": 0, "pm": 1, "topic": 2, "other": 3}
 
         try:
-            rows = self._con.execute(sql).fetchall()
+            rows = self._con.execute("""
+                SELECT
+                    st.id           AS trace_id,
+                    st.url_type     AS url_type,
+                    st.topic_id     AS topic_id,
+                    st.forum_id     AS forum_id,
+                    st.pm_topic_id  AS pm_topic_id,
+                    st.post_id      AS post_id,
+                    st.actor_user_id AS actor_user_id
+                FROM fdb.scrape_targets st
+                WHERE st.url_type != 'static'
+                ORDER BY st.id ASC
+            """).fetchall()
         except Exception as exc:
-            logger.error("get_trace_sequence() SQL fehlgeschlagen: %s", exc)
+            logger.error("get_trace_sequence() Abfrage fehlgeschlagen: %s", exc)
             return []
 
-        # Gruppieren und sortieren: profile(0) → pm(1) → topic(2) → other(3)
-        group_order = {"profile": 0, "pm": 1, "topic": 2, "other": 3}
-
-        def _to_group(url_type: str) -> str:
-            if url_type == "profile":
-                return "profile"
-            if url_type in ("pm", "pmsnew"):
-                return "pm"
-            if url_type in ("topic", "post", "poll", "thanks"):
-                return "topic"
-            return "other"
-
-        # Deduplizieren: gleiche URL nur einmal (mehrere scrape_targets können
-        # dieselbe Seite referenzieren — z.B. topic + poll auf viewtopic.php).
         seen_urls: set[str] = set()
         raw_entries = []
+
         for row in rows:
-            url_norm = str(row["url"] or "")
-            if url_norm in seen_urls:
+            url_type = str(row["url_type"] or "")
+            if url_type not in TYPE_MAP:
+                logger.debug("get_trace_sequence: unbekannter url_type '%s' — übersprungen", url_type)
+                continue
+
+            group, id_col, url_fragment = TYPE_MAP[url_type]
+
+            # ID-Wert bestimmen
+            id_val = None
+            if id_col:
+                id_val = row[id_col]
+
+            # URL in blob_lookup suchen
+            try:
+                if id_val is not None:
+                    pattern = f"%{url_fragment}{id_val}%"
+                    bl_row = self._con.execute(
+                        "SELECT url FROM blob_lookup WHERE url LIKE ? LIMIT 1",
+                        (pattern,),
+                    ).fetchone()
+                else:
+                    # Fixe URL — exakter LIKE auf Fragment
+                    pattern = f"%{url_fragment}%"
+                    bl_row = self._con.execute(
+                        "SELECT url FROM blob_lookup WHERE url LIKE ? LIMIT 1",
+                        (pattern,),
+                    ).fetchone()
+            except Exception as exc:
+                logger.debug("get_trace_sequence: blob_lookup für '%s' fehlgeschlagen: %s", url_type, exc)
+                continue
+
+            if not bl_row:
+                continue
+
+            url_norm = str(bl_row["url"] or "")
+            if not url_norm or url_norm in seen_urls:
                 continue
             seen_urls.add(url_norm)
-            group = _to_group(str(row["url_type"] or ""))
+
+            # Titel aus fdb.pages über blob_lookup.page_id
+            try:
+                t_row = self._con.execute(
+                    "SELECT p.title FROM fdb.pages p "
+                    "INNER JOIN blob_lookup bl ON bl.page_id = p.id "
+                    "WHERE bl.url = ? LIMIT 1",
+                    (url_norm,),
+                ).fetchone()
+                title = str(t_row["title"]).strip() if t_row and t_row["title"] else None
+            except Exception:
+                title = None
+
             raw_entries.append({
-                "url":      url_norm,
-                "title":    str(row["title"]).strip() if row["title"] else None,
-                "group":    group,
-                "trace_id": int(row["trace_id"]),
-                "_sort_key": group_order.get(group, 3),
+                "url":       url_norm,
+                "title":     title,
+                "group":     group,
+                "trace_id":  int(row["trace_id"]),
+                "_sort_key": GROUP_ORDER.get(group, 3),
             })
 
-        # Stabile Sortierung: Gruppe zuerst, dann trace_id (Autoincrement)
+        # Stabile Sortierung: Gruppe zuerst, dann trace_id ASC
         raw_entries.sort(key=lambda e: (e["_sort_key"], e["trace_id"]))
 
-        # _sort_key aus Output entfernen
-        result = []
-        for e in raw_entries:
-            result.append({
-                "url":      e["url"],
-                "title":    e["title"],
-                "group":    e["group"],
-                "trace_id": e["trace_id"],
-            })
-
-        return result
+        return [
+            {"url": e["url"], "title": e["title"],
+             "group": e["group"], "trace_id": e["trace_id"]}
+            for e in raw_entries
+        ]
 
     def page_count(self) -> int:
 
