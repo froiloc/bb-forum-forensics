@@ -2,7 +2,7 @@
  * toolbar.css — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 077 · 2026-04-27
+ * Version: v0.1.0 · Build: 081 · 2026-04-27
  *
  * Änderungen Build 071:
  *   - .forensic-ctx-panel: z-index: 10000 (war 1100, überblendet jetzt
@@ -1394,8 +1394,13 @@ body {
   letter-spacing: 0.01em;
 }
 
-/* Toggle-Button — wie .forensic-btn gestylt (Punkt 3) */
-.forensic-hints-toggle-btn {
+/* Ansichtswechsel-Button: feste Mindestbreite verhindert Layout-Shift
+   beim Wechsel zwischen "⊞ Angepasst" und "⊟ Original" (Build 081).
+   Wert orientiert sich an der breiteren Variante "⊟ Original". */
+#forensic-btn-viewmode {
+  min-width: 88px;
+  justify-content: center;
+}
   /* Erbt .forensic-btn: background #252b3e, border #3a4060, border-radius 4px */
   font-size: 12px;
   padding: 2px 6px;
