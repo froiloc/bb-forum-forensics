@@ -2,7 +2,7 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 081 · 2026-04-27
+ * Version: v0.1.0 · Build: 082 · 2026-04-27
  *
  * Änderungen Build 077:
  *   Sektion 2: Label "Markierung" ergänzt. Ann.-Buttons (◄/►) von Sektion 3
@@ -552,6 +552,35 @@
       },
       body: JSON.stringify(data),
     }).then(function (r) { return r.json(); });
+  }
+
+  /**
+   * _resolveTraceElement(elemId) → HTMLElement | null
+   *
+   * Gemeinsame Hilfsfunktion für MinimapModule und TraceNavigationModule.
+   * Löst einen traceElements-Token zu einem DOM-Element auf.
+   *
+   * Zwei Formate:
+   *   "p<post_id>"     → document.getElementById("p<post_id>")
+   *                      (Post-Container auf viewtopic.php)
+   *   "topic:<id>"     → querySelector('a[href*="viewtopic.php?id=<id>&uid="]')
+   *                      .closest("tr")
+   *                      (Topic-Zeile auf viewforum.php — Build 082)
+   *
+   * Beleg: HTML-Analyse viewforum.php — Links haben immer &uid= Parameter.
+   *        Selektor 'a[href*="?id=<id>&uid="]' ist eindeutig (kein Treffer
+   *        auf action=new-Links da diese kein &uid= enthalten).
+   */
+  function _resolveTraceElement(elemId) {
+    if (!elemId) return null;
+    if (elemId.startsWith("topic:")) {
+      var topicId = elemId.slice(6);
+      var link = document.querySelector(
+        'a[href*="viewtopic.php?id=' + topicId + '&uid="]'
+      );
+      return link ? link.closest("tr") : null;
+    }
+    return document.getElementById(elemId);
   }
 
   /**
@@ -2561,17 +2590,24 @@
 
       // --- Typ 1: Spur-Marker (traceElements aus Envelope) ---
       // Sofort beim Laden sichtbar; zeigen Aktivität des Beschuldigten.
+      // "p<id>"      → Post-Container auf viewtopic.php (Farbe: Grau-Blau)
+      // "topic:<id>" → Topic-Zeile auf viewforum.php   (Farbe: Grün, Build 082)
       _state.traceElements.forEach(function (elemId) {
-        var el = document.getElementById(elemId);
+        var el = _resolveTraceElement(elemId);
         if (!el) return;
+        var isTopic = elemId.startsWith("topic:");
+        var color   = isTopic ? "#3a7a4a" : "#3a5a8a";
+        var label   = isTopic
+          ? "Topic-Spur: " + elemId.slice(6)
+          : "Spur: " + elemId;
         var pct = _pctOf(el);
         var bar = _makeBar(
           pct,
-          "#3a5a8a",   // gedämpftes Grau-Blau — neutral, nicht kategorisiert
-          "Spur: " + elemId,
+          color,
+          label,
           function () { el.scrollIntoView({ behavior: "smooth", block: "center" }); }
         );
-        bar.className = "forensic-minimap-trace";
+        bar.className = isTopic ? "forensic-minimap-topic" : "forensic-minimap-trace";
         _minimapEl.appendChild(bar);
       });
 
@@ -2805,16 +2841,17 @@
       _currentIdx = idx;
 
       var elemId = traces[idx];
-      var el = document.getElementById(elemId);
+      var el = _resolveTraceElement(elemId);
 
       if (el) {
         el.scrollIntoView({ behavior: "smooth", block: "center" });
         el.style.transition = "outline 0.1s";
         el.style.outline    = "3px solid #4f8ef7";
         setTimeout(function () { el.style.outline = ""; }, 1200);
-        AccessibilityModule.announce(
-          "Spur " + (idx + 1) + " von " + traces.length + ": " + traces[idx]
-        );
+        var label = elemId.startsWith("topic:")
+          ? "Topic-Spur " + (idx + 1) + " von " + traces.length + ": Topic " + elemId.slice(6)
+          : "Spur " + (idx + 1) + " von " + traces.length + ": " + elemId;
+        AccessibilityModule.announce(label);
       }
       _update();
     }

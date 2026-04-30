@@ -2,7 +2,7 @@
  * toolbar.css — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 081 · 2026-04-27
+ * Version: v0.1.0 · Build: 082 · 2026-04-27
  *
  * Änderungen Build 071:
  *   - .forensic-ctx-panel: z-index: 10000 (war 1100, überblendet jetzt
@@ -71,7 +71,7 @@
    Reset & Grundlayout
    =========================================================================== */
 
-*, *::before, *::after {
+#forensic-toolbar *, #forensic-toolbar *::before, #forensic-toolbar *::after {
   box-sizing: border-box;
 }
 
@@ -833,6 +833,29 @@ body {
   outline: 2px solid #4f8ef7;
 }
 
+/* Topic-Spur auf viewforum.php (Build 082) — erbt Layout von minimap-trace,
+   Farbe wird per inline style gesetzt (#3a7a4a gedämpftes Grün) */
+.forensic-minimap-topic {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  height: 3px;
+  border-radius: 2px;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: height 0.1s, opacity 0.1s;
+  z-index: 1;
+}
+
+.forensic-minimap-topic:hover {
+  height: 6px;
+  opacity: 0.85;
+}
+
+.forensic-minimap-topic:focus-visible {
+  outline: 2px solid #4f8ef7;
+}
+
 /* Annotations-Marker liegen über Spur-Markern */
 .forensic-minimap-bar {
   z-index: 2;
@@ -1414,4 +1437,26 @@ body {
 .forensic-hints-toggle-btn[aria-expanded="true"] {
   border-color: #4f8ef7;
   background: #1e2d50;
+}
+
+/* prevent images from being inverted */
+#forensic-viewport img {
+  filter: none !important;
+}
+
+/* interactive censorship */
+#forensic-viewport .censorship .uncensored {
+  display: none;
+}
+
+#forensic-viewport .censorship .censored {
+  display: inline;
+}
+
+#forensic-viewport .censorship:hover .censored {
+  display: none !important;
+}
+
+#forensic-viewport .censorship:hover .uncensored {
+  display: inline !important;
 }

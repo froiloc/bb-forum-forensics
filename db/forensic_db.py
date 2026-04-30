@@ -615,6 +615,62 @@ class ForensicDb:
                 "(page_id=%d): %s", page_id, exc
             )
 
+        # Forenübersicht-Seiten (viewforum.php): Topic-Zeilen markieren.
+        #
+        # Auf viewforum.php-Seiten gibt es keine Post-IDs im DOM — die Zeilen
+        # sind <tr>-Elemente mit Links der Form:
+        #   <a href="viewtopic.php?id=66118&uid=2948078">Titel</a>
+        #
+        # Für jede topic_id aus scrape_targets, die auf dieser Forenseite
+        # gelistet ist, liefern wir "topic:<id>" — ein Token-Format das der
+        # Client (MinimapModule, TraceNavigationModule) per
+        #   document.querySelector('a[href*="viewtopic.php?id=<id>&uid="]')
+        #   .closest("tr")
+        # auflöst.
+        #
+        # Erkennung: url_canonical der Seite enthält 'viewforum.php'.
+        # Beleg: HTML-Analyse viewforum.php, Build 082.
+        try:
+            url_row = self._con.execute(
+                "SELECT url_canonical FROM fdb.pages WHERE id = ? LIMIT 1",
+                (page_id,),
+            ).fetchone()
+            if url_row and "viewforum.php" in str(url_row[0]):
+                # forum_id dieser Seite aus URL extrahieren
+                # URL-Form: .../viewforum.php?id=<forum_id>[&p=<page>]
+                url_str = str(url_row[0])
+                forum_id = None
+                import re as _re
+                m = _re.search(r"[?&]id=(\d+)", url_str)
+                if m:
+                    forum_id = int(m.group(1))
+
+                if forum_id is not None:
+                    # Alle topic_ids aus scrape_targets für dieses Forum
+                    topic_rows = self._con.execute(
+                        """
+                        SELECT DISTINCT st.topic_id
+                        FROM fdb.scrape_targets st
+                        WHERE st.topic_id IS NOT NULL
+                          AND st.forum_id = ?
+                        ORDER BY st.topic_id
+                        """,
+                        (forum_id,),
+                    ).fetchall()
+                    for trow in topic_rows:
+                        results.append(f"topic:{trow[0]}")
+                else:
+                    logger.debug(
+                        "get_trace_elements_for_page: viewforum-Seite ohne "
+                        "erkennbare forum_id (page_id=%d, url=%s)",
+                        page_id, url_str,
+                    )
+        except Exception as exc:
+            logger.warning(
+                "get_trace_elements_for_page: viewforum-Topic-Abfrage "
+                "fehlgeschlagen (page_id=%d): %s", page_id, exc
+            )
+
         return results
 
     def search_pages(

@@ -55,7 +55,7 @@ _TOOLBAR_JS_TAG  = '<script src="/_forensic/toolbar.js"></script>'
 _SHELL_BODY = """\
 <body>
   <div id="forensic-toolbar"></div>
-  <div id="forensic-viewport">
+  <div id="forensic-viewport" class="nojs winter notouch section-viewtopic ltr">
     <!-- Inhalt wird per AJAX nachgeladen durch toolbar.js -->
   </div>
 </body>"""
