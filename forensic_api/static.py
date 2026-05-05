@@ -21,6 +21,7 @@
 # Changelog:
 #   Build 010: Erstimplementierung (toolbar.js, toolbar.css).
 #   Build 012: userinfo.js, userinfo.css ergaenzt.
+#   Build 084: /_forensic/static/vendor/*-Auslieferung ergaenzt (Tabulator.js).
 #   Build 044 (AP-E3): /_forensic/static/editor/*-Auslieferung ergaenzt.
 #     - handle_editor_asset(): dedizierte Methode fuer Editor.js-Bundle-Assets.
 #     - HTTP 503 bei fehlendem Bundle (statt leerem Platzhalter).
@@ -48,6 +49,7 @@ _BASE_DIR      = Path(__file__).resolve().parent.parent
 _TOOLBAR_DIR   = _BASE_DIR / "toolbar"
 _USERINFO_DIR  = _BASE_DIR / "userinfo"
 _EDITOR_DIR    = _BASE_DIR / "static" / "editor"   # AP-E3: Editor.js-Bundle
+_VENDOR_DIR    = _BASE_DIR / "static" / "vendor"   # Build 084: Vendor-Bibliotheken
 
 # Ressourcen-Registry: Pfad -> (Dateiname, MIME-Type, Verzeichnis)
 _RESOURCES: dict[str, tuple[str, str, Path]] = {
@@ -185,4 +187,71 @@ class StaticEndpoint:
                 _BUNDLE_MISSING_BODY,
                 content_type="application/json; charset=utf-8",
                 extra_headers={"Retry-After": "3600"},
+            )
+
+    def handle_vendor_asset(
+        self,
+        handler: "ForensicRequestHandler",
+        url_path: str,
+    ) -> None:
+        """
+        Liefert Vendor-Bibliotheken aus /_forensic/static/vendor/<lib>/<file> aus.
+
+        Unterstuetzt: tabulator/tabulator.min.js, tabulator/tabulator.min.css.
+        Gibt HTTP 404 zurueck wenn die Datei nicht gefunden wird.
+        Beleg: Projektgespraech 2026-05-05, Build 084.
+
+        Args:
+            handler:  ForensicRequestHandler-Instanz.
+            url_path: Vollstaendiger Pfad, z.B.
+                      /_forensic/static/vendor/tabulator/tabulator.min.js
+        """
+        prefix = "/_forensic/static/vendor/"
+        if not url_path.startswith(prefix):
+            handler.send_response_body(
+                400,
+                json.dumps({"error": "Ungueltiger Pfad"}).encode("utf-8"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+
+        # Relativer Pfad: z.B. "tabulator/tabulator.min.js"
+        rel = url_path[len(prefix):]
+
+        # Pfad-Traversal verhindern: keine ".." erlaubt
+        if not rel or ".." in rel or rel.startswith("/"):
+            logger.warning(
+                "handle_vendor_asset: ungueltiger Pfad '%s'", rel
+            )
+            handler.send_response_body(
+                400,
+                json.dumps({"error": "Ungueltiger Pfad"}).encode("utf-8"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+
+        file_path = _VENDOR_DIR / rel
+
+        suffix = Path(file_path).suffix.lower()
+        mime_map = {
+            ".js":  "application/javascript; charset=utf-8",
+            ".css": "text/css; charset=utf-8",
+            ".map": "application/json; charset=utf-8",
+        }
+        mime_type = mime_map.get(suffix, "application/octet-stream")
+
+        try:
+            data = file_path.read_bytes()
+            logger.debug(
+                "Vendor-Asset: '%s' ausgeliefert (%d bytes)", rel, len(data)
+            )
+            handler.send_response_body(200, data, content_type=mime_type)
+        except FileNotFoundError:
+            logger.warning(
+                "Vendor-Asset nicht gefunden: '%s' — HTTP 404", file_path
+            )
+            handler.send_response_body(
+                404,
+                json.dumps({"error": f"Vendor-Datei nicht gefunden: {rel}"}).encode("utf-8"),
+                content_type="application/json; charset=utf-8",
             )

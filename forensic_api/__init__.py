@@ -25,6 +25,7 @@
 #   /_forensic/editor/block      (POST)       -> EditorBlockEndpoint   [AP-E3]
 #   /_forensic/editor/order      (POST)       -> EditorOrderEndpoint   [AP-E3]
 #   /_forensic/editor/evidence   (POST)       -> EditorEvidenceEndpoint [AP-E3]
+#   /_forensic/static/vendor/*   (GET)        -> StaticEndpoint.handle_vendor_asset [Build 084]
 #   /_forensic/static/editor/*   (GET)        -> StaticEndpoint.handle_editor_asset [AP-E3]
 #
 # Routing-Reihenfolge bei Praefix-Konflikten:
@@ -66,6 +67,9 @@ _MAX_BODY_SIZE = 1 * 1024 * 1024
 
 # Praefix fuer Editor.js-Asset-Pfade (AP-E3)
 _EDITOR_STATIC_PREFIX = "/_forensic/static/editor/"
+
+# Praefix fuer Vendor-Asset-Pfade (Build 084)
+_VENDOR_STATIC_PREFIX = "/_forensic/static/vendor/"
 
 # Praefix fuer Editor-API-Pfade (AP-E3)
 _EDITOR_API_PREFIX = "/_forensic/editor/"
@@ -184,6 +188,16 @@ class ForensicApi:
                 self._method_not_allowed(handler)
                 return
             self._get_events().handle(handler, params)
+            return
+
+        # /_forensic/static/vendor/* (GET) [Build 084]
+        # Vendor-Bibliotheken (Tabulator.js). Vor editor-Praefix pruefen.
+        # Beleg: Projektgespraech 2026-05-05
+        if url_path.startswith(_VENDOR_STATIC_PREFIX):
+            if method not in ("GET", "HEAD"):
+                self._method_not_allowed(handler)
+                return
+            self._get_static().handle_vendor_asset(handler, url_path)
             return
 
         # /_forensic/static/editor/* (GET) [AP-E3]

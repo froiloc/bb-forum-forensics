@@ -13,7 +13,7 @@
      - Ampel-Pills für Strafrechtsrelevanz (rot/orange/gelb)
      - Heatmap: 7×24-Raster, Weiß→Hellblau→Dunkelblau
 
-   Version: v0.1.0 · Build: 014 · 2026-05-04
+   Version: v0.1.0 · Build: 084 · 2026-05-05
    ============================================================================= */
 
 /* ------------------------------------------------------------------ */
@@ -406,12 +406,21 @@ html, body {
 /* Read-Only-Berichtsreiter (§8 Bauplan B4)                            */
 /* ------------------------------------------------------------------ */
 
+/* Build 084: Bericht-Buttons als fixe obere Toolbar.
+   position: sticky + top:0 + z-index halten den Container sichtbar
+   wenn die Ermittlerin durch den langen BLOB-Inhalt scrollt.
+   Beleg: Projektgespräch 2026-05-05. */
 #userinfo-report-readonly {
     background: #fff;
     border: 1px solid #ccc;
-    border-radius: 4px;
-    padding: 10px 12px;
-    margin-bottom: 8px;
+    border-bottom: 2px solid #1565c0;
+    border-radius: 0;
+    padding: 6px 12px;
+    margin-bottom: 0;
+    position: sticky;
+    top: 0;
+    z-index: 120;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.10);
 }
 
 #userinfo-report-readonly h3 {
@@ -665,7 +674,7 @@ details.forensic-section {
 }
 
 summary.forensic-section-title {
-    padding: 8px 12px;
+    padding: 8px 12px 8px 17px; /* Build 084: Links-Padding für ::before-Rand */
     font-weight: 600;
     font-size: 12px;
     cursor: pointer;
@@ -675,6 +684,27 @@ summary.forensic-section-title {
     user-select: none;
     text-transform: uppercase;
     letter-spacing: 0.04em;
+    position: relative; /* Beleg: Projektgespräch 2026-05-05 */
+}
+
+/* Build 084: Klickbarer linker 5px-Rand auf summary-Elementen.
+   Der Rand ist ein visueller Indikator (eingeklappt = grau, offen = blau)
+   und gleichzeitig klickbare Fläche (cursor: pointer erbt vom summary).
+   Beleg: Projektgespräch 2026-05-05. */
+summary.forensic-section-title::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    background: #c0cad8;
+    border-radius: 4px 0 0 4px;
+    transition: background 0.15s ease;
+}
+
+details[open] > summary.forensic-section-title::before {
+    background: #1565c0; /* Offen: blau */
 }
 
 summary.forensic-section-title:hover {
@@ -1075,7 +1105,7 @@ span.forensic-passive {
 /* Datum/Zeit (links der Linie) */
 .tl-datetime {
     position: absolute;
-    left: -140px;
+    left: -160px; /* Build 084: +20px nach rechts (Zeitstempel-Überlappung). Beleg: Projektgespräch 2026-05-05 */
     width: 128px;
     text-align: right;
     font-size: 10px;
@@ -1510,6 +1540,56 @@ span.forensic-passive {
 .ro-unknown   { color: #999; font-size: 11px; font-style: italic; }
 
 /* -- Print-CSS: Toolbar und Overlays ausblenden -------------------------- */
+
+/* ------------------------------------------------------------------ */
+/* Tabulator.js Wrapper (Build 084)                                    */
+/* ------------------------------------------------------------------ */
+
+/* Wrapper-Container, der die Original-<table> im DOM ersetzt.         */
+/* Die Original-Tabelle bleibt im DOM (display:none) — forensische     */
+/* Integrität des BLOBs bleibt gewahrt. Beleg: Projektgespräch 2026-05-05 */
+.forensic-tabulator-wrapper {
+    margin-bottom: 8px;
+    font-size: 12px;
+}
+
+.forensic-tabulator-wrapper .tabulator {
+    border: 1px solid #d0d8e8;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: inherit;
+}
+
+.forensic-tabulator-wrapper .tabulator-header {
+    background: #f4f6fa;
+    border-bottom: 1px solid #d0d8e8;
+}
+
+.forensic-tabulator-wrapper .tabulator-col-title {
+    font-weight: 600;
+    color: #1a1f2e;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.forensic-tabulator-wrapper .tabulator-header-filter input {
+    font-size: 11px;
+    padding: 2px 4px;
+    border: 1px solid #c0cad8;
+    border-radius: 2px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.forensic-tabulator-wrapper .tabulator-row:nth-child(even) {
+    background: #f9fafc;
+}
+
+.forensic-tabulator-wrapper .tabulator-row:hover {
+    background: #edf2fb;
+}
+
 
 @media print {
     #report-editor-toolbar,

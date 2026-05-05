@@ -496,3 +496,63 @@ class TestForensicApiPageOriginalMethod(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+# ===========================================================================
+# Tests: Vendor-Asset-Route (Build 084)
+# Beleg: Projektgespräch 2026-05-05
+# ===========================================================================
+
+class TestVendorAssetRoute(unittest.TestCase):
+    """
+    Build 084: /_forensic/static/vendor/* liefert Tabulator.js / CSS aus.
+    Beleg: Projektgespraesch 2026-05-05.
+    """
+
+    def setUp(self):
+        self.cfg = _setup_logging_and_config()
+        self.ctx = _make_context()
+
+    def tearDown(self):
+        reset_for_testing()
+
+    def test_tabulator_js_200(self):
+        """/_forensic/static/vendor/tabulator/tabulator.min.js → HTTP 200, JavaScript."""
+        bundle = _make_bundle()
+        api    = ForensicApi(bundle, self.ctx, self.cfg)
+        resp   = _dispatch(api, "GET", "/_forensic/static/vendor/tabulator/tabulator.min.js")
+        self.assertEqual(resp["status"], 200)
+        self.assertIn("javascript", resp.get("content_type", ""))
+
+    def test_tabulator_css_200(self):
+        """/_forensic/static/vendor/tabulator/tabulator.min.css → HTTP 200, CSS."""
+        bundle = _make_bundle()
+        api    = ForensicApi(bundle, self.ctx, self.cfg)
+        resp   = _dispatch(api, "GET", "/_forensic/static/vendor/tabulator/tabulator.min.css")
+        self.assertEqual(resp["status"], 200)
+        self.assertIn("css", resp.get("content_type", ""))
+
+    def test_vendor_traversal_rejected(self):
+        """Pfad-Traversal-Versuch via .. wird mit HTTP 400 abgewiesen."""
+        bundle = _make_bundle()
+        api    = ForensicApi(bundle, self.ctx, self.cfg)
+        resp   = _dispatch(api, "GET", "/_forensic/static/vendor/../../../etc/passwd")
+        self.assertEqual(resp["status"], 400)
+
+    def test_vendor_post_rejected(self):
+        """POST auf Vendor-Pfad → HTTP 405."""
+        bundle = _make_bundle()
+        api    = ForensicApi(bundle, self.ctx, self.cfg)
+        resp   = _dispatch(api, "POST", "/_forensic/static/vendor/tabulator/tabulator.min.js")
+        self.assertEqual(resp["status"], 405)
+
+    def test_vendor_unknown_file_404(self):
+        """Unbekannte Vendor-Datei → HTTP 404."""
+        bundle = _make_bundle()
+        api    = ForensicApi(bundle, self.ctx, self.cfg)
+        resp   = _dispatch(api, "GET", "/_forensic/static/vendor/tabulator/nichtvorhanden.js")
+        self.assertEqual(resp["status"], 404)
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)

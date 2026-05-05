@@ -26,7 +26,7 @@
  *   window.opener?.postMessage({ type: 'navigate_to_annotation',
  *                                annotation_id: N }, origin)
  *
- * Version: v0.1.0 · Build: 013 · 2026-05-04
+ * Version: v0.1.0 · Build: 084 · 2026-05-05
  */
 
 'use strict';
@@ -202,6 +202,7 @@ async function loadStaticBlob() {
         initHeatmap(container);
         initTimeline(container);
         initCollapseButtons(container);   // Einfahren-Schaltflächen (Build 013)
+        initTabulatorTables(container);   // Filter/Sortierung via Tabulator.js (Build 084)
 
     } catch (err) {
         container.innerHTML =
@@ -1111,6 +1112,105 @@ document.addEventListener('DOMContentLoaded', () => {
         initForensicLinks();    // navigate_to_url via postMessage (Build 038)
     }
 });
+
+
+// ===========================================================================
+// FENSTER 2 — Tabulator.js Filter/Sortierung auf forensic-data-Tabellen
+// ===========================================================================
+
+/**
+ * Initialisiert Tabulator.js auf allen <table class="forensic-data"> im
+ * gegebenen Container.
+ *
+ * Tabulator.js wird als statische Vendor-Bibliothek über
+ * /_forensic/static/vendor/tabulator/ ausgeliefert (Build 084).
+ * Es ersetzt die rohen <table>-Elemente durch interaktive Tabellen
+ * mit Spalten-Sortierung und Zeilenfilterung.
+ *
+ * Forensische Grundregel: Der BLOB selbst bleibt unverändert (immutabel).
+ * Tabulator.js operiert ausschließlich auf dem DOM nach der Injektion.
+ * Beleg: Matrijoshka-Prinzip, Projektgespräch 2026-05-05.
+ *
+ * @param {HTMLElement} container — Wurzelelement (#userinfo-static)
+ */
+function initTabulatorTables(container) {
+    if (typeof Tabulator === 'undefined') {
+        // Tabulator.js nicht geladen — kein Fehler, tabellen bleiben statisch
+        console.warn('[forensic] Tabulator.js nicht verfügbar — Tabellen ohne Filter/Sortierung.');
+        return;
+    }
+
+    const tables = container.querySelectorAll('table.forensic-data');
+    if (tables.length === 0) return;
+
+    tables.forEach((table, idx) => {
+        // Tabelle braucht eine ID für Tabulator
+        if (!table.id) {
+            table.id = `forensic-tabulator-${idx}`;
+        }
+
+        // Spaltendefinitionen aus <thead> extrahieren
+        const headers = Array.from(table.querySelectorAll('thead th'));
+        if (headers.length === 0) return;
+
+        const columns = headers.map((th, colIdx) => ({
+            title:     th.textContent.trim(),
+            field:     `col${colIdx}`,
+            headerFilter: 'input',
+            sorter:    'string',
+            formatter: 'html',  // HTML-Inhalt (Links, Spans) erhalten
+        }));
+
+        // Datenzeilen aus <tbody> extrahieren
+        const rows = Array.from(table.querySelectorAll('tbody tr')).map(tr => {
+            const cells = Array.from(tr.querySelectorAll('td'));
+            const row = {};
+            cells.forEach((td, colIdx) => {
+                row[`col${colIdx}`] = td.innerHTML;
+            });
+            return row;
+        });
+
+        // Wrapper-Div für Tabulator erstellen (ersetzt die Tabelle im DOM)
+        const wrapper = document.createElement('div');
+        wrapper.className = 'forensic-tabulator-wrapper';
+        table.parentNode.insertBefore(wrapper, table);
+        table.style.display = 'none';  // Original-Tabelle ausblenden (BLOB bleibt intakt)
+
+        // Tabulator instanziieren
+        // eslint-disable-next-line no-new
+        new Tabulator(wrapper, {
+            data:           rows,
+            columns:        columns,
+            layout:         'fitDataStretch',
+            height:         'auto',
+            maxHeight:      '600px',
+            pagination:     rows.length > 50 ? 'local' : false,
+            paginationSize: 50,
+            locale:         'de-de',
+            langs: {
+                'de-de': {
+                    pagination: {
+                        first:     'Erste',
+                        first_title: 'Erste Seite',
+                        last:      'Letzte',
+                        last_title: 'Letzte Seite',
+                        prev:      'Zurück',
+                        prev_title: 'Vorherige Seite',
+                        next:      'Weiter',
+                        next_title: 'Nächste Seite',
+                        all:       'Alle',
+                        page_size: 'Zeilen pro Seite',
+                        page_counter: '{count} von {total}',
+                    },
+                    headerFilters: {
+                        default: 'Filtern…',
+                    },
+                },
+            },
+        });
+    });
+}
 
 // ===========================================================================
 // FENSTER 2 — Einfahren-Schaltflächen (Einklappen von unten)

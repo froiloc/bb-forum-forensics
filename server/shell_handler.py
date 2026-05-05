@@ -51,6 +51,10 @@ logger = get_logger(__name__)
 # Konstante Shell-Bestandteile
 _TOOLBAR_CSS_TAG = '<link rel="stylesheet" href="/_forensic/toolbar.css">'
 _TOOLBAR_JS_TAG  = '<script src="/_forensic/toolbar.js"></script>'
+# Build 084: Tabulator.js fuer Filter/Sortierung in Nutzerinfo-Tabellen.
+# Beleg: Projektgespraesch 2026-05-05.
+_TABULATOR_CSS_TAG = ('<link rel="stylesheet" href="/_forensic/static/vendor/tabulator/tabulator.min.css">')
+_TABULATOR_JS_TAG  = '<script src="/_forensic/static/vendor/tabulator/tabulator.min.js" defer></script>'
 
 _SHELL_BODY = """\
 <body>
@@ -161,7 +165,9 @@ class ShellHandler:
 <meta charset="utf-8">
 {head_content}
 {_TOOLBAR_CSS_TAG}
+{_TABULATOR_CSS_TAG}
 </head>
 {_SHELL_BODY}
 {_TOOLBAR_JS_TAG}
+{_TABULATOR_JS_TAG}
 </html>"""
