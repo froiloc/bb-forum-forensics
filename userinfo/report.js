@@ -33,7 +33,14 @@
  *   POST /_forensic/report              -- add_paragraph, update_paragraph,
  *                                          set_status, reorder
  *
- * Version: v0.1.0 · Build: 090 · 2026-05-05
+ * Aenderungen Build 091:
+ *   - Chip-Rendering via PlaceholderChips (placeholder_chips.js)
+ *   - _renderParagraphCard: content via PlaceholderChips.render()
+ *   - _bindCardEvents: Doppelklick auf Chip als Stub fuer Phase 5
+ *   - Aktivieren-Button gesperrt wenn Pflichtfelder leer
+ *   Beleg: Bauplan B6 v0.3 §4.5, Build 091
+ *
+ * Version: v0.1.1 · Build: 091 · 2026-05-05
  * Beleg: Bauplan B6 v0.3 §4, Ausdefinitionsgespraech 2026-05-05
  */
 
@@ -279,8 +286,10 @@ function _renderParagraphCard(p, nr) {
       </div>
       <div class="report-paragraph-content"
            data-block-id="${esc(p.block_id)}"
-           ${editDisabled ? '' : 'contenteditable="true"'}
-           >${esc(p.content)}</div>
+           data-raw-content="${esc(p.content)}"
+           ${editDisabled ? '' : 'contenteditable="true"'}>
+        ${_renderContent(p.content, p.placeholder_values_json)}
+      </div>
       <div class="report-paragraph-actions">
         <button class="report-btn btn-save-paragraph"
           data-block-id="${esc(p.block_id)}"${editDisabled}
@@ -300,6 +309,34 @@ function _renderParagraphCard(p, nr) {
     </div>`;
 }
 
+/**
+ * Rendert den Paragraph-Inhalt mit Platzhalter-Chips.
+ * Nutzt PlaceholderChips wenn vorhanden, sonst escapter Text.
+ * Beleg: Bauplan B6 v0.3 §4.5, Build 091
+ *
+ * @param {string} content               -- Rohtext mit ggf. Platzhaltern
+ * @param {string|null} valuesJson       -- JSON-String {name: value}
+ * @returns {string}                     -- HTML fuer innerHTML
+ */
+function _renderContent(content, valuesJson) {
+    if (!content) return '';
+
+    // PlaceholderChips nicht verfuegbar (Ladereihenfolge) -> Fallback
+    if (!window.PlaceholderChips) {
+        return content.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                      .replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+    }
+
+    let values = {};
+    if (valuesJson) {
+        try { values = JSON.parse(valuesJson); } catch (_) { /* ignorieren */ }
+    }
+
+    // Auto-Platzhalter koennen noch nicht aufgeloest sein (kein Cache-Zugriff
+    // im Browser) -- leeres Objekt, Server-Cache wird in Phase 5 eingebunden.
+    return window.PlaceholderChips.render(content, values, {});
+}
+
 /** SAMAccountName des aktuellen Benutzers. */
 function _myUsername() {
     return document.getElementById('report-editor-body')?.dataset?.username ?? '';
@@ -314,8 +351,26 @@ function _bindCardEvents(card) {
         _saveParagraph(blockId, card);
     });
 
-    // Aktivieren-Button
+    // Aktivieren-Button: gesperrt wenn Pflichtfelder leer
+    // Beleg: Bauplan B6 v0.3 §4.5
     card.querySelector('.btn-activate-paragraph')?.addEventListener('click', () => {
+        const rawContent = card.querySelector('.report-paragraph-content')
+            ?.dataset?.rawContent ?? '';
+        const para  = _currentParagraphs.find(p => p.block_id === blockId);
+        let values  = {};
+        try {
+            if (para?.placeholder_values_json) {
+                values = JSON.parse(para.placeholder_values_json);
+            }
+        } catch (_) {}
+
+        if (window.PlaceholderChips?.hasUnfilledMandatory(rawContent, values)) {
+            showStatus(
+                'Pflichtfelder muessen ausgefuellt werden bevor der Absatz aktiviert werden kann.',
+                'warn'
+            );
+            return;
+        }
         _setStatus(blockId, 'active');
     });
 
@@ -327,6 +382,18 @@ function _bindCardEvents(card) {
     // Kommentar-Button (Phase 8 — Stub)
     card.querySelector('.btn-comment-paragraph')?.addEventListener('click', () => {
         showStatus('Kommentar-Funktion wird in Phase 8 implementiert.', 'warn');
+    });
+
+    // Doppelklick auf Platzhalter-Chip: Phase-5-Stub
+    // Oeffnet in Phase 5 den Wizard beim richtigen Schritt.
+    // Beleg: Bauplan B6 v0.3 §4.5
+    card.querySelectorAll('.ph-chip-mandatory, .ph-chip-optional').forEach(chip => {
+        chip.addEventListener('dblclick', () => {
+            showStatus(
+                'Platzhalter-Wizard wird in Phase 5 implementiert.',
+                'warn'
+            );
+        });
     });
 
     // Auto-Save bei Inhaltseingabe

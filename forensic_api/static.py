@@ -63,6 +63,8 @@ _RESOURCES: dict[str, tuple[str, str, Path]] = {
     # B6 Phase 4: Fenster-3-Modul und Stylesheet
     "/_forensic/report.js":    ("report.js",    "application/javascript; charset=utf-8", _USERINFO_DIR),
     "/_forensic/report.css":   ("report.css",   "text/css; charset=utf-8",               _USERINFO_DIR),
+    # B6 Phase 4 (Chip-Rendering): Platzhalter-Parser
+    "/_forensic/placeholder_chips.js": ("placeholder_chips.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
 }
 
 # MIME-Types fuer Editor.js-Bundle-Dateien (AP-E3)

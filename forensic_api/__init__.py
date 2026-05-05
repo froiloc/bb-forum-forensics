@@ -186,6 +186,7 @@ class ForensicApi:
             "/_forensic/editor.js",      # AP-E4
             "/_forensic/report.js",      # B6 Phase 4
             "/_forensic/report.css",     # B6 Phase 4
+            "/_forensic/placeholder_chips.js",  # B6 Phase 4 Chips
         ):
             if method not in ("GET", "HEAD"):
                 self._method_not_allowed(handler)
