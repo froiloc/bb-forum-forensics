@@ -50,11 +50,13 @@
 #   Build 072 (KN-7): TraceSequenceEndpoint ergaenzt (/_forensic/trace_sequence).
 #
 #   Build 089 (B6 — Phase 3): PlaceholdersEndpoint und TemplatesEndpoint ergaenzt.
+#   Build 090 (B6 — Phase 4): report.js und report.css als statische Assets registriert.
+#     ReportEndpoint auf B6-Schema umgestellt (Paragraphen statt Bloecke).
 #     Drei neue /_forensic/placeholders/*-Endpunkte.
 #     Zwei neue /_forensic/templates[/<id>]-Endpunkte.
 #     Beleg: Bauplan B6 v0.3 §3, §5, 2026-05-05
 #
-# Version: v0.6.089 · Build: 089 · 2026-05-05
+# Version: v0.6.090 · Build: 090 · 2026-05-05
 # =============================================================================
 
 from __future__ import annotations
@@ -182,6 +184,8 @@ class ForensicApi:
             "/_forensic/userinfo.js",
             "/_forensic/userinfo.css",
             "/_forensic/editor.js",      # AP-E4
+            "/_forensic/report.js",      # B6 Phase 4
+            "/_forensic/report.css",     # B6 Phase 4
         ):
             if method not in ("GET", "HEAD"):
                 self._method_not_allowed(handler)

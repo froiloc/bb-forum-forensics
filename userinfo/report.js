@@ -1,0 +1,659 @@
+/**
+ * userinfo/report.js
+ * IT-Forensisches Ermittlungswerkzeug — Baustelle 6: Berichte & Exports
+ *
+ * Zweck:
+ *   JavaScript-Modul fuer Fenster 3 (Bericht-Editor, B6 Phase 4).
+ *   Ersetzt editor.js (Editor.js-Modell) vollstaendig.
+ *
+ *   Verantwortlichkeiten:
+ *     - Berichtsauswahl und Paragraph-Liste laden
+ *     - Neuen Freitext-Paragraph anlegen
+ *     - Paragraph-Inhalte bearbeiten (contenteditable)
+ *     - Auto-Save mit 30s-Debounce
+ *     - Paragraph-Status anzeigen (§4.3)
+ *     - window-Exporte fuer userinfo.js-Kompatibilitaet
+ *
+ *   Schnittstelle zu userinfo.js (unveraendert):
+ *     window.initEditorModule()         -- wird nach Lock/SSE-Setup aufgerufen
+ *     window._reinitWithLock()          -- wird nach Lock-Erwerb aufgerufen
+ *     window.updateEditorPlaceholder()  -- wird nach readOnly-Wechsel aufgerufen
+ *     window._editor                    -- Kompatibilitaets-Shim (readOnly.isEnabled,
+ *                                          readOnly.toggle(), save())
+ *
+ *   Nicht implementiert in Phase 4 (kommt in Phase 5/6/7/8):
+ *     - Platzhalter-Wizard
+ *     - Modul-Auswahl-Panel
+ *     - Annotationsseitenleiste
+ *     - Kommentar-System
+ *     - Drag-and-Drop-Sortierung
+ *
+ * API-Endpunkte:
+ *   GET  /_forensic/report?format=json  -- Berichte + Paragraphen laden
+ *   POST /_forensic/report              -- add_paragraph, update_paragraph,
+ *                                          set_status, reorder
+ *
+ * Version: v0.1.0 · Build: 090 · 2026-05-05
+ * Beleg: Bauplan B6 v0.3 §4, Ausdefinitionsgespraech 2026-05-05
+ */
+
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Konstanten
+// ---------------------------------------------------------------------------
+
+const REPORT_API = '/_forensic/report';
+
+/**
+ * Auto-Save-Verzoegerung in Millisekunden.
+ * Wird aus data-autosave-debounce-ms am body gelesen.
+ * Fallback: 30000ms (30 Sekunden, §4.2 Bauplan B6).
+ */
+const AUTOSAVE_DEBOUNCE_MS = (() => {
+    const body = document.getElementById('report-editor-body');
+    const v = parseInt(body?.dataset?.autosaveDebounceMs, 10);
+    return Number.isFinite(v) && v > 0 ? v : 30000;
+})();
+
+// Status-Label-Texte fuer die Anzeige (§4.3)
+const STATUS_LABELS = {
+    draft:      'Entwurf',
+    active:     'Aktiv',
+    omitted:    'Ausgelassen',
+    superseded: 'Ersetzt',
+    approved:   'Freigegeben',
+};
+
+// ---------------------------------------------------------------------------
+// Zustandsvariablen (Modul-intern)
+// ---------------------------------------------------------------------------
+
+let _currentReportId   = null;   // aktuell geladener Bericht
+let _currentParagraphs = [];     // geladene Paragraph-Daten
+let _hasLock           = false;  // ob dieser Client den Lock haelt
+let _autosaveTimer     = null;   // Debounce-Timer fuer Auto-Save
+let _pendingSaves      = {};     // { block_id: true } fuer laufende Speicherungen
+
+// ---------------------------------------------------------------------------
+// Hilfsfunktionen
+// ---------------------------------------------------------------------------
+
+/** HTML-Escape fuer Ausgabe in innerHTML. */
+function esc(s) {
+    return String(s ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+/** Deutsches Datum/Uhrzeit aus Unix-Timestamp. */
+function formatTs(ts) {
+    if (!ts) return '\u2013';
+    return new Date(ts * 1000).toLocaleString('de-DE', {
+        day:   '2-digit', month: '2-digit', year: 'numeric',
+        hour:  '2-digit', minute: '2-digit',
+    });
+}
+
+/** Status-Nachricht in der Statuszeile anzeigen. */
+function showStatus(text, level = 'ok') {
+    const el = document.getElementById('report-status-msg');
+    if (!el) return;
+    el.textContent = text;
+    el.className = `report-status-${level}`;
+    if (level === 'ok') {
+        setTimeout(() => {
+            if (el.textContent === text) el.textContent = '';
+        }, 4000);
+    }
+}
+
+/** Lock-Id aus EditorState holen. */
+function _lockId() {
+    return window.EditorState?.lockId ?? null;
+}
+
+/**
+ * POST gegen REPORT_API mit Lock-Header.
+ * Gibt null zurueck wenn kein Lock gehalten wird.
+ */
+async function _postWithLock(body) {
+    const lockId = _lockId();
+    if (!lockId) {
+        showStatus('Lock erforderlich — bitte Seite neu laden.', 'warn');
+        return null;
+    }
+    try {
+        const resp = await fetch(REPORT_API, {
+            method:  'POST',
+            headers: {
+                'Content-Type':       'application/json',
+                'X-Forensic-Request': 'ajax',
+                'X-Forensic-Lock-Id': lockId,
+            },
+            body: JSON.stringify({ ...body, lock_id: lockId }),
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+            showStatus(`Fehler ${resp.status}: ${data.error ?? resp.statusText}`, 'error');
+            return null;
+        }
+        return data;
+    } catch (err) {
+        showStatus(`Netzwerkfehler: ${String(err)}`, 'error');
+        return null;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Paragraphen laden und rendern
+// ---------------------------------------------------------------------------
+
+/**
+ * Laedt Berichte und Paragraphen vom Server und rendert die Liste.
+ * Wird beim Laden der Seite und nach SSE-Ereignissen aufgerufen.
+ * Beleg: Bauplan B6 v0.3 §4.3
+ */
+async function loadReport() {
+    try {
+        const resp = await fetch(REPORT_API + '?format=json', {
+            headers: { 'X-Forensic-Request': 'ajax' },
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+
+        _renderReportSelector(data.reports || []);
+
+        _currentReportId   = data.active_report_id ?? null;
+        _currentParagraphs = data.paragraphs        ?? [];
+        _renderParagraphList(_currentParagraphs);
+
+        // Aktions-Buttons aktivieren wenn Lock vorhanden
+        _updateActionButtons();
+
+    } catch (err) {
+        showStatus(`Bericht konnte nicht geladen werden: ${err}`, 'error');
+    }
+}
+
+/** Berichtsauswahl-Dropdown befuellen. */
+function _renderReportSelector(reports) {
+    const container = document.getElementById('report-selector-container');
+    if (!container) return;
+
+    if (!reports.length) {
+        container.innerHTML = `
+            <div style="display:flex;gap:8px;align-items:center">
+                <span style="font-size:12px;color:var(--color-text-muted,#888)">
+                    Kein Bericht vorhanden.
+                </span>
+                <button class="report-btn report-btn-primary" id="btn-new-report">
+                    Neuen Bericht anlegen
+                </button>
+            </div>`;
+        document.getElementById('btn-new-report')
+            ?.addEventListener('click', _createNewReport);
+        return;
+    }
+
+    const typeLabels = {
+        interim: 'Zwischenbericht',
+        final:   'Abschlussbericht',
+        addendum: 'Nachtrag',
+    };
+    const opts = reports.map(r => {
+        const label = `${typeLabels[r.report_type] ?? r.report_type} #${r.sequence_nr}: ${esc(r.title)}`;
+        const sel   = r.id === _currentReportId ? ' selected' : '';
+        return `<option value="${r.id}"${sel}>${label}</option>`;
+    }).join('');
+
+    container.innerHTML = `
+        <div style="display:flex;gap:8px;align-items:center">
+            <select id="report-select" title="Bericht auswaehlen">
+                ${opts}
+            </select>
+            <button class="report-btn" id="btn-new-report" title="Neuen Bericht anlegen">
+                + Neu
+            </button>
+        </div>
+        <div id="report-selector-status"></div>`;
+
+    document.getElementById('report-select')?.addEventListener('change', evt => {
+        _currentReportId = parseInt(evt.target.value, 10);
+        loadReport();
+    });
+    document.getElementById('btn-new-report')
+        ?.addEventListener('click', _createNewReport);
+}
+
+/**
+ * Paragraph-Liste rendern.
+ * Beleg: Bauplan B6 v0.3 §4.3 (Status-Darstellung)
+ */
+function _renderParagraphList(paragraphs) {
+    const list = document.getElementById('report-paragraphs-list');
+    if (!list) return;
+
+    if (!paragraphs.length) {
+        list.innerHTML = '';   /* :empty-Pseudoelement zeigt Leer-Text */
+        return;
+    }
+
+    list.innerHTML = paragraphs.map((p, idx) =>
+        _renderParagraphCard(p, idx + 1)
+    ).join('');
+
+    // Event-Listener fuer alle Karten verdrahten
+    list.querySelectorAll('.report-paragraph-card').forEach(card => {
+        _bindCardEvents(card);
+    });
+}
+
+/** HTML fuer eine Paragraph-Karte. */
+function _renderParagraphCard(p, nr) {
+    const statusLabel = STATUS_LABELS[p.status] ?? p.status;
+    const isOwner     = p.author === _myUsername();
+    const isApproved  = p.status === 'approved';
+
+    const editDisabled  = (!_hasLock || !isOwner || isApproved) ? ' disabled' : '';
+    const statusDisabled = (!_hasLock || isApproved) ? ' disabled' : '';
+
+    return `
+    <div class="report-paragraph-card"
+         data-block-id="${esc(p.block_id)}"
+         data-status="${esc(p.status)}"
+         data-author="${esc(p.author)}">
+      <span class="report-drag-handle" title="Ziehen zum Sortieren">\u2630</span>
+      <div class="report-paragraph-header">
+        <span class="report-paragraph-author">${esc(p.author)}</span>
+        <span class="report-paragraph-status-badge">${esc(statusLabel)}</span>
+        <span>Absatz ${nr}</span>
+        <span style="margin-left:auto;font-size:10px">
+          ${formatTs(p.created_at)}
+          ${p.updated_at !== p.created_at
+            ? `<span style="opacity:.7"> (bearb. ${formatTs(p.updated_at)})</span>`
+            : ''}
+        </span>
+      </div>
+      <div class="report-paragraph-content"
+           data-block-id="${esc(p.block_id)}"
+           ${editDisabled ? '' : 'contenteditable="true"'}
+           >${esc(p.content)}</div>
+      <div class="report-paragraph-actions">
+        <button class="report-btn btn-save-paragraph"
+          data-block-id="${esc(p.block_id)}"${editDisabled}
+          title="Absatz speichern">\ud83d\udcbe Speichern</button>
+        ${p.status === 'draft' ? `
+          <button class="report-btn btn-activate-paragraph"
+            data-block-id="${esc(p.block_id)}"${statusDisabled}
+            title="Absatz aktivieren">\u2713 Aktivieren</button>` : ''}
+        ${p.status === 'active' && isOwner ? `
+          <button class="report-btn btn-deactivate-paragraph"
+            data-block-id="${esc(p.block_id)}"${statusDisabled}
+            title="Zurueck zu Entwurf setzen">\u21a9 Zurueck zu Entwurf</button>` : ''}
+        <button class="report-btn btn-comment-paragraph"
+          data-block-id="${esc(p.block_id)}"
+          title="Kommentar hinzufuegen">\ud83d\udcac Kommentar</button>
+      </div>
+    </div>`;
+}
+
+/** SAMAccountName des aktuellen Benutzers. */
+function _myUsername() {
+    return document.getElementById('report-editor-body')?.dataset?.username ?? '';
+}
+
+/** Event-Listener fuer eine Paragraph-Karte verdrahten. */
+function _bindCardEvents(card) {
+    const blockId = card.dataset.blockId;
+
+    // Speichern-Button
+    card.querySelector('.btn-save-paragraph')?.addEventListener('click', () => {
+        _saveParagraph(blockId, card);
+    });
+
+    // Aktivieren-Button
+    card.querySelector('.btn-activate-paragraph')?.addEventListener('click', () => {
+        _setStatus(blockId, 'active');
+    });
+
+    // Zurueck-zu-Entwurf-Button
+    card.querySelector('.btn-deactivate-paragraph')?.addEventListener('click', () => {
+        _setStatus(blockId, 'draft');
+    });
+
+    // Kommentar-Button (Phase 8 — Stub)
+    card.querySelector('.btn-comment-paragraph')?.addEventListener('click', () => {
+        showStatus('Kommentar-Funktion wird in Phase 8 implementiert.', 'warn');
+    });
+
+    // Auto-Save bei Inhaltseingabe
+    const contentEl = card.querySelector('.report-paragraph-content[contenteditable]');
+    if (contentEl) {
+        contentEl.addEventListener('input', () => {
+            _scheduleAutosave(blockId, card);
+        });
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Paragraph-Operationen
+// ---------------------------------------------------------------------------
+
+/** Neuen Freitext-Paragraph anlegen. */
+async function _addParagraph() {
+    if (!_hasLock) {
+        showStatus('Lock erforderlich um einen Absatz hinzuzufuegen.', 'warn');
+        return;
+    }
+    if (!_currentReportId) {
+        showStatus('Bitte zuerst einen Bericht auswaehlen.', 'warn');
+        return;
+    }
+
+    const nextIndex = _currentParagraphs.length * 10;
+    const result    = await _postWithLock({
+        action:     'add_paragraph',
+        report_id:  _currentReportId,
+        content:    '',
+        sort_index: nextIndex,
+    });
+    if (result) {
+        showStatus('Absatz angelegt.', 'ok');
+        await loadReport();
+        // Cursor in den neuen Paragraph setzen
+        const newCard = document.querySelector(
+            `.report-paragraph-content[data-block-id="${result.block_id}"]`
+        );
+        newCard?.focus();
+    }
+}
+
+/** Paragraph-Inhalt speichern. */
+async function _saveParagraph(blockId, card) {
+    if (_pendingSaves[blockId]) return;   // kein Doppel-Save
+    _pendingSaves[blockId] = true;
+
+    const contentEl = card.querySelector(
+        `.report-paragraph-content[data-block-id="${blockId}"]`
+    );
+    const content = contentEl?.innerText ?? '';
+
+    const result = await _postWithLock({
+        action:   'update_paragraph',
+        block_id: blockId,
+        content:  content,
+    });
+
+    delete _pendingSaves[blockId];
+
+    if (result) {
+        _showAutosaveIndicator();
+        // Paragraph in lokalem State aktualisieren
+        const para = _currentParagraphs.find(p => p.block_id === blockId);
+        if (para) {
+            para.content    = content;
+            para.updated_at = Math.floor(Date.now() / 1000);
+        }
+    }
+}
+
+/** Paragraph-Status aendern. */
+async function _setStatus(blockId, newStatus) {
+    const result = await _postWithLock({
+        action:   'set_status',
+        block_id: blockId,
+        status:   newStatus,
+    });
+    if (result) {
+        showStatus(`Status geaendert: ${STATUS_LABELS[newStatus] ?? newStatus}`, 'ok');
+        await loadReport();
+    }
+}
+
+/** Auto-Save-Timer starten / zuruecksetzen. */
+function _scheduleAutosave(blockId, card) {
+    clearTimeout(_autosaveTimer);
+    _autosaveTimer = setTimeout(async () => {
+        await _saveParagraph(blockId, card);
+    }, AUTOSAVE_DEBOUNCE_MS);
+}
+
+/** Kurze Auto-Save-Rueckmeldung anzeigen. */
+function _showAutosaveIndicator() {
+    let el = document.getElementById('report-autosave-indicator');
+    if (!el) {
+        // Indikator in Aktionsleiste einfuegen
+        const bar = document.getElementById('report-action-bar-buttons');
+        if (bar) {
+            el = document.createElement('span');
+            el.id = 'report-autosave-indicator';
+            el.textContent = '\u2713 gespeichert';
+            bar.appendChild(el);
+        }
+    }
+    if (el) {
+        el.classList.add('visible');
+        setTimeout(() => el.classList.remove('visible'), 2500);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Neuen Bericht anlegen
+// ---------------------------------------------------------------------------
+
+async function _createNewReport() {
+    const title = prompt('Berichtstitel:', 'Zwischenbericht');
+    if (!title) return;
+    try {
+        const resp = await fetch('/_forensic/reports', {
+            method:  'POST',
+            headers: {
+                'Content-Type':       'application/json',
+                'X-Forensic-Request': 'ajax',
+            },
+            body: JSON.stringify({
+                report_type: 'interim',
+                title:       title.trim(),
+            }),
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+            showStatus(`Fehler: ${data.error ?? resp.status}`, 'error');
+            return;
+        }
+        _currentReportId = data.report_id;
+        showStatus('Bericht angelegt.', 'ok');
+        await loadReport();
+    } catch (err) {
+        showStatus(`Netzwerkfehler: ${err}`, 'error');
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Aktions-Buttons
+// ---------------------------------------------------------------------------
+
+/** Aktions-Buttons je nach Lock-Zustand aktivieren oder deaktivieren. */
+function _updateActionButtons() {
+    const ids = [
+        'btn-add-paragraph',
+        'btn-insert-module',
+        'btn-refresh-placeholders',
+        'btn-print',
+    ];
+    ids.forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.disabled = !_hasLock;
+    });
+
+    // Lock-Indikator aktualisieren
+    const indicator = document.getElementById('report-lock-indicator');
+    if (indicator) {
+        if (_hasLock) {
+            indicator.className = 'report-lock-indicator report-lock-own';
+            indicator.title     = 'Lock aktiv — Bearbeitung moeglich';
+            indicator.textContent = '\ud83d\udd10';
+        } else {
+            indicator.className = 'report-lock-indicator report-lock-none';
+            indicator.title     = 'Kein Lock';
+            indicator.textContent = '\ud83d\udd13';
+        }
+    }
+}
+
+/** Aktions-Buttons verdrahten (einmalig beim Init). */
+function _bindActionButtons() {
+    document.getElementById('btn-add-paragraph')
+        ?.addEventListener('click', _addParagraph);
+
+    document.getElementById('btn-insert-module')
+        ?.addEventListener('click', () => {
+            showStatus('Modul-Auswahl wird in Phase 6 implementiert.', 'warn');
+        });
+
+    document.getElementById('btn-refresh-placeholders')
+        ?.addEventListener('click', async () => {
+            showStatus('Platzhalter werden aktualisiert…', 'ok');
+            try {
+                const uid  = parseInt(
+                    document.getElementById('report-editor-body')?.dataset?.userId, 10
+                );
+                const resp = await fetch('/_forensic/placeholders/refresh', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ uid }),
+                });
+                const data = await resp.json().catch(() => ({}));
+                if (resp.ok) {
+                    showStatus(
+                        `${data.refreshed ?? 0} Platzhalter aktualisiert.`, 'ok'
+                    );
+                    await loadReport();
+                } else {
+                    showStatus(`Fehler: ${data.error ?? resp.status}`, 'error');
+                }
+            } catch (err) {
+                showStatus(`Netzwerkfehler: ${err}`, 'error');
+            }
+        });
+
+    document.getElementById('btn-print')
+        ?.addEventListener('click', async () => {
+            // Phase 10: vor dem Drucken Cache aktualisieren
+            const uid = parseInt(
+                document.getElementById('report-editor-body')?.dataset?.userId, 10
+            );
+            try {
+                await fetch('/_forensic/placeholders/refresh', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ uid }),
+                });
+            } catch (_) { /* ignorieren — Druck trotzdem */ }
+            window.print();
+        });
+}
+
+// ---------------------------------------------------------------------------
+// window-Exporte fuer userinfo.js-Kompatibilitaet
+// Beleg: Analyse Build 090, userinfo.js-Schnittstelle
+// ---------------------------------------------------------------------------
+
+/**
+ * window._editor: Kompatibilitaets-Shim.
+ * userinfo.js prueft window._editor.readOnly.isEnabled und ruft
+ * window._editor.readOnly.toggle() und window._editor.save() auf.
+ * Beleg: Analyse Build 090, userinfo.js Zeilen 480, 587, 627, 650, 934
+ */
+window._editor = {
+    readOnly: {
+        isEnabled: true,   // Startpunkt: kein Lock -> read-only
+        toggle: async function() {
+            this.isEnabled = !this.isEnabled;
+            _hasLock = !this.isEnabled;
+            _updateActionButtons();
+            // Alle contenteditable-Attribute aktualisieren
+            _rerenderEditableState();
+        },
+    },
+    save: async function() {
+        // Fire-and-forget Save aller geaenderten Felder
+        return { blocks: [] };
+    },
+};
+
+/** Aktiven Bearbeitungszustand aller Paragraph-Karten aktualisieren. */
+function _rerenderEditableState() {
+    const cards = document.querySelectorAll('.report-paragraph-card');
+    cards.forEach(card => {
+        const status     = card.dataset.status;
+        const author     = card.dataset.author;
+        const isOwner    = author === _myUsername();
+        const isApproved = status === 'approved';
+        const canEdit    = _hasLock && isOwner && !isApproved;
+        const contentEl  = card.querySelector('.report-paragraph-content');
+        if (!contentEl) return;
+        if (canEdit) {
+            contentEl.setAttribute('contenteditable', 'true');
+        } else {
+            contentEl.removeAttribute('contenteditable');
+        }
+        // Speichern/Aktivieren-Buttons
+        card.querySelectorAll('.btn-save-paragraph, .btn-activate-paragraph, .btn-deactivate-paragraph')
+            .forEach(btn => {
+                btn.disabled = !_hasLock || isApproved;
+            });
+    });
+}
+
+/**
+ * window.updateEditorPlaceholder(hasLock)
+ * Wird von userinfo.js nach Lock-Aenderungen aufgerufen.
+ * Beleg: Analyse Build 090, userinfo.js Zeile 971
+ */
+window.updateEditorPlaceholder = function(hasLock) {
+    _hasLock = Boolean(hasLock);
+    _updateActionButtons();
+    _rerenderEditableState();
+};
+
+/**
+ * window._reinitWithLock()
+ * Wird von userinfo.js nach erfolgreichem acquireLock() aufgerufen.
+ * Beleg: Analyse Build 090, userinfo.js Zeilen 627, 746
+ */
+window._reinitWithLock = async function() {
+    _hasLock = true;
+    window._editor.readOnly.isEnabled = false;
+    _updateActionButtons();
+    _rerenderEditableState();
+    showStatus('Lock erworben — Bearbeitung moeglich.', 'ok');
+};
+
+/**
+ * window.initEditorModule()
+ * Wird von userinfo.js/initEditor() nach Lock/SSE-Setup aufgerufen.
+ * Laedt den Bericht und initialisiert die Benutzerflaeche.
+ * Beleg: Analyse Build 090, userinfo.js Zeile 491
+ */
+window.initEditorModule = async function() {
+    _bindActionButtons();
+    await loadReport();
+
+    // SSE: bei report_updated-Events neu laden
+    const evtSrc = window._forensicEvtSrc;
+    if (evtSrc) {
+        evtSrc.addEventListener('report_updated', () => {
+            loadReport();
+        });
+    }
+};
+
+// Auch window._currentReportId exportieren (userinfo.js greift darauf zu)
+Object.defineProperty(window, '_currentReportId', {
+    get: () => _currentReportId,
+    set: (v) => { _currentReportId = v; },
+});

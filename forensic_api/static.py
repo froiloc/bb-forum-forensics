@@ -23,6 +23,7 @@
 #   Build 012: userinfo.js, userinfo.css ergaenzt.
 #   Build 084: /_forensic/static/vendor/*-Auslieferung ergaenzt (Tabulator.js).
 #   Build 044 (AP-E3): /_forensic/static/editor/*-Auslieferung ergaenzt.
+#   Build 090 (B6 Phase 4): report.js und report.css ergaenzt (Fenster 3).
 #     - handle_editor_asset(): dedizierte Methode fuer Editor.js-Bundle-Assets.
 #     - HTTP 503 bei fehlendem Bundle (statt leerem Platzhalter).
 #     - MIME-Type-Erkennung anhand Dateiendung.
@@ -59,6 +60,9 @@ _RESOURCES: dict[str, tuple[str, str, Path]] = {
     "/_forensic/userinfo.css": ("userinfo.css", "text/css; charset=utf-8",               _USERINFO_DIR),
     # AP-E4: Editor.js-Modul liegt im userinfo/-Verzeichnis
     "/_forensic/editor.js":    ("editor.js",    "application/javascript; charset=utf-8", _USERINFO_DIR),
+    # B6 Phase 4: Fenster-3-Modul und Stylesheet
+    "/_forensic/report.js":    ("report.js",    "application/javascript; charset=utf-8", _USERINFO_DIR),
+    "/_forensic/report.css":   ("report.css",   "text/css; charset=utf-8",               _USERINFO_DIR),
 }
 
 # MIME-Types fuer Editor.js-Bundle-Dateien (AP-E3)
