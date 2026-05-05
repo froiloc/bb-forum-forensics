@@ -1784,6 +1784,10 @@ span.forensic-passive {
     margin: 8px 0 4px 0;
 }
 
+.forensic-ts {
+    display: none;
+}
+
 /* Einfahren-Schaltfläche (Build 014) --------------------------------------- */
 
 /* Standardmäßig unsichtbar — nur sichtbar wenn details geöffnet ist */

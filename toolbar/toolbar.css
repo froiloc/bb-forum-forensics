@@ -1460,3 +1460,7 @@ body {
 #forensic-viewport .censorship:hover .uncensored {
   display: inline !important;
 }
+
+.forensic-ts {
+    display: none;
+}

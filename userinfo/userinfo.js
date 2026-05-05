@@ -26,7 +26,7 @@
  *   window.opener?.postMessage({ type: 'navigate_to_annotation',
  *                                annotation_id: N }, origin)
  *
- * Version: v0.1.0 · Build: 086 · 2026-05-05
+ * Version: v0.1.0 · Build: 087 · 2026-05-05
  */
 
 'use strict';
@@ -272,7 +272,7 @@ function renderDynamicBlocks(container, data) {
 
     // Read-Only-Berichtsreiter
     const editBtn = `<button class="editor-btn" id="btn-open-report">Bearbeiten →</button>`;
-    const refreshBtn = `<button class="editor-btn" id="btn-refresh-report">Aktualisieren</button>`;
+    // Build 087: Aktualisieren-Schaltfläche entfernt (nur Bearbeiten in Toolbar). Beleg: Projektgespräch 2026-05-05.
 
     container.innerHTML = `
         <h3>Ermittlungsstand</h3>
@@ -290,8 +290,8 @@ function renderDynamicBlocks(container, data) {
     // Beleg: Projektgespräch 2026-05-05
     const toolbarActions = document.getElementById('userinfo-toolbar-actions');
     if (toolbarActions) {
-        toolbarActions.innerHTML = `${refreshBtn} ${editBtn}`;
-        document.getElementById('btn-refresh-report')?.addEventListener('click', loadReadonlyReport);
+        toolbarActions.innerHTML = editBtn;
+        // Aktualisieren-Handler entfernt (Build 087).
         document.getElementById('btn-open-report')?.addEventListener('click', () => {
             window.open('/_forensic/report', 'forensic_report');
         });
@@ -1138,6 +1138,13 @@ document.addEventListener('DOMContentLoaded', () => {
  *
  * @param {HTMLElement} container — Wurzelelement (#userinfo-static)
  */
+// BEKANNTER BUG (TODO-002): Gelegentliche Kollision zwischen Tabulator.js-Sortierpfeilen
+// und dem _initLeftBorderCollapse-Click-Handler. Symptom: Klick auf Spaltenüberschrift
+// klappt den Abschnitt ein statt zu sortieren. Reproduzierbarkeit noch unklar.
+// Ursache: event.offsetX-Prüfung greift möglicherweise auch auf Klicks innerhalb
+// der Tabulator-Tabellenköpfe. Workaround: Click-Handler prüft zusätzlich
+// ob das Klickziel ein Tabulator-Element ist.
+// Beleg: Projektgespräch 2026-05-05. Wird in eigenem Debug-Durchgang untersucht.
 function initTabulatorTables(container) {
     if (typeof Tabulator === 'undefined') {
         // Tabulator.js nicht geladen — kein Fehler, tabellen bleiben statisch
@@ -1158,11 +1165,30 @@ function initTabulatorTables(container) {
         const headers = Array.from(table.querySelectorAll('thead th'));
         if (headers.length === 0) return;
 
+        // Build 087: Zeitstempel-Sorter via data-ts-Attribut.
+        // Wenn eine Zelle ein <span class="forensic-ts" data-ts="unix"> enthält,
+        // wird der Unix-Timestamp als numerischer Sortierschlüssel verwendet.
+        // Beleg: Projektgespräch 2026-05-05 — lexikografische Sortierung ist falsch
+        //        wenn der Wochentag voransteht.
+        function _tsSorter(a, b) {
+            // Versuche data-ts aus dem HTML-Inhalt zu extrahieren
+            function extractTs(html) {
+                const m = html.match(/data-ts="(\d+)"/);
+                return m ? parseInt(m[1], 10) : null;
+            }
+            const tsA = extractTs(a);
+            const tsB = extractTs(b);
+            // Wenn beide Timestamps vorhanden: numerisch vergleichen
+            if (tsA !== null && tsB !== null) return tsA - tsB;
+            // Fallback: Zeichenkettenvergleich
+            return String(a).localeCompare(String(b));
+        }
+
         const columns = headers.map((th, colIdx) => ({
             title:     th.textContent.trim(),
             field:     `col${colIdx}`,
             headerFilter: 'input',
-            sorter:    'string',
+            sorter:    _tsSorter,
             formatter: 'html',  // HTML-Inhalt (Links, Spans) erhalten
         }));
 
@@ -1257,6 +1283,12 @@ function _initLeftBorderCollapse(details) {
         // der Klick NICHT auf dem summary-Element liegt.
         const onSummary = evt.target.closest('summary');
         if (onSummary) return;
+
+        // Build 087: Tabulator-Elemente vom Collapse-Handler ausschließen.
+        // Verhindert versehentliches Einklappen beim Klick auf Spaltenköpfe.
+        // Beleg: TODO-002, Projektgespräch 2026-05-05.
+        const onTabulator = evt.target.closest('.tabulator');
+        if (onTabulator) return;
 
         if (evt.offsetX <= 5) {
             evt.preventDefault();
