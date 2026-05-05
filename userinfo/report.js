@@ -40,7 +40,7 @@
  *   - Aktivieren-Button gesperrt wenn Pflichtfelder leer
  *   Beleg: Bauplan B6 v0.3 §4.5, Build 091
  *
- * Version: v0.1.1 · Build: 091 · 2026-05-05
+ * Version: v0.1.2 · Build: 092 · 2026-05-05
  * Beleg: Bauplan B6 v0.3 §4, Ausdefinitionsgespraech 2026-05-05
  */
 
@@ -384,15 +384,11 @@ function _bindCardEvents(card) {
         showStatus('Kommentar-Funktion wird in Phase 8 implementiert.', 'warn');
     });
 
-    // Doppelklick auf Platzhalter-Chip: Phase-5-Stub
-    // Oeffnet in Phase 5 den Wizard beim richtigen Schritt.
+    // Doppelklick auf Platzhalter-Chip: Wizard beim richtigen Schritt oeffnen
     // Beleg: Bauplan B6 v0.3 §4.5
     card.querySelectorAll('.ph-chip-mandatory, .ph-chip-optional').forEach(chip => {
         chip.addEventListener('dblclick', () => {
-            showStatus(
-                'Platzhalter-Wizard wird in Phase 5 implementiert.',
-                'warn'
-            );
+            _openWizardForCard(blockId, chip.dataset.chipName);
         });
     });
 
@@ -486,6 +482,54 @@ function _scheduleAutosave(blockId, card) {
     _autosaveTimer = setTimeout(async () => {
         await _saveParagraph(blockId, card);
     }, AUTOSAVE_DEBOUNCE_MS);
+}
+
+/**
+ * Oeffnet den Platzhalter-Wizard fuer den Paragraph einer Karte.
+ * Bei Doppelklick auf einen Chip: direkt beim Schritt des Feldes oeffnen.
+ * Beleg: Bauplan B6 v0.3 §4.5
+ *
+ * @param {string}      blockId   -- Paragraph-ID
+ * @param {string|null} fieldName -- Feldname beim Doppelklick, oder null
+ */
+function _openWizardForCard(blockId, fieldName) {
+    const para = _currentParagraphs.find(p => p.block_id === blockId);
+    if (!para) { showStatus('Absatz nicht gefunden.', 'error'); return; }
+    if (!_hasLock) { showStatus('Lock erforderlich zum Bearbeiten.', 'warn'); return; }
+
+    const rawContent = para.content || '';
+    let values = {};
+    try {
+        if (para.placeholder_values_json) values = JSON.parse(para.placeholder_values_json);
+    } catch (_) {}
+
+    const onSave = async (bid, newValues) => {
+        const result = await _postWithLock({
+            action:                  'update_paragraph',
+            block_id:                bid,
+            content:                 rawContent,
+            placeholder_values_json: JSON.stringify(newValues),
+        });
+        if (!result) throw new Error('Speichern fehlgeschlagen.');
+        showStatus('Platzhalter gespeichert.', 'ok');
+        await loadReport();
+    };
+
+    const opts = {
+        blockId,
+        moduleTitle: `Absatz (${esc(blockId.slice(0, 8))}…)`,
+        bodyText:    rawContent,
+        values,
+        onSave,
+    };
+
+    if (fieldName && window.PlaceholderWizard?.openAtField) {
+        window.PlaceholderWizard.openAtField(opts, fieldName);
+    } else if (window.PlaceholderWizard?.open) {
+        window.PlaceholderWizard.open(opts);
+    } else {
+        showStatus('Platzhalter-Wizard nicht verfuegbar.', 'error');
+    }
 }
 
 /** Kurze Auto-Save-Rueckmeldung anzeigen. */

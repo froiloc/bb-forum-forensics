@@ -157,7 +157,9 @@ _EDITOR_HTML = """\
     <!-- Scripts (Reihenfolge wichtig) -->
     <!-- 1a) placeholder_chips.js: Chip-Renderer (vor report.js laden) -->
     <script src="/_forensic/placeholder_chips.js" defer></script>
-    <!-- 1b) report.js: B6-Paragraph-Editor (ersetzt editor.js) -->
+    <!-- 1b) placeholder_wizard.js: Wizard (nach Chips, vor report.js) -->
+    <script src="/_forensic/placeholder_wizard.js" defer></script>
+    <!-- 1c) report.js: B6-Paragraph-Editor (ersetzt editor.js) -->
     <script src="/_forensic/report.js" defer></script>
     <!-- 2) userinfo.js: Lock/SSE/BroadcastChannel — nach report.js laden -->
     <script src="/_forensic/userinfo.js" defer></script>
