@@ -32,7 +32,10 @@
 # T25 — _migrate_schema() ist idempotent
 # T26 — get_all_annotations() liefert neue Felder korrekt zurueck
 #
-# Version: v0.6.043 · Build: 043 · 2026-04-19
+# Version: v0.6.089 · Build: 089 · 2026-05-05
+# Geaendert Build 089: T01 auf B6-Schema aktualisiert.
+# Geaendert Build 089: T16-T26 (alte Editor.js-Tests) entfernt — B6-Schema-Tests folgen in test_evidence_db_b6.py
+# Beleg: Bauplan B6 v0.3 §2.3, Ausdefinitionsgespraech 2026-05-05 · 2026-04-19
 # Beleg: AP-E1, Projektgespraech 2026-04-19
 # =============================================================================
 
@@ -85,12 +88,17 @@ class TestEvidenceDb(unittest.TestCase):
         self.assertIn("page_visits", tables)
         self.assertIn("viewport_events", tables)
         self.assertIn("annotations", tables)
-        # AP-E1: neue Tabellen
+        # AP-E1: reports, report_approvals (unveraendert)
         self.assertIn("reports", tables)
-        self.assertIn("report_blocks", tables)
-        self.assertIn("report_block_order", tables)
-        self.assertIn("block_evidence_user", tables)
         self.assertIn("report_approvals", tables)
+        # B6: neue Berichts-Tabellen (Build 089)
+        self.assertIn("report_paragraphs", tables)
+        self.assertIn("report_block_order", tables)
+        self.assertIn("report_anchors", tables)
+        self.assertIn("report_comments", tables)
+        self.assertIn("placeholder_cache", tables)
+        self.assertIn("lock_takeover_requests", tables)
+        # AP-E1 entfernt: report_blocks, block_evidence_user, report_templates
 
     def test_T02_log_page_visit(self):
         """T02: log_page_visit() speichert Eintrag korrekt."""

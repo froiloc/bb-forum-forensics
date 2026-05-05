@@ -27,6 +27,11 @@
 #   /_forensic/editor/evidence   (POST)       -> EditorEvidenceEndpoint [AP-E3]
 #   /_forensic/static/vendor/*   (GET)        -> StaticEndpoint.handle_vendor_asset [Build 084]
 #   /_forensic/static/editor/*   (GET)        -> StaticEndpoint.handle_editor_asset [AP-E3]
+#   /_forensic/placeholders/resolve  (POST)      -> PlaceholdersEndpoint [B6]
+#   /_forensic/placeholders/refresh  (POST)      -> PlaceholdersEndpoint [B6]
+#   /_forensic/placeholders/library  (GET)       -> PlaceholdersEndpoint [B6]
+#   /_forensic/templates             (GET)       -> TemplatesEndpoint    [B6]
+#   /_forensic/templates/<id>        (GET)       -> TemplatesEndpoint    [B6]
 #
 # Routing-Reihenfolge bei Praefix-Konflikten:
 #   Laengere/spezifischere Pfade werden zuerst geprueft:
@@ -44,7 +49,12 @@
 #
 #   Build 072 (KN-7): TraceSequenceEndpoint ergaenzt (/_forensic/trace_sequence).
 #
-# Version: v0.6.072 · Build: 072 · 2026-04-26
+#   Build 089 (B6 — Phase 3): PlaceholdersEndpoint und TemplatesEndpoint ergaenzt.
+#     Drei neue /_forensic/placeholders/*-Endpunkte.
+#     Zwei neue /_forensic/templates[/<id>]-Endpunkte.
+#     Beleg: Bauplan B6 v0.3 §3, §5, 2026-05-05
+#
+# Version: v0.6.089 · Build: 089 · 2026-05-05
 # =============================================================================
 
 from __future__ import annotations
@@ -73,6 +83,9 @@ _VENDOR_STATIC_PREFIX = "/_forensic/static/vendor/"
 
 # Praefix fuer Editor-API-Pfade (AP-E3)
 _EDITOR_API_PREFIX = "/_forensic/editor/"
+
+# Praefix fuer Platzhalter-API-Pfade (B6)
+_PLACEHOLDERS_PREFIX = "/_forensic/placeholders/"
 
 
 class ForensicApi:
@@ -109,6 +122,8 @@ class ForensicApi:
         self._editor_evidence  = None  # [AP-E3]
         self._search           = None  # [KN-3]
         self._trace_sequence   = None  # [KN-7]
+        self._placeholders    = None  # [B6]
+        self._templates_ep    = None  # [B6]
 
     def dispatch(
         self,
@@ -282,6 +297,21 @@ class ForensicApi:
             self._get_trace_sequence().handle(handler, params)
             return
 
+        # /_forensic/placeholders/* (POST/GET) [B6]
+        # Beleg: Bauplan B6 v0.3 §3, §5, Build 089
+        if url_path.startswith(_PLACEHOLDERS_PREFIX):
+            self._dispatch_placeholders(handler, method, url_path, params)
+            return
+
+        # /_forensic/templates (GET, Liste) und
+        # /_forensic/templates/<id> (GET, Einzelmodul) [B6]
+        if url_path == "/_forensic/templates" or url_path.startswith("/_forensic/templates/"):
+            if method not in ("GET", "HEAD"):
+                self._method_not_allowed(handler)
+                return
+            self._get_templates_ep().handle_get(handler, url_path, params)
+            return
+
         # /_forensic/search (GET) [KN-3]
         # Kontext-Navigator: gefilterte Seitenliste für Dropdown + Modal.
         # Beleg: Bauplan KN v0.6 §7.3, Build 070.
@@ -355,6 +385,53 @@ class ForensicApi:
     # ------------------------------------------------------------------
     # Request-Body lesen
     # ------------------------------------------------------------------
+
+    def _dispatch_placeholders(
+        self,
+        handler: "ForensicRequestHandler",
+        method: str,
+        url_path: str,
+        params: dict,
+    ) -> None:
+        """
+        Interne Dispatch-Funktion fuer /_forensic/placeholders/*-Pfade.
+        Beleg: Bauplan B6 v0.3 §3, Build 089
+        """
+        if url_path == "/_forensic/placeholders/resolve":
+            if method != "POST":
+                self._method_not_allowed(handler)
+                return
+            body = self._read_body(handler)
+            if body is None:
+                return
+            self._get_placeholders().handle_resolve(handler, body)
+            return
+
+        if url_path == "/_forensic/placeholders/refresh":
+            if method != "POST":
+                self._method_not_allowed(handler)
+                return
+            body = self._read_body(handler)
+            if body is None:
+                return
+            self._get_placeholders().handle_refresh(handler, body)
+            return
+
+        if url_path == "/_forensic/placeholders/library":
+            if method not in ("GET", "HEAD"):
+                self._method_not_allowed(handler)
+                return
+            self._get_placeholders().handle_library(handler, params)
+            return
+
+        import json as _json
+        logger.warning("Unbekannter Placeholders-Endpunkt: '%s'", url_path)
+        handler.send_response_body(
+            404,
+            _json.dumps({"error": f"Endpunkt '{url_path}' nicht bekannt"}
+            ).encode("utf-8"),
+            content_type="application/json; charset=utf-8",
+        )
 
     def _read_body(self, handler: "ForensicRequestHandler") -> "bytes | None":
         try:
@@ -483,6 +560,20 @@ class ForensicApi:
             from forensic_api.editor_evidence import EditorEvidenceEndpoint
             self._editor_evidence = EditorEvidenceEndpoint(self._bundle, self._context, self._config)
         return self._editor_evidence
+
+    def _get_placeholders(self):
+        """[B6] Lazy-Init fuer PlaceholdersEndpoint. Beleg: Bauplan B6 v0.3 §3."""
+        if self._placeholders is None:
+            from forensic_api.placeholders import PlaceholdersEndpoint
+            self._placeholders = PlaceholdersEndpoint(self._bundle, self._context, self._config)
+        return self._placeholders
+
+    def _get_templates_ep(self):
+        """[B6] Lazy-Init fuer TemplatesListEndpoint. Beleg: Bauplan B6 v0.3 §5."""
+        if self._templates_ep is None:
+            from forensic_api.templates_ep import TemplatesListEndpoint
+            self._templates_ep = TemplatesListEndpoint(self._bundle, self._context, self._config)
+        return self._templates_ep
 
     def _get_search(self):
         """[KN-3] Lazy-Init fuer SearchEndpoint. Beleg: Bauplan KN v0.6 §12 Phase KN-3."""

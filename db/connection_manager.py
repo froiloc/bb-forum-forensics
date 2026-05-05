@@ -57,7 +57,8 @@ from db.forensic_db import ForensicDb
 from db.default_db import DefaultDb
 from db.evidence_db import EvidenceDb
 from db.coordinator_db import CoordinatorDb
-from db.assets_db import AssetsDb          # NEU Build 017
+from db.assets_db import AssetsDb
+from db.templates_db import TemplatesDb          # NEU Build 089
 
 logger = get_logger(__name__)
 
@@ -74,6 +75,7 @@ class DatabaseBundle:
         evidence     — EvidenceDb (READ-WRITE oder Support-TEMP)
         coordinator  — CoordinatorDb (READ-WRITE außer in Sonderfällen)
         assets       — AssetsDb  (READ-ONLY, nutzerspezifische Bilder/Avatare)
+        templates    — TemplatesDb (READ-ONLY, Berichtsvorlagen aus templates.db)
                        Kann intern None-Verbindung haben wenn assets_<uid>.db
                        noch nicht existiert (vor erstem asset_importer-Lauf).
         temp_db_path — Pfad zur Support-TEMP-DB-Datei, oder None
@@ -85,6 +87,7 @@ class DatabaseBundle:
     evidence:     EvidenceDb
     coordinator:  CoordinatorDb
     assets:       AssetsDb            # NEU Build 017
+    templates:    TemplatesDb         # NEU Build 089
     temp_db_path: Optional[str] = None
 
     def close(self) -> None:
@@ -222,6 +225,7 @@ class ConnectionManager:
             evidence    = EvidenceDb(con)
             coordinator = CoordinatorDb(con)
             assets      = AssetsDb(assets_con, forum_base_url=forum_base_url)   # NEU Build 017
+            templates   = TemplatesDb(con)          # NEU Build 089
 
             # Authorizer nach vollständigem ATTACH-Aufbau deaktivieren.
             # Hintergrund (Build 021): set_authorizer() ist nicht thread-safe
@@ -248,6 +252,7 @@ class ConnectionManager:
                 evidence=evidence,
                 coordinator=coordinator,
                 assets=assets,    # NEU Build 017
+                templates=templates,  # NEU Build 089
             )
 
         except sqlite3.OperationalError as exc:
@@ -355,6 +360,7 @@ class ConnectionManager:
             evidence    = EvidenceDb(con)
             coordinator = CoordinatorDb(con)
             assets      = AssetsDb(assets_con, forum_base_url=forum_base_url)   # NEU Build 017
+            templates   = TemplatesDb(con)          # NEU Build 089
 
             # Authorizer nach vollständigem ATTACH-Aufbau deaktivieren.
             # Hintergrund (Build 021): set_authorizer() ist nicht thread-safe
@@ -380,6 +386,7 @@ class ConnectionManager:
                 evidence=evidence,
                 coordinator=coordinator,
                 assets=assets,        # NEU Build 017
+                templates=templates,  # NEU Build 089
                 temp_db_path=temp_db_path,
             )
 

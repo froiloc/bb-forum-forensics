@@ -152,7 +152,6 @@ class ReportsEndpoint:
                 report_type=report_type,
                 title=title,
                 created_by=investigator,
-                template_id=template_id,
             )
         except EvidenceDbError as exc:
             # Bekannte Fehler: doppelter Abschlussbericht, leerer Titel etc.

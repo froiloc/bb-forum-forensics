@@ -3,42 +3,46 @@
 # IT-Forensisches Ermittlungswerkzeug — Baustelle 2: Python-Webserver
 # =============================================================================
 # Zweck:
-#   Kapselt alle Schreiboperationen in die evidence_<uid>.db (Haupt-DB).
+#   Kapselt alle Schreib- und Lesezugriffe auf die evidence_<uid>.db.
 #
 # Changelog:
-#   Build 012 (Baustelle 4 — §8.2 Bauplan):
-#     - Tabellen report_paragraphs, report_anchors, report_suggestions,
-#       report_approvals, editor_locks hinzugefügt.
-#     - Lock-Mechanismus (dreischichtig) implementiert.
-#     - get_annotation_counts_by_category(), get_last_annotation_info(),
-#       get_unreferenced_annotation_count(), get_report_status().
-#
-#   Build 043 (AP-E1 — Editor.js-Integration):
-#     - report_paragraphs, report_anchors, report_suggestions ERSETZT durch:
-#         reports              — Berichtsmetadata (Typ, Sequenz, Status)
-#         report_templates     — Vorlagen-Stub (für spätere Berichtstyp-Vorlagen)
-#         report_blocks        — Editor.js-Blöcke (JSON, Owner, Timestamps)
-#         report_block_order   — Sortierung via String-based Fractional Indexing
-#         block_evidence_user  — Junction Block <-> Annotation (N:M)
-#     - report_approvals: Spalte report_id ergänzt.
-#     - Neue Dataclasses: ReportRecord, ReportBlockRecord,
-#       ReportBlockOrderRecord, BlockEvidenceRecord.
-#     - Entfernte Dataclasses: ReportParagraphRecord, ReportAnchorRecord,
-#       ReportSuggestionRecord.
-#     - Entfernte Methoden: add_paragraph(), _extract_and_save_anchors(),
-#       omit_paragraph(), get_paragraphs(), add_suggestion(), resolve_suggestion().
-#     - Neue Methoden: create_report(), get_reports(), get_report(),
-#       update_report_status(), save_block(), delete_block(),
-#       get_blocks_ordered(), get_block(), update_block_order(),
-#       get_block_order(), add_block_evidence(), remove_block_evidence(),
+#   Build 012 (Baustelle 4):
+#     - Tabellen, Lock-Mechanismus, Annotation-Methoden.
+#   Build 043 (AP-E1):
+#     - Editor.js-Modell: reports, report_templates, report_blocks,
+#       report_block_order, block_evidence_user.
+#   Build 089 (B6 — Phase 2/3):
+#     - Editor.js-Modell vollstaendig ersetzt durch Baustelle-6-Modell.
+#     - Entfernte Tabellen: report_templates, report_blocks,
+#       report_block_order (alt, TEXT sort_index), block_evidence_user.
+#     - Neue Tabellen: report_paragraphs, report_block_order (INTEGER),
+#       report_anchors, report_comments, placeholder_cache.
+#     - Entfernte Dataclasses: ReportBlockRecord, ReportBlockOrderRecord,
+#       BlockEvidenceRecord.
+#     - Neue Dataclasses: ReportParagraphRecord, ReportAnchorRecord,
+#       ReportCommentRecord.
+#     - Entfernte Methoden: save_block(), delete_block(), get_blocks_ordered(),
+#       get_block(), update_block_order(), get_block_order(),
+#       add_block_evidence(), remove_block_evidence(),
 #       get_evidence_for_block(), get_blocks_for_evidence().
-#     - get_report_status() auf neues Schema umgeschrieben.
-#     - get_unreferenced_annotation_count() auf block_evidence_user umgeschrieben.
-#     - root-level evidence_db.py entfernt (war versehentliche Kopie).
-#     Beleg: AP-E1, Projektgespräch 2026-04-19
+#     - Neue Methoden: add_paragraph(), get_paragraph(), get_paragraphs(),
+#       update_paragraph_content(), set_paragraph_status(),
+#       get_block_order_for_report(), set_block_order(),
+#       add_anchor(), remove_anchor(), get_anchors_for_paragraph(),
+#       get_anchored_annotation_ids(),
+#       add_comment(), get_comments_for_paragraph(), resolve_comment(),
+#       get_cache_entry(), set_cache_entry(), clear_cache_for_uid().
+#     - get_report_status() auf B6-Schema umgeschrieben.
+#     - get_unreferenced_annotation_count() auf report_anchors umgeschrieben.
+#     - create_report(): template_id-Parameter entfernt (kein report_templates mehr).
+#     Beleg: Bauplan B6 v0.3 §2.3, Ausdefinitionsgespraech 2026-05-05
 #
-# Abhängigkeiten: sqlite3, time, json, uuid — ausschließlich Stdlib
-# Version: v0.6.043 · Build: 043 · 2026-04-19
+#   Synchronisation:
+#   _SCHEMA_DDL muss mit stage2/evidence_db_init.py im Prepper synchron
+#   gehalten werden. Letzte Synchronisation: Build 089 (B6), 2026-05-05.
+#
+# Abhaengigkeiten: sqlite3, time, json, uuid -- ausschliesslich Stdlib
+# Version: v0.6.089 · Build: 089 · 2026-05-05
 # =============================================================================
 
 from __future__ import annotations
@@ -55,7 +59,7 @@ from core.logger import get_logger
 
 logger = get_logger(__name__)
 
-# Zulässige Annotationskategorien — unveränderliche Menge
+# Zulaessige Annotationskategorien -- unveraenderliche Menge
 VALID_CATEGORIES = frozenset({
     "CAT_PERSON",
     "CAT_LOCATION",
@@ -65,15 +69,14 @@ VALID_CATEGORIES = frozenset({
     "CAT_OTHER",
 })
 
-# Zulässige Berichtstypen — unveränderliche Menge
-# Beleg: AP-E1, Projektgespräch 2026-04-19
+# Zulaessige Berichtstypen
 VALID_REPORT_TYPES = frozenset({
     "interim",    # Zwischenbericht
     "final",      # Abschlussbericht (max. einer pro evidence_db)
     "addendum",   # Nachtragsbericht
 })
 
-# Zulässige Berichtsstatus
+# Zulaessige Berichtsstatus
 VALID_REPORT_STATUSES = frozenset({
     "draft",
     "submitted",
@@ -81,9 +84,32 @@ VALID_REPORT_STATUSES = frozenset({
     "final",
 })
 
-# DDL für die evidence_db-Tabellen.
-# Beleg: AP-E1, Projektgespräch 2026-04-19
-_SCHEMA_DDL = """\
+# Zulaessige Paragraphen-Status (Baustelle 6)
+# Beleg: Bauplan B6 v0.3 §2.3
+VALID_PARAGRAPH_STATUSES = frozenset({
+    "draft",
+    "active",
+    "omitted",
+    "superseded",
+    "approved",
+})
+
+# Zulaessige Kommentar-Status (Baustelle 6)
+# Beleg: Bauplan B6 v0.3 §2.3
+VALID_COMMENT_STATUSES = frozenset({
+    "pending",
+    "addressed",
+    "dismissed",
+    "revoked",
+})
+
+# =============================================================================
+# Schema-DDL
+#
+# SYNCHRON HALTEN MIT: stage2/evidence_db_init.py (_FULL_SCHEMA_DDL)
+# Letzte Synchronisation: Build 089 (B6-Schema), 2026-05-05
+# =============================================================================
+_SCHEMA_DDL = """
 CREATE TABLE IF NOT EXISTS page_visits (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     page_url        TEXT NOT NULL,
@@ -117,79 +143,85 @@ CREATE TABLE IF NOT EXISTS annotations (
     created_by      TEXT NOT NULL DEFAULT ''
 );
 
--- Berichtsmetadata.
--- Nur ein Bericht vom Typ 'final' zulässig (via Partial-Index reports_one_final_idx).
--- Beleg: AP-E1, Projektgespräch 2026-04-19
+-- Berichts-Metadaten. Nur ein Bericht vom Typ 'final' zulaessig.
 CREATE TABLE IF NOT EXISTS reports (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     report_type     TEXT    NOT NULL
                     CHECK (report_type IN ('interim', 'final', 'addendum')),
     sequence_nr     INTEGER NOT NULL DEFAULT 1,
     title           TEXT    NOT NULL,
-    template_id     INTEGER REFERENCES report_templates(id),
     created_by      TEXT    NOT NULL,
     created_at      INTEGER NOT NULL,
     status          TEXT    NOT NULL DEFAULT 'draft'
                     CHECK (status IN ('draft', 'submitted', 'approved', 'final'))
 );
 
--- Vorlagen-Stub. Inhalte werden in spaeteren Baustellen definiert.
--- Beleg: AP-E1, Projektgespräch 2026-04-19
-CREATE TABLE IF NOT EXISTS report_templates (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    name        TEXT    NOT NULL,
-    report_type TEXT    NOT NULL
-                CHECK (report_type IN ('interim', 'final', 'addendum')),
-    blocks_json TEXT    NOT NULL DEFAULT '[]',
-    created_at  INTEGER NOT NULL
+-- Kern: Berichts-Paragraphen (Baustelle 6).
+-- Beleg: Bauplan B6 v0.3 §2.3, Ausdefinitionsgespraech 2026-05-05
+CREATE TABLE IF NOT EXISTS report_paragraphs (
+    block_id                TEXT    NOT NULL PRIMARY KEY,
+    report_id               INTEGER NOT NULL REFERENCES reports(id),
+    author                  TEXT    NOT NULL,
+    created_at              INTEGER NOT NULL,
+    updated_at              INTEGER NOT NULL,
+    content                 TEXT    NOT NULL DEFAULT '',
+    placeholder_values_json TEXT,
+    status                  TEXT    NOT NULL DEFAULT 'draft'
+                            CHECK (status IN (
+                                'draft', 'active', 'omitted', 'superseded', 'approved'
+                            )),
+    omitted_by              TEXT,
+    omitted_at              INTEGER,
+    omitted_reason          TEXT,
+    module_id               INTEGER
 );
 
--- Editor.js-Blöcke: normalisiert, ein Block pro Zeile.
--- block_id: vom Editor.js-Client generierte UUID (TEXT).
--- block_type: Editor.js-Blocktyp (paragraph, header, list, table,
---             quote, image, delimiter, evidenceBlock, ...).
--- block_data: JSON-Objekt mit dem Editor.js-Datenfeld des Blocks.
--- owner: SAMAccountName des Erstellers — steuert Bearbeitungsrechte.
--- Beleg: AP-E1, Projektgespräch 2026-04-19
-CREATE TABLE IF NOT EXISTS report_blocks (
-    block_id    TEXT    PRIMARY KEY,
-    report_id   INTEGER NOT NULL REFERENCES reports(id),
-    block_type  TEXT    NOT NULL,
-    block_data  TEXT    NOT NULL DEFAULT '{}',
-    owner       TEXT    NOT NULL,
-    created_at  INTEGER NOT NULL,
-    updated_at  INTEGER NOT NULL
-);
-
--- Sortierung der Blöcke via String-based Fractional Indexing.
--- sort_index: lexikografisch sortierbar (z.B. "a0", "a0V", "b").
--- Vorteil: Verschieben eines Blocks erfordert nur UPDATE einer Zeile,
---          keine Neuvergabe aller Indizes.
--- Beleg: AP-E1, Projektgespräch 2026-04-19
+-- Reihenfolge der Paragraphen (INTEGER sort_index, B6).
+-- Beleg: Bauplan B6 v0.3 §2.3
 CREATE TABLE IF NOT EXISTS report_block_order (
-    block_id            TEXT    PRIMARY KEY
-                        REFERENCES report_blocks(block_id),
-    sort_index          TEXT    NOT NULL,
+    block_id            TEXT    NOT NULL PRIMARY KEY
+                        REFERENCES report_paragraphs(block_id),
+    sort_index          INTEGER NOT NULL,
     last_modified_by    TEXT    NOT NULL,
     last_modified_at    INTEGER NOT NULL
 );
 
--- Junction-Tabelle Block <-> Annotation (N:M).
--- Ein Block kann mehrere Annotationen referenzieren (Beweismittelgruppe).
--- Eine Annotation kann in mehreren Blöcken zitiert werden.
--- Referenzielle Integrität: Annotation darf nicht geloescht werden,
--- solange ein block_evidence_user-Eintrag existiert.
--- Beleg: AP-E1, Projektgespräch 2026-04-19
-CREATE TABLE IF NOT EXISTS block_evidence_user (
-    block_id            TEXT    NOT NULL REFERENCES report_blocks(block_id),
-    evidence_id         INTEGER NOT NULL REFERENCES annotations(id),
-    investigator_id     INTEGER NOT NULL,
-    last_modified_at    INTEGER NOT NULL,
-    PRIMARY KEY (block_id, evidence_id)
+-- Beweisanker: Verknuepfung Paragraph <-> Annotation.
+-- Beleg: Bauplan B6 v0.3 §2.3
+CREATE TABLE IF NOT EXISTS report_anchors (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    block_id        TEXT    NOT NULL REFERENCES report_paragraphs(block_id),
+    annotation_id   INTEGER NOT NULL REFERENCES annotations(id),
+    anchor_text     TEXT    NOT NULL,
+    created_at      INTEGER NOT NULL
 );
 
--- Freigabe-Tabelle. report_id ergänzt in Build 043 (AP-E1).
--- Beleg: AP-E1, Projektgespräch 2026-04-19
+-- Kommentare zu fremden Paragraphen (Status One-Way, Grundregel 15).
+-- Beleg: Bauplan B6 v0.3 §2.3
+CREATE TABLE IF NOT EXISTS report_comments (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    block_id            TEXT    NOT NULL REFERENCES report_paragraphs(block_id),
+    author              TEXT    NOT NULL,
+    created_at          INTEGER NOT NULL,
+    comment_text        TEXT    NOT NULL,
+    suggested_content   TEXT,
+    status              TEXT    NOT NULL DEFAULT 'pending'
+                        CHECK (status IN ('pending', 'addressed', 'dismissed', 'revoked')),
+    resolved_by         TEXT,
+    resolved_at         INTEGER
+);
+
+-- Cache fuer {{a:...}}-Platzhalter.
+-- Beleg: Bauplan B6 v0.3 §2.3
+CREATE TABLE IF NOT EXISTS placeholder_cache (
+    query_id        TEXT    NOT NULL,
+    uid             INTEGER NOT NULL,
+    cached_value    TEXT    NOT NULL,
+    cached_at       INTEGER NOT NULL,
+    PRIMARY KEY (query_id, uid)
+);
+
+-- Freigabe-Tabelle (unveraendert).
 CREATE TABLE IF NOT EXISTS report_approvals (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     report_id   INTEGER NOT NULL REFERENCES reports(id),
@@ -199,6 +231,7 @@ CREATE TABLE IF NOT EXISTS report_approvals (
     is_final    INTEGER NOT NULL DEFAULT 0
 );
 
+-- Editor-Lock (unveraendert).
 CREATE TABLE IF NOT EXISTS editor_locks (
     resource    TEXT    NOT NULL PRIMARY KEY,
     locked_by   TEXT    NOT NULL,
@@ -207,65 +240,53 @@ CREATE TABLE IF NOT EXISTS editor_locks (
     sse_client  TEXT    NOT NULL
 );
 
--- Lock-Übernahme-Anfragen (V3: Lock-Übernahme-Dialog)
--- Beleg: Lock-System v2 V3, Projektgespraech 2026-04-21
+-- Lock-Uebernahme-Anfragen (unveraendert).
 CREATE TABLE IF NOT EXISTS lock_takeover_requests (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    lock_id      TEXT    NOT NULL,
-    requested_by TEXT    NOT NULL,
-    requested_at INTEGER NOT NULL,
-    status       TEXT    NOT NULL DEFAULT 'pending'
-                 CHECK (status IN ('pending', 'granted', 'denied', 'expired'))
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    lock_id         TEXT    NOT NULL,
+    requested_by    TEXT    NOT NULL,
+    requested_at    INTEGER NOT NULL,
+    status          TEXT    NOT NULL DEFAULT 'pending'
+                    CHECK (status IN ('pending', 'granted', 'denied', 'expired'))
 );
 
--- Indizes: Seitenbesuche, Viewport, Annotationen
 CREATE INDEX IF NOT EXISTS pv_url_idx       ON page_visits (page_url);
 CREATE INDEX IF NOT EXISTS ve_url_idx       ON viewport_events (page_url);
 CREATE INDEX IF NOT EXISTS ann_url_idx      ON annotations (page_url);
 CREATE INDEX IF NOT EXISTS ann_cat_idx      ON annotations (category);
-
--- Indizes: Berichte
 CREATE INDEX IF NOT EXISTS rep_type_idx     ON reports (report_type);
 CREATE INDEX IF NOT EXISTS rep_status_idx   ON reports (status);
-
--- Indizes: Bloecke
-CREATE INDEX IF NOT EXISTS rb_report_idx    ON report_blocks (report_id);
-CREATE INDEX IF NOT EXISTS rb_owner_idx     ON report_blocks (owner);
-
--- Indizes: Blockreihenfolge (haeufig sortiert gelesen)
+CREATE INDEX IF NOT EXISTS rp_report_idx    ON report_paragraphs (report_id);
+CREATE INDEX IF NOT EXISTS rp_author_idx    ON report_paragraphs (author);
+CREATE INDEX IF NOT EXISTS rp_status_idx    ON report_paragraphs (status);
 CREATE INDEX IF NOT EXISTS rbo_sort_idx     ON report_block_order (sort_index);
+CREATE INDEX IF NOT EXISTS ra_block_idx     ON report_anchors (block_id);
+CREATE INDEX IF NOT EXISTS ra_ann_idx       ON report_anchors (annotation_id);
+CREATE UNIQUE INDEX IF NOT EXISTS ra_block_ann_uniq
+    ON report_anchors (block_id, annotation_id);
+CREATE INDEX IF NOT EXISTS rc_block_idx     ON report_comments (block_id);
+CREATE INDEX IF NOT EXISTS rc_status_idx    ON report_comments (status);
+CREATE INDEX IF NOT EXISTS rap_report_idx   ON report_approvals (report_id);
 
--- Indizes: Junction-Tabelle
-CREATE INDEX IF NOT EXISTS beu_block_idx    ON block_evidence_user (block_id);
-CREATE INDEX IF NOT EXISTS beu_evidence_idx ON block_evidence_user (evidence_id);
-
--- Indizes: Freigaben
-CREATE INDEX IF NOT EXISTS ra_report_idx    ON report_approvals (report_id);
-
--- Partial-Index: Stellt sicher, dass es nur einen Abschlussbericht gibt.
--- SQLite unterstuetzt Partial-Indizes mit WHERE-Klausel.
--- Beleg: AP-E1, Projektgespräch 2026-04-19
 CREATE UNIQUE INDEX IF NOT EXISTS reports_one_final_idx
     ON reports (report_type)
     WHERE report_type = 'final';
 
--- HINWEIS: annotations_local_id_uniq wird NICHT hier im DDL angelegt,
--- sondern in _migrate_schema() nach der Spalten-Migration.
--- Grund: local_id-Spalte kann in älteren DBs fehlen; DDL wird via
--- executescript() auf bestehenden DBs ausgeführt bevor die Spalte ergänzt wird.
--- Beleg: Build 061, Test-Fehler test_T24.
+-- annotations_local_id_uniq: wird in _migrate_schema() angelegt,
+-- NICHT hier, weil local_id in aelteren DBs fehlen kann (T24-Migration).
+-- SQLite-Einschraenkung: ON CONFLICT(col) erkennt keine partiellen Indizes.
+-- UPSERT in save_annotation() nutzt daher SELECT+UPDATE/INSERT.
+-- Beleg: Build 089, SQLite-Dokumentation.
 """
 
-# Spalten, die in aelteren evidence_db-Instanzen fehlen koennen.
+# Migrationsspalten fuer aeltere evidence_db-Instanzen.
+# Beleg: Build 061, Build 089
 _MIGRATION_COLUMNS: list[tuple[str, str, str]] = [
     ("annotations", "selection_json", "TEXT DEFAULT NULL"),
     ("annotations", "tags_json",      "TEXT DEFAULT NULL"),
     ("annotations", "local_id",       "TEXT DEFAULT NULL"),
     ("annotations", "post_id",        "INTEGER DEFAULT NULL"),
     ("annotations", "created_by",     "TEXT NOT NULL DEFAULT ''"),
-    # report_approvals.report_id: in Build 012 noch nicht vorhanden.
-    # Beleg: AP-E1, Projektgespräch 2026-04-19
-    ("report_approvals", "report_id", "INTEGER DEFAULT NULL"),
 ]
 
 
@@ -301,59 +322,67 @@ class AnnotationRecord:
 @dataclass
 class ReportRecord:
     """Berichtsmetadata.
-    Beleg: AP-E1, Projektgespräch 2026-04-19
+    Beleg: AP-E1 (angelegt), unveraendert in B6
     """
     id:          int
     report_type: str
     sequence_nr: int
     title:       str
-    template_id: Optional[int]
     created_by:  str
     created_at:  int
     status:      str
 
 
 @dataclass
-class ReportBlockRecord:
-    """Ein Editor.js-Block. block_data ist JSON-String.
-    Beleg: AP-E1, Projektgespräch 2026-04-19
+class ReportParagraphRecord:
+    """Ein Berichts-Paragraph (Baustelle 6).
+    Beleg: Bauplan B6 v0.3 §2.3
     """
-    block_id:   str
-    report_id:  int
-    block_type: str
-    block_data: str
-    owner:      str
-    created_at: int
-    updated_at: int
+    block_id:                str
+    report_id:               int
+    author:                  str
+    created_at:              int
+    updated_at:              int
+    content:                 str
+    status:                  str
+    placeholder_values_json: Optional[str] = None
+    omitted_by:              Optional[str] = None
+    omitted_at:              Optional[int] = None
+    omitted_reason:          Optional[str] = None
+    module_id:               Optional[int] = None
 
 
 @dataclass
-class ReportBlockOrderRecord:
-    """Sortierungseintrag (Fractional Indexing).
-    Beleg: AP-E1, Projektgespräch 2026-04-19
+class ReportAnchorRecord:
+    """Beweisanker Paragraph <-> Annotation (Baustelle 6).
+    Beleg: Bauplan B6 v0.3 §2.3
     """
-    block_id:         str
-    sort_index:       str
-    last_modified_by: str
-    last_modified_at: int
+    id:            int
+    block_id:      str
+    annotation_id: int
+    anchor_text:   str
+    created_at:    int
 
 
 @dataclass
-class BlockEvidenceRecord:
-    """Junction Block <-> Annotation.
-    Beleg: AP-E1, Projektgespräch 2026-04-19
+class ReportCommentRecord:
+    """Kommentar zu einem Paragraphen (Baustelle 6).
+    Beleg: Bauplan B6 v0.3 §2.3
     """
-    block_id:         str
-    evidence_id:      int
-    investigator_id:  int
-    last_modified_at: int
+    id:                int
+    block_id:          str
+    author:            str
+    created_at:        int
+    comment_text:      str
+    status:            str
+    suggested_content: Optional[str] = None
+    resolved_by:       Optional[str] = None
+    resolved_at:       Optional[int] = None
 
 
 @dataclass
 class ReportApprovalRecord:
-    """Freigabeeintrag. report_id ab Build 043 (AP-E1).
-    Beleg: AP-E1, Projektgespräch 2026-04-19
-    """
+    """Freigabeeintrag (unveraendert)."""
     id:          int
     report_id:   Optional[int]
     approved_by: str
@@ -394,10 +423,6 @@ class EvidenceDb:
         self._con.row_factory = sqlite3.Row
         self._setup_schema()
         self._migrate_schema()
-        # Event-Signal fuer Lock-Aenderungen.
-        # SSE-Threads warten darauf — werden sofort geweckt wenn
-        # acquire_lock() / release_lock() aufgerufen wird.
-        # Beleg: Lock-System v2, Projektgespraech 2026-04-21
         self._lock_change_event = threading.Event()
 
     # ------------------------------------------------------------------
@@ -416,7 +441,7 @@ class EvidenceDb:
             ) from exc
 
     def _migrate_schema(self) -> None:
-        """Ergaenzt fehlende Spalten in aelteren evidence_db-Instanzen (idempotent)."""
+        """Ergaenzt fehlende Spalten in aelteren evidence_db-Instanzen."""
         for table, column, col_def in _MIGRATION_COLUMNS:
             try:
                 self._con.execute(
@@ -435,10 +460,7 @@ class EvidenceDb:
                 else:
                     raise
 
-        # Index-Migrationen: Idempotent durch CREATE ... IF NOT EXISTS.
-        # Build 061: annotations_local_id_uniq für Upsert via ON CONFLICT(local_id).
-        # Beleg: save_annotation() ohne UNIQUE-Index auf local_id legt bei jeder
-        # Bearbeitung eine neue Zeile an statt die bestehende zu aktualisieren.
+        # annotations_local_id_uniq nach Spalten-Migration anlegen.
         try:
             self._con.execute(
                 "CREATE UNIQUE INDEX IF NOT EXISTS annotations_local_id_uniq "
@@ -448,7 +470,9 @@ class EvidenceDb:
             self._con.commit()
             logger.debug("evidence_db Migration: annotations_local_id_uniq sichergestellt")
         except sqlite3.OperationalError as exc:
-            logger.warning("evidence_db Migration: annotations_local_id_uniq fehlgeschlagen: %s", exc)
+            logger.warning(
+                "evidence_db Migration: annotations_local_id_uniq fehlgeschlagen: %s", exc
+            )
 
     # ------------------------------------------------------------------
     # Seitenbesuche
@@ -469,9 +493,6 @@ class EvidenceDb:
             (page_url, scrape_context, ts, investigator_id),
         )
         self._con.commit()
-        logger.debug(
-            "page_visit protokolliert: '%s' (context=%s)", page_url, scrape_context
-        )
         return cursor.lastrowid
 
     def get_page_visits(self, page_url: str) -> list[PageVisitRecord]:
@@ -506,14 +527,14 @@ class EvidenceDb:
         ts_enter: int,
         ts_leave: int,
         investigator_id: Optional[int] = None,
-    ) -> int:
-        if visible_ms < 0:
-            raise EvidenceDbError(
-                f"visible_ms muss >= 0 sein, erhalten: {visible_ms}"
-            )
+    ) -> Optional[int]:
         if ts_leave < ts_enter:
             raise EvidenceDbError(
-                f"ts_leave ({ts_leave}) darf nicht vor ts_enter ({ts_enter}) liegen"
+                "ts_leave darf nicht vor ts_enter liegen."
+            )
+        if visible_ms < 0:
+            raise EvidenceDbError(
+                "visible_ms darf nicht negativ sein."
             )
         cursor = self._con.execute(
             "INSERT INTO viewport_events "
@@ -522,10 +543,6 @@ class EvidenceDb:
             (page_url, element_id, visible_ms, ts_enter, ts_leave, investigator_id),
         )
         self._con.commit()
-        logger.debug(
-            "viewport_event: '%s' element=%s, %d ms sichtbar",
-            page_url, element_id, visible_ms,
-        )
         return cursor.lastrowid
 
     def save_viewport_batch(
@@ -533,33 +550,33 @@ class EvidenceDb:
         events: list[dict],
         investigator_id: Optional[int] = None,
     ) -> int:
-        if not events:
-            return 0
-        rows = []
+        saved = 0
         for ev in events:
-            visible_ms = int(ev.get("visible_ms", 0))
-            ts_enter   = int(ev.get("ts_enter", 0))
-            ts_leave   = int(ev.get("ts_leave", 0))
-            if visible_ms < 0 or ts_leave < ts_enter:
-                logger.warning("Ungueltiges Viewport-Event uebersprungen: %s", ev)
+            try:
+                ts_enter = int(ev.get("ts_enter", 0))
+                ts_leave = int(ev.get("ts_leave", 0))
+                visible_ms = int(ev.get("visible_ms", 0))
+                if ts_leave < ts_enter or visible_ms < 0:
+                    continue
+                self._con.execute(
+                    "INSERT INTO viewport_events "
+                    "(page_url, element_id, visible_ms, ts_enter, ts_leave, investigator_id) "
+                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    (
+                        str(ev.get("page_url", "")),
+                        ev.get("element_id"),
+                        visible_ms,
+                        ts_enter,
+                        ts_leave,
+                        investigator_id,
+                    ),
+                )
+                saved += 1
+            except (TypeError, ValueError):
                 continue
-            rows.append((
-                str(ev["page_url"]),
-                ev.get("element_id"),
-                visible_ms,
-                ts_enter,
-                ts_leave,
-                investigator_id,
-            ))
-        self._con.executemany(
-            "INSERT INTO viewport_events "
-            "(page_url, element_id, visible_ms, ts_enter, ts_leave, investigator_id) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
-            rows,
-        )
-        self._con.commit()
-        logger.debug("viewport_batch: %d Events gespeichert", len(rows))
-        return len(rows)
+        if saved:
+            self._con.commit()
+        return saved
 
     # ------------------------------------------------------------------
     # Annotationen
@@ -572,97 +589,87 @@ class EvidenceDb:
         text: str,
         element_id: Optional[str] = None,
         investigator_id: Optional[int] = None,
-        ts: Optional[int] = None,
         selection_json: Optional[str] = None,
         tags_json: Optional[str] = None,
         local_id: Optional[str] = None,
         post_id: Optional[int] = None,
         created_by: str = "",
+        ts: Optional[int] = None,
     ) -> int:
         if category not in VALID_CATEGORIES:
             raise EvidenceDbError(
-                f"Ungueltige Annotationskategorie: '{category}'. "
-                f"Zulaessige Werte: {sorted(VALID_CATEGORIES)}"
+                f"Unbekannte Kategorie '{category}'. "
+                f"Zulaessig: {sorted(VALID_CATEGORIES)}"
             )
         if ts is None:
             ts = int(time.time())
 
-        # Manuelles UPSERT: SELECT → UPDATE wenn local_id existiert, sonst INSERT.
-        # SQLite ON CONFLICT(col) DO UPDATE benötigt einen regulären UNIQUE-Constraint
-        # auf der Tabelle selbst. Ein Partial-UNIQUE-Index (WHERE local_id IS NOT NULL)
-        # ist dafür nicht ausreichend (OperationalError: ON CONFLICT clause does not
-        # match any PRIMARY KEY or UNIQUE constraint).
-        # Beleg: Build 061 — ohne Upsert-Logik legt jeder syncAnnotation()-Aufruf
-        # beim Bearbeiten eine neue Zeile an. loadAnnotations() liest ORDER BY ts ASC,
-        # zeigt also die älteste (ursprüngliche) statt der aktuellsten Annotation.
         if local_id is not None:
+            # UPSERT fuer local_id: SQLite ON CONFLICT(col) unterstuetzt keine
+            # partiellen Unique-Indizes. Daher: SELECT-dann-UPDATE-oder-INSERT.
+            # Beleg: SQLite-Dokumentation, ON CONFLICT-Einschraenkung, Build 089.
             existing = self._con.execute(
                 "SELECT id FROM annotations WHERE local_id = ?", (local_id,)
             ).fetchone()
-            if existing:
+            if existing is not None:
+                # Bestehenden Eintrag aktualisieren
                 self._con.execute(
-                    "UPDATE annotations SET"
-                    "  page_url = ?, element_id = ?, category = ?, text = ?,"
-                    "  ts = ?, investigator_id = ?, selection_json = ?,"
-                    "  tags_json = ?, post_id = ?, created_by = ?"
-                    " WHERE local_id = ?",
-                    (page_url, element_id, category, text, ts, investigator_id,
-                     selection_json, tags_json, post_id, created_by, local_id),
+                    "UPDATE annotations SET "
+                    "  page_url=?, element_id=?, category=?, text=?, ts=?, "
+                    "  selection_json=?, tags_json=?, post_id=?, created_by=? "
+                    "WHERE local_id=?",
+                    (
+                        page_url, element_id, category, text, ts,
+                        selection_json, tags_json, post_id, created_by,
+                        local_id,
+                    ),
                 )
                 self._con.commit()
-                row_id = int(existing["id"])
-                logger.debug(
-                    "Annotation aktualisiert: '%s' [%s] local_id=%s → id=%d",
-                    page_url, category, local_id, row_id,
+                return int(existing["id"])
+            else:
+                cursor = self._con.execute(
+                    "INSERT INTO annotations "
+                    "(page_url, element_id, category, text, ts, investigator_id, "
+                    " selection_json, tags_json, local_id, post_id, created_by) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        page_url, element_id, category, text, ts, investigator_id,
+                        selection_json, tags_json, local_id, post_id, created_by,
+                    ),
                 )
-                return row_id
-
-        # Kein existing local_id-Eintrag oder local_id ist None: normaler INSERT
-        cursor = self._con.execute(
-            "INSERT INTO annotations "
-            "(page_url, element_id, category, text, ts, investigator_id, "
-            " selection_json, tags_json, local_id, post_id, created_by) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (page_url, element_id, category, text, ts, investigator_id,
-             selection_json, tags_json, local_id, post_id, created_by),
-        )
+        else:
+            cursor = self._con.execute(
+                "INSERT INTO annotations "
+                "(page_url, element_id, category, text, ts, investigator_id, "
+                " selection_json, tags_json, local_id, post_id, created_by) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    page_url, element_id, category, text, ts, investigator_id,
+                    selection_json, tags_json, None, post_id, created_by,
+                ),
+            )
         self._con.commit()
-        row_id = cursor.lastrowid
-        logger.debug(
-            "Annotation eingefügt: '%s' [%s] element=%s post_id=%s local_id=%s → id=%d",
-            page_url, category, element_id, post_id, local_id, row_id,
-        )
-        return row_id
+        # Bei UPSERT gibt lastrowid die ID des betroffenen Eintrags zurueck
+        if cursor.lastrowid:
+            return cursor.lastrowid
+        # Fallback: ID per local_id nachschlagen
+        row = self._con.execute(
+            "SELECT id FROM annotations WHERE local_id = ?", (local_id,)
+        ).fetchone()
+        return int(row["id"]) if row else 0
 
     def delete_annotation(self, annotation_id: int) -> bool:
-        """
-        Löscht eine Annotation anhand ihrer Server-ID.
-
-        Gibt True zurück wenn eine Zeile gelöscht wurde, False wenn keine
-        Annotation mit dieser ID existierte.
-
-        Beleg: OP-KN-9 — HoverMenuModule Delete-Pfad benötigt Server-seitige
-        Persistenz des Löschvorgangs. Ohne diesen Aufruf taucht die Annotation
-        beim nächsten loadAnnotations() wieder auf.
-        """
         cursor = self._con.execute(
-            "DELETE FROM annotations WHERE id = ?",
-            (annotation_id,),
+            "DELETE FROM annotations WHERE id = ?", (annotation_id,)
         )
         self._con.commit()
-        deleted = cursor.rowcount > 0
-        if deleted:
-            logger.debug("Annotation gelöscht: id=%d", annotation_id)
-        else:
-            logger.warning(
-                "delete_annotation: Keine Annotation mit id=%d gefunden", annotation_id
-            )
-        return deleted
+        return cursor.rowcount > 0
 
     def get_annotations(self, page_url: str) -> list[AnnotationRecord]:
         rows = self._con.execute(
-            "SELECT id, page_url, element_id, category, text, ts, investigator_id, "
-            "       selection_json, tags_json, local_id, post_id, created_by "
+            "SELECT id, page_url, element_id, category, text, ts, "
+            "       investigator_id, selection_json, tags_json, local_id, "
+            "       post_id, created_by "
             "FROM annotations WHERE page_url = ? ORDER BY ts ASC",
             (page_url,),
         ).fetchall()
@@ -670,72 +677,47 @@ class EvidenceDb:
 
     def get_all_annotations(self) -> list[AnnotationRecord]:
         rows = self._con.execute(
-            "SELECT id, page_url, element_id, category, text, ts, investigator_id, "
-            "       selection_json, tags_json, local_id, post_id, created_by "
-            "FROM annotations ORDER BY page_url ASC, ts ASC"
+            "SELECT id, page_url, element_id, category, text, ts, "
+            "       investigator_id, selection_json, tags_json, local_id, "
+            "       post_id, created_by "
+            "FROM annotations ORDER BY ts DESC"
         ).fetchall()
         return [self._row_to_annotation(r) for r in rows]
 
     def annotation_count(self) -> int:
-        try:
-            row = self._con.execute("SELECT COUNT(*) FROM annotations").fetchone()
-            return int(row[0]) if row else 0
-        except sqlite3.OperationalError:
-            return 0
+        row = self._con.execute("SELECT COUNT(*) FROM annotations").fetchone()
+        return int(row[0]) if row else 0
 
     def get_annotation_counts_by_category(self) -> dict:
-        counts = {cat: 0 for cat in sorted(VALID_CATEGORIES)}
-        try:
-            rows = self._con.execute(
-                "SELECT category, COUNT(*) AS cnt FROM annotations GROUP BY category"
-            ).fetchall()
-            for r in rows:
-                cat = str(r["category"])
-                if cat in counts:
-                    counts[cat] = int(r["cnt"])
-        except sqlite3.OperationalError as exc:
-            logger.warning(
-                "get_annotation_counts_by_category fehlgeschlagen: %s", exc
-            )
-        return counts
+        rows = self._con.execute(
+            "SELECT category, COUNT(*) as cnt FROM annotations GROUP BY category"
+        ).fetchall()
+        return {str(r["category"]): int(r["cnt"]) for r in rows}
 
     def get_last_annotation_info(self) -> Optional[dict]:
-        try:
-            row = self._con.execute(
-                "SELECT ts, created_by FROM annotations ORDER BY ts DESC LIMIT 1"
-            ).fetchone()
-            if row:
-                return {
-                    "ts": int(row["ts"]),
-                    "investigator": str(row["created_by"]),
-                }
-        except sqlite3.OperationalError as exc:
-            logger.warning("get_last_annotation_info fehlgeschlagen: %s", exc)
+        row = self._con.execute(
+            "SELECT ts, category FROM annotations ORDER BY ts DESC LIMIT 1"
+        ).fetchone()
+        if row:
+            return {"ts": int(row["ts"]), "category": str(row["category"])}
         return None
 
     def get_unreferenced_annotation_count(self) -> int:
         """
-        Vollstaendigkeitspruefung: Annotationen ohne Berichtsbezug.
-        Menge A (alle annotations) minus Menge B (referenziert in block_evidence_user).
-        Beleg: AP-E1, Projektgespraech 2026-04-19
+        Anzahl Annotationen ohne Beweisanker in report_anchors.
+        Beleg: Bauplan B6 v0.3 §4.7 (Vollstaendigkeitsanzeige)
         """
         try:
             row = self._con.execute(
                 "SELECT COUNT(*) FROM annotations "
-                "WHERE id NOT IN ("
-                "  SELECT DISTINCT evidence_id FROM block_evidence_user"
-                ")"
+                "WHERE id NOT IN (SELECT DISTINCT annotation_id FROM report_anchors)"
             ).fetchone()
             return int(row[0]) if row else 0
-        except sqlite3.OperationalError as exc:
-            logger.warning(
-                "get_unreferenced_annotation_count fehlgeschlagen: %s", exc
-            )
+        except sqlite3.OperationalError:
             return 0
 
     # ------------------------------------------------------------------
-    # Berichte — Metadata (reports)
-    # Beleg: AP-E1, Projektgespraech 2026-04-19
+    # Berichte (reports)
     # ------------------------------------------------------------------
 
     def create_report(
@@ -743,7 +725,6 @@ class EvidenceDb:
         report_type: str,
         title: str,
         created_by: str,
-        template_id: Optional[int] = None,
     ) -> int:
         """
         Legt einen neuen Bericht an.
@@ -752,7 +733,6 @@ class EvidenceDb:
             report_type: 'interim', 'final' oder 'addendum'.
             title:       Titel des Berichts.
             created_by:  SAMAccountName des Erstellers.
-            template_id: Optionale Vorlage.
 
         Returns:
             id des neuen Berichts.
@@ -781,11 +761,9 @@ class EvidenceDb:
         try:
             cursor = self._con.execute(
                 "INSERT INTO reports "
-                "(report_type, sequence_nr, title, template_id, "
-                " created_by, created_at, status) "
-                "VALUES (?, ?, ?, ?, ?, ?, 'draft')",
-                (report_type, sequence_nr, title.strip(),
-                 template_id, created_by.strip(), now),
+                "(report_type, sequence_nr, title, created_by, created_at, status) "
+                "VALUES (?, ?, ?, ?, ?, 'draft')",
+                (report_type, sequence_nr, title.strip(), created_by.strip(), now),
             )
             self._con.commit()
         except sqlite3.IntegrityError as exc:
@@ -802,7 +780,7 @@ class EvidenceDb:
 
     def get_reports(self) -> list[ReportRecord]:
         rows = self._con.execute(
-            "SELECT id, report_type, sequence_nr, title, template_id, "
+            "SELECT id, report_type, sequence_nr, title, "
             "       created_by, created_at, status "
             "FROM reports ORDER BY report_type ASC, sequence_nr ASC"
         ).fetchall()
@@ -810,7 +788,7 @@ class EvidenceDb:
 
     def get_report(self, report_id: int) -> Optional[ReportRecord]:
         row = self._con.execute(
-            "SELECT id, report_type, sequence_nr, title, template_id, "
+            "SELECT id, report_type, sequence_nr, title, "
             "       created_by, created_at, status "
             "FROM reports WHERE id = ?",
             (report_id,),
@@ -843,13 +821,13 @@ class EvidenceDb:
     def get_report_status(self) -> dict:
         """
         Berichtsstatus fuer /_forensic/userinfo/data.
-        Beleg: AP-E1, Projektgespraech 2026-04-19
+        Beleg: B6 Build 089 -- auf B6-Schema umgeschrieben.
         """
         try:
-            block_row = self._con.execute(
-                "SELECT rb.updated_at, rb.owner "
-                "FROM report_blocks rb "
-                "ORDER BY rb.updated_at DESC LIMIT 1"
+            para_row = self._con.execute(
+                "SELECT rp.updated_at, rp.author "
+                "FROM report_paragraphs rp "
+                "ORDER BY rp.updated_at DESC LIMIT 1"
             ).fetchone()
             appr_row = self._con.execute(
                 "SELECT approved_by FROM report_approvals "
@@ -859,9 +837,9 @@ class EvidenceDb:
                 "SELECT COUNT(*) FROM reports"
             ).fetchone()
             return {
-                "has_draft":    block_row is not None,
-                "last_edit_ts": int(block_row["updated_at"]) if block_row else None,
-                "last_editor":  str(block_row["owner"]) if block_row else None,
+                "has_draft":    para_row is not None,
+                "last_edit_ts": int(para_row["updated_at"]) if para_row else None,
+                "last_editor":  str(para_row["author"]) if para_row else None,
                 "approved":     appr_row is not None,
                 "approved_by":  str(appr_row["approved_by"]) if appr_row else None,
                 "report_count": int(count_row[0]) if count_row else 0,
@@ -874,281 +852,484 @@ class EvidenceDb:
             }
 
     # ------------------------------------------------------------------
-    # Editor.js-Bloecke (report_blocks)
-    # Beleg: AP-E1, Projektgespraech 2026-04-19
+    # Paragraphen (report_paragraphs, B6)
+    # Beleg: Bauplan B6 v0.3 §2.3
     # ------------------------------------------------------------------
 
-    def save_block(
+    def add_paragraph(
         self,
         block_id: str,
         report_id: int,
-        block_type: str,
-        block_data: dict,
-        owner: str,
-        sort_index: Optional[str] = None,
+        author: str,
+        content: str = "",
+        module_id: Optional[int] = None,
+        placeholder_values_json: Optional[str] = None,
+        sort_index: Optional[int] = None,
     ) -> str:
         """
-        Speichert oder aktualisiert einen Editor.js-Block (UPSERT).
+        Legt einen neuen Paragraphen an (Status 'draft').
 
-        Bei neuem Block: Legt auch Eintrag in report_block_order an
-        wenn sort_index angegeben.
-        Bei Update: Aktualisiert nur block_data und updated_at.
-        Owner und report_id sind unveraenderlich.
+        Args:
+            block_id:   UUID (clientseitig erzeugt).
+            report_id:  Referenz auf reports.id.
+            author:     SAMAccountName -- Owner, nie aenderbar.
+            content:    Freitext (darf leer sein bei neuem Block).
+            module_id:  Referenz auf templates.report_modules.id (optional).
+            placeholder_values_json: JSON-String {name: value} fuer m:/o:-Felder.
+            sort_index: Initiale Sortierposition. Wird in report_block_order eingetragen.
 
         Returns:
             block_id (unveraendert).
+
+        Raises:
+            EvidenceDbError: Bei leerem author oder ungueltigem report_id.
         """
-        if not block_id.strip():
-            raise EvidenceDbError("block_id darf nicht leer sein.")
-        if not block_type.strip():
-            raise EvidenceDbError("block_type darf nicht leer sein.")
-        if not owner.strip():
-            raise EvidenceDbError("owner darf nicht leer sein.")
+        if not author.strip():
+            raise EvidenceDbError("author darf nicht leer sein.")
 
         now = int(time.time())
-        data_json = json.dumps(block_data, ensure_ascii=False)
-
-        existing = self._con.execute(
-            "SELECT block_id FROM report_blocks WHERE block_id = ?",
-            (block_id,),
-        ).fetchone()
-
-        if existing:
+        self._con.execute(
+            "INSERT INTO report_paragraphs "
+            "(block_id, report_id, author, created_at, updated_at, content, "
+            " placeholder_values_json, status, module_id) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?)",
+            (
+                block_id, report_id, author.strip(), now, now,
+                content, placeholder_values_json, module_id,
+            ),
+        )
+        if sort_index is not None:
             self._con.execute(
-                "UPDATE report_blocks SET block_data = ?, updated_at = ? "
-                "WHERE block_id = ?",
-                (data_json, now, block_id),
+                "INSERT OR REPLACE INTO report_block_order "
+                "(block_id, sort_index, last_modified_by, last_modified_at) "
+                "VALUES (?, ?, ?, ?)",
+                (block_id, sort_index, author.strip(), now),
             )
-            logger.debug("Block aktualisiert: block_id=%s", block_id)
-        else:
-            self._con.execute(
-                "INSERT INTO report_blocks "
-                "(block_id, report_id, block_type, block_data, owner, "
-                " created_at, updated_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (block_id, report_id, block_type, data_json, owner, now, now),
-            )
-            logger.info(
-                "Block angelegt: block_id=%s type=%s owner=%s report_id=%d",
-                block_id, block_type, owner, report_id,
-            )
-            if sort_index is not None:
-                self._con.execute(
-                    "INSERT INTO report_block_order "
-                    "(block_id, sort_index, last_modified_by, last_modified_at) "
-                    "VALUES (?, ?, ?, ?)",
-                    (block_id, sort_index, owner, now),
-                )
-
-        self._con.commit()
-        return block_id
-
-    def delete_block(self, block_id: str, requesting_owner: str) -> bool:
-        """
-        Loescht einen Block und alle zugehoerigen Eintraege.
-        Nur der Owner des Blocks darf loeschen.
-
-        Returns:
-            True wenn geloescht, False wenn nicht gefunden oder kein Recht.
-        """
-        row = self._con.execute(
-            "SELECT owner FROM report_blocks WHERE block_id = ?",
-            (block_id,),
-        ).fetchone()
-
-        if row is None:
-            return False
-
-        if str(row["owner"]) != requesting_owner:
-            logger.warning(
-                "delete_block: '%s' versucht Block von '%s' zu loeschen (block_id=%s)",
-                requesting_owner, row["owner"], block_id,
-            )
-            return False
-
-        self._con.execute(
-            "DELETE FROM block_evidence_user WHERE block_id = ?", (block_id,)
-        )
-        self._con.execute(
-            "DELETE FROM report_block_order WHERE block_id = ?", (block_id,)
-        )
-        self._con.execute(
-            "DELETE FROM report_blocks WHERE block_id = ?", (block_id,)
-        )
         self._con.commit()
         logger.info(
-            "Block geloescht: block_id=%s von '%s'", block_id, requesting_owner
+            "Paragraph angelegt: block_id=%s report_id=%d von '%s'",
+            block_id, report_id, author,
+        )
+        return block_id
+
+    def get_paragraph(self, block_id: str) -> Optional[ReportParagraphRecord]:
+        """Einzelnen Paragraphen per block_id laden."""
+        row = self._con.execute(
+            "SELECT block_id, report_id, author, created_at, updated_at, "
+            "       content, placeholder_values_json, status, "
+            "       omitted_by, omitted_at, omitted_reason, module_id "
+            "FROM report_paragraphs WHERE block_id = ?",
+            (block_id,),
+        ).fetchone()
+        return self._row_to_paragraph(row) if row else None
+
+    def get_paragraphs(self, report_id: int) -> list[ReportParagraphRecord]:
+        """
+        Alle Paragraphen eines Berichts, sortiert nach sort_index ASC.
+        Paragraphen ohne Sortierungseintrag werden ans Ende gestellt.
+        """
+        rows = self._con.execute(
+            "SELECT rp.block_id, rp.report_id, rp.author, rp.created_at, "
+            "       rp.updated_at, rp.content, rp.placeholder_values_json, "
+            "       rp.status, rp.omitted_by, rp.omitted_at, "
+            "       rp.omitted_reason, rp.module_id "
+            "FROM report_paragraphs rp "
+            "LEFT JOIN report_block_order rbo ON rbo.block_id = rp.block_id "
+            "WHERE rp.report_id = ? "
+            "ORDER BY COALESCE(rbo.sort_index, 999999) ASC, rp.created_at ASC",
+            (report_id,),
+        ).fetchall()
+        return [self._row_to_paragraph(r) for r in rows]
+
+    def update_paragraph_content(
+        self,
+        block_id: str,
+        content: str,
+        placeholder_values_json: Optional[str],
+        requesting_author: str,
+    ) -> bool:
+        """
+        Aktualisiert Inhalt und Platzhalter-Werte eines Paragraphen.
+        Nur der Eigentuemer darf bearbeiten (Grundregel 14).
+        'approved'-Paragraphen koennen nie bearbeitet werden.
+
+        Returns:
+            True wenn gespeichert, False wenn Block nicht gefunden.
+
+        Raises:
+            EvidenceDbError: Wenn nicht Eigentuemer oder Status 'approved'.
+        """
+        row = self._con.execute(
+            "SELECT author, status FROM report_paragraphs WHERE block_id = ?",
+            (block_id,),
+        ).fetchone()
+        if not row:
+            return False
+        if str(row["status"]) == "approved":
+            raise EvidenceDbError(
+                "Freigegebene Paragraphen koennen nicht bearbeitet werden."
+            )
+        if str(row["author"]) != requesting_author:
+            raise EvidenceDbError(
+                f"Nur der Eigentuemer darf einen Paragraphen bearbeiten. "
+                f"Eigentuemer: '{row['author']}'"
+            )
+        now = int(time.time())
+        self._con.execute(
+            "UPDATE report_paragraphs "
+            "SET content = ?, placeholder_values_json = ?, updated_at = ? "
+            "WHERE block_id = ?",
+            (content, placeholder_values_json, now, block_id),
+        )
+        self._con.commit()
+        return True
+
+    def set_paragraph_status(
+        self,
+        block_id: str,
+        new_status: str,
+        requesting_user: str,
+        omitted_reason: Optional[str] = None,
+        is_chef: bool = False,
+    ) -> bool:
+        """
+        Setzt den Status eines Paragraphen.
+
+        Lifecycle (Grundregel 10):
+          draft <-> active   (Eigentuemer)
+          active -> omitted  (nur Chef-Ermittlerin)
+          active -> approved (nur Chef-Ermittlerin, One-Way)
+          draft  -> omitted  (nur Chef-Ermittlerin)
+
+        Returns True wenn gesetzt, False wenn Block nicht gefunden.
+        Raises EvidenceDbError bei ungueltigem Uebergang oder fehlender Berechtigung.
+        """
+        if new_status not in VALID_PARAGRAPH_STATUSES:
+            raise EvidenceDbError(
+                f"Ungueltiger Status: '{new_status}'. "
+                f"Zulaessig: {sorted(VALID_PARAGRAPH_STATUSES)}"
+            )
+        row = self._con.execute(
+            "SELECT author, status FROM report_paragraphs WHERE block_id = ?",
+            (block_id,),
+        ).fetchone()
+        if not row:
+            return False
+
+        current = str(row["status"])
+        owner   = str(row["author"])
+
+        # approved ist absolut einfrierend
+        if current == "approved":
+            raise EvidenceDbError(
+                "Freigegebene Paragraphen koennen den Status nicht mehr aendern."
+            )
+
+        # Berechtigungspruefung
+        chef_only = {"omitted", "approved"}
+        if new_status in chef_only and not is_chef:
+            raise EvidenceDbError(
+                f"Status '{new_status}' kann nur durch die Chef-Ermittlerin gesetzt werden."
+            )
+        if new_status in ("draft", "active") and requesting_user != owner and not is_chef:
+            raise EvidenceDbError(
+                f"Nur der Eigentuemer oder die Chef-Ermittlerin darf "
+                f"zwischen 'draft' und 'active' wechseln."
+            )
+
+        now = int(time.time())
+        if new_status == "omitted":
+            self._con.execute(
+                "UPDATE report_paragraphs "
+                "SET status=?, omitted_by=?, omitted_at=?, omitted_reason=?, updated_at=? "
+                "WHERE block_id=?",
+                (new_status, requesting_user, now, omitted_reason, now, block_id),
+            )
+        else:
+            self._con.execute(
+                "UPDATE report_paragraphs SET status=?, updated_at=? WHERE block_id=?",
+                (new_status, now, block_id),
+            )
+        self._con.commit()
+        logger.info(
+            "Paragraph-Status: block_id=%s %s->%s von '%s'",
+            block_id, current, new_status, requesting_user,
         )
         return True
 
-    def get_blocks_ordered(self, report_id: int) -> list[ReportBlockRecord]:
-        """
-        Gibt alle Bloecke eines Berichts sortiert nach sort_index zurueck.
-        Bloecke ohne Sortierungseintrag werden ans Ende gestellt (NULLS LAST).
-        Beleg: AP-E1, Projektgespraech 2026-04-19
-        """
-        rows = self._con.execute(
-            "SELECT rb.block_id, rb.report_id, rb.block_type, rb.block_data, "
-            "       rb.owner, rb.created_at, rb.updated_at "
-            "FROM report_blocks rb "
-            "LEFT JOIN report_block_order rbo ON rbo.block_id = rb.block_id "
-            "WHERE rb.report_id = ? "
-            "ORDER BY rbo.sort_index ASC",
-            (report_id,),
-        ).fetchall()
-        return [self._row_to_block(r) for r in rows]
-
-    def get_block(self, block_id: str) -> Optional[ReportBlockRecord]:
-        row = self._con.execute(
-            "SELECT block_id, report_id, block_type, block_data, "
-            "       owner, created_at, updated_at "
-            "FROM report_blocks WHERE block_id = ?",
-            (block_id,),
-        ).fetchone()
-        return self._row_to_block(row) if row else None
-
     # ------------------------------------------------------------------
-    # Blockreihenfolge (report_block_order)
-    # Beleg: AP-E1, Projektgespraech 2026-04-19
+    # Blockreihenfolge (report_block_order, B6)
     # ------------------------------------------------------------------
 
-    def update_block_order(
-        self,
-        report_id: int,
-        ordered_block_ids: list[str],
-        new_sort_indices: list[str],
-        modified_by: str,
-    ) -> int:
+    def get_block_order_for_report(self, report_id: int) -> list[dict]:
         """
-        Aktualisiert Sortierungseintraege fuer eine Blockliste (UPSERT).
-
-        Returns:
-            Anzahl aktualisierter Eintraege.
+        Gibt die Sortierungseintraege aller Paragraphen eines Berichts zurueck.
+        Beleg: Bauplan B6 v0.3 §5 (action=reorder)
         """
-        if len(ordered_block_ids) != len(new_sort_indices):
-            raise EvidenceDbError(
-                f"ordered_block_ids ({len(ordered_block_ids)}) und "
-                f"new_sort_indices ({len(new_sort_indices)}) muessen gleich lang sein."
-            )
-        now = int(time.time())
-        count = 0
-        for block_id, sort_index in zip(ordered_block_ids, new_sort_indices):
-            cursor = self._con.execute(
-                "INSERT INTO report_block_order "
-                "(block_id, sort_index, last_modified_by, last_modified_at) "
-                "VALUES (?, ?, ?, ?) "
-                "ON CONFLICT(block_id) DO UPDATE SET "
-                "  sort_index = excluded.sort_index, "
-                "  last_modified_by = excluded.last_modified_by, "
-                "  last_modified_at = excluded.last_modified_at",
-                (block_id, sort_index, modified_by, now),
-            )
-            count += cursor.rowcount
-        self._con.commit()
-        logger.debug(
-            "update_block_order: %d Eintraege fuer report_id=%d", count, report_id
-        )
-        return count
-
-    def get_block_order(self, report_id: int) -> list[ReportBlockOrderRecord]:
         rows = self._con.execute(
-            "SELECT rbo.block_id, rbo.sort_index, "
-            "       rbo.last_modified_by, rbo.last_modified_at "
+            "SELECT rbo.block_id, rbo.sort_index, rbo.last_modified_by, "
+            "       rbo.last_modified_at "
             "FROM report_block_order rbo "
-            "JOIN report_blocks rb ON rb.block_id = rbo.block_id "
-            "WHERE rb.report_id = ? "
+            "JOIN report_paragraphs rp ON rp.block_id = rbo.block_id "
+            "WHERE rp.report_id = ? "
             "ORDER BY rbo.sort_index ASC",
             (report_id,),
         ).fetchall()
         return [
-            ReportBlockOrderRecord(
-                block_id=str(r["block_id"]),
-                sort_index=str(r["sort_index"]),
-                last_modified_by=str(r["last_modified_by"]),
-                last_modified_at=int(r["last_modified_at"]),
-            )
+            {
+                "block_id":         str(r["block_id"]),
+                "sort_index":       int(r["sort_index"]),
+                "last_modified_by": str(r["last_modified_by"]),
+                "last_modified_at": int(r["last_modified_at"]),
+            }
             for r in rows
         ]
 
-    # ------------------------------------------------------------------
-    # Block-Evidence-Junction (block_evidence_user)
-    # Beleg: AP-E1, Projektgespraech 2026-04-19
-    # ------------------------------------------------------------------
-
-    def add_block_evidence(
+    def set_block_order(
         self,
-        block_id: str,
-        evidence_id: int,
-        investigator_id: int,
-    ) -> bool:
+        order: list[dict],
+        modified_by: str,
+    ) -> int:
         """
-        Verknuepft eine Annotation mit einem Block (idempotent UPSERT).
+        Setzt die Sortierungsreihenfolge fuer mehrere Paragraphen.
+        Jeder Ermittler darf die Reihenfolge aendern (Grundregel aus §2.3).
+
+        Args:
+            order:       Liste von {block_id, sort_index}.
+            modified_by: SAMAccountName des Sortierers.
 
         Returns:
-            True bei Erfolg.
+            Anzahl aktualisierter Eintraege.
         """
         now = int(time.time())
-        self._con.execute(
-            "INSERT INTO block_evidence_user "
-            "(block_id, evidence_id, investigator_id, last_modified_at) "
-            "VALUES (?, ?, ?, ?) "
-            "ON CONFLICT(block_id, evidence_id) DO UPDATE SET "
-            "  investigator_id = excluded.investigator_id, "
-            "  last_modified_at = excluded.last_modified_at",
-            (block_id, evidence_id, investigator_id, now),
-        )
-        self._con.commit()
-        logger.debug(
-            "block_evidence verknuepft: block_id=%s evidence_id=%d",
-            block_id, evidence_id,
-        )
-        return True
+        updated = 0
+        for entry in order:
+            block_id   = str(entry.get("block_id", ""))
+            sort_index = int(entry.get("sort_index", 0))
+            if not block_id:
+                continue
+            self._con.execute(
+                "INSERT OR REPLACE INTO report_block_order "
+                "(block_id, sort_index, last_modified_by, last_modified_at) "
+                "VALUES (?, ?, ?, ?)",
+                (block_id, sort_index, modified_by, now),
+            )
+            updated += 1
+        if updated:
+            self._con.commit()
+        return updated
 
-    def remove_block_evidence(
+    # ------------------------------------------------------------------
+    # Beweisanker (report_anchors, B6)
+    # Beleg: Bauplan B6 v0.3 §2.3, §4.7
+    # ------------------------------------------------------------------
+
+    def add_anchor(
         self,
         block_id: str,
-        evidence_id: int,
-    ) -> bool:
+        annotation_id: int,
+        anchor_text: str,
+    ) -> int:
         """
-        Entfernt die Verknuepfung zwischen Block und Annotation.
+        Verknuepft einen Paragraphen mit einer Annotation.
+        Wirft EvidenceDbError wenn die Verknuepfung bereits existiert.
 
         Returns:
-            True wenn Eintrag gefunden und geloescht.
+            id des neuen Anker-Eintrags.
         """
+        now = int(time.time())
+        try:
+            cursor = self._con.execute(
+                "INSERT INTO report_anchors "
+                "(block_id, annotation_id, anchor_text, created_at) "
+                "VALUES (?, ?, ?, ?)",
+                (block_id, annotation_id, anchor_text, now),
+            )
+            self._con.commit()
+            return cursor.lastrowid
+        except sqlite3.IntegrityError as exc:
+            raise EvidenceDbError(
+                f"Beweisanker fuer block_id='{block_id}', "
+                f"annotation_id={annotation_id} existiert bereits."
+            ) from exc
+
+    def remove_anchor(self, anchor_id: int) -> bool:
         cursor = self._con.execute(
-            "DELETE FROM block_evidence_user "
-            "WHERE block_id = ? AND evidence_id = ?",
-            (block_id, evidence_id),
+            "DELETE FROM report_anchors WHERE id = ?", (anchor_id,)
         )
         self._con.commit()
         return cursor.rowcount > 0
 
-    def get_evidence_for_block(
-        self, block_id: str
-    ) -> list[BlockEvidenceRecord]:
+    def get_anchors_for_paragraph(self, block_id: str) -> list[ReportAnchorRecord]:
         rows = self._con.execute(
-            "SELECT block_id, evidence_id, investigator_id, last_modified_at "
-            "FROM block_evidence_user WHERE block_id = ? "
-            "ORDER BY last_modified_at ASC",
+            "SELECT id, block_id, annotation_id, anchor_text, created_at "
+            "FROM report_anchors WHERE block_id = ? ORDER BY created_at ASC",
             (block_id,),
         ).fetchall()
-        return [self._row_to_block_evidence(r) for r in rows]
+        return [
+            ReportAnchorRecord(
+                id=int(r["id"]),
+                block_id=str(r["block_id"]),
+                annotation_id=int(r["annotation_id"]),
+                anchor_text=str(r["anchor_text"]),
+                created_at=int(r["created_at"]),
+            )
+            for r in rows
+        ]
 
-    def get_blocks_for_evidence(
-        self, evidence_id: int
-    ) -> list[BlockEvidenceRecord]:
-        """
-        Alle Block-Verknuepfungen fuer eine Annotation.
-        Relevant fuer SSE block_updated-Events.
-        Beleg: AP-E1, Projektgespraech 2026-04-19
-        """
+    def get_anchored_annotation_ids(self) -> set[int]:
+        """Menge aller annotation_ids die mindestens einmal verankert sind."""
         rows = self._con.execute(
-            "SELECT block_id, evidence_id, investigator_id, last_modified_at "
-            "FROM block_evidence_user WHERE evidence_id = ? "
-            "ORDER BY last_modified_at ASC",
-            (evidence_id,),
+            "SELECT DISTINCT annotation_id FROM report_anchors"
         ).fetchall()
-        return [self._row_to_block_evidence(r) for r in rows]
+        return {int(r[0]) for r in rows}
+
+    # ------------------------------------------------------------------
+    # Kommentare (report_comments, B6)
+    # Beleg: Bauplan B6 v0.3 §2.3, Grundregel 15
+    # ------------------------------------------------------------------
+
+    def add_comment(
+        self,
+        block_id: str,
+        author: str,
+        comment_text: str,
+        suggested_content: Optional[str] = None,
+    ) -> int:
+        """
+        Fuegt einen Kommentar zu einem Paragraphen hinzu.
+
+        Returns:
+            id des neuen Kommentars.
+        """
+        if not author.strip():
+            raise EvidenceDbError("author darf nicht leer sein.")
+        if not comment_text.strip():
+            raise EvidenceDbError("comment_text darf nicht leer sein.")
+        now = int(time.time())
+        cursor = self._con.execute(
+            "INSERT INTO report_comments "
+            "(block_id, author, created_at, comment_text, suggested_content, status) "
+            "VALUES (?, ?, ?, ?, ?, 'pending')",
+            (block_id, author.strip(), now, comment_text.strip(), suggested_content),
+        )
+        self._con.commit()
+        return cursor.lastrowid
+
+    def get_comments_for_paragraph(self, block_id: str) -> list[ReportCommentRecord]:
+        rows = self._con.execute(
+            "SELECT id, block_id, author, created_at, comment_text, "
+            "       suggested_content, status, resolved_by, resolved_at "
+            "FROM report_comments WHERE block_id = ? ORDER BY created_at ASC",
+            (block_id,),
+        ).fetchall()
+        return [self._row_to_comment(r) for r in rows]
+
+    def resolve_comment(
+        self,
+        comment_id: int,
+        new_status: str,
+        resolved_by: str,
+        requesting_user: str,
+        is_chef: bool = False,
+    ) -> bool:
+        """
+        Setzt den Status eines Kommentars (One-Way, Grundregel 15).
+
+        Berechtigungen:
+          pending -> addressed: Eigentuemer des Paragraphen oder Chef
+          pending -> dismissed: Eigentuemer des Paragraphen oder Chef
+          pending -> revoked:   nur der Kommentator selbst
+
+        Returns True wenn gesetzt, False wenn Kommentar nicht gefunden.
+        """
+        if new_status not in VALID_COMMENT_STATUSES - {"pending"}:
+            raise EvidenceDbError(
+                f"Ungueltiger Zielstatus: '{new_status}'. "
+                f"Zulaessig: addressed, dismissed, revoked"
+            )
+        row = self._con.execute(
+            "SELECT rc.author, rc.status, rp.author as para_author "
+            "FROM report_comments rc "
+            "JOIN report_paragraphs rp ON rp.block_id = rc.block_id "
+            "WHERE rc.id = ?",
+            (comment_id,),
+        ).fetchone()
+        if not row:
+            return False
+        if str(row["status"]) != "pending":
+            raise EvidenceDbError("Kommentar-Status-Uebergaenge sind One-Way.")
+
+        # Berechtigungspruefung
+        if new_status == "revoked":
+            if str(row["author"]) != requesting_user:
+                raise EvidenceDbError(
+                    "Nur der Kommentator selbst darf einen Kommentar zurueckziehen."
+                )
+        else:
+            # addressed / dismissed: Eigentuemer oder Chef
+            if str(row["para_author"]) != requesting_user and not is_chef:
+                raise EvidenceDbError(
+                    "Nur der Eigentuemer des Paragraphen oder die "
+                    "Chef-Ermittlerin darf Kommentare bearbeiten."
+                )
+
+        now = int(time.time())
+        self._con.execute(
+            "UPDATE report_comments "
+            "SET status=?, resolved_by=?, resolved_at=? WHERE id=?",
+            (new_status, resolved_by, now, comment_id),
+        )
+        self._con.commit()
+        return True
+
+    # ------------------------------------------------------------------
+    # Platzhalter-Cache (placeholder_cache, B6)
+    # Beleg: Bauplan B6 v0.3 §2.3, §3.1, §3.2
+    # ------------------------------------------------------------------
+
+    def get_cache_entry(self, query_id: str, uid: int) -> Optional[str]:
+        """
+        Liest einen Cache-Eintrag fuer (query_id, uid).
+        Returns cached_value oder None bei Cache-Miss.
+        """
+        row = self._con.execute(
+            "SELECT cached_value FROM placeholder_cache "
+            "WHERE query_id = ? AND uid = ?",
+            (query_id, uid),
+        ).fetchone()
+        return str(row["cached_value"]) if row else None
+
+    def set_cache_entry(self, query_id: str, uid: int, value: str) -> None:
+        """
+        Setzt oder aktualisiert einen Cache-Eintrag (UPSERT).
+        Beleg: Bauplan B6 v0.3 §3.1 (Cache-Hit)
+        """
+        now = int(time.time())
+        self._con.execute(
+            "INSERT OR REPLACE INTO placeholder_cache "
+            "(query_id, uid, cached_value, cached_at) VALUES (?, ?, ?, ?)",
+            (query_id, uid, value, now),
+        )
+        self._con.commit()
+
+    def clear_cache_for_uid(self, uid: int) -> int:
+        """
+        Loescht alle Cache-Eintraege fuer eine uid.
+        Wird aufgerufen durch POST /refresh.
+        Beleg: Bauplan B6 v0.3 §3.2
+
+        Returns: Anzahl geloeschter Eintraege.
+        """
+        cursor = self._con.execute(
+            "DELETE FROM placeholder_cache WHERE uid = ?", (uid,)
+        )
+        self._con.commit()
+        deleted = cursor.rowcount
+        logger.info(
+            "placeholder_cache geleert: uid=%d, %d Eintraege entfernt", uid, deleted
+        )
+        return deleted
 
     # ------------------------------------------------------------------
     # Freigaben (report_approvals)
@@ -1158,30 +1339,22 @@ class EvidenceDb:
         self,
         report_id: int,
         approved_by: str,
-        is_final: bool = False,
         note: Optional[str] = None,
+        is_final: bool = False,
     ) -> int:
-        """
-        Speichert einen Freigabeeintrag.
-        report_id ist ab Build 043 (AP-E1) Pflichtfeld.
-        Beleg: AP-E1, Projektgespraech 2026-04-19
-        """
         now = int(time.time())
         cursor = self._con.execute(
             "INSERT INTO report_approvals "
             "(report_id, approved_by, approved_at, note, is_final) "
             "VALUES (?, ?, ?, ?, ?)",
-            (report_id, approved_by, now, note, 1 if is_final else 0),
+            (report_id, approved_by, now, note, int(is_final)),
         )
         self._con.commit()
-        logger.info(
-            "Bericht-Freigabe von '%s' fuer report_id=%d (final=%s)",
-            approved_by, report_id, is_final,
-        )
         return cursor.lastrowid
 
     # ------------------------------------------------------------------
-    # Editor-Lock (§8.6 Bauplan B4) — unveraendert gegenueber Build 012
+    # Lock-Mechanismus (Lock-System v2, unveraendert)
+    # Beleg: Bauplan B4 §8.6, Lock-System v2, Projektgespraech 2026-04-21
     # ------------------------------------------------------------------
 
     @property
@@ -1189,25 +1362,18 @@ class EvidenceDb:
         """Event-Signal das bei jeder Lock-Aenderung gesetzt wird."""
         return self._lock_change_event
 
-    # Lock-Timeout: nach dieser Zeit gilt ein Lock als abgelaufen.
-    # Schuetzt gegen Deadlock bei Browser-Absturz.
-    # Beleg: Lock-System v2, Projektgespraech 2026-04-21
     _LOCK_TIMEOUT_SEC = 90
 
     def acquire_lock(self, locked_by: str, sse_client: str) -> Optional[str]:
         now = int(time.time())
         new_lock_id = str(uuid.uuid4())
-        # Abgelaufene Locks loeschen bevor neuer Lock angelegt wird.
-        # Verhindert Deadlock wenn Browser abgestuerzt ist und SSE-Cleanup
-        # nicht rechtzeitig lief.
-        # Beleg: Lock-System v2, Projektgespraech 2026-04-21
         try:
             self._con.execute(
                 "DELETE FROM editor_locks WHERE resource=? AND locked_at < ?",
                 (self._LOCK_RESOURCE, now - self._LOCK_TIMEOUT_SEC),
             )
         except sqlite3.OperationalError:
-            pass  # Tabellle noch nicht vorhanden — ignorieren
+            pass
         try:
             self._con.execute(
                 "INSERT INTO editor_locks "
@@ -1216,7 +1382,7 @@ class EvidenceDb:
                 (self._LOCK_RESOURCE, locked_by, new_lock_id, now, sse_client),
             )
             self._con.commit()
-            self._lock_change_event.set()  # SSE-Threads sofort aufwecken
+            self._lock_change_event.set()
             logger.info(
                 "Editor-Lock erworben: '%s' (lock_id=%s)", locked_by, new_lock_id
             )
@@ -1235,7 +1401,7 @@ class EvidenceDb:
         self._con.commit()
         freed = cursor.rowcount > 0
         if freed:
-            self._lock_change_event.set()  # SSE-Threads sofort aufwecken
+            self._lock_change_event.set()
             logger.info("Editor-Lock freigegeben (lock_id=%s)", lock_id)
         return freed
 
@@ -1247,7 +1413,7 @@ class EvidenceDb:
         self._con.commit()
         freed = cursor.rowcount > 0
         if freed:
-            self._lock_change_event.set()  # SSE-Threads sofort aufwecken
+            self._lock_change_event.set()
             logger.info(
                 "Editor-Lock durch SSE-Abriss freigegeben (sse_client=%s)",
                 sse_client,
@@ -1255,17 +1421,6 @@ class EvidenceDb:
         return freed
 
     def resume_lock(self, lock_id: str, locked_by: str, new_sse_client: str) -> bool:
-        """
-        Bindet einen bestehenden Lock an eine neue SSE-client_id.
-        Wird aufgerufen wenn ein Browser nach SSE-Abriss reconnected
-        und seinen Lock wiederherstellen moechte.
-
-        Nur erlaubt wenn lock_id UND locked_by uebereinstimmen —
-        verhindert dass ein fremder Benutzer einen Lock uebernimmt.
-
-        Returns True wenn der Lock erfolgreich aktualisiert wurde.
-        Beleg: Lock-System v2 V1, Projektgespraech 2026-04-21
-        """
         try:
             cursor = self._con.execute(
                 "UPDATE editor_locks "
@@ -1286,20 +1441,13 @@ class EvidenceDb:
                     locked_by, lock_id, new_sse_client,
                 )
                 return True
-            logger.debug("Lock-Resume: Lock nicht gefunden oder falscher Benutzer")
             return False
         except sqlite3.OperationalError as exc:
             logger.warning("resume_lock fehlgeschlagen: %s", exc)
             return False
 
     def request_takeover(self, lock_id: str, requested_by: str) -> int:
-        """
-        Legt eine Lock-Übernahme-Anfrage an.
-        Returns die request_id.
-        Beleg: Lock-System v2 V3, Projektgespraech 2026-04-21
-        """
         now = int(time.time())
-        # Bestehende pending-Anfragen dieses Benutzers loeschen
         self._con.execute(
             "DELETE FROM lock_takeover_requests "
             "WHERE lock_id=? AND requested_by=? AND status='pending'",
@@ -1313,13 +1461,7 @@ class EvidenceDb:
         self._con.commit()
         return cursor.lastrowid
 
-    def resolve_takeover(
-        self, request_id: int, status: str
-    ) -> bool:
-        """
-        Setzt den Status einer Takeover-Anfrage (granted/denied/expired).
-        Beleg: Lock-System v2 V3, Projektgespraech 2026-04-21
-        """
+    def resolve_takeover(self, request_id: int, status: str) -> bool:
         cursor = self._con.execute(
             "UPDATE lock_takeover_requests SET status=? "
             "WHERE id=? AND status='pending'",
@@ -1329,20 +1471,17 @@ class EvidenceDb:
         return cursor.rowcount > 0
 
     def get_pending_takeover(self, lock_id: str) -> Optional[dict]:
-        """
-        Gibt die aelteste pending Takeover-Anfrage fuer diesen Lock zurueck.
-        Beleg: Lock-System v2 V3, Projektgespraech 2026-04-21
-        """
         try:
             row = self._con.execute(
-                "SELECT id, lock_id, requested_by, requested_at FROM lock_takeover_requests "
+                "SELECT id, lock_id, requested_by, requested_at "
+                "FROM lock_takeover_requests "
                 "WHERE lock_id=? AND status='pending' ORDER BY requested_at ASC LIMIT 1",
                 (lock_id,),
             ).fetchone()
             if row:
                 return {
-                    "id": row["id"],
-                    "lock_id": row["lock_id"],
+                    "id":           row["id"],
+                    "lock_id":      row["lock_id"],
                     "requested_by": row["requested_by"],
                     "requested_at": row["requested_at"],
                 }
@@ -1358,11 +1497,9 @@ class EvidenceDb:
                 (self._LOCK_RESOURCE,),
             ).fetchone()
             if row:
-                # Defensiv gegen NULL-Werte in Pflichtfeldern (alte Datensaetze)
-                # Beleg: Bugfix Build 051c, Projektgespraech 2026-04-21
                 if row["locked_at"] is None or row["lock_id"] is None:
                     logger.warning(
-                        "get_lock: korrupter Datensatz (NULL in Pflichtfeld) — bereinige"
+                        "get_lock: korrupter Datensatz (NULL in Pflichtfeld) -- bereinige"
                     )
                     try:
                         self._con.execute(
@@ -1383,10 +1520,6 @@ class EvidenceDb:
                 )
         except (sqlite3.OperationalError, sqlite3.ProgrammingError,
                 sqlite3.InterfaceError, TypeError) as exc:
-            # InterfaceError: 'bad parameter or other API misuse' tritt auf wenn
-            # die Verbindung in einem inkonsistenten Zustand ist (z.B. nach commit()
-            # in einem anderen Thread). Kein Lock verfuegbar — None zurueckgeben.
-            # Beleg: Bugfix Build 050, Projektgespraech 2026-04-21
             logger.debug("get_lock fehlgeschlagen (ignoriert): %s", exc)
         return None
 
@@ -1454,31 +1587,56 @@ class EvidenceDb:
             report_type=str(r["report_type"]),
             sequence_nr=int(r["sequence_nr"]),
             title=str(r["title"]),
-            template_id=(
-                int(r["template_id"]) if r["template_id"] is not None else None
-            ),
             created_by=str(r["created_by"]),
             created_at=int(r["created_at"]),
             status=str(r["status"]),
         )
 
     @staticmethod
-    def _row_to_block(r: sqlite3.Row) -> ReportBlockRecord:
-        return ReportBlockRecord(
+    def _row_to_paragraph(r: sqlite3.Row) -> ReportParagraphRecord:
+        return ReportParagraphRecord(
             block_id=str(r["block_id"]),
             report_id=int(r["report_id"]),
-            block_type=str(r["block_type"]),
-            block_data=str(r["block_data"]),
-            owner=str(r["owner"]),
+            author=str(r["author"]),
             created_at=int(r["created_at"]),
             updated_at=int(r["updated_at"]),
+            content=str(r["content"]),
+            status=str(r["status"]),
+            placeholder_values_json=(
+                str(r["placeholder_values_json"])
+                if r["placeholder_values_json"] is not None else None
+            ),
+            omitted_by=(
+                str(r["omitted_by"]) if r["omitted_by"] is not None else None
+            ),
+            omitted_at=(
+                int(r["omitted_at"]) if r["omitted_at"] is not None else None
+            ),
+            omitted_reason=(
+                str(r["omitted_reason"]) if r["omitted_reason"] is not None else None
+            ),
+            module_id=(
+                int(r["module_id"]) if r["module_id"] is not None else None
+            ),
         )
 
     @staticmethod
-    def _row_to_block_evidence(r: sqlite3.Row) -> BlockEvidenceRecord:
-        return BlockEvidenceRecord(
+    def _row_to_comment(r: sqlite3.Row) -> ReportCommentRecord:
+        return ReportCommentRecord(
+            id=int(r["id"]),
             block_id=str(r["block_id"]),
-            evidence_id=int(r["evidence_id"]),
-            investigator_id=int(r["investigator_id"]),
-            last_modified_at=int(r["last_modified_at"]),
+            author=str(r["author"]),
+            created_at=int(r["created_at"]),
+            comment_text=str(r["comment_text"]),
+            status=str(r["status"]),
+            suggested_content=(
+                str(r["suggested_content"])
+                if r["suggested_content"] is not None else None
+            ),
+            resolved_by=(
+                str(r["resolved_by"]) if r["resolved_by"] is not None else None
+            ),
+            resolved_at=(
+                int(r["resolved_at"]) if r["resolved_at"] is not None else None
+            ),
         )
