@@ -1043,6 +1043,250 @@
   border-color: var(--color-primary-dark, #1565c0);
 }
 
+/* ---------------------------------------------------------------------------
+ * 13. Annotationsseitenleiste (§4.7)
+ * Beleg: Bauplan B6 v0.3 §4.7, Build 094
+ * --------------------------------------------------------------------------- */
+
+/* Panel-Container: fuellt die gesamte rechte Spalte */
+.as-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  font-size: 13px;
+  color: var(--color-text, #222);
+}
+
+/* Toolbar: Suche + Filter */
+.as-toolbar {
+  padding: 10px 12px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+  background: var(--color-surface, #fff);
+}
+
+.as-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--color-border, #ccc);
+  border-radius: var(--radius, 4px);
+  padding: 5px 9px;
+  background: var(--color-surface, #fff);
+  transition: border-color .15s, box-shadow .15s;
+}
+.as-search-wrap:focus-within {
+  border-color: var(--color-primary, #1976d2);
+  box-shadow: 0 0 0 2px rgba(25,118,210,.12);
+}
+
+.as-search-icon { font-size: 12px; color: var(--color-text-muted, #aaa); }
+
+.as-search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 12.5px;
+  background: transparent;
+  color: var(--color-text, #222);
+}
+.as-search-input::placeholder { color: var(--color-text-muted, #bbb); }
+
+/* Filter-Checkbox */
+.as-filter-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-text, #444);
+  cursor: pointer;
+  user-select: none;
+}
+.as-filter-label input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: var(--color-primary, #1976d2);
+}
+
+/* Trennlinie */
+.as-divider {
+  height: 1px;
+  background: var(--color-border, #ddd);
+  flex-shrink: 0;
+}
+
+/* Annotationsliste */
+.as-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.as-empty, .as-error {
+  padding: 16px 12px;
+  font-size: 12px;
+  color: var(--color-text-muted, #aaa);
+  text-align: center;
+  font-style: italic;
+}
+
+.as-error {
+  color: var(--color-error, #c62828);
+  background: #fff5f5;
+  font-style: normal;
+}
+
+/* Kategorie-Block */
+.as-category { border-bottom: 1px solid var(--color-border-light, #eee); }
+
+.as-category-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-text, #333);
+  transition: background .1s;
+}
+.as-category-header:hover { background: var(--color-bg-hover, #f5f5f5); }
+
+.as-chevron {
+  font-size: 9px;
+  color: var(--color-text-muted, #888);
+  width: 10px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.as-category-label { flex: 1; }
+
+.as-category-count {
+  font-size: 11px;
+  font-weight: normal;
+  color: var(--color-text-muted, #888);
+}
+
+/* Kategorie-Body: Annotationen */
+.as-category-body {
+  padding: 0 4px 6px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Einzelne Annotation */
+.as-annotation {
+  background: var(--color-bg, #fafafa);
+  border: 1px solid var(--color-border, #e8e8e8);
+  border-radius: var(--radius, 4px);
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.as-annotation.as-ann-anchored {
+  opacity: .65;
+  border-color: var(--color-ok, #388e3c);
+  border-left-width: 3px;
+}
+
+/* Verankert-Badge */
+.as-anchored-badge {
+  display: inline-block;
+  font-size: 10px;
+  color: var(--color-ok, #388e3c);
+  margin-bottom: 3px;
+}
+
+/* Tags */
+.as-ann-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-bottom: 4px;
+}
+
+.as-tag {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: #e3f2fd;
+  color: #1565c0;
+  border: 1px solid #90caf9;
+}
+
+/* Informationszeilen */
+.as-ann-text {
+  color: var(--color-text, #333);
+  margin-bottom: 2px;
+  line-height: 1.4;
+}
+
+.as-ann-orig {
+  color: var(--color-text-muted, #666);
+  font-style: italic;
+  font-size: 11.5px;
+  margin-bottom: 2px;
+  line-height: 1.4;
+}
+
+.as-ann-meta {
+  font-size: 10.5px;
+  color: var(--color-text-muted, #aaa);
+  margin-bottom: 4px;
+  display: flex;
+  gap: 4px;
+}
+
+/* Aktionszeile */
+.as-ann-actions { margin-top: 4px; }
+
+/* Buttons in der Seitenleiste */
+.as-btn {
+  padding: 3px 9px;
+  border: 1px solid var(--color-border, #ccc);
+  border-radius: var(--radius, 4px);
+  background: var(--color-surface, #fff);
+  color: var(--color-text, #333);
+  font-size: 11.5px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .12s, border-color .12s;
+}
+.as-btn:hover:not(:disabled) {
+  background: var(--color-bg-hover, #f0f0f0);
+  border-color: var(--color-border-hover, #999);
+}
+.as-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+.as-btn-anchor {
+  color: var(--color-primary, #1565c0);
+  border-color: #90caf9;
+  background: #e3f2fd;
+}
+.as-btn-anchor:hover:not(:disabled) {
+  background: #bbdefb;
+  border-color: #64b5f6;
+}
+
+/* Vollstaendigkeitsanzeige */
+.as-completeness {
+  padding: 7px 12px;
+  font-size: 12px;
+  flex-shrink: 0;
+  text-align: center;
+}
+.as-completeness-ok   { color: var(--color-ok, #388e3c); background: #f1f8f1; }
+.as-completeness-warn { color: var(--color-warn, #e65100); background: #fff8f0; }
+.as-completeness-neutral { color: var(--color-text-muted, #888); }
+
 @media print {
   /* Aktionsleiste und Sidebar ausblenden */
   #report-action-bar,

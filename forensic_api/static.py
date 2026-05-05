@@ -69,6 +69,8 @@ _RESOURCES: dict[str, tuple[str, str, Path]] = {
     "/_forensic/placeholder_wizard.js": ("placeholder_wizard.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
     # B6 Phase 6 (Modul-Panel): Modul-Auswahl
     "/_forensic/module_panel.js": ("module_panel.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
+    # B6 Phase 7 (Sidebar): Annotationsseitenleiste
+    "/_forensic/annotation_sidebar.js": ("annotation_sidebar.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
 }
 
 # MIME-Types fuer Editor.js-Bundle-Dateien (AP-E3)

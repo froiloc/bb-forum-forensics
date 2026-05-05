@@ -189,6 +189,7 @@ class ForensicApi:
             "/_forensic/placeholder_chips.js",  # B6 Phase 4 Chips
             "/_forensic/placeholder_wizard.js", # B6 Phase 5 Wizard
             "/_forensic/module_panel.js",       # B6 Phase 6 Panel
+            "/_forensic/annotation_sidebar.js", # B6 Phase 7 Sidebar
         ):
             if method not in ("GET", "HEAD"):
                 self._method_not_allowed(handler)

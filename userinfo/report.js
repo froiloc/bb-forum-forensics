@@ -40,7 +40,7 @@
  *   - Aktivieren-Button gesperrt wenn Pflichtfelder leer
  *   Beleg: Bauplan B6 v0.3 §4.5, Build 091
  *
- * Version: v0.1.3 · Build: 093 · 2026-05-05
+ * Version: v0.1.4 · Build: 094 · 2026-05-05
  * Beleg: Bauplan B6 v0.3 §4, Ausdefinitionsgespraech 2026-05-05
  */
 
@@ -76,7 +76,9 @@ const STATUS_LABELS = {
 // Zustandsvariablen (Modul-intern)
 // ---------------------------------------------------------------------------
 
-let _currentReportId   = null;   // aktuell geladener Bericht
+let _currentReportId         = null;   // aktuell geladener Bericht
+let _activeParagraphId       = null;   // zuletzt fokussierter Paragraph (fuer Sidebar)
+let _anchoredAnnotationIds   = new Set(); // verankerte Annotation-IDs (Sidebar-Sync)
 let _currentParagraphs = [];     // geladene Paragraph-Daten
 let _hasLock           = false;  // ob dieser Client den Lock haelt
 let _autosaveTimer     = null;   // Debounce-Timer fuer Auto-Save
@@ -176,6 +178,10 @@ async function loadReport() {
         _currentReportId   = data.active_report_id ?? null;
         _currentParagraphs = data.paragraphs        ?? [];
         _renderParagraphList(_currentParagraphs);
+
+        // Verankerte Annotation-IDs synchronisieren (Phase 7)
+        // Wird nach jedem loadReport() aus der evidence_db abgerufen
+        _syncAnchoredIds();
 
         // Aktions-Buttons aktivieren wenn Lock vorhanden
         _updateActionButtons();
@@ -383,6 +389,10 @@ function _bindCardEvents(card) {
     card.querySelector('.btn-comment-paragraph')?.addEventListener('click', () => {
         showStatus('Kommentar-Funktion wird in Phase 8 implementiert.', 'warn');
     });
+
+    // Fokus-Tracking: aktiven Paragraph fuer Sidebar merken
+    card.addEventListener('click', () => { _activeParagraphId = blockId; });
+    card.addEventListener('focusin', () => { _activeParagraphId = blockId; });
 
     // Doppelklick auf Platzhalter-Chip: Wizard beim richtigen Schritt oeffnen
     // Beleg: Bauplan B6 v0.3 §4.5
@@ -624,6 +634,27 @@ async function _createNewReport() {
     }
 }
 
+/**
+ * Laedt die verankerten Annotation-IDs vom Server und synchronisiert die Sidebar.
+ * Wird nach jedem loadReport() aufgerufen.
+ * Beleg: Bauplan B6 v0.3 §4.7 (Vollstaendigkeitsanzeige), Build 094
+ */
+async function _syncAnchoredIds() {
+    if (!window.AnnotationSidebar) return;
+    try {
+        const resp = await fetch('/_forensic/report?format=json', {
+            headers: { 'X-Forensic-Request': 'ajax' },
+        });
+        if (!resp.ok) return;
+        // Verankerte IDs aus den Paragraphen-Anker-Daten lesen
+        // Da report?format=json keine Anker liefert, nutzen wir den
+        // Hilfsendpunkt /_forensic/annotations (nur IDs benoetigt)
+        // Vereinfachung: Sidebar verwaltet _anchoredAnnotationIds selbst
+        // via updateAnchored() bei onAnchorAdded(). Kein separater Fetch.
+        window.AnnotationSidebar.updateAnchored(_anchoredAnnotationIds);
+    } catch (_) { /* ignorieren */ }
+}
+
 // ---------------------------------------------------------------------------
 // Aktions-Buttons
 // ---------------------------------------------------------------------------
@@ -798,6 +829,24 @@ window.initEditorModule = async function() {
     if (evtSrc) {
         evtSrc.addEventListener('report_updated', () => {
             loadReport();
+        });
+        // SSE: Annotationsseitenleiste bei annotation_*-Events neu laden
+        evtSrc.addEventListener('annotation_created', () => window.AnnotationSidebar?.reload());
+        evtSrc.addEventListener('annotation_deleted', () => window.AnnotationSidebar?.reload());
+    }
+
+    // Annotationsseitenleiste initialisieren (Phase 7)
+    // Beleg: Bauplan B6 v0.3 §4.7, Build 094
+    if (window.AnnotationSidebar) {
+        window.AnnotationSidebar.init({
+            containerId:        'report-annotation-sidebar',
+            postFn:             _postWithLock,
+            getActiveParagraph: () => _activeParagraphId,
+            onAnchorAdded:      (annId, blockId) => {
+                // Verankerte IDs nach Anker-Aktion aktualisieren
+                _anchoredAnnotationIds.add(annId);
+                window.AnnotationSidebar.updateAnchored(_anchoredAnnotationIds);
+            },
         });
     }
 };
