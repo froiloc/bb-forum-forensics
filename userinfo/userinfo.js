@@ -26,7 +26,7 @@
  *   window.opener?.postMessage({ type: 'navigate_to_annotation',
  *                                annotation_id: N }, origin)
  *
- * Version: v0.1.0 · Build: 012 · 2026-04-14
+ * Version: v0.1.0 · Build: 013 · 2026-05-04
  */
 
 'use strict';
@@ -201,6 +201,7 @@ async function loadStaticBlob() {
         container.innerHTML = html;
         initHeatmap(container);
         initTimeline(container);
+        initCollapseButtons(container);   // Einfahren-Schaltflächen (Build 013)
 
     } catch (err) {
         container.innerHTML =
@@ -1110,6 +1111,38 @@ document.addEventListener('DOMContentLoaded', () => {
         initForensicLinks();    // navigate_to_url via postMessage (Build 038)
     }
 });
+
+// ===========================================================================
+// FENSTER 2 — Einfahren-Schaltflächen (Einklappen von unten)
+// ===========================================================================
+
+/**
+ * Hängt an jedes geöffnete <details class="forensic-section"> einen Button
+ * ans Ende von .forensic-section-body, mit dem der Abschnitt von unten
+ * eingeklappt werden kann.
+ *
+ * Die CSS-Sichtbarkeit wird über details[open] .forensic-collapse-btn
+ * gesteuert — der Button erscheint nur, wenn der Abschnitt geöffnet ist.
+ *
+ * Beleg: Projektgespräch 2026-05-04 — Einfahren-Schaltfläche (Build 013)
+ *
+ * @param {HTMLElement} container — Wurzelelement (#userinfo-static)
+ */
+function initCollapseButtons(container) {
+    container.querySelectorAll('details.forensic-section').forEach(details => {
+        const body = details.querySelector('.forensic-section-body');
+        if (!body) return;
+
+        const btn = document.createElement('button');
+        btn.className  = 'forensic-collapse-btn';
+        btn.textContent = '▲ Einklappen';
+        btn.setAttribute('type', 'button');
+        btn.setAttribute('title', 'Abschnitt einklappen');
+        btn.addEventListener('click', () => { details.open = false; });
+
+        body.appendChild(btn);
+    });
+}
 
 // ===========================================================================
 // FENSTER 2 — Vollständiger Zeitstrahl §7.11

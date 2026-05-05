@@ -13,7 +13,7 @@
      - Ampel-Pills für Strafrechtsrelevanz (rot/orange/gelb)
      - Heatmap: 7×24-Raster, Weiß→Hellblau→Dunkelblau
 
-   Version: v0.1.0 · Build: 013 · 2026-04-22
+   Version: v0.1.0 · Build: 014 · 2026-05-04
    ============================================================================= */
 
 /* ------------------------------------------------------------------ */
@@ -1647,4 +1647,34 @@ span.forensic-passive {
     font-weight: 600;
     color: #4a5568;
     margin: 8px 0 4px 0;
+}
+
+/* Einfahren-Schaltfläche (Build 014) --------------------------------------- */
+
+/* Standardmäßig unsichtbar — nur sichtbar wenn details geöffnet ist */
+.forensic-collapse-btn {
+    display: none;
+}
+
+details[open] .forensic-collapse-btn {
+    display: block;
+    width: 100%;
+    margin-top: 10px;
+    padding: 5px 0;
+    background: #f4f6fa;
+    border: 1px solid #d0d8e8;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #5a6a8a;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    text-align: center;
+    user-select: none;
+}
+
+details[open] .forensic-collapse-btn:hover {
+    background: #e8edf4;
+    color: #1a1f2e;
 }
