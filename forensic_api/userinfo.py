@@ -382,10 +382,14 @@ class UserinfoEndpoint:
 
   </div>
 
+  <!-- Build 088: userinfo-report-readonly AUSSERHALB von #userinfo-static.
+       loadStaticBlob() setzt container.innerHTML = html, wobei der BLOB
+       selbst ein <div id="userinfo-static"> als Wurzel hat. Ein Element
+       innerhalb von #userinfo-static wird daher beim BLOB-Load überschrieben.
+       Beleg: Projektgespräch 2026-05-05 -- doppeltes #userinfo-static. -->
+  <div id="userinfo-report-readonly" style="display:none"></div>
+
   <div id="userinfo-static">
-    <!-- Build 086: Berichts-Anzeige wieder als normaler Abschnitt, oben -->
-    <!-- Beleg: Projektgespräch 2026-05-05 -->
-    <div id="userinfo-report-readonly" style="display:none"></div>
     <p style="color:#9aa0b8;font-size:12px;padding:12px 28px">
       Lade forensische Nutzerdaten…</p>
   </div>

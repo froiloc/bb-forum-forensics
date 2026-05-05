@@ -26,7 +26,7 @@
  *   window.opener?.postMessage({ type: 'navigate_to_annotation',
  *                                annotation_id: N }, origin)
  *
- * Version: v0.1.0 · Build: 087 · 2026-05-05
+ * Version: v0.1.0 · Build: 088 · 2026-05-05
  */
 
 'use strict';
@@ -199,6 +199,15 @@ async function loadStaticBlob() {
 
         const html = await resp.text();
         container.innerHTML = html;
+
+        // Build 088: class und data-uid vom BLOB auf den Container übertragen.
+        // Der Renderer erzeugt keinen Wrapper-Div mehr (Prepper Build 061).
+        // forensic-userinfo und data-uid wurden vorher vom Wrapper-Div getragen.
+        // Beleg: Projektgespräch 2026-05-05 -- doppeltes #userinfo-static.
+        container.classList.add('forensic-userinfo');
+        const uidMatch = html.match(/data-uid="(\d+)"/);
+        if (uidMatch) container.dataset.uid = uidMatch[1];
+
         initHeatmap(container);
         initTimeline(container);
         initCollapseButtons(container);   // Einfahren-Schaltflächen (Build 013)
