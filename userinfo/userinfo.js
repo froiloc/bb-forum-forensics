@@ -26,7 +26,7 @@
  *   window.opener?.postMessage({ type: 'navigate_to_annotation',
  *                                annotation_id: N }, origin)
  *
- * Version: v0.1.0 · Build: 084 · 2026-05-05
+ * Version: v0.1.0 · Build: 085 · 2026-05-05
  */
 
 'use strict';
@@ -1228,19 +1228,55 @@ function initTabulatorTables(container) {
  *
  * @param {HTMLElement} container — Wurzelelement (#userinfo-static)
  */
+/**
+ * Linker-Rand-Klick: Klappt details[open].forensic-section ein wenn
+ * der Klick innerhalb der linken 5px-Zone erfolgt.
+ *
+ * Hintergrund: CSS ::before-Pseudo-Elemente sind nicht direkt über
+ * addEventListener ansprechbar. Stattdessen wird ein click-Handler auf
+ * dem details-Element selbst registriert. event.offsetX gibt die
+ * X-Position relativ zur Kante des Elements an — liegt sie <= 5px,
+ * war der Klick auf dem ::before-Streifen.
+ * Beleg: Projektgespräch 2026-05-05 (Build 085).
+ *
+ * @param {HTMLElement} details — das details.forensic-section-Element
+ */
+function _initLeftBorderCollapse(details) {
+    details.addEventListener('click', (evt) => {
+        // Nur wenn Abschnitt offen ist — sonst kein Rand sichtbar
+        if (!details.open) return;
+
+        // offsetX: X-Position relativ zur linken Kante von details.
+        // Klick auf summary öffnet/schließt nativ — den überlassen wir
+        // dem Browser. Wir greifen nur ein wenn offsetX <= 5 UND
+        // der Klick NICHT auf dem summary-Element liegt.
+        const onSummary = evt.target.closest('summary');
+        if (onSummary) return;
+
+        if (evt.offsetX <= 5) {
+            evt.preventDefault();
+            evt.stopPropagation();
+            details.open = false;
+        }
+    });
+}
+
 function initCollapseButtons(container) {
     container.querySelectorAll('details.forensic-section').forEach(details => {
         const body = details.querySelector('.forensic-section-body');
         if (!body) return;
 
+        // Einfahren-Schaltfläche am unteren Ende des Abschnitts
         const btn = document.createElement('button');
         btn.className  = 'forensic-collapse-btn';
         btn.textContent = '▲ Einklappen';
         btn.setAttribute('type', 'button');
         btn.setAttribute('title', 'Abschnitt einklappen');
         btn.addEventListener('click', () => { details.open = false; });
-
         body.appendChild(btn);
+
+        // Build 085: Linker 5px-Rand als zusätzliche Einklapp-Fläche
+        _initLeftBorderCollapse(details);
     });
 }
 

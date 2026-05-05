@@ -13,7 +13,7 @@
      - Ampel-Pills für Strafrechtsrelevanz (rot/orange/gelb)
      - Heatmap: 7×24-Raster, Weiß→Hellblau→Dunkelblau
 
-   Version: v0.1.0 · Build: 084 · 2026-05-05
+   Version: v0.1.0 · Build: 085 · 2026-05-05
    ============================================================================= */
 
 /* ------------------------------------------------------------------ */
@@ -674,7 +674,7 @@ details.forensic-section {
 }
 
 summary.forensic-section-title {
-    padding: 8px 12px 8px 17px; /* Build 084: Links-Padding für ::before-Rand */
+    padding: 8px 12px;
     font-weight: 600;
     font-size: 12px;
     cursor: pointer;
@@ -684,27 +684,35 @@ summary.forensic-section-title {
     user-select: none;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    position: relative; /* Beleg: Projektgespräch 2026-05-05 */
+
 }
 
-/* Build 084: Klickbarer linker 5px-Rand auf summary-Elementen.
-   Der Rand ist ein visueller Indikator (eingeklappt = grau, offen = blau)
-   und gleichzeitig klickbare Fläche (cursor: pointer erbt vom summary).
+/* Build 085: Klickbarer linker 5px-Rand über die gesamte Höhe des
+   aufgeklappten details-Elements (Überschrift + Inhalt).
+   Nur sichtbar wenn offen — sonst keine Ablenkung.
+   Der Click-Handler in initCollapseButtons() wertet offsetX aus
+   und klappt ein wenn der Klick innerhalb der 5px-Zone erfolgt.
    Beleg: Projektgespräch 2026-05-05. */
-summary.forensic-section-title::before {
+details[open].forensic-section {
+    position: relative;
+}
+
+details[open].forensic-section::before {
     content: "";
     position: absolute;
     left: 0;
     top: 0;
     bottom: 0;
     width: 5px;
-    background: #c0cad8;
+    background: #1565c0;
     border-radius: 4px 0 0 4px;
+    cursor: pointer;
+    z-index: 1;
     transition: background 0.15s ease;
 }
 
-details[open] > summary.forensic-section-title::before {
-    background: #1565c0; /* Offen: blau */
+details[open].forensic-section::before:hover {
+    background: #0d47a1;
 }
 
 summary.forensic-section-title:hover {
