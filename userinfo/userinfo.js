@@ -26,7 +26,7 @@
  *   window.opener?.postMessage({ type: 'navigate_to_annotation',
  *                                annotation_id: N }, origin)
  *
- * Version: v0.1.0 · Build: 085 · 2026-05-05
+ * Version: v0.1.0 · Build: 086 · 2026-05-05
  */
 
 'use strict';
@@ -286,23 +286,28 @@ function renderDynamicBlocks(container, data) {
         <div class="annotation-count-grid">${countsHtml}</div>
         ${unrefHtml}`;
 
-    // Read-Only-Berichtsreiter sichtbar schalten und befuellen.
-    // style="display:none" wird hier explizit entfernt.
+    // Build 086: Buttons in die fixe Toolbar schreiben (nicht in roContainer).
+    // Beleg: Projektgespräch 2026-05-05
+    const toolbarActions = document.getElementById('userinfo-toolbar-actions');
+    if (toolbarActions) {
+        toolbarActions.innerHTML = `${refreshBtn} ${editBtn}`;
+        document.getElementById('btn-refresh-report')?.addEventListener('click', loadReadonlyReport);
+        document.getElementById('btn-open-report')?.addEventListener('click', () => {
+            window.open('/_forensic/report', 'forensic_report');
+        });
+    }
+
+    // Berichts-Inhalt im normalen Abschnitts-Container sichtbar schalten und befüllen.
     // Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19
     const roContainer = document.getElementById('userinfo-report-readonly');
     if (roContainer) {
         roContainer.style.display = '';
         roContainer.innerHTML = `
             <h3>Bericht <span id="report-draft-badge"></span></h3>
-            <div class="report-actions">${refreshBtn} ${editBtn}</div>
             <div id="report-readonly-content">
                 <span class="loading-spinner"></span> Lade Berichtsinhalt…
             </div>`;
         loadReadonlyReport();
-        document.getElementById('btn-refresh-report')?.addEventListener('click', loadReadonlyReport);
-        document.getElementById('btn-open-report')?.addEventListener('click', () => {
-            window.open('/_forensic/report', 'forensic_report');
-        });
     }
 }
 

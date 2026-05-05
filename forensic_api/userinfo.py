@@ -306,6 +306,15 @@ class UserinfoEndpoint:
   </style>
 </head>
 <body>
+  <!-- Build 086: Fixe Werkzeugleiste oben im Userinfo-Fenster.
+       Analog zur Toolbar im Hauptfenster. Buttons werden von
+       loadDynamicBlocks() befüllt. Beleg: Projektgespräch 2026-05-05 -->
+  <div id="userinfo-toolbar" role="toolbar" aria-label="Bericht-Werkzeugleiste">
+    <span class="userinfo-toolbar-title">Ermittlungsbericht</span>
+    <div id="userinfo-toolbar-actions">
+      <!-- Wird von loadDynamicBlocks() befüllt -->
+    </div>
+  </div>
   <div class="ui-header">
     <div>
       <div class="ui-uid">Benutzer-ID: {user_id}</div>
@@ -373,12 +382,10 @@ class UserinfoEndpoint:
 
   </div>
 
-  <!-- Berichtsreiter: wird von loadDynamicBlocks() befuellt (AP-E4).
-       Erscheint oberhalb des langen Forum-Inhalts fuer schnellen Zugriff.
-       Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19 -->
-  <div id="userinfo-report-readonly"></div>
-
   <div id="userinfo-static">
+    <!-- Build 086: Berichts-Anzeige wieder als normaler Abschnitt, oben -->
+    <!-- Beleg: Projektgespräch 2026-05-05 -->
+    <div id="userinfo-report-readonly" style="display:none"></div>
     <p style="color:#9aa0b8;font-size:12px;padding:12px 28px">
       Lade forensische Nutzerdaten…</p>
   </div>
@@ -388,6 +395,11 @@ class UserinfoEndpoint:
     Benutzer-ID: {user_id} · {u}
   </div>
 
+  <!-- Tabulator.js: Filter/Sortierung in forensic-data-Tabellen -->
+  <!-- Build 086: Einbindung hier (nicht shell_handler) da eigenes Fenster -->
+  <!-- Beleg: Projektgespräch 2026-05-05 -->
+  <link rel="stylesheet" href="/_forensic/static/vendor/tabulator/tabulator.min.css">
+  <script src="/_forensic/static/vendor/tabulator/tabulator.min.js"></script>
   <script src="/_forensic/userinfo.js" defer></script>
 </body>
 </html>"""

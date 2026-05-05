@@ -13,8 +13,61 @@
      - Ampel-Pills für Strafrechtsrelevanz (rot/orange/gelb)
      - Heatmap: 7×24-Raster, Weiß→Hellblau→Dunkelblau
 
-   Version: v0.1.0 · Build: 085 · 2026-05-05
+   Version: v0.1.0 · Build: 086 · 2026-05-05
    ============================================================================= */
+
+
+/* ------------------------------------------------------------------ */
+/* Fixe Werkzeugleiste oben im Userinfo-Fenster (Build 086)           */
+/* Analog zur Toolbar im Hauptfenster. Beleg: Projektgespräch 2026-05-05 */
+/* ------------------------------------------------------------------ */
+
+#userinfo-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #1a1f2e;
+    border-bottom: 2px solid #1565c0;
+    padding: 6px 16px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+}
+
+.userinfo-toolbar-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #c8d0e8;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    margin-right: 8px;
+}
+
+#userinfo-toolbar-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+#userinfo-toolbar .editor-btn {
+    background: #2a3550;
+    color: #c8d0e8;
+    border: 1px solid #3a4a6a;
+    border-radius: 3px;
+    padding: 4px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+#userinfo-toolbar .editor-btn:hover {
+    background: #1565c0;
+    border-color: #1565c0;
+    color: #fff;
+}
 
 /* ------------------------------------------------------------------ */
 /* Basis-Reset & Typografie                                             */
@@ -406,21 +459,15 @@ html, body {
 /* Read-Only-Berichtsreiter (§8 Bauplan B4)                            */
 /* ------------------------------------------------------------------ */
 
-/* Build 084: Bericht-Buttons als fixe obere Toolbar.
-   position: sticky + top:0 + z-index halten den Container sichtbar
-   wenn die Ermittlerin durch den langen BLOB-Inhalt scrollt.
+/* Build 086: userinfo-report-readonly ist wieder normaler Abschnitt.
+   Die Bericht-Buttons sind jetzt in #userinfo-toolbar.
    Beleg: Projektgespräch 2026-05-05. */
 #userinfo-report-readonly {
     background: #fff;
-    border: 1px solid #ccc;
-    border-bottom: 2px solid #1565c0;
-    border-radius: 0;
-    padding: 6px 12px;
-    margin-bottom: 0;
-    position: sticky;
-    top: 0;
-    z-index: 120;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.10);
+    border: 1px solid #d0d8e8;
+    border-radius: 4px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
 }
 
 #userinfo-report-readonly h3 {
