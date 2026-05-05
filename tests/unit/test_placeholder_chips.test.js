@@ -30,42 +30,21 @@
  * Version: v0.1.0 · Build: 091 · 2026-05-05
  */
 
-// test_placeholder_chips.test.js
+/**
+ * @vitest-environment jsdom
+ */
 import { describe, it, expect, beforeEach } from 'vitest';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import '../../userinfo/placeholder_chips.js';
+import '../../userinfo/placeholder_wizard.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-// Direkter Import nach Änderung der ?? Operatoren
-// Aber da die Datei window.PlaceholderChips erwartet, müssen wir sie zuerst laden
+let PlaceholderWizard;
 let PlaceholderChips;
 
-beforeEach(async () => {
-    // Lösche eventuell vorhandenen Export
-    delete global.window;
-    
-    // Lade die Datei als Modul (nachdem ?? ersetzt wurden)
-    const modulePath = path.resolve(__dirname, '../../userinfo/placeholder_chips.js');
-    
-    // Da die Datei kein export verwendet, sondern window.*, müssen wir sie anders laden
-    // Option 1: Mit eval aber korrigiertem Code
-    const src = fs.readFileSync(modulePath, 'utf8');
-    
-    // Ersetze ?? Operatoren IM CODE bevor er evaluiert wird
-    const fixedSrc = src
-        .replace(/(\w+)\s*\?\?\s*([^,;\n]+)/g, '($1 !== undefined && $1 !== null ? $1 : $2)')
-        .replace(/\(([^,]+)\s*\?\?\s*([^)]+)\)/g, '($1 !== undefined && $1 !== null ? $1 : $2)');
-    
-    // Simuliere window Umgebung
-    global.window = {};
-    
-    // Führe den korrigierten Code aus
-    const script = new Function(fixedSrc);
-    script();
-    
-    PlaceholderChips = global.window.PlaceholderChips;
+beforeEach(() => {
+    // Da die Skripte via import oben geladen wurden, 
+    // stehen sie am window-Objekt bereit.
+    PlaceholderWizard = window.PlaceholderWizard;
+    PlaceholderChips = window.PlaceholderChips;
 });
 
 // ---------------------------------------------------------------------------

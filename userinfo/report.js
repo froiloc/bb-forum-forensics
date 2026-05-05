@@ -40,7 +40,7 @@
  *   - Aktivieren-Button gesperrt wenn Pflichtfelder leer
  *   Beleg: Bauplan B6 v0.3 §4.5, Build 091
  *
- * Version: v0.1.2 · Build: 092 · 2026-05-05
+ * Version: v0.1.3 · Build: 093 · 2026-05-05
  * Beleg: Bauplan B6 v0.3 §4, Ausdefinitionsgespraech 2026-05-05
  */
 
@@ -405,6 +405,47 @@ function _bindCardEvents(card) {
 // Paragraph-Operationen
 // ---------------------------------------------------------------------------
 
+/**
+ * Oeffnet das Modul-Auswahl-Panel (Phase 6).
+ * Beleg: Bauplan B6 v0.3 §4.4, Build 093
+ */
+function _openModulePanel() {
+    if (!_hasLock) {
+        showStatus('Lock erforderlich zum Einfügen eines Moduls.', 'warn');
+        return;
+    }
+    if (!_currentReportId) {
+        showStatus('Bitte zuerst einen Bericht auswählen.', 'warn');
+        return;
+    }
+    if (!window.ModulePanel) {
+        showStatus('Modul-Panel nicht verfügbar.', 'error');
+        return;
+    }
+
+    window.ModulePanel.open({
+        reportId:              _currentReportId,
+        currentParagraphCount: _currentParagraphs.length,
+        postFn:   _postWithLock,
+        saveFn:   async (blockId, bodyText, values) => {
+            const result = await _postWithLock({
+                action:                  'update_paragraph',
+                block_id:                blockId,
+                content:                 bodyText,
+                placeholder_values_json: JSON.stringify(values),
+            });
+            if (!result) throw new Error('Speichern fehlgeschlagen.');
+            showStatus('Modul eingefügt.', 'ok');
+            await loadReport();
+        },
+        onInserted: async (_blockId) => {
+            showStatus('Modul eingefügt.', 'ok');
+            await loadReport();
+        },
+        showStatus,
+    });
+}
+
 /** Neuen Freitext-Paragraph anlegen. */
 async function _addParagraph() {
     if (!_hasLock) {
@@ -621,9 +662,7 @@ function _bindActionButtons() {
         ?.addEventListener('click', _addParagraph);
 
     document.getElementById('btn-insert-module')
-        ?.addEventListener('click', () => {
-            showStatus('Modul-Auswahl wird in Phase 6 implementiert.', 'warn');
-        });
+        ?.addEventListener('click', _openModulePanel);
 
     document.getElementById('btn-refresh-placeholders')
         ?.addEventListener('click', async () => {

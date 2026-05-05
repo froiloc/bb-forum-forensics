@@ -175,7 +175,7 @@ function _renderChip(seg, values, resolvedAuto) {
     if (chipType === 'a') {
         // Automatisch aufgeloest: gruen, zeigt aufgeloesten Wert
         const resolved = resolvedAuto[name];
-        const displayVal = resolved ?? defaultVal || name;
+        const displayVal = (resolved ?? defaultVal) || name;
         const title = `Automatisch: ${name}` + (description ? ` — ${description}` : '');
         return `<span class="ph-chip ph-chip-auto" ${dataAttrs} title="${_esc(title)}">${_esc(displayVal)}</span>`;
     }

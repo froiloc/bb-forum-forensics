@@ -747,6 +747,302 @@
   border-color: var(--color-primary-dark, #1565c0);
 }
 
+/* ---------------------------------------------------------------------------
+ * 12. Modul-Auswahl-Panel (§4.4)
+ * Beleg: Bauplan B6 v0.3 §4.4, Build 093
+ * --------------------------------------------------------------------------- */
+
+/* Overlay */
+.mp-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.48);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+/* Dialog */
+.mp-dialog {
+  background: var(--color-surface, #fff);
+  border-radius: var(--radius, 6px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.22);
+  width: 100%;
+  max-width: 560px;
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-size: 14px;
+}
+
+/* Header */
+.mp-header {
+  display: flex;
+  align-items: center;
+  padding: 13px 18px 11px;
+  border-bottom: 1px solid var(--color-border, #ddd);
+  flex-shrink: 0;
+  background: var(--color-bg, #f8f8f8);
+  gap: 8px;
+}
+
+.mp-title {
+  font-weight: 600;
+  font-size: 14px;
+  flex: 1;
+  color: var(--color-text, #222);
+}
+
+.mp-close-btn {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: var(--color-text-muted, #888);
+  padding: 2px 4px;
+  border-radius: 3px;
+  line-height: 1;
+  transition: color .15s, background .15s;
+}
+.mp-close-btn:hover { color: var(--color-text, #333); background: var(--color-bg-hover, #eee); }
+
+/* Filter-Bereich */
+.mp-filters {
+  padding: 10px 18px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+  background: var(--color-surface, #fff);
+}
+
+.mp-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--color-border, #ccc);
+  border-radius: var(--radius, 4px);
+  padding: 5px 10px;
+  background: var(--color-surface, #fff);
+  transition: border-color .15s, box-shadow .15s;
+}
+.mp-search-wrap:focus-within {
+  border-color: var(--color-primary, #1976d2);
+  box-shadow: 0 0 0 2px rgba(25,118,210,.12);
+}
+
+.mp-search-icon { font-size: 13px; color: var(--color-text-muted, #aaa); }
+
+.mp-search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  background: transparent;
+  color: var(--color-text, #222);
+}
+.mp-search-input::placeholder { color: var(--color-text-muted, #aaa); }
+
+/* Filter-Zeile */
+.mp-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mp-filter-label {
+  font-size: 12px;
+  color: var(--color-text-muted, #666);
+  white-space: nowrap;
+}
+
+.mp-filter-select {
+  padding: 4px 8px;
+  font-size: 12px;
+  border: 1px solid var(--color-border, #ccc);
+  border-radius: var(--radius, 4px);
+  background: var(--color-surface, #fff);
+  color: var(--color-text, #333);
+  cursor: pointer;
+}
+
+/* Trennlinie */
+.mp-divider {
+  height: 1px;
+  background: var(--color-border, #ddd);
+  flex-shrink: 0;
+}
+
+/* Modulliste */
+.mp-list-wrap {
+  flex: 1 1 200px;
+  min-height: 120px;
+  overflow-y: auto;
+  padding: 6px 0;
+  position: relative;
+}
+
+.mp-list { display: flex; flex-direction: column; }
+
+.mp-loading, .mp-empty {
+  padding: 20px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--color-text-muted, #aaa);
+  font-style: italic;
+}
+
+/* Modul-Eintrag */
+.mp-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 18px;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  transition: background .1s, border-color .1s;
+  gap: 8px;
+  outline: none;
+}
+
+.mp-item:hover {
+  background: var(--color-bg-hover, #f5f5f5);
+}
+
+.mp-item:focus {
+  background: var(--color-bg-hover, #f0f0f0);
+  border-left-color: var(--color-primary, #1976d2);
+}
+
+.mp-item-selected {
+  background: #e3f2fd;
+  border-left-color: var(--color-primary, #1976d2);
+}
+.mp-item-selected:hover { background: #d6eaf8; }
+
+.mp-item-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.mp-item-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.mp-item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mp-item-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text, #222);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mp-item-desc {
+  font-size: 11.5px;
+  color: var(--color-text-muted, #777);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Rollen-Badge */
+.mp-item-role-badge {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: var(--color-bg, #f0f0f0);
+  color: var(--color-text-muted, #666);
+  border: 1px solid var(--color-border, #ddd);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Vorschau-Bereich */
+.mp-preview-wrap {
+  flex-shrink: 0;
+  max-height: 180px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.mp-preview-header {
+  padding: 6px 18px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted, #888);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  flex-shrink: 0;
+}
+
+.mp-preview-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 18px 10px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--color-text, #333);
+}
+
+/* Footer */
+.mp-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 18px 13px;
+  border-top: 1px solid var(--color-border, #ddd);
+  flex-shrink: 0;
+  background: var(--color-bg, #f8f8f8);
+}
+
+.mp-footer-spacer { flex: 1; }
+
+/* Panel-Buttons (gleiche Basis wie .pw-btn) */
+.mp-btn {
+  padding: 6px 14px;
+  border: 1px solid var(--color-border, #ccc);
+  border-radius: var(--radius, 4px);
+  background: var(--color-surface, #fff);
+  color: var(--color-text, #333);
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s, border-color .15s;
+}
+.mp-btn:hover:not(:disabled) {
+  background: var(--color-bg-hover, #f0f0f0);
+  border-color: var(--color-border-hover, #999);
+}
+.mp-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+.mp-btn-primary {
+  background: var(--color-primary, #1976d2);
+  color: #fff;
+  border-color: var(--color-primary, #1976d2);
+}
+.mp-btn-primary:hover:not(:disabled) {
+  background: var(--color-primary-dark, #1565c0);
+  border-color: var(--color-primary-dark, #1565c0);
+}
+
 @media print {
   /* Aktionsleiste und Sidebar ausblenden */
   #report-action-bar,

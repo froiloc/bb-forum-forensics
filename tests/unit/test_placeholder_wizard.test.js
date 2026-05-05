@@ -21,47 +21,21 @@
  * Beleg: Bauplan B6 v0.3 §4.5, Ausdefinitionsgespraech 2026-05-05
  */
 
+/**
+ * @vitest-environment jsdom
+ */
 import { describe, it, expect, beforeEach } from 'vitest';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+import '../../userinfo/placeholder_chips.js';
+import '../../userinfo/placeholder_wizard.js';
 
 let PlaceholderWizard;
 let PlaceholderChips;
 
 beforeEach(() => {
-    const window = {};
-    global.window = window;
-
-    // Lade Chips
-    let chipsSrc = fs.readFileSync(
-        path.resolve(__dirname, '../../userinfo/placeholder_chips.js'), 
-        'utf8'
-    );
-    
-    // Ersetze NUR die spezifischen ?? Vorkommen
-    chipsSrc = chipsSrc
-        .replace(/match\[3\] \?\? ''/g, 'match[3] !== undefined && match[3] !== null ? match[3] : ""')
-        .replace(/match\[4\] \?\? ''/g, 'match[4] !== undefined && match[4] !== null ? match[4] : ""')
-        .replace(/match\[5\] \?\? null/g, 'match[5] !== undefined && match[5] !== null ? match[5] : null')
-        .replace(/resolved \?\? defaultVal/g, '(resolved !== undefined && resolved !== null ? resolved : defaultVal)');
-    
-    new Function(chipsSrc)();
-    PlaceholderChips = window.PlaceholderChips;
-
-    // Lade Wizard
-    let wizardSrc = fs.readFileSync(
-        path.resolve(__dirname, '../../userinfo/placeholder_wizard.js'), 
-        'utf8'
-    );
-    
-    // Ersetze ?? in Wizard
-    wizardSrc = wizardSrc.replace(/s \?\? ''/g, 's !== undefined && s !== null ? s : ""');
-    
-    new Function(wizardSrc)();
+    // Da die Skripte via import oben geladen wurden, 
+    // stehen sie am window-Objekt bereit.
     PlaceholderWizard = window.PlaceholderWizard;
+    PlaceholderChips = window.PlaceholderChips;
 });
 
 // ---------------------------------------------------------------------------
