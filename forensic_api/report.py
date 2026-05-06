@@ -55,8 +55,16 @@
 #     vier .support-accordion-section-Elementen (Bausteine, Annotationen,
 #     Formular, Kommentare). Empty-States und ARIA-Attribute gesetzt.
 #     Beleg: Bauplan B6 v0.5 §4.4, Projektgespraech 2026-05-06
+#   Build 102 (B6 Phase 4): Block-API-Umbau und Modularisierung.
+#     GET ?format=json: "paragraphs" -> "blocks", get_blocks_for_report(),
+#       get_comments_for_block(). Felder angepasst (block_type, block_data
+#       statt content/status/omitted_*).
+#     POST-Aktionen: add_paragraph/update_paragraph/set_status ersetzt durch
+#       save_block/update_block/delete_block (Block-API v0.5).
+#     add_comment/resolve_comment ausgelagert in editor_comment.py.
+#     Beleg: Bauplan B6 v0.5 §5, Projektgespraech 2026-05-06
 #
-# Version: v0.6.101 · Build: 101 · 2026-05-06
+# Version: v0.6.102 · Build: 102 · 2026-05-06
 # =============================================================================
 
 from __future__ import annotations
@@ -370,26 +378,28 @@ class ReportEndpoint:
               "created_at": N
             }
           ],
-          "paragraphs": [    <- aktiver Bericht (erster draft/active-Bericht)
+          "blocks": [    <- aktiver Bericht (erster draft/submitted-Bericht)
             {
               "block_id": "uuid",
               "report_id": N,
               "author": "...",
               "created_at": N,
               "updated_at": N,
-              "content": "...",
-              "status": "draft"|"active"|"omitted"|"superseded"|"approved",
-              "placeholder_values_json": "{}"|null,
-              "module_id": N|null
+              "block_type": "paragraph"|"header"|...,
+              "block_data": "{...}",
+              "placeholder_values_json": "{...}"|null,
+              "module_id": N|null,
+              "comments": [...]
             }
           ],
+          "active_report_id": N|null,
           "lock": {"locked_by": "...", "locked_at": N} | null
         }
 
-        Beleg: Bauplan B6 v0.3 §5, loadReadonlyReport() in userinfo.js
+        Beleg: Bauplan B6 v0.5 §5, B6 Phase 4, Projektgespraech 2026-05-06
         """
-        edb   = self._bundle.evidence
-        lock  = edb.get_lock()
+        edb     = self._bundle.evidence
+        lock    = edb.get_lock()
         reports = edb.get_reports()
 
         # Aktiven Bericht bestimmen: erster nicht-'final'-Bericht oder erster ueberhaupt
@@ -401,35 +411,32 @@ class ReportEndpoint:
         if active_report is None and reports:
             active_report = reports[0]
 
-        paragraphs_payload = []
+        blocks_payload = []
         if active_report:
-            paras = edb.get_paragraphs(active_report.id)
-            for p in paras:
-                # Kommentare je Paragraph mitliefern (Phase 8)
-                # Beleg: Bauplan B6 v0.3 §4.3, Build 095
-                comments = edb.get_comments_for_paragraph(p.block_id)
-                paragraphs_payload.append({
-                    "block_id":                p.block_id,
-                    "report_id":               p.report_id,
-                    "author":                  p.author,
-                    "created_at":              p.created_at,
-                    "updated_at":              p.updated_at,
-                    "content":                 p.content,
-                    "status":                  p.status,
-                    "placeholder_values_json": p.placeholder_values_json,
-                    "module_id":               p.module_id,
-                    "omitted_by":              p.omitted_by,
-                    "omitted_reason":          p.omitted_reason,
+            # Beleg: Bauplan B6 v0.5 §5, Phase 4 — Block-API statt Paragraph-API
+            blocks = edb.get_blocks_for_report(active_report.id)
+            for b in blocks:
+                comments = edb.get_comments_for_block(b.block_id)
+                blocks_payload.append({
+                    "block_id":                b.block_id,
+                    "report_id":               b.report_id,
+                    "author":                  b.author,
+                    "created_at":              b.created_at,
+                    "updated_at":              b.updated_at,
+                    "block_type":              b.block_type,
+                    "block_data":              b.block_data,
+                    "placeholder_values_json": b.placeholder_values_json,
+                    "module_id":               b.module_id,
                     "comments": [
                         {
-                            "id":               cm.id,
-                            "author":           cm.author,
-                            "created_at":       cm.created_at,
-                            "comment_text":     cm.comment_text,
-                            "suggested_content":cm.suggested_content,
-                            "status":           cm.status,
-                            "resolved_by":      cm.resolved_by,
-                            "resolved_at":      cm.resolved_at,
+                            "id":                cm.id,
+                            "author":            cm.author,
+                            "created_at":        cm.created_at,
+                            "comment_text":      cm.comment_text,
+                            "suggested_content": cm.suggested_content,
+                            "status":            cm.status,
+                            "resolved_by":       cm.resolved_by,
+                            "resolved_at":       cm.resolved_at,
                         }
                         for cm in comments
                     ],
@@ -449,8 +456,8 @@ class ReportEndpoint:
         ]
 
         payload = {
-            "reports":    reports_payload,
-            "paragraphs": paragraphs_payload,
+            "reports":          reports_payload,
+            "blocks":           blocks_payload,
             "active_report_id": active_report.id if active_report else None,
             "lock": {
                 "locked_by": lock.locked_by,
@@ -498,19 +505,25 @@ class ReportEndpoint:
         elif action == "respond_takeover":
             self._action_respond_takeover(handler, data, investigator)
 
-        # B6-Schreibaktionen (Phase 4)
-        elif action == "add_paragraph":
-            self._action_add_paragraph(handler, data, investigator)
-        elif action == "update_paragraph":
-            self._action_update_paragraph(handler, data, investigator)
-        elif action == "set_status":
-            self._action_set_status(handler, data, investigator)
+        # B6-Schreibaktionen (Phase 4 — auf Block-API umgestellt)
+        # Beleg: Bauplan B6 v0.5 §5, Projektgespraech 2026-05-06
+        elif action == "save_block":
+            self._action_save_block(handler, data, investigator)
+        elif action == "delete_block":
+            self._action_delete_block(handler, data, investigator)
+        elif action == "update_block":
+            self._action_update_block(handler, data, investigator)
         elif action == "reorder":
             self._action_reorder(handler, data, investigator)
         elif action == "add_comment":
-            self._action_add_comment(handler, data, investigator)
+            from forensic_api.editor_comment import EditorCommentEndpoint
+            ep = EditorCommentEndpoint(self._bundle, investigator)
+            ep.action_add_comment(handler, data)
         elif action == "resolve_comment":
-            self._action_resolve_comment(handler, data, investigator)
+            lock_id = handler.headers.get("X-Forensic-Lock-Id") or None
+            from forensic_api.editor_comment import EditorCommentEndpoint
+            ep = EditorCommentEndpoint(self._bundle, investigator)
+            ep.action_resolve_comment(handler, data, lock_id)
         elif action == "add_anchor":
             self._action_add_anchor(handler, data, investigator)
 
@@ -525,42 +538,66 @@ class ReportEndpoint:
             )
 
     # ------------------------------------------------------------------
-    # B6-Schreibaktionen (Phase 4)
+    # B6-Schreibaktionen (Phase 4 — Block-API)
+    # Beleg: Bauplan B6 v0.5 §5, Projektgespraech 2026-05-06
     # ------------------------------------------------------------------
 
-    def _action_add_paragraph(
+    def _action_save_block(
         self,
         handler: "ForensicRequestHandler",
         data: dict,
         investigator: str,
     ) -> None:
         """
-        Neuen Freitext-Paragraph anlegen.
-        Beleg: Bauplan B6 v0.3 §4.3, §5
+        Block speichern (INSERT oder UPDATE).
+        Nur der Eigentuemer darf einen vorhandenen Block ueberschreiben.
+        Beleg: Bauplan B6 v0.5 §2.3 (Grundregel 14), §5
         """
         if not self._require_lock(handler, data):
             return
-        report_id = data.get("report_id")
+        report_id  = data.get("report_id")
+        block_id   = str(data.get("block_id") or "").strip() or str(uuid.uuid4())
+        block_type = str(data.get("block_type") or "paragraph").strip()
+        block_data = data.get("block_data")
+        if block_data is None:
+            block_data = "{}"
+        elif not isinstance(block_data, str):
+            import json as _json
+            block_data = _json.dumps(block_data, ensure_ascii=False)
+
         if not report_id:
             handler.send_response_body(
                 400, _json_err("report_id fehlt", "MISSING_REPORT_ID"),
                 content_type="application/json; charset=utf-8",
             )
             return
-        content    = str(data.get("content", ""))
-        block_id   = data.get("block_id") or str(uuid.uuid4())
-        sort_index = data.get("sort_index")
 
+        placeholder_values_json = data.get("placeholder_values_json")
+        if placeholder_values_json is not None:
+            placeholder_values_json = str(placeholder_values_json)
+        sort_index = data.get("sort_index")
+        module_id  = data.get("module_id")
+
+        from db.evidence_db import EvidenceDbError
         try:
-            self._bundle.evidence.add_paragraph(
+            self._bundle.evidence.save_block(
                 block_id=block_id,
                 report_id=int(report_id),
                 author=investigator,
-                content=content,
+                block_type=block_type,
+                block_data=block_data,
+                module_id=int(module_id) if module_id is not None else None,
+                placeholder_values_json=placeholder_values_json,
                 sort_index=int(sort_index) if sort_index is not None else None,
             )
+        except EvidenceDbError as exc:
+            handler.send_response_body(
+                403, _json_err(str(exc), "FORBIDDEN"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
         except Exception as exc:
-            logger.warning("add_paragraph fehlgeschlagen: %s", exc)
+            logger.warning("save_block fehlgeschlagen: %s", exc)
             handler.send_response_body(
                 400, _json_err(str(exc)),
                 content_type="application/json; charset=utf-8",
@@ -568,44 +605,49 @@ class ReportEndpoint:
             return
 
         handler.send_response_body(
-            201,
-            _json_ok({"block_id": block_id, "status": "draft"}),
+            201, _json_ok({"block_id": block_id}),
             content_type="application/json; charset=utf-8",
         )
         logger.info(
-            "add_paragraph: block_id=%s report_id=%s von '%s'",
-            block_id, report_id, investigator,
+            "save_block: block_id=%s report_id=%s type=%s von '%s'",
+            block_id, report_id, block_type, investigator,
         )
 
-    def _action_update_paragraph(
+    def _action_update_block(
         self,
         handler: "ForensicRequestHandler",
         data: dict,
         investigator: str,
     ) -> None:
         """
-        Paragraph-Inhalt aktualisieren (nur Eigentuemer).
-        Beleg: Bauplan B6 v0.3 §2.3 (Grundregel 14)
+        Block-Inhalt aktualisieren (nur Eigentuemer, Grundregel 14).
+        Beleg: Bauplan B6 v0.5 §2.3, §5
         """
         if not self._require_lock(handler, data):
             return
-        block_id = data.get("block_id", "")
+        block_id = str(data.get("block_id") or "").strip()
         if not block_id:
             handler.send_response_body(
                 400, _json_err("block_id fehlt", "MISSING_BLOCK_ID"),
                 content_type="application/json; charset=utf-8",
             )
             return
-        content = str(data.get("content", ""))
+        block_data = data.get("block_data")
+        if block_data is None:
+            block_data = "{}"
+        elif not isinstance(block_data, str):
+            import json as _json
+            block_data = _json.dumps(block_data, ensure_ascii=False)
+
         placeholder_values_json = data.get("placeholder_values_json")
         if placeholder_values_json is not None:
             placeholder_values_json = str(placeholder_values_json)
 
         from db.evidence_db import EvidenceDbError
         try:
-            found = self._bundle.evidence.update_paragraph_content(
+            found = self._bundle.evidence.update_block(
                 block_id=block_id,
-                content=content,
+                block_data=block_data,
                 placeholder_values_json=placeholder_values_json,
                 requesting_author=investigator,
             )
@@ -618,7 +660,7 @@ class ReportEndpoint:
 
         if not found:
             handler.send_response_body(
-                404, _json_err(f"Paragraph '{block_id}' nicht gefunden.", "NOT_FOUND"),
+                404, _json_err(f"Block '{block_id}' nicht gefunden.", "NOT_FOUND"),
                 content_type="application/json; charset=utf-8",
             )
             return
@@ -628,38 +670,32 @@ class ReportEndpoint:
             content_type="application/json; charset=utf-8",
         )
 
-    def _action_set_status(
+    def _action_delete_block(
         self,
         handler: "ForensicRequestHandler",
         data: dict,
         investigator: str,
     ) -> None:
         """
-        Paragraph-Status setzen (Lifecycle §2.3).
-        Beleg: Bauplan B6 v0.3 §2.3
+        Block loeschen (nur Eigentuemer, Grundregel 14).
+        Loescht kaskadierend: report_block_order, report_anchors, report_comments.
+        Beleg: Bauplan B6 v0.5 §2.3, §5
         """
         if not self._require_lock(handler, data):
             return
-        block_id   = data.get("block_id", "")
-        new_status = data.get("status", "")
-        is_chef    = bool(data.get("is_chef", False))
-        omitted_reason = data.get("omitted_reason")
-
-        if not block_id or not new_status:
+        block_id = str(data.get("block_id") or "").strip()
+        if not block_id:
             handler.send_response_body(
-                400, _json_err("block_id und status erforderlich"),
+                400, _json_err("block_id fehlt", "MISSING_BLOCK_ID"),
                 content_type="application/json; charset=utf-8",
             )
             return
 
         from db.evidence_db import EvidenceDbError
         try:
-            found = self._bundle.evidence.set_paragraph_status(
+            found = self._bundle.evidence.delete_block(
                 block_id=block_id,
-                new_status=new_status,
-                requesting_user=investigator,
-                omitted_reason=omitted_reason,
-                is_chef=is_chef,
+                requesting_author=investigator,
             )
         except EvidenceDbError as exc:
             handler.send_response_body(
@@ -670,15 +706,16 @@ class ReportEndpoint:
 
         if not found:
             handler.send_response_body(
-                404, _json_err(f"Paragraph '{block_id}' nicht gefunden.", "NOT_FOUND"),
+                404, _json_err(f"Block '{block_id}' nicht gefunden.", "NOT_FOUND"),
                 content_type="application/json; charset=utf-8",
             )
             return
 
         handler.send_response_body(
-            200, _json_ok({"ok": True, "status": new_status}),
+            200, _json_ok({"ok": True}),
             content_type="application/json; charset=utf-8",
         )
+        logger.info("delete_block: block_id=%s von '%s'", block_id, investigator)
 
     def _action_reorder(
         self,
@@ -706,100 +743,6 @@ class ReportEndpoint:
         )
         handler.send_response_body(
             200, _json_ok({"updated": updated}),
-            content_type="application/json; charset=utf-8",
-        )
-
-    def _action_add_comment(
-        self,
-        handler: "ForensicRequestHandler",
-        data: dict,
-        investigator: str,
-    ) -> None:
-        """
-        Kommentar zu einem Paragraph hinzufuegen.
-        Beleg: Bauplan B6 v0.3 §2.3, §5
-        """
-        block_id     = data.get("block_id", "")
-        comment_text = str(data.get("comment_text", "")).strip()
-        suggested    = data.get("suggested_content")
-
-        if not block_id or not comment_text:
-            handler.send_response_body(
-                400, _json_err("block_id und comment_text erforderlich"),
-                content_type="application/json; charset=utf-8",
-            )
-            return
-
-        from db.evidence_db import EvidenceDbError
-        try:
-            cid = self._bundle.evidence.add_comment(
-                block_id=block_id,
-                author=investigator,
-                comment_text=comment_text,
-                suggested_content=suggested,
-            )
-        except EvidenceDbError as exc:
-            handler.send_response_body(
-                400, _json_err(str(exc)),
-                content_type="application/json; charset=utf-8",
-            )
-            return
-
-        handler.send_response_body(
-            201, _json_ok({"comment_id": cid}),
-            content_type="application/json; charset=utf-8",
-        )
-
-    def _action_resolve_comment(
-        self,
-        handler: "ForensicRequestHandler",
-        data: dict,
-        investigator: str,
-    ) -> None:
-        """
-        Kommentar-Status aendern (One-Way, Grundregel 15).
-        Beleg: Bauplan B6 v0.3 §2.3, §5
-        """
-        if not self._require_lock(handler, data):
-            return
-        comment_id = data.get("comment_id")
-        resolution = data.get("resolution", "")
-        is_chef    = bool(data.get("is_chef", False))
-
-        if not comment_id or resolution not in ("addressed", "dismissed", "revoked"):
-            handler.send_response_body(
-                400, _json_err(
-                    "comment_id und resolution ('addressed'|'dismissed'|'revoked') erforderlich"
-                ),
-                content_type="application/json; charset=utf-8",
-            )
-            return
-
-        from db.evidence_db import EvidenceDbError
-        try:
-            found = self._bundle.evidence.resolve_comment(
-                comment_id=int(comment_id),
-                new_status=resolution,
-                resolved_by=investigator,
-                requesting_user=investigator,
-                is_chef=is_chef,
-            )
-        except EvidenceDbError as exc:
-            handler.send_response_body(
-                403, _json_err(str(exc), "FORBIDDEN"),
-                content_type="application/json; charset=utf-8",
-            )
-            return
-
-        if not found:
-            handler.send_response_body(
-                404, _json_err(f"Kommentar {comment_id} nicht gefunden.", "NOT_FOUND"),
-                content_type="application/json; charset=utf-8",
-            )
-            return
-
-        handler.send_response_body(
-            200, _json_ok({"ok": True}),
             content_type="application/json; charset=utf-8",
         )
 

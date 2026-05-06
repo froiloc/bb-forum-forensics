@@ -1973,3 +1973,286 @@
   .block-wrapper              { border-left: none !important; }
   .block-wrapper--comment-focus { box-shadow: none !important; }
 }
+
+/* ===========================================================================
+ * B6 Phase 4: Kommentar-Thread CSS
+ * Beleg: Bauplan B6 v0.5 §4.4.4, Projektgespraech 2026-05-06
+ * Version: Build 102 · 2026-05-06
+ * =========================================================================== */
+
+/* ---------------------------------------------------------------------------
+ * 11. Block-Wrapper: Fokus-Blau + Pulsanimation (§4.4.4)
+ * --------------------------------------------------------------------------- */
+
+@keyframes pulse-ring {
+    0%   { box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.6); }
+    50%  { box-shadow: 0 0 0 5px rgba(26, 115, 232, 0.25); }
+    100% { box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.6); }
+}
+
+.block-wrapper--focus-blue {
+    box-shadow: 0 0 0 2px var(--color-focus, #1a73e8);
+    border-radius: var(--radius, 4px);
+}
+
+.block-wrapper--pulse {
+    animation: pulse-ring 0.5s ease-in-out 3;
+    /* Nach 3 Durchlaeufen: statisch blau (box-shadow aus --focus-blue bleibt) */
+    animation-fill-mode: forwards;
+}
+
+/* ---------------------------------------------------------------------------
+ * 12. Kommentar-Thread (ct-*) in Support-Sidebar
+ * --------------------------------------------------------------------------- */
+
+/* Thread-Wrapper */
+.ct-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+/* Einzelner Kommentar */
+.ct-comment {
+    border: 1px solid var(--color-border, #e0e0e0);
+    border-radius: var(--radius, 4px);
+    padding: 8px 10px;
+    background: var(--color-surface, #fff);
+    font-size: 12px;
+    line-height: 1.5;
+    cursor: default;
+    transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.ct-comment:hover,
+.ct-comment:focus {
+    border-color: var(--color-focus, #1a73e8);
+    box-shadow: 0 0 0 1px rgba(26, 115, 232, 0.2);
+    outline: none;
+}
+
+/* Kommentar-Kopf */
+.ct-comment-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+
+.ct-comment-author {
+    font-weight: 600;
+    color: var(--color-text, #333);
+}
+
+.ct-comment-ts {
+    font-size: 10px;
+    color: var(--color-text-muted, #888);
+    flex: 1;
+}
+
+/* Status-Badge */
+.ct-status-badge {
+    font-size: 13px;
+    line-height: 1;
+    flex-shrink: 0;
+    cursor: help;
+}
+
+.ct-status-pending   { color: var(--color-info,  #1565c0); }
+.ct-status-addressed { color: var(--color-ok,    #2e7d32); }
+.ct-status-dismissed { color: var(--color-text-muted, #888); }
+.ct-status-revoked   { color: var(--color-text-muted, #aaa); }
+
+/* Kommentar-Text */
+.ct-comment-text {
+    font-size: 12px;
+    color: var(--color-text, #333);
+    word-break: break-word;
+}
+
+/* Formulierungsvorschlag */
+.ct-suggestion {
+    margin-top: 6px;
+    padding: 6px 8px;
+    background: var(--color-bg, #f8f8f8);
+    border-left: 3px solid var(--color-border, #ccc);
+    border-radius: 0 var(--radius, 4px) var(--radius, 4px) 0;
+    font-size: 11px;
+}
+
+.ct-suggestion-label {
+    font-weight: 600;
+    color: var(--color-text-muted, #888);
+    margin-right: 4px;
+}
+
+.ct-suggestion-text {
+    color: var(--color-text, #333);
+    font-style: italic;
+    margin-top: 2px;
+}
+
+/* Aktions-Schaltflaechen */
+.ct-comment-actions {
+    display: flex;
+    gap: 4px;
+    margin-top: 6px;
+    flex-wrap: wrap;
+}
+
+.ct-btn {
+    padding: 2px 8px;
+    font-size: 11px;
+    line-height: 1.6;
+    border: 1px solid var(--color-border, #ccc);
+    border-radius: var(--radius, 4px);
+    background: var(--color-surface, #fff);
+    color: var(--color-text, #333);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.1s;
+}
+
+.ct-btn:hover { background: var(--color-bg-hover, #f0f0f0); }
+
+.ct-btn:focus-visible {
+    outline: 2px solid var(--color-focus, #1a73e8);
+    outline-offset: 1px;
+}
+
+.ct-btn-primary {
+    background: var(--color-primary, #1a73e8);
+    color: #fff;
+    border-color: transparent;
+}
+
+.ct-btn-primary:hover { background: var(--color-primary-dark, #1557b0); }
+
+/* Aufloesebutton-Farben */
+.ct-btn-resolve { border-color: var(--color-ok,   #388e3c); color: var(--color-ok,   #388e3c); }
+.ct-btn-dismiss { border-color: var(--color-warn, #e65100); color: var(--color-warn, #e65100); }
+.ct-btn-revoke  { color: var(--color-text-muted, #888); }
+
+/* Aufgeloest-Info */
+.ct-resolved-by {
+    margin-top: 4px;
+    font-size: 10px;
+    color: var(--color-text-muted, #aaa);
+    font-style: italic;
+}
+
+/* Offene-Kommentare-Hinweis */
+.ct-pending-note {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-info, #1565c0);
+    padding: 4px 8px;
+    background: rgba(26, 115, 232, 0.07);
+    border-radius: var(--radius, 4px);
+    margin-bottom: 8px;
+}
+
+/* Leer-Zustand */
+.ct-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    color: var(--color-text-muted, #aaa);
+    font-size: 12px;
+    font-style: italic;
+    text-align: center;
+    padding: 8px;
+    margin: 0;
+}
+
+/* Fehleranzeige beim Senden */
+.ct-send-error {
+    font-size: 11px;
+    color: var(--color-error, #c62828);
+    padding: 4px 0;
+}
+
+/* ---------------------------------------------------------------------------
+ * 13. Kommentar-Eingabebereich (ct-compose)
+ * --------------------------------------------------------------------------- */
+
+.ct-compose {
+    border-top: 1px solid var(--color-border, #e0e0e0);
+    padding-top: 10px;
+    margin-top: 4px;
+}
+
+.ct-textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 6px 8px;
+    font-size: 12px;
+    font-family: inherit;
+    line-height: 1.5;
+    border: 1px solid var(--color-border, #ccc);
+    border-radius: var(--radius, 4px);
+    background: var(--color-surface, #fff);
+    color: var(--color-text, #333);
+    resize: vertical;
+    transition: border-color 0.15s;
+}
+
+.ct-textarea:focus {
+    outline: none;
+    border-color: var(--color-focus, #1a73e8);
+    box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+}
+
+.ct-textarea.ct-input-error {
+    border-color: var(--color-error, #c62828);
+    animation: shake-horizontal 0.2s ease-in-out 2;
+}
+
+@keyframes shake-horizontal {
+    0%, 100% { transform: translateX(0); }
+    25%       { transform: translateX(-3px); }
+    75%       { transform: translateX(3px); }
+}
+
+.ct-suggestion-wrap {
+    margin-top: 6px;
+    font-size: 11px;
+}
+
+.ct-suggestion-toggle {
+    cursor: pointer;
+    color: var(--color-text-muted, #888);
+    user-select: none;
+}
+
+.ct-suggestion-wrap .ct-suggestion-textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 4px 6px;
+    font-size: 11px;
+    font-family: inherit;
+    line-height: 1.4;
+    border: 1px solid var(--color-border, #ccc);
+    border-radius: var(--radius, 4px);
+    background: var(--color-surface, #fff);
+    resize: vertical;
+    margin-top: 4px;
+}
+
+.ct-compose-footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 6px;
+}
+
+/* ---------------------------------------------------------------------------
+ * 13.1 @media print — Kommentar-Bereich ausblenden
+ * --------------------------------------------------------------------------- */
+
+@media print {
+    .ct-compose      { display: none !important; }
+    .ct-comment-actions { display: none !important; }
+    .ct-pending-note { display: none !important; }
+}

@@ -20,9 +20,15 @@
  * T14 -- _renderComment(): Fremder Ermittler sieht keine Aktionsbuttons
  * T15 -- _renderComment(): Chef sieht alle Aktionsbuttons
  * T16 -- _formatTs(): null -> leerer String
+ * T17 -- renderForBlock(): renderForCard als Alias vorhanden
+ * T18 -- renderForBlock(): gibt HTML fuer leere Kommentarliste
+ * T19 -- _renderComment(): Status-Symbol fuer pending ist ⁉
+ * T20 -- _renderComment(): Status-Symbol fuer addressed
+ * T21 -- showForBlock: Leer-Zustand bei unbekanntem blockId
+ * T22 -- _pulseEditorBlock/clearEditorBlockPulse exportiert
  *
- * Version: v0.1.0 · Build: 095 · 2026-05-05
- * Beleg: Bauplan B6 v0.3 §4.3, Ausdefinitionsgespraech 2026-05-05
+ * Version: v0.6.102 · Build: 102 · 2026-05-06
+ * Beleg: Bauplan B6 v0.5 §4.4.4, Projektgespraech 2026-05-06
  */
 
 /**
@@ -85,36 +91,42 @@ describe('CommentThread API', () => {
 
 describe('renderForCard()', () => {
 
-    it('T02: leere Kommentarliste -> "(0)" im Toggle-Button', () => {
+    it('T02: leere Kommentarliste -> Leer-Zustand und Eingabefeld', () => {
+        // Neues Sidebar-Modell: kein Toggle-Button, stattdessen ct-empty + ct-compose
+        // Beleg: Bauplan B6 v0.5 §4.4.4, Projektgespraech 2026-05-06
         const html = window.CommentThread.renderForCard(_mkPara([]), _baseOpts);
-        expect(html).toContain('(0)');
-        expect(html).toContain('ct-toggle');
+        expect(html).toContain('ct-empty');
+        expect(html).toContain('ct-compose');
     });
 
-    it('T03: offene Kommentare -> Anzahl und "offen" im Toggle', () => {
+    it('T03: offene Kommentare -> ct-pending-note und ct-list', () => {
+        // Beleg: Bauplan B6 v0.5 §4.4.4, Projektgespraech 2026-05-06
         const html = window.CommentThread.renderForCard(
             _mkPara([_mkComment(), _mkComment({ id: 2 })]),
             _baseOpts
         );
-        expect(html).toContain('(2');
-        expect(html).toContain('offen');
+        expect(html).toContain('ct-pending-note');
+        expect(html).toContain('ct-list');
+        expect(html).toContain('offene');
     });
 
-    it('T04: nur erledigte Kommentare -> kein "offen" im Toggle', () => {
+    it('T04: nur erledigte Kommentare -> kein ct-pending-note', () => {
+        // Beleg: Bauplan B6 v0.5 §4.4.4, Projektgespraech 2026-05-06
         const html = window.CommentThread.renderForCard(
             _mkPara([_mkComment({ status: 'addressed' })]),
             _baseOpts
         );
-        expect(html).not.toContain('offen');
-        expect(html).toContain('(1)');
+        expect(html).not.toContain('ct-pending-note');
+        expect(html).toContain('ct-list');
     });
 
-    it('T05: offene Kommentare -> ct-toggle-pending Klasse', () => {
+    it('T05: offene Kommentare -> ct-pending-note vorhanden', () => {
+        // Beleg: Bauplan B6 v0.5 §4.4.4, Projektgespraech 2026-05-06
         const html = window.CommentThread.renderForCard(
             _mkPara([_mkComment()]),
             _baseOpts
         );
-        expect(html).toContain('ct-toggle-pending');
+        expect(html).toContain('ct-pending-note');
     });
 });
 
@@ -238,5 +250,67 @@ describe('_formatTs()', () => {
     it('T16: null oder 0 -> leerer String', () => {
         expect(window.CommentThread._formatTs(null)).toBe('');
         expect(window.CommentThread._formatTs(0)).toBe('');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// T17-T22: Neue API und Phase-4-Erweiterungen (Build 102)
+// Beleg: Bauplan B6 v0.5 §4.4.4, Projektgespraech 2026-05-06
+// ---------------------------------------------------------------------------
+
+describe('Phase 4 — renderForBlock / Sidebar-API', () => {
+
+    it('T17: renderForCard ist Alias fuer renderForBlock', () => {
+        // Beide muessen dasselbe Ergebnis fuer denselben Input liefern
+        const block = _mkPara([], { block_id: 'blk-x' });
+        const html1 = window.CommentThread.renderForBlock(block, _baseOpts);
+        const html2 = window.CommentThread.renderForCard(block, _baseOpts);
+        expect(html1).toBe(html2);
+    });
+
+    it('T18: renderForBlock() mit leerer Liste liefert Leer-Zustand und Eingabefeld', () => {
+        const block = _mkPara([], { block_id: 'blk-empty' });
+        const html = window.CommentThread.renderForBlock(block, _baseOpts);
+        expect(html).toContain('ct-empty');
+        expect(html).toContain('ct-compose');
+        expect(html).toContain('blk-empty');
+    });
+
+    it('T19: Status-Symbol fuer pending ist ⁉ (U+2049)', () => {
+        const html = window.CommentThread._renderComment(
+            _mkComment({ status: 'pending' }),
+            _mkPara(),
+            _baseOpts
+        );
+        expect(html).toContain('\u2049');
+        expect(html).toContain('ct-status-pending');
+    });
+
+    it('T20: Status-Symbol fuer addressed ist 👍', () => {
+        const html = window.CommentThread._renderComment(
+            _mkComment({ status: 'addressed' }),
+            _mkPara(),
+            _baseOpts
+        );
+        expect(html).toContain('ct-status-addressed');
+        expect(html).toContain('Bearbeitet');
+    });
+
+    it('T21: showForBlock rendert Leer-Zustand fuer unbekannte block_id', () => {
+        // DOM fuer #accordion-body-comments erzeugen
+        const body = document.createElement('div');
+        body.id = 'accordion-body-comments';
+        document.body.appendChild(body);
+
+        window.CommentThread.showForBlock('nonexistent-id', [], _baseOpts);
+
+        expect(body.innerHTML).toContain('ct-empty');
+        expect(body.innerHTML).not.toContain('ct-compose');
+        document.body.removeChild(body);
+    });
+
+    it('T22: _pulseEditorBlock und _clearEditorBlockPulse sind exportiert', () => {
+        expect(typeof window.CommentThread._pulseEditorBlock).toBe('function');
+        expect(typeof window.CommentThread._clearEditorBlockPulse).toBe('function');
     });
 });

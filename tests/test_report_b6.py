@@ -145,10 +145,12 @@ class TestGetJson(unittest.TestCase):
         return data
 
     def test_T01_leere_db(self):
-        """T01: Leere DB liefert reports=[], paragraphs=[], lock=null."""
+        """T01: Leere DB liefert reports=[], blocks=[], lock=null.
+        Beleg: Bauplan B6 v0.5 §5 (Phase 4 — 'blocks' statt 'paragraphs')
+        """
         data = self._get_json()
         self.assertEqual(data["reports"], [])
-        self.assertEqual(data["paragraphs"], [])
+        self.assertEqual(data["blocks"], [])
         self.assertIsNone(data["lock"])
         self.assertIsNone(data["active_report_id"])
 
