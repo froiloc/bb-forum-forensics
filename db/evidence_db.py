@@ -37,17 +37,42 @@
 #     - create_report(): template_id-Parameter entfernt (kein report_templates mehr).
 #     Beleg: Bauplan B6 v0.3 §2.3, Ausdefinitionsgespraech 2026-05-05
 #
-#   Synchronisation:
-#   _SCHEMA_DDL muss mit stage2/evidence_db_init.py im Prepper synchron
-#   gehalten werden. Letzte Synchronisation: Build 089 (B6), 2026-05-05.
-#
-# Abhaengigkeiten: sqlite3, time, json, uuid -- ausschliesslich Stdlib
 #   Build 098: get_lock() nutzt eigene kurzlebige Connection wenn db_path gesetzt.
 #     Verhindert 'bad parameter or other API misuse' im SSE-Thread.
 #     EvidenceDb.__init__() bekommt optionalen db_path-Parameter.
 #     Beleg: Build 098, Thread-Safety-Fix, Projektgespraech 2026-05-06
 #
-# Version: v0.6.098 · Build: 098 · 2026-05-06
+#   Build 099 (B6 — Phase 1: Schema bereinigen):
+#     - report_paragraphs ersetzt durch report_blocks (Editor.js-Blockmodell).
+#       Neues Schema: block_type (Editor.js-Tool-Name), block_data (JSON),
+#       placeholder_values_json. Entfernte Felder: content, status,
+#       omitted_by, omitted_at, omitted_reason.
+#     - Paragraph-Lifecycle (draft/active/omitted/superseded/approved) entfernt.
+#       Freigabe wird ausschliesslich auf Berichtsebene (reports.status) verwaltet.
+#     - VALID_PARAGRAPH_STATUSES entfernt.
+#     - Dataclass ReportParagraphRecord ersetzt durch ReportBlockRecord.
+#     - Umbenennung Methoden: add_paragraph->save_block, get_paragraph->get_block,
+#       get_paragraphs->get_blocks_for_report,
+#       update_paragraph_content->update_block,
+#       get_anchors_for_paragraph->get_anchors_for_block,
+#       get_comments_for_paragraph->get_comments_for_block.
+#     - set_paragraph_status() entfernt (kein Block-Status-Lifecycle mehr).
+#     - get_report_status() auf report_blocks umgeschrieben.
+#     - get_block_order_for_report() Join auf report_blocks umgeschrieben.
+#     - resolve_comment() Join auf report_blocks umgeschrieben.
+#     - _row_to_paragraph() umbenannt in _row_to_block().
+#     - _MIGRATION_COLUMNS: report_paragraphs-Migration ergaenzt (Tabelle bleibt
+#       fuer Altdaten erhalten, wird aber nicht mehr befuellt).
+#     - Synchronisation mit stage2/evidence_db_init.py erforderlich.
+#     Beleg: Bauplan B6 v0.5 §2.3, Projektgespraech 2026-05-06
+#
+#   Synchronisation:
+#   _SCHEMA_DDL muss mit stage2/evidence_db_init.py im Prepper synchron
+#   gehalten werden. Letzte Synchronisation: Build 099 (B6-Phase-1), 2026-05-06.
+#
+# Abhaengigkeiten: sqlite3, time, json, uuid -- ausschliesslich Stdlib
+#
+# Version: v0.6.099 · Build: 099 · 2026-05-06
 # =============================================================================
 
 from __future__ import annotations
@@ -87,16 +112,6 @@ VALID_REPORT_STATUSES = frozenset({
     "submitted",
     "approved",
     "final",
-})
-
-# Zulaessige Paragraphen-Status (Baustelle 6)
-# Beleg: Bauplan B6 v0.3 §2.3
-VALID_PARAGRAPH_STATUSES = frozenset({
-    "draft",
-    "active",
-    "omitted",
-    "superseded",
-    "approved",
 })
 
 # Zulaessige Kommentar-Status (Baustelle 6)
@@ -161,57 +176,69 @@ CREATE TABLE IF NOT EXISTS reports (
                     CHECK (status IN ('draft', 'submitted', 'approved', 'final'))
 );
 
--- Kern: Berichts-Paragraphen (Baustelle 6).
--- Beleg: Bauplan B6 v0.3 §2.3, Ausdefinitionsgespraech 2026-05-05
-CREATE TABLE IF NOT EXISTS report_paragraphs (
-    block_id                TEXT    NOT NULL PRIMARY KEY,
+-- Editor.js-Bloecke: ein Datensatz pro Editor.js-Block.
+-- author ist unveraenderlich (Grundregel 14).
+-- block_type entspricht dem Editor.js-Tool-Namen:
+--   'paragraph', 'header', 'list', 'table', 'quote',
+--   'image', 'delimiter', 'marker', 'evidence'.
+-- block_data ist das Editor.js-Datenfeld als JSON-String.
+-- placeholder_values_json speichert befuellte m:/o:-Werte: {"name": "wert"}.
+-- module_id referenziert templates.report_modules.id (NULL = Freitext-Block).
+--   Keine FK-Constraint, da templates.db per ATTACH eingebunden ist.
+-- Freigabe liegt ausschliesslich auf Berichtsebene (reports.status).
+--   Kein Block-Status-Lifecycle. Beleg: Bauplan B6 v0.5 §2.3.
+CREATE TABLE IF NOT EXISTS report_blocks (
+    block_id                TEXT    NOT NULL PRIMARY KEY,  -- UUID, clientseitig erzeugt
     report_id               INTEGER NOT NULL REFERENCES reports(id),
     author                  TEXT    NOT NULL,
     created_at              INTEGER NOT NULL,
     updated_at              INTEGER NOT NULL,
-    content                 TEXT    NOT NULL DEFAULT '',
+    block_type              TEXT    NOT NULL,
+    block_data              TEXT    NOT NULL DEFAULT '{}',
     placeholder_values_json TEXT,
-    status                  TEXT    NOT NULL DEFAULT 'draft'
-                            CHECK (status IN (
-                                'draft', 'active', 'omitted', 'superseded', 'approved'
-                            )),
-    omitted_by              TEXT,
-    omitted_at              INTEGER,
-    omitted_reason          TEXT,
     module_id               INTEGER
 );
 
--- Reihenfolge der Paragraphen (INTEGER sort_index, B6).
--- Beleg: Bauplan B6 v0.3 §2.3
+-- Reihenfolge der Bloecke.
+-- Jede Umsortierung wird protokolliert (last_modified_by, last_modified_at).
+-- Jeder Ermittler darf die Reihenfolge aller Bloecke aendern.
+-- Beleg: Bauplan B6 v0.5 §2.3
 CREATE TABLE IF NOT EXISTS report_block_order (
     block_id            TEXT    NOT NULL PRIMARY KEY
-                        REFERENCES report_paragraphs(block_id),
+                        REFERENCES report_blocks(block_id),
     sort_index          INTEGER NOT NULL,
     last_modified_by    TEXT    NOT NULL,
     last_modified_at    INTEGER NOT NULL
 );
 
--- Beweisanker: Verknuepfung Paragraph <-> Annotation.
--- Beleg: Bauplan B6 v0.3 §2.3
+-- Beweisanker: Verknuepfung Block <-> Annotation.
+-- Dokumentiert welche Annotationen im Bericht verarbeitet wurden.
+-- Beleg: Bauplan B6 v0.5 §2.3
 CREATE TABLE IF NOT EXISTS report_anchors (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    block_id        TEXT    NOT NULL REFERENCES report_paragraphs(block_id),
+    block_id        TEXT    NOT NULL REFERENCES report_blocks(block_id),
     annotation_id   INTEGER NOT NULL REFERENCES annotations(id),
     anchor_text     TEXT    NOT NULL,
     created_at      INTEGER NOT NULL
 );
 
--- Kommentare zu fremden Paragraphen (Status One-Way, Grundregel 15).
--- Beleg: Bauplan B6 v0.3 §2.3
+-- Kommentare zu fremden Bloecken.
+-- Status-Uebergaenge sind One-Way (Grundregel 15).
+-- Beleg: Bauplan B6 v0.5 §2.3
 CREATE TABLE IF NOT EXISTS report_comments (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-    block_id            TEXT    NOT NULL REFERENCES report_paragraphs(block_id),
+    block_id            TEXT    NOT NULL REFERENCES report_blocks(block_id),
     author              TEXT    NOT NULL,
     created_at          INTEGER NOT NULL,
     comment_text        TEXT    NOT NULL,
-    suggested_content   TEXT,
+    suggested_content   TEXT,              -- Optionaler konkreter Ersatztext
     status              TEXT    NOT NULL DEFAULT 'pending'
-                        CHECK (status IN ('pending', 'addressed', 'dismissed', 'revoked')),
+                        CHECK (status IN (
+                            'pending',     -- Offen
+                            'addressed',   -- Bearbeitet (Block-Eigentuemer oder Chef)
+                            'dismissed',   -- Abgelehnt (Block-Eigentuemer oder Chef)
+                            'revoked'      -- Zurueckgezogen (nur Kommentator selbst)
+                        )),
     resolved_by         TEXT,
     resolved_at         INTEGER
 );
@@ -261,9 +288,8 @@ CREATE INDEX IF NOT EXISTS ann_url_idx      ON annotations (page_url);
 CREATE INDEX IF NOT EXISTS ann_cat_idx      ON annotations (category);
 CREATE INDEX IF NOT EXISTS rep_type_idx     ON reports (report_type);
 CREATE INDEX IF NOT EXISTS rep_status_idx   ON reports (status);
-CREATE INDEX IF NOT EXISTS rp_report_idx    ON report_paragraphs (report_id);
-CREATE INDEX IF NOT EXISTS rp_author_idx    ON report_paragraphs (author);
-CREATE INDEX IF NOT EXISTS rp_status_idx    ON report_paragraphs (status);
+CREATE INDEX IF NOT EXISTS rb_report_idx    ON report_blocks (report_id);
+CREATE INDEX IF NOT EXISTS rb_author_idx    ON report_blocks (author);
 CREATE INDEX IF NOT EXISTS rbo_sort_idx     ON report_block_order (sort_index);
 CREATE INDEX IF NOT EXISTS ra_block_idx     ON report_anchors (block_id);
 CREATE INDEX IF NOT EXISTS ra_ann_idx       ON report_anchors (annotation_id);
@@ -339,28 +365,30 @@ class ReportRecord:
 
 
 @dataclass
-class ReportParagraphRecord:
-    """Ein Berichts-Paragraph (Baustelle 6).
-    Beleg: Bauplan B6 v0.3 §2.3
+class ReportBlockRecord:
+    """Ein Editor.js-Block im Bericht (Baustelle 6).
+
+    block_type entspricht dem Editor.js-Tool-Namen: 'paragraph', 'header',
+    'list', 'table', 'quote', 'image', 'delimiter', 'marker', 'evidence'.
+    block_data ist das Editor.js-Datenfeld als JSON-String.
+    author ist unveraenderlich (Grundregel 14).
+    Beleg: Bauplan B6 v0.5 §2.3, Projektgespraech 2026-05-06
     """
     block_id:                str
     report_id:               int
     author:                  str
     created_at:              int
     updated_at:              int
-    content:                 str
-    status:                  str
+    block_type:              str
+    block_data:              str
     placeholder_values_json: Optional[str] = None
-    omitted_by:              Optional[str] = None
-    omitted_at:              Optional[int] = None
-    omitted_reason:          Optional[str] = None
     module_id:               Optional[int] = None
 
 
 @dataclass
 class ReportAnchorRecord:
-    """Beweisanker Paragraph <-> Annotation (Baustelle 6).
-    Beleg: Bauplan B6 v0.3 §2.3
+    """Beweisanker Block <-> Annotation (Baustelle 6).
+    Beleg: Bauplan B6 v0.5 §2.3
     """
     id:            int
     block_id:      str
@@ -371,8 +399,8 @@ class ReportAnchorRecord:
 
 @dataclass
 class ReportCommentRecord:
-    """Kommentar zu einem Paragraphen (Baustelle 6).
-    Beleg: Bauplan B6 v0.3 §2.3
+    """Kommentar zu einem Block (Baustelle 6).
+    Beleg: Bauplan B6 v0.5 §2.3
     """
     id:                int
     block_id:          str
@@ -829,13 +857,13 @@ class EvidenceDb:
     def get_report_status(self) -> dict:
         """
         Berichtsstatus fuer /_forensic/userinfo/data.
-        Beleg: B6 Build 089 -- auf B6-Schema umgeschrieben.
+        Beleg: B6 Build 099 -- auf report_blocks umgeschrieben (Phase 1).
         """
         try:
-            para_row = self._con.execute(
-                "SELECT rp.updated_at, rp.author "
-                "FROM report_paragraphs rp "
-                "ORDER BY rp.updated_at DESC LIMIT 1"
+            block_row = self._con.execute(
+                "SELECT rb.updated_at, rb.author "
+                "FROM report_blocks rb "
+                "ORDER BY rb.updated_at DESC LIMIT 1"
             ).fetchone()
             appr_row = self._con.execute(
                 "SELECT approved_by FROM report_approvals "
@@ -845,9 +873,9 @@ class EvidenceDb:
                 "SELECT COUNT(*) FROM reports"
             ).fetchone()
             return {
-                "has_draft":    para_row is not None,
-                "last_edit_ts": int(para_row["updated_at"]) if para_row else None,
-                "last_editor":  str(para_row["author"]) if para_row else None,
+                "has_draft":    block_row is not None,
+                "last_edit_ts": int(block_row["updated_at"]) if block_row else None,
+                "last_editor":  str(block_row["author"]) if block_row else None,
                 "approved":     appr_row is not None,
                 "approved_by":  str(appr_row["approved_by"]) if appr_row else None,
                 "report_count": int(count_row[0]) if count_row else 0,
@@ -860,52 +888,80 @@ class EvidenceDb:
             }
 
     # ------------------------------------------------------------------
-    # Paragraphen (report_paragraphs, B6)
-    # Beleg: Bauplan B6 v0.3 §2.3
+    # Bloecke (report_blocks, B6)
+    # Beleg: Bauplan B6 v0.5 §2.3, Projektgespraech 2026-05-06
     # ------------------------------------------------------------------
 
-    def add_paragraph(
+    def save_block(
         self,
         block_id: str,
         report_id: int,
         author: str,
-        content: str = "",
+        block_type: str,
+        block_data: str = "{}",
         module_id: Optional[int] = None,
         placeholder_values_json: Optional[str] = None,
         sort_index: Optional[int] = None,
     ) -> str:
         """
-        Legt einen neuen Paragraphen an (Status 'draft').
+        Speichert einen Editor.js-Block (INSERT OR REPLACE).
+
+        Beim ersten Anlegen: author wird dauerhaft als Eigentuemer gesetzt.
+        Bei UPDATE: author-Prueefung erfolgt im Aufrufer (editor_block.py).
+        sort_index: Wird in report_block_order eingetragen wenn angegeben.
 
         Args:
-            block_id:   UUID (clientseitig erzeugt).
+            block_id:   UUID, clientseitig erzeugt.
             report_id:  Referenz auf reports.id.
-            author:     SAMAccountName -- Owner, nie aenderbar.
-            content:    Freitext (darf leer sein bei neuem Block).
+            author:     SAMAccountName -- Eigentuemer, nie aenderbar.
+            block_type: Editor.js-Tool-Name (z.B. 'paragraph', 'header').
+            block_data: Editor.js-Datenfeld als JSON-String.
             module_id:  Referenz auf templates.report_modules.id (optional).
             placeholder_values_json: JSON-String {name: value} fuer m:/o:-Felder.
-            sort_index: Initiale Sortierposition. Wird in report_block_order eingetragen.
+            sort_index: Initiale Sortierposition in report_block_order.
 
         Returns:
             block_id (unveraendert).
 
         Raises:
-            EvidenceDbError: Bei leerem author oder ungueltigem report_id.
+            EvidenceDbError: Bei leerem author, leerem block_type.
         """
         if not author.strip():
             raise EvidenceDbError("author darf nicht leer sein.")
+        if not block_type.strip():
+            raise EvidenceDbError("block_type darf nicht leer sein.")
 
         now = int(time.time())
-        self._con.execute(
-            "INSERT INTO report_paragraphs "
-            "(block_id, report_id, author, created_at, updated_at, content, "
-            " placeholder_values_json, status, module_id) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?)",
-            (
-                block_id, report_id, author.strip(), now, now,
-                content, placeholder_values_json, module_id,
-            ),
-        )
+        # Bestehenden Block laden um created_at zu erhalten (autor ist unveraenderlich).
+        existing = self._con.execute(
+            "SELECT created_at, author FROM report_blocks WHERE block_id = ?",
+            (block_id,),
+        ).fetchone()
+        if existing is not None:
+            # UPDATE: created_at und author bleiben unveraendert.
+            self._con.execute(
+                "UPDATE report_blocks "
+                "SET report_id=?, updated_at=?, block_type=?, block_data=?, "
+                "    placeholder_values_json=?, module_id=? "
+                "WHERE block_id=?",
+                (
+                    report_id, now, block_type.strip(), block_data,
+                    placeholder_values_json, module_id, block_id,
+                ),
+            )
+        else:
+            # INSERT: neuer Block.
+            self._con.execute(
+                "INSERT INTO report_blocks "
+                "(block_id, report_id, author, created_at, updated_at, "
+                " block_type, block_data, placeholder_values_json, module_id) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    block_id, report_id, author.strip(), now, now,
+                    block_type.strip(), block_data,
+                    placeholder_values_json, module_id,
+                ),
+            )
         if sort_index is not None:
             self._con.execute(
                 "INSERT OR REPLACE INTO report_block_order "
@@ -915,171 +971,145 @@ class EvidenceDb:
             )
         self._con.commit()
         logger.info(
-            "Paragraph angelegt: block_id=%s report_id=%d von '%s'",
-            block_id, report_id, author,
+            "Block gespeichert: block_id=%s type=%s report_id=%d von '%s'",
+            block_id, block_type, report_id, author,
         )
         return block_id
 
-    def get_paragraph(self, block_id: str) -> Optional[ReportParagraphRecord]:
-        """Einzelnen Paragraphen per block_id laden."""
+    def get_block(self, block_id: str) -> Optional[ReportBlockRecord]:
+        """Einzelnen Block per block_id laden."""
         row = self._con.execute(
             "SELECT block_id, report_id, author, created_at, updated_at, "
-            "       content, placeholder_values_json, status, "
-            "       omitted_by, omitted_at, omitted_reason, module_id "
-            "FROM report_paragraphs WHERE block_id = ?",
+            "       block_type, block_data, placeholder_values_json, module_id "
+            "FROM report_blocks WHERE block_id = ?",
             (block_id,),
         ).fetchone()
-        return self._row_to_paragraph(row) if row else None
+        return self._row_to_block(row) if row else None
 
-    def get_paragraphs(self, report_id: int) -> list[ReportParagraphRecord]:
+    def get_blocks_for_report(self, report_id: int) -> list[ReportBlockRecord]:
         """
-        Alle Paragraphen eines Berichts, sortiert nach sort_index ASC.
-        Paragraphen ohne Sortierungseintrag werden ans Ende gestellt.
+        Alle Bloecke eines Berichts, sortiert nach sort_index ASC.
+        Bloecke ohne Sortierungseintrag werden ans Ende gestellt.
         """
         rows = self._con.execute(
-            "SELECT rp.block_id, rp.report_id, rp.author, rp.created_at, "
-            "       rp.updated_at, rp.content, rp.placeholder_values_json, "
-            "       rp.status, rp.omitted_by, rp.omitted_at, "
-            "       rp.omitted_reason, rp.module_id "
-            "FROM report_paragraphs rp "
-            "LEFT JOIN report_block_order rbo ON rbo.block_id = rp.block_id "
-            "WHERE rp.report_id = ? "
-            "ORDER BY COALESCE(rbo.sort_index, 999999) ASC, rp.created_at ASC",
+            "SELECT rb.block_id, rb.report_id, rb.author, rb.created_at, "
+            "       rb.updated_at, rb.block_type, rb.block_data, "
+            "       rb.placeholder_values_json, rb.module_id "
+            "FROM report_blocks rb "
+            "LEFT JOIN report_block_order rbo ON rbo.block_id = rb.block_id "
+            "WHERE rb.report_id = ? "
+            "ORDER BY COALESCE(rbo.sort_index, 999999) ASC, rb.created_at ASC",
             (report_id,),
         ).fetchall()
-        return [self._row_to_paragraph(r) for r in rows]
+        return [self._row_to_block(r) for r in rows]
 
-    def update_paragraph_content(
+    def update_block(
         self,
         block_id: str,
-        content: str,
+        block_data: str,
         placeholder_values_json: Optional[str],
         requesting_author: str,
     ) -> bool:
         """
-        Aktualisiert Inhalt und Platzhalter-Werte eines Paragraphen.
+        Aktualisiert block_data und Platzhalter-Werte eines Blocks.
         Nur der Eigentuemer darf bearbeiten (Grundregel 14).
-        'approved'-Paragraphen koennen nie bearbeitet werden.
+        Nach Berichts-Freigabe (reports.status='approved') nicht moeglich.
 
         Returns:
             True wenn gespeichert, False wenn Block nicht gefunden.
 
         Raises:
-            EvidenceDbError: Wenn nicht Eigentuemer oder Status 'approved'.
+            EvidenceDbError: Wenn nicht Eigentuemer oder Bericht freigegeben.
         """
         row = self._con.execute(
-            "SELECT author, status FROM report_paragraphs WHERE block_id = ?",
+            "SELECT rb.author, r.status AS report_status "
+            "FROM report_blocks rb "
+            "JOIN reports r ON r.id = rb.report_id "
+            "WHERE rb.block_id = ?",
             (block_id,),
         ).fetchone()
         if not row:
             return False
-        if str(row["status"]) == "approved":
+        if str(row["report_status"]) == "approved":
             raise EvidenceDbError(
-                "Freigegebene Paragraphen koennen nicht bearbeitet werden."
+                "Freigegebene Berichte koennen nicht mehr bearbeitet werden."
             )
         if str(row["author"]) != requesting_author:
             raise EvidenceDbError(
-                f"Nur der Eigentuemer darf einen Paragraphen bearbeiten. "
+                f"Nur der Eigentuemer darf einen Block bearbeiten. "
                 f"Eigentuemer: '{row['author']}'"
             )
         now = int(time.time())
         self._con.execute(
-            "UPDATE report_paragraphs "
-            "SET content = ?, placeholder_values_json = ?, updated_at = ? "
+            "UPDATE report_blocks "
+            "SET block_data = ?, placeholder_values_json = ?, updated_at = ? "
             "WHERE block_id = ?",
-            (content, placeholder_values_json, now, block_id),
+            (block_data, placeholder_values_json, now, block_id),
         )
         self._con.commit()
         return True
 
-    def set_paragraph_status(
-        self,
-        block_id: str,
-        new_status: str,
-        requesting_user: str,
-        omitted_reason: Optional[str] = None,
-        is_chef: bool = False,
-    ) -> bool:
+    def delete_block(self, block_id: str, requesting_author: str) -> bool:
         """
-        Setzt den Status eines Paragraphen.
+        Loescht einen Block aus report_blocks.
+        Nur der Eigentuemer darf loeschen (Grundregel 14).
+        Nach Berichts-Freigabe nicht moeglich.
 
-        Lifecycle (Grundregel 10):
-          draft <-> active   (Eigentuemer)
-          active -> omitted  (nur Chef-Ermittlerin)
-          active -> approved (nur Chef-Ermittlerin, One-Way)
-          draft  -> omitted  (nur Chef-Ermittlerin)
-
-        Returns True wenn gesetzt, False wenn Block nicht gefunden.
-        Raises EvidenceDbError bei ungueltigem Uebergang oder fehlender Berechtigung.
+        Returns:
+            True wenn geloescht, False wenn Block nicht gefunden.
         """
-        if new_status not in VALID_PARAGRAPH_STATUSES:
-            raise EvidenceDbError(
-                f"Ungueltiger Status: '{new_status}'. "
-                f"Zulaessig: {sorted(VALID_PARAGRAPH_STATUSES)}"
-            )
         row = self._con.execute(
-            "SELECT author, status FROM report_paragraphs WHERE block_id = ?",
+            "SELECT rb.author, r.status AS report_status "
+            "FROM report_blocks rb "
+            "JOIN reports r ON r.id = rb.report_id "
+            "WHERE rb.block_id = ?",
             (block_id,),
         ).fetchone()
         if not row:
             return False
-
-        current = str(row["status"])
-        owner   = str(row["author"])
-
-        # approved ist absolut einfrierend
-        if current == "approved":
+        if str(row["report_status"]) == "approved":
             raise EvidenceDbError(
-                "Freigegebene Paragraphen koennen den Status nicht mehr aendern."
+                "Freigegebene Berichte koennen nicht mehr veraendert werden."
             )
-
-        # Berechtigungspruefung
-        chef_only = {"omitted", "approved"}
-        if new_status in chef_only and not is_chef:
+        if str(row["author"]) != requesting_author:
             raise EvidenceDbError(
-                f"Status '{new_status}' kann nur durch die Chef-Ermittlerin gesetzt werden."
+                f"Nur der Eigentuemer darf einen Block loeschen. "
+                f"Eigentuemer: '{row['author']}'"
             )
-        if new_status in ("draft", "active") and requesting_user != owner and not is_chef:
-            raise EvidenceDbError(
-                f"Nur der Eigentuemer oder die Chef-Ermittlerin darf "
-                f"zwischen 'draft' und 'active' wechseln."
-            )
-
-        now = int(time.time())
-        if new_status == "omitted":
-            self._con.execute(
-                "UPDATE report_paragraphs "
-                "SET status=?, omitted_by=?, omitted_at=?, omitted_reason=?, updated_at=? "
-                "WHERE block_id=?",
-                (new_status, requesting_user, now, omitted_reason, now, block_id),
-            )
-        else:
-            self._con.execute(
-                "UPDATE report_paragraphs SET status=?, updated_at=? WHERE block_id=?",
-                (new_status, now, block_id),
-            )
-        self._con.commit()
-        logger.info(
-            "Paragraph-Status: block_id=%s %s->%s von '%s'",
-            block_id, current, new_status, requesting_user,
+        # Kaskade: report_block_order, report_anchors, report_comments mitloeschen.
+        self._con.execute(
+            "DELETE FROM report_block_order WHERE block_id = ?", (block_id,)
         )
-        return True
+        self._con.execute(
+            "DELETE FROM report_anchors WHERE block_id = ?", (block_id,)
+        )
+        self._con.execute(
+            "DELETE FROM report_comments WHERE block_id = ?", (block_id,)
+        )
+        cursor = self._con.execute(
+            "DELETE FROM report_blocks WHERE block_id = ?", (block_id,)
+        )
+        self._con.commit()
+        if cursor.rowcount > 0:
+            logger.info("Block geloescht: block_id=%s von '%s'", block_id, requesting_author)
+        return cursor.rowcount > 0
 
     # ------------------------------------------------------------------
     # Blockreihenfolge (report_block_order, B6)
+    # Beleg: Bauplan B6 v0.5 §2.3
     # ------------------------------------------------------------------
 
     def get_block_order_for_report(self, report_id: int) -> list[dict]:
         """
-        Gibt die Sortierungseintraege aller Paragraphen eines Berichts zurueck.
-        Beleg: Bauplan B6 v0.3 §5 (action=reorder)
+        Gibt die Sortierungseintraege aller Bloecke eines Berichts zurueck.
+        Beleg: Bauplan B6 v0.5 §5 (action=reorder)
         """
         rows = self._con.execute(
             "SELECT rbo.block_id, rbo.sort_index, rbo.last_modified_by, "
             "       rbo.last_modified_at "
             "FROM report_block_order rbo "
-            "JOIN report_paragraphs rp ON rp.block_id = rbo.block_id "
-            "WHERE rp.report_id = ? "
+            "JOIN report_blocks rb ON rb.block_id = rbo.block_id "
+            "WHERE rb.report_id = ? "
             "ORDER BY rbo.sort_index ASC",
             (report_id,),
         ).fetchall()
@@ -1099,8 +1129,8 @@ class EvidenceDb:
         modified_by: str,
     ) -> int:
         """
-        Setzt die Sortierungsreihenfolge fuer mehrere Paragraphen.
-        Jeder Ermittler darf die Reihenfolge aendern (Grundregel aus §2.3).
+        Setzt die Sortierungsreihenfolge fuer mehrere Bloecke.
+        Jeder Ermittler darf die Reihenfolge aendern (Bauplan B6 v0.5 §2.3).
 
         Args:
             order:       Liste von {block_id, sort_index}.
@@ -1129,7 +1159,7 @@ class EvidenceDb:
 
     # ------------------------------------------------------------------
     # Beweisanker (report_anchors, B6)
-    # Beleg: Bauplan B6 v0.3 §2.3, §4.7
+    # Beleg: Bauplan B6 v0.5 §2.3, §4.7
     # ------------------------------------------------------------------
 
     def add_anchor(
@@ -1168,7 +1198,7 @@ class EvidenceDb:
         self._con.commit()
         return cursor.rowcount > 0
 
-    def get_anchors_for_paragraph(self, block_id: str) -> list[ReportAnchorRecord]:
+    def get_anchors_for_block(self, block_id: str) -> list[ReportAnchorRecord]:
         rows = self._con.execute(
             "SELECT id, block_id, annotation_id, anchor_text, created_at "
             "FROM report_anchors WHERE block_id = ? ORDER BY created_at ASC",
@@ -1194,7 +1224,7 @@ class EvidenceDb:
 
     # ------------------------------------------------------------------
     # Kommentare (report_comments, B6)
-    # Beleg: Bauplan B6 v0.3 §2.3, Grundregel 15
+    # Beleg: Bauplan B6 v0.5 §2.3, Grundregel 15
     # ------------------------------------------------------------------
 
     def add_comment(
@@ -1224,7 +1254,7 @@ class EvidenceDb:
         self._con.commit()
         return cursor.lastrowid
 
-    def get_comments_for_paragraph(self, block_id: str) -> list[ReportCommentRecord]:
+    def get_comments_for_block(self, block_id: str) -> list[ReportCommentRecord]:
         rows = self._con.execute(
             "SELECT id, block_id, author, created_at, comment_text, "
             "       suggested_content, status, resolved_by, resolved_at "
@@ -1257,9 +1287,9 @@ class EvidenceDb:
                 f"Zulaessig: addressed, dismissed, revoked"
             )
         row = self._con.execute(
-            "SELECT rc.author, rc.status, rp.author as para_author "
+            "SELECT rc.author, rc.status, rb.author as block_author "
             "FROM report_comments rc "
-            "JOIN report_paragraphs rp ON rp.block_id = rc.block_id "
+            "JOIN report_blocks rb ON rb.block_id = rc.block_id "
             "WHERE rc.id = ?",
             (comment_id,),
         ).fetchone()
@@ -1276,9 +1306,9 @@ class EvidenceDb:
                 )
         else:
             # addressed / dismissed: Eigentuemer oder Chef
-            if str(row["para_author"]) != requesting_user and not is_chef:
+            if str(row["block_author"]) != requesting_user and not is_chef:
                 raise EvidenceDbError(
-                    "Nur der Eigentuemer des Paragraphen oder die "
+                    "Nur der Eigentuemer des Blocks oder die "
                     "Chef-Ermittlerin darf Kommentare bearbeiten."
                 )
 
@@ -1293,7 +1323,7 @@ class EvidenceDb:
 
     # ------------------------------------------------------------------
     # Platzhalter-Cache (placeholder_cache, B6)
-    # Beleg: Bauplan B6 v0.3 §2.3, §3.1, §3.2
+    # Beleg: Bauplan B6 v0.5 §2.3, §3.1, §3.2
     # ------------------------------------------------------------------
 
     def get_cache_entry(self, query_id: str, uid: int) -> Optional[str]:
@@ -1311,7 +1341,7 @@ class EvidenceDb:
     def set_cache_entry(self, query_id: str, uid: int, value: str) -> None:
         """
         Setzt oder aktualisiert einen Cache-Eintrag (UPSERT).
-        Beleg: Bauplan B6 v0.3 §3.1 (Cache-Hit)
+        Beleg: Bauplan B6 v0.5 §3.1 (Cache-Hit)
         """
         now = int(time.time())
         self._con.execute(
@@ -1325,7 +1355,7 @@ class EvidenceDb:
         """
         Loescht alle Cache-Eintraege fuer eine uid.
         Wird aufgerufen durch POST /refresh.
-        Beleg: Bauplan B6 v0.3 §3.2
+        Beleg: Bauplan B6 v0.5 §3.2
 
         Returns: Anzahl geloeschter Eintraege.
         """
@@ -1648,27 +1678,21 @@ class EvidenceDb:
         )
 
     @staticmethod
-    def _row_to_paragraph(r: sqlite3.Row) -> ReportParagraphRecord:
-        return ReportParagraphRecord(
+    def _row_to_block(r: sqlite3.Row) -> ReportBlockRecord:
+        """Konvertiert eine SQLite-Row in einen ReportBlockRecord.
+        Beleg: Bauplan B6 v0.5 §2.3
+        """
+        return ReportBlockRecord(
             block_id=str(r["block_id"]),
             report_id=int(r["report_id"]),
             author=str(r["author"]),
             created_at=int(r["created_at"]),
             updated_at=int(r["updated_at"]),
-            content=str(r["content"]),
-            status=str(r["status"]),
+            block_type=str(r["block_type"]),
+            block_data=str(r["block_data"]),
             placeholder_values_json=(
                 str(r["placeholder_values_json"])
                 if r["placeholder_values_json"] is not None else None
-            ),
-            omitted_by=(
-                str(r["omitted_by"]) if r["omitted_by"] is not None else None
-            ),
-            omitted_at=(
-                int(r["omitted_at"]) if r["omitted_at"] is not None else None
-            ),
-            omitted_reason=(
-                str(r["omitted_reason"]) if r["omitted_reason"] is not None else None
             ),
             module_id=(
                 int(r["module_id"]) if r["module_id"] is not None else None

@@ -91,14 +91,16 @@ class TestEvidenceDb(unittest.TestCase):
         # AP-E1: reports, report_approvals (unveraendert)
         self.assertIn("reports", tables)
         self.assertIn("report_approvals", tables)
-        # B6: neue Berichts-Tabellen (Build 089)
-        self.assertIn("report_paragraphs", tables)
+        # B6 Phase 1: Berichts-Tabellen (Build 099 -- report_blocks statt report_paragraphs)
+        # Beleg: Bauplan B6 v0.5 §2.3, Projektgespraech 2026-05-06
+        self.assertIn("report_blocks", tables)
         self.assertIn("report_block_order", tables)
         self.assertIn("report_anchors", tables)
         self.assertIn("report_comments", tables)
         self.assertIn("placeholder_cache", tables)
         self.assertIn("lock_takeover_requests", tables)
-        # AP-E1 entfernt: report_blocks, block_evidence_user, report_templates
+        # AP-E1 entfernt: block_evidence_user, report_templates
+        # B6 v0.3 entfernt: report_paragraphs (Phase 1)
 
     def test_T02_log_page_visit(self):
         """T02: log_page_visit() speichert Eintrag korrekt."""

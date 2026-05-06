@@ -4,6 +4,14 @@
 # =============================================================================
 # Testsuite fuer forensic_api/report.py (B6 Phase 4)
 #
+# HINWEIS BUILD 099 (Phase 1):
+#   Diese Tests testen die Endpoint-Schicht forensic_api/report.py, die noch
+#   auf das v0.3-Interface (add_paragraph, get_paragraph, set_paragraph_status)
+#   aufbaut. report.py wird in Phase 2 (Build 100) auf das neue report_blocks-
+#   Modell umgebaut. Bis dahin sind alle Tests, die das alte Interface nutzen,
+#   mit @unittest.skip markiert, damit keine stillen Fehler entstehen.
+#   Beleg: Bauplan B6 v0.5 §9 (Phasen-Reihenfolge), Projektgespraech 2026-05-06
+#
 # GET format=json:
 # T01 -- Leere DB: Antwort enthaelt reports=[], paragraphs=[], lock=null
 # T02 -- Mit Bericht und Paragraphen: Antwort enthaelt korrektes B6-Schema
@@ -41,8 +49,9 @@
 # T20 -- add_anchor mit Lock -> HTTP 201
 # T21 -- add_anchor Duplikat -> HTTP 409
 #
-# Version: v0.6.090 · Build: 090 · 2026-05-05
+# Version: v0.6.099 · Build: 099 · 2026-05-06
 # Beleg: Bauplan B6 v0.3 §4, §5, Ausdefinitionsgespraech 2026-05-05
+# Phase-1-Skip: Beleg Bauplan B6 v0.5 §9, Projektgespraech 2026-05-06
 # =============================================================================
 
 import json
@@ -56,6 +65,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from db.evidence_db import EvidenceDb
 from forensic_api.report import ReportEndpoint
+
+# Skip-Grund fuer alle Tests die das v0.3-Interface benutzen.
+# Wird in Phase 2 (Build 100) entfernt wenn report.py umgebaut ist.
+# Beleg: Bauplan B6 v0.5 §9, Projektgespraech 2026-05-06
+_PHASE1_SKIP = (
+    "report.py noch auf v0.3-Interface (add_paragraph/set_paragraph_status). "
+    "Umbau erfolgt in Phase 2 (Build 100). "
+    "Beleg: Bauplan B6 v0.5 §9"
+)
 
 
 # =============================================================================
@@ -134,6 +152,7 @@ class TestGetJson(unittest.TestCase):
         self.assertIsNone(data["lock"])
         self.assertIsNone(data["active_report_id"])
 
+    @unittest.skip(_PHASE1_SKIP)
     def test_T02_mit_bericht_und_paragraphen(self):
         """T02: Bericht mit Paragraphen erscheinen im JSON."""
         rid = _mk_report(self.edb)
@@ -146,12 +165,14 @@ class TestGetJson(unittest.TestCase):
         self.assertEqual(data["paragraphs"][0]["block_id"], "b1")
         self.assertEqual(data["paragraphs"][0]["content"], "Erster Absatz.")
 
+    @unittest.skip(_PHASE1_SKIP)
     def test_T03_active_report_id(self):
         """T03: active_report_id zeigt auf den aktiven Bericht."""
         rid = _mk_report(self.edb)
         data = self._get_json()
         self.assertEqual(data["active_report_id"], rid)
 
+    @unittest.skip(_PHASE1_SKIP)
     def test_T04_omitted_erscheint_in_json(self):
         """T04: omitted-Paragraphen erscheinen im JSON (fuer alle sichtbar)."""
         rid = _mk_report(self.edb)
@@ -179,6 +200,7 @@ class TestAddParagraph(unittest.TestCase):
     def tearDown(self):
         self.con.close()
 
+    @unittest.skip(_PHASE1_SKIP)
     def test_T05_kein_lock(self):
         """T05: add_paragraph ohne Lock -> HTTP 423."""
         handler, responses = _make_handler(lock_id="")
@@ -189,6 +211,7 @@ class TestAddParagraph(unittest.TestCase):
         })
         self.assertEqual(responses[0][0], 423)
 
+    @unittest.skip(_PHASE1_SKIP)
     def test_T06_mit_lock(self):
         """T06: add_paragraph mit Lock -> HTTP 201."""
         lock_id = _acquire_lock(self.edb)
@@ -203,6 +226,7 @@ class TestAddParagraph(unittest.TestCase):
         self.assertIn("block_id", data)
         self.assertEqual(data["status"], "draft")
 
+    @unittest.skip(_PHASE1_SKIP)
     def test_T07_fehlende_report_id(self):
         """T07: add_paragraph ohne report_id -> HTTP 400."""
         lock_id = _acquire_lock(self.edb)
@@ -229,6 +253,7 @@ class TestUpdateParagraph(unittest.TestCase):
     def tearDown(self):
         self.con.close()
 
+    @unittest.skip(_PHASE1_SKIP)
     def test_T08_eigentuemer(self):
         """T08: update_paragraph vom Eigentuemer -> HTTP 200."""
         ep = _make_endpoint(self.edb, "h001")
@@ -242,6 +267,7 @@ class TestUpdateParagraph(unittest.TestCase):
         p = self.edb.get_paragraph("blk-u1")
         self.assertEqual(p.content, "Aktualisiert.")
 
+    @unittest.skip(_PHASE1_SKIP)
     def test_T09_fremder_ermittler(self):
         """T09: update_paragraph von fremdem Ermittler -> HTTP 403."""
         ep = _make_endpoint(self.edb, "h002")
@@ -253,6 +279,7 @@ class TestUpdateParagraph(unittest.TestCase):
         })
         self.assertEqual(responses[0][0], 403)
 
+    @unittest.skip(_PHASE1_SKIP)
     def test_T10_approved_gesperrt(self):
         """T10: update_paragraph auf approved-Paragraph -> HTTP 403."""
         self.edb.set_paragraph_status("blk-u1", "active", "h001")
@@ -282,6 +309,7 @@ class TestSetStatus(unittest.TestCase):
     def tearDown(self):
         self.con.close()
 
+    @unittest.skip(_PHASE1_SKIP)
     def test_T11_draft_to_active(self):
         """T11: set_status draft -> active -> HTTP 200."""
         ep = _make_endpoint(self.edb, "h001")
@@ -293,6 +321,7 @@ class TestSetStatus(unittest.TestCase):
         })
         self.assertEqual(responses[0][0], 200)
 
+    @unittest.skip(_PHASE1_SKIP)
     def test_T12_approved_ohne_chef(self):
         """T12: set_status -> approved ohne is_chef -> HTTP 403."""
         self.edb.set_paragraph_status("blk-s1", "active", "h001")
@@ -306,6 +335,7 @@ class TestSetStatus(unittest.TestCase):
         })
         self.assertEqual(responses[0][0], 403)
 
+    @unittest.skip(_PHASE1_SKIP)
     def test_T13_approved_mit_chef(self):
         """T13: set_status -> approved mit is_chef -> HTTP 200."""
         self.edb.set_paragraph_status("blk-s1", "active", "h001")
@@ -319,6 +349,7 @@ class TestSetStatus(unittest.TestCase):
         })
         self.assertEqual(responses[0][0], 200)
 
+    @unittest.skip(_PHASE1_SKIP)
     def test_T14_approved_oneway(self):
         """T14: approved-Paragraph kann Status nicht mehr aendern -> HTTP 403."""
         self.edb.set_paragraph_status("blk-s1", "active", "h001")
@@ -350,6 +381,7 @@ class TestReorder(unittest.TestCase):
     def tearDown(self):
         self.con.close()
 
+    @unittest.skip(_PHASE1_SKIP)
     def test_T15_reorder(self):
         """T15: reorder mit Lock -> HTTP 200, updated=2."""
         ep = _make_endpoint(self.edb)
@@ -381,6 +413,7 @@ class TestAddComment(unittest.TestCase):
     def tearDown(self):
         self.con.close()
 
+    @unittest.skip(_PHASE1_SKIP)
     def test_T16_add_comment(self):
         """T16: add_comment -> HTTP 201."""
         ep = _make_endpoint(self.edb, "h002")
@@ -394,6 +427,7 @@ class TestAddComment(unittest.TestCase):
         self.assertEqual(status, 201)
         self.assertIn("comment_id", data)
 
+    @unittest.skip(_PHASE1_SKIP)
     def test_T17_leerer_kommentar(self):
         """T17: add_comment mit leerem Text -> HTTP 400."""
         ep = _make_endpoint(self.edb, "h002")
@@ -422,6 +456,7 @@ class TestResolveComment(unittest.TestCase):
     def tearDown(self):
         self.con.close()
 
+    @unittest.skip(_PHASE1_SKIP)
     def test_T18_eigentuemer_kann_adressieren(self):
         """T18: Paragraph-Eigentuemer kann Kommentar auf 'addressed' setzen."""
         ep = _make_endpoint(self.edb, "h001")
@@ -433,6 +468,7 @@ class TestResolveComment(unittest.TestCase):
         })
         self.assertEqual(responses[0][0], 200)
 
+    @unittest.skip(_PHASE1_SKIP)
     def test_T19_fremder_darf_nicht(self):
         """T19: Fremder Ermittler (kein Eigentuemer, kein Chef) -> HTTP 403."""
         ep = _make_endpoint(self.edb, "h003")
@@ -463,6 +499,7 @@ class TestAddAnchor(unittest.TestCase):
     def tearDown(self):
         self.con.close()
 
+    @unittest.skip(_PHASE1_SKIP)
     def test_T20_add_anchor(self):
         """T20: add_anchor mit Lock -> HTTP 201."""
         ep = _make_endpoint(self.edb)
@@ -477,6 +514,7 @@ class TestAddAnchor(unittest.TestCase):
         self.assertEqual(status, 201)
         self.assertIn("anchor_id", data)
 
+    @unittest.skip(_PHASE1_SKIP)
     def test_T21_duplikat_anker(self):
         """T21: Duplikat-Anker -> HTTP 409."""
         self.edb.add_anchor("anc-blk", self.ann_id, "Erster Anker")

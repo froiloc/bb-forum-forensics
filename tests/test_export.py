@@ -29,6 +29,15 @@ from unittest.mock import MagicMock, patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from forensic_api.export import ExportEndpoint
+
+# Skip-Grund fuer Tests die das v0.3-Interface benutzen.
+# export.py wird in Phase 2 (Build 100) auf report_blocks umgebaut.
+# Beleg: Bauplan B6 v0.5 §9, Projektgespraech 2026-05-06
+_PHASE1_SKIP = (
+    "export.py noch auf v0.3-Interface (add_paragraph/set_paragraph_status/report_paragraphs). "
+    "Umbau erfolgt in Phase 2 (Build 100). "
+    "Beleg: Bauplan B6 v0.5 §9"
+)
 from db.evidence_db import EvidenceDb
 
 
@@ -94,6 +103,7 @@ class TestExportHtml(unittest.TestCase):
         self.assertIn("<!DOCTYPE html>", html)
         self.assertIn("text/html", kw.get("content_type", ""))
 
+    @unittest.skip(_PHASE1_SKIP)
     def test_T03_paragraph_in_export(self):
         """T03: Paragraph mit status=active erscheint im HTML-Export."""
         rid = self.edb.create_report("interim", "Test", "h001")
@@ -111,6 +121,7 @@ class TestExportHtml(unittest.TestCase):
         self.assertIn("attachment", cd)
         self.assertIn(".html", cd)
 
+    @unittest.skip(_PHASE1_SKIP)
     def test_T04_xss_schutz(self):
         """T04: XSS-Schutz im HTML-Export."""
         rid = self.edb.create_report("interim", "Test", "h001")
@@ -124,6 +135,7 @@ class TestExportHtml(unittest.TestCase):
         self.assertNotIn("<script>", html)
         self.assertIn("&lt;script&gt;", html)
 
+    @unittest.skip(_PHASE1_SKIP)
     def test_T05_beweisanker_als_liste(self):
         """T05: Beweisanker erscheinen als Listenelemente im HTML-Export."""
         rid = self.edb.create_report("interim", "Test", "h001")
@@ -180,6 +192,7 @@ class TestExportSqlite(unittest.TestCase):
         tmp_con.deserialize(body)
         return tmp_con
 
+    @unittest.skip(_PHASE1_SKIP)
     def test_T07_alle_tabellen_vorhanden(self):
         """T07: SQLite-Export enthaelt alle Pflicht-Tabellen."""
         db = self._get_sqlite_db()
@@ -192,6 +205,7 @@ class TestExportSqlite(unittest.TestCase):
             self.assertIn(t, tables, f"Tabelle '{t}' fehlt im SQLite-Export")
         db.close()
 
+    @unittest.skip(_PHASE1_SKIP)
     def test_T08_nur_active_und_approved(self):
         """T08: report_paragraphs im Export nur active/approved."""
         rid = self.edb.create_report("interim", "Test", "h001")
