@@ -40,7 +40,7 @@
  *   - Aktivieren-Button gesperrt wenn Pflichtfelder leer
  *   Beleg: Bauplan B6 v0.3 §4.5, Build 091
  *
- * Version: v0.1.5 · Build: 095 · 2026-05-05
+ * Version: v0.1.6 · Build: 096 · 2026-05-05
  * Beleg: Bauplan B6 v0.3 §4, Ausdefinitionsgespraech 2026-05-05
  */
 
@@ -77,7 +77,8 @@ const STATUS_LABELS = {
 // ---------------------------------------------------------------------------
 
 let _currentReportId         = null;   // aktuell geladener Bericht
-let _activeParagraphId       = null;   // zuletzt fokussierter Paragraph (fuer Sidebar)
+let _activeParagraphId       = null;
+let _isChef                  = false;  // is_supervisor aus coordinator.db (Phase 9)   // zuletzt fokussierter Paragraph (fuer Sidebar)
 let _anchoredAnnotationIds   = new Set(); // verankerte Annotation-IDs (Sidebar-Sync)
 let _currentParagraphs = [];     // geladene Paragraph-Daten
 let _hasLock           = false;  // ob dieser Client den Lock haelt
@@ -312,6 +313,14 @@ function _renderParagraphCard(p, nr) {
         <button class="report-btn btn-comment-paragraph"
           data-block-id="${esc(p.block_id)}"
           title="Kommentar hinzufuegen">\ud83d\udcac Kommentar</button>
+        ${_isChef && p.status !== 'approved' && p.status !== 'omitted' ? `
+          <button class="report-btn btn-omit-paragraph report-btn-danger"
+            data-block-id="${esc(p.block_id)}"${statusDisabled}
+            title="Absatz ausschlie\u00dfen (nur Chef-Ermittlerin)">⛔ Ausschlie\u00dfen</button>` : ''}
+        ${_isChef && p.status === 'active' ? `
+          <button class="report-btn btn-approve-paragraph report-btn-success"
+            data-block-id="${esc(p.block_id)}"${statusDisabled}
+            title="Absatz freigeben (nur Chef-Ermittlerin)">✅ Freigeben</button>` : ''}
       </div>
     </div>`;
 }
@@ -351,7 +360,7 @@ function _renderContent(content, valuesJson) {
 function _commentOpts() {
     return {
         myUsername: _myUsername(),
-        isChef:     window.EditorState?.isChef ?? false,
+        isChef:     _isChef,
         postFn:     _postWithLock,
         onReload:   loadReport,
     };
@@ -399,9 +408,20 @@ function _bindCardEvents(card) {
         _setStatus(blockId, 'draft');
     });
 
-    // Kommentar-Button (Phase 8 — Stub)
-    card.querySelector('.btn-comment-paragraph')?.addEventListener('click', () => {
-        showStatus('Kommentar-Funktion wird in Phase 8 implementiert.', 'warn');
+    // Kommentar-Button (Phase 8)
+    // Kein Stub mehr -- CommentThread.bindForCard() uebernimmt das Binding
+
+    // Ausschliessen-Button (nur Chef-Ermittlerin, Phase 9)
+    card.querySelector('.btn-omit-paragraph')?.addEventListener('click', () => {
+        const reason = prompt('Grund fuer den Ausschluss (optional):');
+        if (reason === null) return;  // Abbrechen
+        _setStatusWithReason(blockId, 'omitted', reason || null);
+    });
+
+    // Freigeben-Button (nur Chef-Ermittlerin, Phase 9)
+    card.querySelector('.btn-approve-paragraph')?.addEventListener('click', () => {
+        if (!confirm('Absatz freigeben? Diese Aktion kann nicht rueckgaengig gemacht werden.')) return;
+        _setStatus(blockId, 'approved');
     });
 
     // Fokus-Tracking: aktiven Paragraph fuer Sidebar merken
@@ -539,6 +559,25 @@ async function _setStatus(blockId, newStatus) {
         action:   'set_status',
         block_id: blockId,
         status:   newStatus,
+        is_chef:  _isChef,
+    });
+    if (result) {
+        showStatus(`Status geaendert: ${STATUS_LABELS[newStatus] ?? newStatus}`, 'ok');
+        await loadReport();
+    }
+}
+
+/**
+ * Paragraph-Status mit optionalem Grund aendern (fuer 'omitted').
+ * Beleg: Bauplan B6 v0.3 §4.3, Build 096
+ */
+async function _setStatusWithReason(blockId, newStatus, reason) {
+    const result = await _postWithLock({
+        action:         'set_status',
+        block_id:       blockId,
+        status:         newStatus,
+        is_chef:        _isChef,
+        omitted_reason: reason,
     });
     if (result) {
         showStatus(`Status geaendert: ${STATUS_LABELS[newStatus] ?? newStatus}`, 'ok');
@@ -840,6 +879,18 @@ window._reinitWithLock = async function() {
  * Beleg: Analyse Build 090, userinfo.js Zeile 491
  */
 window.initEditorModule = async function() {
+    // is_supervisor (Chef-Ermittlerin) aus coordinator.db laden (Phase 9)
+    // Beleg: Bauplan B6 v0.3 §4.3, Build 096
+    try {
+        const resp = await fetch('/_forensic/investigator/me', {
+            headers: { 'X-Forensic-Request': 'ajax' },
+        });
+        if (resp.ok) {
+            const me = await resp.json();
+            _isChef = Boolean(me.is_supervisor);
+        }
+    } catch (_) { /* kein Chef-Status bei Fehler */ }
+
     _bindActionButtons();
     await loadReport();
 

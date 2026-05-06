@@ -1518,6 +1518,44 @@
 .ct-btn-dismiss { color: var(--color-text-muted, #666); }
 .ct-btn-revoke  { color: var(--color-text-muted, #666); }
 
+/* ---------------------------------------------------------------------------
+ * 15. Chef-Ermittlerin-Aktionen (Phase 9)
+ * Beleg: Bauplan B6 v0.3 §4.3, Build 096
+ * --------------------------------------------------------------------------- */
+
+/* Ausschliessen-Button (Danger) */
+.report-btn-danger {
+  color: var(--color-error, #c62828);
+  border-color: #ef9a9a;
+  background: #ffebee;
+}
+.report-btn-danger:hover:not(:disabled) {
+  background: #ffcdd2;
+  border-color: #e57373;
+}
+
+/* Freigeben-Button (Success) */
+.report-btn-success {
+  color: var(--color-ok, #2e7d32);
+  border-color: #a5d6a7;
+  background: #e8f5e9;
+}
+.report-btn-success:hover:not(:disabled) {
+  background: #c8e6c9;
+  border-color: #81c784;
+}
+
+/* Chef-Badge in der Aktionsleiste */
+#report-chef-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #fff3e0;
+  color: #e65100;
+  border: 1px solid #ffcc80;
+  white-space: nowrap;
+}
+
 @media print {
   /* Aktionsleiste und Sidebar ausblenden */
   #report-action-bar,

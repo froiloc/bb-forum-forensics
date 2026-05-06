@@ -51,6 +51,7 @@
 #
 #   Build 089 (B6 — Phase 3): PlaceholdersEndpoint und TemplatesEndpoint ergaenzt.
 #   Build 090 (B6 — Phase 4): report.js und report.css als statische Assets registriert.
+#   Build 096 (B6 — Phase 9): /_forensic/investigator/me Endpunkt ergaenzt.
 #     ReportEndpoint auf B6-Schema umgestellt (Paragraphen statt Bloecke).
 #     Drei neue /_forensic/placeholders/*-Endpunkte.
 #     Zwei neue /_forensic/templates[/<id>]-Endpunkte.
@@ -304,6 +305,15 @@ class ForensicApi:
                 self._method_not_allowed(handler)
                 return
             self._get_trace_sequence().handle(handler, params)
+            return
+
+        # /_forensic/investigator/me (GET) [B6 Phase 9]
+        # Beleg: Bauplan B6 v0.3 §4.3, Build 096
+        if url_path == '/_forensic/investigator/me':
+            if method not in ('GET', 'HEAD'):
+                self._method_not_allowed(handler)
+                return
+            self._get_investigator_me().handle_get(handler)
             return
 
         # /_forensic/placeholders/* (POST/GET) [B6]
@@ -569,6 +579,15 @@ class ForensicApi:
             from forensic_api.editor_evidence import EditorEvidenceEndpoint
             self._editor_evidence = EditorEvidenceEndpoint(self._bundle, self._context, self._config)
         return self._editor_evidence
+
+    def _get_investigator_me(self):
+        """[B6 Phase 9] Lazy-Init fuer InvestigatorMeEndpoint."""
+        if not hasattr(self, '_investigator_me_ep') or self._investigator_me_ep is None:
+            from forensic_api.investigator_me import InvestigatorMeEndpoint
+            self._investigator_me_ep = InvestigatorMeEndpoint(
+                self._bundle, self._context, self._config
+            )
+        return self._investigator_me_ep
 
     def _get_placeholders(self):
         """[B6] Lazy-Init fuer PlaceholdersEndpoint. Beleg: Bauplan B6 v0.3 §3."""
