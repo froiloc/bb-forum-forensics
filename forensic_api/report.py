@@ -158,11 +158,7 @@ _EDITOR_HTML = """\
 
       <!-- Rechte Spalte: Annotationsseitenleiste (~35%, Phase 7) -->
       <aside id="report-annotation-sidebar">
-        <!-- Vollstaendige Implementierung in Phase 7 -->
-        <div id="report-sidebar-placeholder" class="report-sidebar-placeholder">
-          <p>\u2139\ufe0f Annotationsseitenleiste</p>
-          <p class="report-hint">Wird in Phase 7 implementiert.</p>
-        </div>
+        <!-- Inhalt wird von annotation_sidebar.js (Build 094) befuellt -->
       </aside>
     </div>
 

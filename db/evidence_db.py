@@ -42,7 +42,12 @@
 #   gehalten werden. Letzte Synchronisation: Build 089 (B6), 2026-05-05.
 #
 # Abhaengigkeiten: sqlite3, time, json, uuid -- ausschliesslich Stdlib
-# Version: v0.6.089 · Build: 089 · 2026-05-05
+#   Build 098: get_lock() nutzt eigene kurzlebige Connection wenn db_path gesetzt.
+#     Verhindert 'bad parameter or other API misuse' im SSE-Thread.
+#     EvidenceDb.__init__() bekommt optionalen db_path-Parameter.
+#     Beleg: Build 098, Thread-Safety-Fix, Projektgespraech 2026-05-06
+#
+# Version: v0.6.098 · Build: 098 · 2026-05-06
 # =============================================================================
 
 from __future__ import annotations
@@ -418,9 +423,12 @@ class EvidenceDb:
 
     _LOCK_RESOURCE = "report_editor"
 
-    def __init__(self, con: sqlite3.Connection) -> None:
+    def __init__(self, con: sqlite3.Connection, db_path: Optional[str] = None) -> None:
         self._con = con
         self._con.row_factory = sqlite3.Row
+        # Pfad zur DB-Datei fuer get_lock() (eigene Connection, Thread-Safety).
+        # Beleg: Build 098, Thread-Safety-Fix fuer SSE-Thread
+        self._db_path: Optional[str] = db_path
         self._setup_schema()
         self._migrate_schema()
         self._lock_change_event = threading.Event()
@@ -1490,6 +1498,53 @@ class EvidenceDb:
         return None
 
     def get_lock(self) -> Optional[EditorLockRecord]:
+        # Eigene kurzlebige Connection wenn _db_path gesetzt.
+        # Verhindert 'bad parameter or other API misuse' wenn der SSE-Thread
+        # und der Request-Thread gleichzeitig die geteilte Connection nutzen.
+        # Beleg: Build 098, Thread-Safety-Fix fuer SSE-Thread
+        if self._db_path:
+            try:
+                read_con = sqlite3.connect(
+                    self._db_path,
+                    timeout=5.0,
+                    check_same_thread=False,
+                )
+                read_con.row_factory = sqlite3.Row
+                row = read_con.execute(
+                    "SELECT resource, locked_by, lock_id, locked_at, sse_client "
+                    "FROM editor_locks WHERE resource=?",
+                    (self._LOCK_RESOURCE,),
+                ).fetchone()
+                read_con.close()
+                if row is None:
+                    return None
+                if row['locked_at'] is None or row['lock_id'] is None:
+                    logger.warning(
+                        'get_lock: korrupter Datensatz (NULL in Pflichtfeld) -- bereinige'
+                    )
+                    try:
+                        self._con.execute(
+                            'DELETE FROM editor_locks WHERE resource=? '
+                            'AND (locked_at IS NULL OR lock_id IS NULL)',
+                            (self._LOCK_RESOURCE,),
+                        )
+                        self._con.commit()
+                    except Exception:
+                        pass
+                    return None
+                return EditorLockRecord(
+                    resource=str(row['resource']),
+                    locked_by=str(row['locked_by'] or ''),
+                    lock_id=str(row['lock_id']),
+                    locked_at=int(row['locked_at']),
+                    sse_client=str(row['sse_client'] or ''),
+                )
+            except (sqlite3.OperationalError, sqlite3.ProgrammingError,
+                    sqlite3.InterfaceError, TypeError) as exc:
+                logger.debug('get_lock (eigene Con) fehlgeschlagen: %s', exc)
+                return None
+
+        # Fallback: geteilte Connection (z.B. In-Memory-DB in Tests)
         try:
             row = self._con.execute(
                 "SELECT resource, locked_by, lock_id, locked_at, sse_client "

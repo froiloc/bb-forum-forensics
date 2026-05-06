@@ -222,7 +222,7 @@ class ConnectionManager:
             # benötigt, da asset_urls vollständige Onion-URLs als Schlüssel speichert
             forum_base_url = forensic.get_forum_base_url()
             default     = DefaultDb(con, forum_base_url=forum_base_url)
-            evidence    = EvidenceDb(con)
+            evidence    = EvidenceDb(con, db_path=str(evidence_path))  # Build 098: Thread-Safety
             coordinator = CoordinatorDb(con)
             assets      = AssetsDb(assets_con, forum_base_url=forum_base_url)   # NEU Build 017
             templates   = TemplatesDb(con)          # NEU Build 089
@@ -357,7 +357,7 @@ class ConnectionManager:
             forum_base_url = forensic.get_forum_base_url()
             default     = DefaultDb(con, forum_base_url=forum_base_url)
             # EvidenceDb schreibt in die TEMP-Haupt-DB
-            evidence    = EvidenceDb(con)
+            evidence    = EvidenceDb(con, db_path=str(evidence_path))  # Build 098: Thread-Safety
             coordinator = CoordinatorDb(con)
             assets      = AssetsDb(assets_con, forum_base_url=forum_base_url)   # NEU Build 017
             templates   = TemplatesDb(con)          # NEU Build 089

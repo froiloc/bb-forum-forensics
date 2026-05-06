@@ -460,8 +460,10 @@ async function initEditor() {
         // PROD: Buttons ausblenden, Lock automatisch erwerben
         document.getElementById('btn-acquire-lock')?.remove();
         document.getElementById('btn-release-lock')?.remove();
-        // Lock sofort automatisch erwerben (wenn SSE-Client-ID bereit)
-        setTimeout(acquireLock, 200);
+        // Greedy client: Lock sofort nach SSE-Aufbau anfordern.
+        // sseClientId ist durch await initSSEWindow3() garantiert gesetzt.
+        // Beleg: Build 098, Projektgespraech 2026-05-06
+        acquireLock();
     } else {
         document.getElementById('btn-acquire-lock')?.addEventListener('click', acquireLock);
         document.getElementById('btn-release-lock')?.addEventListener('click', releaseLock);
@@ -582,12 +584,15 @@ async function initSSEWindow3() {
                             EditorState.lockId = null;
                             sessionStorage.removeItem('forensic_lock_id');
                             updateLockStatus('lock-none', 'Kein Lock');
-                            document.getElementById('btn-acquire-lock').disabled = false;
-                            document.getElementById('btn-release-lock').disabled = true;
+                            // Buttons optional (DEV_LOCK_UI)
+                            document.getElementById('btn-acquire-lock')?.disable && (document.getElementById('btn-acquire-lock').disabled = false);
+                            document.getElementById('btn-release-lock')?.disable && (document.getElementById('btn-release-lock').disabled = true);
                             if (window._editor && !window._editor.readOnly.isEnabled) {
                                 window._editor.readOnly.toggle().catch(() => {});
                             }
-                            showStatusMsg('Verbindung wiederhergestellt — Lock abgelaufen. Bitte neu erwerben.', 'warn');
+                            // Greedy client: sofort neu versuchen
+                            showStatusMsg('Lock abgelaufen — wird neu angefordert…', 'info');
+                            setTimeout(acquireLock, 500);
                         }
                     } catch (err) {
                         console.warn('SSE-Reconnect: resume_lock fehlgeschlagen:', err);
@@ -636,12 +641,13 @@ async function initSSEWindow3() {
         });
 
         evtSrc.addEventListener('editor_lock_released', () => {
-            // SSE-Verbindungsabriss hat den Lock freigegeben.
-            // Zustand vollstaendig zuruecksetzen — Beleg: AP-E4 Bugfix 2026-04-19
+            // SSE-Event: Lock wurde freigegeben (Verbindungsabriss oder explizit).
+            // Beleg: Build 098 Fix — greedy client, automatisches Re-Acquire
+            const hadLock = !!EditorState.lockId;  // VOR dem Nullsetzen merken
             EditorState.lockId = null;
             sessionStorage.removeItem('forensic_lock_id');
             updateLockStatus('lock-none', 'Kein Lock');
-            // Buttons zuruecksetzen
+            // Buttons (DEV_LOCK_UI-Modus)
             const btnAcquire = document.getElementById('btn-acquire-lock');
             const btnRelease = document.getElementById('btn-release-lock');
             if (btnAcquire) btnAcquire.disabled = false;
@@ -650,10 +656,14 @@ async function initSSEWindow3() {
             if (window._editor && !window._editor.readOnly.isEnabled) {
                 window._editor.readOnly.toggle().catch(() => {});
             }
-            // Nachricht nur zeigen wenn Lock wirklich verloren ging (nicht beim Start)
-            if (EditorState.lockId === null) {
-                showStatusMsg('Lock freigegeben — bitte neu erwerben.', 'warn');
+            // Greedy client: Lock immer sofort neu anfordern.
+            // Kurze Verzoegerung damit der Server den Release vollstaendig
+            // verarbeitet hat bevor der naechste Acquire ankommt.
+            // Beleg: Build 098, Projektgespraech 2026-05-06
+            if (hadLock) {
+                showStatusMsg('Verbindung unterbrochen — Lock wird neu angefordert…', 'info');
             }
+            setTimeout(acquireLock, 500);
         });
 
         evtSrc.addEventListener('report_updated', () => {
