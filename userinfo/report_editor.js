@@ -38,8 +38,14 @@
  *     MutationObserver, Hover-Metazeile und Kommentieren-Schaltflaeche.
  *     Neue window-Exports: initBlockWrappers, openAccordionSection, ownerColor.
  *     Beleg: Bauplan B6 v0.5 §4.3, §4.4, Projektgespraech 2026-05-06
+ *   Build 103 (B6 Phase 5): PlaceholderInlineTool registriert (CMD+SHIFT+P).
+ *     _performAutoSave: dehydrateChips() vor dem Speichern aufgerufen.
+ *     _initEditorJs/Laden: hydrateChips() beim Aufbau der Editor.js-Daten.
+ *     _bindChipDoubleClick(): Doppelklick auf .ph-chip oeffnet Formular-Akkordeon.
+ *     OP-B6-5 verifiziert: Toggle-Logik von surround() bestaetigt.
+ *     Beleg: Bauplan B6 v0.5 §4.6, Projektgespraech 2026-05-06
  *
- * Version: v0.6.101 · Build: 101 · 2026-05-06
+ * Version: v0.6.103 · Build: 103 · 2026-05-06
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -389,6 +395,15 @@ function _initEditorJs(blocks, reportId) {
                 : (b.block_data || {});
             // paragraph ohne text-Feld: Editor.js wuerde Block verwerfen
             if (b.block_type === 'paragraph' && !raw.text) raw.text = '';
+            // B6 Phase 5: Template-Syntax in text-Feld zu Chips hydrieren.
+            // Platzhalter-Werte kommen aus placeholder_values_json.
+            // Beleg: Bauplan B6 v0.5 §4.6, Projektgespraech 2026-05-06
+            if (raw.text && window.PlaceholderChips?.hydrateChips) {
+                const values = b.placeholder_values_json
+                    ? (() => { try { return JSON.parse(b.placeholder_values_json); } catch(_) { return {}; } })()
+                    : {};
+                raw.text = window.PlaceholderChips.hydrateChips(raw.text, values, {});
+            }
             return { id: b.block_id, type: b.block_type, data: raw };
         }),
     };
@@ -418,6 +433,13 @@ function _initEditorJs(blocks, reportId) {
             marker:     { class: window.EditorTools?.Marker,     shortcut: 'CMD+SHIFT+M' },
             annotation: { class: window.EditorTools?.Annotation },
             evidence:   { class: EvidenceBlock },
+            // B6 Phase 5: Platzhalter-Chips als InlineTool (OP-B6-5 verifiziert)
+            // Beleg: Bauplan B6 v0.5 §4.6, Projektgespraech 2026-05-06
+            placeholder: {
+                class:         window.PlaceholderInlineTool,
+                inlineToolbar: true,
+                shortcut:      'CMD+SHIFT+P',
+            },
         },
 
         onChange: () => _scheduleAutoSave(reportId),
@@ -432,6 +454,9 @@ function _initEditorJs(blocks, reportId) {
             // Beleg: Bauplan B6 v0.5 §4.3, Projektgespraech 2026-05-06
             initBlockWrappers(blocks, username);
             _initSidebarAccordion();
+            // B6 Phase 5: Doppelklick-Handler auf Chips binden
+            // Beleg: Bauplan B6 v0.5 §4.6, Projektgespraech 2026-05-06
+            _bindChipDoubleClick();
             // Global bereitstellen fuer Debugging und Reinit
             window._editor = _editor;
             console.debug('report_editor.js: Editor bereit, report_id=', reportId,
@@ -689,6 +714,77 @@ function initBlockWrappers(blocks, username) {
 let _blockWrapperObserver = null;
 
 // ---------------------------------------------------------------------------
+// Platzhalter-Chip Doppelklick (B6 Phase 5)
+// Beleg: Bauplan B6 v0.5 §4.6, Projektgespraech 2026-05-06
+// ---------------------------------------------------------------------------
+
+/**
+ * Registriert Doppelklick-Handler auf dem #editorjs-holder.
+ * Doppelklick auf einen .ph-chip oeffnet den Formular-Akkordeon-Abschnitt
+ * in der Support-Sidebar und setzt den Fokus auf das zugehoerige Feld.
+ * Beleg: Bauplan B6 v0.5 §4.6, Projektgespraech 2026-05-06
+ */
+function _bindChipDoubleClick() {
+    const holder = document.getElementById('editorjs-holder');
+    if (!holder) return;
+
+    holder.addEventListener('dblclick', (e) => {
+        const chip = e.target.closest('.ph-chip');
+        if (!chip) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        const fieldName = chip.dataset.chipName;
+        const chipType  = chip.dataset.chipType;
+
+        // a:-Chips (automatisch) brauchen kein Formular
+        if (chipType === 'a') return;
+
+        // Formular-Akkordeon in Support-Sidebar oeffnen
+        const sidebar = document.getElementById('support-sidebar');
+        if (!sidebar) return;
+
+        const formSection = sidebar.querySelector('[data-accordion="form"]');
+        if (formSection && typeof _openAccordionSection === 'function') {
+            _openAccordionSection(formSection);
+        }
+
+        // Fokussiertes Feld fuer Phase 6 merken (PlaceholderWizard)
+        sidebar.dataset.focusedChipName  = fieldName || '';
+        sidebar.dataset.focusedChipType  = chipType  || '';
+
+        // PlaceholderWizard (Phase 6) vorbereiten: openAtField wenn vorhanden
+        if (window.PlaceholderWizard?.openAtField && _currentReport) {
+            // Blockinhalt aus Editor.js fuer den Wizard holen
+            _editor?.save?.().then(data => {
+                if (!data) return;
+                // Block finden der den angeklickten Chip enthaelt
+                const ceBlock = chip.closest('[data-id]');
+                const blockId = ceBlock?.dataset?.id;
+                const block   = data.blocks?.find(b => b.id === blockId);
+                if (!block) return;
+
+                // Dehydrierter Text (Template-Syntax) fuer den Wizard
+                const rawText = window.PlaceholderChips?.dehydrateChips?.(
+                    block.data?.text || ''
+                ) || '';
+
+                window.PlaceholderWizard.openAtField({
+                    blockId:     blockId,
+                    moduleTitle: chip.dataset.chipDescription || fieldName,
+                    bodyText:    rawText,
+                    values:      {},
+                    onSave:      () => {},
+                }, fieldName);
+            }).catch(() => {});
+        }
+
+        console.debug('report_editor.js: Chip-Doppelklick:', fieldName, chipType);
+    });
+}
+
+// ---------------------------------------------------------------------------
 // Support-Sidebar Akkordeon (B6 Phase 3)
 // Beleg: Bauplan B6 v0.5 §4.4, Projektgespraech 2026-05-06
 // ---------------------------------------------------------------------------
@@ -776,12 +872,22 @@ async function _performAutoSave(reportId) {
     const username = document.getElementById('report-editor-body')?.dataset?.username || '';
 
     for (const block of editorData.blocks) {
+        // B6 Phase 5: Chips aus block_data.text dehydrieren (gerendertes HTML -> Template-Syntax)
+        // bevor gespeichert wird, damit block_data immer rohe Template-Syntax enthaelt.
+        // Beleg: Bauplan B6 v0.5 §4.6, Projektgespraech 2026-05-06
+        let blockDataToSave = block.data;
+        if (block.data && block.data.text && window.PlaceholderChips?.dehydrateChips) {
+            blockDataToSave = {
+                ...block.data,
+                text: window.PlaceholderChips.dehydrateChips(block.data.text),
+            };
+        }
         const resp = await _fetchWithLock(EDITOR_API.BLOCK, {
             action:     'save',
             block_id:   block.id,
             report_id:  reportId,
             block_type: block.type,
-            block_data: block.data,
+            block_data: blockDataToSave,
             owner:      username,
         });
         if (resp && !resp.ok) {

@@ -27,7 +27,8 @@
  * T21 -- extractFields(): Duplikate werden uebersprungen
  * T22 -- extractFields(): b64regex wird durchgereicht (OP-B6-5)
  *
- * Version: v0.1.0 · Build: 091 · 2026-05-05
+ * Version: v0.6.103 · Build: 103 · 2026-05-06
+ * Beleg: Bauplan B6 v0.5 §4.6 (Phase 5), OP-B6-5, Projektgespraech 2026-05-06
  */
 
 /**
@@ -250,5 +251,72 @@ describe('extractFields()', () => {
             `{{m:datum||Datum|${b64}}}`, 'm'
         );
         expect(fields[0].b64regex).toBe(b64);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// T23-T30: Phase 5 — dehydrateChips, hydrateChips, PlaceholderInlineTool
+// Beleg: Bauplan B6 v0.5 §4.6, OP-B6-5-Verifikation, Projektgespraech 2026-05-06
+// ---------------------------------------------------------------------------
+
+describe('dehydrateChips() (Phase 5)', () => {
+
+    it('T23: dehydrateChips() ohne Chips gibt Text unveraendert zurueck', () => {
+        const html = 'Normaler Text ohne Platzhalter.';
+        expect(window.PlaceholderChips.dehydrateChips(html)).toBe(html);
+    });
+
+    it('T24: dehydrateChips() ersetzt .ph-chip-Span durch data-chip-raw-Wert', () => {
+        // Chip mit data-chip-raw simulieren
+        const html = 'Ermittler <span class="ph-chip ph-chip-mandatory ph-chip-empty" '
+            + 'data-chip-raw="{{m:name}}" data-chip-name="name" data-chip-type="m">name *</span> handelt.';
+        const result = window.PlaceholderChips.dehydrateChips(html);
+        expect(result).toContain('{{m:name}}');
+        expect(result).not.toContain('ph-chip');
+    });
+
+    it('T25: dehydrateChips() laesst Spans ohne data-chip-raw unveraendert', () => {
+        const html = 'Text <span class="andere-klasse">normal</span> weiter.';
+        const result = window.PlaceholderChips.dehydrateChips(html);
+        expect(result).toContain('andere-klasse');
+    });
+
+    it('T26: dehydrateChips() und hydrateChips() sind invers (Roundtrip)', () => {
+        const original = 'Nutzer {{m:username||Benutzername}} ist aktiv.';
+        const hydrated = window.PlaceholderChips.hydrateChips(original, {}, {});
+        const roundtrip = window.PlaceholderChips.dehydrateChips(hydrated);
+        expect(roundtrip).toBe(original);
+    });
+});
+
+describe('PlaceholderInlineTool (Phase 5)', () => {
+
+    it('T27: PlaceholderInlineTool ist nach dem Laden verfuegbar', () => {
+        expect(window.PlaceholderInlineTool).toBeDefined();
+        expect(typeof window.PlaceholderInlineTool).toBe('function');
+    });
+
+    it('T28: static isInline ist true', () => {
+        expect(window.PlaceholderInlineTool.isInline).toBe(true);
+    });
+
+    it('T29: static sanitize enthaelt span-Konfiguration mit data-chip-*-Attributen', () => {
+        const san = window.PlaceholderInlineTool.sanitize;
+        expect(san).toBeDefined();
+        expect(san.span).toBeDefined();
+        expect(san.span['data-chip-type']).toBe(true);
+        expect(san.span['data-chip-raw']).toBe(true);
+    });
+
+    it('T30: render() gibt einen button-Element zurueck', () => {
+        const mockApi = {
+            styles:    { inlineToolButton: 'ce-inline-tool', inlineToolButtonActive: 'ce-inline-tool--active' },
+            selection: { findParentTag: () => null, expandToTag: () => {} },
+        };
+        const tool = new window.PlaceholderInlineTool({ api: mockApi });
+        const btn = tool.render();
+        expect(btn).not.toBeNull();
+        expect(btn.tagName).toBe('BUTTON');
+        expect(btn.classList.contains('ce-inline-tool')).toBe(true);
     });
 });

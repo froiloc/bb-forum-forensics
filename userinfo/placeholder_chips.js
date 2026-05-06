@@ -270,3 +270,218 @@ window.PlaceholderChips = {
     hasUnfilledMandatory,
     extractFields,
 };
+
+// ---------------------------------------------------------------------------
+// dehydrateChips / hydrateChips (B6 Phase 5)
+// Beleg: Bauplan B6 v0.5 §4.6, OP-B6-5-Verifikation, Projektgespraech 2026-05-06
+// ---------------------------------------------------------------------------
+
+/**
+ * Konvertiert gerendertes HTML mit .ph-chip-Spans zurueck in Template-Syntax.
+ * Wird im Auto-Save aufgerufen bevor block_data gespeichert wird.
+ *
+ * Algorithmus:
+ *   1. HTML in einen temporaeren DOM-Knoten laden.
+ *   2. Jeden .ph-chip-Span durch seinen data-chip-raw-Wert ersetzen.
+ *   3. innerHTML des temporaeren Knotens zurueckgeben (= Rohtext).
+ *
+ * Unbekannte Spans (ohne data-chip-raw) werden nicht veraendert.
+ * Beleg: Bauplan B6 v0.5 §4.6, Projektgespraech 2026-05-06
+ *
+ * @param {string} html  -- innerHTML eines paragraph-Blocks mit gerenderten Chips
+ * @returns {string}     -- Text mit Template-Syntax ({{m:...}} etc.)
+ */
+function dehydrateChips(html) {
+    if (!html || !html.includes('ph-chip')) return html;
+
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+
+    tmp.querySelectorAll('.ph-chip').forEach(span => {
+        const raw = span.dataset.chipRaw;
+        if (raw) {
+            // Durch Text-Knoten ersetzen, damit kein umschliessendes Element uebrig bleibt
+            span.replaceWith(document.createTextNode(raw));
+        }
+    });
+
+    return tmp.innerHTML;
+}
+
+/**
+ * Alias fuer render() — Template-Syntax -> HTML mit Chips.
+ * Beleg: Bauplan B6 v0.5 §4.6, Projektgespraech 2026-05-06
+ *
+ * @param {string} text           -- Rohtext mit Platzhaltern
+ * @param {Object} values         -- { name: value } fuer m:/o:-Felder
+ * @param {Object} resolvedAuto   -- { query_id: wert } fuer a:-Felder
+ * @returns {string}              -- HTML-String mit Chips
+ */
+function hydrateChips(text, values = {}, resolvedAuto = {}) {
+    return render(text, values, resolvedAuto);
+}
+
+// window-Export ergaenzen
+window.PlaceholderChips.dehydrateChips = dehydrateChips;
+window.PlaceholderChips.hydrateChips   = hydrateChips;
+
+// ---------------------------------------------------------------------------
+// PlaceholderInlineTool (B6 Phase 5)
+// Editor.js InlineTool fuer Platzhalter-Chips.
+//
+// Verifiziert gegen editor.bundle.js (OP-B6-5):
+//   - static isInline = true
+//   - render(): gibt button-Element zurueck
+//   - surround(range): wrap/unwrap (Toggle)
+//   - checkState(sel): gibt boolean zurueck
+//   - static sanitize: Whitelist fuer Tag + data-chip-*-Attribute
+//   - api.selection.findParentTag(tag, cssClass): sucht im DOM nach Elterntag
+//   - api.selection.expandToTag(el): Selektion auf Element ausdehnen
+//
+// Beleg: Bauplan B6 v0.5 §4.6, editor.bundle.js OP-B6-5-Verifikation,
+//        Projektgespraech 2026-05-06
+// ---------------------------------------------------------------------------
+
+/**
+ * Editor.js InlineTool fuer Platzhalter-Chips.
+ * Ermoeglicht das Setzen und Entfernen von Platzhaltern im Fliesstext.
+ * Beleg: Bauplan B6 v0.5 §4.6, Projektgespraech 2026-05-06
+ */
+class PlaceholderInlineTool {
+
+    static get isInline() { return true; }
+
+    static get title() { return 'Platzhalter'; }
+
+    /**
+     * Sanitize-Konfiguration: erlaubt SPAN mit ph-chip-Klasse und data-chip-*-Attributen.
+     * Beleg: Bauplan B6 v0.5 §4.6, editor.bundle.js OP-B6-5-Verifikation
+     */
+    static get sanitize() {
+        return {
+            span: {
+                class:                    true,
+                'data-chip-type':         true,
+                'data-chip-name':         true,
+                'data-chip-default':      true,
+                'data-chip-description':  true,
+                'data-chip-b64regex':     true,
+                'data-chip-raw':          true,
+                title:                    true,
+            },
+        };
+    }
+
+    constructor({ api }) {
+        this.api    = api;
+        this.button = null;
+        this._CSS   = {
+            button:       this.api.styles.inlineToolButton,
+            buttonActive: this.api.styles.inlineToolButtonActive,
+        };
+    }
+
+    /**
+     * Toolbar-Button rendern.
+     * Symbol: { } als Platzhalter-Indikator.
+     * Beleg: Bauplan B6 v0.5 §4.6, Projektgespraech 2026-05-06
+     */
+    render() {
+        this.button = document.createElement('button');
+        this.button.type = 'button';
+        this.button.classList.add(this._CSS.button);
+        // SVG: geschweifte Klammern als Chip-Symbol
+        this.button.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5c0 1.1.9 2 2 2h1"/>
+            <path d="M16 21h1a2 2 0 0 0 2-2v-5c0-1.1.9-2 2-2a2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"/>
+        </svg>`;
+        this.button.setAttribute('aria-label', 'Platzhalter einf\u00fcgen');
+        return this.button;
+    }
+
+    /**
+     * Selektion mit Chip-Span umschliessen oder Chip entfernen (Toggle).
+     * Ist der Cursor in einem .ph-chip: auswickeln.
+     * Sonst: Selektion mit neuem Chip-Span umschliessen.
+     * Beleg: OP-B6-5 (Toggle-Logik bestaetigt), editor.bundle.js Annotation-Tool
+     * @param {Range} range
+     */
+    surround(range) {
+        if (!range) return;
+
+        // Vorhandenen Chip finden (Toggle: auswickeln)
+        const existingChip = this.api.selection.findParentTag('SPAN', 'ph-chip');
+        if (existingChip) {
+            this._unwrap(existingChip);
+            return;
+        }
+
+        // Neuen Chip-Span anlegen (Standardtyp 'm' fuer Pflichtfeld)
+        // Der Ermittler sieht einen Platzhalter-Chip, der in Phase 6
+        // ueber das Formular befuellt wird.
+        const selectedText = range.toString().trim();
+        const name = selectedText
+            ? selectedText.replace(/[^A-Za-z0-9_.-]/g, '_').toLowerCase().slice(0, 40)
+            : 'platzhalter';
+        const raw = `\u007b\u007bm:${name}\u007d\u007d`;  // {{m:name}}
+
+        const span = document.createElement('span');
+        span.className = 'ph-chip ph-chip-mandatory ph-chip-empty';
+        span.dataset.chipType        = 'm';
+        span.dataset.chipName        = name;
+        span.dataset.chipDefault     = '';
+        span.dataset.chipDescription = selectedText || name;
+        span.dataset.chipRaw         = raw;
+        span.title = `${name} (Pflichtfeld \u2014 bitte ausf\u00fcllen)`;
+        span.textContent = (selectedText || name) + ' *';
+
+        // Selektion mit Span ersetzen
+        span.appendChild(range.extractContents());
+        // Wenn extractContents() Inhalt hatte: span.textContent wird ueberschrieben
+        // Deshalb: nur wenn keine sinnvollen Kindknoten da sind, textContent setzen
+        if (!span.textContent.trim()) {
+            span.textContent = (selectedText || name) + ' *';
+        }
+        range.insertNode(span);
+        this.api.selection.expandToTag(span);
+    }
+
+    /**
+     * Aktivitaetsstatus pruefen: Cursor in einem .ph-chip-Element?
+     * Beleg: OP-B6-5-Verifikation, editor.bundle.js
+     * @param {Selection} _sel
+     * @returns {boolean}
+     */
+    checkState(_sel) {
+        const chip = this.api.selection.findParentTag('SPAN', 'ph-chip');
+        const isActive = chip !== null;
+        if (this.button) {
+            this.button.classList.toggle(this._CSS.buttonActive, isActive);
+        }
+        return isActive;
+    }
+
+    /**
+     * Chip-Span auswickeln: Inhalt bleibt als normaler Fliesstext.
+     * @param {Element} chipEl
+     */
+    _unwrap(chipEl) {
+        this.api.selection.expandToTag(chipEl);
+        const sel   = window.getSelection();
+        const range = sel.getRangeAt(0);
+        const text  = document.createTextNode(chipEl.textContent
+            .replace(/\s*\*\s*$/, '')  // " *" Suffix entfernen
+            .trim());
+        range.deleteContents();
+        range.insertNode(text);
+        sel.removeAllRanges();
+        const newRange = document.createRange();
+        newRange.setStartAfter(text);
+        newRange.collapse(true);
+        sel.addRange(newRange);
+    }
+}
+
+window.PlaceholderInlineTool = PlaceholderInlineTool;
