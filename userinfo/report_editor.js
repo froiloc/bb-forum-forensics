@@ -28,7 +28,18 @@
  *   data-autosave-debounce-ms  Auto-Save-Debounce in Millisekunden
  *                              (Standard: AUTOSAVE_DEBOUNCE_MS = 1500)
  *
- * Version: v0.6.045 · Build: 045 · 2026-04-19
+ * Changelog:
+ *   Build 045 (AP-E4): Erstimplementierung als editor.js
+ *   Build 100 (B6 Phase 2): Umbenannt zu report_editor.js. report.js entfernt.
+ *     Beleg: Bauplan B6 v0.5 §4.1, Projektgespraech 2026-05-06
+ *   Build 101 (B6 Phase 3): BlockWrapperManager, _ownerColor, initBlockWrappers,
+ *     _openAccordionSection, _initSidebarAccordion. _applyOwnershipStyles bleibt
+ *     fuer contenteditable-Verwaltung erhalten; initBlockWrappers ergaenzt um
+ *     MutationObserver, Hover-Metazeile und Kommentieren-Schaltflaeche.
+ *     Neue window-Exports: initBlockWrappers, openAccordionSection, ownerColor.
+ *     Beleg: Bauplan B6 v0.5 §4.3, §4.4, Projektgespraech 2026-05-06
+ *
+ * Version: v0.6.101 · Build: 101 · 2026-05-06
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -417,6 +428,10 @@ function _initEditorJs(blocks, reportId) {
                 new window.EditorTools.Undo({ editor: _editor });
             }
             _applyOwnershipStyles(blocks, username);
+            // Block-Wrapper und Support-Sidebar initialisieren (B6 Phase 3)
+            // Beleg: Bauplan B6 v0.5 §4.3, Projektgespraech 2026-05-06
+            initBlockWrappers(blocks, username);
+            _initSidebarAccordion();
             // Global bereitstellen fuer Debugging und Reinit
             window._editor = _editor;
             console.debug('report_editor.js: Editor bereit, report_id=', reportId,
@@ -447,6 +462,283 @@ function _applyOwnershipStyles(blocks, username) {
             }
         });
     }, 300);
+}
+
+// ---------------------------------------------------------------------------
+// BlockWrapperManager (B6 Phase 3)
+// Beleg: Bauplan B6 v0.5 §4.3, Projektgespraech 2026-05-06
+//
+// Legt fuer jeden Editor.js-.ce-block-Knoten einen Block-Wrapper an.
+// Der Wrapper liegt AUSSERHALB von Editor.js und enthaelt:
+//   - border-left in der deterministischen Eigentuemer-Farbe
+//   - Hover-Metazeile (Eigentuemer, Erstellungsdatum, Kommentieren-Schaltflaeche)
+//
+// Der Eigentuemer-Farbe wird per _ownerColor() deterministisch aus dem
+// SAMAccountName berechnet (Hash -> HSL), damit dieselbe Person in jeder
+// Sitzung konsistent dieselbe Farbe erhaelt.
+// ---------------------------------------------------------------------------
+
+/**
+ * Berechnet einen deterministischen HSL-Farbton aus einem SAMAccountName.
+ * Sattigung und Helligkeit sind fest, nur der Hue variiert.
+ * Beleg: Bauplan B6 v0.5 §4.3, Projektgespraech 2026-05-06
+ *
+ * @param {string} username
+ * @returns {string}  CSS-Farbwert, z.B. 'hsl(127, 60%, 40%)'
+ */
+function _ownerColor(username) {
+    if (!username) return 'hsl(0, 0%, 70%)';
+    let hash = 0;
+    for (let i = 0; i < username.length; i++) {
+        hash = (hash * 31 + username.charCodeAt(i)) >>> 0;
+    }
+    const hue = hash % 360;
+    return `hsl(${hue}, 60%, 40%)`;
+}
+
+/**
+ * Legt einen Block-Wrapper um ein .ce-block-Element.
+ * Idempotent: bereits gewrappte Bloecke werden uebersprungen.
+ * Beleg: Bauplan B6 v0.5 §4.3, Projektgespraech 2026-05-06
+ *
+ * @param {Element}  ceBlock    .ce-block-DOM-Knoten
+ * @param {object}   blockMeta  { block_id, author, created_at } aus blocks-Array
+ * @param {string}   username   Eigener SAMAccountName (bestimmt own vs. foreign)
+ */
+function _wrapBlock(ceBlock, blockMeta, username) {
+    if (ceBlock.closest('.block-wrapper')) return;  // bereits gewrappt
+
+    const isOwn   = blockMeta.author === username;
+    const color   = _ownerColor(blockMeta.author);
+    const created = blockMeta.created_at
+        ? new Date(blockMeta.created_at * 1000).toLocaleString('de-DE', {
+              day:   '2-digit', month: '2-digit', year: 'numeric',
+              hour:  '2-digit', minute: '2-digit',
+          })
+        : '';
+
+    // Wrapper-Div erzeugen
+    const wrapper = document.createElement('div');
+    wrapper.className = 'block-wrapper ' + (isOwn ? 'block-wrapper--own' : 'block-wrapper--foreign');
+    wrapper.dataset.blockId  = blockMeta.block_id;
+    wrapper.dataset.author   = blockMeta.author;
+    wrapper.style.setProperty('--block-owner-color', color);
+    wrapper.setAttribute('aria-label', isOwn
+        ? `Eigener Block (${blockMeta.author})`
+        : `Block von ${blockMeta.author}`);
+
+    // Metazeile (standardmaessig ausgeblendet, erscheint bei Hover)
+    const metaBar = document.createElement('div');
+    metaBar.className = 'block-meta-bar';
+    metaBar.setAttribute('aria-hidden', 'true');
+
+    const metaAuthor = document.createElement('span');
+    metaAuthor.className = 'block-meta-author';
+    metaAuthor.textContent = blockMeta.author;
+
+    const metaDate = document.createElement('span');
+    metaDate.className = 'block-meta-date';
+    metaDate.textContent = created;
+
+    const btnComment = document.createElement('button');
+    btnComment.className = 'block-meta-comment-btn';
+    btnComment.type = 'button';
+    btnComment.textContent = '💬 Kommentieren';
+    btnComment.setAttribute('aria-label', `Kommentar zu Block von ${blockMeta.author} verfassen`);
+    btnComment.addEventListener('click', (e) => {
+        e.stopPropagation();
+        _openCommentAccordion(blockMeta.block_id);
+    });
+
+    metaBar.appendChild(metaAuthor);
+    metaBar.appendChild(metaDate);
+    metaBar.appendChild(btnComment);
+
+    // Wrapper in DOM einsetzen (ceBlock in Wrapper verschieben)
+    ceBlock.parentNode.insertBefore(wrapper, ceBlock);
+    wrapper.appendChild(metaBar);
+    wrapper.appendChild(ceBlock);
+
+    // Fremde Bloecke: contenteditable deaktivieren
+    if (!isOwn) {
+        ceBlock.querySelectorAll('[contenteditable]').forEach(c => {
+            c.contentEditable = 'false';
+        });
+        ceBlock.classList.add('block-foreign');
+    }
+}
+
+/**
+ * Oeffnet den Kommentar-Abschnitt der Support-Sidebar und
+ * setzt den Fokus auf das Eingabefeld.
+ * Beleg: Bauplan B6 v0.5 §4.3, §4.4.4, Projektgespraech 2026-05-06
+ *
+ * @param {string} blockId
+ */
+function _openCommentAccordion(blockId) {
+    const sidebar = document.getElementById('support-sidebar');
+    if (!sidebar) return;
+
+    // Kommentar-Akkordeon oeffnen
+    const commentSection = sidebar.querySelector('[data-accordion="comments"]');
+    if (commentSection) {
+        _openAccordionSection(commentSection);
+    }
+
+    // Aktiven Block merken (wird von comment_thread.js ausgelesen)
+    sidebar.dataset.focusedBlockId = blockId;
+
+    // Eingabefeld fokussieren
+    const textarea = sidebar.querySelector('.comment-input-textarea');
+    if (textarea) {
+        textarea.focus();
+    }
+
+    // Fokussierten Block im Editor visuell hervorheben
+    document.querySelectorAll('.block-wrapper--comment-focus').forEach(w => {
+        w.classList.remove('block-wrapper--comment-focus');
+    });
+    const wrapper = document.querySelector(`.block-wrapper[data-block-id="${blockId}"]`);
+    if (wrapper) {
+        wrapper.classList.add('block-wrapper--comment-focus');
+    }
+}
+
+/**
+ * Klappt einen Akkordeon-Abschnitt auf und alle anderen zu.
+ * Beleg: Bauplan B6 v0.5 §4.4, Projektgespraech 2026-05-06
+ *
+ * @param {Element} section  Das .support-accordion-section-Element
+ */
+function _openAccordionSection(section) {
+    const sidebar = document.getElementById('support-sidebar');
+    if (!sidebar) return;
+
+    sidebar.querySelectorAll('.support-accordion-section').forEach(s => {
+        const isTarget = s === section;
+        const body = s.querySelector('.support-accordion-body');
+        const btn  = s.querySelector('.support-accordion-toggle');
+        const expanded = isTarget;
+        s.classList.toggle('support-accordion-section--open', expanded);
+        if (body)  body.hidden = !expanded;
+        if (btn)   btn.setAttribute('aria-expanded', String(expanded));
+    });
+
+    // Zustand in localStorage sichern
+    try {
+        const key = section.dataset.accordion;
+        if (key) localStorage.setItem('b6_sidebar_open', key);
+    } catch (_) {}
+}
+
+/**
+ * Initialisiert den BlockWrapperManager:
+ *   1. Bestehende .ce-block-Elemente sofort wrappen.
+ *   2. MutationObserver auf #editorjs-holder beobachtet neu eingefuegte Bloecke.
+ *
+ * Muss aufgerufen werden nachdem loadReport() den Editor initialisiert hat
+ * und die Bloecke geladen wurden.
+ * Beleg: Bauplan B6 v0.5 §4.3, Projektgespraech 2026-05-06
+ *
+ * @param {Array}  blocks    Geladene Bloecke [{block_id, author, created_at}]
+ * @param {string} username  Eigener SAMAccountName
+ */
+function initBlockWrappers(blocks, username) {
+    const holder = document.getElementById('editorjs-holder');
+    if (!holder) return;
+
+    // Index: block_id -> Metadaten (fuer schnellen Zugriff im Observer)
+    const blockIndex = Object.create(null);
+    blocks.forEach(b => { blockIndex[b.block_id] = b; });
+
+    // Hilfsfunktion: ein .ce-block wrappen wenn block_id bekannt
+    function tryWrap(ceBlock) {
+        const blockId = ceBlock.dataset?.id;
+        if (!blockId) return;
+        const meta = blockIndex[blockId];
+        if (!meta) return;
+        _wrapBlock(ceBlock, meta, username);
+    }
+
+    // 1. Bestehende Bloecke sofort wrappen (Editor.js hat sie bereits gerendert)
+    holder.querySelectorAll('.ce-block').forEach(tryWrap);
+
+    // 2. MutationObserver fuer dynamisch eingefuegte Bloecke
+    // (Editor.js fuegt neue .ce-block-Elemente bei Benutzeraktion ein)
+    if (_blockWrapperObserver) {
+        _blockWrapperObserver.disconnect();
+    }
+    _blockWrapperObserver = new MutationObserver(mutations => {
+        for (const mutation of mutations) {
+            for (const node of mutation.addedNodes) {
+                if (!(node instanceof Element)) continue;
+                // Direkt eingefuegter .ce-block
+                if (node.classList.contains('ce-block')) {
+                    tryWrap(node);
+                }
+                // Untergeordnete .ce-block-Elemente (z.B. bei Batch-Rendering)
+                node.querySelectorAll?.('.ce-block').forEach(tryWrap);
+            }
+        }
+    });
+    _blockWrapperObserver.observe(holder, { childList: true, subtree: true });
+}
+
+// MutationObserver-Instanz (Modul-Scope, damit disconnect() moeglich ist)
+// Beleg: Bauplan B6 v0.5 §4.3, Projektgespraech 2026-05-06
+let _blockWrapperObserver = null;
+
+// ---------------------------------------------------------------------------
+// Support-Sidebar Akkordeon (B6 Phase 3)
+// Beleg: Bauplan B6 v0.5 §4.4, Projektgespraech 2026-05-06
+// ---------------------------------------------------------------------------
+
+/**
+ * Initialisiert das vierstufige Akkordeon der Support-Sidebar.
+ * Liest den zuletzt geoeffneten Abschnitt aus localStorage und stellt ihn
+ * wieder her. Registriert Click-Handler auf allen Toggle-Schaltflaechen.
+ * Beleg: Bauplan B6 v0.5 §4.4, Projektgespraech 2026-05-06
+ */
+function _initSidebarAccordion() {
+    const sidebar = document.getElementById('support-sidebar');
+    if (!sidebar) return;
+
+    // Letzten Zustand aus localStorage lesen (Standard: 'blocks')
+    let lastOpen = 'blocks';
+    try {
+        lastOpen = localStorage.getItem('b6_sidebar_open') || 'blocks';
+    } catch (_) {}
+
+    // Toggle-Handler auf jeder Sektion registrieren
+    sidebar.querySelectorAll('.support-accordion-section').forEach(section => {
+        const btn  = section.querySelector('.support-accordion-toggle');
+        const body = section.querySelector('.support-accordion-body');
+        if (!btn || !body) return;
+
+        btn.addEventListener('click', () => {
+            const isOpen = section.classList.contains('support-accordion-section--open');
+            if (isOpen) return;  // Aufgeklappter Abschnitt bleibt offen
+            _openAccordionSection(section);
+        });
+
+        // Tastatur: Enter und Space oeffnen Sektion
+        btn.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                btn.click();
+            }
+        });
+    });
+
+    // Letzten Zustand wiederherstellen
+    const toOpen = sidebar.querySelector(`[data-accordion="${lastOpen}"]`);
+    if (toOpen) {
+        _openAccordionSection(toOpen);
+    } else {
+        // Fallback: ersten Abschnitt oeffnen
+        const first = sidebar.querySelector('.support-accordion-section');
+        if (first) _openAccordionSection(first);
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -961,6 +1253,11 @@ window.initEditorModule            = initEditorModule;
 window.injectInsertInReportButtons = injectInsertInReportButtons;
 window.toggleAnnotationSidebar     = toggleAnnotationSidebar;
 window.EvidenceBlock               = EvidenceBlock;
+// Phase 3: BlockWrapper und Akkordeon
+// Beleg: Bauplan B6 v0.5 §4.3, §4.4, Projektgespraech 2026-05-06
+window.initBlockWrappers           = initBlockWrappers;
+window.openAccordionSection        = _openAccordionSection;
+window.ownerColor                  = _ownerColor;
 // Konstante exportieren fuer Tests und externe Konfigurationspruefung
 // Beleg: AP-E4, Projektgespraech 2026-04-19
 window.AUTOSAVE_DEBOUNCE_MS        = AUTOSAVE_DEBOUNCE_MS;

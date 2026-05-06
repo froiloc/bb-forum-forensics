@@ -50,8 +50,13 @@
 #     Beleg: Bauplan B6 v0.3 §4, Ausdefinitionsgespraech 2026-05-05
 #   Build 100 (B6 Phase 2): report_editor.js ersetzt report.js im HTML-Template.
 #     Beleg: Bauplan B6 v0.5 §4.1, Projektgespraech 2026-05-06
+#   Build 101 (B6 Phase 3): Support-Sidebar Akkordeon-Skelett im HTML-Template.
+#     aside#report-annotation-sidebar ersetzt durch aside#support-sidebar mit
+#     vier .support-accordion-section-Elementen (Bausteine, Annotationen,
+#     Formular, Kommentare). Empty-States und ARIA-Attribute gesetzt.
+#     Beleg: Bauplan B6 v0.5 §4.4, Projektgespraech 2026-05-06
 #
-# Version: v0.6.100 · Build: 100 · 2026-05-06
+# Version: v0.6.101 · Build: 101 · 2026-05-06
 # =============================================================================
 
 from __future__ import annotations
@@ -158,9 +163,87 @@ _EDITOR_HTML = """\
         </div>
       </main>
 
-      <!-- Rechte Spalte: Annotationsseitenleiste (~35%, Phase 7) -->
-      <aside id="report-annotation-sidebar">
-        <!-- Inhalt wird von annotation_sidebar.js (Build 094) befuellt -->
+      <!-- Rechte Spalte: Support-Sidebar mit vierstufigem Akkordeon (~35%) -->
+      <!-- Beleg: Bauplan B6 v0.5 §4.4, Projektgespraech 2026-05-06 -->
+      <aside id="support-sidebar" aria-label="Support-Sidebar">
+
+        <!-- Abschnitt 1: Bausteine (Standard: aufgeklappt) -->
+        <section class="support-accordion-section support-accordion-section--open"
+                 data-accordion="blocks">
+          <button class="support-accordion-toggle" type="button"
+                  aria-expanded="true" aria-controls="accordion-body-blocks">
+            <span class="support-accordion-icon" aria-hidden="true">📦</span>
+            Bausteine
+            <span class="support-accordion-chevron" aria-hidden="true">&#x25be;</span>
+          </button>
+          <div id="accordion-body-blocks" class="support-accordion-body"
+               role="region" aria-label="Bausteine">
+            <!-- Inhalt wird von module_panel.js befuellt (Phase 7) -->
+            <p class="support-accordion-empty">
+              Bausteine werden in Phase 7 implementiert.
+            </p>
+          </div>
+        </section>
+
+        <!-- Abschnitt 2: Annotationen -->
+        <section class="support-accordion-section"
+                 data-accordion="annotations">
+          <button class="support-accordion-toggle" type="button"
+                  aria-expanded="false" aria-controls="accordion-body-annotations">
+            <span class="support-accordion-icon" aria-hidden="true">🔍</span>
+            Annotationen
+            <span class="support-accordion-chevron" aria-hidden="true">&#x25be;</span>
+          </button>
+          <div id="accordion-body-annotations" class="support-accordion-body"
+               role="region" aria-label="Annotationen" hidden>
+            <!-- Inhalt wird von annotation_sidebar.js befuellt (Phase 8) -->
+            <p class="support-accordion-empty">
+              Noch keine Annotationen zu diesem Benutzer vorhanden.
+            </p>
+          </div>
+        </section>
+
+        <!-- Abschnitt 3: Formular (Platzhalter-Eingabe) -->
+        <section class="support-accordion-section"
+                 data-accordion="form">
+          <button class="support-accordion-toggle" type="button"
+                  aria-expanded="false" aria-controls="accordion-body-form">
+            <span class="support-accordion-icon" aria-hidden="true">📝</span>
+            Formular
+            <span class="support-accordion-chevron" aria-hidden="true">&#x25be;</span>
+          </button>
+          <div id="accordion-body-form" class="support-accordion-body"
+               role="region" aria-label="Platzhalter-Formular" hidden>
+            <!-- Inhalt wird von placeholder_wizard.js befuellt (Phase 6) -->
+            <p class="support-accordion-empty">
+              Kein Bericht ge&#xf6;ffnet.
+            </p>
+          </div>
+        </section>
+
+        <!-- Abschnitt 4: Kommentare (unten) -->
+        <section class="support-accordion-section"
+                 data-accordion="comments">
+          <button class="support-accordion-toggle" type="button"
+                  aria-expanded="false" aria-controls="accordion-body-comments">
+            <span class="support-accordion-icon" aria-hidden="true">💬</span>
+            Kommentare
+            <span class="support-accordion-chevron" aria-hidden="true">&#x25be;</span>
+          </button>
+          <div id="accordion-body-comments" class="support-accordion-body"
+               role="region" aria-label="Kommentare" hidden>
+            <!-- Inhalt wird von comment_thread.js befuellt (Phase 4) -->
+            <p class="support-accordion-empty" id="comments-empty-state">
+              Kein Block ausgew&#xe4;hlt.
+            </p>
+            <!-- Kommentar-Eingabe (wird von comment_thread.js aktiviert) -->
+            <textarea class="comment-input-textarea" rows="3"
+                      placeholder="Kommentar verfassen…"
+                      aria-label="Neuen Kommentar verfassen"
+                      style="display:none"></textarea>
+          </div>
+        </section>
+
       </aside>
     </div>
 
