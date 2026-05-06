@@ -40,7 +40,7 @@
  *   - Aktivieren-Button gesperrt wenn Pflichtfelder leer
  *   Beleg: Bauplan B6 v0.3 §4.5, Build 091
  *
- * Version: v0.1.6 · Build: 096 · 2026-05-05
+ * Version: v0.1.7 · Build: 097 · 2026-05-05
  * Beleg: Bauplan B6 v0.3 §4, Ausdefinitionsgespraech 2026-05-05
  */
 
@@ -660,6 +660,74 @@ function _showAutosaveIndicator() {
     }
 }
 
+/**
+ * Fuegt Druck-Kopfzeile und -Fusszeile in den DOM ein.
+ * Wird vor window.print() aufgerufen und nach dem Druck wieder entfernt.
+ * Beleg: Bauplan B6 v0.3 §7.1, Build 097
+ */
+function _injectPrintChrome(username, uid) {
+    // Vorhandene Elemente entfernen
+    document.getElementById('print-header')?.remove();
+    document.getElementById('print-footer')?.remove();
+
+    const now = new Date().toLocaleString('de-DE', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+    });
+
+    const header = document.createElement('div');
+    header.id = 'print-header';
+    header.style.display = 'none';  // sichtbar nur via @media print
+    header.innerHTML = (
+        `Beschuldigter: ${esc(username)} (ID: ${uid}) &middot; ` +
+        `Ausdruck: ${esc(now)}`
+    );
+
+    const footer = document.createElement('div');
+    footer.id = 'print-footer';
+    footer.style.display = 'none';
+    footer.textContent = 'IT-forensisches Ermittlungswerkzeug · NRW · VERTRAULICH';
+
+    const main = document.getElementById('report-main-col');
+    if (main) {
+        main.prepend(header);
+        main.append(footer);
+    }
+    // Nach Druck aufraumen
+    window.addEventListener('afterprint', () => {
+        header.remove(); footer.remove();
+    }, { once: true });
+}
+
+/**
+ * Verdrahtet das Export-Dropdown-Menue.
+ * Beleg: Bauplan B6 v0.3 §7.2, Build 097
+ */
+function _bindExportDropdown() {
+    const btn = document.getElementById('btn-export');
+    const menu = document.getElementById('export-dropdown');
+    if (!btn || !menu) return;
+
+    btn.addEventListener('click', () => {
+        menu.style.display = menu.style.display === 'none' ? '' : 'none';
+    });
+
+    // Schliessen bei Klick ausserhalb
+    document.addEventListener('click', e => {
+        if (!btn.contains(e.target) && !menu.contains(e.target)) {
+            menu.style.display = 'none';
+        }
+    });
+
+    menu.querySelectorAll('[data-export-format]').forEach(item => {
+        item.addEventListener('click', () => {
+            menu.style.display = 'none';
+            const fmt = item.dataset.exportFormat;
+            window.location.href = `/_forensic/export?format=${fmt}`;
+        });
+    });
+}
+
 // ---------------------------------------------------------------------------
 // Neuen Bericht anlegen
 // ---------------------------------------------------------------------------
@@ -724,6 +792,7 @@ function _updateActionButtons() {
         'btn-insert-module',
         'btn-refresh-placeholders',
         'btn-print',
+        'btn-export',
     ];
     ids.forEach(id => {
         const btn = document.getElementById(id);
@@ -781,19 +850,27 @@ function _bindActionButtons() {
 
     document.getElementById('btn-print')
         ?.addEventListener('click', async () => {
-            // Phase 10: vor dem Drucken Cache aktualisieren
-            const uid = parseInt(
+            // Phase 10: Cache aktualisieren + Druck-Kopf/Fusszeile einblenden
+            // Beleg: Bauplan B6 v0.3 §7.1, Build 097
+            const uid  = parseInt(
                 document.getElementById('report-editor-body')?.dataset?.userId, 10
             );
+            const body = document.getElementById('report-editor-body');
+            const user = body?.dataset?.username ?? '';
             try {
                 await fetch('/_forensic/placeholders/refresh', {
                     method:  'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body:    JSON.stringify({ uid }),
                 });
-            } catch (_) { /* ignorieren — Druck trotzdem */ }
+            } catch (_) { /* ignorieren */ }
+            // Kopfzeile injizieren
+            _injectPrintChrome(user, uid);
             window.print();
         });
+
+    // Export-Dropdown verdrahten
+    _bindExportDropdown();
 }
 
 // ---------------------------------------------------------------------------

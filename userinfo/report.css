@@ -1556,29 +1556,144 @@
   white-space: nowrap;
 }
 
+/* ---------------------------------------------------------------------------
+ * 16. Export-Dropdown (Phase 10/11)
+ * Beleg: Bauplan B6 v0.3 §7.2, Build 097
+ * --------------------------------------------------------------------------- */
+
+.report-export-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.report-export-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #ccc);
+  border-radius: var(--radius, 4px);
+  box-shadow: 0 4px 12px rgba(0,0,0,.12);
+  min-width: 180px;
+  z-index: 500;
+  overflow: hidden;
+}
+
+.report-export-item {
+  display: block;
+  width: 100%;
+  padding: 9px 14px;
+  border: none;
+  background: none;
+  text-align: left;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--color-text, #333);
+  transition: background .1s;
+  white-space: nowrap;
+}
+.report-export-item:hover {
+  background: var(--color-bg-hover, #f5f5f5);
+}
+
 @media print {
-  /* Aktionsleiste und Sidebar ausblenden */
+  /* ---------------------------------------------------------------------------
+   * Druckansicht (§7.1 Bauplan B6 v0.3)
+   * Beleg: Bauplan B6 v0.3 §7.1, Build 097
+   * --------------------------------------------------------------------------- */
+
+  /* Alles ausblenden was nicht zum Bericht gehoert */
   #report-action-bar,
   #report-annotation-sidebar,
   .report-paragraph-actions,
-  .report-drag-handle {
+  .report-drag-handle,
+  .ct-thread,
+  .ct-compose,
+  .report-frozen-overlay,
+  #report-selector-container,
+  #report-status-msg,
+  #report-autosave-indicator,
+  .report-lock-indicator {
     display: none !important;
   }
 
-  /* Volle Breite fuer Paragraph-Liste */
-  #report-workspace { display: block; }
-  #report-main-col  { max-width: 100%; border: none; }
+  /* Volle Breite: kein Flex-Layout mehr */
+  #report-editor-body {
+    height: auto;
+    overflow: visible;
+    background: #fff;
+  }
+  #report-workspace  { display: block; }
+  #report-main-col   { max-width: 100%; width: 100%; border: none; overflow: visible; }
+  #report-paragraphs-list { padding: 0; overflow: visible; }
 
-  /* omitted und superseded nicht drucken */
+  /* Paragraphen mit Status draft/omitted/superseded nicht drucken */
+  .report-paragraph-card[data-status="draft"],
   .report-paragraph-card[data-status="omitted"],
-  .report-paragraph-card[data-status="superseded"],
-  .report-paragraph-card[data-status="draft"] {
-    display: none;
+  .report-paragraph-card[data-status="superseded"] {
+    display: none !important;
   }
 
-  /* approved-Karte ohne farbigen Rand */
-  .report-paragraph-card[data-status="approved"] {
-    border-color: #ccc;
-    border-width: 1px;
+  /* Paragraph-Karten: klarer Druck ohne dekorative Schatten */
+  .report-paragraph-card {
+    border: 1px solid #ccc !important;
+    border-width: 1px !important;
+    border-color: #ccc !important;
+    box-shadow: none !important;
+    padding: 12px 0 !important;
+    margin-bottom: 12pt;
+    page-break-inside: avoid;
   }
+
+  /* Status-Badge ausblenden im Druck */
+  .report-paragraph-status-badge { display: none; }
+
+  /* Platzhalter-Chips: nur aufgeloesten Wert, kein visueller Chip */
+  .ph-chip {
+    background: none !important;
+    border: none !important;
+    padding: 0 !important;
+    color: inherit !important;
+    font-weight: 600;
+    animation: none !important;
+  }
+
+  /* Paragraph-Inhalt */
+  .report-paragraph-content {
+    font-size: 11pt;
+    line-height: 1.6;
+    color: #000;
+    font-family: "Times New Roman", Times, serif;
+  }
+
+  /* Kopfzeile (wird von JS vor dem Druck eingefuegt) */
+  #print-header {
+    display: block !important;
+    font-size: 9pt;
+    color: #555;
+    border-bottom: 1pt solid #ccc;
+    padding-bottom: 6pt;
+    margin-bottom: 18pt;
+    font-family: Arial, sans-serif;
+  }
+
+  /* Fusszeile */
+  #print-footer {
+    display: block !important;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    font-size: 8pt;
+    color: #888;
+    text-align: center;
+    border-top: 1pt solid #ddd;
+    padding-top: 4pt;
+    font-family: Arial, sans-serif;
+    font-weight: bold;
+    letter-spacing: 0.04em;
+  }
+
+  /* Seitenumbrueche */
+  .report-paragraph-card { page-break-inside: avoid; }
 }

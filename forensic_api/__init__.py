@@ -307,6 +307,15 @@ class ForensicApi:
             self._get_trace_sequence().handle(handler, params)
             return
 
+        # /_forensic/export (GET) [B6 Phase 10/11]
+        # Beleg: Bauplan B6 v0.3 §7.2, Build 097
+        if url_path == '/_forensic/export':
+            if method not in ('GET', 'HEAD'):
+                self._method_not_allowed(handler)
+                return
+            self._get_export_ep().handle_get(handler, params)
+            return
+
         # /_forensic/investigator/me (GET) [B6 Phase 9]
         # Beleg: Bauplan B6 v0.3 §4.3, Build 096
         if url_path == '/_forensic/investigator/me':
@@ -579,6 +588,15 @@ class ForensicApi:
             from forensic_api.editor_evidence import EditorEvidenceEndpoint
             self._editor_evidence = EditorEvidenceEndpoint(self._bundle, self._context, self._config)
         return self._editor_evidence
+
+    def _get_export_ep(self):
+        """[B6 Phase 10/11] Lazy-Init fuer ExportEndpoint."""
+        if not hasattr(self, '_export_ep_inst') or self._export_ep_inst is None:
+            from forensic_api.export import ExportEndpoint
+            self._export_ep_inst = ExportEndpoint(
+                self._bundle, self._context, self._config
+            )
+        return self._export_ep_inst
 
     def _get_investigator_me(self):
         """[B6 Phase 9] Lazy-Init fuer InvestigatorMeEndpoint."""

@@ -110,6 +110,23 @@ _EDITOR_HTML = """\
           title="Bericht drucken" disabled>
           ✎ Drucken
         </button>
+        <div class="report-export-wrap">
+          <button class="report-btn" id="btn-export"
+            title="Bericht exportieren" disabled>
+            &#x2b07; Export &#x25be;
+          </button>
+          <div id="export-dropdown" class="report-export-dropdown" style="display:none">
+            <button class="report-export-item" data-export-format="html">
+              &#x1F4C4; HTML-Dokument
+            </button>
+            <button class="report-export-item" data-export-format="docx">
+              &#x1F4DD; Word-Dokument (.docx)
+            </button>
+            <button class="report-export-item" data-export-format="sqlite">
+              &#x1F5FA; SQLite3-Fallakte (.db)
+            </button>
+          </div>
+        </div>
         <span id="report-lock-indicator" class="report-lock-indicator report-lock-none"
           title="Lock-Status">&#x1f513;</span>
       </div>
