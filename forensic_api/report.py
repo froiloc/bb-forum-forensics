@@ -163,7 +163,9 @@ _EDITOR_HTML = """\
     <script src="/_forensic/module_panel.js" defer></script>
     <!-- 1d) annotation_sidebar.js: Annotationsseitenleiste -->
     <script src="/_forensic/annotation_sidebar.js" defer></script>
-    <!-- 1e) report.js: B6-Paragraph-Editor (ersetzt editor.js) -->
+    <!-- 1e) comment_thread.js: Kommentar-System -->
+    <script src="/_forensic/comment_thread.js" defer></script>
+    <!-- 1f) report.js: B6-Paragraph-Editor (ersetzt editor.js) -->
     <script src="/_forensic/report.js" defer></script>
     <!-- 2) userinfo.js: Lock/SSE/BroadcastChannel — nach report.js laden -->
     <script src="/_forensic/userinfo.js" defer></script>
@@ -304,8 +306,11 @@ class ReportEndpoint:
         paragraphs_payload = []
         if active_report:
             paras = edb.get_paragraphs(active_report.id)
-            paragraphs_payload = [
-                {
+            for p in paras:
+                # Kommentare je Paragraph mitliefern (Phase 8)
+                # Beleg: Bauplan B6 v0.3 §4.3, Build 095
+                comments = edb.get_comments_for_paragraph(p.block_id)
+                paragraphs_payload.append({
                     "block_id":                p.block_id,
                     "report_id":               p.report_id,
                     "author":                  p.author,
@@ -317,9 +322,20 @@ class ReportEndpoint:
                     "module_id":               p.module_id,
                     "omitted_by":              p.omitted_by,
                     "omitted_reason":          p.omitted_reason,
-                }
-                for p in paras
-            ]
+                    "comments": [
+                        {
+                            "id":               cm.id,
+                            "author":           cm.author,
+                            "created_at":       cm.created_at,
+                            "comment_text":     cm.comment_text,
+                            "suggested_content":cm.suggested_content,
+                            "status":           cm.status,
+                            "resolved_by":      cm.resolved_by,
+                            "resolved_at":      cm.resolved_at,
+                        }
+                        for cm in comments
+                    ],
+                })
 
         reports_payload = [
             {

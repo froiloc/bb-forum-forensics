@@ -1287,6 +1287,237 @@
 .as-completeness-warn { color: var(--color-warn, #e65100); background: #fff8f0; }
 .as-completeness-neutral { color: var(--color-text-muted, #888); }
 
+/* ---------------------------------------------------------------------------
+ * 14. Kommentar-Thread (§4.3, Phase 8)
+ * Beleg: Bauplan B6 v0.3 §4.3, Build 095
+ * --------------------------------------------------------------------------- */
+
+/* Thread-Container unterhalb der Paragraph-Karte */
+.ct-thread {
+  border-top: 1px dashed var(--color-border, #e0e0e0);
+  margin-top: 8px;
+  padding-top: 6px;
+}
+
+/* Aufklapp-Button */
+.ct-toggle {
+  background: none;
+  border: none;
+  padding: 2px 0;
+  font-size: 12px;
+  color: var(--color-text-muted, #777);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: color .15s;
+}
+.ct-toggle:hover { color: var(--color-text, #333); }
+
+/* Offene Kommentare -> orangerot */
+.ct-toggle-pending { color: var(--color-warn, #e65100); font-weight: 600; }
+.ct-toggle-pending:hover { color: #bf360c; }
+
+/* Ausgeklappter Bereich */
+.ct-body { margin-top: 6px; }
+
+/* Kommentar-Liste */
+.ct-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.ct-empty {
+  font-size: 11.5px;
+  color: var(--color-text-muted, #bbb);
+  font-style: italic;
+  padding: 4px 0;
+}
+
+/* Einzelner Kommentar */
+.ct-comment {
+  border: 1px solid var(--color-border, #e8e8e8);
+  border-radius: var(--radius, 4px);
+  padding: 7px 10px;
+  font-size: 12.5px;
+  background: var(--color-bg, #fafafa);
+}
+
+/* Status-spezifische Darstellung */
+.ct-comment-addressed,
+.ct-comment-dismissed,
+.ct-comment-revoked {
+  opacity: .6;
+}
+
+/* Kopfzeile */
+.ct-comment-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.ct-comment-author {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--color-text, #333);
+}
+
+.ct-comment-ts {
+  font-size: 10.5px;
+  color: var(--color-text-muted, #aaa);
+}
+
+/* Status-Badges */
+.ct-status-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  border: 1px solid currentColor;
+  margin-left: auto;
+}
+
+.ct-status-pending   { color: var(--color-primary, #1565c0); }
+.ct-status-addressed { color: var(--color-ok, #388e3c); }
+.ct-status-dismissed { color: var(--color-text-muted, #888); }
+.ct-status-revoked   { color: var(--color-text-muted, #888); }
+
+/* Kommentartext */
+.ct-comment-text {
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin-bottom: 3px;
+}
+
+/* Formulierungsvorschlag */
+.ct-suggestion {
+  margin-top: 5px;
+  padding: 5px 8px;
+  background: #fff8e1;
+  border-left: 3px solid var(--color-warn, #e65100);
+  border-radius: 0 3px 3px 0;
+  font-size: 12px;
+}
+.ct-suggestion-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--color-warn, #e65100);
+  display: block;
+  margin-bottom: 2px;
+}
+.ct-suggestion-text { white-space: pre-wrap; }
+
+/* Aktionsbuttons am Kommentar */
+.ct-comment-actions {
+  display: flex;
+  gap: 5px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+/* Aufloese-Info */
+.ct-resolved-by {
+  font-size: 10.5px;
+  color: var(--color-text-muted, #aaa);
+  margin-top: 4px;
+  font-style: italic;
+}
+
+/* Kommentar-Eingabe */
+.ct-compose {
+  border-top: 1px solid var(--color-border-light, #eee);
+  padding-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ct-textarea,
+.ct-suggestion-textarea {
+  width: 100%;
+  padding: 6px 9px;
+  border: 1px solid var(--color-border, #ccc);
+  border-radius: var(--radius, 4px);
+  font-size: 12.5px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 44px;
+  box-sizing: border-box;
+  background: var(--color-surface, #fff);
+  color: var(--color-text, #222);
+  transition: border-color .15s, box-shadow .15s;
+}
+.ct-textarea:focus,
+.ct-suggestion-textarea:focus {
+  outline: none;
+  border-color: var(--color-primary, #1976d2);
+  box-shadow: 0 0 0 2px rgba(25,118,210,.12);
+}
+
+.ct-textarea.ct-input-error { border-color: var(--color-error, #c62828); }
+
+/* Formulierungsvorschlag-Toggle */
+.ct-suggestion-wrap {
+  font-size: 12px;
+}
+.ct-suggestion-toggle {
+  cursor: pointer;
+  color: var(--color-text-muted, #888);
+  font-size: 11.5px;
+  user-select: none;
+}
+.ct-suggestion-toggle:hover { color: var(--color-text, #333); }
+
+/* Footer der Eingabe */
+.ct-compose-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Fehlertext beim Senden */
+.ct-send-error {
+  font-size: 11.5px;
+  color: var(--color-error, #c62828);
+}
+
+/* Kommentar-Buttons (allgemein) */
+.ct-btn {
+  padding: 3px 9px;
+  border: 1px solid var(--color-border, #ccc);
+  border-radius: var(--radius, 4px);
+  background: var(--color-surface, #fff);
+  color: var(--color-text, #333);
+  font-size: 11.5px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .12s, border-color .12s;
+}
+.ct-btn:hover:not(:disabled) {
+  background: var(--color-bg-hover, #f0f0f0);
+  border-color: var(--color-border-hover, #999);
+}
+.ct-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+.ct-btn-primary {
+  background: var(--color-primary, #1976d2);
+  color: #fff;
+  border-color: var(--color-primary, #1976d2);
+}
+.ct-btn-primary:hover:not(:disabled) {
+  background: var(--color-primary-dark, #1565c0);
+}
+
+.ct-btn-resolve { color: var(--color-ok, #388e3c); border-color: #a5d6a7; background: #f1f8e9; }
+.ct-btn-dismiss { color: var(--color-text-muted, #666); }
+.ct-btn-revoke  { color: var(--color-text-muted, #666); }
+
 @media print {
   /* Aktionsleiste und Sidebar ausblenden */
   #report-action-bar,

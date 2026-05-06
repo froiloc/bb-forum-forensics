@@ -40,7 +40,7 @@
  *   - Aktivieren-Button gesperrt wenn Pflichtfelder leer
  *   Beleg: Bauplan B6 v0.3 §4.5, Build 091
  *
- * Version: v0.1.4 · Build: 094 · 2026-05-05
+ * Version: v0.1.5 · Build: 095 · 2026-05-05
  * Beleg: Bauplan B6 v0.3 §4, Ausdefinitionsgespraech 2026-05-05
  */
 
@@ -296,6 +296,7 @@ function _renderParagraphCard(p, nr) {
            ${editDisabled ? '' : 'contenteditable="true"'}>
         ${_renderContent(p.content, p.placeholder_values_json)}
       </div>
+      ${window.CommentThread ? window.CommentThread.renderForCard(p, _commentOpts()) : ''}
       <div class="report-paragraph-actions">
         <button class="report-btn btn-save-paragraph"
           data-block-id="${esc(p.block_id)}"${editDisabled}
@@ -341,6 +342,19 @@ function _renderContent(content, valuesJson) {
     // Auto-Platzhalter koennen noch nicht aufgeloest sein (kein Cache-Zugriff
     // im Browser) -- leeres Objekt, Server-Cache wird in Phase 5 eingebunden.
     return window.PlaceholderChips.render(content, values, {});
+}
+
+/**
+ * Erstellt das opts-Objekt fuer CommentThread.
+ * Beleg: Bauplan B6 v0.3 §4.3, Build 095
+ */
+function _commentOpts() {
+    return {
+        myUsername: _myUsername(),
+        isChef:     window.EditorState?.isChef ?? false,
+        postFn:     _postWithLock,
+        onReload:   loadReport,
+    };
 }
 
 /** SAMAccountName des aktuellen Benutzers. */
@@ -401,6 +415,11 @@ function _bindCardEvents(card) {
             _openWizardForCard(blockId, chip.dataset.chipName);
         });
     });
+
+    // Kommentar-Thread-Events binden (Phase 8)
+    if (window.CommentThread) {
+        window.CommentThread.bindForCard(card, _commentOpts());
+    }
 
     // Auto-Save bei Inhaltseingabe
     const contentEl = card.querySelector('.report-paragraph-content[contenteditable]');
