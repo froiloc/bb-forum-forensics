@@ -56,8 +56,12 @@
 #     Drei neue /_forensic/placeholders/*-Endpunkte.
 #     Zwei neue /_forensic/templates[/<id>]-Endpunkte.
 #     Beleg: Bauplan B6 v0.3 §3, §5, 2026-05-05
+#   Build 099 (B6 Phase 1): evidence_db.py auf report_blocks umgestellt.
+#   Build 100 (B6 Phase 2): editor.js -> report_editor.js umbenannt.
+#     report.js (contenteditable-Modell) entfernt.
+#     Beleg: Bauplan B6 v0.5 §4.1, Projektgespraech 2026-05-06
 #
-# Version: v0.6.090 · Build: 090 · 2026-05-05
+# Version: v0.6.100 · Build: 100 · 2026-05-06
 # =============================================================================
 
 from __future__ import annotations
@@ -184,9 +188,8 @@ class ForensicApi:
             "/_forensic/toolbar.css",
             "/_forensic/userinfo.js",
             "/_forensic/userinfo.css",
-            "/_forensic/editor.js",      # AP-E4
-            "/_forensic/report.js",      # B6 Phase 4
-            "/_forensic/report.css",     # B6 Phase 4
+            "/_forensic/report_editor.js",      # B6 Phase 2 (umbenannt von editor.js)
+            "/_forensic/report.css",            # B6 Phase 4 Stylesheet
             "/_forensic/placeholder_chips.js",  # B6 Phase 4 Chips
             "/_forensic/placeholder_wizard.js", # B6 Phase 5 Wizard
             "/_forensic/module_panel.js",       # B6 Phase 6 Panel

@@ -1,6 +1,10 @@
 /**
- * tests/unit/test_editor.test.js
- * Unit-Tests fuer userinfo/editor.js
+ * tests/unit/test_report_editor.test.js
+ * Unit-Tests fuer userinfo/report_editor.js
+ *
+ * Umbenannt von test_editor.test.js -> test_report_editor.test.js (Build 100, B6 Phase 2)
+ * zur dauerhaften Trennung von Bibliotheksname und Dateiname.
+ * Beleg: Bauplan B6 v0.5 §4.1, Projektgespraech 2026-05-06
  *
  * Getestet:
  *   T01 — AUTOSAVE_DEBOUNCE_MS: Standard 1500 wenn kein data-Attribut gesetzt
@@ -20,7 +24,7 @@
  *   T15 — window.toggleAnnotationSidebar ist eine Funktion
  *   T16 — window.injectInsertInReportButtons ist eine Funktion
  *
- * Version: v0.6.045 · Build: 045 · 2026-04-19
+ * Version: v0.6.100 · Build: 100 · 2026-05-06
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -28,7 +32,7 @@ import { describe, it, expect, beforeAll, beforeEach } from "vitest";
 import { readFileSync } from "fs";
 import { JSDOM } from "jsdom";
 
-// editor.js benoetigt bestimmte globale Vorbereitungen
+// report_editor.js benoetigt bestimmte globale Vorbereitungen
 function makeDOM(autosaveMs = null) {
     const bodyAttrs = autosaveMs !== null
         ? `id="report-editor-body" data-autosave-debounce-ms="${autosaveMs}"`
@@ -52,7 +56,7 @@ function makeDOM(autosaveMs = null) {
     // crypto.randomUUID-Stub
     dom.window.crypto = { randomUUID: () => "test-uuid-" + Math.random().toString(36).slice(2) };
 
-    const src = readFileSync("userinfo/editor.js", "utf-8");
+    const src = readFileSync("userinfo/report_editor.js", "utf-8");
     dom.window.eval(src);
     return dom;
 }

@@ -6,13 +6,13 @@
 #   Endpunkt /_forensic/report — GET und POST (Fenster 3: Bericht-Editor).
 #
 # GET ohne Parameter:
-#   Liefert die Editor-Shell-HTML (report.js wird eingebunden).
+#   Liefert die Editor-Shell-HTML (report_editor.js wird eingebunden).
 #
 # GET mit ?format=json:
-#   Liefert alle Berichte mit ihren Paragraphen als JSON (B6-Schema).
+#   Liefert alle Berichte mit ihren Bloecken als JSON (B6-Schema).
 #   Schema: { "reports": [...], "paragraphs": [...], "lock": {...} | null }
 #   Benoetigt von: loadReadonlyReport() in userinfo.js (Fenster 2, Read-Only-Reiter)
-#                  und report.js (Fenster 3, Paragraph-Liste).
+#                  und report_editor.js (Fenster 3, Block-Liste).
 #
 # POST — Aktionen:
 #   acquire_lock, release_lock, heartbeat, resume_lock,
@@ -27,14 +27,14 @@
 #
 # Layout Fenster 3 (§4.1 Bauplan B6 v0.3):
 #   height: 100vh, display: flex, zweispaltig:
-#   linke Spalte ~65% (Paragraph-Liste), rechte Spalte ~35% (Annotation-Sidebar)
+#   linke Spalte ~65% (Block-Liste), rechte Spalte ~35% (Annotation-Sidebar)
 #
 # CSP fuer Editorfenster:
-#   script-src 'unsafe-inline' erlaubt (report.js-Anforderung).
+#   script-src 'unsafe-inline' erlaubt (report_editor.js-Anforderung).
 #   Beleg: AP-E1, Projektgespraech 2026-04-19
 #
 # Datenbankzugriff:
-#   evidence_<uid>.db (READ-WRITE) — Berichte, Paragraphen, Locks
+#   evidence_<uid>.db (READ-WRITE) — Berichte, Bloecke, Locks
 #
 # Changelog:
 #   Build 012: Erstimplementierung mit report_paragraphs-Modell.
@@ -48,8 +48,10 @@
 #     - report.js ersetzt editor.js als Fenster-3-Modul.
 #     - report.css als dediziertes Stylesheet fuer Fenster 3.
 #     Beleg: Bauplan B6 v0.3 §4, Ausdefinitionsgespraech 2026-05-05
+#   Build 100 (B6 Phase 2): report_editor.js ersetzt report.js im HTML-Template.
+#     Beleg: Bauplan B6 v0.5 §4.1, Projektgespraech 2026-05-06
 #
-# Version: v0.6.090 · Build: 090 · 2026-05-05
+# Version: v0.6.100 · Build: 100 · 2026-05-06
 # =============================================================================
 
 from __future__ import annotations
@@ -178,9 +180,9 @@ _EDITOR_HTML = """\
     <script src="/_forensic/annotation_sidebar.js" defer></script>
     <!-- 1e) comment_thread.js: Kommentar-System -->
     <script src="/_forensic/comment_thread.js" defer></script>
-    <!-- 1f) report.js: B6-Paragraph-Editor (ersetzt editor.js) -->
-    <script src="/_forensic/report.js" defer></script>
-    <!-- 2) userinfo.js: Lock/SSE/BroadcastChannel — nach report.js laden -->
+    <!-- 1f) report_editor.js: B6-Editor-Modul (umbenannt von editor.js, Build 100) -->
+    <script src="/_forensic/report_editor.js" defer></script>
+    <!-- 2) userinfo.js: Lock/SSE/BroadcastChannel — nach report_editor.js laden -->
     <script src="/_forensic/userinfo.js" defer></script>
   </body>
 </html>"""

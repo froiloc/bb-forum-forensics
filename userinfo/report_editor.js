@@ -1,10 +1,13 @@
 /**
- * userinfo/editor.js
+ * userinfo/report_editor.js
  * IT-Forensisches Ermittlungswerkzeug — Baustelle 6: Editor.js-Integration
  *
  * Zweck:
  *   Editor.js-Modul fuer Fenster 3 (Bericht-Editor).
  *   Wird von userinfo.js geladen wenn #report-editor-body vorhanden ist.
+ *   Umbenannt von editor.js -> report_editor.js (Build 100, B6 Phase 2)
+ *   zur dauerhaften Trennung von Bibliotheksname und Dateiname.
+ *   Beleg: Bauplan B6 v0.5 §4.1, Projektgespraech 2026-05-06
  *
  * Funktionen:
  *   - EditorJsManager: initialisiert Editor.js mit allen Plugins
@@ -95,7 +98,7 @@ async function _fetchWithLock(url, body) {
     // EditorState kommt aus userinfo.js (gemeinsam geladen)
     const lockId = window.EditorState?.lockId;
     if (!lockId) {
-        console.warn('editor.js: Kein Lock — POST abgebrochen:', url);
+        console.warn('report_editor.js: Kein Lock — POST abgebrochen:', url);
         return null;
     }
     return fetch(url, {
@@ -269,7 +272,7 @@ function _cleanupDuplicateEditors() {
     // Alle ausser dem ersten entfernen
     for (let i = 1; i < instances.length; i++) {
         instances[i].remove();
-        console.warn('editor.js: doppelte codex-editor-Instanz entfernt');
+        console.warn('report_editor.js: doppelte codex-editor-Instanz entfernt');
     }
 }
 
@@ -277,7 +280,7 @@ async function loadReport(report) {
     // Guard: verhindert parallele Ausfuehrung (z.B. initEditorModule + _reinitWithLock)
     // Beleg: Bugfix Build 051b, Projektgespraech 2026-04-21
     if (_loadInProgress) {
-        console.debug('editor.js: loadReport() bereits aktiv — übersprungen');
+        console.debug('report_editor.js: loadReport() bereits aktiv — übersprungen');
         return;
     }
     _loadInProgress = true;
@@ -416,7 +419,7 @@ function _initEditorJs(blocks, reportId) {
             _applyOwnershipStyles(blocks, username);
             // Global bereitstellen fuer Debugging und Reinit
             window._editor = _editor;
-            console.debug('editor.js: Editor bereit, report_id=', reportId,
+            console.debug('report_editor.js: Editor bereit, report_id=', reportId,
                           '| readOnly=', !hasLock);
         },
     });
@@ -474,7 +477,7 @@ async function _performAutoSave(reportId) {
     try {
         editorData = await _editor.save();
     } catch (err) {
-        console.warn('editor.js: Editor.save() fehlgeschlagen:', err);
+        console.warn('report_editor.js: Editor.save() fehlgeschlagen:', err);
         return;
     }
 
@@ -491,7 +494,7 @@ async function _performAutoSave(reportId) {
         });
         if (resp && !resp.ok) {
             const err = await resp.json().catch(() => ({}));
-            console.warn('editor.js: Block-Save fehlgeschlagen:', block.id, err);
+            console.warn('report_editor.js: Block-Save fehlgeschlagen:', block.id, err);
         }
     }
 
@@ -633,7 +636,7 @@ class EvidenceBlock {
                 evidence_id: annotationId,
             });
             if (resp && !resp.ok) {
-                console.warn('editor.js: Evidence-Add fehlgeschlagen:', annotationId);
+                console.warn('report_editor.js: Evidence-Add fehlgeschlagen:', annotationId);
                 return;
             }
         }
@@ -650,7 +653,7 @@ class EvidenceBlock {
                 evidence_id: annotationId,
             });
             if (resp && !resp.ok) {
-                console.warn('editor.js: Evidence-Remove fehlgeschlagen:', annotationId);
+                console.warn('report_editor.js: Evidence-Remove fehlgeschlagen:', annotationId);
                 return;
             }
         }
@@ -794,7 +797,7 @@ window.addEventListener('message', async (evt) => {
     const annotationId = parseInt(evt.data.annotation_id, 10);
     if (!annotationId || !_editor || !_currentReport) return;
     if (!window.EditorState?.lockId) {
-        console.warn('editor.js: insert_evidence: Kein Lock — Einfuegen abgebrochen');
+        console.warn('report_editor.js: insert_evidence: Kein Lock — Einfuegen abgebrochen');
         return;
     }
 
@@ -927,7 +930,7 @@ async function _reinitWithLock() {
     // Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19
     const lockIdSnapshot = window.EditorState?.lockId;
     if (!lockIdSnapshot) {
-        console.debug('editor.js: _reinitWithLock: kein Lock — abgebrochen');
+        console.debug('report_editor.js: _reinitWithLock: kein Lock — abgebrochen');
         return;
     }
     // Flag setzen: verhindert doppelten Aufruf via SSE-Handler

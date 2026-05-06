@@ -28,8 +28,11 @@
 #     - HTTP 503 bei fehlendem Bundle (statt leerem Platzhalter).
 #     - MIME-Type-Erkennung anhand Dateiendung.
 #     Beleg: AP-E3, Projektgespraech 2026-04-19
+#   Build 100 (B6 Phase 2): editor.js -> report_editor.js umbenannt.
+#     report.js (contenteditable-Modell) entfernt.
+#     Beleg: Bauplan B6 v0.5 §4.1, Projektgespraech 2026-05-06
 #
-# Version: v0.6.044 · Build: 044 · 2026-04-19
+# Version: v0.6.100 · Build: 100 · 2026-05-06
 # =============================================================================
 
 from __future__ import annotations
@@ -58,10 +61,10 @@ _RESOURCES: dict[str, tuple[str, str, Path]] = {
     "/_forensic/toolbar.css":  ("toolbar.css",  "text/css; charset=utf-8",               _TOOLBAR_DIR),
     "/_forensic/userinfo.js":  ("userinfo.js",  "application/javascript; charset=utf-8", _USERINFO_DIR),
     "/_forensic/userinfo.css": ("userinfo.css", "text/css; charset=utf-8",               _USERINFO_DIR),
-    # AP-E4: Editor.js-Modul liegt im userinfo/-Verzeichnis
-    "/_forensic/editor.js":    ("editor.js",    "application/javascript; charset=utf-8", _USERINFO_DIR),
-    # B6 Phase 4: Fenster-3-Modul und Stylesheet
-    "/_forensic/report.js":    ("report.js",    "application/javascript; charset=utf-8", _USERINFO_DIR),
+    # B6 Phase 2: report_editor.js (umbenannt von editor.js, Build 100)
+    # Beleg: Bauplan B6 v0.5 §4.1, Projektgespraech 2026-05-06
+    "/_forensic/report_editor.js": ("report_editor.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
+    # B6 Phase 4: Fenster-3-Stylesheet (report.css unveraendert)
     "/_forensic/report.css":   ("report.css",   "text/css; charset=utf-8",               _USERINFO_DIR),
     # B6 Phase 4 (Chip-Rendering): Platzhalter-Parser
     "/_forensic/placeholder_chips.js": ("placeholder_chips.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
