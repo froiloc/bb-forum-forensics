@@ -2745,3 +2745,54 @@
 @media print {
     .mp-panel { display: none !important; }
 }
+
+/* ===========================================================================
+ * B6 Phase 8: Annotationssidebar Drag-and-Drop (as-annotation--dragging)
+ * Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
+ * Version: Build 106 · 2026-05-06
+ * =========================================================================== */
+
+/* ---------------------------------------------------------------------------
+ * 24. Drag-Zustand auf Annotationskarten
+ * --------------------------------------------------------------------------- */
+
+/* Karte wird gezogen: leicht transparent + Cursor */
+.as-annotation[draggable="true"] {
+    cursor: grab;
+}
+
+.as-annotation[draggable="true"]:active {
+    cursor: grabbing;
+}
+
+.as-annotation--dragging {
+    opacity: 0.5;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+    border-style: dashed;
+}
+
+/* Drag-Hinweis-Tooltip fuer neue Nutzer */
+.as-annotation[draggable="true"]::after {
+    content: '';
+    /* Kein sichtbarer Inhalt — Tooltip via title-Attribut */
+}
+
+/* ---------------------------------------------------------------------------
+ * 25. Panel-Scrollhoehe im Akkordeon begrenzen
+ * --------------------------------------------------------------------------- */
+
+/* Annotation-Panel in Support-Sidebar: maximale Hoehe mit Scroll */
+#accordion-body-annotations .as-list {
+    max-height: 380px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+/* ---------------------------------------------------------------------------
+ * 26. Print: Annotation-Panel ausblenden
+ * --------------------------------------------------------------------------- */
+
+@media print {
+    .as-panel { display: none !important; }
+    #accordion-body-annotations { display: none !important; }
+}

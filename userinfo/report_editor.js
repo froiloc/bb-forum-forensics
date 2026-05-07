@@ -41,11 +41,12 @@
  *   Build 103 (B6 Phase 5): PlaceholderInlineTool registriert (CMD+SHIFT+P).
  *   Build 104 (B6 Phase 6): _openAccordionSection fuer 'form' -> _refreshPlaceholderForm().
  *   Build 105 (B6 Phase 7): _refreshModulePanel(), _loadBlocksAndReinit().
- *     _openAccordionSection fuer 'blocks' -> _refreshModulePanel().
- *     onInserted-Callback: Bloecke neu laden + Formular-Akkordeon oeffnen.
- *     Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06
+ *   Build 106 (B6 Phase 8): _refreshAnnotationSidebar().
+ *     _openAccordionSection fuer 'annotations' -> _refreshAnnotationSidebar().
+ *     toggleAnnotationSidebar() leitet auf Annotationen-Akkordeon um.
+ *     Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
  *
- * Version: v0.6.105 · Build: 105 · 2026-05-06
+ * Version: v0.6.106 · Build: 106 · 2026-05-06
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -672,6 +673,12 @@ function _openAccordionSection(section) {
     if (section.dataset.accordion === 'blocks') {
         _refreshModulePanel();
     }
+
+    // B6 Phase 8: Annotationen-Akkordeon geoeffnet -> _refreshAnnotationSidebar() aufrufen
+    // Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
+    if (section.dataset.accordion === 'annotations') {
+        _refreshAnnotationSidebar();
+    }
 }
 
 /**
@@ -955,6 +962,46 @@ async function _loadBlocksAndReinit(report) {
             _currentBlocks = data.blocks || [];
         }
     } catch (_) {}
+}
+
+// ---------------------------------------------------------------------------
+// Annotationen-Sidebar (B6 Phase 8)
+// Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
+// ---------------------------------------------------------------------------
+
+/**
+ * Ruft AnnotationSidebar.showSidebar() mit dem aktuellen Editor-Zustand auf.
+ * Wird von _openAccordionSection() aufgerufen wenn das Annotationen-Akkordeon
+ * geoeffnet wird.
+ * Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
+ */
+function _refreshAnnotationSidebar() {
+    if (!window.AnnotationSidebar?.showSidebar) return;
+
+    const lockId   = window.EditorState?.lockId || null;
+    const username = document.getElementById('report-editor-body')?.dataset?.username || '';
+
+    window.AnnotationSidebar.showSidebar(_currentBlocks, {
+        lockId,
+        getActiveBlockId: () => {
+            // Aktiven Block-ID aus dem Editor holen (zuletzt fokussierter Block)
+            if (!_editor) return null;
+            try {
+                const idx = _editor.blocks.getCurrentBlockIndex();
+                if (idx < 0) return null;
+                const block = _editor.blocks.getBlockByIndex(idx);
+                return block?.id || null;
+            } catch (_) { return null; }
+        },
+        onAnchorAdded: (annId, blockId) => {
+            // Nach Anker-Einfuegen: Bloecke neu laden
+            // Beleg: Bauplan B6 v0.5 §4.4.2
+            if (_currentReport) {
+                _loadBlocksAndReinit(_currentReport);
+            }
+            console.debug('report_editor.js: Anker eingefuegt:', annId, '->', blockId);
+        },
+    });
 }
 
 function _initSidebarAccordion() {
@@ -1253,92 +1300,24 @@ class EvidenceBlock {
  * Laedt alle Annotationen und rendert sie als ziehbare Karten.
  * @param {EvidenceBlock|null} targetBlock  Ziel-Block fuer direktes Hinzufuegen
  */
+/**
+ * Oeffnet die Annotationssidebar.
+ *
+ * Phase 8: Leitet auf das Annotationen-Akkordeon in der Support-Sidebar um.
+ * Das alte floatende Panel wird nicht mehr benutzt.
+ * targetBlock wird an EvidenceBlock._addEvidence uebergeben wenn per
+ * Direktklick aufgerufen — das Drag-and-Drop in die EvidenceBlock-Flaeche
+ * funktioniert weiterhin direkt ueber text/x-annotation-id.
+ * Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
+ *
+ * @param {Object|null} targetBlock  -- EvidenceBlock-Instanz oder null
+ */
 async function toggleAnnotationSidebar(targetBlock = null) {
-    _sidebarVisible = !_sidebarVisible;
-    let sidebar = document.getElementById('annotation-sidebar');
-
-    if (!_sidebarVisible) {
-        sidebar?.remove();
-        return;
-    }
-
-    if (!sidebar) {
-        sidebar = document.createElement('div');
-        sidebar.id = 'annotation-sidebar';
-        sidebar.className = 'annotation-sidebar';
-        document.getElementById('report-editor-body')?.appendChild(sidebar);
-    }
-
-    sidebar.innerHTML = '<div class="sidebar-header">Annotationen<button id="btn-close-sidebar" class="sidebar-close">×</button></div>'
-        + '<div class="sidebar-content"><span class="loading-spinner"></span> Lade…</div>';
-
-    document.getElementById('btn-close-sidebar')?.addEventListener('click', () => {
-        _sidebarVisible = false;
-        sidebar.remove();
-    });
-
-    try {
-        const resp = await fetch('/_forensic/annotations', {
-            headers: { 'X-Forensic-Request': 'ajax' }
-        });
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const data = await resp.json();
-        const annotations = (data.annotations || []).slice(0, SIDEBAR_MAX_ANNOTATIONS);
-
-        if (!annotations.length) {
-            sidebar.querySelector('.sidebar-content').innerHTML =
-                '<p style="font-size:12px;color:#666;padding:8px">Keine Annotationen vorhanden.</p>';
-            return;
-        }
-
-        const escFn = window.esc || (s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'));
-        const catColors = {
-            CAT_PERSON:   '#e3f2fd',
-            CAT_LOCATION: '#e8f5e9',
-            CAT_176:      '#ffebee',
-            CAT_184:      '#ffebee',
-            CAT_VICTIM:   '#fff3e0',
-            CAT_OTHER:    '#f5f5f5',
-        };
-
-        sidebar.querySelector('.sidebar-content').innerHTML = annotations.map(a => `
-            <div class="sidebar-annotation" draggable="true"
-                data-id="${a.id}" style="background:${catColors[a.category] || '#f9f9f9'}">
-                <div class="sidebar-ann-meta">#${a.id} · ${escFn(a.category)}</div>
-                <div class="sidebar-ann-text">${escFn((a.text || '').slice(0, 100))}</div>
-                ${targetBlock ? `<button class="editor-btn sidebar-add-btn" data-id="${a.id}"
-                    style="margin-top:4px;font-size:10px;padding:2px 6px">+ Einfügen</button>` : ''}
-            </div>`).join('');
-
-        // Drag-Events
-        sidebar.querySelectorAll('.sidebar-annotation').forEach(el => {
-            el.addEventListener('dragstart', e => {
-                e.dataTransfer.setData('text/x-annotation-id', el.dataset.id);
-                e.dataTransfer.effectAllowed = 'copy';
-            });
-        });
-
-        // Direkt-Einfuegen-Buttons — Sidebar bleibt offen fuer mehrfaches Einfuegen
-        // Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19
-        if (targetBlock) {
-            sidebar.querySelectorAll('.sidebar-add-btn').forEach(btn => {
-                btn.addEventListener('click', async () => {
-                    const annId = parseInt(btn.dataset.id, 10);
-                    await targetBlock._addEvidence(annId);
-                    // Visuelles Feedback: Button kurz markieren, Sidebar bleibt offen
-                    btn.textContent = '✓ Eingefügt';
-                    btn.disabled = true;
-                    setTimeout(() => {
-                        btn.textContent = '+ Einfügen';
-                        btn.disabled = false;
-                    }, 1500);
-                });
-            });
-        }
-
-    } catch (err) {
-        sidebar.querySelector('.sidebar-content').innerHTML =
-            `<p style="font-size:12px;color:#c00;padding:8px">Fehler: ${String(err)}</p>`;
+    // Annotationen-Akkordeon in der Support-Sidebar oeffnen
+    const sidebar      = document.getElementById('support-sidebar');
+    const annSection   = sidebar?.querySelector('[data-accordion="annotations"]');
+    if (annSection) {
+        _openAccordionSection(annSection);
     }
 }
 

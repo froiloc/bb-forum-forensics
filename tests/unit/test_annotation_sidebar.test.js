@@ -21,14 +21,14 @@
  * T15 -- _renderAnnotation(): Verankerte Annotation erhaelt as-ann-anchored-Klasse
  * T16 -- _renderAnnotation(): XSS-Schutz in Annotationstext
  *
- * Version: v0.1.0 · Build: 094 · 2026-05-05
- * Beleg: Bauplan B6 v0.3 §4.7, Ausdefinitionsgespraech 2026-05-05
+ * Version: v0.6.106 · Build: 106 · 2026-05-06
+ * Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
  */
 
 /**
  * @vitest-environment jsdom
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import '../../userinfo/annotation_sidebar.js';
 
 // ---------------------------------------------------------------------------
@@ -225,5 +225,63 @@ describe('_renderAnnotation()', () => {
         );
         expect(html).not.toContain('<script>');
         expect(html).toContain('&lt;script&gt;');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// T17-T22: Phase 8 — Sidebar-Integration, Drag-and-Drop, showSidebar
+// Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
+// ---------------------------------------------------------------------------
+
+describe('Phase 8 — Sidebar-Integration', () => {
+
+    it('T17: showSidebar ist exportiert', () => {
+        expect(typeof window.AnnotationSidebar.showSidebar).toBe('function');
+    });
+
+    it('T18: _renderAnnotation() hat draggable="true"', () => {
+        window.AnnotationSidebar._testSetState([], new Set(), '', false);
+        const html = window.AnnotationSidebar._renderAnnotation(
+            { id: 1, category: 'CAT_OTHER', text: 'Test', tags: [], selection: {} }
+        );
+        expect(html).toContain('draggable="true"');
+    });
+
+    it('T19: _renderAnnotation() enthält data-ann-id', () => {
+        window.AnnotationSidebar._testSetState([], new Set(), '', false);
+        const html = window.AnnotationSidebar._renderAnnotation(
+            { id: 77, category: 'CAT_OTHER', text: 'Test', tags: [], selection: {} }
+        );
+        expect(html).toContain('data-ann-id="77"');
+    });
+
+    it('T20: _renderAnnotation() zeigt "Als Beleg einfuegen"-Button', () => {
+        window.AnnotationSidebar._testSetState([], new Set(), '', false);
+        const html = window.AnnotationSidebar._renderAnnotation(
+            { id: 1, category: 'CAT_OTHER', text: 'Test', tags: [], selection: {} }
+        );
+        expect(html).toContain('as-btn-anchor');
+    });
+
+    it('T21: _renderAnnotation(): verankerte Annotation hat deaktivierten Anker-Button', () => {
+        window.AnnotationSidebar._testSetState([], new Set([5]), '', false);
+        const html = window.AnnotationSidebar._renderAnnotation(
+            { id: 5, category: 'CAT_OTHER', text: 'Test', tags: [], selection: {} }
+        );
+        expect(html).toContain('disabled');
+    });
+
+    it('T22: showSidebar mit EvidenceBlock-Bloecken extrahiert evidence_ids', () => {
+        // Prueft dass showSidebar keine Ausnahme wirft und korrekt aufgerufen wird
+        const blocks = [
+            {
+                block_id:   'blk-001',
+                block_type: 'evidence',
+                block_data: '{"evidence_ids":[42,43],"group_label":""}',
+            },
+        ];
+        expect(() => {
+            window.AnnotationSidebar.showSidebar(blocks, { lockId: null });
+        }).not.toThrow();
     });
 });

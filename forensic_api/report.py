@@ -205,9 +205,10 @@ _EDITOR_HTML = """\
           </button>
           <div id="accordion-body-annotations" class="support-accordion-body"
                role="region" aria-label="Annotationen" hidden>
-            <!-- Inhalt wird von annotation_sidebar.js befuellt (Phase 8) -->
-            <p class="support-accordion-empty">
-              Noch keine Annotationen zu diesem Benutzer vorhanden.
+            <!-- Inhalt wird von annotation_sidebar.js/_refreshAnnotationSidebar() befuellt (Phase 8) -->
+            <!-- Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06 -->
+            <p class="support-accordion-empty" id="annotations-loading-state">
+              Annotationen werden geladen\u2026
             </p>
           </div>
         </section>

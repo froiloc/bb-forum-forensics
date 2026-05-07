@@ -237,7 +237,9 @@ function _renderAnnotation(ann) {
     const anchoredCls = isAnchored ? ' as-ann-anchored' : '';
 
     return `
-        <div class="as-annotation${anchoredCls}" data-ann-id="${ann.id}">
+        <div class="as-annotation${anchoredCls}" data-ann-id="${ann.id}"
+             draggable="true"
+             title="Ziehen um als EvidenceBlock einzuf\u00fcgen">
             ${isAnchored
                 ? '<span class="as-anchored-badge" title="Bereits verankert">\ud83d\udccc verankert</span>'
                 : ''}
@@ -324,6 +326,21 @@ function _bindEvents(container) {
             _insertAnchor(annId);
         });
     });
+
+    // Drag-and-Drop: Annotation-Karten als Drag-Quelle (Phase 8)
+    // dataTransfer-Format: text/x-annotation-id (kompatibel mit EvidenceBlock)
+    // Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
+    container.querySelectorAll('.as-annotation[draggable="true"]').forEach(card => {
+        card.addEventListener('dragstart', e => {
+            const annId = card.dataset.annId;
+            e.dataTransfer.setData('text/x-annotation-id', annId);
+            e.dataTransfer.effectAllowed = 'copy';
+            card.classList.add('as-annotation--dragging');
+        });
+        card.addEventListener('dragend', () => {
+            card.classList.remove('as-annotation--dragging');
+        });
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -334,26 +351,22 @@ function _bindEvents(container) {
  * Fuegt einen Beweisanker fuer die Annotation ein.
  *
  * Ablauf:
- * 1. Aktiven Paragraph-Block per _opts.getActiveParagraph() ermitteln
+ * 1. Aktiven Block per _opts.getActiveParagraph() ermitteln
  * 2. POST action=add_anchor mit block_id und annotation_id
- * 3. [BELEG:annotation_id=X] an Cursor-Position im contenteditable einfuegen
- * 4. _anchoredIds aktualisieren, Seitenleiste neu rendern
- * Beleg: Bauplan B6 v0.3 §4.7
+ * 3. _anchoredIds aktualisieren, Seitenleiste neu rendern
+ *
+ * Hinweis Phase 8: Kein Cursor-Texteinschub mehr. Der Anker wird
+ * serverseitig gespeichert. EvidenceBlock-Drop erfolgt direkt ueber
+ * Drag-and-Drop in den Editor-Bereich.
+ * Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
  */
 async function _insertAnchor(annId) {
     const blockId = _opts?.getActiveParagraph?.();
     if (!blockId) {
-        _showInsertError('Bitte zuerst einen Absatz zum Bearbeiten ausw\u00e4hlen.');
+        _showInsertError('Bitte zuerst einen Block im Editor ausw\u00e4hlen.');
         return;
     }
 
-    // Anker-Text aus Annotation-Daten aufbauen
-    const ann = _annotations.find(a => a.id === annId);
-    const anchorText = ann
-        ? `[BELEG:annotation_id=${annId}]`
-        : `[BELEG:annotation_id=${annId}]`;
-
-    // Visuelles Feedback: Button deaktivieren
     const btn = document.querySelector(`.as-btn-anchor[data-ann-id="${annId}"]`);
     if (btn) { btn.disabled = true; btn.textContent = 'Wird eingetragen\u2026'; }
 
@@ -362,17 +375,11 @@ async function _insertAnchor(annId) {
             action:        'add_anchor',
             block_id:      blockId,
             annotation_id: annId,
-            anchor_text:   anchorText,
         });
         if (!result) throw new Error('Keine Serverantwort');
 
-        // [BELEG:...] an Cursor-Position im aktiven contenteditable einfuegen
-        _insertTextAtCursor(anchorText);
-
-        // Zustand aktualisieren
         _anchoredIds.add(annId);
         _render();
-
         _opts?.onAnchorAdded?.(annId, blockId);
 
     } catch (err) {
@@ -475,10 +482,84 @@ function updateAnchored(anchoredIds) {
 }
 
 // ---------------------------------------------------------------------------
+// Sidebar-Integration (B6 Phase 8)
+// Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
+// ---------------------------------------------------------------------------
+
+/**
+ * Rendert die Annotationssidebar in #accordion-body-annotations.
+ * Haupteinstiegspunkt fuer report_editor.js.
+ * Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
+ *
+ * @param {Array}  blocks  -- Bloecke des aktiven Berichts (fuer bereits-verankert-Filter)
+ * @param {Object} opts    -- { lockId, getActiveBlockId, onAnchorAdded }
+ */
+function showSidebar(blocks, opts) {
+    _opts = {
+        containerId:         'accordion-body-annotations',
+        postFn:              (data) => _fetchWithLockInternal(data, opts?.lockId),
+        getActiveParagraph:  opts?.getActiveBlockId || (() => null),
+        onAnchorAdded:       opts?.onAnchorAdded || (() => {}),
+    };
+
+    // Verankerte IDs aus report_anchors der Bloecke bestimmen
+    // Beleg: Bauplan B6 v0.5 §4.4.2
+    const anchoredFromBlocks = new Set();
+    (blocks || []).forEach(b => {
+        // Wenn der Block anchor_ids oder evidence_ids hat
+        (b.anchor_ids || []).forEach(id => anchoredFromBlocks.add(id));
+        // evidence_ids aus block_data (EvidenceBlock)
+        if (b.block_type === 'evidence' && b.block_data) {
+            try {
+                const data = typeof b.block_data === 'string'
+                    ? JSON.parse(b.block_data)
+                    : b.block_data;
+                (data.evidence_ids || []).forEach(id => anchoredFromBlocks.add(id));
+            } catch (_) {}
+        }
+    });
+    if (anchoredFromBlocks.size > 0) {
+        _anchoredIds = anchoredFromBlocks;
+    }
+
+    if (_annotations.length === 0) {
+        // Noch nicht geladen: laden + rendern
+        _loadAnnotations();
+    } else {
+        // Bereits geladen: nur rendern (z.B. nach Akkordeon-Oeffnen)
+        _render();
+    }
+}
+
+/**
+ * Interner postFn-Wrapper: sendet POST an /_forensic/report mit Lock-Header.
+ * Kapselt das Fetch damit annotation_sidebar.js unabhaengig bleibt.
+ * Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
+ */
+async function _fetchWithLockInternal(data, lockId) {
+    const headers = {
+        'Content-Type':       'application/json',
+        'X-Forensic-Request': 'ajax',
+    };
+    if (lockId) headers['X-Forensic-Lock-Id'] = lockId;
+    const resp = await fetch('/_forensic/report', {
+        method:  'POST',
+        headers,
+        body:    JSON.stringify(data),
+    });
+    const result = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(result.error || 'HTTP ' + resp.status);
+    return result;
+}
+
+// ---------------------------------------------------------------------------
 // window-Export
 // ---------------------------------------------------------------------------
 
 window.AnnotationSidebar = {
+    // Phase 8 Haupt-API
+    showSidebar,
+    // Unveraenderte API (Rueckwaerts-Kompatibilitaet und Tests)
     init,
     reload,
     updateAnchored,
