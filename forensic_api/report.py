@@ -69,7 +69,12 @@
 #              durch btn-new-report-header (delegiert an btn-new-report).
 #              Beleg: Projektgespraech 2026-05-07
 #
-# Version: v0.6.109 · Build: 109 · 2026-05-07
+# Build 110 (Fix): IIFE-Wrapper um alle userinfo/*.js eingeführt — behebt
+#              SyntaxError durch let/const-Kollisionen im globalen Scope.
+#              DEV-Logging (_dbg) in alle JS-Dateien eingeführt.
+#              Beleg: Projektgespraech 2026-05-07
+#
+# Version: v0.6.110 · Build: 110 · 2026-05-07
 # =============================================================================
 
 from __future__ import annotations

@@ -38,11 +38,25 @@
  *   window.PlaceholderChips.extractNames(text, type)
  *     Gibt alle Feldnamen eines Typs ('m', 'o', 'a') zurueck.
  *
- * Version: v0.1.0 · Build: 091 · 2026-05-05
+ * Version: v0.6.110 · Build: 110 · 2026-05-07
  * Beleg: Bauplan B6 v0.3 §2.2, §4.5, Ausdefinitionsgespraech 2026-05-05
  */
 
+(function() {
 'use strict';
+
+// ---------------------------------------------------------------------------
+// DEV-Logging (Build 110: systematisches Debug-Logging eingefuehrt)
+// Ueber window.FORENSIC_DEBUG = false in der Browser-Console abschaltbar.
+// Beleg: Projektgespraech 2026-05-07
+// ---------------------------------------------------------------------------
+/** @param {...*} args */
+function _dbg(...args) {
+    if (window.FORENSIC_DEBUG !== false) {
+        console.debug('[forensic]', ...args);
+    }
+}
+
 
 // ---------------------------------------------------------------------------
 // Regex fuer alle drei Platzhalter-Typen
@@ -264,6 +278,7 @@ function extractFields(text, type) {
 // window-Export
 // ---------------------------------------------------------------------------
 
+_dbg('placeholder_chips.js: window.PlaceholderChips exportiert');
 window.PlaceholderChips = {
     parse,
     render,
@@ -485,3 +500,5 @@ class PlaceholderInlineTool {
 }
 
 window.PlaceholderInlineTool = PlaceholderInlineTool;
+
+})();

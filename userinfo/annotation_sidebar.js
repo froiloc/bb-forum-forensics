@@ -40,11 +40,25 @@
  *   GET /_forensic/annotations         -- alle Annotationen
  *   POST /_forensic/report             -- action=add_anchor
  *
- * Version: v0.1.0 · Build: 094 · 2026-05-05
+ * Version: v0.6.110 · Build: 110 · 2026-05-07
  * Beleg: Bauplan B6 v0.3 §4.7, Ausdefinitionsgespraech 2026-05-05
  */
 
+(function() {
 'use strict';
+
+// ---------------------------------------------------------------------------
+// DEV-Logging (Build 110: systematisches Debug-Logging eingefuehrt)
+// Ueber window.FORENSIC_DEBUG = false in der Browser-Console abschaltbar.
+// Beleg: Projektgespraech 2026-05-07
+// ---------------------------------------------------------------------------
+/** @param {...*} args */
+function _dbg(...args) {
+    if (window.FORENSIC_DEBUG !== false) {
+        console.debug('[forensic]', ...args);
+    }
+}
+
 
 // ---------------------------------------------------------------------------
 // Konstanten
@@ -556,6 +570,7 @@ async function _fetchWithLockInternal(data, lockId) {
 // window-Export
 // ---------------------------------------------------------------------------
 
+_dbg('annotation_sidebar.js: window.AnnotationSidebar exportiert');
 window.AnnotationSidebar = {
     // Phase 8 Haupt-API
     showSidebar,
@@ -576,3 +591,5 @@ window.AnnotationSidebar = {
     _matchesSearch,
     _renderAnnotation,
 };
+
+})();

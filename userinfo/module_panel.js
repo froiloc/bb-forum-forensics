@@ -52,11 +52,25 @@
  *     Rueckwaerts-Kompatibilitaet open()/close() erhalten.
  *     Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06.
  *
- * Version: v0.6.105 · Build: 105 · 2026-05-06
+ * Version: v0.6.110 · Build: 110 · 2026-05-07
  * Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06
  */
 
+(function() {
 'use strict';
+
+// ---------------------------------------------------------------------------
+// DEV-Logging (Build 110: systematisches Debug-Logging eingefuehrt)
+// Ueber window.FORENSIC_DEBUG = false in der Browser-Console abschaltbar.
+// Beleg: Projektgespraech 2026-05-07
+// ---------------------------------------------------------------------------
+/** @param {...*} args */
+function _dbg(...args) {
+    if (window.FORENSIC_DEBUG !== false) {
+        console.debug('[forensic]', ...args);
+    }
+}
+
 
 // ---------------------------------------------------------------------------
 // Konstanten
@@ -635,6 +649,7 @@ function close() {}
 // window-Export
 // ---------------------------------------------------------------------------
 
+_dbg('module_panel.js: window.ModulePanel exportiert');
 window.ModulePanel = {
     // Phase 7 Haupt-API
     showPanel,
@@ -652,3 +667,5 @@ window.ModulePanel = {
 
 // Alias: var ModulePanel (fuer Tests ohne window-Prafix)
 var ModulePanel = window.ModulePanel;
+
+})();

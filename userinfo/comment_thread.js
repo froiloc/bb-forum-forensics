@@ -39,10 +39,24 @@
  *     Rueckwaerts-Kompatibilitaet erhalten.
  *     Beleg: Bauplan B6 v0.5 §4.4.4, Projektgespraech 2026-05-06.
  *
- * Version: v0.6.102 · Build: 102 · 2026-05-06
+ * Version: v0.6.110 · Build: 110 · 2026-05-07
  */
 
+(function() {
 'use strict';
+
+// ---------------------------------------------------------------------------
+// DEV-Logging (Build 110: systematisches Debug-Logging eingefuehrt)
+// Ueber window.FORENSIC_DEBUG = false in der Browser-Console abschaltbar.
+// Beleg: Projektgespraech 2026-05-07
+// ---------------------------------------------------------------------------
+/** @param {...*} args */
+function _dbg(...args) {
+    if (window.FORENSIC_DEBUG !== false) {
+        console.debug('[forensic]', ...args);
+    }
+}
+
 
 // ---------------------------------------------------------------------------
 // Hilfsfunktionen
@@ -372,3 +386,5 @@ window.CommentThread = {
     _pulseEditorBlock,
     _clearEditorBlockPulse,
 };
+
+})();

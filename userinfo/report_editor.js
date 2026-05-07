@@ -46,11 +46,24 @@
  *     toggleAnnotationSidebar() leitet auf Annotationen-Akkordeon um.
  *     Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
  *
- * Version: v0.6.109 · Build: 109 · 2026-05-07
+ * Version: v0.6.110 · Build: 110 · 2026-05-07
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
+(function() {
 'use strict';
+
+// ---------------------------------------------------------------------------
+// DEV-Logging (Build 110)
+// Beleg: Projektgespraech 2026-05-07
+// ---------------------------------------------------------------------------
+/** @param {...*} args */
+function _dbg(...args) {
+    if (window.FORENSIC_DEBUG !== false) {
+        console.debug('[forensic]', ...args);
+    }
+}
+
 
 // ---------------------------------------------------------------------------
 // Konstanten
@@ -141,6 +154,7 @@ async function _fetchWithLock(url, body) {
  * Laeuft beim Initialisieren von Fenster 3.
  */
 async function initReportSelector() {
+    _dbg('initReportSelector() gestartet');
     const container = document.getElementById('report-selector-container');
     if (!container) return;
 
@@ -306,6 +320,7 @@ function _cleanupDuplicateEditors() {
 }
 
 async function loadReport(report) {
+    _dbg('loadReport() report_id=', report?.id, 'type=', report?.report_type);
     // Guard: verhindert parallele Ausfuehrung (z.B. initEditorModule + _reinitWithLock)
     // Beleg: Bugfix Build 051b, Projektgespraech 2026-04-21
     if (_loadInProgress) {
@@ -375,6 +390,7 @@ async function _loadReportImpl(report) {
     _cleanupDuplicateEditors();
 
     // Auf Bundle warten
+    _dbg('_initEditorJs(): window.EditorJS=', !!window.EditorJS);
     if (!window.EditorJS) {
         document.getElementById('report-editor-container').innerHTML = `
             <div class="status-msg status-msg-warn" style="margin:20px">
@@ -1013,6 +1029,7 @@ function _refreshAnnotationSidebar() {
 }
 
 function _initSidebarAccordion() {
+    _dbg('_initSidebarAccordion() gestartet');
     const sidebar = document.getElementById('support-sidebar');
     if (!sidebar) return;
 
@@ -1460,6 +1477,7 @@ function injectInsertInReportButtons() {
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 async function initEditorModule() {
+    _dbg('initEditorModule() gestartet');
     await initReportSelector();
     initBlockUpdatedListener();
 }
@@ -1504,6 +1522,7 @@ async function _reinitWithLock() {
 }
 
 // Im globalen Scope bereitstellen
+_dbg('report_editor.js: Exports auf window gesetzt');
 window.initEditorModule            = initEditorModule;
 window.injectInsertInReportButtons = injectInsertInReportButtons;
 window.toggleAnnotationSidebar     = toggleAnnotationSidebar;
@@ -1536,3 +1555,5 @@ window.updateEditorPlaceholder = function(hasLock) {
     });
 };
 window._reinitWithLock             = _reinitWithLock;
+
+})();

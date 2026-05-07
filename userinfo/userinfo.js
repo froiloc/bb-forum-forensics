@@ -26,7 +26,7 @@
  *   window.opener?.postMessage({ type: 'navigate_to_annotation',
  *                                annotation_id: N }, origin)
  *
- * Version: v0.1.0 · Build: 089 · 2026-05-07
+ * Version: v0.6.110 · Build: 110 · 2026-05-07
  *
  * Änderungen Build 089 (Bugfix: SSE-Deadlock-Kaskade):
  *   Ursache: Drei zusammenwirkende Probleme führten dazu, dass alle Server-Threads
@@ -54,7 +54,20 @@
  *     im Log ausgegeben statt stumm fortzufahren.
  */
 
+(function() {
 'use strict';
+
+// ---------------------------------------------------------------------------
+// DEV-Logging (Build 110)
+// Beleg: Projektgespraech 2026-05-07
+// ---------------------------------------------------------------------------
+/** @param {...*} args */
+function _dbg(...args) {
+    if (window.FORENSIC_DEBUG !== false) {
+        console.debug('[forensic]', ...args);
+    }
+}
+
 
 // ---------------------------------------------------------------------------
 // Konstanten
@@ -431,6 +444,7 @@ let _broadcastChannel = null;
  * Editor initialisieren.
  */
 async function initEditor() {
+    _dbg('initEditor() gestartet');
     const body = document.getElementById('report-editor-body');
     if (!body) return;
 
@@ -560,6 +574,7 @@ function freezeEditor() {
  * Empfängt client_id und Editor-Lock-Events.
  */
 async function initSSEWindow3() {
+    _dbg('initSSEWindow3() gestartet');
     return new Promise(resolve => {
         // V1: resume_lock_id mitsenden falls Lock gehalten wird.
         // Der Server bindet den Lock an die neue SSE-client_id.
@@ -770,6 +785,7 @@ function disableEditorControls(disable) {
  * Lock erwerben (§8.5 Bauplan B4 — acquire_lock).
  */
 async function acquireLock() {
+    _dbg('acquireLock() aufgerufen, sseClientId=', EditorState.sseClientId);
     if (EditorState.frozen) return;
     if (!EditorState.sseClientId) {
         showStatusMsg('SSE-Verbindung nicht bereit — bitte Seite neu laden.', 'warn');
@@ -1177,6 +1193,7 @@ function showStatusMsg(text, level) {
 // ===========================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
+    _dbg('DOMContentLoaded: userinfo.js aktiv');
     const isEditor = !!document.getElementById('report-editor-body');
     const isNutzerinfo = !!document.getElementById('userinfo-static');
 
@@ -1671,3 +1688,5 @@ function initForensicLinks() {
         }
     });
 }
+
+})();

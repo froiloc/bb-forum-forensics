@@ -57,11 +57,25 @@
  *     Rueckwaerts-Kompatibilitaet fuer open()/openAtField() erhalten.
  *     Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06.
  *
- * Version: v0.6.104 · Build: 104 · 2026-05-06
+ * Version: v0.6.110 · Build: 110 · 2026-05-07
  * Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06
  */
 
+(function() {
 'use strict';
+
+// ---------------------------------------------------------------------------
+// DEV-Logging (Build 110: systematisches Debug-Logging eingefuehrt)
+// Ueber window.FORENSIC_DEBUG = false in der Browser-Console abschaltbar.
+// Beleg: Projektgespraech 2026-05-07
+// ---------------------------------------------------------------------------
+/** @param {...*} args */
+function _dbg(...args) {
+    if (window.FORENSIC_DEBUG !== false) {
+        console.debug('[forensic]', ...args);
+    }
+}
+
 
 // ---------------------------------------------------------------------------
 // Konstanten
@@ -552,6 +566,7 @@ function close() {
 // window-Export
 // ---------------------------------------------------------------------------
 
+_dbg('placeholder_wizard.js: window.PlaceholderWizard exportiert');
 window.PlaceholderWizard = {
     // Phase 6 Haupt-API
     showPlaceholderForm,
@@ -564,3 +579,5 @@ window.PlaceholderWizard = {
     openAtField,
     close,
 };
+
+})();
