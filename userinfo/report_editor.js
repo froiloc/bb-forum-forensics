@@ -42,11 +42,17 @@
  *   Build 104 (B6 Phase 6): _openAccordionSection fuer 'form' -> _refreshPlaceholderForm().
  *   Build 105 (B6 Phase 7): _refreshModulePanel(), _loadBlocksAndReinit().
  *   Build 106 (B6 Phase 8): _refreshAnnotationSidebar().
+ *   Build 118 (Bugfix 2.14/2.16/2.17/2.18):
+ *     - _isInitializing-Guard: onChange waehrend onReady unterdrückt.
+ *     - aria-hidden → inert auf .block-meta-bar (WCAG 2.18).
+ *     - inert per mouseenter/mouseleave/focusout gesteuert.
+ *     - blauer Rahmen: Cleanup bei Formular-Akkordeon-Wechsel.
+ *     Beleg: Bugfix Build 118, Projektgespraech 2026-05-08
  *     _openAccordionSection fuer 'annotations' -> _refreshAnnotationSidebar().
  *     toggleAnnotationSidebar() leitet auf Annotationen-Akkordeon um.
  *     Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
  *
- * Version: v0.6.115 · Build: 115 · 2026-05-07
+ * Version: v0.6.118 · Build: 118 · 2026-05-08
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -116,6 +122,19 @@ let _sidebarVisible = false;
  * Beleg: Bugfix Build 051b, Projektgespraech 2026-04-21
  */
 let _loadInProgress = false;
+
+/**
+ * Guard: Unterdrückt onChange-Callbacks waehrend der Editor-Initialisierung.
+ * Problem: _applyOwnershipStyles und initBlockWrappers veraendern DOM-Attribute
+ * in onReady (via setTimeout), was Editor.js's MutationObserver triggert und
+ * sofort onChange → _performAutoSave auslöst. Das fuehrt zu:
+ *   1. Vorzeitigem Auto-Save bevor alle Bloecke korrekt geladen sind.
+ *   2. TypeError in setCurrentBlockByChildNode (Editor noch nicht bereit).
+ * Fix: _isInitializing=true von onReady bis nach dem letzten setTimeout,
+ * dann auf false setzen. onChange prueft dieses Flag.
+ * Beleg: Bugfix Build 117, Projektgespraech 2026-05-08
+ */
+let _isInitializing = false;
 
 // ---------------------------------------------------------------------------
 // Hilfsfunktion: fetch mit Lock-Header
@@ -477,9 +496,22 @@ function _initEditorJs(blocks, reportId) {
             },
         },
 
-        onChange: () => _scheduleAutoSave(reportId),
+        onChange: () => {
+            // Bug-Fix Build 117: Waehrend der Initialisierung (onReady + Timeouts)
+            // duerfen DOM-Mutationen durch _applyOwnershipStyles und initBlockWrappers
+            // keinen Auto-Save ausloesen. Das wuerde den TypeError in
+            // setCurrentBlockByChildNode verursachen.
+            // Beleg: Bugfix Build 117, Projektgespraech 2026-05-08
+            if (_isInitializing) return;
+            _scheduleAutoSave(reportId);
+        },
 
         onReady: () => {
+            // Initialisierungs-Guard aktivieren: verhindert vorzeitigen Auto-Save
+            // durch DOM-Mutationen in _applyOwnershipStyles / initBlockWrappers.
+            // Beleg: Bugfix Build 117, Projektgespraech 2026-05-08
+            _isInitializing = true;
+
             // Undo-Plugin initialisieren (muss nach onReady geschehen)
             if (window.EditorTools?.Undo) {
                 new window.EditorTools.Undo({ editor: _editor });
@@ -496,6 +528,16 @@ function _initEditorJs(blocks, reportId) {
             window._editor = _editor;
             console.debug('report_editor.js: Editor bereit, report_id=', reportId,
                           '| readOnly=', !hasLock);
+
+            // Initialisierungs-Guard freigeben: laengste interne Timeout-Kette
+            // ist _applyOwnershipStyles mit 300 ms. Wir waehlen 600 ms als
+            // sicheren Puffer, damit alle DOM-Mutationen abgeschlossen sind
+            // bevor onChange wieder Auto-Saves ausloesen darf.
+            // Beleg: Bugfix Build 117, Projektgespraech 2026-05-08
+            setTimeout(() => {
+                _isInitializing = false;
+                console.debug('report_editor.js: Initialisierungs-Guard freigegeben.');
+            }, 600);
         },
     });
 }
@@ -587,10 +629,15 @@ function _wrapBlock(ceBlock, blockMeta, username) {
         ? `Eigener Block (${blockMeta.author})`
         : `Block von ${blockMeta.author}`);
 
-    // Metazeile (standardmaessig ausgeblendet, erscheint bei Hover)
-    const metaBar = document.createElement('div');
+    // Metazeile (standardmaessig ausgeblendet, erscheint bei Hover).
+    // Bug-Fix Build 117: aria-hidden auf einem Element, das fokussierbare
+    // Kinder enthaelt (btnComment), verstösst gegen WCAG und erzeugt
+    // Browser-Warnung. Fix: inert-Attribut statt aria-hidden.
+    // inert macht das Element und alle Nachkommen fuer AT und Fokus unsichtbar
+    // solange der Block nicht gehovert wird. CSS entfernt inert bei :hover.
+    // Beleg: Bugfix Build 117, Projektgespraech 2026-05-08
     metaBar.className = 'block-meta-bar';
-    metaBar.setAttribute('aria-hidden', 'true');
+    metaBar.setAttribute('inert', '');
 
     const metaAuthor = document.createElement('span');
     metaAuthor.className = 'block-meta-author';
@@ -618,6 +665,27 @@ function _wrapBlock(ceBlock, blockMeta, username) {
     ceBlock.parentNode.insertBefore(wrapper, ceBlock);
     wrapper.appendChild(metaBar);
     wrapper.appendChild(ceBlock);
+
+    // Bug-Fix Build 117 (2.18): inert-Attribut per Hover-Event toggeln.
+    // CSS kann inert nicht entfernen, daher JS-gesteuertes mouseenter/mouseleave.
+    // Beim Eintreten: inert entfernen → metaBar und btnComment fokussierbar.
+    // Beim Verlassen: inert setzen → AT und Fokus koennen bar nicht mehr erreichen.
+    // Beleg: Bugfix Build 117, Projektgespraech 2026-05-08
+    wrapper.addEventListener('mouseenter', () => {
+        metaBar.removeAttribute('inert');
+    });
+    wrapper.addEventListener('mouseleave', () => {
+        // Nur inert setzen, wenn der Fokus nicht innerhalb der metaBar ist
+        if (!metaBar.contains(document.activeElement)) {
+            metaBar.setAttribute('inert', '');
+        }
+    });
+    // Wenn Fokus metaBar verlässt (z.B. Tab-Navigation heraus): inert wieder setzen
+    metaBar.addEventListener('focusout', (e) => {
+        if (!metaBar.contains(e.relatedTarget)) {
+            metaBar.setAttribute('inert', '');
+        }
+    });
 
     // Fremde Bloecke: contenteditable deaktivieren
     if (!isOwn) {
@@ -694,6 +762,17 @@ function _openAccordionSection(section) {
     // Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06
     if (section.dataset.accordion === 'form') {
         _refreshPlaceholderForm();
+    } else {
+        // Bug-Fix Build 117 (2.14): Wenn das Formular-Akkordeon VERLASSEN wird,
+        // blauen Rahmen auf dem zuletzt fokussierten Editor-Block entfernen.
+        // Ohne diesen Cleanup blieb der Rahmen dauerhaft sichtbar.
+        // Beleg: Bugfix Build 117, Projektgespraech 2026-05-08
+        if (typeof window.PlaceholderWizard?.getCurrentBlockId === 'function') {
+            const lastId = window.PlaceholderWizard.getCurrentBlockId();
+            if (lastId) {
+                window.CommentThread?._clearEditorBlockPulse?.(lastId);
+            }
+        }
     }
 
     // B6 Phase 7: Bausteine-Akkordeon geoeffnet -> _refreshModulePanel() aufrufen

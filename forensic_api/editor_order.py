@@ -11,7 +11,7 @@
 #   Body: { "report_id": N,
 #            "order": [
 #              {"block_id": "uuid1", "sort_index": "a0"},
-#              {"block_id": "uuid2", "sort_index": "a0V"},
+#              {"block_id": "uuid2", "sort_index": "000000"},
 #              ...
 #            ],
 #            "lock_id": "uuid" (oder X-Forensic-Lock-Id-Header) }
@@ -23,8 +23,18 @@
 # Datenbankzugriff:
 #   evidence_<uid>.db (READ-WRITE) — report_block_order, editor_locks
 #
+# Fixes:
+#   Build 117 (Bug 2.16/2.20): Signatur-Mismatch set_block_order:
+#     editor_order.py uebergab report_id, ordered_block_ids, new_sort_indices
+#     als separate Parameter — set_block_order erwartet aber (order: list[dict],
+#     modified_by: str). Der Mismatch fuehrte zu 500 Internal Server Error
+#     bei jedem Auto-Save. Beleg: Projektgespraech 2026-05-08
+#   Build 117 (Bug 3.1): context.username ist der Beschuldigte, nicht der
+#     Ermittler. Fix: context.investigator_username verwenden.
+#     Beleg: Projektgespraech 2026-05-07
+#
 # Beleg: AP-E3, Projektgespraech 2026-04-19
-# Version: v0.6.114 · Build: 114 · 2026-05-07
+# Version: v0.6.118 · Build: 118 · 2026-05-08
 # =============================================================================
 
 from __future__ import annotations
@@ -106,9 +116,10 @@ class EditorOrderEndpoint:
             )
             return
 
-        # order-Eintraege validieren: jeder muss block_id und sort_index haben
-        block_ids   = []
-        sort_indices = []
+        # order-Eintraege validieren und in das von set_block_order erwartete
+        # Format normalisieren: list[{block_id: str, sort_index: str}].
+        # Beleg: Bugfix Build 117, Projektgespraech 2026-05-08
+        order_list: list[dict] = []
         for i, entry in enumerate(order_raw):
             if not isinstance(entry, dict):
                 handler.send_response_body(
@@ -131,16 +142,19 @@ class EditorOrderEndpoint:
                     content_type=_CT_JSON,
                 )
                 return
-            block_ids.append(bid)
-            sort_indices.append(idx)
+            order_list.append({"block_id": bid, "sort_index": idx})
 
-        modified_by = self._context.username or ""
+        # Bug 3.1 Fix (Build 117): Ermittler-Username, nicht Beschuldigter.
+        # Beleg: Projektgespraech 2026-05-07
+        modified_by = self._context.investigator_username
 
         try:
+            # Bug-Fix Build 117: set_block_order(order: list[dict], modified_by: str).
+            # Frueherer Aufruf mit separaten report_id/ordered_block_ids/new_sort_indices
+            # stimmte nicht mit DB-Signatur ueberein → 500-Fehler.
+            # Beleg: Projektgespraech 2026-05-08
             updated = self._bundle.evidence.set_block_order(
-                report_id=report_id,
-                ordered_block_ids=block_ids,
-                new_sort_indices=sort_indices,
+                order=order_list,
                 modified_by=modified_by,
             )
         except EvidenceDbError as exc:

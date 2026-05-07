@@ -24,7 +24,7 @@
 #   evidence_<uid>.db (READ-WRITE) — reports-Tabelle
 #
 # Beleg: AP-E3, Projektgespraech 2026-04-19
-# Version: v0.6.044 · Build: 044 · 2026-04-19
+# Version: v0.6.118 · Build: 118 · 2026-05-08
 # =============================================================================
 
 from __future__ import annotations
@@ -145,7 +145,9 @@ class ReportsEndpoint:
         except (TypeError, ValueError):
             template_id = None
 
-        investigator = self._context.username or ""
+        # Bug 3.1 Fix (Build 117): Ermittler-Username, nicht Beschuldigter.
+        # Beleg: Projektgespraech 2026-05-07
+        investigator = self._context.investigator_username
 
         try:
             report_id = self._bundle.evidence.create_report(

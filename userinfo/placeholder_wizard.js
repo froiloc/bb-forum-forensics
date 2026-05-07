@@ -57,7 +57,7 @@
  *     Rueckwaerts-Kompatibilitaet fuer open()/openAtField() erhalten.
  *     Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06.
  *
- * Version: v0.6.113 · Build: 113 · 2026-05-07
+ * Version: v0.6.118 · Build: 118 · 2026-05-08
  * Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06
  */
 
@@ -207,13 +207,21 @@ function focusBlock(blockId) {
     const body = document.getElementById('accordion-body-form');
     if (!body) return;
 
+    // Bug-Fix Build 117 (2.14): Alten blauen Rahmen entfernen BEVOR
+    // _currentBlockId ueberschrieben wird. Vorher wurde _clearEditorBlockPulse
+    // mit dem neuen blockId aufgerufen (weil _currentBlockId bereits gesetzt war),
+    // sodass der alte Rahmen dauerhaft sichtbar blieb.
+    // Beleg: Bugfix Build 117, Projektgespraech 2026-05-08
+    if (_currentBlockId && _currentBlockId !== blockId) {
+        window.CommentThread?._clearEditorBlockPulse?.(_currentBlockId);
+    }
+
     _currentBlockId = blockId;
     _applyFocusBlur(body, blockId);
     _scrollToFocusedBlock(body, blockId);
 
-    // Pulsanimation auf Editor-Block
+    // Pulsanimation auf Editor-Block (nur wenn neuer Block gesetzt)
     if (blockId && typeof window.CommentThread?._pulseEditorBlock === 'function') {
-        window.CommentThread._clearEditorBlockPulse?.(_currentBlockId);
         window.CommentThread._pulseEditorBlock(blockId);
     }
 }
@@ -571,6 +579,9 @@ window.PlaceholderWizard = {
     // Phase 6 Haupt-API
     showPlaceholderForm,
     focusBlock,
+    // Build 117: _currentBlockId fuer externen Zugriff (Cleanup blauer Rahmen)
+    // Beleg: Bugfix Build 117, Projektgespraech 2026-05-08
+    getCurrentBlockId: () => _currentBlockId,
     // Unveraenderte Kern-Funktionen (Tests und Phase 5)
     buildSteps,
     stepIndexForField,
