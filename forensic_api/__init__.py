@@ -455,6 +455,15 @@ class ForensicApi:
             self._get_placeholders().handle_library(handler, params)
             return
 
+        # B6 Phase 6: placeholder_values_json aller Bloecke des aktiven Berichts
+        # Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06
+        if url_path == "/_forensic/placeholders/values":
+            if method not in ("GET", "HEAD"):
+                self._method_not_allowed(handler)
+                return
+            self._get_placeholders().handle_values(handler)
+            return
+
         import json as _json
         logger.warning("Unbekannter Placeholders-Endpunkt: '%s'", url_path)
         handler.send_response_body(

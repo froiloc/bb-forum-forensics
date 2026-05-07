@@ -85,6 +85,9 @@ const SIDEBAR_MAX_ANNOTATIONS = 200;
 /** Aktuell geladener Bericht (ReportRecord) oder null */
 let _currentReport = null;
 
+/** Aktuell geladene Bloecke (fuer Sidebar-Formular) */
+let _currentBlocks = [];
+
 /** Editor.js-Instanz */
 let _editor = null;
 
@@ -351,8 +354,11 @@ async function _loadReportImpl(report) {
     let existingBlocks = [];
     if (blocksResp.ok) {
         const data = await blocksResp.json();
-        const found = (data.reports || []).find(r => r.id === report.id);
-        if (found) existingBlocks = found.blocks || [];
+        // B6 Phase 4+: "blocks" statt "paragraphs"
+        existingBlocks = data.blocks || [];
+        // B6 Phase 6: _currentBlocks fuer Sidebar-Formular merken
+        // Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06
+        _currentBlocks = existingBlocks;
     }
 
     // Defensive Bereinigung: doppelte Editor-Instanzen entfernen
@@ -654,6 +660,12 @@ function _openAccordionSection(section) {
         const key = section.dataset.accordion;
         if (key) localStorage.setItem('b6_sidebar_open', key);
     } catch (_) {}
+
+    // B6 Phase 6: Formular-Akkordeon geoeffnet -> showPlaceholderForm() aufrufen
+    // Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06
+    if (section.dataset.accordion === 'form') {
+        _refreshPlaceholderForm();
+    }
 }
 
 /**
@@ -795,6 +807,85 @@ function _bindChipDoubleClick() {
  * wieder her. Registriert Click-Handler auf allen Toggle-Schaltflaechen.
  * Beleg: Bauplan B6 v0.5 §4.4, Projektgespraech 2026-05-06
  */
+// ---------------------------------------------------------------------------
+// Platzhalter-Formular (B6 Phase 6)
+// Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06
+// ---------------------------------------------------------------------------
+
+/**
+ * Ruft showPlaceholderForm() mit dem aktuellen Editor-Zustand auf.
+ * Wird von _openAccordionSection() aufgerufen wenn das Formular-Akkordeon
+ * geoeffnet wird.
+ * Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06
+ */
+async function _refreshPlaceholderForm() {
+    if (!window.PlaceholderWizard?.showPlaceholderForm) return;
+    if (!_currentBlocks.length && !_currentReport) return;
+
+    // placeholder_values_json aus dem Server laden (aktuellste Werte)
+    let blocks = _currentBlocks;
+    try {
+        const resp = await fetch('/_forensic/placeholders/values', {
+            headers: { 'X-Forensic-Request': 'ajax' },
+        });
+        if (resp.ok) {
+            const valuesMap = await resp.json();
+            // Werte in die Bloecke einmergen (ohne _currentBlocks zu mutieren)
+            blocks = _currentBlocks.map(b => ({
+                ...b,
+                placeholder_values_json: JSON.stringify(valuesMap[b.block_id] || {}),
+            }));
+        }
+    } catch (_) {}
+
+    // Aktiven Block bestimmen: Sidebar-Datensatz oder erster Block
+    const sidebar = document.getElementById('support-sidebar');
+    const focusedId = sidebar?.dataset?.focusedBlockId
+        || (blocks.length ? blocks[0].block_id : null);
+
+    const username = document.getElementById('report-editor-body')?.dataset?.username || '';
+
+    window.PlaceholderWizard.showPlaceholderForm(blocks, focusedId, {
+        myUsername: username,
+        onSave:     _onPlaceholderFieldSave,
+    });
+}
+
+/**
+ * Speichert einen einzelnen Platzhalter-Feldwert fuer einen Block.
+ * Wird als onSave-Callback von showPlaceholderForm() aufgerufen.
+ * Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06
+ *
+ * @param {string} blockId
+ * @param {string} fieldName
+ * @param {string} value
+ */
+async function _onPlaceholderFieldSave(blockId, fieldName, value) {
+    if (!blockId || !fieldName) return;
+    if (!window.EditorState?.lockId) return;   // kein Lock = kein Schreiben
+
+    // Aktuelle Werte des Blocks zusammenfuehren
+    const block = _currentBlocks.find(b => b.block_id === blockId);
+    let existing = {};
+    try {
+        if (block?.placeholder_values_json) {
+            existing = JSON.parse(block.placeholder_values_json);
+        }
+    } catch (_) {}
+    const newValues = { ...existing, [fieldName]: value };
+
+    const resp = await _fetchWithLock(EDITOR_API.BLOCK, {
+        action:                  'update_block',
+        block_id:                blockId,
+        block_data:              block?.block_data || '{}',
+        placeholder_values_json: JSON.stringify(newValues),
+    });
+    if (resp && !resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        console.warn('report_editor.js: Platzhalter-Save fehlgeschlagen:', fieldName, err);
+    }
+}
+
 function _initSidebarAccordion() {
     const sidebar = document.getElementById('support-sidebar');
     if (!sidebar) return;

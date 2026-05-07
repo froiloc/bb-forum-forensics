@@ -350,3 +350,96 @@ class TestPlaceholderRegex(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+# =============================================================================
+# TestHandleValues (B6 Phase 6)
+# Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06
+# =============================================================================
+
+class TestHandleValues(unittest.TestCase):
+    """
+    T12-T15: handle_values() liefert placeholder_values_json aller Bloecke.
+    Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06
+    """
+
+    def _setup(self):
+        """Erstellt Bundle-Mock und Handler fuer handle_values()-Tests."""
+        from db.evidence_db import EvidenceDb, ReportBlockRecord
+
+        con = sqlite3.connect(":memory:", check_same_thread=False)
+        con.row_factory = sqlite3.Row
+        edb = EvidenceDb(con)
+
+        bundle   = MagicMock()
+        bundle.evidence = edb
+
+        context  = MagicMock()
+        context.user_id = 1
+        config   = MagicMock()
+
+        ep = PlaceholdersEndpoint(bundle, context, config)
+
+        responses = []
+        handler = MagicMock()
+        handler.send_response_body = lambda status, body, **kw: responses.append(
+            (status, json.loads(body.decode("utf-8")) if body else {})
+        )
+        return ep, edb, con, responses, handler
+
+    def _mk_report(self, edb):
+        return edb.create_report("interim", "Testbericht", "h001")
+
+    def _mk_block(self, edb, report_id, block_id="blk-001",
+                  values_json=None):
+        edb.save_block(block_id, report_id, "h001", "paragraph",
+                       '{"text":"Test {{m:vorname}}"}')
+        if values_json:
+            edb.update_block(block_id, '{"text":"Test {{m:vorname}}"}',
+                             placeholder_values_json=values_json,
+                             requesting_author="h001")
+        return block_id
+
+    def test_T12_kein_bericht(self):
+        """T12: Kein Bericht -> leeres Dict."""
+        ep, edb, con, responses, handler = self._setup()
+        ep.handle_values(handler)
+        self.assertEqual(responses[0][0], 200)
+        self.assertEqual(responses[0][1], {})
+        con.close()
+
+    def test_T13_bericht_ohne_werte(self):
+        """T13: Bericht mit Block aber ohne placeholder_values_json -> block_id: {}."""
+        ep, edb, con, responses, handler = self._setup()
+        rid = self._mk_report(edb)
+        bid = self._mk_block(edb, rid)
+        ep.handle_values(handler)
+        self.assertEqual(responses[0][0], 200)
+        self.assertIn(bid, responses[0][1])
+        self.assertEqual(responses[0][1][bid], {})
+        con.close()
+
+    def test_T14_bericht_mit_werten(self):
+        """T14: Bericht mit befuelltem Block -> korrekte Werte zurueck."""
+        ep, edb, con, responses, handler = self._setup()
+        rid = self._mk_report(edb)
+        bid = self._mk_block(edb, rid, values_json='{"vorname":"Max"}')
+        ep.handle_values(handler)
+        self.assertEqual(responses[0][0], 200)
+        self.assertEqual(responses[0][1].get(bid, {}).get("vorname"), "Max")
+        con.close()
+
+    def test_T15_mehrere_bloecke(self):
+        """T15: Mehrere Bloecke -> alle im Result."""
+        ep, edb, con, responses, handler = self._setup()
+        rid = self._mk_report(edb)
+        bid1 = self._mk_block(edb, rid, block_id="blk-A", values_json='{"a":"1"}')
+        bid2 = self._mk_block(edb, rid, block_id="blk-B")
+        ep.handle_values(handler)
+        self.assertEqual(responses[0][0], 200)
+        result = responses[0][1]
+        self.assertIn(bid1, result)
+        self.assertIn(bid2, result)
+        self.assertEqual(result[bid1].get("a"), "1")
+        con.close()
+
+

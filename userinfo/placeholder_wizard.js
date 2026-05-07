@@ -3,45 +3,62 @@
  * IT-Forensisches Ermittlungswerkzeug — Baustelle 6: Berichte & Exports
  *
  * Zweck:
- *   Platzhalter-Wizard fuer Fenster 3 (Phase 5, Bauplan B6 v0.3 §4.5).
+ *   Platzhalter-Formular fuer den Formular-Akkordeon-Abschnitt der
+ *   Support-Sidebar (B6 Phase 6, Bauplan B6 v0.5 §4.4.3).
  *
- *   Fuehrt den Ermittler schrittweise durch das Ausfuellen aller m:- und
- *   o:-Felder eines Paragraphen. Oeffnet beim Einfuegen eines Moduls (Phase 6)
- *   und bei Doppelklick auf einen Chip im fertigen Block.
+ *   Zeigt Platzhalter-Eingabefelder ALLER Bloecke des aktiven Berichts
+ *   in Dokumentreihenfolge. Der fokussierte Block erscheint scharf,
+ *   alle anderen sind geblurt (filter: blur + opacity). Beides ist
+ *   synchron mit dem blauen Fokus-Rahmen auf dem Editor-Block.
  *
- *   Grundprinzip (§4.5):
- *     - 2-3 Felder pro Schritt (alle m:-Felder in Schritten a 2-3,
- *       o:-Felder im letzten Schritt je 2-3)
- *     - Vor/Zurueck-Navigation ohne Datenverlust
- *     - {{a:...}}-Werte erscheinen nicht im Wizard
- *     - Pflichtfeld-Validierung direkt am Feld (kein generischer Alert)
- *     - "Weiter" und "In Bericht uebernehmen" deaktiviert solange m: leer
- *     - Doppelklick auf Chip oeffnet Wizard beim richtigen Schritt
- *     - Eingaben werden als JSON in placeholder_values_json gespeichert
+ *   Verhaltensregeln (§4.4.3):
+ *     - Felder: m: mit rotem *, o: ohne, a: nicht angezeigt.
+ *     - Klick auf ein geblurtes Feld setzt den Fokus direkt.
+ *     - Tab/Shift+Tab: naechstes/vorheriges Feld, Blur wandert mit.
+ *     - RegExp-Validierung: gruenem Rahmen bei OK, Warntext bei Fehler.
+ *       Kein Speichern blockiert (Grundregel 11).
+ *     - Leer-Zustand: "Kein Bericht geoeffnet."
+ *     - Block ohne Platzhalter: "Keine Platzhalter" (sichtbar, geblurt).
+ *     - Scroll: fokussierter Block bleibt in mittleren 80% des Viewports.
  *
- *   Abhaengigkeiten:
- *     placeholder_chips.js (window.PlaceholderChips) muss VOR diesem Skript
- *     geladen sein.
+ * Rueckwaerts-Kompatibilitaet:
+ *   buildSteps(), stepIndexForField() und die open()/openAtField()-Aufrufe
+ *   aus Phase 5 (report_editor.js _bindChipDoubleClick) werden weiter
+ *   unterstuetzt. open() ist jetzt ein Alias fuer showPlaceholderForm().
  *
  * Exports:
- *   window.PlaceholderWizard.open(options)
- *     Oeffnet den Wizard.
- *     options: {
- *       blockId:     string,   -- Paragraph-ID
- *       moduleTitle: string,   -- Anzeigename im Wizard-Header
- *       bodyText:    string,   -- Rohtext des Paragraphen mit Platzhaltern
- *       values:      object,   -- aktuelle {name: value}-Werte
- *       onSave:      async function(blockId, newValues)
- *     }
- *   window.PlaceholderWizard.openAtField(options, fieldName)
- *     Oeffnet den Wizard direkt beim Schritt der das Feld fieldName enthaelt.
- *   window.PlaceholderWizard.close()
- *     Schliesst den Wizard (z.B. bei Lock-Verlust).
+ *   window.PlaceholderWizard.showPlaceholderForm(blocks, focusedBlockId, opts)
+ *     Rendert das Formular in #accordion-body-form.
+ *   window.PlaceholderWizard.focusBlock(blockId)
+ *     Verschiebt den Formular-Fokus auf einen anderen Block.
+ *   window.PlaceholderWizard.open(options)      [Rueckwaerts-Kompatibilitaet]
+ *   window.PlaceholderWizard.openAtField(opts, fieldName)  [RW-Compat]
+ *   window.PlaceholderWizard.close()            [Rueckwaerts-Kompatibilitaet]
  *   window.PlaceholderWizard.buildSteps(bodyText)
- *     Gibt die Schritt-Struktur zurueck (fuer Tests).
+ *   window.PlaceholderWizard.stepIndexForField(steps, name)
  *
- * Version: v0.1.0 · Build: 092 · 2026-05-05
- * Beleg: Bauplan B6 v0.3 §4.5, Ausdefinitionsgespraech 2026-05-05
+ *   opts: {
+ *     myUsername: string,
+ *     onSave:     async function(blockId, name, value)
+ *     blocks:     array (alle Bloecke des Berichts)
+ *   }
+ *
+ * Abhaengigkeiten:
+ *   placeholder_chips.js (window.PlaceholderChips) muss VOR diesem Skript
+ *   geladen sein.
+ *
+ * Changelog:
+ *   Build 092: Erstimplementierung als Modal-Wizard (buildSteps, stepIndexForField).
+ *   Build 104 (B6 Phase 6): Modal-Code durch Sidebar-Formular ersetzt.
+ *     showPlaceholderForm() rendert alle Bloecke in #accordion-body-form.
+ *     Blur-Fokus-Synchronisation mit Editor-Block (comment_thread.js-Muster).
+ *     RegExp-Validierung, Tab-Navigation, Scroll-Zentrierung.
+ *     Wert-Speicherung via onSave-Callback pro Feld.
+ *     Rueckwaerts-Kompatibilitaet fuer open()/openAtField() erhalten.
+ *     Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06.
+ *
+ * Version: v0.6.104 · Build: 104 · 2026-05-06
+ * Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06
  */
 
 'use strict';
@@ -50,8 +67,11 @@
 // Konstanten
 // ---------------------------------------------------------------------------
 
-/** Maximale Anzahl Felder pro Wizard-Schritt. */
+/** Maximale Anzahl Felder pro Wizard-Schritt (fuer buildSteps — bleibt erhalten). */
 const FIELDS_PER_STEP = 3;
+
+/** Zeitdauer fuer debounced Auto-Save nach Eingabe (ms). */
+const FIELD_SAVE_DEBOUNCE_MS = 700;
 
 // ---------------------------------------------------------------------------
 // Hilfsfunktionen
@@ -65,24 +85,25 @@ function _esc(s) {
         .replace(/"/g, '&quot;');
 }
 
+/** Base64-Decode mit Unicode-Unterstuetzung (OP-B6-5). */
+function _b64DecodeUnicode(str) {
+    try {
+        return decodeURIComponent(atob(str).split('').map(c =>
+            '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+        ).join(''));
+    } catch (_) {
+        return null;
+    }
+}
+
 // ---------------------------------------------------------------------------
-// Schritt-Aufbau
+// buildSteps / stepIndexForField (unveraendert aus Build 092)
+// Beleg: Bauplan B6 v0.3 §4.5
 // ---------------------------------------------------------------------------
 
 /**
  * Teilt die Felder eines Paragraphen in Wizard-Schritte auf.
- *
- * Reihenfolge: alle m:-Felder zuerst, dann alle o:-Felder.
- * Jeder Schritt enthaelt maximal FIELDS_PER_STEP Felder.
- * Leere Feldlisten erzeugen einen einzigen leeren Schritt.
- *
- * Jedes Feld-Objekt:
- *   { name, defaultVal, description, b64regex, type: 'm'|'o' }
- *
- * Beleg: Bauplan B6 v0.3 §4.5 (2-3 Felder pro Schritt)
- *
- * @param {string} bodyText
- * @returns {Array<Array>}  Array von Schritten, jeder Schritt ein Array von Feldern
+ * m:-Felder zuerst, dann o:-Felder; max FIELDS_PER_STEP pro Schritt.
  */
 function buildSteps(bodyText) {
     const chips = window.PlaceholderChips;
@@ -104,10 +125,6 @@ function buildSteps(bodyText) {
 /**
  * Gibt den Schritt-Index zurueck, der das Feld mit dem Namen fieldName enthaelt.
  * Gibt 0 zurueck wenn das Feld nicht gefunden wird.
- *
- * @param {Array<Array>} steps
- * @param {string} fieldName
- * @returns {number}
  */
 function stepIndexForField(steps, fieldName) {
     for (let i = 0; i < steps.length; i++) {
@@ -117,122 +134,252 @@ function stepIndexForField(steps, fieldName) {
 }
 
 // ---------------------------------------------------------------------------
-// DOM-Aufbau
+// Sidebar-Formular-Zustand
+// ---------------------------------------------------------------------------
+
+let _currentBlockId  = null;   // aktuell fokussierter Block-ID
+let _currentBlocks   = [];     // alle Bloecke des Berichts
+let _currentOpts     = {};     // { myUsername, onSave }
+let _saveTimers      = {};     // Debounce-Timer { "blockId:fieldName": timer }
+
+// ---------------------------------------------------------------------------
+// Sidebar-Formular rendern
 // ---------------------------------------------------------------------------
 
 /**
- * Erstellt das Modal-Overlay und gibt es zurueck.
- * Das Modal wird dem document.body angehaengt.
- * Beleg: Bauplan B6 v0.3 §4.5 (Dialog-Mockup)
- */
-function _createModal() {
-    const overlay = document.createElement('div');
-    overlay.id = 'pw-overlay';
-    overlay.className = 'pw-overlay';
-    overlay.setAttribute('role', 'dialog');
-    overlay.setAttribute('aria-modal', 'true');
-    overlay.setAttribute('aria-labelledby', 'pw-title');
-    overlay.innerHTML = `
-        <div class="pw-dialog" id="pw-dialog">
-            <div class="pw-header">
-                <span class="pw-header-title" id="pw-title"></span>
-                <span class="pw-header-step" id="pw-step-indicator"></span>
-                <button class="pw-close-btn" id="pw-btn-close"
-                    title="Abbrechen" aria-label="Wizard schliessen">\u2715</button>
-            </div>
-            <div class="pw-body" id="pw-body"></div>
-            <div class="pw-footer">
-                <button class="pw-btn" id="pw-btn-cancel">\u2715 Abbrechen</button>
-                <span class="pw-footer-spacer"></span>
-                <button class="pw-btn" id="pw-btn-back" disabled>\u25c4 Zur\u00fcck</button>
-                <button class="pw-btn pw-btn-primary" id="pw-btn-next">Weiter \u25ba</button>
-                <button class="pw-btn pw-btn-primary" id="pw-btn-save" style="display:none">
-                    \u2714 In Bericht \u00fcbernehmen
-                </button>
-            </div>
-        </div>`;
-    document.body.appendChild(overlay);
-    return overlay;
-}
-
-/**
- * Rendert den Inhalt eines Schrittes in #pw-body.
+ * Rendert das Platzhalter-Formular fuer alle Bloecke in #accordion-body-form.
+ * Haupteinstiegspunkt fuer report_editor.js.
+ * Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06
  *
- * @param {Array}  fields     -- Felder des aktuellen Schrittes
- * @param {Object} values     -- aktuell gespeicherte Werte {name: value}
- * @param {number} stepIdx    -- 0-basierter Schritt-Index
- * @param {number} totalSteps -- Gesamtanzahl Schritte
+ * @param {Array}  blocks         -- alle Bloecke des Berichts (aus GET format=json)
+ * @param {string} focusedBlockId -- block_id des fokussierten Blocks
+ * @param {Object} opts           -- { myUsername, onSave: async(blockId, name, val) }
  */
-function _renderStep(fields, values, stepIdx, totalSteps) {
-    const body = document.getElementById('pw-body');
+function showPlaceholderForm(blocks, focusedBlockId, opts) {
+    const body = document.getElementById('accordion-body-form');
     if (!body) return;
 
-    if (!fields.length) {
-        body.innerHTML = '<p class="pw-empty">Keine Felder zum Ausf\u00fcllen vorhanden.</p>';
+    _currentBlocks  = blocks || [];
+    _currentBlockId = focusedBlockId || null;
+    _currentOpts    = opts || {};
+
+    if (!_currentBlocks.length) {
+        body.innerHTML = '<p class="pf-empty-state">Kein Bericht ge\u00f6ffnet.</p>';
         return;
     }
 
-    body.innerHTML = fields.map(f => {
-        const val     = values[f.name] ?? f.defaultVal ?? '';
-        const isM     = f.type === 'm';
-        const label   = _esc(f.description || f.name);
-        const inputId = `pw-field-${_esc(f.name)}`;
-        const reqMark = isM ? ' <span class="pw-required" aria-hidden="true">*</span>' : '';
-        const optMark = !isM ? ' <span class="pw-optional">(optional)</span>' : '';
+    // Alle Bloecke rendern
+    body.innerHTML = _renderAllBlocks(_currentBlocks, _currentBlockId);
 
-        return `
-            <div class="pw-field-group" data-field-name="${_esc(f.name)}"
-                 data-field-type="${_esc(f.type)}">
-                <label class="pw-label" for="${inputId}">
-                    ${label}${reqMark}${optMark}
-                </label>
-                <div class="pw-input-wrap">
-                    <input class="pw-input" id="${inputId}"
-                           type="text"
-                           name="${_esc(f.name)}"
-                           value="${_esc(val)}"
-                           data-field-name="${_esc(f.name)}"
-                           data-field-type="${_esc(f.type)}"
-                           autocomplete="off"
-                           placeholder="${_esc(val || f.defaultVal || '')}"
-                           ${f.b64regex ? `data-b64regex="${_esc(f.b64regex)}"` : ''}>
-                    ${!isM ? `<button class="pw-skip-btn"
-                        data-field-name="${_esc(f.name)}"
-                        title="Dieses optionale Feld \u00fcberspringen">
-                        \u00dcberspringen</button>` : ''}
-                </div>
-                <div class="pw-field-error" id="pw-err-${_esc(f.name)}" role="alert"></div>
-            </div>`;
-    }).join('');
+    // Event-Listener binden
+    _bindFormEvents(body, _currentBlocks, opts);
 
-    // Step-Indikator
-    const indicator = document.getElementById('pw-step-indicator');
-    if (indicator) {
-        indicator.textContent = `Schritt ${stepIdx + 1} von ${totalSteps}`;
+    // Fokussierten Block sichtbar machen (Blur und Scroll)
+    _applyFocusBlur(body, _currentBlockId);
+    _scrollToFocusedBlock(body, _currentBlockId);
+
+    // Pulsanimation auf Editor-Block
+    if (_currentBlockId && typeof window.CommentThread?._pulseEditorBlock === 'function') {
+        window.CommentThread._pulseEditorBlock(_currentBlockId);
+    }
+}
+
+/**
+ * Verschiebt den Formular-Fokus auf blockId (z.B. bei Tab-Navigation
+ * zwischen Bloecken oder Klick auf geblurtes Feld).
+ * Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06
+ */
+function focusBlock(blockId) {
+    const body = document.getElementById('accordion-body-form');
+    if (!body) return;
+
+    _currentBlockId = blockId;
+    _applyFocusBlur(body, blockId);
+    _scrollToFocusedBlock(body, blockId);
+
+    // Pulsanimation auf Editor-Block
+    if (blockId && typeof window.CommentThread?._pulseEditorBlock === 'function') {
+        window.CommentThread._clearEditorBlockPulse?.(_currentBlockId);
+        window.CommentThread._pulseEditorBlock(blockId);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// HTML-Renderer
+// ---------------------------------------------------------------------------
+
+/**
+ * Rendert alle Block-Gruppen als HTML-String.
+ * @param {Array}  blocks
+ * @param {string} focusedBlockId
+ * @returns {string}
+ */
+function _renderAllBlocks(blocks, focusedBlockId) {
+    if (!blocks.length) {
+        return '<p class="pf-empty-state">Keine Bl\u00f6cke im Bericht.</p>';
     }
 
-    // Zurueck-Button
-    const btnBack = document.getElementById('pw-btn-back');
-    if (btnBack) btnBack.disabled = stepIdx === 0;
+    return blocks.map(block => _renderBlockGroup(block, focusedBlockId)).join('');
+}
 
-    // Weiter / Speichern
-    const btnNext = document.getElementById('pw-btn-next');
-    const btnSave = document.getElementById('pw-btn-save');
-    const isLast  = stepIdx === totalSteps - 1;
-    if (btnNext) btnNext.style.display = isLast ? 'none' : '';
-    if (btnSave) btnSave.style.display = isLast ? '' : 'none';
+/**
+ * Rendert eine Block-Gruppe (eine Block-Karte mit allen m:/o:-Feldern).
+ * @param {Object} block
+ * @param {string} focusedBlockId
+ * @returns {string}
+ */
+function _renderBlockGroup(block, focusedBlockId) {
+    const chips  = window.PlaceholderChips;
+    const isFocused = block.block_id === focusedBlockId;
 
-    // Skip-Buttons verdrahten
-    body.querySelectorAll('.pw-skip-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const input = body.querySelector(`input[data-field-name="${btn.dataset.fieldName}"]`);
-            if (input) { input.value = ''; }
+    // Rohtext aus block_data extrahieren
+    let rawText = '';
+    try {
+        const data = typeof block.block_data === 'string'
+            ? JSON.parse(block.block_data)
+            : (block.block_data || {});
+        rawText = data.text || '';
+    } catch (_) {}
+
+    // Felder extrahieren (m: und o: — a: wird nicht angezeigt)
+    const mFields = chips ? chips.extractFields(rawText, 'm').map(f => ({ ...f, type: 'm' })) : [];
+    const oFields = chips ? chips.extractFields(rawText, 'o').map(f => ({ ...f, type: 'o' })) : [];
+    const fields  = [...mFields, ...oFields];
+
+    // Aktuelle Werte aus placeholder_values_json
+    let values = {};
+    try {
+        if (block.placeholder_values_json) {
+            values = JSON.parse(block.placeholder_values_json);
+        }
+    } catch (_) {}
+
+    const focusedCls = isFocused ? ' pf-block-group--focused' : ' pf-block-group--blurred';
+
+    if (!fields.length) {
+        return `<div class="pf-block-group${focusedCls}"
+                     data-block-id="${_esc(block.block_id)}"
+                     aria-label="Block ohne Platzhalter">
+            <div class="pf-block-empty">Keine Platzhalter</div>
+        </div>`;
+    }
+
+    const fieldsHtml = fields.map(f => _renderField(f, values, block.block_id)).join('');
+
+    return `<div class="pf-block-group${focusedCls}"
+                 data-block-id="${_esc(block.block_id)}"
+                 aria-label="Platzhalter-Felder f\u00fcr Block ${_esc(block.author || '')}">
+        ${fieldsHtml}
+    </div>`;
+}
+
+/**
+ * Rendert ein einzelnes Eingabefeld.
+ * @param {Object} field   -- { name, defaultVal, description, b64regex, type }
+ * @param {Object} values  -- aktuelle Werte
+ * @param {string} blockId
+ * @returns {string}
+ */
+function _renderField(field, values, blockId) {
+    const val       = values[field.name] ?? field.defaultVal ?? '';
+    const isM       = field.type === 'm';
+    const label     = _esc(field.description || field.name);
+    const inputId   = `pf-input-${_esc(blockId)}-${_esc(field.name)}`;
+    const reqMark   = isM ? ' <span class="pf-required" aria-hidden="true">*</span>' : '';
+    const hasVal    = String(val).trim() !== '';
+
+    // Validierungsstatus
+    let validCls = '';
+    if (hasVal && field.b64regex) {
+        const pattern = _b64DecodeUnicode(field.b64regex);
+        if (pattern !== null) {
+            try {
+                validCls = new RegExp(pattern).test(val) ? ' pf-input--valid' : ' pf-input--warn';
+            } catch (_) {}
+        }
+    } else if (hasVal) {
+        validCls = ' pf-input--valid';
+    }
+
+    return `<div class="pf-field-group"
+                 data-block-id="${_esc(blockId)}"
+                 data-field-name="${_esc(field.name)}"
+                 data-field-type="${_esc(field.type)}">
+        <label class="pf-label" for="${inputId}">
+            ${label}${reqMark}
+        </label>
+        <div class="pf-input-wrap">
+            <input class="pf-input${validCls}"
+                   id="${inputId}"
+                   type="text"
+                   value="${_esc(val)}"
+                   data-block-id="${_esc(blockId)}"
+                   data-field-name="${_esc(field.name)}"
+                   data-field-type="${_esc(field.type)}"
+                   ${field.b64regex ? `data-b64regex="${_esc(field.b64regex)}"` : ''}
+                   autocomplete="off"
+                   placeholder="${_esc(field.defaultVal || field.description || '')}"
+                   aria-required="${isM ? 'true' : 'false'}"
+                   aria-label="${label}${isM ? ' (Pflichtfeld)' : ''}">
+        </div>
+        <div class="pf-field-error" id="pf-err-${_esc(blockId)}-${_esc(field.name)}"
+             role="alert"></div>
+        ${field.description && field.description !== field.name
+            ? `<div class="pf-field-hint">${_esc(field.description)}</div>`
+            : ''}
+    </div>`;
+}
+
+// ---------------------------------------------------------------------------
+// Event-Listener
+// ---------------------------------------------------------------------------
+
+/**
+ * Verdrahtet alle Event-Listener fuer das Sidebar-Formular.
+ * Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06
+ */
+function _bindFormEvents(body, blocks, opts) {
+    // Klick auf eine Block-Gruppe: Fokus setzen
+    body.querySelectorAll('.pf-block-group').forEach(group => {
+        group.addEventListener('click', () => {
+            const bid = group.dataset.blockId;
+            if (bid && bid !== _currentBlockId) {
+                _currentBlockId = bid;
+                focusBlock(bid);
+            }
         });
     });
 
-    // Ersten Input fokussieren
-    const firstInput = body.querySelector('.pw-input');
-    firstInput?.focus();
+    // Klick auf ein Eingabefeld: Fokus direkt auf diesem Block setzen
+    body.querySelectorAll('.pf-input').forEach(input => {
+        input.addEventListener('focus', () => {
+            const bid = input.dataset.blockId;
+            if (bid && bid !== _currentBlockId) {
+                _currentBlockId = bid;
+                _applyFocusBlur(body, bid);
+                _scrollToFocusedBlock(body, bid);
+                if (typeof window.CommentThread?._pulseEditorBlock === 'function') {
+                    window.CommentThread._pulseEditorBlock(bid);
+                }
+            }
+            // Visuelles Feedback: grüner/oranger Rahmen live waehrend Eingabe
+        });
+
+        // Eingabe: Validierung + debounced Save
+        input.addEventListener('input', () => {
+            _validateFieldLive(input);
+            _scheduleFieldSave(input, opts);
+        });
+
+        // Tab-Navigation zwischen Block-Gruppen: Blur wandert mit
+        input.addEventListener('keydown', e => {
+            if (e.key === 'Tab') {
+                // Naechste/vorherige Gruppe bestimmen — wird nach dem
+                // DOM-Focus-Wechsel von "focus"-Handler verarbeitet.
+                // Kein explizites Handling noetig.
+            }
+        });
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -240,225 +387,165 @@ function _renderStep(fields, values, stepIdx, totalSteps) {
 // ---------------------------------------------------------------------------
 
 /**
- * Prueft ob alle m:-Felder des aktuellen Schrittes ausgefuellt sind.
- * Zeigt Fehler direkt am Feld an. Gibt true zurueck wenn alles OK.
- * Beleg: Bauplan B6 v0.3 §4.5 (Fehlermeldung direkt am Feld)
- *
- * Optionaler b64regex-Check (OP-B6-5): Wenn das Feld einen b64regex-Wert hat,
- * wird der Regex dekodiert und gegen die Eingabe geprueft. Zeigt Warnung (kein Block).
+ * Live-Validierung eines Eingabefeldes (waehrend Eingabe).
+ * Pflichtfeld-Check + RegExp-Warnung (kein Block).
+ * Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06
  */
-function _validateStep(body) {
-    if (!body) return true;
-    let valid = true;
+function _validateFieldLive(input) {
+    const errEl = document.getElementById(
+        `pf-err-${input.dataset.blockId}-${input.dataset.fieldName}`
+    );
+    const val  = input.value.trim();
+    const isM  = input.dataset.fieldType === 'm';
+    const b64re = input.dataset.b64regex;
 
-    body.querySelectorAll('.pw-input').forEach(input => {
-        const errEl = document.getElementById(`pw-err-${input.dataset.fieldName}`);
-        if (!errEl) return;
+    // Klassen-Reset
+    input.classList.remove('pf-input--valid', 'pf-input--warn', 'pf-input--error');
+    if (errEl) errEl.textContent = '';
 
-        const isM    = input.dataset.fieldType === 'm';
-        const val    = input.value.trim();
-        const b64re  = input.dataset.b64regex;
-
-        errEl.textContent = '';
-        input.classList.remove('pw-input-error', 'pw-input-warn');
-
-        // Pflichtfeld-Pruefung
-        if (isM && !val) {
-            errEl.textContent = 'Dieses Feld ist erforderlich.';
-            input.classList.add('pw-input-error');
-            valid = false;
-            return;
-        }
-
-        // Validierungs-Regex (OP-B6-5) — nur Warnung, kein Block
-        if (b64re && val) {
-            try {
-                const pattern = _b64DecodeUnicode(b64re);
-                const re      = new RegExp(pattern);
-                if (!re.test(val)) {
-                    errEl.textContent = 'Eingabe entspricht nicht dem erwarteten Format.';
-                    input.classList.add('pw-input-warn');
-                    // Kein valid = false: Warnung blockiert nicht
-                }
-            } catch (_) { /* ungueltige Regex ignorieren */ }
-        }
-    });
-
-    return valid;
-}
-
-/**
- * Liest alle Eingabewerte des aktuellen Schrittes aus.
- * @returns {Object} {fieldName: value}
- */
-function _collectStepValues(body) {
-    const result = {};
-    if (!body) return result;
-    body.querySelectorAll('.pw-input').forEach(input => {
-        result[input.dataset.fieldName] = input.value;
-    });
-    return result;
-}
-
-// ---------------------------------------------------------------------------
-// Base64-Hilfsfunktionen (OP-B6-5)
-// Quelle: Projektgespraech 2026-05-05 (bereitgestellt durch Entwickler)
-// ---------------------------------------------------------------------------
-
-function _b64DecodeUnicode(str) {
-    return decodeURIComponent(atob(str).split('').map(c =>
-        '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
-    ).join(''));
-}
-
-// ---------------------------------------------------------------------------
-// Wizard-Zustand (Modul-intern)
-// ---------------------------------------------------------------------------
-
-let _overlay   = null;    // aktuelles Modal-Overlay
-let _opts      = null;    // aktuelle open()-Optionen
-let _steps     = [];      // Schritt-Array
-let _stepIdx   = 0;       // aktueller Schritt-Index
-let _values    = {};      // gesammelte Werte {name: value}
-
-// ---------------------------------------------------------------------------
-// Oeffentliche API
-// ---------------------------------------------------------------------------
-
-/**
- * Oeffnet den Wizard.
- *
- * @param {Object} options
- *   blockId:     string
- *   moduleTitle: string
- *   bodyText:    string
- *   values:      object   -- Vorbelgung {name: value}
- *   onSave:      async function(blockId, newValues)
- */
-function open(options) {
-    // Vorhandenes Modal entfernen
-    close();
-
-    _opts    = options;
-    _steps   = buildSteps(options.bodyText || '');
-    _stepIdx = 0;
-    _values  = { ...(options.values || {}) };
-
-    _overlay = _createModal();
-
-    // Titel setzen
-    const titleEl = document.getElementById('pw-title');
-    if (titleEl) {
-        titleEl.textContent = `Modul ausf\u00fcllen: \u201e${options.moduleTitle || ''}\u201c`;
+    if (!val) {
+        if (isM && errEl) errEl.textContent = 'Pflichtfeld — bitte ausf\u00fcllen.';
+        return;
     }
 
-    // Schritt rendern
-    _renderStep(_steps[_stepIdx] || [], _values, _stepIdx, _steps.length);
+    // RegExp-Validierung (OP-B6-5, Warnung)
+    if (b64re) {
+        const pattern = _b64DecodeUnicode(b64re);
+        if (pattern !== null) {
+            try {
+                const ok = new RegExp(pattern).test(val);
+                if (!ok) {
+                    input.classList.add('pf-input--warn');
+                    if (errEl) errEl.textContent = 'Eingabe entspricht nicht dem erwarteten Format.';
+                    return;
+                }
+            } catch (_) {}
+        }
+    }
 
-    // Schliessen-Buttons
-    document.getElementById('pw-btn-close')?.addEventListener('click', close);
-    document.getElementById('pw-btn-cancel')?.addEventListener('click', close);
+    // Alles OK
+    input.classList.add('pf-input--valid');
+}
 
-    // Overlay-Klick schliesst nicht (forensische Daten duerfen nicht versehentlich verloren gehen)
+// ---------------------------------------------------------------------------
+// Auto-Save (debounced)
+// ---------------------------------------------------------------------------
 
-    // Escape-Taste schliesst
-    _overlay._escHandler = e => { if (e.key === 'Escape') close(); };
-    document.addEventListener('keydown', _overlay._escHandler);
+/**
+ * Startet einen debounced Save fuer ein Eingabefeld.
+ * Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06
+ */
+function _scheduleFieldSave(input, opts) {
+    if (!opts?.onSave) return;
+    const key = `${input.dataset.blockId}:${input.dataset.fieldName}`;
+    clearTimeout(_saveTimers[key]);
+    _saveTimers[key] = setTimeout(() => {
+        _saveField(input, opts);
+        delete _saveTimers[key];
+    }, FIELD_SAVE_DEBOUNCE_MS);
+}
 
-    // Weiter
-    document.getElementById('pw-btn-next')?.addEventListener('click', _onNext);
+async function _saveField(input, opts) {
+    if (!opts?.onSave) return;
+    const blockId = input.dataset.blockId;
+    const name    = input.dataset.fieldName;
+    const val     = input.value;
+    try {
+        await opts.onSave(blockId, name, val);
+    } catch (err) {
+        console.warn('placeholder_wizard.js: Feld-Save fehlgeschlagen:', name, err);
+    }
+}
 
-    // Zurueck
-    document.getElementById('pw-btn-back')?.addEventListener('click', _onBack);
+// ---------------------------------------------------------------------------
+// Blur-Effekt und Scroll-Zentrierung
+// ---------------------------------------------------------------------------
 
-    // Speichern
-    document.getElementById('pw-btn-save')?.addEventListener('click', _onSave);
+/**
+ * Setzt den Blur-Effekt: fokussierter Block scharf, alle anderen geblurt.
+ * Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06
+ */
+function _applyFocusBlur(body, focusedBlockId) {
+    body.querySelectorAll('.pf-block-group').forEach(group => {
+        const isFocused = group.dataset.blockId === focusedBlockId;
+        group.classList.toggle('pf-block-group--focused', isFocused);
+        group.classList.toggle('pf-block-group--blurred', !isFocused);
+    });
 }
 
 /**
- * Oeffnet den Wizard direkt beim Schritt, der das Feld fieldName enthaelt.
- * Beleg: Bauplan B6 v0.3 §4.5 (Doppelklick-Nachbearbeitung)
+ * Scrollt den fokussierten Block in die mittleren 80% des Viewports.
+ * Nur wenn der Block ausserhalb dieses Bereichs liegt.
+ * Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06
+ */
+function _scrollToFocusedBlock(body, focusedBlockId) {
+    if (!focusedBlockId) return;
+    const group = body.querySelector(`.pf-block-group[data-block-id="${focusedBlockId}"]`);
+    if (!group) return;
+
+    const containerRect = body.getBoundingClientRect();
+    const groupRect     = group.getBoundingClientRect();
+    const margin        = containerRect.height * 0.1;   // 10% oben/unten = 80% Mitte
+    const topBound      = containerRect.top + margin;
+    const botBound      = containerRect.bottom - margin;
+
+    // Nur scrollen wenn ausserhalb der 80%-Zone
+    if (groupRect.top < topBound || groupRect.bottom > botBound) {
+        group.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Rueckwaerts-Kompatibilitaet: open() / openAtField() / close()
+// Phase 5 ruft open() nicht direkt auf, aber _bindChipDoubleClick() nutzt
+// openAtField(). Diese Stubs ersetzen den alten Modal-Code.
+// Beleg: Build 104, Rueckwaerts-Kompatibilitaet
+// ---------------------------------------------------------------------------
+
+/**
+ * Oeffnet das Sidebar-Formular beim Schritt, der fieldName enthaelt.
+ * Rueckwaerts-Kompatibilitaet fuer _bindChipDoubleClick (Phase 5).
+ * Beleg: Bauplan B6 v0.5 §4.6 (Doppelklick-Handler)
  */
 function openAtField(options, fieldName) {
-    open(options);
-    if (!fieldName) return;
-    const target = stepIndexForField(_steps, fieldName);
-    if (target > 0) {
-        // Schritte ohne Validierung vorspulen (Werte bleiben erhalten)
-        _stepIdx = target;
-        _renderStep(_steps[_stepIdx] || [], _values, _stepIdx, _steps.length);
+    // Formular-Akkordeon oeffnen
+    const sidebar = document.getElementById('support-sidebar');
+    const formSection = sidebar?.querySelector('[data-accordion="form"]');
+    if (formSection && typeof window.openAccordionSection === 'function') {
+        window.openAccordionSection(formSection);
+    }
+
+    // Fokus auf den Block setzen der das Feld enthaelt
+    if (options?.blockId) {
+        focusBlock(options.blockId);
+    }
+
+    // Fokussiertes Feld durch scrollen in den Viewport bringen
+    if (fieldName && options?.blockId) {
+        const inputId = `pf-input-${options.blockId}-${fieldName}`;
+        const input   = document.getElementById(inputId);
+        if (input) {
+            setTimeout(() => {
+                input.focus();
+                input.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 100);
+        }
     }
 }
 
 /**
- * Schliesst den Wizard und entfernt das Modal aus dem DOM.
+ * Stub: open() ist in Phase 6 kein Modal mehr.
+ * Oeffnet das Formular-Akkordeon fuer den angegeben Block.
  */
+function open(options) {
+    if (options?.blockId) {
+        openAtField(options, null);
+    }
+}
+
+/** Stub: close() — kein Modal in Phase 6. */
 function close() {
-    if (_overlay) {
-        if (_overlay._escHandler) {
-            document.removeEventListener('keydown', _overlay._escHandler);
-        }
-        _overlay.remove();
-        _overlay = null;
-    }
-    _opts = _steps = null;
-    _stepIdx = 0;
-    _values  = {};
-}
-
-// ---------------------------------------------------------------------------
-// Navigation
-// ---------------------------------------------------------------------------
-
-function _onNext() {
-    const body = document.getElementById('pw-body');
-    if (!_validateStep(body)) return;
-
-    // Werte des aktuellen Schrittes sichern
-    Object.assign(_values, _collectStepValues(body));
-
-    _stepIdx++;
-    _renderStep(_steps[_stepIdx] || [], _values, _stepIdx, _steps.length);
-}
-
-function _onBack() {
-    const body = document.getElementById('pw-body');
-    // Aktuelle Werte sichern (auch ohne Validierung — kein Verlust beim Zurueck)
-    Object.assign(_values, _collectStepValues(body));
-
-    _stepIdx = Math.max(0, _stepIdx - 1);
-    _renderStep(_steps[_stepIdx] || [], _values, _stepIdx, _steps.length);
-}
-
-async function _onSave() {
-    const body = document.getElementById('pw-body');
-    if (!_validateStep(body)) return;
-
-    // Letzten Schritt sichern
-    Object.assign(_values, _collectStepValues(body));
-
-    const btnSave = document.getElementById('pw-btn-save');
-    if (btnSave) {
-        btnSave.disabled = true;
-        btnSave.textContent = 'Wird gespeichert\u2026';
-    }
-
-    try {
-        await _opts.onSave(_opts.blockId, { ..._values });
-        close();
-    } catch (err) {
-        if (btnSave) {
-            btnSave.disabled = false;
-            btnSave.textContent = '\u2714 In Bericht \u00fcbernehmen';
-        }
-        const body2 = document.getElementById('pw-body');
-        if (body2) {
-            const errDiv = document.createElement('div');
-            errDiv.className = 'pw-save-error';
-            errDiv.textContent = `Speichern fehlgeschlagen: ${err}`;
-            body2.prepend(errDiv);
-        }
-    }
+    // Nichts zu tun (kein Modal mehr)
 }
 
 // ---------------------------------------------------------------------------
@@ -466,9 +553,14 @@ async function _onSave() {
 // ---------------------------------------------------------------------------
 
 window.PlaceholderWizard = {
+    // Phase 6 Haupt-API
+    showPlaceholderForm,
+    focusBlock,
+    // Unveraenderte Kern-Funktionen (Tests und Phase 5)
+    buildSteps,
+    stepIndexForField,
+    // Rueckwaerts-Kompatibilitaet
     open,
     openAtField,
     close,
-    buildSteps,
-    stepIndexForField,
 };

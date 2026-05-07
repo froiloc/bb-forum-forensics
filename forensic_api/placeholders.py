@@ -30,7 +30,7 @@
 #   - Query-Definitionen lesen: templates_db (tdb.placeholder_queries).
 #
 # Beleg: Bauplan B6 v0.3 §3, Ausdefinitionsgespraech 2026-05-05
-# Version: v0.6.089 · Build: 089 · 2026-05-05
+# Version: v0.6.104 · Build: 104 · 2026-05-06
 # =============================================================================
 
 from __future__ import annotations
@@ -167,6 +167,53 @@ class PlaceholdersEndpoint:
         handler.send_response_body(
             200,
             _json_ok({"refreshed": refreshed, "errors": errors}),
+            content_type="application/json; charset=utf-8",
+        )
+
+    def handle_values(
+        self,
+        handler: "ForensicRequestHandler",
+    ) -> None:
+        """
+        GET /_forensic/placeholders/values
+
+        Liefert die placeholder_values_json aller Bloecke des aktiven
+        Berichts als Dictionary: { block_id: {name: value, ...}, ... }
+
+        Wird vom Platzhalter-Formular in der Support-Sidebar genutzt
+        (B6 Phase 6) um die aktuellen Feldwerte aller Bloecke zu laden.
+        Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06
+        """
+        edb     = self._bundle.evidence
+        reports = edb.get_reports()
+
+        # Aktiven Bericht bestimmen (gleiche Logik wie in report.py)
+        active_report = None
+        for r in reports:
+            if r.status in ("draft", "submitted"):
+                active_report = r
+                break
+        if active_report is None and reports:
+            active_report = reports[0]
+
+        result: dict[str, dict] = {}
+
+        if active_report:
+            blocks = edb.get_blocks_for_report(active_report.id)
+            for b in blocks:
+                if b.placeholder_values_json:
+                    try:
+                        values = json.loads(b.placeholder_values_json)
+                        if isinstance(values, dict):
+                            result[b.block_id] = values
+                    except (json.JSONDecodeError, ValueError):
+                        pass
+                if b.block_id not in result:
+                    result[b.block_id] = {}
+
+        handler.send_response_body(
+            200,
+            _json_ok(result),
             content_type="application/json; charset=utf-8",
         )
 
