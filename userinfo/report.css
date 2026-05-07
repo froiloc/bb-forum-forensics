@@ -22,7 +22,7 @@
  *     9. Block-Wrapper (§4.3, B6 Phase 3)
  *    10. Support-Sidebar Akkordeon (§4.4, B6 Phase 3)
  *
- * Version: v0.6.115 · Build: 115 · 2026-05-07
+ * Version: v0.6.116 · Build: 116 · 2026-05-07
  * Beleg: Bauplan B6 v0.3 §4.1–4.7, Bauplan B6 v0.5 §4.3–4.4
  * =========================================================================== */
 
@@ -1180,7 +1180,8 @@
 
 /* ---------------------------------------------------------------------------
  * Build 115: Annotationskategorien als Reiter im Toolbar-Stil
- * Farben + Layout identisch mit .forensic-cat-btn (toolbar.css)
+ * Identisch mit .forensic-cat-btn (toolbar.css): Farben, Größe, Stil
+ * Aktiver Reiter: kein unterer Rahmen → visuell mit as-list verbunden
  * Beleg: Projektgespraech 2026-05-07
  * --------------------------------------------------------------------------- */
 
@@ -1188,12 +1189,12 @@
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  padding: 6px 8px;
-  border-bottom: 1px solid var(--color-border, #e0e0e0);
+  padding: 6px 8px 0;
   background: var(--color-surface-alt, #f5f5f7);
+  border-bottom: none;
 }
 
-/* Basis-Tab: wie forensic-cat-btn */
+/* Basis-Tab: wie forensic-cat-btn (52px × 38px, dunkel) */
 .as-tab {
   display: inline-flex;
   align-items: center;
@@ -1204,39 +1205,28 @@
   height: 36px;
   padding: 0 5px;
   background: #f0f0f4;
-  border: 2px solid #d0d0da;
-  border-radius: 5px;
+  border: 2px solid #c8c8d8;
+  border-bottom: 2px solid #c8c8d8;
+  border-radius: 5px 5px 0 0;
   font-size: 10px;
   font-weight: 700;
   font-family: monospace;
   cursor: pointer;
-  color: #555;
+  color: #444;
   transition: background 0.15s, border-color 0.15s;
   white-space: nowrap;
+  position: relative;
+  bottom: -1px;
 }
 
 .as-tab:hover {
-  background: #e8e8f0;
-  transform: translateY(-1px);
+  background: #e4e4f0;
 }
 
-/* "Alle"-Tab hat neutrale Farbe */
-.as-tab[data-cat=""] {
-  font-family: inherit;
-  font-size: 11px;
-  min-width: 36px;
-}
-
-/* Aktiver Tab: fetter Rahmen + dezente Farbhinterlegung (wie forensic-cat-active) */
-.as-tab--active {
-  box-shadow: 0 0 0 2px currentColor;
-}
-
-/* Kein Eintrag: ausgegraut */
-.as-tab--empty {
-  opacity: 0.4;
-  cursor: default;
-  pointer-events: none;
+.as-tab-label {
+  font-family: monospace;
+  font-size: 10px;
+  font-weight: 700;
 }
 
 .as-tab-count {
@@ -1246,19 +1236,58 @@
   opacity: 0.7;
 }
 
-/* Kategoriefarben */
-.as-tab[data-cat="CAT_PERSON"]   { color: #b89000; border-color: #f5c84270; }
-.as-tab[data-cat="CAT_PERSON"].as-tab--active   { background: #f5c84222; border-color: #f5c842; }
-.as-tab[data-cat="CAT_LOCATION"] { color: #1565c0; border-color: #4f8ef770; }
-.as-tab[data-cat="CAT_LOCATION"].as-tab--active { background: #4f8ef722; border-color: #4f8ef7; }
-.as-tab[data-cat="CAT_176"]      { color: #b71c1c; border-color: #e8404070; }
-.as-tab[data-cat="CAT_176"].as-tab--active      { background: #e8404022; border-color: #e84040; }
-.as-tab[data-cat="CAT_184"]      { color: #7b1fa2; border-color: #c040e870; }
-.as-tab[data-cat="CAT_184"].as-tab--active      { background: #c040e822; border-color: #c040e8; }
-.as-tab[data-cat="CAT_VICTIM"]   { color: #bf360c; border-color: #e8704070; }
-.as-tab[data-cat="CAT_VICTIM"].as-tab--active   { background: #e8704022; border-color: #e87040; }
-.as-tab[data-cat="CAT_OTHER"]    { color: #00695c; border-color: #40c8a070; }
-.as-tab[data-cat="CAT_OTHER"].as-tab--active    { background: #40c8a022; border-color: #40c8a0; }
+/* "Alle"-Tab: etwas breiter, normaler Font */
+.as-tab[data-cat=""] {
+  font-family: inherit;
+  font-size: 11px;
+  min-width: 36px;
+}
+.as-tab[data-cat=""] .as-tab-label {
+  font-family: inherit;
+  font-size: 11px;
+}
+
+/* Aktiver Tab: kein unterer Rand — verbindet sich mit .as-list */
+.as-tab--active {
+  border-bottom-color: var(--color-surface, #fff);
+  background: var(--color-surface, #fff);
+  z-index: 1;
+}
+
+/* Leerer Tab: ausgegraut */
+.as-tab--empty {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* as-list: Rahmenfarbe des aktiven Tabs — Standard blau (Alle) */
+.as-list {
+  border: 2px solid #c8c8d8;
+  border-top: none;
+  background: var(--color-surface, #fff);
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  padding: 4px 0;
+}
+
+/* Kategoriefarben (aus toolbar.js) */
+.as-tab[data-cat="CAT_PERSON"]   { color: #8a6800; border-color: #f5c84270; }
+.as-tab[data-cat="CAT_PERSON"].as-tab--active   { color: #8a6800; border-color: #f5c842; border-bottom-color: #fff; background: #fff; box-shadow: inset 0 2px 0 #f5c842; }
+.as-tab[data-cat="CAT_LOCATION"] { color: #1255a0; border-color: #4f8ef770; }
+.as-tab[data-cat="CAT_LOCATION"].as-tab--active { color: #1255a0; border-color: #4f8ef7; border-bottom-color: #fff; background: #fff; box-shadow: inset 0 2px 0 #4f8ef7; }
+.as-tab[data-cat="CAT_176"]      { color: #9a1010; border-color: #e8404070; }
+.as-tab[data-cat="CAT_176"].as-tab--active      { color: #9a1010; border-color: #e84040; border-bottom-color: #fff; background: #fff; box-shadow: inset 0 2px 0 #e84040; }
+.as-tab[data-cat="CAT_184"]      { color: #6a0090; border-color: #c040e870; }
+.as-tab[data-cat="CAT_184"].as-tab--active      { color: #6a0090; border-color: #c040e8; border-bottom-color: #fff; background: #fff; box-shadow: inset 0 2px 0 #c040e8; }
+.as-tab[data-cat="CAT_VICTIM"]   { color: #9a3000; border-color: #e8704070; }
+.as-tab[data-cat="CAT_VICTIM"].as-tab--active   { color: #9a3000; border-color: #e87040; border-bottom-color: #fff; background: #fff; box-shadow: inset 0 2px 0 #e87040; }
+.as-tab[data-cat="CAT_OTHER"]    { color: #006048; border-color: #40c8a070; }
+.as-tab[data-cat="CAT_OTHER"].as-tab--active    { color: #006048; border-color: #40c8a0; border-bottom-color: #fff; background: #fff; box-shadow: inset 0 2px 0 #40c8a0; }
+
+/* Alle-Tab aktiv: neutraler Balken oben */
+.as-tab[data-cat=""].as-tab--active { box-shadow: inset 0 2px 0 #888; border-bottom-color: #fff; }
 
 .as-category-title {
   font-size: 11px;
@@ -1938,10 +1967,10 @@
  * Rechte Spalte ~35%, vier Akkordeon-Abschnitte.
  * --------------------------------------------------------------------------- */
 
+/* Build 115: max-width entfernt — Sidebar nimmt vollen 35%-Anteil ein */
 #support-sidebar {
   flex: 0 0 35%;
   min-width: 240px;
-  max-width: 420px;
   display: flex;
   flex-direction: column;
   overflow: hidden;

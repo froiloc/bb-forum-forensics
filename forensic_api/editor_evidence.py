@@ -34,7 +34,7 @@
 #   evidence_<uid>.db (READ-WRITE) — block_evidence_user, editor_locks
 #
 # Beleg: AP-E3, Projektgespraech 2026-04-19
-# Version: v0.6.115 · Build: 115 · 2026-05-07
+# Version: v0.6.116 · Build: 116 · 2026-05-07
 # =============================================================================
 
 from __future__ import annotations

@@ -40,7 +40,7 @@
  *   GET /_forensic/annotations         -- alle Annotationen
  *   POST /_forensic/report             -- action=add_anchor
  *
- * Version: v0.6.115 · Build: 115 · 2026-05-07
+ * Version: v0.6.116 · Build: 116 · 2026-05-07
  * Beleg: Bauplan B6 v0.3 §4.7, Ausdefinitionsgespraech 2026-05-05
  */
 
@@ -71,13 +71,27 @@ const ANN_API = '/_forensic/annotations';
  * Build 112: Icons ergaenzt.
  * Beleg: Projektgespraech 2026-05-07
  */
+/** Anzeigelabels: icon + Kurzform (wie forensic-cat-btn in toolbar.css).
+ * Build 115: Angleichung an Toolbar-Stil.
+ * Beleg: Projektgespraech 2026-05-07
+ */
 const CATEGORY_LABELS = {
-    CAT_PERSON:   '\ud83d\udc64\u2002Person',
-    CAT_LOCATION: '\ud83d\udccd\u2002Ort',
-    CAT_176:      '\u26a0\ufe0f\u2002\u00a7\u00a7\u00a0176/176a\u00a0StGB',
-    CAT_184:      '\u26d4\u2002\u00a7\u00a7\u00a0184b/184c\u00a0StGB',
-    CAT_VICTIM:   '\ud83d\udc9c\u2002Betroffene Person',
-    CAT_OTHER:    '\ud83d\udccc\u2002Sonstiges',
+    CAT_PERSON:   'PER',
+    CAT_LOCATION: 'LOC',
+    CAT_176:      '176',
+    CAT_184:      '184',
+    CAT_VICTIM:   'OPF',
+    CAT_OTHER:    'SON',
+};
+
+/** Volle Beschriftung fuer Title- und ARIA-Texte. */
+const CATEGORY_TITLES = {
+    CAT_PERSON:   '\ud83d\udc64 PER \u2013 Pers\u00f6nliche Identifikationsmerkmale',
+    CAT_LOCATION: '\ud83d\udccd LOC \u2013 Ortsangaben, geografische Hinweise',
+    CAT_176:      '\u2696\ufe0f 176 \u2013 Relevanz \u00a7\u00a7 176, 176a StGB',
+    CAT_184:      '\ud83d\udd34 184 \u2013 Relevanz \u00a7\u00a7 184b, 184c StGB',
+    CAT_VICTIM:   '\ud83d\udee1\ufe0f OPF \u2013 Hinweise auf m\u00f6gliche Opfer',
+    CAT_OTHER:    '\ud83d\udcce SON \u2013 Sonstige Ermittlungsrelevanz',
 };
 
 /** Reihenfolge der Kategorien in der Anzeige. */
@@ -215,44 +229,42 @@ function _render() {
 }
 
 function _renderCategoryTabs(grouped) {
-    // Build 115: Reiter immer anzeigen (ausgegraut wenn leer), Toolbar-Stil
+    // Build 115: Toolbar-Stil (forensic-cat-btn), alle Kategorien permanent
+    // Beschriftung, Icons, ARIA identisch mit toolbar.js/toolbar.css
     // Beleg: Projektgespraech 2026-05-07
     const allCount = Object.values(grouped).reduce((s, a) => s + a.length, 0);
 
-    // "Alle"-Tab + alle 6 Kategorien fix + unbekannte dynamisch
     const allTabs = [
-        { key: null, label: 'Alle', count: allCount, icon: '' },
+        { key: null, label: 'Alle', title: 'Alle Kategorien' },
         ...CATEGORY_ORDER.map(c => ({
-            key: c,
+            key:   c,
             label: CATEGORY_LABELS[c] || c,
-            count: (grouped[c] || []).length,
-            icon: '',
+            title: CATEGORY_TITLES[c] || c,
         })),
-        ...Object.keys(grouped)
-            .filter(c => !CATEGORY_ORDER.includes(c))
-            .map(c => ({ key: c, label: CATEGORY_LABELS[c] || c, count: grouped[c].length, icon: '' })),
     ];
 
     return `<div class="as-tabs" role="tablist" aria-label="Annotationskategorien">
         ${allTabs.map(t => {
+            const count    = t.key ? (grouped[t.key] || []).length : allCount;
             const isActive = t.key === _activeTab;
-            const isEmpty  = t.count === 0 && t.key !== null;
+            const isEmpty  = count === 0 && t.key !== null;
             const cls = [
                 'as-tab',
                 isActive ? 'as-tab--active' : '',
                 isEmpty  ? 'as-tab--empty'  : '',
             ].filter(Boolean).join(' ');
-            // Kurzkürzel: letztes Wort des Labels als Tab-Label
-            const shortLabel = t.key ? (CATEGORY_LABELS[t.key] || t.key).split('\u2002').pop() : 'Alle';
-            const dispLabel  = t.key ? shortLabel.replace(/[\u00a7 ]/g, '').slice(0, 5) : 'Alle';
-            return `<button class="${cls}"
-                        role="tab" aria-selected="${isActive}"
-                        data-cat="${t.key ?? ''}"
-                        title="${_esc(t.key ? CATEGORY_LABELS[t.key] || t.key : 'Alle Kategorien')}"
-                    >${_esc(dispLabel)}<span class="as-tab-count">${t.count}</span></button>`;
+            // data-cat-key fuer CSS-Farbgebung
+            const catAttr  = t.key ? `data-cat="${_esc(t.key)}"` : `data-cat=""`;
+            return `<button class="${cls}" role="tab"
+                        aria-selected="${isActive}"
+                        ${catAttr}
+                        title="${_esc(t.title)}"
+                        aria-label="${_esc(t.title)}"
+                    ><span class="as-tab-label">${_esc(t.label)}</span><span class="as-tab-count">${count}</span></button>`;
         }).join('')}
     </div>`;
 }
+
 
 function _renderFilteredAnnotations(grouped) {
     // Build 114: nur aktive Kategorie anzeigen (oder alle)

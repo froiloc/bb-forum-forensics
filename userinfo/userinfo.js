@@ -26,7 +26,7 @@
  *   window.opener?.postMessage({ type: 'navigate_to_annotation',
  *                                annotation_id: N }, origin)
  *
- * Version: v0.6.115 · Build: 115 · 2026-05-07
+ * Version: v0.6.116 · Build: 116 · 2026-05-07
  *
  * Änderungen Build 089 (Bugfix: SSE-Deadlock-Kaskade):
  *   Ursache: Drei zusammenwirkende Probleme führten dazu, dass alle Server-Threads
@@ -799,6 +799,12 @@ function disableEditorControls(disable) {
  */
 async function acquireLock() {
     _dbg('acquireLock() aufgerufen, sseClientId=', EditorState.sseClientId);
+    // Build 115: Guard — Lock bereits aus Resume-Session vorhanden → kein neuer Erwerb
+    // Beleg: Projektgespraech 2026-05-07
+    if (EditorState.lockId) {
+        _dbg('acquireLock: Lock bereits vorhanden (', EditorState.lockId, ') — uebersprungen');
+        return;
+    }
     if (EditorState.frozen) return;
     if (!EditorState.sseClientId) {
         showStatusMsg('SSE-Verbindung nicht bereit — bitte Seite neu laden.', 'warn');
