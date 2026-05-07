@@ -52,7 +52,7 @@
  *     toggleAnnotationSidebar() leitet auf Annotationen-Akkordeon um.
  *     Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
  *
- * Version: v0.6.118 · Build: 118 · 2026-05-08
+ * Version: v0.6.119 · Build: 119 · 2026-05-08
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -550,17 +550,21 @@ function _initEditorJs(blocks, reportId) {
  */
 function _applyOwnershipStyles(blocks, username) {
     if (!blocks.length) return;
-    // Nach kurzer Verzoegerung — Editor.js braucht Zeit zum Rendern
+    // Nach kurzer Verzoegerung — Editor.js braucht Zeit zum Rendern.
+    // Bug-Fix Build 119: b.owner → b.author (API liefert 'author', nicht 'owner').
+    // Vorher wurden alle Bloecke als fremd eingestuft (b.owner immer undefined),
+    // was contentEditable='false' auf alle Bloecke setzte.
+    // Beleg: Bugfix Build 119, Projektgespraech 2026-05-08
     setTimeout(() => {
         blocks.forEach(b => {
-            if (b.owner === username) return;
+            if (b.author === username) return;
             const el = document.querySelector(`[data-id="${b.block_id}"] .ce-block__content`);
             if (el) {
                 el.querySelectorAll('[contenteditable]').forEach(c => {
                     c.contentEditable = 'false';
                 });
                 el.classList.add('block-foreign');
-                el.title = `Erstellt von: ${b.owner}`;
+                el.title = `Erstellt von: ${b.author}`;
             }
         });
     }, 300);
@@ -630,12 +634,11 @@ function _wrapBlock(ceBlock, blockMeta, username) {
         : `Block von ${blockMeta.author}`);
 
     // Metazeile (standardmaessig ausgeblendet, erscheint bei Hover).
-    // Bug-Fix Build 117: aria-hidden auf einem Element, das fokussierbare
-    // Kinder enthaelt (btnComment), verstösst gegen WCAG und erzeugt
-    // Browser-Warnung. Fix: inert-Attribut statt aria-hidden.
-    // inert macht das Element und alle Nachkommen fuer AT und Fokus unsichtbar
-    // solange der Block nicht gehovert wird. CSS entfernt inert bei :hover.
-    // Beleg: Bugfix Build 117, Projektgespraech 2026-05-08
+    // Bug-Fix Build 118: aria-hidden → inert (WCAG 2.18).
+    // inert macht Element und Nachkommen fuer AT und Fokus unsichtbar
+    // solange nicht gehovert. Hover-Handler toggeln inert per JS.
+    // Beleg: Bugfix Build 118, Projektgespraech 2026-05-08
+    const metaBar = document.createElement('div');
     metaBar.className = 'block-meta-bar';
     metaBar.setAttribute('inert', '');
 
@@ -762,11 +765,18 @@ function _openAccordionSection(section) {
     // Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06
     if (section.dataset.accordion === 'form') {
         _refreshPlaceholderForm();
-    } else {
-        // Bug-Fix Build 117 (2.14): Wenn das Formular-Akkordeon VERLASSEN wird,
-        // blauen Rahmen auf dem zuletzt fokussierten Editor-Block entfernen.
-        // Ohne diesen Cleanup blieb der Rahmen dauerhaft sichtbar.
-        // Beleg: Bugfix Build 117, Projektgespraech 2026-05-08
+    }
+
+    // Bug-Fix Build 119 (2.24): Blauen Rahmen nur bereinigen wenn das
+    // Formular-Akkordeon VORHER offen war und jetzt ein ANDERER Abschnitt
+    // geoeffnet wird. Vorher wurde der Rahmen bei jedem Akkordeon-Wechsel
+    // geloescht — auch wenn das Formular gerade erst geoeffnet wurde.
+    // Pruefung: vorher-offener Abschnitt war 'form' UND neuer ist nicht 'form'.
+    // Beleg: Bugfix Build 119, Projektgespraech 2026-05-08
+    const previousOpen = (() => {
+        try { return localStorage.getItem('b6_sidebar_open'); } catch(_) { return null; }
+    })();
+    if (previousOpen === 'form' && section.dataset.accordion !== 'form') {
         if (typeof window.PlaceholderWizard?.getCurrentBlockId === 'function') {
             const lastId = window.PlaceholderWizard.getCurrentBlockId();
             if (lastId) {
