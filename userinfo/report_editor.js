@@ -46,7 +46,7 @@
  *     toggleAnnotationSidebar() leitet auf Annotationen-Akkordeon um.
  *     Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
  *
- * Version: v0.6.112 · Build: 112 · 2026-05-07
+ * Version: v0.6.113 · Build: 113 · 2026-05-07
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -348,11 +348,12 @@ async function _loadReportImpl(report) {
         _editor = null;
         window._editor = null;
     }
-    // editorjs-holder neu anlegen falls destroy() ihn entfernt hat
-    const editorContainer = document.getElementById('report-editor-container');
+    // editorjs-holder neu anlegen falls Editor.destroy() ihn entfernt hat.
+    // Build 113: Holder lebt in #report-main-col (nicht mehr in report-editor-container).
+    // Beleg: Projektgespraech 2026-05-07
+    const editorContainer = document.getElementById('report-main-col');
     if (editorContainer && !document.getElementById('editorjs-holder')) {
-        // Toolbar, Status-Msg und Frozen-Overlay bleiben erhalten —
-        // nur den Holder neu einfuegen
+        // Holder nach report-selector-container + report-status-msg einfuegen
         const statusEl = document.getElementById('report-status-msg');
         const newHolder = document.createElement('div');
         newHolder.id = 'editorjs-holder';
@@ -385,9 +386,11 @@ async function _loadReportImpl(report) {
     // Auf Bundle warten
     _dbg('_initEditorJs(): window.EditorJS=', !!window.EditorJS);
     if (!window.EditorJS) {
-        document.getElementById('report-editor-container').innerHTML = `
-            <div class="status-msg status-msg-warn" style="margin:20px">
-                Editor.js-Bundle nicht geladen.<br>
+        // Build 113: Fehlermeldung in #report-status-msg (report-editor-container entfernt)
+        const statusEl = document.getElementById('report-status-msg');
+        if (statusEl) statusEl.innerHTML = `
+            <div class="status-msg status-msg-warn" style="margin:12px 0">
+                Editor.js-Bundle nicht geladen.
                 Bitte <code>deployment/build_editor_bundle.py</code> ausfuehren (AP-E2).
             </div>`;
         return;

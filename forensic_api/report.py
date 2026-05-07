@@ -80,7 +80,7 @@
 #              btn-new-report-header aus Action-Bar entfernt (redundant).
 #              Beleg: Projektgespraech 2026-05-07
 #
-# Version: v0.6.112 · Build: 112 · 2026-05-07
+# Version: v0.6.113 · Build: 113 · 2026-05-07
 # =============================================================================
 
 from __future__ import annotations
@@ -155,6 +155,13 @@ _EDITOR_HTML = """\
         </div>
         <span id="report-lock-indicator" class="report-lock-indicator report-lock-none"
           title="Lock-Status">&#x1f513;</span>
+        <!-- Lock-Status-Zeile: von userinfo.js beschrieben (Build 113) -->
+        <span id="report-lock-status" class="lock-status lock-none"
+          title="Editor-Lock-Status" style="font-size:11px"></span>
+        <span id="editor-save-indicator"
+          style="font-size:11px;color:#4caf50;opacity:0;transition:opacity 1s"></span>
+        <span id="editor-report-title"
+          style="font-size:11px;color:#888"></span>
       </div>
     </header>
 
@@ -167,8 +174,9 @@ _EDITOR_HTML = """\
         <div id="report-selector-container"></div>
         <!-- Status-Meldungen -->
         <div id="report-status-msg"></div>
-        <!-- Paragraph-Liste (wird von report.js befuellt) -->
-        <div id="report-paragraphs-list"></div>
+        <!-- Editor-Bereich: EditorJS-Holder direkt in report-main-col.
+             Beleg: Bauplan B6 §4.3, Build 113, Projektgespraech 2026-05-07 -->
+        <div id="editorjs-holder" class="editorjs-holder"></div>
         <!-- Frozen-Overlay (BroadcastChannel-Schutz, §4.6) -->
         <div id="report-frozen-overlay" style="display:none">
           <div class="report-frozen-inner">
@@ -268,10 +276,11 @@ _EDITOR_HTML = """\
       </aside>
     </div>
 
-    <!-- Lock-Infrastruktur (userinfo.js erwartet diese IDs) -->
-    <!-- Lock-Toolbar wird von userinfo.js/initEditor() dynamisch erzeugt -->
+    <!-- Lock-Infrastruktur: report-lock-status und Lock-Buttons werden von
+         userinfo.js in #report-action-bar-buttons injiziert (Build 113).
+         editorjs-holder lebt in #report-paragraphs-list (report-main-col).
+         Beleg: Projektgespraech 2026-05-07 -->
     <div id="report-editor-container" style="display:none"></div>
-    <div id="editorjs-holder" style="display:none"></div>
 
     <!-- Scripts (Reihenfolge wichtig) -->
     <!-- 0) editor.bundle.js: Editor.js + Tools (window.EditorJS, window.EditorTools).

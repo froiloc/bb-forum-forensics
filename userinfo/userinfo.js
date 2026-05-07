@@ -26,7 +26,7 @@
  *   window.opener?.postMessage({ type: 'navigate_to_annotation',
  *                                annotation_id: N }, origin)
  *
- * Version: v0.6.112 · Build: 112 · 2026-05-07
+ * Version: v0.6.113 · Build: 113 · 2026-05-07
  *
  * Änderungen Build 089 (Bugfix: SSE-Deadlock-Kaskade):
  *   Ursache: Drei zusammenwirkende Probleme führten dazu, dass alle Server-Threads
@@ -456,38 +456,46 @@ async function initEditor() {
             return id;
         })();
 
-    // Editor-HTML-Grundstruktur aufbauen (AP-E4: Editor.js-Container).
-    // Beleg: AP-E4, Projektgespraech 2026-04-19
-    const container = document.getElementById('report-editor-container');
-    if (container) {
-        // Build 112: Container nach Befuellen einblenden (war dauerhaft display:none).
-        // Beleg: Projektgespraech 2026-05-07
-        container.style.display = '';
-        container.innerHTML = `
-            <div id="report-editor-toolbar">
-                <span id="report-lock-status" class="lock-status lock-none">Kein Lock</span>
-                <button class="editor-btn editor-btn-primary" id="btn-acquire-lock"
-                    title="Editor-Lock erwerben">Lock erwerben</button>
-                <button class="editor-btn" id="btn-release-lock" disabled
-                    title="Editor-Lock freigeben">Lock freigeben</button>
-                <button class="editor-btn" id="btn-annotations-sidebar"
-                    title="Annotations-Sidebar ein/ausblenden">⚖ Belege</button>
-                <button class="editor-btn" id="btn-request-takeover"
-                    title="Lock von anderem Ermittler anfordern" style="display:none"
-                    >🔔 Lock anfordern</button>
-                <span id="editor-save-indicator"
-                    style="font-size:11px;color:#4caf50;opacity:0;transition:opacity 1s"></span>
-                <span id="editor-report-title"
-                    style="font-size:11px;color:#555;margin-left:auto"></span>
-            </div>
-            <div id="report-status-msg"></div>
-            <div id="editorjs-holder" class="editorjs-holder"></div>
-            <div id="report-frozen-overlay">
-                <div>
-                    <strong>Dieser Editor ist bereits in einem anderen Fenster geoeffnet.</strong><br>
-                    Dieses Fenster ist schreibgeschuetzt.
-                </div>
-            </div>`;
+    // Build 113: report-editor-container entfernt.
+    // Lock-UI-Elemente (report-lock-status, btn-acquire-lock, btn-release-lock,
+    // btn-request-takeover) existieren jetzt als feste HTML-Elemente in der
+    // Action-Bar (#report-action-bar-buttons) — kein dynamisches Injizieren.
+    // editorjs-holder liegt direkt in #report-main-col.
+    // Beleg: Projektgespraech 2026-05-07
+    //
+    // DEV_LOCK_UI: Lock-Buttons in Action-Bar einblenden
+    if (DEV_LOCK_UI) {
+        const bar = document.getElementById('report-action-bar-buttons');
+        if (bar && !document.getElementById('btn-acquire-lock')) {
+            const btnAcquire = document.createElement('button');
+            btnAcquire.id = 'btn-acquire-lock';
+            btnAcquire.className = 'report-btn report-btn-primary';
+            btnAcquire.title = 'Editor-Lock erwerben';
+            btnAcquire.textContent = '🔒 Lock erwerben';
+            const btnRelease = document.createElement('button');
+            btnRelease.id = 'btn-release-lock';
+            btnRelease.className = 'report-btn';
+            btnRelease.disabled = true;
+            btnRelease.title = 'Editor-Lock freigeben';
+            btnRelease.textContent = '🔓 Lock freigeben';
+            const btnTakeover = document.createElement('button');
+            btnTakeover.id = 'btn-request-takeover';
+            btnTakeover.className = 'report-btn';
+            btnTakeover.style.display = 'none';
+            btnTakeover.title = 'Lock von anderem Ermittler anfordern';
+            btnTakeover.textContent = '🔔 Lock anfordern';
+            // Vor dem Lock-Indikator einfuegen
+            const lockIndicator = document.getElementById('report-lock-indicator');
+            if (lockIndicator) {
+                bar.insertBefore(btnTakeover, lockIndicator);
+                bar.insertBefore(btnRelease, lockIndicator);
+                bar.insertBefore(btnAcquire, lockIndicator);
+            } else {
+                bar.appendChild(btnAcquire);
+                bar.appendChild(btnRelease);
+                bar.appendChild(btnTakeover);
+            }
+        }
     }
 
     // Schicht 1: BroadcastChannel — Duplikat-Erkennung (§8.6 Bauplan B4)

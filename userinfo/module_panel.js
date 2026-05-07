@@ -52,7 +52,7 @@
  *     Rueckwaerts-Kompatibilitaet open()/close() erhalten.
  *     Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06.
  *
- * Version: v0.6.112 · Build: 112 · 2026-05-07
+ * Version: v0.6.113 · Build: 113 · 2026-05-07
  * Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06
  */
 
