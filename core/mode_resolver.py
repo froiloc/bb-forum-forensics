@@ -39,7 +39,7 @@
 #   zuordnen. Daher: harter Abbruch bei jeder Unklarheit.
 #
 # Abhängigkeiten: sqlite3, os, pathlib — Stdlib + core-Module
-# Version: v0.1.0 · Build: 017 · 2026-04-15
+# Version: v0.6.117 · Build: 117 · 2026-05-07
 # =============================================================================
 
 import os
@@ -92,16 +92,23 @@ class ResolvedContext:
         investigator_id — investigators.id des aktuellen Systembenutzer,
                           oder None wenn nicht in coordinator.db gefunden
                           (im support-Modus akzeptabel)
+        investigator_username — SAMAccountName des angemeldeten Ermittlers
+                          (Windows: os.environ['USERNAME'],
+                           Linux:   os.environ['USER'] / pwd-Fallback).
+                          Nie leer — mindestens "unbekannt" als Fallback.
+                          Build 117: NEU — Trennung Beschuldigter/Ermittler.
+                          Beleg: Projektgespraech 2026-05-07
     """
-    mode:            str
-    user_id:         int
-    username:        str
-    forensic_db:     Path
-    evidence_db:     Path
-    default_db:      Path
-    coordinator_db:  Path
-    assets_db:       Path           # NEU Build 017 — assets_<uid>.db (READ-ONLY, optional)
-    investigator_id: Optional[int]
+    mode:                   str
+    user_id:                int
+    username:               str
+    forensic_db:            Path
+    evidence_db:            Path
+    default_db:             Path
+    coordinator_db:         Path
+    assets_db:              Path           # NEU Build 017 — assets_<uid>.db (READ-ONLY, optional)
+    investigator_id:        Optional[int]
+    investigator_username:  str            # NEU Build 117 — SAMAccountName des Ermittlers
 
 
 class ModeResolver:
@@ -246,6 +253,9 @@ class ModeResolver:
             coordinator_db=coordinator_db,
             assets_db=self._build_assets_db_path(user_id),   # NEU Build 017
             investigator_id=investigator_id,
+            # Build 117: system_username ist der Ermittler (SAMAccountName),
+            # username ist der Beschuldigte. Beleg: Projektgespraech 2026-05-07
+            investigator_username=system_username,
         )
 
     def _query_job(
@@ -353,6 +363,9 @@ class ModeResolver:
             coordinator_db=coordinator_db,
             assets_db=self._build_assets_db_path(user_id),   # NEU Build 017
             investigator_id=investigator_id,
+            # Build 117: system_username ist der Ermittler (SAMAccountName).
+            # Beleg: Projektgespraech 2026-05-07
+            investigator_username=self._user_resolver.system_username,
         )
 
     def _resolve_user_identity(

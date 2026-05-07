@@ -13,6 +13,8 @@
 #   ATTACH AS fdb: forensic_<uid>.db  (READ-ONLY, URI mode=ro)
 #   ATTACH AS ddb: default.db         (READ-ONLY, URI mode=ro)
 #   ATTACH AS cdb: coordinator.db     (READ-WRITE)
+#   ATTACH AS adb: assets_<uid>.db    (READ-ONLY, optional)
+#   ATTACH AS tdb: templates.db       (READ-ONLY, optional) — NEU Build 117
 #
 # ATTACH-Konfiguration — Support-Modus:
 #   Haupt-DB:  :memory: oder /tmp/forensic_support_<session_id>.db
@@ -20,12 +22,16 @@
 #   ATTACH AS fdb: forensic_<uid>.db  (READ-ONLY, URI mode=ro)
 #   ATTACH AS ddb: default.db         (READ-ONLY, URI mode=ro)
 #   ATTACH AS cdb: coordinator.db     (READ-WRITE)
+#   ATTACH AS adb: assets_<uid>.db    (READ-ONLY, optional)
+#   ATTACH AS tdb: templates.db       (READ-ONLY, optional) — NEU Build 117
 #
 # Verbindliche Alias-Namen (unveränderlich):
 #   fdb → forensic_<uid>.db
 #   ddb → default.db
 #   cdb → coordinator.db
 #   edb → evidence_<uid>.db (nur Support-Modus)
+#   adb → assets_<uid>.db   (optional)
+#   tdb → templates.db      (optional)
 #
 # Session-ID für Support-TEMP-DB:
 #   Wird aus Unix-Timestamp + user_id gebildet.
@@ -37,7 +43,7 @@
 #   Jede Verbindungsöffnung wird im Log protokolliert (mit Pfaden).
 #
 # Abhängigkeiten: sqlite3, time, os — Stdlib + interne DB-Module
-# Version: v0.1.0 · Build: 021 · 2026-04-22
+# Version: v0.6.117 · Build: 117 · 2026-05-07
 # =============================================================================
 
 from __future__ import annotations
@@ -160,7 +166,8 @@ class ConnectionManager:
         Öffnet Verbindungen im Normalmodus.
 
         Haupt-DB: evidence_<uid>.db (READ-WRITE)
-        ATTACHs:  fdb (READ-ONLY), ddb (READ-ONLY), cdb (READ-WRITE)
+        ATTACHs:  fdb (READ-ONLY), ddb (READ-ONLY), cdb (READ-WRITE),
+                  adb (READ-ONLY, optional), tdb (READ-ONLY, optional)
         """
         evidence_path   = self._ctx.evidence_db
         forensic_path   = self._ctx.forensic_db
@@ -214,6 +221,24 @@ class ConnectionManager:
                     "assets_<uid>.db nicht gefunden — adb nicht angebunden: '%s'. "
                     "Asset-Lookup fällt vollständig auf default.db zurück.",
                     assets_path,
+                )
+
+            # tdb: templates_db READ-ONLY (optional — existiert erst nach setup_templates.py)
+            # NEU Build 117 — Bug 3.3: templates.db wurde bisher nicht per ATTACH
+            # eingebunden, TemplatesDb._check_available() fing das still ab.
+            # Beleg: Projektgespraech 2026-05-07
+            templates_path = Path(
+                self._config.get("paths.templates_db", "./data/templates.db")
+            ).resolve()
+            if templates_path.exists():
+                self._attach_readonly(con, templates_path, "tdb")
+                logger.debug("tdb angebunden (READ-ONLY): '%s'", templates_path)
+            else:
+                logger.info(
+                    "templates.db nicht gefunden — tdb nicht angebunden: '%s'. "
+                    "Bausteine-Bibliothek bleibt leer. "
+                    "setup_templates.py ausfuehren um templates.db anzulegen.",
+                    templates_path,
                 )
 
             # DB-Instanzen initialisieren
@@ -270,7 +295,8 @@ class ConnectionManager:
 
         Haupt-DB: TEMP-DB (In-Memory oder /tmp-Datei)
         ATTACHs:  edb (READ-ONLY), fdb (READ-ONLY),
-                  ddb (READ-ONLY), cdb (READ-WRITE)
+                  ddb (READ-ONLY), cdb (READ-WRITE),
+                  adb (READ-ONLY, optional), tdb (READ-ONLY, optional)
         """
         evidence_path    = self._ctx.evidence_db
         forensic_path    = self._ctx.forensic_db
@@ -347,6 +373,22 @@ class ConnectionManager:
                     "assets_<uid>.db nicht gefunden — adb nicht angebunden: '%s'. "
                     "Asset-Lookup fällt vollständig auf default.db zurück.",
                     assets_path,
+                )
+
+            # tdb: templates_db READ-ONLY (optional — existiert erst nach setup_templates.py)
+            # NEU Build 117 — Bug 3.3: analog zum Normalmodus.
+            # Beleg: Projektgespraech 2026-05-07
+            templates_path = Path(
+                self._config.get("paths.templates_db", "./data/templates.db")
+            ).resolve()
+            if templates_path.exists():
+                self._attach_readonly(con, templates_path, "tdb")
+                logger.debug("tdb angebunden (READ-ONLY, Support): '%s'", templates_path)
+            else:
+                logger.info(
+                    "templates.db nicht gefunden — tdb nicht angebunden (Support): '%s'. "
+                    "Bausteine-Bibliothek bleibt leer.",
+                    templates_path,
                 )
 
             # DB-Instanzen initialisieren

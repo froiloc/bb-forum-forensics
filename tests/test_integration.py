@@ -372,6 +372,7 @@ class _ServerFixture(unittest.TestCase):
             coordinator_db=cls.coordinator_path,
             assets_db=Path(cls.tmp) / "assets_42.db",
             investigator_id=1,
+            investigator_username="h012345",
         )
 
         cls.bundle = ConnectionManager(cls.context, cls.config).open()
@@ -697,6 +698,7 @@ class TestIntegrationShutdown(unittest.TestCase):
             default_db=default_path, coordinator_db=coordinator_path,
             assets_db=Path(coordinator_path).parent / "assets_42.db",
             investigator_id=None,
+            investigator_username="h012345",
         )
 
         bundle = ConnectionManager(context, config).open()

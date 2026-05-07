@@ -31,7 +31,7 @@
 #     statt ValueError / FileNotFoundError.
 #
 # Abhängigkeiten: yaml (PyYAML), os, pathlib — ausschließlich Stdlib + PyYAML
-# Version: v0.1.0 · Build: 017 · 2026-04-15
+# Version: v0.6.117 · Build: 117 · 2026-05-07
 # =============================================================================
 
 import os
@@ -80,6 +80,7 @@ _DEFAULTS: dict[str, Any] = {
         "default_db":       "./data/default.db",
         "evidence_db_dir":  "./data/evidence/",
         "assets_db_dir":    "./data/assets/",    # NEU Build 017
+        "templates_db":     "./data/templates.db",  # NEU Build 117 — Bug 3.3
     },
     "hosts_management": {
         "enabled":        False,

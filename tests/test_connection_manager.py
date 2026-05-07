@@ -160,6 +160,7 @@ def _make_context(
         default_db=default_db, coordinator_db=coordinator,
         assets_db=Path(coordinator).parent / "assets_42.db",
         investigator_id=1,
+            investigator_username="h012345",
     )
     cfg = _setup_test_logging()
     return ctx, cfg
@@ -310,6 +311,7 @@ class TestConnectionManagerSupport(unittest.TestCase):
             default_db=default_db, coordinator_db=coordinator,
             assets_db=Path(coordinator).parent / "assets_42.db",
             investigator_id=1,
+            investigator_username="h012345",
         )
         self.bundle = ConnectionManager(ctx, cfg).open()
         self.assertIsNotNone(self.bundle)
@@ -333,6 +335,7 @@ class TestConnectionManagerSupport(unittest.TestCase):
             default_db=default_db, coordinator_db=coordinator,
             assets_db=Path(coordinator).parent / "assets_42.db",
             investigator_id=1,
+            investigator_username="h012345",
         )
         self.bundle = ConnectionManager(ctx, cfg).open()
         self.assertIsNotNone(self.bundle.temp_db_path)
@@ -356,6 +359,7 @@ class TestConnectionManagerSupport(unittest.TestCase):
             default_db=default_db, coordinator_db=coordinator,
             assets_db=Path(coordinator).parent / "assets_42.db",
             investigator_id=1,
+            investigator_username="h012345",
         )
         self.bundle = ConnectionManager(ctx, cfg).open()
         self.bundle.evidence.log_page_visit("/forum/test", "user")
@@ -432,6 +436,7 @@ class TestConnectionManagerClose(unittest.TestCase):
             default_db=default_db, coordinator_db=coordinator,
             assets_db=Path(coordinator).parent / "assets_42.db",
             investigator_id=1,
+            investigator_username="h012345",
         )
         bundle = ConnectionManager(ctx, cfg).open()
         temp_path = bundle.temp_db_path
@@ -494,6 +499,7 @@ class TestAttachReadonlyUNCKompatibilitaet(unittest.TestCase):
             default_db=default_db, coordinator_db=coordinator,
             assets_db=Path(self.tmp) / "assets_14.db",
             investigator_id=1,
+            investigator_username="h012345",
         )
         bundle = ConnectionManager(ctx, cfg).open()
         con = bundle.connection

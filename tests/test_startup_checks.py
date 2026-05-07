@@ -186,6 +186,7 @@ def _make_resolved_context(
         coordinator_db=coord_db,
         assets_db=Path(coord_db).parent / "assets_42.db",
         investigator_id=1,
+            investigator_username="h012345",
     )
     return ctx, forensic_db
 
@@ -308,6 +309,7 @@ class TestStartupChecksSchema(unittest.TestCase):
             default_db=default_db, coordinator_db=coord_db,
             assets_db=Path(coord_db).parent / "assets_42.db",
             investigator_id=1,
+            investigator_username="h012345",
         )
         checker = StartupChecker(ctx, ConfigLoader.__new__(ConfigLoader))
         with self.assertRaises(StartupCheckError) as cm:
@@ -333,6 +335,7 @@ class TestStartupChecksSchema(unittest.TestCase):
             default_db=default_db, coordinator_db=coord_db,
             assets_db=Path(coord_db).parent / "assets_42.db",
             investigator_id=1,
+            investigator_username="h012345",
         )
         checker = StartupChecker(ctx, ConfigLoader.__new__(ConfigLoader))
         with self.assertRaises(StartupCheckError) as cm:
@@ -364,6 +367,7 @@ class TestStartupChecksIntegrity(unittest.TestCase):
             default_db=default_db, coordinator_db=coord_db,
             assets_db=Path(coord_db).parent / "assets_42.db",
             investigator_id=1,
+            investigator_username="h012345",
         )
 
     def test_T09_sha256_fehlt(self):

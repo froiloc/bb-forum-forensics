@@ -80,7 +80,7 @@
 #              btn-new-report-header aus Action-Bar entfernt (redundant).
 #              Beleg: Projektgespraech 2026-05-07
 #
-# Version: v0.6.115 · Build: 115 · 2026-05-07
+# Version: v0.6.117 · Build: 117 · 2026-05-07
 # =============================================================================
 
 from __future__ import annotations
@@ -515,7 +515,10 @@ class ReportEndpoint:
             return
 
         action = data.get("action", "")
-        investigator = self._context.username or ""
+        # Bug 3.1 Fix (Build 117): context.username ist der Beschuldigte.
+        # Ermittler-Username kommt aus context.investigator_username.
+        # Beleg: Projektgespraech 2026-05-07
+        investigator = self._context.investigator_username
 
         # Lock-Aktionen (Lock-System v2, unveraendert)
         if action == "acquire_lock":

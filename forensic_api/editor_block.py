@@ -38,12 +38,26 @@
 #                                    block_evidence_user, editor_locks
 #
 # Beleg: AP-E3, Projektgespraech 2026-04-19
-# Version: v0.6.115 · Build: 115 · 2026-05-07
+# Fixes:
+#   Build 117 (Bug 3.4): block_data als dict wurde unseralisiert an save_block()
+#     uebergeben. save_block() erwartet JSON-String. Fix: json.dumps() vor Aufruf.
+#     Beleg: Projektgespraech 2026-05-07
+#   Build 117 (Bug 3.4): sort_index wurde als String (z.B. "a0") uebergeben,
+#     save_block() erwartet Optional[int]. Fix: sort_index als String beibehalten
+#     und None liefern wenn nicht ganzzahlig konvertierbar.
+#     Achtung: report.py konvertiert sort_index mit int() — hier gleiche Behandlung.
+#     Beleg: Projektgespraech 2026-05-07
+#   Build 117 (Bug 3.1): context.username ist der Beschuldigte, nicht der Ermittler.
+#     Der Eigentuemer eines Blocks muss der Ermittler (Systembenutzer) sein.
+#     Fix: context.investigator_username verwenden.
+#     Beleg: Projektgespraech 2026-05-07
+# Version: v0.6.117 · Build: 117 · 2026-05-07
 # =============================================================================
 
 from __future__ import annotations
 
 import json
+import os
 from typing import TYPE_CHECKING
 
 from core.logger import get_logger
@@ -159,6 +173,12 @@ class EditorBlockEndpoint:
         if block_type == "paragraph" and not block_data.get("text"):
             block_data = {"text": ""}
 
+        # Bug 3.4 Fix (Build 117): block_data muss als JSON-String an
+        # save_block() uebergeben werden. Der HTTP-Body liefert ein dict
+        # (nach json.loads), save_block() erwartet aber str.
+        # Beleg: Projektgespraech 2026-05-07
+        block_data_json: str = json.dumps(block_data, ensure_ascii=False)
+
         try:
             report_id = int(report_id_raw) if report_id_raw is not None else None
         except (TypeError, ValueError):
@@ -178,7 +198,23 @@ class EditorBlockEndpoint:
                 return
             report_id = existing.report_id
 
-        sort_idx = str(sort_index).strip() if sort_index is not None else None
+        # Bug 3.4 Fix (Build 117): sort_index als optionaler int.
+        # Der Client uebergibt Fractional-Index-Strings (z.B. "a0") —
+        # save_block() erwartet Optional[int]. Nicht-numerische Werte
+        # werden ignoriert (None). Beleg: Projektgespraech 2026-05-07
+        sort_idx: int | None = None
+        if sort_index is not None:
+            try:
+                sort_idx = int(sort_index)
+            except (TypeError, ValueError):
+                sort_idx = None
+
+        # Bug 3.1 Fix (Build 117): context.username ist der Beschuldigte,
+        # nicht der Ermittler. Der Block-Eigentuemer muss der Systembenutzer
+        # (Ermittler) sein. context.investigator_username liefert den
+        # SAMAccountName des angemeldeten Ermittlers.
+        # Beleg: Projektgespraech 2026-05-07
+        ermittler = self._context.investigator_username
 
         try:
             # Build 114: owner= → author= (Signatur evidence_db.save_block)
@@ -186,9 +222,9 @@ class EditorBlockEndpoint:
             self._bundle.evidence.save_block(
                 block_id=block_id,
                 report_id=report_id,
-                author=owner,
+                author=ermittler,
                 block_type=block_type,
-                block_data=block_data,
+                block_data=block_data_json,
                 sort_index=sort_idx,
             )
         except EvidenceDbError as exc:
@@ -239,7 +275,9 @@ class EditorBlockEndpoint:
             )
             return
 
-        requesting_owner = self._context.username or ""
+        # Bug 3.1 Fix (Build 117): Ermittler-Username, nicht Beschuldigter.
+        # Beleg: Projektgespraech 2026-05-07
+        requesting_owner = self._context.investigator_username
         if block.owner != requesting_owner:
             handler.send_response_body(
                 403,
