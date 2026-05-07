@@ -64,7 +64,12 @@
 #     add_comment/resolve_comment ausgelagert in editor_comment.py.
 #     Beleg: Bauplan B6 v0.5 §5, Projektgespraech 2026-05-06
 #
-# Version: v0.6.102 · Build: 102 · 2026-05-06
+#   Build 109 (Fix): editor.bundle.js in HTML-Template eingebunden (window.EditorJS).
+#              Veraltete Buttons btn-add-paragraph, btn-insert-module ersetzt
+#              durch btn-new-report-header (delegiert an btn-new-report).
+#              Beleg: Projektgespraech 2026-05-07
+#
+# Version: v0.6.109 · Build: 109 · 2026-05-07
 # =============================================================================
 
 from __future__ import annotations
@@ -109,13 +114,13 @@ _EDITOR_HTML = """\
         📄 Bericht \u00b7 <span id="report-current-title">{username} (ID: {user_id})</span>
       </div>
       <div id="report-action-bar-buttons">
-        <button class="report-btn report-btn-primary" id="btn-add-paragraph"
-          title="Neuen Freitext-Absatz hinzufuegen" disabled>
-          + Freitext-Absatz
-        </button>
-        <button class="report-btn" id="btn-insert-module"
-          title="Berichtsmodul auswaehlen und einfuegen" disabled>
-          + Modul einfuegen
+        <!-- Build 109: btn-add-paragraph und btn-insert-module entfernt (veraltet).
+             Ersetzt durch btn-new-report-header, der an btn-new-report im
+             report-selector-container delegiert.
+             Beleg: Projektgespraech 2026-05-07 -->
+        <button class="report-btn report-btn-primary" id="btn-new-report-header"
+          title="Neuen Bericht anlegen">
+          + Neuer Bericht
         </button>
         <button class="report-btn" id="btn-refresh-placeholders"
           title="Automatische Platzhalter aktualisieren" disabled>
@@ -263,6 +268,10 @@ _EDITOR_HTML = """\
     <div id="editorjs-holder" style="display:none"></div>
 
     <!-- Scripts (Reihenfolge wichtig) -->
+    <!-- 0) editor.bundle.js: Editor.js + Tools (window.EditorJS, window.EditorTools).
+         Muss vor report_editor.js geladen werden.
+         Beleg: AP-E2, Projektgespraech 2026-05-07 (Build 109) -->
+    <script src="/_forensic/static/editor/editor.bundle.js" defer></script>
     <!-- 1a) placeholder_chips.js: Chip-Renderer (vor report.js laden) -->
     <script src="/_forensic/placeholder_chips.js" defer></script>
     <!-- 1b) placeholder_wizard.js: Wizard (nach Chips, vor report.js) -->
