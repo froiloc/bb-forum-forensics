@@ -186,9 +186,10 @@ _EDITOR_HTML = """\
           </button>
           <div id="accordion-body-blocks" class="support-accordion-body"
                role="region" aria-label="Bausteine">
-            <!-- Inhalt wird von module_panel.js befuellt (Phase 7) -->
-            <p class="support-accordion-empty">
-              Bausteine werden in Phase 7 implementiert.
+            <!-- Inhalt wird von module_panel.js/_refreshModulePanel() befuellt (Phase 7) -->
+            <!-- Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06 -->
+            <p class="support-accordion-empty" id="blocks-loading-state">
+              Bausteine werden geladen\u2026
             </p>
           </div>
         </section>

@@ -39,13 +39,13 @@
  *     Neue window-Exports: initBlockWrappers, openAccordionSection, ownerColor.
  *     Beleg: Bauplan B6 v0.5 §4.3, §4.4, Projektgespraech 2026-05-06
  *   Build 103 (B6 Phase 5): PlaceholderInlineTool registriert (CMD+SHIFT+P).
- *     _performAutoSave: dehydrateChips() vor dem Speichern aufgerufen.
- *     _initEditorJs/Laden: hydrateChips() beim Aufbau der Editor.js-Daten.
- *     _bindChipDoubleClick(): Doppelklick auf .ph-chip oeffnet Formular-Akkordeon.
- *     OP-B6-5 verifiziert: Toggle-Logik von surround() bestaetigt.
- *     Beleg: Bauplan B6 v0.5 §4.6, Projektgespraech 2026-05-06
+ *   Build 104 (B6 Phase 6): _openAccordionSection fuer 'form' -> _refreshPlaceholderForm().
+ *   Build 105 (B6 Phase 7): _refreshModulePanel(), _loadBlocksAndReinit().
+ *     _openAccordionSection fuer 'blocks' -> _refreshModulePanel().
+ *     onInserted-Callback: Bloecke neu laden + Formular-Akkordeon oeffnen.
+ *     Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06
  *
- * Version: v0.6.103 · Build: 103 · 2026-05-06
+ * Version: v0.6.105 · Build: 105 · 2026-05-06
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -666,6 +666,12 @@ function _openAccordionSection(section) {
     if (section.dataset.accordion === 'form') {
         _refreshPlaceholderForm();
     }
+
+    // B6 Phase 7: Bausteine-Akkordeon geoeffnet -> _refreshModulePanel() aufrufen
+    // Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06
+    if (section.dataset.accordion === 'blocks') {
+        _refreshModulePanel();
+    }
 }
 
 /**
@@ -884,6 +890,71 @@ async function _onPlaceholderFieldSave(blockId, fieldName, value) {
         const err = await resp.json().catch(() => ({}));
         console.warn('report_editor.js: Platzhalter-Save fehlgeschlagen:', fieldName, err);
     }
+}
+
+// ---------------------------------------------------------------------------
+// Bausteine-Panel (B6 Phase 7)
+// Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06
+// ---------------------------------------------------------------------------
+
+/**
+ * Ruft ModulePanel.showPanel() mit dem aktuellen Editor-Zustand auf.
+ * Wird von _openAccordionSection() aufgerufen wenn das Bausteine-Akkordeon
+ * geoeffnet wird.
+ * Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06
+ */
+function _refreshModulePanel() {
+    if (!window.ModulePanel?.showPanel) return;
+
+    const lockId   = window.EditorState?.lockId || null;
+    const reportId = _currentReport?.id || null;
+
+    window.ModulePanel.showPanel(_currentBlocks, {
+        reportId,
+        lockId,
+        onInserted: async (blockId, moduleId, bodyText) => {
+            // Nach Einfuegen: Editor-Daten neu laden
+            // Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06
+            if (_currentReport) {
+                await _loadBlocksAndReinit(_currentReport);
+            }
+
+            // Formular-Akkordeon automatisch oeffnen wenn m: oder o:-Felder vorhanden
+            const chips = window.PlaceholderChips;
+            const hasMO = chips && bodyText && (
+                chips.extractFields(bodyText, 'm').length > 0 ||
+                chips.extractFields(bodyText, 'o').length > 0
+            );
+            if (hasMO) {
+                const sidebar     = document.getElementById('support-sidebar');
+                const formSection = sidebar?.querySelector('[data-accordion="form"]');
+                if (formSection) {
+                    _openAccordionSection(formSection);
+                    // PlaceholderWizard auf neuen Block fokussieren
+                    if (blockId && typeof window.PlaceholderWizard?.focusBlock === 'function') {
+                        window.PlaceholderWizard.focusBlock(blockId);
+                    }
+                }
+            }
+        },
+    });
+}
+
+/**
+ * Laedt die Bloecke neu und aktualisiert den Editor-State.
+ * Leichter als loadReport() — kein Editor-Destroy/Reinit.
+ * Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06
+ */
+async function _loadBlocksAndReinit(report) {
+    try {
+        const resp = await fetch('/_forensic/report?format=json', {
+            headers: { 'X-Forensic-Request': 'ajax' },
+        });
+        if (resp.ok) {
+            const data = await resp.json();
+            _currentBlocks = data.blocks || [];
+        }
+    } catch (_) {}
 }
 
 function _initSidebarAccordion() {
