@@ -52,7 +52,7 @@
  *     toggleAnnotationSidebar() leitet auf Annotationen-Akkordeon um.
  *     Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
  *
- * Version: v0.6.120 · Build: 120 · 2026-05-08
+ * Version: v0.6.121 · Build: 121 · 2026-05-08
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -449,6 +449,15 @@ function _initEditorJs(blocks, reportId) {
                 : (b.block_data || {});
             // paragraph ohne text-Feld: Editor.js wuerde Block verwerfen
             if (b.block_type === 'paragraph' && !raw.text) raw.text = '';
+            // Build 121 Fix: Vor dem Hydrieren zuerst dehydrieren.
+            // Beim erneuten Laden (z.B. _reinitWithLock) koennte raw.text
+            // bereits hydriertes HTML enthalten — dann wuerde hydrateChips
+            // das HTML nochmals verarbeiten und den Block ungueltig machen.
+            // dehydrateChips ist idempotent auf reiner Template-Syntax.
+            // Beleg: Bugfix Build 121, Projektgespraech 2026-05-08
+            if (raw.text && window.PlaceholderChips?.dehydrateChips) {
+                raw.text = window.PlaceholderChips.dehydrateChips(raw.text);
+            }
             // B6 Phase 5: Template-Syntax in text-Feld zu Chips hydrieren.
             // Platzhalter-Werte kommen aus placeholder_values_json.
             // Beleg: Bauplan B6 v0.5 §4.6, Projektgespraech 2026-05-06
@@ -816,12 +825,19 @@ function initBlockWrappers(blocks, username) {
     const blockIndex = Object.create(null);
     blocks.forEach(b => { blockIndex[b.block_id] = b; });
 
-    // Hilfsfunktion: ein .ce-block wrappen wenn block_id bekannt
+    // Hilfsfunktion: ein .ce-block wrappen.
+    // Build 121: Neue Bloecke ohne blockIndex-Eintrag erhalten Fallback-Metadata
+    // (author=username, created_at=jetzt). Sonst blieben vom Nutzer neu angelegte
+    // Bloecke ohne Wrapper bis zum naechsten Reload.
+    // Beleg: Bugfix Build 121, Projektgespraech 2026-05-08
     function tryWrap(ceBlock) {
         const blockId = ceBlock.dataset?.id;
         if (!blockId) return;
-        const meta = blockIndex[blockId];
-        if (!meta) return;
+        const meta = blockIndex[blockId] || {
+            block_id:   blockId,
+            author:     username,
+            created_at: Math.floor(Date.now() / 1000),
+        };
         _wrapBlock(ceBlock, meta, username);
     }
 

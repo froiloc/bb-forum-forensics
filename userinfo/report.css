@@ -1261,6 +1261,14 @@
   pointer-events: none;
 }
 
+/* Bug 1.3 Fix Build 121: as-list Rahmenfarbe je aktivem Tab */
+#accordion-body-annotations:has(.as-tab[data-cat="CAT_PERSON"].as-tab--active)   .as-list { border-color: #f5c842; }
+#accordion-body-annotations:has(.as-tab[data-cat="CAT_LOCATION"].as-tab--active) .as-list { border-color: #4f8ef7; }
+#accordion-body-annotations:has(.as-tab[data-cat="CAT_176"].as-tab--active)      .as-list { border-color: #e84040; }
+#accordion-body-annotations:has(.as-tab[data-cat="CAT_184"].as-tab--active)      .as-list { border-color: #b040e8; }
+#accordion-body-annotations:has(.as-tab[data-cat="CAT_OPF"].as-tab--active)      .as-list { border-color: #e88040; }
+#accordion-body-annotations:has(.as-tab[data-cat="CAT_SON"].as-tab--active)      .as-list { border-color: #40b0e8; }
+
 /* as-list: Rahmenfarbe des aktiven Tabs — Standard blau (Alle) */
 .as-list {
   border: 2px solid #c8c8d8;
@@ -1344,12 +1352,14 @@
 }
 
 /* Einzelne Annotation */
+/* Bug 1.5 Fix Build 121: margin damit Einträge sich nicht berühren */
 .as-annotation {
   background: var(--color-bg, #fafafa);
   border: 1px solid var(--color-border, #e8e8e8);
   border-radius: var(--radius, 4px);
   padding: 8px 10px;
   font-size: 12px;
+  margin: 0 5px;
 }
 
 .as-annotation.as-ann-anchored {
@@ -1904,28 +1914,30 @@
  * Standardmaessig ausgeblendet; erscheint beim Hover ueber .block-wrapper.
  * --------------------------------------------------------------------------- */
 
-/* Build 120: position:absolute — kein Layout-Shift beim Einblenden (Bug 1.14).
- * Erscheint am unteren Rand des .ce-block, ueberlappt nicht den Inhalt.
- * Beleg: Bugfix Build 120, Projektgespraech 2026-05-08 */
+/* Build 121: position:absolute, top-rechts als kleine dezente Leiste.
+ * Erscheint als Overlay über dem Block — kein Layout-Shift (Bug 1.14),
+ * transparenter Hintergrund damit Inhalt noch lesbar ist (laut Feedback).
+ * Beleg: Bugfix Build 121, Projektgespraech 2026-05-08 */
 .block-meta-bar {
   position: absolute;
-  bottom: 0;
-  left: 4px;
-  right: 0;
+  top: 2px;
+  right: 4px;
+  left: auto;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 1px 6px;
-  font-size: 11px;
+  gap: 6px;
+  padding: 1px 4px;
+  font-size: 10px;
   line-height: 1.4;
-  color: var(--color-text-muted, #888);
-  background: var(--color-surface, #fff);
-  border-top: 1px solid var(--color-border, #eee);
+  color: var(--color-text-muted, #999);
+  background: rgba(255,255,255,0.85);
+  border: 1px solid var(--color-border, #e8e8e8);
+  border-radius: var(--radius, 4px);
   opacity: 0;
   pointer-events: none;
   user-select: none;
   transition: opacity 0.15s;
-  z-index: 2;
+  z-index: 5;
 }
 
 .ce-block[data-wrapped]:hover > .block-meta-bar,
@@ -2017,7 +2029,8 @@
   gap: 6px;
   width: 100%;
   padding: 8px 12px;
-  font-size: 13px;
+  /* Bug 1.7 Fix Build 121: Überschrift größer */
+  font-size: 17px;
   font-weight: 600;
   color: var(--color-text, #333);
   background: var(--color-bg, #f8f8f8);
@@ -2068,6 +2081,11 @@
  * 10.3 Akkordeon-Koerper
  * --------------------------------------------------------------------------- */
 
+/* Bug 1.8 Fix Build 121: Sanfte Akkordeon-Animation.
+ * hidden-Attribut wird von JS gesetzt/entfernt. Um eine Animation zu
+ * ermöglichen, nutzen wir max-height + overflow statt display:none.
+ * JS muss hidden-Attribut durch Klasse ersetzen (siehe report_editor.js).
+ * Beleg: Bugfix Build 121, Projektgespraech 2026-05-08 */
 .support-accordion-body {
   flex: 1 1 auto;
   overflow-y: auto;
@@ -2079,6 +2097,19 @@
   /* Scrollbar dezent stylen (Webkit) */
   scrollbar-width: thin;
   scrollbar-color: var(--color-border, #ccc) transparent;
+  /* Sanfte Einblend-Animation */
+  transition: opacity 0.18s ease;
+  opacity: 1;
+}
+
+.support-accordion-body[hidden] {
+  display: none;  /* Fallback: hidden-Attribut bleibt funktional */
+}
+
+/* Geschlossener Abschnitt: Body ausblenden mit Fade */
+.support-accordion-section:not(.support-accordion-section--open) .support-accordion-body:not([hidden]) {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .support-accordion-body::-webkit-scrollbar {
@@ -2735,7 +2766,7 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
-    max-height: 340px;
+    /* Bug 1.13 Fix Build 121: max-height entfernt */
     overflow-y: auto;
     overscroll-behavior: contain;
 }

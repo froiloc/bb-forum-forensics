@@ -125,6 +125,10 @@ _EDITOR_HTML = """\
       <div id="report-action-bar-title">
         📄 Bericht \u00b7 <span id="report-current-title">{subject} (ID: {user_id})</span>
       </div>
+      <!-- Bug 1.10 Fix Build 121: editor-report-title als div zwischen title und buttons.
+           War bisher als span NACH den Buttons platziert und drückte die Leiste nach unten.
+           Beleg: Bugfix Build 121, Projektgespraech 2026-05-08 -->
+      <div id="editor-report-title"></div>
       <div id="report-action-bar-buttons">
         <!-- Build 111: btn-new-report-header entfernt.
              "Neuer Bericht" befindet sich bereits im report-selector-container.
@@ -133,9 +137,11 @@ _EDITOR_HTML = """\
           title="Automatische Platzhalter aktualisieren" disabled>
           🔄 Aktualisieren
         </button>
+        <!-- Bug 1.9 Fix Build 121: ✎ → 🖶 (Drucker-Symbol).
+             Beleg: Bugfix Build 121, Projektgespraech 2026-05-08 -->
         <button class="report-btn" id="btn-print"
           title="Bericht drucken" disabled>
-          ✎ Drucken
+          🖶 Drucken
         </button>
         <div class="report-export-wrap">
           <button class="report-btn" id="btn-export"
@@ -162,8 +168,6 @@ _EDITOR_HTML = """\
         <span id="editor-save-indicator"
           style="font-size:11px;color:#4caf50;opacity:0;transition:opacity 1s"></span>
       </div>
-      <!-- Berichtsname in der Mitte (Grid-Spalte 2, Build 115) -->
-      <span id="editor-report-title"></span>
     </header>
 
     <!-- Zweispaltiger Arbeitsbereich (§4.1, §4.3, §4.7) -->
