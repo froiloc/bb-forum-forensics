@@ -46,7 +46,7 @@
  *     toggleAnnotationSidebar() leitet auf Annotationen-Akkordeon um.
  *     Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
  *
- * Version: v0.6.111 · Build: 111 · 2026-05-07
+ * Version: v0.6.112 · Build: 112 · 2026-05-07
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 

@@ -40,7 +40,7 @@
  *   GET /_forensic/annotations         -- alle Annotationen
  *   POST /_forensic/report             -- action=add_anchor
  *
- * Version: v0.6.111 · Build: 111 · 2026-05-07
+ * Version: v0.6.112 · Build: 112 · 2026-05-07
  * Beleg: Bauplan B6 v0.3 §4.7, Ausdefinitionsgespraech 2026-05-05
  */
 
@@ -67,13 +67,17 @@ function _dbg(...args) {
 const ANN_API = '/_forensic/annotations';
 
 /** Deutsche Bezeichnungen fuer die Kategorie-Codes. */
+/** Deutsche Bezeichnungen + Icons fuer die Kategorie-Codes.
+ * Build 112: Icons ergaenzt.
+ * Beleg: Projektgespraech 2026-05-07
+ */
 const CATEGORY_LABELS = {
-    CAT_PERSON:   'Person',
-    CAT_LOCATION: 'Ort',
-    CAT_176:      '\u00a7\u00a7 176/176a StGB',
-    CAT_184:      '\u00a7\u00a7 184b/184c StGB',
-    CAT_VICTIM:   'Betroffene Person',
-    CAT_OTHER:    'Sonstiges',
+    CAT_PERSON:   '\ud83d\udc64\u2002Person',
+    CAT_LOCATION: '\ud83d\udccd\u2002Ort',
+    CAT_176:      '\u26a0\ufe0f\u2002\u00a7\u00a7\u00a0176/176a\u00a0StGB',
+    CAT_184:      '\u26d4\u2002\u00a7\u00a7\u00a0184b/184c\u00a0StGB',
+    CAT_VICTIM:   '\ud83d\udc9c\u2002Betroffene Person',
+    CAT_OTHER:    '\ud83d\udccc\u2002Sonstiges',
 };
 
 /** Reihenfolge der Kategorien in der Anzeige. */

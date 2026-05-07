@@ -52,7 +52,7 @@
  *     Rueckwaerts-Kompatibilitaet open()/close() erhalten.
  *     Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06.
  *
- * Version: v0.6.111 · Build: 111 · 2026-05-07
+ * Version: v0.6.112 · Build: 112 · 2026-05-07
  * Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06
  */
 
@@ -89,6 +89,20 @@ const ROLE_LABELS = {
     appendix:   'Anhang',
     closing:    'Abschluss',
 };
+
+/**
+ * Standard-Bloecke: clientseitig fest verdrahtete Editor.js-Systemkategorie.
+ * Kein API-Aufruf — direkte Eintraege als Pseudo-Module-Objekte.
+ * Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-07 (Build 112)
+ */
+const STANDARD_BLOCKS = [
+    { id: '__std_paragraph', title: '\u00b6 Textabsatz',      description: 'Freier Texteintrag (Paragraph)',    block_type: 'paragraph',  icon: '\u270f\ufe0f' },
+    { id: '__std_header',    title: '\ud83c\udd97 \u00dcberschrift', description: 'Abschnitts\u00fcberschrift (H2)', block_type: 'header',     icon: '\ud83c\udd97' },
+    { id: '__std_list',      title: '\ud83d\udcdd Liste',         description: 'Aufz\u00e4hlungsliste oder nummerierte Liste',  block_type: 'list',       icon: '\ud83d\udcdd' },
+    { id: '__std_table',     title: '\ud83d\udcca Tabelle',        description: 'Strukturierte Tabelle',            block_type: 'table',      icon: '\ud83d\udcca' },
+    { id: '__std_quote',     title: '\u201eZitat\u201c',           description: 'Hervorgehobenes Zitat',            block_type: 'quote',      icon: '\u201e' },
+    { id: '__std_delimiter', title: '\u2014 Trennlinie',        description: 'Horizontale Trennlinie',           block_type: 'delimiter',  icon: '\u2014' },
+];
 
 /** Vorschau-Laenge (Zeichen). */
 const PREVIEW_CHARS = 80;
@@ -195,8 +209,9 @@ async function showPanel(blocks, opts) {
  * Skeleton-HTML des Panels (Umschalter + Filter + Liste-Container).
  */
 function _renderSkeleton() {
-    const roleChips = ['', ...Object.keys(ROLE_LABELS)].map(role => {
-        const label = role ? ROLE_LABELS[role] : 'Alle';
+    // 'standard' am Ende als spezielle Systemkategorie
+    const roleChips = ['', ...Object.keys(ROLE_LABELS), 'standard'].map(role => {
+        const label = role === 'standard' ? 'Standard' : (role ? ROLE_LABELS[role] : 'Alle');
         const active = role === '' ? ' mp-chip-active' : '';
         return `<button class="mp-chip${active}" type="button"
                     data-role="${_esc(role)}"
@@ -309,7 +324,15 @@ async function _loadAndRender() {
     if (empty)   empty.style.display = 'none';
 
     try {
-        if (_activeCategory === 'modules') {
+        if (_activeCategory === 'modules' && _filterRole === 'standard') {
+            // Standard: clientseitig gefiltert, kein API-Aufruf
+            // Beleg: Bauplan B6 v0.5 §4.4.1, Build 112
+            const q = _filterSearch.toLowerCase();
+            const filtered = q
+                ? STANDARD_BLOCKS.filter(b => b.title.toLowerCase().includes(q) || b.description.toLowerCase().includes(q))
+                : STANDARD_BLOCKS;
+            _renderStandardList(filtered);
+        } else if (_activeCategory === 'modules') {
             _modules = await _fetchModules(_filterRole, _filterSearch);
             _renderList(_modules);
         } else {
@@ -470,6 +493,74 @@ function _renderQueryList(queries) {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
             _insertQuery(btn.dataset.queryId);
+        });
+    });
+}
+
+// ---------------------------------------------------------------------------
+// Standard-Blöcke rendern
+// ---------------------------------------------------------------------------
+
+/**
+ * Rendert die clientseitige Standard-Blockliste in #mp-list.
+ * Kein API-Aufruf — Editor.js-Systemkategorie (Bauplan B6 §4.4.1).
+ * Beleg: Build 112, Projektgespraech 2026-05-07
+ * @param {Array} blocks  Gefilterte Eintraege aus STANDARD_BLOCKS
+ */
+function _renderStandardList(blocks) {
+    const list    = document.getElementById('mp-list');
+    const empty   = document.getElementById('mp-empty');
+    const loading = document.getElementById('mp-loading');
+    if (!list) return;
+    if (loading) loading.style.display = 'none';
+    if (!blocks.length) {
+        list.innerHTML = '';
+        if (empty) empty.style.display = '';
+        return;
+    }
+    if (empty) empty.style.display = 'none';
+
+    list.innerHTML = blocks.map(b => `
+        <div class="mp-item mp-item--standard" data-std-type="${_esc(b.block_type)}"
+             role="listitem" tabindex="0"
+             title="${_esc(b.description)}">
+            <div class="mp-item-header">
+                <span class="mp-item-icon" aria-hidden="true">${_esc(b.icon)}</span>
+                <span class="mp-item-title">${_esc(b.title)}</span>
+            </div>
+            <div class="mp-item-preview">${_esc(b.description)}</div>
+            <button class="mp-btn-insert" type="button"
+                    data-std-type="${_esc(b.block_type)}"
+                    title="${_esc(b.title)} einfuegen"
+                    aria-label="${_esc(b.title)} in Editor einfuegen">
+                + Einfügen
+            </button>
+        </div>
+    `).join('');
+
+    // Insert-Handler: neuen leeren Block des gewuenschten Typs anlegen
+    list.querySelectorAll('.mp-btn-insert[data-std-type]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const blockType = btn.dataset.stdType;
+            _dbg('Standard-Block einfuegen: type=', blockType);
+            if (window._editor?.blocks?.insert) {
+                window._editor.blocks.insert(blockType);
+                // Fokus in den neuen Block setzen
+                const idx = window._editor.blocks.getBlocksCount() - 1;
+                window._editor.caret.setToBlock(idx);
+            } else {
+                _dbg('Standard-Block: _editor nicht verfuegbar');
+            }
+        });
+    });
+
+    // Tastatur: Enter/Space oeffnen Insert
+    list.querySelectorAll('.mp-item--standard').forEach(item => {
+        item.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                item.querySelector('.mp-btn-insert')?.click();
+            }
         });
     });
 }

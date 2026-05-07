@@ -26,7 +26,7 @@
  *   window.opener?.postMessage({ type: 'navigate_to_annotation',
  *                                annotation_id: N }, origin)
  *
- * Version: v0.6.111 · Build: 111 · 2026-05-07
+ * Version: v0.6.112 · Build: 112 · 2026-05-07
  *
  * Änderungen Build 089 (Bugfix: SSE-Deadlock-Kaskade):
  *   Ursache: Drei zusammenwirkende Probleme führten dazu, dass alle Server-Threads
@@ -460,6 +460,9 @@ async function initEditor() {
     // Beleg: AP-E4, Projektgespraech 2026-04-19
     const container = document.getElementById('report-editor-container');
     if (container) {
+        // Build 112: Container nach Befuellen einblenden (war dauerhaft display:none).
+        // Beleg: Projektgespraech 2026-05-07
+        container.style.display = '';
         container.innerHTML = `
             <div id="report-editor-toolbar">
                 <span id="report-lock-status" class="lock-status lock-none">Kein Lock</span>

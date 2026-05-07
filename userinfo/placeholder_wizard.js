@@ -57,7 +57,7 @@
  *     Rueckwaerts-Kompatibilitaet fuer open()/openAtField() erhalten.
  *     Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06.
  *
- * Version: v0.6.111 · Build: 111 · 2026-05-07
+ * Version: v0.6.112 · Build: 112 · 2026-05-07
  * Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06
  */
 
