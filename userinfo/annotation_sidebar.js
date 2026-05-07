@@ -40,7 +40,7 @@
  *   GET /_forensic/annotations         -- alle Annotationen
  *   POST /_forensic/report             -- action=add_anchor
  *
- * Version: v0.6.113 · Build: 113 · 2026-05-07
+ * Version: v0.6.114 · Build: 114 · 2026-05-07
  * Beleg: Bauplan B6 v0.3 §4.7, Ausdefinitionsgespraech 2026-05-05
  */
 
@@ -111,7 +111,8 @@ function _truncate(s, maxLen) {
 let _opts          = null;
 let _annotations   = [];        // alle geladenen Annotations-Objekte
 let _anchoredIds   = new Set(); // bereits verankerte Annotation-IDs
-let _expanded      = new Set(); // aufgeklappte Kategorien
+let _expanded      = new Set(); // aufgeklappte Kategorien (Legacy, nicht mehr genutzt)
+let _activeTab     = null;      // Build 114: aktiver Kategorie-Tab (null = Alle)
 let _searchText    = '';
 let _hideAnchored  = false;
 let _searchTimer   = null;
@@ -202,8 +203,9 @@ function _render() {
                 </label>
             </div>
             <div class="as-divider"></div>
+            ${_renderCategoryTabs(grouped)}
             <div class="as-list" id="as-list">
-                ${_renderCategories(grouped)}
+                ${_renderFilteredAnnotations(grouped)}
             </div>
             <div class="as-divider"></div>
             ${_renderCompleteness(anchored, total)}
@@ -212,38 +214,57 @@ function _render() {
     _bindEvents(container);
 }
 
-function _renderCategories(grouped) {
-    // Alle Kategorien in definierter Reihenfolge, dann unbekannte
-    const cats = [
-        ...CATEGORY_ORDER.filter(c => grouped[c]?.length),
-        ...Object.keys(grouped).filter(c => !CATEGORY_ORDER.includes(c) && grouped[c]?.length),
+function _renderCategoryTabs(grouped) {
+    // Build 114: Reiter-Struktur statt Akkordeon fuer Annotationskategorien
+    // Beleg: Projektgespraech 2026-05-07
+    const allCount = Object.values(grouped).reduce((s, a) => s + a.length, 0);
+    const tabs = [
+        { key: null, label: 'Alle', count: allCount },
+        ...CATEGORY_ORDER
+            .filter(c => grouped[c]?.length)
+            .map(c => ({ key: c, label: CATEGORY_LABELS[c] || c, count: grouped[c].length })),
+        ...Object.keys(grouped)
+            .filter(c => !CATEGORY_ORDER.includes(c) && grouped[c]?.length)
+            .map(c => ({ key: c, label: CATEGORY_LABELS[c] || c, count: grouped[c].length })),
     ];
+
+    if (tabs.length <= 1) return '';   // kein Tab-Strip wenn nur "Alle"
+
+    return `<div class="as-tabs" role="tablist" aria-label="Annotationskategorien">
+        ${tabs.map(t => {
+            const isActive = t.key === _activeTab;
+            return `<button class="as-tab${isActive ? ' as-tab--active' : ''}"
+                        role="tab" aria-selected="${isActive}"
+                        data-cat="${t.key ?? ''}"
+                        title="${_esc(t.label)}"
+                    >${_esc(t.label)}<sup class="as-tab-count">${t.count}</sup></button>`;
+        }).join('')}
+    </div>`;
+}
+
+function _renderFilteredAnnotations(grouped) {
+    // Build 114: nur aktive Kategorie anzeigen (oder alle)
+    const cats = _activeTab
+        ? (_activeTab in grouped ? [_activeTab] : [])
+        : [
+            ...CATEGORY_ORDER.filter(c => grouped[c]?.length),
+            ...Object.keys(grouped).filter(c => !CATEGORY_ORDER.includes(c) && grouped[c]?.length),
+          ];
 
     if (!cats.length) {
         return '<div class="as-empty">Keine Annotationen gefunden.</div>';
     }
 
     return cats.map(cat => {
-        const items    = grouped[cat];
-        const label    = CATEGORY_LABELS[cat] || _esc(cat);
-        const isOpen   = _expanded.has(cat);
-        const count    = items.length;
-        const chevron  = isOpen ? '\u25bc' : '\u25b6';
-
-        return `
-            <div class="as-category" data-category="${_esc(cat)}">
-                <button class="as-category-header" data-category="${_esc(cat)}"
-                    aria-expanded="${isOpen ? 'true' : 'false'}">
-                    <span class="as-chevron" aria-hidden="true">${chevron}</span>
-                    <span class="as-category-label">${_esc(label)}</span>
-                    <span class="as-category-count">(${count})</span>
-                </button>
-                ${isOpen ? `<div class="as-category-body">
-                    ${items.map(a => _renderAnnotation(a)).join('')}
-                </div>` : ''}
-            </div>`;
+        const items = grouped[cat];
+        const label = CATEGORY_LABELS[cat] || _esc(cat);
+        return `<div class="as-category-section">
+            ${_activeTab === null ? `<div class="as-category-title">${_esc(label)}</div>` : ''}
+            ${items.map(a => _renderAnnotation(a)).join('')}
+        </div>`;
     }).join('');
 }
+
 
 function _renderAnnotation(ann) {
     const isAnchored = _anchoredIds.has(ann.id);
@@ -305,6 +326,14 @@ function _showError(msg) {
 // ---------------------------------------------------------------------------
 
 function _bindEvents(container) {
+    // Build 114: Kategorie-Tab-Clicks
+    container.querySelectorAll('.as-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            _activeTab = tab.dataset.cat || null;
+            _render();
+        });
+    });
+
     // Suche
     const searchInput = container.querySelector('#as-search-input');
     if (searchInput) {

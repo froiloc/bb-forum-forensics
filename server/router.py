@@ -22,7 +22,7 @@
 #   Kein Muster ist hart im Code verdrahtet.
 #
 # Abhängigkeiten: urllib.parse — Stdlib + interne Module
-# Version: v0.1.0 · Build: 008 · 2026-04-10
+# Version: v0.6.114 · Build: 114 · 2026-05-07
 # =============================================================================
 
 from __future__ import annotations
@@ -126,6 +126,21 @@ class Router:
                 url_path=url_path,
                 query=query,
                 is_ajax=is_ajax,
+            )
+            return
+
+        # ----------------------------------------------------------------
+        # Regel 2b: /icons/ → statische Icons aus static/icons/
+        # Build 114: IconQuote.svg und andere Editor.js-Plugin-Icons.
+        # Beleg: Projektgespraech 2026-05-07
+        # ----------------------------------------------------------------
+        if url_path.startswith('/icons/') and method == 'GET':
+            self._get_forensic_api().dispatch(
+                handler=handler,
+                method=method,
+                url_path='/_forensic/static' + url_path,
+                query='',
+                is_ajax=False,
             )
             return
 

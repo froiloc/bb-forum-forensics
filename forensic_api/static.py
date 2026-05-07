@@ -32,7 +32,7 @@
 #     report.js (contenteditable-Modell) entfernt.
 #     Beleg: Bauplan B6 v0.5 §4.1, Projektgespraech 2026-05-06
 #
-# Version: v0.6.100 · Build: 100 · 2026-05-06
+# Version: v0.6.114 · Build: 114 · 2026-05-07
 # =============================================================================
 
 from __future__ import annotations
@@ -54,6 +54,7 @@ _TOOLBAR_DIR   = _BASE_DIR / "toolbar"
 _USERINFO_DIR  = _BASE_DIR / "userinfo"
 _EDITOR_DIR    = _BASE_DIR / "static" / "editor"   # AP-E3: Editor.js-Bundle
 _VENDOR_DIR    = _BASE_DIR / "static" / "vendor"   # Build 084: Vendor-Bibliotheken
+_ICONS_DIR     = _BASE_DIR / "static" / "icons"    # Build 114: Plugin-Icons
 
 # Ressourcen-Registry: Pfad -> (Dateiname, MIME-Type, Verzeichnis)
 _RESOURCES: dict[str, tuple[str, str, Path]] = {
@@ -272,3 +273,36 @@ class StaticEndpoint:
                 json.dumps({"error": f"Vendor-Datei nicht gefunden: {rel}"}).encode("utf-8"),
                 content_type="application/json; charset=utf-8",
             )
+    def handle_icons_asset(
+        self,
+        handler: "ForensicRequestHandler",
+        url_path: str,
+    ) -> None:
+        """
+        Liefert Plugin-Icons aus static/icons/<file> aus.
+        Wird von /_forensic/static/icons/* und /icons/* (via Router) aufgerufen.
+        Build 114: IconQuote.svg und weitere Editor.js-Plugin-Icons.
+        Beleg: Projektgespraech 2026-05-07
+        """
+        prefix = "/_forensic/static/icons/"
+        if not url_path.startswith(prefix):
+            handler.send_response_body(400, b"", content_type="text/plain")
+            return
+
+        filename = url_path[len(prefix):]
+        if not filename or "/" in filename or "\\" in filename or filename.startswith("."):
+            handler.send_response_body(404, b"", content_type="text/plain")
+            return
+
+        file_path = _ICONS_DIR / filename
+        suffix = Path(filename).suffix.lower()
+        mime_type = "image/svg+xml" if suffix == ".svg" else "application/octet-stream"
+
+        try:
+            data = file_path.read_bytes()
+            logger.debug("Icons-Asset: '%s' ausgeliefert (%d bytes)", filename, len(data))
+            handler.send_response_body(200, data, content_type=mime_type)
+        except FileNotFoundError:
+            handler.send_response_body(404, b"Not found", content_type="text/plain")
+
+

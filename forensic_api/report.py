@@ -80,7 +80,7 @@
 #              btn-new-report-header aus Action-Bar entfernt (redundant).
 #              Beleg: Projektgespraech 2026-05-07
 #
-# Version: v0.6.113 · Build: 113 · 2026-05-07
+# Version: v0.6.114 · Build: 114 · 2026-05-07
 # =============================================================================
 
 from __future__ import annotations

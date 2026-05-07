@@ -46,7 +46,7 @@
  *     toggleAnnotationSidebar() leitet auf Annotationen-Akkordeon um.
  *     Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
  *
- * Version: v0.6.113 · Build: 113 · 2026-05-07
+ * Version: v0.6.114 · Build: 114 · 2026-05-07
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -330,6 +330,14 @@ async function loadReport(report) {
 
 async function _loadReportImpl(report) {
     _currentReport = report;
+
+    // Build 114: Action-Bar-Buttons aktivieren sobald ein Bericht geladen ist.
+    // Drucken, Export und Aktualisieren sind lock-unabhaengig.
+    // Beleg: Projektgespraech 2026-05-07
+    ['btn-print', 'btn-export', 'btn-refresh-placeholders'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.disabled = false;
+    });
 
     // Titel aktualisieren
     const titleEl = document.getElementById('editor-report-title');
@@ -853,7 +861,8 @@ function _bindChipDoubleClick() {
  */
 async function _refreshPlaceholderForm() {
     if (!window.PlaceholderWizard?.showPlaceholderForm) return;
-    if (!_currentBlocks.length && !_currentReport) return;
+    // Build 114: Form auch zeigen wenn Bericht geladen aber noch keine Bloecke existieren
+    if (!_currentReport) return;
 
     // placeholder_values_json aus dem Server laden (aktuellste Werte)
     let blocks = _currentBlocks;

@@ -24,7 +24,7 @@
 #   evidence_<uid>.db (READ-WRITE) — report_block_order, editor_locks
 #
 # Beleg: AP-E3, Projektgespraech 2026-04-19
-# Version: v0.6.044 · Build: 044 · 2026-04-19
+# Version: v0.6.114 · Build: 114 · 2026-05-07
 # =============================================================================
 
 from __future__ import annotations
@@ -137,7 +137,7 @@ class EditorOrderEndpoint:
         modified_by = self._context.username or ""
 
         try:
-            updated = self._bundle.evidence.update_block_order(
+            updated = self._bundle.evidence.set_block_order(
                 report_id=report_id,
                 ordered_block_ids=block_ids,
                 new_sort_indices=sort_indices,
@@ -149,7 +149,7 @@ class EditorOrderEndpoint:
             )
             return
         except Exception as exc:
-            logger.error("update_block_order fehlgeschlagen: %s", exc)
+            logger.error("set_block_order fehlgeschlagen: %s", exc)
             handler.send_response_body(
                 500, _json_err("Interner Datenbankfehler"), content_type=_CT_JSON
             )

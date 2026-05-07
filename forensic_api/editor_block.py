@@ -38,7 +38,7 @@
 #                                    block_evidence_user, editor_locks
 #
 # Beleg: AP-E3, Projektgespraech 2026-04-19
-# Version: v0.6.044 · Build: 044 · 2026-04-19
+# Version: v0.6.114 · Build: 114 · 2026-05-07
 # =============================================================================
 
 from __future__ import annotations
@@ -181,12 +181,14 @@ class EditorBlockEndpoint:
         sort_idx = str(sort_index).strip() if sort_index is not None else None
 
         try:
+            # Build 114: owner= → author= (Signatur evidence_db.save_block)
+            # Beleg: Projektgespraech 2026-05-07
             self._bundle.evidence.save_block(
                 block_id=block_id,
                 report_id=report_id,
+                author=owner,
                 block_type=block_type,
                 block_data=block_data,
-                owner=owner,
                 sort_index=sort_idx,
             )
         except EvidenceDbError as exc:

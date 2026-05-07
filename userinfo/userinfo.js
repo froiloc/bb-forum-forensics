@@ -26,7 +26,7 @@
  *   window.opener?.postMessage({ type: 'navigate_to_annotation',
  *                                annotation_id: N }, origin)
  *
- * Version: v0.6.113 · Build: 113 · 2026-05-07
+ * Version: v0.6.114 · Build: 114 · 2026-05-07
  *
  * Änderungen Build 089 (Bugfix: SSE-Deadlock-Kaskade):
  *   Ursache: Drei zusammenwirkende Probleme führten dazu, dass alle Server-Threads
@@ -87,7 +87,9 @@ const FORENSIC_API = {
  *               Buttons werden ausgeblendet, Aktionen via console.log.
  * Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19
  */
-const DEV_LOCK_UI = true;
+// Build 114: DEV_LOCK_UI=false → Auto-Lock (kein manueller Lock-Button).
+// Beleg: Projektgespraech 2026-05-07
+const DEV_LOCK_UI = false;
 
 // Regex für Beweisanker-Syntax [BELEG:annotation_id=N] im Berichtstext
 const ANCHOR_PATTERN = /\[BELEG:annotation_id=(\d+)\]/g;

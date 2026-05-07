@@ -61,7 +61,7 @@
 #     report.js (contenteditable-Modell) entfernt.
 #     Beleg: Bauplan B6 v0.5 §4.1, Projektgespraech 2026-05-06
 #
-# Version: v0.6.100 · Build: 100 · 2026-05-06
+# Version: v0.6.114 · Build: 114 · 2026-05-07
 # =============================================================================
 
 from __future__ import annotations
@@ -87,6 +87,9 @@ _EDITOR_STATIC_PREFIX = "/_forensic/static/editor/"
 
 # Praefix fuer Vendor-Asset-Pfade (Build 084)
 _VENDOR_STATIC_PREFIX = "/_forensic/static/vendor/"
+
+# Praefix fuer Plugin-Icon-Pfade (Build 114)
+_ICONS_STATIC_PREFIX  = "/_forensic/static/icons/"
 
 # Praefix fuer Editor-API-Pfade (AP-E3)
 _EDITOR_API_PREFIX = "/_forensic/editor/"
@@ -226,6 +229,11 @@ class ForensicApi:
                 self._method_not_allowed(handler)
                 return
             self._get_static().handle_vendor_asset(handler, url_path)
+            return
+
+        # /_forensic/static/icons/* (GET) [Build 114]
+        if method == "GET" and url_path.startswith(_ICONS_STATIC_PREFIX):
+            self._get_static().handle_icons_asset(handler, url_path)
             return
 
         # /_forensic/static/editor/* (GET) [AP-E3]

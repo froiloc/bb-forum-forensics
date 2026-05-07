@@ -52,7 +52,7 @@
  *     Rueckwaerts-Kompatibilitaet open()/close() erhalten.
  *     Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06.
  *
- * Version: v0.6.113 · Build: 113 · 2026-05-07
+ * Version: v0.6.114 · Build: 114 · 2026-05-07
  * Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06
  */
 
@@ -334,7 +334,17 @@ async function _loadAndRender() {
             _renderStandardList(filtered);
         } else if (_activeCategory === 'modules') {
             _modules = await _fetchModules(_filterRole, _filterSearch);
-            _renderList(_modules);
+            // Build 114: Bei "Alle" (kein Rollenfilter) Standard-Bloecke am Ende anfuegen
+            // Beleg: Projektgespraech 2026-05-07
+            if (!_filterRole) {
+                const q = _filterSearch.toLowerCase();
+                const stdFiltered = q
+                    ? STANDARD_BLOCKS.filter(b => b.title.toLowerCase().includes(q) || b.description.toLowerCase().includes(q))
+                    : STANDARD_BLOCKS;
+                _renderListWithStandard(_modules, stdFiltered);
+            } else {
+                _renderList(_modules);
+            }
         } else {
             _queries = await _fetchQueries(_filterSearch);
             _renderQueryList(_queries);
@@ -584,6 +594,67 @@ function _selectModule(id) {
         el.setAttribute('aria-selected', selected ? 'true' : 'false');
     });
 }
+/**
+ * Rendert Modulliste + Standard-Bloecke in #mp-list (fuer "Alle"-Ansicht).
+ * Build 114: Standard-Bloecke werden nach den regulaeren Modulen angezeigt.
+ * Beleg: Projektgespraech 2026-05-07
+ * @param {Array} modules
+ * @param {Array} stdBlocks
+ */
+function _renderListWithStandard(modules, stdBlocks) {
+    const list    = document.getElementById('mp-list');
+    const empty   = document.getElementById('mp-empty');
+    const loading = document.getElementById('mp-loading');
+    if (!list) return;
+    if (loading) loading.style.display = 'none';
+
+    if (!modules.length && !stdBlocks.length) {
+        list.innerHTML = '';
+        if (empty) empty.style.display = '';
+        return;
+    }
+    if (empty) empty.style.display = 'none';
+
+    // Module-Eintraege rendern (wiederverwendet _renderList-Logik)
+    _renderList(modules);
+
+    // Standard-Trenner + Standard-Eintraege anhaengen
+    if (stdBlocks.length) {
+        const divider = document.createElement('div');
+        divider.className = 'mp-std-divider';
+        divider.textContent = 'Standard-Blöcke';
+        list.appendChild(divider);
+
+        const stdHolder = document.createElement('div');
+        stdHolder.className = 'mp-std-section';
+        list.appendChild(stdHolder);
+
+        // Standard-Rendering in den stdHolder umleiten
+        const origList = document.getElementById('mp-list');
+        // Temporaer stdHolder als Ziel setzen via innere Render-Funktion
+        stdHolder.innerHTML = stdBlocks.map(b => `
+            <div class="mp-item mp-item--standard" data-std-type="${_esc(b.block_type)}"
+                 role="listitem" tabindex="0" title="${_esc(b.description)}">
+                <div class="mp-item-header">
+                    <span class="mp-item-icon" aria-hidden="true">${_esc(b.icon)}</span>
+                    <span class="mp-item-title">${_esc(b.title)}</span>
+                </div>
+                <button class="mp-btn-insert" type="button"
+                        data-std-type="${_esc(b.block_type)}"
+                        title="${_esc(b.title)} einfügen">+ Einfügen</button>
+            </div>
+        `).join('');
+
+        stdHolder.querySelectorAll('.mp-btn-insert[data-std-type]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (window._editor?.blocks?.insert) {
+                    window._editor.blocks.insert(btn.dataset.stdType);
+                }
+            });
+        });
+    }
+}
+
 
 // ---------------------------------------------------------------------------
 // Einfuegen
