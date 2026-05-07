@@ -38,7 +38,7 @@
  *   window.PlaceholderChips.extractNames(text, type)
  *     Gibt alle Feldnamen eines Typs ('m', 'o', 'a') zurueck.
  *
- * Version: v0.6.110 · Build: 110 · 2026-05-07
+ * Version: v0.6.111 · Build: 111 · 2026-05-07
  * Beleg: Bauplan B6 v0.3 §2.2, §4.5, Ausdefinitionsgespraech 2026-05-05
  */
 

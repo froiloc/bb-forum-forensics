@@ -40,7 +40,7 @@
  *   GET /_forensic/annotations         -- alle Annotationen
  *   POST /_forensic/report             -- action=add_anchor
  *
- * Version: v0.6.110 · Build: 110 · 2026-05-07
+ * Version: v0.6.111 · Build: 111 · 2026-05-07
  * Beleg: Bauplan B6 v0.3 §4.7, Ausdefinitionsgespraech 2026-05-05
  */
 

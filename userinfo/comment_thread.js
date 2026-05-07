@@ -39,7 +39,7 @@
  *     Rueckwaerts-Kompatibilitaet erhalten.
  *     Beleg: Bauplan B6 v0.5 §4.4.4, Projektgespraech 2026-05-06.
  *
- * Version: v0.6.110 · Build: 110 · 2026-05-07
+ * Version: v0.6.111 · Build: 111 · 2026-05-07
  */
 
 (function() {

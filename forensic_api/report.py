@@ -74,7 +74,13 @@
 #              DEV-Logging (_dbg) in alle JS-Dateien eingeführt.
 #              Beleg: Projektgespraech 2026-05-07
 #
-# Version: v0.6.110 · Build: 110 · 2026-05-07
+# Build 111 (Fix): _initSidebarAccordion() direkt in initEditorModule() aufgerufen
+#              (nicht mehr ausschliesslich in EditorJS onReady). Akkordeon-Listener
+#              sind jetzt ohne aktiven Bericht aktiv.
+#              btn-new-report-header aus Action-Bar entfernt (redundant).
+#              Beleg: Projektgespraech 2026-05-07
+#
+# Version: v0.6.111 · Build: 111 · 2026-05-07
 # =============================================================================
 
 from __future__ import annotations
@@ -119,14 +125,9 @@ _EDITOR_HTML = """\
         📄 Bericht \u00b7 <span id="report-current-title">{username} (ID: {user_id})</span>
       </div>
       <div id="report-action-bar-buttons">
-        <!-- Build 109: btn-add-paragraph und btn-insert-module entfernt (veraltet).
-             Ersetzt durch btn-new-report-header, der an btn-new-report im
-             report-selector-container delegiert.
+        <!-- Build 111: btn-new-report-header entfernt.
+             "Neuer Bericht" befindet sich bereits im report-selector-container.
              Beleg: Projektgespraech 2026-05-07 -->
-        <button class="report-btn report-btn-primary" id="btn-new-report-header"
-          title="Neuen Bericht anlegen">
-          + Neuer Bericht
-        </button>
         <button class="report-btn" id="btn-refresh-placeholders"
           title="Automatische Platzhalter aktualisieren" disabled>
           🔄 Aktualisieren

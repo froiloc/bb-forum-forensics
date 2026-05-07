@@ -46,7 +46,7 @@
  *     toggleAnnotationSidebar() leitet auf Annotationen-Akkordeon um.
  *     Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
  *
- * Version: v0.6.110 · Build: 110 · 2026-05-07
+ * Version: v0.6.111 · Build: 111 · 2026-05-07
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -200,13 +200,6 @@ async function initReportSelector() {
 
     document.getElementById('btn-new-report')?.addEventListener('click', () => openNewReportDialog(reports));
 
-    // Build 109: btn-new-report-header (Action-Bar) delegiert an btn-new-report
-    // im report-selector-container. Wird hier verdrahtet, da 'reports' erst
-    // nach dem Fetch bekannt ist.
-    // Beleg: Projektgespraech 2026-05-07
-    document.getElementById('btn-new-report-header')?.addEventListener('click', () => {
-        document.getElementById('btn-new-report')?.click();
-    });
 
     // Ersten Bericht automatisch laden
     if (reports.length) {
@@ -1478,6 +1471,9 @@ function injectInsertInReportButtons() {
  */
 async function initEditorModule() {
     _dbg('initEditorModule() gestartet');
+    // Akkordeon-Listener sofort verdrahten — unabhaengig von Berichten und EditorJS.
+    // Beleg: Bugfix Build 111, Projektgespraech 2026-05-07
+    _initSidebarAccordion();
     await initReportSelector();
     initBlockUpdatedListener();
 }
