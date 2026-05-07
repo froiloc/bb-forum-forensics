@@ -1870,7 +1870,10 @@
  * Liegt ausserhalb von Editor.js und umgibt jedes .ce-block-Element.
  * --------------------------------------------------------------------------- */
 
-.block-wrapper {
+/* Build 120: .block-wrapper-Stile direkt auf .ce-block[data-wrapped] —
+ * kein separater Wrapper-div mehr, da dieser Editor.js-DOM bricht.
+ * Beleg: Bugfix Build 120, Projektgespraech 2026-05-08 */
+.ce-block[data-wrapped] {
   position: relative;
   border-left: 2px solid transparent;
   margin-bottom: 2px;
@@ -1879,19 +1882,19 @@
 }
 
 /* Eigene Bloecke: breiter Rand (4px) */
-.block-wrapper--own {
+.ce-block.block-wrapper--own {
   border-left-width: 4px;
   border-left-color: var(--block-owner-color, hsl(220, 60%, 40%));
 }
 
 /* Fremde Bloecke: schmalererer Rand (2px) */
-.block-wrapper--foreign {
+.ce-block.block-wrapper--foreign {
   border-left-width: 2px;
   border-left-color: var(--block-owner-color, hsl(0, 0%, 60%));
 }
 
 /* Fokussierter Block (waehrend Kommentar-Eingabe) */
-.block-wrapper--comment-focus {
+.ce-block.block-wrapper--comment-focus {
   box-shadow: 0 0 0 2px var(--color-focus, #1a73e8);
   border-radius: var(--radius, 4px);
 }
@@ -1901,26 +1904,33 @@
  * Standardmaessig ausgeblendet; erscheint beim Hover ueber .block-wrapper.
  * --------------------------------------------------------------------------- */
 
+/* Build 120: position:absolute — kein Layout-Shift beim Einblenden (Bug 1.14).
+ * Erscheint am unteren Rand des .ce-block, ueberlappt nicht den Inhalt.
+ * Beleg: Bugfix Build 120, Projektgespraech 2026-05-08 */
 .block-meta-bar {
+  position: absolute;
+  bottom: 0;
+  left: 4px;
+  right: 0;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 2px 6px 2px 0;
+  padding: 1px 6px;
   font-size: 11px;
   line-height: 1.4;
   color: var(--color-text-muted, #888);
+  background: var(--color-surface, #fff);
+  border-top: 1px solid var(--color-border, #eee);
   opacity: 0;
-  max-height: 0;
-  overflow: hidden;
-  transition: opacity 0.15s, max-height 0.15s;
   pointer-events: none;
   user-select: none;
+  transition: opacity 0.15s;
+  z-index: 2;
 }
 
-.block-wrapper:hover > .block-meta-bar,
-.block-wrapper:focus-within > .block-meta-bar {
+.ce-block[data-wrapped]:hover > .block-meta-bar,
+.ce-block[data-wrapped]:focus-within > .block-meta-bar {
   opacity: 1;
-  max-height: 28px;
   pointer-events: auto;
 }
 
@@ -2129,8 +2139,8 @@
 @media print {
   #support-sidebar            { display: none !important; }
   .block-meta-bar             { display: none !important; }
-  .block-wrapper              { border-left: none !important; }
-  .block-wrapper--comment-focus { box-shadow: none !important; }
+  .ce-block[data-wrapped]     { border-left: none !important; }
+  .ce-block.block-wrapper--comment-focus { box-shadow: none !important; }
 }
 
 /* ===========================================================================
@@ -2149,12 +2159,12 @@
     100% { box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.6); }
 }
 
-.block-wrapper--focus-blue {
+.ce-block.block-wrapper--focus-blue {
     box-shadow: 0 0 0 2px var(--color-focus, #1a73e8);
     border-radius: var(--radius, 4px);
 }
 
-.block-wrapper--pulse {
+.ce-block.block-wrapper--pulse {
     animation: pulse-ring 0.5s ease-in-out 3;
     /* Nach 3 Durchlaeufen: statisch blau (box-shadow aus --focus-blue bleibt) */
     animation-fill-mode: forwards;

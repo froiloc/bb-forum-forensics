@@ -289,7 +289,7 @@ let _pulseTimer = null;
  */
 function _pulseEditorBlock(blockId) {
     if (!blockId) return;
-    const wrapper = document.querySelector(`.block-wrapper[data-block-id="${blockId}"]`);
+    const wrapper = document.querySelector(`.ce-block[data-block-id="${blockId}"]`);
     if (!wrapper) return;
     wrapper.classList.remove('block-wrapper--pulse', 'block-wrapper--focus-blue');
     if (_pulseTimer) clearTimeout(_pulseTimer);
@@ -300,7 +300,7 @@ function _pulseEditorBlock(blockId) {
 
 function _clearEditorBlockPulse(blockId) {
     if (!blockId) return;
-    const wrapper = document.querySelector(`.block-wrapper[data-block-id="${blockId}"]`);
+    const wrapper = document.querySelector(`.ce-block[data-block-id="${blockId}"]`);
     if (!wrapper) return;
     wrapper.classList.remove('block-wrapper--pulse', 'block-wrapper--focus-blue');
 }

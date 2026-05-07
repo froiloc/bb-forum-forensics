@@ -110,19 +110,20 @@ _EDITOR_HTML = """\
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Bericht \u00b7 {username} \u00b7 ID: {user_id}</title>
+    <title>Bericht \u00b7 {subject} \u00b7 ID: {user_id}</title>
     <link rel="stylesheet" href="/_forensic/userinfo.css">
     <link rel="stylesheet" href="/_forensic/report.css">
   </head>
   <body id="report-editor-body"
         data-user-id="{user_id}"
         data-username="{username}"
+        data-subject="{subject}"
         data-autosave-debounce-ms="{autosave_debounce_ms}">
 
     <!-- Fixierte Aktionsleiste (§4.2 Bauplan B6 v0.3) -->
     <header id="report-action-bar">
       <div id="report-action-bar-title">
-        📄 Bericht \u00b7 <span id="report-current-title">{username} (ID: {user_id})</span>
+        📄 Bericht \u00b7 <span id="report-current-title">{subject} (ID: {user_id})</span>
       </div>
       <div id="report-action-bar-buttons">
         <!-- Build 111: btn-new-report-header entfernt.
@@ -363,7 +364,19 @@ class ReportEndpoint:
 
     def _handle_get_html(self, handler: "ForensicRequestHandler") -> None:
         """Liefert die Editor-Shell-HTML mit CSP-Header aus."""
-        safe_username = html_module.escape(
+        # context.username = Beschuldigter (fuer Anzeigetitel)
+        # context.investigator_username = Ermittler (fuer data-username,
+        #   Block-Eigentuemer-Vergleich in report_editor.js)
+        # Bug-Fix Build 120: data-username muss den Ermittler enthalten,
+        # nicht den Beschuldigten. report_editor.js liest data-username als
+        # 'username' und vergleicht damit b.author in _applyOwnershipStyles
+        # und _wrapBlock. Wenn dieser Wert der Beschuldigte war, wurden alle
+        # Bloecke als fremd markiert und gesperrt.
+        # Beleg: Bugfix Build 120, Projektgespraech 2026-05-08
+        safe_investigator = html_module.escape(
+            self._context.investigator_username
+        )
+        safe_subject = html_module.escape(
             self._context.username or f"uid_{self._context.user_id}"
         )
         autosave_ms = int(
@@ -372,7 +385,8 @@ class ReportEndpoint:
             )
         )
         page_html = _EDITOR_HTML.format(
-            username=safe_username,
+            username=safe_investigator,   # Ermittler — fuer data-username / Block-Owner-Vergleich
+            subject=safe_subject,         # Beschuldigter — nur fuer Anzeigetitel
             user_id=self._context.user_id,
             autosave_debounce_ms=autosave_ms,
         )

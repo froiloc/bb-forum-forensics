@@ -52,7 +52,7 @@
  *     toggleAnnotationSidebar() leitet auf Annotationen-Akkordeon um.
  *     Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
  *
- * Version: v0.6.119 · Build: 119 · 2026-05-08
+ * Version: v0.6.120 · Build: 120 · 2026-05-08
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -603,16 +603,25 @@ function _ownerColor(username) {
 }
 
 /**
- * Legt einen Block-Wrapper um ein .ce-block-Element.
- * Idempotent: bereits gewrappte Bloecke werden uebersprungen.
- * Beleg: Bauplan B6 v0.5 §4.3, Projektgespraech 2026-05-06
+ * Dekoriert ein .ce-block-Element mit Metadaten und Hover-Leiste.
+ * Idempotent: bereits dekorierte Bloecke werden uebersprungen.
+ *
+ * Build 120 REDESIGN: statt .ce-block in einen aeusseren Wrapper zu verschieben
+ * (was Editor.js DOM-Erwartungen bricht und TypeError in selectionChanged/
+ * updateCurrentInput ausloest), werden Dekorationen DIREKT AUF .ce-block gesetzt:
+ *   - CSS-Klassen und data-Attribute direkt auf .ce-block
+ *   - .block-meta-bar als absolut-positioniertes Kind innerhalb .ce-block
+ * Editor.js sieht seine Bloecke weiterhin als direkte Kinder des Holders.
+ * Beleg: Bugfix Build 120, Projektgespraech 2026-05-08
  *
  * @param {Element}  ceBlock    .ce-block-DOM-Knoten
  * @param {object}   blockMeta  { block_id, author, created_at } aus blocks-Array
  * @param {string}   username   Eigener SAMAccountName (bestimmt own vs. foreign)
  */
 function _wrapBlock(ceBlock, blockMeta, username) {
-    if (ceBlock.closest('.block-wrapper')) return;  // bereits gewrappt
+    // Idempotenz: bereits dekorierte Bloecke ueberspringen
+    if (ceBlock.dataset.wrapped) return;
+    ceBlock.dataset.wrapped = '1';
 
     const isOwn   = blockMeta.author === username;
     const color   = _ownerColor(blockMeta.author);
@@ -623,21 +632,18 @@ function _wrapBlock(ceBlock, blockMeta, username) {
           })
         : '';
 
-    // Wrapper-Div erzeugen
-    const wrapper = document.createElement('div');
-    wrapper.className = 'block-wrapper ' + (isOwn ? 'block-wrapper--own' : 'block-wrapper--foreign');
-    wrapper.dataset.blockId  = blockMeta.block_id;
-    wrapper.dataset.author   = blockMeta.author;
-    wrapper.style.setProperty('--block-owner-color', color);
-    wrapper.setAttribute('aria-label', isOwn
+    // Metadaten direkt auf .ce-block setzen — kein DOM-Verschieben.
+    ceBlock.classList.add(isOwn ? 'block-wrapper--own' : 'block-wrapper--foreign');
+    ceBlock.dataset.blockId = blockMeta.block_id;
+    ceBlock.dataset.author  = blockMeta.author;
+    ceBlock.style.setProperty('--block-owner-color', color);
+    ceBlock.setAttribute('aria-label', isOwn
         ? `Eigener Block (${blockMeta.author})`
         : `Block von ${blockMeta.author}`);
 
-    // Metazeile (standardmaessig ausgeblendet, erscheint bei Hover).
-    // Bug-Fix Build 118: aria-hidden → inert (WCAG 2.18).
-    // inert macht Element und Nachkommen fuer AT und Fokus unsichtbar
-    // solange nicht gehovert. Hover-Handler toggeln inert per JS.
-    // Beleg: Bugfix Build 118, Projektgespraech 2026-05-08
+    // .block-meta-bar als absolut-positioniertes Kind in .ce-block injizieren.
+    // position: absolute → kein Layout-Shift (Bug 1.14).
+    // inert: AT und Fokus erst beim Hover freigeben (Bug 2.18).
     const metaBar = document.createElement('div');
     metaBar.className = 'block-meta-bar';
     metaBar.setAttribute('inert', '');
@@ -664,26 +670,18 @@ function _wrapBlock(ceBlock, blockMeta, username) {
     metaBar.appendChild(metaDate);
     metaBar.appendChild(btnComment);
 
-    // Wrapper in DOM einsetzen (ceBlock in Wrapper verschieben)
-    ceBlock.parentNode.insertBefore(wrapper, ceBlock);
-    wrapper.appendChild(metaBar);
-    wrapper.appendChild(ceBlock);
+    // Metazeile als erstes Kind in .ce-block einfuegen (absolut positioniert).
+    ceBlock.insertBefore(metaBar, ceBlock.firstChild);
 
-    // Bug-Fix Build 117 (2.18): inert-Attribut per Hover-Event toggeln.
-    // CSS kann inert nicht entfernen, daher JS-gesteuertes mouseenter/mouseleave.
-    // Beim Eintreten: inert entfernen → metaBar und btnComment fokussierbar.
-    // Beim Verlassen: inert setzen → AT und Fokus koennen bar nicht mehr erreichen.
-    // Beleg: Bugfix Build 117, Projektgespraech 2026-05-08
-    wrapper.addEventListener('mouseenter', () => {
+    // inert per mouseenter/mouseleave auf .ce-block toggeln.
+    ceBlock.addEventListener('mouseenter', () => {
         metaBar.removeAttribute('inert');
     });
-    wrapper.addEventListener('mouseleave', () => {
-        // Nur inert setzen, wenn der Fokus nicht innerhalb der metaBar ist
+    ceBlock.addEventListener('mouseleave', () => {
         if (!metaBar.contains(document.activeElement)) {
             metaBar.setAttribute('inert', '');
         }
     });
-    // Wenn Fokus metaBar verlässt (z.B. Tab-Navigation heraus): inert wieder setzen
     metaBar.addEventListener('focusout', (e) => {
         if (!metaBar.contains(e.relatedTarget)) {
             metaBar.setAttribute('inert', '');
@@ -726,10 +724,10 @@ function _openCommentAccordion(blockId) {
     }
 
     // Fokussierten Block im Editor visuell hervorheben
-    document.querySelectorAll('.block-wrapper--comment-focus').forEach(w => {
+    document.querySelectorAll('.ce-block.block-wrapper--comment-focus').forEach(w => {
         w.classList.remove('block-wrapper--comment-focus');
     });
-    const wrapper = document.querySelector(`.block-wrapper[data-block-id="${blockId}"]`);
+    const wrapper = document.querySelector(`.ce-block[data-block-id="${blockId}"]`);
     if (wrapper) {
         wrapper.classList.add('block-wrapper--comment-focus');
     }

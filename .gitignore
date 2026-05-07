@@ -12,7 +12,7 @@ nohup.out
 *.md
 *.html.org
 aiw*.html
-data/
+data*/
 md5.chksum
 package-lock.json
 
@@ -37,4 +37,4 @@ tools/validation/__pycache__
 
 anon_html.py
 *.html
-
+static/icons/favicon.ico
