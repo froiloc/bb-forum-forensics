@@ -26,7 +26,7 @@
  *   window.opener?.postMessage({ type: 'navigate_to_annotation',
  *                                annotation_id: N }, origin)
  *
- * Version: v0.6.114 · Build: 114 · 2026-05-07
+ * Version: v0.6.115 · Build: 115 · 2026-05-07
  *
  * Änderungen Build 089 (Bugfix: SSE-Deadlock-Kaskade):
  *   Ursache: Drei zusammenwirkende Probleme führten dazu, dass alle Server-Threads

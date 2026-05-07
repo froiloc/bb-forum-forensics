@@ -52,7 +52,7 @@
  *     Rueckwaerts-Kompatibilitaet open()/close() erhalten.
  *     Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06.
  *
- * Version: v0.6.114 · Build: 114 · 2026-05-07
+ * Version: v0.6.115 · Build: 115 · 2026-05-07
  * Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06
  */
 
@@ -301,6 +301,26 @@ function _bindPanelEvents(body) {
         });
     });
 
+    // Build 115: Drag&Drop — Bausteine per Drag in Editor-Bereich einziehen
+    // Beleg: Projektgespraech 2026-05-07
+    body.querySelectorAll('.mp-item[draggable]').forEach(item => {
+        item.addEventListener('dragstart', (e) => {
+            const modId = parseInt(item.dataset.moduleId, 10);
+            if (!modId) return;
+            const mod = _modules.find(m => m.id === modId);
+            if (!mod) return;
+            _dbg('Drag start: module_id=', modId, 'title=', mod.title);
+            e.dataTransfer.effectAllowed = 'copy';
+            // Daten als JSON serialisieren fuer den Drop-Handler im Editor
+            e.dataTransfer.setData('application/x-forensic-module', JSON.stringify({
+                module_id:   modId,
+                block_type:  'paragraph',
+                block_data:  JSON.stringify({ text: mod.text || '' }),
+                module_text: mod.text || '',
+            }));
+        });
+    });
+
     // Suche (debounced)
     const searchInput = document.getElementById('mp-sidebar-search');
     if (searchInput) {
@@ -397,7 +417,7 @@ function _renderList(modules) {
                 + (m.description.length > PREVIEW_CHARS ? '\u2026' : '')
             : '';
         return `
-            <div class="mp-item${sel}${usedCls}" role="option"
+            <div class="mp-item${sel}${usedCls}" role="option" draggable="true"
                  aria-selected="${m.id === _selectedId ? 'true' : 'false'}"
                  data-module-id="${m.id}"
                  tabindex="0">

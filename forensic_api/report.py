@@ -80,7 +80,7 @@
 #              btn-new-report-header aus Action-Bar entfernt (redundant).
 #              Beleg: Projektgespraech 2026-05-07
 #
-# Version: v0.6.114 · Build: 114 · 2026-05-07
+# Version: v0.6.115 · Build: 115 · 2026-05-07
 # =============================================================================
 
 from __future__ import annotations
@@ -155,14 +155,14 @@ _EDITOR_HTML = """\
         </div>
         <span id="report-lock-indicator" class="report-lock-indicator report-lock-none"
           title="Lock-Status">&#x1f513;</span>
-        <!-- Lock-Status-Zeile: von userinfo.js beschrieben (Build 113) -->
+        <!-- Lock-Status: von userinfo.js beschrieben (Build 113) -->
         <span id="report-lock-status" class="lock-status lock-none"
           title="Editor-Lock-Status" style="font-size:11px"></span>
         <span id="editor-save-indicator"
           style="font-size:11px;color:#4caf50;opacity:0;transition:opacity 1s"></span>
-        <span id="editor-report-title"
-          style="font-size:11px;color:#888"></span>
       </div>
+      <!-- Berichtsname in der Mitte (Grid-Spalte 2, Build 115) -->
+      <span id="editor-report-title"></span>
     </header>
 
     <!-- Zweispaltiger Arbeitsbereich (§4.1, §4.3, §4.7) -->

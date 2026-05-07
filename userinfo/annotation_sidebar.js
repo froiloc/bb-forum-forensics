@@ -40,7 +40,7 @@
  *   GET /_forensic/annotations         -- alle Annotationen
  *   POST /_forensic/report             -- action=add_anchor
  *
- * Version: v0.6.114 · Build: 114 · 2026-05-07
+ * Version: v0.6.115 · Build: 115 · 2026-05-07
  * Beleg: Bauplan B6 v0.3 §4.7, Ausdefinitionsgespraech 2026-05-05
  */
 
@@ -215,29 +215,41 @@ function _render() {
 }
 
 function _renderCategoryTabs(grouped) {
-    // Build 114: Reiter-Struktur statt Akkordeon fuer Annotationskategorien
+    // Build 115: Reiter immer anzeigen (ausgegraut wenn leer), Toolbar-Stil
     // Beleg: Projektgespraech 2026-05-07
     const allCount = Object.values(grouped).reduce((s, a) => s + a.length, 0);
-    const tabs = [
-        { key: null, label: 'Alle', count: allCount },
-        ...CATEGORY_ORDER
-            .filter(c => grouped[c]?.length)
-            .map(c => ({ key: c, label: CATEGORY_LABELS[c] || c, count: grouped[c].length })),
+
+    // "Alle"-Tab + alle 6 Kategorien fix + unbekannte dynamisch
+    const allTabs = [
+        { key: null, label: 'Alle', count: allCount, icon: '' },
+        ...CATEGORY_ORDER.map(c => ({
+            key: c,
+            label: CATEGORY_LABELS[c] || c,
+            count: (grouped[c] || []).length,
+            icon: '',
+        })),
         ...Object.keys(grouped)
-            .filter(c => !CATEGORY_ORDER.includes(c) && grouped[c]?.length)
-            .map(c => ({ key: c, label: CATEGORY_LABELS[c] || c, count: grouped[c].length })),
+            .filter(c => !CATEGORY_ORDER.includes(c))
+            .map(c => ({ key: c, label: CATEGORY_LABELS[c] || c, count: grouped[c].length, icon: '' })),
     ];
 
-    if (tabs.length <= 1) return '';   // kein Tab-Strip wenn nur "Alle"
-
     return `<div class="as-tabs" role="tablist" aria-label="Annotationskategorien">
-        ${tabs.map(t => {
+        ${allTabs.map(t => {
             const isActive = t.key === _activeTab;
-            return `<button class="as-tab${isActive ? ' as-tab--active' : ''}"
+            const isEmpty  = t.count === 0 && t.key !== null;
+            const cls = [
+                'as-tab',
+                isActive ? 'as-tab--active' : '',
+                isEmpty  ? 'as-tab--empty'  : '',
+            ].filter(Boolean).join(' ');
+            // Kurzkürzel: letztes Wort des Labels als Tab-Label
+            const shortLabel = t.key ? (CATEGORY_LABELS[t.key] || t.key).split('\u2002').pop() : 'Alle';
+            const dispLabel  = t.key ? shortLabel.replace(/[\u00a7 ]/g, '').slice(0, 5) : 'Alle';
+            return `<button class="${cls}"
                         role="tab" aria-selected="${isActive}"
                         data-cat="${t.key ?? ''}"
-                        title="${_esc(t.label)}"
-                    >${_esc(t.label)}<sup class="as-tab-count">${t.count}</sup></button>`;
+                        title="${_esc(t.key ? CATEGORY_LABELS[t.key] || t.key : 'Alle Kategorien')}"
+                    >${_esc(dispLabel)}<span class="as-tab-count">${t.count}</span></button>`;
         }).join('')}
     </div>`;
 }
@@ -417,11 +429,17 @@ async function _insertAnchor(annId) {
     const btn = document.querySelector(`.as-btn-anchor[data-ann-id="${annId}"]`);
     if (btn) { btn.disabled = true; btn.textContent = 'Wird eingetragen\u2026'; }
 
+    // anchor_text aus der Annotation holen (Server-Pflichtfeld)
+    // Beleg: Bugfix Build 115, Projektgespraech 2026-05-07
+    const ann = _annotations.find(a => a.id === annId);
+    const anchorText = ann?.text || ann?.quote || ann?.annotation_text || String(annId);
+
     try {
         const result = await _opts.postFn({
             action:        'add_anchor',
             block_id:      blockId,
             annotation_id: annId,
+            anchor_text:   anchorText,
         });
         if (!result) throw new Error('Keine Serverantwort');
 

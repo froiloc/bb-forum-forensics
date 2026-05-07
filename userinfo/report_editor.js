@@ -46,7 +46,7 @@
  *     toggleAnnotationSidebar() leitet auf Annotationen-Akkordeon um.
  *     Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
  *
- * Version: v0.6.114 · Build: 114 · 2026-05-07
+ * Version: v0.6.115 · Build: 115 · 2026-05-07
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -1481,11 +1481,63 @@ function injectInsertInReportButtons() {
  * Wird von userinfo.js (initEditor) aufgerufen nach Lock/SSE-Setup.
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
+/**
+ * Initialisiert Drag&Drop-Empfang auf dem Editor-Bereich.
+ * Bausteine aus der Sidebar koennen per Drag in den Editor gezogen werden.
+ * Build 115: Beleg: Projektgespraech 2026-05-07
+ */
+function _initDragDrop() {
+    const holder = document.getElementById('editorjs-holder');
+    if (!holder) return;
+
+    holder.addEventListener('dragover', (e) => {
+        if (!e.dataTransfer.types.includes('application/x-forensic-module')) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+        holder.classList.add('editorjs-holder--drag-over');
+    });
+
+    holder.addEventListener('dragleave', () => {
+        holder.classList.remove('editorjs-holder--drag-over');
+    });
+
+    holder.addEventListener('drop', async (e) => {
+        holder.classList.remove('editorjs-holder--drag-over');
+        if (!e.dataTransfer.types.includes('application/x-forensic-module')) return;
+        e.preventDefault();
+
+        let modData;
+        try {
+            modData = JSON.parse(e.dataTransfer.getData('application/x-forensic-module'));
+        } catch (_) { return; }
+
+        _dbg('Drop: module_id=', modData.module_id);
+
+        if (!window._editor?.blocks) {
+            _dbg('Drop: Editor nicht bereit');
+            return;
+        }
+
+        // Block am Ende einfuegen
+        const blockData = modData.block_type === 'paragraph'
+            ? { text: modData.module_text || '' }
+            : {};
+        window._editor.blocks.insert(modData.block_type || 'paragraph', blockData);
+        const lastIdx = window._editor.blocks.getBlocksCount() - 1;
+        window._editor.caret.setToBlock(lastIdx);
+        _dbg('Drop: Block eingefuegt, type=', modData.block_type, 'idx=', lastIdx);
+    });
+
+    _dbg('_initDragDrop: Drop-Zone registriert auf #editorjs-holder');
+}
+
 async function initEditorModule() {
     _dbg('initEditorModule() gestartet');
     // Akkordeon-Listener sofort verdrahten — unabhaengig von Berichten und EditorJS.
     // Beleg: Bugfix Build 111, Projektgespraech 2026-05-07
     _initSidebarAccordion();
+    // Build 115: Drag&Drop-Zone auf editorjs-holder registrieren
+    _initDragDrop();
     await initReportSelector();
     initBlockUpdatedListener();
 }

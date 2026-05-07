@@ -34,7 +34,7 @@
 #   evidence_<uid>.db (READ-WRITE) — block_evidence_user, editor_locks
 #
 # Beleg: AP-E3, Projektgespraech 2026-04-19
-# Version: v0.6.044 · Build: 044 · 2026-04-19
+# Version: v0.6.115 · Build: 115 · 2026-05-07
 # =============================================================================
 
 from __future__ import annotations
@@ -146,14 +146,17 @@ class EditorEvidenceEndpoint:
 
         investigator_id = getattr(self._context, "investigator_id", 0) or 0
 
+        # Build 115: add_block_evidence → add_anchor (Signatur evidence_db)
+        # anchor_text als Leerstring – der EvidenceBlock speichert selbst.
+        # Beleg: Projektgespraech 2026-05-07
         try:
-            self._bundle.evidence.add_block_evidence(
+            self._bundle.evidence.add_anchor(
                 block_id=block_id,
-                evidence_id=evidence_id,
-                investigator_id=investigator_id,
+                annotation_id=evidence_id,
+                anchor_text="",
             )
         except Exception as exc:
-            logger.error("add_block_evidence fehlgeschlagen: %s", exc)
+            logger.error("add_anchor fehlgeschlagen: %s", exc)
             handler.send_response_body(
                 500, _json_err("Interner Datenbankfehler"), content_type=_CT_JSON
             )

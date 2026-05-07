@@ -22,7 +22,7 @@
  *     9. Block-Wrapper (§4.3, B6 Phase 3)
  *    10. Support-Sidebar Akkordeon (§4.4, B6 Phase 3)
  *
- * Version: v0.6.114 · Build: 114 · 2026-05-07
+ * Version: v0.6.115 · Build: 115 · 2026-05-07
  * Beleg: Bauplan B6 v0.3 §4.1–4.7, Bauplan B6 v0.5 §4.3–4.4
  * =========================================================================== */
 
@@ -58,11 +58,13 @@
  * Beleg: Bauplan B6 v0.3 §4.2
  * --------------------------------------------------------------------------- */
 
-/* Build 114: 3-Zonen-Layout: links (Bericht-Auswahl) | mitte (Titel) | rechts (Buttons)
+/* Build 115: 3-Zonen-Layout links(report-action-bar-title) | mitte(editor-report-title) | rechts(Buttons)
+ * report-action-bar-title = "📄 Bericht · uid_..."  → bleibt links
+ * editor-report-title     = "1. Zwischenbericht: ..." → geht in die Mitte
  * Beleg: Projektgespraech 2026-05-07 */
 #report-action-bar {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
@@ -73,7 +75,7 @@
   min-height: 48px;
 }
 
-/* Build 114: Titelzone in der Mitte (Grid-Spalte 2) */
+/* Build 115: report-action-bar-title links (Grid-Spalte 1) */
 #report-action-bar-title {
   font-weight: 600;
   font-size: 13px;
@@ -81,15 +83,26 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  text-align: center;
-  grid-column: 2;
+  grid-column: 1;
 }
 
 #report-current-title {
   font-weight: normal;
 }
 
-/* Build 114: Buttons-Zone rechts (Grid-Spalte 3) */
+/* Build 115: editor-report-title in der Mitte (Grid-Spalte 2) */
+#editor-report-title {
+  grid-column: 2;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text, #333);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Build 115: Buttons-Zone rechts (Grid-Spalte 3) */
 #report-action-bar-buttons {
   display: flex;
   align-items: center;
@@ -1069,6 +1082,18 @@
   color: var(--color-text, #222);
 }
 
+/* Build 115: as-list füllt verfügbaren Raum, Statusleiste bleibt unten */
+.as-list {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.as-completeness {
+  flex-shrink: 0;
+  margin-top: auto;
+}
+
 /* Toolbar: Suche + Filter */
 .as-toolbar {
   padding: 10px 12px 8px;
@@ -1154,47 +1179,86 @@
 
 
 /* ---------------------------------------------------------------------------
- * Build 114: Annotationskategorien als Reiter (Tabs)
+ * Build 115: Annotationskategorien als Reiter im Toolbar-Stil
+ * Farben + Layout identisch mit .forensic-cat-btn (toolbar.css)
  * Beleg: Projektgespraech 2026-05-07
  * --------------------------------------------------------------------------- */
 
 .as-tabs {
   display: flex;
   flex-wrap: wrap;
-  gap: 2px;
-  padding: 6px 8px 4px;
+  gap: 4px;
+  padding: 6px 8px;
   border-bottom: 1px solid var(--color-border, #e0e0e0);
-  background: var(--color-surface-alt, #f8f8f8);
+  background: var(--color-surface-alt, #f5f5f7);
 }
 
+/* Basis-Tab: wie forensic-cat-btn */
 .as-tab {
-  padding: 3px 9px;
-  border: 1px solid var(--color-border, #ccc);
-  border-radius: 3px;
-  background: var(--color-surface, #fff);
-  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 44px;
+  height: 36px;
+  padding: 0 5px;
+  background: #f0f0f4;
+  border: 2px solid #d0d0da;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: monospace;
   cursor: pointer;
-  color: var(--color-text, #333);
+  color: #555;
+  transition: background 0.15s, border-color 0.15s;
   white-space: nowrap;
-  transition: background 0.1s;
 }
 
 .as-tab:hover {
-  background: var(--color-surface-alt, #eee);
+  background: #e8e8f0;
+  transform: translateY(-1px);
 }
 
+/* "Alle"-Tab hat neutrale Farbe */
+.as-tab[data-cat=""] {
+  font-family: inherit;
+  font-size: 11px;
+  min-width: 36px;
+}
+
+/* Aktiver Tab: fetter Rahmen + dezente Farbhinterlegung (wie forensic-cat-active) */
 .as-tab--active {
-  background: var(--color-primary, #1976d2);
-  color: #fff;
-  border-color: var(--color-primary, #1976d2);
+  box-shadow: 0 0 0 2px currentColor;
+}
+
+/* Kein Eintrag: ausgegraut */
+.as-tab--empty {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
 }
 
 .as-tab-count {
   font-size: 9px;
-  vertical-align: super;
-  margin-left: 2px;
-  opacity: 0.8;
+  font-weight: normal;
+  font-family: inherit;
+  opacity: 0.7;
 }
+
+/* Kategoriefarben */
+.as-tab[data-cat="CAT_PERSON"]   { color: #b89000; border-color: #f5c84270; }
+.as-tab[data-cat="CAT_PERSON"].as-tab--active   { background: #f5c84222; border-color: #f5c842; }
+.as-tab[data-cat="CAT_LOCATION"] { color: #1565c0; border-color: #4f8ef770; }
+.as-tab[data-cat="CAT_LOCATION"].as-tab--active { background: #4f8ef722; border-color: #4f8ef7; }
+.as-tab[data-cat="CAT_176"]      { color: #b71c1c; border-color: #e8404070; }
+.as-tab[data-cat="CAT_176"].as-tab--active      { background: #e8404022; border-color: #e84040; }
+.as-tab[data-cat="CAT_184"]      { color: #7b1fa2; border-color: #c040e870; }
+.as-tab[data-cat="CAT_184"].as-tab--active      { background: #c040e822; border-color: #c040e8; }
+.as-tab[data-cat="CAT_VICTIM"]   { color: #bf360c; border-color: #e8704070; }
+.as-tab[data-cat="CAT_VICTIM"].as-tab--active   { background: #e8704022; border-color: #e87040; }
+.as-tab[data-cat="CAT_OTHER"]    { color: #00695c; border-color: #40c8a070; }
+.as-tab[data-cat="CAT_OTHER"].as-tab--active    { background: #40c8a022; border-color: #40c8a0; }
 
 .as-category-title {
   font-size: 11px;
@@ -2884,14 +2948,14 @@
   background: var(--color-surface-alt, #f5f5f5);
 }
 
+/* Build 115: header links ausrichten */
 .mp-item--standard .mp-item-header {
   display: flex;
   align-items: center;
   gap: 6px;
   flex: 1;
   min-width: 0;
-  text-align: right;      /* Text rechtsbündig */
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .mp-item--standard .mp-item-icon {
@@ -2907,14 +2971,17 @@
   text-overflow: ellipsis;
 }
 
+/* Build 115: Vorschautext anzeigen */
 .mp-item--standard .mp-item-preview {
-  display: none;          /* kein Vorschautext in der Standard-Karte */
+  display: block;
+  font-size: 11px;
+  color: var(--color-text-muted, #666);
 }
 
-/* Einfügen-Button: feste Breite damit kein Zeilenumbruch */
+/* Einfügen-Button: 6em fest */
 .mp-item--standard .mp-btn-insert {
   flex-shrink: 0;
-  width: 8em;
+  width: 6em;
   text-align: center;
   padding: 3px 0;
   font-size: 11px;
@@ -2943,3 +3010,12 @@
   margin-top: 6px;
 }
 
+
+/* ---------------------------------------------------------------------------
+ * Build 115: Drag&Drop-Feedback auf editorjs-holder
+ * --------------------------------------------------------------------------- */
+.editorjs-holder--drag-over {
+  outline: 2px dashed var(--color-primary, #1976d2);
+  outline-offset: -2px;
+  background: rgba(25, 118, 210, 0.04);
+}
