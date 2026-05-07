@@ -33,8 +33,26 @@
 #   Alle drei Fälle werfen ForensicHTTPServerBindError — main.py behandelt sie
 #   einheitlich mit benutzerfreundlicher Konsolenausgabe.
 #
-# Abhängigkeiten: http.server, socketserver, errno — ausschließlich Stdlib
-# Version: v0.1.0 · Build: 029 · 2026-04-15
+# Abhängigkeiten: http.server, socketserver, errno, threading — ausschließlich Stdlib
+# Version: v0.1.0 · Build: 030 · 2026-05-07
+# =============================================================================
+#
+# Änderungen Build 030 (Bugfix: Socket-Backlog-Erschöpfung durch SSE-Verbindungen):
+#   - request_queue_size auf 50 erhöht (Python-Default: 5).
+#     Hintergrund: Der Browser öffnet beim Laden der Report-Seite mehrere
+#     gleichzeitige Verbindungen (SSE-Streams + Asset-Requests). Der OS-Level-
+#     Socket-Backlog von 5 reichte nicht aus — neue Verbindungen wurden vom
+#     Kernel mit ECONNREFUSED abgewiesen, bevor der Server sie annehmen konnte.
+#     Beleg: Projektgespräch 2026-05-07, freeze_dump.txt / freeze_dump_002.txt.
+#   - SSE_MAX_CONNECTIONS = 20 als Klassen-Konstante und Semaphore eingeführt.
+#     Verhindert, dass der gesamte Thread-Pool durch hängende SSE-Verbindungen
+#     blockiert wird. Der Semaphore wird in EventsEndpoint.handle() als Guard
+#     verwendet (events.py Build 013).
+#     Beleg: Projektgespräch 2026-05-07.
+#   TODO (Multiplexing): Langfristig soll ein einziger SSE-Kanal alle Event-Typen
+#     bedienen (SSE-Multiplexing), sodass pro Browser-Tab nur eine Verbindung
+#     nötig ist. Dann können SSE_MAX_CONNECTIONS und der Semaphore entfallen.
+#     Beleg: Projektgespräch 2026-05-07.
 # =============================================================================
 
 from __future__ import annotations
@@ -42,6 +60,7 @@ from __future__ import annotations
 import errno
 import http.server
 import socketserver
+import threading
 from typing import TYPE_CHECKING
 
 from core.logger import get_logger
@@ -235,6 +254,22 @@ class ForensicHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
                              # verhindert Hänger beim ersten Browser-Request wenn
                              # ein SSE-Stream-Thread offen ist
 
+    # OS-Level Socket-Backlog: Anzahl der Verbindungen, die der Kernel
+    # puffern darf, während der Server mit accept() hinterherkommt.
+    # Python-Default ist 5 — reicht nicht wenn der Browser beim Laden der
+    # Report-Seite mehrere SSE-Streams + Assets gleichzeitig öffnet.
+    # Beleg: Bugfix Build 030, Projektgespräch 2026-05-07.
+    request_queue_size: int = 50
+
+    # Maximale Anzahl gleichzeitig offener SSE-Verbindungen.
+    # Verhindert Thread-Pool-Blockade durch hängende SSE-Streams.
+    # EventsEndpoint.handle() erwirbt diesen Semaphore vor dem Betreten
+    # der SSE-Polling-Schleife.
+    # TODO (Multiplexing): Entfällt wenn SSE-Multiplexing implementiert ist.
+    # Beleg: Bugfix Build 030, Projektgespräch 2026-05-07.
+    SSE_MAX_CONNECTIONS: int = 20
+    sse_semaphore: threading.Semaphore  # wird in __init__ gesetzt
+
     def __init__(
         self,
         host: str,
@@ -249,12 +284,15 @@ class ForensicHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
         except OSError as exc:
             raise _make_bind_error(exc, host, port) from exc
 
-        self.bundle  = bundle
-        self.context = context
-        self.config  = config
-        self.router  = Router(bundle, context, config)
+        self.bundle        = bundle
+        self.context       = context
+        self.config        = config
+        self.router        = Router(bundle, context, config)
+        self.sse_semaphore = threading.Semaphore(self.SSE_MAX_CONNECTIONS)
         logger.info(
-            "ForensicHTTPServer initialisiert: http://%s:%d", host, port
+            "ForensicHTTPServer initialisiert: http://%s:%d "
+            "(socket-backlog=%d, sse-max=%d)",
+            host, port, self.request_queue_size, self.SSE_MAX_CONNECTIONS,
         )
 
     def serve_forever_logged(self) -> None:

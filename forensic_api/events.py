@@ -27,7 +27,18 @@
 #   coordinator.db (READ-ONLY) — Support-Status
 #   evidence_<uid>.db (READ/WRITE) — Lock-Freigabe bei Verbindungsabriss
 #
-# Version: v0.1.0 · Build: 012 · 2026-04-14
+# Version: v0.1.0 · Build: 013 · 2026-05-07
+# =============================================================================
+#
+# Änderungen Build 013 (Bugfix: Socket-Backlog-Erschöpfung durch SSE-Verbindungen):
+#   - SSE-Semaphore-Guard eingeführt: Vor dem Betreten der Polling-Schleife
+#     wird ForensicHTTPServer.sse_semaphore.acquire(blocking=False) aufgerufen.
+#     Wenn das Limit (SSE_MAX_CONNECTIONS=20) erreicht ist, antwortet der Server
+#     sofort mit HTTP 503 statt den Thread dauerhaft zu blockieren.
+#     Beleg: Bugfix Build 030 (http_server.py), Projektgespräch 2026-05-07.
+#   TODO (Multiplexing): Semaphore-Guard entfällt wenn SSE-Multiplexing
+#     implementiert ist (ein Kanal pro Tab statt mehrere).
+#     Beleg: Projektgespräch 2026-05-07.
 # =============================================================================
 
 from __future__ import annotations
@@ -112,10 +123,46 @@ class EventsEndpoint:
         Verarbeitet GET /_forensic/events.
         Oeffnet SSE-Stream, sendet sofort erste Events, dann im Intervall.
 
+        Vor dem Betreten der Polling-Schleife wird der SSE-Semaphore des
+        Servers erworben. Ist das Limit erreicht, antwortet der Server sofort
+        mit HTTP 503 statt den Thread dauerhaft zu blockieren.
+        Beleg: Bugfix Build 013, Projektgespräch 2026-05-07.
+
         Args:
             handler: ForensicRequestHandler-Instanz.
             params:  URL-Query-Parameter (aus urllib.parse.parse_qs).
                      resume_lock_id: Lock-ID fuer SSE-Reconnect (V1).
+        """
+        # SSE-Semaphore erwerben — verhindert Thread-Pool-Blockade.
+        # non-blocking: sofortiger 503 statt unendliches Warten.
+        # Beleg: Bugfix Build 013, Projektgespräch 2026-05-07.
+        sse_semaphore = getattr(handler.server, "sse_semaphore", None)
+        if sse_semaphore is not None and not sse_semaphore.acquire(blocking=False):
+            logger.warning(
+                "SSE-Verbindungslimit erreicht (max=%d) — HTTP 503 für client.",
+                getattr(handler.server, "SSE_MAX_CONNECTIONS", "?"),
+            )
+            handler.send_response_body(
+                503,
+                b"<html><body><p>SSE-Verbindungslimit erreicht. "
+                b"Bitte Seite neu laden.</p></body></html>",
+            )
+            return
+
+        try:
+            self._handle_stream(handler, params)
+        finally:
+            if sse_semaphore is not None:
+                sse_semaphore.release()
+
+    def _handle_stream(
+        self,
+        handler: "ForensicRequestHandler",
+        params: dict | None = None,
+    ) -> None:
+        """
+        Innere Implementierung des SSE-Streams (nach Semaphore-Erwerb).
+        Ausgelagert aus handle() für Übersichtlichkeit.
         """
         wfile = handler.wfile
 
