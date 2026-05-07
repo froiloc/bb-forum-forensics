@@ -26,7 +26,32 @@
  *   window.opener?.postMessage({ type: 'navigate_to_annotation',
  *                                annotation_id: N }, origin)
  *
- * Version: v0.1.0 · Build: 088 · 2026-05-05
+ * Version: v0.1.0 · Build: 089 · 2026-05-07
+ *
+ * Änderungen Build 089 (Bugfix: SSE-Deadlock-Kaskade):
+ *   Ursache: Drei zusammenwirkende Probleme führten dazu, dass alle Server-Threads
+ *   dauerhaft durch SSE-Verbindungen blockiert wurden und der Server keine weiteren
+ *   Requests (insb. POST /_forensic/report) mehr beantworten konnte.
+ *   Beleg: freeze_dump_003.txt, Projektgespräch 2026-05-07.
+ *
+ *   Fix 1 — acquireLock Re-Entry-Guard (_acquireLockRunning):
+ *     acquireLock() kann durch mehrere Pfade gleichzeitig aufgerufen werden
+ *     (editor_lock_released-SSE-Event, client_id-Reconnect-Pfad, DEV_LOCK_UI=false).
+ *     Parallele Aufrufe erzeugten mehrere gleichzeitige POSTs, die den Thread-Pool
+ *     erschöpften. Guard verhindert parallele Ausführung.
+ *
+ *   Fix 2 — editor_lock_released: acquireLock nur bei DEV_LOCK_UI=false:
+ *     Der handler rief setTimeout(acquireLock, 500) bedingungslos auf — auch im
+ *     DEV-Modus (DEV_LOCK_UI=true), wo der Benutzer den Lock manuell erwirbt.
+ *     Im DEV-Modus darf kein automatisches Re-Acquire stattfinden.
+ *
+ *   Fix 3 — initSSEWindow3: 3s-Timeout verlängert auf 10s, mit Warnung:
+ *     Der 3s-Timeout löste die Promise auf bevor der Server client_id liefern
+ *     konnte — initEditor() fuhr dann ohne sseClientId fort. Im Normalfall
+ *     antwortet der Server in <100ms; 3s war zu knapp für den Startmoment
+ *     wenn mehrere SSE-Verbindungen gleichzeitig aufgebaut werden.
+ *     10s gibt dem Server ausreichend Puffer. Bei Ablauf wird eine Warnung
+ *     im Log ausgegeben statt stumm fortzufahren.
  */
 
 'use strict';
@@ -663,7 +688,14 @@ async function initSSEWindow3() {
             if (hadLock) {
                 showStatusMsg('Verbindung unterbrochen — Lock wird neu angefordert…', 'info');
             }
-            setTimeout(acquireLock, 500);
+            // Nur im PROD-Modus (DEV_LOCK_UI=false) automatisch neu erwerben.
+            // Im DEV-Modus erwirbt der Ermittler den Lock manuell per Button.
+            // Automatisches Re-Acquire im DEV-Modus würde einen Retry-Sturm
+            // auslösen wenn der Server nicht antworten kann.
+            // Beleg: Bugfix Build 089, Projektgespräch 2026-05-07.
+            if (!DEV_LOCK_UI) {
+                setTimeout(acquireLock, 500);
+            }
         });
 
         evtSrc.addEventListener('report_updated', () => {
@@ -688,10 +720,22 @@ async function initSSEWindow3() {
             } catch (_) {}
         });
 
-        // Timeout: nach 3s auch ohne client_id fortfahren
+        // Timeout: nach 10s auch ohne client_id fortfahren.
+        // 3s war zu knapp — beim Seitenstart bauen mehrere SSE-Verbindungen
+        // gleichzeitig auf, der Server kann in dieser Phase langsamer antworten.
+        // Im Normalfall kommt client_id in <100ms; 10s ist ein Sicherheitspuffer.
+        // Beleg: Bugfix Build 089, Projektgespräch 2026-05-07.
         setTimeout(() => {
-            if (!resolved) { resolved = true; resolve(); }
-        }, 3000);
+            if (!resolved) {
+                console.warn(
+                    '[userinfo.js] initSSEWindow3: client_id nicht innerhalb von 10s ' +
+                    'empfangen — fortfahren ohne SSE-Client-ID. ' +
+                    'acquireLock() wird blockiert bis SSE-Verbindung steht.'
+                );
+                resolved = true;
+                resolve();
+            }
+        }, 10000);
     });
 }
 
@@ -732,6 +776,11 @@ async function acquireLock() {
         return;
     }
 
+    // Re-Entry-Guard: verhindert parallele Aufrufe durch mehrere Auslöser
+    // (editor_lock_released-Event, client_id-Reconnect, DEV_LOCK_UI=false).
+    // Beleg: Bugfix Build 089, Projektgespräch 2026-05-07.
+    if (acquireLock._running) return;
+    acquireLock._running = true;
     try {
         const resp = await fetch(FORENSIC_API.REPORT, {
             method: 'POST',
@@ -765,8 +814,15 @@ async function acquireLock() {
         }
     } catch (err) {
         showStatusMsg(`Netzwerkfehler: ${esc(String(err))}`, 'error');
+    } finally {
+        // Guard zurücksetzen — nächster Aufruf ist wieder erlaubt.
+        // Beleg: Bugfix Build 089, Projektgespräch 2026-05-07.
+        acquireLock._running = false;
     }
 }
+// Initialer Zustand des Guards.
+// Beleg: Bugfix Build 089, Projektgespräch 2026-05-07.
+acquireLock._running = false;
 
 /**
  * Lock freigeben (§8.5 Bauplan B4 — release_lock).
