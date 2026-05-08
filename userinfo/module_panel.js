@@ -52,7 +52,7 @@
  *     Rueckwaerts-Kompatibilitaet open()/close() erhalten.
  *     Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06.
  *
- * Version: v0.6.115 · Build: 115 · 2026-05-07
+ * Version: v0.6.122 · Build: 122 · 2026-05-08
  * Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06
  */
 
@@ -194,6 +194,11 @@ async function showPanel(blocks, opts) {
     _filterRole     = '';
     _filterSearch   = '';
     _selectedId     = null;
+    // Bug 2.13 Fix Build 122: _activeCategory zurücksetzen wenn showPanel neu
+    // aufgerufen wird. Ohne Reset blieb die letzte Kategorie ('queries') aktiv,
+    // während die Tab-UI 'Module' als aktiv anzeigte — inkonsistenter Zustand.
+    // Beleg: Bugfix Build 122, Projektgespraech 2026-05-08
+    _activeCategory = 'modules';
 
     // Skeleton rendern (sofort sichtbar)
     body.innerHTML = _renderSkeleton();

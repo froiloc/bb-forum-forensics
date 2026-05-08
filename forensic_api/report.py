@@ -855,6 +855,30 @@ class ReportEndpoint:
         if lock_id is None:
             current = edb.get_lock()
             locked_by = current.locked_by if current else "?"
+            # Build 122 Fix: Wenn der Lock vom selben Benutzer gehalten wird
+            # (z.B. nach Browser-Refresh, Seiten-Reload oder Server-Neustart),
+            # automatisch resume_lock versuchen statt 423 zu liefern.
+            # Ohne diesen Fix sieht der Benutzer "Belegt: paul" obwohl er selbst
+            # paul ist — und der rote Indikator bleibt dauerhaft.
+            # Beleg: Bugfix Build 122, Projektgespraech 2026-05-08
+            if current and locked_by == investigator:
+                resumed = edb.resume_lock(
+                    lock_id=current.lock_id,
+                    locked_by=investigator,
+                    new_sse_client=sse_client,
+                )
+                if resumed:
+                    logger.info(
+                        "acquire_lock: Auto-Resume fuer '%s' (alter Lock %s → neuer SSE-Client %s)",
+                        investigator, current.lock_id, sse_client,
+                    )
+                    handler.send_response_body(
+                        200,
+                        json.dumps({"lock_id": current.lock_id, "resumed": True},
+                                   ensure_ascii=False).encode("utf-8"),
+                        content_type="application/json; charset=utf-8",
+                    )
+                    return
             handler.send_response_body(
                 423,
                 json.dumps(

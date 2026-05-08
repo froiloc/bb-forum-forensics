@@ -2081,11 +2081,10 @@
  * 10.3 Akkordeon-Koerper
  * --------------------------------------------------------------------------- */
 
-/* Bug 1.8 Fix Build 121: Sanfte Akkordeon-Animation.
- * hidden-Attribut wird von JS gesetzt/entfernt. Um eine Animation zu
- * ermöglichen, nutzen wir max-height + overflow statt display:none.
- * JS muss hidden-Attribut durch Klasse ersetzen (siehe report_editor.js).
- * Beleg: Bugfix Build 121, Projektgespraech 2026-05-08 */
+/* Bug 1.8 Fix Build 122: Sanfte Akkordeon-Animation via grid-template-rows.
+ * hidden-Attribut wird nicht mehr verwendet — stattdessen CSS-Klasse.
+ * grid-template-rows: 0fr → 1fr erzeugt saubere Höhen-Animation.
+ * Beleg: Bugfix Build 122, Projektgespraech 2026-05-08 */
 .support-accordion-body {
   flex: 1 1 auto;
   overflow-y: auto;
@@ -2097,13 +2096,24 @@
   /* Scrollbar dezent stylen (Webkit) */
   scrollbar-width: thin;
   scrollbar-color: var(--color-border, #ccc) transparent;
-  /* Sanfte Einblend-Animation */
-  transition: opacity 0.18s ease;
+  /* Animations-Vorbereitung */
+  transition: opacity 0.2s ease, max-height 0.22s ease;
+  max-height: 2000px;
   opacity: 1;
+  overflow: hidden;
+}
+
+.support-accordion-body--closed {
+  max-height: 0 !important;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  pointer-events: none;
+  overflow: hidden;
 }
 
 .support-accordion-body[hidden] {
-  display: none;  /* Fallback: hidden-Attribut bleibt funktional */
+  display: none;  /* Fallback für nicht-initialisierte Zustände */
 }
 
 /* Geschlossener Abschnitt: Body ausblenden mit Fade */
@@ -2981,9 +2991,8 @@
  * 25. Panel-Scrollhoehe im Akkordeon begrenzen
  * --------------------------------------------------------------------------- */
 
-/* Annotation-Panel in Support-Sidebar: maximale Hoehe mit Scroll */
+/* Bug 1.4 Fix Build 122: max-height:380px entfernt — as-list füllt verfügbaren Raum */
 #accordion-body-annotations .as-list {
-    max-height: 380px;
     overflow-y: auto;
     overscroll-behavior: contain;
 }

@@ -52,7 +52,7 @@
  *     toggleAnnotationSidebar() leitet auf Annotationen-Akkordeon um.
  *     Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
  *
- * Version: v0.6.121 · Build: 121 · 2026-05-08
+ * Version: v0.6.122 · Build: 122 · 2026-05-08
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -726,11 +726,23 @@ function _openCommentAccordion(blockId) {
     // Aktiven Block merken (wird von comment_thread.js ausgelesen)
     sidebar.dataset.focusedBlockId = blockId;
 
-    // Eingabefeld fokussieren
-    const textarea = sidebar.querySelector('.comment-input-textarea');
-    if (textarea) {
-        textarea.focus();
+    // Bug 2.15 Fix Build 122: CommentThread.showForBlock() aufrufen.
+    // Vorher wurde nur der focusedBlockId gesetzt — der Thread wurde nie
+    // gerendert → "Kein Block ausgewählt." blieb dauerhaft stehen.
+    // Beleg: Bugfix Build 122, Projektgespraech 2026-05-08
+    if (typeof window.CommentThread?.showForBlock === 'function') {
+        const lockId = window.EditorState?.lockId || null;
+        window.CommentThread.showForBlock(blockId, _currentBlocks, {
+            lockId,
+            investigator: document.getElementById('report-editor-body')?.dataset?.username || '',
+        });
     }
+
+    // Eingabefeld fokussieren
+    setTimeout(() => {
+        const textarea = sidebar.querySelector('.comment-input-textarea, .ct-compose textarea');
+        if (textarea) textarea.focus();
+    }, 80);
 
     // Fokussierten Block im Editor visuell hervorheben
     document.querySelectorAll('.ce-block.block-wrapper--comment-focus').forEach(w => {
@@ -758,12 +770,21 @@ function _openAccordionSection(section) {
         const btn  = s.querySelector('.support-accordion-toggle');
         const expanded = isTarget;
         s.classList.toggle('support-accordion-section--open', expanded);
-        if (body)  body.hidden = !expanded;
+        // Build 122 Fix 1.8: hidden-Attribut durch CSS-Klasse ersetzen,
+        // damit CSS-Transition animieren kann (hidden=display:none blockiert Transitions).
+        // Beleg: Bugfix Build 122, Projektgespraech 2026-05-08
+        if (body) {
+            body.hidden = false;  // native hidden entfernen
+            body.classList.toggle('support-accordion-body--closed', !expanded);
+        }
         if (btn)   btn.setAttribute('aria-expanded', String(expanded));
     });
 
     // Zustand in localStorage sichern
+    // Build 122: _previousAccordionKey VOR dem Speichern lesen (Bug 2.29 Fix)
+    let previousKey = null;
     try {
+        previousKey = localStorage.getItem('b6_sidebar_open');
         const key = section.dataset.accordion;
         if (key) localStorage.setItem('b6_sidebar_open', key);
     } catch (_) {}
@@ -774,16 +795,10 @@ function _openAccordionSection(section) {
         _refreshPlaceholderForm();
     }
 
-    // Bug-Fix Build 119 (2.24): Blauen Rahmen nur bereinigen wenn das
-    // Formular-Akkordeon VORHER offen war und jetzt ein ANDERER Abschnitt
-    // geoeffnet wird. Vorher wurde der Rahmen bei jedem Akkordeon-Wechsel
-    // geloescht — auch wenn das Formular gerade erst geoeffnet wurde.
-    // Pruefung: vorher-offener Abschnitt war 'form' UND neuer ist nicht 'form'.
-    // Beleg: Bugfix Build 119, Projektgespraech 2026-05-08
-    const previousOpen = (() => {
-        try { return localStorage.getItem('b6_sidebar_open'); } catch(_) { return null; }
-    })();
-    if (previousOpen === 'form' && section.dataset.accordion !== 'form') {
+    // Bug 2.29 Fix Build 122: Blauen Rahmen bereinigen wenn das Formular-Akkordeon
+    // VERLASSEN wird. previousKey lesen VOR dem localStorage.setItem-Aufruf.
+    // Beleg: Bugfix Build 122, Projektgespraech 2026-05-08
+    if (previousKey === 'form' && section.dataset.accordion !== 'form') {
         if (typeof window.PlaceholderWizard?.getCurrentBlockId === 'function') {
             const lastId = window.PlaceholderWizard.getCurrentBlockId();
             if (lastId) {
@@ -1146,6 +1161,13 @@ function _initSidebarAccordion() {
     try {
         lastOpen = localStorage.getItem('b6_sidebar_open') || 'blocks';
     } catch (_) {}
+
+    // Build 122 Fix 1.8: Alle nativen hidden-Attribute durch CSS-Klasse ersetzen,
+    // damit CSS-Transitions animieren können.
+    sidebar.querySelectorAll('.support-accordion-body[hidden]').forEach(body => {
+        body.hidden = false;
+        body.classList.add('support-accordion-body--closed');
+    });
 
     // Toggle-Handler auf jeder Sektion registrieren
     sidebar.querySelectorAll('.support-accordion-section').forEach(section => {
