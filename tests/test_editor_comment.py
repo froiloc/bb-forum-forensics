@@ -226,5 +226,32 @@ class TestResolveComment(unittest.TestCase):
         self.assertEqual(responses[0][0], 404)
 
 
+    def test_T13_oneway_nach_erstem_erfolg_liefert_403(self):
+        """
+        T13 Regression Bug 3.5/2.31:
+        Ein erfolgreiches revoked (200) soll beim zweiten Versuch 403 liefern.
+        Sichert die One-Way-Grundregel (Grundregel 15) serverseitig ab.
+        Beleg: Bugfix Build 126, Projektgespraech 2026-05-08
+        """
+        # Erster Aufruf: revoked durch Kommentator h002 -> 200
+        handler1, responses1 = _make_handler()
+        ep = EditorCommentEndpoint(self.bundle, "h002")
+        ep.action_resolve_comment(
+            handler1, {"comment_id": self.cid, "resolution": "revoked"}, None
+        )
+        self.assertEqual(responses1[0][0], 200, "Erster revoked-Aufruf muss 200 sein")
+
+        # Zweiter Aufruf: Kommentar ist bereits revoked -> 403 (One-Way)
+        handler2, responses2 = _make_handler()
+        ep.action_resolve_comment(
+            handler2, {"comment_id": self.cid, "resolution": "revoked"}, None
+        )
+        self.assertEqual(
+            responses2[0][0], 403,
+            "Zweiter Aufruf auf geloesten Kommentar muss 403 sein (One-Way)"
+        )
+        self.assertIn("One-Way", responses2[0][1].get("error", ""))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

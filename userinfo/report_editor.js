@@ -52,7 +52,7 @@
  *     toggleAnnotationSidebar() leitet auf Annotationen-Akkordeon um.
  *     Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
  *
- * Version: v0.6.125 · Build: 125 · 2026-05-08
+ * Version: v0.6.126 · Build: 126 · 2026-05-08
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -742,7 +742,12 @@ function _openCommentAccordion(blockId) {
 
     // Bug 2.15 Fix Build 122: CommentThread.showForBlock() aufrufen.
     // Build 125: myUsername statt investigator in opts (renderForBlock braucht myUsername).
-    // Beleg: Bugfix Build 125, Projektgespraech 2026-05-08
+    // Build 126 Fix Bug 3.5/2.31: onReload laedt _currentBlocks vom Server neu bevor
+    // der Thread re-rendert. Ohne diesen Reload zeigte showForBlock() den alten
+    // Kommentar-Status (pending) obwohl resolve_comment erfolgreich war — weil
+    // _currentBlocks noch den veralteten Zustand enthielt. Der User sah den
+    // Kommentar weiterhin als offen und klickte erneut (loste die 403-Schleife aus).
+    // Beleg: Bugfix Build 126, Projektgespraech 2026-05-08
     if (typeof window.CommentThread?.showForBlock === 'function') {
         const username = document.getElementById('report-editor-body')?.dataset?.username || '';
         const lockId = window.EditorState?.lockId || null;
@@ -750,8 +755,15 @@ function _openCommentAccordion(blockId) {
             lockId,
             myUsername:  username,
             investigator: username,
-            onReload: () => {
-                // Nach Submit: Thread fuer denselben Block neu laden
+            onReload: async () => {
+                // Nach Submit/Resolve: _currentBlocks vom Server aktualisieren,
+                // DANN Thread mit frischen Daten neu rendern.
+                // Verhindert dass geloeste Kommentare weiterhin als 'pending'
+                // angezeigt werden (Root-Cause der 403-Retry-Schleife).
+                // Beleg: Bugfix Build 126, Projektgespraech 2026-05-08
+                if (_currentReport) {
+                    await _loadBlocksAndReinit(_currentReport);
+                }
                 window.CommentThread.showForBlock(blockId, _currentBlocks, commentOpts);
             },
         };
