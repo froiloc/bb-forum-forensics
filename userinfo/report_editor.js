@@ -52,7 +52,7 @@
  *     toggleAnnotationSidebar() leitet auf Annotationen-Akkordeon um.
  *     Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
  *
- * Version: v0.6.123 · Build: 123 · 2026-05-08
+ * Version: v0.6.124 · Build: 124 · 2026-05-08
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -449,19 +449,17 @@ function _initEditorJs(blocks, reportId) {
                 : (b.block_data || {});
             // paragraph ohne text-Feld: Editor.js wuerde Block verwerfen
             if (b.block_type === 'paragraph' && !raw.text) raw.text = '';
-            // Build 121 Fix: Vor dem Hydrieren zuerst dehydrieren.
-            // Beim erneuten Laden (z.B. _reinitWithLock) koennte raw.text
-            // bereits hydriertes HTML enthalten — dann wuerde hydrateChips
-            // das HTML nochmals verarbeiten und den Block ungueltig machen.
+            // Build 124 Fix: Vor dem Hydrieren zuerst dehydrieren.
             // dehydrateChips ist idempotent auf reiner Template-Syntax.
-            // Beleg: Bugfix Build 121, Projektgespraech 2026-05-08
+            // Beleg: Bugfix Build 121/124, Projektgespraech 2026-05-08
             if (raw.text && window.PlaceholderChips?.dehydrateChips) {
                 raw.text = window.PlaceholderChips.dehydrateChips(raw.text);
             }
             // B6 Phase 5: Template-Syntax in text-Feld zu Chips hydrieren.
-            // Platzhalter-Werte kommen aus placeholder_values_json.
-            // Beleg: Bauplan B6 v0.5 §4.6, Projektgespraech 2026-05-06
-            if (raw.text && window.PlaceholderChips?.hydrateChips) {
+            // NUR wenn Template-Syntax {{...}} vorhanden — sonst wuerde
+            // render()/_esc() HTML-Entities wie &lt; nochmals escapen.
+            // Beleg: Bugfix Build 124, Projektgespraech 2026-05-08
+            if (raw.text && raw.text.includes('{{') && window.PlaceholderChips?.hydrateChips) {
                 const values = b.placeholder_values_json
                     ? (() => { try { return JSON.parse(b.placeholder_values_json); } catch(_) { return {}; } })()
                     : {};

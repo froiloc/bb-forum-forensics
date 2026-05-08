@@ -289,9 +289,14 @@ let _pulseTimer = null;
  */
 function _pulseEditorBlock(blockId) {
     if (!blockId) return;
+    // Build 124: Zuerst ALLE fokussierten Bloecke bereinigen (nicht nur den letzten).
+    // Verhindert, dass mehrere Bloecke gleichzeitig fokussiert erscheinen.
+    // Beleg: Bugfix Build 124, Projektgespraech 2026-05-08
+    document.querySelectorAll('.ce-block.block-wrapper--pulse, .ce-block.block-wrapper--focus-blue')
+        .forEach(el => el.classList.remove('block-wrapper--pulse', 'block-wrapper--focus-blue'));
+
     const wrapper = document.querySelector(`.ce-block[data-block-id="${blockId}"]`);
     if (!wrapper) return;
-    wrapper.classList.remove('block-wrapper--pulse', 'block-wrapper--focus-blue');
     if (_pulseTimer) clearTimeout(_pulseTimer);
     _pulseTimer = setTimeout(() => {
         wrapper.classList.add('block-wrapper--focus-blue', 'block-wrapper--pulse');
@@ -300,9 +305,11 @@ function _pulseEditorBlock(blockId) {
 
 function _clearEditorBlockPulse(blockId) {
     if (!blockId) return;
-    const wrapper = document.querySelector(`.ce-block[data-block-id="${blockId}"]`);
-    if (!wrapper) return;
-    wrapper.classList.remove('block-wrapper--pulse', 'block-wrapper--focus-blue');
+    // Build 124: Bereinigt den angegebenen Block UND vorsorglich alle anderen.
+    // Beleg: Bugfix Build 124, Projektgespraech 2026-05-08
+    document.querySelectorAll('.ce-block.block-wrapper--pulse, .ce-block.block-wrapper--focus-blue')
+        .forEach(el => el.classList.remove('block-wrapper--pulse', 'block-wrapper--focus-blue'));
+    if (_pulseTimer) { clearTimeout(_pulseTimer); _pulseTimer = null; }
 }
 
 // ---------------------------------------------------------------------------

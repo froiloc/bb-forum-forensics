@@ -52,7 +52,7 @@
  *     Rueckwaerts-Kompatibilitaet open()/close() erhalten.
  *     Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06.
  *
- * Version: v0.6.123 · Build: 123 · 2026-05-08
+ * Version: v0.6.124 · Build: 124 · 2026-05-08
  * Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06
  */
 
@@ -338,7 +338,7 @@ function _bindPanelEvents(body) {
 // Laden und Rendern
 // ---------------------------------------------------------------------------
 
-async function _loadAndRender() {
+async function _loadAndRender(forceReload = false) {
     const loading = document.getElementById('mp-loading');
     const empty   = document.getElementById('mp-empty');
     const list    = document.getElementById('mp-list');
@@ -355,7 +355,12 @@ async function _loadAndRender() {
                 : STANDARD_BLOCKS;
             _renderStandardList(filtered);
         } else if (_activeCategory === 'modules') {
-            _modules = await _fetchModules(_filterRole, _filterSearch);
+            // Build 124: Cache — nur laden wenn leer oder Force-Reload.
+            // Module aendern sich selten; kein Re-Fetch bei jedem Akkordeon-Wechsel.
+            // Beleg: Bugfix Build 124, Projektgespraech 2026-05-08
+            if (forceReload || _modules.length === 0 || _filterRole || _filterSearch) {
+                _modules = await _fetchModules(_filterRole, _filterSearch);
+            }
             // Build 114: Bei "Alle" (kein Rollenfilter) Standard-Bloecke am Ende anfuegen
             // Beleg: Projektgespraech 2026-05-07
             if (!_filterRole) {
@@ -368,7 +373,10 @@ async function _loadAndRender() {
                 _renderList(_modules);
             }
         } else {
-            _queries = await _fetchQueries(_filterSearch);
+            // Build 124: Cache fuer Queries
+            if (forceReload || _queries.length === 0 || _filterSearch) {
+                _queries = await _fetchQueries(_filterSearch);
+            }
             _renderQueryList(_queries);
         }
     } catch (_) {

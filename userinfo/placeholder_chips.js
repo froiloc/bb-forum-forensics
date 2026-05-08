@@ -307,7 +307,12 @@ window.PlaceholderChips = {
  * @returns {string}     -- Text mit Template-Syntax ({{m:...}} etc.)
  */
 function dehydrateChips(html) {
-    if (!html || !html.includes('ph-chip')) return html;
+    if (!html) return html;
+
+    // Build 124 Fix: dehydrateChips muss HTML-safe Text zurueckgeben der
+    // kein weiteres Escaping benoetigt. Wenn html keine ph-chips enthaelt,
+    // direkt zurueckgeben — kein DOM-Roundtrip der Entities veraendern koennte.
+    if (!html.includes('ph-chip')) return html;
 
     const tmp = document.createElement('div');
     tmp.innerHTML = html;
@@ -320,6 +325,8 @@ function dehydrateChips(html) {
         }
     });
 
+    // tmp.innerHTML serialisiert den DOM zurueck zu HTML.
+    // Text-Knoten die Zeichen wie < > & enthalten werden dabei korrekt escaped.
     return tmp.innerHTML;
 }
 
