@@ -52,7 +52,7 @@
  *     toggleAnnotationSidebar() leitet auf Annotationen-Akkordeon um.
  *     Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
  *
- * Version: v0.6.122 · Build: 122 · 2026-05-08
+ * Version: v0.6.123 · Build: 123 · 2026-05-08
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -727,15 +727,19 @@ function _openCommentAccordion(blockId) {
     sidebar.dataset.focusedBlockId = blockId;
 
     // Bug 2.15 Fix Build 122: CommentThread.showForBlock() aufrufen.
-    // Vorher wurde nur der focusedBlockId gesetzt — der Thread wurde nie
-    // gerendert → "Kein Block ausgewählt." blieb dauerhaft stehen.
-    // Beleg: Bugfix Build 122, Projektgespraech 2026-05-08
+    // Build 123: onReload ergaenzt — nach Kommentar-Submit den Thread neu laden.
+    // Beleg: Bugfix Build 123, Projektgespraech 2026-05-08
     if (typeof window.CommentThread?.showForBlock === 'function') {
         const lockId = window.EditorState?.lockId || null;
-        window.CommentThread.showForBlock(blockId, _currentBlocks, {
+        const commentOpts = {
             lockId,
             investigator: document.getElementById('report-editor-body')?.dataset?.username || '',
-        });
+            onReload: () => {
+                // Nach Submit: Thread fuer denselben Block neu laden
+                window.CommentThread.showForBlock(blockId, _currentBlocks, commentOpts);
+            },
+        };
+        window.CommentThread.showForBlock(blockId, _currentBlocks, commentOpts);
     }
 
     // Eingabefeld fokussieren
@@ -1274,6 +1278,27 @@ async function _performAutoSave(reportId) {
     }
 
     _showSaveIndicator();
+
+    // Bug 2.30 Fix Build 123: _currentBlocks nach jedem Auto-Save aktualisieren.
+    // Neue Bloecke erhalten server-seitige Metadaten (author, created_at etc.),
+    // Sortierung kann sich durch Drag-Drop geaendert haben.
+    // Wenn das Formular-Akkordeon gerade offen ist: gleich neu rendern.
+    // Beleg: Bugfix Build 123, Projektgespraech 2026-05-08
+    try {
+        const resp = await fetch('/_forensic/report?format=json', {
+            headers: { 'X-Forensic-Request': 'ajax' },
+        });
+        if (resp.ok) {
+            const data = await resp.json();
+            _currentBlocks = data.blocks || [];
+            // Formular aktualisieren wenn es gerade offen ist
+            const sidebar = document.getElementById('support-sidebar');
+            const openAccordion = sidebar?.querySelector('.support-accordion-section--open');
+            if (openAccordion?.dataset?.accordion === 'form') {
+                _refreshPlaceholderForm();
+            }
+        }
+    } catch (_) {}
 }
 
 /** Kurze "Gespeichert"-Anzeige */

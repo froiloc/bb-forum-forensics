@@ -52,7 +52,7 @@
  *     Rueckwaerts-Kompatibilitaet open()/close() erhalten.
  *     Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06.
  *
- * Version: v0.6.122 · Build: 122 · 2026-05-08
+ * Version: v0.6.123 · Build: 123 · 2026-05-08
  * Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06
  */
 
@@ -191,14 +191,11 @@ async function showPanel(blocks, opts) {
 
     _currentBlocks  = blocks || [];
     _currentOpts    = opts || {};
-    _filterRole     = '';
+    // Bug 2.13 Fix Build 123: _activeCategory und _filterRole bleiben erhalten
+    // (_renderSkeleton reflektiert _activeCategory jetzt korrekt).
+    // Beleg: Bugfix Build 123, Projektgespraech 2026-05-08
     _filterSearch   = '';
     _selectedId     = null;
-    // Bug 2.13 Fix Build 122: _activeCategory zurücksetzen wenn showPanel neu
-    // aufgerufen wird. Ohne Reset blieb die letzte Kategorie ('queries') aktiv,
-    // während die Tab-UI 'Module' als aktiv anzeigte — inkonsistenter Zustand.
-    // Beleg: Bugfix Build 122, Projektgespraech 2026-05-08
-    _activeCategory = 'modules';
 
     // Skeleton rendern (sofort sichtbar)
     body.innerHTML = _renderSkeleton();
@@ -227,11 +224,11 @@ function _renderSkeleton() {
     <div class="mp-panel">
         <!-- Kategorie-Umschalter -->
         <div class="mp-cat-tabs" role="tablist" aria-label="Bausteine-Kategorien">
-            <button class="mp-cat-tab mp-cat-tab--active" role="tab"
-                    aria-selected="true" data-category="modules"
+            <button class="mp-cat-tab${_activeCategory === 'modules' ? ' mp-cat-tab--active' : ''}" role="tab"
+                    aria-selected="${String(_activeCategory === 'modules')}" data-category="modules"
                     type="button">Module</button>
-            <button class="mp-cat-tab" role="tab"
-                    aria-selected="false" data-category="queries"
+            <button class="mp-cat-tab${_activeCategory === 'queries' ? ' mp-cat-tab--active' : ''}" role="tab"
+                    aria-selected="${String(_activeCategory === 'queries')}" data-category="queries"
                     type="button">Einzeldaten</button>
         </div>
 

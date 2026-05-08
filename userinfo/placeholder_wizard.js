@@ -57,7 +57,7 @@
  *     Rueckwaerts-Kompatibilitaet fuer open()/openAtField() erhalten.
  *     Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06.
  *
- * Version: v0.6.118 · Build: 118 · 2026-05-08
+ * Version: v0.6.120 · Build: 120 · 2026-05-08
  * Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06
  */
 
@@ -172,6 +172,14 @@ let _saveTimers      = {};     // Debounce-Timer { "blockId:fieldName": timer }
 function showPlaceholderForm(blocks, focusedBlockId, opts) {
     const body = document.getElementById('accordion-body-form');
     if (!body) return;
+
+    // Bug 2.29 Fix Build 123: Alten Puls loeschen BEVOR _currentBlockId
+    // ueberschrieben wird. showPlaceholderForm wird bei jedem Akkordeon-
+    // Oeffnen neu aufgerufen — ohne Cleanup blieben alte Pulse stehen.
+    // Beleg: Bugfix Build 123, Projektgespraech 2026-05-08
+    if (_currentBlockId && _currentBlockId !== focusedBlockId) {
+        window.CommentThread?._clearEditorBlockPulse?.(_currentBlockId);
+    }
 
     _currentBlocks  = blocks || [];
     _currentBlockId = focusedBlockId || null;
