@@ -3098,3 +3098,95 @@
   outline-offset: -2px;
   background: rgba(25, 118, 210, 0.04);
 }
+
+
+/* ==========================================================================
+ * Build 125: CSS-Paket — Bugs 1.14, 1.15, 1.16, 2.26, 2.35
+ * Beleg: Bugfix Build 125, Projektgespraech 2026-05-08
+ * ========================================================================== */
+
+/* Bug 2.35 / 2.29: Blauer Rahmen NUR wenn Kommentar-Akkordeon offen ist.
+ * CSS-Query koppelt den Rahmen an den Akkordeon-Zustand — kein JS-Cleanup nötig.
+ * Beleg: Feedback Projektgespraech 2026-05-08 */
+#report-workspace:has(
+  #support-sidebar [data-accordion="comments"].support-accordion-section--open
+) .ce-block.block-wrapper--comment-focus {
+  box-shadow: 0 0 0 2px var(--color-focus, #1a73e8);
+  border-radius: var(--radius, 4px);
+}
+
+/* Wenn Kommentar-Akkordeon NICHT offen: Rahmen immer ausblenden */
+#report-workspace:not(:has(
+  #support-sidebar [data-accordion="comments"].support-accordion-section--open
+)) .ce-block.block-wrapper--comment-focus {
+  box-shadow: none !important;
+}
+
+/* Bug 1.15: Scrollbar in #mp-list wiederherstellen.
+ * Durch max-height-Entfernung war kein overflow:auto mehr wirksam. */
+#mp-list {
+  overflow-y: auto;
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+/* Bug 1.16: Blur im Formular-Bereich — nur ein Blur, nicht additiv.
+ * .pf-block--blurred soll opacity:0.35 haben, nicht gestapelt werden. */
+.pf-block--blurred {
+  opacity: 0.35 !important;
+  pointer-events: none;
+  user-select: none;
+  transition: opacity 0.15s;
+}
+.pf-block--blurred .pf-block--blurred {
+  /* Verschachtelte Blur-Klassen: kein weiterer Abzug */
+  opacity: 1 !important;
+}
+
+/* Bug 1.14: Metazeile (.block-meta-bar) als absolutes Overlay — kein Layout-Shift.
+ * Angezeigt als schmale Leiste oben-rechts mit halbtransparentem Hintergrund.
+ * Die .ce-block braucht position:relative (bereits gesetzt via data-wrapped). */
+.ce-block[data-wrapped] {
+  /* padding-bottom entfernt — kein Platz für fixed Metazeile nötig */
+  padding-bottom: 0 !important;
+}
+
+/* Bug 2.26: Fremde Blöcke können zwar via Kontext-Menü umgewandelt werden —
+ * Das Editor.js-Toolbar-Menü per pointer-events unterdrücken reicht nicht.
+ * Besser: .block-foreign .ce-toolbar verstecken. */
+.ce-block.block-wrapper--foreign .ce-toolbar {
+  display: none !important;
+}
+
+/* Speicher-Indikator (Bug 2.27): sichtbar gestalten */
+#editor-save-indicator {
+  font-size: 11px;
+  color: var(--color-success, #2d7a2d);
+  opacity: 0;
+  transition: opacity 0.3s;
+  margin-left: 8px;
+  align-self: center;
+}
+
+
+/* Bug 2.34: Kommentar-Indikator an Blöcken
+ * Rot = offene Kommentare, Grau = alle erledigt
+ * Beleg: Bugfix Build 125, Projektgespraech 2026-05-08 */
+.block-comment-badge {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  z-index: 4;
+  pointer-events: none;
+}
+.block-comment-badge--pending {
+  background: #e84040;
+  box-shadow: 0 0 0 1px #fff;
+}
+.block-comment-badge--done {
+  background: #999;
+  box-shadow: 0 0 0 1px #fff;
+}

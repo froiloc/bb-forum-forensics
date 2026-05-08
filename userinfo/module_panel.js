@@ -52,7 +52,7 @@
  *     Rueckwaerts-Kompatibilitaet open()/close() erhalten.
  *     Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06.
  *
- * Version: v0.6.124 · Build: 124 · 2026-05-08
+ * Version: v0.6.125 · Build: 125 · 2026-05-08
  * Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06
  */
 
@@ -244,7 +244,8 @@ function _renderSkeleton() {
 
         <!-- Rollenfilter-Chips (nur im Module-Modus sichtbar) -->
         <div class="mp-role-chips" id="mp-role-chips" role="group"
-             aria-label="Rollenfilter">
+             aria-label="Rollenfilter"
+             style="${_activeCategory !== 'modules' ? 'display:none' : ''}">
             ${roleChips}
         </div>
 

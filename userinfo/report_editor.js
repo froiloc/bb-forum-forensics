@@ -52,7 +52,7 @@
  *     toggleAnnotationSidebar() leitet auf Annotationen-Akkordeon um.
  *     Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
  *
- * Version: v0.6.124 · Build: 124 · 2026-05-08
+ * Version: v0.6.125 · Build: 125 · 2026-05-08
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -680,6 +680,22 @@ function _wrapBlock(ceBlock, blockMeta, username) {
     // Metazeile als erstes Kind in .ce-block einfuegen (absolut positioniert).
     ceBlock.insertBefore(metaBar, ceBlock.firstChild);
 
+    // Bug 2.34 Fix Build 125: Kommentar-Indikator (Badge) anzeigen.
+    // Rot = offene Kommentare, Grau = alle erledigt, keiner = kein Badge.
+    // blockMeta.comments kommt aus format=json Response.
+    // Beleg: Bugfix Build 125, Projektgespraech 2026-05-08
+    const comments = Array.isArray(blockMeta.comments) ? blockMeta.comments : [];
+    if (comments.length > 0) {
+        const hasPending = comments.some(c => c.status === 'pending');
+        const badge = document.createElement('div');
+        badge.className = 'block-comment-badge ' +
+            (hasPending ? 'block-comment-badge--pending' : 'block-comment-badge--done');
+        badge.title = hasPending
+            ? `${comments.filter(c => c.status === 'pending').length} offene Kommentare`
+            : 'Alle Kommentare erledigt';
+        ceBlock.insertBefore(badge, ceBlock.firstChild);
+    }
+
     // inert per mouseenter/mouseleave auf .ce-block toggeln.
     ceBlock.addEventListener('mouseenter', () => {
         metaBar.removeAttribute('inert');
@@ -725,13 +741,15 @@ function _openCommentAccordion(blockId) {
     sidebar.dataset.focusedBlockId = blockId;
 
     // Bug 2.15 Fix Build 122: CommentThread.showForBlock() aufrufen.
-    // Build 123: onReload ergaenzt — nach Kommentar-Submit den Thread neu laden.
-    // Beleg: Bugfix Build 123, Projektgespraech 2026-05-08
+    // Build 125: myUsername statt investigator in opts (renderForBlock braucht myUsername).
+    // Beleg: Bugfix Build 125, Projektgespraech 2026-05-08
     if (typeof window.CommentThread?.showForBlock === 'function') {
+        const username = document.getElementById('report-editor-body')?.dataset?.username || '';
         const lockId = window.EditorState?.lockId || null;
         const commentOpts = {
             lockId,
-            investigator: document.getElementById('report-editor-body')?.dataset?.username || '',
+            myUsername:  username,
+            investigator: username,
             onReload: () => {
                 // Nach Submit: Thread fuer denselben Block neu laden
                 window.CommentThread.showForBlock(blockId, _currentBlocks, commentOpts);
@@ -856,8 +874,21 @@ function initBlockWrappers(blocks, username) {
             created_at: Math.floor(Date.now() / 1000),
         };
         _wrapBlock(ceBlock, meta, username);
-    }
 
+        // Bug 2.33 Fix Build 125: Klick auf Block öffnet Kommentar-Thread.
+        // Nur einmal registrieren (idempotent via data-click-bound).
+        // Beleg: Bugfix Build 125, Projektgespraech 2026-05-08
+        if (!ceBlock.dataset.clickBound) {
+            ceBlock.dataset.clickBound = '1';
+            ceBlock.addEventListener('click', (e) => {
+                // Nicht auslösen wenn auf Formular-Felder, Buttons oder den
+                // Kommentieren-Button selbst geklickt wird
+                if (e.target.closest('input, textarea, button, select, .ce-toolbar')) return;
+                const bid = ceBlock.dataset.blockId || ceBlock.dataset.id;
+                if (bid) _openCommentAccordion(bid);
+            });
+        }
+    }
     // 1. Bestehende Bloecke sofort wrappen (Editor.js hat sie bereits gerendert)
     holder.querySelectorAll('.ce-block').forEach(tryWrap);
 

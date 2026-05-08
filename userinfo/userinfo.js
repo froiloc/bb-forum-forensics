@@ -775,6 +775,23 @@ function updateLockStatus(cssClass, text) {
     if (!el) return;
     el.className = `lock-status ${cssClass}`;
     el.textContent = text;
+    // Bug 2.6 Fix Build 125: Lock-Indikator-Tooltip informativ gestalten.
+    // Beleg: Bugfix Build 125, Projektgespraech 2026-05-08
+    const lockIndicator = document.getElementById('report-lock-indicator');
+    if (lockIndicator) {
+        const titleMap = {
+            'lock-none':    'Kein Lock — Editor nur lesend',
+            'lock-mine':    'Lock gehalten — Bearbeitung möglich',
+            'lock-self':    'Lock gehalten — Bearbeitung möglich',
+            'lock-other':   `Lock belegt von: ${text.replace(/^Belegt:\s*/,'').replace(/^Lock belegt:\s*/,'')} — Bearbeitung gesperrt`,
+            'lock-frozen':  'Lock eingefroren — anderes Fenster aktiv',
+        };
+        lockIndicator.title = titleMap[cssClass] || text;
+        lockIndicator.textContent = cssClass === 'lock-none' ? '🔓'
+            : cssClass === 'lock-mine' || cssClass === 'lock-self' ? '🔒'
+            : cssClass === 'lock-other' ? '🔐'
+            : '🔒';
+    }
     // V3: 'Lock anfordern'-Button nur bei fremdem Lock anzeigen
     const btnTakeover = document.getElementById('btn-request-takeover');
     if (btnTakeover) {
