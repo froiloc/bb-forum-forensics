@@ -52,7 +52,7 @@
  *     Rueckwaerts-Kompatibilitaet open()/close() erhalten.
  *     Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06.
  *
- * Version: v0.6.125 · Build: 125 · 2026-05-08
+ * Version: v0.6.127 · Build: 127 · 2026-05-08
  * Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06
  */
 
@@ -644,6 +644,11 @@ function _renderListWithStandard(modules, stdBlocks) {
         if (empty) empty.style.display = '';
         return;
     }
+    // Bug 2.22/2.36 Fix Build 127: mp-empty immer ausblenden wenn stdBlocks
+    // vorhanden sind. _renderList() mit leerem modules-Array blendete mp-empty
+    // ein bevor Standard-Blöcke angehängt wurden — "Keine Einträge gefunden."
+    // erschien obwohl Standard-Blöcke vorhanden und gerendert wurden.
+    // Beleg: Bugfix Build 127, Projektgespraech 2026-05-08
     if (empty) empty.style.display = 'none';
 
     // Module-Eintraege rendern (wiederverwendet _renderList-Logik)

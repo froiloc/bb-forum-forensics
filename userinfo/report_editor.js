@@ -52,7 +52,7 @@
  *     toggleAnnotationSidebar() leitet auf Annotationen-Akkordeon um.
  *     Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
  *
- * Version: v0.6.126 · Build: 126 · 2026-05-08
+ * Version: v0.6.127 · Build: 127 · 2026-05-08
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -724,6 +724,60 @@ function _wrapBlock(ceBlock, blockMeta, username) {
  * Oeffnet den Kommentar-Abschnitt der Support-Sidebar und
  * setzt den Fokus auf das Eingabefeld.
  * Beleg: Bauplan B6 v0.5 §4.3, §4.4.4, Projektgespraech 2026-05-06
+/**
+ * Aktualisiert die Kommentar-Badges aller bereits gewrappten .ce-block-Elemente.
+ *
+ * Hintergrund: _wrapBlock() ist idempotent (data-wrapped-Guard) und ueberspringt
+ * bereits dekorierte Bloecke. Das Badge wird daher nach einem _loadBlocksAndReinit
+ * nicht automatisch aktualisiert — der Block haette nach resolve_comment noch den
+ * alten Status (pending), obwohl die DB ihn als addressed/dismissed kennt.
+ *
+ * Diese Funktion iteriert ueber alle gewrappten .ce-block-Elemente und setzt
+ * das Badge neu basierend auf den frisch geladenen _currentBlocks-Daten.
+ * Wird nach jedem erfolgreichen _loadBlocksAndReinit aufgerufen.
+ *
+ * Beleg: Bugfix Build 127, Projektgespraech 2026-05-08
+ *
+ * @param {Array} blocks  Frisch geladene Bloecke aus _currentBlocks
+ */
+function _updateBlockBadges(blocks) {
+    if (!blocks || !blocks.length) return;
+
+    // Index block_id → Kommentar-Array fuer schnellen Zugriff
+    const commentIndex = Object.create(null);
+    blocks.forEach(b => {
+        if (Array.isArray(b.comments) && b.comments.length > 0) {
+            commentIndex[b.block_id] = b.comments;
+        }
+    });
+
+    document.querySelectorAll('.ce-block[data-wrapped]').forEach(ceBlock => {
+        const blockId = ceBlock.dataset.blockId;
+        if (!blockId) return;
+
+        // Bestehendes Badge entfernen (wird neu gesetzt)
+        const existingBadge = ceBlock.querySelector('.block-comment-badge');
+        if (existingBadge) existingBadge.remove();
+
+        const comments = commentIndex[blockId];
+        if (!comments || !comments.length) return;
+
+        const hasPending = comments.some(c => c.status === 'pending');
+        const badge = document.createElement('div');
+        badge.className = 'block-comment-badge ' +
+            (hasPending ? 'block-comment-badge--pending' : 'block-comment-badge--done');
+        badge.title = hasPending
+            ? `${comments.filter(c => c.status === 'pending').length} offene Kommentare`
+            : 'Alle Kommentare erledigt';
+        // Badge als erstes Kind einfuegen (vor block-meta-bar)
+        ceBlock.insertBefore(badge, ceBlock.firstChild);
+    });
+}
+
+/**
+ * Oeffnet den Kommentar-Abschnitt der Support-Sidebar und
+ * setzt den Fokus auf das Eingabefeld.
+ * Beleg: Bauplan B6 v0.5 §4.3, §4.4.4, Projektgespraech 2026-05-06
  *
  * @param {string} blockId
  */
@@ -1152,6 +1206,12 @@ async function _loadBlocksAndReinit(report) {
         if (resp.ok) {
             const data = await resp.json();
             _currentBlocks = data.blocks || [];
+            // Bug 2 Fix Build 127: Kommentar-Badges nach Reload aktualisieren.
+            // _wrapBlock() ist idempotent (data-wrapped-Guard) und setzt Badges
+            // bei bereits dekorierten Bloecken nicht neu. Expliziter Badge-Update
+            // ist noetig damit der Status nach resolve_comment sofort sichtbar wird.
+            // Beleg: Bugfix Build 127, Projektgespraech 2026-05-08
+            _updateBlockBadges(_currentBlocks);
         }
     } catch (_) {}
 }
