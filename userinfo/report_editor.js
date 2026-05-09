@@ -60,15 +60,23 @@
  *   Build 130 (2026-05-09): Bug 2.39 + Bug 2.27 behoben.
  *     - Bug 2.39: _performAutoSave erkennt geloeschte Bloecke per _knownBlockIds-Set
  *       und sendet delete_block fuer jeden Block, der nicht mehr im Editor vorhanden ist.
- *       Ohne diesen Fix wurden geloeschte Bloecke beim Reload aus der DB neu geladen.
- *       _knownBlockIds wird beim Laden des Berichts aus den Server-Daten initialisiert
- *       und nach jedem Auto-Save auf den aktuellen Editor-Zustand synchronisiert.
- *     - Bug 2.27: Speicher-Indikator hat nun drei deutlich sichtbare Zustaende:
- *       idle (grau, immer sichtbar), saving (gruen pulsierend), saved (gruen, kurz).
- *       DevTools-Console-Ausgaben beim Speichern hinzugefuegt.
+ *     - Bug 2.27: Speicher-Indikator drei sichtbare Zustaende: idle/saving/saved.
  *     Beleg: Bugfix Build 130, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.130 · Build: 130 · 2026-05-09
+ *   Build 132 (2026-05-09): Bug 1.22 + Bug 2.7 + Bug 2.19/2.37 behoben.
+ *     - Bug 1.22: Speicher-Indikator auf Disketten-Symbol (🖫) umgestellt.
+ *       Vier Zustaende: idle (grau, blur), saving (gruen, pulsierender Rahmen),
+ *       saved (gruen, 5s dann zurueck zu idle), failed (rot, dauerhaft bis Erfolg).
+ *     - Bug 2.7: Aktualisieren-Schaltfläche lädt Editor-Inhalte neu ohne Seiten-Reload.
+ *       Ruft _reloadEditorContent() auf — laedt Bloecke vom Server, zerstoert den
+ *       alten Editor und initialisiert ihn mit den neuen Daten.
+ *     - Bug 2.19/2.37: Einfügen von Einzeldaten jetzt sofort im Editor sichtbar.
+ *       _insertQueryAsNewBlock() und _insertModule() in module_panel.js fuegen den
+ *       Block nach dem Server-POST direkt via window._editor.blocks.insert() in den
+ *       Editor ein und aktualisieren _knownBlockIds. Kein Seiten-Reload mehr noetig.
+ *     Beleg: Bugfix Build 132, Projektgespraech 2026-05-09.
+ *
+ * Version: v0.6.132 · Build: 132 · 2026-05-09
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -1243,6 +1251,65 @@ async function _loadBlocksAndReinit(report) {
     } catch (_) {}
 }
 
+/**
+ * Laedt den Editor komplett neu vom Server (ohne Seiten-Reload).
+ * Zerstoert den bestehenden Editor und initialisiert ihn mit den
+ * aktuellen Bloecken aus der Datenbank.
+ * Wird von der Aktualisieren-Schaltflaeche (Bug 2.7) aufgerufen.
+ * Beleg: Bugfix Build 132, Projektgespraech 2026-05-09
+ */
+async function _reloadEditorContent() {
+    if (!_currentReport) return;
+    _dbg('_reloadEditorContent(): Starte Neuladen fuer report_id=', _currentReport.id);
+
+    try {
+        // Aktuelle Bloecke vom Server laden
+        const resp = await fetch(
+            `/_forensic/report?format=json&report_id=${_currentReport.id}`,
+            { headers: { 'X-Forensic-Request': 'ajax' } }
+        );
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const data = await resp.json();
+        const freshBlocks = data.blocks || [];
+
+        // Bestehenden Editor zerstoeren
+        if (_editor) {
+            try { await _editor.destroy(); } catch (_) {}
+            _editor = null;
+        }
+        // editorjs-holder neu anlegen (Editor.js entfernt ihn beim destroy())
+        const workspace = document.getElementById('report-main-col');
+        let holder = document.getElementById('editorjs-holder');
+        if (!holder && workspace) {
+            holder = document.createElement('div');
+            holder.id = 'editorjs-holder';
+            holder.className = 'editorjs-holder';
+            const frozen = document.getElementById('report-frozen-overlay');
+            if (frozen) {
+                workspace.insertBefore(holder, frozen);
+            } else {
+                workspace.appendChild(holder);
+            }
+        }
+
+        // _currentBlocks aktualisieren und _knownBlockIds neu setzen
+        _currentBlocks = freshBlocks;
+        _knownBlockIds = new Set(freshBlocks.map(b => b.block_id).filter(Boolean));
+
+        // Editor neu initialisieren
+        _initEditorJs(freshBlocks, _currentReport.id);
+
+        // Sidebar-Module aktualisieren
+        _refreshModulePanel();
+        _updateBlockBadges(freshBlocks);
+
+        _dbg('_reloadEditorContent(): Abgeschlossen.',
+             freshBlocks.length, 'Bloecke geladen.');
+    } catch (err) {
+        console.warn('report_editor.js: _reloadEditorContent fehlgeschlagen:', err);
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Annotationen-Sidebar (B6 Phase 8)
 // Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
@@ -1490,44 +1557,65 @@ async function _performAutoSave(reportId) {
 
 /**
  * Zeigt den Speicher-Indikator als pulsierend-gruen waehrend des Speichervorgangs.
- * Wird am Anfang von _performAutoSave aufgerufen.
- * Beleg: Bugfix Build 130, Projektgespraech 2026-05-09 (Bug 2.27)
+ * Zustand: --saving (gruener pulsierender Rahmen, Diskette gruen).
+ * Beleg: Bugfix Build 132, Projektgespraech 2026-05-09 (Bug 1.22)
  */
 function _showSavingIndicator() {
     const el = document.getElementById('editor-save-indicator');
     if (!el) return;
-    el.textContent = '⏳ Speichern…';
+    el.textContent = '🖫';
+    el.title = 'Speichern läuft…';
     el.className = 'save-indicator save-indicator--saving';
-    el.style.opacity = '1';
+    // Inline-Style zuruecksetzen damit CSS-Klasse allein steuert
+    el.style.opacity = '';
+    el.style.color = '';
 }
 
 /**
- * Blendet den pulsierenden Indikator aus (bei Fehler).
+ * Zeigt Fehler-Zustand: Diskette rot, dauerhaft bis Erfolg.
+ * Zustand: --failed
+ * Beleg: Bugfix Build 132, Projektgespraech 2026-05-09 (Bug 1.22)
  */
-function _hideSavingIndicator() {
+function _showSaveFailedIndicator() {
     const el = document.getElementById('editor-save-indicator');
     if (!el) return;
-    el.className = 'save-indicator save-indicator--idle';
-    el.style.opacity = '1';
+    el.textContent = '🖫';
+    el.title = 'Speichern fehlgeschlagen! Bitte Seite neu laden.';
+    el.className = 'save-indicator save-indicator--failed';
+    el.style.opacity = '';
+    el.style.color = '';
 }
 
 /**
- * Zeigt kurz "Gespeichert" in gruen an, danach kehrt der Indikator
- * in den grauen Ruhezustand zurueck.
- * Beleg: Bugfix Build 130, Projektgespraech 2026-05-09 (Bug 2.27)
+ * Blendet den pulsierenden Indikator aus (bei Fehler -> --failed).
+ * Beleg: Bugfix Build 132, Projektgespraech 2026-05-09 (Bug 1.22)
+ */
+function _hideSavingIndicator() {
+    _showSaveFailedIndicator();
+}
+
+/**
+ * Zeigt kurz "Gespeichert" (gruen), nach 5s Rueckkehr zum Ruhezustand.
+ * Zustand: --saved -> --idle
+ * Beleg: Bugfix Build 132, Projektgespraech 2026-05-09 (Bug 1.22)
  */
 function _showSaveIndicator() {
     const el = document.getElementById('editor-save-indicator');
     if (!el) return;
-    el.textContent = '✓ Gespeichert';
+    el.textContent = '🖫';
+    el.title = 'Gespeichert';
     el.className = 'save-indicator save-indicator--saved';
-    el.style.opacity = '1';
-    // Nach 2 Sekunden in den grauen Ruhezustand zurueckfallen
+    el.style.opacity = '';
+    el.style.color = '';
+    // Nach 5 Sekunden in den grauen Ruhezustand zurueckfallen
     setTimeout(() => {
-        el.textContent = '● Kein Speichern ausstehend';
-        el.className = 'save-indicator save-indicator--idle';
-        el.style.opacity = '1';
-    }, 2000);
+        // Nur zuruecksetzen wenn kein Fehler- oder Speicher-Zustand eingetreten
+        if (el.classList.contains('save-indicator--saved')) {
+            el.textContent = '🖫';
+            el.title = 'Kein Speichern ausstehend';
+            el.className = 'save-indicator save-indicator--idle';
+        }
+    }, 5000);
 }
 
 // ---------------------------------------------------------------------------
@@ -1908,17 +1996,38 @@ async function initEditorModule() {
     _initSidebarAccordion();
     // Build 115: Drag&Drop-Zone auf editorjs-holder registrieren
     _initDragDrop();
-    // Bug 2.27 Fix Build 130: Speicher-Indikator im Ruhezustand (grau) initialisieren.
-    // So ist immer sichtbar, ob gerade gespeichert wird oder nicht.
-    // Beleg: Bugfix Build 130, Projektgespraech 2026-05-09
+    // Bug 1.22 Fix Build 132: Speicher-Indikator mit Disketten-Symbol initialisieren.
+    // Grau und leicht gebluert im Ruhezustand (--idle).
+    // Beleg: Bugfix Build 132, Projektgespraech 2026-05-09
     const saveEl = document.getElementById('editor-save-indicator');
     if (saveEl) {
-        saveEl.textContent = '● Kein Speichern ausstehend';
+        saveEl.textContent = '🖫';
+        saveEl.title = 'Kein Speichern ausstehend';
         saveEl.className = 'save-indicator save-indicator--idle';
-        saveEl.style.opacity = '1';
+        saveEl.style.opacity = '';
+        saveEl.style.color = '';
     }
     await initReportSelector();
     initBlockUpdatedListener();
+
+    // Bug 2.7 Fix Build 132: Aktualisieren-Schaltflaeche laedt Editor-Inhalte
+    // neu ohne Seiten-Reload. Zerstoert den alten Editor und initialisiert ihn
+    // mit den neu vom Server geladenen Bloecken.
+    // Beleg: Bugfix Build 132, Projektgespraech 2026-05-09
+    const btnRefresh = document.getElementById('btn-refresh-placeholders');
+    if (btnRefresh) {
+        btnRefresh.addEventListener('click', async () => {
+            if (!_currentReport) return;
+            btnRefresh.disabled = true;
+            btnRefresh.textContent = '⏳ Lädt…';
+            try {
+                await _reloadEditorContent();
+            } finally {
+                btnRefresh.disabled = false;
+                btnRefresh.textContent = '🔄 Aktualisieren';
+            }
+        });
+    }
 }
 
 /**

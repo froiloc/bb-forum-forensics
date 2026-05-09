@@ -22,7 +22,7 @@
  *     9. Block-Wrapper (§4.3, B6 Phase 3)
  *    10. Support-Sidebar Akkordeon (§4.4, B6 Phase 3)
  *
- * Version: v0.6.129 · Build: 129 · 2026-05-09
+ * Version: v0.6.132 · Build: 132 · 2026-05-09
  * Beleg: Bauplan B6 v0.3 §4.1–4.7, Bauplan B6 v0.5 §4.3–4.4
  * =========================================================================== */
 
@@ -3201,38 +3201,55 @@
   display: none !important;
 }
 
-/* Speicher-Indikator (Bug 2.27 Fix Build 130): drei Zustände
- * idle  = grau, immer sichtbar — kein Speichern ausstehend
- * saving = grün pulsierend — Speichervorgang läuft gerade
- * saved  = grün, kurz eingeblendet — letzte Speicherung erfolgreich
- * Beleg: Bugfix Build 130, Projektgespraech 2026-05-09 */
+/* Speicher-Indikator (Bug 1.22 Fix Build 132): vier Zustände mit Disketten-Symbol.
+ * idle    = grau, leicht gebluert — kein Speichern ausstehend
+ * saving  = gruen, pulsierender Rahmen — Speichervorgang läuft
+ * saved   = gruen, 5s sichtbar — letzte Speicherung erfolgreich
+ * failed  = rot, dauerhaft — Fehler bis naechster Erfolg
+ * Beleg: Bugfix Build 132, Projektgespraech 2026-05-09 */
 #editor-save-indicator,
 .save-indicator {
-  font-size: 11px;
-  opacity: 1;
-  transition: opacity 0.3s, color 0.3s;
-  margin-left: 8px;
+  font-size: 16px;
+  line-height: 1;
+  display: inline-block;
+  padding: 2px 4px;
+  border-radius: 4px;
+  border: 2px solid transparent;
+  transition: color 0.25s, border-color 0.25s, filter 0.25s;
+  margin-left: 6px;
   align-self: center;
+  cursor: default;
   white-space: nowrap;
 }
 
 .save-indicator--idle {
-  color: var(--color-text-muted, #9ca3af);
+  color: var(--color-text-muted, #b0b8c4);
+  filter: blur(0.4px) grayscale(0.4);
+  border-color: transparent;
 }
 
 .save-indicator--saving {
   color: var(--color-success, #16a34a);
-  animation: save-pulse 0.9s ease-in-out infinite;
+  filter: none;
+  border-color: var(--color-success, #16a34a);
+  animation: save-border-pulse 0.9s ease-in-out infinite;
 }
 
 .save-indicator--saved {
   color: var(--color-success, #16a34a);
-  font-weight: 600;
+  filter: none;
+  border-color: var(--color-success, #16a34a);
 }
 
-@keyframes save-pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.35; }
+.save-indicator--failed {
+  color: #dc2626;
+  filter: none;
+  border-color: #dc2626;
+}
+
+@keyframes save-border-pulse {
+  0%, 100% { border-color: var(--color-success, #16a34a); opacity: 1; }
+  50%       { border-color: transparent; opacity: 0.6; }
 }
 
 

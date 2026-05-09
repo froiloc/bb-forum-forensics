@@ -52,13 +52,13 @@
  *     Rueckwaerts-Kompatibilitaet open()/close() erhalten.
  *     Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06.
  *
- *   Build 128 (2026-05-09): Bugs 2.19/2.21/2.22/2.37 behoben.
- *     _insertQuery() fuegt Chip inline an Cursorposition ein statt neuen Block.
- *     _insertQueryAsNewBlock() als Fallback wenn kein Cursor aktiv.
- *     _renderListWithStandard(): mp-empty vor _renderList ausgeblendet (Bug 2.22).
- *     Beleg: Bugfix Build 128, Projektgespraech 2026-05-09.
+ *   Build 132 (2026-05-09): Bug 2.19/2.37 behoben.
+ *     _insertQueryAsNewBlock() und _insertModule() fuegen den Block nach
+ *     dem Server-POST direkt via window._editor.blocks.insert() in den
+ *     Editor ein. Kein Seiten-Reload mehr noetig.
+ *     Beleg: Bugfix Build 132, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.128 · Build: 128 · 2026-05-09
+ * Version: v0.6.132 · Build: 132 · 2026-05-09
  * Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06
  */
 
@@ -746,14 +746,31 @@ async function _insertModule(moduleId) {
         const data = await resp.json().catch(() => ({}));
         if (!resp.ok) throw new Error(data.error || 'HTTP ' + resp.status);
 
-        // 4. Formular-Akkordeon oeffnen (Phase 6)
+        // 4. Block sofort im Editor anzeigen (Bug 2.19 Fix Build 132).
+        // Chip-HTML aufbauen und direkt per Editor.js einfuegen.
+        const editor = window._editor;
+        if (editor?.blocks) {
+            const bodyText = m.body || '';
+            let chipHtml;
+            if (window.PlaceholderChips?.hydrateChips) {
+                chipHtml = window.PlaceholderChips.hydrateChips(bodyText, {}, {});
+            } else {
+                chipHtml = bodyText;
+            }
+            editor.blocks.insert('paragraph', { text: chipHtml }, {}, undefined, true);
+            const lastIdx = editor.blocks.getBlocksCount() - 1;
+            editor.caret.setToBlock(lastIdx);
+            _dbg('_insertModule: Block sofort in Editor eingefuegt, idx=', lastIdx);
+        }
+
+        // 5. Formular-Akkordeon oeffnen (Phase 6)
         const sidebar     = document.getElementById('support-sidebar');
         const formSection = sidebar?.querySelector('[data-accordion="form"]');
         if (formSection && typeof window.openAccordionSection === 'function') {
             window.openAccordionSection(formSection);
         }
 
-        // 5. Callback
+        // 6. Callback
         if (_currentOpts.onInserted) {
             await _currentOpts.onInserted(blockId, moduleId, m.body || '');
         }
@@ -862,7 +879,11 @@ async function _insertQuery(queryId) {
  * Fallback: legt einen neuen Paragraphen-Block mit dem Platzhalter am Ende
  * des Berichts an und speichert ihn sofort via POST /_forensic/report.
  * Wird aufgerufen wenn kein Editor-Cursor aktiv ist (Bug 2.21 Fallback).
- * Beleg: Bugfix Build 128, Projektgespraech 2026-05-09
+ *
+ * Bug 2.19 Fix Build 132: Block wird nach dem Server-POST sofort per
+ * window._editor.blocks.insert() in den Editor eingefuegt, damit er ohne
+ * Seiten-Reload sichtbar ist.
+ * Beleg: Bugfix Build 132, Projektgespraech 2026-05-09
  * @param {string} queryId
  */
 async function _insertQueryAsNewBlock(queryId) {
@@ -885,6 +906,25 @@ async function _insertQueryAsNewBlock(queryId) {
     });
     const data = await resp.json().catch(() => ({}));
     if (!resp.ok) throw new Error(data.error || 'HTTP ' + resp.status);
+
+    // Block sofort in den Editor einfuegen (kein Seiten-Reload noetig).
+    // Chip-HTML aufbauen damit der Platzhalter sofort als Chip dargestellt wird.
+    const editor = window._editor;
+    if (editor?.blocks) {
+        const raw = `{{a:${queryId}}}`;
+        let chipHtml;
+        if (window.PlaceholderChips?.hydrateChips) {
+            chipHtml = window.PlaceholderChips.hydrateChips(raw, {}, {});
+        } else {
+            chipHtml = `<span class="ph-chip ph-chip-auto" data-chip-raw="${raw}">${queryId}</span>`;
+        }
+        editor.blocks.insert('paragraph', { text: chipHtml }, {}, undefined, true);
+        const lastIdx = editor.blocks.getBlocksCount() - 1;
+        editor.caret.setToBlock(lastIdx);
+        _dbg('_insertQueryAsNewBlock: Block sofort in Editor eingefuegt, idx=', lastIdx);
+    } else {
+        _dbg('_insertQueryAsNewBlock: Editor nicht verfuegbar, Fallback auf Server-Reload');
+    }
 
     if (_currentOpts.onInserted) {
         await _currentOpts.onInserted(blockId, null, `{{a:${queryId}}}`);
