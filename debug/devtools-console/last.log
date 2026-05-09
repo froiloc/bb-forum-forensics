@@ -1,0 +1,144 @@
+:8080/favicon.ico:1  Failed to load resource: the server responded with a status of 404 (Not Found)
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+report:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+Navigated to http://127.0.0.2:8080/_forensic/report
+placeholder_chips.js:56 [forensic] placeholder_chips.js: window.PlaceholderChips exportiert
+placeholder_wizard.js:75 [forensic] placeholder_wizard.js: window.PlaceholderWizard exportiert
+module_panel.js:76 [forensic] module_panel.js: window.ModulePanel exportiert
+annotation_sidebar.js:58 [forensic] annotation_sidebar.js: window.AnnotationSidebar exportiert
+report_editor.js:85 [forensic] report_editor.js: Exports auf window gesetzt
+userinfo.js:67 [forensic] DOMContentLoaded: userinfo.js aktiv
+userinfo.js:67 [forensic] initEditor() gestartet
+userinfo.js:67 [forensic] initSSEWindow3() gestartet
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= d2b76586-6546-491c-ac34-d947981a8829
+report_editor.js:85 [forensic] initEditorModule() gestartet
+report_editor.js:85 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:85 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
+report_editor.js:85 [forensic] initReportSelector() gestartet
+favicon.ico:1  GET http://127.0.0.2:8080/favicon.ico 404 (Not Found)
+report_editor.js:85 [forensic] loadReport() report_id= 2 type= interim
+report_editor.js:436 report_editor.js: _knownBlockIds initialisiert, 14 Bloecke geladen.
+report_editor.js:85 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:85 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:567 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+report_editor.js:577 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:1370 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 14
+report_editor.js:1465 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 14 | Bloecke geloescht: 0
+Navigated to http://127.0.0.2:8080/_forensic/report
+placeholder_chips.js:56 [forensic] placeholder_chips.js: window.PlaceholderChips exportiert
+placeholder_wizard.js:75 [forensic] placeholder_wizard.js: window.PlaceholderWizard exportiert
+module_panel.js:76 [forensic] module_panel.js: window.ModulePanel exportiert
+annotation_sidebar.js:58 [forensic] annotation_sidebar.js: window.AnnotationSidebar exportiert
+report_editor.js:85 [forensic] report_editor.js: Exports auf window gesetzt
+userinfo.js:67 [forensic] DOMContentLoaded: userinfo.js aktiv
+userinfo.js:67 [forensic] initEditor() gestartet
+userinfo.js:67 [forensic] initSSEWindow3() gestartet
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 2170d8c0-646d-4413-a964-c8b6d2ccf140
+report_editor.js:85 [forensic] initEditorModule() gestartet
+report_editor.js:85 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:85 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
+report_editor.js:85 [forensic] initReportSelector() gestartet
+favicon.ico:1  GET http://127.0.0.2:8080/favicon.ico 404 (Not Found)
+report_editor.js:85 [forensic] loadReport() report_id= 2 type= interim
+report_editor.js:436 report_editor.js: _knownBlockIds initialisiert, 14 Bloecke geladen.
+report_editor.js:85 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:85 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:567 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 2170d8c0-646d-4413-a964-c8b6d2ccf140
+userinfo.js:67 [forensic] acquireLock: Lock bereits vorhanden ( 2bc4b2df-aac4-4b1e-8155-37f4e46d0cd6 ) — uebersprungen
+report_editor.js:577 report_editor.js: Initialisierungs-Guard freigegeben.
+Navigated to http://127.0.0.2:8080/_forensic/report
+placeholder_chips.js:56 [forensic] placeholder_chips.js: window.PlaceholderChips exportiert
+placeholder_wizard.js:75 [forensic] placeholder_wizard.js: window.PlaceholderWizard exportiert
+module_panel.js:76 [forensic] module_panel.js: window.ModulePanel exportiert
+annotation_sidebar.js:58 [forensic] annotation_sidebar.js: window.AnnotationSidebar exportiert
+report_editor.js:85 [forensic] report_editor.js: Exports auf window gesetzt
+userinfo.js:67 [forensic] DOMContentLoaded: userinfo.js aktiv
+userinfo.js:67 [forensic] initEditor() gestartet
+userinfo.js:67 [forensic] initSSEWindow3() gestartet
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= efa6cb6b-10de-4ba2-9c1c-7ec5a4355c00
+report_editor.js:85 [forensic] initEditorModule() gestartet
+report_editor.js:85 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:85 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
+report_editor.js:85 [forensic] initReportSelector() gestartet
+favicon.ico:1  GET http://127.0.0.2:8080/favicon.ico 404 (Not Found)
+report_editor.js:85 [forensic] loadReport() report_id= 2 type= interim
+report_editor.js:436 report_editor.js: _knownBlockIds initialisiert, 14 Bloecke geladen.
+report_editor.js:85 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:85 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:567 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= efa6cb6b-10de-4ba2-9c1c-7ec5a4355c00
+userinfo.js:67 [forensic] acquireLock: Lock bereits vorhanden ( 40c27c41-d0e1-44d9-965d-27b69a32737a ) — uebersprungen
+report_editor.js:577 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:1370 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 14
+report_editor.js:1465 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 14 | Bloecke geloescht: 0
+module_panel.js:76 [forensic] _insertQuery: Kein aktiver Cursor, lege neuen Block an: user.aoa
+Navigated to http://127.0.0.2:8080/_forensic/report
+placeholder_chips.js:56 [forensic] placeholder_chips.js: window.PlaceholderChips exportiert
+placeholder_wizard.js:75 [forensic] placeholder_wizard.js: window.PlaceholderWizard exportiert
+module_panel.js:76 [forensic] module_panel.js: window.ModulePanel exportiert
+annotation_sidebar.js:58 [forensic] annotation_sidebar.js: window.AnnotationSidebar exportiert
+report_editor.js:85 [forensic] report_editor.js: Exports auf window gesetzt
+userinfo.js:67 [forensic] DOMContentLoaded: userinfo.js aktiv
+userinfo.js:67 [forensic] initEditor() gestartet
+userinfo.js:67 [forensic] initSSEWindow3() gestartet
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 9689085a-12d4-4dd2-97b9-76f603d1cd68
+report_editor.js:85 [forensic] initEditorModule() gestartet
+report_editor.js:85 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:85 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
+report_editor.js:85 [forensic] initReportSelector() gestartet
+report_editor.js:85 [forensic] loadReport() report_id= 2 type= interim
+report_editor.js:436 report_editor.js: _knownBlockIds initialisiert, 15 Bloecke geladen.
+report_editor.js:85 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:85 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:567 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 9689085a-12d4-4dd2-97b9-76f603d1cd68
+userinfo.js:67 [forensic] acquireLock: Lock bereits vorhanden ( 5d1e6e17-92a4-4e5a-bd2f-1b6dd6f484a9 ) — uebersprungen
+report_editor.js:577 report_editor.js: Initialisierungs-Guard freigegeben.
+Navigated to http://127.0.0.2:8080/_forensic/report
+placeholder_chips.js:56 [forensic] placeholder_chips.js: window.PlaceholderChips exportiert
+placeholder_wizard.js:75 [forensic] placeholder_wizard.js: window.PlaceholderWizard exportiert
+module_panel.js:76 [forensic] module_panel.js: window.ModulePanel exportiert
+annotation_sidebar.js:58 [forensic] annotation_sidebar.js: window.AnnotationSidebar exportiert
+report_editor.js:85 [forensic] report_editor.js: Exports auf window gesetzt
+userinfo.js:67 [forensic] DOMContentLoaded: userinfo.js aktiv
+userinfo.js:67 [forensic] initEditor() gestartet
+userinfo.js:67 [forensic] initSSEWindow3() gestartet
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= f36179db-af85-4a35-ba0c-1b8f5e09c8c1
+report_editor.js:85 [forensic] initEditorModule() gestartet
+report_editor.js:85 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:85 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
+report_editor.js:85 [forensic] initReportSelector() gestartet
+favicon.ico:1  GET http://127.0.0.2:8080/favicon.ico 404 (Not Found)
+report_editor.js:85 [forensic] loadReport() report_id= 2 type= interim
+report_editor.js:436 report_editor.js: _knownBlockIds initialisiert, 15 Bloecke geladen.
+report_editor.js:85 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:85 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:567 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= f36179db-af85-4a35-ba0c-1b8f5e09c8c1
+userinfo.js:67 [forensic] acquireLock: Lock bereits vorhanden ( 10f8a9d2-9a48-44ac-b493-193658348529 ) — uebersprungen
+report_editor.js:577 report_editor.js: Initialisierungs-Guard freigegeben.
+module_panel.js:76 [forensic] _insertQuery: Kein aktiver Cursor, lege neuen Block an: user.email
+Navigated to http://127.0.0.2:8080/_forensic/report
+placeholder_chips.js:56 [forensic] placeholder_chips.js: window.PlaceholderChips exportiert
+placeholder_wizard.js:75 [forensic] placeholder_wizard.js: window.PlaceholderWizard exportiert
+module_panel.js:76 [forensic] module_panel.js: window.ModulePanel exportiert
+annotation_sidebar.js:58 [forensic] annotation_sidebar.js: window.AnnotationSidebar exportiert
+report_editor.js:85 [forensic] report_editor.js: Exports auf window gesetzt
+userinfo.js:67 [forensic] DOMContentLoaded: userinfo.js aktiv
+userinfo.js:67 [forensic] initEditor() gestartet
+userinfo.js:67 [forensic] initSSEWindow3() gestartet
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 45d043bb-63de-4d95-b9dc-cc0781d289a3
+report_editor.js:85 [forensic] initEditorModule() gestartet
+report_editor.js:85 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:85 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
+report_editor.js:85 [forensic] initReportSelector() gestartet
+favicon.ico:1  GET http://127.0.0.2:8080/favicon.ico 404 (Not Found)
+report_editor.js:85 [forensic] loadReport() report_id= 2 type= interim
+report_editor.js:436 report_editor.js: _knownBlockIds initialisiert, 16 Bloecke geladen.
+report_editor.js:85 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:85 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:567 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 45d043bb-63de-4d95-b9dc-cc0781d289a3
+userinfo.js:67 [forensic] acquireLock: Lock bereits vorhanden ( 0b21b276-1162-4e8f-adf4-6242c282cfcd ) — uebersprungen
+report_editor.js:577 report_editor.js: Initialisierungs-Guard freigegeben.

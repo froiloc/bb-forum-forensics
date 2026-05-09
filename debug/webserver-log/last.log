@@ -1,0 +1,777 @@
+2026-05-09 13:44:20 [INFO    ] forensic (logger.py:158): Logging initialisiert — Level: DEBUG, Logdatei: /opt/aiw_webserver/logs/forensic_server.log
+2026-05-09 13:44:20 [INFO    ] forensic (main.py:236): === Forensischer Webserver startet — Build 038 · 2026-04-18 ===
+2026-05-09 13:44:20 [INFO    ] forensic (main.py:239): Config geladen: '/opt/aiw_webserver/config.yaml'
+2026-05-09 13:44:20 [DEBUG   ] forensic.core.user_resolver (user_resolver.py:70): Systembenutzer ermittelt: 'paul' (Plattform: linux)
+2026-05-09 13:44:20 [INFO    ] forensic (main.py:248): Systembenutzer: 'paul'
+2026-05-09 13:44:20 [INFO    ] forensic.core.mode_resolver (mode_resolver.py:150): Startmodus: 'cli'
+2026-05-09 13:44:20 [INFO    ] forensic.core.mode_resolver (mode_resolver.py:351): Modus 'cli': user_id=538299, username='uid_538299', forensic_db='/opt/aiw_webserver/data/forensic/forensic_538299.db'
+2026-05-09 13:44:20 [INFO    ] forensic (main.py:271): Kontext: mode='cli', user_id=538299, username='uid_538299'
+2026-05-09 13:44:20 [INFO    ] forensic (main.py:275): forensic_db : '/opt/aiw_webserver/data/forensic/forensic_538299.db'
+2026-05-09 13:44:20 [INFO    ] forensic (main.py:276): evidence_db : '/opt/aiw_webserver/data/evidence/evidence_538299.db'
+2026-05-09 13:44:20 [INFO    ] forensic (main.py:277): default_db  : '/opt/aiw_webserver/data/default.db'
+2026-05-09 13:44:20 [INFO    ] forensic (main.py:278): coordinator : '/opt/aiw_webserver/data/coordinator.db'
+2026-05-09 13:44:20 [INFO    ] forensic.core.startup_checks (startup_checks.py:123): Starte Voraussetzungsprüfungen...
+2026-05-09 13:44:20 [DEBUG   ] forensic.core.startup_checks (startup_checks.py:164): Datei gefunden: forensic_db = '/opt/aiw_webserver/data/forensic/forensic_538299.db'
+2026-05-09 13:44:20 [DEBUG   ] forensic.core.startup_checks (startup_checks.py:164): Datei gefunden: evidence_db = '/opt/aiw_webserver/data/evidence/evidence_538299.db'
+2026-05-09 13:44:20 [DEBUG   ] forensic.core.startup_checks (startup_checks.py:180): default_db gefunden: '/opt/aiw_webserver/data/default.db'
+2026-05-09 13:44:20 [DEBUG   ] forensic.core.startup_checks (startup_checks.py:206): coordinator_db gefunden: '/opt/aiw_webserver/data/coordinator.db'
+2026-05-09 13:44:20 [DEBUG   ] forensic.core.startup_checks (startup_checks.py:254): Schema-Version geprüft: 1 (erwartet: 1) ✓
+2026-05-09 13:44:21 [INFO    ] forensic.core.startup_checks (startup_checks.py:327): Integritätsprüfung forensic_db erfolgreich: SHA-256 = bf1506808669a92e... ✓
+2026-05-09 13:44:21 [DEBUG   ] forensic.core.startup_checks (startup_checks.py:366): forensic_db READ-ONLY-Prüfung bestanden ✓
+2026-05-09 13:44:21 [INFO    ] forensic.core.startup_checks (startup_checks.py:132): Alle Voraussetzungsprüfungen erfolgreich abgeschlossen.
+2026-05-09 13:44:21 [INFO    ] forensic (main.py:293): Alle Startprüfungen bestanden.
+2026-05-09 13:44:21 [DEBUG   ] forensic.core.hosts_manager (hosts_manager.py:135): HostsManager: forum_hostname nicht konfiguriert — no-op.
+2026-05-09 13:44:21 [INFO    ] forensic.db.connection_manager (connection_manager.py:146): Öffne Datenbankverbindungen (Modus: 'cli', user_id: 538299)
+2026-05-09 13:44:21 [DEBUG   ] forensic.db.connection_manager (connection_manager.py:189): Haupt-DB geöffnet: '/opt/aiw_webserver/data/evidence/evidence_538299.db'
+2026-05-09 13:44:21 [DEBUG   ] forensic.db.connection_manager (connection_manager.py:519): ATTACH fdb (READ-ONLY via Authorizer): '/opt/aiw_webserver/data/forensic/forensic_538299.db'
+2026-05-09 13:44:21 [DEBUG   ] forensic.db.connection_manager (connection_manager.py:519): ATTACH ddb (READ-ONLY via Authorizer): '/opt/aiw_webserver/data/default.db'
+2026-05-09 13:44:21 [DEBUG   ] forensic.db.connection_manager (connection_manager.py:532): ATTACH cdb (READ-WRITE): '/opt/aiw_webserver/data/coordinator.db'
+2026-05-09 13:44:21 [DEBUG   ] forensic.db.connection_manager (connection_manager.py:204): cdb angebunden: '/opt/aiw_webserver/data/coordinator.db'
+2026-05-09 13:44:21 [DEBUG   ] forensic.db.connection_manager (connection_manager.py:519): ATTACH adb (READ-ONLY via Authorizer): '/opt/aiw_webserver/data/assets/assets_538299.db'
+2026-05-09 13:44:21 [DEBUG   ] forensic.db.connection_manager (connection_manager.py:218): adb angebunden (READ-ONLY): '/opt/aiw_webserver/data/assets/assets_538299.db'
+2026-05-09 13:44:21 [DEBUG   ] forensic.db.connection_manager (connection_manager.py:519): ATTACH tdb (READ-ONLY via Authorizer): '/opt/aiw_webserver/data/templates.db'
+2026-05-09 13:44:21 [DEBUG   ] forensic.db.connection_manager (connection_manager.py:235): tdb angebunden (READ-ONLY): '/opt/aiw_webserver/data/templates.db'
+2026-05-09 13:44:21 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:456): get_forum_base_url(): 'http://alice4n4kd5gga3xqggygi6r7q7l7bb2wg5lcykh22ilxomk2jmpcbyd.onion'
+2026-05-09 13:44:21 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:221): blob_lookup TEMP VIEW angelegt (forum_base_url='http://alice4n4kd5gga3xqggygi6r7q7l7bb2wg5lcykh22ilxomk2jmpcbyd.onion')
+2026-05-09 13:44:21 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:456): get_forum_base_url(): 'http://alice4n4kd5gga3xqggygi6r7q7l7bb2wg5lcykh22ilxomk2jmpcbyd.onion'
+2026-05-09 13:44:21 [DEBUG   ] forensic.db.default_db (default_db.py:121): ddb (default.db) korrekt angebunden und erreichbar
+2026-05-09 13:44:21 [DEBUG   ] forensic.db.evidence_db (evidence_db.py:473): evidence_db Schema initialisiert (oder bereits vorhanden)
+2026-05-09 13:44:21 [DEBUG   ] forensic.db.evidence_db (evidence_db.py:492): evidence_db Migration: 'annotations.selection_json' bereits vorhanden
+2026-05-09 13:44:21 [DEBUG   ] forensic.db.evidence_db (evidence_db.py:492): evidence_db Migration: 'annotations.tags_json' bereits vorhanden
+2026-05-09 13:44:21 [DEBUG   ] forensic.db.evidence_db (evidence_db.py:492): evidence_db Migration: 'annotations.local_id' bereits vorhanden
+2026-05-09 13:44:21 [DEBUG   ] forensic.db.evidence_db (evidence_db.py:492): evidence_db Migration: 'annotations.post_id' bereits vorhanden
+2026-05-09 13:44:21 [DEBUG   ] forensic.db.evidence_db (evidence_db.py:492): evidence_db Migration: 'annotations.created_by' bereits vorhanden
+2026-05-09 13:44:21 [DEBUG   ] forensic.db.evidence_db (evidence_db.py:507): evidence_db Migration: annotations_local_id_uniq sichergestellt
+2026-05-09 13:44:21 [DEBUG   ] forensic.db.assets_db (assets_db.py:155): adb (assets_<uid>.db) korrekt angebunden und erreichbar
+2026-05-09 13:44:21 [DEBUG   ] forensic.db.templates_db (templates_db.py:102): TemplatesDb: tdb verfuegbar und initialisiert.
+2026-05-09 13:44:21 [DEBUG   ] forensic.db.connection_manager (connection_manager.py:264): Authorizer deaktiviert — Schreibschutz via Dateisystem/startup_checks.
+2026-05-09 13:44:21 [INFO    ] forensic.db.connection_manager (connection_manager.py:266): Alle Verbindungen aufgebaut (Normalmodus). forensic_db: 53 Seiten, evidence_db: 2 Annotationen
+2026-05-09 13:44:21 [INFO    ] forensic (main.py:337): Alle Datenbankverbindungen aufgebaut.
+2026-05-09 13:44:21 [INFO    ] forensic.server.http_server (http_server.py:292): ForensicHTTPServer initialisiert: http://127.0.0.2:8080 (socket-backlog=50, sse-max=20)
+2026-05-09 13:44:21 [INFO    ] forensic (main.py:367): Server bereit: http://127.0.0.2:8080
+2026-05-09 13:44:21 [INFO    ] forensic (main.py:368): Ermittlung: user_id=538299 ('uid_538299'), Modus='cli'
+2026-05-09 13:44:21 [INFO    ] forensic (main.py:423): Watchdog gestartet (Intervall: 30s, Dump: 'logs/freeze_dump.txt')
+2026-05-09 13:44:21 [INFO    ] forensic.server.http_server (http_server.py:303): Server läuft. Strg+C zum Beenden.
+2026-05-09 13:44:23 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/events (ajax=False)
+2026-05-09 13:44:23 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/events HTTP/1.1" 200 -
+2026-05-09 13:44:23 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/events (ajax=False)
+2026-05-09 13:44:23 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/events HTTP/1.1" 200 -
+2026-05-09 13:44:23 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/events (ajax=False)
+2026-05-09 13:44:23 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/events HTTP/1.1" 200 -
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/report (ajax=False)
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/report HTTP/1.1" 200 -
+2026-05-09 13:44:24 [DEBUG   ] forensic.forensic_api.report (report.py:403): /_forensic/report (HTML) ausgeliefert: user_id=538299
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/userinfo.css (ajax=False)
+2026-05-09 13:44:24 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/userinfo.css' ausgeliefert (43575 bytes)
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/userinfo.css HTTP/1.1" 200 -
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /.well-known/appspecific/com.chrome.devtools.json (ajax=False)
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/static/editor/editor.bundle.js (ajax=False)
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/report.css (ajax=False)
+2026-05-09 13:44:24 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:264): Seite nicht im Scope: '/.well-known/appspecific/com.chrome.devtools.json' (method=GET)
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.shell_handler (shell_handler.py:119): Shell: NOT_IN_SCOPE für '/.well-known/appspecific/com.chrome.devtools.json'
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 -
+2026-05-09 13:44:24 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/report.css' ausgeliefert (84375 bytes)
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/report.css HTTP/1.1" 200 -
+2026-05-09 13:44:24 [DEBUG   ] forensic.forensic_api.static (static.py:195): Editor-Asset: 'editor.bundle.js' ausgeliefert (367120 bytes)
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/static/editor/editor.bundle.js HTTP/1.1" 200 -
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/placeholder_chips.js (ajax=False)
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/placeholder_wizard.js (ajax=False)
+2026-05-09 13:44:24 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/placeholder_chips.js' ausgeliefert (19776 bytes)
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/placeholder_chips.js HTTP/1.1" 200 -
+2026-05-09 13:44:24 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/placeholder_wizard.js' ausgeliefert (22661 bytes)
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/placeholder_wizard.js HTTP/1.1" 200 -
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/module_panel.js (ajax=False)
+2026-05-09 13:44:24 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/module_panel.js' ausgeliefert (38824 bytes)
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/module_panel.js HTTP/1.1" 200 -
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/annotation_sidebar.js (ajax=False)
+2026-05-09 13:44:24 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/annotation_sidebar.js' ausgeliefert (24113 bytes)
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/report_editor.js (ajax=False)
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/comment_thread.js (ajax=False)
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/annotation_sidebar.js HTTP/1.1" 200 -
+2026-05-09 13:44:24 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/report_editor.js' ausgeliefert (83202 bytes)
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/report_editor.js HTTP/1.1" 200 -
+2026-05-09 13:44:24 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/comment_thread.js' ausgeliefert (16640 bytes)
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/comment_thread.js HTTP/1.1" 200 -
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/userinfo.js (ajax=False)
+2026-05-09 13:44:24 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/userinfo.js' ausgeliefert (69864 bytes)
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/userinfo.js HTTP/1.1" 200 -
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/events (ajax=False)
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/events HTTP/1.1" 200 -
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /favicon.ico (ajax=False)
+2026-05-09 13:44:24 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:264): Seite nicht im Scope: '/favicon.ico' (method=GET)
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.shell_handler (shell_handler.py:119): Shell: NOT_IN_SCOPE für '/favicon.ico'
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /favicon.ico HTTP/1.1" 404 -
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/report (ajax=False)
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/reports (ajax=True)
+2026-05-09 13:44:24 [INFO    ] forensic.db.evidence_db (evidence_db.py:1424): Editor-Lock erworben: 'paul' (lock_id=c43cc449-89f1-4383-9b3f-687215e6afba)
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/report HTTP/1.1" 200 -
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/reports HTTP/1.1" 200 -
+2026-05-09 13:44:24 [INFO    ] forensic.forensic_api.report (report.py:897): acquire_lock: 'paul' hat Lock erworben (sse_client=d2b76586-6546-491c-ac34-d947981a8829)
+2026-05-09 13:44:24 [DEBUG   ] forensic.forensic_api.reports (reports.py:90): /_forensic/reports (GET): 1 Berichte ausgeliefert
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/static/editor/editor.bundle.js.map (ajax=False)
+2026-05-09 13:44:24 [DEBUG   ] forensic.forensic_api.static (static.py:195): Editor-Asset: 'editor.bundle.js.map' ausgeliefert (938680 bytes)
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/static/editor/editor.bundle.js.map HTTP/1.1" 200 -
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/report (ajax=True)
+2026-05-09 13:44:24 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/report?format=json HTTP/1.1" 200 -
+2026-05-09 13:44:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 13:45:16 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 13:45:16 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=21fe8fd1-1d4a-44d1-bd7c-c077a30b6351 type=paragraph report_id=2 von 'paul'
+2026-05-09 13:45:16 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 13:45:16 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:246): Block gespeichert: block_id=21fe8fd1-1d4a-44d1-bd7c-c077a30b6351 type=paragraph owner=paul
+2026-05-09 13:45:16 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 13:45:16 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=i8OxxJCEj2 type=delimiter report_id=2 von 'paul'
+2026-05-09 13:45:16 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 13:45:16 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:246): Block gespeichert: block_id=i8OxxJCEj2 type=delimiter owner=paul
+2026-05-09 13:45:16 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 13:45:16 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=ePoQFO0ZVy type=paragraph report_id=2 von 'paul'
+2026-05-09 13:45:16 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 13:45:16 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:246): Block gespeichert: block_id=ePoQFO0ZVy type=paragraph owner=paul
+2026-05-09 13:45:16 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 13:45:16 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=bll-PCJeEv type=paragraph report_id=2 von 'paul'
+2026-05-09 13:45:16 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 13:45:16 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:246): Block gespeichert: block_id=bll-PCJeEv type=paragraph owner=paul
+2026-05-09 13:45:16 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 13:45:16 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=514412a5-9f7f-4766-a03c-6619cdee2843 type=paragraph report_id=2 von 'paul'
+2026-05-09 13:45:16 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 13:45:16 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:246): Block gespeichert: block_id=514412a5-9f7f-4766-a03c-6619cdee2843 type=paragraph owner=paul
+2026-05-09 13:45:16 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 13:45:16 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=9Tz-6p_SWf type=paragraph report_id=2 von 'paul'
+2026-05-09 13:45:16 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 13:45:16 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:246): Block gespeichert: block_id=9Tz-6p_SWf type=paragraph owner=paul
+2026-05-09 13:45:16 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 13:45:16 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=f7a7ae29-3ccf-4ec8-9ea6-3281c64142cb type=paragraph report_id=2 von 'paul'
+2026-05-09 13:45:16 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 13:45:16 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:246): Block gespeichert: block_id=f7a7ae29-3ccf-4ec8-9ea6-3281c64142cb type=paragraph owner=paul
+2026-05-09 13:45:16 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 13:45:16 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=85KQx12QVa type=list report_id=2 von 'paul'
+2026-05-09 13:45:16 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 13:45:16 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:246): Block gespeichert: block_id=85KQx12QVa type=list owner=paul
+2026-05-09 13:45:16 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 13:45:16 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=a6I-NPWFfk type=evidence report_id=2 von 'paul'
+2026-05-09 13:45:16 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 13:45:16 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:246): Block gespeichert: block_id=a6I-NPWFfk type=evidence owner=paul
+2026-05-09 13:45:16 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 13:45:16 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=ef75e706-dedd-435e-ae62-1ed82b040743 type=paragraph report_id=2 von 'paul'
+2026-05-09 13:45:16 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 13:45:16 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:246): Block gespeichert: block_id=ef75e706-dedd-435e-ae62-1ed82b040743 type=paragraph owner=paul
+2026-05-09 13:45:16 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 13:45:16 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=1e7bd7c5-a255-49f8-83a7-04f9c0a88c07 type=paragraph report_id=2 von 'paul'
+2026-05-09 13:45:16 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 13:45:16 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:246): Block gespeichert: block_id=1e7bd7c5-a255-49f8-83a7-04f9c0a88c07 type=paragraph owner=paul
+2026-05-09 13:45:16 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 13:45:16 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=b18d53c4-8663-4517-9664-825ea6faaaec type=paragraph report_id=2 von 'paul'
+2026-05-09 13:45:16 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 13:45:16 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:246): Block gespeichert: block_id=b18d53c4-8663-4517-9664-825ea6faaaec type=paragraph owner=paul
+2026-05-09 13:45:16 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 13:45:16 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=6b0ac64f-3a00-420f-9b99-497a3969c92b type=paragraph report_id=2 von 'paul'
+2026-05-09 13:45:16 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 13:45:16 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:246): Block gespeichert: block_id=6b0ac64f-3a00-420f-9b99-497a3969c92b type=paragraph owner=paul
+2026-05-09 13:45:16 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 13:45:16 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=3e826a38-d7c4-46c1-b44c-86ece89ca95e type=paragraph report_id=2 von 'paul'
+2026-05-09 13:45:16 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 13:45:16 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:246): Block gespeichert: block_id=3e826a38-d7c4-46c1-b44c-86ece89ca95e type=paragraph owner=paul
+2026-05-09 13:45:16 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/order (ajax=False)
+2026-05-09 13:45:16 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/order HTTP/1.1" 200 -
+2026-05-09 13:45:16 [INFO    ] forensic.forensic_api.editor_order (editor_order.py:174): Blockreihenfolge aktualisiert: report_id=2, 14 Eintraege von 'paul'
+2026-05-09 13:45:16 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/report (ajax=True)
+2026-05-09 13:45:16 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/report?format=json HTTP/1.1" 200 -
+2026-05-09 13:45:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 13:45:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/report (ajax=False)
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/report HTTP/1.1" 200 -
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/report (ajax=False)
+2026-05-09 13:46:04 [DEBUG   ] forensic.forensic_api.report (report.py:403): /_forensic/report (HTML) ausgeliefert: user_id=538299
+2026-05-09 13:46:04 [INFO    ] forensic.db.evidence_db (evidence_db.py:1443): Editor-Lock freigegeben (lock_id=c43cc449-89f1-4383-9b3f-687215e6afba)
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/report HTTP/1.1" 200 -
+2026-05-09 13:46:04 [DEBUG   ] forensic.forensic_api.events (events.py:221): SSE-Stream: Client hat Verbindung getrennt (client_id=d2b76586-6546-491c-ac34-d947981a8829)
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /.well-known/appspecific/com.chrome.devtools.json (ajax=False)
+2026-05-09 13:46:04 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:264): Seite nicht im Scope: '/.well-known/appspecific/com.chrome.devtools.json' (method=GET)
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.shell_handler (shell_handler.py:119): Shell: NOT_IN_SCOPE für '/.well-known/appspecific/com.chrome.devtools.json'
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 -
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/userinfo.css (ajax=False)
+2026-05-09 13:46:04 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/userinfo.css' ausgeliefert (43575 bytes)
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/userinfo.css HTTP/1.1" 200 -
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/report.css (ajax=False)
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/static/editor/editor.bundle.js (ajax=False)
+2026-05-09 13:46:04 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/report.css' ausgeliefert (84375 bytes)
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/report.css HTTP/1.1" 200 -
+2026-05-09 13:46:04 [DEBUG   ] forensic.forensic_api.static (static.py:195): Editor-Asset: 'editor.bundle.js' ausgeliefert (367120 bytes)
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/static/editor/editor.bundle.js HTTP/1.1" 200 -
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/placeholder_chips.js (ajax=False)
+2026-05-09 13:46:04 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/placeholder_chips.js' ausgeliefert (19776 bytes)
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/placeholder_chips.js HTTP/1.1" 200 -
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/placeholder_wizard.js (ajax=False)
+2026-05-09 13:46:04 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/placeholder_wizard.js' ausgeliefert (22661 bytes)
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/placeholder_wizard.js HTTP/1.1" 200 -
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/module_panel.js (ajax=False)
+2026-05-09 13:46:04 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/module_panel.js' ausgeliefert (38824 bytes)
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/module_panel.js HTTP/1.1" 200 -
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/annotation_sidebar.js (ajax=False)
+2026-05-09 13:46:04 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/annotation_sidebar.js' ausgeliefert (24113 bytes)
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/annotation_sidebar.js HTTP/1.1" 200 -
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/comment_thread.js (ajax=False)
+2026-05-09 13:46:04 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/comment_thread.js' ausgeliefert (16640 bytes)
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/comment_thread.js HTTP/1.1" 200 -
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/report_editor.js (ajax=False)
+2026-05-09 13:46:04 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/report_editor.js' ausgeliefert (83202 bytes)
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/report_editor.js HTTP/1.1" 200 -
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/userinfo.js (ajax=False)
+2026-05-09 13:46:04 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/userinfo.js' ausgeliefert (69864 bytes)
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/userinfo.js HTTP/1.1" 200 -
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/events (ajax=False)
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/events HTTP/1.1" 200 -
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /favicon.ico (ajax=False)
+2026-05-09 13:46:04 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:264): Seite nicht im Scope: '/favicon.ico' (method=GET)
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.shell_handler (shell_handler.py:119): Shell: NOT_IN_SCOPE für '/favicon.ico'
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /favicon.ico HTTP/1.1" 404 -
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/report (ajax=False)
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/reports (ajax=True)
+2026-05-09 13:46:04 [INFO    ] forensic.db.evidence_db (evidence_db.py:1424): Editor-Lock erworben: 'paul' (lock_id=2bc4b2df-aac4-4b1e-8155-37f4e46d0cd6)
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/report HTTP/1.1" 200 -
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/reports HTTP/1.1" 200 -
+2026-05-09 13:46:04 [INFO    ] forensic.forensic_api.report (report.py:897): acquire_lock: 'paul' hat Lock erworben (sse_client=2170d8c0-646d-4413-a964-c8b6d2ccf140)
+2026-05-09 13:46:04 [DEBUG   ] forensic.forensic_api.reports (reports.py:90): /_forensic/reports (GET): 1 Berichte ausgeliefert
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/report (ajax=True)
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/report?format=json HTTP/1.1" 200 -
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/static/editor/editor.bundle.js.map (ajax=False)
+2026-05-09 13:46:04 [DEBUG   ] forensic.forensic_api.static (static.py:195): Editor-Asset: 'editor.bundle.js.map' ausgeliefert (938680 bytes)
+2026-05-09 13:46:04 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/static/editor/editor.bundle.js.map HTTP/1.1" 200 -
+2026-05-09 13:46:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 13:46:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 13:47:08 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/report (ajax=False)
+2026-05-09 13:47:08 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/report HTTP/1.1" 200 -
+2026-05-09 13:47:08 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/report (ajax=False)
+2026-05-09 13:47:08 [DEBUG   ] forensic.forensic_api.report (report.py:403): /_forensic/report (HTML) ausgeliefert: user_id=538299
+2026-05-09 13:47:08 [INFO    ] forensic.db.evidence_db (evidence_db.py:1443): Editor-Lock freigegeben (lock_id=2bc4b2df-aac4-4b1e-8155-37f4e46d0cd6)
+2026-05-09 13:47:08 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/report HTTP/1.1" 200 -
+2026-05-09 13:47:08 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/userinfo.css (ajax=False)
+2026-05-09 13:47:08 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /.well-known/appspecific/com.chrome.devtools.json (ajax=False)
+2026-05-09 13:47:08 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/userinfo.css' ausgeliefert (43575 bytes)
+2026-05-09 13:47:08 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:264): Seite nicht im Scope: '/.well-known/appspecific/com.chrome.devtools.json' (method=GET)
+2026-05-09 13:47:08 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/userinfo.css HTTP/1.1" 200 -
+2026-05-09 13:47:08 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/report.css (ajax=False)
+2026-05-09 13:47:08 [DEBUG   ] forensic.server.shell_handler (shell_handler.py:119): Shell: NOT_IN_SCOPE für '/.well-known/appspecific/com.chrome.devtools.json'
+2026-05-09 13:47:08 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 -
+2026-05-09 13:47:08 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/report.css' ausgeliefert (84375 bytes)
+2026-05-09 13:47:08 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/report.css HTTP/1.1" 200 -
+2026-05-09 13:47:08 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/static/editor/editor.bundle.js (ajax=False)
+2026-05-09 13:47:08 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/placeholder_chips.js (ajax=False)
+2026-05-09 13:47:08 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/placeholder_wizard.js (ajax=False)
+2026-05-09 13:47:08 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/placeholder_chips.js' ausgeliefert (19776 bytes)
+2026-05-09 13:47:08 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/placeholder_chips.js HTTP/1.1" 200 -
+2026-05-09 13:47:08 [DEBUG   ] forensic.forensic_api.static (static.py:195): Editor-Asset: 'editor.bundle.js' ausgeliefert (367120 bytes)
+2026-05-09 13:47:08 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/static/editor/editor.bundle.js HTTP/1.1" 200 -
+2026-05-09 13:47:08 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/placeholder_wizard.js' ausgeliefert (22661 bytes)
+2026-05-09 13:47:08 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/module_panel.js (ajax=False)
+2026-05-09 13:47:08 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/placeholder_wizard.js HTTP/1.1" 200 -
+2026-05-09 13:47:08 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/module_panel.js' ausgeliefert (38824 bytes)
+2026-05-09 13:47:08 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/module_panel.js HTTP/1.1" 200 -
+2026-05-09 13:47:08 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/comment_thread.js (ajax=False)
+2026-05-09 13:47:08 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/annotation_sidebar.js (ajax=False)
+2026-05-09 13:47:08 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/report_editor.js (ajax=False)
+2026-05-09 13:47:08 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/comment_thread.js' ausgeliefert (16640 bytes)
+2026-05-09 13:47:08 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/comment_thread.js HTTP/1.1" 200 -
+2026-05-09 13:47:08 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/annotation_sidebar.js' ausgeliefert (24113 bytes)
+2026-05-09 13:47:08 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/annotation_sidebar.js HTTP/1.1" 200 -
+2026-05-09 13:47:08 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/report_editor.js' ausgeliefert (83202 bytes)
+2026-05-09 13:47:08 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/report_editor.js HTTP/1.1" 200 -
+2026-05-09 13:47:08 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/userinfo.js (ajax=False)
+2026-05-09 13:47:08 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/userinfo.js' ausgeliefert (69864 bytes)
+2026-05-09 13:47:08 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/userinfo.js HTTP/1.1" 200 -
+2026-05-09 13:47:09 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/events (ajax=False)
+2026-05-09 13:47:09 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/events HTTP/1.1" 200 -
+2026-05-09 13:47:09 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /favicon.ico (ajax=False)
+2026-05-09 13:47:09 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:264): Seite nicht im Scope: '/favicon.ico' (method=GET)
+2026-05-09 13:47:09 [DEBUG   ] forensic.server.shell_handler (shell_handler.py:119): Shell: NOT_IN_SCOPE für '/favicon.ico'
+2026-05-09 13:47:09 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /favicon.ico HTTP/1.1" 404 -
+2026-05-09 13:47:09 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/report (ajax=False)
+2026-05-09 13:47:09 [INFO    ] forensic.db.evidence_db (evidence_db.py:1424): Editor-Lock erworben: 'paul' (lock_id=40c27c41-d0e1-44d9-965d-27b69a32737a)
+2026-05-09 13:47:09 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/report HTTP/1.1" 200 -
+2026-05-09 13:47:09 [INFO    ] forensic.forensic_api.report (report.py:897): acquire_lock: 'paul' hat Lock erworben (sse_client=efa6cb6b-10de-4ba2-9c1c-7ec5a4355c00)
+2026-05-09 13:47:09 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/reports (ajax=True)
+2026-05-09 13:47:09 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/reports HTTP/1.1" 200 -
+2026-05-09 13:47:09 [DEBUG   ] forensic.forensic_api.reports (reports.py:90): /_forensic/reports (GET): 1 Berichte ausgeliefert
+2026-05-09 13:47:09 [DEBUG   ] forensic.forensic_api.events (events.py:221): SSE-Stream: Client hat Verbindung getrennt (client_id=2170d8c0-646d-4413-a964-c8b6d2ccf140)
+2026-05-09 13:47:09 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/report (ajax=True)
+2026-05-09 13:47:09 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/report?format=json HTTP/1.1" 200 -
+2026-05-09 13:47:09 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/static/editor/editor.bundle.js.map (ajax=False)
+2026-05-09 13:47:09 [DEBUG   ] forensic.forensic_api.static (static.py:195): Editor-Asset: 'editor.bundle.js.map' ausgeliefert (938680 bytes)
+2026-05-09 13:47:09 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/static/editor/editor.bundle.js.map HTTP/1.1" 200 -
+2026-05-09 13:47:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 13:47:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 13:48:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 13:48:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 13:49:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 13:49:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 13:50:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 13:50:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 13:51:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 13:51:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 13:52:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 13:52:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 13:53:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 13:53:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 13:54:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 13:54:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 13:55:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 13:55:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 13:55:51 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/templates (ajax=True)
+2026-05-09 13:55:51 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/templates HTTP/1.1" 200 -
+2026-05-09 13:55:54 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/placeholders/library (ajax=True)
+2026-05-09 13:55:54 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/placeholders/library HTTP/1.1" 200 -
+2026-05-09 13:56:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 13:56:47 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 13:56:47 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=21fe8fd1-1d4a-44d1-bd7c-c077a30b6351 type=paragraph report_id=2 von 'paul'
+2026-05-09 13:56:47 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 13:56:47 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:246): Block gespeichert: block_id=21fe8fd1-1d4a-44d1-bd7c-c077a30b6351 type=paragraph owner=paul
+2026-05-09 13:56:47 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 13:56:47 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=i8OxxJCEj2 type=delimiter report_id=2 von 'paul'
+2026-05-09 13:56:47 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 13:56:47 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:246): Block gespeichert: block_id=i8OxxJCEj2 type=delimiter owner=paul
+2026-05-09 13:56:47 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 13:56:47 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=ePoQFO0ZVy type=paragraph report_id=2 von 'paul'
+2026-05-09 13:56:47 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 13:56:47 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:246): Block gespeichert: block_id=ePoQFO0ZVy type=paragraph owner=paul
+2026-05-09 13:56:47 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 13:56:47 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=bll-PCJeEv type=paragraph report_id=2 von 'paul'
+2026-05-09 13:56:47 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 13:56:47 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:246): Block gespeichert: block_id=bll-PCJeEv type=paragraph owner=paul
+2026-05-09 13:56:47 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 13:56:47 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=514412a5-9f7f-4766-a03c-6619cdee2843 type=paragraph report_id=2 von 'paul'
+2026-05-09 13:56:47 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 13:56:47 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:246): Block gespeichert: block_id=514412a5-9f7f-4766-a03c-6619cdee2843 type=paragraph owner=paul
+2026-05-09 13:56:47 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 13:56:47 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=9Tz-6p_SWf type=paragraph report_id=2 von 'paul'
+2026-05-09 13:56:47 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 13:56:47 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:246): Block gespeichert: block_id=9Tz-6p_SWf type=paragraph owner=paul
+2026-05-09 13:56:47 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 13:56:47 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=f7a7ae29-3ccf-4ec8-9ea6-3281c64142cb type=paragraph report_id=2 von 'paul'
+2026-05-09 13:56:47 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 13:56:47 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:246): Block gespeichert: block_id=f7a7ae29-3ccf-4ec8-9ea6-3281c64142cb type=paragraph owner=paul
+2026-05-09 13:56:47 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 13:56:47 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=85KQx12QVa type=list report_id=2 von 'paul'
+2026-05-09 13:56:47 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 13:56:47 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:246): Block gespeichert: block_id=85KQx12QVa type=list owner=paul
+2026-05-09 13:56:47 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 13:56:47 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=a6I-NPWFfk type=evidence report_id=2 von 'paul'
+2026-05-09 13:56:47 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 13:56:47 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:246): Block gespeichert: block_id=a6I-NPWFfk type=evidence owner=paul
+2026-05-09 13:56:47 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 13:56:47 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=ef75e706-dedd-435e-ae62-1ed82b040743 type=paragraph report_id=2 von 'paul'
+2026-05-09 13:56:47 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 13:56:47 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:246): Block gespeichert: block_id=ef75e706-dedd-435e-ae62-1ed82b040743 type=paragraph owner=paul
+2026-05-09 13:56:47 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 13:56:47 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=1e7bd7c5-a255-49f8-83a7-04f9c0a88c07 type=paragraph report_id=2 von 'paul'
+2026-05-09 13:56:47 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 13:56:47 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:246): Block gespeichert: block_id=1e7bd7c5-a255-49f8-83a7-04f9c0a88c07 type=paragraph owner=paul
+2026-05-09 13:56:47 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 13:56:47 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=b18d53c4-8663-4517-9664-825ea6faaaec type=paragraph report_id=2 von 'paul'
+2026-05-09 13:56:47 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 13:56:47 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:246): Block gespeichert: block_id=b18d53c4-8663-4517-9664-825ea6faaaec type=paragraph owner=paul
+2026-05-09 13:56:47 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 13:56:47 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=6b0ac64f-3a00-420f-9b99-497a3969c92b type=paragraph report_id=2 von 'paul'
+2026-05-09 13:56:47 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 13:56:47 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:246): Block gespeichert: block_id=6b0ac64f-3a00-420f-9b99-497a3969c92b type=paragraph owner=paul
+2026-05-09 13:56:47 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 13:56:47 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=3e826a38-d7c4-46c1-b44c-86ece89ca95e type=paragraph report_id=2 von 'paul'
+2026-05-09 13:56:47 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 13:56:47 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:246): Block gespeichert: block_id=3e826a38-d7c4-46c1-b44c-86ece89ca95e type=paragraph owner=paul
+2026-05-09 13:56:47 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/order (ajax=False)
+2026-05-09 13:56:47 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/order HTTP/1.1" 200 -
+2026-05-09 13:56:47 [INFO    ] forensic.forensic_api.editor_order (editor_order.py:174): Blockreihenfolge aktualisiert: report_id=2, 14 Eintraege von 'paul'
+2026-05-09 13:56:47 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/report (ajax=True)
+2026-05-09 13:56:47 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/report?format=json HTTP/1.1" 200 -
+2026-05-09 13:56:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 13:57:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 13:57:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 13:58:17 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/report (ajax=True)
+2026-05-09 13:58:17 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=d55e0f4e-b289-4a32-a281-051552569437 type=paragraph report_id=2 von 'paul'
+2026-05-09 13:58:17 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/report HTTP/1.1" 201 -
+2026-05-09 13:58:17 [INFO    ] forensic.forensic_api.report (report.py:658): save_block: block_id=d55e0f4e-b289-4a32-a281-051552569437 report_id=2 type=paragraph von 'paul'
+2026-05-09 13:58:17 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/report (ajax=True)
+2026-05-09 13:58:17 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/report?format=json HTTP/1.1" 200 -
+2026-05-09 13:58:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/report (ajax=False)
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/report (ajax=False)
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/report HTTP/1.1" 200 -
+2026-05-09 13:58:22 [DEBUG   ] forensic.forensic_api.report (report.py:403): /_forensic/report (HTML) ausgeliefert: user_id=538299
+2026-05-09 13:58:22 [INFO    ] forensic.db.evidence_db (evidence_db.py:1443): Editor-Lock freigegeben (lock_id=40c27c41-d0e1-44d9-965d-27b69a32737a)
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/report HTTP/1.1" 200 -
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/userinfo.css (ajax=False)
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/report.css (ajax=False)
+2026-05-09 13:58:22 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/userinfo.css' ausgeliefert (43575 bytes)
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/userinfo.css HTTP/1.1" 200 -
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/static/editor/editor.bundle.js (ajax=False)
+2026-05-09 13:58:22 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/report.css' ausgeliefert (84375 bytes)
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/report.css HTTP/1.1" 200 -
+2026-05-09 13:58:22 [DEBUG   ] forensic.forensic_api.static (static.py:195): Editor-Asset: 'editor.bundle.js' ausgeliefert (367120 bytes)
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/static/editor/editor.bundle.js HTTP/1.1" 200 -
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/placeholder_chips.js (ajax=False)
+2026-05-09 13:58:22 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/placeholder_chips.js' ausgeliefert (19776 bytes)
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/placeholder_wizard.js (ajax=False)
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/placeholder_chips.js HTTP/1.1" 200 -
+2026-05-09 13:58:22 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/placeholder_wizard.js' ausgeliefert (22661 bytes)
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/placeholder_wizard.js HTTP/1.1" 200 -
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/module_panel.js (ajax=False)
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/annotation_sidebar.js (ajax=False)
+2026-05-09 13:58:22 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/module_panel.js' ausgeliefert (38824 bytes)
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/module_panel.js HTTP/1.1" 200 -
+2026-05-09 13:58:22 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/annotation_sidebar.js' ausgeliefert (24113 bytes)
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/annotation_sidebar.js HTTP/1.1" 200 -
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/comment_thread.js (ajax=False)
+2026-05-09 13:58:22 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/comment_thread.js' ausgeliefert (16640 bytes)
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/comment_thread.js HTTP/1.1" 200 -
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/report_editor.js (ajax=False)
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/userinfo.js (ajax=False)
+2026-05-09 13:58:22 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/report_editor.js' ausgeliefert (83202 bytes)
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/report_editor.js HTTP/1.1" 200 -
+2026-05-09 13:58:22 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/userinfo.js' ausgeliefert (69864 bytes)
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/userinfo.js HTTP/1.1" 200 -
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /.well-known/appspecific/com.chrome.devtools.json (ajax=False)
+2026-05-09 13:58:22 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:264): Seite nicht im Scope: '/.well-known/appspecific/com.chrome.devtools.json' (method=GET)
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.shell_handler (shell_handler.py:119): Shell: NOT_IN_SCOPE für '/.well-known/appspecific/com.chrome.devtools.json'
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 -
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/events (ajax=False)
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/events HTTP/1.1" 200 -
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/report (ajax=False)
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/templates (ajax=True)
+2026-05-09 13:58:22 [INFO    ] forensic.db.evidence_db (evidence_db.py:1424): Editor-Lock erworben: 'paul' (lock_id=5d1e6e17-92a4-4e5a-bd2f-1b6dd6f484a9)
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/report HTTP/1.1" 200 -
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/templates HTTP/1.1" 200 -
+2026-05-09 13:58:22 [INFO    ] forensic.forensic_api.report (report.py:897): acquire_lock: 'paul' hat Lock erworben (sse_client=9689085a-12d4-4dd2-97b9-76f603d1cd68)
+2026-05-09 13:58:22 [WARNING ] forensic.db.coordinator_db (coordinator_db.py:161): get_support_status(): Fehler beim Lesen — gebe inactive zurück: tuple index out of range
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/reports (ajax=True)
+2026-05-09 13:58:22 [DEBUG   ] forensic.forensic_api.events (events.py:221): SSE-Stream: Client hat Verbindung getrennt (client_id=efa6cb6b-10de-4ba2-9c1c-7ec5a4355c00)
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/reports HTTP/1.1" 200 -
+2026-05-09 13:58:22 [DEBUG   ] forensic.forensic_api.reports (reports.py:90): /_forensic/reports (GET): 1 Berichte ausgeliefert
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/report (ajax=True)
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/report?format=json HTTP/1.1" 200 -
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/static/editor/editor.bundle.js.map (ajax=False)
+2026-05-09 13:58:22 [DEBUG   ] forensic.forensic_api.static (static.py:195): Editor-Asset: 'editor.bundle.js.map' ausgeliefert (938680 bytes)
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/static/editor/editor.bundle.js.map HTTP/1.1" 200 -
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/templates (ajax=True)
+2026-05-09 13:58:22 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/templates HTTP/1.1" 200 -
+2026-05-09 13:58:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 13:59:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 13:59:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:00:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:00:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:01:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/report (ajax=False)
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/report (ajax=False)
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/report HTTP/1.1" 200 -
+2026-05-09 14:01:27 [DEBUG   ] forensic.forensic_api.report (report.py:403): /_forensic/report (HTML) ausgeliefert: user_id=538299
+2026-05-09 14:01:27 [INFO    ] forensic.db.evidence_db (evidence_db.py:1443): Editor-Lock freigegeben (lock_id=5d1e6e17-92a4-4e5a-bd2f-1b6dd6f484a9)
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/report HTTP/1.1" 200 -
+2026-05-09 14:01:27 [DEBUG   ] forensic.forensic_api.events (events.py:221): SSE-Stream: Client hat Verbindung getrennt (client_id=9689085a-12d4-4dd2-97b9-76f603d1cd68)
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /.well-known/appspecific/com.chrome.devtools.json (ajax=False)
+2026-05-09 14:01:27 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:264): Seite nicht im Scope: '/.well-known/appspecific/com.chrome.devtools.json' (method=GET)
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.shell_handler (shell_handler.py:119): Shell: NOT_IN_SCOPE für '/.well-known/appspecific/com.chrome.devtools.json'
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 -
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/userinfo.css (ajax=False)
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/report.css (ajax=False)
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/static/editor/editor.bundle.js (ajax=False)
+2026-05-09 14:01:27 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/userinfo.css' ausgeliefert (43575 bytes)
+2026-05-09 14:01:27 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/report.css' ausgeliefert (84375 bytes)
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/report.css HTTP/1.1" 200 -
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/userinfo.css HTTP/1.1" 200 -
+2026-05-09 14:01:27 [DEBUG   ] forensic.forensic_api.static (static.py:195): Editor-Asset: 'editor.bundle.js' ausgeliefert (367120 bytes)
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/static/editor/editor.bundle.js HTTP/1.1" 200 -
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/placeholder_chips.js (ajax=False)
+2026-05-09 14:01:27 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/placeholder_chips.js' ausgeliefert (20074 bytes)
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/placeholder_chips.js HTTP/1.1" 200 -
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/placeholder_wizard.js (ajax=False)
+2026-05-09 14:01:27 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/placeholder_wizard.js' ausgeliefert (22661 bytes)
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/placeholder_wizard.js HTTP/1.1" 200 -
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/module_panel.js (ajax=False)
+2026-05-09 14:01:27 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/module_panel.js' ausgeliefert (38824 bytes)
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/annotation_sidebar.js (ajax=False)
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/module_panel.js HTTP/1.1" 200 -
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/comment_thread.js (ajax=False)
+2026-05-09 14:01:27 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/annotation_sidebar.js' ausgeliefert (24113 bytes)
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/annotation_sidebar.js HTTP/1.1" 200 -
+2026-05-09 14:01:27 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/comment_thread.js' ausgeliefert (16640 bytes)
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/comment_thread.js HTTP/1.1" 200 -
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/report_editor.js (ajax=False)
+2026-05-09 14:01:27 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/report_editor.js' ausgeliefert (83202 bytes)
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/report_editor.js HTTP/1.1" 200 -
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/userinfo.js (ajax=False)
+2026-05-09 14:01:27 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/userinfo.js' ausgeliefert (69864 bytes)
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/userinfo.js HTTP/1.1" 200 -
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/events (ajax=False)
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/events HTTP/1.1" 200 -
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /favicon.ico (ajax=False)
+2026-05-09 14:01:27 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:264): Seite nicht im Scope: '/favicon.ico' (method=GET)
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.shell_handler (shell_handler.py:119): Shell: NOT_IN_SCOPE für '/favicon.ico'
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /favicon.ico HTTP/1.1" 404 -
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/report (ajax=False)
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/templates (ajax=True)
+2026-05-09 14:01:27 [INFO    ] forensic.db.evidence_db (evidence_db.py:1424): Editor-Lock erworben: 'paul' (lock_id=10f8a9d2-9a48-44ac-b493-193658348529)
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/templates HTTP/1.1" 200 -
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/report HTTP/1.1" 200 -
+2026-05-09 14:01:27 [INFO    ] forensic.forensic_api.report (report.py:897): acquire_lock: 'paul' hat Lock erworben (sse_client=f36179db-af85-4a35-ba0c-1b8f5e09c8c1)
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/reports (ajax=True)
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/static/editor/editor.bundle.js.map (ajax=False)
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/reports HTTP/1.1" 200 -
+2026-05-09 14:01:27 [DEBUG   ] forensic.forensic_api.reports (reports.py:90): /_forensic/reports (GET): 1 Berichte ausgeliefert
+2026-05-09 14:01:27 [DEBUG   ] forensic.forensic_api.static (static.py:195): Editor-Asset: 'editor.bundle.js.map' ausgeliefert (938680 bytes)
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/static/editor/editor.bundle.js.map HTTP/1.1" 200 -
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/report (ajax=True)
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/report?format=json HTTP/1.1" 200 -
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/templates (ajax=True)
+2026-05-09 14:01:27 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/templates HTTP/1.1" 200 -
+2026-05-09 14:01:31 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/placeholders/library (ajax=True)
+2026-05-09 14:01:31 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/placeholders/library HTTP/1.1" 200 -
+2026-05-09 14:01:33 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/report (ajax=True)
+2026-05-09 14:01:33 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=c07412b8-5be3-4fb1-8138-cddef458c7de type=paragraph report_id=2 von 'paul'
+2026-05-09 14:01:33 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/report HTTP/1.1" 201 -
+2026-05-09 14:01:33 [INFO    ] forensic.forensic_api.report (report.py:658): save_block: block_id=c07412b8-5be3-4fb1-8138-cddef458c7de report_id=2 type=paragraph von 'paul'
+2026-05-09 14:01:33 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/report (ajax=True)
+2026-05-09 14:01:33 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/report?format=json HTTP/1.1" 200 -
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/report (ajax=False)
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/report HTTP/1.1" 200 -
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/report (ajax=False)
+2026-05-09 14:01:39 [DEBUG   ] forensic.forensic_api.report (report.py:403): /_forensic/report (HTML) ausgeliefert: user_id=538299
+2026-05-09 14:01:39 [INFO    ] forensic.db.evidence_db (evidence_db.py:1443): Editor-Lock freigegeben (lock_id=10f8a9d2-9a48-44ac-b493-193658348529)
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/report HTTP/1.1" 200 -
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /.well-known/appspecific/com.chrome.devtools.json (ajax=False)
+2026-05-09 14:01:39 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:264): Seite nicht im Scope: '/.well-known/appspecific/com.chrome.devtools.json' (method=GET)
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.shell_handler (shell_handler.py:119): Shell: NOT_IN_SCOPE für '/.well-known/appspecific/com.chrome.devtools.json'
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 -
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/userinfo.css (ajax=False)
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/report.css (ajax=False)
+2026-05-09 14:01:39 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/userinfo.css' ausgeliefert (43575 bytes)
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/userinfo.css HTTP/1.1" 200 -
+2026-05-09 14:01:39 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/report.css' ausgeliefert (84375 bytes)
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/report.css HTTP/1.1" 200 -
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/static/editor/editor.bundle.js (ajax=False)
+2026-05-09 14:01:39 [DEBUG   ] forensic.forensic_api.static (static.py:195): Editor-Asset: 'editor.bundle.js' ausgeliefert (367120 bytes)
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/static/editor/editor.bundle.js HTTP/1.1" 200 -
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/placeholder_chips.js (ajax=False)
+2026-05-09 14:01:39 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/placeholder_chips.js' ausgeliefert (20074 bytes)
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/placeholder_chips.js HTTP/1.1" 200 -
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/placeholder_wizard.js (ajax=False)
+2026-05-09 14:01:39 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/placeholder_wizard.js' ausgeliefert (22661 bytes)
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/placeholder_wizard.js HTTP/1.1" 200 -
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/module_panel.js (ajax=False)
+2026-05-09 14:01:39 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/module_panel.js' ausgeliefert (38824 bytes)
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/module_panel.js HTTP/1.1" 200 -
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/annotation_sidebar.js (ajax=False)
+2026-05-09 14:01:39 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/annotation_sidebar.js' ausgeliefert (24113 bytes)
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/annotation_sidebar.js HTTP/1.1" 200 -
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/comment_thread.js (ajax=False)
+2026-05-09 14:01:39 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/comment_thread.js' ausgeliefert (16640 bytes)
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/comment_thread.js HTTP/1.1" 200 -
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/report_editor.js (ajax=False)
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/userinfo.js (ajax=False)
+2026-05-09 14:01:39 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/userinfo.js' ausgeliefert (69864 bytes)
+2026-05-09 14:01:39 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/report_editor.js' ausgeliefert (83202 bytes)
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/userinfo.js HTTP/1.1" 200 -
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/report_editor.js HTTP/1.1" 200 -
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/events (ajax=False)
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/events HTTP/1.1" 200 -
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /favicon.ico (ajax=False)
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/static/editor/editor.bundle.js.map (ajax=False)
+2026-05-09 14:01:39 [DEBUG   ] forensic.forensic_api.static (static.py:195): Editor-Asset: 'editor.bundle.js.map' ausgeliefert (938680 bytes)
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/static/editor/editor.bundle.js.map HTTP/1.1" 200 -
+2026-05-09 14:01:39 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:264): Seite nicht im Scope: '/favicon.ico' (method=GET)
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.shell_handler (shell_handler.py:119): Shell: NOT_IN_SCOPE für '/favicon.ico'
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /favicon.ico HTTP/1.1" 404 -
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/report (ajax=False)
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/templates (ajax=True)
+2026-05-09 14:01:39 [INFO    ] forensic.db.evidence_db (evidence_db.py:1424): Editor-Lock erworben: 'paul' (lock_id=0b21b276-1162-4e8f-adf4-6242c282cfcd)
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/templates HTTP/1.1" 200 -
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/report HTTP/1.1" 200 -
+2026-05-09 14:01:39 [INFO    ] forensic.forensic_api.report (report.py:897): acquire_lock: 'paul' hat Lock erworben (sse_client=45d043bb-63de-4d95-b9dc-cc0781d289a3)
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/reports (ajax=True)
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/reports HTTP/1.1" 200 -
+2026-05-09 14:01:39 [DEBUG   ] forensic.forensic_api.reports (reports.py:90): /_forensic/reports (GET): 1 Berichte ausgeliefert
+2026-05-09 14:01:39 [DEBUG   ] forensic.forensic_api.events (events.py:221): SSE-Stream: Client hat Verbindung getrennt (client_id=f36179db-af85-4a35-ba0c-1b8f5e09c8c1)
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/report (ajax=True)
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/report?format=json HTTP/1.1" 200 -
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/templates (ajax=True)
+2026-05-09 14:01:39 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/templates HTTP/1.1" 200 -
+2026-05-09 14:01:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:02:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:02:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:03:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:03:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:04:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:04:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:05:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:05:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:06:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:06:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:07:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:07:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:08:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:08:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:09:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:09:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:10:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:10:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:11:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:11:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:12:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:12:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:13:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:13:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:14:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:14:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:15:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:15:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:16:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:16:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:17:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:17:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:18:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:18:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:19:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:19:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:20:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:20:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:21:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:21:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:22:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:22:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:23:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:23:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:24:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:24:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:25:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:25:24 [WARNING ] forensic.db.coordinator_db (coordinator_db.py:161): get_support_status(): Fehler beim Lesen — gebe inactive zurück: tuple index out of range
+2026-05-09 14:25:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:26:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:26:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:27:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:27:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:28:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:28:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:29:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:29:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:30:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:30:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:31:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:31:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:32:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:32:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:33:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:33:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:34:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:34:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:35:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:35:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:36:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:36:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:37:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:37:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:38:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:38:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:39:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:39:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:40:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:40:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:41:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:41:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:42:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:42:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:43:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:43:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:44:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:44:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:45:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:45:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:46:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:46:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:47:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:47:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:48:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:48:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:49:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:49:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:50:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:50:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:51:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:51:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:52:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:52:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:53:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:53:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:53:54 [WARNING ] forensic.db.coordinator_db (coordinator_db.py:161): get_support_status(): Fehler beim Lesen — gebe inactive zurück: tuple index out of range
+2026-05-09 14:54:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:54:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:55:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:55:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:56:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:56:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:57:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:57:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:58:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:58:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:59:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 14:59:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:00:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:00:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:01:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:01:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:02:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:02:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:03:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:03:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:04:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:04:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:05:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:05:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:06:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:06:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:07:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:07:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:08:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:08:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:09:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:09:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:10:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:10:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:11:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:11:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:12:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:12:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:13:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:13:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:14:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:14:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:15:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:15:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:16:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:16:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:17:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:17:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:18:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:18:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:19:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:19:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:20:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:20:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:21:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:21:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:22:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:22:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:23:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:23:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:24:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:24:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:25:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:25:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:26:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:26:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:27:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:27:40 [WARNING ] forensic.db.coordinator_db (coordinator_db.py:161): get_support_status(): Fehler beim Lesen — gebe inactive zurück: tuple index out of range
+2026-05-09 15:27:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:28:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:28:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:29:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:29:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:30:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:30:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:31:21 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 15:31:51 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
