@@ -1,4 +1,5 @@
 # Fehler auf der Berichtsseite
+(Cache #0000001)
 Ich werde in dieser Liste fortlaufend die von mir beobachteten Fehler aufführen.
 Falls diese abgeschlossen und verworfen wurden, werde ich sie durchstreichen. Alles, was nicht durchgestrichen ist, ist also noch offen und muss bearbeitet werden.
 Am Anfang jedes Eintrages kann eine Zahl stehen. Je höher der Wert, desto dringender ist das Problem und sollte daher vorrangig behoben werden.
@@ -51,6 +52,7 @@ Hier werden CSS‑Fehler aufgeführt. Das sind Themen, bei denen die Anzeige fun
 22. (20) Die Visualisierung des Speicherns gefällt mir nicht! Ich möchte: Keine Aktion (default) `.save-indicator--idle`: graue, leicht blury Diskette `🖫`; aktives Speichern `.save-indicator--saving`: grüner, pulsierender Rahmen um das Symbole. Diskette ist grün; Speichern erfolgreich `.save-indicator--saved`: Diskette ist für 5 Sekunden grün wird dann wieder default-grau. Speichern  `.save-indicator--failed`fehlgeschlagen: Diskette ist rot. Dauerhaft. Bis Speichern wieder erfolgreich ist.
 23. (15) `#editor-save-indicator, .save-indicator` soll die `font-size: 25px` haben. Das direkte Styling bei Elementen wir bei diesem erfolgt, hat grundsätzlich zu unterbleiben. Styles werden ausschließlich über Klassen und CSS Dokument vorgenommen!
 24. (20) Der Eintrag für `max-height: 420px` in `#accordion-body-blocks` muss entfernt werden!
+25. (5) Die Schaltfläche `Drucken` hat nun zwar eine Funktion, aber sie ist nun anders hoch als die anderen Schaltflächen. Bitte homogenisieren.
 ---
 ## 2. Funktionalität Frontend / Daten / JS
 Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mit dem Webwerkzeug arbeiten kann oder ihn dabei nicht im vorgesehenen Maße unterstützen oder behindern.
@@ -59,7 +61,7 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
  2. (8) Bei Annotationen soll das Konzept zum Ausblenden geändert werden. Statt der Checkbox `bereits verankerte ausblenden`, sollen dort Schalter sein. Ausblenden: `Verankerte`, `Tags`, `Ermittler`, `Zitate`, `Quelle`, `Notizen` Durch CSS sollen diese Checkboxen dann die betroffenen Teile ausblenden. `#accordion-body-annotations:has(#as-hide-anchored[checked]) .as-annotation.as-ann-anchored {display: none}` Warum löschen wir die Elemente hier, statt sie einfach nur auszublenden? Das leuchtet mir nicht ein.
  3. ~~(10) Für `.mp-item mp-item--standard` fehlt das `<div>` für den Eintrag `mp-item-preview` also der beschreibende Text. Auch hier soll als CSS-Style dasselbe gelten wie im Bereich `Standard`.~~
  4. (2) Die Funktionalität für die Schaltfläche `⬇ Export ▾` fehlt.
- 5. (8) Die Funktionalität für die Schaltfläche `✎ Drucken` fehlt.
+ 5. ~~(8) Die Funktionalität für die Schaltfläche `✎ Drucken` fehlt.~~
  6. ~~(5) Beim Hover über das Schloss-Symbol `🔓` von `#report-lock-indicator` ist nicht klar, was es jetzt aussagen soll. Beim Hover steht da `Lock-Status`, aber nicht der Zustand. Das ist unzureichend. Hier muss eine Nachricht hin, die dem Ermittler eine Information vermittelt.  Gleiches gilt für `#report-lock-status`.~~
  7. (2) Die Funktionalität für die Schaltfläche `🔄 Aktualisieren` fehlt.
  8. ~~(6) Im Akkordeon-Abschnitt für `Formular` (Warum hat alles eine ID, aber das nicht?) steht, obwohl ein Bericht geöffnet ist, `Kein Bericht geöffnet`. Das ist irritierend, weil nicht wahr. Der Text, wenn der Editor verfügbar ist, muss anders lauten. Wir benötigen hier einen weiteren Platzhalter. Dieser kann/sollte per CSS geschaltet werden. Nachfolgendes ist die Idee:`#report-workspace:has(#report-selector-container select:checked) .pf-empty-state {display: none;}` Ich bin mir nicht sicher, ob `select:checked` hier korrekt ist.~~
@@ -128,6 +130,7 @@ documentTouched @ editorjs.mjs:10898
 41. (30) Ab Build 132 wird zwar der Platzhalter im Editor eingefügt. Aber er wird unter dem Paragraph, auf dem der Fokus liegt eingefügt. Es muss aber IM Block eingefügt werden. So wie das mit dem Context-Menü von Editor bereits möglich ist.
 42. (20) Der Doppelklick auf den Inline-Platzhalter öffnet zwar den Akkordeon-Bereich `Formular`, aber springt nicht zum Eingabefeld für den angeklickten Inline-Platzhalter.
 43. (30) Das Speichern nach dem Einfügen von Platzhaltern funktioniert nicht.
+44. (10) Wenn der `Kommentare` Akkordeon-Bereich aktiv ist, sollte ein Klick in einen Block die zugehörigen Kommentare dieses Bereichs anzeigen. ABER es darf nicht der Fokus auf die Kommentareingabe für einen neuen Kommentar gesetzt werden! Das zusätzliche Setzen des Fokus darf und muss grundsätzlich nur passieren, wenn die Schaltfläche `Kommentieren` geklickt wird.
 ---
 ## 3. Funktionalität Backend / Python / SQLite3-Datenbank
 Hier werden Funktionsprobleme aufgeführt, die aufgrund von Problemen im Webserver oder der Datenbank auftreten.

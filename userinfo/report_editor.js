@@ -63,14 +63,13 @@
  *     - Bug 2.27: Speicher-Indikator drei sichtbare Zustaende: idle/saving/saved.
  *     Beleg: Bugfix Build 130, Projektgespraech 2026-05-09.
  *
- *   Build 133 (2026-05-09): Bug 2.26 behoben.
- *     Fremde Bloecke werden im Auto-Save uebersprungen. _performAutoSave()
- *     baut einen ownBlockIds-Set aus _currentBlocks (owner === username)
- *     und speichert nur eigene Bloecke. Bekannte fremde Bloecke werden
- *     per continue-Statement uebersprungen.
- *     Beleg: Bugfix Build 133, Projektgespraech 2026-05-09.
+ *   Build 134 (2026-05-09): Bug 2.5 behoben.
+ *     Drucken-Schaltflaeche (btn-print) loest jetzt window.print() aus.
+ *     Wenn ein Lock besteht, wird vor dem Drucken ein letzter Auto-Save
+ *     ausgefuehrt damit der gedruckte Stand mit der DB synchron ist.
+ *     Beleg: Bugfix Build 134, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.133 · Build: 133 · 2026-05-09
+ * Version: v0.6.134 · Build: 134 · 2026-05-09
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -2037,6 +2036,29 @@ async function initEditorModule() {
                 btnRefresh.disabled = false;
                 btnRefresh.textContent = '🔄 Aktualisieren';
             }
+        });
+    }
+
+    // Bug 2.5 Fix Build 134: Drucken-Schaltflaeche oeffnet Browser-Druckdialog.
+    // Vor dem Drucken wird ein letzter Auto-Save ausgeloest wenn ein Lock besteht,
+    // damit der gedruckte Stand mit der Datenbank synchron ist.
+    // Beleg: Bugfix Build 134, Projektgespraech 2026-05-09
+    const btnPrint = document.getElementById('btn-print');
+    if (btnPrint) {
+        btnPrint.addEventListener('click', async () => {
+            // Letzten Stand speichern bevor gedruckt wird
+            if (window.EditorState?.lockId && _currentReport?.id) {
+                btnPrint.disabled = true;
+                btnPrint.textContent = '🖶 …';
+                try {
+                    await _performAutoSave(_currentReport.id);
+                } catch (_) { /* Drucken trotzdem fortsetzen */ }
+                finally {
+                    btnPrint.disabled = false;
+                    btnPrint.textContent = '🖶 Drucken';
+                }
+            }
+            window.print();
         });
     }
 }
