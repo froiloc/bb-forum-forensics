@@ -1,5 +1,5 @@
 # Fehler auf der Berichtsseite
-(Cache-buster-pre-extension: 92673918-4c02-11f1-8370-4bed8665d3fa)
+(Cache-buster-pre-extension: 173339da-4c03-11f1-a709-8b5356c7150f)
 
 Ich werde in dieser Liste fortlaufend die von mir beobachteten Fehler aufführen.
 Falls diese abgeschlossen und verworfen wurden, werde ich sie durchstreichen. Alles, was nicht durchgestrichen ist, ist also noch offen und muss bearbeitet werden.
@@ -9,15 +9,15 @@ Nach der Bearbeitung ist das behobene Problem anzugeben. Und zwar mit Kapitel (1
 
 Quellen zum Debuggen:
 * Dieses Dokument mit den Arbeitsanweisungen und Problembeschreibungen:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.92673918-4c02-11f1-8370-4bed8665d3fa.md
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.173339da-4c03-11f1-a709-8b5356c7150f.md
 * Die Ausgabe von DevTools-Console:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.92673918-4c02-11f1-8370-4bed8665d3fa.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.173339da-4c03-11f1-a709-8b5356c7150f.log
 * Die Ausgabe von DevTools-Network:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.92673918-4c02-11f1-8370-4bed8665d3fa.har
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.173339da-4c03-11f1-a709-8b5356c7150f.har
 * Das aktuelle DOM als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last.92673918-4c02-11f1-8370-4bed8665d3fa.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last.173339da-4c03-11f1-a709-8b5356c7150f.html
 * Die Ausgabe des aktuellen Webservers:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.92673918-4c02-11f1-8370-4bed8665d3fa.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.173339da-4c03-11f1-a709-8b5356c7150f.log
 * Die aktuellen Screenshots:
 https://github.com/froiloc/bb-forum-forensics/tree/1b5017a2f62c5a8f1825de76fc6edabb25d6bf66/debug/screenshots
 ***
