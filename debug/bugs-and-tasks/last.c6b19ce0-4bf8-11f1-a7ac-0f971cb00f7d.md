@@ -1,5 +1,5 @@
 # Fehler auf der Berichtsseite
-(Cache-buster-pre-extension: 2c667ae6-4bf5-11f1-b92d-5bd50f57c119)
+(Cache-buster-pre-extension: c6b19ce0-4bf8-11f1-a7ac-0f971cb00f7d)
 
 Ich werde in dieser Liste fortlaufend die von mir beobachteten Fehler aufführen.
 Falls diese abgeschlossen und verworfen wurden, werde ich sie durchstreichen. Alles, was nicht durchgestrichen ist, ist also noch offen und muss bearbeitet werden.
@@ -9,15 +9,15 @@ Nach der Bearbeitung ist das behobene Problem anzugeben. Und zwar mit Kapitel (1
 
 Quellen zum Debuggen:
 * Dieses Dokument mit den Arbeitsanweisungen und Problembeschreibungen:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.2c667ae6-4bf5-11f1-b92d-5bd50f57c119.md
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.c6b19ce0-4bf8-11f1-a7ac-0f971cb00f7d.md
 * Die Ausgabe von DevTools-Console:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.2c667ae6-4bf5-11f1-b92d-5bd50f57c119.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.c6b19ce0-4bf8-11f1-a7ac-0f971cb00f7d.log
 * Die Ausgabe von DevTools-Network:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.2c667ae6-4bf5-11f1-b92d-5bd50f57c119.har
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.c6b19ce0-4bf8-11f1-a7ac-0f971cb00f7d.har
 * Das aktuelle DOM als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last.2c667ae6-4bf5-11f1-b92d-5bd50f57c119.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last.c6b19ce0-4bf8-11f1-a7ac-0f971cb00f7d.html
 * Die Ausgabe des aktuellen Webservers:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.2c667ae6-4bf5-11f1-b92d-5bd50f57c119.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.c6b19ce0-4bf8-11f1-a7ac-0f971cb00f7d.log
 * Die aktuellen Screenshots:
 https://github.com/froiloc/bb-forum-forensics/tree/1b5017a2f62c5a8f1825de76fc6edabb25d6bf66/debug/screenshots
 ***
@@ -111,6 +111,8 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 54. (40) Autosave sorgt dafür, dass der Fokus verloren geht, dass das ausgewählte Formularfeld verlassen wird, dass der Rahmen im Formular und im Editor auf das erste Element verschoben wird, das einen Kommentar hat.
 55. (20) Es kommt noch immer zu Situationen, in denen nicht inline eingefügt werden kann und bei denen dann der Platzhalter nach einem Block eingefügt wird. In diesem Fall wurde der Platzhalter am Ende des Dokuments eingefügt, obwohl zuvor der Fokus in einem der vorderen Blöcke war. Der Cursor wurde zuvor aktiv in einen Text in einem Block platziert. Erst dann wurde die Schaltfläche `+ Einfügen` für `user.aliases` angeklickt. Der Platzhalter wurde dann zunächst am Ende des Dokuments eingefügt. Nach erneutem Platzieren des Cursors im ursprünglichen Block und erneutem Klicken auf `+Einfügen` wurde `user.aliases` dann korrekt inline an der gewünschten Stelle gesetzt.
 56. (30) Nach dem Klicken auf Aktualisieren sind die Einträge für die Platzhalter weg. Siehe Screenshots, bitte anhand der Zeitstempel im Dateinamen vergleichen.
+57. (30) Vorschlag für das 2.47 Problem mit dem ersten Klick. Können wir einen `mousedown` und `keydown`-Listener implementieren, der die _savedCursorRange setzt? Das müsste vor dem Click feuern und dann wäre der Wert gesetzt. Akzeptabel ist der "Restzustand" nur mit Bauchschmerzen. Aber ich würde das vorerst zurückstellen. Auch wenn ich mich freuen würde, wenn wir durch ein aggressiveres Debug-Logging hier mehr Gewissheit erlangen könnten. Speziell wenn der Wert für den Cursor nicht da ist, möchte ich einen vollumfänglichen Zustand des Systems kennen, um Schlussfolgerungen ziehen zu können.
+58. (20) Nach wie vor verlieren wir den Fokus beim Speichern. Das ist nicht akzeptabel. Das ist ein schwerer Rückschlag für ein sauberes UX.
 ---
 ## 3. Funktionalität Backend / Python / SQLite3-Datenbank
 Hier werden Funktionsprobleme aufgeführt, die aufgrund von Problemen im Webserver oder der Datenbank auftreten.

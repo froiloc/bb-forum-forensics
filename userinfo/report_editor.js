@@ -69,7 +69,7 @@
  *     ausgefuehrt damit der gedruckte Stand mit der DB synchron ist.
  *     Beleg: Bugfix Build 134, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.139 · Build: 139 · 2026-05-09
+ * Version: v0.6.140 · Build: 140 · 2026-05-09
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -1058,21 +1058,28 @@ function _bindChipDoubleClick() {
     const holder = document.getElementById('editorjs-holder');
     if (!holder) return;
 
-    // Einfacher Klick: Flash-Animation als "nicht editierbar"-Feedback
-    // (Bug 2.50 Fix Build 137)
+    // Einfacher Klick: Flash-Animation als "nicht editierbar"-Feedback (Bug 2.50 Fix Build 137).
+    // Bug IndexSizeError Fix Build 140: classList.add/remove auf einem contenteditable=false
+    // Span innerhalb eines contenteditable=true Blocks triggert Editor.js MutationObserver,
+    // der dann caret.setToBlock aufruft und getRangeAt(0) crasht (keine aktive Selection).
+    // Fix: Web Animations API (element.animate()) statt classList — kein DOM-Attribut-Trigger.
+    // Beleg: Bugfix Build 140, Projektgespraech 2026-05-09
     holder.addEventListener('click', (e) => {
         const chip = e.target.closest('.ph-chip');
         if (!chip) return;
-        // Nur flashen wenn kein Doppelklick folgt (250ms Toleranz)
+        // Doppelklick-Toleranz: 200ms warten bevor Flash startet
+        // (dblclick-Handler bricht diesen Timer ab)
         chip._flashTimer && clearTimeout(chip._flashTimer);
         chip._flashTimer = setTimeout(() => {
-            chip.classList.remove('ph-chip--flash');
-            chip.classList.add('ph-chip--flash');
-            // Klasse nach Animation entfernen damit sie wiederholbar ist
-            chip.addEventListener('animationend', () => {
-                chip.classList.remove('ph-chip--flash');
-            }, { once: true });
-        }, 180);
+            chip._flashTimer = null;
+            // Web Animations API: kein classList-Aufruf, kein MutationObserver-Trigger
+            chip.animate([
+                { boxShadow: '0 0 0 0px rgba(255,152,0,0)',   backgroundColor: 'inherit' },
+                { boxShadow: '0 0 0 3px rgba(255,152,0,.7)',  backgroundColor: '#fff3e0' },
+                { boxShadow: '0 0 0 5px rgba(255,152,0,.3)' },
+                { boxShadow: '0 0 0 0px rgba(255,152,0,0)',   backgroundColor: 'inherit' },
+            ], { duration: 500, easing: 'ease-out', fill: 'none' });
+        }, 200);
     });
 
     holder.addEventListener('dblclick', (e) => {
