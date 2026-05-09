@@ -133,6 +133,13 @@ _EDITOR_HTML = """\
         <!-- Build 111: btn-new-report-header entfernt.
              "Neuer Bericht" befindet sich bereits im report-selector-container.
              Beleg: Projektgespraech 2026-05-07 -->
+        <!-- Bug 2.40/2.43 Absicherung Build 136: Manueller Speichern-Button.
+             Wird aktiv sobald ein Bericht geladen ist (disabled -> enabled durch JS).
+             Beleg: Bugfix Build 136, Projektgespraech 2026-05-09 -->
+        <button class="report-btn" id="btn-save-now"
+          title="Bericht jetzt speichern (Strg+S)" disabled>
+          💾 Speichern
+        </button>
         <button class="report-btn" id="btn-refresh-placeholders"
           title="Automatische Platzhalter aktualisieren" disabled>
           🔄 Aktualisieren

@@ -1,5 +1,5 @@
 # Fehler auf der Berichtsseite
-(Cache-buster-pre-extension: 6569c210-4bcf-11f1-b748-375a33b899f1)
+(Cache-buster-pre-extension: af170e4a-4bde-11f1-81ee-03e211bdc18d)
 
 Ich werde in dieser Liste fortlaufend die von mir beobachteten Fehler aufführen.
 Falls diese abgeschlossen und verworfen wurden, werde ich sie durchstreichen. Alles, was nicht durchgestrichen ist, ist also noch offen und muss bearbeitet werden.
@@ -9,15 +9,15 @@ Nach der Bearbeitung ist das behobene Problem anzugeben. Und zwar mit Kapitel (1
 
 Quellen zum Debuggen:
 * Dieses Dokument mit den Arbeitsanweisungen und Problembeschreibungen:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.6569c210-4bcf-11f1-b748-375a33b899f1.md
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.af170e4a-4bde-11f1-81ee-03e211bdc18d.md
 * Die Ausgabe von DevTools-Console:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.6569c210-4bcf-11f1-b748-375a33b899f1.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.af170e4a-4bde-11f1-81ee-03e211bdc18d.log
 * Die Ausgabe von DevTools-Network:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.6569c210-4bcf-11f1-b748-375a33b899f1.har
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.af170e4a-4bde-11f1-81ee-03e211bdc18d.har
 * Das aktuelle DOM als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last.6569c210-4bcf-11f1-b748-375a33b899f1.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last.af170e4a-4bde-11f1-81ee-03e211bdc18d.html
 * Die Ausgabe des aktuellen Webservers:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.6569c210-4bcf-11f1-b748-375a33b899f1.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.af170e4a-4bde-11f1-81ee-03e211bdc18d.log
 * Die aktuellen Screenshots:
 https://github.com/froiloc/bb-forum-forensics/tree/1b5017a2f62c5a8f1825de76fc6edabb25d6bf66/debug/screenshots
 ***
@@ -128,11 +128,16 @@ documentTouched @ editorjs.mjs:10898
 38. ~~(50) Sobald ich in einen Block im Editor klicke, um den Text zu bearbeiten, öffnet sich das Akkordeon `Kommentare` und der Fokus springt in das Textarea-Element `.ct-textarea.comment-input-textarea`. Dadurch kann kein Text mehr bearbeitet werden.~~
 39. (40) Das Löschen eines Blocks im Editor ist nicht mehr möglich. Sie werden optisch im Editor gelöscht. Aber nach einem Reload der Seite sind alle gelöschten Elemente wieder da.
 40. (50) Das Speichern wird noch immer nicht in Echtzeit angezeigt oder bleibt aus. Ich habe mit build 132 einen Eintrag hinter dem Wort "Stadt" gemacht. Aber der wurde nicht gespeichert.
-41. (30) Ab Build 132 wird zwar der Platzhalter im Editor eingefügt. Aber er wird unter dem Paragraph, auf dem der Fokus liegt eingefügt. Es muss aber IM Block eingefügt werden. So wie das mit dem Context-Menü von Editor bereits möglich ist.
-42. (20) Der Doppelklick auf den Inline-Platzhalter öffnet zwar den Akkordeon-Bereich `Formular`, aber springt nicht zum Eingabefeld für den angeklickten Inline-Platzhalter.
-43. (30) Das Speichern nach dem Einfügen von Platzhaltern funktioniert nicht.
+41. ~~(30) Ab Build 132 wird zwar der Platzhalter im Editor eingefügt. Aber er wird unter dem Paragraph, auf dem der Fokus liegt eingefügt. Es muss aber IM Block eingefügt werden. So wie das mit dem Context-Menü von Editor bereits möglich ist.~~
+42. ~~(20) Der Doppelklick auf den Inline-Platzhalter öffnet zwar den Akkordeon-Bereich `Formular`, aber springt nicht zum Eingabefeld für den angeklickten Inline-Platzhalter.~~
+43. (30) Das automatische Speichern nach dem Einfügen von Platzhaltern funktioniert nicht.
 44. (10) Wenn der `Kommentare` Akkordeon-Bereich aktiv ist, sollte ein Klick in einen Block die zugehörigen Kommentare dieses Bereichs anzeigen. ABER es darf nicht der Fokus auf die Kommentareingabe für einen neuen Kommentar gesetzt werden! Das zusätzliche Setzen des Fokus darf und muss grundsätzlich nur passieren, wenn die Schaltfläche `Kommentieren` geklickt wird.
 45. (10) Möglicherweise wird der Fokus verloren, nachdem ein Autosave durchgeführt wurde. Ich bin aber nicht sicher. Ich konnte es nicht genau beobachten und nachstellen.
+46. (15) Es muss eine Möglichkeit geben, nach einem Platzhalter den Cursor zu setzen, um dahinter Text zu ergänzen. Gleiches gilt für davor. Vielleicht kann man ein Space um das Tag ergänzen oder einen längeren Space oder ein Zeichen mit null Breite. In jedem Fall muss es möglich sein, um einen einzelnen Cursor herum Text zu schreiben!
+47. (20) Wir sind kurz vor dem totalen Erfolg. NUR BEIM ERSTEN MAL klappt das mit dem Einfügen inline noch nicht (zuverlässig immer). Ab dem zweiten Klick auf die Schaltfläche funktioniert es. Wir müssen also nur noch herausfinden, warum es beim ersten Mal nicht klappt, dann können wir das Thema endlich zumachen. :-)
+48. (20) Beim Einfügen eines Platzhalters muss zuvor geprüft werden, dass der Cursor nicht bereits in einem Platzhalter steht. Dann muss entweder die Aktion abgelehnt werden oder das Element wird ans Ende des Platzhalters, in dem der Cursor steckt, eingefügt.
+49. (10) Wenn die Platzhalter im Formular ausgefüllt sind, sollten die Platzhalter im Editor diese Eingabe auch rendern.
+50. (20) Wir müssen verhindern, dass der Benutzer in Platzhaltern im Editor schreibt. Ideen?
 ---
 ## 3. Funktionalität Backend / Python / SQLite3-Datenbank
 Hier werden Funktionsprobleme aufgeführt, die aufgrund von Problemen im Webserver oder der Datenbank auftreten.

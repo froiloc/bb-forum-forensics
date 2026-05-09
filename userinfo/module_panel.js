@@ -59,7 +59,7 @@
  *       in _renderStandardList vorhanden).
  *     Beleg: Bugfix Build 133, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.133 · Build: 133 · 2026-05-09
+ * Version: v0.6.136 · Build: 136 · 2026-05-09
  * Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06
  */
 
@@ -148,6 +148,14 @@ let _filterRole      = '';
 let _filterSearch    = '';
 let _activeCategory  = 'modules';  // 'modules' | 'queries'
 let _searchTimer     = null;
+/**
+ * Bug 2.41 Fix Build 136: Gespeicherte Cursor-Position im Editor.
+ * mousedown-Handler auf Einfuegen-Buttons speichert die aktive Selection
+ * bevor der Button-Klick den Fokus vom contenteditable nimmt.
+ * _insertQuery() stellt die Selection vor execCommand wieder her.
+ * Beleg: Bugfix Build 136, Projektgespraech 2026-05-09
+ */
+let _savedCursorRange = null;
 
 // ---------------------------------------------------------------------------
 // API-Abfragen
@@ -538,6 +546,24 @@ function _renderQueryList(queries) {
     }).join('');
 
     list.querySelectorAll('.mp-insert-btn').forEach(btn => {
+        // Bug 2.41 Fix Build 136: mousedown speichert Selection VOR dem
+        // Fokus-Verlust durch den Button-Klick. Der click-Handler laeuft
+        // danach mit der gespeicherten Range in _savedCursorRange.
+        // Beleg: Bugfix Build 136, Projektgespraech 2026-05-09
+        btn.addEventListener('mousedown', (e) => {
+            const holder = document.getElementById('editorjs-holder');
+            const active = document.activeElement;
+            if (active && active.isContentEditable && holder?.contains(active)) {
+                const sel = window.getSelection();
+                if (sel && sel.rangeCount > 0) {
+                    _savedCursorRange = sel.getRangeAt(0).cloneRange();
+                } else {
+                    _savedCursorRange = null;
+                }
+            } else {
+                _savedCursorRange = null;
+            }
+        });
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
             _insertQuery(btn.dataset.queryId);
@@ -831,13 +857,35 @@ async function _insertQuery(queryId) {
 
     try {
         // --- Schritt 1: Aktives contenteditable im editorjs-holder ermitteln ---
+        // Bug 2.41 Fix Build 136: Zuerst gespeicherte Range pruefen (mousedown-Handler),
+        // da der Fokus durch den Button-Klick bereits weg ist wenn click ausloest.
+        // Beleg: Bugfix Build 136, Projektgespraech 2026-05-09
         const holder = document.getElementById('editorjs-holder');
-        const activeEl = document.activeElement;
-        const editorCE = (
-            activeEl &&
-            activeEl.isContentEditable &&
-            holder?.contains(activeEl)
-        ) ? activeEl : null;
+        let editorCE = null;
+
+        if (_savedCursorRange) {
+            // Range-Container im Editor-Holder suchen
+            const container = _savedCursorRange.commonAncestorContainer;
+            const el = container.nodeType === Node.ELEMENT_NODE
+                ? container
+                : container.parentElement;
+            const ceBlock = el?.closest('[contenteditable="true"]');
+            if (ceBlock && holder?.contains(ceBlock)) {
+                editorCE = ceBlock;
+            }
+        }
+
+        if (!editorCE) {
+            // Fallback: activeElement (funktioniert nur wenn Fokus noch im Editor)
+            const activeEl = document.activeElement;
+            if (
+                activeEl &&
+                activeEl.isContentEditable &&
+                holder?.contains(activeEl)
+            ) {
+                editorCE = activeEl;
+            }
+        }
 
         // Chip-HTML aufbauen (identisch zu PlaceholderChips.hydrateChips-Output)
         // window.PlaceholderChips muss bereits geladen sein.
@@ -853,10 +901,20 @@ async function _insertQuery(queryId) {
 
         if (editorCE) {
             // --- Schritt 2: Inline-Einfuegen an Cursorposition ---
-            // execCommand ist in aktuellen Browsern fuer contenteditable
-            // der zuverlaessigste Weg ohne Editor.js-interne API zu brechen.
-            // Sicherstellen, dass das Element fokussiert ist.
+            // Bug 2.41 Fix Build 136: Gespeicherte Range wiederherstellen.
+            // Der mousedown-Handler hat die Selection vor dem Fokus-Verlust
+            // gespeichert. Jetzt wird sie wiederhergestellt bevor execCommand
+            // aufgerufen wird — sonst wuerde der Chip am Dokumentanfang landen.
+            // Beleg: Bugfix Build 136, Projektgespraech 2026-05-09
             editorCE.focus();
+            if (_savedCursorRange) {
+                try {
+                    const sel = window.getSelection();
+                    sel.removeAllRanges();
+                    sel.addRange(_savedCursorRange);
+                } catch (_) { /* Range ungueltig — execCommand arbeitet mit aktuellem Cursor */ }
+                _savedCursorRange = null;
+            }
             const inserted = document.execCommand('insertHTML', false, chipHtml);
             if (!inserted) {
                 // execCommand fehlgeschlagen (z.B. readonly) -> Fallback

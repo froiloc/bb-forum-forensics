@@ -69,7 +69,7 @@
  *     ausgefuehrt damit der gedruckte Stand mit der DB synchron ist.
  *     Beleg: Bugfix Build 134, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.135 · Build: 135 · 2026-05-09
+ * Version: v0.6.136 · Build: 136 · 2026-05-09
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -378,11 +378,28 @@ async function _loadReportImpl(report) {
 
     // Build 114: Action-Bar-Buttons aktivieren sobald ein Bericht geladen ist.
     // Drucken, Export und Aktualisieren sind lock-unabhaengig.
-    // Beleg: Projektgespraech 2026-05-07
-    ['btn-print', 'btn-export', 'btn-refresh-placeholders'].forEach(id => {
+    // Bug 2.40/2.43 Absicherung Build 136: btn-save-now manueller Speichern-Button.
+    // Beleg: Projektgespraech 2026-05-07, 2026-05-09
+    ['btn-print', 'btn-export', 'btn-refresh-placeholders', 'btn-save-now'].forEach(id => {
         const btn = document.getElementById(id);
         if (btn) btn.disabled = false;
     });
+
+    // Handler fuer manuellen Speichern-Button (Bug 2.40/2.43 Absicherung)
+    const btnSaveNow = document.getElementById('btn-save-now');
+    if (btnSaveNow && !btnSaveNow._saveHandlerBound) {
+        btnSaveNow._saveHandlerBound = true;
+        btnSaveNow.addEventListener('click', async () => {
+            btnSaveNow.disabled = true;
+            btnSaveNow.textContent = '⏳ Speichert…';
+            try {
+                await _performAutoSave();
+            } finally {
+                btnSaveNow.disabled = false;
+                btnSaveNow.textContent = '💾 Speichern';
+            }
+        });
+    }
 
     // Titel aktualisieren
     const titleEl = document.getElementById('editor-report-title');
@@ -1150,6 +1167,12 @@ async function _refreshPlaceholderForm() {
  * Wird als onSave-Callback von showPlaceholderForm() aufgerufen.
  * Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06
  *
+ * Bug 3.7 Fix Build 136: block_data war ein JSON-String, das Backend erwartet
+ * aber ein Objekt (dict). Fix: JSON.parse() vor dem Senden.
+ * Aktion auf 'save' vereinfacht (statt 'update_block') — Backend benoetigt
+ * dann keine spezielle Alias-Behandlung mehr.
+ * Beleg: Bugfix Build 136, Projektgespraech 2026-05-09
+ *
  * @param {string} blockId
  * @param {string} fieldName
  * @param {string} value
@@ -1168,15 +1191,27 @@ async function _onPlaceholderFieldSave(blockId, fieldName, value) {
     } catch (_) {}
     const newValues = { ...existing, [fieldName]: value };
 
+    // Bug 3.7 Fix Build 136: block_data als Objekt senden, nicht als String.
+    // _currentBlocks speichert block_data als JSON-String — JSON.parse() noetig.
+    let blockDataObj = {};
+    try {
+        blockDataObj = JSON.parse(block?.block_data || '{}');
+    } catch (_) {}
+
     const resp = await _fetchWithLock(EDITOR_API.BLOCK, {
-        action:                  'update_block',
+        action:                  'save',
         block_id:                blockId,
-        block_data:              block?.block_data || '{}',
+        block_data:              blockDataObj,
         placeholder_values_json: JSON.stringify(newValues),
     });
     if (resp && !resp.ok) {
         const err = await resp.json().catch(() => ({}));
         console.warn('report_editor.js: Platzhalter-Save fehlgeschlagen:', fieldName, err);
+    } else if (resp?.ok) {
+        // Lokalen Cache aktualisieren damit nachfolgende Saves korrekte Basis haben
+        if (block) {
+            block.placeholder_values_json = JSON.stringify(newValues);
+        }
     }
 }
 
@@ -2066,6 +2101,20 @@ async function initEditorModule() {
                 }
             }
             window.print();
+        });
+    }
+
+    // Bug 2.40/2.43 Absicherung Build 136: Ctrl+S / Cmd+S als globaler
+    // Tastatur-Shortcut fuer manuelles Speichern.
+    // Beleg: Bugfix Build 136, Projektgespraech 2026-05-09
+    if (!window._saveShortcutBound) {
+        window._saveShortcutBound = true;
+        document.addEventListener('keydown', async (e) => {
+            const isSave = (e.ctrlKey || e.metaKey) && e.key === 's';
+            if (!isSave) return;
+            e.preventDefault();
+            if (!_currentReport?.id || !window.EditorState?.lockId) return;
+            await _performAutoSave(_currentReport.id);
         });
     }
 }

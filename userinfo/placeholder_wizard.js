@@ -57,7 +57,7 @@
  *     Rueckwaerts-Kompatibilitaet fuer open()/openAtField() erhalten.
  *     Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06.
  *
- * Version: v0.6.135 · Build: 135 · 2026-05-09
+ * Version: v0.6.136 · Build: 136 · 2026-05-09
  * Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06
  */
 
@@ -311,7 +311,15 @@ function _renderBlockGroup(block, focusedBlockId) {
  * @returns {string}
  */
 function _renderField(field, values, blockId) {
-    const val       = values[field.name] ?? field.defaultVal ?? '';
+    // Bug 2.42 Fix Build 136: Nur tatsaechlich gespeicherte Werte als value.
+    // field.defaultVal darf NICHT als value eingesetzt werden — das wuerde
+    // den Beschreibungstext als Eingabe-Inhalt erscheinen lassen.
+    // defaultVal kommt ausschliesslich als placeholder-Attribut zum Einsatz
+    // (HTML-Platzhaltermechanismus: erscheint grau wenn Feld leer, verschwindet
+    // bei Eingabe — kein CSS erforderlich, native Browser-Funktionalitaet).
+    // Beleg: Bugfix Build 136, Projektgespraech 2026-05-09
+    const savedVal  = values[field.name] ?? null;
+    const val       = savedVal !== null ? savedVal : '';
     const isM       = field.type === 'm';
     const label     = _esc(field.description || field.name);
     const inputId   = `pf-input-${_esc(blockId)}-${_esc(field.name)}`;
