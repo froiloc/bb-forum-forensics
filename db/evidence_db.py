@@ -72,7 +72,7 @@
 #
 # Abhaengigkeiten: sqlite3, time, json, uuid -- ausschliesslich Stdlib
 #
-# Version: v0.6.099 · Build: 099 · 2026-05-06
+# Version: v0.6.144 · Build: 144 · 2026-05-10
 # =============================================================================
 
 from __future__ import annotations
@@ -939,16 +939,35 @@ class EvidenceDb:
         ).fetchone()
         if existing is not None:
             # UPDATE: created_at und author bleiben unveraendert.
-            self._con.execute(
-                "UPDATE report_blocks "
-                "SET report_id=?, updated_at=?, block_type=?, block_data=?, "
-                "    placeholder_values_json=?, module_id=? "
-                "WHERE block_id=?",
-                (
-                    report_id, now, block_type.strip(), block_data,
-                    placeholder_values_json, module_id, block_id,
-                ),
-            )
+            # Bug 2.51 Fix Build 144: placeholder_values_json nur ueberschreiben
+            # wenn im Request-Payload explizit enthalten. Der normale Auto-Save
+            # (_performAutoSave) sendet das Feld nicht — NULL wuerde den zuvor
+            # gespeicherten Wert loeschen. Loesung: COALESCE erhalt den DB-Wert
+            # wenn None uebergeben wird.
+            # Beleg: Bugfix Build 144, Projektgespraech 2026-05-10
+            if placeholder_values_json is not None:
+                self._con.execute(
+                    "UPDATE report_blocks "
+                    "SET report_id=?, updated_at=?, block_type=?, block_data=?, "
+                    "    placeholder_values_json=?, module_id=? "
+                    "WHERE block_id=?",
+                    (
+                        report_id, now, block_type.strip(), block_data,
+                        placeholder_values_json, module_id, block_id,
+                    ),
+                )
+            else:
+                # placeholder_values_json nicht im Request — vorhandenen DB-Wert beibehalten
+                self._con.execute(
+                    "UPDATE report_blocks "
+                    "SET report_id=?, updated_at=?, block_type=?, block_data=?, "
+                    "    module_id=? "
+                    "WHERE block_id=?",
+                    (
+                        report_id, now, block_type.strip(), block_data,
+                        module_id, block_id,
+                    ),
+                )
         else:
             # INSERT: neuer Block.
             self._con.execute(
