@@ -22,7 +22,7 @@
  *     9. Block-Wrapper (§4.3, B6 Phase 3)
  *    10. Support-Sidebar Akkordeon (§4.4, B6 Phase 3)
  *
- * Version: v0.6.135 · Build: 135 · 2026-05-09
+ * Version: v0.6.137 · Build: 137 · 2026-05-09
  * Beleg: Bauplan B6 v0.3 §4.1–4.7, Bauplan B6 v0.5 §4.3–4.4
  * =========================================================================== */
 
@@ -480,6 +480,26 @@
   border: 1px solid transparent;
   vertical-align: baseline;
   transition: opacity .15s, box-shadow .15s;
+  /* Bug 2.50 Fix Build 137: user-select:none verhindert Textmarkierung
+   * im Chip. Zusammen mit contenteditable="false" am Element selbst wird
+   * das Schreiben in Chips vollstaendig unterbunden.
+   * Beleg: Bugfix Build 137, Projektgespraech 2026-05-09 */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Bug 2.50 Fix Build 137: Aufleuchten-Animation bei Klick auf einen Chip.
+ * Visuelles Feedback: "dieser Bereich ist geschuetzt".
+ * Ausgeloest per JS durch Hinzufuegen der Klasse .ph-chip--flash.
+ * Beleg: Bugfix Build 137, Projektgespraech 2026-05-09 */
+@keyframes ph-chip-flash {
+  0%   { box-shadow: 0 0 0 0px rgba(255,152,0,0);   background-color: inherit; }
+  25%  { box-shadow: 0 0 0 3px rgba(255,152,0,.7);  background-color: #fff3e0; }
+  60%  { box-shadow: 0 0 0 5px rgba(255,152,0,.3); }
+  100% { box-shadow: 0 0 0 0px rgba(255,152,0,0);   background-color: inherit; }
+}
+.ph-chip--flash {
+  animation: ph-chip-flash .5s ease-out forwards;
 }
 
 /* Doppelklick-Cursor fuer editierbare Chips (Phase 5) */

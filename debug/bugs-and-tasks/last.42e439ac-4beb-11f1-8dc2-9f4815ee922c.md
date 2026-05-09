@@ -1,5 +1,5 @@
 # Fehler auf der Berichtsseite
-(Cache-buster-pre-extension: af2b3836-4be1-11f1-932b-c709e026c4a1)
+(Cache-buster-pre-extension: 42e439ac-4beb-11f1-8dc2-9f4815ee922c)
 
 Ich werde in dieser Liste fortlaufend die von mir beobachteten Fehler aufführen.
 Falls diese abgeschlossen und verworfen wurden, werde ich sie durchstreichen. Alles, was nicht durchgestrichen ist, ist also noch offen und muss bearbeitet werden.
@@ -9,15 +9,15 @@ Nach der Bearbeitung ist das behobene Problem anzugeben. Und zwar mit Kapitel (1
 
 Quellen zum Debuggen:
 * Dieses Dokument mit den Arbeitsanweisungen und Problembeschreibungen:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.af2b3836-4be1-11f1-932b-c709e026c4a1.md
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.42e439ac-4beb-11f1-8dc2-9f4815ee922c.md
 * Die Ausgabe von DevTools-Console:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.af2b3836-4be1-11f1-932b-c709e026c4a1.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.42e439ac-4beb-11f1-8dc2-9f4815ee922c.log
 * Die Ausgabe von DevTools-Network:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.af2b3836-4be1-11f1-932b-c709e026c4a1.har
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.42e439ac-4beb-11f1-8dc2-9f4815ee922c.har
 * Das aktuelle DOM als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last.af2b3836-4be1-11f1-932b-c709e026c4a1.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last.42e439ac-4beb-11f1-8dc2-9f4815ee922c.html
 * Die Ausgabe des aktuellen Webservers:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.af2b3836-4be1-11f1-932b-c709e026c4a1.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.42e439ac-4beb-11f1-8dc2-9f4815ee922c.log
 * Die aktuellen Screenshots:
 https://github.com/froiloc/bb-forum-forensics/tree/1b5017a2f62c5a8f1825de76fc6edabb25d6bf66/debug/screenshots
 ***
@@ -39,17 +39,17 @@ Hier werden CSS‑Fehler aufgeführt. Das sind Themen, bei denen die Anzeige fun
  12. erledigt
  13. erledigt
  14. erledigt
- 15.  erledigt
- 16.  erledigt
+ 15. erledigt
+ 16. erledigt
  17. erledigt
  18. erledigt
  19. erledigt
  20. erledigt
-21. (20) Der Scrollbalken in `#mp-list` da, liegt aber am falschen Element. `#accordion-body-blocks {flex-direction: row;}` hilft, aber es sorgt dafür, dass dieses div nicht mehr die volle Breite einnimmt.
-22. (20) Die Visualisierung des Speicherns gefällt mir nicht! Ich möchte: Keine Aktion (default) `.save-indicator--idle`: graue, leicht blury Diskette `🖫`; aktives Speichern `.save-indicator--saving`: grüner, pulsierender Rahmen um das Symbole. Diskette ist grün; Speichern erfolgreich `.save-indicator--saved`: Diskette ist für 5 Sekunden grün wird dann wieder default-grau. Speichern  `.save-indicator--failed`fehlgeschlagen: Diskette ist rot. Dauerhaft. Bis Speichern wieder erfolgreich ist.
-23. erledigt
-24. erledigt
-25. erledigt
+ 21. erledigt
+ 22. erledigt
+ 23. erledigt
+ 24. erledigt
+ 25. erledigt
 ---
 ## 2. Funktionalität Frontend / Daten / JS
 Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mit dem Webwerkzeug arbeiten kann oder ihn dabei nicht im vorgesehenen Maße unterstützen oder behindern.
@@ -93,17 +93,22 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 37. erledigt
 38. erledigt
 39. (40) Das Löschen eines Blocks im Editor ist nicht mehr möglich. Sie werden optisch im Editor gelöscht. Aber nach einem Reload der Seite sind alle gelöschten Elemente wieder da.
-40. (50) Das Speichern wird noch immer nicht in Echtzeit angezeigt oder bleibt aus. Ich habe mit build 132 einen Eintrag hinter dem Wort "Stadt" gemacht. Aber der wurde nicht gespeichert.
+40. erledigt
 41. erledigt
 42. erledigt
 43. (30) Das automatische Speichern nach dem Einfügen von Platzhaltern funktioniert nicht.
 44. (10) Wenn der `Kommentare` Akkordeon-Bereich aktiv ist, sollte ein Klick in einen Block die zugehörigen Kommentare dieses Bereichs anzeigen. ABER es darf nicht der Fokus auf die Kommentareingabe für einen neuen Kommentar gesetzt werden! Das zusätzliche Setzen des Fokus darf und muss grundsätzlich nur passieren, wenn die Schaltfläche `Kommentieren` geklickt wird.
 45. (10) Möglicherweise wird der Fokus verloren, nachdem ein Autosave durchgeführt wurde. Ich bin aber nicht sicher. Ich konnte es nicht genau beobachten und nachstellen.
-46. (15) Es muss eine Möglichkeit geben, nach einem Platzhalter den Cursor zu setzen, um dahinter Text zu ergänzen. Gleiches gilt für davor. Vielleicht kann man ein Space um das Tag ergänzen oder einen längeren Space oder ein Zeichen mit null Breite. In jedem Fall muss es möglich sein, um einen einzelnen Cursor herum Text zu schreiben!
-47. (20) Wir sind kurz vor dem totalen Erfolg. NUR BEIM ERSTEN MAL klappt das mit dem Einfügen inline noch nicht (zuverlässig immer). Ab dem zweiten Klick auf die Schaltfläche funktioniert es. Wir müssen also nur noch herausfinden, warum es beim ersten Mal nicht klappt, dann können wir das Thema endlich zumachen. :-)
-48. (20) Beim Einfügen eines Platzhalters muss zuvor geprüft werden, dass der Cursor nicht bereits in einem Platzhalter steht. Dann muss entweder die Aktion abgelehnt werden oder das Element wird ans Ende des Platzhalters, in dem der Cursor steckt, eingefügt.
-49. (10) Wenn die Platzhalter im Formular ausgefüllt sind, sollten die Platzhalter im Editor diese Eingabe auch rendern.
-50. (20) Wir müssen verhindern, dass der Benutzer in Platzhaltern im Editor schreibt. Ideen?
+46. erledigt
+47. erledigt
+48. erledigt
+49. erledigt
+50. erledigt
+51. (30) Man kann im Formular Platzhalter ausfüllen und sie werden dann auch im Editor gerendert, aber sie werden scheinbar nicht gespeichert, denn nach einem Neuladen der Seite oder des Editors sind die Werte nicht mehr da und die Platzhalter haben wieder den leeren, unausgefüllten Zustand.
+52. (30) Das Löschen eines Blocks nutzt wahrscheinlich die falsche Aktion oder der Endpunkt fehlt. Es wird `delete_block` verwendet, aber nur `save` und `delete` sind zulässig.
+53. (20) Die automatischen Werte in den Platzhaltern müssen noch gerendert werden. Bislang stehen im Editor nur die identifizierenden Namen der Platzhalter.
+54. (20) Wenn ein Platzhalter ausgefüllt ist und im Anschluss durch erneutes Doppelklicken bearbeitet werden soll, dann soll sein derzeitiger Wert auch als Wert im Formular stehen. Im Grunde genommen sollte der Wert im Formular dauerhaft stehen.
+55. (40) Autosave sorgt dafür, dass der Fokus verloren geht, dass das ausgewählte Formularfeld verlassen wird, dass der Rahmen im Formular und im Editor auf das erste Element verschoben wird, das einen Kommentar hat.
 ---
 ## 3. Funktionalität Backend / Python / SQLite3-Datenbank
 Hier werden Funktionsprobleme aufgeführt, die aufgrund von Problemen im Webserver oder der Datenbank auftreten.
@@ -114,14 +119,7 @@ Hier werden Funktionsprobleme aufgeführt, die aufgrund von Problemen im Webserv
  4. erledigt
  5. erledigt
  6. erledigt
- 7. (30) Das Speichern von eingetragenen Werten für Inline-Platzhalter wird vom Backend nicht akzeptiert. Es erscheint `report_editor.js:1179 report_editor.js: Platzhalter-Save fehlgeschlagen: realname {error: "'block_data' fehlt oder ist kein Objekt", code: 'MISSING_FIELD'}
-_onPlaceholderFieldSave @ report_editor.js:1179
-await in _onPlaceholderFieldSave
-_saveField @ placeholder_wizard.js:484
-(anonymous) @ placeholder_wizard.js:473
-setTimeout
-_scheduleFieldSave @ placeholder_wizard.js:472
-(anonymous) @ placeholder_wizard.js:401Understand this warning`
+ 7. (30) Das Speichern von eingetragenen Werten für Inline-Platzhalter wird vom Backend nicht akzeptiert.
 ---
 ## 4. Sonstiges
 Themen, die keinem der zuvor genannten Bereiche eindeutig zugeordnet werden können.

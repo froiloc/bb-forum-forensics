@@ -38,7 +38,7 @@
  *   window.PlaceholderChips.extractNames(text, type)
  *     Gibt alle Feldnamen eines Typs ('m', 'o', 'a') zurueck.
  *
- * Version: v0.6.131 · Build: 131 · 2026-05-09
+ * Version: v0.6.137 · Build: 137 · 2026-05-09
  * Beleg: Bauplan B6 v0.3 §2.2, §4.5, Ausdefinitionsgespraech 2026-05-05
  */
 
@@ -195,20 +195,23 @@ function _renderChip(seg, values, resolvedAuto) {
         const resolved = resolvedAuto[name];
         const displayVal = (resolved ?? defaultVal) || name;
         const title = `Automatisch: ${name}` + (description ? ` — ${description}` : '');
-        return `<span class="ph-chip ph-chip-auto" ${dataAttrs} title="${_esc(title)}">${_esc(displayVal)}</span>`;
+        // Bug 2.50 Fix Build 137: contenteditable="false" verhindert direktes Schreiben
+        // in den Chip. Der Span ist damit nicht editierbar (Browser-nativ).
+        // Beleg: Bugfix Build 137, Projektgespraech 2026-05-09
+        return `<span class="ph-chip ph-chip-auto" contenteditable="false" ${dataAttrs} title="${_esc(title)}">${_esc(displayVal)}</span>`;
     }
 
     if (chipType === 'm') {
         const val = values[name];
         const isFilled = val !== undefined && val !== null && String(val).trim() !== '';
         if (isFilled) {
-            // Ausgefuellt: blau
+            // Bug 2.49 Fix Build 137: Ausgefuellter Wert wird im Chip dargestellt.
+            // Bug 2.50 Fix Build 137: contenteditable="false"
             const title = description ? `${name} — ${description}` : name;
-            return `<span class="ph-chip ph-chip-mandatory ph-chip-filled" ${dataAttrs} title="${_esc(title)}">${_esc(val)}</span>`;
+            return `<span class="ph-chip ph-chip-mandatory ph-chip-filled" contenteditable="false" ${dataAttrs} title="${_esc(title)}">${_esc(val)}</span>`;
         } else {
-            // Leer: rot blinkend, blockiert Aktivierung
             const title = (description || name) + ' (Pflichtfeld — muss ausgefuellt werden)';
-            return `<span class="ph-chip ph-chip-mandatory ph-chip-empty" ${dataAttrs} title="${_esc(title)}">${_esc(description || name)} *</span>`;
+            return `<span class="ph-chip ph-chip-mandatory ph-chip-empty" contenteditable="false" ${dataAttrs} title="${_esc(title)}">${_esc(description || name)} *</span>`;
         }
     }
 
@@ -216,13 +219,13 @@ function _renderChip(seg, values, resolvedAuto) {
         const val = values[name];
         const isFilled = val !== undefined && val !== null && String(val).trim() !== '';
         if (isFilled) {
-            // Ausgefuellt: blau
+            // Bug 2.49 Fix Build 137: Ausgefuellter Wert wird im Chip dargestellt.
+            // Bug 2.50 Fix Build 137: contenteditable="false"
             const title = description ? `${name} — ${description}` : name;
-            return `<span class="ph-chip ph-chip-optional ph-chip-filled" ${dataAttrs} title="${_esc(title)}">${_esc(val)}</span>`;
+            return `<span class="ph-chip ph-chip-optional ph-chip-filled" contenteditable="false" ${dataAttrs} title="${_esc(title)}">${_esc(val)}</span>`;
         } else {
-            // Leer: gelb
             const title = (description || name) + ' (optional)';
-            return `<span class="ph-chip ph-chip-optional ph-chip-empty" ${dataAttrs} title="${_esc(title)}">${_esc(description || name)}</span>`;
+            return `<span class="ph-chip ph-chip-optional ph-chip-empty" contenteditable="false" ${dataAttrs} title="${_esc(title)}">${_esc(description || name)}</span>`;
         }
     }
 

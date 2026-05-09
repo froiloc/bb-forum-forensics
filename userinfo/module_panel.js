@@ -59,7 +59,7 @@
  *       in _renderStandardList vorhanden).
  *     Beleg: Bugfix Build 133, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.136 · Build: 136 · 2026-05-09
+ * Version: v0.6.137 · Build: 137 · 2026-05-09
  * Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06
  */
 
@@ -889,30 +889,48 @@ async function _insertQuery(queryId) {
 
         // Chip-HTML aufbauen (identisch zu PlaceholderChips.hydrateChips-Output)
         // window.PlaceholderChips muss bereits geladen sein.
+        // Bug 2.46 Fix Build 137: Zero-Width-Space (\u200B) vor und nach dem Chip
+        // als Anker fuer den Cursor. Ohne diese ZWS ist es nicht moeglich, direkt
+        // vor oder nach einem Chip zu tippen, da Editor.js keinen Cursor in einen
+        // contenteditable=false Span setzen kann.
+        // Beleg: Bugfix Build 137, Projektgespraech 2026-05-09
+        const ZWS = '\u200B';
         const raw = `{{a:${queryId}}}`;
         let chipHtml;
         if (window.PlaceholderChips?.hydrateChips) {
-            // hydrateChips liefert fertiges HTML fuer den Chip
-            chipHtml = window.PlaceholderChips.hydrateChips(raw, {}, {});
+            chipHtml = ZWS + window.PlaceholderChips.hydrateChips(raw, {}, {}) + ZWS;
         } else {
-            // Fallback: einfacher Text-Chip ohne Styling
-            chipHtml = `<span class="ph-chip ph-chip-auto" data-chip-raw="${raw}">${queryId}</span>`;
+            chipHtml = `${ZWS}<span class="ph-chip ph-chip-auto" data-chip-raw="${raw}">${queryId}</span>${ZWS}`;
         }
 
         if (editorCE) {
             // --- Schritt 2: Inline-Einfuegen an Cursorposition ---
-            // Bug 2.41 Fix Build 136: Gespeicherte Range wiederherstellen.
-            // Der mousedown-Handler hat die Selection vor dem Fokus-Verlust
-            // gespeichert. Jetzt wird sie wiederhergestellt bevor execCommand
-            // aufgerufen wird — sonst wuerde der Chip am Dokumentanfang landen.
-            // Beleg: Bugfix Build 136, Projektgespraech 2026-05-09
+            // Bug 2.48 Fix Build 137: Pruefen ob Cursor bereits in einem Platzhalter steht.
+            // Falls ja: Range ans Ende des Chips verschieben statt abzulehnen —
+            // besser UX als eine Fehlermeldung. Der Chip wird NACH dem bestehenden Chip eingefuegt.
+            // Beleg: Bugfix Build 137, Projektgespraech 2026-05-09
             editorCE.focus();
             if (_savedCursorRange) {
                 try {
                     const sel = window.getSelection();
                     sel.removeAllRanges();
                     sel.addRange(_savedCursorRange);
-                } catch (_) { /* Range ungueltig — execCommand arbeitet mit aktuellem Cursor */ }
+
+                    // Cursor-Position pruefen: steckt der Anker in einem .ph-chip?
+                    const anchorNode = sel.anchorNode;
+                    const anchorEl   = anchorNode?.nodeType === Node.ELEMENT_NODE
+                        ? anchorNode : anchorNode?.parentElement;
+                    const existingChip = anchorEl?.closest('.ph-chip');
+                    if (existingChip) {
+                        // Range ans Ende des Chips verschieben
+                        const afterRange = document.createRange();
+                        afterRange.setStartAfter(existingChip);
+                        afterRange.collapse(true);
+                        sel.removeAllRanges();
+                        sel.addRange(afterRange);
+                        _dbg('_insertQuery: Cursor war in Chip, verschiebe ans Chip-Ende');
+                    }
+                } catch (_) {}
                 _savedCursorRange = null;
             }
             const inserted = document.execCommand('insertHTML', false, chipHtml);
@@ -933,8 +951,39 @@ async function _insertQuery(queryId) {
 
         } else {
             // --- Schritt 4: Fallback — neuer Block am Ende ---
+            // Bug 2.47 Fix Build 137: Auch nach dem Fallback wird der Chip
+            // inline in den neuen Block eingefuegt (nicht als raw-Text).
+            // Nach _insertQueryAsNewBlock ist der neue Block fokussiert;
+            // wir holen sein contenteditable und fuegen den Chip per execCommand ein.
+            // Das macht das Verhalten beim ersten Klick identisch zum zweiten.
+            // Beleg: Bugfix Build 137, Projektgespraech 2026-05-09
             _dbg('_insertQuery: Kein aktiver Cursor, lege neuen Block an:', queryId);
             await _insertQueryAsNewBlock(queryId);
+
+            // Neuen Block fokussieren und Chip inline einfuegen
+            const editor = window._editor;
+            if (editor?.blocks && chipHtml) {
+                const lastIdx = editor.blocks.getBlocksCount() - 1;
+                const editorHolder = document.getElementById('editorjs-holder');
+                const ceBlocks = editorHolder?.querySelectorAll(
+                    '.ce-block:last-child [contenteditable="true"]'
+                );
+                const lastCE = ceBlocks?.[ceBlocks.length - 1];
+                if (lastCE) {
+                    // Leeren Block neu besetzen: raw-Text durch Chip ersetzen
+                    lastCE.focus();
+                    // Vorhandenen Inhalt (plain-text {{a:...}}) entfernen und
+                    // durch hydriertes Chip-HTML ersetzen
+                    const sel = window.getSelection();
+                    const range = document.createRange();
+                    range.selectNodeContents(lastCE);
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                    document.execCommand('insertHTML', false, chipHtml);
+                    lastCE.dispatchEvent(new Event('input', { bubbles: true }));
+                    _dbg('_insertQuery: Chip nach Fallback inline ersetzt:', queryId);
+                }
+            }
         }
 
     } catch (err) {

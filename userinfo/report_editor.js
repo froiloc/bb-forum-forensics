@@ -69,7 +69,7 @@
  *     ausgefuehrt damit der gedruckte Stand mit der DB synchron ist.
  *     Beleg: Bugfix Build 134, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.136 · Build: 136 · 2026-05-09
+ * Version: v0.6.137 · Build: 137 · 2026-05-09
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -1038,14 +1038,39 @@ let _blockWrapperObserver = null;
  * Doppelklick auf einen .ph-chip oeffnet den Formular-Akkordeon-Abschnitt
  * in der Support-Sidebar und setzt den Fokus auf das zugehoerige Feld.
  * Beleg: Bauplan B6 v0.5 §4.6, Projektgespraech 2026-05-06
+ *
+ * Bug 2.50 Fix Build 137: Einfacher Klick auf einen Chip loest Aufleuchten-
+ * Animation (.ph-chip--flash) aus als visuelles Feedback "geschuetzt".
+ * Beleg: Bugfix Build 137, Projektgespraech 2026-05-09
  */
 function _bindChipDoubleClick() {
     const holder = document.getElementById('editorjs-holder');
     if (!holder) return;
 
+    // Einfacher Klick: Flash-Animation als "nicht editierbar"-Feedback
+    // (Bug 2.50 Fix Build 137)
+    holder.addEventListener('click', (e) => {
+        const chip = e.target.closest('.ph-chip');
+        if (!chip) return;
+        // Nur flashen wenn kein Doppelklick folgt (250ms Toleranz)
+        chip._flashTimer && clearTimeout(chip._flashTimer);
+        chip._flashTimer = setTimeout(() => {
+            chip.classList.remove('ph-chip--flash');
+            chip.classList.add('ph-chip--flash');
+            // Klasse nach Animation entfernen damit sie wiederholbar ist
+            chip.addEventListener('animationend', () => {
+                chip.classList.remove('ph-chip--flash');
+            }, { once: true });
+        }, 180);
+    });
+
     holder.addEventListener('dblclick', (e) => {
         const chip = e.target.closest('.ph-chip');
         if (!chip) return;
+
+        // Flash-Timer aus dem Einfach-Klick-Handler abbrechen
+        chip._flashTimer && clearTimeout(chip._flashTimer);
+        chip._flashTimer = null;
 
         e.preventDefault();
         e.stopPropagation();
@@ -1212,7 +1237,57 @@ async function _onPlaceholderFieldSave(blockId, fieldName, value) {
         if (block) {
             block.placeholder_values_json = JSON.stringify(newValues);
         }
+        // Bug 2.49 Fix Build 137: Chips im Editor sofort mit neuem Wert rendern.
+        // Den Block im Editor-DOM suchen und die Chip-Spans fuer diesen Feldnamen
+        // aktualisieren (Klassen + Textinhalt) ohne die gesamte Block-Struktur zu ersetzen.
+        // Beleg: Bugfix Build 137, Projektgespraech 2026-05-09
+        _refreshChipsInBlock(blockId, newValues);
     }
+}
+
+/**
+ * Bug 2.49 Fix Build 137: Aktualisiert Chip-Spans im Editor-DOM nach einem
+ * Formular-Save. Sucht alle .ph-chip-Spans im betroffenen Block und ersetzt
+ * Klassen und Textinhalt anhand der neuen Werte — ohne den Block neu zu laden.
+ *
+ * @param {string} blockId   Editor.js Block-ID (data-id am .ce-block)
+ * @param {Object} values    { fieldName: value } — alle bekannten Feldwerte
+ */
+function _refreshChipsInBlock(blockId, values) {
+    if (!blockId || !values) return;
+    const holder = document.getElementById('editorjs-holder');
+    if (!holder) return;
+
+    // Block-Element im DOM suchen
+    const ceBlock = holder.querySelector(`.ce-block[data-id="${blockId}"]`);
+    if (!ceBlock) return;
+
+    // Alle Chips in diesem Block aktualisieren
+    ceBlock.querySelectorAll('.ph-chip[data-chip-name]').forEach(chip => {
+        const name     = chip.dataset.chipName;
+        const chipType = chip.dataset.chipType;
+
+        // Nur m: und o: Chips rendern Formularwerte
+        if (chipType !== 'm' && chipType !== 'o') return;
+
+        const val      = values[name];
+        const isFilled = val !== undefined && val !== null && String(val).trim() !== '';
+        const description = chip.dataset.chipDescription || name;
+
+        if (isFilled) {
+            // Chip als ausgefuellt markieren
+            chip.classList.remove('ph-chip-empty');
+            chip.classList.add('ph-chip-filled');
+            chip.textContent = String(val);
+        } else {
+            // Chip als leer markieren
+            chip.classList.remove('ph-chip-filled');
+            chip.classList.add('ph-chip-empty');
+            chip.textContent = chipType === 'm'
+                ? (description + ' *')
+                : description;
+        }
+    });
 }
 
 // ---------------------------------------------------------------------------
