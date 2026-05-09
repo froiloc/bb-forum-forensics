@@ -816,3 +816,259 @@ TypeError: int() argument must be a string, a bytes-like object or a real number
 2026-05-09 21:37:11 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
 2026-05-09 21:37:41 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
 2026-05-09 21:38:11 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:38:41 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:39:11 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:39:41 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:40:11 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:40:41 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:41:11 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:41:41 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:42:11 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:42:41 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:43:11 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:43:19 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/annotations (ajax=True)
+2026-05-09 21:43:19 [DEBUG   ] forensic.forensic_api.annotations (annotations.py:153): Annotationen geliefert: url='None', count=2
+2026-05-09 21:43:19 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/annotations HTTP/1.1" 200 -
+2026-05-09 21:43:24 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/report (ajax=True)
+2026-05-09 21:43:24 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/report HTTP/1.1" 201 -
+2026-05-09 21:43:24 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/report (ajax=True)
+2026-05-09 21:43:24 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/report?format=json HTTP/1.1" 200 -
+2026-05-09 21:43:41 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:44:11 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:44:41 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:45:11 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:45:41 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:46:11 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:46:41 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:47:11 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:47:41 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:48:11 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:48:41 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:49:11 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:49:41 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:50:11 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:50:41 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:51:11 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:51:41 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:52:11 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:52:41 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:53:03 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/placeholders/values (ajax=True)
+2026-05-09 21:53:03 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/placeholders/values HTTP/1.1" 200 -
+2026-05-09 21:53:11 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:53:41 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:54:11 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:54:41 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:55:11 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:55:41 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:55:51 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/report (ajax=True)
+2026-05-09 21:55:51 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/report?format=json&report_id=2 HTTP/1.1" 200 -
+2026-05-09 21:56:11 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:56:41 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:57:11 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:57:41 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:58:11 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:58:20 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/report (ajax=True)
+2026-05-09 21:58:20 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=e4121388-0b2c-4aee-a2b5-797242b1e09f type=paragraph report_id=2 von 'paul'
+2026-05-09 21:58:20 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/report HTTP/1.1" 201 -
+2026-05-09 21:58:20 [INFO    ] forensic.forensic_api.report (report.py:665): save_block: block_id=e4121388-0b2c-4aee-a2b5-797242b1e09f report_id=2 type=paragraph von 'paul'
+2026-05-09 21:58:20 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/report (ajax=True)
+2026-05-09 21:58:20 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/report?format=json HTTP/1.1" 200 -
+2026-05-09 21:58:41 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=21fe8fd1-1d4a-44d1-bd7c-c077a30b6351 type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=21fe8fd1-1d4a-44d1-bd7c-c077a30b6351 type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=bll-PCJeEv type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=bll-PCJeEv type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=i8OxxJCEj2 type=delimiter report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=i8OxxJCEj2 type=delimiter owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=514412a5-9f7f-4766-a03c-6619cdee2843 type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=514412a5-9f7f-4766-a03c-6619cdee2843 type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=ePoQFO0ZVy type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=ePoQFO0ZVy type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=cEqVULVn60 type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=cEqVULVn60 type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=Uugp1g8Wl4 type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=Uugp1g8Wl4 type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=cewq53-w1Y type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=cewq53-w1Y type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=pPklymmFi4 type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=pPklymmFi4 type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=FCIUdDNj0n type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=FCIUdDNj0n type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=BeJ0-UiIAh type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=BeJ0-UiIAh type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=9Tz-6p_SWf type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=9Tz-6p_SWf type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=rCq5G9wQNQ type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=rCq5G9wQNQ type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=4bZQRqQoFu type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=4bZQRqQoFu type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=CQuIzXZXsW type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=CQuIzXZXsW type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=zXOfyNaMlK type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=zXOfyNaMlK type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=mFge8rhOQ4 type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=mFge8rhOQ4 type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=2x_wx_XRef type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=2x_wx_XRef type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=2sE-aEWNz9 type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=2sE-aEWNz9 type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=KLU8TZwIVR type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=KLU8TZwIVR type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=xL2xw8eL4U type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=xL2xw8eL4U type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=85KQx12QVa type=list report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=85KQx12QVa type=list owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=a6I-NPWFfk type=evidence report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=a6I-NPWFfk type=evidence owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=f7a7ae29-3ccf-4ec8-9ea6-3281c64142cb type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=f7a7ae29-3ccf-4ec8-9ea6-3281c64142cb type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=ef75e706-dedd-435e-ae62-1ed82b040743 type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=ef75e706-dedd-435e-ae62-1ed82b040743 type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=1e7bd7c5-a255-49f8-83a7-04f9c0a88c07 type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=1e7bd7c5-a255-49f8-83a7-04f9c0a88c07 type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=b18d53c4-8663-4517-9664-825ea6faaaec type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=b18d53c4-8663-4517-9664-825ea6faaaec type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=6b0ac64f-3a00-420f-9b99-497a3969c92b type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=6b0ac64f-3a00-420f-9b99-497a3969c92b type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=3e826a38-d7c4-46c1-b44c-86ece89ca95e type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=3e826a38-d7c4-46c1-b44c-86ece89ca95e type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=d55e0f4e-b289-4a32-a281-051552569437 type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=d55e0f4e-b289-4a32-a281-051552569437 type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=c07412b8-5be3-4fb1-8138-cddef458c7de type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=c07412b8-5be3-4fb1-8138-cddef458c7de type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=c7b9448a-a144-482c-a677-75bfef051543 type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=c7b9448a-a144-482c-a677-75bfef051543 type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=5cecc378-ac6c-4a20-9140-49a2f9eba9f9 type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=5cecc378-ac6c-4a20-9140-49a2f9eba9f9 type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=0f481d39-f202-449c-b24b-28cd1c2da9fb type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=0f481d39-f202-449c-b24b-28cd1c2da9fb type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=a0401d7f-3c3c-415a-a706-21712baad59c type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=a0401d7f-3c3c-415a-a706-21712baad59c type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=94f30f18-2106-4631-b9d2-a2d78ae830e4 type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=94f30f18-2106-4631-b9d2-a2d78ae830e4 type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=91509f5d-c323-4791-9ff0-1ad099779a87 type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=91509f5d-c323-4791-9ff0-1ad099779a87 type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=faab5dd0-196f-4e70-bb5f-3db727c97329 type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=faab5dd0-196f-4e70-bb5f-3db727c97329 type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=e25ce51c-7eeb-47a8-ba19-915c2f4e5d3b type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=e25ce51c-7eeb-47a8-ba19-915c2f4e5d3b type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=8eda283c-fe16-4fcf-b715-6e385bfa5805 type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=8eda283c-fe16-4fcf-b715-6e385bfa5805 type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=ffbc71f9-3bad-4846-bb79-3e076318775c type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=ffbc71f9-3bad-4846-bb79-3e076318775c type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=d70d8a8c-0025-4f3b-8e86-628c622238c9 type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=d70d8a8c-0025-4f3b-8e86-628c622238c9 type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=35a5e7ff-ba8e-4cb4-bcd1-5e9574a13e11 type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=35a5e7ff-ba8e-4cb4-bcd1-5e9574a13e11 type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=0463eb2a-13af-4de7-b82a-52945fa89d3d type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=0463eb2a-13af-4de7-b82a-52945fa89d3d type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=ccf3f12c-83ba-466a-84aa-7c31530ac5b6 type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=ccf3f12c-83ba-466a-84aa-7c31530ac5b6 type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=bb207375-9a66-4c14-9490-d4fc0ff07a1e type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=bb207375-9a66-4c14-9490-d4fc0ff07a1e type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=5d10beac-9445-426b-b367-d8d041f236c0 type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=5d10beac-9445-426b-b367-d8d041f236c0 type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/block (ajax=False)
+2026-05-09 21:59:01 [INFO    ] forensic.db.evidence_db (evidence_db.py:973): Block gespeichert: block_id=d85a18f6-1fa9-46a2-8b9d-a9f992ea4142 type=paragraph report_id=2 von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/block HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_block (editor_block.py:315): Block gespeichert: block_id=d85a18f6-1fa9-46a2-8b9d-a9f992ea4142 type=paragraph owner=paul
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: POST /_forensic/editor/order (ajax=False)
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/editor/order HTTP/1.1" 200 -
+2026-05-09 21:59:01 [INFO    ] forensic.forensic_api.editor_order (editor_order.py:174): Blockreihenfolge aktualisiert: report_id=2, 48 Eintraege von 'paul'
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.router (router.py:102): Router: GET /_forensic/report (ajax=True)
+2026-05-09 21:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/report?format=json HTTP/1.1" 200 -
+2026-05-09 21:59:11 [DEBUG   ] forensic (main.py:408): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')

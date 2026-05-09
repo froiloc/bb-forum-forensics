@@ -59,3 +59,12 @@ _performAutoSave @ report_editor.js:1573
 await in _performAutoSave
 (anonymous) @ report_editor.js:396
 report_editor.js:1584 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 47 | Bloecke geloescht: 0
+report_editor.js:1383 report_editor.js: Anker eingefuegt: 2 -> 4bZQRqQoFu
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 2
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 47 Bloecke geladen.
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:585 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+report_editor.js:595 report_editor.js: Initialisierungs-Guard freigegeben.
+module_panel.js:77 [forensic] _insertQuery: Kein aktiver Cursor, lege neuen Block an: user.shared_files_count
+module_panel.js:77 [forensic] _insertQueryAsNewBlock: Block sofort in Editor eingefuegt, idx= 47
+module_panel.js:77 [forensic] _insertQuery: Chip inline eingefuegt: user.shared_files_count
