@@ -1,85 +1,94 @@
-:8080/favicon.ico:1  Failed to load resource: the server responded with a status of 404 (Not Found)
+values:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
 block:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
 block:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
 block:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
-block:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
-block:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
-block:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
-block:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
-block:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
-block:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
-block:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
 report:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
 Navigated to http://127.0.0.2:8080/_forensic/report
 placeholder_chips.js:56 [forensic] placeholder_chips.js: window.PlaceholderChips exportiert
 placeholder_wizard.js:75 [forensic] placeholder_wizard.js: window.PlaceholderWizard exportiert
-module_panel.js:76 [forensic] module_panel.js: window.ModulePanel exportiert
+module_panel.js:77 [forensic] module_panel.js: window.ModulePanel exportiert
 annotation_sidebar.js:58 [forensic] annotation_sidebar.js: window.AnnotationSidebar exportiert
-report_editor.js:93 [forensic] report_editor.js: Exports auf window gesetzt
+report_editor.js:87 [forensic] report_editor.js: Exports auf window gesetzt
 userinfo.js:67 [forensic] DOMContentLoaded: userinfo.js aktiv
 userinfo.js:67 [forensic] initEditor() gestartet
 userinfo.js:67 [forensic] initSSEWindow3() gestartet
-userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= a40f588f-b360-464e-86ff-8c7051b57c90
-report_editor.js:93 [forensic] initEditorModule() gestartet
-report_editor.js:93 [forensic] _initSidebarAccordion() gestartet
-report_editor.js:93 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
-report_editor.js:93 [forensic] initReportSelector() gestartet
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= ac893919-5ebc-4104-b2b9-8d0347531198
+report_editor.js:87 [forensic] initEditorModule() gestartet
+report_editor.js:87 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:87 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
+report_editor.js:87 [forensic] initReportSelector() gestartet
 favicon.ico:1  GET http://127.0.0.2:8080/favicon.ico 404 (Not Found)
-report_editor.js:93 [forensic] loadReport() report_id= 2 type= interim
-report_editor.js:444 report_editor.js: _knownBlockIds initialisiert, 16 Bloecke geladen.
-report_editor.js:93 [forensic] _initEditorJs(): window.EditorJS= true
-report_editor.js:93 [forensic] _initSidebarAccordion() gestartet
-report_editor.js:575 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
-report_editor.js:585 report_editor.js: Initialisierungs-Guard freigegeben.
-Navigated to http://127.0.0.2:8080/_forensic/report
-placeholder_chips.js:56 [forensic] placeholder_chips.js: window.PlaceholderChips exportiert
-placeholder_wizard.js:75 [forensic] placeholder_wizard.js: window.PlaceholderWizard exportiert
-module_panel.js:76 [forensic] module_panel.js: window.ModulePanel exportiert
-annotation_sidebar.js:58 [forensic] annotation_sidebar.js: window.AnnotationSidebar exportiert
-report_editor.js:93 [forensic] report_editor.js: Exports auf window gesetzt
-userinfo.js:67 [forensic] DOMContentLoaded: userinfo.js aktiv
-userinfo.js:67 [forensic] initEditor() gestartet
-userinfo.js:67 [forensic] initSSEWindow3() gestartet
-userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 3bf9857a-f2c5-41e6-b3d9-89b60b21ba24
-report_editor.js:93 [forensic] initEditorModule() gestartet
-report_editor.js:93 [forensic] _initSidebarAccordion() gestartet
-report_editor.js:93 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
-report_editor.js:93 [forensic] initReportSelector() gestartet
-report_editor.js:93 [forensic] loadReport() report_id= 2 type= interim
-report_editor.js:444 report_editor.js: _knownBlockIds initialisiert, 16 Bloecke geladen.
-report_editor.js:93 [forensic] _initEditorJs(): window.EditorJS= true
-report_editor.js:93 [forensic] _initSidebarAccordion() gestartet
-report_editor.js:575 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
-userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 3bf9857a-f2c5-41e6-b3d9-89b60b21ba24
-userinfo.js:67 [forensic] acquireLock: Lock bereits vorhanden ( 65799bc5-af89-4cff-8020-966dacc30562 ) — uebersprungen
-report_editor.js:585 report_editor.js: Initialisierungs-Guard freigegeben.
-Navigated to http://127.0.0.2:8080/_forensic/report
-placeholder_chips.js:56 [forensic] placeholder_chips.js: window.PlaceholderChips exportiert
-placeholder_wizard.js:75 [forensic] placeholder_wizard.js: window.PlaceholderWizard exportiert
-module_panel.js:76 [forensic] module_panel.js: window.ModulePanel exportiert
-annotation_sidebar.js:58 [forensic] annotation_sidebar.js: window.AnnotationSidebar exportiert
-report_editor.js:93 [forensic] report_editor.js: Exports auf window gesetzt
-userinfo.js:67 [forensic] DOMContentLoaded: userinfo.js aktiv
-userinfo.js:67 [forensic] initEditor() gestartet
-userinfo.js:67 [forensic] initSSEWindow3() gestartet
-userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 02e1fb3d-9003-4054-b72a-750a2be89ead
-report_editor.js:93 [forensic] initEditorModule() gestartet
-report_editor.js:93 [forensic] _initSidebarAccordion() gestartet
-report_editor.js:93 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
-report_editor.js:93 [forensic] initReportSelector() gestartet
-report_editor.js:93 [forensic] loadReport() report_id= 2 type= interim
-report_editor.js:444 report_editor.js: _knownBlockIds initialisiert, 16 Bloecke geladen.
-report_editor.js:93 [forensic] _initEditorJs(): window.EditorJS= true
-report_editor.js:93 [forensic] _initSidebarAccordion() gestartet
-report_editor.js:575 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
-userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 02e1fb3d-9003-4054-b72a-750a2be89ead
-userinfo.js:67 [forensic] acquireLock: Lock bereits vorhanden ( d590a97c-e347-4bbb-843d-c150b6c01967 ) — uebersprungen
-report_editor.js:585 report_editor.js: Initialisierungs-Guard freigegeben.
-module_panel.js:76 [forensic] _insertQuery: Kein aktiver Cursor, lege neuen Block an: user.group
-module_panel.js:76 [forensic] _insertQueryAsNewBlock: Block sofort in Editor eingefuegt, idx= 16
-report_editor.js:1437 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 16
-report_editor.js:1532 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 17 | Bloecke geloescht: 0
-report_editor.js:1088 report_editor.js: Chip-Doppelklick: platzhalter m
-report_editor.js:1088 report_editor.js: Chip-Doppelklick: platzhalter m
-report_editor.js:1437 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 17
-report_editor.js:1532 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 17 | Bloecke geloescht: 0
+report_editor.js:87 [forensic] loadReport() report_id= 2 type= interim
+report_editor.js:438 report_editor.js: _knownBlockIds initialisiert, 20 Bloecke geladen.
+report_editor.js:87 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:87 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:569 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+report_editor.js:579 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:1082 report_editor.js: Chip-Doppelklick: platzhalter m
+report_editor.js:1082 report_editor.js: Chip-Doppelklick: platzhalter m
+report_editor.js:1082 report_editor.js: Chip-Doppelklick: platzhalter m
+report_editor.js:184  POST http://127.0.0.2:8080/_forensic/editor/block 400 (Bad Request)
+_fetchWithLock @ report_editor.js:184
+_onPlaceholderFieldSave @ report_editor.js:1165
+_saveField @ placeholder_wizard.js:484
+(anonymous) @ placeholder_wizard.js:473
+setTimeout
+_scheduleFieldSave @ placeholder_wizard.js:472
+(anonymous) @ placeholder_wizard.js:401
+report_editor.js:1173 report_editor.js: Platzhalter-Save fehlgeschlagen: platzhalter {error: "Unbekannte Aktion: 'update_block'. Zulaessig: save, delete", code: 'UNKNOWN_ACTION'}
+_onPlaceholderFieldSave @ report_editor.js:1173
+await in _onPlaceholderFieldSave
+_saveField @ placeholder_wizard.js:484
+(anonymous) @ placeholder_wizard.js:473
+setTimeout
+_scheduleFieldSave @ placeholder_wizard.js:472
+(anonymous) @ placeholder_wizard.js:401
+report_editor.js:184  POST http://127.0.0.2:8080/_forensic/editor/block 400 (Bad Request)
+_fetchWithLock @ report_editor.js:184
+_onPlaceholderFieldSave @ report_editor.js:1165
+_saveField @ placeholder_wizard.js:484
+(anonymous) @ placeholder_wizard.js:473
+setTimeout
+_scheduleFieldSave @ placeholder_wizard.js:472
+(anonymous) @ placeholder_wizard.js:401
+report_editor.js:1173 report_editor.js: Platzhalter-Save fehlgeschlagen: platzhalter {error: "Unbekannte Aktion: 'update_block'. Zulaessig: save, delete", code: 'UNKNOWN_ACTION'}
+_onPlaceholderFieldSave @ report_editor.js:1173
+await in _onPlaceholderFieldSave
+_saveField @ placeholder_wizard.js:484
+(anonymous) @ placeholder_wizard.js:473
+setTimeout
+_scheduleFieldSave @ placeholder_wizard.js:472
+(anonymous) @ placeholder_wizard.js:401
+module_panel.js:77 [forensic] _insertQuery: Kein aktiver Cursor, lege neuen Block an: user.aliases
+module_panel.js:77 [forensic] _insertQueryAsNewBlock: Block sofort in Editor eingefuegt, idx= 20
+report_editor.js:87 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 2
+report_editor.js:87 [forensic] _reloadEditorContent(): Abgeschlossen. 21 Bloecke geladen.
+report_editor.js:87 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:569 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+report_editor.js:579 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:1431 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 21
+report_editor.js:1543 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 21 | Bloecke geloescht: 0
+module_panel.js:77 [forensic] _insertQuery: Kein aktiver Cursor, lege neuen Block an: user.aoa
+module_panel.js:77 [forensic] _insertQueryAsNewBlock: Block sofort in Editor eingefuegt, idx= 21
+report_editor.js:87 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 2
+report_editor.js:87 [forensic] _reloadEditorContent(): Abgeschlossen. 22 Bloecke geladen.
+report_editor.js:87 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:569 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+report_editor.js:579 report_editor.js: Initialisierungs-Guard freigegeben.
+module_panel.js:77 [forensic] _insertQuery: Kein aktiver Cursor, lege neuen Block an: user.id
+module_panel.js:77 [forensic] _insertQueryAsNewBlock: Block sofort in Editor eingefuegt, idx= 22
+report_editor.js:87 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 2
+report_editor.js:87 [forensic] _reloadEditorContent(): Abgeschlossen. 23 Bloecke geladen.
+report_editor.js:87 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:569 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+report_editor.js:579 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:1431 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 23
+report_editor.js:1543 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 23 | Bloecke geloescht: 0
+report_editor.js:87 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 2
+report_editor.js:87 [forensic] _reloadEditorContent(): Abgeschlossen. 23 Bloecke geladen.
+report_editor.js:87 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:569 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+report_editor.js:579 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:1431 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 23
+report_editor.js:1543 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 23 | Bloecke geloescht: 0

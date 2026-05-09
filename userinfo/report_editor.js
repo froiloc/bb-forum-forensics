@@ -63,20 +63,14 @@
  *     - Bug 2.27: Speicher-Indikator drei sichtbare Zustaende: idle/saving/saved.
  *     Beleg: Bugfix Build 130, Projektgespraech 2026-05-09.
  *
- *   Build 132 (2026-05-09): Bug 1.22 + Bug 2.7 + Bug 2.19/2.37 behoben.
- *     - Bug 1.22: Speicher-Indikator auf Disketten-Symbol (🖫) umgestellt.
- *       Vier Zustaende: idle (grau, blur), saving (gruen, pulsierender Rahmen),
- *       saved (gruen, 5s dann zurueck zu idle), failed (rot, dauerhaft bis Erfolg).
- *     - Bug 2.7: Aktualisieren-Schaltfläche lädt Editor-Inhalte neu ohne Seiten-Reload.
- *       Ruft _reloadEditorContent() auf — laedt Bloecke vom Server, zerstoert den
- *       alten Editor und initialisiert ihn mit den neuen Daten.
- *     - Bug 2.19/2.37: Einfügen von Einzeldaten jetzt sofort im Editor sichtbar.
- *       _insertQueryAsNewBlock() und _insertModule() in module_panel.js fuegen den
- *       Block nach dem Server-POST direkt via window._editor.blocks.insert() in den
- *       Editor ein und aktualisieren _knownBlockIds. Kein Seiten-Reload mehr noetig.
- *     Beleg: Bugfix Build 132, Projektgespraech 2026-05-09.
+ *   Build 133 (2026-05-09): Bug 2.26 behoben.
+ *     Fremde Bloecke werden im Auto-Save uebersprungen. _performAutoSave()
+ *     baut einen ownBlockIds-Set aus _currentBlocks (owner === username)
+ *     und speichert nur eigene Bloecke. Bekannte fremde Bloecke werden
+ *     per continue-Statement uebersprungen.
+ *     Beleg: Bugfix Build 133, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.132 · Build: 132 · 2026-05-09
+ * Version: v0.6.133 · Build: 133 · 2026-05-09
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -1448,10 +1442,27 @@ async function _performAutoSave(reportId) {
 
     const username = document.getElementById('report-editor-body')?.dataset?.username || '';
 
-    // Schritt 1: Vorhandene Bloecke speichern
+    // Schnellzugriff: welche Block-IDs gehoeren dem aktuellen Nutzer?
+    // Fremde Bloecke werden im Auto-Save uebersprungen (Bug 2.26 Fix Build 133).
+    // Beleg: Bugfix Build 133, Projektgespraech 2026-05-09
+    const ownBlockIds = new Set(
+        _currentBlocks
+            .filter(b => !b.author || b.author === username)
+            .map(b => b.block_id)
+    );
+
+    // Schritt 1: Vorhandene Bloecke speichern — nur eigene Bloecke
     const currentBlockIds = new Set();
     for (const block of editorData.blocks) {
         currentBlockIds.add(block.id);
+
+        // Fremde Bloecke nicht ueberschreiben.
+        // _knownBlockIds kennt diese IDs vom Laden — sie kommen in editorData
+        // weil Editor.js alle sichtbaren Bloecke zurueckgibt, auch fremde.
+        if (!ownBlockIds.has(block.id) && _knownBlockIds.has(block.id)) {
+            // Bekannter fremder Block: ueberspringen
+            continue;
+        }
 
         // B6 Phase 5: Chips aus block_data.text dehydrieren (gerendertes HTML -> Template-Syntax)
         // bevor gespeichert wird, damit block_data immer rohe Template-Syntax enthaelt.

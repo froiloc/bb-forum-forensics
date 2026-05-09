@@ -52,13 +52,14 @@
  *     Rueckwaerts-Kompatibilitaet open()/close() erhalten.
  *     Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06.
  *
- *   Build 132 (2026-05-09): Bug 2.19/2.37 behoben.
- *     _insertQueryAsNewBlock() und _insertModule() fuegen den Block nach
- *     dem Server-POST direkt via window._editor.blocks.insert() in den
- *     Editor ein. Kein Seiten-Reload mehr noetig.
- *     Beleg: Bugfix Build 132, Projektgespraech 2026-05-09.
+ *   Build 133 (2026-05-09): Bug 2.22, 2.3, 1.21 (teilw.) behoben.
+ *     - Bug 2.22: _renderListWithStandard ruft _renderList([]) nicht mehr auf
+ *       wenn modules leer ist, damit mp-empty nicht faelschlich eingeblendet wird.
+ *     - Bug 2.3: mp-item-preview in _renderListWithStandard eingefuegt (war nur
+ *       in _renderStandardList vorhanden).
+ *     Beleg: Bugfix Build 133, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.132 · Build: 132 · 2026-05-09
+ * Version: v0.6.133 · Build: 133 · 2026-05-09
  * Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06
  */
 
@@ -634,7 +635,11 @@ function _selectModule(id) {
 /**
  * Rendert Modulliste + Standard-Bloecke in #mp-list (fuer "Alle"-Ansicht).
  * Build 114: Standard-Bloecke werden nach den regulaeren Modulen angezeigt.
- * Beleg: Projektgespraech 2026-05-07
+ *
+ * Bug 2.22 Fix Build 133: Wenn modules leer ist, darf _renderList([]) NICHT
+ * aufgerufen werden — _renderList([]) blendet mp-empty ein, obwohl danach
+ * noch Standard-Bloecke folgen würden.
+ * Beleg: Bugfix Build 133, Projektgespraech 2026-05-09
  * @param {Array} modules
  * @param {Array} stdBlocks
  */
@@ -650,15 +655,20 @@ function _renderListWithStandard(modules, stdBlocks) {
         if (empty) empty.style.display = '';
         return;
     }
-    // Bug 2.22 Fix Build 128: mp-empty VOR _renderList ausblenden.
-    // _renderList([]) blendet mp-empty ein wenn modules leer ist —
-    // dann wurden Standard-Bloecke angehaengt, aber mp-empty blieb sichtbar.
-    // Reihenfolge: erst ausblenden, dann rendern.
-    // Beleg: Bugfix Build 128, Projektgespraech 2026-05-09
+
+    // mp-empty sicher ausblenden.
+    // WICHTIG: _renderList([]) wuerde mp-empty wieder einblenden —
+    // deshalb bei leerer Modulliste direkt leeren statt _renderList([]) zu delegieren.
     if (empty) empty.style.display = 'none';
 
-    // Module-Eintraege rendern (wiederverwendet _renderList-Logik)
-    _renderList(modules);
+    if (modules.length) {
+        // Module rendern via _renderList (setzt mp-empty korrekt auf 'none')
+        _renderList(modules);
+    } else {
+        // Keine Module vorhanden — Liste leeren ohne _renderList([]) aufzurufen,
+        // da _renderList([]) mp-empty wieder einblenden wuerde.
+        list.innerHTML = '';
+    }
 
     // Standard-Trenner + Standard-Eintraege anhaengen
     if (stdBlocks.length) {
@@ -671,9 +681,7 @@ function _renderListWithStandard(modules, stdBlocks) {
         stdHolder.className = 'mp-std-section';
         list.appendChild(stdHolder);
 
-        // Standard-Rendering in den stdHolder umleiten
-        const origList = document.getElementById('mp-list');
-        // Temporaer stdHolder als Ziel setzen via innere Render-Funktion
+        // mp-item-preview hinzugefuegt (Bug 2.3 Fix Build 133)
         stdHolder.innerHTML = stdBlocks.map(b => `
             <div class="mp-item mp-item--standard" data-std-type="${_esc(b.block_type)}"
                  role="listitem" tabindex="0" title="${_esc(b.description)}">
@@ -681,6 +689,7 @@ function _renderListWithStandard(modules, stdBlocks) {
                     <span class="mp-item-icon" aria-hidden="true">${_esc(b.icon)}</span>
                     <span class="mp-item-title">${_esc(b.title)}</span>
                 </div>
+                <div class="mp-item-preview">${_esc(b.description)}</div>
                 <button class="mp-btn-insert" type="button"
                         data-std-type="${_esc(b.block_type)}"
                         title="${_esc(b.title)} einfügen">+ Einfügen</button>
@@ -691,6 +700,8 @@ function _renderListWithStandard(modules, stdBlocks) {
             btn.addEventListener('click', () => {
                 if (window._editor?.blocks?.insert) {
                     window._editor.blocks.insert(btn.dataset.stdType);
+                    const idx = window._editor.blocks.getBlocksCount() - 1;
+                    window._editor.caret.setToBlock(idx);
                 }
             });
         });

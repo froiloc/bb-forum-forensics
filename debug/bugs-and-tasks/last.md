@@ -50,13 +50,14 @@ Hier werden CSS‑Fehler aufgeführt. Das sind Themen, bei denen die Anzeige fun
 21. (20) Der Scrollbalken in `#mp-list` da, liegt aber am falschen Element. `#accordion-body-blocks {flex-direction: row;}` hilft, aber es sorgt dafür, dass dieses div nicht mehr die volle Breite einnimmt.
 22. (20) Die Visualisierung des Speicherns gefällt mir nicht! Ich möchte: Keine Aktion (default) `.save-indicator--idle`: graue, leicht blury Diskette `🖫`; aktives Speichern `.save-indicator--saving`: grüner, pulsierender Rahmen um das Symbole. Diskette ist grün; Speichern erfolgreich `.save-indicator--saved`: Diskette ist für 5 Sekunden grün wird dann wieder default-grau. Speichern  `.save-indicator--failed`fehlgeschlagen: Diskette ist rot. Dauerhaft. Bis Speichern wieder erfolgreich ist.
 23. (15) `#editor-save-indicator, .save-indicator` soll die `font-size: 25px` haben. Das direkte Styling bei Elementen wir bei diesem erfolgt, hat grundsätzlich zu unterbleiben. Styles werden ausschließlich über Klassen und CSS Dokument vorgenommen!
+24. (20) Der Eintrag für `max-height: 420px` in `#accordion-body-blocks` muss entfernt werden!
 ---
 ## 2. Funktionalität Frontend / Daten / JS
 Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mit dem Webwerkzeug arbeiten kann oder ihn dabei nicht im vorgesehenen Maße unterstützen oder behindern.
 
  1. (3) Die Einträge für `.as-annotation` innerhalb von `#accordion-body-annotations` müssen mehr Substanz erhalten. Ausblenden kann man die Daten immer noch, aber da sein müssen sie! Es soll neben den bestehenden `<div>` und `<span>` noch Angaben zu Quelle mit Verweis, markierter Text (zumindest die ersten 200 Zeichen), Datum und Zeit der Annotation, Tags und Notiz abgelegt sein. Der Name des Investigators ist mit der Klasse `as-ann-investigator` zu kennzeichnen. Alle anderen neuen Punkte sind entsprechend ebenfalls mit einer eigenen passenden Klasse zu versehen.
  2. (8) Bei Annotationen soll das Konzept zum Ausblenden geändert werden. Statt der Checkbox `bereits verankerte ausblenden`, sollen dort Schalter sein. Ausblenden: `Verankerte`, `Tags`, `Ermittler`, `Zitate`, `Quelle`, `Notizen` Durch CSS sollen diese Checkboxen dann die betroffenen Teile ausblenden. `#accordion-body-annotations:has(#as-hide-anchored[checked]) .as-annotation.as-ann-anchored {display: none}` Warum löschen wir die Elemente hier, statt sie einfach nur auszublenden? Das leuchtet mir nicht ein.
- 3. (10) Für `.mp-item mp-item--standard` fehlt das `<div>` für den Eintrag `mp-item-preview` also der beschreibende Text. Auch hier soll als CSS-Style dasselbe gelten wie im Bereich `Standard`.
+ 3. ~~(10) Für `.mp-item mp-item--standard` fehlt das `<div>` für den Eintrag `mp-item-preview` also der beschreibende Text. Auch hier soll als CSS-Style dasselbe gelten wie im Bereich `Standard`.~~
  4. (2) Die Funktionalität für die Schaltfläche `⬇ Export ▾` fehlt.
  5. (8) Die Funktionalität für die Schaltfläche `✎ Drucken` fehlt.
  6. ~~(5) Beim Hover über das Schloss-Symbol `🔓` von `#report-lock-indicator` ist nicht klar, was es jetzt aussagen soll. Beim Hover steht da `Lock-Status`, aber nicht der Zustand. Das ist unzureichend. Hier muss eine Nachricht hin, die dem Ermittler eine Information vermittelt.  Gleiches gilt für `#report-lock-status`.~~
@@ -86,14 +87,14 @@ Ancestor with aria-hidden: <div.block-meta-bar> <div class=​"block-meta-bar" a
 19. (20) Das Einfügen von `Einzeldaten` wird nicht in Echtzeit angezeigt. Nur durch Neuladen wird das Element im `Editor.js`-Bereich sichtbar.
 20. ~~(20) Das Anlegen eines neuen `Editor.js`-Blocks nach dem Neuladen funktioniert, aber gespeichert wird der nicht.~~
 21. (30) Das Einfügen von Platzhaltern ist nicht inline möglich.
-22. (10) In `Bausteine`>`Module`>`Alle` wird unter den `Standard-Blöcken` der Text `Keine Einträge gefunden.` angezeigt.
+22. ~~(10) In `Bausteine`>`Module`>`Alle` wird unter den `Standard-Blöcken` der Text `Keine Einträge gefunden.` angezeigt.~~
 23. ~~(20) Nachfolgefehler von 2.18, Fehler in DevTools Console:~~
 ```
 report_editor.js:639 Uncaught (in promise) ReferenceError: metaBar is not defined at _wrapBlock (report_editor.js:639:5) at tryWrap (report_editor.js:817:9) at NodeList.forEach (<anonymous>) at initBlockWrappers (report_editor.js:821:42) at onReady (report_editor.js:522:13) at editorjs.mjs:11173:26
 ```
 24. ~~(12) In `Editor.js` wird nun beim Wechseln des Blocks in `Formular` kein blauer Rahmen mehr angezeigt. Im Akkordeon-Bereich `Formular` wird der Rahmen angezeigt, aber im Bereich `Editor.js` nicht.~~
 25. ~~(18) Bestehende, geladene Blöcke in `Editor.js` werden angezeigt, aber können nicht bearbeitet werden.~~
-26. (6) Bestehende, geladene Blöcke in `Editor.js` anderer Ermittler können umgewandelt werden, beispielsweise von `Text` zu `Quote` und können dann bearbeitet werden. Allerdings werden diese Änderungen nicht gespeichert. Sie sollten nicht änderbar sein.
+26. ~~(6) Bestehende, geladene Blöcke in `Editor.js` anderer Ermittler können umgewandelt werden, beispielsweise von `Text` zu `Quote` und können dann bearbeitet werden. Allerdings werden diese Änderungen nicht gespeichert. Sie sollten nicht änderbar sein.~~
 27. (100) Es scheint keinen Indikator zum Speichern zu geben ~~, oder das Speichern funktioniert generell nicht mehr~~.
 28. ~~(18) Fehler in der DevTools-Console:~~
 ```
@@ -125,6 +126,8 @@ documentTouched @ editorjs.mjs:10898
 39. (40) Das Löschen eines Blocks im Editor ist nicht mehr möglich. Sie werden optisch im Editor gelöscht. Aber nach einem Reload der Seite sind alle gelöschten Elemente wieder da.
 40. (50) Das Speichern wird noch immer nicht in Echtzeit angezeigt oder bleibt aus. Ich habe mit build 132 einen Eintrag hinter dem Wort "Stadt" gemacht. Aber der wurde nicht gespeichert.
 41. (30) Ab Build 132 wird zwar der Platzhalter im Editor eingefügt. Aber er wird unter dem Paragraph, auf dem der Fokus liegt eingefügt. Es muss aber IM Block eingefügt werden. So wie das mit dem Context-Menü von Editor bereits möglich ist.
+42. (20) Der Doppelklick auf den Inline-Platzhalter öffnet zwar den Akkordeon-Bereich `Formular`, aber springt nicht zum Eingabefeld für den angeklickten Inline-Platzhalter.
+43. (30) Das Speichern nach dem Einfügen von Platzhaltern funktioniert nicht.
 ---
 ## 3. Funktionalität Backend / Python / SQLite3-Datenbank
 Hier werden Funktionsprobleme aufgeführt, die aufgrund von Problemen im Webserver oder der Datenbank auftreten.
@@ -134,6 +137,7 @@ Hier werden Funktionsprobleme aufgeführt, die aufgrund von Problemen im Webserv
  3.  ~~(11) Die `templates.db` im Verzeichnis `./data` wird durch den Webserver noch ignoriert und nicht zum Laden der Bausteine verwendet.~~
 4.   ~~(20) Das Speichern des Berichts funktioniert nicht: `report_editor.js:1134 report_editor.js: Block-Save fehlgeschlagen: 4rZcgdVuan {error: 'Interner Datenbankfehler', code: 'ERROR'}`~~
 5.  ~~(18) Das Setzen des Kommentar-Status funktioniert  nicht im Backend oder das Frontend reagiert nicht korrekt.~~
+6.  (30) Das Speichern von eingetragenen Werten für Inline-Platzhalter wird vom Backend nicht akzeptiert. Unbekannte Aktion: `update_block`, Zulaessig: `save, delete`, Code: `UNKNOWN_ACTION`
 ---
 ## 4. Sonstiges
 Themen, die keinem der zuvor genannten Bereiche eindeutig zugeordnet werden können.
