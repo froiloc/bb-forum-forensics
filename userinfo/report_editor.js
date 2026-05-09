@@ -69,7 +69,7 @@
  *     ausgefuehrt damit der gedruckte Stand mit der DB synchron ist.
  *     Beleg: Bugfix Build 134, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.137 · Build: 137 · 2026-05-09
+ * Version: v0.6.138 · Build: 138 · 2026-05-09
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -512,7 +512,18 @@ function _initEditorJs(blocks, reportId) {
                 const values = b.placeholder_values_json
                     ? (() => { try { return JSON.parse(b.placeholder_values_json); } catch(_) { return {}; } })()
                     : {};
-                raw.text = window.PlaceholderChips.hydrateChips(raw.text, values, {});
+                // Bug 2.53 Fix Build 138: resolvedAuto aus block_data befuellen.
+                // Automatische Platzhalter ({{a:query_id}}) werden mit ihrem
+                // aufgeloesten Wert gerendert falls dieser in placeholder_values_json
+                // unter dem Schlussel "auto:query_id" gespeichert ist.
+                // Beleg: Bugfix Build 138, Projektgespraech 2026-05-09
+                const resolvedAuto = {};
+                for (const [k, v] of Object.entries(values)) {
+                    if (k.startsWith('auto:')) {
+                        resolvedAuto[k.slice(5)] = v;
+                    }
+                }
+                raw.text = window.PlaceholderChips.hydrateChips(raw.text, values, resolvedAuto);
             }
             return { id: b.block_id, type: b.block_type, data: raw };
         }),
@@ -1110,17 +1121,23 @@ function _bindChipDoubleClick() {
                     block.data?.text || ''
                 ) || '';
 
-                // Bug 2.42 Fix Build 135: onSave muss auf _onPlaceholderFieldSave
-                // zeigen statt auf eine leere Funktion, damit Werte tatsaechlich
-                // gespeichert werden. Ausserdem: focusBlock rendert das Formular
-                // asynchron — der Input-Fokus wird erst nach 250ms gesetzt
-                // (statt 100ms) damit der DOM sicher bereit ist.
-                // Beleg: Bugfix Build 135, Projektgespraech 2026-05-09
+                // Bug 2.54 Fix Build 138: Bestehende Formularwerte aus _currentBlocks
+                // uebergeben damit der aktuelle Wert im Eingabefeld erscheint.
+                // Vorher war values:{} — damit sah das Feld immer leer aus.
+                // Beleg: Bugfix Build 138, Projektgespraech 2026-05-09
+                const knownBlock = _currentBlocks.find(b => b.block_id === blockId);
+                let existingValues = {};
+                try {
+                    if (knownBlock?.placeholder_values_json) {
+                        existingValues = JSON.parse(knownBlock.placeholder_values_json);
+                    }
+                } catch (_) {}
+
                 window.PlaceholderWizard.openAtField({
                     blockId:     blockId,
                     moduleTitle: chip.dataset.chipDescription || fieldName,
                     bodyText:    rawText,
-                    values:      {},
+                    values:      existingValues,
                     onSave:      _onPlaceholderFieldSave,
                     _focusDelay: 250,
                 }, fieldName);
@@ -1160,8 +1177,12 @@ async function _refreshPlaceholderForm() {
 
     // placeholder_values_json aus dem Server laden (aktuellste Werte)
     let blocks = _currentBlocks;
+    const rid = _currentReport?.id;
     try {
-        const resp = await fetch('/_forensic/placeholders/values', {
+        const url = rid
+            ? `/_forensic/placeholders/values?report_id=${encodeURIComponent(rid)}`
+            : '/_forensic/placeholders/values';
+        const resp = await fetch(url, {
             headers: { 'X-Forensic-Request': 'ajax' },
         });
         if (resp.ok) {
@@ -1223,10 +1244,15 @@ async function _onPlaceholderFieldSave(blockId, fieldName, value) {
         blockDataObj = JSON.parse(block?.block_data || '{}');
     } catch (_) {}
 
+    const username = document.getElementById('report-editor-body')?.dataset?.username
+        || block?.author
+        || '';
+
     const resp = await _fetchWithLock(EDITOR_API.BLOCK, {
         action:                  'save',
         block_id:                blockId,
         block_data:              blockDataObj,
+        owner:                   username,
         placeholder_values_json: JSON.stringify(newValues),
     });
     if (resp && !resp.ok) {
@@ -1618,8 +1644,10 @@ async function _performAutoSave(reportId) {
     if (deletedIds.length > 0) {
         console.debug('report_editor.js: Geloeschte Bloecke erkannt:', deletedIds);
         for (const blockId of deletedIds) {
+        // Bug 2.52 Fix Build 138: Aktion heisst 'delete', nicht 'delete_block'.
+        // Backend kennt nur 'save' und 'delete'. Beleg: Bugfix Build 138, 2026-05-09
             const resp = await _fetchWithLock(EDITOR_API.BLOCK, {
-                action:   'delete_block',
+                action:   'delete',
                 block_id: blockId,
             });
             if (resp) {
@@ -1660,22 +1688,26 @@ async function _performAutoSave(reportId) {
                   '| Bloecke gespeichert:', currentBlockIds.size,
                   '| Bloecke geloescht:', deletedIds.length);
 
-    // Bug 2.30 Fix Build 123: _currentBlocks nach jedem Auto-Save aktualisieren.
-    // Neue Bloecke erhalten server-seitige Metadaten (author, created_at etc.),
-    // Sortierung kann sich durch Drag-Drop geaendert haben.
-    // Wenn das Formular-Akkordeon gerade offen ist: gleich neu rendern.
-    // Beleg: Bugfix Build 123, Projektgespraech 2026-05-08
+    // Bug 2.55 Fix Build 138: /_forensic/report?format=json braucht report_id,
+    // sonst wird immer der erste Bericht geladen. Ausserdem: Formular-Akkordeon
+    // nur neu rendern wenn kein Element im Formular den Fokus hat — sonst springt
+    // der Fokus auf Block 0 und die Eingabe wird unterbrochen.
+    // Beleg: Bugfix Build 138, Projektgespraech 2026-05-09
     try {
-        const resp = await fetch('/_forensic/report?format=json', {
-            headers: { 'X-Forensic-Request': 'ajax' },
-        });
+        const rid = _currentReport?.id || reportId;
+        if (!rid) return;
+        const resp = await fetch(
+            `/_forensic/report?format=json&report_id=${encodeURIComponent(rid)}`,
+            { headers: { 'X-Forensic-Request': 'ajax' } },
+        );
         if (resp.ok) {
             const data = await resp.json();
             _currentBlocks = data.blocks || [];
-            // Formular aktualisieren wenn es gerade offen ist
-            const sidebar = document.getElementById('support-sidebar');
+            // Formular nur aktualisieren wenn kein Formularfeld gerade fokussiert
+            const sidebar       = document.getElementById('support-sidebar');
             const openAccordion = sidebar?.querySelector('.support-accordion-section--open');
-            if (openAccordion?.dataset?.accordion === 'form') {
+            const formFocused   = document.activeElement?.closest('#accordion-body-form');
+            if (openAccordion?.dataset?.accordion === 'form' && !formFocused) {
                 _refreshPlaceholderForm();
             }
         }

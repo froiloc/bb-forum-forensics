@@ -30,7 +30,7 @@
 #   - Query-Definitionen lesen: templates_db (tdb.placeholder_queries).
 #
 # Beleg: Bauplan B6 v0.3 §3, Ausdefinitionsgespraech 2026-05-05
-# Version: v0.6.104 · Build: 104 · 2026-05-06
+# Version: v0.6.138 · Build: 138 · 2026-05-09
 # =============================================================================
 
 from __future__ import annotations
@@ -175,41 +175,58 @@ class PlaceholdersEndpoint:
         handler: "ForensicRequestHandler",
     ) -> None:
         """
-        GET /_forensic/placeholders/values
+        GET /_forensic/placeholders/values?report_id=<id>
 
-        Liefert die placeholder_values_json aller Bloecke des aktiven
+        Liefert die placeholder_values_json aller Bloecke des angegebenen
         Berichts als Dictionary: { block_id: {name: value, ...}, ... }
 
-        Wird vom Platzhalter-Formular in der Support-Sidebar genutzt
-        (B6 Phase 6) um die aktuellen Feldwerte aller Bloecke zu laden.
-        Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06
+        Bug 2.53 Fix Build 138: report_id aus Query-Params lesen.
+        Vorher wurde immer der erste/aktive Bericht genommen — das ergab
+        einen 500-Fehler wenn keine Reports existierten oder der falsche
+        Bericht geladen wurde.
+        Beleg: Bugfix Build 138, Projektgespraech 2026-05-09
         """
-        edb     = self._bundle.evidence
-        reports = edb.get_reports()
+        from urllib.parse import urlparse, parse_qs
+        parsed   = urlparse(handler.path)
+        params   = parse_qs(parsed.query)
+        rid_raw  = params.get("report_id", [None])[0]
 
-        # Aktiven Bericht bestimmen (gleiche Logik wie in report.py)
-        active_report = None
-        for r in reports:
-            if r.status in ("draft", "submitted"):
-                active_report = r
-                break
-        if active_report is None and reports:
-            active_report = reports[0]
-
+        edb = self._bundle.evidence
         result: dict[str, dict] = {}
 
-        if active_report:
-            blocks = edb.get_blocks_for_report(active_report.id)
-            for b in blocks:
-                if b.placeholder_values_json:
-                    try:
-                        values = json.loads(b.placeholder_values_json)
-                        if isinstance(values, dict):
-                            result[b.block_id] = values
-                    except (json.JSONDecodeError, ValueError):
-                        pass
-                if b.block_id not in result:
-                    result[b.block_id] = {}
+        if rid_raw:
+            try:
+                report_id = int(rid_raw)
+            except (ValueError, TypeError):
+                handler.send_response_body(
+                    400,
+                    _json_err("'report_id' muss eine ganze Zahl sein", "BAD_PARAM"),
+                    content_type="application/json; charset=utf-8",
+                )
+                return
+            blocks = edb.get_blocks_for_report(report_id)
+        else:
+            # Fallback: aktiven Bericht bestimmen (gleiche Logik wie in report.py)
+            reports = edb.get_reports()
+            active_report = None
+            for r in reports:
+                if r.status in ("draft", "submitted"):
+                    active_report = r
+                    break
+            if active_report is None and reports:
+                active_report = reports[0]
+            blocks = edb.get_blocks_for_report(active_report.id) if active_report else []
+
+        for b in blocks:
+            if b.placeholder_values_json:
+                try:
+                    values = json.loads(b.placeholder_values_json)
+                    if isinstance(values, dict):
+                        result[b.block_id] = values
+                except (json.JSONDecodeError, ValueError):
+                    pass
+            if b.block_id not in result:
+                result[b.block_id] = {}
 
         handler.send_response_body(
             200,
