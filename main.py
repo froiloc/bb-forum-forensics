@@ -50,6 +50,7 @@ import argparse
 import atexit
 import sys
 from pathlib import Path
+import subprocess
 
 # ---------------------------------------------------------------------------
 # Projektroot in sys.path eintragen, damit alle Modul-Imports funktionieren
@@ -233,8 +234,21 @@ def main() -> None:
     from core.logger import get_logger
     logger = get_logger(__name__)
 
+    # Git-Befehl ausführen
+    result = subprocess.run(['git', 'log', '-1'], capture_output=True, text=True)
+
+    # Output in Zeilen aufteilen
+    lines = result.stdout.strip().split('\n')
+
+    # Zeile 3 und 5 extrahieren (Index 2 und 4, da Python bei 0 zählt)
+    line_3 = lines[2] if len(lines) > 2 else ""
+    line_5 = lines[4] if len(lines) > 4 else ""
+
+    # Als String speichern (z.B. kombiniert oder separat)
+    combined_data = f"{line_3} {line_5}"
+    
     logger.info(
-        "=== Forensischer Webserver startet — Build 038 · 2026-04-18 ==="
+        f"=== Forensischer Webserver startet - {combined_data} ==="
     )
     logger.info("Config geladen: '%s'", config_path)
 
