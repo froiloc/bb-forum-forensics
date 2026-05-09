@@ -30,7 +30,7 @@ then
 	mv "${ROOTDIR}debug/webserver-log/last.log" "${ROOTDIR}debug/webserver-log/last.${uuid}.log" 2>/dev/null
 fi
 git add "${ROOTDIR}debug/screenshots/*"
-git commit -a -m "${1:-$(git log -1 | tail -n1 | echo "Version 0.6.134" | awk -F. '{print $1 "." $2 "." $3+1}')} - ${uuid}"
+git commit -a -m "${1:-$(git log -1 | tail -n1 | awk -F. '{print $1 "." $2 "." $3+1}')} - ${uuid}"
 git push
 git rm "${ROOTDIR}debug/screenshots/*.png"
 mkdir -p "${ROOTDIR}debug/screenshots/"

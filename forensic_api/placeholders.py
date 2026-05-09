@@ -30,7 +30,7 @@
 #   - Query-Definitionen lesen: templates_db (tdb.placeholder_queries).
 #
 # Beleg: Bauplan B6 v0.3 §3, Ausdefinitionsgespraech 2026-05-05
-# Version: v0.6.138 · Build: 138 · 2026-05-09
+# Version: v0.6.143 · Build: 143 · 2026-05-10
 # =============================================================================
 
 from __future__ import annotations

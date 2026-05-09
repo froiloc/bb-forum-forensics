@@ -59,7 +59,7 @@
 #     block_data und owner optional — fehlende Werte werden aus dem
 #     bestehenden Block in der DB ergaenzt.
 #     Beleg: Bugfix Build 135, Projektgespraech 2026-05-09
-# Version: v0.6.139 · Build: 139 · 2026-05-09
+# Version: v0.6.143 · Build: 143 · 2026-05-10
 # =============================================================================
 
 from __future__ import annotations

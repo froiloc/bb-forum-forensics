@@ -69,7 +69,7 @@
  *     ausgefuehrt damit der gedruckte Stand mit der DB synchron ist.
  *     Beleg: Bugfix Build 134, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.142 · Build: 142 · 2026-05-09
+ * Version: v0.6.143 · Build: 143 · 2026-05-09
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
