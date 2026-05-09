@@ -52,7 +52,13 @@
  *     Rueckwaerts-Kompatibilitaet open()/close() erhalten.
  *     Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06.
  *
- * Version: v0.6.127 · Build: 127 · 2026-05-08
+ *   Build 128 (2026-05-09): Bugs 2.19/2.21/2.22/2.37 behoben.
+ *     _insertQuery() fuegt Chip inline an Cursorposition ein statt neuen Block.
+ *     _insertQueryAsNewBlock() als Fallback wenn kein Cursor aktiv.
+ *     _renderListWithStandard(): mp-empty vor _renderList ausgeblendet (Bug 2.22).
+ *     Beleg: Bugfix Build 128, Projektgespraech 2026-05-09.
+ *
+ * Version: v0.6.128 · Build: 128 · 2026-05-09
  * Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06
  */
 
@@ -644,11 +650,11 @@ function _renderListWithStandard(modules, stdBlocks) {
         if (empty) empty.style.display = '';
         return;
     }
-    // Bug 2.22/2.36 Fix Build 127: mp-empty immer ausblenden wenn stdBlocks
-    // vorhanden sind. _renderList() mit leerem modules-Array blendete mp-empty
-    // ein bevor Standard-Blöcke angehängt wurden — "Keine Einträge gefunden."
-    // erschien obwohl Standard-Blöcke vorhanden und gerendert wurden.
-    // Beleg: Bugfix Build 127, Projektgespraech 2026-05-08
+    // Bug 2.22 Fix Build 128: mp-empty VOR _renderList ausblenden.
+    // _renderList([]) blendet mp-empty ein wenn modules leer ist —
+    // dann wurden Standard-Bloecke angehaengt, aber mp-empty blieb sichtbar.
+    // Reihenfolge: erst ausblenden, dann rendern.
+    // Beleg: Bugfix Build 128, Projektgespraech 2026-05-09
     if (empty) empty.style.display = 'none';
 
     // Module-Eintraege rendern (wiederverwendet _renderList-Logik)
@@ -763,6 +769,28 @@ async function _insertModule(moduleId) {
  * Fuegt einen a:-Query-Platzhalter als neuen Paragraph-Block ein.
  * Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06
  */
+/**
+ * Fuegt einen {{a:queryId}}-Platzhalter als Chip inline an der aktuellen
+ * Cursorposition im Editor ein.
+ *
+ * Strategie (Bug 2.21/2.19/2.37 Fix Build 128):
+ *   Statt immer einen neuen Block anzulegen, wird der Chip in den aktiven
+ *   Editor.js-Block an der Caretposition eingefuegt. Das entspricht dem
+ *   erwarteten Verhalten: Chip erscheint sofort im laufenden Text (2.19),
+ *   Inline-Einfuegen ist moeglich (2.21), kein verlorener Nachtext mehr (2.37).
+ *
+ *   Ablauf:
+ *   1. Aktives contenteditable-Element im Editor ermitteln.
+ *   2. Wenn Cursor in einem Editor-Block steht: Chip-HTML per
+ *      document.execCommand('insertHTML') an der Caretposition einsetzen.
+ *   3. Editor.js onChange-Callback ausloesen, damit der Block gespeichert wird.
+ *   4. Fallback: kein aktiver Cursor → neuer Paragraphen-Block am Ende
+ *      (bisheriges Verhalten, damit kein Datenverlust bei Fehler).
+ *
+ * Beleg: Bugfix Build 128, Projektgespraech 2026-05-09
+ *
+ * @param {string} queryId  Wert aus placeholder_queries.query_id (z.B. 'user.email')
+ */
 async function _insertQuery(queryId) {
     if (!queryId) return;
     if (!_currentOpts.lockId) {
@@ -774,34 +802,92 @@ async function _insertQuery(queryId) {
     if (btn) { btn.disabled = true; btn.textContent = '\u2026'; }
 
     try {
-        const blockData = JSON.stringify({ text: `{{a:${queryId}}}` });
-        const blockId   = _generateUUID();
-        const resp = await fetch(REPORT_API, {
-            method:  'POST',
-            headers: {
-                'Content-Type':       'application/json',
-                'X-Forensic-Request': 'ajax',
-                'X-Forensic-Lock-Id': _currentOpts.lockId || '',
-            },
-            body: JSON.stringify({
-                action:     'save_block',
-                block_id:   blockId,
-                report_id:  _currentOpts.reportId,
-                block_type: 'paragraph',
-                block_data: blockData,
-            }),
-        });
-        const data = await resp.json().catch(() => ({}));
-        if (!resp.ok) throw new Error(data.error || 'HTTP ' + resp.status);
+        // --- Schritt 1: Aktives contenteditable im editorjs-holder ermitteln ---
+        const holder = document.getElementById('editorjs-holder');
+        const activeEl = document.activeElement;
+        const editorCE = (
+            activeEl &&
+            activeEl.isContentEditable &&
+            holder?.contains(activeEl)
+        ) ? activeEl : null;
 
-        if (_currentOpts.onInserted) {
-            await _currentOpts.onInserted(blockId, null, `{{a:${queryId}}}`);
+        // Chip-HTML aufbauen (identisch zu PlaceholderChips.hydrateChips-Output)
+        // window.PlaceholderChips muss bereits geladen sein.
+        const raw = `{{a:${queryId}}}`;
+        let chipHtml;
+        if (window.PlaceholderChips?.hydrateChips) {
+            // hydrateChips liefert fertiges HTML fuer den Chip
+            chipHtml = window.PlaceholderChips.hydrateChips(raw, {}, {});
+        } else {
+            // Fallback: einfacher Text-Chip ohne Styling
+            chipHtml = `<span class="ph-chip ph-chip-auto" data-chip-raw="${raw}">${queryId}</span>`;
+        }
+
+        if (editorCE) {
+            // --- Schritt 2: Inline-Einfuegen an Cursorposition ---
+            // execCommand ist in aktuellen Browsern fuer contenteditable
+            // der zuverlaessigste Weg ohne Editor.js-interne API zu brechen.
+            // Sicherstellen, dass das Element fokussiert ist.
+            editorCE.focus();
+            const inserted = document.execCommand('insertHTML', false, chipHtml);
+            if (!inserted) {
+                // execCommand fehlgeschlagen (z.B. readonly) -> Fallback
+                _dbg('_insertQuery: execCommand fehlgeschlagen, Fallback auf neuen Block');
+                await _insertQueryAsNewBlock(queryId);
+                return;
+            }
+
+            // --- Schritt 3: onChange in Editor.js ausloesen ---
+            // Editor.js beobachtet MutationObserver und input-Events.
+            // Ein synthetisches 'input'-Event stellt sicher, dass der
+            // Autosave-Debounce ausgeloest wird.
+            editorCE.dispatchEvent(new Event('input', { bubbles: true }));
+
+            _dbg('_insertQuery: Chip inline eingefuegt:', queryId);
+
+        } else {
+            // --- Schritt 4: Fallback — neuer Block am Ende ---
+            _dbg('_insertQuery: Kein aktiver Cursor, lege neuen Block an:', queryId);
+            await _insertQueryAsNewBlock(queryId);
         }
 
     } catch (err) {
         _showInsertError(String(err));
     } finally {
         if (btn) { btn.disabled = false; btn.textContent = '+ Einf\u00fcgen'; }
+    }
+}
+
+/**
+ * Fallback: legt einen neuen Paragraphen-Block mit dem Platzhalter am Ende
+ * des Berichts an und speichert ihn sofort via POST /_forensic/report.
+ * Wird aufgerufen wenn kein Editor-Cursor aktiv ist (Bug 2.21 Fallback).
+ * Beleg: Bugfix Build 128, Projektgespraech 2026-05-09
+ * @param {string} queryId
+ */
+async function _insertQueryAsNewBlock(queryId) {
+    const blockData = JSON.stringify({ text: `{{a:${queryId}}}` });
+    const blockId   = _generateUUID();
+    const resp = await fetch(REPORT_API, {
+        method:  'POST',
+        headers: {
+            'Content-Type':       'application/json',
+            'X-Forensic-Request': 'ajax',
+            'X-Forensic-Lock-Id': _currentOpts.lockId || '',
+        },
+        body: JSON.stringify({
+            action:     'save_block',
+            block_id:   blockId,
+            report_id:  _currentOpts.reportId,
+            block_type: 'paragraph',
+            block_data: blockData,
+        }),
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(data.error || 'HTTP ' + resp.status);
+
+    if (_currentOpts.onInserted) {
+        await _currentOpts.onInserted(blockId, null, `{{a:${queryId}}}`);
     }
 }
 

@@ -22,7 +22,7 @@
  *     9. Block-Wrapper (§4.3, B6 Phase 3)
  *    10. Support-Sidebar Akkordeon (§4.4, B6 Phase 3)
  *
- * Version: v0.6.116 · Build: 116 · 2026-05-07
+ * Version: v0.6.128 · Build: 128 · 2026-05-09
  * Beleg: Bauplan B6 v0.3 §4.1–4.7, Bauplan B6 v0.5 §4.3–4.4
  * =========================================================================== */
 
@@ -1076,6 +1076,10 @@
 .as-panel {
   display: flex;
   flex-direction: column;
+  /* Bug 1.18 Fix Build 128: flex:1 1 0% damit .as-panel den gesamten
+   * verfuegbaren Raum im Flex-Container (.support-accordion-body) ausfuellt.
+   * Beleg: Bugfix Build 128, Projektgespraech 2026-05-09 */
+  flex: 1 1 0%;
   height: 100%;
   overflow: hidden;
   font-size: 13px;
@@ -2086,6 +2090,12 @@
  * grid-template-rows: 0fr → 1fr erzeugt saubere Höhen-Animation.
  * Beleg: Bugfix Build 122, Projektgespraech 2026-05-08 */
 .support-accordion-body {
+  /* Bug 1.17 Fix Build 128: display:flex fehlte — flex:1 1 auto hatte ohne
+   * Flex-Kontext keine Wirkung. flex-direction:column damit Kinder vertikal
+   * gestapelt werden (Bug 1.19 accordion-body-form).
+   * Beleg: Bugfix Build 128, Projektgespraech 2026-05-09 */
+  display: flex;
+  flex-direction: column;
   flex: 1 1 auto;
   overflow-y: auto;
   padding: 12px;
@@ -2096,12 +2106,11 @@
   /* Scrollbar dezent stylen (Webkit) */
   scrollbar-width: thin;
   scrollbar-color: var(--color-border, #ccc) transparent;
-  /* Build 127: max-height fuer Animation entfernt — blockierte Flex-Shrinking.
-   * Akkordeon-Animation laeuft jetzt ueber opacity-Transition statt max-height.
-   * overflow: hidden entfernt (war Konflikt mit overflow-y: auto).
-   * Beleg: Bugfix Build 127b, Projektgespraech 2026-05-08 */
-  transition: opacity 0.2s ease;
+  /* Animations-Vorbereitung */
+  transition: opacity 0.2s ease, max-height 0.22s ease;
+  max-height: 2000px;
   opacity: 1;
+  overflow: hidden;
 }
 
 .support-accordion-body--closed {
@@ -2115,6 +2124,15 @@
 
 .support-accordion-body[hidden] {
   display: none;  /* Fallback für nicht-initialisierte Zustände */
+}
+
+/* Bug 1.19 Fix Build 128: Formular-Bereich senkrecht gestapelt.
+ * #accordion-body-form erbt display:flex von .support-accordion-body,
+ * flex-direction:column stellt sicher, dass Formular-Bloecke untereinander
+ * statt nebeneinander dargestellt werden.
+ * Beleg: Bugfix Build 128, Projektgespraech 2026-05-09 */
+#accordion-body-form {
+  flex-direction: column;
 }
 
 /* Geschlossener Abschnitt: Body ausblenden mit Fade */
@@ -2655,13 +2673,6 @@
     flex-direction: column;
     gap: 6px;
     padding: 4px 0 0;
-    /* Build 127: flex:1 + min-height:0 damit #mp-list scrollbar wird statt
-     * unbegrenzt zu wachsen. Ohne diese Einschraenkung ignoriert Flex die
-     * Elterngrenze und #mp-list nimmt mehr Platz als verfuegbar.
-     * Beleg: Bugfix Build 127b, Projektgespraech 2026-05-08 */
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow: hidden;
 }
 
 /* ---------------------------------------------------------------------------
@@ -2719,8 +2730,6 @@
     border-radius: var(--radius, 4px);
     padding: 4px 7px;
     background: var(--color-surface, #fff);
-    /* Build 127: fest — scrollt nicht mit #mp-list */
-    flex-shrink: 0;
 }
 
 .mp-search-icon {
@@ -2749,8 +2758,6 @@
     display: flex;
     flex-wrap: wrap;
     gap: 3px;
-    /* Build 127: fest — scrollt nicht mit #mp-list */
-    flex-shrink: 0;
 }
 
 .mp-chip {
