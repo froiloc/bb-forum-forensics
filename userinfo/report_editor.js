@@ -52,7 +52,12 @@
  *     toggleAnnotationSidebar() leitet auf Annotationen-Akkordeon um.
  *     Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
  *
- * Version: v0.6.127 · Build: 127 · 2026-05-08
+ *   Build 129 (2026-05-09): Bug 2.38 behoben — Block-Klick-Handler entfernt.
+ *     Kein automatisches Oeffnen von Kommentare bei jedem Block-Klick mehr.
+ *     Kommentiere-Button in .block-meta-bar ist der einzige Einstiegspunkt.
+ *     Beleg: Bugfix Build 129, Projektgespraech 2026-05-09.
+ *
+ * Version: v0.6.129 · Build: 129 · 2026-05-09
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -941,19 +946,15 @@ function initBlockWrappers(blocks, username) {
         };
         _wrapBlock(ceBlock, meta, username);
 
-        // Bug 2.33 Fix Build 125: Klick auf Block öffnet Kommentar-Thread.
-        // Nur einmal registrieren (idempotent via data-click-bound).
-        // Beleg: Bugfix Build 125, Projektgespraech 2026-05-08
-        if (!ceBlock.dataset.clickBound) {
-            ceBlock.dataset.clickBound = '1';
-            ceBlock.addEventListener('click', (e) => {
-                // Nicht auslösen wenn auf Formular-Felder, Buttons oder den
-                // Kommentieren-Button selbst geklickt wird
-                if (e.target.closest('input, textarea, button, select, .ce-toolbar')) return;
-                const bid = ceBlock.dataset.blockId || ceBlock.dataset.id;
-                if (bid) _openCommentAccordion(bid);
-            });
-        }
+        // Bug 2.38 Fix Build 129: Block-Klick-Handler ENTFERNT.
+        // Der vorherige Handler (Build 125) oeffnete bei jedem Klick in einen
+        // Block den Kommentar-Akkordeon und setzte den Fokus ins Textarea —
+        // dadurch war kein Bearbeiten des Block-Inhalts mehr moeglich (Prio 50).
+        // Der Kommentieren-Button in .block-meta-bar hat seinen eigenen Handler
+        // (_openCommentAccordion via btnComment.addEventListener) — das reicht.
+        // Kommentare werden durch expliziten Klick auf "💬 Kommentieren" geoeffnet,
+        // nicht durch jeden Block-Klick.
+        // Beleg: Bugfix Build 129, Projektgespraech 2026-05-09
     }
     // 1. Bestehende Bloecke sofort wrappen (Editor.js hat sie bereits gerendert)
     holder.querySelectorAll('.ce-block').forEach(tryWrap);

@@ -22,7 +22,7 @@
  *     9. Block-Wrapper (§4.3, B6 Phase 3)
  *    10. Support-Sidebar Akkordeon (§4.4, B6 Phase 3)
  *
- * Version: v0.6.128 · Build: 128 · 2026-05-09
+ * Version: v0.6.129 · Build: 129 · 2026-05-09
  * Beleg: Bauplan B6 v0.3 §4.1–4.7, Bauplan B6 v0.5 §4.3–4.4
  * =========================================================================== */
 
@@ -2097,7 +2097,13 @@
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
+  /* Bug 1.21 Fix Build 129: overflow-y:auto statt overflow:hidden.
+   * overflow:hidden (fuer max-height-Animation) verhinderte, dass #mp-list
+   * und andere Kinder scrollen konnten. Die max-height-Animation clippt
+   * den Inhalt bereits — overflow-y:auto ermoeglicht Scrolling im Body.
+   * Beleg: Bugfix Build 129, Projektgespraech 2026-05-09 */
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 12px;
   min-height: 0;
   font-size: 13px;
@@ -2110,7 +2116,9 @@
   transition: opacity 0.2s ease, max-height 0.22s ease;
   max-height: 2000px;
   opacity: 1;
-  overflow: hidden;
+  /* overflow:hidden hier ENTFERNT (Bug 1.21 Fix Build 129):
+   * ueberschrieb overflow-y:auto weiter oben und verhinderte Scrolling.
+   * max-height:2000px clippt ohnehin; overflow-x:hidden genuegt. */
 }
 
 .support-accordion-body--closed {
@@ -2546,6 +2554,18 @@
     filter: none;
     opacity: 1;
     box-shadow: 0 0 0 2px var(--color-focus, #1a73e8);
+}
+
+/* Bug 1.20 Fix Build 129: Unmittelbare Nachbarn des fokussierten Blocks
+ * werden schwaecher geblurt (0.7px statt 1.5px) — besserer Uebergang.
+ * :has()-Selektor: Block direkt NACH dem fokussierten, und Block direkt
+ * VOR dem fokussierten (via :has(+ .focused)).
+ * Beleg: Bugfix Build 129, Projektgespraech 2026-05-09 */
+.pf-block-group.pf-block-group--focused + .pf-block-group.pf-block-group--blurred,
+.pf-block-group.pf-block-group--blurred:has(+ .pf-block-group.pf-block-group--focused) {
+    filter: blur(0.7px);
+    opacity: 1;
+    cursor: pointer;
 }
 
 /* Block ohne Platzhalter */
