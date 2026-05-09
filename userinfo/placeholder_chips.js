@@ -38,7 +38,7 @@
  *   window.PlaceholderChips.extractNames(text, type)
  *     Gibt alle Feldnamen eines Typs ('m', 'o', 'a') zurueck.
  *
- * Version: v0.6.113 · Build: 113 · 2026-05-07
+ * Version: v0.6.131 · Build: 131 · 2026-05-09
  * Beleg: Bauplan B6 v0.3 §2.2, §4.5, Ausdefinitionsgespraech 2026-05-05
  */
 
@@ -163,7 +163,11 @@ function render(text, values = {}, resolvedAuto = {}) {
     const segments = parse(text);
     return segments.map(seg => {
         if (seg.type === 'text') {
-            return _esc(seg.text).replace(/\n/g, '<br>');
+            // seg.text stammt aus raw.text (DB-Speicher, bereits HTML-safe via
+            // Editor.js-Serialisierung). Kein nochmaliges Escaping — sonst werden
+            // korrekte Entities wie &lt; zu &amp;lt; doppelt kodiert.
+            // Beleg: Bugfix Build 131, Projektgespraech 2026-05-09
+            return seg.text.replace(/\n/g, '<br>');
         }
         return _renderChip(seg, values, resolvedAuto);
     }).join('');
