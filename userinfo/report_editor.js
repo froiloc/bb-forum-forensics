@@ -69,7 +69,7 @@
  *     ausgefuehrt damit der gedruckte Stand mit der DB synchron ist.
  *     Beleg: Bugfix Build 134, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.138 · Build: 138 · 2026-05-09
+ * Version: v0.6.139 · Build: 139 · 2026-05-09
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -1565,6 +1565,18 @@ function _scheduleAutoSave(reportId) {
  * @param {number} reportId
  */
 async function _performAutoSave(reportId) {
+    // Bug 2.55 Fix Build 139: reportId-Fallback auf _currentReport.id.
+    // Debounce-Aufrufe (onChange-Callback) uebergeben kein Argument —
+    // dann wird _currentReport.id verwendet. Ohne diesen Fallback ist
+    // reportId undefined und der order-Endpunkt antwortet mit 400.
+    // Beleg: Bugfix Build 139, Projektgespraech 2026-05-09
+    if (reportId === undefined || reportId === null) {
+        reportId = _currentReport?.id;
+    }
+    if (!reportId) {
+        _dbg('_performAutoSave: kein reportId verfuegbar, ueberspringe Save');
+        return;
+    }
     if (!window.EditorState?.lockId) return;
     if (!_editor) return;
 

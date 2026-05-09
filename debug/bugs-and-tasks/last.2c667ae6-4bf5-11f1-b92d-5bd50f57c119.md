@@ -1,5 +1,5 @@
 # Fehler auf der Berichtsseite
-(Cache-buster-pre-extension: e1fdee38-4bf1-11f1-97f1-a36e42227031)
+(Cache-buster-pre-extension: 2c667ae6-4bf5-11f1-b92d-5bd50f57c119)
 
 Ich werde in dieser Liste fortlaufend die von mir beobachteten Fehler aufführen.
 Falls diese abgeschlossen und verworfen wurden, werde ich sie durchstreichen. Alles, was nicht durchgestrichen ist, ist also noch offen und muss bearbeitet werden.
@@ -9,15 +9,15 @@ Nach der Bearbeitung ist das behobene Problem anzugeben. Und zwar mit Kapitel (1
 
 Quellen zum Debuggen:
 * Dieses Dokument mit den Arbeitsanweisungen und Problembeschreibungen:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.e1fdee38-4bf1-11f1-97f1-a36e42227031.md
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.2c667ae6-4bf5-11f1-b92d-5bd50f57c119.md
 * Die Ausgabe von DevTools-Console:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.e1fdee38-4bf1-11f1-97f1-a36e42227031.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.2c667ae6-4bf5-11f1-b92d-5bd50f57c119.log
 * Die Ausgabe von DevTools-Network:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.e1fdee38-4bf1-11f1-97f1-a36e42227031.har
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.2c667ae6-4bf5-11f1-b92d-5bd50f57c119.har
 * Das aktuelle DOM als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last.e1fdee38-4bf1-11f1-97f1-a36e42227031.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last.2c667ae6-4bf5-11f1-b92d-5bd50f57c119.html
 * Die Ausgabe des aktuellen Webservers:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.e1fdee38-4bf1-11f1-97f1-a36e42227031.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.2c667ae6-4bf5-11f1-b92d-5bd50f57c119.log
 * Die aktuellen Screenshots:
 https://github.com/froiloc/bb-forum-forensics/tree/1b5017a2f62c5a8f1825de76fc6edabb25d6bf66/debug/screenshots
 ***
@@ -92,7 +92,7 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 36. erledigt
 37. erledigt
 38. erledigt
-39. (40) Das Löschen eines Blocks im Editor ist nicht mehr möglich. Sie werden optisch im Editor gelöscht. Aber nach einem Reload der Seite sind alle gelöschten Elemente wieder da.
+39. erledigt
 40. erledigt
 41. erledigt
 42. erledigt
@@ -105,10 +105,12 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 49. erledigt
 50. erledigt
 51. (30) Man kann im Formular Platzhalter ausfüllen und sie werden dann auch im Editor gerendert, aber sie werden scheinbar nicht gespeichert, denn nach einem Neuladen der Seite oder des Editors sind die Werte nicht mehr da und die Platzhalter haben wieder den leeren, unausgefüllten Zustand.
-52. (30) Das Löschen eines Blocks nutzt wahrscheinlich die falsche Aktion oder der Endpunkt fehlt. Es wird `delete_block` verwendet, aber nur `save` und `delete` sind zulässig.
-53. (20) Die automatischen Werte in den Platzhaltern müssen noch gerendert werden. Bislang stehen im Editor nur die identifizierenden Namen der Platzhalter.
-54. (20) Wenn ein Platzhalter ausgefüllt ist und im Anschluss durch erneutes Doppelklicken bearbeitet werden soll, dann soll sein derzeitiger Wert auch als Wert im Formular stehen. Im Grunde genommen sollte der Wert im Formular dauerhaft stehen.
-55. (40) Autosave sorgt dafür, dass der Fokus verloren geht, dass das ausgewählte Formularfeld verlassen wird, dass der Rahmen im Formular und im Editor auf das erste Element verschoben wird, das einen Kommentar hat.
+52.erledigt
+52. (20) Die automatischen Werte in den Platzhaltern müssen noch gerendert werden. Bislang stehen im Editor nur die identifizierenden Namen der Platzhalter.
+53. (20) Wenn ein Platzhalter ausgefüllt ist und im Anschluss durch erneutes Doppelklicken bearbeitet werden soll, dann soll sein derzeitiger Wert auch als Wert im Formular stehen. Im Grunde genommen sollte der Wert im Formular dauerhaft stehen.
+54. (40) Autosave sorgt dafür, dass der Fokus verloren geht, dass das ausgewählte Formularfeld verlassen wird, dass der Rahmen im Formular und im Editor auf das erste Element verschoben wird, das einen Kommentar hat.
+55. (20) Es kommt noch immer zu Situationen, in denen nicht inline eingefügt werden kann und bei denen dann der Platzhalter nach einem Block eingefügt wird. In diesem Fall wurde der Platzhalter am Ende des Dokuments eingefügt, obwohl zuvor der Fokus in einem der vorderen Blöcke war. Der Cursor wurde zuvor aktiv in einen Text in einem Block platziert. Erst dann wurde die Schaltfläche `+ Einfügen` für `user.aliases` angeklickt. Der Platzhalter wurde dann zunächst am Ende des Dokuments eingefügt. Nach erneutem Platzieren des Cursors im ursprünglichen Block und erneutem Klicken auf `+Einfügen` wurde `user.aliases` dann korrekt inline an der gewünschten Stelle gesetzt.
+56. (30) Nach dem Klicken auf Aktualisieren sind die Einträge für die Platzhalter weg. Siehe Screenshots, bitte anhand der Zeitstempel im Dateinamen vergleichen.
 ---
 ## 3. Funktionalität Backend / Python / SQLite3-Datenbank
 Hier werden Funktionsprobleme aufgeführt, die aufgrund von Problemen im Webserver oder der Datenbank auftreten.

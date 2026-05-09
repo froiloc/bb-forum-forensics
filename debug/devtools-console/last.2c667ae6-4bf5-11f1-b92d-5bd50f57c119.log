@@ -1,0 +1,157 @@
+127.0.0.2:8080/favicon.ico:1  Failed to load resource: the server responded with a status of 404 (Not Found)
+block:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+block:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+block:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+block:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+block:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+block:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+block:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+order:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+order:1  Failed to load resource: the server responded with a status of 400 (Bad Request)
+127.0.0.2:8080/_forensic/events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+report:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+Navigated to http://127.0.0.2:8080/_forensic/report
+placeholder_chips.js:56 [forensic] placeholder_chips.js: window.PlaceholderChips exportiert
+placeholder_wizard.js:75 [forensic] placeholder_wizard.js: window.PlaceholderWizard exportiert
+module_panel.js:77 [forensic] module_panel.js: window.ModulePanel exportiert
+annotation_sidebar.js:58 [forensic] annotation_sidebar.js: window.AnnotationSidebar exportiert
+report_editor.js:86 [forensic] report_editor.js: Exports auf window gesetzt
+userinfo.js:67 [forensic] DOMContentLoaded: userinfo.js aktiv
+userinfo.js:67 [forensic] initEditor() gestartet
+userinfo.js:67 [forensic] initSSEWindow3() gestartet
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 6ba40ae4-d05e-47df-9142-fac596788d87
+report_editor.js:86 [forensic] initEditorModule() gestartet
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:86 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
+report_editor.js:86 [forensic] initReportSelector() gestartet
+favicon.ico:1  GET http://127.0.0.2:8080/favicon.ico 404 (Not Found)
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= interim
+report_editor.js:454 report_editor.js: _knownBlockIds initialisiert, 49 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:596 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+report_editor.js:606 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:1147 report_editor.js: Chip-Doppelklick: kalbfleisch m
+bundle.js:2 Uncaught (in promise) IndexSizeError: Failed to execute 'getRangeAt' on 'Selection': 0 is not a valid index.
+    at f.value (bundle.js:2:881)
+    at u.value (bundle.js:2:14933)
+    at u.value (bundle.js:2:14699)
+    at bundle.js:2:14118
+value @ bundle.js:2
+value @ bundle.js:2
+value @ bundle.js:2
+(anonymous) @ bundle.js:2
+Promise.then
+value @ bundle.js:2
+(anonymous) @ bundle.js:2
+(anonymous) @ bundle.js:2
+(anonymous) @ bundle.js:2
+setTimeout
+(anonymous) @ bundle.js:2
+value @ bundle.js:2
+(anonymous) @ bundle.js:2
+attributes
+(anonymous) @ report_editor.js:1069
+setTimeout
+(anonymous) @ report_editor.js:1068
+report_editor.js:1585 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 49
+report_editor.js:1699 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 49 | Bloecke geloescht: 0
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 2
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 49 Bloecke geladen.
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:596 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+report_editor.js:606 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:1147 report_editor.js: Chip-Doppelklick: kalbfleisch m
+report_editor.js:1147 report_editor.js: Chip-Doppelklick: kalbfleisch m
+report_editor.js:1147 report_editor.js: Chip-Doppelklick: platzhalter m
+report_editor.js:1147 report_editor.js: Chip-Doppelklick: platzhalter m
+report_editor.js:1585 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 49
+report_editor.js:1657 report_editor.js: Geloeschte Bloecke erkannt: (5) ['ef75e706-dedd-435e-ae62-1ed82b040743', '1e7bd7c5-a255-49f8-83a7-04f9c0a88c07', 'b18d53c4-8663-4517-9664-825ea6faaaec', '6b0ac64f-3a00-420f-9b99-497a3969c92b', 'c7b9448a-a144-482c-a677-75bfef051543']
+report_editor.js:1668 report_editor.js: Block geloescht: ef75e706-dedd-435e-ae62-1ed82b040743 | Status: 200
+report_editor.js:1668 report_editor.js: Block geloescht: 1e7bd7c5-a255-49f8-83a7-04f9c0a88c07 | Status: 200
+report_editor.js:1668 report_editor.js: Block geloescht: b18d53c4-8663-4517-9664-825ea6faaaec | Status: 200
+report_editor.js:1668 report_editor.js: Block geloescht: 6b0ac64f-3a00-420f-9b99-497a3969c92b | Status: 200
+report_editor.js:1668 report_editor.js: Block geloescht: c7b9448a-a144-482c-a677-75bfef051543 | Status: 200
+report_editor.js:1699 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 44 | Bloecke geloescht: 5
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 2
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 44 Bloecke geladen.
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:596 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+report_editor.js:606 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:1585 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 44
+report_editor.js:1699 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 44 | Bloecke geloescht: 0
+bundle.js:2 Uncaught (in promise) IndexSizeError: Failed to execute 'getRangeAt' on 'Selection': 0 is not a valid index.
+    at f.value (bundle.js:2:881)
+    at u.value (bundle.js:2:14933)
+    at u.value (bundle.js:2:14699)
+    at bundle.js:2:14118
+value @ bundle.js:2
+value @ bundle.js:2
+value @ bundle.js:2
+(anonymous) @ bundle.js:2
+Promise.then
+value @ bundle.js:2
+(anonymous) @ bundle.js:2
+(anonymous) @ bundle.js:2
+(anonymous) @ bundle.js:2
+setTimeout
+(anonymous) @ bundle.js:2
+value @ bundle.js:2
+(anonymous) @ bundle.js:2
+attributes
+(anonymous) @ report_editor.js:1069
+setTimeout
+(anonymous) @ report_editor.js:1068
+report_editor.js:1147 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:1147 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:1147 report_editor.js: Chip-Doppelklick: realname o
+bundle.js:2 Uncaught (in promise) IndexSizeError: Failed to execute 'getRangeAt' on 'Selection': 0 is not a valid index.
+    at f.value (bundle.js:2:881)
+    at u.value (bundle.js:2:14933)
+    at u.value (bundle.js:2:14699)
+    at bundle.js:2:14118
+value @ bundle.js:2
+value @ bundle.js:2
+value @ bundle.js:2
+(anonymous) @ bundle.js:2
+Promise.then
+value @ bundle.js:2
+(anonymous) @ bundle.js:2
+(anonymous) @ bundle.js:2
+(anonymous) @ bundle.js:2
+setTimeout
+(anonymous) @ bundle.js:2
+value @ bundle.js:2
+(anonymous) @ bundle.js:2
+attributes
+(anonymous) @ report_editor.js:1069
+setTimeout
+(anonymous) @ report_editor.js:1068
+report_editor.js:1147 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:1147 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:1147 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:1147 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:1147 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:1147 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:1585 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 44
+report_editor.js:1699 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 44 | Bloecke geloescht: 0
+module_panel.js:77 [forensic] _insertQuery: Kein aktiver Cursor, lege neuen Block an: user.aliases
+module_panel.js:77 [forensic] _insertQueryAsNewBlock: Block sofort in Editor eingefuegt, idx= 39
+module_panel.js:77 [forensic] _insertQuery: Chip nach Fallback inline ersetzt: user.aliases
+module_panel.js:77 [forensic] _insertQuery: Chip inline eingefuegt: user.aliases
+module_panel.js:77 [forensic] _insertQuery: Chip inline eingefuegt: user.email
+report_editor.js:1585 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 44
+report_editor.js:1657 report_editor.js: Geloeschte Bloecke erkannt: (5) ['CQuIzXZXsW', '2x_wx_XRef', '2sE-aEWNz9', 'KLU8TZwIVR', 'xL2xw8eL4U']
+report_editor.js:1668 report_editor.js: Block geloescht: CQuIzXZXsW | Status: 200
+report_editor.js:1668 report_editor.js: Block geloescht: 2x_wx_XRef | Status: 200
+report_editor.js:1668 report_editor.js: Block geloescht: 2sE-aEWNz9 | Status: 200
+report_editor.js:1668 report_editor.js: Block geloescht: KLU8TZwIVR | Status: 200
+report_editor.js:1668 report_editor.js: Block geloescht: xL2xw8eL4U | Status: 200
+report_editor.js:1699 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 40 | Bloecke geloescht: 5
+report_editor.js:1585 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 40
+report_editor.js:1699 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 40 | Bloecke geloescht: 0
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 2
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 41 Bloecke geladen.
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:596 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+report_editor.js:606 report_editor.js: Initialisierungs-Guard freigegeben.

@@ -59,7 +59,7 @@
 #     block_data und owner optional — fehlende Werte werden aus dem
 #     bestehenden Block in der DB ergaenzt.
 #     Beleg: Bugfix Build 135, Projektgespraech 2026-05-09
-# Version: v0.6.135 · Build: 135 · 2026-05-09
+# Version: v0.6.139 · Build: 139 · 2026-05-09
 # =============================================================================
 
 from __future__ import annotations
@@ -158,22 +158,30 @@ class EditorBlockEndpoint:
         block_data = data.get("block_data")
         owner      = str(data.get("owner", "")).strip()
         sort_index = data.get("sort_index")
-        # Bug 3.6 Fix Build 135: placeholder_values_json aus Body lesen.
-        # Wird von _onPlaceholderFieldSave (report_editor.js) via update_block
-        # gesendet. save_block() erwartet einen JSON-String oder None.
-        # Beleg: Bugfix Build 135, Projektgespraech 2026-05-09
         placeholder_values_json_raw = data.get("placeholder_values_json")
         placeholder_values_json: str | None = None
         if placeholder_values_json_raw is not None:
             if isinstance(placeholder_values_json_raw, str):
                 placeholder_values_json = placeholder_values_json_raw
             else:
-                # dict/list aus JSON-Body → als String serialisieren
                 placeholder_values_json = json.dumps(
                     placeholder_values_json_raw, ensure_ascii=False
                 )
 
         report_id_raw = data.get("report_id")
+
+        # Bug 3.7 Diagnose Build 139: Erweitertes Logging fuer Platzhalter-Save.
+        # Zeigt genau welche Felder ankommen und was fehlt.
+        # Beleg: Bugfix Build 139, Projektgespraech 2026-05-09
+        logger.debug(
+            "_action_save eingehend: block_id=%r block_type=%r "
+            "block_data_type=%s owner=%r report_id=%r "
+            "placeholder_values_json_len=%s",
+            block_id, block_type,
+            type(block_data).__name__,
+            owner, report_id_raw,
+            len(placeholder_values_json) if placeholder_values_json else 'None',
+        )
 
         # Pflichtfeld block_id immer pruefen
         if not block_id:
@@ -183,13 +191,31 @@ class EditorBlockEndpoint:
             )
             return
 
-        # Bug 3.6 Fix Build 135: Bei update_block (Platzhalter-Werte-Update) sind
-        # block_type, block_data und owner optional — fehlende Werte werden aus dem
-        # bestehenden Block in der DB ergaenzt.
-        # Beleg: Bugfix Build 135, Projektgespraech 2026-05-09
         existing_for_fill: object = None
         if not block_type or block_data is None or not owner:
-            existing_for_fill = self._bundle.evidence.get_block(block_id)
+            logger.debug(
+                "_action_save: optionale Felder fehlen — lade Block aus DB: "
+                "block_type=%r block_data_none=%s owner=%r",
+                block_type, block_data is None, owner,
+            )
+            try:
+                existing_for_fill = self._bundle.evidence.get_block(block_id)
+            except Exception as exc:
+                logger.error("_action_save: get_block fehlgeschlagen block_id=%s: %s",
+                             block_id, exc, exc_info=True)
+                handler.send_response_body(
+                    500, _json_err("Interner Datenbankfehler beim Lesen des Blocks", "ERROR"),
+                    content_type=_CT_JSON,
+                )
+                return
+            logger.debug(
+                "_action_save: DB-Ergebnis fuer block_id=%r: gefunden=%s "
+                "db_block_type=%r db_owner=%r",
+                block_id,
+                existing_for_fill is not None,
+                getattr(existing_for_fill, 'block_type', None),
+                getattr(existing_for_fill, 'author', None),
+            )
             if existing_for_fill is None and (not block_type or block_data is None):
                 handler.send_response_body(
                     400,
@@ -203,13 +229,12 @@ class EditorBlockEndpoint:
             if not block_type and existing_for_fill:
                 block_type = existing_for_fill.block_type or ''
             if block_data is None and existing_for_fill:
-                # block_data aus DB laden (JSON-String -> dict)
                 try:
                     block_data = json.loads(existing_for_fill.block_data or '{}')
                 except (json.JSONDecodeError, TypeError):
                     block_data = {}
             if not owner and existing_for_fill:
-                owner = existing_for_fill.author or ''
+                owner = getattr(existing_for_fill, 'author', '') or ''
 
         # block_type und owner als Pflichtfelder pruefen (nach Auffuellung)
         for field, value in [
@@ -217,6 +242,10 @@ class EditorBlockEndpoint:
             ("owner",      owner),
         ]:
             if not value:
+                logger.warning(
+                    "_action_save: Pflichtfeld '%s' fehlt nach DB-Auffuellung "
+                    "fuer block_id=%r", field, block_id,
+                )
                 handler.send_response_body(
                     400, _json_err(f"'{field}' fehlt oder leer", "MISSING_FIELD"),
                     content_type=_CT_JSON,
@@ -224,6 +253,11 @@ class EditorBlockEndpoint:
                 return
 
         if not isinstance(block_data, dict):
+            logger.warning(
+                "_action_save: block_data ist kein dict fuer block_id=%r, "
+                "Typ=%s Wert=%r",
+                block_id, type(block_data).__name__, str(block_data)[:100],
+            )
             handler.send_response_body(
                 400,
                 _json_err("'block_data' fehlt oder ist kein Objekt", "MISSING_FIELD"),
@@ -325,6 +359,11 @@ class EditorBlockEndpoint:
         """
         Loescht einen Block. Nur der Owner darf loeschen.
         HTTP 403 wenn nicht Owner, HTTP 404 wenn nicht gefunden.
+
+        Bug 2.52 Fix Build 139: block.owner → block.author (Umbenennung Build 114).
+        Ausserdem: get_block() in try/except gefasst damit AttributeError nicht
+        als leerer 500 ankommt.
+        Beleg: Bugfix Build 139, Projektgespraech 2026-05-09
         """
         block_id = str(data.get("block_id", "")).strip()
         if not block_id:
@@ -335,7 +374,17 @@ class EditorBlockEndpoint:
             return
 
         # Eigentuemerschaft pruefen bevor delete_block() aufgerufen wird
-        block = self._bundle.evidence.get_block(block_id)
+        try:
+            block = self._bundle.evidence.get_block(block_id)
+        except Exception as exc:
+            logger.error("_action_delete: get_block fehlgeschlagen block_id=%s: %s",
+                         block_id, exc, exc_info=True)
+            handler.send_response_body(
+                500, _json_err("Interner Datenbankfehler beim Lesen des Blocks", "ERROR"),
+                content_type=_CT_JSON,
+            )
+            return
+
         if block is None:
             handler.send_response_body(
                 404,
@@ -344,10 +393,17 @@ class EditorBlockEndpoint:
             )
             return
 
-        # Bug 3.1 Fix (Build 117): Ermittler-Username, nicht Beschuldigter.
-        # Beleg: Projektgespraech 2026-05-07
+        # Bug 2.52 Fix Build 139: Attribut heisst 'author', nicht 'owner'.
+        # Umbenennung erfolgte in Build 114 (save_block owner→author).
+        # block.owner loest AttributeError aus → unkontrollierter 500.
+        # Beleg: Bugfix Build 139, Projektgespraech 2026-05-09
         requesting_owner = self._context.investigator_username
-        if block.owner != requesting_owner:
+        block_author = getattr(block, 'author', None) or getattr(block, 'owner', None) or ''
+        logger.debug(
+            "_action_delete: block_id=%s block_author=%r requesting_owner=%r",
+            block_id, block_author, requesting_owner,
+        )
+        if block_author and block_author != requesting_owner:
             handler.send_response_body(
                 403,
                 _json_err(

@@ -563,8 +563,20 @@ function openAtField(options, fieldName) {
 
     // Fokus auf den Block setzen der das Feld enthaelt.
     // focusBlock() rendert das Formular neu — Input-DOM erst danach vorhanden.
+    // Bug IndexSizeError Fix Build 139: _pulseEditorBlock ruft caret.setToBlock
+    // auf, das intern getRangeAt(0) aufruft. Wenn der Editor keinen Fokus hat
+    // (Formular ist gerade aktiv), gibt es keine Range → IndexSizeError.
+    // Fix: _pulseEditorBlock temporaer deaktivieren waehrend openAtField laeuft.
+    // Beleg: Bugfix Build 139, Projektgespraech 2026-05-09
     if (options?.blockId) {
+        const savedPulse = window.CommentThread?._pulseEditorBlock;
+        if (window.CommentThread) {
+            window.CommentThread._pulseEditorBlock = () => {};
+        }
         focusBlock(options.blockId);
+        if (window.CommentThread && savedPulse) {
+            window.CommentThread._pulseEditorBlock = savedPulse;
+        }
     }
 
     // Bug 2.42 Fix Build 135: _focusDelay aus Options respektieren (Standard 100ms).
