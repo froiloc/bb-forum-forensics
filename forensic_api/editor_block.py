@@ -51,7 +51,15 @@
 #     Der Eigentuemer eines Blocks muss der Ermittler (Systembenutzer) sein.
 #     Fix: context.investigator_username verwenden.
 #     Beleg: Projektgespraech 2026-05-07
-# Version: v0.6.117 · Build: 117 · 2026-05-07
+#   Build 135 (Bug 3.6): update_block als Alias fuer save hinzugefuegt.
+#     _onPlaceholderFieldSave in report_editor.js sendete 'update_block',
+#     das Backend kannte nur 'save' und 'delete'. Fix: update_block wird wie
+#     save behandelt. placeholder_values_json wird jetzt aus dem Body gelesen
+#     und an save_block() weitergegeben. Bei update_block sind block_type,
+#     block_data und owner optional — fehlende Werte werden aus dem
+#     bestehenden Block in der DB ergaenzt.
+#     Beleg: Bugfix Build 135, Projektgespraech 2026-05-09
+# Version: v0.6.135 · Build: 135 · 2026-05-09
 # =============================================================================
 
 from __future__ import annotations
@@ -119,6 +127,13 @@ class EditorBlockEndpoint:
             self._action_save(handler, data)
         elif action == "delete":
             self._action_delete(handler, data)
+        elif action == "update_block":
+            # Bug 3.6 Fix Build 135: update_block ist ein Alias fuer save.
+            # Der Frontend-Code (_onPlaceholderFieldSave) sendete 'update_block'
+            # mit placeholder_values_json — das Backend kannte diese Aktion nicht.
+            # Fix: 'update_block' wird wie 'save' behandelt.
+            # Beleg: Bugfix Build 135, Projektgespraech 2026-05-09
+            self._action_save(handler, data)
         else:
             handler.send_response_body(
                 400,
@@ -143,12 +158,61 @@ class EditorBlockEndpoint:
         block_data = data.get("block_data")
         owner      = str(data.get("owner", "")).strip()
         sort_index = data.get("sort_index")
+        # Bug 3.6 Fix Build 135: placeholder_values_json aus Body lesen.
+        # Wird von _onPlaceholderFieldSave (report_editor.js) via update_block
+        # gesendet. save_block() erwartet einen JSON-String oder None.
+        # Beleg: Bugfix Build 135, Projektgespraech 2026-05-09
+        placeholder_values_json_raw = data.get("placeholder_values_json")
+        placeholder_values_json: str | None = None
+        if placeholder_values_json_raw is not None:
+            if isinstance(placeholder_values_json_raw, str):
+                placeholder_values_json = placeholder_values_json_raw
+            else:
+                # dict/list aus JSON-Body → als String serialisieren
+                placeholder_values_json = json.dumps(
+                    placeholder_values_json_raw, ensure_ascii=False
+                )
 
         report_id_raw = data.get("report_id")
 
-        # Pflichtfelder pruefen
+        # Pflichtfeld block_id immer pruefen
+        if not block_id:
+            handler.send_response_body(
+                400, _json_err("'block_id' fehlt oder leer", "MISSING_FIELD"),
+                content_type=_CT_JSON,
+            )
+            return
+
+        # Bug 3.6 Fix Build 135: Bei update_block (Platzhalter-Werte-Update) sind
+        # block_type, block_data und owner optional — fehlende Werte werden aus dem
+        # bestehenden Block in der DB ergaenzt.
+        # Beleg: Bugfix Build 135, Projektgespraech 2026-05-09
+        existing_for_fill: object = None
+        if not block_type or block_data is None or not owner:
+            existing_for_fill = self._bundle.evidence.get_block(block_id)
+            if existing_for_fill is None and (not block_type or block_data is None):
+                handler.send_response_body(
+                    400,
+                    _json_err(
+                        "'block_type' und 'block_data' erforderlich fuer neuen Block",
+                        "MISSING_FIELD",
+                    ),
+                    content_type=_CT_JSON,
+                )
+                return
+            if not block_type and existing_for_fill:
+                block_type = existing_for_fill.block_type or ''
+            if block_data is None and existing_for_fill:
+                # block_data aus DB laden (JSON-String -> dict)
+                try:
+                    block_data = json.loads(existing_for_fill.block_data or '{}')
+                except (json.JSONDecodeError, TypeError):
+                    block_data = {}
+            if not owner and existing_for_fill:
+                owner = existing_for_fill.author or ''
+
+        # block_type und owner als Pflichtfelder pruefen (nach Auffuellung)
         for field, value in [
-            ("block_id",   block_id),
             ("block_type", block_type),
             ("owner",      owner),
         ]:
@@ -159,7 +223,7 @@ class EditorBlockEndpoint:
                 )
                 return
 
-        if block_data is None or not isinstance(block_data, dict):
+        if not isinstance(block_data, dict):
             handler.send_response_body(
                 400,
                 _json_err("'block_data' fehlt oder ist kein Objekt", "MISSING_FIELD"),
@@ -186,17 +250,20 @@ class EditorBlockEndpoint:
 
         if report_id is None:
             # Pruefe ob Block bereits existiert (Update-Fall benoetigt keine report_id)
-            existing = self._bundle.evidence.get_block(block_id)
-            if existing is None:
-                handler.send_response_body(
-                    400,
-                    _json_err(
-                        "'report_id' erforderlich fuer neuen Block", "MISSING_FIELD"
-                    ),
-                    content_type=_CT_JSON,
-                )
-                return
-            report_id = existing.report_id
+            if existing_for_fill is not None:
+                report_id = existing_for_fill.report_id
+            else:
+                existing = self._bundle.evidence.get_block(block_id)
+                if existing is None:
+                    handler.send_response_body(
+                        400,
+                        _json_err(
+                            "'report_id' erforderlich fuer neuen Block", "MISSING_FIELD"
+                        ),
+                        content_type=_CT_JSON,
+                    )
+                    return
+                report_id = existing.report_id
 
         # Bug 3.4 Fix (Build 117): sort_index als optionaler int.
         # Der Client uebergibt Fractional-Index-Strings (z.B. "a0") —
@@ -218,7 +285,8 @@ class EditorBlockEndpoint:
 
         try:
             # Build 114: owner= → author= (Signatur evidence_db.save_block)
-            # Beleg: Projektgespraech 2026-05-07
+            # Bug 3.6 Fix Build 135: placeholder_values_json mitsenden.
+            # Beleg: Projektgespraech 2026-05-07, 2026-05-09
             self._bundle.evidence.save_block(
                 block_id=block_id,
                 report_id=report_id,
@@ -226,6 +294,7 @@ class EditorBlockEndpoint:
                 block_type=block_type,
                 block_data=block_data_json,
                 sort_index=sort_idx,
+                placeholder_values_json=placeholder_values_json,
             )
         except EvidenceDbError as exc:
             handler.send_response_body(

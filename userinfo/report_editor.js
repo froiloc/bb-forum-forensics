@@ -69,7 +69,7 @@
  *     ausgefuehrt damit der gedruckte Stand mit der DB synchron ist.
  *     Beleg: Bugfix Build 134, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.134 · Build: 134 · 2026-05-09
+ * Version: v0.6.135 · Build: 135 · 2026-05-09
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -1068,12 +1068,19 @@ function _bindChipDoubleClick() {
                     block.data?.text || ''
                 ) || '';
 
+                // Bug 2.42 Fix Build 135: onSave muss auf _onPlaceholderFieldSave
+                // zeigen statt auf eine leere Funktion, damit Werte tatsaechlich
+                // gespeichert werden. Ausserdem: focusBlock rendert das Formular
+                // asynchron — der Input-Fokus wird erst nach 250ms gesetzt
+                // (statt 100ms) damit der DOM sicher bereit ist.
+                // Beleg: Bugfix Build 135, Projektgespraech 2026-05-09
                 window.PlaceholderWizard.openAtField({
                     blockId:     blockId,
                     moduleTitle: chip.dataset.chipDescription || fieldName,
                     bodyText:    rawText,
                     values:      {},
-                    onSave:      () => {},
+                    onSave:      _onPlaceholderFieldSave,
+                    _focusDelay: 250,
                 }, fieldName);
             }).catch(() => {});
         }

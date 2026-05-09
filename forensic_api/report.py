@@ -166,7 +166,7 @@ _EDITOR_HTML = """\
         <span id="report-lock-status" class="lock-status lock-none"
           title="Editor-Lock-Status" style="font-size:11px"></span>
         <span id="editor-save-indicator"
-          style="font-size:11px;color:#4caf50;opacity:0;transition:opacity 1s"></span>
+          class="save-indicator save-indicator--idle" title="Kein Speichern ausstehend">🖫</span>
       </div>
     </header>
 

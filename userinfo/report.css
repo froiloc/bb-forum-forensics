@@ -22,7 +22,7 @@
  *     9. Block-Wrapper (§4.3, B6 Phase 3)
  *    10. Support-Sidebar Akkordeon (§4.4, B6 Phase 3)
  *
- * Version: v0.6.133 · Build: 133 · 2026-05-09
+ * Version: v0.6.135 · Build: 135 · 2026-05-09
  * Beleg: Bauplan B6 v0.3 §4.1–4.7, Bauplan B6 v0.5 §4.3–4.4
  * =========================================================================== */
 
@@ -115,6 +115,9 @@
 /* Schaltflaechen in der Aktionsleiste */
 .report-btn {
   padding: 5px 12px;
+  height: 28px;
+  box-sizing: border-box;
+  line-height: 1;
   border: 1px solid var(--color-border, #ccc);
   border-radius: var(--radius, 4px);
   background: var(--color-surface, #fff);
@@ -123,6 +126,7 @@
   cursor: pointer;
   transition: background .15s, border-color .15s;
   white-space: nowrap;
+  vertical-align: middle;
 }
 
 .report-btn:hover:not(:disabled) {
@@ -2813,14 +2817,12 @@
  * 20. Ergebnisliste und Eintraege
  * --------------------------------------------------------------------------- */
 
-/* Bug 1.21 Fix Build 133: #accordion-body-blocks nicht scrollen lassen —
- * der Scrollbalken soll auf #mp-list liegen, nicht auf dem Accordion-Body.
- * Dazu: overflow-y:hidden am Body + fixe max-height. #mp-list hat flex:1 1 0
- * + min-height:0 und uebernimmt damit das Scrolling.
- * Beleg: Bugfix Build 133, Projektgespraech 2026-05-09 */
+/* Bug 1.21 Fix Build 133, Bug 1.24 Fix Build 135:
+ * overflow-y:hidden damit der Scrollbar auf #mp-list liegt, nicht am Body.
+ * Bug 1.24: max-height:420px entfernt (war zu restriktiv).
+ * Beleg: Bugfix Build 133/135, Projektgespraech 2026-05-09 */
 #accordion-body-blocks {
   overflow-y: hidden;
-  max-height: 420px;
 }
 
 /* .mp-panel muss ebenfalls als Flex-Column mit min-height:0 konfiguriert sein,
@@ -3210,15 +3212,14 @@
   display: none !important;
 }
 
-/* Speicher-Indikator (Bug 1.22 Fix Build 132): vier Zustände mit Disketten-Symbol.
- * idle    = grau, leicht gebluert — kein Speichern ausstehend
- * saving  = gruen, pulsierender Rahmen — Speichervorgang läuft
- * saved   = gruen, 5s sichtbar — letzte Speicherung erfolgreich
- * failed  = rot, dauerhaft — Fehler bis naechster Erfolg
- * Beleg: Bugfix Build 132, Projektgespraech 2026-05-09 */
+/* Speicher-Indikator (Bug 1.22 Fix Build 132, Bug 1.23 Fix Build 135).
+ * Bug 1.23: font-size 25px (war 16px). Kein direktes Element-Styling —
+ * ausschliesslich ueber CSS-Klassen und dieses Stylesheet.
+ * Bug 1.24: max-height:420px aus #accordion-body-blocks entfernt.
+ * Beleg: Bugfix Build 135, Projektgespraech 2026-05-09 */
 #editor-save-indicator,
 .save-indicator {
-  font-size: 16px;
+  font-size: 25px;
   line-height: 1;
   display: inline-block;
   padding: 2px 4px;

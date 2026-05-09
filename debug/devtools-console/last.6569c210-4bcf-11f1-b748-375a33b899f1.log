@@ -1,0 +1,240 @@
+127.0.0.2:8080/favicon.ico:1  Failed to load resource: the server responded with a status of 404 (Not Found)
+report:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+Navigated to http://127.0.0.2:8080/_forensic/report
+placeholder_chips.js:56 [forensic] placeholder_chips.js: window.PlaceholderChips exportiert
+placeholder_wizard.js:75 [forensic] placeholder_wizard.js: window.PlaceholderWizard exportiert
+module_panel.js:77 [forensic] module_panel.js: window.ModulePanel exportiert
+annotation_sidebar.js:58 [forensic] annotation_sidebar.js: window.AnnotationSidebar exportiert
+report_editor.js:86 [forensic] report_editor.js: Exports auf window gesetzt
+userinfo.js:67 [forensic] DOMContentLoaded: userinfo.js aktiv
+userinfo.js:67 [forensic] initEditor() gestartet
+userinfo.js:67 [forensic] initSSEWindow3() gestartet
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= b7ca1dc8-31c4-4c21-b651-b452dca4ceb3
+report_editor.js:86 [forensic] initEditorModule() gestartet
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:86 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
+report_editor.js:86 [forensic] initReportSelector() gestartet
+favicon.ico:1  GET http://127.0.0.2:8080/favicon.ico 404 (Not Found)
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= interim
+report_editor.js:437 report_editor.js: _knownBlockIds initialisiert, 27 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:568 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+report_editor.js:578 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 2
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 27 Bloecke geladen.
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:568 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+report_editor.js:578 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:1437 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 27
+report_editor.js:1549 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 27 | Bloecke geloescht: 0
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 2
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 27 Bloecke geladen.
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:568 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+report_editor.js:578 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 2
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 27 Bloecke geladen.
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:568 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+report_editor.js:578 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:1437 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 27
+report_editor.js:1549 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 27 | Bloecke geloescht: 0
+report_editor.js:1088 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:1088 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:1088 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:1088 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:1122  GET http://127.0.0.2:8080/_forensic/placeholders/values 500 (Internal Server Error)
+_refreshPlaceholderForm @ report_editor.js:1122
+_openAccordionSection @ report_editor.js:913
+(anonymous) @ report_editor.js:1048
+report_editor.js:183  POST http://127.0.0.2:8080/_forensic/editor/block 400 (Bad Request)
+_fetchWithLock @ report_editor.js:183
+_onPlaceholderFieldSave @ report_editor.js:1171
+_saveField @ placeholder_wizard.js:484
+(anonymous) @ placeholder_wizard.js:473
+setTimeout
+_scheduleFieldSave @ placeholder_wizard.js:472
+(anonymous) @ placeholder_wizard.js:401
+report_editor.js:1179 report_editor.js: Platzhalter-Save fehlgeschlagen: realname {error: "'block_data' fehlt oder ist kein Objekt", code: 'MISSING_FIELD'}
+_onPlaceholderFieldSave @ report_editor.js:1179
+await in _onPlaceholderFieldSave
+_saveField @ placeholder_wizard.js:484
+(anonymous) @ placeholder_wizard.js:473
+setTimeout
+_scheduleFieldSave @ placeholder_wizard.js:472
+(anonymous) @ placeholder_wizard.js:401
+report_editor.js:183  POST http://127.0.0.2:8080/_forensic/editor/block 400 (Bad Request)
+_fetchWithLock @ report_editor.js:183
+_onPlaceholderFieldSave @ report_editor.js:1171
+_saveField @ placeholder_wizard.js:484
+(anonymous) @ placeholder_wizard.js:473
+setTimeout
+_scheduleFieldSave @ placeholder_wizard.js:472
+(anonymous) @ placeholder_wizard.js:401
+report_editor.js:1179 report_editor.js: Platzhalter-Save fehlgeschlagen: realname {error: "'block_data' fehlt oder ist kein Objekt", code: 'MISSING_FIELD'}
+_onPlaceholderFieldSave @ report_editor.js:1179
+await in _onPlaceholderFieldSave
+_saveField @ placeholder_wizard.js:484
+(anonymous) @ placeholder_wizard.js:473
+setTimeout
+_scheduleFieldSave @ placeholder_wizard.js:472
+(anonymous) @ placeholder_wizard.js:401
+report_editor.js:183  POST http://127.0.0.2:8080/_forensic/editor/block 400 (Bad Request)
+_fetchWithLock @ report_editor.js:183
+_onPlaceholderFieldSave @ report_editor.js:1171
+_saveField @ placeholder_wizard.js:484
+(anonymous) @ placeholder_wizard.js:473
+setTimeout
+_scheduleFieldSave @ placeholder_wizard.js:472
+(anonymous) @ placeholder_wizard.js:401
+report_editor.js:1179 report_editor.js: Platzhalter-Save fehlgeschlagen: realname {error: "'block_data' fehlt oder ist kein Objekt", code: 'MISSING_FIELD'}
+_onPlaceholderFieldSave @ report_editor.js:1179
+await in _onPlaceholderFieldSave
+_saveField @ placeholder_wizard.js:484
+(anonymous) @ placeholder_wizard.js:473
+setTimeout
+_scheduleFieldSave @ placeholder_wizard.js:472
+(anonymous) @ placeholder_wizard.js:401
+report_editor.js:183  POST http://127.0.0.2:8080/_forensic/editor/block 400 (Bad Request)
+_fetchWithLock @ report_editor.js:183
+_onPlaceholderFieldSave @ report_editor.js:1171
+_saveField @ placeholder_wizard.js:484
+(anonymous) @ placeholder_wizard.js:473
+setTimeout
+_scheduleFieldSave @ placeholder_wizard.js:472
+(anonymous) @ placeholder_wizard.js:401
+report_editor.js:1179 report_editor.js: Platzhalter-Save fehlgeschlagen: realname {error: "'block_data' fehlt oder ist kein Objekt", code: 'MISSING_FIELD'}
+_onPlaceholderFieldSave @ report_editor.js:1179
+await in _onPlaceholderFieldSave
+_saveField @ placeholder_wizard.js:484
+(anonymous) @ placeholder_wizard.js:473
+setTimeout
+_scheduleFieldSave @ placeholder_wizard.js:472
+(anonymous) @ placeholder_wizard.js:401
+module_panel.js:77 [forensic] _insertQuery: Kein aktiver Cursor, lege neuen Block an: user.aliases
+module_panel.js:77 [forensic] _insertQueryAsNewBlock: Block sofort in Editor eingefuegt, idx= 27
+report_editor.js:1437 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 27
+report_editor.js:1549 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 28 | Bloecke geloescht: 0
+module_panel.js:77 [forensic] _insertQuery: Kein aktiver Cursor, lege neuen Block an: user.email
+module_panel.js:77 [forensic] _insertQueryAsNewBlock: Block sofort in Editor eingefuegt, idx= 28
+report_editor.js:1437 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 28
+report_editor.js:1549 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 29 | Bloecke geloescht: 0
+report_editor.js:1088 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:1088 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:1088 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:1088 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:1122  GET http://127.0.0.2:8080/_forensic/placeholders/values 500 (Internal Server Error)
+_refreshPlaceholderForm @ report_editor.js:1122
+_openAccordionSection @ report_editor.js:913
+(anonymous) @ report_editor.js:1048
+report_editor.js:1088 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:1088 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:1088 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:1088 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:183  POST http://127.0.0.2:8080/_forensic/editor/block 400 (Bad Request)
+_fetchWithLock @ report_editor.js:183
+_onPlaceholderFieldSave @ report_editor.js:1171
+_saveField @ placeholder_wizard.js:484
+(anonymous) @ placeholder_wizard.js:473
+setTimeout
+_scheduleFieldSave @ placeholder_wizard.js:472
+(anonymous) @ placeholder_wizard.js:401
+report_editor.js:1179 report_editor.js: Platzhalter-Save fehlgeschlagen: realname {error: "'block_data' fehlt oder ist kein Objekt", code: 'MISSING_FIELD'}
+_onPlaceholderFieldSave @ report_editor.js:1179
+await in _onPlaceholderFieldSave
+_saveField @ placeholder_wizard.js:484
+(anonymous) @ placeholder_wizard.js:473
+setTimeout
+_scheduleFieldSave @ placeholder_wizard.js:472
+(anonymous) @ placeholder_wizard.js:401
+report_editor.js:1437 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 29
+report_editor.js:1549 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 29 | Bloecke geloescht: 0
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 2
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 31 Bloecke geladen.
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:568 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+report_editor.js:578 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:1088 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:1088 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:1088 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:1088 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:1088 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:1437 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 31
+report_editor.js:1549 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 31 | Bloecke geloescht: 0
+report_editor.js:1088 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:1088 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:1088 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:1088 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:1088 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:1088 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:1088 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:1088 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:1088 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:1088 report_editor.js: Chip-Doppelklick: realname o
+report_editor.js:183  POST http://127.0.0.2:8080/_forensic/editor/block 400 (Bad Request)
+_fetchWithLock @ report_editor.js:183
+_onPlaceholderFieldSave @ report_editor.js:1171
+_saveField @ placeholder_wizard.js:484
+(anonymous) @ placeholder_wizard.js:473
+setTimeout
+_scheduleFieldSave @ placeholder_wizard.js:472
+(anonymous) @ placeholder_wizard.js:401
+report_editor.js:1179 report_editor.js: Platzhalter-Save fehlgeschlagen: realname {error: "'block_data' fehlt oder ist kein Objekt", code: 'MISSING_FIELD'}
+_onPlaceholderFieldSave @ report_editor.js:1179
+await in _onPlaceholderFieldSave
+_saveField @ placeholder_wizard.js:484
+(anonymous) @ placeholder_wizard.js:473
+setTimeout
+_scheduleFieldSave @ placeholder_wizard.js:472
+(anonymous) @ placeholder_wizard.js:401
+report_editor.js:183  POST http://127.0.0.2:8080/_forensic/editor/block 400 (Bad Request)
+_fetchWithLock @ report_editor.js:183
+_onPlaceholderFieldSave @ report_editor.js:1171
+_saveField @ placeholder_wizard.js:484
+(anonymous) @ placeholder_wizard.js:473
+setTimeout
+_scheduleFieldSave @ placeholder_wizard.js:472
+(anonymous) @ placeholder_wizard.js:401
+report_editor.js:1179 report_editor.js: Platzhalter-Save fehlgeschlagen: realname {error: "'block_data' fehlt oder ist kein Objekt", code: 'MISSING_FIELD'}
+_onPlaceholderFieldSave @ report_editor.js:1179
+await in _onPlaceholderFieldSave
+_saveField @ placeholder_wizard.js:484
+(anonymous) @ placeholder_wizard.js:473
+setTimeout
+_scheduleFieldSave @ placeholder_wizard.js:472
+(anonymous) @ placeholder_wizard.js:401
+report_editor.js:183  POST http://127.0.0.2:8080/_forensic/editor/block 400 (Bad Request)
+_fetchWithLock @ report_editor.js:183
+_onPlaceholderFieldSave @ report_editor.js:1171
+_saveField @ placeholder_wizard.js:484
+(anonymous) @ placeholder_wizard.js:473
+setTimeout
+_scheduleFieldSave @ placeholder_wizard.js:472
+(anonymous) @ placeholder_wizard.js:401
+report_editor.js:1179 report_editor.js: Platzhalter-Save fehlgeschlagen: realname {error: "'block_data' fehlt oder ist kein Objekt", code: 'MISSING_FIELD'}
+_onPlaceholderFieldSave @ report_editor.js:1179
+await in _onPlaceholderFieldSave
+_saveField @ placeholder_wizard.js:484
+(anonymous) @ placeholder_wizard.js:473
+setTimeout
+_scheduleFieldSave @ placeholder_wizard.js:472
+(anonymous) @ placeholder_wizard.js:401
+report_editor.js:183  POST http://127.0.0.2:8080/_forensic/editor/block 400 (Bad Request)
+_fetchWithLock @ report_editor.js:183
+_onPlaceholderFieldSave @ report_editor.js:1171
+_saveField @ placeholder_wizard.js:484
+(anonymous) @ placeholder_wizard.js:473
+setTimeout
+_scheduleFieldSave @ placeholder_wizard.js:472
+(anonymous) @ placeholder_wizard.js:401
+report_editor.js:1179 report_editor.js: Platzhalter-Save fehlgeschlagen: realname {error: "'block_data' fehlt oder ist kein Objekt", code: 'MISSING_FIELD'}
+_onPlaceholderFieldSave @ report_editor.js:1179
+await in _onPlaceholderFieldSave
+_saveField @ placeholder_wizard.js:484
+(anonymous) @ placeholder_wizard.js:473
+setTimeout
+_scheduleFieldSave @ placeholder_wizard.js:472
+(anonymous) @ placeholder_wizard.js:401
+report_editor.js:1437 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 31
+report_editor.js:1549 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 31 | Bloecke geloescht: 0

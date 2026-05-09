@@ -57,7 +57,7 @@
  *     Rueckwaerts-Kompatibilitaet fuer open()/openAtField() erhalten.
  *     Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06.
  *
- * Version: v0.6.120 · Build: 120 · 2026-05-08
+ * Version: v0.6.135 · Build: 135 · 2026-05-09
  * Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06
  */
 
@@ -545,21 +545,36 @@ function openAtField(options, fieldName) {
         window.openAccordionSection(formSection);
     }
 
-    // Fokus auf den Block setzen der das Feld enthaelt
+    // Bug 2.42 Fix Build 135: onSave aus Options in _currentOpts setzen damit
+    // Feldaenderungen nach dem Chip-Doppelklick korrekt gespeichert werden.
+    // Vorher war onSave = () => {} (leer), Werte wurden nicht gespeichert.
+    // Beleg: Bugfix Build 135, Projektgespraech 2026-05-09
+    if (typeof options?.onSave === 'function') {
+        _currentOpts = { ..._currentOpts, onSave: options.onSave };
+    }
+
+    // Fokus auf den Block setzen der das Feld enthaelt.
+    // focusBlock() rendert das Formular neu — Input-DOM erst danach vorhanden.
     if (options?.blockId) {
         focusBlock(options.blockId);
     }
 
+    // Bug 2.42 Fix Build 135: _focusDelay aus Options respektieren (Standard 100ms).
+    // focusBlock rendert das Formular asynchron; bei 100ms war der Input-DOM
+    // noch nicht bereit. 250ms geben genug Zeit fuer den Re-Render.
+    // Beleg: Bugfix Build 135, Projektgespraech 2026-05-09
+    const focusDelay = (options?._focusDelay ?? 100);
+
     // Fokussiertes Feld durch scrollen in den Viewport bringen
     if (fieldName && options?.blockId) {
         const inputId = `pf-input-${options.blockId}-${fieldName}`;
-        const input   = document.getElementById(inputId);
-        if (input) {
-            setTimeout(() => {
+        setTimeout(() => {
+            const input = document.getElementById(inputId);
+            if (input) {
                 input.focus();
                 input.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }, 100);
-        }
+            }
+        }, focusDelay);
     }
 }
 
