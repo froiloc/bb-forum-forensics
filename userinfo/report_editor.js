@@ -57,7 +57,18 @@
  *     Kommentiere-Button in .block-meta-bar ist der einzige Einstiegspunkt.
  *     Beleg: Bugfix Build 129, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.129 · Build: 129 · 2026-05-09
+ *   Build 130 (2026-05-09): Bug 2.39 + Bug 2.27 behoben.
+ *     - Bug 2.39: _performAutoSave erkennt geloeschte Bloecke per _knownBlockIds-Set
+ *       und sendet delete_block fuer jeden Block, der nicht mehr im Editor vorhanden ist.
+ *       Ohne diesen Fix wurden geloeschte Bloecke beim Reload aus der DB neu geladen.
+ *       _knownBlockIds wird beim Laden des Berichts aus den Server-Daten initialisiert
+ *       und nach jedem Auto-Save auf den aktuellen Editor-Zustand synchronisiert.
+ *     - Bug 2.27: Speicher-Indikator hat nun drei deutlich sichtbare Zustaende:
+ *       idle (grau, immer sichtbar), saving (gruen pulsierend), saved (gruen, kurz).
+ *       DevTools-Console-Ausgaben beim Speichern hinzugefuegt.
+ *     Beleg: Bugfix Build 130, Projektgespraech 2026-05-09.
+ *
+ * Version: v0.6.130 · Build: 130 · 2026-05-09
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -140,6 +151,15 @@ let _loadInProgress = false;
  * Beleg: Bugfix Build 117, Projektgespraech 2026-05-08
  */
 let _isInitializing = false;
+
+/**
+ * Set der Block-IDs, die dem Server zuletzt bekannt waren.
+ * Wird nach jedem erfolgreichen _performAutoSave aktualisiert.
+ * Beim Auto-Save werden Block-IDs, die in _knownBlockIds sind aber nicht mehr
+ * in editorData.blocks, als geloescht erkannt und per delete_block entfernt.
+ * Beleg: Bugfix Build 130, Projektgespraech 2026-05-09 (Bug 2.39)
+ */
+let _knownBlockIds = new Set();
 
 // ---------------------------------------------------------------------------
 // Hilfsfunktion: fetch mit Lock-Header
@@ -409,6 +429,12 @@ async function _loadReportImpl(report) {
         // B6 Phase 6: _currentBlocks fuer Sidebar-Formular merken
         // Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06
         _currentBlocks = existingBlocks;
+        // Bug 2.39 Fix Build 130: _knownBlockIds mit den vom Server geladenen
+        // Block-IDs initialisieren, damit der Auto-Save Loeschungen erkennen kann.
+        // Beleg: Bugfix Build 130, Projektgespraech 2026-05-09
+        _knownBlockIds = new Set(existingBlocks.map(b => b.block_id).filter(Boolean));
+        console.debug('report_editor.js: _knownBlockIds initialisiert,',
+                      _knownBlockIds.size, 'Bloecke geladen.');
     }
 
     // Defensive Bereinigung: doppelte Editor-Instanzen entfernen
@@ -1323,25 +1349,43 @@ function _scheduleAutoSave(reportId) {
 }
 
 /**
- * Auto-Save: speichert alle geaenderten Bloecke.
+ * Auto-Save: speichert alle geaenderten Bloecke und loescht entfernte Bloecke.
  * Nur wenn Lock gehalten wird.
+ *
+ * Bug 2.39 Fix Build 130: Erkennt entfernte Bloecke durch Vergleich von
+ * editorData.blocks mit _knownBlockIds und sendet delete_block fuer jeden
+ * Block, der in _knownBlockIds steht aber nicht mehr im Editor vorhanden ist.
+ * Ohne diesen Fix wurden geloeschte Bloecke beim naechsten Reload wieder
+ * aus der DB geladen und erschienen erneut im Editor.
+ * Beleg: Bugfix Build 130, Projektgespraech 2026-05-09
+ *
  * @param {number} reportId
  */
 async function _performAutoSave(reportId) {
     if (!window.EditorState?.lockId) return;
     if (!_editor) return;
 
+    // Speicher-Indikator auf "Speichern laeuft..." setzen (pulsierend gruen)
+    _showSavingIndicator();
+    console.debug('report_editor.js: Auto-Save gestartet, report_id=', reportId,
+                  '| bekannte Block-IDs:', _knownBlockIds.size);
+
     let editorData;
     try {
         editorData = await _editor.save();
     } catch (err) {
         console.warn('report_editor.js: Editor.save() fehlgeschlagen:', err);
+        _hideSavingIndicator();
         return;
     }
 
     const username = document.getElementById('report-editor-body')?.dataset?.username || '';
 
+    // Schritt 1: Vorhandene Bloecke speichern
+    const currentBlockIds = new Set();
     for (const block of editorData.blocks) {
+        currentBlockIds.add(block.id);
+
         // B6 Phase 5: Chips aus block_data.text dehydrieren (gerendertes HTML -> Template-Syntax)
         // bevor gespeichert wird, damit block_data immer rohe Template-Syntax enthaelt.
         // Beleg: Bauplan B6 v0.5 §4.6, Projektgespraech 2026-05-06
@@ -1366,11 +1410,45 @@ async function _performAutoSave(reportId) {
         }
     }
 
-    // Blockreihenfolge speichern (Fractional Indexing: einfaches 'a0', 'a1', ... fuer jetzt)
+    // Schritt 2: Geloeschte Bloecke erkennen und serverseitig entfernen.
+    // Bug 2.39 Fix: _knownBlockIds enthaelt Block-IDs aus dem letzten gespeicherten
+    // Zustand. Jede ID, die dort steht aber nicht mehr in currentBlockIds, wurde
+    // vom Benutzer geloescht und muss per delete_block aus der DB entfernt werden.
+    // Beleg: Bugfix Build 130, Projektgespraech 2026-05-09
+    const deletedIds = [];
+    for (const knownId of _knownBlockIds) {
+        if (!currentBlockIds.has(knownId)) {
+            deletedIds.push(knownId);
+        }
+    }
+    if (deletedIds.length > 0) {
+        console.debug('report_editor.js: Geloeschte Bloecke erkannt:', deletedIds);
+        for (const blockId of deletedIds) {
+            const resp = await _fetchWithLock(EDITOR_API.BLOCK, {
+                action:   'delete_block',
+                block_id: blockId,
+            });
+            if (resp) {
+                if (resp.ok || resp.status === 404) {
+                    // 404 = bereits geloescht (OK), 200 = erfolgreich geloescht
+                    console.debug('report_editor.js: Block geloescht:', blockId,
+                                  '| Status:', resp.status);
+                    _knownBlockIds.delete(blockId);
+                } else {
+                    const errBody = await resp.json().catch(() => ({}));
+                    console.warn('report_editor.js: delete_block fehlgeschlagen:',
+                                 blockId, resp.status, errBody);
+                }
+            }
+        }
+    }
+
+    // Schritt 3: Blockreihenfolge speichern
+    // (Fractional Indexing: einfaches '000000', '000001', ... fuer jetzt)
     // AP-E4: vollstaendiges Fractional Indexing in einem Folgebuild
     const orderPayload = editorData.blocks.map((b, i) => ({
         block_id:   b.id,
-        sort_index: String(i).padStart(6, '0'),  // '000000', '000001', ...
+        sort_index: String(i).padStart(6, '0'),
     }));
     if (orderPayload.length) {
         await _fetchWithLock(EDITOR_API.ORDER, {
@@ -1379,7 +1457,14 @@ async function _performAutoSave(reportId) {
         });
     }
 
+    // _knownBlockIds auf aktuellen Stand bringen
+    _knownBlockIds = new Set(currentBlockIds);
+
+    // Speicher-Indikator: Erfolg anzeigen
     _showSaveIndicator();
+    console.debug('report_editor.js: Auto-Save abgeschlossen.',
+                  '| Bloecke gespeichert:', currentBlockIds.size,
+                  '| Bloecke geloescht:', deletedIds.length);
 
     // Bug 2.30 Fix Build 123: _currentBlocks nach jedem Auto-Save aktualisieren.
     // Neue Bloecke erhalten server-seitige Metadaten (author, created_at etc.),
@@ -1403,13 +1488,46 @@ async function _performAutoSave(reportId) {
     } catch (_) {}
 }
 
-/** Kurze "Gespeichert"-Anzeige */
+/**
+ * Zeigt den Speicher-Indikator als pulsierend-gruen waehrend des Speichervorgangs.
+ * Wird am Anfang von _performAutoSave aufgerufen.
+ * Beleg: Bugfix Build 130, Projektgespraech 2026-05-09 (Bug 2.27)
+ */
+function _showSavingIndicator() {
+    const el = document.getElementById('editor-save-indicator');
+    if (!el) return;
+    el.textContent = '⏳ Speichern…';
+    el.className = 'save-indicator save-indicator--saving';
+    el.style.opacity = '1';
+}
+
+/**
+ * Blendet den pulsierenden Indikator aus (bei Fehler).
+ */
+function _hideSavingIndicator() {
+    const el = document.getElementById('editor-save-indicator');
+    if (!el) return;
+    el.className = 'save-indicator save-indicator--idle';
+    el.style.opacity = '1';
+}
+
+/**
+ * Zeigt kurz "Gespeichert" in gruen an, danach kehrt der Indikator
+ * in den grauen Ruhezustand zurueck.
+ * Beleg: Bugfix Build 130, Projektgespraech 2026-05-09 (Bug 2.27)
+ */
 function _showSaveIndicator() {
     const el = document.getElementById('editor-save-indicator');
     if (!el) return;
     el.textContent = '✓ Gespeichert';
+    el.className = 'save-indicator save-indicator--saved';
     el.style.opacity = '1';
-    setTimeout(() => { el.style.opacity = '0'; }, 2000);
+    // Nach 2 Sekunden in den grauen Ruhezustand zurueckfallen
+    setTimeout(() => {
+        el.textContent = '● Kein Speichern ausstehend';
+        el.className = 'save-indicator save-indicator--idle';
+        el.style.opacity = '1';
+    }, 2000);
 }
 
 // ---------------------------------------------------------------------------
@@ -1790,6 +1908,15 @@ async function initEditorModule() {
     _initSidebarAccordion();
     // Build 115: Drag&Drop-Zone auf editorjs-holder registrieren
     _initDragDrop();
+    // Bug 2.27 Fix Build 130: Speicher-Indikator im Ruhezustand (grau) initialisieren.
+    // So ist immer sichtbar, ob gerade gespeichert wird oder nicht.
+    // Beleg: Bugfix Build 130, Projektgespraech 2026-05-09
+    const saveEl = document.getElementById('editor-save-indicator');
+    if (saveEl) {
+        saveEl.textContent = '● Kein Speichern ausstehend';
+        saveEl.className = 'save-indicator save-indicator--idle';
+        saveEl.style.opacity = '1';
+    }
     await initReportSelector();
     initBlockUpdatedListener();
 }

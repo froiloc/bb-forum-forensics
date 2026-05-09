@@ -3201,14 +3201,38 @@
   display: none !important;
 }
 
-/* Speicher-Indikator (Bug 2.27): sichtbar gestalten */
-#editor-save-indicator {
+/* Speicher-Indikator (Bug 2.27 Fix Build 130): drei Zustände
+ * idle  = grau, immer sichtbar — kein Speichern ausstehend
+ * saving = grün pulsierend — Speichervorgang läuft gerade
+ * saved  = grün, kurz eingeblendet — letzte Speicherung erfolgreich
+ * Beleg: Bugfix Build 130, Projektgespraech 2026-05-09 */
+#editor-save-indicator,
+.save-indicator {
   font-size: 11px;
-  color: var(--color-success, #2d7a2d);
-  opacity: 0;
-  transition: opacity 0.3s;
+  opacity: 1;
+  transition: opacity 0.3s, color 0.3s;
   margin-left: 8px;
   align-self: center;
+  white-space: nowrap;
+}
+
+.save-indicator--idle {
+  color: var(--color-text-muted, #9ca3af);
+}
+
+.save-indicator--saving {
+  color: var(--color-success, #16a34a);
+  animation: save-pulse 0.9s ease-in-out infinite;
+}
+
+.save-indicator--saved {
+  color: var(--color-success, #16a34a);
+  font-weight: 600;
+}
+
+@keyframes save-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
 }
 
 
