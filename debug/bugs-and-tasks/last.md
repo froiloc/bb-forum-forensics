@@ -49,6 +49,7 @@ Hier werden CSS‑Fehler aufgeführt. Das sind Themen, bei denen die Anzeige fun
 }`~~
 21. (20) Der Scrollbalken in `#mp-list` da, liegt aber am falschen Element. `#accordion-body-blocks {flex-direction: row;}` hilft, aber es sorgt dafür, dass dieses div nicht mehr die volle Breite einnimmt.
 22. (20) Die Visualisierung des Speicherns gefällt mir nicht! Ich möchte: Keine Aktion (default) `.save-indicator--idle`: graue, leicht blury Diskette `🖫`; aktives Speichern `.save-indicator--saving`: grüner, pulsierender Rahmen um das Symbole. Diskette ist grün; Speichern erfolgreich `.save-indicator--saved`: Diskette ist für 5 Sekunden grün wird dann wieder default-grau. Speichern  `.save-indicator--failed`fehlgeschlagen: Diskette ist rot. Dauerhaft. Bis Speichern wieder erfolgreich ist.
+23. (15) `#editor-save-indicator, .save-indicator` soll die `font-size: 25px` haben. Das direkte Styling bei Elementen wir bei diesem erfolgt, hat grundsätzlich zu unterbleiben. Styles werden ausschließlich über Klassen und CSS Dokument vorgenommen!
 ---
 ## 2. Funktionalität Frontend / Daten / JS
 Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mit dem Webwerkzeug arbeiten kann oder ihn dabei nicht im vorgesehenen Maße unterstützen oder behindern.
@@ -122,7 +123,8 @@ documentTouched @ editorjs.mjs:10898
 37. (20) Nachdem ein Platzhalter (Einzeldaten) eingefügt worden ist, erscheint er nicht im Abschnitt `Editor.js`. Wenn ich dann einen Text im Abschnitt `Editor.js` erstelle, wo der Platzhalter eingefügt werden sollte, so wird dieser nicht gespeichert. Bei einem Reload der Seite wird im Editor der Platzhalter angezeigt, der vorher nicht angezeigt worden war, aber der Text, der danach hinzugefügt worden war, nicht.
 38. ~~(50) Sobald ich in einen Block im Editor klicke, um den Text zu bearbeiten, öffnet sich das Akkordeon `Kommentare` und der Fokus springt in das Textarea-Element `.ct-textarea.comment-input-textarea`. Dadurch kann kein Text mehr bearbeitet werden.~~
 39. (40) Das Löschen eines Blocks im Editor ist nicht mehr möglich. Sie werden optisch im Editor gelöscht. Aber nach einem Reload der Seite sind alle gelöschten Elemente wieder da.
-40. (50) Das Speichern wird noch immer nicht in Echtzeit angezeigt oder bleibt aus.
+40. (50) Das Speichern wird noch immer nicht in Echtzeit angezeigt oder bleibt aus. Ich habe mit build 132 einen Eintrag hinter dem Wort "Stadt" gemacht. Aber der wurde nicht gespeichert.
+41. (30) Ab Build 132 wird zwar der Platzhalter im Editor eingefügt. Aber er wird unter dem Paragraph, auf dem der Fokus liegt eingefügt. Es muss aber IM Block eingefügt werden. So wie das mit dem Context-Menü von Editor bereits möglich ist.
 ---
 ## 3. Funktionalität Backend / Python / SQLite3-Datenbank
 Hier werden Funktionsprobleme aufgeführt, die aufgrund von Problemen im Webserver oder der Datenbank auftreten.
