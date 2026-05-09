@@ -197,8 +197,37 @@ function showPlaceholderForm(blocks, focusedBlockId, opts) {
         return;
     }
 
+    // Fix Build 142: Fokus vor dem innerHTML-Überschreiben retten.
+    // body.innerHTML = ... zerstört den DOM und damit den Fokus. Wenn ein
+    // Eingabefeld gerade aktiv ist, wird der Wert gespeichert und der Fokus
+    // nach dem Render wiederhergestellt.
+    // Beleg: Bugfix Build 142, Projektgespraech 2026-05-09
+    const activeEl = document.activeElement;
+    const savedBlockId  = activeEl?.dataset?.blockId  || null;
+    const savedFieldName = activeEl?.dataset?.fieldName || null;
+    const savedValue    = (savedBlockId && savedFieldName) ? activeEl.value : null;
+
     // Alle Bloecke rendern
     body.innerHTML = _renderAllBlocks(_currentBlocks, _currentBlockId);
+
+    // Fokus wiederherstellen wenn ein Feld aktiv war
+    if (savedBlockId && savedFieldName) {
+        const inputId = `pf-input-${savedBlockId}-${savedFieldName}`;
+        const restored = document.getElementById(inputId);
+        if (restored) {
+            if (savedValue !== null) restored.value = savedValue;
+            // Fokus nur setzen wenn Element noch sichtbar (nicht durch Blur ausgeblendet)
+            if (!restored.disabled) {
+                // Micro-Task damit der DOM stabil ist
+                Promise.resolve().then(() => {
+                    restored.focus();
+                    // Cursor ans Ende setzen
+                    const len = restored.value.length;
+                    restored.setSelectionRange(len, len);
+                });
+            }
+        }
+    }
 
     // Event-Listener binden
     _bindFormEvents(body, _currentBlocks, opts);
@@ -207,8 +236,12 @@ function showPlaceholderForm(blocks, focusedBlockId, opts) {
     _applyFocusBlur(body, _currentBlockId);
     _scrollToFocusedBlock(body, _currentBlockId);
 
-    // Pulsanimation auf Editor-Block
-    if (_currentBlockId && typeof window.CommentThread?._pulseEditorBlock === 'function') {
+    // Fix Build 142: _pulseEditorBlock unterdrücken — würde Editor.js-onChange
+    // triggern → _scheduleAutoSave → _refreshPlaceholderForm → Rückkopplungsschleife.
+    // Puls wird nur beim initialen Formular-Öffnen gesetzt, nicht bei Refreshes.
+    // Beleg: Bugfix Build 142, Projektgespraech 2026-05-09
+    if (_currentBlockId && !opts?._suppressPulse
+        && typeof window.CommentThread?._pulseEditorBlock === 'function') {
         window.CommentThread._pulseEditorBlock(_currentBlockId);
     }
 }

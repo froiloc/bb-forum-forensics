@@ -69,7 +69,7 @@
  *     ausgefuehrt damit der gedruckte Stand mit der DB synchron ist.
  *     Beleg: Bugfix Build 134, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.141 · Build: 141 · 2026-05-09
+ * Version: v0.6.142 · Build: 142 · 2026-05-09
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -1103,6 +1103,16 @@ function _bindChipDoubleClick() {
         const sidebar = document.getElementById('support-sidebar');
         if (!sidebar) return;
 
+        // Fix Build 142: focusedBlockId auf den angeklickten Chip-Block setzen.
+        // _refreshPlaceholderForm liest sidebar.dataset.focusedBlockId — war vorher
+        // der Wert vom letzten Kommentar-Klick, nicht der Chip-Block.
+        // Beleg: Bugfix Build 142, Projektgespraech 2026-05-09
+        const ceBlock = chip.closest('[data-id]');
+        const chipBlockId = ceBlock?.dataset?.id;
+        if (chipBlockId) {
+            sidebar.dataset.focusedBlockId = chipBlockId;
+        }
+
         const formSection = sidebar.querySelector('[data-accordion="form"]');
         if (formSection && typeof _openAccordionSection === 'function') {
             _openAccordionSection(formSection);
@@ -1210,8 +1220,9 @@ async function _refreshPlaceholderForm() {
     const username = document.getElementById('report-editor-body')?.dataset?.username || '';
 
     window.PlaceholderWizard.showPlaceholderForm(blocks, focusedId, {
-        myUsername: username,
-        onSave:     _onPlaceholderFieldSave,
+        myUsername:     username,
+        onSave:         _onPlaceholderFieldSave,
+        _suppressPulse: true,   // Fix Build 142: kein Puls bei Refresh — verhindert onChange-Loop
     });
 }
 

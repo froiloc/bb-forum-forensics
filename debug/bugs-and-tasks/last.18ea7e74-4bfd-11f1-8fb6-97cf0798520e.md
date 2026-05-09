@@ -1,5 +1,5 @@
 # Fehler auf der Berichtsseite
-(Cache-buster-pre-extension: c826025c-4bfb-11f1-aece-133bf629b9ae)
+(Cache-buster-pre-extension: 18ea7e74-4bfd-11f1-8fb6-97cf0798520e)
 
 Ich werde in dieser Liste fortlaufend die von mir beobachteten Fehler aufführen.
 Falls diese abgeschlossen und verworfen wurden, werde ich sie durchstreichen. Alles, was nicht durchgestrichen ist, ist also noch offen und muss bearbeitet werden.
@@ -9,15 +9,15 @@ Nach der Bearbeitung ist das behobene Problem anzugeben. Und zwar mit Kapitel (1
 
 Quellen zum Debuggen:
 * Dieses Dokument mit den Arbeitsanweisungen und Problembeschreibungen:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.c826025c-4bfb-11f1-aece-133bf629b9ae.md
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.18ea7e74-4bfd-11f1-8fb6-97cf0798520e.md
 * Die Ausgabe von DevTools-Console:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.c826025c-4bfb-11f1-aece-133bf629b9ae.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.18ea7e74-4bfd-11f1-8fb6-97cf0798520e.log
 * Die Ausgabe von DevTools-Network:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.c826025c-4bfb-11f1-aece-133bf629b9ae.har
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.18ea7e74-4bfd-11f1-8fb6-97cf0798520e.har
 * Das aktuelle DOM als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last.c826025c-4bfb-11f1-aece-133bf629b9ae.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last.18ea7e74-4bfd-11f1-8fb6-97cf0798520e.html
 * Die Ausgabe des aktuellen Webservers:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.c826025c-4bfb-11f1-aece-133bf629b9ae.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.18ea7e74-4bfd-11f1-8fb6-97cf0798520e.log
 * Die aktuellen Screenshots:
 https://github.com/froiloc/bb-forum-forensics/tree/1b5017a2f62c5a8f1825de76fc6edabb25d6bf66/debug/screenshots
 ***
@@ -123,7 +123,8 @@ Hier werden Funktionsprobleme aufgeführt, die aufgrund von Problemen im Webserv
  4. erledigt
  5. erledigt
  6. erledigt
- 7. (30) Das Speichern von eingetragenen Werten für Inline-Platzhalter wird vom Backend nicht akzeptiert.
+ 7. (40) Das Speichern von eingetragenen Werten für Inline-Platzhalter wird vom Backend nicht akzeptiert.
+ 8. (40) In der Datenbank `evidence_<uid>.db` ist kein Eintrag für die Speicherung der Werte für die Inline-Platzhalter zu finden. Hier ist im Webserver eine genauere Untersuchung anzustellen, was da beim Speichern fehlschlägt und ob das Backend für diese Aufgabe vollständig implementiert wurde.
 ---
 ## 4. Sonstiges
 Themen, die keinem der zuvor genannten Bereiche eindeutig zugeordnet werden können.
