@@ -32,4 +32,5 @@ fi
 git add "${ROOTDIR}debug/screenshots/*"
 git commit -a -m "${1:-$(git log -1 | tail -n1 | echo "Version 0.6.134" | awk -F. '{print $1 "." $2 "." $3+1}')} - ${uuid}"
 git push
-git rm "${ROOTDIR}debug/screenshots/*"
+git rm "${ROOTDIR}debug/screenshots/*.png"
+mkdir -p "${ROOTDIR}debug/screenshots/"
