@@ -69,7 +69,7 @@
  *     ausgefuehrt damit der gedruckte Stand mit der DB synchron ist.
  *     Beleg: Bugfix Build 134, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.140 · Build: 140 · 2026-05-09
+ * Version: v0.6.141 · Build: 141 · 2026-05-09
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -1231,8 +1231,18 @@ async function _refreshPlaceholderForm() {
  * @param {string} value
  */
 async function _onPlaceholderFieldSave(blockId, fieldName, value) {
-    if (!blockId || !fieldName) return;
-    if (!window.EditorState?.lockId) return;   // kein Lock = kein Schreiben
+    // Build 141 Logging: Zeigt ob der Callback ueberhaupt aufgerufen wird.
+    console.debug('report_editor.js: _onPlaceholderFieldSave aufgerufen:',
+        'blockId=', blockId, 'field=', fieldName, 'value=', JSON.stringify(value));
+
+    if (!blockId || !fieldName) {
+        console.warn('report_editor.js: _onPlaceholderFieldSave: blockId oder fieldName fehlt');
+        return;
+    }
+    if (!window.EditorState?.lockId) {
+        console.warn('report_editor.js: _onPlaceholderFieldSave: kein Lock — Abbruch');
+        return;
+    }
 
     // Aktuelle Werte des Blocks zusammenfuehren
     const block = _currentBlocks.find(b => b.block_id === blockId);
@@ -1262,6 +1272,9 @@ async function _onPlaceholderFieldSave(blockId, fieldName, value) {
         owner:                   username,
         placeholder_values_json: JSON.stringify(newValues),
     });
+    // Build 141 Logging: Zeigt Antwort-Status des Backends.
+    console.debug('report_editor.js: _onPlaceholderFieldSave fetch-Antwort:',
+        'ok=', resp?.ok, 'status=', resp?.status);
     if (resp && !resp.ok) {
         const err = await resp.json().catch(() => ({}));
         console.warn('report_editor.js: Platzhalter-Save fehlgeschlagen:', fieldName, err);

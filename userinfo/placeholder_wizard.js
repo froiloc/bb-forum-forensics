@@ -185,6 +185,13 @@ function showPlaceholderForm(blocks, focusedBlockId, opts) {
     _currentBlockId = focusedBlockId || null;
     _currentOpts    = opts || {};
 
+    // Build 141 Logging: Zeigt ob onSave korrekt uebergeben wird.
+    console.debug('[PlaceholderWizard] showPlaceholderForm:',
+        'blocks=', _currentBlocks.length,
+        'focusedId=', _currentBlockId,
+        'onSave=', typeof _currentOpts.onSave,
+        'myUsername=', _currentOpts.myUsername);
+
     if (!_currentBlocks.length) {
         body.innerHTML = '<p class="pf-empty-state">Kein Bericht ge\u00f6ffnet.</p>';
         return;
@@ -474,8 +481,17 @@ function _validateFieldLive(input) {
  * Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06
  */
 function _scheduleFieldSave(input, opts) {
-    if (!opts?.onSave) return;
+    // Build 141 Logging: Zeigt ob onSave ueberhaupt vorhanden ist.
+    if (!opts?.onSave) {
+        console.warn('[PlaceholderWizard] _scheduleFieldSave: kein onSave in opts!',
+            'blockId=', input.dataset.blockId,
+            'field=', input.dataset.fieldName,
+            'opts=', opts);
+        return;
+    }
     const key = `${input.dataset.blockId}:${input.dataset.fieldName}`;
+    console.debug('[PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer', key,
+        'value=', JSON.stringify(input.value));
     clearTimeout(_saveTimers[key]);
     _saveTimers[key] = setTimeout(() => {
         _saveField(input, opts);
@@ -484,12 +500,20 @@ function _scheduleFieldSave(input, opts) {
 }
 
 async function _saveField(input, opts) {
-    if (!opts?.onSave) return;
     const blockId = input.dataset.blockId;
     const name    = input.dataset.fieldName;
     const val     = input.value;
+    // Build 141 Logging: Zeigt genau was gespeichert wird.
+    console.debug('[PlaceholderWizard] _saveField: blockId=', blockId,
+        'name=', name, 'val=', JSON.stringify(val),
+        'onSave=', typeof opts?.onSave);
+    if (!opts?.onSave) {
+        console.warn('[PlaceholderWizard] _saveField: kein onSave — Abbruch');
+        return;
+    }
     try {
         await opts.onSave(blockId, name, val);
+        console.debug('[PlaceholderWizard] _saveField: onSave abgeschlossen fuer', name);
     } catch (err) {
         console.warn('placeholder_wizard.js: Feld-Save fehlgeschlagen:', name, err);
     }
@@ -559,6 +583,11 @@ function openAtField(options, fieldName) {
     // Beleg: Bugfix Build 135, Projektgespraech 2026-05-09
     if (typeof options?.onSave === 'function') {
         _currentOpts = { ..._currentOpts, onSave: options.onSave };
+        console.debug('[PlaceholderWizard] openAtField: onSave aus Options gesetzt,',
+            'blockId=', options.blockId, 'fieldName=', fieldName);
+    } else {
+        console.warn('[PlaceholderWizard] openAtField: KEIN onSave in options!',
+            'options=', options);
     }
 
     // Fokus auf den Block setzen der das Feld enthaelt.
