@@ -319,23 +319,38 @@ function _bindPanelEvents(body) {
         });
     });
 
-    // Build 115: Drag&Drop — Bausteine per Drag in Editor-Bereich einziehen
-    // Beleg: Projektgespraech 2026-05-07
+    // Build 115: Drag&Drop — Bausteine per Drag in Editor-Bereich einziehen.
+    // Bug 2.11 Fix Build 145: Standard-Elemente hatten keine module_id und wurden
+    // im dragstart-Handler sofort abgebrochen. Fix: eigenes dataTransfer-Format
+    // 'application/x-forensic-standard' fuer Standard-Bloecke.
+    // Beleg: Bugfix Build 145, Projektgespraech 2026-05-10
     body.querySelectorAll('.mp-item[draggable]').forEach(item => {
         item.addEventListener('dragstart', (e) => {
             const modId = parseInt(item.dataset.moduleId, 10);
-            if (!modId) return;
-            const mod = _modules.find(m => m.id === modId);
-            if (!mod) return;
-            _dbg('Drag start: module_id=', modId, 'title=', mod.title);
-            e.dataTransfer.effectAllowed = 'copy';
-            // Daten als JSON serialisieren fuer den Drop-Handler im Editor
-            e.dataTransfer.setData('application/x-forensic-module', JSON.stringify({
-                module_id:   modId,
-                block_type:  'paragraph',
-                block_data:  JSON.stringify({ text: mod.text || '' }),
-                module_text: mod.text || '',
-            }));
+
+            if (modId) {
+                // Modul-Block
+                const mod = _modules.find(m => m.id === modId);
+                if (!mod) return;
+                _dbg('Drag start (Modul): module_id=', modId, 'title=', mod.title);
+                e.dataTransfer.effectAllowed = 'copy';
+                e.dataTransfer.setData('application/x-forensic-module', JSON.stringify({
+                    module_id:   modId,
+                    block_type:  'paragraph',
+                    block_data:  JSON.stringify({ text: mod.text || '' }),
+                    module_text: mod.text || '',
+                }));
+            } else {
+                // Standard-Block (kein module_id)
+                const blockType = item.dataset.blockType || 'paragraph';
+                const blockTitle = item.querySelector('.mp-item-title')?.textContent?.trim() || '';
+                _dbg('Drag start (Standard): type=', blockType, 'title=', blockTitle);
+                e.dataTransfer.effectAllowed = 'copy';
+                e.dataTransfer.setData('application/x-forensic-standard', JSON.stringify({
+                    block_type: blockType,
+                    title:      blockTitle,
+                }));
+            }
         });
     });
 
@@ -942,10 +957,13 @@ async function _insertQuery(queryId) {
             }
 
             // --- Schritt 3: onChange in Editor.js ausloesen ---
-            // Editor.js beobachtet MutationObserver und input-Events.
-            // Ein synthetisches 'input'-Event stellt sicher, dass der
-            // Autosave-Debounce ausgeloest wird.
-            editorCE.dispatchEvent(new Event('input', { bubbles: true }));
+            // Bug 2.43 Fix Build 145: setTimeout(0) gibt Editor.js Zeit den DOM
+            // zu lesen bevor der Auto-Save-Debounce ausgeloest wird. Ohne den
+            // Timeout wuerde save() noch den alten Block-Inhalt zurueckgeben.
+            // Beleg: Bugfix Build 145, Projektgespraech 2026-05-10
+            setTimeout(() => {
+                editorCE.dispatchEvent(new Event('input', { bubbles: true }));
+            }, 0);
 
             _dbg('_insertQuery: Chip inline eingefuegt:', queryId);
 
@@ -1105,7 +1123,14 @@ window.ModulePanel = {
     close,
     // Interna
     _fetchModules,
+    // Bug 2.57 Fix Build 145: Setter fuer _savedCursorRange — wird vom
+    // globalen mousedown/keydown-Listener in report_editor.js aufgerufen.
+    // Beleg: Bugfix Build 145, Projektgespraech 2026-05-10
+    _setSavedCursorRange: (range) => { _savedCursorRange = range; },
 };
+
+// Alias fuer report_editor.js (window._ModulePanel)
+window._ModulePanel = window.ModulePanel;
 
 // Alias: var ModulePanel (fuer Tests ohne window-Prafix)
 var ModulePanel = window.ModulePanel;

@@ -1,5 +1,5 @@
 # Fehler auf der Berichtsseite
-(Cache-buster-pre-extension: 33760782-4c5b-11f1-88e2-1766f507fc54)
+(Cache-buster-pre-extension: 7e1ebe6e-4c60-11f1-ae3e-dba97e1c1c9d)
 
 Ich werde in dieser Liste fortlaufend die von mir beobachteten Fehler aufführen.
 Falls diese abgeschlossen und verworfen wurden, werde ich sie durchstreichen. Alles, was nicht durchgestrichen ist, ist also noch offen und muss bearbeitet werden.
@@ -9,15 +9,15 @@ Nach der Bearbeitung ist das behobene Problem anzugeben. Und zwar mit Kapitel (1
 
 Quellen zum Debuggen:
 * Dieses Dokument mit den Arbeitsanweisungen und Problembeschreibungen:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.33760782-4c5b-11f1-88e2-1766f507fc54.md
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.7e1ebe6e-4c60-11f1-ae3e-dba97e1c1c9d.md
 * Die Ausgabe von DevTools-Console:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.33760782-4c5b-11f1-88e2-1766f507fc54.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.7e1ebe6e-4c60-11f1-ae3e-dba97e1c1c9d.log
 * Die Ausgabe von DevTools-Network:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.33760782-4c5b-11f1-88e2-1766f507fc54.har
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.7e1ebe6e-4c60-11f1-ae3e-dba97e1c1c9d.har
 * Das aktuelle DOM als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last.33760782-4c5b-11f1-88e2-1766f507fc54.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last.7e1ebe6e-4c60-11f1-ae3e-dba97e1c1c9d.html
 * Die Ausgabe des aktuellen Webservers:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.33760782-4c5b-11f1-88e2-1766f507fc54.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.7e1ebe6e-4c60-11f1-ae3e-dba97e1c1c9d.log
 * Die aktuellen Screenshots:
 https://github.com/froiloc/bb-forum-forensics/tree/1b5017a2f62c5a8f1825de76fc6edabb25d6bf66/debug/screenshots
 ***
@@ -83,7 +83,7 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 27. erledigt
 28. erledigt
 29. erledigt
-30. (12) Wenn die Blöcke umsortiert werden, wird dem im Formular-Bereich nicht Rechnung getragen. Dort muss die Sortierung ebenfalls angepasst werden. Gleiches gilt, wenn Blöcke hinzugefügt oder entfernt werden.
+30. erledigt
 31. erledigt
 32. erledigt
 33. erledigt
@@ -96,8 +96,8 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 40. erledigt
 41. erledigt
 42. erledigt
-43. (30) Das automatische Speichern nach dem Einfügen von Platzhaltern funktioniert nicht.
-44. (10) Wenn der `Kommentare` Akkordeon-Bereich aktiv ist, sollte ein Klick in einen Block die zugehörigen Kommentare dieses Bereichs anzeigen. ABER es darf nicht der Fokus auf die Kommentareingabe für einen neuen Kommentar gesetzt werden! Das zusätzliche Setzen des Fokus darf und muss grundsätzlich nur passieren, wenn die Schaltfläche `Kommentieren` geklickt wird.
+43. erledigt
+44. zurückgezogen
 45. (10) Möglicherweise wird der Fokus verloren, nachdem ein Autosave durchgeführt wurde. Ich bin aber nicht sicher. Ich konnte es nicht genau beobachten und nachstellen.
 46. erledigt
 47. erledigt
@@ -106,13 +106,14 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 50. erledigt
 51. erledigt
 52. erledigt
-52. erledigt
 53. erledigt
-54. (40) Autosave sorgt dafür, dass der Fokus verloren geht, dass das ausgewählte Formularfeld verlassen wird, dass der Rahmen im Formular und im Editor auf das erste Element verschoben wird, das einen Kommentar hat.
-55. (20) Es kommt noch immer zu Situationen, in denen nicht inline eingefügt werden kann und bei denen dann der Platzhalter nach einem Block eingefügt wird. In diesem Fall wurde der Platzhalter am Ende des Dokuments eingefügt, obwohl zuvor der Fokus in einem der vorderen Blöcke war. Der Cursor wurde zuvor aktiv in einen Text in einem Block platziert. Erst dann wurde die Schaltfläche `+ Einfügen` für `user.aliases` angeklickt. Der Platzhalter wurde dann zunächst am Ende des Dokuments eingefügt. Nach erneutem Platzieren des Cursors im ursprünglichen Block und erneutem Klicken auf `+Einfügen` wurde `user.aliases` dann korrekt inline an der gewünschten Stelle gesetzt.
-56. erledigt
-57. (30) Vorschlag für das 2.47 Problem mit dem ersten Klick. Können wir einen `mousedown` und `keydown`-Listener implementieren, der die _savedCursorRange setzt? Das müsste vor dem Click feuern und dann wäre der Wert gesetzt. Akzeptabel ist der "Restzustand" nur mit Bauchschmerzen. Aber ich würde das vorerst zurückstellen. Auch wenn ich mich freuen würde, wenn wir durch ein aggressiveres Debug-Logging hier mehr Gewissheit erlangen könnten. Speziell wenn der Wert für den Cursor nicht da ist, möchte ich einen vollumfänglichen Zustand des Systems kennen, um Schlussfolgerungen ziehen zu können.
-58. (20) Nach wie vor verlieren wir den Fokus beim Speichern. Das ist nicht akzeptabel. Das ist ein schwerer Rückschlag für ein sauberes UX.
+54. erledigt
+55. (40) Autosave sorgt dafür, dass der Fokus verloren geht, dass das ausgewählte Formularfeld verlassen wird, dass der Rahmen im Formular und im Editor auf das erste Element verschoben wird, das einen Kommentar hat.
+56. (20) Es kommt noch immer zu Situationen, in denen nicht inline eingefügt werden kann und bei denen dann der Platzhalter nach einem Block eingefügt wird. In diesem Fall wurde der Platzhalter am Ende des Dokuments eingefügt, obwohl zuvor der Fokus in einem der vorderen Blöcke war. Der Cursor wurde zuvor aktiv in einen Text in einem Block platziert. Erst dann wurde die Schaltfläche `+ Einfügen` für `user.aliases` angeklickt. Der Platzhalter wurde dann zunächst am Ende des Dokuments eingefügt. Nach erneutem Platzieren des Cursors im ursprünglichen Block und erneutem Klicken auf `+Einfügen` wurde `user.aliases` dann korrekt inline an der gewünschten Stelle gesetzt.
+57. erledigt
+58. (30) Vorschlag für das 2.47 Problem mit dem ersten Klick. Können wir einen `mousedown` und `keydown`-Listener implementieren, der die _savedCursorRange setzt? Das müsste vor dem Click feuern und dann wäre der Wert gesetzt. Akzeptabel ist der "Restzustand" nur mit Bauchschmerzen. Aber ich würde das vorerst zurückstellen. Auch wenn ich mich freuen würde, wenn wir durch ein aggressiveres Debug-Logging hier mehr Gewissheit erlangen könnten. Speziell wenn der Wert für den Cursor nicht da ist, möchte ich einen vollumfänglichen Zustand des Systems kennen, um Schlussfolgerungen ziehen zu können.
+59. (20) Nach wie vor verlieren wir den Fokus beim Speichern. Das ist nicht akzeptabel. Das ist ein schwerer Rückschlag für ein sauberes UX.
+60. (10) Wenn der Block umsortiert wird, dann muss auch im Akkordeon-Bereich die Klasse `focused` mitwandern. Derzeit bleibt diese auf der selben Stelle stehen und geht nicht mit dem Block mit. Ein Block, der focused ist, und damit einen blauen Rahmen hat und ohne Blur dargestellt wird, und im Editor verschoben wird, muss auch im Akkordeon-Bereich `Formuar` mit der Focused Klasse mitgehen. Derzeit wechselt in Akkordeon `Formular` beim Bewegen eines Blocks die Klasse `focused` auf den aller ersten Eintrag in der Liste. Es soll aber dasselbe Element den Fokus behalten, das ihn auch zuvor hatte. Falls der fokusierte Block gelöscht wird, dann soll kein Block im Akkordeon die Klasse focused haben.
 ---
 ## 3. Funktionalität Backend / Python / SQLite3-Datenbank
 Hier werden Funktionsprobleme aufgeführt, die aufgrund von Problemen im Webserver oder der Datenbank auftreten.

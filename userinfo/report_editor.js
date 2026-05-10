@@ -69,7 +69,7 @@
  *     ausgefuehrt damit der gedruckte Stand mit der DB synchron ist.
  *     Beleg: Bugfix Build 134, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.143 · Build: 143 · 2026-05-09
+ * Version: v0.6.145 · Build: 145 · 2026-05-09
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -563,13 +563,37 @@ function _initEditorJs(blocks, reportId) {
             },
         },
 
-        onChange: () => {
-            // Bug-Fix Build 117: Waehrend der Initialisierung (onReady + Timeouts)
-            // duerfen DOM-Mutationen durch _applyOwnershipStyles und initBlockWrappers
-            // keinen Auto-Save ausloesen. Das wuerde den TypeError in
-            // setCurrentBlockByChildNode verursachen.
-            // Beleg: Bugfix Build 117, Projektgespraech 2026-05-08
+        onChange: async (api, event) => {
+            // Bug-Fix Build 117: Waehrend der Initialisierung keine Auto-Saves.
             if (_isInitializing) return;
+
+            // Bug 2.30 Fix Build 145: Nach Block-Move Formular-Sortierung aktualisieren.
+            // Editor.js liefert event.type 'block-moved' fuer Drag-and-Drop-Umsortierungen.
+            // Das Formular muss danach neu gerendert werden damit die Reihenfolge stimmt.
+            // Beleg: Bugfix Build 145, Projektgespraech 2026-05-10
+            if (event?.type === 'block-moved' || event?.type === 'block-removed' || event?.type === 'block-added') {
+                const formFocused = document.activeElement?.closest('#accordion-body-form');
+                if (!formFocused) {
+                    // _currentBlocks mit neuer Reihenfolge aus Editor holen
+                    const editorData = await api.saver?.save?.();
+                    if (editorData?.blocks && _currentBlocks.length) {
+                        // Reihenfolge von _currentBlocks an Editor-Reihenfolge angleichen
+                        const ordered = editorData.blocks
+                            .map(b => _currentBlocks.find(cb => cb.block_id === b.id))
+                            .filter(Boolean);
+                        if (ordered.length) {
+                            _currentBlocks = [
+                                ...ordered,
+                                ..._currentBlocks.filter(cb =>
+                                    !ordered.find(o => o.block_id === cb.block_id)
+                                ),
+                            ];
+                        }
+                        _refreshPlaceholderForm();
+                    }
+                }
+            }
+
             _scheduleAutoSave(reportId);
         },
 
@@ -601,6 +625,33 @@ function _initEditorJs(blocks, reportId) {
             // sicheren Puffer, damit alle DOM-Mutationen abgeschlossen sind
             // bevor onChange wieder Auto-Saves ausloesen darf.
             // Beleg: Bugfix Build 117, Projektgespraech 2026-05-08
+            // Bug 2.57 Fix Build 145: Globaler mousedown+keydown-Listener auf
+            // #editorjs-holder haelt _savedCursorRange kontinuierlich aktuell.
+            // Loest Bug 2.47 (erster Klick) vollstaendig: Range ist schon gesetzt
+            // bevor der Einfuege-Button geklickt wird.
+            // mousedown: Mausklick in den Editor setzt Range.
+            // keydown: Tastendruck (Pfeile, Buchstaben) setzt Range nach Cursor-Bewegung.
+            // Beleg: Bugfix Build 145, Projektgespraech 2026-05-10
+            const holderForRange = document.getElementById('editorjs-holder');
+            if (holderForRange && !holderForRange._rangeListenerBound) {
+                holderForRange._rangeListenerBound = true;
+                const _captureRange = () => {
+                    const sel = window.getSelection();
+                    if (!sel || sel.rangeCount === 0) return;
+                    const range    = sel.getRangeAt(0);
+                    const el       = range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
+                        ? range.commonAncestorContainer
+                        : range.commonAncestorContainer.parentElement;
+                    // Nur speichern wenn Range innerhalb des Editor-Holders liegt
+                    if (holderForRange.contains(el)) {
+                        window._ModulePanel?._setSavedCursorRange?.(range.cloneRange());
+                    }
+                };
+                holderForRange.addEventListener('mousedown', _captureRange);
+                holderForRange.addEventListener('keydown',   _captureRange);
+                holderForRange.addEventListener('keyup',     _captureRange);
+            }
+
             setTimeout(() => {
                 _isInitializing = false;
                 console.debug('report_editor.js: Initialisierungs-Guard freigegeben.');
@@ -730,7 +781,8 @@ function _wrapBlock(ceBlock, blockMeta, username) {
     btnComment.setAttribute('aria-label', `Kommentar zu Block von ${blockMeta.author} verfassen`);
     btnComment.addEventListener('click', (e) => {
         e.stopPropagation();
-        _openCommentAccordion(blockMeta.block_id);
+        // Bug 2.44 Fix Build 145: focusInput=true nur beim expliziten Button-Klick.
+        _openCommentAccordion(blockMeta.block_id, true);
     });
 
     metaBar.appendChild(metaAuthor);
@@ -837,11 +889,14 @@ function _updateBlockBadges(blocks) {
 /**
  * Oeffnet den Kommentar-Abschnitt der Support-Sidebar und
  * setzt den Fokus auf das Eingabefeld.
- * Beleg: Bauplan B6 v0.5 §4.3, §4.4.4, Projektgespraech 2026-05-06
+ * Bug 2.44 Fix Build 145: focusInput-Parameter — Fokus auf Eingabe nur beim
+ * expliziten Klick auf "Kommentieren", nicht beim Block-Klick.
+ * Beleg: Bugfix Build 145, Projektgespraech 2026-05-10
  *
- * @param {string} blockId
+ * @param {string}  blockId
+ * @param {boolean} [focusInput=false]
  */
-function _openCommentAccordion(blockId) {
+function _openCommentAccordion(blockId, focusInput = false) {
     const sidebar = document.getElementById('support-sidebar');
     if (!sidebar) return;
 
@@ -884,11 +939,16 @@ function _openCommentAccordion(blockId) {
         window.CommentThread.showForBlock(blockId, _currentBlocks, commentOpts);
     }
 
-    // Eingabefeld fokussieren
-    setTimeout(() => {
-        const textarea = sidebar.querySelector('.comment-input-textarea, .ct-compose textarea');
-        if (textarea) textarea.focus();
-    }, 80);
+    // Eingabefeld fokussieren — nur wenn explizit angefordert (Kommentieren-Button).
+    // Bug 2.44 Fix Build 145: beim Block-Klick (focusInput=false) darf der
+    // Fokus NICHT auf die Eingabe gesetzt werden.
+    // Beleg: Bugfix Build 145, Projektgespraech 2026-05-10
+    if (focusInput) {
+        setTimeout(() => {
+            const textarea = sidebar.querySelector('.comment-input-textarea, .ct-compose textarea');
+            if (textarea) textarea.focus();
+        }, 80);
+    }
 
     // Fokussierten Block im Editor visuell hervorheben
     document.querySelectorAll('.ce-block.block-wrapper--comment-focus').forEach(w => {
@@ -2151,7 +2211,9 @@ function _initDragDrop() {
     if (!holder) return;
 
     holder.addEventListener('dragover', (e) => {
-        if (!e.dataTransfer.types.includes('application/x-forensic-module')) return;
+        const hasModule   = e.dataTransfer.types.includes('application/x-forensic-module');
+        const hasStandard = e.dataTransfer.types.includes('application/x-forensic-standard');
+        if (!hasModule && !hasStandard) return;
         e.preventDefault();
         e.dataTransfer.dropEffect = 'copy';
         holder.classList.add('editorjs-holder--drag-over');
@@ -2163,29 +2225,44 @@ function _initDragDrop() {
 
     holder.addEventListener('drop', async (e) => {
         holder.classList.remove('editorjs-holder--drag-over');
-        if (!e.dataTransfer.types.includes('application/x-forensic-module')) return;
+        const hasModule   = e.dataTransfer.types.includes('application/x-forensic-module');
+        const hasStandard = e.dataTransfer.types.includes('application/x-forensic-standard');
+        if (!hasModule && !hasStandard) return;
         e.preventDefault();
-
-        let modData;
-        try {
-            modData = JSON.parse(e.dataTransfer.getData('application/x-forensic-module'));
-        } catch (_) { return; }
-
-        _dbg('Drop: module_id=', modData.module_id);
 
         if (!window._editor?.blocks) {
             _dbg('Drop: Editor nicht bereit');
             return;
         }
 
-        // Block am Ende einfuegen
-        const blockData = modData.block_type === 'paragraph'
-            ? { text: modData.module_text || '' }
-            : {};
-        window._editor.blocks.insert(modData.block_type || 'paragraph', blockData);
-        const lastIdx = window._editor.blocks.getBlocksCount() - 1;
-        window._editor.caret.setToBlock(lastIdx);
-        _dbg('Drop: Block eingefuegt, type=', modData.block_type, 'idx=', lastIdx);
+        if (hasModule) {
+            let modData;
+            try {
+                modData = JSON.parse(e.dataTransfer.getData('application/x-forensic-module'));
+            } catch (_) { return; }
+            _dbg('Drop (Modul): module_id=', modData.module_id);
+            const blockData = modData.block_type === 'paragraph'
+                ? { text: modData.module_text || '' }
+                : {};
+            window._editor.blocks.insert(modData.block_type || 'paragraph', blockData);
+            const lastIdx = window._editor.blocks.getBlocksCount() - 1;
+            window._editor.caret.setToBlock(lastIdx);
+            _dbg('Drop (Modul): Block eingefuegt, type=', modData.block_type, 'idx=', lastIdx);
+        }
+
+        if (hasStandard) {
+            // Bug 2.11 Fix Build 145: Standard-Block per Drag einziehen.
+            // Beleg: Bugfix Build 145, Projektgespraech 2026-05-10
+            let stdData;
+            try {
+                stdData = JSON.parse(e.dataTransfer.getData('application/x-forensic-standard'));
+            } catch (_) { return; }
+            _dbg('Drop (Standard): type=', stdData.block_type);
+            window._editor.blocks.insert(stdData.block_type || 'paragraph', {});
+            const lastIdx = window._editor.blocks.getBlocksCount() - 1;
+            window._editor.caret.setToBlock(lastIdx);
+            _dbg('Drop (Standard): Block eingefuegt, type=', stdData.block_type, 'idx=', lastIdx);
+        }
     });
 
     _dbg('_initDragDrop: Drop-Zone registriert auf #editorjs-holder');
