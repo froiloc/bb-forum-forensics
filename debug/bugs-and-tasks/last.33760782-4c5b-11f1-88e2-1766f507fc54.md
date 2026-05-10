@@ -1,5 +1,5 @@
 # Fehler auf der Berichtsseite
-(Cache-buster-pre-extension: 173339da-4c03-11f1-a709-8b5356c7150f)
+(Cache-buster-pre-extension: 33760782-4c5b-11f1-88e2-1766f507fc54)
 
 Ich werde in dieser Liste fortlaufend die von mir beobachteten Fehler aufführen.
 Falls diese abgeschlossen und verworfen wurden, werde ich sie durchstreichen. Alles, was nicht durchgestrichen ist, ist also noch offen und muss bearbeitet werden.
@@ -9,15 +9,15 @@ Nach der Bearbeitung ist das behobene Problem anzugeben. Und zwar mit Kapitel (1
 
 Quellen zum Debuggen:
 * Dieses Dokument mit den Arbeitsanweisungen und Problembeschreibungen:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.173339da-4c03-11f1-a709-8b5356c7150f.md
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.33760782-4c5b-11f1-88e2-1766f507fc54.md
 * Die Ausgabe von DevTools-Console:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.173339da-4c03-11f1-a709-8b5356c7150f.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.33760782-4c5b-11f1-88e2-1766f507fc54.log
 * Die Ausgabe von DevTools-Network:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.173339da-4c03-11f1-a709-8b5356c7150f.har
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.33760782-4c5b-11f1-88e2-1766f507fc54.har
 * Das aktuelle DOM als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last.173339da-4c03-11f1-a709-8b5356c7150f.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last.33760782-4c5b-11f1-88e2-1766f507fc54.html
 * Die Ausgabe des aktuellen Webservers:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.173339da-4c03-11f1-a709-8b5356c7150f.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.33760782-4c5b-11f1-88e2-1766f507fc54.log
 * Die aktuellen Screenshots:
 https://github.com/froiloc/bb-forum-forensics/tree/1b5017a2f62c5a8f1825de76fc6edabb25d6bf66/debug/screenshots
 ***
@@ -104,13 +104,13 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 48. erledigt
 49. erledigt
 50. erledigt
-51. (30) Man kann im Formular Platzhalter ausfüllen und sie werden dann auch im Editor gerendert, aber sie werden scheinbar nicht gespeichert, denn nach einem Neuladen der Seite oder des Editors sind die Werte nicht mehr da und die Platzhalter haben wieder den leeren, unausgefüllten Zustand.
-52.erledigt
-52. (20) Die automatischen Werte in den Platzhaltern müssen noch gerendert werden. Bislang stehen im Editor nur die identifizierenden Namen der Platzhalter.
-53. (20) Wenn ein Platzhalter ausgefüllt ist und im Anschluss durch erneutes Doppelklicken bearbeitet werden soll, dann soll sein derzeitiger Wert auch als Wert im Formular stehen. Im Grunde genommen sollte der Wert im Formular dauerhaft stehen.
+51. erledigt
+52. erledigt
+52. erledigt
+53. erledigt
 54. (40) Autosave sorgt dafür, dass der Fokus verloren geht, dass das ausgewählte Formularfeld verlassen wird, dass der Rahmen im Formular und im Editor auf das erste Element verschoben wird, das einen Kommentar hat.
 55. (20) Es kommt noch immer zu Situationen, in denen nicht inline eingefügt werden kann und bei denen dann der Platzhalter nach einem Block eingefügt wird. In diesem Fall wurde der Platzhalter am Ende des Dokuments eingefügt, obwohl zuvor der Fokus in einem der vorderen Blöcke war. Der Cursor wurde zuvor aktiv in einen Text in einem Block platziert. Erst dann wurde die Schaltfläche `+ Einfügen` für `user.aliases` angeklickt. Der Platzhalter wurde dann zunächst am Ende des Dokuments eingefügt. Nach erneutem Platzieren des Cursors im ursprünglichen Block und erneutem Klicken auf `+Einfügen` wurde `user.aliases` dann korrekt inline an der gewünschten Stelle gesetzt.
-56. (30) Nach dem Klicken auf Aktualisieren sind die Einträge für die Platzhalter weg. Siehe Screenshots, bitte anhand der Zeitstempel im Dateinamen vergleichen.
+56. erledigt
 57. (30) Vorschlag für das 2.47 Problem mit dem ersten Klick. Können wir einen `mousedown` und `keydown`-Listener implementieren, der die _savedCursorRange setzt? Das müsste vor dem Click feuern und dann wäre der Wert gesetzt. Akzeptabel ist der "Restzustand" nur mit Bauchschmerzen. Aber ich würde das vorerst zurückstellen. Auch wenn ich mich freuen würde, wenn wir durch ein aggressiveres Debug-Logging hier mehr Gewissheit erlangen könnten. Speziell wenn der Wert für den Cursor nicht da ist, möchte ich einen vollumfänglichen Zustand des Systems kennen, um Schlussfolgerungen ziehen zu können.
 58. (20) Nach wie vor verlieren wir den Fokus beim Speichern. Das ist nicht akzeptabel. Das ist ein schwerer Rückschlag für ein sauberes UX.
 ---
@@ -123,8 +123,8 @@ Hier werden Funktionsprobleme aufgeführt, die aufgrund von Problemen im Webserv
  4. erledigt
  5. erledigt
  6. erledigt
- 7. (40) Das Speichern von eingetragenen Werten für Inline-Platzhalter wird vom Backend nicht akzeptiert.
- 8. (40) In der Datenbank `evidence_<uid>.db` ist kein Eintrag für die Speicherung der Werte für die Inline-Platzhalter zu finden. Hier ist im Webserver eine genauere Untersuchung anzustellen, was da beim Speichern fehlschlägt und ob das Backend für diese Aufgabe vollständig implementiert wurde.
+ 7. erledigt
+ 8. erledigt
 ---
 ## 4. Sonstiges
 Themen, die keinem der zuvor genannten Bereiche eindeutig zugeordnet werden können.
