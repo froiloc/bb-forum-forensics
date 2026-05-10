@@ -1,5 +1,5 @@
 # Fehler auf der Berichtsseite
-(Cache-buster-pre-extension: 6b384e86-4cbb-11f1-bf02-4bfe333a760d)
+(Cache-buster-pre-extension: 66501f64-4cc7-11f1-94a8-1b05fde6247e)
 
 Ich werde in dieser Liste fortlaufend die von mir beobachteten Fehler aufführen.
 Falls diese abgeschlossen und verworfen wurden, werde ich sie durchstreichen. Alles, was nicht durchgestrichen ist, ist also noch offen und muss bearbeitet werden.
@@ -9,29 +9,29 @@ Nach der Bearbeitung ist das behobene Problem anzugeben. Und zwar mit Kapitel (1
 
 Quellen zum Debuggen:
 * Dieses Dokument mit den Arbeitsanweisungen und Problembeschreibungen:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.6b384e86-4cbb-11f1-bf02-4bfe333a760d.md
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.66501f64-4cc7-11f1-94a8-1b05fde6247e.md
 * Die Ausgabe von DevTools-Console:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.6b384e86-4cbb-11f1-bf02-4bfe333a760d.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.66501f64-4cc7-11f1-94a8-1b05fde6247e.log
 * Die Ausgabe von DevTools-Network:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.6b384e86-4cbb-11f1-bf02-4bfe333a760d.har
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.66501f64-4cc7-11f1-94a8-1b05fde6247e.har
 * Das aktuelle DOM des gesamten Dokuments als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.6b384e86-4cbb-11f1-bf02-4bfe333a760d.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.66501f64-4cc7-11f1-94a8-1b05fde6247e.html
 * Das aktuelle DOM des gesamten Body als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.6b384e86-4cbb-11f1-bf02-4bfe333a760d.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.66501f64-4cc7-11f1-94a8-1b05fde6247e.html
 * Das aktuelle DOM des gesamten Sidebar als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.6b384e86-4cbb-11f1-bf02-4bfe333a760d.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.66501f64-4cc7-11f1-94a8-1b05fde6247e.html
 * Das aktuelle DOM des gesamten Main als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.6b384e86-4cbb-11f1-bf02-4bfe333a760d.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.66501f64-4cc7-11f1-94a8-1b05fde6247e.html
 * Das aktuelle DOM des Akkordeon 1 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.6b384e86-4cbb-11f1-bf02-4bfe333a760d.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.66501f64-4cc7-11f1-94a8-1b05fde6247e.html
 * Das aktuelle DOM des Akkordeon 2 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.6b384e86-4cbb-11f1-bf02-4bfe333a760d.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.66501f64-4cc7-11f1-94a8-1b05fde6247e.html
 * Das aktuelle DOM des Akkordeon 3 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.6b384e86-4cbb-11f1-bf02-4bfe333a760d.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.66501f64-4cc7-11f1-94a8-1b05fde6247e.html
 * Das aktuelle DOM des Akkordeon 4 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.6b384e86-4cbb-11f1-bf02-4bfe333a760d.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.66501f64-4cc7-11f1-94a8-1b05fde6247e.html
 * Die Ausgabe des aktuellen Webservers:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.6b384e86-4cbb-11f1-bf02-4bfe333a760d.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.66501f64-4cc7-11f1-94a8-1b05fde6247e.log
 * Die aktuellen Screenshots:
 https://github.com/froiloc/bb-forum-forensics/tree/1b5017a2f62c5a8f1825de76fc6edabb25d6bf66/debug/screenshots
 ***
@@ -125,14 +125,14 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 55. erledigt
 56. (20) Es kommt noch immer zu Situationen, in denen nicht inline eingefügt werden kann und bei denen dann der Platzhalter nach einem Block eingefügt wird. In diesem Fall wurde der Platzhalter am Ende des Dokuments eingefügt, obwohl zuvor der Fokus in einem der vorderen Blöcke war. Der Cursor wurde zuvor aktiv in einen Text in einem Block platziert. Erst dann wurde die Schaltfläche `+ Einfügen` für `user.aliases` angeklickt. Der Platzhalter wurde dann zunächst am Ende des Dokuments eingefügt. Nach erneutem Platzieren des Cursors im ursprünglichen Block und erneutem Klicken auf `+Einfügen` wurde `user.aliases` dann korrekt inline an der gewünschten Stelle gesetzt.
 57. erledigt
-58. (30) Vorschlag für das 2.47 Problem mit dem ersten Klick. Können wir einen `mousedown` und `keydown`-Listener implementieren, der die _savedCursorRange setzt? Das müsste vor dem Click feuern und dann wäre der Wert gesetzt. Akzeptabel ist der "Restzustand" nur mit Bauchschmerzen. Aber ich würde das vorerst zurückstellen. Auch wenn ich mich freuen würde, wenn wir durch ein aggressiveres Debug-Logging hier mehr Gewissheit erlangen könnten. Speziell wenn der Wert für den Cursor nicht da ist, möchte ich einen vollumfänglichen Zustand des Systems kennen, um Schlussfolgerungen ziehen zu können.
+58. erledigt
 59. erledigt
 60. erledigt
 61. (20) Es kommt vor, und das ist wieder so ein "Beim ersten Versuch klappt es nicht, bei den folgenden Versuchen aber schon"-Fehler, dass beim Einfügen eines Standard-Elements dieses nicht an der Position nach dem aktuellen Block, sondern am Anfang des Dokuments eingefügt wird. Das sollte nicht sein. Hier müssen wir wieder schauen, wie wir da herausfinden, woran das liegen kann. Ich wünsche daher, dass im Consolen-Output die Aktualisierung der Cursor-Position angezeigt wird, wenn sie durch Mousedown oder Keydown erfasst wird. Und es soll vor dem Setzen des neuen gespeicherten Wertes dessen derzeitiger Wert aufgeben werden. Und ich wünsche, dass beim Einfügen eines Elements in der Console die Position des Cursors angegeben wird und die Position, an der das neue Element eingefügt wird. Das wird uns hoffentlich rasch helfen, das Problem zu lösen.
 62. (20) Nach dem Laden der Seite, wurde in `Bausteine` > `Module` > `Standard` das Element per Drag and Drop in den `Editor.js` an eine Stelle am Anfang gezogen und losgelassen. Es wurde aber nicht an dieser Stelle, sondern ganz am Ende des Dokuments eingefügt.
 63. erledigt
-64. (20) Das Drag-and-Drop von Modulen klappt noch nicht. Einfügen per Klick auf `+Einfügen` klappt. Aber per Drag-and-Drop nicht. Es wird dann nur ein leerer Paragraph als Block eingefügt.
-65. (20) Das Einfügen von Modulen klappt nun ein wenig besser. Aber die Module rendern die Platzhalter nicht. Beim normalen Einfügen über die Schaltfläche `+Einfügen` besteht dieses Problem ab sofort auch. Zuvor wurden die Sachen richtig gerendert.
+64. erledigt
+65. erledigt
 ---
 ## 3. Funktionalität Backend / Python / SQLite3-Datenbank
 Hier werden Funktionsprobleme aufgeführt, die aufgrund von Problemen im Webserver oder der Datenbank auftreten.

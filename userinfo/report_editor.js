@@ -69,7 +69,7 @@
  *     ausgefuehrt damit der gedruckte Stand mit der DB synchron ist.
  *     Beleg: Bugfix Build 134, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.157 · Build: 157 · 2026-05-09
+ * Version: v0.6.158 · Build: 158 · 2026-05-09
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -2328,8 +2328,7 @@ function _initDragDrop() {
             _dbg('Drop (Modul): module_id=', modData.module_id, 'targetIdx=', targetIdx);
 
             // Bug 2.64 Fix Build 157: module_text kommt aus dragstart wo _modules
-            // kein body-Feld hat (Listenview uebertraegt body nicht).
-            // Fix: _fetchModuleBody() wie _insertModule es tut.
+            // kein body-Feld hat. Fix: _fetchModuleBody() aufrufen.
             // Beleg: Bugfix Build 157, Projektgespraech 2026-05-10
             let insertText = modData.module_text || '';
             if (!insertText && modData.module_id) {
@@ -2338,6 +2337,7 @@ function _initDragDrop() {
                     insertText = m?.body || '';
                 } catch (_) {}
             }
+            // Sicherheitshalber dehydrieren falls doch HTML enthalten ist
             if (window.PlaceholderChips?.dehydrateChips && insertText.includes('<')) {
                 insertText = window.PlaceholderChips.dehydrateChips(insertText);
             }
@@ -2349,6 +2349,31 @@ function _initDragDrop() {
             window._editor.caret.setToBlock(targetIdx);
             _dbg('Drop (Modul): Block eingefuegt, type=', modData.block_type,
                 'idx=', targetIdx, 'textLen=', insertText.length);
+
+            // Chip-Hydration: Template-Syntax im neuen Block sofort rendern.
+            // blocks.insert rendert Plaintext — hydrateChips muss nachtraeglich
+            // per execCommand auf das contenteditable angewendet werden.
+            // Beleg: Bugfix Build 158, Projektgespraech 2026-05-11
+            if (insertText && window.PlaceholderChips?.hydrateChips) {
+                setTimeout(() => {
+                    const holder = document.getElementById('editorjs-holder');
+                    const ceBlocks = holder?.querySelectorAll('.ce-block[data-id]');
+                    if (!ceBlocks) return;
+                    // Neu eingefügter Block ist an targetIdx
+                    const newCeBlock = ceBlocks[targetIdx];
+                    const ce = newCeBlock?.querySelector('[contenteditable="true"]');
+                    if (!ce) return;
+                    const chipHtml = window.PlaceholderChips.hydrateChips(insertText, {}, {});
+                    ce.focus();
+                    const sel = window.getSelection();
+                    const range = document.createRange();
+                    range.selectNodeContents(ce);
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                    document.execCommand('insertHTML', false, chipHtml);
+                    _dbg('Drop (Modul): Chips hydriert fuer Block idx=', targetIdx);
+                }, 50);
+            }
         }
 
         if (hasStandard) {

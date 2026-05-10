@@ -59,7 +59,7 @@
  *       in _renderStandardList vorhanden).
  *     Beleg: Bugfix Build 133, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.157 · Build: 157 · 2026-05-10
+ * Version: v0.6.158 · Build: 158 · 2026-05-10
  * Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06
  */
 
@@ -838,20 +838,36 @@ async function _insertModule(moduleId) {
         if (!resp.ok) throw new Error(data.error || 'HTTP ' + resp.status);
 
         // 4. Block sofort im Editor anzeigen (Bug 2.19 Fix Build 132).
-        // Bug 2.64 Fix Build 155: chipHtml war hydriertes HTML — Editor.js
-        // markiert andere Bloecke als 'invalid' weil Chip-Spans (<span
-        // contenteditable="false">) kein valides Paragraph-data.text sind.
-        // Fix: Template-Syntax (dehydriert) in block_data speichern, dann
-        // hydrieren fuer die sofortige Anzeige im Editor per execCommand.
-        // Beleg: Bugfix Build 155, Projektgespraech 2026-05-10
+        // Bug 2.64 Fix Build 155: Template-Syntax statt chipHtml fuer blocks.insert.
+        // Bug Rendering Fix Build 158: Chips nach blocks.insert per execCommand
+        // hydrieren — blocks.insert zeigt nur Plaintext.
+        // Beleg: Bugfix Build 158, Projektgespraech 2026-05-11
         const editor = window._editor;
         if (editor?.blocks) {
             const bodyText = m.body || '';
-            // Fuer Editor.js: template-Syntax (kein HTML)
             editor.blocks.insert('paragraph', { text: bodyText }, {}, undefined, true);
             const lastIdx = editor.blocks.getBlocksCount() - 1;
             editor.caret.setToBlock(lastIdx);
-            _dbg('_insertModule: Block sofort in Editor eingefuegt, idx=', lastIdx);
+            _dbg('_insertModule: Block eingefuegt, idx=', lastIdx);
+
+            if (bodyText && window.PlaceholderChips?.hydrateChips) {
+                setTimeout(() => {
+                    const holder = document.getElementById('editorjs-holder');
+                    const ceBlocks = holder?.querySelectorAll('.ce-block[data-id]');
+                    const newCeBlock = ceBlocks?.[lastIdx];
+                    const ce = newCeBlock?.querySelector('[contenteditable="true"]');
+                    if (!ce) return;
+                    const chipHtml = window.PlaceholderChips.hydrateChips(bodyText, {}, {});
+                    ce.focus();
+                    const sel = window.getSelection();
+                    const range = document.createRange();
+                    range.selectNodeContents(ce);
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                    document.execCommand('insertHTML', false, chipHtml);
+                    _dbg('_insertModule: Chips hydriert, idx=', lastIdx);
+                }, 50);
+            }
         }
 
         // 5. Formular-Akkordeon oeffnen (Phase 6)

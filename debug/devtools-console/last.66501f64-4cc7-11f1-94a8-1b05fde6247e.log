@@ -1,0 +1,40 @@
+Navigated to http://127.0.0.2:8080/_forensic/report
+placeholder_chips.js:56 [forensic] placeholder_chips.js: window.PlaceholderChips exportiert
+placeholder_wizard.js:75 [forensic] placeholder_wizard.js: window.PlaceholderWizard exportiert
+module_panel.js:77 [forensic] module_panel.js: window.ModulePanel exportiert
+annotation_sidebar.js:58 [forensic] annotation_sidebar.js: window.AnnotationSidebar exportiert
+report_editor.js:86 [forensic] report_editor.js: Exports auf window gesetzt
+userinfo.js:67 [forensic] DOMContentLoaded: userinfo.js aktiv
+userinfo.js:67 [forensic] initEditor() gestartet
+userinfo.js:67 [forensic] initSSEWindow3() gestartet
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 7d430730-4123-4a6f-8dcc-9c050998fd18
+report_editor.js:86 [forensic] initEditorModule() gestartet
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:86 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
+report_editor.js:86 [forensic] initReportSelector() gestartet
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= interim
+favicon.ico:1  GET http://127.0.0.2:8080/favicon.ico 404 (Not Found)
+report_editor.js:457 report_editor.js: _knownBlockIds initialisiert, 61 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:643 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 61 focusedId= wU6z9eBw34 onSave= function myUsername= paul
+report_editor.js:688 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:675 [forensic] _captureRange: alt= null → neu: blockId= qjlgcQzu8n blockIdx= 7 startOffset= 12
+report_editor.js:675 [forensic] _captureRange: alt= blockId=qjlgcQzu8n offset=12 → neu: blockId= ? blockIdx= -1 startOffset= 1
+report_editor.js:186  POST http://127.0.0.2:8080/_forensic/editor/evidence 500 (Internal Server Error)
+_fetchWithLock @ report_editor.js:186
+_addEvidence @ report_editor.js:2034
+(anonymous) @ report_editor.js:1977
+report_editor.js:2040 report_editor.js: Evidence-Add fehlgeschlagen: 3
+_addEvidence @ report_editor.js:2040
+await in _addEvidence
+(anonymous) @ report_editor.js:1977
+report_editor.js:186  POST http://127.0.0.2:8080/_forensic/editor/evidence 500 (Internal Server Error)
+_fetchWithLock @ report_editor.js:186
+_addEvidence @ report_editor.js:2034
+(anonymous) @ report_editor.js:1977
+report_editor.js:2040 report_editor.js: Evidence-Add fehlgeschlagen: 2
+_addEvidence @ report_editor.js:2040
+await in _addEvidence
+(anonymous) @ report_editor.js:1977
