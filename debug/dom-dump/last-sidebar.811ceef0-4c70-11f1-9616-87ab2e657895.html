@@ -1,0 +1,151 @@
+<aside id="support-sidebar" aria-label="Support-Sidebar">
+
+        <!-- Abschnitt 1: Bausteine (Standard: aufgeklappt) -->
+        <section class="support-accordion-section support-accordion-section--open" data-accordion="blocks">
+          <button class="support-accordion-toggle" type="button" aria-expanded="true" aria-controls="accordion-body-blocks">
+            <span class="support-accordion-icon" aria-hidden="true">📦</span>
+            Bausteine
+            <span class="support-accordion-chevron" aria-hidden="true">▾</span>
+          </button>
+          <div id="accordion-body-blocks" class="support-accordion-body" role="region" aria-label="Bausteine">
+    <div class="mp-panel">
+        <!-- Kategorie-Umschalter -->
+        <div class="mp-cat-tabs" role="tablist" aria-label="Bausteine-Kategorien">
+            <button class="mp-cat-tab mp-cat-tab--active" role="tab" aria-selected="true" data-category="modules" type="button">Module</button>
+            <button class="mp-cat-tab" role="tab" aria-selected="false" data-category="queries" type="button">Einzeldaten</button>
+        </div>
+
+        <!-- Suche -->
+        <div class="mp-search-wrap">
+            <span class="mp-search-icon" aria-hidden="true">🔍</span>
+            <input class="mp-search-input" id="mp-sidebar-search" type="search" placeholder="Suche…" autocomplete="off" aria-label="Bausteine durchsuchen">
+        </div>
+
+        <!-- Rollenfilter-Chips (nur im Module-Modus sichtbar) -->
+        <div class="mp-role-chips" id="mp-role-chips" role="group" aria-label="Rollenfilter" style="">
+            <button class="mp-chip" type="button" data-role="" aria-pressed="false">Alle</button><button class="mp-chip" type="button" data-role="intro" aria-pressed="false">Einleitung</button><button class="mp-chip" type="button" data-role="conclusion" aria-pressed="false">Fazit</button><button class="mp-chip" type="button" data-role="body" aria-pressed="false">Hauptteil</button><button class="mp-chip" type="button" data-role="legal" aria-pressed="false">Rechtsgrundlagen</button><button class="mp-chip" type="button" data-role="appendix" aria-pressed="false">Anhang</button><button class="mp-chip" type="button" data-role="closing" aria-pressed="false">Abschluss</button><button class="mp-chip mp-chip-active" type="button" data-role="standard" aria-pressed="true">Standard</button>
+        </div>
+
+        <!-- Ergebnisliste -->
+        <div class="mp-list" id="mp-list" role="listbox" aria-label="Verfügbare Bausteine">
+        <div class="mp-item mp-item--standard" data-std-type="paragraph" data-block-type="paragraph" role="listitem" tabindex="0" draggable="true" title="Freier Texteintrag (Paragraph)">
+            <div class="mp-item-header">
+                <span class="mp-item-icon" aria-hidden="true">✏️</span>
+                <span class="mp-item-title">¶ Textabsatz</span>
+            </div>
+            <div class="mp-item-preview">Freier Texteintrag (Paragraph)</div>
+            <button class="mp-btn-insert" type="button" data-std-type="paragraph" title="¶ Textabsatz einfuegen" aria-label="¶ Textabsatz in Editor einfuegen">
+                + Einfügen
+            </button>
+        </div>
+    
+        <div class="mp-item mp-item--standard" data-std-type="header" data-block-type="header" role="listitem" tabindex="0" draggable="true" title="Abschnittsüberschrift (H2)">
+            <div class="mp-item-header">
+                <span class="mp-item-icon" aria-hidden="true">🆗</span>
+                <span class="mp-item-title">🆗 Überschrift</span>
+            </div>
+            <div class="mp-item-preview">Abschnittsüberschrift (H2)</div>
+            <button class="mp-btn-insert" type="button" data-std-type="header" title="🆗 Überschrift einfuegen" aria-label="🆗 Überschrift in Editor einfuegen">
+                + Einfügen
+            </button>
+        </div>
+    
+        <div class="mp-item mp-item--standard" data-std-type="list" data-block-type="list" role="listitem" tabindex="0" draggable="true" title="Aufzählungsliste oder nummerierte Liste">
+            <div class="mp-item-header">
+                <span class="mp-item-icon" aria-hidden="true">📝</span>
+                <span class="mp-item-title">📝 Liste</span>
+            </div>
+            <div class="mp-item-preview">Aufzählungsliste oder nummerierte Liste</div>
+            <button class="mp-btn-insert" type="button" data-std-type="list" title="📝 Liste einfuegen" aria-label="📝 Liste in Editor einfuegen">
+                + Einfügen
+            </button>
+        </div>
+    
+        <div class="mp-item mp-item--standard" data-std-type="table" data-block-type="table" role="listitem" tabindex="0" draggable="true" title="Strukturierte Tabelle">
+            <div class="mp-item-header">
+                <span class="mp-item-icon" aria-hidden="true">📊</span>
+                <span class="mp-item-title">📊 Tabelle</span>
+            </div>
+            <div class="mp-item-preview">Strukturierte Tabelle</div>
+            <button class="mp-btn-insert" type="button" data-std-type="table" title="📊 Tabelle einfuegen" aria-label="📊 Tabelle in Editor einfuegen">
+                + Einfügen
+            </button>
+        </div>
+    
+        <div class="mp-item mp-item--standard" data-std-type="quote" data-block-type="quote" role="listitem" tabindex="0" draggable="true" title="Hervorgehobenes Zitat">
+            <div class="mp-item-header">
+                <span class="mp-item-icon" aria-hidden="true">„</span>
+                <span class="mp-item-title">„Zitat“</span>
+            </div>
+            <div class="mp-item-preview">Hervorgehobenes Zitat</div>
+            <button class="mp-btn-insert" type="button" data-std-type="quote" title="„Zitat“ einfuegen" aria-label="„Zitat“ in Editor einfuegen">
+                + Einfügen
+            </button>
+        </div>
+    
+        <div class="mp-item mp-item--standard" data-std-type="delimiter" data-block-type="delimiter" role="listitem" tabindex="0" draggable="true" title="Horizontale Trennlinie">
+            <div class="mp-item-header">
+                <span class="mp-item-icon" aria-hidden="true">—</span>
+                <span class="mp-item-title">— Trennlinie</span>
+            </div>
+            <div class="mp-item-preview">Horizontale Trennlinie</div>
+            <button class="mp-btn-insert" type="button" data-std-type="delimiter" title="— Trennlinie einfuegen" aria-label="— Trennlinie in Editor einfuegen">
+                + Einfügen
+            </button>
+        </div>
+    </div>
+        <div class="mp-empty" id="mp-empty" style="display:none">
+            Keine Einträge gefunden.
+        </div>
+    </div></div>
+        </section>
+
+        <!-- Abschnitt 2: Annotationen -->
+        <section class="support-accordion-section" data-accordion="annotations">
+          <button class="support-accordion-toggle" type="button" aria-expanded="false" aria-controls="accordion-body-annotations">
+            <span class="support-accordion-icon" aria-hidden="true">🔍</span>
+            Annotationen
+            <span class="support-accordion-chevron" aria-hidden="true">▾</span>
+          </button>
+          <div id="accordion-body-annotations" class="support-accordion-body support-accordion-body--closed" role="region" aria-label="Annotationen">
+            <!-- Inhalt wird von annotation_sidebar.js/_refreshAnnotationSidebar() befuellt (Phase 8) -->
+            <!-- Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06 -->
+            <p class="support-accordion-empty" id="annotations-loading-state">
+              Annotationen werden geladen…
+            </p>
+          </div>
+        </section>
+
+        <!-- Abschnitt 3: Formular (Platzhalter-Eingabe) -->
+        <section class="support-accordion-section" data-accordion="form">
+          <button class="support-accordion-toggle" type="button" aria-expanded="false" aria-controls="accordion-body-form">
+            <span class="support-accordion-icon" aria-hidden="true">📝</span>
+            Formular
+            <span class="support-accordion-chevron" aria-hidden="true">▾</span>
+          </button>
+          <div id="accordion-body-form" class="support-accordion-body support-accordion-body--closed" role="region" aria-label="Platzhalter-Formular">
+            <!-- Inhalt wird von placeholder_wizard.js befuellt (Phase 6) -->
+            <p class="support-accordion-empty">
+              Kein Bericht geöffnet.
+            </p>
+          </div>
+        </section>
+
+        <!-- Abschnitt 4: Kommentare (unten) -->
+        <section class="support-accordion-section" data-accordion="comments">
+          <button class="support-accordion-toggle" type="button" aria-expanded="false" aria-controls="accordion-body-comments">
+            <span class="support-accordion-icon" aria-hidden="true">💬</span>
+            Kommentare
+            <span class="support-accordion-chevron" aria-hidden="true">▾</span>
+          </button>
+          <div id="accordion-body-comments" class="support-accordion-body support-accordion-body--closed" role="region" aria-label="Kommentare">
+            <!-- Inhalt wird von comment_thread.js befuellt (Phase 4) -->
+            <p class="support-accordion-empty" id="comments-empty-state">
+              Kein Block ausgewählt.
+            </p>
+            <!-- Kommentar-Eingabe (wird von comment_thread.js aktiviert) -->
+            <textarea class="comment-input-textarea" rows="3" placeholder="Kommentar verfassen…" aria-label="Neuen Kommentar verfassen" style="display:none"></textarea>
+          </div>
+        </section>
+
+      </aside>

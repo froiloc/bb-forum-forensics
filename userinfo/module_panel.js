@@ -319,39 +319,34 @@ function _bindPanelEvents(body) {
         });
     });
 
-    // Build 115: Drag&Drop — Bausteine per Drag in Editor-Bereich einziehen.
-    // Bug 2.11 Fix Build 145: Standard-Elemente hatten keine module_id und wurden
-    // im dragstart-Handler sofort abgebrochen. Fix: eigenes dataTransfer-Format
-    // 'application/x-forensic-standard' fuer Standard-Bloecke.
-    // Beleg: Bugfix Build 145, Projektgespraech 2026-05-10
-    body.querySelectorAll('.mp-item[draggable]').forEach(item => {
-        item.addEventListener('dragstart', (e) => {
-            const modId = parseInt(item.dataset.moduleId, 10);
-
-            if (modId) {
-                // Modul-Block
-                const mod = _modules.find(m => m.id === modId);
-                if (!mod) return;
-                _dbg('Drag start (Modul): module_id=', modId, 'title=', mod.title);
-                e.dataTransfer.effectAllowed = 'copy';
-                e.dataTransfer.setData('application/x-forensic-module', JSON.stringify({
-                    module_id:   modId,
-                    block_type:  'paragraph',
-                    block_data:  JSON.stringify({ text: mod.text || '' }),
-                    module_text: mod.text || '',
-                }));
-            } else {
-                // Standard-Block (kein module_id)
-                const blockType = item.dataset.blockType || 'paragraph';
-                const blockTitle = item.querySelector('.mp-item-title')?.textContent?.trim() || '';
-                _dbg('Drag start (Standard): type=', blockType, 'title=', blockTitle);
-                e.dataTransfer.effectAllowed = 'copy';
-                e.dataTransfer.setData('application/x-forensic-standard', JSON.stringify({
-                    block_type: blockType,
-                    title:      blockTitle,
-                }));
-            }
-        });
+    // Build 115: Drag&Drop via Event-Delegation auf body.
+    // Bug 2.11 Fix Build 147: Per-Item-Listener sind in Firefox ESR innerhalb
+    // von Scroll-Containern unzuverlässig. Event-Delegation löst das.
+    // Beleg: Bugfix Build 147, Projektgespraech 2026-05-10
+    body.addEventListener('dragstart', (e) => {
+        const item = e.target.closest('.mp-item[draggable]');
+        if (!item) return;
+        const modId = parseInt(item.dataset.moduleId, 10);
+        if (modId) {
+            const mod = _modules.find(m => m.id === modId);
+            if (!mod) return;
+            _dbg('Drag start (Modul, delegiert): module_id=', modId, 'title=', mod.title);
+            e.dataTransfer.effectAllowed = 'copy';
+            e.dataTransfer.setData('application/x-forensic-module', JSON.stringify({
+                module_id:   modId,
+                block_type:  'paragraph',
+                block_data:  JSON.stringify({ text: mod.text || '' }),
+                module_text: mod.text || '',
+            }));
+        } else {
+            const blockType = item.dataset.blockType || 'paragraph';
+            _dbg('Drag start (Standard, delegiert): type=', blockType);
+            e.dataTransfer.effectAllowed = 'copy';
+            e.dataTransfer.setData('application/x-forensic-standard', JSON.stringify({
+                block_type: blockType,
+                title:      item.querySelector('.mp-item-title')?.textContent?.trim() || '',
+            }));
+        }
     });
 
     // Suche (debounced)
@@ -628,21 +623,21 @@ function _renderStandardList(blocks) {
         </div>
     `).join('');
 
-    // Drag&Drop fuer Standard-Items binden (dasselbe wie in _bindListHandlers).
-    // Bug 2.11 Fix Build 146: Standard-Items haben jetzt draggable="true" und
-    // data-block-type. _bindListHandlers wird nicht aufgerufen fuer Standard-Items,
-    // daher hier direkt binden.
-    // Beleg: Bugfix Build 146, Projektgespraech 2026-05-10
-    list.querySelectorAll('.mp-item--standard[draggable]').forEach(item => {
-        item.addEventListener('dragstart', (e) => {
-            const blockType = item.dataset.blockType || item.dataset.stdType || 'paragraph';
-            _dbg('Drag start (Standard): type=', blockType);
-            e.dataTransfer.effectAllowed = 'copy';
-            e.dataTransfer.setData('application/x-forensic-standard', JSON.stringify({
-                block_type: blockType,
-                title:      item.querySelector('.mp-item-title')?.textContent?.trim() || '',
-            }));
-        });
+    // Drag&Drop via Event-Delegation auf #mp-list.
+    // Bug 2.11 Fix Build 147: Firefox feuert dragstart nicht zuverlässig auf
+    // einzelnen Items innerhalb von Scroll-Containern. Event-Delegation auf dem
+    // Container ist stabiler in Firefox ESR.
+    // Beleg: Bugfix Build 147, Projektgespraech 2026-05-10
+    list.addEventListener('dragstart', (e) => {
+        const item = e.target.closest('.mp-item--standard[draggable]');
+        if (!item) return;
+        const blockType = item.dataset.blockType || item.dataset.stdType || 'paragraph';
+        _dbg('Drag start (Standard, delegiert): type=', blockType);
+        e.dataTransfer.effectAllowed = 'copy';
+        e.dataTransfer.setData('application/x-forensic-standard', JSON.stringify({
+            block_type: blockType,
+            title:      item.querySelector('.mp-item-title')?.textContent?.trim() || '',
+        }));
     });
     list.querySelectorAll('.mp-btn-insert[data-std-type]').forEach(btn => {
         btn.addEventListener('click', () => {

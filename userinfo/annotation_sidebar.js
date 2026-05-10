@@ -40,7 +40,7 @@
  *   GET /_forensic/annotations         -- alle Annotationen
  *   POST /_forensic/report             -- action=add_anchor
  *
- * Version: v0.6.116 · Build: 116 · 2026-05-07
+ * Version: v0.6.148 · Build: 148 · 2026-05-10
  * Beleg: Bauplan B6 v0.3 §4.7, Ausdefinitionsgespraech 2026-05-05
  */
 
@@ -84,6 +84,18 @@ const CATEGORY_LABELS = {
     CAT_OTHER:    'SON',
 };
 
+/** Bug 1.1 Fix Build 148: Icons identisch zur Toolbar (toolbar.js Zeilen 342-347).
+ * Beleg: Bugfix Build 148, Projektgespraech 2026-05-10
+ */
+const CATEGORY_ICONS = {
+    CAT_PERSON:   '👤',
+    CAT_LOCATION: '📍',
+    CAT_176:      '⚖️',
+    CAT_184:      '🔴',
+    CAT_VICTIM:   '🛡️',
+    CAT_OTHER:    '📎',
+};
+
 /** Volle Beschriftung fuer Title- und ARIA-Texte. */
 const CATEGORY_TITLES = {
     CAT_PERSON:   '\ud83d\udc64 PER \u2013 Pers\u00f6nliche Identifikationsmerkmale',
@@ -94,9 +106,13 @@ const CATEGORY_TITLES = {
     CAT_OTHER:    '\ud83d\udcce SON \u2013 Sonstige Ermittlungsrelevanz',
 };
 
-/** Reihenfolge der Kategorien in der Anzeige. */
+/** Reihenfolge der Kategorien in der Anzeige.
+ * Bug 1.2 Fix Build 148: Reihenfolge entspricht jetzt der Toolbar:
+ * PER, LOC, 176, 184, OPF, SON.
+ * Beleg: Bugfix Build 148, Projektgespraech 2026-05-10
+ */
 const CATEGORY_ORDER = [
-    'CAT_PERSON', 'CAT_VICTIM', 'CAT_176', 'CAT_184', 'CAT_LOCATION', 'CAT_OTHER',
+    'CAT_PERSON', 'CAT_LOCATION', 'CAT_176', 'CAT_184', 'CAT_VICTIM', 'CAT_OTHER',
 ];
 
 // ---------------------------------------------------------------------------
@@ -235,10 +251,11 @@ function _renderCategoryTabs(grouped) {
     const allCount = Object.values(grouped).reduce((s, a) => s + a.length, 0);
 
     const allTabs = [
-        { key: null, label: 'Alle', title: 'Alle Kategorien' },
+        { key: null, label: 'Alle', icon: null, title: 'Alle Kategorien' },
         ...CATEGORY_ORDER.map(c => ({
             key:   c,
             label: CATEGORY_LABELS[c] || c,
+            icon:  CATEGORY_ICONS[c]  || null,
             title: CATEGORY_TITLES[c] || c,
         })),
     ];
@@ -253,14 +270,18 @@ function _renderCategoryTabs(grouped) {
                 isActive ? 'as-tab--active' : '',
                 isEmpty  ? 'as-tab--empty'  : '',
             ].filter(Boolean).join(' ');
-            // data-cat-key fuer CSS-Farbgebung
             const catAttr  = t.key ? `data-cat="${_esc(t.key)}"` : `data-cat=""`;
+            // Bug 1.1 Fix Build 148: Icon vor Label anzeigen wenn vorhanden.
+            // Anzahl bleibt erhalten (as-tab-count). Identisch mit Toolbar-Darstellung.
+            const iconHtml = t.icon
+                ? `<span class="as-tab-icon" aria-hidden="true">${_esc(t.icon)}</span>`
+                : '';
             return `<button class="${cls}" role="tab"
                         aria-selected="${isActive}"
                         ${catAttr}
                         title="${_esc(t.title)}"
                         aria-label="${_esc(t.title)}"
-                    ><span class="as-tab-label">${_esc(t.label)}</span><span class="as-tab-count">${count}</span></button>`;
+                    >${iconHtml}<span class="as-tab-label">${_esc(t.label)}</span><span class="as-tab-count">${count}</span></button>`;
         }).join('')}
     </div>`;
 }

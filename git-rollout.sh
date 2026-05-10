@@ -23,21 +23,37 @@ if [[ -f "${ROOTDIR}debug/dom-dump/last-html.${last_uuid}.html" ]]
 then
 	git mv "${ROOTDIR}debug/dom-dump/last-html.${last_uuid}.html" "${ROOTDIR}debug/dom-dump/last-html.${uuid}.html"
 	mv "${ROOTDIR}debug/dom-dump/last-html.html" "${ROOTDIR}debug/dom-dump/last-html.${uuid}.html" 2>/dev/null
-fi
-if [[ -f "${ROOTDIR}debug/dom-dump/last-body.${last_uuid}.html" ]]
-then
-	git mv "${ROOTDIR}debug/dom-dump/last-body.${last_uuid}.html" "${ROOTDIR}debug/dom-dump/last-body.${uuid}.html"
-	mv "${ROOTDIR}debug/dom-dump/last-body.html" "${ROOTDIR}debug/dom-dump/last-body.${uuid}.html" 2>/dev/null
-fi
-if [[ -f "${ROOTDIR}debug/dom-dump/last-sidebar.${last_uuid}.html" ]]
-then
-	git mv "${ROOTDIR}debug/dom-dump/last-sidebar.${last_uuid}.html" "${ROOTDIR}debug/dom-dump/last-sidebar.${uuid}.html"
-	mv "${ROOTDIR}debug/dom-dump/last-sidebar.html" "${ROOTDIR}debug/dom-dump/last-sidebar.${uuid}.html" 2>/dev/null
-fi
-if [[ -f "${ROOTDIR}debug/dom-dump/last-main.${last_uuid}.html" ]]
-then
-	git mv "${ROOTDIR}debug/dom-dump/last-main.${last_uuid}.html" "${ROOTDIR}debug/dom-dump/last-main.${uuid}.html"
-	mv "${ROOTDIR}debug/dom-dump/last-main.html" "${ROOTDIR}debug/dom-dump/last-main.${uuid}.html" 2>/dev/null
+	if [[ -f "${ROOTDIR}debug/dom-dump/last-html.${uuid}.html" ]]
+	then	
+		git mv "${ROOTDIR}debug/dom-dump/last-main.${last_uuid}.html" "${ROOTDIR}debug/dom-dump/last-main.${uuid}.html" 2>/dev/null
+		python "${ROOTDIR}debug/html_query.py" -i "${ROOTDIR}debug/dom-dump/last-html.${uuid}.html" -o "${ROOTDIR}debug/dom-dump/last-main.${uuid}.html" -c main
+		git add -f "${ROOTDIR}debug/dom-dump/last-main.${uuid}.html" 2>/dev/null
+
+		git mv "${ROOTDIR}debug/dom-dump/last-sidebar.${last_uuid}.html" "${ROOTDIR}debug/dom-dump/last-sidebar.${uuid}.html" 2>/dev/null
+		python "${ROOTDIR}debug/html_query.py" -i "${ROOTDIR}debug/dom-dump/last-html.${uuid}.html" -o "${ROOTDIR}debug/dom-dump/last-sidebar.${uuid}.html" -c aside
+		git add -f "${ROOTDIR}debug/dom-dump/last-sidebar.${uuid}.html" 2>/dev/null
+
+		git mv "${ROOTDIR}debug/dom-dump/last-body.${last_uuid}.html" "${ROOTDIR}debug/dom-dump/last-body.${uuid}.html" 2>/dev/null
+		python "${ROOTDIR}debug/html_query.py" -i "${ROOTDIR}debug/dom-dump/last-html.${uuid}.html" -o "${ROOTDIR}debug/dom-dump/last-body.${uuid}.html" -c body
+		git add -f "${ROOTDIR}debug/dom-dump/last-body.${uuid}.html" 2>/dev/null
+
+		git mv "${ROOTDIR}debug/dom-dump/last-accordion-1.${last_uuid}.html" "${ROOTDIR}debug/dom-dump/last-accordion-1.${uuid}.html" 2>/dev/null
+		python "${ROOTDIR}debug/html_query.py" -i "${ROOTDIR}debug/dom-dump/last-html.${uuid}.html" -o "${ROOTDIR}debug/dom-dump/last-accordion-1.${uuid}.html" -c '#support-sidebar .support-accordion-section:nth-of-type(1)'
+		git add -f "${ROOTDIR}debug/dom-dump/last-accordion-1.${uuid}.html" 2>/dev/null
+
+		git mv "${ROOTDIR}debug/dom-dump/last-accordion-2.${last_uuid}.html" "${ROOTDIR}debug/dom-dump/last-accordion-2.${uuid}.html" 2>/dev/null
+		python "${ROOTDIR}debug/html_query.py" -i "${ROOTDIR}debug/dom-dump/last-html.${uuid}.html" -o "${ROOTDIR}debug/dom-dump/last-accordion-1.${uuid}.html" -c '#support-sidebar .support-accordion-section:nth-of-type(2)'
+		git add -f "${ROOTDIR}debug/dom-dump/last-accordion-2.${uuid}.html" 2>/dev/null
+
+		git mv "${ROOTDIR}debug/dom-dump/last-accordion-3.${last_uuid}.html" "${ROOTDIR}debug/dom-dump/last-accordion-3.${uuid}.html" 2>/dev/null
+		python "${ROOTDIR}debug/html_query.py" -i "${ROOTDIR}debug/dom-dump/last-html.${uuid}.html" -o "${ROOTDIR}debug/dom-dump/last-accordion-1.${uuid}.html" -c '#support-sidebar .support-accordion-section:nth-of-type(3)'
+		git add -f "${ROOTDIR}debug/dom-dump/last-accordion-3.${uuid}.html" 2>/dev/null
+
+		git mv "${ROOTDIR}debug/dom-dump/last-accordion-4.${last_uuid}.html" "${ROOTDIR}debug/dom-dump/last-accordion-4.${uuid}.html" 2>/dev/null
+		python "${ROOTDIR}debug/html_query.py" -i "${ROOTDIR}debug/dom-dump/last-html.${uuid}.html" -o "${ROOTDIR}debug/dom-dump/last-accordion-1.${uuid}.html" -c '#support-sidebar .support-accordion-section:nth-of-type(4)'
+		git add -f "${ROOTDIR}debug/dom-dump/last-accordion-4.${uuid}.html" 2>/dev/null
+
+	fi
 fi
 if [[ -f "${ROOTDIR}debug/webserver-log/last.${last_uuid}.log" ]]
 then

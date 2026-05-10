@@ -69,7 +69,7 @@
  *     ausgefuehrt damit der gedruckte Stand mit der DB synchron ist.
  *     Beleg: Bugfix Build 134, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.146 · Build: 146 · 2026-05-09
+ * Version: v0.6.148 · Build: 148 · 2026-05-09
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -1272,9 +1272,22 @@ function _bindChipDoubleClick() {
  */
 async function _refreshPlaceholderForm() {
     if (!window.PlaceholderWizard?.showPlaceholderForm) return;
-    // Build 114: Form auch zeigen wenn Bericht geladen aber noch keine Bloecke existieren
     if (!_currentReport) return;
 
+    // Bug 2.55/2.59 Fix Build 147: Guard verhindert Reentry-Schleife.
+    // _refreshPlaceholderForm → showPlaceholderForm → onChange → _performAutoSave
+    // → _refreshPlaceholderForm ist eine Rückkopplungsschleife.
+    // Beleg: Bugfix Build 147, Projektgespraech 2026-05-10
+    if (_isRefreshingForm) return;
+    _isRefreshingForm = true;
+    try {
+        await _doRefreshPlaceholderForm();
+    } finally {
+        _isRefreshingForm = false;
+    }
+}
+
+async function _doRefreshPlaceholderForm() {
     // placeholder_values_json aus dem Server laden (aktuellste Werte)
     let blocks = _currentBlocks;
     const rid = _currentReport?.id;
