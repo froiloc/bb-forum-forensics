@@ -734,9 +734,12 @@ function _renderListWithStandard(modules, stdBlocks) {
         list.appendChild(stdHolder);
 
         // mp-item-preview hinzugefuegt (Bug 2.3 Fix Build 133)
+        // Bug 2.63 Fix Build 149: draggable="true" + data-block-type fehlten.
+        // Beleg: Bugfix Build 149, Projektgespraech 2026-05-10
         stdHolder.innerHTML = stdBlocks.map(b => `
             <div class="mp-item mp-item--standard" data-std-type="${_esc(b.block_type)}"
-                 role="listitem" tabindex="0" title="${_esc(b.description)}">
+                 data-block-type="${_esc(b.block_type)}"
+                 role="listitem" tabindex="0" draggable="true" title="${_esc(b.description)}">
                 <div class="mp-item-header">
                     <span class="mp-item-icon" aria-hidden="true">${_esc(b.icon)}</span>
                     <span class="mp-item-title">${_esc(b.title)}</span>
@@ -931,10 +934,6 @@ async function _insertQuery(queryId) {
 
         if (editorCE) {
             // --- Schritt 2: Inline-Einfuegen an Cursorposition ---
-            // Bug 2.48 Fix Build 137: Pruefen ob Cursor bereits in einem Platzhalter steht.
-            // Falls ja: Range ans Ende des Chips verschieben statt abzulehnen —
-            // besser UX als eine Fehlermeldung. Der Chip wird NACH dem bestehenden Chip eingefuegt.
-            // Beleg: Bugfix Build 137, Projektgespraech 2026-05-09
             editorCE.focus();
             if (_savedCursorRange) {
                 try {
@@ -942,13 +941,20 @@ async function _insertQuery(queryId) {
                     sel.removeAllRanges();
                     sel.addRange(_savedCursorRange);
 
+                    // Bug 2.61 Fix Build 149: Einfüge-Position loggen.
+                    const container = _savedCursorRange.commonAncestorContainer;
+                    const el = container.nodeType === Node.ELEMENT_NODE ? container : container.parentElement;
+                    const ceBlock = el?.closest('.ce-block[data-id]');
+                    _dbg('_insertQuery: Einfuege-Position: blockId=', ceBlock?.dataset?.id,
+                        'offset=', _savedCursorRange.startOffset,
+                        'queryId=', queryId);
+
                     // Cursor-Position pruefen: steckt der Anker in einem .ph-chip?
                     const anchorNode = sel.anchorNode;
                     const anchorEl   = anchorNode?.nodeType === Node.ELEMENT_NODE
                         ? anchorNode : anchorNode?.parentElement;
                     const existingChip = anchorEl?.closest('.ph-chip');
                     if (existingChip) {
-                        // Range ans Ende des Chips verschieben
                         const afterRange = document.createRange();
                         afterRange.setStartAfter(existingChip);
                         afterRange.collapse(true);
@@ -958,6 +964,8 @@ async function _insertQuery(queryId) {
                     }
                 } catch (_) {}
                 _savedCursorRange = null;
+            } else {
+                _dbg('_insertQuery: _savedCursorRange ist null — kein gespeicherter Cursor vorhanden!');
             }
             const inserted = document.execCommand('insertHTML', false, chipHtml);
             if (!inserted) {
@@ -1134,10 +1142,16 @@ window.ModulePanel = {
     close,
     // Interna
     _fetchModules,
-    // Bug 2.57 Fix Build 145: Setter fuer _savedCursorRange — wird vom
-    // globalen mousedown/keydown-Listener in report_editor.js aufgerufen.
-    // Beleg: Bugfix Build 145, Projektgespraech 2026-05-10
+    // Bug 2.57 Fix Build 145: Setter fuer _savedCursorRange
     _setSavedCursorRange: (range) => { _savedCursorRange = range; },
+    // Bug 2.61 Fix Build 149: Getter fuer Logging-Zwecke
+    _getSavedRangeInfo: () => {
+        if (!_savedCursorRange) return 'null';
+        const el = _savedCursorRange.commonAncestorContainer;
+        const ceBlock = (el.nodeType === Node.ELEMENT_NODE ? el : el.parentElement)
+            ?.closest?.('.ce-block[data-id]');
+        return `blockId=${ceBlock?.dataset?.id || '?'} offset=${_savedCursorRange.startOffset}`;
+    },
 };
 
 // Alias fuer report_editor.js (window._ModulePanel)

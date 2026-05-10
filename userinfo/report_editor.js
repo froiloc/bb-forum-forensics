@@ -69,7 +69,7 @@
  *     ausgefuehrt damit der gedruckte Stand mit der DB synchron ist.
  *     Beleg: Bugfix Build 134, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.148 · Build: 148 · 2026-05-09
+ * Version: v0.6.149 · Build: 149 · 2026-05-09
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -665,8 +665,16 @@ function _initEditorJs(blocks, reportId) {
                     const el       = range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
                         ? range.commonAncestorContainer
                         : range.commonAncestorContainer.parentElement;
-                    // Nur speichern wenn Range innerhalb des Editor-Holders liegt
                     if (holderForRange.contains(el)) {
+                        // Bug 2.61 Fix Build 149: Cursor-Logging — zeigt alten und neuen Wert.
+                        // Beleg: Bugfix Build 149, Projektgespraech 2026-05-10
+                        const ceBlock = el.closest('.ce-block[data-id]');
+                        const blockId = ceBlock?.dataset?.id || '?';
+                        const allBlocks = holderForRange.querySelectorAll('.ce-block[data-id]');
+                        const blockIdx = Array.from(allBlocks).findIndex(b => b.dataset.id === blockId);
+                        console.debug('[forensic] _captureRange: alt=', window._ModulePanel?._getSavedRangeInfo?.(),
+                            '→ neu: blockId=', blockId, 'blockIdx=', blockIdx,
+                            'startOffset=', range.startOffset);
                         window._ModulePanel?._setSavedCursorRange?.(range.cloneRange());
                     }
                 };
@@ -2246,6 +2254,31 @@ function _initDragDrop() {
     const holder = document.getElementById('editorjs-holder');
     if (!holder) return;
 
+    // Bug 2.62/2.64 Fix Build 149: Drop-Position anhand Maus-Y-Koordinate bestimmen.
+    // _dragOverTargetIdx wird beim dragover aktualisiert.
+    // Beleg: Bugfix Build 149, Projektgespraech 2026-05-10
+    let _dragOverTargetIdx = -1;
+
+    /**
+     * Ermittelt den Block-Index anhand der Maus-Y-Position beim dragover.
+     * Vergleicht e.clientY mit den Bounding-Rects der .ce-block-Elemente.
+     */
+    function _getDropTargetIndex(mouseY) {
+        const blocks = holder.querySelectorAll('.ce-block');
+        let bestIdx = window._editor?.blocks?.getBlocksCount?.() ?? 0;
+        for (let i = 0; i < blocks.length; i++) {
+            const rect = blocks[i].getBoundingClientRect();
+            const mid  = rect.top + rect.height / 2;
+            if (mouseY < mid) {
+                bestIdx = i;
+                break;
+            }
+            // Maus ist unterhalb der Mitte des letzten Blocks — ans Ende
+            bestIdx = i + 1;
+        }
+        return bestIdx;
+    }
+
     holder.addEventListener('dragover', (e) => {
         const hasModule   = e.dataTransfer.types.includes('application/x-forensic-module');
         const hasStandard = e.dataTransfer.types.includes('application/x-forensic-standard');
@@ -2253,10 +2286,12 @@ function _initDragDrop() {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'copy';
         holder.classList.add('editorjs-holder--drag-over');
+        _dragOverTargetIdx = _getDropTargetIndex(e.clientY);
     });
 
     holder.addEventListener('dragleave', () => {
         holder.classList.remove('editorjs-holder--drag-over');
+        _dragOverTargetIdx = -1;
     });
 
     holder.addEventListener('drop', async (e) => {
@@ -2271,34 +2306,39 @@ function _initDragDrop() {
             return;
         }
 
+        // Ziel-Index aus letztem dragover; -1 = am Ende
+        const totalBlocks = window._editor.blocks.getBlocksCount();
+        const targetIdx   = (_dragOverTargetIdx >= 0 && _dragOverTargetIdx <= totalBlocks)
+            ? _dragOverTargetIdx
+            : totalBlocks;
+        _dbg('Drop: Ziel-Index=', targetIdx, 'von', totalBlocks, 'Bloecken');
+
         if (hasModule) {
             let modData;
             try {
                 modData = JSON.parse(e.dataTransfer.getData('application/x-forensic-module'));
             } catch (_) { return; }
-            _dbg('Drop (Modul): module_id=', modData.module_id);
+            _dbg('Drop (Modul): module_id=', modData.module_id, 'targetIdx=', targetIdx);
             const blockData = modData.block_type === 'paragraph'
                 ? { text: modData.module_text || '' }
                 : {};
-            window._editor.blocks.insert(modData.block_type || 'paragraph', blockData);
-            const lastIdx = window._editor.blocks.getBlocksCount() - 1;
-            window._editor.caret.setToBlock(lastIdx);
-            _dbg('Drop (Modul): Block eingefuegt, type=', modData.block_type, 'idx=', lastIdx);
+            window._editor.blocks.insert(modData.block_type || 'paragraph', blockData, {}, targetIdx);
+            window._editor.caret.setToBlock(targetIdx);
+            _dbg('Drop (Modul): Block eingefuegt, type=', modData.block_type, 'idx=', targetIdx);
         }
 
         if (hasStandard) {
-            // Bug 2.11 Fix Build 145: Standard-Block per Drag einziehen.
-            // Beleg: Bugfix Build 145, Projektgespraech 2026-05-10
             let stdData;
             try {
                 stdData = JSON.parse(e.dataTransfer.getData('application/x-forensic-standard'));
             } catch (_) { return; }
-            _dbg('Drop (Standard): type=', stdData.block_type);
-            window._editor.blocks.insert(stdData.block_type || 'paragraph', {});
-            const lastIdx = window._editor.blocks.getBlocksCount() - 1;
-            window._editor.caret.setToBlock(lastIdx);
-            _dbg('Drop (Standard): Block eingefuegt, type=', stdData.block_type, 'idx=', lastIdx);
+            _dbg('Drop (Standard): type=', stdData.block_type, 'targetIdx=', targetIdx);
+            window._editor.blocks.insert(stdData.block_type || 'paragraph', {}, {}, targetIdx);
+            window._editor.caret.setToBlock(targetIdx);
+            _dbg('Drop (Standard): Block eingefuegt, type=', stdData.block_type, 'idx=', targetIdx);
         }
+
+        _dragOverTargetIdx = -1;
     });
 
     _dbg('_initDragDrop: Drop-Zone registriert auf #editorjs-holder');
