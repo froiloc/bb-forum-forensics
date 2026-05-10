@@ -1,5 +1,5 @@
 # Fehler auf der Berichtsseite
-(Cache-buster-pre-extension: 4b5c87b0-4c63-11f1-b9a6-cb5cab2c08ae)
+(Cache-buster-pre-extension: 8c9769e6-4c65-11f1-82f7-27f63fdb9957)
 
 Ich werde in dieser Liste fortlaufend die von mir beobachteten Fehler aufführen.
 Falls diese abgeschlossen und verworfen wurden, werde ich sie durchstreichen. Alles, was nicht durchgestrichen ist, ist also noch offen und muss bearbeitet werden.
@@ -9,15 +9,15 @@ Nach der Bearbeitung ist das behobene Problem anzugeben. Und zwar mit Kapitel (1
 
 Quellen zum Debuggen:
 * Dieses Dokument mit den Arbeitsanweisungen und Problembeschreibungen:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.4b5c87b0-4c63-11f1-b9a6-cb5cab2c08ae.md
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.8c9769e6-4c65-11f1-82f7-27f63fdb9957.md
 * Die Ausgabe von DevTools-Console:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.4b5c87b0-4c63-11f1-b9a6-cb5cab2c08ae.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.8c9769e6-4c65-11f1-82f7-27f63fdb9957.log
 * Die Ausgabe von DevTools-Network:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.4b5c87b0-4c63-11f1-b9a6-cb5cab2c08ae.har
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.8c9769e6-4c65-11f1-82f7-27f63fdb9957.har
 * Das aktuelle DOM als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last.4b5c87b0-4c63-11f1-b9a6-cb5cab2c08ae.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last.8c9769e6-4c65-11f1-82f7-27f63fdb9957.html
 * Die Ausgabe des aktuellen Webservers:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.4b5c87b0-4c63-11f1-b9a6-cb5cab2c08ae.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.8c9769e6-4c65-11f1-82f7-27f63fdb9957.log
 * Die aktuellen Screenshots:
 https://github.com/froiloc/bb-forum-forensics/tree/1b5017a2f62c5a8f1825de76fc6edabb25d6bf66/debug/screenshots
 ***
@@ -64,7 +64,7 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
  8. erledigt
  9. (10) Verankerte Annotationen werden im Report nicht angezeigt oder gerendert.
 10. (10)  Das `Editor.js`-Modul `Beweismittelgruppe` ist nicht mehr funktional. Es erlaubt kein Hinzufügen von Belegen. Weder per Drag-and-Drop noch durch Klicken auf `+ Beleg hinzufügen`.
-11. (8) Das Einfügen von `Standard`-Elementen per Drag-and-Drop funktioniert nicht. Weder mit den Elementen bei der Anzeige in `Alle` noch bei `Standard`.
+11. erledigt
 12. erledigt
 13. erledigt
 14. erledigt
@@ -114,7 +114,7 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 58. (30) Vorschlag für das 2.47 Problem mit dem ersten Klick. Können wir einen `mousedown` und `keydown`-Listener implementieren, der die _savedCursorRange setzt? Das müsste vor dem Click feuern und dann wäre der Wert gesetzt. Akzeptabel ist der "Restzustand" nur mit Bauchschmerzen. Aber ich würde das vorerst zurückstellen. Auch wenn ich mich freuen würde, wenn wir durch ein aggressiveres Debug-Logging hier mehr Gewissheit erlangen könnten. Speziell wenn der Wert für den Cursor nicht da ist, möchte ich einen vollumfänglichen Zustand des Systems kennen, um Schlussfolgerungen ziehen zu können.
 59. (20) Nach wie vor verlieren wir den Fokus beim Speichern. Das ist nicht akzeptabel. Das ist ein schwerer Rückschlag für ein sauberes UX.
 60. erledigt
-61. Es kommt vor, und das ist wieder so ein "Beim ersten Versuch klappt es nicht, bei den folgenden Versuchen aber schon"-Fehler, dass beim Einfügen eines Standard-Elements dieses nicht an der Position nach dem aktuellen Block, sondern am Anfang des Dokuments eingefügt wird. Das sollte nicht sein. Hier müssen wir wieder schauen, wie wir da herausfinden, woran das liegen kann. Ich wünsche daher, dass im Consolen-Output die Aktualisierung der Cursor-Position angezeigt wird, wenn sie durch Mousedown oder Keydown erfasst wird. Und es soll vor dem Setzen des neuen gespeicherten Wertes dessen derzeitiger Wert aufgeben werden. Und ich wünsche, dass beim Einfügen eines Elements in der Console die Position des Cursors angegeben wird und die Position, an der das neue Element eingefügt wird. Das wird uns hoffentlich rasch helfen, das Problem zu lösen.
+61. (20) Es kommt vor, und das ist wieder so ein "Beim ersten Versuch klappt es nicht, bei den folgenden Versuchen aber schon"-Fehler, dass beim Einfügen eines Standard-Elements dieses nicht an der Position nach dem aktuellen Block, sondern am Anfang des Dokuments eingefügt wird. Das sollte nicht sein. Hier müssen wir wieder schauen, wie wir da herausfinden, woran das liegen kann. Ich wünsche daher, dass im Consolen-Output die Aktualisierung der Cursor-Position angezeigt wird, wenn sie durch Mousedown oder Keydown erfasst wird. Und es soll vor dem Setzen des neuen gespeicherten Wertes dessen derzeitiger Wert aufgeben werden. Und ich wünsche, dass beim Einfügen eines Elements in der Console die Position des Cursors angegeben wird und die Position, an der das neue Element eingefügt wird. Das wird uns hoffentlich rasch helfen, das Problem zu lösen.
 ---
 ## 3. Funktionalität Backend / Python / SQLite3-Datenbank
 Hier werden Funktionsprobleme aufgeführt, die aufgrund von Problemen im Webserver oder der Datenbank auftreten.

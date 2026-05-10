@@ -1,0 +1,816 @@
+:8080/favicon.ico:1  Failed to load resource: the server responded with a status of 404 (Not Found)
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+report:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+Navigated to http://127.0.0.2:8080/_forensic/report
+placeholder_chips.js:56 [forensic] placeholder_chips.js: window.PlaceholderChips exportiert
+placeholder_wizard.js:75 [forensic] placeholder_wizard.js: window.PlaceholderWizard exportiert
+module_panel.js:77 [forensic] module_panel.js: window.ModulePanel exportiert
+annotation_sidebar.js:58 [forensic] annotation_sidebar.js: window.AnnotationSidebar exportiert
+report_editor.js:86 [forensic] report_editor.js: Exports auf window gesetzt
+userinfo.js:67 [forensic] DOMContentLoaded: userinfo.js aktiv
+userinfo.js:67 [forensic] initEditor() gestartet
+userinfo.js:67 [forensic] initSSEWindow3() gestartet
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= f8cfd7cd-1a33-472f-a9e7-6c10e35a3c30
+report_editor.js:86 [forensic] initEditorModule() gestartet
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:86 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
+report_editor.js:86 [forensic] initReportSelector() gestartet
+favicon.ico:1  GET http://127.0.0.2:8080/favicon.ico 404 (Not Found)
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= interim
+report_editor.js:457 report_editor.js: _knownBlockIds initialisiert, 41 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:643 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+report_editor.js:680 report_editor.js: Initialisierungs-Guard freigegeben.
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 41 focusedId= pPklymmFi4 onSave= function myUsername= paul
+report_editor.js:1247 report_editor.js: Chip-Doppelklick: realname o
+placeholder_wizard.js:619 [PlaceholderWizard] openAtField: onSave aus Options gesetzt, blockId= pPklymmFi4 fieldName= realname
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 41 focusedId= pPklymmFi4 onSave= function myUsername= paul
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 41 focusedId= pPklymmFi4 onSave= function myUsername= paul
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 41 focusedId= pPklymmFi4 onSave= function myUsername= paul
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 41 focusedId= pPklymmFi4 onSave= function myUsername= paul
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 41 focusedId= pPklymmFi4 onSave= function myUsername= paul
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 41 focusedId= pPklymmFi4 onSave= function myUsername= paul
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 41 focusedId= pPklymmFi4 onSave= function myUsername= paul
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 41 focusedId= pPklymmFi4 onSave= function myUsername= paul
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 41 focusedId= pPklymmFi4 onSave= function myUsername= paul
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 41 focusedId= pPklymmFi4 onSave= function myUsername= paul
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 41 focusedId= pPklymmFi4 onSave= function myUsername= paul
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 41 focusedId= pPklymmFi4 onSave= function myUsername= paul
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 41 focusedId= pPklymmFi4 onSave= function myUsername= paul
+report_editor.js:1699 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 41
+report_editor.js:1813 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 41 | Bloecke geloescht: 0
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 41 focusedId= i8OxxJCEj2 onSave= function myUsername= paul
+report_editor.js:1699 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 41
+report_editor.js:1813 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 41 | Bloecke geloescht: 0
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 41 focusedId= i8OxxJCEj2 onSave= function myUsername= paul
+report_editor.js:1699 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 41
+report_editor.js:1813 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 41 | Bloecke geloescht: 0
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 41 focusedId= i8OxxJCEj2 onSave= function myUsername= paul
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 41 focusedId= i8OxxJCEj2 onSave= function myUsername= paul
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 41 focusedId= i8OxxJCEj2 onSave= function myUsername= paul
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 41 focusedId= i8OxxJCEj2 onSave= function myUsername= paul
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 41 focusedId= i8OxxJCEj2 onSave= function myUsername= paul
+report_editor.js:1699 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 41
+report_editor.js:1813 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 43 | Bloecke geloescht: 0
+// Diagnose: Standard-Items im DOM auf Drag-Fähigkeit prüfen
+(function() {
+  const list = document.getElementById('mp-list');
+  if (!list) { console.warn('⛔ #mp-list nicht gefunden'); return; }
+
+  const items = list.querySelectorAll('.mp-item, .mp-item--standard');
+  console.log('Gefundene Items:', items.length);
+
+  items.forEach((item, i) => {
+    console.log(`Item ${i}:`, {
+      classes:        item.className,
+      draggable:      item.getAttribute('draggable'),
+      blockType:      item.dataset.blockType,
+      stdType:        item.dataset.stdType,
+      moduleId:       item.dataset.moduleId,
+      hasInsertBtn:   !!item.querySelector('button'),
+    });
+  });
+
+  // Drop-Zone prüfen
+  const holder = document.getElementById('editorjs-holder');
+  console.log('editorjs-holder gefunden:', !!holder);
+  console.log('ModulePanel._setSavedCursorRange:', typeof window._ModulePanel?._setSavedCursorRange);
+})();
+VM75833:7 Gefundene Items: 6
+VM75833:10 Item 0: {classes: 'mp-item mp-item--standard', draggable: 'true', blockType: 'paragraph', stdType: 'paragraph', moduleId: undefined, …}
+VM75833:10 Item 1: {classes: 'mp-item mp-item--standard', draggable: 'true', blockType: 'header', stdType: 'header', moduleId: undefined, …}
+VM75833:10 Item 2: {classes: 'mp-item mp-item--standard', draggable: 'true', blockType: 'list', stdType: 'list', moduleId: undefined, …}
+VM75833:10 Item 3: {classes: 'mp-item mp-item--standard', draggable: 'true', blockType: 'table', stdType: 'table', moduleId: undefined, …}
+VM75833:10 Item 4: {classes: 'mp-item mp-item--standard', draggable: 'true', blockType: 'quote', stdType: 'quote', moduleId: undefined, …}
+VM75833:10 Item 5: {classes: 'mp-item mp-item--standard', draggable: 'true', blockType: 'delimiter', stdType: 'delimiter', moduleId: undefined, …}
+VM75833:22 editorjs-holder gefunden: true
+VM75833:23 ModulePanel._setSavedCursorRange: function
+undefined
+// Lauscht auf alle Drag-Events im mp-list
+(function() {
+  const list = document.getElementById('mp-list');
+  if (!list) { console.warn('⛔ #mp-list nicht gefunden'); return; }
+
+  ['dragstart', 'drag', 'dragend'].forEach(evt => {
+    list.addEventListener(evt, (e) => {
+      console.log(`🎯 ${evt}:`, {
+        target:    e.target.className,
+        types:     Array.from(e.dataTransfer?.types || []),
+        effectAllowed: e.dataTransfer?.effectAllowed,
+      });
+    }, { once: false });
+  });
+
+  const holder = document.getElementById('editorjs-holder');
+  if (holder) {
+    ['dragover', 'drop', 'dragleave'].forEach(evt => {
+      holder.addEventListener(evt, (e) => {
+        console.log(`📦 Editor ${evt}:`, {
+          types: Array.from(e.dataTransfer?.types || []),
+        });
+      }, { once: false });
+    });
+  }
+
+  console.log('✅ Drag-Listener aktiv. Jetzt ein Standard-Element ziehen.');
+})();
+VM75837:27 ✅ Drag-Listener aktiv. Jetzt ein Standard-Element ziehen.
+undefined
+module_panel.js:77 [forensic] Drag start (Standard): type= paragraph
+VM75837:8 🎯 dragstart: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragleave: {types: Array(1)}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragleave: {types: Array(1)}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragleave: {types: Array(1)}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragleave: {types: Array(1)}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragleave: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragleave: {types: Array(1)}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragleave: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragleave: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragleave: {types: Array(1)}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragleave: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragleave: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragleave: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragleave: {types: Array(1)}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragleave: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragleave: {types: Array(1)}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragleave: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragleave: {types: Array(1)}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+report_editor.js:86 [forensic] Drop (Standard): type= paragraph
+report_editor.js:86 [forensic] Drop (Standard): Block eingefuegt, type= paragraph idx= 43
+VM75837:20 📦 Editor drop: {types: Array(1)}
+VM75837:8 🎯 dragend: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 43 focusedId= i8OxxJCEj2 onSave= function myUsername= paul
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+module_panel.js:77 [forensic] Drag start (Standard): type= delimiter
+VM75837:8 🎯 dragstart: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragleave: {types: Array(1)}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragleave: {types: Array(1)}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+report_editor.js:86 [forensic] Drop (Standard): type= delimiter
+report_editor.js:86 [forensic] Drop (Standard): Block eingefuegt, type= delimiter idx= 44
+VM75837:20 📦 Editor drop: {types: Array(1)}
+VM75837:8 🎯 dragend: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 43 focusedId= i8OxxJCEj2 onSave= function myUsername= paul
+report_editor.js:1699 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 43
+report_editor.js:1813 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 45 | Bloecke geloescht: 0
+// Simuliert einen Drop auf den Editor — umgeht das Browser-DnD-System
+(function() {
+  const holder = document.getElementById('editorjs-holder');
+  if (!holder) { console.warn('⛔ #editorjs-holder nicht gefunden'); return; }
+
+  // Synthetisches Drop-Event mit Standard-Block-Daten
+  const data = JSON.stringify({ block_type: 'delimiter', title: 'Trennlinie' });
+  const dt = new DataTransfer();
+  dt.setData('application/x-forensic-standard', data);
+
+  const dropEvt = new DragEvent('drop', {
+    bubbles: true, cancelable: true, dataTransfer: dt,
+  });
+  holder.dispatchEvent(dropEvt);
+  console.log('✅ Synthetisches Drop gefeuert. Neuer Block sollte im Editor erscheinen.');
+  console.log('Editor Block-Anzahl:', window._editor?.blocks?.getBlocksCount());
+})();
+report_editor.js:86 [forensic] Drop (Standard): type= delimiter
+report_editor.js:86 [forensic] Drop (Standard): Block eingefuegt, type= delimiter idx= 45
+VM75837:20 📦 Editor drop: {types: Array(1)}
+VM75841:15 ✅ Synthetisches Drop gefeuert. Neuer Block sollte im Editor erscheinen.
+VM75841:16 Editor Block-Anzahl: 46
+undefined
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 45 focusedId= i8OxxJCEj2 onSave= function myUsername= paul
+module_panel.js:77 [forensic] Drag start (Standard): type= delimiter
+VM75837:8 🎯 dragstart: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragleave: {types: Array(1)}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragleave: {types: Array(1)}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+VM75837:8 🎯 drag: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+VM75837:20 📦 Editor dragover: {types: Array(1)}
+report_editor.js:86 [forensic] Drop (Standard): type= delimiter
+report_editor.js:86 [forensic] Drop (Standard): Block eingefuegt, type= delimiter idx= 46
+VM75837:20 📦 Editor drop: {types: Array(1)}
+VM75837:8 🎯 dragend: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 45 focusedId= i8OxxJCEj2 onSave= function myUsername= paul
