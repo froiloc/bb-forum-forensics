@@ -1,5 +1,5 @@
 # Fehler auf der Berichtsseite
-(Cache-buster-pre-extension: 292de464-4c7b-11f1-bb95-2f91853940e0)
+(Cache-buster-pre-extension: 320e5f24-4c7f-11f1-9ea8-6f2b250add09)
 
 Ich werde in dieser Liste fortlaufend die von mir beobachteten Fehler aufführen.
 Falls diese abgeschlossen und verworfen wurden, werde ich sie durchstreichen. Alles, was nicht durchgestrichen ist, ist also noch offen und muss bearbeitet werden.
@@ -9,29 +9,29 @@ Nach der Bearbeitung ist das behobene Problem anzugeben. Und zwar mit Kapitel (1
 
 Quellen zum Debuggen:
 * Dieses Dokument mit den Arbeitsanweisungen und Problembeschreibungen:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.292de464-4c7b-11f1-bb95-2f91853940e0.md
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.320e5f24-4c7f-11f1-9ea8-6f2b250add09.md
 * Die Ausgabe von DevTools-Console:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.292de464-4c7b-11f1-bb95-2f91853940e0.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.320e5f24-4c7f-11f1-9ea8-6f2b250add09.log
 * Die Ausgabe von DevTools-Network:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.292de464-4c7b-11f1-bb95-2f91853940e0.har
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.320e5f24-4c7f-11f1-9ea8-6f2b250add09.har
 * Das aktuelle DOM des gesamten Dokuments als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.292de464-4c7b-11f1-bb95-2f91853940e0.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.320e5f24-4c7f-11f1-9ea8-6f2b250add09.html
 * Das aktuelle DOM des gesamten Body als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.292de464-4c7b-11f1-bb95-2f91853940e0.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.320e5f24-4c7f-11f1-9ea8-6f2b250add09.html
 * Das aktuelle DOM des gesamten Sidebar als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.292de464-4c7b-11f1-bb95-2f91853940e0.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.320e5f24-4c7f-11f1-9ea8-6f2b250add09.html
 * Das aktuelle DOM des gesamten Main als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.292de464-4c7b-11f1-bb95-2f91853940e0.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.320e5f24-4c7f-11f1-9ea8-6f2b250add09.html
 * Das aktuelle DOM des Akkordeon 1 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.292de464-4c7b-11f1-bb95-2f91853940e0.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.320e5f24-4c7f-11f1-9ea8-6f2b250add09.html
 * Das aktuelle DOM des Akkordeon 2 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.292de464-4c7b-11f1-bb95-2f91853940e0.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.320e5f24-4c7f-11f1-9ea8-6f2b250add09.html
 * Das aktuelle DOM des Akkordeon 3 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.292de464-4c7b-11f1-bb95-2f91853940e0.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.320e5f24-4c7f-11f1-9ea8-6f2b250add09.html
 * Das aktuelle DOM des Akkordeon 4 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.292de464-4c7b-11f1-bb95-2f91853940e0.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.320e5f24-4c7f-11f1-9ea8-6f2b250add09.html
 * Die Ausgabe des aktuellen Webservers:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.292de464-4c7b-11f1-bb95-2f91853940e0.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.320e5f24-4c7f-11f1-9ea8-6f2b250add09.log
 * Die aktuellen Screenshots:
 https://github.com/froiloc/bb-forum-forensics/tree/1b5017a2f62c5a8f1825de76fc6edabb25d6bf66/debug/screenshots
 ***
@@ -49,7 +49,7 @@ Hier werden CSS‑Fehler aufgeführt. Das sind Themen, bei denen die Anzeige fun
  8. erledigt
  9. erledigt
  10. erledigt
- 11. (1) Es wäre cool, wenn man die Breite von `<main>` und `<aside>` über einen Schiebebalken `⇹` oder `⇔`dynamisch könnte.
+ 11. (1) Es wäre cool, wenn man die Breite von `<main>` und `<aside>` über einen Schiebebalken `⇹` oder `⇔`dynamisch könnte. `<div class="group w-2 relative h-full cursor-col-resize -mr-1 z-30 grid place-items-center max-md:hidden"><div class="absolute top-0 bottom-0 right-1 w-[0.5px] bg-border-300 transition-all group-hover:delay-75 group-hover:bg-accent-100 group-hover:w-px group-hover:translate-x-[0.5px]"></div><div class="h-6 w-2 relative rounded-full border-0.5 bg-bg-100 shadow border-border-300 transition duration-200 group-hover:delay-75 group-hover:border-accent-900 group-hover:bg-accent-900 cursor-col-resize"></div></div>`So regelt das die Oberfläche bei `claude.ai` mit dem Trenner.
  12. erledigt
  13. erledigt
  14. erledigt

@@ -59,7 +59,7 @@
  *       in _renderStandardList vorhanden).
  *     Beleg: Bugfix Build 133, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.155 · Build: 155 · 2026-05-10
+ * Version: v0.6.156 · Build: 156 · 2026-05-10
  * Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06
  */
 
@@ -156,6 +156,13 @@ let _searchTimer     = null;
  * Beleg: Bugfix Build 136, Projektgespraech 2026-05-09
  */
 let _savedCursorRange = null;
+/**
+ * Bug 2.64 Fix Build 155/156: _justDropped als Modulvariable.
+ * Verhindert Doppel-Insert wenn ein Drop auf einem +Einfuegen-Button landet.
+ * Muss Modulvariable sein damit _setJustDropped() darauf zugreifen kann.
+ * Beleg: Bugfix Build 156, Projektgespraech 2026-05-10
+ */
+let _justDropped = false;
 
 // ---------------------------------------------------------------------------
 // API-Abfragen
@@ -324,8 +331,8 @@ function _bindPanelEvents(body) {
     // von Scroll-Containern unzuverlässig. Event-Delegation löst das.
     // Bug 2.64 Fix Build 155: _justDropped-Flag verhindert Doppel-Insert wenn
     // der Drop auf einem +Einfuegen-Button landet und dessen click-Event feuert.
-    // Beleg: Bugfix Build 155, Projektgespraech 2026-05-10
-    let _justDropped = false;
+    // Build 156: _justDropped ist jetzt Modulvariable (nicht mehr lokal).
+    // Beleg: Bugfix Build 156, Projektgespraech 2026-05-10
 
     body.addEventListener('dragstart', () => { _justDropped = false; });
     body.addEventListener('dragend',   () => {
