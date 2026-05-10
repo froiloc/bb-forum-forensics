@@ -1,0 +1,212 @@
+favicon.ico:1  Failed to load resource: the server responded with a status of 404 (Not Found)
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+report:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+Navigated to http://127.0.0.2:8080/_forensic/report
+placeholder_chips.js:56 [forensic] placeholder_chips.js: window.PlaceholderChips exportiert
+placeholder_wizard.js:75 [forensic] placeholder_wizard.js: window.PlaceholderWizard exportiert
+module_panel.js:77 [forensic] module_panel.js: window.ModulePanel exportiert
+annotation_sidebar.js:58 [forensic] annotation_sidebar.js: window.AnnotationSidebar exportiert
+report_editor.js:86 [forensic] report_editor.js: Exports auf window gesetzt
+userinfo.js:67 [forensic] DOMContentLoaded: userinfo.js aktiv
+userinfo.js:67 [forensic] initEditor() gestartet
+userinfo.js:67 [forensic] initSSEWindow3() gestartet
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= f2097499-e034-4636-867b-8ffaac4e09f4
+report_editor.js:86 [forensic] initEditorModule() gestartet
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:86 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
+report_editor.js:86 [forensic] initReportSelector() gestartet
+favicon.ico:1  GET http://127.0.0.2:8080/favicon.ico 404 (Not Found)
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= interim
+report_editor.js:457 report_editor.js: _knownBlockIds initialisiert, 53 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:643 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+editorjs.mjs:136 Can't open Toolbar since Editor initialization is not finished yet
+Ie @ editorjs.mjs:136
+moveAndOpen @ editorjs.mjs:5348
+(anonymous) @ editorjs.mjs:5452
+(anonymous) @ editorjs.mjs:889
+emit @ editorjs.mjs:888
+(anonymous) @ editorjs.mjs:10766
+(anonymous) @ editorjs.mjs:224
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 53 focusedId= wU6z9eBw34 onSave= function myUsername= paul
+report_editor.js:688 report_editor.js: Initialisierungs-Guard freigegeben.
+module_panel.js:77 [forensic] Drag start (Modul, delegiert): module_id= 4 title= Technische Ermittlungsergebnisse
+report_editor.js:86 [forensic] Drop: Ziel-Index= 12 von 53 Bloecken
+module_panel.js:1173 Uncaught (in promise) ReferenceError: _justDropped is not defined
+    at Object._setJustDropped (module_panel.js:1173:46)
+    at HTMLDivElement.<anonymous> (report_editor.js:2320:32)
+_setJustDropped @ module_panel.js:1173
+(anonymous) @ report_editor.js:2320
+report_editor.js:675 [forensic] _captureRange: alt= null → neu: blockId= cEqVULVn60 blockIdx= 11 startOffset= 4
+module_panel.js:77 [forensic] Drag start (Modul, delegiert): module_id= 2 title= Aktivitaetsübersicht und Tatrelevanz
+report_editor.js:86 [forensic] Drop: Ziel-Index= 5 von 53 Bloecken
+module_panel.js:1173 Uncaught (in promise) ReferenceError: _justDropped is not defined
+    at Object._setJustDropped (module_panel.js:1173:46)
+    at HTMLDivElement.<anonymous> (report_editor.js:2320:32)
+_setJustDropped @ module_panel.js:1173
+(anonymous) @ report_editor.js:2320
+report_editor.js:675 [forensic] _captureRange: alt= blockId=cEqVULVn60 offset=4 → neu: blockId= pPklymmFi4 blockIdx= 5 startOffset= 17
+editorjs.mjs:5847 Uncaught IndexSizeError: Failed to execute 'setStart' on 'Range': There is no child at offset 17.
+    at si (editorjs.mjs:5847:58)
+    at kt (editorjs.mjs:5871:28)
+    at Go.arrowRightAndDown (editorjs.mjs:7051:115)
+    at Go.keydown (editorjs.mjs:6868:14)
+    at HTMLDivElement.<anonymous> (editorjs.mjs:7850:9)
+un @ editorjs.mjs:5847
+Re @ editorjs.mjs:5871
+arrowRightAndDown @ editorjs.mjs:7051
+keydown @ editorjs.mjs:6868
+(anonymous) @ editorjs.mjs:7850
+report_editor.js:675 [forensic] _captureRange: alt= blockId=pPklymmFi4 offset=17 → neu: blockId= pPklymmFi4 blockIdx= 5 startOffset= 2
+report_editor.js:675 [forensic] _captureRange: alt= blockId=pPklymmFi4 offset=2 → neu: blockId= pPklymmFi4 blockIdx= 5 startOffset= 2
+editorjs.mjs:5847 Uncaught IndexSizeError: Failed to execute 'setStart' on 'Range': There is no child at offset 17.
+    at si (editorjs.mjs:5847:58)
+    at kt (editorjs.mjs:5871:28)
+    at Go.arrowRightAndDown (editorjs.mjs:7051:115)
+    at Go.keydown (editorjs.mjs:6868:14)
+    at HTMLDivElement.<anonymous> (editorjs.mjs:7850:9)
+un @ editorjs.mjs:5847
+Re @ editorjs.mjs:5871
+arrowRightAndDown @ editorjs.mjs:7051
+keydown @ editorjs.mjs:6868
+(anonymous) @ editorjs.mjs:7850
+report_editor.js:675 [forensic] _captureRange: alt= blockId=pPklymmFi4 offset=2 → neu: blockId= pPklymmFi4 blockIdx= 5 startOffset= 2
+report_editor.js:675 [forensic] _captureRange: alt= blockId=pPklymmFi4 offset=2 → neu: blockId= pPklymmFi4 blockIdx= 5 startOffset= 2
+editorjs.mjs:5847 Uncaught IndexSizeError: Failed to execute 'setStart' on 'Range': There is no child at offset 17.
+    at si (editorjs.mjs:5847:58)
+    at kt (editorjs.mjs:5871:28)
+    at Go.arrowRightAndDown (editorjs.mjs:7051:115)
+    at Go.keydown (editorjs.mjs:6868:14)
+    at HTMLDivElement.<anonymous> (editorjs.mjs:7850:9)
+un @ editorjs.mjs:5847
+Re @ editorjs.mjs:5871
+arrowRightAndDown @ editorjs.mjs:7051
+keydown @ editorjs.mjs:6868
+(anonymous) @ editorjs.mjs:7850
+report_editor.js:675 [forensic] _captureRange: alt= blockId=pPklymmFi4 offset=2 → neu: blockId= pPklymmFi4 blockIdx= 5 startOffset= 2
+report_editor.js:675 [forensic] _captureRange: alt= blockId=pPklymmFi4 offset=2 → neu: blockId= pPklymmFi4 blockIdx= 5 startOffset= 2
+editorjs.mjs:5847 Uncaught IndexSizeError: Failed to execute 'setStart' on 'Range': There is no child at offset 17.
+    at si (editorjs.mjs:5847:58)
+    at kt (editorjs.mjs:5871:28)
+    at Go.arrowRightAndDown (editorjs.mjs:7051:115)
+    at Go.keydown (editorjs.mjs:6868:14)
+    at HTMLDivElement.<anonymous> (editorjs.mjs:7850:9)
+un @ editorjs.mjs:5847
+Re @ editorjs.mjs:5871
+arrowRightAndDown @ editorjs.mjs:7051
+keydown @ editorjs.mjs:6868
+(anonymous) @ editorjs.mjs:7850
+report_editor.js:675 [forensic] _captureRange: alt= blockId=pPklymmFi4 offset=2 → neu: blockId= pPklymmFi4 blockIdx= 5 startOffset= 2
+report_editor.js:675 [forensic] _captureRange: alt= blockId=pPklymmFi4 offset=2 → neu: blockId= pPklymmFi4 blockIdx= 5 startOffset= 2
+editorjs.mjs:5847 Uncaught IndexSizeError: Failed to execute 'setEnd' on 'Range': There is no child at offset 17.
+    at si (editorjs.mjs:5847:39)
+    at bt (editorjs.mjs:5862:28)
+    at Go.arrowLeftAndUp (editorjs.mjs:7076:115)
+    at Go.keydown (editorjs.mjs:6872:14)
+    at HTMLDivElement.<anonymous> (editorjs.mjs:7850:9)
+un @ editorjs.mjs:5847
+Ne @ editorjs.mjs:5862
+arrowLeftAndUp @ editorjs.mjs:7076
+keydown @ editorjs.mjs:6872
+(anonymous) @ editorjs.mjs:7850
+report_editor.js:675 [forensic] _captureRange: alt= blockId=pPklymmFi4 offset=2 → neu: blockId= pPklymmFi4 blockIdx= 5 startOffset= 2
+report_editor.js:675 [forensic] _captureRange: alt= blockId=pPklymmFi4 offset=2 → neu: blockId= pPklymmFi4 blockIdx= 5 startOffset= 0
+report_editor.js:675 [forensic] _captureRange: alt= blockId=pPklymmFi4 offset=0 → neu: blockId= pPklymmFi4 blockIdx= 5 startOffset= 0
+report_editor.js:675 [forensic] _captureRange: alt= blockId=pPklymmFi4 offset=0 → neu: blockId= pPklymmFi4 blockIdx= 5 startOffset= 2
+editorjs.mjs:5847 Uncaught IndexSizeError: Failed to execute 'setStart' on 'Range': There is no child at offset 17.
+    at si (editorjs.mjs:5847:58)
+    at kt (editorjs.mjs:5871:28)
+    at Go.arrowRightAndDown (editorjs.mjs:7051:115)
+    at Go.keydown (editorjs.mjs:6868:14)
+    at HTMLDivElement.<anonymous> (editorjs.mjs:7850:9)
+un @ editorjs.mjs:5847
+Re @ editorjs.mjs:5871
+arrowRightAndDown @ editorjs.mjs:7051
+keydown @ editorjs.mjs:6868
+(anonymous) @ editorjs.mjs:7850
+report_editor.js:675 [forensic] _captureRange: alt= blockId=pPklymmFi4 offset=2 → neu: blockId= pPklymmFi4 blockIdx= 5 startOffset= 2
+report_editor.js:675 [forensic] _captureRange: alt= blockId=pPklymmFi4 offset=2 → neu: blockId= pPklymmFi4 blockIdx= 5 startOffset= 2
+editorjs.mjs:5847 Uncaught IndexSizeError: Failed to execute 'setEnd' on 'Range': There is no child at offset 17.
+    at si (editorjs.mjs:5847:39)
+    at bt (editorjs.mjs:5862:28)
+    at Go.arrowLeftAndUp (editorjs.mjs:7076:115)
+    at Go.keydown (editorjs.mjs:6872:14)
+    at HTMLDivElement.<anonymous> (editorjs.mjs:7850:9)
+un @ editorjs.mjs:5847
+Ne @ editorjs.mjs:5862
+arrowLeftAndUp @ editorjs.mjs:7076
+keydown @ editorjs.mjs:6872
+(anonymous) @ editorjs.mjs:7850
+report_editor.js:675 [forensic] _captureRange: alt= blockId=pPklymmFi4 offset=2 → neu: blockId= pPklymmFi4 blockIdx= 5 startOffset= 2
+report_editor.js:675 [forensic] _captureRange: alt= blockId=pPklymmFi4 offset=2 → neu: blockId= pPklymmFi4 blockIdx= 5 startOffset= 10
+report_editor.js:675 [forensic] _captureRange: alt= blockId=pPklymmFi4 offset=10 → neu: blockId= pPklymmFi4 blockIdx= 5 startOffset= 10
+report_editor.js:675 [forensic] _captureRange: alt= blockId=pPklymmFi4 offset=10 → neu: blockId= pPklymmFi4 blockIdx= 5 startOffset= 0
+report_editor.js:675 [forensic] _captureRange: alt= blockId=pPklymmFi4 offset=0 → neu: blockId= pPklymmFi4 blockIdx= 5 startOffset= 0
+report_editor.js:675 [forensic] _captureRange: alt= blockId=pPklymmFi4 offset=0 → neu: blockId= pPklymmFi4 blockIdx= 5 startOffset= 2
+editorjs.mjs:5847 Uncaught IndexSizeError: Failed to execute 'setStart' on 'Range': There is no child at offset 17.
+    at si (editorjs.mjs:5847:58)
+    at kt (editorjs.mjs:5871:28)
+    at Go.arrowRightAndDown (editorjs.mjs:7051:115)
+    at Go.keydown (editorjs.mjs:6868:14)
+    at HTMLDivElement.<anonymous> (editorjs.mjs:7850:9)
+un @ editorjs.mjs:5847
+Re @ editorjs.mjs:5871
+arrowRightAndDown @ editorjs.mjs:7051
+keydown @ editorjs.mjs:6868
+(anonymous) @ editorjs.mjs:7850
+report_editor.js:675 [forensic] _captureRange: alt= blockId=pPklymmFi4 offset=2 → neu: blockId= pPklymmFi4 blockIdx= 5 startOffset= 2
+report_editor.js:675 [forensic] _captureRange: alt= blockId=pPklymmFi4 offset=2 → neu: blockId= pPklymmFi4 blockIdx= 5 startOffset= 2
+editorjs.mjs:5847 Uncaught IndexSizeError: Failed to execute 'setEnd' on 'Range': There is no child at offset 17.
+    at si (editorjs.mjs:5847:39)
+    at bt (editorjs.mjs:5862:28)
+    at Go.arrowLeftAndUp (editorjs.mjs:7076:115)
+    at Go.keydown (editorjs.mjs:6872:14)
+    at HTMLDivElement.<anonymous> (editorjs.mjs:7850:9)
+un @ editorjs.mjs:5847
+Ne @ editorjs.mjs:5862
+arrowLeftAndUp @ editorjs.mjs:7076
+keydown @ editorjs.mjs:6872
+(anonymous) @ editorjs.mjs:7850
+report_editor.js:675 [forensic] _captureRange: alt= blockId=pPklymmFi4 offset=2 → neu: blockId= pPklymmFi4 blockIdx= 5 startOffset= 2
+report_editor.js:675 [forensic] _captureRange: alt= blockId=pPklymmFi4 offset=2 → neu: blockId= pPklymmFi4 blockIdx= 5 startOffset= 10
+report_editor.js:675 [forensic] _captureRange: alt= blockId=pPklymmFi4 offset=10 → neu: blockId= ePoQFO0ZVy blockIdx= 6 startOffset= 0
+report_editor.js:675 [forensic] _captureRange: alt= blockId=ePoQFO0ZVy offset=0 → neu: blockId= ePoQFO0ZVy blockIdx= 6 startOffset= 0
+report_editor.js:675 [forensic] _captureRange: alt= blockId=ePoQFO0ZVy offset=0 → neu: blockId= pPklymmFi4 blockIdx= 5 startOffset= 17
+report_editor.js:675 [forensic] _captureRange: alt= blockId=pPklymmFi4 offset=17 → neu: blockId= pPklymmFi4 blockIdx= 5 startOffset= 17
+report_editor.js:675 [forensic] _captureRange: alt= blockId=pPklymmFi4 offset=17 → neu: blockId= ePoQFO0ZVy blockIdx= 6 startOffset= 0
+report_editor.js:675 [forensic] _captureRange: alt= blockId=ePoQFO0ZVy offset=0 → neu: blockId= ePoQFO0ZVy blockIdx= 6 startOffset= 0
+report_editor.js:675 [forensic] _captureRange: alt= blockId=ePoQFO0ZVy offset=0 → neu: blockId= yVjJm970O7 blockIdx= 8 startOffset= 0
+report_editor.js:675 [forensic] _captureRange: alt= blockId=yVjJm970O7 offset=0 → neu: blockId= yVjJm970O7 blockIdx= 8 startOffset= 0
+report_editor.js:675 [forensic] _captureRange: alt= blockId=yVjJm970O7 offset=0 → neu: blockId= cEqVULVn60 blockIdx= 11 startOffset= 0
+report_editor.js:675 [forensic] _captureRange: alt= blockId=cEqVULVn60 offset=0 → neu: blockId= cEqVULVn60 blockIdx= 11 startOffset= 0
+report_editor.js:675 [forensic] _captureRange: alt= blockId=cEqVULVn60 offset=0 → neu: blockId= cEqVULVn60 blockIdx= 11 startOffset= 0
+report_editor.js:675 [forensic] _captureRange: alt= blockId=cEqVULVn60 offset=0 → neu: blockId= cEqVULVn60 blockIdx= 11 startOffset= 1
+report_editor.js:675 [forensic] _captureRange: alt= blockId=cEqVULVn60 offset=1 → neu: blockId= cEqVULVn60 blockIdx= 11 startOffset= 1
+report_editor.js:675 [forensic] _captureRange: alt= blockId=cEqVULVn60 offset=1 → neu: blockId= cEqVULVn60 blockIdx= 11 startOffset= 2
+report_editor.js:675 [forensic] _captureRange: alt= blockId=cEqVULVn60 offset=2 → neu: blockId= cEqVULVn60 blockIdx= 11 startOffset= 2
+report_editor.js:675 [forensic] _captureRange: alt= blockId=cEqVULVn60 offset=2 → neu: blockId= cEqVULVn60 blockIdx= 11 startOffset= 3
+report_editor.js:675 [forensic] _captureRange: alt= blockId=cEqVULVn60 offset=3 → neu: blockId= cEqVULVn60 blockIdx= 11 startOffset= 3
+report_editor.js:675 [forensic] _captureRange: alt= blockId=cEqVULVn60 offset=2 → neu: blockId= cEqVULVn60 blockIdx= 11 startOffset= 2
+report_editor.js:675 [forensic] _captureRange: alt= blockId=cEqVULVn60 offset=2 → neu: blockId= cEqVULVn60 blockIdx= 11 startOffset= 2
+report_editor.js:675 [forensic] _captureRange: alt= blockId=cEqVULVn60 offset=2 → neu: blockId= cEqVULVn60 blockIdx= 11 startOffset= 3
+report_editor.js:675 [forensic] _captureRange: alt= blockId=cEqVULVn60 offset=3 → neu: blockId= cEqVULVn60 blockIdx= 11 startOffset= 3
+report_editor.js:675 [forensic] _captureRange: alt= blockId=cEqVULVn60 offset=2 → neu: blockId= cEqVULVn60 blockIdx= 11 startOffset= 2
+report_editor.js:675 [forensic] _captureRange: alt= blockId=cEqVULVn60 offset=2 → neu: blockId= cEqVULVn60 blockIdx= 11 startOffset= 2
+report_editor.js:675 [forensic] _captureRange: alt= blockId=cEqVULVn60 offset=2 → neu: blockId= cEqVULVn60 blockIdx= 11 startOffset= 1
+report_editor.js:675 [forensic] _captureRange: alt= blockId=cEqVULVn60 offset=1 → neu: blockId= cEqVULVn60 blockIdx= 11 startOffset= 1
+report_editor.js:675 [forensic] _captureRange: alt= blockId=cEqVULVn60 offset=1 → neu: blockId= cEqVULVn60 blockIdx= 11 startOffset= 0
+module_panel.js:77 [forensic] Drag start (Modul, delegiert): module_id= 2 title= Aktivitaetsübersicht und Tatrelevanz
+report_editor.js:86 [forensic] Drop: Ziel-Index= 11 von 53 Bloecken
+module_panel.js:1173 Uncaught (in promise) ReferenceError: _justDropped is not defined
+    at Object._setJustDropped (module_panel.js:1173:46)
+    at HTMLDivElement.<anonymous> (report_editor.js:2320:32)
+_setJustDropped @ module_panel.js:1173
+(anonymous) @ report_editor.js:2320
+module_panel.js:77 [forensic] Drag start (Modul, delegiert): module_id= 1 title= Personenbeschreibung des Beschuldigten
+report_editor.js:86 [forensic] Drop: Ziel-Index= 10 von 53 Bloecken
+module_panel.js:1173 Uncaught (in promise) ReferenceError: _justDropped is not defined
+    at Object._setJustDropped (module_panel.js:1173:46)
+    at HTMLDivElement.<anonymous> (report_editor.js:2320:32)
+_setJustDropped @ module_panel.js:1173
+(anonymous) @ report_editor.js:2320

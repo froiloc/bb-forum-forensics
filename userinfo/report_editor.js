@@ -69,7 +69,7 @@
  *     ausgefuehrt damit der gedruckte Stand mit der DB synchron ist.
  *     Beleg: Bugfix Build 134, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.150 · Build: 150 · 2026-05-09
+ * Version: v0.6.155 · Build: 155 · 2026-05-09
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -2312,6 +2312,13 @@ function _initDragDrop() {
             ? _dragOverTargetIdx
             : totalBlocks;
         _dbg('Drop: Ziel-Index=', targetIdx, 'von', totalBlocks, 'Bloecken');
+
+        // Bug 2.64 Fix Build 155: _justDropped setzen damit der nachfolgende
+        // click-Event auf einem +Einfuegen-Button ignoriert wird.
+        // Beleg: Bugfix Build 155, Projektgespraech 2026-05-10
+        if (window.ModulePanel?._setJustDropped) {
+            window.ModulePanel._setJustDropped(true);
+        }
 
         if (hasModule) {
             let modData;

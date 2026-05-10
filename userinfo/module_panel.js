@@ -59,7 +59,7 @@
  *       in _renderStandardList vorhanden).
  *     Beleg: Bugfix Build 133, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.137 · Build: 137 · 2026-05-09
+ * Version: v0.6.155 · Build: 155 · 2026-05-10
  * Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06
  */
 
@@ -322,7 +322,18 @@ function _bindPanelEvents(body) {
     // Build 115: Drag&Drop via Event-Delegation auf body.
     // Bug 2.11 Fix Build 147: Per-Item-Listener sind in Firefox ESR innerhalb
     // von Scroll-Containern unzuverlässig. Event-Delegation löst das.
-    // Beleg: Bugfix Build 147, Projektgespraech 2026-05-10
+    // Bug 2.64 Fix Build 155: _justDropped-Flag verhindert Doppel-Insert wenn
+    // der Drop auf einem +Einfuegen-Button landet und dessen click-Event feuert.
+    // Beleg: Bugfix Build 155, Projektgespraech 2026-05-10
+    let _justDropped = false;
+
+    body.addEventListener('dragstart', () => { _justDropped = false; });
+    body.addEventListener('dragend',   () => {
+        // Nach kurzer Verzoegerung zuruecksetzen damit der drop+click-Zyklus
+        // abgeschlossen ist bevor das Flag zurueckgesetzt wird.
+        setTimeout(() => { _justDropped = false; }, 400);
+    });
+
     body.addEventListener('dragstart', (e) => {
         const item = e.target.closest('.mp-item[draggable]');
         if (!item) return;
@@ -498,8 +509,15 @@ function _renderList(modules) {
 
     // Einfuegen-Buttons
     list.querySelectorAll('.mp-insert-btn').forEach(btn => {
+        btn.addEventListener('mousedown', () => { _justDropped = false; });
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
+            // Bug 2.64 Fix Build 155: Nach einem Drop den Click ignorieren.
+            if (_justDropped) {
+                _dbg('mp-insert-btn click nach Drop ignoriert (_justDropped)');
+                _justDropped = false;
+                return;
+            }
             _insertModule(parseInt(btn.dataset.moduleId, 10));
         });
     });
@@ -813,17 +831,17 @@ async function _insertModule(moduleId) {
         if (!resp.ok) throw new Error(data.error || 'HTTP ' + resp.status);
 
         // 4. Block sofort im Editor anzeigen (Bug 2.19 Fix Build 132).
-        // Chip-HTML aufbauen und direkt per Editor.js einfuegen.
+        // Bug 2.64 Fix Build 155: chipHtml war hydriertes HTML — Editor.js
+        // markiert andere Bloecke als 'invalid' weil Chip-Spans (<span
+        // contenteditable="false">) kein valides Paragraph-data.text sind.
+        // Fix: Template-Syntax (dehydriert) in block_data speichern, dann
+        // hydrieren fuer die sofortige Anzeige im Editor per execCommand.
+        // Beleg: Bugfix Build 155, Projektgespraech 2026-05-10
         const editor = window._editor;
         if (editor?.blocks) {
             const bodyText = m.body || '';
-            let chipHtml;
-            if (window.PlaceholderChips?.hydrateChips) {
-                chipHtml = window.PlaceholderChips.hydrateChips(bodyText, {}, {});
-            } else {
-                chipHtml = bodyText;
-            }
-            editor.blocks.insert('paragraph', { text: chipHtml }, {}, undefined, true);
+            // Fuer Editor.js: template-Syntax (kein HTML)
+            editor.blocks.insert('paragraph', { text: bodyText }, {}, undefined, true);
             const lastIdx = editor.blocks.getBlocksCount() - 1;
             editor.caret.setToBlock(lastIdx);
             _dbg('_insertModule: Block sofort in Editor eingefuegt, idx=', lastIdx);
@@ -1142,9 +1160,8 @@ window.ModulePanel = {
     close,
     // Interna
     _fetchModules,
-    // Bug 2.57 Fix Build 145: Setter fuer _savedCursorRange
+    // Bug 2.57/2.64: Setter fuer Cursor-Range und Drop-Flag
     _setSavedCursorRange: (range) => { _savedCursorRange = range; },
-    // Bug 2.61 Fix Build 149: Getter fuer Logging-Zwecke
     _getSavedRangeInfo: () => {
         if (!_savedCursorRange) return 'null';
         const el = _savedCursorRange.commonAncestorContainer;
@@ -1152,6 +1169,8 @@ window.ModulePanel = {
             ?.closest?.('.ce-block[data-id]');
         return `blockId=${ceBlock?.dataset?.id || '?'} offset=${_savedCursorRange.startOffset}`;
     },
+    // Bug 2.64 Fix Build 155: Drop-Flag damit click nach Drop ignoriert wird.
+    _setJustDropped: (val) => { _justDropped = val; },
 };
 
 // Alias fuer report_editor.js (window._ModulePanel)
