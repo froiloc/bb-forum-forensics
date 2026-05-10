@@ -41,6 +41,7 @@
 #   Build 043 (AP-E1): Umgeschrieben auf Editor.js-Block-Modell.
 #   Build 089 (B6): evidence_db auf B6-Schema umgestellt.
 #   Build 090 (B6 Phase 4):
+#   Build 158 (B6 Bug 2.9): anchor_ids je Block in GET-Response ergaenzt.
 #     - _EDITOR_HTML: Fenster-3-Grundgeruest mit 100vh/flex-Layout (§4.1).
 #     - GET ?format=json: liefert jetzt paragraphs statt blocks (B6-Schema).
 #     - POST: fuenf neue schreibende Aktionen (add_paragraph, update_paragraph,
@@ -468,6 +469,11 @@ class ReportEndpoint:
             blocks = edb.get_blocks_for_report(active_report.id)
             for b in blocks:
                 comments = edb.get_comments_for_block(b.block_id)
+                # Bug 2.9 Fix Build 158: report_anchors je Block laden und als
+                # anchor_ids-Liste mitliefern, damit AnnotationSidebar.showSidebar()
+                # die bereits verankerten Annotations-IDs korrekt befuellt.
+                # Beleg: Projektgespraech 2026-05-11
+                anchors = edb.get_anchors_for_block(b.block_id)
                 blocks_payload.append({
                     "block_id":                b.block_id,
                     "report_id":               b.report_id,
@@ -478,6 +484,7 @@ class ReportEndpoint:
                     "block_data":              b.block_data,
                     "placeholder_values_json": b.placeholder_values_json,
                     "module_id":               b.module_id,
+                    "anchor_ids":              [a.annotation_id for a in anchors],
                     "comments": [
                         {
                             "id":                cm.id,

@@ -40,7 +40,7 @@
  *   GET /_forensic/annotations         -- alle Annotationen
  *   POST /_forensic/report             -- action=add_anchor
  *
- * Version: v0.6.148 · Build: 148 · 2026-05-10
+ * Version: v0.6.158 · Build: 158 · 2026-05-11
  * Beleg: Bauplan B6 v0.3 §4.7, Ausdefinitionsgespraech 2026-05-05
  */
 
@@ -226,11 +226,37 @@ function _render() {
                            value="${_esc(_searchText)}"
                            autocomplete="off">
                 </div>
-                <label class="as-filter-label">
-                    <input type="checkbox" id="as-hide-anchored"
-                        ${_hideAnchored ? 'checked' : ''}>
-                    Bereits verankerte ausblenden
-                </label>
+                <!-- Bug 2.2 Fix Build 158: Toggle-Schalter statt einzelner Checkbox.
+                     CSS-gesteuert ueber :has()-Selektoren; kein JS-Loeschen.
+                     Beleg: Projektgespraech 2026-05-11 -->
+                <div class="as-filter-toggles" role="group" aria-label="Ausblenden-Filter">
+                    <span class="as-filter-label-prefix">Ausblenden:</span>
+                    <label class="as-toggle-label" title="Bereits verankerte Annotationen ausblenden">
+                        <input type="checkbox" id="as-hide-anchored"
+                            ${_hideAnchored ? 'checked' : ''}>
+                        Verankerte
+                    </label>
+                    <label class="as-toggle-label" title="Tags ausblenden">
+                        <input type="checkbox" id="as-hide-tags">
+                        Tags
+                    </label>
+                    <label class="as-toggle-label" title="Ermittler-Namen ausblenden">
+                        <input type="checkbox" id="as-hide-investigator">
+                        Ermittler
+                    </label>
+                    <label class="as-toggle-label" title="Zitate (Originaltext) ausblenden">
+                        <input type="checkbox" id="as-hide-quotes">
+                        Zitate
+                    </label>
+                    <label class="as-toggle-label" title="Quellenangaben ausblenden">
+                        <input type="checkbox" id="as-hide-source">
+                        Quelle
+                    </label>
+                    <label class="as-toggle-label" title="Notizen ausblenden">
+                        <input type="checkbox" id="as-hide-notes">
+                        Notizen
+                    </label>
+                </div>
             </div>
             <div class="as-divider"></div>
             ${_renderCategoryTabs(grouped)}
@@ -312,13 +338,49 @@ function _renderFilteredAnnotations(grouped) {
 
 
 function _renderAnnotation(ann) {
-    const isAnchored = _anchoredIds.has(ann.id);
-    const tags       = (ann.tags || []).map(t =>
+    const isAnchored  = _anchoredIds.has(ann.id);
+    const anchoredCls = isAnchored ? ' as-ann-anchored' : '';
+
+    // Bug 2.1 Fix Build 158: alle verfuegbaren Felder rendern.
+    // Tags, markierter Text (max. 200 Zeichen), Notiz, Quelle mit Verweis,
+    // Datum+Zeit, Ermittler. Eigene Klassen fuer CSS-Toggle-Steuerung (Bug 2.2).
+    // Beleg: Projektgespraech 2026-05-11
+
+    // Tags
+    const tags = (ann.tags || []).map(t =>
         `<span class="as-tag">${_esc(t)}</span>`
     ).join('');
-    const noteText   = _truncate(ann.text, 120);
-    const origText   = _truncate(ann.selection?.text, 120);
-    const anchoredCls = isAnchored ? ' as-ann-anchored' : '';
+
+    // Notiz (text): bis 120 Zeichen — Klasse as-ann-text (wie bisher)
+    const noteText = _truncate(ann.text, 120);
+
+    // Originaltext / Zitat: bis 200 Zeichen (Bug 2.1: bisher 120)
+    const origText = _truncate(ann.selection?.text, 200);
+
+    // Quelle: pageUrl + Anker-Element
+    const pageUrl   = ann.pageUrl || '';
+    const elementId = ann.elementId || '';
+    const sourceHref = elementId ? `${_esc(pageUrl)}#${_esc(elementId)}` : _esc(pageUrl);
+    const sourceLabel = pageUrl
+        ? _truncate(pageUrl.replace(/^https?:\/\/[^/]+/, ''), 60) || pageUrl
+        : '';
+
+    // Datum + Zeit aus createdAt (Millisekunden-Timestamp)
+    let dateStr = '';
+    if (ann.createdAt) {
+        try {
+            dateStr = new Date(ann.createdAt).toLocaleString('de-DE', {
+                day:    '2-digit',
+                month:  '2-digit',
+                year:   'numeric',
+                hour:   '2-digit',
+                minute: '2-digit',
+            });
+        } catch (_) { /* ignorieren */ }
+    }
+
+    // Ermittler-Name
+    const investigator = ann.createdBy || '';
 
     return `
         <div class="as-annotation${anchoredCls}" data-ann-id="${ann.id}"
@@ -327,16 +389,32 @@ function _renderAnnotation(ann) {
             ${isAnchored
                 ? '<span class="as-anchored-badge" title="Bereits verankert">\ud83d\udccc verankert</span>'
                 : ''}
-            ${tags ? `<div class="as-ann-tags">${tags}</div>` : ''}
+            ${tags
+                ? `<div class="as-ann-tags">${tags}</div>`
+                : ''}
             ${noteText
-                ? `<div class="as-ann-text">${_esc(noteText)}</div>`
+                ? `<div class="as-ann-notes">${_esc(noteText)}</div>`
                 : ''}
             ${origText
-                ? `<div class="as-ann-orig">\u201e${_esc(origText)}\u201c</div>`
+                ? `<div class="as-ann-quote">\u201e${_esc(origText)}\u201c</div>`
+                : ''}
+            ${sourceLabel
+                ? `<div class="as-ann-source">
+                       <a class="as-ann-source-link"
+                          href="${sourceHref}"
+                          title="${_esc(pageUrl)}"
+                          target="_blank"
+                          rel="noopener">\ud83d\udd17 ${_esc(sourceLabel)}</a>
+                   </div>`
                 : ''}
             <div class="as-ann-meta">
-                <span class="as-ann-id">ID: ${ann.id}</span>
-                ${ann.createdBy ? `<span>\u2022 ${_esc(ann.createdBy)}</span>` : ''}
+                <span class="as-ann-id">ID\u00a0${ann.id}</span>
+                ${dateStr
+                    ? `<span class="as-ann-date" title="Erstellt am ${_esc(dateStr)}">\ud83d\uddd3\u00a0${_esc(dateStr)}</span>`
+                    : ''}
+                ${investigator
+                    ? `<span class="as-ann-investigator" title="Ermittler: ${_esc(investigator)}">\ud83d\udc64\u00a0${_esc(investigator)}</span>`
+                    : ''}
             </div>
             <div class="as-ann-actions">
                 <button class="as-btn as-btn-anchor"

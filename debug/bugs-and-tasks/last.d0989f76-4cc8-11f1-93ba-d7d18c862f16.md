@@ -1,5 +1,5 @@
 # Fehler auf der Berichtsseite
-(Cache-buster-pre-extension: 66501f64-4cc7-11f1-94a8-1b05fde6247e)
+(Cache-buster-pre-extension: d0989f76-4cc8-11f1-93ba-d7d18c862f16)
 
 Ich werde in dieser Liste fortlaufend die von mir beobachteten Fehler aufführen.
 Falls diese abgeschlossen und verworfen wurden, werde ich sie durchstreichen. Alles, was nicht durchgestrichen ist, ist also noch offen und muss bearbeitet werden.
@@ -9,29 +9,29 @@ Nach der Bearbeitung ist das behobene Problem anzugeben. Und zwar mit Kapitel (1
 
 Quellen zum Debuggen:
 * Dieses Dokument mit den Arbeitsanweisungen und Problembeschreibungen:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.66501f64-4cc7-11f1-94a8-1b05fde6247e.md
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.d0989f76-4cc8-11f1-93ba-d7d18c862f16.md
 * Die Ausgabe von DevTools-Console:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.66501f64-4cc7-11f1-94a8-1b05fde6247e.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.d0989f76-4cc8-11f1-93ba-d7d18c862f16.log
 * Die Ausgabe von DevTools-Network:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.66501f64-4cc7-11f1-94a8-1b05fde6247e.har
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.d0989f76-4cc8-11f1-93ba-d7d18c862f16.har
 * Das aktuelle DOM des gesamten Dokuments als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.66501f64-4cc7-11f1-94a8-1b05fde6247e.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.d0989f76-4cc8-11f1-93ba-d7d18c862f16.html
 * Das aktuelle DOM des gesamten Body als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.66501f64-4cc7-11f1-94a8-1b05fde6247e.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.d0989f76-4cc8-11f1-93ba-d7d18c862f16.html
 * Das aktuelle DOM des gesamten Sidebar als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.66501f64-4cc7-11f1-94a8-1b05fde6247e.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.d0989f76-4cc8-11f1-93ba-d7d18c862f16.html
 * Das aktuelle DOM des gesamten Main als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.66501f64-4cc7-11f1-94a8-1b05fde6247e.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.d0989f76-4cc8-11f1-93ba-d7d18c862f16.html
 * Das aktuelle DOM des Akkordeon 1 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.66501f64-4cc7-11f1-94a8-1b05fde6247e.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.d0989f76-4cc8-11f1-93ba-d7d18c862f16.html
 * Das aktuelle DOM des Akkordeon 2 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.66501f64-4cc7-11f1-94a8-1b05fde6247e.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.d0989f76-4cc8-11f1-93ba-d7d18c862f16.html
 * Das aktuelle DOM des Akkordeon 3 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.66501f64-4cc7-11f1-94a8-1b05fde6247e.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.d0989f76-4cc8-11f1-93ba-d7d18c862f16.html
 * Das aktuelle DOM des Akkordeon 4 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.66501f64-4cc7-11f1-94a8-1b05fde6247e.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.d0989f76-4cc8-11f1-93ba-d7d18c862f16.html
 * Die Ausgabe des aktuellen Webservers:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.66501f64-4cc7-11f1-94a8-1b05fde6247e.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.d0989f76-4cc8-11f1-93ba-d7d18c862f16.log
 * Die aktuellen Screenshots:
 https://github.com/froiloc/bb-forum-forensics/tree/1b5017a2f62c5a8f1825de76fc6edabb25d6bf66/debug/screenshots
 ***
@@ -68,8 +68,8 @@ Hier werden CSS‑Fehler aufgeführt. Das sind Themen, bei denen die Anzeige fun
 ## 2. Funktionalität Frontend / Daten / JS
 Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mit dem Webwerkzeug arbeiten kann oder ihn dabei nicht im vorgesehenen Maße unterstützen oder behindern.
 
- 1. (3) Die Einträge für `.as-annotation` innerhalb von `#accordion-body-annotations` müssen mehr Substanz erhalten. Ausblenden kann man die Daten immer noch, aber da sein müssen sie! Es soll neben den bestehenden `<div>` und `<span>` noch Angaben zu Quelle mit Verweis, markierter Text (zumindest die ersten 200 Zeichen), Datum und Zeit der Annotation, Tags und Notiz abgelegt sein. Der Name des Investigators ist mit der Klasse `as-ann-investigator` zu kennzeichnen. Alle anderen neuen Punkte sind entsprechend ebenfalls mit einer eigenen passenden Klasse zu versehen.
- 2. (8) Bei Annotationen soll das Konzept zum Ausblenden geändert werden. Statt der Checkbox `bereits verankerte ausblenden`, sollen dort Schalter sein. Ausblenden: `Verankerte`, `Tags`, `Ermittler`, `Zitate`, `Quelle`, `Notizen` Durch CSS sollen diese Checkboxen dann die betroffenen Teile ausblenden. `#accordion-body-annotations:has(#as-hide-anchored[checked]) .as-annotation.as-ann-anchored {display: none}` Warum löschen wir die Elemente hier, statt sie einfach nur auszublenden? Das leuchtet mir nicht ein.
+ 1. erledigt
+ 2. erledigt
  3. erledigt
  4. (2) Die Funktionalität für die Schaltfläche `⬇ Export ▾` fehlt.
  5. erledigt
