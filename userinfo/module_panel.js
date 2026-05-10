@@ -59,7 +59,7 @@
  *       in _renderStandardList vorhanden).
  *     Beleg: Bugfix Build 133, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.156 · Build: 156 · 2026-05-10
+ * Version: v0.6.157 · Build: 157 · 2026-05-10
  * Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06
  */
 
@@ -353,8 +353,8 @@ function _bindPanelEvents(body) {
             e.dataTransfer.setData('application/x-forensic-module', JSON.stringify({
                 module_id:   modId,
                 block_type:  'paragraph',
-                block_data:  JSON.stringify({ text: mod.text || '' }),
-                module_text: mod.text || '',
+                block_data:  JSON.stringify({ text: mod.body || '' }),
+                module_text: mod.body || '',
             }));
         } else {
             const blockType = item.dataset.blockType || 'paragraph';
@@ -1167,6 +1167,7 @@ window.ModulePanel = {
     close,
     // Interna
     _fetchModules,
+    _fetchModuleBody,
     // Bug 2.57/2.64: Setter fuer Cursor-Range und Drop-Flag
     _setSavedCursorRange: (range) => { _savedCursorRange = range; },
     _getSavedRangeInfo: () => {
