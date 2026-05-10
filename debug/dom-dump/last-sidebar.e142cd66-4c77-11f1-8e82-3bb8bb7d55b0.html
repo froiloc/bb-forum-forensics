@@ -1,0 +1,473 @@
+<aside aria-label="Support-Sidebar" id="support-sidebar">
+<!-- Abschnitt 1: Bausteine (Standard: aufgeklappt) -->
+<section class="support-accordion-section" data-accordion="blocks">
+<button aria-controls="accordion-body-blocks" aria-expanded="false" class="support-accordion-toggle" type="button">
+<span aria-hidden="true" class="support-accordion-icon">📦</span>
+            Bausteine
+            <span aria-hidden="true" class="support-accordion-chevron">▾</span>
+</button>
+<div aria-label="Bausteine" class="support-accordion-body support-accordion-body--closed" id="accordion-body-blocks" role="region">
+<div class="mp-panel">
+<!-- Kategorie-Umschalter -->
+<div aria-label="Bausteine-Kategorien" class="mp-cat-tabs" role="tablist">
+<button aria-selected="true" class="mp-cat-tab mp-cat-tab--active" data-category="modules" role="tab" type="button">Module</button>
+<button aria-selected="false" class="mp-cat-tab" data-category="queries" role="tab" type="button">Einzeldaten</button>
+</div>
+<!-- Suche -->
+<div class="mp-search-wrap">
+<span aria-hidden="true" class="mp-search-icon">🔍</span>
+<input aria-label="Bausteine durchsuchen" autocomplete="off" class="mp-search-input" id="mp-sidebar-search" placeholder="Suche…" type="search"/>
+</div>
+<!-- Rollenfilter-Chips (nur im Module-Modus sichtbar) -->
+<div aria-label="Rollenfilter" class="mp-role-chips" id="mp-role-chips" role="group" style="">
+<button aria-pressed="true" class="mp-chip mp-chip-active" data-role="" type="button">Alle</button><button aria-pressed="false" class="mp-chip" data-role="intro" type="button">Einleitung</button><button aria-pressed="false" class="mp-chip" data-role="conclusion" type="button">Fazit</button><button aria-pressed="false" class="mp-chip" data-role="body" type="button">Hauptteil</button><button aria-pressed="false" class="mp-chip" data-role="legal" type="button">Rechtsgrundlagen</button><button aria-pressed="false" class="mp-chip" data-role="appendix" type="button">Anhang</button><button aria-pressed="false" class="mp-chip" data-role="closing" type="button">Abschluss</button><button aria-pressed="false" class="mp-chip" data-role="standard" type="button">Standard</button>
+</div>
+<!-- Ergebnisliste -->
+<div aria-label="Verfügbare Bausteine" class="mp-list" id="mp-list" role="listbox">
+<div aria-selected="false" class="mp-item" data-module-id="1" draggable="true" role="option" tabindex="0">
+<div class="mp-item-main">
+<span aria-hidden="true" class="mp-item-icon">📋</span>
+<div class="mp-item-text">
+<span class="mp-item-title">Personenbeschreibung des Beschuldigten</span>
+<span class="mp-item-desc">Einleitungsbaustein: Identifizierung und Basisdaten des untersuchten Forum-Accou…</span>
+</div>
+</div>
+<div class="mp-item-footer">
+<span class="mp-item-role-badge">Einleitung</span>
+<button aria-label="Modul Personenbeschreibung des Beschuldigten einfügen" class="mp-insert-btn" data-module-id="1" type="button">
+                        + Einfügen
+                    </button>
+</div>
+</div>
+<div aria-selected="false" class="mp-item" data-module-id="2" draggable="true" role="option" tabindex="0">
+<div class="mp-item-main">
+<span aria-hidden="true" class="mp-item-icon">📋</span>
+<div class="mp-item-text">
+<span class="mp-item-title">Aktivitaetsübersicht und Tatrelevanz</span>
+<span class="mp-item-desc">Zusammenfassung der Forum-Aktivitaeten: Beitragszahl, geteilte Dateien, Zeitraum…</span>
+</div>
+</div>
+<div class="mp-item-footer">
+<span class="mp-item-role-badge">Hauptteil</span>
+<button aria-label="Modul Aktivitaetsübersicht und Tatrelevanz einfügen" class="mp-insert-btn" data-module-id="2" type="button">
+                        + Einfügen
+                    </button>
+</div>
+</div>
+<div aria-selected="false" class="mp-item" data-module-id="3" draggable="true" role="option" tabindex="0">
+<div class="mp-item-main">
+<span aria-hidden="true" class="mp-item-icon">📋</span>
+<div class="mp-item-text">
+<span class="mp-item-title">Strafrechtliche Einordnung (§§ 176 / 184b StGB)</span>
+<span class="mp-item-desc">Rechtlicher Bewertungsbaustein: Subsumtion der festgestellten Tathandlungen unte…</span>
+</div>
+</div>
+<div class="mp-item-footer">
+<span class="mp-item-role-badge">Rechtsgrundlagen</span>
+<button aria-label="Modul Strafrechtliche Einordnung (§§ 176 / 184b StGB) einfügen" class="mp-insert-btn" data-module-id="3" type="button">
+                        + Einfügen
+                    </button>
+</div>
+</div>
+<div aria-selected="false" class="mp-item" data-module-id="4" draggable="true" role="option" tabindex="0">
+<div class="mp-item-main">
+<span aria-hidden="true" class="mp-item-icon">📋</span>
+<div class="mp-item-text">
+<span class="mp-item-title">Technische Ermittlungsergebnisse</span>
+<span class="mp-item-desc">IP-Adressen, Aliasnamen und technische Spuren die zur Identifizierung der realen…</span>
+</div>
+</div>
+<div class="mp-item-footer">
+<span class="mp-item-role-badge">Hauptteil</span>
+<button aria-label="Modul Technische Ermittlungsergebnisse einfügen" class="mp-insert-btn" data-module-id="4" type="button">+ Einfügen</button>
+</div>
+</div>
+<div aria-selected="false" class="mp-item" data-module-id="5" draggable="true" role="option" tabindex="0">
+<div class="mp-item-main">
+<span aria-hidden="true" class="mp-item-icon">📋</span>
+<div class="mp-item-text">
+<span class="mp-item-title">Ermittlungsfazit und Maßnahmenempfehlung</span>
+<span class="mp-item-desc">Zusammenfassende Bewertung der Ermittlungsergebnisse und Empfehlung weiterer str…</span>
+</div>
+</div>
+<div class="mp-item-footer">
+<span class="mp-item-role-badge">Fazit</span>
+<button aria-label="Modul Ermittlungsfazit und Maßnahmenempfehlung einfügen" class="mp-insert-btn" data-module-id="5" type="button">
+                        + Einfügen
+                    </button>
+</div>
+</div>
+<div aria-selected="false" class="mp-item" data-module-id="6" draggable="true" role="option" tabindex="0">
+<div class="mp-item-main">
+<span aria-hidden="true" class="mp-item-icon">📋</span>
+<div class="mp-item-text">
+<span class="mp-item-title">Anlagenverzeichnis</span>
+<span class="mp-item-desc">Auflistung der dem Bericht beigefuegten Anlagen (Screenshots, Sicherungen, exter…</span>
+</div>
+</div>
+<div class="mp-item-footer">
+<span class="mp-item-role-badge">Anhang</span>
+<button aria-label="Modul Anlagenverzeichnis einfügen" class="mp-insert-btn" data-module-id="6" type="button">
+                        + Einfügen
+                    </button>
+</div>
+</div><div class="mp-std-divider">Standard-Blöcke</div><div class="mp-std-section">
+<div class="mp-item mp-item--standard" data-block-type="paragraph" data-std-type="paragraph" draggable="true" role="listitem" tabindex="0" title="Freier Texteintrag (Paragraph)">
+<div class="mp-item-header">
+<span aria-hidden="true" class="mp-item-icon">✏️</span>
+<span class="mp-item-title">¶ Textabsatz</span>
+</div>
+<div class="mp-item-preview">Freier Texteintrag (Paragraph)</div>
+<button class="mp-btn-insert" data-std-type="paragraph" title="¶ Textabsatz einfügen" type="button">+ Einfügen</button>
+</div>
+<div class="mp-item mp-item--standard" data-block-type="header" data-std-type="header" draggable="true" role="listitem" tabindex="0" title="Abschnittsüberschrift (H2)">
+<div class="mp-item-header">
+<span aria-hidden="true" class="mp-item-icon">🆗</span>
+<span class="mp-item-title">🆗 Überschrift</span>
+</div>
+<div class="mp-item-preview">Abschnittsüberschrift (H2)</div>
+<button class="mp-btn-insert" data-std-type="header" title="🆗 Überschrift einfügen" type="button">+ Einfügen</button>
+</div>
+<div class="mp-item mp-item--standard" data-block-type="list" data-std-type="list" draggable="true" role="listitem" tabindex="0" title="Aufzählungsliste oder nummerierte Liste">
+<div class="mp-item-header">
+<span aria-hidden="true" class="mp-item-icon">📝</span>
+<span class="mp-item-title">📝 Liste</span>
+</div>
+<div class="mp-item-preview">Aufzählungsliste oder nummerierte Liste</div>
+<button class="mp-btn-insert" data-std-type="list" title="📝 Liste einfügen" type="button">+ Einfügen</button>
+</div>
+<div class="mp-item mp-item--standard" data-block-type="table" data-std-type="table" draggable="true" role="listitem" tabindex="0" title="Strukturierte Tabelle">
+<div class="mp-item-header">
+<span aria-hidden="true" class="mp-item-icon">📊</span>
+<span class="mp-item-title">📊 Tabelle</span>
+</div>
+<div class="mp-item-preview">Strukturierte Tabelle</div>
+<button class="mp-btn-insert" data-std-type="table" title="📊 Tabelle einfügen" type="button">+ Einfügen</button>
+</div>
+<div class="mp-item mp-item--standard" data-block-type="quote" data-std-type="quote" draggable="true" role="listitem" tabindex="0" title="Hervorgehobenes Zitat">
+<div class="mp-item-header">
+<span aria-hidden="true" class="mp-item-icon">„</span>
+<span class="mp-item-title">„Zitat“</span>
+</div>
+<div class="mp-item-preview">Hervorgehobenes Zitat</div>
+<button class="mp-btn-insert" data-std-type="quote" title="„Zitat“ einfügen" type="button">+ Einfügen</button>
+</div>
+<div class="mp-item mp-item--standard" data-block-type="delimiter" data-std-type="delimiter" draggable="true" role="listitem" tabindex="0" title="Horizontale Trennlinie">
+<div class="mp-item-header">
+<span aria-hidden="true" class="mp-item-icon">—</span>
+<span class="mp-item-title">— Trennlinie</span>
+</div>
+<div class="mp-item-preview">Horizontale Trennlinie</div>
+<button class="mp-btn-insert" data-std-type="delimiter" title="— Trennlinie einfügen" type="button">+ Einfügen</button>
+</div>
+</div></div>
+<div class="mp-empty" id="mp-empty" style="display:none">
+            Keine Einträge gefunden.
+        </div>
+</div></div>
+</section>
+<!-- Abschnitt 2: Annotationen -->
+<section class="support-accordion-section" data-accordion="annotations">
+<button aria-controls="accordion-body-annotations" aria-expanded="false" class="support-accordion-toggle" type="button">
+<span aria-hidden="true" class="support-accordion-icon">🔍</span>
+            Annotationen
+            <span aria-hidden="true" class="support-accordion-chevron">▾</span>
+</button>
+<div aria-label="Annotationen" class="support-accordion-body support-accordion-body--closed" id="accordion-body-annotations" role="region">
+<!-- Inhalt wird von annotation_sidebar.js/_refreshAnnotationSidebar() befuellt (Phase 8) -->
+<!-- Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06 -->
+<p class="support-accordion-empty" id="annotations-loading-state">
+              Annotationen werden geladen…
+            </p>
+</div>
+</section>
+<!-- Abschnitt 3: Formular (Platzhalter-Eingabe) -->
+<section class="support-accordion-section support-accordion-section--open" data-accordion="form">
+<button aria-controls="accordion-body-form" aria-expanded="true" class="support-accordion-toggle" type="button">
+<span aria-hidden="true" class="support-accordion-icon">📝</span>
+            Formular
+            <span aria-hidden="true" class="support-accordion-chevron">▾</span>
+</button>
+<div aria-label="Platzhalter-Formular" class="support-accordion-body" id="accordion-body-form" role="region"><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--focused" data-block-id="wU6z9eBw34">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="bll-PCJeEv">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="i8OxxJCEj2">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="514412a5-9f7f-4766-a03c-6619cdee2843">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="BeJ0-UiIAh">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Platzhalter-Felder für Block paul" class="pf-block-group pf-block-group--blurred" data-block-id="pPklymmFi4">
+<div class="pf-field-group" data-block-id="pPklymmFi4" data-field-name="realname" data-field-type="o">
+<label class="pf-label" for="pf-input-pPklymmFi4-realname">
+            realname
+        </label>
+<div class="pf-input-wrap">
+<input aria-label="realname" aria-required="false" autocomplete="off" class="pf-input pf-input--valid" data-block-id="pPklymmFi4" data-field-name="realname" data-field-type="o" id="pf-input-pPklymmFi4-realname" placeholder="Bürgerlicher Name des Beschuldigten (sofern ermittelt)" type="text" value="Herbert Damenfrau"/>
+</div>
+<div class="pf-field-error" id="pf-err-pPklymmFi4-realname" role="alert"></div>
+</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="ePoQFO0ZVy">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="Z6M25Xi_cx">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="yVjJm970O7">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="y43YbBAm0i">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="t6FegxPnsm">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="cEqVULVn60">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="Uugp1g8Wl4">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="0G_PT2A9j9">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="cewq53-w1Y">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="hD5SRLR-Ll">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="FCIUdDNj0n">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Platzhalter-Felder für Block paul" class="pf-block-group pf-block-group--blurred" data-block-id="4bZQRqQoFu">
+<div class="pf-field-group" data-block-id="4bZQRqQoFu" data-field-name="platzhalter" data-field-type="m">
+<label class="pf-label" for="pf-input-4bZQRqQoFu-platzhalter">
+            platzhalter <span aria-hidden="true" class="pf-required">*</span>
+</label>
+<div class="pf-input-wrap">
+<input aria-label="platzhalter (Pflichtfeld)" aria-required="true" autocomplete="off" class="pf-input pf-input--valid" data-block-id="4bZQRqQoFu" data-field-name="platzhalter" data-field-type="m" id="pf-input-4bZQRqQoFu-platzhalter" placeholder="" type="text" value="Kartoffeln"/>
+</div>
+<div class="pf-field-error" id="pf-err-4bZQRqQoFu-platzhalter" role="alert"></div>
+</div><div class="pf-field-group" data-block-id="4bZQRqQoFu" data-field-name="kalbfleisch" data-field-type="m">
+<label class="pf-label" for="pf-input-4bZQRqQoFu-kalbfleisch">
+            kalbfleisch <span aria-hidden="true" class="pf-required">*</span>
+</label>
+<div class="pf-input-wrap">
+<input aria-label="kalbfleisch (Pflichtfeld)" aria-required="true" autocomplete="off" class="pf-input pf-input--valid" data-block-id="4bZQRqQoFu" data-field-name="kalbfleisch" data-field-type="m" id="pf-input-4bZQRqQoFu-kalbfleisch" placeholder="" type="text" value="Taschentuch"/>
+</div>
+<div class="pf-field-error" id="pf-err-4bZQRqQoFu-kalbfleisch" role="alert"></div>
+</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="9Tz-6p_SWf">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="rCq5G9wQNQ">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="zXOfyNaMlK">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="mFge8rhOQ4">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="85KQx12QVa">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="a6I-NPWFfk">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="f7a7ae29-3ccf-4ec8-9ea6-3281c64142cb">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="d55e0f4e-b289-4a32-a281-051552569437">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="LeD0oMUSrC">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="5cecc378-ac6c-4a20-9140-49a2f9eba9f9">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="a0401d7f-3c3c-415a-a706-21712baad59c">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Platzhalter-Felder für Block paul" class="pf-block-group pf-block-group--blurred" data-block-id="faab5dd0-196f-4e70-bb5f-3db727c97329">
+<div class="pf-field-group" data-block-id="faab5dd0-196f-4e70-bb5f-3db727c97329" data-field-name="realname" data-field-type="o">
+<label class="pf-label" for="pf-input-faab5dd0-196f-4e70-bb5f-3db727c97329-realname">
+            realname
+        </label>
+<div class="pf-input-wrap">
+<input aria-label="realname" aria-required="false" autocomplete="off" class="pf-input pf-input--valid" data-block-id="faab5dd0-196f-4e70-bb5f-3db727c97329" data-field-name="realname" data-field-type="o" id="pf-input-faab5dd0-196f-4e70-bb5f-3db727c97329-realname" placeholder="Bürgerlicher Name des Beschuldigten (sofern ermittelt)" type="text" value="Marle Montag"/>
+</div>
+<div class="pf-field-error" id="pf-err-faab5dd0-196f-4e70-bb5f-3db727c97329-realname" role="alert"></div>
+</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="3e826a38-d7c4-46c1-b44c-86ece89ca95e">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="8eda283c-fe16-4fcf-b715-6e385bfa5805">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="d70d8a8c-0025-4f3b-8e86-628c622238c9">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="c07412b8-5be3-4fb1-8138-cddef458c7de">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="35a5e7ff-ba8e-4cb4-bcd1-5e9574a13e11">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="0463eb2a-13af-4de7-b82a-52945fa89d3d">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="ccf3f12c-83ba-466a-84aa-7c31530ac5b6">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="bb207375-9a66-4c14-9490-d4fc0ff07a1e">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="5d10beac-9445-426b-b367-d8d041f236c0">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Platzhalter-Felder für Block paul" class="pf-block-group pf-block-group--blurred" data-block-id="oBywrb4RNF">
+<div class="pf-field-group" data-block-id="oBywrb4RNF" data-field-name="anlage1" data-field-type="m">
+<label class="pf-label" for="pf-input-oBywrb4RNF-anlage1">
+            anlage1 <span aria-hidden="true" class="pf-required">*</span>
+</label>
+<div class="pf-input-wrap">
+<input aria-label="anlage1 (Pflichtfeld)" aria-required="true" autocomplete="off" class="pf-input" data-block-id="oBywrb4RNF" data-field-name="anlage1" data-field-type="m" id="pf-input-oBywrb4RNF-anlage1" placeholder="Bezeichnung der ersten Anlage" type="text" value=""/>
+</div>
+<div class="pf-field-error" id="pf-err-oBywrb4RNF-anlage1" role="alert"></div>
+</div><div class="pf-field-group" data-block-id="oBywrb4RNF" data-field-name="anlage2" data-field-type="m">
+<label class="pf-label" for="pf-input-oBywrb4RNF-anlage2">
+            anlage2 <span aria-hidden="true" class="pf-required">*</span>
+</label>
+<div class="pf-input-wrap">
+<input aria-label="anlage2 (Pflichtfeld)" aria-required="true" autocomplete="off" class="pf-input" data-block-id="oBywrb4RNF" data-field-name="anlage2" data-field-type="m" id="pf-input-oBywrb4RNF-anlage2" placeholder="Bezeichnung der zweiten Anlage" type="text" value=""/>
+</div>
+<div class="pf-field-error" id="pf-err-oBywrb4RNF-anlage2" role="alert"></div>
+</div><div class="pf-field-group" data-block-id="oBywrb4RNF" data-field-name="sicherungsdatum" data-field-type="m">
+<label class="pf-label" for="pf-input-oBywrb4RNF-sicherungsdatum">
+            sicherungsdatum <span aria-hidden="true" class="pf-required">*</span>
+</label>
+<div class="pf-input-wrap">
+<input aria-label="sicherungsdatum (Pflichtfeld)" aria-required="true" autocomplete="off" class="pf-input" data-block-id="oBywrb4RNF" data-field-name="sicherungsdatum" data-field-type="m" id="pf-input-oBywrb4RNF-sicherungsdatum" placeholder="Datum der Sicherung TT.MM.JJJJ" type="text" value=""/>
+</div>
+<div class="pf-field-error" id="pf-err-oBywrb4RNF-sicherungsdatum" role="alert"></div>
+</div><div class="pf-field-group" data-block-id="oBywrb4RNF" data-field-name="aktenzeichen" data-field-type="m">
+<label class="pf-label" for="pf-input-oBywrb4RNF-aktenzeichen">
+            aktenzeichen <span aria-hidden="true" class="pf-required">*</span>
+</label>
+<div class="pf-input-wrap">
+<input aria-label="aktenzeichen (Pflichtfeld)" aria-required="true" autocomplete="off" class="pf-input" data-block-id="oBywrb4RNF" data-field-name="aktenzeichen" data-field-type="m" id="pf-input-oBywrb4RNF-aktenzeichen" placeholder="Aktenzeichen der Ermittlung" type="text" value=""/>
+</div>
+<div class="pf-field-error" id="pf-err-oBywrb4RNF-aktenzeichen" role="alert"></div>
+</div><div class="pf-field-group" data-block-id="oBywrb4RNF" data-field-name="anlage3" data-field-type="o">
+<label class="pf-label" for="pf-input-oBywrb4RNF-anlage3">
+            anlage3
+        </label>
+<div class="pf-input-wrap">
+<input aria-label="anlage3" aria-required="false" autocomplete="off" class="pf-input" data-block-id="oBywrb4RNF" data-field-name="anlage3" data-field-type="o" id="pf-input-oBywrb4RNF-anlage3" placeholder="Anlage 3 (optional): Bezeichnung" type="text" value=""/>
+</div>
+<div class="pf-field-error" id="pf-err-oBywrb4RNF-anlage3" role="alert"></div>
+</div>
+</div><div aria-label="Platzhalter-Felder für Block paul" class="pf-block-group pf-block-group--blurred" data-block-id="d85a18f6-1fa9-46a2-8b9d-a9f992ea4142">
+<div class="pf-field-group" data-block-id="d85a18f6-1fa9-46a2-8b9d-a9f992ea4142" data-field-name="tatbestand" data-field-type="m">
+<label class="pf-label" for="pf-input-d85a18f6-1fa9-46a2-8b9d-a9f992ea4142-tatbestand">
+            tatbestand <span aria-hidden="true" class="pf-required">*</span>
+</label>
+<div class="pf-input-wrap">
+<input aria-label="tatbestand (Pflichtfeld)" aria-required="true" autocomplete="off" class="pf-input pf-input--valid" data-block-id="d85a18f6-1fa9-46a2-8b9d-a9f992ea4142" data-field-name="tatbestand" data-field-type="m" id="pf-input-d85a18f6-1fa9-46a2-8b9d-a9f992ea4142-tatbestand" placeholder="Tatbestand z.B. '§ 184b Abs. 1 Nr. 1 StGB'" type="text" value="§ 1989a Abs 4 StGB"/>
+</div>
+<div class="pf-field-error" id="pf-err-d85a18f6-1fa9-46a2-8b9d-a9f992ea4142-tatbestand" role="alert"></div>
+</div><div class="pf-field-group" data-block-id="d85a18f6-1fa9-46a2-8b9d-a9f992ea4142" data-field-name="tathandlung" data-field-type="m">
+<label class="pf-label" for="pf-input-d85a18f6-1fa9-46a2-8b9d-a9f992ea4142-tathandlung">
+            tathandlung <span aria-hidden="true" class="pf-required">*</span>
+</label>
+<div class="pf-input-wrap">
+<input aria-label="tathandlung (Pflichtfeld)" aria-required="true" autocomplete="off" class="pf-input pf-input--valid" data-block-id="d85a18f6-1fa9-46a2-8b9d-a9f992ea4142" data-field-name="tathandlung" data-field-type="m" id="pf-input-d85a18f6-1fa9-46a2-8b9d-a9f992ea4142-tathandlung" placeholder="Beschreibung der konkreten Tathandlung(en)" type="text" value="Trinken ohne Trinkgefäß"/>
+</div>
+<div class="pf-field-error" id="pf-err-d85a18f6-1fa9-46a2-8b9d-a9f992ea4142-tathandlung" role="alert"></div>
+</div><div class="pf-field-group" data-block-id="d85a18f6-1fa9-46a2-8b9d-a9f992ea4142" data-field-name="strafschaerfung" data-field-type="o">
+<label class="pf-label" for="pf-input-d85a18f6-1fa9-46a2-8b9d-a9f992ea4142-strafschaerfung">
+            strafschaerfung
+        </label>
+<div class="pf-input-wrap">
+<input aria-label="strafschaerfung" aria-required="false" autocomplete="off" class="pf-input" data-block-id="d85a18f6-1fa9-46a2-8b9d-a9f992ea4142" data-field-name="strafschaerfung" data-field-type="o" id="pf-input-d85a18f6-1fa9-46a2-8b9d-a9f992ea4142-strafschaerfung" placeholder="Strafschaerfende Umstaende gemaess § 176a StGB" type="text" value=""/>
+</div>
+<div class="pf-field-error" id="pf-err-d85a18f6-1fa9-46a2-8b9d-a9f992ea4142-strafschaerfung" role="alert"></div>
+</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="91509f5d-c323-4791-9ff0-1ad099779a87">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="e4121388-0b2c-4aee-a2b5-797242b1e09f">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="0f481d39-f202-449c-b24b-28cd1c2da9fb">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="e25ce51c-7eeb-47a8-ba19-915c2f4e5d3b">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="ffbc71f9-3bad-4846-bb79-3e076318775c">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="94f30f18-2106-4631-b9d2-a2d78ae830e4">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="c4419f84-8217-4a36-ad31-ec3c95c353b7">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="38DAtbqkeh">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="YXpi3z0Ouv">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div><div aria-label="Platzhalter-Felder für Block paul" class="pf-block-group pf-block-group--blurred" data-block-id="bd1fb94b-fdbd-412d-b3e2-31783cccf4df">
+<div class="pf-field-group" data-block-id="bd1fb94b-fdbd-412d-b3e2-31783cccf4df" data-field-name="anlage1" data-field-type="m">
+<label class="pf-label" for="pf-input-bd1fb94b-fdbd-412d-b3e2-31783cccf4df-anlage1">
+            anlage1 <span aria-hidden="true" class="pf-required">*</span>
+</label>
+<div class="pf-input-wrap">
+<input aria-label="anlage1 (Pflichtfeld)" aria-required="true" autocomplete="off" class="pf-input" data-block-id="bd1fb94b-fdbd-412d-b3e2-31783cccf4df" data-field-name="anlage1" data-field-type="m" id="pf-input-bd1fb94b-fdbd-412d-b3e2-31783cccf4df-anlage1" placeholder="Bezeichnung der ersten Anlage" type="text" value=""/>
+</div>
+<div class="pf-field-error" id="pf-err-bd1fb94b-fdbd-412d-b3e2-31783cccf4df-anlage1" role="alert"></div>
+</div><div class="pf-field-group" data-block-id="bd1fb94b-fdbd-412d-b3e2-31783cccf4df" data-field-name="anlage2" data-field-type="m">
+<label class="pf-label" for="pf-input-bd1fb94b-fdbd-412d-b3e2-31783cccf4df-anlage2">
+            anlage2 <span aria-hidden="true" class="pf-required">*</span>
+</label>
+<div class="pf-input-wrap">
+<input aria-label="anlage2 (Pflichtfeld)" aria-required="true" autocomplete="off" class="pf-input" data-block-id="bd1fb94b-fdbd-412d-b3e2-31783cccf4df" data-field-name="anlage2" data-field-type="m" id="pf-input-bd1fb94b-fdbd-412d-b3e2-31783cccf4df-anlage2" placeholder="Bezeichnung der zweiten Anlage" type="text" value=""/>
+</div>
+<div class="pf-field-error" id="pf-err-bd1fb94b-fdbd-412d-b3e2-31783cccf4df-anlage2" role="alert"></div>
+</div><div class="pf-field-group" data-block-id="bd1fb94b-fdbd-412d-b3e2-31783cccf4df" data-field-name="sicherungsdatum" data-field-type="m">
+<label class="pf-label" for="pf-input-bd1fb94b-fdbd-412d-b3e2-31783cccf4df-sicherungsdatum">
+            sicherungsdatum <span aria-hidden="true" class="pf-required">*</span>
+</label>
+<div class="pf-input-wrap">
+<input aria-label="sicherungsdatum (Pflichtfeld)" aria-required="true" autocomplete="off" class="pf-input" data-block-id="bd1fb94b-fdbd-412d-b3e2-31783cccf4df" data-field-name="sicherungsdatum" data-field-type="m" id="pf-input-bd1fb94b-fdbd-412d-b3e2-31783cccf4df-sicherungsdatum" placeholder="Datum der Sicherung TT.MM.JJJJ" type="text" value=""/>
+</div>
+<div class="pf-field-error" id="pf-err-bd1fb94b-fdbd-412d-b3e2-31783cccf4df-sicherungsdatum" role="alert"></div>
+</div><div class="pf-field-group" data-block-id="bd1fb94b-fdbd-412d-b3e2-31783cccf4df" data-field-name="aktenzeichen" data-field-type="m">
+<label class="pf-label" for="pf-input-bd1fb94b-fdbd-412d-b3e2-31783cccf4df-aktenzeichen">
+            aktenzeichen <span aria-hidden="true" class="pf-required">*</span>
+</label>
+<div class="pf-input-wrap">
+<input aria-label="aktenzeichen (Pflichtfeld)" aria-required="true" autocomplete="off" class="pf-input" data-block-id="bd1fb94b-fdbd-412d-b3e2-31783cccf4df" data-field-name="aktenzeichen" data-field-type="m" id="pf-input-bd1fb94b-fdbd-412d-b3e2-31783cccf4df-aktenzeichen" placeholder="Aktenzeichen der Ermittlung" type="text" value=""/>
+</div>
+<div class="pf-field-error" id="pf-err-bd1fb94b-fdbd-412d-b3e2-31783cccf4df-aktenzeichen" role="alert"></div>
+</div><div class="pf-field-group" data-block-id="bd1fb94b-fdbd-412d-b3e2-31783cccf4df" data-field-name="anlage3" data-field-type="o">
+<label class="pf-label" for="pf-input-bd1fb94b-fdbd-412d-b3e2-31783cccf4df-anlage3">
+            anlage3
+        </label>
+<div class="pf-input-wrap">
+<input aria-label="anlage3" aria-required="false" autocomplete="off" class="pf-input" data-block-id="bd1fb94b-fdbd-412d-b3e2-31783cccf4df" data-field-name="anlage3" data-field-type="o" id="pf-input-bd1fb94b-fdbd-412d-b3e2-31783cccf4df-anlage3" placeholder="Anlage 3 (optional): Bezeichnung" type="text" value=""/>
+</div>
+<div class="pf-field-error" id="pf-err-bd1fb94b-fdbd-412d-b3e2-31783cccf4df-anlage3" role="alert"></div>
+</div>
+</div><div aria-label="Platzhalter-Felder für Block paul" class="pf-block-group pf-block-group--blurred" data-block-id="0f4972eb-82e0-4cbe-a8a1-4fd4f6e024f8">
+<div class="pf-field-group" data-block-id="0f4972eb-82e0-4cbe-a8a1-4fd4f6e024f8" data-field-name="ip_auswertung" data-field-type="m">
+<label class="pf-label" for="pf-input-0f4972eb-82e0-4cbe-a8a1-4fd4f6e024f8-ip_auswertung">
+            ip_auswertung <span aria-hidden="true" class="pf-required">*</span>
+</label>
+<div class="pf-input-wrap">
+<input aria-label="ip_auswertung (Pflichtfeld)" aria-required="true" autocomplete="off" class="pf-input" data-block-id="0f4972eb-82e0-4cbe-a8a1-4fd4f6e024f8" data-field-name="ip_auswertung" data-field-type="m" id="pf-input-0f4972eb-82e0-4cbe-a8a1-4fd4f6e024f8-ip_auswertung" placeholder="Ergebnis der IP-Rueckverfolgung / Provider-Auskunft" type="text" value=""/>
+</div>
+<div class="pf-field-error" id="pf-err-0f4972eb-82e0-4cbe-a8a1-4fd4f6e024f8-ip_auswertung" role="alert"></div>
+</div><div class="pf-field-group" data-block-id="0f4972eb-82e0-4cbe-a8a1-4fd4f6e024f8" data-field-name="verdaechtige_person" data-field-type="m">
+<label class="pf-label" for="pf-input-0f4972eb-82e0-4cbe-a8a1-4fd4f6e024f8-verdaechtige_person">
+            verdaechtige_person <span aria-hidden="true" class="pf-required">*</span>
+</label>
+<div class="pf-input-wrap">
+<input aria-label="verdaechtige_person (Pflichtfeld)" aria-required="true" autocomplete="off" class="pf-input" data-block-id="0f4972eb-82e0-4cbe-a8a1-4fd4f6e024f8" data-field-name="verdaechtige_person" data-field-type="m" id="pf-input-0f4972eb-82e0-4cbe-a8a1-4fd4f6e024f8-verdaechtige_person" placeholder="Name/Anschrift des Beschuldigten" type="text" value=""/>
+</div>
+<div class="pf-field-error" id="pf-err-0f4972eb-82e0-4cbe-a8a1-4fd4f6e024f8-verdaechtige_person" role="alert"></div>
+</div><div class="pf-field-group" data-block-id="0f4972eb-82e0-4cbe-a8a1-4fd4f6e024f8" data-field-name="geraetehinweis" data-field-type="o">
+<label class="pf-label" for="pf-input-0f4972eb-82e0-4cbe-a8a1-4fd4f6e024f8-geraetehinweis">
+            geraetehinweis
+        </label>
+<div class="pf-input-wrap">
+<input aria-label="geraetehinweis" aria-required="false" autocomplete="off" class="pf-input" data-block-id="0f4972eb-82e0-4cbe-a8a1-4fd4f6e024f8" data-field-name="geraetehinweis" data-field-type="o" id="pf-input-0f4972eb-82e0-4cbe-a8a1-4fd4f6e024f8-geraetehinweis" placeholder="Hinweise auf verwendete Geraete oder Betriebssysteme" type="text" value=""/>
+</div>
+<div class="pf-field-error" id="pf-err-0f4972eb-82e0-4cbe-a8a1-4fd4f6e024f8-geraetehinweis" role="alert"></div>
+</div>
+</div></div>
+</section>
+<!-- Abschnitt 4: Kommentare (unten) -->
+<section class="support-accordion-section" data-accordion="comments">
+<button aria-controls="accordion-body-comments" aria-expanded="false" class="support-accordion-toggle" type="button">
+<span aria-hidden="true" class="support-accordion-icon">💬</span>
+            Kommentare
+            <span aria-hidden="true" class="support-accordion-chevron">▾</span>
+</button>
+<div aria-label="Kommentare" class="support-accordion-body support-accordion-body--closed" id="accordion-body-comments" role="region">
+<!-- Inhalt wird von comment_thread.js befuellt (Phase 4) -->
+<p class="support-accordion-empty" id="comments-empty-state">
+              Kein Block ausgewählt.
+            </p>
+<!-- Kommentar-Eingabe (wird von comment_thread.js aktiviert) -->
+<textarea aria-label="Neuen Kommentar verfassen" class="comment-input-textarea" placeholder="Kommentar verfassen…" rows="3" style="display:none"></textarea>
+</div>
+</section>
+</aside>

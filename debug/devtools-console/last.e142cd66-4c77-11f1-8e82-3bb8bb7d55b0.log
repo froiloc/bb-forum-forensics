@@ -10,33 +10,33 @@ report_editor.js:86 [forensic] report_editor.js: Exports auf window gesetzt
 userinfo.js:67 [forensic] DOMContentLoaded: userinfo.js aktiv
 userinfo.js:67 [forensic] initEditor() gestartet
 userinfo.js:67 [forensic] initSSEWindow3() gestartet
-userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 32cac9b8-2809-4cae-b3af-0a8d86c56ffc
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 5a59c358-85d6-4ea7-af68-2c273bc07a24
 report_editor.js:86 [forensic] initEditorModule() gestartet
 report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
 report_editor.js:86 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
 report_editor.js:86 [forensic] initReportSelector() gestartet
 favicon.ico:1  GET http://127.0.0.2:8080/favicon.ico 404 (Not Found)
 report_editor.js:86 [forensic] loadReport() report_id= 2 type= interim
-report_editor.js:457 report_editor.js: _knownBlockIds initialisiert, 50 Bloecke geladen.
+report_editor.js:457 report_editor.js: _knownBlockIds initialisiert, 51 Bloecke geladen.
 report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
 report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
 report_editor.js:643 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
 report_editor.js:688 report_editor.js: Initialisierungs-Guard freigegeben.
-module_panel.js:77 [forensic] Drag start (Standard, delegiert): type= paragraph
-module_panel.js:77 [forensic] Drag start (Standard, delegiert): type= paragraph
-module_panel.js:77 [forensic] Drag start (Standard, delegiert): type= table
-module_panel.js:77 [forensic] Drag start (Standard, delegiert): type= table
-report_editor.js:86 [forensic] Drop: Ziel-Index= 26 von 50 Bloecken
-report_editor.js:86 [forensic] Drop (Standard): type= table targetIdx= 26
-report_editor.js:86 [forensic] Drop (Standard): Block eingefuegt, type= table idx= 26
-report_editor.js:1720 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 50
-report_editor.js:1834 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 51 | Bloecke geloescht: 0
 module_panel.js:77 [forensic] Drag start (Modul, delegiert): module_id= 4 title= Technische Ermittlungsergebnisse
 module_panel.js:77 [forensic] Drag start (Modul, delegiert): module_id= 4 title= Technische Ermittlungsergebnisse
-report_editor.js:86 [forensic] Drop: Ziel-Index= 21 von 51 Bloecken
-report_editor.js:86 [forensic] Drop (Modul): module_id= 4 targetIdx= 21
-report_editor.js:86 [forensic] Drop (Modul): Block eingefuegt, type= paragraph idx= 21
+report_editor.js:86 [forensic] Drop: Ziel-Index= 18 von 51 Bloecken
+report_editor.js:86 [forensic] Drop (Modul): module_id= 4 targetIdx= 18
+report_editor.js:86 [forensic] Drop (Modul): Block eingefuegt, type= paragraph idx= 18
 editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+module_panel.js:77 [forensic] _insertModule: Block sofort in Editor eingefuegt, idx= 52
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 51 focusedId= wU6z9eBw34 onSave= function myUsername= paul
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 52 focusedId= wU6z9eBw34 onSave= function myUsername= paul
 editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
 editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
 editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
@@ -44,4 +44,5 @@ editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
 editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
 report_editor.js:1720 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 51
 editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
-report_editor.js:1834 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 51 | Bloecke geloescht: 0
+report_editor.js:1834 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 52 | Bloecke geloescht: 0
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 53 focusedId= wU6z9eBw34 onSave= function myUsername= paul

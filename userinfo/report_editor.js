@@ -69,7 +69,7 @@
  *     ausgefuehrt damit der gedruckte Stand mit der DB synchron ist.
  *     Beleg: Bugfix Build 134, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.149 · Build: 149 · 2026-05-09
+ * Version: v0.6.150 · Build: 150 · 2026-05-09
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -2319,8 +2319,18 @@ function _initDragDrop() {
                 modData = JSON.parse(e.dataTransfer.getData('application/x-forensic-module'));
             } catch (_) { return; }
             _dbg('Drop (Modul): module_id=', modData.module_id, 'targetIdx=', targetIdx);
+
+            // Bug 2.64 Fix Build 149: module_text dehydrieren bevor es in Editor.js
+            // eingefuegt wird. Hydriertes HTML (Chip-Spans) ist kein valides
+            // Paragraph-Format — Editor.js markiert Bloecke als 'invalid'.
+            // Beleg: Bugfix Build 149, Projektgespraech 2026-05-10
+            let insertText = modData.module_text || '';
+            if (window.PlaceholderChips?.dehydrateChips && insertText.includes('<')) {
+                insertText = window.PlaceholderChips.dehydrateChips(insertText);
+            }
+
             const blockData = modData.block_type === 'paragraph'
-                ? { text: modData.module_text || '' }
+                ? { text: insertText }
                 : {};
             window._editor.blocks.insert(modData.block_type || 'paragraph', blockData, {}, targetIdx);
             window._editor.caret.setToBlock(targetIdx);
