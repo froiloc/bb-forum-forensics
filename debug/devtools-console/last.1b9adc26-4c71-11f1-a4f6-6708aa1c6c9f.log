@@ -27,3 +27,5 @@ module_panel.js:77 [forensic] Drag start (Standard, delegiert): type= delimiter
 module_panel.js:77 [forensic] Drag start (Standard, delegiert): type= delimiter
 report_editor.js:86 [forensic] Drop (Standard): type= delimiter
 report_editor.js:86 [forensic] Drop (Standard): Block eingefuegt, type= delimiter idx= 47
+report_editor.js:1712 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 47
+report_editor.js:1826 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 48 | Bloecke geloescht: 0
