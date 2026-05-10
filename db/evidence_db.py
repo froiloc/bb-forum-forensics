@@ -1241,6 +1241,47 @@ class EvidenceDb:
         ).fetchall()
         return {int(r[0]) for r in rows}
 
+    def get_blocks_for_evidence(self, annotation_id: int) -> list:
+        """
+        Gibt alle block_ids zurueck, die eine bestimmte annotation_id als
+        Beweisanker (report_anchors) referenzieren.
+
+        Wird von EditorEvidenceEndpoint._action_add() und ._action_remove()
+        genutzt, um nach einer Aenderung die betroffenen Bloecke zu melden.
+
+        Bug 2.10 Fix Build 160: Methode war im Changelog erwaehnt, aber nicht
+        implementiert. Der fehlende Aufruf erzeugte AttributeError -> HTTP 500.
+        Beleg: Projektgespraech 2026-05-11
+        """
+        rows = self._con.execute(
+            "SELECT DISTINCT block_id FROM report_anchors WHERE annotation_id = ?",
+            (annotation_id,),
+        ).fetchall()
+        # Gibt eine Liste von Objekten mit .block_id-Attribut zurueck,
+        # kompatibel mit dem bestehenden Aufruf-Muster in editor_evidence.py
+        # (r.block_id fuer r in ...).
+        class _Row:
+            __slots__ = ("block_id",)
+            def __init__(self, bid: str) -> None:
+                self.block_id = bid
+        return [_Row(str(r[0])) for r in rows]
+
+    def remove_block_evidence(self, block_id: str, evidence_id: int) -> bool:
+        """
+        Loescht einen Beweisanker (report_anchors) anhand block_id und
+        annotation_id. Gibt True zurueck wenn ein Datensatz geloescht wurde.
+
+        Bug 2.10 Fix Build 160: Methode war im Changelog erwaehnt, aber nicht
+        implementiert. Der fehlende Aufruf erzeugte AttributeError -> HTTP 500.
+        Beleg: Projektgespraech 2026-05-11
+        """
+        cur = self._con.execute(
+            "DELETE FROM report_anchors WHERE block_id = ? AND annotation_id = ?",
+            (block_id, evidence_id),
+        )
+        self._con.commit()
+        return cur.rowcount > 0
+
     # ------------------------------------------------------------------
     # Kommentare (report_comments, B6)
     # Beleg: Bauplan B6 v0.5 §2.3, Grundregel 15
