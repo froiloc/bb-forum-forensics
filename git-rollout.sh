@@ -19,10 +19,25 @@ then
 	git mv "${ROOTDIR}debug/devtools-network/last.${last_uuid}.har" "${ROOTDIR}debug/devtools-network/last.${uuid}.har"
 	mv "${ROOTDIR}debug/devtools-network/last..har" "${ROOTDIR}debug/devtools-network/last.${uuid}.har" 2>/dev/null
 fi
-if [[ -f "${ROOTDIR}debug/dom-dump/last.${last_uuid}.html" ]]
+if [[ -f "${ROOTDIR}debug/dom-dump/last-html.${last_uuid}.html" ]]
 then
-	git mv "${ROOTDIR}debug/dom-dump/last.${last_uuid}.html" "${ROOTDIR}debug/dom-dump/last.${uuid}.html"
-	mv "${ROOTDIR}debug/dom-dump/last.html" "${ROOTDIR}debug/dom-dump/last.${uuid}.html" 2>/dev/null
+	git mv "${ROOTDIR}debug/dom-dump/last-html.${last_uuid}.html" "${ROOTDIR}debug/dom-dump/last-html.${uuid}.html"
+	mv "${ROOTDIR}debug/dom-dump/last-html.html" "${ROOTDIR}debug/dom-dump/last-html.${uuid}.html" 2>/dev/null
+fi
+if [[ -f "${ROOTDIR}debug/dom-dump/last-body.${last_uuid}.html" ]]
+then
+	git mv "${ROOTDIR}debug/dom-dump/last-body.${last_uuid}.html" "${ROOTDIR}debug/dom-dump/last-body.${uuid}.html"
+	mv "${ROOTDIR}debug/dom-dump/last-body.html" "${ROOTDIR}debug/dom-dump/last-body.${uuid}.html" 2>/dev/null
+fi
+if [[ -f "${ROOTDIR}debug/dom-dump/last-sidebar.${last_uuid}.html" ]]
+then
+	git mv "${ROOTDIR}debug/dom-dump/last-sidebar.${last_uuid}.html" "${ROOTDIR}debug/dom-dump/last-sidebar.${uuid}.html"
+	mv "${ROOTDIR}debug/dom-dump/last-sidebar.html" "${ROOTDIR}debug/dom-dump/last-sidebar.${uuid}.html" 2>/dev/null
+fi
+if [[ -f "${ROOTDIR}debug/dom-dump/last-main.${last_uuid}.html" ]]
+then
+	git mv "${ROOTDIR}debug/dom-dump/last-main.${last_uuid}.html" "${ROOTDIR}debug/dom-dump/last-main.${uuid}.html"
+	mv "${ROOTDIR}debug/dom-dump/last-main.html" "${ROOTDIR}debug/dom-dump/last-main.${uuid}.html" 2>/dev/null
 fi
 if [[ -f "${ROOTDIR}debug/webserver-log/last.${last_uuid}.log" ]]
 then

@@ -9,7 +9,10 @@ declare -A REGELN=(
     ['Failed to load resource:|Navigated to http://127.0.0.2:8080/_forensic/report']="${ROOTDIR}/debug/devtools-console/last.log"
     ['"name": "WebInspector"']="${ROOTDIR}/debug/devtools-network/last.har"
     ['# Fehler auf der Berichtsseite']="${ROOTDIR}/debug/bugs-and-tasks/last.md"
-    ['<html lang="de">']="${ROOTDIR}/debug/dom-dump/last.html"
+    ['<html lang="de">']="${ROOTDIR}/debug/dom-dump/last-html.html"
+    ['<body id="report-editor-body"']="${ROOTDIR}/debug/dom-dump/last-body.html"
+    ['<main id="report-main-col">']="${ROOTDIR}/debug/dom-dump/last-main.html"
+    ['<aside id="support-sidebar"']="${ROOTDIR}/debug/dom-dump/last-sidebar.html"
     ['Logging initialisiert — Level: DEBUG']="${ROOTDIR}/debug/webserver-log/last.log"
 )
 

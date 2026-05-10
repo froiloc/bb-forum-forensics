@@ -814,3 +814,25 @@ report_editor.js:86 [forensic] Drop (Standard): Block eingefuegt, type= delimite
 VM75837:20 📦 Editor drop: {types: Array(1)}
 VM75837:8 🎯 dragend: {target: 'mp-item mp-item--standard', types: Array(1), effectAllowed: 'copy'}
 placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 45 focusedId= i8OxxJCEj2 onSave= function myUsername= paul
+report_editor.js:1699 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 45
+report_editor.js:1813 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 47 | Bloecke geloescht: 0
+report_editor.js:1699 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 47
+report_editor.js:1813 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 47 | Bloecke geloescht: 0
+module_panel.js:77 [forensic] Standard-Block einfuegen: type= header
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 47 focusedId= i8OxxJCEj2 onSave= function myUsername= paul
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+report_editor.js:1699 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 47
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+report_editor.js:1813 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 47 | Bloecke geloescht: 0
