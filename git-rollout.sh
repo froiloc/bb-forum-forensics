@@ -42,15 +42,15 @@ then
 		git add -f "${ROOTDIR}debug/dom-dump/last-accordion-1.${uuid}.html" 2>/dev/null
 
 		git mv "${ROOTDIR}debug/dom-dump/last-accordion-2.${last_uuid}.html" "${ROOTDIR}debug/dom-dump/last-accordion-2.${uuid}.html" 2>/dev/null
-		python "${ROOTDIR}debug/html_query.py" -i "${ROOTDIR}debug/dom-dump/last-html.${uuid}.html" -o "${ROOTDIR}debug/dom-dump/last-accordion-1.${uuid}.html" -c '#support-sidebar .support-accordion-section:nth-of-type(2)'
+		python "${ROOTDIR}debug/html_query.py" -i "${ROOTDIR}debug/dom-dump/last-html.${uuid}.html" -o "${ROOTDIR}debug/dom-dump/last-accordion-2.${uuid}.html" -c '#support-sidebar .support-accordion-section:nth-of-type(2)'
 		git add -f "${ROOTDIR}debug/dom-dump/last-accordion-2.${uuid}.html" 2>/dev/null
 
 		git mv "${ROOTDIR}debug/dom-dump/last-accordion-3.${last_uuid}.html" "${ROOTDIR}debug/dom-dump/last-accordion-3.${uuid}.html" 2>/dev/null
-		python "${ROOTDIR}debug/html_query.py" -i "${ROOTDIR}debug/dom-dump/last-html.${uuid}.html" -o "${ROOTDIR}debug/dom-dump/last-accordion-1.${uuid}.html" -c '#support-sidebar .support-accordion-section:nth-of-type(3)'
+		python "${ROOTDIR}debug/html_query.py" -i "${ROOTDIR}debug/dom-dump/last-html.${uuid}.html" -o "${ROOTDIR}debug/dom-dump/last-accordion-3.${uuid}.html" -c '#support-sidebar .support-accordion-section:nth-of-type(3)'
 		git add -f "${ROOTDIR}debug/dom-dump/last-accordion-3.${uuid}.html" 2>/dev/null
 
 		git mv "${ROOTDIR}debug/dom-dump/last-accordion-4.${last_uuid}.html" "${ROOTDIR}debug/dom-dump/last-accordion-4.${uuid}.html" 2>/dev/null
-		python "${ROOTDIR}debug/html_query.py" -i "${ROOTDIR}debug/dom-dump/last-html.${uuid}.html" -o "${ROOTDIR}debug/dom-dump/last-accordion-1.${uuid}.html" -c '#support-sidebar .support-accordion-section:nth-of-type(4)'
+		python "${ROOTDIR}debug/html_query.py" -i "${ROOTDIR}debug/dom-dump/last-html.${uuid}.html" -o "${ROOTDIR}debug/dom-dump/last-accordion-4.${uuid}.html" -c '#support-sidebar .support-accordion-section:nth-of-type(4)'
 		git add -f "${ROOTDIR}debug/dom-dump/last-accordion-4.${uuid}.html" 2>/dev/null
 
 	fi
