@@ -611,7 +611,8 @@ function _renderStandardList(blocks) {
 
     list.innerHTML = blocks.map(b => `
         <div class="mp-item mp-item--standard" data-std-type="${_esc(b.block_type)}"
-             role="listitem" tabindex="0"
+             data-block-type="${_esc(b.block_type)}"
+             role="listitem" tabindex="0" draggable="true"
              title="${_esc(b.description)}">
             <div class="mp-item-header">
                 <span class="mp-item-icon" aria-hidden="true">${_esc(b.icon)}</span>
@@ -627,7 +628,22 @@ function _renderStandardList(blocks) {
         </div>
     `).join('');
 
-    // Insert-Handler: neuen leeren Block des gewuenschten Typs anlegen
+    // Drag&Drop fuer Standard-Items binden (dasselbe wie in _bindListHandlers).
+    // Bug 2.11 Fix Build 146: Standard-Items haben jetzt draggable="true" und
+    // data-block-type. _bindListHandlers wird nicht aufgerufen fuer Standard-Items,
+    // daher hier direkt binden.
+    // Beleg: Bugfix Build 146, Projektgespraech 2026-05-10
+    list.querySelectorAll('.mp-item--standard[draggable]').forEach(item => {
+        item.addEventListener('dragstart', (e) => {
+            const blockType = item.dataset.blockType || item.dataset.stdType || 'paragraph';
+            _dbg('Drag start (Standard): type=', blockType);
+            e.dataTransfer.effectAllowed = 'copy';
+            e.dataTransfer.setData('application/x-forensic-standard', JSON.stringify({
+                block_type: blockType,
+                title:      item.querySelector('.mp-item-title')?.textContent?.trim() || '',
+            }));
+        });
+    });
     list.querySelectorAll('.mp-btn-insert[data-std-type]').forEach(btn => {
         btn.addEventListener('click', () => {
             const blockType = btn.dataset.stdType;

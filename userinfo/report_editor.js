@@ -69,7 +69,7 @@
  *     ausgefuehrt damit der gedruckte Stand mit der DB synchron ist.
  *     Beleg: Bugfix Build 134, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.145 · Build: 145 · 2026-05-09
+ * Version: v0.6.146 · Build: 146 · 2026-05-09
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -151,7 +151,10 @@ let _loadInProgress = false;
  * dann auf false setzen. onChange prueft dieses Flag.
  * Beleg: Bugfix Build 117, Projektgespraech 2026-05-08
  */
-let _isInitializing = false;
+let _isInitializing  = false;
+// Bug 2.55/2.59 Fix Build 146: Guard gegen onChange-Schleife durch _refreshPlaceholderForm.
+// Beleg: Bugfix Build 146, Projektgespraech 2026-05-10
+let _isRefreshingForm = false;
 
 /**
  * Set der Block-IDs, die dem Server zuletzt bekannt waren.
@@ -567,29 +570,49 @@ function _initEditorJs(blocks, reportId) {
             // Bug-Fix Build 117: Waehrend der Initialisierung keine Auto-Saves.
             if (_isInitializing) return;
 
-            // Bug 2.30 Fix Build 145: Nach Block-Move Formular-Sortierung aktualisieren.
-            // Editor.js liefert event.type 'block-moved' fuer Drag-and-Drop-Umsortierungen.
-            // Das Formular muss danach neu gerendert werden damit die Reihenfolge stimmt.
-            // Beleg: Bugfix Build 145, Projektgespraech 2026-05-10
-            if (event?.type === 'block-moved' || event?.type === 'block-removed' || event?.type === 'block-added') {
+            // Bug 2.30/2.60 Fix Build 146: Nach Block-Move Formular-Sortierung
+            // aktualisieren und focusedId beibehalten.
+            // Guard _isRefreshingForm verhindert Schleife: _refreshPlaceholderForm →
+            // showPlaceholderForm → onChange → _refreshPlaceholderForm ...
+            // Beleg: Bugfix Build 146, Projektgespraech 2026-05-10
+            const evType = event?.type;
+            if (
+                (evType === 'block-moved' || evType === 'block-removed' || evType === 'block-added')
+                && !_isRefreshingForm
+            ) {
                 const formFocused = document.activeElement?.closest('#accordion-body-form');
                 if (!formFocused) {
-                    // _currentBlocks mit neuer Reihenfolge aus Editor holen
-                    const editorData = await api.saver?.save?.();
-                    if (editorData?.blocks && _currentBlocks.length) {
-                        // Reihenfolge von _currentBlocks an Editor-Reihenfolge angleichen
-                        const ordered = editorData.blocks
-                            .map(b => _currentBlocks.find(cb => cb.block_id === b.id))
-                            .filter(Boolean);
-                        if (ordered.length) {
-                            _currentBlocks = [
-                                ...ordered,
-                                ..._currentBlocks.filter(cb =>
-                                    !ordered.find(o => o.block_id === cb.block_id)
-                                ),
-                            ];
+                    _isRefreshingForm = true;
+                    try {
+                        const editorData = await window._editor?.save?.();
+                        if (editorData?.blocks && _currentBlocks.length) {
+                            const ordered = editorData.blocks
+                                .map(b => _currentBlocks.find(cb => cb.block_id === b.id))
+                                .filter(Boolean);
+                            if (ordered.length) {
+                                _currentBlocks = [
+                                    ...ordered,
+                                    ..._currentBlocks.filter(cb =>
+                                        !ordered.find(o => o.block_id === cb.block_id)
+                                    ),
+                                ];
+                            }
+                            // Bug 2.60 Fix Build 146: Fokus auf denselben Block
+                            // beibehalten der vor dem Move fokussiert war.
+                            // Bei block-removed: wenn der fokussierte Block geloescht
+                            // wurde, Fokus auf null setzen.
+                            if (evType === 'block-removed') {
+                                const sidebar = document.getElementById('support-sidebar');
+                                const fid = sidebar?.dataset?.focusedBlockId;
+                                const stillExists = _currentBlocks.some(b => b.block_id === fid);
+                                if (!stillExists && sidebar) {
+                                    sidebar.dataset.focusedBlockId = '';
+                                }
+                            }
+                            _refreshPlaceholderForm();
                         }
-                        _refreshPlaceholderForm();
+                    } finally {
+                        _isRefreshingForm = false;
                     }
                 }
             }
