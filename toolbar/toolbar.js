@@ -2318,105 +2318,109 @@
      * Post-Container-Delegation. Multi-Annotation-Ansicht löst auch Überlappungen.
      * Kategorie der Markierung kann geändert werden.
      */
-    function _showMenu(ann, x, y) {
-      _hideMenu();
-      _targetAnn = ann;
-      
-      var cat = _getCat(ann.category);
-      var activeCatId = ann.category;
-      
-      _menuEl = document.createElement("div");
-      _menuEl.className = "forensic-hover-menu";
-      _menuEl.setAttribute("role", "menu");
-      _menuEl.setAttribute("aria-label", "Annotation-Menü");
-      
-      // Feste Aktionen (Edit + Delete)
-      var actionsHtml = 
-        '<div class="forensic-hover-actions" role="group" aria-label="Aktionen">' +
-          '<button class="forensic-hover-btn" data-action="edit" aria-label="Annotation bearbeiten">✏️</button>' +
-          '<button class="forensic-hover-btn" data-action="delete" aria-label="Annotation löschen">🗑️</button>' +
-        '</div>';
-      
-      // Kategorie-Container mit allen 6 Buttons
-      var catsHtml = '<div class="forensic-hover-cats" role="group" aria-label="Kategorie auswählen">';
-      
-      ForensicToolbar.config.CATEGORIES.forEach(function(c) {
-        var isActive = (c.id === activeCatId);
-        var activeClass = isActive ? ' forensic-hover-cat-wrapper--active' : '';
-        catsHtml += 
-          '<div class="forensic-hover-cat-wrapper' + activeClass + '" data-cat-id="' + c.id + '" ' +
-          'role="menuitem" tabindex="-1" aria-label="Kategorie ' + c.label + '">' +
-        '<span class="forensic-cat-icon" aria-hidden="true">' + c.icon + '</span>' +
-        '<span class="forensic-cat-label">' + c.label + '</span>' +
-          '</div>';
-      });
-      
-      catsHtml += '</div>';
-      
-      // Overlay (Pfeil) – nur im kompakten Zustand sichtbar
-      var overlayHtml = '<span class="forensic-hover-cat-overlay" aria-hidden="true">⏵</span>';
-      
-      _menuEl.innerHTML = actionsHtml + catsHtml + overlayHtml;
-      
-      // Positionierung
-      _menuEl.style.left = x + "px";
-      _menuEl.style.top  = y + "px";
-      document.body.appendChild(_menuEl);
-      
-      // Events binden
-      _bindHoverMenuEvents(_menuEl, _targetAnn);
-    }
+     function _showMenu(ann, x, y) {
+       _hideMenu();
+       _targetAnn = ann;
+       
+       var activeCatId = ann.category;
+       
+       _menuEl = document.createElement("div");
+       _menuEl.className = "forensic-hover-menu";
+       _menuEl.setAttribute("role", "menu");
+       _menuEl.setAttribute("aria-label", "Annotation-Menü");
+       
+       // Feste Aktionen (Edit + Delete)
+       var actionsHtml = 
+         '<div class="forensic-hover-actions" role="group" aria-label="Aktionen">' +
+           '<button class="forensic-hover-btn" data-action="edit" aria-label="Annotation bearbeiten">✏️</button>' +
+           '<button class="forensic-hover-btn" data-action="delete" aria-label="Annotation löschen">🗑️</button>' +
+         '</div>';
+       
+       // Kategorie-Container mit allen 6 Buttons (OHNE Overlay hier)
+       var catsHtml = '<div class="forensic-hover-cats" role="group" aria-label="Kategorie auswählen">';
+       
+       ForensicToolbar.config.CATEGORIES.forEach(function(c) {
+         var isActive = (c.id === activeCatId);
+         var activeClass = isActive ? ' forensic-hover-cat-wrapper--active' : '';
+         catsHtml += 
+           '<div class="forensic-hover-cat-wrapper' + activeClass + '" data-cat-id="' + c.id + '" ' +
+           'role="menuitem" tabindex="-1" aria-label="Kategorie ' + c.label + '">' +
+          '<span class="forensic-cat-icon" aria-hidden="true">' + c.icon + '</span>' +
+          '<span class="forensic-cat-label">' + c.label + '</span>' +
+           '</div>';
+       });
+       
+       catsHtml += '</div>';
+       
+       _menuEl.innerHTML = actionsHtml + catsHtml;
+       
+       // Positionierung (nach Ihrer Korrektur: x und y direkt)
+       _menuEl.style.left = x + "px";
+       _menuEl.style.top  = y + "px";
+       document.body.appendChild(_menuEl);
+       
+       // Events binden
+       _bindHoverMenuEvents(_menuEl, _targetAnn);
+     }
 
     function _bindHoverMenuEvents(menuEl, ann) {
-      // Edit / Delete Buttons
-      var actionBtns = menuEl.querySelectorAll("[data-action]");
-      actionBtns.forEach(function(btn) {
-        btn.addEventListener("click", function(e) {
+      // Event-Delegation: Ein einziger Listener auf dem Menü fängt alle Klicks ab
+      menuEl.addEventListener("click", function(e) {
+        // Edit-Button
+        var editBtn = e.target.closest("[data-action='edit']");
+        if (editBtn) {
           e.stopPropagation();
-          var action = btn.dataset.action;
-          if (action === "edit") {
-        _hideMenu();
-        AnnotationPopupModule.open(ann);
-          } else if (action === "delete") {
-        _hideMenu();
-        _deleteAnnotation(ann);
+          _hideMenu();
+          AnnotationPopupModule.open(ann);
+          return;
+        }
+        
+        // Delete-Button
+        var deleteBtn = e.target.closest("[data-action='delete']");
+        if (deleteBtn) {
+          e.stopPropagation();
+          _hideMenu();
+          _deleteAnnotation(ann);
+          return;
+        }
+        
+        // Kategorie-Wrapper
+        var catWrapper = e.target.closest(".forensic-hover-cat-wrapper");
+        if (!catWrapper) return;
+        
+        e.stopPropagation();
+        var isExpanded = menuEl.classList.contains("forensic-hover-menu--expanded");
+        var clickedCatId = catWrapper.dataset.catId;
+        var isActive = catWrapper.classList.contains("forensic-hover-cat-wrapper--active");
+        
+        // Fall 1: Im kompakten Zustand -> nur der aktive Button ist sichtbar
+        if (!isExpanded) {
+          // Nur wenn der geklickte Wrapper der aktive ist, expandieren
+          if (isActive) {
+        _expandCategoryMenu(menuEl, ann);
           }
-        });
-      });
-      
-      // Kategorie-Wrapper
-      var catWrappers = menuEl.querySelectorAll(".forensic-hover-cat-wrapper");
-      var activeWrapper = menuEl.querySelector(".forensic-hover-cat-wrapper--active");
-      var catsContainer = menuEl.querySelector(".forensic-hover-cats");
-      
-      // Klick auf aktiven Button (im kompakten Zustand) → expandieren
-      if (activeWrapper && !menuEl.classList.contains("forensic-hover-menu--expanded")) {
-        activeWrapper.addEventListener("click", function(e) {
-          e.stopPropagation();
-          _expandCategoryMenu(menuEl, ann);
-        });
-      }
-      
-      // Klick auf beliebigen Kategorie-Button (auch im expandierten Zustand)
-      catWrappers.forEach(function(wrapper) {
-        wrapper.addEventListener("click", function(e) {
-          e.stopPropagation();
-          var newCatId = wrapper.dataset.catId;
-          var wasExpanded = menuEl.classList.contains("forensic-hover-menu--expanded");
-          
-          if (newCatId !== ann.category) {
-        _changeAnnotationCategory(ann, newCatId);
-          }
-          
-          if (wasExpanded) {
+          return;
+        }
+        
+        // Fall 2: Im expandierten Zustand
+        if (isExpanded) {
+          // Wenn der geklickte Wrapper der aktive ist -> nur einklappen
+          if (isActive) {
         _collapseCategoryMenu(menuEl);
+        return;
           }
-        });
+          
+          // Andernfalls: Kategorie ändern
+          if (clickedCatId !== ann.category) {
+        _changeAnnotationCategory(ann, clickedCatId);
+          }
+          _collapseCategoryMenu(menuEl);
+        }
       });
       
-      // Tastatursteuerung
-      _setupHoverKeyboard(menuEl, ann, catsContainer, catWrappers);
-    }
+      // Tastatursteuerung bleibt bestehen
+      _setupHoverKeyboard(menuEl, ann, menuEl.querySelector(".forensic-hover-cats"), menuEl.querySelectorAll(".forensic-hover-cat-wrapper"));
+    } 
 
     function _expandCategoryMenu(menuEl, ann) {
       if (menuEl.classList.contains("forensic-hover-menu--expanded")) return;
@@ -2424,18 +2428,12 @@
       menuEl.classList.add("forensic-hover-menu--expanded");
       menuEl.setAttribute("aria-label", "Annotation-Menü – Kategorieauswahl erweitert");
       
-      // Focus auf den aktiven Button setzen
+      // Fokus auf den aktiven Button setzen (für Tastatur)
       var activeWrapper = menuEl.querySelector(".forensic-hover-cat-wrapper--active");
       if (activeWrapper) {
         activeWrapper.setAttribute("tabindex", "0");
         activeWrapper.focus();
       }
-      
-      // Alle anderen Wrapper fokussierbar machen
-      var allWrappers = menuEl.querySelectorAll(".forensic-hover-cat-wrapper");
-      allWrappers.forEach(function(w) {
-        w.setAttribute("tabindex", "0");
-      });
     }
 
     function _collapseCategoryMenu(menuEl) {
@@ -2444,7 +2442,7 @@
       menuEl.classList.remove("forensic-hover-menu--expanded");
       menuEl.setAttribute("aria-label", "Annotation-Menü");
       
-      // Tabindex zurücksetzen: nur der aktive Button soll fokussierbar sein
+      // Tabindex zurücksetzen: nur der aktive Button fokussierbar
       var allWrappers = menuEl.querySelectorAll(".forensic-hover-cat-wrapper");
       allWrappers.forEach(function(w) {
         w.setAttribute("tabindex", "-1");
@@ -2453,6 +2451,8 @@
       var activeWrapper = menuEl.querySelector(".forensic-hover-cat-wrapper--active");
       if (activeWrapper) {
         activeWrapper.setAttribute("tabindex", "0");
+        // Optional: Fokus zurücksetzen auf den aktiven Button (nicht zwingend)
+        // activeWrapper.focus();
       }
     }
 
@@ -2529,6 +2529,31 @@
       });
       
       AccessibilityModule.announce("Kategorie geändert von " + oldCatId + " zu " + newCatId);
+
+      // *** NEU: Aktualisiere das Hover-Menü, falls es noch offen ist ***
+      if (_menuEl) {
+        // Hole den aktiven Wrapper im aktuellen Menü
+        var oldActiveWrapper = _menuEl.querySelector('.forensic-hover-cat-wrapper--active');
+        if (oldActiveWrapper) {
+          oldActiveWrapper.classList.remove('forensic-hover-cat-wrapper--active');
+        }
+        
+        // Finde den neuen Wrapper anhand der data-cat-id
+        var newActiveWrapper = _menuEl.querySelector('.forensic-hover-cat-wrapper[data-cat-id="' + newCatId + '"]');
+        if (newActiveWrapper) {
+          newActiveWrapper.classList.add('forensic-hover-cat-wrapper--active');
+          newActiveWrapper.style.position = 'relative';
+        }
+        
+        // Aktualisiere die Tab-Indizes (nur der neue aktive Button soll fokussierbar sein im kompakten Zustand)
+        var allWrappers = _menuEl.querySelectorAll('.forensic-hover-cat-wrapper');
+        allWrappers.forEach(function(w) {
+          w.setAttribute('tabindex', '-1');
+        });
+        if (newActiveWrapper) {
+          newActiveWrapper.setAttribute('tabindex', '0');
+        }
+      }        
     }
 	  
     /**

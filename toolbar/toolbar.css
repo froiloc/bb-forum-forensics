@@ -1472,6 +1472,7 @@ body {
   position: absolute;
   display: flex;
   align-items: center;
+  gap: 1px;
   padding: 4px 6px;
   background: #1a1f2e;
   border: 1px solid #3a4060;
@@ -1483,15 +1484,16 @@ body {
 .forensic-hover-actions {
   display: flex;
   gap: 2px;
-  margin-right: 1px;
 }
 
 .forensic-hover-cats {
   display: flex;
   align-items: center;
+  gap: 0;
+  position: relative;
 }
 
-/* Kategorie-Wrapper – Grundstil */
+/* Basisstil für alle Kategorie-Wrapper */
 .forensic-hover-cat-wrapper {
   display: inline-flex;
   align-items: center;
@@ -1500,8 +1502,8 @@ body {
   width: 0;
   overflow: hidden;
   background: #252b3e;
-  border: 2px solid #2d3550;
-  border-radius: 5px;
+  border: 1px solid #2d3550;
+  border-radius: 4px;
   font-size: 11px;
   font-weight: 600;
   color: #c8d0e8;
@@ -1509,95 +1511,140 @@ body {
   white-space: nowrap;
   transition: width 0.2s cubic-bezier(0.2, 0.9, 0.4, 1.1),
               padding 0.2s ease,
-              margin 0.2s ease,
-              opacity 0.15s ease;
+              border-width 0.1s ease;
   opacity: 0;
   pointer-events: none;
-}
-
-.forensic-hover-cat-wrapper:not(.forensic-hover-cat-wrapper--active) {
-  background: #252b3e;
-  border: 0;
-  border-radius: 3px;
-  color: #c8d0e8;
-  font-size: 17px;
-  padding: 4px 0;
-  cursor: pointer;
-  margin: 0 0;
+  flex-shrink: 0;
 }
 
 /* Aktiver Wrapper im kompakten Zustand: sichtbar */
 .forensic-hover-cat-wrapper--active {
   width: auto;
-  border: 1px solid #2d3550;
-  border-radius: 3px;
-  padding: 4px 3px;
-  cursor: pointer;
-  margin: 0 1px;
+  padding: 3px 6px;
   opacity: 1;
   pointer-events: auto;
   border-color: currentColor;
+  border: 1px solid #2d3550;
 }
 
 /* Expandierter Zustand: alle Wrapper sichtbar */
 .forensic-hover-menu--expanded .forensic-hover-cat-wrapper {
   width: auto;
-  padding: 4px 6px;
-  margin: 0;
+  padding: 3px 6px;
   opacity: 1;
   pointer-events: auto;
+  margin: 0 1px;
+  border: 1px solid #2d3550;
 }
 
 /* Aktiver Button im expandierten Zustand: hervorgehoben */
 .forensic-hover-menu--expanded .forensic-hover-cat-wrapper--active {
-  box-shadow: 0 0 0 2px currentColor;
-  background: rgba(currentColor, 0.13);
+  box-shadow: 0 0 0 1px currentColor;
+  background: rgba(from currentColor r g b, 0.15);
 }
 
-/* Hover-Effekt auf Kategorie-Buttons */
-.forensic-hover-cat-wrapper:hover {
-  transform: translateY(-1px);
+/* ==========================================================================
+   Kategorie-Farben im Hover-Menü (angepasst an Toolbar)
+   ========================================================================== */
+
+/* PER (1. Kind) */
+.forensic-hover-cats .forensic-hover-cat-wrapper:nth-child(1) {
+  border-color: #f5c84272;
+}
+.forensic-hover-cats .forensic-hover-cat-wrapper:nth-child(1).forensic-hover-cat-wrapper--active {
+  background: rgba(245, 200, 66, 0.13);
+}
+.forensic-hover-menu:not(.forensic-hover-menu--expanded) .forensic-hover-cats .forensic-hover-cat-wrapper:nth-child(1).forensic-hover-cat-wrapper--active, .forensic-hover-cats .forensic-hover-cat-wrapper:nth-child(1):hover {
+  border-color: #f5c842;
+}
+
+/* LOC (2. Kind) */
+.forensic-hover-cats .forensic-hover-cat-wrapper:nth-child(2) {
+  border-color: #4f8ef772;
+}
+.forensic-hover-cats .forensic-hover-cat-wrapper:nth-child(2).forensic-hover-cat-wrapper--active {
+  background: rgba(79, 142, 247, 0.13);
+}
+.forensic-hover-menu:not(.forensic-hover-menu--expanded) .forensic-hover-cats .forensic-hover-cat-wrapper:nth-child(2).forensic-hover-cat-wrapper--active, .forensic-hover-cats .forensic-hover-cat-wrapper:nth-child(2):hover {
+  border-color: #4f8ef7;
+}
+
+/* 176 (3. Kind) */
+.forensic-hover-cats .forensic-hover-cat-wrapper:nth-child(3) {
+  border-color: #e8404072;
+}
+.forensic-hover-cats .forensic-hover-cat-wrapper:nth-child(3).forensic-hover-cat-wrapper--active {
+  background: rgba(232, 64, 64, 0.13);
+}
+.forensic-hover-menu:not(.forensic-hover-menu--expanded) .forensic-hover-cats .forensic-hover-cat-wrapper:nth-child(3).forensic-hover-cat-wrapper--active, .forensic-hover-cats .forensic-hover-cat-wrapper:nth-child(3):hover {
+  border-color: #e84040;
+}
+
+/* 184 (4. Kind) */
+.forensic-hover-cats .forensic-hover-cat-wrapper:nth-child(4) {
+  border-color: #c040e872;
+}
+.forensic-hover-cats .forensic-hover-cat-wrapper:nth-child(4).forensic-hover-cat-wrapper--active {
+  background: rgba(192, 64, 232, 0.13);
+}
+.forensic-hover-menu:not(.forensic-hover-menu--expanded) .forensic-hover-cats .forensic-hover-cat-wrapper:nth-child(4).forensic-hover-cat-wrapper--active, .forensic-hover-cats .forensic-hover-cat-wrapper:nth-child(4):hover {
+  border-color: #c040e8;
+}
+
+/* OPF (5. Kind) */
+.forensic-hover-cats .forensic-hover-cat-wrapper:nth-child(5) {
+  border-color: #e8704072;
+}
+.forensic-hover-cats .forensic-hover-cat-wrapper:nth-child(5).forensic-hover-cat-wrapper--active {
+  background: rgba(232, 112, 64, 0.13);
+}
+.forensic-hover-menu:not(.forensic-hover-menu--expanded) .forensic-hover-cats .forensic-hover-cat-wrapper:nth-child(5).forensic-hover-cat-wrapper--active, .forensic-hover-cats .forensic-hover-cat-wrapper:nth-child(5):hover {
+  border-color: #e87040;
+}
+
+/* SON (6. Kind) */
+.forensic-hover-cats .forensic-hover-cat-wrapper:nth-child(6) {
+  border-color: #40c8a072;
+}
+.forensic-hover-cats .forensic-hover-cat-wrapper:nth-child(6).forensic-hover-cat-wrapper--active {
+  background: rgba(64, 200, 160, 0.13);
+}
+.forensic-hover-menu:not(.forensic-hover-menu--expanded) .forensic-hover-cats .forensic-hover-cat-wrapper:nth-child(6).forensic-hover-cat-wrapper--active, .forensic-hover-cats .forensic-hover-cat-wrapper:nth-child(6):hover {
+  border-color: #40c8a0;
+}
+
+.forensic-hover-menu:not(.forensic-hover-menu--expanded) .forensic-hover-cat-wrapper:not(.forensic-hover-cat-wrapper--active) {
+  border: 0;
+}
+
+/* Hover-Effekt */
+.forensic-hover-cat-wrapper:hover, .forensic-hover-actions .forensic-hover-btn:hover {
   background: #2d3550;
+  border-color: #4f8ef7;
+  transform: translateY(-1px);
 }
 
-/* Icons und Labels innerhalb der Kategorie-Buttons */
+/* Icons und Labels */
 .forensic-cat-icon {
-  font-size: 17px;
+  font-size: 11px;
+  line-height: 1;
 }
 
 .forensic-cat-label {
-  font-size: 9px;
+  font-size: 8px;
   font-family: monospace;
   font-weight: 700;
 }
 
-/* Overlay (Pfeil) – absolut positioniert über dem aktiven Button */
-.forensic-hover-cat-overlay {
-  position: absolute;
-  left: 125px;
-  top: 8px;
-  font-size: 19px;
-  color: white;
-  border-radius: 10px;
-  padding: 0 2px;
-  opacity: 0.75;
-  pointer-events: none;
-  transition: opacity 0.1s ease, visibility 0.1s ease;
-}
-
-/* Im expandierten Zustand Overlay ausblenden */
-.forensic-hover-menu--expanded .forensic-hover-cat-overlay {
-  opacity: 0;
-  visibility: hidden;
-}
-
-/* Fokus-Stil für Tastatursteuerung */
-.forensic-hover-cat-wrapper:focus-visible {
-  outline: 2px solid #4f8ef7;
-  outline-offset: 2px;
-}
-
+/* Fokus-Stil */
+.forensic-hover-cat-wrapper:focus-visible,
 .forensic-hover-btn:focus-visible {
   outline: 2px solid #4f8ef7;
   outline-offset: 2px;
+}
+
+.forensic-hover-btn,
+.forensic-hover-cat-wrapper {
+  height: 28px;
+  box-sizing: border-box;
 }
