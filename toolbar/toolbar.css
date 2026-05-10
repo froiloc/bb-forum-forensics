@@ -702,7 +702,6 @@ body {
   border-radius: 4px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
   display: flex;
-  gap: 2px;
   padding: 3px;
 }
 
@@ -1463,4 +1462,142 @@ body {
 
 .forensic-ts {
     display: none;
+}
+
+/* ==========================================================================
+   Hover-Menü erweiterte Kategorieauswahl (Punkt 3)
+   ========================================================================== */
+
+.forensic-hover-menu {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  padding: 4px 6px;
+  background: #1a1f2e;
+  border: 1px solid #3a4060;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  z-index: 9999;
+}
+
+.forensic-hover-actions {
+  display: flex;
+  gap: 2px;
+  margin-right: 1px;
+}
+
+.forensic-hover-cats {
+  display: flex;
+  align-items: center;
+}
+
+/* Kategorie-Wrapper – Grundstil */
+.forensic-hover-cat-wrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 0;
+  overflow: hidden;
+  background: #252b3e;
+  border: 2px solid #2d3550;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #c8d0e8;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: width 0.2s cubic-bezier(0.2, 0.9, 0.4, 1.1),
+              padding 0.2s ease,
+              margin 0.2s ease,
+              opacity 0.15s ease;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.forensic-hover-cat-wrapper:not(.forensic-hover-cat-wrapper--active) {
+  background: #252b3e;
+  border: 0;
+  border-radius: 3px;
+  color: #c8d0e8;
+  font-size: 17px;
+  padding: 4px 0;
+  cursor: pointer;
+  margin: 0 0;
+}
+
+/* Aktiver Wrapper im kompakten Zustand: sichtbar */
+.forensic-hover-cat-wrapper--active {
+  width: auto;
+  border: 1px solid #2d3550;
+  border-radius: 3px;
+  padding: 4px 3px;
+  cursor: pointer;
+  margin: 0 1px;
+  opacity: 1;
+  pointer-events: auto;
+  border-color: currentColor;
+}
+
+/* Expandierter Zustand: alle Wrapper sichtbar */
+.forensic-hover-menu--expanded .forensic-hover-cat-wrapper {
+  width: auto;
+  padding: 4px 6px;
+  margin: 0;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Aktiver Button im expandierten Zustand: hervorgehoben */
+.forensic-hover-menu--expanded .forensic-hover-cat-wrapper--active {
+  box-shadow: 0 0 0 2px currentColor;
+  background: rgba(currentColor, 0.13);
+}
+
+/* Hover-Effekt auf Kategorie-Buttons */
+.forensic-hover-cat-wrapper:hover {
+  transform: translateY(-1px);
+  background: #2d3550;
+}
+
+/* Icons und Labels innerhalb der Kategorie-Buttons */
+.forensic-cat-icon {
+  font-size: 17px;
+}
+
+.forensic-cat-label {
+  font-size: 9px;
+  font-family: monospace;
+  font-weight: 700;
+}
+
+/* Overlay (Pfeil) – absolut positioniert über dem aktiven Button */
+.forensic-hover-cat-overlay {
+  position: absolute;
+  left: 125px;
+  top: 8px;
+  font-size: 19px;
+  color: white;
+  border-radius: 10px;
+  padding: 0 2px;
+  opacity: 0.75;
+  pointer-events: none;
+  transition: opacity 0.1s ease, visibility 0.1s ease;
+}
+
+/* Im expandierten Zustand Overlay ausblenden */
+.forensic-hover-menu--expanded .forensic-hover-cat-overlay {
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* Fokus-Stil für Tastatursteuerung */
+.forensic-hover-cat-wrapper:focus-visible {
+  outline: 2px solid #4f8ef7;
+  outline-offset: 2px;
+}
+
+.forensic-hover-btn:focus-visible {
+  outline: 2px solid #4f8ef7;
+  outline-offset: 2px;
 }
