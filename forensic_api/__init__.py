@@ -136,6 +136,7 @@ class ForensicApi:
         self._trace_sequence   = None  # [KN-7]
         self._placeholders    = None  # [B6]
         self._templates_ep    = None  # [B6]
+        self._knownusers      = None  # [BS3 Bug 2.78 Build 175]
 
     def dispatch(
         self,
@@ -173,6 +174,16 @@ class ForensicApi:
                 self._method_not_allowed(handler)
                 return
             self._get_status().handle(handler)
+            return
+
+        # /_forensic/knownusers (GET) [BS3 Bug 2.78 Build 175]
+        # Liefert alle bekannten Beschuldigten-Benutzer fuer das
+        # Annotations-Popup (User-Wechsel-Schaltfläche).
+        if url_path == "/_forensic/knownusers":
+            if method not in ("GET", "HEAD"):
+                self._method_not_allowed(handler)
+                return
+            self._get_knownusers().handle(handler)
             return
 
         # /_forensic/viewport (POST)
@@ -691,3 +702,10 @@ class ForensicApi:
             from forensic_api.trace_sequence import TraceSequenceEndpoint
             self._trace_sequence = TraceSequenceEndpoint(self._bundle, self._context, self._config)
         return self._trace_sequence
+
+    def _get_knownusers(self):
+        """[BS3 Bug 2.78] Lazy-Init fuer KnownUsersEndpoint. Beleg: Projektgespraech 2026-05-11."""
+        if self._knownusers is None:
+            from forensic_api.knownusers import KnownUsersEndpoint
+            self._knownusers = KnownUsersEndpoint(self._bundle, self._context, self._config)
+        return self._knownusers

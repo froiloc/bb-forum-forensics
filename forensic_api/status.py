@@ -64,16 +64,22 @@ class StatusEndpoint:
             page_count       = -1
             annotation_count = -1
 
+        # Beleg: Projektgespräch — Bug 2.67: investigator_username war nicht im
+        # Status-Response enthalten. toolbar.js nutzte fälschlicherweise
+        # s.username (= Beschuldigter) als investigatorUsername statt
+        # s.investigator_username (= Ermittler, z.B. paul).
+        # Build 175: investigator_username aus context.investigator_username ergänzt.
         status = {
-            "mode":              self._context.mode,
-            "user_id":           self._context.user_id,
-            "username":          self._context.username,
-            "investigator_id":   self._context.investigator_id,
-            "page_count":        page_count,
-            "annotation_count":  annotation_count,
-            "forum_hostname":    self._bundle.forensic.get_meta("domainname") or "",
-            "ts":                int(time.time()),
-            "version":           SERVER_VERSION,
+            "mode":                  self._context.mode,
+            "user_id":               self._context.user_id,
+            "username":              self._context.username,
+            "investigator_id":       self._context.investigator_id,
+            "investigator_username": getattr(self._context, "investigator_username", ""),
+            "page_count":            page_count,
+            "annotation_count":      annotation_count,
+            "forum_hostname":        self._bundle.forensic.get_meta("domainname") or "",
+            "ts":                    int(time.time()),
+            "version":               SERVER_VERSION,
         }
 
         body = json.dumps(status, ensure_ascii=False).encode("utf-8")

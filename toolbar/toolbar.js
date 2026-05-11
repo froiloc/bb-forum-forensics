@@ -2,7 +2,24 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 082 · 2026-04-27
+ * Version: v0.1.0 · Build: 175 · 2026-05-11
+ *
+ * Änderungen Build 175 (BS3):
+ *   Bug 2.67: investigatorUsername aus s.investigator_username (Ermittler),
+ *     nicht mehr aus s.username (Beschuldigter). status.py liefert jetzt
+ *     investigator_username als eigenes Feld.
+ *   Bug 2.76: AnnotationPopupModule — Kategorie-Dropdown: Kategorie
+ *     nachträglich änderbar. Dropdown zeigt Icon+Label; Badge sofort aktuell.
+ *   Bug 2.77: AnnotationPopupModule — Forenbenutzer-Badge: user_id+username
+ *     des Beschuldigten wird im Popup angezeigt.
+ *   Bug 2.78: AnnotationPopupModule — Benutzer-Wechsel-Panel: Annotation
+ *     einem anderen Beschuldigten zuordnen. Benutzer kommen von
+ *     GET /_forensic/knownusers (lazy, gecacht). Neuer Endpunkt knownusers.py.
+ *   Bug 2.80: MinimapModule — contains_traces-Klasse für Spur-Elemente
+ *     (initial pulsierende Umrandung via CSS-Animation). DOM-basierter
+ *     Tooltip statt generischem Token-Text (_buildTraceTooltip).
+ *   _state.username + _state.user_id aus /status geladen (für Popup).
+ *   API_KNOWN_USERS: neuer Config-Eintrag.
  *
  * Änderungen Build 077:
  *   Sektion 2: Label "Markierung" ergänzt. Ann.-Buttons (◄/►) von Sektion 3
@@ -336,6 +353,8 @@
     API_SEARCH:           "/_forensic/search",
     // Spur-Navigation (Build 072, OP-KN-7)
     API_TRACE_SEQUENCE:   "/_forensic/trace_sequence",
+    // Build 175 (Bug 2.78): Bekannte Beschuldigte-Benutzer
+    API_KNOWN_USERS:      "/_forensic/knownusers",
 
     // Annotationskategorien (Reihenfolge = Tastenkürzel 1-6)
     CATEGORIES: [
@@ -2071,24 +2090,53 @@
   // ===========================================================================
   // PHASE 6: AnnotationPopupModule — Schwebendes Editor-Feld
   // ===========================================================================
+  //
+  // Build 175 (BS3):
+  //   Bug 2.76: Kategorie-Dropdown im Popup — Kategorie nachträglich änderbar.
+  //             Dropdown zeigt Icon + Label jeder Kategorie; Auswahl aktualisiert
+  //             _currentAnn.category und den Titel-Badge sofort.
+  //   Bug 2.77: Forenbenutzer-Anzeige im Popup — zeigt user_id + username des
+  //             Beschuldigten, zu dem die Annotation gehört.
+  //   Bug 2.78: Benutzer-Wechsel-Schaltfläche — Annotation einem anderen
+  //             bekannten Beschuldigten zuordnen. Lädt bekannte Benutzer per
+  //             GET /_forensic/knownusers (lazy, wird gecacht).
+  //             Bei Wechsel: _currentAnn.targetUserId wird gesetzt; server-side
+  //             schreibt die Annotation in coordinator.db statt evidence_db.
+  //   Beleg: Projektgespräch 2026-05-11
+  // ===========================================================================
   var AnnotationPopupModule = (function () {
-    var _currentAnn = null;
-    var _popupEl    = null;
+    'use strict';
+
+    var _currentAnn   = null;  // Aktuell bearbeitete Annotation
+    var _popupEl      = null;  // DOM-Element des Popups
+
+    // Cache für bekannte Benutzer (Bug 2.78) — wird einmalig geladen
+    // Format: [{user_id: 538299, username: "uid_538299"}, ...]
+    var _knownUsersCache = null;   // null = noch nicht geladen
+    var _knownUsersLoading = false; // Ladevorgang läuft
+
+    // =========================================================================
+    // Öffentliche API
+    // =========================================================================
 
     function open(ann) {
       _currentAnn = ann;
       _render(ann);
+      // Bekannte Benutzer vorladen (Bug 2.78) — im Hintergrund, kein Blockieren
+      _preloadKnownUsers();
     }
 
     function close(save) {
       if (save && _currentAnn) {
-        _currentAnn.text = _getFieldValue("forensic-popup-text");
-        _currentAnn.tags = _parseTags(_getFieldValue("forensic-popup-tags"));
+        _currentAnn.text     = _getFieldValue("forensic-popup-text");
+        _currentAnn.tags     = _parseTags(_getFieldValue("forensic-popup-tags"));
+        // Bug 2.76: Kategorie aus Dropdown übernehmen
+        var selCat = _getFieldValue("forensic-popup-category");
+        if (selCat) { _currentAnn.category = selCat; }
         AnnotationStoreModule.syncAnnotation(_currentAnn);
         // Semantisch korrekt: "created" nur bei neuen Annotationen (noch keine
         // Server-ID), "updated" bei bereits persistierten.
-        // Beleg: OP-KN-9 Build 059 — Korrektur für konsistente Event-Semantik.
-        // Faktischer Unterschied: KN-Fortschrittsberechnung unterscheidet beide.
+        // Beleg: OP-KN-9 Build 059
         var evtName = _currentAnn.id ? "annotation:updated" : "annotation:created";
         ForensicToolbar.events.emit(evtName, _currentAnn);
       } else if (!save && _currentAnn && _currentAnn.syncState === "pending") {
@@ -2105,11 +2153,31 @@
       _currentAnn = null;
     }
 
+    // =========================================================================
+    // Rendering
+    // =========================================================================
+
     function _render(ann) {
       if (_popupEl) _popupEl.remove();
 
-      var cat  = _getCat(ann.category);
+      var cat      = _getCat(ann.category);
       var catLabel = cat ? (cat.icon + " " + cat.label) : ann.category;
+      var catColor = cat ? cat.color : "#aaa";
+
+      // Bug 2.77: Forenbenutzer aus State lesen
+      // _state.username = Beschuldigter (forum username), user_id = forum user_id
+      var forumUser    = _state.username || ("uid_" + _state.user_id) || "—";
+      var forumUserId  = _state.user_id  || "—";
+
+      // Kategorie-Optionen für Dropdown (Bug 2.76)
+      var catOptions = "";
+      var cats = ForensicToolbar.config.CATEGORIES || [];
+      for (var ci = 0; ci < cats.length; ci++) {
+        var c = cats[ci];
+        var sel = (c.id === ann.category) ? ' selected' : '';
+        catOptions += '<option value="' + _esc(c.id) + '"' + sel + '>' +
+          _esc(c.icon + " " + c.label) + '</option>';
+      }
 
       _popupEl = document.createElement("div");
       _popupEl.id = "forensic-annotation-popup";
@@ -2118,25 +2186,62 @@
       _popupEl.setAttribute("aria-labelledby", "forensic-popup-title");
       _popupEl.className = "forensic-popup";
       _popupEl.innerHTML =
+        // --- Header ---
         '<div class="forensic-popup-header">' +
         '<span id="forensic-popup-title" class="forensic-popup-title">' +
-        'Annotation · <span style="color:' + (cat ? cat.color : "#aaa") + '">' +
+        'Annotation · <span id="forensic-popup-cat-badge" style="color:' + catColor + '">' +
         _esc(catLabel) + '</span></span>' +
         '<button class="forensic-popup-close" aria-label="Schließen" ' +
         'id="forensic-popup-btn-close">✕</button>' +
         '</div>' +
+        // --- Body ---
         '<div class="forensic-popup-body">' +
+
+        // Bug 2.76: Kategorie-Dropdown
+        '<label for="forensic-popup-category" class="forensic-popup-label">Kategorie:</label>' +
+        '<select id="forensic-popup-category" class="forensic-popup-select" ' +
+        'aria-label="Kategorie auswählen">' +
+        catOptions +
+        '</select>' +
+
+        // Bug 2.77: Forenbenutzer-Anzeige
+        '<div class="forensic-popup-user-row">' +
+        '<span class="forensic-popup-label forensic-popup-label--inline">Benutzer:</span>' +
+        '<span id="forensic-popup-user-display" class="forensic-popup-user-badge" ' +
+        'title="Forum-User-ID: ' + _esc(String(forumUserId)) + '">' +
+        _esc(forumUser) + '</span>' +
+        // Bug 2.78: Wechsel-Schaltfläche
+        '<button id="forensic-popup-btn-change-user" ' +
+        'class="forensic-btn forensic-btn-xs forensic-btn-secondary" ' +
+        'title="Annotation einem anderen Beschuldigten zuordnen" ' +
+        'aria-label="Benutzer wechseln">↔</button>' +
+        '</div>' +
+        // Benutzer-Wechsel-Panel (Bug 2.78) — initial versteckt
+        '<div id="forensic-popup-user-panel" class="forensic-popup-user-panel" ' +
+        'style="display:none" aria-live="polite">' +
+        '<span class="forensic-popup-hint">Lade bekannte Benutzer…</span>' +
+        '</div>' +
+
+        // Notiz
         '<label for="forensic-popup-text" class="forensic-popup-label">Notiz (optional):</label>' +
         '<textarea id="forensic-popup-text" class="forensic-popup-textarea" ' +
         'aria-label="Ermittlungsnotiz eingeben" rows="3">' + _esc(ann.text) + '</textarea>' +
+
+        // Tags
         '<label for="forensic-popup-tags" class="forensic-popup-label">Tags (mit Komma trennen):</label>' +
         '<input type="text" id="forensic-popup-tags" class="forensic-popup-input" ' +
-        'aria-label="Tags eingeben, mit Komma getrennt" value="' + _esc((ann.tags || []).join(", ")) + '">' +
-        '<div id="forensic-popup-tag-suggestion" class="forensic-popup-suggestion" style="display:none"></div>' +
+        'aria-label="Tags eingeben, mit Komma getrennt" value="' +
+        _esc((ann.tags || []).join(", ")) + '">' +
+        '<div id="forensic-popup-tag-suggestion" class="forensic-popup-suggestion" ' +
+        'style="display:none"></div>' +
+
+        // Markierter Text (wenn vorhanden)
         (ann.selection ?
           '<label class="forensic-popup-label">Markierter Text:</label>' +
           '<div class="forensic-popup-seltext">' + _esc(ann.selection.textContent) + '</div>' : "") +
+
         '</div>' +
+        // --- Footer ---
         '<div class="forensic-popup-footer">' +
         '<button id="forensic-popup-btn-cancel" class="forensic-btn forensic-btn-secondary">Abbrechen</button>' +
         '<button id="forensic-popup-btn-save" class="forensic-btn forensic-btn-primary">💾 Speichern</button>' +
@@ -2149,17 +2254,42 @@
       var txtArea = document.getElementById("forensic-popup-text");
       if (txtArea) txtArea.focus();
 
-      // Event-Listener
+      // --- Event-Listener ---
+
       document.getElementById("forensic-popup-btn-close").addEventListener("click", function () { close(false); });
       document.getElementById("forensic-popup-btn-cancel").addEventListener("click", function () { close(false); });
       document.getElementById("forensic-popup-btn-save").addEventListener("click", function () { close(true); });
+
+      // Bug 2.76: Kategorie-Dropdown — Badge sofort aktualisieren bei Änderung
+      var catSelect = document.getElementById("forensic-popup-category");
+      if (catSelect) {
+        catSelect.addEventListener("change", function () {
+          var newCat    = catSelect.value;
+          var newCatObj = _getCat(newCat);
+          var badge     = document.getElementById("forensic-popup-cat-badge");
+          if (badge && newCatObj) {
+            badge.textContent = newCatObj.icon + " " + newCatObj.label;
+            badge.style.color = newCatObj.color;
+          }
+          if (_currentAnn) { _currentAnn.category = newCat; }
+          _dbg("[Popup] Kategorie geändert auf:", newCat);
+        });
+      }
+
+      // Bug 2.78: Benutzer-Wechsel-Schaltfläche
+      var btnChangeUser = document.getElementById("forensic-popup-btn-change-user");
+      if (btnChangeUser) {
+        btnChangeUser.addEventListener("click", function () {
+          _toggleUserPanel();
+        });
+      }
 
       // Levenshtein-Vorschlag beim Tag-Tippen (§19.2 Bauplan)
       var tagInput = document.getElementById("forensic-popup-tags");
       if (tagInput) {
         tagInput.addEventListener("input", function () {
-          var last = (tagInput.value.split(",").pop() || "").trim();
-          var sug  = ForensicToolbar.config.suggestTag(last, []);
+          var last  = (tagInput.value.split(",").pop() || "").trim();
+          var sug   = ForensicToolbar.config.suggestTag(last, []);
           var sugEl = document.getElementById("forensic-popup-tag-suggestion");
           if (sugEl && sug && sug !== last) {
             sugEl.style.display = "block";
@@ -2180,7 +2310,7 @@
         if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { close(true); }
         if (e.key === "Tab") {
           var focusable = _popupEl.querySelectorAll(
-            "button, textarea, input, [tabindex]:not([tabindex='-1'])"
+            "button, textarea, input, select, [tabindex]:not([tabindex='-1'])"
           );
           if (!focusable.length) return;
           var first = focusable[0];
@@ -2194,12 +2324,156 @@
       });
     }
 
+    // =========================================================================
+    // Bug 2.78: Benutzer-Wechsel-Panel
+    // =========================================================================
+
+    /**
+     * Schaltet das Benutzer-Wechsel-Panel um (auf/zu).
+     * Beim ersten Öffnen: Benutzer aus Cache oder Server laden.
+     */
+    function _toggleUserPanel() {
+      var panel = document.getElementById("forensic-popup-user-panel");
+      if (!panel) return;
+
+      var isOpen = panel.style.display !== "none";
+      if (isOpen) {
+        panel.style.display = "none";
+        _dbg("[Popup] Benutzer-Panel geschlossen");
+        return;
+      }
+
+      // Panel öffnen
+      panel.style.display = "block";
+      _dbg("[Popup] Benutzer-Panel geöffnet");
+
+      if (_knownUsersCache !== null) {
+        // Cache vorhanden → sofort rendern
+        _renderUserPanel(panel, _knownUsersCache);
+      } else if (!_knownUsersLoading) {
+        // Noch nicht geladen → jetzt laden
+        _loadKnownUsers(function (users) {
+          _renderUserPanel(panel, users);
+        });
+      } else {
+        // Ladevorgang läuft bereits → Lade-Hinweis bleibt stehen
+        _dbg("[Popup] Benutzer werden bereits geladen…");
+      }
+    }
+
+    /**
+     * Rendert die Benutzer-Liste in das Panel.
+     * Jeder Eintrag hat einen Button, der die Annotation diesem Benutzer
+     * zuordnet und den Benutzer-Badge im Header aktualisiert.
+     */
+    function _renderUserPanel(panel, users) {
+      if (!users || users.length === 0) {
+        panel.innerHTML = '<span class="forensic-popup-hint">Keine weiteren Benutzer bekannt.</span>';
+        return;
+      }
+
+      var html = '<span class="forensic-popup-label forensic-popup-label--sm">' +
+        'Annotation zuordnen:</span><div class="forensic-popup-user-list">';
+
+      for (var i = 0; i < users.length; i++) {
+        var u       = users[i];
+        var isCurr  = (_currentAnn && _currentAnn.targetUserId === u.user_id);
+        // Aktueller Beschuldigter des aktiven Jobs
+        var isActive = (u.user_id === _state.user_id);
+        var btnCls  = "forensic-btn forensic-btn-xs" +
+          (isCurr || isActive ? " forensic-btn-primary" : " forensic-btn-secondary");
+        var indicator = isActive ? " ✓" : "";
+
+        html += '<button class="' + btnCls + '" ' +
+          'data-uid="' + _esc(String(u.user_id)) + '" ' +
+          'data-uname="' + _esc(u.username) + '" ' +
+          'title="User-ID: ' + _esc(String(u.user_id)) + '">' +
+          _esc(u.username) + indicator + '</button>';
+      }
+      html += '</div>';
+      panel.innerHTML = html;
+
+      // Event-Delegation: Klick auf Benutzer-Button
+      panel.addEventListener("click", function (e) {
+        var btn = e.target.closest("button[data-uid]");
+        if (!btn) return;
+
+        var uid   = parseInt(btn.getAttribute("data-uid"), 10);
+        var uname = btn.getAttribute("data-uname");
+
+        _dbg("[Popup] Benutzer-Wechsel →", uid, uname);
+
+        // Annotation dem neuen Benutzer zuordnen
+        if (_currentAnn) {
+          _currentAnn.targetUserId   = uid;
+          _currentAnn.targetUsername = uname;
+        }
+
+        // Badge aktualisieren
+        var badge = document.getElementById("forensic-popup-user-display");
+        if (badge) {
+          badge.textContent = uname;
+          badge.title       = "Forum-User-ID: " + uid;
+        }
+
+        // Panel schließen
+        var panelEl = document.getElementById("forensic-popup-user-panel");
+        if (panelEl) panelEl.style.display = "none";
+
+        // Alle Buttons neu markieren
+        var allBtns = panel.querySelectorAll("button[data-uid]");
+        allBtns.forEach(function (b) {
+          b.classList.remove("forensic-btn-primary");
+          b.classList.add("forensic-btn-secondary");
+        });
+        btn.classList.remove("forensic-btn-secondary");
+        btn.classList.add("forensic-btn-primary");
+      });
+    }
+
+    /**
+     * Lädt bekannte Benutzer vom Server (Bug 2.78).
+     * Ergebnis wird in _knownUsersCache gespeichert.
+     * callback(users) wird nach erfolgreichem Laden aufgerufen.
+     */
+    function _loadKnownUsers(callback) {
+      _knownUsersLoading = true;
+      _dbg("[Popup] Lade bekannte Benutzer von", ForensicToolbar.config.API_KNOWN_USERS);
+
+      ajaxGet(ForensicToolbar.config.API_KNOWN_USERS)
+        .then(function (data) {
+          _knownUsersCache   = (data && Array.isArray(data.users)) ? data.users : [];
+          _knownUsersLoading = false;
+          _dbg("[Popup] Bekannte Benutzer geladen:", _knownUsersCache.length);
+          if (callback) callback(_knownUsersCache);
+        })
+        .catch(function (err) {
+          _knownUsersLoading = false;
+          _knownUsersCache   = [];  // Leerer Cache verhindert erneute Ladeversuche
+          _dbg("[Popup] Fehler beim Laden der Benutzer:", err);
+          if (callback) callback([]);
+        });
+    }
+
+    /**
+     * Lädt bekannte Benutzer im Hintergrund vor (ohne Callback).
+     * Wird beim Öffnen des Popups aufgerufen damit der Cache bereit ist.
+     */
+    function _preloadKnownUsers() {
+      if (_knownUsersCache !== null || _knownUsersLoading) return;
+      _loadKnownUsers(null);
+    }
+
+    // =========================================================================
+    // Positionierung und Hilfsfunktionen
+    // =========================================================================
+
     /** Popup nah an Markierung positionieren, nie über Toolbar (§8 Bauplan) */
     function _positionPopup(ann) {
       if (!_popupEl) return;
       var tb = ForensicToolbar.config.TOOLBAR_HEIGHT;
-      var pw = _popupEl.offsetWidth || 420;
-      var ph = _popupEl.offsetHeight || 280;
+      var pw = _popupEl.offsetWidth  || 440;
+      var ph = _popupEl.offsetHeight || 340;
       var vw = window.innerWidth;
       var vh = window.innerHeight;
 
@@ -2212,7 +2486,7 @@
       }
 
       _popupEl.style.left = left + "px";
-      _popupEl.style.top  = top + "px";
+      _popupEl.style.top  = top  + "px";
     }
 
     function _getFieldValue(id) {
@@ -2230,6 +2504,7 @@
   })();
 
   // ===========================================================================
+  // PHASE 6: HoverMenuModule  // ===========================================================================
   // PHASE 6: HoverMenuModule — Mini-Werkzeugleiste beim Hover
   // ===========================================================================
   var HoverMenuModule = (function () {
@@ -2812,6 +3087,64 @@
     }
 
     // -------------------------------------------------------------------------
+    // _buildTraceTooltip — Aussagekräftigen Tooltip-Text aus DOM ableiten
+    // (Bug 2.80, Build 175)
+    // -------------------------------------------------------------------------
+    // Strategie:
+    //   topic:<id>  → Linktext des Topic-Links (Titel des Themas)
+    //   p<id>       → erster Textinhalt von .post-entry / .post-content / .post
+    //                  (erste 80 Zeichen), Fallback: "Post #<id>"
+    // Beleg: HTML-Analyse viewtopic.php + viewforum.php — DOM-Selektoren
+    //        für FluxBB/PunBB-Markup. Projektgespräch 2026-05-11.
+    // -------------------------------------------------------------------------
+    function _buildTraceTooltip(elemId, el, isTopic) {
+      _dbg("[Minimap] _buildTraceTooltip:", elemId, "isTopic:", isTopic);
+
+      if (isTopic) {
+        // Topic-Zeile: Linktext des viewtopic.php-Links extrahieren
+        var topicId = elemId.slice(6);
+        var link = el.querySelector('a[href*="viewtopic.php?id=' + topicId + '"]');
+        if (link && link.textContent.trim()) {
+          return "📌 Thema: " + link.textContent.trim().substring(0, 80);
+        }
+        // Fallback: erster Link-Text in der Zeile
+        var anyLink = el.querySelector("a");
+        if (anyLink && anyLink.textContent.trim()) {
+          return "📌 Thema: " + anyLink.textContent.trim().substring(0, 80);
+        }
+        return "📌 Topic-Spur: " + topicId;
+      }
+
+      // Post-Eintrag: Inhalt aus bekannten FluxBB/PunBB-Selektoren
+      // Reihenfolge: spezifischster Selektor zuerst
+      var contentSelectors = [
+        ".post-entry",
+        ".post-body",
+        ".entry",
+        ".postmsg",
+        ".post-content",
+        ".post_body",
+        ".message",
+      ];
+      for (var i = 0; i < contentSelectors.length; i++) {
+        var contentEl = el.querySelector(contentSelectors[i]);
+        if (contentEl) {
+          var txt = (contentEl.textContent || "").replace(/\s+/g, " ").trim();
+          if (txt.length > 0) {
+            return "💬 Post: " + txt.substring(0, 80) + (txt.length > 80 ? "…" : "");
+          }
+        }
+      }
+      // Fallback: Autoren aus .username oder .post-author
+      var authorEl = el.querySelector(".username, .post-author, .author");
+      if (authorEl && authorEl.textContent.trim()) {
+        return "💬 Post von " + authorEl.textContent.trim().substring(0, 40);
+      }
+      // Letzter Fallback
+      return "💬 Post #" + elemId.slice(1);
+    }
+
+    // -------------------------------------------------------------------------
     // _makeBar — Minimap-Balken erstellen und einfügen
     // -------------------------------------------------------------------------
     function _makeBar(pct, color, label, onClick) {
@@ -2841,14 +3174,30 @@
       // Sofort beim Laden sichtbar; zeigen Aktivität des Beschuldigten.
       // "p<id>"      → Post-Container auf viewtopic.php (Farbe: Grau-Blau)
       // "topic:<id>" → Topic-Zeile auf viewforum.php   (Farbe: Grün, Build 082)
+      // Bug 2.80 (Build 175): contains_traces-Klasse an Spur-Elemente vergeben
+      // + DOM-basierter Tooltip statt generischer "Spur: p<id>"-Text.
+      // Beleg: Projektgespräch 2026-05-11
+      //
+      // Tooltip-Strategie (clientseitig, kein Server-Roundtrip):
+      //   topic:<id>  → Titel aus <a href*="viewtopic.php?id=<id>">-Linktext
+      //   p<id>       → Textvorschau aus .post-content (erste 80 Zeichen)
+      //
+      // contains_traces-Klasse: initial pulsierende Umrandung via CSS-Animation.
       _state.traceElements.forEach(function (elemId) {
         var el = _resolveTraceElement(elemId);
         if (!el) return;
+
+        // contains_traces-Klasse für CSS-Highlighting setzen
+        if (!el.classList.contains("contains_traces")) {
+          el.classList.add("contains_traces");
+        }
+
         var isTopic = elemId.startsWith("topic:");
         var color   = isTopic ? "#3a7a4a" : "#3a5a8a";
-        var label   = isTopic
-          ? "Topic-Spur: " + elemId.slice(6)
-          : "Spur: " + elemId;
+
+        // DOM-basierter Tooltip (Bug 2.80)
+        var label = _buildTraceTooltip(elemId, el, isTopic);
+
         var pct = _pctOf(el);
         var bar = _makeBar(
           pct,
@@ -4816,8 +5165,15 @@
     ajaxGet(ForensicToolbar.config.API_STATUS)
       .then(function (s) {
         ForensicToolbar._setState({
-          investigatorUsername: s.username || s.user_id || "—",
+          // Bug 2.67 (Build 175): investigator_username = Ermittler (z.B. "paul"),
+          // NICHT s.username = Beschuldigter (z.B. "uid_538299").
+          // Beleg: Projektgespraech 2026-05-11 — status.py liefert jetzt investigator_username.
+          investigatorUsername: s.investigator_username || s.user_id || "—",
           forumHostname:        s.forum_hostname || "",
+          // Bug 2.77 (Build 175): Beschuldigten-Username + user_id für Popup-Anzeige.
+          // _state.username/user_id werden vom AnnotationPopupModule verwendet.
+          username: s.username || null,
+          user_id:  s.user_id  || null,
         });
         ToolbarUIModule.updateSessionInfo();
         console.info(

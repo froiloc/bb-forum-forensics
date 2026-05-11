@@ -1,5 +1,5 @@
 # Fehler im Frontend
-(Cache-buster-pre-extension: a32422d0-4d82-11f1-b87e-bff260ff26b9)
+(Cache-buster-pre-extension: 3a6192bc-4d89-11f1-9a2a-331901f0ef31)
 
 Ich werde in dieser Liste fortlaufend die von mir beobachteten Fehler aufführen.
 Falls diese abgeschlossen und verworfen wurden, werde ich sie durchstreichen. Alles, was nicht durchgestrichen ist, ist also noch offen und muss bearbeitet werden.
@@ -20,29 +20,29 @@ Hier noch einmal die Liste der Baustellen und wofür sie stehen:
 
 Quellen zum Debuggen:
 * Dieses Dokument mit den Arbeitsanweisungen und Problembeschreibungen:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.a32422d0-4d82-11f1-b87e-bff260ff26b9.md
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.3a6192bc-4d89-11f1-9a2a-331901f0ef31.md
 * Die Ausgabe von DevTools-Console:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.a32422d0-4d82-11f1-b87e-bff260ff26b9.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.3a6192bc-4d89-11f1-9a2a-331901f0ef31.log
 * Die Ausgabe von DevTools-Network:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.a32422d0-4d82-11f1-b87e-bff260ff26b9.har
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.3a6192bc-4d89-11f1-9a2a-331901f0ef31.har
 * Das aktuelle DOM des gesamten Dokuments als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.a32422d0-4d82-11f1-b87e-bff260ff26b9.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.3a6192bc-4d89-11f1-9a2a-331901f0ef31.html
 * Das aktuelle DOM des gesamten Body als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.a32422d0-4d82-11f1-b87e-bff260ff26b9.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.3a6192bc-4d89-11f1-9a2a-331901f0ef31.html
 * Das aktuelle DOM des gesamten Sidebar als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.a32422d0-4d82-11f1-b87e-bff260ff26b9.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.3a6192bc-4d89-11f1-9a2a-331901f0ef31.html
 * Das aktuelle DOM des gesamten Main als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.a32422d0-4d82-11f1-b87e-bff260ff26b9.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.3a6192bc-4d89-11f1-9a2a-331901f0ef31.html
 * Das aktuelle DOM des Akkordeon 1 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.a32422d0-4d82-11f1-b87e-bff260ff26b9.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.3a6192bc-4d89-11f1-9a2a-331901f0ef31.html
 * Das aktuelle DOM des Akkordeon 2 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.a32422d0-4d82-11f1-b87e-bff260ff26b9.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.3a6192bc-4d89-11f1-9a2a-331901f0ef31.html
 * Das aktuelle DOM des Akkordeon 3 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.a32422d0-4d82-11f1-b87e-bff260ff26b9.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.3a6192bc-4d89-11f1-9a2a-331901f0ef31.html
 * Das aktuelle DOM des Akkordeon 4 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.a32422d0-4d82-11f1-b87e-bff260ff26b9.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.3a6192bc-4d89-11f1-9a2a-331901f0ef31.html
 * Die Ausgabe des aktuellen Webservers:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.a32422d0-4d82-11f1-b87e-bff260ff26b9.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.3a6192bc-4d89-11f1-9a2a-331901f0ef31.log
 * Die aktuellen Screenshots:
 https://github.com/froiloc/bb-forum-forensics/tree/1b5017a2f62c5a8f1825de76fc6edabb25d6bf66/debug/screenshots
 ***
@@ -153,15 +153,19 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 72. erledigt
 73. erledigt
 74. erledigt
-75. (10) (BS3) Wenn eine Markierung gelöscht wird, soll sie nur in der Datenbank als gelöscht markiert werden. Sie soll wiederherstellbar sein. Es soll eine Modal geben, dass gelöschte Annotationen wiederherstellt. Ideal wäre es, wenn alle Änderungen per Versionierung festgehalten werden und nur die aktuelleste Version angezeigt wird. Es aber einen Weg gibt sich zu einer Annotation die Historie anzusehen. Das eröffnet dann auch einen Weg für einen Zurück-Button, um eine Aktion rückgängi zu machen.
-76. (15) (BS3) Im Eingabemodal zum Markieren für die 6-Kategorien soll folgende Ergänzungen vorgenommen werden: Per Dropdown soll die Kategorie geändert werden können (Das Dropdown soll die Symbole, so wie jetzt angezeigt werden verwenden). Darüber soll durch Bearbeiten auch die Kategorie geändert werden können (falls der Ermittler sich vertan hat).
-77. (15) (BS3) Im Eingabemodal zum Markieren für die 6-Kategorien soll folgende Ergänzungen vorgenommen werden: Es soll angezeigt werden, zu welchem Forumbenutzer der Eintrag ist.
-78. (15) (BS3) Im Eingabemodal zum Markieren für die 6-Kategorien soll folgende Ergänzungen vorgenommen werden: Durch Klicken auf eine Schaltfläche neben dem Benutzernamen, soll der Benutzername geändert werden können. Dann findet der Eintrag zu jenem Benutzer statt. Der Webserver muss dann den Eintrag an die Allgemeine Austauschdatenbank übergeben, wo sie dann in die Datenbank des anderen Benutzers integriert wird, sobald mit diesem wieder gearbeitet wird. Die Benutzernamen werden über einen Endpunkt `/foresic_api/knownusers` abgefragt und gibt sowohl `username` als auch `user_id` zurück.
+75. (10) (BS3) Wenn eine Markierung gelöscht wird, soll sie nur in der Datenbank als gelöscht markiert werden. Sie soll wiederherstellbar sein. Es soll ein Modal geben, das gelöschte Annotationen wiederherstellt. Ideal wäre es, wenn alle Änderungen per Versionierung festgehalten werden und nur die aktuellste Version angezeigt wird, es aber einen Weg gibt, sich zu einer Annotation die Historie anzusehen. Das eröffnet dann auch einen Weg für einen Zurück-Button, um eine Aktion rückgängig zu machen.
+76. (15) (BS3) Im Eingabemodal zum Markieren für die 6-Kategorien soll folgende Ergänzung vorgenommen werden: Per Dropdown soll die Kategorie geändert werden können (Das Dropdown soll die Symbole, so wie sie jetzt angezeigt werden, verwenden). Darüber soll durch Bearbeiten auch die Kategorie geändert werden können (falls der Ermittler sich vertan hat).
+77. (15) (BS3) Im Eingabemodal zum Markieren für die 6-Kategorien soll folgende Ergänzung vorgenommen werden: Es soll angezeigt werden, zu welchem Forumbenutzer der Eintrag ist.
+78. (15) (BS3) Im Eingabemodal zum Markieren für die 6-Kategorien soll folgende Ergänzung vorgenommen werden: Durch Klicken auf eine Schaltfläche neben dem Benutzernamen soll der Benutzername geändert werden können. Dann findet der Eintrag zu jenem Benutzer statt. Der Webserver muss dann den Eintrag an die Allgemeine Austauschdatenbank übergeben, wo sie dann in die Datenbank des anderen Benutzers integriert wird, sobald mit diesem wieder gearbeitet wird. Die Benutzernamen werden über einen Endpunkt `/foresic_api/knownusers` abgefragt und geben sowohl `username` als auch `user_id` zurück. Anmerkung: Das Forum hat 487.246 registrierte Benutzer. Plus die Alias, die ebenfalls im Endpunkt durchsucht werden sollten, sind das bestimmt 500.000 Namen. Bei der Suche soll also erst ab dem vierten Buchstaben gesucht werden, um die Datenbank nicht zu überlasten. Und es muss einen Index auf der Tabelle geben. Siehe: 2.82 und 2.83.
 79. (10) (BS3) Eine Aliastabelle für Benutzernamen als Modal anzeigen und pflegen lassen. (Suchbegriffe, die immer gehighlightet werden) Damit kann ein Benutzer mit dem "Rosaroter Panther", der von den Leuten nur "Panther" genannt wird, mit einem Alias "Panther" auch schnell auf einer Seite gefunden werden.
-80. (5) (BS3) In der Forenansicht die Topics in Minimap highlighten, wo Benutzer Spuren hinterlassen hat
--   das passiert, aber hier muss in der Minimap noch der passende Text als Tooltip angegeben werden.
--   per Javascipt sollte der Bereich der Spuren enthält eine Klasse contains_traces erhalten. Diese sollte optisch hervorgehoben werden (initially pulsing border).
+80. erledigt
 81. (5) (BS3) Es soll ein Suchmodal geben, das eine erweiterte Suche für das Forum bereitstellt. Das muss noch gemeinsam ausdefiniert werden. Nur die grobe Idee ist derzeit da.
+82. (15) (BS0) Es soll in `default.db` eine Tabelle mit den Benutzernamen `user_id`, `username` geben.
+83. (15) (BS0) Es soll in `default.db` eine Tabelle mit den Benutzeraliasen geben: `alias_id`, `user_id`, `alias`. Ein Benutzer soll so mehrere mögliche Aliase haben.
+84. (40) (BS3) zu 2.76: Die Farbe der Markierung wird nach der Änderung der Kategorie nicht geändert!
+85. (40) (BS3) Es wird noch immer nicht der Systemname des Ermittlers (`paul` in DEV) sondern `uid_<uid>` als Urheber der Markierung angegeben. `paul` ist der Systembenutzer.
+86. (30) (BS3) Zu 2.77: Es soll der `username` des Forenbenutzers angegeben werden. Dieser ist in `forensic_<uid>.db` in `forensic_meta.key='username'` in der Spalte `forensic_meta.value` zu finden. Zusatzlich sollte noch die Benutzer-ID angegeben werden. Das aber nur, wenn auch Platz zur Verfügung steht, sonst reicht der Benutzername aus.
+87. (10) (BS3) Das Modal für das Bearbeiten der Markierung ist ein wenig zu schmal. Es muss etwa 15 bis 25px breiter gemacht werden, damit alle Eingabeflächen auch hineinpassen. Benutzt das eigentlich FLEX-Style? Das wäre sinnvoll, denke ich.
 ---
 ## 3. Funktionalität Backend / Python / SQLite3-Datenbank
 Hier werden Funktionsprobleme aufgeführt, die aufgrund von Problemen im Webserver oder der Datenbank auftreten.

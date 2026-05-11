@@ -103,10 +103,12 @@ def _make_bundle(page=None, annotation_id=1, viewport_saved=2):
 
 def _make_context():
     ctx = MagicMock()
-    ctx.mode           = "cli"
-    ctx.user_id        = 42
-    ctx.username       = "testnutzer"
-    ctx.investigator_id = 1
+    ctx.mode                 = "cli"
+    ctx.user_id              = 42
+    ctx.username             = "testnutzer"
+    ctx.investigator_id      = 1
+    # Build 175 (Bug 2.67): investigator_username ist der Ermittler-Account
+    ctx.investigator_username = "paul"
     return ctx
 
 
@@ -328,6 +330,23 @@ class TestForensicApiStatus(unittest.TestCase):
         self.assertIn("mode", data)
         self.assertEqual(data["user_id"], 42)
         self.assertEqual(data["username"], "testnutzer")
+
+    def test_T08b_status_investigator_username(self):
+        """T08b (Build 175 — Bug 2.67): /_forensic/status liefert investigator_username.
+        Der Ermittler-Username (z.B. 'paul') muss als eigenes Feld zurückkommen,
+        damit toolbar.js nicht den Beschuldigten-Username fälschlicherweise
+        als investigatorUsername verwendet.
+        Beleg: Projektgespräch 2026-05-11 — Bug 2.67 (BS3).
+        """
+        bundle = _make_bundle()
+        api    = ForensicApi(bundle, self.ctx, self.cfg)
+        resp   = _dispatch(api, "GET", "/_forensic/status")
+        self.assertEqual(resp["status"], 200)
+        data = json.loads(resp["body"])
+        self.assertIn("investigator_username", data)
+        self.assertEqual(data["investigator_username"], "paul")
+        # Sicherheitsnetz: username ist weiterhin der Beschuldigte, nicht der Ermittler
+        self.assertNotEqual(data["username"], data["investigator_username"])
 
 
 class TestForensicApiViewport(unittest.TestCase):

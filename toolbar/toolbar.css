@@ -1648,3 +1648,125 @@ body {
   height: 28px;
   box-sizing: border-box;
 }
+
+/* ===========================================================================
+   Build 175 (BS3) — Neue Stile
+   Bug 2.76: Kategorie-Dropdown im Popup
+   Bug 2.77: Forenbenutzer-Badge im Popup
+   Bug 2.78: Benutzer-Wechsel-Panel
+   Bug 2.80: contains_traces — pulsierende Umrandung für Spur-Elemente
+   =========================================================================== */
+
+/* --- Popup: Kategorie-Dropdown (Bug 2.76) --- */
+.forensic-popup-select {
+  width: 100%;
+  padding: 5px 8px;
+  background: #1a1f2e;
+  border: 1px solid #3a4060;
+  border-radius: 4px;
+  color: #e8eaf0;
+  font-size: 12px;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+
+.forensic-popup-select:focus {
+  outline: 2px solid #4f8ef7;
+  outline-offset: 1px;
+}
+
+/* --- Popup: Forenbenutzer-Zeile (Bug 2.77) --- */
+.forensic-popup-user-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.forensic-popup-label--inline {
+  margin-bottom: 0;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.forensic-popup-label--sm {
+  font-size: 10px;
+  color: #8890a8;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.forensic-popup-user-badge {
+  font-size: 11px;
+  font-family: monospace;
+  background: #2d3550;
+  border: 1px solid #3a4060;
+  border-radius: 3px;
+  padding: 2px 7px;
+  color: #a8c4f0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- Popup: Benutzer-Wechsel-Panel (Bug 2.78) --- */
+.forensic-popup-user-panel {
+  background: #161b29;
+  border: 1px solid #2d3550;
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.forensic-popup-user-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 4px;
+}
+
+.forensic-popup-hint {
+  font-size: 11px;
+  color: #8890a8;
+  font-style: italic;
+}
+
+/* --- Kleiner Button (xs) für inline Aktionen --- */
+.forensic-btn-xs {
+  padding: 2px 7px;
+  font-size: 11px;
+  line-height: 1.4;
+  height: auto;
+  min-height: 0;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+/* --- contains_traces — pulsierende Umrandung (Bug 2.80) --- */
+/*
+ * Klasse wird von MinimapModule.refresh() an jedes Spur-Element vergeben.
+ * Die Animation läuft 3× und stoppt dann — damit sie nicht dauerhaft stört.
+ * Beleg: Projektgespräch 2026-05-11
+ */
+@keyframes forensic-trace-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(79, 142, 247, 0.0); outline-color: rgba(79, 142, 247, 0.8); }
+  40%  { box-shadow: 0 0 0 4px rgba(79, 142, 247, 0.3); outline-color: rgba(79, 142, 247, 1.0); }
+  100% { box-shadow: 0 0 0 0 rgba(79, 142, 247, 0.0); outline-color: rgba(79, 142, 247, 0.3); }
+}
+
+.contains_traces {
+  outline: 2px solid rgba(79, 142, 247, 0.5);
+  outline-offset: 2px;
+  border-radius: 2px;
+  animation: forensic-trace-pulse 1.2s ease-out 3;
+  /* Nach Ende der Animation: dezente Umrandung behalten */
+  animation-fill-mode: forwards;
+}
+
+/* Topic-Zeilen auf viewforum: etwas breiteren Rahmen verwenden */
+tr.contains_traces {
+  outline-offset: 0;
+}
