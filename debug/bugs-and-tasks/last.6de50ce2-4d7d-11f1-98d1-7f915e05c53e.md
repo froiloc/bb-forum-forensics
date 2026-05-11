@@ -1,5 +1,5 @@
 # Fehler im Frontend
-(Cache-buster-pre-extension: 79ee565c-4d7c-11f1-aacb-db929f128b82)
+(Cache-buster-pre-extension: 6de50ce2-4d7d-11f1-98d1-7f915e05c53e)
 
 Ich werde in dieser Liste fortlaufend die von mir beobachteten Fehler aufführen.
 Falls diese abgeschlossen und verworfen wurden, werde ich sie durchstreichen. Alles, was nicht durchgestrichen ist, ist also noch offen und muss bearbeitet werden.
@@ -20,29 +20,29 @@ Hier noch einmal die Liste der Baustellen und wofür sie stehen:
 
 Quellen zum Debuggen:
 * Dieses Dokument mit den Arbeitsanweisungen und Problembeschreibungen:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.79ee565c-4d7c-11f1-aacb-db929f128b82.md
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.6de50ce2-4d7d-11f1-98d1-7f915e05c53e.md
 * Die Ausgabe von DevTools-Console:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.79ee565c-4d7c-11f1-aacb-db929f128b82.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.6de50ce2-4d7d-11f1-98d1-7f915e05c53e.log
 * Die Ausgabe von DevTools-Network:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.79ee565c-4d7c-11f1-aacb-db929f128b82.har
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.6de50ce2-4d7d-11f1-98d1-7f915e05c53e.har
 * Das aktuelle DOM des gesamten Dokuments als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.79ee565c-4d7c-11f1-aacb-db929f128b82.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.6de50ce2-4d7d-11f1-98d1-7f915e05c53e.html
 * Das aktuelle DOM des gesamten Body als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.79ee565c-4d7c-11f1-aacb-db929f128b82.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.6de50ce2-4d7d-11f1-98d1-7f915e05c53e.html
 * Das aktuelle DOM des gesamten Sidebar als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.79ee565c-4d7c-11f1-aacb-db929f128b82.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.6de50ce2-4d7d-11f1-98d1-7f915e05c53e.html
 * Das aktuelle DOM des gesamten Main als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.79ee565c-4d7c-11f1-aacb-db929f128b82.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.6de50ce2-4d7d-11f1-98d1-7f915e05c53e.html
 * Das aktuelle DOM des Akkordeon 1 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.79ee565c-4d7c-11f1-aacb-db929f128b82.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.6de50ce2-4d7d-11f1-98d1-7f915e05c53e.html
 * Das aktuelle DOM des Akkordeon 2 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.79ee565c-4d7c-11f1-aacb-db929f128b82.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.6de50ce2-4d7d-11f1-98d1-7f915e05c53e.html
 * Das aktuelle DOM des Akkordeon 3 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.79ee565c-4d7c-11f1-aacb-db929f128b82.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.6de50ce2-4d7d-11f1-98d1-7f915e05c53e.html
 * Das aktuelle DOM des Akkordeon 4 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.79ee565c-4d7c-11f1-aacb-db929f128b82.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.6de50ce2-4d7d-11f1-98d1-7f915e05c53e.html
 * Die Ausgabe des aktuellen Webservers:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.79ee565c-4d7c-11f1-aacb-db929f128b82.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.6de50ce2-4d7d-11f1-98d1-7f915e05c53e.log
 * Die aktuellen Screenshots:
 https://github.com/froiloc/bb-forum-forensics/tree/1b5017a2f62c5a8f1825de76fc6edabb25d6bf66/debug/screenshots
 ***
@@ -60,7 +60,7 @@ Hier werden CSS‑Fehler aufgeführt. Das sind Themen, bei denen die Anzeige fun
  8. erledigt
  9. erledigt
  10. erledigt
- 11. (1) Es wäre cool, wenn man die Breite von `<main>` und `<aside>` über einen Schiebebalken `⇹` oder `⇔`dynamisch könnte. `<div class="group w-2 relative h-full cursor-col-resize -mr-1 z-30 grid place-items-center max-md:hidden"><div class="absolute top-0 bottom-0 right-1 w-[0.5px] bg-border-300 transition-all group-hover:delay-75 group-hover:bg-accent-100 group-hover:w-px group-hover:translate-x-[0.5px]"></div><div class="h-6 w-2 relative rounded-full border-0.5 bg-bg-100 shadow border-border-300 transition duration-200 group-hover:delay-75 group-hover:border-accent-900 group-hover:bg-accent-900 cursor-col-resize"></div></div>`So regelt das die Oberfläche bei `claude.ai` mit dem Trenner.
+ 11. erledigt
  12. erledigt
  13. erledigt
  14. erledigt
@@ -147,7 +147,7 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 66. erledigt
 67. (10) (BS3). Hier wird bei der Erstellung der Annotation als Ermittler der Forenbenutzer angegeben. Also `uid_538299` statt `paul` in meiner DEV-Umgebung.
 68. erledigt
-69. (20) Die Links im Berichts-Editor (BS6) zu Forenseiten im Hauptfenster sollen niemals als `target="_blank"` erhalten, sondern in der Hauptseite geöffnet werden. Im `userinfo-tab` ⁣haben wir das Thema bereits gelöst. Bitte dort nachschauen, wie wir das gemacht haben. Ich denke, das ging über die SSE‑Verbindung. 
+69. erledigt
 70. erledigt
 71. erledigt
 72. erledigt
