@@ -388,8 +388,21 @@ class ReportEndpoint:
         safe_investigator = html_module.escape(
             self._context.investigator_username
         )
+        # Bug 2.70 Fix Build 163: echten Forum-Benutzernamen aus forensic_meta
+        # lesen statt uid_<id>-Fallback aus coordinator.db.
+        # forensic_db.get_meta('username') -> forensic_meta WHERE key='username'.
+        # Beleg: Projektgespraech 2026-05-11
+        forum_username: Optional[str] = None
+        try:
+            raw_uname = self._bundle.forensic.get_meta('username')
+            if raw_uname and not raw_uname.startswith('uid_'):
+                forum_username = raw_uname
+        except Exception:
+            pass
         safe_subject = html_module.escape(
-            self._context.username or f"uid_{self._context.user_id}"
+            forum_username
+            or self._context.username
+            or f"uid_{self._context.user_id}"
         )
         autosave_ms = int(
             getattr(self._config, "get", lambda k, d: d)(

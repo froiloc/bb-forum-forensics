@@ -1973,20 +1973,31 @@ class EvidenceBlock {
         this._wrapper.className = 'evidence-block';
         this._renderContent();
 
-        // Drag-Drop-Ziel: Annotationen aus Sidebar fallen lassen
+        // Drag-Drop-Ziel: Annotationen aus Sidebar fallen lassen.
+        // Bug 2.71 Fix Build 163: stopPropagation verhindert, dass das Event
+        // zum editorjs-holder bubbled und dort einen zweiten EvidenceBlock erzeugt.
+        // Beleg: Projektgespraech 2026-05-11
         if (!this._readOnly) {
             this._wrapper.addEventListener('dragover', e => {
+                if (!e.dataTransfer.types.includes('text/x-annotation-id')) return;
                 e.preventDefault();
+                e.stopPropagation(); // Holder-dragover nicht ausloesen
                 this._wrapper.classList.add('evidence-block--dragover');
             });
-            this._wrapper.addEventListener('dragleave', () => {
-                this._wrapper.classList.remove('evidence-block--dragover');
+            this._wrapper.addEventListener('dragleave', (e) => {
+                // Nur entfernen wenn wir den Block wirklich verlassen
+                if (!this._wrapper.contains(e.relatedTarget)) {
+                    this._wrapper.classList.remove('evidence-block--dragover');
+                }
             });
             this._wrapper.addEventListener('drop', async (e) => {
+                if (!e.dataTransfer.types.includes('text/x-annotation-id')) return;
                 e.preventDefault();
+                e.stopPropagation(); // Holder-drop nicht ausloesen — kein zweiter Block
                 this._wrapper.classList.remove('evidence-block--dragover');
                 const annId = parseInt(e.dataTransfer.getData('text/x-annotation-id'), 10);
                 if (!annId) return;
+                _dbg('EvidenceBlock.drop: annId=', annId, 'in Block', this._data);
                 await this._addEvidence(annId);
             });
         }

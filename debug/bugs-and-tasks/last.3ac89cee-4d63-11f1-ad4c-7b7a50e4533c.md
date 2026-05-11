@@ -1,5 +1,5 @@
 # Fehler im Frontend
-(Cache-buster-pre-extension: a27fbb72-4d60-11f1-bd66-a39cd8692133)
+(Cache-buster-pre-extension: 3ac89cee-4d63-11f1-ad4c-7b7a50e4533c)
 
 Ich werde in dieser Liste fortlaufend die von mir beobachteten Fehler aufführen.
 Falls diese abgeschlossen und verworfen wurden, werde ich sie durchstreichen. Alles, was nicht durchgestrichen ist, ist also noch offen und muss bearbeitet werden.
@@ -20,29 +20,29 @@ Hier noch einmal die Liste der Baustellen und wofür sie stehen:
 
 Quellen zum Debuggen:
 * Dieses Dokument mit den Arbeitsanweisungen und Problembeschreibungen:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.a27fbb72-4d60-11f1-bd66-a39cd8692133.md
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.3ac89cee-4d63-11f1-ad4c-7b7a50e4533c.md
 * Die Ausgabe von DevTools-Console:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.a27fbb72-4d60-11f1-bd66-a39cd8692133.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.3ac89cee-4d63-11f1-ad4c-7b7a50e4533c.log
 * Die Ausgabe von DevTools-Network:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.a27fbb72-4d60-11f1-bd66-a39cd8692133.har
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.3ac89cee-4d63-11f1-ad4c-7b7a50e4533c.har
 * Das aktuelle DOM des gesamten Dokuments als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.a27fbb72-4d60-11f1-bd66-a39cd8692133.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.3ac89cee-4d63-11f1-ad4c-7b7a50e4533c.html
 * Das aktuelle DOM des gesamten Body als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.a27fbb72-4d60-11f1-bd66-a39cd8692133.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.3ac89cee-4d63-11f1-ad4c-7b7a50e4533c.html
 * Das aktuelle DOM des gesamten Sidebar als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.a27fbb72-4d60-11f1-bd66-a39cd8692133.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.3ac89cee-4d63-11f1-ad4c-7b7a50e4533c.html
 * Das aktuelle DOM des gesamten Main als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.a27fbb72-4d60-11f1-bd66-a39cd8692133.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.3ac89cee-4d63-11f1-ad4c-7b7a50e4533c.html
 * Das aktuelle DOM des Akkordeon 1 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.a27fbb72-4d60-11f1-bd66-a39cd8692133.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.3ac89cee-4d63-11f1-ad4c-7b7a50e4533c.html
 * Das aktuelle DOM des Akkordeon 2 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.a27fbb72-4d60-11f1-bd66-a39cd8692133.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.3ac89cee-4d63-11f1-ad4c-7b7a50e4533c.html
 * Das aktuelle DOM des Akkordeon 3 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.a27fbb72-4d60-11f1-bd66-a39cd8692133.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.3ac89cee-4d63-11f1-ad4c-7b7a50e4533c.html
 * Das aktuelle DOM des Akkordeon 4 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.a27fbb72-4d60-11f1-bd66-a39cd8692133.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.3ac89cee-4d63-11f1-ad4c-7b7a50e4533c.html
 * Die Ausgabe des aktuellen Webservers:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.a27fbb72-4d60-11f1-bd66-a39cd8692133.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.3ac89cee-4d63-11f1-ad4c-7b7a50e4533c.log
 * Die aktuellen Screenshots:
 https://github.com/froiloc/bb-forum-forensics/tree/1b5017a2f62c5a8f1825de76fc6edabb25d6bf66/debug/screenshots
 ***
@@ -148,8 +148,9 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 67. (10) (BS3). Hier wird bei der Erstellung der Annotation als Ermittler der Forenbenutzer angegeben. Also `uid_538299` statt `paul` in meiner DEV-Umgebung.
 68. erledigt
 69. (20) Die Links im Berichts-Editor (BS6) zu Forenseiten im Hauptfenster sollen niemals als `target="_blank"` erhalten, sondern in der Hauptseite geöffnet werden. Im `userinfo-tab` ⁣haben wir das Thema bereits gelöst. Bitte dort nachschauen, wie wir das gemacht haben. Ich denke, das ging über die SSE‑Verbindung. 
-70. (10) (BS6) Also 2.68 ist schon erledigt, aber warum steht denn da jetzt `paul / uid_538299 (ID: 538299)`​ Was soll das uid_538299 in der Mitte? Was mit noch gefallen würde wäre, denn dort der username des Forumbenutzers stünde. Das würde helfen. Aber uid_<uid> halte ich für etwas sinnbefreit.
-71. (25) (BS6) Annotationen erzeugen augenblicklich immer eine neue Beweismittelgruppe, auch dann, wenn die Annotation per Drag-and-drop auf eine Beweismittelgruppe geschoben wird UND diese sogar optisch als Landezone angegeben wird. Dabei werden sie mal vor und mal nach dieser Beweismittelgruppe erzeugt. Eine eigene Beweismittelgruppe darf nur dann erstellt werden, wenn die Dropzone keine bestehende Beweismittelgruppe ist. Andernfalls sind diese Annotationen in der bestehenden Beweismittelzone, die als Dropzone gekennzeichnet ist, zu verankern.
+70. erledigt
+71. erledigt
+72. (10) (BS6) Wenn eine Annotation per Drag-and-drop im Bericht eingefügt wurde, wird weder der Zähler im Fuss des `Annotation` Akkordeon aktualisiert, noch erhält das ursprüngliche Annotation-Element seinen grünen Rahmen. Auch die Schaltfläche `Als Beleg einfügen` ist noch enabled.
 ---
 ## 3. Funktionalität Backend / Python / SQLite3-Datenbank
 Hier werden Funktionsprobleme aufgeführt, die aufgrund von Problemen im Webserver oder der Datenbank auftreten.
