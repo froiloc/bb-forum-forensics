@@ -1,5 +1,5 @@
 # Fehler im Frontend
-(Cache-buster-pre-extension: 314d27ba-4d6e-11f1-b316-038b4d455d90)
+(Cache-buster-pre-extension: 2a100f92-4d70-11f1-8379-fb4c4c6158a5)
 
 Ich werde in dieser Liste fortlaufend die von mir beobachteten Fehler aufführen.
 Falls diese abgeschlossen und verworfen wurden, werde ich sie durchstreichen. Alles, was nicht durchgestrichen ist, ist also noch offen und muss bearbeitet werden.
@@ -20,29 +20,29 @@ Hier noch einmal die Liste der Baustellen und wofür sie stehen:
 
 Quellen zum Debuggen:
 * Dieses Dokument mit den Arbeitsanweisungen und Problembeschreibungen:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.314d27ba-4d6e-11f1-b316-038b4d455d90.md
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.2a100f92-4d70-11f1-8379-fb4c4c6158a5.md
 * Die Ausgabe von DevTools-Console:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.314d27ba-4d6e-11f1-b316-038b4d455d90.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.2a100f92-4d70-11f1-8379-fb4c4c6158a5.log
 * Die Ausgabe von DevTools-Network:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.314d27ba-4d6e-11f1-b316-038b4d455d90.har
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.2a100f92-4d70-11f1-8379-fb4c4c6158a5.har
 * Das aktuelle DOM des gesamten Dokuments als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.314d27ba-4d6e-11f1-b316-038b4d455d90.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.2a100f92-4d70-11f1-8379-fb4c4c6158a5.html
 * Das aktuelle DOM des gesamten Body als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.314d27ba-4d6e-11f1-b316-038b4d455d90.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.2a100f92-4d70-11f1-8379-fb4c4c6158a5.html
 * Das aktuelle DOM des gesamten Sidebar als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.314d27ba-4d6e-11f1-b316-038b4d455d90.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.2a100f92-4d70-11f1-8379-fb4c4c6158a5.html
 * Das aktuelle DOM des gesamten Main als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.314d27ba-4d6e-11f1-b316-038b4d455d90.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.2a100f92-4d70-11f1-8379-fb4c4c6158a5.html
 * Das aktuelle DOM des Akkordeon 1 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.314d27ba-4d6e-11f1-b316-038b4d455d90.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.2a100f92-4d70-11f1-8379-fb4c4c6158a5.html
 * Das aktuelle DOM des Akkordeon 2 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.314d27ba-4d6e-11f1-b316-038b4d455d90.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.2a100f92-4d70-11f1-8379-fb4c4c6158a5.html
 * Das aktuelle DOM des Akkordeon 3 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.314d27ba-4d6e-11f1-b316-038b4d455d90.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.2a100f92-4d70-11f1-8379-fb4c4c6158a5.html
 * Das aktuelle DOM des Akkordeon 4 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.314d27ba-4d6e-11f1-b316-038b4d455d90.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.2a100f92-4d70-11f1-8379-fb4c4c6158a5.html
 * Die Ausgabe des aktuellen Webservers:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.314d27ba-4d6e-11f1-b316-038b4d455d90.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.2a100f92-4d70-11f1-8379-fb4c4c6158a5.log
 * Die aktuellen Screenshots:
 https://github.com/froiloc/bb-forum-forensics/tree/1b5017a2f62c5a8f1825de76fc6edabb25d6bf66/debug/screenshots
 ***
@@ -151,7 +151,7 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 70. erledigt
 71. erledigt
 72. erledigt
-73. (15) (BS6) Wenn eine Beweismittelgruppe gelöscht wurde, dann wird die Annotation Sidebar nicht aktualisiert. Die Lage muss dann, am besten durch Analyse des Editors, welche Annotationen noch verankert sind.
+73. erledigt
 74. erledigt
 ---
 ## 3. Funktionalität Backend / Python / SQLite3-Datenbank

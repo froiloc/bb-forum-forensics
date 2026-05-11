@@ -435,6 +435,8 @@ async function _loadReportImpl(report) {
         try { await _editor.destroy(); } catch (_) {}
         _editor = null;
         window._editor = null;
+        // Bug 2.73(a) Fix Build 168: Instanz-Set leeren nach Editor-Destroy.
+        window._allEvidenceBlocks = new Set();
     }
     // editorjs-holder neu anlegen falls Editor.destroy() ihn entfernt hat.
     // Build 113: Holder lebt in #report-main-col (nicht mehr in report-editor-container).
@@ -1571,6 +1573,8 @@ async function _reloadEditorContent() {
         if (_editor) {
             try { await _editor.destroy(); } catch (_) {}
             _editor = null;
+            // Bug 2.73(a) Fix Build 168: Instanz-Set leeren.
+            window._allEvidenceBlocks = new Set();
         }
         // editorjs-holder neu anlegen (Editor.js entfernt ihn beim destroy())
         const workspace = document.getElementById('report-main-col');
@@ -1626,6 +1630,24 @@ async function _reloadEditorContent() {
  * Bug 2.73 Fix Build 165: Sidebar nach Entfernen von Belegen aktualisieren.
  * Beleg: Projektgespraech 2026-05-11
  */
+/**
+ * Synchronisiert _anchoredIds der Sidebar aus den lebenden EvidenceBlock-Instanzen.
+ * Kein editor.save()-Aufruf noetig — liest direkt aus this._data.evidence_ids.
+ * Bug 2.73(a) Fix Build 168: ersetzt setTimeout-Ansatz aus Build 166.
+ * Beleg: Projektgespraech 2026-05-11
+ */
+function _syncAnchoredFromInstances() {
+    if (!window.AnnotationSidebar?.updateAnchored) return;
+    const anchoredIds = new Set();
+    for (const block of (window._allEvidenceBlocks || [])) {
+        for (const id of (block._data?.evidence_ids || [])) {
+            anchoredIds.add(id);
+        }
+    }
+    _dbg('_syncAnchoredFromInstances:', anchoredIds.size, 'verankerte Annotationen');
+    window.AnnotationSidebar.updateAnchored(anchoredIds);
+}
+
 async function _syncAnchoredFromEditor() {
     if (!window._editor?.save || !window.AnnotationSidebar?.updateAnchored) return;
     try {
@@ -2030,6 +2052,10 @@ class EvidenceBlock {
     render() {
         this._wrapper = document.createElement('div');
         this._wrapper.className = 'evidence-block';
+        // Bug 2.73(a) Fix Build 168: Instanz im globalen Set registrieren
+        // damit _syncAnchoredFromInstances() ohne editor.save() auskommt.
+        if (!window._allEvidenceBlocks) window._allEvidenceBlocks = new Set();
+        window._allEvidenceBlocks.add(this);
         this._renderContent();
 
         // Drag-Drop-Ziel: Annotationen aus Sidebar fallen lassen.
@@ -2288,11 +2314,12 @@ class EvidenceBlock {
         }
         this._data.evidence_ids = this._data.evidence_ids.filter(id => id !== annotationId);
         this._renderContent();
-        // Bug 2.73(a) Fix Build 166: setTimeout damit _renderContent() den
-        // DOM-Zustand fertiggestellt hat bevor editor.save() aufgerufen wird.
-        // Kein Race-Condition mehr zwischen _renderContent und editor.save().
+        // Bug 2.73(a) Fix Build 168: kein editor.save()-Umweg mehr.
+        // Alle EvidenceBlock-Instanzen registrieren sich in window._allEvidenceBlocks.
+        // Wir berechnen die Vereinigung aller evidence_ids direkt aus den
+        // lebenden Instanzen und rufen updateAnchored synchron auf.
         // Beleg: Projektgespraech 2026-05-11
-        setTimeout(() => _syncAnchoredFromEditor(), 50);
+        _syncAnchoredFromInstances();
     }
 
     _getBlockId() {
@@ -2307,6 +2334,14 @@ class EvidenceBlock {
             group_label:  label,
             display_mode: this._data.display_mode,
         };
+    }
+
+    destroy() {
+        // Bug 2.73(a) Fix Build 168: Instanz beim Loeschen des Blocks aus dem
+        // globalen Set entfernen und Sidebar synchronisieren.
+        // Beleg: Projektgespraech 2026-05-11
+        window._allEvidenceBlocks?.delete(this);
+        _syncAnchoredFromInstances();
     }
 
     static get sanitize() {
