@@ -1937,6 +1937,19 @@ function _showSaveIndicator() {
  *
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
+// ---------------------------------------------------------------------------
+// Kategorie-Langnamen fuer EvidenceBlock-Darstellung (Bug 2.66 Fix Build 162)
+// Beleg: Projektgespraech 2026-05-11
+// ---------------------------------------------------------------------------
+const EVIDENCE_CATEGORY_LABELS = {
+    CAT_PERSON:   'PER – Persönliche Identifikationsmerkmale',
+    CAT_LOCATION: 'LOC – Ortsangaben, geografische Hinweise',
+    CAT_176:      '176 – Relevanz §§ 176, 176a StGB',
+    CAT_184:      '184 – Relevanz §§ 184b, 184c StGB',
+    CAT_VICTIM:   'OPF – Hinweise auf mögliche Opfer',
+    CAT_OTHER:    'SON – Sonstige Ermittlungsrelevanz',
+};
+
 class EvidenceBlock {
     static get toolbox() {
         return { title: 'Beweismittel', icon: '⚖' };
@@ -2012,7 +2025,7 @@ class EvidenceBlock {
             const selText = ann.selection?.text || '';
             return `<tr class="evidence-item evidence-item--table" data-id="${annId}">
                 <td class="evidence-item-id-cell">#${e(annId)}</td>
-                <td class="evidence-cat-cell evidence-cat-${e(ann.category)}">${e(ann.category)}</td>
+                <td class="evidence-cat-cell evidence-cat-${e(ann.category)}" title="${e(ann.category)}">${e(EVIDENCE_CATEGORY_LABELS[ann.category] || ann.category)}</td>
                 <td class="evidence-sel-cell">${e(selText.slice(0,80))}${selText.length>80?'…':''}</td>
                 <td class="evidence-note-cell">${e(ann.text || '')}</td>
                 <td class="evidence-src-cell"><a href="${e(ann.pageUrl||'')}" title="${e(ann.pageUrl||'')}" target="_blank" rel="noopener">&#x1F517;</a></td>
@@ -2043,7 +2056,8 @@ class EvidenceBlock {
             : '';
         const rows = [
             ['ID',         `#${e(annId)}`],
-            ['Kategorie',  `<span class="evidence-cat-${e(ann.category)}">${e(ann.category)}</span>`],
+            // Bug 2.66 Fix Build 162: Langname statt technischer Abkuerzung
+            ['Kategorie',  `<span class="evidence-cat-${e(ann.category)}" title="${e(ann.category)}">${e(EVIDENCE_CATEGORY_LABELS[ann.category] || ann.category)}</span>`],
             tags     ? ['Tags',        e(tags)]     : null,
             selText  ? ['Markierung',  e(selText.slice(0,200)) + (selText.length>200?'…':'')] : null,
             ann.text ? ['Notiz',       e(ann.text)] : null,
@@ -2475,9 +2489,12 @@ function _initDragDrop() {
     }
 
     holder.addEventListener('dragover', (e) => {
-        const hasModule   = e.dataTransfer.types.includes('application/x-forensic-module');
-        const hasStandard = e.dataTransfer.types.includes('application/x-forensic-standard');
-        if (!hasModule && !hasStandard) return;
+        const hasModule     = e.dataTransfer.types.includes('application/x-forensic-module');
+        const hasStandard   = e.dataTransfer.types.includes('application/x-forensic-standard');
+        // Option D Build 162: Annotation-Drop erzeugt neuen EvidenceBlock
+        // Beleg: Planungsgespraech 2026-05-11
+        const hasAnnotation = e.dataTransfer.types.includes('text/x-annotation-id');
+        if (!hasModule && !hasStandard && !hasAnnotation) return;
         e.preventDefault();
         e.dataTransfer.dropEffect = 'copy';
         holder.classList.add('editorjs-holder--drag-over');
@@ -2491,9 +2508,12 @@ function _initDragDrop() {
 
     holder.addEventListener('drop', async (e) => {
         holder.classList.remove('editorjs-holder--drag-over');
-        const hasModule   = e.dataTransfer.types.includes('application/x-forensic-module');
-        const hasStandard = e.dataTransfer.types.includes('application/x-forensic-standard');
-        if (!hasModule && !hasStandard) return;
+        const hasModule     = e.dataTransfer.types.includes('application/x-forensic-module');
+        const hasStandard   = e.dataTransfer.types.includes('application/x-forensic-standard');
+        // Option D Build 162: Annotation-Drop erzeugt neuen EvidenceBlock
+        // Beleg: Planungsgespraech 2026-05-11
+        const hasAnnotation = e.dataTransfer.types.includes('text/x-annotation-id');
+        if (!hasModule && !hasStandard && !hasAnnotation) return;
         e.preventDefault();
 
         if (!window._editor?.blocks) {
@@ -2580,6 +2600,26 @@ function _initDragDrop() {
             window._editor.blocks.insert(stdData.block_type || 'paragraph', {}, {}, targetIdx);
             window._editor.caret.setToBlock(targetIdx);
             _dbg('Drop (Standard): Block eingefuegt, type=', stdData.block_type, 'idx=', targetIdx);
+        }
+
+        // Option D Build 162: Annotation-Drop -> neuer EvidenceBlock
+        // Beleg: Planungsgespraech 2026-05-11
+        if (hasAnnotation) {
+            const annId = parseInt(e.dataTransfer.getData('text/x-annotation-id'), 10);
+            if (annId && window.insertEvidenceBlockFromAnnotation) {
+                e.preventDefault();
+                _dbg('Drop (Annotation): annId=', annId, 'targetIdx=', targetIdx);
+
+                // EvidenceBlock an Zielposition einfuegen:
+                // insertEvidenceBlockFromAnnotation() haengt immer nach dem
+                // fokussierten Block an. Daher setzen wir den Caret zuerst.
+                if (targetIdx > 0 && window._editor?.caret) {
+                    try {
+                        window._editor.caret.setToBlock(targetIdx - 1, 'end');
+                    } catch (_) {}
+                }
+                await window.insertEvidenceBlockFromAnnotation(annId);
+            }
         }
 
         _dragOverTargetIdx = -1;

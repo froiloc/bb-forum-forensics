@@ -124,7 +124,7 @@ _EDITOR_HTML = """\
     <!-- Fixierte Aktionsleiste (§4.2 Bauplan B6 v0.3) -->
     <header id="report-action-bar">
       <div id="report-action-bar-title">
-        📄 Bericht \u00b7 <span id="report-current-title">{subject} (ID: {user_id})</span>
+        📄 Bericht \u00b7 <span id="report-current-title">{investigator} / {subject} (ID: {user_id})</span>
       </div>
       <!-- Bug 1.10 Fix Build 121: editor-report-title als div zwischen title und buttons.
            War bisher als span NACH den Buttons platziert und drückte die Leiste nach unten.
@@ -399,6 +399,7 @@ class ReportEndpoint:
         page_html = _EDITOR_HTML.format(
             username=safe_investigator,   # Ermittler — fuer data-username / Block-Owner-Vergleich
             subject=safe_subject,         # Beschuldigter — nur fuer Anzeigetitel
+            investigator=safe_investigator,  # Bug 2.68 Fix Build 162: Ermittler im Titel
             user_id=self._context.user_id,
             autosave_debounce_ms=autosave_ms,
         )

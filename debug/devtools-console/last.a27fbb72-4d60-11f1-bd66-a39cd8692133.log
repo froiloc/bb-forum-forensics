@@ -1,0 +1,47 @@
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+report:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+Navigated to http://127.0.0.2:8080/_forensic/report
+placeholder_chips.js:56 [forensic] placeholder_chips.js: window.PlaceholderChips exportiert
+placeholder_wizard.js:75 [forensic] placeholder_wizard.js: window.PlaceholderWizard exportiert
+module_panel.js:77 [forensic] module_panel.js: window.ModulePanel exportiert
+annotation_sidebar.js:58 [forensic] annotation_sidebar.js: window.AnnotationSidebar exportiert
+report_editor.js:86 [forensic] report_editor.js: Exports auf window gesetzt
+userinfo.js:67 [forensic] DOMContentLoaded: userinfo.js aktiv
+userinfo.js:67 [forensic] initEditor() gestartet
+userinfo.js:67 [forensic] initSSEWindow3() gestartet
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= bb12be51-d351-4eec-97ce-9732fa8baf53
+report_editor.js:86 [forensic] initEditorModule() gestartet
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:86 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
+report_editor.js:86 [forensic] initReportSelector() gestartet
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= interim
+favicon.ico:1  GET http://127.0.0.2:8080/favicon.ico 404 (Not Found)
+report_editor.js:457 report_editor.js: _knownBlockIds initialisiert, 64 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:643 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+report_editor.js:688 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:86 [forensic] Drop: Ziel-Index= 3 von 64 Bloecken
+report_editor.js:86 [forensic] Drop (Annotation): annId= 6 targetIdx= 3
+report_editor.js:86 [forensic] insertEvidenceBlockFromAnnotation: annId= 6
+report_editor.js:86 [forensic] insertEvidenceBlockFromAnnotation: nach Block 2 -> idx 3
+report_editor.js:86 [forensic] insertEvidenceBlockFromAnnotation: neuer Block id= 5VR4YV1DKj
+report_editor.js:1720 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 64
+report_editor.js:1834 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 65 | Bloecke geloescht: 0
+report_editor.js:86 [forensic] Drop: Ziel-Index= 8 von 65 Bloecken
+report_editor.js:86 [forensic] Drop (Annotation): annId= 7 targetIdx= 8
+report_editor.js:86 [forensic] insertEvidenceBlockFromAnnotation: annId= 7
+report_editor.js:86 [forensic] insertEvidenceBlockFromAnnotation: nach Block 7 -> idx 8
+report_editor.js:86 [forensic] insertEvidenceBlockFromAnnotation: neuer Block id= gyuYSZ03Eh
+report_editor.js:86 [forensic] Drop: Ziel-Index= 10 von 66 Bloecken
+report_editor.js:86 [forensic] Drop (Annotation): annId= 3 targetIdx= 10
+report_editor.js:86 [forensic] insertEvidenceBlockFromAnnotation: annId= 3
+report_editor.js:86 [forensic] insertEvidenceBlockFromAnnotation: nach Block 9 -> idx 10
+report_editor.js:86 [forensic] insertEvidenceBlockFromAnnotation: neuer Block id= 0tbLku37XJ
+report_editor.js:86 [forensic] Drop: Ziel-Index= 10 von 67 Bloecken
+report_editor.js:86 [forensic] Drop (Annotation): annId= 5 targetIdx= 10
+report_editor.js:86 [forensic] insertEvidenceBlockFromAnnotation: annId= 5
+report_editor.js:86 [forensic] insertEvidenceBlockFromAnnotation: nach Block 9 -> idx 10
+report_editor.js:86 [forensic] insertEvidenceBlockFromAnnotation: neuer Block id= ZhpWVhAo7h
+report_editor.js:1720 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 65
+report_editor.js:1834 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 68 | Bloecke geloescht: 0
