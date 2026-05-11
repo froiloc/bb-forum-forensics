@@ -398,7 +398,9 @@ async function _loadReportImpl(report) {
     // Drucken, Export und Aktualisieren sind lock-unabhaengig.
     // Bug 2.40/2.43 Absicherung Build 136: btn-save-now manueller Speichern-Button.
     // Beleg: Projektgespraech 2026-05-07, 2026-05-09
-    ['btn-print', 'btn-export', 'btn-refresh-placeholders', 'btn-save-now'].forEach(id => {
+    // Bug 2.4: btn-export bleibt deaktiviert bis Export implementiert ist.
+    // Beleg: Projektgespraech 2026-05-11
+    ['btn-print', 'btn-refresh-placeholders', 'btn-save-now'].forEach(id => {
         const btn = document.getElementById(id);
         if (btn) btn.disabled = false;
     });
@@ -2750,11 +2752,203 @@ function _initDragDrop() {
     _dbg('_initDragDrop: Drop-Zone registriert auf #editorjs-holder');
 }
 
+// ---------------------------------------------------------------------------
+// Schiebebalken zwischen main und aside (Bug 1.11 Fix Build 169)
+// Angelehnt an claude.ai-Design.
+// Beleg: Projektgespraech 2026-05-11
+// ---------------------------------------------------------------------------
+
+/**
+ * Initialisiert den Schiebebalken (#col-resizer) zwischen #report-main-col
+ * und #support-sidebar.
+ *
+ * Ablauf:
+ * 1. Gespeicherte Breite aus localStorage wiederherstellen.
+ * 2. mousedown auf #col-resizer startet Drag-Modus.
+ * 3. mousemove berechnet neue flex-Werte aus Gesamtbreite und Mausposition.
+ * 4. mouseup beendet Drag-Modus und speichert Breite in localStorage.
+ *
+ * Die flex-Werte werden als numerische Anteile gesetzt (wie bei claude.ai).
+ * Min/Max-Grenzen: main min 30%, max 85%.
+ */
+function _initColResizer() {
+    const resizer   = document.getElementById('col-resizer');
+    const mainCol   = document.getElementById('report-main-col');
+    const sideCol   = document.getElementById('support-sidebar');
+    if (!resizer || !mainCol || !sideCol) return;
+
+    // Gespeicherte Aufteilung wiederherstellen (Anteil der linken Spalte 0..1)
+    const STORAGE_KEY = 'forensic_col_split';
+    const DEFAULT_SPLIT = 0.65;
+    const MIN_SPLIT = 0.30;
+    const MAX_SPLIT = 0.85;
+
+    function _applySplit(ratio) {
+        const r = Math.max(MIN_SPLIT, Math.min(MAX_SPLIT, ratio));
+        const left  = (r * 100).toFixed(4);
+        const right = ((1 - r) * 100).toFixed(4);
+        mainCol.style.flex = `${left} 1 0%`;
+        sideCol.style.flex = `${right} 1 0%`;
+    }
+
+    // Gespeicherte Aufteilung laden
+    try {
+        const saved = parseFloat(localStorage.getItem(STORAGE_KEY));
+        if (saved >= MIN_SPLIT && saved <= MAX_SPLIT) _applySplit(saved);
+    } catch (_) {}
+
+    let _dragging = false;
+    let _startX   = 0;
+    let _startRatio = DEFAULT_SPLIT;
+
+    resizer.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        _dragging = true;
+        _startX   = e.clientX;
+        const workspace = document.getElementById('report-workspace');
+        const totalW    = workspace?.getBoundingClientRect().width || window.innerWidth;
+        const mainW     = mainCol.getBoundingClientRect().width;
+        _startRatio = mainW / totalW;
+        resizer.classList.add('col-resizer--dragging');
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+        _dbg('_initColResizer: drag start ratio=', _startRatio);
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!_dragging) return;
+        const workspace = document.getElementById('report-workspace');
+        const totalW    = workspace?.getBoundingClientRect().width || window.innerWidth;
+        const delta     = e.clientX - _startX;
+        const newRatio  = _startRatio + delta / totalW;
+        _applySplit(newRatio);
+    });
+
+    document.addEventListener('mouseup', (e) => {
+        if (!_dragging) return;
+        _dragging = false;
+        resizer.classList.remove('col-resizer--dragging');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        // Neue Aufteilung persistieren
+        const workspace = document.getElementById('report-workspace');
+        const totalW    = workspace?.getBoundingClientRect().width || window.innerWidth;
+        const mainW     = mainCol.getBoundingClientRect().width;
+        const ratio     = mainW / totalW;
+        try { localStorage.setItem(STORAGE_KEY, String(ratio)); } catch (_) {}
+        _dbg('_initColResizer: drag end ratio=', ratio);
+    });
+
+    // Touch-Support
+    resizer.addEventListener('touchstart', (e) => {
+        const touch = e.touches[0];
+        _dragging = true;
+        _startX   = touch.clientX;
+        const workspace = document.getElementById('report-workspace');
+        const totalW    = workspace?.getBoundingClientRect().width || window.innerWidth;
+        _startRatio = mainCol.getBoundingClientRect().width / totalW;
+        resizer.classList.add('col-resizer--dragging');
+    }, { passive: true });
+
+    document.addEventListener('touchmove', (e) => {
+        if (!_dragging) return;
+        const touch = e.touches[0];
+        const workspace = document.getElementById('report-workspace');
+        const totalW    = workspace?.getBoundingClientRect().width || window.innerWidth;
+        const newRatio  = _startRatio + (touch.clientX - _startX) / totalW;
+        _applySplit(newRatio);
+    }, { passive: true });
+
+    document.addEventListener('touchend', () => {
+        if (!_dragging) return;
+        _dragging = false;
+        resizer.classList.remove('col-resizer--dragging');
+        const workspace = document.getElementById('report-workspace');
+        const totalW    = workspace?.getBoundingClientRect().width || window.innerWidth;
+        const ratio     = mainCol.getBoundingClientRect().width / totalW;
+        try { localStorage.setItem(STORAGE_KEY, String(ratio)); } catch (_) {}
+    }, { passive: true });
+
+    _dbg('_initColResizer: Schiebebalken initialisiert');
+}
+
+// ---------------------------------------------------------------------------
+// Forum-Links im Berichts-Editor: Navigation via postMessage (Bug 2.69 Fix)
+// Angelehnt an Fenster-2-Mechanismus in userinfo.js (initForensicLinks).
+// Beleg: Projektgespraech 2026-05-11
+// ---------------------------------------------------------------------------
+
+/**
+ * Fängt alle Klicks auf Forum-Links im Berichts-Editor ab und sendet
+ * eine navigate_to_url-Nachricht an das Hauptfenster (window.opener).
+ *
+ * Betrifft:
+ * - Quell-Links in EvidenceBlock-Items (.evidence-item-value a, etc.)
+ * - Quell-Links in der Annotation-Sidebar (.as-ann-source-link)
+ *
+ * Erkennt Forum-URLs anhand fehlenden Hosts (relative URL) oder
+ * gleichem Hostnamen wie der aktuelle Server.
+ *
+ * Bug 2.69 Fix Build 169: Links sollen niemals target="_blank" verwenden,
+ * sondern im Hauptfenster über die SSE-verknüpfte AJAX-Navigation öffnen.
+ * Beleg: Projektgespraech 2026-05-11
+ */
+function _initForumLinkInterceptor() {
+    document.addEventListener('click', (evt) => {
+        // Nächsten <a>-Vorfahren finden
+        const link = evt.target.closest('a[href]');
+        if (!link) return;
+
+        const href = link.getAttribute('href');
+        if (!href || href.startsWith('#') || href.startsWith('javascript')) return;
+
+        // Nur Forum-URLs abfangen:
+        // - Relative URLs (beginnen mit /)
+        // - URLs mit gleichem Host wie der forensic-Server
+        let isForumUrl = false;
+        try {
+            if (href.startsWith('/')) {
+                isForumUrl = true;
+            } else {
+                const parsed = new URL(href);
+                isForumUrl = (parsed.hostname === window.location.hostname);
+            }
+        } catch (_) {
+            return; // Ungültige URL — nicht abfangen
+        }
+
+        if (!isForumUrl) return;
+
+        evt.preventDefault();
+        evt.stopPropagation();
+
+        // URL an Hauptfenster senden (window.opener = Hauptfenster)
+        const target = window.opener;
+        if (target && target !== window) {
+            _dbg('_initForumLinkInterceptor: navigate_to_url ->', href);
+            target.postMessage(
+                { type: 'navigate_to_url', url: href },
+                window.location.origin
+            );
+        } else {
+            // Fallback wenn kein opener (z.B. direkt aufgerufen)
+            _dbg('_initForumLinkInterceptor: kein opener — direkte Navigation');
+            window.location.href = href;
+        }
+    });
+    _dbg('_initForumLinkInterceptor: Forum-Link-Interceptor aktiv');
+}
+
 async function initEditorModule() {
     _dbg('initEditorModule() gestartet');
     // Akkordeon-Listener sofort verdrahten — unabhaengig von Berichten und EditorJS.
     // Beleg: Bugfix Build 111, Projektgespraech 2026-05-07
     _initSidebarAccordion();
+    // Bug 1.11 Fix Build 169: Schiebebalken zwischen main und aside.
+    // Beleg: Projektgespraech 2026-05-11
+    _initColResizer();
+    // Bug 2.69 Fix Build 169: Forum-Links an Hauptfenster weiterleiten.
+    _initForumLinkInterceptor();
     // Build 115: Drag&Drop-Zone auf editorjs-holder registrieren
     _initDragDrop();
     // Bug 1.22 Fix Build 132: Speicher-Indikator mit Disketten-Symbol initialisieren.

@@ -203,6 +203,12 @@ _EDITOR_HTML = """\
         </div>
       </main>
 
+      <!-- Schiebebalken zwischen main und aside (Bug 1.11 Fix) -->
+      <!-- Beleg: Projektgespraech 2026-05-11 -->
+      <div id="col-resizer" aria-hidden="true">
+        <div id="col-resizer-handle"></div>
+      </div>
+
       <!-- Rechte Spalte: Support-Sidebar mit vierstufigem Akkordeon (~35%) -->
       <!-- Beleg: Bauplan B6 v0.5 §4.4, Projektgespraech 2026-05-06 -->
       <aside id="support-sidebar" aria-label="Support-Sidebar">

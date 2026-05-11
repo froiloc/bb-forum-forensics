@@ -154,9 +154,11 @@
  * 3. Linke Spalte: Paragraphen-Liste (~65%)
  * --------------------------------------------------------------------------- */
 
+/* Bug 1.11 Fix Build 169: Breite jetzt dynamisch per Regler; flex-grow statt fixed. */
 #report-main-col {
-  flex: 0 0 65%;
-  max-width: 65%;
+  flex: 65 1 0%;
+  min-width: 30%;
+  max-width: 85%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1887,7 +1889,65 @@
   background: var(--color-bg-hover, #f5f5f5);
 }
 
+/* ---------------------------------------------------------------------------
+ * Schiebebalken zwischen main und aside (Bug 1.11 Fix Build 169)
+ * Angelehnt an claude.ai-Design: schmaler Anfasser, Linie, Hover-Effekt.
+ * Beleg: Projektgespraech 2026-05-11
+ * --------------------------------------------------------------------------- */
+
+#col-resizer {
+  position: relative;
+  width: 8px;
+  flex: 0 0 8px;
+  cursor: col-resize;
+  display: grid;
+  place-items: center;
+  z-index: 30;
+  margin: 0 -1px;   /* -mr-1 Effekt wie bei claude.ai */
+  user-select: none;
+  touch-action: none;
+}
+
+/* Vertikale Linie */
+#col-resizer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 3px;
+  width: 0.5px;
+  background: var(--color-border, #ddd);
+  transition: width 0.15s, background 0.15s, transform 0.15s;
+}
+#col-resizer:hover::before,
+#col-resizer.col-resizer--dragging::before {
+  width: 1px;
+  background: var(--color-primary, #1976d2);
+  transform: translateX(0.5px);
+}
+
+/* Griff-Pille */
+#col-resizer-handle {
+  width: 8px;
+  height: 24px;
+  border-radius: 9999px;
+  border: 0.5px solid var(--color-border, #ddd);
+  background: var(--color-surface, #fff);
+  box-shadow: 0 1px 3px rgba(0,0,0,.12);
+  position: relative;
+  z-index: 1;
+  transition: border-color 0.2s, background 0.2s;
+  cursor: col-resize;
+  pointer-events: none;  /* Events gehen an #col-resizer */
+}
+#col-resizer:hover #col-resizer-handle,
+#col-resizer.col-resizer--dragging #col-resizer-handle {
+  border-color: var(--color-primary, #1976d2);
+  background: var(--color-primary, #1976d2);
+}
+
 @media print {
+
   /* ---------------------------------------------------------------------------
    * Druckansicht (§7.1 Bauplan B6 v0.3)
    * Beleg: Bauplan B6 v0.3 §7.1, Build 097
@@ -2110,8 +2170,9 @@
  * --------------------------------------------------------------------------- */
 
 /* Build 115: max-width entfernt — Sidebar nimmt vollen 35%-Anteil ein */
+/* Bug 1.11 Fix Build 169: Breite dynamisch per Regler. */
 #support-sidebar {
-  flex: 0 0 35%;
+  flex: 35 1 0%;
   min-width: 240px;
   display: flex;
   flex-direction: column;
