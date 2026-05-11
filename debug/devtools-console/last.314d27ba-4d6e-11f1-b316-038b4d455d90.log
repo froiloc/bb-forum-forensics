@@ -1,0 +1,39 @@
+favicon.ico:1  Failed to load resource: the server responded with a status of 404 (Not Found)
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+report:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+Navigated to http://127.0.0.2:8080/_forensic/report
+placeholder_chips.js:56 [forensic] placeholder_chips.js: window.PlaceholderChips exportiert
+placeholder_wizard.js:75 [forensic] placeholder_wizard.js: window.PlaceholderWizard exportiert
+module_panel.js:77 [forensic] module_panel.js: window.ModulePanel exportiert
+annotation_sidebar.js:58 [forensic] annotation_sidebar.js: window.AnnotationSidebar exportiert
+report_editor.js:86 [forensic] report_editor.js: Exports auf window gesetzt
+userinfo.js:67 [forensic] DOMContentLoaded: userinfo.js aktiv
+userinfo.js:67 [forensic] initEditor() gestartet
+userinfo.js:67 [forensic] initSSEWindow3() gestartet
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= ef56c6d6-0627-4d64-ac10-87044cb84a1c
+report_editor.js:86 [forensic] initEditorModule() gestartet
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:86 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
+report_editor.js:86 [forensic] initReportSelector() gestartet
+favicon.ico:1  GET http://127.0.0.2:8080/favicon.ico 404 (Not Found)
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= final
+report_editor.js:472 report_editor.js: _knownBlockIds initialisiert, 1 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:663 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+report_editor.js:708 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:86 [forensic] _syncAnchoredFromEditor:  1 verankerte Annotationen
+report_editor.js:86 [forensic] _syncAnchoredFromEditor:  0 verankerte Annotationen
+report_editor.js:86 [forensic] EvidenceBlock.drop: annId= 1 in Block {evidence_ids: Array(0), group_label: '', display_mode: 'list'}
+annotation_sidebar.js:58 [forensic] notifyAnchored: annId= 1
+report_editor.js:86 [forensic] _addEvidence: Sidebar benachrichtigt für annId= 1
+report_editor.js:86 [forensic] EvidenceBlock.drop: annId= 4 in Block {evidence_ids: Array(1), group_label: '', display_mode: 'list'}
+annotation_sidebar.js:58 [forensic] notifyAnchored: annId= 4
+report_editor.js:86 [forensic] _addEvidence: Sidebar benachrichtigt für annId= 4
+report_editor.js:695 [forensic] _captureRange: alt= null → neu: blockId= TOkQYs2qcs blockIdx= 0 startOffset= 0
+report_editor.js:695 [forensic] _captureRange: alt= blockId=TOkQYs2qcs offset=0 → neu: blockId= ? blockIdx= -1 startOffset= 1
+report_editor.js:695 [forensic] _captureRange: alt= blockId=? offset=1 → neu: blockId= ? blockIdx= -1 startOffset= 1
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid

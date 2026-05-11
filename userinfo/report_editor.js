@@ -155,6 +155,13 @@ let _isInitializing  = false;
 // Bug 2.55/2.59 Fix Build 146: Guard gegen onChange-Schleife durch _refreshPlaceholderForm.
 // Beleg: Bugfix Build 146, Projektgespraech 2026-05-10
 let _isRefreshingForm = false;
+/**
+ * Guard: Unterdrückt _syncAnchoredFromEditor während _reloadEditorContent().
+ * Bug 2.73(a) Fix Build 167: block-removed-Events während Reload
+ * lösten fruühzeitige Sync-Aufrufe aus die 0 Annotationen lieferten.
+ * Beleg: Projektgespräch 2026-05-11
+ */
+let _isReloading = false;
 
 /**
  * Set der Block-IDs, die dem Server zuletzt bekannt waren.
@@ -616,10 +623,11 @@ function _initEditorJs(blocks, reportId) {
                                 if (!stillExists && sidebar) {
                                     sidebar.dataset.focusedBlockId = '';
                                 }
-                                // Bug 2.73 Fix Build 165: Sidebar nach Block-Delete
+                                // Bug 2.73 Fix Build 165/167: Sidebar nach Block-Delete
                                 // neu synchronisieren (EvidenceBlock koennte geloescht sein).
+                                // _isReloading-Guard verhindert Fehlsync waehrend Reload.
                                 // Beleg: Projektgespraech 2026-05-11
-                                _syncAnchoredFromEditor();
+                                if (!_isReloading) _syncAnchoredFromEditor();
                             }
                             _refreshPlaceholderForm();
                         }
@@ -1545,6 +1553,10 @@ async function _reloadEditorContent() {
     if (!_currentReport) return;
     _dbg('_reloadEditorContent(): Starte Neuladen fuer report_id=', _currentReport.id);
 
+    // Bug 2.73(a) Fix Build 167: waehrend des Reloads block-removed-Events
+    // nicht als echte Loeschungen behandeln.
+    // Beleg: Projektgespraech 2026-05-11
+    _isReloading = true;
     try {
         // Aktuelle Bloecke vom Server laden
         const resp = await fetch(
@@ -1590,6 +1602,11 @@ async function _reloadEditorContent() {
              freshBlocks.length, 'Bloecke geladen.');
     } catch (err) {
         console.warn('report_editor.js: _reloadEditorContent fehlgeschlagen:', err);
+    } finally {
+        // Bug 2.73(a) Fix Build 167: Reload-Flag zuruecksetzen und
+        // einmalig synchronisieren um den echten Post-Reload-Zustand abzubilden.
+        _isReloading = false;
+        _syncAnchoredFromEditor();
     }
 }
 
