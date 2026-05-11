@@ -1,0 +1,82 @@
+Navigated to http://127.0.0.2:8080/_forensic/report
+placeholder_chips.js:56 [forensic] placeholder_chips.js: window.PlaceholderChips exportiert
+placeholder_wizard.js:75 [forensic] placeholder_wizard.js: window.PlaceholderWizard exportiert
+module_panel.js:77 [forensic] module_panel.js: window.ModulePanel exportiert
+annotation_sidebar.js:58 [forensic] annotation_sidebar.js: window.AnnotationSidebar exportiert
+report_editor.js:86 [forensic] report_editor.js: Exports auf window gesetzt
+userinfo.js:67 [forensic] DOMContentLoaded: userinfo.js aktiv
+userinfo.js:67 [forensic] initEditor() gestartet
+userinfo.js:67 [forensic] initSSEWindow3() gestartet
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 96011a73-8420-4eb3-b055-eb6a07eaa99e
+report_editor.js:86 [forensic] initEditorModule() gestartet
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:86 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
+report_editor.js:86 [forensic] initReportSelector() gestartet
+favicon.ico:1  GET http://127.0.0.2:8080/favicon.ico 404 (Not Found)
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= interim
+report_editor.js:457 report_editor.js: _knownBlockIds initialisiert, 63 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:643 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+report_editor.js:688 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:675 [forensic] _captureRange: alt= null → neu: blockId= s1EKXKACox blockIdx= 7 startOffset= 3
+report_editor.js:675 [forensic] _captureRange: alt= blockId=s1EKXKACox offset=3 → neu: blockId= ? blockIdx= -1 startOffset= 1
+report_editor.js:675 [forensic] _captureRange: alt= blockId=? offset=1 → neu: blockId= _fXvyjaO70 blockIdx= 7 startOffset= 1
+report_editor.js:675 [forensic] _captureRange: alt= blockId=_fXvyjaO70 offset=1 → neu: blockId= _fXvyjaO70 blockIdx= 7 startOffset= 3
+ report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 63
+ report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 64 | Bloecke geloescht: 0
+ report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 64
+ report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 64 | Bloecke geloescht: 0
+ [forensic] _captureRange: alt= blockId=_fXvyjaO70 offset=0 → neu: blockId= _fXvyjaO70 blockIdx= 7 startOffset= 0
+Navigated to http://127.0.0.2:8080/_forensic/report
+ [forensic] placeholder_chips.js: window.PlaceholderChips exportiert
+ [forensic] placeholder_wizard.js: window.PlaceholderWizard exportiert
+ [forensic] module_panel.js: window.ModulePanel exportiert
+ [forensic] annotation_sidebar.js: window.AnnotationSidebar exportiert
+ [forensic] report_editor.js: Exports auf window gesetzt
+ [forensic] DOMContentLoaded: userinfo.js aktiv
+ [forensic] initEditor() gestartet
+ [forensic] initSSEWindow3() gestartet
+ [forensic] acquireLock() aufgerufen, sseClientId= 940fb569-ed78-4302-afcd-bf1035e57061
+ [forensic] initEditorModule() gestartet
+ [forensic] _initSidebarAccordion() gestartet
+ [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
+ [forensic] initReportSelector() gestartet
+:8080/favicon.ico:1  GET http://127.0.0.2:8080/favicon.ico 404 (Not Found)
+ [forensic] loadReport() report_id= 2 type= interim
+ report_editor.js: _knownBlockIds initialisiert, 64 Bloecke geladen.
+ [forensic] _initEditorJs(): window.EditorJS= true
+ [forensic] _initSidebarAccordion() gestartet
+ report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+ [forensic] acquireLock() aufgerufen, sseClientId= 940fb569-ed78-4302-afcd-bf1035e57061
+ [forensic] acquireLock: Lock bereits vorhanden ( 7c641711-185c-485f-b578-7074b82f29e6 ) — uebersprungen
+ report_editor.js: Initialisierungs-Guard freigegeben.
+ [forensic] _captureRange: alt= null → neu: blockId= _fXvyjaO70 blockIdx= 7 startOffset= 1
+ [forensic] _captureRange: alt= blockId=_fXvyjaO70 offset=1 → neu: blockId= _fXvyjaO70 blockIdx= 7 startOffset= 1
+ [forensic] _captureRange: alt= blockId=_fXvyjaO70 offset=1 → neu: blockId= _fXvyjaO70 blockIdx= 7 startOffset= 4
+ [forensic] _captureRange: alt= blockId=_fXvyjaO70 offset=4 → neu: blockId= _fXvyjaO70 blockIdx= 7 startOffset= 21
+Navigated to http://127.0.0.2:8080/_forensic/report
+placeholder_chips.js:56 [forensic] placeholder_chips.js: window.PlaceholderChips exportiert
+placeholder_wizard.js:75 [forensic] placeholder_wizard.js: window.PlaceholderWizard exportiert
+module_panel.js:77 [forensic] module_panel.js: window.ModulePanel exportiert
+annotation_sidebar.js:58 [forensic] annotation_sidebar.js: window.AnnotationSidebar exportiert
+report_editor.js:86 [forensic] report_editor.js: Exports auf window gesetzt
+userinfo.js:67 [forensic] DOMContentLoaded: userinfo.js aktiv
+userinfo.js:67 [forensic] initEditor() gestartet
+userinfo.js:67 [forensic] initSSEWindow3() gestartet
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= df22cb1e-b6a4-41f1-857f-218728ee7dcb
+report_editor.js:86 [forensic] initEditorModule() gestartet
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:86 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
+report_editor.js:86 [forensic] initReportSelector() gestartet
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= interim
+report_editor.js:457 report_editor.js: _knownBlockIds initialisiert, 64 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:643 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= df22cb1e-b6a4-41f1-857f-218728ee7dcb
+userinfo.js:67 [forensic] acquireLock: Lock bereits vorhanden ( 290db5cf-cd8e-442d-afaf-a726a4921197 ) — uebersprungen
+report_editor.js:688 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:675 [forensic] _captureRange: alt= null → neu: blockId= pPklymmFi4 blockIdx= 5 startOffset= 17
+report_editor.js:1720 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 64
+report_editor.js:1834 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 64 | Bloecke geloescht: 0
