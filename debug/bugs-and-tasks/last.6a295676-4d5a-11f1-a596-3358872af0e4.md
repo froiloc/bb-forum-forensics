@@ -1,37 +1,48 @@
-# Fehler auf der Berichtsseite
-(Cache-buster-pre-extension: dc3b94a0-4d59-11f1-b97c-5750f95bffd0)
+# Fehler im Frontend
+(Cache-buster-pre-extension: 6a295676-4d5a-11f1-a596-3358872af0e4)
 
 Ich werde in dieser Liste fortlaufend die von mir beobachteten Fehler aufführen.
 Falls diese abgeschlossen und verworfen wurden, werde ich sie durchstreichen. Alles, was nicht durchgestrichen ist, ist also noch offen und muss bearbeitet werden.
 Am Anfang jedes Eintrages kann eine Zahl stehen. Je höher der Wert, desto dringender ist das Problem und sollte daher vorrangig behoben werden.
 Themen gleicher Art sollten in einem gemeinsamen Build behoben werden.
 Nach der Bearbeitung ist das behobene Problem anzugeben. Und zwar mit Kapitel (1 = CSS, 2 = JS, 3 = PY/SQL, 4 = Sonst) und der Nummer in der Liste.
+Hier noch einmal die Liste der Baustellen und wofür sie stehen:
+| Baustelle | Abkürzung | Thema | base64-Zip-Archiv |
+|--|--|--|--|
+| 0 | BS0 | Datenextraktion aus MariaDB, Bereitstellung SQLite3-DBs, Vorberechnen von statischen Seiten | aiw_sqlite_prepper |
+| 1 | BS1 | Laufzeitumgebung und Deployment | teilweise aiw_webserver |
+| 2 | BS2 | Python-Webserver für Ermittler | aiw_webserver |
+| 3 | BS3 | Toolbar, Werkzeugleiste der Hauptseite, Modals für Hauptseite | aiw_webserver |
+| 4 | BS4 | userinfo-tab, Nutzerinformationsseite, statische, extrahierte Daten, ohne Darstellung in Foren-Webseiten, Sammlung und Darstellung der Ermittlungsergebnisse | aiw_webserver |
+| 5 | BS5 | Datenbank-Interfaces, Schnittstellen und Zugriffsrechte zwischen Datenbanken | aiw_webserver, aiw_sqlite_prepper, aiw_administration (noch ausstehend) |
+| 6 | BS6 | Berichtseditor, Export, Datenbereitstellung für die Akte und die Staatsanwaltschaft | aiw_webserver |
+| 7 | BS7 | Management-Interface, Vorlagenverwaltung, Auftragsvergabe, Priorisierung | aiw_webserver, aiw_administration (noch ausstehend) |
 
 Quellen zum Debuggen:
 * Dieses Dokument mit den Arbeitsanweisungen und Problembeschreibungen:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.dc3b94a0-4d59-11f1-b97c-5750f95bffd0.md
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.6a295676-4d5a-11f1-a596-3358872af0e4.md
 * Die Ausgabe von DevTools-Console:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.dc3b94a0-4d59-11f1-b97c-5750f95bffd0.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.6a295676-4d5a-11f1-a596-3358872af0e4.log
 * Die Ausgabe von DevTools-Network:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.dc3b94a0-4d59-11f1-b97c-5750f95bffd0.har
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.6a295676-4d5a-11f1-a596-3358872af0e4.har
 * Das aktuelle DOM des gesamten Dokuments als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.dc3b94a0-4d59-11f1-b97c-5750f95bffd0.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.6a295676-4d5a-11f1-a596-3358872af0e4.html
 * Das aktuelle DOM des gesamten Body als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.dc3b94a0-4d59-11f1-b97c-5750f95bffd0.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.6a295676-4d5a-11f1-a596-3358872af0e4.html
 * Das aktuelle DOM des gesamten Sidebar als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.dc3b94a0-4d59-11f1-b97c-5750f95bffd0.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.6a295676-4d5a-11f1-a596-3358872af0e4.html
 * Das aktuelle DOM des gesamten Main als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.dc3b94a0-4d59-11f1-b97c-5750f95bffd0.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.6a295676-4d5a-11f1-a596-3358872af0e4.html
 * Das aktuelle DOM des Akkordeon 1 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.dc3b94a0-4d59-11f1-b97c-5750f95bffd0.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.6a295676-4d5a-11f1-a596-3358872af0e4.html
 * Das aktuelle DOM des Akkordeon 2 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.dc3b94a0-4d59-11f1-b97c-5750f95bffd0.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.6a295676-4d5a-11f1-a596-3358872af0e4.html
 * Das aktuelle DOM des Akkordeon 3 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.dc3b94a0-4d59-11f1-b97c-5750f95bffd0.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.6a295676-4d5a-11f1-a596-3358872af0e4.html
 * Das aktuelle DOM des Akkordeon 4 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.dc3b94a0-4d59-11f1-b97c-5750f95bffd0.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.6a295676-4d5a-11f1-a596-3358872af0e4.html
 * Die Ausgabe des aktuellen Webservers:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.dc3b94a0-4d59-11f1-b97c-5750f95bffd0.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.6a295676-4d5a-11f1-a596-3358872af0e4.log
 * Die aktuellen Screenshots:
 https://github.com/froiloc/bb-forum-forensics/tree/1b5017a2f62c5a8f1825de76fc6edabb25d6bf66/debug/screenshots
 ***
@@ -76,7 +87,7 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
  6. erledigt
  7. erledigt
  8. erledigt
- 9. (10) Verankerte Annotationen werden im Report nicht angezeigt oder gerendert.
+ 9. erledigt
 10. erledigt
 11. erledigt
 12. erledigt
@@ -129,10 +140,14 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 59. erledigt
 60. erledigt
 61. (20) Es kommt vor, und das ist wieder so ein "Beim ersten Versuch klappt es nicht, bei den folgenden Versuchen aber schon"-Fehler, dass beim Einfügen eines Standard-Elements dieses nicht an der Position nach dem aktuellen Block, sondern am Anfang des Dokuments eingefügt wird. Das sollte nicht sein. Hier müssen wir wieder schauen, wie wir da herausfinden, woran das liegen kann. Ich wünsche daher, dass im Consolen-Output die Aktualisierung der Cursor-Position angezeigt wird, wenn sie durch Mousedown oder Keydown erfasst wird. Und es soll vor dem Setzen des neuen gespeicherten Wertes dessen derzeitiger Wert aufgeben werden. Und ich wünsche, dass beim Einfügen eines Elements in der Console die Position des Cursors angegeben wird und die Position, an der das neue Element eingefügt wird. Das wird uns hoffentlich rasch helfen, das Problem zu lösen.
-62. (20) Nach dem Laden der Seite, wurde in `Bausteine` > `Module` > `Standard` das Element per Drag and Drop in den `Editor.js` an eine Stelle am Anfang gezogen und losgelassen. Es wurde aber nicht an dieser Stelle, sondern ganz am Ende des Dokuments eingefügt.
+62. (20) Nach dem Laden der Seite wurde in `Bausteine` > `Module` > `Standard` das Element per Drag and Drop in den `Editor.js` an eine Stelle am Anfang gezogen und losgelassen. Es wurde aber nicht an dieser Stelle, sondern ganz am Ende des Dokuments eingefügt.
 63. erledigt
 64. erledigt
 65. erledigt
+66. (5) (BS6) Bei der Listenanzeige für die Beweismittelgruppe wird in der Kategorie nur die technische Abkürzung der Kategorie angegeben. Es wäre gut, wenn hier die ausführlichen Bezeichnungen stünden. Diese sind beispielsweise im Hover-Text der Toolbar auf der Hauptseite zu finden. Aber bitte den Teil mit " [Taste x]" weglassen. :-)
+67. (10) (BS3). Hier wird bei der Erstellung der Annotation als Ermittler der Forenbenutzer angegeben. Also `uid_538299` statt `paul` in meiner DEV-Umgebung.
+68. (10) (BS6) Oben links, `#report-current-title` wird die falsche Bezeichnung für den Ermittler angezeigt. Es muss der Systemname sein und nicht der Name des Forenbenutzers. Also muss also `paul` statt `uid_538299` in meiner DEV-Umgebung sein.
+69. (20) Die Links im Berichts-Editor (BS6) zu Forenseiten im Hauptfenster sollen niemals als `target="_blank"` erhalten, sondern in der Hauptseite geöffnet werden. Im `userinfo-tab` ⁣haben wir das Thema bereits gelöst. Bitte dort nachschauen, wie wir das gemacht haben. Ich denke, das ging über die SSE‑Verbindung. 
 ---
 ## 3. Funktionalität Backend / Python / SQLite3-Datenbank
 Hier werden Funktionsprobleme aufgeführt, die aufgrund von Problemen im Webserver oder der Datenbank auftreten.
