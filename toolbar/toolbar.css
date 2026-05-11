@@ -1720,8 +1720,20 @@ body {
   border-radius: 4px;
   padding: 8px 10px;
   margin-bottom: 10px;
-  max-height: 160px;
+  /* Build 177: overflow-y war 'auto' auf dem Panel-Container selbst,
+     wodurch bereits beim Anzeigen des Suchfelds (ohne Ergebnisse)
+     ein Scrollbar erschien. Neu: Panel selbst kein Scroll, nur die
+     Ergebnisliste (#forensic-popup-user-results) scrollt.
+     Beleg: Screenshot + Projektgespräch 2026-05-12. */
+  overflow: visible;
+}
+
+/* Ergebnisliste: scrollt eigenständig, Panel bleibt ruhig */
+#forensic-popup-user-results {
+  max-height: 110px;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #3a4060 transparent;
 }
 
 .forensic-popup-user-list {
@@ -1789,4 +1801,14 @@ tr.contains_traces {
   margin-top: 4px;
   font-size: 10px;
   color: #6a7a9a;
+}
+
+/* Build 177: code-Tag in Popup-Labels (für %-Platzhalter-Hinweis) */
+.forensic-popup-label--sm code {
+  font-family: monospace;
+  background: #2d3550;
+  border-radius: 2px;
+  padding: 0 3px;
+  font-size: 10px;
+  color: #a8c4f0;
 }

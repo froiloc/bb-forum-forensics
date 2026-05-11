@@ -2,7 +2,15 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 176 · 2026-05-12
+ * Version: v0.1.0 · Build: 177 · 2026-05-12
+ *
+ * Änderungen Build 177 (BS3):
+ *   CSS: Panel-Overflow umstrukturiert — Scrollbar erschien beim
+ *     Suchfeld ohne Ergebnisse. Jetzt: Panel overflow:visible,
+ *     nur #forensic-popup-user-results scrollt (max-height:110px).
+ *   JS: %-Platzhalter-Hinweis in Label + Placeholder-Text.
+ *   JS: Mindestlängen-Check ignoriert %-Zeichen (nur Nutzzeichen).
+ *   Beleg: Screenshot + Projektgespräch 2026-05-12.
  *
  * Änderungen Build 176 (BS3):
  *   Bug 2.84: Kategorie-Wechsel im Popup rendert Highlights neu
@@ -2399,11 +2407,13 @@
      * Benutzer-Ergebnisliste wird erst nach Eingabe von ≥4 Zeichen befüllt.
      */
     function _renderUserPanelInput(panel) {
+      // Build 177: %-Platzhalter-Hinweis im Label, da Suche LIKE-basiert ist.
+      // Beleg: Projektgespräch 2026-05-12.
       panel.innerHTML =
         '<span class="forensic-popup-label forensic-popup-label--sm">' +
-        'Benutzer suchen (mind. 4 Zeichen):</span>' +
+        'Benutzer suchen (mind. 4 Zeichen, <code>%</code> als Platzhalter):</span>' +
         '<input type="text" id="forensic-popup-user-search" ' +
-        'class="forensic-popup-input" placeholder="Benutzername oder Alias…" ' +
+        'class="forensic-popup-input" placeholder="z.B. Pant% oder %panther%" ' +
         'autocomplete="off" spellcheck="false">' +
         '<div id="forensic-popup-user-results" class="forensic-popup-user-list"></div>';
 
@@ -2435,10 +2445,15 @@
       var q = (value || "").trim();
       var resultsEl = document.getElementById("forensic-popup-user-results");
 
-      if (q.length < 4) {
+      // %-Zeichen für Mindestlängen-Check nicht mitzählen (Build 177):
+      // "%%%" wäre 3 Zeichen, aber kein sinnvoller Suchbegriff.
+      // Nur nicht-%-Zeichen für die 4-Zeichen-Pflicht zählen.
+      var qContentLen = q.replace(/%/g, "").length;
+      if (qContentLen < 4) {
         if (resultsEl) {
           resultsEl.innerHTML = q.length > 0
-            ? '<span class="forensic-popup-hint">Noch ' + (4 - q.length) + ' Zeichen…</span>'
+            ? '<span class="forensic-popup-hint">Noch ' + (4 - qContentLen) +
+              ' Zeichen (ohne %)…</span>'
             : '';
         }
         return;
