@@ -1981,47 +1981,186 @@ class EvidenceBlock {
         return this._wrapper;
     }
 
+    // -----------------------------------------------------------------------
+    // Darstellungs-Modi (Bauplan B6 §4.7, Planungsgespraech 2026-05-11)
+    // Beleg: Projektgespraech 2026-05-11
+    // -----------------------------------------------------------------------
+
+    /** HTML-Escape-Hilfsfunktion. */
+    static _esc(s) {
+        return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    /**
+     * Rendert eine einzelne Annotation entsprechend display_mode.
+     * annotations: Map<id, annotationsObjekt> aus window._evidenceAnnotationCache.
+     * Beleg: Bauplan B6 §4.7, Planungsgespraech 2026-05-11
+     */
+    _renderAnnotationItem(annId, annotations) {
+        const e = EvidenceBlock._esc;
+        const ann = annotations?.get(annId) || null;
+        const mode = this._data.display_mode || 'list';
+
+        if (!ann) {
+            return `<div class="evidence-item evidence-item--missing" data-id="${annId}">
+                <span class="evidence-item-id">Beleg #${e(annId)}</span>
+                <span class="evidence-item-loading">wird geladen…</span>
+            </div>`;
+        }
+
+        if (mode === 'table') {
+            const selText = ann.selection?.text || '';
+            return `<tr class="evidence-item evidence-item--table" data-id="${annId}">
+                <td class="evidence-item-id-cell">#${e(annId)}</td>
+                <td class="evidence-cat-cell evidence-cat-${e(ann.category)}">${e(ann.category)}</td>
+                <td class="evidence-sel-cell">${e(selText.slice(0,80))}${selText.length>80?'…':''}</td>
+                <td class="evidence-note-cell">${e(ann.text || '')}</td>
+                <td class="evidence-src-cell"><a href="${e(ann.pageUrl||'')}" title="${e(ann.pageUrl||'')}" target="_blank" rel="noopener">&#x1F517;</a></td>
+            </tr>`;
+        }
+
+        if (mode === 'quote') {
+            const selText = ann.selection?.text || ann.text || '';
+            const dateStr = ann.createdAt
+                ? new Date(ann.createdAt).toLocaleDateString('de-DE')
+                : '';
+            const noteHtml = ann.text
+                ? `<div class="evidence-item-quote-note">Notiz: ${e(ann.text)}</div>`
+                : '';
+            return `<div class="evidence-item evidence-item--quote" data-id="${annId}">
+                <div class="evidence-item-quote-text">„${e(selText)}“</div>
+                <div class="evidence-item-quote-source">— <a href="${e(ann.pageUrl||'')}" target="_blank" rel="noopener">${e(ann.pageUrl||'')}</a>${dateStr ? ', ' + e(dateStr) : ''}${ann.createdBy ? ', ' + e(ann.createdBy) : ''}</div>
+                ${noteHtml}
+                ${!this._readOnly ? `<button class="evidence-remove-btn" data-id="${annId}" title="Entfernen">×</button>` : ''}
+            </div>`;
+        }
+
+        // Standard: 'list'
+        const selText = ann.selection?.text || '';
+        const tags = Array.isArray(ann.tags) ? ann.tags.join(', ') : '';
+        const dateStr = ann.createdAt
+            ? new Date(ann.createdAt).toLocaleString('de-DE', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})
+            : '';
+        const rows = [
+            ['ID',         `#${e(annId)}`],
+            ['Kategorie',  `<span class="evidence-cat-${e(ann.category)}">${e(ann.category)}</span>`],
+            tags     ? ['Tags',        e(tags)]     : null,
+            selText  ? ['Markierung',  e(selText.slice(0,200)) + (selText.length>200?'…':'')] : null,
+            ann.text ? ['Notiz',       e(ann.text)] : null,
+            ['Quelle',     `<a href="${e(ann.pageUrl||'')}" target="_blank" rel="noopener">${e(ann.pageUrl||'')}</a>`],
+            dateStr  ? ['Datum',       e(dateStr)]  : null,
+            ann.createdBy ? ['Ermittler', e(ann.createdBy)] : null,
+        ].filter(Boolean);
+
+        return `<div class="evidence-item evidence-item--list" data-id="${annId}">
+            <table class="evidence-item-kv">
+                ${rows.map(([k,v]) => `<tr><td class="evidence-item-key">${k}</td><td class="evidence-item-value">${v}</td></tr>`).join('')}
+            </table>
+            ${!this._readOnly ? `<button class="evidence-remove-btn" data-id="${annId}" title="Entfernen">×</button>` : ''}
+        </div>`;
+    }
+
     _renderContent() {
         const ids    = this._data.evidence_ids;
         const label  = this._data.group_label;
-        const escFn  = window.esc || (s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'));
+        const mode   = this._data.display_mode || 'list';
+        const e      = EvidenceBlock._esc;
+        const modeLabel = { list: 'Liste', table: 'Tabelle', quote: 'Zitat' }[mode] || mode;
 
-        let idsHtml = ids.length
-            ? ids.map(id => `<span class="evidence-id-chip" data-id="${id}">⚖ Beleg #${id}
-                ${!this._readOnly ? `<button class="evidence-remove-btn" data-id="${id}" title="Entfernen">×</button>` : ''}
-                </span>`).join('')
-            : '<span class="evidence-empty">Noch kein Beleg — aus Sidebar ziehen oder via Schaltfläche hinzufügen.</span>';
+        // Annotation-Cache befüllen
+        const cache = window._evidenceAnnotationCache || new Map();
+        const missing = ids.filter(id => !cache.has(id));
+        if (missing.length > 0) this._fetchAnnotations(missing);
 
-        this._wrapper.innerHTML = `
-            <div class="evidence-block-header">
-                <span class="evidence-block-icon">⚖</span>
-                <span class="evidence-block-title">Beweismittelgruppe</span>
-            </div>
-            ${!this._readOnly ? `<input class="evidence-label-input" type="text"
-                value="${escFn(label)}" placeholder="Beschriftung (optional)">` : (label ? `<div class="evidence-label">${escFn(label)}</div>` : '')}
-            <div class="evidence-ids">${idsHtml}</div>
-            ${!this._readOnly ? `<div class="evidence-actions">
-                <button class="editor-btn evidence-add-btn" style="font-size:11px">+ Beleg hinzufügen</button>
-            </div>` : ''}`;
+        const headerHtml = `<div class="evidence-block-header">
+            <span class="evidence-block-icon">&#x2696;&#xFE0F;</span>
+            <span class="evidence-block-title">Beweismittelgruppe</span>
+            <span class="evidence-block-mode-badge evidence-mode-${e(mode)}">${e(modeLabel)}</span>
+        </div>`;
 
-        // Label-Eingabe verdrahten
-        this._wrapper.querySelector('.evidence-label-input')?.addEventListener('input', e => {
-            this._data.group_label = e.target.value;
+        const labelHtml = !this._readOnly
+            ? `<input class="evidence-label-input" type="text" value="${e(label)}" placeholder="Beschriftung (optional)">`
+            : (label ? `<div class="evidence-label">${e(label)}</div>` : '');
+
+        let bodyHtml = '';
+        if (!ids.length) {
+            bodyHtml = '<div class="evidence-empty">Noch kein Beleg — aus Sidebar ziehen oder via Schaltfläche hinzufügen.</div>';
+        } else if (mode === 'table') {
+            const rows = ids.map(id => this._renderAnnotationItem(id, cache)).join('');
+            bodyHtml = `<div class="evidence-items evidence-items--table">
+                <table class="evidence-table"><thead><tr>
+                    <th>ID</th><th>Kat.</th><th>Markierung</th><th>Notiz</th><th>Quelle</th>
+                </tr></thead><tbody>${rows}</tbody></table>
+            </div>`;
+        } else if (mode === 'quote') {
+            bodyHtml = `<div class="evidence-items evidence-items--quote">${ids.map(id => this._renderAnnotationItem(id, cache)).join('')}</div>`;
+        } else {
+            bodyHtml = `<div class="evidence-items evidence-items--list">${ids.map(id => this._renderAnnotationItem(id, cache)).join('')}</div>`;
+        }
+
+        const actionsHtml = !this._readOnly
+            ? `<div class="evidence-actions"><button class="editor-btn evidence-add-btn" style="font-size:11px">+ Beleg hinzufügen</button></div>`
+            : '';
+
+        this._wrapper.className = `evidence-block evidence-block--mode-${e(mode)}`;
+        this._wrapper.innerHTML = headerHtml + labelHtml + bodyHtml + actionsHtml;
+
+        this._wrapper.querySelector('.evidence-label-input')?.addEventListener('input', ev => {
+            this._data.group_label = ev.target.value;
         });
-
-        // Entfernen-Buttons
         this._wrapper.querySelectorAll('.evidence-remove-btn').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                e.stopPropagation();
-                const id = parseInt(btn.dataset.id, 10);
-                await this._removeEvidence(id);
+            btn.addEventListener('click', async (ev) => {
+                ev.stopPropagation();
+                await this._removeEvidence(parseInt(btn.dataset.id, 10));
             });
         });
-
-        // Hinzufügen-Button: öffnet Sidebar
         this._wrapper.querySelector('.evidence-add-btn')?.addEventListener('click', () => {
             toggleAnnotationSidebar(this);
         });
+    }
+
+    /**
+     * Annotation-Cache befüllen: GET /_forensic/annotations.
+     * Beleg: Bauplan B6 §4.7, Planungsgespraech 2026-05-11
+     */
+    async _fetchAnnotations(missingIds) {
+        try {
+            const resp = await fetch('/_forensic/annotations', { headers: { 'X-Forensic-Request': 'ajax' } });
+            if (!resp.ok) return;
+            const data = await resp.json();
+            if (!window._evidenceAnnotationCache) window._evidenceAnnotationCache = new Map();
+            for (const ann of (data.annotations || [])) window._evidenceAnnotationCache.set(ann.id, ann);
+            if (missingIds.some(id => window._evidenceAnnotationCache.has(id))) this._renderContent();
+        } catch (_) {}
+    }
+
+    /**
+     * Settings-Panel: Modus-Auswahl (Zahnrad-Icon in Editor.js).
+     * Beleg: Bauplan B6 §4.7, Planungsgespraech 2026-05-11
+     */
+    renderSettings() {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'evidence-settings';
+        const modes = [
+            { key: 'list',  label: 'Key-Value-Liste' },
+            { key: 'table', label: 'Tabelle' },
+            { key: 'quote', label: '„Zitat“' },
+        ];
+        modes.forEach(({ key, label }) => {
+            const btn = document.createElement('div');
+            btn.className = 'cdx-settings-button' + (this._data.display_mode === key ? ' cdx-settings-button--active' : '');
+            btn.textContent = label;
+            btn.dataset.key = key;
+            btn.addEventListener('click', () => {
+                this._data.display_mode = key;
+                this._renderContent();
+                wrapper.querySelectorAll('.cdx-settings-button').forEach(b => {
+                    b.classList.toggle('cdx-settings-button--active', b.dataset.key === key);
+                });
+            });
+            wrapper.appendChild(btn);
+        });
+        return wrapper;
     }
 
     async _addEvidence(annotationId) {
@@ -2113,6 +2252,62 @@ async function toggleAnnotationSidebar(targetBlock = null) {
     if (annSection) {
         _openAccordionSection(annSection);
     }
+}
+
+/**
+ * Fuegt einen neuen EvidenceBlock nach dem aktuell fokussierten Block ein.
+ * Aufgerufen von annotation_sidebar.js beim Klick auf 'Als Beleg einfügen'.
+ * Beleg: Bauplan B6 §4.7, Planungsgespraech 2026-05-11
+ *
+ * @param {number} annId  -- Annotation-ID
+ * @returns {boolean} true wenn erfolgreich
+ */
+async function insertEvidenceBlockFromAnnotation(annId) {
+    _dbg('insertEvidenceBlockFromAnnotation: annId=', annId);
+    if (!_editor || !_currentReport) {
+        _dbg('insertEvidenceBlockFromAnnotation: Editor oder Report nicht bereit');
+        return false;
+    }
+    if (!window.EditorState?.lockId) {
+        _dbg('insertEvidenceBlockFromAnnotation: Kein Lock');
+        return false;
+    }
+
+    // Einfuege-Position: nach dem aktuell fokussierten Block (Fallback: Ende)
+    let insertIdx;
+    try {
+        const curIdx = _editor.blocks.getCurrentBlockIndex();
+        insertIdx = (curIdx >= 0) ? curIdx + 1 : undefined;
+        _dbg('insertEvidenceBlockFromAnnotation: nach Block', curIdx, '-> idx', insertIdx);
+    } catch (_) { insertIdx = undefined; }
+
+    await _editor.blocks.insert(
+        'evidence',
+        { evidence_ids: [annId], group_label: '', display_mode: 'list' },
+        {},
+        insertIdx,
+        false,
+    );
+
+    // Block-ID des neu eingefuegten Blocks ermitteln
+    let newBlockId = null;
+    try {
+        const targetIdx = (insertIdx !== undefined) ? insertIdx : (_editor.blocks.getBlocksCount() - 1);
+        newBlockId = _editor.blocks.getBlockByIndex(targetIdx)?.id || null;
+        _dbg('insertEvidenceBlockFromAnnotation: neuer Block id=', newBlockId);
+    } catch (_) {}
+
+    // Evidence-Verknuepfung serverseitig persistieren
+    if (newBlockId) {
+        try {
+            await _fetchWithLock(EDITOR_API.EVIDENCE, {
+                action: 'add', block_id: newBlockId, evidence_id: annId,
+            });
+        } catch (err) {
+            _dbg('insertEvidenceBlockFromAnnotation: Evidence-Link fehlgeschlagen:', err);
+        }
+    }
+    return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -2514,7 +2709,8 @@ async function _reinitWithLock() {
 _dbg('report_editor.js: Exports auf window gesetzt');
 window.initEditorModule            = initEditorModule;
 window.injectInsertInReportButtons = injectInsertInReportButtons;
-window.toggleAnnotationSidebar     = toggleAnnotationSidebar;
+window.toggleAnnotationSidebar          = toggleAnnotationSidebar;
+window.insertEvidenceBlockFromAnnotation = insertEvidenceBlockFromAnnotation;
 window.EvidenceBlock               = EvidenceBlock;
 // Phase 3: BlockWrapper und Akkordeon
 // Beleg: Bauplan B6 v0.5 §4.3, §4.4, Projektgespraech 2026-05-06

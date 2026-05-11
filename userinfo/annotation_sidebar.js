@@ -40,7 +40,7 @@
  *   GET /_forensic/annotations         -- alle Annotationen
  *   POST /_forensic/report             -- action=add_anchor
  *
- * Version: v0.6.158 · Build: 158 · 2026-05-11
+ * Version: v0.6.161 · Build: 161 · 2026-05-11
  * Beleg: Bauplan B6 v0.3 §4.7, Ausdefinitionsgespraech 2026-05-05
  */
 
@@ -518,49 +518,42 @@ function _bindEvents(container) {
 // ---------------------------------------------------------------------------
 
 /**
- * Fuegt einen Beweisanker fuer die Annotation ein.
+ * Fuegt die Annotation als neuen EvidenceBlock in den Editor ein.
  *
- * Ablauf:
- * 1. Aktiven Block per _opts.getActiveParagraph() ermitteln
- * 2. POST action=add_anchor mit block_id und annotation_id
- * 3. _anchoredIds aktualisieren, Seitenleiste neu rendern
+ * Ablauf (Bauplan B6 §4.7, Planungsgespraech 2026-05-11):
+ * 1. window.insertEvidenceBlockFromAnnotation(annId) aufrufen
+ *    (report_editor.js) -> fuegt EvidenceBlock nach fokussiertem Block ein
+ * 2. _anchoredIds aktualisieren, Sidebar neu rendern
  *
- * Hinweis Phase 8: Kein Cursor-Texteinschub mehr. Der Anker wird
- * serverseitig gespeichert. EvidenceBlock-Drop erfolgt direkt ueber
- * Drag-and-Drop in den Editor-Bereich.
- * Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
+ * Beleg: Bauplan B6 §4.7, Planungsgespraech 2026-05-11
  */
 async function _insertAnchor(annId) {
-    const blockId = _opts?.getActiveParagraph?.();
-    if (!blockId) {
-        _showInsertError('Bitte zuerst einen Block im Editor ausw\u00e4hlen.');
+    _dbg('_insertAnchor: annId=', annId);
+
+    const btn = document.querySelector(`.as-btn-anchor[data-ann-id="${annId}"]`);
+    if (btn) { btn.disabled = true; btn.textContent = 'Wird eingefügt…'; }
+
+    // Pruefen ob report_editor.js die Funktion bereitstellt
+    // Beleg: Bauplan B6 §4.7, Planungsgespraech 2026-05-11
+    if (typeof window.insertEvidenceBlockFromAnnotation !== 'function') {
+        _showInsertError('Editor nicht bereit. Bitte Seite neu laden.');
+        if (btn) { btn.disabled = false; btn.textContent = '📌 Als Beleg einfügen'; }
         return;
     }
 
-    const btn = document.querySelector(`.as-btn-anchor[data-ann-id="${annId}"]`);
-    if (btn) { btn.disabled = true; btn.textContent = 'Wird eingetragen\u2026'; }
-
-    // anchor_text aus der Annotation holen (Server-Pflichtfeld)
-    // Beleg: Bugfix Build 115, Projektgespraech 2026-05-07
-    const ann = _annotations.find(a => a.id === annId);
-    const anchorText = ann?.text || ann?.quote || ann?.annotation_text || String(annId);
-
     try {
-        const result = await _opts.postFn({
-            action:        'add_anchor',
-            block_id:      blockId,
-            annotation_id: annId,
-            anchor_text:   anchorText,
-        });
-        if (!result) throw new Error('Keine Serverantwort');
+        const ok = await window.insertEvidenceBlockFromAnnotation(annId);
+        if (!ok) throw new Error('Einfügen fehlgeschlagen (kein Lock oder Editor nicht bereit)');
 
+        // Sidebar: Annotation als verankert markieren
         _anchoredIds.add(annId);
         _render();
-        _opts?.onAnchorAdded?.(annId, blockId);
+        _opts?.onAnchorAdded?.(annId, null);
+        _dbg('_insertAnchor: EvidenceBlock eingefügt für annId=', annId);
 
     } catch (err) {
-        if (btn) { btn.disabled = false; btn.textContent = '\ud83d\udccc Als Beleg einf\u00fcgen'; }
-        _showInsertError('Beweisanker konnte nicht eingetragen werden: ' + String(err));
+        if (btn) { btn.disabled = false; btn.textContent = '📌 Als Beleg einfügen'; }
+        _showInsertError('Beleg konnte nicht eingefügt werden: ' + String(err));
     }
 }
 

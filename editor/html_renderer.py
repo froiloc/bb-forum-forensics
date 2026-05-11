@@ -261,6 +261,7 @@ class EvidenceBlockRenderer(EditorJsBlock):
     def html(self, sanitize: bool = False) -> str:
         evidence_ids = self.data.get("evidence_ids", [])
         group_label  = self.data.get("group_label", "")
+        display_mode = self.data.get("display_mode", "list")
         edb          = self.__class__._evidence_db
 
         label_html = (
@@ -268,20 +269,171 @@ class EvidenceBlockRenderer(EditorJsBlock):
             if group_label else ""
         )
 
-        items_html = ""
-        for evidence_id in evidence_ids:
-            items_html += self._render_evidence_item(evidence_id, edb)
+        # Belege laden und nach Modus rendern
+        # Beleg: Bauplan B6 §4.7, Planungsgespraech 2026-05-11
+        items = [self._load_evidence_item(eid, edb) for eid in evidence_ids]
+
+        if display_mode == "table":
+            items_html = self._render_table(items)
+        elif display_mode == "quote":
+            items_html = self._render_quotes(items)
+        else:
+            items_html = self._render_list(items)
 
         if not items_html:
             items_html = '<div class="evidence-block-empty">Keine Belege angegeben.</div>'
 
         return (
-            f'<div class="cdx-block evidence-block">'
-            f'<div class="evidence-block-header">⚖ Beweismittelgruppe</div>'
-            f'{label_html}'
-            f'<div class="evidence-block-items">{items_html}</div>'
-            f"</div>"
+            f'<div class="cdx-block evidence-block evidence-block--mode-{_esc(display_mode)}">'            f'<div class="evidence-block-header">⚖️ Beweismittelgruppe</div>'            f'{label_html}'            f'<div class="evidence-block-items">{items_html}</div>'            f"</div>"
         )
+
+    def _load_evidence_item(self, evidence_id: int, edb) -> dict:
+        """
+        Laedt eine Annotation und gibt ein Dict mit allen relevanten Feldern
+        zurueck. Bei Fehler: {"id": N, "error": True}.
+        Beleg: Bauplan B6 §4.7, Planungsgespraech 2026-05-11
+        """
+        if edb is None:
+            return {"id": evidence_id, "error": True}
+        try:
+            all_anns = edb.get_all_annotations()
+            ann = next((a for a in all_anns if a.id == evidence_id), None)
+        except Exception as exc:
+            logger.warning(
+                "html_renderer: Annotation #%d konnte nicht geladen werden: %s",
+                evidence_id, exc,
+            )
+            ann = None
+
+        if ann is None:
+            return {"id": evidence_id, "error": True}
+
+        import json as _json
+        tags: list = []
+        if getattr(ann, "tags_json", None):
+            try:
+                tags = _json.loads(ann.tags_json)
+            except Exception:
+                pass
+
+        sel_text = ""
+        if getattr(ann, "selection_json", None):
+            try:
+                sel = _json.loads(ann.selection_json)
+                sel_text = sel.get("textContent", "") or sel.get("text", "") or ""
+            except Exception:
+                pass
+
+        return {
+            "id":         ann.id,
+            "category":   ann.category,
+            "text":       ann.text or "",
+            "tags":       tags,
+            "page_url":   ann.page_url,
+            "sel_text":   sel_text,
+            "created_by": getattr(ann, "created_by", ""),
+            "ts":         getattr(ann, "ts", 0),
+            "error":      False,
+        }
+
+    def _render_list(self, items: list) -> str:
+        """
+        Darstellungsmodus 'list': Key-Value-Tabelle je Beleg.
+        Beleg: Bauplan B6 §4.7, Planungsgespraech 2026-05-11
+        """
+        import datetime as _dt
+        parts = []
+        for item in items:
+            if item.get("error"):
+                parts.append(
+                    f'<div class="evidence-item evidence-item--missing" data-id="{item['id']}">'                    f'Beleg #{item["id"]} (nicht gefunden)</div>'
+                )
+                continue
+            date_str = ""
+            if item.get("ts"):
+                try:
+                    date_str = _dt.datetime.fromtimestamp(item["ts"]).strftime("%d.%m.%Y %H:%M")
+                except Exception:
+                    pass
+            rows = [("ID", f'#{_esc(str(item["id"]))}')]
+            rows.append(("Kategorie", f'<span class="evidence-cat-{_esc(item["category"])}">{_esc(item["category"])}</span>'))
+            if item.get("tags"):
+                rows.append(("Tags", _esc(", ".join(item["tags"]))))
+            if item.get("sel_text"):
+                short = item["sel_text"][:200] + ("…" if len(item["sel_text"]) > 200 else "")
+                rows.append(("Markierung", _esc(short)))
+            if item.get("text"):
+                rows.append(("Notiz", _esc(item["text"])))
+            rows.append(("Quelle", f'<a href="{_esc(item["page_url"])}">{_esc(item["page_url"])}</a>'))
+            if date_str:
+                rows.append(("Datum", _esc(date_str)))
+            if item.get("created_by"):
+                rows.append(("Ermittler", _esc(item["created_by"])))
+            tr_html = "".join(
+                f'<tr><td class="evidence-item-key">{k}</td><td class="evidence-item-value">{v}</td></tr>'
+                for k, v in rows
+            )
+            parts.append(
+                f'<div class="evidence-item evidence-item--list" data-id="{item['id']}">'                f'<table class="evidence-item-kv">{tr_html}</table></div>'
+            )
+        return "".join(parts)
+
+    def _render_table(self, items: list) -> str:
+        """
+        Darstellungsmodus 'table': eine Zeile pro Beleg.
+        Beleg: Bauplan B6 §4.7, Planungsgespraech 2026-05-11
+        """
+        header = (
+            '<table class="evidence-table">'            '<thead><tr>'            '<th>ID</th><th>Kat.</th><th>Markierung</th><th>Notiz</th><th>Quelle</th>'            '</tr></thead><tbody>'
+        )
+        rows = []
+        for item in items:
+            if item.get("error"):
+                rows.append(
+                    f'<tr><td colspan="5" class="evidence-item--missing">'                    f'Beleg #{item["id"]} nicht gefunden</td></tr>'
+                )
+                continue
+            sel = item.get("sel_text", "")
+            short = sel[:80] + ("…" if len(sel) > 80 else "")
+            rows.append(
+                f'<tr class="evidence-item--table" data-id="{item['id']}">'                f'<td class="evidence-item-id-cell">#{_esc(str(item["id"]))}</td>'                f'<td class="evidence-cat-cell evidence-cat-{_esc(item["category"])}">{_esc(item["category"])}</td>'                f'<td class="evidence-sel-cell">{_esc(short)}</td>'                f'<td class="evidence-note-cell">{_esc(item.get("text", ""))}</td>'                f'<td class="evidence-src-cell"><a href="{_esc(item["page_url"])}">{_esc(item["page_url"])}</a></td>'                '</tr>'
+            )
+        return header + "".join(rows) + "</tbody></table>"
+
+    def _render_quotes(self, items: list) -> str:
+        """
+        Darstellungsmodus 'quote': Zitatkarte je Beleg.
+        Beleg: Bauplan B6 §4.7, Planungsgespraech 2026-05-11
+        """
+        import datetime as _dt
+        parts = []
+        for item in items:
+            if item.get("error"):
+                parts.append(
+                    f'<div class="evidence-item evidence-item--missing" data-id="{item['id']}">'                    f'Beleg #{item["id"]} nicht gefunden</div>'
+                )
+                continue
+            sel = item.get("sel_text", "") or item.get("text", "")
+            date_str = ""
+            if item.get("ts"):
+                try:
+                    date_str = _dt.datetime.fromtimestamp(item["ts"]).strftime("%d.%m.%Y")
+                except Exception:
+                    pass
+            source_parts = [_esc(item["page_url"])]
+            if date_str:
+                source_parts.append(_esc(date_str))
+            if item.get("created_by"):
+                source_parts.append(_esc(item["created_by"]))
+            note_html = (
+                f'<div class="evidence-item-quote-note">Notiz: {_esc(item["text"])}</div>'
+                if item.get("text") else ""
+            )
+            parts.append(
+                f'<div class="evidence-item evidence-item--quote" data-id="{item['id']}">'                f'<div class="evidence-item-quote-text">„{_esc(sel)}“</div>'                f'<div class="evidence-item-quote-source">— {", ".join(source_parts)}</div>'                f'{note_html}</div>'
+            )
+        return "".join(parts)
+
 
     @staticmethod
     def _render_evidence_item(evidence_id: int, edb: Optional["EvidenceDb"]) -> str:

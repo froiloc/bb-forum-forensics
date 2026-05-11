@@ -1476,6 +1476,146 @@ span.forensic-passive {
     font-style: italic;
 }
 
+/* -----------------------------------------------------------------------
+ * EvidenceBlock Darstellungsmodi (Bauplan B6 §4.7, Build 161)
+ * Beleg: Planungsgespraech 2026-05-11
+ * ----------------------------------------------------------------------- */
+
+/* Modus-Badge in der Kopfzeile */
+.evidence-block-mode-badge {
+    margin-left: auto;
+    font-size: 9px;
+    font-weight: normal;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 1px 5px;
+    border-radius: 8px;
+    background: rgba(21,101,192,0.12);
+    color: #1565c0;
+}
+
+/* --- Modus: list --- */
+
+.evidence-block--mode-list .evidence-item--list {
+    position: relative;
+    padding: 6px 0 6px 0;
+    border-bottom: 1px solid #cce0f5;
+}
+.evidence-block--mode-list .evidence-item--list:last-child {
+    border-bottom: none;
+}
+
+.evidence-item-kv {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+.evidence-item-key {
+    width: 30%;
+    padding: 1px 8px 1px 0;
+    color: #546e7a;
+    font-weight: 600;
+    vertical-align: top;
+    white-space: nowrap;
+}
+.evidence-item-value {
+    padding: 1px 0;
+    color: #212121;
+    word-break: break-word;
+}
+.evidence-item-value a {
+    color: #1565c0;
+    text-decoration: none;
+    word-break: break-all;
+}
+.evidence-item-value a:hover { text-decoration: underline; }
+
+/* --- Modus: table --- */
+
+.evidence-block--mode-table .evidence-items--table {
+    overflow-x: auto;
+}
+.evidence-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11.5px;
+}
+.evidence-table th {
+    background: #e3f2fd;
+    color: #1565c0;
+    padding: 4px 8px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid #90caf9;
+    white-space: nowrap;
+}
+.evidence-table td {
+    padding: 4px 8px;
+    border-bottom: 1px solid #e0e0e0;
+    vertical-align: top;
+    max-width: 200px;
+    word-break: break-word;
+}
+.evidence-table tr:hover td { background: #f5f5f5; }
+.evidence-table a { color: #1565c0; }
+
+/* --- Modus: quote --- */
+
+.evidence-block--mode-quote .evidence-item--quote {
+    position: relative;
+    margin: 6px 0;
+    padding: 8px 10px 8px 14px;
+    border-left: 3px solid #1565c0;
+    background: #f8fbff;
+    border-radius: 0 4px 4px 0;
+}
+.evidence-item-quote-text {
+    font-size: 13px;
+    font-style: italic;
+    color: #212121;
+    line-height: 1.5;
+    margin-bottom: 4px;
+}
+.evidence-item-quote-source {
+    font-size: 11px;
+    color: #78909c;
+}
+.evidence-item-quote-source a {
+    color: #1565c0;
+    text-decoration: none;
+    word-break: break-all;
+}
+.evidence-item-quote-source a:hover { text-decoration: underline; }
+.evidence-item-quote-note {
+    font-size: 11.5px;
+    color: #37474f;
+    margin-top: 4px;
+    font-style: normal;
+}
+
+/* Lade-Platzhalter */
+.evidence-item--missing { opacity: 0.6; font-style: italic; font-size: 11px; }
+.evidence-item-loading  { color: #78909c; }
+
+/* Kategorie-Farben */
+.evidence-cat-CAT_PERSON   { color: #8a6800; }
+.evidence-cat-CAT_LOCATION { color: #1255a0; }
+.evidence-cat-CAT_176      { color: #9a1010; }
+.evidence-cat-CAT_184      { color: #6a0090; }
+.evidence-cat-CAT_VICTIM   { color: #9a3000; }
+.evidence-cat-CAT_OTHER    { color: #006048; }
+
+/* Entfernen-Button (Positionierung in Liste/Zitat) */
+.evidence-item--list .evidence-remove-btn,
+.evidence-item--quote .evidence-remove-btn {
+    position: absolute;
+    top: 4px;
+    right: 0;
+}
+
+/* Settings-Panel */
+.evidence-settings { display: flex; flex-direction: column; gap: 2px; }
+
 /* -- Annotations-Sidebar ------------------------------------------------- */
 
 .annotation-sidebar {
