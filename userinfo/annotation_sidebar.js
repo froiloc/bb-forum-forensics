@@ -725,10 +725,29 @@ async function _fetchWithLockInternal(data, lockId) {
 // window-Export
 // ---------------------------------------------------------------------------
 
+/**
+ * Markiert eine einzelne Annotation als verankert und aktualisiert die Sidebar.
+ *
+ * Wird von report_editor.js aufgerufen nach einem Drop-Einfügen
+ * (Option D) oder nach _addEvidence() in EvidenceBlock.
+ * Bug 2.72 Fix Build 164: Drop-Weg benachrichtigte Sidebar nicht.
+ * Beleg: Projektgespräch 2026-05-11
+ *
+ * @param {number} annId  -- Annotation-ID
+ */
+function notifyAnchored(annId) {
+    _dbg('notifyAnchored: annId=', annId);
+    if (!annId) return;
+    _anchoredIds.add(annId);
+    _render();
+}
+
 _dbg('annotation_sidebar.js: window.AnnotationSidebar exportiert');
 window.AnnotationSidebar = {
     // Phase 8 Haupt-API
     showSidebar,
+    // Bug 2.72 Fix Build 164: Sidebar nach Drop-Einfügen benachrichtigen
+    notifyAnchored,
     // Unveraenderte API (Rueckwaerts-Kompatibilitaet und Tests)
     init,
     reload,

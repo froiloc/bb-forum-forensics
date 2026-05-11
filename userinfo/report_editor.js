@@ -2207,6 +2207,11 @@ class EvidenceBlock {
         }
         this._data.evidence_ids = [...this._data.evidence_ids, annotationId];
         this._renderContent();
+        // Bug 2.72 Fix Build 164: Sidebar nach Drop auf bestehenden
+        // EvidenceBlock benachrichtigen (grüner Rahmen, Zähler, Button).
+        // Beleg: Projektgespräch 2026-05-11
+        window.AnnotationSidebar?.notifyAnchored?.(annotationId);
+        _dbg('_addEvidence: Sidebar benachrichtigt für annId=', annotationId);
     }
 
     async _removeEvidence(annotationId) {
@@ -2332,6 +2337,13 @@ async function insertEvidenceBlockFromAnnotation(annId) {
             _dbg('insertEvidenceBlockFromAnnotation: Evidence-Link fehlgeschlagen:', err);
         }
     }
+
+    // Bug 2.72 Fix Build 164: Sidebar nach Drop-Einfügen benachrichtigen.
+    // Der Drop-Weg lief bisher ohne Sidebar-Update durch.
+    // Beleg: Projektgespräch 2026-05-11
+    window.AnnotationSidebar?.notifyAnchored?.(annId);
+    _dbg('insertEvidenceBlockFromAnnotation: Sidebar benachrichtigt für annId=', annId);
+
     return true;
 }
 

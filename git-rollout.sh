@@ -63,5 +63,6 @@ fi
 git add "${ROOTDIR}debug/screenshots/*"
 git commit -a -m "${1:-$(git log -1 | tail -n1 | awk -F. '{print $1 "." $2 "." $3+1}')} - ${uuid}"
 git push
-git rm "${ROOTDIR}debug/screenshots/*.png"
+git rm "${ROOTDIR}debug/screenshots/*.png" 2>/dev/null
 mkdir -p "${ROOTDIR}debug/screenshots/"
+xclip -selection clipboard -i <<<"https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.${uuid}.md"
