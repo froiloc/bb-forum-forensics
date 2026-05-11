@@ -151,8 +151,13 @@ class AnnotateEndpoint:
             clean_tags = [str(t).strip() for t in tags_raw if str(t).strip()]
             tags_json = json.dumps(clean_tags, ensure_ascii=False)
 
-        # created_by aus Kontext (SAMAccountName des Ermittlers)
-        created_by = getattr(self._context, "username", "") or ""
+        # Bug 2.85 (Build 176): created_by = SAMAccountName des ERMITTLERS,
+        # nicht des Beschuldigten. context.investigator_username ist der
+        # angemeldete Systembenutzer (z.B. "paul"), context.username ist der
+        # Forum-Username des Beschuldigten (z.B. "uid_538299").
+        # Beleg: Projektgespräch 2026-05-12 — Bug 2.85 (BS3).
+        created_by = getattr(self._context, "investigator_username", "") or \
+                     getattr(self._context, "username", "") or ""
 
         # Annotation speichern
         try:

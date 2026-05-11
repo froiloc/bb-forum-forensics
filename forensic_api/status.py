@@ -59,22 +59,36 @@ class StatusEndpoint:
         try:
             page_count       = self._bundle.forensic.page_count()
             annotation_count = self._bundle.evidence.annotation_count()
+            # Bug 2.86 (Build 176): Forum-Username des Beschuldigten aus forensic_meta.
+            # forensic_meta.key='username' enthält den echten Forum-Benutzernamen.
+            # context.username ist ein Fallback (z.B. "uid_538299"), der greift wenn
+            # forensic_meta keinen Eintrag hat.
+            # Beleg: forensic_db.get_meta() + Projektgespräch 2026-05-12.
+            forum_username = self._bundle.forensic.get_meta("username") or \
+                             self._context.username or ""
+            forum_user_id  = self._bundle.forensic.get_meta("user_id") or \
+                             str(self._context.user_id or "")
         except Exception as exc:
             logger.warning("Statusabfrage: DB-Zugriff fehlgeschlagen: %s", exc)
             page_count       = -1
             annotation_count = -1
+            forum_username   = self._context.username or ""
+            forum_user_id    = str(self._context.user_id or "")
 
         # Beleg: Projektgespräch — Bug 2.67: investigator_username war nicht im
         # Status-Response enthalten. toolbar.js nutzte fälschlicherweise
         # s.username (= Beschuldigter) als investigatorUsername statt
         # s.investigator_username (= Ermittler, z.B. paul).
         # Build 175: investigator_username aus context.investigator_username ergänzt.
+        # Build 176 (Bug 2.86): forum_username + forum_user_id ergänzt.
         status = {
             "mode":                  self._context.mode,
             "user_id":               self._context.user_id,
             "username":              self._context.username,
             "investigator_id":       self._context.investigator_id,
             "investigator_username": getattr(self._context, "investigator_username", ""),
+            "forum_username":        forum_username,
+            "forum_user_id":         forum_user_id,
             "page_count":            page_count,
             "annotation_count":      annotation_count,
             "forum_hostname":        self._bundle.forensic.get_meta("domainname") or "",

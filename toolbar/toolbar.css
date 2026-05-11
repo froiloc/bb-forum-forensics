@@ -553,7 +553,10 @@ body {
 .forensic-popup {
   position: fixed;
   z-index: 10000;
-  width: 440px;
+  /* Bug 2.87 (Build 176): Breite von 440px auf 465px erhöht (+25px),
+     damit alle Eingabeflächen (Dropdown, User-Badge, Suchfeld) vollständig
+     hineinpassen. Beleg: Projektgespräch 2026-05-12. */
+  width: 465px;
   max-width: calc(100vw - 16px);
   background: #1a1f2e;
   border: 1px solid #3a4060;
@@ -1769,4 +1772,21 @@ body {
 /* Topic-Zeilen auf viewforum: etwas breiteren Rahmen verwenden */
 tr.contains_traces {
   outline-offset: 0;
+}
+
+/* --- Build 176 (BS3) — Ergänzungen --- */
+
+/* Alias-Hinweis in Typeahead-Ergebnissen (Bug 2.78) */
+.forensic-popup-alias-hint {
+  font-size: 10px;
+  color: #6a7a9a;
+  font-style: italic;
+}
+
+/* Limit-Hinweis bei abgeschnittener Trefferliste */
+.forensic-popup-hint--limit {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  color: #6a7a9a;
 }

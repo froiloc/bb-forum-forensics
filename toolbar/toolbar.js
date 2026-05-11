@@ -2,7 +2,19 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 175 · 2026-05-11
+ * Version: v0.1.0 · Build: 176 · 2026-05-12
+ *
+ * Änderungen Build 176 (BS3):
+ *   Bug 2.84: Kategorie-Wechsel im Popup rendert Highlights neu
+ *     (clearAll/restoreAll/MinimapModule.refresh — wie HoverMenu).
+ *   Bug 2.85: annotate.py created_by = investigator_username.
+ *   Bug 2.86: forumUsername aus forensic_meta.key='username';
+ *     status.py liefert forum_username + forum_user_id;
+ *     Popup nutzt _state.forumUsername statt _state.username.
+ *   Bug 2.87: Popup 465px breit (+25px).
+ *   Bug 2.78: Volliste → Typeahead (≥4 Zeichen, 300ms Debounce,
+ *     GET /_forensic/knownusers?q=..., matched_alias anzeigen).
+ *     knownusers.py sucht in default.db (known_users + known_aliases).
  *
  * Änderungen Build 175 (BS3):
  *   Bug 2.67: investigatorUsername aus s.investigator_username (Ermittler),
@@ -2110,10 +2122,8 @@
     var _currentAnn   = null;  // Aktuell bearbeitete Annotation
     var _popupEl      = null;  // DOM-Element des Popups
 
-    // Cache für bekannte Benutzer (Bug 2.78) — wird einmalig geladen
-    // Format: [{user_id: 538299, username: "uid_538299"}, ...]
-    var _knownUsersCache = null;   // null = noch nicht geladen
-    var _knownUsersLoading = false; // Ladevorgang läuft
+    // Bug 2.78 (Build 176): Kein Cache mehr — Typeahead-Suche lädt bei Eingabe.
+    // Build 175-Cache (_knownUsersCache/_knownUsersLoading) entfernt.
 
     // =========================================================================
     // Öffentliche API
@@ -2122,8 +2132,7 @@
     function open(ann) {
       _currentAnn = ann;
       _render(ann);
-      // Bekannte Benutzer vorladen (Bug 2.78) — im Hintergrund, kein Blockieren
-      _preloadKnownUsers();
+      // Bug 2.78 (Build 176): Kein Vorladen — Typeahead sucht on-demand.
     }
 
     function close(save) {
@@ -2164,10 +2173,13 @@
       var catLabel = cat ? (cat.icon + " " + cat.label) : ann.category;
       var catColor = cat ? cat.color : "#aaa";
 
-      // Bug 2.77: Forenbenutzer aus State lesen
-      // _state.username = Beschuldigter (forum username), user_id = forum user_id
-      var forumUser    = _state.username || ("uid_" + _state.user_id) || "—";
-      var forumUserId  = _state.user_id  || "—";
+      // Bug 2.77/2.86: Forenbenutzer aus State lesen
+      // Build 176: forumUsername kommt aus forensic_meta.key='username' (echter Forum-Name).
+      // Fallback-Kette: forumUsername → username → "uid_<id>" → "—"
+      // Beleg: Projektgespräch 2026-05-12 — Bug 2.86 (BS3).
+      var forumUser   = _state.forumUsername || _state.username ||
+                        (_state.forumUserId ? ("uid_" + _state.forumUserId) : "—");
+      var forumUserId = _state.forumUserId || _state.user_id || "—";
 
       // Kategorie-Optionen für Dropdown (Bug 2.76)
       var catOptions = "";
@@ -2260,19 +2272,43 @@
       document.getElementById("forensic-popup-btn-cancel").addEventListener("click", function () { close(false); });
       document.getElementById("forensic-popup-btn-save").addEventListener("click", function () { close(true); });
 
-      // Bug 2.76: Kategorie-Dropdown — Badge sofort aktualisieren bei Änderung
+      // Bug 2.76/2.84 (Build 175/176): Kategorie-Dropdown — Highlight sofort neu rendern.
+      // Build 176 Fix (Bug 2.84): Kategorie-Wechsel im Popup änderte nur den Badge,
+      // aber nicht die Highlight-Farbe im DOM. Lösung: HighlightModule.clearAll() +
+      // restoreAll() + MinimapModule.refresh() — dasselbe Muster wie
+      // HoverMenuModule._changeAnnotationCategory() (dort funktioniert es tadellos).
+      // Beleg: Projektgespräch 2026-05-12 — Bug 2.84 (BS3).
       var catSelect = document.getElementById("forensic-popup-category");
       if (catSelect) {
         catSelect.addEventListener("change", function () {
           var newCat    = catSelect.value;
           var newCatObj = _getCat(newCat);
-          var badge     = document.getElementById("forensic-popup-cat-badge");
+
+          // Badge-Text + Farbe sofort aktualisieren
+          var badge = document.getElementById("forensic-popup-cat-badge");
           if (badge && newCatObj) {
             badge.textContent = newCatObj.icon + " " + newCatObj.label;
             badge.style.color = newCatObj.color;
           }
-          if (_currentAnn) { _currentAnn.category = newCat; }
-          _dbg("[Popup] Kategorie geändert auf:", newCat);
+
+          if (_currentAnn && _currentAnn.category !== newCat) {
+            var oldCat = _currentAnn.category;
+            _currentAnn.category  = newCat;
+            _currentAnn.syncState = "pending";
+
+            // Highlight-Farbe im DOM sofort aktualisieren:
+            // clearAll() entfernt alle Ranges aus CSS.highlights,
+            // restoreAll() rendert sie mit der neuen Kategorie-Farbe.
+            // PostMarkerModule.clearAll/restoreAll() synchronisiert Post-Marker.
+            HighlightModule.clearAll();
+            HighlightModule.restoreAll();
+            PostMarkerModule.clearAll();
+            PostMarkerModule.restoreAll();
+            MinimapModule.refresh();
+
+            _dbg("[Popup] Kategorie geändert:", oldCat, "→", newCat,
+                 "| Highlight neu gerendert");
+          }
         });
       }
 
@@ -2325,12 +2361,21 @@
     }
 
     // =========================================================================
-    // Bug 2.78: Benutzer-Wechsel-Panel
+    // Bug 2.78 (Build 176): Benutzer-Wechsel-Panel — Typeahead-Suche
     // =========================================================================
+    // Build 175 nutzte eine Volliste (nicht skalierbar bei 500k+ Einträgen).
+    // Build 176: Typeahead-Eingabefeld, Suche erst ab 4 Zeichen,
+    //   GET /_forensic/knownusers?q=<suchbegriff> gegen default.db
+    //   (known_users + known_aliases). Debounce: 300ms.
+    // Beleg: Projektgespräch 2026-05-12 — Bug 2.78/2.82/2.83.
+    // =========================================================================
+
+    // Debounce-Timer für Typeahead
+    var _searchDebounceTimer = null;
 
     /**
      * Schaltet das Benutzer-Wechsel-Panel um (auf/zu).
-     * Beim ersten Öffnen: Benutzer aus Cache oder Server laden.
+     * Beim Öffnen: Typeahead-Eingabefeld rendern.
      */
     function _toggleUserPanel() {
       var panel = document.getElementById("forensic-popup-user-panel");
@@ -2343,125 +2388,172 @@
         return;
       }
 
-      // Panel öffnen
+      // Panel öffnen + Typeahead-UI rendern
       panel.style.display = "block";
-      _dbg("[Popup] Benutzer-Panel geöffnet");
-
-      if (_knownUsersCache !== null) {
-        // Cache vorhanden → sofort rendern
-        _renderUserPanel(panel, _knownUsersCache);
-      } else if (!_knownUsersLoading) {
-        // Noch nicht geladen → jetzt laden
-        _loadKnownUsers(function (users) {
-          _renderUserPanel(panel, users);
-        });
-      } else {
-        // Ladevorgang läuft bereits → Lade-Hinweis bleibt stehen
-        _dbg("[Popup] Benutzer werden bereits geladen…");
-      }
+      _renderUserPanelInput(panel);
+      _dbg("[Popup] Benutzer-Panel geöffnet (Typeahead)");
     }
 
     /**
-     * Rendert die Benutzer-Liste in das Panel.
-     * Jeder Eintrag hat einen Button, der die Annotation diesem Benutzer
-     * zuordnet und den Benutzer-Badge im Header aktualisiert.
+     * Rendert das Typeahead-Eingabefeld im Panel.
+     * Benutzer-Ergebnisliste wird erst nach Eingabe von ≥4 Zeichen befüllt.
      */
-    function _renderUserPanel(panel, users) {
-      if (!users || users.length === 0) {
-        panel.innerHTML = '<span class="forensic-popup-hint">Keine weiteren Benutzer bekannt.</span>';
+    function _renderUserPanelInput(panel) {
+      panel.innerHTML =
+        '<span class="forensic-popup-label forensic-popup-label--sm">' +
+        'Benutzer suchen (mind. 4 Zeichen):</span>' +
+        '<input type="text" id="forensic-popup-user-search" ' +
+        'class="forensic-popup-input" placeholder="Benutzername oder Alias…" ' +
+        'autocomplete="off" spellcheck="false">' +
+        '<div id="forensic-popup-user-results" class="forensic-popup-user-list"></div>';
+
+      // Fokus auf Suchfeld
+      var searchInput = document.getElementById("forensic-popup-user-search");
+      if (searchInput) {
+        searchInput.focus();
+        searchInput.addEventListener("input", function () {
+          _onUserSearchInput(searchInput.value, panel);
+        });
+        // Enter in Suchfeld: ersten Treffer auswählen
+        searchInput.addEventListener("keydown", function (e) {
+          if (e.key === "Enter") {
+            var firstBtn = panel.querySelector("button[data-uid]");
+            if (firstBtn) firstBtn.click();
+          }
+        });
+      }
+
+      // Klick-Delegation für Ergebnisse (wird nach Suche befüllt)
+      panel.addEventListener("click", _onUserResultClick);
+    }
+
+    /**
+     * Debounced Input-Handler: sucht erst nach 300ms Pause und ≥4 Zeichen.
+     */
+    function _onUserSearchInput(value, panel) {
+      clearTimeout(_searchDebounceTimer);
+      var q = (value || "").trim();
+      var resultsEl = document.getElementById("forensic-popup-user-results");
+
+      if (q.length < 4) {
+        if (resultsEl) {
+          resultsEl.innerHTML = q.length > 0
+            ? '<span class="forensic-popup-hint">Noch ' + (4 - q.length) + ' Zeichen…</span>'
+            : '';
+        }
         return;
       }
 
-      var html = '<span class="forensic-popup-label forensic-popup-label--sm">' +
-        'Annotation zuordnen:</span><div class="forensic-popup-user-list">';
+      // Lade-Indikator
+      if (resultsEl) {
+        resultsEl.innerHTML = '<span class="forensic-popup-hint">Suche…</span>';
+      }
 
+      _searchDebounceTimer = setTimeout(function () {
+        _searchUsers(q, function (users, limited) {
+          _renderUserResults(panel, users, limited);
+        });
+      }, 300);
+    }
+
+    /**
+     * Führt die Suche gegen den Server aus.
+     * GET /_forensic/knownusers?q=<suchbegriff>
+     */
+    function _searchUsers(q, callback) {
+      var url = ForensicToolbar.config.API_KNOWN_USERS + "?q=" + encodeURIComponent(q);
+      _dbg("[Popup] Suche Benutzer:", url);
+
+      ajaxGet(url)
+        .then(function (data) {
+          var users   = (data && Array.isArray(data.users)) ? data.users : [];
+          var limited = !!(data && data.limited);
+          _dbg("[Popup] Benutzer-Suchergebnis:", users.length, "Treffer, limited:", limited);
+          callback(users, limited);
+        })
+        .catch(function (err) {
+          _dbg("[Popup] Benutzer-Suche Fehler:", err);
+          callback([], false);
+        });
+    }
+
+    /**
+     * Rendert die Suchergebnisse als anklickbare Buttons.
+     * matched_alias wird angezeigt wenn der Treffer über Alias gefunden wurde.
+     */
+    function _renderUserResults(panel, users, limited) {
+      var resultsEl = document.getElementById("forensic-popup-user-results");
+      if (!resultsEl) return;
+
+      if (!users || users.length === 0) {
+        resultsEl.innerHTML = '<span class="forensic-popup-hint">Kein Benutzer gefunden.</span>';
+        return;
+      }
+
+      var html = "";
       for (var i = 0; i < users.length; i++) {
-        var u       = users[i];
-        var isCurr  = (_currentAnn && _currentAnn.targetUserId === u.user_id);
-        // Aktueller Beschuldigter des aktiven Jobs
-        var isActive = (u.user_id === _state.user_id);
-        var btnCls  = "forensic-btn forensic-btn-xs" +
-          (isCurr || isActive ? " forensic-btn-primary" : " forensic-btn-secondary");
-        var indicator = isActive ? " ✓" : "";
+        var u        = users[i];
+        var isActive = (u.user_id === _state.user_id || u.user_id === _state.forumUserId);
+        var btnCls   = "forensic-btn forensic-btn-xs" +
+          (isActive ? " forensic-btn-primary" : " forensic-btn-secondary");
+        // Alias-Hinweis: "Name (→ Alias)"
+        var label = _esc(u.username);
+        if (u.matched_alias) {
+          label += ' <span class="forensic-popup-alias-hint">(→ ' +
+            _esc(u.matched_alias) + ')</span>';
+        }
+        if (isActive) { label += ' ✓'; }
 
         html += '<button class="' + btnCls + '" ' +
           'data-uid="' + _esc(String(u.user_id)) + '" ' +
           'data-uname="' + _esc(u.username) + '" ' +
           'title="User-ID: ' + _esc(String(u.user_id)) + '">' +
-          _esc(u.username) + indicator + '</button>';
+          label + '</button>';
       }
-      html += '</div>';
-      panel.innerHTML = html;
-
-      // Event-Delegation: Klick auf Benutzer-Button
-      panel.addEventListener("click", function (e) {
-        var btn = e.target.closest("button[data-uid]");
-        if (!btn) return;
-
-        var uid   = parseInt(btn.getAttribute("data-uid"), 10);
-        var uname = btn.getAttribute("data-uname");
-
-        _dbg("[Popup] Benutzer-Wechsel →", uid, uname);
-
-        // Annotation dem neuen Benutzer zuordnen
-        if (_currentAnn) {
-          _currentAnn.targetUserId   = uid;
-          _currentAnn.targetUsername = uname;
-        }
-
-        // Badge aktualisieren
-        var badge = document.getElementById("forensic-popup-user-display");
-        if (badge) {
-          badge.textContent = uname;
-          badge.title       = "Forum-User-ID: " + uid;
-        }
-
-        // Panel schließen
-        var panelEl = document.getElementById("forensic-popup-user-panel");
-        if (panelEl) panelEl.style.display = "none";
-
-        // Alle Buttons neu markieren
-        var allBtns = panel.querySelectorAll("button[data-uid]");
-        allBtns.forEach(function (b) {
-          b.classList.remove("forensic-btn-primary");
-          b.classList.add("forensic-btn-secondary");
-        });
-        btn.classList.remove("forensic-btn-secondary");
-        btn.classList.add("forensic-btn-primary");
-      });
+      if (limited) {
+        html += '<span class="forensic-popup-hint forensic-popup-hint--limit">' +
+          '(Liste abgeschnitten — Suche verfeinern)</span>';
+      }
+      resultsEl.innerHTML = html;
     }
 
     /**
-     * Lädt bekannte Benutzer vom Server (Bug 2.78).
-     * Ergebnis wird in _knownUsersCache gespeichert.
-     * callback(users) wird nach erfolgreichem Laden aufgerufen.
+     * Click-Handler für Suchergebnis-Buttons (Event-Delegation).
+     * Setzt targetUserId auf der Annotation und schließt das Panel.
      */
-    function _loadKnownUsers(callback) {
-      _knownUsersLoading = true;
-      _dbg("[Popup] Lade bekannte Benutzer von", ForensicToolbar.config.API_KNOWN_USERS);
+    function _onUserResultClick(e) {
+      var btn = e.target.closest("button[data-uid]");
+      if (!btn) return;
 
-      ajaxGet(ForensicToolbar.config.API_KNOWN_USERS)
-        .then(function (data) {
-          _knownUsersCache   = (data && Array.isArray(data.users)) ? data.users : [];
-          _knownUsersLoading = false;
-          _dbg("[Popup] Bekannte Benutzer geladen:", _knownUsersCache.length);
-          if (callback) callback(_knownUsersCache);
-        })
-        .catch(function (err) {
-          _knownUsersLoading = false;
-          _knownUsersCache   = [];  // Leerer Cache verhindert erneute Ladeversuche
-          _dbg("[Popup] Fehler beim Laden der Benutzer:", err);
-          if (callback) callback([]);
-        });
+      var uid   = parseInt(btn.getAttribute("data-uid"), 10);
+      var uname = btn.getAttribute("data-uname");
+      _dbg("[Popup] Benutzer-Wechsel →", uid, uname);
+
+      // Annotation dem neuen Benutzer zuordnen
+      if (_currentAnn) {
+        _currentAnn.targetUserId   = uid;
+        _currentAnn.targetUsername = uname;
+      }
+
+      // Benutzer-Badge im Popup aktualisieren
+      var badge = document.getElementById("forensic-popup-user-display");
+      if (badge) {
+        badge.textContent = uname;
+        badge.title       = "Forum-User-ID: " + uid;
+      }
+
+      // Panel schließen
+      var panelEl = document.getElementById("forensic-popup-user-panel");
+      if (panelEl) panelEl.style.display = "none";
     }
 
     /**
-     * Lädt bekannte Benutzer im Hintergrund vor (ohne Callback).
-     * Wird beim Öffnen des Popups aufgerufen damit der Cache bereit ist.
+     * _preloadKnownUsers — entfernt (Build 176).
+     * Vorabladen einer Volliste ist bei 500k+ Einträgen nicht sinnvoll.
+     * Typeahead lädt nur bei Eingabe.
      */
     function _preloadKnownUsers() {
-      if (_knownUsersCache !== null || _knownUsersLoading) return;
-      _loadKnownUsers(null);
+      // Absichtlich leer — Build 176: kein Vorladen mehr.
     }
 
     // =========================================================================
@@ -5170,10 +5262,15 @@
           // Beleg: Projektgespraech 2026-05-11 — status.py liefert jetzt investigator_username.
           investigatorUsername: s.investigator_username || s.user_id || "—",
           forumHostname:        s.forum_hostname || "",
-          // Bug 2.77 (Build 175): Beschuldigten-Username + user_id für Popup-Anzeige.
-          // _state.username/user_id werden vom AnnotationPopupModule verwendet.
-          username: s.username || null,
-          user_id:  s.user_id  || null,
+          // Bug 2.77/2.86 (Build 175/176): Forum-Username + user_id des Beschuldigten.
+          // Build 176: forum_username kommt jetzt aus forensic_meta.key='username'
+          // (= echter Forum-Benutzername), nicht mehr aus s.username (Fallback).
+          // _state.forumUsername/forumUserId werden vom AnnotationPopupModule verwendet.
+          // Beleg: Projektgespräch 2026-05-12 — Bug 2.86 (BS3).
+          username:      s.username      || null,
+          user_id:       s.user_id       || null,
+          forumUsername: s.forum_username || s.username || null,
+          forumUserId:   s.forum_user_id  || String(s.user_id || ""),
         });
         ToolbarUIModule.updateSessionInfo();
         console.info(

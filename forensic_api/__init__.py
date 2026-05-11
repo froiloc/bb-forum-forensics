@@ -176,14 +176,14 @@ class ForensicApi:
             self._get_status().handle(handler)
             return
 
-        # /_forensic/knownusers (GET) [BS3 Bug 2.78 Build 175]
-        # Liefert alle bekannten Beschuldigten-Benutzer fuer das
-        # Annotations-Popup (User-Wechsel-Schaltfläche).
+        # /_forensic/knownusers (GET) [BS3 Bug 2.78 Build 175/176]
+        # Build 176: params (q-Parameter) jetzt mitgegeben — Suchendpunkt.
+        # Beleg: Projektgespräch 2026-05-12 — Bug 2.78 überarbeitet.
         if url_path == "/_forensic/knownusers":
             if method not in ("GET", "HEAD"):
                 self._method_not_allowed(handler)
                 return
-            self._get_knownusers().handle(handler)
+            self._get_knownusers().handle(handler, params)
             return
 
         # /_forensic/viewport (POST)

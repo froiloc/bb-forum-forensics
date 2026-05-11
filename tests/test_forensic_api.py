@@ -243,6 +243,30 @@ class TestForensicApiAnnotate(unittest.TestCase):
                 f"Kategorie {cat} wurde nicht akzeptiert"
             )
 
+    def test_T60_created_by_ist_ermittler(self):
+        """T60 (Build 176 — Bug 2.85): created_by muss investigator_username
+        ('paul') sein, nicht der Beschuldigten-Username ('testnutzer').
+        Beleg: Projektgespräch 2026-05-12 — Bug 2.85 (BS3).
+        """
+        bundle = _make_bundle()
+        api    = ForensicApi(bundle, self.ctx, self.cfg)
+        body   = json.dumps({
+            "page_url":  "/forum/viewtopic.php?id=42",
+            "category":  "CAT_PERSON",
+            "text":      "Testzweck Bug 2.85",
+        }).encode("utf-8")
+        _dispatch(api, "POST", "/_forensic/annotate", "", body)
+
+        # save_annotation muss mit created_by="paul" aufgerufen worden sein
+        call_kwargs = bundle.evidence.save_annotation.call_args
+        self.assertIsNotNone(call_kwargs, "save_annotation wurde nicht aufgerufen")
+        created_by = call_kwargs.kwargs.get("created_by") or \
+                     (call_kwargs.args[9] if len(call_kwargs.args) > 9 else None)
+        self.assertEqual(
+            created_by, "paul",
+            f"created_by ist '{created_by}', erwartet 'paul' (investigator_username)"
+        )
+
 
 # ===========================================================================
 # Tests: AnnotateEndpoint DELETE — OP-KN-9, Build 059

@@ -244,6 +244,108 @@ class DefaultDb:
             logger.error("get_meta('%s') fehlgeschlagen: %s", key, exc)
             return None
 
+
+    def search_known_users(self, query: str, limit: int = 20) -> list[dict]:
+        """
+        Sucht in known_users und known_aliases nach Benutzern, deren Username
+        oder Alias den Suchbegriff enthält (LIKE-Suche, case-insensitive).
+
+        Wird von KnownUsersEndpoint (/_forensic/knownusers?q=...) aufgerufen.
+
+        Architektur-Hinweis:
+          - known_users und known_aliases werden vom aiw_sqlite_prepper in
+            default.db befüllt (BS0, Bugs 2.82+2.83).
+          - Benötigte Tabellen + Indizes (angelegt vom Prepper):
+              known_users  (user_id INTEGER PK, username TEXT NOT NULL)
+              known_aliases(alias_id INTEGER PK AUTOINCREMENT,
+                            user_id  INTEGER REFERENCES known_users(user_id),
+                            alias    TEXT NOT NULL)
+              INDEX known_users_username_idx ON known_users(username COLLATE NOCASE)
+              INDEX known_aliases_alias_idx  ON known_aliases(alias    COLLATE NOCASE)
+          - default.db ist READ-ONLY: diese Methode schreibt nie.
+          - Suche erst ab 4 Zeichen (Pflicht, wegen 500k+ Einträgen).
+
+        Args:
+            query: Suchbegriff (mind. 4 Zeichen, sonst leere Liste).
+            limit: Maximale Trefferanzahl (Default: 20).
+
+        Returns:
+            Liste von {"user_id": int, "username": str, "matched_alias": str|None}.
+            matched_alias ist None wenn der Treffer auf username basiert,
+            sonst der gematchte Alias-String.
+
+        Beleg: Projektgespräch 2026-05-12 — Bugs 2.78/2.82/2.83 (BS3/BS0).
+        """
+        # Sicherheitsnetz: Suche erst ab 4 Zeichen (Performance bei 500k Einträgen)
+        if not query or len(query.strip()) < 4:
+            return []
+
+        q = query.strip()
+        pattern = "%" + q + "%"
+
+        results: list[dict] = []
+
+        try:
+            # Treffer direkt auf username
+            rows = self._con.execute(
+                """
+                SELECT user_id, username
+                FROM ddb.known_users
+                WHERE username LIKE ? COLLATE NOCASE
+                LIMIT ?
+                """,
+                (pattern, limit),
+            ).fetchall()
+            seen_ids: set[int] = set()
+            for row in rows:
+                uid = int(row["user_id"])
+                seen_ids.add(uid)
+                results.append({
+                    "user_id":      uid,
+                    "username":     str(row["username"]),
+                    "matched_alias": None,
+                })
+        except Exception as exc:
+            logger.warning(
+                "search_known_users: known_users-Abfrage fehlgeschlagen: %s", exc
+            )
+            # Tabelle existiert noch nicht (Prepper hat noch nicht befüllt)
+            return []
+
+        # Treffer über Aliasse — bis Limit auffüllen
+        remaining = limit - len(results)
+        if remaining > 0:
+            try:
+                alias_rows = self._con.execute(
+                    """
+                    SELECT ka.user_id, ku.username, ka.alias
+                    FROM ddb.known_aliases ka
+                    JOIN ddb.known_users ku ON ku.user_id = ka.user_id
+                    WHERE ka.alias LIKE ? COLLATE NOCASE
+                    LIMIT ?
+                    """,
+                    (pattern, remaining * 2),  # etwas mehr holen, Duplikate filtern
+                ).fetchall()
+                for row in alias_rows:
+                    uid = int(row["user_id"])
+                    if uid in seen_ids:
+                        continue  # Bereits über username gefunden
+                    seen_ids.add(uid)
+                    results.append({
+                        "user_id":      uid,
+                        "username":     str(row["username"]),
+                        "matched_alias": str(row["alias"]),
+                    })
+                    if len(results) >= limit:
+                        break
+            except Exception as exc:
+                logger.warning(
+                    "search_known_users: known_aliases-Abfrage fehlgeschlagen: %s", exc
+                )
+                # Alias-Tabelle fehlt noch — kein Fehler, nur username-Treffer zurückgeben
+
+        return results
+
     def asset_count(self) -> int:
         """Gibt die Anzahl der gespeicherten Assets zurück. Für Statusanzeigen."""
         try:
