@@ -3130,10 +3130,23 @@ async function _reinitWithLock() {
 }
 
 // Im globalen Scope bereitstellen
-// Build-Nummer fuer Diagnose (immer sichtbar in window._buildnr)
+// Build-Info vom Server laden (/_forensic/version)
 // Beleg: Projektgespraech 2026-05-11
-window._buildnr = 173;
-_dbg('report_editor.js: Build', window._buildnr, '| Exports auf window gesetzt');
+window._buildnr  = 0;     // wird sofort ueberschrieben
+window._version  = '?';
+fetch('/_forensic/version', { headers: { 'X-Forensic-Request': 'ajax' } })
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+        if (!data) return;
+        window._buildnr = data.build   || 0;
+        window._version = data.version || '?';
+        console.debug(
+            '[forensic] report_editor.js: v' + window._version +
+            ' Build ' + window._buildnr + ' | Exports auf window gesetzt'
+        );
+    })
+    .catch(() => console.debug('[forensic] report_editor.js: version fetch fehlgeschlagen'));
+_dbg('report_editor.js: Exports auf window gesetzt (Build wird async geladen)');
 window.initEditorModule            = initEditorModule;
 window.injectInsertInReportButtons = injectInsertInReportButtons;
 window.toggleAnnotationSidebar          = toggleAnnotationSidebar;

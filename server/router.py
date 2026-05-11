@@ -57,10 +57,12 @@ class Router:
         bundle: "DatabaseBundle",
         context: "ResolvedContext",
         config: "ConfigLoader",
+        build_info=None,
     ) -> None:
-        self._bundle  = bundle
-        self._context = context
-        self._config  = config
+        self._bundle     = bundle
+        self._context    = context
+        self._config     = config
+        self._build_info = build_info
 
         # Asset-Präfixe aus config.yaml laden
         self._asset_prefixes: list[str] = config.get(
@@ -223,6 +225,7 @@ class Router:
         if self._forensic_api is None:
             from forensic_api import ForensicApi
             self._forensic_api = ForensicApi(
-                self._bundle, self._context, self._config
+                self._bundle, self._context, self._config,
+                build_info=self._build_info,
             )
         return self._forensic_api

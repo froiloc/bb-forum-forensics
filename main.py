@@ -351,6 +351,13 @@ def main() -> None:
     logger.info("Alle Datenbankverbindungen aufgebaut.")
 
     # ------------------------------------------------------------------
+    # Schritt 8b: Build-Info laden und Datei-Prüfsummen loggen
+    # Beleg: Projektgespräch 2026-05-11
+    # ------------------------------------------------------------------
+    from core.build_info import BuildInfo, log_file_checksums
+    _build_info = BuildInfo(project_root=Path(__file__).parent)
+    log_file_checksums(Path(__file__).parent)
+
     # Schritt 9: ForensicHTTPServer starten
     # ------------------------------------------------------------------
     from server.http_server import ForensicHTTPServer, ForensicHTTPServerBindError
@@ -359,7 +366,7 @@ def main() -> None:
     port = int(config.get("server.port", 80))
 
     try:
-        server = ForensicHTTPServer(host, port, bundle, context, config)
+        server = ForensicHTTPServer(host, port, bundle, context, config, build_info=_build_info)
     except ForensicHTTPServerBindError as exc:
         # Differenzierte Fehlermeldung: Port belegt, kein Zugriff, ungültige Adresse.
         # Die Meldung enthält bereits konkrete Handlungshinweise für den Ermittler.
@@ -378,7 +385,11 @@ def main() -> None:
         hosts_manager.cleanup()
         sys.exit(1)
 
-    logger.info("Server bereit: http://%s:%d", host, port)
+    logger.info(
+        "Server bereit: http://%s:%d | v%s Build %d (%s)",
+        host, port,
+        _build_info.version, _build_info.build, _build_info.date,
+    )
     logger.info(
         "Ermittlung: user_id=%d ('%s'), Modus='%s'",
         context.user_id, context.username, context.mode,

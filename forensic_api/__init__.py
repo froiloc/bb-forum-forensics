@@ -109,8 +109,10 @@ class ForensicApi:
         bundle: "DatabaseBundle",
         context: "ResolvedContext",
         config: "ConfigLoader",
+        build_info=None,
     ) -> None:
-        self._bundle  = bundle
+        self._bundle     = bundle
+        self._build_info = build_info
         self._context = context
         self._config  = config
 
@@ -219,6 +221,16 @@ class ForensicApi:
                 self._method_not_allowed(handler)
                 return
             self._get_events().handle(handler, params)
+            return
+
+        # /_forensic/version (GET) [Build 174]
+        # Build-Info: version, build, date.
+        # Beleg: Projektgespraech 2026-05-11
+        if url_path == "/_forensic/version":
+            if method not in ("GET", "HEAD"):
+                self._method_not_allowed(handler)
+                return
+            self._get_version().handle(handler)
             return
 
         # /_forensic/windows (GET/POST/DELETE) [Build 173]
@@ -561,6 +573,13 @@ class ForensicApi:
             from forensic_api.annotations import AnnotationsEndpoint
             self._annotations = AnnotationsEndpoint(self._bundle, self._context, self._config)
         return self._annotations
+
+    def _get_version(self):
+        """Version-Endpunkt (Build 174). Beleg: Projektgespraech 2026-05-11"""
+        if not hasattr(self, '_version_ep'):
+            from forensic_api.version import VersionEndpoint
+            self._version_ep = VersionEndpoint(self._build_info)
+        return self._version_ep
 
     def _get_windows(self):
         """Fenster-Registrierung (Build 173). Beleg: Projektgespraech 2026-05-11"""

@@ -277,6 +277,7 @@ class ForensicHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
         bundle: "DatabaseBundle",
         context: "ResolvedContext",
         config: "ConfigLoader",
+        build_info=None,
     ) -> None:
         from server.router import Router
         try:
@@ -287,7 +288,7 @@ class ForensicHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
         self.bundle        = bundle
         self.context       = context
         self.config        = config
-        self.router        = Router(bundle, context, config)
+        self.router        = Router(bundle, context, config, build_info=build_info)
         self.sse_semaphore = threading.Semaphore(self.SSE_MAX_CONNECTIONS)
         logger.info(
             "ForensicHTTPServer initialisiert: http://%s:%d "
