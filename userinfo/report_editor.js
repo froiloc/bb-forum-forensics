@@ -608,6 +608,10 @@ function _initEditorJs(blocks, reportId) {
                                 if (!stillExists && sidebar) {
                                     sidebar.dataset.focusedBlockId = '';
                                 }
+                                // Bug 2.73 Fix Build 165: Sidebar nach Block-Delete
+                                // neu synchronisieren (EvidenceBlock koennte geloescht sein).
+                                // Beleg: Projektgespraech 2026-05-11
+                                _syncAnchoredFromEditor();
                             }
                             _refreshPlaceholderForm();
                         }
@@ -1587,6 +1591,36 @@ async function _reloadEditorContent() {
 // ---------------------------------------------------------------------------
 
 /**
+ * Berechnet den Verankerungs-Zustand neu aus dem aktuellen Editor-Inhalt
+ * und aktualisiert die Annotation-Sidebar.
+ *
+ * Wird aufgerufen nach:
+ * - block-removed (EvidenceBlock geloescht)
+ * - _removeEvidence (Annotation aus EvidenceBlock entfernt)
+ *
+ * Bug 2.73 Fix Build 165: Sidebar nach Entfernen von Belegen aktualisieren.
+ * Beleg: Projektgespraech 2026-05-11
+ */
+async function _syncAnchoredFromEditor() {
+    if (!window._editor?.save || !window.AnnotationSidebar?.updateAnchored) return;
+    try {
+        const editorData = await window._editor.save();
+        const anchoredIds = new Set();
+        for (const block of (editorData?.blocks || [])) {
+            if (block.type === 'evidence') {
+                for (const id of (block.data?.evidence_ids || [])) {
+                    anchoredIds.add(id);
+                }
+            }
+        }
+        _dbg('_syncAnchoredFromEditor: ', anchoredIds.size, 'verankerte Annotationen');
+        window.AnnotationSidebar.updateAnchored(anchoredIds);
+    } catch (err) {
+        _dbg('_syncAnchoredFromEditor: Fehler:', err);
+    }
+}
+
+/**
  * Ruft AnnotationSidebar.showSidebar() mit dem aktuellen Editor-Zustand auf.
  * Wird von _openAccordionSection() aufgerufen wenn das Annotationen-Akkordeon
  * geoeffnet wird.
@@ -2229,6 +2263,10 @@ class EvidenceBlock {
         }
         this._data.evidence_ids = this._data.evidence_ids.filter(id => id !== annotationId);
         this._renderContent();
+        // Bug 2.73 Fix Build 165: Sidebar neu synchronisieren nach Entfernen
+        // einer Annotation aus einem EvidenceBlock.
+        // Beleg: Projektgespraech 2026-05-11
+        _syncAnchoredFromEditor();
     }
 
     _getBlockId() {
