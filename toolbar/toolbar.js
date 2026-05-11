@@ -1862,6 +1862,43 @@
     }
   });
 
+  // Build 173: BroadcastChannel 'forensic_navigation' — Navigation aus anderen
+  // Fenstern (Fenster 2, Fenster 3) per BroadcastChannel empfangen.
+  // Robuster als postMessage-Kette da kein opener noetig.
+  // Beleg: Projektgespraech 2026-05-11
+  (function() {
+    if (typeof BroadcastChannel === 'undefined') return;
+    var _navChannel = new BroadcastChannel('forensic_navigation');
+    _navChannel.addEventListener('message', function(evt) {
+      if (!evt.data || typeof evt.data !== 'object') return;
+      if (evt.data.type === 'navigate_to_url') {
+        var url = evt.data.url;
+        if (typeof url === 'string' && url.length > 0) {
+          NavigationModule.loadPage(url, true);
+          // Empfang bestätigen damit Sender weiss, dass Navigation stattfindet
+          _navChannel.postMessage({ type: 'navigate_ack', url: url });
+        }
+      }
+    });
+    // Fenster beim Server registrieren und Heartbeat alle 30s senden
+    var _windowId = crypto.randomUUID ? crypto.randomUUID()
+                  : Math.random().toString(36).slice(2);
+    function _registerWindow() {
+      fetch('/_forensic/windows', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Forensic-Request': 'ajax' },
+        body: JSON.stringify({ window_id: _windowId, role: 'main' }),
+      }).catch(function() {});
+    }
+    _registerWindow();
+    setInterval(_registerWindow, 30000);
+    window.addEventListener('unload', function() {
+      navigator.sendBeacon('/_forensic/windows',
+        new Blob([JSON.stringify({ window_id: _windowId })],
+                 { type: 'application/json' }));
+    });
+  })();
+
   // ===========================================================================
   // PHASE 5: MarkerToolModule — Textmarkierungs-Workflow
   // ===========================================================================

@@ -1725,4 +1725,26 @@ function initForensicLinks() {
     });
 }
 
+// Build 173: Fenster 2 (userinfo) beim Server registrieren.
+// Heartbeat alle 30s damit TTL nicht abläuft.
+// Beleg: Projektgespraech 2026-05-11
+(function() {
+    var _windowId = crypto.randomUUID ? crypto.randomUUID()
+                  : Math.random().toString(36).slice(2);
+    function _registerWindow() {
+        fetch('/_forensic/windows', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Forensic-Request': 'ajax' },
+            body: JSON.stringify({ window_id: _windowId, role: 'userinfo' }),
+        }).catch(function() {});
+    }
+    _registerWindow();
+    setInterval(_registerWindow, 30000);
+    window.addEventListener('unload', function() {
+        navigator.sendBeacon('/_forensic/windows',
+            new Blob([JSON.stringify({ window_id: _windowId })],
+                     { type: 'application/json' }));
+    });
+})();
+
 })();

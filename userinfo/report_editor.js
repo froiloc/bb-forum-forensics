@@ -2893,18 +2893,101 @@ function _initColResizer() {
  * sondern im Hauptfenster über die SSE-verknüpfte AJAX-Navigation öffnen.
  * Beleg: Projektgespraech 2026-05-11
  */
+/**
+ * Initialisiert Forum-Link-Abfang und BroadcastChannel-Navigation.
+ *
+ * Build 173: Primärweg ist BroadcastChannel 'forensic_navigation'.
+ * Fallback-Kette:
+ *   1. BroadcastChannel senden (funktioniert im selben Browser)
+ *   2. Nach 300ms ohne Bestätigung: postMessage an window.opener
+ *      (Fenster 2, das an Fenster 1 weiterleitet falls noch vorhanden)
+ *   3. Kein opener oder opener geschlossen: window.open(url, '_blank')
+ *
+ * Fenster 3 registriert sich beim Server und sendet alle 30s Heartbeat.
+ * Beleg: Projektgespraech 2026-05-11
+ */
 function _initForumLinkInterceptor() {
+    // BroadcastChannel aufbauen
+    let _navChannel = null;
+    if (typeof BroadcastChannel !== 'undefined') {
+        _navChannel = new BroadcastChannel('forensic_navigation');
+        _dbg('_initForumLinkInterceptor: BroadcastChannel bereit');
+    }
+
+    // Fenster beim Server registrieren
+    const _windowId = crypto.randomUUID ? crypto.randomUUID()
+                    : Math.random().toString(36).slice(2);
+
+    function _registerWindow() {
+        fetch('/_forensic/windows', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Forensic-Request': 'ajax' },
+            body: JSON.stringify({ window_id: _windowId, role: 'report' }),
+        }).catch(() => {});
+    }
+    _registerWindow();
+    setInterval(_registerWindow, 30000);
+    window.addEventListener('unload', () => {
+        navigator.sendBeacon('/_forensic/windows',
+            new Blob([JSON.stringify({ window_id: _windowId })],
+                     { type: 'application/json' }));
+    });
+
+    /**
+     * Forum-URL im Hauptfenster öffnen.
+     * Fallback-Kette: BroadcastChannel → postMessage → window.open
+     */
+    function _navigateInMain(url) {
+        _dbg('_navigateInMain: url=', url);
+
+        if (_navChannel) {
+            // Primärweg: BroadcastChannel
+            let _ackReceived = false;
+
+            const _ackHandler = (evt) => {
+                if (evt.data?.type === 'navigate_ack' && evt.data?.url === url) {
+                    _ackReceived = true;
+                    _navChannel.removeEventListener('message', _ackHandler);
+                    _dbg('_navigateInMain: BroadcastChannel ACK erhalten');
+                }
+            };
+            _navChannel.addEventListener('message', _ackHandler);
+            _navChannel.postMessage({ type: 'navigate_to_url', url });
+
+            // Fallback nach 300ms wenn kein ACK
+            setTimeout(() => {
+                _navChannel.removeEventListener('message', _ackHandler);
+                if (_ackReceived) return;
+                _dbg('_navigateInMain: kein ACK — Fallback zu postMessage/open');
+                _navigateFallback(url);
+            }, 300);
+        } else {
+            _navigateFallback(url);
+        }
+    }
+
+    function _navigateFallback(url) {
+        // Fallback 1: postMessage an window.opener (Fenster 2)
+        const opener = window.opener;
+        if (opener && !opener.closed) {
+            _dbg('_navigateFallback: postMessage an opener');
+            opener.postMessage({ type: 'navigate_to_url', url }, window.location.origin);
+            return;
+        }
+        // Fallback 2: neues Tab
+        _dbg('_navigateFallback: window.open ->', url);
+        window.open(url, '_blank', 'noopener');
+    }
+
+    // Click-Interceptor
     document.addEventListener('click', (evt) => {
-        // Nächsten <a>-Vorfahren finden
         const link = evt.target.closest('a[href]');
         if (!link) return;
 
         const href = link.getAttribute('href');
         if (!href || href.startsWith('#') || href.startsWith('javascript')) return;
 
-        // Nur Forum-URLs abfangen:
-        // - Relative URLs (beginnen mit /)
-        // - URLs mit gleichem Host wie der forensic-Server
+        // Nur Forum-URLs abfangen (relativ oder gleicher Host)
         let isForumUrl = false;
         try {
             if (href.startsWith('/')) {
@@ -2913,30 +2996,15 @@ function _initForumLinkInterceptor() {
                 const parsed = new URL(href);
                 isForumUrl = (parsed.hostname === window.location.hostname);
             }
-        } catch (_) {
-            return; // Ungültige URL — nicht abfangen
-        }
+        } catch (_) { return; }
 
         if (!isForumUrl) return;
-
         evt.preventDefault();
         evt.stopPropagation();
-
-        // URL an Hauptfenster senden (window.opener = Hauptfenster)
-        const target = window.opener;
-        if (target && target !== window) {
-            _dbg('_initForumLinkInterceptor: navigate_to_url ->', href);
-            target.postMessage(
-                { type: 'navigate_to_url', url: href },
-                window.location.origin
-            );
-        } else {
-            // Fallback wenn kein opener (z.B. direkt aufgerufen)
-            _dbg('_initForumLinkInterceptor: kein opener — direkte Navigation');
-            window.location.href = href;
-        }
+        _navigateInMain(href);
     });
-    _dbg('_initForumLinkInterceptor: Forum-Link-Interceptor aktiv');
+
+    _dbg('_initForumLinkInterceptor: aktiv (window_id=', _windowId, ')');
 }
 
 async function initEditorModule() {
@@ -3062,7 +3130,10 @@ async function _reinitWithLock() {
 }
 
 // Im globalen Scope bereitstellen
-_dbg('report_editor.js: Exports auf window gesetzt');
+// Build-Nummer fuer Diagnose (immer sichtbar in window._buildnr)
+// Beleg: Projektgespraech 2026-05-11
+window._buildnr = 173;
+_dbg('report_editor.js: Build', window._buildnr, '| Exports auf window gesetzt');
 window.initEditorModule            = initEditorModule;
 window.injectInsertInReportButtons = injectInsertInReportButtons;
 window.toggleAnnotationSidebar          = toggleAnnotationSidebar;

@@ -221,6 +221,17 @@ class ForensicApi:
             self._get_events().handle(handler, params)
             return
 
+        # /_forensic/windows (GET/POST/DELETE) [Build 173]
+        # Fenster-Registrierung fuer BroadcastChannel-Fallback.
+        # Beleg: Projektgespraech 2026-05-11
+        if url_path == "/_forensic/windows":
+            if method not in ("GET", "POST", "DELETE"):
+                self._method_not_allowed(handler)
+                return
+            body = self._read_body(handler) if method in ("POST", "DELETE") else None
+            self._get_windows().handle(handler, method, body)
+            return
+
         # /_forensic/static/vendor/* (GET) [Build 084]
         # Vendor-Bibliotheken (Tabulator.js). Vor editor-Praefix pruefen.
         # Beleg: Projektgespraech 2026-05-05
@@ -550,6 +561,13 @@ class ForensicApi:
             from forensic_api.annotations import AnnotationsEndpoint
             self._annotations = AnnotationsEndpoint(self._bundle, self._context, self._config)
         return self._annotations
+
+    def _get_windows(self):
+        """Fenster-Registrierung (Build 173). Beleg: Projektgespraech 2026-05-11"""
+        if not hasattr(self, '_windows_ep'):
+            from forensic_api.windows import WindowsEndpoint
+            self._windows_ep = WindowsEndpoint()
+        return self._windows_ep
 
     def _get_events(self):
         if self._events is None:
