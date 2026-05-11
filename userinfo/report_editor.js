@@ -201,7 +201,10 @@ async function _fetchWithLock(url, body) {
  * Report-Auswahl-Dropdown laden und aufbauen.
  * Laeuft beim Initialisieren von Fenster 3.
  */
-async function initReportSelector() {
+async function initReportSelector(preselectId = null) {
+    // Bug 2.74 Fix Build 166: optionaler preselectId-Parameter verhindert
+    // Doppel-Editor nach Neuanlegen: kein change-Event mehr noetig.
+    // Beleg: Projektgespraech 2026-05-11
     _dbg('initReportSelector() gestartet');
     const container = document.getElementById('report-selector-container');
     if (!container) return;
@@ -249,9 +252,17 @@ async function initReportSelector() {
     document.getElementById('btn-new-report')?.addEventListener('click', () => openNewReportDialog(reports));
 
 
-    // Ersten Bericht automatisch laden
+    // Ersten (oder vorgewaehlten) Bericht automatisch laden
+    // Bug 2.74 Fix Build 166: preselectId ladet gezielt den neuen Bericht.
     if (reports.length) {
-        await loadReport(reports[0]);
+        const toLoad = preselectId
+            ? (reports.find(r => r.id === preselectId) || reports[0])
+            : reports[0];
+        if (preselectId) {
+            const sel = document.getElementById('report-select');
+            if (sel) sel.value = String(preselectId);
+        }
+        await loadReport(toLoad);
     }
 }
 
@@ -314,13 +325,10 @@ function openNewReportDialog(existingReports) {
             const data = await resp.json();
             if (resp.status === 201) {
                 dialog.remove();
-                await initReportSelector();
-                // Neuen Bericht sofort laden
-                const select = document.getElementById('report-select');
-                if (select) {
-                    select.value = data.id;
-                    select.dispatchEvent(new Event('change'));
-                }
+                // Bug 2.74 Fix Build 166: preselectId statt change-Event
+                // verhindert doppelten _initEditorJs()-Aufruf.
+                // Beleg: Projektgespraech 2026-05-11
+                await initReportSelector(data.id);
             } else {
                 _selectorStatus(data.error || `Fehler ${resp.status}`, 'error');
             }
@@ -2263,10 +2271,11 @@ class EvidenceBlock {
         }
         this._data.evidence_ids = this._data.evidence_ids.filter(id => id !== annotationId);
         this._renderContent();
-        // Bug 2.73 Fix Build 165: Sidebar neu synchronisieren nach Entfernen
-        // einer Annotation aus einem EvidenceBlock.
+        // Bug 2.73(a) Fix Build 166: setTimeout damit _renderContent() den
+        // DOM-Zustand fertiggestellt hat bevor editor.save() aufgerufen wird.
+        // Kein Race-Condition mehr zwischen _renderContent und editor.save().
         // Beleg: Projektgespraech 2026-05-11
-        _syncAnchoredFromEditor();
+        setTimeout(() => _syncAnchoredFromEditor(), 50);
     }
 
     _getBlockId() {
