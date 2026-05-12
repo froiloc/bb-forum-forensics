@@ -858,6 +858,32 @@ body {
   outline: 2px solid #4f8ef7;
 }
 
+/* Alias-Treffer-Marker (Build 180): zwischen Spur-Marker (z-index:1)
+   und Annotations-Marker (z-index:2). Schmaler als Annotations-Marker,
+   aber breiter als Spur-Marker — Aliasse sind wichtige Orientierungspunkte
+   die auf keiner Seite fehlen sollten. */
+.forensic-minimap-alias {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  height: 3px;
+  border-radius: 2px;
+  cursor: pointer;
+  opacity: 0.65;
+  transition: height 0.1s, opacity 0.1s;
+  z-index: 1;
+  background: #c8a000;
+}
+
+.forensic-minimap-alias:hover {
+  height: 6px;
+  opacity: 1;
+}
+
+.forensic-minimap-alias:focus-visible {
+  outline: 2px solid #ffe050;
+}
+
 /* Annotations-Marker liegen über Spur-Markern */
 .forensic-minimap-bar {
   z-index: 2;

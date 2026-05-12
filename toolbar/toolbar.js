@@ -2852,6 +2852,9 @@
     var _loaded       = false; // true nach erstem erfolgreichem Laden
     var _hlSet        = null;  // CSS Highlight Set für Alias-Treffer
     var _markEls      = [];    // Fallback: injizierte <mark>-Elemente
+    // Build 180: Ranges aller Alias-Treffer für Minimap-Verwendung
+    // Format: [{term, range}] — wird bei jedem highlight() neu befüllt
+    var _ranges       = [];
 
     // CSS Custom Highlights API verfügbar?
     var _cssApi = (
@@ -2901,11 +2904,15 @@
       _aliases.forEach(function (alias) {
         _highlightTerm(alias.term, viewport);
       });
-      _dbg("[AliasHighlight] Highlighting abgeschlossen, Begriffe:", _aliases.length);
+      _dbg("[AliasHighlight] Highlighting abgeschlossen, Begriffe:", _aliases.length,
+           "Treffer-Ranges:", _ranges.length);
+      // Build 180: Minimap nach Alias-Highlight aktualisieren
+      MinimapModule.refresh();
     }
 
     /** Alle bestehenden Alias-Highlights entfernen. */
     function clearHighlights() {
+      _ranges = [];  // Build 180: Range-Cache für Minimap leeren
       if (_cssApi && _hlSet) {
         _hlSet.clear();
       }
@@ -2957,6 +2964,9 @@
           range.setStart(node, pos);
           range.setEnd(node, pos + lower.length);
 
+          // Build 180: Range für Minimap merken
+          _ranges.push({ term: term, range: range });
+
           if (_cssApi && _hlSet) {
             _hlSet.add(range);
           } else {
@@ -2985,8 +2995,15 @@
       }
     });
 
-    return { load: load, reload: reload, highlight: highlight, clearHighlights: clearHighlights,
-             getAliases: function () { return _aliases.slice(); } };
+    return {
+      load:           load,
+      reload:         reload,
+      highlight:      highlight,
+      clearHighlights: clearHighlights,
+      getAliases:     function () { return _aliases.slice(); },
+      // Build 180: Ranges für MinimapModule
+      getRanges:      function () { return _ranges.slice(); },
+    };
   })();
 
   // ===========================================================================
@@ -3855,6 +3872,37 @@
         );
         bar.className = "forensic-minimap-bar";
         if (ann.stale) bar.style.outline = "1px dashed #aaa";
+        _minimapEl.appendChild(bar);
+      });
+
+      // --- Typ 3: Alias-Treffer-Marker (Build 180) ---
+      // AliasHighlightModule.getRanges() liefert alle Treffer-Ranges.
+      // Farbe: warmes Gelb (#c8a000) — passend zum gelben Alias-Highlight.
+      // Beleg: Projektgespräch 2026-05-12.
+      (typeof AliasHighlightModule !== "undefined"
+        ? AliasHighlightModule.getRanges()
+        : []
+      ).forEach(function (entry) {
+        var range = entry.range;
+        var term  = entry.term;
+        if (!range) return;
+
+        // Y-Position aus dem Startcontainer ableiten
+        var container = range.startContainer;
+        var el = (container && container.nodeType === 3)
+          ? container.parentElement
+          : container;
+        if (!el || !el.getBoundingClientRect) return;
+
+        var pct   = _pctOf(el);
+        var label = '"' + term + '" gefunden';
+        var bar   = _makeBar(
+          pct,
+          "#c8a000",
+          label,
+          function () { el.scrollIntoView({ behavior: "smooth", block: "center" }); }
+        );
+        bar.className = "forensic-minimap-alias";
         _minimapEl.appendChild(bar);
       });
     }
