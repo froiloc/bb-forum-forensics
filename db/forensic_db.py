@@ -282,12 +282,15 @@ class ForensicDb:
 
     def get_page_by_url(self, url: str) -> Optional[dict]:
         """
-        Gibt Page-Metadaten + BLOB als Dict zurueck. Wrapper fuer lookup().
-        Wird von _write_cross_annotation() genutzt um den Page-BLOB in die
-        Transportdatei zu kopieren.
-        Build 182 (Bug 2.78). Beleg: Projektgespraech 2026-05-12.
+        Gibt Page-Metadaten + BLOB als Dict zurueck.
+        Wrapper fuer get_page() — wird von _write_cross_annotation() genutzt
+        um den Page-BLOB in die Transportdatei zu kopieren.
+
+        Build 182 (Bug 2.78). Build 185 (Bug 3.10): lookup() existiert nicht,
+        korrekte Methode ist get_page().
+        Beleg: Webserver-Log 2026-05-12 — 'ForensicDb has no attribute lookup'.
         """
-        record = self.lookup(url)
+        record = self.get_page(url)
         if record is None:
             return None
         return {
@@ -295,7 +298,7 @@ class ForensicDb:
             "http_status":    record.http_status,
             "scrape_context": record.scrape_context,
             "fetched_at":     record.fetched_at,
-            "title":          None,   # pages.title falls vorhanden
+            "title":          None,
             "in_scope":       1,
         }
 

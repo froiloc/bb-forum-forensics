@@ -1,6 +1,6 @@
 {
-  "build":   184,
-  "version": "0.6.184",
+  "build":   185,
+  "version": "0.6.185",
   "date":    "2026-05-12",
-  "note":    "BS3 Build 184: Bug 2.91 Fix — self._config in AnnotateEndpoint.__init__ fehlte, Pfadberechnung Transportdatei schlug fehl"
+  "note":    "BS3 Build 185: Bug 3.10 get_page_by_url nutzt get_page() statt lookup(), Bug 1.26 Popup-Overflow behoben, pending_cross_annotations auto-anlegen bei fehlendem Schema"
 }

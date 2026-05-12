@@ -422,6 +422,25 @@ class CoordinatorDb:
     ) -> int:
         """Traegt neue Transportnotiz in pending_cross_annotations ein. Idempotent."""
         def _insert() -> int:
+            # Build 185: Tabelle anlegen falls noch nicht vorhanden.
+            # setup_coordinator_dev.py macht das beim Setup, aber fuer den Fall
+            # dass es uebersprungen wurde, legen wir sie hier nach.
+            # Beleg: Webserver-Log 2026-05-12 — coordinator.db verfuegbar aber
+            # pending_cross_annotations-Eintrag fehlte lautlos.
+            self._con.executescript("""
+                CREATE TABLE IF NOT EXISTS pending_cross_annotations (
+                    id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+                    source_iid           INTEGER NOT NULL,
+                    target_uid           INTEGER NOT NULL,
+                    db_path              TEXT    NOT NULL,
+                    annotation_local_id  TEXT    NOT NULL,
+                    created_at           INTEGER NOT NULL,
+                    integrated_at        INTEGER DEFAULT NULL
+                );
+                CREATE INDEX IF NOT EXISTS pca_target_uid_idx
+                    ON pending_cross_annotations (target_uid)
+                    WHERE integrated_at IS NULL;
+            """)
             ts = int(time.time())
             existing = self._con.execute(
                 "SELECT id FROM cdb.pending_cross_annotations "
@@ -444,14 +463,19 @@ class CoordinatorDb:
     def get_pending_for_uid(self, target_uid: int) -> list:
         """Gibt ausstehende Transportnotizen fuer einen Ziel-uid zurueck."""
         def _get() -> list:
-            rows = self._con.execute(
-                "SELECT id, source_iid, target_uid, db_path, "
-                "       annotation_local_id, created_at "
-                "FROM cdb.pending_cross_annotations "
-                "WHERE target_uid = ? AND integrated_at IS NULL "
-                "ORDER BY created_at ASC",
-                (target_uid,),
-            ).fetchall()
+            # Tabelle anlegen falls noch nicht vorhanden (Build 185)
+            try:
+                rows = self._con.execute(
+                    "SELECT id, source_iid, target_uid, db_path, "
+                    "       annotation_local_id, created_at "
+                    "FROM cdb.pending_cross_annotations "
+                    "WHERE target_uid = ? AND integrated_at IS NULL "
+                    "ORDER BY created_at ASC",
+                    (target_uid,),
+                ).fetchall()
+            except Exception:
+                # Tabelle existiert noch nicht — kein Fehler
+                return []
             return [
                 {
                     "id":                  int(r["id"]),

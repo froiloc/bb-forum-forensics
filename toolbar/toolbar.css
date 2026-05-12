@@ -606,6 +606,13 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  /* Bug 1.26 (Build 185): overflow-x:hidden verhindert dass Inputfelder
+     mit width:100% aus dem Padding-Bereich herausbrechen.
+     box-sizing:border-box stellt sicher dass padding in die Breite eingerechnet wird.
+     Beleg: Screenshot + Projektgespräch 2026-05-12. */
+  overflow-x: hidden;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .forensic-popup-label {
@@ -620,6 +627,7 @@ body {
 
 .forensic-popup-textarea {
   width: 100%;
+  box-sizing: border-box;
   min-height: 68px;
   background: #252b3e;
   border: 1px solid #3a4060;
@@ -638,6 +646,7 @@ body {
 
 .forensic-popup-input {
   width: 100%;
+  box-sizing: border-box;
   background: #252b3e;
   border: 1px solid #3a4060;
   border-radius: 4px;
@@ -1689,6 +1698,7 @@ body {
 /* --- Popup: Kategorie-Dropdown (Bug 2.76) --- */
 .forensic-popup-select {
   width: 100%;
+  box-sizing: border-box;
   padding: 5px 8px;
   background: #1a1f2e;
   border: 1px solid #3a4060;

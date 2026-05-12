@@ -1,5 +1,5 @@
 # Fehler im Frontend
-(Cache-buster-pre-extension: 4f13ee3c-4e22-11f1-83b5-8b83cba3d51e)
+(Cache-buster-pre-extension: 7c6d7d6a-4e24-11f1-8ca9-7bd61fe78c4d)
 
 Ich werde in dieser Liste fortlaufend die von mir beobachteten Fehler aufführen.
 Falls diese abgeschlossen und verworfen wurden, werde ich sie durchstreichen. Alles, was nicht durchgestrichen ist, ist also noch offen und muss bearbeitet werden.
@@ -20,29 +20,29 @@ Hier noch einmal die Liste der Baustellen und wofür sie stehen:
 
 Quellen zum Debuggen:
 * Dieses Dokument mit den Arbeitsanweisungen und Problembeschreibungen:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.4f13ee3c-4e22-11f1-83b5-8b83cba3d51e.md
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.7c6d7d6a-4e24-11f1-8ca9-7bd61fe78c4d.md
 * Die Ausgabe von DevTools-Console:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.4f13ee3c-4e22-11f1-83b5-8b83cba3d51e.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.7c6d7d6a-4e24-11f1-8ca9-7bd61fe78c4d.log
 * Die Ausgabe von DevTools-Network:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.4f13ee3c-4e22-11f1-83b5-8b83cba3d51e.har
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.7c6d7d6a-4e24-11f1-8ca9-7bd61fe78c4d.har
 * Das aktuelle DOM des gesamten Dokuments als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.4f13ee3c-4e22-11f1-83b5-8b83cba3d51e.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.7c6d7d6a-4e24-11f1-8ca9-7bd61fe78c4d.html
 * Das aktuelle DOM des gesamten Body als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.4f13ee3c-4e22-11f1-83b5-8b83cba3d51e.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.7c6d7d6a-4e24-11f1-8ca9-7bd61fe78c4d.html
 * Das aktuelle DOM des gesamten Sidebar als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.4f13ee3c-4e22-11f1-83b5-8b83cba3d51e.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.7c6d7d6a-4e24-11f1-8ca9-7bd61fe78c4d.html
 * Das aktuelle DOM des gesamten Main als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.4f13ee3c-4e22-11f1-83b5-8b83cba3d51e.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.7c6d7d6a-4e24-11f1-8ca9-7bd61fe78c4d.html
 * Das aktuelle DOM des Akkordeon 1 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.4f13ee3c-4e22-11f1-83b5-8b83cba3d51e.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.7c6d7d6a-4e24-11f1-8ca9-7bd61fe78c4d.html
 * Das aktuelle DOM des Akkordeon 2 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.4f13ee3c-4e22-11f1-83b5-8b83cba3d51e.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.7c6d7d6a-4e24-11f1-8ca9-7bd61fe78c4d.html
 * Das aktuelle DOM des Akkordeon 3 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.4f13ee3c-4e22-11f1-83b5-8b83cba3d51e.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.7c6d7d6a-4e24-11f1-8ca9-7bd61fe78c4d.html
 * Das aktuelle DOM des Akkordeon 4 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.4f13ee3c-4e22-11f1-83b5-8b83cba3d51e.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.7c6d7d6a-4e24-11f1-8ca9-7bd61fe78c4d.html
 * Die Ausgabe des aktuellen Webservers:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.4f13ee3c-4e22-11f1-83b5-8b83cba3d51e.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.7c6d7d6a-4e24-11f1-8ca9-7bd61fe78c4d.log
 * Die aktuellen Screenshots:
 https://github.com/froiloc/bb-forum-forensics/tree/1b5017a2f62c5a8f1825de76fc6edabb25d6bf66/debug/screenshots
 ***
@@ -75,7 +75,7 @@ Hier werden CSS‑Fehler aufgeführt. Das sind Themen, bei denen die Anzeige fun
  23. erledigt
  24. erledigt
  25. erledigt
- 26. (5) (BS3) Das Modal zur Änderung der Markierung hat wieder einen Overflow der Inputfelder nach rechts. Ich dachte, das wäre mit der Änderung auf das FLEX-Model behoben gewesen. Jetzt ist es wieder da. Siehe Screenshot.
+ 26. erledigt
 ---
 ## 2. Funktionalität Frontend / Daten / JS
 Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mit dem Webwerkzeug arbeiten kann oder ihn dabei nicht im vorgesehenen Maße unterstützen oder behindern.
@@ -158,7 +158,7 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 76. erledigt
 77. erledigt
 78. (15) (BS3) Im Eingabemodal zum Markieren für die 6-Kategorien soll folgende Ergänzung vorgenommen werden: Durch Klicken auf eine Schaltfläche neben dem Benutzernamen soll der Benutzername geändert werden können. Dann findet der Eintrag zu jenem Benutzer statt. Der Webserver muss dann den Eintrag an die Allgemeine Austauschdatenbank übergeben, wo sie dann in die Datenbank des anderen Benutzers integriert wird, sobald mit diesem wieder gearbeitet wird. Die Benutzernamen werden über einen Endpunkt `/foresic_api/knownusers` abgefragt und geben sowohl `username` als auch `user_id` zurück. Anmerkung: Das Forum hat 487.246 registrierte Benutzer. Plus die Alias, die ebenfalls im Endpunkt durchsucht werden sollten, sind das bestimmt 500.000 Namen. Bei der Suche soll also erst ab dem vierten Buchstaben gesucht werden, um die Datenbank nicht zu überlasten. Und es muss einen Index auf der Tabelle geben. Siehe: 2.82 und 2.83.
-79. (10) (BS3) Eine Aliastabelle für Benutzernamen als Modal anzeigen und pflegen lassen. (Suchbegriffe, die immer gehighlightet werden) Damit kann ein Benutzer mit dem "Rosaroter Panther", der von den Leuten nur "Panther" genannt wird, mit einem Alias "Panther" auch schnell auf einer Seite gefunden werden.
+79. erledigt
 80. erledigt
 81. (5) (BS3) Es soll ein Suchmodal geben, das eine erweiterte Suche für das Forum bereitstellt. Das muss noch gemeinsam ausdefiniert werden. Nur die grobe Idee ist derzeit da.
 82. erledigt
@@ -170,7 +170,8 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 88. erledigt
 89. (20) (BS3) Bei Spuren, die nur auf andere Spuren verlinken, also beispielsweise die Auflistung der Topic oder privaten Nachrichten im Forum, möchte ich, dass mit einem farbigen Rahmen angezeigt wird, zu wie viel Prozent die verlinkte Seite bereits bearbeitet wurde. Also: grün für 100%, gelb für 50%, rot für 0%. Ob das über einen dynamischen Farbverlauf (CSS-Gradient) oder starr sein soll, weiß ich noch nicht. Das muss diskutiert werden.
 90. (5) (BS3) Es soll einen Link in der Toolbar auf der Hauptseite zum Berichtseditor geben. Also Fenster 1 direkt auf Fenster 3. Ohne den Umweg über Fenster 2.
-91. (50) (BS3) Das Annotieren für Fremdbenutzer, also eine Annotation für Benutzer, die nicht uid sind, funktioniert leider noch nicht. Da das ein komplexes Thema ist, müssen wir den Prozess kleinschrittig und mit zahlreichen Debugging-Nachrichten in Console und Webserver-Log verfolgen können. Bitte erstelle dieses Logging als ersten Schritt der Fehleranalyse. Erstelle ebenfalls Javascript-Tests für die DevTools-Console, die uns weiterhelfen. Einen heißen Verdacht gibt es bereits: Webserver-Log: `2026-05-12 13:40:46 [ERROR ] forensic.forensic_api.annotate: _write_cross_annotation: Pfadberechnung fehlgeschlagen: 'AnnotateEndpoint' object has no attribute '_config'` Sind das Zugriffberechtigungsprobleme auf Betriebssystemebene?
+91. erledigt
+92. (15) (BS3) im Modal, das es ermöglicht, den Kontext für eine Annotation zu ändern, wird Änderung des Benutzernamens nicht angezeigt. Es steht dort immer der im Fall untersuchte Standard-Benutzer. Es muss aber der Benutzername sein, zu dem die Annotation erstellt wurde. (Hier eine Fremdnotiz über einen anderen Benutzer). Der Eintrag in der Datenbank enthält bei `actual_uid` den korrekten Wert, aber dieser wird in der Oberfläche nicht angezeigt. Der Abgleich der `actual_uid` auf den passenden `username` muss über einen oder Nachschlagen in `default.db` `known_users.user_id` erfolgen.
 
 ---
 ## 3. Funktionalität Backend / Python / SQLite3-Datenbank
