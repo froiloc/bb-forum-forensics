@@ -2069,3 +2069,23 @@ mark.forensic-alias-mark {
   padding: 1px 5px;
   font-style: italic;
 }
+
+/* ===========================================================================
+   Build 189 (BS3): Bug 2.89 Fortschrittsrahmen + Bug 2.90 Report-Button
+   =========================================================================== */
+
+/* Bug 2.89: Fortschrittsrahmen auf Spur-Elementen mit bekanntem Fortschritt.
+   --trace-progress: 0–100, gesetzt von _applyTraceProgress().
+   HSL-Farbverlauf: 0% = rot (0°), 50% = gelb (60°), 100% = grün (120°).
+   Nur aktiv wenn has_trace_progress-Klasse gesetzt ist. */
+.has_trace_progress {
+  outline: 2px solid hsl(calc(var(--trace-progress, 0) * 1.2deg), 70%, 45%) !important;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Keine doppelte Umrandung: contains_traces-Basis-Outline zurücksetzen
+   wenn Fortschrittsfarbe gesetzt ist (has_trace_progress übernimmt) */
+.contains_traces.has_trace_progress {
+  animation: none;
+}

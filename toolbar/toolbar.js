@@ -2,7 +2,15 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 188 · 2026-05-12
+ * Version: v0.1.0 · Build: 189 · 2026-05-12
+ *
+ * Aenderungen Build 189 (BS3):
+ *   Bug 2.90: ReportWindowModule, Schaltfläche '📋 Bericht', window.name
+ *     in report.js gesetzt. Fenster-Name 'forensic_report' konsistent.
+ *   Bug 2.89: _applyTraceProgress() — Fortschrittsrahmen auf Spur-Elementen
+ *     per CSS-Custom-Property --trace-progress (HSL-Farbverlauf).
+ *   viewport_events: Mehr Elemente beobachtet (.forum/.topic/.post/tr[id]),
+ *     flush bei visibilitychange.
  *
  * Aenderungen Build 188 (BS3 — Bug 2.94):
  *   open(): resolve-Cache an actualUid gebunden. Cache ungültig wenn
@@ -399,6 +407,8 @@
     API_VIEWPORT:    "/_forensic/viewport",
     API_EVENTS:      "/_forensic/events",
     API_USERINFO:    "/_forensic/userinfo",
+    // Build 189 (Bug 2.90): Berichtseditor-URL (Fenster 3)
+    API_REPORT:      "/_forensic/report",
     // Kontext-Navigator (Build 066, Bauplan KN §7.3)
     API_SEARCH:           "/_forensic/search",
     // Spur-Navigation (Build 072, OP-KN-7)
@@ -1264,6 +1274,14 @@
         });
       }
 
+      // Berichtseditor-Button (Build 189 — Bug 2.90)
+      var reportBtn = document.getElementById("forensic-btn-report");
+      if (reportBtn) {
+        reportBtn.addEventListener("click", function () {
+          ReportWindowModule.open();
+        });
+      }
+
       // Navigation: Pfeiltasten
       var prevBtn = document.getElementById("forensic-btn-nav-prev");
       var nextPgBtn = document.getElementById("forensic-btn-nav-next");
@@ -1334,6 +1352,10 @@
           '<button id="forensic-btn-userinfo" class="forensic-btn" ' +
           'aria-label="Nutzerinfo-Tab öffnen (Alt+U)" title="Nutzerinfo öffnen [Alt+U]">' +
           '👤 Nutzerinfo</button>' +
+          // Build 189 (Bug 2.90): Direktlink zum Berichtseditor
+          '<button id="forensic-btn-report" class="forensic-btn" ' +
+          'aria-label="Berichtseditor öffnen" title="Berichtseditor öffnen [Fenster 3]">' +
+          '📋 Bericht</button>' +
           '<button id="forensic-btn-viewmode" class="forensic-btn" ' +
           'aria-label="Ansicht wechseln: Original oder Angepasst" ' +
           'title="Ansicht wechseln [Original / Angepasst]" ' +
@@ -3831,6 +3853,57 @@
     }
 
     // -------------------------------------------------------------------------
+    // _applyTraceProgress — Fortschrittsrahmen auf Spur-Elemente setzen
+    // (Bug 2.89, Build 189)
+    // -------------------------------------------------------------------------
+    // Holt progressPercent aus dem Navigator-Cache fuer die verlinkte Seite
+    // und setzt --trace-progress als CSS-Custom-Property.
+    // CSS berechnet daraus: hsl(calc(var(--trace-progress,0) * 1.2deg), 70%, 45%)
+    // 0% = rot (0°), 50% = gelb (60°), 100% = gruen (120°).
+    // Asynchron: Cache-Abfrage, Rahmen erscheint sobald Daten vorliegen.
+    // Beleg: Projektgespraech 2026-05-12 — Bug 2.89 (BS3).
+    // -------------------------------------------------------------------------
+    function _applyTraceProgress(el, elemId) {
+      // URL der verlinkten Seite ableiten
+      var linkedUrl = null;
+      if (elemId.startsWith("topic:")) {
+        var topicId = elemId.slice(6);
+        linkedUrl = "/forum/viewtopic.php?id=" + topicId;
+      } else if (/^p\d+$/.test(elemId)) {
+        // Post-Element: URL ist die aktuelle Seite (der Post liegt hier)
+        linkedUrl = _state.currentUrl || null;
+      }
+      if (!linkedUrl) return;
+
+      // Cache aus ContextNavigatorModule abfragen (Promise-basiert)
+      if (typeof ForensicToolbar.navigator === "undefined" ||
+          typeof ForensicToolbar.navigator.getPages !== "function") return;
+
+      ForensicToolbar.navigator.getPages().then(function (pages) {
+        if (!pages || !pages.length) return;
+        // Seite in der Liste suchen (URL-Vergleich, normalisiert)
+        var found = null;
+        for (var i = 0; i < pages.length; i++) {
+          var p = pages[i];
+          var pUrl = p.url || "";
+          // Normalisierung: beide ohne trailing slash, case-insensitive
+          if (pUrl.toLowerCase().replace(/\/$/, "") ===
+              linkedUrl.toLowerCase().replace(/\/$/, "")) {
+            found = p;
+            break;
+          }
+        }
+        var pct = found ? (found.progressPercent || 0) : 0;
+        _dbg("[TraceProgress] elemId=", elemId, "url=", linkedUrl,
+             "pct=", pct, "found=", !!found);
+        // CSS-Custom-Property setzen — CSS-Regel übernimmt Farbberechnung
+        el.style.setProperty("--trace-progress", pct);
+        // Klasse fuer aktive Fortschrittsanzeige setzen
+        el.classList.add("has_trace_progress");
+      });
+    }
+
+    // -------------------------------------------------------------------------
     // _buildTraceTooltip — Aussagekräftigen Tooltip-Text aus DOM ableiten
     // (Bug 2.80, Build 175)
     // -------------------------------------------------------------------------
@@ -3935,6 +4008,8 @@
         if (!el.classList.contains("contains_traces")) {
           el.classList.add("contains_traces");
         }
+        // Bug 2.89 (Build 189): Fortschrittsrahmen
+        _applyTraceProgress(el, elemId);
 
         var isTopic = elemId.startsWith("topic:");
         var color   = isTopic ? "#3a7a4a" : "#3a5a8a";
@@ -4417,6 +4492,33 @@
       container.querySelectorAll("[id^='p']").forEach(function (el) {
         if (/^p\d+$/.test(el.id)) _observer.observe(el);
       });
+
+      // Build 189: Weitere Elemente beobachten — Topic-Zeilen, Forum-Zeilen,
+      // Topic-Container — damit auch auf viewforum/index-Seiten Events entstehen.
+      // FluxBB/PunBB-Markup: .forum, .topic, .post, tr[id] als Selektoren.
+      var extraSelectors = [
+        "tr[id]",        // Topic/Post-Zeilen mit ID-Attribut
+        ".forum",        // Forum-Zeilen in Forenübersicht
+        ".topic",        // Topic-Zeilen in viewforum
+        ".post",         // Post-Container in viewtopic
+        "[id^='forum']", // Forum-IDs wie forum1, forum2
+        "[id^='topic']", // Topic-IDs
+      ];
+      var seen = new Set();
+      extraSelectors.forEach(function (sel) {
+        try {
+          container.querySelectorAll(sel).forEach(function (el) {
+            // Synthetische ID vergeben wenn keine vorhanden
+            if (!el.id) el.id = "_vt_" + Math.random().toString(36).slice(2, 8);
+            if (!seen.has(el.id)) {
+              seen.add(el.id);
+              _observer.observe(el);
+            }
+          });
+        } catch (e) { /* ungültiger Selektor — ignorieren */ }
+      });
+      _dbg("[ViewportTracker] Beobachte", seen.size + (container.querySelectorAll("[id^='p']").length || 0),
+           "Elemente auf", pageUrl);
     }
 
     function _scheduleFlush() {
@@ -4428,6 +4530,7 @@
       _flushTimer = null;
       if (!_buffer.length || !_pageUrl) return;
       var toSend = _buffer.splice(0);
+      _dbg("[ViewportTracker] Flush", toSend.length, "Events fuer", _pageUrl);
       ajaxPost(ForensicToolbar.config.API_VIEWPORT, {
         page_url: _pageUrl,
         events:   toSend,
@@ -4436,7 +4539,16 @@
       });
     }
 
-    return { start: start };
+    // Build 189: Flush auch bei Seitennavigation (visibilitychange) und
+    // beforeunload — verhindert Datenverlust wenn Seite gewechselt wird.
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden && _buffer.length > 0) {
+        clearTimeout(_flushTimer);
+        _flush();
+      }
+    });
+
+    return { start: start, flush: _flush };
   })();
 
   // ===========================================================================
@@ -4527,6 +4639,27 @@
         ForensicToolbar.config.API_USERINFO,
         "forensic_userinfo",
         "width=1100,height=800,menubar=no,toolbar=no,status=no,scrollbars=yes"
+      );
+    }
+    return { open: open };
+  })();
+
+  // ===========================================================================
+  // ReportWindowModule — Direktlink zum Berichtseditor (Bug 2.90, Build 189)
+  // ===========================================================================
+  // Oeffnet Fenster 3 (/_forensic/report) mit festem Namen 'forensic_report'.
+  // Ist das Fenster bereits offen, wird es aktiviert (window.open mit
+  // bekanntem name bringt das Fenster in den Vordergrund).
+  // userinfo.js und report_editor.js nutzen denselben Namen — konsistent.
+  // Beleg: Projektgespraech 2026-05-12 — Bug 2.90 (BS3).
+  // ===========================================================================
+  var ReportWindowModule = (function () {
+    function open() {
+      _dbg("[ReportWindow] Oeffne Berichtseditor: forensic_report");
+      window.open(
+        ForensicToolbar.config.API_REPORT,
+        "forensic_report",
+        "width=1200,height=900,menubar=no,toolbar=no,status=no,scrollbars=yes"
       );
     }
     return { open: open };

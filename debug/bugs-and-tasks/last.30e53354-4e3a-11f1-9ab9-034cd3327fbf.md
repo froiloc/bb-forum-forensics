@@ -1,5 +1,5 @@
 # Fehler im Frontend
-(Cache-buster-pre-extension: 282f07d8-4e2d-11f1-a1d5-ef032ac4c103)
+(Cache-buster-pre-extension: 30e53354-4e3a-11f1-9ab9-034cd3327fbf)
 
 Ich werde in dieser Liste fortlaufend die von mir beobachteten Fehler aufführen.
 Falls diese abgeschlossen und verworfen wurden, werde ich sie durchstreichen. Alles, was nicht durchgestrichen ist, ist also noch offen und muss bearbeitet werden.
@@ -20,29 +20,29 @@ Hier noch einmal die Liste der Baustellen und wofür sie stehen:
 
 Quellen zum Debuggen:
 * Dieses Dokument mit den Arbeitsanweisungen und Problembeschreibungen:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.282f07d8-4e2d-11f1-a1d5-ef032ac4c103.md
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.30e53354-4e3a-11f1-9ab9-034cd3327fbf.md
 * Die Ausgabe von DevTools-Console:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.282f07d8-4e2d-11f1-a1d5-ef032ac4c103.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.30e53354-4e3a-11f1-9ab9-034cd3327fbf.log
 * Die Ausgabe von DevTools-Network:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.282f07d8-4e2d-11f1-a1d5-ef032ac4c103.har
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.30e53354-4e3a-11f1-9ab9-034cd3327fbf.har
 * Das aktuelle DOM des gesamten Dokuments als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.282f07d8-4e2d-11f1-a1d5-ef032ac4c103.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.30e53354-4e3a-11f1-9ab9-034cd3327fbf.html
 * Das aktuelle DOM des gesamten Body als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.282f07d8-4e2d-11f1-a1d5-ef032ac4c103.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.30e53354-4e3a-11f1-9ab9-034cd3327fbf.html
 * Das aktuelle DOM des gesamten Sidebar als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.282f07d8-4e2d-11f1-a1d5-ef032ac4c103.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.30e53354-4e3a-11f1-9ab9-034cd3327fbf.html
 * Das aktuelle DOM des gesamten Main als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.282f07d8-4e2d-11f1-a1d5-ef032ac4c103.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.30e53354-4e3a-11f1-9ab9-034cd3327fbf.html
 * Das aktuelle DOM des Akkordeon 1 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.282f07d8-4e2d-11f1-a1d5-ef032ac4c103.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.30e53354-4e3a-11f1-9ab9-034cd3327fbf.html
 * Das aktuelle DOM des Akkordeon 2 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.282f07d8-4e2d-11f1-a1d5-ef032ac4c103.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.30e53354-4e3a-11f1-9ab9-034cd3327fbf.html
 * Das aktuelle DOM des Akkordeon 3 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.282f07d8-4e2d-11f1-a1d5-ef032ac4c103.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.30e53354-4e3a-11f1-9ab9-034cd3327fbf.html
 * Das aktuelle DOM des Akkordeon 4 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.282f07d8-4e2d-11f1-a1d5-ef032ac4c103.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.30e53354-4e3a-11f1-9ab9-034cd3327fbf.html
 * Die Ausgabe des aktuellen Webservers:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.282f07d8-4e2d-11f1-a1d5-ef032ac4c103.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.30e53354-4e3a-11f1-9ab9-034cd3327fbf.log
 * Die aktuellen Screenshots:
 https://github.com/froiloc/bb-forum-forensics/tree/1b5017a2f62c5a8f1825de76fc6edabb25d6bf66/debug/screenshots
 ***
@@ -168,8 +168,8 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 86. erledigt
 87. erledigt
 88. erledigt
-89. (20) (BS3) Bei Spuren, die nur auf andere Spuren verlinken, also beispielsweise die Auflistung der Topic oder privaten Nachrichten im Forum, möchte ich, dass mit einem farbigen Rahmen angezeigt wird, zu wie viel Prozent die verlinkte Seite bereits bearbeitet wurde. Also: grün für 100%, gelb für 50%, rot für 0%. Ob das über einen dynamischen Farbverlauf (CSS-Gradient) oder starr sein soll, weiß ich noch nicht. Das muss diskutiert werden.
-90. (5) (BS3) Es soll einen Link in der Toolbar auf der Hauptseite zum Berichtseditor geben. Also Fenster 1 direkt auf Fenster 3. Ohne den Umweg über Fenster 2.
+89. erledigt
+90. erledigt
 91. erledigt
 92. erledigt
 93. erledigt

@@ -1,6 +1,6 @@
 {
-  "build":   188,
-  "version": "0.6.188",
+  "build":   189,
+  "version": "0.6.189",
   "date":    "2026-05-12",
-  "note":    "BS3 Build 188: Bug 2.94 resolve-Cache an actualUid gebunden, Vollpaket toolbar.js+css"
+  "note":    "BS3 Build 189: Bug 2.90 Direktlink Berichtseditor (fester Fenster-Name), Bug 2.89 Fortschrittsrahmen auf Spur-Links, viewport_events Fix (mehr Elemente + flush bei unload)"
 }

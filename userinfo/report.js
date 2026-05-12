@@ -46,6 +46,13 @@
 
 'use strict';
 
+// Build 189 (Bug 2.90): window.name sicherstellen damit window.open() aus
+// Fenster 1/2 dieses Fenster aktiviert statt ein neues zu oeffnen.
+// Gilt auch wenn der Berichtseditor direkt per URL aufgerufen wird.
+if (!window.name || window.name === '_blank') {
+  window.name = 'forensic_report';
+}
+
 // ---------------------------------------------------------------------------
 // Konstanten
 // ---------------------------------------------------------------------------
