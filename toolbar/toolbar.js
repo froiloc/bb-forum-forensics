@@ -3117,6 +3117,14 @@
         if (!btn) return;
         var aliasId = parseInt(btn.getAttribute("data-id"), 10);
         btn.disabled = true;
+
+        // Build 181: Highlights + Minimap sofort leeren — noch vor dem
+        // AJAX-Response, damit der Ermittler keine veralteten Marker sieht.
+        // reload() danach baut alles mit dem neuen Stand neu auf.
+        // Beleg: Projektgespräch 2026-05-12.
+        AliasHighlightModule.clearHighlights();
+        MinimapModule.refresh();
+
         ajaxDelete(ForensicToolbar.config.API_ALIASES, { id: aliasId })
           .then(function (data) {
             if (data && data.deleted) {
@@ -3124,12 +3132,20 @@
                 ? _modalEl.querySelector('.forensic-alias-item[data-id="' + aliasId + '"]')
                 : null;
               if (item) item.remove();
+              // Vollständiges Reload: Aliasse vom Server holen + neu highlighten
+              // (inkl. Minimap-Refresh via highlight() → MinimapModule.refresh())
               AliasHighlightModule.reload();
             } else {
+              // Server hat abgelehnt: Highlights wiederherstellen
               btn.disabled = false;
+              AliasHighlightModule.highlight();
             }
           })
-          .catch(function () { btn.disabled = false; });
+          .catch(function () {
+            btn.disabled = false;
+            // Netzwerkfehler: Highlights wiederherstellen
+            AliasHighlightModule.highlight();
+          });
       });
     }
 
