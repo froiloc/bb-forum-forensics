@@ -166,6 +166,14 @@ class AnnotateEndpoint:
 
         # Bug 2.78 (Build 182): Fremd-Annotation — target_user_id gesetzt
         # wenn Ermittler die Annotation einem anderen Forenbenutzer zuordnet.
+        # Build 183 (Bug 2.91): Umfangreiches Debug-Logging fuer Fehleranalyse.
+        logger.debug(
+            "[2.91-DBG] annotate POST empfangen: page_url=%r category=%r "
+            "local_id=%r target_user_id_raw=%r investigator_id=%r user_id=%r",
+            data.get("page_url"), data.get("category"), data.get("local_id"),
+            data.get("target_user_id"), self._context.investigator_id,
+            self._context.user_id,
+        )
         target_user_id_raw = data.get("target_user_id")
         target_user_id: Optional[int] = None
         if target_user_id_raw is not None:
@@ -177,6 +185,11 @@ class AnnotateEndpoint:
         is_cross = (
             target_user_id is not None
             and target_user_id != self._context.user_id
+        )
+        logger.debug(
+            "[2.91-DBG] Pfad-Entscheidung: target_user_id=%r current_uid=%r "
+            "is_cross=%r",
+            target_user_id, self._context.user_id, is_cross,
         )
 
         # Annotation speichern
@@ -206,6 +219,11 @@ class AnnotateEndpoint:
             self._error(handler, "Interner Fehler beim Speichern")
             return
 
+        logger.debug(
+            "[2.91-DBG] save_annotation Ergebnis: annotation_id=%r "
+            "actual_uid=%r is_cross=%r local_id=%r",
+            annotation_id, actual_uid, is_cross, local_id,
+        )
         # Fremd-Annotation: Transportkopie anlegen
         if is_cross and local_id:
             self._write_cross_annotation(
@@ -314,6 +332,11 @@ class AnnotateEndpoint:
         Beleg: Projektgespraech 2026-05-12.
         """
         iid = self._context.investigator_id
+        logger.debug(
+            "[2.91-DBG] _write_cross_annotation: target_uid=%r iid=%r "
+            "local_id=%r page_url=%r",
+            target_user_id, iid, local_id, page_url,
+        )
         if iid is None:
             logger.warning(
                 "_write_cross_annotation: investigator_id nicht gesetzt — Transportkopie nicht angelegt"
@@ -327,6 +350,10 @@ class AnnotateEndpoint:
                 self._config.get("paths.evidence_db_dir")
             ) / f"evidence_{target_user_id}_{iid}.db"
             cross_path = cross_path.resolve()
+            logger.debug(
+                "[2.91-DBG] Transportdatei-Pfad: '%s' (existiert: %s)",
+                cross_path, cross_path.exists(),
+            )
         except Exception as exc:
             logger.error("_write_cross_annotation: Pfadberechnung fehlgeschlagen: %s", exc)
             return
@@ -424,12 +451,23 @@ class AnnotateEndpoint:
 
             t_con.commit()
             logger.info(
-                "_write_cross_annotation: Transportkopie geschrieben: "
+                "[2.91-DBG] _write_cross_annotation: Transportkopie geschrieben: "
                 "local_id=%r → '%s'", local_id, cross_path,
+            )
+            # Annotation-Zählung zur Verifikation
+            ann_count = t_con.execute(
+                "SELECT COUNT(*) FROM annotations WHERE local_id = ?", (local_id,)
+            ).fetchone()[0]
+            logger.debug(
+                "[2.91-DBG] Transportdatei nach Commit: annotations mit local_id=%r: %d",
+                local_id, ann_count,
             )
 
             # coordinator.db eintragen
             cdb = self._bundle.coordinator
+            logger.debug(
+                "[2.91-DBG] coordinator.db verfuegbar: %s", cdb is not None
+            )
             if cdb:
                 try:
                     cdb.add_pending_cross_annotation(

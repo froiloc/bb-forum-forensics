@@ -3,23 +3,23 @@ uuid="$(uuid)"
 last_uuid="$(ls -1 "${ROOTDIR}debug/bugs-and-tasks/"last.*.md | head -n 1 | cut -d'.' -f 2)"
 echo "Die neue cache-buster UUID ist ${uuid}"
 ROOTDIR="/opt/aiw_webserver/"
-if [[ -f "${ROOTDIR}debug/bugs-and-tasks/last.${last_uuid}.md" ]]
+if ls -1 ${ROOTDIR}debug/bugs-and-tasks/last.*.md 2>/dev/null
 then
 	git mv "${ROOTDIR}debug/bugs-and-tasks/last.${last_uuid}.md" "${ROOTDIR}debug/bugs-and-tasks/last.${uuid}.md"
 	mv "${ROOTDIR}debug/bugs-and-tasks/last.md" "${ROOTDIR}debug/bugs-and-tasks/last.${uuid}.md" 2>/dev/null
 	sed -i -E 's#[0-9a-f]{8}-4[0-9a-f]{3}(-[0-9a-f]{4}){3}[0-9a-f]{8}#'${uuid}'#g' "${ROOTDIR}debug/bugs-and-tasks/last.${uuid}.md"
 fi
-if [[ -f "${ROOTDIR}debug/devtools-console/last.${last_uuid}.log" ]]
+if ls -1 ${ROOTDIR}debug/devtools-console/last.*.log 2>/dev/null
 then
 	git mv "${ROOTDIR}debug/devtools-console/last.${last_uuid}.log" "${ROOTDIR}debug/devtools-console/last.${uuid}.log"
 	mv "${ROOTDIR}debug/devtools-console/last.log" "${ROOTDIR}debug/devtools-console/last.${uuid}.log" 2>/dev/null
 fi
-if [[ -f "${ROOTDIR}debug/devtools-network/last.${last_uuid}.har" ]]
+if ls -1 ${ROOTDIR}debug/devtools-network/last.*.har 2>/dev/null
 then
 	git mv "${ROOTDIR}debug/devtools-network/last.${last_uuid}.har" "${ROOTDIR}debug/devtools-network/last.${uuid}.har"
 	mv "${ROOTDIR}debug/devtools-network/last..har" "${ROOTDIR}debug/devtools-network/last.${uuid}.har" 2>/dev/null
 fi
-if [[ -f "${ROOTDIR}debug/dom-dump/last-html.${last_uuid}.html" ]]
+if ls -1 ${ROOTDIR}debug/dom-dump/last-html.*.html 2>/dev/null
 then
 	git mv "${ROOTDIR}debug/dom-dump/last-html.${last_uuid}.html" "${ROOTDIR}debug/dom-dump/last-html.${uuid}.html"
 	mv "${ROOTDIR}debug/dom-dump/last-html.html" "${ROOTDIR}debug/dom-dump/last-html.${uuid}.html" 2>/dev/null
@@ -55,9 +55,9 @@ then
 
 	fi
 fi
-if [[ -f "${ROOTDIR}debug/webserver-log/last.${last_uuid}.log" ]]
+if ls -1 ${ROOTDIR}debug/webserver-log/last.*.log 2>/dev/null
 then
-	git mv "${ROOTDIR}debug/webserver-log/last.${last_uuid}.log" "${ROOTDIR}debug/webserver-log/last.${uuid}.log"
+	git mv ${ROOTDIR}debug/webserver-log/last.*.log "${ROOTDIR}debug/webserver-log/last.${uuid}.log"
 	mv "${ROOTDIR}debug/webserver-log/last.log" "${ROOTDIR}debug/webserver-log/last.${uuid}.log" 2>/dev/null
 fi
 git add "${ROOTDIR}debug/screenshots/*"

@@ -259,9 +259,9 @@ class DefaultDb:
               known_users  (user_id INTEGER PK, username TEXT NOT NULL)
               known_aliases(alias_id INTEGER PK AUTOINCREMENT,
                             user_id  INTEGER REFERENCES known_users(user_id),
-                            alias    TEXT NOT NULL)
+                            name     TEXT NOT NULL)  -- Spalte heisst 'name' (Build 183 Fix)
               INDEX known_users_username_idx ON known_users(username COLLATE NOCASE)
-              INDEX known_aliases_alias_idx  ON known_aliases(alias    COLLATE NOCASE)
+              INDEX known_aliases_name_idx   ON known_aliases(name    COLLATE NOCASE)
           - default.db ist READ-ONLY: diese Methode schreibt nie.
           - Suche erst ab 4 Zeichen (Pflicht, wegen 500k+ Einträgen).
 
@@ -316,25 +316,27 @@ class DefaultDb:
         remaining = limit - len(results)
         if remaining > 0:
             try:
+                # Bug 3.9 (Build 183): Spalte heisst 'name', nicht 'alias'.
+                # Beleg: Webserver-Log, Fehler 'no such column: ka.alias'.
                 alias_rows = self._con.execute(
                     """
-                    SELECT ka.user_id, ku.username, ka.alias
+                    SELECT ka.user_id, ku.username, ka.name
                     FROM ddb.known_aliases ka
                     JOIN ddb.known_users ku ON ku.user_id = ka.user_id
-                    WHERE ka.alias LIKE ? COLLATE NOCASE
+                    WHERE ka.name LIKE ? COLLATE NOCASE
                     LIMIT ?
                     """,
-                    (pattern, remaining * 2),  # etwas mehr holen, Duplikate filtern
+                    (pattern, remaining * 2),
                 ).fetchall()
                 for row in alias_rows:
                     uid = int(row["user_id"])
                     if uid in seen_ids:
-                        continue  # Bereits über username gefunden
+                        continue
                     seen_ids.add(uid)
                     results.append({
                         "user_id":      uid,
                         "username":     str(row["username"]),
-                        "matched_alias": str(row["alias"]),
+                        "matched_alias": str(row["name"]),
                     })
                     if len(results) >= limit:
                         break

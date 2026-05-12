@@ -845,6 +845,12 @@
     function syncAnnotation(ann) {
       // Build 182 (Bug 2.78): target_user_id mitsenden wenn Ermittler
       // die Annotation einem anderen Forenbenutzer zugeordnet hat.
+      // Build 183 (Bug 2.91): Debug-Logging.
+      _dbg("[2.91-DBG] syncAnnotation: ann.localId=", ann.localId,
+           "ann.targetUserId=", ann.targetUserId,
+           "ann.targetUsername=", ann.targetUsername,
+           "ann.category=", ann.category,
+           "ann.syncState=", ann.syncState);
       var payload = {
         page_url:       ann.pageUrl,
         category:       ann.category,
@@ -857,8 +863,11 @@
         target_user_id: ann.targetUserId || null,
       };
 
+      _dbg("[2.91-DBG] ajaxPost payload:", JSON.stringify(payload));
       return ajaxPost(ForensicToolbar.config.API_ANNOTATE, payload)
         .then(function (r) {
+          _dbg("[2.91-DBG] ajaxPost Response:", JSON.stringify(r),
+               "| payload.target_user_id war:", payload.target_user_id);
           if (r.status === "ok") {
             ann.id        = r.id;
             ann.syncState = "synced";
@@ -2199,6 +2208,12 @@
         // Bug 2.76: Kategorie aus Dropdown übernehmen
         var selCat = _getFieldValue("forensic-popup-category");
         if (selCat) { _currentAnn.category = selCat; }
+        // Build 183 (Bug 2.91): Zustand der Annotation beim Speichern loggen
+        _dbg("[2.91-DBG] Popup close(save=true): _currentAnn.targetUserId=",
+             _currentAnn.targetUserId,
+             "targetUsername=", _currentAnn.targetUsername,
+             "localId=", _currentAnn.localId,
+             "category=", _currentAnn.category);
         AnnotationStoreModule.syncAnnotation(_currentAnn);
         // Semantisch korrekt: "created" nur bei neuen Annotationen (noch keine
         // Server-ID), "updated" bei bereits persistierten.
@@ -2601,11 +2616,17 @@
       var uid   = parseInt(btn.getAttribute("data-uid"), 10);
       var uname = btn.getAttribute("data-uname");
       _dbg("[Popup] Benutzer-Wechsel →", uid, uname);
+      _dbg("[2.91-DBG] _onUserResultClick: uid=", uid, "uname=", uname,
+           "_currentAnn vorhanden:", !!_currentAnn,
+           "_currentAnn.targetUserId vorher:",
+           _currentAnn ? _currentAnn.targetUserId : "(null)");
 
       // Annotation dem neuen Benutzer zuordnen
       if (_currentAnn) {
         _currentAnn.targetUserId   = uid;
         _currentAnn.targetUsername = uname;
+        _dbg("[2.91-DBG] _currentAnn nach Wechsel: targetUserId=",
+             _currentAnn.targetUserId, "targetUsername=", _currentAnn.targetUsername);
       }
 
       // Benutzer-Badge im Popup aktualisieren
