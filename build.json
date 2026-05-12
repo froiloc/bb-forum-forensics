@@ -1,6 +1,6 @@
 {
-  "build":   191,
-  "version": "0.6.191",
+  "build":   196,
+  "version": "0.6.196",
   "date":    "2026-05-12",
-  "note":    "BS3 Build 191: viewport_events .tcr und a[href*=viewtopic.php] als Selektoren"
+  "note":    "BS3 Build 196: Such-Modal KN-7 Schritt 1 — _buildQueryString() + _doSearch(), Suchen-Button verdrahtet, Tabulator mit echten Daten befuellt"
 }

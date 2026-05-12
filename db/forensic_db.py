@@ -705,6 +705,8 @@ class ForensicDb:
         fetch_failed_only: bool = False,
         has_annotations: "bool | None" = None,
         progress_filter: "str | None" = None,
+        progress_threshold: int = 100,  # Build 194: Schwellenwert für 'open' (0–99)
+        progress_direction: str = "lt",   # Build 195: 'lt'=< / 'gte'=>= Schwellenwert
         viewed_from: "int | None" = None,
         viewed_to: "int | None" = None,
         tags_filter: "list[str] | None" = None,
@@ -753,6 +755,9 @@ class ForensicDb:
             fetch_failed_only:      Nur Seiten mit http_status != 200.
             has_annotations:        True = nur mit, False = nur ohne Anns.
             progress_filter:        'open' | 'closed' | None.
+            progress_threshold:     0–99 — Schwellenwert (Build 194).
+            progress_direction:     'lt' = progress < threshold (Standard),
+                                    'gte' = progress >= threshold (Build 195).
             viewed_from:            Unix-ms — nur Seiten ab diesem Zeitpunkt.
             viewed_to:              Unix-ms — nur Seiten bis zu diesem Zeitpunkt.
             tags_filter:            Nur Seiten mit mind. einem dieser Tags.
@@ -921,9 +926,16 @@ class ForensicDb:
             else:
                 progress = 0
 
-            # progress_filter (open < 100, closed = 100)
-            if progress_filter == "open" and progress >= 100:
-                continue
+            # progress_filter (Build 194/195: Schwellenwert + Richtung)
+            if progress_filter == "open":
+                if progress_direction == "gte":
+                    # >= Schwellenwert: Seiten die mindestens so weit sind
+                    if progress < progress_threshold:
+                        continue
+                else:
+                    # < Schwellenwert (Standard): noch nicht abgeschlossen
+                    if progress >= progress_threshold:
+                        continue
             if progress_filter == "closed" and progress < 100:
                 continue
 

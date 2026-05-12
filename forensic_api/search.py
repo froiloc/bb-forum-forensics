@@ -116,6 +116,18 @@ class SearchEndpoint:
         # Fortschrittsfilter
         progress_raw = _first("progress", "all").lower()
         progress_filter = progress_raw if progress_raw in ("open", "closed") else None
+        # Build 194: numerischer Schwellenwert für 'open' (0–99).
+        # Build 195: progress_direction ('lt'=<, 'gte'=>=).
+        progress_threshold = 100
+        try:
+            _pt = int(_first("progress_threshold", ""))
+            if 0 <= _pt <= 99:
+                progress_threshold = _pt
+        except (ValueError, TypeError):
+            pass
+        progress_direction = _first("progress_direction", "lt").strip()
+        if progress_direction not in ("lt", "gte"):
+            progress_direction = "lt"
 
         # Betrachtungszeitraum (Unix-ms)
         viewed_from: int | None = None
@@ -178,6 +190,8 @@ class SearchEndpoint:
                 fetch_failed_only=fetch_failed_only,
                 has_annotations=has_annotations,
                 progress_filter=progress_filter,
+                progress_threshold=progress_threshold,
+                progress_direction=progress_direction,
                 viewed_from=viewed_from,
                 viewed_to=viewed_to,
                 tags_filter=tags_filter,

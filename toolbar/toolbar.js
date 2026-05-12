@@ -2,7 +2,37 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 191 · 2026-05-12
+ * Version: v0.1.0 · Build: 196 · 2026-05-12
+ *
+ * Aenderungen Build 196 (BS3 — KN-7 Schritt 1):
+ *   _buildQueryString(): alle Filterfelder → URL-Parameter.
+ *   _doSearch(): GET /_forensic/search, Tabulator befüllen.
+ *   _setSearchLoading(), _setSearchError().
+ *   Zeilen-Klick navigiert zur Seite und schliesst Modal.
+ *
+ * Aenderungen Build 195 (BS3):
+ *   Modal 800px Hoehe.
+ *   Operator-Toggle am Schieberegler: Klick wechselt < / ≥.
+ *   _toggleThresholdOp(), Erklärzeile zeigt aktuellen Operator.
+ *
+ * Aenderungen Build 194 (BS3):
+ *   Such-Modal 1280px Breite.
+ *   Badge text-align:center.
+ *   Schieberegler fuer Offen-Schwellenwert (0–99 %, HSL-Farbverlauf).
+ *   _onProgressChange() aktiviert/deaktiviert Schieberegler per Radio.
+ *
+ * Aenderungen Build 193 (BS3 — Bug 2.95):
+ *   SearchModalModule: hidden/show statt remove() — Ergebnisse bleiben.
+ *   Backdrop statisch im DOM, CSS :has()-Selektor steuert Sichtbarkeit.
+ *   Tabulator.js fuer sortierbare Ergebnistabelle (Dark-Theme).
+ *   Hoehe 760px. Badge line-height:2.1 in csm-cb-label.
+ *   setResults() als oeffentliche API fuer KN-7.
+ *
+ * Aenderungen Build 192 (BS3 — Bug 2.95):
+ *   SearchModalModule: Modal-Rahmen (KN-4), Filterformular (KN-5),
+ *     Ergebnistabellen-Platzhalter (KN-6). Rein visuell, keine Servercalls.
+ *   Schaltfläche '🔎 Suche' in Sektion 3. Alt+F oeffnet Modal.
+ *   navigator:modal_open leitet auf SearchModalModule.open() weiter.
  *
  * Aenderungen Build 191 (BS3):
  *   viewport_events: .tcr und a[href*='viewtopic.php'] als Selektoren
@@ -1292,6 +1322,20 @@
         });
       }
 
+      // Suchmodal-Button + Alt+F (Build 192 — Bug 2.95)
+      var searchModalBtn = document.getElementById("forensic-btn-search-modal");
+      if (searchModalBtn) {
+        searchModalBtn.addEventListener("click", function () {
+          ForensicToolbar.events.emit("navigator:modal_open");
+        });
+      }
+      document.addEventListener("keydown", function (e) {
+        if (e.altKey && (e.key === "f" || e.key === "F")) {
+          e.preventDefault();
+          ForensicToolbar.events.emit("navigator:modal_open");
+        }
+      });
+
       // Navigation: Pfeiltasten
       var prevBtn = document.getElementById("forensic-btn-nav-prev");
       var nextPgBtn = document.getElementById("forensic-btn-nav-next");
@@ -1366,6 +1410,10 @@
           '<button id="forensic-btn-report" class="forensic-btn" ' +
           'aria-label="Berichtseditor öffnen" title="Berichtseditor öffnen [Fenster 3]">' +
           '📋 Bericht</button>' +
+          // Build 192 (Bug 2.95): Erweiterte Suche
+          '<button id="forensic-btn-search-modal" class="forensic-btn" ' +
+          'aria-label="Erweiterte Suche öffnen (Alt+F)" title="Erweiterte Suche [Alt+F]">' +
+          '🔎 Suche</button>' +
           '<button id="forensic-btn-viewmode" class="forensic-btn" ' +
           'aria-label="Ansicht wechseln: Original oder Angepasst" ' +
           'title="Ansicht wechseln [Original / Angepasst]" ' +
@@ -3278,6 +3326,657 @@
     }
 
     return { open: open, close: close };
+  })();
+
+    // ===========================================================================
+  // SearchModalModule — Erweiterte Suche (Phase KN-4/5/6, Build 193)
+  // ===========================================================================
+  // Bug 2.95: Such-Modal mit hidden/show-Architektur (Ergebnisse bleiben erhalten).
+  //
+  // Build 193:
+  //   - hidden-Klasse statt remove()/append() — DOM wird einmalig gebaut.
+  //   - Backdrop static im DOM, gesteuert via CSS :has()-Selektor.
+  //   - Tabulator.js für sortierbare Ergebnistabelle.
+  //   - Höhe 760px, Badge line-height fix.
+  //
+  // Beleg: Bauplan_Baustelle3_Kontext_Navigator_v0_1.md §6; Projektgespräch 2026-05-12.
+  // ===========================================================================
+  var SearchModalModule = (function () {
+    'use strict';
+
+    var _modalEl       = null;   // Modal-DOM (einmalig gebaut)
+    var _backdropEl    = null;   // Backdrop-DOM (einmalig gebaut)
+    var _triggerEl     = null;   // Fokus-Rückgabe beim Schließen
+    var _tabulatorInst = null;   // Tabulator-Instanz
+    var _tabulatorReady = false; // Tabulator.js geladen?
+
+    // =========================================================================
+    // Öffentliche API
+    // =========================================================================
+
+    function open(triggerEl) {
+      _triggerEl = triggerEl || document.activeElement || null;
+      if (!_modalEl) {
+        _buildDOM();
+      }
+      // Zeigen
+      _modalEl.classList.remove("hidden");
+      // Fokus
+      var firstInput = _modalEl.querySelector(".csm-text-input");
+      if (firstInput) { setTimeout(function () { firstInput.focus(); }, 30); }
+      _dbg("[SearchModal] Geöffnet");
+      // Tabulator beim ersten Öffnen initialisieren
+      if (!_tabulatorReady) { _ensureTabulator(); }
+    }
+
+    function close() {
+      if (!_modalEl) return;
+      _modalEl.classList.add("hidden");
+      ForensicToolbar.events.emit("navigator:modal_closed");
+      if (_triggerEl && _triggerEl.focus) {
+        try { _triggerEl.focus(); } catch (e) {}
+      }
+      _triggerEl = null;
+      _dbg("[SearchModal] Geschlossen (DOM bleibt erhalten)");
+    }
+
+    function isOpen() {
+      return !!_modalEl && !_modalEl.classList.contains("hidden");
+    }
+
+    // =========================================================================
+    // DOM-Aufbau (einmalig)
+    // =========================================================================
+
+    function _buildDOM() {
+      // Backdrop (statisch, gesteuert via CSS :has())
+      _backdropEl = document.createElement("div");
+      _backdropEl.id        = "context-search-backdrop";
+      _backdropEl.className = "context-search-backdrop";
+      _backdropEl.addEventListener("click", close);
+      document.body.appendChild(_backdropEl);
+
+      // Modal
+      _modalEl = document.createElement("div");
+      _modalEl.id = "context-search-modal";
+      _modalEl.className = "context-search-modal hidden";
+      _modalEl.setAttribute("role", "dialog");
+      _modalEl.setAttribute("aria-modal", "true");
+      _modalEl.setAttribute("aria-labelledby", "context-modal-title");
+      _modalEl.setAttribute("tabindex", "-1");
+      _modalEl.innerHTML = _buildHTML();
+      document.body.appendChild(_modalEl);
+
+      // Event-Listener
+      _modalEl.addEventListener("keydown", _onKeyDown);
+      _modalEl.querySelector(".csm-close-btn").addEventListener("click", close);
+      _modalEl.querySelector(".csm-footer-close").addEventListener("click", close);
+      _modalEl.querySelector(".csm-reset-btn").addEventListener("click", _onReset);
+      _modalEl.querySelectorAll(".csm-excl-cb").forEach(function (cb) {
+        cb.addEventListener("change", _checkConflict);
+      });
+      // Schieberegler: Aktivierung bei Radio-Wechsel + Live-Anzeige
+      _modalEl.querySelectorAll('input[name="csm-progress"]').forEach(function (r) {
+        r.addEventListener("change", _onProgressChange);
+      });
+      var slider = _modalEl.querySelector("#csm-threshold");
+      if (slider) {
+        slider.addEventListener("input", function () {
+          var pctEl = _modalEl.querySelector("#csm-threshold-pct");
+          if (pctEl) pctEl.textContent = slider.value + " %";
+        });
+      }
+      // Build 195: Operator-Badge Toggle (Klick = lt/gte wechseln)
+      var opBtn = _modalEl.querySelector("#csm-threshold-op");
+      if (opBtn) {
+        opBtn.addEventListener("click", function (e) {
+          e.preventDefault();
+          _toggleThresholdOp();
+        });
+      }
+      // Suchen-Button (KN-7: wird später verdrahtet)
+      var searchBtn = _modalEl.querySelector("#csm-search-btn");
+      if (searchBtn) {
+        searchBtn.addEventListener("click", function () {
+          _doSearch();
+        });
+      }
+    }
+
+    function _buildHTML() {
+      var cats = ForensicToolbar.config.CATEGORIES || [];
+      var catCbs = cats.map(function (c) {
+        return (
+          '<label class="csm-cb-label">' +
+          '<input type="checkbox" class="csm-cat-cb" value="' + _esc(c.id) +
+          '" checked> ' + _esc(c.icon + " " + c.label) +
+          '</label>'
+        );
+      }).join("");
+
+      return (
+        '<div class="csm-header">' +
+        '<span id="context-modal-title" class="csm-title">🔎 Erweiterte Suche</span>' +
+        '<button class="csm-close-btn forensic-popup-close" aria-label="Schließen">✕</button>' +
+        '</div>' +
+
+        '<div class="csm-body">' +
+
+        // ── Linke Spalte: Filter ──────────────────────────────────
+        '<div class="csm-filters" role="search" aria-label="Suchfilter">' +
+
+        '<div class="csm-filter-group">' +
+        '<label class="csm-filter-label" for="csm-q">Freitext (URL / Titel)</label>' +
+        '<input type="text" id="csm-q" class="csm-text-input forensic-popup-input" ' +
+        'placeholder="z.B. viewtopic, pgp, profile…" autocomplete="off">' +
+        '</div>' +
+
+        '<div class="csm-filter-group">' +
+        '<label class="csm-filter-label">Tags</label>' +
+        '<input type="text" id="csm-tags" class="csm-text-input forensic-popup-input" ' +
+        'placeholder="z.B. username, email (mit Komma trennen)">' +
+        '<div class="csm-filter-hint">Sucht Seiten mit mind. einem dieser Tags</div>' +
+        '</div>' +
+
+        '<div class="csm-filter-group">' +
+        '<label class="csm-filter-label">Kategorien</label>' +
+        '<div class="csm-cb-grid">' + catCbs + '</div>' +
+        '</div>' +
+
+        '<div class="csm-filter-group">' +
+        '<label class="csm-filter-label">Auswertungsstatus</label>' +
+        // Build 194: Offen-Radio bekommt Schieberegler für Schwellenwert.
+        // Standard: 30 % (Gelb/Rot-Grenze aus Bauplan KN §8.1).
+        // Schieberegler nur aktiv wenn Radio 'open' ausgewählt ist.
+        '<div class="csm-radio-group">' +
+        '<label class="csm-radio-label"><input type="radio" name="csm-progress" value="all" checked> Alle</label>' +
+        '<div class="csm-progress-row">' +
+        '<label class="csm-radio-label"><input type="radio" name="csm-progress" value="open"> Offen</label>' +
+        '<div class="csm-threshold-wrap" id="csm-threshold-wrap">' +
+        // Build 195: Operator-Badge — Klick wechselt zwischen < und >=
+        '<button class="csm-threshold-op" id="csm-threshold-op" data-dir="lt" ' +
+        'title="Klick: Operator wechseln (< oder ≥)" aria-label="Operator wechseln">&lt;</button>' +
+        '<input type="range" id="csm-threshold" class="csm-threshold-slider" ' +
+        'min="0" max="99" value="30" aria-label="Schwellenwert (0–99 %)">' +
+        '<span class="csm-threshold-pct" id="csm-threshold-pct">30 %</span>' +
+        '</div></div>' +
+        '<div class="csm-threshold-hint" id="csm-threshold-hint" style="display:none">' +
+        'Fortschritt <span id="csm-threshold-op-hint">&lt;</span> Schwellenwert</div>' +
+        '<label class="csm-radio-label"><input type="radio" name="csm-progress" value="closed"> Abgeschlossen (= 100 %)</label>' +
+        '</div>' +
+        '</div>' +
+
+        '<div class="csm-filter-group">' +
+        '<label class="csm-filter-label">Betrachtungszeitraum</label>' +
+        '<div class="csm-date-row">' +
+        '<label class="csm-date-label" for="csm-from">Von</label>' +
+        '<input type="date" id="csm-from" class="csm-date-input forensic-popup-input">' +
+        '</div>' +
+        '<div class="csm-date-row">' +
+        '<label class="csm-date-label" for="csm-to">Bis</label>' +
+        '<input type="date" id="csm-to" class="csm-date-input forensic-popup-input">' +
+        '</div>' +
+        '</div>' +
+
+        '<div class="csm-filter-group">' +
+        '<label class="csm-filter-label">Kontext</label>' +
+        '<div class="csm-cb-col">' +
+        '<label class="csm-cb-label"><input type="checkbox" class="csm-ctx-cb" value="user" checked> ' +
+        '<span class="forensic-ctx-badge forensic-ctx-badge--user">U</span> Nutzersicht</label>' +
+        '<label class="csm-cb-label"><input type="checkbox" class="csm-ctx-cb" value="investigator" checked> ' +
+        '<span class="forensic-ctx-badge forensic-ctx-badge--investigator">E</span> Ermittler-Session</label>' +
+        '<label class="csm-cb-label"><input type="checkbox" class="csm-ctx-cb" value="actor" checked> ' +
+        '<span class="forensic-ctx-badge forensic-ctx-badge--actor">A</span> Fremd-Session</label>' +
+        '</div>' +
+        '</div>' +
+
+        '<div class="csm-filter-group">' +
+        '<label class="csm-filter-label">Weitere Filter</label>' +
+        '<div class="csm-cb-col">' +
+        '<label class="csm-cb-label"><input type="checkbox" class="csm-other-cb" value="fetch_failed"> ' +
+        'Nur fehlgeschlagene Seiten ⚠️</label>' +
+        '<label class="csm-cb-label"><input type="checkbox" class="csm-excl-cb" id="csm-has-ann" value="has_annotations"> ' +
+        'Nur Seiten <em>mit</em> Annotationen</label>' +
+        '<label class="csm-cb-label"><input type="checkbox" class="csm-excl-cb" id="csm-no-ann" value="no_annotations"> ' +
+        'Nur Seiten <em>ohne</em> Annotationen</label>' +
+        '</div>' +
+        '<div class="csm-conflict-warn" id="csm-conflict-warn" style="display:none">' +
+        '⚠️ Widerspruch: „mit" und „ohne" Annotationen schließen sich aus.' +
+        '</div>' +
+        '</div>' +
+
+        '<div class="csm-filter-actions">' +
+        '<button class="csm-reset-btn forensic-btn forensic-btn-secondary csm-btn-sm">' +
+        '🔄 Zurücksetzen</button>' +
+        '<button class="csm-search-btn forensic-btn forensic-btn-primary csm-btn-sm" id="csm-search-btn">' +
+        '🔎 Suchen</button>' +
+        '</div>' +
+
+        '</div>' + // /csm-filters
+
+        // ── Rechte Spalte: Ergebnisse ─────────────────────────────
+        '<div class="csm-results" aria-live="polite" aria-label="Suchergebnisse">' +
+
+        '<div class="csm-results-header">' +
+        '<span class="csm-results-count" id="csm-results-count">— Ergebnisse</span>' +
+        '<div class="csm-sort-hint">Sortierung via Tabulator.js — Spalte klicken</div>' +
+        '</div>' +
+
+        // Tabulator-Ziel: leere div, Tabulator baut hier die Tabelle auf
+        '<div id="csm-tabulator" class="csm-tabulator-wrap"></div>' +
+
+        '</div>' + // /csm-results
+
+        '</div>' + // /csm-body
+
+        '<div class="csm-footer">' +
+        '<button class="csm-footer-close forensic-btn forensic-btn-secondary">Schließen</button>' +
+        '</div>'
+      );
+    }
+
+    // =========================================================================
+    // Tabulator.js laden + initialisieren
+    // =========================================================================
+
+    function _ensureTabulator() {
+      // CSS einmalig laden
+      if (!document.querySelector('link[href*="tabulator"]')) {
+        var link = document.createElement("link");
+        link.rel  = "stylesheet";
+        link.href = "/_forensic/static/vendor/tabulator/tabulator.min.css";
+        document.head.appendChild(link);
+      }
+
+      // JS laden (asynchron), dann initialisieren
+      if (typeof Tabulator !== "undefined") {
+        _initTabulator();
+        return;
+      }
+      var script = document.createElement("script");
+      script.src = "/_forensic/static/vendor/tabulator/tabulator.min.js";
+      script.onload = function () {
+        _tabulatorReady = true;
+        _initTabulator();
+        _dbg("[SearchModal] Tabulator.js geladen und initialisiert");
+      };
+      script.onerror = function () {
+        _dbg("[SearchModal] Tabulator.js konnte nicht geladen werden — Fallback auf native Tabelle");
+      };
+      document.head.appendChild(script);
+    }
+
+    function _initTabulator() {
+      var el = document.getElementById("csm-tabulator");
+      if (!el || _tabulatorInst) return;
+
+      // Spalten-Definition (Bauplan KN §8.1)
+      var columns = [
+        {
+          title: "Kontext", field: "scrapeContext", width: 64, sorter: "string",
+          hozAlign: "center",
+          formatter: function (cell) {
+            var ctx = cell.getValue() || "user";
+            var badge = ctx === "user"        ? '<span class="forensic-ctx-badge forensic-ctx-badge--user">U</span>' :
+                        ctx === "investigator" ? '<span class="forensic-ctx-badge forensic-ctx-badge--investigator">E</span>' :
+                                                '<span class="forensic-ctx-badge forensic-ctx-badge--actor">A</span>';
+            var warn = cell.getRow().getData().fetchFailed ? " ⚠️" : "";
+            return badge + warn;
+          },
+        },
+        {
+          title: "URL / Titel", field: "url", sorter: "string", minWidth: 160,
+          formatter: function (cell) {
+            var row   = cell.getRow().getData();
+            var url   = (row.url || "").replace(/^\/forum/, "");
+            if (url.length > 52) url = url.substring(0, 49) + "…";
+            var title = row.title ? ('<div class="csm-row-title">' + _esc(row.title) + "</div>") : "";
+            return '<div class="csm-row-url">' + _esc(url) + "</div>" + title;
+          },
+        },
+        {
+          title: "Fortschritt", field: "progressPercent", width: 100, sorter: "number",
+          hozAlign: "center",
+          formatter: function (cell) {
+            var pct      = cell.getValue() || 0;
+            var barClass = pct >= 80 ? "csm-prog--green" : pct >= 30 ? "csm-prog--yellow" : "csm-prog--red";
+            var filled   = Math.round(pct / 10);
+            var bar      = "";
+            for (var i = 0; i < 10; i++) {
+              bar += '<span class="csm-prog-seg ' + (i < filled ? barClass : "csm-prog-seg--empty") + '"></span>';
+            }
+            return '<div class="csm-prog-bar">' + bar + '</div><div class="csm-prog-pct">' + pct + ' %</div>';
+          },
+        },
+        {
+          title: "🔗", field: "traceCountTotal", width: 44, sorter: "number", hozAlign: "center",
+          formatter: function (cell) { return cell.getValue() || 0; },
+        },
+        {
+          title: "📌", field: "annotationsTotal", width: 44, sorter: "number", hozAlign: "center",
+          formatter: function (cell) { return cell.getValue() || 0; },
+        },
+        {
+          title: "Tags", field: "tagList", width: 110, sorter: false,
+          formatter: function (cell) {
+            var tags = cell.getValue() || [];
+            if (!tags.length) return '<span class="csm-no-tags">—</span>';
+            var visible = tags.slice(0, 3).map(function (t) {
+              return '<span class="csm-tag-chip">' + _esc(t) + "</span>";
+            }).join("");
+            var rest = tags.length > 3 ? ' <span class="csm-tag-more">+' + (tags.length - 3) + "</span>" : "";
+            return visible + rest;
+          },
+        },
+        {
+          title: "Zuletzt", field: "lastViewedAt", width: 100, sorter: "number",
+          formatter: function (cell) {
+            var ts = cell.getValue();
+            if (!ts) return '<span class="csm-no-tags">—</span>';
+            var d   = new Date(ts);
+            var now = Date.now();
+            var diff = now - ts;
+            if (diff < 3600000)    return "vor " + Math.round(diff / 60000) + " Min.";
+            if (diff < 86400000)   return "heute " + d.toLocaleTimeString("de-DE", {hour:"2-digit",minute:"2-digit"});
+            if (diff < 172800000)  return "gestern " + d.toLocaleTimeString("de-DE", {hour:"2-digit",minute:"2-digit"});
+            return d.toLocaleDateString("de-DE", {day:"2-digit",month:"2-digit",year:"2-digit"});
+          },
+        },
+      ];
+
+      _tabulatorInst = new Tabulator("#csm-tabulator", {
+        data:              [],
+        columns:           columns,
+        layout:            "fitColumns",
+        height:            "100%",
+        placeholder:       "Filter setzen und 🔎 Suchen klicken",
+        initialSort:       [{ column: "lastViewedAt", dir: "desc" }],
+        rowClick:          function (e, row) {
+          // KN-7 (Build 196): Navigation zu Seite aus Ergebnis.
+          // Modal bleibt offen (hidden), Seite lädt im Hauptfenster.
+          var url = row.getData().url;
+          if (!url) return;
+          _dbg("[SearchModal] Navigation zu:", url);
+          close();
+          ForensicToolbar.events.emit("navigator:page_selected", { url: url });
+        },
+        rowFormatter:      function (row) {
+          row.getElement().classList.add("csm-row");
+        },
+      });
+
+      _tabulatorReady = true;
+      _dbg("[SearchModal] Tabulator initialisiert");
+    }
+
+    // Öffentliche Methode zum Befüllen (für KN-7)
+    function setResults(pages, total) {
+      var countEl = document.getElementById("csm-results-count");
+      if (countEl) countEl.textContent = (total || pages.length) + " Ergebnisse";
+      if (_tabulatorInst) {
+        _tabulatorInst.setData(pages);
+      }
+    }
+
+    // =========================================================================
+    // Hilfsfunktionen
+    // =========================================================================
+
+    function _onKeyDown(e) {
+      if (e.key === "Escape") { close(); return; }
+      if (e.key === "Enter" && e.target.tagName !== "BUTTON" &&
+          e.target.tagName !== "SELECT") {
+        var searchBtn = _modalEl && _modalEl.querySelector("#csm-search-btn");
+        if (searchBtn && !searchBtn.disabled) { searchBtn.click(); }
+      }
+      if (e.key === "Tab") {
+        var focusable = Array.from(
+          _modalEl.querySelectorAll(
+            "button:not([disabled]), input:not([disabled]), [tabindex='0']"
+          )
+        ).filter(function (el) { return el.offsetParent !== null; });
+        if (!focusable.length) return;
+        var first = focusable[0], last = focusable[focusable.length - 1];
+        if (e.shiftKey) {
+          if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+        } else {
+          if (document.activeElement === last)  { e.preventDefault(); first.focus(); }
+        }
+      }
+    }
+
+    // =========================================================================
+    // KN-7 (Build 196): Suche ausführen
+    // =========================================================================
+
+    /**
+     * _buildQueryString — Liest alle Filterfelder aus dem DOM und baut
+     * den URL-Query-String für GET /_forensic/search.
+     *
+     * Felder ohne aktiven Filter werden weggelassen (saubere URL, Bauplan §7.3).
+     * Alle 6 Kategorien aktiv = kein categories-Parameter.
+     * Alle 3 Kontexte aktiv = kein context-Parameter.
+     *
+     * Beleg: Bauplan KN §7.3 — Serialisierung der Filterparameter.
+     */
+    function _buildQueryString() {
+      if (!_modalEl) return "";
+      var params = [];
+
+      // --- Freitext ---
+      var q = (_modalEl.querySelector("#csm-q") || {}).value || "";
+      if (q.trim()) params.push("q=" + encodeURIComponent(q.trim()));
+
+      // --- Tags ---
+      var tagsRaw = (_modalEl.querySelector("#csm-tags") || {}).value || "";
+      var tags = tagsRaw.split(",")
+        .map(function (t) { return t.trim(); })
+        .filter(function (t) { return t.length > 0; });
+      if (tags.length) params.push("tags=" + encodeURIComponent(tags.join(",")));
+
+      // --- Kategorien: nur senden wenn nicht alle aktiv ---
+      var allCats  = ForensicToolbar.config.CATEGORIES || [];
+      var checkedCats = Array.from(
+        _modalEl.querySelectorAll(".csm-cat-cb:checked")
+      ).map(function (cb) { return cb.value; });
+      if (checkedCats.length > 0 && checkedCats.length < allCats.length) {
+        params.push("categories=" + encodeURIComponent(checkedCats.join(",")));
+      }
+
+      // --- Auswertungsstatus ---
+      var progressRadio = _modalEl.querySelector('input[name="csm-progress"]:checked');
+      var progressVal   = progressRadio ? progressRadio.value : "all";
+      if (progressVal !== "all") {
+        params.push("progress=" + progressVal);
+        // Schwellenwert und Richtung nur bei "open"
+        if (progressVal === "open") {
+          var slider = _modalEl.querySelector("#csm-threshold");
+          var opBtn  = _modalEl.querySelector("#csm-threshold-op");
+          if (slider) {
+            params.push("progress_threshold=" + slider.value);
+          }
+          if (opBtn) {
+            params.push("progress_direction=" + (opBtn.getAttribute("data-dir") || "lt"));
+          }
+        }
+      }
+
+      // --- Betrachtungszeitraum ---
+      var fromVal = (_modalEl.querySelector("#csm-from") || {}).value || "";
+      var toVal   = (_modalEl.querySelector("#csm-to")   || {}).value || "";
+      if (fromVal) {
+        // Date-Input liefert YYYY-MM-DD → in Unix-ms umwandeln
+        params.push("viewed_from=" + new Date(fromVal).getTime());
+      }
+      if (toVal) {
+        // Bis-Datum: Ende des Tages (23:59:59)
+        var toDate = new Date(toVal);
+        toDate.setHours(23, 59, 59, 999);
+        params.push("viewed_to=" + toDate.getTime());
+      }
+
+      // --- Kontext: nur senden wenn nicht alle aktiv ---
+      var checkedCtx = Array.from(
+        _modalEl.querySelectorAll(".csm-ctx-cb:checked")
+      ).map(function (cb) { return cb.value; });
+      if (checkedCtx.length > 0 && checkedCtx.length < 3) {
+        params.push("context=" + encodeURIComponent(checkedCtx.join(",")));
+      }
+
+      // --- Weitere Filter ---
+      var fetchFailed = _modalEl.querySelector(".csm-other-cb[value='fetch_failed']");
+      if (fetchFailed && fetchFailed.checked) {
+        params.push("fetch_failed=true");
+      }
+      var hasAnn = _modalEl.querySelector("#csm-has-ann");
+      var noAnn  = _modalEl.querySelector("#csm-no-ann");
+      if (hasAnn && hasAnn.checked) params.push("has_annotations=true");
+      if (noAnn  && noAnn.checked)  params.push("has_annotations=false");
+
+      // Limit: clientseitige Paginierung via Tabulator → großzügig
+      params.push("limit=200");
+
+      var qs = params.join("&");
+      _dbg("[SearchModal] Query-String:", qs);
+      return qs;
+    }
+
+    /**
+     * _doSearch — Baut Query-String, ruft /_forensic/search ab,
+     * befüllt Tabulator mit dem Ergebnis.
+     *
+     * Zustand: Suchen-Button wird während des Requests deaktiviert.
+     * Fehler: werden als Meldung in der Ergebniszeile angezeigt.
+     * Beleg: Bauplan KN §7.2 (Filterauslösung), §8 (Ergebnisliste).
+     */
+    function _doSearch() {
+      if (!_modalEl) return;
+      var qs = _buildQueryString();
+      var url = ForensicToolbar.config.API_SEARCH + (qs ? "?" + qs : "");
+
+      _dbg("[SearchModal] Suche:", url);
+      _setSearchLoading(true);
+
+      ajaxGet(url)
+        .then(function (data) {
+          _setSearchLoading(false);
+          if (!data || data.status !== "ok") {
+            _setSearchError(data && data.error ? data.error : "Unbekannter Fehler");
+            return;
+          }
+          var pages = Array.isArray(data.pages) ? data.pages : [];
+          _dbg("[SearchModal] Ergebnis:", pages.length, "Seiten");
+          setResults(pages, data.total || pages.length);
+        })
+        .catch(function (err) {
+          _setSearchLoading(false);
+          _setSearchError("Verbindungsfehler: " + (err && err.message ? err.message : String(err)));
+          _dbg("[SearchModal] Suchfehler:", err);
+        });
+    }
+
+    /** Suchen-Button und Ergebnisbereich während Request sperren/entsperren */
+    function _setSearchLoading(loading) {
+      if (!_modalEl) return;
+      var btn     = _modalEl.querySelector("#csm-search-btn");
+      var countEl = _modalEl.querySelector("#csm-results-count");
+      if (btn) {
+        btn.disabled    = loading;
+        btn.textContent = loading ? "⏳ Suche läuft…" : "🔎 Suchen";
+      }
+      if (countEl && loading) countEl.textContent = "Lädt…";
+    }
+
+    /** Fehlermeldung in der Ergebnisspalte anzeigen */
+    function _setSearchError(msg) {
+      if (!_modalEl) return;
+      var countEl = _modalEl.querySelector("#csm-results-count");
+      if (countEl) countEl.textContent = "Fehler: " + msg;
+      if (_tabulatorInst) _tabulatorInst.setData([]);
+      _dbg("[SearchModal] Suchfehler angezeigt:", msg);
+    }
+
+    // Build 195: Operator-Toggle für Schieberegler (< vs ≥)
+    // Klick auf das Badge wechselt Richtung und aktualisiert Erklärzeile.
+    function _toggleThresholdOp() {
+      if (!_modalEl) return;
+      var btn     = _modalEl.querySelector("#csm-threshold-op");
+      var hint    = _modalEl.querySelector("#csm-threshold-op-hint");
+      if (!btn) return;
+      var isLt = btn.getAttribute("data-dir") === "lt";
+      if (isLt) {
+        btn.setAttribute("data-dir", "gte");
+        btn.innerHTML = "&ge;";
+        btn.title = "Klick: Operator wechseln (aktuell: ≥)";
+        if (hint) hint.innerHTML = "&ge;";
+      } else {
+        btn.setAttribute("data-dir", "lt");
+        btn.innerHTML = "&lt;";
+        btn.title = "Klick: Operator wechseln (aktuell: <)";
+        if (hint) hint.innerHTML = "&lt;";
+      }
+      _dbg("[SearchModal] Operator gewechselt:", btn.getAttribute("data-dir"));
+    }
+
+    function _onProgressChange() {
+      if (!_modalEl) return;
+      var openRadio = _modalEl.querySelector('input[name="csm-progress"][value="open"]');
+      var wrap      = _modalEl.querySelector("#csm-threshold-wrap");
+      var hint      = _modalEl.querySelector("#csm-threshold-hint");
+      var isOpen    = openRadio && openRadio.checked;
+      if (wrap) wrap.classList.toggle("active", isOpen);
+      if (hint) hint.style.display = isOpen ? "block" : "none";
+    }
+
+    function _onReset() {
+      if (!_modalEl) return;
+      var q = _modalEl.querySelector("#csm-q");
+      if (q) q.value = "";
+      var t = _modalEl.querySelector("#csm-tags");
+      if (t) t.value = "";
+      _modalEl.querySelectorAll(".csm-cat-cb").forEach(function (cb) { cb.checked = true; });
+      _modalEl.querySelectorAll(".csm-ctx-cb").forEach(function (cb) { cb.checked = true; });
+      _modalEl.querySelectorAll(".csm-other-cb, .csm-excl-cb").forEach(function (cb) { cb.checked = false; });
+      var allRadio = _modalEl.querySelector('input[name="csm-progress"][value="all"]');
+      if (allRadio) allRadio.checked = true;
+      var slider = _modalEl.querySelector("#csm-threshold");
+      if (slider) { slider.value = 30; }
+      var pctEl = _modalEl.querySelector("#csm-threshold-pct");
+      if (pctEl) pctEl.textContent = "30 %";
+      // Operator zurücksetzen
+      var opBtn = _modalEl.querySelector("#csm-threshold-op");
+      if (opBtn) {
+        opBtn.setAttribute("data-dir", "lt");
+        opBtn.innerHTML = "&lt;";
+      }
+      var opHint = _modalEl.querySelector("#csm-threshold-op-hint");
+      if (opHint) opHint.innerHTML = "&lt;";
+      _onProgressChange();
+      var from = _modalEl.querySelector("#csm-from");
+      var to   = _modalEl.querySelector("#csm-to");
+      if (from) from.value = "";
+      if (to)   to.value   = "";
+      _checkConflict();
+      _dbg("[SearchModal] Filter zurückgesetzt");
+    }
+
+    function _checkConflict() {
+      if (!_modalEl) return;
+      var hasAnn   = _modalEl.querySelector("#csm-has-ann");
+      var noAnn    = _modalEl.querySelector("#csm-no-ann");
+      var warn     = _modalEl.querySelector("#csm-conflict-warn");
+      var searchBtn = _modalEl.querySelector("#csm-search-btn");
+      var conflict = hasAnn && noAnn && hasAnn.checked && noAnn.checked;
+      if (warn)     warn.style.display   = conflict ? "block" : "none";
+      if (searchBtn) searchBtn.disabled  = !!conflict;
+    }
+
+    return {
+      open:       open,
+      close:      close,
+      isOpen:     isOpen,
+      setResults: setResults,   // KN-7: von außen befüllbar
+    };
   })();
 
     // PHASE 6: HoverMenuModule  // ===========================================================================
@@ -5397,10 +6096,13 @@
         }
       });
 
-      // Modal öffnen (Stub — KN-4 implementiert das vollständige Modal)
+      // KN-4 (Build 192): Echtes Such-Modal öffnen
       ForensicToolbar.events.on("navigator:modal_open", function () {
         ForensicToolbar._setState({ contextModalOpen: true });
-        ToastModule.show("Erweiterte Suche — folgt in Phase KN-4", ToastModule.TYPES[0]);
+        SearchModalModule.open();
+      });
+      ForensicToolbar.events.on("navigator:modal_closed", function () {
+        ForensicToolbar._setState({ contextModalOpen: false });
       });
     }
 

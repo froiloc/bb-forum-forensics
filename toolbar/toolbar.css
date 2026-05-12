@@ -2089,3 +2089,616 @@ mark.forensic-alias-mark {
 .contains_traces.has_trace_progress {
   animation: none;
 }
+
+/* ===========================================================================
+   Build 192 (BS3 — Bug 2.95): Such-Modal (SearchModalModule, KN-4/5/6)
+   Bauplan: Bauplan_Baustelle3_Kontext_Navigator_v0_1.md §6
+   =========================================================================== */
+
+/* Backdrop — statisch im DOM, gesteuert via CSS :has() (Build 193).
+   Sichtbar wenn Modal nicht .hidden ist. */
+#context-search-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 10010;
+  background: rgba(0, 0, 0, 0.55);
+}
+#context-search-backdrop:has(+ #context-search-modal:not(.hidden)) {
+  display: block;
+}
+
+/* Modal: hidden-Klasse versteckt ohne DOM-Entfernung (Build 193) */
+.context-search-modal.hidden {
+  display: none;
+}
+
+/* Modal-Rahmen */
+.context-search-modal {
+  position: fixed;
+  z-index: 10011;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  /* Build 194: Breite auf 1280px erhöht */
+  width: min(1280px, calc(100vw - 24px));
+  /* Build 195: Höhe 800px — Platz für Erklärzeile beim Schieberegler */
+  height: min(800px, calc(100vh - 60px));
+  background: #1a1f2e;
+  border: 1px solid #3a4060;
+  border-radius: 8px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.75);
+  color: #c8d0e8;
+  font-family: "Segoe UI", Arial, sans-serif;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Header */
+.csm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #1e2438;
+  border-bottom: 1px solid #2d3550;
+  flex-shrink: 0;
+}
+
+.csm-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #a8c4f0;
+}
+
+/* Body — zweispaltig */
+.csm-body {
+  display: flex;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Linke Spalte: Filterformular */
+.csm-filters {
+  width: 260px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow-y: auto;
+  padding: 12px 14px;
+  border-right: 1px solid #2d3550;
+  scrollbar-width: thin;
+  scrollbar-color: #3a4060 transparent;
+}
+
+.csm-filter-group {
+  margin-bottom: 14px;
+}
+
+.csm-filter-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  color: #6a7a9a;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 5px;
+}
+
+.csm-text-input {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 0;
+}
+
+.csm-filter-hint {
+  font-size: 10px;
+  color: #6a7a9a;
+  margin-top: 3px;
+  font-style: italic;
+}
+
+/* Checkboxen-Grid (Kategorien) */
+.csm-cb-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+/* Checkboxen-Spalte (Kontext, Weitere) */
+.csm-cb-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.csm-cb-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Badge-Ausrichtung in Checkbox-Labels (Build 193/194) */
+.csm-cb-label .forensic-ctx-badge {
+  line-height: 2.1;
+  text-align: center;
+}
+
+.csm-cb-label input[type="checkbox"] {
+  accent-color: #4f8ef7;
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+
+/* Radio-Buttons */
+.csm-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.csm-radio-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.csm-radio-label input[type="radio"] {
+  accent-color: #4f8ef7;
+}
+
+/* Datumszeilen */
+.csm-date-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.csm-date-label {
+  font-size: 11px;
+  color: #8890a8;
+  width: 24px;
+  flex-shrink: 0;
+}
+
+.csm-date-input {
+  flex: 1 1 auto;
+  box-sizing: border-box;
+  color-scheme: dark;
+}
+
+/* Konflikt-Warnung */
+.csm-conflict-warn {
+  background: rgba(255, 100, 80, 0.12);
+  border: 1px solid rgba(255, 100, 80, 0.4);
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 11px;
+  color: #ff8070;
+  margin-top: 6px;
+}
+
+/* Filter-Aktionsleiste */
+.csm-filter-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid #2d3550;
+}
+
+.csm-btn-sm {
+  font-size: 11px;
+  padding: 4px 10px;
+}
+
+.csm-btn-xs {
+  font-size: 11px;
+  padding: 2px 8px;
+}
+
+/* Rechte Spalte: Ergebnisse */
+.csm-results {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.csm-results-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: #161b29;
+  border-bottom: 1px solid #2d3550;
+  flex-shrink: 0;
+}
+
+.csm-results-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: #7a8aaa;
+}
+
+.csm-sort-hint {
+  font-size: 10px;
+  color: #4a5570;
+  font-style: italic;
+}
+
+/* Tabelle */
+.csm-table-wrap {
+  flex: 1 1 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #3a4060 transparent;
+}
+
+.csm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.csm-th {
+  position: sticky;
+  top: 0;
+  background: #1a1f2e;
+  padding: 6px 8px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  color: #5a6a8a;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid #2d3550;
+  white-space: nowrap;
+  cursor: default;
+  user-select: none;
+}
+
+.csm-th--ctx   { width: 48px; }
+.csm-th--prog  { width: 100px; }
+.csm-th--traces { width: 44px; text-align: center; }
+.csm-th--ann   { width: 44px; text-align: center; }
+.csm-th--tags  { width: 100px; }
+.csm-th--date  { width: 100px; }
+
+.csm-sort-arrow {
+  font-size: 10px;
+  color: #3a4a6a;
+  margin-left: 2px;
+}
+
+.csm-empty-state {
+  padding: 32px;
+  text-align: center;
+  color: #4a5570;
+  font-style: italic;
+  font-size: 12px;
+}
+
+/* Paginierung */
+.csm-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-top: 1px solid #2d3550;
+  flex-shrink: 0;
+}
+
+.csm-page-info {
+  font-size: 11px;
+  color: #7a8aaa;
+}
+
+/* Footer */
+.csm-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 14px;
+  border-top: 1px solid #2d3550;
+  background: #1a1f2e;
+  flex-shrink: 0;
+}
+
+/* Kontext-Badges im Modal */
+.forensic-ctx-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+  line-height: 1.4;
+  vertical-align: middle;
+}
+
+.forensic-ctx-badge--user        { background: #1a4a2e; color: #4ae090; border: 1px solid #2a6a3e; }
+.forensic-ctx-badge--investigator { background: #4a1a1a; color: #e05050; border: 1px solid #6a2a2a; }
+.forensic-ctx-badge--actor        { background: #4a3a1a; color: #e0a040; border: 1px solid #6a5a2a; }
+
+/* ===========================================================================
+   Build 193: Tabulator-Integration + Ergebnistabellen-Stile
+   =========================================================================== */
+
+/* Tabulator-Container */
+.csm-tabulator-wrap {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Tabulator Dark-Theme-Anpassung */
+#csm-tabulator .tabulator {
+  background-color: #161b29;
+  border: none;
+  color: #c8d0e8;
+  font-family: "Segoe UI", Arial, sans-serif;
+  font-size: 12px;
+}
+
+#csm-tabulator .tabulator-header {
+  background-color: #1a1f2e;
+  border-bottom: 1px solid #2d3550;
+}
+
+#csm-tabulator .tabulator-col {
+  background-color: #1a1f2e;
+  border-right: 1px solid #2d3550;
+  color: #5a6a8a;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+#csm-tabulator .tabulator-col:hover {
+  background-color: #1e2438;
+  color: #a8c4f0;
+}
+
+#csm-tabulator .tabulator-col.tabulator-col-sorter-element {
+  cursor: pointer;
+}
+
+#csm-tabulator .tabulator-row {
+  background-color: #161b29;
+  border-bottom: 1px solid #1e2438;
+  cursor: pointer;
+}
+
+#csm-tabulator .tabulator-row:hover {
+  background-color: #1e2438;
+}
+
+#csm-tabulator .tabulator-row.tabulator-selectable:hover {
+  background-color: #222840;
+}
+
+#csm-tabulator .tabulator-cell {
+  border-right: 1px solid #1e2438;
+  padding: 5px 7px;
+  color: #c8d0e8;
+  vertical-align: middle;
+}
+
+#csm-tabulator .tabulator-placeholder {
+  background-color: #161b29;
+  color: #4a5570;
+  font-style: italic;
+  font-size: 12px;
+}
+
+/* Zeilen-Inhalte */
+.csm-row-url {
+  font-family: monospace;
+  font-size: 11px;
+  color: #a8c4f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.csm-row-title {
+  font-size: 10px;
+  color: #6a7a9a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+/* Fortschrittsbalken in Tabulator */
+.csm-prog-bar {
+  display: flex;
+  gap: 1px;
+  margin-bottom: 2px;
+}
+
+.csm-prog-seg {
+  height: 5px;
+  flex: 1;
+  border-radius: 1px;
+}
+
+.csm-prog-seg--empty   { background: #2d3550; }
+.csm-prog--green       { background: #3a9a5a; }
+.csm-prog--yellow      { background: #c8a000; }
+.csm-prog--red         { background: #aa3030; }
+
+.csm-prog-pct {
+  font-size: 10px;
+  color: #7a8aaa;
+  text-align: center;
+}
+
+/* Tag-Chips in Tabulator */
+.csm-tag-chip {
+  display: inline-block;
+  background: #2d3550;
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 10px;
+  color: #8890a8;
+  margin-right: 2px;
+  white-space: nowrap;
+}
+
+.csm-tag-more {
+  font-size: 10px;
+  color: #4a5570;
+}
+
+.csm-no-tags {
+  color: #3a4060;
+  font-size: 11px;
+}
+
+/* ===========================================================================
+   Build 194: Fortschritt-Schieberegler (progress_threshold)
+   =========================================================================== */
+
+/* Zeile: Radio "Offen" + Schieberegler + Prozentzahl */
+.csm-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.csm-progress-row .csm-radio-label {
+  flex-shrink: 0;
+}
+
+/* Schieberegler-Container */
+.csm-threshold-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  /* Nur sichtbar wenn "Offen" aktiv */
+  opacity: 0.35;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+
+.csm-threshold-wrap.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Schieberegler selbst */
+.csm-threshold-slider {
+  flex: 1 1 auto;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+  /* Farbverlauf rot→gelb→grün — identisch zu Fortschrittsrahmen (Bug 2.89) */
+  background: linear-gradient(
+    to right,
+    hsl(0, 70%, 45%),
+    hsl(60, 70%, 45%) 50%,
+    hsl(120, 70%, 45%)
+  );
+}
+
+.csm-threshold-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #c8d0e8;
+  border: 2px solid #4f8ef7;
+  cursor: pointer;
+  box-shadow: 0 0 3px rgba(0,0,0,0.5);
+}
+
+.csm-threshold-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #c8d0e8;
+  border: 2px solid #4f8ef7;
+  cursor: pointer;
+}
+
+/* Prozentzahl rechts vom Slider */
+.csm-threshold-pct {
+  font-size: 11px;
+  font-weight: 700;
+  color: #c8d0e8;
+  min-width: 32px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Beschriftung unter dem Slider */
+.csm-threshold-hint {
+  font-size: 9px;
+  color: #4a5570;
+  margin-top: 2px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* ===========================================================================
+   Build 195: Schieberegler Operator-Toggle
+   =========================================================================== */
+
+/* Operator-Badge links vom Slider — zeigt < oder ≥ */
+.csm-threshold-op {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 20px;
+  background: #2d3550;
+  border: 1px solid #3a4060;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #a8c4f0;
+  cursor: pointer;
+  flex-shrink: 0;
+  user-select: none;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.csm-threshold-op:hover {
+  background: #3a4570;
+  border-color: #4f8ef7;
+}
+
+/* Richtungs-abhängige Farbe: < = orange/rot-Tendenz, ≥ = grün-Tendenz */
+.csm-threshold-op[data-dir="lt"] {
+  color: #e0a040;
+  border-color: #6a5a2a;
+}
+
+.csm-threshold-op[data-dir="gte"] {
+  color: #4ae090;
+  border-color: #2a6a3e;
+}
+
+/* Tooltip-Hinweis */
+.csm-threshold-op[title] {
+  cursor: help;
+}
