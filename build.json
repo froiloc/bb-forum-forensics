@@ -1,6 +1,6 @@
 {
-  "build":   190,
-  "version": "0.6.190",
+  "build":   191,
+  "version": "0.6.191",
   "date":    "2026-05-12",
-  "note":    "BS3 Build 190: SERVER_VERSION aus build.json (war hartcodiert build042), viewport_events #page-body-Selektor, Cache-Buster Query-String fuer toolbar.js/css"
+  "note":    "BS3 Build 191: viewport_events .tcr und a[href*=viewtopic.php] als Selektoren"
 }

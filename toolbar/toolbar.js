@@ -2,7 +2,11 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 190 · 2026-05-12
+ * Version: v0.1.0 · Build: 191 · 2026-05-12
+ *
+ * Aenderungen Build 191 (BS3):
+ *   viewport_events: .tcr und a[href*='viewtopic.php'] als Selektoren
+ *     ergaenzt (Topic-Links in Forenübersichten).
  *
  * Aenderungen Build 190 (BS3):
  *   viewport_events: Selektoren auf #page-body beschraenkt,
@@ -4506,15 +4510,17 @@
       // .post, .postbody, .post-entry). Fallback: tr[id] für Tabellenlayouts.
       var pageBody = container.querySelector("#page-body") || container;
       var extraSelectors = [
-        "h2",              // Überschriften — auf jeder Forum-Seite vorhanden
-        ".forum",          // Forum-Zeilen (viewforum, index)
-        ".topic",          // Topic-Zeilen (viewforum)
-        ".post",           // Post-Container (viewtopic)
-        ".postbody",       // Post-Body (älteres FluxBB-Markup)
-        ".post-entry",     // Post-Body (neueres Markup)
-        "tr[id]",          // Fallback: Tabellenzeilen mit ID
-        "[id^='forum']",   // Forum-IDs wie forum1, forum2
-        "[id^='topic']",   // Topic-IDs
+        "h2",                          // Überschriften — auf jeder Forum-Seite vorhanden
+        ".tcr",                        // Topic-Titelzellen in Forenübersicht (Build 191)
+        "a[href*='viewtopic.php']",   // Topic-Links — jeder Verweis auf ein Thema (Build 191)
+        ".forum",                      // Forum-Zeilen (viewforum, index)
+        ".topic",                      // Topic-Zeilen (viewforum)
+        ".post",                       // Post-Container (viewtopic)
+        ".postbody",                   // Post-Body (älteres FluxBB-Markup)
+        ".post-entry",                 // Post-Body (neueres Markup)
+        "tr[id]",                      // Fallback: Tabellenzeilen mit ID
+        "[id^='forum']",              // Forum-IDs wie forum1, forum2
+        "[id^='topic']",              // Topic-IDs
       ];
       var seen = new Set();
       extraSelectors.forEach(function (sel) {
