@@ -1,5 +1,5 @@
 # Fehler im Frontend
-(Cache-buster-pre-extension: 3a91e8f8-4e2a-11f1-9f8c-df86ff7d2f8d)
+(Cache-buster-pre-extension: 6c0461e4-4e2b-11f1-86a3-ebd9f4cac5af)
 
 Ich werde in dieser Liste fortlaufend die von mir beobachteten Fehler aufführen.
 Falls diese abgeschlossen und verworfen wurden, werde ich sie durchstreichen. Alles, was nicht durchgestrichen ist, ist also noch offen und muss bearbeitet werden.
@@ -20,29 +20,29 @@ Hier noch einmal die Liste der Baustellen und wofür sie stehen:
 
 Quellen zum Debuggen:
 * Dieses Dokument mit den Arbeitsanweisungen und Problembeschreibungen:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.3a91e8f8-4e2a-11f1-9f8c-df86ff7d2f8d.md
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.6c0461e4-4e2b-11f1-86a3-ebd9f4cac5af.md
 * Die Ausgabe von DevTools-Console:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.3a91e8f8-4e2a-11f1-9f8c-df86ff7d2f8d.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.6c0461e4-4e2b-11f1-86a3-ebd9f4cac5af.log
 * Die Ausgabe von DevTools-Network:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.3a91e8f8-4e2a-11f1-9f8c-df86ff7d2f8d.har
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.6c0461e4-4e2b-11f1-86a3-ebd9f4cac5af.har
 * Das aktuelle DOM des gesamten Dokuments als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.3a91e8f8-4e2a-11f1-9f8c-df86ff7d2f8d.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.6c0461e4-4e2b-11f1-86a3-ebd9f4cac5af.html
 * Das aktuelle DOM des gesamten Body als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.3a91e8f8-4e2a-11f1-9f8c-df86ff7d2f8d.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.6c0461e4-4e2b-11f1-86a3-ebd9f4cac5af.html
 * Das aktuelle DOM des gesamten Sidebar als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.3a91e8f8-4e2a-11f1-9f8c-df86ff7d2f8d.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.6c0461e4-4e2b-11f1-86a3-ebd9f4cac5af.html
 * Das aktuelle DOM des gesamten Main als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.3a91e8f8-4e2a-11f1-9f8c-df86ff7d2f8d.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.6c0461e4-4e2b-11f1-86a3-ebd9f4cac5af.html
 * Das aktuelle DOM des Akkordeon 1 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.3a91e8f8-4e2a-11f1-9f8c-df86ff7d2f8d.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.6c0461e4-4e2b-11f1-86a3-ebd9f4cac5af.html
 * Das aktuelle DOM des Akkordeon 2 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.3a91e8f8-4e2a-11f1-9f8c-df86ff7d2f8d.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.6c0461e4-4e2b-11f1-86a3-ebd9f4cac5af.html
 * Das aktuelle DOM des Akkordeon 3 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.3a91e8f8-4e2a-11f1-9f8c-df86ff7d2f8d.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.6c0461e4-4e2b-11f1-86a3-ebd9f4cac5af.html
 * Das aktuelle DOM des Akkordeon 4 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.3a91e8f8-4e2a-11f1-9f8c-df86ff7d2f8d.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.6c0461e4-4e2b-11f1-86a3-ebd9f4cac5af.html
 * Die Ausgabe des aktuellen Webservers:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.3a91e8f8-4e2a-11f1-9f8c-df86ff7d2f8d.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.6c0461e4-4e2b-11f1-86a3-ebd9f4cac5af.log
 * Die aktuellen Screenshots:
 https://github.com/froiloc/bb-forum-forensics/tree/1b5017a2f62c5a8f1825de76fc6edabb25d6bf66/debug/screenshots
 ***
@@ -173,6 +173,7 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 91. erledigt
 92. (15) (BS3) im Modal, das es ermöglicht, den Kontext für eine Annotation zu ändern, wird Änderung des Benutzernamens nicht angezeigt. Es steht dort immer der im Fall untersuchte Standard-Benutzer. Es muss aber der Benutzername sein, zu dem die Annotation erstellt wurde. (Hier eine Fremdnotiz über einen anderen Benutzer). Der Eintrag in der Datenbank enthält bei `actual_uid` den korrekten Wert, aber dieser wird in der Oberfläche nicht angezeigt. Der Abgleich der `actual_uid` auf den passenden `username` muss über einen oder Nachschlagen in `default.db` `known_users.user_id` erfolgen.
 93. (20) (BS3) Im Browser wird nach dem Absenden einer Annotation zu einem anderen Benutzer (uid2) noch immer der Benutzer (uid) angezeigt. Und im Kopf des Modal steht dort `uid_<uid>`. Das soll aber nur dort stehen, wenn ein anderer `<iid>` als der aktuelle System-Benutzer einen Eintrag erfasst hat. Das sind also zwei Fehler. Siehe Screenshot und DOM-Dump.
+94. (20) (BS3) Im Browser wird direkt nach dem Absenden einer Annotation zu einem anderen Benutzer (uid2) beim nochmaligen Öffnen des Annotations-Modals als Benutzer der Benutzername von <uid> angezeigt. Nach dem Reload der Seite ist die Anzeige aber korrekt. Die Anzeige muss aber auch ohne Reload korrekt sein! Siehe Screenshots. Bitte Zeitstempel im Dateinamen beachten, für die Reihenfolge.
 
 ---
 ## 3. Funktionalität Backend / Python / SQLite3-Datenbank
