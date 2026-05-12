@@ -1,5 +1,5 @@
 # Fehler im Frontend
-(Cache-buster-pre-extension: 7c6d7d6a-4e24-11f1-8ca9-7bd61fe78c4d)
+(Cache-buster-pre-extension: 3a91e8f8-4e2a-11f1-9f8c-df86ff7d2f8d)
 
 Ich werde in dieser Liste fortlaufend die von mir beobachteten Fehler aufführen.
 Falls diese abgeschlossen und verworfen wurden, werde ich sie durchstreichen. Alles, was nicht durchgestrichen ist, ist also noch offen und muss bearbeitet werden.
@@ -20,29 +20,29 @@ Hier noch einmal die Liste der Baustellen und wofür sie stehen:
 
 Quellen zum Debuggen:
 * Dieses Dokument mit den Arbeitsanweisungen und Problembeschreibungen:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.7c6d7d6a-4e24-11f1-8ca9-7bd61fe78c4d.md
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.3a91e8f8-4e2a-11f1-9f8c-df86ff7d2f8d.md
 * Die Ausgabe von DevTools-Console:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.7c6d7d6a-4e24-11f1-8ca9-7bd61fe78c4d.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.3a91e8f8-4e2a-11f1-9f8c-df86ff7d2f8d.log
 * Die Ausgabe von DevTools-Network:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.7c6d7d6a-4e24-11f1-8ca9-7bd61fe78c4d.har
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.3a91e8f8-4e2a-11f1-9f8c-df86ff7d2f8d.har
 * Das aktuelle DOM des gesamten Dokuments als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.7c6d7d6a-4e24-11f1-8ca9-7bd61fe78c4d.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.3a91e8f8-4e2a-11f1-9f8c-df86ff7d2f8d.html
 * Das aktuelle DOM des gesamten Body als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.7c6d7d6a-4e24-11f1-8ca9-7bd61fe78c4d.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.3a91e8f8-4e2a-11f1-9f8c-df86ff7d2f8d.html
 * Das aktuelle DOM des gesamten Sidebar als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.7c6d7d6a-4e24-11f1-8ca9-7bd61fe78c4d.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.3a91e8f8-4e2a-11f1-9f8c-df86ff7d2f8d.html
 * Das aktuelle DOM des gesamten Main als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.7c6d7d6a-4e24-11f1-8ca9-7bd61fe78c4d.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.3a91e8f8-4e2a-11f1-9f8c-df86ff7d2f8d.html
 * Das aktuelle DOM des Akkordeon 1 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.7c6d7d6a-4e24-11f1-8ca9-7bd61fe78c4d.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.3a91e8f8-4e2a-11f1-9f8c-df86ff7d2f8d.html
 * Das aktuelle DOM des Akkordeon 2 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.7c6d7d6a-4e24-11f1-8ca9-7bd61fe78c4d.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.3a91e8f8-4e2a-11f1-9f8c-df86ff7d2f8d.html
 * Das aktuelle DOM des Akkordeon 3 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.7c6d7d6a-4e24-11f1-8ca9-7bd61fe78c4d.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.3a91e8f8-4e2a-11f1-9f8c-df86ff7d2f8d.html
 * Das aktuelle DOM des Akkordeon 4 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.7c6d7d6a-4e24-11f1-8ca9-7bd61fe78c4d.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.3a91e8f8-4e2a-11f1-9f8c-df86ff7d2f8d.html
 * Die Ausgabe des aktuellen Webservers:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.7c6d7d6a-4e24-11f1-8ca9-7bd61fe78c4d.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.3a91e8f8-4e2a-11f1-9f8c-df86ff7d2f8d.log
 * Die aktuellen Screenshots:
 https://github.com/froiloc/bb-forum-forensics/tree/1b5017a2f62c5a8f1825de76fc6edabb25d6bf66/debug/screenshots
 ***
@@ -172,6 +172,7 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 90. (5) (BS3) Es soll einen Link in der Toolbar auf der Hauptseite zum Berichtseditor geben. Also Fenster 1 direkt auf Fenster 3. Ohne den Umweg über Fenster 2.
 91. erledigt
 92. (15) (BS3) im Modal, das es ermöglicht, den Kontext für eine Annotation zu ändern, wird Änderung des Benutzernamens nicht angezeigt. Es steht dort immer der im Fall untersuchte Standard-Benutzer. Es muss aber der Benutzername sein, zu dem die Annotation erstellt wurde. (Hier eine Fremdnotiz über einen anderen Benutzer). Der Eintrag in der Datenbank enthält bei `actual_uid` den korrekten Wert, aber dieser wird in der Oberfläche nicht angezeigt. Der Abgleich der `actual_uid` auf den passenden `username` muss über einen oder Nachschlagen in `default.db` `known_users.user_id` erfolgen.
+93. (20) (BS3) Im Browser wird nach dem Absenden einer Annotation zu einem anderen Benutzer (uid2) noch immer der Benutzer (uid) angezeigt. Und im Kopf des Modal steht dort `uid_<uid>`. Das soll aber nur dort stehen, wenn ein anderer `<iid>` als der aktuelle System-Benutzer einen Eintrag erfasst hat. Das sind also zwei Fehler. Siehe Screenshot und DOM-Dump.
 
 ---
 ## 3. Funktionalität Backend / Python / SQLite3-Datenbank
@@ -186,7 +187,7 @@ Hier werden Funktionsprobleme aufgeführt, die aufgrund von Problemen im Webserv
  7. erledigt
  8. erledigt
  9. erledigt
- 10. (50) (BS2) In der Datenbank `evidence_<uid>_<iid>.db`, die zum Transfer von Annotationen verwendet wird, wird der BLOB nicht abgelegt. Meldung im Webserver: `2026-05-12 18:42:10 [WARNING ] forensic.forensic_api.annotate: _write_cross_annotation: Page-BLOB fuer '/forum/notifications.php' nicht gefunden: 'ForensicDb' object has no attribute 'lookup'`
+ 10. erledigt
 ---
 ## 4. Sonstiges
 Themen, die keinem der zuvor genannten Bereiche eindeutig zugeordnet werden können.

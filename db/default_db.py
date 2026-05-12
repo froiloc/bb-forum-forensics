@@ -245,6 +245,27 @@ class DefaultDb:
             return None
 
 
+    def get_username_by_uid(self, user_id: int) -> str | None:
+        """
+        Schlaegt einen Forum-Benutzernamen anhand der user_id in known_users nach.
+        Wird vom knownusers/resolve-Endpunkt und vom Popup (Bug 2.92) verwendet.
+
+        Returns:
+            username-String wenn gefunden, None wenn nicht in known_users.
+        Beleg: Projektgespraech 2026-05-12 — Bug 2.92 (BS3).
+        """
+        try:
+            row = self._con.execute(
+                "SELECT username FROM ddb.known_users WHERE user_id = ? LIMIT 1",
+                (user_id,),
+            ).fetchone()
+            return str(row["username"]) if row else None
+        except Exception as exc:
+            logger.warning(
+                "get_username_by_uid(%d): Abfrage fehlgeschlagen: %s", user_id, exc
+            )
+            return None
+
     def search_known_users(self, query: str, limit: int = 20) -> list[dict]:
         """
         Sucht in known_users und known_aliases nach Benutzern, deren Username

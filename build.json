@@ -1,6 +1,6 @@
 {
-  "build":   185,
-  "version": "0.6.185",
+  "build":   186,
+  "version": "0.6.186",
   "date":    "2026-05-12",
-  "note":    "BS3 Build 185: Bug 3.10 get_page_by_url nutzt get_page() statt lookup(), Bug 1.26 Popup-Overflow behoben, pending_cross_annotations auto-anlegen bei fehlendem Schema"
+  "note":    "BS3 Build 186: Bug 2.92 actual_uid im Annotation-Response, knownusers/resolve-Endpunkt, Popup zeigt korrekten Benutzernamen fuer Fremdannotationen"
 }

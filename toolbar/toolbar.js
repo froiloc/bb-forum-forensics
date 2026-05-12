@@ -2,7 +2,12 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 179 · 2026-05-12
+ * Version: v0.1.0 · Build: 186 · 2026-05-12
+ *
+ * Aenderungen Build 186 (BS3 — Bug 2.92):
+ *   Popup open(): laedt Username per resolve-Endpunkt bei Fremdannotation.
+ *   Popup _render(): zeigt aufgeloesten Username statt Standard-Beschuldigten.
+ *   API_KNOWNUSERS_RESOLVE ergaenzt.
  *
  * Änderungen Build 179 (BS3):
  *   Bug 2.88: 'von <ermittler>' im Popup-Header nur wenn
@@ -395,6 +400,8 @@
     API_ANNOTATE_DELETED: "/_forensic/annotate/deleted",
     // Build 179 (Bug 2.79): Ermittler-Aliasse
     API_ALIASES:          "/_forensic/aliases",
+    // Build 186 (Bug 2.92): uid → username Lookup fuer Fremdannotationen
+    API_KNOWNUSERS_RESOLVE: "/_forensic/knownusers/resolve",
 
     // Annotationskategorien (Reihenfolge = Tastenkürzel 1-6)
     CATEGORIES: [
@@ -2197,7 +2204,35 @@
 
     function open(ann) {
       _currentAnn = ann;
-      _render(ann);
+
+      // Build 186 (Bug 2.92): Wenn actual_uid gesetzt und != aktueller Job-uid,
+      // dann ist das eine Fremdannotation. Username per resolve-Endpunkt laden
+      // und _render() erst danach aufrufen damit der Badge stimmt.
+      // Beleg: Projektgespraech 2026-05-12.
+      var actualUid = ann.actualUid || null;
+      var isForign  = actualUid && actualUid !== _state.user_id &&
+                      actualUid !== _state.forumUserId;
+
+      if (isForign) {
+        _dbg("[Popup] Fremdannotation: actual_uid=", actualUid,
+             "→ lade Username per resolve-Endpunkt");
+        ajaxGet(ForensicToolbar.config.API_KNOWNUSERS_RESOLVE +
+                "?uid=" + encodeURIComponent(actualUid))
+          .then(function (data) {
+            ann._resolvedActualUsername = (data && data.username) || ("uid_" + actualUid);
+            ann._resolvedActualUid      = actualUid;
+            _dbg("[Popup] Resolved username:", ann._resolvedActualUsername);
+            _render(ann);
+          })
+          .catch(function () {
+            ann._resolvedActualUsername = "uid_" + actualUid;
+            ann._resolvedActualUid      = actualUid;
+            _render(ann);
+          });
+      } else {
+        _render(ann);
+      }
+
       // Bug 2.78 (Build 176): Kein Vorladen — Typeahead sucht on-demand.
     }
 
@@ -2245,13 +2280,19 @@
       var catLabel = cat ? (cat.icon + " " + cat.label) : ann.category;
       var catColor = cat ? cat.color : "#aaa";
 
-      // Bug 2.77/2.86: Forenbenutzer aus State lesen
-      // Build 176: forumUsername kommt aus forensic_meta.key='username' (echter Forum-Name).
-      // Fallback-Kette: forumUsername → username → "uid_<id>" → "—"
-      // Beleg: Projektgespräch 2026-05-12 — Bug 2.86 (BS3).
-      var forumUser   = _state.forumUsername || _state.username ||
-                        (_state.forumUserId ? ("uid_" + _state.forumUserId) : "—");
-      var forumUserId = _state.forumUserId || _state.user_id || "—";
+      // Bug 2.77/2.86/2.92: Forenbenutzer anzeigen.
+      // Build 186 (Bug 2.92): Wenn actual_uid gesetzt (Fremdannotation),
+      // aufgeloesten Username verwenden statt Standard-Beschuldigten.
+      // Beleg: Projektgespraech 2026-05-12.
+      var forumUser, forumUserId;
+      if (ann._resolvedActualUsername) {
+        forumUser   = ann._resolvedActualUsername;
+        forumUserId = ann._resolvedActualUid || ann.actualUid || "—";
+      } else {
+        forumUser   = _state.forumUsername || _state.username ||
+                      (_state.forumUserId ? ("uid_" + _state.forumUserId) : "—");
+        forumUserId = _state.forumUserId || _state.user_id || "—";
+      }
 
       // Kategorie-Optionen für Dropdown (Bug 2.76)
       var catOptions = "";

@@ -209,6 +209,15 @@ class ForensicApi:
             self._get_knownusers().handle(handler, params)
             return
 
+        # /_forensic/knownusers/resolve (GET) [BS3 Bug 2.92 Build 186]
+        # Schlaegt einen einzelnen username anhand uid nach (fuer Popup-Anzeige).
+        if url_path == "/_forensic/knownusers/resolve":
+            if method not in ("GET", "HEAD"):
+                self._method_not_allowed(handler)
+                return
+            self._get_knownusers().handle_resolve(handler, params)
+            return
+
         # /_forensic/aliases (GET/POST/DELETE) [BS3 Bug 2.79 Build 179]
         # Ermittler-Aliasse: Suchbegriffe die dauerhaft gehighlightet werden.
         if url_path == "/_forensic/aliases":

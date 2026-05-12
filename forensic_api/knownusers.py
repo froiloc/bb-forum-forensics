@@ -130,3 +130,47 @@ class KnownUsersEndpoint:
             "/_forensic/knownusers: q=%r → %d Treffer (limited=%s)",
             query, len(users), limited,
         )
+
+    def handle_resolve(
+        self,
+        handler: "ForensicRequestHandler",
+        params: dict,
+    ) -> None:
+        """
+        GET /_forensic/knownusers/resolve?uid=<user_id>
+        Schlaegt einen einzelnen username anhand seiner user_id nach.
+        Wird vom Annotation-Popup (Bug 2.92) verwendet wenn actual_uid gesetzt ist.
+        Response: {"user_id": N, "username": "...", "found": true/false}
+        Beleg: Projektgespraech 2026-05-12 — Bug 2.92 (BS3).
+        """
+        import json as _json
+        uid_list = params.get("uid", [])
+        if not uid_list:
+            body = _json.dumps({"error": "uid fehlt"}).encode("utf-8")
+            handler.send_response_body(400, body,
+                                       content_type="application/json; charset=utf-8")
+            return
+        try:
+            uid = int(uid_list[0])
+        except (TypeError, ValueError):
+            body = _json.dumps({"error": "uid muss Ganzzahl sein"}).encode("utf-8")
+            handler.send_response_body(400, body,
+                                       content_type="application/json; charset=utf-8")
+            return
+
+        ddb = getattr(self._bundle, "default", None)
+        username = None
+        if ddb is not None:
+            try:
+                username = ddb.get_username_by_uid(uid)
+            except Exception as exc:
+                logger.warning("handle_resolve: Fehler: %s", exc)
+
+        body = _json.dumps({
+            "user_id":  uid,
+            "username": username or f"uid_{uid}",
+            "found":    username is not None,
+        }, ensure_ascii=False).encode("utf-8")
+        handler.send_response_body(200, body,
+                                   content_type="application/json; charset=utf-8")
+        logger.debug("/_forensic/knownusers/resolve: uid=%d → %r", uid, username)

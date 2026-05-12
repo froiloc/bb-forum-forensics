@@ -151,6 +151,10 @@ class AnnotationsEndpoint:
                 # Build 178 (Bug 2.75): Versionierungsfelder
                 "versionNr": getattr(rec, "version_nr", 1),
                 "prevId":    getattr(rec, "prev_id", None),
+                # Build 186 (Bug 2.92): Forenbenutzer dem die Annotation gilt.
+                # None = gehoert zum aktuellen Job-Benutzer (Normalfall).
+                # Gesetzt = Fremdannotation zu einem anderen Forenbenutzer.
+                "actualUid": getattr(rec, "actual_uid", None),
             })
 
         logger.debug(
