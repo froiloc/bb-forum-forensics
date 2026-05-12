@@ -1,0 +1,559 @@
+2026-05-12 21:46:05 [INFO    ] forensic (logger.py:158): Logging initialisiert — Level: DEBUG, Logdatei: /opt/aiw_webserver/logs/forensic_server.log
+2026-05-12 21:46:05 [INFO    ] forensic (main.py:250): === Forensischer Webserver startet - Date:   Tue May 12 21:38:47 2026 +0200     Version 0.6.189 - 30e53354-4e3a-11f1-9ab9-034cd3327fbf ===
+2026-05-12 21:46:05 [INFO    ] forensic (main.py:253): Config geladen: '/opt/aiw_webserver/config.yaml'
+2026-05-12 21:46:05 [DEBUG   ] forensic.core.user_resolver (user_resolver.py:70): Systembenutzer ermittelt: 'paul' (Plattform: linux)
+2026-05-12 21:46:05 [INFO    ] forensic (main.py:262): Systembenutzer: 'paul'
+2026-05-12 21:46:05 [INFO    ] forensic.core.mode_resolver (mode_resolver.py:150): Startmodus: 'cli'
+2026-05-12 21:46:05 [INFO    ] forensic.core.mode_resolver (mode_resolver.py:351): Modus 'cli': user_id=538299, username='uid_538299', forensic_db='/opt/aiw_webserver/data/forensic/forensic_538299.db'
+2026-05-12 21:46:05 [INFO    ] forensic (main.py:285): Kontext: mode='cli', user_id=538299, username='uid_538299'
+2026-05-12 21:46:05 [INFO    ] forensic (main.py:289): forensic_db : '/opt/aiw_webserver/data/forensic/forensic_538299.db'
+2026-05-12 21:46:05 [INFO    ] forensic (main.py:290): evidence_db : '/opt/aiw_webserver/data/evidence/evidence_538299.db'
+2026-05-12 21:46:05 [INFO    ] forensic (main.py:291): default_db  : '/opt/aiw_webserver/data/default.db'
+2026-05-12 21:46:05 [INFO    ] forensic (main.py:292): coordinator : '/opt/aiw_webserver/data/coordinator.db'
+2026-05-12 21:46:05 [INFO    ] forensic.core.startup_checks (startup_checks.py:123): Starte Voraussetzungsprüfungen...
+2026-05-12 21:46:05 [DEBUG   ] forensic.core.startup_checks (startup_checks.py:164): Datei gefunden: forensic_db = '/opt/aiw_webserver/data/forensic/forensic_538299.db'
+2026-05-12 21:46:05 [DEBUG   ] forensic.core.startup_checks (startup_checks.py:164): Datei gefunden: evidence_db = '/opt/aiw_webserver/data/evidence/evidence_538299.db'
+2026-05-12 21:46:05 [DEBUG   ] forensic.core.startup_checks (startup_checks.py:180): default_db gefunden: '/opt/aiw_webserver/data/default.db'
+2026-05-12 21:46:05 [DEBUG   ] forensic.core.startup_checks (startup_checks.py:206): coordinator_db gefunden: '/opt/aiw_webserver/data/coordinator.db'
+2026-05-12 21:46:05 [DEBUG   ] forensic.core.startup_checks (startup_checks.py:254): Schema-Version geprüft: 1 (erwartet: 1) ✓
+2026-05-12 21:46:05 [INFO    ] forensic.core.startup_checks (startup_checks.py:327): Integritätsprüfung forensic_db erfolgreich: SHA-256 = 98c6d83d285741e1... ✓
+2026-05-12 21:46:05 [DEBUG   ] forensic.core.startup_checks (startup_checks.py:366): forensic_db READ-ONLY-Prüfung bestanden ✓
+2026-05-12 21:46:05 [INFO    ] forensic.core.startup_checks (startup_checks.py:132): Alle Voraussetzungsprüfungen erfolgreich abgeschlossen.
+2026-05-12 21:46:05 [INFO    ] forensic (main.py:307): Alle Startprüfungen bestanden.
+2026-05-12 21:46:05 [DEBUG   ] forensic.core.hosts_manager (hosts_manager.py:135): HostsManager: forum_hostname nicht konfiguriert — no-op.
+2026-05-12 21:46:05 [INFO    ] forensic.db.connection_manager (connection_manager.py:146): Öffne Datenbankverbindungen (Modus: 'cli', user_id: 538299)
+2026-05-12 21:46:05 [DEBUG   ] forensic.db.connection_manager (connection_manager.py:189): Haupt-DB geöffnet: '/opt/aiw_webserver/data/evidence/evidence_538299.db'
+2026-05-12 21:46:05 [DEBUG   ] forensic.db.connection_manager (connection_manager.py:519): ATTACH fdb (READ-ONLY via Authorizer): '/opt/aiw_webserver/data/forensic/forensic_538299.db'
+2026-05-12 21:46:05 [DEBUG   ] forensic.db.connection_manager (connection_manager.py:519): ATTACH ddb (READ-ONLY via Authorizer): '/opt/aiw_webserver/data/default.db'
+2026-05-12 21:46:05 [DEBUG   ] forensic.db.connection_manager (connection_manager.py:532): ATTACH cdb (READ-WRITE): '/opt/aiw_webserver/data/coordinator.db'
+2026-05-12 21:46:05 [DEBUG   ] forensic.db.connection_manager (connection_manager.py:204): cdb angebunden: '/opt/aiw_webserver/data/coordinator.db'
+2026-05-12 21:46:05 [DEBUG   ] forensic.db.connection_manager (connection_manager.py:519): ATTACH adb (READ-ONLY via Authorizer): '/opt/aiw_webserver/data/assets/assets_538299.db'
+2026-05-12 21:46:05 [DEBUG   ] forensic.db.connection_manager (connection_manager.py:218): adb angebunden (READ-ONLY): '/opt/aiw_webserver/data/assets/assets_538299.db'
+2026-05-12 21:46:05 [DEBUG   ] forensic.db.connection_manager (connection_manager.py:519): ATTACH tdb (READ-ONLY via Authorizer): '/opt/aiw_webserver/data/templates.db'
+2026-05-12 21:46:05 [DEBUG   ] forensic.db.connection_manager (connection_manager.py:235): tdb angebunden (READ-ONLY): '/opt/aiw_webserver/data/templates.db'
+2026-05-12 21:46:05 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:478): get_forum_base_url(): 'http://alice4n4kd5gga3xqggygi6r7q7l7bb2wg5lcykh22ilxomk2jmpcbyd.onion'
+2026-05-12 21:46:05 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:221): blob_lookup TEMP VIEW angelegt (forum_base_url='http://alice4n4kd5gga3xqggygi6r7q7l7bb2wg5lcykh22ilxomk2jmpcbyd.onion')
+2026-05-12 21:46:05 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:478): get_forum_base_url(): 'http://alice4n4kd5gga3xqggygi6r7q7l7bb2wg5lcykh22ilxomk2jmpcbyd.onion'
+2026-05-12 21:46:05 [DEBUG   ] forensic.db.default_db (default_db.py:121): ddb (default.db) korrekt angebunden und erreichbar
+2026-05-12 21:46:05 [DEBUG   ] forensic.db.evidence_db (evidence_db.py:534): evidence_db Schema initialisiert (oder bereits vorhanden)
+2026-05-12 21:46:05 [DEBUG   ] forensic.db.evidence_db (evidence_db.py:553): evidence_db Migration: 'annotations.selection_json' bereits vorhanden
+2026-05-12 21:46:05 [DEBUG   ] forensic.db.evidence_db (evidence_db.py:553): evidence_db Migration: 'annotations.tags_json' bereits vorhanden
+2026-05-12 21:46:05 [DEBUG   ] forensic.db.evidence_db (evidence_db.py:553): evidence_db Migration: 'annotations.local_id' bereits vorhanden
+2026-05-12 21:46:05 [DEBUG   ] forensic.db.evidence_db (evidence_db.py:553): evidence_db Migration: 'annotations.post_id' bereits vorhanden
+2026-05-12 21:46:05 [DEBUG   ] forensic.db.evidence_db (evidence_db.py:553): evidence_db Migration: 'annotations.created_by' bereits vorhanden
+2026-05-12 21:46:05 [DEBUG   ] forensic.db.evidence_db (evidence_db.py:553): evidence_db Migration: 'annotations.deleted_at' bereits vorhanden
+2026-05-12 21:46:05 [DEBUG   ] forensic.db.evidence_db (evidence_db.py:553): evidence_db Migration: 'annotations.version_nr' bereits vorhanden
+2026-05-12 21:46:05 [DEBUG   ] forensic.db.evidence_db (evidence_db.py:553): evidence_db Migration: 'annotations.prev_id' bereits vorhanden
+2026-05-12 21:46:05 [DEBUG   ] forensic.db.evidence_db (evidence_db.py:553): evidence_db Migration: 'annotations.actual_uid' bereits vorhanden
+2026-05-12 21:46:05 [DEBUG   ] forensic.db.evidence_db (evidence_db.py:572): evidence_db Migration: ann_local_id_idx (nicht-unique) sichergestellt
+2026-05-12 21:46:05 [DEBUG   ] forensic.db.evidence_db (evidence_db.py:599): evidence_db Migration: Index 'ann_active_url_idx' sichergestellt
+2026-05-12 21:46:05 [DEBUG   ] forensic.db.evidence_db (evidence_db.py:599): evidence_db Migration: Index 'ann_prev_id_idx' sichergestellt
+2026-05-12 21:46:05 [DEBUG   ] forensic.db.assets_db (assets_db.py:155): adb (assets_<uid>.db) korrekt angebunden und erreichbar
+2026-05-12 21:46:05 [DEBUG   ] forensic.db.templates_db (templates_db.py:102): TemplatesDb: tdb verfuegbar und initialisiert.
+2026-05-12 21:46:05 [DEBUG   ] forensic.db.connection_manager (connection_manager.py:264): Authorizer deaktiviert — Schreibschutz via Dateisystem/startup_checks.
+2026-05-12 21:46:05 [INFO    ] forensic.db.connection_manager (connection_manager.py:266): Alle Verbindungen aufgebaut (Normalmodus). forensic_db: 53 Seiten, evidence_db: 6 Annotationen
+2026-05-12 21:46:05 [INFO    ] forensic (main.py:351): Alle Datenbankverbindungen aufgebaut.
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:87): Build-Info geladen: v0.6.190 Build 190 (2026-05-12) — /opt/aiw_webserver/build.json
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:117): ======================================================================
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:118): Datei-Prüfsummen (MD5) — relevante Verzeichnisse:
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:119): ======================================================================
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:139):   forensic_api/
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     2a34686a487712ffd2b7f41b86fbf3b7  forensic_api/__init__.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     8e1a788593df5d9946a975eed7db50b6  forensic_api/_lock_guard.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     a390a43516f6de3d26ef38005ca52fc0  forensic_api/aliases.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     5158550bda7a170b0f95f700c1937f6f  forensic_api/annotate.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     055a8cbc2479f760763218891051f6aa  forensic_api/annotations.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     eb89f8d7d3b9a8c799d5f339e530476c  forensic_api/cross_annotation_integrator.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     f13489f0012d7c545f6753d4970e4a3f  forensic_api/editor_block.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     5dfbd8e5d82c57267e7e48e58a77719f  forensic_api/editor_comment.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     a348aec0cfabf13d7efb6cecca8b78a9  forensic_api/editor_evidence.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     968ad04d95d0fee56ede3ad57caa6385  forensic_api/editor_order.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     ae9bc6270d463f33e7bf467c0cdeb71c  forensic_api/events.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     c72bbf0458972cd2ee5e2a503d0865cc  forensic_api/export.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     5e6d2427dbd60cbd54b36b8f8ed6dbc4  forensic_api/investigator_me.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     1a83b9b6fa5668aa2bedf70f6210f812  forensic_api/knownusers.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     9501fe000961856272d57b11b29b2836  forensic_api/page.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     3458270eea9344594fb5ef67683ffa07  forensic_api/placeholders.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     e28dbe0471f56af3a8b7699d375223cd  forensic_api/report.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     739031ebcde0344cd2968d253f8136fc  forensic_api/reports.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     601b27c4e9dff2eb4d07893bfe206afe  forensic_api/search.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     6ae53f3b01f3d06e44838999af9777ce  forensic_api/static.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     7486692643ad2fb75e0262ccf906a647  forensic_api/status.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     1ecb25eae003e36a6a32de28cc6aa48f  forensic_api/sync_incoming.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     bc368f902df389e35beeafc17f0eb134  forensic_api/templates_ep.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     f07dd8ba3965137f0e93be096eba3cc5  forensic_api/trace_sequence.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     6e9964ae4fd7f2818bea5baff74d2d48  forensic_api/userinfo.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     ac03dc8f8019230b6d5de5aab0c5b12c  forensic_api/userinfo_data.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     9bdbdc7be233589a10bc4935570803e7  forensic_api/userinfo_static.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     6b4cee54f3d596804768a5ef06db3490  forensic_api/version.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     612c6dc8137ced9b2314fb4be57e6a70  forensic_api/viewport.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     5092a0c290ed97bf042d95a8eca3b766  forensic_api/windows.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:139):   userinfo/
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     42fc9748677746ec6f6e07a795aee6a6  userinfo/annotation_sidebar.js
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     0af4671eec15c19cf43ae174b99dbc6c  userinfo/comment_thread.js
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     1c8e8e2cff1442a9ab0f2938c0de253f  userinfo/module_panel.js
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     8374c259ea766060b94af35bab49f961  userinfo/placeholder_chips.js
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     14ee9dcb5f46df38582d58f8a88acd55  userinfo/placeholder_wizard.js
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     e49010a802ae10269091f7b31363d461  userinfo/report.css
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     114ed06c021fd0e589d7e32ec96d415b  userinfo/report.js
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     0a7b61345206e8cfdb8755dc5912ab5c  userinfo/report_editor.js
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     a0af65cf6bcae5ef6793c72dec97b426  userinfo/userinfo.css
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     cb637070dfcff396a45d1247cf94b453  userinfo/userinfo.js
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:139):   editor/
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     d41d8cd98f00b204e9800998ecf8427e  editor/__init__.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     6937f1a3a1fec2608183dbdecde5d006  editor/html_renderer.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:139):   toolbar/
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     c26e450c912c9ae18045d6a465d34c94  toolbar/toolbar.css
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     a99b2ca65105453ad1197f1f074dd8cf  toolbar/toolbar.js
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:139):   data/
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     bef834f54e3e1dc4f55b441cf9778401  data/forensic/forensic_2948078.db.sql
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:139):   core/
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     7927ee36542484c7320d7934218cc7ca  core/__init__.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     139421d80f349dd8d1f7ca0f69b0b827  core/build_info.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     8efc0965c3fb1a2640922bbe95f9eced  core/config_loader.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     d4cf0da5390bc28ab841e955ee797221  core/hosts_manager.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     9e1e6e718de683bad2db3e9946bd6583  core/logger.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     66002a767e40c8988b8943af69e9f065  core/mode_resolver.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     67ba2bef87e31e3e8fc4b684f125c9c2  core/startup_checks.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     dd0ed27c3aaa8aad9ac0060b5f4c475a  core/user_resolver.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:139):   server/
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     cb1df466eddc44b80558d5b7f9c47a53  server/__init__.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     d32e4629985e87371a398311831f3692  server/asset_handler.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     8c67670cf6c98a6cded255e2b35b5848  server/blob_handler.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     14b08d37a307281bae0c4f9d6a7dd22e  server/head_extractor.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     79d80d36082a370fb466c8160333e5fe  server/http_server.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     ebbf539ef5963d32ccdd499e26c2dc84  server/router.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     2f11a43976926fc9df308c2604585ca3  server/shell_handler.py
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:139):   static/
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     7a0ef236562857f714cf205cace21c6c  static/editor/bundle_manifest.json
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     669dc1faf0b279966a108ef3cbae4b59  static/editor/editor.bundle.js
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     602170ae2f1d5c003e894f32217a96df  static/vendor/tabulator/tabulator.min.css
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:144):     0a71453fb151b4ff2392904746c8d8a2  static/vendor/tabulator/tabulator.min.js
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:156):   fe593b5f8a4875cd65c655632c341e9e  build.json
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:159): ======================================================================
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:160): Prüfsummen ausgegeben: 65 Dateien
+2026-05-12 21:46:05 [INFO    ] forensic.core.build_info (build_info.py:161): ======================================================================
+2026-05-12 21:46:05 [DEBUG   ] forensic.forensic_api.cross_annotation_integrator (cross_annotation_integrator.py:96): CrossAnnotationIntegrator: keine ausstehenden Eintraege fuer uid=538299
+2026-05-12 21:46:05 [INFO    ] forensic.forensic_api.cross_annotation_integrator (cross_annotation_integrator.py:139): CrossAnnotationIntegrator: Hintergrundpolling gestartet (3600s Intervall)
+2026-05-12 21:46:05 [INFO    ] forensic.server.http_server (http_server.py:293): ForensicHTTPServer initialisiert: http://127.0.0.2:8080 (socket-backlog=50, sse-max=20)
+2026-05-12 21:46:05 [INFO    ] forensic (main.py:402): Server bereit: http://127.0.0.2:8080 | v0.6.190 Build 190 (2026-05-12)
+2026-05-12 21:46:05 [INFO    ] forensic (main.py:407): Ermittlung: user_id=538299 ('uid_538299'), Modus='cli'
+2026-05-12 21:46:05 [INFO    ] forensic (main.py:462): Watchdog gestartet (Intervall: 30s, Dump: 'logs/freeze_dump.txt')
+2026-05-12 21:46:05 [INFO    ] forensic.server.http_server (http_server.py:304): Server läuft. Strg+C zum Beenden.
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /forum/profile.php (ajax=False)
+2026-05-12 21:46:06 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:277): Seite gefunden: '/forum/profile.php?id=538299&menu=settings' [GET] → page_id=27, context=user, fetch_failed=False
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.head_extractor (head_extractor.py:283): Head extrahiert: title='Display / Profile / Alice In Wonderland', base=None, 2 CSS, 1 inline-style(s), refresh_removed=False
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.shell_handler (shell_handler.py:136): Shell: ausgeliefert für '/forum/profile.php?id=538299&menu=settings' (context=user, fetch_failed=False)
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /forum/profile.php?id=538299&menu=settings HTTP/1.1" 200 -
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /.well-known/appspecific/com.chrome.devtools.json (ajax=False)
+2026-05-12 21:46:06 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:264): Seite nicht im Scope: '/.well-known/appspecific/com.chrome.devtools.json' (method=GET)
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.shell_handler (shell_handler.py:133): Shell: NOT_IN_SCOPE für '/.well-known/appspecific/com.chrome.devtools.json'
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 -
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/toolbar.css (ajax=False)
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/toolbar.js (ajax=False)
+2026-05-12 21:46:06 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/toolbar.css' ausgeliefert (51145 bytes)
+2026-05-12 21:46:06 [DEBUG   ] forensic.forensic_api.static (static.py:136): Static: '/_forensic/toolbar.js' ausgeliefert (261548 bytes)
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/toolbar.js?v=190 HTTP/1.1" 200 -
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/toolbar.css?v=190 HTTP/1.1" 200 -
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:46:06 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'a6948ba0-c7a0-4504-b33b-a32e533bd991' (Rolle 'main') registriert
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/status (ajax=True)
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/page (ajax=True)
+2026-05-12 21:46:06 [DEBUG   ] forensic.forensic_api.page (page.py:120): /_forensic/page: url='/forum/profile.php?id=538299&menu=settings' fragment=None original_method=GET
+2026-05-12 21:46:06 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:277): Seite gefunden: '/forum/profile.php?id=538299&menu=settings' [GET] → page_id=27, context=user, fetch_failed=False
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.head_extractor (head_extractor.py:283): Head extrahiert: title='Display / Profile / Alice In Wonderland', base=None, 2 CSS, 1 inline-style(s), refresh_removed=False
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.blob_handler (blob_handler.py:254): BlobHandler: '/forum/profile.php?id=538299&menu=settings' → page_id=27, context=user, failed=False
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/events (ajax=False)
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/events HTTP/1.1" 200 -
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /favicon.ico (ajax=False)
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/page?url=%2Fforum%2Fprofile.php%3Fid%3D538299%26menu%3Dsettings HTTP/1.1" 200 -
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/status HTTP/1.1" 200 -
+2026-05-12 21:46:06 [DEBUG   ] forensic.forensic_api.status (status.py:120): /_forensic/status ausgeliefert
+2026-05-12 21:46:06 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:264): Seite nicht im Scope: '/favicon.ico' (method=GET)
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.shell_handler (shell_handler.py:133): Shell: NOT_IN_SCOPE für '/favicon.ico'
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /favicon.ico HTTP/1.1" 404 -
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /forum/style/Air.css (ajax=False)
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /forum/style/old.css (ajax=False)
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/aliases (ajax=True)
+2026-05-12 21:46:06 [DEBUG   ] forensic.db.assets_db (assets_db.py:221): Asset nicht in assets_<uid>.db: '/forum/style/old.css'
+2026-05-12 21:46:06 [DEBUG   ] forensic.db.assets_db (assets_db.py:221): Asset nicht in assets_<uid>.db: '/forum/style/Air.css'
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/trace_sequence (ajax=True)
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/annotations (ajax=True)
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.asset_handler (asset_handler.py:117): Asset aus default.db: '/forum/style/Air.css'
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.asset_handler (asset_handler.py:117): Asset aus default.db: '/forum/style/old.css'
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/aliases HTTP/1.1" 200 -
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.asset_handler (asset_handler.py:87): Asset ausgeliefert: '/forum/style/Air.css' (text/css, 100835 bytes)
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /forum/style/Air.css HTTP/1.1" 200 -
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.asset_handler (asset_handler.py:87): Asset ausgeliefert: '/forum/style/old.css' (text/css, 56418 bytes)
+2026-05-12 21:46:06 [DEBUG   ] forensic.forensic_api.annotations (annotations.py:160): Annotationen geliefert: url='/forum/profile.php?id=538299&menu=settings', count=0
+2026-05-12 21:46:06 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:478): get_forum_base_url(): 'http://alice4n4kd5gga3xqggygi6r7q7l7bb2wg5lcykh22ilxomk2jmpcbyd.onion'
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /forum/style/old.css HTTP/1.1" 200 -
+2026-05-12 21:46:06 [DEBUG   ] forensic.forensic_api.aliases (aliases.py:92): /_forensic/aliases GET: 0 Aliasse
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/annotations?url=%2Fforum%2Fprofile.php%3Fid%3D538299%26menu%3Dsettings HTTP/1.1" 200 -
+2026-05-12 21:46:06 [DEBUG   ] forensic.forensic_api.trace_sequence (trace_sequence.py:115): /_forensic/trace_sequence: 8 Einträge
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/trace_sequence HTTP/1.1" 200 -
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /forum/style/images/icons_button.png (ajax=False)
+2026-05-12 21:46:06 [DEBUG   ] forensic.db.assets_db (assets_db.py:221): Asset nicht in assets_<uid>.db: '/forum/style/images/icons_button.png'
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.asset_handler (asset_handler.py:117): Asset aus default.db: '/forum/style/images/icons_button.png'
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.asset_handler (asset_handler.py:87): Asset ausgeliefert: '/forum/style/images/icons_button.png' (image/png, 8037 bytes)
+2026-05-12 21:46:06 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /forum/style/images/icons_button.png HTTP/1.1" 200 -
+2026-05-12 21:46:07 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/events (ajax=False)
+2026-05-12 21:46:07 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/events (ajax=False)
+2026-05-12 21:46:07 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/events HTTP/1.1" 200 -
+2026-05-12 21:46:07 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/events HTTP/1.1" 200 -
+2026-05-12 21:46:07 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/report (ajax=False)
+2026-05-12 21:46:07 [INFO    ] forensic.db.evidence_db (evidence_db.py:1855): Lock-Resume: 'paul' (lock_id=fc3f25bf-96e6-4466-8138-be0f47edcc50, neue sse_client=0afaeb0a-a2ef-4e38-a9f4-85d7b9aa63e6)
+2026-05-12 21:46:07 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/report HTTP/1.1" 200 -
+2026-05-12 21:46:13 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:46:13 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'a1148a4f-a3c5-4bb3-939a-231a3fbf2eda' (Rolle 'userinfo') registriert
+2026-05-12 21:46:13 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:46:24 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/search (ajax=True)
+2026-05-12 21:46:24 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:478): get_forum_base_url(): 'http://alice4n4kd5gga3xqggygi6r7q7l7bb2wg5lcykh22ilxomk2jmpcbyd.onion'
+2026-05-12 21:46:24 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:478): get_forum_base_url(): 'http://alice4n4kd5gga3xqggygi6r7q7l7bb2wg5lcykh22ilxomk2jmpcbyd.onion'
+2026-05-12 21:46:24 [DEBUG   ] forensic.forensic_api.search (search.py:197): /_forensic/search: sort=last_viewed_desc q='' → 50 Seiten
+2026-05-12 21:46:24 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/search?limit=50&sort=last_viewed_desc HTTP/1.1" 200 -
+2026-05-12 21:46:27 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/page (ajax=True)
+2026-05-12 21:46:27 [DEBUG   ] forensic.forensic_api.page (page.py:120): /_forensic/page: url='/forum/notifications.php' fragment=None original_method=GET
+2026-05-12 21:46:27 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:277): Seite gefunden: '/forum/notifications.php' [GET] → page_id=1, context=user, fetch_failed=False
+2026-05-12 21:46:27 [DEBUG   ] forensic.server.head_extractor (head_extractor.py:283): Head extrahiert: title='Info / Alice In Wonderland', base=None, 2 CSS, 1 inline-style(s), refresh_removed=False
+2026-05-12 21:46:27 [DEBUG   ] forensic.server.blob_handler (blob_handler.py:254): BlobHandler: '/forum/notifications.php' → page_id=1, context=user, failed=False
+2026-05-12 21:46:27 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/page?url=%2Fforum%2Fnotifications.php HTTP/1.1" 200 -
+2026-05-12 21:46:27 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /forum/style/Air.css (ajax=False)
+2026-05-12 21:46:27 [DEBUG   ] forensic.db.assets_db (assets_db.py:221): Asset nicht in assets_<uid>.db: '/forum/style/Air.css'
+2026-05-12 21:46:27 [DEBUG   ] forensic.server.asset_handler (asset_handler.py:117): Asset aus default.db: '/forum/style/Air.css'
+2026-05-12 21:46:27 [DEBUG   ] forensic.server.asset_handler (asset_handler.py:87): Asset ausgeliefert: '/forum/style/Air.css' (text/css, 100835 bytes)
+2026-05-12 21:46:27 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /forum/style/Air.css HTTP/1.1" 200 -
+2026-05-12 21:46:27 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /forum/style/old.css (ajax=False)
+2026-05-12 21:46:27 [DEBUG   ] forensic.db.assets_db (assets_db.py:221): Asset nicht in assets_<uid>.db: '/forum/style/old.css'
+2026-05-12 21:46:27 [DEBUG   ] forensic.server.asset_handler (asset_handler.py:117): Asset aus default.db: '/forum/style/old.css'
+2026-05-12 21:46:27 [DEBUG   ] forensic.server.asset_handler (asset_handler.py:87): Asset ausgeliefert: '/forum/style/old.css' (text/css, 56418 bytes)
+2026-05-12 21:46:27 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /forum/style/old.css HTTP/1.1" 200 -
+2026-05-12 21:46:27 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/annotations (ajax=True)
+2026-05-12 21:46:27 [DEBUG   ] forensic.forensic_api.annotations (annotations.py:160): Annotationen geliefert: url='/forum/notifications.php', count=0
+2026-05-12 21:46:27 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/annotations?url=%2Fforum%2Fnotifications.php HTTP/1.1" 200 -
+2026-05-12 21:46:32 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:46:32 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster '8479bc08-75b5-4189-a146-5b316c61d13d' (Rolle 'userinfo') registriert
+2026-05-12 21:46:32 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:46:32 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:46:32 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'ddc81ecf-552e-47aa-acfa-a99d3a0aca60' (Rolle 'report') registriert
+2026-05-12 21:46:32 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:46:35 [DEBUG   ] forensic (main.py:447): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-12 21:46:36 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:46:36 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'a6948ba0-c7a0-4504-b33b-a32e533bd991' (Rolle 'main') registriert
+2026-05-12 21:46:36 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:46:40 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/search (ajax=True)
+2026-05-12 21:46:40 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:478): get_forum_base_url(): 'http://alice4n4kd5gga3xqggygi6r7q7l7bb2wg5lcykh22ilxomk2jmpcbyd.onion'
+2026-05-12 21:46:40 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:478): get_forum_base_url(): 'http://alice4n4kd5gga3xqggygi6r7q7l7bb2wg5lcykh22ilxomk2jmpcbyd.onion'
+2026-05-12 21:46:40 [DEBUG   ] forensic.forensic_api.search (search.py:197): /_forensic/search: sort=last_viewed_desc q='' → 50 Seiten
+2026-05-12 21:46:40 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/search?limit=50&sort=last_viewed_desc HTTP/1.1" 200 -
+2026-05-12 21:46:43 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:46:43 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'a1148a4f-a3c5-4bb3-939a-231a3fbf2eda' (Rolle 'userinfo') registriert
+2026-05-12 21:46:43 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:46:43 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/page (ajax=True)
+2026-05-12 21:46:43 [DEBUG   ] forensic.forensic_api.page (page.py:120): /_forensic/page: url='/forum/notifications.php?filter=10' fragment=None original_method=GET
+2026-05-12 21:46:43 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:277): Seite gefunden: '/forum/notifications.php?filter=10' [GET] → page_id=4, context=user, fetch_failed=False
+2026-05-12 21:46:43 [DEBUG   ] forensic.server.head_extractor (head_extractor.py:283): Head extrahiert: title='Info / Alice In Wonderland', base=None, 2 CSS, 1 inline-style(s), refresh_removed=False
+2026-05-12 21:46:43 [DEBUG   ] forensic.server.blob_handler (blob_handler.py:254): BlobHandler: '/forum/notifications.php?filter=10' → page_id=4, context=user, failed=False
+2026-05-12 21:46:43 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/page?url=%2Fforum%2Fnotifications.php%3Ffilter%3D10 HTTP/1.1" 200 -
+2026-05-12 21:46:43 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /forum/style/Air.css (ajax=False)
+2026-05-12 21:46:43 [DEBUG   ] forensic.db.assets_db (assets_db.py:221): Asset nicht in assets_<uid>.db: '/forum/style/Air.css'
+2026-05-12 21:46:43 [DEBUG   ] forensic.server.asset_handler (asset_handler.py:117): Asset aus default.db: '/forum/style/Air.css'
+2026-05-12 21:46:43 [DEBUG   ] forensic.server.asset_handler (asset_handler.py:87): Asset ausgeliefert: '/forum/style/Air.css' (text/css, 100835 bytes)
+2026-05-12 21:46:43 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /forum/style/Air.css HTTP/1.1" 200 -
+2026-05-12 21:46:43 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /forum/style/old.css (ajax=False)
+2026-05-12 21:46:43 [DEBUG   ] forensic.db.assets_db (assets_db.py:221): Asset nicht in assets_<uid>.db: '/forum/style/old.css'
+2026-05-12 21:46:43 [DEBUG   ] forensic.server.asset_handler (asset_handler.py:117): Asset aus default.db: '/forum/style/old.css'
+2026-05-12 21:46:43 [DEBUG   ] forensic.server.asset_handler (asset_handler.py:87): Asset ausgeliefert: '/forum/style/old.css' (text/css, 56418 bytes)
+2026-05-12 21:46:43 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /forum/style/old.css HTTP/1.1" 200 -
+2026-05-12 21:46:43 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/annotations (ajax=True)
+2026-05-12 21:46:43 [DEBUG   ] forensic.forensic_api.annotations (annotations.py:160): Annotationen geliefert: url='/forum/notifications.php?filter=10', count=0
+2026-05-12 21:46:43 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/annotations?url=%2Fforum%2Fnotifications.php%3Ffilter%3D10 HTTP/1.1" 200 -
+2026-05-12 21:46:45 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/search (ajax=True)
+2026-05-12 21:46:45 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:478): get_forum_base_url(): 'http://alice4n4kd5gga3xqggygi6r7q7l7bb2wg5lcykh22ilxomk2jmpcbyd.onion'
+2026-05-12 21:46:45 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:478): get_forum_base_url(): 'http://alice4n4kd5gga3xqggygi6r7q7l7bb2wg5lcykh22ilxomk2jmpcbyd.onion'
+2026-05-12 21:46:45 [DEBUG   ] forensic.forensic_api.search (search.py:197): /_forensic/search: sort=last_viewed_desc q='' → 50 Seiten
+2026-05-12 21:46:45 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/search?limit=50&sort=last_viewed_desc HTTP/1.1" 200 -
+2026-05-12 21:46:55 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/page (ajax=True)
+2026-05-12 21:46:55 [DEBUG   ] forensic.forensic_api.page (page.py:120): /_forensic/page: url='/forum/profile.php?id=538299&menu=settings' fragment=None original_method=GET
+2026-05-12 21:46:55 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:277): Seite gefunden: '/forum/profile.php?id=538299&menu=settings' [GET] → page_id=27, context=user, fetch_failed=False
+2026-05-12 21:46:55 [DEBUG   ] forensic.server.head_extractor (head_extractor.py:283): Head extrahiert: title='Display / Profile / Alice In Wonderland', base=None, 2 CSS, 1 inline-style(s), refresh_removed=False
+2026-05-12 21:46:55 [DEBUG   ] forensic.server.blob_handler (blob_handler.py:254): BlobHandler: '/forum/profile.php?id=538299&menu=settings' → page_id=27, context=user, failed=False
+2026-05-12 21:46:55 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/page?url=%2Fforum%2Fprofile.php%3Fid%3D538299%26menu%3Dsettings HTTP/1.1" 200 -
+2026-05-12 21:46:55 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /forum/style/Air.css (ajax=False)
+2026-05-12 21:46:55 [DEBUG   ] forensic.db.assets_db (assets_db.py:221): Asset nicht in assets_<uid>.db: '/forum/style/Air.css'
+2026-05-12 21:46:55 [DEBUG   ] forensic.server.asset_handler (asset_handler.py:117): Asset aus default.db: '/forum/style/Air.css'
+2026-05-12 21:46:55 [DEBUG   ] forensic.server.asset_handler (asset_handler.py:87): Asset ausgeliefert: '/forum/style/Air.css' (text/css, 100835 bytes)
+2026-05-12 21:46:55 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /forum/style/Air.css HTTP/1.1" 200 -
+2026-05-12 21:46:55 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /forum/style/old.css (ajax=False)
+2026-05-12 21:46:55 [DEBUG   ] forensic.db.assets_db (assets_db.py:221): Asset nicht in assets_<uid>.db: '/forum/style/old.css'
+2026-05-12 21:46:55 [DEBUG   ] forensic.server.asset_handler (asset_handler.py:117): Asset aus default.db: '/forum/style/old.css'
+2026-05-12 21:46:55 [DEBUG   ] forensic.server.asset_handler (asset_handler.py:87): Asset ausgeliefert: '/forum/style/old.css' (text/css, 56418 bytes)
+2026-05-12 21:46:55 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /forum/style/old.css HTTP/1.1" 200 -
+2026-05-12 21:46:55 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/annotations (ajax=True)
+2026-05-12 21:46:55 [DEBUG   ] forensic.forensic_api.annotations (annotations.py:160): Annotationen geliefert: url='/forum/profile.php?id=538299&menu=settings', count=0
+2026-05-12 21:46:55 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/annotations?url=%2Fforum%2Fprofile.php%3Fid%3D538299%26menu%3Dsettings HTTP/1.1" 200 -
+2026-05-12 21:47:05 [DEBUG   ] forensic (main.py:447): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-12 21:47:06 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:47:06 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'a6948ba0-c7a0-4504-b33b-a32e533bd991' (Rolle 'main') registriert
+2026-05-12 21:47:06 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:47:13 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/viewport (ajax=True)
+2026-05-12 21:47:13 [DEBUG   ] forensic.forensic_api.viewport (viewport.py:112): /_forensic/viewport: 1 Events für '/forum/profile.php?id=538299&menu=settings' gespeichert
+2026-05-12 21:47:13 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/viewport HTTP/1.1" 200 -
+2026-05-12 21:47:13 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:47:13 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'a1148a4f-a3c5-4bb3-939a-231a3fbf2eda' (Rolle 'userinfo') registriert
+2026-05-12 21:47:13 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:47:13 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/search (ajax=True)
+2026-05-12 21:47:13 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:478): get_forum_base_url(): 'http://alice4n4kd5gga3xqggygi6r7q7l7bb2wg5lcykh22ilxomk2jmpcbyd.onion'
+2026-05-12 21:47:13 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:478): get_forum_base_url(): 'http://alice4n4kd5gga3xqggygi6r7q7l7bb2wg5lcykh22ilxomk2jmpcbyd.onion'
+2026-05-12 21:47:13 [DEBUG   ] forensic.forensic_api.search (search.py:197): /_forensic/search: sort=last_viewed_desc q='' → 50 Seiten
+2026-05-12 21:47:13 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/search?limit=50&sort=last_viewed_desc HTTP/1.1" 200 -
+2026-05-12 21:47:23 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/page (ajax=True)
+2026-05-12 21:47:23 [DEBUG   ] forensic.forensic_api.page (page.py:120): /_forensic/page: url='/forum/preview.html' fragment=None original_method=GET
+2026-05-12 21:47:23 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:277): Seite gefunden: '/forum/preview.html' [GET] → page_id=22, context=user, fetch_failed=False
+2026-05-12 21:47:23 [DEBUG   ] forensic.server.head_extractor (head_extractor.py:283): Head extrahiert: title=None, base=None, 0 CSS, 1 inline-style(s), refresh_removed=False
+2026-05-12 21:47:23 [DEBUG   ] forensic.server.blob_handler (blob_handler.py:254): BlobHandler: '/forum/preview.html' → page_id=22, context=user, failed=False
+2026-05-12 21:47:23 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/page?url=%2Fforum%2Fpreview.html HTTP/1.1" 200 -
+2026-05-12 21:47:23 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/annotations (ajax=True)
+2026-05-12 21:47:23 [DEBUG   ] forensic.forensic_api.annotations (annotations.py:160): Annotationen geliefert: url='/forum/preview.html', count=0
+2026-05-12 21:47:23 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/annotations?url=%2Fforum%2Fpreview.html HTTP/1.1" 200 -
+2026-05-12 21:47:29 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/search (ajax=True)
+2026-05-12 21:47:29 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:478): get_forum_base_url(): 'http://alice4n4kd5gga3xqggygi6r7q7l7bb2wg5lcykh22ilxomk2jmpcbyd.onion'
+2026-05-12 21:47:29 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:478): get_forum_base_url(): 'http://alice4n4kd5gga3xqggygi6r7q7l7bb2wg5lcykh22ilxomk2jmpcbyd.onion'
+2026-05-12 21:47:29 [DEBUG   ] forensic.forensic_api.search (search.py:197): /_forensic/search: sort=last_viewed_desc q='' → 50 Seiten
+2026-05-12 21:47:29 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/search?limit=50&sort=last_viewed_desc HTTP/1.1" 200 -
+2026-05-12 21:47:32 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:47:32 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster '8479bc08-75b5-4189-a146-5b316c61d13d' (Rolle 'userinfo') registriert
+2026-05-12 21:47:32 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:47:32 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:47:32 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'ddc81ecf-552e-47aa-acfa-a99d3a0aca60' (Rolle 'report') registriert
+2026-05-12 21:47:32 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:47:35 [DEBUG   ] forensic (main.py:447): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-12 21:47:36 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:47:36 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'a6948ba0-c7a0-4504-b33b-a32e533bd991' (Rolle 'main') registriert
+2026-05-12 21:47:36 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:47:38 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/page (ajax=True)
+2026-05-12 21:47:38 [DEBUG   ] forensic.forensic_api.page (page.py:120): /_forensic/page: url='/forum/search.php?action=show_user_warn&user_id=538299' fragment=None original_method=GET
+2026-05-12 21:47:38 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:277): Seite gefunden: '/forum/search.php?action=show_user_warn&user_id=538299' [GET] → page_id=44, context=user, fetch_failed=False
+2026-05-12 21:47:38 [DEBUG   ] forensic.server.head_extractor (head_extractor.py:283): Head extrahiert: title='Info / Alice In Wonderland', base=None, 1 CSS, 1 inline-style(s), refresh_removed=False
+2026-05-12 21:47:38 [DEBUG   ] forensic.server.blob_handler (blob_handler.py:254): BlobHandler: '/forum/search.php?action=show_user_warn&user_id=538299' → page_id=44, context=user, failed=False
+2026-05-12 21:47:38 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/page?url=%2Fforum%2Fsearch.php%3Faction%3Dshow_user_warn%26user_id%3D538299 HTTP/1.1" 200 -
+2026-05-12 21:47:38 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /forum/style/index.css (ajax=False)
+2026-05-12 21:47:38 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/annotations (ajax=True)
+2026-05-12 21:47:38 [DEBUG   ] forensic.db.assets_db (assets_db.py:221): Asset nicht in assets_<uid>.db: '/forum/style/index.css'
+2026-05-12 21:47:38 [DEBUG   ] forensic.server.asset_handler (asset_handler.py:117): Asset aus default.db: '/forum/style/index.css'
+2026-05-12 21:47:38 [DEBUG   ] forensic.server.asset_handler (asset_handler.py:87): Asset ausgeliefert: '/forum/style/index.css' (text/css, 27192 bytes)
+2026-05-12 21:47:38 [DEBUG   ] forensic.forensic_api.annotations (annotations.py:160): Annotationen geliefert: url='/forum/search.php?action=show_user_warn&user_id=538299', count=0
+2026-05-12 21:47:38 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /forum/style/index.css?538299 HTTP/1.1" 200 -
+2026-05-12 21:47:38 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/annotations?url=%2Fforum%2Fsearch.php%3Faction%3Dshow_user_warn%26user_id%3D538299 HTTP/1.1" 200 -
+2026-05-12 21:47:43 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:47:43 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'a1148a4f-a3c5-4bb3-939a-231a3fbf2eda' (Rolle 'userinfo') registriert
+2026-05-12 21:47:43 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:47:53 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/search (ajax=True)
+2026-05-12 21:47:53 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:478): get_forum_base_url(): 'http://alice4n4kd5gga3xqggygi6r7q7l7bb2wg5lcykh22ilxomk2jmpcbyd.onion'
+2026-05-12 21:47:53 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:478): get_forum_base_url(): 'http://alice4n4kd5gga3xqggygi6r7q7l7bb2wg5lcykh22ilxomk2jmpcbyd.onion'
+2026-05-12 21:47:53 [DEBUG   ] forensic.forensic_api.search (search.py:197): /_forensic/search: sort=last_viewed_desc q='' → 50 Seiten
+2026-05-12 21:47:53 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/search?limit=50&sort=last_viewed_desc HTTP/1.1" 200 -
+2026-05-12 21:47:56 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/page (ajax=True)
+2026-05-12 21:47:56 [DEBUG   ] forensic.forensic_api.page (page.py:120): /_forensic/page: url='/forum/preview.html' fragment=None original_method=GET
+2026-05-12 21:47:56 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:277): Seite gefunden: '/forum/preview.html' [GET] → page_id=22, context=user, fetch_failed=False
+2026-05-12 21:47:56 [DEBUG   ] forensic.server.head_extractor (head_extractor.py:283): Head extrahiert: title=None, base=None, 0 CSS, 1 inline-style(s), refresh_removed=False
+2026-05-12 21:47:56 [DEBUG   ] forensic.server.blob_handler (blob_handler.py:254): BlobHandler: '/forum/preview.html' → page_id=22, context=user, failed=False
+2026-05-12 21:47:56 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/page?url=%2Fforum%2Fpreview.html HTTP/1.1" 200 -
+2026-05-12 21:47:56 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/annotations (ajax=True)
+2026-05-12 21:47:56 [DEBUG   ] forensic.forensic_api.annotations (annotations.py:160): Annotationen geliefert: url='/forum/preview.html', count=0
+2026-05-12 21:47:56 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/annotations?url=%2Fforum%2Fpreview.html HTTP/1.1" 200 -
+2026-05-12 21:47:58 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/search (ajax=True)
+2026-05-12 21:47:58 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:478): get_forum_base_url(): 'http://alice4n4kd5gga3xqggygi6r7q7l7bb2wg5lcykh22ilxomk2jmpcbyd.onion'
+2026-05-12 21:47:58 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:478): get_forum_base_url(): 'http://alice4n4kd5gga3xqggygi6r7q7l7bb2wg5lcykh22ilxomk2jmpcbyd.onion'
+2026-05-12 21:47:58 [DEBUG   ] forensic.forensic_api.search (search.py:197): /_forensic/search: sort=last_viewed_desc q='' → 50 Seiten
+2026-05-12 21:47:58 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/search?limit=50&sort=last_viewed_desc HTTP/1.1" 200 -
+2026-05-12 21:48:04 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/page (ajax=True)
+2026-05-12 21:48:04 [DEBUG   ] forensic.forensic_api.page (page.py:120): /_forensic/page: url='/forum/viewforum.php?id=350' fragment=None original_method=GET
+2026-05-12 21:48:04 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:277): Seite gefunden: '/forum/viewforum.php?id=350' [GET] → page_id=45, context=user, fetch_failed=False
+2026-05-12 21:48:05 [DEBUG   ] forensic.server.head_extractor (head_extractor.py:283): Head extrahiert: title='Academy DEAD LINKS / Academy / Alice In Wonderland', base=None, 1 CSS, 1 inline-style(s), refresh_removed=False
+2026-05-12 21:48:05 [DEBUG   ] forensic (main.py:447): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-12 21:48:05 [DEBUG   ] forensic.server.blob_handler (blob_handler.py:254): BlobHandler: '/forum/viewforum.php?id=350' → page_id=45, context=user, failed=False
+2026-05-12 21:48:05 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/page?url=%2Fforum%2Fviewforum.php%3Fid%3D350 HTTP/1.1" 200 -
+2026-05-12 21:48:06 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /forum/style/index.css (ajax=False)
+2026-05-12 21:48:06 [DEBUG   ] forensic.db.assets_db (assets_db.py:221): Asset nicht in assets_<uid>.db: '/forum/style/index.css'
+2026-05-12 21:48:06 [DEBUG   ] forensic.server.asset_handler (asset_handler.py:117): Asset aus default.db: '/forum/style/index.css'
+2026-05-12 21:48:06 [DEBUG   ] forensic.server.asset_handler (asset_handler.py:87): Asset ausgeliefert: '/forum/style/index.css' (text/css, 27192 bytes)
+2026-05-12 21:48:06 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /forum/style/index.css?538299 HTTP/1.1" 200 -
+2026-05-12 21:48:06 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/annotations (ajax=True)
+2026-05-12 21:48:06 [DEBUG   ] forensic.forensic_api.annotations (annotations.py:160): Annotationen geliefert: url='/forum/viewforum.php?id=350', count=0
+2026-05-12 21:48:06 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/annotations?url=%2Fforum%2Fviewforum.php%3Fid%3D350 HTTP/1.1" 200 -
+2026-05-12 21:48:12 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:48:12 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'a6948ba0-c7a0-4504-b33b-a32e533bd991' (Rolle 'main') registriert
+2026-05-12 21:48:12 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:48:13 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/search (ajax=True)
+2026-05-12 21:48:13 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:478): get_forum_base_url(): 'http://alice4n4kd5gga3xqggygi6r7q7l7bb2wg5lcykh22ilxomk2jmpcbyd.onion'
+2026-05-12 21:48:13 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:478): get_forum_base_url(): 'http://alice4n4kd5gga3xqggygi6r7q7l7bb2wg5lcykh22ilxomk2jmpcbyd.onion'
+2026-05-12 21:48:13 [DEBUG   ] forensic.forensic_api.search (search.py:197): /_forensic/search: sort=last_viewed_desc q='' → 50 Seiten
+2026-05-12 21:48:13 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/search?limit=50&sort=last_viewed_desc HTTP/1.1" 200 -
+2026-05-12 21:48:14 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:48:14 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'a1148a4f-a3c5-4bb3-939a-231a3fbf2eda' (Rolle 'userinfo') registriert
+2026-05-12 21:48:14 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:48:30 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/viewport (ajax=True)
+2026-05-12 21:48:30 [DEBUG   ] forensic.forensic_api.viewport (viewport.py:112): /_forensic/viewport: 2 Events für '/forum/viewforum.php?id=350' gespeichert
+2026-05-12 21:48:30 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/viewport HTTP/1.1" 200 -
+2026-05-12 21:48:33 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:48:33 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster '8479bc08-75b5-4189-a146-5b316c61d13d' (Rolle 'userinfo') registriert
+2026-05-12 21:48:33 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:48:33 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'ddc81ecf-552e-47aa-acfa-a99d3a0aca60' (Rolle 'report') registriert
+2026-05-12 21:48:33 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:48:33 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:48:35 [DEBUG   ] forensic (main.py:447): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-12 21:48:36 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:48:36 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'a6948ba0-c7a0-4504-b33b-a32e533bd991' (Rolle 'main') registriert
+2026-05-12 21:48:36 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:48:43 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:48:43 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'a1148a4f-a3c5-4bb3-939a-231a3fbf2eda' (Rolle 'userinfo') registriert
+2026-05-12 21:48:43 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:49:05 [DEBUG   ] forensic (main.py:447): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-12 21:49:06 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:49:06 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'a6948ba0-c7a0-4504-b33b-a32e533bd991' (Rolle 'main') registriert
+2026-05-12 21:49:06 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:49:13 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:49:13 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'a1148a4f-a3c5-4bb3-939a-231a3fbf2eda' (Rolle 'userinfo') registriert
+2026-05-12 21:49:13 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:49:33 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:49:33 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster '8479bc08-75b5-4189-a146-5b316c61d13d' (Rolle 'userinfo') registriert
+2026-05-12 21:49:33 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:49:33 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:49:33 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'ddc81ecf-552e-47aa-acfa-a99d3a0aca60' (Rolle 'report') registriert
+2026-05-12 21:49:33 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:49:35 [DEBUG   ] forensic (main.py:447): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-12 21:49:36 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:49:36 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'a6948ba0-c7a0-4504-b33b-a32e533bd991' (Rolle 'main') registriert
+2026-05-12 21:49:36 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:49:43 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:49:43 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'a1148a4f-a3c5-4bb3-939a-231a3fbf2eda' (Rolle 'userinfo') registriert
+2026-05-12 21:49:43 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:50:05 [DEBUG   ] forensic (main.py:447): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-12 21:50:06 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:50:06 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'a6948ba0-c7a0-4504-b33b-a32e533bd991' (Rolle 'main') registriert
+2026-05-12 21:50:06 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:50:13 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:50:13 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'a1148a4f-a3c5-4bb3-939a-231a3fbf2eda' (Rolle 'userinfo') registriert
+2026-05-12 21:50:13 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:50:32 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:50:32 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:50:32 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster '8479bc08-75b5-4189-a146-5b316c61d13d' (Rolle 'userinfo') registriert
+2026-05-12 21:50:32 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'ddc81ecf-552e-47aa-acfa-a99d3a0aca60' (Rolle 'report') registriert
+2026-05-12 21:50:32 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:50:32 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:50:35 [DEBUG   ] forensic (main.py:447): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-12 21:50:36 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:50:36 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'a6948ba0-c7a0-4504-b33b-a32e533bd991' (Rolle 'main') registriert
+2026-05-12 21:50:36 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:50:43 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:50:43 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'a1148a4f-a3c5-4bb3-939a-231a3fbf2eda' (Rolle 'userinfo') registriert
+2026-05-12 21:50:43 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:51:05 [DEBUG   ] forensic (main.py:447): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-12 21:51:06 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:51:06 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'a6948ba0-c7a0-4504-b33b-a32e533bd991' (Rolle 'main') registriert
+2026-05-12 21:51:06 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:51:13 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:51:13 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'a1148a4f-a3c5-4bb3-939a-231a3fbf2eda' (Rolle 'userinfo') registriert
+2026-05-12 21:51:13 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:51:32 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:51:32 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster '8479bc08-75b5-4189-a146-5b316c61d13d' (Rolle 'userinfo') registriert
+2026-05-12 21:51:32 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:51:32 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:51:32 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'ddc81ecf-552e-47aa-acfa-a99d3a0aca60' (Rolle 'report') registriert
+2026-05-12 21:51:32 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:51:35 [DEBUG   ] forensic (main.py:447): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-12 21:51:36 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:51:36 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'a6948ba0-c7a0-4504-b33b-a32e533bd991' (Rolle 'main') registriert
+2026-05-12 21:51:36 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:51:43 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:51:43 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'a1148a4f-a3c5-4bb3-939a-231a3fbf2eda' (Rolle 'userinfo') registriert
+2026-05-12 21:51:43 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:52:05 [DEBUG   ] forensic (main.py:447): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-12 21:52:06 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:52:06 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'a6948ba0-c7a0-4504-b33b-a32e533bd991' (Rolle 'main') registriert
+2026-05-12 21:52:06 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:52:13 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:52:13 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'a1148a4f-a3c5-4bb3-939a-231a3fbf2eda' (Rolle 'userinfo') registriert
+2026-05-12 21:52:13 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:52:32 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:52:32 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster '8479bc08-75b5-4189-a146-5b316c61d13d' (Rolle 'userinfo') registriert
+2026-05-12 21:52:32 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:52:32 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:52:32 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'ddc81ecf-552e-47aa-acfa-a99d3a0aca60' (Rolle 'report') registriert
+2026-05-12 21:52:32 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:52:35 [DEBUG   ] forensic (main.py:447): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-12 21:52:36 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:52:36 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'a6948ba0-c7a0-4504-b33b-a32e533bd991' (Rolle 'main') registriert
+2026-05-12 21:52:36 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:52:43 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:52:43 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'a1148a4f-a3c5-4bb3-939a-231a3fbf2eda' (Rolle 'userinfo') registriert
+2026-05-12 21:52:43 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:53:05 [DEBUG   ] forensic (main.py:447): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-12 21:53:06 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:53:06 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'a6948ba0-c7a0-4504-b33b-a32e533bd991' (Rolle 'main') registriert
+2026-05-12 21:53:06 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:53:13 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:53:13 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'a1148a4f-a3c5-4bb3-939a-231a3fbf2eda' (Rolle 'userinfo') registriert
+2026-05-12 21:53:13 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:53:33 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:53:33 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:53:33 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'ddc81ecf-552e-47aa-acfa-a99d3a0aca60' (Rolle 'report') registriert
+2026-05-12 21:53:33 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:53:33 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster '8479bc08-75b5-4189-a146-5b316c61d13d' (Rolle 'userinfo') registriert
+2026-05-12 21:53:33 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:53:35 [DEBUG   ] forensic (main.py:447): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-12 21:53:36 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:53:36 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'a6948ba0-c7a0-4504-b33b-a32e533bd991' (Rolle 'main') registriert
+2026-05-12 21:53:36 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:53:37 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/page (ajax=True)
+2026-05-12 21:53:37 [DEBUG   ] forensic.forensic_api.page (page.py:120): /_forensic/page: url='/forum/viewtopic.php?id=42462&uid=538299' fragment=None original_method=GET
+2026-05-12 21:53:37 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:264): Seite nicht im Scope: '/forum/viewtopic.php?id=42462&uid=538299' (method=GET)
+2026-05-12 21:53:37 [DEBUG   ] forensic.server.blob_handler (blob_handler.py:211): BlobHandler: NOT_IN_SCOPE für '/forum/viewtopic.php?id=42462&uid=538299'
+2026-05-12 21:53:37 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/page?url=%2Fforum%2Fviewtopic.php%3Fid%3D42462%26uid%3D538299 HTTP/1.1" 200 -
+2026-05-12 21:53:42 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/page (ajax=True)
+2026-05-12 21:53:42 [DEBUG   ] forensic.forensic_api.page (page.py:120): /_forensic/page: url='/forum/viewtopic.php?id=42462&uid=538299' fragment=None original_method=GET
+2026-05-12 21:53:42 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:264): Seite nicht im Scope: '/forum/viewtopic.php?id=42462&uid=538299' (method=GET)
+2026-05-12 21:53:42 [DEBUG   ] forensic.server.blob_handler (blob_handler.py:211): BlobHandler: NOT_IN_SCOPE für '/forum/viewtopic.php?id=42462&uid=538299'
+2026-05-12 21:53:42 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/page?url=%2Fforum%2Fviewtopic.php%3Fid%3D42462%26uid%3D538299 HTTP/1.1" 200 -
+2026-05-12 21:53:43 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:53:43 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'a1148a4f-a3c5-4bb3-939a-231a3fbf2eda' (Rolle 'userinfo') registriert
+2026-05-12 21:53:43 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:53:52 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/page (ajax=True)
+2026-05-12 21:53:52 [DEBUG   ] forensic.forensic_api.page (page.py:120): /_forensic/page: url='/forum/viewtopic.php?id=42462&uid=538299' fragment=None original_method=GET
+2026-05-12 21:53:52 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:264): Seite nicht im Scope: '/forum/viewtopic.php?id=42462&uid=538299' (method=GET)
+2026-05-12 21:53:52 [DEBUG   ] forensic.server.blob_handler (blob_handler.py:211): BlobHandler: NOT_IN_SCOPE für '/forum/viewtopic.php?id=42462&uid=538299'
+2026-05-12 21:53:52 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/page?url=%2Fforum%2Fviewtopic.php%3Fid%3D42462%26uid%3D538299 HTTP/1.1" 200 -
+2026-05-12 21:54:02 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/page (ajax=True)
+2026-05-12 21:54:02 [DEBUG   ] forensic.forensic_api.page (page.py:120): /_forensic/page: url='/forum/notifications.php?filter=0' fragment=None original_method=GET
+2026-05-12 21:54:02 [DEBUG   ] forensic.db.forensic_db (forensic_db.py:277): Seite gefunden: '/forum/notifications.php?filter=0' [GET] → page_id=2, context=user, fetch_failed=False
+2026-05-12 21:54:02 [DEBUG   ] forensic.server.head_extractor (head_extractor.py:283): Head extrahiert: title='Info / Alice In Wonderland', base=None, 2 CSS, 1 inline-style(s), refresh_removed=False
+2026-05-12 21:54:02 [DEBUG   ] forensic.server.blob_handler (blob_handler.py:254): BlobHandler: '/forum/notifications.php?filter=0' → page_id=2, context=user, failed=False
+2026-05-12 21:54:02 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/page?url=%2Fforum%2Fnotifications.php%3Ffilter%3D0 HTTP/1.1" 200 -
+2026-05-12 21:54:03 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /forum/style/Air.css (ajax=False)
+2026-05-12 21:54:03 [DEBUG   ] forensic.db.assets_db (assets_db.py:221): Asset nicht in assets_<uid>.db: '/forum/style/Air.css'
+2026-05-12 21:54:03 [DEBUG   ] forensic.server.asset_handler (asset_handler.py:117): Asset aus default.db: '/forum/style/Air.css'
+2026-05-12 21:54:03 [DEBUG   ] forensic.server.asset_handler (asset_handler.py:87): Asset ausgeliefert: '/forum/style/Air.css' (text/css, 100835 bytes)
+2026-05-12 21:54:03 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /forum/style/Air.css HTTP/1.1" 200 -
+2026-05-12 21:54:03 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /forum/style/old.css (ajax=False)
+2026-05-12 21:54:03 [DEBUG   ] forensic.db.assets_db (assets_db.py:221): Asset nicht in assets_<uid>.db: '/forum/style/old.css'
+2026-05-12 21:54:03 [DEBUG   ] forensic.server.asset_handler (asset_handler.py:117): Asset aus default.db: '/forum/style/old.css'
+2026-05-12 21:54:03 [DEBUG   ] forensic.server.asset_handler (asset_handler.py:87): Asset ausgeliefert: '/forum/style/old.css' (text/css, 56418 bytes)
+2026-05-12 21:54:03 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /forum/style/old.css HTTP/1.1" 200 -
+2026-05-12 21:54:03 [DEBUG   ] forensic.server.router (router.py:104): Router: GET /_forensic/annotations (ajax=True)
+2026-05-12 21:54:03 [DEBUG   ] forensic.forensic_api.annotations (annotations.py:160): Annotationen geliefert: url='/forum/notifications.php?filter=0', count=0
+2026-05-12 21:54:03 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "GET /_forensic/annotations?url=%2Fforum%2Fnotifications.php%3Ffilter%3D0 HTTP/1.1" 200 -
+2026-05-12 21:54:05 [DEBUG   ] forensic (main.py:447): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-12 21:54:06 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:54:06 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'a6948ba0-c7a0-4504-b33b-a32e533bd991' (Rolle 'main') registriert
+2026-05-12 21:54:06 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:54:13 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:54:13 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'a1148a4f-a3c5-4bb3-939a-231a3fbf2eda' (Rolle 'userinfo') registriert
+2026-05-12 21:54:13 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:54:32 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:54:32 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster '8479bc08-75b5-4189-a146-5b316c61d13d' (Rolle 'userinfo') registriert
+2026-05-12 21:54:32 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-12 21:54:32 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-12 21:54:32 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'ddc81ecf-552e-47aa-acfa-a99d3a0aca60' (Rolle 'report') registriert
+2026-05-12 21:54:32 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -

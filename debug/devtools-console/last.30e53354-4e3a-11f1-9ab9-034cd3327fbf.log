@@ -1,5 +1,0 @@
-:8080/favicon.ico:1  Failed to load resource: the server responded with a status of 404 (Not Found)
-Navigated to http://127.0.0.2:8080/forum/viewtopic.php?id=41528
-toolbar.js:6092 [Forensic] Server: v0.1.0-build042 | Modus: cli | Beschuldigter: uid_538299 | Seiten: 53
-favicon.ico:1  GET http://127.0.0.2:8080/favicon.ico 404 (Not Found)
-toolbar.js:1724 [Violation] 'requestAnimationFrame' handler took 103ms

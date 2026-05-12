@@ -1,6 +1,6 @@
 {
-  "build":   189,
-  "version": "0.6.189",
+  "build":   190,
+  "version": "0.6.190",
   "date":    "2026-05-12",
-  "note":    "BS3 Build 189: Bug 2.90 Direktlink Berichtseditor (fester Fenster-Name), Bug 2.89 Fortschrittsrahmen auf Spur-Links, viewport_events Fix (mehr Elemente + flush bei unload)"
+  "note":    "BS3 Build 190: SERVER_VERSION aus build.json (war hartcodiert build042), viewport_events #page-body-Selektor, Cache-Buster Query-String fuer toolbar.js/css"
 }

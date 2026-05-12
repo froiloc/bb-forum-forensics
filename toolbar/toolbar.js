@@ -2,7 +2,13 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 189 · 2026-05-12
+ * Version: v0.1.0 · Build: 190 · 2026-05-12
+ *
+ * Aenderungen Build 190 (BS3):
+ *   viewport_events: Selektoren auf #page-body beschraenkt,
+ *     h2 + .forum/.topic/.post/.postbody/.post-entry als primäre Selektoren.
+ *   status.py: SERVER_VERSION dynamisch aus build.json (war build042).
+ *   shell_handler.py: Cache-Buster ?v=<build> fuer toolbar.js/css.
  *
  * Aenderungen Build 189 (BS3):
  *   Bug 2.90: ReportWindowModule, Schaltfläche '📋 Bericht', window.name
@@ -4493,21 +4499,27 @@
         if (/^p\d+$/.test(el.id)) _observer.observe(el);
       });
 
-      // Build 189: Weitere Elemente beobachten — Topic-Zeilen, Forum-Zeilen,
-      // Topic-Container — damit auch auf viewforum/index-Seiten Events entstehen.
-      // FluxBB/PunBB-Markup: .forum, .topic, .post, tr[id] als Selektoren.
+      // Build 189/190: Weitere Elemente beobachten.
+      // Build 190 (Projektgespraech 2026-05-12): Selektoren auf #page-body
+      // beschraenkt. Primär: h2 (Überschriften jeder Forum-Seite) und
+      // direkte div-Kinder von #page-body (FluxBB/PunBB: .forum, .topic,
+      // .post, .postbody, .post-entry). Fallback: tr[id] für Tabellenlayouts.
+      var pageBody = container.querySelector("#page-body") || container;
       var extraSelectors = [
-        "tr[id]",        // Topic/Post-Zeilen mit ID-Attribut
-        ".forum",        // Forum-Zeilen in Forenübersicht
-        ".topic",        // Topic-Zeilen in viewforum
-        ".post",         // Post-Container in viewtopic
-        "[id^='forum']", // Forum-IDs wie forum1, forum2
-        "[id^='topic']", // Topic-IDs
+        "h2",              // Überschriften — auf jeder Forum-Seite vorhanden
+        ".forum",          // Forum-Zeilen (viewforum, index)
+        ".topic",          // Topic-Zeilen (viewforum)
+        ".post",           // Post-Container (viewtopic)
+        ".postbody",       // Post-Body (älteres FluxBB-Markup)
+        ".post-entry",     // Post-Body (neueres Markup)
+        "tr[id]",          // Fallback: Tabellenzeilen mit ID
+        "[id^='forum']",   // Forum-IDs wie forum1, forum2
+        "[id^='topic']",   // Topic-IDs
       ];
       var seen = new Set();
       extraSelectors.forEach(function (sel) {
         try {
-          container.querySelectorAll(sel).forEach(function (el) {
+          pageBody.querySelectorAll(sel).forEach(function (el) {
             // Synthetische ID vergeben wenn keine vorhanden
             if (!el.id) el.id = "_vt_" + Math.random().toString(36).slice(2, 8);
             if (!seen.has(el.id)) {
@@ -4517,8 +4529,8 @@
           });
         } catch (e) { /* ungültiger Selektor — ignorieren */ }
       });
-      _dbg("[ViewportTracker] Beobachte", seen.size + (container.querySelectorAll("[id^='p']").length || 0),
-           "Elemente auf", pageUrl);
+      _dbg("[ViewportTracker] Beobachte", seen.size,
+           "Elemente auf", pageUrl, "(#page-body:", !!pageBody, ")");
     }
 
     function _scheduleFlush() {

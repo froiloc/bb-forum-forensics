@@ -48,9 +48,23 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
+# Build 190: Cache-Buster via Query-String — Versionsnummer aus build.json.
+# Verhindert dass der Browser veraltetes toolbar.js/css aus dem Cache laedt.
+def _get_build_nr() -> str:
+    import json as _json
+    from pathlib import Path as _Path
+    try:
+        build_file = _Path(__file__).parent.parent / "build.json"
+        data = _json.loads(build_file.read_text(encoding="utf-8"))
+        return str(data.get("build", "0"))
+    except Exception:
+        return "0"
+
+_BUILD_NR = _get_build_nr()
+
 # Konstante Shell-Bestandteile
-_TOOLBAR_CSS_TAG = '<link rel="stylesheet" href="/_forensic/toolbar.css">'
-_TOOLBAR_JS_TAG  = '<script src="/_forensic/toolbar.js"></script>'
+_TOOLBAR_CSS_TAG = f'<link rel="stylesheet" href="/_forensic/toolbar.css?v={_BUILD_NR}">'
+_TOOLBAR_JS_TAG  = f'<script src="/_forensic/toolbar.js?v={_BUILD_NR}"></script>'
 # Build 086: Tabulator.js wird in userinfo.py eingebunden (eigenes Fenster).
 # Beleg: Projektgespräch 2026-05-05 — shell_handler lädt für Hauptfenster, nicht Userinfo-Tab.
 

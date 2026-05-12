@@ -39,7 +39,24 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-SERVER_VERSION = "v0.1.0-build042"
+# Build 190: SERVER_VERSION dynamisch aus build.json laden.
+# War hartcodiert "v0.1.0-build042" — blieb immer auf Build 042 egal welche
+# build.json deployed wurde. Toolbar.js loggt diesen Wert und zeigte daher
+# immer "build042" in der Console, obwohl neuere Builds liefen.
+# Beleg: Projektgespraech 2026-05-12.
+def _load_server_version() -> str:
+    """Liest build-Nummer aus build.json neben dieser Datei."""
+    import json as _json
+    from pathlib import Path as _Path
+    try:
+        build_file = _Path(__file__).parent.parent / "build.json"
+        data = _json.loads(build_file.read_text(encoding="utf-8"))
+        build = data.get("build", "?")
+        return f"v0.1.0-build{build:03d}" if isinstance(build, int) else f"v0.1.0-build{build}"
+    except Exception:
+        return "v0.1.0-buildUNKNOWN"
+
+SERVER_VERSION = _load_server_version()
 
 
 class StatusEndpoint:
