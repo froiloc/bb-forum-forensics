@@ -1,5 +1,5 @@
 # Fehler im Frontend
-(Cache-buster-pre-extension: edabeef0-4e2c-11f1-8814-b3beebec6e9a)
+(Cache-buster-pre-extension: 282f07d8-4e2d-11f1-a1d5-ef032ac4c103)
 
 Ich werde in dieser Liste fortlaufend die von mir beobachteten Fehler aufführen.
 Falls diese abgeschlossen und verworfen wurden, werde ich sie durchstreichen. Alles, was nicht durchgestrichen ist, ist also noch offen und muss bearbeitet werden.
@@ -20,29 +20,29 @@ Hier noch einmal die Liste der Baustellen und wofür sie stehen:
 
 Quellen zum Debuggen:
 * Dieses Dokument mit den Arbeitsanweisungen und Problembeschreibungen:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.edabeef0-4e2c-11f1-8814-b3beebec6e9a.md
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.282f07d8-4e2d-11f1-a1d5-ef032ac4c103.md
 * Die Ausgabe von DevTools-Console:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.edabeef0-4e2c-11f1-8814-b3beebec6e9a.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.282f07d8-4e2d-11f1-a1d5-ef032ac4c103.log
 * Die Ausgabe von DevTools-Network:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.edabeef0-4e2c-11f1-8814-b3beebec6e9a.har
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.282f07d8-4e2d-11f1-a1d5-ef032ac4c103.har
 * Das aktuelle DOM des gesamten Dokuments als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.edabeef0-4e2c-11f1-8814-b3beebec6e9a.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.282f07d8-4e2d-11f1-a1d5-ef032ac4c103.html
 * Das aktuelle DOM des gesamten Body als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.edabeef0-4e2c-11f1-8814-b3beebec6e9a.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.282f07d8-4e2d-11f1-a1d5-ef032ac4c103.html
 * Das aktuelle DOM des gesamten Sidebar als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.edabeef0-4e2c-11f1-8814-b3beebec6e9a.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.282f07d8-4e2d-11f1-a1d5-ef032ac4c103.html
 * Das aktuelle DOM des gesamten Main als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.edabeef0-4e2c-11f1-8814-b3beebec6e9a.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.282f07d8-4e2d-11f1-a1d5-ef032ac4c103.html
 * Das aktuelle DOM des Akkordeon 1 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.edabeef0-4e2c-11f1-8814-b3beebec6e9a.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.282f07d8-4e2d-11f1-a1d5-ef032ac4c103.html
 * Das aktuelle DOM des Akkordeon 2 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.edabeef0-4e2c-11f1-8814-b3beebec6e9a.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.282f07d8-4e2d-11f1-a1d5-ef032ac4c103.html
 * Das aktuelle DOM des Akkordeon 3 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.edabeef0-4e2c-11f1-8814-b3beebec6e9a.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.282f07d8-4e2d-11f1-a1d5-ef032ac4c103.html
 * Das aktuelle DOM des Akkordeon 4 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.edabeef0-4e2c-11f1-8814-b3beebec6e9a.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.282f07d8-4e2d-11f1-a1d5-ef032ac4c103.html
 * Die Ausgabe des aktuellen Webservers:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.edabeef0-4e2c-11f1-8814-b3beebec6e9a.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.282f07d8-4e2d-11f1-a1d5-ef032ac4c103.log
 * Die aktuellen Screenshots:
 https://github.com/froiloc/bb-forum-forensics/tree/1b5017a2f62c5a8f1825de76fc6edabb25d6bf66/debug/screenshots
 ***
@@ -146,7 +146,7 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 64. erledigt
 65. erledigt
 66. erledigt
-67. (10) (BS3). Hier wird bei der Erstellung der Annotation als Ermittler der Forenbenutzer angegeben. Also `uid_538299` statt `paul` in meiner DEV-Umgebung.
+67. erledigt
 68. erledigt
 69. erledigt
 70. erledigt
@@ -157,7 +157,7 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 75. erledigt
 76. erledigt
 77. erledigt
-78. (15) (BS3) Im Eingabemodal zum Markieren für die 6-Kategorien soll folgende Ergänzung vorgenommen werden: Durch Klicken auf eine Schaltfläche neben dem Benutzernamen soll der Benutzername geändert werden können. Dann findet der Eintrag zu jenem Benutzer statt. Der Webserver muss dann den Eintrag an die Allgemeine Austauschdatenbank übergeben, wo sie dann in die Datenbank des anderen Benutzers integriert wird, sobald mit diesem wieder gearbeitet wird. Die Benutzernamen werden über einen Endpunkt `/foresic_api/knownusers` abgefragt und geben sowohl `username` als auch `user_id` zurück. Anmerkung: Das Forum hat 487.246 registrierte Benutzer. Plus die Alias, die ebenfalls im Endpunkt durchsucht werden sollten, sind das bestimmt 500.000 Namen. Bei der Suche soll also erst ab dem vierten Buchstaben gesucht werden, um die Datenbank nicht zu überlasten. Und es muss einen Index auf der Tabelle geben. Siehe: 2.82 und 2.83.
+78. erledigt
 79. erledigt
 80. erledigt
 81. (5) (BS3) Es soll ein Suchmodal geben, das eine erweiterte Suche für das Forum bereitstellt. Das muss noch gemeinsam ausdefiniert werden. Nur die grobe Idee ist derzeit da.
@@ -171,9 +171,9 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 89. (20) (BS3) Bei Spuren, die nur auf andere Spuren verlinken, also beispielsweise die Auflistung der Topic oder privaten Nachrichten im Forum, möchte ich, dass mit einem farbigen Rahmen angezeigt wird, zu wie viel Prozent die verlinkte Seite bereits bearbeitet wurde. Also: grün für 100%, gelb für 50%, rot für 0%. Ob das über einen dynamischen Farbverlauf (CSS-Gradient) oder starr sein soll, weiß ich noch nicht. Das muss diskutiert werden.
 90. (5) (BS3) Es soll einen Link in der Toolbar auf der Hauptseite zum Berichtseditor geben. Also Fenster 1 direkt auf Fenster 3. Ohne den Umweg über Fenster 2.
 91. erledigt
-92. (15) (BS3) im Modal, das es ermöglicht, den Kontext für eine Annotation zu ändern, wird Änderung des Benutzernamens nicht angezeigt. Es steht dort immer der im Fall untersuchte Standard-Benutzer. Es muss aber der Benutzername sein, zu dem die Annotation erstellt wurde. (Hier eine Fremdnotiz über einen anderen Benutzer). Der Eintrag in der Datenbank enthält bei `actual_uid` den korrekten Wert, aber dieser wird in der Oberfläche nicht angezeigt. Der Abgleich der `actual_uid` auf den passenden `username` muss über einen oder Nachschlagen in `default.db` `known_users.user_id` erfolgen.
-93. (20) (BS3) Im Browser wird nach dem Absenden einer Annotation zu einem anderen Benutzer (uid2) noch immer der Benutzer (uid) angezeigt. Und im Kopf des Modal steht dort `uid_<uid>`. Das soll aber nur dort stehen, wenn ein anderer `<iid>` als der aktuelle System-Benutzer einen Eintrag erfasst hat. Das sind also zwei Fehler. Siehe Screenshot und DOM-Dump.
-94. (20) (BS3) Im Browser wird direkt nach dem Absenden einer Annotation zu einem anderen Benutzer (uid2) beim nochmaligen Öffnen des Annotations-Modals als Benutzer der Benutzername von <uid> angezeigt. Nach dem Reload der Seite ist die Anzeige aber korrekt. Die Anzeige muss aber auch ohne Reload korrekt sein! Siehe Screenshots. Bitte Zeitstempel im Dateinamen beachten, für die Reihenfolge.
+92. erledigt
+93. erledigt
+94. erledigt
 
 ---
 ## 3. Funktionalität Backend / Python / SQLite3-Datenbank
