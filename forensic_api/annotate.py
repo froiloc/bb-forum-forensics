@@ -82,6 +82,10 @@ class AnnotateEndpoint:
     ) -> None:
         self._bundle  = bundle
         self._context = context
+        # Build 184 (Bug 2.91): self._config war nicht zugewiesen — Pfadberechnung
+        # für Transportdatei schlug fehl mit "has no attribute '_config'".
+        # Beleg: Webserver-Log 2026-05-12.
+        self._config  = config
 
     def handle(
         self,

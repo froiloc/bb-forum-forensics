@@ -1,6 +1,6 @@
 {
-  "build":   183,
-  "version": "0.6.183",
+  "build":   184,
+  "version": "0.6.184",
   "date":    "2026-05-12",
-  "note":    "BS3 Build 183: Fix Bug 3.9 (ka.alias -> ka.name), umfangreiches Debug-Logging fuer Bug 2.91 (Fremd-Annotation), Console-Testsuite"
+  "note":    "BS3 Build 184: Bug 2.91 Fix — self._config in AnnotateEndpoint.__init__ fehlte, Pfadberechnung Transportdatei schlug fehl"
 }
