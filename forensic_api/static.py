@@ -141,7 +141,12 @@ class StaticEndpoint:
             )
             data = b""
 
-        handler.send_response_body(200, data, content_type=mime_type)
+        # Build 187 (Bug 2.93): Cache-Control: no-cache verhindert dass der Browser
+        # veraltete toolbar.js/toolbar.css aus dem Cache laedt.
+        # Beleg: Console zeigte build042 obwohl Server build185 lieferte.
+        extra_headers = {"Cache-Control": "no-cache, must-revalidate"}
+        handler.send_response_body(200, data, content_type=mime_type,
+                                   extra_headers=extra_headers)
 
     def handle_editor_asset(
         self,

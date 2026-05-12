@@ -1,6 +1,6 @@
 {
-  "build":   186,
-  "version": "0.6.186",
+  "build":   188,
+  "version": "0.6.188",
   "date":    "2026-05-12",
-  "note":    "BS3 Build 186: Bug 2.92 actual_uid im Annotation-Response, knownusers/resolve-Endpunkt, Popup zeigt korrekten Benutzernamen fuer Fremdannotationen"
+  "note":    "BS3 Build 188: Bug 2.94 resolve-Cache an actualUid gebunden, Vollpaket toolbar.js+css"
 }

@@ -2,7 +2,17 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 186 · 2026-05-12
+ * Version: v0.1.0 · Build: 188 · 2026-05-12
+ *
+ * Aenderungen Build 188 (BS3 — Bug 2.94):
+ *   open(): resolve-Cache an actualUid gebunden. Cache ungültig wenn
+ *     _resolvedActualUid != actualUid. Verhindert Anzeige des alten
+ *     Benutzers nach syncAnnotation() bis zum nächsten Seitenreload.
+ *
+ * Aenderungen Build 187 (BS3 — Bug 2.93):
+ *   Cache-Control: no-cache fuer toolbar.js/css (static.py).
+ *   syncAnnotation(): actualUid aus targetUserId nach Speichern im Store.
+ *   foreignBadge: Leerstring-Schutz + investigatorUsername-Fallback.
  *
  * Aenderungen Build 186 (BS3 — Bug 2.92):
  *   Popup open(): laedt Username per resolve-Endpunkt bei Fremdannotation.
@@ -878,6 +888,13 @@
           if (r.status === "ok") {
             ann.id        = r.id;
             ann.syncState = "synced";
+            // Build 187 (Bug 2.93): targetUserId nach dem Speichern als
+            // actualUid im Store-Objekt persistieren, damit das Popup bei
+            // erneutem Oeffnen den richtigen Benutzer anzeigt — auch bevor
+            // loadAnnotations() den Server erneut abfragt.
+            if (payload.target_user_id && !ann.actualUid) {
+              ann.actualUid = payload.target_user_id;
+            }
             _state.annotations.set(ann.localId, ann);
             _state.lastSaveTs = Date.now();
             ForensicToolbar.events.emit("annotation:synced", ann);
@@ -2205,17 +2222,22 @@
     function open(ann) {
       _currentAnn = ann;
 
-      // Build 186 (Bug 2.92): Wenn actual_uid gesetzt und != aktueller Job-uid,
-      // dann ist das eine Fremdannotation. Username per resolve-Endpunkt laden
-      // und _render() erst danach aufrufen damit der Badge stimmt.
+      // Build 186/188 (Bug 2.92/2.94): Fremdannotation-Erkennung.
+      // actualUid gesetzt und != aktueller Job-uid → Fremdannotation.
+      // Cache (_resolvedActualUsername) ist gültig wenn _resolvedActualUid
+      // mit der aktuellen actualUid übereinstimmt. Sonst neu auflösen.
       // Beleg: Projektgespraech 2026-05-12.
-      var actualUid = ann.actualUid || null;
-      var isForign  = actualUid && actualUid !== _state.user_id &&
-                      actualUid !== _state.forumUserId;
+      var actualUid  = ann.actualUid || null;
+      var isForign   = actualUid && actualUid !== _state.user_id &&
+                       actualUid !== _state.forumUserId;
+      // Cache-Gültigkeit: aufgelöster uid muss mit actual_uid übereinstimmen
+      var cacheValid = ann._resolvedActualUid &&
+                       String(ann._resolvedActualUid) === String(actualUid) &&
+                       ann._resolvedActualUsername;
 
-      if (isForign) {
+      if (isForign && !cacheValid) {
         _dbg("[Popup] Fremdannotation: actual_uid=", actualUid,
-             "→ lade Username per resolve-Endpunkt");
+             "→ lade Username per resolve-Endpunkt (Cache ungültig)");
         ajaxGet(ForensicToolbar.config.API_KNOWNUSERS_RESOLVE +
                 "?uid=" + encodeURIComponent(actualUid))
           .then(function (data) {
@@ -2229,6 +2251,11 @@
             ann._resolvedActualUid      = actualUid;
             _render(ann);
           });
+      } else if (isForign && cacheValid) {
+        // Cache gültig — sofort rendern ohne AJAX
+        _dbg("[Popup] Fremdannotation: Cache gültig für uid=", actualUid,
+             "username=", ann._resolvedActualUsername);
+        _render(ann);
       } else {
         _render(ann);
       }
@@ -2310,12 +2337,16 @@
       _popupEl.setAttribute("aria-modal", "true");
       _popupEl.setAttribute("aria-labelledby", "forensic-popup-title");
       _popupEl.className = "forensic-popup";
-      // Bug 2.88 (Build 179): 'von <ermittler>' nur wenn Ersteller != ich.
-      // Hält die Oberfläche schlicht für eigene Annotationen.
-      // Beleg: Projektgespräch 2026-05-12.
-      var createdBy     = ann.createdBy || "";
-      var isForeign     = createdBy && createdBy !== _state.investigatorUsername;
-      var foreignBadge  = isForeign
+      // Bug 2.88/2.93 (Build 179/187): 'von <ermittler>' nur wenn Ersteller != ich.
+      // Build 187: Leerstring-Schutz + investigatorUsername-Fallback.
+      var createdBy = ann.createdBy || "";
+      var myName    = _state.investigatorUsername || "";
+      // Fremd wenn: createdBy gesetzt UND nicht der aktuelle Ermittler
+      // UND nicht leer UND nicht der Beschuldigte (uid_*)
+      var isForeign    = createdBy.length > 0 &&
+                         myName.length > 0 &&
+                         createdBy !== myName;
+      var foreignBadge = isForeign
         ? ' <span class="forensic-popup-author-badge">von ' + _esc(createdBy) + '</span>'
         : '';
 
