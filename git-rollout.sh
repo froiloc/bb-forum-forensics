@@ -53,6 +53,10 @@ then
 		python "${ROOTDIR}debug/html_query.py" -i "${ROOTDIR}debug/dom-dump/last-html.${uuid}.html" -o "${ROOTDIR}debug/dom-dump/last-accordion-4.${uuid}.html" -c '#support-sidebar .support-accordion-section:nth-of-type(4)'
 		git add -f "${ROOTDIR}debug/dom-dump/last-accordion-4.${uuid}.html" 2>/dev/null
 
+		git mv "${ROOTDIR}debug/dom-dump/last-searchmodal.${last_uuid}.html" "${ROOTDIR}debug/dom-dump/last-searchmodal.${uuid}.html" 2>/dev/null
+		python "${ROOTDIR}debug/html_query.py" -i "${ROOTDIR}debug/dom-dump/last-html.${uuid}.html" -o "${ROOTDIR}debug/dom-dump/last-searchmodal.${uuid}.html" -c '#context-search-modal'
+		git add -f "${ROOTDIR}debug/dom-dump/last-searchmodal.${uuid}.html" 2>/dev/null
+
 	fi
 fi
 if ls -1 ${ROOTDIR}debug/webserver-log/last.*.log 2>/dev/null
