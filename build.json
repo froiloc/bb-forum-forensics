@@ -1,6 +1,6 @@
 {
-  "build":   181,
-  "version": "0.6.181",
+  "build":   182,
+  "version": "0.6.182",
   "date":    "2026-05-12",
-  "note":    "BS3 Build 181: Alias-Modal Loeschen entfernt Minimap-Marker sofort (clearHighlights + MinimapModule.refresh vor AJAX-Rueckkehr)"
+  "note":    "BS3 Build 182: Bug 2.78 Fremd-Annotation-Schreibpfad. actual_uid in annotations, pending_cross_annotations in coordinator.db, CrossAnnotationIntegrator, sync_incoming-Endpunkt, Frontend sendet target_user_id"
 }

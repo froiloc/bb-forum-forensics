@@ -843,15 +843,18 @@
      * Bei Fehler: Status 'error', automatischer Retry nach RETRY_DELAY_MS.
      */
     function syncAnnotation(ann) {
+      // Build 182 (Bug 2.78): target_user_id mitsenden wenn Ermittler
+      // die Annotation einem anderen Forenbenutzer zugeordnet hat.
       var payload = {
-        page_url:   ann.pageUrl,
-        category:   ann.category,
-        text:       ann.text,
-        element_id: ann.elementId || null,
-        local_id:   ann.localId,
-        post_id:    ann.postId || null,
-        tags:       ann.tags || [],
-        selection:  ann.selection || null,
+        page_url:       ann.pageUrl,
+        category:       ann.category,
+        text:           ann.text,
+        element_id:     ann.elementId || null,
+        local_id:       ann.localId,
+        post_id:        ann.postId || null,
+        tags:           ann.tags || [],
+        selection:      ann.selection || null,
+        target_user_id: ann.targetUserId || null,
       };
 
       return ajaxPost(ForensicToolbar.config.API_ANNOTATE, payload)

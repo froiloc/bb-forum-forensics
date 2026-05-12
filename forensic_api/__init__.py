@@ -138,6 +138,7 @@ class ForensicApi:
         self._templates_ep    = None  # [B6]
         self._knownusers      = None  # [BS3 Bug 2.78 Build 175]
         self._aliases         = None  # [BS3 Bug 2.79 Build 179]
+        self._integrator      = None  # [BS3 Bug 2.78 Build 182]
 
     def dispatch(
         self,
@@ -741,6 +742,13 @@ class ForensicApi:
             from forensic_api.knownusers import KnownUsersEndpoint
             self._knownusers = KnownUsersEndpoint(self._bundle, self._context, self._config)
         return self._knownusers
+
+    def _get_integrator(self):
+        """[BS3 Bug 2.78 Build 182] Lazy-Init fuer CrossAnnotationEndpoint."""
+        if self._integrator is None:
+            from forensic_api.sync_incoming import SyncIncomingEndpoint
+            self._integrator = SyncIncomingEndpoint(self._bundle, self._context, self._config)
+        return self._integrator
 
     def _get_aliases(self):
         """[BS3 Bug 2.79] Lazy-Init fuer AliasesEndpoint. Beleg: Projektgespraech 2026-05-12."""

@@ -90,6 +90,26 @@ DDL_ADD_ASSIGNED_TO = "ALTER TABLE scrape_jobs ADD COLUMN assigned_to INTEGER RE
 # Beleg: Projektgespräch 2026-04-18 — Bugfix 'no such column: j.note'
 DDL_ADD_NOTE = "ALTER TABLE scrape_jobs ADD COLUMN note TEXT"
 
+# Build 182 (Bug 2.78): Transportmechanismus für Fremd-Annotationen.
+# Ermittler <iid> schreibt Annotation zu uid2 auf Seiten von uid.
+# Transportdatei evidence_<uid2>_<iid>.db wird angelegt, Eintrag hier als Signal.
+# uid2-Webserver integriert beim Start/stündlich/manuell und markiert integrated_at.
+# Beleg: Projektgespräch 2026-05-12.
+DDL_PENDING_CROSS_ANNOTATIONS = """
+CREATE TABLE IF NOT EXISTS pending_cross_annotations (
+    id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_iid           INTEGER NOT NULL REFERENCES investigators(id),
+    target_uid           INTEGER NOT NULL,
+    db_path              TEXT    NOT NULL,
+    annotation_local_id  TEXT    NOT NULL,
+    created_at           INTEGER NOT NULL,
+    integrated_at        INTEGER DEFAULT NULL
+);
+CREATE INDEX IF NOT EXISTS pca_target_uid_idx
+    ON pending_cross_annotations (target_uid)
+    WHERE integrated_at IS NULL;
+"""
+
 
 def _column_exists(con: sqlite3.Connection, table: str, column: str) -> bool:
     """Prüft ob eine Spalte in einer Tabelle existiert."""
@@ -154,6 +174,16 @@ def setup(db_path: Path) -> None:
             print("[setup_coordinator_dev] scrape_jobs.note: Spalte nachgerüstet (ALTER TABLE)")
         else:
             print("[setup_coordinator_dev] scrape_jobs.note: bereits vorhanden — kein ALTER TABLE nötig")
+
+        # ------------------------------------------------------------------
+        # Build 182 (Bug 2.78): pending_cross_annotations anlegen
+        # ------------------------------------------------------------------
+        if not _table_exists(con, "pending_cross_annotations"):
+            con.executescript(DDL_PENDING_CROSS_ANNOTATIONS)
+            con.commit()
+            print("[setup_coordinator_dev] pending_cross_annotations: Tabelle angelegt")
+        else:
+            print("[setup_coordinator_dev] pending_cross_annotations: bereits vorhanden")
 
         # ------------------------------------------------------------------
         # DEV-Dummy-Ermittler einfügen

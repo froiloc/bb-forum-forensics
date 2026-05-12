@@ -176,14 +176,15 @@ CREATE TABLE IF NOT EXISTS annotations (
     post_id         INTEGER DEFAULT NULL,
     created_by      TEXT NOT NULL DEFAULT '',
     -- Build 178 (Bug 2.75): Soft-Delete + Append-only-Log
-    -- deleted_at: NULL = aktiv; gesetzt = gelöscht oder durch Nachfolger ersetzt.
-    --   Semantik: deleted_at IS NOT NULL + Nachfolger (prev_id=this.id) = changed_at
-    --             deleted_at IS NOT NULL + kein Nachfolger = tatsächlich gelöscht
-    -- version_nr: 1 = Ersteintrag, wird bei jeder Änderung inkrementiert.
-    -- prev_id: Zeiger auf den unmittelbaren Vorgänger-Datensatz (NULL = Ersteintrag).
     deleted_at      INTEGER DEFAULT NULL,
     version_nr      INTEGER NOT NULL DEFAULT 1,
-    prev_id         INTEGER DEFAULT NULL REFERENCES annotations(id)
+    prev_id         INTEGER DEFAULT NULL REFERENCES annotations(id),
+    -- Build 182 (Bug 2.78): Forenbenutzer dem die Annotation inhaltlich gilt.
+    -- NULL / fehlt = gehört zur uid dieser evidence_<uid>.db (Normalfall).
+    -- Gesetzt = Ermittler hat auf Seiten von uid einen Hinweis zu uid2 gefunden;
+    --   actual_uid = uid2. Trigger für Transportkopie in pending_cross_annotations.
+    -- Beleg: Projektgespräch 2026-05-12.
+    actual_uid      INTEGER DEFAULT NULL
 );
 
 -- Berichts-Metadaten. Nur ein Bericht vom Typ 'final' zulaessig.
@@ -359,6 +360,8 @@ _MIGRATION_COLUMNS: list[tuple[str, str, str]] = [
     ("annotations", "deleted_at",     "INTEGER DEFAULT NULL"),
     ("annotations", "version_nr",     "INTEGER NOT NULL DEFAULT 1"),
     ("annotations", "prev_id",        "INTEGER DEFAULT NULL"),
+    # Build 182 (Bug 2.78): Forenbenutzer dem die Annotation inhaltlich gilt
+    ("annotations", "actual_uid",     "INTEGER DEFAULT NULL"),
 ]
 
 
@@ -390,9 +393,11 @@ class AnnotationRecord:
     post_id:         Optional[int] = None
     created_by:      str           = ""
     # Build 178 (Bug 2.75): Soft-Delete + Versionierung
-    deleted_at:  Optional[int] = None   # NULL=aktiv, gesetzt=gelöscht/ersetzt
-    version_nr:  int           = 1      # 1=Ersteintrag, bei Änderung inkrementiert
-    prev_id:     Optional[int] = None   # Vorgänger-ID (NULL=Ersteintrag)
+    deleted_at:  Optional[int] = None
+    version_nr:  int           = 1
+    prev_id:     Optional[int] = None
+    # Build 182 (Bug 2.78): Forenbenutzer dem die Annotation inhaltlich gilt
+    actual_uid:  Optional[int] = None  # NULL = uid dieser DB, sonst Fremd-uid
 
 
 @dataclass
@@ -719,6 +724,7 @@ class EvidenceDb:
         post_id: Optional[int] = None,
         created_by: str = "",
         ts: Optional[int] = None,
+        actual_uid: Optional[int] = None,
     ) -> int:
         """
         Speichert eine Annotation nach dem Append-only-Log-Prinzip.
@@ -766,12 +772,12 @@ class EvidenceDb:
                     "INSERT INTO annotations "
                     "(page_url, element_id, category, text, ts, investigator_id,"
                     " selection_json, tags_json, local_id, post_id, created_by,"
-                    " version_nr, prev_id) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    " version_nr, prev_id, actual_uid) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     (
                         page_url, element_id, category, text, ts, investigator_id,
                         selection_json, tags_json, local_id, post_id, created_by,
-                        new_version, old_id,
+                        new_version, old_id, actual_uid,
                     ),
                 )
                 logger.debug(
@@ -785,11 +791,12 @@ class EvidenceDb:
                     "INSERT INTO annotations "
                     "(page_url, element_id, category, text, ts, investigator_id,"
                     " selection_json, tags_json, local_id, post_id, created_by,"
-                    " version_nr, prev_id) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NULL)",
+                    " version_nr, prev_id, actual_uid) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NULL, ?)",
                     (
                         page_url, element_id, category, text, ts, investigator_id,
                         selection_json, tags_json, local_id, post_id, created_by,
+                        actual_uid,
                     ),
                 )
         else:
@@ -798,11 +805,11 @@ class EvidenceDb:
                 "INSERT INTO annotations "
                 "(page_url, element_id, category, text, ts, investigator_id,"
                 " selection_json, tags_json, local_id, post_id, created_by,"
-                " version_nr, prev_id) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, 1, NULL)",
+                " version_nr, prev_id, actual_uid) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, 1, NULL, ?)",
                 (
                     page_url, element_id, category, text, ts, investigator_id,
-                    selection_json, tags_json, post_id, created_by,
+                    selection_json, tags_json, post_id, created_by, actual_uid,
                 ),
             )
         self._con.commit()
@@ -881,7 +888,7 @@ class EvidenceDb:
         current = self._con.execute(
             "SELECT id, page_url, element_id, category, text, ts, "
             "       investigator_id, selection_json, tags_json, local_id, "
-            "       post_id, created_by, deleted_at, version_nr, prev_id "
+            "       post_id, created_by, deleted_at, version_nr, prev_id, actual_uid "
             "FROM annotations WHERE id = ?",
             (annotation_id,),
         ).fetchone()
@@ -903,7 +910,7 @@ class EvidenceDb:
             row = self._con.execute(
                 "SELECT id, page_url, element_id, category, text, ts, "
                 "       investigator_id, selection_json, tags_json, local_id, "
-                "       post_id, created_by, deleted_at, version_nr, prev_id "
+                "       post_id, created_by, deleted_at, version_nr, prev_id, actual_uid "
                 "FROM annotations WHERE id = ?",
                 (prev_id,),
             ).fetchone()
@@ -933,7 +940,7 @@ class EvidenceDb:
         base_query = (
             "SELECT id, page_url, element_id, category, text, ts, "
             "       investigator_id, selection_json, tags_json, local_id, "
-            "       post_id, created_by, deleted_at, version_nr, prev_id "
+            "       post_id, created_by, deleted_at, version_nr, prev_id, actual_uid "
             "FROM annotations "
             "WHERE deleted_at IS NOT NULL "
             "  AND id NOT IN (SELECT prev_id FROM annotations WHERE prev_id IS NOT NULL)"
@@ -954,7 +961,7 @@ class EvidenceDb:
         rows = self._con.execute(
             "SELECT id, page_url, element_id, category, text, ts, "
             "       investigator_id, selection_json, tags_json, local_id, "
-            "       post_id, created_by, deleted_at, version_nr, prev_id "
+            "       post_id, created_by, deleted_at, version_nr, prev_id, actual_uid "
             "FROM annotations "
             "WHERE page_url = ? AND deleted_at IS NULL "
             "ORDER BY ts ASC",
@@ -967,7 +974,7 @@ class EvidenceDb:
         rows = self._con.execute(
             "SELECT id, page_url, element_id, category, text, ts, "
             "       investigator_id, selection_json, tags_json, local_id, "
-            "       post_id, created_by, deleted_at, version_nr, prev_id "
+            "       post_id, created_by, deleted_at, version_nr, prev_id, actual_uid "
             "FROM annotations "
             "WHERE deleted_at IS NULL "
             "ORDER BY ts DESC"
@@ -2048,6 +2055,12 @@ class EvidenceDb:
             prev_id=(
                 int(r["prev_id"])
                 if ("prev_id" in keys and r["prev_id"] is not None)
+                else None
+            ),
+            # Build 182 (Bug 2.78): Forenbenutzer
+            actual_uid=(
+                int(r["actual_uid"])
+                if ("actual_uid" in keys and r["actual_uid"] is not None)
                 else None
             ),
         )

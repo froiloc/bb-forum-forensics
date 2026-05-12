@@ -358,6 +358,20 @@ def main() -> None:
     _build_info = BuildInfo(project_root=Path(__file__).parent)
     log_file_checksums(Path(__file__).parent)
 
+    # ------------------------------------------------------------------
+    # Schritt 8c: CrossAnnotationIntegrator starten (Build 182 — Bug 2.78)
+    # Integriert ausstehende Fremd-Annotationen aus Transportdateien.
+    # Laeuft einmalig beim Start + stündlich im Hintergrundthread.
+    # Beleg: Projektgespraech 2026-05-12.
+    # ------------------------------------------------------------------
+    from forensic_api.cross_annotation_integrator import CrossAnnotationIntegrator
+    _integrator = CrossAnnotationIntegrator(bundle, context, config)
+    try:
+        _integrator.run_once()
+    except Exception as _exc:
+        logger.warning("CrossAnnotationIntegrator Startup-Lauf fehlgeschlagen: %s", _exc)
+    _integrator.start_background_polling()
+
     # Schritt 9: ForensicHTTPServer starten
     # ------------------------------------------------------------------
     from server.http_server import ForensicHTTPServer, ForensicHTTPServerBindError

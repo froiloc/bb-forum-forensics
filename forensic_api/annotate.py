@@ -54,6 +54,11 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
+import sqlite3
+import time
+from pathlib import Path
+from typing import Optional
+
 from core.logger import get_logger
 from db.evidence_db import VALID_CATEGORIES, EvidenceDbError
 
@@ -155,15 +160,30 @@ class AnnotateEndpoint:
             clean_tags = [str(t).strip() for t in tags_raw if str(t).strip()]
             tags_json = json.dumps(clean_tags, ensure_ascii=False)
 
-        # Bug 2.85 (Build 176): created_by = SAMAccountName des ERMITTLERS,
-        # nicht des Beschuldigten. context.investigator_username ist der
-        # angemeldete Systembenutzer (z.B. "paul"), context.username ist der
-        # Forum-Username des Beschuldigten (z.B. "uid_538299").
-        # Beleg: Projektgespräch 2026-05-12 — Bug 2.85 (BS3).
+        # Bug 2.85 (Build 176): created_by = SAMAccountName des ERMITTLERS.
         created_by = getattr(self._context, "investigator_username", "") or \
                      getattr(self._context, "username", "") or ""
 
+        # Bug 2.78 (Build 182): Fremd-Annotation — target_user_id gesetzt
+        # wenn Ermittler die Annotation einem anderen Forenbenutzer zuordnet.
+        target_user_id_raw = data.get("target_user_id")
+        target_user_id: Optional[int] = None
+        if target_user_id_raw is not None:
+            try:
+                target_user_id = int(target_user_id_raw)
+            except (TypeError, ValueError):
+                pass
+        # Wenn target_user_id == aktuelle user_id oder None → Normalpfad
+        is_cross = (
+            target_user_id is not None
+            and target_user_id != self._context.user_id
+        )
+
         # Annotation speichern
+        # Build 182 (Bug 2.78): Bei Fremd-Annotation (is_cross=True) wird
+        # die Annotation in der lokalen evidence_db mit actual_uid=target_user_id
+        # gespeichert UND als Transportkopie in evidence_<uid2>_<iid>.db.
+        actual_uid = target_user_id if is_cross else None
         try:
             annotation_id = self._bundle.evidence.save_annotation(
                 page_url=page_url,
@@ -176,6 +196,7 @@ class AnnotateEndpoint:
                 local_id=local_id,
                 post_id=post_id,
                 created_by=created_by,
+                actual_uid=actual_uid,
             )
         except EvidenceDbError as exc:
             self._error(handler, str(exc))
@@ -184,6 +205,22 @@ class AnnotateEndpoint:
             logger.error("Annotation konnte nicht gespeichert werden: %s", exc)
             self._error(handler, "Interner Fehler beim Speichern")
             return
+
+        # Fremd-Annotation: Transportkopie anlegen
+        if is_cross and local_id:
+            self._write_cross_annotation(
+                page_url=page_url,
+                category=category,
+                text=str(text),
+                element_id=element_id,
+                selection_json=selection_json,
+                tags_json=tags_json,
+                local_id=local_id,
+                post_id=post_id,
+                created_by=created_by,
+                target_user_id=target_user_id,
+                actual_uid=actual_uid,
+            )
 
         logger.info(
             "Annotation gespeichert: id=%d, page='%s', cat=%s, element=%s, post_id=%s",
@@ -249,6 +286,167 @@ class AnnotateEndpoint:
         handler.send_response_body(
             200, body_out, content_type="application/json; charset=utf-8"
         )
+
+    def _write_cross_annotation(
+        self,
+        page_url: str,
+        category: str,
+        text: str,
+        element_id,
+        selection_json,
+        tags_json,
+        local_id: str,
+        post_id,
+        created_by: str,
+        target_user_id: int,
+        actual_uid,
+    ) -> None:
+        """
+        Schreibt Fremd-Annotation in Transportdatei evidence_<uid2>_<iid>.db
+        und traegt pending_cross_annotations in coordinator.db ein.
+
+        Build 182 (Bug 2.78):
+          1. Transportdatei oeffnen/anlegen
+          2. Annotation + Page-BLOB hineinschreiben
+          3. coordinator.db: add_pending_cross_annotation()
+
+        Fehler hier sind nicht fatal — lokale Annotation ist bereits gespeichert.
+        Beleg: Projektgespraech 2026-05-12.
+        """
+        iid = self._context.investigator_id
+        if iid is None:
+            logger.warning(
+                "_write_cross_annotation: investigator_id nicht gesetzt — Transportkopie nicht angelegt"
+            )
+            return
+
+        # Pfad zur Transportdatei
+        try:
+            from core.mode_resolver import ModeResolver
+            cross_path = Path(
+                self._config.get("paths.evidence_db_dir")
+            ) / f"evidence_{target_user_id}_{iid}.db"
+            cross_path = cross_path.resolve()
+        except Exception as exc:
+            logger.error("_write_cross_annotation: Pfadberechnung fehlgeschlagen: %s", exc)
+            return
+
+        # Transportdatei oeffnen (anlegen wenn nicht vorhanden)
+        try:
+            t_con = sqlite3.connect(str(cross_path))
+            t_con.row_factory = sqlite3.Row
+            # Minimales Schema: annotations + pages
+            t_con.executescript("""
+                CREATE TABLE IF NOT EXISTS annotations (
+                    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                    page_url        TEXT    NOT NULL,
+                    element_id      TEXT,
+                    category        TEXT    NOT NULL,
+                    text            TEXT    NOT NULL DEFAULT '',
+                    ts              INTEGER NOT NULL,
+                    investigator_id INTEGER,
+                    selection_json  TEXT    DEFAULT NULL,
+                    tags_json       TEXT    DEFAULT NULL,
+                    local_id        TEXT    DEFAULT NULL,
+                    post_id         INTEGER DEFAULT NULL,
+                    created_by      TEXT    NOT NULL DEFAULT '',
+                    deleted_at      INTEGER DEFAULT NULL,
+                    version_nr      INTEGER NOT NULL DEFAULT 1,
+                    prev_id         INTEGER DEFAULT NULL,
+                    actual_uid      INTEGER DEFAULT NULL
+                );
+                CREATE TABLE IF NOT EXISTS pages (
+                    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                    url_canonical   TEXT    NOT NULL UNIQUE,
+                    html_blob       BLOB,
+                    http_status     INTEGER,
+                    scrape_context  TEXT,
+                    fetched_at      INTEGER,
+                    title           TEXT,
+                    in_scope        INTEGER NOT NULL DEFAULT 1
+                );
+                CREATE INDEX IF NOT EXISTS t_ann_local_id_idx ON annotations (local_id);
+                CREATE INDEX IF NOT EXISTS t_pages_url_idx    ON pages (url_canonical);
+            """)
+        except Exception as exc:
+            logger.error("_write_cross_annotation: Transportdatei kann nicht angelegt werden: %s", exc)
+            return
+
+        try:
+            ts_now = int(time.time())
+
+            # Annotation schreiben (idempotent via local_id)
+            existing = t_con.execute(
+                "SELECT id FROM annotations WHERE local_id = ? AND deleted_at IS NULL",
+                (local_id,),
+            ).fetchone()
+            if not existing:
+                t_con.execute(
+                    "INSERT INTO annotations "
+                    "(page_url, element_id, category, text, ts, investigator_id, "
+                    " selection_json, tags_json, local_id, post_id, created_by, actual_uid) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        page_url, element_id, category, text, ts_now,
+                        iid, selection_json, tags_json, local_id,
+                        post_id, created_by, actual_uid,
+                    ),
+                )
+
+            # Page-BLOB aus forensic_db holen und in Transportdatei kopieren
+            page_exists = t_con.execute(
+                "SELECT id FROM pages WHERE url_canonical = ?", (page_url,)
+            ).fetchone()
+            if not page_exists:
+                try:
+                    page_row = self._bundle.forensic.get_page_by_url(page_url)
+                    if page_row:
+                        t_con.execute(
+                            "INSERT OR IGNORE INTO pages "
+                            "(url_canonical, html_blob, http_status, scrape_context, "
+                            " fetched_at, title, in_scope) "
+                            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                            (
+                                page_url,
+                                page_row.get("html_blob"),
+                                page_row.get("http_status"),
+                                page_row.get("scrape_context"),
+                                page_row.get("fetched_at"),
+                                page_row.get("title"),
+                                page_row.get("in_scope", 1),
+                            ),
+                        )
+                except Exception as exc:
+                    logger.warning(
+                        "_write_cross_annotation: Page-BLOB fuer '%s' nicht gefunden: %s",
+                        page_url, exc,
+                    )
+
+            t_con.commit()
+            logger.info(
+                "_write_cross_annotation: Transportkopie geschrieben: "
+                "local_id=%r → '%s'", local_id, cross_path,
+            )
+
+            # coordinator.db eintragen
+            cdb = self._bundle.coordinator
+            if cdb:
+                try:
+                    cdb.add_pending_cross_annotation(
+                        source_iid=iid,
+                        target_uid=target_user_id,
+                        db_path=str(cross_path),
+                        annotation_local_id=local_id,
+                    )
+                except Exception as exc:
+                    logger.error(
+                        "_write_cross_annotation: add_pending_cross_annotation fehlgeschlagen: %s",
+                        exc,
+                    )
+        except Exception as exc:
+            logger.error("_write_cross_annotation: unerwarteter Fehler: %s", exc)
+        finally:
+            t_con.close()
 
     def handle_restore(
         self,

@@ -508,6 +508,19 @@ class ModeResolver:
         directory = Path(self._config.get("paths.evidence_db_dir"))
         return (directory / f"evidence_{user_id}.db").resolve()
 
+    def build_cross_evidence_db_path(self, target_uid: int, iid: int) -> Path:
+        """
+        Pfad zur Transportdatei evidence_<target_uid>_<iid>.db.
+        Liegt im selben Verzeichnis wie die normale evidence_db.
+
+        Build 182 (Bug 2.78): Ermittler <iid> schreibt Fremd-Annotation zu
+        target_uid. Die Datei dient als Transportmittel bis uid2-Webserver
+        integriert. Danach kann sie geloescht werden.
+        Beleg: Projektgespraech 2026-05-12.
+        """
+        directory = Path(self._config.get("paths.evidence_db_dir"))
+        return (directory / f"evidence_{target_uid}_{iid}.db").resolve()
+
     def _resolve_default_db_path(self) -> Path:
         """Gibt den aufgelösten Pfad zur default.db zurück."""
         return Path(self._config.get("paths.default_db")).resolve()

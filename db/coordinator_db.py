@@ -407,6 +407,77 @@ class CoordinatorDb:
             created_at=int(row["created_at"]),
         )
 
+    # ==========================================================================
+    # pending_cross_annotations (Build 182 - Bug 2.78)
+    # Transportmechanismus fuer Fremd-Annotationen.
+    # Beleg: Projektgespraech 2026-05-12.
+    # ==========================================================================
+
+    def add_pending_cross_annotation(
+        self,
+        source_iid: int,
+        target_uid: int,
+        db_path: str,
+        annotation_local_id: str,
+    ) -> int:
+        """Traegt neue Transportnotiz in pending_cross_annotations ein. Idempotent."""
+        def _insert() -> int:
+            ts = int(time.time())
+            existing = self._con.execute(
+                "SELECT id FROM cdb.pending_cross_annotations "
+                "WHERE target_uid = ? AND annotation_local_id = ? "
+                "AND integrated_at IS NULL",
+                (target_uid, annotation_local_id),
+            ).fetchone()
+            if existing:
+                return int(existing["id"])
+            cursor = self._con.execute(
+                "INSERT INTO cdb.pending_cross_annotations "
+                "(source_iid, target_uid, db_path, annotation_local_id, created_at) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (source_iid, target_uid, db_path, annotation_local_id, ts),
+            )
+            self._con.commit()
+            return cursor.lastrowid or 0
+        return self._retry(_insert)
+
+    def get_pending_for_uid(self, target_uid: int) -> list:
+        """Gibt ausstehende Transportnotizen fuer einen Ziel-uid zurueck."""
+        def _get() -> list:
+            rows = self._con.execute(
+                "SELECT id, source_iid, target_uid, db_path, "
+                "       annotation_local_id, created_at "
+                "FROM cdb.pending_cross_annotations "
+                "WHERE target_uid = ? AND integrated_at IS NULL "
+                "ORDER BY created_at ASC",
+                (target_uid,),
+            ).fetchall()
+            return [
+                {
+                    "id":                  int(r["id"]),
+                    "source_iid":          int(r["source_iid"]),
+                    "target_uid":          int(r["target_uid"]),
+                    "db_path":             str(r["db_path"]),
+                    "annotation_local_id": str(r["annotation_local_id"]),
+                    "created_at":          int(r["created_at"]),
+                }
+                for r in rows
+            ]
+        return self._retry(_get)
+
+    def mark_integrated(self, pending_id: int) -> bool:
+        """Markiert Transporteintrag als integriert (integrated_at = now)."""
+        def _mark() -> bool:
+            ts = int(time.time())
+            cursor = self._con.execute(
+                "UPDATE cdb.pending_cross_annotations "
+                "SET integrated_at = ? WHERE id = ?",
+                (ts, pending_id),
+            )
+            self._con.commit()
+            return cursor.rowcount > 0
+        return self._retry(_mark)
+
     def _retry(self, func, *args):
         """
         Führt func(*args) aus und wiederholt bei sqlite3.OperationalError.

@@ -280,6 +280,25 @@ class ForensicDb:
         )
         return record
 
+    def get_page_by_url(self, url: str) -> Optional[dict]:
+        """
+        Gibt Page-Metadaten + BLOB als Dict zurueck. Wrapper fuer lookup().
+        Wird von _write_cross_annotation() genutzt um den Page-BLOB in die
+        Transportdatei zu kopieren.
+        Build 182 (Bug 2.78). Beleg: Projektgespraech 2026-05-12.
+        """
+        record = self.lookup(url)
+        if record is None:
+            return None
+        return {
+            "html_blob":      record.html,
+            "http_status":    record.http_status,
+            "scrape_context": record.scrape_context,
+            "fetched_at":     record.fetched_at,
+            "title":          None,   # pages.title falls vorhanden
+            "in_scope":       1,
+        }
+
     def get_page_by_id(self, page_id: int) -> Optional[PageRecord]:
         """
         Sucht eine Seite anhand ihrer page_id (direkt in fdb.pages).
