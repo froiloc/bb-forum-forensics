@@ -148,6 +148,9 @@ class AnnotationsEndpoint:
                 "createdBy": rec.created_by,
                 # Alle aus DB geladenen Annotationen gelten als synced
                 "syncState": "synced",
+                # Build 178 (Bug 2.75): Versionierungsfelder
+                "versionNr": getattr(rec, "version_nr", 1),
+                "prevId":    getattr(rec, "prev_id", None),
             })
 
         logger.debug(

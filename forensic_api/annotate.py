@@ -37,12 +37,16 @@
 #
 # Änderungen:
 #   Build 011 (2026-04-13): POST implementiert (Baustelle 3, §11.2 Bauplan).
-#   Build 059 (2026-04-26): DELETE implementiert (OP-KN-9 — HoverMenuModule
+#   Build 059 (2026-04-26): DELETE implementiert
+#   Build 178 (2026-05-12): Soft-Delete (Bug 2.75) — DELETE setzt nur
+#     deleted_at in evidence_db. Neuer Pfad POST /_forensic/annotate/restore
+#     zum Wiederherstellen gelöschter Annotationen.
+#     Neuer Pfad GET /_forensic/annotate/deleted für Wiederherstellungs-Modal. (OP-KN-9 — HoverMenuModule
 #     löscht Annotationen ohne Server-Call, sie erscheinen nach Reload wieder).
 #     Beleg: Analyse annotate.py + evidence_db.py — kein delete_annotation()
 #     vorhanden. delete_annotation() in evidence_db.py gleichzeitig ergänzt.
 #
-# Version: v0.1.0 · Build: 059 · 2026-04-26
+# Version: v0.6.178 · Build: 178 · 2026-05-12
 # =============================================================================
 
 from __future__ import annotations
@@ -93,7 +97,7 @@ class AnnotateEndpoint:
             self._handle_delete(handler, body)
             return
 
-        # --- POST-Pfad (unverändert) ---
+        # --- POST-Pfad ---
         # JSON parsen
         try:
             data = json.loads(body.decode("utf-8", errors="replace"))
@@ -244,6 +248,114 @@ class AnnotateEndpoint:
         ).encode("utf-8")
         handler.send_response_body(
             200, body_out, content_type="application/json; charset=utf-8"
+        )
+
+    def handle_restore(
+        self,
+        handler: "ForensicRequestHandler",
+        body: bytes,
+    ) -> None:
+        """
+        POST /_forensic/annotate/restore — Gelöschte Annotation wiederherstellen.
+
+        Erwartet JSON-Body: {"id": <annotation_id>}
+        Gibt {"status": "ok", "restored": true} oder
+             {"status": "not_found"/"has_successor", "restored": false} zurück.
+        Beleg: Projektgespräch 2026-05-12 — Bug 2.75 (BS3).
+        """
+        try:
+            data = json.loads(body.decode("utf-8", errors="replace"))
+        except (json.JSONDecodeError, ValueError) as exc:
+            self._error(handler, f"Ungültiges JSON: {exc}")
+            return
+
+        ann_id_raw = data.get("id")
+        if ann_id_raw is None:
+            self._error(handler, "Feld 'id' fehlt")
+            return
+        try:
+            ann_id = int(ann_id_raw)
+        except (TypeError, ValueError):
+            self._error(handler, f"Feld 'id' muss Ganzzahl sein, erhalten: {ann_id_raw!r}")
+            return
+
+        try:
+            restored = self._bundle.evidence.restore_annotation(ann_id)
+        except Exception as exc:
+            logger.error("Annotation konnte nicht wiederhergestellt werden: %s", exc)
+            self._error(handler, "Interner Fehler beim Wiederherstellen")
+            return
+
+        if restored:
+            logger.info("Annotation wiederhergestellt: id=%d", ann_id)
+            status = "ok"
+        else:
+            # Entweder nicht gefunden oder hat Nachfolger (nur alte Version)
+            status = "not_restorable"
+
+        body_out = json.dumps(
+            {"status": status, "restored": restored}, ensure_ascii=False
+        ).encode("utf-8")
+        handler.send_response_body(
+            200, body_out, content_type="application/json; charset=utf-8"
+        )
+
+    def handle_deleted(
+        self,
+        handler: "ForensicRequestHandler",
+        params: dict,
+    ) -> None:
+        """
+        GET /_forensic/annotate/deleted?url=<page_url>
+        Liefert tatsächlich gelöschte Annotationen (ohne Nachfolger) für das
+        Wiederherstellungs-Modal im Frontend.
+        Beleg: Projektgespräch 2026-05-12 — Bug 2.75 (BS3).
+        """
+        import urllib.parse
+        url_list = params.get("url", [])
+        page_url = urllib.parse.unquote(url_list[0]) if url_list else None
+
+        try:
+            records = self._bundle.evidence.get_deleted_annotations(page_url)
+        except Exception as exc:
+            logger.error("Gelöschte Annotationen: Datenbankfehler: %s", exc)
+            self._error(handler, "Interner Fehler beim Laden gelöschter Annotationen")
+            return
+
+        out = []
+        for rec in records:
+            tags = []
+            if rec.tags_json:
+                try:
+                    tags = json.loads(rec.tags_json)
+                    if not isinstance(tags, list):
+                        tags = []
+                except (json.JSONDecodeError, ValueError):
+                    pass
+            out.append({
+                "id":         rec.id,
+                "pageUrl":    rec.page_url,
+                "category":   rec.category,
+                "text":       rec.text,
+                "tags":       tags,
+                "elementId":  rec.element_id,
+                "postId":     rec.post_id,
+                "localId":    rec.local_id,
+                "createdAt":  rec.ts * 1000,
+                "createdBy":  rec.created_by,
+                "deletedAt":  rec.deleted_at * 1000 if rec.deleted_at else None,
+                "versionNr":  rec.version_nr,
+            })
+
+        body_out = json.dumps(
+            {"annotations": out, "status": "ok"}, ensure_ascii=False
+        ).encode("utf-8")
+        handler.send_response_body(
+            200, body_out, content_type="application/json; charset=utf-8"
+        )
+        logger.debug(
+            "/_forensic/annotate/deleted: url=%r → %d gelöschte Annotationen",
+            page_url, len(out),
         )
 
     @staticmethod

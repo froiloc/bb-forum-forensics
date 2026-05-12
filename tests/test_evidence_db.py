@@ -385,8 +385,10 @@ class TestEvidenceDb(unittest.TestCase):
         cols = {r[1] for r in old_con.execute(
             "PRAGMA table_info(annotations)"
         ).fetchall()}
+        # Alle Migrationsspalten prüfen — inkl. Build 178
         for expected in (
-            "selection_json", "tags_json", "local_id", "post_id", "created_by"
+            "selection_json", "tags_json", "local_id", "post_id", "created_by",
+            "deleted_at", "version_nr", "prev_id",
         ):
             self.assertIn(expected, cols,
                 msg=f"Migration: Spalte '{expected}' fehlt")
@@ -395,6 +397,10 @@ class TestEvidenceDb(unittest.TestCase):
         self.assertEqual(anns[0].text, "alter Eintrag")
         self.assertIsNone(anns[0].selection_json)
         self.assertEqual(anns[0].created_by, "")
+        # Build 178: neue Felder haben Standardwerte
+        self.assertIsNone(anns[0].deleted_at)
+        self.assertEqual(anns[0].version_nr, 1)
+        self.assertIsNone(anns[0].prev_id)
         old_con.close()
 
     def test_T25_migration_idempotent(self):
@@ -466,6 +472,120 @@ class TestEvidenceDb(unittest.TestCase):
         self.assertIn(id3, remaining_ids, "Annotation id3 muss erhalten bleiben")
         self.assertNotIn(id2, remaining_ids, "Annotation id2 muss gelöscht sein")
         self.assertEqual(len(remaining), 2)
+
+
+# ===========================================================================
+# Build 178 — Bug 2.75: Soft-Delete + Append-only-Log
+# T61 — delete_annotation() setzt deleted_at, kein physisches Löschen
+# T62 — get_annotations() liefert nur aktive (deleted_at IS NULL)
+# T63 — save_annotation() erzeugt neue Version, Vorgänger bekommt deleted_at
+# T64 — restore_annotation() stellt gelöschte Annotation wieder her
+# ===========================================================================
+class TestSoftDeleteBuild178(unittest.TestCase):
+    """T61–T64: Soft-Delete + Append-only-Log (Build 178 — Bug 2.75)."""
+
+    def setUp(self):
+        self.con = sqlite3.connect(":memory:")
+        self.con.row_factory = sqlite3.Row
+        self.edb = EvidenceDb(self.con)
+
+    def tearDown(self):
+        self.con.close()
+
+    def test_T61_soft_delete_setzt_deleted_at(self):
+        """T61: delete_annotation() setzt deleted_at, physischer Datensatz bleibt.
+        Beleg: Projektgespräch 2026-05-12 — Bug 2.75 (BS3).
+        """
+        ann_id = self.edb.save_annotation(
+            "/forum/x", "CAT_OTHER", "Testnotiz", local_id="uuid-t61"
+        )
+        self.assertTrue(self.edb.delete_annotation(ann_id))
+
+        # Datensatz physisch noch vorhanden
+        row = self.con.execute(
+            "SELECT deleted_at FROM annotations WHERE id = ?", (ann_id,)
+        ).fetchone()
+        self.assertIsNotNone(row, "Datensatz muss physisch noch existieren")
+        self.assertIsNotNone(row["deleted_at"], "deleted_at muss gesetzt sein")
+
+        # get_annotations() liefert ihn nicht mehr
+        anns = self.edb.get_annotations("/forum/x")
+        self.assertEqual(len(anns), 0, "Gelöschte Annotation darf nicht in get_annotations erscheinen")
+
+    def test_T62_annotation_count_nur_aktive(self):
+        """T62: annotation_count() zählt nur aktive Annotationen.
+        Beleg: Projektgespräch 2026-05-12 — Bug 2.75 (BS3).
+        """
+        id1 = self.edb.save_annotation("/forum/x", "CAT_OTHER", "A", local_id="uuid-t62a")
+        id2 = self.edb.save_annotation("/forum/x", "CAT_OTHER", "B", local_id="uuid-t62b")
+        self.assertEqual(self.edb.annotation_count(), 2)
+        self.edb.delete_annotation(id1)
+        self.assertEqual(self.edb.annotation_count(), 1)
+
+    def test_T63_save_annotation_append_only(self):
+        """T63: save_annotation() mit existierender local_id erzeugt neuen Datensatz.
+        Vorgänger bekommt deleted_at gesetzt (changed_at-Semantik).
+        Beleg: Projektgespräch 2026-05-12 — Bug 2.75 (BS3).
+        """
+        local_id = "uuid-t63"
+        id_v1 = self.edb.save_annotation(
+            "/forum/x", "CAT_OTHER", "Version 1", local_id=local_id
+        )
+        id_v2 = self.edb.save_annotation(
+            "/forum/x", "CAT_OTHER", "Version 2", local_id=local_id
+        )
+
+        # Zwei verschiedene Datensätze
+        self.assertNotEqual(id_v1, id_v2, "Neue Version muss neuen Datensatz erzeugen")
+
+        # Vorgänger hat deleted_at gesetzt (changed_at)
+        row_v1 = self.con.execute(
+            "SELECT deleted_at, version_nr FROM annotations WHERE id = ?", (id_v1,)
+        ).fetchone()
+        self.assertIsNotNone(row_v1["deleted_at"], "Vorgänger muss deleted_at haben")
+        self.assertEqual(row_v1["version_nr"], 1)
+
+        # Nachfolger ist aktiv mit version_nr=2 und prev_id=id_v1
+        row_v2 = self.con.execute(
+            "SELECT deleted_at, version_nr, prev_id FROM annotations WHERE id = ?", (id_v2,)
+        ).fetchone()
+        self.assertIsNone(row_v2["deleted_at"], "Neue Version muss aktiv sein")
+        self.assertEqual(row_v2["version_nr"], 2)
+        self.assertEqual(row_v2["prev_id"], id_v1)
+
+        # get_annotations() liefert nur Version 2
+        anns = self.edb.get_annotations("/forum/x")
+        self.assertEqual(len(anns), 1)
+        self.assertEqual(anns[0].text, "Version 2")
+
+    def test_T64_restore_annotation(self):
+        """T64: restore_annotation() stellt gelöschte Annotation wieder her.
+        Vorgängerversionen (mit Nachfolger) können nicht wiederhergestellt werden.
+        Beleg: Projektgespräch 2026-05-12 — Bug 2.75 (BS3).
+        """
+        local_id = "uuid-t64"
+        id_v1 = self.edb.save_annotation(
+            "/forum/x", "CAT_OTHER", "Version 1", local_id=local_id
+        )
+        # Löschen
+        self.edb.delete_annotation(id_v1)
+        self.assertEqual(len(self.edb.get_annotations("/forum/x")), 0)
+
+        # Wiederherstellen
+        self.assertTrue(self.edb.restore_annotation(id_v1))
+        anns = self.edb.get_annotations("/forum/x")
+        self.assertEqual(len(anns), 1)
+        self.assertEqual(anns[0].text, "Version 1")
+
+        # Vorgänger einer aktiven Version kann NICHT wiederhergestellt werden
+        id_v2 = self.edb.save_annotation(
+            "/forum/x", "CAT_OTHER", "Version 2", local_id=local_id
+        )
+        # id_v1 ist jetzt Vorgänger von id_v2 → nicht wiederherstellbar
+        self.assertFalse(
+            self.edb.restore_annotation(id_v1),
+            "Vorgängerversion darf nicht wiederhergestellt werden"
+        )
 
 
 if __name__ == "__main__":

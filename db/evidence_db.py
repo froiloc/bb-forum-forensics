@@ -72,7 +72,21 @@
 #
 # Abhaengigkeiten: sqlite3, time, json, uuid -- ausschliesslich Stdlib
 #
-# Version: v0.6.144 · Build: 144 · 2026-05-10
+# Version: v0.6.178 · Build: 178 · 2026-05-12
+#
+#   Build 178 (BS3 — Bug 2.75):
+#     - Soft-Delete + Append-only-Log für Annotationen.
+#     - annotations: neue Spalten deleted_at, version_nr, prev_id.
+#     - delete_annotation(): setzt deleted_at statt DELETE FROM.
+#     - save_annotation(): neue Version anlegen (version_nr++, prev_id)
+#       statt UPDATE; Vorgänger bekommt deleted_at=now (changed_at).
+#     - get_annotations() / get_all_annotations(): WHERE deleted_at IS NULL.
+#     - get_deleted_annotations(page_url): gelöschte ohne Nachfolger.
+#     - restore_annotation(id): deleted_at=NULL zurücksetzen.
+#     - get_annotation_history(annotation_id): Versionskette via prev_id.
+#     - annotation_count(): nur aktive (deleted_at IS NULL).
+#     - AnnotationRecord: neue Felder deleted_at, version_nr, prev_id.
+#     - Beleg: Projektgespräch 2026-05-12 — Bug 2.75 (BS3).
 # =============================================================================
 
 from __future__ import annotations
@@ -160,7 +174,16 @@ CREATE TABLE IF NOT EXISTS annotations (
     tags_json       TEXT DEFAULT NULL,
     local_id        TEXT DEFAULT NULL,
     post_id         INTEGER DEFAULT NULL,
-    created_by      TEXT NOT NULL DEFAULT ''
+    created_by      TEXT NOT NULL DEFAULT '',
+    -- Build 178 (Bug 2.75): Soft-Delete + Append-only-Log
+    -- deleted_at: NULL = aktiv; gesetzt = gelöscht oder durch Nachfolger ersetzt.
+    --   Semantik: deleted_at IS NOT NULL + Nachfolger (prev_id=this.id) = changed_at
+    --             deleted_at IS NOT NULL + kein Nachfolger = tatsächlich gelöscht
+    -- version_nr: 1 = Ersteintrag, wird bei jeder Änderung inkrementiert.
+    -- prev_id: Zeiger auf den unmittelbaren Vorgänger-Datensatz (NULL = Ersteintrag).
+    deleted_at      INTEGER DEFAULT NULL,
+    version_nr      INTEGER NOT NULL DEFAULT 1,
+    prev_id         INTEGER DEFAULT NULL REFERENCES annotations(id)
 );
 
 -- Berichts-Metadaten. Nur ein Bericht vom Typ 'final' zulaessig.
@@ -263,6 +286,18 @@ CREATE TABLE IF NOT EXISTS report_approvals (
     is_final    INTEGER NOT NULL DEFAULT 0
 );
 
+-- Ermittler-Aliasse: Suchbegriffe die auf allen Seiten gehighlightet werden.
+-- Build 179 (Bug 2.79): Vom Ermittler gepflegte Liste von Begriffen,
+-- die immer im Forum-Text hervorgehoben werden (z.B. Spitznamen).
+-- Gehört zu evidence_<uid>.db (benutzerspezifisch).
+CREATE TABLE IF NOT EXISTS investigator_aliases (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    term        TEXT    NOT NULL UNIQUE,   -- Suchbegriff (case-insensitive UNIQUE)
+    created_by  TEXT    NOT NULL DEFAULT '',
+    created_at  INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ia_term_idx ON investigator_aliases (term);
+
 -- Editor-Lock (unveraendert).
 CREATE TABLE IF NOT EXISTS editor_locks (
     resource    TEXT    NOT NULL PRIMARY KEY,
@@ -286,6 +321,9 @@ CREATE INDEX IF NOT EXISTS pv_url_idx       ON page_visits (page_url);
 CREATE INDEX IF NOT EXISTS ve_url_idx       ON viewport_events (page_url);
 CREATE INDEX IF NOT EXISTS ann_url_idx      ON annotations (page_url);
 CREATE INDEX IF NOT EXISTS ann_cat_idx      ON annotations (category);
+-- Build 178: ann_active_url_idx und ann_prev_id_idx werden in
+-- _migrate_schema() angelegt (setzen deleted_at/prev_id voraus,
+-- die per ALTER TABLE ergänzt werden). Beleg: T24-Regression Build 178.
 CREATE INDEX IF NOT EXISTS rep_type_idx     ON reports (report_type);
 CREATE INDEX IF NOT EXISTS rep_status_idx   ON reports (status);
 CREATE INDEX IF NOT EXISTS rb_report_idx    ON report_blocks (report_id);
@@ -303,11 +341,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS reports_one_final_idx
     ON reports (report_type)
     WHERE report_type = 'final';
 
--- annotations_local_id_uniq: wird in _migrate_schema() angelegt,
--- NICHT hier, weil local_id in aelteren DBs fehlen kann (T24-Migration).
--- SQLite-Einschraenkung: ON CONFLICT(col) erkennt keine partiellen Indizes.
--- UPSERT in save_annotation() nutzt daher SELECT+UPDATE/INSERT.
--- Beleg: Build 089, SQLite-Dokumentation.
+-- Build 178: annotations_local_id_uniq (UNIQUE) entfernt — Append-only-Log
+-- erlaubt mehrere Datensätze mit gleicher local_id (Versionen).
+-- ann_local_id_idx (nicht-unique) wird in _migrate_schema() angelegt.
+-- save_annotation() sucht aktiven Eintrag via local_id + deleted_at IS NULL.
 """
 
 # Migrationsspalten fuer aeltere evidence_db-Instanzen.
@@ -318,6 +355,10 @@ _MIGRATION_COLUMNS: list[tuple[str, str, str]] = [
     ("annotations", "local_id",       "TEXT DEFAULT NULL"),
     ("annotations", "post_id",        "INTEGER DEFAULT NULL"),
     ("annotations", "created_by",     "TEXT NOT NULL DEFAULT ''"),
+    # Build 178 (Bug 2.75): Soft-Delete + Append-only-Log
+    ("annotations", "deleted_at",     "INTEGER DEFAULT NULL"),
+    ("annotations", "version_nr",     "INTEGER NOT NULL DEFAULT 1"),
+    ("annotations", "prev_id",        "INTEGER DEFAULT NULL"),
 ]
 
 
@@ -348,6 +389,21 @@ class AnnotationRecord:
     local_id:        Optional[str] = None
     post_id:         Optional[int] = None
     created_by:      str           = ""
+    # Build 178 (Bug 2.75): Soft-Delete + Versionierung
+    deleted_at:  Optional[int] = None   # NULL=aktiv, gesetzt=gelöscht/ersetzt
+    version_nr:  int           = 1      # 1=Ersteintrag, bei Änderung inkrementiert
+    prev_id:     Optional[int] = None   # Vorgänger-ID (NULL=Ersteintrag)
+
+
+@dataclass
+class AliasRecord:
+    """Ermittler-Alias (Suchbegriff für dauerhaftes Highlighting).
+    Beleg: Bug 2.79, Build 179.
+    """
+    id:         int
+    term:       str
+    created_by: str = ""
+    created_at: int = 0
 
 
 @dataclass
@@ -496,19 +552,51 @@ class EvidenceDb:
                 else:
                     raise
 
-        # annotations_local_id_uniq nach Spalten-Migration anlegen.
+        # Build 178 (Bug 2.75): annotations_local_id_uniq ENTFERNT.
+        # Der eindeutige Index auf local_id verhindert mehrere Versionen
+        # mit gleicher local_id (Append-only-Prinzip). Er wird durch
+        # ann_local_id_idx (nicht-unique) ersetzt.
+        # Beleg: Projektgespräch 2026-05-12 — T63-Regression.
         try:
+            self._con.execute("DROP INDEX IF EXISTS annotations_local_id_uniq")
             self._con.execute(
-                "CREATE UNIQUE INDEX IF NOT EXISTS annotations_local_id_uniq "
-                "ON annotations (local_id) "
-                "WHERE local_id IS NOT NULL"
+                "CREATE INDEX IF NOT EXISTS ann_local_id_idx "
+                "ON annotations (local_id) WHERE local_id IS NOT NULL"
             )
             self._con.commit()
-            logger.debug("evidence_db Migration: annotations_local_id_uniq sichergestellt")
+            logger.debug("evidence_db Migration: ann_local_id_idx (nicht-unique) sichergestellt")
         except sqlite3.OperationalError as exc:
             logger.warning(
-                "evidence_db Migration: annotations_local_id_uniq fehlgeschlagen: %s", exc
+                "evidence_db Migration: ann_local_id_idx fehlgeschlagen: %s", exc
             )
+
+        # Build 178 (Bug 2.75): Partielle Indizes auf new columns anlegen.
+        # Müssen nach ALTER TABLE (Migration) angelegt werden, da sie
+        # deleted_at / prev_id voraussetzen.
+        # Beleg: T24-Regression Build 178 — partieller Index mit WHERE deleted_at
+        # schlägt in _SCHEMA_DDL fehl wenn Spalte noch nicht existiert.
+        _partial_indices = [
+            (
+                "ann_active_url_idx",
+                "CREATE INDEX IF NOT EXISTS ann_active_url_idx "
+                "ON annotations (page_url) WHERE deleted_at IS NULL",
+            ),
+            (
+                "ann_prev_id_idx",
+                "CREATE INDEX IF NOT EXISTS ann_prev_id_idx "
+                "ON annotations (prev_id) WHERE prev_id IS NOT NULL",
+            ),
+        ]
+        for idx_name, idx_ddl in _partial_indices:
+            try:
+                self._con.execute(idx_ddl)
+                self._con.commit()
+                logger.debug("evidence_db Migration: Index '%s' sichergestellt", idx_name)
+            except sqlite3.OperationalError as exc:
+                logger.warning(
+                    "evidence_db Migration: Index '%s' fehlgeschlagen: %s",
+                    idx_name, exc,
+                )
 
     # ------------------------------------------------------------------
     # Seitenbesuche
@@ -632,6 +720,22 @@ class EvidenceDb:
         created_by: str = "",
         ts: Optional[int] = None,
     ) -> int:
+        """
+        Speichert eine Annotation nach dem Append-only-Log-Prinzip.
+
+        Build 178 (Bug 2.75): Kein UPDATE mehr. Stattdessen:
+          - Existiert bereits ein aktiver Datensatz mit gleicher local_id,
+            wird dieser als Vorgänger markiert (deleted_at = now) und ein
+            neuer Datensatz angelegt (version_nr++, prev_id = alter.id).
+          - Existiert noch kein Datensatz für local_id, wird er neu angelegt
+            (version_nr = 1, prev_id = NULL).
+          - Ohne local_id: immer Insert (anonyme Einmal-Annotation).
+
+        Semantik deleted_at beim Vorgänger:
+          Vorgänger.deleted_at gesetzt + neuer Datensatz mit prev_id = Vorgänger.id
+          → Bedeutung: "geändert am ts", nicht "gelöscht".
+          Beleg: Projektgespräch 2026-05-12 — Bug 2.75 (BS3).
+        """
         if category not in VALID_CATEGORIES:
             raise EvidenceDbError(
                 f"Unbekannte Kategorie '{category}'. "
@@ -641,88 +745,295 @@ class EvidenceDb:
             ts = int(time.time())
 
         if local_id is not None:
-            # UPSERT fuer local_id: SQLite ON CONFLICT(col) unterstuetzt keine
-            # partiellen Unique-Indizes. Daher: SELECT-dann-UPDATE-oder-INSERT.
-            # Beleg: SQLite-Dokumentation, ON CONFLICT-Einschraenkung, Build 089.
+            # Aktiven Vorgänger suchen (deleted_at IS NULL)
             existing = self._con.execute(
-                "SELECT id FROM annotations WHERE local_id = ?", (local_id,)
+                "SELECT id, version_nr FROM annotations "
+                "WHERE local_id = ? AND deleted_at IS NULL",
+                (local_id,),
             ).fetchone()
+
             if existing is not None:
-                # Bestehenden Eintrag aktualisieren
+                # Append-only: Vorgänger als "ersetzt" markieren (deleted_at = now)
+                # und neuen Datensatz anlegen (version_nr+1, prev_id = alter.id).
+                old_id      = int(existing["id"])
+                new_version = int(existing["version_nr"]) + 1
+
                 self._con.execute(
-                    "UPDATE annotations SET "
-                    "  page_url=?, element_id=?, category=?, text=?, ts=?, "
-                    "  selection_json=?, tags_json=?, post_id=?, created_by=? "
-                    "WHERE local_id=?",
-                    (
-                        page_url, element_id, category, text, ts,
-                        selection_json, tags_json, post_id, created_by,
-                        local_id,
-                    ),
+                    "UPDATE annotations SET deleted_at = ? WHERE id = ?",
+                    (ts, old_id),
                 )
-                self._con.commit()
-                return int(existing["id"])
-            else:
                 cursor = self._con.execute(
                     "INSERT INTO annotations "
-                    "(page_url, element_id, category, text, ts, investigator_id, "
-                    " selection_json, tags_json, local_id, post_id, created_by) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    "(page_url, element_id, category, text, ts, investigator_id,"
+                    " selection_json, tags_json, local_id, post_id, created_by,"
+                    " version_nr, prev_id) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        page_url, element_id, category, text, ts, investigator_id,
+                        selection_json, tags_json, local_id, post_id, created_by,
+                        new_version, old_id,
+                    ),
+                )
+                logger.debug(
+                    "save_annotation: Neue Version v%d für local_id=%s "
+                    "(Vorgänger id=%d als ersetzt markiert)",
+                    new_version, local_id, old_id,
+                )
+            else:
+                # Ersteintrag für diese local_id
+                cursor = self._con.execute(
+                    "INSERT INTO annotations "
+                    "(page_url, element_id, category, text, ts, investigator_id,"
+                    " selection_json, tags_json, local_id, post_id, created_by,"
+                    " version_nr, prev_id) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, NULL)",
                     (
                         page_url, element_id, category, text, ts, investigator_id,
                         selection_json, tags_json, local_id, post_id, created_by,
                     ),
                 )
         else:
+            # Ohne local_id: anonyme Einmal-Annotation, immer Insert
             cursor = self._con.execute(
                 "INSERT INTO annotations "
-                "(page_url, element_id, category, text, ts, investigator_id, "
-                " selection_json, tags_json, local_id, post_id, created_by) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "(page_url, element_id, category, text, ts, investigator_id,"
+                " selection_json, tags_json, local_id, post_id, created_by,"
+                " version_nr, prev_id) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, 1, NULL)",
                 (
                     page_url, element_id, category, text, ts, investigator_id,
-                    selection_json, tags_json, None, post_id, created_by,
+                    selection_json, tags_json, post_id, created_by,
                 ),
             )
         self._con.commit()
-        # Bei UPSERT gibt lastrowid die ID des betroffenen Eintrags zurueck
-        if cursor.lastrowid:
-            return cursor.lastrowid
-        # Fallback: ID per local_id nachschlagen
-        row = self._con.execute(
-            "SELECT id FROM annotations WHERE local_id = ?", (local_id,)
-        ).fetchone()
-        return int(row["id"]) if row else 0
+        return cursor.lastrowid or 0
 
     def delete_annotation(self, annotation_id: int) -> bool:
+        """
+        Soft-Delete: setzt deleted_at statt physisch zu löschen.
+
+        Build 178 (Bug 2.75): Kein DELETE FROM mehr.
+        Semantik: Eintrag ohne Nachfolger (kein anderer Datensatz hat prev_id=this.id)
+        = tatsächlich gelöscht, wiederherstellbar via restore_annotation().
+        Beleg: Projektgespräch 2026-05-12 — Bug 2.75 (BS3).
+        """
+        ts_now = int(time.time())
         cursor = self._con.execute(
-            "DELETE FROM annotations WHERE id = ?", (annotation_id,)
+            "UPDATE annotations SET deleted_at = ? "
+            "WHERE id = ? AND deleted_at IS NULL",
+            (ts_now, annotation_id),
         )
         self._con.commit()
-        return cursor.rowcount > 0
+        deleted = cursor.rowcount > 0
+        if deleted:
+            logger.debug("delete_annotation: Soft-Delete id=%d (deleted_at=%d)",
+                         annotation_id, ts_now)
+        else:
+            logger.warning(
+                "delete_annotation: id=%d nicht gefunden oder bereits gelöscht",
+                annotation_id,
+            )
+        return deleted
+
+    def restore_annotation(self, annotation_id: int) -> bool:
+        """
+        Stellt eine soft-gelöschte Annotation wieder her (deleted_at = NULL).
+
+        Nur möglich wenn kein Nachfolger existiert (kein anderer Datensatz hat
+        prev_id = annotation_id) — sonst wäre es eine Vorgängerversion, keine
+        echte Löschung.
+        Beleg: Projektgespräch 2026-05-12 — Bug 2.75 (BS3).
+        """
+        # Prüfen ob ein Nachfolger existiert (dann ist dies "nur" eine alte Version)
+        successor = self._con.execute(
+            "SELECT id FROM annotations WHERE prev_id = ? LIMIT 1",
+            (annotation_id,),
+        ).fetchone()
+        if successor is not None:
+            logger.warning(
+                "restore_annotation: id=%d ist eine Vorgängerversion "
+                "(Nachfolger id=%d) — keine Wiederherstellung möglich",
+                annotation_id, int(successor["id"]),
+            )
+            return False
+
+        cursor = self._con.execute(
+            "UPDATE annotations SET deleted_at = NULL "
+            "WHERE id = ? AND deleted_at IS NOT NULL",
+            (annotation_id,),
+        )
+        self._con.commit()
+        restored = cursor.rowcount > 0
+        if restored:
+            logger.info("restore_annotation: Wiederhergestellt id=%d", annotation_id)
+        return restored
+
+    def get_annotation_history(self, annotation_id: int) -> list[AnnotationRecord]:
+        """
+        Gibt die vollständige Versionskette einer Annotation zurück,
+        geordnet von ältester zu aktuellster Version.
+
+        Startet bei annotation_id und folgt prev_id-Zeigern rückwärts bis zum
+        Ersteintrag (prev_id IS NULL). Gibt alle Versionen chronologisch zurück.
+        Beleg: Projektgespräch 2026-05-12 — Bug 2.75 (BS3).
+        """
+        # Aktuellen Datensatz laden
+        current = self._con.execute(
+            "SELECT id, page_url, element_id, category, text, ts, "
+            "       investigator_id, selection_json, tags_json, local_id, "
+            "       post_id, created_by, deleted_at, version_nr, prev_id "
+            "FROM annotations WHERE id = ?",
+            (annotation_id,),
+        ).fetchone()
+        if current is None:
+            return []
+
+        chain: list[AnnotationRecord] = [self._row_to_annotation(current)]
+
+        # Vorgängerkette rückwärts traversieren
+        prev_id = current["prev_id"]
+        visited: set[int] = {annotation_id}
+        while prev_id is not None:
+            if prev_id in visited:
+                logger.warning(
+                    "get_annotation_history: Zyklus entdeckt bei prev_id=%d", prev_id
+                )
+                break
+            visited.add(prev_id)
+            row = self._con.execute(
+                "SELECT id, page_url, element_id, category, text, ts, "
+                "       investigator_id, selection_json, tags_json, local_id, "
+                "       post_id, created_by, deleted_at, version_nr, prev_id "
+                "FROM annotations WHERE id = ?",
+                (prev_id,),
+            ).fetchone()
+            if row is None:
+                break
+            chain.append(self._row_to_annotation(row))
+            prev_id = row["prev_id"]
+
+        # Älteste Version zuerst
+        chain.reverse()
+        return chain
+
+    def get_deleted_annotations(
+        self, page_url: Optional[str] = None
+    ) -> list[AnnotationRecord]:
+        """
+        Gibt tatsächlich gelöschte Annotationen zurück — d.h. Einträge mit
+        deleted_at IS NOT NULL ohne Nachfolger (kein anderer Datensatz hat
+        prev_id = this.id). Vorgängerversionen (mit Nachfolger) werden nicht
+        zurückgegeben.
+
+        Args:
+            page_url: Wenn angegeben, nur Annotationen dieser Seite.
+        Beleg: Projektgespräch 2026-05-12 — Bug 2.75 (BS3).
+        """
+        # Subquery: Alle prev_ids die als Vorgänger referenziert werden
+        base_query = (
+            "SELECT id, page_url, element_id, category, text, ts, "
+            "       investigator_id, selection_json, tags_json, local_id, "
+            "       post_id, created_by, deleted_at, version_nr, prev_id "
+            "FROM annotations "
+            "WHERE deleted_at IS NOT NULL "
+            "  AND id NOT IN (SELECT prev_id FROM annotations WHERE prev_id IS NOT NULL)"
+        )
+        if page_url:
+            rows = self._con.execute(
+                base_query + " AND page_url = ? ORDER BY deleted_at DESC",
+                (page_url,),
+            ).fetchall()
+        else:
+            rows = self._con.execute(
+                base_query + " ORDER BY deleted_at DESC"
+            ).fetchall()
+        return [self._row_to_annotation(r) for r in rows]
 
     def get_annotations(self, page_url: str) -> list[AnnotationRecord]:
+        """Gibt aktive Annotationen für eine URL zurück (deleted_at IS NULL)."""
         rows = self._con.execute(
             "SELECT id, page_url, element_id, category, text, ts, "
             "       investigator_id, selection_json, tags_json, local_id, "
-            "       post_id, created_by "
-            "FROM annotations WHERE page_url = ? ORDER BY ts ASC",
+            "       post_id, created_by, deleted_at, version_nr, prev_id "
+            "FROM annotations "
+            "WHERE page_url = ? AND deleted_at IS NULL "
+            "ORDER BY ts ASC",
             (page_url,),
         ).fetchall()
         return [self._row_to_annotation(r) for r in rows]
 
     def get_all_annotations(self) -> list[AnnotationRecord]:
+        """Gibt alle aktiven Annotationen zurück (deleted_at IS NULL)."""
         rows = self._con.execute(
             "SELECT id, page_url, element_id, category, text, ts, "
             "       investigator_id, selection_json, tags_json, local_id, "
-            "       post_id, created_by "
-            "FROM annotations ORDER BY ts DESC"
+            "       post_id, created_by, deleted_at, version_nr, prev_id "
+            "FROM annotations "
+            "WHERE deleted_at IS NULL "
+            "ORDER BY ts DESC"
         ).fetchall()
         return [self._row_to_annotation(r) for r in rows]
 
     def annotation_count(self) -> int:
-        row = self._con.execute("SELECT COUNT(*) FROM annotations").fetchone()
+        """Zählt nur aktive Annotationen (deleted_at IS NULL)."""
+        row = self._con.execute(
+            "SELECT COUNT(*) FROM annotations WHERE deleted_at IS NULL"
+        ).fetchone()
         return int(row[0]) if row else 0
+
+    # ------------------------------------------------------------------
+    # Ermittler-Aliasse (Bug 2.79, Build 179)
+    # ------------------------------------------------------------------
+
+    def save_alias(self, term: str, created_by: str = "") -> int:
+        """
+        Legt einen neuen Alias-Begriff an oder gibt die ID des bestehenden zurück.
+        UNIQUE auf term (COLLATE NOCASE via SQL-Vergleich).
+        Beleg: Bug 2.79 — Projektgespräch 2026-05-12.
+        """
+        term = term.strip()
+        if not term:
+            raise EvidenceDbError("Alias-Begriff darf nicht leer sein")
+        ts = int(time.time())
+        try:
+            cursor = self._con.execute(
+                "INSERT INTO investigator_aliases (term, created_by, created_at) "
+                "VALUES (?, ?, ?)",
+                (term, created_by, ts),
+            )
+            self._con.commit()
+            return cursor.lastrowid or 0
+        except sqlite3.IntegrityError:
+            # Term existiert bereits (UNIQUE-Constraint)
+            row = self._con.execute(
+                "SELECT id FROM investigator_aliases WHERE term = ? COLLATE NOCASE",
+                (term,),
+            ).fetchone()
+            return int(row["id"]) if row else 0
+
+    def delete_alias(self, alias_id: int) -> bool:
+        """Löscht einen Alias-Eintrag anhand seiner ID. Physisches Delete (kein Soft-Delete)."""
+        cursor = self._con.execute(
+            "DELETE FROM investigator_aliases WHERE id = ?", (alias_id,)
+        )
+        self._con.commit()
+        return cursor.rowcount > 0
+
+    def get_aliases(self) -> list:
+        """Gibt alle Aliasse alphabetisch sortiert zurück."""
+        rows = self._con.execute(
+            "SELECT id, term, created_by, created_at "
+            "FROM investigator_aliases ORDER BY term ASC"
+        ).fetchall()
+        result = []
+        for r in rows:
+            result.append(AliasRecord(
+                id=int(r["id"]),
+                term=str(r["term"]),
+                created_by=str(r["created_by"]) if r["created_by"] else "",
+                created_at=int(r["created_at"]),
+            ))
+        return result
 
     def get_annotation_counts_by_category(self) -> dict:
         rows = self._con.execute(
@@ -1722,6 +2033,22 @@ class EvidenceDb:
                 str(r["created_by"])
                 if ("created_by" in keys and r["created_by"] is not None)
                 else ""
+            ),
+            # Build 178 (Bug 2.75): Soft-Delete + Versionierung
+            deleted_at=(
+                int(r["deleted_at"])
+                if ("deleted_at" in keys and r["deleted_at"] is not None)
+                else None
+            ),
+            version_nr=(
+                int(r["version_nr"])
+                if ("version_nr" in keys and r["version_nr"] is not None)
+                else 1
+            ),
+            prev_id=(
+                int(r["prev_id"])
+                if ("prev_id" in keys and r["prev_id"] is not None)
+                else None
             ),
         )
 

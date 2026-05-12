@@ -137,6 +137,7 @@ class ForensicApi:
         self._placeholders    = None  # [B6]
         self._templates_ep    = None  # [B6]
         self._knownusers      = None  # [BS3 Bug 2.78 Build 175]
+        self._aliases         = None  # [BS3 Bug 2.79 Build 179]
 
     def dispatch(
         self,
@@ -157,7 +158,7 @@ class ForensicApi:
             self._get_page().handle(handler, params)
             return
 
-        # /_forensic/annotate (POST → anlegen, DELETE → löschen)
+        # /_forensic/annotate (POST → anlegen, DELETE → soft-löschen)
         if url_path == "/_forensic/annotate":
             if method not in ("POST", "DELETE"):
                 self._method_not_allowed(handler)
@@ -166,6 +167,29 @@ class ForensicApi:
             if body is None:
                 return
             self._get_annotate().handle(handler, body)
+            return
+
+        # /_forensic/annotate/restore (POST) [Build 178 — Bug 2.75]
+        # Stellt eine soft-gelöschte Annotation wieder her.
+        # Body: {"id": <annotation_id>}
+        if url_path == "/_forensic/annotate/restore":
+            if method != "POST":
+                self._method_not_allowed(handler)
+                return
+            body = self._read_body(handler)
+            if body is None:
+                return
+            self._get_annotate().handle_restore(handler, body)
+            return
+
+        # /_forensic/annotate/deleted (GET) [Build 178 — Bug 2.75]
+        # Liefert gelöschte Annotationen für das Wiederherstellungs-Modal.
+        # Query: ?url=<page_url> (optional)
+        if url_path == "/_forensic/annotate/deleted":
+            if method not in ("GET", "HEAD"):
+                self._method_not_allowed(handler)
+                return
+            self._get_annotate().handle_deleted(handler, params)
             return
 
         # /_forensic/status (GET)
@@ -177,13 +201,21 @@ class ForensicApi:
             return
 
         # /_forensic/knownusers (GET) [BS3 Bug 2.78 Build 175/176]
-        # Build 176: params (q-Parameter) jetzt mitgegeben — Suchendpunkt.
-        # Beleg: Projektgespräch 2026-05-12 — Bug 2.78 überarbeitet.
         if url_path == "/_forensic/knownusers":
             if method not in ("GET", "HEAD"):
                 self._method_not_allowed(handler)
                 return
             self._get_knownusers().handle(handler, params)
+            return
+
+        # /_forensic/aliases (GET/POST/DELETE) [BS3 Bug 2.79 Build 179]
+        # Ermittler-Aliasse: Suchbegriffe die dauerhaft gehighlightet werden.
+        if url_path == "/_forensic/aliases":
+            if method not in ("GET", "POST", "DELETE"):
+                self._method_not_allowed(handler)
+                return
+            body = self._read_body(handler) if method in ("POST", "DELETE") else b""
+            self._get_aliases().handle(handler, method, body)
             return
 
         # /_forensic/viewport (POST)
@@ -704,8 +736,15 @@ class ForensicApi:
         return self._trace_sequence
 
     def _get_knownusers(self):
-        """[BS3 Bug 2.78] Lazy-Init fuer KnownUsersEndpoint. Beleg: Projektgespraech 2026-05-11."""
+        """[BS3 Bug 2.78] Lazy-Init fuer KnownUsersEndpoint."""
         if self._knownusers is None:
             from forensic_api.knownusers import KnownUsersEndpoint
             self._knownusers = KnownUsersEndpoint(self._bundle, self._context, self._config)
         return self._knownusers
+
+    def _get_aliases(self):
+        """[BS3 Bug 2.79] Lazy-Init fuer AliasesEndpoint. Beleg: Projektgespraech 2026-05-12."""
+        if self._aliases is None:
+            from forensic_api.aliases import AliasesEndpoint
+            self._aliases = AliasesEndpoint(self._bundle, self._context, self._config)
+        return self._aliases

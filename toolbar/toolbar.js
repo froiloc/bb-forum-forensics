@@ -2,7 +2,22 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 177 · 2026-05-12
+ * Version: v0.1.0 · Build: 179 · 2026-05-12
+ *
+ * Änderungen Build 179 (BS3):
+ *   Bug 2.88: 'von <ermittler>' im Popup-Header nur wenn
+ *     ann.createdBy != investigatorUsername.
+ *   Bug 2.79: AliasHighlightModule — lädt Aliasse per page:loaded,
+ *     CSS Custom Highlights API (Set 'forensic-alias'), <mark>-Fallback.
+ *     AliasModalModule — Modal zum Anlegen/Löschen von Aliassen.
+ *     Schaltfläche '✱ Aliasse' in Sektion 3.
+ *
+ * Änderungen Build 178 (BS3 — Bug 2.75):
+ *   RestoreModalModule: Wiederherstellungs-Modal für gelöschte
+ *     Annotationen. Schaltfläche '↺ Gelöscht' in Sektion 3.
+ *     Lädt GET /_forensic/annotate/deleted, POST restore.
+ *   API_ANNOTATE_RESTORE / API_ANNOTATE_DELETED ergänzt.
+ *   _state: forumUsername + forumUserId Initialisierung.
  *
  * Änderungen Build 177 (BS3):
  *   CSS: Panel-Overflow umstrukturiert — Scrollbar erschien beim
@@ -375,6 +390,11 @@
     API_TRACE_SEQUENCE:   "/_forensic/trace_sequence",
     // Build 175 (Bug 2.78): Bekannte Beschuldigte-Benutzer
     API_KNOWN_USERS:      "/_forensic/knownusers",
+    // Build 178 (Bug 2.75): Soft-Delete + Wiederherstellung
+    API_ANNOTATE_RESTORE: "/_forensic/annotate/restore",
+    API_ANNOTATE_DELETED: "/_forensic/annotate/deleted",
+    // Build 179 (Bug 2.79): Ermittler-Aliasse
+    API_ALIASES:          "/_forensic/aliases",
 
     // Annotationskategorien (Reihenfolge = Tastenkürzel 1-6)
     CATEGORIES: [
@@ -501,6 +521,8 @@
     },
     investigatorUsername: "",
     forumHostname:        "",
+    forumUsername:        null,   // Echter Forum-Username des Beschuldigten (Build 178)
+    forumUserId:          null,   // Forum-User-ID (Build 178)
     lastSaveTs:           null,
     syncErrorCount:       0,
     // Kontext-Navigator (Build 066, Bauplan KN §3)
@@ -1190,6 +1212,22 @@
         });
       }
 
+      // Wiederherstellungs-Modal (Build 178 — Bug 2.75)
+      var restoreBtn = document.getElementById("forensic-btn-restore");
+      if (restoreBtn) {
+        restoreBtn.addEventListener("click", function () {
+          RestoreModalModule.open();
+        });
+      }
+
+      // Alias-Modal (Build 179 — Bug 2.79)
+      var aliasBtn = document.getElementById("forensic-btn-aliases");
+      if (aliasBtn) {
+        aliasBtn.addEventListener("click", function () {
+          AliasModalModule.open();
+        });
+      }
+
       // Navigation: Pfeiltasten
       var prevBtn = document.getElementById("forensic-btn-nav-prev");
       var nextPgBtn = document.getElementById("forensic-btn-nav-next");
@@ -1265,6 +1303,14 @@
           'title="Ansicht wechseln [Original / Angepasst]" ' +
           'data-viewmode="enhanced">' +
           '⊞ Angepasst</button>' +
+          // Build 178 (Bug 2.75): Wiederherstellungs-Button
+          '<button id="forensic-btn-restore" class="forensic-btn" ' +
+          'aria-label="Gelöschte Annotationen wiederherstellen" ' +
+          'title="Gelöschte Annotationen [↺]">↺ Gelöscht</button>' +
+          // Build 179 (Bug 2.79): Alias-Modal
+          '<button id="forensic-btn-aliases" class="forensic-btn" ' +
+          'aria-label="Alias-Liste öffnen" ' +
+          'title="Aliasse (dauerhafte Suchbegriffe)">✱ Aliasse</button>' +
           '</div>' +
 
         '</div>' + // /zone-center
@@ -2205,12 +2251,21 @@
       _popupEl.setAttribute("aria-modal", "true");
       _popupEl.setAttribute("aria-labelledby", "forensic-popup-title");
       _popupEl.className = "forensic-popup";
+      // Bug 2.88 (Build 179): 'von <ermittler>' nur wenn Ersteller != ich.
+      // Hält die Oberfläche schlicht für eigene Annotationen.
+      // Beleg: Projektgespräch 2026-05-12.
+      var createdBy     = ann.createdBy || "";
+      var isForeign     = createdBy && createdBy !== _state.investigatorUsername;
+      var foreignBadge  = isForeign
+        ? ' <span class="forensic-popup-author-badge">von ' + _esc(createdBy) + '</span>'
+        : '';
+
       _popupEl.innerHTML =
         // --- Header ---
         '<div class="forensic-popup-header">' +
         '<span id="forensic-popup-title" class="forensic-popup-title">' +
         'Annotation · <span id="forensic-popup-cat-badge" style="color:' + catColor + '">' +
-        _esc(catLabel) + '</span></span>' +
+        _esc(catLabel) + '</span>' + foreignBadge + '</span>' +
         '<button class="forensic-popup-close" aria-label="Schließen" ' +
         'id="forensic-popup-btn-close">✕</button>' +
         '</div>' +
@@ -2611,7 +2666,460 @@
   })();
 
   // ===========================================================================
-  // PHASE 6: HoverMenuModule  // ===========================================================================
+  // ===========================================================================
+  // RestoreModalModule — Wiederherstellung gelöschter Annotationen (Build 178)
+  // ===========================================================================
+  // Bug 2.75: Gelöschte Annotationen sollen wiederherstellbar sein.
+  //
+  // Aufruf: RestoreModalModule.open() — öffnet Modal für aktuelle Seite.
+  //   Lädt GET /_forensic/annotate/deleted?url=<aktuell>
+  //   Zeigt Tabelle der gelöschten Annotationen.
+  //   Schaltfläche "↺ Wiederherstellen" → POST /_forensic/annotate/restore.
+  //   Nach Wiederherstellung: Seite neu laden (loadAnnotations + restoreAll).
+  //
+  // Beleg: Projektgespräch 2026-05-12 — Bug 2.75 (BS3).
+  // ===========================================================================
+  var RestoreModalModule = (function () {
+    'use strict';
+
+    var _modalEl = null;
+
+    var _CAT_LABEL = {};
+    (function () {
+      var cats = ForensicToolbar.config.CATEGORIES || [];
+      for (var i = 0; i < cats.length; i++) {
+        _CAT_LABEL[cats[i].id] = cats[i].icon + " " + cats[i].label;
+      }
+    })();
+
+    function open() {
+      if (_modalEl) return; // Bereits offen
+      var url = _state.currentUrl || location.pathname + location.search;
+      _dbg("[RestoreModal] Lade gelöschte Annotationen für:", url);
+
+      ajaxGet(
+        ForensicToolbar.config.API_ANNOTATE_DELETED +
+        "?url=" + encodeURIComponent(url)
+      )
+        .then(function (data) {
+          var anns = (data && Array.isArray(data.annotations)) ? data.annotations : [];
+          _dbg("[RestoreModal] Gelöschte Annotationen:", anns.length);
+          _render(anns);
+        })
+        .catch(function (err) {
+          _dbg("[RestoreModal] Ladefehler:", err);
+          _render([]);
+        });
+    }
+
+    function close() {
+      if (_modalEl) {
+        _modalEl.remove();
+        _modalEl = null;
+      }
+    }
+
+    function _render(anns) {
+      if (_modalEl) _modalEl.remove();
+
+      _modalEl = document.createElement("div");
+      _modalEl.id = "forensic-restore-modal";
+      _modalEl.className = "forensic-restore-modal";
+      _modalEl.setAttribute("role", "dialog");
+      _modalEl.setAttribute("aria-modal", "true");
+      _modalEl.setAttribute("aria-labelledby", "forensic-restore-title");
+
+      var listHtml = "";
+      if (anns.length === 0) {
+        listHtml = '<p class="forensic-restore-empty">Keine gelöschten Annotationen auf dieser Seite.</p>';
+      } else {
+        listHtml = '<ul class="forensic-restore-list">';
+        for (var i = 0; i < anns.length; i++) {
+          var a        = anns[i];
+          var catLabel = _CAT_LABEL[a.category] || a.category;
+          var deleted  = a.deletedAt
+            ? new Date(a.deletedAt).toLocaleString("de-DE")
+            : "—";
+          var preview  = (a.text || "").substring(0, 60) ||
+                         (a.selection && a.selection.textContent
+                           ? a.selection.textContent.substring(0, 60)
+                           : "—");
+          listHtml +=
+            '<li class="forensic-restore-item" data-id="' + _esc(String(a.id)) + '">' +
+            '<span class="forensic-restore-cat">' + _esc(catLabel) + '</span>' +
+            '<span class="forensic-restore-preview">' + _esc(preview) + '</span>' +
+            '<span class="forensic-restore-date">gelöscht: ' + _esc(deleted) + '</span>' +
+            '<span class="forensic-restore-by">von: ' + _esc(a.createdBy || "—") + '</span>' +
+            '<button class="forensic-btn forensic-btn-xs forensic-btn-primary ' +
+            'forensic-restore-btn" data-id="' + _esc(String(a.id)) + '">' +
+            '↺ Wiederherstellen</button>' +
+            '</li>';
+        }
+        listHtml += '</ul>';
+      }
+
+      _modalEl.innerHTML =
+        '<div class="forensic-restore-header">' +
+        '<span id="forensic-restore-title" class="forensic-restore-title">' +
+        '↺ Gelöschte Annotationen</span>' +
+        '<button class="forensic-popup-close" id="forensic-restore-close" ' +
+        'aria-label="Schließen">✕</button>' +
+        '</div>' +
+        '<div class="forensic-restore-body">' + listHtml + '</div>';
+
+      document.body.appendChild(_modalEl);
+
+      document.getElementById("forensic-restore-close")
+        .addEventListener("click", close);
+
+      // Event-Delegation für Wiederherstellungs-Buttons
+      _modalEl.addEventListener("click", function (e) {
+        var btn = e.target.closest(".forensic-restore-btn");
+        if (!btn) return;
+        var annId = parseInt(btn.getAttribute("data-id"), 10);
+        _restoreAnnotation(annId, btn);
+      });
+
+      // Esc schließt Modal
+      _modalEl.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") close();
+      });
+    }
+
+    function _restoreAnnotation(annId, btn) {
+      btn.disabled = true;
+      btn.textContent = "…";
+      _dbg("[RestoreModal] Wiederherstelle id:", annId);
+
+      ajaxPost(ForensicToolbar.config.API_ANNOTATE_RESTORE, { id: annId })
+        .then(function (data) {
+          if (data && data.restored) {
+            _dbg("[RestoreModal] Wiederhergestellt:", annId);
+            // Listeneintrag ausblenden
+            var item = _modalEl
+              ? _modalEl.querySelector('[data-id="' + annId + '"].forensic-restore-item')
+              : null;
+            if (item) item.style.opacity = "0.4";
+            btn.textContent = "✓ Wiederhergestellt";
+
+            // Annotationen neu laden und Highlights aktualisieren
+            AnnotationStoreModule.loadAnnotations(_state.currentUrl)
+              .then(function () {
+                HighlightModule.clearAll();
+                HighlightModule.restoreAll();
+                PostMarkerModule.clearAll();
+                PostMarkerModule.restoreAll();
+                MinimapModule.refresh();
+              });
+          } else {
+            btn.disabled = false;
+            btn.textContent = "↺ Wiederherstellen";
+            AccessibilityModule.announce(
+              "Wiederherstellung nicht möglich (Annotation hat Nachfolger oder nicht gefunden)."
+            );
+          }
+        })
+        .catch(function (err) {
+          _dbg("[RestoreModal] Fehler:", err);
+          btn.disabled = false;
+          btn.textContent = "↺ Wiederherstellen";
+        });
+    }
+
+    return { open: open, close: close };
+  })();
+
+    // ===========================================================================
+  // AliasHighlightModule — Dauerhaftes Highlighting von Ermittler-Aliasbegriffen
+  // ===========================================================================
+  // Bug 2.79 (Build 179): Ermittler pflegen eine Liste von Suchbegriffen
+  // (z.B. "Panther" für einen Nutzer der meist so genannt wird). Diese Begriffe
+  // werden nach jedem Seitenload im gesamten Forum-Text gehighlightet.
+  //
+  // Implementierung:
+  //   - Eigenes CSS-Highlight-Set "forensic-alias" (CSS Custom Highlights API)
+  //     oder <mark>-Fallback.
+  //   - TreeWalker über alle Textknoten im #forensic-viewport.
+  //   - Suche case-insensitive, Wortgrenze nicht erzwungen (Substring-Match).
+  //   - Aliasse werden einmalig geladen und gecacht. Neuladen per reload().
+  //
+  // Beleg: Projektgespräch 2026-05-12 — Bug 2.79 (BS3).
+  // ===========================================================================
+  var AliasHighlightModule = (function () {
+    'use strict';
+
+    var _aliases      = [];    // Array<{id, term, createdBy}>
+    var _loaded       = false; // true nach erstem erfolgreichem Laden
+    var _hlSet        = null;  // CSS Highlight Set für Alias-Treffer
+    var _markEls      = [];    // Fallback: injizierte <mark>-Elemente
+
+    // CSS Custom Highlights API verfügbar?
+    var _cssApi = (
+      typeof CSS !== "undefined" &&
+      typeof CSS.highlights !== "undefined" &&
+      typeof Highlight !== "undefined"
+    );
+
+    // Highlight-Set einmalig anlegen
+    if (_cssApi) {
+      _hlSet = new Highlight();
+      CSS.highlights.set("forensic-alias", _hlSet);
+    }
+
+    /** Aliasse vom Server laden und danach highlighten. */
+    function load() {
+      ajaxGet(ForensicToolbar.config.API_ALIASES)
+        .then(function (data) {
+          _aliases = (data && Array.isArray(data.aliases)) ? data.aliases : [];
+          _loaded  = true;
+          _dbg("[AliasHighlight] Aliasse geladen:", _aliases.length);
+          highlight();
+        })
+        .catch(function (err) {
+          _dbg("[AliasHighlight] Ladefehler:", err);
+          _aliases = [];
+          _loaded  = true;
+        });
+    }
+
+    /** Alias-Cache aktualisieren (nach Hinzufügen/Löschen). */
+    function reload() {
+      _loaded = false;
+      clearHighlights();
+      load();
+    }
+
+    /** Alle Alias-Highlights im Viewport setzen. */
+    function highlight() {
+      clearHighlights();
+      if (!_aliases.length) return;
+
+      var viewport = document.getElementById("forensic-viewport");
+      if (!viewport) return;
+
+      // Jeder Begriff einzeln suchen (case-insensitive TreeWalker-Scan)
+      _aliases.forEach(function (alias) {
+        _highlightTerm(alias.term, viewport);
+      });
+      _dbg("[AliasHighlight] Highlighting abgeschlossen, Begriffe:", _aliases.length);
+    }
+
+    /** Alle bestehenden Alias-Highlights entfernen. */
+    function clearHighlights() {
+      if (_cssApi && _hlSet) {
+        _hlSet.clear();
+      }
+      // Fallback: <mark>-Elemente entfernen
+      _markEls.forEach(function (m) {
+        if (m.parentNode) {
+          var parent = m.parentNode;
+          while (m.firstChild) { parent.insertBefore(m.firstChild, m); }
+          parent.removeChild(m);
+        }
+      });
+      _markEls = [];
+    }
+
+    /**
+     * Sucht den Begriff `term` in allen Textknoten des Viewports
+     * und hebt ihn per CSS Highlight API oder <mark> hervor.
+     */
+    function _highlightTerm(term, viewport) {
+      if (!term) return;
+      var lower = term.toLowerCase();
+
+      var walker = document.createTreeWalker(
+        viewport,
+        NodeFilter.SHOW_TEXT,
+        {
+          acceptNode: function (node) {
+            // Script/Style-Knoten überspringen
+            var pn = node.parentNode;
+            if (!pn) return NodeFilter.FILTER_REJECT;
+            var tag = pn.tagName ? pn.tagName.toLowerCase() : "";
+            if (tag === "script" || tag === "style" || tag === "noscript") {
+              return NodeFilter.FILTER_REJECT;
+            }
+            return NodeFilter.FILTER_ACCEPT;
+          }
+        }
+      );
+
+      var node;
+      while ((node = walker.nextNode())) {
+        var text  = node.nodeValue || "";
+        var tLow  = text.toLowerCase();
+        var start = 0;
+        var pos;
+
+        while ((pos = tLow.indexOf(lower, start)) !== -1) {
+          var range = document.createRange();
+          range.setStart(node, pos);
+          range.setEnd(node, pos + lower.length);
+
+          if (_cssApi && _hlSet) {
+            _hlSet.add(range);
+          } else {
+            // Fallback: <mark>
+            var mark = document.createElement("mark");
+            mark.className = "forensic-alias-mark";
+            try {
+              range.surroundContents(mark);
+              _markEls.push(mark);
+            } catch (e) {
+              // Elementgrenzen-Fehler ignorieren
+            }
+          }
+          start = pos + lower.length;
+        }
+      }
+    }
+
+    // Auf Seitenload reagieren
+    ForensicToolbar.events.on("page:loaded", function () {
+      if (!_loaded) {
+        load();
+      } else {
+        // Seite neu geladen, Aliasse schon bekannt → direkt highlighten
+        highlight();
+      }
+    });
+
+    return { load: load, reload: reload, highlight: highlight, clearHighlights: clearHighlights,
+             getAliases: function () { return _aliases.slice(); } };
+  })();
+
+  // ===========================================================================
+  // AliasModalModule — Modal zum Anzeigen und Pflegen der Alias-Liste
+  // ===========================================================================
+  // Bug 2.79 (Build 179): Ermittler können Suchbegriffe hinzufügen und löschen.
+  // Schaltfläche "✱ Aliasse" in Sektion 3 der Toolbar.
+  // Beleg: Projektgespräch 2026-05-12 — Bug 2.79 (BS3).
+  // ===========================================================================
+  var AliasModalModule = (function () {
+    'use strict';
+
+    var _modalEl = null;
+
+    function open() {
+      if (_modalEl) { _modalEl.focus(); return; }
+      _render(AliasHighlightModule.getAliases());
+    }
+
+    function close() {
+      if (_modalEl) { _modalEl.remove(); _modalEl = null; }
+    }
+
+    function _render(aliases) {
+      if (_modalEl) _modalEl.remove();
+
+      _modalEl = document.createElement("div");
+      _modalEl.id = "forensic-alias-modal";
+      _modalEl.className = "forensic-alias-modal";
+      _modalEl.setAttribute("role", "dialog");
+      _modalEl.setAttribute("aria-modal", "true");
+      _modalEl.setAttribute("aria-labelledby", "forensic-alias-title");
+      _modalEl.setAttribute("tabindex", "-1");
+
+      var listHtml = aliases.length === 0
+        ? '<p class="forensic-restore-empty">Noch keine Aliasse angelegt.</p>'
+        : '<ul class="forensic-alias-list">' +
+          aliases.map(function (a) {
+            return (
+              '<li class="forensic-alias-item" data-id="' + _esc(String(a.id)) + '">' +
+              '<span class="forensic-alias-term">' + _esc(a.term) + '</span>' +
+              '<span class="forensic-alias-by">' + _esc(a.createdBy || "") + '</span>' +
+              '<button class="forensic-btn forensic-btn-xs forensic-btn-secondary ' +
+              'forensic-alias-del-btn" data-id="' + _esc(String(a.id)) + '" ' +
+              'aria-label="Alias löschen: ' + _esc(a.term) + '">✕</button>' +
+              '</li>'
+            );
+          }).join("") +
+          '</ul>';
+
+      _modalEl.innerHTML =
+        '<div class="forensic-restore-header">' +
+        '<span id="forensic-alias-title" class="forensic-restore-title">✱ Aliasse</span>' +
+        '<button class="forensic-popup-close" id="forensic-alias-close" ' +
+        'aria-label="Schließen">✕</button>' +
+        '</div>' +
+        '<div class="forensic-restore-body">' +
+        '<p class="forensic-alias-hint-text">Suchbegriffe die auf allen Seiten ' +
+        'dauerhaft hervorgehoben werden. Groß-/Kleinschreibung wird ignoriert.</p>' +
+        '<div class="forensic-alias-add-row">' +
+        '<input type="text" id="forensic-alias-input" class="forensic-popup-input" ' +
+        'placeholder="Neuer Begriff…" maxlength="120" autocomplete="off">' +
+        '<button id="forensic-alias-add-btn" class="forensic-btn forensic-btn-primary ' +
+        'forensic-btn-xs">+ Hinzufügen</button>' +
+        '</div>' +
+        '<div id="forensic-alias-list-container">' + listHtml + '</div>' +
+        '</div>';
+
+      document.body.appendChild(_modalEl);
+      _modalEl.focus();
+
+      // Schließen
+      document.getElementById("forensic-alias-close").addEventListener("click", close);
+      _modalEl.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") close();
+      });
+
+      // Hinzufügen
+      var addBtn   = document.getElementById("forensic-alias-add-btn");
+      var addInput = document.getElementById("forensic-alias-input");
+      function _doAdd() {
+        var term = (addInput.value || "").trim();
+        if (!term) return;
+        addBtn.disabled = true;
+        ajaxPost(ForensicToolbar.config.API_ALIASES, { term: term })
+          .then(function (data) {
+            addBtn.disabled = false;
+            if (data && data.id) {
+              addInput.value = "";
+              AliasHighlightModule.reload();
+              // Modal-Liste aktualisieren
+              _render(AliasHighlightModule.getAliases());
+              // Kurz warten bis reload fertig ist, dann nochmal
+              setTimeout(function () {
+                if (_modalEl) _render(AliasHighlightModule.getAliases());
+              }, 600);
+            }
+          })
+          .catch(function () { addBtn.disabled = false; });
+      }
+      addBtn.addEventListener("click", _doAdd);
+      addInput.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") _doAdd();
+      });
+      // Fokus auf Eingabe
+      addInput.focus();
+
+      // Löschen (Event-Delegation)
+      _modalEl.addEventListener("click", function (e) {
+        var btn = e.target.closest(".forensic-alias-del-btn");
+        if (!btn) return;
+        var aliasId = parseInt(btn.getAttribute("data-id"), 10);
+        btn.disabled = true;
+        ajaxDelete(ForensicToolbar.config.API_ALIASES, { id: aliasId })
+          .then(function (data) {
+            if (data && data.deleted) {
+              var item = _modalEl
+                ? _modalEl.querySelector('.forensic-alias-item[data-id="' + aliasId + '"]')
+                : null;
+              if (item) item.remove();
+              AliasHighlightModule.reload();
+            } else {
+              btn.disabled = false;
+            }
+          })
+          .catch(function () { btn.disabled = false; });
+      });
+    }
+
+    return { open: open, close: close };
+  })();
+
+    // PHASE 6: HoverMenuModule  // ===========================================================================
   // PHASE 6: HoverMenuModule — Mini-Werkzeugleiste beim Hover
   // ===========================================================================
   var HoverMenuModule = (function () {
