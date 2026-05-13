@@ -3624,16 +3624,52 @@
             return badge + warn;
           },
         },
-        {
+        /*{
           title: "URL / Titel", field: "url", sorter: "string", minWidth: 160,
+          // Beleg: Projektgespräch — Bug 2.95 (Build 197):
+          // URL und Titel werden als <a href>-Element gerendert, damit die Zelle
+          // visuell als Link erkennbar ist (Linkfarbe, Unterstreichung on hover).
+          // pointer-events: none verhindert, dass das <a> den rowClick-Handler
+          // der Tabulator-Zeile abfängt — die Navigation läuft weiterhin
+          // ausschließlich über rowClick → ForensicToolbar.events.emit.
           formatter: function (cell) {
             var row   = cell.getRow().getData();
-            var url   = (row.url || "").replace(/^\/forum/, "");
-            if (url.length > 52) url = url.substring(0, 49) + "…";
-            var title = row.title ? ('<div class="csm-row-title">' + _esc(row.title) + "</div>") : "";
-            return '<div class="csm-row-url">' + _esc(url) + "</div>" + title;
+            var url   = row.url || "";
+            var urlKurz = url.replace(/^\/forum/, "");
+            if (urlKurz.length > 52) urlKurz = urlKurz.substring(0, 49) + "…";
+            var titel = row.title ? ('<div class="csm-row-title">' + _esc(row.title) + "</div>") : "";
+            return '<a class="csm-row-url" href="' + _esc(url) + '" tabindex="-1">'
+                 + _esc(urlKurz)
+                 + '</a>'
+                 + titel;
           },
-        },
+        },*/
+	/*{
+	  title: "URL / Titel", field: "url", sorter: "string", minWidth: 160,
+	  formatter: function (cell) {
+	    var row   = cell.getRow().getData();
+	    var url   = row.url || "";
+	    var urlKurz = url.replace(/^\/forum/, "");
+	    if (urlKurz.length > 52) urlKurz = urlKurz.substring(0, 49) + "…";
+	    var titel = row.title ? ('<div class="csm-row-title">ALEX: ' + _esc(row.title) + "</div>") : "";
+	    
+	    // Nur Text – kein Link-Element
+	    return '<span class="csm-row-url-text">' + _esc(urlKurz) + '</span>' + titel;
+	  },
+	},*/
+	{
+	  title: "URL / Titel", field: "url", sorter: "string", minWidth: 160,
+	  formatter: function (cell) {
+	    var row   = cell.getRow().getData();
+	    var url   = row.url || "";
+	    var urlKurz = url.replace(/^\/forum/, "");
+	    if (urlKurz.length > 52) urlKurz = urlKurz.substring(0, 49) + "…";
+	    var titel = row.title ? ('<div class="csm-row-title">' + _esc(row.title) + "</div>") : "";
+	    
+	    // Nur Text, kein anklickbarer Link – die Zeile selbst macht die Navigation
+	    return '<span class="csm-row-url-text">' + _esc(urlKurz) + '</span>' + titel;
+	  },
+	},
         {
           title: "Fortschritt", field: "progressPercent", width: 100, sorter: "number",
           hozAlign: "center",
@@ -3691,18 +3727,27 @@
         height:            "100%",
         placeholder:       "Filter setzen und 🔎 Suchen klicken",
         initialSort:       [{ column: "lastViewedAt", dir: "desc" }],
-        rowClick:          function (e, row) {
-          // KN-7 (Build 196): Navigation zu Seite aus Ergebnis.
-          // Modal bleibt offen (hidden), Seite lädt im Hauptfenster.
-          var url = row.getData().url;
-          if (!url) return;
-          _dbg("[SearchModal] Navigation zu:", url);
-          close();
-          ForensicToolbar.events.emit("navigator:page_selected", { url: url });
-        },
         rowFormatter:      function (row) {
           row.getElement().classList.add("csm-row");
         },
+      });
+
+      document.querySelector("#csm-tabulator").addEventListener("click", (e) => {
+        const rowElement = e.target.closest(".tabulator-row");
+        if (!rowElement) return;
+
+        // ✅ RICHTIG: getRow, NICHT getRowFromElement
+        const row = _tabulatorInst.getRow(rowElement);
+    
+        if (row) {
+          var url = row.getData().url;
+          _dbg("[SearchModal] Navigation zu:", url);
+        
+          if (url) {
+            close();
+            ForensicToolbar.events.emit("navigator:page_selected", { url: url });
+          }
+        }
       });
 
       _tabulatorReady = true;
@@ -6269,6 +6314,9 @@
 
       // Klick außerhalb schließt
       document.addEventListener("click", function (e) {
+        // Prüfen, ob auf eine Tabulator-Zeile oder deren Inhalt geklickt wurde
+        if (e.target.closest(".tabulator-row, #csm-tabulator")) return;
+
         if (_isOpen && !_panel.contains(e.target) && e.target !== _btn) {
           _close();
         }

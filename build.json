@@ -1,6 +1,6 @@
 {
-  "build":   196,
-  "version": "0.6.196",
-  "date":    "2026-05-12",
-  "note":    "BS3 Build 196: Such-Modal KN-7 Schritt 1 — _buildQueryString() + _doSearch(), Suchen-Button verdrahtet, Tabulator mit echten Daten befuellt"
+  "build":   197,
+  "version": "0.6.197",
+  "date":    "2026-05-13",
+  "note":    "BS3 Build 197: Bug 2.95 — Such-Modal URL-Zelle als <a>-Link mit pointer-events:none und Hover-Unterstreichung"
 }

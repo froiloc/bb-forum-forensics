@@ -2506,13 +2506,24 @@ mark.forensic-alias-mark {
 }
 
 /* Zeilen-Inhalte */
+/* Bug 2.95 (Build 197): .csm-row-url ist jetzt ein <a>-Element.
+   pointer-events: none verhindert Konflikt mit rowClick des Tabulators.
+   display: block erlaubt overflow: hidden / text-overflow: ellipsis. */
 .csm-row-url {
+  display: block;
   font-family: monospace;
   font-size: 11px;
   color: #a8c4f0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-decoration: none;
+  pointer-events: none;
+}
+
+#csm-tabulator .tabulator-row:hover .csm-row-url {
+  text-decoration: underline;
+  color: #c8deff;
 }
 
 .csm-row-title {
