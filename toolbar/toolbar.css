@@ -1849,6 +1849,38 @@ tr.contains_traces {
   color: #a8c4f0;
 }
 
+/* ==========================================================================
+   Build 199 (2026-05-16): Bereits identifizierte Nutzer im Benutzer-Panel.
+   Entscheidung Chef-Ermittlerin: grüner Hintergrund, nicht auswählbar.
+   Beleg: Projektgespräch 2026-05-16.
+   ========================================================================== */
+
+/* Button-Stil für identifizierte Nutzer — grün hinterlegt, gesperrt */
+.forensic-btn-identified {
+  background: #1a3d2b;           /* dunkles Grün — passt zu dunklem Theme */
+  border: 1px solid #2e7d52;
+  color: #7ecfa0;                /* helles Grün für Text */
+  cursor: not-allowed;
+  opacity: 0.85;
+  pointer-events: none;          /* Zusatzsicherung: kein Click erreichbar */
+  text-align: left;
+  width: 100%;
+  display: block;
+  padding: 4px 8px;
+  margin: 1px 0;
+  border-radius: 3px;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+/* Schloss-Badge neben dem Namen */
+.forensic-popup-identified-badge {
+  font-size: 10px;
+  margin-left: 4px;
+  vertical-align: middle;
+  opacity: 0.8;
+}
+
 /* ===========================================================================
    Build 178 (BS3 — Bug 2.75): Wiederherstellungs-Modal
    =========================================================================== */

@@ -1,6 +1,6 @@
 {
-  "build":   198,
-  "version": "0.6.198",
+  "build":   199,
+  "version": "0.6.199",
   "date":    "2026-05-16",
-  "note":    "Build 198: identified_users — is_identified-Flag in knownusers-Suche, grün+gesperrt im Annotation-Modal"
+  "note":    "Build 199: is_identified — identifizierte Nutzer im Benutzer-Panel grün+gesperrt (Chef-Ermittlerin)"
 }

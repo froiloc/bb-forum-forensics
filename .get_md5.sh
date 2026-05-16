@@ -21,6 +21,7 @@ done < <(find . -type f -not \( \
 	-regex '\.\/\(debug\|data.*\|logs\|setup\)\/.*' -or \
         -regex '.*\.\(zip\|log\|base64\|md\|chksum\|org\|html\|pdf\|map\)$' -or \
 	-regex '.*\(.env\|package-lock.json\)$' -or \
+	-regex '\./\(setup\.7z\)$' -or \
         -regex '$^' \) \
     ) | sort -k2,2 | tee "${md5}"
 

@@ -2,7 +2,18 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.1.0 · Build: 196 · 2026-05-12
+ * Version: v0.6.199 · Build: 199 · 2026-05-16
+ *
+ * Aenderungen Build 199 (BS3 — 2026-05-16):
+ *   is_identified-Unterstützung im Benutzer-Wechsel-Panel.
+ *   Identifizierte Nutzer (is_identified=true aus /_forensic/knownusers)
+ *   werden grün hinterlegt, mit Schloss-Symbol 🔒 versehen und sind
+ *   nicht auswählbar (disabled + pointer-events:none).
+ *   Entscheidung Chef-Ermittlerin: keine Doppelarbeit für bereits
+ *   identifizierte Beschuldigte.
+ *   Beleg: Projektgespräch 2026-05-16.
+ *   Geändert: _renderUserResults(), _onUserResultClick() (Kommentar).
+ *   CSS: .forensic-btn-identified, .forensic-popup-identified-badge.
  *
  * Aenderungen Build 196 (BS3 — KN-7 Schritt 1):
  *   _buildQueryString(): alle Filterfelder → URL-Parameter.
@@ -2720,6 +2731,11 @@
     /**
      * Rendert die Suchergebnisse als anklickbare Buttons.
      * matched_alias wird angezeigt wenn der Treffer über Alias gefunden wurde.
+     *
+     * Build 199 (2026-05-16): is_identified-Flag auswerten.
+     *   Identifizierte Nutzer (is_identified=true) werden grün hinterlegt und
+     *   sind nicht auswählbar (Entscheidung Chef-Ermittlerin — keine Doppelarbeit).
+     *   Beleg: Projektgespräch 2026-05-16.
      */
     function _renderUserResults(panel, users, limited) {
       var resultsEl = document.getElementById("forensic-popup-user-results");
@@ -2732,23 +2748,45 @@
 
       var html = "";
       for (var i = 0; i < users.length; i++) {
-        var u        = users[i];
-        var isActive = (u.user_id === _state.user_id || u.user_id === _state.forumUserId);
-        var btnCls   = "forensic-btn forensic-btn-xs" +
-          (isActive ? " forensic-btn-primary" : " forensic-btn-secondary");
-        // Alias-Hinweis: "Name (→ Alias)"
-        var label = _esc(u.username);
-        if (u.matched_alias) {
-          label += ' <span class="forensic-popup-alias-hint">(→ ' +
-            _esc(u.matched_alias) + ')</span>';
-        }
-        if (isActive) { label += ' ✓'; }
+        var u           = users[i];
+        var isActive     = (u.user_id === _state.user_id || u.user_id === _state.forumUserId);
+        // Build 199: is_identified — polizeilich bereits identifiziert
+        var isIdentified = !!(u.is_identified);
 
-        html += '<button class="' + btnCls + '" ' +
-          'data-uid="' + _esc(String(u.user_id)) + '" ' +
-          'data-uname="' + _esc(u.username) + '" ' +
-          'title="User-ID: ' + _esc(String(u.user_id)) + '">' +
-          label + '</button>';
+        if (isIdentified) {
+          // Identifizierte Nutzer: grüner Hintergrund, kein Click-Handler,
+          // disabled-Darstellung mit Schloss-Symbol + Erklärungstooltip.
+          // data-uid wird NICHT gesetzt → _onUserResultClick ignoriert diesen Button.
+          var labelId = _esc(u.username);
+          if (u.matched_alias) {
+            labelId += ' <span class="forensic-popup-alias-hint">(→ ' +
+              _esc(u.matched_alias) + ')</span>';
+          }
+          labelId += ' <span class="forensic-popup-identified-badge" ' +
+            'aria-label="Bereits identifiziert">🔒</span>';
+
+          html += '<button class="forensic-btn forensic-btn-xs forensic-btn-identified" ' +
+            'disabled ' +
+            'aria-disabled="true" ' +
+            'title="Bereits polizeilich identifiziert — keine weitere Bearbeitung erforderlich">' +
+            labelId + '</button>';
+        } else {
+          // Normaler auswählbarer Nutzer (bisheriges Verhalten)
+          var btnCls = "forensic-btn forensic-btn-xs" +
+            (isActive ? " forensic-btn-primary" : " forensic-btn-secondary");
+          var label = _esc(u.username);
+          if (u.matched_alias) {
+            label += ' <span class="forensic-popup-alias-hint">(→ ' +
+              _esc(u.matched_alias) + ')</span>';
+          }
+          if (isActive) { label += ' ✓'; }
+
+          html += '<button class="' + btnCls + '" ' +
+            'data-uid="' + _esc(String(u.user_id)) + '" ' +
+            'data-uname="' + _esc(u.username) + '" ' +
+            'title="User-ID: ' + _esc(String(u.user_id)) + '">' +
+            label + '</button>';
+        }
       }
       if (limited) {
         html += '<span class="forensic-popup-hint forensic-popup-hint--limit">' +
@@ -2760,6 +2798,11 @@
     /**
      * Click-Handler für Suchergebnis-Buttons (Event-Delegation).
      * Setzt targetUserId auf der Annotation und schließt das Panel.
+     *
+     * Build 199 (2026-05-16): Identifizierte Nutzer (is_identified=true) haben
+     *   kein data-uid-Attribut und sind disabled — closest("button[data-uid]")
+     *   gibt null zurück, der Handler bricht früh ab. Kein weiterer Schutz nötig.
+     *   Beleg: Projektgespräch 2026-05-16.
      */
     function _onUserResultClick(e) {
       var btn = e.target.closest("button[data-uid]");
