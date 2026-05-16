@@ -23,7 +23,7 @@
 #   forensischen Beweismitteln in forensic_<uid>.db gespeichert.
 #
 # Abhängigkeiten: sqlite3 — ausschließlich Stdlib
-# Version: v0.1.0 · Build: 018 · 2026-04-15
+# Version: v0.6.198 · Build: 198 · 2026-05-16
 # =============================================================================
 
 from __future__ import annotations
@@ -322,9 +322,10 @@ class DefaultDb:
                 uid = int(row["user_id"])
                 seen_ids.add(uid)
                 results.append({
-                    "user_id":      uid,
-                    "username":     str(row["username"]),
+                    "user_id":       uid,
+                    "username":      str(row["username"]),
                     "matched_alias": None,
+                    "is_identified": False,  # wird unten per identified_users-Abgleich gesetzt
                 })
         except Exception as exc:
             logger.warning(
@@ -355,9 +356,10 @@ class DefaultDb:
                         continue
                     seen_ids.add(uid)
                     results.append({
-                        "user_id":      uid,
-                        "username":     str(row["username"]),
+                        "user_id":       uid,
+                        "username":      str(row["username"]),
                         "matched_alias": str(row["name"]),
+                        "is_identified": False,  # wird unten befüllt
                     })
                     if len(results) >= limit:
                         break
@@ -366,6 +368,29 @@ class DefaultDb:
                     "search_known_users: known_aliases-Abfrage fehlgeschlagen: %s", exc
                 )
                 # Alias-Tabelle fehlt noch — kein Fehler, nur username-Treffer zurückgeben
+
+        # is_identified-Flag nachträglich setzen (Build 198, 2026-05-16).
+        # Abgleich gegen identified_users in einem einzigen IN-Query
+        # (statt N Einzelabfragen). Graceful degradation wenn Tabelle fehlt.
+        if results:
+            try:
+                uid_list = [r["user_id"] for r in results]
+                placeholders = ",".join("?" * len(uid_list))
+                id_rows = self._con.execute(
+                    f"SELECT user_id FROM ddb.identified_users "
+                    f"WHERE user_id IN ({placeholders})",
+                    uid_list,
+                ).fetchall()
+                identified_ids: set[int] = {int(r["user_id"]) for r in id_rows}
+                for r in results:
+                    r["is_identified"] = r["user_id"] in identified_ids
+            except Exception as exc:
+                # identified_users fehlt (älterer Prepper-Stand) → is_identified=False
+                logger.debug(
+                    "search_known_users: identified_users-Abfrage nicht verfügbar "
+                    "(älterer Prepper-Stand): %s", exc
+                )
+                # is_identified bleibt False für alle — kein Fehler, kein stilles Überspringen
 
         return results
 

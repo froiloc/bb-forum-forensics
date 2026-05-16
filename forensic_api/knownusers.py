@@ -22,13 +22,18 @@
 # Response (JSON):
 #   {
 #     "users": [
-#       { "user_id": 538299, "username": "SomeUser", "matched_alias": null },
-#       { "user_id": 123456, "username": "Other",    "matched_alias": "Panther" },
+#       { "user_id": 538299, "username": "SomeUser", "matched_alias": null,  "is_identified": false },
+#       { "user_id": 123456, "username": "Other",    "matched_alias": "Panther", "is_identified": true },
 #       ...
 #     ],
 #     "query":   "pant",
 #     "limited": true   -- true wenn Trefferliste auf limit abgeschnitten wurde
 #   }
+#
+#   is_identified=true: Benutzer ist polizeilich bereits identifiziert
+#   (in default.db.identified_users). Das Frontend zeigt ihn mit grünem
+#   Hintergrund an und sperrt ihn für die Auswahl im Annotation-Edit-Modal.
+#   (Entscheidung Chef-Ermittlerin, Build 198, 2026-05-16.)
 #
 # Fehler-Response:
 #   400  { "error": "..." }   -- nur bei fehlendem/leerem q-Parameter
@@ -39,7 +44,12 @@
 #     known_aliases). Volliste war nicht skalierbar (500k+ Nutzer).
 #     Beleg: Projektgespräch 2026-05-12 — Bug 2.78/2.82/2.83 (BS3/BS0).
 #
-# Version: v0.6.176 · Build: 176 · 2026-05-12
+#   Build 198: is_identified-Flag ergänzt. Abgleich gegen default.db.identified_users
+#     (neue Tabelle aus phase_b_exporter Build 062). Frontend zeigt identifizierte
+#     Nutzer grün hinterlegt und sperrt Auswahl. Graceful degradation wenn Tabelle fehlt.
+#     Beleg: Projektgespräch 2026-05-16.
+#
+# Version: v0.6.198 · Build: 198 · 2026-05-16
 # =============================================================================
 
 from __future__ import annotations

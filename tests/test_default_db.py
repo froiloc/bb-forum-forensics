@@ -162,5 +162,163 @@ class TestDefaultDb(unittest.TestCase):
         self.assertEqual(self.ddb.asset_count(), 3)
 
 
+def _make_ddb_with_known_users(identified_ids: list[int] | None = None) -> str:
+    """
+    Hilfsfunktion: Erstellt temporäre default.db mit known_users,
+    known_aliases und optional identified_users.
+    default_assets wird angelegt damit DefaultDb._verify_attachment() nicht scheitert.
+    Beleg: Projektgespräch 2026-05-16 (Build 198).
+    """
+    path = tempfile.mktemp(suffix=".db")
+    con = sqlite3.connect(path)
+    con.executescript("""
+        CREATE TABLE default_assets (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            content_hash TEXT NOT NULL UNIQUE,
+            data         BLOB,
+            mime_type    TEXT,
+            file_size    INTEGER,
+            source_note  TEXT NOT NULL,
+            fetched_at   INTEGER
+        );
+        CREATE TABLE known_users (
+            user_id  INTEGER PRIMARY KEY,
+            username TEXT    NOT NULL
+        );
+        CREATE TABLE known_aliases (
+            alias_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id  INTEGER NOT NULL,
+            name     TEXT    NOT NULL
+        );
+        INSERT INTO known_users VALUES (100, 'TestNutzer');
+        INSERT INTO known_users VALUES (200, 'AndererNutzer');
+        INSERT INTO known_users VALUES (300, 'DritterNutzer');
+        INSERT INTO known_aliases VALUES (NULL, 200, 'Alias200');
+    """)
+    if identified_ids is not None:
+        con.execute(
+            "CREATE TABLE identified_users (user_id INTEGER PRIMARY KEY)"
+        )
+        for uid in identified_ids:
+            con.execute(
+                "INSERT INTO identified_users VALUES (?)", (uid,)
+            )
+    con.commit()
+    con.close()
+    return path
+
+
+def _attach_ku(ddb_path: str) -> sqlite3.Connection:
+    """Öffnet :memory: und attachiert ddb_path als 'ddb'."""
+    main = sqlite3.connect(":memory:")
+    main.row_factory = sqlite3.Row
+    main.execute(f"ATTACH DATABASE '{ddb_path}' AS ddb")
+    return main
+
+
+class TestSearchKnownUsersIdentified(unittest.TestCase):
+    """
+    Tests für search_known_users() mit is_identified-Flag.
+    Build 198, 2026-05-16: Abgleich gegen identified_users in default.db.
+    """
+
+    def setUp(self):
+        _setup_test_logging()
+
+    def tearDown(self):
+        reset_for_testing()
+
+    def test_T11_is_identified_false_ohne_tabelle(self):
+        """
+        T11: is_identified=False für alle Treffer wenn identified_users fehlt.
+        Graceful degradation — kein Fehler, kein Absturz.
+        Beleg: Build 198, Projektgespräch 2026-05-16.
+        """
+        path = _make_ddb_with_known_users(identified_ids=None)
+        con = _attach_ku(path)
+        ddb = DefaultDb(con)
+        results = ddb.search_known_users("TestNutzer")
+        self.assertEqual(len(results), 1)
+        self.assertFalse(results[0]["is_identified"])
+        con.close()
+        os.unlink(path)
+
+    def test_T12_is_identified_true(self):
+        """
+        T12: is_identified=True wenn user_id in identified_users vorhanden.
+        Beleg: Build 198, Projektgespräch 2026-05-16.
+        """
+        path = _make_ddb_with_known_users(identified_ids=[100])
+        con = _attach_ku(path)
+        ddb = DefaultDb(con)
+        results = ddb.search_known_users("TestNutzer")
+        self.assertEqual(len(results), 1)
+        self.assertTrue(results[0]["is_identified"])
+        con.close()
+        os.unlink(path)
+
+    def test_T13_is_identified_false_nicht_in_tabelle(self):
+        """
+        T13: is_identified=False wenn user_id NICHT in identified_users.
+        Beleg: Build 198, Projektgespräch 2026-05-16.
+        """
+        path = _make_ddb_with_known_users(identified_ids=[999])  # andere ID
+        con = _attach_ku(path)
+        ddb = DefaultDb(con)
+        results = ddb.search_known_users("TestNutzer")
+        self.assertEqual(len(results), 1)
+        self.assertFalse(results[0]["is_identified"])
+        con.close()
+        os.unlink(path)
+
+    def test_T14_gemischte_treffer(self):
+        """
+        T14: Treffer-Liste mit identifizierten und nicht-identifizierten Nutzern.
+        TestNutzer (100) ist identifiziert, AndererNutzer (200) nicht.
+        Beleg: Build 198, Projektgespräch 2026-05-16.
+        """
+        path = _make_ddb_with_known_users(identified_ids=[100])
+        con = _attach_ku(path)
+        ddb = DefaultDb(con)
+        results = ddb.search_known_users("Nutzer")
+        self.assertGreaterEqual(len(results), 2)
+        by_uid = {r["user_id"]: r for r in results}
+        self.assertTrue(by_uid[100]["is_identified"])
+        self.assertFalse(by_uid[200]["is_identified"])
+        con.close()
+        os.unlink(path)
+
+    def test_T15_alias_treffer_is_identified(self):
+        """
+        T15: is_identified wird auch für Alias-Treffer korrekt gesetzt.
+        AndererNutzer (200) hat Alias 'Alias200' und ist identifiziert.
+        Beleg: Build 198, Projektgespräch 2026-05-16.
+        """
+        path = _make_ddb_with_known_users(identified_ids=[200])
+        con = _attach_ku(path)
+        ddb = DefaultDb(con)
+        # Suche über Alias — direkt nach "Alias200"
+        results = ddb.search_known_users("Alias200")
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["user_id"], 200)
+        self.assertEqual(results[0]["matched_alias"], "Alias200")
+        self.assertTrue(results[0]["is_identified"])
+        con.close()
+        os.unlink(path)
+
+    def test_T16_zu_kurzer_suchbegriff(self):
+        """
+        T16: Suchbegriff < 4 Zeichen → leere Liste (keine Änderung durch Build 198).
+        Beleg: Build 198 — Sicherheitsnetz unverändert.
+        """
+        path = _make_ddb_with_known_users(identified_ids=[100])
+        con = _attach_ku(path)
+        ddb = DefaultDb(con)
+        results = ddb.search_known_users("ab")
+        self.assertEqual(results, [])
+        con.close()
+        os.unlink(path)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
