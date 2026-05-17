@@ -147,6 +147,10 @@ let _selectedId      = null;   // aktuell ausgewaehltes Element (id/string)
 let _filterRole      = '';
 let _filterSearch    = '';
 let _activeCategory  = 'modules';  // 'modules' | 'queries'
+// Bug 2.117 Fix Build 211: _filterRole unter dem _modules zuletzt geladen wurde.
+// Wenn _filterRole wechselt, ist der Cache ungueltig.
+// Beleg: Bugfix Build 211, Projektgespraech 2026-05-17
+let _modulesLoadedWithRole = null;  // undefined = noch nie geladen
 let _searchTimer     = null;
 /**
  * Bug 2.41 Fix Build 136: Gespeicherte Cursor-Position im Editor.
@@ -405,9 +409,15 @@ async function _loadAndRender(forceReload = false) {
         } else if (_activeCategory === 'modules') {
             // Build 124: Cache — nur laden wenn leer oder Force-Reload.
             // Module aendern sich selten; kein Re-Fetch bei jedem Akkordeon-Wechsel.
-            // Beleg: Bugfix Build 124, Projektgespraech 2026-05-08
-            if (forceReload || _modules.length === 0 || _filterRole || _filterSearch) {
+            // Bug 2.117 Fix Build 211: Cache auch ungueltig wenn _filterRole sich
+            // gegenueber dem letzten Ladevorgang geaendert hat. Ohne diese Pruefung
+            // blieben bei Rueckkehr zu 'Alle' (filterRole='') die unter 'Fazit'
+            // geladenen Module im Cache.
+            // Beleg: Bugfix Build 211, Projektgespraech 2026-05-17
+            const _roleChanged = _filterRole !== _modulesLoadedWithRole;
+            if (forceReload || _modules.length === 0 || _filterRole || _filterSearch || _roleChanged) {
                 _modules = await _fetchModules(_filterRole, _filterSearch);
+                _modulesLoadedWithRole = _filterRole;
             }
             // Build 114: Bei "Alle" (kein Rollenfilter) Standard-Bloecke am Ende anfuegen
             // Beleg: Projektgespraech 2026-05-07
