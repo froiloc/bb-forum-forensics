@@ -1591,6 +1591,25 @@ async function _loadBlocksAndReinit(report) {
  */
 async function _reloadEditorContent() {
     if (!_currentReport) return;
+
+    // Bug 2.104 Fix Build 204: Reentry-Guard — parallele _reloadEditorContent-Aufrufe
+    // koennen den Editor in einen inkonsistenten Zustand bringen (destroy() auf einem
+    // noch initialisierenden Editor). Zweiter Aufruf wird einmalig nach Abschluss
+    // des laufenden Reloads wiederholt, damit der neue Block sichtbar wird.
+    // Ursache: schneller Doppelklick waehrend laufendem Reload (z.B. nach Block-Loeschen)
+    // loest einen zweiten _reloadEditorContent-Aufruf aus.
+    // Beleg: Bugfix Build 204, Projektgespraech 2026-05-17
+    if (_isReloading) {
+        _dbg('_reloadEditorContent(): Reload bereits aktiv — einmalige Wiederholung geplant.');
+        // Einmaligen Retry nach kurzem Delay planen (vorherige Retry-Planung abbrechen)
+        clearTimeout(_reloadEditorContent._retryTimer);
+        _reloadEditorContent._retryTimer = setTimeout(() => {
+            _reloadEditorContent._retryTimer = null;
+            _reloadEditorContent();
+        }, 300);
+        return;
+    }
+
     _dbg('_reloadEditorContent(): Starte Neuladen fuer report_id=', _currentReport.id);
 
     // Bug 2.73(a) Fix Build 167: waehrend des Reloads block-removed-Events
@@ -3199,7 +3218,11 @@ fetch('/_forensic/version', { headers: { 'X-Forensic-Request': 'ajax' } })
 _dbg('report_editor.js: Exports auf window gesetzt (Build wird async geladen)');
 // Bug 2.97/2.107 Fix Build 202: Guard-API fuer module_panel._insertModule.
 // Beleg: Bugfix Build 202, Projektgespraech 2026-05-17
+// Bug 2.104 Fix Build 204: isReloading() fuer module_panel._insertModule.
+// Beleg: Bugfix Build 204, Projektgespraech 2026-05-17
 window.ReportEditor = window.ReportEditor || {};
+/** Gibt true zurueck wenn _reloadEditorContent() gerade aktiv ist. */
+window.ReportEditor.isReloading = function() { return _isReloading; };
 /**
  * Setzt _isProgrammaticInsert=true. Muss vor editor.blocks.insert() gerufen werden.
  * Timeout-Sicherung: Nach 2000ms automatischer Reset (Absicherung gegen haengende Guards).

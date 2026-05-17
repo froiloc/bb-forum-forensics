@@ -1,3 +1,5 @@
+<aside aria-label="Support-Sidebar" data-focused-block-id="" id="support-sidebar" style="flex: 28.7061 1 0%;">
+<!-- Abschnitt 1: Bausteine (Standard: aufgeklappt) -->
 <section class="support-accordion-section" data-accordion="blocks">
 <button aria-controls="accordion-body-blocks" aria-expanded="false" class="support-accordion-toggle" type="button">
 <span aria-hidden="true" class="support-accordion-icon">📦</span>
@@ -97,7 +99,7 @@
                     </button>
 </div>
 </div>
-<div aria-selected="false" class="mp-item mp-item-used" data-module-id="6" draggable="true" role="option" tabindex="0">
+<div aria-selected="false" class="mp-item" data-module-id="6" draggable="true" role="option" tabindex="0">
 <div class="mp-item-main">
 <span aria-hidden="true" class="mp-item-icon">📋</span>
 <div class="mp-item-text">
@@ -166,3 +168,72 @@
         </div>
 </div></div>
 </section>
+<!-- Abschnitt 2: Annotationen -->
+<section class="support-accordion-section" data-accordion="annotations">
+<button aria-controls="accordion-body-annotations" aria-expanded="false" class="support-accordion-toggle" type="button">
+<span aria-hidden="true" class="support-accordion-icon">🔍</span>
+            Annotationen
+            <span aria-hidden="true" class="support-accordion-chevron">▾</span>
+</button>
+<div aria-label="Annotationen" class="support-accordion-body support-accordion-body--closed" id="accordion-body-annotations" role="region">
+<!-- Inhalt wird von annotation_sidebar.js/_refreshAnnotationSidebar() befuellt (Phase 8) -->
+<!-- Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06 -->
+<p class="support-accordion-empty" id="annotations-loading-state">
+              Annotationen werden geladen…
+            </p>
+</div>
+</section>
+<!-- Abschnitt 3: Formular (Platzhalter-Eingabe) -->
+<section class="support-accordion-section support-accordion-section--open" data-accordion="form">
+<button aria-controls="accordion-body-form" aria-expanded="true" class="support-accordion-toggle" type="button">
+<span aria-hidden="true" class="support-accordion-icon">📝</span>
+            Formular
+            <span aria-hidden="true" class="support-accordion-chevron">▾</span>
+</button>
+<div aria-label="Platzhalter-Formular" class="support-accordion-body" id="accordion-body-form" role="region"><div aria-label="Platzhalter-Felder für Block paul" class="pf-block-group pf-block-group--focused" data-block-id="50c0eb32-6058-4f21-abb2-69ddb7351d67">
+<div class="pf-field-group" data-block-id="50c0eb32-6058-4f21-abb2-69ddb7351d67" data-field-name="realname" data-field-type="o">
+<label class="pf-label" for="pf-input-50c0eb32-6058-4f21-abb2-69ddb7351d67-realname">
+            realname
+        </label>
+<div class="pf-input-wrap">
+<input aria-label="realname" aria-required="false" autocomplete="off" class="pf-input" data-block-id="50c0eb32-6058-4f21-abb2-69ddb7351d67" data-field-name="realname" data-field-type="o" id="pf-input-50c0eb32-6058-4f21-abb2-69ddb7351d67-realname" placeholder="Bürgerlicher Name des Beschuldigten (sofern ermittelt)" type="text" value=""/>
+</div>
+<div class="pf-field-error" id="pf-err-50c0eb32-6058-4f21-abb2-69ddb7351d67-realname" role="alert"></div>
+</div>
+</div><div aria-label="Platzhalter-Felder für Block paul" class="pf-block-group pf-block-group--blurred" data-block-id="d742768e-d12c-4063-95f7-7d0787381639">
+<div class="pf-field-group" data-block-id="d742768e-d12c-4063-95f7-7d0787381639" data-field-name="aktivitaetsgrad" data-field-type="m">
+<label class="pf-label" for="pf-input-d742768e-d12c-4063-95f7-7d0787381639-aktivitaetsgrad">
+            aktivitaetsgrad <span aria-hidden="true" class="pf-required">*</span>
+</label>
+<div class="pf-input-wrap">
+<input aria-label="aktivitaetsgrad (Pflichtfeld)" aria-required="true" autocomplete="off" class="pf-input" data-block-id="d742768e-d12c-4063-95f7-7d0787381639" data-field-name="aktivitaetsgrad" data-field-type="m" id="pf-input-d742768e-d12c-4063-95f7-7d0787381639-aktivitaetsgrad" placeholder="Einschaetzung der Einbindung: z.B. 'langjährig aktives Mitglied'" type="text" value=""/>
+</div>
+<div class="pf-field-error" id="pf-err-d742768e-d12c-4063-95f7-7d0787381639-aktivitaetsgrad" role="alert"></div>
+</div><div class="pf-field-group" data-block-id="d742768e-d12c-4063-95f7-7d0787381639" data-field-name="kommunikationshinweis" data-field-type="o">
+<label class="pf-label" for="pf-input-d742768e-d12c-4063-95f7-7d0787381639-kommunikationshinweis">
+            kommunikationshinweis
+        </label>
+<div class="pf-input-wrap">
+<input aria-label="kommunikationshinweis" aria-required="false" autocomplete="off" class="pf-input" data-block-id="d742768e-d12c-4063-95f7-7d0787381639" data-field-name="kommunikationshinweis" data-field-type="o" id="pf-input-d742768e-d12c-4063-95f7-7d0787381639-kommunikationshinweis" placeholder="Ergaenzende Hinweise zur Kommunikation" type="text" value=""/>
+</div>
+<div class="pf-field-error" id="pf-err-d742768e-d12c-4063-95f7-7d0787381639-kommunikationshinweis" role="alert"></div>
+</div>
+</div></div>
+</section>
+<!-- Abschnitt 4: Kommentare (unten) -->
+<section class="support-accordion-section" data-accordion="comments">
+<button aria-controls="accordion-body-comments" aria-expanded="false" class="support-accordion-toggle" type="button">
+<span aria-hidden="true" class="support-accordion-icon">💬</span>
+            Kommentare
+            <span aria-hidden="true" class="support-accordion-chevron">▾</span>
+</button>
+<div aria-label="Kommentare" class="support-accordion-body support-accordion-body--closed" id="accordion-body-comments" role="region">
+<!-- Inhalt wird von comment_thread.js befuellt (Phase 4) -->
+<p class="support-accordion-empty" id="comments-empty-state">
+              Kein Block ausgewählt.
+            </p>
+<!-- Kommentar-Eingabe (wird von comment_thread.js aktiviert) -->
+<textarea aria-label="Neuen Kommentar verfassen" class="comment-input-textarea" placeholder="Kommentar verfassen…" rows="3" style="display:none"></textarea>
+</div>
+</section>
+</aside>

@@ -819,6 +819,17 @@ async function _insertModule(moduleId) {
         return;
     }
 
+    // Bug 2.104 Fix Build 204: Einfuegen waehrend eines laufenden Editor-Reloads
+    // verwerfen. _reloadEditorContent plant bei Bedarf selbst einen Retry.
+    // Wird benutzer-seitig als 'kein Block erscheint' wahrgenommen wenn der
+    // Doppelklick den onInserted-Callback triggert waehrend _isReloading=true.
+    // Beleg: Bugfix Build 204, Projektgespraech 2026-05-17
+    if (window.ReportEditor?.isReloading?.()) {
+        _dbg('_insertModule: Editor-Reload aktiv — Einfuegen zurueckgestellt (150ms)');
+        setTimeout(() => _insertModule(moduleId), 150);
+        return;
+    }
+
     const btn = document.querySelector(`.mp-insert-btn[data-module-id="${moduleId}"]`);
     if (btn) { btn.disabled = true; btn.textContent = '\u2026'; }
 

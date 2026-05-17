@@ -1,6 +1,6 @@
 {
-  "build":   203,
-  "version": "0.6.203",
+  "build":   204,
+  "version": "0.6.204",
   "date":    "2026-05-17",
-  "note":    "Build 203: Bug 2.97/2.107 — blocks.insert() aus _insertModule entfernt; onInserted ruft _reloadEditorContent() auf (Editor-Neuinit mit Server-UUIDs)"
+  "note":    "Build 204: Bug 2.104 — Reentry-Guard in _reloadEditorContent; _insertModule wartet auf Reload-Ende"
 }
