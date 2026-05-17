@@ -7,6 +7,7 @@ then
 	if [[ -x /bin/xclip ]]
 	then
 		xclip -selection clipboard < "${filename}"
+		grep 'Server bereit:' "${filename}" | tail -n1
 		rm "${filename}"
 	else
 		echo "xclip ist nicht installiert. Kann nicht in Zwischenablage speichern." >&2

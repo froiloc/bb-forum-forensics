@@ -12,17 +12,17 @@ userinfo.js:67 [forensic] DOMContentLoaded: userinfo.js aktiv
 userinfo.js:67 [forensic] initEditor() gestartet
 userinfo.js:67 [forensic] initSSEWindow3() gestartet
 report_editor.js:3186 [forensic] report_editor.js: v0.6.202 Build 202 | Exports auf window gesetzt
-userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= cc3fdd7f-0d9f-4fcc-86c9-34bd1d2d6cb1
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 90ba15ae-79ab-450f-9b44-c3490baeb3a5
 report_editor.js:86 [forensic] initEditorModule() gestartet
 report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
 report_editor.js:86 [forensic] _initColResizer: Schiebebalken initialisiert
 report_editor.js:86 [forensic] _initForumLinkInterceptor: BroadcastChannel bereit
-report_editor.js:86 [forensic] _initForumLinkInterceptor: aktiv (window_id= 862e01da-9f83-4cd5-a19b-fde54c6001fd )
+report_editor.js:86 [forensic] _initForumLinkInterceptor: aktiv (window_id= 11557ab6-518a-4db8-bc08-6c5cf29ef301 )
 report_editor.js:86 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
 report_editor.js:86 [forensic] initReportSelector() gestartet
 favicon.ico:1  GET http://127.0.0.2:8080/favicon.ico 404 (Not Found)
-userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= cc3fdd7f-0d9f-4fcc-86c9-34bd1d2d6cb1
-userinfo.js:67 [forensic] acquireLock: Lock bereits vorhanden ( e75728a2-5b3e-4f90-b238-7d108d1c0dd0 ) — uebersprungen
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 90ba15ae-79ab-450f-9b44-c3490baeb3a5
+userinfo.js:67 [forensic] acquireLock: Lock bereits vorhanden ( 42594430-4e40-41fa-9478-81d8494dfefd ) — uebersprungen
 /**
  * IIFE-Diagnosescript: Bug 2.97 / 2.107
  * Berichtseditor — Doppelklick-Einfügen erzeugt Doppelblock + 3 Formular-Einträge
@@ -227,63 +227,64 @@ userinfo.js:67 [forensic] acquireLock: Lock bereits vorhanden ( e75728a2-5b3e-4f
     console.debug(TAG, '='.repeat(60));
 
 })();
-VM1833:51 [DIAG 2.97/2.107] Guard-API-Wrapper installiert.
-VM1833:135 [DIAG 2.97/2.107] fetch-Intercept installiert (POST /_forensic/editor + /report).
-VM1833:160 [DIAG 2.97/2.107] PlaceholderWizard.showPlaceholderForm Wrapper installiert.
-VM1833:199 [DIAG 2.97/2.107] ============================================================
-VM1833:200 [DIAG 2.97/2.107] DIAG 2.97/2.107: Monitoring aktiv.
-VM1833:201 [DIAG 2.97/2.107] Jetzt bitte: Bausteine > Module > Doppelklick auf ein Modul.
-VM1833:202 [DIAG 2.97/2.107] ============================================================
+VM2025:51 [DIAG 2.97/2.107] Guard-API-Wrapper installiert.
+VM2025:135 [DIAG 2.97/2.107] fetch-Intercept installiert (POST /_forensic/editor + /report).
+VM2025:160 [DIAG 2.97/2.107] PlaceholderWizard.showPlaceholderForm Wrapper installiert.
+VM2025:199 [DIAG 2.97/2.107] ============================================================
+VM2025:200 [DIAG 2.97/2.107] DIAG 2.97/2.107: Monitoring aktiv.
+VM2025:201 [DIAG 2.97/2.107] Jetzt bitte: Bausteine > Module > Doppelklick auf ein Modul.
+VM2025:202 [DIAG 2.97/2.107] ============================================================
 undefined
-debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
-debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
-VM1833:171 [DIAG 2.97/2.107] 12:51:15.267 DOPPELKLICK auf .mp-item erkannt — starte Zeitreihen-Dump
-debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
-VM1833:188 [DIAG 2.97/2.107] 12:51:15.280 T+0ms | Editor-IDs: [] | _currentBlocks IDs: (nicht zugänglich) | Guard aktiv: (kein Timer)
-VM1833:119 [DIAG 2.97/2.107] 12:51:15.284 fetch POST /_forensic/report | action: save_block | block_id: bfd6f23d-9581-4b2b-a743-a29dbe11adc7 | report_id: — | block_type: paragraph | block_data (gekürzt): "{\"text\":\"Der untersuchte Benutzer-Account ist im Forum unter dem Nutzernamen...
-VM1833:133  POST http://127.0.0.2:8080/_forensic/report 400 (Bad Request)
-window.fetch @ VM1833:133
-_insertModule @ module_panel.js:835
-await in _insertModule
-(anonymous) @ module_panel.js:520
-VM1833:188 [DIAG 2.97/2.107] 12:51:15.368 T+100ms | Editor-IDs: [] | _currentBlocks IDs: (nicht zugänglich) | Guard aktiv: (kein Timer)
-VM1833:188 [DIAG 2.97/2.107] 12:51:15.468 T+200ms | Editor-IDs: [] | _currentBlocks IDs: (nicht zugänglich) | Guard aktiv: (kein Timer)
-VM1833:188 [DIAG 2.97/2.107] 12:51:15.768 T+500ms | Editor-IDs: [] | _currentBlocks IDs: (nicht zugänglich) | Guard aktiv: (kein Timer)
-VM1833:188 [DIAG 2.97/2.107] 12:51:16.268 T+1000ms | Editor-IDs: [] | _currentBlocks IDs: (nicht zugänglich) | Guard aktiv: (kein Timer)
-VM1833:188 [DIAG 2.97/2.107] 12:51:16.868 T+1600ms | Editor-IDs: [] | _currentBlocks IDs: (nicht zugänglich) | Guard aktiv: (kein Timer)
-VM1833:188 [DIAG 2.97/2.107] 12:51:17.268 T+2000ms | Editor-IDs: [] | _currentBlocks IDs: (nicht zugänglich) | Guard aktiv: (kein Timer)
-VM1833:188 [DIAG 2.97/2.107] 12:51:17.768 T+2500ms | Editor-IDs: [] | _currentBlocks IDs: (nicht zugänglich) | Guard aktiv: (kein Timer)
-VM1833:188 [DIAG 2.97/2.107] 12:51:18.268 T+3000ms | Editor-IDs: [] | _currentBlocks IDs: (nicht zugänglich) | Guard aktiv: (kein Timer)
 debug_events.js:174 [USER]     [report_editor] click:btn-new-report — Mouse
 debug_events.js:174 [USER]     [report_editor] click:btn-create-report — Mouse
-VM1833:119 [DIAG 2.97/2.107] 12:51:40.682 fetch POST /_forensic/reports | action: (kein action) | block_id: — | report_id: — | block_type: — | block_data (gekürzt): —
+VM2025:119 [DIAG 2.97/2.107] 13:08:14.327 fetch POST /_forensic/reports | action: (kein action) | block_id: — | report_id: — | block_type: — | block_data (gekürzt): —
 report_editor.js:86 [forensic] initReportSelector() gestartet
 report_editor.js:86 [forensic] loadReport() report_id= 1 type= interim
 report_editor.js:497 report_editor.js: _knownBlockIds initialisiert, 0 Bloecke geladen.
 report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
 report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
 report_editor.js:693 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
-VM1833:89 [DIAG 2.97/2.107] editor.blocks.insert Wrapper installiert.
+VM2025:152 [DIAG 2.97/2.107] 13:08:14.404 showPlaceholderForm aufgerufen | blocks.length: 0 | focusedId: null | block_ids: []
+VM2025:157 [DIAG 2.97/2.107] showPlaceholderForm callstack:
+window.PlaceholderWizard.showPlaceholderForm @ VM2025:157
+_doRefreshPlaceholderForm @ report_editor.js:1379
+await in _doRefreshPlaceholderForm
+_refreshPlaceholderForm @ report_editor.js:1345
+_openAccordionSection @ report_editor.js:1083
+_initSidebarAccordion @ report_editor.js:1778
+onReady @ report_editor.js:687
+(anonymous) @ editorjs.mjs:11173
+Promise.then
+constructor @ editorjs.mjs:11172
+_initEditorJs @ report_editor.js:581
+_loadReportImpl @ report_editor.js:518
+await in _loadReportImpl
+loadReport @ report_editor.js:408
+initReportSelector @ report_editor.js:291
+await in initReportSelector
+(anonymous) @ report_editor.js:358
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= null onSave= function myUsername= paul
+VM2025:89 [DIAG 2.97/2.107] editor.blocks.insert Wrapper installiert.
 editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
 report_editor.js:738 report_editor.js: Initialisierungs-Guard freigegeben.
 debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
 debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
-VM1833:171 [DIAG 2.97/2.107] 12:51:46.778 DOPPELKLICK auf .mp-item erkannt — starte Zeitreihen-Dump
+VM2025:171 [DIAG 2.97/2.107] 13:08:20.801 DOPPELKLICK auf .mp-item erkannt — starte Zeitreihen-Dump
 debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
-VM1833:188 [DIAG 2.97/2.107] 12:51:46.782 T+0ms | Editor-IDs: ['_GYv8tkW8e'] | _currentBlocks IDs: (nicht zugänglich) | Guard aktiv: (kein Timer)
-VM1833:119 [DIAG 2.97/2.107] 12:51:46.783 fetch POST /_forensic/report | action: save_block | block_id: 93254dd1-7b09-4de9-9b46-6f9463b98f21 | report_id: 1 | block_type: paragraph | block_data (gekürzt): "{\"text\":\"Der untersuchte Benutzer-Account ist im Forum unter dem Nutzernamen...
-VM1833:42 [DIAG 2.97/2.107] 12:51:46.796 beginProgrammaticInsert() aufgerufen — Guard AKTIV
-VM1833:43 [DIAG 2.97/2.107] beginProgrammaticInsert callstack:
-window.ReportEditor.beginProgrammaticInsert @ VM1833:43
+VM2025:188 [DIAG 2.97/2.107] 13:08:20.814 T+0ms | Editor-IDs: ['o_DkOJRYRB'] | _currentBlocks IDs: (nicht zugänglich) | Guard aktiv: (kein Timer)
+VM2025:119 [DIAG 2.97/2.107] 13:08:20.818 fetch POST /_forensic/report | action: save_block | block_id: 24da1cae-148f-422e-94e8-68970939c8b3 | report_id: 1 | block_type: paragraph | block_data (gekürzt): "{\"text\":\"Der untersuchte Benutzer-Account ist im Forum unter dem Nutzernamen...
+VM2025:42 [DIAG 2.97/2.107] 13:08:20.839 beginProgrammaticInsert() aufgerufen — Guard AKTIV
+VM2025:43 [DIAG 2.97/2.107] beginProgrammaticInsert callstack:
+window.ReportEditor.beginProgrammaticInsert @ VM2025:43
 _insertModule @ module_panel.js:867
 await in _insertModule
 (anonymous) @ module_panel.js:520
-VM1833:72 [DIAG 2.97/2.107] 12:51:46.796 editor.blocks.insert() aufgerufen | args[0] (type): paragraph | _isProgrammaticInsert zur Zeit: (nicht messbar)
+VM2025:72 [DIAG 2.97/2.107] 13:08:20.840 editor.blocks.insert() aufgerufen | args[0] (type): paragraph | _isProgrammaticInsert zur Zeit: (nicht messbar)
 module_panel.js:77 [forensic] _insertModule: Block eingefuegt, idx= 1
-VM1833:85 [DIAG 2.97/2.107] 12:51:46.801 Block-IDs im Editor NACH insert: (2) ['JNSCaUy6lc', '_GYv8tkW8e']
-VM1833:152 [DIAG 2.97/2.107] 12:51:46.809 showPlaceholderForm aufgerufen | blocks.length: 1 | focusedId: 93254dd1-7b09-4de9-9b46-6f9463b98f21 | block_ids: ['93254dd1-7b09-4de9-9b46-6f9463b98f21']
-VM1833:157 [DIAG 2.97/2.107] showPlaceholderForm callstack:
-window.PlaceholderWizard.showPlaceholderForm @ VM1833:157
+VM2025:85 [DIAG 2.97/2.107] 13:08:20.845 Block-IDs im Editor NACH insert: (2) ['9F_wgKUPED', 'o_DkOJRYRB']
+VM2025:152 [DIAG 2.97/2.107] 13:08:20.854 showPlaceholderForm aufgerufen | blocks.length: 1 | focusedId: 24da1cae-148f-422e-94e8-68970939c8b3 | block_ids: ['24da1cae-148f-422e-94e8-68970939c8b3']
+VM2025:157 [DIAG 2.97/2.107] showPlaceholderForm callstack:
+window.PlaceholderWizard.showPlaceholderForm @ VM2025:157
 _doRefreshPlaceholderForm @ report_editor.js:1379
 await in _doRefreshPlaceholderForm
 _refreshPlaceholderForm @ report_editor.js:1345
@@ -293,32 +294,32 @@ await in onInserted
 _insertModule @ module_panel.js:910
 await in _insertModule
 (anonymous) @ module_panel.js:520
-placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= 93254dd1-7b09-4de9-9b46-6f9463b98f21 onSave= function myUsername= paul
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= 24da1cae-148f-422e-94e8-68970939c8b3 onSave= function myUsername= paul
 module_panel.js:77 [forensic] _insertModule: Chips hydriert, idx= 1
-VM1833:47 [DIAG 2.97/2.107] 12:51:46.850 endProgrammaticInsert() aufgerufen — Guard FREIGEGEBEN
-VM1833:48 [DIAG 2.97/2.107] endProgrammaticInsert callstack:
-window.ReportEditor.endProgrammaticInsert @ VM1833:48
+VM2025:47 [DIAG 2.97/2.107] 13:08:20.896 endProgrammaticInsert() aufgerufen — Guard FREIGEGEBEN
+VM2025:48 [DIAG 2.97/2.107] endProgrammaticInsert callstack:
+window.ReportEditor.endProgrammaticInsert @ VM2025:48
 (anonymous) @ module_panel.js:894
 setTimeout
 _insertModule @ module_panel.js:874
 await in _insertModule
 (anonymous) @ module_panel.js:520
-VM1833:188 [DIAG 2.97/2.107] 12:51:46.879 T+100ms | Editor-IDs: (2) ['JNSCaUy6lc', '_GYv8tkW8e'] | _currentBlocks IDs: (nicht zugänglich) | Guard aktiv: (Timer existiert — Guard möglicherweise aktiv)
-VM1833:188 [DIAG 2.97/2.107] 12:51:46.978 T+200ms | Editor-IDs: (2) ['JNSCaUy6lc', '_GYv8tkW8e'] | _currentBlocks IDs: (nicht zugänglich) | Guard aktiv: (Timer existiert — Guard möglicherweise aktiv)
-VM1833:188 [DIAG 2.97/2.107] 12:51:47.278 T+500ms | Editor-IDs: (2) ['JNSCaUy6lc', '_GYv8tkW8e'] | _currentBlocks IDs: (nicht zugänglich) | Guard aktiv: (Timer existiert — Guard möglicherweise aktiv)
-VM1833:188 [DIAG 2.97/2.107] 12:51:47.778 T+1000ms | Editor-IDs: (2) ['JNSCaUy6lc', '_GYv8tkW8e'] | _currentBlocks IDs: (nicht zugänglich) | Guard aktiv: (Timer existiert — Guard möglicherweise aktiv)
-VM1833:188 [DIAG 2.97/2.107] 12:51:48.378 T+1600ms | Editor-IDs: (2) ['JNSCaUy6lc', '_GYv8tkW8e'] | _currentBlocks IDs: (nicht zugänglich) | Guard aktiv: (Timer existiert — Guard möglicherweise aktiv)
-VM1833:188 [DIAG 2.97/2.107] 12:51:48.778 T+2000ms | Editor-IDs: (2) ['JNSCaUy6lc', '_GYv8tkW8e'] | _currentBlocks IDs: (nicht zugänglich) | Guard aktiv: (Timer existiert — Guard möglicherweise aktiv)
-VM1833:188 [DIAG 2.97/2.107] 12:51:49.278 T+2500ms | Editor-IDs: (2) ['JNSCaUy6lc', '_GYv8tkW8e'] | _currentBlocks IDs: (nicht zugänglich) | Guard aktiv: (Timer existiert — Guard möglicherweise aktiv)
-VM1833:188 [DIAG 2.97/2.107] 12:51:49.778 T+3000ms | Editor-IDs: (2) ['JNSCaUy6lc', '_GYv8tkW8e'] | _currentBlocks IDs: (nicht zugänglich) | Guard aktiv: (Timer existiert — Guard möglicherweise aktiv)
+VM2025:188 [DIAG 2.97/2.107] 13:08:20.902 T+100ms | Editor-IDs: (2) ['9F_wgKUPED', 'o_DkOJRYRB'] | _currentBlocks IDs: (nicht zugänglich) | Guard aktiv: (Timer existiert — Guard möglicherweise aktiv)
+VM2025:188 [DIAG 2.97/2.107] 13:08:21.002 T+200ms | Editor-IDs: (2) ['9F_wgKUPED', 'o_DkOJRYRB'] | _currentBlocks IDs: (nicht zugänglich) | Guard aktiv: (Timer existiert — Guard möglicherweise aktiv)
+VM2025:188 [DIAG 2.97/2.107] 13:08:21.302 T+500ms | Editor-IDs: (2) ['9F_wgKUPED', 'o_DkOJRYRB'] | _currentBlocks IDs: (nicht zugänglich) | Guard aktiv: (Timer existiert — Guard möglicherweise aktiv)
+VM2025:188 [DIAG 2.97/2.107] 13:08:21.802 T+1000ms | Editor-IDs: (2) ['9F_wgKUPED', 'o_DkOJRYRB'] | _currentBlocks IDs: (nicht zugänglich) | Guard aktiv: (Timer existiert — Guard möglicherweise aktiv)
+VM2025:188 [DIAG 2.97/2.107] 13:08:22.402 T+1600ms | Editor-IDs: (2) ['9F_wgKUPED', 'o_DkOJRYRB'] | _currentBlocks IDs: (nicht zugänglich) | Guard aktiv: (Timer existiert — Guard möglicherweise aktiv)
+VM2025:188 [DIAG 2.97/2.107] 13:08:22.802 T+2000ms | Editor-IDs: (2) ['9F_wgKUPED', 'o_DkOJRYRB'] | _currentBlocks IDs: (nicht zugänglich) | Guard aktiv: (Timer existiert — Guard möglicherweise aktiv)
+VM2025:188 [DIAG 2.97/2.107] 13:08:23.302 T+2500ms | Editor-IDs: (2) ['9F_wgKUPED', 'o_DkOJRYRB'] | _currentBlocks IDs: (nicht zugänglich) | Guard aktiv: (Timer existiert — Guard möglicherweise aktiv)
+VM2025:188 [DIAG 2.97/2.107] 13:08:23.802 T+3000ms | Editor-IDs: (2) ['9F_wgKUPED', 'o_DkOJRYRB'] | _currentBlocks IDs: (nicht zugänglich) | Guard aktiv: (Timer existiert — Guard möglicherweise aktiv)
 report_editor.js:1832 report_editor.js: Auto-Save gestartet, report_id= 1 | bekannte Block-IDs: 0
-VM1833:119 [DIAG 2.97/2.107] 12:52:17.255 fetch POST /_forensic/editor/block | action: save | block_id: JNSCaUy6lc | report_id: 1 | block_type: paragraph | block_data (gekürzt): {"text":"Der untersuchte Benutzer-Account ist im Forum unter dem Nutzernamen {{a...
-VM1833:119 [DIAG 2.97/2.107] 12:52:17.275 fetch POST /_forensic/editor/block | action: save | block_id: _GYv8tkW8e | report_id: 1 | block_type: paragraph | block_data (gekürzt): {"text":"Der untersuchte Benutzer-Account ist im Forum unter dem Nutzernamen {{a...
-VM1833:119 [DIAG 2.97/2.107] 12:52:17.281 fetch POST /_forensic/editor/order | action: (kein action) | block_id: — | report_id: 1 | block_type: — | block_data (gekürzt): —
+VM2025:119 [DIAG 2.97/2.107] 13:08:51.301 fetch POST /_forensic/editor/block | action: save | block_id: 9F_wgKUPED | report_id: 1 | block_type: paragraph | block_data (gekürzt): {"text":"Der untersuchte Benutzer-Account ist im Forum unter dem Nutzernamen {{a...
+VM2025:119 [DIAG 2.97/2.107] 13:08:51.325 fetch POST /_forensic/editor/block | action: save | block_id: o_DkOJRYRB | report_id: 1 | block_type: paragraph | block_data (gekürzt): {"text":"Der untersuchte Benutzer-Account ist im Forum unter dem Nutzernamen {{a...
+VM2025:119 [DIAG 2.97/2.107] 13:08:51.338 fetch POST /_forensic/editor/order | action: (kein action) | block_id: — | report_id: 1 | block_type: — | block_data (gekürzt): —
 report_editor.js:1946 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 2 | Bloecke geloescht: 0
-VM1833:152 [DIAG 2.97/2.107] 12:52:17.294 showPlaceholderForm aufgerufen | blocks.length: 3 | focusedId: JNSCaUy6lc | block_ids: (3) ['JNSCaUy6lc', '_GYv8tkW8e', '93254dd1-7b09-4de9-9b46-6f9463b98f21']
-VM1833:157 [DIAG 2.97/2.107] showPlaceholderForm callstack:
-window.PlaceholderWizard.showPlaceholderForm @ VM1833:157
+VM2025:152 [DIAG 2.97/2.107] 13:08:51.353 showPlaceholderForm aufgerufen | blocks.length: 3 | focusedId: 9F_wgKUPED | block_ids: (3) ['9F_wgKUPED', 'o_DkOJRYRB', '24da1cae-148f-422e-94e8-68970939c8b3']
+VM2025:157 [DIAG 2.97/2.107] showPlaceholderForm callstack:
+window.PlaceholderWizard.showPlaceholderForm @ VM2025:157
 _doRefreshPlaceholderForm @ report_editor.js:1379
 await in _doRefreshPlaceholderForm
 _refreshPlaceholderForm @ report_editor.js:1345
@@ -350,4 +351,4 @@ setTimeout
 _insertModule @ module_panel.js:874
 await in _insertModule
 (anonymous) @ module_panel.js:520
-placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 3 focusedId= JNSCaUy6lc onSave= function myUsername= paul
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 3 focusedId= 9F_wgKUPED onSave= function myUsername= paul

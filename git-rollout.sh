@@ -7,7 +7,7 @@ if ls -1 ${ROOTDIR}debug/bugs-and-tasks/last.*.md 2>/dev/null
 then
 	git mv "${ROOTDIR}debug/bugs-and-tasks/last.${last_uuid}.md" "${ROOTDIR}debug/bugs-and-tasks/last.${uuid}.md"
 	mv "${ROOTDIR}debug/bugs-and-tasks/last.md" "${ROOTDIR}debug/bugs-and-tasks/last.${uuid}.md" 2>/dev/null
-	sed -i -E 's#[0-9a-f]{8}-4[0-9a-f]{3}(-[0-9a-f]{4}){3}[0-9a-f]{8}#'${uuid}'#g' "${ROOTDIR}debug/bugs-and-tasks/last.${uuid}.md"
+	sed -i -E 's#[0-9a-f]{8}(-[0-9a-f]{4}){4}[0-9a-f]{8}#'${uuid}'#g' "${ROOTDIR}debug/bugs-and-tasks/last.${uuid}.md"
 fi
 if ls -1 ${ROOTDIR}debug/devtools-console/last.*.log 2>/dev/null
 then
