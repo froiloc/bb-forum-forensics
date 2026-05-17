@@ -451,7 +451,8 @@ function _showError(msg) {
 function _bindEvents(container) {
     // Build 114: Kategorie-Tab-Clicks
     container.querySelectorAll('.as-tab').forEach(tab => {
-        tab.addEventListener('click', () => {
+        tab.addEventListener('click', (evt) => {
+            window._uevt?.(evt, 'annotation_sidebar', 'click:as-tab', { cat: tab.dataset.cat }); // B200
             _activeTab = tab.dataset.cat || null;
             _render();
         });
@@ -461,6 +462,7 @@ function _bindEvents(container) {
     const searchInput = container.querySelector('#as-search-input');
     if (searchInput) {
         searchInput.addEventListener('input', e => {
+            window._uevt?.(e, 'annotation_sidebar', 'input:as-search', { value: e.target.value }); // B200
             clearTimeout(_searchTimer);
             _searchText = e.target.value;
             _searchTimer = setTimeout(_render, 200);
@@ -471,6 +473,7 @@ function _bindEvents(container) {
     const hideChk = container.querySelector('#as-hide-anchored');
     if (hideChk) {
         hideChk.addEventListener('change', e => {
+            window._uevt?.(e, 'annotation_sidebar', 'change:as-hide-anchored', { checked: e.target.checked }); // B200
             _hideAnchored = e.target.checked;
             _render();
         });
@@ -478,7 +481,8 @@ function _bindEvents(container) {
 
     // Kategorie-Zeilen aufklappen/zuklappen
     container.querySelectorAll('.as-category-header').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', (evt) => {
+            window._uevt?.(evt, 'annotation_sidebar', 'click:as-category-header', { cat: btn.dataset.category }); // B200
             const cat = btn.dataset.category;
             if (_expanded.has(cat)) {
                 _expanded.delete(cat);
@@ -491,7 +495,8 @@ function _bindEvents(container) {
 
     // "Als Beleg einfuegen"-Buttons
     container.querySelectorAll('.as-btn-anchor').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', (evt) => {
+            window._uevt?.(evt, 'annotation_sidebar', 'click:as-btn-anchor', { annId: btn.dataset.annId }); // B200
             const annId = parseInt(btn.dataset.annId, 10);
             _insertAnchor(annId);
         });
@@ -502,12 +507,14 @@ function _bindEvents(container) {
     // Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
     container.querySelectorAll('.as-annotation[draggable="true"]').forEach(card => {
         card.addEventListener('dragstart', e => {
+            window._uevt?.(e, 'annotation_sidebar', 'dragstart:as-annotation', { annId: card.dataset.annId }); // B200
             const annId = card.dataset.annId;
             e.dataTransfer.setData('text/x-annotation-id', annId);
             e.dataTransfer.effectAllowed = 'copy';
             card.classList.add('as-annotation--dragging');
         });
-        card.addEventListener('dragend', () => {
+        card.addEventListener('dragend', (e) => {
+            window._uevt?.(e, 'annotation_sidebar', 'dragend:as-annotation'); // B200
             card.classList.remove('as-annotation--dragging');
         });
     });

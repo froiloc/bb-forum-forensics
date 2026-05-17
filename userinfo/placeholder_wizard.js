@@ -419,7 +419,8 @@ function _renderField(field, values, blockId) {
 function _bindFormEvents(body, blocks, opts) {
     // Klick auf eine Block-Gruppe: Fokus setzen
     body.querySelectorAll('.pf-block-group').forEach(group => {
-        group.addEventListener('click', () => {
+        group.addEventListener('click', (evt) => {
+            window._uevt?.(evt, 'placeholder_wizard', 'click:pf-block-group', { blockId: group.dataset.blockId }); // B200
             const bid = group.dataset.blockId;
             if (bid && bid !== _currentBlockId) {
                 _currentBlockId = bid;
@@ -430,7 +431,8 @@ function _bindFormEvents(body, blocks, opts) {
 
     // Klick auf ein Eingabefeld: Fokus direkt auf diesem Block setzen
     body.querySelectorAll('.pf-input').forEach(input => {
-        input.addEventListener('focus', () => {
+        input.addEventListener('focus', (evt) => {
+            window._uevt?.(evt, 'placeholder_wizard', 'focus:pf-input', { blockId: input.dataset.blockId, field: input.dataset.fieldName }); // B200
             const bid = input.dataset.blockId;
             if (bid && bid !== _currentBlockId) {
                 _currentBlockId = bid;
@@ -444,13 +446,15 @@ function _bindFormEvents(body, blocks, opts) {
         });
 
         // Eingabe: Validierung + debounced Save
-        input.addEventListener('input', () => {
+        input.addEventListener('input', (evt) => {
+            window._uevt?.(evt, 'placeholder_wizard', 'input:pf-input', { field: input.dataset.fieldName }); // B200
             _validateFieldLive(input);
             _scheduleFieldSave(input, opts);
         });
 
         // Tab-Navigation zwischen Block-Gruppen: Blur wandert mit
         input.addEventListener('keydown', e => {
+            window._uevt?.(e, 'placeholder_wizard', 'keydown:pf-input', { key: e.key, field: input.dataset.fieldName }); // B200
             if (e.key === 'Tab') {
                 // Naechste/vorherige Gruppe bestimmen — wird nach dem
                 // DOM-Focus-Wechsel von "focus"-Handler verarbeitet.

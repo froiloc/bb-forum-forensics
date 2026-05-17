@@ -237,11 +237,17 @@ function showForBlock(blockId, blocks, opts) {
 
 function _bindSidebarComments(body, block, opts) {
     body.querySelectorAll('.ct-btn-submit').forEach(btn => {
-        btn.addEventListener('click', () => _submitComment(body, btn, opts));
+        btn.addEventListener('click', (evt) => {
+            window._uevt?.(evt, 'comment_thread', 'click:ct-btn-submit', { blockId: block?.block_id }); // B200
+            _submitComment(body, btn, opts);
+        });
     });
 
     body.querySelectorAll('[data-resolution]').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', (evt) => {
+            window._uevt?.(evt, 'comment_thread', 'click:ct-resolution', { // B200
+                commentId: btn.dataset.commentId, resolution: btn.dataset.resolution,
+            }); // B200
             _resolveComment(parseInt(btn.dataset.commentId, 10), btn.dataset.resolution, opts);
         });
     });
@@ -249,8 +255,8 @@ function _bindSidebarComments(body, block, opts) {
     // Hover: Pulsanimation auf Editor-Block
     body.querySelectorAll('.ct-comment').forEach(el => {
         const bid = el.dataset.blockId || block.block_id;
-        el.addEventListener('mouseenter', () => _pulseEditorBlock(bid));
-        el.addEventListener('focus',      () => _pulseEditorBlock(bid), true);
+        el.addEventListener('mouseenter', (e) => { window._uevt?.(e, 'comment_thread', 'mouseenter:ct-comment', { bid }); _pulseEditorBlock(bid); }); // B200
+        el.addEventListener('focus',      (e) => { window._uevt?.(e, 'comment_thread', 'focus:ct-comment',      { bid }); _pulseEditorBlock(bid); }, true); // B200
         el.addEventListener('mouseleave', () => _clearEditorBlockPulse(bid));
         el.addEventListener('blur',       () => _clearEditorBlockPulse(bid), true);
     });
@@ -261,17 +267,24 @@ function bindForCard(card, opts) {
     const toggle = card.querySelector('.ct-toggle');
     const bdy    = card.querySelector('.ct-body');
     if (toggle && bdy) {
-        toggle.addEventListener('click', () => {
+        toggle.addEventListener('click', (evt) => {
+            window._uevt?.(evt, 'comment_thread', 'click:ct-toggle'); // B200
             const isOpen = bdy.style.display !== 'none';
             bdy.style.display = isOpen ? 'none' : '';
             toggle.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
         });
     }
     card.querySelectorAll('.ct-btn-submit').forEach(btn => {
-        btn.addEventListener('click', () => _submitComment(card, btn, opts));
+        btn.addEventListener('click', (evt) => {
+            window._uevt?.(evt, 'comment_thread', 'click:ct-btn-submit-card'); // B200
+            _submitComment(card, btn, opts);
+        });
     });
     card.querySelectorAll('[data-resolution]').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', (evt) => {
+            window._uevt?.(evt, 'comment_thread', 'click:ct-resolution-card', { // B200
+                commentId: btn.dataset.commentId, resolution: btn.dataset.resolution,
+            }); // B200
             _resolveComment(parseInt(btn.dataset.commentId, 10), btn.dataset.resolution, opts);
         });
     });

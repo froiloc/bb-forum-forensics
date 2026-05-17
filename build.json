@@ -1,6 +1,6 @@
 {
-  "build":   199,
-  "version": "0.6.199",
-  "date":    "2026-05-16",
-  "note":    "Build 199: is_identified — identifizierte Nutzer im Benutzer-Panel grün+gesperrt (Chef-Ermittlerin)"
+  "build":   200,
+  "version": "0.6.200",
+  "date":    "2026-05-17",
+  "note":    "Build 200: debug_events.js — Event-Tracing window._uevt() fuer USER vs. WORKFLOW-Unterscheidung in allen B6-Handlern"
 }

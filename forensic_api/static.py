@@ -65,6 +65,9 @@ _RESOURCES: dict[str, tuple[str, str, Path]] = {
     # B6 Phase 2: report_editor.js (umbenannt von editor.js, Build 100)
     # Beleg: Bauplan B6 v0.5 §4.1, Projektgespraech 2026-05-06
     "/_forensic/report_editor.js": ("report_editor.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
+    # B6 Build 200: debug_events.js — Event-Tracing (window._uevt), USER vs. WORKFLOW
+    # Beleg: Projektgespraech 2026-05-17
+    "/_forensic/debug_events.js": ("debug_events.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
     # B6 Phase 4: Fenster-3-Stylesheet (report.css unveraendert)
     "/_forensic/report.css":   ("report.css",   "text/css; charset=utf-8",               _USERINFO_DIR),
     # B6 Phase 4 (Chip-Rendering): Platzhalter-Parser

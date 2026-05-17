@@ -289,7 +289,8 @@ function _renderSkeleton() {
 function _bindPanelEvents(body) {
     // Kategorie-Tabs
     body.querySelectorAll('.mp-cat-tab').forEach(btn => {
-        btn.addEventListener('click', async () => {
+        btn.addEventListener('click', async (evt) => {
+            window._uevt?.(evt, 'module_panel', 'click:mp-cat-tab', { category: btn.dataset.category }); // B200
             _activeCategory = btn.dataset.category;
             _selectedId     = null;
             _filterRole     = '';
@@ -314,7 +315,8 @@ function _bindPanelEvents(body) {
 
     // Rollenfilter-Chips
     body.querySelectorAll('.mp-chip').forEach(chip => {
-        chip.addEventListener('click', async () => {
+        chip.addEventListener('click', async (evt) => {
+            window._uevt?.(evt, 'module_panel', 'click:mp-chip', { role: chip.dataset.role }); // B200
             _filterRole   = chip.dataset.role;
             _selectedId   = null;
             body.querySelectorAll('.mp-chip').forEach(c => {
@@ -342,6 +344,7 @@ function _bindPanelEvents(body) {
     });
 
     body.addEventListener('dragstart', (e) => {
+        window._uevt?.(e, 'module_panel', 'dragstart:mp-item'); // B200
         const item = e.target.closest('.mp-item[draggable]');
         if (!item) return;
         const modId = parseInt(item.dataset.moduleId, 10);
@@ -370,7 +373,8 @@ function _bindPanelEvents(body) {
     // Suche (debounced)
     const searchInput = document.getElementById('mp-sidebar-search');
     if (searchInput) {
-        searchInput.addEventListener('input', () => {
+        searchInput.addEventListener('input', (evt) => {
+            window._uevt?.(evt, 'module_panel', 'input:mp-sidebar-search', { value: searchInput.value }); // B200
             _filterSearch = searchInput.value.trim();
             clearTimeout(_searchTimer);
             _searchTimer = setTimeout(_loadAndRender, SEARCH_DEBOUNCE_MS);
@@ -498,17 +502,20 @@ function _renderList(modules) {
     // Klick-Events
     list.querySelectorAll('.mp-item').forEach(item => {
         item.addEventListener('click', (e) => {
+            window._uevt?.(e, 'module_panel', 'click:mp-item', { moduleId: item.dataset.moduleId }); // B200
             // Klick auf Insert-Button: nicht Selektion aendern
             if (e.target.closest('.mp-insert-btn')) return;
             _selectModule(parseInt(item.dataset.moduleId, 10));
         });
         item.addEventListener('keydown', e => {
+            window._uevt?.(e, 'module_panel', 'keydown:mp-item', { key: e.key, moduleId: item.dataset.moduleId }); // B200
             if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
                 _selectModule(parseInt(item.dataset.moduleId, 10));
             }
         });
-        item.addEventListener('dblclick', () => {
+        item.addEventListener('dblclick', (e) => {
+            window._uevt?.(e, 'module_panel', 'dblclick:mp-item', { moduleId: item.dataset.moduleId }); // B200
             _selectModule(parseInt(item.dataset.moduleId, 10));
             _insertModule(parseInt(item.dataset.moduleId, 10));
         });
@@ -516,8 +523,9 @@ function _renderList(modules) {
 
     // Einfuegen-Buttons
     list.querySelectorAll('.mp-insert-btn').forEach(btn => {
-        btn.addEventListener('mousedown', () => { _justDropped = false; });
+        btn.addEventListener('mousedown', (e) => { window._uevt?.(e, 'module_panel', 'mousedown:mp-insert-btn'); _justDropped = false; }); // B200
         btn.addEventListener('click', (e) => {
+            window._uevt?.(e, 'module_panel', 'click:mp-insert-btn'); // B200
             e.stopPropagation();
             // Bug 2.64 Fix Build 155: Nach einem Drop den Click ignorieren.
             if (_justDropped) {
@@ -586,6 +594,7 @@ function _renderQueryList(queries) {
         // danach mit der gespeicherten Range in _savedCursorRange.
         // Beleg: Bugfix Build 136, Projektgespraech 2026-05-09
         btn.addEventListener('mousedown', (e) => {
+            window._uevt?.(e, 'module_panel', 'mousedown:einzeldaten-insert-btn', { queryId: btn.dataset.queryId }); // B200
             const holder = document.getElementById('editorjs-holder');
             const active = document.activeElement;
             if (active && active.isContentEditable && holder?.contains(active)) {
@@ -600,6 +609,7 @@ function _renderQueryList(queries) {
             }
         });
         btn.addEventListener('click', (e) => {
+            window._uevt?.(e, 'module_panel', 'click:einzeldaten-insert-btn', { queryId: btn.dataset.queryId }); // B200
             e.stopPropagation();
             _insertQuery(btn.dataset.queryId);
         });
@@ -656,6 +666,7 @@ function _renderStandardList(blocks) {
     list.addEventListener('dragstart', (e) => {
         const item = e.target.closest('.mp-item--standard[draggable]');
         if (!item) return;
+        window._uevt?.(e, 'module_panel', 'dragstart:standard-block', { blockType: item.dataset.blockType }); // B200
         const blockType = item.dataset.blockType || item.dataset.stdType || 'paragraph';
         _dbg('Drag start (Standard, delegiert): type=', blockType);
         e.dataTransfer.effectAllowed = 'copy';
@@ -665,7 +676,8 @@ function _renderStandardList(blocks) {
         }));
     });
     list.querySelectorAll('.mp-btn-insert[data-std-type]').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', (evt) => {
+            window._uevt?.(evt, 'module_panel', 'click:std-block-insert', { blockType: btn.dataset.stdType }); // B200
             const blockType = btn.dataset.stdType;
             _dbg('Standard-Block einfuegen: type=', blockType);
             if (window._editor?.blocks?.insert) {
@@ -682,6 +694,7 @@ function _renderStandardList(blocks) {
     // Tastatur: Enter/Space oeffnen Insert
     list.querySelectorAll('.mp-item--standard').forEach(item => {
         item.addEventListener('keydown', (e) => {
+            window._uevt?.(e, 'module_panel', 'keydown:std-block-item', { key: e.key }); // B200
             if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
                 item.querySelector('.mp-btn-insert')?.click();
@@ -777,7 +790,8 @@ function _renderListWithStandard(modules, stdBlocks) {
         `).join('');
 
         stdHolder.querySelectorAll('.mp-btn-insert[data-std-type]').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', (evt) => {
+                window._uevt?.(evt, 'module_panel', 'click:std-block-insert-secondary', { blockType: btn.dataset.stdType }); // B200
                 if (window._editor?.blocks?.insert) {
                     window._editor.blocks.insert(btn.dataset.stdType);
                     const idx = window._editor.blocks.getBlocksCount() - 1;

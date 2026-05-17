@@ -250,13 +250,14 @@ async function initReportSelector(preselectId = null) {
         </div>`;
 
     document.getElementById('report-select')?.addEventListener('change', async (evt) => {
+        window._uevt?.(evt, 'report_editor', 'change:report-select', { reportId: evt.target.value }); // B200
         const reportId = parseInt(evt.target.value, 10);
         if (!reportId) return;
         const report = reports.find(r => r.id === reportId);
         if (report) await loadReport(report);
     });
 
-    document.getElementById('btn-new-report')?.addEventListener('click', () => openNewReportDialog(reports));
+    document.getElementById('btn-new-report')?.addEventListener('click', (evt) => { window._uevt?.(evt, 'report_editor', 'click:btn-new-report'); openNewReportDialog(reports); }); // B200
 
 
     // Ersten (oder vorgewaehlten) Bericht automatisch laden
@@ -315,8 +316,9 @@ function openNewReportDialog(existingReports) {
     document.getElementById('report-selector-container').appendChild(dialog);
     document.getElementById('new-report-title').focus();
 
-    document.getElementById('btn-cancel-new-report')?.addEventListener('click', () => dialog.remove());
-    document.getElementById('btn-create-report')?.addEventListener('click', async () => {
+    document.getElementById('btn-cancel-new-report')?.addEventListener('click', (evt) => { window._uevt?.(evt, 'report_editor', 'click:btn-cancel-new-report'); dialog.remove(); }); // B200
+    document.getElementById('btn-create-report')?.addEventListener('click', async (evt) => {
+        window._uevt?.(evt, 'report_editor', 'click:btn-create-report'); // B200
         const type  = document.getElementById('new-report-type').value;
         const title = document.getElementById('new-report-title').value.trim();
         if (!title) {
@@ -409,7 +411,8 @@ async function _loadReportImpl(report) {
     const btnSaveNow = document.getElementById('btn-save-now');
     if (btnSaveNow && !btnSaveNow._saveHandlerBound) {
         btnSaveNow._saveHandlerBound = true;
-        btnSaveNow.addEventListener('click', async () => {
+        btnSaveNow.addEventListener('click', async (evt) => {
+            window._uevt?.(evt, 'report_editor', 'click:btn-save-now'); // B200
             btnSaveNow.disabled = true;
             btnSaveNow.textContent = '⏳ Speichert…';
             try {
@@ -702,9 +705,9 @@ function _initEditorJs(blocks, reportId) {
                         window._ModulePanel?._setSavedCursorRange?.(range.cloneRange());
                     }
                 };
-                holderForRange.addEventListener('mousedown', _captureRange);
-                holderForRange.addEventListener('keydown',   _captureRange);
-                holderForRange.addEventListener('keyup',     _captureRange);
+                holderForRange.addEventListener('mousedown', (e) => { window._uevt?.(e, 'report_editor', 'mousedown:captureRange'); _captureRange(e); }); // B200
+                holderForRange.addEventListener('keydown',   (e) => { window._uevt?.(e, 'report_editor', 'keydown:captureRange');   _captureRange(e); }); // B200
+                holderForRange.addEventListener('keyup',     (e) => { window._uevt?.(e, 'report_editor', 'keyup:captureRange');     _captureRange(e); }); // B200
             }
 
             setTimeout(() => {
@@ -835,6 +838,7 @@ function _wrapBlock(ceBlock, blockMeta, username) {
     btnComment.textContent = '💬 Kommentieren';
     btnComment.setAttribute('aria-label', `Kommentar zu Block von ${blockMeta.author} verfassen`);
     btnComment.addEventListener('click', (e) => {
+        window._uevt?.(e, 'report_editor', 'click:btnComment', { blockId: blockMeta.block_id }); // B200
         e.stopPropagation();
         // Bug 2.44 Fix Build 145: focusInput=true nur beim expliziten Button-Klick.
         _openCommentAccordion(blockMeta.block_id, true);
@@ -1180,6 +1184,7 @@ function _bindChipDoubleClick() {
     // Fix: Web Animations API (element.animate()) statt classList — kein DOM-Attribut-Trigger.
     // Beleg: Bugfix Build 140, Projektgespraech 2026-05-09
     holder.addEventListener('click', (e) => {
+        window._uevt?.(e, 'report_editor', 'click:ph-chip', { target: e.target.className }); // B200
         const chip = e.target.closest('.ph-chip');
         if (!chip) return;
         // Doppelklick-Toleranz: 200ms warten bevor Flash startet
@@ -1198,6 +1203,7 @@ function _bindChipDoubleClick() {
     });
 
     holder.addEventListener('dblclick', (e) => {
+        window._uevt?.(e, 'report_editor', 'dblclick:ph-chip'); // B200
         const chip = e.target.closest('.ph-chip');
         if (!chip) return;
 
@@ -2079,6 +2085,7 @@ class EvidenceBlock {
             });
             this._wrapper.addEventListener('drop', async (e) => {
                 if (!e.dataTransfer.types.includes('text/x-annotation-id')) return;
+                window._uevt?.(e, 'report_editor', 'drop:EvidenceBlock', { blockData: this._data }); // B200
                 e.preventDefault();
                 e.stopPropagation(); // Holder-drop nicht ausloesen — kein zweiter Block
                 this._wrapper.classList.remove('evidence-block--dragover');
@@ -2218,15 +2225,18 @@ class EvidenceBlock {
         this._wrapper.innerHTML = headerHtml + labelHtml + bodyHtml + actionsHtml;
 
         this._wrapper.querySelector('.evidence-label-input')?.addEventListener('input', ev => {
+            window._uevt?.(ev, 'report_editor', 'input:evidence-label', { value: ev.target.value }); // B200
             this._data.group_label = ev.target.value;
         });
         this._wrapper.querySelectorAll('.evidence-remove-btn').forEach(btn => {
             btn.addEventListener('click', async (ev) => {
+                window._uevt?.(ev, 'report_editor', 'click:evidence-remove-btn', { id: btn.dataset.id }); // B200
                 ev.stopPropagation();
                 await this._removeEvidence(parseInt(btn.dataset.id, 10));
             });
         });
-        this._wrapper.querySelector('.evidence-add-btn')?.addEventListener('click', () => {
+        this._wrapper.querySelector('.evidence-add-btn')?.addEventListener('click', (ev) => {
+            window._uevt?.(ev, 'report_editor', 'click:evidence-add-btn'); // B200
             toggleAnnotationSidebar(this);
         });
     }
@@ -2263,7 +2273,8 @@ class EvidenceBlock {
             btn.className = 'cdx-settings-button' + (this._data.display_mode === key ? ' cdx-settings-button--active' : '');
             btn.textContent = label;
             btn.dataset.key = key;
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', (ev) => {
+                window._uevt?.(ev, 'report_editor', 'click:evidence-display-mode', { mode: key }); // B200
                 this._data.display_mode = key;
                 this._renderContent();
                 wrapper.querySelectorAll('.cdx-settings-button').forEach(b => {
@@ -2638,6 +2649,9 @@ function _initDragDrop() {
         // Beleg: Planungsgespraech 2026-05-11
         const hasAnnotation = e.dataTransfer.types.includes('text/x-annotation-id');
         if (!hasModule && !hasStandard && !hasAnnotation) return;
+        window._uevt?.(e, 'report_editor', 'drop:editorjs-holder', { // B200
+            hasModule, hasStandard, hasAnnotation,
+        }); // B200
         e.preventDefault();
 
         if (!window._editor?.blocks) {
@@ -2802,6 +2816,7 @@ function _initColResizer() {
     let _startRatio = DEFAULT_SPLIT;
 
     resizer.addEventListener('mousedown', (e) => {
+        window._uevt?.(e, 'report_editor', 'mousedown:col-resizer'); // B200
         e.preventDefault();
         _dragging = true;
         _startX   = e.clientX;
@@ -2841,6 +2856,7 @@ function _initColResizer() {
 
     // Touch-Support
     resizer.addEventListener('touchstart', (e) => {
+        window._uevt?.(e, 'report_editor', 'touchstart:col-resizer'); // B200
         const touch = e.touches[0];
         _dragging = true;
         _startX   = touch.clientX;
@@ -2983,6 +2999,7 @@ function _initForumLinkInterceptor() {
     document.addEventListener('click', (evt) => {
         const link = evt.target.closest('a[href]');
         if (!link) return;
+        window._uevt?.(evt, 'report_editor', 'click:link-interceptor', { href: link.getAttribute('href') }); // B200
 
         const href = link.getAttribute('href');
         if (!href || href.startsWith('#') || href.startsWith('javascript')) return;
@@ -3039,7 +3056,8 @@ async function initEditorModule() {
     // Beleg: Bugfix Build 132, Projektgespraech 2026-05-09
     const btnRefresh = document.getElementById('btn-refresh-placeholders');
     if (btnRefresh) {
-        btnRefresh.addEventListener('click', async () => {
+        btnRefresh.addEventListener('click', async (evt) => {
+            window._uevt?.(evt, 'report_editor', 'click:btn-refresh-placeholders'); // B200
             if (!_currentReport) return;
             btnRefresh.disabled = true;
             btnRefresh.textContent = '⏳ Lädt…';
@@ -3058,7 +3076,8 @@ async function initEditorModule() {
     // Beleg: Bugfix Build 134, Projektgespraech 2026-05-09
     const btnPrint = document.getElementById('btn-print');
     if (btnPrint) {
-        btnPrint.addEventListener('click', async () => {
+        btnPrint.addEventListener('click', async (evt) => {
+            window._uevt?.(evt, 'report_editor', 'click:btn-print'); // B200
             // Letzten Stand speichern bevor gedruckt wird
             if (window.EditorState?.lockId && _currentReport?.id) {
                 btnPrint.disabled = true;
@@ -3083,6 +3102,7 @@ async function initEditorModule() {
         document.addEventListener('keydown', async (e) => {
             const isSave = (e.ctrlKey || e.metaKey) && e.key === 's';
             if (!isSave) return;
+            window._uevt?.(e, 'report_editor', 'keydown:Ctrl+S', { reportId: _currentReport?.id }); // B200
             e.preventDefault();
             if (!_currentReport?.id || !window.EditorState?.lockId) return;
             await _performAutoSave(_currentReport.id);

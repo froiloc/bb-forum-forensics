@@ -306,6 +306,10 @@ _EDITOR_HTML = """\
          Muss vor report_editor.js geladen werden.
          Beleg: AP-E2, Projektgespraech 2026-05-07 (Build 109) -->
     <script src="/_forensic/static/editor/editor.bundle.js" defer></script>
+    <!-- 0b) debug_events.js: Event-Tracing (window._uevt). Muss VOR allen anderen
+          B6-Skripten geladen werden, damit _uevt beim Laden der Handler verfuegbar ist.
+          Build 200, Projektgespraech 2026-05-17 -->
+    <script src="/_forensic/debug_events.js" defer></script>
     <!-- 1a) placeholder_chips.js: Chip-Renderer (vor report.js laden) -->
     <script src="/_forensic/placeholder_chips.js" defer></script>
     <!-- 1b) placeholder_wizard.js: Wizard (nach Chips, vor report.js) -->
