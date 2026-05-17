@@ -1,6 +1,6 @@
 {
-  "build":   201,
-  "version": "0.6.201",
+  "build":   202,
+  "version": "0.6.202",
   "date":    "2026-05-17",
-  "note":    "Build 201: Bug 2.106 — debug_events.js Route in __init__.py ergaenzt; Null-Check auf Lock-Buttons in userinfo.js"
+  "note":    "Build 202: Bug 2.97/2.107 — _isProgrammaticInsert-Guard verhindert doppelten Auto-Save bei blocks.insert(); vorzeitiges Akkordeon-Oeffnen entfernt"
 }

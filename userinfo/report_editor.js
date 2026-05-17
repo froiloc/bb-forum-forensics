@@ -156,6 +156,24 @@ let _isInitializing  = false;
 // Beleg: Bugfix Build 146, Projektgespraech 2026-05-10
 let _isRefreshingForm = false;
 /**
+ * Guard: Unterdrückt Auto-Save waehrend programmatischem blocks.insert()
+ * in _insertModule (module_panel.js).
+ *
+ * Problem (Bug 2.97/2.107 Build 202):
+ *   _insertModule speichert den Block bereits per POST save_block server-seitig.
+ *   Das anschliessende editor.blocks.insert() loest onChange → _performAutoSave
+ *   aus, der den rohen Template-Text als zweiten Block in die DB schreibt.
+ *   Ergebnis: doppelter Block (einmal gerendert, einmal roh), 3 Formular-Eintraege.
+ *
+ * Loesung: module_panel.js ruft window.ReportEditor.beginProgrammaticInsert()
+ * vor blocks.insert() auf und window.ReportEditor.endProgrammaticInsert()
+ * nach Abschluss (inkl. Chip-Hydration-Timeout). onChange ist waehrenddessen
+ * fuer Auto-Save gesperrt; _refreshPlaceholderForm laeuft aber weiterhin.
+ *
+ * Beleg: Bugfix Build 202, Projektgespraech 2026-05-17 (Bug 2.97/2.107)
+ */
+let _isProgrammaticInsert = false;
+/**
  * Guard: Unterdrückt _syncAnchoredFromEditor während _reloadEditorContent().
  * Bug 2.73(a) Fix Build 167: block-removed-Events während Reload
  * lösten fruühzeitige Sync-Aufrufe aus die 0 Annotationen lieferten.
@@ -591,6 +609,11 @@ function _initEditorJs(blocks, reportId) {
         onChange: async (api, event) => {
             // Bug-Fix Build 117: Waehrend der Initialisierung keine Auto-Saves.
             if (_isInitializing) return;
+            // Bug 2.97/2.107 Fix Build 202: Waehrend programmatischem blocks.insert()
+            // (aus module_panel._insertModule) keinen Auto-Save ausloesen.
+            // Der Block wurde bereits per POST save_block server-seitig gespeichert.
+            // Beleg: Bugfix Build 202, Projektgespraech 2026-05-17
+            if (_isProgrammaticInsert) return;
 
             // Bug 2.30/2.60 Fix Build 146: Nach Block-Move Formular-Sortierung
             // aktualisieren und focusedId beibehalten.
@@ -3167,6 +3190,32 @@ fetch('/_forensic/version', { headers: { 'X-Forensic-Request': 'ajax' } })
     })
     .catch(() => console.debug('[forensic] report_editor.js: version fetch fehlgeschlagen'));
 _dbg('report_editor.js: Exports auf window gesetzt (Build wird async geladen)');
+// Bug 2.97/2.107 Fix Build 202: Guard-API fuer module_panel._insertModule.
+// Beleg: Bugfix Build 202, Projektgespraech 2026-05-17
+window.ReportEditor = window.ReportEditor || {};
+/**
+ * Setzt _isProgrammaticInsert=true. Muss vor editor.blocks.insert() gerufen werden.
+ * Timeout-Sicherung: Nach 2000ms automatischer Reset (Absicherung gegen haengende Guards).
+ */
+window.ReportEditor.beginProgrammaticInsert = function() {
+    _isProgrammaticInsert = true;
+    // Sicherheits-Timeout: Guard nach 2s zwangsweise zuruecksetzen
+    clearTimeout(window.ReportEditor._insertGuardTimer);
+    window.ReportEditor._insertGuardTimer = setTimeout(() => {
+        if (_isProgrammaticInsert) {
+            console.warn('[forensic] report_editor.js: _isProgrammaticInsert-Guard-Timeout ausgeloest (2s) — Guard zurueckgesetzt.');
+            _isProgrammaticInsert = false;
+        }
+    }, 2000);
+};
+/**
+ * Setzt _isProgrammaticInsert=false. Nach Abschluss von blocks.insert()
+ * inkl. aller setTimeout-Callbacks aufrufen.
+ */
+window.ReportEditor.endProgrammaticInsert = function() {
+    clearTimeout(window.ReportEditor._insertGuardTimer);
+    _isProgrammaticInsert = false;
+};
 window.initEditorModule            = initEditorModule;
 window.injectInsertInReportButtons = injectInsertInReportButtons;
 window.toggleAnnotationSidebar          = toggleAnnotationSidebar;

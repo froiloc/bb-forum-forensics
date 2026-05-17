@@ -855,10 +855,16 @@ async function _insertModule(moduleId) {
         // Bug 2.64 Fix Build 155: Template-Syntax statt chipHtml fuer blocks.insert.
         // Bug Rendering Fix Build 158: Chips nach blocks.insert per execCommand
         // hydrieren — blocks.insert zeigt nur Plaintext.
-        // Beleg: Bugfix Build 158, Projektgespraech 2026-05-11
+        // Bug 2.97/2.107 Fix Build 202: Guard verhindert, dass blocks.insert()
+        // einen onChange → Auto-Save ausloest, der den rohen Template-Text als
+        // zweiten Block in die DB schreibt. Der Block ist bereits per POST
+        // save_block server-seitig gespeichert.
+        // Beleg: Bugfix Build 202, Projektgespraech 2026-05-17
         const editor = window._editor;
         if (editor?.blocks) {
             const bodyText = m.body || '';
+            // Guard setzen: Auto-Save waehrend blocks.insert() unterdrücken
+            window.ReportEditor?.beginProgrammaticInsert?.();
             editor.blocks.insert('paragraph', { text: bodyText }, {}, undefined, true);
             const lastIdx = editor.blocks.getBlocksCount() - 1;
             editor.caret.setToBlock(lastIdx);
@@ -870,7 +876,11 @@ async function _insertModule(moduleId) {
                     const ceBlocks = holder?.querySelectorAll('.ce-block[data-id]');
                     const newCeBlock = ceBlocks?.[lastIdx];
                     const ce = newCeBlock?.querySelector('[contenteditable="true"]');
-                    if (!ce) return;
+                    if (!ce) {
+                        // Guard freigeben auch wenn Chip-Hydration fehlschlaegt
+                        window.ReportEditor?.endProgrammaticInsert?.();
+                        return;
+                    }
                     const chipHtml = window.PlaceholderChips.hydrateChips(bodyText, {}, {});
                     ce.focus();
                     const sel = window.getSelection();
@@ -880,16 +890,20 @@ async function _insertModule(moduleId) {
                     sel.addRange(range);
                     document.execCommand('insertHTML', false, chipHtml);
                     _dbg('_insertModule: Chips hydriert, idx=', lastIdx);
+                    // Guard freigeben: Chip-Hydration abgeschlossen
+                    window.ReportEditor?.endProgrammaticInsert?.();
                 }, 50);
+            } else {
+                // Kein bodyText oder kein hydrateChips: Guard sofort freigeben
+                window.ReportEditor?.endProgrammaticInsert?.();
             }
         }
 
-        // 5. Formular-Akkordeon oeffnen (Phase 6)
-        const sidebar     = document.getElementById('support-sidebar');
-        const formSection = sidebar?.querySelector('[data-accordion="form"]');
-        if (formSection && typeof window.openAccordionSection === 'function') {
-            window.openAccordionSection(formSection);
-        }
+        // 5. Formular-Akkordeon: wird im onInserted-Callback (report_editor.js)
+        // nach _loadBlocksAndReinit geoeffnet, damit _currentBlocks aktuell sind.
+        // Bug 2.97/2.107 Fix Build 202: Fruehzeitiges Oeffnen hier verursachte
+        // showPlaceholderForm mit blocks=0 (vor Server-Antwort).
+        // Beleg: Bugfix Build 202, Projektgespraech 2026-05-17
 
         // 6. Callback
         if (_currentOpts.onInserted) {
