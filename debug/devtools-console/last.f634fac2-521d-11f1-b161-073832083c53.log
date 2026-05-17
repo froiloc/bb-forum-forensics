@@ -1,0 +1,624 @@
+:8080/favicon.ico:1  Failed to load resource: the server responded with a status of 404 (Not Found)
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+report:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+Navigated to http://127.0.0.2:8080/_forensic/report
+debug_events.js:235 [debug_events.js] Build 200 geladen. window._uevt() verfügbar. Trace-Modus: window.FORENSIC_EVENT_TRACE = true
+debug_events.js:241 [debug_events.js] Kill-Switches: window.FORENSIC_DEBUG=false (alles) | window.FORENSIC_EVENT_DEBUG=false (nur Events)
+placeholder_chips.js:56 [forensic] placeholder_chips.js: window.PlaceholderChips exportiert
+placeholder_wizard.js:75 [forensic] placeholder_wizard.js: window.PlaceholderWizard exportiert
+module_panel.js:77 [forensic] module_panel.js: window.ModulePanel exportiert
+annotation_sidebar.js:58 [forensic] annotation_sidebar.js: window.AnnotationSidebar exportiert
+report_editor.js:86 [forensic] report_editor.js: Exports auf window gesetzt (Build wird async geladen)
+userinfo.js:67 [forensic] DOMContentLoaded: userinfo.js aktiv
+userinfo.js:67 [forensic] initEditor() gestartet
+userinfo.js:67 [forensic] initSSEWindow3() gestartet
+report_editor.js:3458 [forensic] report_editor.js: v0.6.217 Build 217 | Exports auf window gesetzt
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 630300b8-0e38-4a57-a3a2-cc1642f4b6f7
+report_editor.js:86 [forensic] initEditorModule() gestartet
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:86 [forensic] _initColResizer: Schiebebalken initialisiert
+report_editor.js:86 [forensic] _initForumLinkInterceptor: BroadcastChannel bereit
+report_editor.js:86 [forensic] _initForumLinkInterceptor: aktiv (window_id= 74135139-65d6-45a1-bf1a-eb35302fb974 )
+report_editor.js:86 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
+report_editor.js:86 [forensic] initReportSelector() gestartet
+favicon.ico:1  GET http://127.0.0.2:8080/favicon.ico 404 (Not Found)
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 630300b8-0e38-4a57-a3a2-cc1642f4b6f7
+userinfo.js:67 [forensic] acquireLock: Lock bereits vorhanden ( 84f0f510-9115-4ce3-a2ee-3d0af1b250c6 ) — uebersprungen
+debug_events.js:174 [USER]     [report_editor] click:btn-new-report — Mouse
+debug_events.js:174 [USER]     [report_editor] click:btn-create-report — Mouse
+report_editor.js:86 [forensic] initReportSelector() gestartet
+report_editor.js:86 [forensic] loadReport() report_id= 1 type= interim
+report_editor.js:519 report_editor.js: _knownBlockIds initialisiert, 0 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:931 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= null onSave= function myUsername= paul
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+report_editor.js:976 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= 069368b2-2a8f-467e-8463-4620a39faa9e — Editor-Reload via onInserted-Callback
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 1 Bloecke geladen.
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:931 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+report_editor.js:976 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= 49c28fae-79ed-418e-a1e9-2e10c6357e59 — Editor-Reload via onInserted-Callback
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 2 Bloecke geladen.
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:931 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+report_editor.js:976 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:963 [forensic] _captureRange: alt= null → neu: blockId= 069368b2-2a8f-467e-8463-4620a39faa9e blockIdx= 1 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:963 [forensic] _captureRange: alt= blockId=069368b2-2a8f-467e-8463-4620a39faa9e offset=0 → neu: blockId= 069368b2-2a8f-467e-8463-4620a39faa9e blockIdx= 1 startOffset= 0
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:963 [forensic] _captureRange: alt= blockId=069368b2-2a8f-467e-8463-4620a39faa9e offset=0 → neu: blockId= D-JHv-FxRm blockIdx= 0 startOffset= 0
+report_editor.js:86 [forensic] onChange: Block-Anzahl geaendert: Editor= 3  / _currentBlocks= 2  — bereinige _currentBlocks und Formular-Refresh (Bug 2.98/2.121)
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:963 [forensic] _captureRange: alt= blockId=D-JHv-FxRm offset=0 → neu: blockId= D-JHv-FxRm blockIdx= 0 startOffset= 0
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:963 [forensic] _captureRange: alt= blockId=D-JHv-FxRm offset=0 → neu: blockId= ? blockIdx= -1 startOffset= 1
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:963 [forensic] _captureRange: alt= blockId=? offset=1 → neu: blockId= ? blockIdx= -1 startOffset= 1
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+report_editor.js:86 [forensic] onChange: Block-Anzahl geaendert: Editor= 3  / _currentBlocks= 2  — bereinige _currentBlocks und Formular-Refresh (Bug 2.98/2.121)
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:963 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= fMg1NzlXXU blockIdx= 0 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:963 [forensic] _captureRange: alt= blockId=fMg1NzlXXU offset=0 → neu: blockId= fMg1NzlXXU blockIdx= 0 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:963 [forensic] _captureRange: alt= blockId=fMg1NzlXXU offset=0 → neu: blockId= fMg1NzlXXU blockIdx= 0 startOffset= 1
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:963 [forensic] _captureRange: alt= blockId=fMg1NzlXXU offset=1 → neu: blockId= fMg1NzlXXU blockIdx= 0 startOffset= 1
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:963 [forensic] _captureRange: alt= blockId=fMg1NzlXXU offset=1 → neu: blockId= fMg1NzlXXU blockIdx= 0 startOffset= 1
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:963 [forensic] _captureRange: alt= blockId=fMg1NzlXXU offset=1 → neu: blockId= fMg1NzlXXU blockIdx= 0 startOffset= 2
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:963 [forensic] _captureRange: alt= blockId=fMg1NzlXXU offset=2 → neu: blockId= fMg1NzlXXU blockIdx= 0 startOffset= 2
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:963 [forensic] _captureRange: alt= blockId=fMg1NzlXXU offset=2 → neu: blockId= fMg1NzlXXU blockIdx= 0 startOffset= 3
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:963 [forensic] _captureRange: alt= blockId=fMg1NzlXXU offset=3 → neu: blockId= fMg1NzlXXU blockIdx= 0 startOffset= 4
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:963 [forensic] _captureRange: alt= blockId=fMg1NzlXXU offset=4 → neu: blockId= fMg1NzlXXU blockIdx= 0 startOffset= 4
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:963 [forensic] _captureRange: alt= blockId=fMg1NzlXXU offset=4 → neu: blockId= fMg1NzlXXU blockIdx= 0 startOffset= 4
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:963 [forensic] _captureRange: alt= blockId=fMg1NzlXXU offset=4 → neu: blockId= fMg1NzlXXU blockIdx= 0 startOffset= 5
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:963 [forensic] _captureRange: alt= blockId=fMg1NzlXXU offset=5 → neu: blockId= fMg1NzlXXU blockIdx= 0 startOffset= 6
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:963 [forensic] _captureRange: alt= blockId=fMg1NzlXXU offset=6 → neu: blockId= fMg1NzlXXU blockIdx= 0 startOffset= 6
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:963 [forensic] _captureRange: alt= blockId=fMg1NzlXXU offset=6 → neu: blockId= fMg1NzlXXU blockIdx= 0 startOffset= 6
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:963 [forensic] _captureRange: alt= blockId=fMg1NzlXXU offset=6 → neu: blockId= fMg1NzlXXU blockIdx= 0 startOffset= 7
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:963 [forensic] _captureRange: alt= blockId=fMg1NzlXXU offset=7 → neu: blockId= fMg1NzlXXU blockIdx= 0 startOffset= 7
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:963 [forensic] _captureRange: alt= blockId=fMg1NzlXXU offset=7 → neu: blockId= fMg1NzlXXU blockIdx= 0 startOffset= 8
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:963 [forensic] _captureRange: alt= blockId=fMg1NzlXXU offset=8 → neu: blockId= fMg1NzlXXU blockIdx= 0 startOffset= 8
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:963 [forensic] _captureRange: alt= blockId=fMg1NzlXXU offset=8 → neu: blockId= fMg1NzlXXU blockIdx= 0 startOffset= 9
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:963 [forensic] _captureRange: alt= blockId=fMg1NzlXXU offset=9 → neu: blockId= fMg1NzlXXU blockIdx= 0 startOffset= 9
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:963 [forensic] _captureRange: alt= blockId=fMg1NzlXXU offset=9 → neu: blockId= fMg1NzlXXU blockIdx= 0 startOffset= 10
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:963 [forensic] _captureRange: alt= blockId=fMg1NzlXXU offset=10 → neu: blockId= fMg1NzlXXU blockIdx= 0 startOffset= 10
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:963 [forensic] _captureRange: alt= blockId=fMg1NzlXXU offset=10 → neu: blockId= fMg1NzlXXU blockIdx= 0 startOffset= 11
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:963 [forensic] _captureRange: alt= blockId=fMg1NzlXXU offset=11 → neu: blockId= fMg1NzlXXU blockIdx= 0 startOffset= 11
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+/**
+ * IIFE-Diagnosescript: Bug 2.120
+ * Neuer Bericht → Wechsel zu bestehendem → Totalverlust
+ *
+ * ANLEITUNG:
+ *   1. Berichtseditor öffnen. Mindestens einen Bericht mit einem Modul
+ *      anlegen und speichern (manuell, einmalig).
+ *   2. Script in DevTools-Console einfügen + Enter.
+ *   3. "[DIAG 2.120] Bereit" abwarten.
+ *   4. Roten Button "[DIAG] 2.120 Test starten" unten rechts klicken.
+ *   5. ~10 Sekunden warten bis "ERGEBNIS" erscheint.
+ *   6. Alle [DIAG 2.120]-Zeilen bereitstellen.
+ */
+(function () {
+    'use strict';
+
+    const TAG  = '[DIAG 2.120]';
+    const ts   = () => new Date().toISOString().slice(11, 23);
+    const wait = (ms) => new Promise(r => setTimeout(r, ms));
+
+    // -----------------------------------------------------------------------
+    // fetch-Intercept
+    // -----------------------------------------------------------------------
+    const origFetch = window.fetch;
+    const _fetchLog = [];
+    window.fetch = async function (url, opts) {
+        const urlStr = typeof url === 'string' ? url : url?.url ?? String(url);
+        const method = opts?.method || 'GET';
+        let body = null;
+        try { body = opts?.body ? JSON.parse(opts.body) : null; } catch (_) {}
+        const relevant = urlStr.includes('/_forensic/report')
+            || urlStr.includes('/_forensic/editor');
+        if (relevant) {
+            const entry = {
+                ts: ts(),
+                url: urlStr.replace('http://127.0.0.2:8080', ''),
+                method,
+                action:    body?.action    ?? null,
+                report_id: body?.report_id ?? null,
+                block_id:  body?.block_id  ? body.block_id.slice(0, 8) : null,
+            };
+            _fetchLog.push(entry);
+            console.debug(TAG, entry.ts,
+                method, entry.url.split('?')[0].split('&')[0],
+                'rid=' + (entry.report_id ?? '—'),
+                'action=' + (entry.action ?? '—'),
+                entry.block_id ? 'bid=' + entry.block_id : ''
+            );
+        }
+        return origFetch.apply(this, arguments);
+    };
+
+    // -----------------------------------------------------------------------
+    // Hilfsfunktionen
+    // -----------------------------------------------------------------------
+    function _getEditorBlockIds() {
+        const ed = window._editor;
+        if (!ed) return [];
+        const ids = [];
+        try {
+            const n = ed.blocks.getBlocksCount();
+            for (let i = 0; i < n; i++) {
+                const id = ed.blocks.getBlockByIndex(i)?.id;
+                if (id) ids.push(id);
+            }
+        } catch (_) {}
+        return ids;
+    }
+
+    function _getCurrentReportId() {
+        return document.getElementById('report-select')?.value ?? '?';
+    }
+
+    function _snap(label) {
+        const edIds  = _getEditorBlockIds();
+        const report = _getCurrentReportId();
+        console.debug(TAG, ts(), '[' + label + ']',
+            '| Bericht:', report,
+            '| Editor-Blöcke:', edIds.length,
+            edIds.length ? '(' + edIds.map(function(id) { return id.slice(0, 8); }).join(', ') + ')' : ''
+        );
+        return { label: label, report: report, edIds: edIds };
+    }
+
+    // -----------------------------------------------------------------------
+    // Haupt-Testablauf
+    // -----------------------------------------------------------------------
+    async function _runTest() {
+        _fetchLog.length = 0;
+        console.debug(TAG, '='.repeat(60));
+        console.debug(TAG, ts(), 'Test startet. Build:', window._buildnr ?? '?');
+
+        // ---- Ausgangszustand ----
+        var reportSelectEl = document.getElementById('report-select');
+        if (!reportSelectEl) {
+            console.error(TAG, 'ABBRUCH: #report-select nicht gefunden.');
+            return;
+        }
+
+        // Bericht 1 laden
+        var opts = Array.from(reportSelectEl.options);
+        var report1Opt = opts.find(function(o) { return o.value === '1'; });
+        if (!report1Opt) {
+            console.error(TAG, 'ABBRUCH: Kein Bericht ID=1. Erst manuell anlegen.');
+            return;
+        }
+
+        console.debug(TAG, ts(), 'Phase 1: Lade Bericht 1');
+        reportSelectEl.value = '1';
+        reportSelectEl.dispatchEvent(new Event('change', { bubbles: true }));
+        await wait(2000);
+        var snap1 = _snap('Bericht 1 geladen');
+
+        if (snap1.edIds.length === 0) {
+            console.error(TAG, 'ABBRUCH: Bericht 1 leer. Erst Modul einfügen + Speichern.');
+            return;
+        }
+        var originalBlockIds = snap1.edIds.slice();
+        console.debug(TAG, ts(), 'Ursprüngliche Blöcke:',
+            originalBlockIds.map(function(id) { return id.slice(0, 8); }).join(', '));
+
+        // Manuell speichern
+        console.debug(TAG, ts(), 'Phase 2: Manuell speichern');
+        var btnSave = document.getElementById('btn-save-now');
+        if (btnSave) btnSave.click();
+        await wait(1500);
+
+        // ---- Neuen Bericht erstellen ----
+        console.debug(TAG, ts(), 'Phase 3: btn-new-report klicken');
+        var btnNew = document.getElementById('btn-new-report');
+        if (!btnNew) { console.error(TAG, 'ABBRUCH: btn-new-report fehlt'); return; }
+        btnNew.click();
+        await wait(600);
+
+        // Modal prüfen
+        var dialog = document.getElementById('new-report-dialog');
+        if (!dialog) {
+            console.error(TAG, 'ABBRUCH: #new-report-dialog nicht erschienen.');
+            return;
+        }
+        console.debug(TAG, ts(), 'Modal vorhanden:', dialog.id);
+
+        var titleInput = document.getElementById('new-report-title');
+        if (!titleInput) {
+            console.error(TAG, 'ABBRUCH: #new-report-title nicht gefunden.');
+            return;
+        }
+
+        // Titel eintragen — nativ, ohne framework-spezifische Tricks nötig
+        var testTitle = 'DIAG-2120-' + Date.now().toString(36);
+        titleInput.focus();
+        // Wert direkt setzen und alle relevanten Events feuern
+        var nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+            window.HTMLInputElement.prototype, 'value'
+        ).set;
+        nativeInputValueSetter.call(titleInput, testTitle);
+        titleInput.dispatchEvent(new Event('input',  { bubbles: true }));
+        titleInput.dispatchEvent(new Event('change', { bubbles: true }));
+        console.debug(TAG, ts(), 'Titel eingetragen:', testTitle,
+            '| input.value jetzt:', titleInput.value);
+
+        await wait(300);
+
+        // Anlegen klicken
+        var btnCreate = document.getElementById('btn-create-report');
+        if (!btnCreate) {
+            console.error(TAG, 'ABBRUCH: #btn-create-report nicht gefunden.');
+            return;
+        }
+        console.debug(TAG, ts(), 'Phase 4: btn-create-report klicken');
+        btnCreate.click();
+        await wait(2500);
+        var snap2 = _snap('Neuer Bericht erstellt');
+
+        // Prüfen ob neuer Bericht wirklich angelegt wurde
+        var newReportId = _getCurrentReportId();
+        if (newReportId === '1') {
+            console.warn(TAG, 'WARNUNG: Bericht-ID immer noch 1 — neuer Bericht evtl. nicht erstellt.',
+                'Titel war:', titleInput.value);
+        } else {
+            console.debug(TAG, ts(), 'Neuer Bericht ID:', newReportId);
+        }
+
+        // ---- Zurück zu Bericht 1 ----
+        console.debug(TAG, ts(), 'Phase 5: Zurück zu Bericht 1');
+        reportSelectEl.value = '1';
+        reportSelectEl.dispatchEvent(new Event('change', { bubbles: true }));
+        await wait(2500);
+        var snap3 = _snap('Nach Rückwechsel zu Bericht 1');
+
+        // ---- Aktualisieren ----
+        console.debug(TAG, ts(), 'Phase 6: Aktualisieren');
+        var btnRefresh = document.getElementById('btn-refresh-placeholders');
+        if (btnRefresh) btnRefresh.click();
+        await wait(2000);
+        var snap4 = _snap('Nach Aktualisieren');
+
+        // ---- Ergebnis ----
+        console.debug(TAG, '='.repeat(60));
+        console.debug(TAG, ts(), 'ERGEBNIS:');
+        console.debug(TAG, '  Ursprüngliche Blöcke:',
+            originalBlockIds.map(function(id) { return id.slice(0, 8); }).join(', '));
+        console.debug(TAG, '  Blöcke nach Test:',
+            snap4.edIds.map(function(id) { return id.slice(0, 8); }).join(', ') || '(leer!)');
+
+        var verloren = originalBlockIds.filter(function(id) {
+            return !snap4.edIds.includes(id);
+        });
+        var erhalten = originalBlockIds.filter(function(id) {
+            return snap4.edIds.includes(id);
+        });
+
+        if (verloren.length === 0) {
+            console.debug(TAG, '✅ BESTANDEN: Alle Blöcke von Bericht 1 erhalten.');
+        } else {
+            console.error(TAG, '❌ FEHLER 2.120:',
+                verloren.map(function(id) { return id.slice(0, 8); }).join(', '), 'verloren.');
+            console.debug(TAG, '  Erhalten:',
+                erhalten.map(function(id) { return id.slice(0, 8); }).join(', ') || '(keine)');
+        }
+
+        console.debug(TAG, '--- Fetch-Log (' + _fetchLog.length + ' Einträge) ---');
+        _fetchLog.forEach(function(e) {
+            console.debug(TAG, ' ', e.ts, e.method,
+                e.url.split('?')[0], 'rid=' + (e.report_id ?? '—'), 'action=' + (e.action ?? '—'));
+        });
+        console.debug(TAG, '='.repeat(60));
+    }
+
+    // -----------------------------------------------------------------------
+    // Start-Button
+    // -----------------------------------------------------------------------
+    var existing = document.getElementById('diag-2120-btn');
+    if (existing) existing.remove();
+
+    var btn = document.createElement('button');
+    btn.id = 'diag-2120-btn';
+    btn.textContent = '[DIAG] 2.120 Test starten';
+    btn.style.cssText = [
+        'position:fixed', 'bottom:16px', 'right:16px', 'z-index:99999',
+        'background:#c0392b', 'color:#fff', 'border:none', 'border-radius:6px',
+        'padding:8px 14px', 'font:bold 13px/1 monospace', 'cursor:pointer',
+        'box-shadow:0 2px 8px rgba(0,0,0,.4)',
+    ].join(';');
+    btn.addEventListener('click', async function() {
+        btn.disabled = true;
+        btn.textContent = '[DIAG] läuft…';
+        try { await _runTest(); }
+        finally {
+            btn.disabled = false;
+            btn.textContent = '[DIAG] Nochmal';
+        }
+    });
+    document.body.appendChild(btn);
+
+    console.debug(TAG, '='.repeat(60));
+    console.debug(TAG, 'Bereit. Roter Button unten rechts klicken.');
+    console.debug(TAG, 'Voraussetzung: Bericht 1 hat min. einen gespeicherten Block.');
+    console.debug(TAG, '='.repeat(60));
+
+})();
+VM10368:256 [DIAG 2.120] ============================================================
+VM10368:257 [DIAG 2.120] Bereit. Roter Button unten rechts klicken.
+VM10368:258 [DIAG 2.120] Voraussetzung: Bericht 1 hat min. einen gespeicherten Block.
+VM10368:259 [DIAG 2.120] ============================================================
+undefined
+VM10368:90 [DIAG 2.120] ============================================================
+VM10368:91 [DIAG 2.120] 18:24:52.731 Test startet. Build: 217
+VM10368:108 [DIAG 2.120] 18:24:52.731 Phase 1: Lade Bericht 1
+debug_events.js:162 [WORKFLOW] [report_editor] change:report-select — programmatisch
+report_editor.js:86 [forensic] loadReport() report_id= 1 type= interim
+VM10368:43 [DIAG 2.120] 18:24:52.733 GET /_forensic/report rid=— action=— 
+report_editor.js:519 report_editor.js: _knownBlockIds initialisiert, 2 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:931 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+report_editor.js:976 report_editor.js: Initialisierungs-Guard freigegeben.
+VM10368:77 [DIAG 2.120] 18:24:54.733 [Bericht 1 geladen] | Bericht: 1 | Editor-Blöcke: 2 (069368b2, 49c28fae)
+VM10368:119 [DIAG 2.120] 18:24:54.733 Ursprüngliche Blöcke: 069368b2, 49c28fae
+VM10368:123 [DIAG 2.120] 18:24:54.733 Phase 2: Manuell speichern
+debug_events.js:174 [WORKFLOW] [report_editor] click:btn-save-now — programmatisch
+report_editor.js:2104 report_editor.js: Auto-Save gestartet, report_id= 1 | bekannte Block-IDs: 2
+VM10368:43 [DIAG 2.120] 18:24:54.736 POST /_forensic/editor/block rid=1 action=save bid=069368b2
+VM10368:43 [DIAG 2.120] 18:24:54.751 POST /_forensic/editor/block rid=1 action=save bid=49c28fae
+VM10368:43 [DIAG 2.120] 18:24:54.757 POST /_forensic/editor/order rid=1 action=— 
+report_editor.js:2218 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 2 | Bloecke geloescht: 0
+VM10368:43 [DIAG 2.120] 18:24:54.764 GET /_forensic/report rid=— action=— 
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+VM10368:129 [DIAG 2.120] 18:24:56.235 Phase 3: btn-new-report klicken
+debug_events.js:174 [WORKFLOW] [report_editor] click:btn-new-report — programmatisch
+VM10368:141 [DIAG 2.120] 18:24:56.841 Modal vorhanden: new-report-dialog
+VM10368:159 [DIAG 2.120] 18:24:56.842 Titel eingetragen: DIAG-2120-mpa3ulmx | input.value jetzt: DIAG-2120-mpa3ulmx
+VM10368:170 [DIAG 2.120] 18:24:57.142 Phase 4: btn-create-report klicken
+debug_events.js:174 [WORKFLOW] [report_editor] click:btn-create-report — programmatisch
+VM10368:43 [DIAG 2.120] 18:24:57.142 POST /_forensic/reports rid=— action=— 
+report_editor.js:86 [forensic] initReportSelector() gestartet
+VM10368:43 [DIAG 2.120] 18:24:57.156 GET /_forensic/reports rid=— action=— 
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= interim
+VM10368:43 [DIAG 2.120] 18:24:57.163 GET /_forensic/report rid=— action=— 
+report_editor.js:519 report_editor.js: _knownBlockIds initialisiert, 2 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:931 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+report_editor.js:976 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:2104 report_editor.js: Auto-Save gestartet, report_id= 1 | bekannte Block-IDs: 2
+VM10368:43 [DIAG 2.120] 18:24:58.552 POST /_forensic/editor/block rid=1 action=save bid=069368b2
+VM10368:43 [DIAG 2.120] 18:24:58.565 POST /_forensic/editor/block rid=1 action=save bid=49c28fae
+VM10368:43 [DIAG 2.120] 18:24:58.571 POST /_forensic/editor/order rid=1 action=— 
+report_editor.js:2218 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 2 | Bloecke geloescht: 0
+VM10368:43 [DIAG 2.120] 18:24:58.580 GET /_forensic/report rid=— action=— 
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+VM10368:77 [DIAG 2.120] 18:24:59.642 [Neuer Bericht erstellt] | Bericht: 2 | Editor-Blöcke: 2 (069368b2, 49c28fae)
+VM10368:181 [DIAG 2.120] 18:24:59.643 Neuer Bericht ID: 2
+VM10368:185 [DIAG 2.120] 18:24:59.643 Phase 5: Zurück zu Bericht 1
+debug_events.js:162 [WORKFLOW] [report_editor] change:report-select — programmatisch
+report_editor.js:86 [forensic] loadReport() report_id= 1 type= interim
+VM10368:43 [DIAG 2.120] 18:24:59.644 GET /_forensic/report rid=— action=— 
+report_editor.js:519 report_editor.js: _knownBlockIds initialisiert, 2 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:931 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+report_editor.js:976 report_editor.js: Initialisierungs-Guard freigegeben.
+VM10368:77 [DIAG 2.120] 18:25:02.144 [Nach Rückwechsel zu Bericht 1] | Bericht: 2 | Editor-Blöcke: 2 (069368b2, 49c28fae)
+VM10368:192 [DIAG 2.120] 18:25:02.145 Phase 6: Aktualisieren
+debug_events.js:174 [WORKFLOW] [report_editor] click:btn-refresh-placeholders — programmatisch
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+VM10368:43 [DIAG 2.120] 18:25:02.145 GET /_forensic/report rid=— action=— 
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 2 Bloecke geladen.
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:931 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+report_editor.js:976 report_editor.js: Initialisierungs-Guard freigegeben.
+VM10368:77 [DIAG 2.120] 18:25:04.145 [Nach Aktualisieren] | Bericht: 2 | Editor-Blöcke: 2 (069368b2, 49c28fae)
+VM10368:199 [DIAG 2.120] ============================================================
+VM10368:200 [DIAG 2.120] 18:25:04.146 ERGEBNIS:
+VM10368:201 [DIAG 2.120]   Ursprüngliche Blöcke: 069368b2, 49c28fae
+VM10368:203 [DIAG 2.120]   Blöcke nach Test: 069368b2, 49c28fae
+VM10368:214 [DIAG 2.120] ✅ BESTANDEN: Alle Blöcke von Bericht 1 erhalten.
+VM10368:222 [DIAG 2.120] --- Fetch-Log (14 Einträge) ---
+VM10368:224 [DIAG 2.120]   18:24:52.733 GET /_forensic/report rid=— action=—
+VM10368:224 [DIAG 2.120]   18:24:54.736 POST /_forensic/editor/block rid=1 action=save
+VM10368:224 [DIAG 2.120]   18:24:54.751 POST /_forensic/editor/block rid=1 action=save
+VM10368:224 [DIAG 2.120]   18:24:54.757 POST /_forensic/editor/order rid=1 action=—
+VM10368:224 [DIAG 2.120]   18:24:54.764 GET /_forensic/report rid=— action=—
+VM10368:224 [DIAG 2.120]   18:24:57.142 POST /_forensic/reports rid=— action=—
+VM10368:224 [DIAG 2.120]   18:24:57.156 GET /_forensic/reports rid=— action=—
+VM10368:224 [DIAG 2.120]   18:24:57.163 GET /_forensic/report rid=— action=—
+VM10368:224 [DIAG 2.120]   18:24:58.552 POST /_forensic/editor/block rid=1 action=save
+VM10368:224 [DIAG 2.120]   18:24:58.565 POST /_forensic/editor/block rid=1 action=save
+VM10368:224 [DIAG 2.120]   18:24:58.571 POST /_forensic/editor/order rid=1 action=—
+VM10368:224 [DIAG 2.120]   18:24:58.580 GET /_forensic/report rid=— action=—
+VM10368:224 [DIAG 2.120]   18:24:59.644 GET /_forensic/report rid=— action=—
+VM10368:224 [DIAG 2.120]   18:25:02.145 GET /_forensic/report rid=— action=—
+VM10368:227 [DIAG 2.120] ============================================================
+debug_events.js:174 [USER]     [report_editor] click:btn-save-now — Mouse
+report_editor.js:2104 report_editor.js: Auto-Save gestartet, report_id= 1 | bekannte Block-IDs: 2
+VM10368:43 [DIAG 2.120] 18:25:29.633 POST /_forensic/editor/block rid=1 action=save bid=069368b2
+VM10368:43 [DIAG 2.120] 18:25:29.648 POST /_forensic/editor/block rid=1 action=save bid=49c28fae
+VM10368:43 [DIAG 2.120] 18:25:29.654 POST /_forensic/editor/order rid=1 action=— 
+report_editor.js:2218 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 2 | Bloecke geloescht: 0
+VM10368:43 [DIAG 2.120] 18:25:29.661 GET /_forensic/report rid=— action=— 
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+debug_events.js:162 [USER]     [report_editor] change:report-select — Input
+report_editor.js:86 [forensic] loadReport() report_id= 1 type= interim
+VM10368:43 [DIAG 2.120] 18:25:31.941 GET /_forensic/report rid=— action=— 
+report_editor.js:519 report_editor.js: _knownBlockIds initialisiert, 2 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:931 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+report_editor.js:976 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:162 [USER]     [report_editor] change:report-select — Input
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= interim
+VM10368:43 [DIAG 2.120] 18:25:34.137 GET /_forensic/report rid=— action=— 
+report_editor.js:519 report_editor.js: _knownBlockIds initialisiert, 2 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:931 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+report_editor.js:976 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:162 [USER]     [report_editor] change:report-select — Input
+report_editor.js:86 [forensic] loadReport() report_id= 1 type= interim
+VM10368:43 [DIAG 2.120] 18:25:36.349 GET /_forensic/report rid=— action=— 
+report_editor.js:519 report_editor.js: _knownBlockIds initialisiert, 2 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:931 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+report_editor.js:976 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:963 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= ? blockIdx= -1 startOffset= 1
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:963 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= wMhcsZbK1z blockIdx= 1 startOffset= 241
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+report_editor.js:86 [forensic] onChange: Block-Anzahl geaendert: Editor= 3  / _currentBlocks= 2  — bereinige _currentBlocks und Formular-Refresh (Bug 2.98/2.121)
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+report_editor.js:86 [forensic] onChange: sofortiger delete_block fuer ['49c28fae-79ed-418e-a1e9-2e10c6357e59']
+VM10368:43 [DIAG 2.120] 18:25:55.598 POST /_forensic/editor/block rid=— action=delete bid=49c28fae
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+report_editor.js:86 [forensic] onChange: Block sofort geloescht (2.98): 49c28fae-79ed-418e-a1e9-2e10c6357e59
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:963 [forensic] _captureRange: alt= blockId=wMhcsZbK1z offset=241 → neu: blockId= Y4OntEAcoa blockIdx= 2 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] click:btn-save-now — Mouse
+report_editor.js:2104 report_editor.js: Auto-Save gestartet, report_id= 1 | bekannte Block-IDs: 1
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+VM10368:43 [DIAG 2.120] 18:26:00.229 POST /_forensic/editor/block rid=1 action=save bid=069368b2
+VM10368:43 [DIAG 2.120] 18:26:00.243 POST /_forensic/editor/block rid=1 action=save bid=wMhcsZbK
+VM10368:43 [DIAG 2.120] 18:26:00.249 POST /_forensic/editor/order rid=1 action=— 
+report_editor.js:2218 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 2 | Bloecke geloescht: 0
+VM10368:43 [DIAG 2.120] 18:26:00.255 GET /_forensic/report rid=— action=— 
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:162 [USER]     [report_editor] change:report-select — Input
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= interim
+VM10368:43 [DIAG 2.120] 18:26:02.483 GET /_forensic/report rid=— action=— 
+report_editor.js:519 report_editor.js: _knownBlockIds initialisiert, 2 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:931 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+report_editor.js:976 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:162 [USER]     [report_editor] change:report-select — Input
+report_editor.js:86 [forensic] loadReport() report_id= 1 type= interim
+VM10368:43 [DIAG 2.120] 18:26:04.317 GET /_forensic/report rid=— action=— 
+report_editor.js:519 report_editor.js: _knownBlockIds initialisiert, 2 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:931 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+report_editor.js:976 report_editor.js: Initialisierungs-Guard freigegeben.

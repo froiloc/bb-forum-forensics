@@ -1,3 +1,5 @@
+<aside aria-label="Support-Sidebar" id="support-sidebar" style="flex: 28.7061 1 0%;">
+<!-- Abschnitt 1: Bausteine (Standard: aufgeklappt) -->
 <section class="support-accordion-section" data-accordion="blocks">
 <button aria-controls="accordion-body-blocks" aria-expanded="false" class="support-accordion-toggle" type="button">
 <span aria-hidden="true" class="support-accordion-icon">📦</span>
@@ -37,7 +39,7 @@
                     </button>
 </div>
 </div>
-<div aria-selected="false" class="mp-item mp-item-used" data-module-id="2" draggable="true" role="option" tabindex="0">
+<div aria-selected="false" class="mp-item" data-module-id="2" draggable="true" role="option" tabindex="0">
 <div class="mp-item-main">
 <span aria-hidden="true" class="mp-item-icon">📋</span>
 <div class="mp-item-text">
@@ -166,3 +168,56 @@
         </div>
 </div></div>
 </section>
+<!-- Abschnitt 2: Annotationen -->
+<section class="support-accordion-section" data-accordion="annotations">
+<button aria-controls="accordion-body-annotations" aria-expanded="false" class="support-accordion-toggle" type="button">
+<span aria-hidden="true" class="support-accordion-icon">🔍</span>
+            Annotationen
+            <span aria-hidden="true" class="support-accordion-chevron">▾</span>
+</button>
+<div aria-label="Annotationen" class="support-accordion-body support-accordion-body--closed" id="accordion-body-annotations" role="region">
+<!-- Inhalt wird von annotation_sidebar.js/_refreshAnnotationSidebar() befuellt (Phase 8) -->
+<!-- Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06 -->
+<p class="support-accordion-empty" id="annotations-loading-state">
+              Annotationen werden geladen…
+            </p>
+</div>
+</section>
+<!-- Abschnitt 3: Formular (Platzhalter-Eingabe) -->
+<section class="support-accordion-section support-accordion-section--open" data-accordion="form">
+<button aria-controls="accordion-body-form" aria-expanded="true" class="support-accordion-toggle" type="button">
+<span aria-hidden="true" class="support-accordion-icon">📝</span>
+            Formular
+            <span aria-hidden="true" class="support-accordion-chevron">▾</span>
+</button>
+<div aria-label="Platzhalter-Formular" class="support-accordion-body" id="accordion-body-form" role="region"><div aria-label="Platzhalter-Felder für Block paul" class="pf-block-group pf-block-group--focused" data-block-id="069368b2-2a8f-467e-8463-4620a39faa9e">
+<div class="pf-field-group" data-block-id="069368b2-2a8f-467e-8463-4620a39faa9e" data-field-name="realname" data-field-type="o">
+<label class="pf-label" for="pf-input-069368b2-2a8f-467e-8463-4620a39faa9e-realname">
+            realname
+        </label>
+<div class="pf-input-wrap">
+<input aria-label="realname" aria-required="false" autocomplete="off" class="pf-input" data-block-id="069368b2-2a8f-467e-8463-4620a39faa9e" data-field-name="realname" data-field-type="o" id="pf-input-069368b2-2a8f-467e-8463-4620a39faa9e-realname" placeholder="Bürgerlicher Name des Beschuldigten (sofern ermittelt)" type="text" value=""/>
+</div>
+<div class="pf-field-error" id="pf-err-069368b2-2a8f-467e-8463-4620a39faa9e-realname" role="alert"></div>
+</div>
+</div><div aria-label="Block ohne Platzhalter" class="pf-block-group pf-block-group--blurred" data-block-id="wMhcsZbK1z">
+<div class="pf-block-empty">Keine Platzhalter</div>
+</div></div>
+</section>
+<!-- Abschnitt 4: Kommentare (unten) -->
+<section class="support-accordion-section" data-accordion="comments">
+<button aria-controls="accordion-body-comments" aria-expanded="false" class="support-accordion-toggle" type="button">
+<span aria-hidden="true" class="support-accordion-icon">💬</span>
+            Kommentare
+            <span aria-hidden="true" class="support-accordion-chevron">▾</span>
+</button>
+<div aria-label="Kommentare" class="support-accordion-body support-accordion-body--closed" id="accordion-body-comments" role="region">
+<!-- Inhalt wird von comment_thread.js befuellt (Phase 4) -->
+<p class="support-accordion-empty" id="comments-empty-state">
+              Kein Block ausgewählt.
+            </p>
+<!-- Kommentar-Eingabe (wird von comment_thread.js aktiviert) -->
+<textarea aria-label="Neuen Kommentar verfassen" class="comment-input-textarea" placeholder="Kommentar verfassen…" rows="3" style="display:none"></textarea>
+</div>
+</section>
+</aside>
