@@ -695,9 +695,9 @@ function _initEditorJs(blocks, reportId) {
                 const editorBlockCount = ed?.blocks?.getBlocksCount?.() ?? -1;
                 const knownCount = _currentBlocks.length;
                 if (editorBlockCount >= 0 && editorBlockCount !== knownCount) {
-                    _dbg('onChange: Editor hat weniger Bloecke (',
-                         editorBlockCount, ') als _currentBlocks (', knownCount,
-                         ') — bereinige _currentBlocks und Formular-Refresh (Bug 2.98)');
+                    _dbg('onChange: Block-Anzahl geaendert: Editor=', editorBlockCount,
+                         ' / _currentBlocks=', knownCount,
+                         ' — bereinige _currentBlocks und Formular-Refresh (Bug 2.98/2.121)');
                     // Aktuelle Editor-Block-IDs ermitteln
                     const editorIds = new Set();
                     try {

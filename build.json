@@ -1,6 +1,6 @@
 {
-  "build":   214,
-  "version": "0.6.214",
+  "build":   215,
+  "version": "0.6.215",
   "date":    "2026-05-17",
-  "note":    "Build 214: Bug 2.120 — report_id beim initialen Block-Fetch; Bug 2.121 — Enter/Backspace loest sofortigen Formular-Refresh aus, neue Bloecke in _currentBlocks; Bug 2.99 — Sofort-Save vor Kommentieren wenn Block noch nicht gespeichert"
+  "note":    "Build 215: 2.121 bestaetigt behoben fuer Enter-Fall; Log-Text im Block-Anzahl-Vergleich korrigiert (zeigte 'weniger' auch bei Erhoehung)"
 }
