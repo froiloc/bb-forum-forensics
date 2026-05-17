@@ -745,3 +745,152 @@ debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
 report_editor.js:86 [forensic] onChange block-removed: sofortiger Delete fuer ['3254662b-d6a9-4974-b2b0-11095b4492b0']
 report_editor.js:86 [forensic] _syncAnchoredFromEditor:  0 verankerte Annotationen
 report_editor.js:86 [forensic] onChange: Block sofort geloescht: 3254662b-d6a9-4974-b2b0-11095b4492b0
+report_editor.js:1924 report_editor.js: Auto-Save gestartet, report_id= 1 | bekannte Block-IDs: 8
+report_editor.js:2038 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 8 | Bloecke geloescht: 0
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 8 focusedId= b0c4fe10-6ee8-4b71-9ad4-0122a6761e6c onSave= function myUsername= paul
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:791 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= b0c4fe10-6ee8-4b71-9ad4-0122a6761e6c blockIdx= 0 startOffset= 4
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:791 [forensic] _captureRange: alt= blockId=b0c4fe10-6ee8-4b71-9ad4-0122a6761e6c offset=4 → neu: blockId= f80699b8-513b-42bd-9bd4-6c2f234d4313 blockIdx= 1 startOffset= 5
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:791 [forensic] _captureRange: alt= blockId=f80699b8-513b-42bd-9bd4-6c2f234d4313 offset=5 → neu: blockId= f80699b8-513b-42bd-9bd4-6c2f234d4313 blockIdx= 1 startOffset= 5
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:791 [forensic] _captureRange: alt= blockId=f80699b8-513b-42bd-9bd4-6c2f234d4313 offset=5 → neu: blockId= f80699b8-513b-42bd-9bd4-6c2f234d4313 blockIdx= 1 startOffset= 5
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:791 [forensic] _captureRange: alt= blockId=f80699b8-513b-42bd-9bd4-6c2f234d4313 offset=5 → neu: blockId= f80699b8-513b-42bd-9bd4-6c2f234d4313 blockIdx= 1 startOffset= 5
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:791 [forensic] _captureRange: alt= blockId=f80699b8-513b-42bd-9bd4-6c2f234d4313 offset=5 → neu: blockId= f80699b8-513b-42bd-9bd4-6c2f234d4313 blockIdx= 1 startOffset= 5
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:791 [forensic] _captureRange: alt= blockId=f80699b8-513b-42bd-9bd4-6c2f234d4313 offset=5 → neu: blockId= f80699b8-513b-42bd-9bd4-6c2f234d4313 blockIdx= 1 startOffset= 5
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:791 [forensic] _captureRange: alt= blockId=f80699b8-513b-42bd-9bd4-6c2f234d4313 offset=5 → neu: blockId= ee105ac7-1cc7-4dfb-8e18-df11aa8caada blockIdx= 2 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:791 [forensic] _captureRange: alt= blockId=ee105ac7-1cc7-4dfb-8e18-df11aa8caada offset=0 → neu: blockId= ee105ac7-1cc7-4dfb-8e18-df11aa8caada blockIdx= 2 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:791 [forensic] _captureRange: alt= blockId=ee105ac7-1cc7-4dfb-8e18-df11aa8caada offset=0 → neu: blockId= ee105ac7-1cc7-4dfb-8e18-df11aa8caada blockIdx= 2 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:791 [forensic] _captureRange: alt= blockId=ee105ac7-1cc7-4dfb-8e18-df11aa8caada offset=0 → neu: blockId= ee105ac7-1cc7-4dfb-8e18-df11aa8caada blockIdx= 2 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:791 [forensic] _captureRange: alt= blockId=ee105ac7-1cc7-4dfb-8e18-df11aa8caada offset=0 → neu: blockId= ee105ac7-1cc7-4dfb-8e18-df11aa8caada blockIdx= 2 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:791 [forensic] _captureRange: alt= blockId=ee105ac7-1cc7-4dfb-8e18-df11aa8caada offset=0 → neu: blockId= ee105ac7-1cc7-4dfb-8e18-df11aa8caada blockIdx= 2 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:791 [forensic] _captureRange: alt= blockId=ee105ac7-1cc7-4dfb-8e18-df11aa8caada offset=0 → neu: blockId= ee105ac7-1cc7-4dfb-8e18-df11aa8caada blockIdx= 2 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:791 [forensic] _captureRange: alt= blockId=ee105ac7-1cc7-4dfb-8e18-df11aa8caada offset=0 → neu: blockId= ee105ac7-1cc7-4dfb-8e18-df11aa8caada blockIdx= 2 startOffset= 12
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:791 [forensic] _captureRange: alt= blockId=ee105ac7-1cc7-4dfb-8e18-df11aa8caada offset=12 → neu: blockId= ee105ac7-1cc7-4dfb-8e18-df11aa8caada blockIdx= 2 startOffset= 12
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:791 [forensic] _captureRange: alt= blockId=ee105ac7-1cc7-4dfb-8e18-df11aa8caada offset=12 → neu: blockId= ee105ac7-1cc7-4dfb-8e18-df11aa8caada blockIdx= 2 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:791 [forensic] _captureRange: alt= blockId=ee105ac7-1cc7-4dfb-8e18-df11aa8caada offset=0 → neu: blockId= ee105ac7-1cc7-4dfb-8e18-df11aa8caada blockIdx= 2 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:791 [forensic] _captureRange: alt= blockId=ee105ac7-1cc7-4dfb-8e18-df11aa8caada offset=0 → neu: blockId= ee105ac7-1cc7-4dfb-8e18-df11aa8caada blockIdx= 2 startOffset= 17
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:791 [forensic] _captureRange: alt= blockId=ee105ac7-1cc7-4dfb-8e18-df11aa8caada offset=17 → neu: blockId= ee105ac7-1cc7-4dfb-8e18-df11aa8caada blockIdx= 2 startOffset= 17
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:791 [forensic] _captureRange: alt= blockId=ee105ac7-1cc7-4dfb-8e18-df11aa8caada offset=17 → neu: blockId= ee105ac7-1cc7-4dfb-8e18-df11aa8caada blockIdx= 2 startOffset= 17
+editorjs.mjs:5847 Uncaught IndexSizeError: Failed to execute 'setEnd' on 'Range': There is no child at offset 8.
+    at si (editorjs.mjs:5847:39)
+    at bt (editorjs.mjs:5862:28)
+    at Go.backspace (editorjs.mjs:6982:63)
+    at Go.keydown (editorjs.mjs:6858:14)
+    at HTMLDivElement.<anonymous> (editorjs.mjs:7850:9)
+un @ editorjs.mjs:5847
+Ne @ editorjs.mjs:5862
+backspace @ editorjs.mjs:6982
+keydown @ editorjs.mjs:6858
+(anonymous) @ editorjs.mjs:7850
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+ [forensic] _captureRange: alt= blockId=ee105ac7-1cc7-4dfb-8e18-df11aa8caada offset=17 → neu: blockId= ee105ac7-1cc7-4dfb-8e18-df11aa8caada blockIdx= 2 startOffset= 17
+ [USER]     [report_editor] keyup:captureRange — Keyboard
+ [forensic] _captureRange: alt= blockId=ee105ac7-1cc7-4dfb-8e18-df11aa8caada offset=16 → neu: blockId= ee105ac7-1cc7-4dfb-8e18-df11aa8caada blockIdx= 2 startOffset= 14
+ [USER]     [report_editor] keydown:captureRange — Keyboard
+ [forensic] _captureRange: alt= blockId=ee105ac7-1cc7-4dfb-8e18-df11aa8caada offset=14 → neu: blockId= ee105ac7-1cc7-4dfb-8e18-df11aa8caada blockIdx= 2 startOffset= 14
+ [USER]     [report_editor] keyup:captureRange — Keyboard
+ [forensic] _captureRange: alt= blockId=ee105ac7-1cc7-4dfb-8e18-df11aa8caada offset=13 → neu: blockId= ee105ac7-1cc7-4dfb-8e18-df11aa8caada blockIdx= 2 startOffset= 13
+ [USER]     [report_editor] keydown:captureRange — Keyboard
+ [forensic] _captureRange: alt= blockId=ee105ac7-1cc7-4dfb-8e18-df11aa8caada offset=13 → neu: blockId= ee105ac7-1cc7-4dfb-8e18-df11aa8caada blockIdx= 2 startOffset= 13
+ [USER]     [report_editor] keydown:captureRange — Keyboard
+ [forensic] _captureRange: alt= blockId=ee105ac7-1cc7-4dfb-8e18-df11aa8caada offset=13 → neu: blockId= ee105ac7-1cc7-4dfb-8e18-df11aa8caada blockIdx= 2 startOffset= 13
+ [USER]     [report_editor] keydown:captureRange — Keyboard
+ [forensic] _captureRange: alt= blockId=ee105ac7-1cc7-4dfb-8e18-df11aa8caada offset=13 → neu: blockId= ee105ac7-1cc7-4dfb-8e18-df11aa8caada blockIdx= 2 startOffset= 13
+ [USER]     [report_editor] keyup:captureRange — Keyboard
+ [forensic] _captureRange: alt= blockId=ee105ac7-1cc7-4dfb-8e18-df11aa8caada offset=13 → neu: blockId= ee105ac7-1cc7-4dfb-8e18-df11aa8caada blockIdx= 2 startOffset= 0
+ [USER]     [report_editor] keyup:captureRange — Keyboard
+ [forensic] _captureRange: alt= blockId=ee105ac7-1cc7-4dfb-8e18-df11aa8caada offset=0 → neu: blockId= ee105ac7-1cc7-4dfb-8e18-df11aa8caada blockIdx= 2 startOffset= 0
+ [USER]     [report_editor] keyup:captureRange — Keyboard
+ [forensic] _captureRange: alt= blockId=ee105ac7-1cc7-4dfb-8e18-df11aa8caada offset=0 → neu: blockId= ee105ac7-1cc7-4dfb-8e18-df11aa8caada blockIdx= 2 startOffset= 0
+ [USER]     [report_editor] keydown:captureRange — Keyboard
+ [forensic] _captureRange: alt= blockId=ee105ac7-1cc7-4dfb-8e18-df11aa8caada offset=0 → neu: blockId= ee105ac7-1cc7-4dfb-8e18-df11aa8caada blockIdx= 2 startOffset= 0
+ [USER]     [report_editor] keyup:captureRange — Keyboard
+ [forensic] _captureRange: alt= blockId=ee105ac7-1cc7-4dfb-8e18-df11aa8caada offset=0 → neu: blockId= ee105ac7-1cc7-4dfb-8e18-df11aa8caada blockIdx= 2 startOffset= 0
+ [USER]     [report_editor] keydown:captureRange — Keyboard
+ [forensic] _captureRange: alt= blockId=ee105ac7-1cc7-4dfb-8e18-df11aa8caada offset=0 → neu: blockId= ee105ac7-1cc7-4dfb-8e18-df11aa8caada blockIdx= 2 startOffset= 0
+ [USER]     [report_editor] keyup:captureRange — Keyboard
+ [forensic] _captureRange: alt= blockId=ee105ac7-1cc7-4dfb-8e18-df11aa8caada offset=0 → neu: blockId= ee105ac7-1cc7-4dfb-8e18-df11aa8caada blockIdx= 2 startOffset= 0
+ [USER]     [report_editor] keydown:captureRange — Keyboard
+ [forensic] _captureRange: alt= blockId=ee105ac7-1cc7-4dfb-8e18-df11aa8caada offset=0 → neu: blockId= ee105ac7-1cc7-4dfb-8e18-df11aa8caada blockIdx= 2 startOffset= 0
+ [USER]     [report_editor] keyup:captureRange — Keyboard
+ [forensic] _captureRange: alt= blockId=ee105ac7-1cc7-4dfb-8e18-df11aa8caada offset=0 → neu: blockId= ee105ac7-1cc7-4dfb-8e18-df11aa8caada blockIdx= 2 startOffset= 13
+ [USER]     [report_editor] keydown:captureRange — Keyboard
+ [forensic] _captureRange: alt= blockId=ee105ac7-1cc7-4dfb-8e18-df11aa8caada offset=13 → neu: blockId= 92b6a9e9-338c-4999-baeb-dc3d066b502d blockIdx= 3 startOffset= 0
+ [USER]     [report_editor] keyup:captureRange — Keyboard
+ [forensic] _captureRange: alt= blockId=92b6a9e9-338c-4999-baeb-dc3d066b502d offset=0 → neu: blockId= 92b6a9e9-338c-4999-baeb-dc3d066b502d blockIdx= 3 startOffset= 0
+ [USER]     [report_editor] keydown:captureRange — Keyboard
+ [forensic] _captureRange: alt= blockId=92b6a9e9-338c-4999-baeb-dc3d066b502d offset=0 → neu: blockId= 92b6a9e9-338c-4999-baeb-dc3d066b502d blockIdx= 3 startOffset= 0
+ [USER]     [report_editor] keyup:captureRange — Keyboard
+ [forensic] _captureRange: alt= blockId=92b6a9e9-338c-4999-baeb-dc3d066b502d offset=0 → neu: blockId= 92b6a9e9-338c-4999-baeb-dc3d066b502d blockIdx= 3 startOffset= 2
+ [USER]     [report_editor] mousedown:captureRange — Mouse
+ [forensic] _captureRange: alt= blockId=92b6a9e9-338c-4999-baeb-dc3d066b502d offset=2 → neu: blockId= 92b6a9e9-338c-4999-baeb-dc3d066b502d blockIdx= 3 startOffset= 2
+ [USER]     [report_editor] click:ph-chip — Mouse
+ [USER]     [report_editor] click:ph-chip — Mouse
+ [USER]     [report_editor] click:ph-chip — Mouse
+ [USER]     [report_editor] click:ph-chip — Mouse
+ [USER]     [report_editor] click:ph-chip — Mouse
+ [USER]     [report_editor] click:ph-chip — Mouse
+ [USER]     [report_editor] click:ph-chip — Mouse
+ [USER]     [report_editor] click:ph-chip — Mouse
+ [USER]     [report_editor] click:ph-chip — Mouse
+ [USER]     [report_editor] click:ph-chip — Mouse
+ [USER]     [report_editor] click:ph-chip — Mouse
+ [USER]     [report_editor] click:ph-chip — Mouse
+ [USER]     [report_editor] click:ph-chip — Mouse
+ [USER]     [report_editor] click:ph-chip — Mouse
+ [USER]     [report_editor] mousedown:captureRange — Mouse
+ [forensic] _captureRange: alt= blockId=92b6a9e9-338c-4999-baeb-dc3d066b502d offset=2 → neu: blockId= ee105ac7-1cc7-4dfb-8e18-df11aa8caada blockIdx= 2 startOffset= 45
+ [USER]     [report_editor] click:ph-chip — Mouse
+ [USER]     [report_editor] click:ph-chip — Mouse
+ [USER]     [report_editor] click:ph-chip — Mouse
+ [USER]     [report_editor] click:ph-chip — Mouse
+ [USER]     [report_editor] click:ph-chip — Mouse
+ [USER]     [report_editor] click:ph-chip — Mouse
+ [USER]     [report_editor] click:ph-chip — Mouse
+ [USER]     [report_editor] click:ph-chip — Mouse
+ [USER]     [report_editor] click:ph-chip — Mouse
+ [USER]     [report_editor] click:ph-chip — Mouse
+ [USER]     [report_editor] click:ph-chip — Mouse
+ [USER]     [report_editor] click:ph-chip — Mouse
+ [USER]     [report_editor] click:ph-chip — Mouse
+ [USER]     [report_editor] click:ph-chip — Mouse
+ [USER]     [placeholder_wizard] click:pf-block-group — Mouse
+ [USER]     [placeholder_wizard] focus:pf-input — Input
+ [USER]     [placeholder_wizard] click:pf-block-group — Mouse
+ report_editor.js: Auto-Save gestartet, report_id= 1 | bekannte Block-IDs: 8
+ report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 8 | Bloecke geloescht: 0
+ [USER]     [placeholder_wizard] focus:pf-input — Input
+ [USER]     [report_editor] mousedown:captureRange — Mouse
