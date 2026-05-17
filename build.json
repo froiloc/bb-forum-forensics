@@ -1,6 +1,6 @@
 {
-  "build":   204,
-  "version": "0.6.204",
+  "build":   205,
+  "version": "0.6.205",
   "date":    "2026-05-17",
-  "note":    "Build 204: Bug 2.104 — Reentry-Guard in _reloadEditorContent; _insertModule wartet auf Reload-Ende"
+  "note":    "Build 205: Bug 2.98/2.112 — block-removed loest sofortigen delete_block aus; Bug 2.108 — Enter/ESC im Neu-Bericht-Modal"
 }

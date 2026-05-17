@@ -1,0 +1,747 @@
+:8080/favicon.ico:1  Failed to load resource: the server responded with a status of 404 (Not Found)
+windows:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+windows:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+report:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+Navigated to http://127.0.0.2:8080/_forensic/report
+debug_events.js:235 [debug_events.js] Build 200 geladen. window._uevt() verfügbar. Trace-Modus: window.FORENSIC_EVENT_TRACE = true
+debug_events.js:241 [debug_events.js] Kill-Switches: window.FORENSIC_DEBUG=false (alles) | window.FORENSIC_EVENT_DEBUG=false (nur Events)
+placeholder_chips.js:56 [forensic] placeholder_chips.js: window.PlaceholderChips exportiert
+placeholder_wizard.js:75 [forensic] placeholder_wizard.js: window.PlaceholderWizard exportiert
+module_panel.js:77 [forensic] module_panel.js: window.ModulePanel exportiert
+annotation_sidebar.js:58 [forensic] annotation_sidebar.js: window.AnnotationSidebar exportiert
+report_editor.js:86 [forensic] report_editor.js: Exports auf window gesetzt (Build wird async geladen)
+userinfo.js:67 [forensic] DOMContentLoaded: userinfo.js aktiv
+userinfo.js:67 [forensic] initEditor() gestartet
+userinfo.js:67 [forensic] initSSEWindow3() gestartet
+report_editor.js:3278 [forensic] report_editor.js: v0.6.205 Build 205 | Exports auf window gesetzt
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 1b9cb3af-3df1-4764-9e54-ce0c7e5044f5
+report_editor.js:86 [forensic] initEditorModule() gestartet
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:86 [forensic] _initColResizer: Schiebebalken initialisiert
+report_editor.js:86 [forensic] _initForumLinkInterceptor: BroadcastChannel bereit
+report_editor.js:86 [forensic] _initForumLinkInterceptor: aktiv (window_id= d403aef7-4d57-41a9-ab81-48ac3ec4d674 )
+report_editor.js:86 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
+report_editor.js:86 [forensic] initReportSelector() gestartet
+favicon.ico:1  GET http://127.0.0.2:8080/favicon.ico 404 (Not Found)
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 1b9cb3af-3df1-4764-9e54-ce0c7e5044f5
+userinfo.js:67 [forensic] acquireLock: Lock bereits vorhanden ( 25b1bd16-2abb-4c96-a9bf-cd2e651cfde7 ) — uebersprungen
+debug_events.js:174 [USER]     [report_editor] click:btn-new-report — Mouse
+debug_events.js:174 [USER]     [report_editor] click:btn-new-report — Mouse
+debug_events.js:174 [WORKFLOW] [report_editor] click:btn-create-report — programmatisch
+report_editor.js:86 [forensic] initReportSelector() gestartet
+report_editor.js:86 [forensic] loadReport() report_id= 1 type= interim
+report_editor.js:512 report_editor.js: _knownBlockIds initialisiert, 0 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:759 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= null onSave= function myUsername= paul
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+report_editor.js:804 report_editor.js: Initialisierungs-Guard freigegeben.
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= 2eb625f6-cec8-4917-86ae-da503f177f6e — Editor-Reload via onInserted-Callback
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 1 Bloecke geladen.
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= 2eb625f6-cec8-4917-86ae-da503f177f6e onSave= function myUsername= paul
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:759 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= 2eb625f6-cec8-4917-86ae-da503f177f6e onSave= function myUsername= paul
+report_editor.js:804 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:162 [USER]     [placeholder_wizard] focus:pf-input — Input
+debug_events.js:162 [USER]     [placeholder_wizard] click:pf-block-group — Mouse
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer 2eb625f6-cec8-4917-86ae-da503f177f6e:realname value= "P"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer 2eb625f6-cec8-4917-86ae-da503f177f6e:realname value= "Pf"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer 2eb625f6-cec8-4917-86ae-da503f177f6e:realname value= "Pfe"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer 2eb625f6-cec8-4917-86ae-da503f177f6e:realname value= "Pfer"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer 2eb625f6-cec8-4917-86ae-da503f177f6e:realname value= "Pferd"
+placeholder_wizard.js:544 [PlaceholderWizard] _saveField: blockId= 2eb625f6-cec8-4917-86ae-da503f177f6e name= realname val= "Pferd" onSave= function
+report_editor.js:1469 report_editor.js: _onPlaceholderFieldSave aufgerufen: blockId= 2eb625f6-cec8-4917-86ae-da503f177f6e field= realname value= "Pferd"
+report_editor.js:1510 report_editor.js: _onPlaceholderFieldSave fetch-Antwort: ok= true status= 200
+placeholder_wizard.js:553 [PlaceholderWizard] _saveField: onSave abgeschlossen fuer realname
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:791 [forensic] _captureRange: alt= null → neu: blockId= MRPFtFEJAg blockIdx= 1 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:791 [forensic] _captureRange: alt= blockId=MRPFtFEJAg offset=0 → neu: blockId= ? blockIdx= -1 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:791 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= MRPFtFEJAg blockIdx= 1 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:791 [forensic] _captureRange: alt= blockId=MRPFtFEJAg offset=0 → neu: blockId= ? blockIdx= -1 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:791 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= ? blockIdx= -1 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+report_editor.js:86 [forensic] onChange block-removed: sofortiger Delete fuer ['2eb625f6-cec8-4917-86ae-da503f177f6e']
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+report_editor.js:86 [forensic] _syncAnchoredFromEditor:  0 verankerte Annotationen
+report_editor.js:86 [forensic] onChange: Block sofort geloescht: 2eb625f6-cec8-4917-86ae-da503f177f6e
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= 688c996f-163f-4c37-ba75-5b0fc0b98603 — Editor-Reload via onInserted-Callback
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 1 Bloecke geladen.
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= 688c996f-163f-4c37-ba75-5b0fc0b98603 onSave= function myUsername= paul
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:759 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= 688c996f-163f-4c37-ba75-5b0fc0b98603 onSave= function myUsername= paul
+report_editor.js:804 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= 83438663-fe0a-4979-88ab-1746f7a80fe5 — Editor-Reload via onInserted-Callback
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 2 Bloecke geladen.
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 688c996f-163f-4c37-ba75-5b0fc0b98603 onSave= function myUsername= paul
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:759 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 688c996f-163f-4c37-ba75-5b0fc0b98603 onSave= function myUsername= paul
+report_editor.js:804 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= 3254662b-d6a9-4974-b2b0-11095b4492b0 — Editor-Reload via onInserted-Callback
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 3 Bloecke geladen.
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 3 focusedId= 688c996f-163f-4c37-ba75-5b0fc0b98603 onSave= function myUsername= paul
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:759 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 3 focusedId= 688c996f-163f-4c37-ba75-5b0fc0b98603 onSave= function myUsername= paul
+report_editor.js:804 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:791 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= ? blockIdx= -1 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:791 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= ? blockIdx= -1 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+report_editor.js:86 [forensic] onChange block-removed: sofortiger Delete fuer ['83438663-fe0a-4979-88ab-1746f7a80fe5']
+report_editor.js:86 [forensic] _syncAnchoredFromEditor:  0 verankerte Annotationen
+report_editor.js:86 [forensic] onChange: Block sofort geloescht: 83438663-fe0a-4979-88ab-1746f7a80fe5
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:791 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= ? blockIdx= -1 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:791 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= ? blockIdx= -1 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+report_editor.js:86 [forensic] onChange block-removed: sofortiger Delete fuer ['688c996f-163f-4c37-ba75-5b0fc0b98603']
+report_editor.js:86 [forensic] _syncAnchoredFromEditor:  0 verankerte Annotationen
+report_editor.js:86 [forensic] onChange: Block sofort geloescht: 688c996f-163f-4c37-ba75-5b0fc0b98603
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= b0c4fe10-6ee8-4b71-9ad4-0122a6761e6c — Editor-Reload via onInserted-Callback
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 2 Bloecke geladen.
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 3254662b-d6a9-4974-b2b0-11095b4492b0 onSave= function myUsername= paul
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:759 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 3254662b-d6a9-4974-b2b0-11095b4492b0 onSave= function myUsername= paul
+report_editor.js:804 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:162 [USER]     [module_panel] click:mp-cat-tab — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [module_panel] mousedown:einzeldaten-insert-btn — Mouse
+debug_events.js:162 [USER]     [module_panel] click:einzeldaten-insert-btn — Mouse
+module_panel.js:77 [forensic] _insertQuery: Einfuege-Position: blockId= b0c4fe10-6ee8-4b71-9ad4-0122a6761e6c offset= 13 queryId= user.group
+module_panel.js:77 [forensic] _insertQuery: Chip inline eingefuegt: user.group
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:791 [forensic] _captureRange: alt= null → neu: blockId= b0c4fe10-6ee8-4b71-9ad4-0122a6761e6c blockIdx= 1 startOffset= 1
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:162 [USER]     [module_panel] mousedown:einzeldaten-insert-btn — Mouse
+debug_events.js:162 [USER]     [module_panel] click:einzeldaten-insert-btn — Mouse
+module_panel.js:77 [forensic] _insertQuery: Einfuege-Position: blockId= 6M0EO5f7i0 offset= 0 queryId= user.id
+module_panel.js:77 [forensic] _insertQuery: Chip inline eingefuegt: user.id
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:791 [forensic] _captureRange: alt= null → neu: blockId= 6M0EO5f7i0 blockIdx= 2 startOffset= 1
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:791 [forensic] _captureRange: alt= blockId=6M0EO5f7i0 offset=1 → neu: blockId= 3254662b-d6a9-4974-b2b0-11095b4492b0 blockIdx= 0 startOffset= 18
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:5847 Uncaught IndexSizeError: Failed to execute 'setStart' on 'Range': There is no child at offset 21.
+    at si (editorjs.mjs:5847:58)
+    at kt (editorjs.mjs:5871:28)
+    at Go.arrowRightAndDown (editorjs.mjs:7051:115)
+    at Go.keydown (editorjs.mjs:6868:14)
+    at HTMLDivElement.<anonymous> (editorjs.mjs:7850:9)
+un @ editorjs.mjs:5847
+Re @ editorjs.mjs:5871
+arrowRightAndDown @ editorjs.mjs:7051
+keydown @ editorjs.mjs:6868
+(anonymous) @ editorjs.mjs:7850
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:791 [forensic] _captureRange: alt= blockId=3254662b-d6a9-4974-b2b0-11095b4492b0 offset=18 → neu: blockId= 3254662b-d6a9-4974-b2b0-11095b4492b0 blockIdx= 0 startOffset= 22
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:791 [forensic] _captureRange: alt= blockId=3254662b-d6a9-4974-b2b0-11095b4492b0 offset=22 → neu: blockId= 3254662b-d6a9-4974-b2b0-11095b4492b0 blockIdx= 0 startOffset= 22
+editorjs.mjs:5847 Uncaught IndexSizeError: Failed to execute 'setStart' on 'Range': There is no child at offset 21.
+    at si (editorjs.mjs:5847:58)
+    at kt (editorjs.mjs:5871:28)
+    at Go.arrowRightAndDown (editorjs.mjs:7051:115)
+    at Go.keydown (editorjs.mjs:6868:14)
+    at HTMLDivElement.<anonymous> (editorjs.mjs:7850:9)
+un @ editorjs.mjs:5847
+Re @ editorjs.mjs:5871
+arrowRightAndDown @ editorjs.mjs:7051
+keydown @ editorjs.mjs:6868
+(anonymous) @ editorjs.mjs:7850
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:791 [forensic] _captureRange: alt= blockId=3254662b-d6a9-4974-b2b0-11095b4492b0 offset=22 → neu: blockId= 3254662b-d6a9-4974-b2b0-11095b4492b0 blockIdx= 0 startOffset= 22
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:791 [forensic] _captureRange: alt= blockId=3254662b-d6a9-4974-b2b0-11095b4492b0 offset=22 → neu: blockId= 3254662b-d6a9-4974-b2b0-11095b4492b0 blockIdx= 0 startOffset= 22
+editorjs.mjs:5847 Uncaught IndexSizeError: Failed to execute 'setStart' on 'Range': There is no child at offset 21.
+    at si (editorjs.mjs:5847:58)
+    at kt (editorjs.mjs:5871:28)
+    at Go.arrowRightAndDown (editorjs.mjs:7051:115)
+    at Go.keydown (editorjs.mjs:6868:14)
+    at HTMLDivElement.<anonymous> (editorjs.mjs:7850:9)
+un @ editorjs.mjs:5847
+Re @ editorjs.mjs:5871
+arrowRightAndDown @ editorjs.mjs:7051
+keydown @ editorjs.mjs:6868
+(anonymous) @ editorjs.mjs:7850
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:791 [forensic] _captureRange: alt= blockId=3254662b-d6a9-4974-b2b0-11095b4492b0 offset=22 → neu: blockId= 3254662b-d6a9-4974-b2b0-11095b4492b0 blockIdx= 0 startOffset= 22
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:791 [forensic] _captureRange: alt= blockId=3254662b-d6a9-4974-b2b0-11095b4492b0 offset=22 → neu: blockId= 3254662b-d6a9-4974-b2b0-11095b4492b0 blockIdx= 0 startOffset= 22
+editorjs.mjs:5847 Uncaught IndexSizeError: Failed to execute 'setStart' on 'Range': There is no child at offset 21.
+    at si (editorjs.mjs:5847:58)
+    at kt (editorjs.mjs:5871:28)
+    at Go.arrowRightAndDown (editorjs.mjs:7051:115)
+    at Go.keydown (editorjs.mjs:6868:14)
+    at HTMLDivElement.<anonymous> (editorjs.mjs:7850:9)
+un @ editorjs.mjs:5847
+Re @ editorjs.mjs:5871
+arrowRightAndDown @ editorjs.mjs:7051
+keydown @ editorjs.mjs:6868
+(anonymous) @ editorjs.mjs:7850
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:791 [forensic] _captureRange: alt= blockId=3254662b-d6a9-4974-b2b0-11095b4492b0 offset=22 → neu: blockId= 3254662b-d6a9-4974-b2b0-11095b4492b0 blockIdx= 0 startOffset= 22
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:791 [forensic] _captureRange: alt= blockId=3254662b-d6a9-4974-b2b0-11095b4492b0 offset=22 → neu: blockId= 3254662b-d6a9-4974-b2b0-11095b4492b0 blockIdx= 0 startOffset= 22
+editorjs.mjs:5847 Uncaught IndexSizeError: Failed to execute 'setStart' on 'Range': There is no child at offset 21.
+    at si (editorjs.mjs:5847:58)
+    at kt (editorjs.mjs:5871:28)
+    at n.navigateNext (editorjs.mjs:8269:69)
+    at Go.tabPressed (editorjs.mjs:6947:46)
+    at Go.keydown (editorjs.mjs:6875:14)
+    at HTMLDivElement.<anonymous> (editorjs.mjs:7850:9)
+un @ editorjs.mjs:5847
+Re @ editorjs.mjs:5871
+navigateNext @ editorjs.mjs:8269
+tabPressed @ editorjs.mjs:6947
+keydown @ editorjs.mjs:6875
+(anonymous) @ editorjs.mjs:7850
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:791 [forensic] _captureRange: alt= blockId=3254662b-d6a9-4974-b2b0-11095b4492b0 offset=22 → neu: blockId= 3254662b-d6a9-4974-b2b0-11095b4492b0 blockIdx= 0 startOffset= 22
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:791 [forensic] _captureRange: alt= blockId=3254662b-d6a9-4974-b2b0-11095b4492b0 offset=22 → neu: blockId= b0c4fe10-6ee8-4b71-9ad4-0122a6761e6c blockIdx= 1 startOffset= 0
+debug_events.js:162 [USER]     [module_panel] mousedown:einzeldaten-insert-btn — Mouse
+debug_events.js:162 [USER]     [module_panel] click:einzeldaten-insert-btn — Mouse
+module_panel.js:77 [forensic] _insertQuery: Einfuege-Position: blockId= b0c4fe10-6ee8-4b71-9ad4-0122a6761e6c offset= 0 queryId= user.email
+module_panel.js:77 [forensic] _insertQuery: Chip inline eingefuegt: user.email
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 3254662b-d6a9-4974-b2b0-11095b4492b0 onSave= function myUsername= paul
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:791 [forensic] _captureRange: alt= null → neu: blockId= b0c4fe10-6ee8-4b71-9ad4-0122a6761e6c blockIdx= 1 startOffset= 1
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-cat-tab — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= f80699b8-513b-42bd-9bd4-6c2f234d4313 — Editor-Reload via onInserted-Callback
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 3 Bloecke geladen.
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 3 focusedId= 3254662b-d6a9-4974-b2b0-11095b4492b0 onSave= function myUsername= paul
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:759 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 3 focusedId= 3254662b-d6a9-4974-b2b0-11095b4492b0 onSave= function myUsername= paul
+report_editor.js:804 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:162 [USER]     [placeholder_wizard] click:pf-block-group — Mouse
+debug_events.js:162 [USER]     [placeholder_wizard] focus:pf-input — Input
+debug_events.js:162 [USER]     [placeholder_wizard] click:pf-block-group — Mouse
+debug_events.js:162 [USER]     [placeholder_wizard] click:pf-block-group — Mouse
+debug_events.js:162 [USER]     [placeholder_wizard] focus:pf-input — Input
+debug_events.js:162 [USER]     [placeholder_wizard] click:pf-block-group — Mouse
+debug_events.js:162 [USER]     [placeholder_wizard] click:pf-block-group — Mouse
+report_editor.js:1924 report_editor.js: Auto-Save gestartet, report_id= 1 | bekannte Block-IDs: 3
+report_editor.js:2038 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 3 | Bloecke geloescht: 0
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 3 focusedId= 3254662b-d6a9-4974-b2b0-11095b4492b0 onSave= function myUsername= paul
+debug_events.js:162 [USER]     [placeholder_wizard] click:pf-block-group — Mouse
+debug_events.js:162 [USER]     [placeholder_wizard] focus:pf-input — Input
+debug_events.js:162 [USER]     [placeholder_wizard] click:pf-block-group — Mouse
+debug_events.js:162 [USER]     [placeholder_wizard] click:pf-block-group — Mouse
+debug_events.js:162 [USER]     [placeholder_wizard] focus:pf-input — Input
+debug_events.js:162 [USER]     [placeholder_wizard] click:pf-block-group — Mouse
+debug_events.js:162 [USER]     [placeholder_wizard] click:pf-block-group — Mouse
+debug_events.js:162 [USER]     [placeholder_wizard] focus:pf-input — Input
+debug_events.js:162 [USER]     [placeholder_wizard] click:pf-block-group — Mouse
+debug_events.js:162 [USER]     [placeholder_wizard] focus:pf-input — Input
+debug_events.js:162 [USER]     [placeholder_wizard] click:pf-block-group — Mouse
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer b0c4fe10-6ee8-4b71-9ad4-0122a6761e6c:realname value= "H"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer b0c4fe10-6ee8-4b71-9ad4-0122a6761e6c:realname value= "Hu"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer b0c4fe10-6ee8-4b71-9ad4-0122a6761e6c:realname value= "Huh"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer b0c4fe10-6ee8-4b71-9ad4-0122a6761e6c:realname value= "Huhn"
+placeholder_wizard.js:544 [PlaceholderWizard] _saveField: blockId= b0c4fe10-6ee8-4b71-9ad4-0122a6761e6c name= realname val= "Huhn" onSave= function
+report_editor.js:1469 report_editor.js: _onPlaceholderFieldSave aufgerufen: blockId= b0c4fe10-6ee8-4b71-9ad4-0122a6761e6c field= realname value= "Huhn"
+report_editor.js:1510 report_editor.js: _onPlaceholderFieldSave fetch-Antwort: ok= true status= 200
+placeholder_wizard.js:553 [PlaceholderWizard] _saveField: onSave abgeschlossen fuer realname
+debug_events.js:162 [USER]     [placeholder_wizard] focus:pf-input — Input
+debug_events.js:162 [USER]     [placeholder_wizard] click:pf-block-group — Mouse
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer f80699b8-513b-42bd-9bd4-6c2f234d4313:realname value= "P"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer f80699b8-513b-42bd-9bd4-6c2f234d4313:realname value= "Pf"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer f80699b8-513b-42bd-9bd4-6c2f234d4313:realname value= "Pfe"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer f80699b8-513b-42bd-9bd4-6c2f234d4313:realname value= "Pfer"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer f80699b8-513b-42bd-9bd4-6c2f234d4313:realname value= "Pferd"
+placeholder_wizard.js:544 [PlaceholderWizard] _saveField: blockId= f80699b8-513b-42bd-9bd4-6c2f234d4313 name= realname val= "Pferd" onSave= function
+report_editor.js:1469 report_editor.js: _onPlaceholderFieldSave aufgerufen: blockId= f80699b8-513b-42bd-9bd4-6c2f234d4313 field= realname value= "Pferd"
+report_editor.js:1510 report_editor.js: _onPlaceholderFieldSave fetch-Antwort: ok= true status= 200
+placeholder_wizard.js:553 [PlaceholderWizard] _saveField: onSave abgeschlossen fuer realname
+debug_events.js:162 [USER]     [placeholder_wizard] focus:pf-input — Input
+debug_events.js:162 [USER]     [placeholder_wizard] click:pf-block-group — Mouse
+debug_events.js:162 [USER]     [placeholder_wizard] focus:pf-input — Input
+debug_events.js:162 [USER]     [placeholder_wizard] click:pf-block-group — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= ee105ac7-1cc7-4dfb-8e18-df11aa8caada — Editor-Reload via onInserted-Callback
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 4 Bloecke geladen.
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 4 focusedId= 3254662b-d6a9-4974-b2b0-11095b4492b0 onSave= function myUsername= paul
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:759 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 4 focusedId= 3254662b-d6a9-4974-b2b0-11095b4492b0 onSave= function myUsername= paul
+report_editor.js:804 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:174 [USER]     [report_editor] click:btn-refresh-placeholders — Mouse
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 4 Bloecke geladen.
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:759 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 4 focusedId= 3254662b-d6a9-4974-b2b0-11095b4492b0 onSave= function myUsername= paul
+report_editor.js:804 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [placeholder_wizard] focus:pf-input — Input
+debug_events.js:162 [USER]     [placeholder_wizard] click:pf-block-group — Mouse
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer 3254662b-d6a9-4974-b2b0-11095b4492b0:aktivitaetsgrad value= "A"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer 3254662b-d6a9-4974-b2b0-11095b4492b0:aktivitaetsgrad value= "Ad"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer 3254662b-d6a9-4974-b2b0-11095b4492b0:aktivitaetsgrad value= "Adm"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer 3254662b-d6a9-4974-b2b0-11095b4492b0:aktivitaetsgrad value= "Admi"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer 3254662b-d6a9-4974-b2b0-11095b4492b0:aktivitaetsgrad value= "Admin"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer 3254662b-d6a9-4974-b2b0-11095b4492b0:aktivitaetsgrad value= "Admini"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer 3254662b-d6a9-4974-b2b0-11095b4492b0:aktivitaetsgrad value= "Adminis"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer 3254662b-d6a9-4974-b2b0-11095b4492b0:aktivitaetsgrad value= "Administ"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer 3254662b-d6a9-4974-b2b0-11095b4492b0:aktivitaetsgrad value= "Administr"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer 3254662b-d6a9-4974-b2b0-11095b4492b0:aktivitaetsgrad value= "Administra"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer 3254662b-d6a9-4974-b2b0-11095b4492b0:aktivitaetsgrad value= "Administrat"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer 3254662b-d6a9-4974-b2b0-11095b4492b0:aktivitaetsgrad value= "Administrato"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer 3254662b-d6a9-4974-b2b0-11095b4492b0:aktivitaetsgrad value= "Administrator"
+placeholder_wizard.js:544 [PlaceholderWizard] _saveField: blockId= 3254662b-d6a9-4974-b2b0-11095b4492b0 name= aktivitaetsgrad val= "Administrator" onSave= function
+report_editor.js:1469 report_editor.js: _onPlaceholderFieldSave aufgerufen: blockId= 3254662b-d6a9-4974-b2b0-11095b4492b0 field= aktivitaetsgrad value= "Administrator"
+report_editor.js:1510 report_editor.js: _onPlaceholderFieldSave fetch-Antwort: ok= true status= 200
+placeholder_wizard.js:553 [PlaceholderWizard] _saveField: onSave abgeschlossen fuer aktivitaetsgrad
+debug_events.js:162 [USER]     [placeholder_wizard] focus:pf-input — Input
+debug_events.js:162 [USER]     [placeholder_wizard] click:pf-block-group — Mouse
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer 3254662b-d6a9-4974-b2b0-11095b4492b0:kommunikationshinweis value= "G"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer 3254662b-d6a9-4974-b2b0-11095b4492b0:kommunikationshinweis value= "Ge"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer 3254662b-d6a9-4974-b2b0-11095b4492b0:kommunikationshinweis value= "Ges"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer 3254662b-d6a9-4974-b2b0-11095b4492b0:kommunikationshinweis value= "Gesc"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer 3254662b-d6a9-4974-b2b0-11095b4492b0:kommunikationshinweis value= "Gesch"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer 3254662b-d6a9-4974-b2b0-11095b4492b0:kommunikationshinweis value= "Geschw"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer 3254662b-d6a9-4974-b2b0-11095b4492b0:kommunikationshinweis value= "Geschwä"
+placeholder_wizard.js:544 [PlaceholderWizard] _saveField: blockId= 3254662b-d6a9-4974-b2b0-11095b4492b0 name= kommunikationshinweis val= "Geschwä" onSave= function
+report_editor.js:1469 report_editor.js: _onPlaceholderFieldSave aufgerufen: blockId= 3254662b-d6a9-4974-b2b0-11095b4492b0 field= kommunikationshinweis value= "Geschwä"
+report_editor.js:1510 report_editor.js: _onPlaceholderFieldSave fetch-Antwort: ok= true status= 200
+placeholder_wizard.js:553 [PlaceholderWizard] _saveField: onSave abgeschlossen fuer kommunikationshinweis
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer 3254662b-d6a9-4974-b2b0-11095b4492b0:kommunikationshinweis value= "Geschwät"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer 3254662b-d6a9-4974-b2b0-11095b4492b0:kommunikationshinweis value= "Geschwätz"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer 3254662b-d6a9-4974-b2b0-11095b4492b0:kommunikationshinweis value= "Geschwätzi"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer 3254662b-d6a9-4974-b2b0-11095b4492b0:kommunikationshinweis value= "Geschwätzin"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer 3254662b-d6a9-4974-b2b0-11095b4492b0:kommunikationshinweis value= "Geschwätzinm"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer 3254662b-d6a9-4974-b2b0-11095b4492b0:kommunikationshinweis value= "Geschwätzin"
+placeholder_wizard.js:544 [PlaceholderWizard] _saveField: blockId= 3254662b-d6a9-4974-b2b0-11095b4492b0 name= kommunikationshinweis val= "Geschwätzin" onSave= function
+report_editor.js:1469 report_editor.js: _onPlaceholderFieldSave aufgerufen: blockId= 3254662b-d6a9-4974-b2b0-11095b4492b0 field= kommunikationshinweis value= "Geschwätzin"
+report_editor.js:1510 report_editor.js: _onPlaceholderFieldSave fetch-Antwort: ok= true status= 200
+placeholder_wizard.js:553 [PlaceholderWizard] _saveField: onSave abgeschlossen fuer kommunikationshinweis
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer 3254662b-d6a9-4974-b2b0-11095b4492b0:kommunikationshinweis value= "Geschwätzi"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer 3254662b-d6a9-4974-b2b0-11095b4492b0:kommunikationshinweis value= "Geschwätzig"
+placeholder_wizard.js:544 [PlaceholderWizard] _saveField: blockId= 3254662b-d6a9-4974-b2b0-11095b4492b0 name= kommunikationshinweis val= "Geschwätzig" onSave= function
+report_editor.js:1469 report_editor.js: _onPlaceholderFieldSave aufgerufen: blockId= 3254662b-d6a9-4974-b2b0-11095b4492b0 field= kommunikationshinweis value= "Geschwätzig"
+report_editor.js:1510 report_editor.js: _onPlaceholderFieldSave fetch-Antwort: ok= true status= 200
+placeholder_wizard.js:553 [PlaceholderWizard] _saveField: onSave abgeschlossen fuer kommunikationshinweis
+debug_events.js:162 [USER]     [placeholder_wizard] focus:pf-input — Input
+debug_events.js:162 [USER]     [placeholder_wizard] click:pf-block-group — Mouse
+debug_events.js:162 [USER]     [placeholder_wizard] click:pf-block-group — Mouse
+debug_events.js:162 [USER]     [placeholder_wizard] focus:pf-input — Input
+debug_events.js:162 [USER]     [placeholder_wizard] click:pf-block-group — Mouse
+debug_events.js:162 [USER]     [placeholder_wizard] click:pf-block-group — Mouse
+debug_events.js:162 [USER]     [placeholder_wizard] focus:pf-input — Input
+debug_events.js:162 [USER]     [placeholder_wizard] click:pf-block-group — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= 92b6a9e9-338c-4999-baeb-dc3d066b502d — Editor-Reload via onInserted-Callback
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 5 Bloecke geladen.
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 5 focusedId= 3254662b-d6a9-4974-b2b0-11095b4492b0 onSave= function myUsername= paul
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:759 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 5 focusedId= 3254662b-d6a9-4974-b2b0-11095b4492b0 onSave= function myUsername= paul
+report_editor.js:804 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= c468caaa-7f9b-47ed-b0b6-be45bfb04da2 — Editor-Reload via onInserted-Callback
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 6 Bloecke geladen.
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 6 focusedId= 3254662b-d6a9-4974-b2b0-11095b4492b0 onSave= function myUsername= paul
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:759 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 6 focusedId= 3254662b-d6a9-4974-b2b0-11095b4492b0 onSave= function myUsername= paul
+report_editor.js:804 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:1924 report_editor.js: Auto-Save gestartet, report_id= 1 | bekannte Block-IDs: 6
+report_editor.js:2038 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 6 | Bloecke geloescht: 0
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 6 focusedId= 3254662b-d6a9-4974-b2b0-11095b4492b0 onSave= function myUsername= paul
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:791 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= ee105ac7-1cc7-4dfb-8e18-df11aa8caada blockIdx= 3 startOffset= 11
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= e513d741-b346-4a1e-8a57-6765b5fc70e1 — Editor-Reload via onInserted-Callback
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 7 Bloecke geladen.
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 7 focusedId= 3254662b-d6a9-4974-b2b0-11095b4492b0 onSave= function myUsername= paul
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:759 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 7 focusedId= 3254662b-d6a9-4974-b2b0-11095b4492b0 onSave= function myUsername= paul
+report_editor.js:804 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:791 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= ee105ac7-1cc7-4dfb-8e18-df11aa8caada blockIdx= 3 startOffset= 17
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= 0bf479ef-6676-47da-b985-86b2fc986405 — Editor-Reload via onInserted-Callback
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 8 Bloecke geladen.
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 8 focusedId= 3254662b-d6a9-4974-b2b0-11095b4492b0 onSave= function myUsername= paul
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:759 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 8 focusedId= 3254662b-d6a9-4974-b2b0-11095b4492b0 onSave= function myUsername= paul
+report_editor.js:804 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= 37819e1a-9f8d-4991-8ac5-ea3c7ce27c4c — Editor-Reload via onInserted-Callback
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 9 Bloecke geladen.
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 9 focusedId= 3254662b-d6a9-4974-b2b0-11095b4492b0 onSave= function myUsername= paul
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:759 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 9 focusedId= 3254662b-d6a9-4974-b2b0-11095b4492b0 onSave= function myUsername= paul
+report_editor.js:804 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:791 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= ? blockIdx= -1 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:791 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= ? blockIdx= -1 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+report_editor.js:86 [forensic] onChange block-removed: sofortiger Delete fuer ['3254662b-d6a9-4974-b2b0-11095b4492b0']
+report_editor.js:86 [forensic] _syncAnchoredFromEditor:  0 verankerte Annotationen
+report_editor.js:86 [forensic] onChange: Block sofort geloescht: 3254662b-d6a9-4974-b2b0-11095b4492b0

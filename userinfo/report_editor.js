@@ -334,6 +334,21 @@ function openNewReportDialog(existingReports) {
     document.getElementById('report-selector-container').appendChild(dialog);
     document.getElementById('new-report-title').focus();
 
+    // Bug 2.108 Fix Build 205: Enter bestaetigt, ESC bricht ab.
+    // Beleg: Bugfix Build 205, Projektgespraech 2026-05-17
+    dialog.addEventListener('keydown', (evt) => {
+        if (evt.key === 'Escape') {
+            evt.preventDefault();
+            dialog.remove();
+        } else if (evt.key === 'Enter') {
+            // Enter nur aus dem Titel-Input heraus ausloesen (nicht aus Select)
+            if (document.activeElement?.id === 'new-report-title') {
+                evt.preventDefault();
+                document.getElementById('btn-create-report')?.click();
+            }
+        }
+    });
+
     document.getElementById('btn-cancel-new-report')?.addEventListener('click', (evt) => { window._uevt?.(evt, 'report_editor', 'click:btn-cancel-new-report'); dialog.remove(); }); // B200
     document.getElementById('btn-create-report')?.addEventListener('click', async (evt) => {
         window._uevt?.(evt, 'report_editor', 'click:btn-create-report'); // B200
@@ -658,6 +673,57 @@ function _initEditorJs(blocks, reportId) {
                                 // _isReloading-Guard verhindert Fehlsync waehrend Reload.
                                 // Beleg: Projektgespraech 2026-05-11
                                 if (!_isReloading) _syncAnchoredFromEditor();
+
+                                // Bug 2.98/2.112 Fix Build 205: Block-Loeschung sofort
+                                // server-seitig ausfuehren, ohne Debounce-Wartezeit.
+                                //
+                                // Problem: _scheduleAutoSave hat einen Debounce von
+                                // AUTOSAVE_DEBOUNCE_MS (~30s). In dieser Zeit koennen
+                                // _reloadEditorContent-Aufrufe (z.B. durch Doppelklick)
+                                // den geloeschten Block vom Server neu laden, weil er
+                                // noch in der DB steht (kein delete_block gesendet).
+                                // Zusaetzlich: Bei IndexSizeError im Backspace-Handler
+                                // (Editor.js-Bug) bricht onChange vorzeitig ab, sodass
+                                // _scheduleAutoSave gar nicht erst aufgerufen wird.
+                                // Fix: Geloeschte Block-IDs sofort per delete_block
+                                // entfernen. _knownBlockIds wird dabei aktualisiert,
+                                // sodass der nachfolgende Auto-Save keine doppelte
+                                // Loeschung ausfuehrt.
+                                //
+                                // Beleg: Bugfix Build 205, Projektgespraech 2026-05-17
+                                // (Bug 2.98, Bug 2.112)
+                                if (window.EditorState?.lockId) {
+                                    // Gelöschte IDs = in _knownBlockIds aber nicht mehr im
+                                    // aktuellen Editor-Snapshot (editorData.blocks)
+                                    const currentEditorIds = new Set(
+                                        (editorData?.blocks ?? []).map(b => b.id)
+                                    );
+                                    const toDeleteNow = [..._knownBlockIds].filter(
+                                        id => !currentEditorIds.has(id)
+                                    );
+                                    if (toDeleteNow.length > 0) {
+                                        _dbg('onChange block-removed: sofortiger Delete fuer',
+                                             toDeleteNow);
+                                        // Fire-and-forget — Fehler nicht blockierend
+                                        Promise.all(toDeleteNow.map(async (blockId) => {
+                                            const resp = await _fetchWithLock(
+                                                EDITOR_API.BLOCK,
+                                                { action: 'delete', block_id: blockId }
+                                            );
+                                            if (resp && (resp.ok || resp.status === 404)) {
+                                                _knownBlockIds.delete(blockId);
+                                                _dbg('onChange: Block sofort geloescht:', blockId);
+                                            } else if (resp) {
+                                                console.warn('report_editor.js: sofortiger'
+                                                    + ' delete_block fehlgeschlagen:',
+                                                    blockId, resp.status);
+                                            }
+                                        })).catch(err => {
+                                            console.warn('report_editor.js: sofortiger'
+                                                + ' delete_block Fehler:', err);
+                                        });
+                                    }
+                                }
                             }
                             _refreshPlaceholderForm();
                         }
