@@ -18,7 +18,7 @@ do
 done < <(find . -type f -not \( \
         -regex '\./\.\(venv\|git\|pytest_cache\).*' -or \
 	-regex '.*\(__pycache__\|node_modules\).*' -or \
-	-regex '\.\/\(debug\|data.*\|logs\|setup\)\/.*' -or \
+	-regex '\.\/\(debug\|data.*\|logs\|setup\|old_archives\|documents\)\/.*' -or \
         -regex '.*\.\(zip\|log\|base64\|md\|chksum\|org\|html\|pdf\|map\)$' -or \
 	-regex '.*\(.env\|package-lock.json\)$' -or \
 	-regex '\./\(setup\.7z\)$' -or \

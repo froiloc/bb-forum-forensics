@@ -38,3 +38,5 @@ tools/validation/__pycache__
 anon_html.py
 *.html
 static/icons/favicon.ico
+
+old_archives/
