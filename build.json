@@ -1,6 +1,6 @@
 {
-  "build":   208,
-  "version": "0.6.208",
+  "build":   209,
+  "version": "0.6.209",
   "date":    "2026-05-17",
-  "note":    "Build 208: Bug 2.98 — Editor.js feuert bei Toolbar-Loeschen 'block-added' statt 'block-removed'; Fix: Block-Anzahl-Vergleich in onChange"
+  "note":    "Build 209: Bug 2.98 — _currentBlocks sofort bereinigen vor _refreshPlaceholderForm; Build 208 zeigte veraltete _currentBlocks"
 }

@@ -649,22 +649,34 @@ function _initEditorJs(blocks, reportId) {
                 }
             }
 
-            // Bug 2.98 Fix Build 208: Editor.js feuert bei Toolbar-Loeschen
-            // keinen 'block-removed'-Event, sondern 'block-added' (fuer den
-            // Ersatz-Paragraph, den Editor.js nach removeBlock einfuegt).
-            // Beleg: Callstack-Analyse Build 207-Log: 'insert @ editorjs.mjs:7522'
-            // vor 'removeBlock @ editorjs.mjs:7650' — der onChange-Callback
-            // empfaengt den Insert-Event, nicht den Remove-Event.
-            // Fix: Sofortiger Refresh wenn Editor weniger Bloecke zeigt als
-            // _currentBlocks kennt — unabhaengig vom evType.
-            // Beleg: Bugfix Build 208, Projektgespraech 2026-05-17
+            // Bug 2.98 Fix Build 209: Editor.js feuert bei Toolbar-Loeschen
+            // keinen 'block-removed'-Event. Build 208 erkannte die Differenz,
+            // rief aber _refreshPlaceholderForm mit veralteten _currentBlocks auf
+            // (Block noch drin). Fix: _currentBlocks sofort bereinigen bevor
+            // _refreshPlaceholderForm aufgerufen wird.
+            // Beleg: Bugfix Build 209, Projektgespraech 2026-05-17 (Bug 2.98)
             if (!_isRefreshingForm) {
-                const editorBlockCount = window._editor?.blocks?.getBlocksCount?.() ?? -1;
+                const ed = window._editor;
+                const editorBlockCount = ed?.blocks?.getBlocksCount?.() ?? -1;
                 const knownCount = _currentBlocks.length;
                 if (editorBlockCount >= 0 && editorBlockCount < knownCount) {
                     _dbg('onChange: Editor hat weniger Bloecke (',
                          editorBlockCount, ') als _currentBlocks (', knownCount,
-                         ') — sofortiger Formular-Refresh (Bug 2.98)');
+                         ') — bereinige _currentBlocks und Formular-Refresh (Bug 2.98)');
+                    // Aktuelle Editor-Block-IDs ermitteln
+                    const editorIds = new Set();
+                    try {
+                        const n = ed.blocks.getBlocksCount();
+                        for (let i = 0; i < n; i++) {
+                            const id = ed.blocks.getBlockByIndex(i)?.id;
+                            if (id) editorIds.add(id);
+                        }
+                    } catch (_) {}
+                    // _currentBlocks sofort um geloeschte Bloecke bereinigen
+                    // damit _refreshPlaceholderForm den korrekten Zustand zeigt.
+                    _currentBlocks = _currentBlocks.filter(
+                        b => editorIds.has(b.block_id)
+                    );
                     _refreshPlaceholderForm();
                 }
             }
