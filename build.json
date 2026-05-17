@@ -1,6 +1,6 @@
 {
-  "build":   212,
-  "version": "0.6.212",
+  "build":   213,
+  "version": "0.6.213",
   "date":    "2026-05-17",
-  "note":    "Build 212: Bug 2.118 — _renderSkeleton zeigt aktiven Rollenfilter-Chip basierend auf _filterRole; Kategorie bleibt nach Akkordeon-Wechsel erhalten"
+  "note":    "Build 213: Bug 2.115 — bei block-changed block_data sofort aus Editor lesen (dehydriert) bevor Formular-Refresh; geloeschte Chips verschwinden sofort aus dem Formular"
 }

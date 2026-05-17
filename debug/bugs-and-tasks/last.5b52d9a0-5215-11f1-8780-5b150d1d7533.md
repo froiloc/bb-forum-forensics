@@ -1,5 +1,5 @@
 # Fehler im Frontend
-(Cache-buster-pre-extension: e52b6400-5209-11f1-b0a6-e3be4e62ff85)
+(Cache-buster-pre-extension: 5b52d9a0-5215-11f1-8780-5b150d1d7533)
 
 Ich werde in dieser Liste fortlaufend die von mir beobachteten Fehler aufführen.
 Falls diese abgeschlossen und verworfen wurden, werde ich sie durchstreichen. Alles, was nicht durchgestrichen ist, ist also noch offen und muss bearbeitet werden.
@@ -20,31 +20,31 @@ Hier noch einmal die Liste der Baustellen und wofür sie stehen:
 
 Quellen zum Debuggen:
 * Dieses Dokument mit den Arbeitsanweisungen und Problembeschreibungen:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.e52b6400-5209-11f1-b0a6-e3be4e62ff85.md
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.5b52d9a0-5215-11f1-8780-5b150d1d7533.md
 * Die Ausgabe von DevTools-Console:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.e52b6400-5209-11f1-b0a6-e3be4e62ff85.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.5b52d9a0-5215-11f1-8780-5b150d1d7533.log
 * Die Ausgabe von DevTools-Network:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.e52b6400-5209-11f1-b0a6-e3be4e62ff85.har
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.5b52d9a0-5215-11f1-8780-5b150d1d7533.har
 * Das aktuelle DOM des gesamten Dokuments als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.e52b6400-5209-11f1-b0a6-e3be4e62ff85.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.5b52d9a0-5215-11f1-8780-5b150d1d7533.html
 * Das aktuelle DOM des gesamten Body als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.e52b6400-5209-11f1-b0a6-e3be4e62ff85.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.5b52d9a0-5215-11f1-8780-5b150d1d7533.html
 * Das aktuelle DOM des gesamten Sidebar als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.e52b6400-5209-11f1-b0a6-e3be4e62ff85.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.5b52d9a0-5215-11f1-8780-5b150d1d7533.html
 * Das aktuelle DOM des gesamten Main als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.e52b6400-5209-11f1-b0a6-e3be4e62ff85.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.5b52d9a0-5215-11f1-8780-5b150d1d7533.html
 * Das aktuelle DOM des Akkordeon 1 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.e52b6400-5209-11f1-b0a6-e3be4e62ff85.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.5b52d9a0-5215-11f1-8780-5b150d1d7533.html
 * Das aktuelle DOM des Akkordeon 2 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.e52b6400-5209-11f1-b0a6-e3be4e62ff85.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.5b52d9a0-5215-11f1-8780-5b150d1d7533.html
 * Das aktuelle DOM des Akkordeon 3 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.e52b6400-5209-11f1-b0a6-e3be4e62ff85.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.5b52d9a0-5215-11f1-8780-5b150d1d7533.html
 * Das aktuelle DOM des Akkordeon 4 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.e52b6400-5209-11f1-b0a6-e3be4e62ff85.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.5b52d9a0-5215-11f1-8780-5b150d1d7533.html
 * Das aktuelle DOM des Search-Modal als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-searchmodal.e52b6400-5209-11f1-b0a6-e3be4e62ff85.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-searchmodal.5b52d9a0-5215-11f1-8780-5b150d1d7533.html
 * Die Ausgabe des aktuellen Webservers:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.e52b6400-5209-11f1-b0a6-e3be4e62ff85.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.5b52d9a0-5215-11f1-8780-5b150d1d7533.log
 * Die aktuellen Screenshots:
 https://github.com/froiloc/bb-forum-forensics/tree/1b5017a2f62c5a8f1825de76fc6edabb25d6bf66/debug/screenshots
 ***
@@ -180,8 +180,8 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 96. (10) (BS6) Im Berichtseditor können Einzeldaten nicht per Drag-and-drop eingefügt werden. Nur das Einfügen über die `+Einfügen` Schaltfläche funktioniert.
 97. erledigt
 98. erledigt
-99. (40) (BS6) Ab und zu, wenn ich Blöcke gelöscht habe und neue Blöcke erstelle, dann kann ich bei diesen neuen Blöcken nicht kommentieren. Nach einer Weile klappt es dann. :-/ Heisenbug? Delayed saving issue?
-100. (10) (BS6) Leere Blöcke erscheinen nicht als Block im Formularbereich. Sie werden quasi ignoriert. Liegt das daran, dass leere Blöcke nicht gespeichert werden?
+99. (10) (BS6) Wenn ein neuer Block erstellt wird, dann kann man bei diesem Block erst kommentieren, wenn der Block gespeichert wurde. Im Regelfall ist das nach einem Autosave oder wenn manuell `Speichern` angeklickt wird. Der Klick auf `Kommentieren` sollte daher prüfen, ob der Block bereits gespeichert wurde, und notfalls speichern, damit der Block kommentiert werden kann.
+100. erledigt
 101. (30) (BS6) Wenn ich einen neuen Bericht erstelle und dann zu einem bestehenden Bericht wechsle, wird dieser nicht angezeigt.
 102. erledigt
 103. (40) (BS6) Wenn ein neuer Bericht erstellt wird, erzeugt der keinen leeren Bericht mehr.
@@ -190,16 +190,20 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 106. erledigt
 107. erledigt
 108. erledigt
-109. (5) (BS6) Es ist sicherzustellen, dass, wenn im Formular-Bereich ein Block ausgewählt und umrahmt ist, dieser Block auch im `Editor.js`-Bereich umrahmt ist.
+109. (5) (BS6) Es ist sicherzustellen, dass, wenn im `Formular`-Bereich ein Block ausgewählt und umrahmt ist, dieser Block auch im `Editor.js`-Bereich umrahmt ist. Das muss immer beim Wechsel in den `Formular`-Bereich sichergestellt werden.
 110. (5) (BS6) Um das Verhalten der Bausteine gleich zu machen, sollen auch Standard-Blöcke und Einzeldaten per Doppelklick eingefügt werden können. Derzeit ist das nur für Module möglich.
-111. (10) (BS6) Es kommt vor, dass ein Klick auf `+Einfügen` bei einem Einzeldaten-Platzhalter den Platzhalter nicht beim Cursor einfügt, sondern am Ende des `Editor.js` in einem neuen Block.
+111. (10) (BS6) Es kommt vor, dass ein Klick auf `+Einfügen` bei einem Einzeldaten-Platzhalter den Platzhalter nicht beim Cursor einfügt, sondern am Ende des `Editor.js` in einem neuen Block. Dies passiert meist beim ersten Versuch. Nachfolgende Versuche klappen.
 112. erledigt
-113. (5) (BS6) Das Löschen eines Blocks per Backspace funktioniert nicht zuverlässig. (Wo muss der Cursor denn stehen, damit das klappt?)
+113. (5) (BS6) Das Löschen eines Blocks per Backspace funktioniert nicht. (Wo muss der Cursor denn stehen, damit das klappt?) Beobachtet wird, dass lediglich das links vom Cursor stehende Element/Zeichen entfernt wird. 
 114. (10) (BS6) Der Doppelklick auf ein Modul erstellt das Modul am Ende des `Editor.js` und nicht als neuen Block nach dem Block, der gerade den Cursor hat.
-115. (15) (BS6) Wenn innerhalb eines Blocks ein m:/o:-Platzhalter gelöscht wird, wird das nicht im Formular-Bereich berücksichtigt. Das Formularfeld bleibt weiterhin bestehen. Es wird auch nicht nach 30 Sekunden entfernt. Erwartet wird, dass unmittelbar nach dem Löschen des Platzhalters, dies im Formular-Bereich berücksichtigt wird.
-116. (30) (BS6) Wenn man beispielsweise eine Überschrift eingefügt hat und bearbeitet und dann unmittelbar hiernach ein Modul durch Doppelklick einfügt, so verschwindet die Überschrift. Sie wurde zuvor offensichtlich nicht gespeichert und aufgrund des Reload-Prozess ohne vorheriges Speichern, ist diese Eingabe verloren.
+115. erledigt
+116. (30) (BS6) Wenn man beispielsweise eine Überschrift eingefügt hat und bearbeitet und dann unmittelbar hiernach ein Modul durch Doppelklick einfügt, so verschwindet die Überschrift. Sie wurde zuvor offensichtlich nicht gespeichert und aufgrund des Reload-Prozesses ohne vorheriges Speichern, ist diese Eingabe verloren.
 117. erledigt
 118. erledigt
+119. (20) (BS6) Wenn ein neuer Block in `Editor.js` angelegt wird, und in diesem geschrieben oder ein Platzhalter über das Kontextmenü eingefügt wurde, so sollte das auch gespeichert werden. Erst das ermöglicht es, dass dieser Block im `Formular`-Bereich erscheint oder kommentierbar wird.
+120. (50) (BS6) Das Erstellen eines neuen Berichts sorgt dafür, dass Änderungen an einem bestehenden Bericht zum Totalverlust des Inhalts führen. Auch das Einfügen klappt dann nicht mehr. Speichern ebenfalls nicht mehr.
+121. (45) (BS6) Wenn man in einem Paragraphen Enter drückt und damit den Paragraphen in zwei Teile spaltet, dann muss man auf das Auto-Save warten, damit im Formular-Bereich die geänderte Struktur (nunmehr mit zwei statt einem Block) erkennbar wird. Diese Änderung sollte sofort vollzogen werden. Selbiges gilt, wenn zwei Paragraphen zu einem verschmolzen werden, indem an der ersten Position eines Paragraphen Backspace gedrückt wird.
+122. (30) (BS6) Die automatischen Platzhalter werden nicht ausgefüllt. Bitte untersuche den Grund dafür.
 ---
 ## 3. Funktionalität Backend / Python / SQLite3-Datenbank
 Hier werden Funktionsprobleme aufgeführt, die aufgrund von Problemen im Webserver oder der Datenbank auftreten.

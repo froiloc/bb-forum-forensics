@@ -637,14 +637,39 @@ function _initEditorJs(blocks, reportId) {
             // Beleg: Bugfix Build 146, Projektgespraech 2026-05-10
             const evType = event?.type;
 
-            // Bug 2.115 Fix Build 206: Bei block-changed (z.B. Platzhalter
-            // geloescht) sofort Formular aktualisieren — nicht erst nach
-            // AUTOSAVE_DEBOUNCE_MS. Formularfelder fuer geloeschte Chips
-            // sollen unverzueglich verschwinden.
-            // Beleg: Bugfix Build 206, Projektgespraech 2026-05-17
+            // Bug 2.115 Fix Build 213: Bei block-changed _currentBlocks sofort
+            // mit dem aktuellen Editor-Inhalt abgleichen, bevor das Formular
+            // neu gerendert wird. Sonst zeigt das Formular geloeschte Chips
+            // weiterhin an, weil _currentBlocks noch die alte block_data hat.
+            // Ursache: _doRefreshPlaceholderForm liest block_data aus
+            // _currentBlocks, nicht direkt aus dem Editor.
+            // Beleg: Bugfix Build 213, Projektgespraech 2026-05-17
             if (evType === 'block-changed' && !_isRefreshingForm) {
                 const formFocused = document.activeElement?.closest('#accordion-body-form');
                 if (!formFocused) {
+                    // block_data direkt aus dem Editor lesen und dehydrieren,
+                    // damit geloeschte Chips nicht mehr im Formular erscheinen.
+                    try {
+                        const editorData = await window._editor?.save?.();
+                        if (editorData?.blocks) {
+                            const dehydrate = window.PlaceholderChips?.dehydrateChips;
+                            for (const edBlock of editorData.blocks) {
+                                const cb = _currentBlocks.find(b => b.block_id === edBlock.id);
+                                if (cb && edBlock.data?.text != null) {
+                                    const freshText = dehydrate
+                                        ? dehydrate(edBlock.data.text)
+                                        : edBlock.data.text;
+                                    const parsed = typeof cb.block_data === 'string'
+                                        ? JSON.parse(cb.block_data)
+                                        : (cb.block_data || {});
+                                    cb.block_data = JSON.stringify({
+                                        ...parsed,
+                                        text: freshText,
+                                    });
+                                }
+                            }
+                        }
+                    } catch (_) {}
                     _refreshPlaceholderForm();
                 }
             }

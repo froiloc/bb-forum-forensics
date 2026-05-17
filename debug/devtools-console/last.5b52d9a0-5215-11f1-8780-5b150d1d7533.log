@@ -1,0 +1,1502 @@
+:8080/favicon.ico:1  Failed to load resource: the server responded with a status of 404 (Not Found)
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+windows:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+windows:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+report:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+Navigated to http://127.0.0.2:8080/_forensic/report
+debug_events.js:235 [debug_events.js] Build 200 geladen. window._uevt() verfügbar. Trace-Modus: window.FORENSIC_EVENT_TRACE = true
+debug_events.js:241 [debug_events.js] Kill-Switches: window.FORENSIC_DEBUG=false (alles) | window.FORENSIC_EVENT_DEBUG=false (nur Events)
+placeholder_chips.js:56 [forensic] placeholder_chips.js: window.PlaceholderChips exportiert
+placeholder_wizard.js:75 [forensic] placeholder_wizard.js: window.PlaceholderWizard exportiert
+module_panel.js:77 [forensic] module_panel.js: window.ModulePanel exportiert
+annotation_sidebar.js:58 [forensic] annotation_sidebar.js: window.AnnotationSidebar exportiert
+report_editor.js:86 [forensic] report_editor.js: Exports auf window gesetzt (Build wird async geladen)
+userinfo.js:67 [forensic] DOMContentLoaded: userinfo.js aktiv
+userinfo.js:67 [forensic] initEditor() gestartet
+userinfo.js:67 [forensic] initSSEWindow3() gestartet
+report_editor.js:3389 [forensic] report_editor.js: v0.6.213 Build 213 | Exports auf window gesetzt
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 389ec165-6b3a-4099-94f0-febee726cb37
+report_editor.js:86 [forensic] initEditorModule() gestartet
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:86 [forensic] _initColResizer: Schiebebalken initialisiert
+report_editor.js:86 [forensic] _initForumLinkInterceptor: BroadcastChannel bereit
+report_editor.js:86 [forensic] _initForumLinkInterceptor: aktiv (window_id= 4ce62bf4-e29d-46c1-bc4d-fc71ba734345 )
+report_editor.js:86 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
+report_editor.js:86 [forensic] initReportSelector() gestartet
+:8080/favicon.ico:1  GET http://127.0.0.2:8080/favicon.ico 404 (Not Found)
+favicon.ico:1  GET http://127.0.0.2:8080/favicon.ico 404 (Not Found)
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 389ec165-6b3a-4099-94f0-febee726cb37
+userinfo.js:67 [forensic] acquireLock: Lock bereits vorhanden ( bc69f76a-17b8-4873-aeda-32b5a3efce53 ) — uebersprungen
+debug_events.js:174 [USER]     [report_editor] click:btn-new-report — Mouse
+debug_events.js:174 [USER]     [report_editor] click:btn-create-report — Mouse
+report_editor.js:86 [forensic] initReportSelector() gestartet
+report_editor.js:86 [forensic] loadReport() report_id= 1 type= interim
+report_editor.js:512 report_editor.js: _knownBlockIds initialisiert, 0 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:870 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= null onSave= function myUsername= paul
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+report_editor.js:915 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:162 [USER]     [module_panel] click:mp-cat-tab — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:162 [USER]     [module_panel] click:mp-cat-tab — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 — Editor-Reload via onInserted-Callback
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 1 Bloecke geladen.
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= e6900ce1-63e1-455d-bf07-03e574e07c49 onSave= function myUsername= paul
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:870 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= e6900ce1-63e1-455d-bf07-03e574e07c49 onSave= function myUsername= paul
+report_editor.js:915 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= null → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 7
+debug_events.js:162 [USER]     [report_editor] click:btnComment — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=7 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:btnComment — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=0 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=0 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=0 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 1
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=1 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 2
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=2 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 2
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=2 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 3
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=3 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 3
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=3 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 4
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=4 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 5
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=5 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 5
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=5 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 6
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=6 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 6
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=6 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 6
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=6 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 7
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=7 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 7
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=7 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 8
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=8 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 8
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=8 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 8
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=8 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 9
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= icqM8vYjOh onSave= function myUsername= paul
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=9 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 9
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] click:btn-save-now — Mouse
+report_editor.js:2035 report_editor.js: Auto-Save gestartet, report_id= 1 | bekannte Block-IDs: 1
+report_editor.js:2149 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 2 | Bloecke geloescht: 0
+debug_events.js:174 [USER]     [report_editor] click:btn-refresh-placeholders — Mouse
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 2 Bloecke geladen.
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:870 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+report_editor.js:915 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 9
+debug_events.js:162 [USER]     [report_editor] click:btnComment — Mouse
+report_editor.js:2035 report_editor.js: Auto-Save gestartet, report_id= 1 | bekannte Block-IDs: 2
+report_editor.js:2149 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 2 | Bloecke geloescht: 0
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=9 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:btnComment — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:btnComment — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:btnComment — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] click:btn-save-now — Mouse
+report_editor.js:2035 report_editor.js: Auto-Save gestartet, report_id= 1 | bekannte Block-IDs: 2
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+report_editor.js:2149 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 2 | Bloecke geloescht: 0
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 9
+debug_events.js:162 [USER]     [report_editor] click:btnComment — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=9 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 9
+debug_events.js:162 [USER]     [report_editor] click:btnComment — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=9 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= icqM8vYjOh onSave= function myUsername= paul
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+report_editor.js:2035 report_editor.js: Auto-Save gestartet, report_id= 1 | bekannte Block-IDs: 2
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+report_editor.js:2149 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 2 | Bloecke geloescht: 0
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= icqM8vYjOh onSave= function myUsername= paul
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:5847 Uncaught IndexSizeError: Failed to execute 'setEnd' on 'Range': There is no child at offset 8.
+    at si (editorjs.mjs:5847:39)
+    at bt (editorjs.mjs:5862:28)
+    at Go.backspace (editorjs.mjs:6982:63)
+    at Go.keydown (editorjs.mjs:6858:14)
+    at HTMLDivElement.<anonymous> (editorjs.mjs:7850:9)
+si @ 127.0.0.2:8080/_forensic/static/editor/editor.bundle.js:213
+bt @ 127.0.0.2:8080/_forensic/static/editor/editor.bundle.js:213
+backspace @ 127.0.0.2:8080/_forensic/static/editor/editor.bundle.js:213
+keydown @ 127.0.0.2:8080/_forensic/static/editor/editor.bundle.js:213
+(anonymous) @ 127.0.0.2:8080/_forensic/static/editor/editor.bundle.js:213
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 17
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=16 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 14
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= icqM8vYjOh onSave= function myUsername= paul
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=14 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 14
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=14 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 12
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=12 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 9
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=9 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] dblclick:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] dblclick:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] dblclick:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] dblclick:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] dblclick:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] dblclick:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] dblclick:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] dblclick:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] dblclick:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] dblclick:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] dblclick:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] dblclick:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] dblclick:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] dblclick:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] dblclick:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 1
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= icqM8vYjOh onSave= function myUsername= paul
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=1 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 1
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=1 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 1
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] dblclick:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] dblclick:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] dblclick:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=1 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 1
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=1 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] dblclick:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] dblclick:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] dblclick:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= icqM8vYjOh onSave= function myUsername= paul
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= wjf7aVe48C blockIdx= 3 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=wjf7aVe48C offset=0 → neu: blockId= wjf7aVe48C blockIdx= 3 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=wjf7aVe48C offset=0 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 1
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+report_editor.js:2035 report_editor.js: Auto-Save gestartet, report_id= 1 | bekannte Block-IDs: 2
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+report_editor.js:2149 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 3 | Bloecke geloescht: 0
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 3 focusedId= icqM8vYjOh onSave= function myUsername= paul
+debug_events.js:174 [USER]     [report_editor] click:btn-new-report — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] click:btn-create-report — Mouse
+report_editor.js:86 [forensic] initReportSelector() gestartet
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= interim
+report_editor.js:512 report_editor.js: _knownBlockIds initialisiert, 3 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:870 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 3 focusedId= icqM8vYjOh onSave= function myUsername= paul
+report_editor.js:915 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:162 [USER]     [report_editor] change:report-select — Input
+report_editor.js:86 [forensic] loadReport() report_id= 1 type= interim
+report_editor.js:512 report_editor.js: _knownBlockIds initialisiert, 3 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:870 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 3 focusedId= icqM8vYjOh onSave= function myUsername= paul
+report_editor.js:915 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:162 [USER]     [report_editor] change:report-select — Input
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= interim
+report_editor.js:512 report_editor.js: _knownBlockIds initialisiert, 3 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:870 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 3 focusedId= icqM8vYjOh onSave= function myUsername= paul
+report_editor.js:915 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:162 [USER]     [module_panel] click:mp-cat-tab — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-cat-tab — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= ? blockIdx= -1 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:5847 Uncaught IndexSizeError: Failed to execute 'setStart' on 'Range': There is no child at offset 13.
+    at si (editorjs.mjs:5847:58)
+    at kt (editorjs.mjs:5871:28)
+    at Go.arrowRightAndDown (editorjs.mjs:7051:115)
+    at Go.keydown (editorjs.mjs:6868:14)
+    at HTMLDivElement.<anonymous> (editorjs.mjs:7850:9)
+si @ 127.0.0.2:8080/_forensic/static/editor/editor.bundle.js:213
+kt @ 127.0.0.2:8080/_forensic/static/editor/editor.bundle.js:213
+arrowRightAndDown @ 127.0.0.2:8080/_forensic/static/editor/editor.bundle.js:213
+keydown @ 127.0.0.2:8080/_forensic/static/editor/editor.bundle.js:213
+(anonymous) @ 127.0.0.2:8080/_forensic/static/editor/editor.bundle.js:213
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 1
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=1 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 1
+editorjs.mjs:5847 Uncaught IndexSizeError: Failed to execute 'setStart' on 'Range': There is no child at offset 13.
+    at si (editorjs.mjs:5847:58)
+    at kt (editorjs.mjs:5871:28)
+    at Go.arrowRightAndDown (editorjs.mjs:7051:115)
+    at Go.keydown (editorjs.mjs:6868:14)
+    at HTMLDivElement.<anonymous> (editorjs.mjs:7850:9)
+si @ 127.0.0.2:8080/_forensic/static/editor/editor.bundle.js:213
+kt @ 127.0.0.2:8080/_forensic/static/editor/editor.bundle.js:213
+arrowRightAndDown @ 127.0.0.2:8080/_forensic/static/editor/editor.bundle.js:213
+keydown @ 127.0.0.2:8080/_forensic/static/editor/editor.bundle.js:213
+(anonymous) @ 127.0.0.2:8080/_forensic/static/editor/editor.bundle.js:213
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=1 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 1
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=1 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 1
+editorjs.mjs:5847 Uncaught IndexSizeError: Failed to execute 'setEnd' on 'Range': There is no child at offset 13.
+    at si (editorjs.mjs:5847:39)
+    at bt (editorjs.mjs:5862:28)
+    at Go.backspace (editorjs.mjs:6982:63)
+    at Go.keydown (editorjs.mjs:6858:14)
+    at HTMLDivElement.<anonymous> (editorjs.mjs:7850:9)
+si @ 127.0.0.2:8080/_forensic/static/editor/editor.bundle.js:213
+bt @ 127.0.0.2:8080/_forensic/static/editor/editor.bundle.js:213
+backspace @ 127.0.0.2:8080/_forensic/static/editor/editor.bundle.js:213
+keydown @ 127.0.0.2:8080/_forensic/static/editor/editor.bundle.js:213
+(anonymous) @ 127.0.0.2:8080/_forensic/static/editor/editor.bundle.js:213
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=1 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 1
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=0DMa7NJXP4 offset=0 → neu: blockId= 0DMa7NJXP4 blockIdx= 2 startOffset= 0
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 3 focusedId= icqM8vYjOh onSave= function myUsername= paul
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=? offset=2 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 9
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=9 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 9
+report_editor.js:86 [forensic] onChange: Editor hat weniger Bloecke ( 2 ) als _currentBlocks ( 3 ) — bereinige _currentBlocks und Formular-Refresh (Bug 2.98)
+report_editor.js:86 [forensic] onChange: sofortiger delete_block fuer ['0DMa7NJXP4']
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= icqM8vYjOh onSave= function myUsername= paul
+report_editor.js:86 [forensic] onChange: Block sofort geloescht (2.98): 0DMa7NJXP4
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=9 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 9
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= icqM8vYjOh onSave= function myUsername= paul
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=8 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 8
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=7 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 7
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=6 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 6
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=5 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 5
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=4 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 4
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=3 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 3
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=2 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 2
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=1 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 1
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=1 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 1
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=icqM8vYjOh offset=0 → neu: blockId= icqM8vYjOh blockIdx= 1 startOffset= 0
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= icqM8vYjOh onSave= function myUsername= paul
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=? offset=1 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 14
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=14 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 14
+report_editor.js:86 [forensic] onChange: Editor hat weniger Bloecke ( 1 ) als _currentBlocks ( 2 ) — bereinige _currentBlocks und Formular-Refresh (Bug 2.98)
+report_editor.js:86 [forensic] onChange: sofortiger delete_block fuer ['icqM8vYjOh']
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= icqM8vYjOh onSave= function myUsername= paul
+report_editor.js:86 [forensic] onChange: Block sofort geloescht (2.98): icqM8vYjOh
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=14 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 14
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=13 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 13
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= icqM8vYjOh onSave= function myUsername= paul
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=13 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 13
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=13 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 13
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=12 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 12
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= icqM8vYjOh onSave= function myUsername= paul
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=12 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 12
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=11 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 11
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=11 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 11
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= icqM8vYjOh onSave= function myUsername= paul
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=11 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 11
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=13 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 13
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= icqM8vYjOh onSave= function myUsername= paul
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=13 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 13
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=12 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 12
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= icqM8vYjOh onSave= function myUsername= paul
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=12 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 12
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=11 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 7
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=7 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 7
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=8 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 8
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=8 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 8
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=7 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 26
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=26 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 26
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=4 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 4
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=4 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 4
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=3 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 15
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=15 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 15
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=0 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 0
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=0 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=0 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 0
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= icqM8vYjOh onSave= function myUsername= paul
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=0 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=0 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=0 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=0 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=0 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=0 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=0 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=0 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=0 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=e6900ce1-63e1-455d-bf07-03e574e07c49 offset=0 → neu: blockId= e6900ce1-63e1-455d-bf07-03e574e07c49 blockIdx= 0 startOffset= 0
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
+module_panel.js:77 [forensic] _insertModule: Einfuegen nach Block e6900ce1-63e1-455d-bf07-03e574e07c49
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= 2ed3683b-6a9f-4a52-b72c-a3ce6629c0f6 — Editor-Reload via onInserted-Callback
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 2
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 1 Bloecke geladen.
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= icqM8vYjOh onSave= function myUsername= paul
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:870 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= icqM8vYjOh onSave= function myUsername= paul
+report_editor.js:915 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [placeholder_wizard] click:pf-block-group — Mouse
+report_editor.js:2035 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 1
+report_editor.js:2149 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 1 | Bloecke geloescht: 0
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= cfef4829-f839-4a68-ae1b-f9a64e3f824c — Editor-Reload via onInserted-Callback
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 2
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 0 Bloecke geladen.
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= icqM8vYjOh onSave= function myUsername= paul
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:870 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= icqM8vYjOh onSave= function myUsername= paul
+report_editor.js:915 report_editor.js: Initialisierungs-Guard freigegeben.
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:162 [USER]     [report_editor] change:report-select — Input
+report_editor.js:86 [forensic] loadReport() report_id= 1 type= interim
+report_editor.js:512 report_editor.js: _knownBlockIds initialisiert, 0 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:870 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+report_editor.js:915 report_editor.js: Initialisierungs-Guard freigegeben.
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] click:btn-refresh-placeholders — Mouse
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 0 Bloecke geladen.
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:870 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+report_editor.js:915 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:162 [USER]     [report_editor] change:report-select — Input
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= interim
+report_editor.js:512 report_editor.js: _knownBlockIds initialisiert, 0 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:870 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+report_editor.js:915 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:174 [USER]     [report_editor] click:btn-refresh-placeholders — Mouse
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 2
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 0 Bloecke geladen.
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:870 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+report_editor.js:915 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:2035 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 0
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+report_editor.js:2149 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 0 | Bloecke geloescht: 0
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= ? blockIdx= -1 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=0 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 1
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=1 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 2
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=2 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 3
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=3 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 3
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=3 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 3
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=3 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 3
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=3 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 4
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=4 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 5
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=5 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 6
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=6 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 6
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=6 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 6
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=6 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 7
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=7 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 7
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=7 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 7
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=7 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 8
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=8 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 8
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=7 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 9
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=9 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 9
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=7 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 10
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=10 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 11
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=11 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 12
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=12 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 12
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=12 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 12
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=12 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 12
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=12 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 13
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=13 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 14
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=14 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 15
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=15 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 15
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=15 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 15
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=15 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 15
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=15 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 16
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=16 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 17
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=17 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 18
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=18 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 18
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=18 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 18
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=18 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 18
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=18 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 19
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=19 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 20
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=20 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 21
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=21 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 21
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=21 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 21
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=21 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 22
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=22 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 22
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=22 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 22
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=21 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 23
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=23 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 24
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=24 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 25
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=25 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 25
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=25 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 25
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=25 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 25
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=25 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 26
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=26 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 27
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=27 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 28
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=28 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 28
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=28 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 28
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=28 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 28
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=28 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 29
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=29 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 30
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=30 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 31
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=31 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 31
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=31 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 31
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=31 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 31
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=31 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 32
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=32 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 32
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=31 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 33
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=33 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 34
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=34 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 35
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=35 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 35
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=35 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 35
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=35 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 35
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=35 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 36
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=36 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 37
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=37 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 38
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=38 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 38
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=38 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 38
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=38 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 38
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=38 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 39
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=39 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 40
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=40 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 41
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=41 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 41
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=41 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 41
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=41 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 41
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=41 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 42
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= icqM8vYjOh onSave= function myUsername= paul
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=42 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 42
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=41 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 43
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=43 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 44
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=44 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 45
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=45 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 45
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=45 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 45
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=45 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 45
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=45 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 46
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=46 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 47
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=47 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 48
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=48 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 48
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=48 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 48
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=48 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 48
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=48 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 49
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= icqM8vYjOh onSave= function myUsername= paul
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=49 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 49
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=49 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 49
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=49 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 49
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=49 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 49
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=48 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 48
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= icqM8vYjOh onSave= function myUsername= paul
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=48 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 48
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=48 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 48
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=0 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 0
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= icqM8vYjOh onSave= function myUsername= paul
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=0 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=1WRfgGUEFD offset=0 → neu: blockId= 1WRfgGUEFD blockIdx= 0 startOffset= 0
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+report_editor.js:2035 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 0
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+report_editor.js:2149 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 0 | Bloecke geloescht: 0
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
+module_panel.js:77 [forensic] _insertModule: Einfuegen nach Block 1WRfgGUEFD
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= 12a73202-9453-43f2-b3f4-2ee2fc603c06 — Editor-Reload via onInserted-Callback
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 2
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 0 Bloecke geladen.
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= icqM8vYjOh onSave= function myUsername= paul
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:870 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= icqM8vYjOh onSave= function myUsername= paul
+report_editor.js:915 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= c9b60634-05ff-413f-9610-d92f6c86525d — Editor-Reload via onInserted-Callback
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 2
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 0 Bloecke geladen.
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= icqM8vYjOh onSave= function myUsername= paul
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:870 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= icqM8vYjOh onSave= function myUsername= paul
+report_editor.js:915 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= dcc0de3c-1f33-4972-bf80-2f308ec5deca — Editor-Reload via onInserted-Callback
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 2
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 0 Bloecke geladen.
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= icqM8vYjOh onSave= function myUsername= paul
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:870 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= icqM8vYjOh onSave= function myUsername= paul
+report_editor.js:915 report_editor.js: Initialisierungs-Guard freigegeben.
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= vOFUF0LOCs blockIdx= 0 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=vOFUF0LOCs offset=0 → neu: blockId= vOFUF0LOCs blockIdx= 0 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=vOFUF0LOCs offset=0 → neu: blockId= vOFUF0LOCs blockIdx= 0 startOffset= 1
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=vOFUF0LOCs offset=1 → neu: blockId= vOFUF0LOCs blockIdx= 0 startOffset= 1
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=vOFUF0LOCs offset=1 → neu: blockId= vOFUF0LOCs blockIdx= 0 startOffset= 2
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=vOFUF0LOCs offset=2 → neu: blockId= vOFUF0LOCs blockIdx= 0 startOffset= 2
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=vOFUF0LOCs offset=2 → neu: blockId= vOFUF0LOCs blockIdx= 0 startOffset= 2
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=vOFUF0LOCs offset=2 → neu: blockId= vOFUF0LOCs blockIdx= 0 startOffset= 3
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=vOFUF0LOCs offset=3 → neu: blockId= vOFUF0LOCs blockIdx= 0 startOffset= 3
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=vOFUF0LOCs offset=3 → neu: blockId= vOFUF0LOCs blockIdx= 0 startOffset= 3
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=vOFUF0LOCs offset=3 → neu: blockId= vOFUF0LOCs blockIdx= 0 startOffset= 4
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=vOFUF0LOCs offset=4 → neu: blockId= vOFUF0LOCs blockIdx= 0 startOffset= 4
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=vOFUF0LOCs offset=4 → neu: blockId= vOFUF0LOCs blockIdx= 0 startOffset= 4
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=vOFUF0LOCs offset=4 → neu: blockId= vOFUF0LOCs blockIdx= 0 startOffset= 5
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=vOFUF0LOCs offset=5 → neu: blockId= vOFUF0LOCs blockIdx= 0 startOffset= 5
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=vOFUF0LOCs offset=5 → neu: blockId= vOFUF0LOCs blockIdx= 0 startOffset= 6
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=vOFUF0LOCs offset=6 → neu: blockId= vOFUF0LOCs blockIdx= 0 startOffset= 6
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=vOFUF0LOCs offset=6 → neu: blockId= vOFUF0LOCs blockIdx= 0 startOffset= 6
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=vOFUF0LOCs offset=6 → neu: blockId= vOFUF0LOCs blockIdx= 0 startOffset= 6
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=vOFUF0LOCs offset=6 → neu: blockId= vOFUF0LOCs blockIdx= 0 startOffset= 7
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=vOFUF0LOCs offset=7 → neu: blockId= vOFUF0LOCs blockIdx= 0 startOffset= 8
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=vOFUF0LOCs offset=8 → neu: blockId= vOFUF0LOCs blockIdx= 0 startOffset= 8
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=vOFUF0LOCs offset=8 → neu: blockId= vOFUF0LOCs blockIdx= 0 startOffset= 8
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=vOFUF0LOCs offset=8 → neu: blockId= vOFUF0LOCs blockIdx= 0 startOffset= 8
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= icqM8vYjOh onSave= function myUsername= paul
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=vOFUF0LOCs offset=8 → neu: blockId= F8WpH9Teyh blockIdx= 1 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=F8WpH9Teyh offset=0 → neu: blockId= F8WpH9Teyh blockIdx= 1 startOffset= 0
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] click:btn-save-now — Mouse
+report_editor.js:2035 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 0
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+report_editor.js:2149 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 1 | Bloecke geloescht: 0
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= icqM8vYjOh onSave= function myUsername= paul
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] click:btn-refresh-placeholders — Mouse
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 2
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 0 Bloecke geladen.
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:870 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= icqM8vYjOh onSave= function myUsername= paul
+report_editor.js:915 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:174 [USER]     [report_editor] click:btn-refresh-placeholders — Mouse
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 2
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 0 Bloecke geladen.
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:870 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= icqM8vYjOh onSave= function myUsername= paul
+report_editor.js:915 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:2035 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 0
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+report_editor.js:2149 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 0 | Bloecke geloescht: 0
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= icqM8vYjOh onSave= function myUsername= paul
+debug_events.js:174 [USER]     [report_editor] click:btn-refresh-placeholders — Mouse
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 2
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 0 Bloecke geladen.
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:870 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= icqM8vYjOh onSave= function myUsername= paul
+report_editor.js:915 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:174 [USER]     [report_editor] click:btn-print — Mouse
+report_editor.js:2035 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 0
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+report_editor.js:2149 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 0 | Bloecke geloescht: 0
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= icqM8vYjOh onSave= function myUsername= paul
+events:1  GET http://127.0.0.2:8080/_forensic/events net::ERR_CONNECTION_REFUSED
+events:1  GET http://127.0.0.2:8080/_forensic/events net::ERR_CONNECTION_REFUSED
+events:1  GET http://127.0.0.2:8080/_forensic/events net::ERR_CONNECTION_REFUSED
+events:1  GET http://127.0.0.2:8080/_forensic/events net::ERR_CONNECTION_REFUSED
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+events:1  GET http://127.0.0.2:8080/_forensic/events net::ERR_CONNECTION_REFUSED
+events:1  GET http://127.0.0.2:8080/_forensic/events net::ERR_CONNECTION_REFUSED
+  POST http://127.0.0.2:8080/_forensic/report
+releaseLock @ userinfo.js:1042
+(anonymous) @ userinfo.js:539
+Navigated to chrome-error://chromewebdata/
+Navigated to http://127.0.0.2:8080/_forensic/report
+debug_events.js:235 [debug_events.js] Build 200 geladen. window._uevt() verfügbar. Trace-Modus: window.FORENSIC_EVENT_TRACE = true
+debug_events.js:241 [debug_events.js] Kill-Switches: window.FORENSIC_DEBUG=false (alles) | window.FORENSIC_EVENT_DEBUG=false (nur Events)
+placeholder_chips.js:56 [forensic] placeholder_chips.js: window.PlaceholderChips exportiert
+placeholder_wizard.js:75 [forensic] placeholder_wizard.js: window.PlaceholderWizard exportiert
+module_panel.js:77 [forensic] module_panel.js: window.ModulePanel exportiert
+annotation_sidebar.js:58 [forensic] annotation_sidebar.js: window.AnnotationSidebar exportiert
+report_editor.js:86 [forensic] report_editor.js: Exports auf window gesetzt (Build wird async geladen)
+userinfo.js:67 [forensic] DOMContentLoaded: userinfo.js aktiv
+userinfo.js:67 [forensic] initEditor() gestartet
+userinfo.js:67 [forensic] initSSEWindow3() gestartet
+report_editor.js:3389 [forensic] report_editor.js: v0.6.213 Build 213 | Exports auf window gesetzt
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= ab51a179-f1b8-4677-acd8-3cd6279d63a0
+report_editor.js:86 [forensic] initEditorModule() gestartet
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:86 [forensic] _initColResizer: Schiebebalken initialisiert
+report_editor.js:86 [forensic] _initForumLinkInterceptor: BroadcastChannel bereit
+report_editor.js:86 [forensic] _initForumLinkInterceptor: aktiv (window_id= f0fc458e-1f48-4e84-8fba-8b8741726534 )
+report_editor.js:86 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
+report_editor.js:86 [forensic] initReportSelector() gestartet
+favicon.ico:1  GET http://127.0.0.2:8080/favicon.ico 404 (Not Found)
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= ab51a179-f1b8-4677-acd8-3cd6279d63a0
+userinfo.js:67 [forensic] acquireLock: Lock bereits vorhanden ( d55ee66a-9adf-4285-8d6d-bea13adf3409 ) — uebersprungen
+debug_events.js:174 [USER]     [report_editor] click:btn-new-report — Mouse
+debug_events.js:174 [USER]     [report_editor] click:btn-create-report — Mouse
+report_editor.js:86 [forensic] initReportSelector() gestartet
+report_editor.js:86 [forensic] loadReport() report_id= 1 type= interim
+report_editor.js:512 report_editor.js: _knownBlockIds initialisiert, 0 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:870 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+report_editor.js:915 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= 50ce5089-93f6-4780-8db4-2f88cfad8f9e — Editor-Reload via onInserted-Callback
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 1 Bloecke geladen.
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= 50ce5089-93f6-4780-8db4-2f88cfad8f9e onSave= function myUsername= paul
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:870 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= 50ce5089-93f6-4780-8db4-2f88cfad8f9e onSave= function myUsername= paul
+report_editor.js:915 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= null → neu: blockId= kZQ__dvNzr blockIdx= 1 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=kZQ__dvNzr offset=0 → neu: blockId= kZQ__dvNzr blockIdx= 1 startOffset= 0
+report_editor.js:2035 report_editor.js: Auto-Save gestartet, report_id= 1 | bekannte Block-IDs: 1
+report_editor.js:2149 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 2 | Bloecke geloescht: 0
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 50ce5089-93f6-4780-8db4-2f88cfad8f9e onSave= function myUsername= paul
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=kZQ__dvNzr offset=0 → neu: blockId= kZQ__dvNzr blockIdx= 1 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=? offset=1 → neu: blockId= 50ce5089-93f6-4780-8db4-2f88cfad8f9e blockIdx= 0 startOffset= 107
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=50ce5089-93f6-4780-8db4-2f88cfad8f9e offset=107 → neu: blockId= 50ce5089-93f6-4780-8db4-2f88cfad8f9e blockIdx= 0 startOffset= 107
+report_editor.js:86 [forensic] onChange: Editor hat weniger Bloecke ( 1 ) als _currentBlocks ( 2 ) — bereinige _currentBlocks und Formular-Refresh (Bug 2.98)
+report_editor.js:86 [forensic] onChange: sofortiger delete_block fuer ['kZQ__dvNzr']
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= 50ce5089-93f6-4780-8db4-2f88cfad8f9e onSave= function myUsername= paul
+report_editor.js:86 [forensic] onChange: Block sofort geloescht (2.98): kZQ__dvNzr
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=50ce5089-93f6-4780-8db4-2f88cfad8f9e offset=107 → neu: blockId= 50ce5089-93f6-4780-8db4-2f88cfad8f9e blockIdx= 0 startOffset= 107
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=50ce5089-93f6-4780-8db4-2f88cfad8f9e offset=107 → neu: blockId= 50ce5089-93f6-4780-8db4-2f88cfad8f9e blockIdx= 0 startOffset= 2
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=50ce5089-93f6-4780-8db4-2f88cfad8f9e offset=2 → neu: blockId= 50ce5089-93f6-4780-8db4-2f88cfad8f9e blockIdx= 0 startOffset= 2
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=50ce5089-93f6-4780-8db4-2f88cfad8f9e offset=2 → neu: blockId= 50ce5089-93f6-4780-8db4-2f88cfad8f9e blockIdx= 0 startOffset= 19
+report_editor.js:2035 report_editor.js: Auto-Save gestartet, report_id= 1 | bekannte Block-IDs: 1
+report_editor.js:2149 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 1 | Bloecke geloescht: 0
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= 50ce5089-93f6-4780-8db4-2f88cfad8f9e onSave= function myUsername= paul
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=50ce5089-93f6-4780-8db4-2f88cfad8f9e offset=19 → neu: blockId= 50ce5089-93f6-4780-8db4-2f88cfad8f9e blockIdx= 0 startOffset= 19
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [module_panel] dragstart:mp-item — Drag&Drop
+module_panel.js:77 [forensic] Drag start (Standard, delegiert): type= header
+debug_events.js:174 [USER]     [module_panel] dragstart:mp-item — Drag&Drop
+module_panel.js:77 [forensic] Drag start (Standard, delegiert): type= header
+debug_events.js:174 [USER]     [module_panel] dragstart:mp-item — Drag&Drop
+module_panel.js:77 [forensic] Drag start (Standard, delegiert): type= header
+debug_events.js:162 [USER]     [report_editor] drop:editorjs-holder — Drag&Drop
+report_editor.js:86 [forensic] Drop: Ziel-Index= 0 von 1 Bloecken
+report_editor.js:86 [forensic] Drop (Standard): type= header targetIdx= 0
+report_editor.js:86 [forensic] Drop (Standard): Block eingefuegt, type= header idx= 0
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=50ce5089-93f6-4780-8db4-2f88cfad8f9e offset=19 → neu: blockId= mPXqsvIlDP blockIdx= 0 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=mPXqsvIlDP offset=0 → neu: blockId= mPXqsvIlDP blockIdx= 0 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=mPXqsvIlDP offset=0 → neu: blockId= mPXqsvIlDP blockIdx= 0 startOffset= 1
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=mPXqsvIlDP offset=1 → neu: blockId= mPXqsvIlDP blockIdx= 0 startOffset= 1
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=mPXqsvIlDP offset=1 → neu: blockId= mPXqsvIlDP blockIdx= 0 startOffset= 1
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=mPXqsvIlDP offset=1 → neu: blockId= mPXqsvIlDP blockIdx= 0 startOffset= 2
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=mPXqsvIlDP offset=2 → neu: blockId= mPXqsvIlDP blockIdx= 0 startOffset= 3
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=mPXqsvIlDP offset=3 → neu: blockId= mPXqsvIlDP blockIdx= 0 startOffset= 3
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=mPXqsvIlDP offset=3 → neu: blockId= mPXqsvIlDP blockIdx= 0 startOffset= 4
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=mPXqsvIlDP offset=4 → neu: blockId= mPXqsvIlDP blockIdx= 0 startOffset= 4
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=mPXqsvIlDP offset=4 → neu: blockId= mPXqsvIlDP blockIdx= 0 startOffset= 4
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=mPXqsvIlDP offset=4 → neu: blockId= mPXqsvIlDP blockIdx= 0 startOffset= 5
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=mPXqsvIlDP offset=5 → neu: blockId= mPXqsvIlDP blockIdx= 0 startOffset= 6
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=mPXqsvIlDP offset=6 → neu: blockId= mPXqsvIlDP blockIdx= 0 startOffset= 6
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=mPXqsvIlDP offset=6 → neu: blockId= mPXqsvIlDP blockIdx= 0 startOffset= 6
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=mPXqsvIlDP offset=6 → neu: blockId= mPXqsvIlDP blockIdx= 0 startOffset= 7
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=mPXqsvIlDP offset=7 → neu: blockId= mPXqsvIlDP blockIdx= 0 startOffset= 7
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=mPXqsvIlDP offset=7 → neu: blockId= mPXqsvIlDP blockIdx= 0 startOffset= 8
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=mPXqsvIlDP offset=8 → neu: blockId= mPXqsvIlDP blockIdx= 0 startOffset= 8
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=mPXqsvIlDP offset=8 → neu: blockId= mPXqsvIlDP blockIdx= 0 startOffset= 9
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=mPXqsvIlDP offset=9 → neu: blockId= mPXqsvIlDP blockIdx= 0 startOffset= 9
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=mPXqsvIlDP offset=9 → neu: blockId= mPXqsvIlDP blockIdx= 0 startOffset= 10
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=mPXqsvIlDP offset=10 → neu: blockId= mPXqsvIlDP blockIdx= 0 startOffset= 10
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=mPXqsvIlDP offset=10 → neu: blockId= mPXqsvIlDP blockIdx= 0 startOffset= 11
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= 50ce5089-93f6-4780-8db4-2f88cfad8f9e onSave= function myUsername= paul
+debug_events.js:174 [USER]     [report_editor] click:btn-save-now — Mouse
+report_editor.js:2035 report_editor.js: Auto-Save gestartet, report_id= 1 | bekannte Block-IDs: 1
+report_editor.js:2149 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 2 | Bloecke geloescht: 0
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=mPXqsvIlDP offset=11 → neu: blockId= mPXqsvIlDP blockIdx= 0 startOffset= 11
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
+module_panel.js:77 [forensic] _insertModule: Einfuegen nach Block mPXqsvIlDP
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= 7d7867ca-9398-4b09-a85a-608bb645d816 — Editor-Reload via onInserted-Callback
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 3 Bloecke geladen.
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 3 focusedId= mPXqsvIlDP onSave= function myUsername= paul
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:870 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 3 focusedId= mPXqsvIlDP onSave= function myUsername= paul
+report_editor.js:915 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:2035 report_editor.js: Auto-Save gestartet, report_id= 1 | bekannte Block-IDs: 3
+report_editor.js:2149 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 3 | Bloecke geloescht: 0
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= fe1dcf86-5ad0-413f-a0e9-890568aa29a3 — Editor-Reload via onInserted-Callback
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 4 Bloecke geladen.
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 4 focusedId= mPXqsvIlDP onSave= function myUsername= paul
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:870 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 4 focusedId= mPXqsvIlDP onSave= function myUsername= paul
+report_editor.js:915 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= mPXqsvIlDP blockIdx= 0 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
+module_panel.js:77 [forensic] _insertModule: Einfuegen nach Block mPXqsvIlDP
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= a814899a-55eb-4200-a6a1-4a4e61b5f063 — Editor-Reload via onInserted-Callback
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 5 Bloecke geladen.
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 5 focusedId= mPXqsvIlDP onSave= function myUsername= paul
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:870 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 5 focusedId= mPXqsvIlDP onSave= function myUsername= paul
+report_editor.js:915 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= ? blockIdx= -1 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= ? blockIdx= -1 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= ? blockIdx= -1 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [placeholder_wizard] click:pf-block-group — Mouse
+debug_events.js:162 [USER]     [placeholder_wizard] click:pf-block-group — Mouse
+debug_events.js:162 [USER]     [placeholder_wizard] focus:pf-input — Input
+debug_events.js:162 [USER]     [placeholder_wizard] click:pf-block-group — Mouse
+debug_events.js:162 [USER]     [placeholder_wizard] click:pf-block-group — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= mPXqsvIlDP blockIdx= 0 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=mPXqsvIlDP offset=0 → neu: blockId= mPXqsvIlDP blockIdx= 0 startOffset= 11
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=mPXqsvIlDP offset=11 → neu: blockId= mPXqsvIlDP blockIdx= 0 startOffset= 12
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 5 focusedId= mPXqsvIlDP onSave= function myUsername= paul
+debug_events.js:162 [USER]     [module_panel] click:mp-cat-tab — Mouse
+debug_events.js:162 [USER]     [module_panel] mousedown:einzeldaten-insert-btn — Mouse
+debug_events.js:162 [USER]     [module_panel] click:einzeldaten-insert-btn — Mouse
+module_panel.js:77 [forensic] _insertQuery: Kein aktiver Cursor, lege neuen Block an: user.aoa
+module_panel.js:77 [forensic] _insertQueryAsNewBlock: Block sofort in Editor eingefuegt, idx= 5
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 6 Bloecke geladen.
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:870 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+report_editor.js:915 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:2035 report_editor.js: Auto-Save gestartet, report_id= 1 | bekannte Block-IDs: 6
+report_editor.js:2149 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 6 | Bloecke geloescht: 0
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [module_panel] mousedown:einzeldaten-insert-btn — Mouse
+debug_events.js:162 [USER]     [module_panel] click:einzeldaten-insert-btn — Mouse
+module_panel.js:77 [forensic] _insertQuery: Einfuege-Position: blockId= mPXqsvIlDP offset= 11 queryId= user.last_active
+module_panel.js:77 [forensic] _insertQuery: Chip inline eingefuegt: user.last_active
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 6 focusedId= mPXqsvIlDP onSave= function myUsername= paul
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:902 [forensic] _captureRange: alt= null → neu: blockId= mPXqsvIlDP blockIdx= 0 startOffset= 1
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=mPXqsvIlDP offset=1 → neu: blockId= mPXqsvIlDP blockIdx= 0 startOffset= 11
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:902 [forensic] _captureRange: alt= blockId=mPXqsvIlDP offset=11 → neu: blockId= mPXqsvIlDP blockIdx= 0 startOffset= 12
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 6 focusedId= mPXqsvIlDP onSave= function myUsername= paul
+report_editor.js:2035 report_editor.js: Auto-Save gestartet, report_id= 1 | bekannte Block-IDs: 6
+report_editor.js:2149 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 6 | Bloecke geloescht: 0
