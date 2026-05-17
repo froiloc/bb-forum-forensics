@@ -1,5 +1,5 @@
 # Fehler im Frontend
-(Cache-buster-pre-extension: aedc7758-5205-11f1-9b81-d340eaa808e9)
+(Cache-buster-pre-extension: eb1c8d24-5206-11f1-a4dc-875dbb8b4dc7)
 
 Ich werde in dieser Liste fortlaufend die von mir beobachteten Fehler aufführen.
 Falls diese abgeschlossen und verworfen wurden, werde ich sie durchstreichen. Alles, was nicht durchgestrichen ist, ist also noch offen und muss bearbeitet werden.
@@ -20,31 +20,31 @@ Hier noch einmal die Liste der Baustellen und wofür sie stehen:
 
 Quellen zum Debuggen:
 * Dieses Dokument mit den Arbeitsanweisungen und Problembeschreibungen:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.aedc7758-5205-11f1-9b81-d340eaa808e9.md
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.eb1c8d24-5206-11f1-a4dc-875dbb8b4dc7.md
 * Die Ausgabe von DevTools-Console:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.aedc7758-5205-11f1-9b81-d340eaa808e9.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.eb1c8d24-5206-11f1-a4dc-875dbb8b4dc7.log
 * Die Ausgabe von DevTools-Network:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.aedc7758-5205-11f1-9b81-d340eaa808e9.har
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.eb1c8d24-5206-11f1-a4dc-875dbb8b4dc7.har
 * Das aktuelle DOM des gesamten Dokuments als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.aedc7758-5205-11f1-9b81-d340eaa808e9.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.eb1c8d24-5206-11f1-a4dc-875dbb8b4dc7.html
 * Das aktuelle DOM des gesamten Body als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.aedc7758-5205-11f1-9b81-d340eaa808e9.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.eb1c8d24-5206-11f1-a4dc-875dbb8b4dc7.html
 * Das aktuelle DOM des gesamten Sidebar als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.aedc7758-5205-11f1-9b81-d340eaa808e9.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.eb1c8d24-5206-11f1-a4dc-875dbb8b4dc7.html
 * Das aktuelle DOM des gesamten Main als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.aedc7758-5205-11f1-9b81-d340eaa808e9.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.eb1c8d24-5206-11f1-a4dc-875dbb8b4dc7.html
 * Das aktuelle DOM des Akkordeon 1 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.aedc7758-5205-11f1-9b81-d340eaa808e9.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.eb1c8d24-5206-11f1-a4dc-875dbb8b4dc7.html
 * Das aktuelle DOM des Akkordeon 2 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.aedc7758-5205-11f1-9b81-d340eaa808e9.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.eb1c8d24-5206-11f1-a4dc-875dbb8b4dc7.html
 * Das aktuelle DOM des Akkordeon 3 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.aedc7758-5205-11f1-9b81-d340eaa808e9.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.eb1c8d24-5206-11f1-a4dc-875dbb8b4dc7.html
 * Das aktuelle DOM des Akkordeon 4 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.aedc7758-5205-11f1-9b81-d340eaa808e9.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.eb1c8d24-5206-11f1-a4dc-875dbb8b4dc7.html
 * Das aktuelle DOM des Search-Modal als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-searchmodal.aedc7758-5205-11f1-9b81-d340eaa808e9.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-searchmodal.eb1c8d24-5206-11f1-a4dc-875dbb8b4dc7.html
 * Die Ausgabe des aktuellen Webservers:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.aedc7758-5205-11f1-9b81-d340eaa808e9.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.eb1c8d24-5206-11f1-a4dc-875dbb8b4dc7.log
 * Die aktuellen Screenshots:
 https://github.com/froiloc/bb-forum-forensics/tree/1b5017a2f62c5a8f1825de76fc6edabb25d6bf66/debug/screenshots
 ***
@@ -179,7 +179,7 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 95. erledigt
 96. (10) (BS6) Im Berichtseditor können Einzeldaten nicht per Drag-and-drop eingefügt werden. Nur das Einfügen über die `+Einfügen` Schaltfläche funktioniert.
 97. erledigt
-98. (25) (BS6) Wenn ich in Editor.js einen Block lösche, dauert es bis zu einer halben Minute, damit der Block auch im Formular-Bereich verschwindet. Das ist sehr irritierend. Das Löschen eines Blocks sollte ein Autosave auslösen.
+98. erledigt
 99. (40) (BS6) Ab und zu, wenn ich Blöcke gelöscht habe und neue Blöcke erstelle, dann kann ich bei diesen neuen Blöcken nicht kommentieren. Nach einer Weile klappt es dann. :-/ Heisenbug? Delayed saving issue?
 100. (10) (BS6) Leere Blöcke erscheinen nicht als Block im Formularbereich. Sie werden quasi ignoriert. Liegt das daran, dass leere Blöcke nicht gespeichert werden?
 101. (30) (BS6) Wenn ich einen neuen Bericht erstelle und dann zu einem bestehenden Bericht wechsle, wird dieser nicht angezeigt.
@@ -198,6 +198,7 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 114. (10) (BS6) Der Doppelklick auf ein Modul erstellt das Modul am Ende des `Editor.js` und nicht als neuen Block nach dem Block, der gerade den Cursor hat.
 115. (15) (BS6) Wenn innerhalb eines Blocks ein m:/o:-Platzhalter gelöscht wird, wird das nicht im Formular-Bereich berücksichtigt. Das Formularfeld bleibt weiterhin bestehen. Es wird auch nicht nach 30 Sekunden entfernt. Erwartet wird, dass unmittelbar nach dem Löschen des Platzhalters, dies im Formular-Bereich berücksichtigt wird.
 116. (30) (BS6) Wenn man beispielsweise eine Überschrift eingefügt hat und bearbeitet und dann unmittelbar hiernach ein Modul durch Doppelklick einfügt, so verschwindet die Überschrift. Sie wurde zuvor offensichtlich nicht gespeichert und aufgrund des Reload-Prozess ohne vorheriges Speichern, ist diese Eingabe verloren.
+117. (20) (BS6) Wenn ich in `Bausteine` >`Module` von `Alle` auf eine Kategorie wie `Fazit` wechsle und dann dort das Modul einfüge, und im Anschluss wieder aus `Alle` wechsle, so ist nur das Modul aufgeführt, welches in der zuvor ausgewählten Kategorie `Fazit` angezeigt wurde. Die übrigen Module sind nicht sichtbar. Beim Wechsel in `Alle` müssen also alle Module wieder sichbar gemacht werden!
 ---
 ## 3. Funktionalität Backend / Python / SQLite3-Datenbank
 Hier werden Funktionsprobleme aufgeführt, die aufgrund von Problemen im Webserver oder der Datenbank auftreten.
