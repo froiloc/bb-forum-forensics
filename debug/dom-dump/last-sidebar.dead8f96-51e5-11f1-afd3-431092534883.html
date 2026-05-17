@@ -1,0 +1,62 @@
+<aside aria-label="Support-Sidebar" id="support-sidebar" style="flex: 28.7061 1 0%;">
+<!-- Abschnitt 1: Bausteine (Standard: aufgeklappt) -->
+<section class="support-accordion-section" data-accordion="blocks">
+<button aria-controls="accordion-body-blocks" aria-expanded="false" class="support-accordion-toggle" type="button">
+<span aria-hidden="true" class="support-accordion-icon">📦</span>
+            Bausteine
+            <span aria-hidden="true" class="support-accordion-chevron">▾</span>
+</button>
+<div aria-label="Bausteine" class="support-accordion-body support-accordion-body--closed" id="accordion-body-blocks" role="region">
+<!-- Inhalt wird von module_panel.js/_refreshModulePanel() befuellt (Phase 7) -->
+<!-- Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06 -->
+<p class="support-accordion-empty" id="blocks-loading-state">
+              Bausteine werden geladen…
+            </p>
+</div>
+</section>
+<!-- Abschnitt 2: Annotationen -->
+<section class="support-accordion-section" data-accordion="annotations">
+<button aria-controls="accordion-body-annotations" aria-expanded="false" class="support-accordion-toggle" type="button">
+<span aria-hidden="true" class="support-accordion-icon">🔍</span>
+            Annotationen
+            <span aria-hidden="true" class="support-accordion-chevron">▾</span>
+</button>
+<div aria-label="Annotationen" class="support-accordion-body support-accordion-body--closed" id="accordion-body-annotations" role="region">
+<!-- Inhalt wird von annotation_sidebar.js/_refreshAnnotationSidebar() befuellt (Phase 8) -->
+<!-- Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06 -->
+<p class="support-accordion-empty" id="annotations-loading-state">
+              Annotationen werden geladen…
+            </p>
+</div>
+</section>
+<!-- Abschnitt 3: Formular (Platzhalter-Eingabe) -->
+<section class="support-accordion-section support-accordion-section--open" data-accordion="form">
+<button aria-controls="accordion-body-form" aria-expanded="true" class="support-accordion-toggle" type="button">
+<span aria-hidden="true" class="support-accordion-icon">📝</span>
+            Formular
+            <span aria-hidden="true" class="support-accordion-chevron">▾</span>
+</button>
+<div aria-label="Platzhalter-Formular" class="support-accordion-body" id="accordion-body-form" role="region">
+<!-- Inhalt wird von placeholder_wizard.js befuellt (Phase 6) -->
+<p class="support-accordion-empty">
+              Kein Bericht geöffnet.
+            </p>
+</div>
+</section>
+<!-- Abschnitt 4: Kommentare (unten) -->
+<section class="support-accordion-section" data-accordion="comments">
+<button aria-controls="accordion-body-comments" aria-expanded="false" class="support-accordion-toggle" type="button">
+<span aria-hidden="true" class="support-accordion-icon">💬</span>
+            Kommentare
+            <span aria-hidden="true" class="support-accordion-chevron">▾</span>
+</button>
+<div aria-label="Kommentare" class="support-accordion-body support-accordion-body--closed" id="accordion-body-comments" role="region">
+<!-- Inhalt wird von comment_thread.js befuellt (Phase 4) -->
+<p class="support-accordion-empty" id="comments-empty-state">
+              Kein Block ausgewählt.
+            </p>
+<!-- Kommentar-Eingabe (wird von comment_thread.js aktiviert) -->
+<textarea aria-label="Neuen Kommentar verfassen" class="comment-input-textarea" placeholder="Kommentar verfassen…" rows="3" style="display:none"></textarea>
+</div>
+</section>
+</aside>
