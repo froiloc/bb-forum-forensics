@@ -1,6 +1,6 @@
 {
-  "build":   200,
-  "version": "0.6.200",
+  "build":   201,
+  "version": "0.6.201",
   "date":    "2026-05-17",
-  "note":    "Build 200: debug_events.js — Event-Tracing window._uevt() fuer USER vs. WORKFLOW-Unterscheidung in allen B6-Handlern"
+  "note":    "Build 201: Bug 2.106 — debug_events.js Route in __init__.py ergaenzt; Null-Check auf Lock-Buttons in userinfo.js"
 }

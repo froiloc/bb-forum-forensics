@@ -253,6 +253,7 @@ class ForensicApi:
             "/_forensic/module_panel.js",       # B6 Phase 6 Panel
             "/_forensic/annotation_sidebar.js", # B6 Phase 7 Sidebar
             "/_forensic/comment_thread.js",     # B6 Phase 8 Kommentare
+            "/_forensic/debug_events.js",       # B6 Build 200 Event-Tracing (Bug 2.106)
         ):
             if method not in ("GET", "HEAD"):
                 self._method_not_allowed(handler)

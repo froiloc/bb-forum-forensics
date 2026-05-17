@@ -848,8 +848,11 @@ async function acquireLock() {
             EditorState.lockId = data.lock_id;
             sessionStorage.setItem('forensic_lock_id', data.lock_id);
             updateLockStatus('lock-mine', 'Lock: ich');
-            document.getElementById('btn-acquire-lock').disabled = true;
-            document.getElementById('btn-release-lock').disabled = false;
+            // Bug 2.106 Fix Build 201: Null-Check — Buttons nur vorhanden wenn
+            // initLockUI() gelaufen ist (bar-Element existiert).
+            // Beleg: Fehlerbeschreibung 2.106, Projektgespraech 2026-05-17
+            { const b = document.getElementById('btn-acquire-lock'); if (b) b.disabled = true; }
+            { const b = document.getElementById('btn-release-lock'); if (b) b.disabled = false; }
             showStatusMsg('Lock erworben — Editor wird aktiviert…', 'ok');
             // Direkt reinitieren — nicht auf SSE warten (SSE-Interval = 15s).
             // SSE editor_lock_acquired bleibt als Backup fuer externe Events.
@@ -980,8 +983,9 @@ function _handleTakeoverResult(status, requestedBy) {
     document.getElementById('takeover-waiting-msg')?.remove();
     if (status === 'granted' || status === 'expired') {
         showStatusMsg('Lock freigegeben — jetzt erwerben.', 'ok');
-        // btn-acquire-lock aktivieren
-        document.getElementById('btn-acquire-lock').disabled = false;
+        // Bug 2.106 Fix Build 201: Null-Check (analog zu acquireLock)
+        // Beleg: Fehlerbeschreibung 2.106, Projektgespraech 2026-05-17
+        { const b = document.getElementById('btn-acquire-lock'); if (b) b.disabled = false; }
     } else {
         showStatusMsg('Anfrage abgelehnt.', 'warn');
     }

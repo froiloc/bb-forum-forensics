@@ -1,5 +1,5 @@
 # Fehler im Frontend
-(Cache-buster-pre-extension: dead8f96-51e5-11f1-afd3-431092534883)
+(Cache-buster-pre-extension: f0ba3aac-51e7-11f1-96da-07e12f03dbf5)
 
 Ich werde in dieser Liste fortlaufend die von mir beobachteten Fehler aufführen.
 Falls diese abgeschlossen und verworfen wurden, werde ich sie durchstreichen. Alles, was nicht durchgestrichen ist, ist also noch offen und muss bearbeitet werden.
@@ -20,31 +20,31 @@ Hier noch einmal die Liste der Baustellen und wofür sie stehen:
 
 Quellen zum Debuggen:
 * Dieses Dokument mit den Arbeitsanweisungen und Problembeschreibungen:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.dead8f96-51e5-11f1-afd3-431092534883.md
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.f0ba3aac-51e7-11f1-96da-07e12f03dbf5.md
 * Die Ausgabe von DevTools-Console:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.dead8f96-51e5-11f1-afd3-431092534883.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.f0ba3aac-51e7-11f1-96da-07e12f03dbf5.log
 * Die Ausgabe von DevTools-Network:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.dead8f96-51e5-11f1-afd3-431092534883.har
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.f0ba3aac-51e7-11f1-96da-07e12f03dbf5.har
 * Das aktuelle DOM des gesamten Dokuments als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.dead8f96-51e5-11f1-afd3-431092534883.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.f0ba3aac-51e7-11f1-96da-07e12f03dbf5.html
 * Das aktuelle DOM des gesamten Body als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.dead8f96-51e5-11f1-afd3-431092534883.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.f0ba3aac-51e7-11f1-96da-07e12f03dbf5.html
 * Das aktuelle DOM des gesamten Sidebar als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.dead8f96-51e5-11f1-afd3-431092534883.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.f0ba3aac-51e7-11f1-96da-07e12f03dbf5.html
 * Das aktuelle DOM des gesamten Main als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.dead8f96-51e5-11f1-afd3-431092534883.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.f0ba3aac-51e7-11f1-96da-07e12f03dbf5.html
 * Das aktuelle DOM des Akkordeon 1 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.dead8f96-51e5-11f1-afd3-431092534883.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.f0ba3aac-51e7-11f1-96da-07e12f03dbf5.html
 * Das aktuelle DOM des Akkordeon 2 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.dead8f96-51e5-11f1-afd3-431092534883.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.f0ba3aac-51e7-11f1-96da-07e12f03dbf5.html
 * Das aktuelle DOM des Akkordeon 3 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.dead8f96-51e5-11f1-afd3-431092534883.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.f0ba3aac-51e7-11f1-96da-07e12f03dbf5.html
 * Das aktuelle DOM des Akkordeon 4 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.dead8f96-51e5-11f1-afd3-431092534883.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.f0ba3aac-51e7-11f1-96da-07e12f03dbf5.html
 * Das aktuelle DOM des Search-Modal als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-searchmodal.dead8f96-51e5-11f1-afd3-431092534883.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-searchmodal.f0ba3aac-51e7-11f1-96da-07e12f03dbf5.html
 * Die Ausgabe des aktuellen Webservers:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.dead8f96-51e5-11f1-afd3-431092534883.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.f0ba3aac-51e7-11f1-96da-07e12f03dbf5.log
 * Die aktuellen Screenshots:
 https://github.com/froiloc/bb-forum-forensics/tree/1b5017a2f62c5a8f1825de76fc6edabb25d6bf66/debug/screenshots
 ***
@@ -178,7 +178,7 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 94. erledigt
 95. erledigt
 96. (10) (BS6) Im Berichtseditor können Einzeldaten nicht per Drag-and-drop eingefügt werden. Nur das Einfügen über die `+Einfügen` Schaltfläche funktioniert.
-97. (15) (BS6) Wenn ich auf ein Modul mit Doppelklick im Support-Sidebar klicke, dann wird das Modul im `Editor.js` nicht gerendert eingefügt, sondern wird als roher Code mit den Platzhaltern `{{user.group}}` und Ähnlichem dargestellt. Diese Module erscheinen dann im Formular-Bereich und werden auch dann nicht von dort entfernt, wenn der Block im Editor,js entfernt worden ist. Es wird nun zwar ein gerenderter Block eingefügt, aber direkt hinter dem identischen Block, der ungerendert ist. Das ist eine Verschlimmbesserung in Build 201. Auch erscheint der Block nicht im Formular-Bereich.
+97. (15) (BS6) Wenn ich auf ein Modul mit Doppelklick im Support-Sidebar klicke, dann wird das Modul im `Editor.js` nicht gerendert eingefügt, sondern wird als roher Code mit den Platzhaltern `{{user.group}}` und Ähnlichem dargestellt. Diese Module erscheinen dann im Formular-Bereich und werden auch dann nicht von dort entfernt, wenn der Block im Editor,js entfernt worden ist.
 98. (25) (BS6) Wenn ich in Editor.js einen Block lösche, dauert es bis zu einer halben Minute, damit der Block auch im Formular-Bereich verschwindet. Das ist sehr irritierend. Das Löschen eines Blocks sollte ein Autosave auslösen.
 99. (40) (BS6) Ab und zu, wenn ich Blöcke gelöscht habe und neue Blöcke erstelle, dann kann ich bei diesen neuen Blöcken nicht kommentieren. Nach einer Weile klappt es dann. :-/ Heisenbug? Delayed saving issue?
 100. (10) (BS6) Leere Blöcke erscheinen nicht als Block im Formularbereich. Sie werden quasi ignoriert. Liegt das daran, dass leere Blöcke nicht gespeichert werden?
@@ -187,7 +187,8 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 103. (40) (BS6) Wenn ein neuer Bericht erstellt wird, erzeugt der keinen leeren Bericht mehr.
 104. (40) (BS6) Das Doppelklicken auf ein Modul erzeugt keinen neuen Block im Editor.js. Kann sein, dass das mit dem Löschen eines vorher existierenden Blocks zusammenhängt.
 105. (40) (BS6) Das Doppelklicken auf ein Modul erzeugt zwei unterschiedliche Blocks. Kann auch sein, dass das ein Anzeigeproblem ist, dass nach dem Löschen eines Blocks dieser wieder angezeigt wird, weil er noch nicht durch einen Autosave final entfernt wurde.
-106. (40) (BS6) Wenn der Berichtseditor zum ersten Mal aufgerufen wird, dann erscheint eine Fehlermeldung: `Netzwerkfehler: TypeError: Cannot set properties of null (setting 'disabled')` Lösung: Die Buttons werden in `userinfo.js` dynamisch angelegt (Z.471-478) — aber **nur wenn** ein `bar`-Element vorhanden ist. Wenn `acquireLock()` ausgeführt wird bevor `initLockUI()` die Buttons angelegt hat, oder wenn die Buttons im Report-Fenster-Kontext nicht vorhanden sind, fliegen die Zeilen 851, 852 und 984 mit TypeError. Drei Stellen ohne Null-Check: `document.getElementById('btn-acquire-lock').disabled = true;`  `document.getElementById('btn-release-lock').disabled = false;` `document.getElementById('btn-acquire-lock').disabled = false;` Der Fix ist minimal: optionale Chaining (`?.`) ergänzen:
+106. erledigt
+107. (20) (BS6) Wenn ich auf ein Modul mit Doppelklick im Support-Sidebar klicke, dann wird im `Editor.js` einmal eine Version ohne Rendern des Moduls erzeugt und einmal mit Rendern des Moduls. In dem Formular-Bereich tauchen aber gleich drei Blöcke auf, die alle den einen Platzhalter beinhalten, der in diesem Modul verbaut ist.
 ---
 ## 3. Funktionalität Backend / Python / SQLite3-Datenbank
 Hier werden Funktionsprobleme aufgeführt, die aufgrund von Problemen im Webserver oder der Datenbank auftreten.
