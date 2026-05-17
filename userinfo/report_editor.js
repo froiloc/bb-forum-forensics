@@ -494,7 +494,14 @@ async function _loadReportImpl(report) {
     }
 
     // Bloecke laden
-    const blocksResp = await fetch(`/_forensic/report?format=json`, {
+    // Bug 2.120 Fix Build 214: report_id als Parameter mitsenden.
+    // Ohne report_id lieferte der Server die Bloecke des zuletzt aktiven
+    // Berichts — bei Bericht-Wechsel wurden _knownBlockIds mit fremden IDs
+    // initialisiert, der Auto-Save loeschte diese dann aus der DB.
+    // Beleg: Bugfix Build 214, Projektgespraech 2026-05-17
+    const _initBlocksUrl = `/_forensic/report?format=json`
+        + (report.id != null ? `&report_id=${encodeURIComponent(report.id)}` : '');
+    const blocksResp = await fetch(_initBlocksUrl, {
         headers: { 'X-Forensic-Request': 'ajax' }
     });
     let existingBlocks = [];
@@ -680,11 +687,14 @@ function _initEditorJs(blocks, reportId) {
             // (Block noch drin). Fix: _currentBlocks sofort bereinigen bevor
             // _refreshPlaceholderForm aufgerufen wird.
             // Beleg: Bugfix Build 209, Projektgespraech 2026-05-17 (Bug 2.98)
+            // Bug 2.121 Fix Build 214: Auch bei Blockanzahl-Erhoehung (Enter)
+            // sofort Formular-Refresh ausloesen. Vorher nur bei Verringerung.
+            // Beleg: Bugfix Build 214, Projektgespraech 2026-05-17
             if (!_isRefreshingForm) {
                 const ed = window._editor;
                 const editorBlockCount = ed?.blocks?.getBlocksCount?.() ?? -1;
                 const knownCount = _currentBlocks.length;
-                if (editorBlockCount >= 0 && editorBlockCount < knownCount) {
+                if (editorBlockCount >= 0 && editorBlockCount !== knownCount) {
                     _dbg('onChange: Editor hat weniger Bloecke (',
                          editorBlockCount, ') als _currentBlocks (', knownCount,
                          ') — bereinige _currentBlocks und Formular-Refresh (Bug 2.98)');
@@ -697,6 +707,27 @@ function _initEditorJs(blocks, reportId) {
                             if (id) editorIds.add(id);
                         }
                     } catch (_) {}
+                    // Neue Bloecke ermitteln = im Editor aber nicht in _currentBlocks
+                    // Bug 2.121 Fix Build 214: Enter erzeugt neue Bloecke mit
+                    // Editor.js-IDs — diese muessen in _currentBlocks eingetragen
+                    // werden, damit sie im Formular erscheinen koennen.
+                    // Beleg: Bugfix Build 214, Projektgespraech 2026-05-17
+                    const knownBlockIds = new Set(_currentBlocks.map(b => b.block_id));
+                    for (const edId of editorIds) {
+                        if (!knownBlockIds.has(edId)) {
+                            // Neuer unsaved Block: Platzhalter in _currentBlocks eintragen
+                            _currentBlocks.push({
+                                block_id: edId,
+                                block_type: 'paragraph',
+                                block_data: JSON.stringify({ text: '' }),
+                                author: document.getElementById('report-editor-body')
+                                    ?.dataset?.username || '',
+                                placeholder_values_json: null,
+                                _unsaved: true,
+                            });
+                        }
+                    }
+
                     // Geloeschte Block-IDs ermitteln = in _knownBlockIds aber nicht im Editor
                     const deletedIds = [..._knownBlockIds].filter(id => !editorIds.has(id));
 
@@ -1037,9 +1068,17 @@ function _wrapBlock(ceBlock, blockMeta, username) {
     btnComment.type = 'button';
     btnComment.textContent = '💬 Kommentieren';
     btnComment.setAttribute('aria-label', `Kommentar zu Block von ${blockMeta.author} verfassen`);
-    btnComment.addEventListener('click', (e) => {
+    btnComment.addEventListener('click', async (e) => {
         window._uevt?.(e, 'report_editor', 'click:btnComment', { blockId: blockMeta.block_id }); // B200
         e.stopPropagation();
+        // Bug 2.99 Fix Build 214: Neuer Block muss zuerst gespeichert werden,
+        // bevor er kommentiert werden kann. Pruefen ob block_id in _knownBlockIds;
+        // falls nicht, sofort speichern und erst dann Kommentar-Akkordeon oeffnen.
+        // Beleg: Bugfix Build 214, Projektgespraech 2026-05-17
+        if (!_knownBlockIds.has(blockMeta.block_id)) {
+            _dbg('btnComment: Block noch nicht gespeichert — sofortiger Save vor Kommentar');
+            await _performAutoSave(_currentReport?.id);
+        }
         // Bug 2.44 Fix Build 145: focusInput=true nur beim expliziten Button-Klick.
         _openCommentAccordion(blockMeta.block_id, true);
     });
