@@ -1,6 +1,6 @@
 {
-  "build":   209,
-  "version": "0.6.209",
+  "build":   210,
+  "version": "0.6.210",
   "date":    "2026-05-17",
-  "note":    "Build 209: Bug 2.98 — _currentBlocks sofort bereinigen vor _refreshPlaceholderForm; Build 208 zeigte veraltete _currentBlocks"
+  "note":    "Build 210: Bug 2.98 — delete_block sofort senden wenn Block-Anzahl-Vergleich Loeschung erkennt; Aktualisieren-Button laed Block nicht mehr zurueck"
 }

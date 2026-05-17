@@ -672,11 +672,39 @@ function _initEditorJs(blocks, reportId) {
                             if (id) editorIds.add(id);
                         }
                     } catch (_) {}
+                    // Geloeschte Block-IDs ermitteln = in _knownBlockIds aber nicht im Editor
+                    const deletedIds = [..._knownBlockIds].filter(id => !editorIds.has(id));
+
                     // _currentBlocks sofort um geloeschte Bloecke bereinigen
                     // damit _refreshPlaceholderForm den korrekten Zustand zeigt.
                     _currentBlocks = _currentBlocks.filter(
                         b => editorIds.has(b.block_id)
                     );
+
+                    // Bug 2.98 Fix Build 210: Geloeschte Bloecke sofort aus der DB
+                    // entfernen, damit _reloadEditorContent sie nicht zurueckbringt.
+                    // Vorher wurde delete_block nur im block-removed-Zweig gesendet,
+                    // der bei Toolbar-Loeschen nie feuert.
+                    // Beleg: Bugfix Build 210, Projektgespraech 2026-05-17
+                    if (deletedIds.length > 0 && window.EditorState?.lockId) {
+                        _dbg('onChange: sofortiger delete_block fuer', deletedIds);
+                        Promise.all(deletedIds.map(async (blockId) => {
+                            const resp = await _fetchWithLock(
+                                EDITOR_API.BLOCK,
+                                { action: 'delete', block_id: blockId }
+                            );
+                            if (resp && (resp.ok || resp.status === 404)) {
+                                _knownBlockIds.delete(blockId);
+                                _dbg('onChange: Block sofort geloescht (2.98):', blockId);
+                            } else if (resp) {
+                                console.warn('report_editor.js: delete_block (2.98) fehlgeschlagen:',
+                                    blockId, resp.status);
+                            }
+                        })).catch(err => {
+                            console.warn('report_editor.js: delete_block (2.98) Fehler:', err);
+                        });
+                    }
+
                     _refreshPlaceholderForm();
                 }
             }
