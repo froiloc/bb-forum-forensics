@@ -1,5 +1,5 @@
 # Fehler im Frontend
-(Cache-buster-pre-extension: 37112f0e-5208-11f1-9488-ef83ac1c7261)
+(Cache-buster-pre-extension: e52b6400-5209-11f1-b0a6-e3be4e62ff85)
 
 Ich werde in dieser Liste fortlaufend die von mir beobachteten Fehler aufführen.
 Falls diese abgeschlossen und verworfen wurden, werde ich sie durchstreichen. Alles, was nicht durchgestrichen ist, ist also noch offen und muss bearbeitet werden.
@@ -20,31 +20,31 @@ Hier noch einmal die Liste der Baustellen und wofür sie stehen:
 
 Quellen zum Debuggen:
 * Dieses Dokument mit den Arbeitsanweisungen und Problembeschreibungen:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.37112f0e-5208-11f1-9488-ef83ac1c7261.md
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.e52b6400-5209-11f1-b0a6-e3be4e62ff85.md
 * Die Ausgabe von DevTools-Console:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.37112f0e-5208-11f1-9488-ef83ac1c7261.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.e52b6400-5209-11f1-b0a6-e3be4e62ff85.log
 * Die Ausgabe von DevTools-Network:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.37112f0e-5208-11f1-9488-ef83ac1c7261.har
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.e52b6400-5209-11f1-b0a6-e3be4e62ff85.har
 * Das aktuelle DOM des gesamten Dokuments als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.37112f0e-5208-11f1-9488-ef83ac1c7261.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.e52b6400-5209-11f1-b0a6-e3be4e62ff85.html
 * Das aktuelle DOM des gesamten Body als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.37112f0e-5208-11f1-9488-ef83ac1c7261.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.e52b6400-5209-11f1-b0a6-e3be4e62ff85.html
 * Das aktuelle DOM des gesamten Sidebar als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.37112f0e-5208-11f1-9488-ef83ac1c7261.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.e52b6400-5209-11f1-b0a6-e3be4e62ff85.html
 * Das aktuelle DOM des gesamten Main als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.37112f0e-5208-11f1-9488-ef83ac1c7261.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.e52b6400-5209-11f1-b0a6-e3be4e62ff85.html
 * Das aktuelle DOM des Akkordeon 1 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.37112f0e-5208-11f1-9488-ef83ac1c7261.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.e52b6400-5209-11f1-b0a6-e3be4e62ff85.html
 * Das aktuelle DOM des Akkordeon 2 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.37112f0e-5208-11f1-9488-ef83ac1c7261.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.e52b6400-5209-11f1-b0a6-e3be4e62ff85.html
 * Das aktuelle DOM des Akkordeon 3 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.37112f0e-5208-11f1-9488-ef83ac1c7261.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.e52b6400-5209-11f1-b0a6-e3be4e62ff85.html
 * Das aktuelle DOM des Akkordeon 4 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.37112f0e-5208-11f1-9488-ef83ac1c7261.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.e52b6400-5209-11f1-b0a6-e3be4e62ff85.html
 * Das aktuelle DOM des Search-Modal als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-searchmodal.37112f0e-5208-11f1-9488-ef83ac1c7261.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-searchmodal.e52b6400-5209-11f1-b0a6-e3be4e62ff85.html
 * Die Ausgabe des aktuellen Webservers:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.37112f0e-5208-11f1-9488-ef83ac1c7261.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.e52b6400-5209-11f1-b0a6-e3be4e62ff85.log
 * Die aktuellen Screenshots:
 https://github.com/froiloc/bb-forum-forensics/tree/1b5017a2f62c5a8f1825de76fc6edabb25d6bf66/debug/screenshots
 ***
@@ -199,7 +199,7 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 115. (15) (BS6) Wenn innerhalb eines Blocks ein m:/o:-Platzhalter gelöscht wird, wird das nicht im Formular-Bereich berücksichtigt. Das Formularfeld bleibt weiterhin bestehen. Es wird auch nicht nach 30 Sekunden entfernt. Erwartet wird, dass unmittelbar nach dem Löschen des Platzhalters, dies im Formular-Bereich berücksichtigt wird.
 116. (30) (BS6) Wenn man beispielsweise eine Überschrift eingefügt hat und bearbeitet und dann unmittelbar hiernach ein Modul durch Doppelklick einfügt, so verschwindet die Überschrift. Sie wurde zuvor offensichtlich nicht gespeichert und aufgrund des Reload-Prozess ohne vorheriges Speichern, ist diese Eingabe verloren.
 117. erledigt
-118. (20) (BS6) Wenn man in `Bausteine` ein Modul einfügt und sich dabei nicht in der Kategorie `Alle` befindet, sondern beispielsweise in der Kategorie `Fazit`, so wird das Modul korrekt eingefügt. Hat das Modul ein auszufüllendes Formularfeld, so wechselt die Sidebar in den `Formular`-Bereich. Wechselt man nun wieder in den Bereich `Bausteine`, so ist die aktive Kategorie nicht mehr das vormals aktive `Fazit` sondern `Alle`. Jedoch wird nur der Inhalt von `Fazit` angezeigt und nicht der Inhalt von `Alle` Lösung: Kategorie auf `Fazit` belassen und nich `Alle` anzeigen. Oder `Kategorie` auf `Alle` und beim Wechsel auf `Bausteine` den Inhalt für `Alle` neu laden. Ich bevorzuge Variante 1.
+118. erledigt
 ---
 ## 3. Funktionalität Backend / Python / SQLite3-Datenbank
 Hier werden Funktionsprobleme aufgeführt, die aufgrund von Problemen im Webserver oder der Datenbank auftreten.

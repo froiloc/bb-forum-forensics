@@ -240,10 +240,13 @@ function _renderSkeleton() {
     // 'standard' am Ende als spezielle Systemkategorie
     const roleChips = ['', ...Object.keys(ROLE_LABELS), 'standard'].map(role => {
         const label = role === 'standard' ? 'Standard' : (role ? ROLE_LABELS[role] : 'Alle');
-        const active = role === '' ? ' mp-chip-active' : '';
+        // Bug 2.118 Fix Build 212: Aktiven Chip aus _filterRole bestimmen
+        // statt immer 'Alle'. Beleg: Bugfix Build 212, 2026-05-17
+        const isActive = role === _filterRole;
+        const active = isActive ? ' mp-chip-active' : '';
         return `<button class="mp-chip${active}" type="button"
                     data-role="${_esc(role)}"
-                    aria-pressed="${role === '' ? 'true' : 'false'}">${_esc(label)}</button>`;
+                    aria-pressed="${isActive ? 'true' : 'false'}">${_esc(label)}</button>`;
     }).join('');
 
     return `

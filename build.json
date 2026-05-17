@@ -1,6 +1,6 @@
 {
-  "build":   211,
-  "version": "0.6.211",
+  "build":   212,
+  "version": "0.6.212",
   "date":    "2026-05-17",
-  "note":    "Build 211: Bug 2.117 — Module-Cache bei Kategorie-Wechsel invalidieren; Rueckkehr zu Alle zeigte nur Kategorie-Module"
+  "note":    "Build 212: Bug 2.118 — _renderSkeleton zeigt aktiven Rollenfilter-Chip basierend auf _filterRole; Kategorie bleibt nach Akkordeon-Wechsel erhalten"
 }
