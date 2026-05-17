@@ -1,4 +1,5 @@
 :8080/favicon.ico:1  Failed to load resource: the server responded with a status of 404 (Not Found)
+values?report_id=1:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
 report:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
 Navigated to http://127.0.0.2:8080/_forensic/report
 debug_events.js:235 [debug_events.js] Build 200 geladen. window._uevt() verfügbar. Trace-Modus: window.FORENSIC_EVENT_TRACE = true
@@ -11,18 +12,18 @@ report_editor.js:86 [forensic] report_editor.js: Exports auf window gesetzt (Bui
 userinfo.js:67 [forensic] DOMContentLoaded: userinfo.js aktiv
 userinfo.js:67 [forensic] initEditor() gestartet
 userinfo.js:67 [forensic] initSSEWindow3() gestartet
-report_editor.js:3428 [forensic] report_editor.js: v0.6.215 Build 215 | Exports auf window gesetzt
-userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 568f5f63-f57f-43dc-9564-c3d26bc7ba4a
+report_editor.js:3443 [forensic] report_editor.js: v0.6.216 Build 216 | Exports auf window gesetzt
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= a700d32f-0041-4489-913d-1872d710fe17
 report_editor.js:86 [forensic] initEditorModule() gestartet
 report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
 report_editor.js:86 [forensic] _initColResizer: Schiebebalken initialisiert
 report_editor.js:86 [forensic] _initForumLinkInterceptor: BroadcastChannel bereit
-report_editor.js:86 [forensic] _initForumLinkInterceptor: aktiv (window_id= 611f5ac7-f59e-4d82-ae86-a41751e38719 )
+report_editor.js:86 [forensic] _initForumLinkInterceptor: aktiv (window_id= 51368d0e-33a9-42d6-a3cf-4a344e2cd8c6 )
 report_editor.js:86 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
 report_editor.js:86 [forensic] initReportSelector() gestartet
 favicon.ico:1  GET http://127.0.0.2:8080/favicon.ico 404 (Not Found)
-userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 568f5f63-f57f-43dc-9564-c3d26bc7ba4a
-userinfo.js:67 [forensic] acquireLock: Lock bereits vorhanden ( 658356d9-f113-413f-9ba9-f946f25855c7 ) — uebersprungen
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= a700d32f-0041-4489-913d-1872d710fe17
+userinfo.js:67 [forensic] acquireLock: Lock bereits vorhanden ( 3db198d3-fc08-422e-85d8-2304af1a113d ) — uebersprungen
 debug_events.js:174 [USER]     [report_editor] click:btn-new-report — Mouse
 debug_events.js:174 [USER]     [report_editor] click:btn-create-report — Mouse
 report_editor.js:86 [forensic] initReportSelector() gestartet
@@ -30,39 +31,27 @@ report_editor.js:86 [forensic] loadReport() report_id= 1 type= interim
 report_editor.js:519 report_editor.js: _knownBlockIds initialisiert, 0 Bloecke geladen.
 report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
 report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
-report_editor.js:901 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+report_editor.js:916 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
 placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= null onSave= function myUsername= paul
 editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
-report_editor.js:946 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:961 report_editor.js: Initialisierungs-Guard freigegeben.
 debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
 debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
 debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
-module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= ea15aabc-5dc0-48e7-9ff3-a159a800bd24 — Editor-Reload via onInserted-Callback
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= 5314225f-8a58-4175-bde4-ba545e677a25 — Editor-Reload via onInserted-Callback
 report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
 report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 1 Bloecke geladen.
-placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= ea15aabc-5dc0-48e7-9ff3-a159a800bd24 onSave= function myUsername= paul
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= 5314225f-8a58-4175-bde4-ba545e677a25 onSave= function myUsername= paul
 report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
-report_editor.js:901 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
-placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= ea15aabc-5dc0-48e7-9ff3-a159a800bd24 onSave= function myUsername= paul
-report_editor.js:946 report_editor.js: Initialisierungs-Guard freigegeben.
-debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
-debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
-debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
-module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= e2a8bedd-dd3f-4a4e-97f6-61a929bf5538 — Editor-Reload via onInserted-Callback
-report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
-report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 2 Bloecke geladen.
-placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= ea15aabc-5dc0-48e7-9ff3-a159a800bd24 onSave= function myUsername= paul
-report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
-report_editor.js:901 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
-placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= ea15aabc-5dc0-48e7-9ff3-a159a800bd24 onSave= function myUsername= paul
-report_editor.js:946 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:916 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= 5314225f-8a58-4175-bde4-ba545e677a25 onSave= function myUsername= paul
+report_editor.js:961 report_editor.js: Initialisierungs-Guard freigegeben.
 debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
 debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
 debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
-debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
 debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
-report_editor.js:933 [forensic] _captureRange: alt= null → neu: blockId= eK1gcsn-nA blockIdx= 1 startOffset= 0
+report_editor.js:948 [forensic] _captureRange: alt= null → neu: blockId= JEQTWyKKXR blockIdx= 1 startOffset= 0
 debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
-report_editor.js:933 [forensic] _captureRange: alt= blockId=eK1gcsn-nA offset=0 → neu: blockId= eK1gcsn-nA blockIdx= 1 startOffset= 0
-report_editor.js:86 [forensic] onChange: Block-Anzahl geaendert: Editor= 3  / _currentBlocks= 2  — bereinige _currentBlocks und Formular-Refresh (Bug 2.98/2.121)
-placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 3 focusedId= ea15aabc-5dc0-48e7-9ff3-a159a800bd24 onSave= function myUsername= paul
+report_editor.js:948 [forensic] _captureRange: alt= blockId=JEQTWyKKXR offset=0 → neu: blockId= JEQTWyKKXR blockIdx= 1 startOffset= 0
+report_editor.js:86 [forensic] onChange: Block-Anzahl geaendert: Editor= 2  / _currentBlocks= 1  — bereinige _currentBlocks und Formular-Refresh (Bug 2.98/2.121)
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 5314225f-8a58-4175-bde4-ba545e677a25 onSave= function myUsername= paul

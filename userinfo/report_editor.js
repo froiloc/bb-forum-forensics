@@ -712,20 +712,35 @@ function _initEditorJs(blocks, reportId) {
                     // Editor.js-IDs — diese muessen in _currentBlocks eingetragen
                     // werden, damit sie im Formular erscheinen koennen.
                     // Beleg: Bugfix Build 214, Projektgespraech 2026-05-17
+                    // Bug 2.121 Fix Build 216: block_data direkt aus dem Editor
+                    // lesen und dehydrieren, nicht leer lassen. Sonst zeigt das
+                    // Formular falsche Felder (Felder des Eltern-Blocks) oder
+                    // keine Felder obwohl Inhalt vorhanden ist.
+                    // Beleg: Bugfix Build 216, Projektgespraech 2026-05-17
+                    const dehydrate = window.PlaceholderChips?.dehydrateChips;
+                    // Bug 2.121 Fix Build 216b: editorData per await holen —
+                    // editorData ist in diesem Scope nicht definiert (kein
+                    // editor.save()-Aufruf weiter oben). ReferenceError wurde
+                    // durch fehlenden try/catch nicht sichtbar.
+                    // Beleg: Bugfix Build 216, Projektgespraech 2026-05-17
+                    let _edData = null;
+                    try { _edData = await ed.save(); } catch (_) {}
                     const knownBlockIds = new Set(_currentBlocks.map(b => b.block_id));
-                    for (const edId of editorIds) {
-                        if (!knownBlockIds.has(edId)) {
-                            // Neuer unsaved Block: Platzhalter in _currentBlocks eintragen
-                            _currentBlocks.push({
-                                block_id: edId,
-                                block_type: 'paragraph',
-                                block_data: JSON.stringify({ text: '' }),
-                                author: document.getElementById('report-editor-body')
-                                    ?.dataset?.username || '',
-                                placeholder_values_json: null,
-                                _unsaved: true,
-                            });
-                        }
+                    for (const edBlock of (_edData?.blocks ?? [])) {
+                        const edId = edBlock.id;
+                        if (!edId || knownBlockIds.has(edId)) continue;
+                        // Neuer unsaved Block: tatsaechlichen Inhalt aus Editor lesen
+                        const rawText = edBlock.data?.text ?? '';
+                        const freshText = dehydrate ? dehydrate(rawText) : rawText;
+                        _currentBlocks.push({
+                            block_id: edId,
+                            block_type: edBlock.type || 'paragraph',
+                            block_data: JSON.stringify({ ...edBlock.data, text: freshText }),
+                            author: document.getElementById('report-editor-body')
+                                ?.dataset?.username || '',
+                            placeholder_values_json: null,
+                            _unsaved: true,
+                        });
                     }
 
                     // Geloeschte Block-IDs ermitteln = in _knownBlockIds aber nicht im Editor

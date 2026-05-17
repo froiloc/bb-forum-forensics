@@ -1,6 +1,6 @@
 {
-  "build":   215,
-  "version": "0.6.215",
+  "build":   216,
+  "version": "0.6.216",
   "date":    "2026-05-17",
-  "note":    "Build 215: 2.121 bestaetigt behoben fuer Enter-Fall; Log-Text im Block-Anzahl-Vergleich korrigiert (zeigte 'weniger' auch bei Erhoehung)"
+  "note":    "Build 216: Bug 2.121 — block_data aus Editor lesen (ed.save()) statt leer lassen; editorData-Scope-Bug behoben (ReferenceError im Block-Anzahl-Vergleich)"
 }
