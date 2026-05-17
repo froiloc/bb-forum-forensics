@@ -687,6 +687,19 @@ function _initEditorJs(blocks, reportId) {
                                 // Beleg: Projektgespraech 2026-05-11
                                 if (!_isReloading) _syncAnchoredFromEditor();
 
+                                // Bug 2.98 Fix Build 207: Formular nach Block-Remove
+                                // sofort aktualisieren, AUCH wenn ein Formularfeld
+                                // fokussiert ist. Der formFocused-Guard weiter oben
+                                // verhindert den gesamten Block, wenn der Benutzer
+                                // beim Loeschen im Formular fokussiert war.
+                                // Diagnose: Log build 206 zeigt delete-Request korrekt,
+                                // aber kein showPlaceholderForm danach — weil formFocused
+                                // truthy war (Benutzer hatte Chip-Klicks im Formular).
+                                // Fuer block-removed muss der Refresh immer laufen —
+                                // der geloeschte Block ist unwiederbringlich weg.
+                                // Beleg: Bugfix Build 207, Projektgespraech 2026-05-17
+                                _refreshPlaceholderForm();
+
                                 // Bug 2.98/2.112 Fix Build 205: Block-Loeschung sofort
                                 // server-seitig ausfuehren, ohne Debounce-Wartezeit.
                                 //
