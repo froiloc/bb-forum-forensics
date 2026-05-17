@@ -1,6 +1,6 @@
 {
-  "build":   205,
-  "version": "0.6.205",
+  "build":   206,
+  "version": "0.6.206",
   "date":    "2026-05-17",
-  "note":    "Build 205: Bug 2.98/2.112 — block-removed loest sofortigen delete_block aus; Bug 2.108 — Enter/ESC im Neu-Bericht-Modal"
+  "note":    "Build 206: Bug 2.114 — Doppelklick fuegt nach Cursor-Block ein (insert_after_block_id); Bug 2.115 — block-changed loest sofortigen Formular-Refresh aus"
 }

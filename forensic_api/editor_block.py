@@ -158,6 +158,9 @@ class EditorBlockEndpoint:
         block_data = data.get("block_data")
         owner      = str(data.get("owner", "")).strip()
         sort_index = data.get("sort_index")
+        # Bug 2.114 Fix Build 206: Einfuegen nach bestimmtem Block
+        # Beleg: Bugfix Build 206, Projektgespraech 2026-05-17
+        insert_after_block_id = str(data.get("insert_after_block_id", "")).strip() or None
         placeholder_values_json_raw = data.get("placeholder_values_json")
         placeholder_values_json: str | None = None
         if placeholder_values_json_raw is not None:
@@ -316,6 +319,21 @@ class EditorBlockEndpoint:
         # SAMAccountName des angemeldeten Ermittlers.
         # Beleg: Projektgespraech 2026-05-07
         ermittler = self._context.investigator_username
+
+        # Bug 2.114 Fix Build 206: Falls insert_after_block_id angegeben,
+        # sort_index berechnen und nachfolgende Bloecke verschieben.
+        # Beleg: Bugfix Build 206, Projektgespraech 2026-05-17
+        if insert_after_block_id and sort_idx is None:
+            try:
+                sort_idx = self._bundle.evidence.get_sort_index_after(
+                    after_block_id=insert_after_block_id,
+                    report_id=report_id,
+                )
+            except Exception as exc:
+                logger.warning(
+                    "get_sort_index_after fehlgeschlagen (%s) — Block ans Ende",
+                    exc,
+                )
 
         try:
             # Build 114: owner= → author= (Signatur evidence_db.save_block)

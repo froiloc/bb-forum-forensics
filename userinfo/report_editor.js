@@ -636,6 +636,19 @@ function _initEditorJs(blocks, reportId) {
             // showPlaceholderForm → onChange → _refreshPlaceholderForm ...
             // Beleg: Bugfix Build 146, Projektgespraech 2026-05-10
             const evType = event?.type;
+
+            // Bug 2.115 Fix Build 206: Bei block-changed (z.B. Platzhalter
+            // geloescht) sofort Formular aktualisieren — nicht erst nach
+            // AUTOSAVE_DEBOUNCE_MS. Formularfelder fuer geloeschte Chips
+            // sollen unverzueglich verschwinden.
+            // Beleg: Bugfix Build 206, Projektgespraech 2026-05-17
+            if (evType === 'block-changed' && !_isRefreshingForm) {
+                const formFocused = document.activeElement?.closest('#accordion-body-form');
+                if (!formFocused) {
+                    _refreshPlaceholderForm();
+                }
+            }
+
             if (
                 (evType === 'block-moved' || evType === 'block-removed' || evType === 'block-added')
                 && !_isRefreshingForm

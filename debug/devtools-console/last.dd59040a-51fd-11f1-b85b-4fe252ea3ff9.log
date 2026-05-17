@@ -1,0 +1,507 @@
+:8080/favicon.ico:1  Failed to load resource: the server responded with a status of 404 (Not Found)
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+windows:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+windows:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+report:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+Navigated to http://127.0.0.2:8080/_forensic/report
+debug_events.js:235 [debug_events.js] Build 200 geladen. window._uevt() verfügbar. Trace-Modus: window.FORENSIC_EVENT_TRACE = true
+debug_events.js:241 [debug_events.js] Kill-Switches: window.FORENSIC_DEBUG=false (alles) | window.FORENSIC_EVENT_DEBUG=false (nur Events)
+placeholder_chips.js:56 [forensic] placeholder_chips.js: window.PlaceholderChips exportiert
+placeholder_wizard.js:75 [forensic] placeholder_wizard.js: window.PlaceholderWizard exportiert
+module_panel.js:77 [forensic] module_panel.js: window.ModulePanel exportiert
+annotation_sidebar.js:58 [forensic] annotation_sidebar.js: window.AnnotationSidebar exportiert
+report_editor.js:86 [forensic] report_editor.js: Exports auf window gesetzt (Build wird async geladen)
+userinfo.js:67 [forensic] DOMContentLoaded: userinfo.js aktiv
+userinfo.js:67 [forensic] initEditor() gestartet
+userinfo.js:67 [forensic] initSSEWindow3() gestartet
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 7bef17e4-0ac7-48e6-857c-faa016fe9e18
+report_editor.js:86 [forensic] initEditorModule() gestartet
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:86 [forensic] _initColResizer: Schiebebalken initialisiert
+report_editor.js:86 [forensic] _initForumLinkInterceptor: BroadcastChannel bereit
+report_editor.js:86 [forensic] _initForumLinkInterceptor: aktiv (window_id= ff4e14ce-5e5b-45f3-a46a-d41dcfb3d4a4 )
+report_editor.js:86 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
+report_editor.js:86 [forensic] initReportSelector() gestartet
+report_editor.js:3291 [forensic] report_editor.js: v0.6.206 Build 206 | Exports auf window gesetzt
+favicon.ico:1  GET http://127.0.0.2:8080/favicon.ico 404 (Not Found)
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 7bef17e4-0ac7-48e6-857c-faa016fe9e18
+userinfo.js:67 [forensic] acquireLock: Lock bereits vorhanden ( bd2c20e1-99ad-4406-bedf-20b574bab43e ) — uebersprungen
+debug_events.js:174 [USER]     [report_editor] click:btn-new-report — Mouse
+debug_events.js:174 [USER]     [report_editor] click:btn-create-report — Mouse
+report_editor.js:86 [forensic] initReportSelector() gestartet
+report_editor.js:86 [forensic] loadReport() report_id= 1 type= interim
+report_editor.js:512 report_editor.js: _knownBlockIds initialisiert, 0 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:772 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= null onSave= function myUsername= paul
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+report_editor.js:817 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= b9d7f4d3-99a8-4471-b355-1b7040eee197 — Editor-Reload via onInserted-Callback
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 1 Bloecke geladen.
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= b9d7f4d3-99a8-4471-b355-1b7040eee197 onSave= function myUsername= paul
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:772 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= b9d7f4d3-99a8-4471-b355-1b7040eee197 onSave= function myUsername= paul
+report_editor.js:817 report_editor.js: Initialisierungs-Guard freigegeben.
+/**
+ * IIFE-Diagnosescript: Bug 2.104
+ * Berichtseditor — Doppelklick erzeugt keinen Block (nach vorherigem Löschen)
+ *
+ * ANLEITUNG:
+ *   1. Berichtseditor öffnen, neuen Bericht anlegen.
+ *   2. Ein Modul per Doppelklick einfügen.
+ *   3. Den Block mit der Editor-Toolbar löschen (⋮ → Löschen oder Backspace).
+ *   4. SOFORT (< 2 Sekunden) dieses Script in DevTools-Console einfügen + Enter.
+ *   5. Bestätigung "[DIAG 2.104]: Monitoring aktiv" abwarten.
+ *   6. Sofort wieder einen Doppelklick auf ein Modul ausführen.
+ *   7. 3 Sekunden warten.
+ *   8. Alle [DIAG 2.104]-Zeilen kopieren und bereitstellen.
+ *
+ * Alternativ: Script VOR dem Löschen einfügen — dann den Ablauf wie oben.
+ *
+ * WAS BEOBACHTET WIRD:
+ *   A) _isReloading-Status beim Doppelklick
+ *   B) Ob _insertModule durch den Reload-Guard gebremst wird
+ *   C) Block-IDs im Editor zu verschiedenen Zeitpunkten
+ *   D) Fetch-Requests (save_block, delete)
+ */
+(function () {
+    'use strict';
+
+    const TAG = '[DIAG 2.104]';
+    const ts  = () => new Date().toISOString().slice(11, 23);
+
+    // -----------------------------------------------------------------------
+    // A) isReloading() überwachen
+    // -----------------------------------------------------------------------
+    const origIsReloading = window.ReportEditor?.isReloading;
+    if (!origIsReloading) {
+        console.warn(TAG, 'WARNUNG: window.ReportEditor.isReloading nicht gefunden!');
+        console.warn(TAG, 'Build 204+ erforderlich. Aktuell:', window._buildnr);
+    } else {
+        // Periodischer Status-Check
+        let _lastReloadingState = null;
+        setInterval(() => {
+            const state = window.ReportEditor.isReloading();
+            if (state !== _lastReloadingState) {
+                _lastReloadingState = state;
+                console.debug(TAG, ts(), '_isReloading geändert →', state);
+            }
+        }, 50);
+        console.debug(TAG, '_isReloading-Polling aktiv (50ms).');
+    }
+
+    // -----------------------------------------------------------------------
+    // B) _reloadEditorContent überwachen via window-Exports
+    // -----------------------------------------------------------------------
+    // Kein direkter Zugriff möglich — wir beobachten indirekt via fetch-Intercept
+
+    // -----------------------------------------------------------------------
+    // C) fetch-Intercept
+    // -----------------------------------------------------------------------
+    const origFetch = window.fetch;
+    window.fetch = async function (url, opts) {
+        const urlStr = typeof url === 'string' ? url : url?.url ?? String(url);
+        if (urlStr.includes('/_forensic/report') || urlStr.includes('/_forensic/editor')) {
+            const method = opts?.method || 'GET';
+            let body = null;
+            try { body = opts?.body ? JSON.parse(opts.body) : null; } catch (_) {}
+            if (method === 'POST' && body) {
+                const reloading = window.ReportEditor?.isReloading?.() ?? '?';
+                console.debug(TAG, ts(),
+                    `fetch POST ${urlStr.split('/').pop()}`,
+                    '| action:', body.action ?? '—',
+                    '| block_id:', (body.block_id ?? '—').slice(0, 8) + '…',
+                    '| _isReloading:', reloading
+                );
+            }
+        }
+        return origFetch.apply(this, arguments);
+    };
+
+    // -----------------------------------------------------------------------
+    // D) Doppelklick auf .mp-item → Zeitreihe
+    // -----------------------------------------------------------------------
+    document.addEventListener('dblclick', (evt) => {
+        if (!evt.target.closest('.mp-item')) return;
+        const reloading = window.ReportEditor?.isReloading?.() ?? '?';
+        console.debug(TAG, ts(), 'DOPPELKLICK — _isReloading:', reloading);
+
+        const snapshots = [0, 50, 150, 300, 500, 800, 1200, 2000, 3000];
+        snapshots.forEach(delay => {
+            setTimeout(() => {
+                const ed = window._editor;
+                const edIds = [];
+                try {
+                    if (ed?.blocks) {
+                        const n = ed.blocks.getBlocksCount();
+                        for (let i = 0; i < n; i++) {
+                            edIds.push(ed.blocks.getBlockByIndex(i)?.id ?? '?');
+                        }
+                    }
+                } catch (e) { edIds.push('ERR:' + e.message); }
+
+                const reloading2 = window.ReportEditor?.isReloading?.() ?? '?';
+                console.debug(TAG, ts(),
+                    `T+${delay}ms`,
+                    '| _isReloading:', reloading2,
+                    '| Editor-Blöcke:', edIds.length,
+                    '| IDs:', edIds.map(id => id.slice(0, 8)).join(', ')
+                );
+            }, delay);
+        });
+    }, { capture: true, passive: true });
+
+    // -----------------------------------------------------------------------
+    // E) Lösch-Events überwachen
+    // -----------------------------------------------------------------------
+    // Bereits durch onChange-Logging in Build 205 abgedeckt.
+    // Wir loggen zusätzlich block-removed im onChange via Proxy auf _editor.
+
+    function _tryWrapEditor() {
+        const ed = window._editor;
+        if (!ed || ed._diag104Wrapped) return;
+        ed._diag104Wrapped = true;
+
+        // onChange ist eine Closure — wir können es nicht wrappen.
+        // Stattdessen: MutationObserver auf #editorjs-holder für CE-Block-Entfernung
+        const holder = document.getElementById('editorjs-holder');
+        if (!holder) return;
+
+        const mo = new MutationObserver((mutations) => {
+            for (const m of mutations) {
+                for (const node of m.removedNodes) {
+                    if (node.nodeType === 1 && node.classList?.contains('ce-block')) {
+                        const blockId = node.dataset?.id ?? '?';
+                        const reloading = window.ReportEditor?.isReloading?.() ?? '?';
+                        console.debug(TAG, ts(),
+                            'MutationObserver: ce-block entfernt',
+                            '| block_id:', blockId.slice(0, 8),
+                            '| _isReloading:', reloading
+                        );
+                    }
+                }
+            }
+        });
+        mo.observe(holder, { childList: true, subtree: false });
+        console.debug(TAG, 'MutationObserver auf #editorjs-holder installiert.');
+    }
+
+    // Polling bis Editor bereit
+    const _poll = setInterval(() => {
+        if (window._editor) {
+            _tryWrapEditor();
+            clearInterval(_poll);
+        }
+    }, 200);
+
+    // Nach _reloadEditorContent neu wrappen (Editor wird zerstört und neu erstellt)
+    setInterval(() => {
+        if (window._editor && !window._editor._diag104Wrapped) {
+            _tryWrapEditor();
+        }
+    }, 500);
+
+    console.debug(TAG, '='.repeat(50));
+    console.debug(TAG, 'DIAG 2.104: Monitoring aktiv. Build:', window._buildnr ?? '?');
+    console.debug(TAG, 'Ablauf: Block einfügen → löschen → sofort Doppelklick');
+    console.debug(TAG, '='.repeat(50));
+
+})();
+VM4506:46 [DIAG 2.104] _isReloading-Polling aktiv (50ms).
+VM4506:160 [DIAG 2.104] ==================================================
+VM4506:161 [DIAG 2.104] DIAG 2.104: Monitoring aktiv. Build: 206
+VM4506:162 [DIAG 2.104] Ablauf: Block einfügen → löschen → sofort Doppelklick
+VM4506:163 [DIAG 2.104] ==================================================
+undefined
+VM4506:43 [DIAG 2.104] 14:33:39.385 _isReloading geändert → false
+VM4506:142 [DIAG 2.104] MutationObserver auf #editorjs-holder installiert.
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+VM4506:83 [DIAG 2.104] 14:33:51.926 DOPPELKLICK — _isReloading: false
+debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
+VM4506:100 [DIAG 2.104] 14:33:51.941 T+0ms | _isReloading: false | Editor-Blöcke: 1 | IDs: b9d7f4d3
+VM4506:66 [DIAG 2.104] 14:33:51.942 fetch POST report | action: save_block | block_id: 19d07d38… | _isReloading: false
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= 19d07d38-7fdc-47f5-b52f-8cc98c05e125 — Editor-Reload via onInserted-Callback
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 2 Bloecke geladen.
+VM4506:100 [DIAG 2.104] 14:33:51.978 T+50ms | _isReloading: false | Editor-Blöcke: 0 | IDs: 
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= b9d7f4d3-99a8-4471-b355-1b7040eee197 onSave= function myUsername= paul
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:772 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= b9d7f4d3-99a8-4471-b355-1b7040eee197 onSave= function myUsername= paul
+VM4506:100 [DIAG 2.104] 14:33:52.078 T+150ms | _isReloading: false | Editor-Blöcke: 2 | IDs: b9d7f4d3, 19d07d38
+VM4506:100 [DIAG 2.104] 14:33:52.226 T+300ms | _isReloading: false | Editor-Blöcke: 2 | IDs: b9d7f4d3, 19d07d38
+VM4506:142 [DIAG 2.104] MutationObserver auf #editorjs-holder installiert.
+VM4506:100 [DIAG 2.104] 14:33:52.429 T+500ms | _isReloading: false | Editor-Blöcke: 2 | IDs: b9d7f4d3, 19d07d38
+report_editor.js:817 report_editor.js: Initialisierungs-Guard freigegeben.
+VM4506:100 [DIAG 2.104] 14:33:52.728 T+800ms | _isReloading: false | Editor-Blöcke: 2 | IDs: b9d7f4d3, 19d07d38
+VM4506:100 [DIAG 2.104] 14:33:53.127 T+1200ms | _isReloading: false | Editor-Blöcke: 2 | IDs: b9d7f4d3, 19d07d38
+VM4506:100 [DIAG 2.104] 14:33:53.927 T+2000ms | _isReloading: false | Editor-Blöcke: 2 | IDs: b9d7f4d3, 19d07d38
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+VM4506:100 [DIAG 2.104] 14:33:54.931 T+3000ms | _isReloading: false | Editor-Blöcke: 2 | IDs: b9d7f4d3, 19d07d38
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:804 [forensic] _captureRange: alt= null → neu: blockId= ? blockIdx= -1 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:804 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= ? blockIdx= -1 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:804 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= ? blockIdx= -1 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+report_editor.js:86 [forensic] onChange block-removed: sofortiger Delete fuer ['b9d7f4d3-99a8-4471-b355-1b7040eee197']
+VM4506:66 [DIAG 2.104] 14:34:08.130 fetch POST block | action: delete | block_id: b9d7f4d3… | _isReloading: false
+report_editor.js:86 [forensic] _syncAnchoredFromEditor:  0 verankerte Annotationen
+report_editor.js:86 [forensic] onChange: Block sofort geloescht: b9d7f4d3-99a8-4471-b355-1b7040eee197
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+VM4506:83 [DIAG 2.104] 14:34:08.649 DOPPELKLICK — _isReloading: false
+debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
+VM4506:100 [DIAG 2.104] 14:34:08.655 T+0ms | _isReloading: false | Editor-Blöcke: 1 | IDs: 19d07d38
+VM4506:66 [DIAG 2.104] 14:34:08.656 fetch POST report | action: save_block | block_id: 9ca2ffe7… | _isReloading: false
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= 9ca2ffe7-debd-4a65-aacf-59d1842da7e4 — Editor-Reload via onInserted-Callback
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 2 Bloecke geladen.
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 19d07d38-7fdc-47f5-b52f-8cc98c05e125 onSave= function myUsername= paul
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:772 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 19d07d38-7fdc-47f5-b52f-8cc98c05e125 onSave= function myUsername= paul
+VM4506:100 [DIAG 2.104] 14:34:08.699 T+50ms | _isReloading: false | Editor-Blöcke: 2 | IDs: 19d07d38, 9ca2ffe7
+VM4506:100 [DIAG 2.104] 14:34:08.799 T+150ms | _isReloading: false | Editor-Blöcke: 2 | IDs: 19d07d38, 9ca2ffe7
+VM4506:142 [DIAG 2.104] MutationObserver auf #editorjs-holder installiert.
+VM4506:100 [DIAG 2.104] 14:34:08.949 T+300ms | _isReloading: false | Editor-Blöcke: 2 | IDs: 19d07d38, 9ca2ffe7
+VM4506:100 [DIAG 2.104] 14:34:09.149 T+500ms | _isReloading: false | Editor-Blöcke: 2 | IDs: 19d07d38, 9ca2ffe7
+report_editor.js:817 report_editor.js: Initialisierungs-Guard freigegeben.
+VM4506:100 [DIAG 2.104] 14:34:09.449 T+800ms | _isReloading: false | Editor-Blöcke: 2 | IDs: 19d07d38, 9ca2ffe7
+VM4506:100 [DIAG 2.104] 14:34:09.849 T+1200ms | _isReloading: false | Editor-Blöcke: 2 | IDs: 19d07d38, 9ca2ffe7
+VM4506:100 [DIAG 2.104] 14:34:10.649 T+2000ms | _isReloading: false | Editor-Blöcke: 2 | IDs: 19d07d38, 9ca2ffe7
+VM4506:100 [DIAG 2.104] 14:34:11.650 T+3000ms | _isReloading: false | Editor-Blöcke: 2 | IDs: 19d07d38, 9ca2ffe7
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:804 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= ? blockIdx= -1 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:804 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= ? blockIdx= -1 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+report_editor.js:86 [forensic] onChange block-removed: sofortiger Delete fuer ['9ca2ffe7-debd-4a65-aacf-59d1842da7e4']
+VM4506:66 [DIAG 2.104] 14:34:34.171 fetch POST block | action: delete | block_id: 9ca2ffe7… | _isReloading: false
+report_editor.js:86 [forensic] _syncAnchoredFromEditor:  0 verankerte Annotationen
+report_editor.js:86 [forensic] onChange: Block sofort geloescht: 9ca2ffe7-debd-4a65-aacf-59d1842da7e4
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+VM4506:83 [DIAG 2.104] 14:34:34.559 DOPPELKLICK — _isReloading: false
+debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
+VM4506:100 [DIAG 2.104] 14:34:34.576 T+0ms | _isReloading: false | Editor-Blöcke: 1 | IDs: 19d07d38
+VM4506:66 [DIAG 2.104] 14:34:34.577 fetch POST report | action: save_block | block_id: 6725bf08… | _isReloading: false
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= 6725bf08-2800-47c9-a99c-cf270eb1da20 — Editor-Reload via onInserted-Callback
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 2 Bloecke geladen.
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 19d07d38-7fdc-47f5-b52f-8cc98c05e125 onSave= function myUsername= paul
+VM4506:100 [DIAG 2.104] 14:34:34.609 T+50ms | _isReloading: false | Editor-Blöcke: 0 | IDs: 
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:772 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 19d07d38-7fdc-47f5-b52f-8cc98c05e125 onSave= function myUsername= paul
+VM4506:100 [DIAG 2.104] 14:34:34.711 T+150ms | _isReloading: false | Editor-Blöcke: 2 | IDs: 19d07d38, 6725bf08
+VM4506:142 [DIAG 2.104] MutationObserver auf #editorjs-holder installiert.
+VM4506:100 [DIAG 2.104] 14:34:34.859 T+300ms | _isReloading: false | Editor-Blöcke: 2 | IDs: 19d07d38, 6725bf08
+VM4506:100 [DIAG 2.104] 14:34:35.059 T+500ms | _isReloading: false | Editor-Blöcke: 2 | IDs: 19d07d38, 6725bf08
+report_editor.js:817 report_editor.js: Initialisierungs-Guard freigegeben.
+VM4506:100 [DIAG 2.104] 14:34:35.360 T+800ms | _isReloading: false | Editor-Blöcke: 2 | IDs: 19d07d38, 6725bf08
+VM4506:100 [DIAG 2.104] 14:34:35.759 T+1200ms | _isReloading: false | Editor-Blöcke: 2 | IDs: 19d07d38, 6725bf08
+VM4506:100 [DIAG 2.104] 14:34:36.561 T+2000ms | _isReloading: false | Editor-Blöcke: 2 | IDs: 19d07d38, 6725bf08
+VM4506:100 [DIAG 2.104] 14:34:37.559 T+3000ms | _isReloading: false | Editor-Blöcke: 2 | IDs: 19d07d38, 6725bf08
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:804 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= ? blockIdx= -1 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:804 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= ? blockIdx= -1 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+report_editor.js:86 [forensic] onChange block-removed: sofortiger Delete fuer ['19d07d38-7fdc-47f5-b52f-8cc98c05e125']
+VM4506:66 [DIAG 2.104] 14:34:58.948 fetch POST block | action: delete | block_id: 19d07d38… | _isReloading: false
+report_editor.js:86 [forensic] _syncAnchoredFromEditor:  0 verankerte Annotationen
+report_editor.js:86 [forensic] onChange: Block sofort geloescht: 19d07d38-7fdc-47f5-b52f-8cc98c05e125
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+VM4506:83 [DIAG 2.104] 14:34:59.327 DOPPELKLICK — _isReloading: false
+debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
+VM4506:100 [DIAG 2.104] 14:34:59.331 T+0ms | _isReloading: false | Editor-Blöcke: 1 | IDs: 6725bf08
+VM4506:66 [DIAG 2.104] 14:34:59.332 fetch POST report | action: save_block | block_id: 2cd5e777… | _isReloading: false
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= 2cd5e777-6673-4ece-8cbf-46887508731c — Editor-Reload via onInserted-Callback
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 2 Bloecke geladen.
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 6725bf08-2800-47c9-a99c-cf270eb1da20 onSave= function myUsername= paul
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:772 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 6725bf08-2800-47c9-a99c-cf270eb1da20 onSave= function myUsername= paul
+VM4506:100 [DIAG 2.104] 14:34:59.377 T+50ms | _isReloading: false | Editor-Blöcke: 2 | IDs: 6725bf08, 2cd5e777
+VM4506:100 [DIAG 2.104] 14:34:59.477 T+150ms | _isReloading: false | Editor-Blöcke: 2 | IDs: 6725bf08, 2cd5e777
+VM4506:100 [DIAG 2.104] 14:34:59.627 T+300ms | _isReloading: false | Editor-Blöcke: 2 | IDs: 6725bf08, 2cd5e777
+VM4506:100 [DIAG 2.104] 14:34:59.827 T+500ms | _isReloading: false | Editor-Blöcke: 2 | IDs: 6725bf08, 2cd5e777
+VM4506:142 [DIAG 2.104] MutationObserver auf #editorjs-holder installiert.
+report_editor.js:817 report_editor.js: Initialisierungs-Guard freigegeben.
+VM4506:100 [DIAG 2.104] 14:35:00.127 T+800ms | _isReloading: false | Editor-Blöcke: 2 | IDs: 6725bf08, 2cd5e777
+VM4506:100 [DIAG 2.104] 14:35:00.527 T+1200ms | _isReloading: false | Editor-Blöcke: 2 | IDs: 6725bf08, 2cd5e777
+VM4506:100 [DIAG 2.104] 14:35:01.327 T+2000ms | _isReloading: false | Editor-Blöcke: 2 | IDs: 6725bf08, 2cd5e777
+VM4506:100 [DIAG 2.104] 14:35:02.327 T+3000ms | _isReloading: false | Editor-Blöcke: 2 | IDs: 6725bf08, 2cd5e777
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+VM4506:83 [DIAG 2.104] 14:35:10.975 DOPPELKLICK — _isReloading: false
+debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
+VM4506:100 [DIAG 2.104] 14:35:10.988 T+0ms | _isReloading: false | Editor-Blöcke: 2 | IDs: 6725bf08, 2cd5e777
+VM4506:66 [DIAG 2.104] 14:35:10.989 fetch POST report | action: save_block | block_id: e4929ff0… | _isReloading: false
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= e4929ff0-877c-4df5-8e33-6658b1073616 — Editor-Reload via onInserted-Callback
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 3 Bloecke geladen.
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 3 focusedId= 6725bf08-2800-47c9-a99c-cf270eb1da20 onSave= function myUsername= paul
+VM4506:100 [DIAG 2.104] 14:35:11.026 T+50ms | _isReloading: false | Editor-Blöcke: 0 | IDs: 
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:772 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 3 focusedId= 6725bf08-2800-47c9-a99c-cf270eb1da20 onSave= function myUsername= paul
+VM4506:100 [DIAG 2.104] 14:35:11.128 T+150ms | _isReloading: false | Editor-Blöcke: 3 | IDs: 6725bf08, 2cd5e777, e4929ff0
+VM4506:100 [DIAG 2.104] 14:35:11.275 T+300ms | _isReloading: false | Editor-Blöcke: 3 | IDs: 6725bf08, 2cd5e777, e4929ff0
+VM4506:142 [DIAG 2.104] MutationObserver auf #editorjs-holder installiert.
+VM4506:100 [DIAG 2.104] 14:35:11.475 T+500ms | _isReloading: false | Editor-Blöcke: 3 | IDs: 6725bf08, 2cd5e777, e4929ff0
+report_editor.js:817 report_editor.js: Initialisierungs-Guard freigegeben.
+VM4506:100 [DIAG 2.104] 14:35:11.775 T+800ms | _isReloading: false | Editor-Blöcke: 3 | IDs: 6725bf08, 2cd5e777, e4929ff0
+VM4506:100 [DIAG 2.104] 14:35:12.175 T+1200ms | _isReloading: false | Editor-Blöcke: 3 | IDs: 6725bf08, 2cd5e777, e4929ff0
+VM4506:100 [DIAG 2.104] 14:35:12.976 T+2000ms | _isReloading: false | Editor-Blöcke: 3 | IDs: 6725bf08, 2cd5e777, e4929ff0
+VM4506:100 [DIAG 2.104] 14:35:13.975 T+3000ms | _isReloading: false | Editor-Blöcke: 3 | IDs: 6725bf08, 2cd5e777, e4929ff0
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:804 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= 6725bf08-2800-47c9-a99c-cf270eb1da20 blockIdx= 0 startOffset= 15
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:804 [forensic] _captureRange: alt= blockId=6725bf08-2800-47c9-a99c-cf270eb1da20 offset=15 → neu: blockId= 6725bf08-2800-47c9-a99c-cf270eb1da20 blockIdx= 0 startOffset= 15
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 3 focusedId= 6725bf08-2800-47c9-a99c-cf270eb1da20 onSave= function myUsername= paul
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:804 [forensic] _captureRange: alt= blockId=6725bf08-2800-47c9-a99c-cf270eb1da20 offset=15 → neu: blockId= 6725bf08-2800-47c9-a99c-cf270eb1da20 blockIdx= 0 startOffset= 15
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:804 [forensic] _captureRange: alt= blockId=6725bf08-2800-47c9-a99c-cf270eb1da20 offset=15 → neu: blockId= 6725bf08-2800-47c9-a99c-cf270eb1da20 blockIdx= 0 startOffset= 0
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 3 focusedId= 6725bf08-2800-47c9-a99c-cf270eb1da20 onSave= function myUsername= paul
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:804 [forensic] _captureRange: alt= blockId=6725bf08-2800-47c9-a99c-cf270eb1da20 offset=0 → neu: blockId= 6725bf08-2800-47c9-a99c-cf270eb1da20 blockIdx= 0 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:804 [forensic] _captureRange: alt= blockId=6725bf08-2800-47c9-a99c-cf270eb1da20 offset=0 → neu: blockId= 6725bf08-2800-47c9-a99c-cf270eb1da20 blockIdx= 0 startOffset= 0
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 3 focusedId= 6725bf08-2800-47c9-a99c-cf270eb1da20 onSave= function myUsername= paul
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:804 [forensic] _captureRange: alt= blockId=6725bf08-2800-47c9-a99c-cf270eb1da20 offset=0 → neu: blockId= so1qeIt1RB blockIdx= 1 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:804 [forensic] _captureRange: alt= blockId=so1qeIt1RB offset=0 → neu: blockId= so1qeIt1RB blockIdx= 1 startOffset= 0
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:804 [forensic] _captureRange: alt= blockId=so1qeIt1RB offset=0 → neu: blockId= so1qeIt1RB blockIdx= 1 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:804 [forensic] _captureRange: alt= blockId=so1qeIt1RB offset=0 → neu: blockId= 6725bf08-2800-47c9-a99c-cf270eb1da20 blockIdx= 0 startOffset= 12
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:804 [forensic] _captureRange: alt= blockId=6725bf08-2800-47c9-a99c-cf270eb1da20 offset=12 → neu: blockId= so1qeIt1RB blockIdx= 1 startOffset= 44
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:804 [forensic] _captureRange: alt= blockId=so1qeIt1RB offset=44 → neu: blockId= so1qeIt1RB blockIdx= 1 startOffset= 4
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:804 [forensic] _captureRange: alt= blockId=so1qeIt1RB offset=4 → neu: blockId= 6725bf08-2800-47c9-a99c-cf270eb1da20 blockIdx= 0 startOffset= 9
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:804 [forensic] _captureRange: alt= blockId=6725bf08-2800-47c9-a99c-cf270eb1da20 offset=9 → neu: blockId= so1qeIt1RB blockIdx= 1 startOffset= 37
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+report_editor.js:1937 report_editor.js: Auto-Save gestartet, report_id= 1 | bekannte Block-IDs: 3
+VM4506:66 [DIAG 2.104] 14:36:05.471 fetch POST block | action: save | block_id: 6725bf08… | _isReloading: false
+VM4506:66 [DIAG 2.104] 14:36:05.484 fetch POST block | action: save | block_id: so1qeIt1… | _isReloading: false
+VM4506:66 [DIAG 2.104] 14:36:05.490 fetch POST block | action: save | block_id: 2cd5e777… | _isReloading: false
+VM4506:66 [DIAG 2.104] 14:36:05.496 fetch POST block | action: save | block_id: e4929ff0… | _isReloading: false
+VM4506:66 [DIAG 2.104] 14:36:05.502 fetch POST order | action: — | block_id: —… | _isReloading: false
+report_editor.js:2051 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 4 | Bloecke geloescht: 0
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 4 focusedId= 6725bf08-2800-47c9-a99c-cf270eb1da20 onSave= function myUsername= paul

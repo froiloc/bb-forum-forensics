@@ -842,6 +842,23 @@ async function _insertModule(moduleId) {
         const blockData = JSON.stringify({ text: m.body || '' });
 
         // 3. Block speichern (Phase 4 Block-API)
+        // Bug 2.114 Fix Build 206: Cursor-Block-ID ermitteln, damit der Server
+        // den neuen Block direkt nach dem Cursor-Block einsortiert.
+        // _savedCursorRange haelt die zuletzt erfasste Cursor-Position.
+        // Beleg: Bugfix Build 206, Projektgespraech 2026-05-17
+        let insertAfterBlockId = null;
+        if (_savedCursorRange) {
+            const container = _savedCursorRange.commonAncestorContainer;
+            const el = container.nodeType === Node.ELEMENT_NODE
+                ? container
+                : container.parentElement;
+            const ceBlock = el?.closest?.('.ce-block[data-id]');
+            if (ceBlock?.dataset?.id) {
+                insertAfterBlockId = ceBlock.dataset.id;
+                _dbg('_insertModule: Einfuegen nach Block', insertAfterBlockId);
+            }
+        }
+
         const blockId = _generateUUID();
         const resp = await fetch(REPORT_API, {
             method:  'POST',
@@ -851,12 +868,13 @@ async function _insertModule(moduleId) {
                 'X-Forensic-Lock-Id':    _currentOpts.lockId || '',
             },
             body: JSON.stringify({
-                action:     'save_block',
-                block_id:   blockId,
-                report_id:  _currentOpts.reportId,
-                block_type: 'paragraph',
-                block_data: blockData,
-                module_id:  moduleId,
+                action:               'save_block',
+                block_id:             blockId,
+                report_id:            _currentOpts.reportId,
+                block_type:           'paragraph',
+                block_data:           blockData,
+                module_id:            moduleId,
+                insert_after_block_id: insertAfterBlockId,
             }),
         });
         const data = await resp.json().catch(() => ({}));

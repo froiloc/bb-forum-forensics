@@ -1494,6 +1494,60 @@ class EvidenceDb:
             self._con.commit()
         return updated
 
+    def get_sort_index_after(self, after_block_id: str, report_id: int) -> int:
+        """
+        Berechnet einen sort_index fuer einen neuen Block, der nach
+        after_block_id eingefuegt werden soll.
+
+        Strategie:
+          1. sort_index von after_block_id ermitteln (Basis).
+          2. Alle Bloecke mit sort_index > Basis um +2 verschieben,
+             damit Platz fuer den neuen Block entsteht.
+          3. Neuer sort_index = Basis + 1.
+
+        Falls after_block_id nicht gefunden: maximaler sort_index + 1000
+        (Block ans Ende).
+
+        Bug 2.114 Fix Build 206: Doppelklick fuegt Modul nach Cursor-Block ein.
+        Beleg: Bugfix Build 206, Projektgespraech 2026-05-17
+        """
+        now = int(time.time())
+
+        # Basis-sort_index des Vorgaengers ermitteln
+        row = self._con.execute(
+            "SELECT rbo.sort_index FROM report_block_order rbo "
+            "WHERE rbo.block_id = ?",
+            (after_block_id,),
+        ).fetchone()
+
+        if row is None:
+            # after_block_id unbekannt oder ohne Sortierungseintrag →
+            # maximalen sort_index des Berichts +1000 verwenden (Ende)
+            max_row = self._con.execute(
+                "SELECT MAX(rbo.sort_index) AS m FROM report_block_order rbo "
+                "JOIN report_blocks rb ON rb.block_id = rbo.block_id "
+                "WHERE rb.report_id = ?",
+                (report_id,),
+            ).fetchone()
+            max_idx = int(max_row["m"]) if max_row and max_row["m"] is not None else 0
+            return max_idx + 1000
+
+        base = int(row["sort_index"])
+
+        # Alle nachfolgenden Bloecke um +2 verschieben
+        self._con.execute(
+            "UPDATE report_block_order SET sort_index = sort_index + 2, "
+            "last_modified_at = ? "
+            "WHERE block_id IN ("
+            "  SELECT rbo.block_id FROM report_block_order rbo "
+            "  JOIN report_blocks rb ON rb.block_id = rbo.block_id "
+            "  WHERE rb.report_id = ? AND rbo.sort_index > ?"
+            ")",
+            (now, report_id, base),
+        )
+        # Kein separates commit — wird vom aufrufenden save_block-commit erfasst.
+        return base + 1
+
     # ------------------------------------------------------------------
     # Beweisanker (report_anchors, B6)
     # Beleg: Bauplan B6 v0.5 §2.3, §4.7
