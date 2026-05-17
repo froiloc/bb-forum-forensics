@@ -1,0 +1,132 @@
+favicon.ico:1  Failed to load resource: the server responded with a status of 404 (Not Found)
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+windows:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+windows:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+windows:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+windows:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+windows:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+windows:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+windows:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+windows:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+report:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+Navigated to http://127.0.0.2:8080/_forensic/report
+debug_events.js:235 [debug_events.js] Build 200 geladen. window._uevt() verfügbar. Trace-Modus: window.FORENSIC_EVENT_TRACE = true
+debug_events.js:241 [debug_events.js] Kill-Switches: window.FORENSIC_DEBUG=false (alles) | window.FORENSIC_EVENT_DEBUG=false (nur Events)
+placeholder_chips.js:56 [forensic] placeholder_chips.js: window.PlaceholderChips exportiert
+placeholder_wizard.js:75 [forensic] placeholder_wizard.js: window.PlaceholderWizard exportiert
+module_panel.js:77 [forensic] module_panel.js: window.ModulePanel exportiert
+annotation_sidebar.js:58 [forensic] annotation_sidebar.js: window.AnnotationSidebar exportiert
+report_editor.js:86 [forensic] report_editor.js: Exports auf window gesetzt (Build wird async geladen)
+userinfo.js:67 [forensic] DOMContentLoaded: userinfo.js aktiv
+userinfo.js:67 [forensic] initEditor() gestartet
+userinfo.js:67 [forensic] initSSEWindow3() gestartet
+report_editor.js:3324 [forensic] report_editor.js: v0.6.208 Build 208 | Exports auf window gesetzt
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 88b136fa-209d-4332-a35b-f420a6f9037a
+report_editor.js:86 [forensic] initEditorModule() gestartet
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:86 [forensic] _initColResizer: Schiebebalken initialisiert
+report_editor.js:86 [forensic] _initForumLinkInterceptor: BroadcastChannel bereit
+report_editor.js:86 [forensic] _initForumLinkInterceptor: aktiv (window_id= 55e5fd23-5d76-4c45-a1a2-e9124b5b8512 )
+report_editor.js:86 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
+report_editor.js:86 [forensic] initReportSelector() gestartet
+favicon.ico:1  GET http://127.0.0.2:8080/favicon.ico 404 (Not Found)
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 88b136fa-209d-4332-a35b-f420a6f9037a
+userinfo.js:67 [forensic] acquireLock: Lock bereits vorhanden ( a16d99b1-053f-4719-a623-cbb8374591e8 ) — uebersprungen
+debug_events.js:174 [USER]     [report_editor] click:btn-new-report — Mouse
+debug_events.js:174 [USER]     [report_editor] click:btn-create-report — Mouse
+report_editor.js:86 [forensic] initReportSelector() gestartet
+report_editor.js:86 [forensic] loadReport() report_id= 1 type= interim
+report_editor.js:512 report_editor.js: _knownBlockIds initialisiert, 0 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:805 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= null onSave= function myUsername= paul
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+report_editor.js:850 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= 5104664e-d519-4eeb-b938-93c8117975f3 — Editor-Reload via onInserted-Callback
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 1 Bloecke geladen.
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= 5104664e-d519-4eeb-b938-93c8117975f3 onSave= function myUsername= paul
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:805 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= 5104664e-d519-4eeb-b938-93c8117975f3 onSave= function myUsername= paul
+report_editor.js:850 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= 936bef11-63f4-4e94-8175-cdfee6aaa374 — Editor-Reload via onInserted-Callback
+report_editor.js:86 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+report_editor.js:86 [forensic] _reloadEditorContent(): Abgeschlossen. 2 Bloecke geladen.
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 5104664e-d519-4eeb-b938-93c8117975f3 onSave= function myUsername= paul
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:805 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 5104664e-d519-4eeb-b938-93c8117975f3 onSave= function myUsername= paul
+report_editor.js:850 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [placeholder_wizard] focus:pf-input — Input
+debug_events.js:162 [USER]     [placeholder_wizard] click:pf-block-group — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:837 [forensic] _captureRange: alt= null → neu: blockId= ? blockIdx= -1 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:837 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= ? blockIdx= -1 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+report_editor.js:86 [forensic] onChange: Editor hat weniger Bloecke ( 1 ) als _currentBlocks ( 2 ) — sofortiger Formular-Refresh (Bug 2.98)
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 5104664e-d519-4eeb-b938-93c8117975f3 onSave= function myUsername= paul
+report_editor.js:1970 report_editor.js: Auto-Save gestartet, report_id= 1 | bekannte Block-IDs: 2
+report_editor.js:2042 report_editor.js: Geloeschte Bloecke erkannt: ['5104664e-d519-4eeb-b938-93c8117975f3']
+report_editor.js:2053 report_editor.js: Block geloescht: 5104664e-d519-4eeb-b938-93c8117975f3 | Status: 200
+report_editor.js:2084 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 1 | Bloecke geloescht: 1
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= 936bef11-63f4-4e94-8175-cdfee6aaa374 onSave= function myUsername= paul

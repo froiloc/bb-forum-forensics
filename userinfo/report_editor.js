@@ -649,6 +649,26 @@ function _initEditorJs(blocks, reportId) {
                 }
             }
 
+            // Bug 2.98 Fix Build 208: Editor.js feuert bei Toolbar-Loeschen
+            // keinen 'block-removed'-Event, sondern 'block-added' (fuer den
+            // Ersatz-Paragraph, den Editor.js nach removeBlock einfuegt).
+            // Beleg: Callstack-Analyse Build 207-Log: 'insert @ editorjs.mjs:7522'
+            // vor 'removeBlock @ editorjs.mjs:7650' — der onChange-Callback
+            // empfaengt den Insert-Event, nicht den Remove-Event.
+            // Fix: Sofortiger Refresh wenn Editor weniger Bloecke zeigt als
+            // _currentBlocks kennt — unabhaengig vom evType.
+            // Beleg: Bugfix Build 208, Projektgespraech 2026-05-17
+            if (!_isRefreshingForm) {
+                const editorBlockCount = window._editor?.blocks?.getBlocksCount?.() ?? -1;
+                const knownCount = _currentBlocks.length;
+                if (editorBlockCount >= 0 && editorBlockCount < knownCount) {
+                    _dbg('onChange: Editor hat weniger Bloecke (',
+                         editorBlockCount, ') als _currentBlocks (', knownCount,
+                         ') — sofortiger Formular-Refresh (Bug 2.98)');
+                    _refreshPlaceholderForm();
+                }
+            }
+
             if (
                 (evType === 'block-moved' || evType === 'block-removed' || evType === 'block-added')
                 && !_isRefreshingForm

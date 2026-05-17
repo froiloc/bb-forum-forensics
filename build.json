@@ -1,6 +1,6 @@
 {
-  "build":   207,
-  "version": "0.6.207",
+  "build":   208,
+  "version": "0.6.208",
   "date":    "2026-05-17",
-  "note":    "Build 207: Bug 2.98 — _refreshPlaceholderForm bei block-removed unabhaengig von formFocused aufrufen (Diagnose: formFocused blockierte Refresh wenn Benutzer Chips geklickt hatte)"
+  "note":    "Build 208: Bug 2.98 — Editor.js feuert bei Toolbar-Loeschen 'block-added' statt 'block-removed'; Fix: Block-Anzahl-Vergleich in onChange"
 }
