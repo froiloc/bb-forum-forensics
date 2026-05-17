@@ -851,53 +851,34 @@ async function _insertModule(moduleId) {
         const data = await resp.json().catch(() => ({}));
         if (!resp.ok) throw new Error(data.error || 'HTTP ' + resp.status);
 
-        // 4. Block sofort im Editor anzeigen (Bug 2.19 Fix Build 132).
-        // Bug 2.64 Fix Build 155: Template-Syntax statt chipHtml fuer blocks.insert.
-        // Bug Rendering Fix Build 158: Chips nach blocks.insert per execCommand
-        // hydrieren — blocks.insert zeigt nur Plaintext.
-        // Bug 2.97/2.107 Fix Build 202: Guard verhindert, dass blocks.insert()
-        // einen onChange → Auto-Save ausloest, der den rohen Template-Text als
-        // zweiten Block in die DB schreibt. Der Block ist bereits per POST
-        // save_block server-seitig gespeichert.
-        // Beleg: Bugfix Build 202, Projektgespraech 2026-05-17
-        const editor = window._editor;
-        if (editor?.blocks) {
-            const bodyText = m.body || '';
-            // Guard setzen: Auto-Save waehrend blocks.insert() unterdrücken
-            window.ReportEditor?.beginProgrammaticInsert?.();
-            editor.blocks.insert('paragraph', { text: bodyText }, {}, undefined, true);
-            const lastIdx = editor.blocks.getBlocksCount() - 1;
-            editor.caret.setToBlock(lastIdx);
-            _dbg('_insertModule: Block eingefuegt, idx=', lastIdx);
-
-            if (bodyText && window.PlaceholderChips?.hydrateChips) {
-                setTimeout(() => {
-                    const holder = document.getElementById('editorjs-holder');
-                    const ceBlocks = holder?.querySelectorAll('.ce-block[data-id]');
-                    const newCeBlock = ceBlocks?.[lastIdx];
-                    const ce = newCeBlock?.querySelector('[contenteditable="true"]');
-                    if (!ce) {
-                        // Guard freigeben auch wenn Chip-Hydration fehlschlaegt
-                        window.ReportEditor?.endProgrammaticInsert?.();
-                        return;
-                    }
-                    const chipHtml = window.PlaceholderChips.hydrateChips(bodyText, {}, {});
-                    ce.focus();
-                    const sel = window.getSelection();
-                    const range = document.createRange();
-                    range.selectNodeContents(ce);
-                    sel.removeAllRanges();
-                    sel.addRange(range);
-                    document.execCommand('insertHTML', false, chipHtml);
-                    _dbg('_insertModule: Chips hydriert, idx=', lastIdx);
-                    // Guard freigeben: Chip-Hydration abgeschlossen
-                    window.ReportEditor?.endProgrammaticInsert?.();
-                }, 50);
-            } else {
-                // Kein bodyText oder kein hydrateChips: Guard sofort freigeben
-                window.ReportEditor?.endProgrammaticInsert?.();
-            }
-        }
+        // 4. Kein blocks.insert() mehr — Strategie-Wechsel Build 203.
+        //
+        //   Problem-Geschichte:
+        //     Build 132: blocks.insert(roherText) + execCommand-Hydration (50ms)
+        //     Build 155: Template-Syntax statt chipHtml
+        //     Build 158: Chip-Hydration per execCommand nach blocks.insert
+        //     Build 202: Guard _isProgrammaticInsert — aber execCommand loeste
+        //                 nach Guard-Freigabe noch einen block-added-Event aus
+        //                 (MutationObserver) → neuer Block mit anderer ID
+        //     Build 203: blocks.insert() entfernt. Der onInserted-Callback in
+        //                report_editor.js ruft _reloadEditorContent() auf, das
+        //                den Editor mit den echten Server-IDs neu initialisiert.
+        //
+        //   Warum blocks.insert() nicht funktioniert:
+        //     blocks.insert() weist dem Block eine neue Editor.js-ID zu (z.B.
+        //     'RMW8pkMMux'). Der Block existiert in der DB aber unter seiner
+        //     UUID (z.B. 'ac948574-...'). Beide IDs sind nie gleich. Jeder
+        //     folgende Auto-Save speichert die Editor.js-ID als neuen Block
+        //     und laesst die UUID als Geister-Block in der DB.
+        //
+        //   Loesung: kein sofortiger visueller Block im Editor. Der Benutzer
+        //     sieht den Block nach dem _reloadEditorContent()-Aufruf im
+        //     onInserted-Callback (< 500ms, typischerweise < 200ms).
+        //     Der Einfuegen-Button bleibt waehrenddessen deaktiviert (see finally).
+        //
+        // Beleg: Bugfix Build 203, Projektgespraech 2026-05-17 (Bug 2.97/2.107)
+        _dbg('_insertModule: Block server-seitig gespeichert, blockId=', blockId,
+             '— Editor-Reload via onInserted-Callback');
 
         // 5. Formular-Akkordeon: wird im onInserted-Callback (report_editor.js)
         // nach _loadBlocksAndReinit geoeffnet, damit _currentBlocks aktuell sind.

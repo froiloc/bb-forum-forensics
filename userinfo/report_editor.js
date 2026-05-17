@@ -1525,10 +1525,17 @@ function _refreshModulePanel() {
         reportId,
         lockId,
         onInserted: async (blockId, moduleId, bodyText) => {
-            // Nach Einfuegen: Editor-Daten neu laden
-            // Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06
+            // Bug 2.97/2.107 Fix Build 203: _reloadEditorContent() statt
+            // _loadBlocksAndReinit(). Grund: _loadBlocksAndReinit aktualisiert
+            // nur _currentBlocks, nicht den Editor-DOM. Der Editor hat aber
+            // weiterhin die blocks.insert()-ID, nicht die Server-UUID. Jeder
+            // folgende Auto-Save schreibt die Editor-ID als neuen DB-Block.
+            // _reloadEditorContent() zerstoert den Editor und initialisiert
+            // ihn neu mit den echten Server-Block-IDs (UUIDs). Damit sind
+            // Editor-IDs und DB-IDs garantiert identisch.
+            // Beleg: Bugfix Build 203, Projektgespraech 2026-05-17
             if (_currentReport) {
-                await _loadBlocksAndReinit(_currentReport);
+                await _reloadEditorContent();
             }
 
             // Formular-Akkordeon automatisch oeffnen wenn m: oder o:-Felder vorhanden

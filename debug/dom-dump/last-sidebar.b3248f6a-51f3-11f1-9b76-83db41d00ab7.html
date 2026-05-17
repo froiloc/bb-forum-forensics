@@ -24,7 +24,7 @@
 </div>
 <!-- Ergebnisliste -->
 <div aria-label="Verfügbare Bausteine" class="mp-list" id="mp-list" role="listbox">
-<div aria-selected="true" class="mp-item mp-item-selected" data-module-id="1" draggable="true" role="option" tabindex="0">
+<div aria-selected="false" class="mp-item mp-item-used" data-module-id="1" draggable="true" role="option" tabindex="0">
 <div class="mp-item-main">
 <span aria-hidden="true" class="mp-item-icon">📋</span>
 <div class="mp-item-text">
@@ -34,10 +34,12 @@
 </div>
 <div class="mp-item-footer">
 <span class="mp-item-role-badge">Einleitung</span>
-<button aria-label="Modul Personenbeschreibung des Beschuldigten einfügen" class="mp-insert-btn" data-module-id="1" type="button">+ Einfügen</button>
+<button aria-label="Modul Personenbeschreibung des Beschuldigten einfügen" class="mp-insert-btn" data-module-id="1" type="button">
+                        + Einfügen
+                    </button>
 </div>
 </div>
-<div aria-selected="false" class="mp-item" data-module-id="2" draggable="true" role="option" tabindex="0">
+<div aria-selected="false" class="mp-item mp-item-used" data-module-id="2" draggable="true" role="option" tabindex="0">
 <div class="mp-item-main">
 <span aria-hidden="true" class="mp-item-icon">📋</span>
 <div class="mp-item-text">
@@ -97,7 +99,7 @@
                     </button>
 </div>
 </div>
-<div aria-selected="false" class="mp-item" data-module-id="6" draggable="true" role="option" tabindex="0">
+<div aria-selected="false" class="mp-item mp-item-used" data-module-id="6" draggable="true" role="option" tabindex="0">
 <div class="mp-item-main">
 <span aria-hidden="true" class="mp-item-icon">📋</span>
 <div class="mp-item-text">
@@ -112,7 +114,7 @@
                     </button>
 </div>
 </div><div class="mp-std-divider">Standard-Blöcke</div><div class="mp-std-section">
-<div aria-selected="false" class="mp-item mp-item--standard" data-block-type="paragraph" data-std-type="paragraph" draggable="true" role="listitem" tabindex="0" title="Freier Texteintrag (Paragraph)">
+<div class="mp-item mp-item--standard" data-block-type="paragraph" data-std-type="paragraph" draggable="true" role="listitem" tabindex="0" title="Freier Texteintrag (Paragraph)">
 <div class="mp-item-header">
 <span aria-hidden="true" class="mp-item-icon">✏️</span>
 <span class="mp-item-title">¶ Textabsatz</span>
@@ -120,7 +122,7 @@
 <div class="mp-item-preview">Freier Texteintrag (Paragraph)</div>
 <button class="mp-btn-insert" data-std-type="paragraph" title="¶ Textabsatz einfügen" type="button">+ Einfügen</button>
 </div>
-<div aria-selected="false" class="mp-item mp-item--standard" data-block-type="header" data-std-type="header" draggable="true" role="listitem" tabindex="0" title="Abschnittsüberschrift (H2)">
+<div class="mp-item mp-item--standard" data-block-type="header" data-std-type="header" draggable="true" role="listitem" tabindex="0" title="Abschnittsüberschrift (H2)">
 <div class="mp-item-header">
 <span aria-hidden="true" class="mp-item-icon">🆗</span>
 <span class="mp-item-title">🆗 Überschrift</span>
@@ -128,7 +130,7 @@
 <div class="mp-item-preview">Abschnittsüberschrift (H2)</div>
 <button class="mp-btn-insert" data-std-type="header" title="🆗 Überschrift einfügen" type="button">+ Einfügen</button>
 </div>
-<div aria-selected="false" class="mp-item mp-item--standard" data-block-type="list" data-std-type="list" draggable="true" role="listitem" tabindex="0" title="Aufzählungsliste oder nummerierte Liste">
+<div class="mp-item mp-item--standard" data-block-type="list" data-std-type="list" draggable="true" role="listitem" tabindex="0" title="Aufzählungsliste oder nummerierte Liste">
 <div class="mp-item-header">
 <span aria-hidden="true" class="mp-item-icon">📝</span>
 <span class="mp-item-title">📝 Liste</span>
@@ -136,7 +138,7 @@
 <div class="mp-item-preview">Aufzählungsliste oder nummerierte Liste</div>
 <button class="mp-btn-insert" data-std-type="list" title="📝 Liste einfügen" type="button">+ Einfügen</button>
 </div>
-<div aria-selected="false" class="mp-item mp-item--standard" data-block-type="table" data-std-type="table" draggable="true" role="listitem" tabindex="0" title="Strukturierte Tabelle">
+<div class="mp-item mp-item--standard" data-block-type="table" data-std-type="table" draggable="true" role="listitem" tabindex="0" title="Strukturierte Tabelle">
 <div class="mp-item-header">
 <span aria-hidden="true" class="mp-item-icon">📊</span>
 <span class="mp-item-title">📊 Tabelle</span>
@@ -144,7 +146,7 @@
 <div class="mp-item-preview">Strukturierte Tabelle</div>
 <button class="mp-btn-insert" data-std-type="table" title="📊 Tabelle einfügen" type="button">+ Einfügen</button>
 </div>
-<div aria-selected="false" class="mp-item mp-item--standard" data-block-type="quote" data-std-type="quote" draggable="true" role="listitem" tabindex="0" title="Hervorgehobenes Zitat">
+<div class="mp-item mp-item--standard" data-block-type="quote" data-std-type="quote" draggable="true" role="listitem" tabindex="0" title="Hervorgehobenes Zitat">
 <div class="mp-item-header">
 <span aria-hidden="true" class="mp-item-icon">„</span>
 <span class="mp-item-title">„Zitat“</span>
@@ -152,7 +154,7 @@
 <div class="mp-item-preview">Hervorgehobenes Zitat</div>
 <button class="mp-btn-insert" data-std-type="quote" title="„Zitat“ einfügen" type="button">+ Einfügen</button>
 </div>
-<div aria-selected="false" class="mp-item mp-item--standard" data-block-type="delimiter" data-std-type="delimiter" draggable="true" role="listitem" tabindex="0" title="Horizontale Trennlinie">
+<div class="mp-item mp-item--standard" data-block-type="delimiter" data-std-type="delimiter" draggable="true" role="listitem" tabindex="0" title="Horizontale Trennlinie">
 <div class="mp-item-header">
 <span aria-hidden="true" class="mp-item-icon">—</span>
 <span class="mp-item-title">— Trennlinie</span>
@@ -188,35 +190,75 @@
             Formular
             <span aria-hidden="true" class="support-accordion-chevron">▾</span>
 </button>
-<div aria-label="Platzhalter-Formular" class="support-accordion-body" id="accordion-body-form" role="region"><div aria-label="Platzhalter-Felder für Block paul" class="pf-block-group pf-block-group--focused" data-block-id="9F_wgKUPED">
-<div class="pf-field-group" data-block-id="9F_wgKUPED" data-field-name="realname" data-field-type="o">
-<label class="pf-label" for="pf-input-9F_wgKUPED-realname">
+<div aria-label="Platzhalter-Formular" class="support-accordion-body" id="accordion-body-form" role="region"><div aria-label="Platzhalter-Felder für Block paul" class="pf-block-group pf-block-group--focused" data-block-id="ee574984-b54a-4991-8db2-3d522d7dc6fe">
+<div class="pf-field-group" data-block-id="ee574984-b54a-4991-8db2-3d522d7dc6fe" data-field-name="realname" data-field-type="o">
+<label class="pf-label" for="pf-input-ee574984-b54a-4991-8db2-3d522d7dc6fe-realname">
             realname
         </label>
 <div class="pf-input-wrap">
-<input aria-label="realname" aria-required="false" autocomplete="off" class="pf-input" data-block-id="9F_wgKUPED" data-field-name="realname" data-field-type="o" id="pf-input-9F_wgKUPED-realname" placeholder="Bürgerlicher Name des Beschuldigten (sofern ermittelt)" type="text" value=""/>
+<input aria-label="realname" aria-required="false" autocomplete="off" class="pf-input" data-block-id="ee574984-b54a-4991-8db2-3d522d7dc6fe" data-field-name="realname" data-field-type="o" id="pf-input-ee574984-b54a-4991-8db2-3d522d7dc6fe-realname" placeholder="Bürgerlicher Name des Beschuldigten (sofern ermittelt)" type="text" value=""/>
 </div>
-<div class="pf-field-error" id="pf-err-9F_wgKUPED-realname" role="alert"></div>
+<div class="pf-field-error" id="pf-err-ee574984-b54a-4991-8db2-3d522d7dc6fe-realname" role="alert"></div>
 </div>
-</div><div aria-label="Platzhalter-Felder für Block paul" class="pf-block-group pf-block-group--blurred" data-block-id="o_DkOJRYRB">
-<div class="pf-field-group" data-block-id="o_DkOJRYRB" data-field-name="realname" data-field-type="o">
-<label class="pf-label" for="pf-input-o_DkOJRYRB-realname">
-            realname
+</div><div aria-label="Platzhalter-Felder für Block paul" class="pf-block-group pf-block-group--blurred" data-block-id="0ecfd8c2-8d7d-4922-91f3-3040cfe45236">
+<div class="pf-field-group" data-block-id="0ecfd8c2-8d7d-4922-91f3-3040cfe45236" data-field-name="aktivitaetsgrad" data-field-type="m">
+<label class="pf-label" for="pf-input-0ecfd8c2-8d7d-4922-91f3-3040cfe45236-aktivitaetsgrad">
+            aktivitaetsgrad <span aria-hidden="true" class="pf-required">*</span>
+</label>
+<div class="pf-input-wrap">
+<input aria-label="aktivitaetsgrad (Pflichtfeld)" aria-required="true" autocomplete="off" class="pf-input" data-block-id="0ecfd8c2-8d7d-4922-91f3-3040cfe45236" data-field-name="aktivitaetsgrad" data-field-type="m" id="pf-input-0ecfd8c2-8d7d-4922-91f3-3040cfe45236-aktivitaetsgrad" placeholder="Einschaetzung der Einbindung: z.B. 'langjährig aktives Mitglied'" type="text" value=""/>
+</div>
+<div class="pf-field-error" id="pf-err-0ecfd8c2-8d7d-4922-91f3-3040cfe45236-aktivitaetsgrad" role="alert"></div>
+</div><div class="pf-field-group" data-block-id="0ecfd8c2-8d7d-4922-91f3-3040cfe45236" data-field-name="kommunikationshinweis" data-field-type="o">
+<label class="pf-label" for="pf-input-0ecfd8c2-8d7d-4922-91f3-3040cfe45236-kommunikationshinweis">
+            kommunikationshinweis
         </label>
 <div class="pf-input-wrap">
-<input aria-label="realname" aria-required="false" autocomplete="off" class="pf-input" data-block-id="o_DkOJRYRB" data-field-name="realname" data-field-type="o" id="pf-input-o_DkOJRYRB-realname" placeholder="Bürgerlicher Name des Beschuldigten (sofern ermittelt)" type="text" value=""/>
+<input aria-label="kommunikationshinweis" aria-required="false" autocomplete="off" class="pf-input" data-block-id="0ecfd8c2-8d7d-4922-91f3-3040cfe45236" data-field-name="kommunikationshinweis" data-field-type="o" id="pf-input-0ecfd8c2-8d7d-4922-91f3-3040cfe45236-kommunikationshinweis" placeholder="Ergaenzende Hinweise zur Kommunikation" type="text" value=""/>
 </div>
-<div class="pf-field-error" id="pf-err-o_DkOJRYRB-realname" role="alert"></div>
+<div class="pf-field-error" id="pf-err-0ecfd8c2-8d7d-4922-91f3-3040cfe45236-kommunikationshinweis" role="alert"></div>
 </div>
-</div><div aria-label="Platzhalter-Felder für Block paul" class="pf-block-group pf-block-group--blurred" data-block-id="24da1cae-148f-422e-94e8-68970939c8b3">
-<div class="pf-field-group" data-block-id="24da1cae-148f-422e-94e8-68970939c8b3" data-field-name="realname" data-field-type="o">
-<label class="pf-label" for="pf-input-24da1cae-148f-422e-94e8-68970939c8b3-realname">
-            realname
+</div><div aria-label="Platzhalter-Felder für Block paul" class="pf-block-group pf-block-group--blurred" data-block-id="730b8e96-db54-427a-a0fa-272148592e4c">
+<div class="pf-field-group" data-block-id="730b8e96-db54-427a-a0fa-272148592e4c" data-field-name="anlage1" data-field-type="m">
+<label class="pf-label" for="pf-input-730b8e96-db54-427a-a0fa-272148592e4c-anlage1">
+            anlage1 <span aria-hidden="true" class="pf-required">*</span>
+</label>
+<div class="pf-input-wrap">
+<input aria-label="anlage1 (Pflichtfeld)" aria-required="true" autocomplete="off" class="pf-input" data-block-id="730b8e96-db54-427a-a0fa-272148592e4c" data-field-name="anlage1" data-field-type="m" id="pf-input-730b8e96-db54-427a-a0fa-272148592e4c-anlage1" placeholder="Bezeichnung der ersten Anlage" type="text" value=""/>
+</div>
+<div class="pf-field-error" id="pf-err-730b8e96-db54-427a-a0fa-272148592e4c-anlage1" role="alert"></div>
+</div><div class="pf-field-group" data-block-id="730b8e96-db54-427a-a0fa-272148592e4c" data-field-name="anlage2" data-field-type="m">
+<label class="pf-label" for="pf-input-730b8e96-db54-427a-a0fa-272148592e4c-anlage2">
+            anlage2 <span aria-hidden="true" class="pf-required">*</span>
+</label>
+<div class="pf-input-wrap">
+<input aria-label="anlage2 (Pflichtfeld)" aria-required="true" autocomplete="off" class="pf-input" data-block-id="730b8e96-db54-427a-a0fa-272148592e4c" data-field-name="anlage2" data-field-type="m" id="pf-input-730b8e96-db54-427a-a0fa-272148592e4c-anlage2" placeholder="Bezeichnung der zweiten Anlage" type="text" value=""/>
+</div>
+<div class="pf-field-error" id="pf-err-730b8e96-db54-427a-a0fa-272148592e4c-anlage2" role="alert"></div>
+</div><div class="pf-field-group" data-block-id="730b8e96-db54-427a-a0fa-272148592e4c" data-field-name="sicherungsdatum" data-field-type="m">
+<label class="pf-label" for="pf-input-730b8e96-db54-427a-a0fa-272148592e4c-sicherungsdatum">
+            sicherungsdatum <span aria-hidden="true" class="pf-required">*</span>
+</label>
+<div class="pf-input-wrap">
+<input aria-label="sicherungsdatum (Pflichtfeld)" aria-required="true" autocomplete="off" class="pf-input" data-block-id="730b8e96-db54-427a-a0fa-272148592e4c" data-field-name="sicherungsdatum" data-field-type="m" id="pf-input-730b8e96-db54-427a-a0fa-272148592e4c-sicherungsdatum" placeholder="Datum der Sicherung TT.MM.JJJJ" type="text" value=""/>
+</div>
+<div class="pf-field-error" id="pf-err-730b8e96-db54-427a-a0fa-272148592e4c-sicherungsdatum" role="alert"></div>
+</div><div class="pf-field-group" data-block-id="730b8e96-db54-427a-a0fa-272148592e4c" data-field-name="aktenzeichen" data-field-type="m">
+<label class="pf-label" for="pf-input-730b8e96-db54-427a-a0fa-272148592e4c-aktenzeichen">
+            aktenzeichen <span aria-hidden="true" class="pf-required">*</span>
+</label>
+<div class="pf-input-wrap">
+<input aria-label="aktenzeichen (Pflichtfeld)" aria-required="true" autocomplete="off" class="pf-input" data-block-id="730b8e96-db54-427a-a0fa-272148592e4c" data-field-name="aktenzeichen" data-field-type="m" id="pf-input-730b8e96-db54-427a-a0fa-272148592e4c-aktenzeichen" placeholder="Aktenzeichen der Ermittlung" type="text" value=""/>
+</div>
+<div class="pf-field-error" id="pf-err-730b8e96-db54-427a-a0fa-272148592e4c-aktenzeichen" role="alert"></div>
+</div><div class="pf-field-group" data-block-id="730b8e96-db54-427a-a0fa-272148592e4c" data-field-name="anlage3" data-field-type="o">
+<label class="pf-label" for="pf-input-730b8e96-db54-427a-a0fa-272148592e4c-anlage3">
+            anlage3
         </label>
 <div class="pf-input-wrap">
-<input aria-label="realname" aria-required="false" autocomplete="off" class="pf-input" data-block-id="24da1cae-148f-422e-94e8-68970939c8b3" data-field-name="realname" data-field-type="o" id="pf-input-24da1cae-148f-422e-94e8-68970939c8b3-realname" placeholder="Bürgerlicher Name des Beschuldigten (sofern ermittelt)" type="text" value=""/>
+<input aria-label="anlage3" aria-required="false" autocomplete="off" class="pf-input" data-block-id="730b8e96-db54-427a-a0fa-272148592e4c" data-field-name="anlage3" data-field-type="o" id="pf-input-730b8e96-db54-427a-a0fa-272148592e4c-anlage3" placeholder="Anlage 3 (optional): Bezeichnung" type="text" value=""/>
 </div>
-<div class="pf-field-error" id="pf-err-24da1cae-148f-422e-94e8-68970939c8b3-realname" role="alert"></div>
+<div class="pf-field-error" id="pf-err-730b8e96-db54-427a-a0fa-272148592e4c-anlage3" role="alert"></div>
 </div>
 </div></div>
 </section>

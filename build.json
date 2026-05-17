@@ -1,6 +1,6 @@
 {
-  "build":   202,
-  "version": "0.6.202",
+  "build":   203,
+  "version": "0.6.203",
   "date":    "2026-05-17",
-  "note":    "Build 202: Bug 2.97/2.107 — _isProgrammaticInsert-Guard verhindert doppelten Auto-Save bei blocks.insert(); vorzeitiges Akkordeon-Oeffnen entfernt"
+  "note":    "Build 203: Bug 2.97/2.107 — blocks.insert() aus _insertModule entfernt; onInserted ruft _reloadEditorContent() auf (Editor-Neuinit mit Server-UUIDs)"
 }
