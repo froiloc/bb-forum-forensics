@@ -292,3 +292,103 @@
 2026-05-17 13:56:01 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
 2026-05-17 13:56:01 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'ac276cc1-814e-4577-ae23-68aea9638533' (Rolle 'main') registriert
 2026-05-17 13:56:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-17 13:56:14 [DEBUG   ] forensic (main.py:447): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-17 13:56:15 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-17 13:56:15 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster '0c58e6fc-0e3f-4c8c-9921-0e9273969cd3' (Rolle 'userinfo') registriert
+2026-05-17 13:56:15 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-17 13:56:15 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-17 13:56:15 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'f687ce56-9c2d-48dc-8ffc-84e80601ef52' (Rolle 'report') registriert
+2026-05-17 13:56:15 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-17 13:56:31 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-17 13:56:31 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'ac276cc1-814e-4577-ae23-68aea9638533' (Rolle 'main') registriert
+2026-05-17 13:56:31 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-17 13:56:44 [DEBUG   ] forensic (main.py:447): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-17 13:56:45 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-17 13:56:45 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster '0c58e6fc-0e3f-4c8c-9921-0e9273969cd3' (Rolle 'userinfo') registriert
+2026-05-17 13:56:45 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-17 13:56:45 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-17 13:56:45 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'f687ce56-9c2d-48dc-8ffc-84e80601ef52' (Rolle 'report') registriert
+2026-05-17 13:56:45 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-17 13:57:01 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-17 13:57:01 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'ac276cc1-814e-4577-ae23-68aea9638533' (Rolle 'main') registriert
+2026-05-17 13:57:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-17 13:57:14 [DEBUG   ] forensic (main.py:447): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-17 13:57:15 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-17 13:57:15 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster '0c58e6fc-0e3f-4c8c-9921-0e9273969cd3' (Rolle 'userinfo') registriert
+2026-05-17 13:57:15 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-17 13:57:15 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-17 13:57:15 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'f687ce56-9c2d-48dc-8ffc-84e80601ef52' (Rolle 'report') registriert
+2026-05-17 13:57:15 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-17 13:57:31 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-17 13:57:31 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'ac276cc1-814e-4577-ae23-68aea9638533' (Rolle 'main') registriert
+2026-05-17 13:57:31 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-17 13:57:44 [DEBUG   ] forensic (main.py:447): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-17 13:57:45 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-17 13:57:45 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster '0c58e6fc-0e3f-4c8c-9921-0e9273969cd3' (Rolle 'userinfo') registriert
+2026-05-17 13:57:45 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-17 13:57:45 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-17 13:57:45 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'f687ce56-9c2d-48dc-8ffc-84e80601ef52' (Rolle 'report') registriert
+2026-05-17 13:57:45 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-17 13:58:01 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-17 13:58:01 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'ac276cc1-814e-4577-ae23-68aea9638533' (Rolle 'main') registriert
+2026-05-17 13:58:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-17 13:58:14 [DEBUG   ] forensic (main.py:447): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-17 13:58:15 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-17 13:58:15 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster '0c58e6fc-0e3f-4c8c-9921-0e9273969cd3' (Rolle 'userinfo') registriert
+2026-05-17 13:58:15 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-17 13:58:15 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-17 13:58:15 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'f687ce56-9c2d-48dc-8ffc-84e80601ef52' (Rolle 'report') registriert
+2026-05-17 13:58:15 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-17 13:58:31 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-17 13:58:31 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'ac276cc1-814e-4577-ae23-68aea9638533' (Rolle 'main') registriert
+2026-05-17 13:58:31 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-17 13:58:44 [DEBUG   ] forensic (main.py:447): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-17 13:58:45 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-17 13:58:45 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster '0c58e6fc-0e3f-4c8c-9921-0e9273969cd3' (Rolle 'userinfo') registriert
+2026-05-17 13:58:45 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-17 13:58:45 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-17 13:58:45 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'f687ce56-9c2d-48dc-8ffc-84e80601ef52' (Rolle 'report') registriert
+2026-05-17 13:58:45 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-17 13:59:01 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-17 13:59:01 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'ac276cc1-814e-4577-ae23-68aea9638533' (Rolle 'main') registriert
+2026-05-17 13:59:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-17 13:59:14 [DEBUG   ] forensic (main.py:447): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-17 13:59:15 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-17 13:59:15 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster '0c58e6fc-0e3f-4c8c-9921-0e9273969cd3' (Rolle 'userinfo') registriert
+2026-05-17 13:59:15 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-17 13:59:15 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-17 13:59:15 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'f687ce56-9c2d-48dc-8ffc-84e80601ef52' (Rolle 'report') registriert
+2026-05-17 13:59:15 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-17 13:59:31 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-17 13:59:31 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'ac276cc1-814e-4577-ae23-68aea9638533' (Rolle 'main') registriert
+2026-05-17 13:59:31 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-17 13:59:44 [DEBUG   ] forensic (main.py:447): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-17 13:59:45 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-17 13:59:45 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster '0c58e6fc-0e3f-4c8c-9921-0e9273969cd3' (Rolle 'userinfo') registriert
+2026-05-17 13:59:45 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-17 13:59:45 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-17 13:59:45 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'f687ce56-9c2d-48dc-8ffc-84e80601ef52' (Rolle 'report') registriert
+2026-05-17 13:59:45 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-17 14:00:01 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-17 14:00:01 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'ac276cc1-814e-4577-ae23-68aea9638533' (Rolle 'main') registriert
+2026-05-17 14:00:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-17 14:00:14 [DEBUG   ] forensic (main.py:447): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-17 14:00:15 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-17 14:00:15 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster '0c58e6fc-0e3f-4c8c-9921-0e9273969cd3' (Rolle 'userinfo') registriert
+2026-05-17 14:00:15 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-17 14:00:15 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-17 14:00:15 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'f687ce56-9c2d-48dc-8ffc-84e80601ef52' (Rolle 'report') registriert
+2026-05-17 14:00:15 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-17 14:00:31 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-17 14:00:31 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'ac276cc1-814e-4577-ae23-68aea9638533' (Rolle 'main') registriert
+2026-05-17 14:00:31 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-17 14:00:44 [DEBUG   ] forensic (main.py:447): Watchdog: Heartbeat (Dump: 'logs/freeze_dump.txt')
+2026-05-17 14:00:45 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-17 14:00:45 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster '0c58e6fc-0e3f-4c8c-9921-0e9273969cd3' (Rolle 'userinfo') registriert
+2026-05-17 14:00:45 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-17 14:00:45 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-17 14:00:45 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'f687ce56-9c2d-48dc-8ffc-84e80601ef52' (Rolle 'report') registriert
+2026-05-17 14:00:45 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
+2026-05-17 14:01:01 [DEBUG   ] forensic.server.router (router.py:104): Router: POST /_forensic/windows (ajax=True)
+2026-05-17 14:01:01 [DEBUG   ] forensic.forensic_api.windows (windows.py:186): /_forensic/windows POST: Fenster 'ac276cc1-814e-4577-ae23-68aea9638533' (Rolle 'main') registriert
+2026-05-17 14:01:01 [DEBUG   ] forensic.server.http_server (http_server.py:115): HTTP "POST /_forensic/windows HTTP/1.1" 200 -
