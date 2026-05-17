@@ -1,6 +1,6 @@
 {
-  "build":   216,
-  "version": "0.6.216",
+  "build":   217,
+  "version": "0.6.217",
   "date":    "2026-05-17",
-  "note":    "Build 216: Bug 2.121 — block_data aus Editor lesen (ed.save()) statt leer lassen; editorData-Scope-Bug behoben (ReferenceError im Block-Anzahl-Vergleich)"
+  "note":    "Build 217: Bug 2.121 — bekannte Bloecke im Block-Anzahl-Vergleich mit aktuellem Editor-Inhalt aktualisieren; Eltern-Block zeigt nach Enter-Split nur noch seinen eigenen Teil"
 }

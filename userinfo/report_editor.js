@@ -725,22 +725,37 @@ function _initEditorJs(blocks, reportId) {
                     // Beleg: Bugfix Build 216, Projektgespraech 2026-05-17
                     let _edData = null;
                     try { _edData = await ed.save(); } catch (_) {}
+                    // Bug 2.121 Fix Build 217: Alle Editor-Bloecke abgleichen:
+                    // - Neue Bloecke (Editor.js-ID, noch nicht in _currentBlocks) eintragen
+                    // - Bekannte Bloecke (UUID) mit aktuellem Inhalt aktualisieren, damit
+                    //   geaenderter Text (z.B. nach Enter-Split) sofort korrekt gerendert wird.
+                    // Ohne dieses Update zeigt der Eltern-Block nach Enter noch beide Chips,
+                    // weil _currentBlocks noch die ungeteilte block_data hat.
+                    // Beleg: Bugfix Build 217, Projektgespraech 2026-05-17
                     const knownBlockIds = new Set(_currentBlocks.map(b => b.block_id));
+                    const username217 = document.getElementById('report-editor-body')
+                        ?.dataset?.username || '';
                     for (const edBlock of (_edData?.blocks ?? [])) {
                         const edId = edBlock.id;
-                        if (!edId || knownBlockIds.has(edId)) continue;
-                        // Neuer unsaved Block: tatsaechlichen Inhalt aus Editor lesen
+                        if (!edId) continue;
                         const rawText = edBlock.data?.text ?? '';
                         const freshText = dehydrate ? dehydrate(rawText) : rawText;
-                        _currentBlocks.push({
-                            block_id: edId,
-                            block_type: edBlock.type || 'paragraph',
-                            block_data: JSON.stringify({ ...edBlock.data, text: freshText }),
-                            author: document.getElementById('report-editor-body')
-                                ?.dataset?.username || '',
-                            placeholder_values_json: null,
-                            _unsaved: true,
-                        });
+                        const freshData = JSON.stringify({ ...edBlock.data, text: freshText });
+                        if (!knownBlockIds.has(edId)) {
+                            // Neuer unsaved Block: eintragen
+                            _currentBlocks.push({
+                                block_id: edId,
+                                block_type: edBlock.type || 'paragraph',
+                                block_data: freshData,
+                                author: username217,
+                                placeholder_values_json: null,
+                                _unsaved: true,
+                            });
+                        } else {
+                            // Bekannter Block: block_data sofort aktualisieren
+                            const cb = _currentBlocks.find(b => b.block_id === edId);
+                            if (cb) cb.block_data = freshData;
+                        }
                     }
 
                     // Geloeschte Block-IDs ermitteln = in _knownBlockIds aber nicht im Editor

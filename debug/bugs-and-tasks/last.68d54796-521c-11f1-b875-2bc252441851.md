@@ -1,5 +1,5 @@
 # Fehler im Frontend
-(Cache-buster-pre-extension: b8894f0e-521b-11f1-a2ba-6f252231a2dc)
+(Cache-buster-pre-extension: 68d54796-521c-11f1-b875-2bc252441851)
 
 Ich werde in dieser Liste fortlaufend die von mir beobachteten Fehler aufführen.
 Falls diese abgeschlossen und verworfen wurden, werde ich sie durchstreichen. Alles, was nicht durchgestrichen ist, ist also noch offen und muss bearbeitet werden.
@@ -20,31 +20,31 @@ Hier noch einmal die Liste der Baustellen und wofür sie stehen:
 
 Quellen zum Debuggen:
 * Dieses Dokument mit den Arbeitsanweisungen und Problembeschreibungen:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.b8894f0e-521b-11f1-a2ba-6f252231a2dc.md
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.68d54796-521c-11f1-b875-2bc252441851.md
 * Die Ausgabe von DevTools-Console:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.b8894f0e-521b-11f1-a2ba-6f252231a2dc.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.68d54796-521c-11f1-b875-2bc252441851.log
 * Die Ausgabe von DevTools-Network:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.b8894f0e-521b-11f1-a2ba-6f252231a2dc.har
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.68d54796-521c-11f1-b875-2bc252441851.har
 * Das aktuelle DOM des gesamten Dokuments als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.b8894f0e-521b-11f1-a2ba-6f252231a2dc.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.68d54796-521c-11f1-b875-2bc252441851.html
 * Das aktuelle DOM des gesamten Body als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.b8894f0e-521b-11f1-a2ba-6f252231a2dc.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.68d54796-521c-11f1-b875-2bc252441851.html
 * Das aktuelle DOM des gesamten Sidebar als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.b8894f0e-521b-11f1-a2ba-6f252231a2dc.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.68d54796-521c-11f1-b875-2bc252441851.html
 * Das aktuelle DOM des gesamten Main als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.b8894f0e-521b-11f1-a2ba-6f252231a2dc.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.68d54796-521c-11f1-b875-2bc252441851.html
 * Das aktuelle DOM des Akkordeon 1 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.b8894f0e-521b-11f1-a2ba-6f252231a2dc.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.68d54796-521c-11f1-b875-2bc252441851.html
 * Das aktuelle DOM des Akkordeon 2 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.b8894f0e-521b-11f1-a2ba-6f252231a2dc.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.68d54796-521c-11f1-b875-2bc252441851.html
 * Das aktuelle DOM des Akkordeon 3 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.b8894f0e-521b-11f1-a2ba-6f252231a2dc.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.68d54796-521c-11f1-b875-2bc252441851.html
 * Das aktuelle DOM des Akkordeon 4 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.b8894f0e-521b-11f1-a2ba-6f252231a2dc.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.68d54796-521c-11f1-b875-2bc252441851.html
 * Das aktuelle DOM des Search-Modal als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-searchmodal.b8894f0e-521b-11f1-a2ba-6f252231a2dc.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-searchmodal.68d54796-521c-11f1-b875-2bc252441851.html
 * Die Ausgabe des aktuellen Webservers:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.b8894f0e-521b-11f1-a2ba-6f252231a2dc.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.68d54796-521c-11f1-b875-2bc252441851.log
 * Die aktuellen Screenshots:
 https://github.com/froiloc/bb-forum-forensics/tree/1b5017a2f62c5a8f1825de76fc6edabb25d6bf66/debug/screenshots
 ***
@@ -202,7 +202,7 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 118. erledigt
 119. (20) (BS6) Wenn ein neuer Block in `Editor.js` angelegt wird, und in diesem geschrieben oder ein Platzhalter über das Kontextmenü eingefügt wurde, so sollte das auch gespeichert werden. Erst das ermöglicht es, dass dieser Block im `Formular`-Bereich erscheint oder kommentierbar wird.
 120. (50) (BS6) Das Erstellen eines neuen Berichts sorgt dafür, dass Änderungen an einem bestehenden Bericht zum Totalverlust des Inhalts führen. Auch das Einfügen klappt dann nicht mehr. Speichern ebenfalls nicht mehr.
-121. (45) (BS6) Wenn man in einem Paragraphen Enter drückt und damit den Paragraphen in zwei Teile spaltet, dann muss man auf das Auto-Save warten, damit im Formular-Bereich die geänderte Struktur (nunmehr mit zwei statt einem Block) erkennbar wird. Diese Änderung sollte sofort vollzogen werden. Selbiges gilt, wenn zwei Paragraphen zu einem verschmolzen werden, indem an der ersten Position eines Paragraphen Backspace gedrückt wird.
+121. erledigt
 122. (30) (BS6) Die automatischen Platzhalter werden nicht ausgefüllt. Bitte untersuche den Grund dafür.
 ---
 ## 3. Funktionalität Backend / Python / SQLite3-Datenbank
