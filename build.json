@@ -1,6 +1,6 @@
 {
-  "build":   227,
-  "version": "0.6.227",
+  "build":   228,
+  "version": "0.6.228",
   "date":    "2026-05-18",
-  "note":    "Build 227: Bug 2.120 — _skipNextLoadReportImplSave verhindert doppelten 423-fehlschlagenden Save aus _loadReportImpl nach btn-create-report"
+  "note":    "Build 228: Bug 2.120 — skipReinit nur beim Create-Flow; Switch-Flow verwendet _reinitWithLock; Drop-Handler blockiert bei readOnly"
 }

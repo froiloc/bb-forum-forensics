@@ -1072,17 +1072,18 @@ function _initEditorJs(blocks, reportId) {
     // Fire-and-forget (kein await) — await im synchronen IIFE nicht
     // erlaubt, obwohl _loadReportImpl async ist.
     // Beleg: Bugfix Build 219, Projektgespraech 2026-05-18
-    // Bug 2.120 Fix Build 220/221: _pendingReportSwitchId statt _isReportSwitch.
-    // skipReinit=true verhindert dass acquireLock _reinitWithLock aufruft —
-    // der Editor ist bereits geladen, nur readOnly muss umgeschaltet werden.
-    // Beleg: Bugfix Build 221, Projektgespraech 2026-05-18
+    // Bug 2.120 Fix Build 220/228: _pendingReportSwitchId statt _isReportSwitch.
+    // Beim Switch-Flow: kein skipReinit — acquireLock darf _reinitWithLock aufrufen
+    // um den Editor in den Schreib-Modus zu bringen. Der loadReport-Guard
+    // (_loadInProgress) verhindert doppeltes Laden.
+    // skipReinit wird nur noch beim Create-Flow gesetzt (btn-create-report).
+    // Beleg: Bugfix Build 228, Projektgespraech 2026-05-18
     if (_pendingReportSwitchId && window._acquireLock) {
         _dbg('_initEditorJs: Lock erwerben fuer neuen Bericht', _pendingReportSwitchId);
         const _ridForLock = _pendingReportSwitchId;
         _pendingReportSwitchId = null;  // sofort zuruecksetzen
-        if (window.EditorState) window.EditorState.skipReinit = true;
+        // Kein skipReinit beim Switch — _reinitWithLock schaltet readOnly ab.
         window._acquireLock(_ridForLock).catch(err => {
-            if (window.EditorState) window.EditorState.skipReinit = false;
             console.warn('report_editor.js: acquireLock nach Switch fehlgeschlagen:', err);
         });
     }
@@ -3067,6 +3068,14 @@ function _initDragDrop() {
 
         if (!window._editor?.blocks) {
             _dbg('Drop: Editor nicht bereit');
+            return;
+        }
+        // Bug 2.120 Fix Build 228: Drop ablehnen wenn Editor readOnly ist.
+        // Tritt auf wenn Lock-Erwerb nach Bericht-Wechsel noch nicht
+        // abgeschlossen ist. Verhindert 'cannot save in read-only mode'.
+        // Beleg: Bugfix Build 228, Projektgespraech 2026-05-18
+        if (window._editor?.readOnly?.isEnabled) {
+            _dbg('Drop: Editor readOnly — Drop abgelehnt (Lock noch nicht erworben)');
             return;
         }
 
