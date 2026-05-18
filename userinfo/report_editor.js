@@ -362,13 +362,19 @@ function openNewReportDialog(existingReports) {
             document.getElementById('new-report-title').focus();
             return;
         }
-        // Bug 2.120 Fix Build 218: Alten Lock freigeben, sse_client mitsenden
-        // fuer atomares Lock mit Bericht-Erstellung.
-        // Beleg: Bugfix Build 218, Projektgespraech 2026-05-17
+        // Bug 2.120 Fix Build 223: Reihenfolge korrigiert:
+        // 1. Alten Bericht letztmalig speichern (Lock noch aktiv)
+        // 2. Lock freigeben
+        // 3. Neuen Bericht anlegen + Lock erwerben
+        // Vorher wurde Lock VOR dem Save freigegeben → 423 beim Save.
+        // Beleg: Bugfix Build 223, Projektgespraech 2026-05-18
         const _oldRid218 = _currentReport?.id ?? null;
         if (window.EditorState?.lockId && _oldRid218) {
+            // Schritt 1: Letzter Save vor Lock-Freigabe
+            try { await _performAutoSave(_oldRid218); } catch (_) {}
+            // Schritt 2: Lock freigeben
             try {
-                await fetch(EDITOR_API.REPORT, {
+                await fetch('/_forensic/report', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -403,12 +409,14 @@ function openNewReportDialog(existingReports) {
                     _dbg('create-report: Lock aus 201-Response:', data.lock_id,
                          'fuer Bericht', data.id);
                     // Bug 2.120 Fix Build 222: Lock-Status-UI aktualisieren.
-                    // Der Lock wird still gesetzt ohne acquireLock() aufzurufen,
-                    // daher muss updateLockStatus hier explizit gerufen werden.
-                    // Beleg: Bugfix Build 222, Projektgespraech 2026-05-18
                     if (window._updateLockStatus) {
                         window._updateLockStatus('lock-mine', 'Lock: ich');
                     }
+                    // Bug 2.120 Fix Build 223: skipReinit setzen damit
+                    // acquireLock nach _initEditorJs kein _reinitWithLock
+                    // ausloest — der Editor wird direkt schreibbar gemacht.
+                    // Beleg: Bugfix Build 223, Projektgespraech 2026-05-18
+                    window.EditorState.skipReinit = true;
                 }
                 // Bug 2.74 Fix Build 166: preselectId statt change-Event
                 // verhindert doppelten _initEditorJs()-Aufruf.

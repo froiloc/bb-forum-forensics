@@ -1,6 +1,6 @@
 {
-  "build":   222,
-  "version": "0.6.222",
+  "build":   223,
+  "version": "0.6.223",
   "date":    "2026-05-18",
-  "note":    "Build 222: Bug 2.120 — updateLockStatus nach Lock-Uebernahme aus 201-Response; editor_lock_released SSE ignorieren wenn bericht-spezifischer Lock bereits aktiv"
+  "note":    "Build 223: Bug 2.120 — EDITOR_API.REPORT-Tippfehler behoben; Save vor Lock-Release; skipReinit beim Create"
 }
