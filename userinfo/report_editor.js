@@ -303,6 +303,10 @@ async function initReportSelector(preselectId = null) {
         // Beleg: Bugfix Build 235, Projektgespraech 2026-05-18
         if (!window.EditorState?.lockId && window._acquireLock) {
             _dbg('initReportSelector: Lock erwerben fuer Bericht', toLoad.id);
+            // Bug 2.120 Fix Build 236: skipReinit=true verhindert
+            // _reinitWithLock-Aufruf nach Lock-Erwerb — der Editor ist
+            // bereits geladen, nur readOnly muss umgeschaltet werden.
+            if (window.EditorState) window.EditorState.skipReinit = true;
             await window._acquireLock(toLoad.id);
         }
     }
@@ -1866,9 +1870,13 @@ async function _onPlaceholderFieldSave(blockId, fieldName, value) {
         || block?.author
         || '';
 
+    // Bug 2.120 Fix Build 236: report_id mitsenden damit _lock_guard
+    // validate_lock(lock_id, report_id) bericht-spezifisch pruefen kann.
+    // Beleg: Bugfix Build 236, Projektgespraech 2026-05-18
     const resp = await _fetchWithLock(EDITOR_API.BLOCK, {
         action:                  'save',
         block_id:                blockId,
+        report_id:               _currentReport?.id ?? null,
         block_data:              blockDataObj,
         owner:                   username,
         placeholder_values_json: JSON.stringify(newValues),
@@ -2372,8 +2380,9 @@ async function _performAutoSave(reportId) {
         // Bug 2.52 Fix Build 138: Aktion heisst 'delete', nicht 'delete_block'.
         // Backend kennt nur 'save' und 'delete'. Beleg: Bugfix Build 138, 2026-05-09
             const resp = await _fetchWithLock(EDITOR_API.BLOCK, {
-                action:   'delete',
-                block_id: blockId,
+                action:    'delete',
+                block_id:  blockId,
+                report_id: reportId,
             });
             if (resp) {
                 if (resp.ok || resp.status === 404) {

@@ -1,6 +1,6 @@
 {
-  "build":   235,
-  "version": "0.6.235",
+  "build":   236,
+  "version": "0.6.236",
   "date":    "2026-05-18",
-  "note":    "Build 235: Bug 2.120 — acquireLock(reportId) nach erstem loadReport in initReportSelector; acquireLock ohne reportId immer uebersprungen"
+  "note":    "Build 236: Bug 2.120 — report_id in allen _fetchWithLock-Requests; skipReinit in initReportSelector verhindert doppeltes loadReport"
 }
