@@ -696,6 +696,17 @@ async function initSSEWindow3() {
         evtSrc.addEventListener('editor_lock_released', () => {
             // SSE-Event: Lock wurde freigegeben (Verbindungsabriss oder explizit).
             // Beleg: Build 098 Fix — greedy client, automatisches Re-Acquire
+            //
+            // Bug 2.120 Fix Build 222: SSE ignorieren wenn wir bereits einen
+            // bericht-spezifischen Lock halten (resource=report_editor:N).
+            // Der SSE-Event kommt weil get_lock() nur resource='report_editor'
+            // prueft und den bericht-spezifischen Lock nicht sieht.
+            // Beleg: Bugfix Build 222, Projektgespraech 2026-05-18
+            if (EditorState.lockId) {
+                _dbg('editor_lock_released: ignoriert — bericht-spezifischer Lock '
+                     + EditorState.lockId + ' ist noch aktiv');
+                return;
+            }
             const hadLock = !!EditorState.lockId;  // VOR dem Nullsetzen merken
             EditorState.lockId = null;
             sessionStorage.removeItem('forensic_lock_id');
@@ -1768,6 +1779,8 @@ function initForensicLinks() {
     // (Save → Release → neuen Bericht laden → Acquire).
     // Beleg: Bugfix Build 218, Projektgespraech 2026-05-17
     window._acquireLock = acquireLock;
+    // Bug 2.120 Fix Build 222: updateLockStatus exportieren fuer report_editor.js
+    window._updateLockStatus = updateLockStatus;
     // Bug 2.120 Fix Build 218: awaitable Lock-Freigabe fuer Bericht-Wechsel.
     // Beleg: Bugfix Build 218, Projektgespraech 2026-05-17
     window._releaseLockAsync = function(reportId) {

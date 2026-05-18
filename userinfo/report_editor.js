@@ -402,6 +402,13 @@ function openNewReportDialog(existingReports) {
                     sessionStorage.setItem('forensic_lock_id', data.lock_id);
                     _dbg('create-report: Lock aus 201-Response:', data.lock_id,
                          'fuer Bericht', data.id);
+                    // Bug 2.120 Fix Build 222: Lock-Status-UI aktualisieren.
+                    // Der Lock wird still gesetzt ohne acquireLock() aufzurufen,
+                    // daher muss updateLockStatus hier explizit gerufen werden.
+                    // Beleg: Bugfix Build 222, Projektgespraech 2026-05-18
+                    if (window._updateLockStatus) {
+                        window._updateLockStatus('lock-mine', 'Lock: ich');
+                    }
                 }
                 // Bug 2.74 Fix Build 166: preselectId statt change-Event
                 // verhindert doppelten _initEditorJs()-Aufruf.

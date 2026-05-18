@@ -1,6 +1,6 @@
 {
-  "build":   221,
-  "version": "0.6.221",
+  "build":   222,
+  "version": "0.6.222",
   "date":    "2026-05-18",
-  "note":    "Build 221: Bug 2.120 — skipReinit-Flag verhindert doppeltes loadReport beim Bericht-Wechsel; nur readOnly umschalten statt vollstaendiges _reinitWithLock"
+  "note":    "Build 222: Bug 2.120 — updateLockStatus nach Lock-Uebernahme aus 201-Response; editor_lock_released SSE ignorieren wenn bericht-spezifischer Lock bereits aktiv"
 }

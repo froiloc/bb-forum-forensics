@@ -1,0 +1,207 @@
+127.0.0.2:8080/favicon.ico:1  Failed to load resource: the server responded with a status of 404 (Not Found)
+127.0.0.2:8080/_forensic/events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+127.0.0.2:8080/_forensic/events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+127.0.0.2:8080/_forensic/events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+127.0.0.2:8080/_forensic/events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+127.0.0.2:8080/_forensic/events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+127.0.0.2:8080/_forensic/events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+windows:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+windows:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+127.0.0.2:8080/_forensic/events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+127.0.0.2:8080/_forensic/events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+127.0.0.2:8080/_forensic/events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+127.0.0.2:8080/_forensic/events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+127.0.0.2:8080/_forensic/events:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+report:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+Navigated to http://127.0.0.2:8080/_forensic/report
+debug_events.js:235 [debug_events.js] Build 200 geladen. window._uevt() verfügbar. Trace-Modus: window.FORENSIC_EVENT_TRACE = true
+debug_events.js:241 [debug_events.js] Kill-Switches: window.FORENSIC_DEBUG=false (alles) | window.FORENSIC_EVENT_DEBUG=false (nur Events)
+placeholder_chips.js:56 [forensic] placeholder_chips.js: window.PlaceholderChips exportiert
+placeholder_wizard.js:75 [forensic] placeholder_wizard.js: window.PlaceholderWizard exportiert
+module_panel.js:77 [forensic] module_panel.js: window.ModulePanel exportiert
+annotation_sidebar.js:58 [forensic] annotation_sidebar.js: window.AnnotationSidebar exportiert
+report_editor.js:86 [forensic] report_editor.js: Exports auf window gesetzt (Build wird async geladen)
+userinfo.js:67 [forensic] DOMContentLoaded: userinfo.js aktiv
+userinfo.js:67 [forensic] initEditor() gestartet
+userinfo.js:67 [forensic] initSSEWindow3() gestartet
+report_editor.js:3543 [forensic] report_editor.js: v0.6.222 Build 222 | Exports auf window gesetzt
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 107c2315-7c27-4959-82b5-bfa6584cdb2b
+report_editor.js:86 [forensic] initEditorModule() gestartet
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:86 [forensic] _initColResizer: Schiebebalken initialisiert
+report_editor.js:86 [forensic] _initForumLinkInterceptor: BroadcastChannel bereit
+report_editor.js:86 [forensic] _initForumLinkInterceptor: aktiv (window_id= f143eed4-3047-4892-a4ae-ae468dafaa55 )
+report_editor.js:86 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
+report_editor.js:86 [forensic] initReportSelector() gestartet
+favicon.ico:1  GET http://127.0.0.2:8080/favicon.ico 404 (Not Found)
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 107c2315-7c27-4959-82b5-bfa6584cdb2b
+userinfo.js:67 [forensic] acquireLock: Lock bereits vorhanden ( 865b7ef9-155e-492d-8aac-34c8309514d0 ) — uebersprungen
+debug_events.js:174 [USER]     [report_editor] click:btn-new-report — Mouse
+debug_events.js:174 [USER]     [report_editor] click:btn-create-report — Mouse
+userinfo.js:67 [forensic] editor_lock_released: ignoriert — bericht-spezifischer Lock 865b7ef9-155e-492d-8aac-34c8309514d0 ist noch aktiv
+report_editor.js:86 [forensic] create-report: Lock aus 201-Response: 657c90e6-f93b-4fe6-bb52-fc02aded12fd fuer Bericht 1
+report_editor.js:86 [forensic] initReportSelector() gestartet
+report_editor.js:86 [forensic] loadReport() report_id= 1 type= interim
+report_editor.js:585 report_editor.js: _knownBlockIds initialisiert, 0 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:997 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+report_editor.js:1042 report_editor.js: Initialisierungs-Guard freigegeben.
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [module_panel] dragstart:mp-item — Drag&Drop
+module_panel.js:77 [forensic] Drag start (Modul, delegiert): module_id= 1 title= Personenbeschreibung des Beschuldigten
+debug_events.js:174 [USER]     [module_panel] dragstart:mp-item — Drag&Drop
+module_panel.js:77 [forensic] Drag start (Modul, delegiert): module_id= 1 title= Personenbeschreibung des Beschuldigten
+debug_events.js:162 [USER]     [report_editor] drop:editorjs-holder — Drag&Drop
+report_editor.js:86 [forensic] Drop: Ziel-Index= 1 von 1 Bloecken
+report_editor.js:86 [forensic] Drop (Modul): module_id= 1 targetIdx= 1
+report_editor.js:86 [forensic] Drop (Modul): Block eingefuegt, type= paragraph idx= 1 textLen= 450
+report_editor.js:86 [forensic] Drop (Modul): Chips hydriert fuer Block idx= 1
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+report_editor.js:86 [forensic] onChange: Block-Anzahl geaendert: Editor= 2  / _currentBlocks= 0  — bereinige _currentBlocks und Formular-Refresh (Bug 2.98/2.121)
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 1 focusedId= a8Nq8OWem7 onSave= function myUsername= paul
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [module_panel] dragstart:mp-item — Drag&Drop
+module_panel.js:77 [forensic] Drag start (Modul, delegiert): module_id= 3 title= Strafrechtliche Einordnung (§§ 176 / 184b StGB)
+debug_events.js:174 [USER]     [module_panel] dragstart:mp-item — Drag&Drop
+module_panel.js:77 [forensic] Drag start (Modul, delegiert): module_id= 3 title= Strafrechtliche Einordnung (§§ 176 / 184b StGB)
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:162 [USER]     [report_editor] drop:editorjs-holder — Drag&Drop
+report_editor.js:86 [forensic] Drop: Ziel-Index= 0 von 2 Bloecken
+report_editor.js:86 [forensic] Drop (Modul): module_id= 3 targetIdx= 0
+report_editor.js:86 [forensic] Drop (Modul): Block eingefuegt, type= paragraph idx= 0 textLen= 582
+report_editor.js:86 [forensic] Drop (Modul): Chips hydriert fuer Block idx= 0
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+report_editor.js:86 [forensic] onChange: Block-Anzahl geaendert: Editor= 3  / _currentBlocks= 1  — bereinige _currentBlocks und Formular-Refresh (Bug 2.98/2.121)
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= a8Nq8OWem7 onSave= function myUsername= paul
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] click:btn-new-report — Mouse
+debug_events.js:174 [USER]     [report_editor] click:btn-create-report — Mouse
+report_editor.js:371  POST http://127.0.0.2:8080/_forensic/undefined 404 (Not Found)
+(anonymous) @ report_editor.js:371
+report_editor.js:86 [forensic] create-report: Lock aus 201-Response: 2df45340-5a09-4fcf-baf8-860ec9499345 fuer Bericht 2
+report_editor.js:86 [forensic] initReportSelector() gestartet
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= final
+report_editor.js:86 [forensic] _loadReportImpl: Bericht-Wechsel 1 -> 2 — Save + Lock-Release
+report_editor.js:2189 report_editor.js: Auto-Save gestartet, report_id= 1 | bekannte Block-IDs: 0
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+report_editor.js:215  POST http://127.0.0.2:8080/_forensic/editor/block 423 (Locked)
+_fetchWithLock @ report_editor.js:215
+_performAutoSave @ report_editor.js:2235
+await in _performAutoSave
+_loadReportImpl @ report_editor.js:487
+loadReport @ report_editor.js:466
+initReportSelector @ report_editor.js:295
+await in initReportSelector
+(anonymous) @ report_editor.js:416
+report_editor.js:2245 report_editor.js: Block-Save fehlgeschlagen: FtPDMK9BlJ {error: 'Lock erforderlich', code: 'LOCK_REQUIRED'}
+_performAutoSave @ report_editor.js:2245
+await in _performAutoSave
+_loadReportImpl @ report_editor.js:487
+loadReport @ report_editor.js:466
+initReportSelector @ report_editor.js:295
+await in initReportSelector
+(anonymous) @ report_editor.js:416
+report_editor.js:215  POST http://127.0.0.2:8080/_forensic/editor/block 423 (Locked)
+_fetchWithLock @ report_editor.js:215
+_performAutoSave @ report_editor.js:2235
+await in _performAutoSave
+_loadReportImpl @ report_editor.js:487
+loadReport @ report_editor.js:466
+initReportSelector @ report_editor.js:295
+await in initReportSelector
+(anonymous) @ report_editor.js:416
+report_editor.js:2245 report_editor.js: Block-Save fehlgeschlagen: a8Nq8OWem7 {error: 'Lock erforderlich', code: 'LOCK_REQUIRED'}
+_performAutoSave @ report_editor.js:2245
+await in _performAutoSave
+_loadReportImpl @ report_editor.js:487
+loadReport @ report_editor.js:466
+initReportSelector @ report_editor.js:295
+await in initReportSelector
+(anonymous) @ report_editor.js:416
+report_editor.js:215  POST http://127.0.0.2:8080/_forensic/editor/order 423 (Locked)
+_fetchWithLock @ report_editor.js:215
+_performAutoSave @ report_editor.js:2292
+await in _performAutoSave
+_loadReportImpl @ report_editor.js:487
+loadReport @ report_editor.js:466
+initReportSelector @ report_editor.js:295
+await in initReportSelector
+(anonymous) @ report_editor.js:416
+report_editor.js:2303 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 2 | Bloecke geloescht: 0
+report_editor.js:585 report_editor.js: _knownBlockIds initialisiert, 0 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initEditorJs: Lock erwerben fuer neuen Bericht 2
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 107c2315-7c27-4959-82b5-bfa6584cdb2b
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:997 report_editor.js: Editor bereit, report_id= 2 | readOnly= true
+report_editor.js:1042 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:2189 report_editor.js: Auto-Save gestartet, report_id= 1 | bekannte Block-IDs: 0
+report_editor.js:2194 Editor.js 2.31.6 Editor's content can not be saved in read-only mode
+Ie @ editorjs.mjs:136
+save @ editorjs.mjs:2985
+(anonymous) @ editorjs.mjs:2975
+_performAutoSave @ report_editor.js:2194
+(anonymous) @ report_editor.js:2155
+setTimeout
+_scheduleAutoSave @ report_editor.js:2155
+onChange @ report_editor.js:974
+await in onChange
+(anonymous) @ editorjs.mjs:8564
+setTimeout
+particularBlockChanged @ editorjs.mjs:8562
+(anonymous) @ editorjs.mjs:8529
+(anonymous) @ editorjs.mjs:889
+emit @ editorjs.mjs:888
+blockDidMutated @ editorjs.mjs:7902
+(anonymous) @ editorjs.mjs:7857
+(anonymous) @ editorjs.mjs:889
+emit @ editorjs.mjs:888
+(anonymous) @ editorjs.mjs:1587
+(anonymous) @ editorjs.mjs:1955
+(anonymous) @ editorjs.mjs:889
+emit @ editorjs.mjs:888
+redactorChanged @ editorjs.mjs:8573
+(anonymous) @ editorjs.mjs:8527
+characterData
+(anonymous) @ report_editor.js:3106
+setTimeout
+(anonymous) @ report_editor.js:3091
+report_editor.js:2196 report_editor.js: Editor.save() fehlgeschlagen: Error: Editor's content can not be saved in read-only mode
+    at Ao.save (editorjs.mjs:2985:75)
+    at Ht.save (editorjs.mjs:2975:24)
+    at _performAutoSave (report_editor.js:2194:36)
+    at report_editor.js:2155:35
+_performAutoSave @ report_editor.js:2196
+await in _performAutoSave
+(anonymous) @ report_editor.js:2155
+setTimeout
+_scheduleAutoSave @ report_editor.js:2155
+onChange @ report_editor.js:974
+await in onChange
+(anonymous) @ editorjs.mjs:8564
+setTimeout
+particularBlockChanged @ editorjs.mjs:8562
+(anonymous) @ editorjs.mjs:8529
+(anonymous) @ editorjs.mjs:889
+emit @ editorjs.mjs:888
+blockDidMutated @ editorjs.mjs:7902
+(anonymous) @ editorjs.mjs:7857
+(anonymous) @ editorjs.mjs:889
+emit @ editorjs.mjs:888
+(anonymous) @ editorjs.mjs:1587
+(anonymous) @ editorjs.mjs:1955
+(anonymous) @ editorjs.mjs:889
+emit @ editorjs.mjs:888
+redactorChanged @ editorjs.mjs:8573
+(anonymous) @ editorjs.mjs:8527
+characterData
+(anonymous) @ report_editor.js:3106
+setTimeout
+(anonymous) @ report_editor.js:3091
