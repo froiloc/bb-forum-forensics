@@ -502,16 +502,21 @@ async function _loadReportImpl(report) {
     if (_isReportSwitch) {
         _dbg('_loadReportImpl: Bericht-Wechsel', _prevReportId, '->', report.id,
              '— Save + Lock-Release');
-        // Letzter Save — ausser wenn bereits durch btn-create-report erledigt
+        // Letzter Save und Lock-Release — ausser wenn bereits durch btn-create-report erledigt
+        // Bug 2.120 Fix Build 229: Lock-Release auch ueberspringen wenn
+        // btn-create-report bereits gespeichert hat. Ohne diesen Guard wurde
+        // EditorState.lockId (neu gesetzt aus 201-Response) sofort wieder
+        // auf null gesetzt, bevor _initEditorJs hasLock pruefen konnte.
+        // Beleg: Bugfix Build 229, Projektgespraech 2026-05-18
         if (_skipNextLoadReportImplSave) {
             _skipNextLoadReportImplSave = false;
-            _dbg('_loadReportImpl: Save uebersprungen (bereits durch Create erledigt)');
+            _dbg('_loadReportImpl: Save + Lock-Release uebersprungen (Create-Flow)');
         } else {
             try { await _performAutoSave(_prevReportId); } catch (_) {}
-        }
-        // Lock freigeben (awaitable)
-        if (window._releaseLockAsync) {
-            await window._releaseLockAsync();
+            // Lock freigeben (awaitable)
+            if (window._releaseLockAsync) {
+                await window._releaseLockAsync();
+            }
         }
     }
 
@@ -1078,14 +1083,24 @@ function _initEditorJs(blocks, reportId) {
     // (_loadInProgress) verhindert doppeltes Laden.
     // skipReinit wird nur noch beim Create-Flow gesetzt (btn-create-report).
     // Beleg: Bugfix Build 228, Projektgespraech 2026-05-18
+    // Bug 2.120 Fix Build 229: acquireLock nur wenn kein Lock vorhanden.
+    // Beim Create-Flow ist der Lock bereits in EditorState.lockId (aus 201-Response).
+    // Beim Switch-Flow ist EditorState.lockId null (wurde in _loadReportImpl freigegeben).
+    // Beleg: Bugfix Build 229, Projektgespraech 2026-05-18
     if (_pendingReportSwitchId && window._acquireLock) {
-        _dbg('_initEditorJs: Lock erwerben fuer neuen Bericht', _pendingReportSwitchId);
         const _ridForLock = _pendingReportSwitchId;
-        _pendingReportSwitchId = null;  // sofort zuruecksetzen
-        // Kein skipReinit beim Switch — _reinitWithLock schaltet readOnly ab.
-        window._acquireLock(_ridForLock).catch(err => {
-            console.warn('report_editor.js: acquireLock nach Switch fehlgeschlagen:', err);
-        });
+        _pendingReportSwitchId = null;
+        if (window.EditorState?.lockId) {
+            // Create-Flow: Lock bereits vorhanden — nur UI aktualisieren
+            _dbg('_initEditorJs: Lock bereits vorhanden fuer Bericht', _ridForLock, '— kein acquireLock noetig');
+            if (window._updateLockStatus) window._updateLockStatus('lock-mine', 'Lock: ich');
+        } else {
+            // Switch-Flow: Lock erwerben
+            _dbg('_initEditorJs: Lock erwerben fuer neuen Bericht', _ridForLock);
+            window._acquireLock(_ridForLock).catch(err => {
+                console.warn('report_editor.js: acquireLock nach Switch fehlgeschlagen:', err);
+            });
+        }
     }
 }
 

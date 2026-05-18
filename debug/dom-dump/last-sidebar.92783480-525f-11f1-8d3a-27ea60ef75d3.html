@@ -1,91 +1,3 @@
-<body data-autosave-debounce-ms="30000" data-subject="Rabenherz" data-user-id="2948078" data-username="paul" id="report-editor-body">
-<!-- Fixierte Aktionsleiste (§4.2 Bauplan B6 v0.3) -->
-<header id="report-action-bar">
-<div id="report-action-bar-title">
-        📄 Bericht · <span id="report-current-title">paul / Rabenherz (ID: 2948078)</span>
-</div>
-<!-- Bug 1.10 Fix Build 121: editor-report-title als div zwischen title und buttons.
-           War bisher als span NACH den Buttons platziert und drückte die Leiste nach unten.
-           Beleg: Bugfix Build 121, Projektgespraech 2026-05-08 -->
-<div id="editor-report-title">1. Abschlussbericht: Erster Bericht</div>
-<div id="report-action-bar-buttons">
-<!-- Build 111: btn-new-report-header entfernt.
-             "Neuer Bericht" befindet sich bereits im report-selector-container.
-             Beleg: Projektgespraech 2026-05-07 -->
-<!-- Bug 2.40/2.43 Absicherung Build 136: Manueller Speichern-Button.
-             Wird aktiv sobald ein Bericht geladen ist (disabled -> enabled durch JS).
-             Beleg: Bugfix Build 136, Projektgespraech 2026-05-09 -->
-<button class="report-btn" id="btn-save-now" title="Bericht jetzt speichern (Strg+S)">
-          💾 Speichern
-        </button>
-<button class="report-btn" id="btn-refresh-placeholders" title="Automatische Platzhalter aktualisieren">
-          🔄 Aktualisieren
-        </button>
-<!-- Bug 1.9 Fix Build 121: ✎ → 🖶 (Drucker-Symbol).
-             Beleg: Bugfix Build 121, Projektgespraech 2026-05-08 -->
-<button class="report-btn" id="btn-print" title="Bericht drucken">
-          🖶 Drucken
-        </button>
-<div class="report-export-wrap">
-<button class="report-btn" disabled="" id="btn-export" title="Bericht exportieren">
-            ⬇ Export ▾
-          </button>
-<div class="report-export-dropdown" id="export-dropdown" style="display:none">
-<button class="report-export-item" data-export-format="html">
-              📄 HTML-Dokument
-            </button>
-<button class="report-export-item" data-export-format="docx">
-              📝 Word-Dokument (.docx)
-            </button>
-<button class="report-export-item" data-export-format="sqlite">
-              🗺 SQLite3-Fallakte (.db)
-            </button>
-</div>
-</div>
-<span class="report-lock-indicator report-lock-none" id="report-lock-indicator" title="Lock gehalten — Bearbeitung möglich">🔒</span>
-<!-- Lock-Status: von userinfo.js beschrieben (Build 113) -->
-<span class="lock-status lock-mine" id="report-lock-status" style="font-size:11px" title="Editor-Lock-Status">Lock: ich</span>
-<span class="save-indicator save-indicator--idle" id="editor-save-indicator" title="Kein Speichern ausstehend">🖫</span>
-</div>
-</header>
-<!-- Zweispaltiger Arbeitsbereich (§4.1, §4.3, §4.7) -->
-<div id="report-workspace">
-<!-- Linke Spalte: Paragraph-Liste (~65%) -->
-<main id="report-main-col" style="flex: 71.2939 1 0%;">
-<!-- Berichtsauswahl -->
-<div id="report-selector-container">
-<div id="report-selector-bar">
-<label class="report-selector-label" for="report-select">Bericht:</label>
-<select class="report-select" id="report-select">
-<option value="2">1. Abschlussbericht: Erster Bericht</option><option value="1">1. Zwischenbericht: Testbericht</option>
-</select>
-<button class="editor-btn" id="btn-new-report" title="Neuen Bericht anlegen">+ Neuer Bericht</button>
-<span id="report-selector-status"></span>
-</div></div>
-<!-- Status-Meldungen -->
-<div id="report-status-msg"></div>
-<!-- Editor-Bereich: EditorJS-Holder direkt in report-main-col.
-             Beleg: Bauplan B6 §4.3, Build 113, Projektgespraech 2026-05-07 -->
-<div class="editorjs-holder" id="editorjs-holder"><div class="codex-editor codex-editor--empty"><div class="codex-editor__redactor" style="padding-bottom: 300px;"><div aria-label="Eigener Block (paul)" class="ce-block block-wrapper--own" data-author="paul" data-block-id="4FxzeaL87w" data-id="4FxzeaL87w" data-wrapped="1" style="--block-owner-color: hsl(224, 60%, 40%);"><div class="block-meta-bar" inert=""><span class="block-meta-author">paul</span><span class="block-meta-date">18.05.2026, 04:10</span><button aria-label="Kommentar zu Block von paul verfassen" class="block-meta-comment-btn" type="button">💬 Kommentieren</button></div><div class="ce-block__content"><div class="ce-paragraph cdx-block" contenteditable="false" data-placeholder-active="Lock erwerben um zu schreiben…"></div></div></div></div><div class="codex-editor-overlay"><div class="codex-editor-overlay__container"><div class="codex-editor-overlay__rectangle" style="display: none;"></div></div></div><div class="ce-inline-toolbar"></div></div></div>
-<!-- Frozen-Overlay (BroadcastChannel-Schutz, §4.6) -->
-<div id="report-frozen-overlay" style="display:none">
-<div class="report-frozen-inner">
-<strong>Dieser Editor ist bereits in einem anderen Fenster geöffnet.</strong><br/>
-            Bitte wechseln Sie zum bestehenden Fenster.
-            <br/><br/>
-<button class="report-btn" id="btn-focus-existing">
-              Zum bestehenden Fenster wechseln
-            </button>
-</div>
-</div>
-</main>
-<!-- Schiebebalken zwischen main und aside (Bug 1.11 Fix) -->
-<!-- Beleg: Projektgespraech 2026-05-11 -->
-<div aria-hidden="true" id="col-resizer">
-<div id="col-resizer-handle"></div>
-</div>
-<!-- Rechte Spalte: Support-Sidebar mit vierstufigem Akkordeon (~35%) -->
-<!-- Beleg: Bauplan B6 v0.5 §4.4, Projektgespraech 2026-05-06 -->
 <aside aria-label="Support-Sidebar" id="support-sidebar" style="flex: 28.7061 1 0%;">
 <!-- Abschnitt 1: Bausteine (Standard: aufgeklappt) -->
 <section class="support-accordion-section support-accordion-section--open" data-accordion="blocks">
@@ -278,49 +190,99 @@
             Formular
             <span aria-hidden="true" class="support-accordion-chevron">▾</span>
 </button>
-<div aria-label="Platzhalter-Formular" class="support-accordion-body support-accordion-body--closed" id="accordion-body-form" role="region"><div aria-label="Platzhalter-Felder für Block paul" class="pf-block-group pf-block-group--focused" data-block-id="pOPth8BlZj">
-<div class="pf-field-group" data-block-id="pOPth8BlZj" data-field-name="realname" data-field-type="o">
-<label class="pf-label" for="pf-input-pOPth8BlZj-realname">
-            realname
+<div aria-label="Platzhalter-Formular" class="support-accordion-body support-accordion-body--closed" id="accordion-body-form" role="region"><div aria-label="Platzhalter-Felder für Block paul" class="pf-block-group pf-block-group--focused" data-block-id="jBaRJpGPIB">
+<div class="pf-field-group" data-block-id="jBaRJpGPIB" data-field-name="tatbestand" data-field-type="m">
+<label class="pf-label" for="pf-input-jBaRJpGPIB-tatbestand">
+            tatbestand <span aria-hidden="true" class="pf-required">*</span>
+</label>
+<div class="pf-input-wrap">
+<input aria-label="tatbestand (Pflichtfeld)" aria-required="true" autocomplete="off" class="pf-input" data-block-id="jBaRJpGPIB" data-field-name="tatbestand" data-field-type="m" id="pf-input-jBaRJpGPIB-tatbestand" placeholder="Tatbestand z.B. '§ 184b Abs. 1 Nr. 1 StGB'" type="text" value=""/>
+</div>
+<div class="pf-field-error" id="pf-err-jBaRJpGPIB-tatbestand" role="alert"></div>
+</div><div class="pf-field-group" data-block-id="jBaRJpGPIB" data-field-name="tathandlung" data-field-type="m">
+<label class="pf-label" for="pf-input-jBaRJpGPIB-tathandlung">
+            tathandlung <span aria-hidden="true" class="pf-required">*</span>
+</label>
+<div class="pf-input-wrap">
+<input aria-label="tathandlung (Pflichtfeld)" aria-required="true" autocomplete="off" class="pf-input" data-block-id="jBaRJpGPIB" data-field-name="tathandlung" data-field-type="m" id="pf-input-jBaRJpGPIB-tathandlung" placeholder="Beschreibung der konkreten Tathandlung(en)" type="text" value=""/>
+</div>
+<div class="pf-field-error" id="pf-err-jBaRJpGPIB-tathandlung" role="alert"></div>
+</div><div class="pf-field-group" data-block-id="jBaRJpGPIB" data-field-name="strafschaerfung" data-field-type="o">
+<label class="pf-label" for="pf-input-jBaRJpGPIB-strafschaerfung">
+            strafschaerfung
         </label>
 <div class="pf-input-wrap">
-<input aria-label="realname" aria-required="false" autocomplete="off" class="pf-input" data-block-id="pOPth8BlZj" data-field-name="realname" data-field-type="o" id="pf-input-pOPth8BlZj-realname" placeholder="Bürgerlicher Name des Beschuldigten (sofern ermittelt)" type="text" value=""/>
+<input aria-label="strafschaerfung" aria-required="false" autocomplete="off" class="pf-input" data-block-id="jBaRJpGPIB" data-field-name="strafschaerfung" data-field-type="o" id="pf-input-jBaRJpGPIB-strafschaerfung" placeholder="Strafschaerfende Umstaende gemaess § 176a StGB" type="text" value=""/>
 </div>
-<div class="pf-field-error" id="pf-err-pOPth8BlZj-realname" role="alert"></div>
+<div class="pf-field-error" id="pf-err-jBaRJpGPIB-strafschaerfung" role="alert"></div>
 </div>
-</div><div aria-label="Platzhalter-Felder für Block paul" class="pf-block-group pf-block-group--blurred" data-block-id="lX_00tKg74">
-<div class="pf-field-group" data-block-id="lX_00tKg74" data-field-name="fazit_text" data-field-type="m">
-<label class="pf-label" for="pf-input-lX_00tKg74-fazit_text">
-            fazit_text <span aria-hidden="true" class="pf-required">*</span>
+</div><div aria-label="Platzhalter-Felder für Block paul" class="pf-block-group pf-block-group--blurred" data-block-id="N4K-4f1xRj">
+<div class="pf-field-group" data-block-id="N4K-4f1xRj" data-field-name="anlage1" data-field-type="m">
+<label class="pf-label" for="pf-input-N4K-4f1xRj-anlage1">
+            anlage1 <span aria-hidden="true" class="pf-required">*</span>
 </label>
 <div class="pf-input-wrap">
-<input aria-label="fazit_text (Pflichtfeld)" aria-required="true" autocomplete="off" class="pf-input" data-block-id="lX_00tKg74" data-field-name="fazit_text" data-field-type="m" id="pf-input-lX_00tKg74-fazit_text" placeholder="Zusammenfassung der wichtigsten Ermittlungsergebnisse" type="text" value=""/>
+<input aria-label="anlage1 (Pflichtfeld)" aria-required="true" autocomplete="off" class="pf-input" data-block-id="N4K-4f1xRj" data-field-name="anlage1" data-field-type="m" id="pf-input-N4K-4f1xRj-anlage1" placeholder="Bezeichnung der ersten Anlage" type="text" value=""/>
 </div>
-<div class="pf-field-error" id="pf-err-lX_00tKg74-fazit_text" role="alert"></div>
-</div><div class="pf-field-group" data-block-id="lX_00tKg74" data-field-name="massnahme" data-field-type="m">
-<label class="pf-label" for="pf-input-lX_00tKg74-massnahme">
-            massnahme <span aria-hidden="true" class="pf-required">*</span>
+<div class="pf-field-error" id="pf-err-N4K-4f1xRj-anlage1" role="alert"></div>
+</div><div class="pf-field-group" data-block-id="N4K-4f1xRj" data-field-name="anlage2" data-field-type="m">
+<label class="pf-label" for="pf-input-N4K-4f1xRj-anlage2">
+            anlage2 <span aria-hidden="true" class="pf-required">*</span>
 </label>
 <div class="pf-input-wrap">
-<input aria-label="massnahme (Pflichtfeld)" aria-required="true" autocomplete="off" class="pf-input" data-block-id="lX_00tKg74" data-field-name="massnahme" data-field-type="m" id="pf-input-lX_00tKg74-massnahme" placeholder="Empfohlene Massnahme z.B. 'Beantragung eines Durchsuchungsbeschlusses'" type="text" value=""/>
+<input aria-label="anlage2 (Pflichtfeld)" aria-required="true" autocomplete="off" class="pf-input" data-block-id="N4K-4f1xRj" data-field-name="anlage2" data-field-type="m" id="pf-input-N4K-4f1xRj-anlage2" placeholder="Bezeichnung der zweiten Anlage" type="text" value=""/>
 </div>
-<div class="pf-field-error" id="pf-err-lX_00tKg74-massnahme" role="alert"></div>
-</div><div class="pf-field-group" data-block-id="lX_00tKg74" data-field-name="prioritaet" data-field-type="m">
-<label class="pf-label" for="pf-input-lX_00tKg74-prioritaet">
-            prioritaet <span aria-hidden="true" class="pf-required">*</span>
+<div class="pf-field-error" id="pf-err-N4K-4f1xRj-anlage2" role="alert"></div>
+</div><div class="pf-field-group" data-block-id="N4K-4f1xRj" data-field-name="sicherungsdatum" data-field-type="m">
+<label class="pf-label" for="pf-input-N4K-4f1xRj-sicherungsdatum">
+            sicherungsdatum <span aria-hidden="true" class="pf-required">*</span>
 </label>
 <div class="pf-input-wrap">
-<input aria-label="prioritaet (Pflichtfeld)" aria-required="true" autocomplete="off" class="pf-input" data-block-id="lX_00tKg74" data-field-name="prioritaet" data-field-type="m" id="pf-input-lX_00tKg74-prioritaet" placeholder="hoch / mittel / niedrig" type="text" value=""/>
+<input aria-label="sicherungsdatum (Pflichtfeld)" aria-required="true" autocomplete="off" class="pf-input" data-block-id="N4K-4f1xRj" data-field-name="sicherungsdatum" data-field-type="m" id="pf-input-N4K-4f1xRj-sicherungsdatum" placeholder="Datum der Sicherung TT.MM.JJJJ" type="text" value=""/>
 </div>
-<div class="pf-field-error" id="pf-err-lX_00tKg74-prioritaet" role="alert"></div>
-</div><div class="pf-field-group" data-block-id="lX_00tKg74" data-field-name="ruecksprache" data-field-type="o">
-<label class="pf-label" for="pf-input-lX_00tKg74-ruecksprache">
-            ruecksprache
+<div class="pf-field-error" id="pf-err-N4K-4f1xRj-sicherungsdatum" role="alert"></div>
+</div><div class="pf-field-group" data-block-id="N4K-4f1xRj" data-field-name="aktenzeichen" data-field-type="m">
+<label class="pf-label" for="pf-input-N4K-4f1xRj-aktenzeichen">
+            aktenzeichen <span aria-hidden="true" class="pf-required">*</span>
+</label>
+<div class="pf-input-wrap">
+<input aria-label="aktenzeichen (Pflichtfeld)" aria-required="true" autocomplete="off" class="pf-input" data-block-id="N4K-4f1xRj" data-field-name="aktenzeichen" data-field-type="m" id="pf-input-N4K-4f1xRj-aktenzeichen" placeholder="Aktenzeichen der Ermittlung" type="text" value=""/>
+</div>
+<div class="pf-field-error" id="pf-err-N4K-4f1xRj-aktenzeichen" role="alert"></div>
+</div><div class="pf-field-group" data-block-id="N4K-4f1xRj" data-field-name="anlage3" data-field-type="o">
+<label class="pf-label" for="pf-input-N4K-4f1xRj-anlage3">
+            anlage3
         </label>
 <div class="pf-input-wrap">
-<input aria-label="ruecksprache" aria-required="false" autocomplete="off" class="pf-input" data-block-id="lX_00tKg74" data-field-name="ruecksprache" data-field-type="o" id="pf-input-lX_00tKg74-ruecksprache" placeholder="Ruecksprache mit Staatsanwaltschaft erforderlich (ja/nein + Begruendung)" type="text" value=""/>
+<input aria-label="anlage3" aria-required="false" autocomplete="off" class="pf-input" data-block-id="N4K-4f1xRj" data-field-name="anlage3" data-field-type="o" id="pf-input-N4K-4f1xRj-anlage3" placeholder="Anlage 3 (optional): Bezeichnung" type="text" value=""/>
 </div>
-<div class="pf-field-error" id="pf-err-lX_00tKg74-ruecksprache" role="alert"></div>
+<div class="pf-field-error" id="pf-err-N4K-4f1xRj-anlage3" role="alert"></div>
+</div>
+</div><div aria-label="Platzhalter-Felder für Block paul" class="pf-block-group pf-block-group--blurred" data-block-id="Kd54Uboj1Z">
+<div class="pf-field-group" data-block-id="Kd54Uboj1Z" data-field-name="ip_auswertung" data-field-type="m">
+<label class="pf-label" for="pf-input-Kd54Uboj1Z-ip_auswertung">
+            ip_auswertung <span aria-hidden="true" class="pf-required">*</span>
+</label>
+<div class="pf-input-wrap">
+<input aria-label="ip_auswertung (Pflichtfeld)" aria-required="true" autocomplete="off" class="pf-input" data-block-id="Kd54Uboj1Z" data-field-name="ip_auswertung" data-field-type="m" id="pf-input-Kd54Uboj1Z-ip_auswertung" placeholder="Ergebnis der IP-Rueckverfolgung / Provider-Auskunft" type="text" value=""/>
+</div>
+<div class="pf-field-error" id="pf-err-Kd54Uboj1Z-ip_auswertung" role="alert"></div>
+</div><div class="pf-field-group" data-block-id="Kd54Uboj1Z" data-field-name="verdaechtige_person" data-field-type="m">
+<label class="pf-label" for="pf-input-Kd54Uboj1Z-verdaechtige_person">
+            verdaechtige_person <span aria-hidden="true" class="pf-required">*</span>
+</label>
+<div class="pf-input-wrap">
+<input aria-label="verdaechtige_person (Pflichtfeld)" aria-required="true" autocomplete="off" class="pf-input" data-block-id="Kd54Uboj1Z" data-field-name="verdaechtige_person" data-field-type="m" id="pf-input-Kd54Uboj1Z-verdaechtige_person" placeholder="Name/Anschrift des Beschuldigten" type="text" value=""/>
+</div>
+<div class="pf-field-error" id="pf-err-Kd54Uboj1Z-verdaechtige_person" role="alert"></div>
+</div><div class="pf-field-group" data-block-id="Kd54Uboj1Z" data-field-name="geraetehinweis" data-field-type="o">
+<label class="pf-label" for="pf-input-Kd54Uboj1Z-geraetehinweis">
+            geraetehinweis
+        </label>
+<div class="pf-input-wrap">
+<input aria-label="geraetehinweis" aria-required="false" autocomplete="off" class="pf-input" data-block-id="Kd54Uboj1Z" data-field-name="geraetehinweis" data-field-type="o" id="pf-input-Kd54Uboj1Z-geraetehinweis" placeholder="Hinweise auf verwendete Geraete oder Betriebssysteme" type="text" value=""/>
+</div>
+<div class="pf-field-error" id="pf-err-Kd54Uboj1Z-geraetehinweis" role="alert"></div>
 </div>
 </div></div>
 </section>
@@ -341,33 +303,3 @@
 </div>
 </section>
 </aside>
-</div>
-<!-- Lock-Infrastruktur: report-lock-status und Lock-Buttons werden von
-         userinfo.js in #report-action-bar-buttons injiziert (Build 113).
-         editorjs-holder lebt in #report-paragraphs-list (report-main-col).
-         Beleg: Projektgespraech 2026-05-07 -->
-<div id="report-editor-container" style="display:none"></div>
-<!-- Scripts (Reihenfolge wichtig) -->
-<!-- 0) editor.bundle.js: Editor.js + Tools (window.EditorJS, window.EditorTools).
-         Muss vor report_editor.js geladen werden.
-         Beleg: AP-E2, Projektgespraech 2026-05-07 (Build 109) -->
-<script defer="" src="/_forensic/static/editor/editor.bundle.js"></script>
-<!-- 0b) debug_events.js: Event-Tracing (window._uevt). Muss VOR allen anderen
-          B6-Skripten geladen werden, damit _uevt beim Laden der Handler verfuegbar ist.
-          Build 200, Projektgespraech 2026-05-17 -->
-<script defer="" src="/_forensic/debug_events.js"></script>
-<!-- 1a) placeholder_chips.js: Chip-Renderer (vor report.js laden) -->
-<script defer="" src="/_forensic/placeholder_chips.js"></script>
-<!-- 1b) placeholder_wizard.js: Wizard (nach Chips, vor report.js) -->
-<script defer="" src="/_forensic/placeholder_wizard.js"></script>
-<!-- 1c) module_panel.js: Modul-Auswahl-Panel -->
-<script defer="" src="/_forensic/module_panel.js"></script>
-<!-- 1d) annotation_sidebar.js: Annotationsseitenleiste -->
-<script defer="" src="/_forensic/annotation_sidebar.js"></script>
-<!-- 1e) comment_thread.js: Kommentar-System -->
-<script defer="" src="/_forensic/comment_thread.js"></script>
-<!-- 1f) report_editor.js: B6-Editor-Modul (umbenannt von editor.js, Build 100) -->
-<script defer="" src="/_forensic/report_editor.js"></script>
-<!-- 2) userinfo.js: Lock/SSE/BroadcastChannel — nach report_editor.js laden -->
-<script defer="" src="/_forensic/userinfo.js"></script>
-</body>

@@ -1,6 +1,6 @@
 {
-  "build":   228,
-  "version": "0.6.228",
+  "build":   229,
+  "version": "0.6.229",
   "date":    "2026-05-18",
-  "note":    "Build 228: Bug 2.120 — skipReinit nur beim Create-Flow; Switch-Flow verwendet _reinitWithLock; Drop-Handler blockiert bei readOnly"
+  "note":    "Build 229: Bug 2.120 — Lock-Release in _loadReportImpl beim Create-Flow ueberspringen; acquireLock nur beim Switch-Flow"
 }
