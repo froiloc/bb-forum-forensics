@@ -13,6 +13,7 @@ if ls -1 ${ROOTDIR}debug/devtools-console/last.*.log 2>/dev/null
 then
 	git mv "${ROOTDIR}debug/devtools-console/last.${last_uuid}.log" "${ROOTDIR}debug/devtools-console/last.${uuid}.log"
 	mv "${ROOTDIR}debug/devtools-console/last.log" "${ROOTDIR}debug/devtools-console/last.${uuid}.log" 2>/dev/null
+	sed -i -E "/Failed to load resource: net::ERR_CONNECTION_REFUSED/d" "${ROOTDIR}debug/devtools-console/last.${uuid}.log"
 fi
 if ls -1 ${ROOTDIR}debug/devtools-network/last.*.har 2>/dev/null
 then

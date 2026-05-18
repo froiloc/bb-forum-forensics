@@ -1,6 +1,6 @@
 {
-  "build":   232,
-  "version": "0.6.232",
+  "build":   234,
+  "version": "0.6.234",
   "date":    "2026-05-18",
-  "note":    "Build 232: Bug 2.120 — Timeout-Fallback (5s) wenn acquireLock nach Bericht-Wechsel nicht antwortet"
+  "note":    "Build 234: Bug 2.110 — Doppelklick fuer Einzeldaten und Standard-Bloecke"
 }

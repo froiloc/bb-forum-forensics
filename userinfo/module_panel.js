@@ -627,6 +627,17 @@ function _renderQueryList(queries) {
             _insertQuery(btn.dataset.queryId);
         });
     });
+
+    // Bug 2.110 Fix Build 234: Doppelklick auf Einzeldatum fuegt es sofort ein.
+    // Analoges Verhalten zu Modulen (dblclick:mp-item).
+    // Beleg: Bugfix Build 234, Projektgespraech 2026-05-18
+    list.querySelectorAll('.mp-item[data-query-id]').forEach(item => {
+        item.addEventListener('dblclick', (e) => {
+            window._uevt?.(e, 'module_panel', 'dblclick:einzeldaten-item',
+                { queryId: item.dataset.queryId }); // B200
+            _insertQuery(item.dataset.queryId);
+        });
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -712,6 +723,14 @@ function _renderStandardList(blocks) {
                 e.preventDefault();
                 item.querySelector('.mp-btn-insert')?.click();
             }
+        });
+        // Bug 2.110 Fix Build 234: Doppelklick fuegt Standard-Block sofort ein.
+        // Analoges Verhalten zu Modulen.
+        // Beleg: Bugfix Build 234, Projektgespraech 2026-05-18
+        item.addEventListener('dblclick', (e) => {
+            window._uevt?.(e, 'module_panel', 'dblclick:std-block-item',
+                { blockType: item.dataset.blockType }); // B200
+            item.querySelector('.mp-btn-insert')?.click();
         });
     });
 }

@@ -874,6 +874,8 @@ async function acquireLock(reportId) {
             }),
         });
         const data = await resp.json();
+        // Bug 2.120 Fix Build 233: Ergebnis immer loggen fuer Diagnose
+        _dbg('acquireLock: Antwort status=', resp.status, 'data=', JSON.stringify(data).slice(0,80));
 
         if (resp.ok && data.lock_id) {
             EditorState.lockId = data.lock_id;

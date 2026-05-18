@@ -497,7 +497,9 @@ async function _loadReportImpl(report) {
     // Beleg: Bugfix Build 218, Projektgespraech 2026-05-17
     const _prevReportId = _currentReport?.id;
     const _isReportSwitch = _prevReportId != null && _prevReportId !== report.id;
-    // Bug 2.120 Fix Build 220: Flag fuer _initEditorJs setzen
+    // Bug 2.120 Fix Build 220/233: Flag fuer _initEditorJs.
+    // Beim Switch-Flow wird Lock jetzt vorab awaited — _pendingReportSwitchId
+    // wird danach auf null gesetzt. Beim Create-Flow bleibt er gesetzt.
     _pendingReportSwitchId = _isReportSwitch ? report.id : null;
     if (_isReportSwitch) {
         _dbg('_loadReportImpl: Bericht-Wechsel', _prevReportId, '->', report.id,
@@ -523,6 +525,17 @@ async function _loadReportImpl(report) {
     _currentReport = report;
     // Bug 2.120 Fix Build 218: currentReportId in EditorState fuer Heartbeat.
     if (window.EditorState) window.EditorState.currentReportId = report?.id ?? null;
+
+    // Bug 2.120 Fix Build 233: Lock VOR _initEditorJs erwerben.
+    // Damit ist EditorState.lockId gesetzt wenn hasLock berechnet wird
+    // und der Editor startet direkt mit readOnly=false.
+    // Kein _pendingReportSwitchId mehr noetig fuer den Switch-Flow.
+    // Beleg: Bugfix Build 233, Projektgespraech 2026-05-18
+    if (_isReportSwitch && !_skipNextLoadReportImplSave && window._acquireLock) {
+        _dbg('_loadReportImpl: Lock vorab erwerben fuer Bericht', report.id);
+        await window._acquireLock(report.id);
+        _pendingReportSwitchId = null;  // kein zweiter acquireLock in _initEditorJs
+    }
 
     // Build 114: Action-Bar-Buttons aktivieren sobald ein Bericht geladen ist.
     // Drucken, Export und Aktualisieren sind lock-unabhaengig.
@@ -1101,27 +1114,45 @@ function _initEditorJs(blocks, reportId) {
             // Beleg: Bugfix Build 232, Projektgespraech 2026-05-18
             _dbg('_initEditorJs: Lock erwerben fuer neuen Bericht', _ridForLock);
             if (window.EditorState) window.EditorState.skipReinit = true;
-            const _acquirePromise = window._acquireLock(_ridForLock);
-            // Timeout-Fallback: nach 5s readOnly direkt abschalten wenn Lock vorhanden
-            const _acquireTimeout = setTimeout(() => {
-                if (window._editor?.readOnly?.isEnabled && window.EditorState?.lockId) {
-                    _dbg('_initEditorJs: acquireLock Timeout — readOnly.toggle() direkt');
-                    if (window.EditorState) window.EditorState.skipReinit = false;
-                    window._editor.readOnly.toggle().catch(() => {});
-                    if (window._updateLockStatus) {
-                        window._updateLockStatus('lock-mine', 'Lock: ich');
-                    }
+            // Bug 2.120 Fix Build 233: Polling-Mechanismus nach acquireLock.
+            // Prüft jede 300ms ob Lock erworben und Editor noch readOnly ist.
+            // Bei Erfolg: readOnly.toggle(). Bei Misserfolg: nach 30s aufgeben.
+            // Beleg: Bugfix Build 233, Projektgespraech 2026-05-18
+            let _readOnlyPollCount = 0;
+            const _ridForPoll = _ridForLock;
+            const _readOnlyPoll = setInterval(() => {
+                _readOnlyPollCount++;
+                const ed = window._editor;
+                // Bereits schreibbar — fertig
+                if (ed && !ed.readOnly?.isEnabled) {
+                    clearInterval(_readOnlyPoll);
+                    return;
                 }
-            }, 5000);
-            if (_acquirePromise) {
-                _acquirePromise
-                    .then(() => clearTimeout(_acquireTimeout))
-                    .catch(err => {
-                        clearTimeout(_acquireTimeout);
+                // Lock vorhanden — toggle
+                if (window.EditorState?.lockId && ed?.readOnly?.isEnabled) {
+                    _dbg('_initEditorJs: Polling: Lock vorhanden nach',
+                         _readOnlyPollCount * 300, 'ms — toggle()');
+                    clearInterval(_readOnlyPoll);
+                    ed.readOnly.toggle().then(() => {
+                        if (window._updateLockStatus) window._updateLockStatus('lock-mine', 'Lock: ich');
+                        if (window.updateEditorPlaceholder) updateEditorPlaceholder(true);
+                        if (window.ModulePanel?._refreshLockId) {
+                            window.ModulePanel._refreshLockId(window.EditorState.lockId);
+                        }
                         if (window.EditorState) window.EditorState.skipReinit = false;
-                        console.warn('report_editor.js: acquireLock nach Switch fehlgeschlagen:', err);
-                    });
-            }
+                    }).catch(() => {});
+                    return;
+                }
+                // Nach 30s aufgeben
+                if (_readOnlyPollCount > 100) {
+                    _dbg('_initEditorJs: Polling: Timeout nach 30s fuer Bericht', _ridForPoll);
+                    clearInterval(_readOnlyPoll);
+                    if (window.EditorState) window.EditorState.skipReinit = false;
+                }
+            }, 300);
+            window._acquireLock(_ridForLock).catch(err => {
+                console.warn('report_editor.js: acquireLock nach Switch fehlgeschlagen:', err);
+            });
         }
     }
 }
