@@ -1,6 +1,6 @@
 {
-  "build":   231,
-  "version": "0.6.231",
+  "build":   232,
+  "version": "0.6.232",
   "date":    "2026-05-18",
-  "note":    "Build 231: Bug 2.120 — _insertModule/Query liest lockId aus EditorState; ModulePanel._refreshLockId aktualisiert Lock nach Bericht-Wechsel"
+  "note":    "Build 232: Bug 2.120 — Timeout-Fallback (5s) wenn acquireLock nach Bericht-Wechsel nicht antwortet"
 }

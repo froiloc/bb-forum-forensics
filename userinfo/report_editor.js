@@ -1095,18 +1095,33 @@ function _initEditorJs(blocks, reportId) {
             _dbg('_initEditorJs: Lock bereits vorhanden fuer Bericht', _ridForLock, '— kein acquireLock noetig');
             if (window._updateLockStatus) window._updateLockStatus('lock-mine', 'Lock: ich');
         } else {
-            // Switch-Flow: Lock erwerben, aber kein _reinitWithLock danach.
-            // Der Editor hat den richtigen Bericht bereits geladen (readOnly=true),
-            // ein weiterer loadReport-Aufruf via _reinitWithLock wuerde einen
-            // doppelten Editor erzeugen.
-            // Bug 2.120 Fix Build 230: skipReinit=true fuer Switch-Flow.
-            // Beleg: Bugfix Build 230, Projektgespraech 2026-05-18
+            // Switch-Flow: Lock erwerben, skipReinit=true verhindert doppelten Editor.
+            // Bug 2.120 Fix Build 232: Timeout-Fallback falls acquireLock nicht
+            // antwortet (z.B. Server-Neustart). Nach 5s direkt toggle() wenn Lock vorhanden.
+            // Beleg: Bugfix Build 232, Projektgespraech 2026-05-18
             _dbg('_initEditorJs: Lock erwerben fuer neuen Bericht', _ridForLock);
             if (window.EditorState) window.EditorState.skipReinit = true;
-            window._acquireLock(_ridForLock).catch(err => {
-                if (window.EditorState) window.EditorState.skipReinit = false;
-                console.warn('report_editor.js: acquireLock nach Switch fehlgeschlagen:', err);
-            });
+            const _acquirePromise = window._acquireLock(_ridForLock);
+            // Timeout-Fallback: nach 5s readOnly direkt abschalten wenn Lock vorhanden
+            const _acquireTimeout = setTimeout(() => {
+                if (window._editor?.readOnly?.isEnabled && window.EditorState?.lockId) {
+                    _dbg('_initEditorJs: acquireLock Timeout — readOnly.toggle() direkt');
+                    if (window.EditorState) window.EditorState.skipReinit = false;
+                    window._editor.readOnly.toggle().catch(() => {});
+                    if (window._updateLockStatus) {
+                        window._updateLockStatus('lock-mine', 'Lock: ich');
+                    }
+                }
+            }, 5000);
+            if (_acquirePromise) {
+                _acquirePromise
+                    .then(() => clearTimeout(_acquireTimeout))
+                    .catch(err => {
+                        clearTimeout(_acquireTimeout);
+                        if (window.EditorState) window.EditorState.skipReinit = false;
+                        console.warn('report_editor.js: acquireLock nach Switch fehlgeschlagen:', err);
+                    });
+            }
         }
     }
 }
