@@ -1095,9 +1095,16 @@ function _initEditorJs(blocks, reportId) {
             _dbg('_initEditorJs: Lock bereits vorhanden fuer Bericht', _ridForLock, '— kein acquireLock noetig');
             if (window._updateLockStatus) window._updateLockStatus('lock-mine', 'Lock: ich');
         } else {
-            // Switch-Flow: Lock erwerben
+            // Switch-Flow: Lock erwerben, aber kein _reinitWithLock danach.
+            // Der Editor hat den richtigen Bericht bereits geladen (readOnly=true),
+            // ein weiterer loadReport-Aufruf via _reinitWithLock wuerde einen
+            // doppelten Editor erzeugen.
+            // Bug 2.120 Fix Build 230: skipReinit=true fuer Switch-Flow.
+            // Beleg: Bugfix Build 230, Projektgespraech 2026-05-18
             _dbg('_initEditorJs: Lock erwerben fuer neuen Bericht', _ridForLock);
+            if (window.EditorState) window.EditorState.skipReinit = true;
             window._acquireLock(_ridForLock).catch(err => {
+                if (window.EditorState) window.EditorState.skipReinit = false;
                 console.warn('report_editor.js: acquireLock nach Switch fehlgeschlagen:', err);
             });
         }

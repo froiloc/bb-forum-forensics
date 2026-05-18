@@ -1,6 +1,6 @@
 {
-  "build":   229,
-  "version": "0.6.229",
+  "build":   230,
+  "version": "0.6.230",
   "date":    "2026-05-18",
-  "note":    "Build 229: Bug 2.120 — Lock-Release in _loadReportImpl beim Create-Flow ueberspringen; acquireLock nur beim Switch-Flow"
+  "note":    "Build 230: Bug 2.120 — skipReinit auch im Switch-Flow; verhindert doppelten Editor durch _reinitWithLock nach loadReport"
 }
