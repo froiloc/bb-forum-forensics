@@ -1,0 +1,55 @@
+<section class="support-accordion-section" data-accordion="annotations">
+<button aria-controls="accordion-body-annotations" aria-expanded="false" class="support-accordion-toggle" type="button">
+<span aria-hidden="true" class="support-accordion-icon">🔍</span>
+            Annotationen
+            <span aria-hidden="true" class="support-accordion-chevron">▾</span>
+</button>
+<div aria-label="Annotationen" class="support-accordion-body support-accordion-body--closed" id="accordion-body-annotations" role="region">
+<div class="as-panel">
+<div class="as-toolbar">
+<div class="as-search-wrap">
+<span aria-hidden="true" class="as-search-icon">🔍</span>
+<input autocomplete="off" class="as-search-input" id="as-search-input" placeholder="Suche in Annotationen…" type="search" value=""/>
+</div>
+<!-- Bug 2.2 Fix Build 158: Toggle-Schalter statt einzelner Checkbox.
+                     CSS-gesteuert ueber :has()-Selektoren; kein JS-Loeschen.
+                     Beleg: Projektgespraech 2026-05-11 -->
+<div aria-label="Ausblenden-Filter" class="as-filter-toggles" role="group">
+<span class="as-filter-label-prefix">Ausblenden:</span>
+<label class="as-toggle-label" title="Bereits verankerte Annotationen ausblenden">
+<input id="as-hide-anchored" type="checkbox"/>
+                        Verankerte
+                    </label>
+<label class="as-toggle-label" title="Tags ausblenden">
+<input id="as-hide-tags" type="checkbox"/>
+                        Tags
+                    </label>
+<label class="as-toggle-label" title="Ermittler-Namen ausblenden">
+<input id="as-hide-investigator" type="checkbox"/>
+                        Ermittler
+                    </label>
+<label class="as-toggle-label" title="Zitate (Originaltext) ausblenden">
+<input id="as-hide-quotes" type="checkbox"/>
+                        Zitate
+                    </label>
+<label class="as-toggle-label" title="Quellenangaben ausblenden">
+<input id="as-hide-source" type="checkbox"/>
+                        Quelle
+                    </label>
+<label class="as-toggle-label" title="Notizen ausblenden">
+<input id="as-hide-notes" type="checkbox"/>
+                        Notizen
+                    </label>
+</div>
+</div>
+<div class="as-divider"></div>
+<div aria-label="Annotationskategorien" class="as-tabs" role="tablist">
+<button aria-label="Alle Kategorien" aria-selected="true" class="as-tab as-tab--active" data-cat="" role="tab" title="Alle Kategorien"><span class="as-tab-label">Alle</span><span class="as-tab-count">0</span></button><button aria-label="👤 PER – Persönliche Identifikationsmerkmale" aria-selected="false" class="as-tab as-tab--empty" data-cat="CAT_PERSON" role="tab" title="👤 PER – Persönliche Identifikationsmerkmale"><span aria-hidden="true" class="as-tab-icon">👤</span><span class="as-tab-label">PER</span><span class="as-tab-count">0</span></button><button aria-label="📍 LOC – Ortsangaben, geografische Hinweise" aria-selected="false" class="as-tab as-tab--empty" data-cat="CAT_LOCATION" role="tab" title="📍 LOC – Ortsangaben, geografische Hinweise"><span aria-hidden="true" class="as-tab-icon">📍</span><span class="as-tab-label">LOC</span><span class="as-tab-count">0</span></button><button aria-label="⚖️ 176 – Relevanz §§ 176, 176a StGB" aria-selected="false" class="as-tab as-tab--empty" data-cat="CAT_176" role="tab" title="⚖️ 176 – Relevanz §§ 176, 176a StGB"><span aria-hidden="true" class="as-tab-icon">⚖️</span><span class="as-tab-label">176</span><span class="as-tab-count">0</span></button><button aria-label="🔴 184 – Relevanz §§ 184b, 184c StGB" aria-selected="false" class="as-tab as-tab--empty" data-cat="CAT_184" role="tab" title="🔴 184 – Relevanz §§ 184b, 184c StGB"><span aria-hidden="true" class="as-tab-icon">🔴</span><span class="as-tab-label">184</span><span class="as-tab-count">0</span></button><button aria-label="🛡️ OPF – Hinweise auf mögliche Opfer" aria-selected="false" class="as-tab as-tab--empty" data-cat="CAT_VICTIM" role="tab" title="🛡️ OPF – Hinweise auf mögliche Opfer"><span aria-hidden="true" class="as-tab-icon">🛡️</span><span class="as-tab-label">OPF</span><span class="as-tab-count">0</span></button><button aria-label="📎 SON – Sonstige Ermittlungsrelevanz" aria-selected="false" class="as-tab as-tab--empty" data-cat="CAT_OTHER" role="tab" title="📎 SON – Sonstige Ermittlungsrelevanz"><span aria-hidden="true" class="as-tab-icon">📎</span><span class="as-tab-label">SON</span><span class="as-tab-count">0</span></button>
+</div>
+<div class="as-list" id="as-list">
+<div class="as-empty">Keine Annotationen gefunden.</div>
+</div>
+<div class="as-divider"></div>
+<div class="as-completeness as-completeness-neutral">Keine Annotationen vorhanden.</div>
+</div></div>
+</section>

@@ -897,12 +897,14 @@ async function _insertModule(moduleId) {
         }
 
         const blockId = _generateUUID();
+        // Bug 2.120 Fix Build 237: Lock-ID aus EditorState lesen
+        const _lockIdMod237 = window.EditorState?.lockId || _currentOpts.lockId || '';
         const resp = await fetch(REPORT_API, {
             method:  'POST',
             headers: {
                 'Content-Type':          'application/json',
                 'X-Forensic-Request':    'ajax',
-                'X-Forensic-Lock-Id':    _currentOpts.lockId || '',
+                'X-Forensic-Lock-Id':    _lockIdMod237,
             },
             body: JSON.stringify({
                 action:               'save_block',
@@ -1161,12 +1163,16 @@ async function _insertQuery(queryId) {
 async function _insertQueryAsNewBlock(queryId) {
     const blockData = JSON.stringify({ text: `{{a:${queryId}}}` });
     const blockId   = _generateUUID();
+    // Bug 2.120 Fix Build 237: Lock-ID immer aus EditorState lesen,
+    // _currentOpts.lockId kann nach Bericht-Wechsel veraltet sein.
+    // Beleg: Bugfix Build 237, Projektgespraech 2026-05-18
+    const _lockId237 = window.EditorState?.lockId || _currentOpts.lockId || '';
     const resp = await fetch(REPORT_API, {
         method:  'POST',
         headers: {
             'Content-Type':       'application/json',
             'X-Forensic-Request': 'ajax',
-            'X-Forensic-Lock-Id': _currentOpts.lockId || '',
+            'X-Forensic-Lock-Id': _lockId237,
         },
         body: JSON.stringify({
             action:     'save_block',
