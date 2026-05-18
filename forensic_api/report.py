@@ -380,7 +380,11 @@ class ReportEndpoint:
     ) -> None:
         fmt = params.get("format", [None])[0]
         if fmt == "json":
-            self._handle_get_json(handler)
+            # Bug 2.120 Fix Build 220: report_id aus Query-Parameter lesen.
+            # Beleg: Bugfix Build 220, Projektgespraech 2026-05-18
+            rid_raw = params.get("report_id", [None])[0]
+            requested_report_id = int(rid_raw) if rid_raw else None
+            self._handle_get_json(handler, requested_report_id=requested_report_id)
         else:
             self._handle_get_html(handler)
 
@@ -437,7 +441,10 @@ class ReportEndpoint:
             self._context.user_id,
         )
 
-    def _handle_get_json(self, handler: "ForensicRequestHandler") -> None:
+    def _handle_get_json(
+        self, handler: "ForensicRequestHandler",
+        requested_report_id: Optional[int] = None,
+    ) -> None:
         """
         Liefert alle Berichte mit ihren Paragraphen als JSON (B6-Schema).
 
@@ -478,12 +485,20 @@ class ReportEndpoint:
         lock    = edb.get_lock()
         reports = edb.get_reports()
 
-        # Aktiven Bericht bestimmen: erster nicht-'final'-Bericht oder erster ueberhaupt
+        # Aktiven Bericht bestimmen: requested_report_id hat Vorrang.
+        # Bug 2.120 Fix Build 220: Ohne diesen Check lieferte der Server
+        # immer den ersten draft-Bericht, unabhaengig vom report_id-Parameter.
+        # Beleg: Bugfix Build 220, Projektgespraech 2026-05-18
         active_report = None
-        for r in reports:
-            if r.status in ("draft", "submitted"):
-                active_report = r
-                break
+        if requested_report_id is not None:
+            active_report = next(
+                (r for r in reports if r.id == requested_report_id), None
+            )
+        if active_report is None:
+            for r in reports:
+                if r.status in ("draft", "submitted"):
+                    active_report = r
+                    break
         if active_report is None and reports:
             active_report = reports[0]
 

@@ -189,6 +189,10 @@ let _isReloading = false;
  * Beleg: Bugfix Build 130, Projektgespraech 2026-05-09 (Bug 2.39)
  */
 let _knownBlockIds = new Set();
+// Bug 2.120 Fix Build 220: Flag fuer Bericht-Wechsel, das _initEditorJs
+// aus _loadReportImpl erreichbar macht (separate Funktionen, keine Closure).
+// Beleg: Bugfix Build 220, Projektgespraech 2026-05-18
+let _pendingReportSwitchId = null;  // report_id des neuen Berichts bei Wechsel
 
 // ---------------------------------------------------------------------------
 // Hilfsfunktion: fetch mit Lock-Header
@@ -467,6 +471,8 @@ async function _loadReportImpl(report) {
     // Beleg: Bugfix Build 218, Projektgespraech 2026-05-17
     const _prevReportId = _currentReport?.id;
     const _isReportSwitch = _prevReportId != null && _prevReportId !== report.id;
+    // Bug 2.120 Fix Build 220: Flag fuer _initEditorJs setzen
+    _pendingReportSwitchId = _isReportSwitch ? report.id : null;
     if (_isReportSwitch) {
         _dbg('_loadReportImpl: Bericht-Wechsel', _prevReportId, '->', report.id,
              '— Save + Lock-Release');
@@ -1035,9 +1041,13 @@ function _initEditorJs(blocks, reportId) {
     // Fire-and-forget (kein await) — await im synchronen IIFE nicht
     // erlaubt, obwohl _loadReportImpl async ist.
     // Beleg: Bugfix Build 219, Projektgespraech 2026-05-18
-    if (_isReportSwitch && window._acquireLock) {
-        _dbg('_loadReportImpl: Lock erwerben fuer neuen Bericht', report.id);
-        window._acquireLock(report.id).catch(err => {
+    // Bug 2.120 Fix Build 220: _pendingReportSwitchId statt _isReportSwitch
+    // (Modulvariable, erreichbar aus _initEditorJs).
+    if (_pendingReportSwitchId && window._acquireLock) {
+        _dbg('_initEditorJs: Lock erwerben fuer neuen Bericht', _pendingReportSwitchId);
+        const _ridForLock = _pendingReportSwitchId;
+        _pendingReportSwitchId = null;  // sofort zuruecksetzen
+        window._acquireLock(_ridForLock).catch(err => {
             console.warn('report_editor.js: acquireLock nach Switch fehlgeschlagen:', err);
         });
     }

@@ -1,6 +1,6 @@
 {
-  "build":   219,
-  "version": "0.6.219",
+  "build":   220,
+  "version": "0.6.220",
   "date":    "2026-05-18",
-  "note":    "Build 219: SyntaxError-Fix aus Build 218 — await im IIFE durch .catch() ersetzt"
+  "note":    "Build 220: Bug 2.120 — ReferenceError _isReportSwitch behoben (_pendingReportSwitchId als Modulvariable); Server wertet report_id-Parameter im GET aus"
 }
