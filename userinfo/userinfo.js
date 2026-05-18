@@ -841,13 +841,13 @@ async function acquireLock(reportId) {
     // beim Seitenstart mit leerer DB.
     // Beleg: Bugfix Build 224, Projektgespraech 2026-05-18
     if (!reportId) {
-        const hasReports = !!document.querySelector(
-            '#report-select option[value]:not([value=""])'
-        );
-        if (!hasReports) {
-            _dbg('acquireLock: keine Berichte und keine reportId — uebersprungen');
-            return;
-        }
+        // Bug 2.120 Fix Build 235: Ohne reportId niemals Lock erwerben —
+        // initReportSelector() ruft acquireLock(reportId) nach dem ersten
+        // loadReport auf. Lock ohne Bericht-Bezug wuerde validate_lock
+        // fuer alle bericht-spezifischen Saves fehlschlagen lassen.
+        // Beleg: Bugfix Build 235, Projektgespraech 2026-05-18
+        _dbg('acquireLock: keine reportId — uebersprungen');
+        return;
     }
     if (EditorState.frozen) return;
     if (!EditorState.sseClientId) {

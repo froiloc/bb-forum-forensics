@@ -1,6 +1,6 @@
 {
-  "build":   234,
-  "version": "0.6.234",
+  "build":   235,
+  "version": "0.6.235",
   "date":    "2026-05-18",
-  "note":    "Build 234: Bug 2.110 — Doppelklick fuer Einzeldaten und Standard-Bloecke"
+  "note":    "Build 235: Bug 2.120 — acquireLock(reportId) nach erstem loadReport in initReportSelector; acquireLock ohne reportId immer uebersprungen"
 }

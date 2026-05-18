@@ -296,6 +296,15 @@ async function initReportSelector(preselectId = null) {
             if (sel) sel.value = String(preselectId);
         }
         await loadReport(toLoad);
+        // Bug 2.120 Fix Build 235: Lock nach erstem Laden erwerben wenn
+        // kein Lock vorhanden. Beim ersten Seitenstart gibt es keinen
+        // _isReportSwitch, daher lief acquireLock bisher ohne report_id.
+        // Jetzt: acquireLock(toLoad.id) direkt nach dem ersten loadReport.
+        // Beleg: Bugfix Build 235, Projektgespraech 2026-05-18
+        if (!window.EditorState?.lockId && window._acquireLock) {
+            _dbg('initReportSelector: Lock erwerben fuer Bericht', toLoad.id);
+            await window._acquireLock(toLoad.id);
+        }
     }
 }
 
