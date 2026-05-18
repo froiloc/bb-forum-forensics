@@ -28,6 +28,7 @@
 # =============================================================================
 
 from __future__ import annotations
+from typing import Optional
 
 import json
 from typing import TYPE_CHECKING
@@ -149,6 +150,10 @@ class ReportsEndpoint:
         # Beleg: Projektgespraech 2026-05-07
         investigator = self._context.investigator_username
 
+        # Bug 2.120 Fix Build 218: SSE-Client-ID fuer atomares Lock benoetigt.
+        # Der Client sendet seine sse_client_id im Body mit.
+        sse_client = str(data.get("sse_client", "")).strip()
+
         try:
             report_id = self._bundle.evidence.create_report(
                 report_type=report_type,
@@ -171,12 +176,40 @@ class ReportsEndpoint:
             )
             return
 
-        body = json.dumps(
-            {"id": report_id, "title": title, "report_type": report_type},
-            ensure_ascii=False,
-        ).encode("utf-8")
+        # Bug 2.120 Fix Build 218: Lock atomar mit Bericht-Erstellung erwerben.
+        # Der Lock wird direkt fuer den neuen Bericht erworben, ohne separate
+        # acquire_lock-Anfrage. Das verhindert Race Conditions und stellt sicher
+        # dass der Ersteller immer den Lock haelt.
+        # Beleg: Bugfix Build 218, Projektgespraech 2026-05-17
+        lock_id: Optional[str] = None
+        if sse_client:
+            edb = self._bundle.evidence
+            # Alten Lock desselben Ermittlers freigeben falls vorhanden
+            old_lock = edb.get_lock(report_id=None)  # globaler Fallback
+            if old_lock and old_lock.locked_by == investigator:
+                edb.release_lock(old_lock.lock_id)
+                logger.info(
+                    "create_report: alter Lock %s von '%s' freigegeben",
+                    old_lock.lock_id, investigator,
+                )
+            lock_id = edb.acquire_lock(
+                locked_by=investigator,
+                sse_client=sse_client,
+                report_id=report_id,
+            )
+            if lock_id is None:
+                logger.warning(
+                    "create_report: Lock fuer Bericht %d nicht erworben "
+                    "(bereits belegt). Bericht trotzdem angelegt.",
+                    report_id,
+                )
+
+        resp_data: dict = {"id": report_id, "title": title, "report_type": report_type}
+        if lock_id:
+            resp_data["lock_id"] = lock_id
+        body = json.dumps(resp_data, ensure_ascii=False).encode("utf-8")
         handler.send_response_body(201, body, content_type=_CT_JSON)
         logger.info(
-            "Bericht angelegt: id=%d type='%s' title='%s' von '%s'",
-            report_id, report_type, title, investigator,
+            "Bericht angelegt: id=%d type='%s' title='%s' von '%s' lock_id=%s",
+            report_id, report_type, title, investigator, lock_id or "keiner",
         )

@@ -1,6 +1,6 @@
 {
-  "build":   217,
-  "version": "0.6.217",
-  "date":    "2026-05-17",
-  "note":    "Build 217: Bug 2.121 — bekannte Bloecke im Block-Anzahl-Vergleich mit aktuellem Editor-Inhalt aktualisieren; Eltern-Block zeigt nach Enter-Split nur noch seinen eigenen Teil"
+  "build":   219,
+  "version": "0.6.219",
+  "date":    "2026-05-18",
+  "note":    "Build 219: SyntaxError-Fix aus Build 218 — await im IIFE durch .catch() ersetzt"
 }

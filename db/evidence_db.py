@@ -510,7 +510,24 @@ class EvidenceDbError(Exception):
 class EvidenceDb:
     """Kapselt alle Schreib- und Lesezugriffe auf die evidence_db."""
 
-    _LOCK_RESOURCE = "report_editor"
+    _LOCK_RESOURCE_BASE = "report_editor"
+    # Fester Fallback — wird durch _lock_resource(report_id) ersetzt.
+    # Beleg: Bug 2.120 Fix Build 218, Projektgespraech 2026-05-17
+    _LOCK_RESOURCE = "report_editor"  # Kompatibilitaets-Fallback
+
+    @staticmethod
+    def _lock_resource(report_id: Optional[int]) -> str:
+        """Bericht-spezifischer Lock-Resource-Name.
+
+        Bug 2.120 Fix Build 218: Der Lock war bisher global (resource=
+        "report_editor") und kannte keinen Bericht-Bezug. Dadurch war
+        kein gleichzeitiges Arbeiten an verschiedenen Berichten moeglich,
+        und ein Bericht-Wechsel konnte Daten loeschen.
+        Beleg: Bugfix Build 218, Projektgespraech 2026-05-17
+        """
+        if report_id is None:
+            return "report_editor"
+        return f"report_editor:{report_id}"
 
     def __init__(self, con: sqlite3.Connection, db_path: Optional[str] = None) -> None:
         self._con = con
@@ -1834,13 +1851,23 @@ class EvidenceDb:
 
     _LOCK_TIMEOUT_SEC = 90
 
-    def acquire_lock(self, locked_by: str, sse_client: str) -> Optional[str]:
+    def acquire_lock(
+        self, locked_by: str, sse_client: str,
+        report_id: Optional[int] = None,
+    ) -> Optional[str]:
+        """Erwirbt den Lock fuer einen bestimmten Bericht.
+
+        Bug 2.120 Fix Build 218: report_id als Pflichtparameter fuer
+        bericht-spezifischen Lock.
+        Beleg: Bugfix Build 218, Projektgespraech 2026-05-17
+        """
+        resource = self._lock_resource(report_id)
         now = int(time.time())
         new_lock_id = str(uuid.uuid4())
         try:
             self._con.execute(
                 "DELETE FROM editor_locks WHERE resource=? AND locked_at < ?",
-                (self._LOCK_RESOURCE, now - self._LOCK_TIMEOUT_SEC),
+                (resource, now - self._LOCK_TIMEOUT_SEC),
             )
         except sqlite3.OperationalError:
             pass
@@ -1849,24 +1876,26 @@ class EvidenceDb:
                 "INSERT INTO editor_locks "
                 "(resource, locked_by, lock_id, locked_at, sse_client) "
                 "VALUES (?, ?, ?, ?, ?)",
-                (self._LOCK_RESOURCE, locked_by, new_lock_id, now, sse_client),
+                (resource, locked_by, new_lock_id, now, sse_client),
             )
             self._con.commit()
             self._lock_change_event.set()
             logger.info(
-                "Editor-Lock erworben: '%s' (lock_id=%s)", locked_by, new_lock_id
+                "Editor-Lock erworben: '%s' rid=%s (lock_id=%s)",
+                locked_by, report_id, new_lock_id,
             )
             return new_lock_id
         except sqlite3.IntegrityError:
             logger.debug(
-                "acquire_lock: Lock bereits belegt fuer '%s'", self._LOCK_RESOURCE
+                "acquire_lock: Lock bereits belegt fuer '%s'", resource
             )
             return None
 
-    def release_lock(self, lock_id: str) -> bool:
+    def release_lock(self, lock_id: str, report_id: Optional[int] = None) -> bool:
+        resource = self._lock_resource(report_id)
         cursor = self._con.execute(
             "DELETE FROM editor_locks WHERE resource=? AND lock_id=?",
-            (self._LOCK_RESOURCE, lock_id),
+            (resource, lock_id),
         )
         self._con.commit()
         freed = cursor.rowcount > 0
@@ -1875,10 +1904,13 @@ class EvidenceDb:
             logger.info("Editor-Lock freigegeben (lock_id=%s)", lock_id)
         return freed
 
-    def release_lock_by_sse_client(self, sse_client: str) -> bool:
+    def release_lock_by_sse_client(
+        self, sse_client: str, report_id: Optional[int] = None
+    ) -> bool:
+        resource = self._lock_resource(report_id)
         cursor = self._con.execute(
             "DELETE FROM editor_locks WHERE resource=? AND sse_client=?",
-            (self._LOCK_RESOURCE, sse_client),
+            (resource, sse_client),
         )
         self._con.commit()
         freed = cursor.rowcount > 0
@@ -1890,7 +1922,11 @@ class EvidenceDb:
             )
         return freed
 
-    def resume_lock(self, lock_id: str, locked_by: str, new_sse_client: str) -> bool:
+    def resume_lock(
+        self, lock_id: str, locked_by: str, new_sse_client: str,
+        report_id: Optional[int] = None,
+    ) -> bool:
+        resource = self._lock_resource(report_id)
         try:
             cursor = self._con.execute(
                 "UPDATE editor_locks "
@@ -1899,7 +1935,7 @@ class EvidenceDb:
                 (
                     new_sse_client,
                     int(time.time()),
-                    self._LOCK_RESOURCE,
+                    resource,
                     lock_id,
                     locked_by,
                 ),
@@ -1959,7 +1995,7 @@ class EvidenceDb:
             pass
         return None
 
-    def get_lock(self) -> Optional[EditorLockRecord]:
+    def get_lock(self, report_id: Optional[int] = None) -> Optional[EditorLockRecord]:
         # Eigene kurzlebige Connection wenn _db_path gesetzt.
         # Verhindert 'bad parameter or other API misuse' wenn der SSE-Thread
         # und der Request-Thread gleichzeitig die geteilte Connection nutzen.
@@ -1975,7 +2011,7 @@ class EvidenceDb:
                 row = read_con.execute(
                     "SELECT resource, locked_by, lock_id, locked_at, sse_client "
                     "FROM editor_locks WHERE resource=?",
-                    (self._LOCK_RESOURCE,),
+                    (self._lock_resource(report_id),),
                 ).fetchone()
                 read_con.close()
                 if row is None:
@@ -1988,7 +2024,7 @@ class EvidenceDb:
                         self._con.execute(
                             'DELETE FROM editor_locks WHERE resource=? '
                             'AND (locked_at IS NULL OR lock_id IS NULL)',
-                            (self._LOCK_RESOURCE,),
+                            (self._lock_resource(report_id),),
                         )
                         self._con.commit()
                     except Exception:
@@ -2011,7 +2047,7 @@ class EvidenceDb:
             row = self._con.execute(
                 "SELECT resource, locked_by, lock_id, locked_at, sse_client "
                 "FROM editor_locks WHERE resource=?",
-                (self._LOCK_RESOURCE,),
+                (self._lock_resource(report_id),),
             ).fetchone()
             if row:
                 if row["locked_at"] is None or row["lock_id"] is None:
@@ -2022,7 +2058,7 @@ class EvidenceDb:
                         self._con.execute(
                             "DELETE FROM editor_locks WHERE resource=? "
                             "AND (locked_at IS NULL OR lock_id IS NULL)",
-                            (self._LOCK_RESOURCE,),
+                            (self._lock_resource(report_id),),
                         )
                         self._con.commit()
                     except Exception:
@@ -2040,11 +2076,14 @@ class EvidenceDb:
             logger.debug("get_lock fehlgeschlagen (ignoriert): %s", exc)
         return None
 
-    def validate_lock(self, lock_id: str) -> bool:
+    def validate_lock(
+        self, lock_id: str, report_id: Optional[int] = None
+    ) -> bool:
+        resource = self._lock_resource(report_id)
         try:
             row = self._con.execute(
                 "SELECT 1 FROM editor_locks WHERE resource=? AND lock_id=?",
-                (self._LOCK_RESOURCE, lock_id),
+                (resource, lock_id),
             ).fetchone()
             return row is not None
         except sqlite3.OperationalError:

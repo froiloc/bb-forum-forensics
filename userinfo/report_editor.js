@@ -358,15 +358,47 @@ function openNewReportDialog(existingReports) {
             document.getElementById('new-report-title').focus();
             return;
         }
+        // Bug 2.120 Fix Build 218: Alten Lock freigeben, sse_client mitsenden
+        // fuer atomares Lock mit Bericht-Erstellung.
+        // Beleg: Bugfix Build 218, Projektgespraech 2026-05-17
+        const _oldRid218 = _currentReport?.id ?? null;
+        if (window.EditorState?.lockId && _oldRid218) {
+            try {
+                await fetch(EDITOR_API.REPORT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action:    'release_lock',
+                        lock_id:   window.EditorState.lockId,
+                        report_id: _oldRid218,
+                    }),
+                });
+                window.EditorState.lockId = null;
+                sessionStorage.removeItem('forensic_lock_id');
+            } catch (_) {}
+        }
+
         try {
             const resp = await fetch(EDITOR_API.REPORTS, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ report_type: type, title }),
+                body: JSON.stringify({
+                    report_type: type,
+                    title,
+                    sse_client: window.EditorState?.sseClientId ?? '',
+                }),
             });
             const data = await resp.json();
             if (resp.status === 201) {
                 dialog.remove();
+                // Lock aus 201-Response atomar uebernehmen
+                if (data.lock_id && window.EditorState) {
+                    window.EditorState.lockId = data.lock_id;
+                    window.EditorState.currentReportId = data.id;
+                    sessionStorage.setItem('forensic_lock_id', data.lock_id);
+                    _dbg('create-report: Lock aus 201-Response:', data.lock_id,
+                         'fuer Bericht', data.id);
+                }
                 // Bug 2.74 Fix Build 166: preselectId statt change-Event
                 // verhindert doppelten _initEditorJs()-Aufruf.
                 // Beleg: Projektgespraech 2026-05-11
@@ -427,7 +459,28 @@ async function loadReport(report) {
 }
 
 async function _loadReportImpl(report) {
+    // Bug 2.120 Fix Build 218: Vor dem Laden des neuen Berichts:
+    // 1) Aktuellen Bericht letztmalig speichern
+    // 2) Lock freigeben
+    // Nach dem Laden:
+    // 3) Lock fuer neuen Bericht erwerben
+    // Beleg: Bugfix Build 218, Projektgespraech 2026-05-17
+    const _prevReportId = _currentReport?.id;
+    const _isReportSwitch = _prevReportId != null && _prevReportId !== report.id;
+    if (_isReportSwitch) {
+        _dbg('_loadReportImpl: Bericht-Wechsel', _prevReportId, '->', report.id,
+             '— Save + Lock-Release');
+        // Letzter Save des aktuellen Berichts
+        try { await _performAutoSave(_prevReportId); } catch (_) {}
+        // Lock freigeben (awaitable)
+        if (window._releaseLockAsync) {
+            await window._releaseLockAsync();
+        }
+    }
+
     _currentReport = report;
+    // Bug 2.120 Fix Build 218: currentReportId in EditorState fuer Heartbeat.
+    if (window.EditorState) window.EditorState.currentReportId = report?.id ?? null;
 
     // Build 114: Action-Bar-Buttons aktivieren sobald ein Bericht geladen ist.
     // Drucken, Export und Aktualisieren sind lock-unabhaengig.
@@ -977,6 +1030,17 @@ function _initEditorJs(blocks, reportId) {
             }, 600);
         },
     });
+
+    // Bug 2.120 Fix Build 219: Lock-Erwerb nach Bericht-Wechsel als
+    // Fire-and-forget (kein await) — await im synchronen IIFE nicht
+    // erlaubt, obwohl _loadReportImpl async ist.
+    // Beleg: Bugfix Build 219, Projektgespraech 2026-05-18
+    if (_isReportSwitch && window._acquireLock) {
+        _dbg('_loadReportImpl: Lock erwerben fuer neuen Bericht', report.id);
+        window._acquireLock(report.id).catch(err => {
+            console.warn('report_editor.js: acquireLock nach Switch fehlgeschlagen:', err);
+        });
+    }
 }
 
 /**

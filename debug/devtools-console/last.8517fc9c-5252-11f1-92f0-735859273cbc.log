@@ -1,0 +1,148 @@
+:8080/favicon.ico:1  Failed to load resource: the server responded with a status of 404 (Not Found)
+report:1  Failed to load resource: net::ERR_CONNECTION_REFUSED
+Navigated to http://127.0.0.2:8080/_forensic/report
+debug_events.js:235 [debug_events.js] Build 200 geladen. window._uevt() verfügbar. Trace-Modus: window.FORENSIC_EVENT_TRACE = true
+debug_events.js:241 [debug_events.js] Kill-Switches: window.FORENSIC_DEBUG=false (alles) | window.FORENSIC_EVENT_DEBUG=false (nur Events)
+placeholder_chips.js:56 [forensic] placeholder_chips.js: window.PlaceholderChips exportiert
+placeholder_wizard.js:75 [forensic] placeholder_wizard.js: window.PlaceholderWizard exportiert
+module_panel.js:77 [forensic] module_panel.js: window.ModulePanel exportiert
+annotation_sidebar.js:58 [forensic] annotation_sidebar.js: window.AnnotationSidebar exportiert
+report_editor.js:86 [forensic] report_editor.js: Exports auf window gesetzt (Build wird async geladen)
+userinfo.js:67 [forensic] DOMContentLoaded: userinfo.js aktiv
+userinfo.js:67 [forensic] initEditor() gestartet
+userinfo.js:67 [forensic] initSSEWindow3() gestartet
+report_editor.js:3522 [forensic] report_editor.js: v0.6.219 Build 219 | Exports auf window gesetzt
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= d47e4c48-409a-4fc8-b7ab-2096c8b74049
+report_editor.js:86 [forensic] initEditorModule() gestartet
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:86 [forensic] _initColResizer: Schiebebalken initialisiert
+report_editor.js:86 [forensic] _initForumLinkInterceptor: BroadcastChannel bereit
+report_editor.js:86 [forensic] _initForumLinkInterceptor: aktiv (window_id= 6647009b-e0ec-4a18-bcbe-8a1b80f4dd93 )
+report_editor.js:86 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
+report_editor.js:86 [forensic] initReportSelector() gestartet
+favicon.ico:1  GET http://127.0.0.2:8080/favicon.ico 404 (Not Found)
+report_editor.js:86 [forensic] loadReport() report_id= 1 type= interim
+report_editor.js:572 report_editor.js: _knownBlockIds initialisiert, 2 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:1038 Uncaught (in promise) ReferenceError: _isReportSwitch is not defined
+    at _initEditorJs (report_editor.js:1038:5)
+    at _loadReportImpl (report_editor.js:593:5)
+    at async loadReport (report_editor.js:455:9)
+    at async initReportSelector (report_editor.js:291:9)
+    at async initEditorModule (report_editor.js:3409:5)
+    at async initEditor (userinfo.js:546:9)
+_initEditorJs @ report_editor.js:1038
+_loadReportImpl @ report_editor.js:593
+await in _loadReportImpl
+loadReport @ report_editor.js:455
+initReportSelector @ report_editor.js:291
+await in initReportSelector
+initEditorModule @ report_editor.js:3409
+initEditor @ userinfo.js:546
+await in initEditor
+(anonymous) @ userinfo.js:1242
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:984 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+report_editor.js:1029 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:162 [USER]     [report_editor] change:report-select — Input
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= interim
+report_editor.js:86 [forensic] _loadReportImpl: Bericht-Wechsel 1 -> 2 — Save + Lock-Release
+report_editor.js:2168 report_editor.js: Auto-Save gestartet, report_id= 1 | bekannte Block-IDs: 2
+report_editor.js:2282 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 2 | Bloecke geloescht: 0
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+report_editor.js:572 report_editor.js: _knownBlockIds initialisiert, 2 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:1038 Uncaught (in promise) ReferenceError: _isReportSwitch is not defined
+    at _initEditorJs (report_editor.js:1038:5)
+    at _loadReportImpl (report_editor.js:593:5)
+    at async loadReport (report_editor.js:455:9)
+    at async HTMLSelectElement.<anonymous> (report_editor.js:275:21)
+_initEditorJs @ report_editor.js:1038
+_loadReportImpl @ report_editor.js:593
+await in _loadReportImpl
+loadReport @ report_editor.js:455
+(anonymous) @ report_editor.js:275
+handleMouseUp_ @ (unknown)
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:984 report_editor.js: Editor bereit, report_id= 2 | readOnly= true
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= d47e4c48-409a-4fc8-b7ab-2096c8b74049
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= interim
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= interim
+report_editor.js:450 report_editor.js: loadReport() bereits aktiv — übersprungen
+report_editor.js:572 report_editor.js: _knownBlockIds initialisiert, 2 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:984 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+report_editor.js:1029 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:1029 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:162 [USER]     [report_editor] change:report-select — Input
+report_editor.js:86 [forensic] loadReport() report_id= 1 type= interim
+report_editor.js:86 [forensic] _loadReportImpl: Bericht-Wechsel 2 -> 1 — Save + Lock-Release
+report_editor.js:2168 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 2
+report_editor.js:2282 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 2 | Bloecke geloescht: 0
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= null onSave= function myUsername= paul
+report_editor.js:572 report_editor.js: _knownBlockIds initialisiert, 0 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:1038 Uncaught (in promise) ReferenceError: _isReportSwitch is not defined
+    at _initEditorJs (report_editor.js:1038:5)
+    at _loadReportImpl (report_editor.js:593:5)
+    at async loadReport (report_editor.js:455:9)
+    at async HTMLSelectElement.<anonymous> (report_editor.js:275:21)
+_initEditorJs @ report_editor.js:1038
+_loadReportImpl @ report_editor.js:593
+await in _loadReportImpl
+loadReport @ report_editor.js:455
+(anonymous) @ report_editor.js:275
+handleMouseUp_ @ (unknown)
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:984 report_editor.js: Editor bereit, report_id= 1 | readOnly= true
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= null onSave= function myUsername= paul
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= d47e4c48-409a-4fc8-b7ab-2096c8b74049
+report_editor.js:86 [forensic] loadReport() report_id= 1 type= interim
+report_editor.js:86 [forensic] loadReport() report_id= 1 type= interim
+report_editor.js:450 report_editor.js: loadReport() bereits aktiv — übersprungen
+report_editor.js:572 report_editor.js: _knownBlockIds initialisiert, 0 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:984 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= null onSave= function myUsername= paul
+report_editor.js:1029 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:1029 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:162 [USER]     [report_editor] change:report-select — Input
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= interim
+report_editor.js:86 [forensic] _loadReportImpl: Bericht-Wechsel 1 -> 2 — Save + Lock-Release
+report_editor.js:2168 report_editor.js: Auto-Save gestartet, report_id= 1 | bekannte Block-IDs: 0
+ Block «paragraph» skipped because saved data is invalid
+report_editor.js:2282 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 0 | Bloecke geloescht: 0
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= null onSave= function myUsername= paul
+report_editor.js:572 report_editor.js: _knownBlockIds initialisiert, 0 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:1038 Uncaught (in promise) ReferenceError: _isReportSwitch is not defined
+    at _initEditorJs (report_editor.js:1038:5)
+    at _loadReportImpl (report_editor.js:593:5)
+    at async loadReport (report_editor.js:455:9)
+    at async HTMLSelectElement.<anonymous> (report_editor.js:275:21)
+_initEditorJs @ report_editor.js:1038
+_loadReportImpl @ report_editor.js:593
+await in _loadReportImpl
+loadReport @ report_editor.js:455
+(anonymous) @ report_editor.js:275
+handleMouseUp_ @ (unknown)
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:984 report_editor.js: Editor bereit, report_id= 2 | readOnly= true
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= null onSave= function myUsername= paul
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= d47e4c48-409a-4fc8-b7ab-2096c8b74049
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= interim
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= interim
+report_editor.js:450 report_editor.js: loadReport() bereits aktiv — übersprungen
+report_editor.js:572 report_editor.js: _knownBlockIds initialisiert, 0 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:984 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= null onSave= function myUsername= paul
+report_editor.js:1029 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:1029 report_editor.js: Initialisierungs-Guard freigegeben.
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid

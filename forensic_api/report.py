@@ -888,10 +888,16 @@ class ReportEndpoint:
                 content_type="application/json; charset=utf-8",
             )
             return
+        # Bug 2.120 Fix Build 218: report_id fuer bericht-spezifischen Lock.
+        # Beleg: Bugfix Build 218, Projektgespraech 2026-05-17
+        report_id_raw = data.get("report_id")
+        report_id = int(report_id_raw) if report_id_raw is not None else None
         edb = self._bundle.evidence
-        lock_id = edb.acquire_lock(locked_by=investigator, sse_client=sse_client)
+        lock_id = edb.acquire_lock(
+            locked_by=investigator, sse_client=sse_client, report_id=report_id
+        )
         if lock_id is None:
-            current = edb.get_lock()
+            current = edb.get_lock(report_id=report_id)
             locked_by = current.locked_by if current else "?"
             # Build 122 Fix: Wenn der Lock vom selben Benutzer gehalten wird
             # (z.B. nach Browser-Refresh, Seiten-Reload oder Server-Neustart),
@@ -904,6 +910,7 @@ class ReportEndpoint:
                     lock_id=current.lock_id,
                     locked_by=investigator,
                     new_sse_client=sse_client,
+                    report_id=report_id,
                 )
                 if resumed:
                     logger.info(
@@ -945,7 +952,10 @@ class ReportEndpoint:
                 content_type="application/json; charset=utf-8",
             )
             return
-        freed = self._bundle.evidence.release_lock(lock_id)
+        # Bug 2.120 Fix Build 218: report_id fuer bericht-spezifischen Lock.
+        report_id_raw = data.get("report_id")
+        report_id = int(report_id_raw) if report_id_raw is not None else None
+        freed = self._bundle.evidence.release_lock(lock_id, report_id=report_id)
         handler.send_response_body(
             200,
             json.dumps({"freed": freed}, ensure_ascii=False).encode("utf-8"),
@@ -960,12 +970,16 @@ class ReportEndpoint:
                 content_type="application/json; charset=utf-8",
             )
             return
-        lock = self._bundle.evidence.get_lock()
+        # Bug 2.120 Fix Build 218: report_id fuer bericht-spezifischen Lock.
+        report_id_raw = data.get("report_id")
+        report_id = int(report_id_raw) if report_id_raw is not None else None
+        lock = self._bundle.evidence.get_lock(report_id=report_id)
         if lock and lock.lock_id == lock_id and lock.locked_by == investigator:
             self._bundle.evidence.resume_lock(
                 lock_id=lock_id,
                 locked_by=investigator,
                 new_sse_client=lock.sse_client,
+                report_id=report_id,
             )
             handler.send_response_body(
                 200, _json_ok({"ok": True}),

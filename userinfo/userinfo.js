@@ -1749,6 +1749,51 @@ function initForensicLinks() {
             new Blob([JSON.stringify({ window_id: _windowId })],
                      { type: 'application/json' }));
     });
+
+    // Bug 2.120 Fix Build 218: releaseLock und acquireLock ueber window exportieren
+    // damit report_editor.js beim Bericht-Wechsel Lock korrekt uebergeben kann.
+    // releaseLockAsync: awaitable Version fuer sequenziellen Ablauf
+    // (Save → Release → neuen Bericht laden → Acquire).
+    // Beleg: Bugfix Build 218, Projektgespraech 2026-05-17
+    window._acquireLock = acquireLock;
+    // Bug 2.120 Fix Build 218: awaitable Lock-Freigabe fuer Bericht-Wechsel.
+    // Beleg: Bugfix Build 218, Projektgespraech 2026-05-17
+    window._releaseLockAsync = function(reportId) {
+        return new Promise((resolve) => {
+            const lockId = EditorState.lockId
+                || sessionStorage.getItem('forensic_lock_id');
+            if (!lockId) { resolve(); return; }
+            fetch(FORENSIC_API.REPORT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action:    'release_lock',
+                    lock_id:   lockId,
+                    report_id: reportId ?? EditorState.currentReportId ?? null,
+                }),
+            }).finally(() => {
+                EditorState.lockId = null;
+                sessionStorage.removeItem('forensic_lock_id');
+                resolve();
+            });
+        });
+    };
+    window._releaseLockAsync = function() {
+        const lockId = EditorState.lockId || sessionStorage.getItem('forensic_lock_id');
+        if (!lockId) return Promise.resolve();
+        const body = JSON.stringify({ action: 'release_lock', lock_id: lockId });
+        EditorState.lockId = null;
+        sessionStorage.removeItem('forensic_lock_id');
+        return fetch(FORENSIC_API.REPORT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body,
+        }).then(() => {
+            updateLockStatus('lock-none', 'Kein Lock');
+        }).catch(() => {
+            // Release-Fehler nicht blockieren — Bericht-Wechsel trotzdem fortsetzen
+        });
+    };
 })();
 
 })();

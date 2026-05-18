@@ -1,0 +1,175 @@
+<body data-autosave-debounce-ms="30000" data-subject="Rabenherz" data-user-id="2948078" data-username="paul" id="report-editor-body">
+<!-- Fixierte Aktionsleiste (§4.2 Bauplan B6 v0.3) -->
+<header id="report-action-bar">
+<div id="report-action-bar-title">
+        📄 Bericht · <span id="report-current-title">paul / Rabenherz (ID: 2948078)</span>
+</div>
+<!-- Bug 1.10 Fix Build 121: editor-report-title als div zwischen title und buttons.
+           War bisher als span NACH den Buttons platziert und drückte die Leiste nach unten.
+           Beleg: Bugfix Build 121, Projektgespraech 2026-05-08 -->
+<div id="editor-report-title">2. Zwischenbericht: DIAG-2120-mpa3ulmx</div>
+<div id="report-action-bar-buttons">
+<!-- Build 111: btn-new-report-header entfernt.
+             "Neuer Bericht" befindet sich bereits im report-selector-container.
+             Beleg: Projektgespraech 2026-05-07 -->
+<!-- Bug 2.40/2.43 Absicherung Build 136: Manueller Speichern-Button.
+             Wird aktiv sobald ein Bericht geladen ist (disabled -> enabled durch JS).
+             Beleg: Bugfix Build 136, Projektgespraech 2026-05-09 -->
+<button class="report-btn" id="btn-save-now" title="Bericht jetzt speichern (Strg+S)">
+          💾 Speichern
+        </button>
+<button class="report-btn" id="btn-refresh-placeholders" title="Automatische Platzhalter aktualisieren">
+          🔄 Aktualisieren
+        </button>
+<!-- Bug 1.9 Fix Build 121: ✎ → 🖶 (Drucker-Symbol).
+             Beleg: Bugfix Build 121, Projektgespraech 2026-05-08 -->
+<button class="report-btn" id="btn-print" title="Bericht drucken">
+          🖶 Drucken
+        </button>
+<div class="report-export-wrap">
+<button class="report-btn" disabled="" id="btn-export" title="Bericht exportieren">
+            ⬇ Export ▾
+          </button>
+<div class="report-export-dropdown" id="export-dropdown" style="display:none">
+<button class="report-export-item" data-export-format="html">
+              📄 HTML-Dokument
+            </button>
+<button class="report-export-item" data-export-format="docx">
+              📝 Word-Dokument (.docx)
+            </button>
+<button class="report-export-item" data-export-format="sqlite">
+              🗺 SQLite3-Fallakte (.db)
+            </button>
+</div>
+</div>
+<span class="report-lock-indicator report-lock-none" id="report-lock-indicator" title="Lock gehalten — Bearbeitung möglich">🔒</span>
+<!-- Lock-Status: von userinfo.js beschrieben (Build 113) -->
+<span class="lock-status lock-mine" id="report-lock-status" style="font-size:11px" title="Editor-Lock-Status">Lock: ich</span>
+<span class="save-indicator save-indicator--idle" id="editor-save-indicator" title="Kein Speichern ausstehend">🖫</span>
+</div>
+</header>
+<!-- Zweispaltiger Arbeitsbereich (§4.1, §4.3, §4.7) -->
+<div id="report-workspace">
+<!-- Linke Spalte: Paragraph-Liste (~65%) -->
+<main id="report-main-col" style="flex: 71.2939 1 0%;">
+<!-- Berichtsauswahl -->
+<div id="report-selector-container">
+<div id="report-selector-bar">
+<label class="report-selector-label" for="report-select">Bericht:</label>
+<select class="report-select" id="report-select">
+<option value="1">1. Zwischenbericht: Testbericht</option><option value="2">2. Zwischenbericht: DIAG-2120-mpa3ulmx</option>
+</select>
+<button class="editor-btn" id="btn-new-report" title="Neuen Bericht anlegen">+ Neuer Bericht</button>
+<span id="report-selector-status"></span>
+</div></div>
+<!-- Status-Meldungen -->
+<div id="report-status-msg"></div>
+<!-- Editor-Bereich: EditorJS-Holder direkt in report-main-col.
+             Beleg: Bauplan B6 §4.3, Build 113, Projektgespraech 2026-05-07 -->
+<div class="editorjs-holder" id="editorjs-holder"><div class="codex-editor codex-editor--empty"><div class="codex-editor__redactor" style="padding-bottom: 300px;"><div aria-label="Eigener Block (paul)" class="ce-block block-wrapper--own" data-author="paul" data-block-id="M0GPGGt0Sd" data-id="M0GPGGt0Sd" data-wrapped="1" style="--block-owner-color: hsl(224, 60%, 40%);"><div class="block-meta-bar" inert=""><span class="block-meta-author">paul</span><span class="block-meta-date">18.05.2026, 02:41</span><button aria-label="Kommentar zu Block von paul verfassen" class="block-meta-comment-btn" type="button">💬 Kommentieren</button></div><div class="ce-block__content"><div class="ce-paragraph cdx-block" contenteditable="true" data-empty="true" data-placeholder-active="Schreiben beginnen…"></div></div></div></div><div class="codex-editor-overlay"><div class="codex-editor-overlay__container"><div class="codex-editor-overlay__rectangle" style="display: none;"></div></div></div><div class="ce-inline-toolbar"></div><div class="ce-toolbar ce-toolbar--opened" style="top: 3px;"><div class="ce-toolbar__content"><div class="ce-toolbar__actions ce-toolbar__actions--opened"><div class="ce-toolbar__plus"><svg fill="none" height="24" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M12 7V12M12 17V12M17 12H12M12 12H7" stroke="currentColor" stroke-linecap="round" stroke-width="2"></path></svg></div><span class="ce-toolbar__settings-btn ce-toolbar__settings-btn--hidden"><svg fill="none" height="24" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M9.40999 7.29999H9.4" stroke="currentColor" stroke-linecap="round" stroke-width="2.6"></path><path d="M14.6 7.29999H14.59" stroke="currentColor" stroke-linecap="round" stroke-width="2.6"></path><path d="M9.30999 12H9.3" stroke="currentColor" stroke-linecap="round" stroke-width="2.6"></path><path d="M14.6 12H14.59" stroke="currentColor" stroke-linecap="round" stroke-width="2.6"></path><path d="M9.40999 16.7H9.4" stroke="currentColor" stroke-linecap="round" stroke-width="2.6"></path><path d="M14.6 16.7H14.59" stroke="currentColor" stroke-linecap="round" stroke-width="2.6"></path></svg></span><div class="ce-toolbox"><div class="ce-popover"><div class="ce-popover__container"><div class="cdx-search-field ce-popover__search"><div class="cdx-search-field__icon"><svg fill="none" height="24" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><circle cx="10.5" cy="10.5" r="5.5" stroke="currentColor" stroke-width="2"></circle><line stroke="currentColor" stroke-linecap="round" stroke-width="2" x1="15.4142" x2="19" y1="15" y2="18.5858"></line></svg></div><input class="cdx-search-field__input" placeholder="Filter" tabindex="-1"/></div><div class="ce-popover__nothing-found-message">Nothing found</div><div class="ce-popover__items"><div class="ce-popover-item" data-item-name="paragraph"><div class="ce-popover-item__icon ce-popover-item__icon--tool"><svg fill="none" height="24" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M8 9V7.2C8 7.08954 8.08954 7 8.2 7L12 7M16 9V7.2C16 7.08954 15.9105 7 15.8 7L12 7M12 7L12 17M12 17H10M12 17H14" stroke="currentColor" stroke-linecap="round" stroke-width="2"></path></svg></div><div class="ce-popover-item__title">Text</div></div><div class="ce-popover-item" data-item-name="header"><div class="ce-popover-item__icon ce-popover-item__icon--tool"><svg fill="none" height="24" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M9 7L9 12M9 17V12M9 12L15 12M15 7V12M15 17L15 12" stroke="currentColor" stroke-linecap="round" stroke-width="2"></path></svg></div><div class="ce-popover-item__title">Heading</div></div><div class="ce-popover-item" data-item-name="list"><div class="ce-popover-item__icon ce-popover-item__icon--tool"><svg fill="none" height="24" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><line stroke="currentColor" stroke-linecap="round" stroke-width="2" x1="12" x2="19" y1="7" y2="7"></line><line stroke="currentColor" stroke-linecap="round" stroke-width="2" x1="12" x2="19" y1="12" y2="12"></line><line stroke="currentColor" stroke-linecap="round" stroke-width="2" x1="12" x2="19" y1="17" y2="17"></line><path d="M7.79999 14L7.79999 7.2135C7.79999 7.12872 7.7011 7.0824 7.63597 7.13668L4.79999 9.5" stroke="currentColor" stroke-linecap="round" stroke-width="2"></path></svg></div><div class="ce-popover-item__title">List</div></div><div class="ce-popover-item" data-item-name="table"><div class="ce-popover-item__icon ce-popover-item__icon--tool"><svg fill="none" height="24" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M10 5V18.5" stroke="currentColor" stroke-width="2"></path><path d="M5 10H19" stroke="currentColor" stroke-width="2"></path><rect height="14" rx="4" stroke="currentColor" stroke-width="2" width="14" x="5" y="5"></rect></svg></div><div class="ce-popover-item__title">Table</div></div><div class="ce-popover-item" data-item-name="quote"><div class="ce-popover-item__icon ce-popover-item__icon--tool"><svg fill="none" height="24" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M10 10.8182L9 10.8182C8.80222 10.8182 8.60888 10.7649 8.44443 10.665C8.27998 10.5651 8.15181 10.4231 8.07612 10.257C8.00043 10.0909 7.98063 9.90808 8.01922 9.73174C8.0578 9.55539 8.15304 9.39341 8.29289 9.26627C8.43275 9.13913 8.61093 9.05255 8.80491 9.01747C8.99889 8.98239 9.19996 9.00039 9.38268 9.0692C9.56541 9.13801 9.72159 9.25453 9.83147 9.40403C9.94135 9.55353 10 9.72929 10 9.90909L10 12.1818C10 12.664 9.78929 13.1265 9.41421 13.4675C9.03914 13.8084 8.53043 14 8 14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path><path d="M16 10.8182L15 10.8182C14.8022 10.8182 14.6089 10.7649 14.4444 10.665C14.28 10.5651 14.1518 10.4231 14.0761 10.257C14.0004 10.0909 13.9806 9.90808 14.0192 9.73174C14.0578 9.55539 14.153 9.39341 14.2929 9.26627C14.4327 9.13913 14.6109 9.05255 14.8049 9.01747C14.9989 8.98239 15.2 9.00039 15.3827 9.0692C15.5654 9.13801 15.7216 9.25453 15.8315 9.40403C15.9414 9.55353 16 9.72929 16 9.90909L16 12.1818C16 12.664 15.7893 13.1265 15.4142 13.4675C15.0391 13.8084 14.5304 14 14 14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg></div><div class="ce-popover-item__title">Quote</div></div><div class="ce-popover-item" data-item-name="delimiter"><div class="ce-popover-item__icon ce-popover-item__icon--tool"><svg fill="none" height="24" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><line stroke="currentColor" stroke-linecap="round" stroke-width="2" x1="6" x2="10" y1="12" y2="12"></line><line stroke="currentColor" stroke-linecap="round" stroke-width="2" x1="14" x2="18" y1="12" y2="12"></line></svg></div><div class="ce-popover-item__title">Delimiter</div></div><div class="ce-popover-item" data-item-name="evidence"><div class="ce-popover-item__icon ce-popover-item__icon--tool">⚖</div><div class="ce-popover-item__title">Beweismittel</div></div></div></div></div></div><div class="ce-settings"></div></div></div></div></div></div>
+<!-- Frozen-Overlay (BroadcastChannel-Schutz, §4.6) -->
+<div id="report-frozen-overlay" style="display:none">
+<div class="report-frozen-inner">
+<strong>Dieser Editor ist bereits in einem anderen Fenster geöffnet.</strong><br/>
+            Bitte wechseln Sie zum bestehenden Fenster.
+            <br/><br/>
+<button class="report-btn" id="btn-focus-existing">
+              Zum bestehenden Fenster wechseln
+            </button>
+</div>
+</div>
+</main>
+<!-- Schiebebalken zwischen main und aside (Bug 1.11 Fix) -->
+<!-- Beleg: Projektgespraech 2026-05-11 -->
+<div aria-hidden="true" id="col-resizer">
+<div id="col-resizer-handle"></div>
+</div>
+<!-- Rechte Spalte: Support-Sidebar mit vierstufigem Akkordeon (~35%) -->
+<!-- Beleg: Bauplan B6 v0.5 §4.4, Projektgespraech 2026-05-06 -->
+<aside aria-label="Support-Sidebar" id="support-sidebar" style="flex: 28.7061 1 0%;">
+<!-- Abschnitt 1: Bausteine (Standard: aufgeklappt) -->
+<section class="support-accordion-section" data-accordion="blocks">
+<button aria-controls="accordion-body-blocks" aria-expanded="false" class="support-accordion-toggle" type="button">
+<span aria-hidden="true" class="support-accordion-icon">📦</span>
+            Bausteine
+            <span aria-hidden="true" class="support-accordion-chevron">▾</span>
+</button>
+<div aria-label="Bausteine" class="support-accordion-body support-accordion-body--closed" id="accordion-body-blocks" role="region">
+<!-- Inhalt wird von module_panel.js/_refreshModulePanel() befuellt (Phase 7) -->
+<!-- Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06 -->
+<p class="support-accordion-empty" id="blocks-loading-state">
+              Bausteine werden geladen…
+            </p>
+</div>
+</section>
+<!-- Abschnitt 2: Annotationen -->
+<section class="support-accordion-section" data-accordion="annotations">
+<button aria-controls="accordion-body-annotations" aria-expanded="false" class="support-accordion-toggle" type="button">
+<span aria-hidden="true" class="support-accordion-icon">🔍</span>
+            Annotationen
+            <span aria-hidden="true" class="support-accordion-chevron">▾</span>
+</button>
+<div aria-label="Annotationen" class="support-accordion-body support-accordion-body--closed" id="accordion-body-annotations" role="region">
+<!-- Inhalt wird von annotation_sidebar.js/_refreshAnnotationSidebar() befuellt (Phase 8) -->
+<!-- Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06 -->
+<p class="support-accordion-empty" id="annotations-loading-state">
+              Annotationen werden geladen…
+            </p>
+</div>
+</section>
+<!-- Abschnitt 3: Formular (Platzhalter-Eingabe) -->
+<section class="support-accordion-section support-accordion-section--open" data-accordion="form">
+<button aria-controls="accordion-body-form" aria-expanded="true" class="support-accordion-toggle" type="button">
+<span aria-hidden="true" class="support-accordion-icon">📝</span>
+            Formular
+            <span aria-hidden="true" class="support-accordion-chevron">▾</span>
+</button>
+<div aria-label="Platzhalter-Formular" class="support-accordion-body" id="accordion-body-form" role="region"><p class="pf-empty-state">Kein Bericht geöffnet.</p></div>
+</section>
+<!-- Abschnitt 4: Kommentare (unten) -->
+<section class="support-accordion-section" data-accordion="comments">
+<button aria-controls="accordion-body-comments" aria-expanded="false" class="support-accordion-toggle" type="button">
+<span aria-hidden="true" class="support-accordion-icon">💬</span>
+            Kommentare
+            <span aria-hidden="true" class="support-accordion-chevron">▾</span>
+</button>
+<div aria-label="Kommentare" class="support-accordion-body support-accordion-body--closed" id="accordion-body-comments" role="region">
+<!-- Inhalt wird von comment_thread.js befuellt (Phase 4) -->
+<p class="support-accordion-empty" id="comments-empty-state">
+              Kein Block ausgewählt.
+            </p>
+<!-- Kommentar-Eingabe (wird von comment_thread.js aktiviert) -->
+<textarea aria-label="Neuen Kommentar verfassen" class="comment-input-textarea" placeholder="Kommentar verfassen…" rows="3" style="display:none"></textarea>
+</div>
+</section>
+</aside>
+</div>
+<!-- Lock-Infrastruktur: report-lock-status und Lock-Buttons werden von
+         userinfo.js in #report-action-bar-buttons injiziert (Build 113).
+         editorjs-holder lebt in #report-paragraphs-list (report-main-col).
+         Beleg: Projektgespraech 2026-05-07 -->
+<div id="report-editor-container" style="display:none"></div>
+<!-- Scripts (Reihenfolge wichtig) -->
+<!-- 0) editor.bundle.js: Editor.js + Tools (window.EditorJS, window.EditorTools).
+         Muss vor report_editor.js geladen werden.
+         Beleg: AP-E2, Projektgespraech 2026-05-07 (Build 109) -->
+<script defer="" src="/_forensic/static/editor/editor.bundle.js"></script>
+<!-- 0b) debug_events.js: Event-Tracing (window._uevt). Muss VOR allen anderen
+          B6-Skripten geladen werden, damit _uevt beim Laden der Handler verfuegbar ist.
+          Build 200, Projektgespraech 2026-05-17 -->
+<script defer="" src="/_forensic/debug_events.js"></script>
+<!-- 1a) placeholder_chips.js: Chip-Renderer (vor report.js laden) -->
+<script defer="" src="/_forensic/placeholder_chips.js"></script>
+<!-- 1b) placeholder_wizard.js: Wizard (nach Chips, vor report.js) -->
+<script defer="" src="/_forensic/placeholder_wizard.js"></script>
+<!-- 1c) module_panel.js: Modul-Auswahl-Panel -->
+<script defer="" src="/_forensic/module_panel.js"></script>
+<!-- 1d) annotation_sidebar.js: Annotationsseitenleiste -->
+<script defer="" src="/_forensic/annotation_sidebar.js"></script>
+<!-- 1e) comment_thread.js: Kommentar-System -->
+<script defer="" src="/_forensic/comment_thread.js"></script>
+<!-- 1f) report_editor.js: B6-Editor-Modul (umbenannt von editor.js, Build 100) -->
+<script defer="" src="/_forensic/report_editor.js"></script>
+<!-- 2) userinfo.js: Lock/SSE/BroadcastChannel — nach report_editor.js laden -->
+<script defer="" src="/_forensic/userinfo.js"></script>
+<div class="ct"><div class="ct__content"></div></div></body>
