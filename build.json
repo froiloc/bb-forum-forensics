@@ -1,6 +1,6 @@
 {
-  "build":   220,
-  "version": "0.6.220",
+  "build":   221,
+  "version": "0.6.221",
   "date":    "2026-05-18",
-  "note":    "Build 220: Bug 2.120 — ReferenceError _isReportSwitch behoben (_pendingReportSwitchId als Modulvariable); Server wertet report_id-Parameter im GET aus"
+  "note":    "Build 221: Bug 2.120 — skipReinit-Flag verhindert doppeltes loadReport beim Bericht-Wechsel; nur readOnly umschalten statt vollstaendiges _reinitWithLock"
 }

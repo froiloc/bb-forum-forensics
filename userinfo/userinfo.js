@@ -854,10 +854,22 @@ async function acquireLock() {
             { const b = document.getElementById('btn-acquire-lock'); if (b) b.disabled = true; }
             { const b = document.getElementById('btn-release-lock'); if (b) b.disabled = false; }
             showStatusMsg('Lock erworben — Editor wird aktiviert…', 'ok');
-            // Direkt reinitieren — nicht auf SSE warten (SSE-Interval = 15s).
-            // SSE editor_lock_acquired bleibt als Backup fuer externe Events.
-            // Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-20
-            if (window._reinitWithLock) {
+            // Bug 2.120 Fix Build 221: Beim Bericht-Wechsel ist der Editor
+            // bereits geladen — kein vollstaendiges _reinitWithLock noetig.
+            // Nur readOnly ausschalten. Ohne dieses Flag lud loadReport()
+            // den Bericht doppelt und erzeugte zwei Editor-Instanzen.
+            // Beleg: Bugfix Build 221, Projektgespraech 2026-05-18
+            if (EditorState.skipReinit) {
+                EditorState.skipReinit = false;
+                if (window._editor?.readOnly?.isEnabled) {
+                    window._editor.readOnly.toggle().then(() => {
+                        if (window.updateEditorPlaceholder) updateEditorPlaceholder(true);
+                    }).catch(() => {});
+                }
+                showStatusMsg('Editor aktiv.', 'ok');
+            } else if (window._reinitWithLock) {
+                // Direkt reinitieren — nicht auf SSE warten (SSE-Interval = 15s).
+                // Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-20
                 await window._reinitWithLock();
                 showStatusMsg('Editor aktiv.', 'ok');
             }

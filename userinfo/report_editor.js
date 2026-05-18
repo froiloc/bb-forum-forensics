@@ -1041,13 +1041,17 @@ function _initEditorJs(blocks, reportId) {
     // Fire-and-forget (kein await) — await im synchronen IIFE nicht
     // erlaubt, obwohl _loadReportImpl async ist.
     // Beleg: Bugfix Build 219, Projektgespraech 2026-05-18
-    // Bug 2.120 Fix Build 220: _pendingReportSwitchId statt _isReportSwitch
-    // (Modulvariable, erreichbar aus _initEditorJs).
+    // Bug 2.120 Fix Build 220/221: _pendingReportSwitchId statt _isReportSwitch.
+    // skipReinit=true verhindert dass acquireLock _reinitWithLock aufruft —
+    // der Editor ist bereits geladen, nur readOnly muss umgeschaltet werden.
+    // Beleg: Bugfix Build 221, Projektgespraech 2026-05-18
     if (_pendingReportSwitchId && window._acquireLock) {
         _dbg('_initEditorJs: Lock erwerben fuer neuen Bericht', _pendingReportSwitchId);
         const _ridForLock = _pendingReportSwitchId;
         _pendingReportSwitchId = null;  // sofort zuruecksetzen
+        if (window.EditorState) window.EditorState.skipReinit = true;
         window._acquireLock(_ridForLock).catch(err => {
+            if (window.EditorState) window.EditorState.skipReinit = false;
             console.warn('report_editor.js: acquireLock nach Switch fehlgeschlagen:', err);
         });
     }
