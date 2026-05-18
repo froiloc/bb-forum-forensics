@@ -523,3 +523,150 @@ userinfo.js:67 [forensic] acquireLock: Lock bereits vorhanden ( edacdc10-98a7-46
 report_editor.js:1035 report_editor.js: Initialisierungs-Guard freigegeben.
 report_editor.js:1035 report_editor.js: Initialisierungs-Guard freigegeben.
 editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:162 [USER]     [report_editor] change:report-select — Input
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= interim
+report_editor.js:86 [forensic] _loadReportImpl: Bericht-Wechsel 1 -> 2 — Save + Lock-Release
+report_editor.js:2178 report_editor.js: Auto-Save gestartet, report_id= 1 | bekannte Block-IDs: 0
+ Block «paragraph» skipped because saved data is invalid
+report_editor.js:2292 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 0 | Bloecke geloescht: 0
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= null onSave= function myUsername= paul
+report_editor.js:578 report_editor.js: _knownBlockIds initialisiert, 2 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initEditorJs: Lock erwerben fuer neuen Bericht 2
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 1bfcf4ed-a2cf-4c51-b236-1994fd3a92c1
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:990 report_editor.js: Editor bereit, report_id= 2 | readOnly= true
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= interim
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= interim
+report_editor.js:454 report_editor.js: loadReport() bereits aktiv — übersprungen
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+report_editor.js:578 report_editor.js: _knownBlockIds initialisiert, 2 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:990 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 1bfcf4ed-a2cf-4c51-b236-1994fd3a92c1
+userinfo.js:67 [forensic] acquireLock: Lock bereits vorhanden ( c3d750ad-ebef-4a2b-ba6f-c4ea9627e831 ) — uebersprungen
+report_editor.js:1035 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:1035 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:162 [USER]     [report_editor] change:report-select — Input
+report_editor.js:86 [forensic] loadReport() report_id= 1 type= interim
+report_editor.js:86 [forensic] _loadReportImpl: Bericht-Wechsel 2 -> 1 — Save + Lock-Release
+report_editor.js:2178 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 2
+report_editor.js:2292 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 2 | Bloecke geloescht: 0
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+report_editor.js:578 report_editor.js: _knownBlockIds initialisiert, 0 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initEditorJs: Lock erwerben fuer neuen Bericht 1
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 1bfcf4ed-a2cf-4c51-b236-1994fd3a92c1
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:990 report_editor.js: Editor bereit, report_id= 1 | readOnly= true
+report_editor.js:86 [forensic] loadReport() report_id= 1 type= interim
+report_editor.js:86 [forensic] loadReport() report_id= 1 type= interim
+report_editor.js:454 report_editor.js: loadReport() bereits aktiv — übersprungen
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= null onSave= function myUsername= paul
+report_editor.js:578 report_editor.js: _knownBlockIds initialisiert, 0 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:990 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= null onSave= function myUsername= paul
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 1bfcf4ed-a2cf-4c51-b236-1994fd3a92c1
+userinfo.js:67 [forensic] acquireLock: Lock bereits vorhanden ( a5e24bcb-1492-4308-bf9e-47afdfcb56ad ) — uebersprungen
+report_editor.js:1035 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:1035 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:162 [USER]     [report_editor] change:report-select — Input
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= interim
+report_editor.js:86 [forensic] _loadReportImpl: Bericht-Wechsel 1 -> 2 — Save + Lock-Release
+report_editor.js:2178 report_editor.js: Auto-Save gestartet, report_id= 1 | bekannte Block-IDs: 0
+ Block «paragraph» skipped because saved data is invalid
+report_editor.js:2292 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 0 | Bloecke geloescht: 0
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= null onSave= function myUsername= paul
+report_editor.js:578 report_editor.js: _knownBlockIds initialisiert, 2 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initEditorJs: Lock erwerben fuer neuen Bericht 2
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 1bfcf4ed-a2cf-4c51-b236-1994fd3a92c1
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:990 report_editor.js: Editor bereit, report_id= 2 | readOnly= true
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= interim
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= interim
+report_editor.js:454 report_editor.js: loadReport() bereits aktiv — übersprungen
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+report_editor.js:578 report_editor.js: _knownBlockIds initialisiert, 2 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:990 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 1bfcf4ed-a2cf-4c51-b236-1994fd3a92c1
+userinfo.js:67 [forensic] acquireLock: Lock bereits vorhanden ( f8c0c242-25d0-4ae3-8ff5-0f6c002faa84 ) — uebersprungen
+report_editor.js:1035 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:1035 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:162 [USER]     [report_editor] change:report-select — Input
+report_editor.js:86 [forensic] loadReport() report_id= 1 type= interim
+report_editor.js:86 [forensic] _loadReportImpl: Bericht-Wechsel 2 -> 1 — Save + Lock-Release
+report_editor.js:2178 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 2
+report_editor.js:2292 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 2 | Bloecke geloescht: 0
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+report_editor.js:578 report_editor.js: _knownBlockIds initialisiert, 0 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initEditorJs: Lock erwerben fuer neuen Bericht 1
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 1bfcf4ed-a2cf-4c51-b236-1994fd3a92c1
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:990 report_editor.js: Editor bereit, report_id= 1 | readOnly= true
+report_editor.js:86 [forensic] loadReport() report_id= 1 type= interim
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= null onSave= function myUsername= paul
+report_editor.js:578 report_editor.js: _knownBlockIds initialisiert, 0 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:990 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= null onSave= function myUsername= paul
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 1bfcf4ed-a2cf-4c51-b236-1994fd3a92c1
+userinfo.js:67 [forensic] acquireLock: Lock bereits vorhanden ( 7dbbdf03-dd94-45c8-8d70-5e85ad493e62 ) — uebersprungen
+report_editor.js:1035 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:1035 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:162 [USER]     [report_editor] change:report-select — Input
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= interim
+report_editor.js:86 [forensic] _loadReportImpl: Bericht-Wechsel 1 -> 2 — Save + Lock-Release
+report_editor.js:2178 report_editor.js: Auto-Save gestartet, report_id= 1 | bekannte Block-IDs: 0
+ Block «paragraph» skipped because saved data is invalid
+report_editor.js:2292 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 0 | Bloecke geloescht: 0
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= null onSave= function myUsername= paul
+report_editor.js:578 report_editor.js: _knownBlockIds initialisiert, 2 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initEditorJs: Lock erwerben fuer neuen Bericht 2
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 1bfcf4ed-a2cf-4c51-b236-1994fd3a92c1
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:990 report_editor.js: Editor bereit, report_id= 2 | readOnly= true
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= interim
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= interim
+report_editor.js:454 report_editor.js: loadReport() bereits aktiv — übersprungen
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+report_editor.js:578 report_editor.js: _knownBlockIds initialisiert, 2 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:990 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= 1bfcf4ed-a2cf-4c51-b236-1994fd3a92c1
+userinfo.js:67 [forensic] acquireLock: Lock bereits vorhanden ( 383b1672-cff7-4f72-8294-dd0df8d933c0 ) — uebersprungen
+report_editor.js:1035 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:1035 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:162 [USER]     [report_editor] change:report-select — Input
+report_editor.js:86 [forensic] loadReport() report_id= 1 type= interim
+report_editor.js:86 [forensic] _loadReportImpl: Bericht-Wechsel 2 -> 1 — Save + Lock-Release
+report_editor.js:2178 report_editor.js: Auto-Save gestartet, report_id= 2 | bekannte Block-IDs: 2
+report_editor.js:2292 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 2 | Bloecke geloescht: 0
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 2 focusedId= 069368b2-2a8f-467e-8463-4620a39faa9e onSave= function myUsername= paul
+report_editor.js:578 report_editor.js: _knownBlockIds initialisiert, 0 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initEditorJs: Lock erwerben fuer neuen Bericht 1
+ [forensic] acquireLock() aufgerufen, sseClientId= 1bfcf4ed-a2cf-4c51-b236-1994fd3a92c1
+ [forensic] loadReport() report_id= 1 type= interim
+ report_editor.js: _knownBlockIds initialisiert, 0 Bloecke geladen.
+ [forensic] _initEditorJs(): window.EditorJS= true
+editor.bundle.js:145 Uncaught (in promise) 
+ [forensic] _initSidebarAccordion() gestartet
+ report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+ [PlaceholderWizard] showPlaceholderForm: blocks= 0 focusedId= null onSave= function myUsername= paul
+ [forensic] acquireLock() aufgerufen, sseClientId= 1bfcf4ed-a2cf-4c51-b236-1994fd3a92c1
+ [forensic] acquireLock: Lock bereits vorhanden ( 4ef158aa-ca30-4e67-970d-3ca18527512a ) — uebersprungen
+ report_editor.js: Initialisierungs-Guard freigegeben.
