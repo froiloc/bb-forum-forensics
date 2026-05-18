@@ -1,6 +1,6 @@
 {
-  "build":   237,
-  "version": "0.6.237",
+  "build":   238,
+  "version": "0.6.238",
   "date":    "2026-05-18",
-  "note":    "Build 237: Bug 2.120 — _insertModule/_insertQueryAsNewBlock lesen Lock-ID aus EditorState statt _currentOpts"
+  "note":    "Build 238: Bug 2.120 — Lock immer vor _initEditorJs erwerben (auch beim ersten Seitenstart); acquireLock aus initReportSelector entfernt"
 }

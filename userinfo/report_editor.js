@@ -296,19 +296,9 @@ async function initReportSelector(preselectId = null) {
             if (sel) sel.value = String(preselectId);
         }
         await loadReport(toLoad);
-        // Bug 2.120 Fix Build 235: Lock nach erstem Laden erwerben wenn
-        // kein Lock vorhanden. Beim ersten Seitenstart gibt es keinen
-        // _isReportSwitch, daher lief acquireLock bisher ohne report_id.
-        // Jetzt: acquireLock(toLoad.id) direkt nach dem ersten loadReport.
-        // Beleg: Bugfix Build 235, Projektgespraech 2026-05-18
-        if (!window.EditorState?.lockId && window._acquireLock) {
-            _dbg('initReportSelector: Lock erwerben fuer Bericht', toLoad.id);
-            // Bug 2.120 Fix Build 236: skipReinit=true verhindert
-            // _reinitWithLock-Aufruf nach Lock-Erwerb — der Editor ist
-            // bereits geladen, nur readOnly muss umgeschaltet werden.
-            if (window.EditorState) window.EditorState.skipReinit = true;
-            await window._acquireLock(toLoad.id);
-        }
+        // Bug 2.120 Fix Build 238: acquireLock wird jetzt direkt in
+        // _loadReportImpl vor _initEditorJs aufgerufen (auch beim ersten
+        // Laden ohne _isReportSwitch). Kein zweiter Aufruf hier noetig.
     }
 }
 
@@ -544,7 +534,12 @@ async function _loadReportImpl(report) {
     // und der Editor startet direkt mit readOnly=false.
     // Kein _pendingReportSwitchId mehr noetig fuer den Switch-Flow.
     // Beleg: Bugfix Build 233, Projektgespraech 2026-05-18
-    if (_isReportSwitch && !_skipNextLoadReportImplSave && window._acquireLock) {
+    // Bug 2.120 Fix Build 238: Lock immer VOR _initEditorJs erwerben —
+    // sowohl beim Bericht-Wechsel als auch beim ersten Laden (kein _isReportSwitch).
+    // Nur ueberspringen wenn Lock bereits vorhanden (Create-Flow) oder
+    // wenn _skipNextLoadReportImplSave gesetzt ist.
+    // Beleg: Bugfix Build 238, Projektgespraech 2026-05-18
+    if (!_skipNextLoadReportImplSave && !window.EditorState?.lockId && window._acquireLock) {
         _dbg('_loadReportImpl: Lock vorab erwerben fuer Bericht', report.id);
         await window._acquireLock(report.id);
         _pendingReportSwitchId = null;  // kein zweiter acquireLock in _initEditorJs

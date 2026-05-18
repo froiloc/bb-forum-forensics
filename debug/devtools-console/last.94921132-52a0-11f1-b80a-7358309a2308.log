@@ -1,0 +1,145 @@
+Navigated to http://127.0.0.2:8080/_forensic/report
+debug_events.js:235 [debug_events.js] Build 200 geladen. window._uevt() verfügbar. Trace-Modus: window.FORENSIC_EVENT_TRACE = true
+debug_events.js:241 [debug_events.js] Kill-Switches: window.FORENSIC_DEBUG=false (alles) | window.FORENSIC_EVENT_DEBUG=false (nur Events)
+placeholder_chips.js:56 [forensic] placeholder_chips.js: window.PlaceholderChips exportiert
+placeholder_wizard.js:75 [forensic] placeholder_wizard.js: window.PlaceholderWizard exportiert
+module_panel.js:77 [forensic] module_panel.js: window.ModulePanel exportiert
+annotation_sidebar.js:58 [forensic] annotation_sidebar.js: window.AnnotationSidebar exportiert
+report_editor.js:86 [forensic] report_editor.js: Exports auf window gesetzt (Build wird async geladen)
+userinfo.js:67 [forensic] DOMContentLoaded: userinfo.js aktiv
+userinfo.js:67 [forensic] initEditor() gestartet
+userinfo.js:67 [forensic] initSSEWindow3() gestartet
+report_editor.js:3664 [forensic] report_editor.js: v0.6.238 Build 238 | Exports auf window gesetzt
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= e8af7e15-7282-420c-a932-51929c013b71 reportId= undefined
+userinfo.js:67 [forensic] acquireLock: keine reportId — uebersprungen
+report_editor.js:86 [forensic] initEditorModule() gestartet
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:86 [forensic] _initColResizer: Schiebebalken initialisiert
+report_editor.js:86 [forensic] _initForumLinkInterceptor: BroadcastChannel bereit
+report_editor.js:86 [forensic] _initForumLinkInterceptor: aktiv (window_id= ea9a6a69-c6e5-4198-b563-c74f4b57b9b0 )
+report_editor.js:86 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
+report_editor.js:86 [forensic] initReportSelector() gestartet
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= final
+report_editor.js:86 [forensic] _loadReportImpl: Lock vorab erwerben fuer Bericht 2
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= e8af7e15-7282-420c-a932-51929c013b71 reportId= 2
+favicon.ico:1  GET http://127.0.0.2:8080/favicon.ico 404 (Not Found)
+userinfo.js:67 [forensic] acquireLock: Antwort status= 200 data= {"lock_id":"d6c91930-bd57-44e4-a055-5994590c3923"}
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= final
+report_editor.js:483 report_editor.js: loadReport() bereits aktiv — übersprungen
+report_editor.js:635 report_editor.js: _knownBlockIds initialisiert, 3 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:1047 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 3 focusedId= FyMUhvMr8t onSave= function myUsername= paul
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= e8af7e15-7282-420c-a932-51929c013b71 reportId= undefined
+userinfo.js:67 [forensic] acquireLock: Lock bereits vorhanden ( d6c91930-bd57-44e4-a055-5994590c3923 ) — uebersprungen
+report_editor.js:1092 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:174 [USER]     [module_panel] mousedown:mp-insert-btn — Mouse
+debug_events.js:174 [USER]     [module_panel] click:mp-insert-btn — Mouse
+module_panel.js:902  POST http://127.0.0.2:8080/_forensic/report 423 (Locked)
+_insertModule @ module_panel.js:902
+await in _insertModule
+(anonymous) @ module_panel.js:549
+debug_events.js:162 [USER]     [module_panel] click:std-block-insert-secondary — Mouse
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+report_editor.js:86 [forensic] onChange: Block-Anzahl geaendert: Editor= 4  / _currentBlocks= 3  — bereinige _currentBlocks und Formular-Refresh (Bug 2.98/2.121)
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 3 focusedId= FyMUhvMr8t onSave= function myUsername= paul
+debug_events.js:162 [USER]     [module_panel] click:std-block-insert-secondary — Mouse
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+report_editor.js:86 [forensic] onChange: Block-Anzahl geaendert: Editor= 5  / _currentBlocks= 3  — bereinige _currentBlocks und Formular-Refresh (Bug 2.98/2.121)
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 3 focusedId= FyMUhvMr8t onSave= function myUsername= paul
+debug_events.js:162 [USER]     [module_panel] click:std-block-insert-secondary — Mouse
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+report_editor.js:86 [forensic] onChange: Block-Anzahl geaendert: Editor= 6  / _currentBlocks= 3  — bereinige _currentBlocks und Formular-Refresh (Bug 2.98/2.121)
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 4 focusedId= FyMUhvMr8t onSave= function myUsername= paul
+debug_events.js:174 [USER]     [module_panel] mousedown:mp-insert-btn — Mouse
+debug_events.js:174 [USER]     [module_panel] click:mp-insert-btn — Mouse
+module_panel.js:902  POST http://127.0.0.2:8080/_forensic/report 423 (Locked)
+_insertModule @ module_panel.js:902
+await in _insertModule
+(anonymous) @ module_panel.js:549
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+debug_events.js:162 [USER]     [module_panel] click:mp-cat-tab — Mouse
+debug_events.js:162 [USER]     [module_panel] mousedown:einzeldaten-insert-btn — Mouse
+debug_events.js:162 [USER]     [module_panel] click:einzeldaten-insert-btn — Mouse
+module_panel.js:77 [forensic] _insertQuery: Kein aktiver Cursor, lege neuen Block an: user.first_post_date
+module_panel.js:1170  POST http://127.0.0.2:8080/_forensic/report 423 (Locked)
+_insertQueryAsNewBlock @ module_panel.js:1170
+_insertQuery @ module_panel.js:1117
+(anonymous) @ module_panel.js:627
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:1079 [forensic] _captureRange: alt= null → neu: blockId= nP5eKBrv1Y blockIdx= 5 startOffset= 0
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+debug_events.js:162 [USER]     [module_panel] mousedown:einzeldaten-insert-btn — Mouse
+debug_events.js:162 [USER]     [module_panel] click:einzeldaten-insert-btn — Mouse
+module_panel.js:77 [forensic] _insertQuery: Einfuege-Position: blockId= nP5eKBrv1Y offset= 0 queryId= user.group
+module_panel.js:77 [forensic] _insertQuery: Chip inline eingefuegt: user.group
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 4 focusedId= FyMUhvMr8t onSave= function myUsername= paul
+debug_events.js:162 [USER]     [module_panel] mousedown:einzeldaten-insert-btn — Mouse
+debug_events.js:162 [USER]     [module_panel] click:einzeldaten-insert-btn — Mouse
+module_panel.js:77 [forensic] _insertQuery: Einfuege-Position: blockId= nP5eKBrv1Y offset= 1 queryId= user.aliases
+module_panel.js:77 [forensic] _insertQuery: Chip inline eingefuegt: user.aliases
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 4 focusedId= FyMUhvMr8t onSave= function myUsername= paul
+debug_events.js:162 [USER]     [module_panel] click:mp-cat-tab — Mouse
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+debug_events.js:174 [USER]     [module_panel] mousedown:mp-insert-btn — Mouse
+debug_events.js:174 [USER]     [module_panel] click:mp-insert-btn — Mouse
+module_panel.js:902  POST http://127.0.0.2:8080/_forensic/report 423 (Locked)
+_insertModule @ module_panel.js:902
+await in _insertModule
+(anonymous) @ module_panel.js:549
+debug_events.js:174 [USER]     [module_panel] dragstart:mp-item — Drag&Drop
+module_panel.js:77 [forensic] Drag start (Modul, delegiert): module_id= 5 title= Ermittlungsfazit und Maßnahmenempfehlung
+debug_events.js:162 [USER]     [report_editor] drop:editorjs-holder — Drag&Drop
+report_editor.js:86 [forensic] Drop: Ziel-Index= 4 von 6 Bloecken
+report_editor.js:86 [forensic] Drop (Modul): module_id= 5 targetIdx= 4
+report_editor.js:86 [forensic] Drop (Modul): Block eingefuegt, type= paragraph idx= 4 textLen= 502
+report_editor.js:86 [forensic] Drop (Modul): Chips hydriert fuer Block idx= 4
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+report_editor.js:86 [forensic] onChange: Block-Anzahl geaendert: Editor= 7  / _currentBlocks= 4  — bereinige _currentBlocks und Formular-Refresh (Bug 2.98/2.121)
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 5 focusedId= FyMUhvMr8t onSave= function myUsername= paul
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+debug_events.js:174 [USER]     [module_panel] mousedown:mp-insert-btn — Mouse
+debug_events.js:174 [USER]     [module_panel] click:mp-insert-btn — Mouse
+module_panel.js:902  POST http://127.0.0.2:8080/_forensic/report 423 (Locked)
+_insertModule @ module_panel.js:902
+await in _insertModule
+(anonymous) @ module_panel.js:549
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+debug_events.js:162 [USER]     [module_panel] click:std-block-insert-secondary — Mouse
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+report_editor.js:86 [forensic] onChange: Block-Anzahl geaendert: Editor= 8  / _currentBlocks= 5  — bereinige _currentBlocks und Formular-Refresh (Bug 2.98/2.121)
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 6 focusedId= FyMUhvMr8t onSave= function myUsername= paul
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
