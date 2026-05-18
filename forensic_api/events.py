@@ -238,7 +238,22 @@ class EventsEndpoint:
         # Verhindert dass editor_lock_released periodisch gesendet wird
         # wenn schlicht kein Lock vorhanden ist.
         # Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19
-        _initial_lock = self._bundle.evidence.get_lock()
+        # Schema v2.0: kein globaler Lock mehr, stattdessen pro Bericht.
+        # SSE-Handler liest den zuletzt aktiven Lock des Ermittlers.
+        _initial_lock_row = self._bundle.evidence._con.execute(
+            "SELECT report_id, locked_by, lock_id, locked_at, sse_client "
+            "FROM editor_locks ORDER BY locked_at DESC LIMIT 1"
+        ).fetchone()
+        from db.evidence_db import EditorLockRecord as _ELR
+        _initial_lock = (
+            _ELR(
+                report_id=int(_initial_lock_row["report_id"]),
+                locked_by=str(_initial_lock_row["locked_by"]),
+                lock_id=str(_initial_lock_row["lock_id"]),
+                locked_at=int(_initial_lock_row["locked_at"]),
+                sse_client=str(_initial_lock_row["sse_client"]),
+            ) if _initial_lock_row else None
+        )
         _last_lock_id: str | None = _initial_lock.lock_id if _initial_lock else None
 
         # Warte-Event vom EvidenceDb — wird bei Lock-Aenderungen sofort gesetzt.
@@ -255,7 +270,19 @@ class EventsEndpoint:
                 # Lock-Zustand lesen, DANN Event loeschen.
                 # Reihenfolge wichtig: zwischen clear() und get_lock() koennte
                 # sonst eine Aenderung verloren gehen.
-                current_lock = self._bundle.evidence.get_lock()
+                _cl_row = self._bundle.evidence._con.execute(
+                    "SELECT report_id, locked_by, lock_id, locked_at, sse_client "
+                    "FROM editor_locks ORDER BY locked_at DESC LIMIT 1"
+                ).fetchone()
+                current_lock = (
+                    _ELR(
+                        report_id=int(_cl_row["report_id"]),
+                        locked_by=str(_cl_row["locked_by"]),
+                        lock_id=str(_cl_row["lock_id"]),
+                        locked_at=int(_cl_row["locked_at"]),
+                        sse_client=str(_cl_row["sse_client"]),
+                    ) if _cl_row else None
+                )
                 lock_event.clear()
 
                 # Support-Status senden
@@ -303,7 +330,19 @@ class EventsEndpoint:
         Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19
         """
         try:
-            lock = self._bundle.evidence.get_lock()
+            _lk_row = self._bundle.evidence._con.execute(
+                "SELECT report_id, locked_by, lock_id, locked_at, sse_client "
+                "FROM editor_locks ORDER BY locked_at DESC LIMIT 1"
+            ).fetchone()
+            lock = (
+                _ELR(
+                    report_id=int(_lk_row["report_id"]),
+                    locked_by=str(_lk_row["locked_by"]),
+                    lock_id=str(_lk_row["lock_id"]),
+                    locked_at=int(_lk_row["locked_at"]),
+                    sse_client=str(_lk_row["sse_client"]),
+                ) if _lk_row else None
+            )
             if lock and lock.locked_by and lock.lock_id:
                 return send_fn(
                     "editor_lock_acquired",

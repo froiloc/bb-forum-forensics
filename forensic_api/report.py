@@ -482,7 +482,7 @@ class ReportEndpoint:
         Beleg: Bauplan B6 v0.5 §5, B6 Phase 4, Projektgespraech 2026-05-06
         """
         edb     = self._bundle.evidence
-        lock    = edb.get_lock()
+        lock    = None  # wird nach active_report-Bestimmung gesetzt
         reports = edb.get_reports()
 
         # Aktiven Bericht bestimmen: requested_report_id hat Vorrang.
@@ -501,6 +501,9 @@ class ReportEndpoint:
                     break
         if active_report is None and reports:
             active_report = reports[0]
+
+        # Lock nach Bestimmung von active_report laden — braucht report_id
+        lock = edb.get_lock(active_report.id) if active_report else None
 
         blocks_payload = []
         if active_report:
@@ -1016,11 +1019,15 @@ class ReportEndpoint:
                 content_type="application/json; charset=utf-8",
             )
             return
-        lock = self._bundle.evidence.get_lock()
+        rid_raw = data.get("report_id")
+        report_id_rl = int(rid_raw) if rid_raw else None
+        lock = (self._bundle.evidence.get_lock(report_id_rl)
+                if report_id_rl else None)
         if lock and lock.lock_id == lock_id and lock.locked_by == investigator:
             new_sse = data.get("sse_client_id", lock.sse_client)
             self._bundle.evidence.resume_lock(
-                lock_id=lock_id, locked_by=investigator, new_sse_client=new_sse
+                lock_id=lock_id, locked_by=investigator,
+                new_sse_client=new_sse, report_id=report_id_rl
             )
             handler.send_response_body(
                 200, _json_ok({"ok": True}),
@@ -1034,7 +1041,10 @@ class ReportEndpoint:
             )
 
     def _action_request_takeover(self, handler, data, investigator) -> None:
-        lock = self._bundle.evidence.get_lock()
+        rid_raw = data.get("report_id")
+        report_id_rt = int(rid_raw) if rid_raw else None
+        lock = (self._bundle.evidence.get_lock(report_id_rt)
+                if report_id_rt else None)
         if not lock:
             handler.send_response_body(
                 404, _json_err("Kein Lock vorhanden", "NO_LOCK"),
@@ -1063,7 +1073,10 @@ class ReportEndpoint:
         )
 
     def _action_respond_takeover(self, handler, data, investigator) -> None:
-        lock = self._bundle.evidence.get_lock()
+        rid_raw = data.get("report_id")
+        report_id_resp = int(rid_raw) if rid_raw else None
+        lock = (self._bundle.evidence.get_lock(report_id_resp)
+                if report_id_resp else None)
         if not lock or lock.locked_by != investigator:
             handler.send_response_body(
                 423,
@@ -1082,7 +1095,7 @@ class ReportEndpoint:
             return
         if response == "grant":
             self._bundle.evidence.resolve_takeover(request_id, "granted")
-            self._bundle.evidence.release_lock(lock.lock_id)
+            self._bundle.evidence.release_lock(lock.lock_id, report_id=lock.report_id)
             handler.send_response_body(
                 200, _json_ok({"granted": True}),
                 content_type="application/json; charset=utf-8",
@@ -1118,7 +1131,7 @@ class ReportEndpoint:
                 content_type="application/json; charset=utf-8",
             )
             return False
-        if not self._bundle.evidence.validate_lock(lock_id):
+        if not self._bundle.evidence.validate_lock(lock_id, report_id=report_id):
             handler.send_response_body(
                 423, _LOCK_REQUIRED,
                 content_type="application/json; charset=utf-8",

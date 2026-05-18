@@ -185,12 +185,19 @@ class ReportsEndpoint:
         if sse_client:
             edb = self._bundle.evidence
             # Alten Lock desselben Ermittlers freigeben falls vorhanden
-            old_lock = edb.get_lock(report_id=None)  # globaler Fallback
-            if old_lock and old_lock.locked_by == investigator:
-                edb.release_lock(old_lock.lock_id)
+            # Alle bestehenden Locks des Ermittlers freigeben
+            # (über lock_id-Suche, da wir den alten report_id nicht kennen)
+            old_row = edb._con.execute(
+                "SELECT report_id, lock_id FROM editor_locks WHERE locked_by=? LIMIT 1",
+                (investigator,),
+            ).fetchone()
+            if old_row:
+                edb.release_lock(
+                    old_row["lock_id"], report_id=old_row["report_id"]
+                )
                 logger.info(
                     "create_report: alter Lock %s von '%s' freigegeben",
-                    old_lock.lock_id, investigator,
+                    old_row["lock_id"], investigator,
                 )
             lock_id = edb.acquire_lock(
                 locked_by=investigator,

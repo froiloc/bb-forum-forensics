@@ -1,6 +1,6 @@
 {
-  "build":   238,
-  "version": "0.6.238",
+  "build":   239,
+  "version": "0.6.239",
   "date":    "2026-05-18",
-  "note":    "Build 238: Bug 2.120 — Lock immer vor _initEditorJs erwerben (auch beim ersten Seitenstart); acquireLock aus initReportSelector entfernt"
+  "note":    "Build 239: Schema v2.0 — editor_locks auf report_id INTEGER FK; _lock_resource() entfernt; alle Lock-Methoden bereinigt; lock_takeover_requests report_id + responded_at"
 }
