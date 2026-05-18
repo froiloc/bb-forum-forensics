@@ -1,6 +1,6 @@
 {
-  "build":   224,
-  "version": "0.6.224",
+  "build":   225,
+  "version": "0.6.225",
   "date":    "2026-05-18",
-  "note":    "Build 224: Bug 2.120 — acquireLock(reportId) Signatur; kein Lock-Erwerb ohne reportId und ohne vorhandene Berichte (leere DB)"
+  "note":    "Build 225: Bug 2.120 — readOnly-Guard in _performAutoSave; _knownBlockIds vor letztem Save auffuellen"
 }

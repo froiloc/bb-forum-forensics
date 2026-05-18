@@ -371,6 +371,12 @@ function openNewReportDialog(existingReports) {
         const _oldRid218 = _currentReport?.id ?? null;
         if (window.EditorState?.lockId && _oldRid218) {
             // Schritt 1: Letzter Save vor Lock-Freigabe
+            // Bug 2.120 Fix Build 225: _knownBlockIds aus _currentBlocks
+            // auffuellen, damit neue (noch nicht gespeicherte) Bloecke
+            // beim letzten Save beruecksichtigt werden.
+            _currentBlocks.forEach(b => {
+                if (b.block_id) _knownBlockIds.add(b.block_id);
+            });
             try { await _performAutoSave(_oldRid218); } catch (_) {}
             // Schritt 2: Lock freigeben
             try {
@@ -2191,6 +2197,13 @@ async function _performAutoSave(reportId) {
     }
     if (!window.EditorState?.lockId) return;
     if (!_editor) return;
+    // Bug 2.120 Fix Build 225: readOnly-Guard — editor.save() schlaegt
+    // fehl wenn Editor im Lese-Modus ist (vor Lock-Erwerb).
+    // Beleg: Bugfix Build 225, Projektgespraech 2026-05-18
+    if (_editor.readOnly?.isEnabled) {
+        _dbg('_performAutoSave: Editor readOnly — uebersprungen');
+        return;
+    }
 
     // Speicher-Indikator auf "Speichern laeuft..." setzen (pulsierend gruen)
     _showSavingIndicator();
