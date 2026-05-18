@@ -72,7 +72,15 @@ def require_lock(
         )
         return None
 
-    if not evidence_db.validate_lock(lock_id):
+    # Bug 2.120 Fix Build 226: report_id aus Request-Body lesen und
+    # an validate_lock weitergeben fuer bericht-spezifischen Lock.
+    # Beleg: Bugfix Build 226, Projektgespraech 2026-05-18
+    rid_raw = data.get("report_id") if data else None
+    try:
+        report_id_guard = int(rid_raw) if rid_raw is not None else None
+    except (TypeError, ValueError):
+        report_id_guard = None
+    if not evidence_db.validate_lock(lock_id, report_id=report_id_guard):
         handler.send_response_body(
             423, _LOCK_REQUIRED_BODY, content_type=_CONTENT_TYPE_JSON
         )

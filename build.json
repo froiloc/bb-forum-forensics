@@ -1,6 +1,6 @@
 {
-  "build":   225,
-  "version": "0.6.225",
+  "build":   226,
+  "version": "0.6.226",
   "date":    "2026-05-18",
-  "note":    "Build 225: Bug 2.120 — readOnly-Guard in _performAutoSave; _knownBlockIds vor letztem Save auffuellen"
+  "note":    "Build 226: Bug 2.120 — validate_lock prueft bericht-spezifischen Lock + Fallback; _lock_guard uebergibt report_id aus Request-Body"
 }

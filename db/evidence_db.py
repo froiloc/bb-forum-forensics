@@ -2079,13 +2079,25 @@ class EvidenceDb:
     def validate_lock(
         self, lock_id: str, report_id: Optional[int] = None
     ) -> bool:
-        resource = self._lock_resource(report_id)
+        """Prueft ob lock_id gueltig ist.
+
+        Bug 2.120 Fix Build 226: Falls report_id angegeben, wird zuerst
+        report-spezifischer Lock geprueft, dann Fallback auf globalen.
+        Beleg: Bugfix Build 226, Projektgespraech 2026-05-18
+        """
+        resources_to_check = []
+        if report_id is not None:
+            resources_to_check.append(self._lock_resource(report_id))
+        resources_to_check.append(self._lock_resource(None))  # Fallback
         try:
-            row = self._con.execute(
-                "SELECT 1 FROM editor_locks WHERE resource=? AND lock_id=?",
-                (resource, lock_id),
-            ).fetchone()
-            return row is not None
+            for resource in resources_to_check:
+                row = self._con.execute(
+                    "SELECT 1 FROM editor_locks WHERE resource=? AND lock_id=?",
+                    (resource, lock_id),
+                ).fetchone()
+                if row is not None:
+                    return True
+            return False
         except sqlite3.OperationalError:
             return False
 
