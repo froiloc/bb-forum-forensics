@@ -1,0 +1,85 @@
+:8080/favicon.ico:1  Failed to load resource: the server responded with a status of 404 (Not Found)
+block:1  Failed to load resource: the server responded with a status of 423 (Locked)
+report:1  Failed to load resource: the server responded with a status of 423 (Locked)
+report:1  Failed to load resource: the server responded with a status of 423 (Locked)
+report:1  Failed to load resource: the server responded with a status of 423 (Locked)
+Navigated to http://127.0.0.2:8080/_forensic/report
+debug_events.js:235 [debug_events.js] Build 200 geladen. window._uevt() verfügbar. Trace-Modus: window.FORENSIC_EVENT_TRACE = true
+debug_events.js:241 [debug_events.js] Kill-Switches: window.FORENSIC_DEBUG=false (alles) | window.FORENSIC_EVENT_DEBUG=false (nur Events)
+placeholder_chips.js:56 [forensic] placeholder_chips.js: window.PlaceholderChips exportiert
+placeholder_wizard.js:75 [forensic] placeholder_wizard.js: window.PlaceholderWizard exportiert
+module_panel.js:77 [forensic] module_panel.js: window.ModulePanel exportiert
+annotation_sidebar.js:58 [forensic] annotation_sidebar.js: window.AnnotationSidebar exportiert
+report_editor.js:86 [forensic] report_editor.js: Exports auf window gesetzt (Build wird async geladen)
+userinfo.js:67 [forensic] DOMContentLoaded: userinfo.js aktiv
+userinfo.js:67 [forensic] initEditor() gestartet
+userinfo.js:67 [forensic] initSSEWindow3() gestartet
+report_editor.js:3651 [forensic] report_editor.js: v0.6.234 Build 234 | Exports auf window gesetzt
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= eeeb9de3-4352-4846-a894-b479c669f632 reportId= undefined
+userinfo.js:67 [forensic] acquireLock: keine Berichte und keine reportId — uebersprungen
+report_editor.js:86 [forensic] initEditorModule() gestartet
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:86 [forensic] _initColResizer: Schiebebalken initialisiert
+report_editor.js:86 [forensic] _initForumLinkInterceptor: BroadcastChannel bereit
+report_editor.js:86 [forensic] _initForumLinkInterceptor: aktiv (window_id= 22e43b08-a33f-4aa9-918c-4a7fe6442b39 )
+report_editor.js:86 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
+report_editor.js:86 [forensic] initReportSelector() gestartet
+favicon.ico:1  GET http://127.0.0.2:8080/favicon.ico 404 (Not Found)
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= final
+report_editor.js:627 report_editor.js: _knownBlockIds initialisiert, 3 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:1039 report_editor.js: Editor bereit, report_id= 2 | readOnly= true
+userinfo.js:67 [forensic] acquireLock() aufgerufen, sseClientId= eeeb9de3-4352-4846-a894-b479c669f632 reportId= undefined
+userinfo.js:67 [forensic] acquireLock: Antwort status= 200 data= {"lock_id":"309f388c-0b78-420b-85aa-91e297332534"}
+report_editor.js:86 [forensic] loadReport() report_id= 2 type= final
+report_editor.js:627 report_editor.js: _knownBlockIds initialisiert, 3 Bloecke geladen.
+report_editor.js:86 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:86 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:1039 report_editor.js: Editor bereit, report_id= 2 | readOnly= false
+report_editor.js:1084 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:1084 report_editor.js: Initialisierungs-Guard freigegeben.
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 3 focusedId= FyMUhvMr8t onSave= function myUsername= paul
+debug_events.js:162 [USER]     [placeholder_wizard] focus:pf-input — Input
+debug_events.js:162 [USER]     [placeholder_wizard] click:pf-block-group — Mouse
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer bI_uzpAvFk:tatbestand value= "j"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer bI_uzpAvFk:tatbestand value= "jg"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer bI_uzpAvFk:tatbestand value= "jgj"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer bI_uzpAvFk:tatbestand value= "jgjg"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer bI_uzpAvFk:tatbestand value= "jgjgj"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer bI_uzpAvFk:tatbestand value= "jgjgjh"
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer bI_uzpAvFk:tatbestand value= "jgjgjhg"
+placeholder_wizard.js:544 [PlaceholderWizard] _saveField: blockId= bI_uzpAvFk name= tatbestand val= "jgjgjhg" onSave= function
+report_editor.js:1827 report_editor.js: _onPlaceholderFieldSave aufgerufen: blockId= bI_uzpAvFk field= tatbestand value= "jgjgjhg"
+report_editor.js:218  POST http://127.0.0.2:8080/_forensic/editor/block 423 (Locked)
+_fetchWithLock @ report_editor.js:218
+_onPlaceholderFieldSave @ report_editor.js:1860
+_saveField @ placeholder_wizard.js:552
+(anonymous) @ placeholder_wizard.js:534
+setTimeout
+_scheduleFieldSave @ placeholder_wizard.js:533
+(anonymous) @ placeholder_wizard.js:452
+report_editor.js:1868 report_editor.js: _onPlaceholderFieldSave fetch-Antwort: ok= false status= 423
+report_editor.js:1872 report_editor.js: Platzhalter-Save fehlgeschlagen: tatbestand {error: 'Lock erforderlich', code: 'LOCK_REQUIRED'}
+_onPlaceholderFieldSave @ report_editor.js:1872
+await in _onPlaceholderFieldSave
+_saveField @ placeholder_wizard.js:552
+(anonymous) @ placeholder_wizard.js:534
+setTimeout
+_scheduleFieldSave @ placeholder_wizard.js:533
+(anonymous) @ placeholder_wizard.js:452
+placeholder_wizard.js:553 [PlaceholderWizard] _saveField: onSave abgeschlossen fuer tatbestand
