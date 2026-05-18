@@ -1,6 +1,6 @@
 {
-  "build":   223,
-  "version": "0.6.223",
+  "build":   224,
+  "version": "0.6.224",
   "date":    "2026-05-18",
-  "note":    "Build 223: Bug 2.120 — EDITOR_API.REPORT-Tippfehler behoben; Save vor Lock-Release; skipReinit beim Create"
+  "note":    "Build 224: Bug 2.120 — acquireLock(reportId) Signatur; kein Lock-Erwerb ohne reportId und ohne vorhandene Berichte (leere DB)"
 }

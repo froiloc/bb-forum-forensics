@@ -825,13 +825,29 @@ function disableEditorControls(disable) {
 /**
  * Lock erwerben (§8.5 Bauplan B4 — acquire_lock).
  */
-async function acquireLock() {
-    _dbg('acquireLock() aufgerufen, sseClientId=', EditorState.sseClientId);
+// Bug 2.120 Fix Build 224: reportId als optionaler Parameter.
+// Beleg: Bugfix Build 224, Projektgespraech 2026-05-18
+async function acquireLock(reportId) {
+    _dbg('acquireLock() aufgerufen, sseClientId=', EditorState.sseClientId, 'reportId=', reportId);
     // Build 115: Guard — Lock bereits aus Resume-Session vorhanden → kein neuer Erwerb
     // Beleg: Projektgespraech 2026-05-07
     if (EditorState.lockId) {
         _dbg('acquireLock: Lock bereits vorhanden (', EditorState.lockId, ') — uebersprungen');
         return;
+    }
+    // Bug 2.120 Fix Build 224: Ohne reportId und ohne vorhandene Berichte
+    // keinen Lock erwerben — Lock ohne Bericht-Bezug ist sinnlos.
+    // Verhindert Lock-Erwerb fuer resource='report_editor' (ohne ID)
+    // beim Seitenstart mit leerer DB.
+    // Beleg: Bugfix Build 224, Projektgespraech 2026-05-18
+    if (!reportId) {
+        const hasReports = !!document.querySelector(
+            '#report-select option[value]:not([value=""])'
+        );
+        if (!hasReports) {
+            _dbg('acquireLock: keine Berichte und keine reportId — uebersprungen');
+            return;
+        }
     }
     if (EditorState.frozen) return;
     if (!EditorState.sseClientId) {
@@ -851,6 +867,10 @@ async function acquireLock() {
             body: JSON.stringify({
                 action:     'acquire_lock',
                 sse_client: EditorState.sseClientId,
+                // Bug 2.120 Fix Build 224: report_id fuer bericht-spezifischen Lock
+                report_id:  reportId
+                    ?? EditorState.currentReportId
+                    ?? null,
             }),
         });
         const data = await resp.json();
