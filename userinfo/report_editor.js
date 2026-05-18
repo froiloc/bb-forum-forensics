@@ -193,6 +193,9 @@ let _knownBlockIds = new Set();
 // aus _loadReportImpl erreichbar macht (separate Funktionen, keine Closure).
 // Beleg: Bugfix Build 220, Projektgespraech 2026-05-18
 let _pendingReportSwitchId = null;  // report_id des neuen Berichts bei Wechsel
+// Bug 2.120 Fix Build 227: Verhindert doppelten Save in _loadReportImpl
+// wenn btn-create-report den Save bereits erledigt hat.
+let _skipNextLoadReportImplSave = false;
 
 // ---------------------------------------------------------------------------
 // Hilfsfunktion: fetch mit Lock-Header
@@ -424,6 +427,8 @@ function openNewReportDialog(existingReports) {
                     // Beleg: Bugfix Build 223, Projektgespraech 2026-05-18
                     window.EditorState.skipReinit = true;
                 }
+                // Bug 2.120 Fix Build 227: _loadReportImpl-Save ueberspringen
+                _skipNextLoadReportImplSave = true;
                 // Bug 2.74 Fix Build 166: preselectId statt change-Event
                 // verhindert doppelten _initEditorJs()-Aufruf.
                 // Beleg: Projektgespraech 2026-05-11
@@ -497,8 +502,13 @@ async function _loadReportImpl(report) {
     if (_isReportSwitch) {
         _dbg('_loadReportImpl: Bericht-Wechsel', _prevReportId, '->', report.id,
              '— Save + Lock-Release');
-        // Letzter Save des aktuellen Berichts
-        try { await _performAutoSave(_prevReportId); } catch (_) {}
+        // Letzter Save — ausser wenn bereits durch btn-create-report erledigt
+        if (_skipNextLoadReportImplSave) {
+            _skipNextLoadReportImplSave = false;
+            _dbg('_loadReportImpl: Save uebersprungen (bereits durch Create erledigt)');
+        } else {
+            try { await _performAutoSave(_prevReportId); } catch (_) {}
+        }
         // Lock freigeben (awaitable)
         if (window._releaseLockAsync) {
             await window._releaseLockAsync();

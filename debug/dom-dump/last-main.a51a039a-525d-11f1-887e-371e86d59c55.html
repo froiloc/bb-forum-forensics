@@ -1,0 +1,36 @@
+<main id="report-main-col" style="flex: 71.2939 1 0%;">
+<!-- Berichtsauswahl -->
+<div id="report-selector-container">
+<div id="report-selector-bar">
+<label class="report-selector-label" for="report-select">Bericht:</label>
+<select class="report-select" id="report-select">
+<option value="2">1. Abschlussbericht: Erster Bericht</option><option value="1">1. Zwischenbericht: Testbericht</option>
+</select>
+<button class="editor-btn" id="btn-new-report" title="Neuen Bericht anlegen">+ Neuer Bericht</button>
+<span id="report-selector-status"></span>
+</div></div>
+<!-- Status-Meldungen -->
+<div id="report-status-msg"></div>
+<!-- Editor-Bereich: EditorJS-Holder direkt in report-main-col.
+             Beleg: Bauplan B6 §4.3, Build 113, Projektgespraech 2026-05-07 -->
+<div class="editorjs-holder" id="editorjs-holder"><div class="codex-editor codex-editor--empty"><div class="codex-editor__redactor" style="padding-bottom: 300px;"><div aria-label="Eigener Block (paul)" class="ce-block block-wrapper--own" data-author="paul" data-block-id="Y2CaMqmPq2" data-id="Y2CaMqmPq2" data-wrapped="1" style="--block-owner-color: hsl(224, 60%, 40%);"><div class="block-meta-bar" inert=""><span class="block-meta-author">paul</span><span class="block-meta-date">18.05.2026, 04:01</span><button aria-label="Kommentar zu Block von paul verfassen" class="block-meta-comment-btn" type="button">💬 Kommentieren</button></div><div class="ce-block__content"><div class="ce-paragraph cdx-block" contenteditable="false" data-placeholder-active="Lock erwerben um zu schreiben…"></div></div></div><div aria-label="Eigener Block (paul)" class="ce-block block-wrapper--own" data-author="paul" data-block-id="VqtimU3lCU" data-id="VqtimU3lCU" data-wrapped="1" style="--block-owner-color: hsl(224, 60%, 40%);"><div class="block-meta-bar" inert=""><span class="block-meta-author">paul</span><span class="block-meta-date">18.05.2026, 04:01</span><button aria-label="Kommentar zu Block von paul verfassen" class="block-meta-comment-btn" type="button">💬 Kommentieren</button></div><div class="ce-block__content"><div class="ce-paragraph cdx-block" contenteditable="false" data-placeholder-active="Lock erwerben um zu schreiben…">Dem Bericht sind folgende Anlagen beigefuegt:
+
+Anlage 1: {{m:anlage1|Bezeichnung der ersten Anlage}}
+Anlage 2: {{m:anlage2|Bezeichnung der zweiten Anlage}}
+{{o:anlage3|Anlage 3 (optional): Bezeichnung}}
+
+Alle Anlagen wurden am {{m:sicherungsdatum|Datum der Sicherung TT.MM.JJJJ}} gesichert und sind in der Fallakte unter dem Aktenzeichen {{m:aktenzeichen|Aktenzeichen der Ermittlung}} abgelegt.</div></div></div><div aria-label="Eigener Block (paul)" class="ce-block ce-block--selected block-wrapper--own" data-author="paul" data-block-id="SLClSC99s2" data-id="SLClSC99s2" data-wrapped="1" style="--block-owner-color: hsl(224, 60%, 40%);"><div class="block-meta-bar" inert=""><span class="block-meta-author">paul</span><span class="block-meta-date">18.05.2026, 04:01</span><button aria-label="Kommentar zu Block von paul verfassen" class="block-meta-comment-btn" type="button">💬 Kommentieren</button></div><div class="ce-block__content"><div class="ce-paragraph cdx-block" contenteditable="false" data-placeholder-active="Lock erwerben um zu schreiben…">Der untersuchte Benutzer-Account ist im Forum unter dem Nutzernamen {{a:user.username}} (Benutzer-ID: {{a:user.id}}) registriert. Die Registrierung erfolgte am {{a:user.registered_date}} unter der E-Mail-Adresse {{a:user.email}}. Zuletzt war der Account am {{a:user.last_active}} aktiv.
+
+Zum Zeitpunkt der Auswertung ist dem Account die Nutzergruppe «{{a:user.group}}» zugewiesen. {{o:realname|Bürgerlicher Name des Beschuldigten (sofern ermittelt)}}</div></div></div></div><div class="codex-editor-overlay"><div class="codex-editor-overlay__container"><div class="codex-editor-overlay__rectangle" style="display: none;"></div></div></div><div class="ce-inline-toolbar"></div></div></div>
+<!-- Frozen-Overlay (BroadcastChannel-Schutz, §4.6) -->
+<div id="report-frozen-overlay" style="display:none">
+<div class="report-frozen-inner">
+<strong>Dieser Editor ist bereits in einem anderen Fenster geöffnet.</strong><br/>
+            Bitte wechseln Sie zum bestehenden Fenster.
+            <br/><br/>
+<button class="report-btn" id="btn-focus-existing">
+              Zum bestehenden Fenster wechseln
+            </button>
+</div>
+</div>
+</main>
