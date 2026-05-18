@@ -827,7 +827,12 @@ function _renderListWithStandard(modules, stdBlocks) {
  */
 async function _insertModule(moduleId) {
     if (!moduleId) return;
-    if (!_currentOpts.lockId) {
+    // Bug 2.120 Fix Build 231: lockId immer direkt aus EditorState lesen.
+    // _currentOpts.lockId kann veraltet sein wenn Lock nach showPanel-Aufruf
+    // freigegeben und neu erworben wurde (Bericht-Wechsel).
+    // Beleg: Bugfix Build 231, Projektgespraech 2026-05-18
+    const _lockId231 = window.EditorState?.lockId || _currentOpts.lockId;
+    if (!_lockId231) {
         _showInsertError('Kein aktiver Lock. Bitte Seite neu laden.');
         return;
     }
@@ -968,7 +973,8 @@ async function _insertModule(moduleId) {
  */
 async function _insertQuery(queryId) {
     if (!queryId) return;
-    if (!_currentOpts.lockId) {
+    const _lockId231q = window.EditorState?.lockId || _currentOpts.lockId;
+    if (!_lockId231q) {
         _showInsertError('Kein aktiver Lock. Bitte Seite neu laden.');
         return;
     }
@@ -1236,6 +1242,8 @@ window.ModulePanel = {
     _fetchModules,
     _fetchModuleBody,
     // Bug 2.57/2.64: Setter fuer Cursor-Range und Drop-Flag
+    // Bug 2.120 Fix Build 231: lockId nach Bericht-Wechsel aktualisieren
+    _refreshLockId: (lockId) => { _currentOpts.lockId = lockId || null; },
     _setSavedCursorRange: (range) => { _savedCursorRange = range; },
     _getSavedRangeInfo: () => {
         if (!_savedCursorRange) return 'null';

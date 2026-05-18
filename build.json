@@ -1,6 +1,6 @@
 {
-  "build":   230,
-  "version": "0.6.230",
+  "build":   231,
+  "version": "0.6.231",
   "date":    "2026-05-18",
-  "note":    "Build 230: Bug 2.120 — skipReinit auch im Switch-Flow; verhindert doppelten Editor durch _reinitWithLock nach loadReport"
+  "note":    "Build 231: Bug 2.120 — _insertModule/Query liest lockId aus EditorState; ModulePanel._refreshLockId aktualisiert Lock nach Bericht-Wechsel"
 }

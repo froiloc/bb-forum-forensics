@@ -892,6 +892,11 @@ async function acquireLock(reportId) {
             // Beleg: Bugfix Build 221, Projektgespraech 2026-05-18
             if (EditorState.skipReinit) {
                 EditorState.skipReinit = false;
+                // Bug 2.120 Fix Build 231: ModulePanel-opts mit neuem Lock aktualisieren.
+                // _currentOpts.lockId kann nach Bericht-Wechsel veraltet sein.
+                if (window.ModulePanel?._refreshLockId) {
+                    window.ModulePanel._refreshLockId(EditorState.lockId);
+                }
                 if (window._editor?.readOnly?.isEnabled) {
                     window._editor.readOnly.toggle().then(() => {
                         if (window.updateEditorPlaceholder) updateEditorPlaceholder(true);
