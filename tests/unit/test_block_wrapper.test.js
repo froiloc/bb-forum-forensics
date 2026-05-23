@@ -177,11 +177,12 @@ describe("initBlockWrappers", () => {
         dom = makeDOM();
     });
 
-    it("T05 — erzeugt .block-wrapper fuer bekannte .ce-block-Elemente", () => {
+    // Build 120 Redesign: Dekorationen direkt auf .ce-block, kein separates .block-wrapper-Element
+    it("T05 — dekoriert .ce-block fuer bekannte block_ids", () => {
         addCeBlock(dom, "blk-1");
         const blocks = [{ block_id: "blk-1", author: "h001", created_at: 1700000000 }];
         dom.window.initBlockWrappers(blocks, "h001");
-        const wrapper = dom.window.document.querySelector(".block-wrapper");
+        const wrapper = dom.window.document.querySelector(".ce-block[data-block-id]");
         expect(wrapper).not.toBeNull();
         expect(wrapper.dataset.blockId).toBe("blk-1");
     });
@@ -190,7 +191,7 @@ describe("initBlockWrappers", () => {
         addCeBlock(dom, "blk-own");
         const blocks = [{ block_id: "blk-own", author: "h001", created_at: 1700000000 }];
         dom.window.initBlockWrappers(blocks, "h001");
-        const wrapper = dom.window.document.querySelector(".block-wrapper");
+        const wrapper = dom.window.document.querySelector(".ce-block[data-block-id]");
         expect(wrapper.classList.contains("block-wrapper--own")).toBe(true);
         expect(wrapper.classList.contains("block-wrapper--foreign")).toBe(false);
     });
@@ -199,7 +200,7 @@ describe("initBlockWrappers", () => {
         addCeBlock(dom, "blk-foreign");
         const blocks = [{ block_id: "blk-foreign", author: "h002", created_at: 1700000000 }];
         dom.window.initBlockWrappers(blocks, "h001");
-        const wrapper = dom.window.document.querySelector(".block-wrapper");
+        const wrapper = dom.window.document.querySelector(".ce-block[data-block-id]");
         expect(wrapper.classList.contains("block-wrapper--foreign")).toBe(true);
         expect(wrapper.classList.contains("block-wrapper--own")).toBe(false);
     });
@@ -209,7 +210,7 @@ describe("initBlockWrappers", () => {
         // Kein Eintrag in blocks fuer 'blk-unknown'
         const blocks = [{ block_id: "blk-known", author: "h001", created_at: 1700000000 }];
         dom.window.initBlockWrappers(blocks, "h001");
-        const wrapper = dom.window.document.querySelector(".block-wrapper");
+        const wrapper = dom.window.document.querySelector(".ce-block[data-block-id]");
         expect(wrapper).toBeNull();
     });
 
@@ -218,7 +219,7 @@ describe("initBlockWrappers", () => {
         const blocks = [{ block_id: "blk-idem", author: "h001", created_at: 1700000000 }];
         dom.window.initBlockWrappers(blocks, "h001");
         dom.window.initBlockWrappers(blocks, "h001");
-        const wrappers = dom.window.document.querySelectorAll(".block-wrapper");
+        const wrappers = dom.window.document.querySelectorAll(".ce-block[data-block-id]");
         expect(wrappers.length).toBe(1);
     });
 

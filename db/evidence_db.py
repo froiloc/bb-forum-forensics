@@ -78,6 +78,17 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
+# Erlaubte Annotationskategorien (forensische Grundkategorien).
+# Beleg: Bauplan B4, Projektgespraech 2026-04-19
+VALID_CATEGORIES: frozenset[str] = frozenset({
+    "CAT_PERSON",
+    "CAT_LOCATION",
+    "CAT_176",
+    "CAT_184",
+    "CAT_VICTIM",
+    "CAT_OTHER",
+})
+
 _MIGRATION_COLUMNS: list[tuple[str, str, str]] = []
 
 # =============================================================================

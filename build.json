@@ -1,6 +1,6 @@
 {
-  "build":   241,
-  "version": "0.6.241",
+  "build":   242,
+  "version": "0.6.242",
   "date":    "2026-05-23",
-  "note":    "Build 241: Bugfix — imports in evidence_db.py wiederhergestellt; fetch-Mock in JS-Tests; CSS-Klassen in annotation_sidebar-Tests korrigiert; T09 placeholder_chips als todo"
+  "note":    "Build 242: Bugfix — VALID_CATEGORIES wiederhergestellt; T05-T09 block_wrapper-Tests auf Build-120-Redesign angepasst"
 }
