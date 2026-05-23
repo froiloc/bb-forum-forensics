@@ -1,6 +1,6 @@
 {
-  "build":   240,
-  "version": "0.6.240",
+  "build":   241,
+  "version": "0.6.241",
   "date":    "2026-05-23",
-  "note":    "Build 240: Paket 3 — Lock-Actions neu nach SLA+Layer-Spez; Queue-Kaskade bei RELEASING; SSE-Client-Tracking; get_active_sse_clients"
+  "note":    "Build 241: Bugfix — imports in evidence_db.py wiederhergestellt; fetch-Mock in JS-Tests; CSS-Klassen in annotation_sidebar-Tests korrigiert; T09 placeholder_chips als todo"
 }

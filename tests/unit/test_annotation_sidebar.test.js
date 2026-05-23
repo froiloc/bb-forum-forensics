@@ -191,7 +191,7 @@ describe('_renderAnnotation()', () => {
             _ann({ text: 'Stimmt mit Alias ueberein' })
         );
         expect(html).toContain('Stimmt mit Alias ueberein');
-        expect(html).toContain('as-ann-text');
+        expect(html).toContain('as-ann-notes');  // Build 240: umbenannt von as-ann-text
     });
 
     it('T13: Tags werden als as-tag-Chips gerendert', () => {
@@ -207,7 +207,7 @@ describe('_renderAnnotation()', () => {
         const html = window.AnnotationSidebar._renderAnnotation(
             _ann({ selection: { text: 'wie BirnenKenner99 bereits' } })
         );
-        expect(html).toContain('as-ann-orig');
+        expect(html).toContain('as-ann-quote');  // Build 240: umbenannt von as-ann-orig
         expect(html).toContain('BirnenKenner99');
     });
 

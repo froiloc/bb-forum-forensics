@@ -56,6 +56,10 @@ function makeDOM(autosaveMs = null) {
     // crypto.randomUUID-Stub
     dom.window.crypto = { randomUUID: () => "test-uuid-" + Math.random().toString(36).slice(2) };
 
+    // fetch-Stub: verhindert 'fetch is not defined' beim eval von report_editor.js
+    // (Version-Fetch auf oberster Ebene). Beleg: Build 240 Bugfix
+    dom.window.fetch = () => Promise.resolve({ ok: false, json: () => Promise.resolve(null) });
+
     const src = readFileSync("userinfo/report_editor.js", "utf-8");
     dom.window.eval(src);
     return dom;

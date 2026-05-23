@@ -64,6 +64,20 @@
 #     - # Schema v2.0: alle Spalten direkt im _SCHEMA_DDL.
 # Keine Legacy-Migrationen mehr noetig.
 # Beleg: Architektur-Revision 2026-05-18
+from __future__ import annotations
+
+import json
+import logging
+import sqlite3
+import threading
+import time
+import uuid
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Optional
+
+logger = logging.getLogger(__name__)
+
 _MIGRATION_COLUMNS: list[tuple[str, str, str]] = []
 
 # =============================================================================
