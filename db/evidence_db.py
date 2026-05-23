@@ -71,329 +71,257 @@ _MIGRATION_COLUMNS: list[tuple[str, str, str]] = []
 # Letzte Synchronisation: Build 239 (Schema v2.0), 2026-05-18
 # =============================================================================
 _SCHEMA_DDL = """
--- =============================================================================
--- evidence_schema_db.sql
--- Schema der evidence_<uid>.db
---
--- Architektur-Revision: Layer-Modell B6 v2.0
--- Beleg: Architektur-Entwurf 2026-05-18, Projektgespraech
---
--- Aenderungen gegenueber v1.x:
---   editor_locks:          resource TEXT (String-Hacking)  to  report_id INTEGER FK
---   lock_takeover_requests: report_id ergaenzt, responded_at ergaenzt, CASCADE
---   report_blocks:         placeholder_values_json aus Migration ins Hauptschema
---   report_blocks:         module_id beibehalten (Herkunfts-Nachvollziehbarkeit)
---   annotations:           alle migrierten Spalten ins Hauptschema integriert
---   report_templates:      NICHT in dieser DB (gehoert in templates.db / B7)
---   block_evidence_user:   NICHT in dieser DB (noch nicht implementiert)
---   report_comments:       Original beibehalten (differenzierte Status)
---   report_anchors:        Original beibehalten (anchor_text erhalten)
---   placeholder_cache:     Original beibehalten (query_id + uid als PK)
--- =============================================================================
-
-BEGIN TRANSACTION;
-
--- ---------------------------------------------------------------------------
--- Besuche und Viewport-Ereignisse
--- ---------------------------------------------------------------------------
-
 DROP TABLE IF EXISTS "scraper_log";
 CREATE TABLE IF NOT EXISTS "scraper_log" (
-    "id"      INTEGER,
-    "event"   TEXT    NOT NULL,
-    "user_id" INTEGER NOT NULL,
-    "detail"  TEXT,
-    "ts"      INTEGER NOT NULL,
-    PRIMARY KEY("id" AUTOINCREMENT)
+	"id"	INTEGER,
+	"event"	TEXT NOT NULL,
+	"user_id"	INTEGER NOT NULL,
+	"detail"	TEXT,
+	"ts"	INTEGER NOT NULL,
+	PRIMARY KEY("id" AUTOINCREMENT)
 );
-
 DROP TABLE IF EXISTS "page_visits";
 CREATE TABLE IF NOT EXISTS "page_visits" (
-    "id"              INTEGER,
-    "page_url"        TEXT    NOT NULL,
-    "scrape_context"  TEXT    NOT NULL,
-    "ts"              INTEGER NOT NULL,
-    "investigator_id" INTEGER,
-    PRIMARY KEY("id" AUTOINCREMENT)
+	"id"	INTEGER,
+	"page_url"	TEXT NOT NULL,
+	"scrape_context"	TEXT NOT NULL,
+	"ts"	INTEGER NOT NULL,
+	"investigator_id"	INTEGER,
+	PRIMARY KEY("id" AUTOINCREMENT)
 );
-
 DROP TABLE IF EXISTS "viewport_events";
 CREATE TABLE IF NOT EXISTS "viewport_events" (
-    "id"              INTEGER,
-    "page_url"        TEXT    NOT NULL,
-    "element_id"      TEXT,
-    "visible_ms"      INTEGER NOT NULL,
-    "ts_enter"        INTEGER NOT NULL,
-    "ts_leave"        INTEGER NOT NULL,
-    "investigator_id" INTEGER,
-    PRIMARY KEY("id" AUTOINCREMENT)
+	"id"	INTEGER,
+	"page_url"	TEXT NOT NULL,
+	"element_id"	TEXT,
+	"visible_ms"	INTEGER NOT NULL,
+	"ts_enter"	INTEGER NOT NULL,
+	"ts_leave"	INTEGER NOT NULL,
+	"investigator_id"	INTEGER,
+	PRIMARY KEY("id" AUTOINCREMENT)
 );
-
--- ---------------------------------------------------------------------------
--- Annotationen (alle migrierten Spalten direkt integriert)
--- ---------------------------------------------------------------------------
-
 DROP TABLE IF EXISTS "annotations";
 CREATE TABLE IF NOT EXISTS "annotations" (
-    "id"              INTEGER,
-    "page_url"        TEXT    NOT NULL,
-    "element_id"      TEXT,
-    "category"        TEXT    NOT NULL,
-    "text"            TEXT    NOT NULL DEFAULT '',
-    "ts"              INTEGER NOT NULL,
-    "investigator_id" INTEGER,
-    "selection_json"  TEXT    DEFAULT NULL,
-    "tags_json"       TEXT    DEFAULT NULL,
-    "local_id"        TEXT    DEFAULT NULL,
-    "post_id"         INTEGER DEFAULT NULL,
-    "created_by"      TEXT    NOT NULL DEFAULT '',
-    -- Soft-Delete + Append-only-Log (Build 178, Bug 2.75)
-    "deleted_at"      INTEGER DEFAULT NULL,
-    "version_nr"      INTEGER NOT NULL DEFAULT 1,
-    "prev_id"         INTEGER DEFAULT NULL,
-    -- Forenbenutzer dem die Annotation inhaltlich gilt (Build 182, Bug 2.78)
-    -- NULL = uid dieser DB, sonst Fremd-uid
-    "actual_uid"      INTEGER DEFAULT NULL,
-    PRIMARY KEY("id" AUTOINCREMENT)
+	"id"	INTEGER,
+	"page_url"	TEXT NOT NULL,
+	"element_id"	TEXT,
+	"category"	TEXT NOT NULL,
+	"text"	TEXT NOT NULL DEFAULT '',
+	"ts"	INTEGER NOT NULL,
+	"investigator_id"	INTEGER,
+	"selection_json"	TEXT DEFAULT NULL,
+	"tags_json"	TEXT DEFAULT NULL,
+	"local_id"	TEXT DEFAULT NULL,
+	"post_id"	INTEGER DEFAULT NULL,
+	"created_by"	TEXT NOT NULL DEFAULT '',
+	"deleted_at"	INTEGER DEFAULT NULL,
+	"version_nr"	INTEGER NOT NULL DEFAULT 1,
+	"prev_id"	INTEGER DEFAULT NULL,
+	"actual_uid"	INTEGER DEFAULT NULL,
+	PRIMARY KEY("id" AUTOINCREMENT)
 );
-
--- ---------------------------------------------------------------------------
--- Berichte
--- (report_templates gehoert NICHT in diese DB  -- sie ist pro Beschuldigtem.
---  Vorlagen sind universal und gehoeren in templates.db / B7.)
--- ---------------------------------------------------------------------------
-
 DROP TABLE IF EXISTS "reports";
 CREATE TABLE IF NOT EXISTS "reports" (
-    "id"          INTEGER,
-    "report_type" TEXT    NOT NULL
-                  CHECK("report_type" IN ('interim', 'final', 'addendum')),
-    "sequence_nr" INTEGER NOT NULL DEFAULT 1,
-    "title"       TEXT    NOT NULL,
-    "created_by"  TEXT    NOT NULL,
-    "created_at"  INTEGER NOT NULL,
-    "status"      TEXT    NOT NULL DEFAULT 'draft'
-                  CHECK("status" IN ('draft', 'submitted', 'approved', 'final')),
-    PRIMARY KEY("id" AUTOINCREMENT)
+	"id"	INTEGER,
+	"report_type"	TEXT NOT NULL CHECK("report_type" IN ('interim', 'final', 'addendum')),
+	"sequence_nr"	INTEGER NOT NULL DEFAULT 1,
+	"title"	TEXT NOT NULL,
+	"created_by"	TEXT NOT NULL,
+	"created_at"	INTEGER NOT NULL,
+	"status"	TEXT NOT NULL DEFAULT 'draft' CHECK("status" IN ('draft', 'submitted', 'approved', 'final')),
+	PRIMARY KEY("id" AUTOINCREMENT)
 );
-
--- ---------------------------------------------------------------------------
--- Report-Bloecke
---
--- placeholder_values_json: war per Migration ergaenzt, jetzt direkt im Schema
--- module_id: Herkunft des Blocks (welches Modul hat diesen Block erzeugt)
---            NULL = manuell angelegt, INTEGER = module_id aus templates.db
--- ---------------------------------------------------------------------------
-
 DROP TABLE IF EXISTS "report_blocks";
 CREATE TABLE IF NOT EXISTS "report_blocks" (
-    "block_id"               TEXT    NOT NULL,
-    "report_id"              INTEGER NOT NULL,
-    "author"                 TEXT    NOT NULL,  -- unveraenderlich (Grundregel 14)
-    "created_at"             INTEGER NOT NULL,
-    "updated_at"             INTEGER NOT NULL,
-    "block_type"             TEXT    NOT NULL,
-    "block_data"             TEXT    NOT NULL DEFAULT '{}',
-    "placeholder_values_json" TEXT   DEFAULT NULL,
-    "module_id"              INTEGER DEFAULT NULL,  -- Herkunfts-Nachvollziehbarkeit
-    PRIMARY KEY("block_id"),
-    FOREIGN KEY("report_id") REFERENCES "reports"("id") ON DELETE CASCADE
+	"block_id"	TEXT NOT NULL,
+	"report_id"	INTEGER NOT NULL,
+	"author"	TEXT NOT NULL,
+	"created_at"	INTEGER NOT NULL,
+	"updated_at"	INTEGER NOT NULL,
+	"block_type"	TEXT NOT NULL,
+	"block_data"	TEXT NOT NULL DEFAULT '{}',
+	"placeholder_values_json"	TEXT,
+	"module_id"	INTEGER,
+	FOREIGN KEY("report_id") REFERENCES "reports"("id"),
+	PRIMARY KEY("block_id")
 );
-
 DROP TABLE IF EXISTS "report_block_order";
 CREATE TABLE IF NOT EXISTS "report_block_order" (
-    "block_id"         TEXT    NOT NULL,
-    "sort_index"       TEXT    NOT NULL,
-    "last_modified_by" TEXT    NOT NULL,
-    "last_modified_at" INTEGER NOT NULL,
-    PRIMARY KEY("block_id"),
-    FOREIGN KEY("block_id") REFERENCES "report_blocks"("block_id") ON DELETE CASCADE
+	"block_id"	TEXT NOT NULL,
+	"sort_index"	INTEGER NOT NULL,
+	"last_modified_by"	TEXT NOT NULL,
+	"last_modified_at"	INTEGER NOT NULL,
+	FOREIGN KEY("block_id") REFERENCES "report_blocks"("block_id"),
+	PRIMARY KEY("block_id")
 );
-
--- ---------------------------------------------------------------------------
--- Anker: Verknuepfung Block < to  Annotation
--- anchor_text: der zitierte Textausschnitt der Annotation (Original beibehalten)
--- ---------------------------------------------------------------------------
-
 DROP TABLE IF EXISTS "report_anchors";
 CREATE TABLE IF NOT EXISTS "report_anchors" (
-    "id"            INTEGER,
-    "block_id"      TEXT    NOT NULL,
-    "annotation_id" INTEGER NOT NULL,
-    "anchor_text"   TEXT    NOT NULL,
-    "created_at"    INTEGER NOT NULL,
-    PRIMARY KEY("id" AUTOINCREMENT),
-    FOREIGN KEY("block_id")      REFERENCES "report_blocks"("block_id") ON DELETE CASCADE,
-    FOREIGN KEY("annotation_id") REFERENCES "annotations"("id")
+	"id"	INTEGER,
+	"block_id"	TEXT NOT NULL,
+	"annotation_id"	INTEGER NOT NULL,
+	"anchor_text"	TEXT NOT NULL,
+	"created_at"	INTEGER NOT NULL,
+	PRIMARY KEY("id" AUTOINCREMENT),
+	FOREIGN KEY("annotation_id") REFERENCES "annotations"("id"),
+	FOREIGN KEY("block_id") REFERENCES "report_blocks"("block_id")
 );
-
--- ---------------------------------------------------------------------------
--- Kommentare (Original beibehalten  -- differenzierte Status-Uebergaenge)
--- Status-Uebergaenge sind One-Way (Grundregel 15).
--- Beleg: Bauplan B6 v0.5 SS2.3
--- ---------------------------------------------------------------------------
-
 DROP TABLE IF EXISTS "report_comments";
 CREATE TABLE IF NOT EXISTS "report_comments" (
-    "id"                INTEGER,
-    "block_id"          TEXT    NOT NULL,
-    "author"            TEXT    NOT NULL,
-    "created_at"        INTEGER NOT NULL,
-    "comment_text"      TEXT    NOT NULL,
-    "suggested_content" TEXT,
-    "status"            TEXT    NOT NULL DEFAULT 'pending'
-                        CHECK("status" IN (
-                            'pending',
-                            'addressed',
-                            'dismissed',
-                            'revoked'
-                        )),
-    "resolved_by"       TEXT,
-    "resolved_at"       INTEGER,
-    PRIMARY KEY("id" AUTOINCREMENT),
-    FOREIGN KEY("block_id") REFERENCES "report_blocks"("block_id") ON DELETE CASCADE
+	"id"	INTEGER,
+	"block_id"	TEXT NOT NULL,
+	"author"	TEXT NOT NULL,
+	"created_at"	INTEGER NOT NULL,
+	"comment_text"	TEXT NOT NULL,
+	"suggested_content"	TEXT,
+	"status"	TEXT NOT NULL DEFAULT 'pending' CHECK("status" IN ('pending', 'addressed', 'dismissed', 'revoked')),
+	"resolved_by"	TEXT,
+	"resolved_at"	INTEGER,
+	FOREIGN KEY("block_id") REFERENCES "report_blocks"("block_id"),
+	PRIMARY KEY("id" AUTOINCREMENT)
 );
-
--- ---------------------------------------------------------------------------
--- Genehmigungen
--- ---------------------------------------------------------------------------
-
-DROP TABLE IF EXISTS "report_approvals";
-CREATE TABLE IF NOT EXISTS "report_approvals" (
-    "id"          INTEGER,
-    "report_id"   INTEGER NOT NULL,
-    "approved_by" TEXT    NOT NULL,
-    "approved_at" INTEGER NOT NULL,
-    "note"        TEXT    DEFAULT NULL,
-    "is_final"    INTEGER NOT NULL DEFAULT 0,
-    PRIMARY KEY("id" AUTOINCREMENT),
-    FOREIGN KEY("report_id") REFERENCES "reports"("id") ON DELETE CASCADE
-);
-
--- ---------------------------------------------------------------------------
--- Placeholder-Cache (auto-aufgeloeste a:-Platzhalter)
--- PK (query_id, uid): derselbe Platzhalter kann fuer verschiedene Nutzer
--- verschiedene Werte haben. Original beibehalten.
--- ---------------------------------------------------------------------------
-
 DROP TABLE IF EXISTS "placeholder_cache";
 CREATE TABLE IF NOT EXISTS "placeholder_cache" (
-    "query_id"    TEXT    NOT NULL,
-    "uid"         INTEGER NOT NULL,
-    "cached_value" TEXT   NOT NULL,
-    "cached_at"   INTEGER NOT NULL,
-    PRIMARY KEY("query_id", "uid")
+	"query_id"	TEXT NOT NULL,
+	"uid"	INTEGER NOT NULL,
+	"cached_value"	TEXT NOT NULL,
+	"cached_at"	INTEGER NOT NULL,
+	PRIMARY KEY("query_id","uid")
 );
-
--- ---------------------------------------------------------------------------
--- Editor-Locks
---
--- Kernänderung gegenueber v1.x:
---   resource TEXT PRIMARY KEY  →  report_id INTEGER PRIMARY KEY FK
---
--- Ein Lock gilt immer fuer genau einen Bericht.
--- Die Kodierung als String "report_editor:N" war ein Workaround.
--- _lock_resource() und _LOCK_RESOURCE_BASE entfallen vollstaendig.
--- ---------------------------------------------------------------------------
-
+DROP TABLE IF EXISTS "report_approvals";
+CREATE TABLE IF NOT EXISTS "report_approvals" (
+	"id"	INTEGER,
+	"report_id"	INTEGER NOT NULL,
+	"approved_by"	TEXT NOT NULL,
+	"approved_at"	INTEGER NOT NULL,
+	"note"	TEXT DEFAULT NULL,
+	"is_final"	INTEGER NOT NULL DEFAULT 0,
+	PRIMARY KEY("id" AUTOINCREMENT),
+	FOREIGN KEY("report_id") REFERENCES "reports"("id")
+);
+-- 1. Das aktive Lock (Die Quelle der Wahrheit)
 DROP TABLE IF EXISTS "editor_locks";
 CREATE TABLE IF NOT EXISTS "editor_locks" (
-    "report_id"  INTEGER NOT NULL,
-    "locked_by"  TEXT    NOT NULL,
-    "lock_id"    TEXT    NOT NULL UNIQUE,
-    "locked_at"  INTEGER NOT NULL,
-    "sse_client"     TEXT    NOT NULL,
-    "cooldown_until" INTEGER DEFAULT NULL,  -- NULL = kein Cooldown aktiv
-    PRIMARY KEY("report_id"),
-    FOREIGN KEY("report_id") REFERENCES "reports"("id") ON DELETE CASCADE
+	"report_id"	  INTEGER NOT NULL PRIMARY KEY,
+        "lock_id"         TEXT    NOT NULL, -- Der "Schlüssel" für Schreibzugriffe
+        "locked_by"       TEXT    NOT NULL, -- UserID
+        "sse_client"      TEXT    NOT NULL, -- Eindeutige ID der SSE-Verbindung
+        "locked_at"       INTEGER NOT NULL,
+        "cooldown_until"  INTEGER,          -- NULL wenn kein Cooldown
+        FOREIGN KEY("report_id") REFERENCES reports(id)
 );
-
--- ---------------------------------------------------------------------------
--- Lock-Uebernahme-Anfragen
---
--- report_id ergaenzt (Pflichtfeld, FK auf reports)
--- responded_at ergaenzt fuer Audit-Log
--- ---------------------------------------------------------------------------
-
 DROP TABLE IF EXISTS "lock_takeover_requests";
 CREATE TABLE IF NOT EXISTS "lock_takeover_requests" (
-    "id"           INTEGER,
-    "report_id"    INTEGER NOT NULL,
-    "lock_id"      TEXT    NOT NULL,
-    "requested_by" TEXT    NOT NULL,
-    "requested_at" INTEGER NOT NULL,
-    "responded_at" INTEGER DEFAULT NULL,
-    "status"       TEXT    NOT NULL DEFAULT 'pending'
-                   CHECK("status" IN ('pending', 'granted', 'denied', 'expired')),
-    PRIMARY KEY("id" AUTOINCREMENT),
-    FOREIGN KEY("report_id") REFERENCES "reports"("id") ON DELETE RESTRICT
+    "id"            INTEGER PRIMARY KEY AUTOINCREMENT,
+    "report_id"     INTEGER NOT NULL,
+    "lock_id"       TEXT    NOT NULL,
+    "requested_by"  TEXT    NOT NULL,
+    "requested_at"  INTEGER NOT NULL,
+    "responded_at"  INTEGER,
+    "status"        TEXT    NOT NULL DEFAULT 'pending'
+                    CHECK("status" IN ('pending', 'granted', 'denied', 'expired'))
 );
-
--- ---------------------------------------------------------------------------
--- Lock-Warteschlange (FIFO)
---
--- Ein Client kann pro Bericht nur einen Eintrag haben.
--- Bereinigung erfolgt lazy beim naechsten RELEASING (SLA Punkt 4).
--- Kein ON DELETE CASCADE: Queue-Eintraege sind historisch relevant.
--- ---------------------------------------------------------------------------
-
+DROP TABLE IF EXISTS "investigator_aliases";
+CREATE TABLE IF NOT EXISTS "investigator_aliases" (
+	"id"	INTEGER,
+	"term"	TEXT NOT NULL UNIQUE,
+	"created_by"	TEXT NOT NULL DEFAULT '',
+	"created_at"	INTEGER NOT NULL,
+	PRIMARY KEY("id" AUTOINCREMENT)
+);
+-- 2. Die Warteschlange (FIFO)
 DROP TABLE IF EXISTS "lock_queue";
-CREATE TABLE IF NOT EXISTS "lock_queue" (
-    "id"           INTEGER,
-    "report_id"    INTEGER NOT NULL,
-    "requested_by" TEXT    NOT NULL,
-    "sse_client"   TEXT    NOT NULL,
-    "requested_at" INTEGER NOT NULL,
-    PRIMARY KEY("id" AUTOINCREMENT),
-    FOREIGN KEY("report_id") REFERENCES "reports"("id") ON DELETE RESTRICT
+CREATE TABLE "lock_queue" (
+        "id"              INTEGER PRIMARY KEY AUTOINCREMENT,
+        "report_id"       INTEGER NOT NULL,
+        "requested_by"    TEXT    NOT NULL,
+        "sse_client"      TEXT    NOT NULL,
+        "requested_at"    INTEGER NOT NULL,
+        FOREIGN KEY("report_id") REFERENCES reports("id")
 );
-
--- =============================================================================
--- Indizes
--- =============================================================================
-
-CREATE INDEX IF NOT EXISTS "pv_url_idx"        ON "page_visits"     ("page_url");
-CREATE INDEX IF NOT EXISTS "ve_url_idx"        ON "viewport_events" ("page_url");
-CREATE INDEX IF NOT EXISTS "ann_url_idx"       ON "annotations"     ("page_url");
-CREATE INDEX IF NOT EXISTS "ann_cat_idx"       ON "annotations"     ("category");
-CREATE INDEX IF NOT EXISTS "ann_active_idx"    ON "annotations"     ("page_url", "deleted_at")
-    WHERE "deleted_at" IS NULL;
-
-CREATE INDEX IF NOT EXISTS "rep_type_idx"      ON "reports"         ("report_type");
-CREATE INDEX IF NOT EXISTS "rep_status_idx"    ON "reports"         ("status");
-
-CREATE INDEX IF NOT EXISTS "rb_report_idx"     ON "report_blocks"   ("report_id");
-CREATE INDEX IF NOT EXISTS "rb_author_idx"     ON "report_blocks"   ("author");
-CREATE INDEX IF NOT EXISTS "rbo_sort_idx"      ON "report_block_order" ("sort_index");
-
-CREATE INDEX IF NOT EXISTS "ra_block_idx"      ON "report_anchors"  ("block_id");
-CREATE INDEX IF NOT EXISTS "ra_ann_idx"        ON "report_anchors"  ("annotation_id");
-CREATE INDEX IF NOT EXISTS "rc_block_idx"      ON "report_comments" ("block_id");
-CREATE INDEX IF NOT EXISTS "rc_status_idx"     ON "report_comments" ("status");
-CREATE INDEX IF NOT EXISTS "rap_report_idx"    ON "report_approvals" ("report_id");
-
-CREATE INDEX IF NOT EXISTS "el_locked_by_idx"  ON "editor_locks"    ("locked_by");
-CREATE INDEX IF NOT EXISTS "ltr_report_idx"    ON "lock_takeover_requests" ("report_id");
-CREATE INDEX IF NOT EXISTS "ltr_status_idx"    ON "lock_takeover_requests" ("status");
-
--- =============================================================================
--- Eindeutigkeitsbedingungen
--- =============================================================================
-
--- Nur ein Abschlussbericht pro Untersuchung
-CREATE UNIQUE INDEX IF NOT EXISTS "reports_one_final_idx"
-    ON "reports" ("report_type")
-    WHERE "report_type" = 'final';
-
--- Annotation local_id eindeutig
-CREATE UNIQUE INDEX IF NOT EXISTS "annotations_local_id_uniq"
-    ON "annotations" ("local_id")
-    WHERE "local_id" IS NOT NULL;
-
--- Block-Annotation-Verknuepfung eindeutig
-CREATE UNIQUE INDEX IF NOT EXISTS "ra_block_ann_uniq"
-    ON "report_anchors" ("block_id", "annotation_id");
-
+-- Index für schnelles Finden der Warteschlange pro Bericht
+DROP INDEX IF EXISTS "idx_queue_report";
+CREATE INDEX "idx_queue_report" ON lock_queue("report_id", "requested_at");
+DROP INDEX IF EXISTS "pv_url_idx";
+CREATE INDEX IF NOT EXISTS "pv_url_idx" ON "page_visits" (
+	"page_url"
+);
+DROP INDEX IF EXISTS "ve_url_idx";
+CREATE INDEX IF NOT EXISTS "ve_url_idx" ON "viewport_events" (
+	"page_url"
+);
+DROP INDEX IF EXISTS "ann_url_idx";
+CREATE INDEX IF NOT EXISTS "ann_url_idx" ON "annotations" (
+	"page_url"
+);
+DROP INDEX IF EXISTS "ann_cat_idx";
+CREATE INDEX IF NOT EXISTS "ann_cat_idx" ON "annotations" (
+	"category"
+);
+DROP INDEX IF EXISTS "rep_type_idx";
+CREATE INDEX IF NOT EXISTS "rep_type_idx" ON "reports" (
+	"report_type"
+);
+DROP INDEX IF EXISTS "rep_status_idx";
+CREATE INDEX IF NOT EXISTS "rep_status_idx" ON "reports" (
+	"status"
+);
+DROP INDEX IF EXISTS "rb_report_idx";
+CREATE INDEX IF NOT EXISTS "rb_report_idx" ON "report_blocks" (
+	"report_id"
+);
+DROP INDEX IF EXISTS "rb_author_idx";
+CREATE INDEX IF NOT EXISTS "rb_author_idx" ON "report_blocks" (
+	"author"
+);
+DROP INDEX IF EXISTS "rbo_sort_idx";
+CREATE INDEX IF NOT EXISTS "rbo_sort_idx" ON "report_block_order" (
+	"sort_index"
+);
+DROP INDEX IF EXISTS "ra_block_idx";
+CREATE INDEX IF NOT EXISTS "ra_block_idx" ON "report_anchors" (
+	"block_id"
+);
+DROP INDEX IF EXISTS "ra_ann_idx";
+CREATE INDEX IF NOT EXISTS "ra_ann_idx" ON "report_anchors" (
+	"annotation_id"
+);
+DROP INDEX IF EXISTS "ra_block_ann_uniq";
+CREATE UNIQUE INDEX IF NOT EXISTS "ra_block_ann_uniq" ON "report_anchors" (
+	"block_id",
+	"annotation_id"
+);
+DROP INDEX IF EXISTS "rc_block_idx";
+CREATE INDEX IF NOT EXISTS "rc_block_idx" ON "report_comments" (
+	"block_id"
+);
+DROP INDEX IF EXISTS "rc_status_idx";
+CREATE INDEX IF NOT EXISTS "rc_status_idx" ON "report_comments" (
+	"status"
+);
+DROP INDEX IF EXISTS "rap_report_idx";
+CREATE INDEX IF NOT EXISTS "rap_report_idx" ON "report_approvals" (
+	"report_id"
+);
+DROP INDEX IF EXISTS "reports_one_final_idx";
+CREATE UNIQUE INDEX IF NOT EXISTS "reports_one_final_idx" ON "reports" (
+	"report_type"
+) WHERE "report_type" = 'final';
+DROP INDEX IF EXISTS "ia_term_idx";
+CREATE INDEX IF NOT EXISTS "ia_term_idx" ON "investigator_aliases" (
+	"term"
+);
+DROP INDEX IF EXISTS "ann_local_id_idx";
+CREATE INDEX IF NOT EXISTS "ann_local_id_idx" ON "annotations" (
+	"local_id"
+) WHERE "local_id" IS NOT NULL;
+DROP INDEX IF EXISTS "ann_active_url_idx";
+CREATE INDEX IF NOT EXISTS "ann_active_url_idx" ON "annotations" (
+	"page_url"
+) WHERE "deleted_at" IS NULL;
+DROP INDEX IF EXISTS "ann_prev_id_idx";
+CREATE INDEX IF NOT EXISTS "ann_prev_id_idx" ON "annotations" (
+	"prev_id"
+) WHERE "prev_id" IS NOT NULL;
 """
 
 # =============================================================================

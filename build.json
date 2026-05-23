@@ -1,6 +1,6 @@
 {
-  "build":   239,
-  "version": "0.6.239b",
+  "build":   240,
+  "version": "0.6.240",
   "date":    "2026-05-23",
-  "note":    "Build 239b: Paket 1+2 — Schema v2.0 final (lock_queue, cooldown_until); Lock-Methoden komplett neu nach SLA+Layer-Spezifikation"
+  "note":    "Build 240: Paket 3 — Lock-Actions neu nach SLA+Layer-Spez; Queue-Kaskade bei RELEASING; SSE-Client-Tracking; get_active_sse_clients"
 }

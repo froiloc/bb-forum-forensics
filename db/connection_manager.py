@@ -95,6 +95,14 @@ class DatabaseBundle:
     assets:       AssetsDb            # NEU Build 017
     templates:    TemplatesDb         # NEU Build 089
     temp_db_path: Optional[str] = None
+    # Menge aktiver SSE-Client-IDs — von EventsEndpoint verwaltet.
+    # Wird von _action_release_lock fuer Queue-Kaskade (SLA Punkt 4) benoetigt.
+    # Beleg: Architektur-Revision 2026-05-23
+    _active_sse_clients: set = None
+
+    def get_active_sse_clients(self) -> set:
+        """Gibt Menge aktiver SSE-Client-IDs zurueck."""
+        return self._active_sse_clients or set()
 
     def close(self) -> None:
         """Schließt die Haupt-Verbindung (und damit alle ATTACHs)."""

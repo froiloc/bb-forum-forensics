@@ -598,11 +598,15 @@ class ReportEndpoint:
         if action == "acquire_lock":
             self._action_acquire_lock(handler, data, investigator)
         elif action == "release_lock":
-            self._action_release_lock(handler, data)
+            self._action_release_lock(handler, data, investigator)
         elif action == "heartbeat":
             self._action_heartbeat(handler, data, investigator)
         elif action == "resume_lock":
             self._action_resume_lock(handler, data, investigator)
+        elif action == "queue_join":
+            self._action_queue_join(handler, data, investigator)
+        elif action == "queue_leave":
+            self._action_queue_leave(handler, data, investigator)
         elif action == "request_takeover":
             self._action_request_takeover(handler, data, investigator)
         elif action == "respond_takeover":
@@ -896,155 +900,252 @@ class ReportEndpoint:
     # Beleg: Bauplan B4 §8.6, Lock-System v2, Projektgespraech 2026-04-21
     # ------------------------------------------------------------------
 
-    def _action_acquire_lock(
-        self, handler, data, investigator
-    ) -> None:
-        sse_client = str(data.get("sse_client", ""))
+    def _action_acquire_lock(self, handler, data, investigator) -> None:
+        """ACQUIRING: Lock fuer einen Bericht erwerben.
+
+        Antwortet mit 200+lock_id bei Erfolg.
+        Antwortet mit 423+locked_by+cooldown_until+queue_length bei Misserfolg.
+        Beleg: Layer 4 States ACQUIRING, SLA Punkt 11
+        """
+        sse_client = str(data.get("sse_client", "")).strip()
         if not sse_client:
             handler.send_response_body(
                 400, _json_err("sse_client fehlt", "MISSING_SSE_CLIENT"),
                 content_type="application/json; charset=utf-8",
             )
             return
-        # Bug 2.120 Fix Build 218: report_id fuer bericht-spezifischen Lock.
-        # Beleg: Bugfix Build 218, Projektgespraech 2026-05-17
         report_id_raw = data.get("report_id")
-        report_id = int(report_id_raw) if report_id_raw is not None else None
+        if not report_id_raw:
+            handler.send_response_body(
+                400, _json_err("report_id fehlt", "MISSING_REPORT_ID"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+        report_id = int(report_id_raw)
         edb = self._bundle.evidence
-        lock_id = edb.acquire_lock(
-            locked_by=investigator, sse_client=sse_client, report_id=report_id
-        )
-        if lock_id is None:
-            current = edb.get_lock(report_id=report_id)
-            locked_by = current.locked_by if current else "?"
-            # Build 122 Fix: Wenn der Lock vom selben Benutzer gehalten wird
-            # (z.B. nach Browser-Refresh, Seiten-Reload oder Server-Neustart),
-            # automatisch resume_lock versuchen statt 423 zu liefern.
-            # Ohne diesen Fix sieht der Benutzer "Belegt: paul" obwohl er selbst
-            # paul ist — und der rote Indikator bleibt dauerhaft.
-            # Beleg: Bugfix Build 122, Projektgespraech 2026-05-08
-            if current and locked_by == investigator:
-                resumed = edb.resume_lock(
-                    lock_id=current.lock_id,
-                    locked_by=investigator,
-                    new_sse_client=sse_client,
-                    report_id=report_id,
+
+        lock_id = edb.acquire_lock(report_id, investigator, sse_client)
+        if lock_id:
+            handler.send_response_body(
+                200,
+                json.dumps({"lock_id": lock_id}, ensure_ascii=False).encode("utf-8"),
+                content_type="application/json; charset=utf-8",
+            )
+            logger.info("ACQUIRING ok: '%s' report_id=%d", investigator, report_id)
+            return
+
+        # Lock belegt — 423 mit Kontext fuer Layer 4 ACQUIRING -> IDLE
+        current = edb.get_lock(report_id)
+
+        # Auto-Resume: selber Benutzer mit neuer SSE (Browser-Reload)
+        if current and current.locked_by == investigator:
+            resumed = edb.resume_lock(report_id, current.lock_id, investigator, sse_client)
+            if resumed:
+                logger.info("ACQUIRING: Auto-Resume '%s' report_id=%d", investigator, report_id)
+                handler.send_response_body(
+                    200,
+                    json.dumps({"lock_id": current.lock_id, "resumed": True},
+                               ensure_ascii=False).encode("utf-8"),
+                    content_type="application/json; charset=utf-8",
                 )
-                if resumed:
-                    logger.info(
-                        "acquire_lock: Auto-Resume fuer '%s' (alter Lock %s → neuer SSE-Client %s)",
-                        investigator, current.lock_id, sse_client,
-                    )
-                    handler.send_response_body(
-                        200,
-                        json.dumps({"lock_id": current.lock_id, "resumed": True},
-                                   ensure_ascii=False).encode("utf-8"),
-                        content_type="application/json; charset=utf-8",
-                    )
-                    return
-            handler.send_response_body(
-                423,
-                json.dumps(
-                    {"error": "Lock bereits belegt", "code": "LOCK_CONFLICT",
-                     "locked_by": locked_by},
-                    ensure_ascii=False,
-                ).encode("utf-8"),
-                content_type="application/json; charset=utf-8",
-            )
-            return
-        handler.send_response_body(
-            200,
-            json.dumps({"lock_id": lock_id}, ensure_ascii=False).encode("utf-8"),
-            content_type="application/json; charset=utf-8",
-        )
-        logger.info(
-            "acquire_lock: '%s' hat Lock erworben (sse_client=%s)",
-            investigator, sse_client,
-        )
+                return
 
-    def _action_release_lock(self, handler, data) -> None:
-        lock_id = str(data.get("lock_id", ""))
-        if not lock_id:
-            handler.send_response_body(
-                400, _json_err("lock_id fehlt", "MISSING_LOCK_ID"),
-                content_type="application/json; charset=utf-8",
-            )
-            return
-        # Bug 2.120 Fix Build 218: report_id fuer bericht-spezifischen Lock.
-        report_id_raw = data.get("report_id")
-        report_id = int(report_id_raw) if report_id_raw is not None else None
-        freed = self._bundle.evidence.release_lock(lock_id, report_id=report_id)
+        locked_by      = current.locked_by if current else "?"
+        cooldown_until = edb.get_cooldown_until(report_id)
+        queue_length   = edb.queue_count(report_id)
         handler.send_response_body(
-            200,
-            json.dumps({"freed": freed}, ensure_ascii=False).encode("utf-8"),
+            423,
+            json.dumps({
+                "error":          "Lock bereits belegt",
+                "code":           "LOCK_CONFLICT",
+                "locked_by":      locked_by,
+                "cooldown_until": cooldown_until,
+                "queue_length":   queue_length,
+            }, ensure_ascii=False).encode("utf-8"),
             content_type="application/json; charset=utf-8",
         )
 
-    def _action_heartbeat(self, handler, data, investigator) -> None:
-        lock_id = data.get("lock_id", "")
-        if not lock_id:
+    def _action_release_lock(self, handler, data, investigator) -> None:
+        """RELEASING: Lock freigeben und Queue-Kaskade ausfuehren.
+
+        Nach Freigabe: FIFO-Queue durchgehen, ersten gueltigen Kandidaten
+        zum neuen Inhaber machen und per SSE benachrichtigen.
+        Cooldown wird beim RELEASING entfernt (SLA Punkt 8).
+        Beleg: Layer 4 States RELEASING, SLA Punkte 4, 8
+        """
+        lock_id = str(data.get("lock_id", "")).strip()
+        report_id_raw = data.get("report_id")
+        if not lock_id or not report_id_raw:
             handler.send_response_body(
-                400, _json_err("lock_id fehlt", "MISSING_LOCK_ID"),
+                400, _json_err("lock_id und report_id erforderlich", "MISSING_FIELDS"),
                 content_type="application/json; charset=utf-8",
             )
             return
-        # Bug 2.120 Fix Build 218: report_id fuer bericht-spezifischen Lock.
-        report_id_raw = data.get("report_id")
-        report_id = int(report_id_raw) if report_id_raw is not None else None
-        lock = self._bundle.evidence.get_lock(report_id=report_id)
-        if lock and lock.lock_id == lock_id and lock.locked_by == investigator:
-            self._bundle.evidence.resume_lock(
-                lock_id=lock_id,
-                locked_by=investigator,
-                new_sse_client=lock.sse_client,
-                report_id=report_id,
-            )
+        report_id = int(report_id_raw)
+        edb = self._bundle.evidence
+
+        # Nur der Inhaber darf freigeben
+        current = edb.get_lock(report_id)
+        if not current or current.lock_id != lock_id or current.locked_by != investigator:
             handler.send_response_body(
-                200, _json_ok({"ok": True}),
+                423, _json_err("Nicht der Lock-Inhaber", "NOT_LOCK_OWNER"),
                 content_type="application/json; charset=utf-8",
             )
-            logger.debug("Heartbeat: Lock erneuert fuer '%s'", investigator)
-        else:
-            handler.send_response_body(
-                423,
-                _json_err("Lock nicht gefunden oder falscher Benutzer", "LOCK_NOT_FOUND"),
-                content_type="application/json; charset=utf-8",
+            return
+
+        # Cooldown entfernen (SLA Punkt 8: erlischt bei freiwilligem RELEASING)
+        edb.clear_cooldown(report_id)
+
+        # Lock freigeben
+        edb.release_lock(report_id, lock_id)
+        logger.info("RELEASING: '%s' gibt Lock frei fuer report_id=%d", investigator, report_id)
+
+        # Queue-Kaskade (SLA Punkt 4): aktive SSE-Clients aus events.py-Kontext
+        active_clients = self._bundle.get_active_sse_clients()
+        next_candidate = edb.queue_next_valid(report_id, active_clients)
+
+        new_lock_id = None
+        if next_candidate:
+            new_lock_id = edb.acquire_lock(
+                report_id, next_candidate["requested_by"], next_candidate["sse_client"]
             )
+            if new_lock_id:
+                edb.queue_remove(report_id, next_candidate["requested_by"])
+                logger.info(
+                    "RELEASING: Queue-Kaskade — '%s' erhaelt Lock report_id=%d",
+                    next_candidate["requested_by"], report_id,
+                )
+                # SSE-Benachrichtigung an neuen Inhaber
+                edb.lock_change_event().set()
+
+        handler.send_response_body(
+            200,
+            json.dumps({
+                "freed":      True,
+                "new_holder": next_candidate["requested_by"] if new_lock_id else None,
+            }, ensure_ascii=False).encode("utf-8"),
+            content_type="application/json; charset=utf-8",
+        )
 
     def _action_resume_lock(self, handler, data, investigator) -> None:
-        lock_id = data.get("lock_id", "")
-        if not lock_id:
+        """RESUMING: SSE-Client-ID nach Reconnect aktualisieren.
+
+        Wird nach Wiederverbindung innerhalb der Grace-Period aufgerufen.
+        Beleg: Layer 2 States RESUMING, SLA Punkt 2
+        """
+        lock_id   = str(data.get("lock_id", "")).strip()
+        sse_new   = str(data.get("sse_client", "")).strip()
+        report_id_raw = data.get("report_id")
+        if not lock_id or not sse_new or not report_id_raw:
             handler.send_response_body(
-                400, _json_err("lock_id fehlt", "MISSING_LOCK_ID"),
+                400, _json_err("lock_id, sse_client und report_id erforderlich", "MISSING_FIELDS"),
                 content_type="application/json; charset=utf-8",
             )
             return
-        rid_raw = data.get("report_id")
-        report_id_rl = int(rid_raw) if rid_raw else None
-        lock = (self._bundle.evidence.get_lock(report_id_rl)
-                if report_id_rl else None)
-        if lock and lock.lock_id == lock_id and lock.locked_by == investigator:
-            new_sse = data.get("sse_client_id", lock.sse_client)
-            self._bundle.evidence.resume_lock(
-                lock_id=lock_id, locked_by=investigator,
-                new_sse_client=new_sse, report_id=report_id_rl
+        report_id = int(report_id_raw)
+        ok = self._bundle.evidence.resume_lock(report_id, lock_id, investigator, sse_new)
+        if ok:
+            handler.send_response_body(
+                200, _json_ok({"ok": True}),
+                content_type="application/json; charset=utf-8",
             )
+            logger.info("RESUMING ok: '%s' report_id=%d", investigator, report_id)
+        else:
+            handler.send_response_body(
+                423, _json_err("Resume fehlgeschlagen — Lock nicht gefunden", "LOCK_NOT_FOUND"),
+                content_type="application/json; charset=utf-8",
+            )
+
+    def _action_heartbeat(self, handler, data, investigator) -> None:
+        """Heartbeat: locked_at aktualisieren (verhindert Timeout).
+
+        Beleg: SLA Punkt 1 (SSE als Aktivitaetsnachweis)
+        """
+        lock_id       = str(data.get("lock_id", "")).strip()
+        report_id_raw = data.get("report_id")
+        if not lock_id or not report_id_raw:
+            handler.send_response_body(
+                400, _json_err("lock_id und report_id erforderlich", "MISSING_FIELDS"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+        report_id = int(report_id_raw)
+        edb  = self._bundle.evidence
+        lock = edb.get_lock(report_id)
+        if lock and lock.lock_id == lock_id and lock.locked_by == investigator:
+            edb.resume_lock(report_id, lock_id, investigator, lock.sse_client)
             handler.send_response_body(
                 200, _json_ok({"ok": True}),
                 content_type="application/json; charset=utf-8",
             )
         else:
             handler.send_response_body(
-                423,
-                _json_err("Lock nicht gefunden — bitte neu erwerben", "LOCK_NOT_FOUND"),
+                423, _json_err("Lock nicht gefunden", "LOCK_NOT_FOUND"),
                 content_type="application/json; charset=utf-8",
             )
 
+    def _action_queue_join(self, handler, data, investigator) -> None:
+        """QUEUED: In Warteschlange einreihen.
+
+        Beleg: Layer 4 States QUEUED, SLA Punkt 9
+        """
+        sse_client    = str(data.get("sse_client", "")).strip()
+        report_id_raw = data.get("report_id")
+        if not sse_client or not report_id_raw:
+            handler.send_response_body(
+                400, _json_err("sse_client und report_id erforderlich", "MISSING_FIELDS"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+        report_id = int(report_id_raw)
+        entry_id  = self._bundle.evidence.queue_add(report_id, investigator, sse_client)
+        queue_pos = self._bundle.evidence.queue_count(report_id)
+        handler.send_response_body(
+            200,
+            json.dumps({"queued": True, "entry_id": entry_id, "position": queue_pos},
+                       ensure_ascii=False).encode("utf-8"),
+            content_type="application/json; charset=utf-8",
+        )
+        logger.info("QUEUED: '%s' eingereiht fuer report_id=%d (pos=%d)",
+                    investigator, report_id, queue_pos)
+
+    def _action_queue_leave(self, handler, data, investigator) -> None:
+        """QUEUED -> IDLE: Warteschlange verlassen.
+
+        Beleg: Layer 4 States QUEUED (Bericht-Wechsel)
+        """
+        report_id_raw = data.get("report_id")
+        if not report_id_raw:
+            handler.send_response_body(
+                400, _json_err("report_id erforderlich", "MISSING_REPORT_ID"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+        report_id = int(report_id_raw)
+        removed = self._bundle.evidence.queue_remove(report_id, investigator)
+        handler.send_response_body(
+            200, _json_ok({"removed": removed}),
+            content_type="application/json; charset=utf-8",
+        )
+
     def _action_request_takeover(self, handler, data, investigator) -> None:
-        rid_raw = data.get("report_id")
-        report_id_rt = int(rid_raw) if rid_raw else None
-        lock = (self._bundle.evidence.get_lock(report_id_rt)
-                if report_id_rt else None)
+        """TAKEOVER_PENDING: Uebernahme-Anfrage stellen.
+
+        Prueft Cooldown bevor Anfrage gesendet wird.
+        Beleg: Layer 4 States TAKEOVER_PENDING, SLA Punkt 8
+        """
+        sse_client    = str(data.get("sse_client", "")).strip()
+        report_id_raw = data.get("report_id")
+        if not report_id_raw:
+            handler.send_response_body(
+                400, _json_err("report_id erforderlich", "MISSING_REPORT_ID"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+        report_id = int(report_id_raw)
+        edb  = self._bundle.evidence
+        lock = edb.get_lock(report_id)
+
         if not lock:
             handler.send_response_body(
                 404, _json_err("Kein Lock vorhanden", "NO_LOCK"),
@@ -1057,58 +1158,99 @@ class ReportEndpoint:
                 content_type="application/json; charset=utf-8",
             )
             return
-        request_id = self._bundle.evidence.request_takeover(
-            lock_id=lock.lock_id, requested_by=investigator
-        )
-        self._bundle.evidence.lock_change_event.set()
-        self._bundle.evidence._pending_takeover = {
-            "request_id": request_id,
-            "requested_by": investigator,
-            "lock_id": lock.lock_id,
-            "countdown": 60,
-        }
+
+        # Cooldown pruefen (SLA Punkt 8)
+        cooldown_until = edb.get_cooldown_until(report_id)
+        if cooldown_until:
+            handler.send_response_body(
+                429,
+                json.dumps({
+                    "error":          "Cooldown aktiv",
+                    "code":           "COOLDOWN_ACTIVE",
+                    "cooldown_until": cooldown_until,
+                }, ensure_ascii=False).encode("utf-8"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+
+        request_id = edb.log_takeover_request(report_id, lock.lock_id, investigator)
+        edb.lock_change_event().set()
         handler.send_response_body(
-            200, _json_ok({"queued": True, "request_id": request_id, "countdown": 60}),
+            200,
+            json.dumps({"request_id": request_id, "countdown": 60},
+                       ensure_ascii=False).encode("utf-8"),
             content_type="application/json; charset=utf-8",
         )
+        logger.info("TAKEOVER_PENDING: '%s' fragt '%s' fuer report_id=%d",
+                    investigator, lock.locked_by, report_id)
 
     def _action_respond_takeover(self, handler, data, investigator) -> None:
-        rid_raw = data.get("report_id")
-        report_id_resp = int(rid_raw) if rid_raw else None
-        lock = (self._bundle.evidence.get_lock(report_id_resp)
-                if report_id_resp else None)
-        if not lock or lock.locked_by != investigator:
-            handler.send_response_body(
-                423,
-                _json_err("Nur der Lock-Inhaber darf antworten", "NOT_LOCK_OWNER"),
-                content_type="application/json; charset=utf-8",
-            )
-            return
-        request_id = int(data.get("request_id", 0))
-        response   = data.get("response", "")
-        if response not in ("grant", "deny"):
+        """TAKEOVER_REQUEST_IN: Auf eingehende Uebernahme-Anfrage antworten.
+
+        grant: Lock freigeben, Anfragenden bekommt Lock per Queue-Kaskade.
+        deny: Cooldown starten, Anfragenden bekommt TAKEOVER_DENIED.
+        Beleg: Layer 4 States TAKEOVER_REQUEST_IN
+        """
+        report_id_raw = data.get("report_id")
+        request_id_raw = data.get("request_id")
+        response       = str(data.get("response", "")).strip()
+        if not report_id_raw or not request_id_raw or response not in ("grant", "deny"):
             handler.send_response_body(
                 400,
-                _json_err("response muss 'grant' oder 'deny' sein", "INVALID_RESPONSE"),
+                _json_err("report_id, request_id und response (grant/deny) erforderlich",
+                          "MISSING_FIELDS"),
                 content_type="application/json; charset=utf-8",
             )
             return
+        report_id  = int(report_id_raw)
+        request_id = int(request_id_raw)
+        edb  = self._bundle.evidence
+        lock = edb.get_lock(report_id)
+
+        if not lock or lock.locked_by != investigator:
+            handler.send_response_body(
+                423, _json_err("Nur der Lock-Inhaber darf antworten", "NOT_LOCK_OWNER"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+
         if response == "grant":
-            self._bundle.evidence.resolve_takeover(request_id, "granted")
-            self._bundle.evidence.release_lock(lock.lock_id, report_id=lock.report_id)
+            edb.resolve_takeover(request_id, "granted")
+            edb.clear_cooldown(report_id)
+            edb.release_lock(report_id, lock.lock_id)
+            # Queue-Kaskade startet automatisch nach release_lock
+            active_clients  = self._bundle.get_active_sse_clients()
+            next_candidate  = edb.queue_next_valid(report_id, active_clients)
+            new_lock_id = None
+            if next_candidate:
+                new_lock_id = edb.acquire_lock(
+                    report_id, next_candidate["requested_by"], next_candidate["sse_client"]
+                )
+                if new_lock_id:
+                    edb.queue_remove(report_id, next_candidate["requested_by"])
+                    edb.lock_change_event().set()
             handler.send_response_body(
                 200, _json_ok({"granted": True}),
                 content_type="application/json; charset=utf-8",
             )
-        else:
-            self._bundle.evidence.resolve_takeover(request_id, "denied")
-            self._bundle.evidence.lock_change_event.set()
+            logger.info("TAKEOVER granted: '%s' gibt Lock frei fuer report_id=%d",
+                        investigator, report_id)
+        else:  # deny
+            edb.resolve_takeover(request_id, "denied")
+            edb.set_cooldown(report_id, 600)  # 10 Minuten
+            edb.lock_change_event().set()
             handler.send_response_body(
-                200, _json_ok({"denied": True}),
+                200,
+                json.dumps({
+                    "denied":         True,
+                    "cooldown_until": edb.get_cooldown_until(report_id),
+                }, ensure_ascii=False).encode("utf-8"),
                 content_type="application/json; charset=utf-8",
             )
+            logger.info("TAKEOVER denied: '%s' behaelt Lock fuer report_id=%d (Cooldown 10min)",
+                        investigator, report_id)
 
-    # ------------------------------------------------------------------
+        # ------------------------------------------------------------------
     # Hilfsmethoden
     # ------------------------------------------------------------------
 

@@ -166,8 +166,12 @@ class EventsEndpoint:
         """
         wfile = handler.wfile
 
-        # Eindeutige SSE-Client-ID fuer diesen Verbindungsaufbau (§8.6 Bauplan B4)
+        # Eindeutige SSE-Client-ID fuer diesen Verbindungsaufbau (SLA Punkt 1)
         client_id = str(uuid.uuid4())
+        # SLA Punkt 4: aktive Clients tracken fuer Queue-Kaskade
+        if self._bundle._active_sse_clients is None:
+            self._bundle._active_sse_clients = set()
+        self._bundle._active_sse_clients.add(client_id)
 
         # V1: Resume-Lock — Browser reconnected nach SSE-Abriss und moechte
         # seinen Lock an die neue client_id binden.
@@ -219,6 +223,8 @@ class EventsEndpoint:
                 return True
             except (BrokenPipeError, ConnectionResetError, OSError):
                 logger.debug("SSE-Stream: Client hat Verbindung getrennt (client_id=%s)", client_id)
+            if self._bundle._active_sse_clients:
+                self._bundle._active_sse_clients.discard(client_id)
                 return False
 
         # Sofort: Client-ID senden — Browser speichert sie für acquire_lock
