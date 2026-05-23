@@ -71,206 +71,329 @@ _MIGRATION_COLUMNS: list[tuple[str, str, str]] = []
 # Letzte Synchronisation: Build 239 (Schema v2.0), 2026-05-18
 # =============================================================================
 _SCHEMA_DDL = """
+-- =============================================================================
+-- evidence_schema_db.sql
+-- Schema der evidence_<uid>.db
+--
+-- Architektur-Revision: Layer-Modell B6 v2.0
+-- Beleg: Architektur-Entwurf 2026-05-18, Projektgespraech
+--
+-- Aenderungen gegenueber v1.x:
+--   editor_locks:          resource TEXT (String-Hacking)  to  report_id INTEGER FK
+--   lock_takeover_requests: report_id ergaenzt, responded_at ergaenzt, CASCADE
+--   report_blocks:         placeholder_values_json aus Migration ins Hauptschema
+--   report_blocks:         module_id beibehalten (Herkunfts-Nachvollziehbarkeit)
+--   annotations:           alle migrierten Spalten ins Hauptschema integriert
+--   report_templates:      NICHT in dieser DB (gehoert in templates.db / B7)
+--   block_evidence_user:   NICHT in dieser DB (noch nicht implementiert)
+--   report_comments:       Original beibehalten (differenzierte Status)
+--   report_anchors:        Original beibehalten (anchor_text erhalten)
+--   placeholder_cache:     Original beibehalten (query_id + uid als PK)
+-- =============================================================================
 
--- Forensischer Scraper-Log.
-CREATE TABLE IF NOT EXISTS scraper_log (
-    id      INTEGER PRIMARY KEY AUTOINCREMENT,
-    event   TEXT    NOT NULL,
-    user_id INTEGER NOT NULL,
-    detail  TEXT,
-    ts      INTEGER NOT NULL
+BEGIN TRANSACTION;
+
+-- ---------------------------------------------------------------------------
+-- Besuche und Viewport-Ereignisse
+-- ---------------------------------------------------------------------------
+
+DROP TABLE IF EXISTS "scraper_log";
+CREATE TABLE IF NOT EXISTS "scraper_log" (
+    "id"      INTEGER,
+    "event"   TEXT    NOT NULL,
+    "user_id" INTEGER NOT NULL,
+    "detail"  TEXT,
+    "ts"      INTEGER NOT NULL,
+    PRIMARY KEY("id" AUTOINCREMENT)
 );
 
--- Seitenbesuche.
-CREATE TABLE IF NOT EXISTS page_visits (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    page_url        TEXT    NOT NULL,
-    scrape_context  TEXT    NOT NULL,
-    ts              INTEGER NOT NULL,
-    investigator_id INTEGER
+DROP TABLE IF EXISTS "page_visits";
+CREATE TABLE IF NOT EXISTS "page_visits" (
+    "id"              INTEGER,
+    "page_url"        TEXT    NOT NULL,
+    "scrape_context"  TEXT    NOT NULL,
+    "ts"              INTEGER NOT NULL,
+    "investigator_id" INTEGER,
+    PRIMARY KEY("id" AUTOINCREMENT)
 );
 
--- Viewport-Events.
-CREATE TABLE IF NOT EXISTS viewport_events (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    page_url        TEXT    NOT NULL,
-    element_id      TEXT,
-    visible_ms      INTEGER NOT NULL,
-    ts_enter        INTEGER NOT NULL,
-    ts_leave        INTEGER NOT NULL,
-    investigator_id INTEGER
+DROP TABLE IF EXISTS "viewport_events";
+CREATE TABLE IF NOT EXISTS "viewport_events" (
+    "id"              INTEGER,
+    "page_url"        TEXT    NOT NULL,
+    "element_id"      TEXT,
+    "visible_ms"      INTEGER NOT NULL,
+    "ts_enter"        INTEGER NOT NULL,
+    "ts_leave"        INTEGER NOT NULL,
+    "investigator_id" INTEGER,
+    PRIMARY KEY("id" AUTOINCREMENT)
 );
 
--- Annotationen (alle Spalten direkt im Schema, keine Migration noetig).
-CREATE TABLE IF NOT EXISTS annotations (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    page_url        TEXT    NOT NULL,
-    element_id      TEXT,
-    category        TEXT    NOT NULL,
-    text            TEXT    NOT NULL DEFAULT '',
-    ts              INTEGER NOT NULL,
-    investigator_id INTEGER,
-    selection_json  TEXT    DEFAULT NULL,
-    tags_json       TEXT    DEFAULT NULL,
-    local_id        TEXT    DEFAULT NULL,
-    post_id         INTEGER DEFAULT NULL,
-    created_by      TEXT    NOT NULL DEFAULT '',
+-- ---------------------------------------------------------------------------
+-- Annotationen (alle migrierten Spalten direkt integriert)
+-- ---------------------------------------------------------------------------
+
+DROP TABLE IF EXISTS "annotations";
+CREATE TABLE IF NOT EXISTS "annotations" (
+    "id"              INTEGER,
+    "page_url"        TEXT    NOT NULL,
+    "element_id"      TEXT,
+    "category"        TEXT    NOT NULL,
+    "text"            TEXT    NOT NULL DEFAULT '',
+    "ts"              INTEGER NOT NULL,
+    "investigator_id" INTEGER,
+    "selection_json"  TEXT    DEFAULT NULL,
+    "tags_json"       TEXT    DEFAULT NULL,
+    "local_id"        TEXT    DEFAULT NULL,
+    "post_id"         INTEGER DEFAULT NULL,
+    "created_by"      TEXT    NOT NULL DEFAULT '',
     -- Soft-Delete + Append-only-Log (Build 178, Bug 2.75)
-    deleted_at      INTEGER DEFAULT NULL,
-    version_nr      INTEGER NOT NULL DEFAULT 1,
-    prev_id         INTEGER DEFAULT NULL REFERENCES annotations(id),
+    "deleted_at"      INTEGER DEFAULT NULL,
+    "version_nr"      INTEGER NOT NULL DEFAULT 1,
+    "prev_id"         INTEGER DEFAULT NULL,
     -- Forenbenutzer dem die Annotation inhaltlich gilt (Build 182, Bug 2.78)
-    actual_uid      INTEGER DEFAULT NULL
+    -- NULL = uid dieser DB, sonst Fremd-uid
+    "actual_uid"      INTEGER DEFAULT NULL,
+    PRIMARY KEY("id" AUTOINCREMENT)
 );
 
--- Berichts-Metadaten. Nur ein Bericht vom Typ 'final' zulaessig.
-CREATE TABLE IF NOT EXISTS reports (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    report_type TEXT    NOT NULL
-                CHECK (report_type IN ('interim', 'final', 'addendum')),
-    sequence_nr INTEGER NOT NULL DEFAULT 1,
-    title       TEXT    NOT NULL,
-    created_by  TEXT    NOT NULL,
-    created_at  INTEGER NOT NULL,
-    status      TEXT    NOT NULL DEFAULT 'draft'
-                CHECK (status IN ('draft', 'submitted', 'approved', 'final'))
+-- ---------------------------------------------------------------------------
+-- Berichte
+-- (report_templates gehoert NICHT in diese DB  -- sie ist pro Beschuldigtem.
+--  Vorlagen sind universal und gehoeren in templates.db / B7.)
+-- ---------------------------------------------------------------------------
+
+DROP TABLE IF EXISTS "reports";
+CREATE TABLE IF NOT EXISTS "reports" (
+    "id"          INTEGER,
+    "report_type" TEXT    NOT NULL
+                  CHECK("report_type" IN ('interim', 'final', 'addendum')),
+    "sequence_nr" INTEGER NOT NULL DEFAULT 1,
+    "title"       TEXT    NOT NULL,
+    "created_by"  TEXT    NOT NULL,
+    "created_at"  INTEGER NOT NULL,
+    "status"      TEXT    NOT NULL DEFAULT 'draft'
+                  CHECK("status" IN ('draft', 'submitted', 'approved', 'final')),
+    PRIMARY KEY("id" AUTOINCREMENT)
 );
 
--- Editor.js-Bloecke.
--- author ist unveraenderlich (Grundregel 14).
--- module_id: NULL = Freitext, sonst Referenz auf templates.report_modules.id.
---   Keine FK-Constraint da templates.db per ATTACH eingebunden ist.
-CREATE TABLE IF NOT EXISTS report_blocks (
-    block_id                TEXT    NOT NULL PRIMARY KEY,
-    report_id               INTEGER NOT NULL REFERENCES reports(id) ON DELETE CASCADE,
-    author                  TEXT    NOT NULL,
-    created_at              INTEGER NOT NULL,
-    updated_at              INTEGER NOT NULL,
-    block_type              TEXT    NOT NULL,
-    block_data              TEXT    NOT NULL DEFAULT '{}',
-    placeholder_values_json TEXT,
-    module_id               INTEGER
+-- ---------------------------------------------------------------------------
+-- Report-Bloecke
+--
+-- placeholder_values_json: war per Migration ergaenzt, jetzt direkt im Schema
+-- module_id: Herkunft des Blocks (welches Modul hat diesen Block erzeugt)
+--            NULL = manuell angelegt, INTEGER = module_id aus templates.db
+-- ---------------------------------------------------------------------------
+
+DROP TABLE IF EXISTS "report_blocks";
+CREATE TABLE IF NOT EXISTS "report_blocks" (
+    "block_id"               TEXT    NOT NULL,
+    "report_id"              INTEGER NOT NULL,
+    "author"                 TEXT    NOT NULL,  -- unveraenderlich (Grundregel 14)
+    "created_at"             INTEGER NOT NULL,
+    "updated_at"             INTEGER NOT NULL,
+    "block_type"             TEXT    NOT NULL,
+    "block_data"             TEXT    NOT NULL DEFAULT '{}',
+    "placeholder_values_json" TEXT   DEFAULT NULL,
+    "module_id"              INTEGER DEFAULT NULL,  -- Herkunfts-Nachvollziehbarkeit
+    PRIMARY KEY("block_id"),
+    FOREIGN KEY("report_id") REFERENCES "reports"("id") ON DELETE CASCADE
 );
 
--- Reihenfolge der Bloecke.
-CREATE TABLE IF NOT EXISTS report_block_order (
-    block_id         TEXT    NOT NULL PRIMARY KEY
-                     REFERENCES report_blocks(block_id) ON DELETE CASCADE,
-    sort_index       TEXT    NOT NULL,
-    last_modified_by TEXT    NOT NULL,
-    last_modified_at INTEGER NOT NULL
+DROP TABLE IF EXISTS "report_block_order";
+CREATE TABLE IF NOT EXISTS "report_block_order" (
+    "block_id"         TEXT    NOT NULL,
+    "sort_index"       TEXT    NOT NULL,
+    "last_modified_by" TEXT    NOT NULL,
+    "last_modified_at" INTEGER NOT NULL,
+    PRIMARY KEY("block_id"),
+    FOREIGN KEY("block_id") REFERENCES "report_blocks"("block_id") ON DELETE CASCADE
 );
 
--- Beweisanker: Verknuepfung Block <-> Annotation.
-CREATE TABLE IF NOT EXISTS report_anchors (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    block_id      TEXT    NOT NULL REFERENCES report_blocks(block_id) ON DELETE CASCADE,
-    annotation_id INTEGER NOT NULL REFERENCES annotations(id),
-    anchor_text   TEXT    NOT NULL,
-    created_at    INTEGER NOT NULL
+-- ---------------------------------------------------------------------------
+-- Anker: Verknuepfung Block < to  Annotation
+-- anchor_text: der zitierte Textausschnitt der Annotation (Original beibehalten)
+-- ---------------------------------------------------------------------------
+
+DROP TABLE IF EXISTS "report_anchors";
+CREATE TABLE IF NOT EXISTS "report_anchors" (
+    "id"            INTEGER,
+    "block_id"      TEXT    NOT NULL,
+    "annotation_id" INTEGER NOT NULL,
+    "anchor_text"   TEXT    NOT NULL,
+    "created_at"    INTEGER NOT NULL,
+    PRIMARY KEY("id" AUTOINCREMENT),
+    FOREIGN KEY("block_id")      REFERENCES "report_blocks"("block_id") ON DELETE CASCADE,
+    FOREIGN KEY("annotation_id") REFERENCES "annotations"("id")
 );
 
--- Kommentare zu fremden Bloecken.
+-- ---------------------------------------------------------------------------
+-- Kommentare (Original beibehalten  -- differenzierte Status-Uebergaenge)
 -- Status-Uebergaenge sind One-Way (Grundregel 15).
-CREATE TABLE IF NOT EXISTS report_comments (
-    id                INTEGER PRIMARY KEY AUTOINCREMENT,
-    block_id          TEXT    NOT NULL REFERENCES report_blocks(block_id) ON DELETE CASCADE,
-    author            TEXT    NOT NULL,
-    created_at        INTEGER NOT NULL,
-    comment_text      TEXT    NOT NULL,
-    suggested_content TEXT,
-    status            TEXT    NOT NULL DEFAULT 'pending'
-                      CHECK (status IN (
-                          'pending',
-                          'addressed',
-                          'dismissed',
-                          'revoked'
-                      )),
-    resolved_by       TEXT,
-    resolved_at       INTEGER
+-- Beleg: Bauplan B6 v0.5 SS2.3
+-- ---------------------------------------------------------------------------
+
+DROP TABLE IF EXISTS "report_comments";
+CREATE TABLE IF NOT EXISTS "report_comments" (
+    "id"                INTEGER,
+    "block_id"          TEXT    NOT NULL,
+    "author"            TEXT    NOT NULL,
+    "created_at"        INTEGER NOT NULL,
+    "comment_text"      TEXT    NOT NULL,
+    "suggested_content" TEXT,
+    "status"            TEXT    NOT NULL DEFAULT 'pending'
+                        CHECK("status" IN (
+                            'pending',
+                            'addressed',
+                            'dismissed',
+                            'revoked'
+                        )),
+    "resolved_by"       TEXT,
+    "resolved_at"       INTEGER,
+    PRIMARY KEY("id" AUTOINCREMENT),
+    FOREIGN KEY("block_id") REFERENCES "report_blocks"("block_id") ON DELETE CASCADE
 );
 
--- Cache fuer {{a:...}}-Platzhalter.
-CREATE TABLE IF NOT EXISTS placeholder_cache (
-    query_id     TEXT    NOT NULL,
-    uid          INTEGER NOT NULL,
-    cached_value TEXT    NOT NULL,
-    cached_at    INTEGER NOT NULL,
-    PRIMARY KEY (query_id, uid)
+-- ---------------------------------------------------------------------------
+-- Genehmigungen
+-- ---------------------------------------------------------------------------
+
+DROP TABLE IF EXISTS "report_approvals";
+CREATE TABLE IF NOT EXISTS "report_approvals" (
+    "id"          INTEGER,
+    "report_id"   INTEGER NOT NULL,
+    "approved_by" TEXT    NOT NULL,
+    "approved_at" INTEGER NOT NULL,
+    "note"        TEXT    DEFAULT NULL,
+    "is_final"    INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY("id" AUTOINCREMENT),
+    FOREIGN KEY("report_id") REFERENCES "reports"("id") ON DELETE CASCADE
 );
 
--- Freigabe-Tabelle.
-CREATE TABLE IF NOT EXISTS report_approvals (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    report_id   INTEGER NOT NULL REFERENCES reports(id) ON DELETE CASCADE,
-    approved_by TEXT    NOT NULL,
-    approved_at INTEGER NOT NULL,
-    note        TEXT    DEFAULT NULL,
-    is_final    INTEGER NOT NULL DEFAULT 0
+-- ---------------------------------------------------------------------------
+-- Placeholder-Cache (auto-aufgeloeste a:-Platzhalter)
+-- PK (query_id, uid): derselbe Platzhalter kann fuer verschiedene Nutzer
+-- verschiedene Werte haben. Original beibehalten.
+-- ---------------------------------------------------------------------------
+
+DROP TABLE IF EXISTS "placeholder_cache";
+CREATE TABLE IF NOT EXISTS "placeholder_cache" (
+    "query_id"    TEXT    NOT NULL,
+    "uid"         INTEGER NOT NULL,
+    "cached_value" TEXT   NOT NULL,
+    "cached_at"   INTEGER NOT NULL,
+    PRIMARY KEY("query_id", "uid")
 );
 
--- Ermittler-Aliasse (Build 179, Bug 2.79).
-CREATE TABLE IF NOT EXISTS investigator_aliases (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    term       TEXT    NOT NULL UNIQUE,
-    created_by TEXT    NOT NULL DEFAULT '',
-    created_at INTEGER NOT NULL
+-- ---------------------------------------------------------------------------
+-- Editor-Locks
+--
+-- Kernänderung gegenueber v1.x:
+--   resource TEXT PRIMARY KEY  →  report_id INTEGER PRIMARY KEY FK
+--
+-- Ein Lock gilt immer fuer genau einen Bericht.
+-- Die Kodierung als String "report_editor:N" war ein Workaround.
+-- _lock_resource() und _LOCK_RESOURCE_BASE entfallen vollstaendig.
+-- ---------------------------------------------------------------------------
+
+DROP TABLE IF EXISTS "editor_locks";
+CREATE TABLE IF NOT EXISTS "editor_locks" (
+    "report_id"  INTEGER NOT NULL,
+    "locked_by"  TEXT    NOT NULL,
+    "lock_id"    TEXT    NOT NULL UNIQUE,
+    "locked_at"  INTEGER NOT NULL,
+    "sse_client"     TEXT    NOT NULL,
+    "cooldown_until" INTEGER DEFAULT NULL,  -- NULL = kein Cooldown aktiv
+    PRIMARY KEY("report_id"),
+    FOREIGN KEY("report_id") REFERENCES "reports"("id") ON DELETE CASCADE
 );
 
--- Editor-Lock: ein Lock pro Bericht (Schema v2.0).
--- Architektur-Revision 2026-05-18: resource TEXT -> report_id INTEGER FK.
-CREATE TABLE IF NOT EXISTS editor_locks (
-    report_id  INTEGER NOT NULL PRIMARY KEY
-               REFERENCES reports(id) ON DELETE CASCADE,
-    locked_by  TEXT    NOT NULL,
-    lock_id    TEXT    NOT NULL UNIQUE,
-    locked_at  INTEGER NOT NULL,
-    sse_client TEXT    NOT NULL
+-- ---------------------------------------------------------------------------
+-- Lock-Uebernahme-Anfragen
+--
+-- report_id ergaenzt (Pflichtfeld, FK auf reports)
+-- responded_at ergaenzt fuer Audit-Log
+-- ---------------------------------------------------------------------------
+
+DROP TABLE IF EXISTS "lock_takeover_requests";
+CREATE TABLE IF NOT EXISTS "lock_takeover_requests" (
+    "id"           INTEGER,
+    "report_id"    INTEGER NOT NULL,
+    "lock_id"      TEXT    NOT NULL,
+    "requested_by" TEXT    NOT NULL,
+    "requested_at" INTEGER NOT NULL,
+    "responded_at" INTEGER DEFAULT NULL,
+    "status"       TEXT    NOT NULL DEFAULT 'pending'
+                   CHECK("status" IN ('pending', 'granted', 'denied', 'expired')),
+    PRIMARY KEY("id" AUTOINCREMENT),
+    FOREIGN KEY("report_id") REFERENCES "reports"("id") ON DELETE RESTRICT
 );
 
--- Lock-Uebernahme-Anfragen (Schema v2.0).
--- report_id und responded_at ergaenzt.
-CREATE TABLE IF NOT EXISTS lock_takeover_requests (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    report_id    INTEGER NOT NULL REFERENCES reports(id) ON DELETE CASCADE,
-    lock_id      TEXT    NOT NULL,
-    requested_by TEXT    NOT NULL,
-    requested_at INTEGER NOT NULL,
-    responded_at INTEGER DEFAULT NULL,
-    status       TEXT    NOT NULL DEFAULT 'pending'
-                 CHECK (status IN ('pending', 'granted', 'denied', 'expired'))
+-- ---------------------------------------------------------------------------
+-- Lock-Warteschlange (FIFO)
+--
+-- Ein Client kann pro Bericht nur einen Eintrag haben.
+-- Bereinigung erfolgt lazy beim naechsten RELEASING (SLA Punkt 4).
+-- Kein ON DELETE CASCADE: Queue-Eintraege sind historisch relevant.
+-- ---------------------------------------------------------------------------
+
+DROP TABLE IF EXISTS "lock_queue";
+CREATE TABLE IF NOT EXISTS "lock_queue" (
+    "id"           INTEGER,
+    "report_id"    INTEGER NOT NULL,
+    "requested_by" TEXT    NOT NULL,
+    "sse_client"   TEXT    NOT NULL,
+    "requested_at" INTEGER NOT NULL,
+    PRIMARY KEY("id" AUTOINCREMENT),
+    FOREIGN KEY("report_id") REFERENCES "reports"("id") ON DELETE RESTRICT
 );
 
-CREATE INDEX IF NOT EXISTS pv_url_idx        ON page_visits (page_url);
-CREATE INDEX IF NOT EXISTS ve_url_idx        ON viewport_events (page_url);
-CREATE INDEX IF NOT EXISTS ann_url_idx       ON annotations (page_url);
-CREATE INDEX IF NOT EXISTS ann_cat_idx       ON annotations (category);
-CREATE INDEX IF NOT EXISTS ann_active_idx    ON annotations (page_url, deleted_at)
-    WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS ia_term_idx       ON investigator_aliases (term);
-CREATE INDEX IF NOT EXISTS rep_type_idx      ON reports (report_type);
-CREATE INDEX IF NOT EXISTS rep_status_idx    ON reports (status);
-CREATE INDEX IF NOT EXISTS rb_report_idx     ON report_blocks (report_id);
-CREATE INDEX IF NOT EXISTS rb_author_idx     ON report_blocks (author);
-CREATE INDEX IF NOT EXISTS rbo_sort_idx      ON report_block_order (sort_index);
-CREATE INDEX IF NOT EXISTS ra_block_idx      ON report_anchors (block_id);
-CREATE INDEX IF NOT EXISTS ra_ann_idx        ON report_anchors (annotation_id);
-CREATE UNIQUE INDEX IF NOT EXISTS ra_block_ann_uniq
-    ON report_anchors (block_id, annotation_id);
-CREATE INDEX IF NOT EXISTS rc_block_idx      ON report_comments (block_id);
-CREATE INDEX IF NOT EXISTS rc_status_idx     ON report_comments (status);
-CREATE INDEX IF NOT EXISTS rap_report_idx    ON report_approvals (report_id);
-CREATE INDEX IF NOT EXISTS el_locked_by_idx  ON editor_locks (locked_by);
-CREATE INDEX IF NOT EXISTS ltr_report_idx    ON lock_takeover_requests (report_id);
-CREATE INDEX IF NOT EXISTS ltr_status_idx    ON lock_takeover_requests (status);
+-- =============================================================================
+-- Indizes
+-- =============================================================================
 
-CREATE UNIQUE INDEX IF NOT EXISTS reports_one_final_idx
-    ON reports (report_type)
-    WHERE report_type = 'final';
+CREATE INDEX IF NOT EXISTS "pv_url_idx"        ON "page_visits"     ("page_url");
+CREATE INDEX IF NOT EXISTS "ve_url_idx"        ON "viewport_events" ("page_url");
+CREATE INDEX IF NOT EXISTS "ann_url_idx"       ON "annotations"     ("page_url");
+CREATE INDEX IF NOT EXISTS "ann_cat_idx"       ON "annotations"     ("category");
+CREATE INDEX IF NOT EXISTS "ann_active_idx"    ON "annotations"     ("page_url", "deleted_at")
+    WHERE "deleted_at" IS NULL;
 
-CREATE UNIQUE INDEX IF NOT EXISTS annotations_local_id_uniq
-    ON annotations (local_id)
-    WHERE local_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS "rep_type_idx"      ON "reports"         ("report_type");
+CREATE INDEX IF NOT EXISTS "rep_status_idx"    ON "reports"         ("status");
+
+CREATE INDEX IF NOT EXISTS "rb_report_idx"     ON "report_blocks"   ("report_id");
+CREATE INDEX IF NOT EXISTS "rb_author_idx"     ON "report_blocks"   ("author");
+CREATE INDEX IF NOT EXISTS "rbo_sort_idx"      ON "report_block_order" ("sort_index");
+
+CREATE INDEX IF NOT EXISTS "ra_block_idx"      ON "report_anchors"  ("block_id");
+CREATE INDEX IF NOT EXISTS "ra_ann_idx"        ON "report_anchors"  ("annotation_id");
+CREATE INDEX IF NOT EXISTS "rc_block_idx"      ON "report_comments" ("block_id");
+CREATE INDEX IF NOT EXISTS "rc_status_idx"     ON "report_comments" ("status");
+CREATE INDEX IF NOT EXISTS "rap_report_idx"    ON "report_approvals" ("report_id");
+
+CREATE INDEX IF NOT EXISTS "el_locked_by_idx"  ON "editor_locks"    ("locked_by");
+CREATE INDEX IF NOT EXISTS "ltr_report_idx"    ON "lock_takeover_requests" ("report_id");
+CREATE INDEX IF NOT EXISTS "ltr_status_idx"    ON "lock_takeover_requests" ("status");
+
+-- =============================================================================
+-- Eindeutigkeitsbedingungen
+-- =============================================================================
+
+-- Nur ein Abschlussbericht pro Untersuchung
+CREATE UNIQUE INDEX IF NOT EXISTS "reports_one_final_idx"
+    ON "reports" ("report_type")
+    WHERE "report_type" = 'final';
+
+-- Annotation local_id eindeutig
+CREATE UNIQUE INDEX IF NOT EXISTS "annotations_local_id_uniq"
+    ON "annotations" ("local_id")
+    WHERE "local_id" IS NOT NULL;
+
+-- Block-Annotation-Verknuepfung eindeutig
+CREATE UNIQUE INDEX IF NOT EXISTS "ra_block_ann_uniq"
+    ON "report_anchors" ("block_id", "annotation_id");
+
 """
 
 # =============================================================================
@@ -395,16 +518,18 @@ class ReportApprovalRecord:
 
 @dataclass
 class EditorLockRecord:
-    """Aktiver Editor-Lock.
+    """Aktiver Editor-Lock (Schema v2.0).
 
-    Schema v2.0: report_id statt resource (kein String-Hacking mehr).
+    report_id statt resource-String. cooldown_until schuetzt Inhaber
+    vor TAKEOVER-Anfragen (SLA Punkt 8).
     Beleg: Architektur-Revision 2026-05-18
     """
-    report_id:  int
-    locked_by:  str
-    lock_id:    str
-    locked_at:  int
-    sse_client: str
+    report_id:      int
+    locked_by:      str
+    lock_id:        str
+    locked_at:      int
+    sse_client:     str
+    cooldown_until: Optional[int]  # Unix-Timestamp oder None
 
 
 # =============================================================================
@@ -1741,145 +1866,378 @@ class EvidenceDb:
 
     @property
     def lock_change_event(self) -> threading.Event:
-        """Event-Signal das bei jeder Lock-Aenderung gesetzt wird."""
+        """Event-Signal das bei jeder Lock-Aenderung gesetzt wird (SSE-Thread)."""
         return self._lock_change_event
 
-    def acquire_lock(
-        self, locked_by: str, sse_client: str, report_id: int,
-    ) -> Optional[str]:
-        """Erwirbt den Lock fuer einen Bericht (schema v2.0: report_id INTEGER FK).
+    # ------------------------------------------------------------------
+    # Lock-Grundoperationen (SLA Punkte 1, 6, 7, 11)
+    # ------------------------------------------------------------------
 
-        Loescht zuerst abgelaufene Locks fuer denselben Bericht,
-        dann INSERT. Bei IntegrityError ist der Lock bereits belegt.
-        Beleg: Architektur-Revision 2026-05-18
+    def acquire_lock(
+        self, report_id: int, locked_by: str, sse_client: str,
+    ) -> Optional[str]:
+        """Erwirbt den Lock fuer einen Bericht atomar.
+
+        Gibt neue lock_id zurueck oder None wenn Lock bereits belegt.
+        Kein Timeout-basiertes Loeschen alter Locks — das erledigt
+        release_lock_with_queue_cascade() beim RELEASING.
+        Beleg: SLA Punkt 6, Architektur-Revision 2026-05-18
         """
-        now = int(time.time())
         new_lock_id = str(uuid.uuid4())
-        try:
-            self._con.execute(
-                "DELETE FROM editor_locks WHERE report_id=? AND locked_at < ?",
-                (report_id, now - self._LOCK_TIMEOUT_SEC),
-            )
-        except sqlite3.OperationalError:
-            pass
         try:
             self._con.execute(
                 "INSERT INTO editor_locks "
                 "(report_id, locked_by, lock_id, locked_at, sse_client) "
                 "VALUES (?, ?, ?, ?, ?)",
-                (report_id, locked_by, new_lock_id, now, sse_client),
+                (report_id, locked_by, new_lock_id, int(time.time()), sse_client),
             )
             self._con.commit()
             self._lock_change_event.set()
             logger.info(
-                "Editor-Lock erworben: '%s' report_id=%s (lock_id=%s)",
+                "Lock erworben: '%s' report_id=%d lock_id=%s",
                 locked_by, report_id, new_lock_id,
             )
             return new_lock_id
         except sqlite3.IntegrityError:
-            logger.debug(
-                "acquire_lock: Lock bereits belegt fuer report_id=%s", report_id
-            )
+            logger.debug("acquire_lock: Lock bereits belegt fuer report_id=%d", report_id)
             return None
 
-    def release_lock(self, lock_id: str, report_id: Optional[int] = None) -> bool:
-        """Gibt den Lock frei. report_id optional fuer direkten PK-Zugriff."""
-        if report_id is not None:
-            cursor = self._con.execute(
-                "DELETE FROM editor_locks WHERE report_id=? AND lock_id=?",
-                (report_id, lock_id),
-            )
-        else:
-            cursor = self._con.execute(
-                "DELETE FROM editor_locks WHERE lock_id=?",
-                (lock_id,),
-            )
-        self._con.commit()
-        freed = cursor.rowcount > 0
-        if freed:
-            self._lock_change_event.set()
-            logger.info("Editor-Lock freigegeben (lock_id=%s)", lock_id)
-        return freed
+    def create_report_with_lock(
+        self, report_type: str, title: str, created_by: str, sse_client: str,
+    ) -> tuple[int, str]:
+        """Erzeugt Bericht und Lock atomar in einer Transaktion.
 
-    def release_lock_by_sse_client(
-        self, sse_client: str, report_id: Optional[int] = None
-    ) -> bool:
-        """Gibt Lock(s) frei die zu einem SSE-Client gehoeren.
-
-        Wird aufgerufen wenn SSE-Verbindung abreisst. Ohne report_id
-        werden alle Locks dieses SSE-Clients freigegeben.
+        Gibt (report_id, lock_id) zurueck.
+        Beleg: SLA Punkt 7, Architektur-Revision 2026-05-18
         """
-        if report_id is not None:
+        now = int(time.time())
+        lock_id = str(uuid.uuid4())
+        seq_nr = self._con.execute(
+            "SELECT COALESCE(MAX(sequence_nr), 0) + 1 FROM reports WHERE report_type=?",
+            (report_type,),
+        ).fetchone()[0]
+        try:
             cursor = self._con.execute(
-                "DELETE FROM editor_locks WHERE report_id=? AND sse_client=?",
-                (report_id, sse_client),
+                "INSERT INTO reports (report_type, sequence_nr, title, created_by, created_at) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (report_type, seq_nr, title, created_by, now),
             )
-        else:
-            cursor = self._con.execute(
-                "DELETE FROM editor_locks WHERE sse_client=?",
-                (sse_client,),
+            report_id = cursor.lastrowid
+            self._con.execute(
+                "INSERT INTO editor_locks "
+                "(report_id, locked_by, lock_id, locked_at, sse_client) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (report_id, created_by, lock_id, now, sse_client),
             )
-        self._con.commit()
-        freed = cursor.rowcount > 0
-        if freed:
+            self._con.commit()
             self._lock_change_event.set()
             logger.info(
-                "Editor-Lock durch SSE-Abriss freigegeben (sse_client=%s)", sse_client
+                "Bericht+Lock atomar: report_id=%d type=%s lock_id=%s von '%s'",
+                report_id, report_type, lock_id, created_by,
             )
+            return report_id, lock_id
+        except Exception as exc:
+            self._con.rollback()
+            raise exc
+
+    def release_lock_with_queue_cascade(
+        self, report_id: int, lock_id: str,
+    ) -> Optional[tuple[str, str, str]]:
+        """Gibt Lock frei und vergibt ihn ggf. an ersten gueltigen Queue-Eintrag.
+
+        Fuehrt die FIFO-Kaskade durch (SLA Punkt 4):
+        1. Lock loeschen
+        2. Queue fuer diesen Bericht in FIFO-Reihenfolge durchgehen
+        3. Eintraege ohne aktive SSE-Verbindung loeschen (lazy cleanup)
+        4. Ersten gueltigen Eintrag zum neuen Inhaber machen
+        5. Alles atomar in einer Transaktion
+
+        Gibt (neuer_lock_id, neuer_locked_by, neuer_sse_client) zurueck
+        wenn ein Warteschlangenkandidat gefunden wurde, sonst None.
+        Beleg: SLA Punkte 3, 4, Architektur-Revision 2026-05-18
+        """
+        # Aktive SSE-Clients aus events.py-Kontext — wird von aussen injiziert
+        # da evidence_db keine Kenntnis des SSE-Zustands hat
+        raise NotImplementedError(
+            "release_lock_with_queue_cascade muss von der API-Schicht aufgerufen "
+            "werden die Zugriff auf aktive SSE-Clients hat. "
+            "Siehe forensic_api/report.py _action_release_lock"
+        )
+
+    def release_lock(self, report_id: int, lock_id: str) -> bool:
+        """Gibt Lock frei (ohne Queue-Kaskade).
+
+        Fuer interne Verwendung wenn Queue bereits extern verarbeitet wird.
+        Beleg: Architektur-Revision 2026-05-18
+        """
+        cursor = self._con.execute(
+            "DELETE FROM editor_locks WHERE report_id=? AND lock_id=?",
+            (report_id, lock_id),
+        )
+        self._con.commit()
+        freed = cursor.rowcount > 0
+        if freed:
+            self._lock_change_event.set()
+            logger.info("Lock freigegeben: report_id=%d lock_id=%s", report_id, lock_id)
         return freed
 
-    def resume_lock(
-        self, lock_id: str, locked_by: str, new_sse_client: str,
-        report_id: Optional[int] = None,
-    ) -> bool:
-        """Aktualisiert sse_client eines bestehenden Locks nach SSE-Reconnect."""
-        try:
-            if report_id is not None:
-                cursor = self._con.execute(
-                    "UPDATE editor_locks "
-                    "SET sse_client = ?, locked_at = ? "
-                    "WHERE report_id = ? AND lock_id = ? AND locked_by = ?",
-                    (new_sse_client, int(time.time()), report_id, lock_id, locked_by),
-                )
-            else:
-                cursor = self._con.execute(
-                    "UPDATE editor_locks "
-                    "SET sse_client = ?, locked_at = ? "
-                    "WHERE lock_id = ? AND locked_by = ?",
-                    (new_sse_client, int(time.time()), lock_id, locked_by),
-                )
+    def release_lock_by_sse_client(self, sse_client: str) -> list[int]:
+        """Gibt alle Locks frei die zu einer SSE-Client-ID gehoeren.
+
+        Wird aufgerufen wenn SSE-Grace-Period ablaeuft (SLA Punkt 2).
+        Gibt Liste der betroffenen report_ids zurueck.
+        Beleg: SLA Punkt 1, Architektur-Revision 2026-05-18
+        """
+        rows = self._con.execute(
+            "SELECT report_id FROM editor_locks WHERE sse_client=?",
+            (sse_client,),
+        ).fetchall()
+        report_ids = [r[0] for r in rows]
+        if report_ids:
+            self._con.execute(
+                "DELETE FROM editor_locks WHERE sse_client=?", (sse_client,)
+            )
             self._con.commit()
-            if cursor.rowcount > 0:
-                logger.info(
-                    "Lock-Resume: '%s' (lock_id=%s, neue sse_client=%s)",
-                    locked_by, lock_id, new_sse_client,
-                )
-                return True
-            return False
-        except sqlite3.OperationalError as exc:
-            logger.warning("resume_lock fehlgeschlagen: %s", exc)
+            self._lock_change_event.set()
+            logger.info(
+                "Locks durch SSE-Ablauf freigegeben: sse_client=%s report_ids=%s",
+                sse_client, report_ids,
+            )
+        return report_ids
+
+    def resume_lock(
+        self, report_id: int, lock_id: str, locked_by: str, new_sse_client: str,
+    ) -> bool:
+        """Aktualisiert SSE-Client-ID nach Reconnect innerhalb der Grace-Period.
+
+        RESUMING ist serverseitig ein atomares UPDATE (kein Zustandswechsel).
+        Beleg: Layer 2 States, SLA Punkt 2, Architektur-Revision 2026-05-18
+        """
+        cursor = self._con.execute(
+            "UPDATE editor_locks "
+            "SET sse_client=?, locked_at=? "
+            "WHERE report_id=? AND lock_id=? AND locked_by=?",
+            (new_sse_client, int(time.time()), report_id, lock_id, locked_by),
+        )
+        self._con.commit()
+        ok = cursor.rowcount > 0
+        if ok:
+            logger.info(
+                "Lock-Resume: '%s' report_id=%d neue_sse=%s",
+                locked_by, report_id, new_sse_client,
+            )
+        return ok
+
+    def get_lock(self, report_id: int) -> Optional[EditorLockRecord]:
+        """Liest den aktiven Lock fuer einen Bericht (thread-safe).
+
+        Verwendet eigene Connection wenn _db_path gesetzt (SSE-Thread-Safety).
+        Beleg: Build 098, Thread-Safety-Fix
+        """
+        sql = (
+            "SELECT report_id, locked_by, lock_id, locked_at, sse_client, cooldown_until "
+            "FROM editor_locks WHERE report_id=?"
+        )
+
+        def _parse(row: sqlite3.Row) -> Optional[EditorLockRecord]:
+            if row is None:
+                return None
+            return EditorLockRecord(
+                report_id=int(row["report_id"]),
+                locked_by=str(row["locked_by"] or ""),
+                lock_id=str(row["lock_id"]),
+                locked_at=int(row["locked_at"]),
+                sse_client=str(row["sse_client"] or ""),
+                cooldown_until=row["cooldown_until"],
+            )
+
+        if self._db_path:
+            try:
+                rc = sqlite3.connect(self._db_path, timeout=5.0, check_same_thread=False)
+                rc.row_factory = sqlite3.Row
+                row = rc.execute(sql, (report_id,)).fetchone()
+                rc.close()
+                return _parse(row)
+            except (sqlite3.OperationalError, sqlite3.ProgrammingError,
+                    sqlite3.InterfaceError, TypeError) as exc:
+                logger.debug("get_lock (eigene Con) fehlgeschlagen: %s", exc)
+                return None
+        try:
+            row = self._con.execute(sql, (report_id,)).fetchone()
+            return _parse(row)
+        except (sqlite3.OperationalError, sqlite3.ProgrammingError,
+                sqlite3.InterfaceError, TypeError) as exc:
+            logger.debug("get_lock fehlgeschlagen: %s", exc)
+        return None
+
+    def validate_lock(self, report_id: int, lock_id: str) -> bool:
+        """Prueft ob lock_id fuer diesen Bericht gueltig ist.
+
+        Schema v2.0: direkte Pruefung auf (report_id, lock_id).
+        Kein resource-String-Fallback mehr.
+        Beleg: SLA Punkt 11, Architektur-Revision 2026-05-18
+        """
+        try:
+            row = self._con.execute(
+                "SELECT 1 FROM editor_locks WHERE report_id=? AND lock_id=?",
+                (report_id, lock_id),
+            ).fetchone()
+            return row is not None
+        except sqlite3.OperationalError:
             return False
 
-    def request_takeover(self, lock_id: str, requested_by: str, report_id: int) -> int:
-        """Stellt eine Lock-Uebernahme-Anfrage fuer einen Bericht."""
+    def set_cooldown(self, report_id: int, seconds: int) -> bool:
+        """Setzt Cooldown auf dem Lock (SLA Punkt 8).
+
+        Schuetzt Lock-Inhaber vor TAKEOVER-Anfragen.
+        Beleg: SLA Punkt 8, Layer 4 States TAKEOVER_DENIED
+        """
+        cooldown_until = int(time.time()) + seconds
+        cursor = self._con.execute(
+            "UPDATE editor_locks SET cooldown_until=? WHERE report_id=?",
+            (cooldown_until, report_id),
+        )
+        self._con.commit()
+        return cursor.rowcount > 0
+
+    def clear_cooldown(self, report_id: int) -> bool:
+        """Entfernt Cooldown vom Lock (bei RELEASING durch Inhaber)."""
+        cursor = self._con.execute(
+            "UPDATE editor_locks SET cooldown_until=NULL WHERE report_id=?",
+            (report_id,),
+        )
+        self._con.commit()
+        return cursor.rowcount > 0
+
+    def get_cooldown_until(self, report_id: int) -> Optional[int]:
+        """Gibt Unix-Timestamp des aktiven Cooldowns zurueck oder None."""
+        try:
+            row = self._con.execute(
+                "SELECT cooldown_until FROM editor_locks WHERE report_id=?",
+                (report_id,),
+            ).fetchone()
+            if row and row[0] and row[0] > int(time.time()):
+                return int(row[0])
+            return None
+        except sqlite3.OperationalError:
+            return None
+
+    # ------------------------------------------------------------------
+    # Queue-Operationen (SLA Punkte 4, 9)
+    # ------------------------------------------------------------------
+
+    def queue_add(self, report_id: int, requested_by: str, sse_client: str) -> int:
+        """Fuegt Eintrag in Warteschlange ein.
+
+        Jeder Client kann pro Bericht nur einen Eintrag haben:
+        bestehender Eintrag wird zuerst entfernt.
+        Beleg: SLA Punkt 9, Layer 4 States QUEUED
+        """
         now = int(time.time())
-        # Alte offene Anfragen desselben Antragstellers fuer denselben Bericht loeschen
         self._con.execute(
-            "DELETE FROM lock_takeover_requests "
-            "WHERE report_id=? AND requested_by=? AND status='pending'",
+            "DELETE FROM lock_queue WHERE report_id=? AND requested_by=?",
             (report_id, requested_by),
         )
         cursor = self._con.execute(
+            "INSERT INTO lock_queue (report_id, requested_by, sse_client, requested_at) "
+            "VALUES (?, ?, ?, ?)",
+            (report_id, requested_by, sse_client, now),
+        )
+        self._con.commit()
+        logger.debug(
+            "Queue: '%s' eingereiht fuer report_id=%d", requested_by, report_id
+        )
+        return cursor.lastrowid
+
+    def queue_remove(self, report_id: int, requested_by: str) -> bool:
+        """Entfernt eigenen Queue-Eintrag (QUEUED -> IDLE)."""
+        cursor = self._con.execute(
+            "DELETE FROM lock_queue WHERE report_id=? AND requested_by=?",
+            (report_id, requested_by),
+        )
+        self._con.commit()
+        return cursor.rowcount > 0
+
+    def queue_next_valid(
+        self, report_id: int, active_sse_clients: set[str],
+    ) -> Optional[dict]:
+        """Findet naechsten gueltigen Queue-Eintrag (FIFO mit lazy cleanup).
+
+        Durchlaeuft Queue in FIFO-Reihenfolge, loescht inaktive SSE-Eintraege,
+        gibt ersten Eintrag mit aktiver SSE-Verbindung zurueck.
+        Beleg: SLA Punkt 4, Architektur-Revision 2026-05-18
+        """
+        rows = self._con.execute(
+            "SELECT id, requested_by, sse_client, requested_at "
+            "FROM lock_queue WHERE report_id=? ORDER BY requested_at ASC, id ASC",
+            (report_id,),
+        ).fetchall()
+
+        stale_ids = []
+        result = None
+        for row in rows:
+            if row["sse_client"] not in active_sse_clients:
+                stale_ids.append(row["id"])
+                logger.debug(
+                    "Queue: Eintrag %d von '%s' bereinigt (SSE inaktiv)",
+                    row["id"], row["requested_by"],
+                )
+            else:
+                result = {
+                    "id":           row["id"],
+                    "requested_by": row["requested_by"],
+                    "sse_client":   row["sse_client"],
+                }
+                break  # Erster gueltiger Eintrag gefunden
+
+        if stale_ids:
+            placeholders = ",".join("?" * len(stale_ids))
+            self._con.execute(
+                f"DELETE FROM lock_queue WHERE id IN ({placeholders})", stale_ids
+            )
+            self._con.commit()
+
+        return result
+
+    def queue_count(self, report_id: int) -> int:
+        """Gibt Anzahl der Eintraege in der Queue zurueck."""
+        row = self._con.execute(
+            "SELECT COUNT(*) FROM lock_queue WHERE report_id=?", (report_id,)
+        ).fetchone()
+        return row[0] if row else 0
+
+    def queue_remove_by_sse_client(self, sse_client: str) -> int:
+        """Entfernt alle Queue-Eintraege einer SSE-Verbindung.
+
+        Wird bei SSE-Abriss aufgerufen (lazy cleanup als Ergaenzung).
+        SLA Punkt 9: Queue-Integrität.
+        """
+        cursor = self._con.execute(
+            "DELETE FROM lock_queue WHERE sse_client=?", (sse_client,)
+        )
+        self._con.commit()
+        return cursor.rowcount
+
+    # ------------------------------------------------------------------
+    # Takeover-Audit-Log (SLA Punkt 10)
+    # ------------------------------------------------------------------
+
+    def log_takeover_request(
+        self, report_id: int, lock_id: str, requested_by: str,
+    ) -> int:
+        """Schreibt Takeover-Anfrage in Audit-Log."""
+        cursor = self._con.execute(
             "INSERT INTO lock_takeover_requests "
             "(report_id, lock_id, requested_by, requested_at, status) "
-            "VALUES (?,?,?,?,'pending')",
-            (report_id, lock_id, requested_by, now),
+            "VALUES (?, ?, ?, ?, 'pending')",
+            (report_id, lock_id, requested_by, int(time.time())),
         )
         self._con.commit()
         return cursor.lastrowid
 
     def resolve_takeover(self, request_id: int, status: str) -> bool:
-        """Beantwortet eine Takeover-Anfrage und setzt responded_at."""
+        """Beantwortet Takeover-Anfrage im Audit-Log (status: granted/denied/expired)."""
+        assert status in ('granted', 'denied', 'expired')
         cursor = self._con.execute(
             "UPDATE lock_takeover_requests "
             "SET status=?, responded_at=? "
@@ -1889,31 +2247,19 @@ class EvidenceDb:
         self._con.commit()
         return cursor.rowcount > 0
 
-    def get_pending_takeover(
-        self, report_id: int, lock_id: Optional[str] = None
-    ) -> Optional[dict]:
-        """Gibt die aelteste offene Takeover-Anfrage fuer einen Bericht zurueck."""
+    def get_pending_takeover(self, report_id: int) -> Optional[dict]:
+        """Gibt aelteste offene Takeover-Anfrage fuer einen Bericht zurueck."""
         try:
-            if lock_id:
-                row = self._con.execute(
-                    "SELECT id, report_id, lock_id, requested_by, requested_at "
-                    "FROM lock_takeover_requests "
-                    "WHERE report_id=? AND lock_id=? AND status='pending' "
-                    "ORDER BY requested_at ASC LIMIT 1",
-                    (report_id, lock_id),
-                ).fetchone()
-            else:
-                row = self._con.execute(
-                    "SELECT id, report_id, lock_id, requested_by, requested_at "
-                    "FROM lock_takeover_requests "
-                    "WHERE report_id=? AND status='pending' "
-                    "ORDER BY requested_at ASC LIMIT 1",
-                    (report_id,),
-                ).fetchone()
+            row = self._con.execute(
+                "SELECT id, lock_id, requested_by, requested_at "
+                "FROM lock_takeover_requests "
+                "WHERE report_id=? AND status='pending' "
+                "ORDER BY requested_at ASC LIMIT 1",
+                (report_id,),
+            ).fetchone()
             if row:
                 return {
                     "id":           row["id"],
-                    "report_id":    row["report_id"],
                     "lock_id":      row["lock_id"],
                     "requested_by": row["requested_by"],
                     "requested_at": row["requested_at"],
@@ -1922,92 +2268,7 @@ class EvidenceDb:
             pass
         return None
 
-    def get_lock(self, report_id: int) -> Optional[EditorLockRecord]:
-        """Liest den aktiven Lock fuer einen Bericht.
-
-        Verwendet eigene kurzlebige Connection wenn _db_path gesetzt,
-        um Thread-Safety zwischen SSE-Thread und Request-Thread zu gewaehrleisten.
-        Beleg: Build 098, Thread-Safety-Fix
-        """
-        sql = (
-            "SELECT report_id, locked_by, lock_id, locked_at, sse_client "
-            "FROM editor_locks WHERE report_id=?"
-        )
-
-        def _parse(row: sqlite3.Row) -> Optional[EditorLockRecord]:
-            if row is None:
-                return None
-            if row["locked_at"] is None or row["lock_id"] is None:
-                logger.warning(
-                    "get_lock: korrupter Datensatz (NULL in Pflichtfeld) — bereinige"
-                )
-                try:
-                    self._con.execute(
-                        "DELETE FROM editor_locks WHERE report_id=? "
-                        "AND (locked_at IS NULL OR lock_id IS NULL)",
-                        (report_id,),
-                    )
-                    self._con.commit()
-                except Exception:
-                    pass
-                return None
-            return EditorLockRecord(
-                report_id=int(row["report_id"]),
-                locked_by=str(row["locked_by"] or ""),
-                lock_id=str(row["lock_id"]),
-                locked_at=int(row["locked_at"]),
-                sse_client=str(row["sse_client"] or ""),
-            )
-
-        if self._db_path:
-            try:
-                read_con = sqlite3.connect(
-                    self._db_path, timeout=5.0, check_same_thread=False
-                )
-                read_con.row_factory = sqlite3.Row
-                row = read_con.execute(sql, (report_id,)).fetchone()
-                read_con.close()
-                return _parse(row)
-            except (sqlite3.OperationalError, sqlite3.ProgrammingError,
-                    sqlite3.InterfaceError, TypeError) as exc:
-                logger.debug("get_lock (eigene Con) fehlgeschlagen: %s", exc)
-                return None
-
-        try:
-            row = self._con.execute(sql, (report_id,)).fetchone()
-            return _parse(row)
-        except (sqlite3.OperationalError, sqlite3.ProgrammingError,
-                sqlite3.InterfaceError, TypeError) as exc:
-            logger.debug("get_lock fehlgeschlagen: %s", exc)
-        return None
-
-    def validate_lock(
-        self, lock_id: str, report_id: Optional[int] = None
-    ) -> bool:
-        """Prueft ob lock_id in editor_locks existiert.
-
-        Schema v2.0: kein resource-String-Fallback mehr.
-        Mit report_id: prueft ob Lock zu diesem Bericht gehoert.
-        Ohne report_id: prueft nur ob lock_id existiert (fuer Kompatibilitaet
-        mit Endpunkten die report_id noch nicht uebergeben).
-        Beleg: Architektur-Revision 2026-05-18
-        """
-        try:
-            if report_id is not None:
-                row = self._con.execute(
-                    "SELECT 1 FROM editor_locks WHERE report_id=? AND lock_id=?",
-                    (report_id, lock_id),
-                ).fetchone()
-            else:
-                row = self._con.execute(
-                    "SELECT 1 FROM editor_locks WHERE lock_id=?",
-                    (lock_id,),
-                ).fetchone()
-            return row is not None
-        except sqlite3.OperationalError:
-            return False
-
-    # ------------------------------------------------------------------
+        # ------------------------------------------------------------------
     # Interne Hilfsmethoden
     # ------------------------------------------------------------------
 

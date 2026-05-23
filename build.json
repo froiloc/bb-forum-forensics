@@ -1,6 +1,6 @@
 {
   "build":   239,
-  "version": "0.6.239",
-  "date":    "2026-05-18",
-  "note":    "Build 239: Schema v2.0 — editor_locks auf report_id INTEGER FK; _lock_resource() entfernt; alle Lock-Methoden bereinigt; lock_takeover_requests report_id + responded_at"
+  "version": "0.6.239b",
+  "date":    "2026-05-23",
+  "note":    "Build 239b: Paket 1+2 — Schema v2.0 final (lock_queue, cooldown_until); Lock-Methoden komplett neu nach SLA+Layer-Spezifikation"
 }
