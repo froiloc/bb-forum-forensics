@@ -668,12 +668,20 @@ function updateAnchored(anchoredIds) {
  * Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
  *
  * @param {Array}  blocks  -- Bloecke des aktiven Berichts (fuer bereits-verankert-Filter)
- * @param {Object} opts    -- { lockId, getActiveBlockId, onAnchorAdded }
+ * @param {Object} opts    -- { getActiveBlockId, onAnchorAdded }
+ *                           lockId wird nicht mehr direkt übergeben — DocumentLayer
+ *                           verwaltet Lock-Kontext intern. Beleg: Paket 9
  */
 function showSidebar(blocks, opts) {
     _opts = {
         containerId:         'accordion-body-annotations',
-        postFn:              (data) => _fetchWithLockInternal(data, opts?.lockId),
+        // Paket 9: postFn delegiert an DocumentLayer statt _fetchWithLockInternal.
+        // DocumentLayer prüft Lock-Guard und baut Kontext selbst auf.
+        postFn:              (data) => {
+            const dl = window.documentLayer;
+            if (!dl) return Promise.reject(new Error('documentLayer nicht verfügbar'));
+            return dl._sendRequest(data);
+        },
         getActiveParagraph:  opts?.getActiveBlockId || (() => null),
         onAnchorAdded:       opts?.onAnchorAdded || (() => {}),
     };

@@ -1,6 +1,6 @@
 {
-  "build":   251,
-  "version": "0.6.251",
+  "build":   252,
+  "version": "0.6.252",
   "date":    "2026-05-24",
-  "note":    "Build 251: Paket 8 — DocumentLayer (Layer 5), _sendRequest/_buildContext, isDirty+AutoSave-Debounce; 20 neue JS-Tests; 376 JS + 533 Python Tests 0 failures"
+  "note":    "Build 252: Paket 9 — report_editor.js/module_panel.js/annotation_sidebar.js auf DocumentLayer/_docSend umgestellt; editor_bootstrap.js neu; userinfo.js Stubs; 376 JS + 533 Python Tests 0 failures"
 }

@@ -69,7 +69,11 @@
  *     ausgefuehrt damit der gedruckte Stand mit der DB synchron ist.
  *     Beleg: Bugfix Build 134, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.158 · Build: 158 · 2026-05-09
+ * Version: v0.6.252 · Build: 252 · 2026-05-24
+ * Paket 9: Alle direkten fetch()-Schreiboperationen auf _docSend()/DocumentLayer
+ * umgestellt. EditorState.lockId → lockLayer.lockId. Polling-Mechanismus
+ * durch reaktiven LockLayer ersetzt. skipReinit/_pendingReportSwitchId entfernt.
+ * Beleg: Paket 9
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  */
 
@@ -192,10 +196,10 @@ let _knownBlockIds = new Set();
 // Bug 2.120 Fix Build 220: Flag fuer Bericht-Wechsel, das _initEditorJs
 // aus _loadReportImpl erreichbar macht (separate Funktionen, keine Closure).
 // Beleg: Bugfix Build 220, Projektgespraech 2026-05-18
-let _pendingReportSwitchId = null;  // report_id des neuen Berichts bei Wechsel
+// Paket 9: _pendingReportSwitchId entfernt (LockLayer übernimmt).
 // Bug 2.120 Fix Build 227: Verhindert doppelten Save in _loadReportImpl
 // wenn btn-create-report den Save bereits erledigt hat.
-let _skipNextLoadReportImplSave = false;
+// Paket 9: _skipNextLoadReportImplSave entfernt (LockLayer übernimmt).
 
 // ---------------------------------------------------------------------------
 // Hilfsfunktion: fetch mit Lock-Header
@@ -208,21 +212,22 @@ let _skipNextLoadReportImplSave = false;
  * @param {object} body
  * @returns {Promise<Response|null>}
  */
-async function _fetchWithLock(url, body) {
-    // EditorState kommt aus userinfo.js (gemeinsam geladen)
-    const lockId = window.EditorState?.lockId;
-    if (!lockId) {
-        console.warn('report_editor.js: Kein Lock — POST abgebrochen:', url);
+/**
+ * Delegiert eine Schreiboperation an window.documentLayer.
+ * Ersetzt _fetchWithLock(). DocumentLayer baut Kontext (sseClientId,
+ * reportId, lockId) selbst auf und prueft den Lock-Guard intern.
+ * Beleg: DocumentLayer._sendRequest, Paket 9
+ * @param {string} action
+ * @param {object} payload
+ * @returns {Promise<object|null>}
+ */
+async function _docSend(action, payload) {
+    const dl = window.documentLayer;
+    if (!dl) {
+        console.warn('report_editor.js: documentLayer nicht verfuegbar — abgebrochen:', action);
         return null;
     }
-    return fetch(url, {
-        method:  'POST',
-        headers: {
-            'Content-Type':       'application/json',
-            'X-Forensic-Lock-Id': lockId,
-        },
-        body: JSON.stringify({ ...body, lock_id: lockId }),
-    });
+    return dl._sendRequest({ action, ...payload });
 }
 
 // ---------------------------------------------------------------------------
@@ -368,77 +373,19 @@ function openNewReportDialog(existingReports) {
             document.getElementById('new-report-title').focus();
             return;
         }
-        // Bug 2.120 Fix Build 223: Reihenfolge korrigiert:
-        // 1. Alten Bericht letztmalig speichern (Lock noch aktiv)
-        // 2. Lock freigeben
-        // 3. Neuen Bericht anlegen + Lock erwerben
-        // Vorher wurde Lock VOR dem Save freigegeben → 423 beim Save.
-        // Beleg: Bugfix Build 223, Projektgespraech 2026-05-18
+        // Paket 9: Bericht anlegen über ReportLayer (atomare Bericht+Lock-Transaktion).
+        // Beleg: Paket 9, ReportLayer.create(), LockLayer._onReportCreated()
         const _oldRid218 = _currentReport?.id ?? null;
-        if (window.EditorState?.lockId && _oldRid218) {
-            // Schritt 1: Letzter Save vor Lock-Freigabe
-            // Bug 2.120 Fix Build 225: _knownBlockIds aus _currentBlocks
-            // auffuellen, damit neue (noch nicht gespeicherte) Bloecke
-            // beim letzten Save beruecksichtigt werden.
-            _currentBlocks.forEach(b => {
-                if (b.block_id) _knownBlockIds.add(b.block_id);
-            });
+        if (window.lockLayer?.lockId && _oldRid218) {
+            _currentBlocks.forEach(b => { if (b.block_id) _knownBlockIds.add(b.block_id); });
             try { await _performAutoSave(_oldRid218); } catch (_) {}
-            // Schritt 2: Lock freigeben
-            try {
-                await fetch('/_forensic/report', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action:    'release_lock',
-                        lock_id:   window.EditorState.lockId,
-                        report_id: _oldRid218,
-                    }),
-                });
-                window.EditorState.lockId = null;
-                sessionStorage.removeItem('forensic_lock_id');
-            } catch (_) {}
+            window.lockLayer.release();
+            await new Promise(r => setTimeout(r, 100));
         }
-
         try {
-            const resp = await fetch(EDITOR_API.REPORTS, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    report_type: type,
-                    title,
-                    sse_client: window.EditorState?.sseClientId ?? '',
-                }),
-            });
-            const data = await resp.json();
-            if (resp.status === 201) {
-                dialog.remove();
-                // Lock aus 201-Response atomar uebernehmen
-                if (data.lock_id && window.EditorState) {
-                    window.EditorState.lockId = data.lock_id;
-                    window.EditorState.currentReportId = data.id;
-                    sessionStorage.setItem('forensic_lock_id', data.lock_id);
-                    _dbg('create-report: Lock aus 201-Response:', data.lock_id,
-                         'fuer Bericht', data.id);
-                    // Bug 2.120 Fix Build 222: Lock-Status-UI aktualisieren.
-                    if (window._updateLockStatus) {
-                        window._updateLockStatus('lock-mine', 'Lock: ich');
-                    }
-                    // Bug 2.120 Fix Build 223: skipReinit setzen damit
-                    // acquireLock nach _initEditorJs kein _reinitWithLock
-                    // ausloest — der Editor wird direkt schreibbar gemacht.
-                    // Beleg: Bugfix Build 223, Projektgespraech 2026-05-18
-                    window.EditorState.skipReinit = true;
-                }
-                // Bug 2.120 Fix Build 227: _loadReportImpl-Save ueberspringen
-                _skipNextLoadReportImplSave = true;
-                // Bug 2.74 Fix Build 166: preselectId statt change-Event
-                // verhindert doppelten _initEditorJs()-Aufruf.
-                // Beleg: Projektgespraech 2026-05-11
-                await initReportSelector(data.id);
-            } else {
-                _selectorStatus(data.error || `Fehler ${resp.status}`, 'error');
-            }
+            if (!window.reportLayer) { _selectorStatus('reportLayer nicht verfügbar', 'error'); return; }
+            await window.reportLayer.create(type, title);
+            dialog.remove();
         } catch (err) {
             _selectorStatus(String(err), 'error');
         }
@@ -498,51 +445,28 @@ async function _loadReportImpl(report) {
     // Nach dem Laden:
     // 3) Lock fuer neuen Bericht erwerben
     // Beleg: Bugfix Build 218, Projektgespraech 2026-05-17
+    // Paket 9: Switch-Flow über LockLayer / ReportLayer koordiniert.
     const _prevReportId = _currentReport?.id;
     const _isReportSwitch = _prevReportId != null && _prevReportId !== report.id;
-    // Bug 2.120 Fix Build 220/233: Flag fuer _initEditorJs.
-    // Beim Switch-Flow wird Lock jetzt vorab awaited — _pendingReportSwitchId
-    // wird danach auf null gesetzt. Beim Create-Flow bleibt er gesetzt.
-    _pendingReportSwitchId = _isReportSwitch ? report.id : null;
+
     if (_isReportSwitch) {
         _dbg('_loadReportImpl: Bericht-Wechsel', _prevReportId, '->', report.id,
-             '— Save + Lock-Release');
-        // Letzter Save und Lock-Release — ausser wenn bereits durch btn-create-report erledigt
-        // Bug 2.120 Fix Build 229: Lock-Release auch ueberspringen wenn
-        // btn-create-report bereits gespeichert hat. Ohne diesen Guard wurde
-        // EditorState.lockId (neu gesetzt aus 201-Response) sofort wieder
-        // auf null gesetzt, bevor _initEditorJs hasLock pruefen konnte.
-        // Beleg: Bugfix Build 229, Projektgespraech 2026-05-18
-        if (_skipNextLoadReportImplSave) {
-            _skipNextLoadReportImplSave = false;
-            _dbg('_loadReportImpl: Save + Lock-Release uebersprungen (Create-Flow)');
-        } else {
+             '— Save + Lock-Release über LockLayer');
+        if (window.lockLayer?.lockId) {
+            _currentBlocks.forEach(b => { if (b.block_id) _knownBlockIds.add(b.block_id); });
             try { await _performAutoSave(_prevReportId); } catch (_) {}
-            // Lock freigeben (awaitable)
-            if (window._releaseLockAsync) {
-                await window._releaseLockAsync();
-            }
+            window.lockLayer.release();
+            await new Promise(r => setTimeout(r, 100));
         }
     }
 
     _currentReport = report;
-    // Bug 2.120 Fix Build 218: currentReportId in EditorState fuer Heartbeat.
-    if (window.EditorState) window.EditorState.currentReportId = report?.id ?? null;
 
-    // Bug 2.120 Fix Build 233: Lock VOR _initEditorJs erwerben.
-    // Damit ist EditorState.lockId gesetzt wenn hasLock berechnet wird
-    // und der Editor startet direkt mit readOnly=false.
-    // Kein _pendingReportSwitchId mehr noetig fuer den Switch-Flow.
-    // Beleg: Bugfix Build 233, Projektgespraech 2026-05-18
-    // Bug 2.120 Fix Build 238: Lock immer VOR _initEditorJs erwerben —
-    // sowohl beim Bericht-Wechsel als auch beim ersten Laden (kein _isReportSwitch).
-    // Nur ueberspringen wenn Lock bereits vorhanden (Create-Flow) oder
-    // wenn _skipNextLoadReportImplSave gesetzt ist.
-    // Beleg: Bugfix Build 238, Projektgespraech 2026-05-18
-    if (!_skipNextLoadReportImplSave && !window.EditorState?.lockId && window._acquireLock) {
-        _dbg('_loadReportImpl: Lock vorab erwerben fuer Bericht', report.id);
-        await window._acquireLock(report.id);
-        _pendingReportSwitchId = null;  // kein zweiter acquireLock in _initEditorJs
+    // Lock für neuen Bericht erwerben — nur wenn noch kein Lock gehalten.
+    // Beim Create-Flow ist der Lock bereits über LockLayer._onReportCreated gesetzt.
+    if (!window.lockLayer?.lockId && window.lockLayer) {
+        _dbg('_loadReportImpl: Lock erwerben für Bericht', report.id);
+        await window.lockLayer.acquire();
     }
 
     // Build 114: Action-Bar-Buttons aktivieren sobald ein Bericht geladen ist.
@@ -714,7 +638,7 @@ function _initEditorJs(blocks, reportId) {
     // Nach Lock-Erwerb wird der Editor via _reinitWithLock() neu
     // initialisiert — dann mit readOnly: false.
     // Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19
-    const hasLock = !!(window.EditorState?.lockId);
+    const hasLock = !!(window.lockLayer?.lockId);
 
     _editor = new window.EditorJS({
         holder: 'editorjs-holder',
@@ -888,19 +812,13 @@ function _initEditorJs(blocks, reportId) {
                     // Vorher wurde delete_block nur im block-removed-Zweig gesendet,
                     // der bei Toolbar-Loeschen nie feuert.
                     // Beleg: Bugfix Build 210, Projektgespraech 2026-05-17
-                    if (deletedIds.length > 0 && window.EditorState?.lockId) {
+                    if (deletedIds.length > 0 && window.lockLayer?.lockId) {
                         _dbg('onChange: sofortiger delete_block fuer', deletedIds);
                         Promise.all(deletedIds.map(async (blockId) => {
-                            const resp = await _fetchWithLock(
-                                EDITOR_API.BLOCK,
-                                { action: 'delete', block_id: blockId }
-                            );
-                            if (resp && (resp.ok || resp.status === 404)) {
+                            const resp = await _docSend('delete_block', { block_id: blockId });
+                            if (resp !== null) {
                                 _knownBlockIds.delete(blockId);
                                 _dbg('onChange: Block sofort geloescht (2.98):', blockId);
-                            } else if (resp) {
-                                console.warn('report_editor.js: delete_block (2.98) fehlgeschlagen:',
-                                    blockId, resp.status);
                             }
                         })).catch(err => {
                             console.warn('report_editor.js: delete_block (2.98) Fehler:', err);
@@ -980,7 +898,7 @@ function _initEditorJs(blocks, reportId) {
                                 //
                                 // Beleg: Bugfix Build 205, Projektgespraech 2026-05-17
                                 // (Bug 2.98, Bug 2.112)
-                                if (window.EditorState?.lockId) {
+                                if (window.lockLayer?.lockId) {
                                     // Gelöschte IDs = in _knownBlockIds aber nicht mehr im
                                     // aktuellen Editor-Snapshot (editorData.blocks)
                                     const currentEditorIds = new Set(
@@ -994,17 +912,10 @@ function _initEditorJs(blocks, reportId) {
                                              toDeleteNow);
                                         // Fire-and-forget — Fehler nicht blockierend
                                         Promise.all(toDeleteNow.map(async (blockId) => {
-                                            const resp = await _fetchWithLock(
-                                                EDITOR_API.BLOCK,
-                                                { action: 'delete', block_id: blockId }
-                                            );
-                                            if (resp && (resp.ok || resp.status === 404)) {
+                                            const resp = await _docSend('delete_block', { block_id: blockId });
+                                            if (resp !== null) {
                                                 _knownBlockIds.delete(blockId);
                                                 _dbg('onChange: Block sofort geloescht:', blockId);
-                                            } else if (resp) {
-                                                console.warn('report_editor.js: sofortiger'
-                                                    + ' delete_block fehlgeschlagen:',
-                                                    blockId, resp.status);
                                             }
                                         })).catch(err => {
                                             console.warn('report_editor.js: sofortiger'
@@ -1104,65 +1015,9 @@ function _initEditorJs(blocks, reportId) {
     // (_loadInProgress) verhindert doppeltes Laden.
     // skipReinit wird nur noch beim Create-Flow gesetzt (btn-create-report).
     // Beleg: Bugfix Build 228, Projektgespraech 2026-05-18
-    // Bug 2.120 Fix Build 229: acquireLock nur wenn kein Lock vorhanden.
-    // Beim Create-Flow ist der Lock bereits in EditorState.lockId (aus 201-Response).
-    // Beim Switch-Flow ist EditorState.lockId null (wurde in _loadReportImpl freigegeben).
-    // Beleg: Bugfix Build 229, Projektgespraech 2026-05-18
-    if (_pendingReportSwitchId && window._acquireLock) {
-        const _ridForLock = _pendingReportSwitchId;
-        _pendingReportSwitchId = null;
-        if (window.EditorState?.lockId) {
-            // Create-Flow: Lock bereits vorhanden — nur UI aktualisieren
-            _dbg('_initEditorJs: Lock bereits vorhanden fuer Bericht', _ridForLock, '— kein acquireLock noetig');
-            if (window._updateLockStatus) window._updateLockStatus('lock-mine', 'Lock: ich');
-        } else {
-            // Switch-Flow: Lock erwerben, skipReinit=true verhindert doppelten Editor.
-            // Bug 2.120 Fix Build 232: Timeout-Fallback falls acquireLock nicht
-            // antwortet (z.B. Server-Neustart). Nach 5s direkt toggle() wenn Lock vorhanden.
-            // Beleg: Bugfix Build 232, Projektgespraech 2026-05-18
-            _dbg('_initEditorJs: Lock erwerben fuer neuen Bericht', _ridForLock);
-            if (window.EditorState) window.EditorState.skipReinit = true;
-            // Bug 2.120 Fix Build 233: Polling-Mechanismus nach acquireLock.
-            // Prüft jede 300ms ob Lock erworben und Editor noch readOnly ist.
-            // Bei Erfolg: readOnly.toggle(). Bei Misserfolg: nach 30s aufgeben.
-            // Beleg: Bugfix Build 233, Projektgespraech 2026-05-18
-            let _readOnlyPollCount = 0;
-            const _ridForPoll = _ridForLock;
-            const _readOnlyPoll = setInterval(() => {
-                _readOnlyPollCount++;
-                const ed = window._editor;
-                // Bereits schreibbar — fertig
-                if (ed && !ed.readOnly?.isEnabled) {
-                    clearInterval(_readOnlyPoll);
-                    return;
-                }
-                // Lock vorhanden — toggle
-                if (window.EditorState?.lockId && ed?.readOnly?.isEnabled) {
-                    _dbg('_initEditorJs: Polling: Lock vorhanden nach',
-                         _readOnlyPollCount * 300, 'ms — toggle()');
-                    clearInterval(_readOnlyPoll);
-                    ed.readOnly.toggle().then(() => {
-                        if (window._updateLockStatus) window._updateLockStatus('lock-mine', 'Lock: ich');
-                        if (window.updateEditorPlaceholder) updateEditorPlaceholder(true);
-                        if (window.ModulePanel?._refreshLockId) {
-                            window.ModulePanel._refreshLockId(window.EditorState.lockId);
-                        }
-                        if (window.EditorState) window.EditorState.skipReinit = false;
-                    }).catch(() => {});
-                    return;
-                }
-                // Nach 30s aufgeben
-                if (_readOnlyPollCount > 100) {
-                    _dbg('_initEditorJs: Polling: Timeout nach 30s fuer Bericht', _ridForPoll);
-                    clearInterval(_readOnlyPoll);
-                    if (window.EditorState) window.EditorState.skipReinit = false;
-                }
-            }, 300);
-            window._acquireLock(_ridForLock).catch(err => {
-                console.warn('report_editor.js: acquireLock nach Switch fehlgeschlagen:', err);
-            });
-        }
-    }
+    // Paket 9: Polling-Mechanismus entfernt. editor_bootstrap.js registriert
+    // einen LockLayer-Listener der readOnly.toggle() bei 'acquired'-Up-Event ausloest.
+    // Beleg: Paket 9, LockLayer Up-Event 'acquired', editor_bootstrap.js
 }
 
 /**
@@ -1433,7 +1288,7 @@ function _openCommentAccordion(blockId, focusInput = false) {
     // Beleg: Bugfix Build 126, Projektgespraech 2026-05-08
     if (typeof window.CommentThread?.showForBlock === 'function') {
         const username = document.getElementById('report-editor-body')?.dataset?.username || '';
-        const lockId = window.EditorState?.lockId || null;
+        const lockId = window.lockLayer?.lockId || null;
         const commentOpts = {
             lockId,
             myUsername:  username,
@@ -1839,7 +1694,7 @@ async function _onPlaceholderFieldSave(blockId, fieldName, value) {
         console.warn('report_editor.js: _onPlaceholderFieldSave: blockId oder fieldName fehlt');
         return;
     }
-    if (!window.EditorState?.lockId) {
+    if (!window.lockLayer?.lockId) {
         console.warn('report_editor.js: _onPlaceholderFieldSave: kein Lock — Abbruch');
         return;
     }
@@ -1868,10 +1723,8 @@ async function _onPlaceholderFieldSave(blockId, fieldName, value) {
     // Bug 2.120 Fix Build 236: report_id mitsenden damit _lock_guard
     // validate_lock(lock_id, report_id) bericht-spezifisch pruefen kann.
     // Beleg: Bugfix Build 236, Projektgespraech 2026-05-18
-    const resp = await _fetchWithLock(EDITOR_API.BLOCK, {
-        action:                  'save',
+    const resp = await _docSend('save_block', {
         block_id:                blockId,
-        report_id:               _currentReport?.id ?? null,
         block_data:              blockDataObj,
         owner:                   username,
         placeholder_values_json: JSON.stringify(newValues),
@@ -1954,7 +1807,7 @@ function _refreshChipsInBlock(blockId, values) {
 function _refreshModulePanel() {
     if (!window.ModulePanel?.showPanel) return;
 
-    const lockId   = window.EditorState?.lockId || null;
+    const lockId   = window.lockLayer?.lockId || null;
     const reportId = _currentReport?.id || null;
 
     window.ModulePanel.showPanel(_currentBlocks, {
@@ -2169,7 +2022,7 @@ async function _syncAnchoredFromEditor() {
 function _refreshAnnotationSidebar() {
     if (!window.AnnotationSidebar?.showSidebar) return;
 
-    const lockId   = window.EditorState?.lockId || null;
+    const lockId   = window.lockLayer?.lockId || null;
     const username = document.getElementById('report-editor-body')?.dataset?.username || '';
 
     window.AnnotationSidebar.showSidebar(_currentBlocks, {
@@ -2286,7 +2139,7 @@ async function _performAutoSave(reportId) {
         _dbg('_performAutoSave: kein reportId verfuegbar, ueberspringe Save');
         return;
     }
-    if (!window.EditorState?.lockId) return;
+    if (!window.lockLayer?.lockId) return;
     if (!_editor) return;
     // Bug 2.120 Fix Build 225: readOnly-Guard — editor.save() schlaegt
     // fehl wenn Editor im Lese-Modus ist (vor Lock-Erwerb).
@@ -2344,17 +2197,14 @@ async function _performAutoSave(reportId) {
                 text: window.PlaceholderChips.dehydrateChips(block.data.text),
             };
         }
-        const resp = await _fetchWithLock(EDITOR_API.BLOCK, {
-            action:     'save',
+        const resp = await _docSend('save_block', {
             block_id:   block.id,
-            report_id:  reportId,
             block_type: block.type,
             block_data: blockDataToSave,
             owner:      username,
         });
-        if (resp && !resp.ok) {
-            const err = await resp.json().catch(() => ({}));
-            console.warn('report_editor.js: Block-Save fehlgeschlagen:', block.id, err);
+        if (resp === null) {
+            console.warn('report_editor.js: Block-Save fehlgeschlagen:', block.id);
         }
     }
 
@@ -2374,22 +2224,12 @@ async function _performAutoSave(reportId) {
         for (const blockId of deletedIds) {
         // Bug 2.52 Fix Build 138: Aktion heisst 'delete', nicht 'delete_block'.
         // Backend kennt nur 'save' und 'delete'. Beleg: Bugfix Build 138, 2026-05-09
-            const resp = await _fetchWithLock(EDITOR_API.BLOCK, {
-                action:    'delete',
-                block_id:  blockId,
-                report_id: reportId,
-            });
-            if (resp) {
-                if (resp.ok || resp.status === 404) {
-                    // 404 = bereits geloescht (OK), 200 = erfolgreich geloescht
-                    console.debug('report_editor.js: Block geloescht:', blockId,
-                                  '| Status:', resp.status);
-                    _knownBlockIds.delete(blockId);
-                } else {
-                    const errBody = await resp.json().catch(() => ({}));
-                    console.warn('report_editor.js: delete_block fehlgeschlagen:',
-                                 blockId, resp.status, errBody);
-                }
+            const delResp = await _docSend('delete_block', { block_id: blockId });
+            if (delResp !== null) {
+                console.debug('report_editor.js: Block geloescht:', blockId);
+                _knownBlockIds.delete(blockId);
+            } else {
+                console.warn('report_editor.js: delete_block fehlgeschlagen:', blockId);
             }
         }
     }
@@ -2402,10 +2242,7 @@ async function _performAutoSave(reportId) {
         sort_index: String(i).padStart(6, '0'),
     }));
     if (orderPayload.length) {
-        await _fetchWithLock(EDITOR_API.ORDER, {
-            report_id: reportId,
-            order:     orderPayload,
-        });
+        await _docSend('reorder', { order: orderPayload });
     }
 
     // _knownBlockIds auf aktuellen Stand bringen
@@ -2786,12 +2623,12 @@ class EvidenceBlock {
             : null;
 
         if (blockId) {
-            const resp = await _fetchWithLock(EDITOR_API.EVIDENCE, {
-                action:      'add',
-                block_id:    blockId,
-                evidence_id: annotationId,
+            const resp = await _docSend('add_anchor', {
+                block_id:      blockId,
+                annotation_id: annotationId,
+                anchor_text:   `[BELEG:annotation_id=${annotationId}]`,
             });
-            if (resp && !resp.ok) {
+            if (resp === null) {
                 console.warn('report_editor.js: Evidence-Add fehlgeschlagen:', annotationId);
                 return;
             }
@@ -2808,12 +2645,8 @@ class EvidenceBlock {
     async _removeEvidence(annotationId) {
         const blockId = this._getBlockId();
         if (blockId) {
-            const resp = await _fetchWithLock(EDITOR_API.EVIDENCE, {
-                action:      'remove',
-                block_id:    blockId,
-                evidence_id: annotationId,
-            });
-            if (resp && !resp.ok) {
+            const resp = await _docSend('delete_block', { block_id: blockId });
+            if (resp === null) {
                 console.warn('report_editor.js: Evidence-Remove fehlgeschlagen:', annotationId);
                 return;
             }
@@ -2903,7 +2736,7 @@ async function insertEvidenceBlockFromAnnotation(annId) {
         _dbg('insertEvidenceBlockFromAnnotation: Editor oder Report nicht bereit');
         return false;
     }
-    if (!window.EditorState?.lockId) {
+    if (!window.lockLayer?.lockId) {
         _dbg('insertEvidenceBlockFromAnnotation: Kein Lock');
         return false;
     }
@@ -2935,8 +2768,9 @@ async function insertEvidenceBlockFromAnnotation(annId) {
     // Evidence-Verknuepfung serverseitig persistieren
     if (newBlockId) {
         try {
-            await _fetchWithLock(EDITOR_API.EVIDENCE, {
-                action: 'add', block_id: newBlockId, evidence_id: annId,
+            await _docSend('add_anchor', {
+                block_id: newBlockId, annotation_id: annId,
+                anchor_text: `[BELEG:annotation_id=${annId}]`,
             });
         } catch (err) {
             _dbg('insertEvidenceBlockFromAnnotation: Evidence-Link fehlgeschlagen:', err);
@@ -2966,7 +2800,7 @@ window.addEventListener('message', async (evt) => {
     if (!evt.data || evt.data.type !== 'insert_evidence') return;
     const annotationId = parseInt(evt.data.annotation_id, 10);
     if (!annotationId || !_editor || !_currentReport) return;
-    if (!window.EditorState?.lockId) {
+    if (!window.lockLayer?.lockId) {
         console.warn('report_editor.js: insert_evidence: Kein Lock — Einfuegen abgebrochen');
         return;
     }
@@ -2980,10 +2814,9 @@ window.addEventListener('message', async (evt) => {
     }, {}, undefined, true);
 
     // Evidence-Verknuepfung serverseitig speichern
-    await _fetchWithLock(EDITOR_API.EVIDENCE, {
-        action:      'add',
-        block_id:    blockId,
-        evidence_id: annotationId,
+    await _docSend('add_anchor', {
+        block_id: blockId, annotation_id: annotationId,
+        anchor_text: `[BELEG:annotation_id=${annotationId}]`,
     });
 });
 
@@ -3580,7 +3413,7 @@ async function initEditorModule() {
         btnPrint.addEventListener('click', async (evt) => {
             window._uevt?.(evt, 'report_editor', 'click:btn-print'); // B200
             // Letzten Stand speichern bevor gedruckt wird
-            if (window.EditorState?.lockId && _currentReport?.id) {
+            if (window.lockLayer?.lockId && _currentReport?.id) {
                 btnPrint.disabled = true;
                 btnPrint.textContent = '🖶 …';
                 try {
@@ -3605,7 +3438,7 @@ async function initEditorModule() {
             if (!isSave) return;
             window._uevt?.(e, 'report_editor', 'keydown:Ctrl+S', { reportId: _currentReport?.id }); // B200
             e.preventDefault();
-            if (!_currentReport?.id || !window.EditorState?.lockId) return;
+            if (!_currentReport?.id || !window.lockLayer?.lockId) return;
             await _performAutoSave(_currentReport.id);
         });
     }
@@ -3622,7 +3455,7 @@ async function _reinitWithLock() {
     // Lock-ID vor dem destroy() sichern — nach await koennte EditorState
     // durch einen parallel eintreffenden SSE-Event zurueckgesetzt worden sein.
     // Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19
-    const lockIdSnapshot = window.EditorState?.lockId;
+    const lockIdSnapshot = window.lockLayer?.lockId;
     if (!lockIdSnapshot) {
         console.debug('report_editor.js: _reinitWithLock: kein Lock — abgebrochen');
         return;
@@ -3637,12 +3470,7 @@ async function _reinitWithLock() {
         window._editor = null;
     }
 
-    // Sicherstellen dass lockId nach dem destroy() noch gesetzt ist
-    if (window.EditorState && !window.EditorState.lockId) {
-        window.EditorState.lockId = lockIdSnapshot;
-    }
-
-    // Neu laden — jetzt mit gesetztem lockId
+    // Neu laden — jetzt mit gesetztem lockId (LockLayer hält den Zustand)
     try {
         await loadReport(_currentReport);
     } finally {

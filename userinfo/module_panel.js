@@ -846,11 +846,8 @@ function _renderListWithStandard(modules, stdBlocks) {
  */
 async function _insertModule(moduleId) {
     if (!moduleId) return;
-    // Bug 2.120 Fix Build 231: lockId immer direkt aus EditorState lesen.
-    // _currentOpts.lockId kann veraltet sein wenn Lock nach showPanel-Aufruf
-    // freigegeben und neu erworben wurde (Bericht-Wechsel).
-    // Beleg: Bugfix Build 231, Projektgespraech 2026-05-18
-    const _lockId231 = window.EditorState?.lockId || _currentOpts.lockId;
+    // Paket 9: Lock-Check über LockLayer statt EditorState.
+    const _lockId231 = window.lockLayer?.lockId;
     if (!_lockId231) {
         _showInsertError('Kein aktiver Lock. Bitte Seite neu laden.');
         return;
@@ -897,27 +894,18 @@ async function _insertModule(moduleId) {
         }
 
         const blockId = _generateUUID();
-        // Bug 2.120 Fix Build 237: Lock-ID aus EditorState lesen
-        const _lockIdMod237 = window.EditorState?.lockId || _currentOpts.lockId || '';
-        const resp = await fetch(REPORT_API, {
-            method:  'POST',
-            headers: {
-                'Content-Type':          'application/json',
-                'X-Forensic-Request':    'ajax',
-                'X-Forensic-Lock-Id':    _lockIdMod237,
-            },
-            body: JSON.stringify({
-                action:               'save_block',
-                block_id:             blockId,
-                report_id:            _currentOpts.reportId,
-                block_type:           'paragraph',
-                block_data:           blockData,
-                module_id:            moduleId,
-                insert_after_block_id: insertAfterBlockId,
-            }),
+        // Paket 9: Schreiboperation über DocumentLayer. Beleg: Paket 9
+        const dl = window.documentLayer;
+        if (!dl) throw new Error('documentLayer nicht verfügbar');
+        const data = await dl._sendRequest({
+            action:               'save_block',
+            block_id:             blockId,
+            block_type:           'paragraph',
+            block_data:           blockData,
+            module_id:            moduleId,
+            insert_after_block_id: insertAfterBlockId,
         });
-        const data = await resp.json().catch(() => ({}));
-        if (!resp.ok) throw new Error(data.error || 'HTTP ' + resp.status);
+        if (data === null) throw new Error('Block-Save fehlgeschlagen (kein Lock oder Netzwerkfehler)');
 
         // 4. Kein blocks.insert() mehr — Strategie-Wechsel Build 203.
         //
@@ -994,8 +982,8 @@ async function _insertModule(moduleId) {
  */
 async function _insertQuery(queryId) {
     if (!queryId) return;
-    const _lockId231q = window.EditorState?.lockId || _currentOpts.lockId;
-    if (!_lockId231q) {
+    // Paket 9: Lock-Check über LockLayer. Beleg: Paket 9
+    if (!window.lockLayer?.lockId) {
         _showInsertError('Kein aktiver Lock. Bitte Seite neu laden.');
         return;
     }
@@ -1163,27 +1151,16 @@ async function _insertQuery(queryId) {
 async function _insertQueryAsNewBlock(queryId) {
     const blockData = JSON.stringify({ text: `{{a:${queryId}}}` });
     const blockId   = _generateUUID();
-    // Bug 2.120 Fix Build 237: Lock-ID immer aus EditorState lesen,
-    // _currentOpts.lockId kann nach Bericht-Wechsel veraltet sein.
-    // Beleg: Bugfix Build 237, Projektgespraech 2026-05-18
-    const _lockId237 = window.EditorState?.lockId || _currentOpts.lockId || '';
-    const resp = await fetch(REPORT_API, {
-        method:  'POST',
-        headers: {
-            'Content-Type':       'application/json',
-            'X-Forensic-Request': 'ajax',
-            'X-Forensic-Lock-Id': _lockId237,
-        },
-        body: JSON.stringify({
-            action:     'save_block',
-            block_id:   blockId,
-            report_id:  _currentOpts.reportId,
-            block_type: 'paragraph',
-            block_data: blockData,
-        }),
+    // Paket 9: Lock-Check und Schreiboperation über Layer. Beleg: Paket 9
+    const dl = window.documentLayer;
+    if (!dl || !window.lockLayer?.lockId) throw new Error('Kein aktiver Lock oder documentLayer fehlt');
+    const data = await dl._sendRequest({
+        action:     'save_block',
+        block_id:   blockId,
+        block_type: 'paragraph',
+        block_data: blockData,
     });
-    const data = await resp.json().catch(() => ({}));
-    if (!resp.ok) throw new Error(data.error || 'HTTP ' + resp.status);
+    if (data === null) throw new Error('Block-Save fehlgeschlagen');
 
     // Block sofort in den Editor einfuegen (kein Seiten-Reload noetig).
     // Chip-HTML aufbauen damit der Platzhalter sofort als Chip dargestellt wird.
