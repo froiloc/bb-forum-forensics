@@ -1,6 +1,6 @@
 {
-  "build":   249,
-  "version": "0.6.249",
+  "build":   250,
+  "version": "0.6.250",
   "date":    "2026-05-24",
-  "note":    "Build 249: Paket 6 — report_opened-Tabelle, open_report/new_report-Actions, ReportLayer (Layer 3); 20 neue JS-Tests; 326 JS + 533 Python Tests 0 failures"
+  "note":    "Build 250: Paket 7 — LockLayer (Layer 4), alle 10 Zustände, sessionStorage-Key forensic_lock_v2; 30 neue JS-Tests; 356 JS + 533 Python Tests 0 failures"
 }
