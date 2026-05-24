@@ -529,7 +529,7 @@ async function initEditor() {
     // Vor dem Lock-Freigeben noch den aktuellen Editor-Zustand speichern.
     // Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19
     window.addEventListener('beforeunload', () => {
-        if (EditorState.lockId) {
+        if (window.lockLayer?.lockId) {
             // Auto-Save-Timer sofort ausloesen (Debounce umgehen)
             if (window._editor && window._currentReportId) {
                 window._editor.save().then(data => {
@@ -670,7 +670,8 @@ function renderEditorParagraphs(list, paragraphs) {
  * Neuen Paragraph speichern.
  */
 async function saveNewParagraph() {
-    if (!EditorState.lockId) {
+    // Paket 9: Lock-Check über LockLayer. Beleg: Paket 9
+    if (!window.lockLayer?.lockId) {
         showStatusMsg('Lock erforderlich.', 'warn');
         return;
     }
@@ -686,7 +687,7 @@ async function saveNewParagraph() {
             method: 'POST',
             headers: {
                 'Content-Type':        'application/json',
-                'X-Forensic-Lock-Id':  EditorState.lockId,
+                'X-Forensic-Lock-Id':  window.lockLayer?.lockId,
             },
             body: JSON.stringify({ action: 'add_paragraph', content }),
         });

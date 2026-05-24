@@ -1,6 +1,6 @@
 {
-  "build":   252,
-  "version": "0.6.252",
+  "build":   253,
+  "version": "0.6.253",
   "date":    "2026-05-24",
-  "note":    "Build 252: Paket 9 — report_editor.js/module_panel.js/annotation_sidebar.js auf DocumentLayer/_docSend umgestellt; editor_bootstrap.js neu; userinfo.js Stubs; 376 JS + 533 Python Tests 0 failures"
+  "note":    "Build 253: Paket 10 — E2E-Integrationstests (21 Tests E01-E11); Bereinigung EditorState-Reste in userinfo.js; 376 JS + 554 Python Tests 0 failures"
 }

@@ -1005,16 +1005,6 @@ function _initEditorJs(blocks, reportId) {
         },
     });
 
-    // Bug 2.120 Fix Build 219: Lock-Erwerb nach Bericht-Wechsel als
-    // Fire-and-forget (kein await) — await im synchronen IIFE nicht
-    // erlaubt, obwohl _loadReportImpl async ist.
-    // Beleg: Bugfix Build 219, Projektgespraech 2026-05-18
-    // Bug 2.120 Fix Build 220/228: _pendingReportSwitchId statt _isReportSwitch.
-    // Beim Switch-Flow: kein skipReinit — acquireLock darf _reinitWithLock aufrufen
-    // um den Editor in den Schreib-Modus zu bringen. Der loadReport-Guard
-    // (_loadInProgress) verhindert doppeltes Laden.
-    // skipReinit wird nur noch beim Create-Flow gesetzt (btn-create-report).
-    // Beleg: Bugfix Build 228, Projektgespraech 2026-05-18
     // Paket 9: Polling-Mechanismus entfernt. editor_bootstrap.js registriert
     // einen LockLayer-Listener der readOnly.toggle() bei 'acquired'-Up-Event ausloest.
     // Beleg: Paket 9, LockLayer Up-Event 'acquired', editor_bootstrap.js
