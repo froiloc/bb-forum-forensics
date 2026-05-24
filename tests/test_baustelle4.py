@@ -60,6 +60,12 @@ def in_memory_evidence_db():
     con = sqlite3.connect(":memory:")
     con.row_factory = sqlite3.Row
     edb = EvidenceDb(con)
+    # Build 242: Lock-Tests benoetigen report_id=1
+    con.execute(
+        "INSERT INTO reports (report_type, sequence_nr, title, created_by, created_at)"
+        " VALUES ('interim', 1, 'Test', 'h001', 1700000000)"
+    )
+    con.commit()
     yield edb
     con.close()
 
@@ -393,35 +399,35 @@ class TestEvidenceDbLock:
 
     def test_acquire_lock_succeeds(self, in_memory_evidence_db):
         edb = in_memory_evidence_db
-        lock_id = edb.acquire_lock(locked_by="h012345", sse_client="client-1")
+        lock_id = edb.acquire_lock(1, "h012345", "client-1")
         assert lock_id is not None
         assert len(lock_id) > 8
 
     def test_acquire_lock_second_time_fails(self, in_memory_evidence_db):
         """B4-DB11: acquire_lock zweimal -> zweiter Versuch None."""
         edb = in_memory_evidence_db
-        lock_id1 = edb.acquire_lock("h012345", "client-1")
+        lock_id1 = edb.acquire_lock(1, "h012345", "client-1")
         assert lock_id1 is not None
-        lock_id2 = edb.acquire_lock("h067890", "client-2")
+        lock_id2 = edb.acquire_lock(1, "h067890", "client-2")
         assert lock_id2 is None
 
     def test_release_lock_by_sse_client(self, in_memory_evidence_db):
         """B4-DB12: release_lock_by_sse_client -> Lock entfernt."""
         edb = in_memory_evidence_db
-        edb.acquire_lock("h012345", "client-1")
+        edb.acquire_lock(1, "h012345", "client-1")
         freed = edb.release_lock_by_sse_client("client-1")
         assert freed is True
-        assert edb.get_lock() is None
+        assert edb.get_lock(1) is None
 
     def test_validate_lock_correct_id(self, in_memory_evidence_db):
         edb = in_memory_evidence_db
-        lock_id = edb.acquire_lock("h012345", "client-1")
-        assert edb.validate_lock(lock_id) is True
+        lock_id = edb.acquire_lock(1, "h012345", "client-1")
+        assert edb.validate_lock(1, lock_id) is True
 
     def test_validate_lock_wrong_id(self, in_memory_evidence_db):
         edb = in_memory_evidence_db
-        edb.acquire_lock("h012345", "client-1")
-        assert edb.validate_lock("falsche-id") is False
+        edb.acquire_lock(1, "h012345", "client-1")
+        assert edb.validate_lock(1, "falsche-id") is False
 
 
 class TestAnnotationCounts:
@@ -705,7 +711,7 @@ class TestUserinfoEndpoint:
     def test_acquire_lock_twice_returns_423(self, in_memory_evidence_db):
         """B4-S07: Lock bereits belegt -> HTTP 423."""
         edb = in_memory_evidence_db
-        edb.acquire_lock(locked_by="h000001", sse_client="existing-client")
+        edb.acquire_lock(1, "h000001", "existing-client")
         ep   = self._make_endpoint(edb)
         resp = {}
         handler = _make_mock_handler(resp)
@@ -718,7 +724,7 @@ class TestUserinfoEndpoint:
     def test_release_lock_returns_200(self, in_memory_evidence_db):
         """B4-S08"""
         edb = in_memory_evidence_db
-        lock_id = edb.acquire_lock("h012345", "test-client")
+        lock_id = edb.acquire_lock(1, "h012345", "test-client")
         assert lock_id is not None
         ep   = self._make_endpoint(edb)
         resp = {}
@@ -1084,7 +1090,7 @@ class TestEditorBlockEndpoint:
         return EditorBlockEndpoint(bundle, ctx, MagicMock())
 
     def _acquire(self, edb):
-        return edb.acquire_lock("h012345", "test-sse")
+        return edb.acquire_lock(1, "h012345", "test-sse")
 
     def _make_report(self, edb):
         return edb.create_report("interim", "Test", "h001")
@@ -1234,7 +1240,7 @@ class TestEditorOrderEndpoint:
     def test_order_mit_lock_returns_200(self, in_memory_evidence_db):
         edb  = in_memory_evidence_db
         rid  = edb.create_report("interim", "Test", "h001")
-        lock = edb.acquire_lock("h012345", "test-sse")
+        lock = edb.acquire_lock(1, "h012345", "test-sse")
         edb.save_block("b1", rid, "paragraph", {}, "h001", "a0")
         edb.save_block("b2", rid, "paragraph", {}, "h001", "b0")
         ep   = self._make_ep(edb)
@@ -1261,7 +1267,7 @@ class TestEditorOrderEndpoint:
 
     def test_order_fehlende_report_id_returns_400(self, in_memory_evidence_db):
         edb  = in_memory_evidence_db
-        lock = edb.acquire_lock("h012345", "test-sse")
+        lock = edb.acquire_lock(1, "h012345", "test-sse")
         ep   = self._make_ep(edb)
         resp = {}
         handler = _make_mock_handler(resp)
@@ -1275,7 +1281,7 @@ class TestEditorOrderEndpoint:
 
     def test_order_leere_liste_returns_400(self, in_memory_evidence_db):
         edb  = in_memory_evidence_db
-        lock = edb.acquire_lock("h012345", "test-sse")
+        lock = edb.acquire_lock(1, "h012345", "test-sse")
         ep   = self._make_ep(edb)
         resp = {}
         handler = _make_mock_handler(resp)
@@ -1318,7 +1324,7 @@ class TestEditorEvidenceEndpoint:
     def test_add_mit_lock_returns_200(self, in_memory_evidence_db):
         edb  = in_memory_evidence_db
         rid  = edb.create_report("interim", "Test", "h001")
-        lock = edb.acquire_lock("h012345", "test-sse")
+        lock = edb.acquire_lock(1, "h012345", "test-sse")
         ann_id = edb.save_annotation("/test", "CAT_OTHER", "Beleg")
         edb.save_block("b1", rid, "paragraph", {}, "h001")
         ep   = self._make_ep(edb)
@@ -1340,7 +1346,7 @@ class TestEditorEvidenceEndpoint:
     def test_remove_mit_lock_returns_200(self, in_memory_evidence_db):
         edb  = in_memory_evidence_db
         rid  = edb.create_report("interim", "Test", "h001")
-        lock = edb.acquire_lock("h012345", "test-sse")
+        lock = edb.acquire_lock(1, "h012345", "test-sse")
         ann_id = edb.save_annotation("/test", "CAT_OTHER", "Beleg")
         edb.save_block("b1", rid, "paragraph", {}, "h001")
         edb.add_block_evidence("b1", ann_id, 1)
@@ -1360,7 +1366,7 @@ class TestEditorEvidenceEndpoint:
     @unittest.skip("Build 089: Editor.js-Modell entfernt — Test veraltet (report_blocks/block_evidence_user)")
     def test_remove_nicht_gefunden_returns_404(self, in_memory_evidence_db):
         edb  = in_memory_evidence_db
-        lock = edb.acquire_lock("h012345", "test-sse")
+        lock = edb.acquire_lock(1, "h012345", "test-sse")
         ep   = self._make_ep(edb)
         resp = {}
         handler = _make_mock_handler(resp)
@@ -1377,7 +1383,7 @@ class TestEditorEvidenceEndpoint:
         """Doppeltes add derselben Verknuepfung -> HTTP 200, kein Fehler."""
         edb  = in_memory_evidence_db
         rid  = edb.create_report("interim", "Test", "h001")
-        lock = edb.acquire_lock("h012345", "test-sse")
+        lock = edb.acquire_lock(1, "h012345", "test-sse")
         ann_id = edb.save_annotation("/test", "CAT_OTHER", "Beleg")
         edb.save_block("b1", rid, "paragraph", {}, "h001")
         ep   = self._make_ep(edb)

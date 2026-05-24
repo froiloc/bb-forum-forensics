@@ -89,6 +89,14 @@ VALID_CATEGORIES: frozenset[str] = frozenset({
     "CAT_OTHER",
 })
 
+# Erlaubte Berichtstypen.
+# Beleg: reports.status CHECK-Constraint, Projektgespraech 2026-04-19
+VALID_REPORT_TYPES: frozenset[str] = frozenset({
+    "interim",
+    "final",
+    "addendum",
+})
+
 _MIGRATION_COLUMNS: list[tuple[str, str, str]] = []
 
 # =============================================================================

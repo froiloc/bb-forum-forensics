@@ -1,6 +1,6 @@
 {
-  "build":   242,
-  "version": "0.6.242",
+  "build":   243,
+  "version": "0.6.243",
   "date":    "2026-05-23",
-  "note":    "Build 242: Bugfix — VALID_CATEGORIES wiederhergestellt; T05-T09 block_wrapper-Tests auf Build-120-Redesign angepasst"
+  "note":    "Build 243: VALID_REPORT_TYPES wiederhergestellt; acquire_lock/get_lock/validate_lock Tests auf neue Signatur (report_id); T08 block_wrapper auf Build-121-Fallback"
 }

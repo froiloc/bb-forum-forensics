@@ -52,7 +52,7 @@ def edb():
 @pytest.fixture
 def edb_with_lock(edb):
     """EvidenceDb mit bereits erworbenem Lock."""
-    lock_id = edb.acquire_lock("h001", "sse_client_A")
+    lock_id = edb.acquire_lock(1, "h001", "sse_client_A")
     assert lock_id is not None
     return edb, lock_id
 
@@ -68,7 +68,7 @@ class TestResumeLock:
         edb, lock_id = edb_with_lock
         result = edb.resume_lock(lock_id, "h001", "sse_client_B")
         assert result is True
-        lock = edb.get_lock()
+        lock = edb.get_lock(1)
         assert lock.sse_client == "sse_client_B"
         assert lock.lock_id == lock_id
 
@@ -78,7 +78,7 @@ class TestResumeLock:
         result = edb.resume_lock(lock_id, "h002", "sse_client_B")
         assert result is False
         # Alter sse_client bleibt
-        lock = edb.get_lock()
+        lock = edb.get_lock(1)
         assert lock.sse_client == "sse_client_A"
 
     def test_T03_falsche_lock_id_abgewiesen(self, edb_with_lock):
@@ -90,10 +90,10 @@ class TestResumeLock:
     def test_T04_locked_at_aktualisiert(self, edb_with_lock):
         """T04: resume_lock() aktualisiert locked_at (Heartbeat-Effekt)."""
         edb, lock_id = edb_with_lock
-        lock_before = edb.get_lock()
+        lock_before = edb.get_lock(1)
         time.sleep(1)
         edb.resume_lock(lock_id, "h001", "sse_client_A")
-        lock_after = edb.get_lock()
+        lock_after = edb.get_lock(1)
         assert lock_after.locked_at >= lock_before.locked_at
 
 
@@ -107,7 +107,7 @@ class TestLockChangeEvent:
         """T05: acquire_lock() setzt lock_change_event."""
         event = edb.lock_change_event
         assert not event.is_set()
-        edb.acquire_lock("h001", "sse_A")
+        edb.acquire_lock(1, "h001", "sse_A")
         assert event.is_set()
 
     def test_T06_event_bei_release(self, edb_with_lock):
@@ -208,7 +208,7 @@ class TestEdgecases:
         """T16: acquire_lock() mit Timeout loescht abgelaufene Locks.
         Simuliert durch direktes Manipulieren von locked_at in der DB."""
         # Lock anlegen
-        lock_id = edb.acquire_lock("h001", "sse_A")
+        lock_id = edb.acquire_lock(1, "h001", "sse_A")
         assert lock_id is not None
 
         # locked_at in die Vergangenheit setzen (91 Sekunden)
@@ -228,9 +228,9 @@ class TestEdgecases:
         edb._con.commit()
 
         # Jetzt muss h002 Lock erwerben koennen
-        new_lock_id = edb.acquire_lock("h002", "sse_B")
+        new_lock_id = edb.acquire_lock(1, "h002", "sse_B")
         assert new_lock_id is not None
-        lock = edb.get_lock()
+        lock = edb.get_lock(1)
         assert lock.locked_by == "h002"
 
     def test_T17_lock_change_event_nach_clear(self, edb_with_lock):
@@ -245,10 +245,10 @@ class TestEdgecases:
     def test_T18_kein_lock_wenn_bereits_belegt(self, edb_with_lock):
         """T18: acquire_lock() gibt None wenn Lock bereits belegt."""
         edb, lock_id = edb_with_lock
-        result = edb.acquire_lock("h002", "sse_B")
+        result = edb.acquire_lock(1, "h002", "sse_B")
         assert result is None
         # Original-Lock unveraendert
-        lock = edb.get_lock()
+        lock = edb.get_lock(1)
         assert lock.locked_by == "h001"
 
 

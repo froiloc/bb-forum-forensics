@@ -205,13 +205,16 @@ describe("initBlockWrappers", () => {
         expect(wrapper.classList.contains("block-wrapper--own")).toBe(false);
     });
 
-    it("T08 — unbekannte block_id wird nicht gewrappt", () => {
+    // Build 121 Fallback: unbekannte Bloecke erhalten author=username als Fallback.
+    // T08 prueft daher: unbekannter Block erhaelt block-wrapper--own (eigener Fallback)
+    it("T08 — unbekannte block_id erhaelt Fallback-Wrapper (Build 121)", () => {
         addCeBlock(dom, "blk-unknown");
-        // Kein Eintrag in blocks fuer 'blk-unknown'
         const blocks = [{ block_id: "blk-known", author: "h001", created_at: 1700000000 }];
         dom.window.initBlockWrappers(blocks, "h001");
+        // Fallback: block erhaelt eigenen username als author -> block-wrapper--own
         const wrapper = dom.window.document.querySelector(".ce-block[data-block-id]");
-        expect(wrapper).toBeNull();
+        expect(wrapper).not.toBeNull();
+        expect(wrapper.classList.contains("block-wrapper--own")).toBe(true);
     });
 
     it("T09 — Idempotenz: doppelter Aufruf erzeugt nur einen Wrapper", () => {
