@@ -81,7 +81,13 @@
 #              btn-new-report-header aus Action-Bar entfernt (redundant).
 #              Beleg: Projektgespraech 2026-05-07
 #
-# Version: v0.6.117 · Build: 117 · 2026-05-07
+# Version: v0.6.249 · Build: 249 · 2026-05-24
+# Changelog Build 249 (Paket 6 — Layer-3-Aktionen open_report / new_report):
+#   - _action_open_report(): OPENING-Aktion; schreibt report_opened-Eintrag,
+#     bereinigt Queue, liefert Blöcke zurück.
+#   - _action_new_report(): NEW-Aktion; atomare Bericht+Lock-Transaktion
+#     (SLA Punkt 7), schreibt report_opened-Eintrag.
+#   Beleg: Layer 3 States OPENING / NEW, SLA Punkt 7, Paket 6
 # =============================================================================
 
 from __future__ import annotations
@@ -612,6 +618,13 @@ class ReportEndpoint:
         elif action == "respond_takeover":
             self._action_respond_takeover(handler, data, investigator)
 
+        # Layer-3-Aktionen: Bericht öffnen / neu anlegen
+        # Beleg: Layer 3 States OPENING / NEW, Paket 6
+        elif action == "open_report":
+            self._action_open_report(handler, data, investigator)
+        elif action == "new_report":
+            self._action_new_report(handler, data, investigator)
+
         # B6-Schreibaktionen (Phase 4 — auf Block-API umgestellt)
         # Beleg: Bauplan B6 v0.5 §5, Projektgespraech 2026-05-06
         elif action == "save_block":
@@ -892,6 +905,146 @@ class ReportEndpoint:
 
         handler.send_response_body(
             201, _json_ok({"anchor_id": aid}),
+            content_type="application/json; charset=utf-8",
+        )
+
+    # ------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Layer-3-Aktionen: Bericht öffnen / neu anlegen
+    # Beleg: Layer 3 States OPENING / NEW, SLA Punkt 7, Paket 6
+    # ------------------------------------------------------------------
+
+    def _action_open_report(self, handler, data, investigator) -> None:
+        """OPENING: Bestehenden Bericht öffnen.
+
+        Schreibt Audit-Eintrag in report_opened und bereinigt Queue-Einträge
+        des Clients für andere Berichte (Berichtswechsel).
+        Liefert alle Blöcke des Berichts zurück damit ReportLayer seinen
+        Zustand aufbauen kann.
+
+        Beleg: Layer 3 States OPENING → OPENED, SLA Punkt 3 (Queue-Bereinigung),
+               Paket 6
+        """
+        report_id_raw = data.get("report_id")
+        sse_client    = str(data.get("sse_client", "")).strip()
+        if not report_id_raw or not sse_client:
+            handler.send_response_body(
+                400, _json_err("report_id und sse_client erforderlich", "MISSING_FIELDS"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+
+        report_id = int(report_id_raw)
+        edb = self._bundle.evidence
+
+        # Bericht prüfen ob er existiert
+        report = edb.get_report(report_id)
+        if not report:
+            handler.send_response_body(
+                404, _json_err("Bericht nicht gefunden", "REPORT_NOT_FOUND"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+
+        # Audit-Eintrag + Queue-Bereinigung (atomar in log_report_opened)
+        edb.log_report_opened(report_id, sse_client, investigator)
+        logger.info(
+            "OPENING: '%s' öffnet Bericht report_id=%d", investigator, report_id
+        )
+
+        # Blöcke laden damit der Client seinen Zustand aufbauen kann
+        blocks = edb.get_blocks_for_report(report_id)
+        order  = edb.get_block_order_for_report(report_id)
+        order_map = {o.block_id: o.sort_index for o in order}
+
+        handler.send_response_body(
+            200,
+            json.dumps({
+                "status":    "ok",
+                "report_id": report_id,
+                "title":     report.title,
+                "report_type": report.report_type,
+                "report_status": report.status,
+                "blocks": [
+                    {
+                        "block_id":   b.block_id,
+                        "block_type": b.block_type,
+                        "block_data": json.loads(b.block_data) if b.block_data else {},
+                        "author":     b.author,
+                        "created_at": b.created_at,
+                        "updated_at": b.updated_at,
+                        "sort_index": order_map.get(b.block_id, 0),
+                    }
+                    for b in sorted(blocks, key=lambda b: order_map.get(b.block_id, 0))
+                ],
+            }, ensure_ascii=False).encode("utf-8"),
+            content_type="application/json; charset=utf-8",
+        )
+
+    def _action_new_report(self, handler, data, investigator) -> None:
+        """NEW: Neuen Bericht anlegen und Lock atomar erwerben.
+
+        Erzeugt Bericht + Lock in einer Datenbanktransaktion (SLA Punkt 7).
+        Schreibt Audit-Eintrag in report_opened.
+        Antwortet mit report_id und lock_id.
+
+        Beleg: Layer 3 States NEW, SLA Punkt 7, Paket 6
+        """
+        sse_client   = str(data.get("sse_client",   "")).strip()
+        report_type  = str(data.get("report_type",  "interim")).strip()
+        title        = str(data.get("title",        "")).strip()
+
+        if not sse_client:
+            handler.send_response_body(
+                400, _json_err("sse_client erforderlich", "MISSING_SSE_CLIENT"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+        if not title:
+            handler.send_response_body(
+                400, _json_err("title erforderlich", "MISSING_TITLE"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+        if report_type not in ("interim", "final", "addendum"):
+            handler.send_response_body(
+                400, _json_err("Ungültiger report_type", "INVALID_REPORT_TYPE"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+
+        edb = self._bundle.evidence
+        try:
+            report_id, lock_id = edb.create_report_with_lock(
+                report_type=report_type,
+                title=title,
+                created_by=investigator,
+                sse_client=sse_client,
+            )
+        except Exception as exc:
+            logger.error("_action_new_report: %s", exc)
+            handler.send_response_body(
+                500, _json_err("Bericht konnte nicht angelegt werden", "DB_ERROR"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+
+        # Audit-Eintrag (Queue-Bereinigung für anderen Bericht desselben Clients)
+        edb.log_report_opened(report_id, sse_client, investigator)
+        logger.info(
+            "NEW: '%s' legt Bericht an report_id=%d type=%s",
+            investigator, report_id, report_type,
+        )
+
+        handler.send_response_body(
+            200,
+            json.dumps({
+                "status":    "ok",
+                "report_id": report_id,
+                "lock_id":   lock_id,
+                "title":     title,
+                "report_type": report_type,
+            }, ensure_ascii=False).encode("utf-8"),
             content_type="application/json; charset=utf-8",
         )
 

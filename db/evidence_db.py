@@ -42,7 +42,14 @@
 #     EvidenceDb.__init__() bekommt optionalen db_path-Parameter.
 #     Beleg: Build 098, Thread-Safety-Fix, Projektgespraech 2026-05-06
 #
-#   Build 247 (BS6 Paket 4 — SSE Grace-Period, RESUMING via client_id):
+#   Build 249 (BS6 Paket 6 — report_opened-Tabelle):
+#     - _SCHEMA_DDL: Tabelle report_opened + 2 Indizes ergänzt.
+#       Audit-Trail welcher Client welchen Bericht geöffnet hat.
+#     - log_report_opened(): Öffnen-Eintrag schreiben + Queue-Bereinigung
+#       für andere Berichte desselben Clients.
+#     - get_open_report_for_client(): aktuell geöffneter Bericht pro Client.
+#     Beleg: Layer 3 States OPENING, Paket-6-Ergänzung 2026-05-24
+#
 #     - resume_lock(): Signatur geaendert von (report_id, lock_id, locked_by, new_sse)
 #       auf (old_sse_client, new_sse_client). RESUMING ist eine Layer-2-Aktion;
 #       lock_id ist Layer-4-Daten und darf Layer 2 nicht bekannt sein.
@@ -287,6 +294,21 @@ CREATE TABLE "lock_queue" (
 -- Index für schnelles Finden der Warteschlange pro Bericht
 DROP INDEX IF EXISTS "idx_queue_report";
 CREATE INDEX "idx_queue_report" ON lock_queue("report_id", "requested_at");
+-- Audit-Tabelle: welcher Client hat welchen Bericht geöffnet (wächst, wird nicht bereinigt).
+-- Beleg: Layer 3 States OPENING, Paket-6-Ergänzung 2026-05-24
+DROP TABLE IF EXISTS "report_opened";
+CREATE TABLE "report_opened" (
+        "id"         INTEGER PRIMARY KEY AUTOINCREMENT,
+        "report_id"  INTEGER NOT NULL,
+        "sse_client" TEXT    NOT NULL,
+        "opened_by"  TEXT    NOT NULL,
+        "opened_at"  INTEGER NOT NULL,
+        FOREIGN KEY("report_id") REFERENCES reports("id")
+);
+DROP INDEX IF EXISTS "idx_report_opened_report";
+CREATE INDEX "idx_report_opened_report" ON report_opened("report_id", "sse_client");
+DROP INDEX IF EXISTS "idx_report_opened_client";
+CREATE INDEX "idx_report_opened_client" ON report_opened("sse_client");
 DROP INDEX IF EXISTS "pv_url_idx";
 CREATE INDEX IF NOT EXISTS "pv_url_idx" ON "page_visits" (
 	"page_url"
@@ -2200,6 +2222,57 @@ class EvidenceDb:
         )
         self._con.commit()
         return cursor.rowcount
+
+    # ------------------------------------------------------------------
+    # report_opened — Audit-Log geöffneter Berichte (Layer 3 OPENING)
+    # ------------------------------------------------------------------
+
+    def log_report_opened(
+        self, report_id: int, sse_client: str, opened_by: str,
+    ) -> int:
+        """Schreibt einen Öffnen-Eintrag in report_opened.
+
+        Die Tabelle wächst als Audit-Trail und wird nicht bereinigt.
+        Zusätzlich werden alle Queue-Einträge des Clients für andere
+        Berichte entfernt (Berichtswechsel invalidiert Warteschlangen-
+        position, SLA Layer 3 OPENING).
+
+        Gibt die neue id zurück.
+        Beleg: Layer 3 States OPENING, SLA Paket-6-Ergänzung 2026-05-24
+        """
+        now = int(time.time())
+        cursor = self._con.execute(
+            "INSERT INTO report_opened (report_id, sse_client, opened_by, opened_at) "
+            "VALUES (?, ?, ?, ?)",
+            (report_id, sse_client, opened_by, now),
+        )
+        # Queue-Bereinigung: Einträge für ANDERE Berichte dieses Clients löschen.
+        # Beleg: Layer 3 States OPENING: „Einträge in der Warteschlange
+        # für den Client werden alle entfernt."
+        self._con.execute(
+            "DELETE FROM lock_queue WHERE sse_client=? AND report_id!=?",
+            (sse_client, report_id),
+        )
+        self._con.commit()
+        logger.debug(
+            "report_opened: report_id=%d sse_client=%s opened_by=%s",
+            report_id, sse_client, opened_by,
+        )
+        return cursor.lastrowid
+
+    def get_open_report_for_client(self, sse_client: str) -> Optional[int]:
+        """Gibt die report_id des zuletzt geöffneten Berichts für einen Client zurück.
+
+        Liest den neuesten Eintrag aus report_opened für diesen sse_client.
+        Gibt None zurück wenn kein Eintrag vorhanden.
+        Beleg: Layer 3 States OPENED, Paket-6-Ergänzung 2026-05-24
+        """
+        row = self._con.execute(
+            "SELECT report_id FROM report_opened "
+            "WHERE sse_client=? ORDER BY opened_at DESC LIMIT 1",
+            (sse_client,),
+        ).fetchone()
+        return int(row["report_id"]) if row else None
 
     # ------------------------------------------------------------------
     # Takeover-Audit-Log (SLA Punkt 10)

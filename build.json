@@ -1,6 +1,6 @@
 {
-  "build":   248,
-  "version": "0.6.248",
+  "build":   249,
+  "version": "0.6.249",
   "date":    "2026-05-24",
-  "note":    "Build 248: Paket 5 — SSELayer (Layer 2 Frontend), sse_layer.js; 20 neue JS-Tests T01-T19; 306 JS-Tests gesamt 0 failures"
+  "note":    "Build 249: Paket 6 — report_opened-Tabelle, open_report/new_report-Actions, ReportLayer (Layer 3); 20 neue JS-Tests; 326 JS + 533 Python Tests 0 failures"
 }

@@ -168,6 +168,21 @@ CREATE TABLE "lock_queue" (
 -- Index für schnelles Finden der Warteschlange pro Bericht
 DROP INDEX IF EXISTS "idx_queue_report";
 CREATE INDEX "idx_queue_report" ON lock_queue("report_id", "requested_at");
+-- Audit-Tabelle: welcher Client hat welchen Bericht geöffnet (wächst, wird nicht bereinigt).
+-- Beleg: Layer 3 States OPENING, Paket-6-Ergänzung 2026-05-24
+DROP TABLE IF EXISTS "report_opened";
+CREATE TABLE "report_opened" (
+        "id"         INTEGER PRIMARY KEY AUTOINCREMENT,
+        "report_id"  INTEGER NOT NULL,
+        "sse_client" TEXT    NOT NULL,
+        "opened_by"  TEXT    NOT NULL,
+        "opened_at"  INTEGER NOT NULL,
+        FOREIGN KEY("report_id") REFERENCES reports("id")
+);
+DROP INDEX IF EXISTS "idx_report_opened_report";
+CREATE INDEX "idx_report_opened_report" ON report_opened("report_id", "sse_client");
+DROP INDEX IF EXISTS "idx_report_opened_client";
+CREATE INDEX "idx_report_opened_client" ON report_opened("sse_client");
 DROP INDEX IF EXISTS "pv_url_idx";
 CREATE INDEX IF NOT EXISTS "pv_url_idx" ON "page_visits" (
 	"page_url"
