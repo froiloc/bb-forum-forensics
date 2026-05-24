@@ -381,6 +381,7 @@ class TestHandleValues(unittest.TestCase):
 
         responses = []
         handler = MagicMock()
+        handler.path = "/_forensic/placeholders/values"
         handler.send_response_body = lambda status, body, **kw: responses.append(
             (status, json.loads(body.decode("utf-8")) if body else {})
         )

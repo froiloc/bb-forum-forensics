@@ -154,7 +154,7 @@ class TestResolveComment(unittest.TestCase):
         self.rid = _mk_report(self.edb)
         _mk_block(self.edb, self.rid, author="h001")
         # Lock anlegen fuer Tests die ihn benoetigen
-        self.lock_id = self.edb.acquire_lock("h001", "sse-test")
+        self.lock_id = self.edb.acquire_lock(1, "h001", "sse-test")
         self.cid = _mk_comment(self.edb, "blk-001", author="h002")
 
     def tearDown(self):

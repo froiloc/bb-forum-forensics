@@ -376,12 +376,13 @@ class TestEvidenceDb(unittest.TestCase):
             );
         """)
         old_con.commit()
+        migrated_edb = EvidenceDb(old_con)
+        # Eintrag NACH EvidenceDb-Init einfuegen (Schema v2.0 dropt+recreated alle Tabellen)
         old_con.execute(
             "INSERT INTO annotations (page_url, category, text, ts) "
             "VALUES ('/forum/old', 'CAT_OTHER', 'alter Eintrag', 1700000000)"
         )
         old_con.commit()
-        migrated_edb = EvidenceDb(old_con)
         cols = {r[1] for r in old_con.execute(
             "PRAGMA table_info(annotations)"
         ).fetchall()}

@@ -97,6 +97,14 @@ VALID_REPORT_TYPES: frozenset[str] = frozenset({
     "addendum",
 })
 
+VALID_REPORT_STATUSES: frozenset[str] = frozenset({
+    "draft", "submitted", "approved", "final",
+})
+
+VALID_COMMENT_STATUSES: frozenset[str] = frozenset({
+    "pending", "addressed", "dismissed", "revoked",
+})
+
 _MIGRATION_COLUMNS: list[tuple[str, str, str]] = []
 
 # =============================================================================

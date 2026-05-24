@@ -1,6 +1,6 @@
 {
-  "build":   243,
-  "version": "0.6.243",
-  "date":    "2026-05-23",
-  "note":    "Build 243: VALID_REPORT_TYPES wiederhergestellt; acquire_lock/get_lock/validate_lock Tests auf neue Signatur (report_id); T08 block_wrapper auf Build-121-Fallback"
+  "build":   244,
+  "version": "0.6.244",
+  "date":    "2026-05-24",
+  "note":    "Build 244: VALID_REPORT_STATUSES/COMMENT_STATUSES; validate_lock Signatur in _lock_guard; Seed-Fixture getrennt; alle Lock-Test-Signaturen korrigiert"
 }

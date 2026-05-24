@@ -60,7 +60,21 @@ def in_memory_evidence_db():
     con = sqlite3.connect(":memory:")
     con.row_factory = sqlite3.Row
     edb = EvidenceDb(con)
-    # Build 242: Lock-Tests benoetigen report_id=1
+    yield edb
+    con.close()
+
+
+@pytest.fixture
+def evidence_db_with_report():
+    """Frische evidence_db mit Seed-Bericht (report_id=1) fuer Lock-Tests."""
+    import sys, os
+    project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if project_dir not in sys.path:
+        sys.path.insert(0, project_dir)
+    from db.evidence_db import EvidenceDb
+    con = sqlite3.connect(":memory:")
+    con.row_factory = sqlite3.Row
+    edb = EvidenceDb(con)
     con.execute(
         "INSERT INTO reports (report_type, sequence_nr, title, created_by, created_at)"
         " VALUES ('interim', 1, 'Test', 'h001', 1700000000)"
@@ -397,13 +411,13 @@ class TestBlockOrder:
 class TestEvidenceDbLock:
     """B4-DB11/12: Lock-Mechanismus (unveraendert gegenueber Build 012)."""
 
-    def test_acquire_lock_succeeds(self, in_memory_evidence_db):
-        edb = in_memory_evidence_db
+    def test_acquire_lock_succeeds(self, evidence_db_with_report):
+        edb = evidence_db_with_report
         lock_id = edb.acquire_lock(1, "h012345", "client-1")
         assert lock_id is not None
         assert len(lock_id) > 8
 
-    def test_acquire_lock_second_time_fails(self, in_memory_evidence_db):
+    def test_acquire_lock_second_time_fails(self, evidence_db_with_report):
         """B4-DB11: acquire_lock zweimal -> zweiter Versuch None."""
         edb = in_memory_evidence_db
         lock_id1 = edb.acquire_lock(1, "h012345", "client-1")
@@ -411,20 +425,20 @@ class TestEvidenceDbLock:
         lock_id2 = edb.acquire_lock(1, "h067890", "client-2")
         assert lock_id2 is None
 
-    def test_release_lock_by_sse_client(self, in_memory_evidence_db):
+    def test_release_lock_by_sse_client(self, evidence_db_with_report):
         """B4-DB12: release_lock_by_sse_client -> Lock entfernt."""
         edb = in_memory_evidence_db
         edb.acquire_lock(1, "h012345", "client-1")
         freed = edb.release_lock_by_sse_client("client-1")
-        assert freed is True
+        assert len(freed) > 0  # gibt list[int] zurueck (Build 239)
         assert edb.get_lock(1) is None
 
-    def test_validate_lock_correct_id(self, in_memory_evidence_db):
+    def test_validate_lock_correct_id(self, evidence_db_with_report):
         edb = in_memory_evidence_db
         lock_id = edb.acquire_lock(1, "h012345", "client-1")
         assert edb.validate_lock(1, lock_id) is True
 
-    def test_validate_lock_wrong_id(self, in_memory_evidence_db):
+    def test_validate_lock_wrong_id(self, evidence_db_with_report):
         edb = in_memory_evidence_db
         edb.acquire_lock(1, "h012345", "client-1")
         assert edb.validate_lock(1, "falsche-id") is False
@@ -683,7 +697,7 @@ class TestUserinfoEndpoint:
         resp = {}
         handler = _make_mock_handler(resp)
         body = json.dumps({
-            "action": "acquire_lock", "sse_client": "test-sse-client"
+            "action": "acquire_lock", "sse_client": "test-sse-client", "report_id": 1
         }).encode()
         ep.handle_post(handler, body)
         assert resp['status'] == 200
@@ -716,7 +730,7 @@ class TestUserinfoEndpoint:
         resp = {}
         handler = _make_mock_handler(resp)
         body = json.dumps({
-            "action": "acquire_lock", "sse_client": "new-client"
+            "action": "acquire_lock", "sse_client": "new-client", "report_id": 1
         }).encode()
         ep.handle_post(handler, body)
         assert resp['status'] == 423
@@ -730,7 +744,7 @@ class TestUserinfoEndpoint:
         resp = {}
         handler = _make_mock_handler(resp)
         handler.headers = {}
-        body = json.dumps({"action": "release_lock", "lock_id": lock_id}).encode()
+        body = json.dumps({"action": "release_lock", "lock_id": lock_id, "report_id": 1}).encode()
         ep.handle_post(handler, body)
         assert resp['status'] == 200
         data = json.loads(resp['body'])
@@ -961,8 +975,9 @@ def _make_endpoint_bundle(edb=None):
 
 def _make_context_with_name(username="h012345", investigator_id=1):
     ctx = MagicMock()
-    ctx.username       = username
-    ctx.investigator_id = investigator_id
+    ctx.username              = username
+    ctx.investigator_username = username  # Build 243: reports.py liest investigator_username
+    ctx.investigator_id       = investigator_id
     return ctx
 
 

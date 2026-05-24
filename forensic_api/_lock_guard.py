@@ -80,7 +80,8 @@ def require_lock(
         report_id_guard = int(rid_raw) if rid_raw is not None else None
     except (TypeError, ValueError):
         report_id_guard = None
-    if not evidence_db.validate_lock(lock_id, report_id=report_id_guard):
+    _rid = report_id_guard or 0
+    if not evidence_db.validate_lock(_rid, lock_id):
         handler.send_response_body(
             423, _LOCK_REQUIRED_BODY, content_type=_CONTENT_TYPE_JSON
         )
