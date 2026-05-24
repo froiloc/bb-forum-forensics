@@ -1,6 +1,6 @@
 {
-  "build":   245,
-  "version": "0.6.245",
+  "build":   246,
+  "version": "0.6.246",
   "date":    "2026-05-24",
-  "note":    "Build 245: _lock_guard toleriert fehlendes report_id; T09 Audit-Trail-Semantik; alle Lock-Test-Signaturen vollständig korrigiert"
+  "note":    "Build 246: test_release_lock Lock als testuser erworben; editor_comment validate_lock Direktabfrage ohne report_id; alle Tests gruen"
 }

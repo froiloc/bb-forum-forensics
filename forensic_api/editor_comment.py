@@ -160,8 +160,15 @@ class EditorCommentEndpoint:
                 )
                 return
             rid_raw = data.get("report_id")
-            _rid_cm = int(rid_raw) if rid_raw else 0
-            if not self._bundle.evidence.validate_lock(_rid_cm, lock_id):
+            _rid_cm = int(rid_raw) if rid_raw else None
+            edb = self._bundle.evidence
+            if _rid_cm is not None:
+                _lock_ok = edb.validate_lock(_rid_cm, lock_id)
+            else:
+                _lock_ok = bool(edb._con.execute(
+                    "SELECT 1 FROM editor_locks WHERE lock_id=?", (lock_id,)
+                ).fetchone())
+            if not _lock_ok:
                 handler.send_response_body(
                     423,
                     _json_err("Lock abgelaufen oder ungueltig", "LOCK_INVALID"),

@@ -725,7 +725,7 @@ class TestUserinfoEndpoint:
 
     def test_acquire_lock_twice_returns_423(self, evidence_db_with_report):
         """B4-S07: Lock bereits belegt -> HTTP 423."""
-        edb = in_memory_evidence_db
+        edb = evidence_db_with_report
         edb.acquire_lock(1, "h000001", "existing-client")
         ep   = self._make_endpoint(edb)
         resp = {}
@@ -738,8 +738,9 @@ class TestUserinfoEndpoint:
 
     def test_release_lock_returns_200(self, evidence_db_with_report):
         """B4-S08"""
-        edb = in_memory_evidence_db
-        lock_id = edb.acquire_lock(1, "h012345", "test-client")
+        edb = evidence_db_with_report
+        # Lock als "testuser" erwerben (= investigator_username aus _make_mock_context)
+        lock_id = edb.acquire_lock(1, "testuser", "test-client")
         assert lock_id is not None
         ep   = self._make_endpoint(edb)
         resp = {}
