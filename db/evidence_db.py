@@ -42,7 +42,12 @@
 #     EvidenceDb.__init__() bekommt optionalen db_path-Parameter.
 #     Beleg: Build 098, Thread-Safety-Fix, Projektgespraech 2026-05-06
 #
-#   Build 099 (B6 — Phase 1: Schema bereinigen):
+#   Build 247 (BS6 Paket 4 — SSE Grace-Period, RESUMING via client_id):
+#     - resume_lock(): Signatur geaendert von (report_id, lock_id, locked_by, new_sse)
+#       auf (old_sse_client, new_sse_client). RESUMING ist eine Layer-2-Aktion;
+#       lock_id ist Layer-4-Daten und darf Layer 2 nicht bekannt sein.
+#       Beleg: Layer 2 States, Architekturentscheidung Paket-4-Review 2026-05-24
+#
 #     - report_paragraphs ersetzt durch report_blocks (Editor.js-Blockmodell).
 #       Neues Schema: block_type (Editor.js-Tool-Name), block_data (JSON),
 #       placeholder_values_json. Entfernte Felder: content, status,
@@ -1975,25 +1980,34 @@ class EvidenceDb:
         return report_ids
 
     def resume_lock(
-        self, report_id: int, lock_id: str, locked_by: str, new_sse_client: str,
+        self, old_sse_client: str, new_sse_client: str,
     ) -> bool:
         """Aktualisiert SSE-Client-ID nach Reconnect innerhalb der Grace-Period.
 
-        RESUMING ist serverseitig ein atomares UPDATE (kein Zustandswechsel).
-        Beleg: Layer 2 States, SLA Punkt 2, Architektur-Revision 2026-05-18
+        RESUMING ist eine Layer-2-Aktion: Es werden ausschliesslich Layer-2-Daten
+        (SSE-Client-IDs) verwendet. Die lock_id ist Layer-4-Daten und darf hier
+        nicht als Kriterium herangezogen werden.
+
+        Ablauf:
+          1. Suche in editor_locks nach einem Eintrag mit sse_client=old_sse_client.
+          2. Wird ein Eintrag gefunden, wird sse_client auf new_sse_client gesetzt.
+          3. locked_at wird aktualisiert (verhindert Timeout durch frische Aktivitaet).
+
+        Beleg: Layer 2 States RESUMING, SLA Punkt 2,
+               Architekturentscheidung Paket-4-Review 2026-05-24
         """
         cursor = self._con.execute(
             "UPDATE editor_locks "
             "SET sse_client=?, locked_at=? "
-            "WHERE report_id=? AND lock_id=? AND locked_by=?",
-            (new_sse_client, int(time.time()), report_id, lock_id, locked_by),
+            "WHERE sse_client=?",
+            (new_sse_client, int(time.time()), old_sse_client),
         )
         self._con.commit()
         ok = cursor.rowcount > 0
         if ok:
             logger.info(
-                "Lock-Resume: '%s' report_id=%d neue_sse=%s",
-                locked_by, report_id, new_sse_client,
+                "Lock-Resume: alte_sse=%s neue_sse=%s",
+                old_sse_client, new_sse_client,
             )
         return ok
 

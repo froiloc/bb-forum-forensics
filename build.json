@@ -1,6 +1,6 @@
 {
-  "build":   246,
-  "version": "0.6.246",
+  "build":   247,
+  "version": "0.6.247",
   "date":    "2026-05-24",
-  "note":    "Build 246: test_release_lock Lock als testuser erworben; editor_comment validate_lock Direktabfrage ohne report_id; alle Tests gruen"
+  "note":    "Build 247: Paket 4 — SSE Grace-Period (5s threading.Timer), RESUMING via old_sse_client (Layer-2-Trennung), Takeover-Events via DB-Abfrage (Option B); 21 Lock-Tests gruen, 533 Python-Tests gesamt 0 failures"
 }

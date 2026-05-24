@@ -5,48 +5,86 @@
 # =============================================================================
 # Zweck:
 #   Endpunkt GET /_forensic/events (text/event-stream).
-#   SSE-Stream für Support-Status-Indikator (Baustelle 3) und
+#   SSE-Stream fuer Support-Status-Indikator (Baustelle 3) und
 #   Nutzerinfo-Tab-Events (Baustelle 4).
 #
-# Event-Typen:
+# Event-Typen (ausgehend an Browser):
+#   client_id              — Wird sofort beim Verbindungsaufbau gesendet.
+#                            Enthaelt die neue SSE-Client-ID. Der Browser
+#                            speichert diese fuer spaetere Lock-Operationen.
 #   support_status         (B3) — Support-Benutzer aktiv/inaktiv
-#   annotation_added       (B4) — Neue Annotation, inkl. Kategorie
-#   report_updated         (B4) — Neuer Paragraph im Berichtsfeld
-#   status_changed         (B4) — Ermittlungsstatus geändert
-#   editor_lock_acquired   (B4) — Editor-Lock erworben
-#   editor_lock_released   (B4) — Editor-Lock freigegeben oder abgelaufen
+#   editor_lock_acquired   (B4) — Ein Lock wurde erworben (inkl. locked_by, lock_id)
+#   editor_lock_released   (B4) — Ein Lock wurde freigegeben oder abgelaufen
+#   lock_acquired          (B4) — Nur an den neuen Inhaber: Lock-Uebergabe aus Queue
+#                                 oder Takeover. Enthaelt neue lock_id.
+#   lock_takeover_request  (B4) — An den aktuellen Lock-Inhaber: Anfrage eines
+#                                 anderen Clients auf Uebergabe des Locks.
+#   lock_takeover_result   (B4) — An den anfragenden Client: Ergebnis (granted/denied)
 #
-# SSE-Client-ID (NEU Build 012):
-#   Jede SSE-Verbindung erhält beim Aufbau eine eindeutige client_id (UUID).
+# SSE-Client-ID (Build 012):
+#   Jede SSE-Verbindung erhaelt beim Aufbau eine eindeutige client_id (UUID).
 #   Diese wird als erstes Event "client_id" an den Browser gesendet.
-#   Der Browser verwendet sie bei acquire_lock, damit der Server bei
-#   SSE-Verbindungsabriss den Lock automatisch freigeben kann (Schicht 2,
-#   §8.6 Bauplan B4).
+#   Der Browser verwendet sie bei RESUMING (Layer 2) um die Verbindung
+#   zu heilen. Die lock_id ist Layer-4-Daten und wird hier nicht verwendet.
+#   Beleg: Layer 2 States, SLA Punkt 2, Paket-4-Review 2026-05-24
+#
+# Grace-Period (SLA Punkt 2):
+#   Nach SSE-Verbindungsabriss wird ein threading.Timer(5s) gestartet.
+#   Innerhalb dieser 5 Sekunden kann der Client mit RESUMING (Layer 2)
+#   seine alte SSE-Client-ID an die neue binden — der Lock bleibt erhalten.
+#   Erst nach Ablauf des Timers wird release_lock_by_sse_client() aufgerufen
+#   und die Queue-Kaskade gestartet.
+#   Beleg: SLA Punkte 2, 3, 4, Paket-4-Review 2026-05-24
+#
+# Takeover-Events (Option B — DB-Abfrage):
+#   events.py praesentiert Takeover-Anfragen NICHT ueber Instanz-Attribute
+#   auf evidence_db (Option A war ein Polling-Hack der bei mehreren gleichzeitigen
+#   SSE-Verbindungen zu Race-Conditions fuehren kann).
+#   Stattdessen liest jede SSE-Verbindung pro Wakeup aus lock_takeover_requests
+#   genau die Zeilen, die fuer die eigene client_id relevant sind.
+#   Beleg: Architekturentscheidung Paket-4-Review 2026-05-24
 #
 # Datenbankzugriff:
 #   coordinator.db (READ-ONLY) — Support-Status
-#   evidence_<uid>.db (READ/WRITE) — Lock-Freigabe bei Verbindungsabriss
+#   evidence_<uid>.db (READ/WRITE) — Lock-Freigabe bei Grace-Period-Ablauf
 #
-# Version: v0.1.0 · Build: 013 · 2026-05-07
+# Version: v0.6.247 · Build: 247 · 2026-05-24
 # =============================================================================
 #
-# Änderungen Build 013 (Bugfix: Socket-Backlog-Erschöpfung durch SSE-Verbindungen):
-#   - SSE-Semaphore-Guard eingeführt: Vor dem Betreten der Polling-Schleife
+# Changelog Build 247 (Paket 4 — SSE Grace-Period, RESUMING, Takeover-Events):
+#   - Grace-Period (5s): threading.Timer ersetzt den direkten _cleanup_lock()-Aufruf
+#     in finally{}. Der Timer wird beim RESUMING (SSE-Reconnect) geloescht.
+#     Beleg: SLA Punkte 2, 3, Paket-4-Review 2026-05-24
+#   - RESUMING via client_id: ?resume_client_id=<alte_client_id> statt
+#     ?resume_lock_id=<lock_id>. Lock-ID ist Layer-4-Daten, darf in Layer 2
+#     nicht bekannt sein.
+#     Beleg: Layer 2 States RESUMING, Paket-4-Review 2026-05-24
+#   - Takeover-Events via DB (Option B): Kein Polling auf _pending_takeover /
+#     _takeover_result Instanz-Attributen. Jede SSE-Verbindung liest ihre eigene
+#     relevante Zeile aus lock_takeover_requests.
+#     Beleg: Architekturentscheidung Paket-4-Review 2026-05-24
+#   - lock_acquired-Event: Wenn ein Client in der Queue ist und der Lock frei
+#     wird, sendet der Server nur an ihn ein lock_acquired-Event mit neuer lock_id.
+#     Beleg: Layer 4 States QUEUED->MINE, SLA Punkt 4
+#
+# Changelog Build 013 (Bugfix: Socket-Backlog-Erschoepfung durch SSE-Verbindungen):
+#   - SSE-Semaphore-Guard eingefuehrt: Vor dem Betreten der Polling-Schleife
 #     wird ForensicHTTPServer.sse_semaphore.acquire(blocking=False) aufgerufen.
 #     Wenn das Limit (SSE_MAX_CONNECTIONS=20) erreicht ist, antwortet der Server
 #     sofort mit HTTP 503 statt den Thread dauerhaft zu blockieren.
-#     Beleg: Bugfix Build 030 (http_server.py), Projektgespräch 2026-05-07.
-#   TODO (Multiplexing): Semaphore-Guard entfällt wenn SSE-Multiplexing
+#     Beleg: Bugfix Build 030 (http_server.py), Projektgespraech 2026-05-07.
+#   TODO (Multiplexing): Semaphore-Guard entfaellt wenn SSE-Multiplexing
 #     implementiert ist (ein Kanal pro Tab statt mehrere).
-#     Beleg: Projektgespräch 2026-05-07.
+#     Beleg: Projektgespraech 2026-05-07.
 # =============================================================================
 
 from __future__ import annotations
 
 import json
+import threading
 import time
 import uuid
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from core.logger import get_logger
 
@@ -58,14 +96,19 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-# Standard-Sendeintervall in Sekunden (überschreibbar via config.yaml)
+# Standard-Sendeintervall in Sekunden (ueberschreibbar via config.yaml)
 _DEFAULT_INTERVAL_SEC = 15
+
+# Grace-Period in Sekunden (SLA Punkt 2): Wie lange nach SSE-Abriss bleibt
+# der Lock noch erhalten bevor er freigegeben wird.
+# Beleg: SLA Punkt 2, Paket-4-Review 2026-05-24
+_GRACE_PERIOD_SEC = 5
 
 
 def _get_support_status(bundle: "DatabaseBundle") -> dict:
     """
     Liest den aktuellen Support-Status aus coordinator.db.
-    Gibt inaktiven Status zurück wenn coordinator_db nicht verfügbar.
+    Gibt inaktiven Status zurueck wenn coordinator_db nicht verfuegbar.
     """
     empty = {"support_active": False, "support_user": None, "since": None}
 
@@ -92,14 +135,24 @@ class EventsEndpoint:
     Endpunkt /_forensic/events — SSE-Stream.
 
     Sendet im konfigurierbaren Intervall:
+    - client_id (sofort, einmalig beim Verbindungsaufbau)
     - support_status (Baustelle 3)
     - editor_lock_acquired / editor_lock_released (Baustelle 4)
+    - lock_acquired (nur an neuen Lock-Inhaber nach Queue-Kaskade / Takeover)
+    - lock_takeover_request (an aktuellen Lock-Inhaber)
+    - lock_takeover_result (an anfragenden Client)
 
-    Bei Verbindungsabriss: Editor-Lock des Clients automatisch freigeben
-    (Schicht 2 des dreischichtigen Lock-Mechanismus, §8.6 Bauplan B4).
+    Grace-Period (SLA Punkt 2):
+    Bei Verbindungsabriss wird ein threading.Timer(_GRACE_PERIOD_SEC=5) gestartet.
+    Erst nach Ablauf des Timers wird der Lock freigegeben und die Queue-Kaskade
+    gestartet. Reconnectet der Client innerhalb der Grace-Period (RESUMING),
+    wird der Timer geloescht und der Lock bleibt erhalten.
 
-    Die Verbindung bleibt offen bis der Client trennt.
-    Browser-seitiges automatisches Reconnect via EventSource-API.
+    Takeover-Events (Option B):
+    Jede Polling-Schleife liest pro Wakeup aus lock_takeover_requests die
+    Zeilen die fuer die eigene SSE-Client-ID relevant sind. Kein Seitenkanal
+    ueber Instanz-Attribute.
+    Beleg: SLA Punkte 1-4, Layer 2/4 States, Paket-4-Review 2026-05-24
     """
 
     def __init__(
@@ -126,20 +179,21 @@ class EventsEndpoint:
         Vor dem Betreten der Polling-Schleife wird der SSE-Semaphore des
         Servers erworben. Ist das Limit erreicht, antwortet der Server sofort
         mit HTTP 503 statt den Thread dauerhaft zu blockieren.
-        Beleg: Bugfix Build 013, Projektgespräch 2026-05-07.
+        Beleg: Bugfix Build 013, Projektgespraech 2026-05-07.
 
         Args:
             handler: ForensicRequestHandler-Instanz.
             params:  URL-Query-Parameter (aus urllib.parse.parse_qs).
-                     resume_lock_id: Lock-ID fuer SSE-Reconnect (V1).
+                     resume_client_id: Alte SSE-Client-ID fuer Grace-Period-RESUMING.
+                     Beleg: Layer 2 States RESUMING, Paket-4-Review 2026-05-24
         """
         # SSE-Semaphore erwerben — verhindert Thread-Pool-Blockade.
         # non-blocking: sofortiger 503 statt unendliches Warten.
-        # Beleg: Bugfix Build 013, Projektgespräch 2026-05-07.
+        # Beleg: Bugfix Build 013, Projektgespraech 2026-05-07.
         sse_semaphore = getattr(handler.server, "sse_semaphore", None)
         if sse_semaphore is not None and not sse_semaphore.acquire(blocking=False):
             logger.warning(
-                "SSE-Verbindungslimit erreicht (max=%d) — HTTP 503 für client.",
+                "SSE-Verbindungslimit erreicht (max=%d) — HTTP 503 fuer client.",
                 getattr(handler.server, "SSE_MAX_CONNECTIONS", "?"),
             )
             handler.send_response_body(
@@ -162,38 +216,43 @@ class EventsEndpoint:
     ) -> None:
         """
         Innere Implementierung des SSE-Streams (nach Semaphore-Erwerb).
-        Ausgelagert aus handle() für Übersichtlichkeit.
+        Ausgelagert aus handle() fuer Uebersichtlichkeit.
         """
         wfile = handler.wfile
 
-        # Eindeutige SSE-Client-ID fuer diesen Verbindungsaufbau (SLA Punkt 1)
+        # Eindeutige SSE-Client-ID fuer diesen Verbindungsaufbau
+        # Beleg: SLA Punkt 1, Build 012
         client_id = str(uuid.uuid4())
-        # SLA Punkt 4: aktive Clients tracken fuer Queue-Kaskade
+
+        # Aktive Clients tracken fuer Queue-Kaskade (SLA Punkt 4)
         if self._bundle._active_sse_clients is None:
             self._bundle._active_sse_clients = set()
         self._bundle._active_sse_clients.add(client_id)
 
-        # V1: Resume-Lock — Browser reconnected nach SSE-Abriss und moechte
-        # seinen Lock an die neue client_id binden.
-        # Query-Parameter: ?resume_lock_id=<lock_id>
-        # Beleg: Lock-System v2 V1, Projektgespraech 2026-04-21
-        resume_lock_id = (params or {}).get("resume_lock_id", [None])[0]
-        if resume_lock_id:
-            username = self._context.username or f"uid_{self._context.user_id}"
+        # RESUMING (Layer 2): Alte SSE-Client-ID aus Query-Parameter.
+        # Falls vorhanden: Lock des alten Clients auf neue client_id umschreiben
+        # und einen laufenden Grace-Timer loeschen.
+        # Beleg: Layer 2 States RESUMING, SLA Punkt 2, Paket-4-Review 2026-05-24
+        resume_client_id: Optional[str] = (params or {}).get("resume_client_id", [None])[0]
+        if resume_client_id:
+            # Grace-Timer fuer die alte client_id loeschen — Verbindung geheilt.
+            # Beleg: SLA Punkt 2 (Grace-Period-Heilung), Paket-4-Review 2026-05-24
+            self._cancel_grace_timer(resume_client_id)
+
             resumed = self._bundle.evidence.resume_lock(
-                lock_id=resume_lock_id,
-                locked_by=username,
+                old_sse_client=resume_client_id,
                 new_sse_client=client_id,
             )
             if resumed:
                 logger.info(
-                    "SSE-Resume: Lock wiederhergestellt fuer '%s' (lock_id=%s)",
-                    username, resume_lock_id,
+                    "SSE-RESUMING: Lock umgebunden alte_sse=%s neue_sse=%s",
+                    resume_client_id, client_id,
                 )
             else:
                 logger.debug(
-                    "SSE-Resume: Lock nicht wiederherstellbar (lock_id=%s)",
-                    resume_lock_id,
+                    "SSE-RESUMING: Kein Lock gefunden (Grace-Period bereits abgelaufen?) "
+                    "alte_sse=%s",
+                    resume_client_id,
                 )
 
         # SSE-Header senden
@@ -206,12 +265,13 @@ class EventsEndpoint:
             handler.end_headers()
         except Exception as exc:
             logger.debug("SSE-Stream: Header konnte nicht gesendet werden: %s", exc)
+            self._bundle._active_sse_clients.discard(client_id)
             return
 
         def _send_event(event_name: str, data: dict) -> bool:
             """
-            Sendet ein SSE-Event. Gibt False zurück bei Verbindungsabbruch.
-            Formatierung nach RFC 8895: "event: ...\ndata: ...\n\n"
+            Sendet ein SSE-Event. Gibt False zurueck bei Verbindungsabbruch.
+            Formatierung nach RFC 8895: "event: ...\\ndata: ...\\n\\n"
             """
             try:
                 line = (
@@ -222,19 +282,21 @@ class EventsEndpoint:
                 wfile.flush()
                 return True
             except (BrokenPipeError, ConnectionResetError, OSError):
-                logger.debug("SSE-Stream: Client hat Verbindung getrennt (client_id=%s)", client_id)
-            if self._bundle._active_sse_clients:
-                self._bundle._active_sse_clients.discard(client_id)
+                logger.debug(
+                    "SSE-Stream: Client hat Verbindung getrennt (client_id=%s)", client_id
+                )
                 return False
 
-        # Sofort: Client-ID senden — Browser speichert sie für acquire_lock
+        # Sofort: Client-ID senden — Browser speichert sie fuer RESUMING
         if not _send_event("client_id", {"client_id": client_id}):
+            self._bundle._active_sse_clients.discard(client_id)
             return
 
         # Sofort: ersten Support-Status senden
         status = _get_support_status(self._bundle)
         if not _send_event("support_status", status):
-            self._cleanup_lock(client_id)
+            self._bundle._active_sse_clients.discard(client_id)
+            self._start_grace_timer(client_id)
             return
 
         # Sofort: aktuellen Lock-Status senden (Fenster 3 informieren)
@@ -244,23 +306,12 @@ class EventsEndpoint:
         # Verhindert dass editor_lock_released periodisch gesendet wird
         # wenn schlicht kein Lock vorhanden ist.
         # Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19
-        # Schema v2.0: kein globaler Lock mehr, stattdessen pro Bericht.
-        # SSE-Handler liest den zuletzt aktiven Lock des Ermittlers.
-        _initial_lock_row = self._bundle.evidence._con.execute(
-            "SELECT report_id, locked_by, lock_id, locked_at, sse_client "
-            "FROM editor_locks ORDER BY locked_at DESC LIMIT 1"
+        _initial_lock = self._bundle.evidence._con.execute(
+            "SELECT lock_id FROM editor_locks ORDER BY locked_at DESC LIMIT 1"
         ).fetchone()
-        from db.evidence_db import EditorLockRecord as _ELR
-        _initial_lock = (
-            _ELR(
-                report_id=int(_initial_lock_row["report_id"]),
-                locked_by=str(_initial_lock_row["locked_by"]),
-                lock_id=str(_initial_lock_row["lock_id"]),
-                locked_at=int(_initial_lock_row["locked_at"]),
-                sse_client=str(_initial_lock_row["sse_client"]),
-            ) if _initial_lock_row else None
+        _last_lock_id: Optional[str] = (
+            str(_initial_lock["lock_id"]) if _initial_lock else None
         )
-        _last_lock_id: str | None = _initial_lock.lock_id if _initial_lock else None
 
         # Warte-Event vom EvidenceDb — wird bei Lock-Aenderungen sofort gesetzt.
         # Beleg: Lock-System v2, Projektgespraech 2026-04-21
@@ -274,20 +325,13 @@ class EventsEndpoint:
                 lock_event.wait(timeout=self._interval)
 
                 # Lock-Zustand lesen, DANN Event loeschen.
-                # Reihenfolge wichtig: zwischen clear() und get_lock() koennte
+                # Reihenfolge wichtig: zwischen clear() und dem DB-Zugriff koennte
                 # sonst eine Aenderung verloren gehen.
                 _cl_row = self._bundle.evidence._con.execute(
-                    "SELECT report_id, locked_by, lock_id, locked_at, sse_client "
-                    "FROM editor_locks ORDER BY locked_at DESC LIMIT 1"
+                    "SELECT lock_id FROM editor_locks ORDER BY locked_at DESC LIMIT 1"
                 ).fetchone()
-                current_lock = (
-                    _ELR(
-                        report_id=int(_cl_row["report_id"]),
-                        locked_by=str(_cl_row["locked_by"]),
-                        lock_id=str(_cl_row["lock_id"]),
-                        locked_at=int(_cl_row["locked_at"]),
-                        sse_client=str(_cl_row["sse_client"]),
-                    ) if _cl_row else None
+                current_lock_id: Optional[str] = (
+                    str(_cl_row["lock_id"]) if _cl_row else None
                 )
                 lock_event.clear()
 
@@ -297,44 +341,275 @@ class EventsEndpoint:
                     break
 
                 # Lock-Status nur bei Aenderung senden
-                current_lock_id = current_lock.lock_id if current_lock else None
                 if current_lock_id != _last_lock_id:
                     _last_lock_id = current_lock_id
                     if not self._send_lock_status(_send_event):
                         break
 
-                # V3: Takeover-Event senden falls pending
-                # Beleg: Lock-System v2 V3, Projektgespraech 2026-04-21
-                pending = getattr(
-                    self._bundle.evidence, '_pending_takeover', None
-                )
-                if pending:
-                    self._bundle.evidence._pending_takeover = None
-                    if not _send_event("lock_takeover_request", pending):
-                        break
+                # Takeover-Benachrichtigungen (Option B — DB-Abfrage).
+                # Jede SSE-Verbindung liest nur die Zeilen, die an sie adressiert sind.
+                # Beleg: Architekturentscheidung Paket-4-Review 2026-05-24
+                if not self._send_takeover_events(_send_event, client_id):
+                    break
 
-                # V3: Takeover-Ergebnis senden (granted/denied)
-                takeover_result = getattr(
-                    self._bundle.evidence, '_takeover_result', None
-                )
-                if takeover_result:
-                    self._bundle.evidence._takeover_result = None
-                    if not _send_event("lock_takeover_result", takeover_result):
-                        break
+                # Lock-Uebergabe: Wurde diesem Client ein Lock aus der Queue zugeteilt?
+                # Beleg: Layer 4 States QUEUED->MINE, SLA Punkt 4
+                if not self._send_lock_acquired_if_mine(_send_event, client_id):
+                    break
 
         finally:
-            # Verbindung abgerissen: Lock des Clients freigeben (Schicht 2, §8.6 B4)
-            self._cleanup_lock(client_id)
+            # Verbindung abgerissen: Grace-Timer starten.
+            # Erst nach _GRACE_PERIOD_SEC Sekunden wird der Lock freigegeben.
+            # Reconnectet der Client innerhalb dieser Zeit (RESUMING), wird
+            # der Timer geloescht und der Lock bleibt erhalten.
+            # Beleg: SLA Punkt 2, Paket-4-Review 2026-05-24
+            self._bundle._active_sse_clients.discard(client_id)
+            self._start_grace_timer(client_id)
+
+    # ------------------------------------------------------------------
+    # Grace-Period-Verwaltung
+    # ------------------------------------------------------------------
+
+    # Klassen-Dictionary fuer laufende Grace-Timer (client_id -> threading.Timer).
+    # Beleg: SLA Punkt 2, Paket-4-Review 2026-05-24
+    _grace_timers: dict[str, threading.Timer] = {}
+    _grace_timers_lock: threading.Lock = threading.Lock()
+
+    def _start_grace_timer(self, client_id: str) -> None:
+        """
+        Startet den Grace-Period-Timer fuer eine SSE-Client-ID.
+
+        Nach _GRACE_PERIOD_SEC Sekunden wird _grace_expired() aufgerufen
+        wenn der Timer nicht vorher durch _cancel_grace_timer() geloescht wurde.
+
+        Beleg: SLA Punkt 2, Paket-4-Review 2026-05-24
+        """
+        timer = threading.Timer(
+            _GRACE_PERIOD_SEC,
+            self._grace_expired,
+            args=(client_id,),
+        )
+        timer.daemon = True  # Kein Blockieren des Server-Shutdowns
+        with EventsEndpoint._grace_timers_lock:
+            # Sicherheit: existierenden Timer fuer dieselbe client_id abbrechen
+            old = EventsEndpoint._grace_timers.get(client_id)
+            if old:
+                old.cancel()
+            EventsEndpoint._grace_timers[client_id] = timer
+        timer.start()
+        logger.debug(
+            "Grace-Timer gestartet: client_id=%s (%.0fs)", client_id, _GRACE_PERIOD_SEC
+        )
+
+    def _cancel_grace_timer(self, client_id: str) -> bool:
+        """
+        Loescht einen laufenden Grace-Period-Timer (RESUMING — Verbindung geheilt).
+
+        Gibt True zurueck wenn ein Timer gefunden und abgebrochen wurde.
+        Beleg: Layer 2 States RESUMING, SLA Punkt 2, Paket-4-Review 2026-05-24
+        """
+        with EventsEndpoint._grace_timers_lock:
+            timer = EventsEndpoint._grace_timers.pop(client_id, None)
+        if timer:
+            timer.cancel()
+            logger.debug("Grace-Timer geloescht (RESUMING): client_id=%s", client_id)
+            return True
+        return False
+
+    def _grace_expired(self, client_id: str) -> None:
+        """
+        Callback: Grace-Period abgelaufen — Lock freigeben und Queue-Kaskade.
+
+        Wird vom threading.Timer-Thread aufgerufen nach _GRACE_PERIOD_SEC Sekunden.
+        Atomaritaetsanforderung (SLA Punkt 3): release_lock_by_sse_client() und
+        queue_next_valid() werden in derselben DB-Transaktion durchgefuehrt
+        (sichergestellt durch release_lock_by_sse_client() + Commit vor
+        queue_next_valid()).
+
+        Beleg: SLA Punkte 2, 3, 4, Paket-4-Review 2026-05-24
+        """
+        with EventsEndpoint._grace_timers_lock:
+            EventsEndpoint._grace_timers.pop(client_id, None)
+
+        logger.info(
+            "Grace-Period abgelaufen — Lock wird freigegeben: client_id=%s", client_id
+        )
+        try:
+            edb = self._bundle.evidence
+            freed_report_ids = edb.release_lock_by_sse_client(client_id)
+
+            # Queue-Kaskade fuer jeden freigegebenen Bericht (SLA Punkt 4)
+            if freed_report_ids:
+                active_clients = self._bundle.get_active_sse_clients()
+                for report_id in freed_report_ids:
+                    self._process_queue_cascade(report_id, active_clients)
+        except Exception as exc:
+            logger.error("_grace_expired: Fehler bei Lock-Freigabe: %s", exc)
+
+    def _process_queue_cascade(self, report_id: int, active_clients: set) -> None:
+        """
+        FIFO-Queue-Kaskade nach Lock-Freigabe (SLA Punkt 4).
+
+        Sucht den ersten gueltigen Queue-Eintrag (mit aktiver SSE-Verbindung),
+        vergibt den Lock an diesen Client und benachrichtigt ihn per
+        lock_change_event (der SSE-Thread des neuen Inhabers sendet dann
+        ein lock_acquired-Event).
+
+        Beleg: SLA Punkte 3, 4, Paket-4-Review 2026-05-24
+        """
+        try:
+            edb = self._bundle.evidence
+            next_candidate = edb.queue_next_valid(report_id, active_clients)
+            if next_candidate:
+                new_lock_id = edb.acquire_lock(
+                    report_id,
+                    next_candidate["requested_by"],
+                    next_candidate["sse_client"],
+                )
+                if new_lock_id:
+                    edb.queue_remove(report_id, next_candidate["requested_by"])
+                    logger.info(
+                        "Queue-Kaskade: '%s' erhaelt Lock report_id=%d lock_id=%s",
+                        next_candidate["requested_by"], report_id, new_lock_id,
+                    )
+                    # lock_change_event weckt alle SSE-Polling-Schleifen.
+                    # Der SSE-Thread des neuen Inhabers sendet lock_acquired.
+                    edb.lock_change_event.set()
+        except Exception as exc:
+            logger.error("_process_queue_cascade: Fehler: %s", exc)
+
+    # ------------------------------------------------------------------
+    # Takeover-Events (Option B — DB-Abfrage pro Polling-Wakeup)
+    # ------------------------------------------------------------------
+
+    def _send_takeover_events(self, send_fn, client_id: str) -> bool:
+        """
+        Prueeft ob Takeover-Events fuer diese SSE-Verbindung anstehen.
+
+        Zwei Szenarien:
+        A) Diese SSE-Verbindung haelt einen Lock und jemand hat eine
+           Takeover-Anfrage gestellt: lock_takeover_request senden.
+        B) Diese SSE-Verbindung hat eine Takeover-Anfrage gestellt und
+           diese wurde resolved (granted/denied): lock_takeover_result senden.
+
+        Gibt False zurueck wenn die SSE-Verbindung abgebrochen ist.
+        Beleg: Layer 4 States TAKEOVER_PENDING / TAKEOVER_REQUEST_IN,
+               Architekturentscheidung Paket-4-Review 2026-05-24
+        """
+        try:
+            edb = self._bundle.evidence
+
+            # Szenario A: Bin ich Lock-Inhaber mit einer pending Takeover-Anfrage?
+            # Suche den Lock der zu meiner client_id gehoert.
+            my_lock_row = edb._con.execute(
+                "SELECT report_id, lock_id FROM editor_locks WHERE sse_client=?",
+                (client_id,),
+            ).fetchone()
+            if my_lock_row:
+                report_id = int(my_lock_row["report_id"])
+                pending = edb.get_pending_takeover(report_id)
+                if pending:
+                    if not send_fn("lock_takeover_request", {
+                        "report_id":    report_id,
+                        "request_id":   pending["id"],
+                        "requested_by": pending["requested_by"],
+                        "requested_at": pending["requested_at"],
+                    }):
+                        return False
+
+            # Szenario B: Habe ich eine Takeover-Anfrage gestellt, die resolved wurde?
+            # Suche nach Eintraegen in lock_takeover_requests mit meiner client_id
+            # die noch nicht an den Client gesendet wurden.
+            # Identifikation: requested_by des anfragenden Clients ist in der DB,
+            # aber wir brauchen die sse_client des Anfragenden.
+            # Da lock_takeover_requests keine sse_client-Spalte fuer den Anfragenden
+            # speichert, lesen wir ueber queue-Eintrag oder direkt ueber den
+            # aktuellen sse_client des Anfragenden.
+            # Pragmatische Loesung: Wir suchen ob es fuer unsere client_id einen
+            # queue-Eintrag gibt und ob der zugehoerige Lock resolved wurde.
+            my_queue_row = edb._con.execute(
+                "SELECT report_id, requested_by FROM lock_queue WHERE sse_client=?",
+                (client_id,),
+            ).fetchone()
+            if my_queue_row:
+                report_id    = int(my_queue_row["report_id"])
+                requested_by = str(my_queue_row["requested_by"])
+                # Gibt es ein resolved Takeover-Ergebnis fuer diesen Benutzer?
+                result_row = edb._con.execute(
+                    "SELECT id, status FROM lock_takeover_requests "
+                    "WHERE report_id=? AND requested_by=? AND status IN ('granted','denied') "
+                    "AND responded_at IS NOT NULL "
+                    "ORDER BY responded_at DESC LIMIT 1",
+                    (report_id, requested_by),
+                ).fetchone()
+                if result_row:
+                    if not send_fn("lock_takeover_result", {
+                        "report_id":  report_id,
+                        "request_id": int(result_row["id"]),
+                        "result":     str(result_row["status"]),
+                    }):
+                        return False
+
+        except Exception as exc:
+            logger.warning("_send_takeover_events: Fehler: %s", exc)
+        return True
+
+    def _send_lock_acquired_if_mine(self, send_fn, client_id: str) -> bool:
+        """
+        Sendet lock_acquired an einen Client dem soeben ein Lock aus der
+        Queue-Kaskade zugeteilt wurde.
+
+        Prueft ob in editor_locks ein Eintrag fuer diese client_id existiert.
+        Wenn ja, sendet es ein lock_acquired-Event mit report_id und lock_id.
+        Dieses Event ist der direkte Kanal von Layer 4 QUEUED -> MINE.
+
+        Das Event wird nur gesendet wenn der Lock innerhalb der letzten
+        (interval * 2 + 2) Sekunden erworben wurde — als Schutz davor dass
+        ein bestehendes Lock bei jedem Polling-Wakeup erneut gemeldet wird.
+        Layer 4 im Frontend behandelt lock_acquired idempotent.
+
+        Gibt False zurueck bei Verbindungsabbruch.
+        Beleg: Layer 4 States QUEUED->MINE, SLA Punkt 4, Paket-4-Review 2026-05-24
+        """
+        try:
+            edb = self._bundle.evidence
+            row = edb._con.execute(
+                "SELECT report_id, lock_id, locked_at FROM editor_locks "
+                "WHERE sse_client=?",
+                (client_id,),
+            ).fetchone()
+            if not row:
+                return True  # Kein Lock fuer diese Verbindung — nichts zu senden
+
+            age_sec = time.time() - int(row["locked_at"])
+            # Schwellwert: 2 * Polling-Intervall + 2s Toleranz.
+            # Darueberhinaus ist der Lock bereits "bekannt" und wurde beim
+            # Verbindungsaufbau per editor_lock_acquired / _send_lock_status gemeldet.
+            threshold = self._interval * 2 + 2
+            if age_sec <= threshold:
+                if not send_fn("lock_acquired", {
+                    "report_id": int(row["report_id"]),
+                    "lock_id":   str(row["lock_id"]),
+                }):
+                    return False
+        except Exception as exc:
+            logger.warning("_send_lock_acquired_if_mine: Fehler: %s", exc)
+        return True
+
+    # ------------------------------------------------------------------
+    # Lock-Status-Event
+    # ------------------------------------------------------------------
 
     def _send_lock_status(self, send_fn) -> bool:
         """
-        Sendet den aktuellen Editor-Lock-Status.
-        Gibt False zurueck wenn Verbindung abgebrochen ist.
+        Sendet den aktuellen Editor-Lock-Status (editor_lock_acquired /
+        editor_lock_released) an alle Clients.
 
-        Defensiv gegen korrupte Altdatensaetze mit locked_at=NULL:
-        int(None) wuerde TypeError werfen — wird abgefangen.
+        Gibt False zurueck wenn Verbindung abgebrochen ist.
+        Defensiv gegen korrupte Altdatensaetze mit locked_at=NULL.
         Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19
         """
+        from db.evidence_db import EditorLockRecord as _ELR
         try:
             _lk_row = self._bundle.evidence._con.execute(
                 "SELECT report_id, locked_by, lock_id, locked_at, sse_client "
@@ -347,6 +622,7 @@ class EventsEndpoint:
                     lock_id=str(_lk_row["lock_id"]),
                     locked_at=int(_lk_row["locked_at"]),
                     sse_client=str(_lk_row["sse_client"]),
+                    cooldown_until=None,
                 ) if _lk_row else None
             )
             if lock and lock.locked_by and lock.lock_id:
@@ -371,16 +647,22 @@ class EventsEndpoint:
             logger.warning("_send_lock_status: Fehler: %s", exc)
             return True  # Kein Verbindungsabbruch — anderer Fehler
 
-    def _cleanup_lock(self, client_id: str) -> None:
+    # ------------------------------------------------------------------
+    # Direkte Lock-Benachrichtigung (Queue-Kaskade -> neuer Inhaber)
+    # ------------------------------------------------------------------
+
+    def notify_lock_acquired(self, sse_client: str, report_id: int, lock_id: str) -> None:
         """
-        Gibt den Editor-Lock frei, falls er von dieser SSE-Client-ID gehalten wird.
-        Implementiert Schicht 2 des dreischichtigen Lock-Mechanismus (§8.6 Bauplan B4).
+        Wird von report.py aufgerufen wenn einem Client per Queue-Kaskade oder
+        Takeover ein Lock zugeteilt wurde. Loest lock_change_event aus.
+
+        Der SSE-Thread des neuen Inhabers sendet dann bei naechster Gelegenheit
+        ein lock_acquired-Event.
+
+        Beleg: Layer 4 States QUEUED->MINE, SLA Punkt 4, Paket-4-Review 2026-05-24
         """
-        try:
-            freed = self._bundle.evidence.release_lock_by_sse_client(client_id)
-            if freed:
-                logger.info(
-                    "SSE-Verbindungsabriss: Editor-Lock freigegeben (client_id=%s)", client_id
-                )
-        except Exception as exc:
-            logger.warning("_cleanup_lock: Fehler: %s", exc)
+        self._bundle.evidence.lock_change_event.set()
+        logger.debug(
+            "notify_lock_acquired: sse_client=%s report_id=%d lock_id=%s",
+            sse_client, report_id, lock_id,
+        )

@@ -937,9 +937,12 @@ class ReportEndpoint:
         # Lock belegt — 423 mit Kontext fuer Layer 4 ACQUIRING -> IDLE
         current = edb.get_lock(report_id)
 
-        # Auto-Resume: selber Benutzer mit neuer SSE (Browser-Reload)
+        # Auto-Resume: selber Benutzer reconnectet mit neuer SSE (Browser-Reload).
+        # Dies ist eine Layer-2-Aktion (RESUMING): Wir kennen hier die alte sse_client-ID
+        # aus dem bestehenden Lock und binden sie an die neue SSE-Client-ID.
+        # Beleg: Layer 2 States RESUMING, Paket-4-Review 2026-05-24
         if current and current.locked_by == investigator:
-            resumed = edb.resume_lock(report_id, current.lock_id, investigator, sse_client)
+            resumed = edb.resume_lock(current.sse_client, sse_client)
             if resumed:
                 logger.info("ACQUIRING: Auto-Resume '%s' report_id=%d", investigator, report_id)
                 handler.send_response_body(
@@ -1028,31 +1031,38 @@ class ReportEndpoint:
         )
 
     def _action_resume_lock(self, handler, data, investigator) -> None:
-        """RESUMING: SSE-Client-ID nach Reconnect aktualisieren.
+        """RESUMING: SSE-Client-ID nach Reconnect innerhalb der Grace-Period aktualisieren.
 
-        Wird nach Wiederverbindung innerhalb der Grace-Period aufgerufen.
-        Beleg: Layer 2 States RESUMING, SLA Punkt 2
+        RESUMING ist eine Layer-2-Aktion. Die Identifikation erfolgt ausschliesslich
+        ueber die alte SSE-Client-ID (old_sse_client) und die neue (sse_new).
+        Die lock_id ist Layer-4-Daten und ist hier nicht bekannt / nicht zulaessig.
+
+        Der Endpunkt wird aufgerufen wenn der Client nach einem SSE-Abriss
+        innerhalb der Grace-Period reconnectet. Der Webserver prueft ob die
+        alte SSE-Client-ID noch einem aktiven Lock zugeordnet ist (d.h. der
+        Grace-Timer hat noch nicht abgelaufen). Wenn ja, wird die SSE-Client-ID
+        im Lock aktualisiert.
+
+        Beleg: Layer 2 States RESUMING, SLA Punkt 2, Paket-4-Review 2026-05-24
         """
-        lock_id   = str(data.get("lock_id", "")).strip()
-        sse_new   = str(data.get("sse_client", "")).strip()
-        report_id_raw = data.get("report_id")
-        if not lock_id or not sse_new or not report_id_raw:
+        old_sse = str(data.get("old_sse_client", "")).strip()
+        sse_new = str(data.get("sse_client", "")).strip()
+        if not old_sse or not sse_new:
             handler.send_response_body(
-                400, _json_err("lock_id, sse_client und report_id erforderlich", "MISSING_FIELDS"),
+                400, _json_err("old_sse_client und sse_client erforderlich", "MISSING_FIELDS"),
                 content_type="application/json; charset=utf-8",
             )
             return
-        report_id = int(report_id_raw)
-        ok = self._bundle.evidence.resume_lock(report_id, lock_id, investigator, sse_new)
+        ok = self._bundle.evidence.resume_lock(old_sse, sse_new)
         if ok:
             handler.send_response_body(
                 200, _json_ok({"ok": True}),
                 content_type="application/json; charset=utf-8",
             )
-            logger.info("RESUMING ok: '%s' report_id=%d", investigator, report_id)
+            logger.info("RESUMING ok: '%s' alte_sse=%s neue_sse=%s", investigator, old_sse, sse_new)
         else:
             handler.send_response_body(
-                423, _json_err("Resume fehlgeschlagen — Lock nicht gefunden", "LOCK_NOT_FOUND"),
+                423, _json_err("Resume fehlgeschlagen — Grace-Period abgelaufen oder SSE unbekannt", "LOCK_NOT_FOUND"),
                 content_type="application/json; charset=utf-8",
             )
 
@@ -1073,7 +1083,10 @@ class ReportEndpoint:
         edb  = self._bundle.evidence
         lock = edb.get_lock(report_id)
         if lock and lock.lock_id == lock_id and lock.locked_by == investigator:
-            edb.resume_lock(report_id, lock_id, investigator, lock.sse_client)
+            # Heartbeat aktualisiert locked_at — dazu genuegt ein RESUMING
+            # auf dieselbe SSE-Client-ID (kein Wechsel noetig).
+            # Beleg: SLA Punkt 1 (SSE als Aktivitaetsnachweis)
+            edb.resume_lock(lock.sse_client, lock.sse_client)
             handler.send_response_body(
                 200, _json_ok({"ok": True}),
                 content_type="application/json; charset=utf-8",

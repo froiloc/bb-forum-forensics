@@ -4,9 +4,9 @@
 # =============================================================================
 # Testsuite fuer Lock-System v2 (V1 SSE-Reconnect, V3 Takeover-Dialog).
 #
-# T01 — resume_lock(): Lock-Binding an neue SSE-client_id
-# T02 — resume_lock(): falscher Benutzer wird abgewiesen
-# T03 — resume_lock(): falsche lock_id wird abgewiesen
+# T01 — resume_lock(): Lock-Binding an neue SSE-client_id (Layer-2-Aktion)
+# T02 — resume_lock(): unbekannte alte SSE-ID wird abgewiesen
+# T03 — resume_lock(): identische alte/neue SSE-ID ist idempotent
 # T04 — resume_lock(): aktualisiert locked_at (Heartbeat-Effekt)
 # T05 — lock_change_event: wird bei acquire_lock gesetzt
 # T06 — lock_change_event: wird bei release_lock gesetzt
@@ -17,14 +17,17 @@
 # T11 — resolve_takeover(): setzt Status auf denied
 # T12 — get_pending_takeover(): gibt aelteste pending-Anfrage zurueck
 # T13 — get_pending_takeover(): gibt None wenn keine Anfrage vorhanden
-# T14 — Edgecase: resume_lock auf nicht-existentem Lock
+# T14 — Edgecase: resume_lock auf unbekannter SSE-ID
 # T15 — Edgecase: resolve_takeover auf bereits resolvedtem Request
 # T16 — Edgecase: acquire_lock loescht abgelaufene Locks (Timeout)
 # T17 — Edgecase: lock_change_event nur einmal gesetzt bei mehreren Releases
-# T18 — Edgecase: request_takeover auf eigenem Lock schlaegt fehl (HTTP-Ebene)
+# T18 — Edgecase: kein Lock wenn bereits belegt
+# T19 — Grace-Period/RESUMING: RESUMING bindet Lock an neue SSE-Client-ID
+# T20 — Grace-Period/RESUMING: fremde SSE-Client-ID wird abgewiesen
+# T21 — Grace-Period/RESUMING: RESUMING nach Lock-Freigabe schlaegt fehl
 #
-# Version: v0.6.049 · Build: 049 · 2026-04-21
-# Beleg: Lock-System v2, Projektgespraech 2026-04-21
+# Version: v0.6.247 · Build: 247 · 2026-05-24
+# Beleg: Lock-System v2, Paket-4-Review 2026-05-24
 # =============================================================================
 
 import sqlite3
@@ -64,35 +67,54 @@ def edb_with_lock(edb):
 class TestResumeLock:
 
     def test_T01_lock_binding_erneuert(self, edb_with_lock):
-        """T01: resume_lock() aktualisiert sse_client auf neue ID."""
+        """T01: resume_lock() aktualisiert sse_client auf neue ID.
+
+        RESUMING ist eine Layer-2-Aktion: Identifikation ausschliesslich
+        ueber die alte SSE-Client-ID, nicht ueber lock_id.
+        Beleg: Layer 2 States RESUMING, Paket-4-Review 2026-05-24
+        """
         edb, lock_id = edb_with_lock
-        result = edb.resume_lock(1, lock_id, "h001", "sse_client_B")
+        result = edb.resume_lock("sse_client_A", "sse_client_B")
         assert result is True
         lock = edb.get_lock(1)
         assert lock.sse_client == "sse_client_B"
+        # lock_id bleibt unveraendert (nur SSE-Binding wird aktualisiert)
         assert lock.lock_id == lock_id
 
-    def test_T02_falscher_benutzer_abgewiesen(self, edb_with_lock):
-        """T02: resume_lock() mit falschem Benutzer gibt False zurueck."""
+    def test_T02_unbekannte_alte_sse_abgewiesen(self, edb_with_lock):
+        """T02: resume_lock() mit unbekannter alter SSE-Client-ID gibt False zurueck.
+
+        Kein Lock hat sse_client='unbekannt_XYZ' — Resume schlaegt fehl.
+        Dies schuetzt vor Verbindungsdiebstahl durch Clone-Fenster.
+        Beleg: Layer 2 States RESUMING, Paket-4-Review 2026-05-24
+        """
         edb, lock_id = edb_with_lock
-        result = edb.resume_lock(1, lock_id, "h002", "sse_client_B")
+        result = edb.resume_lock("unbekannt_XYZ", "sse_client_B")
         assert result is False
         # Alter sse_client bleibt
         lock = edb.get_lock(1)
         assert lock.sse_client == "sse_client_A"
 
-    def test_T03_falsche_lock_id_abgewiesen(self, edb_with_lock):
-        """T03: resume_lock() mit falscher lock_id gibt False zurueck."""
+    def test_T03_resume_auf_eigenem_client_ist_idempotent(self, edb_with_lock):
+        """T03: resume_lock() mit identischer alter und neuer SSE-ID ist idempotent.
+
+        Browser-Fenster wird neu geladen ohne Tab-Duplikat — client_id
+        bleibt dieselbe. Resume soll dennoch True zurueckgeben und
+        locked_at aktualisieren.
+        Beleg: Layer 2 States RESUMING, Paket-4-Review 2026-05-24
+        """
         edb, lock_id = edb_with_lock
-        result = edb.resume_lock(1, "falsche-id", "h001", "sse_client_B")
-        assert result is False
+        result = edb.resume_lock("sse_client_A", "sse_client_A")
+        assert result is True
+        lock = edb.get_lock(1)
+        assert lock.sse_client == "sse_client_A"
 
     def test_T04_locked_at_aktualisiert(self, edb_with_lock):
         """T04: resume_lock() aktualisiert locked_at (Heartbeat-Effekt)."""
         edb, lock_id = edb_with_lock
         lock_before = edb.get_lock(1)
         time.sleep(1)
-        edb.resume_lock(1, lock_id, "h001", "sse_client_A")
+        edb.resume_lock("sse_client_A", "sse_client_A")
         lock_after = edb.get_lock(1)
         assert lock_after.locked_at >= lock_before.locked_at
 
@@ -195,8 +217,8 @@ class TestTakeover:
 class TestEdgecases:
 
     def test_T14_resume_lock_auf_nicht_existentem_lock(self, edb):
-        """T14: resume_lock() auf nicht-existentem Lock gibt False zurueck."""
-        result = edb.resume_lock(1, "gibts-nicht", "h001", "sse_B")
+        """T14: resume_lock() mit unbekannter SSE-Client-ID gibt False zurueck."""
+        result = edb.resume_lock("gibts-nicht", "sse_B")
         assert result is False
 
     def test_T15_resolve_takeover_bereits_resolved(self, edb_with_lock):
@@ -254,6 +276,78 @@ class TestEdgecases:
         # Original-Lock unveraendert
         lock = edb.get_lock(1)
         assert lock.locked_by == "h001"
+
+
+
+
+# ---------------------------------------------------------------------------
+# T19-T21: Grace-Period und RESUMING (Paket 4, Build 247)
+# ---------------------------------------------------------------------------
+
+class TestGracePeriodResuming:
+    """
+    Testet das neue RESUMING-Verhalten:
+    - Identifikation ausschliesslich ueber SSE-Client-ID (Layer-2-Daten)
+    - Kein Zugriff auf lock_id (Layer-4-Daten)
+    Beleg: Layer 2 States RESUMING, SLA Punkt 2, Paket-4-Review 2026-05-24
+    """
+
+    def test_T19_resuming_bindet_neuen_sse_client(self, edb_with_lock):
+        """T19: RESUMING mit alter SSE-Client-ID bindet Lock an neue ID.
+
+        Szenario: Browser-Tab verliert SSE-Verbindung, reconnectet
+        innerhalb der Grace-Period. Der Lock muss auf die neue
+        SSE-Client-ID umgebunden werden.
+        """
+        edb, lock_id = edb_with_lock
+        # Verbindungsabriss simuliert: alter client 'sse_client_A'
+        # Reconnect mit neuer client_id 'sse_client_C'
+        result = edb.resume_lock("sse_client_A", "sse_client_C")
+        assert result is True
+
+        lock = edb.get_lock(1)
+        assert lock.sse_client == "sse_client_C"
+        assert lock.lock_id == lock_id      # Lock-ID unveraendert
+        assert lock.locked_by == "h001"     # Inhaber unveraendert
+
+    def test_T20_resuming_schlaegt_fehl_wenn_sse_unbekannt(self, edb_with_lock):
+        """T20: RESUMING mit fremder SSE-Client-ID schlaegt fehl.
+
+        Schutzmechanismus: Ein Browser-Tab der die alte SSE-Client-ID
+        nicht kennt (z.B. dupliziertes Fenster) kann keinen Lock kapern.
+        Die alte SSE-Client-ID ist dem echten Client bekannt (er hat sie
+        vom Server per 'client_id'-Event erhalten).
+        """
+        edb, lock_id = edb_with_lock
+        # Angreifer kennt nur seine eigene, neue SSE-ID — nicht die alte
+        result = edb.resume_lock("fremde_sse_XYZ", "sse_client_D")
+        assert result is False
+
+        # Lock unveraendert
+        lock = edb.get_lock(1)
+        assert lock.sse_client == "sse_client_A"
+        assert lock.locked_by == "h001"
+
+    def test_T21_resuming_nach_lock_freigabe_schlaegt_fehl(self, edb_with_lock):
+        """T21: RESUMING nach abgelaufener Grace-Period (Lock bereits freigegeben).
+
+        Szenario: Grace-Period ist abgelaufen, release_lock_by_sse_client()
+        wurde bereits aufgerufen. Ein verspaetetes RESUMING muss False
+        zurueckgeben — der Lock ist weg.
+        """
+        edb, lock_id = edb_with_lock
+
+        # Grace-Period abgelaufen simulieren: Lock direkt freigeben
+        freed = edb.release_lock_by_sse_client("sse_client_A")
+        assert freed == [1]  # report_id 1 wurde freigegeben
+
+        # Jetzt verspaetetes RESUMING versuchen
+        result = edb.resume_lock("sse_client_A", "sse_client_E")
+        assert result is False
+
+        # Lock ist weg
+        lock = edb.get_lock(1)
+        assert lock is None
 
 
 if __name__ == "__main__":
