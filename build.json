@@ -1,6 +1,6 @@
 {
-  "build":   244,
-  "version": "0.6.244",
+  "build":   245,
+  "version": "0.6.245",
   "date":    "2026-05-24",
-  "note":    "Build 244: VALID_REPORT_STATUSES/COMMENT_STATUSES; validate_lock Signatur in _lock_guard; Seed-Fixture getrennt; alle Lock-Test-Signaturen korrigiert"
+  "note":    "Build 245: _lock_guard toleriert fehlendes report_id; T09 Audit-Trail-Semantik; alle Lock-Test-Signaturen vollständig korrigiert"
 }

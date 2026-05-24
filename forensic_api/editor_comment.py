@@ -159,7 +159,9 @@ class EditorCommentEndpoint:
                     content_type="application/json; charset=utf-8",
                 )
                 return
-            if not self._bundle.evidence.validate_lock(lock_id):
+            rid_raw = data.get("report_id")
+            _rid_cm = int(rid_raw) if rid_raw else 0
+            if not self._bundle.evidence.validate_lock(_rid_cm, lock_id):
                 handler.send_response_body(
                     423,
                     _json_err("Lock abgelaufen oder ungueltig", "LOCK_INVALID"),

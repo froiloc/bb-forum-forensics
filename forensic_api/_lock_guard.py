@@ -80,8 +80,16 @@ def require_lock(
         report_id_guard = int(rid_raw) if rid_raw is not None else None
     except (TypeError, ValueError):
         report_id_guard = None
-    _rid = report_id_guard or 0
-    if not evidence_db.validate_lock(_rid, lock_id):
+    # Ohne report_id: nur lock_id pruefen (lock muss existieren, egal fuer welchen Bericht).
+    # Mit report_id: bericht-spezifische Pruefung.
+    if report_id_guard is not None:
+        valid = evidence_db.validate_lock(report_id_guard, lock_id)
+    else:
+        valid = evidence_db.validate_lock(0, lock_id) or \
+                bool(evidence_db._con.execute(
+                    "SELECT 1 FROM editor_locks WHERE lock_id=?", (lock_id,)
+                ).fetchone())
+    if not valid:
         handler.send_response_body(
             423, _LOCK_REQUIRED_BODY, content_type=_CONTENT_TYPE_JSON
         )

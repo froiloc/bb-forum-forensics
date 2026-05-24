@@ -96,8 +96,9 @@ def _make_mock_bundle(edb=None, forensic_con=None):
 
 def _make_mock_context(user_id=999, username="testuser"):
     ctx = MagicMock()
-    ctx.user_id  = user_id
-    ctx.username = username
+    ctx.user_id               = user_id
+    ctx.username              = username
+    ctx.investigator_username = username  # Build 244
     return ctx
 
 
@@ -419,7 +420,7 @@ class TestEvidenceDbLock:
 
     def test_acquire_lock_second_time_fails(self, evidence_db_with_report):
         """B4-DB11: acquire_lock zweimal -> zweiter Versuch None."""
-        edb = in_memory_evidence_db
+        edb = evidence_db_with_report
         lock_id1 = edb.acquire_lock(1, "h012345", "client-1")
         assert lock_id1 is not None
         lock_id2 = edb.acquire_lock(1, "h067890", "client-2")
@@ -427,19 +428,19 @@ class TestEvidenceDbLock:
 
     def test_release_lock_by_sse_client(self, evidence_db_with_report):
         """B4-DB12: release_lock_by_sse_client -> Lock entfernt."""
-        edb = in_memory_evidence_db
+        edb = evidence_db_with_report
         edb.acquire_lock(1, "h012345", "client-1")
         freed = edb.release_lock_by_sse_client("client-1")
         assert len(freed) > 0  # gibt list[int] zurueck (Build 239)
         assert edb.get_lock(1) is None
 
     def test_validate_lock_correct_id(self, evidence_db_with_report):
-        edb = in_memory_evidence_db
+        edb = evidence_db_with_report
         lock_id = edb.acquire_lock(1, "h012345", "client-1")
         assert edb.validate_lock(1, lock_id) is True
 
     def test_validate_lock_wrong_id(self, evidence_db_with_report):
-        edb = in_memory_evidence_db
+        edb = evidence_db_with_report
         edb.acquire_lock(1, "h012345", "client-1")
         assert edb.validate_lock(1, "falsche-id") is False
 
@@ -691,9 +692,9 @@ class TestUserinfoEndpoint:
         assert "blocks" in data or "reports" in data, \
             f"Weder 'blocks' noch 'reports' in Antwort: {list(data.keys())}"
 
-    def test_acquire_lock_returns_lock_id(self, in_memory_evidence_db):
+    def test_acquire_lock_returns_lock_id(self, evidence_db_with_report):
         """B4-S05"""
-        ep   = self._make_endpoint(in_memory_evidence_db)
+        ep   = self._make_endpoint(evidence_db_with_report)
         resp = {}
         handler = _make_mock_handler(resp)
         body = json.dumps({
@@ -722,7 +723,7 @@ class TestUserinfoEndpoint:
         # Kein Lock -> 423 oder 400 (unbekannte Aktion) — beides ist valide
         assert resp['status'] in (423, 400)
 
-    def test_acquire_lock_twice_returns_423(self, in_memory_evidence_db):
+    def test_acquire_lock_twice_returns_423(self, evidence_db_with_report):
         """B4-S07: Lock bereits belegt -> HTTP 423."""
         edb = in_memory_evidence_db
         edb.acquire_lock(1, "h000001", "existing-client")
@@ -735,7 +736,7 @@ class TestUserinfoEndpoint:
         ep.handle_post(handler, body)
         assert resp['status'] == 423
 
-    def test_release_lock_returns_200(self, in_memory_evidence_db):
+    def test_release_lock_returns_200(self, evidence_db_with_report):
         """B4-S08"""
         edb = in_memory_evidence_db
         lock_id = edb.acquire_lock(1, "h012345", "test-client")
@@ -1215,7 +1216,8 @@ class TestEditorBlockEndpoint:
         handler = _make_mock_handler(resp)
         handler.headers = {"X-Forensic-Lock-Id": lock}
         body = json.dumps({
-            "action": "unbekannt", "block_id": "b1", "lock_id": lock
+            "action": "unbekannt", "block_id": "b1",
+            "lock_id": lock, "report_id": 1
         }).encode()
         ep.handle(handler, body)
         assert resp['status'] == 400

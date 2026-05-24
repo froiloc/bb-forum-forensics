@@ -142,14 +142,18 @@ class TestTakeover:
         assert pending["id"] == req_id
 
     def test_T09_request_takeover_ersetzt_bestehende_anfrage(self, edb_with_lock):
-        """T09: Zweite request_takeover() desselben Benutzers ersetzt erste."""
+        """T09: Zwei log_takeover_request() vom selben User -> beide pending.
+
+        Seit SLA Punkt 10 (Audit-Trail): kein Loeschen alter Eintraege.
+        get_pending_takeover gibt die aelteste zurueck (req_id1).
+        """
         edb, lock_id = edb_with_lock
         req_id1 = edb.log_takeover_request(1, lock_id, "h002")
         req_id2 = edb.log_takeover_request(1, lock_id, "h002")
         assert req_id2 != req_id1
-        # Nur eine pending-Anfrage von h002
+        # Audit-Trail: beide Eintraege vorhanden; get_pending gibt aeltesten zurueck
         pending = edb.get_pending_takeover(1)
-        assert pending["id"] == req_id2
+        assert pending["id"] == req_id1  # aeltester pending-Eintrag
 
     def test_T10_resolve_takeover_granted(self, edb_with_lock):
         """T10: resolve_takeover() setzt Status auf granted."""
