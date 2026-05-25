@@ -32,7 +32,7 @@
 #     report.js (contenteditable-Modell) entfernt.
 #     Beleg: Bauplan B6 v0.5 §4.1, Projektgespraech 2026-05-06
 #
-# Version: v0.6.114 · Build: 114 · 2026-05-07
+# Version: v0.6.254 · Build: 254 · 2026-05-25
 # =============================================================================
 
 from __future__ import annotations
@@ -80,6 +80,14 @@ _RESOURCES: dict[str, tuple[str, str, Path]] = {
     "/_forensic/annotation_sidebar.js": ("annotation_sidebar.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
     # B6 Phase 8 (Kommentare): Kommentar-Thread
     "/_forensic/comment_thread.js": ("comment_thread.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
+    # B6 Paket 5-9 (Layer-Architektur, Build 254): SSELayer, ReportLayer, LockLayer,
+    # DocumentLayer, editor_bootstrap. Ladereihenfolge durch Script-Tags in report.py.
+    # Beleg: editor_bootstrap.js, Paket 9 Architekturentscheidung Option C
+    "/_forensic/sse_layer.js":       ("sse_layer.js",       "application/javascript; charset=utf-8", _USERINFO_DIR),
+    "/_forensic/report_layer.js":    ("report_layer.js",    "application/javascript; charset=utf-8", _USERINFO_DIR),
+    "/_forensic/lock_layer.js":      ("lock_layer.js",      "application/javascript; charset=utf-8", _USERINFO_DIR),
+    "/_forensic/document_layer.js":  ("document_layer.js",  "application/javascript; charset=utf-8", _USERINFO_DIR),
+    "/_forensic/editor_bootstrap.js":("editor_bootstrap.js","application/javascript; charset=utf-8", _USERINFO_DIR),
 }
 
 # MIME-Types fuer Editor.js-Bundle-Dateien (AP-E3)

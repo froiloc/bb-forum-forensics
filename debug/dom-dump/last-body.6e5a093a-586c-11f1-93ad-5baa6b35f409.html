@@ -167,6 +167,19 @@
 <script defer="" src="/_forensic/comment_thread.js"></script>
 <!-- 1f) report_editor.js: B6-Editor-Modul (umbenannt von editor.js, Build 100) -->
 <script defer="" src="/_forensic/report_editor.js"></script>
-<!-- 2) userinfo.js: Lock/SSE/BroadcastChannel — nach report_editor.js laden -->
+<!-- 2) Layer-Architektur (Paket 5-9, Build 254). Reihenfolge ist Pflicht.
+         Beleg: editor_bootstrap.js, Paket 9 Architekturentscheidung Option C -->
+<!-- 2a) userinfo.js: BroadcastChannel, Fenster 1/2 -->
 <script defer="" src="/_forensic/userinfo.js"></script>
+<!-- 2b) sse_layer.js: Layer 2 -- SSE-Verbindung -->
+<script defer="" src="/_forensic/sse_layer.js"></script>
+<!-- 2c) report_layer.js: Layer 3 -- Bericht oeffnen/anlegen -->
+<script defer="" src="/_forensic/report_layer.js"></script>
+<!-- 2d) lock_layer.js: Layer 4 -- Lock-Verwaltung -->
+<script defer="" src="/_forensic/lock_layer.js"></script>
+<!-- 2e) document_layer.js: Layer 5 -- Schreiboperationen -->
+<script defer="" src="/_forensic/document_layer.js"></script>
+<!-- 2f) editor_bootstrap.js: Layer-Instanziierung + Verdrahtung.
+             Muss als letztes geladen werden (nach report_editor.js + userinfo.js). -->
+<script defer="" src="/_forensic/editor_bootstrap.js"></script>
 </body>

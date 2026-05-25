@@ -254,6 +254,11 @@ class ForensicApi:
             "/_forensic/annotation_sidebar.js", # B6 Phase 7 Sidebar
             "/_forensic/comment_thread.js",     # B6 Phase 8 Kommentare
             "/_forensic/debug_events.js",       # B6 Build 200 Event-Tracing (Bug 2.106)
+            "/_forensic/sse_layer.js",          # B6 Paket 5 Layer 2 (Build 254)
+            "/_forensic/report_layer.js",       # B6 Paket 6 Layer 3 (Build 254)
+            "/_forensic/lock_layer.js",         # B6 Paket 7 Layer 4 (Build 254)
+            "/_forensic/document_layer.js",     # B6 Paket 8 Layer 5 (Build 254)
+            "/_forensic/editor_bootstrap.js",   # B6 Paket 9 Bootstrap (Build 254)
         ):
             if method not in ("GET", "HEAD"):
                 self._method_not_allowed(handler)
