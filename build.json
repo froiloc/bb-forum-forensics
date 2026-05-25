@@ -1,6 +1,6 @@
 {
-  "build":   260,
-  "version": "0.6.260",
+  "build":   261,
+  "version": "0.6.261",
   "date":    "2026-05-25",
-  "note":    "Build 260: Bugfix — Haupt-IIFE userinfo.js mit })(); geschlossen; updateLockStatus() als fehlende Funktion neu definiert (war in Paket 9 verloren gegangen)"
+  "note":    "Build 261: Bugfix — window.initReportSelector exportiert; editor_bootstrap.js created-Handler konnte initReportSelector nicht aufrufen => Editor nach Bericht-Erstellen nie initialisiert"
 }

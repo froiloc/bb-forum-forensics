@@ -3517,6 +3517,7 @@ window.ReportEditor.endProgrammaticInsert = function() {
     _isProgrammaticInsert = false;
 };
 window.initEditorModule            = initEditorModule;
+window.initReportSelector          = initReportSelector; // Beleg: editor_bootstrap.js created-Handler, Paket 9
 window.injectInsertInReportButtons = injectInsertInReportButtons;
 window.toggleAnnotationSidebar          = toggleAnnotationSidebar;
 window.insertEvidenceBlockFromAnnotation = insertEvidenceBlockFromAnnotation;
