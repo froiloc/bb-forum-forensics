@@ -1,6 +1,6 @@
 {
-  "build":   257,
-  "version": "0.6.257",
+  "build":   258,
+  "version": "0.6.258",
   "date":    "2026-05-25",
-  "note":    "Build 257: Bugfix — userinfo.js DOMContentLoaded durch readyState-Guard ersetzt; bei readyState=complete wird _onDOMReady() sofort aufgerufen statt auf bereits gefeuertes Event zu warten"
+  "note":    "Build 258: Bugfix — kaputte '-e' Zeilen am Ende von userinfo.js entfernt (echo-e Artefakte aus Build 252 Syntax-Reparatur); IIFE wird jetzt korrekt geschlossen"
 }

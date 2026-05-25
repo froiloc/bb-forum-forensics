@@ -1337,7 +1337,5 @@ function initForensicLinks() {
     };
     // Paket 9: Alte doppelte _releaseLockAsync-Definition entfernt.
 
--e 
 })();
--e 
 });
