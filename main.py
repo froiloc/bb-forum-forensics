@@ -145,6 +145,18 @@ def _parse_args() -> argparse.Namespace:
         default=False,
         help="Aktiviert Debug-Logging (überschreibt logging.level in config.yaml).",
     )
+    parser.add_argument(
+        "--web-debug",
+        action="store_true",
+        default=False,
+        dest="web_debug",
+        help=(
+            "Aktiviert clientseitiges Debug-Logging im Browser "
+            "(setzt window.FORENSIC_DEBUG=true und window.FORENSIC_EVENT_TRACE=true "
+            "in allen ausgelieferten Editor-Seiten). "
+            "Nur für Entwicklung/Debugging verwenden."
+        ),
+    )
 
     return parser.parse_args()
 
@@ -163,6 +175,8 @@ def _build_config_overrides(args: argparse.Namespace) -> dict:
         overrides["server.mode"] = args.mode
     if args.debug:
         overrides["logging.level"] = "debug"
+    if args.web_debug:
+        overrides["ui.web_debug"] = True
     if args.forensic_db_dir is not None:
         overrides["paths.forensic_db_dir"] = args.forensic_db_dir
     if args.evidence_db_dir is not None:
@@ -408,6 +422,11 @@ def main() -> None:
         "Ermittlung: user_id=%d ('%s'), Modus='%s'",
         context.user_id, context.username, context.mode,
     )
+    if args.web_debug:
+        logger.warning(
+            "⚠  --web-debug aktiv: FORENSIC_DEBUG=true wird an alle "
+            "Browser-Clients gesendet. Nur für Entwicklung verwenden!"
+        )
 
     # ------------------------------------------------------------------
     # Schritt 9b: Watchdog-Thread für Freeze-Diagnose

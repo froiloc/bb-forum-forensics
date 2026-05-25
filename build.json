@@ -1,6 +1,6 @@
 {
-  "build":   254,
-  "version": "0.6.254",
+  "build":   256,
+  "version": "0.6.256",
   "date":    "2026-05-25",
-  "note":    "Build 254: Bugfix — fehlende Eintraege fuer 5 neue Layer-Dateien in report.py (Script-Tags), static.py (_RESOURCES) und forensic_api/__init__.py (Dispatch-Whitelist)"
+  "note":    "Build 256: --web-debug Argument setzt FORENSIC_DEBUG=true+FORENSIC_EVENT_TRACE=true als Inline-Script in allen Editor-Seiten; Warnhinweis im Startlog"
 }

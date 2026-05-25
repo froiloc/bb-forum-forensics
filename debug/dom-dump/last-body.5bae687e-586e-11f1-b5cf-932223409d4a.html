@@ -147,6 +147,15 @@
          Beleg: Projektgespraech 2026-05-07 -->
 <div id="report-editor-container" style="display:none"></div>
 <!-- Scripts (Reihenfolge wichtig) -->
+<!-- 0a) Web-Debug-Script (nur wenn --web-debug aktiv, sonst leer).
+         Muss vor allen defer-Scripts stehen damit FORENSIC_DEBUG beim
+         Parsen der Skripte bereits gesetzt ist.
+         Beleg: --web-debug Argument, main.py, Build 255 -->
+<script>/* --web-debug aktiv */
+      window.FORENSIC_DEBUG = true;
+      window.FORENSIC_EVENT_TRACE = true;
+      console.info('[web-debug] FORENSIC_DEBUG=true, FORENSIC_EVENT_TRACE=true');
+    </script>
 <!-- 0) editor.bundle.js: Editor.js + Tools (window.EditorJS, window.EditorTools).
          Muss vor report_editor.js geladen werden.
          Beleg: AP-E2, Projektgespraech 2026-05-07 (Build 109) -->

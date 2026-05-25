@@ -308,7 +308,11 @@ _EDITOR_HTML = """\
     <div id="report-editor-container" style="display:none"></div>
 
     <!-- Scripts (Reihenfolge wichtig) -->
-    <!-- 0) editor.bundle.js: Editor.js + Tools (window.EditorJS, window.EditorTools).
+    <!-- 0a) Web-Debug-Script (nur wenn --web-debug aktiv, sonst leer).
+         Muss vor allen defer-Scripts stehen damit FORENSIC_DEBUG beim
+         Parsen der Skripte bereits gesetzt ist.
+         Beleg: --web-debug Argument, main.py, Build 255 -->
+{web_debug_script}    <!-- 0) editor.bundle.js: Editor.js + Tools (window.EditorJS, window.EditorTools).
          Muss vor report_editor.js geladen werden.
          Beleg: AP-E2, Projektgespraech 2026-05-07 (Build 109) -->
     <script src="/_forensic/static/editor/editor.bundle.js" defer></script>
@@ -442,12 +446,24 @@ class ReportEndpoint:
                 "editor.autosave_debounce_ms", 30000
             )
         )
+        web_debug = bool(
+            getattr(self._config, "get", lambda k, d: d)("ui.web_debug", False)
+        )
+        web_debug_script = (
+            "    <script>/* --web-debug aktiv */\n"
+            "      window.FORENSIC_DEBUG = true;\n"
+            "      window.FORENSIC_EVENT_TRACE = true;\n"
+            "      console.info('[web-debug] FORENSIC_DEBUG=true, FORENSIC_EVENT_TRACE=true');\n"
+            "    </script>\n"
+        ) if web_debug else ""
+
         page_html = _EDITOR_HTML.format(
-            username=safe_investigator,   # Ermittler — fuer data-username / Block-Owner-Vergleich
-            subject=safe_subject,         # Beschuldigter — nur fuer Anzeigetitel
-            investigator=safe_investigator,  # Bug 2.68 Fix Build 162: Ermittler im Titel
+            username=safe_investigator,
+            subject=safe_subject,
+            investigator=safe_investigator,
             user_id=self._context.user_id,
             autosave_debounce_ms=autosave_ms,
+            web_debug_script=web_debug_script,
         )
         body = page_html.encode("utf-8")
         handler.send_response_body(

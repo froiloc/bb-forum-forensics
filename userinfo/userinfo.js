@@ -450,6 +450,30 @@ async function initEditor() {
     const body = document.getElementById('report-editor-body');
     if (!body) return;
 
+    // Paket 9 / Build 254: Layer-Architektur wird von editor_bootstrap.js
+    // initialisiert, das mit defer NACH userinfo.js geladen wird.
+    // initEditor() muss warten bis alle Layer bereit sind, bevor es auf
+    // window.lockLayer, window.reportLayer etc. zugreift.
+    // Fallback: 10s Timeout damit die Seite nicht einfriert wenn Bootstrap fehlschlägt.
+    // Beleg: editor_bootstrap.js ready-Kette, Paket 9
+    if (window.documentLayer) {
+        await window.documentLayer.ready;
+    } else {
+        await new Promise(resolve => {
+            const t0 = Date.now();
+            const poll = setInterval(() => {
+                if (window.documentLayer) {
+                    clearInterval(poll);
+                    window.documentLayer.ready.then(resolve);
+                } else if (Date.now() - t0 > 10000) {
+                    clearInterval(poll);
+                    console.warn('[userinfo] Timeout: documentLayer nicht bereit nach 10s');
+                    resolve();
+                }
+            }, 50);
+        });
+    }
+
     // Eindeutige Instanz-ID aus sessionStorage lesen oder neu erzeugen
     EditorState.instanceId = sessionStorage.getItem('forensic_editor_instance')
         || (() => {
@@ -503,23 +527,12 @@ async function initEditor() {
     // Schicht 1: BroadcastChannel — Duplikat-Erkennung (§8.6 Bauplan B4)
     initBroadcastLock();
 
-    // SSE-Verbindung aufbauen — Client-ID empfangen
-    await initSSEWindow3();
-
-    // Lock-Buttons verdrahten / ausblenden je nach DEV_LOCK_UI
-    // Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19
-    if (!DEV_LOCK_UI) {
-        // PROD: Buttons ausblenden, Lock automatisch erwerben
-        document.getElementById('btn-acquire-lock')?.remove();
-        document.getElementById('btn-release-lock')?.remove();
-        // Greedy client: Lock sofort nach SSE-Aufbau anfordern.
-        // sseClientId ist durch await initSSEWindow3() garantiert gesetzt.
-        // Beleg: Build 098, Projektgespraech 2026-05-06
-        acquireLock();
-    } else {
-        document.getElementById('btn-acquire-lock')?.addEventListener('click', acquireLock);
-        document.getElementById('btn-release-lock')?.addEventListener('click', releaseLock);
-    }
+    // Paket 9: SSE-Verbindung und Lock-Erwerb werden von editor_bootstrap.js
+    // über die Layer-Architektur verwaltet. initSSEWindow3() und acquireLock()
+    // sind Stubs; der eigentliche Lock-Erwerb läuft über LockLayer.
+    // initReportSelector() startet den Bericht-Ladevorgang.
+    // Beleg: editor_bootstrap.js, LockLayer.acquire(), Paket 9
+    await initSSEWindow3(); // Stub — sofortiger Rückkehr, SSELayer läuft bereits
     document.getElementById('btn-annotations-sidebar')?.addEventListener('click', () => {
         if (window.toggleAnnotationSidebar) toggleAnnotationSidebar();
     });
