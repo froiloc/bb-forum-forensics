@@ -1,6 +1,6 @@
 {
-  "build":   258,
-  "version": "0.6.258",
+  "build":   260,
+  "version": "0.6.260",
   "date":    "2026-05-25",
-  "note":    "Build 258: Bugfix — kaputte '-e' Zeilen am Ende von userinfo.js entfernt (echo-e Artefakte aus Build 252 Syntax-Reparatur); IIFE wird jetzt korrekt geschlossen"
+  "note":    "Build 260: Bugfix — Haupt-IIFE in userinfo.js mit })(); statt }); geschlossen; IIFE wurde nie aufgerufen"
 }

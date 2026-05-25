@@ -1,0 +1,356 @@
+<body data-autosave-debounce-ms="30000" data-subject="Rabenherz" data-user-id="2948078" data-username="paul" id="report-editor-body">
+<!-- Fixierte Aktionsleiste (§4.2 Bauplan B6 v0.3) -->
+<header id="report-action-bar">
+<div id="report-action-bar-title">
+        📄 Bericht · <span id="report-current-title">paul / Rabenherz (ID: 2948078)</span>
+</div>
+<!-- Bug 1.10 Fix Build 121: editor-report-title als div zwischen title und buttons.
+           War bisher als span NACH den Buttons platziert und drückte die Leiste nach unten.
+           Beleg: Bugfix Build 121, Projektgespraech 2026-05-08 -->
+<div id="editor-report-title"></div>
+<div id="report-action-bar-buttons">
+<!-- Build 111: btn-new-report-header entfernt.
+             "Neuer Bericht" befindet sich bereits im report-selector-container.
+             Beleg: Projektgespraech 2026-05-07 -->
+<!-- Bug 2.40/2.43 Absicherung Build 136: Manueller Speichern-Button.
+             Wird aktiv sobald ein Bericht geladen ist (disabled -> enabled durch JS).
+             Beleg: Bugfix Build 136, Projektgespraech 2026-05-09 -->
+<button class="report-btn" disabled="" id="btn-save-now" title="Bericht jetzt speichern (Strg+S)">
+          💾 Speichern
+        </button>
+<button class="report-btn" disabled="" id="btn-refresh-placeholders" title="Automatische Platzhalter aktualisieren">
+          🔄 Aktualisieren
+        </button>
+<!-- Bug 1.9 Fix Build 121: ✎ → 🖶 (Drucker-Symbol).
+             Beleg: Bugfix Build 121, Projektgespraech 2026-05-08 -->
+<button class="report-btn" disabled="" id="btn-print" title="Bericht drucken">
+          🖶 Drucken
+        </button>
+<div class="report-export-wrap">
+<button class="report-btn" disabled="" id="btn-export" title="Bericht exportieren">
+            ⬇ Export ▾
+          </button>
+<div class="report-export-dropdown" id="export-dropdown" style="display:none">
+<button class="report-export-item" data-export-format="html">
+              📄 HTML-Dokument
+            </button>
+<button class="report-export-item" data-export-format="docx">
+              📝 Word-Dokument (.docx)
+            </button>
+<button class="report-export-item" data-export-format="sqlite">
+              🗺 SQLite3-Fallakte (.db)
+            </button>
+</div>
+</div>
+<span class="report-lock-indicator report-lock-none" id="report-lock-indicator" title="Lock-Status">🔓</span>
+<!-- Lock-Status: von userinfo.js beschrieben (Build 113) -->
+<span class="lock-status lock-none" id="report-lock-status" style="font-size:11px" title="Editor-Lock-Status"></span>
+<span class="save-indicator save-indicator--idle" id="editor-save-indicator" title="Kein Speichern ausstehend">🖫</span>
+</div>
+</header>
+<!-- Zweispaltiger Arbeitsbereich (§4.1, §4.3, §4.7) -->
+<div id="report-workspace">
+<!-- Linke Spalte: Paragraph-Liste (~65%) -->
+<main id="report-main-col" style="flex: 71.2939 1 0%;">
+<!-- Berichtsauswahl -->
+<div id="report-selector-container">
+<div id="report-selector-bar">
+<label class="report-selector-label" for="report-select">Bericht:</label>
+<select class="report-select" id="report-select">
+<option value="">— Noch kein Bericht —</option>
+</select>
+<button class="editor-btn" id="btn-new-report" title="Neuen Bericht anlegen">+ Neuer Bericht</button>
+<span id="report-selector-status"></span>
+</div></div>
+<!-- Status-Meldungen -->
+<div id="report-status-msg"></div>
+<!-- Editor-Bereich: EditorJS-Holder direkt in report-main-col.
+             Beleg: Bauplan B6 §4.3, Build 113, Projektgespraech 2026-05-07 -->
+<div class="editorjs-holder" id="editorjs-holder"></div>
+<!-- Frozen-Overlay (BroadcastChannel-Schutz, §4.6) -->
+<div id="report-frozen-overlay" style="display:none">
+<div class="report-frozen-inner">
+<strong>Dieser Editor ist bereits in einem anderen Fenster geöffnet.</strong><br/>
+            Bitte wechseln Sie zum bestehenden Fenster.
+            <br/><br/>
+<button class="report-btn" id="btn-focus-existing">
+              Zum bestehenden Fenster wechseln
+            </button>
+</div>
+</div>
+</main>
+<!-- Schiebebalken zwischen main und aside (Bug 1.11 Fix) -->
+<!-- Beleg: Projektgespraech 2026-05-11 -->
+<div aria-hidden="true" id="col-resizer">
+<div id="col-resizer-handle"></div>
+</div>
+<!-- Rechte Spalte: Support-Sidebar mit vierstufigem Akkordeon (~35%) -->
+<!-- Beleg: Bauplan B6 v0.5 §4.4, Projektgespraech 2026-05-06 -->
+<aside aria-label="Support-Sidebar" id="support-sidebar" style="flex: 28.7061 1 0%;">
+<!-- Abschnitt 1: Bausteine (Standard: aufgeklappt) -->
+<section class="support-accordion-section support-accordion-section--open" data-accordion="blocks">
+<button aria-controls="accordion-body-blocks" aria-expanded="true" class="support-accordion-toggle" type="button">
+<span aria-hidden="true" class="support-accordion-icon">📦</span>
+            Bausteine
+            <span aria-hidden="true" class="support-accordion-chevron">▾</span>
+</button>
+<div aria-label="Bausteine" class="support-accordion-body" id="accordion-body-blocks" role="region">
+<div class="mp-panel">
+<!-- Kategorie-Umschalter -->
+<div aria-label="Bausteine-Kategorien" class="mp-cat-tabs" role="tablist">
+<button aria-selected="true" class="mp-cat-tab mp-cat-tab--active" data-category="modules" role="tab" type="button">Module</button>
+<button aria-selected="false" class="mp-cat-tab" data-category="queries" role="tab" type="button">Einzeldaten</button>
+</div>
+<!-- Suche -->
+<div class="mp-search-wrap">
+<span aria-hidden="true" class="mp-search-icon">🔍</span>
+<input aria-label="Bausteine durchsuchen" autocomplete="off" class="mp-search-input" id="mp-sidebar-search" placeholder="Suche…" type="search"/>
+</div>
+<!-- Rollenfilter-Chips (nur im Module-Modus sichtbar) -->
+<div aria-label="Rollenfilter" class="mp-role-chips" id="mp-role-chips" role="group" style="">
+<button aria-pressed="true" class="mp-chip mp-chip-active" data-role="" type="button">Alle</button><button aria-pressed="false" class="mp-chip" data-role="intro" type="button">Einleitung</button><button aria-pressed="false" class="mp-chip" data-role="conclusion" type="button">Fazit</button><button aria-pressed="false" class="mp-chip" data-role="body" type="button">Hauptteil</button><button aria-pressed="false" class="mp-chip" data-role="legal" type="button">Rechtsgrundlagen</button><button aria-pressed="false" class="mp-chip" data-role="appendix" type="button">Anhang</button><button aria-pressed="false" class="mp-chip" data-role="closing" type="button">Abschluss</button><button aria-pressed="false" class="mp-chip" data-role="standard" type="button">Standard</button>
+</div>
+<!-- Ergebnisliste -->
+<div aria-label="Verfügbare Bausteine" class="mp-list" id="mp-list" role="listbox">
+<div aria-selected="false" class="mp-item" data-module-id="1" draggable="true" role="option" tabindex="0">
+<div class="mp-item-main">
+<span aria-hidden="true" class="mp-item-icon">📋</span>
+<div class="mp-item-text">
+<span class="mp-item-title">Personenbeschreibung des Beschuldigten</span>
+<span class="mp-item-desc">Einleitungsbaustein: Identifizierung und Basisdaten des untersuchten Forum-Accou…</span>
+</div>
+</div>
+<div class="mp-item-footer">
+<span class="mp-item-role-badge">Einleitung</span>
+<button aria-label="Modul Personenbeschreibung des Beschuldigten einfügen" class="mp-insert-btn" data-module-id="1" type="button">
+                        + Einfügen
+                    </button>
+</div>
+</div>
+<div aria-selected="false" class="mp-item" data-module-id="2" draggable="true" role="option" tabindex="0">
+<div class="mp-item-main">
+<span aria-hidden="true" class="mp-item-icon">📋</span>
+<div class="mp-item-text">
+<span class="mp-item-title">Aktivitaetsübersicht und Tatrelevanz</span>
+<span class="mp-item-desc">Zusammenfassung der Forum-Aktivitaeten: Beitragszahl, geteilte Dateien, Zeitraum…</span>
+</div>
+</div>
+<div class="mp-item-footer">
+<span class="mp-item-role-badge">Hauptteil</span>
+<button aria-label="Modul Aktivitaetsübersicht und Tatrelevanz einfügen" class="mp-insert-btn" data-module-id="2" type="button">
+                        + Einfügen
+                    </button>
+</div>
+</div>
+<div aria-selected="false" class="mp-item" data-module-id="3" draggable="true" role="option" tabindex="0">
+<div class="mp-item-main">
+<span aria-hidden="true" class="mp-item-icon">📋</span>
+<div class="mp-item-text">
+<span class="mp-item-title">Strafrechtliche Einordnung (§§ 176 / 184b StGB)</span>
+<span class="mp-item-desc">Rechtlicher Bewertungsbaustein: Subsumtion der festgestellten Tathandlungen unte…</span>
+</div>
+</div>
+<div class="mp-item-footer">
+<span class="mp-item-role-badge">Rechtsgrundlagen</span>
+<button aria-label="Modul Strafrechtliche Einordnung (§§ 176 / 184b StGB) einfügen" class="mp-insert-btn" data-module-id="3" type="button">
+                        + Einfügen
+                    </button>
+</div>
+</div>
+<div aria-selected="false" class="mp-item" data-module-id="4" draggable="true" role="option" tabindex="0">
+<div class="mp-item-main">
+<span aria-hidden="true" class="mp-item-icon">📋</span>
+<div class="mp-item-text">
+<span class="mp-item-title">Technische Ermittlungsergebnisse</span>
+<span class="mp-item-desc">IP-Adressen, Aliasnamen und technische Spuren die zur Identifizierung der realen…</span>
+</div>
+</div>
+<div class="mp-item-footer">
+<span class="mp-item-role-badge">Hauptteil</span>
+<button aria-label="Modul Technische Ermittlungsergebnisse einfügen" class="mp-insert-btn" data-module-id="4" type="button">
+                        + Einfügen
+                    </button>
+</div>
+</div>
+<div aria-selected="false" class="mp-item" data-module-id="5" draggable="true" role="option" tabindex="0">
+<div class="mp-item-main">
+<span aria-hidden="true" class="mp-item-icon">📋</span>
+<div class="mp-item-text">
+<span class="mp-item-title">Ermittlungsfazit und Maßnahmenempfehlung</span>
+<span class="mp-item-desc">Zusammenfassende Bewertung der Ermittlungsergebnisse und Empfehlung weiterer str…</span>
+</div>
+</div>
+<div class="mp-item-footer">
+<span class="mp-item-role-badge">Fazit</span>
+<button aria-label="Modul Ermittlungsfazit und Maßnahmenempfehlung einfügen" class="mp-insert-btn" data-module-id="5" type="button">
+                        + Einfügen
+                    </button>
+</div>
+</div>
+<div aria-selected="false" class="mp-item" data-module-id="6" draggable="true" role="option" tabindex="0">
+<div class="mp-item-main">
+<span aria-hidden="true" class="mp-item-icon">📋</span>
+<div class="mp-item-text">
+<span class="mp-item-title">Anlagenverzeichnis</span>
+<span class="mp-item-desc">Auflistung der dem Bericht beigefuegten Anlagen (Screenshots, Sicherungen, exter…</span>
+</div>
+</div>
+<div class="mp-item-footer">
+<span class="mp-item-role-badge">Anhang</span>
+<button aria-label="Modul Anlagenverzeichnis einfügen" class="mp-insert-btn" data-module-id="6" type="button">
+                        + Einfügen
+                    </button>
+</div>
+</div><div class="mp-std-divider">Standard-Blöcke</div><div class="mp-std-section">
+<div class="mp-item mp-item--standard" data-block-type="paragraph" data-std-type="paragraph" draggable="true" role="listitem" tabindex="0" title="Freier Texteintrag (Paragraph)">
+<div class="mp-item-header">
+<span aria-hidden="true" class="mp-item-icon">✏️</span>
+<span class="mp-item-title">¶ Textabsatz</span>
+</div>
+<div class="mp-item-preview">Freier Texteintrag (Paragraph)</div>
+<button class="mp-btn-insert" data-std-type="paragraph" title="¶ Textabsatz einfügen" type="button">+ Einfügen</button>
+</div>
+<div class="mp-item mp-item--standard" data-block-type="header" data-std-type="header" draggable="true" role="listitem" tabindex="0" title="Abschnittsüberschrift (H2)">
+<div class="mp-item-header">
+<span aria-hidden="true" class="mp-item-icon">🆗</span>
+<span class="mp-item-title">🆗 Überschrift</span>
+</div>
+<div class="mp-item-preview">Abschnittsüberschrift (H2)</div>
+<button class="mp-btn-insert" data-std-type="header" title="🆗 Überschrift einfügen" type="button">+ Einfügen</button>
+</div>
+<div class="mp-item mp-item--standard" data-block-type="list" data-std-type="list" draggable="true" role="listitem" tabindex="0" title="Aufzählungsliste oder nummerierte Liste">
+<div class="mp-item-header">
+<span aria-hidden="true" class="mp-item-icon">📝</span>
+<span class="mp-item-title">📝 Liste</span>
+</div>
+<div class="mp-item-preview">Aufzählungsliste oder nummerierte Liste</div>
+<button class="mp-btn-insert" data-std-type="list" title="📝 Liste einfügen" type="button">+ Einfügen</button>
+</div>
+<div class="mp-item mp-item--standard" data-block-type="table" data-std-type="table" draggable="true" role="listitem" tabindex="0" title="Strukturierte Tabelle">
+<div class="mp-item-header">
+<span aria-hidden="true" class="mp-item-icon">📊</span>
+<span class="mp-item-title">📊 Tabelle</span>
+</div>
+<div class="mp-item-preview">Strukturierte Tabelle</div>
+<button class="mp-btn-insert" data-std-type="table" title="📊 Tabelle einfügen" type="button">+ Einfügen</button>
+</div>
+<div class="mp-item mp-item--standard" data-block-type="quote" data-std-type="quote" draggable="true" role="listitem" tabindex="0" title="Hervorgehobenes Zitat">
+<div class="mp-item-header">
+<span aria-hidden="true" class="mp-item-icon">„</span>
+<span class="mp-item-title">„Zitat“</span>
+</div>
+<div class="mp-item-preview">Hervorgehobenes Zitat</div>
+<button class="mp-btn-insert" data-std-type="quote" title="„Zitat“ einfügen" type="button">+ Einfügen</button>
+</div>
+<div class="mp-item mp-item--standard" data-block-type="delimiter" data-std-type="delimiter" draggable="true" role="listitem" tabindex="0" title="Horizontale Trennlinie">
+<div class="mp-item-header">
+<span aria-hidden="true" class="mp-item-icon">—</span>
+<span class="mp-item-title">— Trennlinie</span>
+</div>
+<div class="mp-item-preview">Horizontale Trennlinie</div>
+<button class="mp-btn-insert" data-std-type="delimiter" title="— Trennlinie einfügen" type="button">+ Einfügen</button>
+</div>
+</div></div>
+<div class="mp-empty" id="mp-empty" style="display:none">
+            Keine Einträge gefunden.
+        </div>
+</div></div>
+</section>
+<!-- Abschnitt 2: Annotationen -->
+<section class="support-accordion-section" data-accordion="annotations">
+<button aria-controls="accordion-body-annotations" aria-expanded="false" class="support-accordion-toggle" type="button">
+<span aria-hidden="true" class="support-accordion-icon">🔍</span>
+            Annotationen
+            <span aria-hidden="true" class="support-accordion-chevron">▾</span>
+</button>
+<div aria-label="Annotationen" class="support-accordion-body support-accordion-body--closed" id="accordion-body-annotations" role="region">
+<!-- Inhalt wird von annotation_sidebar.js/_refreshAnnotationSidebar() befuellt (Phase 8) -->
+<!-- Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06 -->
+<p class="support-accordion-empty" id="annotations-loading-state">
+              Annotationen werden geladen…
+            </p>
+</div>
+</section>
+<!-- Abschnitt 3: Formular (Platzhalter-Eingabe) -->
+<section class="support-accordion-section" data-accordion="form">
+<button aria-controls="accordion-body-form" aria-expanded="false" class="support-accordion-toggle" type="button">
+<span aria-hidden="true" class="support-accordion-icon">📝</span>
+            Formular
+            <span aria-hidden="true" class="support-accordion-chevron">▾</span>
+</button>
+<div aria-label="Platzhalter-Formular" class="support-accordion-body support-accordion-body--closed" id="accordion-body-form" role="region">
+<!-- Inhalt wird von placeholder_wizard.js befuellt (Phase 6) -->
+<p class="support-accordion-empty">
+              Kein Bericht geöffnet.
+            </p>
+</div>
+</section>
+<!-- Abschnitt 4: Kommentare (unten) -->
+<section class="support-accordion-section" data-accordion="comments">
+<button aria-controls="accordion-body-comments" aria-expanded="false" class="support-accordion-toggle" type="button">
+<span aria-hidden="true" class="support-accordion-icon">💬</span>
+            Kommentare
+            <span aria-hidden="true" class="support-accordion-chevron">▾</span>
+</button>
+<div aria-label="Kommentare" class="support-accordion-body support-accordion-body--closed" id="accordion-body-comments" role="region">
+<!-- Inhalt wird von comment_thread.js befuellt (Phase 4) -->
+<p class="support-accordion-empty" id="comments-empty-state">
+              Kein Block ausgewählt.
+            </p>
+<!-- Kommentar-Eingabe (wird von comment_thread.js aktiviert) -->
+<textarea aria-label="Neuen Kommentar verfassen" class="comment-input-textarea" placeholder="Kommentar verfassen…" rows="3" style="display:none"></textarea>
+</div>
+</section>
+</aside>
+</div>
+<!-- Lock-Infrastruktur: report-lock-status und Lock-Buttons werden von
+         userinfo.js in #report-action-bar-buttons injiziert (Build 113).
+         editorjs-holder lebt in #report-paragraphs-list (report-main-col).
+         Beleg: Projektgespraech 2026-05-07 -->
+<div id="report-editor-container" style="display:none"></div>
+<!-- Scripts (Reihenfolge wichtig) -->
+<!-- 0a) Web-Debug-Script (nur wenn --web-debug aktiv, sonst leer).
+         Muss vor allen defer-Scripts stehen damit FORENSIC_DEBUG beim
+         Parsen der Skripte bereits gesetzt ist.
+         Beleg: --web-debug Argument, main.py, Build 255 -->
+<script>/* --web-debug aktiv */
+      window.FORENSIC_DEBUG = true;
+      window.FORENSIC_EVENT_TRACE = true;
+      console.info('[web-debug] FORENSIC_DEBUG=true, FORENSIC_EVENT_TRACE=true');
+    </script>
+<!-- 0) editor.bundle.js: Editor.js + Tools (window.EditorJS, window.EditorTools).
+         Muss vor report_editor.js geladen werden.
+         Beleg: AP-E2, Projektgespraech 2026-05-07 (Build 109) -->
+<script defer="" src="/_forensic/static/editor/editor.bundle.js"></script>
+<!-- 0b) debug_events.js: Event-Tracing (window._uevt). Muss VOR allen anderen
+          B6-Skripten geladen werden, damit _uevt beim Laden der Handler verfuegbar ist.
+          Build 200, Projektgespraech 2026-05-17 -->
+<script defer="" src="/_forensic/debug_events.js"></script>
+<!-- 1a) placeholder_chips.js: Chip-Renderer (vor report.js laden) -->
+<script defer="" src="/_forensic/placeholder_chips.js"></script>
+<!-- 1b) placeholder_wizard.js: Wizard (nach Chips, vor report.js) -->
+<script defer="" src="/_forensic/placeholder_wizard.js"></script>
+<!-- 1c) module_panel.js: Modul-Auswahl-Panel -->
+<script defer="" src="/_forensic/module_panel.js"></script>
+<!-- 1d) annotation_sidebar.js: Annotationsseitenleiste -->
+<script defer="" src="/_forensic/annotation_sidebar.js"></script>
+<!-- 1e) comment_thread.js: Kommentar-System -->
+<script defer="" src="/_forensic/comment_thread.js"></script>
+<!-- 1f) report_editor.js: B6-Editor-Modul (umbenannt von editor.js, Build 100) -->
+<script defer="" src="/_forensic/report_editor.js"></script>
+<!-- 2) Layer-Architektur (Paket 5-9, Build 254). Reihenfolge ist Pflicht.
+         Beleg: editor_bootstrap.js, Paket 9 Architekturentscheidung Option C -->
+<!-- 2a) userinfo.js: BroadcastChannel, Fenster 1/2 -->
+<script defer="" src="/_forensic/userinfo.js"></script>
+<!-- 2b) sse_layer.js: Layer 2 -- SSE-Verbindung -->
+<script defer="" src="/_forensic/sse_layer.js"></script>
+<!-- 2c) report_layer.js: Layer 3 -- Bericht oeffnen/anlegen -->
+<script defer="" src="/_forensic/report_layer.js"></script>
+<!-- 2d) lock_layer.js: Layer 4 -- Lock-Verwaltung -->
+<script defer="" src="/_forensic/lock_layer.js"></script>
+<!-- 2e) document_layer.js: Layer 5 -- Schreiboperationen -->
+<script defer="" src="/_forensic/document_layer.js"></script>
+<!-- 2f) editor_bootstrap.js: Layer-Instanziierung + Verdrahtung.
+             Muss als letztes geladen werden (nach report_editor.js + userinfo.js). -->
+<script defer="" src="/_forensic/editor_bootstrap.js"></script>
+</body>

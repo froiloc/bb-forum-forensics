@@ -6,7 +6,7 @@
 ROOTDIR="/opt/aiw_webserver"
 
 declare -A REGELN=(
-    ['Failed to load resource:|Navigated to http://127.0.0.2:8080/_forensic/report']="${ROOTDIR}/debug/devtools-console/last.log"
+    ['\[web-debug\]|Failed to load resource:|Navigated to http://127.0.0.2:8080/_forensic/report']="${ROOTDIR}/debug/devtools-console/last.log"
     ['"name": "WebInspector"']="${ROOTDIR}/debug/devtools-network/last.har"
     ['^# Fehler ']="${ROOTDIR}/debug/bugs-and-tasks/last.md"
     ['^<html ']="${ROOTDIR}/debug/dom-dump/last-html.html"

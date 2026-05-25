@@ -56,6 +56,7 @@
 
 (function() {
 'use strict';
+console.log('[userinfo.js] IIFE gestartet, readyState=', document.readyState);
 
 // ---------------------------------------------------------------------------
 // DEV-Logging (Build 110)
@@ -796,6 +797,7 @@ function showStatusMsg(text, level) {
  * Beleg: Build 257, Bugfix defer-Timing
  */
 function _onDOMReady() {
+    console.log('[userinfo.js] _onDOMReady() aufgerufen');
     _dbg('DOMContentLoaded: userinfo.js aktiv');
     const isEditor = !!document.getElementById('report-editor-body');
     const isNutzerinfo = !!document.getElementById('userinfo-static');
@@ -814,12 +816,10 @@ function _onDOMReady() {
 }
 
 if (document.readyState === 'loading') {
-    // DOM noch nicht fertig — auf DOMContentLoaded warten
+    console.log('[userinfo.js] readyState=loading — addEventListener');
     document.addEventListener('DOMContentLoaded', _onDOMReady);
 } else {
-    // DOM bereits fertig (readyState 'interactive' oder 'complete') —
-    // defer-Scripts laufen nach dem Parsen, DOMContentLoaded kann bereits
-    // gefeuert sein. Sofort aufrufen.
+    console.log('[userinfo.js] readyState=' + document.readyState + ' — sofortiger Aufruf');
     _onDOMReady();
 }
 
@@ -1338,4 +1338,4 @@ function initForensicLinks() {
     // Paket 9: Alte doppelte _releaseLockAsync-Definition entfernt.
 
 })();
-});
+})();

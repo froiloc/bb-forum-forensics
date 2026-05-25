@@ -1,6 +1,14 @@
-<main id="report-main-col">
+<main id="report-main-col" style="flex: 71.2939 1 0%;">
 <!-- Berichtsauswahl -->
-<div id="report-selector-container"></div>
+<div id="report-selector-container">
+<div id="report-selector-bar">
+<label class="report-selector-label" for="report-select">Bericht:</label>
+<select class="report-select" id="report-select">
+<option value="">— Noch kein Bericht —</option>
+</select>
+<button class="editor-btn" id="btn-new-report" title="Neuen Bericht anlegen">+ Neuer Bericht</button>
+<span id="report-selector-status"></span>
+</div></div>
 <!-- Status-Meldungen -->
 <div id="report-status-msg"></div>
 <!-- Editor-Bereich: EditorJS-Holder direkt in report-main-col.
