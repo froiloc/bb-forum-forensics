@@ -1329,6 +1329,30 @@ function initForensicLinks() {
     // (Save → Release → neuen Bericht laden → Acquire).
     // Beleg: Bugfix Build 218, Projektgespraech 2026-05-17
     // Paket 9: _acquireLock/_releaseLockAsync delegieren an Layer.
+/**
+ * Lock-Status-Anzeige in der Action-Bar aktualisieren.
+ * Setzt CSS-Klasse und Text auf #report-lock-indicator und #report-lock-status.
+ * Wird von editor_bootstrap.js über window._updateLockStatus aufgerufen.
+ * Beleg: Build 260, Bugfix fehlende Funktion
+ * @param {string} cssClass  — z.B. 'lock-mine', 'lock-other', 'lock-free', 'lock-frozen'
+ * @param {string} label     — Anzeigetext
+ */
+function updateLockStatus(cssClass, label) {
+    const indicator = document.getElementById('report-lock-indicator');
+    const statusEl  = document.getElementById('report-lock-status');
+    const allClasses = ['lock-mine', 'lock-other', 'lock-free', 'lock-frozen', 'lock-none'];
+    if (indicator) {
+        indicator.classList.remove(...allClasses);
+        indicator.classList.add(cssClass);
+        indicator.title = label || '';
+    }
+    if (statusEl) {
+        statusEl.classList.remove(...allClasses);
+        statusEl.classList.add(cssClass);
+        statusEl.textContent = label || '';
+    }
+}
+
     window._acquireLock = acquireLock;
     window._updateLockStatus = updateLockStatus;
     window._releaseLockAsync = function() {

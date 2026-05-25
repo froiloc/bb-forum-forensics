@@ -2,5 +2,5 @@
   "build":   260,
   "version": "0.6.260",
   "date":    "2026-05-25",
-  "note":    "Build 260: Bugfix — Haupt-IIFE in userinfo.js mit })(); statt }); geschlossen; IIFE wurde nie aufgerufen"
+  "note":    "Build 260: Bugfix — Haupt-IIFE userinfo.js mit })(); geschlossen; updateLockStatus() als fehlende Funktion neu definiert (war in Paket 9 verloren gegangen)"
 }
