@@ -1,6 +1,6 @@
 {
-  "build":   256,
-  "version": "0.6.256",
+  "build":   257,
+  "version": "0.6.257",
   "date":    "2026-05-25",
-  "note":    "Build 256: --web-debug Argument setzt FORENSIC_DEBUG=true+FORENSIC_EVENT_TRACE=true als Inline-Script in allen Editor-Seiten; Warnhinweis im Startlog"
+  "note":    "Build 257: Bugfix — userinfo.js DOMContentLoaded durch readyState-Guard ersetzt; bei readyState=complete wird _onDOMReady() sofort aufgerufen statt auf bereits gefeuertes Event zu warten"
 }

@@ -787,7 +787,15 @@ function showStatusMsg(text, level) {
 // Initialisierung — Fenstererkennung
 // ===========================================================================
 
-document.addEventListener('DOMContentLoaded', () => {
+/**
+ * Einstiegspunkt: Fenster-Typ erkennen und passende Initialisierung starten.
+ *
+ * Absicherung gegen defer-Timing-Problem: Wenn readyState bereits 'complete'
+ * oder 'interactive' ist (DOM fertig), wird der Handler sofort aufgerufen
+ * statt auf DOMContentLoaded zu warten das bereits gefeuert hat.
+ * Beleg: Build 257, Bugfix defer-Timing
+ */
+function _onDOMReady() {
     _dbg('DOMContentLoaded: userinfo.js aktiv');
     const isEditor = !!document.getElementById('report-editor-body');
     const isNutzerinfo = !!document.getElementById('userinfo-static');
@@ -803,7 +811,17 @@ document.addEventListener('DOMContentLoaded', () => {
         initSSEWindow2();
         initForensicLinks();    // navigate_to_url via postMessage (Build 038)
     }
-});
+}
+
+if (document.readyState === 'loading') {
+    // DOM noch nicht fertig — auf DOMContentLoaded warten
+    document.addEventListener('DOMContentLoaded', _onDOMReady);
+} else {
+    // DOM bereits fertig (readyState 'interactive' oder 'complete') —
+    // defer-Scripts laufen nach dem Parsen, DOMContentLoaded kann bereits
+    // gefeuert sein. Sofort aufrufen.
+    _onDOMReady();
+}
 
 
 // ===========================================================================
