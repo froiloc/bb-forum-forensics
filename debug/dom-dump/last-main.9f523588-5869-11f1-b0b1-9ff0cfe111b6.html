@@ -1,0 +1,20 @@
+<main id="report-main-col">
+<!-- Berichtsauswahl -->
+<div id="report-selector-container"></div>
+<!-- Status-Meldungen -->
+<div id="report-status-msg"></div>
+<!-- Editor-Bereich: EditorJS-Holder direkt in report-main-col.
+             Beleg: Bauplan B6 §4.3, Build 113, Projektgespraech 2026-05-07 -->
+<div class="editorjs-holder" id="editorjs-holder"></div>
+<!-- Frozen-Overlay (BroadcastChannel-Schutz, §4.6) -->
+<div id="report-frozen-overlay" style="display:none">
+<div class="report-frozen-inner">
+<strong>Dieser Editor ist bereits in einem anderen Fenster geöffnet.</strong><br/>
+            Bitte wechseln Sie zum bestehenden Fenster.
+            <br/><br/>
+<button class="report-btn" id="btn-focus-existing">
+              Zum bestehenden Fenster wechseln
+            </button>
+</div>
+</div>
+</main>
