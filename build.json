@@ -1,6 +1,6 @@
 {
-  "build":   261,
-  "version": "0.6.261",
+  "build":   262,
+  "version": "0.6.262",
   "date":    "2026-05-25",
-  "note":    "Build 261: Bugfix — window.initReportSelector exportiert; editor_bootstrap.js created-Handler konnte initReportSelector nicht aufrufen => Editor nach Bericht-Erstellen nie initialisiert"
+  "note":    "Build 262: Bugfix — _require_lock(): report_id aus data lesen + validate_lock(report_id, lock_id) korrekt aufrufen (war: NameError 'report_id' → HTTP 500 bei save_block/reorder)"
 }

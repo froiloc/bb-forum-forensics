@@ -1468,7 +1468,22 @@ class ReportEndpoint:
                 content_type="application/json; charset=utf-8",
             )
             return False
-        if not self._bundle.evidence.validate_lock(lock_id, report_id=report_id):
+        report_id_raw = data.get("report_id")
+        if report_id_raw is None:
+            handler.send_response_body(
+                400, _json_err("report_id fehlt", "MISSING_REPORT_ID"),
+                content_type="application/json; charset=utf-8",
+            )
+            return False
+        try:
+            report_id = int(report_id_raw)
+        except (TypeError, ValueError):
+            handler.send_response_body(
+                400, _json_err("report_id ungültig", "INVALID_REPORT_ID"),
+                content_type="application/json; charset=utf-8",
+            )
+            return False
+        if not self._bundle.evidence.validate_lock(report_id, lock_id):
             handler.send_response_body(
                 423, _LOCK_REQUIRED,
                 content_type="application/json; charset=utf-8",

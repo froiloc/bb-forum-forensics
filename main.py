@@ -249,20 +249,21 @@ def main() -> None:
     logger = get_logger(__name__)
 
     # Git-Befehl ausführen
-    result = subprocess.run(['git', 'log', '-1'], capture_output=True, text=True)
+    #result = subprocess.run(['git', 'log', '-1'], capture_output=True, text=True)
 
     # Output in Zeilen aufteilen
-    lines = result.stdout.strip().split('\n')
+    #lines = result.stdout.strip().split('\n')
 
     # Zeile 3 und 5 extrahieren (Index 2 und 4, da Python bei 0 zählt)
-    line_3 = lines[2] if len(lines) > 2 else ""
-    line_5 = lines[4] if len(lines) > 4 else ""
+    #line_3 = lines[2] if len(lines) > 2 else ""
+    #line_5 = lines[4] if len(lines) > 4 else ""
 
     # Als String speichern (z.B. kombiniert oder separat)
-    combined_data = f"{line_3} {line_5}"
+    combined_data = ""
+    #combined_data = f"- {line_3} {line_5} "
     
     logger.info(
-        f"=== Forensischer Webserver startet - {combined_data} ==="
+        f"=== Forensischer Webserver startet {combined_data}==="
     )
     logger.info("Config geladen: '%s'", config_path)
 
