@@ -1,0 +1,19 @@
+toolbar.js?v=263:6903 [Forensic] Server: v0.1.0-build263 | Modus: cli | Beschuldigter: uid_2948078 | Seiten: 618
+// Schritt 1: Direkte API-Abfrage
+fetch('/_forensic/annotations?url=' + encodeURIComponent(window.location.pathname + window.location.search), {
+  headers: {'X-Forensic-Request': 'ajax'}
+})
+.then(r => r.json())
+.then(d => {
+  console.log('API count:', d.annotations?.length);
+  console.log('Erste 3:', JSON.stringify(d.annotations?.slice(0,3), null, 2));
+});
+
+// Schritt 2: Aktueller Store
+console.log('Store size:', window.ForensicToolbar?._debugState?.annotations?.size ?? 'kein _debugState');
+VM62:12 Store size: kein _debugState
+undefined
+VM62:2  GET http://127.0.0.2:8080/_forensic/annotations?url=%2Fforum%2Fpmsnew.php%3Fmdl%3Dtopic%26tid%3D85844 500 (Internal Server Error)
+(anonymous) @ VM62:2
+VM62:7 API count: undefined
+VM62:8 Erste 3: undefined
