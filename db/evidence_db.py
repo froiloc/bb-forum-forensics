@@ -50,6 +50,13 @@
 #     - get_open_report_for_client(): aktuell geöffneter Bericht pro Client.
 #     Beleg: Layer 3 States OPENING, Paket-6-Ergänzung 2026-05-24
 #
+#   Build 264 (Bug 2.123, 2026-05-30):
+#     - _row_to_annotation(): investigator_id wird nun als str gelesen statt int.
+#       SQLite erzwingt den INTEGER-Typ nicht — ein Textkuerzel wie 'nw082317'
+#       wuerde int() zum Absturz bringen (ValueError) und den /annotations-
+#       Endpunkt mit HTTP 500 beenden. AnnotationRecord.investigator_id
+#       von Optional[int] auf Optional[str] geaendert.
+#       Beleg: Serverlog 2026-05-30 — 'invalid literal for int() with base 10: nw082317'
 #   Build 263 (Bug 2.122, 2026-05-30):
 #     - _SCHEMA_DDL: Alle DROP TABLE IF EXISTS und DROP INDEX IF EXISTS
 #       entfernt. Diese wurden bei jedem Start ausgefuehrt und vernichteten
@@ -392,7 +399,11 @@ class AnnotationRecord:
     category:        str
     text:            str
     ts:              int
-    investigator_id: Optional[int]
+    # Bug 2.123 (Build 264, 2026-05-30): investigator_id kann ein Textkuerzel sein
+    # (z.B. 'nw082317'), wenn die Annotation von einem anderen Ermittler stammt
+    # und dieser keinen numerischen Eintrag in coordinator.db hatte. SQLite erzwingt
+    # den INTEGER-Typ nicht (type affinity). str statt int vermeidet ValueError.
+    investigator_id: Optional[str]
     selection_json:  Optional[str] = None
     tags_json:       Optional[str] = None
     local_id:        Optional[str] = None
@@ -2319,8 +2330,10 @@ class EvidenceDb:
             category=str(r["category"]),
             text=str(r["text"]),
             ts=int(r["ts"]),
+            # Bug 2.123 (Build 264): str() statt int() — investigator_id kann ein
+            # Textkuerzel sein. str(None) wuerde 'None' liefern, daher explizite Pruefung.
             investigator_id=(
-                int(r["investigator_id"])
+                str(r["investigator_id"])
                 if r["investigator_id"] is not None else None
             ),
             selection_json=(

@@ -2310,8 +2310,14 @@
     // Öffentliche API
     // =========================================================================
 
-    function open(ann) {
+    function open(ann, options) {
       _currentAnn = ann;
+
+      // Bug 2.124 (Build 264, 2026-05-30): readOnly-Modus fuer Fremdannotationen.
+      // Wenn options.readOnly=true gesetzt, wird das Popup im Lesemodus geoeffnet:
+      // alle Felder disabled, Footer zeigt nur Schliessen-Button.
+      // Beleg: Anforderung Lesezugriff auf Fremdannotationen, Projektgespraech 2026-05-30.
+      var readOnly = !!(options && options.readOnly);
 
       // Build 186/188 (Bug 2.92/2.94): Fremdannotation-Erkennung.
       // actualUid gesetzt und != aktueller Job-uid → Fremdannotation.
@@ -2335,20 +2341,20 @@
             ann._resolvedActualUsername = (data && data.username) || ("uid_" + actualUid);
             ann._resolvedActualUid      = actualUid;
             _dbg("[Popup] Resolved username:", ann._resolvedActualUsername);
-            _render(ann);
+            _render(ann, readOnly);
           })
           .catch(function () {
             ann._resolvedActualUsername = "uid_" + actualUid;
             ann._resolvedActualUid      = actualUid;
-            _render(ann);
+            _render(ann, readOnly);
           });
       } else if (isForign && cacheValid) {
         // Cache gültig — sofort rendern ohne AJAX
         _dbg("[Popup] Fremdannotation: Cache gültig für uid=", actualUid,
              "username=", ann._resolvedActualUsername);
-        _render(ann);
+        _render(ann, readOnly);
       } else {
-        _render(ann);
+        _render(ann, readOnly);
       }
 
       // Bug 2.78 (Build 176): Kein Vorladen — Typeahead sucht on-demand.
@@ -2391,8 +2397,11 @@
     // Rendering
     // =========================================================================
 
-    function _render(ann) {
+    function _render(ann, readOnly) {
       if (_popupEl) _popupEl.remove();
+
+      // readOnly-Modus: Standard false wenn nicht uebergeben
+      readOnly = !!readOnly;
 
       var cat      = _getCat(ann.category);
       var catLabel = cat ? (cat.icon + " " + cat.label) : ann.category;
@@ -2456,7 +2465,7 @@
         // Bug 2.76: Kategorie-Dropdown
         '<label for="forensic-popup-category" class="forensic-popup-label">Kategorie:</label>' +
         '<select id="forensic-popup-category" class="forensic-popup-select" ' +
-        'aria-label="Kategorie auswählen">' +
+        'aria-label="Kategorie auswählen"' + (readOnly ? ' disabled' : '') + '>' +
         catOptions +
         '</select>' +
 
@@ -2466,30 +2475,37 @@
         '<span id="forensic-popup-user-display" class="forensic-popup-user-badge" ' +
         'title="Forum-User-ID: ' + _esc(String(forumUserId)) + '">' +
         _esc(forumUser) + '</span>' +
-        // Bug 2.78: Wechsel-Schaltfläche
-        '<button id="forensic-popup-btn-change-user" ' +
-        'class="forensic-btn forensic-btn-xs forensic-btn-secondary" ' +
-        'title="Annotation einem anderen Beschuldigten zuordnen" ' +
-        'aria-label="Benutzer wechseln">↔</button>' +
+        // Bug 2.78: Wechsel-Schaltfläche — bei readOnly ausblenden
+        (!readOnly
+          ? '<button id="forensic-popup-btn-change-user" ' +
+            'class="forensic-btn forensic-btn-xs forensic-btn-secondary" ' +
+            'title="Annotation einem anderen Beschuldigten zuordnen" ' +
+            'aria-label="Benutzer wechseln">↔</button>'
+          : '') +
         '</div>' +
-        // Benutzer-Wechsel-Panel (Bug 2.78) — initial versteckt
-        '<div id="forensic-popup-user-panel" class="forensic-popup-user-panel" ' +
-        'style="display:none" aria-live="polite">' +
-        '<span class="forensic-popup-hint">Lade bekannte Benutzer…</span>' +
-        '</div>' +
+        // Benutzer-Wechsel-Panel (Bug 2.78) — initial versteckt, bei readOnly nicht eingebunden
+        (!readOnly
+          ? '<div id="forensic-popup-user-panel" class="forensic-popup-user-panel" ' +
+            'style="display:none" aria-live="polite">' +
+            '<span class="forensic-popup-hint">Lade bekannte Benutzer…</span>' +
+            '</div>'
+          : '') +
 
         // Notiz
         '<label for="forensic-popup-text" class="forensic-popup-label">Notiz (optional):</label>' +
         '<textarea id="forensic-popup-text" class="forensic-popup-textarea" ' +
-        'aria-label="Ermittlungsnotiz eingeben" rows="3">' + _esc(ann.text) + '</textarea>' +
+        'aria-label="Ermittlungsnotiz eingeben" rows="3"' + (readOnly ? ' readonly' : '') + '>' +
+        _esc(ann.text) + '</textarea>' +
 
         // Tags
         '<label for="forensic-popup-tags" class="forensic-popup-label">Tags (mit Komma trennen):</label>' +
         '<input type="text" id="forensic-popup-tags" class="forensic-popup-input" ' +
         'aria-label="Tags eingeben, mit Komma getrennt" value="' +
-        _esc((ann.tags || []).join(", ")) + '">' +
-        '<div id="forensic-popup-tag-suggestion" class="forensic-popup-suggestion" ' +
-        'style="display:none"></div>' +
+        _esc((ann.tags || []).join(", ")) + '"' + (readOnly ? ' readonly' : '') + '>' +
+        (!readOnly
+          ? '<div id="forensic-popup-tag-suggestion" class="forensic-popup-suggestion" ' +
+            'style="display:none"></div>'
+          : '') +
 
         // Markierter Text (wenn vorhanden)
         (ann.selection ?
@@ -2499,8 +2515,13 @@
         '</div>' +
         // --- Footer ---
         '<div class="forensic-popup-footer">' +
-        '<button id="forensic-popup-btn-cancel" class="forensic-btn forensic-btn-secondary">Abbrechen</button>' +
-        '<button id="forensic-popup-btn-save" class="forensic-btn forensic-btn-primary">💾 Speichern</button>' +
+        (readOnly
+          // Bug 2.124: Lesemodus-Footer — nur Schliessen, kein Speichern
+          ? '<span class="forensic-popup-readonly-badge">🔒 Fremdannotation — nur lesen</span>' +
+            '<button id="forensic-popup-btn-cancel" class="forensic-btn forensic-btn-secondary">Schließen</button>'
+          : '<button id="forensic-popup-btn-cancel" class="forensic-btn forensic-btn-secondary">Abbrechen</button>' +
+            '<button id="forensic-popup-btn-save" class="forensic-btn forensic-btn-primary">💾 Speichern</button>'
+        ) +
         '</div>';
 
       document.body.appendChild(_popupEl);
@@ -2514,7 +2535,9 @@
 
       document.getElementById("forensic-popup-btn-close").addEventListener("click", function () { close(false); });
       document.getElementById("forensic-popup-btn-cancel").addEventListener("click", function () { close(false); });
-      document.getElementById("forensic-popup-btn-save").addEventListener("click", function () { close(true); });
+      // Bug 2.124: Speichern-Button existiert nur im normalen Modus (nicht readOnly)
+      var saveBtn = document.getElementById("forensic-popup-btn-save");
+      if (saveBtn) saveBtn.addEventListener("click", function () { close(true); });
 
       // Bug 2.76/2.84 (Build 175/176): Kategorie-Dropdown — Highlight sofort neu rendern.
       // Build 176 Fix (Bug 2.84): Kategorie-Wechsel im Popup änderte nur den Badge,
@@ -4198,18 +4221,41 @@
        _targetAnn = ann;
        
        var activeCatId = ann.category;
+
+       // Bug 2.124 (Build 264, 2026-05-30): Fremdannotation erkennen.
+       // Eine Annotation gilt als fremd wenn createdBy gesetzt ist und nicht dem
+       // aktuellen Ermittler gehoert. In diesem Fall sind Edit und Delete gesperrt.
+       var myName   = _state.investigatorUsername || "";
+       var createdBy = ann.createdBy || "";
+       var isForeign = createdBy.length > 0 && myName.length > 0 && createdBy !== myName;
        
        _menuEl = document.createElement("div");
        _menuEl.className = "forensic-hover-menu";
        _menuEl.setAttribute("role", "menu");
        _menuEl.setAttribute("aria-label", "Annotation-Menü");
        
-       // Feste Aktionen (Edit + Delete)
-       var actionsHtml = 
-         '<div class="forensic-hover-actions" role="group" aria-label="Aktionen">' +
-           '<button class="forensic-hover-btn" data-action="edit" aria-label="Annotation bearbeiten">✏️</button>' +
-           '<button class="forensic-hover-btn" data-action="delete" aria-label="Annotation löschen">🗑️</button>' +
-         '</div>';
+       // Feste Aktionen (Edit + Delete).
+       // Bei Fremdannotation: Buttons deaktiviert (disabled + grau), Stift durch
+       // Schloss-Symbol ersetzt, Delete-Button ebenfalls gesperrt.
+       // Beleg: Anforderung Lesezugriff auf Fremdannotationen, Projektgespraech 2026-05-30.
+       var actionsHtml;
+       if (isForeign) {
+         actionsHtml =
+           '<div class="forensic-hover-actions" role="group" aria-label="Aktionen">' +
+             '<button class="forensic-hover-btn forensic-hover-btn--readonly" ' +
+               'data-action="view" aria-label="Annotation lesen (fremd)" ' +
+               'title="Fremdannotation von ' + _esc(createdBy) + ' — nur lesen">🔍</button>' +
+             '<button class="forensic-hover-btn forensic-hover-btn--disabled" ' +
+               'data-action="delete-foreign" aria-label="Löschen nicht möglich" ' +
+               'title="Fremdannotation — Löschen nicht erlaubt" disabled>🚫</button>' +
+           '</div>';
+       } else {
+         actionsHtml =
+           '<div class="forensic-hover-actions" role="group" aria-label="Aktionen">' +
+             '<button class="forensic-hover-btn" data-action="edit" aria-label="Annotation bearbeiten">✏️</button>' +
+             '<button class="forensic-hover-btn" data-action="delete" aria-label="Annotation löschen">🗑️</button>' +
+           '</div>';
+       }
        
        // Kategorie-Container mit allen 6 Buttons (OHNE Overlay hier)
        var catsHtml = '<div class="forensic-hover-cats" role="group" aria-label="Kategorie auswählen">';
@@ -4217,8 +4263,11 @@
        ForensicToolbar.config.CATEGORIES.forEach(function(c) {
          var isActive = (c.id === activeCatId);
          var activeClass = isActive ? ' forensic-hover-cat-wrapper--active' : '';
+         // Bei Fremdannotation: Kategorie-Buttons ebenfalls nicht interaktiv
+         var foreignAttr = isForeign ? ' data-foreign="true"' : '';
          catsHtml += 
-           '<div class="forensic-hover-cat-wrapper' + activeClass + '" data-cat-id="' + c.id + '" ' +
+           '<div class="forensic-hover-cat-wrapper' + activeClass + (isForeign ? ' forensic-hover-cat-wrapper--readonly' : '') + '" data-cat-id="' + c.id + '" ' +
+           foreignAttr +
            'role="menuitem" tabindex="-1" aria-label="Kategorie ' + c.label + '">' +
           '<span class="forensic-cat-icon" aria-hidden="true">' + c.icon + '</span>' +
           '<span class="forensic-cat-label">' + c.label + '</span>' +
@@ -4241,7 +4290,7 @@
     function _bindHoverMenuEvents(menuEl, ann) {
       // Event-Delegation: Ein einziger Listener auf dem Menü fängt alle Klicks ab
       menuEl.addEventListener("click", function(e) {
-        // Edit-Button
+        // Edit-Button (nur eigene Annotationen)
         var editBtn = e.target.closest("[data-action='edit']");
         if (editBtn) {
           e.stopPropagation();
@@ -4249,8 +4298,24 @@
           AnnotationPopupModule.open(ann);
           return;
         }
-        
-        // Delete-Button
+
+        // Lese-Button für Fremdannotationen (Bug 2.124)
+        var viewBtn = e.target.closest("[data-action='view']");
+        if (viewBtn) {
+          e.stopPropagation();
+          _hideMenu();
+          AnnotationPopupModule.open(ann, { readOnly: true });
+          return;
+        }
+
+        // Delete-Button für Fremdannotationen — komplett ignorieren (Bug 2.124)
+        var deleteForeignBtn = e.target.closest("[data-action='delete-foreign']");
+        if (deleteForeignBtn) {
+          e.stopPropagation();
+          return;
+        }
+
+        // Delete-Button (nur eigene Annotationen)
         var deleteBtn = e.target.closest("[data-action='delete']");
         if (deleteBtn) {
           e.stopPropagation();
@@ -4262,6 +4327,12 @@
         // Kategorie-Wrapper
         var catWrapper = e.target.closest(".forensic-hover-cat-wrapper");
         if (!catWrapper) return;
+
+        // Bug 2.124: Kategorie-Änderung bei Fremdannotationen sperren
+        if (catWrapper.dataset.foreign === "true") {
+          e.stopPropagation();
+          return;
+        }
         
         e.stopPropagation();
         var isExpanded = menuEl.classList.contains("forensic-hover-menu--expanded");

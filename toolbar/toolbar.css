@@ -702,6 +702,17 @@ body {
   background: #1a1f2e;
 }
 
+/* Bug 2.124 (Build 264): Lesemodus-Badge im Popup-Footer fuer Fremdannotationen */
+.forensic-popup-readonly-badge {
+  display: flex;
+  align-items: center;
+  margin-right: auto;
+  font-size: 11px;
+  color: #8899bb;
+  font-style: italic;
+  gap: 4px;
+}
+
 /* ===========================================================================
    Hover-Menü (§7.3 Bauplan)
    =========================================================================== */
@@ -772,6 +783,41 @@ body {
   font-size: 14px;
   padding: 4px 8px;
   cursor: pointer;
+}
+
+/* Bug 2.124 (Build 264): Readonly-Button (Lupe) fuer Fremdannotationen */
+.forensic-hover-btn--readonly {
+  background: #1e2235;
+  border-color: #2d3550;
+  color: #8899bb;
+  cursor: pointer;
+  filter: grayscale(60%);
+}
+.forensic-hover-btn--readonly:hover {
+  background: #252b3e;
+  border-color: #4f6aa0;
+  filter: grayscale(30%);
+}
+
+/* Bug 2.124 (Build 264): Disabled-Button fuer gesperrte Aktionen bei Fremdannotationen */
+.forensic-hover-btn--disabled {
+  background: #1a1d28;
+  border-color: #252b3e;
+  color: #3d4460;
+  cursor: not-allowed;
+  filter: grayscale(100%);
+  opacity: 0.5;
+}
+
+/* Bug 2.124 (Build 264): Kategorie-Wrapper im readonly-Modus */
+.forensic-hover-cat-wrapper--readonly {
+  cursor: default;
+  filter: grayscale(40%);
+  opacity: 0.7;
+}
+.forensic-hover-cat-wrapper--readonly:hover {
+  background: transparent;
+  cursor: default;
 }
 
 .forensic-hover-btn:hover {
