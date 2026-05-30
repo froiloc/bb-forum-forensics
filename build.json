@@ -1,6 +1,6 @@
 {
-  "build":   262,
-  "version": "0.6.262",
-  "date":    "2026-05-25",
-  "note":    "Build 262: Bugfix — _require_lock(): report_id aus data lesen + validate_lock(report_id, lock_id) korrekt aufrufen (war: NameError 'report_id' → HTTP 500 bei save_block/reorder)"
+  "build": 263,
+  "version": "0.6.263",
+  "date": "2026-05-30",
+  "note": "Build 262: Bugfix \u2014 _require_lock(): report_id aus data lesen + validate_lock(report_id, lock_id) korrekt aufrufen (war: NameError 'report_id' \u2192 HTTP 500 bei save_block/reorder)"
 }

@@ -50,6 +50,13 @@
 #     - get_open_report_for_client(): aktuell geöffneter Bericht pro Client.
 #     Beleg: Layer 3 States OPENING, Paket-6-Ergänzung 2026-05-24
 #
+#   Build 263 (Bug 2.122, 2026-05-30):
+#     - _SCHEMA_DDL: Alle DROP TABLE IF EXISTS und DROP INDEX IF EXISTS
+#       entfernt. Diese wurden bei jedem Start ausgefuehrt und vernichteten
+#       alle Daten einer bestehenden evidence_db unwiederbringlich.
+#       Alle CREATE TABLE/INDEX-Statements auf IF NOT EXISTS geprueft.
+#       Beleg: Datenverlust evidence_2948078.db, Projektgespraech 2026-05-30.
+#
 #     - resume_lock(): Signatur geaendert von (report_id, lock_id, locked_by, new_sse)
 #       auf (old_sse_client, new_sse_client). RESUMING ist eine Layer-2-Aktion;
 #       lock_id ist Layer-4-Daten und darf Layer 2 nicht bekannt sein.
@@ -123,8 +130,18 @@ _MIGRATION_COLUMNS: list[tuple[str, str, str]] = []
 # SYNCHRON HALTEN MIT: stage2/evidence_db_init.py (_FULL_SCHEMA_DDL)
 # Letzte Synchronisation: Build 239 (Schema v2.0), 2026-05-18
 # =============================================================================
+# =============================================================================
+# SYNCHRON HALTEN MIT: stage2/evidence_db_init.py (_FULL_SCHEMA_DDL)
+# Letzte Synchronisation: Build 239 (Schema v2.0), 2026-05-18
+#
+# WICHTIG — Bug 2.122 (Build 263, 2026-05-30):
+#   Alle DROP TABLE/INDEX IF EXISTS-Statements entfernt.
+#   Begruendung: _setup_schema() wird bei JEDEM Start aufgerufen. DROP TABLE
+#   vernichtet alle Daten einer bestehenden DB unwiederbringlich. Die
+#   CREATE TABLE IF NOT EXISTS-Statements sind idempotent — kein DROP noetig.
+#   Beleg: Datenverlust evidence_2948078.db, 2026-05-30, Projektgespraech.
+# =============================================================================
 _SCHEMA_DDL = """
-DROP TABLE IF EXISTS "scraper_log";
 CREATE TABLE IF NOT EXISTS "scraper_log" (
 	"id"	INTEGER,
 	"event"	TEXT NOT NULL,
@@ -133,7 +150,6 @@ CREATE TABLE IF NOT EXISTS "scraper_log" (
 	"ts"	INTEGER NOT NULL,
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
-DROP TABLE IF EXISTS "page_visits";
 CREATE TABLE IF NOT EXISTS "page_visits" (
 	"id"	INTEGER,
 	"page_url"	TEXT NOT NULL,
@@ -142,7 +158,6 @@ CREATE TABLE IF NOT EXISTS "page_visits" (
 	"investigator_id"	INTEGER,
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
-DROP TABLE IF EXISTS "viewport_events";
 CREATE TABLE IF NOT EXISTS "viewport_events" (
 	"id"	INTEGER,
 	"page_url"	TEXT NOT NULL,
@@ -153,7 +168,6 @@ CREATE TABLE IF NOT EXISTS "viewport_events" (
 	"investigator_id"	INTEGER,
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
-DROP TABLE IF EXISTS "annotations";
 CREATE TABLE IF NOT EXISTS "annotations" (
 	"id"	INTEGER,
 	"page_url"	TEXT NOT NULL,
@@ -173,7 +187,6 @@ CREATE TABLE IF NOT EXISTS "annotations" (
 	"actual_uid"	INTEGER DEFAULT NULL,
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
-DROP TABLE IF EXISTS "reports";
 CREATE TABLE IF NOT EXISTS "reports" (
 	"id"	INTEGER,
 	"report_type"	TEXT NOT NULL CHECK("report_type" IN ('interim', 'final', 'addendum')),
@@ -184,7 +197,6 @@ CREATE TABLE IF NOT EXISTS "reports" (
 	"status"	TEXT NOT NULL DEFAULT 'draft' CHECK("status" IN ('draft', 'submitted', 'approved', 'final')),
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
-DROP TABLE IF EXISTS "report_blocks";
 CREATE TABLE IF NOT EXISTS "report_blocks" (
 	"block_id"	TEXT NOT NULL,
 	"report_id"	INTEGER NOT NULL,
@@ -198,7 +210,6 @@ CREATE TABLE IF NOT EXISTS "report_blocks" (
 	FOREIGN KEY("report_id") REFERENCES "reports"("id"),
 	PRIMARY KEY("block_id")
 );
-DROP TABLE IF EXISTS "report_block_order";
 CREATE TABLE IF NOT EXISTS "report_block_order" (
 	"block_id"	TEXT NOT NULL,
 	"sort_index"	INTEGER NOT NULL,
@@ -207,7 +218,6 @@ CREATE TABLE IF NOT EXISTS "report_block_order" (
 	FOREIGN KEY("block_id") REFERENCES "report_blocks"("block_id"),
 	PRIMARY KEY("block_id")
 );
-DROP TABLE IF EXISTS "report_anchors";
 CREATE TABLE IF NOT EXISTS "report_anchors" (
 	"id"	INTEGER,
 	"block_id"	TEXT NOT NULL,
@@ -218,7 +228,6 @@ CREATE TABLE IF NOT EXISTS "report_anchors" (
 	FOREIGN KEY("annotation_id") REFERENCES "annotations"("id"),
 	FOREIGN KEY("block_id") REFERENCES "report_blocks"("block_id")
 );
-DROP TABLE IF EXISTS "report_comments";
 CREATE TABLE IF NOT EXISTS "report_comments" (
 	"id"	INTEGER,
 	"block_id"	TEXT NOT NULL,
@@ -232,7 +241,6 @@ CREATE TABLE IF NOT EXISTS "report_comments" (
 	FOREIGN KEY("block_id") REFERENCES "report_blocks"("block_id"),
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
-DROP TABLE IF EXISTS "placeholder_cache";
 CREATE TABLE IF NOT EXISTS "placeholder_cache" (
 	"query_id"	TEXT NOT NULL,
 	"uid"	INTEGER NOT NULL,
@@ -240,7 +248,6 @@ CREATE TABLE IF NOT EXISTS "placeholder_cache" (
 	"cached_at"	INTEGER NOT NULL,
 	PRIMARY KEY("query_id","uid")
 );
-DROP TABLE IF EXISTS "report_approvals";
 CREATE TABLE IF NOT EXISTS "report_approvals" (
 	"id"	INTEGER,
 	"report_id"	INTEGER NOT NULL,
@@ -252,7 +259,6 @@ CREATE TABLE IF NOT EXISTS "report_approvals" (
 	FOREIGN KEY("report_id") REFERENCES "reports"("id")
 );
 -- 1. Das aktive Lock (Die Quelle der Wahrheit)
-DROP TABLE IF EXISTS "editor_locks";
 CREATE TABLE IF NOT EXISTS "editor_locks" (
 	"report_id"	  INTEGER NOT NULL PRIMARY KEY,
         "lock_id"         TEXT    NOT NULL, -- Der "Schlüssel" für Schreibzugriffe
@@ -262,7 +268,6 @@ CREATE TABLE IF NOT EXISTS "editor_locks" (
         "cooldown_until"  INTEGER,          -- NULL wenn kein Cooldown
         FOREIGN KEY("report_id") REFERENCES reports(id)
 );
-DROP TABLE IF EXISTS "lock_takeover_requests";
 CREATE TABLE IF NOT EXISTS "lock_takeover_requests" (
     "id"            INTEGER PRIMARY KEY AUTOINCREMENT,
     "report_id"     INTEGER NOT NULL,
@@ -273,7 +278,6 @@ CREATE TABLE IF NOT EXISTS "lock_takeover_requests" (
     "status"        TEXT    NOT NULL DEFAULT 'pending'
                     CHECK("status" IN ('pending', 'granted', 'denied', 'expired'))
 );
-DROP TABLE IF EXISTS "investigator_aliases";
 CREATE TABLE IF NOT EXISTS "investigator_aliases" (
 	"id"	INTEGER,
 	"term"	TEXT NOT NULL UNIQUE,
@@ -282,8 +286,7 @@ CREATE TABLE IF NOT EXISTS "investigator_aliases" (
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
 -- 2. Die Warteschlange (FIFO)
-DROP TABLE IF EXISTS "lock_queue";
-CREATE TABLE "lock_queue" (
+CREATE TABLE IF NOT EXISTS "lock_queue" (
         "id"              INTEGER PRIMARY KEY AUTOINCREMENT,
         "report_id"       INTEGER NOT NULL,
         "requested_by"    TEXT    NOT NULL,
@@ -292,12 +295,10 @@ CREATE TABLE "lock_queue" (
         FOREIGN KEY("report_id") REFERENCES reports("id")
 );
 -- Index für schnelles Finden der Warteschlange pro Bericht
-DROP INDEX IF EXISTS "idx_queue_report";
-CREATE INDEX "idx_queue_report" ON lock_queue("report_id", "requested_at");
+CREATE INDEX IF NOT EXISTS "idx_queue_report" ON lock_queue("report_id", "requested_at");
 -- Audit-Tabelle: welcher Client hat welchen Bericht geöffnet (wächst, wird nicht bereinigt).
 -- Beleg: Layer 3 States OPENING, Paket-6-Ergänzung 2026-05-24
-DROP TABLE IF EXISTS "report_opened";
-CREATE TABLE "report_opened" (
+CREATE TABLE IF NOT EXISTS "report_opened" (
         "id"         INTEGER PRIMARY KEY AUTOINCREMENT,
         "report_id"  INTEGER NOT NULL,
         "sse_client" TEXT    NOT NULL,
@@ -305,88 +306,66 @@ CREATE TABLE "report_opened" (
         "opened_at"  INTEGER NOT NULL,
         FOREIGN KEY("report_id") REFERENCES reports("id")
 );
-DROP INDEX IF EXISTS "idx_report_opened_report";
-CREATE INDEX "idx_report_opened_report" ON report_opened("report_id", "sse_client");
-DROP INDEX IF EXISTS "idx_report_opened_client";
-CREATE INDEX "idx_report_opened_client" ON report_opened("sse_client");
-DROP INDEX IF EXISTS "pv_url_idx";
+CREATE INDEX IF NOT EXISTS "idx_report_opened_report" ON report_opened("report_id", "sse_client");
+CREATE INDEX IF NOT EXISTS "idx_report_opened_client" ON report_opened("sse_client");
 CREATE INDEX IF NOT EXISTS "pv_url_idx" ON "page_visits" (
 	"page_url"
 );
-DROP INDEX IF EXISTS "ve_url_idx";
 CREATE INDEX IF NOT EXISTS "ve_url_idx" ON "viewport_events" (
 	"page_url"
 );
-DROP INDEX IF EXISTS "ann_url_idx";
 CREATE INDEX IF NOT EXISTS "ann_url_idx" ON "annotations" (
 	"page_url"
 );
-DROP INDEX IF EXISTS "ann_cat_idx";
 CREATE INDEX IF NOT EXISTS "ann_cat_idx" ON "annotations" (
 	"category"
 );
-DROP INDEX IF EXISTS "rep_type_idx";
 CREATE INDEX IF NOT EXISTS "rep_type_idx" ON "reports" (
 	"report_type"
 );
-DROP INDEX IF EXISTS "rep_status_idx";
 CREATE INDEX IF NOT EXISTS "rep_status_idx" ON "reports" (
 	"status"
 );
-DROP INDEX IF EXISTS "rb_report_idx";
 CREATE INDEX IF NOT EXISTS "rb_report_idx" ON "report_blocks" (
 	"report_id"
 );
-DROP INDEX IF EXISTS "rb_author_idx";
 CREATE INDEX IF NOT EXISTS "rb_author_idx" ON "report_blocks" (
 	"author"
 );
-DROP INDEX IF EXISTS "rbo_sort_idx";
 CREATE INDEX IF NOT EXISTS "rbo_sort_idx" ON "report_block_order" (
 	"sort_index"
 );
-DROP INDEX IF EXISTS "ra_block_idx";
 CREATE INDEX IF NOT EXISTS "ra_block_idx" ON "report_anchors" (
 	"block_id"
 );
-DROP INDEX IF EXISTS "ra_ann_idx";
 CREATE INDEX IF NOT EXISTS "ra_ann_idx" ON "report_anchors" (
 	"annotation_id"
 );
-DROP INDEX IF EXISTS "ra_block_ann_uniq";
 CREATE UNIQUE INDEX IF NOT EXISTS "ra_block_ann_uniq" ON "report_anchors" (
 	"block_id",
 	"annotation_id"
 );
-DROP INDEX IF EXISTS "rc_block_idx";
 CREATE INDEX IF NOT EXISTS "rc_block_idx" ON "report_comments" (
 	"block_id"
 );
-DROP INDEX IF EXISTS "rc_status_idx";
 CREATE INDEX IF NOT EXISTS "rc_status_idx" ON "report_comments" (
 	"status"
 );
-DROP INDEX IF EXISTS "rap_report_idx";
 CREATE INDEX IF NOT EXISTS "rap_report_idx" ON "report_approvals" (
 	"report_id"
 );
-DROP INDEX IF EXISTS "reports_one_final_idx";
 CREATE UNIQUE INDEX IF NOT EXISTS "reports_one_final_idx" ON "reports" (
 	"report_type"
 ) WHERE "report_type" = 'final';
-DROP INDEX IF EXISTS "ia_term_idx";
 CREATE INDEX IF NOT EXISTS "ia_term_idx" ON "investigator_aliases" (
 	"term"
 );
-DROP INDEX IF EXISTS "ann_local_id_idx";
 CREATE INDEX IF NOT EXISTS "ann_local_id_idx" ON "annotations" (
 	"local_id"
 ) WHERE "local_id" IS NOT NULL;
-DROP INDEX IF EXISTS "ann_active_url_idx";
 CREATE INDEX IF NOT EXISTS "ann_active_url_idx" ON "annotations" (
 	"page_url"
 ) WHERE "deleted_at" IS NULL;
-DROP INDEX IF EXISTS "ann_prev_id_idx";
 CREATE INDEX IF NOT EXISTS "ann_prev_id_idx" ON "annotations" (
 	"prev_id"
 ) WHERE "prev_id" IS NOT NULL;
