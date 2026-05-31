@@ -139,6 +139,7 @@ class ForensicApi:
         self._knownusers      = None  # [BS3 Bug 2.78 Build 175]
         self._aliases         = None  # [BS3 Bug 2.79 Build 179]
         self._integrator      = None  # [BS3 Bug 2.78 Build 182]
+        self._fileasset        = None  # [Build 270]
 
     def dispatch(
         self,
@@ -290,6 +291,16 @@ class ForensicApi:
                 self._method_not_allowed(handler)
                 return
             self._get_version().handle(handler)
+            return
+
+        # /_forensic/fileasset (GET) [Build 270]
+        # Liefert Assets per vollständiger Original-URL aus assets_<uid>.db.
+        # Beleg: Projektgespräch 2026-05-31.
+        if url_path == "/_forensic/fileasset":
+            if method not in ("GET", "HEAD"):
+                self._method_not_allowed(handler)
+                return
+            self._get_fileasset().handle(handler, params)
             return
 
         # /_forensic/windows (GET/POST/DELETE) [Build 173]
@@ -639,6 +650,13 @@ class ForensicApi:
             from forensic_api.version import VersionEndpoint
             self._version_ep = VersionEndpoint(self._build_info)
         return self._version_ep
+
+    def _get_fileasset(self):
+        """Asset-Auslieferung per vollständiger URL (Build 270). Beleg: 2026-05-31"""
+        if self._fileasset is None:
+            from forensic_api.fileasset import FileassetEndpoint
+            self._fileasset = FileassetEndpoint(self._bundle)
+        return self._fileasset
 
     def _get_windows(self):
         """Fenster-Registrierung (Build 173). Beleg: Projektgespraech 2026-05-11"""

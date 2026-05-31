@@ -27,10 +27,18 @@
 #   Forum-Seiten, nicht für Assets.
 #
 # Abhängigkeiten: keine externen Abhängigkeiten
-# Version: v0.1.0 · Build: 017 · 2026-04-15
+# Version: v0.1.0 · Build: 270 · 2026-05-31
+#
+# Changelog Build 270 (2026-05-31):
+#   - CSS-Auslieferung: url(...)-Einträge mit bekannten vollständigen
+#     URLs werden durch /_forensic/fileasset?url=... ersetzt.
+#     Beleg: Projektgespräch 2026-05-31.
 # =============================================================================
 
 from __future__ import annotations
+
+import re
+import urllib.parse
 
 from typing import TYPE_CHECKING, Optional
 
@@ -84,6 +92,12 @@ class AssetHandler:
         data      = asset.data or b""
         mime_type = asset.mime_type
 
+        # CSS-Rewriting: url(...)-Einträge mit bekannten vollständigen
+        # URLs durch /_forensic/fileasset?url=... ersetzen.
+        # Beleg: Projektgespräch 2026-05-31.
+        if mime_type and "css" in mime_type and data:
+            data = self._rewrite_css_urls(data)
+
         logger.debug(
             "Asset ausgeliefert: '%s' (%s, %d bytes)",
             url_path, mime_type, len(data),
@@ -93,6 +107,36 @@ class AssetHandler:
             body=data,
             content_type=mime_type,
         )
+
+    _CSS_URL_RE = re.compile(
+        r'url\(["\']?(https?://[^"\')\s]+)["\']?\)',
+        re.IGNORECASE,
+    )
+
+    def _rewrite_css_urls(self, css_bytes: bytes) -> bytes:
+        """
+        Ersetzt url(http://...) in CSS-Daten durch /_forensic/fileasset?url=...
+        wenn die URL in assets_<uid>.db vorhanden ist.
+        Beleg: Projektgespräch 2026-05-31.
+        """
+        try:
+            css_str = css_bytes.decode("utf-8", errors="replace")
+        except Exception:
+            return css_bytes
+
+        candidates = set(m.group(1) for m in self._CSS_URL_RE.finditer(css_str))
+        if not candidates:
+            return css_bytes
+
+        known = self._bundle.assets.get_known_full_urls(candidates)
+        if not known:
+            return css_bytes
+
+        for url in sorted(known, key=len, reverse=True):
+            proxy = "/_forensic/fileasset?url=" + urllib.parse.quote(url, safe="")
+            css_str = css_str.replace(url, proxy)
+
+        return css_str.encode("utf-8")
 
     def _lookup(self, url_path: str) -> "Optional[AssetRecord]":
         """

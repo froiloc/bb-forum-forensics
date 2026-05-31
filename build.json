@@ -1,6 +1,6 @@
 {
-  "build": 269,
-  "version": "0.6.269",
+  "build": 270,
+  "version": "0.6.270",
   "date": "2026-05-31",
-  "note": "Build 269: Fokus statt Reload — Toolbar prüft vor window.open() ob Fenster mit aktivem SSE bereits existiert. Wenn ja: window.open('',name) fokussiert ohne Reload. list_active() liefert sse_active-Flag. Build 268: Grace-Period-Fix fuer SSE-Slot."
+  "note": "Build 270: Filehoster-Asset-Auslieferung — URL-Rewriting in blob_handler (HTML) und asset_handler (CSS), neuer Endpunkt /_forensic/fileasset?url=..., get_known_full_urls + get_asset_by_full_url in assets_db."
 }

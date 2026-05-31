@@ -44,7 +44,13 @@
 #   Alle drei Zustände sind für toolbar.js sichtbar und werden angezeigt.
 #
 # Abhängigkeiten: json, urllib.parse — Stdlib + interne Module
-# Version: v0.1.0 · Build: 042 · 2026-04-19
+# Version: v0.1.0 · Build: 270 · 2026-05-31
+#
+# Changelog Build 270 (2026-05-31):
+#   - _rewrite_asset_urls(): ersetzt vollständige URLs die in assets_<uid>.db
+#     vorhanden sind durch /_forensic/fileasset?url=<encoded>.
+#     Wird auf body_html nach _extract_body() angewendet.
+#     Beleg: Projektgespräch 2026-05-31.
 # Änderungen Build 042:
 #   - handle(): neuer Parameter original_method (Default 'GET').
 #   - handle_with_fragment(): neuer Parameter original_method (Default 'GET').
@@ -251,6 +257,12 @@ class BlobHandler:
         # <body>-Inhalt aus BLOB extrahieren
         body_html = self._extract_body(page.html) if page.html else None
 
+        # URL-Rewriting: vollständige Asset-URLs die in assets_<uid>.db
+        # vorhanden sind, werden durch /_forensic/fileasset?url=... ersetzt.
+        # Beleg: Projektgespräch 2026-05-31.
+        if body_html:
+            body_html = self._rewrite_asset_urls(body_html)
+
         logger.debug(
             "BlobHandler: '%s' → page_id=%d, context=%s, failed=%s",
             resolved_url, page.page_id, page.scrape_context, page.fetch_failed,
@@ -346,6 +358,48 @@ class BlobHandler:
         """
         values = params.get(key)
         return values[0] if values else None
+
+    def _rewrite_asset_urls(self, html_str: str) -> str:
+        """
+        Ersetzt vollständige Asset-URLs in HTML die in assets_<uid>.db
+        vorhanden sind durch /_forensic/fileasset?url=<encoded>.
+
+        Ablauf:
+          1. Alle http(s)://... URLs aus src= und href= Attributen extrahieren.
+          2. Einmal get_known_full_urls() gegen assets_<uid>.db — ein IN-Query.
+          3. Nur Treffer ersetzen; alle anderen URLs bleiben original.
+
+        Forensische Integrität: der gespeicherte BLOB bleibt unberührt;
+        das Rewriting geschieht ausschließlich bei der Auslieferung.
+        Beleg: Projektgespräch 2026-05-31.
+        """
+        import re
+        # URLs aus src="..." und href="..." extrahieren (einfache Regex).
+        # Wir suchen nach vollständigen http(s)-URLs in Attributwerten.
+        _URL_PATTERN = re.compile(
+            r'(?:src|href)=["\']((https?://[^"\'>\s]+))["\']',
+            re.IGNORECASE,
+        )
+        candidates = set(m.group(1) for m in _URL_PATTERN.finditer(html_str))
+        if not candidates:
+            return html_str
+
+        # Welche davon sind in der assets_<uid>.db bekannt?
+        known = self._bundle.assets.get_known_full_urls(candidates)
+        if not known:
+            return html_str
+
+        logger.debug(
+            "_rewrite_asset_urls: %d/%d URLs ersetzt", len(known), len(candidates)
+        )
+
+        # Ersetzen: nur bekannte URLs werden umgeschrieben.
+        # Längstes-zuerst um Teilstring-Kollisionen zu vermeiden.
+        for url in sorted(known, key=len, reverse=True):
+            proxy = "/_forensic/fileasset?url=" + urllib.parse.quote(url, safe="")
+            html_str = html_str.replace(url, proxy)
+
+        return html_str
 
     @staticmethod
     def _extract_body(html: bytes) -> str:

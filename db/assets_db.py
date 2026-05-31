@@ -35,7 +35,15 @@
 #   default.db gespeichert.
 #
 # Abhängigkeiten: sqlite3 — ausschließlich Stdlib
-# Version: v0.1.0 · Build: 018 · 2026-04-15
+# Version: v0.1.0 · Build: 270 · 2026-05-31
+#
+# Changelog Build 270 (2026-05-31):
+#   - get_known_full_urls(candidates): nimmt eine Menge vollständiger URLs,
+#     gibt die Teilmenge zurück die in asset_urls vorhanden ist.
+#     Wird von blob_handler._rewrite_asset_urls() genutzt.
+#   - get_asset_by_full_url(url): Lookup per vollständiger URL
+#     (kein forum_base_url-Prefix). Für /_forensic/fileasset.
+#     Beleg: Projektgespräch 2026-05-31.
 # =============================================================================
 
 from __future__ import annotations
@@ -290,6 +298,60 @@ class AssetsDb:
             return str(row["value"]) if row else None
         except sqlite3.OperationalError as exc:
             logger.error("get_meta('%s') fehlgeschlagen: %s", key, exc)
+            return None
+
+    def get_known_full_urls(self, candidates: set[str]) -> set[str]:
+        """
+        Gibt die Teilmenge von `candidates` zurück, für die ein Eintrag
+        in asset_urls vorhanden ist.
+
+        Verwendet einen einzigen IN-Query statt N einzelner Lookups.
+        candidates: Menge vollständiger URLs (z.B. 'http://filer.onion/img/x.jpg').
+        Gibt leere Menge zurück wenn assets_db nicht verfügbar oder leer.
+        Beleg: Projektgespräch 2026-05-31.
+        """
+        if not self._available or not candidates:
+            return set()
+        try:
+            placeholders = ",".join("?" * len(candidates))
+            rows = self._con.execute(
+                f"SELECT url FROM adb.asset_urls WHERE url IN ({placeholders})",
+                tuple(candidates),
+            ).fetchall()
+            return {str(r[0]) for r in rows}
+        except sqlite3.OperationalError as exc:
+            logger.debug("get_known_full_urls fehlgeschlagen: %s", exc)
+            return set()
+
+    def get_asset_by_full_url(self, url: str) -> "Optional[AssetRecord]":
+        """
+        Lookup per vollständiger URL ohne forum_base_url-Normalisierung.
+        Für /_forensic/fileasset: die URL kommt bereits vollständig
+        als Query-Parameter (z.B. 'http://filer.onion/img/x.jpg').
+        Beleg: Projektgespräch 2026-05-31.
+        """
+        if not self._available:
+            return None
+        row = self._retryable_query(
+            """
+            SELECT au.url, a.data, a.mime_type, a.file_size
+            FROM adb.asset_urls au
+            LEFT JOIN adb.assets a ON a.id = au.asset_id
+            WHERE au.url = ? LIMIT 1
+            """,
+            (url,)
+        )
+        if row is None:
+            return None
+        try:
+            return AssetRecord(
+                url=str(row[0]),
+                data=row[1],
+                mime_type=str(row[2]) if row[2] else "application/octet-stream",
+                file_size=int(row[3]) if row[3] is not None else None,
+            )
+        except (IndexError, TypeError) as exc:
+            logger.error("get_asset_by_full_url Fehler '%s': %s", url, exc)
             return None
 
     def asset_count(self) -> int:
