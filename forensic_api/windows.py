@@ -117,12 +117,17 @@ class WindowRegistry:
                 del self._windows[wid]
                 logger.debug("WindowRegistry: Fenster '%s' abgelaufen und entfernt", wid)
 
+            # sse_active: True wenn fuer diese Rolle ein aktiver SSE-Stream
+            # laeuft (_active_sse_roles). Wird von der Toolbar genutzt um
+            # zu entscheiden ob Fokussieren oder Neu-Oeffnen.
+            # Beleg: Projektgespräch 2026-05-31.
             return [
                 {
                     "window_id":     w["window_id"],
                     "role":          w["role"],
                     "registered_at": int(w["registered_at"]),
                     "last_seen":     int(w["last_seen"]),
+                    "sse_active":    w["role"] in self._active_sse_roles,
                 }
                 for w in self._windows.values()
             ]

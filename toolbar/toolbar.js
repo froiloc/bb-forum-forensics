@@ -5507,14 +5507,74 @@
   })();
 
   // ===========================================================================
+  // _focusOrOpen — Fenster fokussieren oder neu öffnen (Build 269)
+  // ===========================================================================
+  // Prüft via GET /_forensic/windows ob für die Rolle bereits ein aktiver
+  // SSE-Stream läuft. Wenn ja: window.open('', name) — nur Fokus, kein Reload.
+  // Wenn nein: window.open(url, name, features) — normales Öffnen.
+  //
+  // Warum nicht window.open(url, name) immer? Weil Browser bei bekanntem name
+  // und gegebener URL die Seite neu laden — das zerstört den SSE-Zustand.
+  // Beleg: Projektgespräch 2026-05-31.
+  // ===========================================================================
+  function _focusOrOpen(url, winName, role, features) {
+    // WindowRegistry abfragen: läuft bereits ein SSE-Stream für diese Rolle?
+    fetch('/_forensic/windows', {
+      method: 'GET',
+      headers: { 'X-Forensic-Request': 'ajax' },
+    })
+      .then(function (resp) { return resp.json(); })
+      .then(function (data) {
+        var windows = (data && data.windows) || [];
+        // sse_active: vom Server geliefert (Build 269) — True wenn SSE-Stream
+        // fuer diese Rolle aktiv ist. Nur dann fokussieren statt neu laden.
+        var existing = windows.find(function (w) { return w.role === role && w.sse_active; });
+        if (existing) {
+          // Fenster existiert mit aktivem SSE — nur fokussieren, nicht neu laden.
+          // window.open('', name) bringt das Fenster in den Vordergrund
+          // ohne die Seite neu zu laden.
+          // Beleg: MDN window.open() — target mit leerem URL-String.
+          _dbg('[_focusOrOpen] Fenster bereits offen (' + role + ') — fokussiere:', winName);
+          var w = window.open('', winName);
+          if (w) {
+            try { w.focus(); } catch (_) {}
+          }
+        } else {
+          // Fenster existiert nicht — normal öffnen.
+          _dbg('[_focusOrOpen] Öffne neues Fenster (' + role + '):', winName);
+          window.open(url, winName, features);
+        }
+      })
+      .catch(function () {
+        // Fallback: direkt öffnen wenn Registry nicht erreichbar.
+        _dbg('[_focusOrOpen] Registry-Fehler — öffne direkt:', winName);
+        window.open(url, winName, features);
+      });
+  }
+
+  // ===========================================================================
   // PHASE 10: UserInfoTabModule — window.open() → /_forensic/userinfo
   // ===========================================================================
   var UserInfoTabModule = (function () {
+    /**
+     * Öffnet das UserInfo-Fenster oder bringt es in den Vordergrund.
+     *
+     * Ist das Fenster bereits registriert (WindowRegistry hat einen
+     * aktiven SSE-Slot fuer 'userinfo'), wird window.open('', name)
+     * aufgerufen — leere URL = kein Reload, nur Fokus.
+     * Ist es nicht registriert, wird es normal mit URL geöffnet.
+     *
+     * Hintergrund: window.open(url, name) lädt die Seite auch dann
+     * neu wenn das Fenster bereits offen ist. window.open('', name)
+     * fokussiert nur ohne Reload.
+     * Beleg: Projektgespräch 2026-05-31.
+     */
     function open() {
-      window.open(
+      _focusOrOpen(
         ForensicToolbar.config.API_USERINFO,
-        "forensic_userinfo",
-        "width=1100,height=800,menubar=no,toolbar=no,status=no,scrollbars=yes"
+        'forensic_userinfo',
+        'userinfo',
+        'width=1100,height=800,menubar=no,toolbar=no,status=no,scrollbars=yes'
       );
     }
     return { open: open };
@@ -5530,12 +5590,17 @@
   // Beleg: Projektgespraech 2026-05-12 — Bug 2.90 (BS3).
   // ===========================================================================
   var ReportWindowModule = (function () {
+    /**
+     * Öffnet den Berichtseditor oder bringt ihn in den Vordergrund.
+     * Beleg: Projektgespräch 2026-05-31.
+     */
     function open() {
-      _dbg("[ReportWindow] Oeffne Berichtseditor: forensic_report");
-      window.open(
+      _dbg("[ReportWindow] Oeffne oder fokussiere Berichtseditor: forensic_report");
+      _focusOrOpen(
         ForensicToolbar.config.API_REPORT,
-        "forensic_report",
-        "width=1200,height=900,menubar=no,toolbar=no,status=no,scrollbars=yes"
+        'forensic_report',
+        'report',
+        'width=1200,height=900,menubar=no,toolbar=no,status=no,scrollbars=yes'
       );
     }
     return { open: open };
