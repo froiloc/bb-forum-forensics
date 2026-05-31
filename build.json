@@ -1,6 +1,6 @@
 {
-  "build": 271,
-  "version": "0.6.271",
+  "build": 272,
+  "version": "0.6.272",
   "date": "2026-05-31",
-  "note": "Build 271: AssetsDb._con_lock — serialisiert alle sqlite3-Zugriffe aus parallelen HTTP-Threads. Fix fuer SQLITE_MISUSE ('bad parameter or other API misuse') das zu falschen 404-Antworten fuer vorhandene Assets fuehrte. Build 270: Filehoster-Asset-Auslieferung."
+  "note": "Build 272: fileasset.py — doppeltes unquote() entfernt. parse_qs dekodiert Query-Parameter bereits einmal; ein zweites unquote() erzeugt Mismatch mit DB-URLs die literal % enthalten. Build 271: AssetsDb._con_lock."
 }
