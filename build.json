@@ -1,6 +1,6 @@
 {
-  "build": 270,
-  "version": "0.6.270",
+  "build": 271,
+  "version": "0.6.271",
   "date": "2026-05-31",
-  "note": "Build 270: Filehoster-Asset-Auslieferung — URL-Rewriting in blob_handler (HTML) und asset_handler (CSS), neuer Endpunkt /_forensic/fileasset?url=..., get_known_full_urls + get_asset_by_full_url in assets_db."
+  "note": "Build 271: AssetsDb._con_lock — serialisiert alle sqlite3-Zugriffe aus parallelen HTTP-Threads. Fix fuer SQLITE_MISUSE ('bad parameter or other API misuse') das zu falschen 404-Antworten fuer vorhandene Assets fuehrte. Build 270: Filehoster-Asset-Auslieferung."
 }

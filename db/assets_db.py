@@ -35,19 +35,23 @@
 #   default.db gespeichert.
 #
 # Abhängigkeiten: sqlite3 — ausschließlich Stdlib
-# Version: v0.1.0 · Build: 270 · 2026-05-31
+# Version: v0.1.0 · Build: 271 · 2026-05-31
 #
 # Changelog Build 270 (2026-05-31):
-#   - get_known_full_urls(candidates): nimmt eine Menge vollständiger URLs,
-#     gibt die Teilmenge zurück die in asset_urls vorhanden ist.
-#     Wird von blob_handler._rewrite_asset_urls() genutzt.
-#   - get_asset_by_full_url(url): Lookup per vollständiger URL
-#     (kein forum_base_url-Prefix). Für /_forensic/fileasset.
-#     Beleg: Projektgespräch 2026-05-31.
+#   - get_known_full_urls und get_asset_by_full_url ergänzt.
+#
+# Changelog Build 271 (2026-05-31):
+#   - _con_lock (threading.Lock) serialisiert alle self._con.execute()-
+#     Aufrufe. AssetsDb teilt self._con mit anderen DB-Klassen
+#     (ATTACH-Muster, check_same_thread=False). Ohne Lock SQLITE_MISUSE
+#     bei concurrent Requests aus mehreren HTTP-Threads.
+#     Ursache: /_forensic/fileasset + asset_handler parallel auf derselben
+#     Connection. Beleg: Webserver-Log 2026-05-31.
 # =============================================================================
 
 from __future__ import annotations
 
+import threading
 import time
 import sqlite3
 from dataclasses import dataclass
@@ -129,6 +133,9 @@ class AssetsDb:
                                       korrekt angebunden ist.
         """
         self._con = con
+        # Lock serialisiert alle self._con.execute()-Aufrufe.
+        # Beleg: Webserver-Log 2026-05-31 SQLITE_MISUSE, Build 271.
+        self._con_lock = threading.Lock()
         # Abschließenden Slash entfernen für saubere Konkatenation
         self._forum_base_url: Optional[str] = (
             forum_base_url.rstrip("/") if forum_base_url else None
@@ -181,10 +188,11 @@ class AssetsDb:
         for attempt in range(max_retries):
             cursor = None
             try:
-                cursor = self._con.cursor()
-                cursor.row_factory = sqlite3.Row
-                cursor.execute(sql, params)
-                row = cursor.fetchone()
+                with self._con_lock:
+                    cursor = self._con.cursor()
+                    cursor.row_factory = sqlite3.Row
+                    cursor.execute(sql, params)
+                    row = cursor.fetchone()
                 # Prüfe auf leeres Row-Objekt (Länge 0)
                 if row is not None and hasattr(row, "__len__") and len(row) == 0:
                     raise IndexError("Leeres Row-Objekt (Länge 0)")
@@ -269,10 +277,11 @@ class AssetsDb:
         )
 
         try:
-            row = self._con.execute(
-                "SELECT 1 FROM adb.asset_urls WHERE url = ? LIMIT 1",
-                (lookup_url,),
-            ).fetchone()
+            with self._con_lock:
+                row = self._con.execute(
+                    "SELECT 1 FROM adb.asset_urls WHERE url = ? LIMIT 1",
+                    (lookup_url,),
+                ).fetchone()
             return row is not None
         except sqlite3.OperationalError:
             return False
@@ -314,10 +323,11 @@ class AssetsDb:
             return set()
         try:
             placeholders = ",".join("?" * len(candidates))
-            rows = self._con.execute(
-                f"SELECT url FROM adb.asset_urls WHERE url IN ({placeholders})",
-                tuple(candidates),
-            ).fetchall()
+            with self._con_lock:
+                rows = self._con.execute(
+                    f"SELECT url FROM adb.asset_urls WHERE url IN ({placeholders})",
+                    tuple(candidates),
+                ).fetchall()
             return {str(r[0]) for r in rows}
         except sqlite3.OperationalError as exc:
             logger.debug("get_known_full_urls fehlgeschlagen: %s", exc)
