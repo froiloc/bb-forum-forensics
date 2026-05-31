@@ -131,7 +131,31 @@ VALID_COMMENT_STATUSES: frozenset[str] = frozenset({
     "pending", "addressed", "dismissed", "revoked",
 })
 
-_MIGRATION_COLUMNS: list[tuple[str, str, str]] = []
+# Migrationsspalten fuer aeltere evidence_db-Instanzen.
+# Auch wenn _SCHEMA_DDL alle Spalten via CREATE TABLE IF NOT EXISTS enthaelt,
+# greift das nur fuer neue DBs. Aeltere DBs haben die Tabelle bereits ohne
+# diese Spalten — ALTER TABLE ist die einzige Moeglichkeit sie nachzurüsten.
+# ALTER TABLE mit bereits vorhandener Spalte wird via 'duplicate column'-
+# Exception abgefangen und ignoriert (idempotent).
+# Beleg: Regression T24, Projektgespraeche 2026-05-31.
+_MIGRATION_COLUMNS: list[tuple[str, str, str]] = [
+    # Build 089+: selection_json fuer Textmarkierungen (CSS Highlights API)
+    ("annotations", "selection_json", "TEXT DEFAULT NULL"),
+    # Build 132+: Tags-JSON fuer Schlagworte
+    ("annotations", "tags_json",      "TEXT DEFAULT NULL"),
+    # Build 145+: local_id fuer client-seitige Zuordnung
+    ("annotations", "local_id",       "TEXT DEFAULT NULL"),
+    # Build 158+: post_id fuer Beitrags-Referenz
+    ("annotations", "post_id",        "INTEGER DEFAULT NULL"),
+    # Build 163+: created_by fuer Ermittler-Kuerzel
+    ("annotations", "created_by",     "TEXT NOT NULL DEFAULT ''"),
+    # Build 178+: Soft-Delete und Versionierung
+    ("annotations", "deleted_at",     "INTEGER DEFAULT NULL"),
+    ("annotations", "version_nr",     "INTEGER NOT NULL DEFAULT 1"),
+    ("annotations", "prev_id",        "INTEGER DEFAULT NULL"),
+    # Build 239+: actual_uid fuer user_id-Zuordnung
+    ("annotations", "actual_uid",     "INTEGER DEFAULT NULL"),
+]
 
 # =============================================================================
 # SYNCHRON HALTEN MIT: stage2/evidence_db_init.py (_FULL_SCHEMA_DDL)

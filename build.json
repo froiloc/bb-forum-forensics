@@ -1,6 +1,6 @@
 {
-  "build": 265,
-  "version": "0.6.265",
+  "build": 266,
+  "version": "0.6.266",
   "date": "2026-05-31",
-  "note": "Build 265: EventsEndpoint._edb_lock (Klassen-Lock) serialisiert alle fünf edb._con.execute()-Aufrufe aus der SSE-Polling-Schleife. Mehrere gleichzeitige SSE-Threads rufen SQLite nicht mehr concurrent auf."
+  "note": "Build 266: Bugfix T24 — _MIGRATION_COLUMNS wiederhergestellt. ALTER TABLE fuer aeltere evidence_db ohne selection_json u.a. Spalten. Build 265: Duplikat-SSE-Schutz (HTTP 409) + _edb_lock (SQLITE_MISUSE-Fix)."
 }
