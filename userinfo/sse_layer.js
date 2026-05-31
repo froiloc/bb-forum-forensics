@@ -57,8 +57,23 @@
  *   Nach Timer-Ablauf wechselt SSELayer in DISCONNECTED.
  *   Beleg: SLA Punkt 2, Layer 2 States RESUMING, Paket 4 / Paket 5
  *
- * Version: v0.6.247 · Build: 247 · 2026-05-24
+ * Version: v0.6.265 · Build: 265 · 2026-05-31
  * Beleg: Layer 2 States, SLA Manifest, Paket 5, Architekturentscheidungen
+ *
+ * Changelog Build 265 (2026-05-31):
+ *   - Duplikat-SSE-Schutz: connect() übergibt ?role=<rolle> im SSE-URL damit
+ *     der Server die Rolle prüfen kann. Antwortet der Server mit HTTP 409,
+ *     wird _onDuplicate() aufgerufen:
+ *       1. SSELayer wechselt in DUPLICATE (neuer Zustand).
+ *       2. Ein nicht-schließbares Modal erscheint mit der Meldung und dem
+ *          aktiven Fenster-Namen.
+ *       3. Per BroadcastChannel 'forensic_control' wird das aktive Fenster
+ *          gebeten window.focus() aufzurufen.
+ *       4. Button "Dieses Tab schließen" ruft window.close() auf
+ *          (funktioniert nur bei per window.open() geöffneten Tabs;
+ *           sonst erscheint ein Hinweis: Strg+W).
+ *   - Neuer Zustand DUPLICATE: SSELayer öffnet keine weitere Verbindung.
+ *   Beleg: Projektgespräch 2026-05-31.
  */
 
 (function () {
@@ -96,6 +111,8 @@
         CONNECTING:    'CONNECTING',
         CONNECTED:     'CONNECTED',
         RESUMING:      'RESUMING',
+        /** Verbindung verweigert — diese Rolle ist bereits in einem anderen Tab aktiv. */
+        DUPLICATE:     'DUPLICATE',
     });
 
     // -----------------------------------------------------------------------
@@ -127,6 +144,27 @@
             this._debug        = opts.debug        ?? (window.FORENSIC_DEBUG !== false);
             this._endpoint     = opts.endpoint     ?? SSE_ENDPOINT;
             this._EventSource  = opts.EventSourceCtor ?? window.EventSource;
+            /**
+             * Fenster-Rolle fuer Duplikat-Prüfung (z.B. 'report', 'userinfo', 'main').
+             * Wird als ?role=<rolle> im SSE-URL übergeben damit der Server
+             * prüfen kann ob diese Rolle bereits belegt ist.
+             * Beleg: Projektgespräch 2026-05-31.
+             */
+            this._role = opts.role ?? null;
+
+            /**
+             * BroadcastChannel 'forensic_control' — Kanal für systemische
+             * Steuernachrichten zwischen Tabs (Fokus-Anforderung, Duplikat-Info).
+             * Beleg: Projektgespräch 2026-05-31.
+             */
+            this._controlChannel = (typeof BroadcastChannel !== 'undefined')
+                ? new BroadcastChannel('forensic_control')
+                : null;
+            if (this._controlChannel) {
+                this._controlChannel.addEventListener('message', (evt) => {
+                    this._onControlMessage(evt.data);
+                });
+            }
 
             // Zustand
             this._state     = STATES.UNINITIALIZED;
@@ -202,7 +240,8 @@
         connect() {
             if (this._state === STATES.CONNECTING ||
                 this._state === STATES.CONNECTED  ||
-                this._state === STATES.RESUMING) {
+                this._state === STATES.RESUMING   ||
+                this._state === STATES.DUPLICATE) {
                 this._dbg('connect() ignoriert — Zustand:', this._state);
                 return;
             }
@@ -276,10 +315,41 @@
             // löscht und den Lock auf die neue client_id umschreibt.
             // Beleg: Paket 4 events.py _cancel_grace_timer(), resume_lock()
             let url = this._endpoint;
-            if (resumeClientId) {
-                url += '?resume_client_id=' + encodeURIComponent(resumeClientId);
-            }
+            // Query-Parameter zusammenbauen: role und ggf. resume_client_id
+            // role: wird vom Server für Duplikat-Prüfung benötigt (Build 265)
+            // Beleg: Projektgespräch 2026-05-31.
+            const _qp = new URLSearchParams();
+            if (this._role) _qp.set('role', this._role);
+            if (resumeClientId) _qp.set('resume_client_id', resumeClientId);
+            const _qs = _qp.toString();
+            if (_qs) url += '?' + _qs;
             this._dbg('EventSource öffnen:', url);
+
+            // Preflight-Check via fetch: EventSource kann keinen HTTP-Statuscode
+            // auslesen. Wir schicken zuerst einen HEAD-ähnlichen GET und prüfen
+            // ob der Server 409 zurückgibt (Duplikat-Rolle).
+            // Bei 409 wird _onDuplicate() aufgerufen statt EventSource zu öffnen.
+            // Beleg: Projektgespräch 2026-05-31.
+            if (this._role && !resumeClientId) {
+                // Nur beim initialen Connect prüfen, nicht beim RESUMING-Reconnect.
+                // Beim RESUMING sind wir bereits verbunden gewesen — kein Duplikat.
+                fetch(url, {
+                    method: 'GET',
+                    headers: { 'Accept': 'text/event-stream, application/json' },
+                }).then(resp => {
+                    if (resp.status === 409) {
+                        return resp.json().then(data => {
+                            this._onDuplicate(data);
+                        });
+                    }
+                    // Kein Duplikat — echte EventSource öffnen
+                    this._openEventSourceDirect(url);
+                }).catch(err => {
+                    this._dbg('Preflight-Fehler:', err, '— öffne EventSource direkt');
+                    this._openEventSourceDirect(url);
+                });
+                return;  // EventSource wird asynchron geöffnet
+            }
 
             // EventSource-Instanz erzeugen (injizierbar für Tests)
             const es = new this._EventSource(url);
@@ -314,6 +384,33 @@
             es.onerror = () => {
                 this._onError();
             };
+        }
+
+        /**
+         * EventSource direkt öffnen (nach Preflight-Check oder RESUMING).
+         * Wird von _openEventSource() asynchron aufgerufen wenn kein 409.
+         * Beleg: Projektgespräch 2026-05-31.
+         */
+        _openEventSourceDirect(url) {
+            this._dbg('EventSource direkt öffnen (Preflight OK):', url);
+            const es = new this._EventSource(url);
+            this._evtSrc = es;
+
+            es.addEventListener('client_id', (evt) => { this._onClientId(evt); });
+
+            const _passthroughEvents = [
+                'support_status', 'editor_lock_acquired', 'editor_lock_released',
+                'lock_acquired', 'lock_takeover_request', 'lock_takeover_result',
+                'report_updated',
+            ];
+            for (const name of _passthroughEvents) {
+                es.addEventListener(name, (evt) => {
+                    let data = null;
+                    try { data = JSON.parse(evt.data); } catch (_) { data = {}; }
+                    this._emitUp('sse_event', { name, data });
+                });
+            }
+            es.onerror = () => { this._onError(); };
         }
 
         /**
@@ -462,7 +559,160 @@
                 console.debug('[SSELayer]', ...args);
             }
         }
-    }
+
+        /**
+         * HTTP 409 — diese SSE-Rolle ist bereits in einem anderen Tab belegt.
+         *
+         * Ablauf:
+         *   1. Zustand → DUPLICATE (keine weitere Verbindung wird versucht).
+         *   2. Aktives Fenster per BroadcastChannel um Fokus bitten.
+         *   3. Modal anzeigen mit Schließ-Button.
+         *
+         * @param {{ duplicate: boolean, role: string, active_window_id: string }} data
+         * Beleg: Projektgespräch 2026-05-31.
+         */
+        _onDuplicate(data) {
+            this._dbg('Duplikat-SSE erkannt:', data);
+            this._transition(STATES.DUPLICATE);
+            this._emitUp('duplicate', { role: data.role, activeWindowId: data.active_window_id });
+
+            // Aktives Fenster per BroadcastChannel um Fokus bitten.
+            // Das Ziel-Fenster ruft dann window.focus() selbst auf (erlaubt,
+            // da es selbst aktiv ist). Wir können das von hier nicht erzwingen.
+            // Beleg: Browser-Sicherheitsmodell, Projektgespräch 2026-05-31.
+            if (this._controlChannel) {
+                this._controlChannel.postMessage({
+                    type:            'request_focus',
+                    role:            data.role,
+                    active_window_id: data.active_window_id,
+                });
+                this._dbg('BroadcastChannel: request_focus gesendet an', data.active_window_id);
+            }
+
+            this._showDuplicateModal(data.role || '?');
+        }
+
+        /**
+         * Eingehende BroadcastChannel 'forensic_control' Nachricht verarbeiten.
+         *
+         * Unterstützte Typen:
+         *   request_focus — Ein anderes Tab bittet uns, uns in den Vordergrund zu bringen.
+         *                    Wir rufen window.focus() auf (erlaubt weil wir aktiv sind).
+         * Beleg: Projektgespräch 2026-05-31.
+         */
+        _onControlMessage(msg) {
+            if (!msg || typeof msg !== 'object') return;
+            if (msg.type === 'request_focus') {
+                this._dbg('BroadcastChannel: request_focus empfangen — window.focus()');
+                try { window.focus(); } catch (_) {}
+            }
+        }
+
+        /**
+         * Duplikat-Modal anzeigen.
+         *
+         * Das Modal ist nicht schließbar (kein Schließen-Button im Header).
+         * Es bietet zwei Aktionen:
+         *   [Dieses Tab schließen]  — window.close() (nur bei window.open()-Tabs)
+         *   [Trotzdem benutzen]     — Tab bleibt offen, Modal verschwindet,
+         *                              aber ohne SSE-Verbindung.
+         *
+         * Falls window.close() verweigert wird (manuell geöffnetes Tab),
+         * zeigen wir einen Hinweis: "Bitte schließe dieses Tab mit Strg+W".
+         * Beleg: Browser-Sicherheitsmodell, Projektgespräch 2026-05-31.
+         *
+         * @param {string} role  — Fenster-Rolle ('main', 'userinfo', 'report')
+         */
+        _showDuplicateModal(role) {
+            // Rolle leserlich machen
+            const _roleLabels = { main: 'Haupt-Fenster', userinfo: 'Nutzerinfo', report: 'Bericht' };
+            const roleLabel = _roleLabels[role] || role;
+
+            // Modal-Container
+            const overlay = document.createElement('div');
+            overlay.id = 'sse-duplicate-overlay';
+            overlay.style.cssText = [
+                'position:fixed', 'inset:0', 'z-index:999999',
+                'display:flex', 'align-items:center', 'justify-content:center',
+                'background:rgba(0,0,0,0.65)', 'font-family:system-ui,sans-serif',
+            ].join(';');
+
+            const box = document.createElement('div');
+            box.style.cssText = [
+                'background:#fff', 'border-radius:8px', 'padding:28px 32px',
+                'max-width:440px', 'width:90%', 'box-shadow:0 8px 32px rgba(0,0,0,0.35)',
+                'text-align:center',
+            ].join(';');
+
+            // Icon + Überschrift
+            box.innerHTML = `
+                <div style="font-size:2.2rem;margin-bottom:12px">⚠️</div>
+                <h2 style="margin:0 0 12px;font-size:1.15rem;color:#b00">
+                    Dieses Fenster ist ein Duplikat
+                </h2>
+                <p style="margin:0 0 20px;color:#444;line-height:1.5">
+                    Ein <strong>${roleLabel}</strong>-Fenster ist bereits geöffnet
+                    und hat eine aktive SSE-Verbindung. Dieses Tab erhält
+                    <strong>keine</strong> Echtzeit-Updates.
+                </p>
+                <p style="margin:0 0 24px;color:#666;font-size:0.9rem">
+                    Das aktive Fenster wurde aufgefordert, sich in den Vordergrund zu bringen.
+                </p>
+            `;
+
+            // Button: Tab schließen
+            const btnClose = document.createElement('button');
+            btnClose.textContent = 'Dieses Tab schließen';
+            btnClose.style.cssText = [
+                'display:inline-block', 'margin:0 8px 0 0',
+                'padding:9px 18px', 'border-radius:5px', 'border:none',
+                'background:#c0392b', 'color:#fff', 'cursor:pointer',
+                'font-size:0.95rem', 'font-weight:600',
+            ].join(';');
+            btnClose.addEventListener('click', () => {
+                // window.close() funktioniert nur bei per window.open() geöffneten Tabs.
+                // Bei manuell geöffneten Tabs verweigert der Browser das Schließen.
+                window.close();
+                // Falls der Tab noch offen ist (Timeout): Hinweis anzeigen
+                setTimeout(() => {
+                    const hint = box.querySelector('#sse-close-hint');
+                    if (hint) hint.style.display = 'block';
+                }, 400);
+            });
+
+            // Hinweis wenn window.close() nicht funktioniert
+            const closeHint = document.createElement('p');
+            closeHint.id = 'sse-close-hint';
+            closeHint.style.cssText = 'display:none;margin:14px 0 0;color:#b00;font-size:0.88rem';
+            closeHint.textContent = 'Dieses Tab kann nicht automatisch geschlossen werden. Bitte schließe es manuell mit Strg+W.';
+
+            // Button: Trotzdem benutzen
+            const btnKeep = document.createElement('button');
+            btnKeep.textContent = 'Trotzdem benutzen';
+            btnKeep.style.cssText = [
+                'display:inline-block', 'margin:0',
+                'padding:9px 18px', 'border-radius:5px',
+                'border:1px solid #aaa', 'background:#f5f5f5',
+                'color:#333', 'cursor:pointer', 'font-size:0.95rem',
+            ].join(';');
+            btnKeep.addEventListener('click', () => {
+                document.body.removeChild(overlay);
+                this._dbg('Duplikat-Modal: Benutzer wählt "Trotzdem benutzen" — kein SSE.');
+            });
+
+            const btnRow = document.createElement('div');
+            btnRow.appendChild(btnClose);
+            btnRow.appendChild(btnKeep);
+
+            box.appendChild(btnRow);
+            box.appendChild(closeHint);
+            overlay.appendChild(box);
+            document.body.appendChild(overlay);
+
+            this._dbg('Duplikat-Modal angezeigt (Rolle:', role, ')');
+        }
+
+    }  // Ende class SSELayer
 
     // -----------------------------------------------------------------------
     // Export auf window

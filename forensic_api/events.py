@@ -48,8 +48,21 @@
 #   coordinator.db (READ-ONLY) — Support-Status
 #   evidence_<uid>.db (READ/WRITE) — Lock-Freigabe bei Grace-Period-Ablauf
 #
-# Version: v0.6.247 · Build: 247 · 2026-05-24
+# Version: v0.6.265 · Build: 265 · 2026-05-31
 # =============================================================================
+#
+# Changelog Build 265 (2026-05-31):
+#   - Duplikat-SSE-Schutz: handle() prüft ob für die Fenster-Rolle bereits
+#     eine aktive SSE-Verbindung existiert. Wenn ja → HTTP 409 mit JSON-Body
+#     { duplicate: true, role, active_window_id }. Der Browser-Client
+#     (sse_layer.js) zeigt dann ein Modal und kann das aktive Fenster
+#     per BroadcastChannel in den Fokus holen.
+#     Die Rolle wird aus dem ?role=<rolle> Query-Parameter gelesen.
+#     Beleg: Projektgespräch 2026-05-31.
+#   - _edb_lock: Klassen-Lock serialisiert alle edb._con.execute()-Aufrufe
+#     in der SSE-Polling-Schleife. Verhindert SQLITE_MISUSE bei concurrent
+#     Zugriffen aus mehreren SSE-Threads.
+#     Beleg: Diagnose freeze_dump 2026-05-31.
 #
 # Changelog Build 247 (Paket 4 — SSE Grace-Period, RESUMING, Takeover-Events):
 #   - Grace-Period (5s): threading.Timer ersetzt den direkten _cleanup_lock()-Aufruf
@@ -87,6 +100,7 @@ import uuid
 from typing import TYPE_CHECKING, Optional
 
 from core.logger import get_logger
+from forensic_api.windows import get_registry as _get_window_registry
 
 if TYPE_CHECKING:
     from server.http_server import ForensicRequestHandler
@@ -187,6 +201,34 @@ class EventsEndpoint:
                      resume_client_id: Alte SSE-Client-ID fuer Grace-Period-RESUMING.
                      Beleg: Layer 2 States RESUMING, Paket-4-Review 2026-05-24
         """
+        # Duplikat-SSE-Schutz: Prüfen ob für diese Fenster-Rolle bereits eine
+        # aktive SSE-Verbindung läuft. Wenn ja → HTTP 409 damit der Browser
+        # das Duplikat-Tab schließen oder ignorieren kann.
+        # Die Rolle kommt als ?role=<main|userinfo|report> im Query-String.
+        # Beleg: Projektgespräch 2026-05-31.
+        _role = ((params or {}).get("role") or [None])[0]
+        if _role:
+            _reg = _get_window_registry()
+            _existing = _reg.find_active_by_role(_role)
+            if _existing:
+                import json as _json
+                _body = _json.dumps({
+                    "duplicate":        True,
+                    "role":             _role,
+                    "active_window_id": _existing["window_id"],
+                }).encode("utf-8")
+                logger.warning(
+                    "SSE-Duplikat abgewiesen: Rolle '%s' bereits belegt durch "
+                    "Fenster '%s' — HTTP 409.",
+                    _role, _existing["window_id"],
+                )
+                handler.send_response_body(
+                    409, _body,
+                    content_type="application/json; charset=utf-8",
+                    extra_headers={"Cache-Control": "no-store"},
+                )
+                return
+
         # SSE-Semaphore erwerben — verhindert Thread-Pool-Blockade.
         # non-blocking: sofortiger 503 statt unendliches Warten.
         # Beleg: Bugfix Build 013, Projektgespraech 2026-05-07.
@@ -306,9 +348,10 @@ class EventsEndpoint:
         # Verhindert dass editor_lock_released periodisch gesendet wird
         # wenn schlicht kein Lock vorhanden ist.
         # Beleg: AP-E4 Bugfix, Projektgespraech 2026-04-19
-        _initial_lock = self._bundle.evidence._con.execute(
-            "SELECT lock_id FROM editor_locks ORDER BY locked_at DESC LIMIT 1"
-        ).fetchone()
+        with EventsEndpoint._edb_lock:
+            _initial_lock = self._bundle.evidence._con.execute(
+                "SELECT lock_id FROM editor_locks ORDER BY locked_at DESC LIMIT 1"
+            ).fetchone()
         _last_lock_id: Optional[str] = (
             str(_initial_lock["lock_id"]) if _initial_lock else None
         )
@@ -327,9 +370,10 @@ class EventsEndpoint:
                 # Lock-Zustand lesen, DANN Event loeschen.
                 # Reihenfolge wichtig: zwischen clear() und dem DB-Zugriff koennte
                 # sonst eine Aenderung verloren gehen.
-                _cl_row = self._bundle.evidence._con.execute(
-                    "SELECT lock_id FROM editor_locks ORDER BY locked_at DESC LIMIT 1"
-                ).fetchone()
+                with EventsEndpoint._edb_lock:
+                    _cl_row = self._bundle.evidence._con.execute(
+                        "SELECT lock_id FROM editor_locks ORDER BY locked_at DESC LIMIT 1"
+                    ).fetchone()
                 current_lock_id: Optional[str] = (
                     str(_cl_row["lock_id"]) if _cl_row else None
                 )
@@ -374,6 +418,12 @@ class EventsEndpoint:
     # Beleg: SLA Punkt 2, Paket-4-Review 2026-05-24
     _grace_timers: dict[str, threading.Timer] = {}
     _grace_timers_lock: threading.Lock = threading.Lock()
+
+    # Klassen-Lock fuer serialisierten Zugriff auf edb._con aus mehreren
+    # SSE-Threads. SQLite erlaubt check_same_thread=False, aber concurrent
+    # execute()-Aufrufe aus verschiedenen Threads fuehren zu SQLITE_MISUSE.
+    # Beleg: Diagnose freeze_dump 2026-05-31, SQLITE_MISUSE (error 21).
+    _edb_lock: threading.Lock = threading.Lock()
 
     def _start_grace_timer(self, client_id: str) -> None:
         """
@@ -501,10 +551,11 @@ class EventsEndpoint:
 
             # Szenario A: Bin ich Lock-Inhaber mit einer pending Takeover-Anfrage?
             # Suche den Lock der zu meiner client_id gehoert.
-            my_lock_row = edb._con.execute(
-                "SELECT report_id, lock_id FROM editor_locks WHERE sse_client=?",
-                (client_id,),
-            ).fetchone()
+            with EventsEndpoint._edb_lock:
+                my_lock_row = edb._con.execute(
+                    "SELECT report_id, lock_id FROM editor_locks WHERE sse_client=?",
+                    (client_id,),
+                ).fetchone()
             if my_lock_row:
                 report_id = int(my_lock_row["report_id"])
                 pending = edb.get_pending_takeover(report_id)
@@ -527,21 +578,23 @@ class EventsEndpoint:
             # aktuellen sse_client des Anfragenden.
             # Pragmatische Loesung: Wir suchen ob es fuer unsere client_id einen
             # queue-Eintrag gibt und ob der zugehoerige Lock resolved wurde.
-            my_queue_row = edb._con.execute(
-                "SELECT report_id, requested_by FROM lock_queue WHERE sse_client=?",
-                (client_id,),
-            ).fetchone()
+            with EventsEndpoint._edb_lock:
+                my_queue_row = edb._con.execute(
+                    "SELECT report_id, requested_by FROM lock_queue WHERE sse_client=?",
+                    (client_id,),
+                ).fetchone()
             if my_queue_row:
                 report_id    = int(my_queue_row["report_id"])
                 requested_by = str(my_queue_row["requested_by"])
                 # Gibt es ein resolved Takeover-Ergebnis fuer diesen Benutzer?
-                result_row = edb._con.execute(
-                    "SELECT id, status FROM lock_takeover_requests "
-                    "WHERE report_id=? AND requested_by=? AND status IN ('granted','denied') "
-                    "AND responded_at IS NOT NULL "
-                    "ORDER BY responded_at DESC LIMIT 1",
-                    (report_id, requested_by),
-                ).fetchone()
+                with EventsEndpoint._edb_lock:
+                    result_row = edb._con.execute(
+                        "SELECT id, status FROM lock_takeover_requests "
+                        "WHERE report_id=? AND requested_by=? AND status IN ('granted','denied') "
+                        "AND responded_at IS NOT NULL "
+                        "ORDER BY responded_at DESC LIMIT 1",
+                        (report_id, requested_by),
+                    ).fetchone()
                 if result_row:
                     if not send_fn("lock_takeover_result", {
                         "report_id":  report_id,

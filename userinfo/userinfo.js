@@ -406,7 +406,51 @@ function renderReadonlyParagraphs(container, paragraphs) {
  * SSE-Stream für Fenster 2 einrichten.
  */
 function initSSEWindow2() {
-    const evtSrc = new EventSource(FORENSIC_API.EVENTS);
+    // Preflight-Prüfung: Duplikat-SSE-Schutz (Build 265).
+    // EventSource kann keinen HTTP-Status auslesen — fetch-Preflight nötig.
+    // Beleg: Projektgespräch 2026-05-31.
+    const _sseUrl = FORENSIC_API.EVENTS + '?role=userinfo';
+    fetch(_sseUrl, { method: 'GET', headers: { 'Accept': 'text/event-stream, application/json' } })
+        .then(function(resp) {
+            if (resp.status === 409) {
+                return resp.json().then(function(data) {
+                    _showDuplicateHint('Nutzerinfo', data.active_window_id);
+                });
+            }
+            _openSSEWindow2(_sseUrl);
+        })
+        .catch(function() { _openSSEWindow2(_sseUrl); });
+}
+
+/** Duplikat-Hinweis für userinfo-Fenster (ohne SSELayer). Beleg: 2026-05-31. */
+function _showDuplicateHint(roleLabel, activeWindowId) {
+    if (typeof BroadcastChannel !== 'undefined') {
+        var bc = new BroadcastChannel('forensic_control');
+        bc.postMessage({ type: 'request_focus', role: 'userinfo', active_window_id: activeWindowId });
+        bc.close();
+    }
+    var msg = document.createElement('div');
+    msg.style.cssText = 'position:fixed;inset:0;z-index:999999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.65);font-family:system-ui,sans-serif';
+    msg.innerHTML = '<div style="background:#fff;border-radius:8px;padding:28px 32px;max-width:420px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.35)">'
+        + '<div style="font-size:2rem;margin-bottom:12px">\u26a0\ufe0f</div>'
+        + '<h2 style="margin:0 0 12px;font-size:1.1rem;color:#b00">Duplikat-Fenster</h2>'
+        + '<p style="color:#444;line-height:1.5">Ein <strong>' + roleLabel + '</strong>-Fenster ist bereits offen. Dieses Tab erhält keine Echtzeit-Updates.</p>'
+        + '<button id="sse-dup-close" style="margin:12px 8px 0 0;padding:8px 16px;border:none;border-radius:5px;background:#c0392b;color:#fff;cursor:pointer;font-weight:600">Tab schließen</button>'
+        + '<button id="sse-dup-keep" style="margin:12px 0 0;padding:8px 16px;border:1px solid #aaa;border-radius:5px;background:#f5f5f5;cursor:pointer">Trotzdem benutzen</button>'
+        + '<p id="sse-dup-hint" style="display:none;margin-top:10px;color:#b00;font-size:0.88rem">Bitte schließe dieses Tab manuell mit Strg+W.</p>'
+        + '</div>';
+    document.body.appendChild(msg);
+    document.getElementById('sse-dup-close').addEventListener('click', function() {
+        window.close();
+        setTimeout(function() { var h=document.getElementById('sse-dup-hint'); if(h) h.style.display='block'; }, 400);
+    });
+    document.getElementById('sse-dup-keep').addEventListener('click', function() {
+        document.body.removeChild(msg);
+    });
+}
+
+function _openSSEWindow2(sseUrl) {
+    const evtSrc = new EventSource(sseUrl);
 
     evtSrc.addEventListener('annotation_added', () => {
         loadDynamicBlocks();

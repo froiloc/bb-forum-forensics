@@ -5970,7 +5970,40 @@
         console.warn("[Forensic] EventSource nicht verfügbar — Support-Indikator deaktiviert.");
         return;
       }
-      _es = new EventSource(ForensicToolbar.config.API_EVENTS);
+      // Preflight-Prüfung: Duplikat-SSE-Schutz (Build 265).
+      // Beleg: Projektgespräch 2026-05-31.
+      var _sseUrl = ForensicToolbar.config.API_EVENTS + '?role=main';
+      fetch(_sseUrl, { method: 'GET', headers: { Accept: 'text/event-stream, application/json' } })
+        .then(function(resp) {
+          if (resp.status === 409) {
+            return resp.json().then(function(data) {
+              _showMainDuplicateHint(data.active_window_id);
+            });
+          }
+          _openMainSSE(_sseUrl);
+        })
+        .catch(function() { _openMainSSE(_sseUrl); });
+    }
+
+    function _showMainDuplicateHint(activeWindowId) {
+      if (typeof BroadcastChannel !== 'undefined') {
+        var bc = new BroadcastChannel('forensic_control');
+        bc.postMessage({ type: 'request_focus', role: 'main', active_window_id: activeWindowId });
+        bc.close();
+      }
+      console.warn('[Forensic] SSE-Duplikat (main): aktives Fenster=' + activeWindowId);
+      // Minimaler Hinweis in der Toolbar — kein modales Overlay für main
+      var bar = document.querySelector('.forensic-toolbar');
+      if (bar) {
+        var note = document.createElement('span');
+        note.style.cssText = 'background:#b00;color:#fff;padding:2px 8px;border-radius:3px;font-size:0.82rem;margin-left:8px';
+        note.textContent = '⚠ Duplikat-Tab — kein SSE';
+        bar.appendChild(note);
+      }
+    }
+
+    function _openMainSSE(sseUrl) {
+      _es = new EventSource(sseUrl);
 
       _es.addEventListener("support_status", function (e) {
         var data;

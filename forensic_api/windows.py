@@ -21,6 +21,13 @@
 #
 # Build 173: Erstimplementierung.
 # Beleg: Projektgespräch 2026-05-11
+#
+# Build 265 (2026-05-31):
+#   - find_active_by_role(): liefert das erste aktive Fenster einer Rolle.
+#     Wird von events.py genutzt um Duplikat-SSE-Verbindungen abzuweisen (HTTP 409).
+#   - WindowRegistry._lock ist jetzt über get_lock() von außen zugreifbar
+#     damit events.py atomic prüfen und eintragen kann.
+#   Beleg: Projektgespräch 2026-05-31.
 # =============================================================================
 
 from __future__ import annotations
@@ -108,8 +115,42 @@ class WindowRegistry:
             ]
 
 
+    def find_active_by_role(self, role: str) -> Optional[dict]:
+        """
+        Gibt das erste aktive Fenster mit der angegebenen Rolle zurück,
+        oder None wenn keins gefunden.
+
+        Wird von events.py verwendet um zu prüfen ob bereits eine
+        SSE-Verbindung für diese Rolle besteht (Duplikat-Schutz).
+        Beleg: Projektgespräch 2026-05-31.
+        """
+        now = time.time()
+        with self._lock:
+            for wid, w in self._windows.items():
+                if w["role"] == role and (now - w["last_seen"] <= _WINDOW_TTL):
+                    return {
+                        "window_id":     wid,
+                        "role":          w["role"],
+                        "registered_at": int(w["registered_at"]),
+                        "last_seen":     int(w["last_seen"]),
+                    }
+        return None
+
+    @property
+    def lock(self) -> threading.Lock:
+        """Zugriff auf den internen Lock fuer atomare check-and-set Operationen."""
+        return self._lock
+
+
 # Globale Registry-Instanz (Singleton pro Prozess)
 _registry = WindowRegistry()
+
+
+def get_registry() -> WindowRegistry:
+    """Gibt die globale WindowRegistry-Instanz zurück.
+    Beleg: Projektgespräch 2026-05-31.
+    """
+    return _registry
 
 
 class WindowsEndpoint:

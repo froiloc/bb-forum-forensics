@@ -33,7 +33,11 @@
  * zuständig. editor_bootstrap.js ist ausschließlich für Fenster 3 (Editor).
  * Beleg: Option C, Architekturentscheidung Paket-9-Review 2026-05-24
  *
- * Version: v0.6.252 · Build: 252 · 2026-05-24
+ * Version: v0.6.265 · Build: 265 · 2026-05-31
+ *
+ * Changelog Build 265 (2026-05-31):
+ *   - SSELayer erhält role: 'report' damit der Server Duplikat-SSE-Verbindungen
+ *     mit HTTP 409 abweisen kann. Beleg: Projektgespräch 2026-05-31.
  * Beleg: Paket 9, editor_bootstrap.js, Schichten-Architektur
  */
 
@@ -76,6 +80,9 @@
 
         const sseLayer = new window.SSELayer({
             debug: window.FORENSIC_DEBUG !== false,
+            // Fenster-Rolle für Duplikat-SSE-Schutz (Build 265).
+            // Beleg: Projektgespräch 2026-05-31.
+            role: 'report',
         });
         window.sseLayer = sseLayer;
         _dbg('SSELayer instanziiert');
