@@ -28,6 +28,14 @@
 #   - WindowRegistry._lock ist jetzt über get_lock() von außen zugreifbar
 #     damit events.py atomic prüfen und eintragen kann.
 #   Beleg: Projektgespräch 2026-05-31.
+#
+# Build 267 (2026-05-31):
+#   - Separates _active_sse_roles-Dict in WindowRegistry (role → client_id).
+#     claim_sse_role() / release_sse_role() werden von events.py
+#     beim Stream-Start bzw. im finally-Block aufgerufen.
+#     find_active_by_role() prüft nur noch _active_sse_roles, nicht mehr
+#     den Fenster-Heartbeat. Verhindert Falsch-Positiv nach Tab-Schließen.
+#   Beleg: Projektgespräch 2026-05-31.
 # =============================================================================
 
 from __future__ import annotations
@@ -72,6 +80,11 @@ class WindowRegistry:
         self._lock = threading.Lock()
         # { window_id: { role, registered_at, last_seen } }
         self._windows: dict[str, dict] = {}
+        # { role: client_id } — aktive SSE-Verbindungen pro Rolle.
+        # Wird von events.py via claim_sse_role() / release_sse_role()
+        # gepflegt. Unabhängig vom Fenster-Heartbeat-TTL.
+        # Beleg: Projektgespräch 2026-05-31.
+        self._active_sse_roles: dict[str, str] = {}
 
     def register(self, window_id: str, role: str) -> None:
         """Fenster registrieren oder Zeitstempel erneuern."""
@@ -117,24 +130,66 @@ class WindowRegistry:
 
     def find_active_by_role(self, role: str) -> Optional[dict]:
         """
-        Gibt das erste aktive Fenster mit der angegebenen Rolle zurück,
-        oder None wenn keins gefunden.
+        Gibt einen Stub-Dict zurueck wenn fuer die Rolle ein aktiver
+        SSE-Stream laeuft, sonst None.
 
-        Wird von events.py verwendet um zu prüfen ob bereits eine
-        SSE-Verbindung für diese Rolle besteht (Duplikat-Schutz).
+        Seit Build 267 wird _active_sse_roles geprueft (gepflegt von
+        events.py via claim/release), nicht mehr der Fenster-Heartbeat.
+        Das verhindert Falsch-Positiv nach Tab-Schliessen (TTL noch aktiv,
+        SSE-Thread aber bereits beendet).
         Beleg: Projektgespräch 2026-05-31.
         """
-        now = time.time()
         with self._lock:
-            for wid, w in self._windows.items():
-                if w["role"] == role and (now - w["last_seen"] <= _WINDOW_TTL):
-                    return {
-                        "window_id":     wid,
-                        "role":          w["role"],
-                        "registered_at": int(w["registered_at"]),
-                        "last_seen":     int(w["last_seen"]),
-                    }
+            client_id = self._active_sse_roles.get(role)
+            if client_id:
+                return {
+                    "window_id": client_id,
+                    "role":      role,
+                }
         return None
+
+    def claim_sse_role(self, role: str, client_id: str) -> bool:
+        """
+        Beansprucht einen SSE-Slot fuer eine Rolle.
+
+        Gibt True zurueck wenn der Slot erfolgreich beansprucht wurde,
+        False wenn die Rolle bereits von einer anderen client_id belegt ist
+        (Race-Condition zwischen Preflight-Check und Stream-Start).
+
+        Thread-sicher: Lock wird gehalten waehrend geprueft und eingetragen.
+        Beleg: Projektgespräch 2026-05-31.
+        """
+        with self._lock:
+            existing = self._active_sse_roles.get(role)
+            if existing and existing != client_id:
+                return False
+            self._active_sse_roles[role] = client_id
+            return True
+
+    def release_sse_role(self, role: str, client_id: str) -> None:
+        """
+        Gibt den SSE-Slot fuer eine Rolle frei.
+
+        Nur der Client der den Slot beansprucht hat darf ihn freigeben
+        (client_id-Pruefung). Verhindert dass ein RESUMING-Reconnect
+        (neue client_id) den noch aktiven Slot des Vorgaengers loescht.
+        Beleg: Projektgespräch 2026-05-31.
+        """
+        with self._lock:
+            if self._active_sse_roles.get(role) == client_id:
+                del self._active_sse_roles[role]
+                logger.debug(
+                    "SSE-Rolle '%s' freigegeben (client_id=%s)", role, client_id
+                )
+
+    def find_active_sse_role(self, role: str) -> Optional[str]:
+        """
+        Gibt die client_id des aktiven SSE-Clients fuer eine Rolle zurueck,
+        oder None wenn kein aktiver SSE-Stream fuer diese Rolle laeuft.
+        Beleg: Projektgespräch 2026-05-31.
+        """
+        with self._lock:
+            return self._active_sse_roles.get(role)
 
     @property
     def lock(self) -> threading.Lock:

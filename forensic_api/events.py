@@ -53,16 +53,22 @@
 #
 # Changelog Build 265 (2026-05-31):
 #   - Duplikat-SSE-Schutz: handle() prüft ob für die Fenster-Rolle bereits
-#     eine aktive SSE-Verbindung existiert. Wenn ja → HTTP 409 mit JSON-Body
-#     { duplicate: true, role, active_window_id }. Der Browser-Client
-#     (sse_layer.js) zeigt dann ein Modal und kann das aktive Fenster
-#     per BroadcastChannel in den Fokus holen.
-#     Die Rolle wird aus dem ?role=<rolle> Query-Parameter gelesen.
-#     Beleg: Projektgespräch 2026-05-31.
-#   - _edb_lock: Klassen-Lock serialisiert alle edb._con.execute()-Aufrufe
-#     in der SSE-Polling-Schleife. Verhindert SQLITE_MISUSE bei concurrent
-#     Zugriffen aus mehreren SSE-Threads.
+#     eine aktive SSE-Verbindung existiert. Wenn ja → HTTP 409.
+#   - _edb_lock: Klassen-Lock gegen SQLITE_MISUSE.
 #     Beleg: Diagnose freeze_dump 2026-05-31.
+#
+# Changelog Build 267 (2026-05-31) — korrigiert in Build 268:
+#   - claim_sse_role beim Stream-Start.
+#   - release_sse_role im finally-Block war falsch (zu früh, vor Grace-Period).
+#
+# Changelog Build 268 (2026-05-31):
+#   - release_sse_role aus finally-Block entfernt.
+#     Stattdessen: _start_grace_timer() erhält role-Parameter.
+#     _grace_expired() ruft release_sse_role() auf — Slot wird erst
+#     nach Ablauf der Grace-Period freigegeben.
+#     Beim RESUMING (_cancel_grace_timer): Slot via claim_sse_role() auf
+#     neue client_id umgeschrieben — Verbindungsheilung ohne 409-Risiko.
+#     Beleg: Projektgespräch 2026-05-31.
 #
 # Changelog Build 247 (Paket 4 — SSE Grace-Period, RESUMING, Takeover-Events):
 #   - Grace-Period (5s): threading.Timer ersetzt den direkten _cleanup_lock()-Aufruf
@@ -271,6 +277,19 @@ class EventsEndpoint:
             self._bundle._active_sse_clients = set()
         self._bundle._active_sse_clients.add(client_id)
 
+        # SSE-Rolle beanspruchen — Duplikat-Schutz (Build 267).
+        # Wird im finally-Block wieder freigegeben damit der Slot
+        # exakt mit dem Stream-Thread-Ende freigegeben wird.
+        # _role wurde bereits in handle() aus params gelesen — hier
+        # nochmals lesen da _handle_stream params eigenstaendig bekommt.
+        # Beleg: Projektgespräch 2026-05-31.
+        _stream_role: Optional[str] = ((params or {}).get("role") or [None])[0]
+        if _stream_role:
+            _get_window_registry().claim_sse_role(_stream_role, client_id)
+            logger.debug(
+                "SSE-Rolle '%s' beansprucht: client_id=%s", _stream_role, client_id
+            )
+
         # RESUMING (Layer 2): Alte SSE-Client-ID aus Query-Parameter.
         # Falls vorhanden: Lock des alten Clients auf neue client_id umschreiben
         # und einen laufenden Grace-Timer loeschen.
@@ -278,8 +297,10 @@ class EventsEndpoint:
         resume_client_id: Optional[str] = (params or {}).get("resume_client_id", [None])[0]
         if resume_client_id:
             # Grace-Timer fuer die alte client_id loeschen — Verbindung geheilt.
+            # new_client_id mitsenden damit SSE-Slot auf neue ID umgeschrieben wird.
             # Beleg: SLA Punkt 2 (Grace-Period-Heilung), Paket-4-Review 2026-05-24
-            self._cancel_grace_timer(resume_client_id)
+            # Beleg Build 268: Projektgespräch 2026-05-31.
+            self._cancel_grace_timer(resume_client_id, new_client_id=client_id)
 
             resumed = self._bundle.evidence.resume_lock(
                 old_sse_client=resume_client_id,
@@ -408,7 +429,11 @@ class EventsEndpoint:
             # der Timer geloescht und der Lock bleibt erhalten.
             # Beleg: SLA Punkt 2, Paket-4-Review 2026-05-24
             self._bundle._active_sse_clients.discard(client_id)
-            self._start_grace_timer(client_id)
+            # SSE-Slot wird NICHT sofort freigegeben — erst nach Ablauf der
+            # Grace-Period (_grace_expired). Damit kann ein RESUMING-Reconnect
+            # innerhalb von _GRACE_PERIOD_SEC den Slot heilen ohne 409.
+            # Beleg: Projektgespräch 2026-05-31.
+            self._start_grace_timer(client_id, _stream_role)
 
     # ------------------------------------------------------------------
     # Grace-Period-Verwaltung
@@ -425,19 +450,22 @@ class EventsEndpoint:
     # Beleg: Diagnose freeze_dump 2026-05-31, SQLITE_MISUSE (error 21).
     _edb_lock: threading.Lock = threading.Lock()
 
-    def _start_grace_timer(self, client_id: str) -> None:
+    def _start_grace_timer(self, client_id: str, role: Optional[str] = None) -> None:
         """
         Startet den Grace-Period-Timer fuer eine SSE-Client-ID.
 
         Nach _GRACE_PERIOD_SEC Sekunden wird _grace_expired() aufgerufen
         wenn der Timer nicht vorher durch _cancel_grace_timer() geloescht wurde.
+        role: optionale Fenster-Rolle — wenn gesetzt, gibt _grace_expired()
+        den SSE-Slot via release_sse_role() frei.
 
         Beleg: SLA Punkt 2, Paket-4-Review 2026-05-24
+        Beleg Build 268: Projektgespräch 2026-05-31.
         """
         timer = threading.Timer(
             _GRACE_PERIOD_SEC,
             self._grace_expired,
-            args=(client_id,),
+            args=(client_id, role),
         )
         timer.daemon = True  # Kein Blockieren des Server-Shutdowns
         with EventsEndpoint._grace_timers_lock:
@@ -451,22 +479,42 @@ class EventsEndpoint:
             "Grace-Timer gestartet: client_id=%s (%.0fs)", client_id, _GRACE_PERIOD_SEC
         )
 
-    def _cancel_grace_timer(self, client_id: str) -> bool:
+    def _cancel_grace_timer(
+        self, client_id: str, new_client_id: Optional[str] = None
+    ) -> bool:
         """
         Loescht einen laufenden Grace-Period-Timer (RESUMING — Verbindung geheilt).
 
-        Gibt True zurueck wenn ein Timer gefunden und abgebrochen wurde.
+        new_client_id: wenn angegeben, wird der SSE-Slot der alten client_id
+        auf die neue client_id umgeschrieben (claim_sse_role). Damit bleibt
+        der Duplikat-Schutz aktiv ohne dass der neue Stream einen 409 bekommt.
         Beleg: Layer 2 States RESUMING, SLA Punkt 2, Paket-4-Review 2026-05-24
+        Beleg Build 268: Projektgespräch 2026-05-31.
         """
         with EventsEndpoint._grace_timers_lock:
             timer = EventsEndpoint._grace_timers.pop(client_id, None)
         if timer:
             timer.cancel()
             logger.debug("Grace-Timer geloescht (RESUMING): client_id=%s", client_id)
+            # Slot auf neue client_id umschreiben damit kein Fenster-Loch entsteht.
+            # _active_sse_roles: alte_id → neue_id (claim ueberschreibt sicher).
+            # Beleg: Build 268, Projektgespräch 2026-05-31.
+            if new_client_id:
+                reg = _get_window_registry()
+                # Alle Rollen prüfen ob alte client_id einen Slot hält
+                # (wir kennen die Rolle hier nicht direkt — über find suchen)
+                with reg.lock:
+                    for role, cid in list(reg._active_sse_roles.items()):
+                        if cid == client_id:
+                            reg._active_sse_roles[role] = new_client_id
+                            logger.debug(
+                                "SSE-Slot RESUMING: Rolle '%s' %s → %s",
+                                role, client_id, new_client_id,
+                            )
             return True
         return False
 
-    def _grace_expired(self, client_id: str) -> None:
+    def _grace_expired(self, client_id: str, role: Optional[str] = None) -> None:
         """
         Callback: Grace-Period abgelaufen — Lock freigeben und Queue-Kaskade.
 
@@ -476,7 +524,10 @@ class EventsEndpoint:
         (sichergestellt durch release_lock_by_sse_client() + Commit vor
         queue_next_valid()).
 
+        role: wenn gesetzt, wird der SSE-Slot via release_sse_role() freigegeben.
+        Das ist der korrekte Zeitpunkt — erst nach Ablauf der Grace-Period.
         Beleg: SLA Punkte 2, 3, 4, Paket-4-Review 2026-05-24
+        Beleg Build 268: Projektgespräch 2026-05-31.
         """
         with EventsEndpoint._grace_timers_lock:
             EventsEndpoint._grace_timers.pop(client_id, None)
@@ -484,6 +535,14 @@ class EventsEndpoint:
         logger.info(
             "Grace-Period abgelaufen — Lock wird freigegeben: client_id=%s", client_id
         )
+        # SSE-Slot freigeben — jetzt erst, nach Grace-Period.
+        # Beleg: Build 268, Projektgespräch 2026-05-31.
+        if role:
+            _get_window_registry().release_sse_role(role, client_id)
+            logger.debug(
+                "SSE-Rolle '%s' freigegeben nach Grace-Period: client_id=%s",
+                role, client_id,
+            )
         try:
             edb = self._bundle.evidence
             freed_report_ids = edb.release_lock_by_sse_client(client_id)

@@ -1,6 +1,6 @@
 {
-  "build": 266,
-  "version": "0.6.266",
+  "build": 268,
+  "version": "0.6.268",
   "date": "2026-05-31",
-  "note": "Build 266: Bugfix T24 — _MIGRATION_COLUMNS wiederhergestellt. ALTER TABLE fuer aeltere evidence_db ohne selection_json u.a. Spalten. Build 265: Duplikat-SSE-Schutz (HTTP 409) + _edb_lock (SQLITE_MISUSE-Fix)."
+  "note": "Build 268: SSE-Duplikat-Fix korrigiert — release_sse_role aus finally in _grace_expired verschoben. Slot bleibt waehrend Grace-Period reserviert; RESUMING schreibt Slot auf neue client_id um. Build 267: claim_sse_role/release_sse_role. Build 266: T24-Regression. Build 265: Duplikat-SSE-Schutz."
 }
