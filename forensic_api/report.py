@@ -1216,7 +1216,7 @@ class ReportEndpoint:
         # Loesung: Direkt auf edb._con lesen statt get_lock() aufzurufen.
         # Beleg: Bugfix-Liste 2.24, Projektgespraech 2026-06-07
         current_row = edb._con.execute(
-            "SELECT report_id, locked_by, lock_id, locked_at, sse_client, cooldown_until "
+            "SELECT report_id, locked_by, lock_id, locked_at, sse_client "
             "FROM editor_locks WHERE report_id=?",
             (report_id,),
         ).fetchone()

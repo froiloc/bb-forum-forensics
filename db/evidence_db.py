@@ -163,6 +163,9 @@ _MIGRATION_COLUMNS: list[tuple[str, str, str]] = [
     ("annotations", "prev_id",        "INTEGER DEFAULT NULL"),
     # Build 239+: actual_uid fuer user_id-Zuordnung
     ("annotations", "actual_uid",     "INTEGER DEFAULT NULL"),
+    # Build 284+: cooldown_until fuer Lock-Cooldown (SLA Punkt 8)
+    # Aeltere DBs haben diese Spalte nicht — ALTER TABLE ergaenzt sie.
+    ("editor_locks", "cooldown_until", "INTEGER DEFAULT NULL"),
 ]
 
 # =============================================================================

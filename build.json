@@ -1,6 +1,6 @@
 {
-  "build": 284,
-  "version": "0.6.284",
+  "build": 285,
+  "version": "0.6.285",
   "date": "2026-06-07",
-  "note": "Build 284: Bug 2.24 — _action_release_lock nutzt jetzt edb._con direkt statt get_lock(). get_lock() oeffnet eine eigene SQLite-Connection (SSE-Thread-Safety), die im HTTP-Request-Thread einen veralteten DB-Snapshot sehen kann. Dadurch fand get_lock() den frisch per acquire_lock() angelegten Lock nicht — NOT_LOCK_OWNER-423. Eintrittspunkt-Logging am Anfang der Methode sichert Diagnose auch im Fehlerfall."
+  "note": "Build 285: Zwei Fixes fuer Bug 2.24. (1) _action_release_lock liest editor_locks direkt auf edb._con statt get_lock() — get_lock() oeffnet eine eigene SQLite-Connection (SSE-Thread-Safety) die im HTTP-Request-Thread keinen frisch committed Lock sehen kann. (2) evidence_db.py _MIGRATION_COLUMNS: cooldown_until fuer editor_locks ergaenzt — aeltere DBs haben diese Spalte nicht, ALTER TABLE ruestet sie idempotent nach. SELECT in _action_release_lock benoetigt cooldown_until nicht und fragt es nicht ab."
 }
