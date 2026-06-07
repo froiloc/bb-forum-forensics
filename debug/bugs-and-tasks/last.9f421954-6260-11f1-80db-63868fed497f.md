@@ -1,5 +1,5 @@
 # Fehler im Frontend
-(Cache-buster-pre-extension: c70c7996-625d-11f1-8573-bf9180c9153a)
+(Cache-buster-pre-extension: 9f421954-6260-11f1-80db-63868fed497f)
 
 Ich werde in dieser Liste fortlaufend die von mir beobachteten Fehler aufführen.
 Falls diese abgeschlossen und verworfen wurden, werde ich sie durchstreichen. Alles, was nicht durchgestrichen ist, ist also noch offen und muss bearbeitet werden.
@@ -17,39 +17,40 @@ Hier noch einmal die Liste der Baustellen und wofür sie stehen:
 | 5 | BS5 | Datenbank-Interfaces, Schnittstellen und Zugriffsrechte zwischen Datenbanken | aiw_webserver, aiw_sqlite_prepper, aiw_administration (noch ausstehend) |
 | 6 | BS6 | Berichtseditor, Export, Datenbereitstellung für die Akte und die Staatsanwaltschaft | aiw_webserver |
 | 7 | BS7 | Management-Interface, Vorlagenverwaltung, Auftragsvergabe, Priorisierung | aiw_webserver, aiw_administration (noch ausstehend) |
+
 Als optionale dritte Nummer in Klammern steht die Buildnummer, bei der das (erstmalig) festgestellt wurde.
 	Beispiel: 4. (15) (BS6) (160) Die Schaltfläche Test ist funktionslos.
 Die 4. Meldung im Kapitel hat eine Dringlichkeit von 15, gehört zur Baustelle 6, dem Berichtseditor, und wurde das erste Mal in Build 160 festgestellt.
 
-Abgeschlossene Aufgaben werden mit dem Wort "erledigt" ersetzt.
+Abgeschlossene Aufgaben werden durch das Wort `erledigt` ersetzt.
 
 Quellen zum Debuggen:
 * Dieses Dokument mit den Arbeitsanweisungen und Problembeschreibungen:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.c70c7996-625d-11f1-8573-bf9180c9153a.md
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.9f421954-6260-11f1-80db-63868fed497f.md
 * Die Ausgabe von DevTools-Console:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.c70c7996-625d-11f1-8573-bf9180c9153a.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.9f421954-6260-11f1-80db-63868fed497f.log
 * Die Ausgabe von DevTools-Network:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.c70c7996-625d-11f1-8573-bf9180c9153a.har
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.9f421954-6260-11f1-80db-63868fed497f.har
 * Das aktuelle DOM des gesamten Dokuments als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.c70c7996-625d-11f1-8573-bf9180c9153a.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.9f421954-6260-11f1-80db-63868fed497f.html
 * Das aktuelle DOM des gesamten Body als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.c70c7996-625d-11f1-8573-bf9180c9153a.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.9f421954-6260-11f1-80db-63868fed497f.html
 * Das aktuelle DOM des gesamten Sidebar als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.c70c7996-625d-11f1-8573-bf9180c9153a.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.9f421954-6260-11f1-80db-63868fed497f.html
 * Das aktuelle DOM des gesamten Main als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.c70c7996-625d-11f1-8573-bf9180c9153a.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.9f421954-6260-11f1-80db-63868fed497f.html
 * Das aktuelle DOM des Akkordeon 1 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.c70c7996-625d-11f1-8573-bf9180c9153a.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.9f421954-6260-11f1-80db-63868fed497f.html
 * Das aktuelle DOM des Akkordeon 2 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.c70c7996-625d-11f1-8573-bf9180c9153a.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.9f421954-6260-11f1-80db-63868fed497f.html
 * Das aktuelle DOM des Akkordeon 3 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.c70c7996-625d-11f1-8573-bf9180c9153a.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.9f421954-6260-11f1-80db-63868fed497f.html
 * Das aktuelle DOM des Akkordeon 4 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.c70c7996-625d-11f1-8573-bf9180c9153a.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.9f421954-6260-11f1-80db-63868fed497f.html
 * Das aktuelle DOM des Search-Modal als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-searchmodal.c70c7996-625d-11f1-8573-bf9180c9153a.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-searchmodal.9f421954-6260-11f1-80db-63868fed497f.html
 * Die Ausgabe des aktuellen Webservers:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.c70c7996-625d-11f1-8573-bf9180c9153a.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.9f421954-6260-11f1-80db-63868fed497f.log
 * Die aktuellen Screenshots:
 https://github.com/froiloc/bb-forum-forensics/tree/1b5017a2f62c5a8f1825de76fc6edabb25d6bf66/debug/screenshots
 ***
@@ -83,7 +84,8 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 19. erledigt
 20. erledigt
 21. (10) (BS6) (274) Nach dem Einfügen einer Annotation per Drag-and-Drop springt die Liste der Annotationen wieder an den Anfang. Das macht es aufwändig (immer wieder herunterscrollen), mehrere Annotationen in eine Beweismittelgruppe hinzuzufügen. Selbes Phänomen beim Löschen aus einer Beweismittelgruppe. Es wäre gut, wenn die Scrollposition gemerkt wird und beim Neuladen und Aktualisieren der angezeigten Elemente stabil bliebe.
-22. (15) (BS6) (274) Wenn bei der Annotation-Sidebar in der Liste "Ausblenden:" die Checkbox von "Verankerte" wechselt, dann werden gleichzeitig alle anderen gecheckten Checkboxen demarkiert. Das sollte nicht sein.
+22. erledigt
+23. (15) (BS6) (275) Bei Neuladen des Editorfensters nach einem Neustart des Webservers wird zwar der Bericht geladen, aber der Lock wird nicht erworben. Ein manueller Erwerb ist nicht möglich. Daher kann das Dokument nicht bearbeitet werden. (Verhindert auch das Testen der Lösung zu 2.21)
 ---
 ## 3. Funktionalität Backend / Python / SQLite3-Datenbank
 Hier werden Funktionsprobleme aufgeführt, die aufgrund von Problemen im Webserver oder der Datenbank auftreten.

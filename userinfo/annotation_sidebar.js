@@ -40,7 +40,7 @@
  *   GET /_forensic/annotations         -- alle Annotationen
  *   POST /_forensic/report             -- action=add_anchor
  *
- * Version: v0.6.274 · Build: 274 · 2026-06-07
+ * Version: v0.6.275 · Build: 275 · 2026-06-07
  * Beleg: Bauplan B6 v0.3 §4.7, Ausdefinitionsgespraech 2026-05-05
  */
 
@@ -143,9 +143,21 @@ let _annotations   = [];        // alle geladenen Annotations-Objekte
 let _anchoredIds   = new Set(); // bereits verankerte Annotation-IDs
 let _expanded      = new Set(); // aufgeklappte Kategorien (Legacy, nicht mehr genutzt)
 let _activeTab     = null;      // Build 114: aktiver Kategorie-Tab (null = Alle)
-let _searchText    = '';
-let _hideAnchored  = false;
-let _searchTimer   = null;
+let _searchText        = '';
+let _hideAnchored      = false;
+// Bug 2.22 Fix Build 275:
+// Die anderen Ausblenden-Checkboxen hatten keinen Modul-State.
+// Beim Re-Render nach Aenderung einer Checkbox wurden alle anderen
+// ohne 'checked'-Attribut gerendert und erschienen damit demarkiert.
+// Jetzt wird der Zustand jeder Checkbox im Modul-State gehalten und
+// beim Rendern eingespielt.
+// Beleg: Bugfix-Liste 2.22, Projektgespraech 2026-06-07
+let _hideTags          = false;
+let _hideInvestigator  = false;
+let _hideQuotes        = false;
+let _hideSource        = false;
+let _hideNotes         = false;
+let _searchTimer       = null;
 
 // ---------------------------------------------------------------------------
 // Laden
@@ -211,6 +223,14 @@ function _render() {
         : null;
     if (!container) return;
 
+    // Bug 2.21 Fix Build 275:
+    // container.innerHTML ersetzt den gesamten DOM. Das #as-list-Element
+    // wird dabei zerstoert und neu erzeugt — sein scrollTop geht verloren.
+    // Wir lesen scrollTop vor dem Re-Render und schreiben ihn danach zurueck.
+    // Beleg: Bugfix-Liste 2.21, Projektgespraech 2026-06-07
+    const listEl = container.querySelector('#as-list');
+    const savedScrollTop = listEl ? listEl.scrollTop : 0;
+
     const grouped = _filterAndGroup();
     const total   = _annotations.length;
     const anchored = _annotations.filter(a => _anchoredIds.has(a.id)).length;
@@ -237,23 +257,28 @@ function _render() {
                         Verankerte
                     </label>
                     <label class="as-toggle-label" title="Tags ausblenden">
-                        <input type="checkbox" id="as-hide-tags">
+                        <input type="checkbox" id="as-hide-tags"
+                            ${_hideTags ? 'checked' : ''}>
                         Tags
                     </label>
                     <label class="as-toggle-label" title="Ermittler-Namen ausblenden">
-                        <input type="checkbox" id="as-hide-investigator">
+                        <input type="checkbox" id="as-hide-investigator"
+                            ${_hideInvestigator ? 'checked' : ''}>
                         Ermittler
                     </label>
                     <label class="as-toggle-label" title="Zitate (Originaltext) ausblenden">
-                        <input type="checkbox" id="as-hide-quotes">
+                        <input type="checkbox" id="as-hide-quotes"
+                            ${_hideQuotes ? 'checked' : ''}>
                         Zitate
                     </label>
                     <label class="as-toggle-label" title="Quellenangaben ausblenden">
-                        <input type="checkbox" id="as-hide-source">
+                        <input type="checkbox" id="as-hide-source"
+                            ${_hideSource ? 'checked' : ''}>
                         Quelle
                     </label>
                     <label class="as-toggle-label" title="Notizen ausblenden">
-                        <input type="checkbox" id="as-hide-notes">
+                        <input type="checkbox" id="as-hide-notes"
+                            ${_hideNotes ? 'checked' : ''}>
                         Notizen
                     </label>
                 </div>
@@ -268,6 +293,13 @@ function _render() {
         </div>`;
 
     _bindEvents(container);
+
+    // Bug 2.21 Fix Build 275: Scrollposition wiederherstellen.
+    // Das neue #as-list-Element existiert jetzt im DOM.
+    const newListEl = container.querySelector('#as-list');
+    if (newListEl && savedScrollTop > 0) {
+        newListEl.scrollTop = savedScrollTop;
+    }
 }
 
 function _renderCategoryTabs(grouped) {
@@ -504,6 +536,51 @@ function _bindEvents(container) {
         });
     }
 
+    // Bug 2.22 Fix Build 275:
+    // Alle weiteren Ausblenden-Checkboxen haben jetzt State-Variablen im
+    // Modul-Scope und dedizierte Change-Handler. Damit werden ihre
+    // Zustände beim Re-Render korrekt wiederhergestellt.
+    // Beleg: Bugfix-Liste 2.22, Projektgespraech 2026-06-07
+    const hideTagsChk = container.querySelector('#as-hide-tags');
+    if (hideTagsChk) {
+        hideTagsChk.addEventListener('change', e => {
+            _hideTags = e.target.checked;
+            _render();
+        });
+    }
+
+    const hideInvestigatorChk = container.querySelector('#as-hide-investigator');
+    if (hideInvestigatorChk) {
+        hideInvestigatorChk.addEventListener('change', e => {
+            _hideInvestigator = e.target.checked;
+            _render();
+        });
+    }
+
+    const hideQuotesChk = container.querySelector('#as-hide-quotes');
+    if (hideQuotesChk) {
+        hideQuotesChk.addEventListener('change', e => {
+            _hideQuotes = e.target.checked;
+            _render();
+        });
+    }
+
+    const hideSourceChk = container.querySelector('#as-hide-source');
+    if (hideSourceChk) {
+        hideSourceChk.addEventListener('change', e => {
+            _hideSource = e.target.checked;
+            _render();
+        });
+    }
+
+    const hideNotesChk = container.querySelector('#as-hide-notes');
+    if (hideNotesChk) {
+        hideNotesChk.addEventListener('change', e => {
+            _hideNotes = e.target.checked;
+            _render();
+        });
+    }
+
     // Kategorie-Zeilen aufklappen/zuklappen
     container.querySelectorAll('.as-category-header').forEach(btn => {
         btn.addEventListener('click', (evt) => {
@@ -659,7 +736,12 @@ function init(options) {
     _anchoredIds  = new Set();
     _expanded     = new Set();
     _searchText   = '';
-    _hideAnchored = false;
+    _hideAnchored     = false;
+    _hideTags         = false;
+    _hideInvestigator = false;
+    _hideQuotes       = false;
+    _hideSource       = false;
+    _hideNotes        = false;
     _loadAnnotations();
 }
 

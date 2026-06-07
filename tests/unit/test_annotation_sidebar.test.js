@@ -20,6 +20,15 @@
  * T14 -- _renderAnnotation(): Originaltext erscheint in Anfuehrungszeichen
  * T15 -- _renderAnnotation(): Verankerte Annotation erhaelt as-ann-anchored-Klasse
  * T16 -- _renderAnnotation(): XSS-Schutz in Annotationstext
+ * T17 -- showSidebar ist exportiert
+ * T18 -- _renderAnnotation() hat draggable="true"
+ * T19 -- _renderAnnotation() enthält data-ann-id
+ * T20 -- _renderAnnotation() zeigt "Als Beleg einfuegen"-Button
+ * T21 -- _renderAnnotation(): verankerte Annotation hat deaktivierten Anker-Button
+ * T22 -- showSidebar mit EvidenceBlock-Bloecken extrahiert evidence_ids
+ * T23 -- Bug 2.22: _filterAndGroup filtert verankerte bei _hideAnchored=true
+ * T24 -- Bug 2.22: _filterAndGroup zeigt verankerte bei _hideAnchored=false
+ * T25 -- Bug 2.21: _render() bricht stumm ab wenn Container fehlt
  *
  * Version: v0.6.106 · Build: 106 · 2026-05-06
  * Beleg: Bauplan B6 v0.5 §4.4.2, Projektgespraech 2026-05-06
@@ -284,4 +293,49 @@ describe('Phase 8 — Sidebar-Integration', () => {
             window.AnnotationSidebar.showSidebar(blocks, { lockId: null });
         }).not.toThrow();
     });
+});
+
+describe('Bug 2.22 — Checkbox-State-Persistenz beim Re-Render', () => {
+
+    it('T23: _filterAndGroup filtert verankerte heraus wenn _hideAnchored=true', () => {
+        // Prüft den Kerneffekt: verankerte Annotationen werden bei hideAnchored=true
+        // aus dem Ergebnis entfernt. Der HTML-Render-Pfad wird indirekt abgedeckt,
+        // weil _filterAndGroup() von _render() genutzt wird.
+        const anns = [
+            { id: 1, category: 'CAT_OTHER', text: 'A', tags: [], selection: {} },
+            { id: 2, category: 'CAT_OTHER', text: 'B', tags: [], selection: {} },
+        ];
+        window.AnnotationSidebar._testSetState(anns, new Set([1]), '', true);
+        const grouped = window.AnnotationSidebar._filterAndGroup();
+        const ids = (grouped['CAT_OTHER'] || []).map(a => a.id);
+        expect(ids).not.toContain(1);
+        expect(ids).toContain(2);
+    });
+
+    it('T24: _filterAndGroup zeigt verankerte wenn _hideAnchored=false (Standard)', () => {
+        const anns = [
+            { id: 5, category: 'CAT_OTHER', text: 'X', tags: [], selection: {} },
+        ];
+        window.AnnotationSidebar._testSetState(anns, new Set([5]), '', false);
+        const grouped = window.AnnotationSidebar._filterAndGroup();
+        expect((grouped['CAT_OTHER'] || []).map(a => a.id)).toContain(5);
+    });
+
+});
+
+describe('Bug 2.21 — Scrollposition-Erhalt beim Re-Render', () => {
+
+    it('T25: _render() bricht stumm ab wenn Container nicht vorhanden', () => {
+        // Stellt sicher, dass _render() bei fehlendem Container keinen Fehler wirft.
+        // Der Test prueft die Robustheit des Fallback-Guards in _render().
+        window.AnnotationSidebar._testSetState([], new Set(), '', false);
+        // init() mit nicht-existentem containerId — _render() muss ohne Fehler abbrechen
+        expect(() => {
+            window.AnnotationSidebar.init({
+                containerId: 'nicht-vorhanden-2021',
+                annotationsApiUrl: null,
+            });
+        }).not.toThrow();
+    });
+
 });
