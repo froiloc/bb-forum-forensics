@@ -1,5 +1,5 @@
 # Fehler im Frontend
-(Cache-buster-pre-extension: 800760d2-62a4-11f1-b706-bba1ca8855b9)
+(Cache-buster-pre-extension: 468a2c7e-62a7-11f1-bd65-632d572193bd)
 
 Ich werde in dieser Liste fortlaufend die von mir beobachteten Fehler aufführen.
 Falls diese abgeschlossen und verworfen wurden, werde ich sie durchstreichen. Alles, was nicht durchgestrichen ist, ist also noch offen und muss bearbeitet werden.
@@ -26,31 +26,31 @@ Abgeschlossene Aufgaben werden durch das Wort `erledigt` ersetzt.
 
 Quellen zum Debuggen:
 * Dieses Dokument mit den Arbeitsanweisungen und Problembeschreibungen:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.800760d2-62a4-11f1-b706-bba1ca8855b9.md
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.468a2c7e-62a7-11f1-bd65-632d572193bd.md
 * Die Ausgabe von DevTools-Console:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.800760d2-62a4-11f1-b706-bba1ca8855b9.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.468a2c7e-62a7-11f1-bd65-632d572193bd.log
 * Die Ausgabe von DevTools-Network:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.800760d2-62a4-11f1-b706-bba1ca8855b9.har
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.468a2c7e-62a7-11f1-bd65-632d572193bd.har
 * Das aktuelle DOM des gesamten Dokuments als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.800760d2-62a4-11f1-b706-bba1ca8855b9.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.468a2c7e-62a7-11f1-bd65-632d572193bd.html
 * Das aktuelle DOM des gesamten Body als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.800760d2-62a4-11f1-b706-bba1ca8855b9.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.468a2c7e-62a7-11f1-bd65-632d572193bd.html
 * Das aktuelle DOM des gesamten Sidebar als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.800760d2-62a4-11f1-b706-bba1ca8855b9.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.468a2c7e-62a7-11f1-bd65-632d572193bd.html
 * Das aktuelle DOM des gesamten Main als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.800760d2-62a4-11f1-b706-bba1ca8855b9.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.468a2c7e-62a7-11f1-bd65-632d572193bd.html
 * Das aktuelle DOM des Akkordeon 1 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.800760d2-62a4-11f1-b706-bba1ca8855b9.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.468a2c7e-62a7-11f1-bd65-632d572193bd.html
 * Das aktuelle DOM des Akkordeon 2 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.800760d2-62a4-11f1-b706-bba1ca8855b9.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.468a2c7e-62a7-11f1-bd65-632d572193bd.html
 * Das aktuelle DOM des Akkordeon 3 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.800760d2-62a4-11f1-b706-bba1ca8855b9.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.468a2c7e-62a7-11f1-bd65-632d572193bd.html
 * Das aktuelle DOM des Akkordeon 4 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.800760d2-62a4-11f1-b706-bba1ca8855b9.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.468a2c7e-62a7-11f1-bd65-632d572193bd.html
 * Das aktuelle DOM des Search-Modal als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-searchmodal.800760d2-62a4-11f1-b706-bba1ca8855b9.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-searchmodal.468a2c7e-62a7-11f1-bd65-632d572193bd.html
 * Die Ausgabe des aktuellen Webservers:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.800760d2-62a4-11f1-b706-bba1ca8855b9.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.468a2c7e-62a7-11f1-bd65-632d572193bd.log
 * Die aktuellen Screenshots:
 https://github.com/froiloc/bb-forum-forensics/tree/1b5017a2f62c5a8f1825de76fc6edabb25d6bf66/debug/screenshots
 ***
@@ -88,11 +88,11 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 23. erledigt
 24. erledigt
 25. erledigt
-26. (10) (BS6) (287) Beim Steuern mit den Pfeiltasten (rechts oder runter) durch den Editor gibt es einen Javascript-Fehler "Failed to execute 'setStart' on 'Range'", wenn ich von einem Absatz in eine Beweismittelgruppe wechseln würde. Es wird erwartet, dass der Fokus in das nächste bearbeitbare Element wechselt. Das wäre in diesem Fall die optionale Beschriftungszeile für die Beweismittelgruppe. Rückwärts in die Beweismittelgruppe funktioniert. Da landet der Cursor dann in der Eingabezeile. (Wird gemeinsam mit 2.27, 2.28 und 2.29 geschlossen) Update aus Build 291. Wenn der Cursor am Ende des vorherigen Paragraphen steht, so wechselt der Cursor beim Drücken der rechten oder unteren Pfeiltaste an den Anfang der Eingabezeile der nachfolgenden Beweismittelgruppe. Ein weiterer Tastendruck nach rechts lässt den Cursor unmittelbar ans Ende der Eingabezeile springen. Ein Drücken nach links oder oben würde den Cursor aber am Anfang der Eingabezeile belassen.
-27. (10) (BS6) (287) Wenn der Cursor in der Beschriftungseingabezeile einer Beweisgruppe steht, und dann die Pfeiltaste nach links oder oben gedrückt wird, springt der Cursor nicht ans Ende der letzten Position im vorherigen Abschnitt. Aber der Cursor ist auch nicht mehr in der Eingabezeile. Er ist "weg". Es wird erwartet, dass der Cursor an die letzte Position des vorherigen Abschnitts wechselt. (Wird gemeinsam mit 2.26, 2.28 und 2.29 geschlossen) Von der "Nirvana"-Position wechselt der per Pfeiltaste nach rechts oder nach unten direkt ans Ende der Beschriftungseingabezeile.
-28. (10) (BS6) (289) Wenn der Cursor von der Beschriftungseingabezeile einer Beweisgruppe per Pfeiltaste (runter oder rechts) die Beweisgruppe verlässt und dann am Anfang des nächsten Abschnitts steht, dann passiert beim nächsten Drücken der Pfeiltaste keine Cursor-Positionsänderung. Wenn man Pfeiltaste nach links oder oben drückt, auch mehrfach, passiert an jeder Position nichts. Wenn man die Pfeiltaste nach rechts oder unten drückt, bleibt der Cursor an derselben Stelle. Erst das nächste Drücken im Anschluss ändert tatsächlich die Cursorposition. Erwartet wird, dass jedes Betätigen der Pfeiltaste den Cursor bewegt. (Wird gemeinsam mit 2.26, 2.27 und 2.29 geschlossen)
+26. (10) (BS6) (287) Beim Steuern mit den Pfeiltasten (rechts oder runter) durch den Editor gibt es einen Javascript-Fehler "Failed to execute 'setStart' on 'Range'", wenn ich von einem Absatz in eine Beweismittelgruppe wechseln würde. Es wird erwartet, dass der Fokus in das nächste bearbeitbare Element wechselt. Das wäre in diesem Fall die optionale Beschriftungszeile für die Beweismittelgruppe. Rückwärts in die Beweismittelgruppe funktioniert. Da landet der Cursor dann in der Eingabezeile. (Wird gemeinsam mit 2.27, 2.28 und 2.29 geschlossen.) Update aus Build 291. Wenn der Cursor am Ende des vorherigen Paragraphen steht, so wechselt der Cursor beim Drücken der rechten oder unteren Pfeiltaste an den Anfang der Eingabezeile der nachfolgenden Beweismittelgruppe. Ein weiterer Tastendruck nach rechts lässt den Cursor unmittelbar ans Ende der Eingabezeile springen. Ein Drücken nach links oder oben würde den Cursor aber am Anfang der Eingabezeile belassen.
+27. (10) (BS6) (287) Wenn der Cursor in der Beschriftungseingabezeile einer Beweisgruppe steht, und dann die Pfeiltaste nach links oder oben gedrückt wird, springt der Cursor nicht ans Ende der letzten Position im vorherigen Abschnitt. Aber der Cursor ist auch nicht mehr in der Eingabezeile. Er ist "weg". Es wird erwartet, dass der Cursor an die letzte Position des vorherigen Abschnitts wechselt. (Wird gemeinsam mit 2.26, 2.28 und 2.29 geschlossen.) Von der "Nirwana"-Position wechselt der per Pfeiltaste nach rechts oder nach unten direkt ans Ende der Beschriftungseingabezeile.
+28. (10) (BS6) (289) Wenn der Cursor von der Beschriftungseingabezeile einer Beweisgruppe per Pfeiltaste (runter oder rechts) die Beweisgruppe verlässt und dann am Anfang des nächsten Abschnitts steht, dann passiert beim nächsten Drücken der Pfeiltaste keine Cursor-Positionsänderung. Wenn man die Pfeiltaste nach links oder oben drückt, auch mehrfach, passiert an jeder Position nichts. Wenn man die Pfeiltaste nach rechts oder unten drückt, bleibt der Cursor an derselben Stelle. Erst das nächste Drücken im Anschluss ändert tatsächlich die Cursor-Position. Erwartet wird, dass jedes Betätigen der Pfeiltaste den Cursor bewegt. (Wird gemeinsam mit 2.26, 2.27 und 2.29 geschlossen)
 29. (10) (BS6) (289) Wenn der Cursor vor einer Beweismittelgruppe steht, also beispielsweise am Ende des letzten Absatzes, so ändert das Drücken der Pfeiltaste nach rechts oder nach unten nicht die Cursorposition. (Wird gemeinsam mit 2.26, 2.27 und 2.28 geschlossen)
-30. (10) (BS6) (291) Wenn der Cursor in der Beschriftungseingabezeile einer Beweismittelgruppe steht, dann lässt sich der Cursor nicht per Pfeiltasten link oder hoch zum vorherigen Abschnitt bewegen. Der Cursor wandert bei wiederholtem Drücken der linken Pfeiltaste positionsweise nach links bis zum Anfang der Eingabezeile, dann verschwindet er im "Nirvana" und dann steht er wieder am Ende der Eingabezeile.
+30. (10) (BS6) (291) Wenn der Cursor in der Beschriftungseingabezeile einer Beweismittelgruppe steht, dann lässt sich der Cursor nicht per Pfeiltasten links oder hoch zum vorherigen Abschnitt bewegen. Der Cursor wandert bei wiederholtem Drücken der linken Pfeiltaste positionsweise nach links bis zum Anfang der Eingabezeile, dann verschwindet er im „Nirwana“ und dann steht er wieder am Ende der Eingabezeile.
 ---
 ## 3. Funktionalität Backend / Python / SQLite3-Datenbank
 Hier werden Funktionsprobleme aufgeführt, die aufgrund von Problemen im Webserver oder der Datenbank auftreten.

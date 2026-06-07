@@ -1,6 +1,6 @@
 {
-  "build": 291,
-  "version": "0.6.291",
+  "build": 292,
+  "version": "0.6.292",
   "date": "2026-06-07",
-  "note": "Build 291: Bugs 2.26-2.29 abschliessend. Capture-Phase-keydown-Listener auf editorjs-holder: bei ArrowRight/Down/Left/Up am Blockrand neben EvidenceBlock — Editor.js-interne Navigation wird gestoppt (verhindert setStart/setEnd-Crash mit Chip-Spans), stattdessen direktes focus() + Range auf das Label-Div. Bug 2.27: Label-Div-ArrowLeft/Up nutzt direkte DOM-Navigation statt ed.caret.setToBlock() um denselben Crash zu vermeiden."
+  "note": "Build 292: Bugs 2.26-2.30 vollstaendig. Einheitlicher Capture-Phase-keydown-Listener ersetzt alle vorherigen separaten Handler. Drei Faelle: (A) Label-Div ArrowLeft/Up am Anfang → direktes Range-setzen auf letzten TextNode des Vorgaenger-Blocks. (B) Label-Div ArrowRight/Down am Ende → erster TextNode des naechsten Blocks. (C) Normaler Paragraph am Rand neben EvidenceBlock → Label-Div. Alle Faelle nutzen direkte Range-Setzung statt ed.caret.setToBlock() — verhindert bt()/kt()-Crash bei Chip-Paragraphen."
 }
