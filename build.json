@@ -1,6 +1,6 @@
 {
-  "build": 290,
-  "version": "0.6.290",
+  "build": 291,
+  "version": "0.6.291",
   "date": "2026-06-07",
-  "note": "Build 290: Bugs 2.26-2.29. Drei Aenderungen: (1) Relay-Div (.evidence-ce-relay) als erstes contenteditable des EvidenceBlocks — Editor.js setzt Caret immer auf einen sicheren Leerzeichen-TextNode, kein setEnd-Fehler mehr (Bugs 2.29, 2.28). (2) Relay-focus leitet per requestAnimationFrame sofort zum Label-Div weiter. (3) Label-Div-keydown nutzt window._editor.caret.setToBlock() statt direkter DOM-Manipulation — Editor.js-State bleibt konsistent, kein eingefrorener Cursor (Bug 2.28). CSS: .evidence-ce-relay unsichtbar, .evidence-block position:relative."
+  "note": "Build 291: Bugs 2.26-2.29 abschliessend. Capture-Phase-keydown-Listener auf editorjs-holder: bei ArrowRight/Down/Left/Up am Blockrand neben EvidenceBlock — Editor.js-interne Navigation wird gestoppt (verhindert setStart/setEnd-Crash mit Chip-Spans), stattdessen direktes focus() + Range auf das Label-Div. Bug 2.27: Label-Div-ArrowLeft/Up nutzt direkte DOM-Navigation statt ed.caret.setToBlock() um denselben Crash zu vermeiden."
 }
