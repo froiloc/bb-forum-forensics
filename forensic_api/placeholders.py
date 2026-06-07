@@ -30,7 +30,7 @@
 #   - Query-Definitionen lesen: templates_db (tdb.placeholder_queries).
 #
 # Beleg: Bauplan B6 v0.3 §3, Ausdefinitionsgespraech 2026-05-05
-# Version: v0.6.144 · Build: 144 · 2026-05-10
+# Version: v0.6.286 · Build: 286 · 2026-06-07
 # =============================================================================
 
 from __future__ import annotations
@@ -103,8 +103,13 @@ class PlaceholdersEndpoint:
             )
             return
 
-        body_text = data.get("body", "")
-        uid       = data.get("uid", self._context.user_id)
+        body_text    = data.get("body", "")
+        uid          = data.get("uid", self._context.user_id)
+        # Bug 2.17 Fix Build 286: return_values=true gibt zusaetzlich ein
+        # {query_id: value}-Dict zurueck damit der Client die aufgeloesten
+        # Werte als auto:query_id in placeholder_values_json speichern kann.
+        # Beleg: Bugfix-Liste 2.17, Projektgespraech 2026-06-07
+        return_values = bool(data.get("return_values", False))
 
         if not isinstance(body_text, str):
             handler.send_response_body(
@@ -122,18 +127,21 @@ class PlaceholdersEndpoint:
             )
             return
 
-        resolved_text, unresolved, errors, cache_hits = self._resolve_body(
-            body_text, uid
-        )
+        resolved_text, unresolved, errors, cache_hits, values = \
+            self._resolve_body(body_text, uid, collect_values=return_values)
+
+        result = {
+            "resolved":   resolved_text,
+            "unresolved": unresolved,
+            "errors":     errors,
+            "cache_hits": cache_hits,
+        }
+        if return_values:
+            result["values"] = values
 
         handler.send_response_body(
             200,
-            _json_ok({
-                "resolved":   resolved_text,
-                "unresolved": unresolved,
-                "errors":     errors,
-                "cache_hits": cache_hits,
-            }),
+            _json_ok(result),
             content_type="application/json; charset=utf-8",
         )
 
@@ -272,16 +280,19 @@ class PlaceholdersEndpoint:
         self,
         body: str,
         uid: int,
-    ) -> tuple[str, list[str], list[str], list[str]]:
+        collect_values: bool = False,
+    ) -> tuple[str, list[str], list[str], list[str], dict]:
         """
         Ersetzt alle {{a:query_id}}-Vorkommen im Text.
 
         Returns:
-            (resolved_text, unresolved_ids, error_ids, cache_hit_ids)
+            (resolved_text, unresolved_ids, error_ids, cache_hit_ids, values)
+            values ist leer wenn collect_values=False.
         """
         unresolved: list[str] = []
         errors:     list[str] = []
         cache_hits: list[str] = []
+        values:     dict      = {}
 
         def replace_match(m: re.Match) -> str:
             query_id = m.group(1)
@@ -291,6 +302,8 @@ class PlaceholdersEndpoint:
             cached = self._bundle.evidence.get_cache_entry(query_id, uid)
             if cached is not None:
                 cache_hits.append(query_id)
+                if collect_values:
+                    values[query_id] = cached
                 return cached
 
             # 2. Query-Definition laden
@@ -307,10 +320,12 @@ class PlaceholdersEndpoint:
 
             # 4. In Cache speichern
             self._bundle.evidence.set_cache_entry(query_id, uid, value)
+            if collect_values:
+                values[query_id] = value
             return value
 
         resolved = _PLACEHOLDER_RE.sub(replace_match, body)
-        return resolved, unresolved, errors, cache_hits
+        return resolved, unresolved, errors, cache_hits, values
 
     def _execute_query(
         self,

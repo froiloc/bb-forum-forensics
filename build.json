@@ -1,6 +1,6 @@
 {
-  "build": 285,
-  "version": "0.6.285",
+  "build": 287,
+  "version": "0.6.287",
   "date": "2026-06-07",
-  "note": "Build 285: Zwei Fixes fuer Bug 2.24. (1) _action_release_lock liest editor_locks direkt auf edb._con statt get_lock() — get_lock() oeffnet eine eigene SQLite-Connection (SSE-Thread-Safety) die im HTTP-Request-Thread keinen frisch committed Lock sehen kann. (2) evidence_db.py _MIGRATION_COLUMNS: cooldown_until fuer editor_locks ergaenzt — aeltere DBs haben diese Spalte nicht, ALTER TABLE ruestet sie idempotent nach. SELECT in _action_release_lock benoetigt cooldown_until nicht und fragt es nicht ab."
+  "note": "Build 287: Bug 2.17 vollstaendig behoben. Ursache: placeholder_cache war befuellt, aber die auto:-Werte wurden nie in die Block-Antworten eingewebt — der Renderer sah sie nie. Fix: Neue Hilfsfunktion _enrich_blocks_with_cache() in report.py webt auto:query_id-Eintraege aus placeholder_cache in placeholder_values_json der Bloecke ein (nur im Response, kein DB-Write). Wird in handle_get und open_report aufgerufen. Neue Methode get_all_cache_entries(uid) in evidence_db.py. open_report liefert jetzt auch placeholder_values_json mit (fehlte bisher komplett)."
 }

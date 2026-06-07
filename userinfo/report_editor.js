@@ -69,7 +69,7 @@
  *     ausgefuehrt damit der gedruckte Stand mit der DB synchron ist.
  *     Beleg: Bugfix Build 134, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.280 · Build: 280 · 2026-06-07
+ * Version: v0.6.286 · Build: 286 · 2026-06-07
  * Paket 9: Alle direkten fetch()-Schreiboperationen auf _docSend()/DocumentLayer
  * umgestellt. EditorState.lockId → lockLayer.lockId. Polling-Mechanismus
  * durch reaktiven LockLayer ersetzt. skipReinit/_pendingReportSwitchId entfernt.
@@ -660,6 +660,100 @@ async function _loadReportImpl(report) {
     }
 
     _initEditorJs(existingBlocks, report.id);
+
+    // Bug 2.17 Fix Build 286: Automatische Platzhalter ({{a:query_id}})
+    // im Hintergrund auflösen und als auto:query_id in placeholder_values_json
+    // speichern. Läuft asynchron damit der Editor nicht blockiert wird.
+    // Beleg: Bugfix-Liste 2.17, Projektgespraech 2026-06-07
+    _resolveAutoPlaceholders(existingBlocks, report.id).catch(err =>
+        console.warn('report_editor.js: _resolveAutoPlaceholders fehlgeschlagen:', err)
+    );
+}
+
+/**
+ * Bug 2.17 Fix Build 286: Automatische Platzhalter auflösen.
+ *
+ * Sucht alle Blöcke nach {{a:query_id}}-Vorkommen, ruft
+ * /_forensic/placeholders/resolve mit return_values=true auf und
+ * speichert die Ergebnisse als "auto:query_id"-Einträge in
+ * placeholder_values_json auf dem Server (via save_block).
+ *
+ * Läuft asynchron im Hintergrund — blockiert den Editor nicht.
+ * Wird nach dem Laden des Berichts und nach _reloadEditorContent
+ * aufgerufen.
+ *
+ * Beleg: Bugfix-Liste 2.17, Projektgespraech 2026-06-07
+ *
+ * @param {Array}  blocks    Geladene Blöcke (_currentBlocks)
+ * @param {number} reportId
+ */
+async function _resolveAutoPlaceholders(blocks, reportId) {
+    if (!blocks || !blocks.length || !reportId) return;
+
+    // Regex fuer {{a:query_id}} — spiegelt das Server-seitige _PLACEHOLDER_RE
+    const AUTO_RE = /\{\{(?:auto|a):([A-Za-z0-9._-]+)(?:\|[^}]*)?\}\}/g;
+
+    for (const block of blocks) {
+        // Nur Blöcke mit block_data und block_type 'paragraph' (Text)
+        let blockData = {};
+        try { blockData = JSON.parse(block.block_data || '{}'); } catch (_) {}
+        const text = blockData.text || '';
+        if (!text) continue;
+
+        // Prüfen ob der Block überhaupt {{a:...}}-Chips enthält
+        if (!AUTO_RE.test(text)) continue;
+        AUTO_RE.lastIndex = 0;  // Reset nach test()
+
+        _dbg('_resolveAutoPlaceholders: Block', block.block_id, 'enthält Auto-Chips');
+
+        try {
+            const resp = await fetch('/_forensic/placeholders/resolve', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Forensic-Request': 'ajax' },
+                body: JSON.stringify({ body: text, return_values: true }),
+            });
+            if (!resp.ok) continue;
+            const data = await resp.json();
+
+            const newAutoValues = data.values || {};
+            if (!Object.keys(newAutoValues).length) continue;
+
+            // Vorhandene placeholder_values_json lesen und auto:-Einträge mergen
+            let existing = {};
+            try { existing = JSON.parse(block.placeholder_values_json || '{}'); } catch (_) {}
+
+            let changed = false;
+            for (const [queryId, value] of Object.entries(newAutoValues)) {
+                const key = `auto:${queryId}`;
+                if (existing[key] !== value) {
+                    existing[key] = value;
+                    changed = true;
+                }
+            }
+            if (!changed) continue;
+
+            // Auf dem Server speichern (lock erforderlich)
+            if (!window.lockLayer?.lockId) {
+                _dbg('_resolveAutoPlaceholders: kein Lock — Speichern übersprungen für Block', block.block_id);
+                continue;
+            }
+            const saveResp = await _docSend('save_block', {
+                block_id:                block.block_id,
+                block_data:              blockData,
+                owner:                   block.author || '',
+                placeholder_values_json: JSON.stringify(existing),
+            });
+            if (saveResp !== null) {
+                // Lokalen Cache aktualisieren
+                block.placeholder_values_json = JSON.stringify(existing);
+                // Chips im Editor aktualisieren
+                _refreshChipsInBlock(block.block_id, existing);
+                _dbg('_resolveAutoPlaceholders: Block', block.block_id, 'aktualisiert mit', newAutoValues);
+            }
+        } catch (err) {
+            console.warn('report_editor.js: _resolveAutoPlaceholders Block', block.block_id, err);
+        }
+    }
 }
 
 /**
@@ -1801,13 +1895,17 @@ async function _onPlaceholderFieldSave(blockId, fieldName, value) {
         owner:                   username,
         placeholder_values_json: JSON.stringify(newValues),
     });
-    // Build 141 Logging: Zeigt Antwort-Status des Backends.
-    console.debug('report_editor.js: _onPlaceholderFieldSave fetch-Antwort:',
-        'ok=', resp?.ok, 'status=', resp?.status);
-    if (resp && !resp.ok) {
-        const err = await resp.json().catch(() => ({}));
-        console.warn('report_editor.js: Platzhalter-Save fehlgeschlagen:', fieldName, err);
-    } else if (resp?.ok) {
+    // Bug 2.25 Fix Build 286: _docSend() gibt geparste JSON-Daten zurueck
+    // (via _sendRequest), kein Response-Objekt. resp.ok ist undefined — die
+    // alte Pruefung `resp?.ok` war immer false, _refreshChipsInBlock wurde
+    // nie aufgerufen. Fix: resp !== null prueft ob _sendRequest erfolgreich
+    // war (null = Fehler, Objekt = Erfolg).
+    // Beleg: Bugfix-Liste 2.25, Projektgespraech 2026-06-07
+    console.debug('report_editor.js: _onPlaceholderFieldSave Antwort:',
+        'resp=', resp, 'status=', resp?.status);
+    if (resp === null || resp === undefined) {
+        console.warn('report_editor.js: Platzhalter-Save fehlgeschlagen:', fieldName, resp);
+    } else {
         // Lokalen Cache aktualisieren damit nachfolgende Saves korrekte Basis haben
         if (block) {
             block.placeholder_values_json = JSON.stringify(newValues);
@@ -2015,6 +2113,11 @@ async function _reloadEditorContent() {
 
         // Editor neu initialisieren
         _initEditorJs(freshBlocks, _currentReport.id);
+
+        // Bug 2.17 Fix Build 286: Auto-Platzhalter im Hintergrund auflösen
+        _resolveAutoPlaceholders(freshBlocks, _currentReport.id).catch(err =>
+            console.warn('report_editor.js: _resolveAutoPlaceholders (reload) fehlgeschlagen:', err)
+        );
 
         // Sidebar-Module aktualisieren
         _refreshModulePanel();

@@ -379,6 +379,41 @@ def _json_ok(data: dict) -> bytes:
     return json.dumps(data, ensure_ascii=False).encode("utf-8")
 
 
+def _enrich_blocks_with_cache(blocks_payload: list, cache: dict) -> list:
+    """Webt auto:query_id-Eintraege aus dem placeholder_cache in
+    placeholder_values_json der Bloecke ein (nur im Response, kein DB-Write).
+
+    Existierende auto:-Werte in placeholder_values_json werden beibehalten
+    (gespeicherte Overrides). Nur fehlende auto:-Schluessel werden ergaenzt.
+    Macht nichts wenn cache leer ist.
+
+    Beleg: Bugfix-Liste 2.17, Projektgespraech 2026-06-07, Build 287
+    """
+    if not cache:
+        return blocks_payload
+
+    result = []
+    for b in blocks_payload:
+        pvj = b.get("placeholder_values_json")
+        try:
+            values = json.loads(pvj) if pvj else {}
+        except (json.JSONDecodeError, TypeError):
+            values = {}
+
+        changed = False
+        for query_id, cached_value in cache.items():
+            key = f"auto:{query_id}"
+            if key not in values:
+                values[key] = cached_value
+                changed = True
+
+        if changed:
+            b = dict(b)
+            b["placeholder_values_json"] = json.dumps(values, ensure_ascii=False)
+        result.append(b)
+    return result
+
+
 class ReportEndpoint:
     """
     Endpunkt /_forensic/report — GET und POST (Fenster 3).
@@ -596,7 +631,11 @@ class ReportEndpoint:
 
         payload = {
             "reports":          reports_payload,
-            "blocks":           blocks_payload,
+            # Bug 2.17 Fix Build 287: auto:-Eintraege aus placeholder_cache einweben
+            "blocks":           _enrich_blocks_with_cache(
+                                    blocks_payload,
+                                    edb.get_all_cache_entries(self._context.user_id),
+                                ),
             "active_report_id": active_report.id if active_report else None,
             "lock": {
                 "locked_by": lock.locked_by,
@@ -992,6 +1031,23 @@ class ReportEndpoint:
         # Beleg: evidence_db.py get_block_order_for_report, Build 280
         order_map = {o["block_id"]: o["sort_index"] for o in order}
 
+        # Bug 2.17 Fix Build 287: auto:-Eintraege aus placeholder_cache laden
+        _cache = edb.get_all_cache_entries(self._context.user_id)
+
+        _raw_blocks = [
+            {
+                "block_id":              b.block_id,
+                "block_type":            b.block_type,
+                "block_data":            json.loads(b.block_data) if b.block_data else {},
+                "author":                b.author,
+                "created_at":            b.created_at,
+                "updated_at":            b.updated_at,
+                "sort_index":            order_map.get(b.block_id, 0),
+                "placeholder_values_json": b.placeholder_values_json,
+            }
+            for b in sorted(blocks, key=lambda b: order_map.get(b.block_id, 0))
+        ]
+
         handler.send_response_body(
             200,
             json.dumps({
@@ -1000,18 +1056,7 @@ class ReportEndpoint:
                 "title":     report.title,
                 "report_type": report.report_type,
                 "report_status": report.status,
-                "blocks": [
-                    {
-                        "block_id":   b.block_id,
-                        "block_type": b.block_type,
-                        "block_data": json.loads(b.block_data) if b.block_data else {},
-                        "author":     b.author,
-                        "created_at": b.created_at,
-                        "updated_at": b.updated_at,
-                        "sort_index": order_map.get(b.block_id, 0),
-                    }
-                    for b in sorted(blocks, key=lambda b: order_map.get(b.block_id, 0))
-                ],
+                "blocks": _enrich_blocks_with_cache(_raw_blocks, _cache),
             }, ensure_ascii=False).encode("utf-8"),
             content_type="application/json; charset=utf-8",
         )

@@ -1828,6 +1828,23 @@ class EvidenceDb:
         ).fetchone()
         return str(row["cached_value"]) if row else None
 
+    def get_all_cache_entries(self, uid: int) -> dict:
+        """
+        Liest alle Cache-Eintraege fuer eine uid als Dict.
+
+        Returns: {query_id: cached_value, ...}
+
+        Wird beim Ausliefern von Bloecken verwendet, um auto:-Werte
+        in placeholder_values_json einzuweben ohne in die DB zu schreiben.
+        Beleg: Bugfix-Liste 2.17, Projektgespraech 2026-06-07
+        Build 287
+        """
+        rows = self._con.execute(
+            "SELECT query_id, cached_value FROM placeholder_cache WHERE uid = ?",
+            (uid,),
+        ).fetchall()
+        return {str(r["query_id"]): str(r["cached_value"]) for r in rows}
+
     def set_cache_entry(self, query_id: str, uid: int, value: str) -> None:
         """
         Setzt oder aktualisiert einen Cache-Eintrag (UPSERT).
