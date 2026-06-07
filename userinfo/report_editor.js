@@ -69,7 +69,7 @@
  *     ausgefuehrt damit der gedruckte Stand mit der DB synchron ist.
  *     Beleg: Bugfix Build 134, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.279 · Build: 279 · 2026-06-07
+ * Version: v0.6.280 · Build: 280 · 2026-06-07
  * Paket 9: Alle direkten fetch()-Schreiboperationen auf _docSend()/DocumentLayer
  * umgestellt. EditorState.lockId → lockLayer.lockId. Polling-Mechanismus
  * durch reaktiven LockLayer ersetzt. skipReinit/_pendingReportSwitchId entfernt.
@@ -624,34 +624,14 @@ async function _loadReportImpl(report) {
     }
 
     // Bloecke laden.
-    // Bug 2.23 Fix Build 279: Nach reportLayer.open() sind die Bloecke
-    // bereits in window.reportLayer.blocks verfuegbar — kein separater
-    // fetch() auf /_forensic/report?format=json mehr noetig.
-    // Fallback: eigener fetch falls reportLayer nicht verfuegbar oder
-    // kein Bericht geladen (z.B. Create-Flow vor dem ersten open()).
-    // Beleg: Bugfix-Liste 2.23, Layer 3 States OPENED, Projektgespraech 2026-06-07
-    let existingBlocks = [];
-    if (window.reportLayer?.reportId && window.reportLayer.blocks?.length >= 0) {
-        existingBlocks = window.reportLayer.blocks || [];
-        _dbg('_loadReportImpl: Bloecke aus reportLayer (', existingBlocks.length, ')');
-    } else {
-        // Fallback-Pfad (Create-Flow oder reportLayer nicht verfuegbar)
-        // Bug 2.120 Fix Build 214: report_id als Parameter mitsenden.
-        // Ohne report_id lieferte der Server die Bloecke des zuletzt aktiven
-        // Berichts — bei Bericht-Wechsel wurden _knownBlockIds mit fremden IDs
-        // initialisiert, der Auto-Save loeschte diese dann aus der DB.
-        // Beleg: Bugfix Build 214, Projektgespraech 2026-05-17
-        const _initBlocksUrl = `/_forensic/report?format=json`
-            + (report.id != null ? `&report_id=${encodeURIComponent(report.id)}` : '');
-        const blocksResp = await fetch(_initBlocksUrl, {
-            headers: { 'X-Forensic-Request': 'ajax' }
-        });
-        if (blocksResp.ok) {
-            const data = await blocksResp.json();
-            existingBlocks = data.blocks || [];
-            _dbg('_loadReportImpl: Bloecke via Fallback-Fetch (', existingBlocks.length, ')');
-        }
-    }
+    // Build 280: Nach reportLayer.open() (Load-Flow) oder reportLayer.create()
+    // (Create-Flow) sind die Bloecke bereits in window.reportLayer.blocks
+    // verfuegbar — kein separater fetch() auf /_forensic/report?format=json mehr.
+    // Der ReportLayer ist die einzige autorisierte Quelle fuer Block-Daten.
+    // Beleg: Layer 3 States OPENED, Bugfix-Liste 2.23, Projektgespraech 2026-06-07
+    let existingBlocks = window.reportLayer?.blocks || [];
+    _dbg('_loadReportImpl: Bloecke aus reportLayer (', existingBlocks.length, ')');
+
     // B6 Phase 6: _currentBlocks fuer Sidebar-Formular merken
     // Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06
     _currentBlocks = existingBlocks;

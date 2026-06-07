@@ -81,7 +81,11 @@
 #              btn-new-report-header aus Action-Bar entfernt (redundant).
 #              Beleg: Projektgespraech 2026-05-07
 #
-# Version: v0.6.254 · Build: 254 · 2026-05-25
+# Version: v0.6.280 · Build: 280 · 2026-06-07
+# Changelog Build 280 (2026-06-07):
+#   - _action_open_report: o.block_id → o["block_id"] in order_map-Comprehension.
+#     get_block_order_for_report() gibt list[dict] zurueck, kein Objekt mit Attributen.
+#     Beleg: Server-Log 'dict object has no attribute block_id', Projektgespraech 2026-06-07
 # Changelog Build 249 (Paket 6 — Layer-3-Aktionen open_report / new_report):
 #   - _action_open_report(): OPENING-Aktion; schreibt report_opened-Eintrag,
 #     bereinigt Queue, liefert Blöcke zurück.
@@ -984,7 +988,9 @@ class ReportEndpoint:
         # Blöcke laden damit der Client seinen Zustand aufbauen kann
         blocks = edb.get_blocks_for_report(report_id)
         order  = edb.get_block_order_for_report(report_id)
-        order_map = {o.block_id: o.sort_index for o in order}
+        # get_block_order_for_report gibt list[dict] zurück — Zugriff via []
+        # Beleg: evidence_db.py get_block_order_for_report, Build 280
+        order_map = {o["block_id"]: o["sort_index"] for o in order}
 
         handler.send_response_body(
             200,

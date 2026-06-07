@@ -1,6 +1,6 @@
 {
-  "build": 279,
-  "version": "0.6.279",
+  "build": 280,
+  "version": "0.6.280",
   "date": "2026-06-07",
-  "note": "Build 279: Bug 2.23 behoben (eigentliche Ursache). _loadReportImpl rief reportLayer.open() nie auf — report_editor.js lud Berichte direkt via eigenem fetch(), am ReportLayer vorbei. Daher war reportLayer.reportId immer null, und LockLayer.acquire() brach mit NO_REPORT ab. Fix: _loadReportImpl ruft jetzt window.reportLayer.open(report.id) vor acquire() auf. Das setzt reportLayer.reportId, schreibt den Audit-Eintrag (log_report_opened) und liefert die Bloecke zurueck — der separate Blocks-Fetch entfaellt."
+  "note": "Build 280: Bug 2.23 vollstaendig behoben. _loadReportImpl ruft jetzt reportLayer.open(report.id) auf — der ReportLayer ist die einzige autorisierte Quelle fuer Block-Daten, der separate fetch() auf /_forensic/report?format=json entfaellt. Zusaetzlich Backend-Bug in _action_open_report gefixt: o.block_id → o['block_id'] (get_block_order_for_report gibt list[dict] zurueck, kein Objekt mit Attributen)."
 }
