@@ -1,6 +1,6 @@
 {
-  "build": 292,
-  "version": "0.6.292",
+  "build": 293,
+  "version": "0.6.293",
   "date": "2026-06-07",
-  "note": "Build 292: Bugs 2.26-2.30 vollstaendig. Einheitlicher Capture-Phase-keydown-Listener ersetzt alle vorherigen separaten Handler. Drei Faelle: (A) Label-Div ArrowLeft/Up am Anfang → direktes Range-setzen auf letzten TextNode des Vorgaenger-Blocks. (B) Label-Div ArrowRight/Down am Ende → erster TextNode des naechsten Blocks. (C) Normaler Paragraph am Rand neben EvidenceBlock → Label-Div. Alle Faelle nutzen direkte Range-Setzung statt ed.caret.setToBlock() — verhindert bt()/kt()-Crash bei Chip-Paragraphen."
+  "note": "Build 293: Rollback auf 291-Basis + zwei minimale Fixes. (1) Relay-focus-Handler entfernt — er setzte Cursor immer ans Ende des Label-Divs, was den 'erster ArrowRight springt ans Ende'-Bug (2.26 Rest) verursachte. (2) Label-Div-keydown: ev.stopPropagation() fuer alle Pfeiltasten — verhindert dass Editor.js arrowLeftAndUp() → bt() aufruft, was bei Chip-Paragraphen mit setEnd-Crash scheitert (Bugs 2.27, 2.30)."
 }

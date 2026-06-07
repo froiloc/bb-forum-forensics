@@ -1173,21 +1173,21 @@ function _initEditorJs(blocks, reportId) {
                 holderForRange.addEventListener('keydown',   (e) => { window._uevt?.(e, 'report_editor', 'keydown:captureRange');   _captureRange(e); }); // B200
                 holderForRange.addEventListener('keyup',     (e) => { window._uevt?.(e, 'report_editor', 'keyup:captureRange');     _captureRange(e); }); // B200
 
-                // Bug 2.26/2.27/2.29/2.30 Fix Build 292:
-                // Einheitlicher Capture-Phase-Listener für alle Pfeiltasten-Navigation
-                // neben und innerhalb von EvidenceBlocks.
+                // Bug 2.26/2.27/2.29 Fix Build 291:
+                // Editor.js crasht mit "setStart/setEnd at offset N" wenn ArrowRight/Down
+                // aus einem Paragraph mit Chip-Spans navigiert wird und der naechste Block
+                // ein EvidenceBlock ist (oder umgekehrt bei ArrowLeft/Up).
+                // Ursache: isCaretAtEndOfInput() ruft getContenteditableSlice() auf,
+                // das range.setEnd(paragraphEl, childNodes.length) aufruft — wenn der
+                // Cursor auf einem Element-Node mit weniger Kindern als der Offset liegt,
+                // crasht Firefox ESR.
                 //
-                // Drei Fälle:
-                // (A) Cursor im Label-Div + ArrowLeft/Up am Anfang → vorheriger Block
-                // (B) Cursor im Label-Div + ArrowRight/Down am Ende → nächster Block
-                // (C) Cursor in normalem Block + ArrowRight/Down/Left/Up am Rand
-                //     neben EvidenceBlock → Label-Div des EvidenceBlocks
+                // Loesung: Capture-Phase-Listener prueft bei ArrowRight/Down/Left/Up ob
+                // der Nachbar-Block ein EvidenceBlock ist. Wenn ja: direkt per
+                // window._editor.caret.setToBlock() navigieren und Event stoppen —
+                // Editor.js-interne Navigation wird nie aufgerufen.
                 //
-                // In allen Fällen: ev.stopImmediatePropagation() verhindert Editor.js-
-                // internen arrowLeftAndUp/arrowRightAndDown, der bt()/kt() aufruft —
-                // diese crashen bei Paragraphen mit Chip-Spans (setEnd at offset N).
-                //
-                // Beleg: Bugfix-Liste 2.26-2.30, Projektgespraech 2026-06-07, Build 292
+                // Beleg: Bugfix-Liste 2.26-2.29, Projektgespraech 2026-06-07, Build 291
                 holderForRange.addEventListener('keydown', (ev) => {
                     const key = ev.key;
                     const isForward  = key === 'ArrowRight' || key === 'ArrowDown';
@@ -1196,191 +1196,94 @@ function _initEditorJs(blocks, reportId) {
                     if (ev.shiftKey || ev.ctrlKey || ev.metaKey || ev.altKey) return;
 
                     const ed = window._editor;
-                    if (!ed?.blocks) return;
+                    if (!ed?.blocks || !ed?.caret) return;
 
+                    // Aktiven Block ermitteln
                     const sel = window.getSelection();
                     if (!sel || sel.rangeCount === 0) return;
-                    const r = sel.getRangeAt(0);
-                    if (!r.collapsed) return;
-                    const focusNode = r.startContainer;
+                    const focusNode = sel.focusNode;
                     if (!focusNode) return;
-
-                    const focusEl = focusNode.nodeType === Node.ELEMENT_NODE
-                        ? focusNode : focusNode.parentElement;
-
-                    // -------------------------------------------------------
-                    // Fall A + B: Cursor im Label-Div
-                    // -------------------------------------------------------
-                    const labelDivAncestor = focusEl?.closest('.evidence-label-input');
-                    if (labelDivAncestor) {
-                        const labelDiv = labelDivAncestor;
-
-                        // Cursor-Position bestimmen
-                        const fo = r.startOffset;
-                        const fn = r.startContainer;
-
-                        const atStart = (() => {
-                            if (fo !== 0) return false;
-                            // fn muss der erste tiefste Knoten sein
-                            let n = labelDiv;
-                            while (n.firstChild) n = n.firstChild;
-                            if (fn === n) return true;
-                            if (fn === labelDiv && labelDiv.childNodes.length === 0) return true;
-                            return false;
-                        })();
-
-                        const atEnd = (() => {
-                            // fn ist letzter TextNode am Ende
-                            let n = labelDiv;
-                            while (n.lastChild) n = n.lastChild;
-                            if (fn === n) {
-                                const len = n.nodeType === Node.TEXT_NODE
-                                    ? n.textContent.length : n.childNodes.length;
-                                return fo === len;
-                            }
-                            if (fn === labelDiv)
-                                return fo === labelDiv.childNodes.length;
-                            return false;
-                        })();
-
-                        // Normale Bewegung innerhalb des Label-Divs — nicht abfangen
-                        if (isForward  && !atEnd)   return;
-                        if (isBackward && !atStart)  return;
-
-                        ev.preventDefault();
-                        ev.stopImmediatePropagation();
-
-                        // Block-Index der Beweisgruppe
-                        const evidenceHolder = focusEl.closest('.ce-block[data-id]');
-                        if (!evidenceHolder) return;
-                        const blockId  = evidenceHolder.dataset.id;
-                        const blockIdx = ed.blocks.getBlockIndex(blockId);
-                        if (blockIdx === undefined || blockIdx === null) return;
-
-                        const allCeBlocks = holderForRange.querySelectorAll('.ce-block[data-id]');
-                        const targetIdx = isForward ? blockIdx + 1 : blockIdx - 1;
-                        const targetHolder = allCeBlocks[targetIdx];
-                        if (!targetHolder) return;
-
-                        // Zum Nachbar-Block navigieren — direkte Range-Setzung
-                        // (kein ed.caret.setToBlock() — würde bt()/kt() aufrufen → Crash)
-                        const targetContent = isForward
-                            ? targetHolder.querySelector('[contenteditable="true"]')
-                            : targetHolder.querySelector('[contenteditable="true"]:last-of-type') ||
-                              targetHolder.querySelector('[contenteditable="true"]');
-                        if (!targetContent) return;
-
-                        targetContent.focus();
-                        try {
-                            const tSel = window.getSelection();
-                            const tRange = document.createRange();
-                            if (isForward) {
-                                // Anfang des nächsten Blocks
-                                let n = targetContent;
-                                while (n.firstChild) n = n.firstChild;
-                                if (n.nodeType === Node.TEXT_NODE) {
-                                    tRange.setStart(n, 0); tRange.setEnd(n, 0);
-                                } else {
-                                    tRange.setStart(targetContent, 0); tRange.setEnd(targetContent, 0);
-                                }
-                            } else {
-                                // Ende des vorherigen Blocks
-                                let n = targetContent;
-                                while (n.lastChild) n = n.lastChild;
-                                if (n.nodeType === Node.TEXT_NODE) {
-                                    const l = n.textContent.length;
-                                    tRange.setStart(n, l); tRange.setEnd(n, l);
-                                } else {
-                                    tRange.selectNodeContents(targetContent);
-                                    tRange.collapse(false);
-                                }
-                            }
-                            tSel?.removeAllRanges();
-                            tSel?.addRange(tRange);
-                        } catch (_) { /* Focus genügt als Fallback */ }
-                        return;
-                    }
-
-                    // -------------------------------------------------------
-                    // Fall C: Cursor in normalem Block neben EvidenceBlock
-                    // -------------------------------------------------------
-                    const ceBlock = focusEl?.closest('.ce-block[data-id]');
+                    const ceBlock = (focusNode.nodeType === Node.ELEMENT_NODE
+                        ? focusNode : focusNode.parentElement)?.closest('.ce-block[data-id]');
                     if (!ceBlock) return;
-                    if (ceBlock.querySelector('.evidence-block')) return; // EvidenceBlock — nicht hier
 
+                    // Prüfen ob dieser Block ein EvidenceBlock ist (dann handled der
+                    // interne label-keydown-Handler — hier nicht nochmal eingreifen)
+                    if (ceBlock.querySelector('.evidence-block')) return;
+
+                    // Ist der Cursor am Ende (Forward) oder Anfang (Backward)?
                     const contentEl = ceBlock.querySelector('[contenteditable="true"]');
                     if (!contentEl) return;
 
-                    // Crash-sichere Rand-Prüfung
+                    // Schnelle End/Anfang-Prüfung: nur wenn tatsächlich am Rand
+                    // Eigene Implementierung statt Editor.js-interne kt/bt-Funktionen
+                    // die unter Firefox ESR mit Chip-Spans crashen koennen.
                     const isAtEdge = (() => {
+                        const r = sel.getRangeAt(0);
+                        if (!r.collapsed) return false;
                         const fn = r.startContainer;
                         const fo = r.startOffset;
                         try {
                             if (isForward) {
-                                let n = contentEl;
-                                while (n.lastChild) n = n.lastChild;
-                                if (fn === n && fn.nodeType === Node.TEXT_NODE)
+                                // Am Ende: focusNode ist letzter TextNode + Offset == textLength
+                                // oder focusNode ist contentEl selbst + Offset == childNodes.length
+                                const deepLast = (() => {
+                                    let n = contentEl;
+                                    while (n.lastChild) n = n.lastChild;
+                                    return n;
+                                })();
+                                if (fn === deepLast && fn.nodeType === Node.TEXT_NODE)
                                     return fo === fn.textContent.length;
                                 if (fn === contentEl)
                                     return fo === contentEl.childNodes.length;
                                 return false;
                             } else {
-                                let n = contentEl;
-                                while (n.firstChild) n = n.firstChild;
-                                if (fn === n) return fo === 0;
-                                if (fn === contentEl) return fo === 0;
+                                // Am Anfang: focusOffset == 0 und keine linken Geschwister
+                                const deepFirst = (() => {
+                                    let n = contentEl;
+                                    while (n.firstChild) n = n.firstChild;
+                                    return n;
+                                })();
+                                if (fn === deepFirst)
+                                    return fo === 0;
+                                if (fn === contentEl)
+                                    return fo === 0;
                                 return false;
                             }
                         } catch (_) { return false; }
                     })();
                     if (!isAtEdge) return;
 
+                    // Block-Index bestimmen
                     const blockId  = ceBlock.dataset.id;
                     const blockIdx = ed.blocks.getBlockIndex(blockId);
                     if (blockIdx === undefined || blockIdx === null) return;
 
-                    const count = ed.blocks.getBlocksCount();
+                    // Nachbar-Block bestimmen
+                    const count     = ed.blocks.getBlocksCount();
                     const neighborIdx = isForward ? blockIdx + 1 : blockIdx - 1;
                     if (neighborIdx < 0 || neighborIdx >= count) return;
 
-                    const allCeBlocks2 = holderForRange.querySelectorAll('.ce-block[data-id]');
-                    const neighborHolder = allCeBlocks2[neighborIdx];
+                    // Ist der Nachbar ein EvidenceBlock?
+                    const allCeBlocks = holderForRange.querySelectorAll('.ce-block[data-id]');
+                    const neighborHolder = allCeBlocks[neighborIdx];
                     if (!neighborHolder?.querySelector('.evidence-block')) return;
 
+                    // Abfangen: EvidenceBlock-Label-Div direkt focussieren
                     ev.preventDefault();
                     ev.stopImmediatePropagation();
 
-                    const labelDiv2 = neighborHolder.querySelector('.evidence-label-input');
-                    if (!labelDiv2) return;
-
-                    labelDiv2.focus();
-                    try {
-                        const tSel = window.getSelection();
-                        const tRange = document.createRange();
-                        if (isForward) {
-                            // Anfang des Label-Divs
-                            let n = labelDiv2;
-                            while (n.firstChild) n = n.firstChild;
-                            if (n.nodeType === Node.TEXT_NODE) {
-                                tRange.setStart(n, 0); tRange.setEnd(n, 0);
-                            } else {
-                                tRange.setStart(labelDiv2, 0); tRange.setEnd(labelDiv2, 0);
-                            }
-                        } else {
-                            // Ende des Label-Divs
-                            let n = labelDiv2;
-                            while (n.lastChild) n = n.lastChild;
-                            if (n.nodeType === Node.TEXT_NODE) {
-                                const l = n.textContent.length;
-                                tRange.setStart(n, l); tRange.setEnd(n, l);
-                            } else {
-                                tRange.selectNodeContents(labelDiv2);
-                                tRange.collapse(false);
-                            }
-                        }
-                        tSel?.removeAllRanges();
-                        tSel?.addRange(tRange);
-                    } catch (_) { /* Focus genügt */ }
+                    const labelDiv = neighborHolder.querySelector('.evidence-label-input');
+                    if (labelDiv) {
+                        labelDiv.focus();
+                        const targetSel = window.getSelection();
+                        const range = document.createRange();
+                        range.selectNodeContents(labelDiv);
+                        // Forward → Anfang des Labels, Backward → Ende des Labels
+                        range.collapse(isForward);
+                        targetSel?.removeAllRanges();
+                        targetSel?.addRange(range);
+                    }
                 }, { capture: true });
             }
 
@@ -2953,29 +2856,142 @@ class EvidenceBlock {
             this._data.group_label = ev.target.textContent || '';
         });
 
-        // Bug 2.28/2.29 Fix Build 290: Relay-Div leitet Fokus sofort zum Label-Div.
-        // Editor.js setzt den Caret auf das firstInput (Relay-Div). Das Relay-Div
-        // wird sofort per focus-Event weiter zum Label-Div gereicht. So landet der
-        // Cursor nach ArrowRight/Down korrekt in der Eingabezeile.
-        // Beleg: Bugfix-Liste 2.28, 2.29, Projektgespraech 2026-06-07, Build 290
-        const relayDiv = this._wrapper.querySelector('.evidence-ce-relay');
-        const labelDiv = this._wrapper.querySelector('.evidence-label-input');
-        if (relayDiv && labelDiv) {
-            relayDiv.addEventListener('focus', () => {
-                // Kurze Verzögerung damit Editor.js seinen State setzen kann
-                requestAnimationFrame(() => {
-                    labelDiv.focus();
-                    // Cursor ans Ende des Label-Divs
-                    const sel = window.getSelection();
-                    const range = document.createRange();
-                    range.selectNodeContents(labelDiv);
-                    range.collapse(false);
-                    sel?.removeAllRanges();
-                    sel?.addRange(range);
-                });
+        // Bug 2.28/2.29 Fix Build 290: Relay-Div als Editor.js-firstInput.
+        // Build 293: Relay-focus-Handler entfernt — der Capture-Listener setzt
+        // den Cursor bereits mit korrekter Position (Anfang/Ende) ins Label-Div.
+        // Der Relay-focus-Handler setzte immer ans Ende (range.collapse(false))
+        // was den "erster ArrowRight springt ans Ende"-Bug verursachte (2.26 Rest).
+        // Beleg: Bugfix-Liste 2.26, Projektgespraech 2026-06-07, Build 293
+
+        // Bug 2.26 + 2.27 Fix Build 289:
+        // ArrowLeft/Up aus dem Label-Input → Cursor in den vorherigen Block.
+        // ArrowRight/Down aus dem Label-Input → Cursor in den nächsten Block.
+        //
+        // Ursache: Editor.js navigiert mit navigateNext()/navigatePrevious() auf
+        // Ebene der Block-Inputs. Wenn das Ziel-Input ein natives <input>-Element
+        // ist, versucht Editor.js über C.getDeepestNode() + setCursor() zu navigieren.
+        // In einigen Firefox-ESR-Versionen schlägt dabei das Range.setStart() auf
+        // dem <input>-Node fehl ("Failed to execute 'setStart' on 'Range'") weil
+        // der Caret-Einstieg von außen kommend (ArrowDown/Right aus Paragraph)
+        // keinen gültigen Selection-Kontext im Redactor hat.
+        //
+        // Lösung: Das Label-Input übernimmt die Cursor-Bewegung selbst. Wenn der
+        // Cursor bereits am Anfang (ArrowLeft/Up) bzw. Ende (ArrowRight/Down) des
+        // Inputs steht, navigiert es den Editor.js-Caret zum vorherigen/nächsten
+        // Block, indem die caret-API des Editors direkt aufgerufen wird.
+        // Dabei wird focus() explizit auf das Ziel-Input gesetzt statt über
+        // Editor.js-interne setCursor() zu gehen, was den Range-Crash verhindert.
+        //
+        // Rückwärtsnavigation (Bug 2.27): ArrowLeft/Up am Anfang des Inputs.
+        // Vorwärtsnavigation (Bug 2.26): ArrowRight/Down am Ende des Inputs.
+        //
+        // Beleg: Bugfix-Liste 2.26, 2.27, Projektgespraech 2026-06-07
+        const labelInput = this._wrapper.querySelector('.evidence-label-input');
+        if (labelInput) {
+            labelInput.addEventListener('keydown', (ev) => {
+                const key = ev.key;
+                const isLeft  = key === 'ArrowLeft'  || key === 'ArrowUp';
+                const isRight = key === 'ArrowRight' || key === 'ArrowDown';
+                if (!isLeft && !isRight) return;
+
+                // Bug 2.27/2.30 Fix Build 293: Alle Pfeiltasten-Events im Label-Div
+                // stoppen das Bubbling zu Editor.js. Sonst ruft arrowLeftAndUp() die
+                // bt()-Funktion auf, die bei Chip-Paragraphen mit setEnd-Crash scheitert.
+                // Bei normaler Cursor-Bewegung (nicht am Rand) reicht stopPropagation —
+                // der Browser-Default (Cursor-Bewegung im Div) läuft normal weiter.
+                // Beleg: Bugfix-Liste 2.27, 2.30, Projektgespraech 2026-06-07, Build 293
+                ev.stopPropagation();
+
+                // Cursor-Position im contenteditable bestimmen
+                const sel = window.getSelection();
+                if (!sel || !sel.rangeCount) return;
+                const range = sel.getRangeAt(0);
+                if (!range.collapsed) return; // Selektion — nicht abfangen
+
+                // Cursor am Anfang? (ArrowLeft/Up soll Block verlassen)
+                const atStart = range.startOffset === 0
+                    && (!range.startContainer.previousSibling)
+                    && (range.startContainer === labelInput
+                        || range.startContainer === labelInput.firstChild);
+
+                // Cursor am Ende? (ArrowRight/Down soll Block verlassen)
+                const endNode = range.startContainer;
+                const endLen  = endNode.nodeType === Node.TEXT_NODE
+                    ? endNode.textContent.length
+                    : endNode.childNodes.length;
+                const atEnd   = range.startOffset === endLen
+                    && (!endNode.nextSibling || endNode === labelInput)
+                    && (endNode === labelInput || endNode === labelInput.lastChild);
+
+                if (isLeft && !atStart)  return; // normale Cursor-Bewegung im Div
+                if (isRight && !atEnd)   return;
+
+                // Bug 2.27/2.28 Fix Build 290:
+                // Navigation über Editor.js-Caret-API statt direkte DOM-Manipulation.
+                // Direkte .focus() + Range-Setzung lässt Editor.js' currentBlock/
+                // currentInput-State inkonsistent, was zu "eingefrorenem" Cursor führt
+                // (Bug 2.28) und setEnd-Range-Fehlern im editorjs-Kern.
+                // window._editor.caret.setToBlock() informiert Editor.js korrekt.
+                //
+                // Beleg: Bugfix-Liste 2.26-2.29, Projektgespraech 2026-06-07, Build 290
+                const ed = window._editor;
+                if (!ed?.blocks || !ed?.caret) return;
+
+                ev.preventDefault();
+                ev.stopPropagation();
+
+                // Block-Index dieses EvidenceBlocks über Editor.js-API ermitteln
+                const holder = this._wrapper.closest('.ce-block[data-id]');
+                if (!holder) return;
+                const blockId  = holder.dataset.id;
+                const blockIdx = ed.blocks.getBlockIndex(blockId);
+                if (blockIdx === undefined || blockIdx === null) return;
+
+                if (isLeft) {
+                    // Bug 2.27: rückwärts zum Ende des vorherigen Blocks
+                    // Direkte DOM-Navigation statt ed.caret.setToBlock() —
+                    // setToBlock() löst isCaretAtEndOfInput() aus das bei Chip-Spans
+                    // mit setStart-Crash scheitert. Wir setzen den Caret direkt.
+                    // Beleg: Bugfix-Liste 2.27, Projektgespraech 2026-06-07, Build 291
+                    if (blockIdx > 0) {
+                        const allCeBlocks2 = document.querySelectorAll('#editorjs-holder .ce-block[data-id]');
+                        const prevHolder = allCeBlocks2[blockIdx - 1];
+                        if (prevHolder) {
+                            // contenteditable des Vorgänger-Blocks
+                            const prevContent = prevHolder.querySelector('[contenteditable="true"]');
+                            if (prevContent) {
+                                prevContent.focus();
+                                const pSel = window.getSelection();
+                                const pRange = document.createRange();
+                                // Cursor ans Ende — tiefsten letzten Knoten suchen
+                                let deepLast = prevContent;
+                                while (deepLast.lastChild) deepLast = deepLast.lastChild;
+                                try {
+                                    if (deepLast.nodeType === Node.TEXT_NODE) {
+                                        pRange.setStart(deepLast, deepLast.textContent.length);
+                                        pRange.setEnd(deepLast, deepLast.textContent.length);
+                                    } else {
+                                        pRange.selectNodeContents(prevContent);
+                                        pRange.collapse(false);
+                                    }
+                                    pSel?.removeAllRanges();
+                                    pSel?.addRange(pRange);
+                                } catch (_) {
+                                    // Fallback: einfach focus
+                                    prevContent.focus();
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // Bug 2.26/2.29: vorwärts zum Anfang des nächsten Blocks
+                    const count = ed.blocks.getBlocksCount();
+                    if (blockIdx < count - 1) {
+                        ed.caret.setToBlock(blockIdx + 1, 'start');
+                    }
+                }
             });
         }
-
         this._wrapper.querySelectorAll('.evidence-remove-btn').forEach(btn => {
             btn.addEventListener('click', async (ev) => {
                 window._uevt?.(ev, 'report_editor', 'click:evidence-remove-btn', { id: btn.dataset.id }); // B200
