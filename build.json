@@ -1,6 +1,6 @@
 {
-  "build": 278,
-  "version": "0.6.278",
+  "build": 279,
+  "version": "0.6.279",
   "date": "2026-06-07",
-  "note": "Build 278: Bug 2.23 behoben (eigentliche Ursache). Der SSE-Preflight-fetch in sse_layer.js sendet jetzt X-Forensic-Preflight: 1. Der Server erkennt diesen Header in events.py und behandelt den Request als reinen Slot-Verfuegbarkeitscheck (200 oder 409) ohne claim_sse_role() aufzurufen oder einen Stream zu oeffnen. Damit entsteht kein Konflikt zwischen Preflight-GET und der nachfolgenden echten EventSource-Verbindung."
+  "note": "Build 279: Bug 2.23 behoben (eigentliche Ursache). _loadReportImpl rief reportLayer.open() nie auf — report_editor.js lud Berichte direkt via eigenem fetch(), am ReportLayer vorbei. Daher war reportLayer.reportId immer null, und LockLayer.acquire() brach mit NO_REPORT ab. Fix: _loadReportImpl ruft jetzt window.reportLayer.open(report.id) vor acquire() auf. Das setzt reportLayer.reportId, schreibt den Audit-Eintrag (log_report_opened) und liefert die Bloecke zurueck — der separate Blocks-Fetch entfaellt."
 }

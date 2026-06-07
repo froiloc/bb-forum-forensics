@@ -69,7 +69,7 @@
  *     ausgefuehrt damit der gedruckte Stand mit der DB synchron ist.
  *     Beleg: Bugfix Build 134, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.277 · Build: 277 · 2026-06-07
+ * Version: v0.6.279 · Build: 279 · 2026-06-07
  * Paket 9: Alle direkten fetch()-Schreiboperationen auf _docSend()/DocumentLayer
  * umgestellt. EditorState.lockId → lockLayer.lockId. Polling-Mechanismus
  * durch reaktiven LockLayer ersetzt. skipReinit/_pendingReportSwitchId entfernt.
@@ -520,29 +520,40 @@ async function _loadReportImpl(report) {
     if (!window.lockLayer?.lockId && window.lockLayer) {
         _dbg('_loadReportImpl: Lock erwerben für Bericht', report.id);
 
-        // Bug 2.23 Fix Build 277:
-        // Nach einem Server-Neustart ist die SSE-Verbindung noch nicht
-        // hergestellt (sseClientId == null). acquire() bricht in diesem
-        // Fall sofort mit NO_SSE ab — ohne Retry.
-        // Lösung: Warten auf sseLayer.ready (löst sich entweder bei
-        // erfolgreichem 'connected' oder nach dem 10s-Timeout-Fallback
-        // auf). Erst dann acquire() aufrufen — so ist sseClientId in
-        // beiden Fällen gesetzt (oder der Server akzeptiert null).
-        // In einem window.sseLayer direkt referenziert, weil der
-        // ready-Promise stabil ist und nie erneut erzeugt wird.
-        // Beleg: Bugfix-Liste 2.23, Projektgespraech 2026-06-07
-        const sseLayer = window.sseLayer;
-        if (sseLayer?.ready) {
-            _dbg('_loadReportImpl: warte auf sseLayer.ready vor acquire()');
-            await sseLayer.ready;
-            _dbg('_loadReportImpl: sseLayer.ready aufgelöst, clientId=',
-                 sseLayer.clientId);
+        // Bug 2.23 Fix Build 279 (ersetzt Build 277):
+        //
+        // Ursache: LockLayer.acquire() liest die report_id aus
+        // window.reportLayer.reportId. Dieser Wert war null, weil
+        // _loadReportImpl reportLayer.open() nie aufgerufen hat —
+        // der Bericht wurde direkt via eigenem fetch() geladen, am
+        // ReportLayer vorbei. acquire() bricht dann mit NO_REPORT ab.
+        //
+        // Lösung: reportLayer.open(report.id) aufrufen. Das setzt
+        // reportLayer.reportId (wird von acquire() benötigt),
+        // schreibt den forensisch korrekten Audit-Eintrag (log_report_opened)
+        // und liefert die Blöcke zurück — der spätere separate fetch()
+        // auf /_forensic/report?format=json entfällt damit.
+        //
+        // Reihenfolge: open() vor acquire(), weil acquire() die
+        // report_id aus dem ReportLayer liest.
+        //
+        // Beleg: Layer 3 States OPENING, LockLayer.acquire() reportId-Guard,
+        //        Projektgespraech 2026-06-07
+        if (window.reportLayer) {
+            _dbg('_loadReportImpl: reportLayer.open() für Bericht', report.id);
+            await window.reportLayer.open(report.id);
+            // Fehlerfall: reportLayer blieb in IDLE wenn open() fehlschlug
+            if (!window.reportLayer.reportId) {
+                _dbg('_loadReportImpl: reportLayer.open() fehlgeschlagen — acquire() übersprungen');
+            }
         }
 
         // Erneut prüfen: Lock könnte inzwischen durch Auto-Resume
         // (sessionStorage-Pfad in _onReportOpened) bereits gesetzt sein.
-        if (!window.lockLayer.lockId) {
+        if (window.reportLayer?.reportId && !window.lockLayer.lockId) {
             await window.lockLayer.acquire();
+        } else if (!window.reportLayer?.reportId) {
+            _dbg('_loadReportImpl: keine reportId — acquire() übersprungen');
         } else {
             _dbg('_loadReportImpl: Lock bereits gesetzt (Auto-Resume), skip acquire()');
         }
@@ -612,32 +623,44 @@ async function _loadReportImpl(report) {
         }
     }
 
-    // Bloecke laden
-    // Bug 2.120 Fix Build 214: report_id als Parameter mitsenden.
-    // Ohne report_id lieferte der Server die Bloecke des zuletzt aktiven
-    // Berichts — bei Bericht-Wechsel wurden _knownBlockIds mit fremden IDs
-    // initialisiert, der Auto-Save loeschte diese dann aus der DB.
-    // Beleg: Bugfix Build 214, Projektgespraech 2026-05-17
-    const _initBlocksUrl = `/_forensic/report?format=json`
-        + (report.id != null ? `&report_id=${encodeURIComponent(report.id)}` : '');
-    const blocksResp = await fetch(_initBlocksUrl, {
-        headers: { 'X-Forensic-Request': 'ajax' }
-    });
+    // Bloecke laden.
+    // Bug 2.23 Fix Build 279: Nach reportLayer.open() sind die Bloecke
+    // bereits in window.reportLayer.blocks verfuegbar — kein separater
+    // fetch() auf /_forensic/report?format=json mehr noetig.
+    // Fallback: eigener fetch falls reportLayer nicht verfuegbar oder
+    // kein Bericht geladen (z.B. Create-Flow vor dem ersten open()).
+    // Beleg: Bugfix-Liste 2.23, Layer 3 States OPENED, Projektgespraech 2026-06-07
     let existingBlocks = [];
-    if (blocksResp.ok) {
-        const data = await blocksResp.json();
-        // B6 Phase 4+: "blocks" statt "paragraphs"
-        existingBlocks = data.blocks || [];
-        // B6 Phase 6: _currentBlocks fuer Sidebar-Formular merken
-        // Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06
-        _currentBlocks = existingBlocks;
-        // Bug 2.39 Fix Build 130: _knownBlockIds mit den vom Server geladenen
-        // Block-IDs initialisieren, damit der Auto-Save Loeschungen erkennen kann.
-        // Beleg: Bugfix Build 130, Projektgespraech 2026-05-09
-        _knownBlockIds = new Set(existingBlocks.map(b => b.block_id).filter(Boolean));
-        console.debug('report_editor.js: _knownBlockIds initialisiert,',
-                      _knownBlockIds.size, 'Bloecke geladen.');
+    if (window.reportLayer?.reportId && window.reportLayer.blocks?.length >= 0) {
+        existingBlocks = window.reportLayer.blocks || [];
+        _dbg('_loadReportImpl: Bloecke aus reportLayer (', existingBlocks.length, ')');
+    } else {
+        // Fallback-Pfad (Create-Flow oder reportLayer nicht verfuegbar)
+        // Bug 2.120 Fix Build 214: report_id als Parameter mitsenden.
+        // Ohne report_id lieferte der Server die Bloecke des zuletzt aktiven
+        // Berichts — bei Bericht-Wechsel wurden _knownBlockIds mit fremden IDs
+        // initialisiert, der Auto-Save loeschte diese dann aus der DB.
+        // Beleg: Bugfix Build 214, Projektgespraech 2026-05-17
+        const _initBlocksUrl = `/_forensic/report?format=json`
+            + (report.id != null ? `&report_id=${encodeURIComponent(report.id)}` : '');
+        const blocksResp = await fetch(_initBlocksUrl, {
+            headers: { 'X-Forensic-Request': 'ajax' }
+        });
+        if (blocksResp.ok) {
+            const data = await blocksResp.json();
+            existingBlocks = data.blocks || [];
+            _dbg('_loadReportImpl: Bloecke via Fallback-Fetch (', existingBlocks.length, ')');
+        }
     }
+    // B6 Phase 6: _currentBlocks fuer Sidebar-Formular merken
+    // Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06
+    _currentBlocks = existingBlocks;
+    // Bug 2.39 Fix Build 130: _knownBlockIds mit den vom Server geladenen
+    // Block-IDs initialisieren, damit der Auto-Save Loeschungen erkennen kann.
+    // Beleg: Bugfix Build 130, Projektgespraech 2026-05-09
+    _knownBlockIds = new Set(existingBlocks.map(b => b.block_id).filter(Boolean));
+    console.debug('report_editor.js: _knownBlockIds initialisiert,',
+                  _knownBlockIds.size, 'Bloecke geladen.');
 
     // Defensive Bereinigung: doppelte Editor-Instanzen entfernen
     // falls ein paralleler Aufruf die erste Instanz schon gerendert hat.
