@@ -1215,9 +1215,12 @@ function _initEditorJs(blocks, reportId) {
                     const contentEl = ceBlock.querySelector('[contenteditable="true"]');
                     if (!contentEl) return;
 
-                    // Schnelle End/Anfang-Prüfung: nur wenn tatsächlich am Rand
-                    // Eigene Implementierung statt Editor.js-interne kt/bt-Funktionen
-                    // die unter Firefox ESR mit Chip-Spans crashen koennen.
+                    // Crash-sichere Rand-Prüfung für normalen Block neben EvidenceBlock.
+                    // Bug 2.27/2.30 Fix Build 294: isAtEdge-Backward nur wenn der Cursor
+                    // wirklich am absoluten Anfang des contenteditable steht, nicht nur
+                    // am Anfang eines inneren Chip-Spans.
+                    // Methode: Range von contentEl-Anfang bis Cursor — wenn sie
+                    // keine sichtbaren Zeichen enthält, ist der Cursor am Anfang.
                     const isAtEdge = (() => {
                         const r = sel.getRangeAt(0);
                         if (!r.collapsed) return false;
@@ -1225,30 +1228,21 @@ function _initEditorJs(blocks, reportId) {
                         const fo = r.startOffset;
                         try {
                             if (isForward) {
-                                // Am Ende: focusNode ist letzter TextNode + Offset == textLength
-                                // oder focusNode ist contentEl selbst + Offset == childNodes.length
-                                const deepLast = (() => {
-                                    let n = contentEl;
-                                    while (n.lastChild) n = n.lastChild;
-                                    return n;
-                                })();
-                                if (fn === deepLast && fn.nodeType === Node.TEXT_NODE)
+                                // Am Ende: Cursor am letzten TextNode am Textende
+                                let n = contentEl;
+                                while (n.lastChild) n = n.lastChild;
+                                if (fn === n && fn.nodeType === Node.TEXT_NODE)
                                     return fo === fn.textContent.length;
                                 if (fn === contentEl)
                                     return fo === contentEl.childNodes.length;
                                 return false;
                             } else {
-                                // Am Anfang: focusOffset == 0 und keine linken Geschwister
-                                const deepFirst = (() => {
-                                    let n = contentEl;
-                                    while (n.firstChild) n = n.firstChild;
-                                    return n;
-                                })();
-                                if (fn === deepFirst)
-                                    return fo === 0;
-                                if (fn === contentEl)
-                                    return fo === 0;
-                                return false;
+                                // Am Anfang: Range von Anfang contentEl bis Cursor ist leer
+                                const testRange = document.createRange();
+                                testRange.setStart(contentEl, 0);
+                                testRange.setEnd(fn, fo);
+                                return testRange.toString().length === 0
+                                    && testRange.cloneContents().textContent.length === 0;
                             }
                         } catch (_) { return false; }
                     })();

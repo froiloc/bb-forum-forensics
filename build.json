@@ -1,6 +1,6 @@
 {
-  "build": 294,
-  "version": "0.6.294",
+  "build": 295,
+  "version": "0.6.295",
   "date": "2026-06-07",
-  "note": "Build 294: Bug 2.27. ArrowLeft-Navigation aus Label-Div zu vorherigem Block: deepLast-Traversal durch selectNodeContents(prevContent)+collapse(false) ersetzt. Der deepLast-Loop endete bei Chip-Spans in nicht-TextNode-Elementen, die Range-Setzung schlug fehl und der Cursor blieb im Label-Div."
+  "note": "Build 295: Bug 2.27. isAtEdge-Backward-Check im Capture-Listener war fehlerhaft: deepFirst-Traversal erkannte Cursor am Anfang eines Chip-Span-Kind-Elements als 'am Anfang des Blocks', obwohl der Cursor mitten im Block stand. Fix: Range von contentEl-Anfang bis Cursor — wenn cloneContents().textContent.length === 0, ist der Cursor wirklich am absoluten Anfang."
 }
