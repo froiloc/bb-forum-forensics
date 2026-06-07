@@ -2704,15 +2704,15 @@ class EvidenceBlock {
 
         const labelHtml = !this._readOnly
             // Bug 2.26 Fix Build 289: contenteditable statt <input type="text">.
-            // Editor.js' setCursor() setzt den Caret mit Range.setStart() auf dem
-            // deepest node. Fuer native <input>-Elemente waehlt Editor.js zwar den
-            // isNativeInput-Pfad, aber in Firefox ESR gibt es dabei unter bestimmten
-            // Umstaenden (ArrowDown/Right aus Paragraph) einen "setStart on Range"-
-            // Fehler. Ein contenteditable-Div wird von Editor.js korrekt behandelt:
-            // setCursor() ruft setStart() auf dem Text-Node auf, was sicher ist.
-            // Der value wird aus textContent gelesen/geschrieben.
-            // Beleg: Bugfix-Liste 2.26, Projektgespraech 2026-06-07
-            ? `<div class="evidence-label-input" contenteditable="true" data-placeholder="${e('Beschriftung (optional)')}">${e(label)}</div>`
+            // Bug 2.28/2.29 Fix Build 290: Unsichtbares Relay-Div (evidence-ce-relay)
+            // als erstes contenteditable fuer Editor.js-Navigation. Editor.js setzt
+            // den Caret immer auf das firstInput des Blocks — das Relay-Div enthaelt
+            // einen sicheren Leerzeichen-TextNode (Offset 0 immer gueltig, kein
+            // setEnd-Fehler). Ein keydown-Handler auf dem Relay leitet sofort zum
+            // sichtbaren Label-Div weiter. Das Label-Div bleibt als zweites Input.
+            // Beleg: Bugfix-Liste 2.26-2.29, Projektgespraech 2026-06-07, Build 290
+            ? `<div class="evidence-ce-relay" contenteditable="true" aria-hidden="true" tabindex="-1">\u200B</div>` +
+              `<div class="evidence-label-input" contenteditable="true" data-placeholder="${e('Beschriftung (optional)')}">${e(label)}</div>`
             : (label ? `<div class="evidence-label">${e(label)}</div>` : '');
 
         let bodyHtml = '';
@@ -2742,6 +2742,29 @@ class EvidenceBlock {
             window._uevt?.(ev, 'report_editor', 'input:evidence-label', { value: ev.target.textContent }); // B200
             this._data.group_label = ev.target.textContent || '';
         });
+
+        // Bug 2.28/2.29 Fix Build 290: Relay-Div leitet Fokus sofort zum Label-Div.
+        // Editor.js setzt den Caret auf das firstInput (Relay-Div). Das Relay-Div
+        // wird sofort per focus-Event weiter zum Label-Div gereicht. So landet der
+        // Cursor nach ArrowRight/Down korrekt in der Eingabezeile.
+        // Beleg: Bugfix-Liste 2.28, 2.29, Projektgespraech 2026-06-07, Build 290
+        const relayDiv = this._wrapper.querySelector('.evidence-ce-relay');
+        const labelDiv = this._wrapper.querySelector('.evidence-label-input');
+        if (relayDiv && labelDiv) {
+            relayDiv.addEventListener('focus', () => {
+                // Kurze Verzögerung damit Editor.js seinen State setzen kann
+                requestAnimationFrame(() => {
+                    labelDiv.focus();
+                    // Cursor ans Ende des Label-Divs
+                    const sel = window.getSelection();
+                    const range = document.createRange();
+                    range.selectNodeContents(labelDiv);
+                    range.collapse(false);
+                    sel?.removeAllRanges();
+                    sel?.addRange(range);
+                });
+            });
+        }
 
         // Bug 2.26 + 2.27 Fix Build 289:
         // ArrowLeft/Up aus dem Label-Input → Cursor in den vorherigen Block.
@@ -2778,63 +2801,58 @@ class EvidenceBlock {
                 const sel = window.getSelection();
                 if (!sel || !sel.rangeCount) return;
                 const range = sel.getRangeAt(0);
-                const text  = labelInput.textContent || '';
+                if (!range.collapsed) return; // Selektion — nicht abfangen
 
-                // Cursor am Anfang? (ArrowLeft/Up)
-                const atStart = range.startOffset === 0 && range.startContainer === labelInput
-                             || (range.startContainer.nodeType === Node.TEXT_NODE
-                                 && range.startOffset === 0
-                                 && labelInput.contains(range.startContainer));
-                // Cursor am Ende? (ArrowRight/Down)
-                const textLen = range.startContainer.nodeType === Node.TEXT_NODE
-                    ? range.startContainer.textContent.length
-                    : labelInput.textContent.length;
-                const atEnd = range.startContainer === labelInput
-                           || (range.startContainer.nodeType === Node.TEXT_NODE
-                               && range.startOffset === textLen
-                               && range.startContainer === labelInput.firstChild);
+                // Cursor am Anfang? (ArrowLeft/Up soll Block verlassen)
+                const atStart = range.startOffset === 0
+                    && (!range.startContainer.previousSibling)
+                    && (range.startContainer === labelInput
+                        || range.startContainer === labelInput.firstChild);
 
-                if (isLeft && !atStart)  return;
+                // Cursor am Ende? (ArrowRight/Down soll Block verlassen)
+                const endNode = range.startContainer;
+                const endLen  = endNode.nodeType === Node.TEXT_NODE
+                    ? endNode.textContent.length
+                    : endNode.childNodes.length;
+                const atEnd   = range.startOffset === endLen
+                    && (!endNode.nextSibling || endNode === labelInput)
+                    && (endNode === labelInput || endNode === labelInput.lastChild);
+
+                if (isLeft && !atStart)  return; // normale Cursor-Bewegung im Div
                 if (isRight && !atEnd)   return;
+
+                // Bug 2.27/2.28 Fix Build 290:
+                // Navigation über Editor.js-Caret-API statt direkte DOM-Manipulation.
+                // Direkte .focus() + Range-Setzung lässt Editor.js' currentBlock/
+                // currentInput-State inkonsistent, was zu "eingefrorenem" Cursor führt
+                // (Bug 2.28) und setEnd-Range-Fehlern im editorjs-Kern.
+                // window._editor.caret.setToBlock() informiert Editor.js korrekt.
+                //
+                // Beleg: Bugfix-Liste 2.26-2.29, Projektgespraech 2026-06-07, Build 290
+                const ed = window._editor;
+                if (!ed?.blocks || !ed?.caret) return;
 
                 ev.preventDefault();
                 ev.stopPropagation();
 
-                const holder = this._wrapper.closest('.ce-block');
+                // Block-Index dieses EvidenceBlocks über Editor.js-API ermitteln
+                const holder = this._wrapper.closest('.ce-block[data-id]');
                 if (!holder) return;
-                const editorHolder = document.getElementById('editorjs-holder');
-                if (!editorHolder) return;
-                const allBlocks = Array.from(editorHolder.querySelectorAll('.ce-block'));
-                const thisIdx   = allBlocks.indexOf(holder);
-                if (thisIdx === -1) return;
+                const blockId  = holder.dataset.id;
+                const blockIdx = ed.blocks.getBlockIndex(blockId);
+                if (blockIdx === undefined || blockIdx === null) return;
 
-                // Bug 2.27: Rückwärts navigieren (ArrowLeft/Up)
-                // Bug 2.26: Vorwärts navigieren (ArrowRight/Down)
-                const targetHolder = isLeft ? allBlocks[thisIdx - 1] : allBlocks[thisIdx + 1];
-                if (!targetHolder) return;
-
-                const targetInputs = targetHolder.querySelectorAll(
-                    '[contenteditable="true"], input:not([type]), ' +
-                    'input[type="text"], input[type="search"], ' +
-                    'input[type="email"], textarea'
-                );
-                // Rückwärts → letztes Input, Vorwärts → erstes Input
-                const targetInput = isLeft
-                    ? targetInputs[targetInputs.length - 1]
-                    : targetInputs[0];
-                if (!targetInput) return;
-
-                targetInput.focus();
-                const targetSel = window.getSelection();
-                if (targetInput.contentEditable === 'true') {
-                    const targetRange = document.createRange();
-                    targetRange.selectNodeContents(targetInput);
-                    targetRange.collapse(isRight); // true=Anfang, false=Ende
-                    targetSel?.removeAllRanges();
-                    targetSel?.addRange(targetRange);
+                if (isLeft) {
+                    // Bug 2.27: rückwärts zum Ende des vorherigen Blocks
+                    if (blockIdx > 0) {
+                        ed.caret.setToBlock(blockIdx - 1, 'end');
+                    }
                 } else {
-                    const pos = isLeft ? (targetInput.value?.length ?? 0) : 0;
-                    targetInput.setSelectionRange?.(pos, pos);
+                    // Bug 2.26/2.29: vorwärts zum Anfang des nächsten Blocks
+                    const count = ed.blocks.getBlocksCount();
+                    if (blockIdx < count - 1) {
+                        ed.caret.setToBlock(blockIdx + 1, 'start');
+                    }
                 }
             });
         }

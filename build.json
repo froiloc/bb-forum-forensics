@@ -1,6 +1,6 @@
 {
-  "build": 289,
-  "version": "0.6.289",
+  "build": 290,
+  "version": "0.6.290",
   "date": "2026-06-07",
-  "note": "Build 289: Bug 2.26 + 2.27. evidence-label-input von <input type=text> auf contenteditable-Div umgestellt — verhindert den Range.setStart()-Crash beim ArrowDown/Right-Einstieg von außen (Bug 2.26). Keydown-Handler auf dem Label-Div navigiert bei ArrowLeft/Up (Anfang) und ArrowRight/Down (Ende) explizit zum vorherigen/naechsten Block-Input (Bug 2.27). save() liest jetzt textContent statt value. Test T07 aktualisiert."
+  "note": "Build 290: Bugs 2.26-2.29. Drei Aenderungen: (1) Relay-Div (.evidence-ce-relay) als erstes contenteditable des EvidenceBlocks — Editor.js setzt Caret immer auf einen sicheren Leerzeichen-TextNode, kein setEnd-Fehler mehr (Bugs 2.29, 2.28). (2) Relay-focus leitet per requestAnimationFrame sofort zum Label-Div weiter. (3) Label-Div-keydown nutzt window._editor.caret.setToBlock() statt direkter DOM-Manipulation — Editor.js-State bleibt konsistent, kein eingefrorener Cursor (Bug 2.28). CSS: .evidence-ce-relay unsichtbar, .evidence-block position:relative."
 }

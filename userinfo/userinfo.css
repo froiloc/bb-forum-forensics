@@ -1409,6 +1409,7 @@ span.forensic-passive {
     background: #e3f2fd;
     margin: 4px 0;
     transition: border-color 0.15s;
+    position: relative; /* Build 290: fuer .evidence-ce-relay */
 }
 
 .evidence-block--dragover {
@@ -1442,6 +1443,21 @@ span.forensic-passive {
     min-height: 1.4em;
     box-sizing: border-box;
     cursor: text;
+}
+
+/* Relay-Div fuer Editor.js-Navigation — unsichtbar, kein Layout-Platz */
+/* Build 290: firstInput des EvidenceBlocks fuer sicheres setCursor() */
+.evidence-ce-relay {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+    outline: none;
+    border: none;
+    padding: 0;
+    margin: 0;
 }
 
 /* Placeholder fuer contenteditable-Div */
