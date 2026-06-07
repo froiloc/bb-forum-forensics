@@ -1,6 +1,6 @@
 {
-  "build": 275,
-  "version": "0.6.275",
+  "build": 276,
+  "version": "0.6.276",
   "date": "2026-06-07",
-  "note": "Build 275: Bug 2.21 behoben — Scrollposition der Annotation-Sidebar wird vor dem Re-Render gesichert und danach wiederhergestellt (savedScrollTop auf #as-list). Bug 2.22 behoben — alle Ausblenden-Checkboxen (Tags, Ermittler, Zitate, Quelle, Notizen) haben jetzt State-Variablen im Modul-Scope und dedizierte Change-Handler; beim Re-Render werden ihre Zustaende korrekt eingespielt."
+  "note": "Build 276: Bug 2.23 behoben — nach Server-Neustart wird der Lock beim Neuladen des Editorfensters nicht erworben, weil SSE noch nicht verbunden ist (409 Conflict, sseClientId==null). Fix in editor_bootstrap.js: sseLayer.on('connected'/'reconnected') loest jetzt einen Lock-Retry aus, wenn kein Lock gehalten wird, aber ein Bericht geladen ist."
 }

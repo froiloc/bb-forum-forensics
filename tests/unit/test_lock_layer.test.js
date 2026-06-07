@@ -34,8 +34,9 @@
  * T28 — acquire() in ACQUIRING wird ignoriert (Re-Entry-Guard)
  * T29 — SSE editor_lock_released während MINE → IDLE
  * T30 — sessionStorage-Key ist 'forensic_lock_v2'
+ * T31 — acquire() ohne clientId → NO_SSE-Fehler, kein fetch (Bug 2.23)
  *
- * Version: v0.6.250 · Build: 250 · 2026-05-24
+ * Version: v0.6.276 · Build: 276 · 2026-06-07
  * Beleg: Layer 4 States, SLA Manifest, Paket 7
  */
 
@@ -596,6 +597,36 @@ describe('LockLayer — Re-Entry-Guard und sessionStorage', () => {
         expect(storage.getItem('forensic_lock_id')).toBeNull();
         // Neuer Key muss gesetzt sein
         expect(storage.getItem('forensic_lock_v2')).toBe('v2-key-test');
+    });
+
+    it('T31 — acquire() ohne clientId → NO_SSE-Fehler, kein fetch (Bug 2.23)', async () => {
+        // Belegt: acquire() bricht mit NO_SSE ab wenn sseClientId null ist.
+        // Dieser Pfad tritt nach Server-Neustart auf wenn SSE noch nicht
+        // verbunden ist (409 Conflict). editor_bootstrap.js löst den Retry
+        // aus sobald SSE bereit ist.
+        // Beleg: Bugfix-Liste 2.23, Projektgespraech 2026-06-07
+        //
+        // Hinweis: makeMockSseLayer nutzt `opts.clientId ?? 'sse-client-mock'`,
+        // wobei `??` für null den Fallback einsetzt. Wir setzen clientId daher
+        // nach Konstruktion direkt auf null.
+        const sse = makeMockSseLayer();
+        sse.clientId = null;               // null nach Konstruktion setzen, ?? greift nicht
+
+        const rep = makeMockReportLayer();
+        const fetchFn = vi.fn(mockAcquireOk('should-not-be-called'));
+        const { layer } = buildDom(sse, rep, fetchFn);
+        rep._resolveReady(); await layer.ready;
+
+        const errors = [];
+        layer.on('error', e => errors.push(e));
+
+        await layer.acquire();
+
+        expect(fetchFn).not.toHaveBeenCalled();
+        expect(errors).toHaveLength(1);
+        expect(errors[0].code).toBe('NO_SSE');
+        // Zustand muss IDLE geblieben sein (kein Lock)
+        expect(layer.lockId).toBeNull();
     });
 
 });

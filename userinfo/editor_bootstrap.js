@@ -33,7 +33,7 @@
  * zuständig. editor_bootstrap.js ist ausschließlich für Fenster 3 (Editor).
  * Beleg: Option C, Architekturentscheidung Paket-9-Review 2026-05-24
  *
- * Version: v0.6.265 · Build: 265 · 2026-05-31
+ * Version: v0.6.276 · Build: 276 · 2026-06-07
  *
  * Changelog Build 265 (2026-05-31):
  *   - SSELayer erhält role: 'report' damit der Server Duplikat-SSE-Verbindungen
@@ -220,12 +220,43 @@
         /**
          * SSELayer 'connected' / 'reconnected': SSE-Client-ID verfügbar.
          * Debug-Logging.
+         *
+         * Bug 2.23 Fix Build 276:
+         * Beim Laden eines bestehenden Berichts nach Server-Neustart schlägt
+         * acquire() in _loadReportImpl() mit NO_SSE fehl, weil die SSE-
+         * Verbindung noch nicht steht (sseClientId == null). Der Retry-Aufruf
+         * folgt jetzt hier: sobald SSE verbunden ist und der LockLayer noch
+         * keinen Lock hält, aber ein Bericht bereits geladen ist, wird
+         * acquire() nachgeholt.
+         *
+         * Sicherheitsbedingungen für den Retry:
+         *   1. lockLayer.lockId == null  → kein Lock gehalten
+         *   2. lockLayer._state == IDLE  → acquire() wäre erlaubt (_canAcquire)
+         *   3. reportLayer.reportId      → ein Bericht ist aktiv
+         *
+         * Beleg: Bugfix-Liste 2.23, Projektgespraech 2026-06-07
          */
+        function _retryAcquireIfNeeded(label) {
+            const hasLock    = !!lockLayer.lockId;
+            const hasReport  = !!reportLayer.reportId;
+            const canAcquire = typeof lockLayer._canAcquire === 'function'
+                ? lockLayer._canAcquire()
+                : !hasLock;
+            _dbg(`SSELayer ${label}: hasLock=`, hasLock,
+                 'hasReport=', hasReport, 'canAcquire=', canAcquire);
+            if (!hasLock && hasReport && canAcquire) {
+                _dbg(`SSELayer ${label}: Lock-Retry ausgelöst (war zuvor NO_SSE)`);
+                lockLayer.acquire();
+            }
+        }
+
         sseLayer.on('connected', ({ clientId }) => {
             _dbg('SSELayer connected: clientId=', clientId);
+            _retryAcquireIfNeeded('connected');
         });
         sseLayer.on('reconnected', ({ clientId, oldClientId }) => {
             _dbg('SSELayer reconnected: alt=', oldClientId, 'neu=', clientId);
+            _retryAcquireIfNeeded('reconnected');
         });
         sseLayer.on('disconnected', () => {
             _dbg('SSELayer disconnected — Layer-Kollaps läuft');
