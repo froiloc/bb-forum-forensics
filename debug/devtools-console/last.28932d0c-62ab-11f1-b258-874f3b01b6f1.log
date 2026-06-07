@@ -1,0 +1,413 @@
+debug_events.js:216 [TRACE][USER] mousedown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+debug_events.js:216 [TRACE][USER] focus → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] mouseup → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] click → <div.ce-paragraph.cdx-block>
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] blur → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] focus → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= null → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 0
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=0 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 2
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=2 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 3
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=3 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 4
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=4 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 5
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] blur → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] focus → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=5 → neu: blockId= ijjBIozKWn blockIdx= 5 startOffset= 0
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] blur → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] focus → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=0 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 4
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=4 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 3
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=3 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 2
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=2 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 0
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] blur → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] focus → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=0 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 17
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+editorjs.mjs:5847 Uncaught IndexSizeError: Failed to execute 'setEnd' on 'Range': There is no child at offset 10.
+    at si (editorjs.mjs:5847:39)
+    at bt (editorjs.mjs:5862:28)
+    at Go.arrowLeftAndUp (editorjs.mjs:7076:115)
+    at Go.keydown (editorjs.mjs:6872:14)
+    at HTMLDivElement.<anonymous> (editorjs.mjs:7850:9)
+un @ editorjs.mjs:5847
+Ne @ editorjs.mjs:5862
+arrowLeftAndUp @ editorjs.mjs:7076
+keydown @ editorjs.mjs:6872
+(anonymous) @ editorjs.mjs:7850
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=17 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 17
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=17 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 14
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] blur → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] focus → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=14 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 5
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=5 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 5
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=5 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 4
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=4 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 3
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=3 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 2
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=2 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 0
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] blur → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] focus → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=0 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 17
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+editorjs.mjs:5847 Uncaught IndexSizeError: Failed to execute 'setEnd' on 'Range': There is no child at offset 10.
+    at si (editorjs.mjs:5847:39)
+    at bt (editorjs.mjs:5862:28)
+    at Go.arrowLeftAndUp (editorjs.mjs:7076:115)
+    at Go.keydown (editorjs.mjs:6872:14)
+    at HTMLDivElement.<anonymous> (editorjs.mjs:7850:9)
+un @ editorjs.mjs:5847
+Ne @ editorjs.mjs:5862
+arrowLeftAndUp @ editorjs.mjs:7076
+keydown @ editorjs.mjs:6872
+(anonymous) @ editorjs.mjs:7850
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=17 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 17
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=17 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 14
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] blur → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] focus → <div.evidence-ce-relay>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=14 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 1
+report:1 Blocked aria-hidden on an element because its descendant retained focus. The focus must not be hidden from assistive technology users. Avoid using aria-hidden on a focused element or its ancestor. Consider using the inert attribute instead, which will also prevent focus. For more details, see the aria-hidden section of the WAI-ARIA specification at https://w3c.github.io/aria/#aria-hidden.
+Element with focus: <div.evidence-ce-relay>
+Ancestor with aria-hidden: <div.evidence-ce-relay> <div class=​"evidence-ce-relay" contenteditable=​"true" aria-hidden=​"true" tabindex=​"-1" data-empty=​"true">​&ZeroWidthSpace;​</div>​
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-ce-relay>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-ce-relay>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-ce-relay>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-ce-relay>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-ce-relay>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-ce-relay>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-ce-relay>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-ce-relay>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-ce-relay>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-ce-relay>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-ce-relay>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-ce-relay>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-ce-relay>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-ce-relay>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-ce-relay>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-ce-relay>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-ce-relay>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-ce-relay>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-ce-relay>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 10
+debug_events.js:216 [TRACE][USER] mousedown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 10
+debug_events.js:216 [TRACE][USER] blur → <div.evidence-ce-relay>
+debug_events.js:216 [TRACE][USER] focus → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] mouseup → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] click → <div.ce-paragraph.cdx-block>
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= ijjBIozKWn blockIdx= 5 startOffset= 1
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=1 → neu: blockId= ijjBIozKWn blockIdx= 5 startOffset= 0
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] blur → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] focus → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=0 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 4
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=4 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 3
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=3 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 2
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=2 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 0
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] blur → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] focus → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=0 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 17
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+editorjs.mjs:5847 Uncaught IndexSizeError: Failed to execute 'setEnd' on 'Range': There is no child at offset 10.
+    at si (editorjs.mjs:5847:39)
+    at bt (editorjs.mjs:5862:28)
+    at Go.arrowLeftAndUp (editorjs.mjs:7076:115)
+    at Go.keydown (editorjs.mjs:6872:14)
+    at HTMLDivElement.<anonymous> (editorjs.mjs:7850:9)
+un @ editorjs.mjs:5847
+Ne @ editorjs.mjs:5862
+arrowLeftAndUp @ editorjs.mjs:7076
+keydown @ editorjs.mjs:6872
+(anonymous) @ editorjs.mjs:7850
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=17 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 17
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=17 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 14
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] blur → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] focus → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=14 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 5
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=5 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 5
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] blur → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] focus → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=5 → neu: blockId= ijjBIozKWn blockIdx= 5 startOffset= 0
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] blur → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] focus → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=0 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 4
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=4 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 3
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=3 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 2
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=2 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 0
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] blur → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] focus → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=0 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 17
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+editorjs.mjs:5847 Uncaught IndexSizeError: Failed to execute 'setEnd' on 'Range': There is no child at offset 10.
+    at si (editorjs.mjs:5847:39)
+    at bt (editorjs.mjs:5862:28)
+    at Go.arrowLeftAndUp (editorjs.mjs:7076:115)
+    at Go.keydown (editorjs.mjs:6872:14)
+    at HTMLDivElement.<anonymous> (editorjs.mjs:7850:9)
+un @ editorjs.mjs:5847
+Ne @ editorjs.mjs:5862
+arrowLeftAndUp @ editorjs.mjs:7076
+keydown @ editorjs.mjs:6872
+(anonymous) @ editorjs.mjs:7850
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=17 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 17
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=17 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 14
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] blur → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] focus → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=14 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 5
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=5 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 5
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=5 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 4
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=4 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 3
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=3 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 2
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=2 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 0
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] blur → <div.evidence-label-input>
+debug_events.js:216 [TRACE][USER] focus → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=0 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 17
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+editorjs.mjs:5847 Uncaught IndexSizeError: Failed to execute 'setEnd' on 'Range': There is no child at offset 10.
+    at si (editorjs.mjs:5847:39)
+    at bt (editorjs.mjs:5862:28)
+    at Go.arrowLeftAndUp (editorjs.mjs:7076:115)
+    at Go.keydown (editorjs.mjs:6872:14)
+    at HTMLDivElement.<anonymous> (editorjs.mjs:7850:9)
+un @ editorjs.mjs:5847
+Ne @ editorjs.mjs:5862
+arrowLeftAndUp @ editorjs.mjs:7076
+keydown @ editorjs.mjs:6872
+(anonymous) @ editorjs.mjs:7850
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=17 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 17
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=17 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 14
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] blur → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] focus → <div.evidence-ce-relay>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=14 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 1
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-ce-relay>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 4 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-ce-relay>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-ce-relay>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-ce-relay>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-ce-relay>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-ce-relay>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-ce-relay>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <div.evidence-ce-relay>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <div.evidence-ce-relay>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 3 startOffset= 10
+debug_events.js:216 [TRACE][USER] blur → <div.evidence-ce-relay>

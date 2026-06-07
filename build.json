@@ -1,6 +1,6 @@
 {
-  "build": 293,
-  "version": "0.6.293",
+  "build": 294,
+  "version": "0.6.294",
   "date": "2026-06-07",
-  "note": "Build 293: Rollback auf 291-Basis + zwei minimale Fixes. (1) Relay-focus-Handler entfernt — er setzte Cursor immer ans Ende des Label-Divs, was den 'erster ArrowRight springt ans Ende'-Bug (2.26 Rest) verursachte. (2) Label-Div-keydown: ev.stopPropagation() fuer alle Pfeiltasten — verhindert dass Editor.js arrowLeftAndUp() → bt() aufruft, was bei Chip-Paragraphen mit setEnd-Crash scheitert (Bugs 2.27, 2.30)."
+  "note": "Build 294: Bug 2.27. ArrowLeft-Navigation aus Label-Div zu vorherigem Block: deepLast-Traversal durch selectNodeContents(prevContent)+collapse(false) ersetzt. Der deepLast-Loop endete bei Chip-Spans in nicht-TextNode-Elementen, die Range-Setzung schlug fehl und der Cursor blieb im Label-Div."
 }

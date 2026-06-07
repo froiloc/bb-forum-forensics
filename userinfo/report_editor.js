@@ -2948,38 +2948,24 @@ class EvidenceBlock {
                 if (blockIdx === undefined || blockIdx === null) return;
 
                 if (isLeft) {
-                    // Bug 2.27: rückwärts zum Ende des vorherigen Blocks
-                    // Direkte DOM-Navigation statt ed.caret.setToBlock() —
-                    // setToBlock() löst isCaretAtEndOfInput() aus das bei Chip-Spans
-                    // mit setStart-Crash scheitert. Wir setzen den Caret direkt.
-                    // Beleg: Bugfix-Liste 2.27, Projektgespraech 2026-06-07, Build 291
+                    // Bug 2.27: rückwärts zum Ende des vorherigen Blocks.
+                    // Build 293: selectNodeContents()+collapse(false) statt deepLast-Traversal.
+                    // Beleg: Bugfix-Liste 2.27, Projektgespraech 2026-06-07, Build 293
                     if (blockIdx > 0) {
                         const allCeBlocks2 = document.querySelectorAll('#editorjs-holder .ce-block[data-id]');
                         const prevHolder = allCeBlocks2[blockIdx - 1];
                         if (prevHolder) {
-                            // contenteditable des Vorgänger-Blocks
                             const prevContent = prevHolder.querySelector('[contenteditable="true"]');
                             if (prevContent) {
                                 prevContent.focus();
-                                const pSel = window.getSelection();
-                                const pRange = document.createRange();
-                                // Cursor ans Ende — tiefsten letzten Knoten suchen
-                                let deepLast = prevContent;
-                                while (deepLast.lastChild) deepLast = deepLast.lastChild;
                                 try {
-                                    if (deepLast.nodeType === Node.TEXT_NODE) {
-                                        pRange.setStart(deepLast, deepLast.textContent.length);
-                                        pRange.setEnd(deepLast, deepLast.textContent.length);
-                                    } else {
-                                        pRange.selectNodeContents(prevContent);
-                                        pRange.collapse(false);
-                                    }
+                                    const pSel = window.getSelection();
+                                    const pRange = document.createRange();
+                                    pRange.selectNodeContents(prevContent);
+                                    pRange.collapse(false);
                                     pSel?.removeAllRanges();
                                     pSel?.addRange(pRange);
-                                } catch (_) {
-                                    // Fallback: einfach focus
-                                    prevContent.focus();
-                                }
+                                } catch (_) { /* focus genügt */ }
                             }
                         }
                     }
