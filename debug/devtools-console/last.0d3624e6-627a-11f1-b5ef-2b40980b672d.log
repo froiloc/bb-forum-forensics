@@ -1,0 +1,87 @@
+Navigated to http://127.0.0.2:8080/_forensic/report
+report:204 [web-debug] FORENSIC_DEBUG=true, FORENSIC_EVENT_TRACE=true
+debug_events.js:235 [debug_events.js] Build 200 geladen. window._uevt() verfügbar. Trace-Modus: window.FORENSIC_EVENT_TRACE = true
+debug_events.js:241 [debug_events.js] Kill-Switches: window.FORENSIC_DEBUG=false (alles) | window.FORENSIC_EVENT_DEBUG=false (nur Events)
+placeholder_chips.js:56 [forensic] placeholder_chips.js: window.PlaceholderChips exportiert
+placeholder_wizard.js:75 [forensic] placeholder_wizard.js: window.PlaceholderWizard exportiert
+module_panel.js:77 [forensic] module_panel.js: window.ModulePanel exportiert
+annotation_sidebar.js:58 [forensic] annotation_sidebar.js: window.AnnotationSidebar exportiert
+report_editor.js:112 [forensic] report_editor.js: Exports auf window gesetzt (Build wird async geladen)
+userinfo.js:59 [userinfo.js] IIFE gestartet, readyState= interactive
+userinfo.js:866 [userinfo.js] readyState=interactive — sofortiger Aufruf
+userinfo.js:844 [userinfo.js] _onDOMReady() aufgerufen
+userinfo.js:68 [forensic] DOMContentLoaded: userinfo.js aktiv
+userinfo.js:68 [forensic] initEditor() gestartet
+editor_bootstrap.js:53 [editor_bootstrap] bootstrap() gestartet
+sse_layer.js:604 [SSELayer] SSELayer konstruiert
+editor_bootstrap.js:53 [editor_bootstrap] SSELayer instanziiert
+sse_layer.js:604 [SSELayer] connect() aufgerufen aus Zustand: UNINITIALIZED
+sse_layer.js:604 [SSELayer] Zustandsübergang: UNINITIALIZED → CONNECTING
+sse_layer.js:604 [SSELayer] EventSource öffnen: /_forensic/events?role=report
+editor_bootstrap.js:53 [editor_bootstrap] ReportLayer instanziiert
+editor_bootstrap.js:53 [editor_bootstrap] LockLayer instanziiert
+editor_bootstrap.js:53 [editor_bootstrap] DocumentLayer instanziiert
+sse_layer.js:604 [SSELayer] EventSource direkt öffnen (Preflight OK): /_forensic/events?role=report
+report_editor.js:3571 [forensic] report_editor.js: v0.6.282 Build 282 | Exports auf window gesetzt
+sse_layer.js:604 [SSELayer] client_id empfangen: d38337b1-3e16-4d9d-85ce-602ca39ea6fe Zustand vorher: CONNECTING
+sse_layer.js:604 [SSELayer] Zustandsübergang: CONNECTING → CONNECTED
+report_layer.js:406 [ReportLayer] Zustandsübergang: UNINITIALIZED → IDLE
+report_layer.js:406 [ReportLayer] ready — SSELayer ist bereit, ReportLayer in IDLE
+lock_layer.js:718 [LockLayer] Zustandsübergang: UNINITIALIZED → IDLE
+lock_layer.js:718 [LockLayer] ready — ReportLayer ist bereit, LockLayer in IDLE
+document_layer.js:608 [DocumentLayer] ready — LockLayer ist bereit
+editor_bootstrap.js:53 [editor_bootstrap] Alle Layer bereit
+editor_bootstrap.js:53 [editor_bootstrap] bootstrap() abgeschlossen — alle Listener registriert
+userinfo.js:649 [userinfo] initSSEWindow3: Paket 9 — SSELayer übernimmt. Stub.
+report_editor.js:112 [forensic] initEditorModule() gestartet
+report_editor.js:112 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:112 [forensic] _initColResizer: Schiebebalken initialisiert
+report_editor.js:112 [forensic] _initForumLinkInterceptor: BroadcastChannel bereit
+report_editor.js:112 [forensic] _initForumLinkInterceptor: aktiv (window_id= 4737c8aa-7d62-4a17-8be9-20e9fe6bc79c )
+report_editor.js:112 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
+report_editor.js:112 [forensic] initReportSelector() gestartet
+report_editor.js:112 [forensic] loadReport() report_id= 1 type= interim
+report_editor.js:112 [forensic] _loadReportImpl: Lock erwerben für Bericht 1
+report_editor.js:112 [forensic] _loadReportImpl: reportLayer.open() für Bericht 1
+report_layer.js:406 [ReportLayer] open() reportId= 1
+report_layer.js:406 [ReportLayer] Zustandsübergang: IDLE → OPENING
+report_layer.js:406 [ReportLayer] Zustandsübergang: OPENING → OPENED
+lock_layer.js:718 [LockLayer] ReportLayer OPENED — prüfe sessionStorage auf lockId
+report_layer.js:406 [ReportLayer] OPENED: report_id= 1
+lock_layer.js:718 [LockLayer] Zustandsübergang: IDLE → ACQUIRING
+lock_layer.js:718 [LockLayer] Zustandsübergang: ACQUIRING → MINE
+editor_bootstrap.js:53 [editor_bootstrap] LockLayer acquired: lockId= ab6cb10c-5ad2-4592-8ce3-0fe86c67a7a9
+lock_layer.js:718 [LockLayer] MINE: lock_id= ab6cb10c-5ad2-4592-8ce3-0fe86c67a7a9
+report_editor.js:112 [forensic] _loadReportImpl: Bloecke aus reportLayer ( 1 )
+report_editor.js:642 report_editor.js: _knownBlockIds initialisiert, 1 Bloecke geladen.
+report_editor.js:112 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:112 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:1040 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+report_editor.js:1085 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:216 [TRACE][USER] mousedown → <span#report-lock-indicator.report-lock-indicator.report-lock-none.lock-mine>
+debug_events.js:216 [TRACE][USER] mouseup → <span#report-lock-indicator.report-lock-indicator.report-lock-none.lock-mine>
+debug_events.js:216 [TRACE][USER] click → <span#report-lock-indicator.report-lock-indicator.report-lock-none.lock-mine>
+debug_events.js:162 [USER]     [userinfo] click:report-lock-indicator — Mouse
+userinfo.js:1435 [userinfo] Lock-Indikator: Lock freigeben (manuell)
+lock_layer.js:718 [LockLayer] release(): lockId= ab6cb10c-5ad2-4592-8ce3-0fe86c67a7a9 reportId= 1 sync= false
+lock_layer.js:718 [LockLayer] Zustandsübergang: MINE → RELEASING
+lock_layer.js:339  POST http://127.0.0.2:8080/_forensic/report 423 (Locked)
+release @ lock_layer.js:339
+_onLockIndicatorClick @ userinfo.js:1436
+lock_layer.js:718 [LockLayer] Zustandsübergang: RELEASING → IDLE
+editor_bootstrap.js:53 [editor_bootstrap] LockLayer released — Editor auf readOnly
+lock_layer.js:718 [LockLayer] RELEASING → IDLE
+report_editor.js:112 [forensic] _syncAnchoredFromInstances: 0 verankerte Annotationen
+editor_bootstrap.js:53 [editor_bootstrap] Editor readOnly aktiviert nach Lock-Freigabe
+debug_events.js:216 [TRACE][USER] mousedown → <span#report-lock-indicator.report-lock-indicator.report-lock-none.lock-free>
+debug_events.js:216 [TRACE][USER] mouseup → <span#report-lock-indicator.report-lock-indicator.report-lock-none.lock-free>
+debug_events.js:216 [TRACE][USER] click → <span#report-lock-indicator.report-lock-indicator.report-lock-none.lock-free>
+debug_events.js:162 [USER]     [userinfo] click:report-lock-indicator — Mouse
+userinfo.js:1439 [userinfo] Lock-Indikator: Lock erwerben (manuell)
+lock_layer.js:718 [LockLayer] Zustandsübergang: IDLE → ACQUIRING
+lock_layer.js:240  POST http://127.0.0.2:8080/_forensic/report 423 (Locked)
+acquire @ lock_layer.js:240
+_onLockIndicatorClick @ userinfo.js:1445
+lock_layer.js:718 [LockLayer] Zustandsübergang: ACQUIRING → IDLE
+editor_bootstrap.js:53 [editor_bootstrap] LockLayer contested: lockedBy= ?
+lock_layer.js:718 [LockLayer] CONTESTED: locked_by= ?
