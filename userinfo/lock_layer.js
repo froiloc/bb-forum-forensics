@@ -76,7 +76,7 @@
  *   auf IDLE zurück. Falls Zustand MINE war, geschieht das über RELEASING.
  *   Beleg: Layer 4 States Präambel
  *
- * Version: v0.6.250 · Build: 250 · 2026-05-24
+ * Version: v0.6.282 · Build: 282 · 2026-06-07
  * Beleg: Layer 4 States, SLA Manifest, Paket 7
  */
 
@@ -298,7 +298,25 @@
             }
             const lockId   = this._lockId;
             const reportId = this._report.reportId;
-            if (!lockId || !reportId) return;
+
+            // Bug 2.24 Diagnose-Logging Build 282:
+            // release() gibt lock_id und reportId aus damit fehlende Werte
+            // im naechsten Console-Log sichtbar sind.
+            // Beleg: Bugfix-Liste 2.24, Projektgespraech 2026-06-07
+            this._dbg('release(): lockId=', lockId, 'reportId=', reportId, 'sync=', sync);
+
+            if (!lockId) {
+                this._dbg('release(): kein lockId — abgebrochen');
+                return;
+            }
+
+            // Bug 2.24 Fix Build 282: reportId ist optional.
+            // Wenn reportId null ist (z.B. wegen Layer-Kollaps nach SSE-Disconnect),
+            // sendet der Server report_id=null. _action_release_lock schlaegt den
+            // Bericht dann via lock_id in editor_locks nach.
+            // Ein hard-return bei fehlendem reportId wuerde den Lock auf dem Server
+            // nie freigeben — der Client ist lokal in MINE aber kann nicht releasen.
+            // Beleg: Bugfix-Liste 2.24, Projektgespraech 2026-06-07
 
             this._transition(STATES.RELEASING);
 

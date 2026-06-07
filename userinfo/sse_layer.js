@@ -57,7 +57,7 @@
  *   Nach Timer-Ablauf wechselt SSELayer in DISCONNECTED.
  *   Beleg: SLA Punkt 2, Layer 2 States RESUMING, Paket 4 / Paket 5
  *
- * Version: v0.6.278 · Build: 278 · 2026-06-07
+ * Version: v0.6.282 · Build: 282 · 2026-06-07
  * Beleg: Layer 2 States, SLA Manifest, Paket 5, Architekturentscheidungen
  *
  * Changelog Build 265 (2026-05-31):
@@ -354,7 +354,37 @@
                 }).then(resp => {
                     if (resp.status === 409) {
                         return resp.json().then(data => {
-                            this._onDuplicate(data);
+                            // Bug 2.x Fix Build 282: Statt sofort das Overlay zu zeigen,
+                            // warten wir zuerst _GRACE_MS (= serverseitige Grace-Period + 1s).
+                            // Danach prüfen wir erneut. Das behandelt den häufigen Fall:
+                            // ein Reload innerhalb der Grace-Period des vorherigen Tabs
+                            // sieht 409 obwohl das Fenster längst geschlossen ist.
+                            // Nach der Grace-Period ist der Slot frei und wir können normal
+                            // verbinden. Nur wenn nach dem Retry wieder 409 kommt, ist es
+                            // wirklich ein Duplikat-Tab und das Overlay wird gezeigt.
+                            // Beleg: Bugfix-Liste Duplicate-Overlay, Projektgespraech 2026-06-07
+                            this._dbg('Preflight 409 — warte', _GRACE_MS, 'ms vor Retry');
+                            setTimeout(() => {
+                                if (this._state !== STATES.CONNECTING) return;
+                                this._dbg('Preflight Retry nach Grace-Period');
+                                fetch(url, {
+                                    method: 'GET',
+                                    headers: {
+                                        'Accept':               'application/json',
+                                        'X-Forensic-Preflight': '1',
+                                    },
+                                }).then(resp2 => {
+                                    if (resp2.status === 409) {
+                                        return resp2.json().then(data2 => {
+                                            this._onDuplicate(data2);
+                                        });
+                                    }
+                                    this._openEventSourceDirect(url);
+                                }).catch(err => {
+                                    this._dbg('Preflight-Retry-Fehler:', err, '— öffne EventSource direkt');
+                                    this._openEventSourceDirect(url);
+                                });
+                            }, _GRACE_MS);
                         });
                     }
                     // Kein Duplikat — echte EventSource öffnen

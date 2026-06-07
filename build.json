@@ -1,6 +1,6 @@
 {
-  "build": 281,
-  "version": "0.6.281",
+  "build": 282,
+  "version": "0.6.282",
   "date": "2026-06-07",
-  "note": "Build 281: Bug 2.23 (Stale Lock beim Server-Neustart). main.py ruft beim Start bundle.evidence.clear_stale_locks_on_startup() auf — loescht alle Eintraege aus editor_locks, lock_queue und lock_takeover_requests. Nach einem Neustart sind alle Locks veraltet (SSE getrennt, Grace-Period-Timer verloren). Ohne Bereinigung blockieren sie alle acquire()-Versuche mit 423."
+  "note": "Build 282: Bug 2.24 (Lock nach manuellem Release nicht wieder erwerbbar) + Duplicate-Overlay-Fix. lock_layer.js: release() bricht nicht mehr bei fehlendem reportId ab sondern sendet null mit; Debug-Logging fuer lockId/reportId. report.py: _action_release_lock sucht report_id via lock_id-Lookup wenn nicht mitgeschickt; toleriert leeres locked_by. sse_layer.js: Preflight-409 loest jetzt zuerst einen Grace-Period-Wait (_GRACE_MS) aus bevor Overlay gezeigt wird — behandelt Reload-within-Grace-Period."
 }
