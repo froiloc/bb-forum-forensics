@@ -1,6 +1,6 @@
 {
-  "build": 282,
-  "version": "0.6.282",
+  "build": 284,
+  "version": "0.6.284",
   "date": "2026-06-07",
-  "note": "Build 282: Bug 2.24 (Lock nach manuellem Release nicht wieder erwerbbar) + Duplicate-Overlay-Fix. lock_layer.js: release() bricht nicht mehr bei fehlendem reportId ab sondern sendet null mit; Debug-Logging fuer lockId/reportId. report.py: _action_release_lock sucht report_id via lock_id-Lookup wenn nicht mitgeschickt; toleriert leeres locked_by. sse_layer.js: Preflight-409 loest jetzt zuerst einen Grace-Period-Wait (_GRACE_MS) aus bevor Overlay gezeigt wird — behandelt Reload-within-Grace-Period."
+  "note": "Build 284: Bug 2.24 — _action_release_lock nutzt jetzt edb._con direkt statt get_lock(). get_lock() oeffnet eine eigene SQLite-Connection (SSE-Thread-Safety), die im HTTP-Request-Thread einen veralteten DB-Snapshot sehen kann. Dadurch fand get_lock() den frisch per acquire_lock() angelegten Lock nicht — NOT_LOCK_OWNER-423. Eintrittspunkt-Logging am Anfang der Methode sichert Diagnose auch im Fehlerfall."
 }

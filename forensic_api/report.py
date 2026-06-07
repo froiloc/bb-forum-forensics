@@ -1164,6 +1164,13 @@ class ReportEndpoint:
         Cooldown wird beim RELEASING entfernt (SLA Punkt 8).
         Beleg: Layer 4 States RELEASING, SLA Punkte 4, 8
         """
+        # Bug 2.24 Diagnose Build 284: Eintrittspunkt-Logging
+        # Beleg: Projektgespraech 2026-06-07
+        logger.debug(
+            "RELEASING Eintrittspunkt: investigator='%s' data=%s",
+            investigator, {k: v for k, v in data.items() if k != "block_data"},
+        )
+
         lock_id = str(data.get("lock_id", "")).strip()
         if not lock_id:
             handler.send_response_body(
@@ -1183,10 +1190,6 @@ class ReportEndpoint:
         edb = self._bundle.evidence
 
         # Bug 2.24 Fix Build 282: report_id ist optional.
-        # Wenn report_id fehlt oder null ist (z.B. wegen Layer-Kollaps nach
-        # SSE-Disconnect), den Bericht via lock_id aus editor_locks nachschlagen.
-        # Ein fehlender report_id-Parameter darf den Release nicht blockieren.
-        # Beleg: Bugfix-Liste 2.24, Projektgespraech 2026-06-07
         if report_id is None:
             row = edb._con.execute(
                 "SELECT report_id FROM editor_locks WHERE lock_id=?",
@@ -1195,11 +1198,10 @@ class ReportEndpoint:
             if row:
                 report_id = int(row["report_id"])
                 logger.debug(
-                    "RELEASING: report_id=%d aus lock_id-Lookup ergaenzt (war nicht mitgeschickt)",
+                    "RELEASING: report_id=%d aus lock_id-Lookup ergaenzt",
                     report_id,
                 )
             else:
-                # Lock existiert nicht mehr — schon freigegeben
                 handler.send_response_body(
                     200,
                     b'{"freed": true, "note": "lock_not_found"}',
@@ -1207,22 +1209,39 @@ class ReportEndpoint:
                 )
                 return
 
-        # Nur der Inhaber darf freigeben — oder Lock hat leeres locked_by (korrupt)
-        current = edb.get_lock(report_id)
-        if not current or current.lock_id != lock_id:
+        # Bug 2.24 Fix Build 284: get_lock() nutzt eigene SQLite-Connection
+        # (SSE-Thread-Safety). Im HTTP-Request-Thread kann diese Connection
+        # einen veralteten DB-Snapshot sehen wenn der Lock gerade erst durch
+        # acquire_lock() auf der Haupt-Connection geschrieben wurde.
+        # Loesung: Direkt auf edb._con lesen statt get_lock() aufzurufen.
+        # Beleg: Bugfix-Liste 2.24, Projektgespraech 2026-06-07
+        current_row = edb._con.execute(
+            "SELECT report_id, locked_by, lock_id, locked_at, sse_client, cooldown_until "
+            "FROM editor_locks WHERE report_id=?",
+            (report_id,),
+        ).fetchone()
+
+        logger.debug(
+            "RELEASING: lock_id_req=%s current_row=%s",
+            lock_id,
+            dict(current_row) if current_row else None,
+        )
+
+        if not current_row or str(current_row["lock_id"]) != lock_id:
             handler.send_response_body(
                 423, _json_err("Nicht der Lock-Inhaber oder Lock nicht gefunden", "NOT_LOCK_OWNER"),
                 content_type="application/json; charset=utf-8",
             )
             return
-        # locked_by-Pruefung: nur wenn locked_by gesetzt (nicht leer/null)
-        if current.locked_by and current.locked_by != investigator:
+
+        locked_by_db = str(current_row["locked_by"] or "")
+        if locked_by_db and locked_by_db != investigator:
             handler.send_response_body(
                 423, _json_err("Nicht der Lock-Inhaber", "NOT_LOCK_OWNER"),
                 content_type="application/json; charset=utf-8",
             )
             return
-        if not current.locked_by:
+        if not locked_by_db:
             logger.warning(
                 "RELEASING: Lock hat leeres locked_by — trotzdem freigegeben: "
                 "lock_id=%s report_id=%d", lock_id, report_id
