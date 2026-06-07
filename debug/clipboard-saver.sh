@@ -6,7 +6,7 @@
 ROOTDIR="/opt/aiw_webserver"
 
 declare -A REGELN=(
-    ['\[Forensic\] Server|\[web-debug\]|Failed to load resource:|Navigated to http://127.0.0.2:8080/_forensic/report']="${ROOTDIR}/debug/devtools-console/last.log"
+    ['report_editor.js:\d+|annotation_sidebar\.js:\d+|document_layer.js:\d+|debug_events\.js:\d+|editorjs\.mjs:\d+|\[Forensic\] Server|\[web-debug\]|Failed to load resource:|Navigated to http://127.0.0.2:8080/_forensic/report']="${ROOTDIR}/debug/devtools-console/last.log"
     ['"name": "WebInspector"']="${ROOTDIR}/debug/devtools-network/last.har"
     ['^# Fehler ']="${ROOTDIR}/debug/bugs-and-tasks/last.md"
     ['^<html ']="${ROOTDIR}/debug/dom-dump/last-html.html"
@@ -54,7 +54,8 @@ pruefe_text_regeln() {
     local text="$1"
     
     for pattern in "${!REGELN[@]}"; do
-        if [[ "$text" =~ $pattern ]]; then
+        #if [[ "$text" =~ $pattern ]]; then
+        if grep -Pq "${pattern}" <<<"$text"; then
             ziel_datei="${REGELN[$pattern]}"
             echo "📝 Regelmatch: '$pattern' -> Speichere in: $ziel_datei"
             xclip -selection clipboard -o > "$ziel_datei"
