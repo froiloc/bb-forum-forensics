@@ -1,6 +1,6 @@
 {
-  "build": 295,
-  "version": "0.6.295",
+  "build": 296,
+  "version": "0.6.296",
   "date": "2026-06-07",
-  "note": "Build 295: Bug 2.27. isAtEdge-Backward-Check im Capture-Listener war fehlerhaft: deepFirst-Traversal erkannte Cursor am Anfang eines Chip-Span-Kind-Elements als 'am Anfang des Blocks', obwohl der Cursor mitten im Block stand. Fix: Range von contentEl-Anfang bis Cursor — wenn cloneContents().textContent.length === 0, ist der Cursor wirklich am absoluten Anfang."
+  "note": "Build 296: Bug 2.27/2.30. Capture-Listener: ev.stopImmediatePropagation() wird jetzt fuer ALLE Pfeiltasten-Events auf Bloecken neben EvidenceBlocks gesetzt, nicht nur am Rand. Verhindert dass Editor.js bt()/kt() auf Chip-Paragraphen aufruft (setEnd-Crash). Ohne isAtEdge kein preventDefault — Browser bewegt Cursor normal weiter. Nur am tatsaechlichen Rand zusaetzlich preventDefault + Navigation ins Label-Div."
 }

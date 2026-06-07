@@ -1246,15 +1246,13 @@ function _initEditorJs(blocks, reportId) {
                             }
                         } catch (_) { return false; }
                     })();
-                    if (!isAtEdge) return;
-
                     // Block-Index bestimmen
                     const blockId  = ceBlock.dataset.id;
                     const blockIdx = ed.blocks.getBlockIndex(blockId);
                     if (blockIdx === undefined || blockIdx === null) return;
 
                     // Nachbar-Block bestimmen
-                    const count     = ed.blocks.getBlocksCount();
+                    const count       = ed.blocks.getBlocksCount();
                     const neighborIdx = isForward ? blockIdx + 1 : blockIdx - 1;
                     if (neighborIdx < 0 || neighborIdx >= count) return;
 
@@ -1263,18 +1261,23 @@ function _initEditorJs(blocks, reportId) {
                     const neighborHolder = allCeBlocks[neighborIdx];
                     if (!neighborHolder?.querySelector('.evidence-block')) return;
 
-                    // Abfangen: EvidenceBlock-Label-Div direkt focussieren
-                    ev.preventDefault();
+                    // Bug 2.27/2.30 Fix Build 295: bt()/kt()-Crash verhindern.
+                    // Editor.js darf bt()/kt() NIEMALS auf einem Block aufrufen der
+                    // neben einem EvidenceBlock liegt — Chip-Paragraphen crashen dabei.
+                    // stopImmediatePropagation() immer, preventDefault()+Navigation nur am Rand.
+                    // Beleg: Bugfix-Liste 2.27, 2.30, Projektgespraech 2026-06-07, Build 295
                     ev.stopImmediatePropagation();
 
+                    if (!isAtEdge) return; // nicht am Rand: Browser bewegt Cursor normal
+
+                    ev.preventDefault();
                     const labelDiv = neighborHolder.querySelector('.evidence-label-input');
                     if (labelDiv) {
                         labelDiv.focus();
                         const targetSel = window.getSelection();
                         const range = document.createRange();
                         range.selectNodeContents(labelDiv);
-                        // Forward → Anfang des Labels, Backward → Ende des Labels
-                        range.collapse(isForward);
+                        range.collapse(isForward); // Forward=Anfang, Backward=Ende
                         targetSel?.removeAllRanges();
                         targetSel?.addRange(range);
                     }
