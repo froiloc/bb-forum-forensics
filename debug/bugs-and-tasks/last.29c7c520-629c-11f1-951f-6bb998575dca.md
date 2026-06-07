@@ -1,5 +1,5 @@
 # Fehler im Frontend
-(Cache-buster-pre-extension: 2a45c226-6284-11f1-a02f-ffaf39c56cde)
+(Cache-buster-pre-extension: 29c7c520-629c-11f1-951f-6bb998575dca)
 
 Ich werde in dieser Liste fortlaufend die von mir beobachteten Fehler aufführen.
 Falls diese abgeschlossen und verworfen wurden, werde ich sie durchstreichen. Alles, was nicht durchgestrichen ist, ist also noch offen und muss bearbeitet werden.
@@ -26,31 +26,31 @@ Abgeschlossene Aufgaben werden durch das Wort `erledigt` ersetzt.
 
 Quellen zum Debuggen:
 * Dieses Dokument mit den Arbeitsanweisungen und Problembeschreibungen:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.2a45c226-6284-11f1-a02f-ffaf39c56cde.md
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.29c7c520-629c-11f1-951f-6bb998575dca.md
 * Die Ausgabe von DevTools-Console:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.2a45c226-6284-11f1-a02f-ffaf39c56cde.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.29c7c520-629c-11f1-951f-6bb998575dca.log
 * Die Ausgabe von DevTools-Network:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.2a45c226-6284-11f1-a02f-ffaf39c56cde.har
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.29c7c520-629c-11f1-951f-6bb998575dca.har
 * Das aktuelle DOM des gesamten Dokuments als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.2a45c226-6284-11f1-a02f-ffaf39c56cde.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.29c7c520-629c-11f1-951f-6bb998575dca.html
 * Das aktuelle DOM des gesamten Body als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.2a45c226-6284-11f1-a02f-ffaf39c56cde.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.29c7c520-629c-11f1-951f-6bb998575dca.html
 * Das aktuelle DOM des gesamten Sidebar als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.2a45c226-6284-11f1-a02f-ffaf39c56cde.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.29c7c520-629c-11f1-951f-6bb998575dca.html
 * Das aktuelle DOM des gesamten Main als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.2a45c226-6284-11f1-a02f-ffaf39c56cde.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.29c7c520-629c-11f1-951f-6bb998575dca.html
 * Das aktuelle DOM des Akkordeon 1 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.2a45c226-6284-11f1-a02f-ffaf39c56cde.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.29c7c520-629c-11f1-951f-6bb998575dca.html
 * Das aktuelle DOM des Akkordeon 2 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.2a45c226-6284-11f1-a02f-ffaf39c56cde.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.29c7c520-629c-11f1-951f-6bb998575dca.html
 * Das aktuelle DOM des Akkordeon 3 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.2a45c226-6284-11f1-a02f-ffaf39c56cde.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.29c7c520-629c-11f1-951f-6bb998575dca.html
 * Das aktuelle DOM des Akkordeon 4 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.2a45c226-6284-11f1-a02f-ffaf39c56cde.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.29c7c520-629c-11f1-951f-6bb998575dca.html
 * Das aktuelle DOM des Search-Modal als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-searchmodal.2a45c226-6284-11f1-a02f-ffaf39c56cde.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-searchmodal.29c7c520-629c-11f1-951f-6bb998575dca.html
 * Die Ausgabe des aktuellen Webservers:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.2a45c226-6284-11f1-a02f-ffaf39c56cde.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.29c7c520-629c-11f1-951f-6bb998575dca.log
 * Die aktuellen Screenshots:
 https://github.com/froiloc/bb-forum-forensics/tree/1b5017a2f62c5a8f1825de76fc6edabb25d6bf66/debug/screenshots
 ***
@@ -78,8 +78,8 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 13. (5) (BS6) Das Löschen eines Blocks per Backspace funktioniert nicht. (Wo muss der Cursor denn stehen, damit das klappt?) Beobachtet wird, dass lediglich das links vom Cursor stehende Element/Zeichen entfernt wird. 
 14. (10) (BS6) Der Doppelklick auf ein Modul erstellt das Modul am Ende des `Editor.js` und nicht als neuen Block nach dem Block, der gerade den Cursor hat.
 15. (30) (BS6) Wenn man beispielsweise eine Überschrift eingefügt hat und bearbeitet und dann unmittelbar hiernach ein Modul durch Doppelklick einfügt, so verschwindet die Überschrift. Sie wurde zuvor offensichtlich nicht gespeichert und aufgrund des Reload-Prozesses ohne vorheriges Speichern, ist diese Eingabe verloren.
-16. (20) (BS6) Wenn ein neuer Block in `Editor.js` angelegt wird, und in diesem geschrieben oder ein Platzhalter über das Kontextmenü eingefügt wurde, so sollte das auch gespeichert werden. Erst das ermöglicht es, dass dieser Block im `Formular`-Bereich erscheint oder kommentierbar wird.
-17. (30) (BS6) Die automatischen Platzhalter werden nicht ausgefüllt. Bitte untersuche den Grund dafür.
+16. erledigt
+17. erledigt
 18. erledigt
 19. erledigt
 20. erledigt
@@ -87,7 +87,9 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 22. erledigt
 23. erledigt
 24. erledigt
-25. (10) (BS6) (285) Die Platzhalter werden nicht automatisch im Text des Editors aktualisiert, wenn im Formular ein Eintrag für sie geschrieben wurde. Ich entsinne mich, dass das zuvor bereits einmal geklappt hatte. Derzeit muss man auf die Schaltfläche "Aktualisieren" klicken, um die Änderung zu sehen.
+25. erledigt
+26. (10) (BS6) (287) Beim Steuern mit den Pfeiltasten (rechts oder runter) durch den Editor gibt es einen Javascript-Fehler "Failed to execute 'setStart' on 'Range'", wenn ich von einem Absatz in eine Beweisgruppe wechseln würde. Es wird erwartet, dass der Fokus in das nächste bearbeitbare Element wechselt. Das wäre in diesem Fall die optionale Beschriftungszeile für die Beweismittelgruppe. Rückwärts in die Beweisgruppe funktioniert. Da landet der Cursor dann in der Eingabezeile.
+27. (10) (BS6) (287) Wenn der Cursor in der Beschriftungseingabezeile einer Beweisgruppe steht, und dann die Pfeiltaste nach links oder oben gedrückt wird, springt der Cursor nicht ans Ende der letzten Position im vorherigen Abschnitt. Aber der Cursor ist auch nicht mehr in der Eingabezeile. Er ist "weg". Es wird erwartet, dass der Cursor an die letzte Position des vorherigen Abschnitts wechselt.
 ---
 ## 3. Funktionalität Backend / Python / SQLite3-Datenbank
 Hier werden Funktionsprobleme aufgeführt, die aufgrund von Problemen im Webserver oder der Datenbank auftreten.

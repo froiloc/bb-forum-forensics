@@ -1,0 +1,1921 @@
+Navigated to http://127.0.0.2:8080/_forensic/report
+report:204 [web-debug] FORENSIC_DEBUG=true, FORENSIC_EVENT_TRACE=true
+debug_events.js:235 [debug_events.js] Build 200 geladen. window._uevt() verfügbar. Trace-Modus: window.FORENSIC_EVENT_TRACE = true
+debug_events.js:241 [debug_events.js] Kill-Switches: window.FORENSIC_DEBUG=false (alles) | window.FORENSIC_EVENT_DEBUG=false (nur Events)
+placeholder_chips.js:56 [forensic] placeholder_chips.js: window.PlaceholderChips exportiert
+placeholder_wizard.js:75 [forensic] placeholder_wizard.js: window.PlaceholderWizard exportiert
+module_panel.js:77 [forensic] module_panel.js: window.ModulePanel exportiert
+annotation_sidebar.js:58 [forensic] annotation_sidebar.js: window.AnnotationSidebar exportiert
+report_editor.js:112 [forensic] report_editor.js: Exports auf window gesetzt (Build wird async geladen)
+userinfo.js:59 [userinfo.js] IIFE gestartet, readyState= interactive
+userinfo.js:866 [userinfo.js] readyState=interactive — sofortiger Aufruf
+userinfo.js:844 [userinfo.js] _onDOMReady() aufgerufen
+userinfo.js:68 [forensic] DOMContentLoaded: userinfo.js aktiv
+userinfo.js:68 [forensic] initEditor() gestartet
+editor_bootstrap.js:53 [editor_bootstrap] bootstrap() gestartet
+sse_layer.js:604 [SSELayer] SSELayer konstruiert
+editor_bootstrap.js:53 [editor_bootstrap] SSELayer instanziiert
+sse_layer.js:604 [SSELayer] connect() aufgerufen aus Zustand: UNINITIALIZED
+sse_layer.js:604 [SSELayer] Zustandsübergang: UNINITIALIZED → CONNECTING
+sse_layer.js:604 [SSELayer] EventSource öffnen: /_forensic/events?role=report
+editor_bootstrap.js:53 [editor_bootstrap] ReportLayer instanziiert
+editor_bootstrap.js:53 [editor_bootstrap] LockLayer instanziiert
+editor_bootstrap.js:53 [editor_bootstrap] DocumentLayer instanziiert
+sse_layer.js:604 [SSELayer] EventSource direkt öffnen (Preflight OK): /_forensic/events?role=report
+report_editor.js:3674 [forensic] report_editor.js: v0.6.287 Build 287 | Exports auf window gesetzt
+sse_layer.js:604 [SSELayer] client_id empfangen: 88a10f78-848d-48d9-bc07-a72c5fae77a9 Zustand vorher: CONNECTING
+sse_layer.js:604 [SSELayer] Zustandsübergang: CONNECTING → CONNECTED
+report_layer.js:406 [ReportLayer] Zustandsübergang: UNINITIALIZED → IDLE
+report_layer.js:406 [ReportLayer] ready — SSELayer ist bereit, ReportLayer in IDLE
+lock_layer.js:718 [LockLayer] Zustandsübergang: UNINITIALIZED → IDLE
+lock_layer.js:718 [LockLayer] ready — ReportLayer ist bereit, LockLayer in IDLE
+document_layer.js:608 [DocumentLayer] ready — LockLayer ist bereit
+editor_bootstrap.js:53 [editor_bootstrap] Alle Layer bereit
+editor_bootstrap.js:53 [editor_bootstrap] bootstrap() abgeschlossen — alle Listener registriert
+userinfo.js:649 [userinfo] initSSEWindow3: Paket 9 — SSELayer übernimmt. Stub.
+report_editor.js:112 [forensic] initEditorModule() gestartet
+report_editor.js:112 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:112 [forensic] _initColResizer: Schiebebalken initialisiert
+report_editor.js:112 [forensic] _initForumLinkInterceptor: BroadcastChannel bereit
+report_editor.js:112 [forensic] _initForumLinkInterceptor: aktiv (window_id= b486fd93-6ef4-4db2-bafa-20c63f515c97 )
+report_editor.js:112 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
+report_editor.js:112 [forensic] initReportSelector() gestartet
+report_editor.js:112 [forensic] loadReport() report_id= 1 type= interim
+report_editor.js:112 [forensic] _loadReportImpl: Lock erwerben für Bericht 1
+report_editor.js:112 [forensic] _loadReportImpl: reportLayer.open() für Bericht 1
+report_layer.js:406 [ReportLayer] open() reportId= 1
+report_layer.js:406 [ReportLayer] Zustandsübergang: IDLE → OPENING
+report_layer.js:406 [ReportLayer] Zustandsübergang: OPENING → OPENED
+lock_layer.js:718 [LockLayer] ReportLayer OPENED — prüfe sessionStorage auf lockId
+report_layer.js:406 [ReportLayer] OPENED: report_id= 1
+lock_layer.js:718 [LockLayer] Zustandsübergang: IDLE → ACQUIRING
+lock_layer.js:718 [LockLayer] Zustandsübergang: ACQUIRING → MINE
+editor_bootstrap.js:53 [editor_bootstrap] LockLayer acquired: lockId= 3e9ddc52-242d-4ea7-8c46-86d6ac567652
+lock_layer.js:718 [LockLayer] MINE: lock_id= 3e9ddc52-242d-4ea7-8c46-86d6ac567652
+report_editor.js:112 [forensic] _loadReportImpl: Bloecke aus reportLayer ( 3 )
+report_editor.js:642 report_editor.js: _knownBlockIds initialisiert, 3 Bloecke geladen.
+report_editor.js:112 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:112 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:1134 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 3 focusedId= oCHCBvopA_ onSave= function myUsername= paul
+report_editor.js:1179 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:216 [TRACE][USER] mousedown → <button#btn-print.report-btn>
+debug_events.js:216 [TRACE][USER] focus → <button#btn-print.report-btn>
+debug_events.js:216 [TRACE][USER] mouseup → <button#btn-print.report-btn>
+debug_events.js:216 [TRACE][USER] click → <button#btn-print.report-btn>
+debug_events.js:174 [USER]     [report_editor] click:btn-print — Mouse
+debug_events.js:216 [TRACE][USER] blur → <button#btn-print.report-btn>
+report_editor.js:2329 report_editor.js: Auto-Save gestartet, report_id= 1 | bekannte Block-IDs: 3
+report_editor.js:2428 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 3 | Bloecke geloescht: 0
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 3 focusedId= oCHCBvopA_ onSave= function myUsername= paul
+debug_events.js:216 [TRACE][USER] mousedown → <div.ce-block.block-wrapper--own>
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+debug_events.js:216 [TRACE][USER] mouseup → <div.ce-block.block-wrapper--own>
+debug_events.js:216 [TRACE][USER] click → <div.ce-block.block-wrapper--own>
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:216 [TRACE][USER] mousedown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:1166 [forensic] _captureRange: alt= null → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 0
+debug_events.js:216 [TRACE][USER] focus → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] mouseup → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] click → <div.ce-paragraph.cdx-block>
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=0 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 12
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=12 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 12
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=12 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 17
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=17 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 17
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+editorjs.mjs:5847 Uncaught IndexSizeError: Failed to execute 'setStart' on 'Range': There is no child at offset 10.
+    at si (editorjs.mjs:5847:58)
+    at kt (editorjs.mjs:5871:28)
+    at Go.arrowRightAndDown (editorjs.mjs:7051:115)
+    at Go.keydown (editorjs.mjs:6868:14)
+    at HTMLDivElement.<anonymous> (editorjs.mjs:7850:9)
+un @ editorjs.mjs:5847
+Re @ editorjs.mjs:5871
+arrowRightAndDown @ editorjs.mjs:7051
+keydown @ editorjs.mjs:6868
+(anonymous) @ editorjs.mjs:7850
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=17 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 17
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=17 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 17
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+editorjs.mjs:5847 Uncaught IndexSizeError: Failed to execute 'setStart' on 'Range': There is no child at offset 10.
+    at si (editorjs.mjs:5847:58)
+    at kt (editorjs.mjs:5871:28)
+    at Go.arrowRightAndDown (editorjs.mjs:7051:115)
+    at Go.keydown (editorjs.mjs:6868:14)
+    at HTMLDivElement.<anonymous> (editorjs.mjs:7850:9)
+un @ editorjs.mjs:5847
+Re @ editorjs.mjs:5871
+arrowRightAndDown @ editorjs.mjs:7051
+keydown @ editorjs.mjs:6868
+(anonymous) @ editorjs.mjs:7850
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=17 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 17
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=17 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 17
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+editorjs.mjs:5847 Uncaught IndexSizeError: Failed to execute 'setStart' on 'Range': There is no child at offset 10.
+    at si (editorjs.mjs:5847:58)
+    at kt (editorjs.mjs:5871:28)
+    at Go.arrowRightAndDown (editorjs.mjs:7051:115)
+    at Go.keydown (editorjs.mjs:6868:14)
+    at HTMLDivElement.<anonymous> (editorjs.mjs:7850:9)
+un @ editorjs.mjs:5847
+Re @ editorjs.mjs:5871
+arrowRightAndDown @ editorjs.mjs:7051
+keydown @ editorjs.mjs:6868
+(anonymous) @ editorjs.mjs:7850
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=17 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 17
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=17 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 17
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+editorjs.mjs:5847 Uncaught IndexSizeError: Failed to execute 'setEnd' on 'Range': There is no child at offset 10.
+    at si (editorjs.mjs:5847:39)
+    at bt (editorjs.mjs:5862:28)
+    at Go.arrowLeftAndUp (editorjs.mjs:7076:115)
+    at Go.keydown (editorjs.mjs:6872:14)
+    at HTMLDivElement.<anonymous> (editorjs.mjs:7850:9)
+un @ editorjs.mjs:5847
+Ne @ editorjs.mjs:5862
+arrowLeftAndUp @ editorjs.mjs:7076
+keydown @ editorjs.mjs:6872
+(anonymous) @ editorjs.mjs:7850
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=17 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 17
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=17 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 0
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=0 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 0
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=0 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 0
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=0 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 0
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=0 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=1 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 1
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=1 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 0
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=0 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 0
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=0 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=1 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 1
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=1 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 0
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=0 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 0
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=0 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 3
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=3 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 3
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=3 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 12
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=12 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 12
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=12 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=1 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 1
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=1 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 17
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+editorjs.mjs:5847 Uncaught IndexSizeError: Failed to execute 'setStart' on 'Range': There is no child at offset 10.
+    at si (editorjs.mjs:5847:58)
+    at kt (editorjs.mjs:5871:28)
+    at Go.arrowRightAndDown (editorjs.mjs:7051:115)
+    at Go.keydown (editorjs.mjs:6868:14)
+    at HTMLDivElement.<anonymous> (editorjs.mjs:7850:9)
+un @ editorjs.mjs:5847
+Re @ editorjs.mjs:5871
+arrowRightAndDown @ editorjs.mjs:7051
+keydown @ editorjs.mjs:6868
+(anonymous) @ editorjs.mjs:7850
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=17 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 17
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=17 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 17
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+editorjs.mjs:5847 Uncaught IndexSizeError: Failed to execute 'setStart' on 'Range': There is no child at offset 10.
+    at si (editorjs.mjs:5847:58)
+    at kt (editorjs.mjs:5871:28)
+    at Go.arrowRightAndDown (editorjs.mjs:7051:115)
+    at Go.keydown (editorjs.mjs:6868:14)
+    at HTMLDivElement.<anonymous> (editorjs.mjs:7850:9)
+un @ editorjs.mjs:5847
+Re @ editorjs.mjs:5871
+arrowRightAndDown @ editorjs.mjs:7051
+keydown @ editorjs.mjs:6868
+(anonymous) @ editorjs.mjs:7850
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=17 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 17
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=17 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 17
+debug_events.js:216 [TRACE][USER] blur → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] focus → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] mousedown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=17 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 17
+debug_events.js:216 [TRACE][USER] blur → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] focus → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] mouseup → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] click → <div.ce-paragraph.cdx-block>
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=17 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 17
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=17 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 17
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=17 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 15
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=15 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 15
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=15 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 4
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=4 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 4
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=4 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 0
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=0 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 0
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] blur → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] focus → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=0 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] blur → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] focus → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 0
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=0 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 0
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=0 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 0
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=0 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=1 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 1
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=1 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 2
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=2 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 2
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=2 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=1 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 1
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=1 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 0
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] blur → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] focus → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=0 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] blur → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] focus → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 0
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=0 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 0
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=0 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 0
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=0 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=1 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 1
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=1 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 2
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=2 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 2
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=2 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 3
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=3 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 3
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=3 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 2
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=2 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 2
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=2 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=1 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 1
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=1 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 0
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] blur → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] focus → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=0 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] blur → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] focus → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] mousedown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] blur → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] focus → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] mouseup → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] click → <div.ce-paragraph.cdx-block>
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+editorjs.mjs:5847 Uncaught IndexSizeError: Failed to execute 'setEnd' on 'Range': There is no child at offset 10.
+    at si (editorjs.mjs:5847:39)
+    at bt (editorjs.mjs:5862:28)
+    at Go.arrowLeftAndUp (editorjs.mjs:7076:115)
+    at Go.keydown (editorjs.mjs:6872:14)
+    at HTMLDivElement.<anonymous> (editorjs.mjs:7850:9)
+un @ editorjs.mjs:5847
+Ne @ editorjs.mjs:5862
+arrowLeftAndUp @ editorjs.mjs:7076
+keydown @ editorjs.mjs:6872
+(anonymous) @ editorjs.mjs:7850
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 17
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=17 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 14
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=14 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 14
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=14 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 17
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+editorjs.mjs:5847 Uncaught IndexSizeError: Failed to execute 'setStart' on 'Range': There is no child at offset 10.
+    at si (editorjs.mjs:5847:58)
+    at kt (editorjs.mjs:5871:28)
+    at Go.arrowRightAndDown (editorjs.mjs:7051:115)
+    at Go.keydown (editorjs.mjs:6868:14)
+    at HTMLDivElement.<anonymous> (editorjs.mjs:7850:9)
+un @ editorjs.mjs:5847
+Re @ editorjs.mjs:5871
+arrowRightAndDown @ editorjs.mjs:7051
+keydown @ editorjs.mjs:6868
+(anonymous) @ editorjs.mjs:7850
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=17 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 17
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=17 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 17
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+editorjs.mjs:5847 Uncaught IndexSizeError: Failed to execute 'setStart' on 'Range': There is no child at offset 10.
+    at si (editorjs.mjs:5847:58)
+    at kt (editorjs.mjs:5871:28)
+    at Go.arrowRightAndDown (editorjs.mjs:7051:115)
+    at Go.keydown (editorjs.mjs:6868:14)
+    at HTMLDivElement.<anonymous> (editorjs.mjs:7850:9)
+un @ editorjs.mjs:5847
+Re @ editorjs.mjs:5871
+arrowRightAndDown @ editorjs.mjs:7051
+keydown @ editorjs.mjs:6868
+(anonymous) @ editorjs.mjs:7850
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=17 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 17
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=17 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 17
+debug_events.js:216 [TRACE][USER] mousedown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=17 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 17
+debug_events.js:216 [TRACE][USER] blur → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] focus → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] mouseup → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] click → <div.ce-paragraph.cdx-block>
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=17 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 11
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=11 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 0
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] blur → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] focus → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=0 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] blur → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] focus → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 0
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=0 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 0
+debug_events.js:216 [TRACE][USER] mousedown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=0 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 0
+debug_events.js:216 [TRACE][USER] blur → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] focus → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] mouseup → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] click → <input.evidence-label-input>
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=0 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] blur → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] focus → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 0
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=0 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 0
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] blur → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] focus → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=0 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] blur → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] focus → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 0
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=0 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 0
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] blur → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] focus → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=0 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] blur → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] focus → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] mousedown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] mouseup → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] click → <input.evidence-label-input>
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] blur → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] focus → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 0
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=0 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 0
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] blur → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] focus → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=0 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] blur → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] focus → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] mousedown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] mouseup → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] click → <input.evidence-label-input>
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keypress → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keypress → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keypress → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keypress → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keypress → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keypress → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keypress → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keypress → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keypress → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keypress → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keypress → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keypress → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keypress → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keypress → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keypress → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keypress → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] input → <input.evidence-label-input>
+debug_events.js:162 [USER]     [report_editor] input:evidence-label — Input
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keypress → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] input → <input.evidence-label-input>
+debug_events.js:162 [USER]     [report_editor] input:evidence-label — Input
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keypress → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] input → <input.evidence-label-input>
+debug_events.js:162 [USER]     [report_editor] input:evidence-label — Input
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keypress → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] input → <input.evidence-label-input>
+debug_events.js:162 [USER]     [report_editor] input:evidence-label — Input
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keypress → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] input → <input.evidence-label-input>
+debug_events.js:162 [USER]     [report_editor] input:evidence-label — Input
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 3 focusedId= oCHCBvopA_ onSave= function myUsername= paul
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keypress → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keypress → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keypress → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keypress → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keypress → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keypress → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <input.evidence-label-input>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 10
+debug_events.js:216 [TRACE][USER] change → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] blur → <input.evidence-label-input>
+report_editor.js:2329 report_editor.js: Auto-Save gestartet, report_id= 1 | bekannte Block-IDs: 3
+report_editor.js:2428 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 3 | Bloecke geloescht: 0
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 3 focusedId= oCHCBvopA_ onSave= function myUsername= paul
+debug_events.js:216 [TRACE][USER] focus → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] mousedown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=10 → neu: blockId= PSnO2XY66E blockIdx= 1 startOffset= 1
+debug_events.js:216 [TRACE][USER] blur → <input.evidence-label-input>
+debug_events.js:216 [TRACE][USER] focus → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] mouseup → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] click → <div.ce-paragraph.cdx-block>
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:216 [TRACE][USER] mousedown → <span.ph-chip.ph-chip-auto>
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=PSnO2XY66E offset=1 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 41
+debug_events.js:216 [TRACE][USER] mouseup → <span.ph-chip.ph-chip-auto>
+debug_events.js:216 [TRACE][USER] click → <span.ph-chip.ph-chip-auto>
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:216 [TRACE][USER] mousedown → <span.ph-chip.ph-chip-auto>
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=41 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 41
+debug_events.js:216 [TRACE][USER] mouseup → <span.ph-chip.ph-chip-auto>
+debug_events.js:216 [TRACE][USER] click → <span.ph-chip.ph-chip-auto>
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:216 [TRACE][USER] mousedown → <span.ph-chip.ph-chip-auto>
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=41 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 41
+debug_events.js:216 [TRACE][USER] mouseup → <span.ph-chip.ph-chip-auto>
+debug_events.js:216 [TRACE][USER] click → <span.ph-chip.ph-chip-auto>
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:216 [TRACE][USER] mousedown → <span.ph-chip.ph-chip-auto>
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=41 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 41
+debug_events.js:216 [TRACE][USER] mouseup → <span.ph-chip.ph-chip-auto>
+debug_events.js:216 [TRACE][USER] click → <span.ph-chip.ph-chip-auto>
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:216 [TRACE][USER] dblclick → <span.ph-chip.ph-chip-auto>
+debug_events.js:174 [USER]     [report_editor] dblclick:ph-chip — Mouse
+debug_events.js:216 [TRACE][USER] mousedown → <span.ph-chip.ph-chip-auto>
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=41 → neu: blockId= oCHCBvopA_ blockIdx= 0 startOffset= 41
+debug_events.js:216 [TRACE][USER] mouseup → <span.ph-chip.ph-chip-auto>
+debug_events.js:216 [TRACE][USER] click → <span.ph-chip.ph-chip-auto>
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:216 [TRACE][USER] mousedown → <button.support-accordion-toggle>
+debug_events.js:216 [TRACE][USER] blur → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] focus → <button.support-accordion-toggle>
+debug_events.js:216 [TRACE][USER] mouseup → <button.support-accordion-toggle>
+debug_events.js:216 [TRACE][USER] click → <button.support-accordion-toggle>
+debug_events.js:216 [TRACE][USER] mousedown → <div.mp-item-text>
+debug_events.js:216 [TRACE][USER] blur → <button.support-accordion-toggle>
+debug_events.js:216 [TRACE][USER] focus → <div.mp-item>
+debug_events.js:216 [TRACE][USER] dragstart → <div.mp-item>
+debug_events.js:174 [USER]     [module_panel] dragstart:mp-item — Drag&Drop
+module_panel.js:77 [forensic] Drag start (Modul, delegiert): module_id= 3 title= Strafrechtliche Einordnung (§§ 176 / 184b StGB)
+debug_events.js:216 [TRACE][USER] dragover → <span.mp-item-title>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-block.block-wrapper--own>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-block.block-wrapper--own.ce-block--drop-target>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-block.block-wrapper--own.ce-block--drop-target>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-block.block-wrapper--own.ce-block--drop-target>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-block.block-wrapper--own.ce-block--drop-target>
+debug_events.js:216 [TRACE][USER] dragover → <td.evidence-src-cell>
+debug_events.js:216 [TRACE][USER] dragover → <td.evidence-note-cell>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] dragover → <div.codex-editor__redactor>
+debug_events.js:216 [TRACE][USER] dragover → <div.codex-editor__redactor>
+debug_events.js:216 [TRACE][USER] dragover → <div.codex-editor__redactor>
+debug_events.js:216 [TRACE][USER] dragover → <div.codex-editor__redactor>
+debug_events.js:216 [TRACE][USER] dragover → <div.codex-editor__redactor>
+debug_events.js:216 [TRACE][USER] dragover → <div.codex-editor__redactor>
+debug_events.js:216 [TRACE][USER] dragover → <div.codex-editor__redactor>
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 3 focusedId= oCHCBvopA_ onSave= function myUsername= paul
+debug_events.js:216 [TRACE][USER] dragover → <div.codex-editor__redactor>
+debug_events.js:216 [TRACE][USER] dragover → <div.codex-editor__redactor>
+debug_events.js:216 [TRACE][USER] dragover → <div.codex-editor__redactor>
+debug_events.js:216 [TRACE][USER] dragover → <div.codex-editor__redactor>
+debug_events.js:216 [TRACE][USER] dragover → <div.codex-editor__redactor>
+debug_events.js:216 [TRACE][USER] dragover → <div.codex-editor__redactor>
+debug_events.js:216 [TRACE][USER] dragover → <div.codex-editor__redactor>
+debug_events.js:216 [TRACE][USER] dragover → <div.codex-editor__redactor>
+debug_events.js:216 [TRACE][USER] dragover → <div.codex-editor__redactor>
+debug_events.js:216 [TRACE][USER] dragover → <div.codex-editor__redactor>
+debug_events.js:216 [TRACE][USER] dragover → <div.codex-editor__redactor>
+debug_events.js:216 [TRACE][USER] drop → <div.codex-editor__redactor>
+debug_events.js:162 [USER]     [report_editor] drop:editorjs-holder — Drag&Drop
+report_editor.js:112 [forensic] Drop: Ziel-Index= 3 von 3 Bloecken
+report_editor.js:112 [forensic] Drop (Modul): module_id= 3 targetIdx= 3
+debug_events.js:216 [TRACE][USER] dragend → <div.mp-item>
+debug_events.js:216 [TRACE][USER] blur → <div.mp-item>
+debug_events.js:216 [TRACE][USER] focus → <div.ce-paragraph.cdx-block>
+report_editor.js:112 [forensic] Drop (Modul): Block eingefuegt, type= paragraph idx= 3 textLen= 582
+debug_events.js:216 [TRACE][USER] input → <div.ce-paragraph.cdx-block>
+report_editor.js:112 [forensic] Drop (Modul): Chips hydriert fuer Block idx= 3
+report_editor.js:112 [forensic] onChange: Block-Anzahl geaendert: Editor= 4  / _currentBlocks= 3  — bereinige _currentBlocks und Formular-Refresh (Bug 2.98/2.121)
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 4 focusedId= oCHCBvopA_ onSave= function myUsername= paul
+debug_events.js:216 [TRACE][USER] mousedown → <button.support-accordion-toggle>
+debug_events.js:216 [TRACE][USER] blur → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] focus → <button.support-accordion-toggle>
+debug_events.js:216 [TRACE][USER] mouseup → <button.support-accordion-toggle>
+debug_events.js:216 [TRACE][USER] click → <button.support-accordion-toggle>
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 4 focusedId= oCHCBvopA_ onSave= function myUsername= paul
+debug_events.js:216 [TRACE][USER] mousedown → <input#pf-input-O47wiTFR_l-tatbestand.pf-input>
+debug_events.js:216 [TRACE][USER] blur → <button.support-accordion-toggle>
+debug_events.js:216 [TRACE][USER] focus → <input#pf-input-O47wiTFR_l-tatbestand.pf-input>
+debug_events.js:162 [USER]     [placeholder_wizard] focus:pf-input — Input
+debug_events.js:216 [TRACE][USER] mouseup → <input#pf-input-O47wiTFR_l-tatbestand.pf-input>
+debug_events.js:216 [TRACE][USER] click → <input#pf-input-O47wiTFR_l-tatbestand.pf-input>
+debug_events.js:162 [USER]     [placeholder_wizard] click:pf-block-group — Mouse
+debug_events.js:216 [TRACE][USER] keydown → <input#pf-input-O47wiTFR_l-tatbestand.pf-input>
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:216 [TRACE][USER] keypress → <input#pf-input-O47wiTFR_l-tatbestand.pf-input>
+debug_events.js:216 [TRACE][USER] input → <input#pf-input-O47wiTFR_l-tatbestand.pf-input>
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer O47wiTFR_l:tatbestand value= "1"
+debug_events.js:216 [TRACE][USER] keyup → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:216 [TRACE][USER] keydown → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:216 [TRACE][USER] keypress → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:216 [TRACE][USER] input → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer O47wiTFR_l:tatbestand value= "18"
+debug_events.js:216 [TRACE][USER] keyup → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:216 [TRACE][USER] keydown → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:216 [TRACE][USER] keypress → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:216 [TRACE][USER] input → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer O47wiTFR_l:tatbestand value= "184"
+debug_events.js:216 [TRACE][USER] keyup → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+placeholder_wizard.js:544 [PlaceholderWizard] _saveField: blockId= O47wiTFR_l name= tatbestand val= "184" onSave= function
+report_editor.js:1856 report_editor.js: _onPlaceholderFieldSave aufgerufen: blockId= O47wiTFR_l field= tatbestand value= "184"
+report_editor.js:1904 report_editor.js: _onPlaceholderFieldSave Antwort: resp= {block_id: 'O47wiTFR_l'} status= undefined
+placeholder_wizard.js:553 [PlaceholderWizard] _saveField: onSave abgeschlossen fuer tatbestand
+debug_events.js:216 [TRACE][USER] keydown → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:216 [TRACE][USER] keypress → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:216 [TRACE][USER] input → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer O47wiTFR_l:tatbestand value= "184b"
+debug_events.js:216 [TRACE][USER] keyup → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+placeholder_wizard.js:544 [PlaceholderWizard] _saveField: blockId= O47wiTFR_l name= tatbestand val= "184b" onSave= function
+report_editor.js:1856 report_editor.js: _onPlaceholderFieldSave aufgerufen: blockId= O47wiTFR_l field= tatbestand value= "184b"
+report_editor.js:1904 report_editor.js: _onPlaceholderFieldSave Antwort: resp= {block_id: 'O47wiTFR_l'} status= undefined
+placeholder_wizard.js:553 [PlaceholderWizard] _saveField: onSave abgeschlossen fuer tatbestand
+debug_events.js:216 [TRACE][USER] keydown → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:216 [TRACE][USER] keypress → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:216 [TRACE][USER] input → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer O47wiTFR_l:tatbestand value= "184b "
+debug_events.js:216 [TRACE][USER] keyup → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:216 [TRACE][USER] keydown → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:216 [TRACE][USER] keydown → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:216 [TRACE][USER] keypress → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:216 [TRACE][USER] input → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer O47wiTFR_l:tatbestand value= "184b S"
+debug_events.js:216 [TRACE][USER] keyup → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:216 [TRACE][USER] keyup → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:216 [TRACE][USER] keydown → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:216 [TRACE][USER] keypress → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:216 [TRACE][USER] input → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer O47wiTFR_l:tatbestand value= "184b St"
+debug_events.js:216 [TRACE][USER] keyup → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:216 [TRACE][USER] keydown → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:216 [TRACE][USER] keypress → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:216 [TRACE][USER] input → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer O47wiTFR_l:tatbestand value= "184b Stg"
+debug_events.js:216 [TRACE][USER] keyup → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:216 [TRACE][USER] keydown → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:216 [TRACE][USER] keydown → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:162 [USER]     [placeholder_wizard] keydown:pf-input — Keyboard
+debug_events.js:216 [TRACE][USER] keypress → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:216 [TRACE][USER] input → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:162 [USER]     [placeholder_wizard] input:pf-input — Input
+placeholder_wizard.js:530 [PlaceholderWizard] _scheduleFieldSave: Timer gesetzt fuer O47wiTFR_l:tatbestand value= "184b StgB"
+debug_events.js:216 [TRACE][USER] keyup → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:216 [TRACE][USER] keyup → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+placeholder_wizard.js:544 [PlaceholderWizard] _saveField: blockId= O47wiTFR_l name= tatbestand val= "184b StgB" onSave= function
+report_editor.js:1856 report_editor.js: _onPlaceholderFieldSave aufgerufen: blockId= O47wiTFR_l field= tatbestand value= "184b StgB"
+report_editor.js:1904 report_editor.js: _onPlaceholderFieldSave Antwort: resp= {block_id: 'O47wiTFR_l'} status= undefined
+placeholder_wizard.js:553 [PlaceholderWizard] _saveField: onSave abgeschlossen fuer tatbestand
+debug_events.js:216 [TRACE][USER] change → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:216 [TRACE][USER] blur → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:216 [TRACE][USER] focus → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:162 [USER]     [placeholder_wizard] focus:pf-input — Input
+debug_events.js:216 [TRACE][USER] mousedown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+debug_events.js:216 [TRACE][USER] blur → <input#pf-input-O47wiTFR_l-tatbestand.pf-input.pf-input--valid>
+debug_events.js:216 [TRACE][USER] focus → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] mouseup → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] click → <div.ce-paragraph.cdx-block>
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+editorjs.mjs:5847 Uncaught IndexSizeError: Failed to execute 'setEnd' on 'Range': There is no child at offset 15.
+    at si (editorjs.mjs:5847:39)
+    at bt (editorjs.mjs:5862:28)
+    at Go.enter (editorjs.mjs:6973:34)
+    at Go.keydown (editorjs.mjs:6864:14)
+    at HTMLDivElement.<anonymous> (editorjs.mjs:7850:9)
+un @ editorjs.mjs:5847
+Ne @ editorjs.mjs:5862
+enter @ editorjs.mjs:6973
+keydown @ editorjs.mjs:6864
+(anonymous) @ editorjs.mjs:7850
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=oCHCBvopA_ offset=41 → neu: blockId= O47wiTFR_l blockIdx= 3 startOffset= 19
+debug_events.js:216 [TRACE][USER] keypress → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] input → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=O47wiTFR_l offset=19 → neu: blockId= O47wiTFR_l blockIdx= 3 startOffset= 0
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 4 focusedId= oCHCBvopA_ onSave= function myUsername= paul
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=O47wiTFR_l offset=0 → neu: blockId= O47wiTFR_l blockIdx= 3 startOffset= 0
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=O47wiTFR_l offset=0 → neu: blockId= O47wiTFR_l blockIdx= 3 startOffset= 0
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=O47wiTFR_l offset=0 → neu: blockId= O47wiTFR_l blockIdx= 3 startOffset= 15
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=O47wiTFR_l offset=15 → neu: blockId= O47wiTFR_l blockIdx= 3 startOffset= 15
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=O47wiTFR_l offset=15 → neu: blockId= O47wiTFR_l blockIdx= 3 startOffset= 0
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=O47wiTFR_l offset=0 → neu: blockId= O47wiTFR_l blockIdx= 3 startOffset= 0
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=O47wiTFR_l offset=0 → neu: blockId= O47wiTFR_l blockIdx= 3 startOffset= 15
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=O47wiTFR_l offset=15 → neu: blockId= O47wiTFR_l blockIdx= 3 startOffset= 15
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=O47wiTFR_l offset=15 → neu: blockId= O47wiTFR_l blockIdx= 3 startOffset= 0
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=O47wiTFR_l offset=0 → neu: blockId= O47wiTFR_l blockIdx= 3 startOffset= 0
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=O47wiTFR_l offset=0 → neu: blockId= O47wiTFR_l blockIdx= 4 startOffset= 0
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=O47wiTFR_l offset=0 → neu: blockId= O47wiTFR_l blockIdx= 4 startOffset= 0
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+report_editor.js:112 [forensic] onChange: Block-Anzahl geaendert: Editor= 5  / _currentBlocks= 4  — bereinige _currentBlocks und Formular-Refresh (Bug 2.98/2.121)
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 4 focusedId= oCHCBvopA_ onSave= function myUsername= paul
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=O47wiTFR_l offset=0 → neu: blockId= O47wiTFR_l blockIdx= 5 startOffset= 0
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=O47wiTFR_l offset=0 → neu: blockId= O47wiTFR_l blockIdx= 5 startOffset= 0
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+report_editor.js:112 [forensic] onChange: Block-Anzahl geaendert: Editor= 6  / _currentBlocks= 4  — bereinige _currentBlocks und Formular-Refresh (Bug 2.98/2.121)
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 4 focusedId= oCHCBvopA_ onSave= function myUsername= paul
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=O47wiTFR_l offset=0 → neu: blockId= O47wiTFR_l blockIdx= 5 startOffset= 15
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=O47wiTFR_l offset=15 → neu: blockId= O47wiTFR_l blockIdx= 5 startOffset= 15
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=O47wiTFR_l offset=15 → neu: blockId= O47wiTFR_l blockIdx= 5 startOffset= 15
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=O47wiTFR_l offset=15 → neu: blockId= O47wiTFR_l blockIdx= 5 startOffset= 15
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=O47wiTFR_l offset=15 → neu: blockId= O47wiTFR_l blockIdx= 5 startOffset= 15
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=O47wiTFR_l offset=15 → neu: blockId= O47wiTFR_l blockIdx= 5 startOffset= 15
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:216 [TRACE][USER] mousedown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=O47wiTFR_l offset=15 → neu: blockId= O47wiTFR_l blockIdx= 5 startOffset= 15
+debug_events.js:216 [TRACE][USER] blur → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] focus → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] mouseup → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] click → <div.ce-paragraph.cdx-block>
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:216 [TRACE][USER] mousedown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=O47wiTFR_l offset=15 → neu: blockId= TUBxNVTwv7 blockIdx= 3 startOffset= 0
+debug_events.js:216 [TRACE][USER] blur → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] focus → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] mouseup → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] click → <div.ce-paragraph.cdx-block>
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:216 [TRACE][USER] keydown → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] blur → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] focus → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=TUBxNVTwv7 offset=0 → neu: blockId= _dw5WJpzoP blockIdx= 6 startOffset= 0
+debug_events.js:216 [TRACE][USER] keyup → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=_dw5WJpzoP offset=0 → neu: blockId= _dw5WJpzoP blockIdx= 6 startOffset= 0
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+report_editor.js:112 [forensic] onChange: Block-Anzahl geaendert: Editor= 7  / _currentBlocks= 4  — bereinige _currentBlocks und Formular-Refresh (Bug 2.98/2.121)
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 4 focusedId= oCHCBvopA_ onSave= function myUsername= paul
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:216 [TRACE][USER] mousedown → <svg>
+debug_events.js:216 [TRACE][USER] blur → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] focus → <input.cdx-search-field__input>
+debug_events.js:216 [TRACE][USER] blur → <input.cdx-search-field__input>
+debug_events.js:216 [TRACE][USER] mouseup → <svg>
+debug_events.js:216 [TRACE][USER] click → <svg>
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:216 [TRACE][USER] focus → <input.cdx-search-field__input>
+debug_events.js:216 [TRACE][USER] blur → <input.cdx-search-field__input>
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:216 [TRACE][USER] mousedown → <div.ce-popover-item>
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=_dw5WJpzoP offset=0 → neu: blockId= ? blockIdx= -1 startOffset= 0
+debug_events.js:216 [TRACE][USER] mouseup → <div.ce-popover-item>
+debug_events.js:216 [TRACE][USER] click → <div.ce-popover-item>
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:216 [TRACE][USER] focus → <input.cdx-search-field__input>
+debug_events.js:216 [TRACE][USER] blur → <input.cdx-search-field__input>
+debug_events.js:216 [TRACE][USER] mousedown → <div.ce-popover-item__title>
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= ? blockIdx= -1 startOffset= 1
+debug_events.js:216 [TRACE][USER] mouseup → <div.ce-popover-item__title>
+debug_events.js:216 [TRACE][USER] click → <div.ce-popover-item__title>
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+report_editor.js:112 [forensic] onChange: Block-Anzahl geaendert: Editor= 6  / _currentBlocks= 4  — bereinige _currentBlocks und Formular-Refresh (Bug 2.98/2.121)
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 4 focusedId= oCHCBvopA_ onSave= function myUsername= paul
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:216 [TRACE][USER] mousedown → <svg>
+debug_events.js:216 [TRACE][USER] focus → <input.cdx-search-field__input>
+debug_events.js:216 [TRACE][USER] blur → <input.cdx-search-field__input>
+debug_events.js:216 [TRACE][USER] mouseup → <svg>
+debug_events.js:216 [TRACE][USER] click → <svg>
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:216 [TRACE][USER] focus → <input.cdx-search-field__input>
+debug_events.js:216 [TRACE][USER] blur → <input.cdx-search-field__input>
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:216 [TRACE][USER] mousedown → <div.ce-popover-item__title>
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= ? blockIdx= -1 startOffset= 0
+debug_events.js:216 [TRACE][USER] mouseup → <div.ce-popover-item__title>
+debug_events.js:216 [TRACE][USER] click → <div.ce-popover-item__title>
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:216 [TRACE][USER] mousedown → <div.ce-popover-item__title>
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= ? blockIdx= -1 startOffset= 0
+debug_events.js:216 [TRACE][USER] mouseup → <div.ce-popover-item__title>
+debug_events.js:216 [TRACE][USER] click → <div.ce-popover-item__title>
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+report_editor.js:112 [forensic] onChange: Block-Anzahl geaendert: Editor= 5  / _currentBlocks= 4  — bereinige _currentBlocks und Formular-Refresh (Bug 2.98/2.121)
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 4 focusedId= oCHCBvopA_ onSave= function myUsername= paul
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:216 [TRACE][USER] mousedown → <div.ce-paragraph.cdx-block>
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= ijjBIozKWn blockIdx= 2 startOffset= 4
+debug_events.js:216 [TRACE][USER] focus → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] mouseup → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] click → <div.ce-paragraph.cdx-block>
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:216 [TRACE][USER] mousedown → <svg>
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=ijjBIozKWn offset=4 → neu: blockId= _dw5WJpzoP blockIdx= 4 startOffset= 0
+debug_events.js:216 [TRACE][USER] blur → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] mouseup → <svg>
+debug_events.js:216 [TRACE][USER] click → <svg>
+debug_events.js:216 [TRACE][USER] focus → <input.cdx-search-field__input>
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:216 [TRACE][USER] mousedown → <div.ce-popover-item>
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=_dw5WJpzoP offset=0 → neu: blockId= ? blockIdx= -1 startOffset= 1
+debug_events.js:216 [TRACE][USER] blur → <input.cdx-search-field__input>
+debug_events.js:216 [TRACE][USER] mouseup → <div.ce-popover-item>
+debug_events.js:216 [TRACE][USER] click → <div.ce-popover-item>
+debug_events.js:216 [TRACE][USER] focus → <h2.ce-header>
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+report_editor.js:112 [forensic] onChange: Block-Anzahl geaendert: Editor= 5  / _currentBlocks= 4  — bereinige _currentBlocks und Formular-Refresh (Bug 2.98/2.121)
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 4 focusedId= oCHCBvopA_ onSave= function myUsername= paul
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+debug_events.js:216 [TRACE][USER] keydown → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=? offset=1 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 0
+debug_events.js:216 [TRACE][USER] keydown → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=0 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 0
+debug_events.js:216 [TRACE][USER] keypress → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] input → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] keyup → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=0 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=1 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 1
+debug_events.js:216 [TRACE][USER] input → <h2.ce-header>
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 4 focusedId= oCHCBvopA_ onSave= function myUsername= paul
+debug_events.js:216 [TRACE][USER] keyup → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=0 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 0
+debug_events.js:216 [TRACE][USER] keydown → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=0 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 0
+debug_events.js:216 [TRACE][USER] keypress → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] input → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] keyup → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=0 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 1
+debug_events.js:216 [TRACE][USER] keyup → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=1 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=1 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 1
+debug_events.js:216 [TRACE][USER] keypress → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] input → <h2.ce-header>
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 4 focusedId= oCHCBvopA_ onSave= function myUsername= paul
+debug_events.js:216 [TRACE][USER] keyup → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=1 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 2
+debug_events.js:216 [TRACE][USER] keydown → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=2 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 2
+debug_events.js:216 [TRACE][USER] keypress → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] input → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] keydown → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=2 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 3
+debug_events.js:216 [TRACE][USER] keypress → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] input → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] keyup → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=3 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 4
+debug_events.js:216 [TRACE][USER] keyup → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=4 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 4
+debug_events.js:216 [TRACE][USER] keydown → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=4 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 4
+debug_events.js:216 [TRACE][USER] keypress → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] input → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] keydown → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=4 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 5
+debug_events.js:216 [TRACE][USER] keypress → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] input → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] keyup → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=5 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 6
+debug_events.js:216 [TRACE][USER] keyup → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=6 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 6
+debug_events.js:216 [TRACE][USER] keydown → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=6 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 6
+debug_events.js:216 [TRACE][USER] keypress → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] input → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] keydown → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=6 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 7
+debug_events.js:216 [TRACE][USER] keypress → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] input → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] keyup → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=7 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 8
+debug_events.js:216 [TRACE][USER] keyup → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=8 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 8
+debug_events.js:216 [TRACE][USER] keydown → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=8 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 8
+debug_events.js:216 [TRACE][USER] keypress → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] input → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] keydown → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=8 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 9
+debug_events.js:216 [TRACE][USER] keypress → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] input → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] keyup → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=9 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 10
+debug_events.js:216 [TRACE][USER] keyup → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=10 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 10
+debug_events.js:216 [TRACE][USER] keydown → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=10 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 10
+debug_events.js:216 [TRACE][USER] keypress → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] input → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] keydown → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=10 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 11
+debug_events.js:216 [TRACE][USER] keypress → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] input → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] keyup → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=11 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 12
+debug_events.js:216 [TRACE][USER] keyup → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=12 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 12
+debug_events.js:216 [TRACE][USER] keydown → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=12 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 12
+debug_events.js:216 [TRACE][USER] keypress → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] input → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] keyup → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=12 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 13
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 4 focusedId= oCHCBvopA_ onSave= function myUsername= paul
+debug_events.js:216 [TRACE][USER] keydown → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=13 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 13
+debug_events.js:216 [TRACE][USER] keypress → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] input → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] keydown → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=13 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 14
+debug_events.js:216 [TRACE][USER] keypress → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] input → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] keyup → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=14 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 15
+debug_events.js:216 [TRACE][USER] keyup → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=15 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 15
+debug_events.js:216 [TRACE][USER] keydown → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=15 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 15
+debug_events.js:216 [TRACE][USER] keypress → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] input → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] keyup → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=15 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 16
+debug_events.js:216 [TRACE][USER] keydown → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=16 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 16
+debug_events.js:216 [TRACE][USER] keypress → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] input → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] keyup → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=bCKOC0elSs offset=16 → neu: blockId= bCKOC0elSs blockIdx= 4 startOffset= 17
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 4 focusedId= oCHCBvopA_ onSave= function myUsername= paul
+debug_events.js:216 [TRACE][USER] mousedown → <button.support-accordion-toggle>
+debug_events.js:216 [TRACE][USER] blur → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] focus → <button.support-accordion-toggle>
+debug_events.js:216 [TRACE][USER] mouseup → <button.support-accordion-toggle>
+debug_events.js:216 [TRACE][USER] click → <button.support-accordion-toggle>
+debug_events.js:216 [TRACE][USER] mousedown → <span.mp-item-desc>
+debug_events.js:216 [TRACE][USER] blur → <button.support-accordion-toggle>
+debug_events.js:216 [TRACE][USER] focus → <div.mp-item>
+debug_events.js:216 [TRACE][USER] mouseup → <span.mp-item-desc>
+debug_events.js:216 [TRACE][USER] click → <span.mp-item-desc>
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:216 [TRACE][USER] mousedown → <span.mp-item-desc>
+debug_events.js:216 [TRACE][USER] mouseup → <span.mp-item-desc>
+debug_events.js:216 [TRACE][USER] click → <span.mp-item-desc>
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:216 [TRACE][USER] dblclick → <span.mp-item-desc>
+debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
+module_panel.js:77 [forensic] _insertModule: Einfuegen nach Block bCKOC0elSs
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= 606aa2a2-09db-4d27-8dc5-4b600be635de — Editor-Reload via onInserted-Callback
+report_editor.js:112 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+report_editor.js:112 [forensic] _syncAnchoredFromInstances: 0 verankerte Annotationen
+report_editor.js:112 [forensic] _resolveAutoPlaceholders: Block O47wiTFR_l enthält Auto-Chips
+debug_events.js:216 [TRACE][USER] blur → <div.mp-item.mp-item-selected>
+report_editor.js:112 [forensic] _reloadEditorContent(): Abgeschlossen. 5 Bloecke geladen.
+report_editor.js:112 [forensic] _resolveAutoPlaceholders: Block 606aa2a2-09db-4d27-8dc5-4b600be635de enthält Auto-Chips
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 5 focusedId= O47wiTFR_l onSave= function myUsername= paul
+report_editor.js:112 [forensic] _resolveAutoPlaceholders: Block oCHCBvopA_ enthält Auto-Chips
+report_editor.js:112 [forensic] _resolveAutoPlaceholders: Block ijjBIozKWn enthält Auto-Chips
+report_editor.js:112 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:1134 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 5 focusedId= O47wiTFR_l onSave= function myUsername= paul
+report_editor.js:1179 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:216 [TRACE][USER] mousedown → <div.codex-editor__redactor>
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+debug_events.js:216 [TRACE][USER] mouseup → <div.codex-editor__redactor>
+debug_events.js:216 [TRACE][USER] click → <div.codex-editor__redactor>
+debug_events.js:216 [TRACE][USER] focus → <div.ce-paragraph.cdx-block>
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+report_editor.js:112 [forensic] onChange: Block-Anzahl geaendert: Editor= 6  / _currentBlocks= 5  — bereinige _currentBlocks und Formular-Refresh (Bug 2.98/2.121)
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 5 focusedId= O47wiTFR_l onSave= function myUsername= paul
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:216 [TRACE][USER] mousedown → <svg>
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=? offset=0 → neu: blockId= Hq-siKnLSc blockIdx= 5 startOffset= 0
+debug_events.js:216 [TRACE][USER] blur → <div.ce-paragraph.cdx-block>
+debug_events.js:216 [TRACE][USER] mouseup → <svg>
+debug_events.js:216 [TRACE][USER] click → <svg>
+debug_events.js:216 [TRACE][USER] focus → <input.cdx-search-field__input>
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+editorjs.mjs:136 Block «paragraph» skipped because saved data is invalid
+debug_events.js:216 [TRACE][USER] mousedown → <div.ce-popover-item>
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=Hq-siKnLSc offset=0 → neu: blockId= ? blockIdx= -1 startOffset= 1
+debug_events.js:216 [TRACE][USER] blur → <input.cdx-search-field__input>
+debug_events.js:216 [TRACE][USER] mouseup → <div.ce-popover-item>
+debug_events.js:216 [TRACE][USER] click → <div.ce-popover-item>
+debug_events.js:216 [TRACE][USER] focus → <h2.ce-header>
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+report_editor.js:112 [forensic] onChange: Block-Anzahl geaendert: Editor= 6  / _currentBlocks= 5  — bereinige _currentBlocks und Formular-Refresh (Bug 2.98/2.121)
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 5 focusedId= O47wiTFR_l onSave= function myUsername= paul
+editorjs.mjs:136 Block «header» skipped because saved data is invalid
+debug_events.js:216 [TRACE][USER] keydown → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=? offset=1 → neu: blockId= GIPakSK2Vb blockIdx= 5 startOffset= 0
+debug_events.js:216 [TRACE][USER] keydown → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=GIPakSK2Vb offset=0 → neu: blockId= GIPakSK2Vb blockIdx= 5 startOffset= 0
+debug_events.js:216 [TRACE][USER] keypress → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] input → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] keyup → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=GIPakSK2Vb offset=0 → neu: blockId= GIPakSK2Vb blockIdx= 5 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=GIPakSK2Vb offset=1 → neu: blockId= GIPakSK2Vb blockIdx= 5 startOffset= 1
+debug_events.js:216 [TRACE][USER] keypress → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] input → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] keyup → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=GIPakSK2Vb offset=1 → neu: blockId= GIPakSK2Vb blockIdx= 5 startOffset= 2
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 5 focusedId= O47wiTFR_l onSave= function myUsername= paul
+debug_events.js:216 [TRACE][USER] keyup → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=GIPakSK2Vb offset=2 → neu: blockId= GIPakSK2Vb blockIdx= 5 startOffset= 2
+debug_events.js:216 [TRACE][USER] keydown → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=GIPakSK2Vb offset=2 → neu: blockId= GIPakSK2Vb blockIdx= 5 startOffset= 2
+debug_events.js:216 [TRACE][USER] input → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] keyup → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=GIPakSK2Vb offset=1 → neu: blockId= GIPakSK2Vb blockIdx= 5 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=GIPakSK2Vb offset=1 → neu: blockId= GIPakSK2Vb blockIdx= 5 startOffset= 1
+debug_events.js:216 [TRACE][USER] input → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] keyup → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=GIPakSK2Vb offset=0 → neu: blockId= GIPakSK2Vb blockIdx= 5 startOffset= 0
+debug_events.js:216 [TRACE][USER] keydown → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=GIPakSK2Vb offset=0 → neu: blockId= GIPakSK2Vb blockIdx= 5 startOffset= 0
+debug_events.js:216 [TRACE][USER] keydown → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=GIPakSK2Vb offset=0 → neu: blockId= GIPakSK2Vb blockIdx= 5 startOffset= 0
+debug_events.js:216 [TRACE][USER] keypress → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] input → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] keyup → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=GIPakSK2Vb offset=0 → neu: blockId= GIPakSK2Vb blockIdx= 5 startOffset= 1
+debug_events.js:216 [TRACE][USER] keyup → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=GIPakSK2Vb offset=1 → neu: blockId= GIPakSK2Vb blockIdx= 5 startOffset= 1
+debug_events.js:216 [TRACE][USER] keydown → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=GIPakSK2Vb offset=1 → neu: blockId= GIPakSK2Vb blockIdx= 5 startOffset= 1
+debug_events.js:216 [TRACE][USER] keypress → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] input → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] keyup → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=GIPakSK2Vb offset=1 → neu: blockId= GIPakSK2Vb blockIdx= 5 startOffset= 2
+debug_events.js:216 [TRACE][USER] keydown → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=GIPakSK2Vb offset=2 → neu: blockId= GIPakSK2Vb blockIdx= 5 startOffset= 2
+debug_events.js:216 [TRACE][USER] keypress → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] input → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] keyup → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=GIPakSK2Vb offset=2 → neu: blockId= GIPakSK2Vb blockIdx= 5 startOffset= 3
+debug_events.js:216 [TRACE][USER] keydown → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keydown:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=GIPakSK2Vb offset=3 → neu: blockId= GIPakSK2Vb blockIdx= 5 startOffset= 3
+debug_events.js:216 [TRACE][USER] keypress → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] input → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] keyup → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] keyup:captureRange — Keyboard
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=GIPakSK2Vb offset=3 → neu: blockId= GIPakSK2Vb blockIdx= 5 startOffset= 4
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 5 focusedId= O47wiTFR_l onSave= function myUsername= paul
+debug_events.js:216 [TRACE][USER] mousedown → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=GIPakSK2Vb offset=4 → neu: blockId= GIPakSK2Vb blockIdx= 5 startOffset= 4
+debug_events.js:216 [TRACE][USER] mouseup → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] click → <h2.ce-header>
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:216 [TRACE][USER] mousedown → <button.support-accordion-toggle>
+debug_events.js:216 [TRACE][USER] blur → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] focus → <button.support-accordion-toggle>
+debug_events.js:216 [TRACE][USER] mouseup → <button.support-accordion-toggle>
+debug_events.js:216 [TRACE][USER] click → <button.support-accordion-toggle>
+debug_events.js:216 [TRACE][USER] mousedown → <button.mp-btn-insert>
+debug_events.js:216 [TRACE][USER] blur → <button.support-accordion-toggle>
+debug_events.js:216 [TRACE][USER] focus → <button.mp-btn-insert>
+debug_events.js:216 [TRACE][USER] mouseup → <button.mp-btn-insert>
+debug_events.js:216 [TRACE][USER] click → <button.mp-btn-insert>
+debug_events.js:162 [USER]     [module_panel] click:std-block-insert-secondary — Mouse
+debug_events.js:216 [TRACE][USER] blur → <button.mp-btn-insert>
+debug_events.js:216 [TRACE][USER] focus → <div.tc-cell>
+report_editor.js:112 [forensic] onChange: Block-Anzahl geaendert: Editor= 7  / _currentBlocks= 5  — bereinige _currentBlocks und Formular-Refresh (Bug 2.98/2.121)
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 7 focusedId= O47wiTFR_l onSave= function myUsername= paul
+debug_events.js:216 [TRACE][USER] mousedown → <h2.ce-header>
+debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
+report_editor.js:1166 [forensic] _captureRange: alt= blockId=GIPakSK2Vb offset=4 → neu: blockId= 7Vbv13rMqz blockIdx= 6 startOffset= 0
+debug_events.js:216 [TRACE][USER] blur → <div.tc-cell>
+debug_events.js:216 [TRACE][USER] focus → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] mouseup → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] click → <h2.ce-header>
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:162 [USER]     [report_editor] click:ph-chip — Mouse
+debug_events.js:216 [TRACE][USER] mousedown → <span.mp-item-title>
+debug_events.js:216 [TRACE][USER] blur → <h2.ce-header>
+debug_events.js:216 [TRACE][USER] focus → <div.mp-item>
+debug_events.js:216 [TRACE][USER] mouseup → <span.mp-item-title>
+debug_events.js:216 [TRACE][USER] click → <span.mp-item-title>
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:216 [TRACE][USER] mousedown → <span.mp-item-title>
+debug_events.js:216 [TRACE][USER] mouseup → <span.mp-item-title>
+debug_events.js:216 [TRACE][USER] click → <span.mp-item-title>
+debug_events.js:162 [USER]     [module_panel] click:mp-item — Mouse
+debug_events.js:216 [TRACE][USER] dblclick → <span.mp-item-title>
+debug_events.js:162 [USER]     [module_panel] dblclick:mp-item — Mouse
+module_panel.js:77 [forensic] _insertModule: Einfuegen nach Block 7Vbv13rMqz
+module_panel.js:77 [forensic] _insertModule: Block server-seitig gespeichert, blockId= 5674d142-1819-4af5-b90f-c4b9bfa8cd1c — Editor-Reload via onInserted-Callback
+report_editor.js:112 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+report_editor.js:112 [forensic] _syncAnchoredFromInstances: 0 verankerte Annotationen
+report_editor.js:112 [forensic] _resolveAutoPlaceholders: Block O47wiTFR_l enthält Auto-Chips
+debug_events.js:216 [TRACE][USER] blur → <div.mp-item.mp-item-selected>
+report_editor.js:112 [forensic] _reloadEditorContent(): Abgeschlossen. 6 Bloecke geladen.
+report_editor.js:112 [forensic] _resolveAutoPlaceholders: Block 606aa2a2-09db-4d27-8dc5-4b600be635de enthält Auto-Chips
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 6 focusedId= O47wiTFR_l onSave= function myUsername= paul
+report_editor.js:112 [forensic] _resolveAutoPlaceholders: Block oCHCBvopA_ enthält Auto-Chips
+report_editor.js:112 [forensic] _resolveAutoPlaceholders: Block ijjBIozKWn enthält Auto-Chips
+report_editor.js:112 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:1134 report_editor.js: Editor bereit, report_id= 1 | readOnly= false
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 6 focusedId= O47wiTFR_l onSave= function myUsername= paul
+report_editor.js:1179 report_editor.js: Initialisierungs-Guard freigegeben.
+report_editor.js:2329 report_editor.js: Auto-Save gestartet, report_id= 1 | bekannte Block-IDs: 6
+report_editor.js:2428 report_editor.js: Auto-Save abgeschlossen. | Bloecke gespeichert: 6 | Bloecke geloescht: 0
+placeholder_wizard.js:189 [PlaceholderWizard] showPlaceholderForm: blocks= 6 focusedId= O47wiTFR_l onSave= function myUsername= paul
