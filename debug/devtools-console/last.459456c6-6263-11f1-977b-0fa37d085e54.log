@@ -1,0 +1,158 @@
+Navigated to http://127.0.0.2:8080/_forensic/report
+report:204 [web-debug] FORENSIC_DEBUG=true, FORENSIC_EVENT_TRACE=true
+debug_events.js:235 [debug_events.js] Build 200 geladen. window._uevt() verfügbar. Trace-Modus: window.FORENSIC_EVENT_TRACE = true
+debug_events.js:241 [debug_events.js] Kill-Switches: window.FORENSIC_DEBUG=false (alles) | window.FORENSIC_EVENT_DEBUG=false (nur Events)
+placeholder_chips.js:56 [forensic] placeholder_chips.js: window.PlaceholderChips exportiert
+placeholder_wizard.js:75 [forensic] placeholder_wizard.js: window.PlaceholderWizard exportiert
+module_panel.js:77 [forensic] module_panel.js: window.ModulePanel exportiert
+annotation_sidebar.js:58 [forensic] annotation_sidebar.js: window.AnnotationSidebar exportiert
+report_editor.js:112 [forensic] report_editor.js: Exports auf window gesetzt (Build wird async geladen)
+userinfo.js:59 [userinfo.js] IIFE gestartet, readyState= interactive
+userinfo.js:866 [userinfo.js] readyState=interactive — sofortiger Aufruf
+userinfo.js:844 [userinfo.js] _onDOMReady() aufgerufen
+userinfo.js:68 [forensic] DOMContentLoaded: userinfo.js aktiv
+userinfo.js:68 [forensic] initEditor() gestartet
+editor_bootstrap.js:53 [editor_bootstrap] bootstrap() gestartet
+sse_layer.js:559 [SSELayer] SSELayer konstruiert
+editor_bootstrap.js:53 [editor_bootstrap] SSELayer instanziiert
+sse_layer.js:559 [SSELayer] connect() aufgerufen aus Zustand: UNINITIALIZED
+sse_layer.js:559 [SSELayer] Zustandsübergang: UNINITIALIZED → CONNECTING
+sse_layer.js:559 [SSELayer] EventSource öffnen: /_forensic/events?role=report
+editor_bootstrap.js:53 [editor_bootstrap] ReportLayer instanziiert
+editor_bootstrap.js:53 [editor_bootstrap] LockLayer instanziiert
+editor_bootstrap.js:53 [editor_bootstrap] DocumentLayer instanziiert
+report_editor.js:3568 [forensic] report_editor.js: v0.6.277 Build 277 | Exports auf window gesetzt
+sse_layer.js:559 [SSELayer] EventSource direkt öffnen (Preflight OK): /_forensic/events?role=report
+events:1  GET http://127.0.0.2:8080/_forensic/events?role=report 409 (Conflict)
+sse_layer.js:559 [SSELayer] SSE-Verbindungsaufbau fehlgeschlagen → DISCONNECTED
+sse_layer.js:559 [SSELayer] Zustandsübergang: CONNECTING → DISCONNECTED
+lock_layer.js:700 [LockLayer] Layer-Kollaps: SSE DISCONNECTED — aktueller Zustand: UNINITIALIZED
+sse_layer.js:559 [SSELayer] ready-Timeout nach 10000 ms — fortfahren ohne client_id
+report_layer.js:406 [ReportLayer] Zustandsübergang: UNINITIALIZED → IDLE
+report_layer.js:406 [ReportLayer] ready — SSELayer ist bereit, ReportLayer in IDLE
+lock_layer.js:700 [LockLayer] Zustandsübergang: UNINITIALIZED → IDLE
+lock_layer.js:700 [LockLayer] ready — ReportLayer ist bereit, LockLayer in IDLE
+document_layer.js:608 [DocumentLayer] ready — LockLayer ist bereit
+editor_bootstrap.js:53 [editor_bootstrap] Alle Layer bereit
+editor_bootstrap.js:53 [editor_bootstrap] bootstrap() abgeschlossen — alle Listener registriert
+userinfo.js:649 [userinfo] initSSEWindow3: Paket 9 — SSELayer übernimmt. Stub.
+report_editor.js:112 [forensic] initEditorModule() gestartet
+report_editor.js:112 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:112 [forensic] _initColResizer: Schiebebalken initialisiert
+report_editor.js:112 [forensic] _initForumLinkInterceptor: BroadcastChannel bereit
+report_editor.js:112 [forensic] _initForumLinkInterceptor: aktiv (window_id= 975557fd-b2c2-4ae4-abe3-a04832877d27 )
+report_editor.js:112 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
+report_editor.js:112 [forensic] initReportSelector() gestartet
+report_editor.js:112 [forensic] loadReport() report_id= 1 type= interim
+report_editor.js:112 [forensic] _loadReportImpl: Lock erwerben für Bericht 1
+report_editor.js:112 [forensic] _loadReportImpl: warte auf sseLayer.ready vor acquire()
+report_editor.js:112 [forensic] _loadReportImpl: sseLayer.ready aufgelöst, clientId= null
+report_editor.js:638 report_editor.js: _knownBlockIds initialisiert, 1 Bloecke geladen.
+report_editor.js:112 [forensic] _initEditorJs(): window.EditorJS= true
+report_editor.js:112 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:1037 report_editor.js: Editor bereit, report_id= 1 | readOnly= true
+report_editor.js:1082 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:216 [TRACE][USER] mousedown → <span#report-lock-indicator.report-lock-indicator.report-lock-none>
+debug_events.js:216 [TRACE][USER] mouseup → <span#report-lock-indicator.report-lock-indicator.report-lock-none>
+debug_events.js:216 [TRACE][USER] click → <span#report-lock-indicator.report-lock-indicator.report-lock-none>
+debug_events.js:162 [USER]     [userinfo] click:report-lock-indicator — Mouse
+userinfo.js:1439 [userinfo] Lock-Indikator: Lock erwerben (manuell)
+debug_events.js:216 [TRACE][USER] mousedown → <div.as-ann-source>
+debug_events.js:216 [TRACE][USER] dragstart → <div.as-annotation>
+debug_events.js:162 [USER]     [annotation_sidebar] dragstart:as-annotation — Drag&Drop
+debug_events.js:216 [TRACE][USER] dragover → <div.as-ann-source>
+debug_events.js:216 [TRACE][USER] dragover → <div.as-ann-source>
+debug_events.js:216 [TRACE][USER] dragover → <div.as-ann-source>
+debug_events.js:216 [TRACE][USER] dragover → <div.as-ann-tags>
+debug_events.js:216 [TRACE][USER] dragover → <div.as-ann-tags>
+debug_events.js:216 [TRACE][USER] dragover → <div.as-ann-tags>
+debug_events.js:216 [TRACE][USER] dragover → <div.as-annotation.as-ann-anchored>
+debug_events.js:216 [TRACE][USER] dragover → <div.as-annotation.as-ann-anchored>
+debug_events.js:216 [TRACE][USER] dragover → <button.as-btn.as-btn-anchor>
+debug_events.js:216 [TRACE][USER] dragover → <button.as-btn.as-btn-anchor>
+debug_events.js:216 [TRACE][USER] dragover → <button.as-btn.as-btn-anchor>
+debug_events.js:216 [TRACE][USER] dragover → <button.as-btn.as-btn-anchor>
+debug_events.js:216 [TRACE][USER] dragover → <button.as-btn.as-btn-anchor>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-block.block-wrapper--own>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-block.block-wrapper--own>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-block.block-wrapper--own>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-block.block-wrapper--own>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-block.block-wrapper--own>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-block.block-wrapper--own>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-block.block-wrapper--own>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-block.block-wrapper--own>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-block.block-wrapper--own>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-block.block-wrapper--own>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-block.block-wrapper--own>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-block.block-wrapper--own>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-block.block-wrapper--own>
+debug_events.js:216 [TRACE][USER] dragover → <div.ce-block.block-wrapper--own>
+debug_events.js:216 [TRACE][USER] dragover → <td.evidence-src-cell>
+debug_events.js:216 [TRACE][USER] dragover → <td.evidence-src-cell>
+debug_events.js:216 [TRACE][USER] dragover → <td.evidence-src-cell>
+debug_events.js:216 [TRACE][USER] dragover → <td.evidence-src-cell>
+debug_events.js:216 [TRACE][USER] dragover → <td.evidence-src-cell>
+debug_events.js:216 [TRACE][USER] dragover → <td.evidence-note-cell>
+debug_events.js:216 [TRACE][USER] dragover → <td.evidence-note-cell>
+debug_events.js:216 [TRACE][USER] dragover → <td.evidence-note-cell>
+debug_events.js:216 [TRACE][USER] dragover → <td.evidence-note-cell>
+debug_events.js:216 [TRACE][USER] dragover → <td.evidence-note-cell>
+debug_events.js:216 [TRACE][USER] dragover → <td.evidence-note-cell>
+debug_events.js:216 [TRACE][USER] dragover → <td.evidence-note-cell>
+debug_events.js:216 [TRACE][USER] dragover → <td.evidence-note-cell>
+debug_events.js:216 [TRACE][USER] dragover → <td.evidence-note-cell>
+debug_events.js:216 [TRACE][USER] dragover → <td.evidence-note-cell>
+debug_events.js:216 [TRACE][USER] dragover → <td.evidence-note-cell>
+debug_events.js:216 [TRACE][USER] dragover → <td.evidence-note-cell>
+debug_events.js:216 [TRACE][USER] dragover → <td.evidence-note-cell>
+debug_events.js:216 [TRACE][USER] dragover → <td.evidence-note-cell>
+debug_events.js:216 [TRACE][USER] dragover → <td.evidence-note-cell>
+debug_events.js:216 [TRACE][USER] dragover → <td.evidence-note-cell>
+debug_events.js:216 [TRACE][USER] dragover → <td.evidence-note-cell>
+debug_events.js:216 [TRACE][USER] dragover → <td.evidence-note-cell>
+debug_events.js:216 [TRACE][USER] dragover → <td.evidence-note-cell>
+debug_events.js:216 [TRACE][USER] dragover → <td.evidence-note-cell>
+debug_events.js:216 [TRACE][USER] dragover → <td.evidence-note-cell>
+debug_events.js:216 [TRACE][USER] dragover → <td.evidence-note-cell>
+debug_events.js:216 [TRACE][USER] dragover → <td.evidence-note-cell>
+debug_events.js:216 [TRACE][USER] dragover → <td.evidence-note-cell>
+debug_events.js:216 [TRACE][USER] dragover → <td.evidence-note-cell>
+debug_events.js:216 [TRACE][USER] dragover → <td.evidence-note-cell>
+debug_events.js:216 [TRACE][USER] dragend → <div.as-annotation.as-annotation--dragging>
+debug_events.js:174 [USER]     [annotation_sidebar] dragend:as-annotation — Drag&Drop
+debug_events.js:216 [TRACE][USER] mousedown → <div.as-ann-source>
+debug_events.js:216 [TRACE][USER] mouseup → <div.as-ann-source>
+debug_events.js:216 [TRACE][USER] click → <div.as-ann-source>
+debug_events.js:216 [TRACE][USER] mousedown → <button.as-btn.as-btn-anchor>
+debug_events.js:216 [TRACE][USER] focus → <button.as-btn.as-btn-anchor>
+debug_events.js:216 [TRACE][USER] mouseup → <button.as-btn.as-btn-anchor>
+debug_events.js:216 [TRACE][USER] click → <button.as-btn.as-btn-anchor>
+debug_events.js:162 [USER]     [annotation_sidebar] click:as-btn-anchor — Mouse
+annotation_sidebar.js:58 [forensic] _insertAnchor: annId= 79
+debug_events.js:216 [TRACE][USER] blur → <button.as-btn.as-btn-anchor>
+report_editor.js:112 [forensic] insertEvidenceBlockFromAnnotation: annId= 79
+report_editor.js:112 [forensic] insertEvidenceBlockFromAnnotation: Kein Lock
+debug_events.js:216 [TRACE][USER] mousedown → <span#report-lock-indicator.report-lock-indicator.report-lock-none>
+debug_events.js:216 [TRACE][USER] mouseup → <span#report-lock-indicator.report-lock-indicator.report-lock-none>
+debug_events.js:216 [TRACE][USER] click → <span#report-lock-indicator.report-lock-indicator.report-lock-none>
+debug_events.js:162 [USER]     [userinfo] click:report-lock-indicator — Mouse
+userinfo.js:1439 [userinfo] Lock-Indikator: Lock erwerben (manuell)
+debug_events.js:216 [TRACE][USER] mousedown → <button#btn-refresh-placeholders.report-btn>
+debug_events.js:216 [TRACE][USER] focus → <button#btn-refresh-placeholders.report-btn>
+debug_events.js:216 [TRACE][USER] mouseup → <button#btn-refresh-placeholders.report-btn>
+debug_events.js:216 [TRACE][USER] click → <button#btn-refresh-placeholders.report-btn>
+debug_events.js:174 [USER]     [report_editor] click:btn-refresh-placeholders — Mouse
+debug_events.js:216 [TRACE][USER] blur → <button#btn-refresh-placeholders.report-btn>
+report_editor.js:112 [forensic] _reloadEditorContent(): Starte Neuladen fuer report_id= 1
+report_editor.js:112 [forensic] _syncAnchoredFromInstances: 0 verankerte Annotationen
+report_editor.js:112 [forensic] _reloadEditorContent(): Abgeschlossen. 1 Bloecke geladen.
+report_editor.js:112 [forensic] _initSidebarAccordion() gestartet
+report_editor.js:1037 report_editor.js: Editor bereit, report_id= 1 | readOnly= true
+report_editor.js:1082 report_editor.js: Initialisierungs-Guard freigegeben.
+debug_events.js:216 [TRACE][USER] keydown → <body#report-editor-body>
+sse_layer.js:559 [SSELayer] BroadcastChannel: request_focus empfangen — window.focus()
+debug_events.js:216 [TRACE][USER] mousedown → <span#report-lock-indicator.report-lock-indicator.report-lock-none>
+debug_events.js:216 [TRACE][USER] mouseup → <span#report-lock-indicator.report-lock-indicator.report-lock-none>
+debug_events.js:216 [TRACE][USER] click → <span#report-lock-indicator.report-lock-indicator.report-lock-none>
+debug_events.js:162 [USER]     [userinfo] click:report-lock-indicator — Mouse
+userinfo.js:1439 [userinfo] Lock-Indikator: Lock erwerben (manuell)

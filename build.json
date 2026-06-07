@@ -1,6 +1,6 @@
 {
-  "build": 276,
-  "version": "0.6.276",
+  "build": 277,
+  "version": "0.6.277",
   "date": "2026-06-07",
-  "note": "Build 276: Bug 2.23 behoben — nach Server-Neustart wird der Lock beim Neuladen des Editorfensters nicht erworben, weil SSE noch nicht verbunden ist (409 Conflict, sseClientId==null). Fix in editor_bootstrap.js: sseLayer.on('connected'/'reconnected') loest jetzt einen Lock-Retry aus, wenn kein Lock gehalten wird, aber ein Bericht geladen ist."
+  "note": "Build 277: Bug 2.23 erneut behoben (Build 276 unzureichend). _loadReportImpl wartet jetzt auf sseLayer.ready bevor acquire() aufgerufen wird — greift bei echtem 'connected' und beim 10s-Timeout-Fallback. Build 276 hatte den Retry an sseLayer.on('connected') gehaengt, das bei dauerhafter SSE-409 nie feuert. Zusaetzlich: Manueller Lock-Toggle per Klick auf #report-lock-indicator (acquire wenn kein Lock, release wenn Lock gehalten)."
 }

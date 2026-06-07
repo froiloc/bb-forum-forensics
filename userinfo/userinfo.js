@@ -26,7 +26,7 @@
  *   window.opener?.postMessage({ type: 'navigate_to_annotation',
  *                                annotation_id: N }, origin)
  *
- * Version: v0.6.116 · Build: 116 · 2026-05-07
+ * Version: v0.6.277 · Build: 277 · 2026-06-07
  *
  * Änderungen Build 089 (Bugfix: SSE-Deadlock-Kaskade):
  *   Ursache: Drei zusammenwirkende Probleme führten dazu, dass alle Server-Threads
@@ -1403,7 +1403,49 @@ function updateLockStatus(cssClass, label) {
         if (window.lockLayer) return window.lockLayer.release();
         return Promise.resolve();
     };
-    // Paket 9: Alte doppelte _releaseLockAsync-Definition entfernt.
+
+    // Bug 2.23 Fix Build 277: Manueller Lock-Toggle per Klick auf den
+    // Lock-Indikator (#report-lock-indicator).
+    //
+    // Kein Lock gehalten → acquire() ausloesen.
+    // Lock gehalten      → release() ausloesen.
+    //
+    // Das ist eine Notfall-Massnahme fuer den Fall dass der automatische
+    // Acquire (z.B. nach Server-Neustart ohne SSE) fehlschlaegt.
+    // Der Indikator ist als klickbar erkennbar durch cursor:pointer (CSS).
+    // Beleg: Bugfix-Liste 2.23, Projektgespraech 2026-06-07
+    (function _initLockIndicatorClickHandler() {
+        const indicator = document.getElementById('report-lock-indicator');
+        if (!indicator) return;
+
+        // cursor:pointer signalisiert Klickbarkeit
+        indicator.style.cursor = 'pointer';
+
+        indicator.addEventListener('click', async function _onLockIndicatorClick(evt) {
+            window._uevt?.(evt, 'userinfo', 'click:report-lock-indicator',
+                { hasLock: !!window.lockLayer?.lockId }); // B200
+
+            if (!window.lockLayer) {
+                console.warn('[userinfo] lockLayer nicht verfuegbar — Klick ignoriert');
+                return;
+            }
+
+            if (window.lockLayer.lockId) {
+                // Lock gehalten → freigeben
+                console.debug('[userinfo] Lock-Indikator: Lock freigeben (manuell)');
+                window.lockLayer.release();
+            } else {
+                // Kein Lock → erwerben
+                console.debug('[userinfo] Lock-Indikator: Lock erwerben (manuell)');
+                // Sicherstellen dass sseLayer.ready abgewartet wurde
+                const sseLayer = window.sseLayer;
+                if (sseLayer?.ready) {
+                    await sseLayer.ready;
+                }
+                window.lockLayer.acquire();
+            }
+        });
+    })();
 
 })();
 })();

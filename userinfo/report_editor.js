@@ -69,14 +69,22 @@
  *     ausgefuehrt damit der gedruckte Stand mit der DB synchron ist.
  *     Beleg: Bugfix Build 134, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.274 · Build: 274 · 2026-06-07
+ * Version: v0.6.277 · Build: 277 · 2026-06-07
  * Paket 9: Alle direkten fetch()-Schreiboperationen auf _docSend()/DocumentLayer
  * umgestellt. EditorState.lockId → lockLayer.lockId. Polling-Mechanismus
  * durch reaktiven LockLayer ersetzt. skipReinit/_pendingReportSwitchId entfernt.
  * Beleg: Paket 9
  * Beleg: AP-E4, Projektgespraech 2026-04-19
  *
- *   Build 274 (2026-06-07): Bug 2.18, 2.19, 2.20 behoben.
+ *   Build 277 (2026-06-07): Bug 2.23 Retry-Fix.
+ *     _loadReportImpl wartet jetzt auf sseLayer.ready bevor acquire()
+ *     aufgerufen wird. Damit wird der Lock auch nach Server-Neustart
+ *     korrekt erworben, wenn SSE erst nach dem ready-Timeout verfuegbar
+ *     wird (sseClientId bleibt null → acquire() schlaegt sonst mit
+ *     NO_SSE fehl). Build 276 hatte den Retry an sseLayer.on('connected')
+ *     gehaengt — dieses Event feuert aber nie wenn SSE permanent auf
+ *     409 laeuft (kein Reconnect-Versuch).
+ *     Beleg: Bugfix-Liste 2.23, Projektgespraech 2026-06-07
  *     - Bug 2.18/2.19: EvidenceBlock._addEvidence/_removeEvidence nutzten
  *       faelschlicherweise _docSend('add_anchor'/'delete_block') →
  *       /_forensic/report. Umgestellt auf _evidenceSend() →
@@ -511,7 +519,33 @@ async function _loadReportImpl(report) {
     // Beim Create-Flow ist der Lock bereits über LockLayer._onReportCreated gesetzt.
     if (!window.lockLayer?.lockId && window.lockLayer) {
         _dbg('_loadReportImpl: Lock erwerben für Bericht', report.id);
-        await window.lockLayer.acquire();
+
+        // Bug 2.23 Fix Build 277:
+        // Nach einem Server-Neustart ist die SSE-Verbindung noch nicht
+        // hergestellt (sseClientId == null). acquire() bricht in diesem
+        // Fall sofort mit NO_SSE ab — ohne Retry.
+        // Lösung: Warten auf sseLayer.ready (löst sich entweder bei
+        // erfolgreichem 'connected' oder nach dem 10s-Timeout-Fallback
+        // auf). Erst dann acquire() aufrufen — so ist sseClientId in
+        // beiden Fällen gesetzt (oder der Server akzeptiert null).
+        // In einem window.sseLayer direkt referenziert, weil der
+        // ready-Promise stabil ist und nie erneut erzeugt wird.
+        // Beleg: Bugfix-Liste 2.23, Projektgespraech 2026-06-07
+        const sseLayer = window.sseLayer;
+        if (sseLayer?.ready) {
+            _dbg('_loadReportImpl: warte auf sseLayer.ready vor acquire()');
+            await sseLayer.ready;
+            _dbg('_loadReportImpl: sseLayer.ready aufgelöst, clientId=',
+                 sseLayer.clientId);
+        }
+
+        // Erneut prüfen: Lock könnte inzwischen durch Auto-Resume
+        // (sessionStorage-Pfad in _onReportOpened) bereits gesetzt sein.
+        if (!window.lockLayer.lockId) {
+            await window.lockLayer.acquire();
+        } else {
+            _dbg('_loadReportImpl: Lock bereits gesetzt (Auto-Resume), skip acquire()');
+        }
     }
 
     // Build 114: Action-Bar-Buttons aktivieren sobald ein Bericht geladen ist.
