@@ -1437,6 +1437,18 @@ span.forensic-passive {
     border-radius: 2px;
     margin-bottom: 6px;
     background: #fff;
+    /* Build 289: contenteditable-Div statt <input> */
+    outline: none;
+    min-height: 1.4em;
+    box-sizing: border-box;
+    cursor: text;
+}
+
+/* Placeholder fuer contenteditable-Div */
+.evidence-label-input:empty:before {
+    content: attr(data-placeholder);
+    color: #aaa;
+    pointer-events: none;
 }
 
 .evidence-ids {

@@ -2703,7 +2703,16 @@ class EvidenceBlock {
         </div>`;
 
         const labelHtml = !this._readOnly
-            ? `<input class="evidence-label-input" type="text" value="${e(label)}" placeholder="Beschriftung (optional)">`
+            // Bug 2.26 Fix Build 289: contenteditable statt <input type="text">.
+            // Editor.js' setCursor() setzt den Caret mit Range.setStart() auf dem
+            // deepest node. Fuer native <input>-Elemente waehlt Editor.js zwar den
+            // isNativeInput-Pfad, aber in Firefox ESR gibt es dabei unter bestimmten
+            // Umstaenden (ArrowDown/Right aus Paragraph) einen "setStart on Range"-
+            // Fehler. Ein contenteditable-Div wird von Editor.js korrekt behandelt:
+            // setCursor() ruft setStart() auf dem Text-Node auf, was sicher ist.
+            // Der value wird aus textContent gelesen/geschrieben.
+            // Beleg: Bugfix-Liste 2.26, Projektgespraech 2026-06-07
+            ? `<div class="evidence-label-input" contenteditable="true" data-placeholder="${e('Beschriftung (optional)')}">${e(label)}</div>`
             : (label ? `<div class="evidence-label">${e(label)}</div>` : '');
 
         let bodyHtml = '';
@@ -2730,9 +2739,105 @@ class EvidenceBlock {
         this._wrapper.innerHTML = headerHtml + labelHtml + bodyHtml + actionsHtml;
 
         this._wrapper.querySelector('.evidence-label-input')?.addEventListener('input', ev => {
-            window._uevt?.(ev, 'report_editor', 'input:evidence-label', { value: ev.target.value }); // B200
-            this._data.group_label = ev.target.value;
+            window._uevt?.(ev, 'report_editor', 'input:evidence-label', { value: ev.target.textContent }); // B200
+            this._data.group_label = ev.target.textContent || '';
         });
+
+        // Bug 2.26 + 2.27 Fix Build 289:
+        // ArrowLeft/Up aus dem Label-Input → Cursor in den vorherigen Block.
+        // ArrowRight/Down aus dem Label-Input → Cursor in den nächsten Block.
+        //
+        // Ursache: Editor.js navigiert mit navigateNext()/navigatePrevious() auf
+        // Ebene der Block-Inputs. Wenn das Ziel-Input ein natives <input>-Element
+        // ist, versucht Editor.js über C.getDeepestNode() + setCursor() zu navigieren.
+        // In einigen Firefox-ESR-Versionen schlägt dabei das Range.setStart() auf
+        // dem <input>-Node fehl ("Failed to execute 'setStart' on 'Range'") weil
+        // der Caret-Einstieg von außen kommend (ArrowDown/Right aus Paragraph)
+        // keinen gültigen Selection-Kontext im Redactor hat.
+        //
+        // Lösung: Das Label-Input übernimmt die Cursor-Bewegung selbst. Wenn der
+        // Cursor bereits am Anfang (ArrowLeft/Up) bzw. Ende (ArrowRight/Down) des
+        // Inputs steht, navigiert es den Editor.js-Caret zum vorherigen/nächsten
+        // Block, indem die caret-API des Editors direkt aufgerufen wird.
+        // Dabei wird focus() explizit auf das Ziel-Input gesetzt statt über
+        // Editor.js-interne setCursor() zu gehen, was den Range-Crash verhindert.
+        //
+        // Rückwärtsnavigation (Bug 2.27): ArrowLeft/Up am Anfang des Inputs.
+        // Vorwärtsnavigation (Bug 2.26): ArrowRight/Down am Ende des Inputs.
+        //
+        // Beleg: Bugfix-Liste 2.26, 2.27, Projektgespraech 2026-06-07
+        const labelInput = this._wrapper.querySelector('.evidence-label-input');
+        if (labelInput) {
+            labelInput.addEventListener('keydown', (ev) => {
+                const key = ev.key;
+                const isLeft  = key === 'ArrowLeft'  || key === 'ArrowUp';
+                const isRight = key === 'ArrowRight' || key === 'ArrowDown';
+                if (!isLeft && !isRight) return;
+
+                // Cursor-Position im contenteditable bestimmen
+                const sel = window.getSelection();
+                if (!sel || !sel.rangeCount) return;
+                const range = sel.getRangeAt(0);
+                const text  = labelInput.textContent || '';
+
+                // Cursor am Anfang? (ArrowLeft/Up)
+                const atStart = range.startOffset === 0 && range.startContainer === labelInput
+                             || (range.startContainer.nodeType === Node.TEXT_NODE
+                                 && range.startOffset === 0
+                                 && labelInput.contains(range.startContainer));
+                // Cursor am Ende? (ArrowRight/Down)
+                const textLen = range.startContainer.nodeType === Node.TEXT_NODE
+                    ? range.startContainer.textContent.length
+                    : labelInput.textContent.length;
+                const atEnd = range.startContainer === labelInput
+                           || (range.startContainer.nodeType === Node.TEXT_NODE
+                               && range.startOffset === textLen
+                               && range.startContainer === labelInput.firstChild);
+
+                if (isLeft && !atStart)  return;
+                if (isRight && !atEnd)   return;
+
+                ev.preventDefault();
+                ev.stopPropagation();
+
+                const holder = this._wrapper.closest('.ce-block');
+                if (!holder) return;
+                const editorHolder = document.getElementById('editorjs-holder');
+                if (!editorHolder) return;
+                const allBlocks = Array.from(editorHolder.querySelectorAll('.ce-block'));
+                const thisIdx   = allBlocks.indexOf(holder);
+                if (thisIdx === -1) return;
+
+                // Bug 2.27: Rückwärts navigieren (ArrowLeft/Up)
+                // Bug 2.26: Vorwärts navigieren (ArrowRight/Down)
+                const targetHolder = isLeft ? allBlocks[thisIdx - 1] : allBlocks[thisIdx + 1];
+                if (!targetHolder) return;
+
+                const targetInputs = targetHolder.querySelectorAll(
+                    '[contenteditable="true"], input:not([type]), ' +
+                    'input[type="text"], input[type="search"], ' +
+                    'input[type="email"], textarea'
+                );
+                // Rückwärts → letztes Input, Vorwärts → erstes Input
+                const targetInput = isLeft
+                    ? targetInputs[targetInputs.length - 1]
+                    : targetInputs[0];
+                if (!targetInput) return;
+
+                targetInput.focus();
+                const targetSel = window.getSelection();
+                if (targetInput.contentEditable === 'true') {
+                    const targetRange = document.createRange();
+                    targetRange.selectNodeContents(targetInput);
+                    targetRange.collapse(isRight); // true=Anfang, false=Ende
+                    targetSel?.removeAllRanges();
+                    targetSel?.addRange(targetRange);
+                } else {
+                    const pos = isLeft ? (targetInput.value?.length ?? 0) : 0;
+                    targetInput.setSelectionRange?.(pos, pos);
+                }
+            });
+        }
         this._wrapper.querySelectorAll('.evidence-remove-btn').forEach(btn => {
             btn.addEventListener('click', async (ev) => {
                 window._uevt?.(ev, 'report_editor', 'click:evidence-remove-btn', { id: btn.dataset.id }); // B200
@@ -2849,7 +2954,8 @@ class EvidenceBlock {
     }
 
     save(blockContent) {
-        const label = blockContent.querySelector('.evidence-label-input')?.value || this._data.group_label;
+        const labelEl = blockContent.querySelector('.evidence-label-input');
+        const label = (labelEl?.textContent ?? labelEl?.value ?? '') || this._data.group_label;
         return {
             evidence_ids: this._data.evidence_ids,
             group_label:  label,

@@ -140,7 +140,15 @@ describe("EvidenceBlock", () => {
         const el = block.render();
         const input = el.querySelector(".evidence-label-input");
         if (input) {
-            input.value = "Neuer Label";
+            // Build 289: contenteditable-Div statt <input> — textContent statt value
+            // jsdom: contentEditable kann als Attribut oder Property gesetzt sein
+            const isContentEditable = input.getAttribute('contenteditable') === 'true'
+                                   || input.contentEditable === 'true';
+            if (isContentEditable) {
+                input.textContent = "Neuer Label";
+            } else {
+                input.value = "Neuer Label";
+            }
         }
         const saved = block.save(el);
         expect(saved.group_label).toBe(input ? "Neuer Label" : "Original");
