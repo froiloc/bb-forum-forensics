@@ -69,12 +69,26 @@
  *     ausgefuehrt damit der gedruckte Stand mit der DB synchron ist.
  *     Beleg: Bugfix Build 134, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.252 · Build: 252 · 2026-05-24
+ * Version: v0.6.274 · Build: 274 · 2026-06-07
  * Paket 9: Alle direkten fetch()-Schreiboperationen auf _docSend()/DocumentLayer
  * umgestellt. EditorState.lockId → lockLayer.lockId. Polling-Mechanismus
  * durch reaktiven LockLayer ersetzt. skipReinit/_pendingReportSwitchId entfernt.
  * Beleg: Paket 9
  * Beleg: AP-E4, Projektgespraech 2026-04-19
+ *
+ *   Build 274 (2026-06-07): Bug 2.18, 2.19, 2.20 behoben.
+ *     - Bug 2.18/2.19: EvidenceBlock._addEvidence/_removeEvidence nutzten
+ *       faelschlicherweise _docSend('add_anchor'/'delete_block') →
+ *       /_forensic/report. Umgestellt auf _evidenceSend() →
+ *       /_forensic/editor/evidence (action=add/remove).
+ *       _removeEvidence loeschte zuvor den gesamten Block (delete_block)
+ *       statt nur die einzelne Annotation zu entknuepfen — semantisch falsch.
+ *       Beleg: editor_evidence.py, Bugfix-Liste 2.18/2.19, Projektgespraech
+ *       2026-06-07
+ *     - Bug 2.20: Debounce-Zeit des Annotation-Filters 200 ms → 400 ms.
+ *       Fokus und Cursor-Position werden nach dem Re-Render der Sidebar
+ *       wiederhergestellt. Beleg: annotation_sidebar.js, Projektgespraech
+ *       2026-06-07
  */
 
 (function() {
@@ -228,6 +242,37 @@ async function _docSend(action, payload) {
         return null;
     }
     return dl._sendRequest({ action, ...payload });
+}
+
+/**
+ * Sendet einen Lock-gesicherten Request an den Evidence-Endpunkt
+ * (/_forensic/editor/evidence) ueber DocumentLayer.sendWithContext().
+ *
+ * Durch sendWithContext() wird der Lock-Kontext (lock_id, report_id)
+ * automatisch injiziert und alle registrierten Request-Hooks ausgefuehrt.
+ * Das vermeidet einen direkten fetch()-Aufruf mit manueller Lock-Verwaltung
+ * und stellt sicher, dass kuenftige Pruefroutinen (z.B. Audit-Trail-Hooks)
+ * auch fuer Evidence-Operationen greifen.
+ *
+ * Beleg: Bugfix 2.18/2.19, Projektgespraech 2026-06-07
+ *
+ * @param {'add'|'remove'} action
+ * @param {string} blockId
+ * @param {number} annotationId
+ * @returns {Promise<object|null>}
+ */
+async function _evidenceSend(action, blockId, annotationId) {
+    const dl = window.documentLayer;
+    if (!dl) {
+        console.warn('report_editor.js: documentLayer nicht verfuegbar — _evidenceSend abgebrochen:', action);
+        return null;
+    }
+    _dbg('_evidenceSend:', action, 'blockId=', blockId, 'annId=', annotationId);
+    return dl.sendWithContext(EDITOR_API.EVIDENCE, {
+        action,
+        block_id:    blockId,
+        evidence_id: annotationId,
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -2608,16 +2653,17 @@ class EvidenceBlock {
 
     async _addEvidence(annotationId) {
         if (this._data.evidence_ids.includes(annotationId)) return;
-        const blockId = this._api.blocks.getCurrentBlockIndex !== undefined
-            ? this._getBlockId()
-            : null;
+        const blockId = this._getBlockId();
 
         if (blockId) {
-            const resp = await _docSend('add_anchor', {
-                block_id:      blockId,
-                annotation_id: annotationId,
-                anchor_text:   `[BELEG:annotation_id=${annotationId}]`,
-            });
+            // Bug 2.18 Fix Build 274:
+            // Frueherer Code: _docSend('add_anchor', {...}) → /_forensic/report
+            // Korrekt: _evidenceSend('add', ...) → /_forensic/editor/evidence
+            // _docSend('add_anchor') erfordert denselben Lock, liefert aber
+            // keinen eigenen Evidence-Eintrag — der dedizierte Endpunkt ist
+            // semantisch korrekt und bereits vollstaendig implementiert.
+            // Beleg: editor_evidence.py, Projektgespraech 2026-06-07
+            const resp = await _evidenceSend('add', blockId, annotationId);
             if (resp === null) {
                 console.warn('report_editor.js: Evidence-Add fehlgeschlagen:', annotationId);
                 return;
@@ -2635,7 +2681,13 @@ class EvidenceBlock {
     async _removeEvidence(annotationId) {
         const blockId = this._getBlockId();
         if (blockId) {
-            const resp = await _docSend('delete_block', { block_id: blockId });
+            // Bug 2.19 Fix Build 274:
+            // Frueherer Code: _docSend('delete_block', { block_id: blockId })
+            // Das ist semantisch falsch — delete_block loescht den gesamten
+            // Block, nicht nur eine einzelne Annotation aus der Gruppe.
+            // Korrekt: _evidenceSend('remove', ...) → /_forensic/editor/evidence
+            // Beleg: editor_evidence.py, Projektgespraech 2026-06-07
+            const resp = await _evidenceSend('remove', blockId, annotationId);
             if (resp === null) {
                 console.warn('report_editor.js: Evidence-Remove fehlgeschlagen:', annotationId);
                 return;

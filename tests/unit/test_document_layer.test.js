@@ -24,6 +24,12 @@
  * T18 — scheduleAutoSave(): saveFn nicht aufgerufen wenn isDirty false
  * T19 — cancelAutoSave(): stoppt laufenden Timer
  * T20 — on()/off(): Listener korrekt registriert und entfernt
+ * T21 — sendWithContext: kein Lock → null + Up-Event error (NO_LOCK)
+ * T22 — sendWithContext: POST an angegebene URL mit korrektem Body/Headern
+ * T23 — sendWithContext: Server-Fehler → null + Up-Event error
+ * T24 — registerRequestHook: abort: true → Request nicht gesendet
+ * T25 — registerRequestHook: payload-Modifikation wird gesendet
+ * T26 — unregisterRequestHook: Hook nicht mehr ausgefuehrt
  *
  * Version: v0.6.251 · Build: 251 · 2026-05-24
  * Beleg: DocumentLayer-Spec, Paket 8
@@ -439,6 +445,126 @@ describe('DocumentLayer — on()/off()', () => {
         layer.off('saved', fn);
         await layer.saveBlock('bX', 'paragraph', {});
         expect(count).toBe(1); // nicht erhöht
+    });
+
+});
+
+// ---------------------------------------------------------------------------
+// sendWithContext + Hook-System (Build 274)
+// ---------------------------------------------------------------------------
+
+describe('DocumentLayer — sendWithContext', () => {
+
+    it('T21 — sendWithContext: kein Lock → null + Up-Event error', async () => {
+        const sse = makeMockSseLayer(); const rep = makeMockReportLayer();
+        const lock = makeMockLockLayer(null); // kein Lock
+        const fetchMock = vi.fn();
+        const { layer } = buildDom(sse, rep, lock, fetchMock);
+        lock._resolve(); await layer.ready;
+
+        const errors = [];
+        layer.on('error', e => errors.push(e));
+
+        const result = await layer.sendWithContext('/some/endpoint', { action: 'test' });
+
+        expect(result).toBeNull();
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(errors).toHaveLength(1);
+        expect(errors[0].code).toBe('NO_LOCK');
+    });
+
+    it('T22 — sendWithContext: POST an angegebene URL (nicht REPORT_API)', async () => {
+        const sse = makeMockSseLayer(); const rep = makeMockReportLayer(99);
+        const lock = makeMockLockLayer('lock-xyz');
+        const fetchMock = mockOk({ status: 'linked' });
+        const { layer } = buildDom(sse, rep, lock, fetchMock);
+        lock._resolve(); await layer.ready;
+
+        const result = await layer.sendWithContext('/_forensic/editor/evidence', {
+            action: 'add',
+            block_id: 'blk1',
+            evidence_id: 42,
+        });
+
+        expect(result).toMatchObject({ status: 'linked' });
+        const [url, opts] = fetchMock.mock.calls[0];
+        expect(url).toBe('/_forensic/editor/evidence');
+        const body = JSON.parse(opts.body);
+        expect(body.lock_id).toBe('lock-xyz');
+        expect(body.report_id).toBe(99);
+        expect(body.action).toBe('add');
+        expect(body.block_id).toBe('blk1');
+        expect(body.evidence_id).toBe(42);
+        expect(opts.headers['X-Forensic-Lock-Id']).toBe('lock-xyz');
+    });
+
+    it('T23 — sendWithContext: Server-Fehler → null + Up-Event error', async () => {
+        const sse = makeMockSseLayer(); const rep = makeMockReportLayer();
+        const lock = makeMockLockLayer('lock-err');
+        const fetchErrFn = async () => ({
+            ok: false, status: 423,
+            json: async () => ({ error: 'Lock erforderlich', code: 'LOCK_REQUIRED' }),
+        });
+        const { layer } = buildDom(sse, rep, lock, fetchErrFn);
+        lock._resolve(); await layer.ready;
+
+        const errors = [];
+        layer.on('error', e => errors.push(e));
+        const result = await layer.sendWithContext('/test', { action: 'x' });
+
+        expect(result).toBeNull();
+        expect(errors[0].code).toBe('LOCK_REQUIRED');
+    });
+
+    it('T24 — Hook: gibt { abort: true } → Request wird nicht gesendet', async () => {
+        const sse = makeMockSseLayer(); const rep = makeMockReportLayer();
+        const lock = makeMockLockLayer('lock-hook');
+        const fetchMock = mockOk({});
+        const { layer } = buildDom(sse, rep, lock, fetchMock);
+        lock._resolve(); await layer.ready;
+
+        layer.registerRequestHook(() => ({ abort: true }));
+
+        const result = await layer.sendWithContext('/test', { action: 'abort-me' });
+
+        expect(result).toBeNull();
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('T25 — Hook: modifiziert Payload → modifizierter Wert wird gesendet', async () => {
+        const sse = makeMockSseLayer(); const rep = makeMockReportLayer();
+        const lock = makeMockLockLayer('lock-mod');
+        const fetchMock = mockOk({ ok: true });
+        const { layer } = buildDom(sse, rep, lock, fetchMock);
+        lock._resolve(); await layer.ready;
+
+        layer.registerRequestHook((ctx, url, payload) => ({
+            payload: { ...payload, injected: 'hook-wert' },
+        }));
+
+        await layer.sendWithContext('/test', { action: 'modify' });
+
+        const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+        expect(body.injected).toBe('hook-wert');
+        expect(body.action).toBe('modify');
+    });
+
+    it('T26 — unregisterRequestHook: Hook wird nicht mehr ausgefuehrt', async () => {
+        const sse = makeMockSseLayer(); const rep = makeMockReportLayer();
+        const lock = makeMockLockLayer('lock-unreg');
+        const fetchMock = mockOk({ ok: true });
+        const { layer } = buildDom(sse, rep, lock, fetchMock);
+        lock._resolve(); await layer.ready;
+
+        let hookCalled = 0;
+        const hook = () => { hookCalled++; };
+        layer.registerRequestHook(hook);
+        await layer.sendWithContext('/test', { action: 'before' });
+        expect(hookCalled).toBe(1);
+
+        layer.unregisterRequestHook(hook);
+        await layer.sendWithContext('/test', { action: 'after' });
+        expect(hookCalled).toBe(1); // nicht erneut aufgerufen
     });
 
 });

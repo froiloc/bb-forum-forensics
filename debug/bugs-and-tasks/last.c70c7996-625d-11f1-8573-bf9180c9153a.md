@@ -1,5 +1,5 @@
 # Fehler im Frontend
-(Cache-buster-pre-extension: da75624a-6258-11f1-8a43-8fc71300e980)
+(Cache-buster-pre-extension: c70c7996-625d-11f1-8573-bf9180c9153a)
 
 Ich werde in dieser Liste fortlaufend die von mir beobachteten Fehler aufführen.
 Falls diese abgeschlossen und verworfen wurden, werde ich sie durchstreichen. Alles, was nicht durchgestrichen ist, ist also noch offen und muss bearbeitet werden.
@@ -25,31 +25,31 @@ Abgeschlossene Aufgaben werden mit dem Wort "erledigt" ersetzt.
 
 Quellen zum Debuggen:
 * Dieses Dokument mit den Arbeitsanweisungen und Problembeschreibungen:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.da75624a-6258-11f1-8a43-8fc71300e980.md
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.c70c7996-625d-11f1-8573-bf9180c9153a.md
 * Die Ausgabe von DevTools-Console:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.da75624a-6258-11f1-8a43-8fc71300e980.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.c70c7996-625d-11f1-8573-bf9180c9153a.log
 * Die Ausgabe von DevTools-Network:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.da75624a-6258-11f1-8a43-8fc71300e980.har
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.c70c7996-625d-11f1-8573-bf9180c9153a.har
 * Das aktuelle DOM des gesamten Dokuments als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.da75624a-6258-11f1-8a43-8fc71300e980.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.c70c7996-625d-11f1-8573-bf9180c9153a.html
 * Das aktuelle DOM des gesamten Body als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.da75624a-6258-11f1-8a43-8fc71300e980.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.c70c7996-625d-11f1-8573-bf9180c9153a.html
 * Das aktuelle DOM des gesamten Sidebar als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.da75624a-6258-11f1-8a43-8fc71300e980.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.c70c7996-625d-11f1-8573-bf9180c9153a.html
 * Das aktuelle DOM des gesamten Main als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.da75624a-6258-11f1-8a43-8fc71300e980.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.c70c7996-625d-11f1-8573-bf9180c9153a.html
 * Das aktuelle DOM des Akkordeon 1 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.da75624a-6258-11f1-8a43-8fc71300e980.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.c70c7996-625d-11f1-8573-bf9180c9153a.html
 * Das aktuelle DOM des Akkordeon 2 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.da75624a-6258-11f1-8a43-8fc71300e980.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.c70c7996-625d-11f1-8573-bf9180c9153a.html
 * Das aktuelle DOM des Akkordeon 3 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.da75624a-6258-11f1-8a43-8fc71300e980.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.c70c7996-625d-11f1-8573-bf9180c9153a.html
 * Das aktuelle DOM des Akkordeon 4 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.da75624a-6258-11f1-8a43-8fc71300e980.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.c70c7996-625d-11f1-8573-bf9180c9153a.html
 * Das aktuelle DOM des Search-Modal als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-searchmodal.da75624a-6258-11f1-8a43-8fc71300e980.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-searchmodal.c70c7996-625d-11f1-8573-bf9180c9153a.html
 * Die Ausgabe des aktuellen Webservers:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.da75624a-6258-11f1-8a43-8fc71300e980.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.c70c7996-625d-11f1-8573-bf9180c9153a.log
 * Die aktuellen Screenshots:
 https://github.com/froiloc/bb-forum-forensics/tree/1b5017a2f62c5a8f1825de76fc6edabb25d6bf66/debug/screenshots
 ***
@@ -79,9 +79,11 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 15. (30) (BS6) Wenn man beispielsweise eine Überschrift eingefügt hat und bearbeitet und dann unmittelbar hiernach ein Modul durch Doppelklick einfügt, so verschwindet die Überschrift. Sie wurde zuvor offensichtlich nicht gespeichert und aufgrund des Reload-Prozesses ohne vorheriges Speichern, ist diese Eingabe verloren.
 16. (20) (BS6) Wenn ein neuer Block in `Editor.js` angelegt wird, und in diesem geschrieben oder ein Platzhalter über das Kontextmenü eingefügt wurde, so sollte das auch gespeichert werden. Erst das ermöglicht es, dass dieser Block im `Formular`-Bereich erscheint oder kommentierbar wird.
 17. (30) (BS6) Die automatischen Platzhalter werden nicht ausgefüllt. Bitte untersuche den Grund dafür.
-18. (15) (BS6) (272) Im Berichtseditor können Beweismittelgruppen keine Annotationen hinzugefügt werden.
-19. (15) (BS6) (272) Im Berichtseditor können aus Beweismittelgruppen keine Annotationen entfernt werden.
-20. (20) (BS6) (272) Das Debouncing für den Filter bei Annotationen ist zu kurz, der Filter löst nach jedem Tippen aus und verliert dabei den Fokus von der Eingabzeile.
+18. erledigt
+19. erledigt
+20. erledigt
+21. (10) (BS6) (274) Nach dem Einfügen einer Annotation per Drag-and-Drop springt die Liste der Annotationen wieder an den Anfang. Das macht es aufwändig (immer wieder herunterscrollen), mehrere Annotationen in eine Beweismittelgruppe hinzuzufügen. Selbes Phänomen beim Löschen aus einer Beweismittelgruppe. Es wäre gut, wenn die Scrollposition gemerkt wird und beim Neuladen und Aktualisieren der angezeigten Elemente stabil bliebe.
+22. (15) (BS6) (274) Wenn bei der Annotation-Sidebar in der Liste "Ausblenden:" die Checkbox von "Verankerte" wechselt, dann werden gleichzeitig alle anderen gecheckten Checkboxen demarkiert. Das sollte nicht sein.
 ---
 ## 3. Funktionalität Backend / Python / SQLite3-Datenbank
 Hier werden Funktionsprobleme aufgeführt, die aufgrund von Problemen im Webserver oder der Datenbank auftreten.

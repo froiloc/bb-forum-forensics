@@ -48,7 +48,7 @@
  *   anchored  { anchorId }  — Anker gespeichert
  *   error     { code, message, action } — Fehler bei Operation
  *
- * Version: v0.6.251 · Build: 251 · 2026-05-24
+ * Version: v0.6.274 · Build: 274 · 2026-06-07
  * Beleg: DocumentLayer-Spec, Schichten-Architektur, Paket 8
  */
 
@@ -129,6 +129,13 @@
             // Up-Event-Listener
             this._upListeners = {};
 
+            // Request-Hook-Registry (Build 274).
+            // Hooks werden vor jedem sendWithContext()-Aufruf synchron
+            // ausgefuehrt und koennen den Request mit { abort: true }
+            // abbrechen oder den Payload modifizieren.
+            // Beleg: Projektgespraech 2026-06-07
+            this._requestHooks = [];
+
             // ready-Promise: wartet auf LockLayer.ready
             // Beleg: Layer-ready-Kette, Paket 8
             this.ready = this._lock.ready.then(() => {
@@ -154,6 +161,145 @@
          */
         contributeToContext() {
             return this._buildContext();
+        }
+
+        // -------------------------------------------------------------------
+        // Hook-System (Build 274)
+        // -------------------------------------------------------------------
+
+        /**
+         * Registriert einen Request-Hook.
+         *
+         * Ein Hook ist eine Funktion mit der Signatur:
+         *   (ctx, url, payload) => { abort?: boolean, payload?: object }
+         *
+         *   ctx     — { sseClientId, reportId, lockId }
+         *   url     — Ziel-URL des Requests
+         *   payload — der Nutzlast-Body (Kopie, noch ohne lock_id/report_id)
+         *
+         * Gibt der Hook { abort: true } zurueck, wird der Request sofort
+         * abgebrochen und sendWithContext() gibt null zurueck.
+         * Gibt der Hook { payload: {...} } zurueck, wird der Payload durch
+         * den zurueckgegebenen Wert ersetzt (Erweiterung moeglich).
+         *
+         * Hooks werden in Registrierungsreihenfolge ausgefuehrt.
+         * Ein Hook darf nicht async sein — er laeuft synchron.
+         *
+         * Beleg: Projektgespraech 2026-06-07
+         *
+         * @param {function} hookFn
+         */
+        registerRequestHook(hookFn) {
+            if (typeof hookFn !== 'function') {
+                throw new TypeError('[DocumentLayer] registerRequestHook: Argument muss eine Funktion sein');
+            }
+            this._requestHooks.push(hookFn);
+            this._dbg('registerRequestHook: Hook registriert, gesamt=', this._requestHooks.length);
+        }
+
+        /**
+         * Entfernt einen zuvor registrierten Hook (Referenzvergleich).
+         *
+         * @param {function} hookFn
+         */
+        unregisterRequestHook(hookFn) {
+            const before = this._requestHooks.length;
+            this._requestHooks = this._requestHooks.filter(h => h !== hookFn);
+            this._dbg('unregisterRequestHook: entfernt=', before - this._requestHooks.length);
+        }
+
+        /**
+         * Sendet einen Lock-gesicherten POST an eine beliebige URL.
+         *
+         * Funktioniert wie _sendRequest(), aber statt des festkabelten
+         * REPORT_API-Endpunkts wird die uebergebene URL verwendet.
+         * Das ermooglicht anderen Modulen (z.B. EvidenceBlock) Lock-
+         * gesicherte Requests an spezifische Endpunkte zu senden, ohne
+         * den Lock-Kontext selbst verwalten zu muessen.
+         *
+         * Vor dem Request werden alle registrierten Hooks ausgefuehrt
+         * (siehe registerRequestHook). Gibt ein Hook { abort: true }
+         * zurueck, wird der Request abgebrochen.
+         *
+         * Beleg: Projektgespraech 2026-06-07
+         *
+         * @param {string} url      — Ziel-URL (z.B. EDITOR_API.EVIDENCE)
+         * @param {object} payload  — Body-Payload (ohne lock_id / report_id)
+         * @returns {Promise<object|null>}
+         */
+        async sendWithContext(url, payload) {
+            const ctx = this._buildContext();
+
+            // Lock-Guard: identisch mit _sendRequest
+            if (!ctx.lockId) {
+                this._dbg('sendWithContext: kein Lock — abgebrochen:', url, payload);
+                this._emitUp('error', {
+                    code:    'NO_LOCK',
+                    message: 'Kein Lock gehalten — Schreiboperation abgebrochen',
+                    action:  payload.action ?? url,
+                });
+                return null;
+            }
+
+            // Hook-Kette ausfuehren
+            let currentPayload = { ...payload };
+            for (const hook of this._requestHooks) {
+                let result;
+                try {
+                    result = hook(ctx, url, currentPayload);
+                } catch (err) {
+                    console.error('[DocumentLayer] sendWithContext: Hook-Fehler:', err);
+                    continue;
+                }
+                if (result?.abort === true) {
+                    this._dbg('sendWithContext: von Hook abgebrochen:', url);
+                    return null;
+                }
+                if (result?.payload != null) {
+                    currentPayload = result.payload;
+                }
+            }
+
+            // lock_id und report_id injizieren
+            const body = {
+                ...currentPayload,
+                report_id: currentPayload.report_id ?? ctx.reportId,
+                lock_id:   ctx.lockId,
+            };
+
+            try {
+                const resp = await this._fetch(url, {
+                    method:  'POST',
+                    headers: {
+                        'Content-Type':       'application/json',
+                        'X-Forensic-Lock-Id': ctx.lockId,
+                    },
+                    body: JSON.stringify(body),
+                });
+
+                const data = await resp.json();
+
+                if (!resp.ok) {
+                    this._dbg('sendWithContext: Server-Fehler', resp.status, url, data);
+                    this._emitUp('error', {
+                        code:    data.code   ?? `HTTP_${resp.status}`,
+                        message: data.error  ?? `Fehler ${resp.status}`,
+                        action:  currentPayload.action ?? url,
+                    });
+                    return null;
+                }
+
+                return data;
+
+            } catch (err) {
+                this._dbg('sendWithContext: Netzwerkfehler:', url, err);
+                this._emitUp('error', {
+                    code:    'NETWORK_ERROR',
+                    message: String(err),
+                    action:  currentPayload.action ?? url,
+                });
+                return null;
+            }
         }
 
         // -------------------------------------------------------------------

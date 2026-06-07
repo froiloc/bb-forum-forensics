@@ -1,6 +1,6 @@
 {
-  "build": 272,
-  "version": "0.6.272",
-  "date": "2026-05-31",
-  "note": "Build 272: fileasset.py — doppeltes unquote() entfernt. parse_qs dekodiert Query-Parameter bereits einmal; ein zweites unquote() erzeugt Mismatch mit DB-URLs die literal % enthalten. Build 271: AssetsDb._con_lock."
+  "build": 274,
+  "version": "0.6.274",
+  "date": "2026-06-07",
+  "note": "Build 274: Bug 2.18/2.19 behoben — EvidenceBlock._addEvidence/_removeEvidence nutzten faelschlicherweise _docSend('add_anchor'/'delete_block') auf /_forensic/report. Umgestellt auf _evidenceSend() -> /_forensic/editor/evidence (action=add/remove). _removeEvidence loeschte zuvor den gesamten Block statt nur die Annotation zu entkoppeln. DocumentLayer um sendWithContext(url, payload) und Hook-Registry (registerRequestHook/unregisterRequestHook) erweitert. Bug 2.20 behoben — Annotation-Filter-Debounce 200ms -> 400ms, Fokus und Cursor-Position nach Re-Render wiederhergestellt."
 }

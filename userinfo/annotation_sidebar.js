@@ -40,7 +40,7 @@
  *   GET /_forensic/annotations         -- alle Annotationen
  *   POST /_forensic/report             -- action=add_anchor
  *
- * Version: v0.6.161 · Build: 161 · 2026-05-11
+ * Version: v0.6.274 · Build: 274 · 2026-06-07
  * Beleg: Bauplan B6 v0.3 §4.7, Ausdefinitionsgespraech 2026-05-05
  */
 
@@ -465,7 +465,32 @@ function _bindEvents(container) {
             window._uevt?.(e, 'annotation_sidebar', 'input:as-search', { value: e.target.value }); // B200
             clearTimeout(_searchTimer);
             _searchText = e.target.value;
-            _searchTimer = setTimeout(_render, 200);
+            // Bug 2.20 Fix Build 274:
+            // 200 ms war zu kurz — _render() baut das DOM komplett neu auf
+            // (innerHTML-Zuweisung), dadurch wird das #as-search-input-Element
+            // zerstoert und neu erzeugt. Der Browser verliert dadurch
+            // unweigerlich den Fokus, noch bevor der Nutzer fertig tippt.
+            // Massnahmen:
+            //   1. Debounce auf 400 ms erhoehen, damit schnelles Tippen
+            //      selten einen Render ausloest.
+            //   2. Nach dem Render Fokus und Cursor-Position wiederherstellen,
+            //      damit der Nutzer nahtlos weitertippen kann.
+            // Beleg: Bugfix-Liste 2.20, Projektgespraech 2026-06-07
+            const selStart = e.target.selectionStart;
+            const selEnd   = e.target.selectionEnd;
+            _searchTimer = setTimeout(() => {
+                _render();
+                // Fokus und Cursor-Position im neu gerenderten Input wiederherstellen.
+                // Das neue #as-search-input liegt im selben container.
+                const newInput = container.querySelector('#as-search-input');
+                if (newInput) {
+                    newInput.focus();
+                    // setSelectionRange ist nur auf text/search-Inputs verfuegbar.
+                    try {
+                        newInput.setSelectionRange(selStart, selEnd);
+                    } catch (_) { /* ignorieren falls Input-Typ nicht unterstuetzt */ }
+                }
+            }, 400);
         });
     }
 
