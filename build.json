@@ -1,6 +1,6 @@
 {
-  "build": 297,
-  "version": "0.6.297",
+  "build": 298,
+  "version": "0.6.298",
   "date": "2026-06-07",
-  "note": "Build 297: Bug 2.27/2.30. Capture-Listener: Schutzregel erweitert. bt()-Crash passiert bei ArrowLeft auf Block 3 wenn Block 4 (Nachfolger) ein EvidenceBlock ist — previousHolder war falsch. Neue Logik: stopImmediatePropagation wenn (isBackward AND nextBlock=EvidenceBlock) ODER (isForward AND prevBlock=EvidenceBlock) ODER crash-gefaehrdeter Cursor-Zustand (focusOffset > childNodes.length). Navigation am Rand entsprechend angepasst."
+  "note": "Build 298: Bugs 2.26-2.30 abschliessend. Zwei Fixes: (1) isAtEdge-Forward: statt deepLast-Traversal jetzt Range vom Cursor bis Ende des contentEl — robust gegen hohe focusOffset-Werte. Direktes true wenn fn=contentEl mit fo>=childNodes.length. (2) shouldProtect-Logik korrigiert: Schutz wenn nextIsEvidence ODER prevIsEvidence (nicht nach Pfeiltasten-Richtung unterschieden). Navigation: ArrowRight → nextHolder, ArrowLeft → prevHolder."
 }

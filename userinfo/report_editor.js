@@ -1228,16 +1228,20 @@ function _initEditorJs(blocks, reportId) {
                         const fo = r.startOffset;
                         try {
                             if (isForward) {
-                                // Am Ende: Cursor am letzten TextNode am Textende
-                                let n = contentEl;
-                                while (n.lastChild) n = n.lastChild;
-                                if (fn === n && fn.nodeType === Node.TEXT_NODE)
-                                    return fo === fn.textContent.length;
-                                if (fn === contentEl)
-                                    return fo === contentEl.childNodes.length;
-                                return false;
+                                // Am Ende: Range vom Cursor bis Ende contentEl ist leer.
+                                // Robust: wenn fn=contentEl mit fo > childNodes.length
+                                // (Firefox-ESR-Zustand nach collapse), direkt true.
+                                if (fn === contentEl && fo >= contentEl.childNodes.length)
+                                    return true;
+                                const testRange = document.createRange();
+                                testRange.setStart(fn, fo);
+                                testRange.setEnd(contentEl, contentEl.childNodes.length);
+                                return testRange.toString().length === 0
+                                    && testRange.cloneContents().textContent.length === 0;
                             } else {
-                                // Am Anfang: Range von Anfang contentEl bis Cursor ist leer
+                                // Am Anfang: Range vom Anfang contentEl bis Cursor ist leer.
+                                // Robust: wenn fn=contentEl mit fo=0, direkt true.
+                                if (fn === contentEl && fo === 0) return true;
                                 const testRange = document.createRange();
                                 testRange.setStart(contentEl, 0);
                                 testRange.setEnd(fn, fo);
@@ -1271,26 +1275,29 @@ function _initEditorJs(blocks, reportId) {
                     const prevIsEvidence = !!prevHolder?.querySelector('.evidence-block');
                     const nextIsEvidence = !!nextHolder?.querySelector('.evidence-block');
 
-                    // Crash-gefaehrdeter Cursor-Zustand: focusNode ist contentEl selbst
-                    // mit Offset > childNodes.length (nach selectNodeContents+collapse)
+                    // Crash-gefaehrdeter Cursor-Zustand
                     const r2 = sel.getRangeAt(0);
                     const isCrashState = r2.startContainer === contentEl
                         && r2.startOffset > contentEl.childNodes.length;
 
-                    const shouldProtect = (isBackward && nextIsEvidence)
-                                       || (isForward  && prevIsEvidence)
-                                       || isCrashState;
+                    // Schutz benoetigt wenn:
+                    // - ArrowRight → Cursor will zu nextBlock (schützen wenn next=Evidence)
+                    // - ArrowLeft  → bt()-Crash auf diesem Block wenn next=Evidence (da
+                    //   Editor.js nach Crash zu nextBlock springt), ODER Cursor will zu
+                    //   prevBlock (schützen wenn prev=Evidence)
+                    // - crash-gefaehrdeter Zustand immer schützen
+                    const shouldProtect = nextIsEvidence || prevIsEvidence || isCrashState;
 
                     if (!shouldProtect) return;
 
                     ev.stopImmediatePropagation();
 
-                    if (!isAtEdge) return; // nicht am Rand: Browser bewegt Cursor normal
+                    if (!isAtEdge) return; // nicht am Rand: Browser bewegt normal
 
-                    // Am Rand: in EvidenceBlock-Label-Div navigieren
-                    // Richtung: isForward → zum prevHolder (isForward UND prevIsEvidence),
-                    //           isBackward → zum nextHolder (isBackward UND nextIsEvidence)
-                    const neighborHolder = isForward ? prevHolder : nextHolder;
+                    // Navigation: wohin soll der Cursor?
+                    // ArrowRight → in den nächsten Block (wenn EvidenceBlock)
+                    // ArrowLeft  → in den vorherigen Block (wenn EvidenceBlock)
+                    const neighborHolder = isForward ? nextHolder : prevHolder;
                     if (!neighborHolder?.querySelector('.evidence-block')) return;
 
                     ev.preventDefault();
