@@ -1251,24 +1251,47 @@ function _initEditorJs(blocks, reportId) {
                     const blockIdx = ed.blocks.getBlockIndex(blockId);
                     if (blockIdx === undefined || blockIdx === null) return;
 
-                    // Nachbar-Block bestimmen
-                    const count       = ed.blocks.getBlocksCount();
-                    const neighborIdx = isForward ? blockIdx + 1 : blockIdx - 1;
-                    if (neighborIdx < 0 || neighborIdx >= count) return;
-
-                    // Ist der Nachbar ein EvidenceBlock?
                     const allCeBlocks = holderForRange.querySelectorAll('.ce-block[data-id]');
-                    const neighborHolder = allCeBlocks[neighborIdx];
-                    if (!neighborHolder?.querySelector('.evidence-block')) return;
+                    const count       = ed.blocks.getBlocksCount();
 
-                    // Bug 2.27/2.30 Fix Build 295: bt()/kt()-Crash verhindern.
-                    // Editor.js darf bt()/kt() NIEMALS auf einem Block aufrufen der
-                    // neben einem EvidenceBlock liegt — Chip-Paragraphen crashen dabei.
-                    // stopImmediatePropagation() immer, preventDefault()+Navigation nur am Rand.
-                    // Beleg: Bugfix-Liste 2.27, 2.30, Projektgespraech 2026-06-07, Build 295
+                    // Bug 2.27/2.30 Fix Build 296:
+                    // bt()/kt() crasht auf Chip-Paragraphen (setEnd at offset N).
+                    // bt() wird bei ArrowLeft aufgerufen — crasht wenn der Cursor nach
+                    // selectNodeContents()+collapse(false) auf contentEl mit hohem Offset
+                    // steht. kt() wird bei ArrowRight aufgerufen.
+                    //
+                    // Schutzregel: stopImmediatePropagation() wenn IRGENDEIN Nachbar
+                    // (links oder rechts) ein EvidenceBlock ist, ODER wenn der Cursor
+                    // direkt auf dem contentEl-Node mit Offset > childNodes.length steht
+                    // (crash-gefaehrdeter Zustand nach selectNodeContents+collapse).
+                    //
+                    // Beleg: Bugfix-Liste 2.27, 2.30, Projektgespraech 2026-06-07, Build 296
+                    const prevHolder = blockIdx > 0 ? allCeBlocks[blockIdx - 1] : null;
+                    const nextHolder = blockIdx < count - 1 ? allCeBlocks[blockIdx + 1] : null;
+                    const prevIsEvidence = !!prevHolder?.querySelector('.evidence-block');
+                    const nextIsEvidence = !!nextHolder?.querySelector('.evidence-block');
+
+                    // Crash-gefaehrdeter Cursor-Zustand: focusNode ist contentEl selbst
+                    // mit Offset > childNodes.length (nach selectNodeContents+collapse)
+                    const r2 = sel.getRangeAt(0);
+                    const isCrashState = r2.startContainer === contentEl
+                        && r2.startOffset > contentEl.childNodes.length;
+
+                    const shouldProtect = (isBackward && nextIsEvidence)
+                                       || (isForward  && prevIsEvidence)
+                                       || isCrashState;
+
+                    if (!shouldProtect) return;
+
                     ev.stopImmediatePropagation();
 
                     if (!isAtEdge) return; // nicht am Rand: Browser bewegt Cursor normal
+
+                    // Am Rand: in EvidenceBlock-Label-Div navigieren
+                    // Richtung: isForward → zum prevHolder (isForward UND prevIsEvidence),
+                    //           isBackward → zum nextHolder (isBackward UND nextIsEvidence)
+                    const neighborHolder = isForward ? prevHolder : nextHolder;
+                    if (!neighborHolder?.querySelector('.evidence-block')) return;
 
                     ev.preventDefault();
                     const labelDiv = neighborHolder.querySelector('.evidence-label-input');

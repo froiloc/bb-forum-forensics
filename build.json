@@ -1,6 +1,6 @@
 {
-  "build": 296,
-  "version": "0.6.296",
+  "build": 297,
+  "version": "0.6.297",
   "date": "2026-06-07",
-  "note": "Build 296: Bug 2.27/2.30. Capture-Listener: ev.stopImmediatePropagation() wird jetzt fuer ALLE Pfeiltasten-Events auf Bloecken neben EvidenceBlocks gesetzt, nicht nur am Rand. Verhindert dass Editor.js bt()/kt() auf Chip-Paragraphen aufruft (setEnd-Crash). Ohne isAtEdge kein preventDefault — Browser bewegt Cursor normal weiter. Nur am tatsaechlichen Rand zusaetzlich preventDefault + Navigation ins Label-Div."
+  "note": "Build 297: Bug 2.27/2.30. Capture-Listener: Schutzregel erweitert. bt()-Crash passiert bei ArrowLeft auf Block 3 wenn Block 4 (Nachfolger) ein EvidenceBlock ist — previousHolder war falsch. Neue Logik: stopImmediatePropagation wenn (isBackward AND nextBlock=EvidenceBlock) ODER (isForward AND prevBlock=EvidenceBlock) ODER crash-gefaehrdeter Cursor-Zustand (focusOffset > childNodes.length). Navigation am Rand entsprechend angepasst."
 }
