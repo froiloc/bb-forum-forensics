@@ -57,7 +57,7 @@
  *   Nach Timer-Ablauf wechselt SSELayer in DISCONNECTED.
  *   Beleg: SLA Punkt 2, Layer 2 States RESUMING, Paket 4 / Paket 5
  *
- * Version: v0.6.265 · Build: 265 · 2026-05-31
+ * Version: v0.6.278 · Build: 278 · 2026-06-07
  * Beleg: Layer 2 States, SLA Manifest, Paket 5, Architekturentscheidungen
  *
  * Changelog Build 265 (2026-05-31):
@@ -326,16 +326,31 @@
             this._dbg('EventSource öffnen:', url);
 
             // Preflight-Check via fetch: EventSource kann keinen HTTP-Statuscode
-            // auslesen. Wir schicken zuerst einen HEAD-ähnlichen GET und prüfen
-            // ob der Server 409 zurückgibt (Duplikat-Rolle).
-            // Bei 409 wird _onDuplicate() aufgerufen statt EventSource zu öffnen.
-            // Beleg: Projektgespräch 2026-05-31.
+            // auslesen. Wir schicken zuerst einen GET mit dem Header
+            // X-Forensic-Preflight: 1 und prüfen ob der Server 409 zurückgibt.
+            // Der Server erkennt diesen Header und behandelt den Request als reinen
+            // Verfügbarkeitscheck — er beansprucht den SSE-Slot NICHT und öffnet
+            // keinen Stream. Damit entsteht kein Konflikt mit der nachfolgenden
+            // echten EventSource-Verbindung.
+            //
+            // Bug 2.23 Fix Build 278:
+            // Früher wurde 'Accept: text/event-stream, application/json' gesendet.
+            // Der Server öffnete daraufhin einen echten SSE-Stream, beanspruchte den
+            // Slot via claim_sse_role() und gab 200 zurück. Dann wurde _openEvent-
+            // SourceDirect() aufgerufen — ein zweiter GET auf dieselbe URL — und
+            // bekam 409 weil der Slot bereits durch den Preflight belegt war.
+            // Der neue Header X-Forensic-Preflight: 1 löst dieses Problem, weil
+            // der Server den Preflight-Pfad separat behandelt (kein claim, kein Stream).
+            // Beleg: Bugfix-Liste 2.23, Projektgespraech 2026-06-07
             if (this._role && !resumeClientId) {
                 // Nur beim initialen Connect prüfen, nicht beim RESUMING-Reconnect.
                 // Beim RESUMING sind wir bereits verbunden gewesen — kein Duplikat.
                 fetch(url, {
                     method: 'GET',
-                    headers: { 'Accept': 'text/event-stream, application/json' },
+                    headers: {
+                        'Accept':               'application/json',
+                        'X-Forensic-Preflight': '1',
+                    },
                 }).then(resp => {
                     if (resp.status === 409) {
                         return resp.json().then(data => {

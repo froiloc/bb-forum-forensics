@@ -48,7 +48,16 @@
 #   coordinator.db (READ-ONLY) — Support-Status
 #   evidence_<uid>.db (READ/WRITE) — Lock-Freigabe bei Grace-Period-Ablauf
 #
-# Version: v0.6.265 · Build: 265 · 2026-05-31
+# Version: v0.6.278 · Build: 278 · 2026-06-07
+#
+# Changelog Build 278 (2026-06-07):
+#   - Preflight-Request-Erkennung: X-Forensic-Preflight: 1.
+#     handle() erkennt diesen Header und behandelt den Request als reinen
+#     Slot-Verfuegbarkeitscheck: 200 (frei) oder 409 (belegt), ohne
+#     claim_sse_role() aufzurufen oder einen Stream zu oeffnen.
+#     Damit entsteht kein Konflikt zwischen Preflight-GET und der
+#     nachfolgenden echten EventSource-Verbindung (Bug 2.23).
+#     Beleg: Bugfix-Liste 2.23, Projektgespraech 2026-06-07
 # =============================================================================
 #
 # Changelog Build 265 (2026-05-31):
@@ -207,6 +216,65 @@ class EventsEndpoint:
                      resume_client_id: Alte SSE-Client-ID fuer Grace-Period-RESUMING.
                      Beleg: Layer 2 States RESUMING, Paket-4-Review 2026-05-24
         """
+        # Bug 2.23 Fix Build 278: Preflight-Request-Erkennung.
+        #
+        # Der SSE-Layer sendet vor dem Öffnen der echten EventSource einen
+        # GET-Request mit dem Header X-Forensic-Preflight: 1. Dieser Request
+        # darf den SSE-Slot NICHT beanspruchen und keinen Stream öffnen —
+        # er soll nur den Slot-Status abfragen (frei oder belegt).
+        #
+        # Ohne diese Unterscheidung behandelte der Server den Preflight-GET
+        # als vollständigen SSE-Stream-Aufbau, beanspruchte den Slot via
+        # claim_sse_role(), sendete 200 OK und wartete auf Daten. Die danach
+        # kommende echte EventSource-Verbindung bekam dann 409 weil der Slot
+        # bereits durch den Preflight-Request belegt war.
+        #
+        # Verhalten: Preflight-Request gibt 200 (Slot frei) oder 409
+        # (Slot belegt — identische JSON-Antwort wie beim normalen 409).
+        # In keinem Fall wird claim_sse_role() aufgerufen oder der Stream geöffnet.
+        # Beleg: Bugfix-Liste 2.23, Projektgespraech 2026-06-07
+        _is_preflight = (
+            handler.headers.get("X-Forensic-Preflight", "").strip() == "1"
+        )
+        if _is_preflight:
+            _pf_role = ((params or {}).get("role") or [None])[0]
+            if _pf_role:
+                _pf_reg = _get_window_registry()
+                _pf_existing = _pf_reg.find_active_by_role(_pf_role)
+                if _pf_existing:
+                    import json as _pf_json
+                    _pf_body = _pf_json.dumps({
+                        "duplicate":        True,
+                        "role":             _pf_role,
+                        "active_window_id": _pf_existing["window_id"],
+                    }).encode("utf-8")
+                    logger.warning(
+                        "SSE-Preflight: Rolle '%s' bereits belegt durch "
+                        "Fenster '%s' — HTTP 409.",
+                        _pf_role, _pf_existing["window_id"],
+                    )
+                    handler.send_response_body(
+                        409, _pf_body,
+                        content_type="application/json; charset=utf-8",
+                        extra_headers={"Cache-Control": "no-store"},
+                    )
+                    return
+                # Slot frei — 200 OK ohne Stream zu öffnen
+                logger.debug(
+                    "SSE-Preflight: Rolle '%s' frei — 200 OK (kein Stream).",
+                    _pf_role,
+                )
+                handler.send_response_body(
+                    200,
+                    b"{}",
+                    content_type="application/json; charset=utf-8",
+                    extra_headers={"Cache-Control": "no-store"},
+                )
+            else:
+                # Kein role-Parameter — Preflight ohne Rolle, einfach 200
+                handler.send_response_body(200, b"{}")
+            return  # Preflight komplett behandelt — kein Stream, kein claim
+
         # Duplikat-SSE-Schutz: Prüfen ob für diese Fenster-Rolle bereits eine
         # aktive SSE-Verbindung läuft. Wenn ja → HTTP 409 damit der Browser
         # das Duplikat-Tab schließen oder ignorieren kann.
