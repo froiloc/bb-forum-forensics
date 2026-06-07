@@ -1,5 +1,5 @@
 # Fehler im Frontend
-(Cache-buster-pre-extension: 4d86fa90-626e-11f1-87a9-732ce2668566)
+(Cache-buster-pre-extension: bb0e65ec-6270-11f1-a225-4b27c147408f)
 
 Ich werde in dieser Liste fortlaufend die von mir beobachteten Fehler aufführen.
 Falls diese abgeschlossen und verworfen wurden, werde ich sie durchstreichen. Alles, was nicht durchgestrichen ist, ist also noch offen und muss bearbeitet werden.
@@ -26,31 +26,31 @@ Abgeschlossene Aufgaben werden durch das Wort `erledigt` ersetzt.
 
 Quellen zum Debuggen:
 * Dieses Dokument mit den Arbeitsanweisungen und Problembeschreibungen:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.4d86fa90-626e-11f1-87a9-732ce2668566.md
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.bb0e65ec-6270-11f1-a225-4b27c147408f.md
 * Die Ausgabe von DevTools-Console:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.4d86fa90-626e-11f1-87a9-732ce2668566.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.bb0e65ec-6270-11f1-a225-4b27c147408f.log
 * Die Ausgabe von DevTools-Network:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.4d86fa90-626e-11f1-87a9-732ce2668566.har
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.bb0e65ec-6270-11f1-a225-4b27c147408f.har
 * Das aktuelle DOM des gesamten Dokuments als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.4d86fa90-626e-11f1-87a9-732ce2668566.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.bb0e65ec-6270-11f1-a225-4b27c147408f.html
 * Das aktuelle DOM des gesamten Body als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.4d86fa90-626e-11f1-87a9-732ce2668566.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.bb0e65ec-6270-11f1-a225-4b27c147408f.html
 * Das aktuelle DOM des gesamten Sidebar als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.4d86fa90-626e-11f1-87a9-732ce2668566.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.bb0e65ec-6270-11f1-a225-4b27c147408f.html
 * Das aktuelle DOM des gesamten Main als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.4d86fa90-626e-11f1-87a9-732ce2668566.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.bb0e65ec-6270-11f1-a225-4b27c147408f.html
 * Das aktuelle DOM des Akkordeon 1 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.4d86fa90-626e-11f1-87a9-732ce2668566.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.bb0e65ec-6270-11f1-a225-4b27c147408f.html
 * Das aktuelle DOM des Akkordeon 2 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.4d86fa90-626e-11f1-87a9-732ce2668566.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.bb0e65ec-6270-11f1-a225-4b27c147408f.html
 * Das aktuelle DOM des Akkordeon 3 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.4d86fa90-626e-11f1-87a9-732ce2668566.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.bb0e65ec-6270-11f1-a225-4b27c147408f.html
 * Das aktuelle DOM des Akkordeon 4 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.4d86fa90-626e-11f1-87a9-732ce2668566.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.bb0e65ec-6270-11f1-a225-4b27c147408f.html
 * Das aktuelle DOM des Search-Modal als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-searchmodal.4d86fa90-626e-11f1-87a9-732ce2668566.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-searchmodal.bb0e65ec-6270-11f1-a225-4b27c147408f.html
 * Die Ausgabe des aktuellen Webservers:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.4d86fa90-626e-11f1-87a9-732ce2668566.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.bb0e65ec-6270-11f1-a225-4b27c147408f.log
 * Die aktuellen Screenshots:
 https://github.com/froiloc/bb-forum-forensics/tree/1b5017a2f62c5a8f1825de76fc6edabb25d6bf66/debug/screenshots
 ***
@@ -83,9 +83,10 @@ Hier werden Funktionsprobleme aufgeführt, die verhindern, dass der Ermittler mi
 18. erledigt
 19. erledigt
 20. erledigt
-21. (10) (BS6) (274) Nach dem Einfügen einer Annotation per Drag-and-Drop springt die Liste der Annotationen wieder an den Anfang. Das macht es aufwändig (immer wieder herunterscrollen), mehrere Annotationen in eine Beweismittelgruppe hinzuzufügen. Selbes Phänomen beim Löschen aus einer Beweismittelgruppe. Es wäre gut, wenn die Scrollposition gemerkt wird und beim Neuladen und Aktualisieren der angezeigten Elemente stabil bliebe.
+21. erledigt
 22. erledigt
-23. (15) (BS6) (275) Bei Neuladen des Editorfensters nach einem Neustart des Webservers wird zwar der Bericht geladen, aber der Lock wird nicht erworben. Ein manueller Erwerb ist nicht möglich. Daher kann das Dokument nicht bearbeitet werden. (Verhindert auch das Testen der Lösung zu 2.21)
+23. erledigt
+24. (15) (BS6) (181) Wenn der Lock manuell getrennt wurde, kann er nicht wieder durch Anklicken des Lock-Indikators erworben werden. Trennen hat aber geklappt.
 ---
 ## 3. Funktionalität Backend / Python / SQLite3-Datenbank
 Hier werden Funktionsprobleme aufgeführt, die aufgrund von Problemen im Webserver oder der Datenbank auftreten.

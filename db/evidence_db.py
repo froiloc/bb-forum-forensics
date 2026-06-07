@@ -37,6 +37,14 @@
 #     - create_report(): template_id-Parameter entfernt (kein report_templates mehr).
 #     Beleg: Bauplan B6 v0.3 §2.3, Ausdefinitionsgespraech 2026-05-05
 #
+#   Build 281 (Bug 2.23, 2026-06-07):
+#     - clear_stale_locks_on_startup(): Loescht alle Eintraege aus
+#       editor_locks, lock_queue und lock_takeover_requests beim Serverstart.
+#       Nach einem Neustart sind alle Locks veraltet (SSE-Verbindungen
+#       abgebrochen, Grace-Period-Timer nicht uebertragen). Ohne Bereinigung
+#       blockieren Stale Locks alle acquire()-Versuche mit HTTP 423.
+#     Beleg: Bugfix-Liste 2.23, Projektgespraech 2026-06-07
+#
 #   Build 098: get_lock() nutzt eigene kurzlebige Connection wenn db_path gesetzt.
 #     Verhindert 'bad parameter or other API misuse' im SSE-Thread.
 #     EvidenceDb.__init__() bekommt optionalen db_path-Parameter.
@@ -1990,6 +1998,37 @@ class EvidenceDb:
             self._lock_change_event.set()
             logger.info("Lock freigegeben: report_id=%d lock_id=%s", report_id, lock_id)
         return freed
+
+    def clear_stale_locks_on_startup(self) -> int:
+        """Bereinigt alle Locks beim Server-Start.
+
+        Nach einem Server-Neustart sind alle in editor_locks gespeicherten
+        Locks Stale: die zugehoerigen SSE-Verbindungen existieren nicht mehr
+        und die Grace-Period-Timer wurden nicht uebertragen. Ein Beibehalten
+        dieser Locks wuerde alle acquire()-Versuche mit 423 blockieren, weil
+        kein aktiver Client die Locks freigeben kann.
+
+        Wird einmalig beim Serverstart aufgerufen, bevor HTTP-Verbindungen
+        angenommen werden. Die Queue (lock_queue) und Takeover-Eintraege
+        (lock_takeover_requests) werden ebenfalls bereinigt, da sie ohne
+        aktive SSE-Verbindungen bedeutungslos sind.
+
+        Gibt die Anzahl der geloeschten Locks zurueck.
+
+        Beleg: Bugfix-Liste 2.23, Projektgespraech 2026-06-07
+        Build 281
+        """
+        cursor = self._con.execute("DELETE FROM editor_locks")
+        count  = cursor.rowcount
+        # Queue und Takeover-Eintraege ebenfalls bereinigen
+        self._con.execute("DELETE FROM lock_queue")
+        self._con.execute("DELETE FROM lock_takeover_requests")
+        self._con.commit()
+        if count:
+            logger.info(
+                "Startup: %d Stale-Lock(s) aus editor_locks bereinigt.", count
+            )
+        return count
 
     def release_lock_by_sse_client(self, sse_client: str) -> list[int]:
         """Gibt alle Locks frei die zu einer SSE-Client-ID gehoeren.

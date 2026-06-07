@@ -366,6 +366,24 @@ def main() -> None:
     logger.info("Alle Datenbankverbindungen aufgebaut.")
 
     # ------------------------------------------------------------------
+    # Schritt 8a: Stale Locks bereinigen (Build 281)
+    # Nach einem Server-Neustart sind alle Locks in editor_locks veraltet:
+    # Die zugehoerigen SSE-Verbindungen und Grace-Period-Timer existieren
+    # nicht mehr. Ohne Bereinigung blockieren diese Stale Locks alle
+    # acquire()-Versuche mit HTTP 423.
+    # Beleg: Bugfix-Liste 2.23, Projektgespraech 2026-06-07
+    # ------------------------------------------------------------------
+    try:
+        _stale = bundle.evidence.clear_stale_locks_on_startup()
+        if _stale:
+            logger.warning(
+                "Startup: %d Stale-Lock(s) bereinigt — "
+                "Server war zuvor nicht korrekt beendet worden.", _stale
+            )
+    except Exception as _exc:
+        logger.warning("Startup: Stale-Lock-Bereinigung fehlgeschlagen: %s", _exc)
+
+    # ------------------------------------------------------------------
     # Schritt 8b: Build-Info laden und Datei-Prüfsummen loggen
     # Beleg: Projektgespräch 2026-05-11
     # ------------------------------------------------------------------

@@ -1,6 +1,6 @@
 {
-  "build": 280,
-  "version": "0.6.280",
+  "build": 281,
+  "version": "0.6.281",
   "date": "2026-06-07",
-  "note": "Build 280: Bug 2.23 vollstaendig behoben. _loadReportImpl ruft jetzt reportLayer.open(report.id) auf — der ReportLayer ist die einzige autorisierte Quelle fuer Block-Daten, der separate fetch() auf /_forensic/report?format=json entfaellt. Zusaetzlich Backend-Bug in _action_open_report gefixt: o.block_id → o['block_id'] (get_block_order_for_report gibt list[dict] zurueck, kein Objekt mit Attributen)."
+  "note": "Build 281: Bug 2.23 (Stale Lock beim Server-Neustart). main.py ruft beim Start bundle.evidence.clear_stale_locks_on_startup() auf — loescht alle Eintraege aus editor_locks, lock_queue und lock_takeover_requests. Nach einem Neustart sind alle Locks veraltet (SSE getrennt, Grace-Period-Timer verloren). Ohne Bereinigung blockieren sie alle acquire()-Versuche mit 423."
 }
