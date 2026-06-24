@@ -2158,7 +2158,7 @@ mark.forensic-alias-mark {
    Nur aktiv wenn has_trace_progress-Klasse gesetzt ist. */
 .has_trace_progress {
   outline: 2px solid hsl(calc(var(--trace-progress, 0) * 1.2deg), 70%, 45%) !important;
-  outline-offset: 2px;
+  outline-offset: -2px;
   border-radius: 2px;
 }
 
