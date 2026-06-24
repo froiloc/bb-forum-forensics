@@ -311,6 +311,28 @@ function _pulseEditorBlock(blockId) {
     const wrapper = document.querySelector(`.ce-block[data-block-id="${blockId}"]`);
     if (!wrapper) return;
     if (_pulseTimer) clearTimeout(_pulseTimer);
+
+    // Bug 2.31 Fix Build 299: Editor-Block in den sichtbaren Bereich scrollen,
+    // damit beim Wechsel von Formular-Bloecken der Fokus (Scroll) im Editor
+    // mitgeht. Das Formular scrollt bereits via _scrollToFocusedBlock in
+    // placeholder_wizard.js; diese Seite muss den Editor-Canvas synchronisieren.
+    //
+    // Strategie: Pruefen ob der Block ausserhalb der mittleren 80% des
+    // Eltern-Scroll-Containers (#editorjs-holder) liegt. Falls ja: scrollen.
+    // 'nearest' vermeidet unnoetiges Hin- und Herspringen.
+    // Beleg: Bug 2.31, Projektgespraech 2026-06-07
+    const editorHolder = document.getElementById('editorjs-holder');
+    if (editorHolder) {
+        const holderRect  = editorHolder.getBoundingClientRect();
+        const wrapperRect = wrapper.getBoundingClientRect();
+        const margin      = holderRect.height * 0.1; // 10% oben/unten = 80% Mitte
+        const topBound    = holderRect.top    + margin;
+        const botBound    = holderRect.bottom - margin;
+        if (wrapperRect.top < topBound || wrapperRect.bottom > botBound) {
+            wrapper.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }
+
     _pulseTimer = setTimeout(() => {
         wrapper.classList.add('block-wrapper--focus-blue', 'block-wrapper--pulse');
     }, 10);

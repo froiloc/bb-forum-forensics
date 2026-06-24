@@ -1,6 +1,6 @@
 {
-  "build": 298,
-  "version": "0.6.298",
+  "build": 299,
+  "version": "0.6.299",
   "date": "2026-06-07",
-  "note": "Build 298: Bugs 2.26-2.30 abschliessend. Zwei Fixes: (1) isAtEdge-Forward: statt deepLast-Traversal jetzt Range vom Cursor bis Ende des contentEl — robust gegen hohe focusOffset-Werte. Direktes true wenn fn=contentEl mit fo>=childNodes.length. (2) shouldProtect-Logik korrigiert: Schutz wenn nextIsEvidence ODER prevIsEvidence (nicht nach Pfeiltasten-Richtung unterschieden). Navigation: ArrowRight → nextHolder, ArrowLeft → prevHolder."
+  "note": "Build 299: Bug 2.31 Fix — beim Wechsel von Formular-Bloecken scrollt der Fokus (Scroll) im Editor nicht mit. Fix in comment_thread.js::_pulseEditorBlock: scrollIntoView auf den ce-block wenn er ausserhalb der mittleren 80% des editorjs-holder liegt."
 }
