@@ -33,6 +33,12 @@
 #   python main.py --mode cli --username verdaechtiger
 #   python main.py --debug                          # Debug-Logging aktivieren
 #   python main.py --config /pfad/zu/config.yaml    # Abweichender Config-Pfad
+#   python main.py --host 127.0.0.2 --port 8081     # Host/Port explizit setzen
+#   python main.py --auto-port                      # nächsten freien Port ab 8080
+#   python main.py --auto-port --open-browser       # + Browser autom. öffnen
+#
+# Eskalationskette (gilt für alle Konfigurationsparameter):
+#   CLI-Argument  >  config.yaml  >  Coded Default
 #
 # Forensische Relevanz:
 #   Dieser Einstiegspunkt ist das einzige Skript, das direkt ausgeführt wird.
@@ -41,7 +47,7 @@
 #   abgeschlossen sind.
 #
 # Abhängigkeiten: argparse, sys — Stdlib + alle core/db/server-Module
-# Version: v0.1.0 · Build: 018 · 2026-04-23
+# Version: v0.6.299 · Build: 299 · 2026-06-24
 # =============================================================================
 
 from __future__ import annotations
@@ -140,6 +146,47 @@ def _parse_args() -> argparse.Namespace:
         help="Überschreibt paths.coordinator_db aus config.yaml.",
     )
     parser.add_argument(
+        "--host",
+        metavar="IP",
+        default=None,
+        help=(
+            "Lausch-Adresse des Servers (überschreibt server.host aus "
+            "config.yaml). Default: 127.0.0.2."
+        ),
+    )
+    parser.add_argument(
+        "--port",
+        metavar="INT",
+        type=int,
+        default=None,
+        help=(
+            "Lausch-Port des Servers (überschreibt server.port aus "
+            "config.yaml). Ermöglicht parallelen Betrieb mehrerer Fälle."
+        ),
+    )
+    parser.add_argument(
+        "--auto-port",
+        action="store_true",
+        default=False,
+        dest="auto_port",
+        help=(
+            "Sucht ab dem gewünschten Port (Default 8080) den nächsten freien "
+            "Port. Der tatsächlich verwendete Port wird auf der Konsole und im "
+            "Log ausgegeben. Nützlich für parallelen Mehrfall-Betrieb."
+        ),
+    )
+    parser.add_argument(
+        "--open-browser",
+        action="store_true",
+        default=False,
+        dest="open_browser",
+        help=(
+            "Öffnet nach dem Serverstart automatisch den Browser auf der "
+            "tatsächlich gebundenen Adresse. Browser wird über browser.path "
+            "(config.yaml) oder automatische Erkennung ermittelt."
+        ),
+    )
+    parser.add_argument(
         "--debug",
         action="store_true",
         default=False,
@@ -173,6 +220,10 @@ def _build_config_overrides(args: argparse.Namespace) -> dict:
 
     if args.mode is not None:
         overrides["server.mode"] = args.mode
+    if args.host is not None:
+        overrides["server.host"] = args.host
+    if args.port is not None:
+        overrides["server.port"] = args.port
     if args.debug:
         overrides["logging.level"] = "debug"
     if args.web_debug:
@@ -198,6 +249,60 @@ def _build_mode_overrides(args: argparse.Namespace) -> dict:
         "user_id":  args.user_id,
         "username": args.username,
     }
+
+
+def _resolve_listen_port(host: str, start_port: int, auto: bool,
+                         max_tries: int = 100) -> int:
+    """
+    Ermittelt den tatsächlich zu verwendenden Lausch-Port.
+
+    Verhalten:
+      - auto=False: Gibt start_port unverändert zurück. Ist der Port belegt,
+        scheitert später das Binden im ForensicHTTPServer mit einer
+        sprechenden ForensicHTTPServerBindError (bestehendes Verhalten).
+      - auto=True: Sucht ab start_port aufwärts den ersten freien Port
+        (start_port, start_port+1, …). Geprüft wird per Test-Bind auf (host, p).
+
+    Hinweis zur Race-Condition: Zwischen Test-Bind und dem späteren echten
+    Bind im Server kann der Port theoretisch von einem anderen Prozess belegt
+    werden. Dieser Restfall wird vom Server weiterhin als BindError behandelt —
+    kein stiller Betrieb (Grundregel 1).
+
+    Beleg: Projektgespräch 2026-06-24 (Auto-Port für parallelen Mehrfall-Betrieb).
+
+    Args:
+        host:       Lausch-Adresse (z.B. '127.0.0.2').
+        start_port: Gewünschter Startport (z.B. 8080).
+        auto:       Wenn True, freien Port ab start_port suchen.
+        max_tries:  Maximale Anzahl zu prüfender Ports (Schutz vor Endlosschleife).
+
+    Returns:
+        Der zu verwendende Port (int).
+
+    Raises:
+        RuntimeError: Wenn auto=True und in max_tries Ports kein freier
+                      gefunden wurde.
+    """
+    import socket
+
+    if not auto:
+        return start_port
+
+    for offset in range(max_tries):
+        candidate = start_port + offset
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            # SO_REUSEADDR NICHT setzen: Wir wollen einen wirklich freien Port,
+            # nicht einen, der nur im TIME_WAIT-Zustand "wiederverwendbar" wäre.
+            try:
+                sock.bind((host, candidate))
+                return candidate
+            except OSError:
+                continue
+
+    raise RuntimeError(
+        f"Kein freier Port im Bereich {start_port}–{start_port + max_tries - 1} "
+        f"auf {host} gefunden."
+    )
 
 
 def main() -> None:
@@ -410,7 +515,32 @@ def main() -> None:
     from server.http_server import ForensicHTTPServer, ForensicHTTPServerBindError
 
     host = str(config.get("server.host", "127.0.0.2"))
-    port = int(config.get("server.port", 80))
+    # Default-Port 8080 (forensische VM, localhost). Eskalation: CLI > config > 8080.
+    # Beleg: Projektgespräch 2026-06-24 — Default von 80 auf 8080 angeglichen
+    # (entspricht config.yaml und start.bat; Port 80 erfordert Adminrechte).
+    desired_port = int(config.get("server.port", 8080))
+
+    try:
+        port = _resolve_listen_port(host, desired_port, auto=args.auto_port)
+    except RuntimeError as exc:
+        logger.error("Port-Auflösung fehlgeschlagen: %s", exc)
+        print(f"[FEHLER] {exc}", file=sys.stderr)
+        bundle.close()
+        hosts_manager.cleanup()
+        sys.exit(1)
+
+    if args.auto_port and port != desired_port:
+        logger.warning(
+            "Auto-Port: gewünschter Port %d belegt — verwende %d.",
+            desired_port, port,
+        )
+        # Auf der Konsole prominent ausgeben, damit der Ermittler die korrekte
+        # URL kennt (der Browser wird bei --open-browser automatisch geöffnet).
+        print(
+            f"\n[INFO] Port {desired_port} belegt. Server läuft auf Port {port}.\n"
+            f"       URL: http://{host}:{port}/\n",
+            file=sys.stderr,
+        )
 
     try:
         server = ForensicHTTPServer(host, port, bundle, context, config, build_info=_build_info)
@@ -446,6 +576,28 @@ def main() -> None:
             "⚠  --web-debug aktiv: FORENSIC_DEBUG=true wird an alle "
             "Browser-Clients gesendet. Nur für Entwicklung verwenden!"
         )
+
+    # ------------------------------------------------------------------
+    # Schritt 9a: Browser öffnen (optional, --open-browser)
+    # Der Socket ist an dieser Stelle bereits gebunden (ForensicHTTPServer
+    # bindet im Konstruktor). Damit ist garantiert: Server zuerst, dann
+    # Browser — der Browser trifft auf einen lauschenden Server und die
+    # korrekte (ggf. automatisch gewählte) Portnummer.
+    #
+    # Der Browser-Start ist eine reine Komfortfunktion ohne Beweisrelevanz.
+    # Schlägt er fehl, läuft der Server weiter; der Ermittler kann die URL
+    # manuell aufrufen. Es wird daher KEIN Abbruch ausgelöst.
+    # Beleg: Projektgespräch 2026-06-24 (Light-Version / Browser-Start)
+    # ------------------------------------------------------------------
+    if args.open_browser:
+        from core.browser_launcher import BrowserLauncher
+        _url = f"http://{host}:{port}/"
+        logger.info("Öffne Browser auf '%s' …", _url)
+        try:
+            BrowserLauncher(config, project_root=_PROJECT_ROOT).open(_url)
+        except Exception as _exc:
+            logger.warning("Browser konnte nicht geöffnet werden: %s "
+                           "(URL bitte manuell aufrufen: %s)", _exc, _url)
 
     # ------------------------------------------------------------------
     # Schritt 9b: Watchdog-Thread für Freeze-Diagnose

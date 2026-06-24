@@ -3,6 +3,17 @@ server:
   port: 8080
   mode: "cli"
 
+# Browser-Start (optional). Wird nur ausgewertet, wenn main.py mit
+# --open-browser aufgerufen wird (z.B. durch start.bat / start.sh).
+# Auflösungsreihenfolge: browser.path > portabler Browser > Auto-Erkennung
+#                        > System-Standardbrowser.
+# 'path' leer lassen für automatische Erkennung. Beispiele:
+#   Windows: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+#   Linux:   "/usr/bin/google-chrome"
+# Beleg: Projektgespräch 2026-06-24
+browser:
+  path: ""
+
 paths:
   coordinator_db:  "./data/coordinator.db"
   forensic_db_dir: "./data/forensic/"

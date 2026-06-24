@@ -1,6 +1,6 @@
 {
-  "build": 299,
-  "version": "0.6.299",
-  "date": "2026-06-07",
-  "note": "Build 299: Bug 2.31 Fix — beim Wechsel von Formular-Bloecken scrollt der Fokus (Scroll) im Editor nicht mit. Fix in comment_thread.js::_pulseEditorBlock: scrollIntoView auf den ce-block wenn er ausserhalb der mittleren 80% des editorjs-holder liegt."
+  "build": 300,
+  "version": "0.6.300",
+  "date": "2026-06-24",
+  "note": "Build 300 (rebasiert auf Build 299 / Bug-2.31-Fix): Light-Auslieferung & Startflexibilitaet. (1) Neue CLI-Argumente --host und --port (Eskalation CLI > config.yaml > Default 8080). (2) --auto-port: sucht ab Wunschport (Default 8080) den naechsten freien Port; tatsaechlich verwendeter Port wird auf Konsole + Log ausgegeben (paralleler Mehrfall-Betrieb). (3) --open-browser: Server oeffnet NACH dem Bind selbst den Browser auf der korrekten URL (Reihenfolge Server-zuerst garantiert). (4) Neues Modul core/browser_launcher.py: plattformuebergreifende Browser-Erkennung (Win+Linux), Reihenfolge config.yaml browser.path > portabler Browser > Auto-Erkennung > webbrowser-Fallback. (5) config.yaml: neuer Abschnitt 'browser'. (6) start.bat neu (Single-Case, server-first, kein hartkodierter Chrome-Pfad) + start.sh ERSETZT (server-first/auto-port statt Browser-vor-Server). HINWEIS: Build 299 wurde doppelt vergeben (lokaler Feature-Build vs. gepushter Bug-2.31-Fix); dieser Build 300 loest die Kollision auf und enthaelt beide Aenderungsstaende. Beleg: Projektgespraech 2026-06-24."
 }
