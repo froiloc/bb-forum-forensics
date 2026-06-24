@@ -28,7 +28,7 @@
 #   - Internetverbindung
 #
 # Beleg: AP-E2, Projektgespraech 2026-04-19
-# Version: v0.6.044 · Build: 044 · 2026-04-19
+# Version: v0.6.301 · Build: 301 · 2026-06-24
 # =============================================================================
 
 import argparse
@@ -45,16 +45,32 @@ SETUP_LINUX  = SCRIPT_DIR / "setup" / "linux64"
 BUNDLE_SCRIPT = SCRIPT_DIR / "deployment" / "build_editor_bundle.py"
 STATIC_EDITOR = SCRIPT_DIR / "static" / "editor"
 
-# Python-Pakete fuer den Webserver (Laufzeit, kein Node.js)
+# Python-Pakete fuer den Webserver (Laufzeit, kein Node.js).
+# Build 301: pyeditorjs + python-docx ergaenzt (zuvor fehlten beide offline).
+# Beleg: Projektgespraech 2026-06-24 (offline-Vollstaendigkeit).
 RUNTIME_PACKAGES = [
     "pyyaml",
     "lxml",
+    "pyeditorjs",   # AP-E5: serverseitiger Editor.js-HTML-Export
+    "python-docx",  # B6: DOCX-Export
 ]
 
 # Python-Pakete nur fuer DEV (Tests etc.)
 DEV_PACKAGES = [
     "pytest",
     "pytest-asyncio",
+]
+
+# Pakete, die auf PyPI NUR als sdist vorliegen (kein Wheel) und rein in Python
+# geschrieben sind. Beim Cross-Platform-Download (--platform) erzwingt pip
+# --only-binary=:all:, wodurch sdists ausgeschlossen werden — solche Pakete
+# fielen sonst STILL aus dem Offline-Paket (Grundregel 1). Fuer sie wird auf der
+# Vorbereitungsmaschine via 'pip wheel' ein plattformunabhaengiges
+# py3-none-any-Wheel gebaut und in BEIDE Plattform-Verzeichnisse kopiert.
+# Beleg: pyeditorjs 1.0.0b0 — PyPI liefert nur sdist, install_requires=[],
+#        baut sauber zu py3-none-any. Geprueft 2026-06-24.
+SOURCE_ONLY_PURE_PYTHON = [
+    "pyeditorjs",
 ]
 
 
@@ -102,7 +118,10 @@ def _download_wheels(target_dir: Path, platform_tag: str, packages: list[str]) -
             "--platform", platform_tag,
             "--python-version", "314",
             "--only-binary", ":all:",
-            "--no-deps",
+            # Build 301: --no-deps ENTFERNT — der vollstaendige Abhaengigkeitsbaum
+            # wird mitgeladen (z.B. python-docx -> lxml, typing_extensions),
+            # damit die Offline-Installation nicht an fehlenden transitiven
+            # Paketen scheitert. Beleg: Projektgespraech 2026-06-24.
         ] + packages,
         capture_output=True,
         text=True,
@@ -114,7 +133,7 @@ def _download_wheels(target_dir: Path, platform_tag: str, packages: list[str]) -
         result = subprocess.run(
             [sys.executable, "-m", "pip", "download",
              "--dest", str(wheels_dir),
-             "--no-deps",
+             # Build 301: --no-deps auch hier entfernt (vollstaendiger Baum).
             ] + packages,
             capture_output=True,
             text=True,
@@ -130,8 +149,55 @@ def _download_wheels(target_dir: Path, platform_tag: str, packages: list[str]) -
         print(f"    {f.name} [{_md5(f)[:8]}...]")
 
 
+def _build_source_wheels(target_dirs: list[Path], packages: list[str]) -> None:
+    """
+    Baut fuer rein in Python geschriebene, nur-als-sdist verfuegbare Pakete
+    (SOURCE_ONLY_PURE_PYTHON, z.B. pyeditorjs) auf der Vorbereitungsmaschine
+    ein plattformunabhaengiges py3-none-any-Wheel und kopiert es in alle
+    Ziel-Wheels-Verzeichnisse (win64 + linux64).
+
+    Begruendung: Solche Pakete koennen nicht per Cross-Platform-Download
+    (--platform erzwingt --only-binary=:all:) erfasst werden. Ein einmal
+    gebautes py3-none-any-Wheel ist plattformunabhaengig und auf der Offline-VM
+    OHNE Build-Werkzeuge installierbar.
+    Beleg: Projektgespraech 2026-06-24.
+    """
+    if not packages:
+        return
+
+    import shutil
+    import tempfile
+
+    print(f"  Source-only-Pakete als Wheel bauen: {', '.join(packages)} …")
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "wheel",
+             "--no-deps", "--wheel-dir", str(tmp_path)] + packages,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            print("WARNUNG: 'pip wheel' fuer Source-Pakete fehlgeschlagen:")
+            print(result.stderr[-500:])
+            return
+
+        built = list(tmp_path.glob("*.whl"))
+        if not built:
+            print("WARNUNG: 'pip wheel' erzeugte keine Wheels.")
+            return
+
+        for target in target_dirs:
+            wheels_dir = target / "wheels"
+            wheels_dir.mkdir(parents=True, exist_ok=True)
+            for whl in built:
+                dest = wheels_dir / whl.name
+                shutil.copy2(whl, dest)
+                print(f"    {whl.name} -> {dest.parent.name}/ [{_md5(dest)[:8]}...]")
+
+
 def _build_wheels(skip: bool) -> None:
-    """Schritt 2: Python-Wheels fuer win64 und linux64 herunterladen."""
+    """Schritt 2: Python-Wheels fuer win64 und linux64 herunterladen/bauen."""
     _header("Schritt 2: Python-Wheels herunterladen")
     if skip:
         print("  Uebersprungen (--skip-wheels).")
@@ -139,11 +205,21 @@ def _build_wheels(skip: bool) -> None:
 
     all_packages = RUNTIME_PACKAGES + DEV_PACKAGES
 
+    # Source-only-Pakete (kein Wheel auf PyPI) aus dem Cross-Platform-Download
+    # herausnehmen — sie wuerden den --only-binary-Download sonst abbrechen.
+    # Sie werden anschliessend separat als Wheel gebaut.
+    binary_packages = [p for p in all_packages if p not in SOURCE_ONLY_PURE_PYTHON]
+
     print("\n  [win64] …")
-    _download_wheels(SETUP_WIN, "win_amd64", all_packages)
+    _download_wheels(SETUP_WIN, "win_amd64", binary_packages)
 
     print("\n  [linux64] …")
-    _download_wheels(SETUP_LINUX, "manylinux2014_x86_64", all_packages)
+    _download_wheels(SETUP_LINUX, "manylinux2014_x86_64", binary_packages)
+
+    # Plattformunabhaengige Source-Pakete (pyeditorjs) bauen und in beide
+    # Plattform-Verzeichnisse legen.
+    print("\n  [source-only -> win64 + linux64] …")
+    _build_source_wheels([SETUP_WIN, SETUP_LINUX], SOURCE_ONLY_PURE_PYTHON)
 
 
 def _write_setup_metadata() -> None:

@@ -33,7 +33,7 @@
 #     ODER Internetverbindung fuer Online-Installation
 #
 # Beleg: AP-E2, Projektgespraech 2026-04-19
-# Version: v0.6.044 · Build: 044 · 2026-04-19
+# Version: v0.6.301 · Build: 301 · 2026-06-24
 # =============================================================================
 
 import argparse
@@ -49,6 +49,7 @@ RUNTIME_PACKAGES = [
     "pyyaml",
     "lxml",
     "pyeditorjs",   # AP-E5: serverseitiger Editor.js-HTML-Export
+    "python-docx",  # B6: DOCX-Export (fehlte zuvor — Build 301)
 ]
 
 # Nur-DEV-Abhaengigkeiten
@@ -147,6 +148,7 @@ def _verify_installation(packages: list[str]) -> None:
     import_names = {
         "pyyaml": "yaml",
         "pytest-asyncio": "pytest_asyncio",
+        "python-docx": "docx",
     }
     all_ok = True
     for pkg in packages:
