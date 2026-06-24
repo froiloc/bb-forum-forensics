@@ -2,7 +2,24 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.6.199 · Build: 199 · 2026-05-16
+ * Version: v0.6.302 · Build: 302 · 2026-06-24
+ *
+ * Aenderungen Build 302 (BS3 — 2026-06-24):
+ *   PMSTableOrganizerModule._applyProgressBorders(): Fortschrittsrahmen auf
+ *     PN-Dialog-Zeilen (pmsnew.php). Spiegelt das viewforum-Feature
+ *     (Bug 2.89, Build 189, MinimapModule._applyTraceProgress) auf die
+ *     PN-Übersicht. Pro Zeile wird die tid aus dem Link
+ *     'pmsnew.php?mdl=topic&tid=<tid>' gelesen, die kanonische Dialog-URL
+ *     '/forum/pmsnew.php?mdl=topic&tid=<tid>' gebildet (Beleg:
+ *     aiw_sqlite_prepper stage2/url_builder.py) und der progressPercent aus
+ *     ForensicToolbar.navigator.getPages() (/_forensic/search) gematcht.
+ *     Der nächsthöhere <tr> erhält die bestehende CSS-Klasse
+ *     .has_trace_progress (outline 2px solid, HSL-Farbverlauf rot→gelb→grün)
+ *     plus --trace-progress. Keine neue CSS-Regel. Dialoge ohne Daten:
+ *     pct=0 → rot (einheitliches Schema). Exzessives _dbg-Logging.
+ *     Beleg: Projektgespräch 2026-06-24.
+ *   Geändert: PMSTableOrganizerModule.init() (+1 Aufruf), neue Funktion
+ *     _applyProgressBorders().
  *
  * Aenderungen Build 199 (BS3 — 2026-05-16):
  *   is_identified-Unterstützung im Benutzer-Wechsel-Panel.
@@ -5786,6 +5803,14 @@
         _applySort();
         _applyFilter();
       });
+
+      // Build 302 (BS3): Fortschrittsrahmen auf PN-Dialog-Zeilen.
+      // Spiegelt das viewforum-Feature (Bug 2.89) auf pmsnew.php.
+      // Asynchron (getPages liefert ein Promise) — Rahmen erscheinen,
+      // sobald die Fortschrittsdaten vorliegen. Bewusst NICHT an viewmode
+      // gebunden, um das Verhalten von viewforum (Spurrahmen persistent)
+      // exakt zu spiegeln. Beleg: Projektgespräch 2026-06-24.
+      _applyProgressBorders();
     }
 
     function _injectControls(viewport, table) {
@@ -5914,6 +5939,136 @@
       if (!_tbody || !_origOrder) return;
       _origOrder.forEach(function (row) { _tbody.appendChild(row); });
       Array.from(_tbody.rows).forEach(function (row) { row.style.display = ""; });
+    }
+
+    // -------------------------------------------------------------------------
+    // _applyProgressBorders — Fortschrittsrahmen auf PN-Dialog-Zeilen
+    // (Build 302, BS3)
+    // -------------------------------------------------------------------------
+    // ZWECK: Spiegelt das viewforum-Feature (Bug 2.89, Build 189,
+    //   MinimapModule._applyTraceProgress) auf die PN-Übersicht (pmsnew.php).
+    //   Jede Tabellenzeile verlinkt über
+    //       <a href="pmsnew.php?mdl=topic&tid=<tid>">
+    //   auf einen PN-Dialog. Der nächsthöhere <tr>-Elternknoten erhält einen
+    //   farbigen Rahmen, der den Bearbeitungsstand des verlinkten Dialogs
+    //   anzeigt (rot = unbearbeitet … grün = abgeschlossen).
+    //
+    // DATENQUELLE: ForensicToolbar.navigator.getPages() (Serverendpunkt
+    //   /_forensic/search, gespeist aus forensic_<uid>.db + evidence_<uid>.db:
+    //   page_visits / annotations). Liefert pro Seite { url, progressPercent }.
+    //   Beleg: db/forensic_db.py search_pages() — url ist die normalisierte
+    //   url_canonical (Basis-URL entfernt).
+    //
+    // URL-MATCH: Die kanonische Seiten-URL eines PN-Dialogs lautet
+    //       /forum/pmsnew.php?mdl=topic&tid=<pm_topic_id>
+    //   Beleg: aiw_sqlite_prepper stage2/url_builder.py Z. 10
+    //   (url_type 'pmsnew_topic'). Parameter-Reihenfolge identisch zum
+    //   DOM-Link → exakter, normalisierter String-Vergleich genügt; dasselbe
+    //   Verfahren wie _applyTraceProgress für viewtopic.
+    //
+    // DARSTELLUNG: Wiederverwendung der bestehenden CSS-Regel
+    //   .has_trace_progress (toolbar.css, Build 189):
+    //       outline: 2px solid hsl(calc(var(--trace-progress) * 1.2deg),70%,45%)
+    //   0 % = rot (0°), 50 % = gelb (60°), 100 % = grün (120°).
+    //   KEINE neue CSS-Regel nötig — optisch konsistent zum Bestand.
+    //   (outline statt border, da border auf <tr> wegen border-collapse
+    //    unzuverlässig rendert. Entscheidung 2026-06-24.)
+    //
+    // VERHALTEN OHNE DATEN: Dialoge, für die getPages() keinen Eintrag
+    //   liefert (noch nicht betrachtet/annotiert oder außerhalb der Top-50
+    //   der zuletzt betrachteten Seiten), erhalten pct = 0 → roter Rahmen.
+    //   Bewusste Entscheidung (2026-06-24): einheitliches Schema, damit der
+    //   Anwender "rot = noch zu bearbeiten" durchgängig wahrnimmt. Anfangs
+    //   sind damit alle Zeilen rot — das erfüllt den ermittlungstechnischen
+    //   Zweck.
+    //
+    // Beleg: Projektgespräch 2026-06-24 (Auftrag PN-Fortschrittsrahmen).
+    // -------------------------------------------------------------------------
+    function _applyProgressBorders() {
+      if (!_tbody) return;
+
+      // Navigator-API vorhanden? (Defensive — analog _applyTraceProgress.)
+      if (typeof ForensicToolbar.navigator === "undefined" ||
+          typeof ForensicToolbar.navigator.getPages !== "function") {
+        _dbg("[PMS-Progress] navigator.getPages nicht verfügbar — Abbruch");
+        return;
+      }
+
+      // URL-Normalisierung: lowercase + trailing slash entfernt.
+      // Identisch zu _applyTraceProgress, damit Match-Verhalten konsistent ist.
+      function _normUrl(u) {
+        return String(u || "").toLowerCase().replace(/\/$/, "");
+      }
+
+      ForensicToolbar.navigator.getPages().then(function (pages) {
+        // Vorindexierung: normalisierte URL → progressPercent.
+        // Vermeidet O(Zeilen × Seiten); ein Lookup pro Zeile.
+        var progressByUrl = {};
+        (pages || []).forEach(function (p) {
+          if (p && p.url) {
+            progressByUrl[_normUrl(p.url)] = p.progressPercent || 0;
+          }
+        });
+        _dbg("[PMS-Progress] getPages liefert", (pages || []).length,
+             "Seiten; davon PN-Dialoge:",
+             Object.keys(progressByUrl).filter(function (k) {
+               return k.indexOf("pmsnew.php?mdl=topic&tid=") !== -1;
+             }).length);
+
+        // Alle PN-Dialog-Links der Tabelle einsammeln.
+        // Selektor bewusst breit (pmsnew.php + tid=); die tid wird separat
+        // über link.search geparst, um robust gegen &amp;-Entitäten und
+        // Parameter-Reihenfolge im HTML-Attribut zu sein.
+        var rows    = Array.from(_tbody.rows);
+        var applied = 0;
+        var matched = 0;
+
+        rows.forEach(function (row) {
+          var link = row.querySelector('a[href*="pmsnew.php"][href*="tid="]');
+          if (!link) return;  // Zeile ohne PN-Dialog-Link (sollte nicht vorkommen)
+
+          // tid robust aus der aufgelösten Such-Komponente lesen.
+          // link.search liefert den dekodierten Query-String (?mdl=topic&tid=…),
+          // unabhängig von &amp;-Kodierung im Quelltext.
+          var tid = null;
+          try {
+            tid = new URLSearchParams(link.search).get("tid");
+          } catch (e) {
+            // Fallback: Regex direkt auf dem rohen href-Attribut.
+            var m = (link.getAttribute("href") || "").match(/[?&]tid=(\d+)/);
+            tid = m ? m[1] : null;
+          }
+          if (!tid) {
+            _dbg("[PMS-Progress] Zeile ohne tid übersprungen:",
+                 link.getAttribute("href"));
+            return;
+          }
+
+          // Kanonische Dialog-URL bilden (Beleg: url_builder.py 'pmsnew_topic').
+          var linkedUrl = "/forum/pmsnew.php?mdl=topic&tid=" + tid;
+          var key       = _normUrl(linkedUrl);
+          var hasData   = Object.prototype.hasOwnProperty.call(progressByUrl, key);
+          var pct       = hasData ? progressByUrl[key] : 0;
+          if (hasData) matched++;
+
+          // Rahmen auf den nächsthöheren <tr>-Knoten setzen.
+          // closest('tr') ist Beleg-treu zum Auftrag; in dieser Tabelle ist
+          // das row selbst, der Aufruf schadet aber nicht und ist robust,
+          // falls sich die Markup-Verschachtelung künftig ändert.
+          var tr = link.closest("tr") || row;
+          tr.style.setProperty("--trace-progress", pct);
+          tr.classList.add("has_trace_progress");
+          applied++;
+
+          _dbg("[PMS-Progress] tid=", tid, "url=", linkedUrl,
+               "pct=", pct, "match=", hasData);
+        });
+
+        _dbg("[PMS-Progress] Rahmen gesetzt:", applied,
+             "Zeilen; davon mit Fortschrittsdaten:", matched);
+      }).catch(function (err) {
+        _dbg("[PMS-Progress] getPages() Fehler:", err);
+      });
     }
 
     return { init: init };
