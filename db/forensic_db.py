@@ -146,6 +146,25 @@ class PageRecord:
         return self.html is None
 
 
+def _progress_value(ann_count: int, last_viewed) -> int:
+    """
+    Einheitliche Fortschritts-Formel (Platzhalter — OP-KN-1, Baustelle 5).
+
+    Eine Stelle für search_pages() UND resolve_posts_progress(), damit beide
+    nicht auseinanderlaufen. Wird der echte Fortschritt (Baustelle 5)
+    implementiert, ist nur diese Funktion zu ändern.
+
+      100 — annotiert UND betrachtet
+       50 — nur betrachtet
+        0 — sonst
+    """
+    if ann_count > 0 and last_viewed:
+        return 100
+    if last_viewed:
+        return 50
+    return 0
+
+
 @dataclass(frozen=True)
 class PostAliasRecord:
     """Ergebnis einer post_alias-Auflösung."""
@@ -371,6 +390,145 @@ class ForensicDb:
             topic_id=int(row["topic_id"]),
             forum_id=int(row["forum_id"]),
         )
+
+    # ------------------------------------------------------------------
+    # Build 303: pid → Seite (pages.id) + Fortschritt
+    # ------------------------------------------------------------------
+
+    def resolve_posts_progress(self, post_ids: "list[int]") -> "dict[int, dict]":
+        """
+        Löst eine Liste von post_ids auf ihre gescrapte Seite und deren
+        Fortschritt auf. Datenquelle: fdb.post_aliases.page (= pages.id,
+        gemessen vom PostPageMeasurer per direkter Anker-Mitgliedschaft;
+        Beleg: aiw_sqlite_prepper Build 100/101).
+
+        Verwendet für die Fortschrittsrahmen auf
+        search.php?action=show_user_posts (Treffer-Links viewtopic.php?pid=…),
+        die NICHT die kanonische Seiten-URL tragen und daher nicht direkt
+        gegen /_forensic/search gematcht werden können.
+
+        Args:
+            post_ids: Liste von post_ids (aus den pid-Links der Trefferseite).
+
+        Returns:
+            { post_id: { "topicId", "forumId", "pageId", "url",
+                         "progressPercent", "resolved" } }
+            resolved=False, wenn post_aliases.page NULL/0 ist (nicht
+            aufgelöst — z. B. Folgeseite nicht gescrapt). Dann fehlen
+            pageId/url/progressPercent. KEIN Raten (Grundregel 1).
+        """
+        result: dict[int, dict] = {}
+        if not post_ids:
+            return result
+
+        # Defensive: page/page_resolved erst ab Prepper-Build 098 vorhanden.
+        cols = {r["name"] for r in
+                self._con.execute("PRAGMA fdb.table_info(post_aliases)")}
+        has_page = "page" in cols and "page_resolved" in cols
+        if not has_page:
+            logger.warning(
+                "resolve_posts_progress: post_aliases ohne page/page_resolved — "
+                "erneuten Prepper-Lauf (Build 101+) durchführen. Alle "
+                "Treffer gelten als nicht aufgelöst."
+            )
+
+        # post_aliases in Batches abfragen (SQLite-Parameterlimit).
+        rows_by_pid: dict[int, sqlite3.Row] = {}
+        page_ids: set[int] = set()
+        CHUNK = 800
+        page_sel = "page, page_resolved" if has_page else "NULL AS page, 0 AS page_resolved"
+        for i in range(0, len(post_ids), CHUNK):
+            batch = post_ids[i:i + CHUNK]
+            ph = ",".join("?" * len(batch))
+            try:
+                cur = self._con.execute(
+                    f"SELECT post_id, topic_id, forum_id, {page_sel} "
+                    f"FROM fdb.post_aliases WHERE post_id IN ({ph})",
+                    batch,
+                )
+            except sqlite3.OperationalError as exc:
+                logger.error("resolve_posts_progress: Abfrage fehlgeschlagen: %s", exc)
+                return result
+            for row in cur:
+                rows_by_pid[int(row["post_id"])] = row
+                if has_page and row["page_resolved"] and row["page"]:
+                    page_ids.add(int(row["page"]))
+
+        # Fortschritt + URL je aufgelöster Seite (eine Sammelabfrage).
+        page_info = self._progress_for_page_ids(list(page_ids)) if page_ids else {}
+
+        for pid in post_ids:
+            row = rows_by_pid.get(pid)
+            if row is None:
+                # post_id nicht in post_aliases (untypisch) → nicht aufgelöst.
+                result[pid] = {"resolved": False}
+                continue
+            entry = {
+                "topicId": int(row["topic_id"]),
+                "forumId": int(row["forum_id"]),
+                "resolved": False,
+            }
+            if has_page and row["page_resolved"] and row["page"]:
+                pinfo = page_info.get(int(row["page"]))
+                if pinfo is not None:
+                    entry.update({
+                        "pageId": int(row["page"]),
+                        "url": pinfo["url"],
+                        "progressPercent": pinfo["progressPercent"],
+                        "resolved": True,
+                    })
+            result[pid] = entry
+
+        return result
+
+    def _progress_for_page_ids(self, page_ids: "list[int]") -> "dict[int, dict]":
+        """
+        Liefert pro pages.id { "url", "progressPercent" }.
+
+        Spiegelt exakt die Fortschritts-Datenquelle von search_pages():
+        Annotationen (annotations.page_url) und letzte Ansicht
+        (page_visits.ts), gejoint über die basis-bereinigte url_canonical.
+        Formel via _progress_value(). url = url_canonical ohne Basis-URL
+        (identisch zum 'url'-Feld von search_pages, damit der Wert konsistent
+        ist).
+        """
+        out: dict[int, dict] = {}
+        if not page_ids:
+            return out
+        base_url = self.get_forum_base_url() or ""
+        CHUNK = 800
+        for i in range(0, len(page_ids), CHUNK):
+            batch = page_ids[i:i + CHUNK]
+            ph = ",".join("?" * len(batch))
+            try:
+                cur = self._con.execute(
+                    f"""
+                    SELECT
+                        p.id                       AS page_id,
+                        REPLACE(p.url_canonical, ?, '') AS url,
+                        COUNT(DISTINCT a.id)       AS ann_count,
+                        MAX(pv.ts)                 AS last_viewed
+                    FROM fdb.pages p
+                    LEFT JOIN annotations a
+                        ON a.page_url = REPLACE(p.url_canonical, ?, '')
+                    LEFT JOIN page_visits pv
+                        ON pv.page_url = REPLACE(p.url_canonical, ?, '')
+                    WHERE p.id IN ({ph})
+                    GROUP BY p.id
+                    """,
+                    [base_url, base_url, base_url, *batch],
+                )
+            except sqlite3.OperationalError as exc:
+                logger.error("_progress_for_page_ids: Abfrage fehlgeschlagen: %s", exc)
+                return out
+            for row in cur:
+                out[int(row["page_id"])] = {
+                    "url": str(row["url"] or ""),
+                    "progressPercent": _progress_value(
+                        int(row["ann_count"] or 0), row["last_viewed"]
+                    ),
+                }
+        return out
 
     def resolve_pm_alias(self, pm_post_id: int) -> Optional[PmAliasRecord]:
         """
@@ -916,15 +1074,10 @@ class ForensicDb:
                 # Wird für Phase KN-7 vollständig implementiert — hier Platzhalter
                 pass
 
-            # Fortschritt (Platzhalter — OP-KN-1, Baustelle 5)
+            # Fortschritt — gemeinsame Formel (siehe _progress_value).
             last_viewed_ms  = row["last_viewed_ms"]
             first_viewed_ms = row["first_viewed_ms"]
-            if ann_count > 0 and last_viewed_ms:
-                progress = 100
-            elif last_viewed_ms:
-                progress = 50
-            else:
-                progress = 0
+            progress = _progress_value(ann_count, last_viewed_ms)
 
             # progress_filter (Build 194/195: Schwellenwert + Richtung)
             if progress_filter == "open":

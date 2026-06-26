@@ -673,5 +673,141 @@ class TestForensicDbUserinfoBlob(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertIn("String-Inhalt", result)
 
+class TestResolvePostsProgress(unittest.TestCase):
+    """Build 303: resolve_posts_progress() — pid → Seite + Fortschritt."""
+
+    def setUp(self):
+        _setup_test_logging()
+        self.fdb_path = tempfile.mktemp(suffix=".db")
+        con = sqlite3.connect(self.fdb_path)
+        con.executescript("""
+            CREATE TABLE forensic_meta (key TEXT PRIMARY KEY, value TEXT);
+            CREATE TABLE pages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                url_canonical TEXT NOT NULL, html BLOB,
+                fetched_at INTEGER NOT NULL, http_status INTEGER NOT NULL,
+                scrape_context TEXT NOT NULL DEFAULT 'user',
+                method TEXT NOT NULL DEFAULT 'GET'
+            );
+            -- post_aliases MIT page/page_resolved (Prepper Build 098+)
+            CREATE TABLE post_aliases (
+                post_id INTEGER PRIMARY KEY, topic_id INTEGER NOT NULL,
+                forum_id INTEGER NOT NULL,
+                page INTEGER, page_resolved INTEGER NOT NULL DEFAULT 0
+            );
+            INSERT INTO forensic_meta VALUES ('user_id', '42');
+            INSERT INTO pages (url_canonical, html, fetched_at, http_status)
+            VALUES
+              ('/forum/viewtopic.php?id=100',      X'3C68746D6C3E', 1700000000, 200),
+              ('/forum/viewtopic.php?id=100&p=2',  X'3C68746D6C3E', 1700000001, 200);
+            -- 12345 → Seite 1 (id 1), 67890 → Seite 2 (id 2), 99999 → unaufgelöst
+            INSERT INTO post_aliases VALUES
+              (12345, 100, 5, 1, 1),
+              (67890, 100, 5, 2, 1),
+              (99999, 100, 5, NULL, 0);
+        """)
+        con.commit()
+        con.close()
+
+        self.con = sqlite3.connect(":memory:")
+        self.con.row_factory = sqlite3.Row
+        self.con.execute(f"ATTACH DATABASE '{self.fdb_path}' AS fdb")
+        # evidence-Tabellen (annotations, page_visits) in der Haupt-DB
+        self.con.executescript("""
+            CREATE TABLE annotations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                page_url TEXT NOT NULL, tags_json TEXT
+            );
+            CREATE TABLE page_visits (page_url TEXT NOT NULL, ts INTEGER NOT NULL);
+            -- Seite 1: annotiert + betrachtet → 100
+            INSERT INTO annotations (page_url, tags_json)
+              VALUES ('/forum/viewtopic.php?id=100', '["x"]');
+            INSERT INTO page_visits VALUES ('/forum/viewtopic.php?id=100', 1700000500);
+            -- Seite 2: nur betrachtet → 50
+            INSERT INTO page_visits VALUES ('/forum/viewtopic.php?id=100&p=2', 1700000600);
+        """)
+        self.con.commit()
+        self.fdb = ForensicDb(self.con)
+
+    def tearDown(self):
+        self.con.close()
+        reset_for_testing()
+        try:
+            os.unlink(self.fdb_path)
+        except OSError:
+            pass
+
+    def test_resolved_page1_progress_100(self):
+        r = self.fdb.resolve_posts_progress([12345])
+        e = r[12345]
+        self.assertTrue(e["resolved"])
+        self.assertEqual(e["pageId"], 1)
+        self.assertEqual(e["topicId"], 100)
+        self.assertEqual(e["forumId"], 5)
+        self.assertEqual(e["url"], "/forum/viewtopic.php?id=100")
+        self.assertEqual(e["progressPercent"], 100)
+
+    def test_resolved_page2_progress_50(self):
+        r = self.fdb.resolve_posts_progress([67890])
+        e = r[67890]
+        self.assertTrue(e["resolved"])
+        self.assertEqual(e["pageId"], 2)
+        self.assertEqual(e["url"], "/forum/viewtopic.php?id=100&p=2")
+        self.assertEqual(e["progressPercent"], 50)
+
+    def test_unresolved_page_null(self):
+        r = self.fdb.resolve_posts_progress([99999])
+        e = r[99999]
+        self.assertFalse(e["resolved"])
+        self.assertNotIn("pageId", e)
+        self.assertEqual(e["topicId"], 100)
+
+    def test_unknown_pid_resolved_false(self):
+        r = self.fdb.resolve_posts_progress([11111])
+        self.assertFalse(r[11111]["resolved"])
+
+    def test_mixed_batch(self):
+        r = self.fdb.resolve_posts_progress([12345, 67890, 99999, 11111])
+        self.assertEqual(len(r), 4)
+        self.assertTrue(r[12345]["resolved"])
+        self.assertTrue(r[67890]["resolved"])
+        self.assertFalse(r[99999]["resolved"])
+        self.assertFalse(r[11111]["resolved"])
+
+    def test_empty_list(self):
+        self.assertEqual(self.fdb.resolve_posts_progress([]), {})
+
+    def test_missing_page_columns_graceful(self):
+        """post_aliases ohne page/page_resolved → alle unaufgelöst, kein Crash."""
+        path2 = tempfile.mktemp(suffix=".db")
+        c = sqlite3.connect(path2)
+        c.executescript("""
+            CREATE TABLE forensic_meta (key TEXT PRIMARY KEY, value TEXT);
+            CREATE TABLE pages (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                url_canonical TEXT NOT NULL, html BLOB, fetched_at INTEGER NOT NULL,
+                http_status INTEGER NOT NULL, scrape_context TEXT DEFAULT 'user',
+                method TEXT DEFAULT 'GET');
+            CREATE TABLE post_aliases (post_id INTEGER PRIMARY KEY,
+                topic_id INTEGER NOT NULL, forum_id INTEGER NOT NULL);
+            INSERT INTO post_aliases VALUES (12345, 100, 5);
+        """)
+        c.commit(); c.close()
+        con2 = sqlite3.connect(":memory:")
+        con2.row_factory = sqlite3.Row
+        con2.execute(f"ATTACH DATABASE '{path2}' AS fdb")
+        con2.commit()
+        try:
+            fdb2 = ForensicDb(con2)
+            r = fdb2.resolve_posts_progress([12345])
+            self.assertFalse(r[12345]["resolved"])
+            self.assertEqual(r[12345]["topicId"], 100)
+        finally:
+            con2.close()
+            try:
+                os.unlink(path2)
+            except OSError:
+                pass
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

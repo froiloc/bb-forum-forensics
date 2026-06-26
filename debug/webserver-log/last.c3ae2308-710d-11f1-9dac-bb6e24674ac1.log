@@ -1,0 +1,28 @@
+2026-06-26 05:01:33 [INFO    ] forensic: Logging initialisiert — Level: DEBUG, Logdatei: /opt/aiw_webserver/logs/forensic_server.log
+2026-06-26 05:01:33 [INFO    ] forensic: === Forensischer Webserver startet ===
+2026-06-26 05:01:33 [INFO    ] forensic: Config geladen: '/opt/aiw_webserver/config.yaml'
+2026-06-26 05:01:33 [DEBUG   ] forensic.core.user_resolver: Systembenutzer ermittelt: 'paul' (Plattform: linux)
+2026-06-26 05:01:33 [INFO    ] forensic: Systembenutzer: 'paul'
+2026-06-26 05:01:33 [INFO    ] forensic.core.mode_resolver: Startmodus: 'cli'
+2026-06-26 05:01:33 [INFO    ] forensic.core.mode_resolver: Modus 'cli': user_id=2948078, username='uid_2948078', forensic_db='/opt/aiw_webserver/data/forensic/forensic_2948078.db'
+2026-06-26 05:01:33 [INFO    ] forensic: Kontext: mode='cli', user_id=2948078, username='uid_2948078'
+2026-06-26 05:01:33 [INFO    ] forensic: forensic_db : '/opt/aiw_webserver/data/forensic/forensic_2948078.db'
+2026-06-26 05:01:33 [INFO    ] forensic: evidence_db : '/opt/aiw_webserver/data/evidence/evidence_2948078.db'
+2026-06-26 05:01:33 [INFO    ] forensic: default_db  : '/opt/aiw_webserver/data/default.db'
+2026-06-26 05:01:33 [INFO    ] forensic: coordinator : '/opt/aiw_webserver/data/coordinator.db'
+2026-06-26 05:01:33 [INFO    ] forensic.core.startup_checks: Starte Voraussetzungsprüfungen...
+2026-06-26 05:01:33 [DEBUG   ] forensic.core.startup_checks: Datei gefunden: forensic_db = '/opt/aiw_webserver/data/forensic/forensic_2948078.db'
+2026-06-26 05:01:33 [DEBUG   ] forensic.core.startup_checks: Datei gefunden: evidence_db = '/opt/aiw_webserver/data/evidence/evidence_2948078.db'
+2026-06-26 05:01:33 [DEBUG   ] forensic.core.startup_checks: default_db gefunden: '/opt/aiw_webserver/data/default.db'
+2026-06-26 05:01:33 [DEBUG   ] forensic.core.startup_checks: coordinator_db gefunden: '/opt/aiw_webserver/data/coordinator.db'
+2026-06-26 05:01:33 [ERROR   ] forensic: Startprüfung fehlgeschlagen: forensic_db Schema-Version inkompatibel:
+  Erwartet: 1
+  Gefunden: 2
+  Datei: '/opt/aiw_webserver/data/forensic/forensic_2948078.db'
+Die DB wurde möglicherweise mit einer anderen Stage-2-Version erstellt. Bitte Stage 2 neu ausführen.
+[FEHLER] Startprüfung fehlgeschlagen:
+forensic_db Schema-Version inkompatibel:
+  Erwartet: 1
+  Gefunden: 2
+  Datei: '/opt/aiw_webserver/data/forensic/forensic_2948078.db'
+Die DB wurde möglicherweise mit einer anderen Stage-2-Version erstellt. Bitte Stage 2 neu ausführen.

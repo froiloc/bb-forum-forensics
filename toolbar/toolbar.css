@@ -2162,6 +2162,14 @@ mark.forensic-alias-mark {
   border-radius: 2px;
 }
 
+/* Build 304: Suchtreffer-Zeilen (search.php?action=show_user_posts) — Outline
+   1px statt 2px, damit die Rahmen dicht stehender Nachbarzeilen nicht
+   aneinanderstoßen. Zwei-Klassen-Selektor → höhere Spezifität, gewinnt gegen
+   die !important-Basisregel. Beleg: Projektgespräch 2026-06-25. */
+.has_trace_progress.has_trace_progress_tight {
+  outline-width: 1px !important;
+}
+
 /* Keine doppelte Umrandung: contains_traces-Basis-Outline zurücksetzen
    wenn Fortschrittsfarbe gesetzt ist (has_trace_progress übernimmt) */
 .contains_traces.has_trace_progress {

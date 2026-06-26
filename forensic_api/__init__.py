@@ -133,6 +133,7 @@ class ForensicApi:
         self._editor_order     = None  # [AP-E3]
         self._editor_evidence  = None  # [AP-E3]
         self._search           = None  # [KN-3]
+        self._resolve_posts    = None  # [BS3 Build 303]
         self._trace_sequence   = None  # [KN-7]
         self._placeholders    = None  # [B6]
         self._templates_ep    = None  # [B6]
@@ -454,6 +455,16 @@ class ForensicApi:
             self._get_search().handle(handler, params)
             return
 
+        # /_forensic/resolve_posts (GET) [BS3 Build 303]
+        # Löst pid-Links (search.php?action=show_user_posts) auf Seite +
+        # Fortschritt auf. Beleg: aiw_sqlite_prepper Build 100/101.
+        if url_path == "/_forensic/resolve_posts":
+            if method not in ("GET", "HEAD"):
+                self._method_not_allowed(handler)
+                return
+            self._get_resolve_posts().handle(handler, params)
+            return
+
         # Unbekannter Endpunkt
         logger.warning("Unbekannter /_forensic/-Endpunkt: '%s'", url_path)
         import json
@@ -761,6 +772,14 @@ class ForensicApi:
             from forensic_api.search import SearchEndpoint
             self._search = SearchEndpoint(self._bundle, self._context, self._config)
         return self._search
+
+    def _get_resolve_posts(self):
+        """[BS3 Build 303] Lazy-Init für ResolvePostsEndpoint."""
+        if self._resolve_posts is None:
+            from forensic_api.resolve_posts import ResolvePostsEndpoint
+            self._resolve_posts = ResolvePostsEndpoint(
+                self._bundle, self._context, self._config)
+        return self._resolve_posts
 
     def _get_trace_sequence(self):
         """[KN-7] Lazy-Init fuer TraceSequenceEndpoint. Beleg: OP-KN-7, Build 072."""

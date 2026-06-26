@@ -343,6 +343,35 @@ class TestStartupChecksSchema(unittest.TestCase):
         self.assertIn("99", str(cm.exception))
         self.assertIn(FORENSIC_DB_SCHEMA_VERSION, str(cm.exception))
 
+    def _make_ctx(self, forensic_db: Path) -> "ResolvedContext":
+        """Minimaler Kontext — nur forensic_db wird vom Schema-Check genutzt."""
+        return ResolvedContext(
+            mode="job", user_id=42, username="test",
+            forensic_db=forensic_db,
+            evidence_db=Path(self.tmp) / "evidence_42.db",
+            default_db=Path(self.tmp) / "default.db",
+            coordinator_db=Path(self.tmp) / "coordinator.db",
+            assets_db=Path(self.tmp) / "assets_42.db",
+            investigator_id=1, investigator_username="h012345",
+        )
+
+    def test_T08b_schema_version_2_akzeptiert(self):
+        """T08b: schema_version='2' (Prepper Build 098+) → akzeptiert, kein Fehler."""
+        forensic_db = Path(self.tmp) / "forensic_42.db"
+        _create_valid_forensic_db(forensic_db, schema_version="2")
+        checker = StartupChecker(self._make_ctx(forensic_db),
+                                 ConfigLoader.__new__(ConfigLoader))
+        # Schema-Check isoliert — darf NICHT raisen.
+        checker._check_forensic_db_schema_version()
+
+    def test_T08c_schema_version_1_weiterhin_akzeptiert(self):
+        """T08c: Alt-DB schema_version='1' bleibt kompatibel (additiver Sprung)."""
+        forensic_db = Path(self.tmp) / "forensic_42.db"
+        _create_valid_forensic_db(forensic_db, schema_version="1")
+        checker = StartupChecker(self._make_ctx(forensic_db),
+                                 ConfigLoader.__new__(ConfigLoader))
+        checker._check_forensic_db_schema_version()
+
 
 class TestStartupChecksIntegrity(unittest.TestCase):
     """T09–T12: SHA-256-Integritätsprüfung und READ-ONLY"""

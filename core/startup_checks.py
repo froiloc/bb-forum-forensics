@@ -9,7 +9,8 @@
 # Prüfungen (in dieser Reihenfolge):
 #   1. Datenbankdateien erreichbar (forensic_db, evidence_db, default_db)
 #   2. coordinator.db erreichbar (Warnung wenn nicht — Support-Modus toleriert)
-#   3. Schema-Versionscheck: forensic_db muss FORENSIC_DB_SCHEMA_VERSION = 1
+#   3. Schema-Versionscheck: forensic_db muss in
+#      SUPPORTED_FORENSIC_DB_SCHEMA_VERSIONS sein (aktuell {"1", "2"})
 #   4. SHA-256-Integritätsprüfung: forensic_db (aus forensic_meta['sha256'])
 #   5. forensic_db ist READ-ONLY geöffnet (Schreibversuch schlägt fehl)
 #
@@ -75,9 +76,20 @@ def _path_to_sqlite_uri(path: Path, mode: str = "ro") -> str:
     return uri_base + f"?mode={mode}"
 
 
-# Erwartete Schema-Version in forensic_meta.
-# Muss mit FORENSIC_DB_SCHEMA_VERSION in scraper_stage2.py übereinstimmen.
-FORENSIC_DB_SCHEMA_VERSION = "1"
+# Aktuelle/erwartete Schema-Version (für Meldungen und als Test-Default).
+# Muss mit FORENSIC_DB_SCHEMA_VERSION in aiw_sqlite_prepper
+# (stage2/forensic_db_writer.py) übereinstimmen.
+FORENSIC_DB_SCHEMA_VERSION = "2"
+
+# Akzeptierte forensic_db-Schema-Versionen.
+# Version 1 → 2 (Prepper Build 098) ist REIN ADDITIV: post_aliases erhielt die
+# nullable Spalten `page` und `page_resolved`; keine bestehende Semantik wurde
+# geändert. Der Webserver liest diese Spalten defensiv (forensic_db.
+# resolve_posts_progress prüft per PRAGMA auf Existenz), daher sind v1 und v2
+# vollständig kompatibel — eine v1-DB läuft (ohne Suchtreffer-Auflösung), eine
+# v2-DB voll funktionsfähig. Ein künftiges BREAKING-Schema würde hier bewusst
+# NICHT aufgenommen. Beleg: Befund 2026-06-26; aiw_sqlite_prepper Build 098/101.
+SUPPORTED_FORENSIC_DB_SCHEMA_VERSIONS = frozenset({"1", "2"})
 
 # Blockgröße für SHA-256-Berechnung (4 MB)
 _HASH_BLOCK_SIZE = 4 * 1024 * 1024
@@ -208,7 +220,9 @@ class StartupChecker:
     def _check_forensic_db_schema_version(self) -> None:
         """
         Prüft die Schema-Version der forensic_db.
-        Erwartet: forensic_meta['schema_version'] == FORENSIC_DB_SCHEMA_VERSION
+        Akzeptiert: forensic_meta['schema_version'] in
+        SUPPORTED_FORENSIC_DB_SCHEMA_VERSIONS (v1 und v2 sind kompatibel,
+        da der Sprung rein additiv war).
 
         Eine falsche Schema-Version bedeutet, dass die DB mit einer
         inkompatiblen Stage-2-Version erstellt wurde.
@@ -241,10 +255,11 @@ class StartupChecker:
             )
 
         actual_version = str(row["value"])
-        if actual_version != FORENSIC_DB_SCHEMA_VERSION:
+        if actual_version not in SUPPORTED_FORENSIC_DB_SCHEMA_VERSIONS:
+            supported = ", ".join(sorted(SUPPORTED_FORENSIC_DB_SCHEMA_VERSIONS))
             raise StartupCheckError(
                 f"forensic_db Schema-Version inkompatibel:\n"
-                f"  Erwartet: {FORENSIC_DB_SCHEMA_VERSION}\n"
+                f"  Unterstützt: {supported}\n"
                 f"  Gefunden: {actual_version}\n"
                 f"  Datei: '{path}'\n"
                 f"Die DB wurde möglicherweise mit einer anderen Stage-2-Version "
@@ -252,8 +267,9 @@ class StartupChecker:
             )
 
         logger.debug(
-            "Schema-Version geprüft: %s (erwartet: %s) ✓",
-            actual_version, FORENSIC_DB_SCHEMA_VERSION,
+            "Schema-Version geprüft: %s (unterstützt: %s) ✓",
+            actual_version,
+            ", ".join(sorted(SUPPORTED_FORENSIC_DB_SCHEMA_VERSIONS)),
         )
 
     def _check_forensic_db_integrity(self) -> None:

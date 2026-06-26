@@ -1827,6 +1827,7 @@
           TraceNavigationModule.init();
           ViewportTrackerModule.start(viewport, _state.currentUrl);
           PMSTableOrganizerModule.init(viewport);
+          SearchPostsProgressModule.init(viewport);
           TopicsTableOrganizerModule.init(viewport);
           ToolbarUIModule.updateSessionInfo();
         }); // END requestAnimationFrame
@@ -6069,6 +6070,136 @@
       }).catch(function (err) {
         _dbg("[PMS-Progress] getPages() Fehler:", err);
       });
+    }
+
+    return { init: init };
+  })();
+
+  // ===========================================================================
+  // SearchPostsProgressModule — Fortschrittsrahmen auf den Treffern von
+  //   search.php?action=show_user_posts (Build 304, vervollständigt Build 303).
+  // ===========================================================================
+  // ZWECK: Die Trefferseite listet alle Beiträge des Beschuldigten. Jeder
+  //   Treffer ist ein Post-Permalink 'viewtopic.php?pid=<post_id>#p<post_id>'
+  //   in genau EINER Tabellenzeile (<tr>) einer gemeinsamen Ergebnistabelle
+  //   (Beleg: DOM-Diagnose 2026-06-25 — "betroffene <table>: 1"). Die Zeile
+  //   erhält den Fortschrittsrahmen der Seite, auf der der Post steht.
+  //
+  // WARUM EIN ENDPUNKT (nicht navigator.getPages wie bei PN/viewforum):
+  //   Die Treffer-Links tragen NICHT die kanonische Seiten-URL — sie verweisen
+  //   per pid auf einen Post, dessen Seite erst über fdb.post_aliases.page
+  //   (= pages.id, gemessen vom PostPageMeasurer; Beleg aiw_sqlite_prepper
+  //   Build 100/101) bestimmt werden muss. Der Endpunkt /_forensic/resolve_posts
+  //   liefert pro pid {pageId, url, progressPercent, resolved} und umgeht
+  //   zugleich das limit=50 von /_forensic/search.
+  //
+  // RAUSCHEN: Das Benachrichtigungs-Dropdown (#notification_list) enthält
+  //   ebenfalls 'viewtopic.php?...pid=...'-Links, aber mit zusätzlichem
+  //   'notify='-Parameter. Diese werden ausgeschlossen (kein Suchtreffer).
+  //   Beleg: DOM-Diagnose 2026-06-25 (Treffer 0 war ein notify-Link).
+  //
+  // DARSTELLUNG: bestehende CSS-Klasse .has_trace_progress (rot→gelb→grün)
+  //   plus Modifikator .has_trace_progress_tight (Outline 1px statt 2px), damit
+  //   die Rahmen benachbarter, dicht stehender Zeilen nicht aneinanderstoßen.
+  //   Beleg: Projektgespräch 2026-06-25. Unaufgelöst → pct=0 (rot), einheitlich
+  //   zum bestehenden Schema.
+  // ===========================================================================
+  var SearchPostsProgressModule = (function () {
+    'use strict';
+
+    var ENDPOINT = "/_forensic/resolve_posts";
+
+    // pid robust aus einem Treffer-Link lesen (dekodierte Such-Komponente,
+    // Fallback Regex auf rohem href gegen &amp;-Kodierung).
+    function _pidOf(a) {
+      try {
+        var p = new URLSearchParams(a.search).get("pid");
+        if (p) return p;
+      } catch (e) { /* ungültige URL / alter Browser → Fallback */ }
+      var m = (a.getAttribute("href") || "").match(/[?&]pid=(\d+)/);
+      return m ? m[1] : null;
+    }
+
+    // Echter Suchtreffer? (notify=-Links und Dropdown-Links sind Rauschen.)
+    function _isResultLink(a) {
+      var href = a.getAttribute("href") || "";
+      if (/[?&]notify=/.test(href)) return false;
+      if (a.closest && a.closest("#notification_list")) return false;
+      return !!_pidOf(a);
+    }
+
+    function init(viewport) {
+      var root = viewport || document;
+
+      // Seitenerkennung: nur die "Beiträge des Benutzers"-Trefferseite.
+      var pageUrl = (location.pathname || "") + (location.search || "");
+      if (pageUrl.indexOf("search.php") === -1 ||
+          pageUrl.indexOf("action=show_user_posts") === -1) {
+        _dbg("[Search-Progress] keine show_user_posts-Seite — übersprungen");
+        return;
+      }
+
+      var links = Array.prototype.slice.call(
+        root.querySelectorAll('a[href*="viewtopic.php"][href*="pid="]')
+      ).filter(_isResultLink);
+
+      if (!links.length) {
+        _dbg("[Search-Progress] keine Treffer-Links gefunden — übersprungen");
+        return;
+      }
+
+      // pid → Zeile(n). Ein pid steht i. d. R. genau einmal; defensiv als Liste.
+      var rowsByPid = {};
+      links.forEach(function (a) {
+        var pid = _pidOf(a);
+        if (!pid) return;
+        var row = a.closest("tr");
+        if (!row) return;   // Treffer ohne Zeile (sollte nicht vorkommen)
+        (rowsByPid[pid] = rowsByPid[pid] || []).push(row);
+      });
+
+      var pids = Object.keys(rowsByPid);
+      _dbg("[Search-Progress]", links.length, "Treffer-Links,",
+           pids.length, "distinct pids — Endpunkt-Auflösung …");
+
+      if (!pids.length) return;
+
+      fetch(ENDPOINT + "?pids=" + encodeURIComponent(pids.join(",")))
+        .then(function (r) {
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          return r.json();
+        })
+        .then(function (data) {
+          if (!data || data.status !== "ok") {
+            _dbg("[Search-Progress] Antwort nicht ok:", data && data.status);
+            return;
+          }
+          _applyBorders(rowsByPid, data.posts || {});
+        })
+        .catch(function (err) {
+          _dbg("[Search-Progress] Auflösung fehlgeschlagen:",
+               err && err.message);
+        });
+    }
+
+    function _applyBorders(rowsByPid, posts) {
+      var applied = 0, resolved = 0, unresolved = 0;
+      Object.keys(rowsByPid).forEach(function (pid) {
+        var info = posts[pid];
+        var ok   = !!(info && info.resolved);
+        var pct  = ok ? (info.progressPercent || 0) : 0;  // unaufgelöst → 0/rot
+        if (ok) resolved++; else unresolved++;
+        rowsByPid[pid].forEach(function (row) {
+          // CSS-getriebener Zustand: --trace-progress + Klassen. outline statt
+          // border (border-collapse-Probleme auf <tr>). 'tight' = 1px schmaler.
+          row.style.setProperty("--trace-progress", pct);
+          row.classList.add("has_trace_progress");
+          row.classList.add("has_trace_progress_tight");
+          applied++;
+        });
+      });
+      _dbg("[Search-Progress] Rahmen gesetzt:", applied,
+           "| aufgelöst:", resolved, "| unaufgelöst(rot):", unresolved);
     }
 
     return { init: init };
