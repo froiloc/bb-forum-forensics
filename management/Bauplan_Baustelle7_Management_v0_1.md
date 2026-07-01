@@ -1,6 +1,6 @@
 # Bauplan Baustelle 7 — Management-Interface
 
-**Version:** 0.2 · **Datum:** 2026-07-01
+**Version:** 0.3 · **Datum:** 2026-07-01
 **Klassifikation:** VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
 **Auslieferung:** innerhalb `aiw_webserver`, im geschützten Unterordner `management/`
 **Grundlage:** `Ideen_zum_Verwaltungswerkzeug.md`, bewertete Fassung v1.0 (2026-04-14),
@@ -22,7 +22,8 @@ Arbeitspaket = 1 h Vorbereitung · 3 h Entwicklung · 2 h Test/Fehlerbehebung ·
 | Tag | Paket | Ideen | Schreibt nach | Schema-Änderung |
 |-----|-------|-------|---------------|-----------------|
 | 1 | Migrations-Gerüst + Audit-Log + Write-Gateway | 13 | `coordinator.db` | M001: `schema_migrations`, `audit_log` |
-| 2 | `cases` + `scrape_jobs`-Drop + Repointing (**ein atomarer Build**) + Ereigniszeitstrahl | 11 | `coordinator.db` | M002 (destruktiv): Drop `assigned_to`/`note`; Create `cases`, `case_events` |
+| 2 | `cases` + `scrape_jobs`-**Rebuild** + Repointing (`userinfo_data.py`) + auditierte Zuweisungs-CLI (**ein atomarer Build**) | — | `coordinator.db` | M002 (destruktiv): Rebuild `scrape_jobs` ohne `assigned_to`/`note`; Create `cases` |
+| 2+ | Ereigniszeitstrahl `case_events` (eigener additiver Build M003, vor/mit Tag 3) | 11 | `coordinator.db` | M003 (additiv): Create `case_events` |
 | 3 | Ampel-Dashboard (liest `cases`/`case_events` + `evidence_db`-Zähler, SSE) | 1 | — (read) | — |
 | 4 | Backup- & PITR-Maske (WAL/SHM-bewusst, alle DBs per mtime, Pfad aus `config.yaml`) | 10 | Backup-Ziel (SMB) | M003: `backups`-Registry |
 
@@ -242,7 +243,175 @@ Anschließend volle Regression `python run_tests.py` (Erwartung: bestehende 563 
 
 ---
 
-## 3. Geklärte Punkte (Stand v0.2, Projektgespräch 2026-07-01)
+## 3. TAG 2 — cases + scrape_jobs-Rebuild + Repointing + Zuweisungs-CLI (Build 307)
+
+### 3.0 Ziel und Abgrenzung
+
+Tag 2 zieht die Fallakte `cases` (1:1 zur `user_id`) als autoritative Quelle ein, baut
+`scrape_jobs` auf seine reine Baustelle-0-Rolle zurück, biegt den einen Lese-Pfad
+(`userinfo_data.py`) auf `cases` um und liefert die erste **auditierte** Zuweisungs-CLI —
+Ersatz für die bisherige Roh-SQL-Zuweisung (ein Roh-SQL-Write auf `cases` würde die
+Audit-Kette umgehen). **Bewusst NICHT in diesem Build:** `case_events` (Ereigniszeitstrahl,
+Idee 11) — eigener additiver Build M003 vor/mit Tag 3 (Entscheidung „Schritt für Schritt",
+2026-07-01). Der Audit-Trail ist davon unberührt, da jeder `cases`-Write ohnehin einen
+`audit_log`-Eintrag erzeugt.
+
+**Keine Daten-Migration** (Dummies, Entscheidung 2026-07-01). `cases` startet leer; die
+10 Live-User werden per CLI angelegt/zugewiesen. Der Request-/Auslieferungspfad und
+`--user-id` bleiben unangetastet.
+
+### 3.1 Neue/geänderte Dateien
+
+```
+management/
+├── migrate.py                       # NEU: produktiver Migrations-Einstieg (CLI)
+├── cases/
+│   ├── __init__.py
+│   ├── cases_repo.py                # NEU: CasesRepo (auditierte Lese-/Schreibmethoden)
+│   └── cases_admin.py               # NEU: CLI (Anlegen/Zuweisen/Status/Priorität/Notiz)
+└── migrations/coordinator/
+    └── m002_cases.py                # NEU: M002 (destruktiv)
+management/audit/event_types.py      # GEÄNDERT: CASE_* Ereignistypen ergänzt (additiv)
+forensic_api/userinfo_data.py        # GEÄNDERT: Status-Read auf cases umgebogen
+build.json                           # GEÄNDERT: Build 307
+tests/test_management_cases.py       # NEU: Testmatrix B01–B10
+```
+
+### 3.2 Migration M002 (destruktiv) — DDL & Ablauf
+
+`scrape_jobs.assigned_to` steht in einer FK-Klausel → `DROP COLUMN` unzulässig, daher
+**Tabellen-Rebuild** (12-Schritt). Die Management-Verbindung führt `foreign_keys=OFF`
+(SQLite-Default) → Rebuild im Transaktionsrahmen unproblematisch; nach dem Rebuild
+`PRAGMA foreign_key_check` als Kontrolle (in verify()).
+
+```sql
+-- 1) scrape_jobs OHNE assigned_to/note neu aufbauen (Baustelle-0-Spalten + CHECKs erhalten)
+CREATE TABLE scrape_jobs_new (
+    id            INTEGER,
+    user_id       INTEGER NOT NULL,
+    username      TEXT    NOT NULL,
+    priority      INTEGER NOT NULL DEFAULT 3 CHECK(priority BETWEEN 1 AND 5),
+    status        TEXT    NOT NULL DEFAULT 'pending'
+                  CHECK(status IN ('pending','running','done','failed')),
+    manifest_path TEXT,
+    output_path   TEXT,
+    worker_id     TEXT,
+    created_at    INTEGER NOT NULL,
+    started_at    INTEGER,
+    finished_at   INTEGER,
+    error_message TEXT,
+    PRIMARY KEY(id AUTOINCREMENT)
+);
+INSERT INTO scrape_jobs_new
+    (id,user_id,username,priority,status,manifest_path,output_path,worker_id,
+     created_at,started_at,finished_at,error_message)
+SELECT
+    id,user_id,username,priority,status,manifest_path,output_path,worker_id,
+    created_at,started_at,finished_at,error_message
+FROM scrape_jobs;
+DROP TABLE scrape_jobs;
+ALTER TABLE scrape_jobs_new RENAME TO scrape_jobs;
+-- Indizes neu:
+CREATE INDEX IF NOT EXISTS scrape_jobs_status_idx ON scrape_jobs(status);
+CREATE INDEX IF NOT EXISTS scrape_jobs_user_idx   ON scrape_jobs(user_id);
+
+-- 2) Fallakte cases (1:1 zur user_id) — autoritative Quelle
+CREATE TABLE cases (
+    user_id             INTEGER PRIMARY KEY,
+    username            TEXT    NOT NULL,
+    assigned_to         INTEGER,
+    priority            INTEGER NOT NULL DEFAULT 3 CHECK(priority BETWEEN 1 AND 5),
+    status              TEXT    NOT NULL DEFAULT 'open'
+                        CHECK(status IN ('open','in_progress','approved','closed')),
+    approved_at         INTEGER,
+    total_pages_scraped INTEGER,
+    note                TEXT,
+    created_at          INTEGER NOT NULL,
+    updated_at          INTEGER NOT NULL,
+    FOREIGN KEY(assigned_to) REFERENCES investigators(id)
+);
+```
+
+- `KIND='destructive'`; `precount` = `COUNT(*)` scrape_jobs vorher, `postcount` nachher.
+- `verify(con, before, after)`: **assert before == after** (keine Job-Zeile verloren) UND
+  `PRAGMA foreign_key_check` liefert keine Verletzung. Bei Verstoß → Exception → ROLLBACK,
+  kein Teilzustand (Runner-Vertrag).
+- `status`-Vokabular `cases`: `open / in_progress / approved / closed` (echter Ermittlungs-
+  status; ersetzt im Nutzerinfo-Tab die bisherigen Job-Status). `approved_at` ist separate
+  forensische Tatsache.
+
+### 3.3 event_types.py (additiv erweitern, nie umbenennen)
+
+Ergänzung: `CASE_CREATED`, `CASE_ASSIGNED`, `CASE_STATUS_CHANGED`, `CASE_APPROVED`,
+`CASE_PRIORITY_SET`, `CASE_NOTE_SET`. Werte bleiben Versionsbestandteil.
+
+### 3.4 CasesRepo (`management/cases/cases_repo.py`)
+
+- Lesen: `get_case(user_id) -> dict | None` (für den Repoint in userinfo_data.py).
+- Schreiben — **ausschließlich über `CoordinatorWriter.audited_write`**, sodass `cases`-Write
+  und `audit_log`-Eintrag in EINER Transaktion committen:
+  - `create_case(user_id, username, actor_id)` → `CASE_CREATED`
+  - `assign(user_id, investigator_id, actor_id)` → `CASE_ASSIGNED`
+  - `set_status(user_id, status, actor_id)` → `CASE_STATUS_CHANGED`; bei `approved`
+    zusätzlich `approved_at` setzen (`CASE_APPROVED`)
+  - `set_priority(...)`, `set_note(...)`
+- `updated_at` bei jedem Write aktualisieren.
+
+### 3.5 Zuweisungs-CLI (`management/cases/cases_admin.py`)
+
+`python -m management.cases_admin --user-id N --username NAME [--assign SYSUSER] [--status S] [--priority P] [--note TEXT] [--actor SYSUSER]`
+
+- Öffnet dedizierte `coordinator.db`-Verbindung (Autocommit, WAL), baut
+  `AuditLog` + `CoordinatorWriter` + `CasesRepo`, führt die Aktion aus, gibt Ergebnis +
+  `audit_log`-seq aus.
+- `--actor SYSUSER`: `investigators.id` des Ausführenden → `audit_log.actor_id`. Fehlt es,
+  `actor_id=NULL` (System) und OS-Benutzername in `content.performed_by`.
+- Nicht-fatal, klare Fehlermeldungen.
+
+### 3.6 Repoint `userinfo_data.py`
+
+Ersetzt den „neueste scrape_jobs-Zeile"-Read durch:
+
+```sql
+SELECT c.status, c.priority, i.system_username AS assigned_to, c.note
+FROM   cdb.cases c
+LEFT JOIN cdb.investigators i ON i.id = c.assigned_to
+WHERE  c.user_id = ?
+```
+
+Kein `ORDER BY/LIMIT` (1:1). **Gleiche Ergebnisform** (`status/priority/assigned_to/note`).
+Kein `cases`-Eintrag → `None` → Nutzerinfo-Tab zeigt „nicht zugewiesen" (identisch zum
+bisherigen „kein Job"-Verhalten; lautlose Auslassung bei Re-Scrape entfällt).
+
+### 3.7 migrate.py (produktiver Einstieg)
+
+`python -m management.migrate [--coordinator-db PATH] [--deployed-by NAME]`
+
+- Pfad aus `--coordinator-db` oder `config.yaml` (`paths.coordinator_db`).
+- Dedizierte Verbindung (Autocommit, WAL) → `AuditLog(con)` →
+  `discover(management.migrations.coordinator)` → `MigrationRunner(...).run()` →
+  Ausgabe der angewandten Versionen + `verify_chain()`-Ergebnis. Nicht-fatal.
+
+### 3.8 Tests (`tests/test_management_cases.py`)
+
+| ID | Prüfung |
+|----|---------|
+| B01 | M002 Rebuild: `scrape_jobs` ohne `assigned_to`/`note`, übrige Spalten + Indizes erhalten |
+| B02 | M002: Zeilenzahl scrape_jobs vorher == nachher (Invariante) |
+| B03 | M002: `PRAGMA foreign_key_check` sauber; `cases` angelegt |
+| B04 | `create_case` → cases-Zeile + `CASE_CREATED` atomar |
+| B05 | `assign` → `assigned_to` gesetzt + `CASE_ASSIGNED` |
+| B06 | `set_status('approved')` → `approved_at` gesetzt + `CASE_APPROVED` |
+| B07 | ungültiger Status → CHECK-Verletzung (abgewiesen) |
+| B08 | Gateway-Rollback: fehlgeschlagener Write lässt weder cases-Änderung noch Audit zurück |
+| B09 | Repoint-Read: `get_case` gleiche Schlüssel; `None` bei fehlendem Fall |
+| B10 | Audit-Kette verifiziert nach cases-Writes (verify_chain OK) |
+
+Danach volle Regression `python run_tests.py` (0 Fehler).
+
+---
+
+## 4. Geklärte Punkte — Tag 1 (Stand v0.2, Projektgespräch 2026-07-01)
 
 1. **Migrations-Akteur:** GEKLÄRT — `actor_id = NULL` (System); OS-Benutzername des Deployers
    in `content.deployed_by` (aus Umgebung/Config).
@@ -260,6 +429,11 @@ Anschließend volle Regression `python run_tests.py` (Erwartung: bestehende 563 
 ---
 
 ## Änderungshistorie
+
+- **v0.3 (2026-07-01):** §3 „Tag 2" ergänzt (cases + scrape_jobs-Rebuild + Repointing
+  userinfo_data.py + auditierte Zuweisungs-CLI, Build 307); Roadmap Tag 2 aktualisiert
+  (Rebuild statt Drop wegen FK; `case_events` als eigener additiver Build M003 abgetrennt,
+  Entscheidung „Schritt für Schritt"); altes §3 → §4.
 
 - **v0.2 (2026-07-01):** Offene Punkte 1–3 geklärt; §2.8 in Migrations- vs. Live-Backup-Politik
   aufgetrennt (Snapshot statt Dateikopie); Platzhaltermodule `evidence`/`assets` in §2.1

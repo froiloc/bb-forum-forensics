@@ -219,8 +219,8 @@ class ModeResolver:
                 f"Kein offener Ermittlungsauftrag für Systembenutzer "
                 f"'{system_username}' in coordinator.db gefunden.\n"
                 f"Mögliche Ursachen:\n"
-                f"  - Kein Job zugewiesen (assigned_to)\n"
-                f"  - Alle Jobs bereits abgeschlossen (status != 'pending'/'running')\n"
+                f"  - Kein Fall zugewiesen (cases.assigned_to)\n"
+                f"  - Alle Fälle bereits abgeschlossen (status nicht 'open'/'in_progress')\n"
                 f"  - Benutzer nicht in investigators-Tabelle eingetragen\n"
                 f"Alternativ: Server mit --mode cli --user-id <id> starten."
             )
@@ -228,13 +228,12 @@ class ModeResolver:
         user_id = int(job_row["user_id"])
         username = str(job_row["username"])
 
-        # output_path aus dem Job-Eintrag übernehmen, sofern gesetzt —
-        # andernfalls Standard-Pfadzusammensetzung verwenden.
-        output_path = job_row["output_path"]
-        if output_path:
-            forensic_db = Path(output_path).resolve()
-        else:
-            forensic_db = self._build_forensic_db_path(user_id)
+        # Build 308: forensic_db IMMER deterministisch aus user_id ableiten
+        # (kanonisches Muster forensic_<uid>.db). Der frühere output_path-Override
+        # aus dem Job-Eintrag entfällt — cases führt kein output_path, und eine
+        # fremde output_path könnte sonst Beweise eines anderen Beschuldigten
+        # öffnen. Beleg: Problem-1-Analyse 2026-07-01, mc.
+        forensic_db = self._build_forensic_db_path(user_id)
 
         evidence_db = self._build_evidence_db_path(user_id)
 
@@ -262,11 +261,11 @@ class ModeResolver:
         self, con: sqlite3.Connection, system_username: str
     ) -> tuple[Optional[sqlite3.Row], Optional[int]]:
         """
-        Sucht in coordinator.db nach dem ältesten offenen Job für den
-        Systembenutzer. Gibt (job_row, investigator_id) zurück.
+        Sucht in coordinator.db nach dem ältesten offenen Fall für den
+        Systembenutzer (Ermittler). Gibt (job_row, investigator_id) zurück.
 
-        Ein Job gilt als offen wenn:
-          - status IN ('pending', 'running')
+        Ein Fall gilt als offen wenn (Build 308, Quelle: cdb.cases):
+          - status IN ('open', 'in_progress')
           - assigned_to verweist auf den investigators-Eintrag des Systembenutzers
 
         Falls die investigators-Tabelle noch nicht existiert (z.B. in DEV vor
@@ -301,17 +300,17 @@ class ModeResolver:
         try:
             job_row = con.execute(
                 """
-                SELECT user_id, username, output_path
-                FROM scrape_jobs
+                SELECT user_id, username
+                FROM cases
                 WHERE assigned_to = ?
-                  AND status IN ('pending', 'running')
+                  AND status IN ('open', 'in_progress')
                 ORDER BY priority ASC, created_at ASC
                 LIMIT 1
                 """,
                 (investigator_id,),
             ).fetchone()
         except sqlite3.OperationalError as exc:
-            logger.warning("scrape_jobs-Abfrage fehlgeschlagen: %s", exc)
+            logger.warning("cases-Abfrage fehlgeschlagen: %s", exc)
             return None, investigator_id
 
         return job_row, investigator_id

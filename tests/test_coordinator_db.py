@@ -7,10 +7,7 @@
 # T01 — get_investigator(): bekannter Benutzer wird gefunden
 # T02 — get_investigator(): unbekannter Benutzer gibt None zurück
 # T03 — get_investigator(): Rollen-Flags korrekt
-# T04 — get_assigned_job(): offener Job wird gefunden
-# T05 — get_assigned_job(): kein offener Job gibt None zurück
-# T06 — get_assigned_job(): abgeschlossener Job (done) wird ignoriert
-# T07 — get_assigned_job(): Priorität bestimmt Auswahl (kleinste zuerst)
+# T04–T07 — ENTFERNT (Build 308): get_assigned_job() obsolet (Zuweisung -> cases)
 # T08 — get_job_by_id(): bekannter Job gefunden
 # T09 — get_job_by_id(): unbekannte ID gibt None zurück
 # T10 — update_job_status(): Status wird aktualisiert
@@ -144,43 +141,9 @@ class TestCoordinatorDb(unittest.TestCase):
         self.assertTrue(sup.is_investigator)
         self.assertTrue(sup.is_supervisor)
 
-    def test_T04_get_assigned_job(self):
-        """T04: Offener Job wird korrekt gefunden."""
-        job = self.cdb.get_assigned_job(self.inv_id)
-        self.assertIsNotNone(job)
-        self.assertIsInstance(job, JobRecord)
-        self.assertEqual(job.user_id, 42)
-        self.assertEqual(job.username, "verdaechtiger42")
-        self.assertEqual(job.status, "pending")
-
-    def test_T05_kein_offener_job(self):
-        """T05: Ermittler ohne zugewiesenen Job gibt None zurück."""
-        sup_id = self.con.execute(
-            "SELECT id FROM cdb.investigators WHERE system_username='h099999'"
-        ).fetchone()[0]
-        self.assertIsNone(self.cdb.get_assigned_job(sup_id))
-
-    def test_T06_abgeschlossener_job_ignoriert(self):
-        """T06: Jobs mit status='done' werden nicht zurückgegeben."""
-        self.con.execute(
-            "UPDATE cdb.scrape_jobs SET status='done' WHERE id=?",
-            (self.job_id,),
-        )
-        self.con.commit()
-        self.assertIsNone(self.cdb.get_assigned_job(self.inv_id))
-
-    def test_T07_prioritaet(self):
-        """T07: Job mit höchster Priorität (kleinste Zahl) wird bevorzugt."""
-        self.con.execute(
-            "INSERT INTO cdb.scrape_jobs "
-            "(user_id, username, priority, status, assigned_to, created_at) "
-            "VALUES (99, 'dringend', 1, 'pending', ?, 200)",
-            (self.inv_id,),
-        )
-        self.con.commit()
-        job = self.cdb.get_assigned_job(self.inv_id)
-        self.assertEqual(job.user_id, 99)
-        self.assertEqual(job.priority, 1)
+    # T04–T07 (get_assigned_job) ENTFERNT (Build 308): Methode obsolet — die
+    # Zuweisung 'Ermittler -> Fall' ist auf cases übergegangen.
+    # Beleg: Problem-1-Analyse 2026-07-01, mc.
 
     def test_T08_get_job_by_id_bekannt(self):
         """T08: get_job_by_id() gibt Job mit korrekter ID zurück."""
@@ -248,70 +211,24 @@ class TestCoordinatorDb(unittest.TestCase):
         self.assertIsNone(result.username)
         self.assertIsNone(result.since_ms)
 
-    def test_T16_get_support_status_support_nutzer_aktiv(self):
-        """T16: get_support_status() → active wenn Support-Nutzer running-Job hat."""
-        # Support-Nutzer anlegen
+    # T16/T17 (get_support_status via scrape_jobs-Proxy) ENTFERNT (Build 308):
+    # Der Stellvertreter (scrape_jobs.assigned_to + status) ist mit M002 weg;
+    # eine echte Support-Sitzungserfassung existiert (noch) nicht. get_support_status
+    # liefert daher stets inactive. Beleg: Problem-1-Analyse 2026-07-01, mc.
+
+    def test_T17_support_stets_inactive_ohne_sitzungserfassung(self):
+        """T17 (Build 308): Auch mit einem is_support-Ermittler bleibt der Status
+        inactive — es gibt keine persistierte Support-Sitzung, aus der Aktivität
+        abgeleitet werden könnte."""
         self.con.execute(
             "INSERT INTO cdb.investigators "
             "(system_username, display_name, is_investigator, is_supervisor, is_support, created_at) "
-            "VALUES ('h067890', 'Support User', 0, 0, 1, 1700000010)"
-        )
-        support_id = self.con.execute(
-            "SELECT id FROM cdb.investigators WHERE system_username='h067890'"
-        ).fetchone()[0]
-        # running-Job für Support-Nutzer
-        self.con.execute(
-            "INSERT INTO cdb.scrape_jobs "
-            "(user_id, username, priority, status, assigned_to, created_at, started_at) "
-            "VALUES (999, 'testuser', 3, 'running', ?, 1700000000, 1744300000)",
-            (support_id,),
+            "VALUES ('h077777', 'Support', 0, 0, 1, 1700000020)"
         )
         self.con.commit()
-
-        result = self.cdb.get_support_status()
-        self.assertTrue(result.active)
-        self.assertEqual(result.username, "h067890")
-        self.assertEqual(result.since_ms, 1744300000 * 1000)
-
-        # Aufräumen
-        self.con.execute(
-            "DELETE FROM cdb.scrape_jobs WHERE assigned_to=?", (support_id,)
-        )
-        self.con.execute(
-            "DELETE FROM cdb.investigators WHERE id=?", (support_id,)
-        )
-        self.con.commit()
-
-    def test_T17_get_support_status_support_nutzer_done(self):
-        """T17: Support-Nutzer mit status='done' gilt nicht als aktiv."""
-        self.con.execute(
-            "INSERT INTO cdb.investigators "
-            "(system_username, display_name, is_investigator, is_supervisor, is_support, created_at) "
-            "VALUES ('h077777', 'Inactive Support', 0, 0, 1, 1700000020)"
-        )
-        support_id = self.con.execute(
-            "SELECT id FROM cdb.investigators WHERE system_username='h077777'"
-        ).fetchone()[0]
-        # Nur done-Job → nicht aktiv
-        self.con.execute(
-            "INSERT INTO cdb.scrape_jobs "
-            "(user_id, username, priority, status, assigned_to, created_at) "
-            "VALUES (998, 'doneuser', 3, 'done', ?, 1700000000)",
-            (support_id,),
-        )
-        self.con.commit()
-
         result = self.cdb.get_support_status()
         self.assertFalse(result.active)
-
-        # Aufräumen
-        self.con.execute(
-            "DELETE FROM cdb.scrape_jobs WHERE assigned_to=?", (support_id,)
-        )
-        self.con.execute(
-            "DELETE FROM cdb.investigators WHERE id=?", (support_id,)
-        )
-        self.con.commit()
+        self.assertIsNone(result.username)
 
     def test_T18_support_status_record_felder(self):
         """T18: SupportStatusRecord-Datenklasse hat korrekte Felder."""

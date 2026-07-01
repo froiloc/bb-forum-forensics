@@ -102,7 +102,6 @@ class JobRecord:
         priority      — 1 (höchste) bis 5 (niedrigste)
         status        — 'pending', 'running', 'done', 'failed'
         output_path   — Pfad zur forensic_<uid>.db (gesetzt nach Stage 2)
-        assigned_to   — investigators.id des zuständigen Ermittlers
         created_at    — Unix-Timestamp der Job-Anlage
     """
     id:           int
@@ -111,7 +110,6 @@ class JobRecord:
     priority:     int
     status:       str
     output_path:  Optional[str]
-    assigned_to:  Optional[int]
     created_at:   int
 
 
@@ -165,36 +163,18 @@ class CoordinatorDb:
             return SupportStatusRecord(active=False, username=None, since_ms=None)
 
     def _get_support_status_once(self) -> SupportStatusRecord:
-        """Einmaliger Versuch für get_support_status(). Wird durch _retry() wiederholt."""
-        try:
-            row = self._con.execute(
-                """
-                SELECT i.system_username, j.started_at
-                FROM cdb.investigators AS i
-                JOIN cdb.scrape_jobs   AS j ON j.assigned_to = i.id
-                WHERE i.is_support = 1
-                  AND j.status = 'running'
-                ORDER BY j.started_at DESC
-                LIMIT 1
-                """
-            ).fetchone()
-        except sqlite3.OperationalError as exc:
-            # Fehlende Tabelle ist ein dauerhafter Schemakonflikt — kein Retry
-            # sinnvoll, sofort weiterwerfen ohne Zeit zu verlieren
-            if "no such table" in str(exc):
-                raise exc
-            raise exc  # Andere OperationalErrors: Retry übernimmt
+        """
+        Einmaliger Versuch für get_support_status().
 
-        if row is None:
-            return SupportStatusRecord(active=False, username=None, since_ms=None)
-
-        # started_at ist Unix-Timestamp in Sekunden → JS erwartet ms
-        started_at_s = row["started_at"] if row["started_at"] is not None else 0
-        return SupportStatusRecord(
-            active=True,
-            username=str(row["system_username"]),
-            since_ms=int(started_at_s) * 1000,
-        )
+        Build 308: Die frühere Quelle (JOIN scrape_jobs ON assigned_to,
+        status='running') wurde mit M002 entfernt UND war ohnehin nur ein
+        Stellvertreter — eine echte Support-SITZUNG (ein is_support-Helfer schaut
+        live in einen fremden Fall) wird nirgends persistiert (kein Sitzungs-
+        Marker, keine Präsenz-Tabelle). Bis eine echte Support-Sitzungserfassung
+        existiert, liefert die Methode EHRLICH 'inactive' statt Fake-Daten.
+        Beleg: Problem-1-Analyse 2026-07-01, mc.
+        """
+        return SupportStatusRecord(active=False, username=None, since_ms=None)
 
     # ------------------------------------------------------------------
     # Ermittler-Abfragen
@@ -248,47 +228,11 @@ class CoordinatorDb:
     # Job-Abfragen
     # ------------------------------------------------------------------
 
-    def get_assigned_job(
-        self, investigator_id: int
-    ) -> Optional[JobRecord]:
-        """
-        Sucht den ältesten offenen Job für einen Ermittler.
-
-        Offen = status IN ('pending', 'running').
-        Sortierung: priority ASC (kleinste Zahl = höchste Priorität),
-                    created_at ASC (ältester zuerst).
-
-        Args:
-            investigator_id: investigators.id des Ermittlers.
-
-        Returns:
-            JobRecord oder None wenn kein offener Job vorhanden.
-        """
-        return self._retry(self._get_assigned_job_once, investigator_id)
-
-    def _get_assigned_job_once(
-        self, investigator_id: int
-    ) -> Optional[JobRecord]:
-        try:
-            row = self._con.execute(
-                """
-                SELECT id, user_id, username, priority, status,
-                       output_path, assigned_to, created_at
-                FROM cdb.scrape_jobs
-                WHERE assigned_to = ?
-                  AND status IN ('pending', 'running')
-                ORDER BY priority ASC, created_at ASC
-                LIMIT 1
-                """,
-                (investigator_id,),
-            ).fetchone()
-        except sqlite3.OperationalError as exc:
-            raise exc
-
-        if row is None:
-            return None
-
-        return self._row_to_job(row)
+    # get_assigned_job() / _get_assigned_job_once() ENTFERNT (Build 308):
+    # Die Zuweisung 'Ermittler -> Fall' ist mit M002 von scrape_jobs.assigned_to
+    # auf die Fallakte cases übergegangen. Die Job-Modus-Auflösung erfolgt jetzt
+    # in core/mode_resolver._query_job direkt gegen cdb.cases. Diese Methode hatte
+    # keine produktiven Aufrufer mehr. Beleg: Problem-1-Analyse 2026-07-01, mc.
 
     def get_job_by_id(self, job_id: int) -> Optional[JobRecord]:
         """
@@ -306,7 +250,7 @@ class CoordinatorDb:
         try:
             row = self._con.execute(
                 "SELECT id, user_id, username, priority, status, "
-                "output_path, assigned_to, created_at "
+                "output_path, created_at "
                 "FROM cdb.scrape_jobs WHERE id = ?",
                 (job_id,),
             ).fetchone()
@@ -403,7 +347,6 @@ class CoordinatorDb:
             priority=int(row["priority"]),
             status=str(row["status"]),
             output_path=str(row["output_path"]) if row["output_path"] else None,
-            assigned_to=int(row["assigned_to"]) if row["assigned_to"] is not None else None,
             created_at=int(row["created_at"]),
         )
 

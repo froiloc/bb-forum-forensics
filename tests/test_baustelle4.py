@@ -859,78 +859,69 @@ class TestUserinfoStaticEndpoint:
 # Tests: note-Spalte (unveraendert gegenueber Build 037)
 # ---------------------------------------------------------------------------
 
-class TestInvestigationStatusNoteColumn:
-    """B4-S12: _get_investigation_status() — defensives note-Handling."""
+class TestInvestigationStatusFromCases:
+    """B4-S12: Investigation-Status wird aus der Fallakte cases gelesen (Build 307)."""
 
-    def _make_coordinator_db(self, with_note_column: bool) -> sqlite3.Connection:
+    def _make_coordinator_db(self, with_case: bool) -> sqlite3.Connection:
         con = sqlite3.connect(":memory:")
         con.row_factory = sqlite3.Row
-        note_col = ", note TEXT" if with_note_column else ""
-        con.execute(f"""
+        con.execute("""
             CREATE TABLE investigators (
                 id INTEGER PRIMARY KEY,
                 system_username TEXT NOT NULL
             )
         """)
-        con.execute(f"""
-            CREATE TABLE scrape_jobs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
+        con.execute("""
+            CREATE TABLE cases (
+                user_id INTEGER PRIMARY KEY,
                 username TEXT NOT NULL,
-                status TEXT NOT NULL DEFAULT 'pending',
-                priority INTEGER NOT NULL DEFAULT 3,
                 assigned_to INTEGER REFERENCES investigators(id),
-                created_at INTEGER NOT NULL
-                {note_col}
+                priority INTEGER NOT NULL DEFAULT 3,
+                status TEXT NOT NULL DEFAULT 'open',
+                approved_at INTEGER,
+                total_pages_scraped INTEGER,
+                note TEXT,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL
             )
         """)
         con.execute(
             "INSERT INTO investigators (id, system_username) VALUES (1, 'ermittler1')"
         )
-        con.execute(
-            "INSERT INTO scrape_jobs (user_id, username, status, priority, "
-            "assigned_to, created_at) VALUES (18, 'KEKa', 'running', 3, 1, 1700000000)"
-        )
+        if with_case:
+            con.execute(
+                "INSERT INTO cases (user_id, username, assigned_to, priority, "
+                "status, note, created_at, updated_at) "
+                "VALUES (18, 'KEKa', 1, 3, 'in_progress', 'Wichtiger Hinweis', "
+                "1700000000, 1700000000)"
+            )
         con.commit()
         return con
 
-    def test_B4_S12_ohne_note_spalte_kein_fehler(self):
-        cdb_con = self._make_coordinator_db(with_note_column=False)
-        cols = {row[1] for row in cdb_con.execute("PRAGMA table_info(scrape_jobs)")}
-        assert "note" not in cols
-        note_select = ", NULL AS note"
-        row = cdb_con.execute(
-            "SELECT j.status, j.priority, "
-            "       i.system_username AS assigned_to"
-            + note_select +
-            " FROM scrape_jobs j "
-            "LEFT JOIN investigators i ON i.id = j.assigned_to "
-            "WHERE j.user_id = 18 "
-            "ORDER BY j.created_at DESC LIMIT 1"
+    @staticmethod
+    def _read_status(con):
+        # Spiegelt die SUT-Query aus userinfo_data._get_investigation_status (Build 307).
+        return con.execute(
+            "SELECT c.status, c.priority, i.system_username AS assigned_to, c.note "
+            "FROM cases c "
+            "LEFT JOIN investigators i ON i.id = c.assigned_to "
+            "WHERE c.user_id = 18"
         ).fetchone()
+
+    def test_B4_S12_fall_vorhanden_status_gelesen(self):
+        cdb_con = self._make_coordinator_db(with_case=True)
+        row = self._read_status(cdb_con)
         assert row is not None
-        assert row["note"] is None
-        assert row["status"] == "running"
+        assert row["status"] == "in_progress"
+        assert row["assigned_to"] == "ermittler1"
+        assert row["note"] == "Wichtiger Hinweis"
         cdb_con.close()
 
-    def test_B4_S12_mit_note_spalte_wert_wird_gelesen(self):
-        cdb_con = self._make_coordinator_db(with_note_column=True)
-        cdb_con.execute(
-            "UPDATE scrape_jobs SET note = 'Wichtiger Hinweis' WHERE user_id = 18"
-        )
-        cdb_con.commit()
-        note_select = ", j.note"
-        row = cdb_con.execute(
-            "SELECT j.status, j.priority, "
-            "       i.system_username AS assigned_to"
-            + note_select +
-            " FROM scrape_jobs j "
-            "LEFT JOIN investigators i ON i.id = j.assigned_to "
-            "WHERE j.user_id = 18 "
-            "ORDER BY j.created_at DESC LIMIT 1"
-        ).fetchone()
-        assert row is not None
-        assert row["note"] == "Wichtiger Hinweis"
+    def test_B4_S12_kein_fall_gibt_none(self):
+        # Kein cases-Eintrag -> None -> UI zeigt 'nicht zugewiesen'.
+        cdb_con = self._make_coordinator_db(with_case=False)
+        row = self._read_status(cdb_con)
+        assert row is None
         cdb_con.close()
 
     def test_B4_S12_setup_coordinator_nachruestet_note(self):

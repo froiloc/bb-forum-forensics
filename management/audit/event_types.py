@@ -26,8 +26,15 @@ class EventType:
     MIGRATION_APPLIED: str = "migration_applied"
     CHAIN_VERIFIED: str = "chain_verified"
 
+    # --- Tag 2 (Build 307): Fallakte cases ---
+    CASE_CREATED: str = "case_created"
+    CASE_ASSIGNED: str = "case_assigned"
+    CASE_STATUS_CHANGED: str = "case_status_changed"
+    CASE_APPROVED: str = "case_approved"
+    CASE_PRIORITY_SET: str = "case_priority_set"
+    CASE_NOTE_SET: str = "case_note_set"
+
     # --- reserviert für spätere Builds (hier dokumentiert, noch nicht aktiv) ---
-    # CASE_CREATED, CASE_ASSIGNED, CASE_STATUS_CHANGED, CASE_APPROVED,
     # CASE_EVENT_ADDED, NOTIFICATION_SENT, BACKUP_CREATED, RESTORE_PERFORMED
 
     #: Alle aktuell gültigen Werte. Erweitern, nie entfernen/umbenennen.
@@ -36,6 +43,12 @@ class EventType:
             GENESIS,
             MIGRATION_APPLIED,
             CHAIN_VERIFIED,
+            CASE_CREATED,
+            CASE_ASSIGNED,
+            CASE_STATUS_CHANGED,
+            CASE_APPROVED,
+            CASE_PRIORITY_SET,
+            CASE_NOTE_SET,
         }
     )
 

@@ -16,7 +16,7 @@
 #   T02 — Modus 'job': Kein Job vorhanden → ModeResolverError
 #   T03 — Modus 'job': Systembenutzer nicht in investigators → ModeResolverError
 #   T04 — Modus 'job': investigators-Tabelle fehlt → ModeResolverError
-#   T05 — Modus 'job': output_path aus Job-Eintrag wird verwendet
+#   T05 — Modus 'job': forensic_db wird aus user_id abgeleitet (Build 308)
 #   T06 — Modus 'cli': user_id per CLI → ResolvedContext korrekt
 #   T07 — Modus 'cli': username per CLI → user_id aus coordinator.db aufgelöst
 #   T08 — Modus 'cli': Weder user_id noch username → ModeResolverError
@@ -152,6 +152,19 @@ def _setup_coordinator_db(db_path: str) -> sqlite3.Connection:
             worker_id    TEXT,
             manifest_path TEXT
         );
+        CREATE TABLE IF NOT EXISTS cases (
+            user_id             INTEGER PRIMARY KEY,
+            username            TEXT NOT NULL,
+            assigned_to         INTEGER,
+            priority            INTEGER NOT NULL DEFAULT 3 CHECK(priority BETWEEN 1 AND 5),
+            status              TEXT NOT NULL DEFAULT 'open'
+                                CHECK(status IN ('open','in_progress','approved','closed')),
+            approved_at         INTEGER,
+            total_pages_scraped INTEGER,
+            note                TEXT,
+            created_at          INTEGER NOT NULL,
+            updated_at          INTEGER NOT NULL
+        );
     """)
     con.commit()
     return con
@@ -185,11 +198,14 @@ class TestModeResolverJob(unittest.TestCase):
         system_username: str = "h012345",
         user_id: int = 42,
         username: str = "verdaechtiger42",
-        status: str = "pending",
+        status: str = "open",
         priority: int = 3,
-        output_path: str = None,
+        output_path: str = None,  # Build 308: ungenutzt (Signatur beibehalten)
     ) -> str:
-        """Legt coordinator.db mit einem Investigator und einem Job an."""
+        """
+        Legt coordinator.db mit einem Investigator und einer zugewiesenen Fallakte
+        (cases) an. Build 308: Job-Modus löst über cdb.cases auf, nicht scrape_jobs.
+        """
         db_path = self.cfg.get("paths.coordinator_db")
         con = _setup_coordinator_db(db_path)
         con.execute(
@@ -202,10 +218,10 @@ class TestModeResolverJob(unittest.TestCase):
             (system_username,),
         ).fetchone()[0]
         con.execute(
-            "INSERT INTO scrape_jobs "
-            "(user_id, username, priority, status, output_path, assigned_to, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, 100)",
-            (user_id, username, priority, status, output_path, investigator_id),
+            "INSERT INTO cases "
+            "(user_id, username, assigned_to, priority, status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, 100, 100)",
+            (user_id, username, investigator_id, priority, status),
         )
         con.commit()
         con.close()
@@ -225,8 +241,8 @@ class TestModeResolverJob(unittest.TestCase):
         self.assertIsNotNone(ctx.investigator_id)
 
     def test_T02_kein_job(self):
-        """T02: Kein offener Job → ModeResolverError."""
-        self._make_db_with_job(status="done")  # abgeschlossener Job
+        """T02: Kein offener Fall → ModeResolverError."""
+        self._make_db_with_job(status="closed")  # abgeschlossener Fall
         resolver = ModeResolver(self.cfg, self.usr, {"mode": "job"})
         with self.assertRaises(ModeResolverError):
             resolver.resolve()
@@ -258,16 +274,17 @@ class TestModeResolverJob(unittest.TestCase):
         with self.assertRaises(ModeResolverError):
             resolver.resolve()
 
-    def test_T05_output_path_aus_job(self):
-        """T05: output_path aus Job-Eintrag wird als forensic_db-Pfad verwendet."""
-        custom_path = os.path.join(self.tmp, "custom_forensic_42.db")
-        self._make_db_with_job(user_id=42, output_path=custom_path)
+    def test_T05_forensic_db_aus_user_id(self):
+        """T05 (Build 308): forensic_db wird deterministisch aus user_id abgeleitet;
+        der frühere output_path-Override entfällt (cases führt kein output_path)."""
+        self._make_db_with_job(user_id=42)
         resolver = ModeResolver(self.cfg, self.usr, {"mode": "job"})
         ctx = resolver.resolve()
-        self.assertEqual(str(ctx.forensic_db), str(Path(custom_path).resolve()))
+        self.assertTrue(str(ctx.forensic_db).endswith("forensic_42.db"))
 
-    def test_T16_mehrere_jobs_prioritaet(self):
-        """T16: Bei mehreren Jobs wird der mit höchster Priorität (kleinster Zahl) gewählt."""
+    def test_T16_mehrere_faelle_prioritaet(self):
+        """T16: Bei mehreren zugewiesenen Fällen wird der mit höchster Priorität
+        (kleinste Zahl) gewählt."""
         db_path = self.cfg.get("paths.coordinator_db")
         con = _setup_coordinator_db(db_path)
         con.execute(
@@ -277,18 +294,18 @@ class TestModeResolverJob(unittest.TestCase):
         inv_id = con.execute(
             "SELECT id FROM investigators WHERE system_username='h012345'"
         ).fetchone()[0]
-        # Job mit niedrigerer Priorität (höhere Zahl) → soll nicht gewählt werden
+        # Fall mit niedrigerer Priorität (höhere Zahl) → soll nicht gewählt werden
         con.execute(
-            "INSERT INTO scrape_jobs "
-            "(user_id, username, priority, status, assigned_to, created_at) "
-            "VALUES (99, 'nutzer99', 5, 'pending', ?, 200)",
+            "INSERT INTO cases "
+            "(user_id, username, assigned_to, priority, status, created_at, updated_at) "
+            "VALUES (99, 'nutzer99', ?, 5, 'open', 200, 200)",
             (inv_id,),
         )
-        # Job mit höherer Priorität (kleinere Zahl) → soll gewählt werden
+        # Fall mit höherer Priorität (kleinere Zahl) → soll gewählt werden
         con.execute(
-            "INSERT INTO scrape_jobs "
-            "(user_id, username, priority, status, assigned_to, created_at) "
-            "VALUES (77, 'nutzer77', 1, 'pending', ?, 300)",
+            "INSERT INTO cases "
+            "(user_id, username, assigned_to, priority, status, created_at, updated_at) "
+            "VALUES (77, 'nutzer77', ?, 1, 'open', 300, 300)",
             (inv_id,),
         )
         con.commit()

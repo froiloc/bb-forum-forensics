@@ -104,10 +104,10 @@ class UserinfoDataEndpoint:
         Liest den Ermittlungsstatus für den aktuellen Nutzer aus coordinator.db.
         Gibt None zurück wenn coordinator.db nicht verfügbar.
 
-        Die Spalte 'note' in scrape_jobs ist optional (ALTER TABLE nachgerüstet).
-        Die Query wird defensiv aufgebaut: note wird nur selektiert wenn die
-        Spalte existiert.
-        Beleg: Projektgespräch 2026-04-18 — Bugfix 'no such column: j.note'.
+        Baustelle 7 (Build 307): Quelle ist die autoritative Fallakte cdb.cases
+        (1:1 zur user_id) statt der 'neuesten' scrape_jobs-Zeile. Kein cases-
+        Eintrag -> None -> UI zeigt 'nicht zugewiesen'. Ergebnisform unveraendert.
+        Beleg: Bauplan B7 v0.3 §3.6, Repointing scrape_jobs -> cases.
         """
         if self._bundle.coordinator is None:
             return None
@@ -115,21 +115,16 @@ class UserinfoDataEndpoint:
         try:
             con = self._bundle.forensic._con  # Verbindung mit cdb-ATTACH
 
-            # Prüfen ob 'note'-Spalte in scrape_jobs existiert
-            cols = {
-                row[1]
-                for row in con.execute("PRAGMA cdb.table_info(scrape_jobs)")
-            }
-            note_select = ", j.note" if "note" in cols else ", NULL AS note"
-
+            # Baustelle 7 (Build 307): Fallstatus aus der autoritativen Fallakte
+            # cdb.cases (1:1 zur user_id). Kein ORDER BY/LIMIT noetig; die
+            # lautlose Auslassung bei Re-Scrape (alte 'neueste Zeile'-Logik)
+            # entfaellt. Beleg: Bauplan B7 v0.3 §3.6.
             row = con.execute(
-                "SELECT j.status, j.priority, "
-                "       i.system_username AS assigned_to"
-                + note_select +
-                " FROM cdb.scrape_jobs j "
-                "LEFT JOIN cdb.investigators i ON i.id = j.assigned_to "
-                "WHERE j.user_id = ? "
-                "ORDER BY j.created_at DESC LIMIT 1",
+                "SELECT c.status, c.priority, "
+                "       i.system_username AS assigned_to, c.note "
+                "FROM cdb.cases c "
+                "LEFT JOIN cdb.investigators i ON i.id = c.assigned_to "
+                "WHERE c.user_id = ?",
                 (self._context.user_id,),
             ).fetchone()
 
