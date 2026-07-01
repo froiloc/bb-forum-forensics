@@ -592,13 +592,26 @@ Build 312 ist geliefert und grün in der Regression, aber **noch nicht im Browse
 **Danach — Roadmap-Fortsetzung B7:** Tag 3 **Ampel-Dashboard** (Fall-/Support-Übersicht für die
 Chef-Ermittlerin), dann Tag 4 Backup/PITR (§7.5).
 
-### 7.3 Relevante Code-Stellen (Anker)
-- `forensic_api/events.py`: `_get_support_status(bundle)` Z.137; `_GRACE_PERIOD_SEC=5` Z.134; `_handle_stream` Z.328; SSE-Client-Set Z.345/399/423; `support_status`-Emit Z.427 (initial) / Z.472 (Loop).
-- `db/coordinator_db.py`: `SupportStatusRecord` (mit `count`) Z.51; `DEFAULT_SUPPORT_STALE_SEC=30`; `get_support_status(user_id, stale_sec)` (liest `cdb.support_sessions` ⋈ `cdb.investigators`).
-- `db/connection_manager.py`: `_open_support` Z.300; `coordinator_path = ctx.coordinator_db` Z.312; Support-`cdb` READ-WRITE Z.360; `DatabaseBundle` (Feld `coordinator`, `get_active_sse_clients()`); `ctx.mode`/`ctx.user_id`/`ctx.investigator_id`.
-- `core/mode_resolver.py`: `ConnectionContext.investigator_id` Z.110 (= Supporter-Quelle im Support-Modus).
-- `management/support_sessions/support_sessions_repo.py`: `SupportSessionsRepo`.
-- Frontend: `toolbar/toolbar.js` `SupportIndicatorModule` Z.6314 / DOM Z.1510; `userinfo/sse_layer.js` `support_status` Z.412/447.
+### 7.3 Relevante Code-Stellen (Anker, Stand nach Build 312)
+- `forensic_api/support_presence.py` *(neu, 312)*: Klasse `SupportPresenceBinder` — dedizierte
+  coordinator.db-Direktverbindung + `begin/heartbeat/resume/end/close`. Erste Anlaufstelle für die
+  Live-Verifikation und spätere Feinjustierung (z. B. „ein Fenster = eine Sitzung"-Semantik).
+- `forensic_api/events.py`: `_get_support_status(bundle, context, stale_sec=_SUPPORT_STALE_SEC)`
+  (mode-aware, `support_count`); Konstanten `_SUPPORT_STALE_SEC=30`, `_SUPPORT_PRUNE_OLDER_THAN_SEC=3600`,
+  `_GRACE_PERIOD_SEC=5`; `EventsEndpoint._get_support_binder()` (lazy) + `close()`; Verdrahtung in
+  `_handle_stream` (begin/resume nach erstem `support_status`-Emit, `heartbeat` je Loop-Tick);
+  grace-gekoppeltes `end()` in `_grace_expired`.
+- `db/coordinator_db.py`: `SupportStatusRecord(active, username, since_ms, count=0)`;
+  `DEFAULT_SUPPORT_STALE_SEC=30`; `get_support_status(user_id, stale_sec)` (liest
+  `cdb.support_sessions` ⋈ `cdb.investigators`).
+- `db/connection_manager.py`: `DatabaseBundle` (Feld `coordinator`, `get_active_sse_clients()`);
+  `ctx.mode`/`ctx.user_id`/`ctx.investigator_id`/`ctx.coordinator_db`.
+- `management/support_sessions/support_sessions_repo.py`: `SupportSessionsRepo` (siehe §7.4).
+- Frontend: `toolbar/toolbar.js` `SupportIndicatorModule` — reine `_formatSupportLabel(count, safeUsername)`
+  / `_formatSupportAnnounce(count, rawUsername)`, Handler `support:status_changed` (liest `support_count`);
+  DOM `#forensic-support-indicator`; `userinfo/sse_layer.js` registriert `support_status`.
+- Tests: `tests/test_events_support_wiring.py` (W01–W10, P01–P05),
+  `tests/unit/test_support_indicator.test.js` (L01–L08).
 
 ### 7.4 `SupportSessionsRepo` — API-Kurzreferenz
 - `start(user_id, supporter_id, *, actor_id=None, meta=None) -> session_id` — AUDIT `SUPPORT_SESSION_STARTED`.
