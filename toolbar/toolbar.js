@@ -6367,25 +6367,57 @@
       });
     }
 
+    // -------------------------------------------------------------------
+    // Build 312: Reine (seiteneffektfreie) Label-Erzeugung fuer den Support-
+    // Indikator. Bewusst OHNE DOM-/Escaping-Zugriff, damit die Zaehler-Logik
+    // isoliert per vitest testbar ist (siehe tests/unit/test_support_indicator).
+    // Der Aufrufer escapet den Benutzernamen VOR dem Aufruf (safeUsername).
+    //   count <= 1 : "⚠️ Support aktiv · <name>"
+    //   count  > 1 : "⚠️ Support aktiv (N) · <name>"
+    // Beleg: Bauplan B7 v0.6 §7.2, mc 2026-07-01.
+    // -------------------------------------------------------------------
+    function _formatSupportLabel(count, safeUsername) {
+      var name = safeUsername || "?";
+      var n = (typeof count === "number" && count > 1) ? count : 0;
+      if (n > 1) {
+        return "⚠️ Support aktiv (" + n + ") · " + name;
+      }
+      return "⚠️ Support aktiv · " + name;
+    }
+
+    // ARIA-Ansage passend zur Anzahl (rohe, unescapte Strings — Screenreader).
+    function _formatSupportAnnounce(count, rawUsername) {
+      var who = rawUsername || "unbekannt";
+      var n = (typeof count === "number" && count > 1) ? count : 0;
+      if (n > 1) {
+        return n + " Support-Zugriffe aktiv (u. a. " + who + ").";
+      }
+      return "Support-Zugriff durch " + who + " aktiv.";
+    }
+
     ForensicToolbar.events.on("support:status_changed", function (data) {
       var el = document.getElementById("forensic-support-indicator");
       if (!el) return;
 
       if (data.support_active) {
+        // support_count ist ab Build 312 in der Payload; Fallback 1 fuer
+        // aeltere Server (rueckwaertskompatibel).
+        var count = (typeof data.support_count === "number") ? data.support_count : 1;
         ForensicToolbar._setState({
           supportStatus: {
             active:   true,
             username: data.support_user,
             since:    data.since,
+            count:    count,
           },
         });
         el.className   = "forensic-support-active";
-        el.textContent = "⚠️ Support aktiv · " + _esc(data.support_user || "?");
+        el.textContent = _formatSupportLabel(count, _esc(data.support_user || "?"));
         // ARIA-Ankündigung (§6 Bauplan)
-        AccessibilityModule.announce("Support-Zugriff durch " + (data.support_user || "unbekannt") + " aktiv.");
+        AccessibilityModule.announce(_formatSupportAnnounce(count, data.support_user));
       } else {
         ForensicToolbar._setState({
-          supportStatus: { active: false, username: null, since: null },
+          supportStatus: { active: false, username: null, since: null, count: 0 },
         });
         el.className   = "forensic-support-hidden";
         el.textContent = "";

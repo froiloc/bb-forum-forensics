@@ -1,6 +1,6 @@
 # Bauplan Baustelle 7 — Management-Interface
 
-**Version:** 0.5 · **Datum:** 2026-07-01
+**Version:** 0.7 · **Datum:** 2026-07-02
 **Klassifikation:** VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
 **Auslieferung:** innerhalb `aiw_webserver`, im geschützten Unterordner `management/`
 **Grundlage:** `Ideen_zum_Verwaltungswerkzeug.md`, bewertete Fassung v1.0 (2026-04-14),
@@ -487,18 +487,20 @@ Flag-Update, No-Op ohne Audit, unbekannt→Fehler, `list` sortiert, `get` per id
 
 ---
 
-## 6. Echte Support-Sitzungserfassung (Build 311 = Backend, Build 312 = Verdrahtung/Frontend)
+## 6. Echte Support-Sitzungserfassung (Build 311 = Backend, Build 312 = Verdrahtung/Frontend — BEIDE GELIEFERT)
 
 ### 6.0 Ziel und Zweischnitt
 „Support aktiv" ist eine **Live-Sitzung**: solange die Instanz eines Supporters (Modus
 `support`) einen Fall betrachtet, sieht der zugewiesene Ermittler das. Wegen der Delikatesse
 der Live-SSE-Verdrahtung und des JS-Indikators (Browser-Test nötig) in **zwei Builds**:
-- **Build 311 (Backend, hier):** Migration `M003` (`support_sessions`), Event-Typen,
+- **Build 311 (Backend):** Migration `M003` (`support_sessions`), Event-Typen,
   `SupportSessionsRepo`, Read-Repoint `get_support_status(user_id)` inkl. Zähler. Nach außen
   **inert** (leere Tabelle → inactive), voll unit-getestet.
-- **Build 312 (Verdrahtung + Frontend):** Support-Modus-SSE-Lebenszyklus (start/heartbeat/end)
-  in `events.py`, `support_status`-Payload um Zähler, Indikator-Anzeige — nach dem
-  Console-PoC-Protokoll.
+- **Build 312 (Verdrahtung + Frontend) — GELIEFERT 2026-07-02:** Support-Modus-SSE-Lebenszyklus
+  (begin/heartbeat/resume/end) in `events.py` über die gekapselte Klasse `SupportPresenceBinder`
+  (`forensic_api/support_presence.py`), `support_status`-Payload um `support_count`, Indikator
+  zeigt „Support aktiv (N)". **Live-Verifikation im Browser steht noch aus** (dedizierte
+  Test-Session 2026-07-02) — Code + Unit-/Regressionstests sind grün.
 
 ### 6.1 Datenmodell (M003, additiv, coordinator.db)
 `support_sessions(id, user_id [Fall], supporter_id → investigators.id, started_at,
@@ -522,19 +524,119 @@ heartbeat/prune via `writer.transaction()` **ohne** Audit).
 (Join `cdb.investigators`). Ohne `user_id` inaktiv (Alt-Aufrufform bleibt gültig bis 312).
 `SupportStatusRecord` um `count` erweitert (Zähler; mc: Frage 3). Stale-Default **30 s** (mc: Frage 1).
 
-### 6.5 Architektur-Hinweis (für Build 312)
-Der Support-Webserver wird **erstmals Schreiber** von `coordinator.db`. Empfehlung: dedizierte
-Direkt-Verbindung zu `coordinator.db` (`isolation_level=None`) für Session-Writes — getrennt von
-der ATTACHed-`cdb`-Leseverbindung (analog `migrate.py`). Lebenszyklus an
-SSE-Connect/Tick/Disconnect+Grace koppeln (die Mechanik existiert bereits in `events.py`).
+### 6.5 Architektur (umgesetzt in Build 312)
+Der Support-Webserver ist **erstmals Schreiber** von `coordinator.db`. Umgesetzt über eine
+gekapselte Klasse `SupportPresenceBinder` (`forensic_api/support_presence.py`, Grundregel 10)
+mit **dedizierter Direkt-Verbindung** zu `coordinator.db` (`isolation_level=None`, WAL,
+`busy_timeout=10000`, `check_same_thread=False`) — getrennt von der ATTACHed-`cdb`-
+Leseverbindung (analog `migrate.py`). Bindung `client_id → session_id`, thread-serialisiert.
+`events.py` (nur `mode=='support'`, lazy): `begin()` beim SSE-Aufbau (`prune()` einmalig davor),
+`heartbeat()` je Tick, `resume()` bei RESUMING (**bestehende** Sitzung umhängen, kein neuer
+Beleg), `end()` **grace-gekoppelt** im `_grace_expired`-Callback (mc: Entscheidung 1 — ein Blip
+innerhalb der Grace-Period führt die Sitzung fort, statt ein spurioses ENDED/STARTED-Paar in die
+Audit-Kette zu schreiben). Alle DB-Fehler werden geloggt, nie geworfen (Präsenz-Bookkeeping darf
+SSE-/Lock-Pfad nie brechen). Selbstheilung bei hartem Absturz: stale-Schwelle + `prune()`; der
+`STARTED`-Beleg ohne `ENDED` ist forensisch korrekt (Zugriff fand statt).
+Read (`_get_support_status`): **mode-aware** — im Support-Modus keine Selbstbeobachtung; sonst
+Fall-`user_id` an `get_support_status(user_id, stale_sec)`, Payload um `support_count`.
 
 ### 6.6 Tests
-`tests/test_management_support_sessions.py` (S01–S10) + `tests/test_coordinator_db.py`
-(D01–D04). Migrations-Integration M001–M003 via `discover`+Runner verifiziert.
+Backend-Fundament (311): `tests/test_management_support_sessions.py` (S01–S10) +
+`tests/test_coordinator_db.py` (D01–D04). Verdrahtung (312):
+`tests/test_events_support_wiring.py` — W01–W10 (Binder-Lebenszyklus gegen echte
+Temp-`coordinator.db`: begin/heartbeat/resume/end, Zähler, prune, `close()`, Audit-Kette gültig)
++ P01–P05 (`_get_support_status`-Payload: mode-aware, `support_count`, Fehlertoleranz).
+Frontend: `tests/unit/test_support_indicator.test.js` (L01–L08, Zähler-/Announce-Logik).
+Migrations-Integration M001–M003 via `discover`+Runner verifiziert.
+
+---
+
+## 7. Übergabe & Nächste Aufgaben (Stand nach Build 312)
+
+> Dieser Abschnitt ist die **Übergabe an den nächsten Chat**. Er fasst den Stand,
+> den konkreten nächsten Build und alle offenen Punkte zusammen, sodass nach einem
+> frischen Klon reibungslos weitergearbeitet werden kann.
+
+### 7.1 Projektstand (Builds 306–312, PROD-Betrieb ab 2026-07-01)
+- **306:** Migrations-Framework + hash-verkettetes `audit_log` + Genesis + Write-Gateway (`CoordinatorWriter`).
+- **307:** `cases`-Tabelle (Fallakte, 1:1 zu `user_id`) + `scrape_jobs`-Rebuild ohne `assigned_to`/`note` (M002, destruktiv) + `cases_admin`-CLI (auditierte Zuweisung) + Read-Repoint `userinfo_data`.
+- **308:** Hotfix — restliche 4 Leser von `scrape_jobs.assigned_to` umgebogen (`mode_resolver._query_job` → `cases`; `forensic_db` immer aus `user_id`; `get_assigned_job` entfernt; `get_support_status` ehrlich inactive).
+- **310:** Ermittler-Verwaltungs-CLI (`investigators_admin`: `create`/`update`/`list`, auditiert; kein Löschen, `system_username` unveränderlich). *(309 übersprungen — mc.)*
+- **311:** Support-Sitzungserfassung **Teil 1/2 (Backend)** — M003 `support_sessions`, `SupportSessionsRepo`, Read-Repoint `get_support_status(user_id)` + Zähler. **Inert**, bis Build 312 verdrahtet.
+- **312:** Support-Sitzungserfassung **Teil 2/2 (Verdrahtung + Frontend)** — `SupportPresenceBinder`
+  (`forensic_api/support_presence.py`) verdrahtet den SSE-Lebenszyklus im Support-Modus
+  (begin/heartbeat/resume/end, **grace-gekoppeltes** Ende), `_get_support_status` mode-aware +
+  `support_count`, Indikator „Support aktiv (N)". Reine Code-Verdrahtung — **kein neuer `migrate.py`-Lauf**
+  (M003 kam mit 311). **Live-Browser-Verifikation offen** (Test-Session 2026-07-02).
+
+**Deploy-Hinweis 312:** Nur Code (support_presence.py [neu], events.py, toolbar.js). Keine
+Migration, keine Schema-Änderung — M003/`support_sessions` sind bereits mit 311 deployt.
+
+### 7.2 NÄCHSTE AUFGABE — Live-Verifikation Build 312 (Test-Session 2026-07-02)
+Build 312 ist geliefert und grün in der Regression, aber **noch nicht im Browser live verifiziert**
+(Alex konnte am 2026-07-01 nicht browserbasiert testen). Dedizierte Test-Session am **2026-07-02**:
+
+**Verifikations-Szenario (Ist-Verhalten vor Bewertung per DevTools-Console prüfen):**
+1. Supporter-Instanz (Modus `support`) öffnet einen zugewiesenen Fall → SSE-Stream baut auf.
+   Erwartung: Zeile in `support_sessions` (`ended_at IS NULL`), Audit `SUPPORT_SESSION_STARTED`.
+2. Ermittler-Fenster (Modus `job`/`cli`) desselben Falls: Indikator zeigt **„⚠️ Support aktiv · <Supporter>"**
+   (bei mehreren Supportern „(N)"). Payload `support_status` enthält `support_count`.
+3. Supporter schließt Fenster/verliert Verbindung → nach Grace-Period (5 s): Audit
+   `SUPPORT_SESSION_ENDED`, Indikator verschwindet. Ein Reconnect **innerhalb** der Grace-Period
+   (RESUMING) darf **kein** neues STARTED/ENDED-Paar erzeugen (Sitzung läuft weiter).
+4. Heartbeat hält die Präsenz frisch (kein Verschwinden während aktiver Betrachtung trotz
+   30-s-Stale-Schwelle).
+
+**Falls Anpassungsbedarf:** Console-PoC → Fix → Regression → Folge-Build.
+
+**Danach — Roadmap-Fortsetzung B7:** Tag 3 **Ampel-Dashboard** (Fall-/Support-Übersicht für die
+Chef-Ermittlerin), dann Tag 4 Backup/PITR (§7.5).
+
+### 7.3 Relevante Code-Stellen (Anker)
+- `forensic_api/events.py`: `_get_support_status(bundle)` Z.137; `_GRACE_PERIOD_SEC=5` Z.134; `_handle_stream` Z.328; SSE-Client-Set Z.345/399/423; `support_status`-Emit Z.427 (initial) / Z.472 (Loop).
+- `db/coordinator_db.py`: `SupportStatusRecord` (mit `count`) Z.51; `DEFAULT_SUPPORT_STALE_SEC=30`; `get_support_status(user_id, stale_sec)` (liest `cdb.support_sessions` ⋈ `cdb.investigators`).
+- `db/connection_manager.py`: `_open_support` Z.300; `coordinator_path = ctx.coordinator_db` Z.312; Support-`cdb` READ-WRITE Z.360; `DatabaseBundle` (Feld `coordinator`, `get_active_sse_clients()`); `ctx.mode`/`ctx.user_id`/`ctx.investigator_id`.
+- `core/mode_resolver.py`: `ConnectionContext.investigator_id` Z.110 (= Supporter-Quelle im Support-Modus).
+- `management/support_sessions/support_sessions_repo.py`: `SupportSessionsRepo`.
+- Frontend: `toolbar/toolbar.js` `SupportIndicatorModule` Z.6314 / DOM Z.1510; `userinfo/sse_layer.js` `support_status` Z.412/447.
+
+### 7.4 `SupportSessionsRepo` — API-Kurzreferenz
+- `start(user_id, supporter_id, *, actor_id=None, meta=None) -> session_id` — AUDIT `SUPPORT_SESSION_STARTED`.
+- `heartbeat(session_id) -> bool` — plain UPDATE, **kein** Audit; False wenn Sitzung beendet/unbekannt.
+- `end(session_id, *, actor_id=None, meta=None) -> Optional[int]` — AUDIT `SUPPORT_SESSION_ENDED`; idempotent (bereits beendet → None); unbekannt → `SupportSessionsError`.
+- `get_active(user_id, stale_sec) -> list[dict]` — aktive Sitzungen (nicht beendet, Heartbeat frisch), sortiert `started_at ASC`.
+- `prune(older_than_sec) -> int` — entfernt beendete/veraltete Zeilen, **kein** Audit.
+- Verbindung muss `isolation_level=None` (Autocommit) sein (Gateway-Annahme).
+
+### 7.5 Offene Nachläufe / To-Dos
+1. **`setup_coordinator_dev.py`-Analyse (vor Abschluss B7):** Das DEV-Skript rüstet u. a. das mit M002 entfernte `scrape_jobs.assigned_to` per `ALTER` wieder nach. Prüfen, welche Funktionalität überhaupt noch gebraucht wird, dann bereinigen. *(mc 2026-07-01)*
+2. **Live-Stammdaten anlegen:** Neue Mitarbeiter über `investigators_admin create` eintragen; Fälle über `cases_admin` zuweisen (die 10 Live-User waren mangels bekannter IDs zurückgestellt).
+3. **Backup-Modul (P1, Tag 4):** Speicherplatz-Vorabprüfung einbauen — Auslöser war das `default.db`-Malformed durch Voll-Laufen der Platte beim Fallanlegen (2026-07-01).
+4. **GitHub-PAT widerrufen:** am Session-Ende unter `github.com/settings/personal-access-tokens` löschen.
+5. **Roadmap-Rest B7:** Tag 3 Ampel-Dashboard, Tag 4 Backup/PITR; P2-Welle (Vorlageneditor, Nachrichten, Metriken/Lastverteilung, Rollen-Layouts). `case_events` (Idee 11) als eigener additiver Build — nimmt die **nächste freie Migrations-VERSION (M004+)**, da M003 nun `support_sessions` ist.
+
+### 7.6 Build-Nummerierung & Workflow
+- Nächster Code-Build: **313**. Buildnummern iterieren je Lieferung; ZIP `aiw_webserver_<build>.zip` (repo-relative Pfade), nur geänderte Dateien + `build.json`, MD5 je Datei.
+- Workflow: Bauplan → **mc** → Syntaxcheck aller geänderten Dateien → volle Regression `run_tests.py` (pytest + vitest, 0 Fehler) → `build.json`-Bump → ZIP → MD5 → `present_files`.
+- Umgebung hier: Python 3.12.3 / SQLite 3.45.1 (PROD: Python 3.14, SQLite 3.14, Windows-11-Offline-Cloud, UNC-Pfade). `mc` = Freigabe-Token.
 
 ---
 
 ## Änderungshistorie
+
+- **v0.7 (2026-07-02):** §6/§7 auf **Build 312** (Verdrahtung + Frontend, geliefert) fortgeschrieben:
+  `SupportPresenceBinder` (`forensic_api/support_presence.py`, gekapselte dedizierte
+  coordinator.db-Direktverbindung), SSE-Lebenszyklus begin/heartbeat/resume/end mit
+  **grace-gekoppeltem** Ende (mc: Entscheidung 1 — RESUMING führt bestehende Sitzung fort, kein
+  spurioses ENDED/STARTED-Paar), `_get_support_status` mode-aware + `support_count`, Indikator
+  „Support aktiv (N)". Neue Tests `tests/test_events_support_wiring.py` (W01–W10, P01–P05) und
+  `tests/unit/test_support_indicator.test.js` (L01–L08). §7.2 neu = **Live-Verifikation
+  (Test-Session 2026-07-02)**; nächster Build 313. Regression grün (Python 628/59 skip,
+  JS 408/1 skip/1 todo).
+
+- **v0.6 (2026-07-01):** §7 „Übergabe & Nächste Aufgaben" ergänzt (vollständiger Handover für
+  Kontextwechsel: Projektstand 306–311, detaillierter Build-312-Plan mit Code-Ankern und
+  JS-Console-PoC-Protokoll, `SupportSessionsRepo`-API-Referenz, offene Nachläufe, Workflow).
 
 - **v0.5 (2026-07-01):** §6 „Echte Support-Sitzungserfassung" ergänzt; Backend-Fundament als
   **Build 311** (M003 `support_sessions`, `SupportSessionsRepo`, Read-Repoint `get_support_status`
@@ -559,4 +661,4 @@ SSE-Connect/Tick/Disconnect+Grace koppeln (die Mechanik existiert bereits in `ev
 
 ---
 
-*Dokument-Ende · Bauplan Baustelle 7 · Version 0.5 · 2026-07-01*
+*Dokument-Ende · Bauplan Baustelle 7 · Version 0.7 · 2026-07-02*

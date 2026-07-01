@@ -112,10 +112,12 @@ import json
 import threading
 import time
 import uuid
+from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
 from core.logger import get_logger
 from forensic_api.windows import get_registry as _get_window_registry
+from forensic_api.support_presence import SupportPresenceBinder  # NEU Build 312
 
 if TYPE_CHECKING:
     from server.http_server import ForensicRequestHandler
@@ -133,25 +135,64 @@ _DEFAULT_INTERVAL_SEC = 15
 # Beleg: SLA Punkt 2, Paket-4-Review 2026-05-24
 _GRACE_PERIOD_SEC = 5
 
+# Stale-Schwelle fuer Support-Sitzungen (Sekunden). Eine Sitzung gilt als
+# aktiv, solange ihr letzter Heartbeat juenger als dieser Wert ist. 30 s ~=
+# 2x SSE-Tick (Default 15 s) + Puffer.
+# Beleg: Bauplan B7 v0.6 §6.4 (mc: Frage 1), db.coordinator_db.DEFAULT_SUPPORT_STALE_SEC.
+_SUPPORT_STALE_SEC = 30
 
-def _get_support_status(bundle: "DatabaseBundle") -> dict:
+# Einmal-Bereinigung verwaister Support-Sitzungen beim Support-Start (Sekunden).
+# Beleg: Bauplan B7 v0.6 §7.2 (prune(older_than_sec=3600)).
+_SUPPORT_PRUNE_OLDER_THAN_SEC = 3600
+
+
+def _get_support_status(
+    bundle: "DatabaseBundle",
+    context: "ResolvedContext",
+    stale_sec: int = _SUPPORT_STALE_SEC,
+) -> dict:
     """
-    Liest den aktuellen Support-Status aus coordinator.db.
-    Gibt inaktiven Status zurueck wenn coordinator_db nicht verfuegbar.
+    Liest den Live-Support-Status des Falls (context.user_id) aus
+    coordinator.db (ATTACHed 'cdb', Leseverbindung). Gibt inaktiven Status
+    zurueck wenn coordinator_db nicht verfuegbar oder keine aktive Sitzung.
+
+    Build 312:
+    - Reicht die Fall-user_id an get_support_status(user_id, stale_sec) —
+      erst dadurch wird der in Build 311 angelegte Read scharf geschaltet
+      (ohne user_id war er bewusst inaktiv).
+    - Nimmt support_count (Anzahl gleichzeitig aktiver Support-Sitzungen)
+      in die Nutzlast auf.
+    - Im Support-Modus wird KEIN Status gelesen: der Supporter ist der
+      Zugreifende, nicht der Beobachtete — er soll sich nicht selbst als
+      "Support aktiv" angezeigt bekommen. Der Read ist Sache des
+      Ermittler-Fensters (Modus 'job'/'cli').
+    Beleg: Bauplan B7 v0.6 §6.4/§7.2, mc 2026-07-01 (Entscheidung 3).
     """
-    empty = {"support_active": False, "support_user": None, "since": None}
+    empty = {
+        "support_active": False,
+        "support_user": None,
+        "since": None,
+        "support_count": 0,
+    }
+
+    # Support-Modus: keine Selbstbeobachtung.
+    if getattr(context, "mode", None) == "support":
+        return empty
 
     if bundle.coordinator is None:
         return empty
 
     try:
         if hasattr(bundle.coordinator, "get_support_status"):
-            status = bundle.coordinator.get_support_status()
+            status = bundle.coordinator.get_support_status(
+                context.user_id, stale_sec
+            )
             if status.active:
                 return {
                     "support_active": True,
                     "support_user":   status.username,
                     "since":          status.since_ms,
+                    "support_count":  status.count,
                 }
     except Exception as exc:
         logger.warning("Support-Status konnte nicht gelesen werden: %s", exc)
@@ -195,6 +236,61 @@ class EventsEndpoint:
         self._interval = int(
             getattr(config, "get", lambda k, d: d)("sse_interval_sec", _DEFAULT_INTERVAL_SEC)
         )
+        # Support-Praesenz-Verdrahtung (Build 312). Nur im Support-Modus aktiv;
+        # lazy aufgebaut beim ersten Support-Stream (siehe _get_support_binder).
+        # Klassen-Attribut, damit der Grace-Timer-Thread (end()) denselben
+        # Binder erreicht wie der Stream-Thread (begin()/heartbeat()).
+        self._support_binder: Optional[SupportPresenceBinder] = None
+        self._support_binder_lock = threading.Lock()
+
+    def _get_support_binder(self) -> Optional[SupportPresenceBinder]:
+        """
+        Liefert den SupportPresenceBinder — nur im Support-Modus und nur wenn
+        coordinator.db existiert. Baut ihn beim ersten Aufruf auf (lazy, damit
+        job-/cli-Modus keine zusaetzliche coordinator.db-Schreibverbindung
+        oeffnet). Gibt None zurueck, wenn keine Praesenz-Erfassung moeglich ist
+        (dann laeuft der Stream ganz normal, nur ohne Support-Sitzung).
+        Beleg: Bauplan B7 v0.6 §6.5/§7.2.
+        """
+        ctx = self._context
+        if getattr(ctx, "mode", None) != "support":
+            return None
+
+        with self._support_binder_lock:
+            if self._support_binder is not None:
+                return self._support_binder
+
+            coordinator_path = getattr(ctx, "coordinator_db", None)
+            if coordinator_path is None or not Path(coordinator_path).exists():
+                logger.warning(
+                    "Support-Modus, aber coordinator.db nicht verfuegbar "
+                    "('%s') — keine Support-Sitzungserfassung.", coordinator_path,
+                )
+                return None
+            try:
+                self._support_binder = SupportPresenceBinder(
+                    coordinator_path,
+                    user_id=ctx.user_id,
+                    supporter_id=getattr(ctx, "investigator_id", None),
+                    stale_sec=_SUPPORT_STALE_SEC,
+                    prune_older_than_sec=_SUPPORT_PRUNE_OLDER_THAN_SEC,
+                )
+            except Exception as exc:
+                logger.error(
+                    "Support-Binder konnte nicht aufgebaut werden: %s", exc
+                )
+                self._support_binder = None
+            return self._support_binder
+
+    def close(self) -> None:
+        """
+        Gibt Endpunkt-Ressourcen frei (Support-Binder-Verbindung). Wird beim
+        Serverende aufgerufen; idempotent.
+        """
+        with self._support_binder_lock:
+            if self._support_binder is not None:
+                self._support_binder.close()
+                self._support_binder = None
 
     def handle(
         self,
@@ -424,11 +520,30 @@ class EventsEndpoint:
             return
 
         # Sofort: ersten Support-Status senden
-        status = _get_support_status(self._bundle)
+        status = _get_support_status(self._bundle, self._context)
         if not _send_event("support_status", status):
             self._bundle._active_sse_clients.discard(client_id)
             self._start_grace_timer(client_id)
             return
+
+        # ------------------------------------------------------------------
+        # Build 312: Support-Praesenz-Sitzung etablieren (NUR im Support-Modus).
+        # Bei RESUMING wird die bestehende Sitzung der alten client_id auf die
+        # neue umgehaengt (kein neuer Audit-Beleg). Ist die Sitzung inzwischen
+        # (Grace abgelaufen) beendet, wird eine neue gestartet. In job/cli-Modus
+        # ist _support_binder None -> kein Effekt.
+        # Der Grace-Timer beendet die Sitzung spaeter (mc: Entscheidung 1).
+        # Beleg: Bauplan B7 v0.6 §6/§7.2, mc 2026-07-01.
+        # ------------------------------------------------------------------
+        _support_binder = self._get_support_binder()
+        if _support_binder is not None:
+            _resumed_session = False
+            if resume_client_id:
+                _resumed_session = _support_binder.resume(resume_client_id, client_id)
+            if not _resumed_session:
+                _support_binder.begin(client_id)
+            # Erster Heartbeat direkt nach dem Etablieren.
+            _support_binder.heartbeat(client_id)
 
         # Sofort: aktuellen Lock-Status senden (Fenster 3 informieren)
         self._send_lock_status(_send_event)
@@ -468,8 +583,15 @@ class EventsEndpoint:
                 )
                 lock_event.clear()
 
+                # Build 312: Heartbeat der Support-Sitzung (nur Support-Modus).
+                # Haelt die Praesenz frisch (last_heartbeat), damit sie beim
+                # Ermittler nicht als stale (>_SUPPORT_STALE_SEC) verschwindet.
+                # KEIN Audit (nur Praesenz). In job/cli-Modus No-op.
+                if _support_binder is not None:
+                    _support_binder.heartbeat(client_id)
+
                 # Support-Status senden
-                status = _get_support_status(self._bundle)
+                status = _get_support_status(self._bundle, self._context)
                 if not _send_event("support_status", status):
                     break
 
@@ -611,6 +733,16 @@ class EventsEndpoint:
                 "SSE-Rolle '%s' freigegeben nach Grace-Period: client_id=%s",
                 role, client_id,
             )
+
+        # Build 312: Support-Praesenz-Sitzung beenden — grace-gekoppelt
+        # (mc: Entscheidung 1). Ein RESUMING innerhalb der Grace-Period haette
+        # den Timer geloescht (kein _grace_expired) und die Sitzung per resume()
+        # weitergefuehrt; kommt der Callback dagegen zum Zug, ist die Verbindung
+        # endgueltig weg -> Sitzung schliessen + SUPPORT_SESSION_ENDED auditieren.
+        # end() ist idempotent und fehlertolerant (bricht den Lock-Pfad nie ab).
+        if self._support_binder is not None:
+            self._support_binder.end(client_id)
+
         try:
             edb = self._bundle.evidence
             freed_report_ids = edb.release_lock_by_sse_client(client_id)
