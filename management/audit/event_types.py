@@ -13,7 +13,7 @@
 #   case_events, notifications, backups) ergänzt — niemals umbenannt, niemals
 #   wiederverwendet.
 #
-# Version: v0.7.310 · Build: 310 · 2026-07-01
+# Version: v0.7.311 · Build: 311 · 2026-07-01
 # =============================================================================
 
 from typing import FrozenSet
@@ -39,9 +39,13 @@ class EventType:
     INVESTIGATOR_CREATED: str = "investigator_created"
     INVESTIGATOR_UPDATED: str = "investigator_updated"
 
+    # --- Build 311: Live-Support-Sitzung (support_sessions) ---
+    #   Nur Start/Ende als Zugriffsbeleg; Heartbeats werden NICHT auditiert.
+    SUPPORT_SESSION_STARTED: str = "support_session_started"
+    SUPPORT_SESSION_ENDED: str = "support_session_ended"
+
     # --- reserviert für spätere Builds (hier dokumentiert, noch nicht aktiv) ---
     # CASE_EVENT_ADDED, NOTIFICATION_SENT, BACKUP_CREATED, RESTORE_PERFORMED
-    # SUPPORT_SESSION_STARTED, SUPPORT_SESSION_ENDED (echte Support-Sitzung)
 
     #: Alle aktuell gültigen Werte. Erweitern, nie entfernen/umbenennen.
     ALL: FrozenSet[str] = frozenset(
@@ -57,6 +61,8 @@ class EventType:
             CASE_NOTE_SET,
             INVESTIGATOR_CREATED,
             INVESTIGATOR_UPDATED,
+            SUPPORT_SESSION_STARTED,
+            SUPPORT_SESSION_ENDED,
         }
     )
 

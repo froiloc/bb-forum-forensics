@@ -1,6 +1,6 @@
 # Bauplan Baustelle 7 — Management-Interface
 
-**Version:** 0.4 · **Datum:** 2026-07-01
+**Version:** 0.5 · **Datum:** 2026-07-01
 **Klassifikation:** VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
 **Auslieferung:** innerhalb `aiw_webserver`, im geschützten Unterordner `management/`
 **Grundlage:** `Ideen_zum_Verwaltungswerkzeug.md`, bewertete Fassung v1.0 (2026-04-14),
@@ -487,7 +487,59 @@ Flag-Update, No-Op ohne Audit, unbekannt→Fehler, `list` sortiert, `get` per id
 
 ---
 
+## 6. Echte Support-Sitzungserfassung (Build 311 = Backend, Build 312 = Verdrahtung/Frontend)
+
+### 6.0 Ziel und Zweischnitt
+„Support aktiv" ist eine **Live-Sitzung**: solange die Instanz eines Supporters (Modus
+`support`) einen Fall betrachtet, sieht der zugewiesene Ermittler das. Wegen der Delikatesse
+der Live-SSE-Verdrahtung und des JS-Indikators (Browser-Test nötig) in **zwei Builds**:
+- **Build 311 (Backend, hier):** Migration `M003` (`support_sessions`), Event-Typen,
+  `SupportSessionsRepo`, Read-Repoint `get_support_status(user_id)` inkl. Zähler. Nach außen
+  **inert** (leere Tabelle → inactive), voll unit-getestet.
+- **Build 312 (Verdrahtung + Frontend):** Support-Modus-SSE-Lebenszyklus (start/heartbeat/end)
+  in `events.py`, `support_status`-Payload um Zähler, Indikator-Anzeige — nach dem
+  Console-PoC-Protokoll.
+
+### 6.1 Datenmodell (M003, additiv, coordinator.db)
+`support_sessions(id, user_id [Fall], supporter_id → investigators.id, started_at,
+last_heartbeat, ended_at NULL)`, Index `(user_id, ended_at, last_heartbeat)`.
+**Aktiv** = `ended_at IS NULL AND last_heartbeat ≥ now − stale`. coordinator.db ohne
+Migrations-Lock; additiv/datenneutral.
+
+### 6.2 Beleg vs. Präsenz
+`support_sessions` ist **flüchtig** (prunebar). Der **permanente Zugriffsbeleg** lebt im
+`audit_log`: `SUPPORT_SESSION_STARTED` / `_ENDED` (wer sah wann welchen Fall). Heartbeats
+werden **nicht** auditiert (mc: Frage 2).
+
+### 6.3 `SupportSessionsRepo`
+`start()` [audit STARTED, gibt `session_id`], `heartbeat()` [plain, kein Audit], `end()`
+[audit ENDED, idempotent], `get_active(user_id, stale_sec)` [Read], `prune(older_than_sec)`
+[kein Audit]. Schreiben über das `CoordinatorWriter`-Gateway (start/end via `audited_write`;
+heartbeat/prune via `writer.transaction()` **ohne** Audit).
+
+### 6.4 Read-Repoint
+`db/coordinator_db.get_support_status(user_id=None, stale_sec=30)` liest `cdb.support_sessions`
+(Join `cdb.investigators`). Ohne `user_id` inaktiv (Alt-Aufrufform bleibt gültig bis 312).
+`SupportStatusRecord` um `count` erweitert (Zähler; mc: Frage 3). Stale-Default **30 s** (mc: Frage 1).
+
+### 6.5 Architektur-Hinweis (für Build 312)
+Der Support-Webserver wird **erstmals Schreiber** von `coordinator.db`. Empfehlung: dedizierte
+Direkt-Verbindung zu `coordinator.db` (`isolation_level=None`) für Session-Writes — getrennt von
+der ATTACHed-`cdb`-Leseverbindung (analog `migrate.py`). Lebenszyklus an
+SSE-Connect/Tick/Disconnect+Grace koppeln (die Mechanik existiert bereits in `events.py`).
+
+### 6.6 Tests
+`tests/test_management_support_sessions.py` (S01–S10) + `tests/test_coordinator_db.py`
+(D01–D04). Migrations-Integration M001–M003 via `discover`+Runner verifiziert.
+
+---
+
 ## Änderungshistorie
+
+- **v0.5 (2026-07-01):** §6 „Echte Support-Sitzungserfassung" ergänzt; Backend-Fundament als
+  **Build 311** (M003 `support_sessions`, `SupportSessionsRepo`, Read-Repoint `get_support_status`
+  mit Zähler; Start/Ende auditiert, Heartbeat nicht; Stale-Default 30 s). Verdrahtung + Frontend
+  als **Build 312** abgetrennt (Browser-Test nötig, Console-PoC-Protokoll).
 
 - **v0.4 (2026-07-01):** §5 „Ermittler-Verwaltung — investigators-CLI (Build 310)" ergänzt
   (`InvestigatorsRepo` + auditierte CLI `create`/`update`/`list`; kein Löschen, `system_username`
@@ -507,4 +559,4 @@ Flag-Update, No-Op ohne Audit, unbekannt→Fehler, `list` sortiert, `get` per id
 
 ---
 
-*Dokument-Ende · Bauplan Baustelle 7 · Version 0.4 · 2026-07-01*
+*Dokument-Ende · Bauplan Baustelle 7 · Version 0.5 · 2026-07-01*

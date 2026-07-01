@@ -82,6 +82,14 @@ def _make_cdb_attached() -> tuple[sqlite3.Connection, int, int]:
             worker_id     TEXT,
             manifest_path TEXT
         );
+        CREATE TABLE support_sessions (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id        INTEGER NOT NULL,
+            supporter_id   INTEGER,
+            started_at     INTEGER NOT NULL,
+            last_heartbeat INTEGER NOT NULL,
+            ended_at       INTEGER
+        );
         INSERT INTO investigators
             (system_username, display_name, is_investigator, is_supervisor, is_support, created_at)
             VALUES ('h012345', 'Ermittler Eins', 1, 0, 0, 1700000000);
@@ -240,6 +248,67 @@ class TestCoordinatorDb(unittest.TestCase):
         # frozen=True → Zuweisung wirft Fehler
         with self.assertRaises((AttributeError, TypeError)):
             rec.active = False
+
+
+    # ------------------------------------------------------------------ D01
+    def test_D01_support_status_aktiv_mit_sitzung(self):
+        """D01 (Build 311): aktive support_sessions-Zeile → active + count=1."""
+        import time as _t
+        now = int(_t.time())
+        self.con.execute(
+            "INSERT INTO cdb.support_sessions "
+            "(user_id, supporter_id, started_at, last_heartbeat) "
+            "VALUES (42, ?, ?, ?)",
+            (self.inv_id, 1700000000, now),
+        )
+        self.con.commit()
+        r = self.cdb.get_support_status(user_id=42, stale_sec=30)
+        self.assertTrue(r.active)
+        self.assertEqual(r.username, "h012345")
+        self.assertEqual(r.since_ms, 1700000000 * 1000)
+        self.assertEqual(r.count, 1)
+
+    # ------------------------------------------------------------------ D02
+    def test_D02_support_status_stale_ist_inaktiv(self):
+        """D02: Sitzung mit altem Heartbeat gilt als inaktiv."""
+        import time as _t
+        alt = int(_t.time()) - 10_000
+        self.con.execute(
+            "INSERT INTO cdb.support_sessions "
+            "(user_id, supporter_id, started_at, last_heartbeat) "
+            "VALUES (42, ?, ?, ?)",
+            (self.inv_id, alt, alt),
+        )
+        self.con.commit()
+        r = self.cdb.get_support_status(user_id=42, stale_sec=30)
+        self.assertFalse(r.active)
+        self.assertEqual(r.count, 0)
+
+    # ------------------------------------------------------------------ D03
+    def test_D03_support_status_zaehlt_mehrere(self):
+        """D03: Mehrere aktive Sitzungen desselben Falls → count>1, username=frühester."""
+        import time as _t
+        now = int(_t.time())
+        sup2 = self.con.execute(
+            "SELECT id FROM cdb.investigators WHERE system_username='h099999'"
+        ).fetchone()[0]
+        self.con.executemany(
+            "INSERT INTO cdb.support_sessions "
+            "(user_id, supporter_id, started_at, last_heartbeat) VALUES (42, ?, ?, ?)",
+            [(self.inv_id, 1700000000, now), (sup2, 1700000500, now)],
+        )
+        self.con.commit()
+        r = self.cdb.get_support_status(user_id=42, stale_sec=30)
+        self.assertTrue(r.active)
+        self.assertEqual(r.count, 2)
+        self.assertEqual(r.username, "h012345")  # frühester started_at
+
+    # ------------------------------------------------------------------ D04
+    def test_D04_support_status_ohne_user_id_inaktiv(self):
+        """D04: Ohne Fallkontext (user_id=None) inaktiv — unveränderte Alt-Aufrufform."""
+        r = self.cdb.get_support_status()
+        self.assertFalse(r.active)
+        self.assertEqual(r.count, 0)
 
 
 if __name__ == "__main__":

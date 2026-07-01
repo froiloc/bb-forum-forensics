@@ -47,6 +47,12 @@ logger = get_logger(__name__)
 _RETRY_COUNT   = 3
 _RETRY_DELAY_S = 0.5   # Sekunden zwischen Versuchen
 
+# Stale-Schwelle für Live-Support-Sitzungen (Build 311): Eine Sitzung ohne
+# Heartbeat innerhalb dieser Spanne gilt als inaktiv. Default = 30 s
+# (mind. ~3× SSE-Tick; wird ab Build 312 aus der Konfiguration versorgt).
+# Beleg: mc 2026-07-01 (Frage 1).
+DEFAULT_SUPPORT_STALE_SEC = 30
+
 
 @dataclass(frozen=True)
 class SupportStatusRecord:
@@ -58,13 +64,16 @@ class SupportStatusRecord:
 
     Felder:
         active    — True wenn mindestens ein Support-Nutzer gerade aktiv ist
-        username  — SAMAccountName des aktiven Support-Nutzers (oder None)
-        since_ms  — Unix-Timestamp ms seit wann der Support-Nutzer aktiv ist
+        username  — SAMAccountName des am längsten aktiven Supporters (oder None)
+        since_ms  — Unix-Timestamp ms seit wann dieser Supporter aktiv ist
                     (None wenn active=False)
+        count     — Anzahl gleichzeitig aktiver Support-Sitzungen zum Fall
+                    (0 wenn active=False). Build 311.
     """
     active:    bool
     username:  Optional[str]
     since_ms:  Optional[int]
+    count:     int = 0
 
 
 @dataclass(frozen=True)
@@ -139,42 +148,67 @@ class CoordinatorDb:
     # Support-Status (§11.5 Bauplan Baustelle 3)
     # ------------------------------------------------------------------
 
-    def get_support_status(self) -> SupportStatusRecord:
+    def get_support_status(
+        self, user_id: Optional[int] = None,
+        stale_sec: int = DEFAULT_SUPPORT_STALE_SEC,
+    ) -> SupportStatusRecord:
         """
-        Liest den aktuellen Support-Status aus coordinator.db.
+        Liest den Live-Support-Status zu EINEM Fall (user_id) aus
+        cdb.support_sessions (Build 311). Aktiv = mindestens eine Sitzung ohne
+        ended_at mit Heartbeat innerhalb stale_sec. username/since_ms beziehen
+        sich auf den am längsten aktiven Supporter; count zählt alle aktiven.
 
-        Ein Support-Nutzer gilt als aktiv, wenn:
-          1. Er in cdb.investigators mit is_support=1 eingetragen ist UND
-          2. Er einen Job im Status 'running' in cdb.scrape_jobs hat.
+        Ohne user_id (kein Fallkontext) wird inaktiv zurückgegeben — der
+        Aufrufer (events.py) liefert den Fall ab Build 312.
 
-        Gibt bei Fehler oder fehlendem Support-Nutzer einen inaktiven Status
-        zurück — kein Absturz, kein stilles Versagen (Grundregel 1).
-
-        Rückgabe:
-            SupportStatusRecord mit active=False wenn kein Support-Nutzer aktiv.
+        Bei Fehler oder fehlender Sitzung: inaktiver Status — kein Absturz,
+        kein stilles Versagen (Grundregel 1).
         """
+        if user_id is None:
+            return SupportStatusRecord(active=False, username=None,
+                                       since_ms=None, count=0)
         try:
-            return self._retry(self._get_support_status_once)
+            return self._retry(self._get_support_status_once, user_id, stale_sec)
         except Exception as exc:
             logger.warning(
                 "get_support_status(): Fehler beim Lesen — gebe inactive zurück: %s",
                 exc,
             )
-            return SupportStatusRecord(active=False, username=None, since_ms=None)
+            return SupportStatusRecord(active=False, username=None,
+                                       since_ms=None, count=0)
 
-    def _get_support_status_once(self) -> SupportStatusRecord:
+    def _get_support_status_once(
+        self, user_id: int, stale_sec: int
+    ) -> SupportStatusRecord:
         """
-        Einmaliger Versuch für get_support_status().
+        Einmaliger Versuch für get_support_status(). Liest aktive Support-
+        Sitzungen des Falls aus cdb.support_sessions (verknüpft mit
+        cdb.investigators für den system_username des Supporters).
 
-        Build 308: Die frühere Quelle (JOIN scrape_jobs ON assigned_to,
-        status='running') wurde mit M002 entfernt UND war ohnehin nur ein
-        Stellvertreter — eine echte Support-SITZUNG (ein is_support-Helfer schaut
-        live in einen fremden Fall) wird nirgends persistiert (kein Sitzungs-
-        Marker, keine Präsenz-Tabelle). Bis eine echte Support-Sitzungserfassung
-        existiert, liefert die Methode EHRLICH 'inactive' statt Fake-Daten.
-        Beleg: Problem-1-Analyse 2026-07-01, mc.
+        Build 311: löst den ehrlichen 'inactive'-Stub aus Build 308 ab — jetzt
+        existiert mit support_sessions (M003) eine echte Präsenz-Erfassung.
+        Beleg: Bauplan B7 v0.5 §6, mc 2026-07-01.
         """
-        return SupportStatusRecord(active=False, username=None, since_ms=None)
+        threshold = int(time.time()) - stale_sec
+        rows = self._con.execute(
+            "SELECT s.started_at, i.system_username "
+            "FROM cdb.support_sessions s "
+            "LEFT JOIN cdb.investigators i ON i.id = s.supporter_id "
+            "WHERE s.user_id = ? AND s.ended_at IS NULL AND s.last_heartbeat >= ? "
+            "ORDER BY s.started_at ASC",
+            (user_id, threshold),
+        ).fetchall()
+        if not rows:
+            return SupportStatusRecord(active=False, username=None,
+                                       since_ms=None, count=0)
+        first = rows[0]
+        # started_at ist Unix-Sekunden -> JS erwartet ms.
+        return SupportStatusRecord(
+            active=True,
+            username=first["system_username"],
+            since_ms=int(first["started_at"]) * 1000,
+            count=len(rows),
+        )
 
     # ------------------------------------------------------------------
     # Ermittler-Abfragen
