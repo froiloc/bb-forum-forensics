@@ -9,10 +9,11 @@
 #   in der Datenbank (Beleg: Bauplan B7 v0.2 §2.5, Bewertung Idee 9/13).
 #
 #   Tag-1-Umfang: GENESIS, MIGRATION_APPLIED, CHAIN_VERIFIED.
-#   Weitere Werte werden mit ihren jeweiligen Modulen (cases, case_events,
-#   notifications, backups) ergänzt — niemals umbenannt, niemals wiederverwendet.
+#   Weitere Werte werden mit ihren jeweiligen Modulen (cases, investigators,
+#   case_events, notifications, backups) ergänzt — niemals umbenannt, niemals
+#   wiederverwendet.
 #
-# Version: v0.7.306 · Build: 306 · 2026-07-01
+# Version: v0.7.310 · Build: 310 · 2026-07-01
 # =============================================================================
 
 from typing import FrozenSet
@@ -34,8 +35,13 @@ class EventType:
     CASE_PRIORITY_SET: str = "case_priority_set"
     CASE_NOTE_SET: str = "case_note_set"
 
+    # --- Build 310: Ermittler-Verwaltung (investigators) ---
+    INVESTIGATOR_CREATED: str = "investigator_created"
+    INVESTIGATOR_UPDATED: str = "investigator_updated"
+
     # --- reserviert für spätere Builds (hier dokumentiert, noch nicht aktiv) ---
     # CASE_EVENT_ADDED, NOTIFICATION_SENT, BACKUP_CREATED, RESTORE_PERFORMED
+    # SUPPORT_SESSION_STARTED, SUPPORT_SESSION_ENDED (echte Support-Sitzung)
 
     #: Alle aktuell gültigen Werte. Erweitern, nie entfernen/umbenennen.
     ALL: FrozenSet[str] = frozenset(
@@ -49,6 +55,8 @@ class EventType:
             CASE_APPROVED,
             CASE_PRIORITY_SET,
             CASE_NOTE_SET,
+            INVESTIGATOR_CREATED,
+            INVESTIGATOR_UPDATED,
         }
     )
 

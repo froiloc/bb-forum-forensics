@@ -1,6 +1,6 @@
 # Bauplan Baustelle 7 — Management-Interface
 
-**Version:** 0.3 · **Datum:** 2026-07-01
+**Version:** 0.4 · **Datum:** 2026-07-01
 **Klassifikation:** VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
 **Auslieferung:** innerhalb `aiw_webserver`, im geschützten Unterordner `management/`
 **Grundlage:** `Ideen_zum_Verwaltungswerkzeug.md`, bewertete Fassung v1.0 (2026-04-14),
@@ -428,7 +428,72 @@ Danach volle Regression `python run_tests.py` (0 Fehler).
 
 ---
 
+## 5. Ermittler-Verwaltung — investigators-CLI (Build 310)
+
+### 5.0 Ziel und Abgrenzung
+Ermittler sollen sauber über eine **auditierte CLI** angelegt und geändert werden können —
+kein Einfügen per SQL-Direktzugriff mehr. Ein UI ergänzt die CLI später. **Reihenfolge-
+Entscheidung (mc 2026-07-01):** CLI **vor** der Support-Sitzungserfassung, da Letztere
+existierende Ermittler voraussetzt und die Einarbeitung neuer Mitarbeiter das saubere
+Anlegen sofort braucht. **Rein additiv:** keine Schema-Änderung, keine Migration (Tabelle
+`investigators` existiert bereits; es kommen nur zwei Audit-Event-Typen hinzu). Build 309
+wird übersprungen; nächster Build ist **0.7.310** (mc).
+
+### 5.1 Neue/geänderte Dateien
+- `management/investigators/__init__.py` (neu)
+- `management/investigators/investigators_repo.py` (neu) — `InvestigatorsRepo`
+- `management/investigators/investigators_admin.py` (neu) — CLI
+- `management/audit/event_types.py` (geändert) — `INVESTIGATOR_CREATED`, `INVESTIGATOR_UPDATED` additiv
+- `tests/test_management_investigators.py` (neu) — C01–C10
+
+### 5.2 `InvestigatorsRepo`
+- `list_investigators()`, `get(id | system_username)` — Lesen.
+- `create(system_username, display_name, is_investigator=True, is_supervisor=False, is_support=False)`
+  → auditiert `INVESTIGATOR_CREATED`; UNIQUE-Prüfung innerhalb `BEGIN IMMEDIATE` (kein TOCTOU).
+- `update(id | system_username; display_name?, is_investigator?, is_supervisor?, is_support?)`
+  → auditiert `INVESTIGATOR_UPDATED`; nur tatsächlich geänderte Felder, Diff `{alt, neu}` je Feld
+  im Payload; No-Op wirft `InvestigatorsError` (kein irreführender Audit-Eintrag).
+- Schreiben **ausschließlich** über das `CoordinatorWriter`-Gateway (Write + Audit atomar).
+
+### 5.3 Verbindliche Regeln (forensisch)
+- **KEIN Löschen:** `cases.assigned_to` (FK) referenziert `investigators.id` — Löschen würde
+  Fälle verwaisen lassen und Belege zerstören. Stilllegen erfolgt über `is_investigator=0`;
+  die Zeile bleibt als Beleg erhalten.
+- **`system_username` ist die Identität** (Windows-SAMAccountName) und wird **nie** geändert;
+  nur `display_name` und Rollen-Flags sind änderbar.
+- `--actor SYSUSER` → `audit_log.actor_id`; fehlt es, `actor_id=NULL` (System) + OS-Benutzer in
+  `audit_log.meta.performed_by`. Bootstrap (allererster Ermittler) ohne `--actor` zulässig.
+
+### 5.4 CLI-Aufruf (Subkommandos)
+```
+python -m management.investigators.investigators_admin list [--coordinator-db PATH] [--config ...]
+python -m management.investigators.investigators_admin create --system-username h0XXXXX \
+        --display-name "Nachname, Vorname" [--supervisor] [--support] [--no-investigator] \
+        [--actor SYSUSER] [--coordinator-db PATH]
+python -m management.investigators.investigators_admin update (--id N | --system-username h0X) \
+        [--display-name "..."] [--set-investigator 0|1] [--set-supervisor 0|1] [--set-support 0|1] \
+        [--actor SYSUSER] [--coordinator-db PATH]
+```
+
+### 5.5 Tests (`tests/test_management_investigators.py`, C01–C10)
+create+Audit, Duplikat-Rollback (kein Row/Audit), `display_name`-Update mit `alt/neu`-Payload,
+Flag-Update, No-Op ohne Audit, unbekannt→Fehler, `list` sortiert, `get` per id/username,
+`verify_chain` grün nach allen Writes, Stilllegen statt Löschen.
+
+### 5.6 Offener Nachlauf (mc 2026-07-01)
+**Vor Abschluss Baustelle 7** analysieren, welche Funktionalität aus `setup_coordinator_dev.py`
+überhaupt noch benötigt wird (das DEV-Skript rüstet u. a. das mit M002 entfernte
+`scrape_jobs.assigned_to` per `ALTER` wieder nach — veraltet).
+
+---
+
 ## Änderungshistorie
+
+- **v0.4 (2026-07-01):** §5 „Ermittler-Verwaltung — investigators-CLI (Build 310)" ergänzt
+  (`InvestigatorsRepo` + auditierte CLI `create`/`update`/`list`; kein Löschen, `system_username`
+  unveränderlich; zwei additive Audit-Event-Typen; Reihenfolge CLI **vor** Support-Sitzung).
+  Nachlauf `setup_coordinator_dev.py`-Analyse verankert. Build 309 übersprungen (mc).
+
 
 - **v0.3 (2026-07-01):** §3 „Tag 2" ergänzt (cases + scrape_jobs-Rebuild + Repointing
   userinfo_data.py + auditierte Zuweisungs-CLI, Build 307); Roadmap Tag 2 aktualisiert
@@ -442,4 +507,4 @@ Danach volle Regression `python run_tests.py` (0 Fehler).
 
 ---
 
-*Dokument-Ende · Bauplan Baustelle 7 · Version 0.1 · 2026-07-01*
+*Dokument-Ende · Bauplan Baustelle 7 · Version 0.4 · 2026-07-01*
