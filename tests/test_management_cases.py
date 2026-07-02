@@ -32,7 +32,11 @@ from management.audit.audit_log import AuditLog
 from management.audit.event_types import EventType
 from management.cases.cases_repo import CasesError, CasesRepo
 from management.gateway.coordinator_writer import CoordinatorWriter
-from management.migrations.coordinator import m001_audit_log, m002_cases
+from management.migrations.coordinator import (
+    m001_audit_log,
+    m002_cases,
+    m004_case_events,
+)
 from management.migrations.runner import MigrationRunner
 
 _OLD_SCRAPE_JOBS = """
@@ -100,10 +104,15 @@ class ManagementCasesTests(unittest.TestCase):
              (19, "LMN",  2, "pending", now, 2, "Notiz")],
         )
 
-        # Migrationen M001 + M002 anwenden.
+        # Migrationen M001 + M002 + M004 anwenden. M004 (case_events) ist ab
+        # Build 313 Pflicht für diese Suite: CasesRepo spiegelt Anlage/
+        # Zuweisung/Statuswechsel/Freigabe in den Zeitstrahl — ohne die
+        # Tabelle schlügen die Writes hart fehl (gewollt, keine stille
+        # Degradation; Bauplan B7 v0.8 §8.4). M003 (support_sessions) wird
+        # hier nicht gebraucht.
         self.audit = AuditLog(self.con)
         self.runner = MigrationRunner(
-            self.con, [m001_audit_log, m002_cases],
+            self.con, [m001_audit_log, m002_cases, m004_case_events],
             audit=self.audit, deployed_by="tester",
         )
         self.applied = self.runner.run()
@@ -138,7 +147,9 @@ class ManagementCasesTests(unittest.TestCase):
 
     # ------------------------------------------------------------------- B01
     def test_b01_rebuild_columns_and_indexes(self):
-        self.assertEqual(self.applied, [1, 2])
+        # Seit Build 313 wendet die Fixture auch M004 an (Spiegelung
+        # der cases-Writes braucht case_events).
+        self.assertEqual(self.applied, [1, 2, 4])
         cols = self._cols("scrape_jobs")
         self.assertNotIn("assigned_to", cols)
         self.assertNotIn("note", cols)
@@ -255,8 +266,9 @@ class ManagementCasesTests(unittest.TestCase):
         self.repo.set_status(100, "in_progress")
         res = self.audit.verify_chain()
         self.assertTrue(res.ok, res.detail)
-        # Genesis + M001 + M002 + 3 cases-Writes = 6 Einträge.
-        self.assertEqual(self._audit_count(), 6)
+        # Genesis + M001 + M002 + M004 + 3 cases-Writes = 7 Einträge.
+        # (M004 seit Build 313 in der Fixture, s. setUp.)
+        self.assertEqual(self._audit_count(), 7)
 
 
 if __name__ == "__main__":

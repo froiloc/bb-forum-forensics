@@ -44,8 +44,15 @@ class EventType:
     SUPPORT_SESSION_STARTED: str = "support_session_started"
     SUPPORT_SESSION_ENDED: str = "support_session_ended"
 
+    # --- Build 313: Ereigniszeitstrahl (case_events) ---
+    #   Beleg für MANUELL hinzugefügte Zeitstrahl-Einträge. Die automatisch
+    #   gespiegelten Einträge (Anlage/Zuweisung/Status/Freigabe) brauchen
+    #   KEINEN eigenen Typ — ihr Beleg ist der ohnehin geschriebene
+    #   CASE_*-Eintrag, auf den die Zeitstrahl-Zeile per audit_seq zeigt.
+    CASE_EVENT_ADDED: str = "case_event_added"
+
     # --- reserviert für spätere Builds (hier dokumentiert, noch nicht aktiv) ---
-    # CASE_EVENT_ADDED, NOTIFICATION_SENT, BACKUP_CREATED, RESTORE_PERFORMED
+    # NOTIFICATION_SENT, BACKUP_CREATED, RESTORE_PERFORMED
 
     #: Alle aktuell gültigen Werte. Erweitern, nie entfernen/umbenennen.
     ALL: FrozenSet[str] = frozenset(
@@ -59,6 +66,7 @@ class EventType:
             CASE_APPROVED,
             CASE_PRIORITY_SET,
             CASE_NOTE_SET,
+            CASE_EVENT_ADDED,
             INVESTIGATOR_CREATED,
             INVESTIGATOR_UPDATED,
             SUPPORT_SESSION_STARTED,

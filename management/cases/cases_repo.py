@@ -10,7 +10,13 @@
 #   Fallzuweisung/Statusänderung ohne lückenlosen Audit-Eintrag.
 #   (Beleg: Bauplan B7 v0.3 §3.4, mc 2026-07-01)
 #
-# Version: v0.7.307 · Build: 307 · 2026-07-01
+# Version: v0.7.313 · Build: 313 · 2026-07-02
+#   Build 313: create_case/assign/set_status spiegeln zusätzlich eine
+#   Zeitstrahl-Zeile nach case_events (after_audit-Hook, atomar mit Write
+#   und Audit-Beleg; audit_seq = seq des CASE_*-Belegs). set_priority und
+#   set_note werden BEWUSST NICHT gespiegelt (mc 2026-07-02: Zuweisungen,
+#   Statuswechsel, Freigaben; Anlage als Zeitstrahl-Anker ergänzt, s. u.).
+#   Beleg: Bauplan B7 v0.8 §8.4.
 # =============================================================================
 
 import logging
@@ -19,6 +25,7 @@ import time
 from typing import Any, Dict, Optional
 
 from management.audit.event_types import EventType
+from management.case_events.case_events_repo import insert_event_row
 from management.gateway.coordinator_writer import CoordinatorWriter
 
 logger = logging.getLogger(__name__)
@@ -78,9 +85,19 @@ class CasesRepo:
             return {"user_id": user_id, "username": username,
                     "status": "open", "priority": 3}
 
+        def _after(con: sqlite3.Connection, seq: int) -> None:
+            # Zeitstrahl-Anker: ohne 'Fall angelegt' hätte der Zeitstrahl
+            # keinen Startpunkt (Bauplan B7 v0.8 §8.4).
+            insert_event_row(
+                con, user_id=user_id, event_kind="case_created",
+                payload={"username": username},
+                created_by=actor_id, created_at=now, audit_seq=seq,
+            )
+
         return self._writer.audited_write(
             do_write=_w, event_type=EventType.CASE_CREATED,
             actor_id=actor_id, target_type="case", target_id=str(user_id), meta=meta,
+            after_audit=_after,
         )
 
     def assign(
@@ -98,9 +115,19 @@ class CasesRepo:
                 raise CasesError("Kein Fall user_id=%s." % user_id)
             return {"user_id": user_id, "assigned_to": investigator_id}
 
+        def _after(con: sqlite3.Connection, seq: int) -> None:
+            # Spiegelung Zuweisung (mc 2026-07-02). assigned_to=None ist die
+            # dokumentierte Entzugs-Form und erscheint ebenso im Zeitstrahl.
+            insert_event_row(
+                con, user_id=user_id, event_kind="assigned",
+                payload={"assigned_to": investigator_id},
+                created_by=actor_id, created_at=now, audit_seq=seq,
+            )
+
         return self._writer.audited_write(
             do_write=_w, event_type=EventType.CASE_ASSIGNED,
             actor_id=actor_id, target_type="case", target_id=str(user_id), meta=meta,
+            after_audit=_after,
         )
 
     def set_status(
@@ -127,10 +154,23 @@ class CasesRepo:
             return {"user_id": user_id, "status": status,
                     "approved_at": now if approved else None}
 
+        def _after(con: sqlite3.Connection, seq: int) -> None:
+            # Spiegelung Statuswechsel/Freigabe (mc 2026-07-02). 'approved'
+            # ist als eigener kind ausgewiesen — das Dashboard (Tag 3) kann
+            # Freigaben damit ohne Payload-Parsing hervorheben.
+            insert_event_row(
+                con, user_id=user_id,
+                event_kind="approved" if approved else "status_changed",
+                payload={"status": status,
+                         "approved_at": now} if approved else {"status": status},
+                created_by=actor_id, created_at=now, audit_seq=seq,
+            )
+
         event = EventType.CASE_APPROVED if approved else EventType.CASE_STATUS_CHANGED
         return self._writer.audited_write(
             do_write=_w, event_type=event,
             actor_id=actor_id, target_type="case", target_id=str(user_id), meta=meta,
+            after_audit=_after,
         )
 
     def set_priority(

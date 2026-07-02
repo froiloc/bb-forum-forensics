@@ -16,7 +16,7 @@
 #   gehalten, sodass das Tip-Lesen der Hash-Kette + der Insert atomar und gegen
 #   konkurrierende Schreiber serialisiert sind (kein Race auf prev_hash).
 #
-# Version: v0.7.306 · Build: 306 · 2026-07-01
+# Version: v0.7.313 · Build: 313 · 2026-07-02 (after_audit-Hook, Bauplan B7 v0.8 §8.3)
 # =============================================================================
 
 import logging
@@ -61,11 +61,22 @@ class CoordinatorWriter:
         target_type: Optional[str],
         target_id: Optional[str],
         meta: Optional[Any] = None,
+        after_audit: Optional[Callable[[sqlite3.Connection, int], None]] = None,
     ) -> int:
         """
         Führt do_write(con) aus und schreibt im selben Transaktionsrahmen den
         zugehörigen Audit-Eintrag. do_write liefert den Audit-Payload (dict) für
         das Ereignis (oder None -> leeres Payload).
+
+        after_audit(con, seq) — optionaler Hook, der NACH dem Audit-Append,
+        aber noch INNERHALB derselben Transaktion läuft. Er existiert, damit
+        abgeleitete Lesemodell-Zeilen (z. B. case_events, Build 313) die
+        exakte seq ihres audit_log-Belegs tragen können; die Kopplung
+        Write + Audit + Lesemodell committet atomar oder gar nicht.
+        Wirft after_audit, wird die GESAMTE Transaktion zurückgerollt —
+        es bleibt weder Write noch Audit-Eintrag noch Lesemodell-Zeile
+        zurück (Grundregel 1: keine stille Teil-Persistenz).
+        (Beleg: Bauplan B7 v0.8 §8.3, mc 2026-07-02)
 
         Gibt die seq des Audit-Eintrags zurück.
         """
@@ -81,6 +92,8 @@ class CoordinatorWriter:
                 payload=payload,
                 meta=meta,
             )
+            if after_audit is not None:
+                after_audit(con, seq)
         logger.debug(
             "audited_write: type=%s target=%s/%s -> audit seq=%d",
             event_type, target_type, target_id, seq,
