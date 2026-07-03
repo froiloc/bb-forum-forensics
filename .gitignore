@@ -40,3 +40,11 @@ anon_html.py
 static/icons/favicon.ico
 
 old_archives/
+
+.archiveignore
+*.7z
+*.zip
+default.db.schema.sql
+setup/*
+debug/devtools-network/last.har
+debug/test_2_91_console.js

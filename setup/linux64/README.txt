@@ -1,5 +1,5 @@
 aiw_webserver — Setup-Dateien fuer linux64
-Erstellt: 2026-05-15 12:53:38
+Erstellt: 2026-07-03 15:00:20
 
 Enthaelt:
   wheels/  — Python-Pakete (Offline-Installation)
