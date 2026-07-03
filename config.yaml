@@ -27,3 +27,8 @@ hosts_management:
 logging:
   level: "debug"
   logfile: "./logs/forensic_server.log"
+
+dashboard:
+  ampel:
+    amber_idle_days: 7
+    red_idle_days: 21

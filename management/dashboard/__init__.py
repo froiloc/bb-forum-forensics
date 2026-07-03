@@ -13,5 +13,5 @@
 # eigener Build, sobald er live im Browser abgenommen werden kann.
 #
 # Beleg: Bauplan B7 v0.9 Paragraph 9, Projektgespraech/mc 2026-07-02.
-# Version: v0.7.314 · Build: 314 · 2026-07-02
+# Version: v0.7.315 · Build: 315 · 2026-07-03
 # =============================================================================

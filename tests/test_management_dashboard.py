@@ -46,15 +46,28 @@ from management.dashboard.dashboard_repo import (
     AMPEL_GRUEN,
     AMPEL_ROT,
     AmpelThresholds,
+    DashboardConfigError,
     DashboardRepo,
+    DashboardSchemaError,
     REASON_ACTIVE,
     REASON_APPROVED,
     REASON_CLOSED,
     REASON_IDLE_LONG,
     REASON_IDLE_MEDIUM,
     REASON_OPEN_UNASSIGNED,
+    ampel_thresholds_from_config,
     classify_ampel,
 )
+
+
+class _StubCfg:
+    """Minimaler ConfigLoader-Ersatz fuer Tests: get(dotted_key, default)."""
+
+    def __init__(self, values):
+        self._v = dict(values)
+
+    def get(self, key, default=None):
+        return self._v.get(key, default)
 from management.gateway.coordinator_writer import CoordinatorWriter
 from management.migrations.runner import MigrationRunner, discover
 
@@ -146,6 +159,17 @@ class ManagementDashboardTests(unittest.TestCase):
 
     def _count(self, table):
         return self.con.execute("SELECT COUNT(*) FROM %s" % table).fetchone()[0]
+
+    def _set_activity(self, user_id, ts):
+        """
+        Setzt die letzte Fall-Aktivitaet deterministisch: cases.updated_at UND
+        alle case_events.created_at des Falls auf ts. Damit ist
+        last_activity_at == ts (unabhaengig von der realen Uhr).
+        """
+        self.con.execute("UPDATE cases SET updated_at=? WHERE user_id=?",
+                         (ts, user_id))
+        self.con.execute("UPDATE case_events SET created_at=? WHERE user_id=?",
+                         (ts, user_id))
 
     def _add_support(self, user_id, supporter_id, started_at, last_heartbeat,
                      ended_at=None):
@@ -316,6 +340,80 @@ class ManagementDashboardTests(unittest.TestCase):
         after = (self._count("cases"), self._count("audit_log"),
                  self._count("case_events"), self._count("support_sessions"))
         self.assertEqual(before, after, "DashboardRepo darf NICHTS schreiben")
+
+
+    # D13 --------------------------------------------------------------------
+    def test_d13_thresholds_from_config(self):
+        # explizite Werte aus config.yaml
+        t = ampel_thresholds_from_config(_StubCfg({
+            "dashboard.ampel.amber_idle_days": 3,
+            "dashboard.ampel.red_idle_days": 9}))
+        self.assertEqual((t.amber_idle_days, t.red_idle_days), (3, 9))
+        # fehlende Schluessel -> Vorgabe 7/21
+        t2 = ampel_thresholds_from_config(_StubCfg({}))
+        self.assertEqual((t2.amber_idle_days, t2.red_idle_days), (7, 21))
+        # None-cfg -> Vorgabe 7/21
+        t3 = ampel_thresholds_from_config(None)
+        self.assertEqual((t3.amber_idle_days, t3.red_idle_days), (7, 21))
+        # ungueltig: amber >= red
+        with self.assertRaises(DashboardConfigError):
+            ampel_thresholds_from_config(_StubCfg({
+                "dashboard.ampel.amber_idle_days": 21,
+                "dashboard.ampel.red_idle_days": 7}))
+        # ungueltig: nicht-ganzzahlig
+        with self.assertRaises(DashboardConfigError):
+            ampel_thresholds_from_config(_StubCfg({
+                "dashboard.ampel.amber_idle_days": "sieben",
+                "dashboard.ampel.red_idle_days": 21}))
+        # ungueltig: amber < 1
+        with self.assertRaises(DashboardConfigError):
+            ampel_thresholds_from_config(_StubCfg({
+                "dashboard.ampel.amber_idle_days": 0,
+                "dashboard.ampel.red_idle_days": 21}))
+
+    # D14 --------------------------------------------------------------------
+    def test_d14_sort_severity_first(self):
+        NOW = 2_000_000_000
+        # ROT (offen/unzugewiesen), frische Aktivitaet
+        self.cases.create_case(50, "R1", actor_id=1)
+        self._set_activity(50, NOW - 1 * _DAY)
+        # ROT (in_progress, lange inaktiv >= red)
+        self.cases.create_case(53, "R2", actor_id=1)
+        self.cases.assign(53, 2, actor_id=1)
+        self.cases.set_status(53, "in_progress", actor_id=2)
+        self._set_activity(53, NOW - 30 * _DAY)
+        # GELB (in_progress, mittlere Inaktivitaet)
+        self.cases.create_case(52, "Y1", actor_id=1)
+        self.cases.assign(52, 2, actor_id=1)
+        self.cases.set_status(52, "in_progress", actor_id=2)
+        self._set_activity(52, NOW - 10 * _DAY)
+        # GRUEN (in_progress, frisch)
+        self.cases.create_case(51, "G1", actor_id=1)
+        self.cases.assign(51, 2, actor_id=1)
+        self.cases.set_status(51, "in_progress", actor_id=2)
+        self._set_activity(51, NOW - 1 * _DAY)
+
+        overview = self.dash.list_case_overview(now=NOW)
+        ids = [o.user_id for o in overview]
+        amp = {o.user_id: o.ampel for o in overview}
+        # Ampel-Schwere zuerst: beide ROT vor GELB vor GRUEN; innerhalb ROT
+        # (gleiche Prio) juengste Aktivitaet zuerst -> 50 vor 53.
+        self.assertEqual(ids, [50, 53, 52, 51], overview)
+        self.assertEqual(amp[50], AMPEL_ROT)
+        self.assertEqual(amp[53], AMPEL_ROT)
+        self.assertEqual(amp[52], AMPEL_GELB)
+        self.assertEqual(amp[51], AMPEL_GRUEN)
+
+    # D15 --------------------------------------------------------------------
+    def test_d15_missing_table_actionable_error(self):
+        self.cases.create_case(60, "X", actor_id=1)
+        self.con.execute("DROP TABLE case_events")
+        with self.assertRaises(DashboardSchemaError) as ctx:
+            self.dash.list_case_overview()
+        msg = str(ctx.exception)
+        # Handlungsleitend: nennt die fehlende Tabelle UND den Migrationsbefehl.
+        self.assertIn("case_events", msg)
+        self.assertIn("migrate", msg)
 
 
 if __name__ == "__main__":

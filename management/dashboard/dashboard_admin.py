@@ -16,7 +16,7 @@
 #          dashboard_repo.classify_ampel.
 #
 # Beleg: Bauplan B7 v0.9 Paragraph 9.5, mc 2026-07-02.
-# Version: v0.7.314 · Build: 314 · 2026-07-02
+# Version: v0.7.315 · Build: 315 · 2026-07-03
 # =============================================================================
 
 import argparse
@@ -25,27 +25,43 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from management.dashboard.dashboard_repo import DashboardRepo
+from management.dashboard.dashboard_repo import (
+    DEFAULT_AMPEL_THRESHOLDS,
+    DashboardConfigError,
+    DashboardRepo,
+    DashboardSchemaError,
+    ampel_thresholds_from_config,
+)
 
 
-def _resolve_db_path(args) -> str:
+def _load_config(args):
     """
-    coordinator.db-Pfad aus --coordinator-db oder config.yaml
-    (paths.coordinator_db). Gleiche Aufloesungslogik wie cases_admin /
-    case_events_admin — bewusst lokal dupliziert, bis ein gemeinsames
-    CLI-Helfermodul eingezogen wird (eigener Refactoring-Build).
+    Laedt config.yaml (best effort) und gibt den ConfigLoader oder None
+    zurueck. None -> die CLI arbeitet mit Vorgabe-Schwellen (7/21). Die
+    config.yaml ist die Quelle sowohl fuer den coordinator.db-Pfad als auch
+    fuer die Ampel-Schwellen (Build 315) — daher EINMAL laden und
+    weiterreichen, statt sie mehrfach zu oeffnen.
+    """
+    try:
+        from core.config_loader import ConfigLoader
+        return ConfigLoader(config_path=args.config)
+    except Exception as exc:  # pragma: no cover - Konfig-Randfall
+        print("[dashboard_admin] config.yaml nicht lesbar (Vorgabe-Schwellen "
+              "werden verwendet): %s" % exc, file=sys.stderr)
+        return None
+
+
+def _resolve_db_path(args, cfg) -> str:
+    """
+    coordinator.db-Pfad aus --coordinator-db oder (falls vorhanden) aus dem
+    bereits geladenen ConfigLoader (paths.coordinator_db).
     """
     if args.coordinator_db:
         return args.coordinator_db
-    try:
-        from core.config_loader import ConfigLoader
-        cfg = ConfigLoader(config_path=args.config)
+    if cfg is not None:
         path = cfg.get("paths.coordinator_db")
         if path:
             return str(path)
-    except Exception as exc:  # pragma: no cover
-        print("[dashboard_admin] config.yaml nicht lesbar: %s" % exc,
-              file=sys.stderr)
     raise SystemExit(
         "[dashboard_admin] Kein coordinator.db-Pfad: --coordinator-db oder "
         "paths.coordinator_db in config.yaml."
@@ -74,17 +90,32 @@ def main(argv=None) -> int:
     p_list.add_argument("--config", default="./config.yaml")
     args = parser.parse_args(argv)
 
-    db_path = _resolve_db_path(args)
+    cfg = _load_config(args)
+    db_path = _resolve_db_path(args, cfg)
     if not Path(db_path).exists():
         print("[dashboard_admin] coordinator.db nicht gefunden: %s" % db_path,
               file=sys.stderr)
+        return 1
+
+    # Schwellen aus config.yaml (dashboard.ampel.*), sonst Vorgabe 7/21.
+    try:
+        thresholds = (ampel_thresholds_from_config(cfg)
+                      if cfg is not None else DEFAULT_AMPEL_THRESHOLDS)
+    except DashboardConfigError as exc:
+        print("[dashboard_admin] %s" % exc, file=sys.stderr)
         return 1
 
     con = sqlite3.connect(db_path)
     try:
         con.row_factory = sqlite3.Row
         repo = DashboardRepo(con)
-        rows = repo.list_case_overview()
+        try:
+            rows = repo.list_case_overview(thresholds=thresholds)
+        except DashboardSchemaError as exc:
+            # Handlungsleitende Meldung statt rohem SQL-Traceback (mc 2026-07-03).
+            print("[dashboard_admin] %s" % exc, file=sys.stderr)
+            return 1
+
         if not rows:
             print("[dashboard_admin] Keine Faelle vorhanden.")
             return 0
@@ -103,7 +134,9 @@ def main(argv=None) -> int:
                 (o.last_event_kind or "-"),
                 ("aktiv(%d)" % o.support_count) if o.support_active else "-",
             ))
-        print("\nHinweis: Ampel-Semantik PROVISORISCH (mc ausstehend).")
+        print("\nSchwellen: amber=%d Tage, red=%d Tage (config.yaml: "
+              "dashboard.ampel.*)." % (thresholds.amber_idle_days,
+                                       thresholds.red_idle_days))
         return 0
     finally:
         con.close()

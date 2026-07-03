@@ -27,26 +27,26 @@
 #   (Sensibilitaetsregel analog cases.note; Beleg B7 v0.8 Paragraph 8.5.)
 #
 # ---------------------------------------------------------------------------
-# ACHTUNG — AMPEL-SEMANTIK IST PROVISORISCH (mc AUSSTEHEND):
-#   Die Schwellen und die Regelreihenfolge in DEFAULT_AMPEL_THRESHOLDS /
-#   classify_ampel() sind ein begruendeter VORSCHLAG, NICHT final. Sie sind
-#   bewusst an EINER Stelle gekapselt und ueber Parameter austauschbar, damit
-#   die endgueltige Semantik nach mc in genau einem Codeblock justiert werden
-#   kann. Das FRONTEND, das die Ampel den Ermittlern zeigt, ist noch NICHT
-#   gebaut — eine ggf. noch falsche Schwelle kann daher aktuell keine
-#   Ermittlung fehlleiten.
+# AMPEL-SEMANTIK (mc 2026-07-03 BESTAETIGT):
+#   Schwellen amber=7 / red=21 Tage als VORGABE, ab Build 315 aus der
+#   Konfiguration (config.yaml: dashboard.ampel.amber_idle_days /
+#   red_idle_days) ueberschreibbar — NICHT mehr hartkodiert. Fehlt der
+#   Abschnitt, greifen die Vorgabewerte (nicht-stiller Log-Hinweis).
+#   Support-Praesenz fliesst BEWUSST NICHT in die Farbe (eigenes Abzeichen).
+#   Sortierung ab Build 315: Ampel-Schwere zuerst (rot>gelb>gruen), dann
+#   Prioritaet, dann letzte Aktivitaet, dann user_id.
 # ---------------------------------------------------------------------------
 #
-# Beleg: Bauplan B7 v0.9 Paragraph 9, Roadmap "Tag 3 Ampel-Dashboard",
-#        Projektgespraech/mc 2026-07-02.
-# Version: v0.7.314 · Build: 314 · 2026-07-02
+# Beleg: Bauplan B7 v1.0 Paragraph 10, Projektgespraech/mc 2026-07-02 (Semantik)
+#        und mc 2026-07-03 (Schwellen aus Config, Sortierung Ampel-zuerst).
+# Version: v0.7.315 · Build: 315 · 2026-07-03
 # =============================================================================
 
 import logging
 import sqlite3
 import time
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 # Autoritative Stale-Schwelle der Support-Praesenz (kein Magic-Number-Duplikat).
 from db.coordinator_db import DEFAULT_SUPPORT_STALE_SEC
@@ -60,11 +60,32 @@ AMPEL_ROT = "rot"
 AMPEL_GELB = "gelb"
 AMPEL_GRUEN = "gruen"
 
+# Schwere-Rang fuer die Sortierung (rot am dringlichsten). Build 315:
+# 'Ampel-Schwere zuerst' ist die vom Auftraggeber bestaetigte Reihenfolge.
+_AMPEL_RANK = {AMPEL_ROT: 0, AMPEL_GELB: 1, AMPEL_GRUEN: 2}
+
+# Tabellen, die das Read-Model zwingend braucht. Fehlen sie, wird NICHT still
+# degradiert, sondern mit handlungsleitender Meldung abgebrochen (Grundregel 1).
+REQUIRED_TABLES = ("cases", "case_events", "support_sessions", "investigators")
+
+
+class DashboardSchemaError(Exception):
+    """
+    Erforderliche coordinator.db-Tabelle fehlt (z. B. case_events ohne M004).
+    Traegt eine handlungsleitende Meldung (welche Tabelle, was zu tun ist).
+    """
+
+
+class DashboardConfigError(Exception):
+    """Ungueltige dashboard.ampel-Konfiguration (z. B. amber >= red)."""
+
 
 @dataclass(frozen=True)
 class AmpelThresholds:
     """
-    Schwellen fuer die Ampel-Ableitung. PROVISORISCH (mc ausstehend).
+    Schwellen fuer die Ampel-Ableitung. Vorgabe amber=7 / red=21 (mc
+    2026-07-02); ab Build 315 aus config.yaml (dashboard.ampel.*)
+    ueberschreibbar (ampel_thresholds_from_config).
 
     Felder:
         amber_idle_days — ab so vielen Tagen ohne Fall-Aktivitaet wird ein
@@ -75,8 +96,61 @@ class AmpelThresholds:
     red_idle_days: int = 21
 
 
-#: Vorgeschlagene Standard-Schwellen — PROVISORISCH, an EINER Stelle aenderbar.
+#: Vorgabe-Schwellen (greifen, wenn config.yaml keinen dashboard.ampel-Block hat).
 DEFAULT_AMPEL_THRESHOLDS = AmpelThresholds()
+
+
+def ampel_thresholds_from_config(cfg: Any) -> AmpelThresholds:
+    """
+    Baut AmpelThresholds aus der Konfiguration. 'cfg' ist ein Objekt mit einer
+    get(dotted_key, default)-Methode (z. B. core.config_loader.ConfigLoader).
+
+    Gelesen werden dashboard.ampel.amber_idle_days und .red_idle_days. Fehlt
+    ein Wert, wird die Vorgabe (7 bzw. 21) verwendet — und das NICHT still,
+    sondern per Log-Hinweis vermerkt (Grundregel 1). Ungueltige Werte
+    (nicht-ganzzahlig, amber < 1, oder red <= amber) fuehren zu einem harten,
+    handlungsleitenden DashboardConfigError statt zu stiller Fehlkonfiguration.
+
+    Beleg: mc 2026-07-03 (Schwellen konfigurierbar, Vorgabe 7/21).
+    """
+    default = AmpelThresholds()
+    if cfg is None:
+        return default
+
+    raw_amber = cfg.get("dashboard.ampel.amber_idle_days", None)
+    raw_red = cfg.get("dashboard.ampel.red_idle_days", None)
+
+    used_defaults = []
+    if raw_amber is None:
+        raw_amber = default.amber_idle_days
+        used_defaults.append("amber_idle_days=%d" % raw_amber)
+    if raw_red is None:
+        raw_red = default.red_idle_days
+        used_defaults.append("red_idle_days=%d" % raw_red)
+
+    try:
+        amber = int(raw_amber)
+        red = int(raw_red)
+    except (TypeError, ValueError):
+        raise DashboardConfigError(
+            "dashboard.ampel-Schwellen muessen ganze Zahlen sein "
+            "(amber_idle_days=%r, red_idle_days=%r). Bitte config.yaml "
+            "korrigieren." % (raw_amber, raw_red)
+        )
+
+    if amber < 1 or red <= amber:
+        raise DashboardConfigError(
+            "Ungueltige Ampel-Schwellen: amber_idle_days (%d) muss >= 1 und "
+            "echt kleiner als red_idle_days (%d) sein. Bitte config.yaml unter "
+            "dashboard.ampel.* korrigieren." % (amber, red)
+        )
+
+    if used_defaults:
+        logger.info(
+            "dashboard.ampel: Vorgabewerte verwendet (%s) — anpassbar in "
+            "config.yaml unter dashboard.ampel.*.", ", ".join(used_defaults)
+        )
+    return AmpelThresholds(amber_idle_days=amber, red_idle_days=red)
 
 
 # Reason-Codes (maschinenlesbar; die UI kann sie spaeter lokalisieren).
@@ -98,7 +172,7 @@ def classify_ampel(
 ) -> Tuple[str, str]:
     """
     Reine (seiteneffektfreie) Ableitung der Ampel aus den Fall-Rohsignalen.
-    PROVISORISCH (mc ausstehend) — Regelreihenfolge (erste Regel greift):
+    Regelreihenfolge (mc 2026-07-02 bestaetigt; erste Regel greift):
 
       1. status 'closed'            -> GRUEN (abgeschlossen)
       2. status 'approved'          -> GRUEN (freigegeben)
@@ -110,7 +184,7 @@ def classify_ampel(
 
     Support-Praesenz fliesst BEWUSST NICHT in die Farbe ein — sie ist ein
     orthogonaler Live-Zustand und wird im Dashboard als eigenes Abzeichen
-    (support_active/support_count) gefuehrt (Design-Vorschlag, mc ausstehend).
+    (support_active/support_count) gefuehrt (mc 2026-07-02 bestaetigt).
 
     Gibt (ampel, reason_code) zurueck.
     """
@@ -142,7 +216,7 @@ class CaseOverview:
         support_active, support_count, support_since
     Abgeleitet:
         last_activity_at — max(updated_at, last_event_at)
-        ampel, ampel_reason — PROVISORISCH (siehe classify_ampel)
+        ampel, ampel_reason — abgeleitet (siehe classify_ampel)
     """
     user_id: int
     username: str
@@ -174,6 +248,27 @@ class DashboardRepo:
         self._con = con
         self._con.row_factory = sqlite3.Row
 
+    def _check_required_tables(self) -> None:
+        """
+        Prueft VOR der Aggregatabfrage, ob alle Pflichttabellen existieren.
+        Fehlt eine (typisch: case_events ohne M004), wird statt eines rohen
+        sqlite3.OperationalError ein handlungsleitender DashboardSchemaError
+        geworfen, der die fehlende Tabelle nennt und auf den Migrationslauf
+        verweist (mc 2026-07-03: 'handlungsleitende Fehlermeldungen').
+        """
+        have = {
+            row[0] for row in self._con.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            )
+        }
+        missing = [t for t in REQUIRED_TABLES if t not in have]
+        if missing:
+            raise DashboardSchemaError(
+                "Erforderliche Tabelle(n) fehlen in coordinator.db: %s. "
+                "Bitte ausstehende Migrationen anwenden: "
+                "python -m management.migrate" % ", ".join(missing)
+            )
+
     def list_case_overview(
         self,
         *,
@@ -186,14 +281,18 @@ class DashboardRepo:
         deterministische Inaktivitaets-/Praesenz-Berechnung); Standard ist die
         Systemzeit.
 
-        Sortierung (PROVISORISCH, mc ausstehend): aufsteigend nach Prioritaet
-        (1 = hoechste zuerst), dann absteigend nach letzter Aktivitaet, dann
-        user_id — 'was Aufmerksamkeit braucht, steht oben'.
+        Sortierung (mc 2026-07-03): Ampel-Schwere zuerst (rot > gelb >
+        gruen), dann Prioritaet aufsteigend (1 zuerst), dann letzte Aktivitaet
+        absteigend, dann user_id — 'was am dringlichsten ist, steht oben'.
+        'thresholds' stammt in der CLI aus config.yaml
+        (ampel_thresholds_from_config); Vorgabe 7/21.
 
         Eine einzige Aggregatabfrage (kein N+1): case_events- und
         support_sessions-Kennzahlen kommen aus abgeleiteten Teilmengen bzw.
         einer korrelierten Unterabfrage fuer die letzte Ereignisart.
         """
+        self._check_required_tables()
+
         now = int(time.time()) if now is None else int(now)
         sup_threshold = now - support_stale_sec
 
@@ -284,6 +383,9 @@ class DashboardRepo:
                 ampel_reason=reason,
             ))
 
-        # Sortierung PROVISORISCH: Aufmerksamkeit zuerst.
-        out.sort(key=lambda o: (o.priority, -o.last_activity_at, o.user_id))
+        # Sortierung (mc 2026-07-03): Ampel-Schwere zuerst (rot vor gelb vor
+        # gruen), dann Prioritaet aufsteigend, dann letzte Aktivitaet
+        # absteigend, dann user_id — 'was am dringlichsten ist, steht oben'.
+        out.sort(key=lambda o: (_AMPEL_RANK.get(o.ampel, 99), o.priority,
+                                -o.last_activity_at, o.user_id))
         return out
