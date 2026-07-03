@@ -20,7 +20,7 @@
 # migration.db enthaelt keinen Beweisinhalt; Anlegen/Schreiben ist unbedenklich.
 #
 # Beleg: Datenmigrationsleitfaden_AIW.md v0.2 Paragraph 6/9, mc 2026-07-03.
-# Version: v0.7.316 · Build: 316 · 2026-07-03
+# Version: v0.7.318 · Build: 318 · 2026-07-03 (ledger-verify/-list ergaenzt)
 # =============================================================================
 
 import argparse
@@ -29,6 +29,7 @@ import sys
 from pathlib import Path
 
 from management.migration_fleet.catalog import CatalogReconciler
+from management.migration_fleet.ledger import MigrationLedger
 from management.migration_fleet.migration_db import MigrationDb
 from management.migration_fleet.planner import MigrationPlanner, TargetDb
 
@@ -96,6 +97,12 @@ def main(argv=None) -> int:
                             help="Dry-Run-Migrationsplan je Instanz")
     p_plan.add_argument("--target", action="append", default=[],
                         help="db_kind:PATH[:uid] (wiederholbar)")
+    sub.add_parser("ledger-verify", parents=[common],
+                   help="Hash-Kette des migration_runs-Ledgers pruefen")
+    p_ll = sub.add_parser("ledger-list", parents=[common],
+                          help="Ledger-Eintraege auflisten")
+    p_ll.add_argument("--db-kind", default=None)
+    p_ll.add_argument("--uid", type=int, default=None)
 
     args = parser.parse_args(argv)
     db_path = _resolve_migration_db_path(args)
@@ -131,6 +138,46 @@ def main(argv=None) -> int:
                       "bzw. Code/Katalog pruefen.", file=sys.stderr)
                 return 1
             print("[migration_fleet] Kein Drift. Katalog und Code stimmen ueberein.")
+            return 0
+        finally:
+            con.close()
+
+    if args.action == "ledger-verify":
+        con = _open_mdb(db_path, create=False)
+        try:
+            result = MigrationLedger(con).verify_chain()
+            if result.ok:
+                print("[migration_fleet] Ledger-Kette unversehrt (ok).")
+                return 0
+            print("[migration_fleet] LEDGER-KETTE FEHLERHAFT: %s" % result.detail,
+                  file=sys.stderr)
+            return 1
+        finally:
+            con.close()
+
+    if args.action == "ledger-list":
+        con = _open_mdb(db_path, create=False)
+        try:
+            ledger = MigrationLedger(con)
+            rows = ledger.list_runs(db_kind=args.db_kind, uid=args.uid)
+            if not rows:
+                print("[migration_fleet] Keine Ledger-Eintraege.")
+                return 0
+            for r in rows:
+                print("seq=%-4d %-11s%s v%s->v%s  %-9s  started=%s finished=%s"
+                      % (r["seq"], r["db_kind"],
+                         ("/uid=%s" % r["uid"]) if r["uid"] is not None else "",
+                         r["from_version"], r["to_version"], r["status"],
+                         r["started_at"], r["finished_at"]))
+            interrupted = ledger.interrupted_runs()
+            if interrupted:
+                print("\n[migration_fleet] UNTERBROCHENE Laeufe (Start ohne "
+                      "Abschluss):")
+                for it in interrupted:
+                    print("  %s%s -> v%d (start_seq=%d)" % (
+                        it.db_kind,
+                        ("/uid=%s" % it.uid) if it.uid is not None else "",
+                        it.to_version, it.start_seq))
             return 0
         finally:
             con.close()
