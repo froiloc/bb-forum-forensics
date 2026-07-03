@@ -15,3 +15,5 @@ lxml>=5.0
 # Beleg: AP-E2, Projektgespraech 2026-04-19
 pyeditorjs>=1.0.0b0
 python-docx>=1.1.0  # B6 Phase 10/11: DOCX-Export (Format B), Beleg: Bauplan B6 v0.3 §7.2  # AP-E5: serverseitiger Editor.js-HTML-Export, Beleg: AP-E5 Projektgespraech 2026-04-19
+
+tzdata>=2024.1
