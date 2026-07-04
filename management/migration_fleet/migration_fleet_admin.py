@@ -20,7 +20,7 @@
 # migration.db enthaelt keinen Beweisinhalt; Anlegen/Schreiben ist unbedenklich.
 #
 # Beleg: Datenmigrationsleitfaden_AIW.md v0.2 Paragraph 6/9, mc 2026-07-03.
-# Version: v0.7.318 · Build: 318 · 2026-07-03 (ledger-verify/-list ergaenzt)
+# Version: v0.7.320 · Build: 320 · 2026-07-03 (companion-Subkommando ergaenzt)
 # =============================================================================
 
 import argparse
@@ -29,6 +29,7 @@ import sys
 from pathlib import Path
 
 from management.migration_fleet.catalog import CatalogReconciler
+from management.migration_fleet.companion import MigrationCompanion
 from management.migration_fleet.ledger import MigrationLedger
 from management.migration_fleet.migration_db import MigrationDb
 from management.migration_fleet.planner import MigrationPlanner, TargetDb
@@ -51,6 +52,25 @@ def _resolve_migration_db_path(args) -> str:
         "[migration_fleet] Kein migration.db-Pfad: --migration-db angeben oder "
         "paths.migration_db in config.yaml setzen."
     )
+
+
+def _resolve_backup_dir(args):
+    """
+    Backup-Zielverzeichnis aus --backup-dir oder config.yaml (paths.backup_dir).
+    Rueckgabe None, wenn nicht gesetzt (die Ausfuehrung wird dann vom Companion
+    ueber das Tor KEIN_BACKUP_DIR verweigert).
+    """
+    if getattr(args, "backup_dir", None):
+        return args.backup_dir
+    try:
+        from core.config_loader import ConfigLoader
+        cfg = ConfigLoader(config_path=args.config)
+        path = cfg.get("paths.backup_dir")
+        if path:
+            return str(path)
+    except Exception:  # pragma: no cover
+        pass
+    return None
 
 
 def _parse_target(spec: str) -> TargetDb:
@@ -103,6 +123,16 @@ def main(argv=None) -> int:
                           help="Ledger-Eintraege auflisten")
     p_ll.add_argument("--db-kind", default=None)
     p_ll.add_argument("--uid", type=int, default=None)
+    p_co = sub.add_parser("companion", parents=[common],
+                          help="Gefuehrter Migrations-Begleiter (Vorpruefung, "
+                               "Plan; mit --confirm auch Ausfuehrung)")
+    p_co.add_argument("--target", action="append", default=[],
+                      help="db_kind:PATH[:uid] (wiederholbar)")
+    p_co.add_argument("--confirm", action="store_true",
+                      help="Ausfuehrung ausdruecklich bestaetigen")
+    p_co.add_argument("--backup-dir", default=None)
+    p_co.add_argument("--operator", default=None)
+    p_co.add_argument("--verifier", default=None)
 
     args = parser.parse_args(argv)
     db_path = _resolve_migration_db_path(args)
@@ -179,6 +209,59 @@ def main(argv=None) -> int:
                         ("/uid=%s" % it.uid) if it.uid is not None else "",
                         it.to_version, it.start_seq))
             return 0
+        finally:
+            con.close()
+
+    if args.action == "companion":
+        if not args.target:
+            print("[migration_fleet] companion benoetigt mindestens ein --target.",
+                  file=sys.stderr)
+            return 1
+        targets = [_parse_target(s) for s in args.target]
+        con = _open_mdb(db_path, create=False)
+        try:
+            comp = MigrationCompanion(
+                MigrationDb(con), MigrationLedger(con),
+                backup_dir=_resolve_backup_dir(args), operator=args.operator)
+            # Vorpruefung
+            pf = comp.preflight(require_backup_dir=args.confirm)
+            print("== Vorpruefung ==")
+            for n in pf.notes:
+                print("  - %s" % n)
+            for b in pf.blockers:
+                print("  [BLOCKER %s] %s" % (b.code, b.message))
+            # Plan (Dry-Run)
+            print("== Plan (Dry-Run) ==")
+            for p in comp.plan(targets):
+                print("  %s%s v%s->v%s : %s"
+                      % (p.db_kind,
+                         ("/uid=%s" % p.uid) if p.uid is not None else "",
+                         p.from_version, p.to_version,
+                         p.status if not p.detail else p.detail))
+            if not args.confirm:
+                print("\n[migration_fleet] Kein --confirm — es wurde NICHTS "
+                      "ausgefuehrt (nur Vorpruefung + Plan).")
+                return 0 if pf.ok else 1
+            # Ausfuehrung (gated)
+            result = comp.execute(targets, confirm=True, verifier=args.verifier)
+            print("== Ausfuehrung ==")
+            if not result.executed:
+                print("  VERWEIGERT: %s" % result.reason, file=sys.stderr)
+                return 1
+            for r in result.results:
+                print("  %s%s : %s (v%s->v%s)"
+                      % (r.db_kind,
+                         ("/uid=%s" % r.uid) if r.uid is not None else "",
+                         r.status, r.from_version, r.to_version))
+            print("  -> %s" % result.reason)
+            # Zusammenfassung + Vieraugen-Erinnerung
+            summ = comp.summary()
+            print("== Zusammenfassung ==")
+            print("  Ledger-Kette: %s" % ("ok" if summ.chain_ok else "FEHLERHAFT"))
+            for rem in summ.reminders:
+                print("  ! %s" % rem)
+            has_failed = any(r.status == "failed_restored" for r in result.results)
+            return 1 if has_failed else 0
         finally:
             con.close()
 
