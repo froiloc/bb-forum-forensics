@@ -36,7 +36,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import management.migrations.coordinator as coordinator_migrations
 from management.audit.audit_log import AuditLog
-from management.migration_fleet.catalog import CatalogReconciler
+from management.migration_fleet.catalog import CatalogReconciler, DB_KIND_PACKAGES
 from management.migration_fleet.migration_db import (
     CatalogEntry,
     MigrationDb,
@@ -94,6 +94,10 @@ class MigrationFleetTests(unittest.TestCase):
         # Anzahl der im Code vorhandenen coordinator-Migrationen (M001..Mn).
         self.coord_mods = discover(coordinator_migrations)
         self.coord_versions = [m.VERSION for m in self.coord_mods]
+        # Gesamtzahl der Katalogeintraege ueber ALLE db_kinds (seit Build
+        # 319 auch evidence/forensic/assets-Baselines).
+        self.total_catalog = sum(
+            len(discover(pkg)) for pkg in DB_KIND_PACKAGES.values())
 
     def tearDown(self):
         try:
@@ -146,7 +150,9 @@ class MigrationFleetTests(unittest.TestCase):
     # F02 --------------------------------------------------------------------
     def test_f02_catalog_sync_coordinator(self):
         n = self.reconciler.sync()
-        self.assertEqual(n, len(self.coord_versions))
+        # Seit Build 319 deckt der Katalog auch die Beweis-DB-Arten ab.
+        self.assertEqual(n, self.total_catalog)
+        self.assertGreaterEqual(n, len(self.coord_versions))
         cat = self.mdb.list_catalog("coordinator")
         self.assertEqual([e.version for e in cat], sorted(self.coord_versions))
         # Pruefsumme muss identisch zu MigrationRunner._module_checksum sein.
@@ -162,7 +168,7 @@ class MigrationFleetTests(unittest.TestCase):
         self.reconciler.sync()
         report = self.reconciler.reconcile()
         self.assertFalse(report.has_drift)
-        self.assertEqual(len(report.ok), len(self.coord_versions))
+        self.assertEqual(len(report.ok), self.total_catalog)
 
     # F04 --------------------------------------------------------------------
     def test_f04_reconcile_modified(self):
@@ -227,12 +233,13 @@ class MigrationFleetTests(unittest.TestCase):
     # F09 --------------------------------------------------------------------
     def test_f09_plan_db_kind_without_catalog(self):
         self.reconciler.sync()
-        # 'evidence' hat (Build 316) noch kein Migrationspaket -> Katalog leer.
+        # Eine db_kind OHNE Migrationspaket (seit Build 319 haben
+        # evidence/forensic/assets welche) -> Katalog leer, Hinweis-note.
         path = self._make_coordinator_at(0)  # Datei existiert, Art egal
-        plan = self.planner.plan_instance(TargetDb("evidence", path, uid=42))
+        plan = self.planner.plan_instance(TargetDb("nichtexistent", path, uid=42))
         self.assertEqual(plan.pending, [])
         self.assertIsNotNone(plan.note)
-        self.assertIn("evidence", plan.note)
+        self.assertIn("nichtexistent", plan.note)
 
     # F10 --------------------------------------------------------------------
     def test_f10_missing_schema_migrations_is_v0(self):

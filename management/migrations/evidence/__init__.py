@@ -1,4 +1,4 @@
-# management.migrations.evidence — PLATZHALTER.
-# Die erste echte Migration rüstet hier 'schema_migrations' additiv und
-# datenneutral nach. Verankert, damit der Retrofit nicht vergessen wird.
-# Beleg: Bauplan B7 v0.2 §3 (To-Do), Projektgespräch 2026-07-01.
+# management.migrations.evidence — Migrationspaket der evidence_<uid>.db.
+# m001 ruestet 'schema_migrations' additiv/datenneutral nach — der in
+# Bauplan B7 v0.2 §3 vorgemerkte Retrofit ist mit Build 319 implementiert.
+# Beleg: Bauplan Build 319 v0.1 §1, Projektgespraech 2026-07-01, mc 2026-07-03.

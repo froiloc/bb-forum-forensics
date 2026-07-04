@@ -23,7 +23,10 @@
 from dataclasses import dataclass, field
 from typing import Dict, List
 
+import management.migrations.assets as _assets_pkg
 import management.migrations.coordinator as _coordinator_pkg
+import management.migrations.evidence as _evidence_pkg
+import management.migrations.forensic as _forensic_pkg
 from management.migration_fleet import EVIDENCE_DB_KINDS
 from management.migration_fleet.migration_db import CatalogEntry, MigrationDb
 from management.migrations.runner import MigrationRunner, discover
@@ -32,6 +35,9 @@ from management.migrations.runner import MigrationRunner, discover
 #: werden hier eingetragen, sobald ihre m###-Pakete existieren.
 DB_KIND_PACKAGES = {
     "coordinator": _coordinator_pkg,
+    "evidence": _evidence_pkg,
+    "forensic": _forensic_pkg,
+    "assets": _assets_pkg,
 }
 
 
