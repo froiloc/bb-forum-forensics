@@ -80,14 +80,36 @@ def _fmt_ts(ts) -> str:
 _AMPEL_MARK = {"rot": "[ROT ]", "gelb": "[GELB]", "gruen": "[GRUE]"}
 
 
+def _do_export_html(rows, out_path) -> int:
+    """Serialisiert die Uebersicht und schreibt eine self-contained HTML-Datei."""
+    import dataclasses
+    from management.dashboard.html_export import build_dashboard_html
+    overview = [dataclasses.asdict(o) for o in rows]
+    frontend = Path(__file__).resolve().parent / "frontend"
+    css = (frontend / "dashboard.css").read_text(encoding="utf-8")
+    js = (frontend / "dashboard.js").read_text(encoding="utf-8")
+    generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    html = build_dashboard_html(overview, css, js, debug=False,
+                                generated_at=generated)
+    Path(out_path).write_text(html, encoding="utf-8")
+    print("[dashboard_admin] %d Fall/Faelle -> %s (self-contained)"
+          % (len(overview), out_path))
+    return 0
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         description="Ampel-Dashboard (Backend-Sicht, nur lesend)."
     )
+    common = argparse.ArgumentParser(add_help=False)
+    common.add_argument("--coordinator-db", default=None)
+    common.add_argument("--config", default="./config.yaml")
     sub = parser.add_subparsers(dest="action", required=True)
-    p_list = sub.add_parser("list", help="Fall-Uebersicht ausgeben")
-    p_list.add_argument("--coordinator-db", default=None)
-    p_list.add_argument("--config", default="./config.yaml")
+    sub.add_parser("list", parents=[common], help="Fall-Uebersicht ausgeben")
+    p_exp = sub.add_parser("export-html", parents=[common],
+                           help="Self-contained Dashboard-HTML erzeugen")
+    p_exp.add_argument("--out", required=True,
+                       help="Zielpfad der zu erzeugenden HTML-Datei")
     args = parser.parse_args(argv)
 
     cfg = _load_config(args)
@@ -116,6 +138,10 @@ def main(argv=None) -> int:
             print("[dashboard_admin] %s" % exc, file=sys.stderr)
             return 1
 
+        if args.action == "export-html":
+            return _do_export_html(rows, args.out)
+
+        # action == "list"
         if not rows:
             print("[dashboard_admin] Keine Faelle vorhanden.")
             return 0
