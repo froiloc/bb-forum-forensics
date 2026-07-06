@@ -1,0 +1,58 @@
+/* =============================================================================
+   management/dashboard/frontend/dashboard.css
+   IT-Forensisches Ermittlungswerkzeug — Ampel-Dashboard (getrennte Admin-Sicht)
+   =============================================================================
+   Einzige Stilquelle: sowohl die Demo-Seite (dashboard.html, via <link>) als
+   auch der self-contained Export (dashboard_admin export-html, inline) nutzen
+   genau diese Datei -> keine Stil-Duplikate/-Drift.
+   Prioritaet: Lesbarkeit + eindeutige Ampel-Semantik fuer ein internes
+   Forensik-Werkzeug, nicht Zierde.
+   Version: v0.7.323 · Build: 323 · 2026-07-04
+   ============================================================================= */
+:root {
+    --rot: #c0392b;
+    --gelb: #d68910;
+    --gruen: #1e8449;
+    --bg: #f7f7f8;
+    --line: #dddfe2;
+    --ink: #1c1e21;
+}
+body {
+    font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink); background: var(--bg); margin: 0; padding: 24px;
+}
+h1 { font-size: 20px; margin: 0 0 4px; }
+.aiw-sub { color: #606770; font-size: 13px; margin: 0 0 20px; }
+.aiw-dashboard-table {
+    border-collapse: collapse; width: 100%; background: #fff;
+    box-shadow: 0 1px 2px rgba(0,0,0,.08); font-size: 13px;
+}
+.aiw-dashboard-table th, .aiw-dashboard-table td {
+    border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left;
+    white-space: nowrap;
+}
+.aiw-dashboard-table thead th {
+    background: #eef0f2; position: sticky; top: 0; font-weight: 600;
+}
+.aiw-username { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+.aiw-prio { text-align: center; font-variant-numeric: tabular-nums; }
+/* Ampel-Punkt: kleine farbige Scheibe in der ersten Spalte. */
+.aiw-ampel-dot { width: 18px; }
+.aiw-ampel-dot::before {
+    content: ""; display: inline-block; width: 12px; height: 12px;
+    border-radius: 50%; background: #bbb;
+}
+td.aiw-ampel-dot.aiw-ampel-rot::before { background: var(--rot); }
+td.aiw-ampel-dot.aiw-ampel-gelb::before { background: var(--gelb); }
+td.aiw-ampel-dot.aiw-ampel-gruen::before { background: var(--gruen); }
+/* Zeilen dezent nach Ampel einfaerben (linker Rand). */
+tr.aiw-ampel-rot   td:first-child { box-shadow: inset 3px 0 0 var(--rot); }
+tr.aiw-ampel-gelb  td:first-child { box-shadow: inset 3px 0 0 var(--gelb); }
+tr.aiw-ampel-gruen td:first-child { box-shadow: inset 3px 0 0 var(--gruen); }
+.aiw-support-active { color: var(--rot); font-weight: 600; }
+.aiw-has-note { color: #606770; font-style: italic; }
+.aiw-reason { color: #606770; }
+.aiw-legend { margin-top: 16px; font-size: 12px; color: #606770; }
+.aiw-legend span { margin-right: 16px; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+       vertical-align: middle; margin-right: 4px; }
