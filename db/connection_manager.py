@@ -65,6 +65,7 @@ from db.evidence_db import EvidenceDb
 from db.coordinator_db import CoordinatorDb
 from db.assets_db import AssetsDb
 from db.templates_db import TemplatesDb          # NEU Build 089
+from db.locking_connection import LockingConnection  # Build 325: Nebenlaeufigkeits-Serialisierung
 
 logger = get_logger(__name__)
 
@@ -250,15 +251,25 @@ class ConnectionManager:
                 )
 
             # DB-Instanzen initialisieren
-            forensic    = ForensicDb(con)
+            # Build 325: Ab hier laufen ALLE Fach-DB-Zugriffe (mehrthreadig zur Laufzeit:
+            # SSE-Thread + Request-Threads, Beleg connection_manager.py:262-273 / Build 021)
+            # ueber den LockingConnection-Wrapper, der jeden execute+fetch-Abschnitt
+            # serialisiert. ATTACH/PRAGMA/Authorizer oben liefen bewusst auf der rohen
+            # (einthreadigen) con. Beleg: Live-Diagnose 2026-07-06 (get_page InterfaceError
+            # 'bad parameter or other API misuse' bei Nebenlaeufigkeit).
+            db_con = LockingConnection(con)
+            if assets_con is not None:
+                assets_con = db_con          # assets nutzt dieselbe geteilte con (adb-ATTACH)
+
+            forensic    = ForensicDb(db_con)
             # forum_base_url aus forensic_meta lesen — wird für Asset-URL-Lookup
             # benötigt, da asset_urls vollständige Onion-URLs als Schlüssel speichert
             forum_base_url = forensic.get_forum_base_url()
-            default     = DefaultDb(con, forum_base_url=forum_base_url)
-            evidence    = EvidenceDb(con, db_path=str(evidence_path))  # Build 098: Thread-Safety
-            coordinator = CoordinatorDb(con)
+            default     = DefaultDb(db_con, forum_base_url=forum_base_url)
+            evidence    = EvidenceDb(db_con, db_path=str(evidence_path))  # Build 098: Thread-Safety
+            coordinator = CoordinatorDb(db_con)
             assets      = AssetsDb(assets_con, forum_base_url=forum_base_url)   # NEU Build 017
-            templates   = TemplatesDb(con)          # NEU Build 089
+            templates   = TemplatesDb(db_con)          # NEU Build 089
 
             # Authorizer nach vollständigem ATTACH-Aufbau deaktivieren.
             # Hintergrund (Build 021): set_authorizer() ist nicht thread-safe
@@ -279,7 +290,7 @@ class ConnectionManager:
             )
 
             return DatabaseBundle(
-                connection=con,
+                connection=db_con,   # Build 325: gewrappte (serialisierte) Verbindung
                 forensic=forensic,
                 default=default,
                 evidence=evidence,
@@ -401,16 +412,22 @@ class ConnectionManager:
 
             # DB-Instanzen initialisieren
             # ForensicDb und DefaultDb wie im Normalmodus
-            forensic    = ForensicDb(con)
+            # Build 325: Fach-DB-Zugriffe ueber LockingConnection-Wrapper serialisieren
+            # (SSE-Thread + Request-Threads). Beleg: Live-Diagnose 2026-07-06.
+            db_con = LockingConnection(con)
+            if assets_con is not None:
+                assets_con = db_con          # assets nutzt dieselbe geteilte con (adb-ATTACH)
+
+            forensic    = ForensicDb(db_con)
             # forum_base_url aus forensic_meta lesen — wird für Asset-URL-Lookup
             # benötigt, da asset_urls vollständige Onion-URLs als Schlüssel speichert
             forum_base_url = forensic.get_forum_base_url()
-            default     = DefaultDb(con, forum_base_url=forum_base_url)
+            default     = DefaultDb(db_con, forum_base_url=forum_base_url)
             # EvidenceDb schreibt in die TEMP-Haupt-DB
-            evidence    = EvidenceDb(con, db_path=str(evidence_path))  # Build 098: Thread-Safety
-            coordinator = CoordinatorDb(con)
+            evidence    = EvidenceDb(db_con, db_path=str(evidence_path))  # Build 098: Thread-Safety
+            coordinator = CoordinatorDb(db_con)
             assets      = AssetsDb(assets_con, forum_base_url=forum_base_url)   # NEU Build 017
-            templates   = TemplatesDb(con)          # NEU Build 089
+            templates   = TemplatesDb(db_con)          # NEU Build 089
 
             # Authorizer nach vollständigem ATTACH-Aufbau deaktivieren.
             # Hintergrund (Build 021): set_authorizer() ist nicht thread-safe
@@ -430,7 +447,7 @@ class ConnectionManager:
             )
 
             return DatabaseBundle(
-                connection=con,
+                connection=db_con,   # Build 325: gewrappte (serialisierte) Verbindung
                 forensic=forensic,
                 default=default,
                 evidence=evidence,
