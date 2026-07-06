@@ -6324,7 +6324,16 @@
       // Preflight-Prüfung: Duplikat-SSE-Schutz (Build 265).
       // Beleg: Projektgespräch 2026-05-31.
       var _sseUrl = ForensicToolbar.config.API_EVENTS + '?role=main';
-      fetch(_sseUrl, { method: 'GET', headers: { Accept: 'text/event-stream, application/json' } })
+      // Build 324: Preflight-Header 'X-Forensic-Preflight: 1' ist ZWINGEND.
+      // Ohne ihn behandelt der Server (events.py:333-335) diesen GET als echten
+      // SSE-Stream, beansprucht via claim_sse_role() den 'main'-Slot und haelt
+      // ihn offen. Die danach geoeffnete echte EventSource (_openMainSSE)
+      // kollidiert dann mit dem eigenen Preflight-Stream -> HTTP 409 -> kein
+      // support_status -> kein Support-Indikator (Selbst-Kollision). Der Header
+      // macht den Preflight zum reinen Slot-Check (kein claim). Spiegelbild von
+      // sse_layer.js:346-353.
+      // Beleg: PoC 2026-07-06 (P3=PASS), Bugfix-Liste 2.23 (2026-06-07), Build 312.
+      fetch(_sseUrl, { method: 'GET', headers: { 'Accept': 'application/json', 'X-Forensic-Preflight': '1' } })
         .then(function(resp) {
           if (resp.status === 409) {
             return resp.json().then(function(data) {
