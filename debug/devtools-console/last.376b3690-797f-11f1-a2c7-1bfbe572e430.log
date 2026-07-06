@@ -1,0 +1,7 @@
+toolbar.js?v=323:6345 [Forensic] SSE-Duplikat (main): aktives Fenster=596fa808-fbba-458a-a087-596db5905b71
+_showMainDuplicateHint @ toolbar.js:6345
+toolbar.js?v=323:7390 [Forensic] Server: v0.1.0-build323 | Modus: support | Beschuldigter: uid_1488 | Seiten: 7332
+toolbar.js?v=323:2117  POST http://127.0.0.2:8082/_forensic/windows net::ERR_CONNECTION_REFUSED
+_registerWindow @ toolbar.js:2117
+Navigated to http://127.0.0.2:8081/
+toolbar.js?v=324:7399 [Forensic] Server: v0.1.0-build324 | Modus: cli | Beschuldigter: uid_1488 | Seiten: 7332
