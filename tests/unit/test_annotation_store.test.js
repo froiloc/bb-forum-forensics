@@ -91,3 +91,20 @@ describe("Tags — Vokabular", () => {
     });
   });
 });
+
+describe("Build 337: isWholePostMark (Post-Marke vs Text-/Übersetzungs-Marke)", () => {
+  it("post_id ohne selection -> echte Ganz-Post-Marke", () => {
+    expect(ft.config.isWholePostMark({ postId: 705985, selection: null })).toBe(true);
+    expect(ft.config.isWholePostMark({ postId: 705985 })).toBe(true);
+  });
+  it("post_id MIT selection (Übersetzungs-Marke) -> KEINE Post-Marke", () => {
+    expect(ft.config.isWholePostMark({
+      postId: 705985,
+      selection: { target: "translation", charStart: 1, charEnd: 5 }
+    })).toBe(false);
+  });
+  it("ohne post_id / null -> keine Post-Marke", () => {
+    expect(ft.config.isWholePostMark({ postId: null, selection: null })).toBe(false);
+    expect(ft.config.isWholePostMark(null)).toBe(false);
+  });
+});

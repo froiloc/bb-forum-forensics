@@ -2327,6 +2327,15 @@
     // Beleg: §18.1 Bauplan — Selektor: article.post[id^="p"]
     var POST_SELECTOR = "article.post[id^='p']";
 
+    // Build 337: Eine Annotation ist eine ECHTE Ganz-Post-Markierung nur, wenn sie
+    // eine post_id hat UND KEINE selection. Text-/Uebersetzungs-Marken tragen seit
+    // Build 336 (Option B) ebenfalls post_id, besitzen aber eine selection und sind
+    // KEINE Post-Markierungen — sie duerfen weder den Post-Rahmen noch das
+    // Post-weite Hover-Menue ausloesen. Reines Praedikat (vitest-testbar).
+    function _isWholePostMark(ann) {
+      return !!(ann && ann.postId && !ann.selection);
+    }
+
     function _onPostClick(e) {
       var activeCat = _state.activeCategory;
       if (!activeCat) return;
@@ -2361,7 +2370,7 @@
       // Ueberschreiben-Dialog nicht ausloesen.
       var existingAnn = null;
       _state.annotations.forEach(function (ann) {
-        if (ann.postId === postId && !ann.selection) existingAnn = ann;
+        if (_isWholePostMark(ann) && ann.postId === postId) existingAnn = ann;
       });
 
       if (existingAnn) {
@@ -2416,7 +2425,8 @@
     /** Alle Post-Markierungen aus State wiederherstellen (viewmode:enhanced) */
     function restoreAll() {
       _state.annotations.forEach(function (ann) {
-        if (!ann.postId) return;
+        // Build 337: NUR echte Ganz-Post-Marken (mit post_id, OHNE selection).
+        if (!_isWholePostMark(ann)) return;
         var postEl = document.getElementById("p" + ann.postId);
         if (postEl) _applyPostVisual(postEl, ann.category);
       });
@@ -2434,8 +2444,11 @@
     ForensicToolbar.events.on("viewmode:original",  clearAll);
     ForensicToolbar.events.on("viewmode:enhanced",  restoreAll);
 
-    return { clearAll: clearAll, restoreAll: restoreAll };
+    return { clearAll: clearAll, restoreAll: restoreAll, isWholePostMark: _isWholePostMark };
   })();
+
+  // Build 337: Prädikat fuer vitest freilegen (Muster config.levenshtein).
+  ForensicToolbar.config.isWholePostMark = PostMarkerModule.isWholePostMark;
 
   // ===========================================================================
   // PHASE 6: AnnotationPopupModule — Schwebendes Editor-Feld
@@ -4277,7 +4290,8 @@
         if (!isNaN(pid)) {
           var found2 = null;
           _state.annotations.forEach(function (ann) {
-            if (ann.postId === pid) found2 = ann;
+            // Build 337: Post-Hover matcht NUR echte Ganz-Post-Marken (ohne selection).
+            if (ann.postId === pid && !ann.selection) found2 = ann;
           });
           return found2;
         }
