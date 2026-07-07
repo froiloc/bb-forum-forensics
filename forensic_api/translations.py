@@ -21,7 +21,7 @@
 #   - trdb nicht angebunden           -> 200 leere Liste (kein Fehler; die DB
 #                                        wird extern erst spaeter befuellt)
 #
-# Version: v0.7.329 · Build: 329 · 2026-07-07
+# Version: v0.7.331 · Build: 331 · 2026-07-07 (source-Param posts/pms; kein status)
 # =============================================================================
 
 from __future__ import annotations
@@ -82,8 +82,25 @@ class TranslationsEndpoint:
             )
             return
 
+        # Build 331: source trennt 'posts' (Forum) von 'pms'. Default 'posts';
+        # unbekannter Wert wird NICHT still ersetzt, sondern als 400 gemeldet (GR1).
+        source_vals = params.get("source", [])
+        source = source_vals[0] if source_vals else "posts"
+        if source not in ("posts", "pms"):
+            body = json.dumps(
+                {"error": "Ungueltiger source (erlaubt: posts, pms)",
+                 "status": "error"},
+                ensure_ascii=False,
+            ).encode("utf-8")
+            handler.send_response_body(
+                400, body, content_type="application/json; charset=utf-8"
+            )
+            return
+
         try:
-            post_ids = self._bundle.translations.list_translated_post_ids(topic_id)
+            post_ids = self._bundle.translations.list_translated_post_ids(
+                topic_id, source
+            )
         except Exception as exc:  # defensiv — niemals 500 ohne Log (GR1)
             logger.error(
                 "TranslationsEndpoint: list_translated_post_ids(%r) Fehler: %s",
@@ -100,11 +117,11 @@ class TranslationsEndpoint:
             return
 
         logger.debug(
-            "/_forensic/translations: topic_id=%d -> %d uebersetzte post_ids.",
-            topic_id, len(post_ids),
+            "/_forensic/translations: topic_id=%d source=%s -> %d uebersetzte post_ids.",
+            topic_id, source, len(post_ids),
         )
         body_out = json.dumps(
-            {"topic_id": topic_id, "post_ids": post_ids,
+            {"topic_id": topic_id, "source": source, "post_ids": post_ids,
              "count": len(post_ids), "status": "ok"},
             ensure_ascii=False,
         ).encode("utf-8")

@@ -3,8 +3,9 @@
 # IT-Forensisches Ermittlungswerkzeug — Tests fuer forensic_api/translations.py
 # und forensic_api/translate.py
 # =============================================================================
-# Beleg: Bauplan Build 329 §6.1, §3.1, §3.2
-# Version: v0.7.329 · Build: 329 · 2026-07-07
+# Beleg: Bauplan Build 329 §6.1, §3.1, §3.2; Build 331 (reales Schema ohne
+#        status, optionaler source-Param posts/pms).
+# Version: v0.7.331 · Build: 331 · 2026-07-07
 # =============================================================================
 
 import json
@@ -14,10 +15,6 @@ from db.translations_db import TranslationsDb
 from forensic_api.translations import TranslationsEndpoint
 from forensic_api.translate import TranslateEndpoint
 
-
-# -----------------------------------------------------------------------------
-# Fakes
-# -----------------------------------------------------------------------------
 
 class _FakeHandler:
     """Faengt send_response_body(status, body, content_type) ab."""
@@ -42,20 +39,24 @@ class _FakeBundle:
 
 def _real_translations_db(tmp_path):
     p = tmp_path / "translations.db"
+    if p.exists():
+        p.unlink()  # Helfer kann pro Test mehrfach aufgerufen werden
     con = sqlite3.connect(str(p))
     con.execute(
         "CREATE TABLE translations ("
-        "  post_id INTEGER PRIMARY KEY, topic_id INTEGER, translated_text TEXT, "
-        "  model_used TEXT, status TEXT DEFAULT 'pending', created_at TEXT)"
+        "  post_id INTEGER PRIMARY KEY, translated_text TEXT, model_used TEXT, "
+        "  created_at TEXT DEFAULT (datetime('now')), "
+        "  updated_at TEXT DEFAULT (datetime('now')), "
+        "  source TEXT DEFAULT 'posts', topic_id INTEGER, forum_id INTEGER)"
     )
     con.executemany(
         "INSERT INTO translations "
-        "(post_id, topic_id, translated_text, model_used, status, created_at) "
-        "VALUES (?,?,?,?,?,?)",
+        "(post_id, translated_text, model_used, created_at, source, topic_id, forum_id) "
+        "VALUES (?,?,?,?,?,?,?)",
         [
-            (706037, 69192, "Deutsche Uebersetzung A", "ollama/x", "completed", "2026-06-20"),
-            (706040, 69192, "Deutsche Uebersetzung B", "ollama/x", "completed", "2026-06-20"),
-            (706060, 69192, "offen", "ollama/x", "pending", "2026-06-20"),
+            (706037, "Deutsche Uebersetzung A", "ollama/x", "2026-06-20", "posts", 69192, 12),
+            (706040, "Deutsche Uebersetzung B", "ollama/x", "2026-06-20", "posts", 69192, 12),
+            (900001, "PM Uebersetzung",         "ollama/x", "2026-06-20", "pms",   69192, None),
         ],
     )
     con.commit()
@@ -79,15 +80,29 @@ def _translate_ep(tmp_path):
 # /_forensic/translations
 # -----------------------------------------------------------------------------
 
-def test_translations_gueltige_topic_id(tmp_path):
+def test_translations_gueltige_topic_id_nur_posts(tmp_path):
     h = _FakeHandler()
     _translations_ep(tmp_path).handle(h, {"topic_id": ["69192"]})
     assert h.status == 200
     data = h.json()
     assert data["status"] == "ok"
     assert data["topic_id"] == 69192
-    assert sorted(data["post_ids"]) == [706037, 706040]  # pending ausgeschlossen
+    assert data["source"] == "posts"
+    assert sorted(data["post_ids"]) == [706037, 706040]  # PM (900001) NICHT dabei
     assert data["count"] == 2
+
+
+def test_translations_source_pms(tmp_path):
+    h = _FakeHandler()
+    _translations_ep(tmp_path).handle(h, {"topic_id": ["69192"], "source": ["pms"]})
+    assert h.status == 200
+    assert h.json()["post_ids"] == [900001]
+
+
+def test_translations_ungueltiger_source_400(tmp_path):
+    h = _FakeHandler()
+    _translations_ep(tmp_path).handle(h, {"topic_id": ["69192"], "source": ["quatsch"]})
+    assert h.status == 400
 
 
 def test_translations_fehlende_topic_id_400(tmp_path):
@@ -116,15 +131,19 @@ def test_translate_gefunden(tmp_path):
     assert data["post_id"] == 706037
     assert data["translated_text"] == "Deutsche Uebersetzung A"
     assert data["model_used"] == "ollama/x"
-    # confidence_markers wird bewusst NICHT geliefert
     assert "confidence_markers" not in data
+    assert "status" not in data
 
 
-def test_translate_pending_ist_found_false(tmp_path):
-    h = _FakeHandler()
-    _translate_ep(tmp_path).handle(h, {"post_id": ["706060"]})
-    assert h.status == 200          # 'nicht gefunden' ist KEIN Fehler
-    assert h.json()["found"] is False
+def test_translate_pms_nur_mit_source(tmp_path):
+    # Default source='posts' -> PM 900001 nicht gefunden
+    h1 = _FakeHandler()
+    _translate_ep(tmp_path).handle(h1, {"post_id": ["900001"]})
+    assert h1.status == 200 and h1.json()["found"] is False
+    # mit source='pms' -> gefunden
+    h2 = _FakeHandler()
+    _translate_ep(tmp_path).handle(h2, {"post_id": ["900001"], "source": ["pms"]})
+    assert h2.status == 200 and h2.json()["found"] is True
 
 
 def test_translate_unbekannt_ist_found_false(tmp_path):
@@ -132,6 +151,12 @@ def test_translate_unbekannt_ist_found_false(tmp_path):
     _translate_ep(tmp_path).handle(h, {"post_id": ["999999"]})
     assert h.status == 200
     assert h.json()["found"] is False
+
+
+def test_translate_ungueltiger_source_400(tmp_path):
+    h = _FakeHandler()
+    _translate_ep(tmp_path).handle(h, {"post_id": ["706037"], "source": ["quatsch"]})
+    assert h.status == 400
 
 
 def test_translate_fehlender_post_id_400(tmp_path):

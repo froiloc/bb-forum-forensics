@@ -2,8 +2,11 @@
 # tests/test_translations_db.py
 # IT-Forensisches Ermittlungswerkzeug — Tests fuer db/translations_db.py
 # =============================================================================
-# Beleg: Bauplan Build 329 §6.1
-# Version: v0.7.329 · Build: 329 · 2026-07-07
+# Beleg: Bauplan Build 329 §6.1; Build 331 (reales Schema ohne status, source-
+#        Trennung posts/pms). Reale Produktionstabelle (Projektgespraech
+#        2026-07-07): post_id PK, translated_text, model_used, created_at,
+#        updated_at, source ('posts'|'pms'), topic_id, forum_id — KEIN status.
+# Version: v0.7.331 · Build: 331 · 2026-07-07
 # =============================================================================
 
 import sqlite3
@@ -12,7 +15,7 @@ from db.translations_db import TranslationsDb, TranslationRecord
 
 
 # -----------------------------------------------------------------------------
-# Hilfsfunktionen: synthetische Referenz-translations.db
+# Hilfsfunktionen: synthetische Referenz-translations.db im REALEN Schema
 # -----------------------------------------------------------------------------
 
 def _make_trans_db(path, with_topic_id=True):
@@ -20,33 +23,34 @@ def _make_trans_db(path, with_topic_id=True):
     if with_topic_id:
         con.execute(
             "CREATE TABLE translations ("
-            "  post_id INTEGER PRIMARY KEY, topic_id INTEGER, "
-            "  translated_text TEXT, model_used TEXT, "
-            "  status TEXT DEFAULT 'pending', created_at TEXT)"
+            "  post_id INTEGER PRIMARY KEY, translated_text TEXT, model_used TEXT, "
+            "  created_at TEXT DEFAULT (datetime('now')), "
+            "  updated_at TEXT DEFAULT (datetime('now')), "
+            "  source TEXT DEFAULT 'posts', topic_id INTEGER, forum_id INTEGER)"
         )
         con.executemany(
             "INSERT INTO translations "
-            "(post_id, topic_id, translated_text, model_used, status, created_at) "
-            "VALUES (?,?,?,?,?,?)",
+            "(post_id, translated_text, model_used, created_at, source, topic_id, forum_id) "
+            "VALUES (?,?,?,?,?,?,?)",
             [
-                (706037, 69192, "Deutsche Uebersetzung A", "ollama/x", "completed", "2026-06-20"),
-                (706040, 69192, "Deutsche Uebersetzung B", "ollama/x", "completed", "2026-06-20"),
-                (706050, 69192, "",            "ollama/x", "completed", "2026-06-20"),  # leer -> raus
-                (706060, 69192, "noch offen",  "ollama/x", "pending",   "2026-06-20"),  # pending -> raus
-                (800001, 70000, "anderes Topic", "ollama/x", "completed", "2026-06-20"),
+                (706037, "Deutsche Uebersetzung A", "ollama/x", "2026-06-20", "posts", 69192, 12),
+                (706040, "Deutsche Uebersetzung B", "ollama/x", "2026-06-20", "posts", 69192, 12),
+                (706050, "",                          "ollama/x", "2026-06-20", "posts", 69192, 12),  # leer -> raus
+                (800001, "anderes Topic",             "ollama/x", "2026-06-20", "posts", 70000, 12),
+                # PM mit (kontriviert) gleicher topic_id -> darf bei source='posts' NICHT erscheinen
+                (900001, "PM Uebersetzung",           "ollama/x", "2026-06-20", "pms",   69192, None),
             ],
         )
     else:
-        # Wie oben, aber OHNE topic_id-Spalte (Spalten-Robustheit).
+        # REALES Schema ohne topic_id (Spalten-Robustheit); source vorhanden.
         con.execute(
             "CREATE TABLE translations ("
-            "  post_id INTEGER PRIMARY KEY, translated_text TEXT, "
-            "  model_used TEXT, status TEXT DEFAULT 'pending', created_at TEXT)"
+            "  post_id INTEGER PRIMARY KEY, translated_text TEXT, model_used TEXT, "
+            "  created_at TEXT DEFAULT (datetime('now')), source TEXT DEFAULT 'posts')"
         )
         con.execute(
-            "INSERT INTO translations "
-            "(post_id, translated_text, model_used, status, created_at) "
-            "VALUES (706037, 'Text', 'ollama/x', 'completed', '2026-06-20')"
+            "INSERT INTO translations (post_id, translated_text, model_used, created_at, source) "
+            "VALUES (706037, 'Text', 'ollama/x', '2026-06-20', 'posts')"
         )
     con.commit()
     con.close()
@@ -63,13 +67,20 @@ def _open_with_trdb(trans_path):
 # Tests
 # -----------------------------------------------------------------------------
 
-def test_list_translated_post_ids_filtert_korrekt(tmp_path):
+def test_list_posts_filtert_leer_fremdtopic_und_pms_aus(tmp_path):
     p = tmp_path / "translations.db"
     _make_trans_db(p)
     tdb = TranslationsDb(_open_with_trdb(p))
-    ids = tdb.list_translated_post_ids(69192)
-    # leer + pending ausgeschlossen, anderes Topic (70000) nicht enthalten
+    ids = tdb.list_translated_post_ids(69192)  # Default source='posts'
+    # leer (706050) + Fremdtopic (800001) + PM (900001) ausgeschlossen
     assert sorted(ids) == [706037, 706040]
+
+
+def test_list_pms_liefert_nur_pms(tmp_path):
+    p = tmp_path / "translations.db"
+    _make_trans_db(p)
+    tdb = TranslationsDb(_open_with_trdb(p))
+    assert tdb.list_translated_post_ids(69192, source="pms") == [900001]
 
 
 def test_get_translation_gefunden(tmp_path):
@@ -84,11 +95,21 @@ def test_get_translation_gefunden(tmp_path):
     assert rec.created_at == "2026-06-20"
 
 
-def test_get_translation_pending_leer_fehlend_ist_none(tmp_path):
+def test_get_translation_source_trennung(tmp_path):
     p = tmp_path / "translations.db"
     _make_trans_db(p)
     tdb = TranslationsDb(_open_with_trdb(p))
-    assert tdb.get_translation(706060) is None  # pending
+    # 900001 ist eine PM -> bei Default source='posts' NICHT auffindbar
+    assert tdb.get_translation(900001) is None
+    # mit source='pms' sehr wohl
+    rec = tdb.get_translation(900001, source="pms")
+    assert rec is not None and rec.post_id == 900001
+
+
+def test_get_translation_leer_und_fehlend_ist_none(tmp_path):
+    p = tmp_path / "translations.db"
+    _make_trans_db(p)
+    tdb = TranslationsDb(_open_with_trdb(p))
     assert tdb.get_translation(706050) is None  # leerer Text
     assert tdb.get_translation(999999) is None  # nicht vorhanden
 
@@ -105,9 +126,6 @@ def test_fehlende_topic_id_spalte_liefert_leer_kein_crash(tmp_path):
     p = tmp_path / "translations.db"
     _make_trans_db(p, with_topic_id=False)
     tdb = TranslationsDb(_open_with_trdb(p))
-    # topic-basierte Liste kann ohne Spalte nicht filtern -> leer, kein Crash
-    assert tdb.list_translated_post_ids(69192) == []
-    # Einzelabruf braucht kein topic_id -> muss weiterhin funktionieren
-    rec = tdb.get_translation(706037)
-    assert rec is not None
-    assert rec.post_id == 706037
+    assert tdb.list_translated_post_ids(69192) == []   # keine Spalte -> leer, kein Crash
+    rec = tdb.get_translation(706037)                  # braucht kein topic_id
+    assert rec is not None and rec.post_id == 706037

@@ -26,19 +26,33 @@
 #   protokollieren einen WARNING-Log — kein Absturz (GR1: kein stiller Fehler,
 #   aber auch kein Absturz). Exakt das Verhalten von TemplatesDb.
 #
-#   Spalten-Robustheit: Der Topic-Endpoint benoetigt die Spalte
-#   translations.topic_id. Die Schema-Erstfassung (translations_db.sql) fuehrt
-#   topic_id nur in posts_cleaned; die Produktionstabelle wird um topic_id/
-#   forum_id ergaenzt (Projektgespraech). Fehlt topic_id dennoch, liefert
-#   list_translated_post_ids() leer + WARNING statt Exception.
+#   Reale Produktionstabelle (Projektgespraech 2026-07-07):
+#     post_id PK, translated_text, model_used, created_at, updated_at,
+#     source ('posts'|'pms', Default 'posts'), topic_id, forum_id.
+#   Es gibt KEINE Spalte 'status' (anders als die fruehere Schema-Erstfassung
+#   translations_db.sql, die status/confidence_markers fuehrte). Eine
+#   Uebersetzung gilt daher als vorhanden, sobald die Zeile existiert UND
+#   translated_text nicht-leer ist.
 #
-#   Bewusst NICHT gelesen: confidence_markers (die einpflegende Software traegt
-#   dort keine sinnvollen Daten ein — Projektgespraech), sowie processing_time_ms,
-#   error_message, batch_id, worker_url, updated_at.
+#   'source' trennt Forum-Beitraege ('posts') von privaten Nachrichten ('pms').
+#   Beide Methoden filtern auf EINEN source-Wert (Default 'posts'), damit eine
+#   PM-Uebersetzung niemals faelschlich fuer einen Forum-Post angezeigt wird
+#   (forensische Trennschaerfe, GR1). Die PM-Anzeige ist ein spaeterer Build.
+#
+#   Spalten-Robustheit: Fehlt (wider Erwarten) topic_id, liefert
+#   list_translated_post_ids() leer + WARNING statt Exception. Fehlt eine andere
+#   erwartete Spalte, faengt der try/except je Methode das ebenfalls ab.
+#
+#   Bewusst NICHT gelesen: confidence_markers, processing_time_ms, error_message,
+#   batch_id, worker_url, updated_at (updated_at bleibt fuer eine spaetere
+#   Re-Uebersetzungs-Versionierung reserviert).
 #
 # Beleg: Bauplan Build 329 §2, Muster db/templates_db.py, ConnectionManager
 #        _attach_readonly (connection_manager.py:520-544)
-# Version: v0.7.329 · Build: 329 · 2026-07-07
+# Version: v0.7.331 · Build: 331 · 2026-07-07
+#   Build 331: status-Filter entfernt (reale Produktionstabelle hat keine
+#   status-Spalte), source-Trennung (posts/pms) ergaenzt.
+#   Beleg: Projektgespraech 2026-07-07 (reales Schema geliefert).
 # =============================================================================
 
 from __future__ import annotations
@@ -147,19 +161,24 @@ class TranslationsDb:
     # Topic-Ebene: welche Posts eines Topics haben eine Uebersetzung?
     # ------------------------------------------------------------------
 
-    def list_translated_post_ids(self, topic_id: int) -> list[int]:
+    def list_translated_post_ids(
+        self, topic_id: int, source: str = "posts"
+    ) -> list[int]:
         """
-        Liefert die post_ids eines Topics, fuer die eine FERTIGE Uebersetzung
-        vorliegt (status='completed' und nicht-leerer translated_text).
+        Liefert die post_ids eines Topics, fuer die eine Uebersetzung vorliegt
+        (Zeile vorhanden UND nicht-leerer translated_text), gefiltert auf den
+        angegebenen source-Wert.
 
         Die Toolbar ruft dies einmal je Seite auf, cached das Ergebnis als
         Set und injiziert nur dort eine Flaggen-Schaltflaeche, wo die post_id
         enthalten ist (Uebermenge ueber mehrere Topic-Seiten ist unschaedlich —
         die Toolbar schneidet gegen die tatsaechlich vorhandenen #p<id>-Container).
-        Beleg: Bauplan Build 329 §2.2, §4.2
+        Beleg: Bauplan Build 329 §2.2, §4.2; Build 331 (source-Trennung).
 
         Args:
             topic_id: Topic-ID aus der viewtopic.php?id=<topic_id>-URL.
+            source:   'posts' (Default, Forum-Beitraege) oder 'pms'. Trennt
+                      Beitraege von privaten Nachrichten (GR1: Trennschaerfe).
 
         Returns:
             Liste von post_ids (int). Leer, wenn trdb nicht angebunden oder
@@ -171,10 +190,10 @@ class TranslationsDb:
             rows = self._con.execute(
                 "SELECT post_id FROM trdb.translations "
                 "WHERE topic_id = ? "
-                "  AND status = 'completed' "
+                "  AND source = ? "
                 "  AND translated_text IS NOT NULL "
                 "  AND translated_text <> ''",
-                (topic_id,),
+                (topic_id, source),
             ).fetchall()
             return [int(r[0]) for r in rows]
         except sqlite3.OperationalError as exc:
@@ -188,16 +207,21 @@ class TranslationsDb:
     # Post-Ebene: die konkrete Uebersetzung eines Posts
     # ------------------------------------------------------------------
 
-    def get_translation(self, post_id: int) -> Optional[TranslationRecord]:
+    def get_translation(
+        self, post_id: int, source: str = "posts"
+    ) -> Optional[TranslationRecord]:
         """
-        Gibt die fertige Uebersetzung eines einzelnen Posts zurueck.
+        Gibt die Uebersetzung eines einzelnen Posts zurueck (source-gefiltert).
 
         Args:
             post_id: Primaerschluessel aus trdb.translations.
+            source:  'posts' (Default) oder 'pms'. Verhindert, dass eine
+                     PM-Uebersetzung fuer einen Forum-Post ausgegeben wird
+                     (relevant, falls post_id-Werte kollidieren) — GR1.
 
         Returns:
-            TranslationRecord oder None, wenn keine fertige Uebersetzung
-            vorliegt (kein 'completed', leerer Text) bzw. trdb nicht angebunden.
+            TranslationRecord oder None, wenn keine (nicht-leere) Uebersetzung
+            fuer diesen post_id/source vorliegt bzw. trdb nicht angebunden.
         """
         if not self._available:
             return None
@@ -206,10 +230,10 @@ class TranslationsDb:
                 "SELECT post_id, translated_text, model_used, created_at "
                 "FROM trdb.translations "
                 "WHERE post_id = ? "
-                "  AND status = 'completed' "
+                "  AND source = ? "
                 "  AND translated_text IS NOT NULL "
                 "  AND translated_text <> ''",
-                (post_id,),
+                (post_id, source),
             ).fetchone()
             return self._row_to_translation(row) if row else None
         except sqlite3.OperationalError as exc:

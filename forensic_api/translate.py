@@ -23,7 +23,7 @@
 # Fehlerfall:
 #   - fehlender/ungueltiger post_id -> 400 { "error": ..., "status": "error" }
 #
-# Version: v0.7.329 · Build: 329 · 2026-07-07
+# Version: v0.7.331 · Build: 331 · 2026-07-07 (source-Param posts/pms; kein status)
 # =============================================================================
 
 from __future__ import annotations
@@ -84,8 +84,23 @@ class TranslateEndpoint:
             )
             return
 
+        # Build 331: source trennt 'posts' (Forum) von 'pms'. Default 'posts';
+        # unbekannter Wert -> 400 (kein stilles Ersetzen, GR1).
+        source_vals = params.get("source", [])
+        source = source_vals[0] if source_vals else "posts"
+        if source not in ("posts", "pms"):
+            body = json.dumps(
+                {"error": "Ungueltiger source (erlaubt: posts, pms)",
+                 "status": "error"},
+                ensure_ascii=False,
+            ).encode("utf-8")
+            handler.send_response_body(
+                400, body, content_type="application/json; charset=utf-8"
+            )
+            return
+
         try:
-            rec = self._bundle.translations.get_translation(post_id)
+            rec = self._bundle.translations.get_translation(post_id, source)
         except Exception as exc:  # defensiv — niemals 500 ohne Log (GR1)
             logger.error(
                 "TranslateEndpoint: get_translation(%r) Fehler: %s",
