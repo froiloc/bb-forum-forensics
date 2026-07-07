@@ -66,3 +66,19 @@ describe("TranslationModule.isTranslated", () => {
     expect(H.isTranslated(1, null)).toBe(false);
   });
 });
+
+describe("TranslationModule.clickAction (Build 332: Anti-Doppel-Panel)", () => {
+  it("Panel sichtbar -> close (Toggle zu)", () => {
+    expect(H.clickAction(true, false, false)).toBe("close");
+    expect(H.clickAction(true, true, true)).toBe("close");   // Panel hat Vorrang
+  });
+  it("kein Panel, aber Fetch laeuft -> ignore (kein Doppel-Fetch)", () => {
+    expect(H.clickAction(false, true, false)).toBe("ignore");
+  });
+  it("kein Panel, kein Fetch, aber Cache -> render", () => {
+    expect(H.clickAction(false, false, true)).toBe("render");
+  });
+  it("kein Panel, kein Fetch, kein Cache -> fetch", () => {
+    expect(H.clickAction(false, false, false)).toBe("fetch");
+  });
+});

@@ -2831,6 +2831,11 @@ body.aiw-view-original .aux-part { display: none !important; }
   background: #dcecf7;
   border-color: #7ba8c9;
 }
+/* Build 332: Ladezustand — Warte-Cursor, bis die Server-Antwort da ist. */
+.aiw-translate-flag--loading {
+  cursor: wait;
+  opacity: 0.6;
+}
 
 /* Deutschlandflagge rein per CSS (drei Baender Schwarz-Rot-Gold) —
  * keine externe Bilddatei (Offline-VM). */
@@ -2850,13 +2855,14 @@ body.aiw-view-original .aux-part { display: none !important; }
 
 /* Inline-Panel unterhalb des .postfoot. */
 .aiw-translation-panel {
+  width: 100%;              /* Build 332 (von Alex): volle Breite statt schmalem Streifen */
+  box-sizing: border-box;  /* Rahmen/Padding nicht auf die 100% aufschlagen */
   margin: 4px 0 10px 0;
   border: 1px solid #cad7e1;
   border-radius: 4px;
   background: #fbfdff;
   overflow: hidden;
   font-size: 0.95em;
-  width: 100%;
 }
 .aiw-translation-head {
   padding: 4px 10px;

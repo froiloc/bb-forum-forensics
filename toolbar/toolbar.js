@@ -5820,6 +5820,7 @@
 
     var _translatedSet = null;  // Set<number> der post_ids mit Uebersetzung
     var _cache         = {};    // post_id -> Antwortobjekt von /translate
+    var _pending       = {};    // Build 332: post_id -> true, solange ein /translate-Fetch laeuft
     var _topicId       = null;
 
     // ---- reine Hilfsfunktionen (auch fuer vitest exportiert) --------------
@@ -5841,6 +5842,21 @@
     // Set-Mitgliedschaft (null-sicher).
     function isTranslated(postId, set) {
       return !!set && set.has(postId);
+    }
+
+    // Build 332: reine Entscheidungslogik fuer den Flaggen-Klick (vitest-testbar).
+    // Verhindert Mehrfach-Panels bei schnellen Klicks VOR der Server-Antwort:
+    // ein zweiter Klick waehrend eines laufenden Fetches wird verworfen, statt
+    // einen weiteren Fetch (und damit ein weiteres Panel) auszuloesen.
+    //   hasPanel  — ist bereits ein Panel fuer diesen Post sichtbar?
+    //   isPending — laeuft bereits ein /translate-Fetch fuer diesen Post?
+    //   hasCache  — liegt die Antwort schon im Cache?
+    // Rueckgabe: "close" | "ignore" | "render" | "fetch".
+    function clickAction(hasPanel, isPending, hasCache) {
+      if (hasPanel)  return "close";   // sichtbar -> schliessen (Toggle)
+      if (isPending) return "ignore";  // Fetch laeuft -> Klick verwerfen (kein Doppel-Fetch)
+      if (hasCache)  return "render";  // Antwort im Cache -> direkt rendern
+      return "fetch";                  // sonst laden
     }
 
     // ---- Injektion --------------------------------------------------------
@@ -5873,26 +5889,45 @@
     }
 
     function _togglePanel(container, postId, btn) {
-      var existing = container.querySelector(
+      var hasPanel = !!container.querySelector(
         '.aiw-translation-panel[data-post-id="' + postId + '"]'
       );
-      if (existing) {
+      var action = clickAction(hasPanel, !!_pending[postId], !!_cache[postId]);
+
+      if (action === "close") {
+        var existing = container.querySelector(
+          '.aiw-translation-panel[data-post-id="' + postId + '"]'
+        );
         existing.parentNode.removeChild(existing);
         btn.classList.remove("aiw-translate-flag--active");
         _dbg("[Translation] Panel geschlossen fuer post", postId);
         return;
       }
-      if (_cache[postId]) {
+      if (action === "ignore") {
+        // Build 332: Klick verworfen, weil bereits ein Fetch laeuft — verhindert,
+        // dass mehrere schnelle Klicks mehrere Panels erzeugen.
+        _dbg("[Translation] Klick verworfen, Fetch laeuft bereits fuer post", postId);
+        return;
+      }
+      if (action === "render") {
         _renderPanel(container, postId, _cache[postId], btn);
         return;
       }
+
+      // action === "fetch": laden, mit Warte-Cursor bis zur Antwort.
       _dbg("[Translation] Lade Uebersetzung fuer post", postId);
+      _pending[postId] = true;
+      btn.classList.add("aiw-translate-flag--loading");
       ajaxGet(CONF.API_TRANSLATE + "?post_id=" + encodeURIComponent(postId))
         .then(function (data) {
           _cache[postId] = data;
+          delete _pending[postId];
+          btn.classList.remove("aiw-translate-flag--loading");
           _renderPanel(container, postId, data, btn);
         })
         .catch(function (err) {
+          delete _pending[postId];
+          btn.classList.remove("aiw-translate-flag--loading");
           _dbg("[Translation] Fetch-Fehler /translate fuer post", postId, err);
         });
     }
@@ -5900,6 +5935,13 @@
     function _renderPanel(container, postId, data, btn) {
       if (!data || data.found !== true) {
         _dbg("[Translation] Keine Uebersetzung im Ergebnis fuer post", postId, data);
+        return;
+      }
+      // Build 332: idempotent — niemals ein zweites Panel fuer denselben Post
+      // (Absicherung gegen konkurrierende Render-Pfade).
+      if (container.querySelector(
+            '.aiw-translation-panel[data-post-id="' + postId + '"]')) {
+        _dbg("[Translation] Panel bereits vorhanden, kein zweites fuer post", postId);
         return;
       }
       var panel = document.createElement("div");
@@ -5975,7 +6017,8 @@
       _test: {
         topicIdFromUrl:        topicIdFromUrl,
         postIdFromContainerId: postIdFromContainerId,
-        isTranslated:          isTranslated
+        isTranslated:          isTranslated,
+        clickAction:           clickAction
       }
     };
   })();
