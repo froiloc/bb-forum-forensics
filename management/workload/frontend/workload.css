@@ -1,0 +1,81 @@
+/* =============================================================================
+   management/workload/frontend/workload.css
+   IT-Forensisches Ermittlungswerkzeug — Ermittler-Lastverteilung (Admin-Sicht)
+   =============================================================================
+   Einzige Stilquelle des self-contained Exports (workload_admin export-html).
+   Prioritaet: Lesbarkeit + eindeutige Last-/Ampel-Semantik. Spiegelt
+   dashboard.css / support_overview.css.
+   Version: v0.7.335 · Build: 335 · 2026-07-07
+   ============================================================================= */
+:root {
+    --rot: #c0392b;
+    --gelb: #d68910;
+    --gruen: #1e8449;
+    --backlog: #7f8c8d;
+    --bg: #f7f7f8;
+    --line: #dddfe2;
+    --ink: #1c1e21;
+    --muted: #606770;
+}
+body {
+    font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink); background: var(--bg); margin: 0; padding: 24px;
+}
+h1 { font-size: 20px; margin: 0 0 4px; }
+.aiw-sub { color: var(--muted); font-size: 13px; margin: 0 0 12px; max-width: 900px; }
+
+.aiw-integrity { font-size: 13px; margin: 0 0 16px; padding: 8px 12px;
+    border-radius: 4px; border: 1px solid var(--line); }
+.aiw-integrity-ok { background: #eafaf1; border-color: #a9dfbf; color: #145a32; }
+.aiw-integrity-bad { background: #fdecea; border-color: #f5b7b1; color: #922b21;
+    font-weight: 600; }
+.aiw-integrity-unknown { background: #f4f6f6; color: var(--muted); }
+
+.aiw-filterbar { margin: 0 0 12px; display: flex; align-items: center; gap: 12px; }
+#aiw-filter { flex: 0 1 360px; padding: 7px 10px; font-size: 13px;
+    border: 1px solid var(--line); border-radius: 4px; }
+.aiw-count { color: var(--muted); font-size: 12px; }
+
+.aiw-workload-table {
+    border-collapse: collapse; width: 100%; background: #fff;
+    box-shadow: 0 1px 2px rgba(0,0,0,.08); font-size: 13px;
+}
+.aiw-workload-table th, .aiw-workload-table td {
+    border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left;
+    white-space: nowrap;
+}
+.aiw-workload-table thead th {
+    background: #eef0f2; position: sticky; top: 0; font-weight: 600;
+}
+th.aiw-sortable { cursor: pointer; user-select: none; }
+th.aiw-sortable:hover { background: #e2e6ea; }
+th.aiw-sort-active { color: #0b5394; }
+
+.aiw-name { font-weight: 600; max-width: 240px; overflow: hidden;
+    text-overflow: ellipsis; }
+.aiw-roles { font-family: ui-monospace, Consolas, monospace; color: var(--muted); }
+.aiw-total, .aiw-active, .aiw-done, .aiw-actions {
+    text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Last-Balken: gestapelte Segmente (rot/gelb/gruen) + Zahlentext. */
+.aiw-loadcell { min-width: 200px; }
+.aiw-loadbar {
+    display: flex; height: 12px; width: 160px; border-radius: 3px;
+    overflow: hidden; background: #edf0f2; border: 1px solid var(--line);
+}
+.aiw-seg { display: inline-block; height: 100%; }
+.aiw-seg-rot { background: var(--rot); }
+.aiw-seg-gelb { background: var(--gelb); }
+.aiw-seg-gruen { background: var(--gruen); }
+.aiw-loadnums { margin-left: 8px; color: var(--muted);
+    font-variant-numeric: tabular-nums; font-size: 12px; }
+
+/* Rueckstau-Zeile (unzugewiesen): abgesetzt, oben leicht getrennt. */
+tr.aiw-backlog { background: #f4f6f6; font-style: italic; }
+tr.aiw-backlog td { border-top: 2px solid var(--backlog); }
+tr.aiw-backlog .aiw-name { color: var(--backlog); font-style: italic; }
+
+.aiw-legend { margin-top: 16px; font-size: 12px; color: var(--muted); }
+.aiw-legend span { margin-right: 16px; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+       vertical-align: middle; margin-right: 4px; }
