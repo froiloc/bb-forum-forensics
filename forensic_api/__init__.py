@@ -141,6 +141,8 @@ class ForensicApi:
         self._aliases         = None  # [BS3 Bug 2.79 Build 179]
         self._integrator      = None  # [BS3 Bug 2.78 Build 182]
         self._fileasset        = None  # [Build 270]
+        self._translations     = None  # [B3/B5 Build 329]
+        self._translate        = None  # [B3/B5 Build 329]
 
     def dispatch(
         self,
@@ -465,6 +467,26 @@ class ForensicApi:
             self._get_resolve_posts().handle(handler, params)
             return
 
+        # /_forensic/translations (GET) [B3/B5 Build 329]
+        # Liefert die post_ids eines Topics mit fertiger KI-Uebersetzung.
+        # Beleg: Bauplan Build 329 §3.1
+        if url_path == "/_forensic/translations":
+            if method not in ("GET", "HEAD"):
+                self._method_not_allowed(handler)
+                return
+            self._get_translations().handle(handler, params)
+            return
+
+        # /_forensic/translate (GET) [B3/B5 Build 329]
+        # Liefert die Einzeluebersetzung eines Posts.
+        # Beleg: Bauplan Build 329 §3.2
+        if url_path == "/_forensic/translate":
+            if method not in ("GET", "HEAD"):
+                self._method_not_allowed(handler)
+                return
+            self._get_translate().handle(handler, params)
+            return
+
         # Unbekannter Endpunkt
         logger.warning("Unbekannter /_forensic/-Endpunkt: '%s'", url_path)
         import json
@@ -780,6 +802,22 @@ class ForensicApi:
             self._resolve_posts = ResolvePostsEndpoint(
                 self._bundle, self._context, self._config)
         return self._resolve_posts
+
+    def _get_translations(self):
+        """[B3/B5 Build 329] Lazy-Init für TranslationsEndpoint."""
+        if self._translations is None:
+            from forensic_api.translations import TranslationsEndpoint
+            self._translations = TranslationsEndpoint(
+                self._bundle, self._context, self._config)
+        return self._translations
+
+    def _get_translate(self):
+        """[B3/B5 Build 329] Lazy-Init für TranslateEndpoint."""
+        if self._translate is None:
+            from forensic_api.translate import TranslateEndpoint
+            self._translate = TranslateEndpoint(
+                self._bundle, self._context, self._config)
+        return self._translate
 
     def _get_trace_sequence(self):
         """[KN-7] Lazy-Init fuer TraceSequenceEndpoint. Beleg: OP-KN-7, Build 072."""

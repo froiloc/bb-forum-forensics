@@ -2799,3 +2799,75 @@ mark.forensic-alias-mark {
 .csm-threshold-op[title] {
   cursor: help;
 }
+
+/* =========================================================================
+ * BUILD 329: KI-Uebersetzungsanzeige (Baustelle 3)
+ * -------------------------------------------------------------------------
+ * .aux-part markiert ALLE per JS injizierten AIW-Anreicherungen, die im
+ * Original-Modus verschwinden muessen. ViewModeModule setzt dazu die
+ * Body-Klasse aiw-view-original. Bewusst display:none (nicht visibility:
+ * hidden wie Banner/Minimap): diese Elemente sind KEIN Teil des Original-
+ * Layouts und duerfen dort keinen Platz belegen.
+ * Beleg: Bauplan Build 329 §5.2
+ * ========================================================================= */
+body.aiw-view-original .aux-part { display: none !important; }
+
+/* Flaggen-Schaltflaeche neben dem Original-Translate-Link im .postfoot. */
+.aiw-translate-flag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 4px;
+  margin-right: 4px;
+  border: 1px solid #cad7e1;
+  border-radius: 4px;
+  background: #f7fafc;
+  cursor: pointer;
+  vertical-align: middle;
+  line-height: 1;
+}
+.aiw-translate-flag:hover { background: #e9f1f7; }
+.aiw-translate-flag--active {
+  background: #dcecf7;
+  border-color: #7ba8c9;
+}
+
+/* Deutschlandflagge rein per CSS (drei Baender Schwarz-Rot-Gold) —
+ * keine externe Bilddatei (Offline-VM). */
+.aiw-flag-de {
+  display: inline-block;
+  width: 20px;
+  height: 13px;
+  border: 1px solid #99a;
+  border-radius: 2px;
+  background: linear-gradient(
+    to bottom,
+    #000000 0, #000000 33.34%,
+    #dd0000 33.34%, #dd0000 66.67%,
+    #ffce00 66.67%, #ffce00 100%
+  );
+}
+
+/* Inline-Panel unterhalb des .postfoot. */
+.aiw-translation-panel {
+  margin: 4px 0 10px 0;
+  border: 1px solid #cad7e1;
+  border-radius: 4px;
+  background: #fbfdff;
+  overflow: hidden;
+  font-size: 0.95em;
+}
+.aiw-translation-head {
+  padding: 4px 10px;
+  background: #fff3cd;
+  color: #7a5b00;
+  border-bottom: 1px solid #f0e0a0;
+  font-weight: 600;
+  font-size: 0.85em;
+}
+.aiw-translation-body {
+  padding: 8px 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #1d202b;
+}

@@ -491,6 +491,10 @@
     // Build 186 (Bug 2.92): uid → username Lookup fuer Fremdannotationen
     API_KNOWNUSERS_RESOLVE: "/_forensic/knownusers/resolve",
 
+    // Build 329: KI-Uebersetzungs-Endpoints (Baustelle 3 + 5).
+    API_TRANSLATIONS: "/_forensic/translations",  // ?topic_id= -> Liste post_ids
+    API_TRANSLATE:    "/_forensic/translate",     // ?post_id=  -> Einzeluebersetzung
+
     // Annotationskategorien (Reihenfolge = Tastenkürzel 1-6)
     CATEGORIES: [
       { id: "CAT_PERSON",   label: "PER", icon: "👤", color: "#f5c842", desc: "Persönliche Identifikationsmerkmale",  key: "1" },
@@ -1829,6 +1833,8 @@
           PMSTableOrganizerModule.init(viewport);
           SearchPostsProgressModule.init(viewport);
           TopicsTableOrganizerModule.init(viewport);
+          // Build 329: KI-Uebersetzungsanzeige — no-op auf Nicht-viewtopic-Seiten.
+          TranslationModule.init(viewport, _state.currentUrl);
           ToolbarUIModule.updateSessionInfo();
         }); // END requestAnimationFrame
       });
@@ -5713,6 +5719,16 @@
     function _setOriginal() {
       ForensicToolbar._setState({ viewMode: "original" });
 
+      // Build 329: Body-Klasse aktiviert die CSS-Regel
+      //   body.aiw-view-original .aux-part { display:none !important; }
+      // Dadurch verschwinden ALLE als .aux-part markierten AIW-Injektionen
+      // (Uebersetzungs-Buttons/-Panels; spaeter auch die R/G/G-Bearbeitungs-
+      // rahmen) im Original-Modus, ohne dass jedes Modul eigenes clearAll()
+      // braucht. Bewusst display:none (nicht visibility:hidden wie Banner/
+      // Minimap), da diese Elemente NICHT Teil des Original-Layouts sind.
+      // Beleg: Bauplan Build 329 §5.1/§5.2
+      document.body.classList.add("aiw-view-original");
+
       // Highlights entfernen (GR11a)
       HighlightModule.clearAll();
 
@@ -5739,6 +5755,10 @@
 
     function _setEnhanced() {
       ForensicToolbar._setState({ viewMode: "enhanced" });
+
+      // Build 329: Body-Klasse entfernen — .aux-part-Injektionen wieder sichtbar.
+      // Beleg: Bauplan Build 329 §5.1
+      document.body.classList.remove("aiw-view-original");
 
       // Highlights wiederherstellen
       HighlightModule.restoreAll();
@@ -5770,6 +5790,200 @@
   // ===========================================================================
   // PHASE 11: PMSTableOrganizerModule — PN-Übersichtstabelle (pmsnew.php)
   // ===========================================================================
+  // ===========================================================================
+  // BUILD 329: TranslationModule — KI-Uebersetzungsanzeige (Baustelle 3 + 5)
+  // ===========================================================================
+  // Zweck:
+  //   Nicht-deutschsprachige Beitraege werden extern (ollama) ins Deutsche
+  //   uebersetzt und in translations.db (global read-only) abgelegt. Dieses
+  //   Modul zeigt sie am Post:
+  //     - je Post MIT Uebersetzung eine Flaggen-Schaltflaeche (.aux-part) neben
+  //       dem Original-Translate-Link im .postfoot,
+  //     - Klick klappt ein Inline-Panel (.aux-part) unter dem .postfoot aus.
+  //
+  // Ablauf (Beleg: Bauplan Build 329 §4.2):
+  //   1. topic_id aus der viewtopic-URL lesen (parallel zum Seiten-Fetch —
+  //      NICHT auf das Post-DOM warten; der Viewport wird asynchron befuellt).
+  //   2. GET /_forensic/translations?topic_id= -> Set der uebersetzten post_ids.
+  //   3. Fuer jeden #p<id>-Container, dessen post_id im Set liegt, Flagge
+  //      injizieren (Uebermenge ueber mehrere Topic-Seiten ist unschaedlich —
+  //      wir schneiden gegen die tatsaechlich vorhandenen Container).
+  //   4. Klick -> GET /_forensic/translate?post_id= -> Panel toggeln.
+  //
+  // Original/Angepasst: alle injizierten Elemente tragen .aux-part und
+  // verschwinden im Original-Modus automatisch (ViewModeModule setzt die
+  // Body-Klasse aiw-view-original). Der Original-Translate-Link bleibt dabei
+  // unangetastet — er ist Seiteninhalt, kein AIW-Element.
+  // ===========================================================================
+  var TranslationModule = (function () {
+    var CONF = ForensicToolbar.config;
+
+    var _translatedSet = null;  // Set<number> der post_ids mit Uebersetzung
+    var _cache         = {};    // post_id -> Antwortobjekt von /translate
+    var _topicId       = null;
+
+    // ---- reine Hilfsfunktionen (auch fuer vitest exportiert) --------------
+
+    // topic_id aus viewtopic.php?id=<n> lesen; null, wenn keine viewtopic-Seite.
+    function topicIdFromUrl(url) {
+      if (!url || String(url).indexOf("viewtopic.php") === -1) return null;
+      var m = String(url).match(/[?&]id=(\d+)/);
+      return m ? parseInt(m[1], 10) : null;
+    }
+
+    // post_id aus der #p<n>-Container-Id (Beleg: toolbar.js Post-Container-Muster).
+    function postIdFromContainerId(id) {
+      if (!id) return null;
+      var m = /^p(\d+)$/.exec(String(id));
+      return m ? parseInt(m[1], 10) : null;
+    }
+
+    // Set-Mitgliedschaft (null-sicher).
+    function isTranslated(postId, set) {
+      return !!set && set.has(postId);
+    }
+
+    // ---- Injektion --------------------------------------------------------
+
+    function _injectButton(container, postId) {
+      // Doppel-Injektion vermeiden (z.B. wiederholte _apply-Laeufe).
+      if (container.querySelector(".aiw-translate-flag")) return;
+      var foot = container.querySelector(".postfootright ul");
+      if (!foot) {
+        _dbg("[Translation] .postfootright ul fehlt fuer post", postId);
+        return;
+      }
+      // Wrapper-<span> analog zu den vorhandenen ul-Eintraegen; traegt .aux-part.
+      var wrap = document.createElement("span");
+      wrap.className = "aux-part";
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "aiw-translate-flag aux-part";
+      btn.title = "Deutsche Uebersetzung anzeigen (maschinell, nicht gerichtsverwertbar)";
+      btn.setAttribute("aria-label", "Deutsche Uebersetzung anzeigen");
+      btn.dataset.postId = String(postId);
+      // Deutschlandflagge rein per CSS (drei Baender) — keine externe Datei (Offline-VM).
+      btn.innerHTML = '<span class="aiw-flag-de" aria-hidden="true"></span>';
+      btn.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        _togglePanel(container, postId, btn);
+      });
+      wrap.appendChild(btn);
+      foot.insertBefore(wrap, foot.firstChild);
+    }
+
+    function _togglePanel(container, postId, btn) {
+      var existing = container.querySelector(
+        '.aiw-translation-panel[data-post-id="' + postId + '"]'
+      );
+      if (existing) {
+        existing.parentNode.removeChild(existing);
+        btn.classList.remove("aiw-translate-flag--active");
+        _dbg("[Translation] Panel geschlossen fuer post", postId);
+        return;
+      }
+      if (_cache[postId]) {
+        _renderPanel(container, postId, _cache[postId], btn);
+        return;
+      }
+      _dbg("[Translation] Lade Uebersetzung fuer post", postId);
+      ajaxGet(CONF.API_TRANSLATE + "?post_id=" + encodeURIComponent(postId))
+        .then(function (data) {
+          _cache[postId] = data;
+          _renderPanel(container, postId, data, btn);
+        })
+        .catch(function (err) {
+          _dbg("[Translation] Fetch-Fehler /translate fuer post", postId, err);
+        });
+    }
+
+    function _renderPanel(container, postId, data, btn) {
+      if (!data || data.found !== true) {
+        _dbg("[Translation] Keine Uebersetzung im Ergebnis fuer post", postId, data);
+        return;
+      }
+      var panel = document.createElement("div");
+      panel.className = "aiw-translation-panel aux-part";
+      panel.setAttribute("data-post-id", String(postId));
+
+      // Pflicht-Kopfzeile (GR1): Provenienz + Nicht-Verwertbarkeit untrennbar.
+      var head = document.createElement("div");
+      head.className = "aiw-translation-head";
+      head.textContent = "\u26A0 Maschinell \u00FCbersetzt"
+        + (data.model_used ? " \u00B7 Modell " + data.model_used : "")
+        + (data.created_at ? " \u00B7 " + data.created_at : "")
+        + " \u00B7 nicht gerichtsverwertbar";
+
+      // Koerper: reiner Text (BB-Codes wurden beim Uebersetzen entfernt).
+      var body = document.createElement("div");
+      body.className = "aiw-translation-body";
+      body.textContent = data.translated_text || "";
+
+      panel.appendChild(head);
+      panel.appendChild(body);
+
+      // Direkt unter dem .postfoot einfuegen.
+      var foot = container.querySelector(".postfoot");
+      if (foot && foot.parentNode) {
+        if (foot.nextSibling) foot.parentNode.insertBefore(panel, foot.nextSibling);
+        else foot.parentNode.appendChild(panel);
+      } else {
+        container.appendChild(panel);
+      }
+      btn.classList.add("aiw-translate-flag--active");
+      _dbg("[Translation] Panel geoeffnet fuer post", postId);
+    }
+
+    function _apply(viewport) {
+      var containers = viewport.querySelectorAll("[id^='p']");
+      var count = 0;
+      Array.prototype.forEach.call(containers, function (c) {
+        var pid = postIdFromContainerId(c.id);
+        if (pid === null) return;
+        if (!isTranslated(pid, _translatedSet)) return;
+        _injectButton(c, pid);
+        count++;
+      });
+      _dbg("[Translation] Buttons injiziert:", count, "von",
+           _translatedSet ? _translatedSet.size : 0,
+           "uebersetzten Posts im Topic");
+    }
+
+    function init(viewport, pageUrl) {
+      if (!viewport) { _dbg("[Translation] init: kein viewport"); return; }
+      _topicId = topicIdFromUrl(pageUrl);
+      if (_topicId === null) {
+        _dbg("[Translation] init: keine viewtopic-Seite — inaktiv", pageUrl);
+        return;
+      }
+      _dbg("[Translation] init auf topic_id", _topicId);
+      ajaxGet(CONF.API_TRANSLATIONS + "?topic_id=" + encodeURIComponent(_topicId))
+        .then(function (data) {
+          var ids = (data && data.post_ids) || [];
+          _translatedSet = new Set(ids.map(function (x) { return parseInt(x, 10); }));
+          _dbg("[Translation] Uebersetzte post_ids im Topic:", _translatedSet.size);
+          _apply(viewport);
+        })
+        .catch(function (err) {
+          _dbg("[Translation] Fehler bei /translations", err);
+        });
+    }
+
+    return {
+      init: init,
+      // reine Hilfslogik fuer vitest (gegen echten Code, kein Stub)
+      _test: {
+        topicIdFromUrl:        topicIdFromUrl,
+        postIdFromContainerId: postIdFromContainerId,
+        isTranslated:          isTranslated
+      }
+    };
+  })();
+
+  // Test-Oberflaeche fuer vitest freilegen (Muster: ForensicToolbar.config.levenshtein
+  // in test_levenshtein.test.js — echte Funktionen testen, keine Stubs).
+  ForensicToolbar.config.translationHelpers = TranslationModule._test;
+
   var PMSTableOrganizerModule = (function () {
     // Beleg: §21.2 Bauplan (Selektoren verifiziert gegen aiw_pmsnew_new.html)
     var TABLE_SEL   = "div#vf .inbox > table";

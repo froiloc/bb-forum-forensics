@@ -1,0 +1,84 @@
+/* =============================================================================
+   management/support_overview/frontend/support_overview.css
+   IT-Forensisches Ermittlungswerkzeug — Support-Sitzungs-Historie (Admin-Sicht)
+   =============================================================================
+   Einzige Stilquelle des self-contained Exports (support_overview_admin
+   export-html, inline eingebettet) -> keine Stil-Duplikate/-Drift.
+   Prioritaet: Lesbarkeit + eindeutige Status-Semantik fuer ein internes
+   Forensik-Werkzeug, nicht Zierde. Spiegelt bewusst dashboard.css.
+   Version: v0.7.330 · Build: 330 · 2026-07-07
+   ============================================================================= */
+:root {
+    --beendet: #1e8449;
+    --orphan: #d68910;
+    --offen: #2471a3;
+    --herrenlos: #c0392b;
+    --bg: #f7f7f8;
+    --line: #dddfe2;
+    --ink: #1c1e21;
+    --muted: #606770;
+}
+body {
+    font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink); background: var(--bg); margin: 0; padding: 24px;
+}
+h1 { font-size: 20px; margin: 0 0 4px; }
+.aiw-sub { color: var(--muted); font-size: 13px; margin: 0 0 12px; max-width: 900px; }
+
+/* Integritaets-Banner (audit_log-Hashkette). */
+.aiw-integrity { font-size: 13px; margin: 0 0 16px; padding: 8px 12px;
+    border-radius: 4px; border: 1px solid var(--line); }
+.aiw-integrity-ok { background: #eafaf1; border-color: #a9dfbf; color: #145a32; }
+.aiw-integrity-bad { background: #fdecea; border-color: #f5b7b1; color: #922b21;
+    font-weight: 600; }
+.aiw-integrity-unknown { background: #f4f6f6; color: var(--muted); }
+
+/* Filterleiste. */
+.aiw-filterbar { margin: 0 0 12px; display: flex; align-items: center; gap: 12px; }
+#aiw-filter { flex: 0 1 420px; padding: 7px 10px; font-size: 13px;
+    border: 1px solid var(--line); border-radius: 4px; }
+.aiw-count { color: var(--muted); font-size: 12px; }
+
+.aiw-support-table {
+    border-collapse: collapse; width: 100%; background: #fff;
+    box-shadow: 0 1px 2px rgba(0,0,0,.08); font-size: 13px;
+}
+.aiw-support-table th, .aiw-support-table td {
+    border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left;
+    white-space: nowrap;
+}
+.aiw-support-table thead th {
+    background: #eef0f2; position: sticky; top: 0; font-weight: 600;
+}
+th.aiw-sortable { cursor: pointer; user-select: none; }
+th.aiw-sortable:hover { background: #e2e6ea; }
+th.aiw-sort-active { color: #0b5394; }
+
+.aiw-username { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+.aiw-dauer { font-variant-numeric: tabular-nums; }
+.aiw-reason { color: var(--muted); }
+.aiw-beleg { font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+    color: var(--muted); font-size: 12px; }
+
+/* Status-Abzeichen: farbige Kapsel je Zustand. */
+.aiw-status { font-weight: 600; }
+.aiw-status-beendet   { color: var(--beendet); }
+.aiw-status-orphan    { color: var(--orphan); }
+.aiw-status-offen     { color: var(--offen); }
+.aiw-status-herrenlos { color: var(--herrenlos); }
+.aiw-status-unknown   { color: var(--muted); }
+
+/* Zeilen dezent nach Status einfaerben (linker Rand). */
+tr.aiw-status-beendet   td:first-child { box-shadow: inset 3px 0 0 var(--beendet); }
+tr.aiw-status-orphan    td:first-child { box-shadow: inset 3px 0 0 var(--orphan); }
+tr.aiw-status-offen     td:first-child { box-shadow: inset 3px 0 0 var(--offen); }
+tr.aiw-status-herrenlos td:first-child { box-shadow: inset 3px 0 0 var(--herrenlos); }
+
+/* Auffaellige Sitzungen (Anomalie) deutlich markieren. */
+tr.aiw-has-anomaly { background: #fef9e7; }
+.aiw-anomaly { color: var(--herrenlos); font-weight: 600; }
+
+.aiw-legend { margin-top: 16px; font-size: 12px; color: var(--muted); }
+.aiw-legend span { margin-right: 16px; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+       vertical-align: middle; margin-right: 4px; }

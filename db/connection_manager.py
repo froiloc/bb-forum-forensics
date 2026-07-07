@@ -65,6 +65,7 @@ from db.evidence_db import EvidenceDb
 from db.coordinator_db import CoordinatorDb
 from db.assets_db import AssetsDb
 from db.templates_db import TemplatesDb          # NEU Build 089
+from db.translations_db import TranslationsDb    # NEU Build 329
 from db.locking_connection import LockingConnection  # Build 325: Nebenlaeufigkeits-Serialisierung
 
 logger = get_logger(__name__)
@@ -95,6 +96,7 @@ class DatabaseBundle:
     coordinator:  CoordinatorDb
     assets:       AssetsDb            # NEU Build 017
     templates:    TemplatesDb         # NEU Build 089
+    translations: TranslationsDb      # NEU Build 329 — READ-ONLY, KI-Uebersetzungen
     temp_db_path: Optional[str] = None
     # Menge aktiver SSE-Client-IDs — von EventsEndpoint verwaltet.
     # Wird von _action_release_lock fuer Queue-Kaskade (SLA Punkt 4) benoetigt.
@@ -250,6 +252,24 @@ class ConnectionManager:
                     templates_path,
                 )
 
+            # trdb: translations_db READ-ONLY (optional — existiert erst nach
+            # externem ollama-Prepper-Lauf, ~2 Wochen nach Build 329). Muster
+            # analog tdb (Build 117). Anbindung VOR set_authorizer(None) unten.
+            # Beleg: Bauplan Build 329 §2.3
+            translations_path = Path(
+                self._config.get("paths.translations_db", "./data/translations.db")
+            ).resolve()
+            if translations_path.exists():
+                self._attach_readonly(con, translations_path, "trdb")
+                logger.debug("trdb angebunden (READ-ONLY): '%s'", translations_path)
+            else:
+                logger.info(
+                    "translations.db nicht gefunden — trdb nicht angebunden: '%s'. "
+                    "Uebersetzungs-Buttons bleiben aus, bis der ollama-Prepper "
+                    "die DB erzeugt.",
+                    translations_path,
+                )
+
             # DB-Instanzen initialisieren
             # Build 325: Ab hier laufen ALLE Fach-DB-Zugriffe (mehrthreadig zur Laufzeit:
             # SSE-Thread + Request-Threads, Beleg connection_manager.py:262-273 / Build 021)
@@ -270,6 +290,7 @@ class ConnectionManager:
             coordinator = CoordinatorDb(db_con)
             assets      = AssetsDb(assets_con, forum_base_url=forum_base_url)   # NEU Build 017
             templates   = TemplatesDb(db_con)          # NEU Build 089
+            translations = TranslationsDb(db_con)      # NEU Build 329
 
             # Authorizer nach vollständigem ATTACH-Aufbau deaktivieren.
             # Hintergrund (Build 021): set_authorizer() ist nicht thread-safe
@@ -297,6 +318,7 @@ class ConnectionManager:
                 coordinator=coordinator,
                 assets=assets,    # NEU Build 017
                 templates=templates,  # NEU Build 089
+                translations=translations,  # NEU Build 329
             )
 
         except sqlite3.OperationalError as exc:
@@ -410,6 +432,21 @@ class ConnectionManager:
                     templates_path,
                 )
 
+            # trdb: translations_db READ-ONLY (optional — analog Normalmodus).
+            # Beleg: Bauplan Build 329 §2.3
+            translations_path = Path(
+                self._config.get("paths.translations_db", "./data/translations.db")
+            ).resolve()
+            if translations_path.exists():
+                self._attach_readonly(con, translations_path, "trdb")
+                logger.debug("trdb angebunden (READ-ONLY, Support): '%s'", translations_path)
+            else:
+                logger.info(
+                    "translations.db nicht gefunden — trdb nicht angebunden (Support): '%s'. "
+                    "Uebersetzungs-Buttons bleiben aus.",
+                    translations_path,
+                )
+
             # DB-Instanzen initialisieren
             # ForensicDb und DefaultDb wie im Normalmodus
             # Build 325: Fach-DB-Zugriffe ueber LockingConnection-Wrapper serialisieren
@@ -428,6 +465,7 @@ class ConnectionManager:
             coordinator = CoordinatorDb(db_con)
             assets      = AssetsDb(assets_con, forum_base_url=forum_base_url)   # NEU Build 017
             templates   = TemplatesDb(db_con)          # NEU Build 089
+            translations = TranslationsDb(db_con)      # NEU Build 329
 
             # Authorizer nach vollständigem ATTACH-Aufbau deaktivieren.
             # Hintergrund (Build 021): set_authorizer() ist nicht thread-safe
@@ -454,6 +492,7 @@ class ConnectionManager:
                 coordinator=coordinator,
                 assets=assets,        # NEU Build 017
                 templates=templates,  # NEU Build 089
+                translations=translations,  # NEU Build 329
                 temp_db_path=temp_db_path,
             )
 
