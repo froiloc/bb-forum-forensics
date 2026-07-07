@@ -147,9 +147,21 @@ class AnnotateEndpoint:
         selection_raw = data.get("selection")
         selection_json = None
         if selection_raw is not None and isinstance(selection_raw, dict):
-            # Pflichtfelder des selection-Objekts prüfen
-            required_sel = {"xpathStart", "offsetStart", "xpathEnd", "offsetEnd", "textContent"}
-            if required_sel.issubset(selection_raw.keys()):
+            # XPath-Anker (Originaltext) — bisherige Pflichtfelder.
+            xpath_fields = {"xpathStart", "offsetStart", "xpathEnd", "offsetEnd", "textContent"}
+            # Build 336: Uebersetzungs-Offset-Anker (Baustelle 3, Build 329/333)
+            # zusaetzlich akzeptieren. Diese Marken verankern per Zeichen-Offset im
+            # translated_text (stabil ueber Reload) statt per XPath in das dynamisch
+            # injizierte Panel. Ohne diese Ergaenzung verwarf der Endpoint die
+            # Selektion still (selection_json=None) -> Marke ohne Anker.
+            # Beleg: Live-Diagnose 2026-07-07 (/annotate-POST-Probe + annotate.py).
+            translation_fields = {"postId", "charStart", "charEnd", "textLen", "textHash"}
+            is_xpath = xpath_fields.issubset(selection_raw.keys())
+            is_translation = (
+                selection_raw.get("target") == "translation"
+                and translation_fields.issubset(selection_raw.keys())
+            )
+            if is_xpath or is_translation:
                 selection_json = json.dumps(selection_raw, ensure_ascii=False)
             else:
                 logger.warning(

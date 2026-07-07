@@ -2286,7 +2286,10 @@
         _state.currentUrl,
         null,  // element_id: wird über XPath abgedeckt
         selObj,
-        null
+        // Build 336 (Option B): Uebersetzungs-Marken bekommen die post_id-Spalte
+        // gesetzt (direkt abfragbare Post-Verknuepfung, report-freundlich);
+        // XPath-Text-Marken bleiben null (Post-Bezug via XPath).
+        (selObj && selObj.target === "translation") ? selObj.postId : null
       );
 
       // Build 334: Markierungen in KI-Uebersetzungen automatisch mit
@@ -2352,9 +2355,13 @@
       if (isNaN(postId)) return;
 
       // Bereits markiert? → Konflikt-Dialog (§7.2 Bauplan)
+      // Build 336 (Option B): NUR echte Ganz-Post-Marken zaehlen (ohne Selektion).
+      // Uebersetzungs-Text-Marken tragen jetzt ebenfalls post_id, sind aber
+      // KEINE Post-Markierungen (sie haben eine selection) und duerfen den
+      // Ueberschreiben-Dialog nicht ausloesen.
       var existingAnn = null;
       _state.annotations.forEach(function (ann) {
-        if (ann.postId === postId) existingAnn = ann;
+        if (ann.postId === postId && !ann.selection) existingAnn = ann;
       });
 
       if (existingAnn) {
@@ -6110,7 +6117,7 @@
       try {
         _state.annotations.forEach(function (ann) {
           if (ann.selection && ann.selection.target === "translation"
-              && ann.selection.postId === postId) {
+              && Number(ann.selection.postId) === Number(postId)) {
             HighlightModule.render(ann);
           }
         });
