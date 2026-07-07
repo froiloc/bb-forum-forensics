@@ -155,6 +155,90 @@ class SupportSessionsRepo:
             meta=meta,
         )
 
+    def close_orphans(
+        self, stale_sec: int, *, actor_id: Optional[int] = None,
+    ) -> int:
+        """
+        Beendet AUDITIERT alle verwaisten Sitzungen (ended_at IS NULL UND
+        last_heartbeat aelter als stale_sec) — Supporter ungrazil verschwunden,
+        end() wurde nie erreicht. Setzt ended_at = last_heartbeat (der EHRLICHE
+        letzte Praesenzbeleg, NICHT 'now') und schreibt fuer JEDE Sitzung
+        SUPPORT_SESSION_ENDED mit payload.reason='orphan_timeout'.
+
+        Zweck (Grundregel 1 — kein Beleg still uebersprungen): Ohne diesen Schritt
+        wuerde prune() eine nie beendete Sitzung LOESCHEN, ohne dass im audit_log
+        je ein ENDED zum STARTED stuende — der permanente 'wer sah wann welchen
+        Fall'-Beleg bliebe unvollstaendig. close_orphans() vervollstaendigt den
+        Audit-Trail, BEVOR prune() die (nun beendete) Zeile regulaer entfernt.
+
+        actor_id=None => System-Aktion (kein Supporter hat aktiv beendet); der
+        Grund steht im Payload. Idempotent gegen Races: eine zwischenzeitlich
+        regulaer beendete Sitzung wird uebersprungen (kein Doppel-Beleg).
+        Gibt die Anzahl auditiert beendeter Waisen zurueck.
+
+        Beleg: Live-Diagnose 2026-07-07 (Waise id=5 blieb ohne ENDED liegen);
+        mc 2026-07-07.
+        """
+        cutoff = int(time.time()) - stale_sec
+        # Kandidaten zuerst als Snapshot lesen, dann einzeln auditiert beenden.
+        orphans = self._con.execute(
+            "SELECT id, user_id, started_at, last_heartbeat "
+            "FROM support_sessions "
+            "WHERE ended_at IS NULL AND last_heartbeat < ? "
+            "ORDER BY id ASC",
+            (cutoff,),
+        ).fetchall()
+
+        closed = 0
+        for o in orphans:
+            session_id = int(o["id"])
+            user_id = int(o["user_id"])
+            started_at = int(o["started_at"])
+            ended_at = int(o["last_heartbeat"])  # ehrlicher letzter Praesenzbeleg
+
+            # Default-Argumente binden die Schleifenwerte pro Iteration (kein
+            # Late-Binding). audited_write ruft _w synchron innerhalb derselben
+            # Transaktion auf (Write + Audit atomar).
+            def _w(
+                con: sqlite3.Connection,
+                _sid: int = session_id, _uid: int = user_id,
+                _start: int = started_at, _end: int = ended_at,
+            ) -> Dict[str, Any]:
+                cur = con.execute(
+                    "UPDATE support_sessions SET ended_at = ? "
+                    "WHERE id = ? AND ended_at IS NULL",
+                    (_end, _sid),
+                )
+                if cur.rowcount == 0:
+                    # Race: zwischenzeitlich regulaer beendet -> Rollback der
+                    # gesamten Transaktion, KEIN zweiter Beleg fuer diese Sitzung.
+                    raise SupportSessionsError(
+                        "Waise %s bereits beendet." % _sid
+                    )
+                return {
+                    "session_id": _sid,
+                    "user_id": _uid,
+                    "ended_at": _end,
+                    "duration_sec": _end - _start,
+                    "reason": "orphan_timeout",
+                }
+
+            try:
+                self._writer.audited_write(
+                    do_write=_w,
+                    event_type=EventType.SUPPORT_SESSION_ENDED,
+                    actor_id=actor_id,
+                    target_type="support_session",
+                    target_id=str(session_id),
+                    meta=None,
+                )
+                closed += 1
+            except SupportSessionsError:
+                # Race mit regulaerem end()/parallelem close_orphans -> der Beleg
+                # wurde dann anderweitig geschrieben; diese Waise ueberspringen.
+                continue
+        return closed
+
     def prune(self, older_than_sec: int) -> int:
         """
         Entfernt flüchtige Alt-Zeilen: beendete Sitzungen sowie Sitzungen ohne

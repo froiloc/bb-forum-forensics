@@ -148,6 +148,7 @@ class SupportPresenceBinder:
         Alt-Sitzungen (z. B. nach hartem Serverabbruch) zu raeumen.
         """
         with self._lock:
+            self._close_orphans_locked()   # Build 328: AUDITIERT, bei JEDEM begin()
             self._prune_once_locked()
             # Doppel-begin fuer dieselbe client_id vermeiden (Idempotenz-Schutz).
             existing = self._by_client.get(client_id)
@@ -302,6 +303,27 @@ class SupportPresenceBinder:
             logger.info("SupportPresenceBinder geschlossen (user_id=%d).", self._user_id)
 
     # ----------------------------------------------------------------- intern
+    def _close_orphans_locked(self) -> None:
+        """
+        Build 328: Beendet AUDITIERT verwaiste Sitzungen (ended_at IS NULL,
+        Heartbeat aelter als _stale_sec) bei JEDEM begin(). Der reconnectende
+        Supporter raeumt so die Waisen seines Vorgaengers auf ('Saubermachen nach
+        einer Stoerung') und vervollstaendigt den Audit-Trail (jedes STARTED
+        erhaelt sein ENDED), BEVOR prune() die (dann beendete) Zeile regulaer
+        entfernt. Aufrufer haelt _lock. Best effort: Fehler werden nur geloggt —
+        der Waisen-Beleg bleibt als STARTED erhalten und wird beim naechsten
+        begin() erneut versucht (kein Beleg-Verlust).
+        """
+        try:
+            closed = self._repo.close_orphans(self._stale_sec)
+            if closed:
+                logger.info(
+                    "close_orphans(): %d verwaiste Support-Sitzung(en) auditiert "
+                    "beendet (Heartbeat aelter als %ds).", closed, self._stale_sec,
+                )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("close_orphans(): fehlgeschlagen: %s", exc)
+
     def _prune_once_locked(self) -> None:
         """
         Raeumt einmalig verwaiste Alt-Sitzungen. Aufrufer haelt _lock.

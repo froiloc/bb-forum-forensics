@@ -14,8 +14,14 @@
 # S08 — heartbeat() auf beendeter Sitzung → False
 # S09 — end() unbekannte session_id → SupportSessionsError
 # S10 — verify_chain grün nach start+end
+# S11 — close_orphans() beendet stale Waise AUDITIERT: ended_at==last_heartbeat,
+#       genau ein SUPPORT_SESSION_ENDED mit payload.reason='orphan_timeout' (Build 328)
+# S12 — close_orphans() laesst frische Sitzung unangetastet, kein Beleg (Build 328)
+# S13 — close_orphans() ueberspringt bereits beendete Sitzung, kein Doppel-Beleg (Build 328)
+# S14 — close_orphans() beendet mehrere Waisen, laesst frische stehen (Build 328)
+# S15 — verify_chain gruen nach close_orphans() (Build 328)
 #
-# Version: v0.7.311 · Build: 311 · 2026-07-01
+# Version: v0.7.328 · Build: 328 · 2026-07-07
 # =============================================================================
 
 import os
@@ -113,6 +119,29 @@ class ManagementSupportSessionsTests(unittest.TestCase):
             "UPDATE support_sessions SET last_heartbeat = ? WHERE id = ?",
             (ts, session_id),
         )
+
+    def _last_audit_content(self):
+        import json as _json
+        row = self.con.execute(
+            "SELECT content FROM audit_log ORDER BY seq DESC LIMIT 1"
+        ).fetchone()
+        return _json.loads(row["content"]) if row and row["content"] else {}
+
+    def _make_stale_session(self, user_id, supporter_id, actor_id, age_sec=10_000):
+        """
+        Startet eine Sitzung und datiert started_at + last_heartbeat zurueck
+        (realistisch: last_heartbeat >= started_at), sodass sie als Waise gilt.
+        Gibt (session_id, last_heartbeat_ts) zurueck.
+        """
+        sid = self.repo.start(user_id=user_id, supporter_id=supporter_id,
+                              actor_id=actor_id)
+        ts = int(time.time()) - age_sec
+        self.con.execute(
+            "UPDATE support_sessions SET started_at = ?, last_heartbeat = ? "
+            "WHERE id = ?",
+            (ts - 100, ts, sid),
+        )
+        return sid, ts
 
     # ------------------------------------------------------------------- S01
     def test_s01_start_creates_row_and_audit(self):
@@ -217,6 +246,64 @@ class ManagementSupportSessionsTests(unittest.TestCase):
         sid = self.repo.start(user_id=42, supporter_id=1, actor_id=1)
         self.repo.heartbeat(sid)  # kein Audit
         self.repo.end(sid, actor_id=1)
+        result = self.audit.verify_chain()
+        self.assertTrue(result.ok, msg=getattr(result, "detail", ""))
+
+
+    # ------------------------------------------------------------------- S11
+    def test_s11_close_orphans_ends_stale_with_audit(self):
+        # Verwaiste Sitzung: gestartet, Heartbeat weit in der Vergangenheit,
+        # nie beendet (ended_at IS NULL) — der ungrazile Disconnect.
+        sid, hb = self._make_stale_session(42, 1, 1)
+        n_aud = self._audit_count()
+
+        closed = self.repo.close_orphans(stale_sec=30)
+
+        self.assertEqual(closed, 1)
+        row = self._row(sid)
+        # ended_at = last_heartbeat (ehrlicher letzter Praesenzbeleg, NICHT now)
+        self.assertEqual(row["ended_at"], hb)
+        # genau EIN zusaetzlicher Audit-Eintrag, Typ ENDED, reason im Payload
+        self.assertEqual(self._audit_count(), n_aud + 1)
+        self.assertEqual(self._last_audit_type(),
+                         EventType.SUPPORT_SESSION_ENDED)
+        self.assertEqual(self._last_audit_content().get("reason"),
+                         "orphan_timeout")
+
+    # ------------------------------------------------------------------- S12
+    def test_s12_close_orphans_leaves_fresh_untouched(self):
+        sid = self.repo.start(user_id=42, supporter_id=1, actor_id=1)  # frisch
+        n_aud = self._audit_count()
+        closed = self.repo.close_orphans(stale_sec=30)
+        self.assertEqual(closed, 0)
+        self.assertIsNone(self._row(sid)["ended_at"])
+        self.assertEqual(self._audit_count(), n_aud)  # kein Beleg
+
+    # ------------------------------------------------------------------- S13
+    def test_s13_close_orphans_skips_already_ended(self):
+        sid = self.repo.start(user_id=42, supporter_id=1, actor_id=1)
+        self.repo.end(sid, actor_id=1)                       # regulaer beendet
+        self._set_heartbeat(sid, int(time.time()) - 10_000)  # alt, aber beendet
+        n_aud = self._audit_count()
+        closed = self.repo.close_orphans(stale_sec=30)
+        self.assertEqual(closed, 0)                   # ended_at gesetzt -> kein Treffer
+        self.assertEqual(self._audit_count(), n_aud)  # kein Doppel-Beleg
+
+    # ------------------------------------------------------------------- S14
+    def test_s14_close_orphans_multiple(self):
+        a, _ = self._make_stale_session(42, 1, 1)
+        b, _ = self._make_stale_session(43, 2, 2)
+        fresh = self.repo.start(user_id=44, supporter_id=1, actor_id=1)  # bleibt
+        closed = self.repo.close_orphans(stale_sec=30)
+        self.assertEqual(closed, 2)
+        self.assertIsNotNone(self._row(a)["ended_at"])
+        self.assertIsNotNone(self._row(b)["ended_at"])
+        self.assertIsNone(self._row(fresh)["ended_at"])
+
+    # ------------------------------------------------------------------- S15
+    def test_s15_close_orphans_chain_verifies(self):
+        self._make_stale_session(42, 1, 1)
+        self.repo.close_orphans(stale_sec=30)
         result = self.audit.verify_chain()
         self.assertTrue(result.ok, msg=getattr(result, "detail", ""))
 
