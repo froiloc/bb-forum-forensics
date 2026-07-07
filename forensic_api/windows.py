@@ -57,6 +57,19 @@ _ALLOWED_ROLES = {"main", "userinfo", "report"}
 # TTL in Sekunden: Fenster müssen sich innerhalb dieser Zeit erneuern
 _WINDOW_TTL = 60
 
+# Build 326: TTL fuer aktive SSE-Rollen (Selbstheilung gegen geleakte Rollen).
+# Ein lebender SSE-Stream frischt seinen Rolleneintrag pro Poll-Iteration
+# (<= _DEFAULT_INTERVAL_SEC = 15s, events.py) via touch_sse_role() auf. Bleibt die
+# Auffrischung aus (ungrazilder Disconnect, Grace-Pfad lief nicht, Prozess weg),
+# gilt der Eintrag nach _SSE_ROLE_TTL als verwaist und wird beim naechsten Zugriff
+# automatisch freigegeben -> das naechste Fenster kann die Rolle uebernehmen.
+# INVARIANTE: _SSE_ROLE_TTL MUSS groesser als SSE-Poll-Intervall (15s) + Grace (5s)
+# sein, sonst wuerde ein noch lebender, nur langsamer Stream faelschlich verdraengt.
+# 60s (= 4x Intervall, konsistent mit _WINDOW_TTL) haelt sicheren Abstand.
+# Beleg: Live-Diagnose 2026-07-07 — geleakte Rolle 'main' (client_id d12ae68a)
+# blockierte jeden Preflight dauerhaft mit HTTP 409 (kein Grace-Release erfolgt).
+_SSE_ROLE_TTL = 60
+
 
 def _json_ok(data: dict) -> bytes:
     return json.dumps({"ok": True, **data}).encode("utf-8")
@@ -85,6 +98,12 @@ class WindowRegistry:
         # gepflegt. Unabhängig vom Fenster-Heartbeat-TTL.
         # Beleg: Projektgespräch 2026-05-31.
         self._active_sse_roles: dict[str, str] = {}
+        # Build 326: { role: last_seen (time.time()) } — Lebendigkeits-Zeitstempel
+        # der aktiven SSE-Rolle, parallel zu _active_sse_roles gepflegt
+        # (claim/touch/release). Ermoeglicht Selbstheilung geleakter Rollen:
+        # ein lebender Stream frischt via touch_sse_role() auf; bleibt das aus,
+        # gilt der Eintrag nach _SSE_ROLE_TTL als verwaist (siehe dort).
+        self._sse_role_seen: dict[str, float] = {}
 
     def register(self, window_id: str, role: str) -> None:
         """Fenster registrieren oder Zeitstempel erneuern."""
@@ -117,6 +136,12 @@ class WindowRegistry:
                 del self._windows[wid]
                 logger.debug("WindowRegistry: Fenster '%s' abgelaufen und entfernt", wid)
 
+            # Build 326: verwaiste SSE-Rollen mitbereinigen, damit sse_active
+            # unten nicht falsch-positiv ist (Konsistenz mit find_active_by_role).
+            for _role in [r for r in self._sse_role_seen
+                          if (now - self._sse_role_seen[r]) > _SSE_ROLE_TTL]:
+                self._drop_stale_sse_role(_role)
+
             # sse_active: True wenn fuer diese Rolle ein aktiver SSE-Stream
             # laeuft (_active_sse_roles). Wird von der Toolbar genutzt um
             # zu entscheiden ob Fokussieren oder Neu-Oeffnen.
@@ -133,6 +158,36 @@ class WindowRegistry:
             ]
 
 
+    def _sse_role_is_stale(self, role: str) -> bool:
+        """
+        Build 326: True, wenn fuer die Rolle ein Eintrag existiert, dessen
+        letzter Lebendigkeits-Zeitstempel aelter als _SSE_ROLE_TTL ist
+        (geleakte Rolle — der Stream hat sie nie via release_sse_role
+        freigegeben und frischt sie nicht mehr auf).
+        MUSS unter self._lock aufgerufen werden.
+        """
+        seen = self._sse_role_seen.get(role)
+        if seen is None:
+            # Kein Zeitstempel: entweder Rolle frei oder (Alt-Eintrag ohne
+            # Zeitstempel) — nicht als stale werten, um Live-Streams nicht zu
+            # verdraengen. claim/touch setzen den Zeitstempel stets.
+            return False
+        return (time.time() - seen) > _SSE_ROLE_TTL
+
+    def _drop_stale_sse_role(self, role: str) -> None:
+        """
+        Build 326: Entfernt einen als verwaist erkannten Rolleneintrag
+        (beide Dicts). MUSS unter self._lock aufgerufen werden.
+        """
+        cid = self._active_sse_roles.pop(role, None)
+        self._sse_role_seen.pop(role, None)
+        if cid is not None:
+            logger.warning(
+                "SSE-Rolle '%s' als verwaist erkannt (kein Heartbeat > %ds) — "
+                "automatisch freigegeben (war client_id=%s).",
+                role, _SSE_ROLE_TTL, cid,
+            )
+
     def find_active_by_role(self, role: str) -> Optional[dict]:
         """
         Gibt einen Stub-Dict zurueck wenn fuer die Rolle ein aktiver
@@ -143,8 +198,16 @@ class WindowRegistry:
         Das verhindert Falsch-Positiv nach Tab-Schliessen (TTL noch aktiv,
         SSE-Thread aber bereits beendet).
         Beleg: Projektgespräch 2026-05-31.
+
+        Build 326: Zusaetzlich Selbstheilung — ist der Rolleneintrag verwaist
+        (kein Heartbeat > _SSE_ROLE_TTL, z. B. ungrazilder Disconnect ohne
+        Grace-Release), wird er hier automatisch freigegeben und None
+        zurueckgegeben, sodass ein neues Fenster die Rolle uebernehmen kann.
+        Beleg: Live-Diagnose 2026-07-07 (geleakte Rolle 'main' -> Dauer-409).
         """
         with self._lock:
+            if self._sse_role_is_stale(role):
+                self._drop_stale_sse_role(role)
             client_id = self._active_sse_roles.get(role)
             if client_id:
                 return {
@@ -165,10 +228,15 @@ class WindowRegistry:
         Beleg: Projektgespräch 2026-05-31.
         """
         with self._lock:
+            # Build 326: verwaisten Eintrag vorher raeumen, damit ein neues
+            # Fenster eine geleakte Rolle uebernehmen kann.
+            if self._sse_role_is_stale(role):
+                self._drop_stale_sse_role(role)
             existing = self._active_sse_roles.get(role)
             if existing and existing != client_id:
                 return False
             self._active_sse_roles[role] = client_id
+            self._sse_role_seen[role] = time.time()   # Build 326: Lebendigkeit
             return True
 
     def release_sse_role(self, role: str, client_id: str) -> None:
@@ -183,6 +251,7 @@ class WindowRegistry:
         with self._lock:
             if self._active_sse_roles.get(role) == client_id:
                 del self._active_sse_roles[role]
+                self._sse_role_seen.pop(role, None)   # Build 326
                 logger.debug(
                     "SSE-Rolle '%s' freigegeben (client_id=%s)", role, client_id
                 )
@@ -192,9 +261,27 @@ class WindowRegistry:
         Gibt die client_id des aktiven SSE-Clients fuer eine Rolle zurueck,
         oder None wenn kein aktiver SSE-Stream fuer diese Rolle laeuft.
         Beleg: Projektgespräch 2026-05-31.
+
+        Build 326: Selbstheilung — verwaiste Rollen (kein Heartbeat >
+        _SSE_ROLE_TTL) werden vor der Abfrage entfernt.
         """
         with self._lock:
+            if self._sse_role_is_stale(role):
+                self._drop_stale_sse_role(role)
             return self._active_sse_roles.get(role)
+
+    def touch_sse_role(self, role: str, client_id: str) -> None:
+        """
+        Build 326: Frischt den Lebendigkeits-Zeitstempel der SSE-Rolle auf,
+        sofern client_id noch der Inhaber ist. Wird vom LEBENDEN SSE-Stream
+        pro Poll-Iteration (<= 15s) aufgerufen. Ohne diese Auffrischung gilt
+        der Eintrag nach _SSE_ROLE_TTL als verwaist und wird automatisch
+        freigegeben (Selbstheilung gegen geleakte Rollen).
+        Beleg: Live-Diagnose 2026-07-07 (Dauer-409 durch geleakte Rolle 'main').
+        """
+        with self._lock:
+            if self._active_sse_roles.get(role) == client_id:
+                self._sse_role_seen[role] = time.time()
 
     @property
     def lock(self) -> threading.Lock:

@@ -27,8 +27,14 @@
  * P01 — toolbar.js role=main-Preflight-fetch enthaelt 'X-Forensic-Preflight'
  * P02 — der Header-Wert ist '1'
  * P03 — Positiv-Kontrolle: sse_layer.js (Referenzmuster) sendet den Header weiter
+ * P04 — userinfo.js role=userinfo-Preflight-fetch enthaelt 'X-Forensic-Preflight' (Build 327)
+ * P05 — der userinfo-Preflight-Header-Wert ist '1' (Build 327)
  *
- * Version: v0.7.324 · Build: 324 · 2026-07-06
+ * Build 327 (2026-07-07): P04/P05 ergaenzt. userinfo.js Fenster 2 nutzt einen
+ * EIGENEN Preflight-Pfad (initSSEWindow2, OHNE SSELayer) und hatte denselben
+ * fehlenden Header wie role=main in Build 312 -> role=userinfo Selbst-Kollision.
+ *
+ * Version: v0.7.327 · Build: 327 · 2026-07-07
  */
 
 import { describe, it, expect } from 'vitest';
@@ -41,6 +47,7 @@ const REPO_ROOT = join(__dirname, '..', '..');
 
 const TOOLBAR   = readFileSync(join(REPO_ROOT, 'toolbar', 'toolbar.js'), 'utf8');
 const SSE_LAYER = readFileSync(join(REPO_ROOT, 'userinfo', 'sse_layer.js'), 'utf8');
+const USERINFO  = readFileSync(join(REPO_ROOT, 'userinfo', 'userinfo.js'), 'utf8');
 
 // Hilfsfunktion: Fenster ab dem ERSTEN fetch(-Aufruf nach dem role=main-Anker.
 // Damit werden vorangestellte Kommentare (die den Header erwaehnen) bewusst
@@ -52,6 +59,17 @@ function mainPreflightFetchRegion(source) {
     if (fetchStart < 0) return null;
     // Der fetch-Aufruf inkl. Options-Objekt ist kurz (~100 Zeichen). 200 Zeichen
     // decken ihn sicher ab, ohne in unbeteiligten Folgecode zu laufen.
+    return source.slice(fetchStart, fetchStart + 200);
+}
+
+// Analog fuer userinfo.js (Fenster 2, role=userinfo): Anker AUF dem fetch(-Aufruf
+// nach dem '?role=userinfo'-Literal, sodass vorangestellte Kommentare (die den
+// Header erwaehnen) ausgeschlossen sind und Entfernen des Headers den Test rot faerbt.
+function userinfoPreflightFetchRegion(source) {
+    const anchor = source.indexOf("'?role=userinfo'");
+    if (anchor < 0) return null;
+    const fetchStart = source.indexOf('fetch(', anchor);
+    if (fetchStart < 0) return null;
     return source.slice(fetchStart, fetchStart + 200);
 }
 
@@ -74,5 +92,19 @@ describe('SSE-Preflight-Header (Build 324, role=main Selbst-Kollision)', () => {
         // Referenzmuster, an dem der Fix gespiegelt wurde. Faellt dieser Test,
         // hat sich die Referenz veraendert und der Guard ist neu zu bewerten.
         expect(SSE_LAYER).toContain('X-Forensic-Preflight');
+    });
+});
+
+describe('SSE-Preflight-Header (Build 327, role=userinfo Selbst-Kollision)', () => {
+    it('P04 — userinfo.js role=userinfo-Preflight-fetch enthaelt X-Forensic-Preflight', () => {
+        const region = userinfoPreflightFetchRegion(USERINFO);
+        expect(region, "role=userinfo-Preflight-fetch nicht gefunden").not.toBeNull();
+        expect(region).toContain('X-Forensic-Preflight');
+    });
+
+    it('P05 — der userinfo-Preflight-Header-Wert ist "1"', () => {
+        const region = userinfoPreflightFetchRegion(USERINFO);
+        expect(region).not.toBeNull();
+        expect(region).toMatch(/['"]X-Forensic-Preflight['"]\s*:\s*['"]1['"]/);
     });
 });

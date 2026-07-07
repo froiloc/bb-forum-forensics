@@ -571,6 +571,15 @@ class EventsEndpoint:
                 # wenn acquire_lock() / release_lock() aufgerufen wird.
                 lock_event.wait(timeout=self._interval)
 
+                # Build 326: Lebendigkeits-Signal der SSE-Rolle auffrischen.
+                # Solange dieser Stream laeuft, bleibt sein Rolleneintrag frisch;
+                # bricht er ungrazilger ab (Grace-Pfad laeuft nicht, Prozess weg),
+                # verwaist der Eintrag nach _SSE_ROLE_TTL und das naechste Fenster
+                # kann die Rolle uebernehmen (Selbstheilung gegen Dauer-409).
+                # Beleg: Live-Diagnose 2026-07-07 (geleakte Rolle 'main' d12ae68a).
+                if _stream_role:
+                    _get_window_registry().touch_sse_role(_stream_role, client_id)
+
                 # Lock-Zustand lesen, DANN Event loeschen.
                 # Reihenfolge wichtig: zwischen clear() und dem DB-Zugriff koennte
                 # sonst eine Aenderung verloren gehen.
@@ -697,6 +706,10 @@ class EventsEndpoint:
                     for role, cid in list(reg._active_sse_roles.items()):
                         if cid == client_id:
                             reg._active_sse_roles[role] = new_client_id
+                            # Build 326: Lebendigkeits-Zeitstempel mitfuehren,
+                            # sonst koennte der frisch uebernommene Slot faelschlich
+                            # als verwaist gelten, bevor der neue Stream touch't.
+                            reg._sse_role_seen[role] = time.time()
                             logger.debug(
                                 "SSE-Slot RESUMING: Rolle '%s' %s → %s",
                                 role, client_id, new_client_id,

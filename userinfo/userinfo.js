@@ -410,7 +410,15 @@ function initSSEWindow2() {
     // EventSource kann keinen HTTP-Status auslesen — fetch-Preflight nötig.
     // Beleg: Projektgespräch 2026-05-31.
     const _sseUrl = FORENSIC_API.EVENTS + '?role=userinfo';
-    fetch(_sseUrl, { method: 'GET', headers: { 'Accept': 'text/event-stream, application/json' } })
+    // Build 327: Preflight-Header 'X-Forensic-Preflight: 1' ist ZWINGEND — gleiche
+    // Fehlerklasse wie Build 324 (role=main), hier fuer role=userinfo (Fenster 2,
+    // eigener Preflight-Pfad OHNE SSELayer, siehe _showDuplicateHint). Ohne den
+    // Header behandelt der Server (forensic_api/events.py) diesen GET als ECHTEN
+    // SSE-Stream und ruft claim_sse_role('userinfo') auf; das danach geoeffnete
+    // EventSource kollidiert dann mit dem eigenen Preflight-Stream -> HTTP 409,
+    // Fenster 2 bekommt nie seinen Stream. Mit dem Header ist es ein reiner
+    // Slot-Check (200 = frei, 409 = belegt). Beleg: Live-Diagnose 2026-07-07.
+    fetch(_sseUrl, { method: 'GET', headers: { 'Accept': 'text/event-stream, application/json', 'X-Forensic-Preflight': '1' } })
         .then(function(resp) {
             if (resp.status === 409) {
                 return resp.json().then(function(data) {

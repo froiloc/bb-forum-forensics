@@ -1,0 +1,24 @@
+2026-07-07 11:44:14 [INFO    ] forensic: Logging initialisiert — Level: DEBUG, Logdatei: /opt/aiw_webserver/logs/forensic_server.log
+2026-07-07 11:44:14 [INFO    ] forensic: === Forensischer Webserver startet ===
+2026-07-07 11:44:14 [INFO    ] forensic: Config geladen: '/opt/aiw_webserver/config.yaml'
+2026-07-07 11:44:14 [DEBUG   ] forensic.core.user_resolver: Systembenutzer ermittelt: 'paul' (Plattform: linux)
+2026-07-07 11:44:14 [INFO    ] forensic: Systembenutzer: 'paul'
+2026-07-07 11:44:14 [INFO    ] forensic.core.mode_resolver: Startmodus: 'support'
+2026-07-07 11:44:14 [INFO    ] forensic.core.mode_resolver: Modus 'support': user_id=1488, username='uid_1488', forensic_db='/opt/aiw_webserver/data/forensic/forensic_1488.db'
+2026-07-07 11:44:14 [INFO    ] forensic: Kontext: mode='support', user_id=1488, username='uid_1488'
+2026-07-07 11:44:14 [INFO    ] forensic: forensic_db : '/opt/aiw_webserver/data/forensic/forensic_1488.db'
+2026-07-07 11:44:14 [INFO    ] forensic: evidence_db : '/opt/aiw_webserver/data/evidence/evidence_1488.db'
+2026-07-07 11:44:14 [INFO    ] forensic: default_db  : '/opt/aiw_webserver/data/default.db'
+2026-07-07 11:44:14 [INFO    ] forensic: coordinator : '/opt/aiw_webserver/data/coordinator.db'
+2026-07-07 11:44:14 [INFO    ] forensic.core.startup_checks: Starte Voraussetzungsprüfungen...
+2026-07-07 11:44:14 [DEBUG   ] forensic.core.startup_checks: Datei gefunden: forensic_db = '/opt/aiw_webserver/data/forensic/forensic_1488.db'
+2026-07-07 11:44:14 [DEBUG   ] forensic.core.startup_checks: Datei gefunden: evidence_db = '/opt/aiw_webserver/data/evidence/evidence_1488.db'
+2026-07-07 11:44:14 [DEBUG   ] forensic.core.startup_checks: default_db gefunden: '/opt/aiw_webserver/data/default.db'
+2026-07-07 11:44:14 [DEBUG   ] forensic.core.startup_checks: coordinator_db gefunden: '/opt/aiw_webserver/data/coordinator.db'
+2026-07-07 11:44:14 [ERROR   ] forensic: Startprüfung fehlgeschlagen: forensic_db konnte nicht geöffnet werden: '/opt/aiw_webserver/data/forensic/forensic_1488.db'
+SQLite-Fehler: unable to open database file
+[FEHLER] Startprüfung fehlgeschlagen:
+forensic_db konnte nicht geöffnet werden: '/opt/aiw_webserver/data/forensic/forensic_1488.db'
+SQLite-Fehler: unable to open database file
+paul@recherche:/opt/aiw_webserver$ ll /opt/aiw_webserver/data/forensic/forensic_1488.db
+-rw-rw---- 1 paul aiw 802836480 Jun  1 02:41 /opt/aiw_webserver/data/forensic/forensic_1488.db
