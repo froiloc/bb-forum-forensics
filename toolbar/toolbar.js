@@ -503,6 +503,7 @@
       { id: "CAT_184",      label: "184", icon: "🔴", color: "#c040e8", desc: "Relevanz §§ 184b, 184c StGB",          key: "4" },
       { id: "CAT_VICTIM",   label: "OPF", icon: "🛡️", color: "#e87040", desc: "Hinweise auf mögliche Opfer",          key: "5" },
       { id: "CAT_OTHER",    label: "SON", icon: "📎", color: "#40c8a0", desc: "Sonstige Ermittlungsrelevanz",         key: "6" },
+      { id: "CAT_TRANSLATION", label: "ÜBS", icon: "🏳", color: "#6b7280", desc: "Übersetzungsfund (maschinell, nicht gerichtsverwertbar)", key: "7" },
     ],
 
     // Tag-Vokabular (§19.1 Bauplan)
@@ -852,6 +853,53 @@
      * Selection-Objekt aus einer Browser-Selection erstellen.
      * Gibt null zurück wenn Selektion ungültig.
      */
+    // -----------------------------------------------------------------------
+    // Build 333: Uebersetzungs-Markierungen — Offset-Anker statt XPath.
+    // Der Uebersetzungstext (.aiw-translation-body) ist deterministisch aus
+    // translations.db reproduzierbar (post_id+source); das Panel-DOM ist
+    // dynamisch injiziert. XPath in dieses Panel ueberlebt keinen Reload,
+    // Zeichen-Offsets schon. Verifikation ueber textLen+textHash (Erkennung,
+    // ob sich die Uebersetzung seit der Markierung geaendert hat).
+    // -----------------------------------------------------------------------
+
+    // Schneller Inhalts-Hash (FNV-1a, 32 Bit hex) — erkennt Textaenderung.
+    function _fnv1a(str) {
+      var h = 0x811c9dc5;
+      for (var i = 0; i < str.length; i++) {
+        h ^= str.charCodeAt(i);
+        h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+      }
+      return ("0000000" + h.toString(16)).slice(-8);
+    }
+
+    // Zeichen-Offset von (node,offset) relativ zum Anfang von bodyEl —
+    // robust auch bei bereits vorhandenen <mark>-Kindern (range.toString()).
+    function _offsetInBody(bodyEl, node, offset) {
+      var r = document.createRange();
+      r.selectNodeContents(bodyEl);
+      r.setEnd(node, offset);
+      return r.toString().length;
+    }
+
+    // Range ueber [start,end) im reinen Text von root (Textknoten durchlaufen).
+    function _rangeFromOffsets(root, start, end) {
+      var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+      var pos = 0, range = document.createRange(), started = false, node;
+      while ((node = walker.nextNode())) {
+        var len = node.nodeValue.length;
+        if (!started && start <= pos + len) { range.setStart(node, start - pos); started = true; }
+        if (started && end <= pos + len) { range.setEnd(node, end - pos); return range; }
+        pos += len;
+      }
+      return null;
+    }
+
+    // Liefert das umschliessende .aiw-translation-body, oder null.
+    function _translationBodyOf(node) {
+      var el = (node && node.nodeType === 1) ? node : (node ? node.parentElement : null);
+      return el ? el.closest(".aiw-translation-body") : null;
+    }
+
     function selectionFromBrowser(sel) {
       if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return null;
       var range = sel.getRangeAt(0);
@@ -861,6 +909,26 @@
           !viewport.contains(range.endContainer)) return null;
       var text = sel.toString().trim();
       if (!text) return null;
+
+      // Build 333: liegt die Auswahl in einer eingeblendeten Uebersetzung?
+      // Dann Offset-Anker (target:"translation") statt XPath.
+      var trBody = _translationBodyOf(range.commonAncestorContainer);
+      if (trBody &&
+          trBody.contains(range.startContainer) &&
+          trBody.contains(range.endContainer)) {
+        var full  = trBody.textContent;
+        var panel = trBody.closest(".aiw-translation-panel");
+        return {
+          target:      "translation",
+          source:      (panel && panel.getAttribute("data-source")) || "posts",
+          postId:      panel ? parseInt(panel.getAttribute("data-post-id"), 10) : null,
+          charStart:   _offsetInBody(trBody, range.startContainer, range.startOffset),
+          charEnd:     _offsetInBody(trBody, range.endContainer, range.endOffset),
+          textLen:     full.length,
+          textHash:    _fnv1a(full),
+          textContent: text,
+        };
+      }
 
       return {
         xpathStart:  _xpathOf(range.startContainer),
@@ -881,6 +949,32 @@
         _dbg("rangeFromSelection: sel ist null/undefined");
         return null;
       }
+
+      // Build 333: Uebersetzungs-Anker per Offsets aufloesen (statt XPath).
+      if (sel.target === "translation") {
+        var panel = document.querySelector(
+          '.aiw-translation-panel[data-post-id="' + sel.postId + '"]');
+        var body = panel ? panel.querySelector(".aiw-translation-body") : null;
+        if (!body) {
+          // Panel (noch) nicht offen — z.B. Restore beim Seitenaufbau. Das
+          // Nachziehen erfolgt beim Oeffnen des Panels (TranslationModule).
+          _dbg("rangeFromSelection[translation]: Panel/Body nicht offen fuer post", sel.postId);
+          return null;
+        }
+        var fullT = body.textContent;
+        // Verifikation (GR1): hat sich die Uebersetzung seit der Markierung geaendert?
+        var staleT = (fullT.length !== sel.textLen) || (_fnv1a(fullT) !== sel.textHash);
+        var rangeT = _rangeFromOffsets(body, sel.charStart, sel.charEnd);
+        if (!rangeT) {
+          _dbg("rangeFromSelection[translation]: Range nicht bildbar", sel);
+          return null;
+        }
+        if (staleT) {
+          _dbg("rangeFromSelection[translation]: STALE — Uebersetzung geaendert, Position ungeprueft", sel.postId);
+        }
+        return { range: rangeT, stale: staleT };
+      }
+
       var startNode = _nodeFromXpath(sel.xpathStart);
       var endNode   = _nodeFromXpath(sel.xpathEnd);
       _dbg("rangeFromSelection",
@@ -1041,8 +1135,17 @@
       createAnnotation:     createAnnotation,
       syncAnnotation:       syncAnnotation,
       loadAnnotations:      loadAnnotations,
+      // Build 333: reine Offset-Helfer fuer vitest (gegen echten Code).
+      _translationTest: {
+        fnv1a:           _fnv1a,
+        offsetInBody:    _offsetInBody,
+        rangeFromOffsets: _rangeFromOffsets,
+      },
     };
   })();
+
+  // Build 333: Offset-Helfer fuer Tests freilegen (Muster config.levenshtein).
+  ForensicToolbar.config.annTranslationTest = AnnotationStoreModule._translationTest;
 
   // ===========================================================================
   // PHASE 4: HighlightModule — CSS Custom Highlights API + Fallback
@@ -5947,6 +6050,8 @@
       var panel = document.createElement("div");
       panel.className = "aiw-translation-panel aux-part";
       panel.setAttribute("data-post-id", String(postId));
+      // Build 333: source am Panel hinterlegen (Erfassung liest es fuer den Anker).
+      panel.setAttribute("data-source", "posts");
 
       // Pflicht-Kopfzeile (GR1): Provenienz + Nicht-Verwertbarkeit untrennbar.
       var head = document.createElement("div");
@@ -5974,6 +6079,21 @@
       }
       btn.classList.add("aiw-translate-flag--active");
       _dbg("[Translation] Panel geoeffnet fuer post", postId);
+
+      // Build 333: gespeicherte Uebersetzungs-Markierungen dieses Posts nachziehen.
+      // Beim Seitenaufbau war das Panel geschlossen -> rangeFromSelection lieferte
+      // null -> die Markierungen wurden noch nicht gerendert. Jetzt (Panel offen)
+      // sind sie ueber Offsets aufloesbar.
+      try {
+        _state.annotations.forEach(function (ann) {
+          if (ann.selection && ann.selection.target === "translation"
+              && ann.selection.postId === postId) {
+            HighlightModule.render(ann);
+          }
+        });
+      } catch (e) {
+        _dbg("[Translation] Restore der Uebersetzungs-Markierungen fehlgeschlagen", e);
+      }
     }
 
     function _apply(viewport) {
