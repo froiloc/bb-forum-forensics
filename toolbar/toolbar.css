@@ -2856,6 +2856,7 @@ body.aiw-view-original .aux-part { display: none !important; }
   background: #fbfdff;
   overflow: hidden;
   font-size: 0.95em;
+  width: 100%;
 }
 .aiw-translation-head {
   padding: 4px 10px;
