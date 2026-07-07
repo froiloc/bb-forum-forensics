@@ -49,9 +49,8 @@ describe("AnnotationRecord — Struktur", () => {
 });
 
 describe("VALID_CATEGORIES — Vollständigkeit", () => {
-  it("Sieben Kategorien definiert", () => {
-    // Build 333: CAT_TRANSLATION (Uebersetzungsfund, key 7) ergaenzt.
-    expect(ft.config.CATEGORIES.length).toBe(7);
+  it("Sechs Kategorien definiert", () => {
+    expect(ft.config.CATEGORIES.length).toBe(6);
   });
 
   it("Alle Kategorien haben id, label, icon, color, key", () => {
@@ -60,14 +59,14 @@ describe("VALID_CATEGORIES — Vollständigkeit", () => {
       expect(cat.label).toBeTruthy();
       expect(cat.icon).toBeTruthy();
       expect(cat.color).toMatch(/^#[0-9a-f]{6}$/i);
-      expect(cat.key).toMatch(/^[1-7]$/);
+      expect(cat.key).toMatch(/^[1-6]$/);
     });
   });
 
-  it("Kategorie-Schlüssel 1-7 sind eindeutig", () => {
+  it("Kategorie-Schlüssel 1-6 sind eindeutig", () => {
     const keys = ft.config.CATEGORIES.map((c) => c.key);
     const unique = new Set(keys);
-    expect(unique.size).toBe(7);
+    expect(unique.size).toBe(6);
   });
 });
 

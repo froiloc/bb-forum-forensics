@@ -503,7 +503,6 @@
       { id: "CAT_184",      label: "184", icon: "🔴", color: "#c040e8", desc: "Relevanz §§ 184b, 184c StGB",          key: "4" },
       { id: "CAT_VICTIM",   label: "OPF", icon: "🛡️", color: "#e87040", desc: "Hinweise auf mögliche Opfer",          key: "5" },
       { id: "CAT_OTHER",    label: "SON", icon: "📎", color: "#40c8a0", desc: "Sonstige Ermittlungsrelevanz",         key: "6" },
-      { id: "CAT_TRANSLATION", label: "ÜBS", icon: "🏳", color: "#6b7280", desc: "Übersetzungsfund (maschinell, nicht gerichtsverwertbar)", key: "7" },
     ],
 
     // Tag-Vokabular (§19.1 Bauplan)
@@ -516,6 +515,10 @@
     // Levenshtein-Schwellenwert für Tag-Vorschläge (§19.2)
     LEVENSHTEIN_THRESHOLD: 2,
     TAG_MAX_INPUT_LEN: 50,
+
+    // Build 334: Auto-Schlagwort fuer Markierungen in KI-Uebersetzungen.
+    // Trennt maschinell-uebersetzte Spuren sauber von real-deutschsprachigen.
+    KI_TRANSLATION_TAG: "#KI-Übersetzung",
 
     // Hover-Delay für HoverMenuModule (ms)
     HOVER_DELAY_MS: 600,
@@ -900,6 +903,17 @@
       return el ? el.closest(".aiw-translation-body") : null;
     }
 
+    // Build 334: Markierungen in KI-Uebersetzungen bekommen automatisch das
+    // Schlagwort '#KI-Uebersetzung'. Die Kategorie bleibt rein SEMANTISCH
+    // (Person, Ort, 176, ...); ob eine Spur aus einer maschinellen Uebersetzung
+    // oder aus real-deutschsprachigem Text stammt, ist orthogonal dazu und wird
+    // ueber dieses Schlagwort sauber getrennt. Reine Funktion (vitest-testbar).
+    function _autoTagsForSelection(selObj) {
+      return (selObj && selObj.target === "translation")
+        ? [ForensicToolbar.config.KI_TRANSLATION_TAG]
+        : [];
+    }
+
     function selectionFromBrowser(sel) {
       if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return null;
       var range = sel.getRangeAt(0);
@@ -1135,11 +1149,13 @@
       createAnnotation:     createAnnotation,
       syncAnnotation:       syncAnnotation,
       loadAnnotations:      loadAnnotations,
+      autoTagsForSelection: _autoTagsForSelection,   // Build 334
       // Build 333: reine Offset-Helfer fuer vitest (gegen echten Code).
       _translationTest: {
-        fnv1a:           _fnv1a,
-        offsetInBody:    _offsetInBody,
+        fnv1a:            _fnv1a,
+        offsetInBody:     _offsetInBody,
         rangeFromOffsets: _rangeFromOffsets,
+        autoTagsForSelection: _autoTagsForSelection,  // Build 334
       },
     };
   })();
@@ -2272,6 +2288,13 @@
         selObj,
         null
       );
+
+      // Build 334: Markierungen in KI-Uebersetzungen automatisch mit
+      // '#KI-Uebersetzung' verschlagworten (semantische Kategorie bleibt,
+      // Herkunft aus maschineller Uebersetzung wird ueber das Tag getrennt).
+      AnnotationStoreModule.autoTagsForSelection(selObj).forEach(function (t) {
+        if (ann.tags.indexOf(t) === -1) ann.tags.push(t);
+      });
 
       _state.annotations.set(ann.localId, ann);
       HighlightModule.render(ann);

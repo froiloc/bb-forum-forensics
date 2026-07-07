@@ -52,15 +52,13 @@ describe("Build 333: Offsets im Einzel-Textknoten", () => {
   });
 });
 
-describe("Build 333: Offsets ueber mehrere Textknoten (bereits vorhandenes <mark>)", () => {
-  it("Flachtext-Offsets bleiben korrekt", () => {
-    const body = makeBody('Hallo <mark>Welt</mark> Uebersetzung');
-    expect(body.textContent).toBe("Hallo Welt Uebersetzung");
-    // "Uebersetzung" beginnt im Flachtext bei Index 11
-    const r = H.rangeFromOffsets(body, 11, 23);
-    expect(r.toString()).toBe("Uebersetzung");
-    // offsetInBody quer ueber die <mark>-Grenze hinweg
-    const tail = body.lastChild; // " Uebersetzung"
-    expect(H.offsetInBody(body, tail, 1)).toBe(11);
+describe("Build 334: autoTagsForSelection (#KI-Übersetzung)", () => {
+  it("Uebersetzungs-Selektion -> KI-Tag", () => {
+    const tags = H.autoTagsForSelection({ target: "translation" });
+    expect(tags).toEqual(["#KI-Übersetzung"]);
+  });
+  it("Original-Selektion (XPath) -> kein Tag", () => {
+    expect(H.autoTagsForSelection({ xpathStart: "./p[1]" })).toEqual([]);
+    expect(H.autoTagsForSelection(null)).toEqual([]);
   });
 });

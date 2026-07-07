@@ -121,7 +121,6 @@ VALID_CATEGORIES: frozenset[str] = frozenset({
     "CAT_184",
     "CAT_VICTIM",
     "CAT_OTHER",
-    "CAT_TRANSLATION",   # Build 333: Uebersetzungsfund (maschinell, nicht gerichtsverwertbar)
 })
 
 # Erlaubte Berichtstypen.
