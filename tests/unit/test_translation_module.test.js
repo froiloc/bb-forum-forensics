@@ -82,3 +82,21 @@ describe("TranslationModule.clickAction (Build 332: Anti-Doppel-Panel)", () => {
     expect(H.clickAction(false, false, false)).toBe("fetch");
   });
 });
+
+describe("Build 338: findTranslationMark (Flaggen-Indikator)", () => {
+  const anns = [
+    { category: "CAT_VICTIM", selection: { xpathStart: "./p" } },           // XPath, kein target
+    { category: "CAT_OTHER",  selection: { target: "translation", postId: 705985 } },
+    { category: "CAT_176",    selection: { target: "translation", postId: 705990 } },
+  ];
+  it("findet Übersetzungs-Marke fuer Post", () => {
+    expect(H.findTranslationMark(anns, 705985).category).toBe("CAT_OTHER");
+  });
+  it("typ-sicher bei String-postId", () => {
+    expect(H.findTranslationMark(anns, "705990").category).toBe("CAT_176");
+  });
+  it("kein Treffer -> null", () => {
+    expect(H.findTranslationMark(anns, 999999)).toBe(null);
+    expect(H.findTranslationMark([], 1)).toBe(null);
+  });
+});

@@ -6006,6 +6006,42 @@
       return "fetch";                  // sonst laden
     }
 
+    // Build 338: Erste Uebersetzungs-Markierung eines Posts finden (rein, testbar).
+    // Dient dem Flaggen-Indikator: liegt eine Markierung IN der Uebersetzung dieses
+    // Posts vor, faerbt sich der Rahmen der Flagge in deren Kategorie-Farbe - so ist
+    // auch bei ZUGEKLAPPTER Uebersetzung sichtbar, dass dort eine Markierung existiert.
+    function _findTranslationMark(annList, postId) {
+      for (var i = 0; i < annList.length; i++) {
+        var ann = annList[i];
+        if (ann && ann.selection && ann.selection.target === "translation"
+            && Number(ann.selection.postId) === Number(postId)) {
+          return ann;
+        }
+      }
+      return null;
+    }
+
+    // Faerbt/entfaerbt den Rahmen jeder Flaggen-Schaltflaeche je nachdem, ob die
+    // zugehoerige Uebersetzung eine Markierung enthaelt. Liest nur den State -
+    // funktioniert also unabhaengig davon, ob das Panel offen ist.
+    function _updateFlagIndicators() {
+      var annList = [];
+      _state.annotations.forEach(function (a) { annList.push(a); });
+      var flags = document.querySelectorAll(".aiw-translate-flag[data-post-id]");
+      Array.prototype.forEach.call(flags, function (btn) {
+        var pid = parseInt(btn.dataset.postId, 10);
+        var mark = _findTranslationMark(annList, pid);
+        if (mark) {
+          var cat = _getCat(mark.category);
+          btn.classList.add("aiw-translate-flag--marked");
+          btn.style.borderColor = cat ? cat.color : "#888";
+        } else {
+          btn.classList.remove("aiw-translate-flag--marked");
+          btn.style.borderColor = "";
+        }
+      });
+    }
+
     // ---- Injektion --------------------------------------------------------
 
     function _injectButton(container, postId) {
@@ -6138,6 +6174,11 @@
       } catch (e) {
         _dbg("[Translation] Restore der Uebersetzungs-Markierungen fehlgeschlagen", e);
       }
+
+      // Build 338: Minimap aktualisieren. Beim Seitenaufbau feuerte annotations:loaded
+      // -> refresh() bei GESCHLOSSENEM Panel -> rangeFromSelection null -> kein Marker.
+      // Jetzt (Panel offen) sind die Uebersetzungs-Marken aufloesbar -> Marker erscheinen.
+      try { MinimapModule.refresh(); } catch (e) { /* Minimap optional */ }
     }
 
     function _apply(viewport) {
@@ -6153,6 +6194,9 @@
       _dbg("[Translation] Buttons injiziert:", count, "von",
            _translatedSet ? _translatedSet.size : 0,
            "uebersetzten Posts im Topic");
+      // Build 338: Rahmen der Flaggen faerben, wo eine Markierung in der
+      // Uebersetzung vorliegt (sichtbar auch bei zugeklapptem Panel).
+      _updateFlagIndicators();
     }
 
     function init(viewport, pageUrl) {
@@ -6175,6 +6219,14 @@
         });
     }
 
+    // Build 338: Flaggen-Indikatoren bei jeder Annotationsaenderung neu faerben
+    // (Anlegen/Loeschen/Sync/Laden). Registrierung auf Modulebene (innerhalb der
+    // IIFE, damit _updateFlagIndicators sichtbar ist) - einmalig.
+    ForensicToolbar.events.on("annotation:created", _updateFlagIndicators);
+    ForensicToolbar.events.on("annotation:deleted", _updateFlagIndicators);
+    ForensicToolbar.events.on("annotation:synced",  _updateFlagIndicators);
+    ForensicToolbar.events.on("annotations:loaded", _updateFlagIndicators);
+
     return {
       init: init,
       // reine Hilfslogik fuer vitest (gegen echten Code, kein Stub)
@@ -6182,7 +6234,8 @@
         topicIdFromUrl:        topicIdFromUrl,
         postIdFromContainerId: postIdFromContainerId,
         isTranslated:          isTranslated,
-        clickAction:           clickAction
+        clickAction:           clickAction,
+        findTranslationMark:   _findTranslationMark
       }
     };
   })();

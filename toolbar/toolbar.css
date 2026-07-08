@@ -2836,6 +2836,11 @@ body.aiw-view-original .aux-part { display: none !important; }
   cursor: wait;
   opacity: 0.6;
 }
+/* Build 338: Rahmen der Flagge faerbt sich, wenn die Uebersetzung eine
+ * Markierung enthaelt (Farbe wird per JS inline gesetzt = Kategorie-Farbe). */
+.aiw-translate-flag--marked {
+  border-width: 2px;
+}
 
 /* Deutschlandflagge rein per CSS (drei Baender Schwarz-Rot-Gold) —
  * keine externe Bilddatei (Offline-VM). */
