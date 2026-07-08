@@ -139,6 +139,34 @@ class TemplatesDb:
             logger.warning("TemplatesDb.get_module fehlgeschlagen: %s", exc)
             return None
 
+    def get_module_by_key(self, module_key: str) -> Optional[ModuleRecord]:
+        """Gibt ein aktives Modul ueber die STABILE Kennung module_key zurueck.
+
+        Build 341: module_key ist reorganisationssicher (anders als die
+        AUTOINCREMENT-id). Defensiv: fehlt die Spalte module_key noch
+        (templates.db nicht migriert), wird None zurueckgegeben (OperationalError
+        abgefangen) — der Aufrufer behandelt 'Baustein fehlt' ohnehin, so bleibt
+        der Code vor und nach der Migration lauffaehig.
+        """
+        if not self._available or not module_key:
+            return None
+        try:
+            row = self._con.execute(
+                "SELECT id, title, description, role, topic, body, "
+                "       sort_order, is_active "
+                "FROM tdb.report_modules "
+                "WHERE module_key = ? AND is_active = 1",
+                (module_key,),
+            ).fetchone()
+            return self._row_to_module(row) if row else None
+        except sqlite3.OperationalError as exc:
+            logger.warning(
+                "TemplatesDb.get_module_by_key(%r) fehlgeschlagen "
+                "(module_key-Spalte evtl. noch nicht migriert): %s",
+                module_key, exc,
+            )
+            return None
+
     def list_modules(
         self,
         role: Optional[str] = None,

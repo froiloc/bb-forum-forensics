@@ -85,6 +85,23 @@ class TranslationRecord:
     created_at:      Optional[str]
 
 
+@dataclass
+class TranslationMetaRecord:
+    """Bericht-Metadaten zu einem uebersetzten Post (Build 341).
+
+    Liefert dem Bericht per post_id den bereinigten ORIGINAL-Text
+    (posts_cleaned.clean_text), die Ausgangssprache und die Provenienz.
+    Der Bericht zitiert den ganzen Original-Post; die Provenienz dient als
+    LIVE-Fallback, falls sie am Anker nicht eingefroren wurde (Build 340).
+    Beleg: Bauplan Build 340/341 §3, §5.2.
+    """
+    post_id:       int
+    original_text: str
+    source_lang:   Optional[str]
+    model_used:    Optional[str]
+    created_at:    Optional[str]
+
+
 # =============================================================================
 # Hauptklasse
 # =============================================================================
@@ -240,6 +257,47 @@ class TranslationsDb:
             logger.warning(
                 "TranslationsDb.get_translation(%r) fehlgeschlagen: %s",
                 post_id, exc,
+            )
+            return None
+
+    def get_meta(
+        self, post_id: int, source: str = "posts"
+    ) -> Optional["TranslationMetaRecord"]:
+        """Bericht-Metadaten zu einem Post: Original-Text + Sprache + Provenienz.
+
+        Read-only aus trdb: posts_cleaned.clean_text (bereinigter Original-Text)
+        und source_lang; die Provenienz (model_used/created_at) als LEFT JOIN auf
+        translations (LIVE-Fallback; primaer wird sie am Anker eingefroren, Build
+        340). Gibt None zurueck, wenn der Post nicht in posts_cleaned steht oder
+        trdb nicht angebunden ist (GR1: keine stille Annahme).
+        Beleg: Bauplan Build 340/341 §5.2.
+        """
+        if not self._available:
+            return None
+        try:
+            row = self._con.execute(
+                "SELECT pc.post_id AS post_id, pc.clean_text AS clean_text, "
+                "       pc.source_lang AS source_lang, "
+                "       t.model_used AS model_used, t.created_at AS created_at "
+                "FROM trdb.posts_cleaned pc "
+                "LEFT JOIN trdb.translations t "
+                "       ON t.post_id = pc.post_id AND t.source = ? "
+                "WHERE pc.post_id = ?",
+                (source, post_id),
+            ).fetchone()
+            if not row:
+                return None
+            return TranslationMetaRecord(
+                post_id=int(row["post_id"]),
+                original_text=(str(row["clean_text"])
+                               if row["clean_text"] is not None else ""),
+                source_lang=row["source_lang"],
+                model_used=row["model_used"],
+                created_at=row["created_at"],
+            )
+        except sqlite3.OperationalError as exc:
+            logger.warning(
+                "TranslationsDb.get_meta(%r) fehlgeschlagen: %s", post_id, exc
             )
             return None
 

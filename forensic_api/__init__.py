@@ -143,6 +143,7 @@ class ForensicApi:
         self._fileasset        = None  # [Build 270]
         self._translations     = None  # [B3/B5 Build 329]
         self._translate        = None  # [B3/B5 Build 329]
+        self._translation_meta = None  # [B6 Build 341]
 
     def dispatch(
         self,
@@ -487,6 +488,16 @@ class ForensicApi:
             self._get_translate().handle(handler, params)
             return
 
+        # /_forensic/translation_meta (GET) [B6 Build 341]
+        # Liefert Original-Text + Sprache + Provenienz je post_id fuer den Bericht.
+        # Beleg: Bauplan Build 340/341 §5.2
+        if url_path == "/_forensic/translation_meta":
+            if method not in ("GET", "HEAD"):
+                self._method_not_allowed(handler)
+                return
+            self._get_translation_meta().handle(handler, params)
+            return
+
         # Unbekannter Endpunkt
         logger.warning("Unbekannter /_forensic/-Endpunkt: '%s'", url_path)
         import json
@@ -818,6 +829,14 @@ class ForensicApi:
             self._translate = TranslateEndpoint(
                 self._bundle, self._context, self._config)
         return self._translate
+
+    def _get_translation_meta(self):
+        """[B6 Build 341] Lazy-Init für TranslationMetaEndpoint."""
+        if self._translation_meta is None:
+            from forensic_api.translation_meta import TranslationMetaEndpoint
+            self._translation_meta = TranslationMetaEndpoint(
+                self._bundle, self._context, self._config)
+        return self._translation_meta
 
     def _get_trace_sequence(self):
         """[KN-7] Lazy-Init fuer TraceSequenceEndpoint. Beleg: OP-KN-7, Build 072."""
