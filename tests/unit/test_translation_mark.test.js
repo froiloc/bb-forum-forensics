@@ -62,3 +62,57 @@ describe("Build 334: autoTagsForSelection (#KI-Übersetzung)", () => {
     expect(H.autoTagsForSelection(null)).toEqual([]);
   });
 });
+
+describe("Build 340: Provenienz einfrieren (selectionFromBrowser)", () => {
+  function setupPanel(withProvenance) {
+    const oldVp = doc.getElementById("forensic-viewport");
+    if (oldVp) oldVp.remove();
+    const vp = doc.createElement("div");
+    vp.id = "forensic-viewport";
+    const panel = doc.createElement("div");
+    panel.className = "aiw-translation-panel aux-part";
+    panel.setAttribute("data-post-id", "705985");
+    panel.setAttribute("data-source", "posts");
+    if (withProvenance) {
+      panel.setAttribute("data-model", "gpt-x");
+      panel.setAttribute("data-created", "2026-06-01T10:00:00");
+    }
+    const body = doc.createElement("div");
+    body.className = "aiw-translation-body";
+    body.textContent = "Hallo Welt Uebersetzung";
+    panel.appendChild(body);
+    vp.appendChild(panel);
+    doc.body.appendChild(vp);
+    return body.firstChild; // Textknoten
+  }
+  function fakeSel(textNode, start, end) {
+    const range = doc.createRange();
+    range.setStart(textNode, start);
+    range.setEnd(textNode, end);
+    return {
+      rangeCount: 1,
+      isCollapsed: false,
+      getRangeAt: () => range,
+      toString: () => textNode.textContent.slice(start, end),
+    };
+  }
+
+  it("friert Modell + Datum aus den Panel-Attributen ein", () => {
+    const tn = setupPanel(true);
+    const a = H.selectionFromBrowser(fakeSel(tn, 6, 10)); // "Welt"
+    expect(a.target).toBe("translation");
+    expect(a.postId).toBe(705985);
+    expect(a.textContent).toBe("Welt");
+    expect(a.model).toBe("gpt-x");
+    expect(a.created).toBe("2026-06-01T10:00:00");
+  });
+
+  it("ohne Panel-Provenienz -> model/created null, Anker bleibt gueltig", () => {
+    const tn = setupPanel(false);
+    const a = H.selectionFromBrowser(fakeSel(tn, 0, 5)); // "Hallo"
+    expect(a.target).toBe("translation");
+    expect(a.model).toBe(null);
+    expect(a.created).toBe(null);
+    expect(a.textHash).toBeTruthy();
+  });
+});

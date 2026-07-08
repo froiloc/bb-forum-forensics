@@ -941,6 +941,11 @@
           textLen:     full.length,
           textHash:    _fnv1a(full),
           textContent: text,
+          // Build 340: Provenienz EINFRIEREN (optionale Zusatzfelder). Der Bericht
+          // zeigt damit Modell/Datum zum Markierungszeitpunkt; fehlen sie (Alt-
+          // Marken), faellt der Bericht auf den Live-Stand aus trdb zurueck.
+          model:       (panel && panel.getAttribute("data-model"))   || null,
+          created:     (panel && panel.getAttribute("data-created")) || null,
         };
       }
 
@@ -1156,6 +1161,7 @@
         offsetInBody:     _offsetInBody,
         rangeFromOffsets: _rangeFromOffsets,
         autoTagsForSelection: _autoTagsForSelection,  // Build 334
+        selectionFromBrowser: selectionFromBrowser,   // Build 340
       },
     };
   })();
@@ -6141,6 +6147,11 @@
       panel.setAttribute("data-post-id", String(postId));
       // Build 333: source am Panel hinterlegen (Erfassung liest es fuer den Anker).
       panel.setAttribute("data-source", "posts");
+      // Build 340: Provenienz am Panel hinterlegen -> beim Markieren wird sie in
+      // den Anker EINGEFROREN, damit der Bericht Modell/Datum zum Markierungs-
+      // zeitpunkt zeigt (unabhaengig von einer spaeteren Neu-Uebersetzung).
+      panel.setAttribute("data-model",   data.model_used || "");
+      panel.setAttribute("data-created", data.created_at || "");
 
       // Pflicht-Kopfzeile (GR1): Provenienz + Nicht-Verwertbarkeit untrennbar.
       var head = document.createElement("div");
