@@ -2836,10 +2836,17 @@ body.aiw-view-original .aux-part { display: none !important; }
   cursor: wait;
   opacity: 0.6;
 }
-/* Build 338: Rahmen der Flagge faerbt sich, wenn die Uebersetzung eine
- * Markierung enthaelt (Farbe wird per JS inline gesetzt = Kategorie-Farbe). */
+/* Build 338/339: Rahmen der Flagge faerbt sich, wenn die Uebersetzung eine
+ * Markierung enthaelt (Farbe wird per JS inline gesetzt = Kategorie-Farbe).
+ * Kraeftige LINKE/RECHTE Kante (4px), oben/unten duenn (1px) - so faellt es
+ * deutlich ins Auge, ohne die Zeile vertikal zu verschieben. Zusaetzlich ein
+ * dezenter Schein zur besseren Sichtbarkeit. */
 .aiw-translate-flag--marked {
-  border-width: 2px;
+  border-left-width: 4px;
+  border-right-width: 4px;
+  border-top-width: 1px;
+  border-bottom-width: 1px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
 }
 
 /* Deutschlandflagge rein per CSS (drei Baender Schwarz-Rot-Gold) —

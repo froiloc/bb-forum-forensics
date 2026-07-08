@@ -5073,6 +5073,15 @@
         // Position: bevorzugt elementId (Post-Markierung), sonst XPath-Range
         var el = ann.elementId ? document.getElementById(ann.elementId) : null;
 
+        // Build 339: Uebersetzungs-Marken auf die IMMER vorhandene Flaggen-
+        // Schaltflaeche ankern (nicht auf den Panel-Text, der bei ZUGEKLAPPTER
+        // Uebersetzung gar nicht existiert). Dadurch bleibt die Minimap beim
+        // Ein-/Ausklappen stabil und zeigt die Marke auch bei geschlossenem Panel.
+        if (!el && ann.selection && ann.selection.target === "translation") {
+          el = document.querySelector(
+            '.aiw-translate-flag[data-post-id="' + ann.selection.postId + '"]');
+        }
+
         // Für Textmarkierungen: Element über XPath-Range ermitteln
         if (!el && ann.selection) {
           var restored = AnnotationStoreModule.rangeFromSelection(ann.selection);
@@ -6174,11 +6183,9 @@
       } catch (e) {
         _dbg("[Translation] Restore der Uebersetzungs-Markierungen fehlgeschlagen", e);
       }
-
-      // Build 338: Minimap aktualisieren. Beim Seitenaufbau feuerte annotations:loaded
-      // -> refresh() bei GESCHLOSSENEM Panel -> rangeFromSelection null -> kein Marker.
-      // Jetzt (Panel offen) sind die Uebersetzungs-Marken aufloesbar -> Marker erscheinen.
-      try { MinimapModule.refresh(); } catch (e) { /* Minimap optional */ }
+      // Build 339: KEIN MinimapModule.refresh() beim Panel-Oeffnen mehr noetig -
+      // Uebersetzungs-Marken ankern jetzt an der (immer sichtbaren) Flagge, die
+      // Minimap bleibt also beim Ein-/Ausklappen unveraendert.
     }
 
     function _apply(viewport) {
@@ -6197,6 +6204,9 @@
       // Build 338: Rahmen der Flaggen faerben, wo eine Markierung in der
       // Uebersetzung vorliegt (sichtbar auch bei zugeklapptem Panel).
       _updateFlagIndicators();
+      // Build 339: Minimap aktualisieren, NACHDEM die Flaggen (Ankerpunkte fuer
+      // Uebersetzungs-Marken, s. MinimapModule.refresh) gezeichnet sind.
+      try { MinimapModule.refresh(); } catch (e) { /* Minimap optional */ }
     }
 
     function init(viewport, pageUrl) {
