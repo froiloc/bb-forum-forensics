@@ -469,10 +469,13 @@ class TestAnnotationCounts:
 class TestUserinfoEndpoint:
     """B4-S01: GET /_forensic/userinfo -> HTTP 200 (seit Build 031)."""
 
-    def _make_endpoint_with_meta(self, meta_values: dict):
+    def _make_endpoint_with_meta(self, meta_values: dict, profile=None):
         """
         Hilfsmethode: Erstellt UserinfoEndpoint mit gemockter forensic_meta.
         meta_values: Dict mit Key→Value wie in forensic_meta.
+        profile:     Optionaler Rueckgabewert fuer forensic.get_user_profile()
+                     (Dict {username, group_id, group_details_json} oder None).
+                     Default None -> Kopf nutzt den context.username-Fallback.
         """
         import sys, os
         project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -498,6 +501,8 @@ class TestUserinfoEndpoint:
             ).fetchone())
             else None
         )
+        # get_user_profile deterministisch verdrahten (Default None -> Fallback).
+        bundle.forensic.get_user_profile = lambda: profile
         ctx = _make_mock_context()
         ep  = UserinfoEndpoint(bundle, ctx, MagicMock())
         return ep, fdb_con
@@ -751,6 +756,120 @@ class TestUserinfoEndpoint:
         assert resp['status'] == 200
         data = json.loads(resp['body'])
         assert data.get("freed") is True
+
+
+class TestUserinfoHeaderReform:
+    """
+    Welle A / Kopf-Reform (Beleg: Bauplan Userinfo-Verschoenerung v0.2 Pkt.3-5,
+    mc 2026-07-10): echter Benutzername + Gruppe im Kopf statt 'uid_<id>' /
+    'Benutzer-ID', TOC-Container, homogenisierte (zentrierte) Karten.
+    """
+
+    def _ep(self, meta=None, profile=None):
+        return TestUserinfoEndpoint()._make_endpoint_with_meta(meta or {}, profile=profile)
+
+    def _body(self, meta=None, profile=None):
+        ep, con = self._ep(meta, profile)
+        resp = {}
+        ep.handle(_make_mock_handler(resp))
+        con.close()
+        assert resp["status"] == 200
+        return resp["body"].decode("utf-8")
+
+    # --- Pkt.4: echter Benutzername ---
+
+    def test_header_shows_real_username_from_profile(self):
+        """uid_profile.username erscheint als H1; kein 'uid_<id>'-Platzhalter."""
+        html = self._body(profile={
+            "username": "AliceRealName",
+            "group_id": 5,
+            "group_details_json": None,
+        })
+        assert "<h1>AliceRealName</h1>" in html
+        assert "uid_999" not in html
+        # Alte, nutzlose Kopfzeile darf nicht mehr auftauchen.
+        assert "Benutzer-ID:" not in html.split('<div class="ui-footer">')[0]
+
+    def test_header_username_escaped(self):
+        """XSS: Benutzername wird escaped (forensische Integritaet)."""
+        html = self._body(profile={
+            "username": "<script>x</script>",
+            "group_id": 1,
+            "group_details_json": None,
+        })
+        assert "<script>x</script>" not in html
+        assert "&lt;script&gt;" in html
+
+    def test_header_fallback_uid_when_no_profile(self):
+        """Ohne Profil UND ohne context.username -> uid_<id>-Notnagel."""
+        ep, con = self._ep(profile=None)
+        ep._context.username = ""   # context-Fallback ausschalten
+        resp = {}
+        ep.handle(_make_mock_handler(resp))
+        con.close()
+        assert "uid_999" in resp["body"].decode("utf-8")
+
+    # --- Pkt.4: Gruppe ---
+
+    def test_header_shows_group_user_title(self):
+        html = self._body(profile={
+            "username": "Bob",
+            "group_id": 32,
+            "group_details_json": '{"g_id":32,"g_title":"Suspended","g_user_title":"Gesperrt"}',
+        })
+        assert "Gesperrt (32)" in html
+
+    def test_group110_not_special_cased(self):
+        """Nachtrag 5: Gruppe 110 wird NICHT ersetzt/unterdrueckt."""
+        html = self._body(profile={
+            "username": "Carol",
+            "group_id": 110,
+            "group_details_json": '{"g_id":110,"g_title":"Ermittler NRW","g_user_title":"Ermittler NRW"}',
+        })
+        assert "Ermittler NRW (110)" in html
+
+    # --- Pkt.5: TOC-Container ---
+
+    def test_toc_container_present(self):
+        html = self._body(profile={"username": "X", "group_id": 1,
+                                   "group_details_json": None})
+        assert '<nav id="ui-toc"' in html
+
+
+class TestResolveGroupDisplay:
+    """Unit-Tests fuer _resolve_group_display (Pkt.4)."""
+
+    def _f(self, profile):
+        from forensic_api.userinfo import _resolve_group_display
+        return _resolve_group_display(profile)
+
+    def test_none_profile(self):
+        assert self._f(None) == "—"
+
+    def test_user_title_preferred(self):
+        r = self._f({"group_id": 5,
+                     "group_details_json": '{"g_id":5,"g_title":"T","g_user_title":"Ut"}'})
+        assert r == "Ut (5)"
+
+    def test_title_when_no_user_title(self):
+        r = self._f({"group_id": 5,
+                     "group_details_json": '{"g_id":5,"g_title":"NurTitel","g_user_title":""}'})
+        assert r == "NurTitel (5)"
+
+    def test_id_only_when_no_details(self):
+        assert self._f({"group_id": 7, "group_details_json": None}) == "Gruppe 7"
+
+    def test_group_zero_is_dash(self):
+        assert self._f({"group_id": 0, "group_details_json": None}) == "—"
+
+    def test_broken_json_degrades_to_id(self):
+        r = self._f({"group_id": 9, "group_details_json": "{kaputt"})
+        assert r == "Gruppe 9"
+
+    def test_escaping(self):
+        r = self._f({"group_id": 1,
+                     "group_details_json": '{"g_id":1,"g_user_title":"<b>"}'})
+        assert "<b>" not in r and "&lt;b&gt;" in r
 
 
 class TestStaticEndpoint:

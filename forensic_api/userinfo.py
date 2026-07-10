@@ -64,6 +64,47 @@ _RESTRICTED_GROUP_NAMES: dict[int, str] = {
 }
 
 
+def _resolve_group_display(profile: "dict | None") -> str:
+    """
+    Baut die Gruppen-Anzeige fuer den Kopf aus uid_profile.group_details_json.
+
+    Beleg: Bauplan Userinfo-Verschoenerung v0.2 Pkt. 4 (mc 2026-07-10).
+    group_details_json ist ein JSON-Objekt {g_id, g_title, g_user_title}
+    (Prepper _DDL_UID_PROFILE, phase_b_exporter.py:323). Anzeige-Vorrang:
+      1. g_user_title (der forumsseitig sichtbare Gruppentitel) + (g_id)
+      2. g_title (interner Titel) + (g_id)
+      3. bloss "Gruppe <g_id>" bzw. "Gruppe <group_id>"
+    Gibt "—" zurueck, wenn weder Details noch group_id vorliegen. Es findet
+    KEINE Sonderbehandlung fuer Gruppe 110 statt: die Prepper-Arbeits-DB traegt
+    die Originalgruppe (Beleg: Nachtrag 5, 2026-07-10).
+
+    Rueckgabe ist bereits HTML-escaped (fertig zum Einsetzen).
+    """
+    e = html_module.escape
+    if not profile:
+        return "—"
+    group_id = profile.get("group_id")
+    raw = profile.get("group_details_json")
+    if raw:
+        try:
+            import json as _json
+            obj = _json.loads(raw)
+            g_id   = obj.get("g_id", group_id)
+            g_ut   = (obj.get("g_user_title") or "").strip()
+            g_ti   = (obj.get("g_title") or "").strip()
+            name   = g_ut or g_ti
+            if name:
+                return e(f"{name} ({g_id})")
+            if g_id is not None:
+                return e(f"Gruppe {g_id}")
+        except (ValueError, TypeError) as exc:
+            # Defektes JSON — kein stiller Totalausfall, nur Degradierung auf ID.
+            logger.warning("_resolve_group_display: JSON nicht parsebar: %s", exc)
+    if group_id is not None and group_id != 0:
+        return e(f"Gruppe {group_id}")
+    return "—"
+
+
 class UserinfoEndpoint:
     """
     Endpunkt GET /_forensic/userinfo
@@ -84,7 +125,20 @@ class UserinfoEndpoint:
 
     def handle(self, handler: "ForensicRequestHandler") -> None:
         user_id  = self._context.user_id
-        username = self._context.username or f"uid_{user_id}"
+
+        # Kopf-Reform (Beleg: Bauplan Userinfo-Verschoenerung v0.2 Pkt. 4, mc
+        # 2026-07-10): Der ECHTE Benutzername (users.username) und die
+        # Originalgruppe stammen autoritativ aus fdb.uid_profile — nicht mehr
+        # der Platzhalter 'uid_<id>'. context.username ist zur Laufzeit haeufig
+        # leer und diente bisher nur als (nutzloser) uid_-Fallback.
+        profile = self._bundle.forensic.get_user_profile()
+        if profile and profile.get("username"):
+            username = profile["username"]
+        else:
+            # Kein Profil (Phase B nicht gelaufen o.ae.) — bisheriger Fallback.
+            # Grundregel 1: sichtbar als Platzhalter, nicht still erfunden.
+            username = self._context.username or f"uid_{user_id}"
+        group_display = _resolve_group_display(profile)
 
         # Alle Daten sammeln
         meta       = self._load_meta()
@@ -94,7 +148,8 @@ class UserinfoEndpoint:
         page_count = self._bundle.forensic.page_count()
 
         page_html = self._render(
-            user_id, username, meta, stats, ann_counts, last_ann, page_count
+            user_id, username, group_display,
+            meta, stats, ann_counts, last_ann, page_count
         )
         body = page_html.encode("utf-8")
         handler.send_response_body(200, body, content_type="text/html; charset=utf-8")
@@ -182,6 +237,7 @@ class UserinfoEndpoint:
         self,
         user_id: int,
         username: str,
+        group_display: str,
         meta: dict,
         stats: dict,
         ann_counts: dict,
@@ -191,6 +247,7 @@ class UserinfoEndpoint:
         e = html_module.escape
         u = e(username)
         domain = e(meta.get("domainname") or "—")
+        # group_display ist bereits escaped (aus _resolve_group_display).
 
         # Sperrstatus-Banner berechnen
         # Beleg: Bauplan Baustelle4 v0.3 Build 004 §7.0, Projektgespräch 2026-04-22, OP-30.
@@ -264,9 +321,27 @@ class UserinfoEndpoint:
     .ui-header {{ background: #1a1f2e; color: #c8d0e8; padding: 18px 28px;
                   display: flex; align-items: center; gap: 16px; }}
     .ui-header h1 {{ margin: 0; font-size: 18px; font-weight: 700; }}
-    .ui-header .ui-uid {{ font-size: 12px; color: #4f8ef7; font-family: monospace; }}
+    /* Kopf-Reform Pkt.4: Gruppe statt nutzloser Benutzer-ID (mc 2026-07-10). */
+    .ui-header .ui-group {{ font-size: 12px; color: #4f8ef7; font-weight: 600;
+                            margin-top: 2px; }}
+    /* Homogenisierung Pkt.3 (mc 2026-07-10): .ui-body zentriert bei 1200px,
+       identisch zu #userinfo-static (userinfo.css:94-101). Vorher linksbuendig
+       bei 1100px -> sichtbarer Versatz gegenueber den BLOB-Karten darunter. */
     .ui-body {{ padding: 24px 28px; display: grid;
-                grid-template-columns: 1fr 1fr; gap: 20px; max-width: 1100px; }}
+                grid-template-columns: 1fr 1fr; gap: 20px;
+                max-width: 1200px; margin: 0 auto; box-sizing: border-box; }}
+    /* Inhaltsverzeichnis (Pkt.5) — zentriert in derselben Spalte. */
+    .ui-toc {{ max-width: 1200px; margin: 12px auto 0 auto; padding: 10px 28px;
+               box-sizing: border-box; display: flex; flex-wrap: wrap;
+               gap: 6px 14px; align-items: center; font-size: 12px; }}
+    .ui-toc[hidden] {{ display: none; }}
+    .ui-toc .ui-toc-label {{ color: #5a6a8a; font-weight: 700;
+                             text-transform: uppercase; letter-spacing: .04em;
+                             margin-right: 4px; }}
+    .ui-toc a {{ color: #1a56db; text-decoration: none; padding: 2px 8px;
+                 border: 1px solid #d0d8e8; border-radius: 12px;
+                 background: #fff; white-space: nowrap; }}
+    .ui-toc a:hover {{ background: #e8f0fe; border-color: #4f8ef7; }}
     .ui-card {{ background: #fff; border: 1px solid #d0d8e8;
                 border-radius: 6px; padding: 16px 20px; }}
     .ui-card h2 {{ font-size: 13px; font-weight: 700; color: #4f8ef7;
@@ -294,7 +369,9 @@ class UserinfoEndpoint:
       background: #e8f4fc; border: 1px solid #1a6fa8;
       border-left: 4px solid #1a6fa8;
       border-radius: 4px; padding: 12px 20px;
-      margin: 0 28px 0 28px; font-size: 13px; color: #0d3a5c;
+      /* Pkt.3: zentriert in derselben 1200px-Spalte wie Body/TOC/Static. */
+      max-width: 1200px; margin: 12px auto 0 auto; box-sizing: border-box;
+      font-size: 13px; color: #0d3a5c;
     }}
     .ui-restricted-banner__icon {{
       font-size: 18px; color: #1a6fa8; flex-shrink: 0; line-height: 1.3;
@@ -317,11 +394,18 @@ class UserinfoEndpoint:
   </div>
   <div class="ui-header">
     <div>
-      <div class="ui-uid">Benutzer-ID: {user_id}</div>
       <h1>{u}</h1>
+      <div class="ui-group">Gruppe: {group_display}</div>
       <div class="ui-domain">{domain}</div>
     </div>
   </div>
+
+  <!-- Inhaltsverzeichnis (Beleg: Bauplan Userinfo-Verschoenerung v0.2 Pkt. 5,
+       mc 2026-07-10). Wird von userinfo.js:buildTableOfContents() NACH dem
+       BLOB-Load befuellt (Anker werden dort per JS an die Karten vergeben —
+       kein Eingriff in den versiegelten BLOB). Bleibt leer/ausgeblendet, wenn
+       JS keine Karten findet. -->
+  <nav id="ui-toc" class="ui-toc" aria-label="Inhaltsverzeichnis" hidden></nav>
 
   {restricted_banner_html}
 

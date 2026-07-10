@@ -1,8 +1,6 @@
-328cae26bb3ae112aeec69bfb73f345c  management.py
-39c00485a6e7f9315585f1f8ec36a1a1  management/server/__init__.py
-6f85007c5f2e76759d06b9e35eaad8c2  management/server/identity.py
-ed1cd4b33a70aac01e56dca045f3e7dc  management/server/management_app.py
-cd4977eda875550687814277b0cc26b3  management/server/management_handler.py
-78ae68534c3bdb3caf9eea699493b47f  tests/test_management_server.py
-2b9bb73b3679edb71a7659938704b792  build.json
-297515d76ab929c263727f4c0302fc8b  management/Bauplan_Build346_ManagementServer_v0_1.md
+8bef77b86e789c1fa594dccf6deedd66  db/forensic_db.py
+1e5aac75c586930397a3c734bc0a4998  forensic_api/userinfo.py
+2070229047515e7a1bf8ce7efb4e2ec4  userinfo/userinfo.js
+440c74f47f6cce2def93633f753d01f3  tests/test_baustelle4.py
+f5ed124ba5359488dc2d3f62e3f458dc  tests/unit/test_toc_build.test.js
+e27de2e31a901dfe0524dc5e4e84bdcc  build.json

@@ -610,6 +610,53 @@ class ForensicDb:
             logger.error("get_meta('%s') fehlgeschlagen: %s", key, exc)
             return None
 
+    def get_user_profile(self) -> Optional[dict]:
+        """
+        Liest den Kern des Profils des untersuchten Nutzers aus fdb.uid_profile.
+
+        Zweck (Beleg: Bauplan Userinfo-Verschoenerung v0.2, Pkt. 4; mc 2026-07-10):
+          Der Kopf des Userinfo-Tabs soll den ECHTEN Benutzernamen
+          (users.username) und die Originalgruppe anzeigen — nicht den
+          Platzhalter 'uid_<id>'. uid_profile.username ist die autoritative,
+          direkt aus users.username uebernommene Quelle (NOT NULL). Die
+          Gruppen-Anzeige nutzt group_details_json ({g_id, g_title,
+          g_user_title}); das JSON wird bewusst NICHT hier geparst, sondern
+          roh zurueckgegeben — Praesentationslogik gehoert in den Renderer,
+          diese Klasse bleibt reiner Lesezugriff.
+
+          uid_profile enthaelt genau eine Zeile (id = user_id des untersuchten
+          Nutzers). Beleg: _DDL_UID_PROFILE, phase_b_exporter.py:263 ff.
+
+          Hinweis zur Gruppe 110: In der Prepper-Arbeits-DB wird die
+          Gruppenzugehoerigkeit NICHT veraendert (nur in der Original-Forums-DB
+          zum Scraping) — group_id steht hier also als Originalgruppe. Keine
+          Sonderbehandlung noetig. Beleg: Projektgespraech 2026-07-10, Nachtrag 5.
+
+        Returns:
+            Dict {username, group_id, group_details_json} oder None, wenn
+            uid_profile fehlt (z.B. Phase B noch nicht gelaufen) oder leer ist.
+            Grundregel 1: eine fehlende Tabelle wird als None gemeldet, nicht
+            still zu einem falschen Wert verbogen.
+        """
+        try:
+            row = self._con.execute(
+                "SELECT username, group_id, group_details_json "
+                "FROM fdb.uid_profile LIMIT 1"
+            ).fetchone()
+        except sqlite3.OperationalError as exc:
+            # uid_profile nicht vorhanden (alte/unvollstaendige DB) — kein
+            # stiller Fallback auf einen erfundenen Namen, sondern None.
+            logger.warning("get_user_profile(): uid_profile nicht lesbar: %s", exc)
+            return None
+        if row is None:
+            logger.warning("get_user_profile(): uid_profile leer.")
+            return None
+        return {
+            "username":            row["username"],
+            "group_id":            row["group_id"],
+            "group_details_json":  row["group_details_json"],
+        }
+
     def get_forum_base_url(self) -> Optional[str]:
         """
         Liest 'protocol' und 'domainname' aus fdb.forensic_meta und gibt die

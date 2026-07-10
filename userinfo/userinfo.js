@@ -254,12 +254,115 @@ async function loadStaticBlob() {
         initCollapseButtons(container);   // Einfahren-Schaltflächen (Build 013)
         initTabulatorTables(container);   // Filter/Sortierung via Tabulator.js (Build 084)
 
+        // Inhaltsverzeichnis erst JETZT bauen: die BLOB-Karten existieren erst
+        // nach container.innerHTML = html. Die aeusseren .ui-card-Bloecke sind
+        // bereits im Ausgangs-HTML vorhanden. buildTableOfContents() scannt
+        // beide Ebenen. Beleg: Bauplan Userinfo-Verschoenerung v0.2 Pkt.5.
+        buildTableOfContents();
+
     } catch (err) {
         container.innerHTML =
             `<div class="status-msg status-msg-warn">` +
             `Forensische Nutzerdaten konnten nicht geladen werden: ${esc(String(err))}` +
             `</div>`;
     }
+}
+
+/**
+ * Baut das Inhaltsverzeichnis (#ui-toc) im Kopf und verankert die Karten.
+ *
+ * Zweck (Beleg: Bauplan Userinfo-Verschoenerung v0.2 Pkt.5, mc 2026-07-10):
+ *   Schneller Sprung zu den einzelnen Karten. Es gibt ZWEI Kartensorten:
+ *     1. Aeussere Modulbloecke:  .ui-body .ui-card  (Titel = <h2>)
+ *     2. BLOB-Karten:            #userinfo-static details.forensic-section
+ *                                (Titel = <summary class="forensic-section-title">)
+ *
+ * Bewusste Entscheidung — Anker per JS statt im BLOB:
+ *   Die BLOB-Karten liegen im VERSIEGELTEN forensic_<uid>.db. Wir vergeben die
+ *   Anker-id daher zur Laufzeit hier, statt sie in den BLOB zu backen. So bleibt
+ *   Welle A vollstaendig webserver-seitig und migrationsfrei.
+ *
+ * Robustheit:
+ *   - Fehlt #ui-toc (alte Seite) -> stiller Abbruch, kein Fehler.
+ *   - Werden keine Karten gefunden -> #ui-toc bleibt versteckt.
+ *   - id-Kollisionen werden durch Zaehler-Suffix aufgeloest.
+ */
+function buildTableOfContents() {
+    const toc = document.getElementById('ui-toc');
+    if (!toc) {
+        _dbg('buildTableOfContents: #ui-toc nicht vorhanden - uebersprungen');
+        return;
+    }
+
+    // Sammel-Liste {el, title, kind}. el ist das Element, das die Anker-id
+    // erhaelt (die .ui-card bzw. das <details>).
+    const entries = [];
+
+    // (1) Aeussere Modulbloecke
+    document.querySelectorAll('.ui-body .ui-card').forEach((card) => {
+        const h2 = card.querySelector('h2');
+        if (!h2) return;
+        entries.push({ el: card, title: h2.textContent.trim(), kind: 'card' });
+    });
+
+    // (2) BLOB-Karten (nur wenn bereits geladen)
+    document.querySelectorAll('#userinfo-static details.forensic-section')
+        .forEach((det) => {
+            const sum = det.querySelector('summary.forensic-section-title');
+            if (!sum) return;
+            entries.push({ el: det, title: sum.textContent.trim(), kind: 'section' });
+        });
+
+    _dbg('buildTableOfContents: %d Karten gefunden', entries.length);
+
+    if (entries.length === 0) {
+        toc.hidden = true;
+        return;
+    }
+
+    // Anker-id-Vergabe mit Slug + Kollisionsschutz.
+    const seen = Object.create(null);
+    const slug = (s) => {
+        let base = 'toc-' + s.toLowerCase()
+            .replace(/[^a-z0-9\u00e4\u00f6\u00fc\u00df]+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .slice(0, 40);
+        if (!base || base === 'toc-') base = 'toc-karte';
+        let id = base, n = 2;
+        while (seen[id] || document.getElementById(id)) { id = base + '-' + (n++); }
+        seen[id] = true;
+        return id;
+    };
+
+    // TOC-Markup aufbauen. innerHTML einmalig, dann Click-Handler delegiert.
+    let html = '<span class="ui-toc-label">Springe zu:</span>';
+    entries.forEach((entry) => {
+        // Vorhandene id respektieren, sonst neue vergeben.
+        if (!entry.el.id) entry.el.id = slug(entry.title);
+        html += `<a href="#${esc(entry.el.id)}" data-toc-target="${esc(entry.el.id)}">`
+              + `${esc(entry.title)}</a>`;
+    });
+    toc.innerHTML = html;
+    toc.hidden = false;
+
+    // Delegierter Klick-Handler: sanftes Scrollen; falls Ziel ein
+    // eingeklapptes <details> ist, vorher aufklappen, damit der Inhalt
+    // sichtbar wird. Beleg: BLOB-Karten sind <details> und starten meist zu.
+    toc.addEventListener('click', (evt) => {
+        const a = evt.target.closest('a[data-toc-target]');
+        if (!a) return;
+        evt.preventDefault();
+        const target = document.getElementById(a.dataset.tocTarget);
+        if (!target) {
+            _dbg('TOC-Klick: Ziel %s nicht gefunden', a.dataset.tocTarget);
+            return;
+        }
+        if (target.tagName === 'DETAILS' && !target.open) {
+            target.open = true;
+        }
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        _dbg('TOC-Klick: zu %s gesprungen', a.dataset.tocTarget);
+    });
 }
 
 /**
