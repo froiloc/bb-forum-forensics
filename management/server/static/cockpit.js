@@ -12,11 +12,11 @@
 //   Beleg: Bauplan B7 v1.1 §11.2; Referenzlayout AIW_Verwaltung_Mockup.html.
 //
 // ABGRENZUNG (Split analog 314/315, Beleg: UEBERGABE_Build346 §6):
-//   Build 347 = FUNDAMENT. Es baut die Navigation und faellt fuer die gewaehlte
-//   Sicht auf einen Leerzustand-Platzhalter zurueck. Die eigentlichen Sichten
-//   (Overview-/Integritaets-Tabellen ueber /api/overview bzw. /api/integrity,
-//   SSE-Reload ueber /events) werden im browser-verifizierbaren Folge-Build 348
-//   verdrahtet (console-first).
+//   Build 347 = FUNDAMENT (Navigation, Rechte). Build 348 verdrahtet die
+//   OVERVIEW-Sicht (/api/overview) als Tabulator-Tabelle (cockpit_overview.js)
+//   und den SSE-Reload (/events -> bei 'changed' nur die aktive Sicht neu
+//   laden). Die Integritaets-/Ops-Sicht (/api/integrity) folgt in Build 349
+//   (bewusst getrennt, kleinere baubare Einheit).
 //
 // KAPSELUNG / PROJEKT-GEBOTE FUER JS:
 //   1) IIFE-Wrapper mit 'use strict'.
@@ -33,7 +33,7 @@
 //   aber ebenfalls via textContent gesetzt (Prinzip: kein innerHTML mit
 //   variablem Text).
 //
-// Version: v0.7.347 · Build: 347 · 2026-07-10
+// Version: v0.7.348 · Build: 348 · 2026-07-10
 // =============================================================================
 
 (function () {
@@ -224,7 +224,8 @@
     // =========================================================================
 
     // Zustand lebt nur im Speicher (kein localStorage — Projekt-/Artefakt-Regel).
-    var state = { capabilities: {}, activeId: null };
+    // table = aktuelle Tabulator-Instanz (Build 348, Overview); sse = EventSource.
+    var state = { capabilities: {}, activeId: null, table: null, sse: null };
 
     // fetchJson: kleiner Wrapper mit DEV-Logging und klarer Fehlermeldung.
     function fetchJson(url) {
@@ -238,13 +239,88 @@
             });
     }
 
+    // destroyTable: laufende Tabulator-Instanz sauber abbauen (verhindert
+    // DOM-/Listener-Leaks und doppelte Tabellen beim Sichtwechsel/Reload).
+    function destroyTable() {
+        if (state.table && typeof state.table.destroy === 'function') {
+            try { state.table.destroy(); } catch (e) { log('destroyTable', e); }
+        }
+        state.table = null;
+    }
+
+    // renderError: sichtbarer Fehlerhinweis im Hauptbereich (kein stiller Fehlpfad).
+    function renderError(mainEl, msg) {
+        if (!mainEl) { return; }
+        mainEl.textContent = '';
+        var p = document.createElement('p');
+        p.className = 'aiw-pagesub';
+        p.textContent = msg;
+        mainEl.appendChild(p);
+    }
+
+    // loadOverview: /api/overview holen und als Tabulator-Tabelle rendern
+    // (cockpit_overview.js). Wird bei Sichtwahl 'dashboard' UND bei SSE-'changed'
+    // auf der aktiven Overview-Sicht aufgerufen.
+    function loadOverview(mainEl) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var ov = (typeof window !== 'undefined') ? window.AIWCockpitOverview : null;
+        if (!ov) {
+            renderError(mainEl, 'Overview-Modul nicht geladen.');
+            return;
+        }
+        fetchJson('/api/overview').then(function (data) {
+            destroyTable();  // vorherige Instanz vor Neuaufbau abbauen
+            state.table = ov.renderOverview(mainEl, data, {});
+            log('Overview gerendert:', data.count, 'Faelle, scope', data.scope);
+        }).catch(function (err) {
+            destroyTable();
+            renderError(mainEl,
+                'Uebersicht konnte nicht geladen werden: ' + err.message);
+        });
+    }
+
+    // selectView: aktive Sicht setzen, Nav neu markieren, Inhalt dispatchen.
+    // Build 348: 'dashboard' -> Overview-Tabelle; sonst Platzhalter (weitere
+    // Sichten, u.a. Integritaet, folgen in Build 349+).
     function selectView(viewId) {
         state.activeId = viewId;
+        destroyTable();  // beim Sichtwechsel evtl. offene Tabelle abbauen
         var navEl = document.getElementById('aiw-nav');
         var mainEl = document.getElementById('aiw-main');
         var views = visibleViews(state.capabilities);
         buildNav(navEl, views, state.capabilities, state.activeId, selectView);
-        renderPlaceholder(mainEl, viewById(viewId));
+        if (viewId === 'dashboard') {
+            loadOverview(mainEl);
+        } else {
+            renderPlaceholder(mainEl, viewById(viewId));
+        }
+    }
+
+    // startSse: Live-Aktualisierung. Server pollt die audit_log-Spitze; bei
+    // 'changed' laedt der Client NUR die aktive Sicht neu (kein F5, §11.2/§11.1).
+    // hello/keepalive sind reine Lebenszeichen. EventSource reconnectet selbst.
+    function startSse() {
+        if (typeof EventSource === 'undefined') {
+            log('EventSource n/a — kein Live-Reload');
+            return;
+        }
+        var es = new EventSource('/events');
+        es.addEventListener('hello', function (e) { log('SSE hello', e.data); });
+        es.addEventListener('keepalive', function () { /* Lebenszeichen */ });
+        es.addEventListener('changed', function (e) {
+            log('SSE changed', e.data);
+            // Nur die aktive Sicht neu laden (Build 348: Overview).
+            if (state.activeId === 'dashboard') {
+                loadOverview();
+            }
+            // Integritaets-/weitere Sichten: Reload folgt mit deren Build.
+        });
+        es.onerror = function () {
+            // Bei Reconnect/Serverneustart normal; kein harter Fehler.
+            log('SSE onerror (Auto-Reconnect)');
+        };
+        state.sse = es;
+        log('SSE gestartet');
     }
 
     function boot() {
@@ -257,17 +333,25 @@
 
             var views = visibleViews(state.capabilities);
             state.activeId = firstViewId(views);
-            buildNav(document.getElementById('aiw-nav'), views,
-                     state.capabilities, state.activeId, selectView);
-            renderPlaceholder(document.getElementById('aiw-main'),
-                              viewById(state.activeId));
+            // Erste Sicht ueber selectView anzeigen (laedt ggf. die Overview).
+            if (state.activeId) {
+                selectView(state.activeId);
+            } else {
+                buildNav(document.getElementById('aiw-nav'), views,
+                         state.capabilities, null, selectView);
+                renderPlaceholder(document.getElementById('aiw-main'), null);
+            }
 
-            // Integritaets-Banner bleibt in 347 neutral (Bindung folgt 348).
+            // Integritaets-Banner bleibt in 348 neutral (Bindung folgt 349).
             var integ = document.getElementById('aiw-integrity');
             if (integ) {
                 integ.textContent =
-                    'Integritaetsanzeige folgt (Build 348).';
+                    'Integritaetsanzeige folgt (Build 349).';
             }
+
+            // Live-Reload aktivieren.
+            startSse();
+
             log('boot() fertig:', views.length, 'Sichten');
         }).catch(function (err) {
             // Kein stiller Fehlpfad: sichtbarer Hinweis + Console.

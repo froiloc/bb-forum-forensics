@@ -9,7 +9,7 @@
  *   Rollen-Umschalter (die Identitaet ist server-seitig fixiert; Rechte kommen
  *   aus /api/whoami, nicht aus einem UI-Schalter).
  *
- * Version: v0.7.347 · Build: 347 · 2026-07-10
+ * Version: v0.7.348 · Build: 348 · 2026-07-10
  * ============================================================================= */
 
 :root {
@@ -120,3 +120,9 @@ table.aiw-tbl {
   border: 1px dashed var(--line); border-radius: 6px; padding: 22px;
   color: var(--muted); font-size: 13px; background: #fbfcfd;
 }
+
+/* Overview-Sicht (Build 348): dezente Ampel-Zeilenfaerbung in der Tabulator- */
+/* Tabelle, konsistent zum Ampel-Vokabular (rot > gelb > gruen).             */
+.tabulator .tabulator-row.aiw-row-rot   { box-shadow: inset 4px 0 0 var(--rot); }
+.tabulator .tabulator-row.aiw-row-gelb  { box-shadow: inset 4px 0 0 var(--gelb); }
+.tabulator .tabulator-row.aiw-row-gruen { box-shadow: inset 4px 0 0 var(--gruen); }
