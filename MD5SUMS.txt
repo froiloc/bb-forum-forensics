@@ -1,6 +1,4 @@
-459d3192043890b223a6ffa13f34ad5c  management/rbac/rbac_repo.py
-9fd4676c0b9cdf31039c8ac73d584eb4  management/rbac/rbac_admin.py
-2f294be9a84cb864153b59c09cb4c87b  management/audit/event_types.py
-d7672fc1879ffdca2a3494e7ee78d2ef  tests/test_management_rbac_repo.py
-ab1bf5a0c597808d5ccc3223ecf328f4  build.json
-bb44e13a1c8e234360720ddaae2b8d6f  management/Bauplan_Build344_RBAC_Writepath_v0_1.md
+c0f146d724c9c78e1288ae66a2b2d5f8  management/rbac/rbac_resolver.py
+6eb5a0fcd76c4640e9fa9cac17a4b126  tests/test_management_rbac_resolver.py
+65c21fc39833b096c421b3ca0c013776  build.json
+d623011d8c7a5fd28ca5e11c31f1f1af  management/Bauplan_Build345_RBAC_Resolver_v0_1.md
