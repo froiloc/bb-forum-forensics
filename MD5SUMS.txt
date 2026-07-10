@@ -1,4 +1,8 @@
-c0f146d724c9c78e1288ae66a2b2d5f8  management/rbac/rbac_resolver.py
-6eb5a0fcd76c4640e9fa9cac17a4b126  tests/test_management_rbac_resolver.py
-65c21fc39833b096c421b3ca0c013776  build.json
-d623011d8c7a5fd28ca5e11c31f1f1af  management/Bauplan_Build345_RBAC_Resolver_v0_1.md
+328cae26bb3ae112aeec69bfb73f345c  management.py
+39c00485a6e7f9315585f1f8ec36a1a1  management/server/__init__.py
+6f85007c5f2e76759d06b9e35eaad8c2  management/server/identity.py
+ed1cd4b33a70aac01e56dca045f3e7dc  management/server/management_app.py
+cd4977eda875550687814277b0cc26b3  management/server/management_handler.py
+78ae68534c3bdb3caf9eea699493b47f  tests/test_management_server.py
+2b9bb73b3679edb71a7659938704b792  build.json
+297515d76ab929c263727f4c0302fc8b  management/Bauplan_Build346_ManagementServer_v0_1.md

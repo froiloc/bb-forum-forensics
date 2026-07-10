@@ -1,0 +1,164 @@
+#!/usr/bin/env python3
+# =============================================================================
+# management.py
+# IT-Forensisches Ermittlungswerkzeug — Baustelle 7: Management-Interface
+# =============================================================================
+# Zweck:
+#   Entry-Point des EIGENSTAENDIGEN Management-Servers (Welle 0, Schritt 3;
+#   Beleg: Bauplan B7 v1.1 §11.2). Analog main.py, aber getrennt vom Forensik-
+#   Webserver: read-only-first, bindet AUSSCHLIESSLICH localhost, an die
+#   aufgeloeste OS-Identitaet gebunden.
+#
+#   Ablauf:
+#     1. Argumente parsen
+#     2. coordinator.db-Pfad aufloesen
+#     3. Start-Check: RBAC-Katalog vollstaendig in der DB (verify_catalog_present)
+#     4. OS-Identitaet -> person aufloesen (IdentityResolver; --as-user Override)
+#     5. localhost-Port bestimmen (fest oder --auto-port), Server binden
+#     6. optional Browser oeffnen, dann serve_forever
+#
+#   Aufrufe:
+#     python management.py --coordinator-db ./data/coordinator.db
+#     python management.py --auto-port --open-browser
+#     python management.py --as-user h001            # Identitaet explizit (Dev)
+#
+#   READ-ONLY: keine Schreibpfade, kein CoordinatorWriter, keine Migration.
+#
+# Version: v0.7.346 · Build: 346 · 2026-07-10
+# =============================================================================
+
+import argparse
+import socket
+import sys
+import webbrowser
+from pathlib import Path
+
+from management.server.identity import IdentityError, IdentityResolver
+from management.server.management_app import ManagementApp
+from management.server.management_handler import ManagementHTTPServer
+
+DEFAULT_HOST = "127.0.0.1"
+DEFAULT_PORT = 8090
+
+
+def _parse_args(argv=None) -> argparse.Namespace:
+    p = argparse.ArgumentParser(
+        description="AIW Management-Server (read-only, localhost).")
+    p.add_argument("--coordinator-db", default=None,
+                   help="Pfad zur coordinator.db (sonst aus config.yaml).")
+    p.add_argument("--config", default="./config.yaml")
+    p.add_argument("--host", default=DEFAULT_HOST,
+                   help="Lausch-Adresse (nur localhost sinnvoll). "
+                        "Default 127.0.0.1.")
+    p.add_argument("--port", type=int, default=DEFAULT_PORT)
+    p.add_argument("--auto-port", action="store_true", dest="auto_port",
+                   help="naechsten freien Port ab --port suchen.")
+    p.add_argument("--open-browser", action="store_true", dest="open_browser")
+    p.add_argument("--as-user", default=None, dest="as_user",
+                   help="OS-Identitaet explizit setzen (system_username; Dev).")
+    return p.parse_args(argv)
+
+
+def _resolve_db_path(args) -> str:
+    if args.coordinator_db:
+        return args.coordinator_db
+    try:
+        from core.config_loader import ConfigLoader
+        cfg = ConfigLoader(config_path=args.config)
+        path = cfg.get("paths.coordinator_db")
+        if path:
+            return str(path)
+    except Exception as exc:  # pragma: no cover
+        print("[management] config.yaml nicht lesbar: %s" % exc,
+              file=sys.stderr)
+    raise SystemExit(
+        "[management] Kein coordinator.db-Pfad: --coordinator-db oder "
+        "paths.coordinator_db in config.yaml.")
+
+
+def _is_localhost(host: str) -> bool:
+    return host in ("127.0.0.1", "::1", "localhost")
+
+
+def _resolve_port(host: str, start_port: int, auto: bool,
+                  max_tries: int = 100) -> int:
+    if not auto:
+        return start_port
+    for offset in range(max_tries):
+        candidate = start_port + offset
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            try:
+                sock.bind((host, candidate))
+                return candidate
+            except OSError:
+                continue
+    raise SystemExit(
+        "[management] Kein freier Port im Bereich %d-%d auf %s."
+        % (start_port, start_port + max_tries - 1, host))
+
+
+def main(argv=None) -> int:
+    args = _parse_args(argv)
+
+    if not _is_localhost(args.host):
+        print("[management] WARNUNG: --host %s ist nicht localhost. Der "
+              "Management-Server ist ausschliesslich fuer den lokalen Betrieb "
+              "vorgesehen." % args.host, file=sys.stderr)
+
+    db_path = _resolve_db_path(args)
+    if not Path(db_path).exists():
+        print("[management] coordinator.db nicht gefunden: %s" % db_path,
+              file=sys.stderr)
+        return 1
+
+    app = ManagementApp(db_path)
+
+    # Schritt 3: Start-Check (RBAC-Katalog vollstaendig?).
+    from management.rbac.rbac_resolver import RbacCatalogError
+    try:
+        app.startup_selfcheck()
+    except RbacCatalogError as exc:
+        print("[management] Start-Check fehlgeschlagen: %s" % exc,
+              file=sys.stderr)
+        return 1
+
+    # Schritt 4: Identitaet aufloesen.
+    resolver = IdentityResolver(db_path)
+    try:
+        person = resolver.resolve(args.as_user)
+    except IdentityError as exc:
+        print("[management] %s" % exc, file=sys.stderr)
+        return 1
+    print("[management] Angemeldet als %s (%s), person id=%d."
+          % (person["display_name"], person["system_username"], person["id"]))
+
+    # Schritt 5: Port + Server.
+    port = _resolve_port(args.host, args.port, args.auto_port)
+    try:
+        server = ManagementHTTPServer(args.host, port, app, person["id"])
+    except OSError as exc:
+        print("[management] Binden auf %s:%d fehlgeschlagen: %s"
+              % (args.host, port, exc), file=sys.stderr)
+        return 1
+
+    url = "http://%s:%d/" % (args.host, port)
+    print("[management] Server laeuft (read-only): %s" % url)
+
+    # Schritt 6: optional Browser oeffnen.
+    if args.open_browser:
+        try:
+            webbrowser.open(url)
+        except Exception:  # pragma: no cover
+            pass
+
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\n[management] Beende.")
+    finally:
+        server.server_close()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
