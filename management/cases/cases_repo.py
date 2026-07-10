@@ -55,7 +55,7 @@ class CasesRepo:
             "       i.system_username AS assigned_to, c.note, c.approved_at, "
             "       c.total_pages_scraped, c.created_at, c.updated_at "
             "FROM cases c "
-            "LEFT JOIN investigators i ON i.id = c.assigned_to "
+            "LEFT JOIN person i ON i.id = c.assigned_to "
             "WHERE c.user_id = ?",
             (user_id,),
         ).fetchone()
@@ -101,7 +101,7 @@ class CasesRepo:
         )
 
     def assign(
-        self, user_id: int, investigator_id: Optional[int], *,
+        self, user_id: int, person_id: Optional[int], *,
         actor_id: Optional[int] = None, meta: Optional[Any] = None,
     ) -> int:
         now = int(time.time())
@@ -109,18 +109,18 @@ class CasesRepo:
         def _w(con: sqlite3.Connection) -> Dict[str, Any]:
             cur = con.execute(
                 "UPDATE cases SET assigned_to = ?, updated_at = ? WHERE user_id = ?",
-                (investigator_id, now, user_id),
+                (person_id, now, user_id),
             )
             if cur.rowcount == 0:
                 raise CasesError("Kein Fall user_id=%s." % user_id)
-            return {"user_id": user_id, "assigned_to": investigator_id}
+            return {"user_id": user_id, "assigned_to": person_id}
 
         def _after(con: sqlite3.Connection, seq: int) -> None:
             # Spiegelung Zuweisung (mc 2026-07-02). assigned_to=None ist die
             # dokumentierte Entzugs-Form und erscheint ebenso im Zeitstrahl.
             insert_event_row(
                 con, user_id=user_id, event_kind="assigned",
-                payload={"assigned_to": investigator_id},
+                payload={"assigned_to": person_id},
                 created_by=actor_id, created_at=now, audit_seq=seq,
             )
 

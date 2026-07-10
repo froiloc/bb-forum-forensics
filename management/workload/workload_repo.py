@@ -13,7 +13,7 @@
 #   ist die Ampel je Ermittler GARANTIERT deckungsgleich mit dem Dashboard —
 #   eine Wahrheitsquelle, kein dupliziertes Ampel-Regelwerk (keine Drift).
 #
-#   Zusaetzlich: ALLE Ermittler erscheinen (auch mit 0 Faellen; investigators-
+#   Zusaetzlich: ALLE Ermittler erscheinen (auch mit 0 Faellen; person-
 #   Liste ist die Grundmenge), und je Akteur ein Aktivitaets-Beleg aus dem
 #   audit_log (Anzahl auditierter Aktionen + letzter Zeitpunkt).
 #
@@ -49,12 +49,12 @@ _STATUS_IN_PROGRESS = "in_progress"
 _STATUS_APPROVED = "approved"
 _STATUS_CLOSED = "closed"
 
-# Pflichttabellen. Union aus dem, was WorkloadRepo direkt nutzt (investigators,
+# Pflichttabellen. Union aus dem, was WorkloadRepo direkt nutzt (person,
 # audit_log), und dem, was die aufgerollte DashboardRepo braucht (cases,
 # case_events, support_sessions). Fehlt eine, wird NICHT still degradiert,
 # sondern handlungsleitend abgebrochen (Grundregel 1).
 REQUIRED_TABLES = (
-    "cases", "case_events", "support_sessions", "investigators", "audit_log",
+    "cases", "case_events", "support_sessions", "person", "audit_log",
 )
 
 
@@ -139,12 +139,12 @@ class WorkloadRepo:
         Alle Ermittler (Grundmenge — auch die ohne zugewiesene Faelle), direkt
         gelesen. Bewusst KEIN InvestigatorsRepo: dessen Konstruktor verlangt
         einen CoordinatorWriter (Schreibpfad), den dieses reine Lese-Werkzeug
-        nicht braucht. Der SELECT spiegelt list_investigators() 1:1.
+        nicht braucht. Der SELECT spiegelt PersonRepo.list_persons() 1:1.
         """
         return self._con.execute(
             "SELECT id, system_username, display_name, is_investigator, "
             "       is_supervisor, is_support "
-            "FROM investigators ORDER BY system_username ASC"
+            "FROM person ORDER BY system_username ASC"
         ).fetchall()
 
     def _audit_activity(self) -> Dict[int, Tuple[int, int]]:

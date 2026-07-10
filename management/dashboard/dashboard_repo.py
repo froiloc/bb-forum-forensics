@@ -66,7 +66,7 @@ _AMPEL_RANK = {AMPEL_ROT: 0, AMPEL_GELB: 1, AMPEL_GRUEN: 2}
 
 # Tabellen, die das Read-Model zwingend braucht. Fehlen sie, wird NICHT still
 # degradiert, sondern mit handlungsleitender Meldung abgebrochen (Grundregel 1).
-REQUIRED_TABLES = ("cases", "case_events", "support_sessions", "investigators")
+REQUIRED_TABLES = ("cases", "case_events", "support_sessions", "person")
 
 
 class DashboardSchemaError(Exception):
@@ -320,7 +320,7 @@ class DashboardRepo:
             COALESCE(sp.support_count, 0)               AS support_count,
             sp.support_since                            AS support_since
         FROM cases c
-        LEFT JOIN investigators i
+        LEFT JOIN person i
                ON i.id = c.assigned_to
         LEFT JOIN (
             SELECT user_id,

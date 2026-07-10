@@ -8,7 +8,7 @@
 #   Die automatisch gespiegelten Einträge (Anlage/Zuweisung/Status/Freigabe)
 #   entstehen NICHT hier, sondern in CasesRepo (Bauplan B7 v0.8 §8.4).
 #
-# Aufruf (Subkommandos, Muster wie investigators_admin, B7 §5.4):
+# Aufruf (Subkommandos, Muster wie person_admin, B7 §5.4):
 #   python -m management.case_events.case_events_admin list --user-id N
 #          [--limit K] [--coordinator-db PATH] [--config ./config.yaml]
 #   python -m management.case_events.case_events_admin add  --user-id N
@@ -40,7 +40,7 @@ def _resolve_db_path(args) -> str:
     """
     coordinator.db-Pfad aus --coordinator-db oder config.yaml
     (paths.coordinator_db). Identische Auflösungslogik wie cases_admin /
-    investigators_admin — bewusst lokal dupliziert, bis ein gemeinsames
+    person_admin — bewusst lokal dupliziert, bis ein gemeinsames
     CLI-Helfermodul eingezogen wird (kleiner, stabiler Codeblock; ein
     Refactoring aller drei CLIs wäre eigener Build-Umfang).
     """
@@ -63,7 +63,7 @@ def _resolve_db_path(args) -> str:
 
 def _lookup_investigator_id(con: sqlite3.Connection, system_username: str) -> int:
     row = con.execute(
-        "SELECT id FROM investigators WHERE system_username = ?",
+        "SELECT id FROM person WHERE system_username = ?",
         (system_username,),
     ).fetchone()
     if row is None:

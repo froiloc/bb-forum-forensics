@@ -112,7 +112,7 @@ def _create_coordinator_db(path: Path) -> None:
     """Minimale coordinator.db."""
     con = sqlite3.connect(str(path))
     con.executescript("""
-        CREATE TABLE investigators (
+        CREATE TABLE person (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             system_username TEXT NOT NULL UNIQUE,
             display_name TEXT NOT NULL,
@@ -259,7 +259,7 @@ class TestConnectionManagerNormal(unittest.TestCase):
         # ddb erreichbar
         con.execute("SELECT COUNT(*) FROM ddb.default_assets").fetchone()
         # cdb erreichbar
-        con.execute("SELECT COUNT(*) FROM cdb.investigators").fetchone()
+        con.execute("SELECT COUNT(*) FROM cdb.person").fetchone()
 
 
 class TestConnectionManagerSupport(unittest.TestCase):

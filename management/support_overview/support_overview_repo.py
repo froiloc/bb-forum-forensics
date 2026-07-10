@@ -6,7 +6,7 @@
 #   NUR-LESENDES Read-Model der Support-Sitzungs-HISTORIE (Build 330). Baut die
 #   permanente 'wer sah wann welchen Fall'-Uebersicht AUS dem hash-verketteten
 #   audit_log (Ereignistypen SUPPORT_SESSION_STARTED / SUPPORT_SESSION_ENDED)
-#   und reichert sie um Klarnamen an (investigators, cases.username).
+#   und reichert sie um Klarnamen an (person, cases.username).
 #
 #   WARUM audit_log und nicht support_sessions? Die support_sessions-Tabelle ist
 #   FLUECHTIGE Praesenz (prunebar) — beendete/veraltete Zeilen werden von prune()
@@ -60,11 +60,11 @@ logger = logging.getLogger(__name__)
 # (support_sessions_repo.py: payload.reason='orphan_timeout', Build 328).
 _REASON_ORPHAN_TIMEOUT = "orphan_timeout"
 
-# Pflichttabellen des Read-Models. audit_log ist die HARTE Quelle; investigators
+# Pflichttabellen des Read-Models. audit_log ist die HARTE Quelle; person
 # und cases dienen der Namensaufloesung. Fehlt eine, wird NICHT still degradiert,
 # sondern mit handlungsleitender Meldung abgebrochen (Grundregel 1; konsistent
 # zu DashboardRepo.REQUIRED_TABLES).
-REQUIRED_TABLES = ("audit_log", "investigators", "cases")
+REQUIRED_TABLES = ("audit_log", "person", "cases")
 
 
 class SupportOverviewSchemaError(Exception):
@@ -182,7 +182,7 @@ class SupportOverviewRepo:
     """
     NUR-LESENDES Aggregat ueber coordinator.db fuer die Support-Sitzungs-
     Historie. Rekonstruiert Sitzungen aus dem audit_log und reichert Klarnamen
-    aus investigators/cases an.
+    aus person/cases an.
     """
 
     def __init__(self, con: sqlite3.Connection) -> None:
@@ -212,7 +212,7 @@ class SupportOverviewRepo:
         """id -> (system_username, display_name). Fuer die Supporter-Aufloesung."""
         out: Dict[int, Tuple[str, str]] = {}
         for r in self._con.execute(
-            "SELECT id, system_username, display_name FROM investigators"
+            "SELECT id, system_username, display_name FROM person"
         ):
             out[int(r["id"])] = (r["system_username"], r["display_name"])
         return out

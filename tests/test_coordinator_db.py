@@ -58,7 +58,7 @@ def _make_cdb_attached() -> tuple[sqlite3.Connection, int, int]:
     cdb_path = tempfile.mktemp(suffix=".db")
     cdb_con = sqlite3.connect(cdb_path)
     cdb_con.executescript("""
-        CREATE TABLE investigators (
+        CREATE TABLE person (
             id               INTEGER PRIMARY KEY AUTOINCREMENT,
             system_username  TEXT NOT NULL UNIQUE,
             display_name     TEXT NOT NULL,
@@ -90,15 +90,15 @@ def _make_cdb_attached() -> tuple[sqlite3.Connection, int, int]:
             last_heartbeat INTEGER NOT NULL,
             ended_at       INTEGER
         );
-        INSERT INTO investigators
+        INSERT INTO person
             (system_username, display_name, is_investigator, is_supervisor, is_support, created_at)
             VALUES ('h012345', 'Ermittler Eins', 1, 0, 0, 1700000000);
-        INSERT INTO investigators
+        INSERT INTO person
             (system_username, display_name, is_investigator, is_supervisor, is_support, created_at)
             VALUES ('h099999', 'Supervisor', 1, 1, 0, 1700000001);
     """)
     inv_id = cdb_con.execute(
-        "SELECT id FROM investigators WHERE system_username='h012345'"
+        "SELECT id FROM person WHERE system_username='h012345'"
     ).fetchone()[0]
     cdb_con.execute(
         "INSERT INTO scrape_jobs "
@@ -229,7 +229,7 @@ class TestCoordinatorDb(unittest.TestCase):
         inactive — es gibt keine persistierte Support-Sitzung, aus der Aktivität
         abgeleitet werden könnte."""
         self.con.execute(
-            "INSERT INTO cdb.investigators "
+            "INSERT INTO cdb.person "
             "(system_username, display_name, is_investigator, is_supervisor, is_support, created_at) "
             "VALUES ('h077777', 'Support', 0, 0, 1, 1700000020)"
         )
@@ -290,7 +290,7 @@ class TestCoordinatorDb(unittest.TestCase):
         import time as _t
         now = int(_t.time())
         sup2 = self.con.execute(
-            "SELECT id FROM cdb.investigators WHERE system_username='h099999'"
+            "SELECT id FROM cdb.person WHERE system_username='h099999'"
         ).fetchone()[0]
         self.con.executemany(
             "INSERT INTO cdb.support_sessions "

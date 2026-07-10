@@ -275,7 +275,7 @@ def _create_coordinator_db(path: Path) -> None:
     """Erstellt eine minimale coordinator.db."""
     con = sqlite3.connect(str(path))
     con.executescript("""
-        CREATE TABLE investigators (
+        CREATE TABLE person (
             id               INTEGER PRIMARY KEY AUTOINCREMENT,
             system_username  TEXT    NOT NULL UNIQUE,
             display_name     TEXT    NOT NULL,

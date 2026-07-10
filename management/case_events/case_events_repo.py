@@ -124,7 +124,7 @@ class CaseEventsRepo:
             "       e.created_by, i.system_username AS created_by_username, "
             "       e.created_at, e.audit_seq "
             "FROM case_events e "
-            "LEFT JOIN investigators i ON i.id = e.created_by "
+            "LEFT JOIN person i ON i.id = e.created_by "
             "WHERE e.user_id = ? "
             "ORDER BY e.created_at ASC, e.id ASC"
         )

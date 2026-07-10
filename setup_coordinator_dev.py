@@ -15,6 +15,24 @@
 #   vollständige Schema-Migration) ist Teil von Baustelle 5 und Baustelle 7.
 #   Dieses Skript dient ausschließlich dazu, das DEV-System lauffähig zu halten.
 #
+# DEPRECATION (Build 342, Welle 0):
+#   Dieses Skript wird mittelfristig entfernt (Kennzeichnung als 'deprecated'
+#   folgt in Kürze). Es hat aktuell keine reguläre Verwendung mehr und wird
+#   hier NUR funktional erhalten. Es legt die Tabelle bewusst weiterhin unter
+#   dem ALTEN Namen 'investigators' an — NICHT als 'person'. Grund:
+#     - Die Migrationen M002-M004 verdrahten FK-Referenzen fest auf
+#       'investigators(id)'. Läuft dieser Bootstrap VOR 'migrate.py', finden
+#       diese FKs ihren Anker, und die Migration M005 benennt 'investigators'
+#       anschließend verlustfrei nach 'person' um (FK-Nachzug inklusive).
+#     - Würde dieses Skript direkt 'person' anlegen, liefen die FK-Klauseln von
+#       M002-M004 in einem Frisch-DEV ins Leere (dangling), da M005 dann keine
+#       'investigators'-Tabelle zum Umbenennen vorfände.
+#   Die Test-Suite baut ihr Schema ohnehin inline (bereits auf 'person'
+#   umgestellt) und ruft weder dieses Skript noch 'migrate.py' — der reguläre
+#   DEV-Weg ist davon nicht betroffen.
+#   OFFENER PUNKT (späterer Build): Wer erzeugt 'person' nach Wegfall dieses
+#   Bootstraps? -> Bootstrap-/RBAC-Build.
+#
 # Verwendung:
 #   python3 setup_coordinator_dev.py [--db ./data/coordinator.db]
 #
@@ -41,6 +59,8 @@ DEFAULT_DB_PATH = Path("./data/coordinator.db")
 # Beleg: Bauplan_Baustelle2_Webserver_v0_4.md § 9.1
 # -----------------------------------------------------------------------------
 
+# Hinweis (Build 342): bewusst ALTER Name 'investigators' — siehe Deprecation-
+# Block im Kopf. M005 benennt später verlustfrei nach 'person' um.
 DDL_INVESTIGATORS = """
 CREATE TABLE IF NOT EXISTS investigators (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,

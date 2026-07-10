@@ -35,7 +35,7 @@ from management.workload import workload_admin
 from management.workload.html_export import build_workload_html
 
 _INVESTIGATORS = """
-CREATE TABLE investigators (
+CREATE TABLE person (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     system_username TEXT NOT NULL UNIQUE,
     display_name TEXT NOT NULL,
@@ -55,7 +55,7 @@ CREATE TABLE scrape_jobs (
     manifest_path TEXT, output_path TEXT, worker_id TEXT,
     created_at INTEGER NOT NULL, started_at INTEGER, finished_at INTEGER,
     error_message TEXT, assigned_to INTEGER, note TEXT,
-    FOREIGN KEY(assigned_to) REFERENCES investigators(id)
+    FOREIGN KEY(assigned_to) REFERENCES person(id)
 )
 """
 
@@ -126,7 +126,7 @@ class WorkloadExportTests(unittest.TestCase):
         con.execute("PRAGMA journal_mode=WAL")
         now = int(time.time())
         con.execute(_INVESTIGATORS)
-        con.execute("INSERT INTO investigators (id, system_username, "
+        con.execute("INSERT INTO person (id, system_username, "
                     "display_name, is_investigator, created_at) "
                     "VALUES (1, 'h001', 'Alpha', 1, ?)", (now,))
         con.execute(_OLD_SCRAPE_JOBS)

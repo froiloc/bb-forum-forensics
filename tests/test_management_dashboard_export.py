@@ -34,7 +34,7 @@ from management.gateway.coordinator_writer import CoordinatorWriter
 from management.migrations.runner import MigrationRunner, discover
 
 _INVESTIGATORS = """
-CREATE TABLE investigators (
+CREATE TABLE person (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     system_username TEXT NOT NULL UNIQUE,
     display_name TEXT NOT NULL,
@@ -54,7 +54,7 @@ CREATE TABLE scrape_jobs (
     manifest_path TEXT, output_path TEXT, worker_id TEXT,
     created_at INTEGER NOT NULL, started_at INTEGER, finished_at INTEGER,
     error_message TEXT, assigned_to INTEGER, note TEXT,
-    FOREIGN KEY(assigned_to) REFERENCES investigators(id)
+    FOREIGN KEY(assigned_to) REFERENCES person(id)
 )
 """
 
@@ -110,7 +110,7 @@ class DashboardExportTests(unittest.TestCase):
         con.execute("PRAGMA journal_mode=WAL")
         now = int(time.time())
         con.execute(_INVESTIGATORS)
-        con.execute("INSERT INTO investigators (id, system_username, "
+        con.execute("INSERT INTO person (id, system_username, "
                     "display_name, created_at) VALUES (1, 'h001', 'Alpha', ?)",
                     (now,))
         con.execute(_OLD_SCRAPE_JOBS)

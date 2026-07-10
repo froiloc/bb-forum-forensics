@@ -1,25 +1,25 @@
 # =============================================================================
-# management/investigators/investigators_admin.py
+# management/person/person_admin.py
 # IT-Forensisches Ermittlungswerkzeug — Baustelle 7: Management-Interface
 # =============================================================================
 # Zweck:
 #   Auditierte Kommandozeile zum Anlegen, Ändern und Auflisten von Ermittlern
-#   (investigators). Ersetzt das bisherige Einfügen per SQL-Direktzugriff: JEDE
+#   (person). Ersetzt das bisherige Einfügen per SQL-Direktzugriff: JEDE
 #   Änderung läuft über das CoordinatorWriter-Gateway und erzeugt einen
 #   lückenlosen audit_log-Eintrag. Grundlage für die Zuweisung (cases_admin) und
 #   die spätere Support-Sitzungsanzeige — beide setzen sauber angelegte
 #   Ermittler voraus. Ein UI ergänzt diese CLI später.
 #
 # Aufruf:
-#   python -m management.investigators.investigators_admin list
+#   python -m management.person.person_admin list
 #          [--coordinator-db PATH] [--config ./config.yaml]
 #
-#   python -m management.investigators.investigators_admin create
+#   python -m management.person.person_admin create
 #          --system-username h0XXXXX --display-name "Nachname, Vorname"
 #          [--supervisor] [--support] [--no-investigator]
 #          [--actor SYSUSER] [--coordinator-db PATH] [--config ...]
 #
-#   python -m management.investigators.investigators_admin update
+#   python -m management.person.person_admin update
 #          (--id N | --system-username h0XXXXX)
 #          [--display-name "..."] [--set-investigator 0|1]
 #          [--set-supervisor 0|1] [--set-support 0|1]
@@ -35,7 +35,11 @@
 #   - Nicht-fatal, klare Fehlermeldungen; Exit 0 = ok, 1 = Fehler.
 #
 # Beleg: Bauplan B7 v0.4 §5, Projektgespräch 2026-07-01, mc 2026-07-01.
-# Version: v0.7.310 · Build: 310 · 2026-07-01
+# Build 342 (Welle 0): Modul management.investigators -> management.person;
+#   CLI 'python -m management.person.person_admin'; Klassen PersonRepo/
+#   PersonError; Tabelle 'investigators' -> 'person'. Audit-Vokabular
+#   (target_type='investigator', EventType.INVESTIGATOR_*) unveraendert.
+# Version: v0.7.342 · Build: 342 · 2026-07-10
 # =============================================================================
 
 import argparse
@@ -46,9 +50,9 @@ from pathlib import Path
 
 from management.audit.audit_log import AuditLog
 from management.gateway.coordinator_writer import CoordinatorWriter
-from management.investigators.investigators_repo import (
-    InvestigatorsError,
-    InvestigatorsRepo,
+from management.person.person_repo import (
+    PersonError,
+    PersonRepo,
 )
 
 
@@ -63,10 +67,10 @@ def _resolve_db_path(args) -> str:
         if path:
             return str(path)
     except Exception as exc:  # pragma: no cover
-        print("[investigators_admin] config.yaml nicht lesbar: %s" % exc,
+        print("[person_admin] config.yaml nicht lesbar: %s" % exc,
               file=sys.stderr)
     raise SystemExit(
-        "[investigators_admin] Kein coordinator.db-Pfad: --coordinator-db oder "
+        "[person_admin] Kein coordinator.db-Pfad: --coordinator-db oder "
         "paths.coordinator_db in config.yaml."
     )
 
@@ -81,19 +85,19 @@ def _open_con(db_path: str) -> sqlite3.Connection:
 
 def _lookup_actor_id(con: sqlite3.Connection, system_username: str) -> int:
     row = con.execute(
-        "SELECT id FROM investigators WHERE system_username = ?",
+        "SELECT id FROM person WHERE system_username = ?",
         (system_username,),
     ).fetchone()
     if row is None:
         raise SystemExit(
-            "[investigators_admin] Unbekannter Akteur (--actor %r)."
+            "[person_admin] Unbekannter Akteur (--actor %r)."
             % system_username
         )
     return int(row[0])
 
 
 def _resolve_actor(con: sqlite3.Connection, actor: str):
-    """Gibt (actor_id, meta) zurück: entweder investigators.id oder System +
+    """Gibt (actor_id, meta) zurück: entweder person.id oder System +
     OS-Benutzer in meta.performed_by."""
     if actor:
         return _lookup_actor_id(con, actor), None
@@ -102,7 +106,7 @@ def _resolve_actor(con: sqlite3.Connection, actor: str):
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Auditierte Verwaltung der Ermittlerstammdaten (investigators)."
+        description="Auditierte Verwaltung der Ermittlerstammdaten (person)."
     )
     sub = parser.add_subparsers(dest="action", required=True)
 
@@ -164,12 +168,12 @@ def _print_row(r) -> None:
     ))
 
 
-def _cmd_list(repo: InvestigatorsRepo) -> int:
-    rows = repo.list_investigators()
+def _cmd_list(repo: PersonRepo) -> int:
+    rows = repo.list_persons()
     if not rows:
-        print("[investigators_admin] Keine Ermittler eingetragen.")
+        print("[person_admin] Keine Ermittler eingetragen.")
         return 0
-    print("[investigators_admin] %d Ermittler:" % len(rows))
+    print("[person_admin] %d Ermittler:" % len(rows))
     for r in rows:
         _print_row(r)
     return 0
@@ -183,7 +187,7 @@ def _cmd_create(repo, args, actor_id, meta) -> int:
         is_support=args.support,
         actor_id=actor_id, meta=meta,
     )
-    print("[investigators_admin] Ermittler angelegt: %s (audit seq=%d)"
+    print("[person_admin] Ermittler angelegt: %s (audit seq=%d)"
           % (args.system_username, seq))
     return 0
 
@@ -206,7 +210,7 @@ def _cmd_update(repo, args, actor_id, meta) -> int:
     seq = repo.update(**kwargs)
     ident = args.system_username if args.system_username is not None else \
         ("#%d" % args.id)
-    print("[investigators_admin] Ermittler %s geändert (audit seq=%d)"
+    print("[person_admin] Ermittler %s geändert (audit seq=%d)"
           % (ident, seq))
     return 0
 
@@ -217,7 +221,7 @@ def main(argv=None) -> int:
 
     db_path = _resolve_db_path(args)
     if not Path(db_path).exists():
-        print("[investigators_admin] coordinator.db nicht gefunden: %s" % db_path,
+        print("[person_admin] coordinator.db nicht gefunden: %s" % db_path,
               file=sys.stderr)
         return 1
 
@@ -225,7 +229,7 @@ def main(argv=None) -> int:
     try:
         audit = AuditLog(con)
         writer = CoordinatorWriter(con, audit)
-        repo = InvestigatorsRepo(con, writer)
+        repo = PersonRepo(con, writer)
 
         if args.action == "list":
             return _cmd_list(repo)
@@ -240,8 +244,8 @@ def main(argv=None) -> int:
 
         parser.print_help()
         return 1
-    except InvestigatorsError as exc:
-        print("[investigators_admin] %s" % exc, file=sys.stderr)
+    except PersonError as exc:
+        print("[person_admin] %s" % exc, file=sys.stderr)
         return 1
     finally:
         con.close()

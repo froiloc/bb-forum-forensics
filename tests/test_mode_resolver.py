@@ -14,8 +14,8 @@
 # Abgedeckte Testfälle:
 #   T01 — Modus 'job': Offener Job wird korrekt aufgelöst
 #   T02 — Modus 'job': Kein Job vorhanden → ModeResolverError
-#   T03 — Modus 'job': Systembenutzer nicht in investigators → ModeResolverError
-#   T04 — Modus 'job': investigators-Tabelle fehlt → ModeResolverError
+#   T03 — Modus 'job': Systembenutzer nicht in person → ModeResolverError
+#   T04 — Modus 'job': person-Tabelle fehlt → ModeResolverError
 #   T05 — Modus 'job': forensic_db wird aus user_id abgeleitet (Build 308)
 #   T06 — Modus 'cli': user_id per CLI → ResolvedContext korrekt
 #   T07 — Modus 'cli': username per CLI → user_id aus coordinator.db aufgelöst
@@ -123,12 +123,12 @@ def _make_user_resolver(system_username: str = "h012345") -> UserResolver:
 
 def _setup_coordinator_db(db_path: str) -> sqlite3.Connection:
     """
-    Erstellt eine minimale coordinator.db mit investigators- und
+    Erstellt eine minimale coordinator.db mit person- und
     scrape_jobs-Tabellen. Gibt eine offene Verbindung zurück.
     """
     con = sqlite3.connect(db_path)
     con.executescript("""
-        CREATE TABLE IF NOT EXISTS investigators (
+        CREATE TABLE IF NOT EXISTS person (
             id               INTEGER PRIMARY KEY AUTOINCREMENT,
             system_username  TEXT NOT NULL UNIQUE,
             display_name     TEXT NOT NULL,
@@ -144,7 +144,7 @@ def _setup_coordinator_db(db_path: str) -> sqlite3.Connection:
             priority     INTEGER NOT NULL DEFAULT 3,
             status       TEXT NOT NULL DEFAULT 'pending',
             output_path  TEXT,
-            assigned_to  INTEGER REFERENCES investigators(id),
+            assigned_to  INTEGER REFERENCES person(id),
             created_at   INTEGER NOT NULL DEFAULT 0,
             started_at   INTEGER,
             finished_at  INTEGER,
@@ -209,12 +209,12 @@ class TestModeResolverJob(unittest.TestCase):
         db_path = self.cfg.get("paths.coordinator_db")
         con = _setup_coordinator_db(db_path)
         con.execute(
-            "INSERT INTO investigators (system_username, display_name, created_at) "
+            "INSERT INTO person (system_username, display_name, created_at) "
             "VALUES (?, 'Ermittler Test', 0)",
             (system_username,),
         )
         investigator_id = con.execute(
-            "SELECT id FROM investigators WHERE system_username = ?",
+            "SELECT id FROM person WHERE system_username = ?",
             (system_username,),
         ).fetchone()[0]
         con.execute(
@@ -247,13 +247,13 @@ class TestModeResolverJob(unittest.TestCase):
         with self.assertRaises(ModeResolverError):
             resolver.resolve()
 
-    def test_T03_benutzer_nicht_in_investigators(self):
-        """T03: Systembenutzer nicht in investigators-Tabelle → ModeResolverError."""
+    def test_T03_benutzer_nicht_in_person(self):
+        """T03: Systembenutzer nicht in person-Tabelle → ModeResolverError."""
         db_path = self.cfg.get("paths.coordinator_db")
         con = _setup_coordinator_db(db_path)
         # Anderen Benutzer eintragen, aber nicht h012345
         con.execute(
-            "INSERT INTO investigators (system_username, display_name, created_at) "
+            "INSERT INTO person (system_username, display_name, created_at) "
             "VALUES ('anderer_nutzer', 'Jemand', 0)"
         )
         con.commit()
@@ -263,8 +263,8 @@ class TestModeResolverJob(unittest.TestCase):
         with self.assertRaises(ModeResolverError):
             resolver.resolve()
 
-    def test_T04_investigators_tabelle_fehlt(self):
-        """T04: investigators-Tabelle existiert nicht → ModeResolverError."""
+    def test_T04_person_tabelle_fehlt(self):
+        """T04: person-Tabelle existiert nicht → ModeResolverError."""
         db_path = self.cfg.get("paths.coordinator_db")
         # Leere DB ohne Tabellen
         con = sqlite3.connect(db_path)
@@ -288,11 +288,11 @@ class TestModeResolverJob(unittest.TestCase):
         db_path = self.cfg.get("paths.coordinator_db")
         con = _setup_coordinator_db(db_path)
         con.execute(
-            "INSERT INTO investigators (system_username, display_name, created_at) "
+            "INSERT INTO person (system_username, display_name, created_at) "
             "VALUES ('h012345', 'Ermittler', 0)"
         )
         inv_id = con.execute(
-            "SELECT id FROM investigators WHERE system_username='h012345'"
+            "SELECT id FROM person WHERE system_username='h012345'"
         ).fetchone()[0]
         # Fall mit niedrigerer Priorität (höhere Zahl) → soll nicht gewählt werden
         con.execute(
@@ -333,11 +333,11 @@ class TestModeResolverCli(unittest.TestCase):
         db_path = self.cfg.get("paths.coordinator_db")
         con = _setup_coordinator_db(db_path)
         con.execute(
-            "INSERT INTO investigators (system_username, display_name, created_at) "
+            "INSERT INTO person (system_username, display_name, created_at) "
             "VALUES ('h012345', 'Ermittler', 0)"
         )
         inv_id = con.execute(
-            "SELECT id FROM investigators WHERE system_username='h012345'"
+            "SELECT id FROM person WHERE system_username='h012345'"
         ).fetchone()[0]
         con.execute(
             "INSERT INTO scrape_jobs "
@@ -392,11 +392,11 @@ class TestModeResolverCli(unittest.TestCase):
         db_path = self.cfg.get("paths.coordinator_db")
         con = _setup_coordinator_db(db_path)
         con.execute(
-            "INSERT INTO investigators (system_username, display_name, created_at) "
+            "INSERT INTO person (system_username, display_name, created_at) "
             "VALUES ('h012345', 'Ermittler', 0)"
         )
         inv_id = con.execute(
-            "SELECT id FROM investigators WHERE system_username='h012345'"
+            "SELECT id FROM person WHERE system_username='h012345'"
         ).fetchone()[0]
         # Zwei Jobs für denselben Beschuldigten — verschiedene Usernamen
         # (Namenswechsel des Beschuldigten zwischen zwei Jobs)
@@ -440,11 +440,11 @@ class TestModeResolverSupport(unittest.TestCase):
         db_path = self.cfg.get("paths.coordinator_db")
         con = _setup_coordinator_db(db_path)
         con.execute(
-            "INSERT INTO investigators (system_username, display_name, created_at) "
+            "INSERT INTO person (system_username, display_name, created_at) "
             "VALUES ('h012345', 'Support', 0)"
         )
         inv_id = con.execute(
-            "SELECT id FROM investigators WHERE system_username='h012345'"
+            "SELECT id FROM person WHERE system_username='h012345'"
         ).fetchone()[0]
         con.execute(
             "INSERT INTO scrape_jobs "

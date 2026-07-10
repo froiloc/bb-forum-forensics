@@ -13,7 +13,7 @@
 #
 # Wichtige Einschränkung:
 #   Dieser Modul liefert nur den Systembenutzernamen der OS-Session. Die
-#   Prüfung, ob dieser Benutzer in der investigators-Tabelle der coordinator.db
+#   Prüfung, ob dieser Benutzer in der person-Tabelle der coordinator.db
 #   bekannt ist, obliegt coordinator_db.py. user_resolver.py hat keine
 #   Datenbankabhängigkeit.
 #

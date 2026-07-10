@@ -55,7 +55,7 @@ def _resolve_db_path(args) -> str:
 
 def _lookup_investigator_id(con: sqlite3.Connection, system_username: str):
     row = con.execute(
-        "SELECT id FROM investigators WHERE system_username = ?",
+        "SELECT id FROM person WHERE system_username = ?",
         (system_username,),
     ).fetchone()
     if row is None:
@@ -101,7 +101,7 @@ def main(argv=None) -> int:
         writer = CoordinatorWriter(con, audit)
         repo = CasesRepo(con, writer)
 
-        # Akteur auflösen: entweder investigators.id oder System + OS-Benutzer in meta.
+        # Akteur auflösen: entweder person.id oder System + OS-Benutzer in meta.
         actor_id = None
         meta = None
         if args.actor:

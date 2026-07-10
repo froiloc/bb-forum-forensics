@@ -72,9 +72,15 @@ class AuditLog:
         meta         TEXT    NOT NULL DEFAULT '',
         prev_hash    TEXT    NOT NULL,
         row_hash     TEXT    NOT NULL,
-        FOREIGN KEY(actor_id) REFERENCES investigators(id)
+        FOREIGN KEY(actor_id) REFERENCES person(id)
     )
     """
+    # Build 342: FK-Ziel investigators -> person (Entitaets-Rename, Migration
+    # M005). Nur der Referenzname aendert sich; der EINGEFRORENE Spaltensatz
+    # (Grundlage der Hash-Kette) bleibt unveraendert. In der Migrationskette
+    # entsteht audit_log bei M001 (person existiert dann noch als
+    # 'investigators') unter FK OFF unkritisch; M005 zieht die Live-Referenz
+    # ohnehin nach.
 
     # --- DDL: Append-only-Trigger (Leitplanke) -------------------------------
     DDL_TRIG_UPDATE = """

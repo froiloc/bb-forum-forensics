@@ -266,7 +266,7 @@ class SupportSessionsRepo:
         rows = self._con.execute(
             "SELECT s.id, s.supporter_id, s.started_at, i.system_username "
             "FROM support_sessions s "
-            "LEFT JOIN investigators i ON i.id = s.supporter_id "
+            "LEFT JOIN person i ON i.id = s.supporter_id "
             "WHERE s.user_id = ? AND s.ended_at IS NULL AND s.last_heartbeat >= ? "
             "ORDER BY s.started_at ASC",
             (user_id, threshold),

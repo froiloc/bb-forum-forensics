@@ -1,8 +1,8 @@
 # =============================================================================
-# tests/test_management_investigators.py
+# tests/test_management_person.py
 # IT-Forensisches Ermittlungswerkzeug — Baustelle 7: Management-Interface
 # =============================================================================
-# Testsuite für Build 310: InvestigatorsRepo (Anlegen/Ändern/Listen) über das
+# Testsuite für Build 310: PersonRepo (Anlegen/Ändern/Listen) über das
 # CoordinatorWriter-Gateway mit lückenloser Audit-Kette.
 #
 # C01 — create → Zeile angelegt + INVESTIGATOR_CREATED atomar
@@ -11,7 +11,7 @@
 # C04 — update Rollen-Flags (supervisor/support) → Änderung geschrieben
 # C05 — update No-Op (gleiche Werte) → Fehler, kein Audit
 # C06 — update unbekannter Ermittler → Fehler
-# C07 — list_investigators liefert alle, sortiert nach system_username
+# C07 — list_persons liefert alle, sortiert nach system_username
 # C08 — get per id und per system_username
 # C09 — verify_chain grün nach allen Writes
 # C10 — kein Löschen: Stilllegen über is_investigator=0 (Zeile bleibt Beleg)
@@ -32,13 +32,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from management.audit.audit_log import AuditLog
 from management.audit.event_types import EventType
 from management.gateway.coordinator_writer import CoordinatorWriter
-from management.investigators.investigators_repo import (
-    InvestigatorsError,
-    InvestigatorsRepo,
+from management.person.person_repo import (
+    PersonError,
+    PersonRepo,
 )
 
 _INVESTIGATORS = """
-CREATE TABLE investigators (
+CREATE TABLE person (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     system_username TEXT    NOT NULL UNIQUE,
     display_name    TEXT    NOT NULL,
@@ -60,7 +60,7 @@ class ManagementInvestigatorsTests(unittest.TestCase):
         self.con.row_factory = sqlite3.Row
         self.con.execute("PRAGMA journal_mode=WAL")
 
-        # investigators-Tabelle + Audit-Kette (Schema + Genesis) aufsetzen.
+        # person-Tabelle + Audit-Kette (Schema + Genesis) aufsetzen.
         self.con.execute(_INVESTIGATORS)
         AuditLog.create_schema(self.con)
         self.audit = AuditLog(self.con)
@@ -69,7 +69,7 @@ class ManagementInvestigatorsTests(unittest.TestCase):
         self.con.execute("COMMIT")
 
         self.writer = CoordinatorWriter(self.con, self.audit)
-        self.repo = InvestigatorsRepo(self.con, self.writer)
+        self.repo = PersonRepo(self.con, self.writer)
 
     def tearDown(self):
         try:
@@ -85,7 +85,7 @@ class ManagementInvestigatorsTests(unittest.TestCase):
     # Helfer -----------------------------------------------------------------
     def _investigator_count(self):
         return self.con.execute(
-            "SELECT COUNT(*) AS c FROM investigators"
+            "SELECT COUNT(*) AS c FROM person"
         ).fetchone()["c"]
 
     def _audit_count(self):
@@ -104,7 +104,7 @@ class ManagementInvestigatorsTests(unittest.TestCase):
         seq = self.repo.create("h001", "Alpha, Anna", is_supervisor=True)
         self.assertEqual(seq, 2)  # genesis=1, create=2
         row = self.con.execute(
-            "SELECT * FROM investigators WHERE system_username='h001'"
+            "SELECT * FROM person WHERE system_username='h001'"
         ).fetchone()
         self.assertIsNotNone(row)
         self.assertEqual(row["display_name"], "Alpha, Anna")
@@ -121,9 +121,9 @@ class ManagementInvestigatorsTests(unittest.TestCase):
         self.repo.create("h001", "Alpha")
         n_inv = self._investigator_count()
         n_aud = self._audit_count()
-        with self.assertRaises(InvestigatorsError):
+        with self.assertRaises(PersonError):
             self.repo.create("h001", "Alpha Zwei")
-        # Rollback: weder zusätzliche investigators-Zeile noch Audit-Eintrag.
+        # Rollback: weder zusätzliche person-Zeile noch Audit-Eintrag.
         self.assertEqual(self._investigator_count(), n_inv)
         self.assertEqual(self._audit_count(), n_aud)
 
@@ -133,7 +133,7 @@ class ManagementInvestigatorsTests(unittest.TestCase):
         seq = self.repo.update(system_username="h001",
                                display_name="Neu Name")
         row = self.con.execute(
-            "SELECT display_name FROM investigators WHERE system_username='h001'"
+            "SELECT display_name FROM person WHERE system_username='h001'"
         ).fetchone()
         self.assertEqual(row["display_name"], "Neu Name")
         last = self._last_audit()
@@ -150,7 +150,7 @@ class ManagementInvestigatorsTests(unittest.TestCase):
         self.repo.update(system_username="h001",
                          is_supervisor=True, is_support=True)
         row = self.con.execute(
-            "SELECT is_supervisor, is_support FROM investigators "
+            "SELECT is_supervisor, is_support FROM person "
             "WHERE system_username='h001'"
         ).fetchone()
         self.assertEqual(row["is_supervisor"], 1)
@@ -163,14 +163,14 @@ class ManagementInvestigatorsTests(unittest.TestCase):
     def test_c05_update_noop_raises_no_audit(self):
         self.repo.create("h001", "Alpha")
         n_aud = self._audit_count()
-        with self.assertRaises(InvestigatorsError):
+        with self.assertRaises(PersonError):
             # display_name identisch -> keine Änderung
             self.repo.update(system_username="h001", display_name="Alpha")
         self.assertEqual(self._audit_count(), n_aud)
 
     # ------------------------------------------------------------------- C06
     def test_c06_update_unknown_raises(self):
-        with self.assertRaises(InvestigatorsError):
+        with self.assertRaises(PersonError):
             self.repo.update(system_username="gibtsnicht",
                              display_name="X")
 
@@ -179,7 +179,7 @@ class ManagementInvestigatorsTests(unittest.TestCase):
         self.repo.create("h003", "Cee")
         self.repo.create("h001", "Ayy")
         self.repo.create("h002", "Bee")
-        rows = self.repo.list_investigators()
+        rows = self.repo.list_persons()
         self.assertEqual([r["system_username"] for r in rows],
                          ["h001", "h002", "h003"])
 
@@ -206,7 +206,7 @@ class ManagementInvestigatorsTests(unittest.TestCase):
         self.repo.create("h001", "Alpha")
         self.repo.update(system_username="h001", is_investigator=False)
         row = self.con.execute(
-            "SELECT is_investigator FROM investigators "
+            "SELECT is_investigator FROM person "
             "WHERE system_username='h001'"
         ).fetchone()
         self.assertEqual(row["is_investigator"], 0)

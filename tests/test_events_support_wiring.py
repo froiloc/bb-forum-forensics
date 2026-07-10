@@ -46,7 +46,7 @@ from management.audit.event_types import EventType
 from management.migrations.coordinator import m003_support_sessions
 
 _INVESTIGATORS = """
-CREATE TABLE investigators (
+CREATE TABLE person (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     system_username TEXT    NOT NULL UNIQUE,
     display_name    TEXT    NOT NULL,
@@ -59,7 +59,7 @@ CREATE TABLE investigators (
 
 
 def _build_coordinator_db(path):
-    """Legt eine coordinator.db mit investigators, support_sessions und
+    """Legt eine coordinator.db mit person, support_sessions und
     initialisierter Audit-Kette (Genesis) an und schliesst die Verbindung."""
     con = sqlite3.connect(path)
     con.isolation_level = None
@@ -68,7 +68,7 @@ def _build_coordinator_db(path):
     now = int(time.time())
     con.execute(_INVESTIGATORS)
     con.executemany(
-        "INSERT INTO investigators "
+        "INSERT INTO person "
         "(id, system_username, display_name, is_investigator, is_supervisor, "
         " is_support, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
         [(1, "h001", "Support Eins", 1, 0, 1, now),

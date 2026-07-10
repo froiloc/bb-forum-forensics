@@ -1,9 +1,9 @@
 # =============================================================================
-# management/investigators/investigators_repo.py
+# management/person/person_repo.py
 # IT-Forensisches Ermittlungswerkzeug — Baustelle 7: Management-Interface
 # =============================================================================
 # Zweck:
-#   Zugriffsschicht auf die Ermittlerstammdaten 'investigators' in
+#   Zugriffsschicht auf die Ermittlerstammdaten 'person' in
 #   coordinator.db. Lesende Methoden (list/get) sowie schreibende Methoden
 #   (create/update) — Letztere AUSSCHLIESSLICH über das CoordinatorWriter-
 #   Gateway, sodass jede Stammdatenänderung und ihr audit_log-Eintrag in EINER
@@ -11,7 +11,7 @@
 #   ohne lückenlosen Audit-Eintrag (Grundregel 1: kein Beleg wird ausgelassen).
 #
 # Bewusste Entwurfsentscheidungen:
-#   - KEIN Löschen. cases.assigned_to referenziert investigators.id (FK); ein
+#   - KEIN Löschen. cases.assigned_to referenziert person.id (FK); ein
 #     Löschen würde Fälle verwaisen lassen und Belege zerstören. Stilllegen
 #     erfolgt über is_investigator=0 (Rolle entziehen), die Zeile bleibt als
 #     Beleg erhalten.
@@ -22,7 +22,12 @@
 #     Audit-Payload). Ein No-Op erzeugt keinen irreführenden Audit-Eintrag.
 #
 # Beleg: Bauplan B7 v0.4 §5, Projektgespräch 2026-07-01, mc 2026-07-01.
-# Version: v0.7.310 · Build: 310 · 2026-07-01
+# Build 342 (Welle 0): Tabelle 'investigators' -> 'person', Klasse
+#   InvestigatorsRepo -> PersonRepo, InvestigatorsError -> PersonError,
+#   list_investigators() -> list_persons(). Rein mechanisch, verlustfrei.
+#   Belege der Audit-Kette (target_type='investigator', EventType.
+#   INVESTIGATOR_*) bleiben unveraendert (historische Semantik).
+# Version: v0.7.342 · Build: 342 · 2026-07-10
 # =============================================================================
 
 import logging
@@ -39,13 +44,13 @@ logger = logging.getLogger(__name__)
 _FLAG_FIELDS = ("is_investigator", "is_supervisor", "is_support")
 
 
-class InvestigatorsError(Exception):
+class PersonError(Exception):
     """Fachlicher Fehler (z. B. Ermittler existiert bereits / nicht vorhanden /
     keine Änderung)."""
 
 
-class InvestigatorsRepo:
-    """Auditierte Lese-/Schreibmethoden auf der Tabelle investigators."""
+class PersonRepo:
+    """Auditierte Lese-/Schreibmethoden auf der Tabelle person."""
 
     def __init__(self, con: sqlite3.Connection, writer: CoordinatorWriter) -> None:
         self._con = con
@@ -53,12 +58,12 @@ class InvestigatorsRepo:
         self._writer = writer
 
     # ------------------------------------------------------------------- Lesen
-    def list_investigators(self) -> List[Dict[str, Any]]:
+    def list_persons(self) -> List[Dict[str, Any]]:
         """Alle Ermittler, aufsteigend nach system_username."""
         rows = self._con.execute(
             "SELECT id, system_username, display_name, is_investigator, "
             "       is_supervisor, is_support, created_at "
-            "FROM investigators ORDER BY system_username ASC"
+            "FROM person ORDER BY system_username ASC"
         ).fetchall()
         return [self._as_dict(r) for r in rows]
 
@@ -85,16 +90,16 @@ class InvestigatorsRepo:
         meta: Optional[Any] = None,
     ) -> int:
         """
-        Legt einen neuen Ermittler an. Wirft InvestigatorsError, wenn der
+        Legt einen neuen Ermittler an. Wirft PersonError, wenn der
         system_username bereits vergeben ist (UNIQUE). Gibt die audit_log-seq
         zurück.
         """
         system_username = system_username.strip()
         display_name = display_name.strip()
         if not system_username:
-            raise InvestigatorsError("system_username darf nicht leer sein.")
+            raise PersonError("system_username darf nicht leer sein.")
         if not display_name:
-            raise InvestigatorsError("display_name darf nicht leer sein.")
+            raise PersonError("display_name darf nicht leer sein.")
 
         now = int(time.time())
         i_inv = 1 if is_investigator else 0
@@ -105,12 +110,12 @@ class InvestigatorsRepo:
             # UNIQUE-Prüfung innerhalb der Transaktion (BEGIN IMMEDIATE hält die
             # Schreibsperre, kein TOCTOU-Fenster).
             if self._get_row(con, system_username=system_username) is not None:
-                raise InvestigatorsError(
+                raise PersonError(
                     "Ermittler system_username=%r existiert bereits."
                     % system_username
                 )
             cur = con.execute(
-                "INSERT INTO investigators "
+                "INSERT INTO person "
                 "(system_username, display_name, is_investigator, is_supervisor, "
                 " is_support, created_at) VALUES (?, ?, ?, ?, ?, ?)",
                 (system_username, display_name, i_inv, i_sup, i_supp, now),
@@ -150,7 +155,7 @@ class InvestigatorsRepo:
         Ändert display_name und/oder Rollen-Flags eines vorhandenen Ermittlers
         (identifiziert über id ODER system_username). Es werden nur tatsächlich
         veränderte Felder geschrieben; der Audit-Payload enthält je Feld
-        {alt, neu}. Wirft InvestigatorsError bei unbekanntem Ermittler oder wenn
+        {alt, neu}. Wirft PersonError bei unbekanntem Ermittler oder wenn
         sich nichts ändert. Gibt die audit_log-seq zurück.
         """
         # Gewünschte Zielwerte (nur die, die der Aufrufer gesetzt hat).
@@ -158,7 +163,7 @@ class InvestigatorsRepo:
         if display_name is not None:
             dn = display_name.strip()
             if not dn:
-                raise InvestigatorsError("display_name darf nicht leer sein.")
+                raise PersonError("display_name darf nicht leer sein.")
             wanted["display_name"] = dn
         if is_investigator is not None:
             wanted["is_investigator"] = 1 if is_investigator else 0
@@ -168,7 +173,7 @@ class InvestigatorsRepo:
             wanted["is_support"] = 1 if is_support else 0
 
         if not wanted:
-            raise InvestigatorsError(
+            raise PersonError(
                 "Keine änderbaren Felder angegeben (--display-name / "
                 "--set-investigator / --set-supervisor / --set-support)."
             )
@@ -176,7 +181,7 @@ class InvestigatorsRepo:
         def _w(con: sqlite3.Connection) -> Dict[str, Any]:
             row = self._get_row(con, id=id, system_username=system_username)
             if row is None:
-                raise InvestigatorsError(
+                raise PersonError(
                     "Unbekannter Ermittler (id=%r, system_username=%r)."
                     % (id, system_username)
                 )
@@ -189,7 +194,7 @@ class InvestigatorsRepo:
                     changes[field] = {"alt": old_val, "neu": new_val}
 
             if not changes:
-                raise InvestigatorsError(
+                raise PersonError(
                     "Keine Änderung — die angegebenen Werte entsprechen dem "
                     "aktuellen Stand."
                 )
@@ -198,7 +203,7 @@ class InvestigatorsRepo:
             params = [changes[f]["neu"] for f in changes]
             params.append(int(row["id"]))
             con.execute(
-                "UPDATE investigators SET %s WHERE id = ?" % set_clause, params
+                "UPDATE person SET %s WHERE id = ?" % set_clause, params
             )
             return {
                 "id": int(row["id"]),
@@ -223,22 +228,22 @@ class InvestigatorsRepo:
         id: Optional[int] = None,
         system_username: Optional[str] = None,
     ) -> Optional[sqlite3.Row]:
-        """Liest eine investigators-Zeile per id ODER system_username."""
+        """Liest eine person-Zeile per id ODER system_username."""
         if (id is None) == (system_username is None):
-            raise InvestigatorsError(
+            raise PersonError(
                 "Genau eines von id / system_username muss angegeben werden."
             )
         if id is not None:
             return con.execute(
                 "SELECT id, system_username, display_name, is_investigator, "
                 "       is_supervisor, is_support, created_at "
-                "FROM investigators WHERE id = ?",
+                "FROM person WHERE id = ?",
                 (id,),
             ).fetchone()
         return con.execute(
             "SELECT id, system_username, display_name, is_investigator, "
             "       is_supervisor, is_support, created_at "
-            "FROM investigators WHERE system_username = ?",
+            "FROM person WHERE system_username = ?",
             (system_username,),
         ).fetchone()
 

@@ -866,7 +866,7 @@ class TestInvestigationStatusFromCases:
         con = sqlite3.connect(":memory:")
         con.row_factory = sqlite3.Row
         con.execute("""
-            CREATE TABLE investigators (
+            CREATE TABLE person (
                 id INTEGER PRIMARY KEY,
                 system_username TEXT NOT NULL
             )
@@ -875,7 +875,7 @@ class TestInvestigationStatusFromCases:
             CREATE TABLE cases (
                 user_id INTEGER PRIMARY KEY,
                 username TEXT NOT NULL,
-                assigned_to INTEGER REFERENCES investigators(id),
+                assigned_to INTEGER REFERENCES person(id),
                 priority INTEGER NOT NULL DEFAULT 3,
                 status TEXT NOT NULL DEFAULT 'open',
                 approved_at INTEGER,
@@ -886,7 +886,7 @@ class TestInvestigationStatusFromCases:
             )
         """)
         con.execute(
-            "INSERT INTO investigators (id, system_username) VALUES (1, 'ermittler1')"
+            "INSERT INTO person (id, system_username) VALUES (1, 'ermittler1')"
         )
         if with_case:
             con.execute(
@@ -904,7 +904,7 @@ class TestInvestigationStatusFromCases:
         return con.execute(
             "SELECT c.status, c.priority, i.system_username AS assigned_to, c.note "
             "FROM cases c "
-            "LEFT JOIN investigators i ON i.id = c.assigned_to "
+            "LEFT JOIN person i ON i.id = c.assigned_to "
             "WHERE c.user_id = 18"
         ).fetchone()
 

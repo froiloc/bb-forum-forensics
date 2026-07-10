@@ -28,7 +28,7 @@
 # Änderungen gegenüber Build 007 (Baustelle 3 — §11.5 Bauplan):
 #   - SupportStatusRecord: Neues Dataclass für SSE-Support-Status.
 #   - get_support_status(): Liest aktiven Support-Nutzer aus
-#     investigators JOIN scrape_jobs. Gibt SupportStatusRecord zurück.
+#     person JOIN scrape_jobs. Gibt SupportStatusRecord zurück.
 #     Fehlerbehandlung: Bei Exception → inactive-Status statt Absturz.
 # =============================================================================
 
@@ -79,7 +79,7 @@ class SupportStatusRecord:
 @dataclass(frozen=True)
 class InvestigatorRecord:
     """
-    Repräsentiert einen Eintrag aus der investigators-Tabelle.
+    Repräsentiert einen Eintrag aus der person-Tabelle (Rolle: Ermittler).
 
     Felder:
         id               — Primärschlüssel
@@ -183,7 +183,7 @@ class CoordinatorDb:
         """
         Einmaliger Versuch für get_support_status(). Liest aktive Support-
         Sitzungen des Falls aus cdb.support_sessions (verknüpft mit
-        cdb.investigators für den system_username des Supporters).
+        cdb.person für den system_username des Supporters).
 
         Build 311: löst den ehrlichen 'inactive'-Stub aus Build 308 ab — jetzt
         existiert mit support_sessions (M003) eine echte Präsenz-Erfassung.
@@ -193,7 +193,7 @@ class CoordinatorDb:
         rows = self._con.execute(
             "SELECT s.started_at, i.system_username "
             "FROM cdb.support_sessions s "
-            "LEFT JOIN cdb.investigators i ON i.id = s.supporter_id "
+            "LEFT JOIN cdb.person i ON i.id = s.supporter_id "
             "WHERE s.user_id = ? AND s.ended_at IS NULL AND s.last_heartbeat >= ? "
             "ORDER BY s.started_at ASC",
             (user_id, threshold),
@@ -235,7 +235,7 @@ class CoordinatorDb:
             row = self._con.execute(
                 "SELECT id, system_username, display_name, "
                 "is_investigator, is_supervisor, is_support, created_at "
-                "FROM cdb.investigators WHERE system_username = ?",
+                "FROM cdb.person WHERE system_username = ?",
                 (system_username,),
             ).fetchone()
         except sqlite3.OperationalError as exc:
@@ -243,7 +243,7 @@ class CoordinatorDb:
 
         if row is None:
             logger.debug(
-                "Ermittler '%s' nicht in cdb.investigators gefunden",
+                "Ermittler '%s' nicht in cdb.person gefunden",
                 system_username,
             )
             return None

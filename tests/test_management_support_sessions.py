@@ -44,7 +44,7 @@ from management.support_sessions.support_sessions_repo import (
 )
 
 _INVESTIGATORS = """
-CREATE TABLE investigators (
+CREATE TABLE person (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     system_username TEXT    NOT NULL UNIQUE,
     display_name    TEXT    NOT NULL,
@@ -69,7 +69,7 @@ class ManagementSupportSessionsTests(unittest.TestCase):
         now = int(time.time())
         self.con.execute(_INVESTIGATORS)
         self.con.executemany(
-            "INSERT INTO investigators "
+            "INSERT INTO person "
             "(id, system_username, display_name, is_investigator, is_supervisor, "
             " is_support, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
             [(1, "h001", "Support Eins", 1, 0, 1, now),

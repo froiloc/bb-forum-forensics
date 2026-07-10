@@ -10,7 +10,7 @@
 # Die drei Startmodi (Eskalationskette: CLI > config.yaml > Coded Default):
 #
 #   job     — Normalbetrieb. Der Systembenutzer wird gegen die
-#             investigators-Tabelle in coordinator.db geprüft. Der zugewiesene
+#             person-Tabelle in coordinator.db geprüft. Der zugewiesene
 #             Job aus scrape_jobs bestimmt user_id und forensic_db-Pfad.
 #             Kein Job vorhanden → ModeResolverError.
 #
@@ -89,7 +89,7 @@ class ResolvedContext:
                           (READ-WRITE in 'job'/'cli', READ-ONLY in 'support')
         default_db      — Absoluter Pfad zur default.db (READ-ONLY)
         coordinator_db  — Absoluter Pfad zur coordinator.db (READ-WRITE)
-        investigator_id — investigators.id des aktuellen Systembenutzer,
+        investigator_id — person.id des aktuellen Systembenutzer,
                           oder None wenn nicht in coordinator.db gefunden
                           (im support-Modus akzeptabel)
         investigator_username — SAMAccountName des angemeldeten Ermittlers
@@ -221,7 +221,7 @@ class ModeResolver:
                 f"Mögliche Ursachen:\n"
                 f"  - Kein Fall zugewiesen (cases.assigned_to)\n"
                 f"  - Alle Fälle bereits abgeschlossen (status nicht 'open'/'in_progress')\n"
-                f"  - Benutzer nicht in investigators-Tabelle eingetragen\n"
+                f"  - Benutzer nicht in person-Tabelle eingetragen\n"
                 f"Alternativ: Server mit --mode cli --user-id <id> starten."
             )
 
@@ -266,9 +266,9 @@ class ModeResolver:
 
         Ein Fall gilt als offen wenn (Build 308, Quelle: cdb.cases):
           - status IN ('open', 'in_progress')
-          - assigned_to verweist auf den investigators-Eintrag des Systembenutzers
+          - assigned_to verweist auf den person-Eintrag des Systembenutzers
 
-        Falls die investigators-Tabelle noch nicht existiert (z.B. in DEV vor
+        Falls die person-Tabelle noch nicht existiert (z.B. in DEV vor
         der ersten Einrichtung), wird ein leeres Ergebnis zurückgegeben.
         """
         investigator_id: Optional[int] = None
@@ -276,7 +276,7 @@ class ModeResolver:
         # Investigator-ID ermitteln
         try:
             row = con.execute(
-                "SELECT id FROM investigators WHERE system_username = ?",
+                "SELECT id FROM person WHERE system_username = ?",
                 (system_username,),
             ).fetchone()
             if row:
@@ -284,14 +284,14 @@ class ModeResolver:
         except sqlite3.OperationalError:
             # Tabelle existiert noch nicht — kein harter Fehler in DEV
             logger.warning(
-                "investigators-Tabelle nicht gefunden in coordinator.db. "
+                "person-Tabelle nicht gefunden in coordinator.db. "
                 "Modus 'job' benötigt eine eingerichtete coordinator.db."
             )
             return None, None
 
         if investigator_id is None:
             logger.warning(
-                "Systembenutzer '%s' nicht in investigators-Tabelle eingetragen.",
+                "Systembenutzer '%s' nicht in person-Tabelle eingetragen.",
                 system_username,
             )
             return None, None
@@ -399,13 +399,13 @@ class ModeResolver:
                 # (nicht des Beschuldigten — der Beschuldigte ist kein Ermittler)
                 try:
                     inv_row = con.execute(
-                        "SELECT id FROM investigators WHERE system_username = ?",
+                        "SELECT id FROM person WHERE system_username = ?",
                         (system_username,),
                     ).fetchone()
                     if inv_row:
                         investigator_id = int(inv_row["id"])
                 except sqlite3.OperationalError:
-                    # investigators-Tabelle noch nicht vorhanden — in DEV toleriert
+                    # person-Tabelle noch nicht vorhanden — in DEV toleriert
                     pass
 
                 if cli_user_id is not None:

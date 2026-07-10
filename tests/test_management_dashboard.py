@@ -72,7 +72,7 @@ from management.gateway.coordinator_writer import CoordinatorWriter
 from management.migrations.runner import MigrationRunner, discover
 
 _INVESTIGATORS = """
-CREATE TABLE investigators (
+CREATE TABLE person (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     system_username TEXT    NOT NULL UNIQUE,
     display_name    TEXT    NOT NULL,
@@ -100,7 +100,7 @@ CREATE TABLE scrape_jobs (
     error_message TEXT,
     assigned_to   INTEGER,
     note          TEXT,
-    FOREIGN KEY(assigned_to) REFERENCES investigators(id)
+    FOREIGN KEY(assigned_to) REFERENCES person(id)
 )
 """
 
@@ -120,7 +120,7 @@ class ManagementDashboardTests(unittest.TestCase):
         now = int(time.time())
         self.con.execute(_INVESTIGATORS)
         self.con.executemany(
-            "INSERT INTO investigators "
+            "INSERT INTO person "
             "(id, system_username, display_name, is_investigator, is_supervisor, "
             " is_support, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
             [(1, "h001", "Alpha", 1, 1, 0, now),
@@ -182,11 +182,13 @@ class ManagementDashboardTests(unittest.TestCase):
 
     # D01 --------------------------------------------------------------------
     def test_d01_migrations_and_empty(self):
-        self.assertEqual(self.applied, [1, 2, 4] if 3 not in self.applied
-                         else [1, 2, 3, 4])
-        # discover findet M001..M004 -> support_sessions (M003) IST dabei.
+        self.assertEqual(self.applied, [1, 2, 4, 5] if 3 not in self.applied
+                         else [1, 2, 3, 4, 5])
+        # discover findet M001..M005 -> support_sessions (M003) IST dabei,
+        # ebenso der person-Rename (M005, Build 342).
         self.assertIn(3, self.applied)
         self.assertIn(4, self.applied)
+        self.assertIn(5, self.applied)
         self.assertEqual(self.dash.list_case_overview(), [])
 
     # D02 --------------------------------------------------------------------

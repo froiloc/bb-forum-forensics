@@ -52,7 +52,7 @@ from management.gateway.coordinator_writer import CoordinatorWriter
 from management.migrations.runner import MigrationRunner, discover
 
 _INVESTIGATORS = """
-CREATE TABLE investigators (
+CREATE TABLE person (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     system_username TEXT    NOT NULL UNIQUE,
     display_name    TEXT    NOT NULL,
@@ -82,7 +82,7 @@ CREATE TABLE scrape_jobs (
     error_message TEXT,
     assigned_to   INTEGER,
     note          TEXT,
-    FOREIGN KEY(assigned_to) REFERENCES investigators(id)
+    FOREIGN KEY(assigned_to) REFERENCES person(id)
 )
 """
 
@@ -100,7 +100,7 @@ class ManagementCaseEventsTests(unittest.TestCase):
         now = int(time.time())
         self.con.execute(_INVESTIGATORS)
         self.con.executemany(
-            "INSERT INTO investigators "
+            "INSERT INTO person "
             "(id, system_username, display_name, is_investigator, is_supervisor, "
             " is_support, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
             [(1, "h001", "Alpha", 1, 1, 0, now),

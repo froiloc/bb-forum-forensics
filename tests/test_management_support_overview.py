@@ -12,7 +12,7 @@
 # SO03 — STARTED ohne ENDED     -> status 'offen', ended/duration None
 # SO04 — ENDED ohne STARTED     -> status 'herrenlos', Supporter None, sichtbar
 # SO05 — Fall ohne cases-Eintrag -> username None, Zeile bleibt sichtbar (GR 1)
-# SO06 — Supporter nicht in investigators -> Supporter-Namen None
+# SO06 — Supporter nicht in person -> Supporter-Namen None
 # SO07 — deterministische chronologische Ordnung (Anker started_at, Tiebreak id)
 # SO08 — doppeltes ENDED        -> anomaly 'doppeltes_ended', erster Beleg bleibt
 # SO09 — fehlende session_id im Payload -> anomaly, eigener Datensatz, nicht still
@@ -54,7 +54,7 @@ from management.support_overview.support_session_record import (
 from management.support_sessions.support_sessions_repo import SupportSessionsRepo
 
 _INVESTIGATORS = """
-CREATE TABLE investigators (
+CREATE TABLE person (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     system_username TEXT    NOT NULL UNIQUE,
     display_name    TEXT    NOT NULL,
@@ -75,7 +75,7 @@ CREATE TABLE scrape_jobs (
     manifest_path TEXT, output_path TEXT, worker_id TEXT,
     created_at INTEGER NOT NULL, started_at INTEGER, finished_at INTEGER,
     error_message TEXT, assigned_to INTEGER, note TEXT,
-    FOREIGN KEY(assigned_to) REFERENCES investigators(id)
+    FOREIGN KEY(assigned_to) REFERENCES person(id)
 )
 """
 
@@ -93,7 +93,7 @@ class SupportOverviewRepoTests(unittest.TestCase):
         now = int(time.time())
         self.con.execute(_INVESTIGATORS)
         self.con.executemany(
-            "INSERT INTO investigators "
+            "INSERT INTO person "
             "(id, system_username, display_name, is_investigator, is_supervisor, "
             " is_support, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
             [(1, "h001", "Support Eins", 1, 0, 1, now),
@@ -235,7 +235,7 @@ class SupportOverviewRepoTests(unittest.TestCase):
         self.assertIsNone(r.username)                  # kein cases-Eintrag
         self.assertEqual(r.user_id, 7005)              # Zeile bleibt sichtbar
 
-    # ---- SO06: Supporter nicht in investigators ----------------------------
+    # ---- SO06: Supporter nicht in person ----------------------------
     def test_so06_unknown_supporter(self):
         self._emit_started(session_id=54, user_id=7006, supporter_id=999,
                           started_at=1600)
@@ -284,7 +284,7 @@ class SupportOverviewRepoTests(unittest.TestCase):
 
     # ---- SO10: fehlende Pflichttabelle -------------------------------------
     def test_so10_schema_guard(self):
-        # Frische DB nur mit audit_log-Genesis, OHNE cases/investigators.
+        # Frische DB nur mit audit_log-Genesis, OHNE cases/person.
         p = os.path.join(self._tmp, "bare.db")
         con = sqlite3.connect(p)
         con.isolation_level = None
