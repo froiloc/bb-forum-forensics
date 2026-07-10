@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AIW — Verwaltung</title>
+<!--
+  =============================================================================
+  management/server/static/cockpit.html
+  IT-Forensisches Ermittlungswerkzeug — Baustelle 7: Cockpit-Shell
+  =============================================================================
+  Statische Shell des eigenstaendigen Management-Servers. KEINE Inline-Daten:
+  Identitaet, Rechte und Sichten werden ausschliesslich per fetch von den
+  read-only-JSON-Endpunkten geladen (/api/whoami zuerst). Die policy-getriebene
+  Navigation entsteht im Browser (cockpit.js).
+
+  ACHTUNG (Deploy): Diese Datei faellt unter die .gitignore-Regel '*.html' und
+  muss daher mit 'git add -f management/server/static/cockpit.html' eingecheckt
+  werden. Ohne sie liefert '/' ein 404 (ManagementApp._index serviert sie).
+
+  Build 347: Shell + policy-getriebene Nav.
+  Build 348: Overview-Sicht (Tabulator) + SSE-Reload.
+  Build 349: Integritaets-/Ops-Sicht (cockpit_integrity.js) + globaler Ketten-
+             Banner + Live-DEBUG.
+  Beleg: Bauplan B7 v1.1 §11.1/§11.2.
+
+  Version: v0.7.349 · Build: 349 · 2026-07-10
+  =============================================================================
+-->
+<link rel="stylesheet" href="/static/cockpit.css">
+<!--
+  Tabulator.js ist management-lokal vendort. Die Overview-Sicht
+  (cockpit_overview.js) rendert damit die Fall-Uebersicht als Tabelle.
+-->
+<link rel="stylesheet" href="/static/vendor/tabulator/tabulator.min.css">
+<script src="/static/vendor/tabulator/tabulator.min.js" defer></script>
+<script src="/static/cockpit_overview.js" defer></script>
+<script src="/static/cockpit_integrity.js" defer></script>
+<script src="/static/cockpit.js" defer></script>
+</head>
+<body>
+
+<header class="aiw-top">
+  <h1>AIW &mdash; Verwaltung</h1>
+  <span class="aiw-badge">VS-NfD</span>
+  <span class="spacer"></span>
+  <!-- Wird von cockpit.js aus /api/whoami gefuellt (display_name via textContent). -->
+  <span class="aiw-who" id="aiw-who">&hellip;</span>
+</header>
+
+<!--
+  Integritaets-Banner. Ab Build 349 global an /api/integrity gebunden (sofern
+  ops.view); ohne ops.view bleibt der Banner still (Klasse aiw-integrity-hidden).
+-->
+<div class="aiw-integrity" id="aiw-integrity">Integritaet: wird geladen &hellip;</div>
+
+<div class="aiw-frame">
+  <!-- Policy-getriebene Navigation; von cockpit.js aus /api/whoami aufgebaut. -->
+  <nav class="aiw-side" id="aiw-nav" aria-label="Bereiche"></nav>
+  <main class="aiw-main" id="aiw-main"></main>
+</div>
+
+</body>
+</html>
