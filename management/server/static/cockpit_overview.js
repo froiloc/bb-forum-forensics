@@ -28,15 +28,19 @@
 //   'plaintext'-Formatter (textContent). Eigene Formatter bauen DOM-Knoten und
 //   setzen variablen Text ausschliesslich via textContent (nie innerHTML).
 //
-// Version: v0.7.348 · Build: 348 · 2026-07-10
+// Version: v0.7.349 · Build: 349 · 2026-07-10
 // =============================================================================
 
 (function () {
     'use strict';
 
-    var DEBUG = (typeof window !== 'undefined' && window.AIW_COCKPIT_DEBUG === true);
+    // Build 349: DEBUG zur Laufzeit auslesen (kein Reload noetig).
+    function debugOn() {
+        return (typeof window !== 'undefined')
+            && window.AIW_COCKPIT_DEBUG === true;
+    }
     function log() {
-        if (!DEBUG) { return; }
+        if (!debugOn()) { return; }
         var args = Array.prototype.slice.call(arguments);
         args.unshift('[AIW-Overview]');
         // eslint-disable-next-line no-console

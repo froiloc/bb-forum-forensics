@@ -12,11 +12,10 @@
 //   Beleg: Bauplan B7 v1.1 §11.2; Referenzlayout AIW_Verwaltung_Mockup.html.
 //
 // ABGRENZUNG (Split analog 314/315, Beleg: UEBERGABE_Build346 §6):
-//   Build 347 = FUNDAMENT (Navigation, Rechte). Build 348 verdrahtet die
-//   OVERVIEW-Sicht (/api/overview) als Tabulator-Tabelle (cockpit_overview.js)
-//   und den SSE-Reload (/events -> bei 'changed' nur die aktive Sicht neu
-//   laden). Die Integritaets-/Ops-Sicht (/api/integrity) folgt in Build 349
-//   (bewusst getrennt, kleinere baubare Einheit).
+//   347 = Fundament (Nav, Rechte). 348 = Overview-Sicht (Tabulator) + SSE-Reload.
+//   349 = Integritaets-/Ops-Sicht (/api/integrity, cockpit_integrity.js) +
+//   globaler Ketten-Banner (still ohne ops.view) + SSE-Reaktualisierung des
+//   Banners; ausserdem Live-DEBUG (Flag zur Laufzeit auslesbar, kein Reload).
 //
 // KAPSELUNG / PROJEKT-GEBOTE FUER JS:
 //   1) IIFE-Wrapper mit 'use strict'.
@@ -33,20 +32,25 @@
 //   aber ebenfalls via textContent gesetzt (Prinzip: kein innerHTML mit
 //   variablem Text).
 //
-// Version: v0.7.348 · Build: 348 · 2026-07-10
+// Version: v0.7.349 · Build: 349 · 2026-07-10
 // =============================================================================
 
 (function () {
     'use strict';
 
     // -------------------------------------------------------------------------
-    // DEV-Debug-Logging. Aktivierung im Browser VOR dem Laden:
-    //   window.AIW_COCKPIT_DEBUG = true;
-    // PROD: aus (kein Output). Node/Vitest: standardmaessig aus.
+    // DEV-Debug-Logging. Aktivierung im Browser JEDERZEIT (zur Laufzeit):
+    //   window.AIW_COCKPIT_DEBUG = true;   // an
+    //   window.AIW_COCKPIT_DEBUG = false;  // aus
+    // Build 349: Das Flag wird bei JEDEM log()-Aufruf ausgelesen (nicht mehr
+    // einmalig beim Laden), damit es ohne Reload umschaltbar ist. PROD: aus.
     // -------------------------------------------------------------------------
-    var DEBUG = (typeof window !== 'undefined' && window.AIW_COCKPIT_DEBUG === true);
+    function debugOn() {
+        return (typeof window !== 'undefined')
+            && window.AIW_COCKPIT_DEBUG === true;
+    }
     function log() {
-        if (!DEBUG) { return; }
+        if (!debugOn()) { return; }
         var args = Array.prototype.slice.call(arguments);
         args.unshift('[AIW-Cockpit]');
         // eslint-disable-next-line no-console
@@ -279,9 +283,65 @@
         });
     }
 
+    // applyIntegrity: zentrale Banner-Aktualisierung aus einer Integritaets-
+    // Antwort ({ok, first_bad_seq, detail, tip_seq}). Nutzt das Integritaets-
+    // Modul (bannerModel + applyBanner). Wird von loadIntegrity UND refreshBanner
+    // aufgerufen, damit der Banner-Zustand an genau einer Stelle entsteht.
+    function applyIntegrity(data) {
+        var mod = (typeof window !== 'undefined') ? window.AIWCockpitIntegrity : null;
+        var bannerEl = document.getElementById('aiw-integrity');
+        if (!mod || !bannerEl) { return; }
+        mod.applyBanner(bannerEl, mod.bannerModel(data));
+    }
+
+    // refreshBanner: Ketten-Gesundheit GLOBAL im Banner anzeigen — unabhaengig
+    // von der aktiven Sicht. Ohne 'ops.view' bleibt der Banner still/neutral
+    // (kein 403-Rauschen; Entscheidung 2026-07-10). Wird bei boot() und bei
+    // SSE-'changed' (wenn die aktive Sicht nicht 'integrity' ist) aufgerufen.
+    function refreshBanner() {
+        var bannerEl = document.getElementById('aiw-integrity');
+        if (!hasCap(state.capabilities, 'ops.view')) {
+            if (bannerEl) {
+                bannerEl.textContent = '';
+                bannerEl.className = 'aiw-integrity aiw-integrity-hidden';
+            }
+            return;
+        }
+        fetchJson('/api/integrity').then(function (data) {
+            applyIntegrity(data);
+            log('Banner aktualisiert: ok =', data.ok, 'tip', data.tip_seq);
+        }).catch(function (err) {
+            // Fehler nicht verschlucken: Banner in den Fehlerzustand setzen.
+            if (bannerEl) {
+                bannerEl.className = 'aiw-integrity fehler';
+                bannerEl.textContent =
+                    'Integritaet nicht pruefbar: ' + err.message;
+            }
+        });
+    }
+
+    // loadIntegrity: Integritaets-/Ops-Sicht rendern (cockpit_integrity.js) und
+    // dabei den globalen Banner gleich mit aktualisieren (eine Quelle).
+    function loadIntegrity(mainEl) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined') ? window.AIWCockpitIntegrity : null;
+        if (!mod) {
+            renderError(mainEl, 'Integritaets-Modul nicht geladen.');
+            return;
+        }
+        fetchJson('/api/integrity').then(function (data) {
+            mod.renderIntegrity(mainEl, data);
+            applyIntegrity(data);
+            log('Integritaet gerendert: ok =', data.ok, 'tip', data.tip_seq);
+        }).catch(function (err) {
+            renderError(mainEl,
+                'Integritaet konnte nicht geladen werden: ' + err.message);
+        });
+    }
+
     // selectView: aktive Sicht setzen, Nav neu markieren, Inhalt dispatchen.
-    // Build 348: 'dashboard' -> Overview-Tabelle; sonst Platzhalter (weitere
-    // Sichten, u.a. Integritaet, folgen in Build 349+).
+    // Build 349: 'dashboard' -> Overview; 'integrity' -> Integritaets-Sicht;
+    // sonst Platzhalter (weitere Sichten folgen).
     function selectView(viewId) {
         state.activeId = viewId;
         destroyTable();  // beim Sichtwechsel evtl. offene Tabelle abbauen
@@ -291,6 +351,8 @@
         buildNav(navEl, views, state.capabilities, state.activeId, selectView);
         if (viewId === 'dashboard') {
             loadOverview(mainEl);
+        } else if (viewId === 'integrity') {
+            loadIntegrity(mainEl);
         } else {
             renderPlaceholder(mainEl, viewById(viewId));
         }
@@ -309,11 +371,17 @@
         es.addEventListener('keepalive', function () { /* Lebenszeichen */ });
         es.addEventListener('changed', function (e) {
             log('SSE changed', e.data);
-            // Nur die aktive Sicht neu laden (Build 348: Overview).
+            // Aktive Sicht neu laden (kein F5, §11.2/§11.1):
             if (state.activeId === 'dashboard') {
                 loadOverview();
+            } else if (state.activeId === 'integrity') {
+                loadIntegrity();   // aktualisiert Sicht UND Banner
             }
-            // Integritaets-/weitere Sichten: Reload folgt mit deren Build.
+            // Banner global frisch halten, wenn die aktive Sicht nicht die
+            // Integritaets-Sicht ist (dort geschieht es bereits oben).
+            if (state.activeId !== 'integrity') {
+                refreshBanner();
+            }
         });
         es.onerror = function () {
             // Bei Reconnect/Serverneustart normal; kein harter Fehler.
@@ -342,11 +410,11 @@
                 renderPlaceholder(document.getElementById('aiw-main'), null);
             }
 
-            // Integritaets-Banner bleibt in 348 neutral (Bindung folgt 349).
-            var integ = document.getElementById('aiw-integrity');
-            if (integ) {
-                integ.textContent =
-                    'Integritaetsanzeige folgt (Build 349).';
+            // Ketten-Gesundheit global im Banner anzeigen (still, wenn keine
+            // ops.view). Wenn 'integrity' die erste Sicht ist, hat selectView
+            // den Banner bereits gesetzt -> Doppel-Fetch vermeiden.
+            if (state.activeId !== 'integrity') {
+                refreshBanner();
             }
 
             // Live-Reload aktivieren.

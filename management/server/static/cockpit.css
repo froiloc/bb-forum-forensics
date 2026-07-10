@@ -9,7 +9,7 @@
  *   Rollen-Umschalter (die Identitaet ist server-seitig fixiert; Rechte kommen
  *   aus /api/whoami, nicht aus einem UI-Schalter).
  *
- * Version: v0.7.348 · Build: 348 · 2026-07-10
+ * Version: v0.7.349 · Build: 349 · 2026-07-10
  * ============================================================================= */
 
 :root {
@@ -48,6 +48,8 @@ header.aiw-top {
 }
 .aiw-integrity.ok    { background: #eafaf1; border-color: #a9dfbf; color: #1e6b3a; }
 .aiw-integrity.fehler { background: #fdecea; border-color: #f5b7b1; color: #922b21; }
+/* Build 349: ohne ops.view bleibt der Banner still (nimmt keinen Platz ein). */
+.aiw-integrity.aiw-integrity-hidden { display: none; }
 
 /* Rahmenlayout ------------------------------------------------------------- */
 .aiw-frame { display: flex; min-height: calc(100vh - 84px); }
