@@ -26,7 +26,8 @@
 # Build 354 (bewusst getrennt).
 #
 # Beleg: Bauplan B7 v1.1 §11; Datenmigrationsleitfaden v0.2 §4; mc 2026-07-10.
-# Version: v0.7.353 · Build: 353 · 2026-07-10
+# Build 354: BackupRun um run_ts/host erweitert (fuer die backups-Registrierung).
+# Version: v0.7.354 · Build: 354 · 2026-07-10
 # =============================================================================
 
 import json
@@ -65,6 +66,8 @@ class BackupItemResult:
 class BackupRun:
     """Gesamtergebnis eines Backup-Laufs."""
     ok: bool
+    run_ts: str
+    host: str
     results: List[BackupItemResult]
     pruned: List[str]
     manifest_path: Optional[str]
@@ -85,7 +88,8 @@ class BackupExecutor:
         """
         if not plan.ok:
             return BackupRun(
-                ok=False, results=[], pruned=[], manifest_path=None,
+                ok=False, run_ts="", host=socket.gethostname(),
+                results=[], pruned=[], manifest_path=None,
                 reason="Vorabpruefung fehlgeschlagen: " + plan.reason)
 
         run_ts = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
@@ -102,7 +106,8 @@ class BackupExecutor:
         reason = "" if overall_ok else (
             "Mindestens eine DB-Sicherung schlug fehl oder ist nicht integer "
             "(siehe Manifest).")
-        return BackupRun(ok=overall_ok, results=results, pruned=pruned,
+        return BackupRun(ok=overall_ok, run_ts=run_ts, host=host,
+                         results=results, pruned=pruned,
                          manifest_path=manifest_path, reason=reason)
 
     # ----------------------------------------------------------- backup_one

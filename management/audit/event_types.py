@@ -61,8 +61,15 @@ class EventType:
     ROLE_ASSIGNED: str = "role_assigned"
     ROLE_REVOKED: str = "role_revoked"
 
+    # --- Build 354: Datensicherung (backups) ---
+    #   Ein Beleg PRO BACKUP-LAUF (nicht pro DB): der Lauf ist EIN angestossener
+    #   Prozess fuer alle Datenbanken gemeinsam. Jede 'backups'-Zeile des Laufs
+    #   koppelt per audit_seq an genau diesen Beleg. Beleg: Bauplan B7 v1.1 §11;
+    #   mc 2026-07-10.
+    BACKUP_CREATED: str = "backup_created"
+
     # --- reserviert für spätere Builds (hier dokumentiert, noch nicht aktiv) ---
-    # NOTIFICATION_SENT, BACKUP_CREATED, RESTORE_PERFORMED
+    # NOTIFICATION_SENT, RESTORE_PERFORMED
 
     #: Alle aktuell gültigen Werte. Erweitern, nie entfernen/umbenennen.
     ALL: FrozenSet[str] = frozenset(
@@ -85,6 +92,7 @@ class EventType:
             RBAC_REVOKED,
             ROLE_ASSIGNED,
             ROLE_REVOKED,
+            BACKUP_CREATED,
         }
     )
 
