@@ -8,8 +8,8 @@
 # M02 — /api/overview: 403 ohne dashboard.view; 200 mit; Scope 'eigene' filtert
 #       auf eigene Zuweisungen, 'alle' liefert alle.
 # M03 — /api/integrity: 403 ohne ops.view; 200 mit (ok, tip_seq, detail).
-# M04 — / : Shell-HTML enthaelt den Anzeigenamen.
-# M05 — unbekannter Pfad -> 404; /static/... -> 404 mit Hinweis.
+# M04 — / : liefert die statische cockpit.html (Nav-Container + Frontend-Skript).
+# M05 — unbekannter Pfad -> 404; /static/cockpit.js -> 200; fehlend -> 404.
 # M06 — format_sse_event: RFC-8895-Rahmen (event:/data:/Leerzeile).
 # M07 — startup_selfcheck: gruen bei vollstaendigem Katalog; RbacCatalogError
 #       bei Luecke.
@@ -181,17 +181,26 @@ class ManagementServerTests(unittest.TestCase):
 
     # M04 --------------------------------------------------------------------
     def test_m04_shell(self):
+        # Build 347: '/' liefert die statische cockpit.html (kein inline
+        # eingebackener Anzeigename mehr; dieser kommt im Browser aus whoami).
         r = self.app.dispatch(1, "/")
         self.assertEqual(r.status, 200)
         self.assertIn("text/html", r.content_type)
-        self.assertIn("Chefin, Alpha", r.body.decode("utf-8"))
+        html = r.body.decode("utf-8")
+        self.assertIn("id=\"aiw-nav\"", html)          # Nav-Container vorhanden
+        self.assertIn("/static/cockpit.js", html)      # Frontend eingebunden
 
     # M05 --------------------------------------------------------------------
-    def test_m05_not_found(self):
+    def test_m05_not_found_and_static(self):
+        # Unbekannter Pfad -> 404.
         self.assertEqual(self.app.dispatch(1, "/nope").status, 404)
+        # Build 347: /static/cockpit.js wird jetzt AUSGELIEFERT (200, JS-MIME).
         r = self.app.dispatch(1, "/static/cockpit.js")
-        self.assertEqual(r.status, 404)
-        self.assertIn("Cockpit", self._json(r)["detail"])
+        self.assertEqual(r.status, 200)
+        self.assertIn("javascript", r.content_type)
+        # Nicht vorhandenes Asset -> 404.
+        self.assertEqual(
+            self.app.dispatch(1, "/static/gibtsnicht.js").status, 404)
 
     # M06 --------------------------------------------------------------------
     def test_m06_sse_format(self):

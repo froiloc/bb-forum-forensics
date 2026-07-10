@@ -23,12 +23,19 @@
 # READ-ONLY im ersten Build: ausschliesslich GET-Semantik, kein CoordinatorWriter,
 #   keine Migration.
 #
-# Version: v0.7.346 · Build: 346 · 2026-07-10
+# Build 347 (Cockpit-Shell): '/' liefert jetzt die statische cockpit.html (der
+#   frueher inline gebackene Platzhalter _SHELL_HTML entfaellt; der Anzeigename
+#   wird im Browser per fetch('/api/whoami') gesetzt). '/static/<f>' liefert
+#   echte Assets ueber StaticAssets (cockpit.* + management-lokale Vendor-Libs)
+#   statt des 404-Platzhalters.
+#
+# Version: v0.7.347 · Build: 347 · 2026-07-10
 # =============================================================================
 
 import json
 import sqlite3
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from management.audit.audit_log import AuditLog
@@ -42,6 +49,11 @@ from management.rbac.rbac_resolver import (
     RbacResolver,
     verify_catalog_present,
 )
+from management.server.static_assets import StaticAssets
+
+#: Basisverzeichnis der statischen Cockpit-Assets (cockpit.* + Vendor).
+#: Liegt neben diesem Modul (management/server/static/).
+STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 #: Faehigkeits-Gates je Endpunkt (None = kein Gate, nur eigene Identitaet).
 CAP_OVERVIEW = "dashboard.view"
@@ -85,28 +97,15 @@ def format_sse_event(event_name: str, data: Dict[str, Any]) -> bytes:
     ).encode("utf-8")
 
 
-# Minimale Platzhalter-Shell. Die vollstaendige, policy-getriebene Cockpit-
-# Oberflaeche folgt in einem browser-verifizierbaren Build (Split 314/315);
-# diese Seite ist bewusst schlicht und dient dem Backend-Nachweis.
-_SHELL_HTML = (
-    "<!doctype html><html lang=\"de\"><head><meta charset=\"utf-8\">"
-    "<title>AIW Verwaltung</title></head><body>"
-    "<h1>AIW Verwaltung</h1>"
-    "<p>Angemeldet als <strong>%(display)s</strong> (%(user)s).</p>"
-    "<p>Backend aktiv (read-only). Die Cockpit-Oberflaeche folgt in einem "
-    "gesonderten Build.</p>"
-    "<ul><li><a href=\"/api/whoami\">/api/whoami</a></li>"
-    "<li><a href=\"/api/overview\">/api/overview</a></li>"
-    "<li><a href=\"/api/integrity\">/api/integrity</a></li></ul>"
-    "</body></html>"
-)
-
-
 class ManagementApp:
     """Read-only Request-Aufloesung des Management-Servers (ohne Socket)."""
 
-    def __init__(self, db_path: str) -> None:
+    def __init__(self, db_path: str,
+                 static_dir: Optional[Path] = None) -> None:
         self._db_path = db_path
+        # Statische Auslieferung gekapselt (Grundregel 10). static_dir ist im
+        # Test injizierbar; PROD nutzt STATIC_DIR neben diesem Modul.
+        self._static = StaticAssets(static_dir or STATIC_DIR)
 
     # ------------------------------------------------------------- Verbindung
     def _ro_con(self) -> sqlite3.Connection:
@@ -161,7 +160,7 @@ class ManagementApp:
         Serverstart aufgeloeste Identitaet. Gibt eine Response zurueck.
         """
         if path == "/":
-            return self._shell(person_id)
+            return self._index()
         if path == "/api/whoami":
             return self._whoami(person_id)
         if path == "/api/overview":
@@ -169,9 +168,7 @@ class ManagementApp:
         if path == "/api/integrity":
             return self._integrity(person_id)
         if path.startswith("/static/"):
-            return Response.json(
-                404, {"error": "not_found",
-                       "detail": "Statische Assets folgen mit dem Cockpit-Frontend."})
+            return self._serve_static(path[len("/static/"):])
         return Response.json(404, {"error": "not_found", "path": path})
 
     # --------------------------------------------------------------- Helfer
@@ -179,15 +176,19 @@ class ManagementApp:
         return Response.json(
             403, {"error": "forbidden", "capability": capability})
 
-    def _shell(self, person_id: int) -> Response:
-        con = self._ro_con()
-        try:
-            p = self._person(con, person_id)
-        finally:
-            con.close()
-        display = p["display_name"] if p else "?"
-        user = p["system_username"] if p else "?"
-        return Response.html(200, _SHELL_HTML % {"display": display, "user": user})
+    def _index(self) -> Response:
+        """
+        '/' liefert die statische Cockpit-Shell (cockpit.html). Der Anzeigename
+        wird NICHT mehr server-seitig eingebacken, sondern im Browser per
+        fetch('/api/whoami') gesetzt (policy-getriebene Nav, Build 347).
+        """
+        status, ctype, body = self._static.serve("cockpit.html")
+        return Response(status=status, content_type=ctype, body=body)
+
+    def _serve_static(self, rel: str) -> Response:
+        """Statisches Asset unter /static/<rel> ausliefern (StaticAssets)."""
+        status, ctype, body = self._static.serve(rel)
+        return Response(status=status, content_type=ctype, body=body)
 
     def _whoami(self, person_id: int) -> Response:
         con = self._ro_con()
