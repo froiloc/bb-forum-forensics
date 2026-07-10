@@ -1,7 +1,6 @@
-5637eab4c093a5bb851cd301808f2ad4  management/migrations/coordinator/m006_rbac_schema.py
-84c05887d954323b2719e43817bfd2ef  management/rbac/__init__.py
-adc5f0d50b7f3a92a6946987d9b5a231  management/rbac/catalog.py
-8fb897cee96ee1b5501e77e503953c09  tests/test_management_rbac_schema.py
-91618ea2cbe8c653deacc1b69def6ffd  tests/test_management_dashboard.py
-153536d76f22b0d9aa774b283a29f38d  build.json
-fd201ffb080b88ba4073f41d8439de55  management/Bauplan_Build343_RBAC_Schema_v0_1.md
+459d3192043890b223a6ffa13f34ad5c  management/rbac/rbac_repo.py
+9fd4676c0b9cdf31039c8ac73d584eb4  management/rbac/rbac_admin.py
+2f294be9a84cb864153b59c09cb4c87b  management/audit/event_types.py
+d7672fc1879ffdca2a3494e7ee78d2ef  tests/test_management_rbac_repo.py
+ab1bf5a0c597808d5ccc3223ecf328f4  build.json
+bb44e13a1c8e234360720ddaae2b8d6f  management/Bauplan_Build344_RBAC_Writepath_v0_1.md

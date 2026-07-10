@@ -51,6 +51,16 @@ class EventType:
     #   CASE_*-Eintrag, auf den die Zeitstrahl-Zeile per audit_seq zeigt.
     CASE_EVENT_ADDED: str = "case_event_added"
 
+    # --- Build 344: RBAC-Schreibpfad (rbac_grant / person_role) ---
+    #   Vergabe/Ruecknahme von Faehigkeits-Grants und Rollenzuweisungen. Jeder
+    #   Schreibvorgang koppelt die Zeile per audit_seq an genau diesen Beleg
+    #   (append-only Soft-Revoke; kein DELETE). Beleg: Bauplan B7 v1.1
+    #   §11.1/§11.3/§11.7, RBAC Schnitt (b); mc 2026-07-10.
+    RBAC_GRANTED: str = "rbac_granted"
+    RBAC_REVOKED: str = "rbac_revoked"
+    ROLE_ASSIGNED: str = "role_assigned"
+    ROLE_REVOKED: str = "role_revoked"
+
     # --- reserviert für spätere Builds (hier dokumentiert, noch nicht aktiv) ---
     # NOTIFICATION_SENT, BACKUP_CREATED, RESTORE_PERFORMED
 
@@ -71,6 +81,10 @@ class EventType:
             INVESTIGATOR_UPDATED,
             SUPPORT_SESSION_STARTED,
             SUPPORT_SESSION_ENDED,
+            RBAC_GRANTED,
+            RBAC_REVOKED,
+            ROLE_ASSIGNED,
+            ROLE_REVOKED,
         }
     )
 
