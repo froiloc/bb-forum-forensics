@@ -20,6 +20,45 @@ paths:
   default_db:      "./data/default.db"
   evidence_db_dir: "./data/evidence/"
   assets_db_dir:   "./data/assets/"    # NEU Build 017 — assets_<uid>.db liegt hier
+  templates_db:    "./data/templates.db"     # NEU Build 117 — Bug 3.3
+  translations_db: "./data/translations.db"  # NEU Build 329 — KI-Uebersetzungen (read-only ATTACH)
+
+# =============================================================================
+# Backup (Welle 0, Build 352 ff.). Sicherung ALLER Datenbanken per
+# transaktionalem SQLite-Snapshot ('VACUUM INTO'): das erzeugt eine saubere,
+# WAL-unabhaengige Kopie und veraendert die Quelle NICHT (Beleg: Bauplan B7 §11;
+# Datenmigrationsleitfaden v0.2 §4). NIE 'wal_checkpoint(TRUNCATE)' im Backup-
+# Pfad. Diese Sektion deckt Ziel und Rahmenbedingungen ab; das eigentliche
+# Schreiben erfolgt im Executor (Build 353), die Registrierung in Build 354.
+# =============================================================================
+backup:
+  # Zielverzeichnis fuer die Backup-Dateien. Prod: UNC/SMB-Pfad auf dem
+  # Backup-Ziel, z.B. "\\\\prod01\\dfs\\backups\\". Das Verzeichnis (oder sein
+  # Elternverzeichnis) muss erreichbar sein; die Vorabpruefung meldet sonst
+  # einen klaren Fehler, bevor irgendetwas geschrieben wird.
+  dest_dir: "./backups/"
+
+  # Aufbewahrung: wie viele Backup-GENERATIONEN je Datenbank behalten werden.
+  # Aeltere Generationen werden erst vom Executor (Build 353) beschnitten.
+  retention_count: 7
+
+  # Speicherplatz-Vorabpruefung (vorfall-getrieben: 'default.db'-Malformed durch
+  # volle Platte am 2026-07-01). Vor dem Backup muss am Ziel mindestens
+  # (min_free_factor * Gesamtgroesse aller Quell-DBs) frei sein. Der Faktor > 1
+  # gibt Reserve fuer temporaeren VACUUM-Overhead und Dateisystem-Verschnitt.
+  min_free_factor: 1.3
+
+  # WAL-Behandlung vor dem Snapshot: "passive" fuehrt ein nicht-blockierendes
+  # 'wal_checkpoint(PASSIVE)' aus (trimmt WAL, ohne Schreiber zu stoeren);
+  # "none" ueberspringt das. NIEMALS "truncate" (blockiert/gefaehrdet Live).
+  checkpoint: "passive"
+
+  # Ob die gemeinsam genutzten/Referenz-Datenbanken mitgesichert werden:
+  # default.db und templates.db (koennen wachsen) sowie translations.db
+  # (KI-Uebersetzungen, aendert sich kaum, soll aber mindestens einmal gesichert
+  # sein). true = mitsichern (empfohlen). Die fallbezogenen Ermittler-DBs
+  # (coordinator, evidence/forensic/assets je uid) werden IMMER gesichert.
+  include_shared_dbs: true
 
 hosts_management:
   enabled: false

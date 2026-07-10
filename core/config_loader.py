@@ -81,6 +81,16 @@ _DEFAULTS: dict[str, Any] = {
         "evidence_db_dir":  "./data/evidence/",
         "assets_db_dir":    "./data/assets/",    # NEU Build 017
         "templates_db":     "./data/templates.db",  # NEU Build 117 — Bug 3.3
+        "translations_db":  "./data/translations.db",  # NEU Build 329 — read-only ATTACH
+    },
+    # Backup (Welle 0, Build 352 ff.). Ziel + Rahmenbedingungen fuer die
+    # DB-Sicherung per 'VACUUM INTO'. Siehe kommentierte config.yaml.
+    "backup": {
+        "dest_dir":            "./backups/",
+        "retention_count":     7,      # Generationen je DB
+        "min_free_factor":     1.3,    # frei >= Faktor * Gesamt-Quellgroesse
+        "checkpoint":          "passive",  # passive | none (nie truncate)
+        "include_shared_dbs":  True,   # default/templates/translations mitsichern
     },
     "hosts_management": {
         "enabled":        False,
