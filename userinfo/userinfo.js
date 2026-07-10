@@ -1068,39 +1068,70 @@ function initTabulatorTables(container) {
         table.parentNode.insertBefore(wrapper, table);
         table.style.display = 'none';  // Original-Tabelle ausblenden (BLOB bleibt intakt)
 
-        // Tabulator instanziieren
+        // Tabulator instanziieren. Konfiguration in buildTabulatorConfig()
+        // ausgelagert (isoliert testbar). Variante A (Pkt.7): Inhaltshoehe,
+        // kein maxHeight -> Pager wird nicht mehr gekappt.
         // eslint-disable-next-line no-new
-        new Tabulator(wrapper, {
-            data:           rows,
-            columns:        columns,
-            layout:         'fitDataStretch',
-            height:         'auto',
-            maxHeight:      '600px',
-            pagination:     rows.length > 50 ? 'local' : false,
-            paginationSize: 50,
-            locale:         'de-de',
-            langs: {
-                'de-de': {
-                    pagination: {
-                        first:     'Erste',
-                        first_title: 'Erste Seite',
-                        last:      'Letzte',
-                        last_title: 'Letzte Seite',
-                        prev:      'Zurück',
-                        prev_title: 'Vorherige Seite',
-                        next:      'Weiter',
-                        next_title: 'Nächste Seite',
-                        all:       'Alle',
-                        page_size: 'Zeilen pro Seite',
-                        page_counter: '{count} von {total}',
-                    },
-                    headerFilters: {
-                        default: 'Filtern…',
-                    },
+        new Tabulator(wrapper, buildTabulatorConfig(rows, columns));
+    });
+}
+
+/**
+ * Baut die Tabulator-Konfiguration fuer eine BLOB-Tabelle.
+ *
+ * Variante A (Beleg: Bauplan Userinfo-Verschoenerung Pkt.7, Entscheidung
+ * 2026-07-10): Inhaltshoehe statt fixer 600px.
+ *
+ * Ursache des fehlenden Blaetter-Pagers (Console-Diagnose 2026-07-10):
+ *   maxHeight:'600px' zusammen mit Tabulators Basis-CSS
+ *   .tabulator { overflow:hidden } kappte alles jenseits 600px — inklusive des
+ *   im Fluss DARUNTER liegenden Footers/Paginators (footer war im DOM,
+ *   display:block/visibility:visible, aber bei top~3920px ausserhalb der
+ *   600px-Kappung). Kein Sichtbarkeits-, sondern ein Kappungsproblem.
+ *
+ * Fix: KEIN maxHeight, height:false -> die Tabelle ist so hoch wie ihr Inhalt,
+ * der Pager fliesst immer sichtbar darunter. Nebenwirkung geschlossen (GR1):
+ * auch NICHT-paginierte Tabellen (<=50 Zeilen) hoeher als 600px zeigten zuvor
+ * ihre unteren Zeilen gar nicht (kein Scroll, kein Pager) — jetzt vollstaendig.
+ *
+ * Bewusst als eigene Funktion: so ist die Konfiguration ohne die Tabulator-
+ * Bibliothek und ohne DOM unit-testbar (Anti-"gruen aber tot", B4-S12).
+ *
+ * @param {Array} rows    - Zeilendaten
+ * @param {Array} columns - Spaltendefinitionen
+ * @returns {object} Tabulator-Optionsobjekt
+ */
+function buildTabulatorConfig(rows, columns) {
+    return {
+        data:           rows,
+        columns:        columns,
+        layout:         'fitDataStretch',
+        // Variante A: Inhaltshoehe. KEIN maxHeight (das kappte den Pager).
+        height:         false,
+        pagination:     rows.length > 50 ? 'local' : false,
+        paginationSize: 50,
+        locale:         'de-de',
+        langs: {
+            'de-de': {
+                pagination: {
+                    first:     'Erste',
+                    first_title: 'Erste Seite',
+                    last:      'Letzte',
+                    last_title: 'Letzte Seite',
+                    prev:      'Zurück',
+                    prev_title: 'Vorherige Seite',
+                    next:      'Weiter',
+                    next_title: 'Nächste Seite',
+                    all:       'Alle',
+                    page_size: 'Zeilen pro Seite',
+                    page_counter: '{count} von {total}',
+                },
+                headerFilters: {
+                    default: 'Filtern…',
                 },
             },
-        });
-    });
+        },
+    };
 }
 
 // ===========================================================================

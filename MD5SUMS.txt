@@ -1,6 +1,3 @@
-8bef77b86e789c1fa594dccf6deedd66  db/forensic_db.py
-1e5aac75c586930397a3c734bc0a4998  forensic_api/userinfo.py
-2070229047515e7a1bf8ce7efb4e2ec4  userinfo/userinfo.js
-440c74f47f6cce2def93633f753d01f3  tests/test_baustelle4.py
-f5ed124ba5359488dc2d3f62e3f458dc  tests/unit/test_toc_build.test.js
-e27de2e31a901dfe0524dc5e4e84bdcc  build.json
+f014881a826e983b4ee9a6964c585fac  userinfo/userinfo.js
+4ea37712f4c9fa80ad71aa548b9ba339  tests/unit/test_tabulator_config.test.js
+e072776d2694fda6525f2184c4f05354  build.json
