@@ -13,9 +13,11 @@
 //
 // ABGRENZUNG (Split analog 314/315, Beleg: UEBERGABE_Build346 §6):
 //   347 = Fundament (Nav, Rechte). 348 = Overview-Sicht (Tabulator) + SSE-Reload.
-//   349 = Integritaets-/Ops-Sicht (/api/integrity, cockpit_integrity.js) +
-//   globaler Ketten-Banner (still ohne ops.view) + SSE-Reaktualisierung des
-//   Banners; ausserdem Live-DEBUG (Flag zur Laufzeit auslesbar, kein Reload).
+//   349 = Integritaets-/Ops-Sicht + Ketten-Banner + Live-DEBUG.
+//   350 = Backend /api/workload + ECharts-Vendoring.
+//   351 = Lastverteilung-Sicht (/api/workload, cockpit_workload.js) als
+//   gestapeltes ECharts-Balkendiagramm + SSE-Reload; ECharts-Lifecycle
+//   (dispose + Resize) in cleanupView().
 //
 // KAPSELUNG / PROJEKT-GEBOTE FUER JS:
 //   1) IIFE-Wrapper mit 'use strict'.
@@ -32,7 +34,7 @@
 //   aber ebenfalls via textContent gesetzt (Prinzip: kein innerHTML mit
 //   variablem Text).
 //
-// Version: v0.7.349 · Build: 349 · 2026-07-10
+// Version: v0.7.351 · Build: 351 · 2026-07-10
 // =============================================================================
 
 (function () {
@@ -229,7 +231,13 @@
 
     // Zustand lebt nur im Speicher (kein localStorage — Projekt-/Artefakt-Regel).
     // table = aktuelle Tabulator-Instanz (Build 348, Overview); sse = EventSource.
-    var state = { capabilities: {}, activeId: null, table: null, sse: null };
+    var state = {
+        capabilities: {}, activeId: null,
+        table: null,        // aktuelle Tabulator-Instanz (Overview)
+        chart: null,        // aktuelle ECharts-Instanz (Lastverteilung)
+        chartResize: null,  // Resize-Handler der ECharts-Instanz
+        sse: null
+    };
 
     // fetchJson: kleiner Wrapper mit DEV-Logging und klarer Fehlermeldung.
     function fetchJson(url) {
@@ -250,6 +258,27 @@
             try { state.table.destroy(); } catch (e) { log('destroyTable', e); }
         }
         state.table = null;
+    }
+
+    // destroyChart: laufende ECharts-Instanz entsorgen (dispose) und den daran
+    // gebundenen Resize-Handler abmelden. ECharts nutzt dispose(), nicht
+    // destroy() -> daher getrennt von destroyTable().
+    function destroyChart() {
+        if (state.chartResize && typeof window !== 'undefined') {
+            window.removeEventListener('resize', state.chartResize);
+            state.chartResize = null;
+        }
+        if (state.chart && typeof state.chart.dispose === 'function') {
+            try { state.chart.dispose(); } catch (e) { log('destroyChart', e); }
+        }
+        state.chart = null;
+    }
+
+    // cleanupView: alle sicht-spezifischen Artefakte (Tabelle UND Diagramm)
+    // abbauen. Wird beim Sichtwechsel und vor jedem Neuaufbau aufgerufen.
+    function cleanupView() {
+        destroyTable();
+        destroyChart();
     }
 
     // renderError: sichtbarer Fehlerhinweis im Hauptbereich (kein stiller Fehlpfad).
@@ -273,13 +302,40 @@
             return;
         }
         fetchJson('/api/overview').then(function (data) {
-            destroyTable();  // vorherige Instanz vor Neuaufbau abbauen
+            cleanupView();  // vorherige Artefakte vor Neuaufbau abbauen
             state.table = ov.renderOverview(mainEl, data, {});
             log('Overview gerendert:', data.count, 'Faelle, scope', data.scope);
         }).catch(function (err) {
-            destroyTable();
+            cleanupView();
             renderError(mainEl,
                 'Uebersicht konnte nicht geladen werden: ' + err.message);
+        });
+    }
+
+    // loadWorkload: /api/workload holen und als ECharts-Diagramm rendern
+    // (cockpit_workload.js). Bindet einen Resize-Handler an die Instanz, damit
+    // das Diagramm bei Fensteraenderung mitwaechst (in cleanupView abgemeldet).
+    function loadWorkload(mainEl) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined') ? window.AIWCockpitWorkload : null;
+        if (!mod) {
+            renderError(mainEl, 'Workload-Modul nicht geladen.');
+            return;
+        }
+        fetchJson('/api/workload').then(function (data) {
+            cleanupView();  // Tabelle/altes Diagramm vor Neuaufbau abbauen
+            state.chart = mod.renderWorkload(mainEl, data, {});
+            if (state.chart && typeof state.chart.resize === 'function') {
+                state.chartResize = function () {
+                    try { state.chart.resize(); } catch (e) { log('resize', e); }
+                };
+                window.addEventListener('resize', state.chartResize);
+            }
+            log('Workload gerendert:', data.count, 'Zeilen, scope', data.scope);
+        }).catch(function (err) {
+            cleanupView();
+            renderError(mainEl,
+                'Lastverteilung konnte nicht geladen werden: ' + err.message);
         });
     }
 
@@ -344,7 +400,7 @@
     // sonst Platzhalter (weitere Sichten folgen).
     function selectView(viewId) {
         state.activeId = viewId;
-        destroyTable();  // beim Sichtwechsel evtl. offene Tabelle abbauen
+        cleanupView();  // beim Sichtwechsel offene Tabelle/Diagramm abbauen
         var navEl = document.getElementById('aiw-nav');
         var mainEl = document.getElementById('aiw-main');
         var views = visibleViews(state.capabilities);
@@ -353,6 +409,8 @@
             loadOverview(mainEl);
         } else if (viewId === 'integrity') {
             loadIntegrity(mainEl);
+        } else if (viewId === 'workload') {
+            loadWorkload(mainEl);
         } else {
             renderPlaceholder(mainEl, viewById(viewId));
         }
@@ -376,6 +434,8 @@
                 loadOverview();
             } else if (state.activeId === 'integrity') {
                 loadIntegrity();   // aktualisiert Sicht UND Banner
+            } else if (state.activeId === 'workload') {
+                loadWorkload();
             }
             // Banner global frisch halten, wenn die aktive Sicht nicht die
             // Integritaets-Sicht ist (dort geschieht es bereits oben).

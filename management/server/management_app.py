@@ -29,12 +29,17 @@
 #   echte Assets ueber StaticAssets (cockpit.* + management-lokale Vendor-Libs)
 #   statt des 404-Platzhalters.
 #
-# Version: v0.7.347 · Build: 347 · 2026-07-10
+# Build 350 (Lastverteilung Backend): '/api/workload' liefert die Lastverteilung
+#   je Ermittler (WorkloadRepo, read-only, scope-aware); ECharts wird management-
+#   lokal vendort und ueber StaticAssets ausgeliefert. Die ECharts-Frontend-Sicht
+#   folgt in Build 351 (browser-verifizierbar, console-first).
+#
+# Version: v0.7.350 · Build: 350 · 2026-07-10
 # =============================================================================
 
 import json
 import sqlite3
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -50,6 +55,10 @@ from management.rbac.rbac_resolver import (
     verify_catalog_present,
 )
 from management.server.static_assets import StaticAssets
+from management.workload.workload_repo import (
+    WorkloadRepo,
+    WorkloadSchemaError,
+)
 
 #: Basisverzeichnis der statischen Cockpit-Assets (cockpit.* + Vendor).
 #: Liegt neben diesem Modul (management/server/static/).
@@ -58,6 +67,7 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 #: Faehigkeits-Gates je Endpunkt (None = kein Gate, nur eigene Identitaet).
 CAP_OVERVIEW = "dashboard.view"
 CAP_INTEGRITY = "ops.view"
+CAP_WORKLOAD = "workload.view"
 
 
 @dataclass(frozen=True)
@@ -167,6 +177,8 @@ class ManagementApp:
             return self._overview(person_id)
         if path == "/api/integrity":
             return self._integrity(person_id)
+        if path == "/api/workload":
+            return self._workload(person_id)
         if path.startswith("/static/"):
             return self._serve_static(path[len("/static/"):])
         return Response.json(404, {"error": "not_found", "path": path})
@@ -265,3 +277,33 @@ class ManagementApp:
             "detail": res.detail,
             "tip_seq": tip_seq,
         })
+
+    def _workload(self, person_id: int) -> Response:
+        """
+        Lastverteilung je Ermittler (read-only). Nutzt WorkloadRepo; liefert je
+        Ermittler eine Last-Zeile plus eine Rueckstau-Zeile (unzugewiesen).
+        Scope-aware analog _overview: 'alle' -> volle Verteilungssicht;
+        'eigene' (oder ungesetzt) -> nur die EIGENE Last-Zeile (Rueckstau und
+        fremde Ermittler bleiben gekapselt; Zweckbindung, default restriktiv).
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_WORKLOAD):
+            return self._forbidden(CAP_WORKLOAD)
+        scope = policy.scope(CAP_WORKLOAD)  # 'alle' | 'eigene' | None
+
+        con = self._ro_con()
+        try:
+            try:
+                loads = WorkloadRepo(con).list_workload()
+            except WorkloadSchemaError as exc:
+                return Response.json(
+                    503, {"error": "schema", "detail": str(exc)})
+        finally:
+            con.close()
+
+        if scope != "alle":
+            loads = [l for l in loads if l.investigator_id == person_id]
+
+        items = [asdict(l) for l in loads]
+        return Response.json(200, {"scope": scope, "count": len(items),
+                                   "loads": items})

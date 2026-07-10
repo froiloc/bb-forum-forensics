@@ -108,6 +108,10 @@ class ManagementServerTests(unittest.TestCase):
         self.repo.grant("investigator", "dashboard.view", scope="eigene",
                         actor_id=1)
         self.repo.assign_role(2, "investigator", actor_id=1)
+        # Lastverteilung: supervisor sieht alle, investigator nur die eigene Zeile.
+        self.repo.grant("supervisor", "workload.view", scope="alle", actor_id=1)
+        self.repo.grant("investigator", "workload.view", scope="eigene",
+                        actor_id=1)
 
         # Zwei Faelle: 18 h002 zugewiesen, 19 unzugewiesen.
         from management.cases.cases_repo import CasesRepo
@@ -280,9 +284,68 @@ class ManagementServerTests(unittest.TestCase):
         self.app.dispatch(1, "/api/whoami")
         self.app.dispatch(1, "/api/overview")
         self.app.dispatch(1, "/api/integrity")
+        self.app.dispatch(1, "/api/workload")
         after = self.con.execute(
             "SELECT COUNT(*) FROM audit_log").fetchone()[0]
         self.assertEqual(before, after)
+
+    # W01 — /api/workload (Build 350): supervisor (scope alle) sieht alle
+    #       Ermittler-Zeilen plus die Rueckstau-Zeile.
+    def test_w01_workload_scope_alle(self):
+        r = self.app.dispatch(1, "/api/workload")
+        self.assertEqual(r.status, 200)
+        d = self._json(r)
+        self.assertEqual(d["scope"], "alle")
+        # 2 Ermittler (h001, h002) + 1 Rueckstau-Zeile.
+        self.assertEqual(d["count"], 3)
+        loads = d["loads"]
+        backlog = [l for l in loads if l["is_backlog"]]
+        self.assertEqual(len(backlog), 1)
+        self.assertEqual(backlog[0]["investigator_id"], 0)
+        # Fall 18 ist h002 (person 2) zugewiesen -> dessen Zeile zaehlt >=1.
+        h002 = [l for l in loads if l["investigator_id"] == 2][0]
+        self.assertGreaterEqual(h002["total_cases"], 1)
+        # Fall 19 ist unzugewiesen -> Rueckstau zaehlt >=1.
+        self.assertGreaterEqual(backlog[0]["total_cases"], 1)
+
+    # W02 — investigator (scope eigene) sieht NUR die eigene Last-Zeile;
+    #       kein Rueckstau, keine fremden Ermittler.
+    def test_w02_workload_scope_eigene(self):
+        r = self.app.dispatch(2, "/api/workload")
+        self.assertEqual(r.status, 200)
+        d = self._json(r)
+        self.assertEqual(d["scope"], "eigene")
+        self.assertEqual(d["count"], 1)
+        self.assertEqual(d["loads"][0]["investigator_id"], 2)
+        self.assertFalse(d["loads"][0]["is_backlog"])
+
+    # W03 — ohne workload.view -> 403. person 3 hat keinerlei Grants.
+    def test_w03_workload_forbidden(self):
+        self.con.execute(
+            "INSERT INTO person (id, system_username, display_name, "
+            "is_investigator, is_supervisor, is_support, created_at) "
+            "VALUES (3, 'h003', 'Gamma', 1, 0, 0, ?)", (int(time.time()),))
+        self.con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        r = self.app.dispatch(3, "/api/workload")
+        self.assertEqual(r.status, 403)
+        self.assertEqual(self._json(r)["capability"], "workload.view")
+
+    # W04 — Last-DTO enthaelt die erwarteten Aggregat-Felder.
+    def test_w04_workload_shape(self):
+        d = self._json(self.app.dispatch(1, "/api/workload"))
+        row = d["loads"][0]
+        for key in ("investigator_id", "system_username", "display_name",
+                    "is_backlog", "total_cases", "ampel_rot", "ampel_gelb",
+                    "ampel_gruen", "active_cases", "done_cases",
+                    "audit_action_count"):
+            self.assertIn(key, row)
+
+    # W05 — vendorte ECharts-Datei wird ausgeliefert (JS-MIME).
+    def test_w05_echarts_served(self):
+        r = self.app.dispatch(1, "/static/vendor/echarts/echarts.min.js")
+        self.assertEqual(r.status, 200)
+        self.assertIn("javascript", r.content_type)
+        self.assertGreater(len(r.body), 100000)
 
 
 if __name__ == "__main__":
