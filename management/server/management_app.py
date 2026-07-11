@@ -38,15 +38,16 @@
 #   Ermittler eine Kapazitaets-Zeile (inkl. Anzeigename) fuer die Cockpit-Sicht
 #   (Build 360). Mit person_id unveraendert (Einzelperson, Build 358).
 #
-# Build 366 (Support-Historie Backend): /api/support (support_history.view,
-#   scope-aware) liefert die belegbasiert rekonstruierten Support-Sitzungen
-#   (SupportOverviewRepo), je Sitzung markiert mit mine_as_supporter/on_my_case.
+# Build 368 (Ermittler-Betreuung Backend): /api/mentoring (mentoring.view,
+#   scope-aware) liefert die LAUFENDEN Support-Sitzungen (support_sessions,
+#   ended_at IS NULL) mit Live/Stale-Bewertung (Heartbeat-Alter vs. stale_sec).
 #
-# Version: v0.7.366 · Build: 366 · 2026-07-10
+# Version: v0.7.368 · Build: 368 · 2026-07-10
 # =============================================================================
 
 import json
 import sqlite3
+import time
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -70,6 +71,8 @@ from management.support_overview.support_overview_repo import (
     SupportOverviewRepo,
     SupportOverviewSchemaError,
 )
+from management.support_sessions.support_sessions_repo import SupportSessionsRepo
+from db.coordinator_db import DEFAULT_SUPPORT_STALE_SEC
 from management.capacity.capacity_errors import CapacityError
 from management.workload.workload_repo import (
     WorkloadRepo,
@@ -89,6 +92,7 @@ CAP_POLICY = "policy.view"
 CAP_MYCASES = "mycases.view"
 CAP_MYHISTORY = "myhistory.view"
 CAP_SUPPORT = "support_history.view"
+CAP_MENTORING = "mentoring.view"
 
 
 def _case_overview_item(c) -> Dict[str, Any]:
@@ -229,6 +233,8 @@ class ManagementApp:
             return self._myhistory(person_id, query)
         if path == "/api/support":
             return self._support(person_id)
+        if path == "/api/mentoring":
+            return self._mentoring(person_id)
         if path.startswith("/static/"):
             return self._serve_static(path[len("/static/"):])
         return Response.json(404, {"error": "not_found", "path": path})
@@ -526,4 +532,40 @@ class ManagementApp:
             d["on_my_case"] = oncase
             sessions.append(d)
         return Response.json(200, {"scope": scope, "count": len(sessions),
+                                   "sessions": sessions})
+
+    def _mentoring(self, person_id: int) -> Response:
+        """
+        Ermittler-Betreuung (read-only, LIVE): die aktuell LAUFENDEN Support-
+        Sitzungen (support_sessions, ended_at IS NULL) mit Live/Stale-Bewertung
+        (Heartbeat-Alter vs. stale_sec). Scope 'alle' -> alle laufenden;
+        'eigene' -> nur die eigenen (supporter_id == ich). Betreuungsbeduerftige
+        (stale) zuerst, dann laengstlaufende.
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_MENTORING):
+            return self._forbidden(CAP_MENTORING)
+        scope = policy.scope(CAP_MENTORING)
+        stale_sec = DEFAULT_SUPPORT_STALE_SEC
+        now = int(time.time())
+
+        con = self._ro_con()
+        try:
+            rows = SupportSessionsRepo(con, None).list_running()
+        finally:
+            con.close()
+
+        sessions = []
+        for r in rows:
+            if scope != "alle" and r.get("supporter_id") != person_id:
+                continue
+            hb = r.get("last_heartbeat") or 0
+            r["heartbeat_age_sec"] = now - hb
+            r["started_ago_sec"] = now - (r.get("started_at") or now)
+            r["live"] = (now - hb) <= stale_sec
+            sessions.append(r)
+        # Stale (live=False) zuerst; dann aeltester Start zuerst.
+        sessions.sort(key=lambda s: (s["live"], s["started_at"]))
+        return Response.json(200, {"scope": scope, "stale_sec": stale_sec,
+                                   "count": len(sessions),
                                    "sessions": sessions})

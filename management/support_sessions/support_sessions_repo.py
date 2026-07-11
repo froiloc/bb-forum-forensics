@@ -272,3 +272,24 @@ class SupportSessionsRepo:
             (user_id, threshold),
         ).fetchall()
         return [dict(r) for r in rows]
+
+    def list_running(self) -> List[Dict[str, Any]]:
+        """
+        ALLE laufenden Support-Sitzungen (ended_at IS NULL), falluebergreifend,
+        verknuepft mit Supporter (person) und Fall (cases.username). Read-only,
+        KEINE Stale-Filterung — die Live/Stale-Bewertung erfolgt beim Aufrufer
+        (Ermittler-Betreuung, Build 368). Aufsteigend nach started_at (der am
+        laengsten Laufende zuerst).
+        """
+        rows = self._con.execute(
+            "SELECT s.id, s.user_id, c.username, s.supporter_id, "
+            "       p.system_username AS supporter_system_username, "
+            "       p.display_name AS supporter_display_name, "
+            "       s.started_at, s.last_heartbeat "
+            "FROM support_sessions s "
+            "LEFT JOIN person p ON p.id = s.supporter_id "
+            "LEFT JOIN cases c ON c.user_id = s.user_id "
+            "WHERE s.ended_at IS NULL "
+            "ORDER BY s.started_at ASC"
+        ).fetchall()
+        return [dict(r) for r in rows]
