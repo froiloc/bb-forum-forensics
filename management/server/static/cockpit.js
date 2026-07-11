@@ -38,7 +38,9 @@
 //   Diagramm (Basis vs. netto, Auslastungs-Faerbung, Zeitraumwahl) + SSE-Reload.
 //   362 = Rechte/Policy-Sicht (/api/policy, cockpit_policy.js): Tabulator-Tabellen
 //   fuer Grants + Rollen-Zuweisungen + Katalog + SSE-Reload.
-// Version: v0.7.362 · Build: 362 · 2026-07-10
+//   364 = Persoenliche Sichten (cockpit_mycases.js / cockpit_myhistory.js):
+//   Meine Auftraege + Meine Historie (Tabulator) + SSE-Reload.
+// Version: v0.7.364 · Build: 364 · 2026-07-10
 // =============================================================================
 
 (function () {
@@ -418,6 +420,48 @@
         });
     }
 
+    // loadMyCases: /api/mycases holen und als persoenliche Fall-Liste rendern
+    // (cockpit_mycases.js). Einzelne Tabulator-Instanz -> state.table.
+    function loadMyCases(mainEl) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitMyCases : null;
+        if (!mod) {
+            renderError(mainEl, 'Modul "Meine Auftraege" nicht geladen.');
+            return;
+        }
+        fetchJson('/api/mycases').then(function (data) {
+            cleanupView();
+            state.table = mod.renderMyCases(mainEl, data, {});
+            log('Meine Auftraege gerendert:', data.count);
+        }).catch(function (err) {
+            cleanupView();
+            renderError(mainEl,
+                'Meine Auftraege konnten nicht geladen werden: ' + err.message);
+        });
+    }
+
+    // loadMyHistory: /api/myhistory holen und als kombinierte Zeitleiste
+    // rendern (cockpit_myhistory.js). Einzelne Tabulator-Instanz -> state.table.
+    function loadMyHistory(mainEl) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitMyHistory : null;
+        if (!mod) {
+            renderError(mainEl, 'Modul "Meine Historie" nicht geladen.');
+            return;
+        }
+        fetchJson('/api/myhistory').then(function (data) {
+            cleanupView();
+            state.table = mod.renderMyHistory(mainEl, data, {});
+            log('Meine Historie gerendert:', data.count, 'Eintraege');
+        }).catch(function (err) {
+            cleanupView();
+            renderError(mainEl,
+                'Meine Historie konnte nicht geladen werden: ' + err.message);
+        });
+    }
+
     // applyIntegrity: zentrale Banner-Aktualisierung aus einer Integritaets-
     // Antwort ({ok, first_bad_seq, detail, tip_seq}). Nutzt das Integritaets-
     // Modul (bannerModel + applyBanner). Wird von loadIntegrity UND refreshBanner
@@ -494,6 +538,10 @@
             loadCapacity(mainEl);
         } else if (viewId === 'policy') {
             loadPolicy(mainEl);
+        } else if (viewId === 'mycases') {
+            loadMyCases(mainEl);
+        } else if (viewId === 'myhistory') {
+            loadMyHistory(mainEl);
         } else {
             renderPlaceholder(mainEl, viewById(viewId));
         }
@@ -523,6 +571,10 @@
                 loadCapacity(undefined, state.capacityPeriod);
             } else if (state.activeId === 'policy') {
                 loadPolicy();
+            } else if (state.activeId === 'mycases') {
+                loadMyCases();
+            } else if (state.activeId === 'myhistory') {
+                loadMyHistory();
             }
             // Banner global frisch halten, wenn die aktive Sicht nicht die
             // Integritaets-Sicht ist (dort geschieht es bereits oben).
