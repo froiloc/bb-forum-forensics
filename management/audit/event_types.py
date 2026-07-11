@@ -68,6 +68,17 @@ class EventType:
     #   mc 2026-07-10.
     BACKUP_CREATED: str = "backup_created"
 
+    # --- Build 355: Kapazitaet (Welle 0, §11.4) ---
+    #   Auditierte Schreibpfade fuer die Kapazitaets-Datenbasis. Soft-Delete
+    #   erhaelt einen eigenen '_REMOVED'-Beleg (append-only; kein hartes DELETE).
+    #   mc 2026-07-10.
+    WORKTIME_SET: str = "worktime_set"
+    HOLIDAY_ADDED: str = "holiday_added"
+    HOLIDAY_REMOVED: str = "holiday_removed"
+    AVAILABILITY_REASON_ADDED: str = "availability_reason_added"
+    AVAILABILITY_SET: str = "availability_set"
+    AVAILABILITY_REMOVED: str = "availability_removed"
+
     # --- reserviert für spätere Builds (hier dokumentiert, noch nicht aktiv) ---
     # NOTIFICATION_SENT, RESTORE_PERFORMED
 
@@ -93,6 +104,12 @@ class EventType:
             ROLE_ASSIGNED,
             ROLE_REVOKED,
             BACKUP_CREATED,
+            WORKTIME_SET,
+            HOLIDAY_ADDED,
+            HOLIDAY_REMOVED,
+            AVAILABILITY_REASON_ADDED,
+            AVAILABILITY_SET,
+            AVAILABILITY_REMOVED,
         }
     )
 

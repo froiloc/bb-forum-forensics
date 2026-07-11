@@ -182,8 +182,8 @@ class ManagementDashboardTests(unittest.TestCase):
 
     # D01 --------------------------------------------------------------------
     def test_d01_migrations_and_empty(self):
-        self.assertEqual(self.applied, [1, 2, 4, 5, 6, 7] if 3 not in self.applied
-                         else [1, 2, 3, 4, 5, 6, 7])
+        self.assertEqual(self.applied, [1, 2, 4, 5, 6, 7, 8] if 3 not in self.applied
+                         else [1, 2, 3, 4, 5, 6, 7, 8])
         # discover findet M001..M006 -> support_sessions (M003) IST dabei,
         # der person-Rename (M005, Build 342) ebenso wie das RBAC-Schema
         # (M006, Build 343).
