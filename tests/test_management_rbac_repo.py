@@ -297,6 +297,62 @@ class ManagementRbacRepoTests(unittest.TestCase):
         # Re-open fuer tearDown-Aufraeumen.
         self.con = sqlite3.connect(self.db_path)
 
+    # A02 --------------------------------------------------------------------
+    def test_a02_cli_list_grants_role_filter(self):
+        self.repo.grant("supervisor", "dashboard.view", scope="alle",
+                        actor_id=1)
+        self.repo.grant("supervisor", "ops.view", scope="alle", actor_id=1)
+        self.repo.grant("investigator", "mycases.view", scope="eigene",
+                        actor_id=1)
+        self.con.close()
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = rbac_admin.main(["list-grants", "--role", "supervisor",
+                                  "--coordinator-db", self.db_path])
+        out = buf.getvalue()
+        self.assertEqual(rc, 0)
+        self.assertIn("dashboard.view", out)
+        self.assertIn("ops.view", out)
+        self.assertNotIn("mycases.view", out)  # investigator herausgefiltert
+        # kommagetrennt: supervisor,investigator -> mycases wieder dabei
+        buf2 = io.StringIO()
+        with redirect_stdout(buf2):
+            rbac_admin.main(["list-grants", "--role", "supervisor,investigator",
+                             "--coordinator-db", self.db_path])
+        self.assertIn("mycases.view", buf2.getvalue())
+        self.con = sqlite3.connect(self.db_path)
+
+    # A03 --------------------------------------------------------------------
+    def test_a03_cli_list_roles_filters(self):
+        self.repo.assign_role(1, "supervisor", actor_id=1)
+        self.repo.assign_role(2, "investigator", actor_id=1)
+        self.con.close()
+        # --id 2 -> nur person 2
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rbac_admin.main(["list-roles", "--id", "2",
+                             "--coordinator-db", self.db_path])
+        out = buf.getvalue()
+        self.assertIn("person=2", out)
+        self.assertNotIn("person=1", out)
+        # --role supervisor -> nur die supervisor-Zuweisung (person 1)
+        buf2 = io.StringIO()
+        with redirect_stdout(buf2):
+            rbac_admin.main(["list-roles", "--role", "supervisor",
+                             "--coordinator-db", self.db_path])
+        out2 = buf2.getvalue()
+        self.assertIn("person=1", out2)
+        self.assertNotIn("person=2", out2)
+        # --id 1,2 (kommagetrennt) -> beide
+        buf3 = io.StringIO()
+        with redirect_stdout(buf3):
+            rbac_admin.main(["list-roles", "--id", "1,2",
+                             "--coordinator-db", self.db_path])
+        out3 = buf3.getvalue()
+        self.assertIn("person=1", out3)
+        self.assertIn("person=2", out3)
+        self.con = sqlite3.connect(self.db_path)
+
 
 if __name__ == "__main__":
     unittest.main()

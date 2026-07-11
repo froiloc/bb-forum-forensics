@@ -25,8 +25,8 @@
 #
 #   python -m management.rbac.rbac_admin revoke-role --id N [--actor SYSUSER] ...
 #
-#   python -m management.rbac.rbac_admin list-grants  [--all]
-#   python -m management.rbac.rbac_admin list-roles   [--person SYSUSER] [--all]
+#   python -m management.rbac.rbac_admin list-grants  [--role R1,R2] [--all]
+#   python -m management.rbac.rbac_admin list-roles   [--person SYSUSER] [--id N1,N2] [--role R1,R2] [--all]
 #
 # Verhalten:
 #   - Katalog-Validierung: unbekannte Rolle/Faehigkeit/Scope -> Fehler, kein
@@ -37,7 +37,11 @@
 #   - Nicht-fatal, klare Fehlermeldungen; Exit 0 = ok, 1 = Fehler.
 #
 # Beleg: Bauplan B7 v1.1 §11.1/§11.3/§11.7 (Schnitt b), mc 2026-07-10.
-# Version: v0.7.344 · Build: 344 · 2026-07-10
+# Build 365 (CLI-Filter): list-grants --role R1,R2,... und list-roles
+#   --id N1,N2,... / --role R1,R2,... (jeweils kommagetrennt; --person und --id
+#   werden vereinigt). Warnung bei unbekannten Rollen (Grundregel 1).
+#
+# Version: v0.7.365 · Build: 365 · 2026-07-10
 # =============================================================================
 
 import argparse
@@ -144,6 +148,8 @@ def _build_parser() -> argparse.ArgumentParser:
     # list-grants
     p_lg = sub.add_parser("list-grants", parents=[common],
                           help="Grants auflisten.")
+    p_lg.add_argument("--role", default=None,
+                      help="nur diese Rolle(n), kommagetrennt")
     p_lg.add_argument("--all", action="store_true",
                       help="auch zurueckgenommene Grants")
 
@@ -152,6 +158,10 @@ def _build_parser() -> argparse.ArgumentParser:
                           help="Rollenzuweisungen auflisten.")
     p_lr.add_argument("--person", default=None,
                       help="nur diese Person (system_username)")
+    p_lr.add_argument("--id", default=None,
+                      help="nur diese person_id(s), kommagetrennt")
+    p_lr.add_argument("--role", default=None,
+                      help="nur diese Rolle(n), kommagetrennt")
     p_lr.add_argument("--all", action="store_true",
                       help="auch zurueckgenommene Zuweisungen")
 
@@ -200,8 +210,43 @@ def _cmd_revoke_role(repo, args, actor_id, meta) -> int:
     return 0
 
 
+def _csv_set(value):
+    """Kommagetrennte Zeichenkette -> Menge (None bleibt None). Leere Tokens
+    werden verworfen."""
+    if value is None:
+        return None
+    return {tok.strip() for tok in value.split(",") if tok.strip()}
+
+
+def _csv_int_set(value):
+    """Wie _csv_set, aber ganzzahlig. Wirft ValueError bei ungueltigem Token."""
+    if value is None:
+        return None
+    out = set()
+    for tok in value.split(","):
+        tok = tok.strip()
+        if tok:
+            out.add(int(tok))
+    return out
+
+
+def _warn_unknown_roles(role_set) -> None:
+    """Warnt (stderr), wenn Rollen-Tokens nicht im Katalog stehen — kein stilles
+    Verschlucken (Grundregel 1)."""
+    if not role_set:
+        return
+    unknown = sorted(r for r in role_set if r not in catalog.ROLE_CODES)
+    if unknown:
+        print("[rbac_admin] WARNUNG: unbekannte Rolle(n): %s"
+              % ", ".join(unknown), file=sys.stderr)
+
+
 def _cmd_list_grants(repo, args) -> int:
     rows = repo.list_grants(active_only=not args.all)
+    role_filter = _csv_set(getattr(args, "role", None))
+    if role_filter is not None:
+        _warn_unknown_roles(role_filter)
+        rows = [r for r in rows if r["role_code"] in role_filter]
     if not rows:
         print("[rbac_admin] Keine Grants.")
         return 0
@@ -215,8 +260,28 @@ def _cmd_list_grants(repo, args) -> int:
 
 
 def _cmd_list_roles(repo, con, args) -> int:
-    person_id = _lookup_person_id(con, args.person) if args.person else None
-    rows = repo.list_person_roles(person_id, active_only=not args.all)
+    # Personen-Filter: --id (kommagetrennte person_id-Liste) und/oder --person
+    # (system_username, Einzelperson) werden vereinigt.
+    try:
+        id_filter = _csv_int_set(getattr(args, "id", None))
+    except ValueError:
+        print("[rbac_admin] --id erwartet ganzzahlige person_id(s).",
+              file=sys.stderr)
+        return 1
+    if args.person:
+        pid = _lookup_person_id(con, args.person)
+        id_filter = (id_filter or set()) | {pid}
+
+    role_filter = _csv_set(getattr(args, "role", None))
+    if role_filter is not None:
+        _warn_unknown_roles(role_filter)
+
+    rows = repo.list_person_roles(None, active_only=not args.all)
+    if id_filter is not None:
+        rows = [r for r in rows if r["person_id"] in id_filter]
+    if role_filter is not None:
+        rows = [r for r in rows if r["role_code"] in role_filter]
+
     if not rows:
         print("[rbac_admin] Keine Rollenzuweisungen.")
         return 0
