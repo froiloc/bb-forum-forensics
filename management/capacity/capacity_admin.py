@@ -6,12 +6,14 @@
 # Build 356: Regel-Arbeitszeit (person_worktime) + Feiertage (holiday).
 #   set-worktime / list-worktime
 #   add-holiday / remove-holiday / list-holidays
-# Reason + Availability folgen in Build 357.
+# Build 357: Gruende (availability_reason) + Verfuegbarkeit (availability_entry).
+#   add-reason / list-reasons
+#   set-availability / remove-availability / list-availability
 #
 # Pfade aus config.yaml (paths.coordinator_db), override per --coordinator-db.
 # Muster wie rbac_admin. main(argv) ist testbar.
 #
-# Beleg: Bauplan B7 v1.1 §11.4. Version: v0.7.356 · Build: 356 · 2026-07-10
+# Beleg: Bauplan B7 v1.1 §11.4. Version: v0.7.357 · Build: 357 · 2026-07-10
 # =============================================================================
 
 import argparse
@@ -21,8 +23,10 @@ import sys
 from typing import Optional
 
 from management.audit.audit_log import AuditLog
+from management.capacity.availability_repo import AvailabilityRepo
 from management.capacity.capacity_errors import CapacityError
 from management.capacity.holiday_repo import HolidayRepo
+from management.capacity.reason_repo import ReasonRepo
 from management.capacity.worktime_repo import WorktimeRepo
 from management.gateway.coordinator_writer import CoordinatorWriter
 
@@ -149,6 +153,79 @@ def cmd_list_holidays(con, args) -> int:
     return 0
 
 
+def cmd_add_reason(con, args) -> int:
+    actor_id, _ = _resolve_actor(con, args.actor)
+    repo = ReasonRepo(con, CoordinatorWriter(con, AuditLog(con)))
+    try:
+        seq = repo.add_reason(args.code, args.label, sort=args.sort,
+                              actor_id=actor_id)
+    except CapacityError as exc:
+        print("[capacity_admin] %s" % exc, file=sys.stderr)
+        return 2
+    print("[capacity_admin] Grund '%s' hinzugefuegt (audit seq=%d)."
+          % (args.code, seq))
+    return 0
+
+
+def cmd_list_reasons(con, args) -> int:
+    rows = ReasonRepo(con, None).list_reasons(include_deleted=args.all)
+    if not rows:
+        print("[capacity_admin] Keine Gruende.")
+        return 0
+    for r in rows:
+        print("  %-16s '%s' (sort=%d) seq=%s"
+              % (r["code"], r["label"], r["sort"], r["audit_seq"]))
+    return 0
+
+
+def cmd_set_availability(con, args) -> int:
+    actor_id, _ = _resolve_actor(con, args.actor)
+    pid = _person_id(con, args)
+    repo = AvailabilityRepo(con, CoordinatorWriter(con, AuditLog(con)))
+    try:
+        seq = repo.set_availability(
+            pid, period_start=args.start, period_end=args.end, kind=args.kind,
+            value_pct=args.pct, value_minutes=args.minutes,
+            reason_code=args.reason, note=args.note, actor_id=actor_id)
+    except CapacityError as exc:
+        print("[capacity_admin] %s" % exc, file=sys.stderr)
+        return 2
+    print("[capacity_admin] Verfuegbarkeit (%s) fuer person=%d gesetzt "
+          "(%s..%s, audit seq=%d)."
+          % (args.kind, pid, args.start, args.end, seq))
+    return 0
+
+
+def cmd_remove_availability(con, args) -> int:
+    actor_id, _ = _resolve_actor(con, args.actor)
+    repo = AvailabilityRepo(con, CoordinatorWriter(con, AuditLog(con)))
+    try:
+        seq = repo.remove_availability(int(args.id), actor_id=actor_id)
+    except CapacityError as exc:
+        print("[capacity_admin] %s" % exc, file=sys.stderr)
+        return 2
+    print("[capacity_admin] Verfuegbarkeit id=%s entfernt (audit seq=%d)."
+          % (args.id, seq))
+    return 0
+
+
+def cmd_list_availability(con, args) -> int:
+    pid = int(args.person_id) if args.person_id is not None else None
+    rows = AvailabilityRepo(con, None).list_availability(
+        pid, include_deleted=args.all)
+    if not rows:
+        print("[capacity_admin] Keine Verfuegbarkeits-Eintraege.")
+        return 0
+    for r in rows:
+        wert = ("%d%%" % r["value_pct"]) if r["value_pct"] is not None \
+            else ("%d min" % r["value_minutes"])
+        print("  #%d person=%d %s..%s %-14s %s Grund=%s seq=%s%s"
+              % (r["id"], r["person_id"], r["period_start"], r["period_end"],
+                 r["kind"], wert, r["reason_code"] or "-", r["audit_seq"],
+                 " [geloescht]" if r["deleted_at"] else ""))
+    return 0
+
+
 # ---------------------------------------------------------------- arg parser
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -194,6 +271,40 @@ def _build_parser() -> argparse.ArgumentParser:
     p_lh.add_argument("--region", default=None)
     p_lh.add_argument("--all", action="store_true", help="inkl. geloeschte")
 
+    # --- Build 357: Gruende + Verfuegbarkeit ---
+    p_ar = sub.add_parser("add-reason", parents=[common, actor],
+                          help="Verfuegbarkeits-Grund zum Katalog hinzufuegen.")
+    p_ar.add_argument("--code", required=True)
+    p_ar.add_argument("--label", required=True)
+    p_ar.add_argument("--sort", type=int, default=0)
+
+    p_lr = sub.add_parser("list-reasons", parents=[common],
+                          help="Grund-Katalog zeigen.")
+    p_lr.add_argument("--all", action="store_true", help="inkl. geloeschte")
+
+    p_sa = sub.add_parser("set-availability", parents=[common, actor],
+                          help="Garantie/Einschraenkung fuer einen Zeitraum "
+                               "setzen (genau eines von --pct/--minutes).")
+    p_sa.add_argument("--person-id", type=int, default=None)
+    p_sa.add_argument("--person", default=None, help="system_username")
+    p_sa.add_argument("--start", required=True, help="period_start (ISO-Datum)")
+    p_sa.add_argument("--end", required=True, help="period_end (ISO-Datum)")
+    p_sa.add_argument("--kind", required=True,
+                      choices=["garantie", "einschraenkung"])
+    p_sa.add_argument("--pct", type=int, default=None, help="value_pct [0..100]")
+    p_sa.add_argument("--minutes", type=int, default=None, help="value_minutes")
+    p_sa.add_argument("--reason", default=None, help="reason_code (aktiv)")
+    p_sa.add_argument("--note", default=None)
+
+    p_ra = sub.add_parser("remove-availability", parents=[common, actor],
+                          help="Verfuegbarkeits-Eintrag entfernen (Soft-Delete).")
+    p_ra.add_argument("--id", required=True, type=int)
+
+    p_la = sub.add_parser("list-availability", parents=[common],
+                          help="Verfuegbarkeits-Eintraege zeigen.")
+    p_la.add_argument("--person-id", type=int, default=None)
+    p_la.add_argument("--all", action="store_true", help="inkl. geloeschte")
+
     return parser
 
 
@@ -203,6 +314,11 @@ _DISPATCH = {
     "add-holiday": cmd_add_holiday,
     "remove-holiday": cmd_remove_holiday,
     "list-holidays": cmd_list_holidays,
+    "add-reason": cmd_add_reason,
+    "list-reasons": cmd_list_reasons,
+    "set-availability": cmd_set_availability,
+    "remove-availability": cmd_remove_availability,
+    "list-availability": cmd_list_availability,
 }
 
 
