@@ -38,11 +38,11 @@
 #   Ermittler eine Kapazitaets-Zeile (inkl. Anzeigename) fuer die Cockpit-Sicht
 #   (Build 360). Mit person_id unveraendert (Einzelperson, Build 358).
 #
-# Build 361 (Policy-Lesepfad): '/api/policy' (read-only, policy.view, scope-aware)
-#   liefert einen RBAC-Policy-Snapshot (Rollen/Faehigkeiten/Grants/Zuweisungen)
-#   via PolicyRepo. Frontend-Sicht folgt in Build 362.
+# Build 363 (Persoenliche Sichten Backend): /api/mycases (eigene Faelle) +
+#   /api/myhistory (kombiniert: eigene Aktionen + Historie der eigenen Faelle,
+#   MyHistoryRepo). Read-only. Frontends folgen in Build 364.
 #
-# Version: v0.7.361 · Build: 361 · 2026-07-10
+# Version: v0.7.363 · Build: 363 · 2026-07-10
 # =============================================================================
 
 import json
@@ -65,6 +65,7 @@ from management.rbac.rbac_resolver import (
 from management.server.static_assets import StaticAssets
 from management.capacity.capacity_calculator import CapacityCalculator
 from management.rbac.policy_repo import PolicyRepo
+from management.personal.myhistory_repo import MyHistoryRepo
 from management.capacity.capacity_errors import CapacityError
 from management.workload.workload_repo import (
     WorkloadRepo,
@@ -81,6 +82,27 @@ CAP_INTEGRITY = "ops.view"
 CAP_WORKLOAD = "workload.view"
 CAP_CAPACITY = "capacity.edit"
 CAP_POLICY = "policy.view"
+CAP_MYCASES = "mycases.view"
+CAP_MYHISTORY = "myhistory.view"
+
+
+def _case_overview_item(c) -> Dict[str, Any]:
+    """Serialisiert eine CaseOverview in das JSON-Item (Overview + Meine Faelle)."""
+    return {
+        "user_id": c.user_id,
+        "username": c.username,
+        "status": c.status,
+        "priority": c.priority,
+        "assigned_to": c.assigned_to,
+        "assigned_display_name": c.assigned_display_name,
+        "ampel": c.ampel,
+        "ampel_reason": c.ampel_reason,
+        "has_note": c.has_note,
+        "event_count": c.event_count,
+        "last_activity_at": c.last_activity_at,
+        "support_active": c.support_active,
+        "support_count": c.support_count,
+    }
 
 
 @dataclass(frozen=True)
@@ -196,6 +218,10 @@ class ManagementApp:
             return self._capacity(person_id, query)
         if path == "/api/policy":
             return self._policy(person_id)
+        if path == "/api/mycases":
+            return self._mycases(person_id)
+        if path == "/api/myhistory":
+            return self._myhistory(person_id, query)
         if path.startswith("/static/"):
             return self._serve_static(path[len("/static/"):])
         return Response.json(404, {"error": "not_found", "path": path})
@@ -259,21 +285,7 @@ class ManagementApp:
         if scope != "alle":
             cases = [c for c in cases if c.assigned_to == person_id]
 
-        items = [{
-            "user_id": c.user_id,
-            "username": c.username,
-            "status": c.status,
-            "priority": c.priority,
-            "assigned_to": c.assigned_to,
-            "assigned_display_name": c.assigned_display_name,
-            "ampel": c.ampel,
-            "ampel_reason": c.ampel_reason,
-            "has_note": c.has_note,
-            "event_count": c.event_count,
-            "last_activity_at": c.last_activity_at,
-            "support_active": c.support_active,
-            "support_count": c.support_count,
-        } for c in cases]
+        items = [_case_overview_item(c) for c in cases]
         return Response.json(200, {"scope": scope, "count": len(items),
                                    "cases": items})
 
@@ -419,3 +431,53 @@ class ManagementApp:
         finally:
             con.close()
         return Response.json(200, snap)
+
+    def _mycases(self, person_id: int) -> Response:
+        """
+        Meine Auftraege (read-only): die dem Aufrufer aktuell zugewiesenen
+        Faelle (immer nur die eigenen — personenbezogen, Cap ist das Tor).
+        Gleiche Item-Form wie /api/overview.
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_MYCASES):
+            return self._forbidden(CAP_MYCASES)
+
+        con = self._ro_con()
+        try:
+            try:
+                cases = DashboardRepo(con).list_case_overview()
+            except DashboardSchemaError as exc:
+                return Response.json(
+                    503, {"error": "schema", "detail": str(exc)})
+        finally:
+            con.close()
+
+        mine = [_case_overview_item(c) for c in cases
+                if c.assigned_to == person_id]
+        return Response.json(200, {"count": len(mine), "cases": mine})
+
+    def _myhistory(self, person_id: int,
+                   query: Optional[Dict[str, List[str]]]) -> Response:
+        """
+        Meine Historie (read-only, kombiniert): eigene Aktionen + Historie der
+        eigenen Faelle aus dem audit_log. Optional ?limit=N. Immer nur die
+        eigenen Daten (Cap ist das Tor).
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_MYHISTORY):
+            return self._forbidden(CAP_MYHISTORY)
+
+        limit = 200
+        if query and query.get("limit"):
+            try:
+                limit = int(query["limit"][0])
+            except ValueError:
+                return Response.json(
+                    400, {"error": "bad_request", "detail": "limit ungueltig."})
+
+        con = self._ro_con()
+        try:
+            result = MyHistoryRepo(con).my_history(person_id, limit=limit)
+        finally:
+            con.close()
+        return Response.json(200, result)
