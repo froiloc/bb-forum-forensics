@@ -44,7 +44,12 @@
 #   Haertung: X-AIW-Token (Serverlauf-Token via /api/whoami), Content-Type,
 #   Origin. Lesepfade bleiben mode=ro. Dazu GET /api/assignable.
 #
-# Version: v0.7.372 · Build: 372 · 2026-07-10
+# Build 374 (Berichts-Abnahme, Lesepfad): GET /api/reports liest die Berichte
+#   ALLER Faelle aus den evidence_<uid>.db (read-only), beschleunigt durch den
+#   WAL-sicheren Fingerabdruck-Cache (m009). ManagementApp kennt nun das
+#   evidence_db_dir (injizierbar; sonst aus config.yaml).
+#
+# Version: v0.7.374 · Build: 374 · 2026-07-10
 # =============================================================================
 
 import hmac
@@ -80,6 +85,7 @@ from management.support_overview.support_overview_repo import (
 )
 from management.support_sessions.support_sessions_repo import SupportSessionsRepo
 from management.stats.stats_repo import StatsRepo
+from management.reports.reports_repo import ReportsRepo
 from db.coordinator_db import DEFAULT_SUPPORT_STALE_SEC
 from management.capacity.capacity_errors import CapacityError
 from management.workload.workload_repo import (
@@ -103,6 +109,7 @@ CAP_SUPPORT = "support_history.view"
 CAP_MENTORING = "mentoring.view"
 CAP_STATS = "stats.export_sta"
 CAP_ASSIGNMENT = "assignment.edit"
+CAP_REPORTS_REVIEW = "reports.review"
 
 logger = logging.getLogger(__name__)
 
@@ -179,17 +186,36 @@ class ManagementApp:
     """Read-only Request-Aufloesung des Management-Servers (ohne Socket)."""
 
     def __init__(self, db_path: str,
-                 static_dir: Optional[Path] = None) -> None:
+                 static_dir: Optional[Path] = None,
+                 evidence_dir: Optional[str] = None) -> None:
         self._db_path = db_path
         # Statische Auslieferung gekapselt (Grundregel 10). static_dir ist im
         # Test injizierbar; PROD nutzt STATIC_DIR neben diesem Modul.
         self._static = StaticAssets(static_dir or STATIC_DIR)
+        # Verzeichnis der evidence_<uid>.db (Berichts-Abnahme, Build 374).
+        # Injizierbar (Test); sonst aus config.yaml (paths.evidence_db_dir).
+        self._evidence_dir = evidence_dir or self._default_evidence_dir()
         # SCHREIB-TOKEN (Build 372): pro Serverlauf zufaellig. Wird nur ueber
         # den authentifizierten GET /api/whoami ausgeliefert und muss bei JEDEM
         # Schreibzugriff im Header 'X-AIW-Token' mitgeschickt werden. Schuetzt
         # gegen Fremd-POSTs ueber Netzwerk-Bridges/Tunnel und CSRF: wer die
         # GET-Antwort nicht lesen kann, kennt das Token nicht.
         self._write_token = secrets.token_urlsafe(32)
+
+    @staticmethod
+    def _default_evidence_dir() -> str:
+        """
+        evidence_db_dir aus config.yaml. Faellt die Konfiguration aus, wird der
+        Default des ConfigLoaders benutzt — und der Fehler protokolliert
+        (Grundregel 1: kein stilles Verschlucken).
+        """
+        try:
+            from core.config_loader import ConfigLoader
+            return str(ConfigLoader().get("paths.evidence_db_dir"))
+        except Exception as exc:  # pragma: no cover - Konfig-Ausfall
+            logger.warning("evidence_db_dir nicht aus config.yaml lesbar "
+                           "(%s) — Standard './data/evidence/'.", exc)
+            return "./data/evidence/"
 
     @property
     def write_token(self) -> str:
@@ -291,6 +317,8 @@ class ManagementApp:
             return self._stats(person_id, query)
         if path == "/api/assignable":
             return self._assignable(person_id)
+        if path == "/api/reports":
+            return self._reports(person_id, query)
         if path.startswith("/static/"):
             return self._serve_static(path[len("/static/"):])
         return Response.json(404, {"error": "not_found", "path": path})
@@ -707,8 +735,45 @@ class ManagementApp:
             "priority_min": _PRIORITY_MIN, "priority_max": _PRIORITY_MAX,
         })
 
+    def _reports(self, person_id: int,
+                 query: Optional[Dict[str, List[str]]]) -> Response:
+        """
+        Berichts-Abnahme, Lesepfad (Build 374): Berichte ALLER Faelle aus den
+        evidence_<uid>.db — cache-gestuetzt (Fingerabdruck ueber alle DB-Dateien;
+        WAL-sicher). Query 'force=1' erzwingt den Vollscan (Cache ignorieren).
+        Scope 'alle' -> alle Berichte; 'eigene' -> nur Berichte zu eigenen
+        (zugewiesenen) Faellen. Die evidence-DBs werden NUR read-only geoeffnet.
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_REPORTS_REVIEW):
+            return self._forbidden(CAP_REPORTS_REVIEW)
+        scope = policy.scope(CAP_REPORTS_REVIEW)
+
+        q = query or {}
+        force = (q.get("force") or ["0"])[0] in ("1", "true", "yes")
+
+        # Schreibverbindung: NUR fuer den Scan-Cache (m009). Der Cache enthaelt
+        # keine Ermittlungsergebnisse und ist jederzeit neu erzeugbar; er ist
+        # daher bewusst kein auditierter Schreibpfad.
+        con = self._rw_con()
+        try:
+            result = ReportsRepo(con, self._evidence_dir).list_reports(
+                force=force)
+        except Exception as exc:
+            logger.exception("Berichts-Scan fehlgeschlagen")
+            return Response.json(500, {"error": "scan_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+
+        if scope != "alle":
+            result["reports"] = [r for r in result["reports"]
+                                 if r.get("assigned_to") == person_id]
+            result["count"] = len(result["reports"])
+        result["scope"] = scope
+        return Response.json(200, result)
+
     def _require_assignment_scope(self, person_id: int):
-        """Gibt None zurueck, wenn erlaubt; sonst die Fehler-Response."""
         policy = self.resolve_policy(person_id)
         if not policy.can(CAP_ASSIGNMENT):
             return self._forbidden(CAP_ASSIGNMENT)
