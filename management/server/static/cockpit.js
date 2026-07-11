@@ -44,7 +44,9 @@
 //   Sitzungen / An meinen Faellen) + Detail-Mini-Modal + SSE-Reload.
 //   369 = Ermittler-Betreuung (/api/mentoring, cockpit_mentoring.js): Live-Sicht
 //   laufender Support-Sitzungen (Ampel/Laufzeit) + periodischer Refresh.
-// Version: v0.7.369 · Build: 369 · 2026-07-10
+//   371 = Statistiken (/api/stats, cockpit_stats.js): Reiterstruktur, ECharts-
+//   Diagramme (Verteilungen/Durchsatz), Ermittler-Tabelle, CSV/JSON-Download.
+// Version: v0.7.371 · Build: 371 · 2026-07-10
 // =============================================================================
 
 (function () {
@@ -246,6 +248,7 @@
         capabilities: {}, activeId: null,
         table: null,        // aktuelle Tabulator-Instanz (Overview)
         tables: [],         // mehrere Tabulator-Instanzen (Policy-Sicht)
+        charts: [],         // mehrere ECharts-Instanzen (Statistik-Sicht)
         chart: null,        // aktuelle ECharts-Instanz (Lastverteilung/Kapazitaet)
         chartResize: null,  // Resize-Handler der ECharts-Instanz
         capacityPeriod: null,  // {start, end} der Kapazitaets-Sicht (SSE-Reload)
@@ -300,6 +303,13 @@
         });
         state.tables = [];
         destroyChart();
+        // Mehrfach-Charts (Statistik-Sicht) entsorgen.
+        (state.charts || []).forEach(function (c) {
+            if (c && typeof c.dispose === 'function') {
+                try { c.dispose(); } catch (e) { log('destroyCharts', e); }
+            }
+        });
+        state.charts = [];
         // Periodischen Betreuungs-Refresh stoppen (Live-Sicht verlassen).
         if (state.mentoringTimer) {
             clearInterval(state.mentoringTimer);
@@ -541,6 +551,66 @@
         });
     }
 
+    // downloadBlob: erzeugt aus Text einen Download (Blob + <a download>).
+    // Fehler werden geloggt, nicht verschluckt.
+    function downloadBlob(filename, text, mime) {
+        try {
+            var blob = new Blob([text], { type: mime });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (e) {
+            log('downloadBlob-Fehler', e);
+        }
+    }
+
+    // loadStats: /api/stats holen und als Statistik-Sicht rendern
+    // (cockpit_stats.js). Mehrere ECharts -> state.charts; eine Tabelle ->
+    // state.tables. Downloads: CSV via Endpunkt (?format=csv), JSON aus den
+    // bereits geladenen Daten.
+    function loadStats(mainEl) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitStats : null;
+        if (!mod) {
+            renderError(mainEl, 'Statistik-Modul nicht geladen.');
+            return;
+        }
+        fetchJson('/api/stats').then(function (data) {
+            cleanupView();
+            var day = mod.isoDate();
+            var res = mod.renderStats(mainEl, data, {
+                onDownloadCsv: function () {
+                    // CSV kommt aus dem Endpunkt (scope-korrekt serverseitig).
+                    fetch('/api/stats?format=csv').then(function (r) {
+                        return r.text();
+                    }).then(function (text) {
+                        downloadBlob('aiw_statistik_' + day + '.csv', text,
+                            'text/csv;charset=utf-8');
+                    }).catch(function (e) { log('CSV-Download', e); });
+                },
+                onDownloadJson: function (d) {
+                    downloadBlob('aiw_statistik_' + day + '.json',
+                        JSON.stringify(d, null, 2),
+                        'application/json;charset=utf-8');
+                }
+            }) || { charts: [], tables: [] };
+            state.charts = res.charts || [];
+            state.tables = res.tables || [];
+            log('Statistik gerendert:', data.totals && data.totals.cases,
+                'Faelle');
+        }).catch(function (err) {
+            cleanupView();
+            renderError(mainEl,
+                'Statistiken konnten nicht geladen werden: ' + err.message);
+        });
+    }
+
     // applyIntegrity: zentrale Banner-Aktualisierung aus einer Integritaets-
     // Antwort ({ok, first_bad_seq, detail, tip_seq}). Nutzt das Integritaets-
     // Modul (bannerModel + applyBanner). Wird von loadIntegrity UND refreshBanner
@@ -625,6 +695,8 @@
             loadSupport(mainEl);
         } else if (viewId === 'mentoring') {
             loadMentoring(mainEl);
+        } else if (viewId === 'stats') {
+            loadStats(mainEl);
         } else {
             renderPlaceholder(mainEl, viewById(viewId));
         }
@@ -662,6 +734,8 @@
                 loadSupport();
             } else if (state.activeId === 'mentoring') {
                 loadMentoring();
+            } else if (state.activeId === 'stats') {
+                loadStats();
             }
             // Banner global frisch halten, wenn die aktive Sicht nicht die
             // Integritaets-Sicht ist (dort geschieht es bereits oben).
