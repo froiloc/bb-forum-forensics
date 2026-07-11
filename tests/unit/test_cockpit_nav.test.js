@@ -74,7 +74,7 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     expect(api.visibleViews(null)).toEqual([]);
     expect(api.visibleViews(undefined)).toEqual([]);
     // Kataloglaenge bleibt (keine Mutation).
-    expect(api.VIEW_CATALOG.length).toBe(11);
+    expect(api.VIEW_CATALOG.length).toBe(12);
   });
 
   // CN04 -------------------------------------------------------------------

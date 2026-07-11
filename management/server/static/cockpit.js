@@ -34,7 +34,9 @@
 //   aber ebenfalls via textContent gesetzt (Prinzip: kein innerHTML mit
 //   variablem Text).
 //
-// Version: v0.7.351 · Build: 351 · 2026-07-10
+//   360 = Kapazitaets-Sicht (/api/capacity, cockpit_capacity.js) als ECharts-
+//   Diagramm (Basis vs. netto, Auslastungs-Faerbung, Zeitraumwahl) + SSE-Reload.
+// Version: v0.7.360 · Build: 360 · 2026-07-10
 // =============================================================================
 
 (function () {
@@ -73,6 +75,7 @@
         { id: 'reports',    cap: 'reports.approve',      group: 'Verwaltung',     label: 'Berichts-Abnahme' },
         { id: 'stats',      cap: 'stats.export_sta',     group: 'Auswertung',     label: 'Statistiken (StA/Fuehrung)' },
         { id: 'workload',   cap: 'workload.view',        group: 'Auswertung',     label: 'Lastverteilung' },
+        { id: 'capacity',   cap: 'capacity.edit',        group: 'Auswertung',     label: 'Kapazitaet' },
         { id: 'support',    cap: 'support_history.view', group: 'Auswertung',     label: 'Support-Historie' },
         { id: 'mycases',    cap: 'mycases.view',         group: 'Persoenlich',    label: 'Meine Auftraege' },
         { id: 'myhistory',  cap: 'myhistory.view',       group: 'Persoenlich',    label: 'Meine Historie' },
@@ -234,8 +237,9 @@
     var state = {
         capabilities: {}, activeId: null,
         table: null,        // aktuelle Tabulator-Instanz (Overview)
-        chart: null,        // aktuelle ECharts-Instanz (Lastverteilung)
+        chart: null,        // aktuelle ECharts-Instanz (Lastverteilung/Kapazitaet)
         chartResize: null,  // Resize-Handler der ECharts-Instanz
+        capacityPeriod: null,  // {start, end} der Kapazitaets-Sicht (SSE-Reload)
         sse: null
     };
 
@@ -339,6 +343,49 @@
         });
     }
 
+    // loadCapacity: /api/capacity (Aggregat, ohne person_id) fuer einen Zeitraum
+    // holen und als ECharts-Diagramm rendern (cockpit_capacity.js). Der Zeitraum
+    // wird in state.capacityPeriod gehalten (Default: laufender Monat), damit der
+    // SSE-Reload denselben Zeitraum verwendet. Die Zeitraum-Wahl im View ruft
+    // loadCapacity mit neuem Zeitraum erneut auf.
+    function loadCapacity(mainEl, period) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitCapacity : null;
+        if (!mod) {
+            renderError(mainEl, 'Kapazitaets-Modul nicht geladen.');
+            return;
+        }
+        if (!period) {
+            period = state.capacityPeriod || mod.defaultPeriod();
+        }
+        state.capacityPeriod = period;
+        var url = '/api/capacity?start=' + encodeURIComponent(period.start)
+            + '&end=' + encodeURIComponent(period.end);
+        fetchJson(url).then(function (data) {
+            cleanupView();
+            state.chart = mod.renderCapacity(mainEl, data, {
+                onPeriodChange: function (start, end) {
+                    if (start && end) {
+                        loadCapacity(mainEl, { start: start, end: end });
+                    }
+                }
+            });
+            if (state.chart && typeof state.chart.resize === 'function') {
+                state.chartResize = function () {
+                    try { state.chart.resize(); } catch (e) { log('resize', e); }
+                };
+                window.addEventListener('resize', state.chartResize);
+            }
+            log('Kapazitaet gerendert:', data.count, 'Ermittler,',
+                period.start, 'bis', period.end);
+        }).catch(function (err) {
+            cleanupView();
+            renderError(mainEl,
+                'Kapazitaet konnte nicht geladen werden: ' + err.message);
+        });
+    }
+
     // applyIntegrity: zentrale Banner-Aktualisierung aus einer Integritaets-
     // Antwort ({ok, first_bad_seq, detail, tip_seq}). Nutzt das Integritaets-
     // Modul (bannerModel + applyBanner). Wird von loadIntegrity UND refreshBanner
@@ -411,6 +458,8 @@
             loadIntegrity(mainEl);
         } else if (viewId === 'workload') {
             loadWorkload(mainEl);
+        } else if (viewId === 'capacity') {
+            loadCapacity(mainEl);
         } else {
             renderPlaceholder(mainEl, viewById(viewId));
         }
@@ -436,6 +485,8 @@
                 loadIntegrity();   // aktualisiert Sicht UND Banner
             } else if (state.activeId === 'workload') {
                 loadWorkload();
+            } else if (state.activeId === 'capacity') {
+                loadCapacity(undefined, state.capacityPeriod);
             }
             // Banner global frisch halten, wenn die aktive Sicht nicht die
             // Integritaets-Sicht ist (dort geschieht es bereits oben).
