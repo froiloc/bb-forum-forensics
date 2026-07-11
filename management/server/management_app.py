@@ -34,7 +34,10 @@
 #   lokal vendort und ueber StaticAssets ausgeliefert. Die ECharts-Frontend-Sicht
 #   folgt in Build 351 (browser-verifizierbar, console-first).
 #
-# Version: v0.7.350 · Build: 350 · 2026-07-10
+# Build 358 (Kapazitaets-Lesepfad): '/api/capacity' (read-only, capacity.edit,
+#   scope-aware) liefert Kapazitaet(Person, Zeitraum) via CapacityCalculator.
+#
+# Version: v0.7.358 · Build: 358 · 2026-07-10
 # =============================================================================
 
 import json
@@ -55,6 +58,8 @@ from management.rbac.rbac_resolver import (
     verify_catalog_present,
 )
 from management.server.static_assets import StaticAssets
+from management.capacity.capacity_calculator import CapacityCalculator
+from management.capacity.capacity_errors import CapacityError
 from management.workload.workload_repo import (
     WorkloadRepo,
     WorkloadSchemaError,
@@ -68,6 +73,7 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 CAP_OVERVIEW = "dashboard.view"
 CAP_INTEGRITY = "ops.view"
 CAP_WORKLOAD = "workload.view"
+CAP_CAPACITY = "capacity.edit"
 
 
 @dataclass(frozen=True)
@@ -179,6 +185,8 @@ class ManagementApp:
             return self._integrity(person_id)
         if path == "/api/workload":
             return self._workload(person_id)
+        if path == "/api/capacity":
+            return self._capacity(person_id, query)
         if path.startswith("/static/"):
             return self._serve_static(path[len("/static/"):])
         return Response.json(404, {"error": "not_found", "path": path})
@@ -307,3 +315,49 @@ class ManagementApp:
         items = [asdict(l) for l in loads]
         return Response.json(200, {"scope": scope, "count": len(items),
                                    "loads": items})
+
+    def _capacity(self, person_id: int,
+                  query: Optional[Dict[str, List[str]]]) -> Response:
+        """
+        Kapazitaet(Person, Zeitraum) — read-only. Query: person_id, start, end
+        (ISO-Daten). Scope 'alle' -> beliebige Person; 'eigene' -> nur die
+        eigene Kapazitaet.
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_CAPACITY):
+            return self._forbidden(CAP_CAPACITY)
+        scope = policy.scope(CAP_CAPACITY)
+
+        q = query or {}
+
+        def _one(key: str) -> Optional[str]:
+            vals = q.get(key)
+            return vals[0] if vals else None
+
+        target, start, end = _one("person_id"), _one("start"), _one("end")
+        if not (target and start and end):
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "Query-Parameter person_id, start, end erforderlich."})
+        try:
+            target_id = int(target)
+        except ValueError:
+            return Response.json(
+                400, {"error": "bad_request", "detail": "person_id ungueltig."})
+
+        if scope != "alle" and target_id != person_id:
+            return Response.json(403, {
+                "error": "forbidden", "capability": CAP_CAPACITY,
+                "detail": "Scope 'eigene': nur die eigene Kapazitaet."})
+
+        con = self._ro_con()
+        try:
+            try:
+                res = CapacityCalculator(con).compute(target_id, start, end)
+            except CapacityError as exc:
+                return Response.json(
+                    400, {"error": "capacity", "detail": str(exc)})
+        finally:
+            con.close()
+
+        return Response.json(200, asdict(res))
