@@ -38,7 +38,11 @@
 #   Ermittler eine Kapazitaets-Zeile (inkl. Anzeigename) fuer die Cockpit-Sicht
 #   (Build 360). Mit person_id unveraendert (Einzelperson, Build 358).
 #
-# Version: v0.7.359 · Build: 359 · 2026-07-10
+# Build 361 (Policy-Lesepfad): '/api/policy' (read-only, policy.view, scope-aware)
+#   liefert einen RBAC-Policy-Snapshot (Rollen/Faehigkeiten/Grants/Zuweisungen)
+#   via PolicyRepo. Frontend-Sicht folgt in Build 362.
+#
+# Version: v0.7.361 · Build: 361 · 2026-07-10
 # =============================================================================
 
 import json
@@ -60,6 +64,7 @@ from management.rbac.rbac_resolver import (
 )
 from management.server.static_assets import StaticAssets
 from management.capacity.capacity_calculator import CapacityCalculator
+from management.rbac.policy_repo import PolicyRepo
 from management.capacity.capacity_errors import CapacityError
 from management.workload.workload_repo import (
     WorkloadRepo,
@@ -75,6 +80,7 @@ CAP_OVERVIEW = "dashboard.view"
 CAP_INTEGRITY = "ops.view"
 CAP_WORKLOAD = "workload.view"
 CAP_CAPACITY = "capacity.edit"
+CAP_POLICY = "policy.view"
 
 
 @dataclass(frozen=True)
@@ -188,6 +194,8 @@ class ManagementApp:
             return self._workload(person_id)
         if path == "/api/capacity":
             return self._capacity(person_id, query)
+        if path == "/api/policy":
+            return self._policy(person_id)
         if path.startswith("/static/"):
             return self._serve_static(path[len("/static/"):])
         return Response.json(404, {"error": "not_found", "path": path})
@@ -392,3 +400,22 @@ class ManagementApp:
         return Response.json(200, {"scope": scope, "count": len(caps),
                                    "start": start, "end": end,
                                    "capacities": caps})
+
+    def _policy(self, person_id: int) -> Response:
+        """
+        RBAC-Policy-Snapshot (read-only): Rollen, Faehigkeiten, aktive Grants
+        und aktive Personen-Zuweisungen. Scope 'alle' -> volle Matrix; 'eigene'
+        (oder ungesetzt) -> auf den Aufrufer gefiltert ("meine Rechte").
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_POLICY):
+            return self._forbidden(CAP_POLICY)
+        scope = policy.scope(CAP_POLICY)
+
+        con = self._ro_con()
+        try:
+            snap = PolicyRepo(con).snapshot(
+                person_id=None if scope == "alle" else person_id)
+        finally:
+            con.close()
+        return Response.json(200, snap)
