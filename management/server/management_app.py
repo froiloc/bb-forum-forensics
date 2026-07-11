@@ -38,13 +38,19 @@
 #   Ermittler eine Kapazitaets-Zeile (inkl. Anzeigename) fuer die Cockpit-Sicht
 #   (Build 360). Mit person_id unveraendert (Einzelperson, Build 358).
 #
-# Build 370 (Statistiken Backend): /api/stats (stats.export_sta, scope-aware,
-#   format json/csv) liefert Kennzahl-Matrizen (StatsRepo) + Durchsatz je Tag.
+# Build 372 (Zuweisung - ERSTER SCHREIBPFAD): eng begrenzter POST-Pfad
+#   (dispatch_write) fuer /api/case/assign, /api/case/priority, /api/case/status.
+#   Schreiben NUR ueber CasesRepo+CoordinatorWriter (Audit-Beleg erzwungen).
+#   Haertung: X-AIW-Token (Serverlauf-Token via /api/whoami), Content-Type,
+#   Origin. Lesepfade bleiben mode=ro. Dazu GET /api/assignable.
 #
-# Version: v0.7.370 · Build: 370 · 2026-07-10
+# Version: v0.7.372 · Build: 372 · 2026-07-10
 # =============================================================================
 
+import hmac
 import json
+import logging
+import secrets
 import sqlite3
 import time
 from dataclasses import dataclass, asdict
@@ -52,6 +58,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from management.audit.audit_log import AuditLog
+from management.cases.cases_repo import CasesRepo
+from management.gateway.coordinator_writer import CoordinatorWriter
 from management.dashboard.dashboard_repo import (
     DashboardRepo,
     DashboardSchemaError,
@@ -94,6 +102,13 @@ CAP_MYHISTORY = "myhistory.view"
 CAP_SUPPORT = "support_history.view"
 CAP_MENTORING = "mentoring.view"
 CAP_STATS = "stats.export_sta"
+CAP_ASSIGNMENT = "assignment.edit"
+
+logger = logging.getLogger(__name__)
+
+# Zulaessige Werte fuer die auditierten Schreibpfade (Build 372).
+_CASE_STATUSES = ("open", "in_progress", "approved", "closed")
+_PRIORITY_MIN, _PRIORITY_MAX = 1, 5
 
 
 def _case_overview_item(c) -> Dict[str, Any]:
@@ -169,8 +184,36 @@ class ManagementApp:
         # Statische Auslieferung gekapselt (Grundregel 10). static_dir ist im
         # Test injizierbar; PROD nutzt STATIC_DIR neben diesem Modul.
         self._static = StaticAssets(static_dir or STATIC_DIR)
+        # SCHREIB-TOKEN (Build 372): pro Serverlauf zufaellig. Wird nur ueber
+        # den authentifizierten GET /api/whoami ausgeliefert und muss bei JEDEM
+        # Schreibzugriff im Header 'X-AIW-Token' mitgeschickt werden. Schuetzt
+        # gegen Fremd-POSTs ueber Netzwerk-Bridges/Tunnel und CSRF: wer die
+        # GET-Antwort nicht lesen kann, kennt das Token nicht.
+        self._write_token = secrets.token_urlsafe(32)
+
+    @property
+    def write_token(self) -> str:
+        return self._write_token
+
+    def check_write_token(self, presented: Optional[str]) -> bool:
+        """Konstantzeitlicher Token-Vergleich (kein Timing-Orakel)."""
+        if not presented:
+            return False
+        return hmac.compare_digest(presented, self._write_token)
 
     # ------------------------------------------------------------- Verbindung
+    def _rw_con(self) -> sqlite3.Connection:
+        """
+        SCHREIB-Verbindung (nur fuer die auditierten Schreibpfade, Build 372).
+        Alle Lesepfade nutzen weiterhin _ro_con() (mode=ro) — der read-only-
+        Charakter des Servers bleibt fuer alles ausser den expliziten
+        Schreibrouten erhalten.
+        """
+        con = sqlite3.connect(self._db_path)
+        con.isolation_level = None
+        con.row_factory = sqlite3.Row
+        return con
+
     def _ro_con(self) -> sqlite3.Connection:
         con = sqlite3.connect("file:%s?mode=ro" % self._db_path, uri=True)
         con.row_factory = sqlite3.Row
@@ -246,6 +289,8 @@ class ManagementApp:
             return self._mentoring(person_id)
         if path == "/api/stats":
             return self._stats(person_id, query)
+        if path == "/api/assignable":
+            return self._assignable(person_id)
         if path.startswith("/static/"):
             return self._serve_static(path[len("/static/"):])
         return Response.json(404, {"error": "not_found", "path": path})
@@ -286,6 +331,9 @@ class ManagementApp:
             "roles": sorted(policy.roles),
             "capabilities": {k: policy.capabilities[k]
                              for k in sorted(policy.capabilities)},
+            # Schreib-Token (Build 372): nur ueber diesen authentifizierten
+            # GET erreichbar; das Cockpit sendet ihn bei POSTs zurueck.
+            "write_token": self._write_token,
         })
 
     def _overview(self, person_id: int) -> Response:
@@ -606,3 +654,222 @@ class ManagementApp:
         if fmt == "csv":
             return Response.csv(200, StatsRepo.to_csv(stats))
         return Response.json(200, stats)
+
+    # =====================================================================
+    # ZUWEISUNG — Lesepfad (GET) und AUDITIERTER SCHREIBPFAD (POST), Build 372.
+    #
+    # Der Server bleibt fuer ALLES ausser den unten gelisteten Schreibrouten
+    # read-only. Schreiben erfolgt AUSSCHLIESSLICH ueber CasesRepo +
+    # CoordinatorWriter — damit entsteht zwingend ein audit_log-Beleg je
+    # Aenderung (Bauplan §2.6: "der einzige zulaessige Schreibpfad"). Kein
+    # Direkt-SQL. Fehler werden explizit gemeldet (Grundregel 1), nie still
+    # verschluckt.
+    # =====================================================================
+
+    def _assignable(self, person_id: int) -> Response:
+        """
+        Entscheidungsgrundlage fuer die Zuweisungs-Sicht (read-only): alle
+        Faelle (Overview-Form) + waehlbare Ermittler mit ihrer aktuellen Last
+        (Anzahl zugewiesener Faelle). Erfordert assignment.edit (Scope 'alle').
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_ASSIGNMENT):
+            return self._forbidden(CAP_ASSIGNMENT)
+        if policy.scope(CAP_ASSIGNMENT) != "alle":
+            return Response.json(403, {
+                "error": "forbidden", "capability": CAP_ASSIGNMENT,
+                "detail": "Zuweisen erfordert Scope 'alle'."})
+
+        con = self._ro_con()
+        try:
+            try:
+                cases = DashboardRepo(con).list_case_overview()
+            except DashboardSchemaError as exc:
+                return Response.json(
+                    503, {"error": "schema", "detail": str(exc)})
+            rows = con.execute(
+                "SELECT id, system_username, display_name FROM person "
+                "WHERE is_investigator=1 ORDER BY id ASC").fetchall()
+            load = {r[0]: r[1] for r in con.execute(
+                "SELECT assigned_to, COUNT(*) FROM cases "
+                "WHERE assigned_to IS NOT NULL GROUP BY assigned_to")}
+        finally:
+            con.close()
+
+        investigators = [{
+            "person_id": r[0], "system_username": r[1], "display_name": r[2],
+            "case_count": load.get(r[0], 0),
+        } for r in rows]
+        return Response.json(200, {
+            "cases": [_case_overview_item(c) for c in cases],
+            "investigators": investigators,
+            "statuses": list(_CASE_STATUSES),
+            "priority_min": _PRIORITY_MIN, "priority_max": _PRIORITY_MAX,
+        })
+
+    def _require_assignment_scope(self, person_id: int):
+        """Gibt None zurueck, wenn erlaubt; sonst die Fehler-Response."""
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_ASSIGNMENT):
+            return self._forbidden(CAP_ASSIGNMENT)
+        if policy.scope(CAP_ASSIGNMENT) != "alle":
+            return Response.json(403, {
+                "error": "forbidden", "capability": CAP_ASSIGNMENT,
+                "detail": "Diese Aktion erfordert Scope 'alle'."})
+        return None
+
+    def dispatch_write(self, person_id: int, path: str,
+                       payload: Optional[Dict[str, Any]]) -> Response:
+        """
+        Loest einen POST-Schreibzugriff auf. NUR die hier gelisteten Routen
+        sind schreibfaehig; alles andere -> 404 (der Handler weist zudem
+        fremde Methoden mit 405 ab). Der Token-Check erfolgt VOR diesem Aufruf
+        im Handler.
+        """
+        if not isinstance(payload, dict):
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "JSON-Objekt als Rumpf erwartet."})
+
+        if path == "/api/case/assign":
+            return self._case_assign(person_id, payload)
+        if path == "/api/case/priority":
+            return self._case_priority(person_id, payload)
+        if path == "/api/case/status":
+            return self._case_status(person_id, payload)
+        return Response.json(404, {"error": "not_found", "path": path})
+
+    # ------------------------------------------------------------- Schreiben
+    def _case_id(self, con: sqlite3.Connection, payload: Dict[str, Any]):
+        """Validiert user_id und Existenz des Falls. -> (user_id, None) | (None, Response)"""
+        raw = payload.get("user_id")
+        try:
+            user_id = int(raw)
+        except (TypeError, ValueError):
+            return None, Response.json(400, {
+                "error": "bad_request", "detail": "user_id fehlt/ungueltig."})
+        row = con.execute("SELECT 1 FROM cases WHERE user_id=?",
+                          (user_id,)).fetchone()
+        if row is None:
+            return None, Response.json(400, {
+                "error": "unknown_case", "user_id": user_id})
+        return user_id, None
+
+    def _case_assign(self, person_id: int,
+                     payload: Dict[str, Any]) -> Response:
+        """
+        Fall zuweisen oder entziehen. person_id=null -> Zuweisung entziehen.
+        Selbstzuweisung ist ausdruecklich erlaubt (wer Scope 'alle' hat, darf
+        auch sich selbst zuweisen).
+        """
+        denied = self._require_assignment_scope(person_id)
+        if denied is not None:
+            return denied
+
+        target = payload.get("person_id", "__missing__")
+        if target == "__missing__":
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "person_id erforderlich (null = entziehen)."})
+
+        con = self._rw_con()
+        try:
+            user_id, err = self._case_id(con, payload)
+            if err is not None:
+                return err
+
+            assignee: Optional[int] = None
+            if target is not None:
+                try:
+                    assignee = int(target)
+                except (TypeError, ValueError):
+                    return Response.json(400, {
+                        "error": "bad_request",
+                        "detail": "person_id ungueltig."})
+                row = con.execute(
+                    "SELECT is_investigator FROM person WHERE id=?",
+                    (assignee,)).fetchone()
+                if row is None:
+                    return Response.json(400, {
+                        "error": "unknown_person", "person_id": assignee})
+                if not row[0]:
+                    return Response.json(400, {
+                        "error": "not_investigator", "person_id": assignee,
+                        "detail": "Person ist kein Ermittler."})
+
+            writer = CoordinatorWriter(con, AuditLog(con))
+            seq = CasesRepo(con, writer).assign(
+                user_id, assignee, actor_id=person_id)
+        except Exception as exc:  # kein stiller Fehlschlag (Grundregel 1)
+            logger.exception("Zuweisung fehlgeschlagen")
+            return Response.json(500, {"error": "write_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+
+        return Response.json(200, {"ok": True, "user_id": user_id,
+                                   "person_id": assignee, "audit_seq": seq})
+
+    def _case_priority(self, person_id: int,
+                       payload: Dict[str, Any]) -> Response:
+        denied = self._require_assignment_scope(person_id)
+        if denied is not None:
+            return denied
+
+        try:
+            prio = int(payload.get("priority"))
+        except (TypeError, ValueError):
+            return Response.json(400, {
+                "error": "bad_request", "detail": "priority fehlt/ungueltig."})
+        if not (_PRIORITY_MIN <= prio <= _PRIORITY_MAX):
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "priority ausserhalb %d..%d."
+                          % (_PRIORITY_MIN, _PRIORITY_MAX)})
+
+        con = self._rw_con()
+        try:
+            user_id, err = self._case_id(con, payload)
+            if err is not None:
+                return err
+            writer = CoordinatorWriter(con, AuditLog(con))
+            seq = CasesRepo(con, writer).set_priority(
+                user_id, prio, actor_id=person_id)
+        except Exception as exc:
+            logger.exception("Prioritaet setzen fehlgeschlagen")
+            return Response.json(500, {"error": "write_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, "user_id": user_id,
+                                   "priority": prio, "audit_seq": seq})
+
+    def _case_status(self, person_id: int,
+                     payload: Dict[str, Any]) -> Response:
+        denied = self._require_assignment_scope(person_id)
+        if denied is not None:
+            return denied
+
+        status = payload.get("status")
+        if status not in _CASE_STATUSES:
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "status muss einer von %s sein."
+                          % (", ".join(_CASE_STATUSES),)})
+
+        con = self._rw_con()
+        try:
+            user_id, err = self._case_id(con, payload)
+            if err is not None:
+                return err
+            writer = CoordinatorWriter(con, AuditLog(con))
+            seq = CasesRepo(con, writer).set_status(
+                user_id, status, actor_id=person_id)
+        except Exception as exc:
+            logger.exception("Status setzen fehlgeschlagen")
+            return Response.json(500, {"error": "write_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, "user_id": user_id,
+                                   "status": status, "audit_seq": seq})

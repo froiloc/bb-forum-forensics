@@ -20,6 +20,7 @@
 # =============================================================================
 
 import http.server
+import json
 import logging
 import socketserver
 import time
@@ -63,14 +64,84 @@ class ManagementRequestHandler(http.server.BaseHTTPRequestHandler):
             return
         self._send_bytes(resp.status, resp.content_type, resp.body)
 
-    # Nur-Lese-Server: alle schreibenden Methoden abweisen.
-    def do_POST(self) -> None:
-        self._send_bytes(405, "application/json; charset=utf-8",
-                         b'{"error":"read_only"}')
+    # AUDITIERTER SCHREIBPFAD (Build 372). Der Server bleibt fuer alles ausser
+    # den in ManagementApp.dispatch_write gelisteten Routen read-only.
+    # Haertung (localhost-only ist bereits durch das Binding gegeben):
+    #   1) Content-Type MUSS application/json sein -> verhindert einfache
+    #      Cross-Origin-Formular-POSTs (die nur form-encoded senden koennen).
+    #   2) Origin (falls gesetzt) muss localhost sein -> blockt fremde Seiten.
+    #   3) X-AIW-Token muss dem Schreib-Token des Serverlaufs entsprechen
+    #      (konstantzeitlicher Vergleich). Das Token gibt es nur ueber den
+    #      authentifizierten GET /api/whoami -> wer die Antwort nicht lesen
+    #      kann (Bridge/Tunnel/CSRF), kann nicht schreiben.
+    # Fehler werden explizit beantwortet, nie still verschluckt (Grundregel 1).
+    _MAX_BODY = 64 * 1024
 
-    do_PUT = do_POST
-    do_DELETE = do_POST
-    do_PATCH = do_POST
+    def do_POST(self) -> None:
+        app: ManagementApp = self.server.app  # type: ignore[attr-defined]
+        person_id: int = self.server.person_id  # type: ignore[attr-defined]
+        path = urlsplit(self.path).path
+
+        ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip()
+        if ctype != "application/json":
+            self._send_json(415, {"error": "unsupported_media_type",
+                                  "detail": "application/json erforderlich."})
+            return
+
+        origin = self.headers.get("Origin")
+        if origin and not self._origin_is_local(origin):
+            logger.warning("mgmt POST mit fremdem Origin abgewiesen: %s", origin)
+            self._send_json(403, {"error": "bad_origin"})
+            return
+
+        if not app.check_write_token(self.headers.get("X-AIW-Token")):
+            logger.warning("mgmt POST ohne/mit falschem Schreib-Token: %s", path)
+            self._send_json(403, {"error": "bad_token",
+                                  "detail": "X-AIW-Token fehlt oder ungueltig."})
+            return
+
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            self._send_json(400, {"error": "bad_request",
+                                  "detail": "Content-Length ungueltig."})
+            return
+        if length <= 0 or length > self._MAX_BODY:
+            self._send_json(413, {"error": "bad_body_length"})
+            return
+
+        try:
+            payload = json.loads(self.rfile.read(length).decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            self._send_json(400, {"error": "bad_json", "detail": str(exc)})
+            return
+
+        try:
+            resp = app.dispatch_write(person_id, path, payload)
+        except Exception:
+            logger.exception("mgmt dispatch_write-Fehler fuer %s", path)
+            self._send_bytes(500, "application/json; charset=utf-8",
+                             b'{"error":"internal"}')
+            return
+        self._send_bytes(resp.status, resp.content_type, resp.body)
+
+    @staticmethod
+    def _origin_is_local(origin: str) -> bool:
+        host = urlsplit(origin).hostname or ""
+        return host in ("127.0.0.1", "localhost", "::1")
+
+    def _send_json(self, status: int, payload) -> None:
+        self._send_bytes(status, "application/json; charset=utf-8",
+                         json.dumps(payload, ensure_ascii=False).encode("utf-8"))
+
+    # Uebrige schreibende Methoden bleiben abgewiesen.
+    def _reject(self) -> None:
+        self._send_bytes(405, "application/json; charset=utf-8",
+                         b'{"error":"method_not_allowed"}')
+
+    do_PUT = _reject
+    do_DELETE = _reject
+    do_PATCH = _reject
 
     # ------------------------------------------------------------------- SSE
     def _handle_sse(self) -> None:

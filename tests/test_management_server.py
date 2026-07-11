@@ -242,12 +242,39 @@ class ManagementServerTests(unittest.TestCase):
                 data = json.loads(f.read().decode("utf-8"))
             self.assertEqual(data["system_username"], "h001")
 
-            # POST -> 405 (read-only).
+            # SCHREIBPFAD-HAERTUNG (ab Build 372): Der Server ist nicht mehr
+            # pauschal GET-only, sondern erlaubt POST NUR auf den auditierten
+            # Schreibrouten und nur mit Token + korrektem Content-Type.
+            # (a) POST ohne Content-Type/Token -> 415 (Media Type).
             req = Request("http://127.0.0.1:%d/api/whoami" % port,
                           data=b"{}", method="POST")
             with self.assertRaises(HTTPError) as ctx:
                 urlopen(req, timeout=5)
+            self.assertEqual(ctx.exception.code, 415)
+
+            # (b) POST mit JSON-Content-Type, aber OHNE Token -> 403.
+            req = Request("http://127.0.0.1:%d/api/case/assign" % port,
+                          data=b"{}", method="POST",
+                          headers={"Content-Type": "application/json"})
+            with self.assertRaises(HTTPError) as ctx:
+                urlopen(req, timeout=5)
+            self.assertEqual(ctx.exception.code, 403)
+
+            # (c) PUT bleibt generell abgewiesen -> 405.
+            req = Request("http://127.0.0.1:%d/api/whoami" % port,
+                          data=b"{}", method="PUT")
+            with self.assertRaises(HTTPError) as ctx:
+                urlopen(req, timeout=5)
             self.assertEqual(ctx.exception.code, 405)
+
+            # (d) Mit gueltigem Token, aber unbekannter Schreibroute -> 404.
+            req = Request("http://127.0.0.1:%d/api/whoami" % port,
+                          data=b"{}", method="POST",
+                          headers={"Content-Type": "application/json",
+                                   "X-AIW-Token": data["write_token"]})
+            with self.assertRaises(HTTPError) as ctx:
+                urlopen(req, timeout=5)
+            self.assertEqual(ctx.exception.code, 404)
         finally:
             server.shutdown()
             server.server_close()
