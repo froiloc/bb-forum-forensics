@@ -38,11 +38,10 @@
 #   Ermittler eine Kapazitaets-Zeile (inkl. Anzeigename) fuer die Cockpit-Sicht
 #   (Build 360). Mit person_id unveraendert (Einzelperson, Build 358).
 #
-# Build 368 (Ermittler-Betreuung Backend): /api/mentoring (mentoring.view,
-#   scope-aware) liefert die LAUFENDEN Support-Sitzungen (support_sessions,
-#   ended_at IS NULL) mit Live/Stale-Bewertung (Heartbeat-Alter vs. stale_sec).
+# Build 370 (Statistiken Backend): /api/stats (stats.export_sta, scope-aware,
+#   format json/csv) liefert Kennzahl-Matrizen (StatsRepo) + Durchsatz je Tag.
 #
-# Version: v0.7.368 · Build: 368 · 2026-07-10
+# Version: v0.7.370 · Build: 370 · 2026-07-10
 # =============================================================================
 
 import json
@@ -72,6 +71,7 @@ from management.support_overview.support_overview_repo import (
     SupportOverviewSchemaError,
 )
 from management.support_sessions.support_sessions_repo import SupportSessionsRepo
+from management.stats.stats_repo import StatsRepo
 from db.coordinator_db import DEFAULT_SUPPORT_STALE_SEC
 from management.capacity.capacity_errors import CapacityError
 from management.workload.workload_repo import (
@@ -93,6 +93,7 @@ CAP_MYCASES = "mycases.view"
 CAP_MYHISTORY = "myhistory.view"
 CAP_SUPPORT = "support_history.view"
 CAP_MENTORING = "mentoring.view"
+CAP_STATS = "stats.export_sta"
 
 
 def _case_overview_item(c) -> Dict[str, Any]:
@@ -135,6 +136,14 @@ class Response:
         return Response(
             status=status,
             content_type="text/html; charset=utf-8",
+            body=text.encode("utf-8"),
+        )
+
+    @staticmethod
+    def csv(status: int, text: str) -> "Response":
+        return Response(
+            status=status,
+            content_type="text/csv; charset=utf-8",
             body=text.encode("utf-8"),
         )
 
@@ -235,6 +244,8 @@ class ManagementApp:
             return self._support(person_id)
         if path == "/api/mentoring":
             return self._mentoring(person_id)
+        if path == "/api/stats":
+            return self._stats(person_id, query)
         if path.startswith("/static/"):
             return self._serve_static(path[len("/static/"):])
         return Response.json(404, {"error": "not_found", "path": path})
@@ -569,3 +580,29 @@ class ManagementApp:
         return Response.json(200, {"scope": scope, "stale_sec": stale_sec,
                                    "count": len(sessions),
                                    "sessions": sessions})
+
+    def _stats(self, person_id: int,
+               query: Optional[Dict[str, List[str]]]) -> Response:
+        """
+        Statistiken (StA/Fuehrung, read-only): Kennzahl-Matrizen + Durchsatz.
+        Query 'format' = 'json' (Vorgabe) oder 'csv' (Download-Langformat).
+        Scope 'alle' -> alle Faelle; 'eigene' -> nur eigene zugewiesene Faelle.
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_STATS):
+            return self._forbidden(CAP_STATS)
+        scope = policy.scope(CAP_STATS)
+
+        q = query or {}
+        fmt = (q.get("format") or ["json"])[0]
+
+        con = self._ro_con()
+        try:
+            stats = StatsRepo(con).compute(
+                person_id=None if scope == "alle" else person_id)
+        finally:
+            con.close()
+
+        if fmt == "csv":
+            return Response.csv(200, StatsRepo.to_csv(stats))
+        return Response.json(200, stats)
