@@ -142,7 +142,15 @@ def main(argv=None) -> int:
         return 1
 
     url = "http://%s:%d/" % (args.host, port)
-    print("[management] Server laeuft (read-only): %s" % url)
+    # Ab Build 372 ist der Server NICHT mehr rein lesend: die auditierten
+    # Schreibrouten (Zuweisung/Prioritaet/Status) sind ueber POST erreichbar —
+    # abgesichert per Schreib-Token, Content-Type und localhost-Bindung. Die
+    # Meldung benennt das ausdruecklich, damit niemand (auch kein Pruefer) von
+    # einem rein lesenden Dienst ausgeht.
+    print("[management] Server laeuft: %s" % url)
+    print("[management] Lesezugriffe read-only; Schreibzugriffe nur ueber die "
+          "auditierten POST-Routen (Token-geschuetzt, jede Aenderung wird im "
+          "audit_log belegt).")
 
     # Schritt 6: optional Browser oeffnen.
     if args.open_browser:

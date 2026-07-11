@@ -46,7 +46,9 @@
 //   laufender Support-Sitzungen (Ampel/Laufzeit) + periodischer Refresh.
 //   371 = Statistiken (/api/stats, cockpit_stats.js): Reiterstruktur, ECharts-
 //   Diagramme (Verteilungen/Durchsatz), Ermittler-Tabelle, CSV/JSON-Download.
-// Version: v0.7.371 · Build: 371 · 2026-07-10
+//   373 = Zuweisung (SCHREIB-Sicht): /api/assignable + POST /api/case/* mit
+//   Schreib-Token (X-AIW-Token aus /api/whoami); kein optimistisches UI.
+// Version: v0.7.373 · Build: 373 · 2026-07-10
 // =============================================================================
 
 (function () {
@@ -253,7 +255,10 @@
         chartResize: null,  // Resize-Handler der ECharts-Instanz
         capacityPeriod: null,  // {start, end} der Kapazitaets-Sicht (SSE-Reload)
         mentoringTimer: null,  // Intervall-Handle des Betreuungs-Live-Refresh
-        sse: null
+        sse: null,
+        // Schreib-Token (Build 372/373): kommt aus /api/whoami und MUSS bei
+        // jedem POST als 'X-AIW-Token' mitgeschickt werden.
+        writeToken: null
     };
 
     // fetchJson: kleiner Wrapper mit DEV-Logging und klarer Fehlermeldung.
@@ -266,6 +271,37 @@
                 }
                 return r.json();
             });
+    }
+
+    // postJson: AUDITIERTER SCHREIBZUGRIFF (Build 372). Sendet JSON mit dem
+    // Schreib-Token. Fehlerantworten werden AUSGEWERTET und als Fehler mit der
+    // Server-Begruendung weitergereicht (Grundregel 1: kein stiller Fehlschlag).
+    function postJson(url, body) {
+        log('post', url, body);
+        if (!state.writeToken) {
+            return Promise.reject(new Error(
+                'Kein Schreib-Token vorhanden (Server neu gestartet? '
+                + 'Seite neu laden).'));
+        }
+        return fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-AIW-Token': state.writeToken
+            },
+            body: JSON.stringify(body)
+        }).then(function (r) {
+            return r.json().catch(function () { return {}; })
+                .then(function (data) {
+                    if (!r.ok) {
+                        var detail = data.detail || data.error
+                            || ('HTTP ' + r.status);
+                        throw new Error(detail);
+                    }
+                    return data;
+                });
+        });
     }
 
     // destroyTable: laufende Tabulator-Instanz sauber abbauen (verhindert
@@ -611,6 +647,57 @@
         });
     }
 
+    // loadAssignment: SCHREIB-Sicht. Laedt /api/assignable und rendert die
+    // Zuweisungs-Tabelle. Jede Aenderung geht per POST an den auditierten
+    // Schreibpfad; danach wird NEU GELADEN (kein optimistisches UI: die
+    // Oberflaeche zeigt nur bestaetigt geschriebene Zustaende). 'pendingMsg'
+    // traegt die Rueckmeldung (Erfolg ODER Fehler) durch den Reload hindurch —
+    // so bleibt sie sichtbar und geht nicht still verloren (Grundregel 1).
+    function loadAssignment(mainEl, pendingMsg) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitAssignment : null;
+        if (!mod) {
+            renderError(mainEl, 'Zuweisungs-Modul nicht geladen.');
+            return;
+        }
+        fetchJson('/api/assignable').then(function (data) {
+            cleanupView();
+            var view = mod.renderAssignment(mainEl, data, {
+                onChange: function (kind, userId, value) {
+                    var req = mod.changeRequest(kind, userId, value);
+                    if (!req) {
+                        view.setMessage('Unbekannte Aenderungsart: ' + kind,
+                                        true);
+                        return;
+                    }
+                    view.setMessage('Schreibe \u2026', false);
+                    postJson(req.path, req.body).then(function (res) {
+                        loadAssignment(mainEl, {
+                            text: 'Gespeichert (Beleg #' + res.audit_seq + ').',
+                            error: false
+                        });
+                    }).catch(function (err) {
+                        log('Schreibfehler', err);
+                        // Neu laden -> keine ungeschriebene Auswahl bleibt
+                        // stehen; die Fehlermeldung wird mitgetragen.
+                        loadAssignment(mainEl, {
+                            text: 'Fehler: ' + err.message, error: true
+                        });
+                    });
+                }
+            });
+            if (view && pendingMsg) {
+                view.setMessage(pendingMsg.text, pendingMsg.error);
+            }
+            log('Zuweisung gerendert:', (data.cases || []).length, 'Faelle');
+        }).catch(function (err) {
+            cleanupView();
+            renderError(mainEl,
+                'Zuweisung konnte nicht geladen werden: ' + err.message);
+        });
+    }
+
     // applyIntegrity: zentrale Banner-Aktualisierung aus einer Integritaets-
     // Antwort ({ok, first_bad_seq, detail, tip_seq}). Nutzt das Integritaets-
     // Modul (bannerModel + applyBanner). Wird von loadIntegrity UND refreshBanner
@@ -697,6 +784,8 @@
             loadMentoring(mainEl);
         } else if (viewId === 'stats') {
             loadStats(mainEl);
+        } else if (viewId === 'assignment') {
+            loadAssignment(mainEl);
         } else {
             renderPlaceholder(mainEl, viewById(viewId));
         }
@@ -736,6 +825,8 @@
                 loadMentoring();
             } else if (state.activeId === 'stats') {
                 loadStats();
+            } else if (state.activeId === 'assignment') {
+                loadAssignment();
             }
             // Banner global frisch halten, wenn die aktive Sicht nicht die
             // Integritaets-Sicht ist (dort geschieht es bereits oben).
@@ -756,6 +847,12 @@
         fetchJson('/api/whoami').then(function (who) {
             log('whoami', who);
             state.capabilities = who.capabilities || {};
+            // Schreib-Token uebernehmen (nur ueber diesen authentifizierten
+            // GET erhaeltlich; Voraussetzung fuer alle POSTs).
+            state.writeToken = who.write_token || null;
+            if (!state.writeToken) {
+                log('WARNUNG: kein write_token in /api/whoami');
+            }
             setWho(document.getElementById('aiw-who'),
                    who.display_name, who.system_username);
 
