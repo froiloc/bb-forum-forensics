@@ -36,7 +36,9 @@
 //
 //   360 = Kapazitaets-Sicht (/api/capacity, cockpit_capacity.js) als ECharts-
 //   Diagramm (Basis vs. netto, Auslastungs-Faerbung, Zeitraumwahl) + SSE-Reload.
-// Version: v0.7.360 · Build: 360 · 2026-07-10
+//   362 = Rechte/Policy-Sicht (/api/policy, cockpit_policy.js): Tabulator-Tabellen
+//   fuer Grants + Rollen-Zuweisungen + Katalog + SSE-Reload.
+// Version: v0.7.362 · Build: 362 · 2026-07-10
 // =============================================================================
 
 (function () {
@@ -237,6 +239,7 @@
     var state = {
         capabilities: {}, activeId: null,
         table: null,        // aktuelle Tabulator-Instanz (Overview)
+        tables: [],         // mehrere Tabulator-Instanzen (Policy-Sicht)
         chart: null,        // aktuelle ECharts-Instanz (Lastverteilung/Kapazitaet)
         chartResize: null,  // Resize-Handler der ECharts-Instanz
         capacityPeriod: null,  // {start, end} der Kapazitaets-Sicht (SSE-Reload)
@@ -282,6 +285,13 @@
     // abbauen. Wird beim Sichtwechsel und vor jedem Neuaufbau aufgerufen.
     function cleanupView() {
         destroyTable();
+        // Mehrfach-Tabellen (Policy-Sicht) abbauen.
+        (state.tables || []).forEach(function (t) {
+            if (t && typeof t.destroy === 'function') {
+                try { t.destroy(); } catch (e) { log('destroyTables', e); }
+            }
+        });
+        state.tables = [];
         destroyChart();
     }
 
@@ -386,6 +396,28 @@
         });
     }
 
+    // loadPolicy: /api/policy holen und als RBAC-Policy-Sicht rendern
+    // (cockpit_policy.js). Liefert mehrere Tabulator-Instanzen -> state.tables
+    // (in cleanupView abgebaut).
+    function loadPolicy(mainEl) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined') ? window.AIWCockpitPolicy : null;
+        if (!mod) {
+            renderError(mainEl, 'Policy-Modul nicht geladen.');
+            return;
+        }
+        fetchJson('/api/policy').then(function (data) {
+            cleanupView();
+            state.tables = mod.renderPolicy(mainEl, data, {}) || [];
+            log('Policy gerendert:', (data.counts && data.counts.grants),
+                'Grants, scope', data.scope);
+        }).catch(function (err) {
+            cleanupView();
+            renderError(mainEl,
+                'Policy konnte nicht geladen werden: ' + err.message);
+        });
+    }
+
     // applyIntegrity: zentrale Banner-Aktualisierung aus einer Integritaets-
     // Antwort ({ok, first_bad_seq, detail, tip_seq}). Nutzt das Integritaets-
     // Modul (bannerModel + applyBanner). Wird von loadIntegrity UND refreshBanner
@@ -460,6 +492,8 @@
             loadWorkload(mainEl);
         } else if (viewId === 'capacity') {
             loadCapacity(mainEl);
+        } else if (viewId === 'policy') {
+            loadPolicy(mainEl);
         } else {
             renderPlaceholder(mainEl, viewById(viewId));
         }
@@ -487,6 +521,8 @@
                 loadWorkload();
             } else if (state.activeId === 'capacity') {
                 loadCapacity(undefined, state.capacityPeriod);
+            } else if (state.activeId === 'policy') {
+                loadPolicy();
             }
             // Banner global frisch halten, wenn die aktive Sicht nicht die
             // Integritaets-Sicht ist (dort geschieht es bereits oben).
