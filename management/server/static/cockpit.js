@@ -40,7 +40,9 @@
 //   fuer Grants + Rollen-Zuweisungen + Katalog + SSE-Reload.
 //   364 = Persoenliche Sichten (cockpit_mycases.js / cockpit_myhistory.js):
 //   Meine Auftraege + Meine Historie (Tabulator) + SSE-Reload.
-// Version: v0.7.364 · Build: 364 · 2026-07-10
+//   367 = Support-Historie (/api/support, cockpit_support.js): zwei Listen (Meine
+//   Sitzungen / An meinen Faellen) + Detail-Mini-Modal + SSE-Reload.
+// Version: v0.7.367 · Build: 367 · 2026-07-10
 // =============================================================================
 
 (function () {
@@ -462,6 +464,28 @@
         });
     }
 
+    // loadSupport: /api/support holen und als Support-Historie rendern
+    // (cockpit_support.js). Liefert mehrere Tabulator-Instanzen -> state.tables
+    // (in cleanupView abgebaut).
+    function loadSupport(mainEl) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitSupport : null;
+        if (!mod) {
+            renderError(mainEl, 'Support-Modul nicht geladen.');
+            return;
+        }
+        fetchJson('/api/support').then(function (data) {
+            cleanupView();
+            state.tables = mod.renderSupport(mainEl, data, {}) || [];
+            log('Support-Historie gerendert:', data.count, 'Sitzungen');
+        }).catch(function (err) {
+            cleanupView();
+            renderError(mainEl,
+                'Support-Historie konnte nicht geladen werden: ' + err.message);
+        });
+    }
+
     // applyIntegrity: zentrale Banner-Aktualisierung aus einer Integritaets-
     // Antwort ({ok, first_bad_seq, detail, tip_seq}). Nutzt das Integritaets-
     // Modul (bannerModel + applyBanner). Wird von loadIntegrity UND refreshBanner
@@ -542,6 +566,8 @@
             loadMyCases(mainEl);
         } else if (viewId === 'myhistory') {
             loadMyHistory(mainEl);
+        } else if (viewId === 'support') {
+            loadSupport(mainEl);
         } else {
             renderPlaceholder(mainEl, viewById(viewId));
         }
@@ -575,6 +601,8 @@
                 loadMyCases();
             } else if (state.activeId === 'myhistory') {
                 loadMyHistory();
+            } else if (state.activeId === 'support') {
+                loadSupport();
             }
             // Banner global frisch halten, wenn die aktive Sicht nicht die
             // Integritaets-Sicht ist (dort geschieht es bereits oben).
