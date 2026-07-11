@@ -42,7 +42,9 @@
 //   Meine Auftraege + Meine Historie (Tabulator) + SSE-Reload.
 //   367 = Support-Historie (/api/support, cockpit_support.js): zwei Listen (Meine
 //   Sitzungen / An meinen Faellen) + Detail-Mini-Modal + SSE-Reload.
-// Version: v0.7.367 · Build: 367 · 2026-07-10
+//   369 = Ermittler-Betreuung (/api/mentoring, cockpit_mentoring.js): Live-Sicht
+//   laufender Support-Sitzungen (Ampel/Laufzeit) + periodischer Refresh.
+// Version: v0.7.369 · Build: 369 · 2026-07-10
 // =============================================================================
 
 (function () {
@@ -247,6 +249,7 @@
         chart: null,        // aktuelle ECharts-Instanz (Lastverteilung/Kapazitaet)
         chartResize: null,  // Resize-Handler der ECharts-Instanz
         capacityPeriod: null,  // {start, end} der Kapazitaets-Sicht (SSE-Reload)
+        mentoringTimer: null,  // Intervall-Handle des Betreuungs-Live-Refresh
         sse: null
     };
 
@@ -297,6 +300,11 @@
         });
         state.tables = [];
         destroyChart();
+        // Periodischen Betreuungs-Refresh stoppen (Live-Sicht verlassen).
+        if (state.mentoringTimer) {
+            clearInterval(state.mentoringTimer);
+            state.mentoringTimer = null;
+        }
     }
 
     // renderError: sichtbarer Fehlerhinweis im Hauptbereich (kein stiller Fehlpfad).
@@ -486,6 +494,53 @@
         });
     }
 
+    // Betreuung: LIVE-Sicht. Heartbeats sind nicht auditiert -> SSE genuegt
+    // nicht; wir laden periodisch nach (Intervall). MENTORING_REFRESH_MS unter
+    // der Stale-Schwelle (30 s), damit der Uebergang live->stale zeitnah
+    // sichtbar wird.
+    var MENTORING_REFRESH_MS = 15000;
+
+    // refreshMentoring: ein Refresh-Tick — Daten neu holen und die Tabelle neu
+    // aufbauen, OHNE den Timer anzufassen (sonst Timer-Churn). Nur wirksam,
+    // solange die Betreuungs-Sicht aktiv ist.
+    function refreshMentoring(mainEl) {
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitMentoring : null;
+        if (!mod) { return; }
+        fetchJson('/api/mentoring').then(function (data) {
+            if (state.activeId !== 'mentoring') { return; }
+            if (state.table && typeof state.table.destroy === 'function') {
+                try { state.table.destroy(); } catch (e) { log('refresh', e); }
+            }
+            state.table = mod.renderMentoring(mainEl, data, {});
+            log('Betreuung aktualisiert:', data.count, 'laufend');
+        }).catch(function (err) { log('Betreuung-Refresh-Fehler', err); });
+    }
+
+    // loadMentoring: Erst-Laden + periodischen Refresh scharf schalten.
+    function loadMentoring(mainEl) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitMentoring : null;
+        if (!mod) {
+            renderError(mainEl, 'Betreuungs-Modul nicht geladen.');
+            return;
+        }
+        fetchJson('/api/mentoring').then(function (data) {
+            cleanupView();  // baut alte Tabelle ab UND stoppt alten Timer
+            state.table = mod.renderMentoring(mainEl, data, {});
+            state.mentoringTimer = setInterval(function () {
+                refreshMentoring(mainEl);
+            }, MENTORING_REFRESH_MS);
+            log('Betreuung gerendert:', data.count, 'laufend');
+        }).catch(function (err) {
+            cleanupView();
+            renderError(mainEl,
+                'Ermittler-Betreuung konnte nicht geladen werden: '
+                + err.message);
+        });
+    }
+
     // applyIntegrity: zentrale Banner-Aktualisierung aus einer Integritaets-
     // Antwort ({ok, first_bad_seq, detail, tip_seq}). Nutzt das Integritaets-
     // Modul (bannerModel + applyBanner). Wird von loadIntegrity UND refreshBanner
@@ -568,6 +623,8 @@
             loadMyHistory(mainEl);
         } else if (viewId === 'support') {
             loadSupport(mainEl);
+        } else if (viewId === 'mentoring') {
+            loadMentoring(mainEl);
         } else {
             renderPlaceholder(mainEl, viewById(viewId));
         }
@@ -603,6 +660,8 @@
                 loadMyHistory();
             } else if (state.activeId === 'support') {
                 loadSupport();
+            } else if (state.activeId === 'mentoring') {
+                loadMentoring();
             }
             // Banner global frisch halten, wenn die aktive Sicht nicht die
             // Integritaets-Sicht ist (dort geschieht es bereits oben).
