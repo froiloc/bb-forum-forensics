@@ -233,6 +233,45 @@ class CapacityCalculatorTests(unittest.TestCase):
                                "end": ["2026-07-10"]})
         self.assertEqual(r_self.status, 200)
 
+    # EP05 -------------------------------------------------------------------
+    def test_ep05_aggregate_all(self):
+        # Ohne person_id -> je Ermittler eine Zeile (persons 1,2,3).
+        self._grant_capacity("supervisor", "alle", 1)
+        app = ManagementApp(self._db)
+        r = app.dispatch(1, "/api/capacity",
+                         {"start": ["2026-07-06"], "end": ["2026-07-10"]})
+        self.assertEqual(r.status, 200)
+        d = json.loads(r.body.decode("utf-8"))
+        self.assertEqual(d["scope"], "alle")
+        self.assertEqual(d["count"], 3)
+        by_id = {c["person_id"]: c for c in d["capacities"]}
+        # person 2 hat Arbeitszeit -> netto 2400; 1 und 3 ohne Regel -> 0.
+        self.assertEqual(by_id[2]["netto"], 2400)
+        self.assertEqual(by_id[1]["netto"], 0)
+        self.assertEqual(by_id[3]["netto"], 0)
+        # Anzeigename fuer die Sicht mitgeliefert.
+        self.assertEqual(by_id[2]["display_name"], "Mueller")
+        self.assertIn("system_username", by_id[2])
+
+    # EP06 -------------------------------------------------------------------
+    def test_ep06_aggregate_scope_eigene(self):
+        self._grant_capacity("investigator", "eigene", 2)
+        app = ManagementApp(self._db)
+        r = app.dispatch(2, "/api/capacity",
+                         {"start": ["2026-07-06"], "end": ["2026-07-10"]})
+        self.assertEqual(r.status, 200)
+        d = json.loads(r.body.decode("utf-8"))
+        self.assertEqual(d["scope"], "eigene")
+        self.assertEqual(d["count"], 1)
+        self.assertEqual(d["capacities"][0]["person_id"], 2)
+
+    # EP07 -------------------------------------------------------------------
+    def test_ep07_aggregate_bad_request(self):
+        self._grant_capacity("supervisor", "alle", 1)
+        app = ManagementApp(self._db)
+        r = app.dispatch(1, "/api/capacity", {"start": ["2026-07-06"]})
+        self.assertEqual(r.status, 400)
+
 
 if __name__ == "__main__":
     unittest.main()

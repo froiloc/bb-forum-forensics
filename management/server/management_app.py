@@ -34,10 +34,11 @@
 #   lokal vendort und ueber StaticAssets ausgeliefert. Die ECharts-Frontend-Sicht
 #   folgt in Build 351 (browser-verifizierbar, console-first).
 #
-# Build 358 (Kapazitaets-Lesepfad): '/api/capacity' (read-only, capacity.edit,
-#   scope-aware) liefert Kapazitaet(Person, Zeitraum) via CapacityCalculator.
+# Build 359 (Kapazitaets-Aggregat): '/api/capacity' ohne person_id liefert je
+#   Ermittler eine Kapazitaets-Zeile (inkl. Anzeigename) fuer die Cockpit-Sicht
+#   (Build 360). Mit person_id unveraendert (Einzelperson, Build 358).
 #
-# Version: v0.7.358 · Build: 358 · 2026-07-10
+# Version: v0.7.359 · Build: 359 · 2026-07-10
 # =============================================================================
 
 import json
@@ -319,8 +320,12 @@ class ManagementApp:
     def _capacity(self, person_id: int,
                   query: Optional[Dict[str, List[str]]]) -> Response:
         """
-        Kapazitaet(Person, Zeitraum) — read-only. Query: person_id, start, end
-        (ISO-Daten). Scope 'alle' -> beliebige Person; 'eigene' -> nur die
+        Kapazitaet — read-only. Query: start, end (ISO-Daten, Pflicht) und
+        OPTIONAL person_id.
+          - MIT person_id  -> Einzelperson (flaches CapacityResult, wie 358).
+          - OHNE person_id -> AGGREGAT: je Ermittler (person.is_investigator=1)
+            eine Kapazitaets-Zeile inkl. Anzeigename (fuer die Cockpit-Sicht 360).
+        Scope 'alle' -> beliebige Person / alle Ermittler; 'eigene' -> nur die
         eigene Kapazitaet.
         """
         policy = self.resolve_policy(person_id)
@@ -334,30 +339,56 @@ class ManagementApp:
             vals = q.get(key)
             return vals[0] if vals else None
 
-        target, start, end = _one("person_id"), _one("start"), _one("end")
-        if not (target and start and end):
+        start, end = _one("start"), _one("end")
+        if not (start and end):
             return Response.json(400, {
                 "error": "bad_request",
-                "detail": "Query-Parameter person_id, start, end erforderlich."})
-        try:
-            target_id = int(target)
-        except ValueError:
-            return Response.json(
-                400, {"error": "bad_request", "detail": "person_id ungueltig."})
-
-        if scope != "alle" and target_id != person_id:
-            return Response.json(403, {
-                "error": "forbidden", "capability": CAP_CAPACITY,
-                "detail": "Scope 'eigene': nur die eigene Kapazitaet."})
+                "detail": "Query-Parameter start, end erforderlich."})
+        target = _one("person_id")
 
         con = self._ro_con()
         try:
+            calc = CapacityCalculator(con)
+
+            # --- Einzelperson (unveraendert seit Build 358) ---
+            if target is not None:
+                try:
+                    target_id = int(target)
+                except ValueError:
+                    return Response.json(
+                        400, {"error": "bad_request",
+                              "detail": "person_id ungueltig."})
+                if scope != "alle" and target_id != person_id:
+                    return Response.json(403, {
+                        "error": "forbidden", "capability": CAP_CAPACITY,
+                        "detail": "Scope 'eigene': nur die eigene Kapazitaet."})
+                try:
+                    res = calc.compute(target_id, start, end)
+                except CapacityError as exc:
+                    return Response.json(
+                        400, {"error": "capacity", "detail": str(exc)})
+                return Response.json(200, asdict(res))
+
+            # --- Aggregat: alle Ermittler (scope-aware) ---
+            persons = con.execute(
+                "SELECT id, system_username, display_name FROM person "
+                "WHERE is_investigator=1 ORDER BY id ASC").fetchall()
+            if scope != "alle":
+                persons = [p for p in persons if p[0] == person_id]
+
+            caps = []
             try:
-                res = CapacityCalculator(con).compute(target_id, start, end)
+                for pid, uname, disp in persons:
+                    row = asdict(calc.compute(pid, start, end))
+                    row["system_username"] = uname
+                    row["display_name"] = disp
+                    caps.append(row)
             except CapacityError as exc:
                 return Response.json(
                     400, {"error": "capacity", "detail": str(exc)})
         finally:
             con.close()
 
-        return Response.json(200, asdict(res))
+        return Response.json(200, {"scope": scope, "count": len(caps),
+                                   "start": start, "end": end,
+                                   "capacities": caps})
