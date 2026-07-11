@@ -38,11 +38,11 @@
 #   Ermittler eine Kapazitaets-Zeile (inkl. Anzeigename) fuer die Cockpit-Sicht
 #   (Build 360). Mit person_id unveraendert (Einzelperson, Build 358).
 #
-# Build 363 (Persoenliche Sichten Backend): /api/mycases (eigene Faelle) +
-#   /api/myhistory (kombiniert: eigene Aktionen + Historie der eigenen Faelle,
-#   MyHistoryRepo). Read-only. Frontends folgen in Build 364.
+# Build 366 (Support-Historie Backend): /api/support (support_history.view,
+#   scope-aware) liefert die belegbasiert rekonstruierten Support-Sitzungen
+#   (SupportOverviewRepo), je Sitzung markiert mit mine_as_supporter/on_my_case.
 #
-# Version: v0.7.363 · Build: 363 · 2026-07-10
+# Version: v0.7.366 · Build: 366 · 2026-07-10
 # =============================================================================
 
 import json
@@ -66,6 +66,10 @@ from management.server.static_assets import StaticAssets
 from management.capacity.capacity_calculator import CapacityCalculator
 from management.rbac.policy_repo import PolicyRepo
 from management.personal.myhistory_repo import MyHistoryRepo
+from management.support_overview.support_overview_repo import (
+    SupportOverviewRepo,
+    SupportOverviewSchemaError,
+)
 from management.capacity.capacity_errors import CapacityError
 from management.workload.workload_repo import (
     WorkloadRepo,
@@ -84,6 +88,7 @@ CAP_CAPACITY = "capacity.edit"
 CAP_POLICY = "policy.view"
 CAP_MYCASES = "mycases.view"
 CAP_MYHISTORY = "myhistory.view"
+CAP_SUPPORT = "support_history.view"
 
 
 def _case_overview_item(c) -> Dict[str, Any]:
@@ -222,6 +227,8 @@ class ManagementApp:
             return self._mycases(person_id)
         if path == "/api/myhistory":
             return self._myhistory(person_id, query)
+        if path == "/api/support":
+            return self._support(person_id)
         if path.startswith("/static/"):
             return self._serve_static(path[len("/static/"):])
         return Response.json(404, {"error": "not_found", "path": path})
@@ -481,3 +488,42 @@ class ManagementApp:
         finally:
             con.close()
         return Response.json(200, result)
+
+    def _support(self, person_id: int) -> Response:
+        """
+        Support-Historie (read-only): belegbasiert rekonstruierte Support-
+        Sitzungen. Jede Sitzung wird markiert mit mine_as_supporter
+        (supporter_id == ich) und on_my_case (Fall mir zugewiesen). Scope
+        'alle' -> alle Sitzungen; 'eigene' -> nur solche, die mindestens eine
+        der beiden Markierungen tragen (eigene Sitzungen ODER an eigenen Faellen).
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_SUPPORT):
+            return self._forbidden(CAP_SUPPORT)
+        scope = policy.scope(CAP_SUPPORT)
+
+        con = self._ro_con()
+        try:
+            try:
+                records = SupportOverviewRepo(con).list_support_sessions()
+            except SupportOverviewSchemaError as exc:
+                return Response.json(
+                    503, {"error": "schema", "detail": str(exc)})
+            my_case_ids = {r[0] for r in con.execute(
+                "SELECT user_id FROM cases WHERE assigned_to = ?",
+                (person_id,)).fetchall()}
+        finally:
+            con.close()
+
+        sessions = []
+        for rec in records:
+            mine = (rec.supporter_id == person_id)
+            oncase = (rec.user_id in my_case_ids)
+            if scope != "alle" and not (mine or oncase):
+                continue
+            d = asdict(rec)
+            d["mine_as_supporter"] = mine
+            d["on_my_case"] = oncase
+            sessions.append(d)
+        return Response.json(200, {"scope": scope, "count": len(sessions),
+                                   "sessions": sessions})
