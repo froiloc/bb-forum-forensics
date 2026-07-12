@@ -918,7 +918,63 @@ class ReportEndpoint:
             return
         report_id  = data.get("report_id")
         block_id   = str(data.get("block_id") or "").strip() or str(uuid.uuid4())
-        block_type = str(data.get("block_type") or "paragraph").strip()
+
+        # ------------------------------------------------------------------
+        # Build 392 — DATENVERLUST-FIX: block_type NIEMALS raten.
+        #
+        # BISHER (bis Build 391):
+        #     block_type = str(data.get("block_type") or "paragraph").strip()
+        #
+        # Der Default 'paragraph' galt AUCH fuer einen BEREITS BESTEHENDEN
+        # Block. Zwei Aufrufer senden aber gar kein block_type, weil sie nur
+        # Werte nachtragen wollen und den Typ nicht anfassen:
+        #     report_editor.js:753   _resolveAutoPlaceholders()
+        #                            (schreibt aufgeloeste {{a:}}-Werte zurueck)
+        #     report_editor.js:2058  _onPlaceholderFieldSave()
+        #                            (schreibt einen Formularwert zurueck)
+        #
+        # FOLGE: Ein TABLE-Block wurde bei jedem dieser Vorgaenge in der
+        # Datenbank still auf 'paragraph' umgeschrieben. Beim naechsten Laden
+        # war die Tabelle verschwunden — die Daten (block_data.content) lagen
+        # noch da, wurden aber nicht mehr als Tabelle gerendert. Das traf
+        # zwangslaeufig JEDEN Spurenvermerk, sobald ein automatischer
+        # Platzhalter aufgeloest ODER die Spurennummer eingetragen wurde.
+        # Bis Build 388 fiel es nicht auf, weil ueber diesen Pfad nur
+        # paragraph-Bloecke liefen: 'paragraph' -> 'paragraph' ist folgenlos.
+        #
+        # DIESER FIX (Muster von editor_block.py, Build 135 — dort war die
+        # Behandlung laengst richtig, report.py hatte sie nie bekommen):
+        #   - block_type mitgesendet  -> wird verwendet (Typwechsel per
+        #                                Editor.js-Toolbar bleibt moeglich)
+        #   - block_type FEHLT, Block existiert -> BESTEHENDER Typ bleibt
+        #   - block_type FEHLT, Block ist NEU   -> 'paragraph' wie bisher,
+        #                                          aber MIT Protokolleintrag
+        #                                          (GRUNDREGEL 1: kein stilles
+        #                                          Erfinden eines Blocktyps)
+        #
+        # Beleg: Bugbefund Projektgespraech 2026-07-12, editor_block.py §Build 135
+        # ------------------------------------------------------------------
+        block_type_raw = data.get("block_type")
+        block_type     = str(block_type_raw or "").strip()
+
+        if not block_type:
+            existing_block = self._bundle.evidence.get_block(block_id)
+            if existing_block is not None:
+                block_type = str(existing_block.block_type)
+                logger.debug(
+                    "save_block: kein block_type im Request — bestehender Typ "
+                    "'%s' von block_id=%s wird BEIBEHALTEN.",
+                    block_type, block_id,
+                )
+            else:
+                block_type = "paragraph"
+                logger.warning(
+                    "save_block: NEUER Block block_id=%s ohne block_type. "
+                    "Es wird 'paragraph' angenommen. Der Aufrufer sollte den "
+                    "Blocktyp mitsenden.",
+                    block_id,
+                )
+
         block_data = data.get("block_data")
         if block_data is None:
             block_data = "{}"
