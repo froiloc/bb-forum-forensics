@@ -718,6 +718,9 @@ class ReportEndpoint:
             ep.action_resolve_comment(handler, data, lock_id)
         elif action == "add_anchor":
             self._action_add_anchor(handler, data, investigator)
+        elif action == "submit_report":
+            # Build 381: draft -> submitted (BERICHTS-STATUSMODELL).
+            self._action_submit_report(handler, data, investigator)
 
         else:
             handler.send_response_body(
@@ -977,6 +980,110 @@ class ReportEndpoint:
 
         handler.send_response_body(
             201, _json_ok({"anchor_id": aid}),
+            content_type="application/json; charset=utf-8",
+        )
+
+    # ------------------------------------------------------------------
+    # ZUR ABNAHME FREIGEBEN (Build 381) — draft -> submitted
+    #
+    # Beleg: documents/Berichts_Statusmodell.md; Suchbegriff im Code:
+    #        BERICHTS-STATUSMODELL (db/evidence_db.py)
+    #
+    # TRAGWEITE (dem Autor im Bestaetigungsdialog anzuzeigen, Build 382):
+    #   Mit dem Einreichen ist der Bericht FUER DEN AUTOR GESPERRT — er kann
+    #   danach keine Bloecke mehr anlegen, aendern, loeschen, umsortieren oder
+    #   Beweisanker setzen (Schreibsperre, Build 379). Kommentare bleiben
+    #   moeglich. Zurueckholen kann den Bericht NUR der Lektor oder die
+    #   Chef-Ermittlerin (Rueckgabe zur Nachbesserung, Build 380).
+    #
+    # Die Zustandsmaschine in EvidenceDb.update_report_status() erzwingt, dass
+    # dies NUR aus 'draft' moeglich ist; jeder andere Uebergang wird mit
+    # ReportSealedError (-> 409) abgewiesen. Der Server prueft das erneut — die
+    # Oberflaeche ist keine Sicherheitsgrenze.
+    # ------------------------------------------------------------------
+
+    def _action_submit_report(
+        self,
+        handler: "ForensicRequestHandler",
+        data: dict,
+        investigator: str,
+    ) -> None:
+        """Reicht den Bericht zur Abnahme ein (draft -> submitted)."""
+        if not self._require_lock(handler, data):
+            return
+
+        report_id = data.get("report_id")
+        if report_id is None:
+            handler.send_response_body(
+                400, _json_err("report_id erforderlich"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+        try:
+            report_id = int(report_id)
+        except (TypeError, ValueError):
+            handler.send_response_body(
+                400, _json_err("report_id ungueltig"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+
+        edb = self._bundle.evidence
+        report = edb.get_report(report_id)
+        if report is None:
+            handler.send_response_body(
+                404, _json_err("Bericht nicht gefunden", "NOT_FOUND"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+
+        # Nur der VERFASSER reicht seinen Bericht ein. (Die Abnahme selbst und
+        # die Rueckgabe laufen ueber das Management-Cockpit, nicht hier.)
+        if str(report.created_by) != str(investigator):
+            handler.send_response_body(
+                403, _json_err(
+                    "Nur der Verfasser darf den Bericht zur Abnahme freigeben.",
+                    "FORBIDDEN"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+
+        # Nur aus 'draft'. Die Zustandsmaschine (Build 379) behandelt einen
+        # gleichbleibenden Status als No-op-Erfolg — fuer den Editor waere das
+        # irrefuehrend ("erneut eingereicht?"). Deshalb hier EXPLIZIT ablehnen.
+        if str(report.status) != "draft":
+            handler.send_response_body(
+                409, _json_err(
+                    "Der Bericht ist bereits im Status '%s' und kann nicht "
+                    "(erneut) zur Abnahme freigegeben werden."
+                    % report.status, "CONFLICT"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+
+        from db.evidence_db import EvidenceDbError
+        try:
+            edb.update_report_status(report_id, "submitted", investigator)
+        except EvidenceDbError as exc:
+            # Deckt auch ReportSealedError ab (Unterklasse): unzulaessiger
+            # Uebergang, z. B. weil der Bericht bereits eingereicht ist.
+            handler.send_response_body(
+                409, _json_err(str(exc), "CONFLICT"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+
+        logger.info("Bericht %d zur Abnahme freigegeben von %s",
+                    report_id, investigator)
+        handler.send_response_body(
+            200, _json_ok({
+                "report_id": report_id,
+                "status": "submitted",
+                "message": ("Der Bericht wurde zur Abnahme freigegeben und ist "
+                            "fuer Sie nun gesperrt. Nur der Lektor oder die "
+                            "Chef-Ermittlerin koennen ihn zur Nachbesserung "
+                            "zurueckgeben."),
+            }),
             content_type="application/json; charset=utf-8",
         )
 
