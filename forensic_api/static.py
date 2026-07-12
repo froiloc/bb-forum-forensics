@@ -72,6 +72,8 @@ _RESOURCES: dict[str, tuple[str, str, Path]] = {
     "/_forensic/report.css":   ("report.css",   "text/css; charset=utf-8",               _USERINFO_DIR),
     # B6 Phase 4 (Chip-Rendering): Platzhalter-Parser
     "/_forensic/placeholder_chips.js": ("placeholder_chips.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
+    # Build 389: zentraler Katalog der Formatregeln (Client-Seite).
+    "/_forensic/validation_rules.js": ("validation_rules.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
     # B6 Phase 5 (Wizard): Platzhalter-Wizard
     "/_forensic/placeholder_wizard.js": ("placeholder_wizard.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
     # B6 Phase 6 (Modul-Panel): Modul-Auswahl

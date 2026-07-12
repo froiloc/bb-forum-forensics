@@ -302,18 +302,28 @@ function _renderBlockGroup(block, focusedBlockId) {
     const chips  = window.PlaceholderChips;
     const isFocused = block.block_id === focusedBlockId;
 
-    // Rohtext aus block_data extrahieren
-    let rawText = '';
+    // block_data auspacken
+    let blockData = {};
     try {
-        const data = typeof block.block_data === 'string'
+        blockData = typeof block.block_data === 'string'
             ? JSON.parse(block.block_data)
             : (block.block_data || {});
-        rawText = data.text || '';
     } catch (_) {}
 
-    // Felder extrahieren (m: und o: — a: wird nicht angezeigt)
-    const mFields = chips ? chips.extractFields(rawText, 'm').map(f => ({ ...f, type: 'm' })) : [];
-    const oFields = chips ? chips.extractFields(rawText, 'o').map(f => ({ ...f, type: 'o' })) : [];
+    // Felder extrahieren (m: und o: — a: wird nicht angezeigt).
+    //
+    // Build 389: extractFieldsFromBlockData statt extractFields(data.text).
+    // Ein TABLE-Block hat KEIN .text — sein Inhalt steht in .content (2D).
+    // Mit der alten Zeile blieb die gesamte Feststellungstabelle des
+    // Spurenvermerks im Formular unsichtbar: der Ermittler haette die
+    // Spurennummer nirgends eintragen koennen.
+    // Beleg: Bauplan Build 389 §2, Projektgespraech 2026-07-12
+    const mFields = chips
+        ? chips.extractFieldsFromBlockData(blockData, 'm').map(f => ({ ...f, type: 'm' }))
+        : [];
+    const oFields = chips
+        ? chips.extractFieldsFromBlockData(blockData, 'o').map(f => ({ ...f, type: 'o' }))
+        : [];
     const fields  = [...mFields, ...oFields];
 
     // Aktuelle Werte aus placeholder_values_json
@@ -366,17 +376,29 @@ function _renderField(field, values, blockId) {
     const reqMark   = isM ? ' <span class="pf-required" aria-hidden="true">*</span>' : '';
     const hasVal    = String(val).trim() !== '';
 
-    // Validierungsstatus
+    // Validierungsstatus.
+    //
+    // Build 389: Die Pruefung laeuft ueber window.ValidationRules. Das
+    // 5. Platzhalterfeld (field.b64regex) traegt ENTWEDER einen Verweis in den
+    // zentralen Katalog ('rule:spurennummer', neu) ODER eine Base64-Regex
+    // (Alt-Form) — ValidationRules.check() erkennt beide. Damit bleiben alle
+    // bestehenden Bausteine unveraendert gueltig.
+    // Beleg: Bauplan Build 389 §3
     let validCls = '';
-    if (hasVal && field.b64regex) {
-        const pattern = _b64DecodeUnicode(field.b64regex);
-        if (pattern !== null) {
-            try {
-                validCls = new RegExp(pattern).test(val) ? ' pf-input--valid' : ' pf-input--warn';
-            } catch (_) {}
-        }
+    if (hasVal && field.b64regex && window.ValidationRules) {
+        const res = window.ValidationRules.check(field.b64regex, val);
+        validCls = res.ok ? ' pf-input--valid' : ' pf-input--warn';
     } else if (hasVal) {
         validCls = ' pf-input--valid';
+    }
+
+    // Hinweistext der Regel (z.B. 'AIW/R3X/... gefolgt von Ziffern'). Ohne ihn
+    // saehe der Ermittler im Fehlerfall nur 'entspricht nicht dem Format' —
+    // ohne zu erfahren, WAS erwartet wird.
+    let ruleHint = '';
+    if (field.b64regex && window.ValidationRules) {
+        const spec = window.ValidationRules.resolve(field.b64regex);
+        if (spec && spec.hint) ruleHint = spec.hint;
     }
 
     return `<div class="pf-field-group"
@@ -404,6 +426,9 @@ function _renderField(field, values, blockId) {
              role="alert"></div>
         ${field.description && field.description !== field.name
             ? `<div class="pf-field-hint">${_esc(field.description)}</div>`
+            : ''}
+        ${ruleHint
+            ? `<div class="pf-field-hint pf-field-hint--format">Format: ${_esc(ruleHint)}</div>`
             : ''}
     </div>`;
 }
@@ -452,6 +477,33 @@ function _bindFormEvents(body, blocks, opts) {
             _scheduleFieldSave(input, opts);
         });
 
+        // Build 389: Beim VERLASSEN des Feldes wird der Wert normalisiert
+        // (z.B. transform: upper -> 'aiw123' wird zu 'AIW123') und sofort
+        // sichtbar zurueckgeschrieben.
+        //
+        // WARUM ERST BEIM BLUR und nicht schon bei jedem Tastendruck:
+        // Ein Umschreiben des Feldinhalts waehrend der Eingabe setzt die
+        // Cursorposition zurueck — der Ermittler wuerde beim Tippen aus dem
+        // Feld 'springen'. Beim Blur ist das unschaedlich und der Ermittler
+        // SIEHT, welcher Wert tatsaechlich gespeichert wurde. Der Wert im
+        // Feld und der Wert in der Akte sind damit immer identisch.
+        // Beleg: Bauplan Build 389 §3, Entwicklervorgabe 2026-07-12
+        input.addEventListener('blur', (evt) => {
+            window._uevt?.(evt, 'placeholder_wizard', 'blur:pf-input', { field: input.dataset.fieldName }); // B200
+            const b64re = input.dataset.b64regex;
+            if (!b64re || !window.ValidationRules) return;
+
+            const normalized = window.ValidationRules.normalize(b64re, input.value);
+            if (normalized !== input.value) {
+                _dbg('blur: Wert normalisiert:', JSON.stringify(input.value),
+                     '->', JSON.stringify(normalized));
+                input.value = normalized;
+                _validateFieldLive(input);
+                // Sofort speichern — der normalisierte Wert ist der gueltige.
+                _scheduleFieldSave(input, opts);
+            }
+        });
+
         // Tab-Navigation zwischen Block-Gruppen: Blur wandert mit
         input.addEventListener('keydown', e => {
             window._uevt?.(e, 'placeholder_wizard', 'keydown:pf-input', { key: e.key, field: input.dataset.fieldName }); // B200
@@ -490,18 +542,18 @@ function _validateFieldLive(input) {
         return;
     }
 
-    // RegExp-Validierung (OP-B6-5, Warnung)
-    if (b64re) {
-        const pattern = _b64DecodeUnicode(b64re);
-        if (pattern !== null) {
-            try {
-                const ok = new RegExp(pattern).test(val);
-                if (!ok) {
-                    input.classList.add('pf-input--warn');
-                    if (errEl) errEl.textContent = 'Eingabe entspricht nicht dem erwarteten Format.';
-                    return;
-                }
-            } catch (_) {}
+    // Formatpruefung (Build 389: ueber den zentralen Katalog).
+    // Waehrend der Eingabe wird NUR gewarnt, nicht blockiert — sonst koennte
+    // der Ermittler eine Nummer nicht zeichenweise tippen ('AIW1' ist beim
+    // vierten Zeichen noch unvollstaendig). Die harte Pruefung erfolgt beim
+    // Verlassen des Feldes (_normalizeAndValidateField) und ein zweites Mal
+    // serverseitig beim Einreichen (report.py::_validate_report_fields).
+    if (b64re && window.ValidationRules) {
+        const res = window.ValidationRules.check(b64re, val);
+        if (!res.ok) {
+            input.classList.add('pf-input--warn');
+            if (errEl) errEl.textContent = res.message;
+            return;
         }
     }
 
@@ -539,7 +591,17 @@ function _scheduleFieldSave(input, opts) {
 async function _saveField(input, opts) {
     const blockId = input.dataset.blockId;
     const name    = input.dataset.fieldName;
-    const val     = input.value;
+    // Build 389: Es wird der NORMALISIERTE Wert gespeichert (transform aus dem
+    // Regel-Katalog, z.B. upper). Damit steht in der Akte einheitlich
+    // 'AIW12345' — auch wenn der Ermittler 'aiw12345' getippt und das Feld per
+    // debounce-Timer vor dem Blur gespeichert hat. Der Server normalisiert
+    // beim Einreichen ein zweites Mal identisch
+    // (core/validation_rules.py::_apply_transform) — beide Seiten kommen zum
+    // selben Ergebnis.
+    const b64re   = input.dataset.b64regex;
+    const val     = (b64re && window.ValidationRules)
+        ? window.ValidationRules.normalize(b64re, input.value)
+        : input.value;
     // Build 141 Logging: Zeigt genau was gespeichert wird.
     console.debug('[PlaceholderWizard] _saveField: blockId=', blockId,
         'name=', name, 'val=', JSON.stringify(val),

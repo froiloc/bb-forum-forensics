@@ -84,6 +84,17 @@ function _dbg(...args) {
 // ---------------------------------------------------------------------------
 
 const TEMPLATES_API    = '/_forensic/templates';
+// Build 389: Vorlagen (VOLLSTAENDIGE Berichtsgerueste).
+// Abgrenzung, die man staendig verwechselt:
+//   MODUL   = EIN Textbaustein  -> wird als EIN paragraph-Block eingefuegt.
+//   VORLAGE = EIN GANZER BERICHT -> mehrere typisierte Bloecke (header,
+//             paragraph, TABLE). Wird NICHT vom Client Block fuer Block
+//             geschrieben, sondern serverseitig und TRANSAKTIONAL ueber die
+//             Aktion 'insert_template' (Build 388). Wuerde der Client die
+//             Bloecke einzeln senden, koennte bei einem Abbruch ein HALBER
+//             Spurenvermerk stehenbleiben — der wie ein vollstaendiger aussieht.
+// Beleg: Bauplan Build 389 §4, Projektgespraech 2026-07-12
+const FULL_TEMPLATES_API = '/_forensic/templates/full';
 const LIBRARY_API      = '/_forensic/placeholders/library';
 const REPORT_API       = '/_forensic/report';
 
@@ -146,7 +157,8 @@ let _queries         = [];     // geladene Queries (Einzeldaten-Ansicht)
 let _selectedId      = null;   // aktuell ausgewaehltes Element (id/string)
 let _filterRole      = '';
 let _filterSearch    = '';
-let _activeCategory  = 'modules';  // 'modules' | 'queries'
+let _activeCategory  = 'modules';  // 'modules' | 'queries' | 'templates'
+let _templates       = [];     // geladene Vorlagen (Vorlagen-Ansicht, Build 389)
 // Bug 2.117 Fix Build 211: _filterRole unter dem _modules zuletzt geladen wurde.
 // Wenn _filterRole wechselt, ist der Cache ungueltig.
 // Beleg: Bugfix Build 211, Projektgespraech 2026-05-17
@@ -188,6 +200,19 @@ async function _fetchModuleBody(id) {
     });
     if (!resp.ok) return null;
     return resp.json();
+}
+
+/**
+ * Laedt die Liste der VOLLSTAENDIGEN Berichtsvorlagen (ohne blocks_json —
+ * das kann gross sein und wird zum Anzeigen nicht gebraucht).
+ * Beleg: Bauplan Build 389 §4
+ */
+async function _fetchTemplates(search) {
+    const url = FULL_TEMPLATES_API + (search ? '?search=' + encodeURIComponent(search) : '');
+    _dbg('_fetchTemplates:', url);
+    const resp = await fetch(url, { headers: { 'X-Forensic-Request': 'ajax' } });
+    if (!resp.ok) throw new Error('Vorlagen konnten nicht geladen werden (HTTP ' + resp.status + ')');
+    return await resp.json();
 }
 
 async function _fetchQueries(search) {
@@ -259,6 +284,12 @@ function _renderSkeleton() {
             <button class="mp-cat-tab${_activeCategory === 'queries' ? ' mp-cat-tab--active' : ''}" role="tab"
                     aria-selected="${String(_activeCategory === 'queries')}" data-category="queries"
                     type="button">Einzeldaten</button>
+            <!-- Build 389: dritter Reiter. Bewusst 'Vorlagen' und nicht
+                 'Komplett'/'Voll-Vorlagen': kurz genug fuer die Tab-Leiste; der
+                 Untertitel der Liste sagt, was dahintersteckt. -->
+            <button class="mp-cat-tab${_activeCategory === 'templates' ? ' mp-cat-tab--active' : ''}" role="tab"
+                    aria-selected="${String(_activeCategory === 'templates')}" data-category="templates"
+                    type="button">Vorlagen</button>
         </div>
 
         <!-- Suche -->
@@ -433,6 +464,12 @@ async function _loadAndRender(forceReload = false) {
             } else {
                 _renderList(_modules);
             }
+        } else if (_activeCategory === 'templates') {
+            // Build 389: Vorlagen. Kein Cache-Ueberspringen bei Force-Reload.
+            if (forceReload || _templates.length === 0 || _filterSearch) {
+                _templates = await _fetchTemplates(_filterSearch);
+            }
+            _renderTemplateList(_templates);
         } else {
             // Build 124: Cache fuer Queries
             if (forceReload || _queries.length === 0 || _filterSearch) {
@@ -440,11 +477,103 @@ async function _loadAndRender(forceReload = false) {
             }
             _renderQueryList(_queries);
         }
-    } catch (_) {
-        _modules = [];
-        _queries = [];
-        _renderList([]);
+    } catch (err) {
+        // GRUNDREGEL 1: Ein Ladefehler darf nicht als 'keine Eintraege
+        // vorhanden' erscheinen — das sieht fuer den Ermittler aus wie eine
+        // leere, aber funktionierende Bibliothek. Fehler sichtbar machen.
+        // Beleg: Bauplan Build 389 §4
+        console.error('module_panel.js: Laden fehlgeschlagen:', err);
+        _modules   = [];
+        _queries   = [];
+        _templates = [];
+        const list    = document.getElementById('mp-list');
+        const loading = document.getElementById('mp-loading');
+        const empty   = document.getElementById('mp-empty');
+        if (loading) loading.style.display = 'none';
+        if (empty)   empty.style.display = 'none';
+        if (list) {
+            list.innerHTML = `<div class="mp-error" role="alert">
+                Die Bausteine konnten nicht geladen werden.
+                <br><small>${_esc(String(err && err.message ? err.message : err))}</small>
+            </div>`;
+        }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Vorlagenliste rendern (Build 389)
+// ---------------------------------------------------------------------------
+
+/**
+ * Rendert die Liste der vollstaendigen Berichtsvorlagen in #mp-list.
+ *
+ * Bewusst KEIN Drag&Drop (anders als bei Modulen): eine Vorlage wird immer
+ * als GANZES am Ende des Berichts eingefuegt. Ein Drop mitten in einen
+ * bestehenden Bericht wuerde suggerieren, man koenne sie an eine beliebige
+ * Stelle setzen — die Bloecke werden aber serverseitig ans Ende gehaengt
+ * (save_blocks_bulk, Build 388). Ein Knopf sagt die Wahrheit, ein Drag-Ziel
+ * wuerde luegen.
+ * Beleg: Bauplan Build 389 §4
+ *
+ * @param {Array} templates
+ */
+function _renderTemplateList(templates) {
+    const list    = document.getElementById('mp-list');
+    const empty   = document.getElementById('mp-empty');
+    const loading = document.getElementById('mp-loading');
+    if (!list) return;
+
+    if (loading) loading.style.display = 'none';
+
+    if (!templates.length) {
+        list.innerHTML = '';
+        if (empty) {
+            empty.textContent = 'Keine Vorlagen vorhanden.';
+            empty.style.display = '';
+        }
+        return;
+    }
+    if (empty) empty.style.display = 'none';
+
+    const intro = `<div class="mp-cat-intro">
+        Vollst\u00e4ndige Berichtsvorlagen. Beim Einf\u00fcgen werden alle
+        Bausteine der Vorlage gemeinsam an das Ende des Berichts angeh\u00e4ngt.
+    </div>`;
+
+    list.innerHTML = intro + templates.map(t => {
+        const desc = t.description
+            ? _esc(t.description.slice(0, PREVIEW_CHARS))
+                + (t.description.length > PREVIEW_CHARS ? '\u2026' : '')
+            : '';
+        return `
+            <div class="mp-item mp-item--template" role="option"
+                 aria-selected="false"
+                 data-template-key="${_esc(t.template_key)}"
+                 tabindex="0">
+                <div class="mp-item-main">
+                    <span class="mp-item-icon" aria-hidden="true">&#128203;</span>
+                    <div class="mp-item-text">
+                        <span class="mp-item-title">${_esc(t.title || t.template_key)}</span>
+                        ${desc ? `<span class="mp-item-desc">${desc}</span>` : ''}
+                    </div>
+                </div>
+                <div class="mp-item-footer">
+                    <button class="mp-insert-btn" type="button"
+                            data-template-key="${_esc(t.template_key)}"
+                            aria-label="Vorlage ${_esc(t.title || t.template_key)} einf\u00fcgen">
+                        + Vorlage einf\u00fcgen
+                    </button>
+                </div>
+            </div>`;
+    }).join('');
+
+    list.querySelectorAll('.mp-insert-btn[data-template-key]').forEach(btn => {
+        btn.addEventListener('click', (evt) => {
+            window._uevt?.(evt, 'module_panel', 'click:vorlage-insert-btn',
+                           { templateKey: btn.dataset.templateKey }); // B200
+            _insertTemplate(btn.dataset.templateKey);
+        });
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -844,6 +973,87 @@ function _renderListWithStandard(modules, stdBlocks) {
  * Nach dem Einfuegen: Formular-Akkordeon automatisch oeffnen (Phase 6).
  * Beleg: Bauplan B6 v0.5 §4.4.1, Projektgespraech 2026-05-06
  */
+/**
+ * Fuegt eine VOLLSTAENDIGE Berichtsvorlage ein (Build 389).
+ *
+ * Der Client sendet NUR den template_key. Der Server laedt die Vorlage,
+ * vergibt die UUIDs und legt ALLE Bloecke in EINER Transaktion an
+ * (report.py -> insert_template -> evidence_db.save_blocks_bulk).
+ *
+ * WARUM DER CLIENT DIE BLOECKE NICHT SELBST SCHREIBT:
+ *   Der naheliegende Weg waere gewesen, blocks_json abzurufen und N-mal
+ *   save_block zu senden. Bricht das bei Block 3 von 7 ab, bliebe ein HALBER
+ *   Spurenvermerk stehen — der fuer den Ermittler wie ein vollstaendiger
+ *   aussieht. Das ist ein stilles Uebergehen (GRUNDREGEL 1). Deshalb: eine
+ *   Anfrage, eine Transaktion, alles oder nichts.
+ *
+ * BESTAETIGUNG: Anders als ein Modul (ein Block) erzeugt eine Vorlage mehrere
+ * Bloecke auf einmal. Ein versehentlicher Klick waere entsprechend laestig
+ * rueckgaengig zu machen — deshalb eine Rueckfrage.
+ *
+ * Beleg: Bauplan Build 389 §4, Projektgespraech 2026-07-12
+ */
+async function _insertTemplate(templateKey) {
+    if (!templateKey) return;
+
+    const lockId = window.lockLayer?.lockId;
+    if (!lockId) {
+        _showInsertError('Kein aktiver Lock. Bitte Seite neu laden.');
+        return;
+    }
+    if (window.ReportEditor?.isReloading?.()) {
+        _dbg('_insertTemplate: Editor-Reload aktiv — Einfuegen zurueckgestellt (150ms)');
+        setTimeout(() => _insertTemplate(templateKey), 150);
+        return;
+    }
+
+    const tpl   = _templates.find(t => t.template_key === templateKey);
+    const title = tpl?.title || templateKey;
+
+    if (!window.confirm(
+        'Vorlage \u00bb' + title + '\u00ab einf\u00fcgen?\n\n' +
+        'Alle Bausteine der Vorlage werden gemeinsam an das Ende des ' +
+        'Berichts angeh\u00e4ngt. Pflichtfelder (z.\u202fB. die Spurennummer) ' +
+        'm\u00fcssen anschlie\u00dfend im Formular ausgef\u00fcllt werden.'
+    )) {
+        _dbg('_insertTemplate: vom Benutzer abgebrochen.');
+        return;
+    }
+
+    const btn = document.querySelector(`.mp-insert-btn[data-template-key="${templateKey}"]`);
+    if (btn) { btn.disabled = true; btn.textContent = '\u2026'; }
+
+    try {
+        const dl = window.documentLayer;
+        if (!dl) throw new Error('documentLayer nicht verf\u00fcgbar');
+
+        const data = await dl._sendRequest({
+            action:       'insert_template',
+            template_key: templateKey,
+        });
+        if (data === null) {
+            throw new Error('Einf\u00fcgen fehlgeschlagen (kein Lock oder Netzwerkfehler).');
+        }
+
+        _dbg('_insertTemplate: Vorlage eingefuegt, block_count=', data.block_count,
+             'block_ids=', data.block_ids);
+
+        // Wie bei _insertModule (Build 203): kein blocks.insert() im Client.
+        // Der Editor wird im Callback komplett neu geladen, damit Editor-IDs
+        // und Server-UUIDs garantiert identisch sind.
+        if (_currentOpts.onTemplateInserted) {
+            await _currentOpts.onTemplateInserted(
+                data.block_ids || [], templateKey, title
+            );
+        }
+    } catch (err) {
+        console.error('module_panel.js: _insertTemplate fehlgeschlagen:', err);
+        _showInsertError(String(err && err.message ? err.message : err));
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '+ Vorlage einf\u00fcgen'; }
+    }
+}
+
 async function _insertModule(moduleId) {
     if (!moduleId) return;
     // Paket 9: Lock-Check über LockLayer statt EditorState.
@@ -1237,6 +1447,12 @@ window.ModulePanel = {
     _selectModule,
     // Phase 7 Tests
     _renderSkeleton,
+    // Build 389: Vorlagen (vollstaendige Berichtsgerueste)
+    _renderTemplateList,
+    _fetchTemplates,
+    _insertTemplate,
+    _setTemplatesForTest: (t) => { _templates = Array.isArray(t) ? t : []; },
+    _setActiveCategoryForTest: (c) => { _activeCategory = c; },
     // Rueckwaerts-Kompatibilitaet
     open,
     close,

@@ -694,10 +694,23 @@ async function _resolveAutoPlaceholders(blocks, reportId) {
     const AUTO_RE = /\{\{(?:auto|a):([A-Za-z0-9._-]+)(?:\|[^}]*)?\}\}/g;
 
     for (const block of blocks) {
-        // Nur Blöcke mit block_data und block_type 'paragraph' (Text)
         let blockData = {};
         try { blockData = JSON.parse(block.block_data || '{}'); } catch (_) {}
-        const text = blockData.text || '';
+
+        // Build 389: ALLE Textstellen des Blocks zusammenfassen — nicht nur
+        // .text. Ein TABLE-Block traegt seinen Inhalt in .content (2D-Array);
+        // mit der alten Zeile ('const text = blockData.text') blieben die
+        // {{a:}}-Platzhalter in der Feststellungstabelle des Spurenvermerks
+        // UNAUFGELOEST: der Ermittler haette dort rohe Template-Syntax gesehen.
+        // Der zusammengefasste Text wird NUR zum Aufloesen an den Server
+        // geschickt (der Server liefert {query_id: wert} zurueck) — er wird
+        // nirgends gespeichert. Die Werte landen in placeholder_values_json
+        // und werden beim Rendern in JEDE Textstelle eingesetzt.
+        // Beleg: Bauplan Build 389 §2
+        const texts = window.PlaceholderChips?.collectBlockTexts
+            ? window.PlaceholderChips.collectBlockTexts(blockData)
+            : [blockData.text || ''];
+        const text = texts.filter(Boolean).join('\n');
         if (!text) continue;
 
         // Prüfen ob der Block überhaupt {{a:...}}-Chips enthält
@@ -779,24 +792,26 @@ function _initEditorJs(blocks, reportId) {
                 : (b.block_data || {});
             // paragraph ohne text-Feld: Editor.js wuerde Block verwerfen
             if (b.block_type === 'paragraph' && !raw.text) raw.text = '';
-            // Build 124 Fix: Vor dem Hydrieren zuerst dehydrieren.
-            // dehydrateChips ist idempotent auf reiner Template-Syntax.
-            // Beleg: Bugfix Build 121/124, Projektgespraech 2026-05-08
-            if (raw.text && window.PlaceholderChips?.dehydrateChips) {
-                raw.text = window.PlaceholderChips.dehydrateChips(raw.text);
-            }
-            // B6 Phase 5: Template-Syntax in text-Feld zu Chips hydrieren.
-            // NUR wenn Template-Syntax {{...}} vorhanden — sonst wuerde
-            // render()/_esc() HTML-Entities wie &lt; nochmals escapen.
-            // Beleg: Bugfix Build 124, Projektgespraech 2026-05-08
-            if (raw.text && raw.text.includes('{{') && window.PlaceholderChips?.hydrateChips) {
+
+            // Build 389: Hydrieren/Dehydrieren ueber ALLE Textstellen des
+            // Blocks (paragraph/header: .text, list: .items, TABLE: .content).
+            // Bis Build 388 wurde ausschliesslich raw.text behandelt — eine
+            // Tabellenzelle mit '{{a:user.posts_total|0}}' waere dem Ermittler
+            // als ROHE Template-Syntax angezeigt worden.
+            // Beleg: Bauplan Build 389 §2, Projektgespraech 2026-07-12
+            const chips389 = window.PlaceholderChips;
+            if (chips389?.dehydrateBlockData && chips389?.hydrateBlockData) {
+                // Build 124 Fix (unveraendert gueltig): Vor dem Hydrieren zuerst
+                // dehydrieren. dehydrateBlockData ist idempotent auf reiner
+                // Template-Syntax. Beleg: Bugfix Build 121/124
+                let data389 = chips389.dehydrateBlockData(raw);
+
                 const values = b.placeholder_values_json
                     ? (() => { try { return JSON.parse(b.placeholder_values_json); } catch(_) { return {}; } })()
                     : {};
-                // Bug 2.53 Fix Build 138: resolvedAuto aus block_data befuellen.
-                // Automatische Platzhalter ({{a:query_id}}) werden mit ihrem
-                // aufgeloesten Wert gerendert falls dieser in placeholder_values_json
-                // unter dem Schlussel "auto:query_id" gespeichert ist.
+                // Bug 2.53 Fix Build 138: resolvedAuto aus placeholder_values_json.
+                // {{a:query_id}} wird mit dem Wert gerendert, der unter dem
+                // Schluessel "auto:query_id" gespeichert ist.
                 // Beleg: Bugfix Build 138, Projektgespraech 2026-05-09
                 const resolvedAuto = {};
                 for (const [k, v] of Object.entries(values)) {
@@ -804,7 +819,8 @@ function _initEditorJs(blocks, reportId) {
                         resolvedAuto[k.slice(5)] = v;
                     }
                 }
-                raw.text = window.PlaceholderChips.hydrateChips(raw.text, values, resolvedAuto);
+                data389 = chips389.hydrateBlockData(data389, values, resolvedAuto);
+                return { id: b.block_id, type: b.block_type, data: data389 };
             }
             return { id: b.block_id, type: b.block_type, data: raw };
         }),
@@ -875,20 +891,19 @@ function _initEditorJs(blocks, reportId) {
                     try {
                         const editorData = await window._editor?.save?.();
                         if (editorData?.blocks) {
-                            const dehydrate = window.PlaceholderChips?.dehydrateChips;
+                            // Build 389: ganze block_data dehydrieren statt nur
+                            // .text. Sonst wuerde das Formular fuer TABLE-Bloecke
+                            // nie aktualisiert (edBlock.data.text ist dort
+                            // undefined -> die alte Bedingung war nie erfuellt).
+                            // Beleg: Bauplan Build 389 §2
+                            const dehydrateBD = window.PlaceholderChips?.dehydrateBlockData;
                             for (const edBlock of editorData.blocks) {
                                 const cb = _currentBlocks.find(b => b.block_id === edBlock.id);
-                                if (cb && edBlock.data?.text != null) {
-                                    const freshText = dehydrate
-                                        ? dehydrate(edBlock.data.text)
-                                        : edBlock.data.text;
-                                    const parsed = typeof cb.block_data === 'string'
-                                        ? JSON.parse(cb.block_data)
-                                        : (cb.block_data || {});
-                                    cb.block_data = JSON.stringify({
-                                        ...parsed,
-                                        text: freshText,
-                                    });
+                                if (cb && edBlock.data) {
+                                    const fresh = dehydrateBD
+                                        ? dehydrateBD(edBlock.data)
+                                        : edBlock.data;
+                                    cb.block_data = JSON.stringify(fresh);
                                 }
                             }
                         }
@@ -933,7 +948,9 @@ function _initEditorJs(blocks, reportId) {
                     // Formular falsche Felder (Felder des Eltern-Blocks) oder
                     // keine Felder obwohl Inhalt vorhanden ist.
                     // Beleg: Bugfix Build 216, Projektgespraech 2026-05-17
-                    const dehydrate = window.PlaceholderChips?.dehydrateChips;
+                    // Build 389: dehydrateBlockData statt dehydrateChips —
+                    // deckt auch Tabellenzellen ab. Beleg: Bauplan Build 389 §2
+                    const dehydrateBD = window.PlaceholderChips?.dehydrateBlockData;
                     // Bug 2.121 Fix Build 216b: editorData per await holen —
                     // editorData ist in diesem Scope nicht definiert (kein
                     // editor.save()-Aufruf weiter oben). ReferenceError wurde
@@ -954,9 +971,10 @@ function _initEditorJs(blocks, reportId) {
                     for (const edBlock of (_edData?.blocks ?? [])) {
                         const edId = edBlock.id;
                         if (!edId) continue;
-                        const rawText = edBlock.data?.text ?? '';
-                        const freshText = dehydrate ? dehydrate(rawText) : rawText;
-                        const freshData = JSON.stringify({ ...edBlock.data, text: freshText });
+                        const fresh = dehydrateBD
+                            ? dehydrateBD(edBlock.data || {})
+                            : (edBlock.data || {});
+                        const freshData = JSON.stringify(fresh);
                         if (!knownBlockIds.has(edId)) {
                             // Neuer unsaved Block: eintragen
                             _currentBlocks.push({
@@ -1870,10 +1888,18 @@ function _bindChipDoubleClick() {
                 const block   = data.blocks?.find(b => b.id === blockId);
                 if (!block) return;
 
-                // Dehydrierter Text (Template-Syntax) fuer den Wizard
-                const rawText = window.PlaceholderChips?.dehydrateChips?.(
-                    block.data?.text || ''
-                ) || '';
+                // Dehydrierter Text (Template-Syntax) fuer den Wizard.
+                // Build 389: ueber ALLE Textstellen — ein Klick auf einen Chip
+                // IN EINER TABELLENZELLE muss den Wizard mit genau diesem Feld
+                // oeffnen. Mit der alten Zeile (block.data.text) war rawText bei
+                // Tabellen leer und der Wizard oeffnete ohne Felder.
+                // Beleg: Bauplan Build 389 §2
+                const chipsRE = window.PlaceholderChips;
+                const rawText = chipsRE?.dehydrateBlockData
+                    ? chipsRE.collectBlockTexts(
+                        chipsRE.dehydrateBlockData(block.data || {})
+                      ).filter(Boolean).join('\n')
+                    : (chipsRE?.dehydrateChips?.(block.data?.text || '') || '');
 
                 // Bug 2.54 Fix Build 138: Bestehende Formularwerte aus _currentBlocks
                 // uebergeben damit der aktuelle Wert im Eingabefeld erscheint.
@@ -2152,6 +2178,71 @@ function _refreshModulePanel() {
                     if (blockId && typeof window.PlaceholderWizard?.focusBlock === 'function') {
                         window.PlaceholderWizard.focusBlock(blockId);
                     }
+                }
+            }
+        },
+
+        /**
+         * Build 389: Rueckruf nach dem Einfuegen einer VOLLSTAENDIGEN Vorlage.
+         *
+         * Unterschied zu onInserted (ein Modul = ein Block): hier entstehen
+         * MEHRERE Bloecke auf einmal, und der Client kennt ihre Inhalte gar
+         * nicht (der Server hat sie aus templates.db geschrieben). Deshalb
+         * wird nach dem Neuladen des Editors direkt aus den frisch geladenen
+         * _currentBlocks bestimmt, ob es Eingabefelder gibt — nicht aus einem
+         * mitgegebenen bodyText.
+         *
+         * Der Fokus springt auf den ERSTEN Block mit einem PFLICHTFELD. Beim
+         * Spurenvermerk ist das die Ueberschrift mit der Spurennummer: der
+         * Ermittler landet also genau dort, wo er zwingend etwas eintragen
+         * muss, und muss nicht erst suchen.
+         *
+         * Beleg: Bauplan Build 389 §4, Projektgespraech 2026-07-12
+         */
+        onTemplateInserted: async (blockIds, templateKey, title) => {
+            _dbg('onTemplateInserted:', templateKey, '->', blockIds?.length, 'Bloecke');
+
+            if (_currentReport) {
+                await _reloadEditorContent();
+            }
+
+            const chips = window.PlaceholderChips;
+            if (!chips?.extractFieldsFromBlockData) return;
+
+            // Ersten Block der neuen Vorlage suchen, der ein PFLICHTFELD hat;
+            // ersatzweise den ersten mit irgendeinem Eingabefeld.
+            const neu = new Set(blockIds || []);
+            let firstMandatory = null;
+            let firstAny       = null;
+
+            for (const b of _currentBlocks) {
+                if (!neu.has(b.block_id)) continue;
+                let data = {};
+                try {
+                    data = typeof b.block_data === 'string'
+                        ? JSON.parse(b.block_data)
+                        : (b.block_data || {});
+                } catch (_) { continue; }
+
+                const hasM = chips.extractFieldsFromBlockData(data, 'm').length > 0;
+                const hasO = chips.extractFieldsFromBlockData(data, 'o').length > 0;
+
+                if (hasM && !firstMandatory) firstMandatory = b.block_id;
+                if ((hasM || hasO) && !firstAny) firstAny = b.block_id;
+            }
+
+            const target = firstMandatory || firstAny;
+            if (!target) {
+                _dbg('onTemplateInserted: Vorlage ohne Eingabefelder — kein Formular noetig.');
+                return;
+            }
+
+            const sidebar     = document.getElementById('support-sidebar');
+            const formSection = sidebar?.querySelector('[data-accordion="form"]');
+            if (formSection) {
+                _openAccordionSection(formSection);
+                if (typeof window.PlaceholderWizard?.focusBlock === 'function') {
+                    window.PlaceholderWizard.focusBlock(target);
                 }
             }
         },
@@ -2502,15 +2593,22 @@ async function _performAutoSave(reportId) {
             continue;
         }
 
-        // B6 Phase 5: Chips aus block_data.text dehydrieren (gerendertes HTML -> Template-Syntax)
-        // bevor gespeichert wird, damit block_data immer rohe Template-Syntax enthaelt.
-        // Beleg: Bauplan B6 v0.5 §4.6, Projektgespraech 2026-05-06
+        // B6 Phase 5: Chips dehydrieren (gerendertes HTML -> Template-Syntax)
+        // bevor gespeichert wird, damit block_data immer ROHE Template-Syntax
+        // enthaelt. Beleg: Bauplan B6 v0.5 §4.6, Projektgespraech 2026-05-06
+        //
+        // Build 389 — DER KRITISCHE PFAD: hier wird in die evidence_db
+        // geschrieben. Die alte Bedingung (block.data.text) traf auf einen
+        // TABLE-Block NIE zu, weil dieser kein .text hat. Folge waere gewesen:
+        // das gerenderte Chip-HTML (<span class="ph-chip" ...>) landet
+        // unveraendert in report_blocks.block_data — und damit in den
+        // Siegel-Hash des Berichts (report_sealer). Der Bericht waere formal
+        // gesiegelt, aber sein gespeicherter Inhalt waere Darstellungs-HTML
+        // statt der Belegkette. dehydrateBlockData deckt .text, .items UND
+        // .content ab. Beleg: Bauplan Build 389 §2
         let blockDataToSave = block.data;
-        if (block.data && block.data.text && window.PlaceholderChips?.dehydrateChips) {
-            blockDataToSave = {
-                ...block.data,
-                text: window.PlaceholderChips.dehydrateChips(block.data.text),
-            };
+        if (block.data && window.PlaceholderChips?.dehydrateBlockData) {
+            blockDataToSave = window.PlaceholderChips.dehydrateBlockData(block.data);
         }
         const resp = await _docSend('save_block', {
             block_id:   block.id,
@@ -3815,6 +3913,19 @@ function _initForumLinkInterceptor() {
 
 async function initEditorModule() {
     _dbg('initEditorModule() gestartet');
+
+    // Build 389: Regel-Katalog EINMALIG laden (config.yaml -> validation.rules).
+    // Muss vor dem ersten Rendern des Platzhalter-Formulars stehen, sonst
+    // koennte ein Feld mit 'rule:spurennummer' kurzzeitig ungeprueft
+    // erscheinen. Bewusst OHNE await auf den Rest des Inits zu blockieren:
+    // faellt der Abruf aus, protokolliert ValidationRules das laut und der
+    // Server lehnt fehlerhafte Werte beim Einreichen ohnehin ab — der Editor
+    // soll deswegen aber nicht gar nicht erst starten.
+    // Beleg: Bauplan Build 389 §3
+    window.ValidationRules?.load?.().catch(err =>
+        console.error('report_editor.js: Regel-Katalog nicht ladbar:', err)
+    );
+
     // Akkordeon-Listener sofort verdrahten — unabhaengig von Berichten und EditorJS.
     // Beleg: Bugfix Build 111, Projektgespraech 2026-05-07
     _initSidebarAccordion();

@@ -326,6 +326,12 @@ _EDITOR_HTML = """\
     <script src="/_forensic/debug_events.js" defer></script>
     <!-- 1a) placeholder_chips.js: Chip-Renderer (vor report.js laden) -->
     <script src="/_forensic/placeholder_chips.js" defer></script>
+
+    <!-- 1b) validation_rules.js (Build 389): zentraler Katalog der Formatregeln
+         (config.yaml -> validation.rules). MUSS vor placeholder_wizard.js
+         geladen werden — der Wizard loest damit 'rule:<name>' im 5. Feld
+         eines Platzhalters auf. defer erhaelt die Reihenfolge. -->
+    <script src="/_forensic/validation_rules.js" defer></script>
     <!-- 1b) placeholder_wizard.js: Wizard (nach Chips, vor report.js) -->
     <script src="/_forensic/placeholder_wizard.js" defer></script>
     <!-- 1c) module_panel.js: Modul-Auswahl-Panel -->

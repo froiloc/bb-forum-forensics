@@ -258,6 +258,7 @@ class ForensicApi:
             "/_forensic/report_editor.js",      # B6 Phase 2 (umbenannt von editor.js)
             "/_forensic/report.css",            # B6 Phase 4 Stylesheet
             "/_forensic/placeholder_chips.js",  # B6 Phase 4 Chips
+            "/_forensic/validation_rules.js",   # B6 Build 389 Regel-Katalog
             "/_forensic/placeholder_wizard.js", # B6 Phase 5 Wizard
             "/_forensic/module_panel.js",       # B6 Phase 6 Panel
             "/_forensic/annotation_sidebar.js", # B6 Phase 7 Sidebar

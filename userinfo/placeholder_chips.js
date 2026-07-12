@@ -355,6 +355,155 @@ window.PlaceholderChips.dehydrateChips = dehydrateChips;
 window.PlaceholderChips.hydrateChips   = hydrateChips;
 
 // ---------------------------------------------------------------------------
+// Block-Data-Helfer (Build 389)
+// ---------------------------------------------------------------------------
+// PROBLEM, das diese Helfer loesen:
+//   Bis Build 388 arbeiteten ALLE Chip-Pfade ausschliesslich auf
+//   block_data.text (report_editor.js:697 'Nur Bloecke mit block_type
+//   paragraph'). Ein Editor.js-TABLE-Block legt seinen Text aber in
+//   block_data.content ab (2D-Array von Zellen), ein LIST-Block in
+//   block_data.items. Platzhalter in einer Tabellenzelle wurden deshalb:
+//     - beim Laden nicht zu Chips hydriert (der Ermittler saehe rohes
+//       '{{a:user.posts_total|0}}' in der Zelle),
+//     - vom Wizard nicht als Eingabefeld erfasst,
+//     - beim Auto-Save nicht dehydriert (Chip-HTML waere in die Datenbank
+//       geschrieben worden — und damit in den Siegel-Hash des Berichts).
+//
+//   Der Spurenvermerk (Build 388) besteht in seinem Kern aus einer TABELLE.
+//   Ohne diese Helfer waere er unbenutzbar.
+//
+// LOESUNG:
+//   mapBlockTexts() kapselt an EINER Stelle, wo in einem Block Text stehen
+//   kann. Alle uebrigen Pfade (Hydrieren, Dehydrieren, Feld-Extraktion,
+//   Auto-Aufloesung) setzen darauf auf und muessen den Blocktyp nicht mehr
+//   kennen. Das ist bewusst die exakte Entsprechung von
+//   core/placeholder_syntax.py::PlaceholderSyntax.iter_texts() auf dem
+//   Server — beide Seiten MUESSEN dieselben Textstellen sehen, sonst prueft
+//   der Server Felder, die der Client nie angeboten hat (oder umgekehrt).
+//
+// Beleg: Bauplan Build 389 §2, Projektgespraech 2026-07-12
+// ---------------------------------------------------------------------------
+
+/**
+ * Wendet fn auf JEDE Textstelle eines Editor.js-Blocks an und liefert eine
+ * NEUE block_data zurueck (das Original wird nicht veraendert).
+ *
+ * Beruecksichtigte Textstellen:
+ *   .text            paragraph / header / quote
+ *   .items[]         list (Strings ODER {content: '...'} bei NestedList)
+ *   .content[][]     table (2D-Array von Zellen)
+ *
+ * @param {Object}   data  block_data (Objekt, nicht JSON-String)
+ * @param {Function} fn    (text: string) => string
+ * @returns {Object}       neue block_data
+ */
+function mapBlockTexts(data, fn) {
+    if (!data || typeof data !== 'object' || typeof fn !== 'function') return data;
+
+    const out = { ...data };
+
+    // paragraph / header / quote
+    if (typeof out.text === 'string') {
+        out.text = fn(out.text);
+    }
+
+    // list — NestedList liefert je nach Version Strings oder {content}
+    if (Array.isArray(out.items)) {
+        out.items = out.items.map(item => {
+            if (typeof item === 'string') return fn(item);
+            if (item && typeof item === 'object' && typeof item.content === 'string') {
+                return { ...item, content: fn(item.content) };
+            }
+            return item;
+        });
+    }
+
+    // table
+    if (Array.isArray(out.content)) {
+        out.content = out.content.map(row =>
+            Array.isArray(row)
+                ? row.map(cell => (typeof cell === 'string' ? fn(cell) : cell))
+                : row
+        );
+    }
+
+    return out;
+}
+
+/**
+ * Liefert alle Textstellen eines Blocks als Array. Wird gebraucht, wenn nur
+ * GELESEN wird (Feld-Extraktion, Auto-Platzhalter-Erkennung).
+ * @param {Object} data
+ * @returns {string[]}
+ */
+function collectBlockTexts(data) {
+    const texts = [];
+    mapBlockTexts(data, (t) => { texts.push(t); return t; });
+    return texts;
+}
+
+/**
+ * Hydriert ALLE Textstellen eines Blocks (Template-Syntax -> Chip-HTML).
+ *
+ * Wichtig: hydrateChips() wird nur auf Texte angewandt, die tatsaechlich
+ * '{{' enthalten. Sonst wuerde render()/_esc() bereits escapte Entities
+ * (&lt; usw.) ein zweites Mal escapen — genau der Fehler aus Build 124.
+ *
+ * @param {Object} data
+ * @param {Object} values        { name: wert } fuer m:/o:
+ * @param {Object} resolvedAuto  { query_id: wert } fuer a:
+ * @returns {Object} neue block_data
+ */
+function hydrateBlockData(data, values = {}, resolvedAuto = {}) {
+    return mapBlockTexts(data, (t) =>
+        (t && t.includes('{{')) ? hydrateChips(t, values, resolvedAuto) : t
+    );
+}
+
+/**
+ * Dehydriert ALLE Textstellen eines Blocks (Chip-HTML -> Template-Syntax).
+ * Idempotent auf reiner Template-Syntax (dehydrateChips steigt frueh aus,
+ * wenn kein 'ph-chip' im Text vorkommt).
+ *
+ * @param {Object} data
+ * @returns {Object} neue block_data
+ */
+function dehydrateBlockData(data) {
+    return mapBlockTexts(data, (t) => dehydrateChips(t));
+}
+
+/**
+ * Extrahiert die Platzhalter-Felder eines Blocks ueber ALLE Textstellen
+ * hinweg — auch aus Tabellenzellen.
+ *
+ * Duplikate (derselbe Feldname in mehreren Zellen) werden zusammengefasst:
+ * ein Feldname = EIN Wert je Block (so ist placeholder_values_json aufgebaut,
+ * und so rendert _refreshChipsInBlock() den Wert in alle Vorkommen).
+ *
+ * @param {Object} data
+ * @param {'m'|'o'|'a'} type
+ * @returns {Array<{name, defaultVal, description, b64regex}>}
+ */
+function extractFieldsFromBlockData(data, type) {
+    const seen   = new Set();
+    const result = [];
+    for (const text of collectBlockTexts(data)) {
+        for (const f of extractFields(text, type)) {
+            if (seen.has(f.name)) continue;
+            seen.add(f.name);
+            result.push(f);
+        }
+    }
+    return result;
+}
+
+window.PlaceholderChips.mapBlockTexts             = mapBlockTexts;
+window.PlaceholderChips.collectBlockTexts         = collectBlockTexts;
+window.PlaceholderChips.hydrateBlockData          = hydrateBlockData;
+window.PlaceholderChips.dehydrateBlockData        = dehydrateBlockData;
+window.PlaceholderChips.extractFieldsFromBlockData = extractFieldsFromBlockData;
+
+// ---------------------------------------------------------------------------
 // PlaceholderInlineTool (B6 Phase 5)
 // Editor.js InlineTool fuer Platzhalter-Chips.
 //

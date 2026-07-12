@@ -3457,3 +3457,74 @@
   background: #999;
   box-shadow: 0 0 0 1px #fff;
 }
+
+/* ===========================================================================
+   Build 389 — Reiter "Vorlagen" (vollstaendige Berichtsgerueste)
+   ===========================================================================
+   Visuell bewusst von Modulen abgesetzt: eine Vorlage fuegt MEHRERE Bloecke
+   auf einmal ein. Der Ermittler soll auf den ersten Blick sehen, dass hier
+   etwas anderes passiert als beim Einfuegen eines einzelnen Textbausteins.
+   Beleg: Bauplan Build 389 §4, Projektgespraech 2026-07-12
+   =========================================================================== */
+
+/* Einleitungstext oberhalb der Vorlagenliste. Erklaert die Wirkung des
+   Einfuegens, BEVOR geklickt wird — nicht erst im Bestaetigungsdialog. */
+.mp-cat-intro {
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    line-height: 1.45;
+    color: #4a5b6b;
+    background: #eef4f9;
+    border-left: 3px solid #5b8db8;
+    border-radius: 3px;
+}
+
+.mp-item--template {
+    border-left: 3px solid #5b8db8;
+}
+
+.mp-item--template:hover {
+    background: #eef4f9;
+}
+
+.mp-item--template .mp-insert-btn {
+    background: #5b8db8;
+    color: #fff;
+    font-weight: 600;
+}
+
+.mp-item--template .mp-insert-btn:hover:not(:disabled) {
+    background: #4a7ba5;
+}
+
+/* Ladefehler in der Bausteine-Liste.
+   GRUNDREGEL 1: Ein Fehler darf NICHT wie "keine Eintraege vorhanden"
+   aussehen — sonst haelt der Ermittler eine kaputte Bibliothek fuer eine
+   leere. Deshalb rot und ausdruecklich als Fehler ausgewiesen. */
+.mp-error {
+    padding: 12px;
+    margin: 8px 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #8a2020;
+    background: #fdecea;
+    border: 1px solid #e0b4b0;
+    border-radius: 4px;
+}
+
+.mp-error small {
+    display: block;
+    margin-top: 4px;
+    color: #a35a55;
+    font-size: 11px;
+}
+
+/* Formathinweis unter einem Eingabefeld (z.B. "Format: Behoerdenkuerzel ...").
+   Kommt aus dem zentralen Regel-Katalog (config.yaml -> validation.rules.hint).
+   Ohne diesen Hinweis saehe der Ermittler im Fehlerfall nur "entspricht nicht
+   dem Format" — ohne zu erfahren, WAS erwartet wird. */
+.pf-field-hint--format {
+    font-style: italic;
+    color: #5b6b7b;
+}
