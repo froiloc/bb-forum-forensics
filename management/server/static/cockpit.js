@@ -50,7 +50,9 @@
 //   Schreib-Token (X-AIW-Token aus /api/whoami); kein optimistisches UI.
 //   375 = Berichts-Abnahme (/api/reports, cockpit_reports.js) + Nav-Korrektur:
 //   Sichten koennen mehrere Faehigkeiten haben (any-of, Feld 'caps').
-// Version: v0.7.375 · Build: 375 · 2026-07-10
+//   378 = Berichts-Freigabe im Cockpit (POST /api/report/approve mit Schreib-
+//   Token, GET /api/report/verify zur Siegelpruefung).
+// Version: v0.7.378 · Build: 378 · 2026-07-10
 // =============================================================================
 
 (function () {
@@ -722,7 +724,7 @@
 
     // loadReports: Berichts-Abnahme (/api/reports). force=true umgeht den
     // serverseitigen Scan-Cache (liest alle evidence-DBs neu ein).
-    function loadReports(mainEl, force) {
+    function loadReports(mainEl, force, pendingMsg) {
         mainEl = mainEl || document.getElementById('aiw-main');
         var mod = (typeof window !== 'undefined')
             ? window.AIWCockpitReports : null;
@@ -733,9 +735,66 @@
         var url = '/api/reports' + (force ? '?force=1' : '');
         fetchJson(url).then(function (data) {
             cleanupView();
-            state.table = mod.renderReports(mainEl, data, {
-                onForceRescan: function () { loadReports(mainEl, true); }
+            var t = mod.renderReports(mainEl, data, {
+                onForceRescan: function () { loadReports(mainEl, true); },
+                // Nur wer reports.approve besitzt, bekommt die Freigabe-Knoepfe.
+                // (Der Server prueft es ohnehin erneut — die Oberflaeche soll
+                // nur keine Aktion anbieten, die zwingend scheitern wuerde.)
+                canApprove: hasCap(state.capabilities, 'reports.approve'),
+
+                // FREIGABE (Schreibpfad, Build 377): POST mit Schreib-Token.
+                // Danach NEU LADEN — die Sicht zeigt nur bestaetigt
+                // geschriebene Zustaende (kein optimistisches UI).
+                onApprove: function (userId, reportId, isFinal) {
+                    postJson('/api/report/approve', {
+                        user_id: userId, report_id: reportId,
+                        is_final: !!isFinal
+                    }).then(function (res) {
+                        loadReports(mainEl, false, {
+                            text: (isFinal ? 'Endgueltig freigegeben'
+                                           : 'Freigegeben und versiegelt')
+                                + ' (Beleg #' + res.audit_seq + ', Hash '
+                                + String(res.content_sha256).slice(0, 12)
+                                + '\u2026).',
+                            error: false
+                        });
+                    }).catch(function (err) {
+                        log('Freigabe-Fehler', err);
+                        if (t && t.aiwSetResult) {
+                            t.aiwSetResult('Fehler: ' + err.message, true);
+                        }
+                    });
+                },
+
+                // SIEGELPRUEFUNG (lesend): Hash neu bilden und vergleichen.
+                onVerify: function (userId, reportId) {
+                    fetchJson('/api/report/verify?user_id=' + userId
+                              + '&report_id=' + reportId)
+                        .then(function (v) {
+                            if (t && t.aiwShowVerify) { t.aiwShowVerify(v); }
+                            log('Siegelpruefung', v);
+                        }).catch(function (err) {
+                            if (t && t.aiwSetResult) {
+                                t.aiwSetResult(
+                                    'Siegelpruefung fehlgeschlagen: '
+                                    + err.message, true);
+                            }
+                        });
+                }
             });
+            state.table = t;
+            if (t && pendingMsg && t.aiwSetResult) {
+                // Rueckmeldung der Freigabe durch den Reload tragen.
+                t.aiwSelectRow(null);
+                var box = mainEl.querySelector('#aiw-report-actions');
+                if (box) {
+                    var m = document.createElement('div');
+                    m.className = pendingMsg.error ? 'error' : 'ok';
+                    m.id = 'aiw-report-msg';
+                    m.textContent = pendingMsg.text;
+                    box.appendChild(m);
+                }
+            }
             log('Berichte gerendert:', data.count, '-', data.rescanned,
                 'DBs neu eingelesen');
         }).catch(function (err) {

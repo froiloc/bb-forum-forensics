@@ -28,7 +28,9 @@
 //
 // Build 376: Betriebshinweis, wenn der Scan-Cache fehlt (Migration nicht
 //   angewandt) — sichtbar in der Sicht, nicht nur im Log.
-// Version: v0.7.376 · Build: 376 · 2026-07-10
+// Build 378: Freigabe im Cockpit — Aktionsfeld je Bericht (Freigeben /
+//   Endgueltig / Siegel pruefen) inkl. Anzeige des Pruefergebnisses.
+// Version: v0.7.378 · Build: 378 · 2026-07-10
 // =============================================================================
 
 (function () {
@@ -77,6 +79,7 @@
             var ap = r.approvals || [];
             return {
                 user_id: r.user_id,
+                report_id: r.id,
                 username: r.username || '',
                 title: r.title,
                 typ: TYPE_LABEL[r.report_type] || r.report_type,
@@ -117,6 +120,40 @@
         return (data.case_db_count || 0) + ' Fall-Datenbanken, davon '
             + (data.rescanned || 0) + ' neu eingelesen; '
             + (data.count || 0) + ' Berichte.';
+    }
+
+    // availableActions: welche Aktionen sind fuer DIESEN Bericht moeglich?
+    // Rein -> in vitest pruefbar. Die Regeln spiegeln die Vorbedingungen des
+    // Servers (Build 377): Freigabe nur aus 'submitted', 'final' nur aus
+    // 'approved'. Ohne reports.approve bleibt nur die Siegelpruefung.
+    function availableActions(row, canApprove) {
+        var acts = [];
+        if (!row) { return acts; }
+        if (canApprove && row.status === 'submitted') {
+            acts.push({ kind: 'approve', label: 'Freigeben (versiegeln)' });
+        }
+        if (canApprove && row.status === 'approved') {
+            acts.push({ kind: 'final', label: 'Endgueltig freigeben' });
+        }
+        if (row.status === 'approved' || row.status === 'final') {
+            acts.push({ kind: 'verify', label: 'Siegel pruefen' });
+        }
+        return acts;
+    }
+
+    // verifyText: Klartext zum Pruefergebnis. Eine ABWEICHUNG ist ein
+    // Manipulationsverdacht und wird beim Namen genannt.
+    function verifyText(v) {
+        if (!v) { return ''; }
+        if (!v.sealed) {
+            return 'Kein Siegel vorhanden (Bericht ist nicht freigegeben).';
+        }
+        if (v.match === true) {
+            return 'Siegel in Ordnung: der Berichtsinhalt entspricht dem '
+                + 'freigegebenen Stand.';
+        }
+        return 'ABWEICHUNG: Der Berichtsinhalt weicht vom versiegelten Stand '
+            + 'ab. Das ist ein Manipulationsverdacht und muss geprueft werden.';
     }
 
     // =========================================================================
@@ -262,8 +299,117 @@
 
         var table = new Ctor(container, {
             data: rows, columns: _COLUMNS,
-            layout: 'fitColumns', height: '440px'
+            layout: 'fitColumns', height: '440px',
+            // Zeilenklick -> Aktionsfeld fuer DIESEN Bericht (Build 378).
+            rowClick: function (e, row) {
+                selectRow(row.getData());
+            }
         });
+
+        // --- AKTIONSFELD (Build 378) ---------------------------------------
+        // Bewusst KEINE Knoepfe in den Tabellenzellen: die Freigabe ist ein
+        // Schreibvorgang mit Belegpflicht. Der Ermittler waehlt erst einen
+        // Bericht, sieht dann Status und Siegel-Aktionen — ein Klick weniger
+        // Versehen.
+        var panel = doc.createElement('div');
+        panel.className = 'aiw-report-actions';
+        panel.id = 'aiw-report-actions';
+        mainEl.appendChild(panel);
+
+        function selectRow(r) {
+            panel.textContent = '';
+            if (!r) { return; }
+
+            var head = doc.createElement('div');
+            head.className = 'aiw-subhead';
+            head.textContent = 'Bericht ' + r.user_id + '/' + r.report_id
+                + ' \u2014 ' + r.title + ' (' + r.status_label + ')';
+            panel.appendChild(head);
+
+            var acts = availableActions(r, !!opts.canApprove);
+            var btns = doc.createElement('div');
+            btns.className = 'aiw-report-btns';
+
+            acts.forEach(function (a) {
+                var b = doc.createElement('button');
+                b.type = 'button';
+                b.className = 'aiw-btn';
+                b.id = 'aiw-report-' + a.kind;
+                b.textContent = a.label;
+                b.addEventListener('click', function () {
+                    if (a.kind === 'verify') {
+                        if (typeof opts.onVerify === 'function') {
+                            setResult('Pruefe Siegel \u2026', null);
+                            opts.onVerify(r.user_id, r.report_id);
+                        }
+                        return;
+                    }
+                    if (typeof opts.onApprove === 'function') {
+                        setResult('Schreibe \u2026', null);
+                        opts.onApprove(r.user_id, r.report_id,
+                                       a.kind === 'final');
+                    }
+                });
+                btns.appendChild(b);
+            });
+            if (!acts.length) {
+                var none = doc.createElement('div');
+                none.className = 'aiw-placeholder';
+                none.textContent = 'Keine Aktion verfuegbar '
+                    + '(Status oder Berechtigung).';
+                btns.appendChild(none);
+            }
+            panel.appendChild(btns);
+
+            var res = doc.createElement('div');
+            res.className = 'aiw-report-result';
+            res.id = 'aiw-report-result';
+            panel.appendChild(res);
+        }
+
+        // setResult: Rueckmeldung (Erfolg/Fehler/Siegelpruefung) im Aktionsfeld.
+        function setResult(text, isError) {
+            var res = panel.querySelector('#aiw-report-result');
+            if (!res) { return; }
+            res.textContent = text || '';
+            res.classList.toggle('error', isError === true);
+            res.classList.toggle('ok', isError === false);
+        }
+
+        // showVerify: Ergebnis der Siegelpruefung deutlich darstellen. Eine
+        // ABWEICHUNG ist ein Manipulationsverdacht — sie wird nicht beschoenigt.
+        function showVerify(v) {
+            var res = panel.querySelector('#aiw-report-result');
+            if (!res) { return; }
+            res.textContent = '';
+            res.classList.remove('error', 'ok');
+
+            var line = doc.createElement('div');
+            line.textContent = verifyText(v);
+            line.className = (v && v.match === false) ? 'error'
+                : (v && v.match === true ? 'ok' : '');
+            res.appendChild(line);
+
+            if (v && v.sealed) {
+                var dl = doc.createElement('dl');
+                dl.className = 'aiw-detail-dl';
+                [['Siegel-Hash', v.sealed_sha256],
+                 ['Aktueller Hash', v.current_sha256 || '\u2014'],
+                 ['Freigegeben von', v.approved_by],
+                 ['Freigegeben am', fmtTs(v.approved_at)],
+                 ['Beleg (audit_seq)', v.audit_seq],
+                 ['Endgueltig', v.is_final ? 'ja' : 'nein']
+                ].forEach(function (p) {
+                    var dt = doc.createElement('dt');
+                    dt.textContent = p[0];
+                    var dd = doc.createElement('dd');
+                    dd.textContent = String(p[1] === undefined ? '' : p[1]);
+                    dl.appendChild(dt);
+                    dl.appendChild(dd);
+                });
+                res.appendChild(dl);
+            }
+        }
 
         // Statusfilter: lokal filtern (kein Server-Roundtrip noetig).
         sel.addEventListener('change', function () {
@@ -280,6 +426,10 @@
 
         log('renderReports:', rows.length, 'Berichte;',
             (data && data.rescanned), 'DBs neu eingelesen');
+        // Die Shell braucht Zugriff auf das Aktionsfeld (Rueckmeldungen).
+        table.aiwSelectRow = selectRow;
+        table.aiwSetResult = setResult;
+        table.aiwShowVerify = showVerify;
         return table;
     }
 
@@ -294,6 +444,8 @@
         filterByStatus: filterByStatus,
         statusCounts: statusCounts,
         scanInfoText: scanInfoText,
+        availableActions: availableActions,
+        verifyText: verifyText,
         renderReports: renderReports
     };
     if (typeof module !== 'undefined' && module.exports) { module.exports = API; }

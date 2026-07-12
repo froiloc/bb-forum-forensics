@@ -153,4 +153,81 @@ describe("cockpit_reports.js — Berichts-Abnahme (Build 375)", () => {
     // ... und stellt klar, dass die Liste dennoch vollstaendig ist.
     expect(ce.textContent).toContain("vollstaendig");
   });
+
+  // --- Build 378: Freigabe-Aktionen + Siegelpruefung -----------------------
+
+  it("BR08: availableActions spiegelt die Server-Vorbedingungen", () => {
+    const api = _api();
+    // Freigeben nur aus 'submitted' UND nur mit reports.approve.
+    let a = api.availableActions({ status: "submitted" }, true);
+    expect(a.map((x) => x.kind)).toEqual(["approve"]);
+    a = api.availableActions({ status: "submitted" }, false);
+    expect(a).toEqual([]);                     // ohne Cap keine Freigabe
+
+    // 'final' nur aus 'approved'; Siegelpruefung ist auch ohne Cap moeglich.
+    a = api.availableActions({ status: "approved" }, true);
+    expect(a.map((x) => x.kind)).toEqual(["final", "verify"]);
+    a = api.availableActions({ status: "approved" }, false);
+    expect(a.map((x) => x.kind)).toEqual(["verify"]);
+
+    // Entwurf: nichts.
+    expect(api.availableActions({ status: "draft" }, true)).toEqual([]);
+    // Final: nur pruefen.
+    a = api.availableActions({ status: "final" }, true);
+    expect(a.map((x) => x.kind)).toEqual(["verify"]);
+  });
+
+  it("BR09: verifyText benennt eine ABWEICHUNG beim Namen", () => {
+    const api = _api();
+    expect(api.verifyText({ sealed: false })).toContain("Kein Siegel");
+    expect(api.verifyText({ sealed: true, match: true }))
+      .toContain("in Ordnung");
+    const bad = api.verifyText({ sealed: true, match: false });
+    expect(bad).toContain("ABWEICHUNG");
+    expect(bad).toContain("Manipulationsverdacht");
+  });
+
+  it("BR10: Zeilenklick oeffnet das Aktionsfeld; Knoepfe rufen Callbacks", () => {
+    const win = _ctx();
+    const api = win.AIWCockpitReports;
+    const main = win.document.createElement("main");
+    const approvals = [];
+    const verifies = [];
+    let rowClick = null;
+    function StubTab(container, opts) {
+      rowClick = opts.rowClick;
+      this.replaceData = function () {};
+    }
+    const data = _data();
+    const t = api.renderReports(main, data, {
+      Tabulator: StubTab,
+      canApprove: true,
+      onApprove: (u, r, f) => approvals.push([u, r, f]),
+      onVerify: (u, r) => verifies.push([u, r]),
+    });
+
+    // Zeile 1 = Fall 18, status 'submitted' -> Freigabe-Knopf.
+    const rows = api.toRows(data);
+    rowClick(null, { getData: () => rows[0] });
+    const btn = main.querySelector("#aiw-report-approve");
+    expect(btn).toBeTruthy();
+    btn.click();
+    expect(approvals[0]).toEqual([18, 1, false]);
+
+    // Zeile 2 = Fall 19, status 'approved' -> 'final' + 'verify'.
+    rowClick(null, { getData: () => rows[1] });
+    expect(main.querySelector("#aiw-report-final")).toBeTruthy();
+    main.querySelector("#aiw-report-verify").click();
+    expect(verifies[0]).toEqual([19, 1]);
+
+    // Siegelpruefung anzeigen: ABWEICHUNG wird deutlich dargestellt.
+    t.aiwShowVerify({
+      sealed: true, match: false, sealed_sha256: "aaa", current_sha256: "bbb",
+      approved_by: "h0a2898", approved_at: 1783200000, audit_seq: 42,
+      is_final: false,
+    });
+    const res = main.querySelector("#aiw-report-result");
+    expect(res.textContent).toContain("ABWEICHUNG");
+    expect(res.querySelector("dl")).toBeTruthy();   // Hash-Gegenueberstellung
+  });
 });
