@@ -195,3 +195,116 @@ table.aiw-tbl {
 .aiw-cases-result:not(:empty) { margin-top: 10px; font-size: 13px; }
 .aiw-cases-result.ok    { color: #1e6b3a; }
 .aiw-cases-result.error { color: #922b21; font-weight: 600; }
+
+/* ==========================================================================
+   Kalender & Wiedervorlage (Build 386) — cockpit_calendar.js
+   --------------------------------------------------------------------------
+   Wie bei der Fall-Erkennung eng auf '.aiw-cal-*' gefasst, damit keine
+   bestehende Sicht ihr Aussehen aendert.
+
+   Drei Dinge MUESSEN optisch tragen, sonst verfehlt die Sicht ihren Zweck:
+     - der UEBERFAELLIG-Block (rot, oben, nicht zu uebersehen),
+     - die HINWEISE ("dieser Kalender ist nicht vollstaendig"),
+     - der STICHTAGS-Vermerk (die Rechengrundlage).
+   ========================================================================== */
+
+/* Rechengrundlage: unaufdringlich, aber immer da. */
+.aiw-cal-stichtag {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px; margin-top: -12px;
+}
+
+/* "Dieser Kalender ist NICHT vollstaendig" — gelb, nicht rot: es ist kein
+   Missstand in den Daten, sondern eine Grenze der Sicht. */
+.aiw-cal-hints {
+  background: #fef9e7; border: 1px solid #f7dc6f; border-left: 5px solid var(--gelb);
+  border-radius: 6px; padding: 10px 14px; margin: 0 0 12px; font-size: 13px;
+}
+.aiw-cal-hints-title { font-weight: 600; margin-bottom: 4px; }
+.aiw-cal-hints ul { margin: 0; padding-left: 20px; }
+
+/* UEBERFAELLIG ausserhalb des Monats — der wichtigste Block der Sicht. */
+.aiw-cal-overdue {
+  background: #fdecea; border: 1px solid #f5b7b1; border-left: 5px solid var(--rot);
+  border-radius: 6px; padding: 12px 16px; margin: 0 0 16px;
+  color: #922b21; font-size: 13px;
+}
+.aiw-cal-overdue-title { font-weight: 600; margin-bottom: 6px; }
+.aiw-cal-overdue ul { margin: 0; padding-left: 20px; }
+.aiw-cal-overdue li { margin: 2px 0; }
+
+/* Monatsnavigation */
+.aiw-cal-nav { display: flex; gap: 10px; align-items: center; margin: 0 0 10px; }
+.aiw-cal-month { font-size: 15px; font-weight: 600; min-width: 150px; text-align: center; }
+.aiw-cal-counts { margin-left: auto; font-size: 12px; color: var(--muted); }
+
+/* Monatsraster */
+table.aiw-cal-grid {
+  border-collapse: collapse; width: 100%; background: var(--panel);
+  border: 1px solid var(--line); table-layout: fixed; font-size: 12px;
+}
+.aiw-cal-grid th {
+  background: #eef0f2; border-bottom: 1px solid var(--line);
+  padding: 6px; font-weight: 600; text-align: left;
+}
+td.aiw-cal-day {
+  border: 1px solid var(--line); vertical-align: top;
+  height: 92px; padding: 4px; overflow: hidden;
+}
+td.aiw-cal-out { background: #fafbfc; color: var(--muted); }
+td.aiw-cal-today { box-shadow: inset 0 0 0 2px var(--akzent); }
+.aiw-cal-daynum { font-variant-numeric: tabular-nums; color: var(--muted); margin-bottom: 3px; }
+
+/* Ein Eintrag im Raster. Die Ampel ist der linke Balken. */
+.aiw-cal-chip {
+  border-left: 4px solid var(--line); background: #f4f6f7;
+  border-radius: 3px; padding: 2px 5px; margin-bottom: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: default;
+}
+.aiw-cal-chip.aiw-a-rot     { border-left-color: var(--rot);   background: #fdecea; }
+.aiw-cal-chip.aiw-a-gelb    { border-left-color: var(--gelb);  background: #fef9e7; }
+.aiw-cal-chip.aiw-a-gruen   { border-left-color: var(--gruen); background: #eafaf1; }
+.aiw-cal-chip.aiw-a-neutral { border-left-color: var(--backlog); }
+
+/* Ampel-Zeilenfaerbung der Vorgangstabelle (Ampel-Vokabular des Cockpits). */
+.tabulator .tabulator-row.aiw-row-neutral { box-shadow: inset 4px 0 0 var(--backlog); }
+
+/* Bedienleiste + Aktionsfeld + Formular */
+.aiw-cal-bar { display: flex; gap: 10px; align-items: center; margin: 12px 0 8px; }
+.aiw-cal-bar select {
+  font-size: 13px; padding: 5px 8px; border: 1px solid var(--line);
+  border-radius: 4px; background: var(--panel);
+}
+.aiw-cal-btn {
+  font-size: 13px; padding: 6px 12px; margin-right: 8px;
+  border: 1px solid var(--line); border-radius: 4px;
+  background: #eef0f2; color: var(--ink); cursor: pointer;
+}
+.aiw-cal-btn:hover:not(:disabled) { background: #e2e7ea; }
+.aiw-cal-btn:focus-visible { outline: 2px solid var(--akzent); outline-offset: 1px; }
+
+.aiw-cal-actions:not(:empty), .aiw-cal-form:not(:empty) {
+  margin-top: 14px; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 6px; padding: 14px 16px; font-size: 13px;
+}
+.aiw-cal-grund { color: var(--muted); margin: 4px 0 10px; }
+.aiw-cal-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* Bestaetigung: gelb — der Vorgang ist belegpflichtig, der Abschluss endgueltig. */
+.aiw-cal-confirm-title {
+  font-weight: 600; margin: 10px 0 6px; color: #7d6608;
+}
+.aiw-cal-confirm {
+  padding: 12px 14px; background: #fef9e7;
+  border: 1px solid #f7dc6f; border-radius: 6px;
+}
+.aiw-cal-field { display: block; margin-bottom: 8px; }
+.aiw-cal-field span { display: block; font-size: 12px; color: var(--muted); margin-bottom: 2px; }
+.aiw-cal-field input, .aiw-cal-field select {
+  font-size: 13px; padding: 5px 8px; border: 1px solid var(--line);
+  border-radius: 4px; min-width: 280px; background: #fff;
+}
+
+.aiw-cal-result:not(:empty) { margin-top: 10px; font-size: 13px; }
+.aiw-cal-result.ok    { color: #1e6b3a; }
+.aiw-cal-result.error { color: #922b21; font-weight: 600; }

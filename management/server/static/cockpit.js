@@ -57,7 +57,11 @@
 //   lesender Abgleich Platte <-> Fallakte, vier Zustaende) + POST
 //   /api/cases/import (auditierte Aufnahme der AUSGEWAEHLTEN Faelle, mit
 //   Bestaetigung). Recht: assignment.edit (Backend-Vorgabe aus Build 383).
-// Version: v0.7.384 · Build: 384 · 2026-07-12
+//   386 = Kalender & Wiedervorlage (cockpit_calendar.js): GET /api/calendar
+//   (Monatsraster ueber ALLE Zeitquellen) + GET /api/external (Vorgangsliste)
+//   + POST /api/external/create|defer|answer|close. Recht: external.view;
+//   Schreiben nur mit external.edit.
+// Version: v0.7.386 · Build: 386 · 2026-07-12
 // =============================================================================
 
 (function () {
@@ -91,6 +95,11 @@
     // =========================================================================
     var VIEW_CATALOG = [
         { id: 'dashboard',  cap: 'dashboard.view',       group: 'Ueberblick',     label: 'Dashboard' },
+        // Kalender & Wiedervorlage (Build 386). Gruppe 'Ueberblick', weil die
+        // Sicht BEIDE Rollen bedient: die Chefin sieht alle Faelligkeiten, der
+        // Ermittler (Scope 'eigene') die seines Falls. Recht: external.view
+        // (Backend-Vorgabe aus Build 385).
+        { id: 'calendar',   cap: 'external.view',        group: 'Ueberblick',     label: 'Kalender & Wiedervorlage' },
         { id: 'assignment', cap: 'assignment.edit',      group: 'Verwaltung',     label: 'Zuweisung' },
         // Fall-Erkennung (Build 384): haengt an DERSELBEN Faehigkeit wie die
         // Zuweisung — das Backend (Build 383) schuetzt /api/cases/detect und
@@ -836,6 +845,109 @@
         });
     }
 
+    // loadCalendar: KALENDER & WIEDERVORLAGE (Build 386, Frontend zu 385).
+    //
+    //   ZWEI Abrufe, EINE Sicht:
+    //     GET /api/calendar?von=&bis=  -> Monatsraster (externe Vorgaenge +
+    //                                     Abwesenheiten + Feiertage)
+    //     GET /api/external            -> Faelligkeitsliste + Arbeitsvorrat
+    //   Beide muessen DENSELBEN Stichtag verwenden, sonst koennten Raster und
+    //   Liste unterschiedliche Ampeln zeigen. Der Server bestimmt den Stichtag
+    //   (Europe/Berlin); wir uebernehmen ihn aus der Kalender-Antwort und
+    //   geben ihn der Vorgangsliste ausdruecklich mit.
+    //
+    //   KEIN optimistisches UI: jeder Schreibvorgang laedt beide Abrufe neu.
+    function loadCalendar(mainEl, ym, pendingMsg) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitCalendar : null;
+        if (!mod) {
+            renderError(mainEl, 'Kalender-Modul nicht geladen.');
+            return;
+        }
+
+        // Ohne Monatsangabe: der laufende Monat (Stichtag des Servers).
+        ym = ym || state.calYm || mod.ymOf(new Date().toISOString().slice(0, 10));
+        state.calYm = ym;
+        var r = mod.monthRange(ym);
+
+        fetchJson('/api/calendar?von=' + r.von + '&bis=' + r.bis)
+            .then(function (cal) {
+                // Vorgangsliste mit DEMSELBEN Stichtag abrufen.
+                return fetchJson('/api/external?stichtag=' + cal.stichtag)
+                    .then(function (ext) { return { cal: cal, ext: ext }; });
+            })
+            .then(function (both) {
+                cleanupView();
+                var canEdit = hasCap(state.capabilities, 'external.edit');
+
+                function after(text, isError) {
+                    loadCalendar(mainEl, ym, { text: text, error: isError });
+                }
+                function fail(err) {
+                    // Der Fehler wird NICHT verschluckt; danach wird der
+                    // TATSAECHLICHE Stand neu geladen.
+                    log('Schreibfehler', err);
+                    after('Fehler: ' + err.message + ' (es wurde nichts oder '
+                          + 'nur ein Teil geschrieben \u2014 die Liste zeigt '
+                          + 'den tatsaechlichen Stand).', true);
+                }
+
+                var view = mod.renderCalendar(mainEl, both.cal, both.ext, {
+                    ym: ym,
+                    canEdit: canEdit,
+                    onMonth: function (neu) { loadCalendar(mainEl, neu); },
+
+                    onCreate: function (body) {
+                        postJson('/api/external/create', body)
+                            .then(function (res) {
+                                after('Vorgang ' + res.matter_id
+                                      + ' angelegt (Beleg #' + res.audit_seq
+                                      + ').', false);
+                            }).catch(fail);
+                    },
+                    onDefer: function (body) {
+                        postJson('/api/external/defer', body)
+                            .then(function (res) {
+                                after('Wiedervorlage verschoben auf '
+                                      + body.wiedervorlage_am + ' (Beleg #'
+                                      + res.audit_seq + ').', false);
+                            }).catch(fail);
+                    },
+                    onAnswer: function (body) {
+                        postJson('/api/external/answer', body)
+                            .then(function (res) {
+                                after('Antwort erfasst (Beleg #'
+                                      + res.audit_seq + '). Der Vorgang bleibt '
+                                      + 'in der Wiedervorlage, bis er '
+                                      + 'ausgewertet ist.', false);
+                            }).catch(fail);
+                    },
+                    onClose: function (body) {
+                        postJson('/api/external/close', body)
+                            .then(function (res) {
+                                after('Vorgang ' + body.matter_id
+                                      + ' ENDGUELTIG abgeschlossen ('
+                                      + body.status + ', Beleg #'
+                                      + res.audit_seq + ').', false);
+                            }).catch(fail);
+                    }
+                });
+
+                state.table = view && view.table;
+                if (view && pendingMsg) {
+                    view.setResult(pendingMsg.text, pendingMsg.error);
+                }
+                log('Kalender', ym, 'gerendert:', both.cal.count,
+                    'Eintraege,', both.ext.count, 'Vorgaenge');
+            })
+            .catch(function (err) {
+                cleanupView();
+                renderError(mainEl,
+                    'Kalender konnte nicht geladen werden: ' + err.message);
+            });
+    }
+
     // loadCases: FALL-ERKENNUNG (Build 384, Frontend zu 383).
     //   GET  /api/cases/detect  — rein lesender Abgleich Platte <-> Fallakte.
     //   POST /api/cases/import  — auditierte Aufnahme der AUSGEWAEHLTEN Faelle.
@@ -983,6 +1095,8 @@
             loadAssignment(mainEl);
         } else if (viewId === 'cases') {
             loadCases(mainEl);
+        } else if (viewId === 'calendar') {
+            loadCalendar(mainEl);
         } else if (viewId === 'reports') {
             loadReports(mainEl);
         } else {
@@ -1026,6 +1140,10 @@
                 loadStats();
             } else if (state.activeId === 'assignment') {
                 loadAssignment();
+            } else if (state.activeId === 'calendar') {
+                // Ein audit_log-Ereignis kann ein Verschieben/Abschliessen
+                // durch eine andere Person sein -> Faelligkeiten neu messen.
+                loadCalendar(null, state.calYm);
             } else if (state.activeId === 'cases') {
                 // Die Fall-Erkennung misst die PLATTE. Ein audit_log-Ereignis
                 // (z. B. eine Aufnahme durch eine andere Chefin) veraendert die
