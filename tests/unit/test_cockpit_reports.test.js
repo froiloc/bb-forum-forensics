@@ -137,4 +137,20 @@ describe("cockpit_reports.js — Berichts-Abnahme (Build 375)", () => {
     expect(hints.textContent).toContain("nicht lesbar");
     expect(hints.textContent).toContain("22, 23");  // Faelle ohne evidence-DB
   });
+
+  it("BR07: Betriebshinweis bei fehlendem Scan-Cache (Build 376)", () => {
+    const win = _ctx();
+    const api = win.AIWCockpitReports;
+    const main = win.document.createElement("main");
+    function StubTab() { this.replaceData = function () {}; }
+    const data = _data();
+    data.cache_error = "no such table: evidence_scan_cache";
+    api.renderReports(main, data, { Tabulator: StubTab });
+    const ce = main.querySelector("#aiw-reports-cacheerr");
+    expect(ce).toBeTruthy();
+    // Der Hinweis nennt den auszufuehrenden Befehl ...
+    expect(ce.textContent).toContain("python -m management.migrate");
+    // ... und stellt klar, dass die Liste dennoch vollstaendig ist.
+    expect(ce.textContent).toContain("vollstaendig");
+  });
 });

@@ -122,6 +122,23 @@ def main(argv=None) -> int:
               file=sys.stderr)
         return 1
 
+    # Schritt 3b: MIGRATIONSSTAND (Build 376). Der Server migriert BEWUSST NICHT
+    # selbst — das Anwenden bleibt eine kontrollierte, im Audit-Log belegte
+    # Handlung. Ist die coordinator.db nicht auf dem Stand der ausgelieferten
+    # Migrationen, wird das hier DEUTLICH und mit dem exakten Befehl gemeldet
+    # (Grundregel 1: kein stiller Betrieb mit unvollstaendigem Schema).
+    from management.server.migration_status import MigrationStatusCheck
+    try:
+        mstatus = app.migration_status()
+        for line in MigrationStatusCheck.warning_lines(mstatus):
+            print(line, file=sys.stderr)
+        if mstatus.ok:
+            print("[management] Migrationsstand aktuell (%d Migrationen)."
+                  % len(mstatus.applied))
+    except Exception as exc:  # pragma: no cover — Pruefung darf nie den Start
+        print("[management] WARNUNG: Migrationsstand nicht pruefbar: %s" % exc,
+              file=sys.stderr)  # verhindern, aber sie schweigt auch nicht.
+
     # Schritt 4: Identitaet aufloesen.
     resolver = IdentityResolver(db_path)
     try:

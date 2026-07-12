@@ -44,6 +44,10 @@
 #   Haertung: X-AIW-Token (Serverlauf-Token via /api/whoami), Content-Type,
 #   Origin. Lesepfade bleiben mode=ro. Dazu GET /api/assignable.
 #
+# Build 376 (Betriebssicherheit): migration_status() — der Server prueft beim
+#   Start, ob coordinator.db auf dem Stand der ausgelieferten Migrationen ist,
+#   und WARNT deutlich (er migriert bewusst NICHT selbst).
+#
 # Build 375 (Berichts-Abnahme, Frontend + Rechte-Korrektur): /api/reports akzeptiert
 #   nun reports.review ODER reports.approve ('approve' impliziert 'review') —
 #   vorher sah der Supervisor den Reiter, bekam aber 403.
@@ -53,7 +57,7 @@
 #   WAL-sicheren Fingerabdruck-Cache (m009). ManagementApp kennt nun das
 #   evidence_db_dir (injizierbar; sonst aus config.yaml).
 #
-# Version: v0.7.375 · Build: 375 · 2026-07-10
+# Version: v0.7.376 · Build: 376 · 2026-07-10
 # =============================================================================
 
 import hmac
@@ -90,6 +94,7 @@ from management.support_overview.support_overview_repo import (
 from management.support_sessions.support_sessions_repo import SupportSessionsRepo
 from management.stats.stats_repo import StatsRepo
 from management.reports.reports_repo import ReportsRepo
+from management.server.migration_status import MigrationStatusCheck
 from db.coordinator_db import DEFAULT_SUPPORT_STALE_SEC
 from management.capacity.capacity_errors import CapacityError
 from management.workload.workload_repo import (
@@ -260,6 +265,17 @@ class ManagementApp:
         con = self._ro_con()
         try:
             verify_catalog_present(con)
+        finally:
+            con.close()
+
+    def migration_status(self):
+        """
+        Migrationsstand der coordinator.db (Build 376). Rein lesend; der Server
+        migriert NICHT selbst — er warnt nur (siehe migration_status.py).
+        """
+        con = self._ro_con()
+        try:
+            return MigrationStatusCheck(con).status()
         finally:
             con.close()
 

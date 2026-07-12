@@ -26,7 +26,9 @@
 //
 // XSS: nur textContent / Tabulator-plaintext (kein innerHTML).
 //
-// Version: v0.7.375 · Build: 375 · 2026-07-10
+// Build 376: Betriebshinweis, wenn der Scan-Cache fehlt (Migration nicht
+//   angewandt) — sichtbar in der Sicht, nicht nur im Log.
+// Version: v0.7.376 · Build: 376 · 2026-07-10
 // =============================================================================
 
 (function () {
@@ -138,11 +140,27 @@
     function _hints(doc, data) {
         var errs = (data && data.errors) || [];
         var missing = (data && data.cases_without_db) || [];
-        if (!errs.length && !missing.length) { return null; }
+        var cacheErr = data && data.cache_error;
+        if (!errs.length && !missing.length && !cacheErr) { return null; }
 
         var box = doc.createElement('div');
         box.className = 'aiw-hints';
         box.id = 'aiw-reports-hints';
+
+        // BETRIEBSHINWEIS (Build 376): Der Scan-Cache steht nicht zur
+        // Verfuegung — typischerweise, weil die Migration nicht angewandt
+        // wurde. Das ist kein Datenverlust (die Liste oben ist vollstaendig),
+        // aber jeder Aufruf liest alle Fall-Datenbanken neu ein.
+        if (cacheErr) {
+            var ce = doc.createElement('div');
+            ce.className = 'aiw-hint-title error';
+            ce.id = 'aiw-reports-cacheerr';
+            ce.textContent = 'Scan-Cache nicht verfuegbar (' + cacheErr
+                + '). Die Liste ist vollstaendig, aber jeder Aufruf liest alle '
+                + 'Fall-Datenbanken neu. Bitte Migrationen anwenden: '
+                + 'python -m management.migrate';
+            box.appendChild(ce);
+        }
 
         if (errs.length) {
             var h1 = doc.createElement('div');

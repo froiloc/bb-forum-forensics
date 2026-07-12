@@ -47,6 +47,11 @@ class ReportsRepo:
         # der Cache traegt keine Ermittlungsergebnisse (siehe m009).
         self._con = con
         self._scanner = EvidenceScanner(evidence_dir)
+        # Einmalig gemerkter Cache-Fehler (Build 376): z. B. fehlende Tabelle,
+        # weil Migration m009 nicht angewandt wurde. Wird in list_reports()
+        # als 'cache_error' zurueckgegeben und im Cockpit ANGEZEIGT — statt je
+        # Fall eine beilaeufige Logzeile zu erzeugen.
+        self._cache_error = None
 
     # ---------------------------------------------------------------- public
     def list_reports(self, *, force: bool = False) -> Dict[str, Any]:
@@ -106,6 +111,8 @@ class ReportsRepo:
             "reports": reports,
             "errors": errors,
             "cases_without_db": sorted(missing),
+            # None = Cache in Ordnung; sonst der Grund (Betriebshinweis).
+            "cache_error": self._cache_error,
         }
 
     # ------------------------------------------------------------- internals
@@ -178,9 +185,14 @@ class ReportsRepo:
                  int(time.time()), error))
         except sqlite3.Error as exc:
             # Cache-Fehler duerfen die Sicht nicht kippen — aber sie werden
-            # protokolliert (kein Schweigen).
-            logger.warning("Scan-Cache nicht schreibbar (uid=%s): %s",
-                           user_id, exc)
+            # protokolliert UND (Build 376) einmalig gemerkt, damit der Aufrufer
+            # den Zustand SICHTBAR machen kann, statt ihn je Fall beilaeufig zu
+            # loggen. Typischer Fall: Migration m009 nicht angewandt.
+            if self._cache_error is None:
+                self._cache_error = str(exc)
+                logger.warning("Scan-Cache nicht schreibbar: %s "
+                               "(Migrationen angewandt? "
+                               "'python -m management.migrate')", exc)
 
     def _case_usernames(self) -> Dict[int, str]:
         try:
