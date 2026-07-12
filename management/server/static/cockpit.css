@@ -128,3 +128,70 @@ table.aiw-tbl {
 .tabulator .tabulator-row.aiw-row-rot   { box-shadow: inset 4px 0 0 var(--rot); }
 .tabulator .tabulator-row.aiw-row-gelb  { box-shadow: inset 4px 0 0 var(--gelb); }
 .tabulator .tabulator-row.aiw-row-gruen { box-shadow: inset 4px 0 0 var(--gruen); }
+
+/* ==========================================================================
+   Fall-Erkennung (Build 384) — cockpit_cases.js
+   --------------------------------------------------------------------------
+   BEWUSST ENG GEFASST: alle Regeln haengen an '.aiw-cases-*' bzw. an einem
+   Vorfahren daraus. Grund: die uebrigen Sichten (350-382) sind bislang
+   ungestylt (Browser-Vorgaben). Eine globale '.aiw-btn'-Regel wuerde deren
+   Aussehen mit veraendern — das gehoert nicht in diesen Build. Sobald die
+   Cockpit-Optik als Ganzes angefasst wird, koennen diese Regeln hochgezogen
+   werden.
+
+   Der WARNBEREICH ist der eigentliche Grund fuer dieses Stylesheet: die
+   Forderung "deutliche Warnung bei 'vermisst'/'unlesbar'" (Grundregel 1) laesst
+   sich mit Browser-Vorgaben nicht erfuellen.
+   ========================================================================== */
+
+/* Verzeichnisangabe: WORUEBER wurde gemessen? Klein, aber vorhanden. */
+.aiw-cases-dirs {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px; margin-top: -12px;
+}
+
+/* Warnbereich: rot, umrandet, nicht zu uebersehen. Steht oberhalb der Tabelle
+   und ist vom Statusfilter unabhaengig. */
+.aiw-cases-warn {
+  background: #fdecea; border: 1px solid #f5b7b1; border-left: 5px solid var(--rot);
+  border-radius: 6px; padding: 12px 16px; margin: 0 0 16px;
+  color: #922b21; font-size: 13px;
+}
+.aiw-cases-warn-title { font-weight: 600; margin-bottom: 6px; }
+.aiw-cases-warn ul { margin: 0; padding-left: 20px; }
+.aiw-cases-warn li { margin: 2px 0; font-variant-numeric: tabular-nums; }
+
+/* Bedienleiste (Statusfilter). */
+.aiw-cases-bar { display: flex; gap: 10px; align-items: center; margin: 0 0 10px; }
+.aiw-cases-bar select {
+  font-size: 13px; padding: 5px 8px; border: 1px solid var(--line);
+  border-radius: 4px; background: var(--panel);
+}
+
+/* Aktionsfeld: Aufnahme-Knopf, Bestaetigung, Rueckmeldung. */
+.aiw-cases-actions {
+  margin-top: 16px; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 6px; padding: 14px 16px;
+}
+.aiw-cases-btn {
+  font-size: 13px; padding: 7px 14px; margin-right: 8px;
+  border: 1px solid var(--line); border-radius: 4px;
+  background: #eef0f2; color: var(--ink); cursor: pointer;
+}
+.aiw-cases-btn:hover:not(:disabled) { background: #e2e7ea; }
+.aiw-cases-btn:disabled { opacity: .5; cursor: default; }
+.aiw-cases-btn:focus-visible { outline: 2px solid var(--akzent); outline-offset: 1px; }
+
+/* Bestaetigungsblock: gelb — der Vorgang ist belegpflichtig und nicht
+   stillschweigend rueckgaengig zu machen. */
+.aiw-cases-confirm:not(:empty) {
+  margin: 12px 0; padding: 12px 14px; font-size: 13px;
+  background: #fef9e7; border: 1px solid #f7dc6f; border-radius: 6px;
+}
+.aiw-cases-confirm-title { font-weight: 600; margin-bottom: 6px; }
+.aiw-cases-confirm ul { margin: 0 0 10px; padding-left: 20px; }
+
+/* Rueckmeldung: Erfolg gruen, Befund/Fehler rot. */
+.aiw-cases-result:not(:empty) { margin-top: 10px; font-size: 13px; }
+.aiw-cases-result.ok    { color: #1e6b3a; }
+.aiw-cases-result.error { color: #922b21; font-weight: 600; }

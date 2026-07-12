@@ -53,7 +53,11 @@
 //   378 = Berichts-Freigabe im Cockpit (POST /api/report/approve mit Schreib-
 //   Token, GET /api/report/verify zur Siegelpruefung).
 //   380 = Rueckgabe zur Nachbesserung (POST /api/report/return).
-// Version: v0.7.380 · Build: 380 · 2026-07-10
+//   384 = Fall-Erkennung (cockpit_cases.js): GET /api/cases/detect (rein
+//   lesender Abgleich Platte <-> Fallakte, vier Zustaende) + POST
+//   /api/cases/import (auditierte Aufnahme der AUSGEWAEHLTEN Faelle, mit
+//   Bestaetigung). Recht: assignment.edit (Backend-Vorgabe aus Build 383).
+// Version: v0.7.384 · Build: 384 · 2026-07-12
 // =============================================================================
 
 (function () {
@@ -88,6 +92,11 @@
     var VIEW_CATALOG = [
         { id: 'dashboard',  cap: 'dashboard.view',       group: 'Ueberblick',     label: 'Dashboard' },
         { id: 'assignment', cap: 'assignment.edit',      group: 'Verwaltung',     label: 'Zuweisung' },
+        // Fall-Erkennung (Build 384): haengt an DERSELBEN Faehigkeit wie die
+        // Zuweisung — das Backend (Build 383) schuetzt /api/cases/detect und
+        // /api/cases/import mit 'assignment.edit' (Scope 'alle'). Wir fuehren
+        // dafuer bewusst KEINE zweite Faehigkeit ein (mc 2026-07-12).
+        { id: 'cases',      cap: 'assignment.edit',      group: 'Verwaltung',     label: 'Fall-Erkennung' },
         { id: 'mentoring',  cap: 'mentoring.view',       group: 'Verwaltung',     label: 'Ermittler-Betreuung' },
         // Berichts-Abnahme: 'reports.approve' ODER 'reports.review' genuegt
         // (wer freigeben darf, muss lesen duerfen). 'caps' = any-of; 'cap' bleibt
@@ -827,6 +836,63 @@
         });
     }
 
+    // loadCases: FALL-ERKENNUNG (Build 384, Frontend zu 383).
+    //   GET  /api/cases/detect  — rein lesender Abgleich Platte <-> Fallakte.
+    //   POST /api/cases/import  — auditierte Aufnahme der AUSGEWAEHLTEN Faelle.
+    // Wie bei der Zuweisung gilt: KEIN optimistisches UI. Nach dem Schreiben
+    // wird neu geladen; die Rueckmeldung (Erfolg ODER Fehler ODER uebersprungene
+    // Faelle) wird ueber 'pendingMsg' durch den Reload getragen, damit sie nicht
+    // still verloren geht (Grundregel 1).
+    function loadCases(mainEl, pendingMsg) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitCases : null;
+        if (!mod) {
+            renderError(mainEl, 'Fall-Erkennungs-Modul nicht geladen.');
+            return;
+        }
+        fetchJson('/api/cases/detect').then(function (data) {
+            cleanupView();
+            var view = mod.renderCases(mainEl, data, {
+                onImport: function (ids) {
+                    var req = mod.importRequest(ids);
+                    if (!req) {
+                        if (view) {
+                            view.setResult('Kein Fall ausgewaehlt.', true);
+                        }
+                        return;
+                    }
+                    postJson(req.path, req.body).then(function (res) {
+                        // Serverantwort NICHT selbst deuten, sondern woertlich
+                        // wiedergeben (imported MIT Beleg-Nr., skipped MIT
+                        // Grund) — und dann den echten Zustand neu laden.
+                        var r = mod.resultText(res);
+                        loadCases(mainEl, { text: r.text, error: r.error });
+                    }).catch(function (err) {
+                        log('Aufnahme-Fehler', err);
+                        loadCases(mainEl, {
+                            text: 'Fehler bei der Aufnahme: ' + err.message
+                                + ' (es wurde nichts oder nur ein Teil '
+                                + 'geschrieben \u2014 die Liste oben zeigt den '
+                                + 'tatsaechlichen Stand).',
+                            error: true
+                        });
+                    });
+                }
+            });
+            state.table = view && view.table;
+            if (view && pendingMsg) {
+                view.setResult(pendingMsg.text, pendingMsg.error);
+            }
+            log('Fall-Erkennung gerendert:', data.count, 'Faelle,',
+                data.counts);
+        }).catch(function (err) {
+            cleanupView();
+            renderError(mainEl,
+                'Fall-Erkennung konnte nicht geladen werden: ' + err.message);
+        });
+    }
+
     // applyIntegrity: zentrale Banner-Aktualisierung aus einer Integritaets-
     // Antwort ({ok, first_bad_seq, detail, tip_seq}). Nutzt das Integritaets-
     // Modul (bannerModel + applyBanner). Wird von loadIntegrity UND refreshBanner
@@ -915,6 +981,8 @@
             loadStats(mainEl);
         } else if (viewId === 'assignment') {
             loadAssignment(mainEl);
+        } else if (viewId === 'cases') {
+            loadCases(mainEl);
         } else if (viewId === 'reports') {
             loadReports(mainEl);
         } else {
@@ -958,6 +1026,11 @@
                 loadStats();
             } else if (state.activeId === 'assignment') {
                 loadAssignment();
+            } else if (state.activeId === 'cases') {
+                // Die Fall-Erkennung misst die PLATTE. Ein audit_log-Ereignis
+                // (z. B. eine Aufnahme durch eine andere Chefin) veraendert die
+                // Fallakte -> die Zustaende koennen kippen. Also neu messen.
+                loadCases();
             } else if (state.activeId === 'reports') {
                 loadReports();
             }

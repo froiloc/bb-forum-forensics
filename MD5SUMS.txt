@@ -1,3 +1,7 @@
-f014881a826e983b4ee9a6964c585fac  userinfo/userinfo.js
-4ea37712f4c9fa80ad71aa548b9ba339  tests/unit/test_tabulator_config.test.js
-e072776d2694fda6525f2184c4f05354  build.json
+f0b64b1698d711434c2950072ffd6ea9  build.json
+306d1411ae132ff8962831017781bf80  management/server/static/cockpit_cases.js
+cfc84607895cd4bbf330533c7d7c94d0  management/server/static/cockpit.js
+d8d001a0464506595ee7460dbe2506c3  management/server/static/cockpit.html
+73b6278d3ae47f6fb45b478052d74e47  management/server/static/cockpit.css
+7597aff658624b8e84396b07283819a8  tests/unit/test_cockpit_cases.test.js
+0cbcc2d1565ccbc8e0d15365799736ac  tests/unit/test_cockpit_nav.test.js

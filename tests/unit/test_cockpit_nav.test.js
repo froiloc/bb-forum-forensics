@@ -74,7 +74,23 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     expect(api.visibleViews(null)).toEqual([]);
     expect(api.visibleViews(undefined)).toEqual([]);
     // Kataloglaenge bleibt (keine Mutation).
-    expect(api.VIEW_CATALOG.length).toBe(12);
+    // Build 384: 13 statt 12 Sichten (neu: 'cases' - Fall-Erkennung).
+    expect(api.VIEW_CATALOG.length).toBe(13);
+  });
+
+  // CN03b (Build 384) --------------------------------------------------------
+  it("CN03b: Fall-Erkennung haengt an assignment.edit (Backend-Vorgabe 383)", () => {
+    const api = _api();
+    const v = api.viewById("cases");
+    expect(v).toBeTruthy();
+    expect(v.cap).toBe("assignment.edit");
+    expect(v.group).toBe("Verwaltung");
+
+    // Wer zuweisen darf, sieht auch die Fall-Erkennung - und nur der.
+    expect(api.visibleViews({ "assignment.edit": "alle" }).map((x) => x.id))
+      .toEqual(["assignment", "cases"]);
+    expect(api.visibleViews({ "dashboard.view": "eigene" }).map((x) => x.id))
+      .toEqual(["dashboard"]);
   });
 
   // CN04 -------------------------------------------------------------------
