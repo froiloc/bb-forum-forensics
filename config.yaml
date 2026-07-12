@@ -60,6 +60,34 @@ backup:
   # (coordinator, evidence/forensic/assets je uid) werden IMMER gesichert.
   include_shared_dbs: true
 
+# =============================================================================
+# Formatregeln fuer Berichts-Eingabefelder (Build 388).
+#
+# Ein Baustein verweist symbolisch auf eine Regel, z. B.:
+#   {{m:spurennummer||Spurennummer der Vorgangsverwaltung|rule:spurennummer}}
+#
+# Ein NEUES Spurennummern-Format wird hier aufgenommen — ohne Code-Aenderung
+# und ohne Aenderung an templates.db. Nach der Aenderung: Server neu starten.
+#
+# Felder je Regel:
+#   pattern    Regulaerer Ausdruck. MUSS in Python UND JavaScript dieselbe
+#              Bedeutung haben (keine Lookbehinds, keine benannten Gruppen) —
+#              geprueft wird sowohl im Browser als auch beim Einreichen auf
+#              dem Server.
+#   transform  Normalisierung VOR der Pruefung: upper | lower | strip | none.
+#              Der normalisierte Wert ist auch der GESPEICHERTE Wert.
+#   hint       Klartext-Hinweis, der dem Ermittler bei Fehleingabe angezeigt
+#              wird. Ohne hint sieht er nur die Regex — das ist unzumutbar.
+#
+# Beleg: Entwicklervorgabe Projektgespraech 2026-07-12
+# =============================================================================
+validation:
+  rules:
+    spurennummer:
+      pattern:   "^(AIW|R3X|FBL|AMZ|BRU)\\d+$"
+      transform: "upper"
+      hint:      "Behoerdenkuerzel (AIW, R3X, FBL, AMZ oder BRU) gefolgt von Ziffern, z. B. AIW12345"
+
 hosts_management:
   enabled: false
 

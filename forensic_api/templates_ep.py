@@ -68,6 +68,15 @@ class TemplatesListEndpoint:
         """
         if url_path == "/_forensic/templates":
             self._handle_list(handler, params)
+        # Build 388: VORLAGEN (vollstaendige Berichtsgerueste).
+        # ACHTUNG Reihenfolge: '/templates/full' MUSS vor dem allgemeinen
+        # '/templates/<id>'-Zweig stehen — sonst landet 'full' in _handle_single
+        # und scheitert dort an int('full').
+        elif url_path == "/_forensic/templates/full":
+            self._handle_template_list(handler, params)
+        elif url_path.startswith("/_forensic/templates/full/"):
+            key = url_path[len("/_forensic/templates/full/"):]
+            self._handle_template_single(handler, key)
         elif url_path.startswith("/_forensic/templates/"):
             id_str = url_path[len("/_forensic/templates/"):]
             self._handle_single(handler, id_str)
@@ -153,6 +162,84 @@ class TemplatesListEndpoint:
                 "topic":       m.topic,
                 "body":        m.body,
                 "sort_order":  m.sort_order,
+            }),
+            content_type="application/json; charset=utf-8",
+        )
+
+    # ------------------------------------------------------------------
+    # Vorlagen (Build 388)
+    # ------------------------------------------------------------------
+    # Eine VORLAGE ist ein vollstaendiges Berichtsgerueste aus mehreren
+    # typisierten Bloecken — im Unterschied zu einem MODUL (genau ein
+    # paragraph-Block). Sie wird nicht ueber save_block eingefuegt, sondern
+    # ueber die Aktion 'insert_template' (transaktional, alles oder nichts).
+    # ------------------------------------------------------------------
+
+    def _handle_template_list(
+        self,
+        handler: "ForensicRequestHandler",
+        params: dict,
+    ) -> None:
+        """GET /_forensic/templates/full — Liste der Vorlagen (ohne blocks_json)."""
+        search = params.get("search", [None])[0]
+        templates = self._bundle.templates.list_templates(search=search)
+
+        result = [
+            {
+                "template_key": t.template_key,
+                "title":        t.title,
+                "description":  t.description,
+                "report_type":  t.report_type,
+                "sort_order":   t.sort_order,
+            }
+            for t in templates
+        ]
+        handler.send_response_body(
+            200, _json_ok(result),
+            content_type="application/json; charset=utf-8",
+        )
+
+    def _handle_template_single(
+        self,
+        handler: "ForensicRequestHandler",
+        template_key: str,
+    ) -> None:
+        """
+        GET /_forensic/templates/full/<template_key> — Vorlage MIT blocks_json.
+
+        Dient der Vorschau im Reiter 'Vorlagen'. Das EINFUEGEN laeuft NICHT
+        ueber diesen Endpunkt, sondern serverseitig ueber 'insert_template' —
+        der Client soll die Bloecke nicht selbst einzeln schreiben (sonst
+        koennen halbe Vorlagen entstehen; GRUNDREGEL 1).
+        """
+        import urllib.parse as _urlparse
+        key = _urlparse.unquote(template_key or "").strip()
+
+        if not key:
+            handler.send_response_body(
+                400, _json_err("template_key fehlt.", "MISSING_TEMPLATE_KEY"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+
+        tpl = self._bundle.templates.get_template_by_key(key)
+        if tpl is None:
+            handler.send_response_body(
+                404,
+                _json_err("Vorlage '%s' nicht gefunden." % key,
+                          "TEMPLATE_NOT_FOUND"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+
+        handler.send_response_body(
+            200,
+            _json_ok({
+                "template_key": tpl.template_key,
+                "title":        tpl.title,
+                "description":  tpl.description,
+                "report_type":  tpl.report_type,
+                "blocks_json":  tpl.blocks_json,
             }),
             content_type="application/json; charset=utf-8",
         )

@@ -32,6 +32,9 @@
 #   /_forensic/placeholders/library  (GET)       -> PlaceholdersEndpoint [B6]
 #   /_forensic/templates             (GET)       -> TemplatesEndpoint    [B6]
 #   /_forensic/templates/<id>        (GET)       -> TemplatesEndpoint    [B6]
+#   /_forensic/templates/full        (GET)       -> TemplatesEndpoint    [B388]
+#   /_forensic/templates/full/<key>  (GET)       -> TemplatesEndpoint    [B388]
+#   /_forensic/validation_rules      (GET)       -> ValidationRulesEndpoint [B388]
 #
 # Routing-Reihenfolge bei Praefix-Konflikten:
 #   Laengere/spezifischere Pfade werden zuerst geprueft:
@@ -137,6 +140,7 @@ class ForensicApi:
         self._trace_sequence   = None  # [KN-7]
         self._placeholders    = None  # [B6]
         self._templates_ep    = None  # [B6]
+        self._validation_rules_ep = None  # [B6, Build 388]
         self._knownusers      = None  # [BS3 Bug 2.78 Build 175]
         self._aliases         = None  # [BS3 Bug 2.79 Build 179]
         self._integrator      = None  # [BS3 Bug 2.78 Build 182]
@@ -439,7 +443,19 @@ class ForensicApi:
             self._dispatch_placeholders(handler, method, url_path, params)
             return
 
-        # /_forensic/templates (GET, Liste) und
+        # /_forensic/validation_rules (GET) [B6, Build 388]
+        # Zentraler Katalog der Formatregeln (config.yaml -> validation.rules).
+        # Beleg: Bauplan Build 388 §3
+        if url_path == "/_forensic/validation_rules":
+            if method not in ("GET", "HEAD"):
+                self._method_not_allowed(handler)
+                return
+            self._get_validation_rules_ep().handle_get(handler)
+            return
+
+        # /_forensic/templates (GET, Liste),
+        # /_forensic/templates/full (GET, Vorlagenliste, Build 388),
+        # /_forensic/templates/full/<key> (GET, Vorlage mit blocks_json) und
         # /_forensic/templates/<id> (GET, Einzelmodul) [B6]
         if url_path == "/_forensic/templates" or url_path.startswith("/_forensic/templates/"):
             if method not in ("GET", "HEAD"):
@@ -798,6 +814,13 @@ class ForensicApi:
             from forensic_api.templates_ep import TemplatesListEndpoint
             self._templates_ep = TemplatesListEndpoint(self._bundle, self._context, self._config)
         return self._templates_ep
+
+    def _get_validation_rules_ep(self):
+        """[B6/388] Lazy-Init fuer ValidationRulesEndpoint. Beleg: Bauplan Build 388 §3."""
+        if self._validation_rules_ep is None:
+            from forensic_api.validation_rules_ep import ValidationRulesEndpoint
+            self._validation_rules_ep = ValidationRulesEndpoint(self._config)
+        return self._validation_rules_ep
 
     def _get_search(self):
         """[KN-3] Lazy-Init fuer SearchEndpoint. Beleg: Bauplan KN v0.6 §12 Phase KN-3."""

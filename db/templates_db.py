@@ -72,6 +72,38 @@ class QueryRecord:
     is_active:   bool
 
 
+@dataclass
+class TemplateRecord:
+    """Eine VOLLSTAENDIGE Berichtsvorlage aus templates.report_templates.
+
+    Abgrenzung zu ModuleRecord (WICHTIG, haeufige Verwechslung):
+      ModuleRecord   = EIN Textbaustein -> wird als EIN paragraph-Block
+                       eingefuegt (module_panel.js:903).
+      TemplateRecord = ein VOLLSTAENDIGES Berichtsgeruest -> wird als MEHRERE
+                       typisierte Editor.js-Bloecke eingefuegt (header,
+                       paragraph, table, ...). blocks_json haelt diese Bloecke
+                       in ihrer Reihenfolge.
+
+    blocks_json (JSON-Text) hat die Form:
+      [ {"block_type": "header", "block_data": {"text": "...", "level": 2}},
+        {"block_type": "table",  "block_data": {"withHeadings": false,
+                                                "content": [["A","B"], ...]}} ]
+    Die Bloecke duerfen Platzhalter in Template-Syntax enthalten
+    ({{a:}}/{{m:}}/{{o:}}) — sie werden BEIM EINFUEGEN NICHT aufgeloest,
+    sondern bleiben als Chips erhalten (Festlegung 2026-07-12, Variante A).
+
+    Beleg: Bauplan Build 388 §4
+    """
+    id:          int
+    template_key: str          # STABILE Kennung, z.B. 'vermerk.nicht_identifiziert'
+    title:       str
+    description: Optional[str]
+    report_type: str           # 'interim' | 'final' | 'addendum'
+    blocks_json: str
+    sort_order:  int
+    is_active:   bool
+
+
 # =============================================================================
 # Hauptklasse
 # =============================================================================
@@ -316,8 +348,78 @@ class TemplatesDb:
             return []
 
     # ------------------------------------------------------------------
+    # Vorlagen-Zugriff (VOLLSTAENDIGE Berichtsgeruueste, Build 388)
+    # ------------------------------------------------------------------
+    # GRUNDREGEL 1: Fehlt die Tabelle report_templates (Seed-Skript noch nicht
+    # gelaufen), liefern diese Methoden eine LEERE Liste — und protokollieren
+    # das als WARNUNG. Der Reiter 'Vorlagen' zeigt dann eine Leermeldung an,
+    # statt dem Ermittler eine funktionierende, aber leere Bibliothek
+    # vorzutaeuschen.
+    # ------------------------------------------------------------------
+
+    def list_templates(self, search: Optional[str] = None) -> list[TemplateRecord]:
+        """Alle aktiven Vorlagen (ohne blocks_json — das kann gross sein)."""
+        if not self._available:
+            return []
+        try:
+            sql = (
+                "SELECT id, template_key, title, description, report_type, "
+                "       '' AS blocks_json, sort_order, is_active "
+                "FROM tdb.report_templates WHERE is_active = 1"
+            )
+            params: list = []
+            if search:
+                sql += " AND (title LIKE ? OR description LIKE ?)"
+                like = f"%{search}%"
+                params.extend([like, like])
+            sql += " ORDER BY sort_order ASC, id ASC"
+
+            rows = self._con.execute(sql, params).fetchall()
+            return [self._row_to_template(r) for r in rows]
+        except sqlite3.OperationalError as exc:
+            logger.warning(
+                "TemplatesDb.list_templates fehlgeschlagen ('%s'). Vermutlich "
+                "ist das Seed-Skript management/migrate_templates_full_templates.py "
+                "noch nicht gelaufen.", exc,
+            )
+            return []
+
+    def get_template_by_key(self, template_key: str) -> Optional[TemplateRecord]:
+        """Eine Vorlage MIT blocks_json ueber ihre stabile Kennung."""
+        if not self._available or not template_key:
+            return None
+        try:
+            row = self._con.execute(
+                "SELECT id, template_key, title, description, report_type, "
+                "       blocks_json, sort_order, is_active "
+                "FROM tdb.report_templates "
+                "WHERE template_key = ? AND is_active = 1",
+                (template_key,),
+            ).fetchone()
+            return self._row_to_template(row) if row else None
+        except sqlite3.OperationalError as exc:
+            logger.warning(
+                "TemplatesDb.get_template_by_key('%s') fehlgeschlagen: %s",
+                template_key, exc,
+            )
+            return None
+
+    # ------------------------------------------------------------------
     # Hilfsmethoden
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _row_to_template(row: sqlite3.Row) -> TemplateRecord:
+        return TemplateRecord(
+            id=int(row["id"]),
+            template_key=str(row["template_key"]),
+            title=str(row["title"]),
+            description=row["description"],
+            report_type=str(row["report_type"]),
+            blocks_json=str(row["blocks_json"] or ""),
+            sort_order=int(row["sort_order"]),
+            is_active=bool(row["is_active"]),
+        )
 
     @staticmethod
     def _row_to_module(row: sqlite3.Row) -> ModuleRecord:

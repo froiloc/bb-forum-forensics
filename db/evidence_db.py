@@ -1538,6 +1538,130 @@ class EvidenceDb:
         )
         return block_id
 
+    def save_blocks_bulk(
+        self,
+        report_id: int,
+        author: str,
+        blocks: list[dict],
+    ) -> list[str]:
+        """
+        Legt MEHRERE Bloecke in EINER Transaktion an (Build 388).
+
+        Anwendungsfall: Einfuegen einer vollstaendigen Berichtsvorlage
+        (report_templates.blocks_json) — Ueberschrift + Absaetze + Tabelle.
+
+        WARUM TRANSAKTIONAL (GRUNDREGEL 1):
+          Der naheliegende Weg waere gewesen, den Client N-mal save_block
+          rufen zu lassen. Bricht die Verbindung nach dem 3. von 7 Bloecken
+          ab, entsteht ein HALBER Spurenvermerk — ohne dass jemand merkt,
+          dass etwas fehlt. Genau das ist ein stilles Uebergehen. Deshalb:
+          alles oder nichts.
+
+        Sortierung:
+          Die Bloecke werden ANS ENDE des Berichts gehaengt, in der
+          Reihenfolge der Liste. Basis ist der hoechste vorhandene
+          sort_index dieses Berichts. Bloecke ohne Ordnungseintrag stehen
+          in get_blocks_for_report() ohnehin am Ende — sie koennen die
+          Reihenfolge der Vorlage also nicht zerreissen.
+
+        Args:
+            report_id: Referenz auf reports.id.
+            author:    SAMAccountName -- Eigentuemer aller erzeugten Bloecke.
+            blocks:    Liste von Dicts mit den Schluesseln
+                       'block_id' (UUID, Pflicht), 'block_type' (Pflicht),
+                       'block_data' (JSON-String, Pflicht),
+                       'placeholder_values_json' (optional).
+
+        Returns:
+            Liste der angelegten block_ids in Einfuegereihenfolge.
+
+        Raises:
+            EvidenceDbError: Bei leerem author, leerer Blockliste, fehlendem
+                             block_type/block_id — sowie bei gesperrtem Bericht.
+        """
+        # Schreibsperre des Berichts-Statusmodells (Build 379) — VOR allem
+        # anderen, damit ein freigegebener Bericht nicht erweitert wird.
+        self._assert_report_editable(report_id)
+
+        if not author.strip():
+            raise EvidenceDbError("author darf nicht leer sein.")
+        if not blocks:
+            raise EvidenceDbError("Die Vorlage enthaelt keine Bloecke.")
+
+        # Vollstaendige Vorpruefung ALLER Bloecke, BEVOR der erste geschrieben
+        # wird. Ein Fehler im 5. Block darf nicht 4 Bloecke hinterlassen.
+        prepared: list[tuple[str, str, str, Optional[str]]] = []
+        for idx, blk in enumerate(blocks):
+            block_id = str(blk.get("block_id") or "").strip()
+            if not block_id:
+                raise EvidenceDbError(
+                    "Vorlagen-Block %d hat keine block_id." % idx
+                )
+            block_type = str(blk.get("block_type") or "").strip()
+            if not block_type:
+                raise EvidenceDbError(
+                    "Vorlagen-Block %d (%s) hat keinen block_type." % (idx, block_id)
+                )
+            block_data = blk.get("block_data")
+            if not isinstance(block_data, str):
+                raise EvidenceDbError(
+                    "Vorlagen-Block %d (%s): block_data muss ein JSON-String sein."
+                    % (idx, block_id)
+                )
+            pvj = blk.get("placeholder_values_json")
+            prepared.append(
+                (block_id, block_type, block_data,
+                 str(pvj) if pvj is not None else None)
+            )
+
+        now = int(time.time())
+
+        # Hoechsten vorhandenen sort_index dieses Berichts ermitteln.
+        row = self._con.execute(
+            "SELECT MAX(o.sort_index) FROM report_block_order o "
+            "JOIN report_blocks b ON b.block_id = o.block_id "
+            "WHERE b.report_id = ?",
+            (report_id,),
+        ).fetchone()
+        base = (row[0] if row and row[0] is not None else -1) + 1
+
+        created: list[str] = []
+        try:
+            # sqlite3 im Standardmodus oeffnet die Transaktion implizit beim
+            # ersten INSERT; ein einziges commit() am Ende macht alles oder
+            # nichts sichtbar. Bei einer Ausnahme wird zurueckgerollt.
+            for offset, (block_id, block_type, block_data, pvj) in enumerate(prepared):
+                self._con.execute(
+                    "INSERT INTO report_blocks "
+                    "(block_id, report_id, author, created_at, updated_at, "
+                    " block_type, block_data, placeholder_values_json, module_id) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)",
+                    (block_id, report_id, author.strip(), now, now,
+                     block_type, block_data, pvj),
+                )
+                self._con.execute(
+                    "INSERT OR REPLACE INTO report_block_order "
+                    "(block_id, sort_index, last_modified_by, last_modified_at) "
+                    "VALUES (?, ?, ?, ?)",
+                    (block_id, base + offset, author.strip(), now),
+                )
+                created.append(block_id)
+            self._con.commit()
+        except Exception:
+            self._con.rollback()
+            logger.error(
+                "save_blocks_bulk: ZURUECKGEROLLT — report_id=%d, %d Bloecke "
+                "verworfen (kein Teil-Einfuegen).", report_id, len(prepared),
+            )
+            raise
+
+        logger.info(
+            "save_blocks_bulk: %d Bloecke angelegt fuer report_id=%d von '%s' "
+            "(sort_index %d..%d)",
+            len(created), report_id, author, base, base + len(created) - 1,
+        )
+        return created
+
     def get_block(self, block_id: str) -> Optional[ReportBlockRecord]:
         """Einzelnen Block per block_id laden."""
         row = self._con.execute(

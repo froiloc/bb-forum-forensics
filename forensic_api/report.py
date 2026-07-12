@@ -701,6 +701,8 @@ class ReportEndpoint:
 
         # B6-Schreibaktionen (Phase 4 — auf Block-API umgestellt)
         # Beleg: Bauplan B6 v0.5 §5, Projektgespraech 2026-05-06
+        elif action == "insert_template":
+            self._action_insert_template(handler, data, investigator)
         elif action == "save_block":
             self._action_save_block(handler, data, investigator)
         elif action == "delete_block":
@@ -738,6 +740,162 @@ class ReportEndpoint:
     # B6-Schreibaktionen (Phase 4 — Block-API)
     # Beleg: Bauplan B6 v0.5 §5, Projektgespraech 2026-05-06
     # ------------------------------------------------------------------
+
+    def _action_insert_template(
+        self,
+        handler: "ForensicRequestHandler",
+        data: dict,
+        investigator: str,
+    ) -> None:
+        """
+        Vollstaendige Berichtsvorlage einfuegen (Build 388).
+
+        Eine VORLAGE ist ein geordneter Komplex mehrerer typisierter
+        Editor.js-Bloecke (header/paragraph/table/...), anders als ein MODUL,
+        das immer genau EIN paragraph-Block ist (module_panel.js:903).
+
+        Ablauf:
+          1. Lock pruefen (wie bei jeder Schreiboperation).
+          2. Vorlage ueber ihre STABILE Kennung (template_key) aus
+             templates.report_templates laden.
+          3. blocks_json auslesen und je Block eine UUID vergeben.
+          4. ALLE Bloecke in EINER Transaktion anlegen (save_blocks_bulk) —
+             kein halber Spurenvermerk (GRUNDREGEL 1).
+
+        Die Platzhalter ({{a:}}/{{m:}}/{{o:}}) werden hier BEWUSST NICHT
+        aufgeloest. Sie bleiben als Chips im Block erhalten, damit die
+        Herkunft jedes Wertes im Dokument sichtbar und {{a:}} nachladbar
+        bleibt (Festlegung Projektgespraech 2026-07-12, Variante A).
+
+        Beleg: Bauplan Build 388 §5
+        """
+        if not self._require_lock(handler, data):
+            return
+
+        report_id    = data.get("report_id")
+        template_key = str(data.get("template_key") or "").strip()
+
+        if not report_id:
+            handler.send_response_body(
+                400, _json_err("report_id fehlt", "MISSING_REPORT_ID"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+        if not template_key:
+            handler.send_response_body(
+                400, _json_err("template_key fehlt", "MISSING_TEMPLATE_KEY"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+
+        tpl = self._bundle.templates.get_template_by_key(template_key)
+        if tpl is None:
+            # GRUNDREGEL 1: klarer Missstand statt leerem Erfolg.
+            logger.warning(
+                "insert_template: Vorlage '%s' nicht gefunden (oder inaktiv).",
+                template_key,
+            )
+            handler.send_response_body(
+                404,
+                _json_err(
+                    "Die Vorlage '%s' ist nicht (mehr) verfuegbar. Bitte die "
+                    "Vorlagenbibliothek neu laden." % template_key,
+                    "TEMPLATE_NOT_FOUND",
+                ),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+
+        try:
+            raw_blocks = json.loads(tpl.blocks_json or "[]")
+        except json.JSONDecodeError as exc:
+            logger.error(
+                "insert_template: blocks_json der Vorlage '%s' ist kein "
+                "gueltiges JSON: %s", template_key, exc,
+            )
+            handler.send_response_body(
+                500,
+                _json_err(
+                    "Die Vorlage '%s' ist beschaedigt (blocks_json unlesbar) "
+                    "und wurde NICHT eingefuegt." % template_key,
+                    "TEMPLATE_CORRUPT",
+                ),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+
+        if not isinstance(raw_blocks, list) or not raw_blocks:
+            handler.send_response_body(
+                500,
+                _json_err(
+                    "Die Vorlage '%s' enthaelt keine Bloecke." % template_key,
+                    "TEMPLATE_EMPTY",
+                ),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+
+        blocks: list[dict] = []
+        for idx, blk in enumerate(raw_blocks):
+            if not isinstance(blk, dict):
+                handler.send_response_body(
+                    500,
+                    _json_err(
+                        "Vorlage '%s': Block %d ist fehlerhaft aufgebaut."
+                        % (template_key, idx), "TEMPLATE_CORRUPT",
+                    ),
+                    content_type="application/json; charset=utf-8",
+                )
+                return
+            block_data = blk.get("block_data", {})
+            blocks.append({
+                "block_id":   str(uuid.uuid4()),
+                "block_type": str(blk.get("block_type") or "paragraph"),
+                # block_data wird als JSON-STRING gespeichert (Spaltenformat
+                # von report_blocks.block_data).
+                "block_data": json.dumps(block_data, ensure_ascii=False),
+            })
+
+        from db.evidence_db import EvidenceDbError
+        try:
+            created = self._bundle.evidence.save_blocks_bulk(
+                report_id=int(report_id),
+                author=investigator,
+                blocks=blocks,
+            )
+        except EvidenceDbError as exc:
+            handler.send_response_body(
+                403, _json_err(str(exc), "FORBIDDEN"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+        except Exception as exc:
+            logger.error("insert_template fehlgeschlagen: %s", exc)
+            handler.send_response_body(
+                500,
+                _json_err(
+                    "Die Vorlage konnte nicht eingefuegt werden. Es wurde "
+                    "KEIN Block gespeichert.", "DB_ERROR",
+                ),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+
+        logger.info(
+            "insert_template: Vorlage '%s' (%d Bloecke) in Bericht %s "
+            "eingefuegt von '%s'",
+            template_key, len(created), report_id, investigator,
+        )
+        handler.send_response_body(
+            201,
+            _json_ok({
+                "template_key": template_key,
+                "title":        tpl.title,
+                "block_ids":    created,
+                "block_count":  len(created),
+            }),
+            content_type="application/json; charset=utf-8",
+        )
 
     def _action_save_block(
         self,
@@ -1059,6 +1217,53 @@ class ReportEndpoint:
                     "Der Bericht ist bereits im Status '%s' und kann nicht "
                     "(erneut) zur Abnahme freigegeben werden."
                     % report.status, "CONFLICT"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+
+        # ------------------------------------------------------------------
+        # Build 388: SERVERSEITIGE Formatpruefung der Eingabefelder.
+        #
+        # Bis Build 387 wurde ausschliesslich im Browser geprueft
+        # (placeholder_wizard.js). Eine Pruefung, die im Browser des
+        # Ermittlers stattfindet, ist fuer ein gerichtsverwertbares Dokument
+        # kein ausreichender Schutz: ein direkter POST auf /_forensic/report
+        # umgeht sie vollstaendig. Deshalb wird beim UEBERGANG in den Status
+        # 'submitted' — also genau dann, wenn der Bericht die Hand des
+        # Verfassers verlaesst — noch einmal serverseitig geprueft.
+        #
+        # Geprueft wird NUR gegen den zentralen Regel-Katalog
+        # (config.yaml -> validation.rules), also gegen Felder, die per
+        # 'rule:<name>' eine Formatregel referenzieren:
+        #   - Pflichtfeld ({{m:}}) mit Regel und LEEREM Wert  -> Ablehnung
+        #   - Wert entspricht dem Muster nicht                -> Ablehnung
+        #   - Baustein verweist auf UNBEKANNTE Regel          -> Ablehnung
+        #
+        # BEWUSSTE ABGRENZUNG: Es wird hier NICHT generell erzwungen, dass
+        # jedes {{m:}}-Feld gefuellt ist. Das waere eine Verschaerfung fuer
+        # ALLE Altbausteine und wuerde bereits laufende Entwuerfe blockieren.
+        # Leere Pflichtfelder OHNE Regel werden aber protokolliert — sie
+        # verschwinden also nicht stillschweigend (GRUNDREGEL 1).
+        #
+        # Beleg: Bauplan Build 388 §6, Entwicklervorgabe 2026-07-12
+        # ------------------------------------------------------------------
+        violations = self._validate_report_fields(report_id)
+        if violations:
+            logger.warning(
+                "submit_report ABGELEHNT: Bericht %d hat %d Formatverstoss/-"
+                "verstoesse: %s", report_id, len(violations),
+                "; ".join(v["message"] for v in violations),
+            )
+            handler.send_response_body(
+                422,
+                json.dumps({
+                    "error": ("Der Bericht kann nicht zur Abnahme freigegeben "
+                              "werden: %d Eingabefeld(er) sind unvollstaendig "
+                              "oder entsprechen nicht dem geforderten Format."
+                              % len(violations)),
+                    "code": "VALIDATION_FAILED",
+                    "violations": violations,
+                }, ensure_ascii=False).encode("utf-8"),
                 content_type="application/json; charset=utf-8",
             )
             return
@@ -1671,6 +1876,87 @@ class ReportEndpoint:
         # ------------------------------------------------------------------
     # Hilfsmethoden
     # ------------------------------------------------------------------
+
+    def _validate_report_fields(self, report_id: int) -> list[dict]:
+        """
+        Prueft alle Eingabefelder ({{m:}}/{{o:}}) eines Berichts gegen den
+        zentralen Regel-Katalog. Liefert die Liste der Verstoesse
+        (leere Liste = alles in Ordnung).
+
+        Durchsucht JEDE Textstelle jedes Blocks — auch TABELLENZELLEN
+        (PlaceholderSyntax.iter_texts). Ohne das wuerde ausgerechnet die
+        Spurennummer im Spurenvermerk ungeprueft durchgehen, sobald sie in
+        einer Tabelle steht.
+
+        Beleg: Bauplan Build 388 §6
+        """
+        from core.placeholder_syntax import PlaceholderSyntax
+        from core.validation_rules import ValidationRules
+
+        rules = ValidationRules(self._config)
+        violations: list[dict] = []
+
+        blocks = self._bundle.evidence.get_blocks_for_report(report_id)
+        for blk in blocks:
+            try:
+                block_data = json.loads(blk.block_data or "{}")
+            except json.JSONDecodeError:
+                # Ein unlesbarer Block ist selbst ein Missstand — melden,
+                # nicht uebergehen.
+                violations.append({
+                    "block_id": blk.block_id,
+                    "field":    "",
+                    "message":  ("Der Blockinhalt ist unlesbar (kein gueltiges "
+                                 "JSON) und kann nicht geprueft werden."),
+                })
+                continue
+
+            try:
+                values = json.loads(blk.placeholder_values_json or "{}")
+            except json.JSONDecodeError:
+                values = {}
+            if not isinstance(values, dict):
+                values = {}
+
+            for field in PlaceholderSyntax.extract_from_block(block_data):
+                if field.type == "a":
+                    continue  # automatisch aufgeloest — kein Eingabefeld
+
+                raw_value = str(values.get(field.name, "") or "").strip()
+                rule_name = field.rule_name
+
+                if not rule_name:
+                    # Kein Regelverweis -> keine Formatpruefung moeglich.
+                    # Leeres Pflichtfeld wird protokolliert (GRUNDREGEL 1),
+                    # blockiert die Einreichung aber nicht (s. Abgrenzung oben).
+                    if field.type == "m" and not raw_value:
+                        logger.warning(
+                            "submit_report: Bericht %d, Block %s — Pflichtfeld "
+                            "'%s' ist LEER (keine Formatregel hinterlegt, daher "
+                            "keine Ablehnung).",
+                            report_id, blk.block_id, field.name,
+                        )
+                    continue
+
+                if not raw_value:
+                    if field.type == "m":
+                        violations.append({
+                            "block_id": blk.block_id,
+                            "field":    field.name,
+                            "message":  ("Pflichtfeld «%s» ist leer." % field.name),
+                        })
+                    # Leeres OPTIONALES Feld ist zulaessig -> nicht pruefen.
+                    continue
+
+                result = rules.validate(rule_name, raw_value)
+                if not result.ok:
+                    violations.append({
+                        "block_id": blk.block_id,
+                        "field":    field.name,
+                        "message":  "%s: %s" % (field.name, result.message),
+                    })
+
+        return violations
 
     def _require_lock(
         self,
