@@ -82,6 +82,9 @@ _DEFAULTS: dict[str, Any] = {
         "assets_db_dir":    "./data/assets/",    # NEU Build 017
         "templates_db":     "./data/templates.db",  # NEU Build 117 — Bug 3.3
         "translations_db":  "./data/translations.db",  # NEU Build 329 — read-only ATTACH
+        # Zentrale Siegel-DB freigegebener Berichte (Build 377). Nur der
+        # auditierte Freigabepfad schreibt hier; Lesen (verify) ist frei.
+        "approved_reports_db": "./data/approved_reports.db",
     },
     # Backup (Welle 0, Build 352 ff.). Ziel + Rahmenbedingungen fuer die
     # DB-Sicherung per 'VACUUM INTO'. Siehe kommentierte config.yaml.

@@ -44,6 +44,12 @@
 #   Haertung: X-AIW-Token (Serverlauf-Token via /api/whoami), Content-Type,
 #   Origin. Lesepfade bleiben mode=ro. Dazu GET /api/assignable.
 #
+# Build 377 (Berichts-Versiegelung): POST /api/report/approve (reports.approve,
+#   Scope 'alle') versiegelt einen Bericht: Beleg (coordinator) -> zentrales
+#   Siegel mit Inhaltshash (approved_reports.db) -> Durchsetzung in evidence
+#   (status approved/final). GET /api/report/verify prueft das Siegel nach
+#   (Hash neu bilden und vergleichen -> Abweichung = Manipulation).
+#
 # Build 376 (Betriebssicherheit): migration_status() — der Server prueft beim
 #   Start, ob coordinator.db auf dem Stand der ausgelieferten Migrationen ist,
 #   und WARNT deutlich (er migriert bewusst NICHT selbst).
@@ -57,7 +63,7 @@
 #   WAL-sicheren Fingerabdruck-Cache (m009). ManagementApp kennt nun das
 #   evidence_db_dir (injizierbar; sonst aus config.yaml).
 #
-# Version: v0.7.376 · Build: 376 · 2026-07-10
+# Version: v0.7.377 · Build: 377 · 2026-07-10
 # =============================================================================
 
 import hmac
@@ -95,6 +101,7 @@ from management.support_sessions.support_sessions_repo import SupportSessionsRep
 from management.stats.stats_repo import StatsRepo
 from management.reports.reports_repo import ReportsRepo
 from management.server.migration_status import MigrationStatusCheck
+from management.reports.approval_service import ApprovalService, ApprovalError
 from db.coordinator_db import DEFAULT_SUPPORT_STALE_SEC
 from management.capacity.capacity_errors import CapacityError
 from management.workload.workload_repo import (
@@ -197,7 +204,8 @@ class ManagementApp:
 
     def __init__(self, db_path: str,
                  static_dir: Optional[Path] = None,
-                 evidence_dir: Optional[str] = None) -> None:
+                 evidence_dir: Optional[str] = None,
+                 approved_db: Optional[str] = None) -> None:
         self._db_path = db_path
         # Statische Auslieferung gekapselt (Grundregel 10). static_dir ist im
         # Test injizierbar; PROD nutzt STATIC_DIR neben diesem Modul.
@@ -205,6 +213,8 @@ class ManagementApp:
         # Verzeichnis der evidence_<uid>.db (Berichts-Abnahme, Build 374).
         # Injizierbar (Test); sonst aus config.yaml (paths.evidence_db_dir).
         self._evidence_dir = evidence_dir or self._default_evidence_dir()
+        # Zentrale Siegel-DB (Build 377). Injizierbar (Test); sonst config.yaml.
+        self._approved_db = approved_db or self._default_approved_db()
         # SCHREIB-TOKEN (Build 372): pro Serverlauf zufaellig. Wird nur ueber
         # den authentifizierten GET /api/whoami ausgeliefert und muss bei JEDEM
         # Schreibzugriff im Header 'X-AIW-Token' mitgeschickt werden. Schuetzt
@@ -226,6 +236,16 @@ class ManagementApp:
             logger.warning("evidence_db_dir nicht aus config.yaml lesbar "
                            "(%s) — Standard './data/evidence/'.", exc)
             return "./data/evidence/"
+
+    @staticmethod
+    def _default_approved_db() -> str:
+        try:
+            from core.config_loader import ConfigLoader
+            return str(ConfigLoader().get("paths.approved_reports_db"))
+        except Exception as exc:  # pragma: no cover
+            logger.warning("approved_reports_db nicht aus config.yaml lesbar "
+                           "(%s) — Standard './data/approved_reports.db'.", exc)
+            return "./data/approved_reports.db"
 
     @property
     def write_token(self) -> str:
@@ -340,6 +360,8 @@ class ManagementApp:
             return self._assignable(person_id)
         if path == "/api/reports":
             return self._reports(person_id, query)
+        if path == "/api/report/verify":
+            return self._report_verify(person_id, query)
         if path.startswith("/static/"):
             return self._serve_static(path[len("/static/"):])
         return Response.json(404, {"error": "not_found", "path": path})
@@ -811,6 +833,95 @@ class ManagementApp:
         result["scope"] = scope
         return Response.json(200, result)
 
+    # =====================================================================
+    # BERICHTS-VERSIEGELUNG (Build 377).
+    #   GET  /api/report/verify   — Siegel nachpruefen (lesend; wer Berichte
+    #                                sehen darf, darf auch pruefen).
+    #   POST /api/report/approve  — freigeben/versiegeln (reports.approve,
+    #                                Scope 'alle'; auditiert + Token-geschuetzt).
+    # =====================================================================
+
+    def _approval_service(self, con) -> ApprovalService:
+        return ApprovalService(con, self._evidence_dir, self._approved_db)
+
+    def _report_verify(self, person_id: int,
+                       query: Optional[Dict[str, List[str]]]) -> Response:
+        policy = self.resolve_policy(person_id)
+        if not (policy.can(CAP_REPORTS_REVIEW)
+                or policy.can(CAP_REPORTS_APPROVE)):
+            return self._forbidden(CAP_REPORTS_REVIEW)
+
+        q = query or {}
+
+        def _int(key):
+            vals = q.get(key)
+            if not vals:
+                return None
+            try:
+                return int(vals[0])
+            except ValueError:
+                return None
+
+        user_id, report_id = _int("user_id"), _int("report_id")
+        if user_id is None or report_id is None:
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "user_id und report_id erforderlich."})
+
+        con = self._ro_con()
+        try:
+            result = self._approval_service(con).verify(
+                user_id=user_id, report_id=report_id)
+        finally:
+            con.close()
+        return Response.json(200, result)
+
+    def _report_approve(self, person_id: int,
+                        payload: Dict[str, Any]) -> Response:
+        """
+        Bericht freigeben und versiegeln. Erfordert reports.approve mit Scope
+        'alle' (die Abnahme ist per Definition fremdbezogen: der Supervisor
+        gibt die Berichte der Ermittler frei).
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_REPORTS_APPROVE):
+            return self._forbidden(CAP_REPORTS_APPROVE)
+        if policy.scope(CAP_REPORTS_APPROVE) != "alle":
+            return Response.json(403, {
+                "error": "forbidden", "capability": CAP_REPORTS_APPROVE,
+                "detail": "Freigabe erfordert Scope 'alle'."})
+
+        try:
+            user_id = int(payload.get("user_id"))
+            report_id = int(payload.get("report_id"))
+        except (TypeError, ValueError):
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "user_id und report_id erforderlich."})
+        is_final = bool(payload.get("is_final", False))
+        note = payload.get("note")
+
+        con = self._rw_con()
+        try:
+            who = self._person(con, person_id)
+            username = who["system_username"] if who else str(person_id)
+            result = self._approval_service(con).approve(
+                user_id=user_id, report_id=report_id, actor_id=person_id,
+                actor_username=username, is_final=is_final, note=note)
+        except ApprovalError as exc:
+            # Fachlicher Fehler ODER Teilerfolg — in beiden Faellen mit klarer
+            # Begruendung sichtbar machen (Grundregel 1).
+            logger.warning("Freigabe abgelehnt/unvollstaendig: %s", exc)
+            return Response.json(409, {"error": "approval_failed",
+                                       "detail": str(exc)})
+        except Exception as exc:
+            logger.exception("Freigabe fehlgeschlagen")
+            return Response.json(500, {"error": "write_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, result)
+
     def _require_assignment_scope(self, person_id: int):
         policy = self.resolve_policy(person_id)
         if not policy.can(CAP_ASSIGNMENT):
@@ -840,6 +951,8 @@ class ManagementApp:
             return self._case_priority(person_id, payload)
         if path == "/api/case/status":
             return self._case_status(person_id, payload)
+        if path == "/api/report/approve":
+            return self._report_approve(person_id, payload)
         return Response.json(404, {"error": "not_found", "path": path})
 
     # ------------------------------------------------------------- Schreiben

@@ -35,6 +35,10 @@ class EventType:
     CASE_PRIORITY_SET: str = "case_priority_set"
     CASE_NOTE_SET: str = "case_note_set"
 
+    # --- Build 377: Berichts-Versiegelung (approved_reports.db) ---
+    REPORT_APPROVED: str = "report_approved"
+    REPORT_SEAL_VERIFIED: str = "report_seal_verified"
+
     # --- Build 310: Ermittler-Verwaltung (investigators) ---
     INVESTIGATOR_CREATED: str = "investigator_created"
     INVESTIGATOR_UPDATED: str = "investigator_updated"
@@ -95,6 +99,8 @@ class EventType:
             CASE_PRIORITY_SET,
             CASE_NOTE_SET,
             CASE_EVENT_ADDED,
+            REPORT_APPROVED,
+            REPORT_SEAL_VERIFIED,
             INVESTIGATOR_CREATED,
             INVESTIGATOR_UPDATED,
             SUPPORT_SESSION_STARTED,
