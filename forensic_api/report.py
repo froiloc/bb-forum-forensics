@@ -334,6 +334,8 @@ _EDITOR_HTML = """\
     <script src="/_forensic/annotation_sidebar.js" defer></script>
     <!-- 1e) comment_thread.js: Kommentar-System -->
     <script src="/_forensic/comment_thread.js" defer></script>
+    <!-- 1e2) submit_dialog.js: Bestaetigungsdialog "Zur Abnahme freigeben" (Build 382) -->
+    <script src="/_forensic/submit_dialog.js" defer></script>
     <!-- 1f) report_editor.js: B6-Editor-Modul (umbenannt von editor.js, Build 100) -->
     <script src="/_forensic/report_editor.js" defer></script>
     <!-- 2) Layer-Architektur (Paket 5-9, Build 254). Reihenfolge ist Pflicht.

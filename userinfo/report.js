@@ -91,6 +91,13 @@ let _currentParagraphs = [];     // geladene Paragraph-Daten
 let _hasLock           = false;  // ob dieser Client den Lock haelt
 let _autosaveTimer     = null;   // Debounce-Timer fuer Auto-Save
 let _pendingSaves      = {};     // { block_id: true } fuer laufende Speicherungen
+// Build 382: eigene Ermittler-Kennung (aus /_forensic/investigator/me) und die
+// zuletzt geladene Berichtsliste — beides noetig, um zu entscheiden, ob der
+// Knopf "Zur Abnahme freigeben" angeboten wird (eigener Bericht, Status
+// 'draft'). Der Server prueft das erneut; die Oberflaeche ist keine
+// Sicherheitsgrenze, sie soll nur keine Aktion anbieten, die scheitern wuerde.
+let _meUsername        = null;
+let _reportsCache      = [];
 
 // ---------------------------------------------------------------------------
 // Hilfsfunktionen
@@ -181,7 +188,8 @@ async function loadReport() {
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
 
-        _renderReportSelector(data.reports || []);
+        _reportsCache = data.reports || [];
+        _renderReportSelector(_reportsCache);
 
         _currentReportId   = data.active_report_id ?? null;
         _currentParagraphs = data.paragraphs        ?? [];
@@ -238,6 +246,7 @@ function _renderReportSelector(reports) {
             <button class="report-btn" id="btn-new-report" title="Neuen Bericht anlegen">
                 + Neu
             </button>
+            <span id="btn-submit-report-slot"></span>
         </div>
         <div id="report-selector-status"></div>`;
 
@@ -247,6 +256,65 @@ function _renderReportSelector(reports) {
     });
     document.getElementById('btn-new-report')
         ?.addEventListener('click', _createNewReport);
+
+    // Build 382: Knopf "Zur Abnahme freigeben" (draft -> submitted).
+    _renderSubmitButton(reports);
+}
+
+/**
+ * Build 382 — Knopf "Zur Abnahme freigeben".
+ *
+ * Erscheint NUR beim EIGENEN Bericht im Status 'draft' (SubmitDialog.canSubmit).
+ * Der Server prueft das erneut (Build 381) — die Oberflaeche ist keine
+ * Sicherheitsgrenze; sie soll nur keine Aktion anbieten, die zwingend
+ * scheitern wuerde.
+ *
+ * Der Klick oeffnet den BESTAETIGUNGSDIALOG (submit_dialog.js): Tragweite,
+ * weiterer Prozess, Rueckholmoeglichkeit — zweistufig, damit dies eine bewusste
+ * Entscheidung ist und kein versehentlicher Klick.
+ * Beleg: documents/Berichts_Statusmodell.md
+ */
+function _renderSubmitButton(reports) {
+    const slot = document.getElementById('btn-submit-report-slot');
+    if (!slot) return;
+    slot.textContent = '';
+
+    const dlg = window.SubmitDialog;
+    if (!dlg) return;
+
+    const report = (reports || []).find(r => r.id === _currentReportId);
+    if (!dlg.canSubmit(report, _meUsername)) {
+        // Kein Knopf: fremder Bericht oder bereits eingereicht/abgenommen.
+        return;
+    }
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'report-btn report-btn-primary';
+    btn.id = 'btn-submit-report';
+    btn.title = 'Bericht zur Abnahme an die Chef-Ermittlerin freigeben';
+    btn.textContent = 'Zur Abnahme freigeben';
+    btn.addEventListener('click', () => {
+        dlg.open(document, report.title, () => _submitReport(report.id));
+    });
+    slot.appendChild(btn);
+}
+
+/**
+ * Build 382 — Einreichen ausfuehren (nach bestaetigtem Dialog).
+ * Nutzt den bestehenden Lock-gesicherten POST-Pfad.
+ */
+async function _submitReport(reportId) {
+    const data = await _postWithLock({
+        action: 'submit_report',
+        report_id: reportId,
+    });
+    if (!data) return;   // _postWithLock hat den Fehler bereits gemeldet
+
+    // Die Server-Antwort nennt die Tragweite im Klartext (Build 381) — genau
+    // die zeigen wir an, statt einen eigenen Text zu erfinden.
+    showStatus(data.message || 'Bericht zur Abnahme freigegeben.', 'ok');
+    await loadReport();   // Status/Sperre/Knopf neu aufbauen
 }
 
 /**
@@ -972,6 +1040,8 @@ window.initEditorModule = async function() {
         if (resp.ok) {
             const me = await resp.json();
             _isChef = Boolean(me.is_supervisor);
+            // Build 382: eigene Kennung fuer den Autor-Vergleich merken.
+            _meUsername = me.system_username ?? null;
         }
     } catch (_) { /* kein Chef-Status bei Fehler */ }
 

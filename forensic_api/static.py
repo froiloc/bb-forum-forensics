@@ -80,6 +80,8 @@ _RESOURCES: dict[str, tuple[str, str, Path]] = {
     "/_forensic/annotation_sidebar.js": ("annotation_sidebar.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
     # B6 Phase 8 (Kommentare): Kommentar-Thread
     "/_forensic/comment_thread.js": ("comment_thread.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
+    # Build 382: Bestaetigungsdialog fuer "Zur Abnahme freigeben".
+    "/_forensic/submit_dialog.js": ("submit_dialog.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
     # B6 Paket 5-9 (Layer-Architektur, Build 254): SSELayer, ReportLayer, LockLayer,
     # DocumentLayer, editor_bootstrap. Ladereihenfolge durch Script-Tags in report.py.
     # Beleg: editor_bootstrap.js, Paket 9 Architekturentscheidung Option C
