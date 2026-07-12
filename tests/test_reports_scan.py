@@ -275,5 +275,26 @@ class ReportsScanTests(unittest.TestCase):
         self.assertEqual(d["reports"][0]["user_id"], 18)
 
 
+    # RS09 -------------------------------------------------------------------
+    def test_rs09_approve_implies_review(self):
+        """
+        Build 375 (Rechte-Korrektur): Wer FREIGEBEN darf (reports.approve),
+        muss den Bericht auch LESEN duerfen. Vorher gatete /api/reports allein
+        auf reports.review, waehrend die Cockpit-Nav auf reports.approve gatete
+        -> der Supervisor sah den Reiter, bekam aber 403.
+        """
+        # person 3: NUR reports.approve (kein reports.review).
+        self.rbac.grant("support", "reports.approve", scope="alle", actor_id=1)
+        self.rbac.assign_role(3, "support", actor_id=1)
+        self.con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+
+        app = ManagementApp(self._db, evidence_dir=self._ev)
+        r = app.dispatch(3, "/api/reports")
+        self.assertEqual(r.status, 200)
+        d = json.loads(r.body.decode("utf-8"))
+        self.assertEqual(d["scope"], "alle")
+        self.assertEqual(d["count"], 2)
+
+
 if __name__ == "__main__":
     unittest.main()

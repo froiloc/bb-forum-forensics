@@ -195,4 +195,28 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
       "default-deny"
     );
   });
+
+  // CN11 (Build 375): Sichten mit MEHREREN Faehigkeiten (any-of).
+  // 'Berichts-Abnahme' ist sichtbar mit reports.approve ODER reports.review.
+  it("CN11: any-of Faehigkeiten (reports)", () => {
+    const api = _api();
+    const view = api.VIEW_CATALOG.filter((v) => v.id === "reports")[0];
+    expect(view.caps).toEqual(["reports.approve", "reports.review"]);
+
+    // Nur reports.approve (Supervisor) -> sichtbar.
+    let vis = api.visibleViews({ "reports.approve": "alle" });
+    expect(vis.map((v) => v.id)).toContain("reports");
+
+    // Nur reports.review (Lektor) -> ebenfalls sichtbar.
+    vis = api.visibleViews({ "reports.review": "alle" });
+    expect(vis.map((v) => v.id)).toContain("reports");
+
+    // Keine von beiden -> nicht sichtbar.
+    vis = api.visibleViews({ "dashboard.view": "alle" });
+    expect(vis.map((v) => v.id)).not.toContain("reports");
+
+    // effectiveCap: die tatsaechlich vorhandene Faehigkeit (fuer den Scope-Tag).
+    expect(api.effectiveCap(view, { "reports.review": "alle" }))
+      .toBe("reports.review");
+  });
 });

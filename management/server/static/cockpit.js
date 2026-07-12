@@ -48,7 +48,9 @@
 //   Diagramme (Verteilungen/Durchsatz), Ermittler-Tabelle, CSV/JSON-Download.
 //   373 = Zuweisung (SCHREIB-Sicht): /api/assignable + POST /api/case/* mit
 //   Schreib-Token (X-AIW-Token aus /api/whoami); kein optimistisches UI.
-// Version: v0.7.373 · Build: 373 · 2026-07-10
+//   375 = Berichts-Abnahme (/api/reports, cockpit_reports.js) + Nav-Korrektur:
+//   Sichten koennen mehrere Faehigkeiten haben (any-of, Feld 'caps').
+// Version: v0.7.375 · Build: 375 · 2026-07-10
 // =============================================================================
 
 (function () {
@@ -84,7 +86,10 @@
         { id: 'dashboard',  cap: 'dashboard.view',       group: 'Ueberblick',     label: 'Dashboard' },
         { id: 'assignment', cap: 'assignment.edit',      group: 'Verwaltung',     label: 'Zuweisung' },
         { id: 'mentoring',  cap: 'mentoring.view',       group: 'Verwaltung',     label: 'Ermittler-Betreuung' },
-        { id: 'reports',    cap: 'reports.approve',      group: 'Verwaltung',     label: 'Berichts-Abnahme' },
+        // Berichts-Abnahme: 'reports.approve' ODER 'reports.review' genuegt
+        // (wer freigeben darf, muss lesen duerfen). 'caps' = any-of; 'cap' bleibt
+        // fuer den Scope-Tag/Platzhalter die Leitfaehigkeit.
+        { id: 'reports',    cap: 'reports.approve',      caps: ['reports.approve', 'reports.review'], group: 'Verwaltung',     label: 'Berichts-Abnahme' },
         { id: 'stats',      cap: 'stats.export_sta',     group: 'Auswertung',     label: 'Statistiken (StA/Fuehrung)' },
         { id: 'workload',   cap: 'workload.view',        group: 'Auswertung',     label: 'Lastverteilung' },
         { id: 'capacity',   cap: 'capacity.edit',        group: 'Auswertung',     label: 'Kapazitaet' },
@@ -111,9 +116,26 @@
 
     // visibleViews: Sichten, deren Faehigkeit vorliegt — in Katalog-Reihenfolge.
     // Gibt eine NEUE Liste zurueck (mutiert VIEW_CATALOG nicht).
+    // viewCaps: Faehigkeiten, von denen EINE genuegt (any-of). Faellt auf die
+    // Einzel-Faehigkeit 'cap' zurueck (Rueckwaertskompatibilitaet).
+    function viewCaps(v) {
+        return (v.caps && v.caps.length) ? v.caps : [v.cap];
+    }
+
+    // effectiveCap: die erste vorhandene Faehigkeit der Sicht (fuer Scope-Tag).
+    function effectiveCap(v, capabilities) {
+        var caps = viewCaps(v);
+        for (var i = 0; i < caps.length; i++) {
+            if (hasCap(capabilities, caps[i])) { return caps[i]; }
+        }
+        return v.cap;
+    }
+
     function visibleViews(capabilities) {
         return VIEW_CATALOG.filter(function (v) {
-            return hasCap(capabilities, v.cap);
+            return viewCaps(v).some(function (c) {
+                return hasCap(capabilities, c);
+            });
         });
     }
 
@@ -197,7 +219,7 @@
             labelSpan.textContent = v.label;
             b.appendChild(labelSpan);
 
-            var scope = scopeTag(v.cap, capabilities);
+            var scope = scopeTag(effectiveCap(v, capabilities), capabilities);
             if (scope) {
                 var tag = document.createElement('span');
                 tag.className = 'aiw-scopetag ' + scope;
@@ -698,6 +720,31 @@
         });
     }
 
+    // loadReports: Berichts-Abnahme (/api/reports). force=true umgeht den
+    // serverseitigen Scan-Cache (liest alle evidence-DBs neu ein).
+    function loadReports(mainEl, force) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitReports : null;
+        if (!mod) {
+            renderError(mainEl, 'Berichts-Modul nicht geladen.');
+            return;
+        }
+        var url = '/api/reports' + (force ? '?force=1' : '');
+        fetchJson(url).then(function (data) {
+            cleanupView();
+            state.table = mod.renderReports(mainEl, data, {
+                onForceRescan: function () { loadReports(mainEl, true); }
+            });
+            log('Berichte gerendert:', data.count, '-', data.rescanned,
+                'DBs neu eingelesen');
+        }).catch(function (err) {
+            cleanupView();
+            renderError(mainEl,
+                'Berichte konnten nicht geladen werden: ' + err.message);
+        });
+    }
+
     // applyIntegrity: zentrale Banner-Aktualisierung aus einer Integritaets-
     // Antwort ({ok, first_bad_seq, detail, tip_seq}). Nutzt das Integritaets-
     // Modul (bannerModel + applyBanner). Wird von loadIntegrity UND refreshBanner
@@ -786,6 +833,8 @@
             loadStats(mainEl);
         } else if (viewId === 'assignment') {
             loadAssignment(mainEl);
+        } else if (viewId === 'reports') {
+            loadReports(mainEl);
         } else {
             renderPlaceholder(mainEl, viewById(viewId));
         }
@@ -827,6 +876,8 @@
                 loadStats();
             } else if (state.activeId === 'assignment') {
                 loadAssignment();
+            } else if (state.activeId === 'reports') {
+                loadReports();
             }
             // Banner global frisch halten, wenn die aktive Sicht nicht die
             // Integritaets-Sicht ist (dort geschieht es bereits oben).
@@ -910,6 +961,8 @@
     var API = {
         VIEW_CATALOG: VIEW_CATALOG,
         hasCap: hasCap,
+        viewCaps: viewCaps,
+        effectiveCap: effectiveCap,
         visibleViews: visibleViews,
         scopeTag: scopeTag,
         firstViewId: firstViewId,

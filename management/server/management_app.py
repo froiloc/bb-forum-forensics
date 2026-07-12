@@ -44,12 +44,16 @@
 #   Haertung: X-AIW-Token (Serverlauf-Token via /api/whoami), Content-Type,
 #   Origin. Lesepfade bleiben mode=ro. Dazu GET /api/assignable.
 #
+# Build 375 (Berichts-Abnahme, Frontend + Rechte-Korrektur): /api/reports akzeptiert
+#   nun reports.review ODER reports.approve ('approve' impliziert 'review') —
+#   vorher sah der Supervisor den Reiter, bekam aber 403.
+#
 # Build 374 (Berichts-Abnahme, Lesepfad): GET /api/reports liest die Berichte
 #   ALLER Faelle aus den evidence_<uid>.db (read-only), beschleunigt durch den
 #   WAL-sicheren Fingerabdruck-Cache (m009). ManagementApp kennt nun das
 #   evidence_db_dir (injizierbar; sonst aus config.yaml).
 #
-# Version: v0.7.374 · Build: 374 · 2026-07-10
+# Version: v0.7.375 · Build: 375 · 2026-07-10
 # =============================================================================
 
 import hmac
@@ -110,6 +114,7 @@ CAP_MENTORING = "mentoring.view"
 CAP_STATS = "stats.export_sta"
 CAP_ASSIGNMENT = "assignment.edit"
 CAP_REPORTS_REVIEW = "reports.review"
+CAP_REPORTS_APPROVE = "reports.approve"
 
 logger = logging.getLogger(__name__)
 
@@ -743,11 +748,28 @@ class ManagementApp:
         WAL-sicher). Query 'force=1' erzwingt den Vollscan (Cache ignorieren).
         Scope 'alle' -> alle Berichte; 'eigene' -> nur Berichte zu eigenen
         (zugewiesenen) Faellen. Die evidence-DBs werden NUR read-only geoeffnet.
+
+        RECHTE (Korrektur Build 375): Es genuegt EINE der beiden Faehigkeiten —
+        reports.review ODER reports.approve. Begruendung: Wer einen Bericht
+        FREIGEBEN darf, muss ihn zwingend auch LESEN duerfen; 'approve'
+        impliziert 'review'. Vorher gatete der Endpunkt allein auf
+        reports.review, waehrend die Cockpit-Nav auf reports.approve gatete —
+        der Supervisor (reports.approve) sah den Reiter, bekam aber 403.
+        Der wirksame Scope ist der weitere der beiden ('alle' schlaegt 'eigene').
         """
         policy = self.resolve_policy(person_id)
-        if not policy.can(CAP_REPORTS_REVIEW):
+        can_review = policy.can(CAP_REPORTS_REVIEW)
+        can_approve = policy.can(CAP_REPORTS_APPROVE)
+        if not (can_review or can_approve):
             return self._forbidden(CAP_REPORTS_REVIEW)
-        scope = policy.scope(CAP_REPORTS_REVIEW)
+
+        scopes = []
+        if can_review:
+            scopes.append(policy.scope(CAP_REPORTS_REVIEW))
+        if can_approve:
+            scopes.append(policy.scope(CAP_REPORTS_APPROVE))
+        scope = "alle" if "alle" in scopes else (
+            scopes[0] if scopes else None)
 
         q = query or {}
         force = (q.get("force") or ["0"])[0] in ("1", "true", "yes")
