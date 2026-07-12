@@ -99,6 +99,25 @@ class EventType:
     EXTERNAL_MATTER_ANSWERED: str = "external_matter_answered"
     EXTERNAL_MATTER_CLOSED: str = "external_matter_closed"
 
+    # --- Build 387: Ermittlungsergebnis-Bewertung ---------------------------
+    #   ASSESSMENT_RECORDED: eine Bewertung (append-only; jede Korrektur ist
+    #   eine NEUE Zeile und damit ein NEUER Beleg — der Verlauf IST die
+    #   Ermittlungsleistung). Freitext steht NICHT im Payload, nur Fakten,
+    #   Zahlen und die Textlaenge.
+    #
+    #   CATALOG_*: der Bewertungs-KATALOG ist Daten, nicht Code (mc
+    #   2026-07-12) — Skalen und Kriterien sollen sich mit der
+    #   Ermittlungserfahrung weiterentwickeln koennen, OHNE Migration. Genau
+    #   deshalb braucht jede Katalogaenderung einen eigenen Beleg: sie
+    #   veraendert die BEDEUTUNG spaeterer Zahlen.
+    #   CATALOG_DEPRECATED = ausser Dienst gestellt (nie geloescht — sonst
+    #   zeigten bestehende Bewertungen ins Leere).
+    ASSESSMENT_RECORDED: str = "assessment_recorded"
+    CATALOG_SCALE_ADDED: str = "catalog_scale_added"
+    CATALOG_ITEM_ADDED: str = "catalog_item_added"
+    CATALOG_CRITERION_ADDED: str = "catalog_criterion_added"
+    CATALOG_DEPRECATED: str = "catalog_deprecated"
+
     # --- reserviert für spätere Builds (hier dokumentiert, noch nicht aktiv) ---
     # NOTIFICATION_SENT, RESTORE_PERFORMED
 
@@ -137,6 +156,11 @@ class EventType:
             EXTERNAL_MATTER_DEFERRED,
             EXTERNAL_MATTER_ANSWERED,
             EXTERNAL_MATTER_CLOSED,
+            ASSESSMENT_RECORDED,
+            CATALOG_SCALE_ADDED,
+            CATALOG_ITEM_ADDED,
+            CATALOG_CRITERION_ADDED,
+            CATALOG_DEPRECATED,
         }
     )
 

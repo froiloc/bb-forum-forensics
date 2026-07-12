@@ -53,6 +53,10 @@ EVENT_KINDS: FrozenSet[str] = frozenset(
         # der Zeitstrahl das WARTEN eines Falls sichtbar: wer wann worauf
         # gewartet und wie oft er die Wiedervorlage verschoben hat.
         "external_matter",
+        # Build 387: Spiegel der Ergebnisbewertung (ResultsRepo; Beleg
+        # ASSESSMENT_RECORDED). Der Zeitstrahl macht den ERKENNTNISGEWINN
+        # sichtbar: aus 'Verdacht' wird 'wahrscheinlich' wird 'gerichtsfest'.
+        "assessment",
     }
 )
 

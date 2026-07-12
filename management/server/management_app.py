@@ -77,7 +77,13 @@
 #         EINER Sicht), POST /api/external/create|defer|answer|close (auditiert).
 #         Rechte: external.view / external.edit, BEIDE scope-faehig ('eigene' =
 #         nur zugewiesene Faelle) — der Ermittler pflegt seinen Fall selbst.
-# Version: v0.7.385 · Build: 385 · 2026-07-12
+#   387 = ERMITTLUNGSERGEBNIS-BEWERTUNG (M011). GET /api/results/catalog
+#         (Kriterien + Skalen — DATEN, kein Code), GET /api/results?user_id=
+#         (aktueller Stand + VOLLE Historie + provisorische Kennzahl),
+#         GET /api/results/stats (fallUEBERGREIFEND, verlangt Scope 'alle'),
+#         POST /api/results/assess (APPEND-ONLY). Rechte: results.view /
+#         results.edit, beide scope-faehig.
+# Version: v0.7.387 · Build: 387 · 2026-07-12
 # =============================================================================
 
 import hmac
@@ -130,6 +136,12 @@ from management.external.matter_status import (
 from management.external import matter_kinds
 from management.calendar.calendar_repo import CalendarError, CalendarRepo
 from management.calendar import stichtag as stichtag_mod
+from management.results.assessment_catalog_repo import (
+    AssessmentCatalogRepo,
+    CatalogError,
+)
+from management.results.results_repo import ResultsError, ResultsRepo
+from management.results.priority_scorer import PriorityScorer
 from db.coordinator_db import DEFAULT_SUPPORT_STALE_SEC
 from management.capacity.capacity_errors import CapacityError
 from management.workload.workload_repo import (
@@ -159,6 +171,11 @@ CAP_REPORTS_APPROVE = "reports.approve"
 # 'alle' = alle Faelle, 'eigene' = nur die zugewiesenen (mc 2026-07-12).
 CAP_EXTERNAL_VIEW = "external.view"
 CAP_EXTERNAL_EDIT = "external.edit"
+# Build 387: Ermittlungsergebnis-Bewertung. Beide scope-faehig; 'eigene' =
+# nur die zugewiesenen Faelle. Die fallUEBERGREIFENDE Statistik verlangt
+# ausdruecklich Scope 'alle' (mc 2026-07-12).
+CAP_RESULTS_VIEW = "results.view"
+CAP_RESULTS_EDIT = "results.edit"
 
 logger = logging.getLogger(__name__)
 
@@ -419,6 +436,12 @@ class ManagementApp:
             return self._external(person_id, query)
         if path == "/api/calendar":
             return self._calendar(person_id, query)
+        if path == "/api/results/catalog":
+            return self._results_catalog(person_id)
+        if path == "/api/results/stats":
+            return self._results_stats(person_id)
+        if path == "/api/results":
+            return self._results(person_id, query)
         if path.startswith("/static/"):
             return self._serve_static(path[len("/static/"):])
         return Response.json(404, {"error": "not_found", "path": path})
@@ -1391,6 +1414,189 @@ class ManagementApp:
         return Response.json(200, {"ok": True, "matter_id": matter_id,
                                    "audit_seq": seq})
 
+    # ================================================================
+    # ERMITTLUNGSERGEBNIS-BEWERTUNG (Build 387)
+    # ----------------------------------------------------------------
+    # Scope-Aufloesung wie bei den externen Vorgaengen:
+    #   (None,  None)     -> 'alle': alle Faelle
+    #   (Liste, None)     -> 'eigene': genau diese (ggf. LEER)
+    #   (None,  Response) -> kein Recht: 403
+    # Ein Ermittler ohne Zuweisung bekommt eine LEERE LISTE, NICHT 'alle'.
+    # ================================================================
+    def _results_scope(self, person_id: int, capability: str):
+        policy = self.resolve_policy(person_id)
+        if not policy.can(capability):
+            return None, self._forbidden(capability)
+        if policy.scope(capability) == "alle":
+            return None, None
+        con = self._ro_con()
+        try:
+            rows = con.execute(
+                "SELECT user_id FROM cases WHERE assigned_to = ?",
+                (person_id,)).fetchall()
+        finally:
+            con.close()
+        return [int(r[0]) for r in rows], None
+
+    def _results_catalog(self, person_id: int) -> Response:
+        """
+        GET /api/results/catalog — Kriterien, Skalen, Skalenpunkte.
+        Der Katalog ist DATEN (M011), kein Code — die Erfassungsmaske baut
+        ihre Auswahlfelder daraus. 'catalog_version' gehoert in JEDE spaetere
+        Bewertung.
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_RESULTS_VIEW):
+            return self._forbidden(CAP_RESULTS_VIEW)
+        con = self._ro_con()
+        try:
+            data = AssessmentCatalogRepo(con).full()
+        except CatalogError as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Bewertungs-Katalog nicht lesbar")
+            return Response.json(500, {"error": "catalog_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        data["can_edit"] = policy.can(CAP_RESULTS_EDIT)
+        return Response.json(200, data)
+
+    def _results(self, person_id: int, query) -> Response:
+        """
+        GET /api/results?user_id=N — AKTUELLER Stand + VOLLE HISTORIE + die
+        provisorische Kennzahl.
+
+        Die Historie wird bewusst MITGELIEFERT: sie belegt den Erkenntnis-
+        gewinn und ist damit selbst ein Ermittlungsergebnis (append-only, mc).
+        """
+        case_ids, denied = self._results_scope(person_id, CAP_RESULTS_VIEW)
+        if denied is not None:
+            return denied
+
+        q = query or {}
+        try:
+            user_id = int(q.get("user_id"))
+        except (TypeError, ValueError):
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": "user_id fehlt/ungueltig."})
+        if case_ids is not None and user_id not in case_ids:
+            return Response.json(403, {
+                "error": "forbidden", "capability": CAP_RESULTS_VIEW,
+                "detail": "Fall %s ist nicht zugewiesen." % user_id})
+
+        con = self._ro_con()
+        try:
+            repo = ResultsRepo(con)
+            cat = AssessmentCatalogRepo(con)
+            current = repo.current(user_id)
+            history = repo.history(user_id)
+            alle = [c["code"] for c in cat.criteria()]
+            score = PriorityScorer().score_with_gaps(current, alle)
+            catver = cat.version()
+        except (ResultsError, CatalogError) as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Bewertungen nicht lesbar")
+            return Response.json(500, {"error": "results_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+
+        return Response.json(200, {
+            "user_id": user_id,
+            "scope": ("eigene" if case_ids is not None else "alle"),
+            "catalog_version": catver,
+            "current": current,
+            "history": history,
+            "score": score,
+            "can_edit": self.resolve_policy(person_id).can(CAP_RESULTS_EDIT),
+        })
+
+    def _results_stats(self, person_id: int) -> Response:
+        """
+        GET /api/results/stats — fallUEBERGREIFENDE Auswertung.
+
+        Verlangt ausdruecklich Scope 'alle' (mc): die statistische Bewertung
+        ueber fremde Faelle hat eine ANDERE Qualitaet als der Blick auf den
+        eigenen. Ein Ermittler mit 'eigene' bekommt hier 403 — nicht etwa eine
+        stillschweigend auf ihn zusammengeschrumpfte Statistik, die wie eine
+        Gesamtauswertung aussaehe.
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_RESULTS_VIEW):
+            return self._forbidden(CAP_RESULTS_VIEW)
+        if policy.scope(CAP_RESULTS_VIEW) != "alle":
+            return Response.json(403, {
+                "error": "forbidden", "capability": CAP_RESULTS_VIEW,
+                "detail": "Die fallUEBERGREIFENDE Auswertung erfordert Scope "
+                          "'alle'."})
+
+        con = self._ro_con()
+        try:
+            st = ResultsRepo(con).stats()
+            cat = AssessmentCatalogRepo(con).full()
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Bewertungs-Statistik fehlgeschlagen")
+            return Response.json(500, {"error": "stats_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+
+        st["catalog"] = cat
+        # Die Semantik-Warnung wandert MIT: 'ordinal' bedeutet bei
+        # abuser_quality SCHWERE, bei location_quality PRAEZISION. Wer diese
+        # Zahlen ueber Skalen hinweg addiert, addiert Aepfel und Birnen.
+        st["hinweis"] = (
+            "Mittelwerte werden je KRITERIUM gebildet, nie ueber Kriterien "
+            "hinweg: 'ordinal' misst je nach Skala Praezision ODER Schwere "
+            "(siehe quality_beschreibung).")
+        return Response.json(200, st)
+
+    def _results_assess(self, person_id: int,
+                        payload: Dict[str, Any]) -> Response:
+        """
+        POST /api/results/assess — eine Bewertung erfassen.
+        APPEND-ONLY: immer eine NEUE Zeile, nie ein Ueberschreiben.
+        """
+        case_ids, denied = self._results_scope(person_id, CAP_RESULTS_EDIT)
+        if denied is not None:
+            return denied
+        try:
+            user_id = int(payload.get("user_id"))
+        except (TypeError, ValueError):
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": "user_id fehlt/ungueltig."})
+        if case_ids is not None and user_id not in case_ids:
+            return Response.json(403, {
+                "error": "forbidden", "capability": CAP_RESULTS_EDIT,
+                "detail": "Fall %s ist nicht zugewiesen." % user_id})
+
+        con = self._rw_con()
+        try:
+            repo = ResultsRepo(con, CoordinatorWriter(con, AuditLog(con)))
+            res = repo.assess(
+                user_id=user_id,
+                criterion_code=str(payload.get("criterion_code", "")),
+                extrem=str(payload.get("extrem", "")),
+                confidence_code=str(payload.get("confidence_code", "")),
+                quality_code=(payload.get("quality_code") or None),
+                note=str(payload.get("note", "")),
+                actor_id=person_id,
+            )
+        except (ResultsError, CatalogError) as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Bewertung fehlgeschlagen")
+            return Response.json(500, {"error": "assess_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, **res})
+
     def _require_assignment_scope(self, person_id: int):
         policy = self.resolve_policy(person_id)
         if not policy.can(CAP_ASSIGNMENT):
@@ -1434,6 +1640,8 @@ class ManagementApp:
             return self._external_answer(person_id, payload)
         if path == "/api/external/close":
             return self._external_close(person_id, payload)
+        if path == "/api/results/assess":
+            return self._results_assess(person_id, payload)
         return Response.json(404, {"error": "not_found", "path": path})
 
     # ------------------------------------------------------------- Schreiben

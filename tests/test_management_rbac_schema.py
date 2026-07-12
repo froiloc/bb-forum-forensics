@@ -160,13 +160,16 @@ class ManagementRbacSchemaTests(unittest.TestCase):
                     for c in catalog.CAPABILITIES}
         self.assertEqual(set(db_caps), catalog.CAPABILITY_CODES)
         self.assertEqual(db_caps, cat_caps)
-        # §11.3-Aufzaehlung: 15 Faehigkeiten ab Build 343, +2 ab Build 385
+        # §11.3-Aufzaehlung: 15 ab Build 343, +2 ab Build 385, +2 ab Build 387
         # ('external.view'/'external.edit', geseedet in M010) -> 17. Der Test
         # prueft oben bereits, dass DB-Seed und Code-Katalog DECKUNGSGLEICH
         # sind — genau daran wuerde eine vergessene Seed-Migration auffallen.
-        self.assertEqual(len(cat_caps), 17)
+        self.assertEqual(len(cat_caps), 19)
         self.assertIn("external.view", cat_caps)
         self.assertIn("external.edit", cat_caps)
+        # Build 387: Ergebnisbewertung (Seed in M011).
+        self.assertIn("results.view", cat_caps)
+        self.assertIn("results.edit", cat_caps)
         self.assertEqual(len(cat_roles), 6)
 
     # R03 --------------------------------------------------------------------

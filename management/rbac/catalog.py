@@ -59,7 +59,7 @@ ROLES: Tuple[Role, ...] = (
 
 
 # --- Faehigkeitskatalog (Beleg: Bauplan B7 v1.1 §11.3, VOLLE Aufzaehlung) -----
-#   17 Faehigkeiten (15 ab Build 343, +2 ab Build 385). Der Katalog ist
+#   19 Faehigkeiten (15 ab Build 343, +2 ab 385, +2 ab 387). Der Katalog ist
 #   erweiterbar; hier die zur Bauzeit von 343
 #   festgelegte Grundmenge. Die role->capability-ZUWEISUNGEN (Grants mit Scope)
 #   sind NICHT Teil dieses Katalogs und NICHT Teil von Schnitt (a) — sie werden
@@ -107,6 +107,15 @@ CAPABILITIES: Tuple[Capability, ...] = (
                "lesen."),
     Capability("external.edit", "Externe Vorgaenge pflegen",
                "Externe Vorgaenge anlegen, wiedervorlegen und abschliessen."),
+    # --- Build 387: Ermittlungsergebnis-Bewertung (Seed in M011) ------------
+    #   Eigene Faehigkeiten (mc 2026-07-12): das Erfassen und Ansehen der
+    #   EIGENEN Bewertung ('eigene') hat eine andere Qualitaet als die
+    #   fallübergreifende statistische Auswertung ('alle').
+    Capability("results.view", "Ermittlungsergebnis sehen",
+               "Bewertung des Ermittlungsergebnisses (Konfidenz/Qualitaet) "
+               "lesen."),
+    Capability("results.edit", "Ermittlungsergebnis bewerten",
+               "Bewertungen des Ermittlungsergebnisses erfassen (append-only)."),
 )
 
 
