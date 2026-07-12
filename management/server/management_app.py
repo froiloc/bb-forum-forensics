@@ -44,6 +44,10 @@
 #   Haertung: X-AIW-Token (Serverlauf-Token via /api/whoami), Content-Type,
 #   Origin. Lesepfade bleiben mode=ro. Dazu GET /api/assignable.
 #
+# Build 383 (Fall-Autodetektion): GET /api/cases/detect gleicht die auf der
+#   Platte liegenden forensic_<uid>.db mit der Fallakte ab (ok/neu/vermisst/
+#   unlesbar); POST /api/cases/import nimmt neu erkannte Faelle AUDITIERT auf.
+#
 # Build 380 (Rueckgabe zur Nachbesserung): POST /api/report/return setzt einen
 #   EINGEREICHTEN Bericht (submitted) zurueck auf 'draft' — nur Lektor/Chef-
 #   Ermittlerin, auditiert. Abgenommene/versandte Berichte NIE.
@@ -67,7 +71,7 @@
 #   WAL-sicheren Fingerabdruck-Cache (m009). ManagementApp kennt nun das
 #   evidence_db_dir (injizierbar; sonst aus config.yaml).
 #
-# Version: v0.7.380 · Build: 380 · 2026-07-10
+# Version: v0.7.383 · Build: 383 · 2026-07-10
 # =============================================================================
 
 import hmac
@@ -106,6 +110,8 @@ from management.stats.stats_repo import StatsRepo
 from management.reports.reports_repo import ReportsRepo
 from management.server.migration_status import MigrationStatusCheck
 from management.reports.approval_service import ApprovalService, ApprovalError
+from management.cases.case_detector import CaseDetector
+from management.cases.case_importer import CaseImporter
 from db.coordinator_db import DEFAULT_SUPPORT_STALE_SEC
 from management.capacity.capacity_errors import CapacityError
 from management.workload.workload_repo import (
@@ -209,7 +215,9 @@ class ManagementApp:
     def __init__(self, db_path: str,
                  static_dir: Optional[Path] = None,
                  evidence_dir: Optional[str] = None,
-                 approved_db: Optional[str] = None) -> None:
+                 approved_db: Optional[str] = None,
+                 forensic_dir: Optional[str] = None,
+                 assets_dir: Optional[str] = None) -> None:
         self._db_path = db_path
         # Statische Auslieferung gekapselt (Grundregel 10). static_dir ist im
         # Test injizierbar; PROD nutzt STATIC_DIR neben diesem Modul.
@@ -219,6 +227,12 @@ class ManagementApp:
         self._evidence_dir = evidence_dir or self._default_evidence_dir()
         # Zentrale Siegel-DB (Build 377). Injizierbar (Test); sonst config.yaml.
         self._approved_db = approved_db or self._default_approved_db()
+        # Fall-Autodetektion (Build 383): forensic_<uid>.db definiert den Fall;
+        # evidence/assets sind nur Arbeitsstand.
+        self._forensic_dir = forensic_dir or self._cfg_path(
+            "paths.forensic_db_dir", "./data/forensic/")
+        self._assets_dir = assets_dir or self._cfg_path(
+            "paths.assets_db_dir", "./data/assets/")
         # SCHREIB-TOKEN (Build 372): pro Serverlauf zufaellig. Wird nur ueber
         # den authentifizierten GET /api/whoami ausgeliefert und muss bei JEDEM
         # Schreibzugriff im Header 'X-AIW-Token' mitgeschickt werden. Schuetzt
@@ -240,6 +254,17 @@ class ManagementApp:
             logger.warning("evidence_db_dir nicht aus config.yaml lesbar "
                            "(%s) — Standard './data/evidence/'.", exc)
             return "./data/evidence/"
+
+    @staticmethod
+    def _cfg_path(key: str, fallback: str) -> str:
+        """Pfad aus config.yaml; Ausfall wird protokolliert (Grundregel 1)."""
+        try:
+            from core.config_loader import ConfigLoader
+            return str(ConfigLoader().get(key))
+        except Exception as exc:  # pragma: no cover
+            logger.warning("%s nicht aus config.yaml lesbar (%s) — "
+                           "Standard '%s'.", key, exc, fallback)
+            return fallback
 
     @staticmethod
     def _default_approved_db() -> str:
@@ -366,6 +391,8 @@ class ManagementApp:
             return self._reports(person_id, query)
         if path == "/api/report/verify":
             return self._report_verify(person_id, query)
+        if path == "/api/cases/detect":
+            return self._cases_detect(person_id)
         if path.startswith("/static/"):
             return self._serve_static(path[len("/static/"):])
         return Response.json(404, {"error": "not_found", "path": path})
@@ -983,6 +1010,76 @@ class ManagementApp:
             con.close()
         return Response.json(200, result)
 
+    # =====================================================================
+    # FALL-AUTODETEKTION (Build 383).
+    #   GET  /api/cases/detect  — Abgleich Platte <-> Fallakte (rein lesend).
+    #   POST /api/cases/import  — neu erkannte Faelle AUDITIERT aufnehmen.
+    #
+    # Ein Fall EXISTIERT, sobald forensic_<uid>.db vorliegt (mc): unabhaengig
+    # davon, ob schon jemand daran gearbeitet hat.
+    # =====================================================================
+
+    def _detector(self, con) -> CaseDetector:
+        return CaseDetector(con, self._forensic_dir, self._evidence_dir,
+                            self._assets_dir)
+
+    def _cases_detect(self, person_id: int) -> Response:
+        denied = self._require_assignment_scope(person_id)
+        if denied is not None:
+            return denied
+
+        con = self._ro_con()
+        try:
+            result = self._detector(con).detect()
+        except Exception as exc:
+            logger.exception("Fall-Detektion fehlgeschlagen")
+            return Response.json(500, {"error": "detect_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, result)
+
+    def _cases_import(self, person_id: int,
+                      payload: Dict[str, Any]) -> Response:
+        """
+        Nimmt neu erkannte Faelle auf — AUDITIERT (CasesRepo.create_case ->
+        Beleg case_created je Fall). Auswahl per 'user_ids' ODER 'all': true.
+        """
+        denied = self._require_assignment_scope(person_id)
+        if denied is not None:
+            return denied
+
+        all_new = bool(payload.get("all", False))
+        raw_ids = payload.get("user_ids") or []
+        if not all_new and not isinstance(raw_ids, list):
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "user_ids muss eine Liste sein (oder all: true)."})
+        try:
+            user_ids = [int(u) for u in raw_ids]
+        except (TypeError, ValueError):
+            return Response.json(400, {
+                "error": "bad_request", "detail": "user_ids ungueltig."})
+
+        if not all_new and not user_ids:
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "Keine Faelle ausgewaehlt (user_ids oder all: true)."})
+
+        con = self._rw_con()
+        try:
+            importer = CaseImporter(con, self._detector(con))
+            result = importer.import_cases(actor_id=person_id,
+                                           user_ids=user_ids,
+                                           all_new=all_new)
+        except Exception as exc:
+            logger.exception("Fall-Aufnahme fehlgeschlagen")
+            return Response.json(500, {"error": "import_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, result)
+
     def _require_assignment_scope(self, person_id: int):
         policy = self.resolve_policy(person_id)
         if not policy.can(CAP_ASSIGNMENT):
@@ -1016,6 +1113,8 @@ class ManagementApp:
             return self._report_approve(person_id, payload)
         if path == "/api/report/return":
             return self._report_return(person_id, payload)
+        if path == "/api/cases/import":
+            return self._cases_import(person_id, payload)
         return Response.json(404, {"error": "not_found", "path": path})
 
     # ------------------------------------------------------------- Schreiben
