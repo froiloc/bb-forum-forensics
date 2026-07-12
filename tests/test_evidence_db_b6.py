@@ -132,6 +132,9 @@ class TestBloecke(unittest.TestCase):
     def test_T06_update_approved_bericht_verboten(self):
         """T06: update_block() schlaegt fehl wenn Bericht freigegeben."""
         self.edb.save_block("blk-a1", self.report_id, "h001", "paragraph")
+        # Build 379: Die Zustandsmaschine erlaubt kein 'draft' -> 'approved'
+        # (BERICHTS-STATUSMODELL). Der Weg fuehrt ueber 'submitted'.
+        self.edb.update_report_status(self.report_id, "submitted", "autor")
         self.edb.update_report_status(self.report_id, "approved", "chef")
         with self.assertRaises(EvidenceDbError):
             self.edb.update_block("blk-a1", '{"text":"Neu"}', None, "h001")

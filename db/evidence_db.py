@@ -131,8 +131,53 @@ VALID_REPORT_TYPES: frozenset[str] = frozenset({
     "addendum",
 })
 
+# =============================================================================
+# BERICHTS-STATUSMODELL (verbindlich festgelegt am 2026-07-10, mc)
+# =============================================================================
+# Suchbegriff: BERICHTS-STATUSMODELL
+# Ausfuehrliche Fassung: docs/Berichts_Statusmodell.md
+#
+# Bis Build 379 waren die vier Werte NICHT definiert (nur die Konstante, ohne
+# Beleg, ohne erzwungene Uebergaenge). Faktisch wurde ausser 'draft' nie ein
+# Status gesetzt. Deshalb konnte das Modell frei und sauber festgelegt werden:
+#
+#   draft      Autor arbeitet am Bericht.
+#              -> Autor darf ALLES aendern.
+#
+#   submitted  Autor hat den Bericht ZUR ABNAHME EINGEREICHT.
+#              -> Der Bericht ist damit FUER DEN AUTOR GESPERRT.
+#              -> Zurueck zu 'draft' (Nachbesserung) nur durch Lektor
+#                 (reports.review) oder Chef-Ermittlerin (reports.approve).
+#
+#   approved   Chef-Ermittlerin hat ABGENOMMEN und VERSIEGELT (Build 377:
+#              zentrales Abbild + Inhaltshash in approved_reports.db).
+#              -> UNWIDERRUFLICH. Keine Rueckstufung.
+#
+#   final      Der abgenommene Bericht ist AN DIE STA VERSANDT / ABGESCHLOSSEN.
+#              -> Endzustand. Gesetzt von der Chef-Ermittlerin.
+#
+# ACHTUNG, HAEUFIGE VERWECHSLUNG: 'final' existiert ZWEIMAL im Schema —
+#   als STATUS (hier: versandt/abgeschlossen) UND als report_type
+#   ('interim' | 'final' | 'addendum' = Abschlussbericht). Ein Abschlussbericht
+#   im Entwurf ist report_type='final' MIT status='draft'.
+#
+# DURCHSETZUNG (Build 379): Ab 'submitted' ist der Berichtsinhalt fuer den
+#   Autor gesperrt (save_block/update_block/delete_block/set_block_order/
+#   add_anchor/remove_anchor -> ReportSealedError). KOMMENTARE bleiben erlaubt
+#   (mc): sie stecken nicht im Siegel-Hash und helfen, die Notwendigkeit eines
+#   Nachtragsberichts zu dokumentieren.
+# =============================================================================
+
 VALID_REPORT_STATUSES: frozenset[str] = frozenset({
     "draft", "submitted", "approved", "final",
+})
+
+#: Status, in denen der AUTOR den Berichtsinhalt noch aendern darf.
+EDITABLE_REPORT_STATUSES: frozenset[str] = frozenset({"draft"})
+
+#: Status, in denen der Berichtsinhalt gesperrt ist (Build 379).
+LOCKED_REPORT_STATUSES: frozenset[str] = frozenset({
+    "submitted", "approved", "final",
 })
 
 VALID_COMMENT_STATUSES: frozenset[str] = frozenset({
@@ -559,6 +604,20 @@ class EditorLockRecord:
 
 class EvidenceDbError(Exception):
     """Wird geworfen bei ungueltigen Eingaben."""
+
+
+class ReportSealedError(EvidenceDbError):
+    """
+    Der Bericht ist nicht mehr aenderbar (Status submitted/approved/final).
+
+    ERBT BEWUSST von EvidenceDbError: die bestehenden Fehlerpfade in
+    forensic_api/report.py fangen EvidenceDbError bereits ab und melden 403/409
+    an den Client — die Sperre wirkt damit sofort auf ALLEN Berichts-Endpunkten,
+    ohne dass jeder einzeln angefasst werden muesste. Wer den Fall
+    unterscheiden will, kann gezielt auf ReportSealedError pruefen.
+
+    Beleg: BERICHTS-STATUSMODELL (siehe oben), Build 379.
+    """
 
 
 # =============================================================================
@@ -1132,6 +1191,62 @@ class EvidenceDb:
     # Berichte (reports)
     # ------------------------------------------------------------------
 
+    # =====================================================================
+    # SCHREIBSPERRE FUER EINGEREICHTE/ABGENOMMENE BERICHTE (Build 379)
+    #
+    # Suchbegriff: BERICHTS-STATUSMODELL
+    #
+    # Ab Status 'submitted' ist der Berichtsinhalt fuer den AUTOR gesperrt.
+    # Bis Build 379 war die Sperre LUECKENHAFT: update_block und delete_block
+    # prueften nur auf 'approved' (nicht auf 'final'), waehrend save_block,
+    # set_block_order, add_anchor und remove_anchor GAR NICHT geschuetzt waren.
+    # Ein freigegebener Bericht konnte also weiterhin neue Bloecke bekommen,
+    # umsortiert und mit Ankern versehen werden — alles Dinge, die im Siegel-
+    # Hash stecken (Build 377). Das Siegel haette die Aenderung NACHTRAEGLICH
+    # aufgedeckt; verhindert hat sie niemand.
+    #
+    # Die Guards sitzen ZENTRAL in dieser Klasse (eine Stelle statt sieben
+    # Endpunkten). KOMMENTARE bleiben bewusst erlaubt (mc): sie stecken nicht
+    # im Siegel-Hash und dokumentieren den Bedarf fuer einen Nachtragsbericht.
+    # =====================================================================
+
+    def _report_status(self, report_id: int) -> Optional[str]:
+        row = self._con.execute(
+            "SELECT status FROM reports WHERE id = ?", (report_id,)
+        ).fetchone()
+        return str(row["status"]) if row else None
+
+    def _assert_report_editable(self, report_id: int) -> None:
+        """Wirft ReportSealedError, wenn der Bericht gesperrt ist."""
+        status = self._report_status(report_id)
+        if status is None:
+            return  # nicht vorhanden -> die Aufrufer melden das eigenstaendig
+        if status in LOCKED_REPORT_STATUSES:
+            raise ReportSealedError(
+                f"Bericht {report_id} ist im Status '{status}' und kann nicht "
+                f"mehr geaendert werden. Nur der Lektor oder die "
+                f"Chef-Ermittlerin koennen ihn zur Nachbesserung "
+                f"zuruecksetzen."
+            )
+
+    def _assert_block_editable(self, block_id: str) -> None:
+        """Wie _assert_report_editable, ausgehend von einem Block."""
+        row = self._con.execute(
+            "SELECT r.id AS report_id, r.status "
+            "FROM report_blocks b JOIN reports r ON r.id = b.report_id "
+            "WHERE b.block_id = ?", (block_id,)
+        ).fetchone()
+        if not row:
+            return  # unbekannter Block -> die Aufrufer melden das eigenstaendig
+        status = str(row["status"])
+        if status in LOCKED_REPORT_STATUSES:
+            raise ReportSealedError(
+                f"Bericht {row['report_id']} ist im Status '{status}' und kann "
+                f"nicht mehr geaendert werden. Nur der Lektor oder die "
+                f"Chef-Ermittlerin koennen ihn zur Nachbesserung "
+                f"zuruecksetzen."
+            )
+
     def create_report(
         self,
         report_type: str,
@@ -1212,12 +1327,59 @@ class EvidenceDb:
         report_id: int,
         status: str,
         updated_by: str,
+        *,
+        allow_reset: bool = False,
     ) -> bool:
+        """
+        Setzt den Berichtsstatus und ERZWINGT die Uebergaenge des
+        BERICHTS-STATUSMODELLS (Build 379; vorher war JEDER Uebergang moeglich,
+        auch die Rueckstufung eines freigegebenen Berichts auf 'draft' — womit
+        sich die Sperre selbst haette aushebeln lassen).
+
+        Zulaessige Uebergaenge:
+            draft     -> submitted   (der AUTOR reicht zur Abnahme ein)
+            submitted -> draft       (NUR Lektor/Chef-Ermittlerin, zur
+                                      Nachbesserung -> allow_reset=True)
+            submitted -> approved    (Abnahme; erfolgt ueber den auditierten
+                                      Management-Pfad, Build 377)
+            approved  -> final       (versandt/abgeschlossen; Management-Pfad)
+
+        Alles andere wird abgewiesen — insbesondere JEDE Rueckstufung aus
+        'approved' oder 'final' (unwiderruflich, mc 2026-07-10).
+
+        allow_reset: nur der Management-Pfad (Lektor/Chefin) setzt dies auf
+        True, um submitted -> draft zu erlauben. Der Ermittler-Webserver ruft
+        die Methode ohne dieses Flag.
+        """
         if status not in VALID_REPORT_STATUSES:
             raise EvidenceDbError(
                 f"Ungueltiger Berichtsstatus: '{status}'. "
                 f"Zulaessig: {sorted(VALID_REPORT_STATUSES)}"
             )
+
+        current = self._report_status(report_id)
+        if current is None:
+            return False
+        if current == status:
+            return True  # No-op, kein Fehler
+
+        allowed = {
+            ("draft", "submitted"),
+            ("submitted", "approved"),
+            ("approved", "final"),
+        }
+        if allow_reset:
+            allowed.add(("submitted", "draft"))
+
+        if (current, status) not in allowed:
+            raise ReportSealedError(
+                f"Unzulaessiger Statuswechsel '{current}' -> '{status}'. "
+                f"Freigegebene ('approved') und versandte ('final') Berichte "
+                f"koennen nicht zurueckgestuft werden; die Rueckgabe eines "
+                f"eingereichten Berichts zur Nachbesserung ist dem Lektor und "
+                f"der Chef-Ermittlerin vorbehalten."
+            )
+
         cursor = self._con.execute(
             "UPDATE reports SET status = ? WHERE id = ?",
             (status, report_id),
@@ -1302,6 +1464,11 @@ class EvidenceDb:
         Raises:
             EvidenceDbError: Bei leerem author, leerem block_type.
         """
+        # Build 379: Schreibsperre (BERICHTS-STATUSMODELL). Vorher UNGESCHUETZT
+        # -> einem freigegebenen Bericht konnten neue Bloecke hinzugefuegt
+        # werden, die im Siegel-Hash stecken.
+        self._assert_report_editable(report_id)
+
         if not author.strip():
             raise EvidenceDbError("author darf nicht leer sein.")
         if not block_type.strip():
@@ -1425,9 +1592,13 @@ class EvidenceDb:
         ).fetchone()
         if not row:
             return False
-        if str(row["report_status"]) == "approved":
-            raise EvidenceDbError(
-                "Freigegebene Berichte koennen nicht mehr bearbeitet werden."
+        # Build 379: sperrt bei submitted/approved/final (vorher NUR 'approved'
+        # -> 'final' war ungeschuetzt). Siehe BERICHTS-STATUSMODELL.
+        if str(row["report_status"]) in LOCKED_REPORT_STATUSES:
+            raise ReportSealedError(
+                f"Bericht im Status '{row['report_status']}' kann nicht mehr "
+                f"geaendert werden. Nur der Lektor oder die Chef-Ermittlerin "
+                f"koennen ihn zur Nachbesserung zuruecksetzen."
             )
         if str(row["author"]) != requesting_author:
             raise EvidenceDbError(
@@ -1462,9 +1633,13 @@ class EvidenceDb:
         ).fetchone()
         if not row:
             return False
-        if str(row["report_status"]) == "approved":
-            raise EvidenceDbError(
-                "Freigegebene Berichte koennen nicht mehr veraendert werden."
+        # Build 379: sperrt bei submitted/approved/final (vorher NUR 'approved'
+        # -> 'final' war ungeschuetzt). Siehe BERICHTS-STATUSMODELL.
+        if str(row["report_status"]) in LOCKED_REPORT_STATUSES:
+            raise ReportSealedError(
+                f"Bericht im Status '{row['report_status']}' kann nicht mehr "
+                f"geaendert werden. Nur der Lektor oder die Chef-Ermittlerin "
+                f"koennen ihn zur Nachbesserung zuruecksetzen."
             )
         if str(row["author"]) != requesting_author:
             raise EvidenceDbError(
@@ -1534,6 +1709,15 @@ class EvidenceDb:
         Returns:
             Anzahl aktualisierter Eintraege.
         """
+        # Build 379: Schreibsperre (BERICHTS-STATUSMODELL). Vorher UNGESCHUETZT
+        # -> die Block-REIHENFOLGE ist Teil des Berichts und steckt im Siegel.
+        # set_block_order kennt keine report_id — die Pruefung erfolgt daher
+        # ueber die Bloecke selbst (jeder Block gehoert zu genau einem Bericht).
+        for _entry in order:
+            _bid = str(_entry.get("block_id", ""))
+            if _bid:
+                self._assert_block_editable(_bid)
+
         now = int(time.time())
         updated = 0
         for entry in order:
@@ -1624,6 +1808,10 @@ class EvidenceDb:
         Returns:
             id des neuen Anker-Eintrags.
         """
+        # Build 379: Schreibsperre (BERICHTS-STATUSMODELL). Vorher UNGESCHUETZT
+        # -> Beweisanker stecken im Siegel-Hash.
+        self._assert_block_editable(block_id)
+
         now = int(time.time())
         try:
             cursor = self._con.execute(
@@ -1641,6 +1829,14 @@ class EvidenceDb:
             ) from exc
 
     def remove_anchor(self, anchor_id: int) -> bool:
+        # Build 379: Schreibsperre (BERICHTS-STATUSMODELL). Vorher UNGESCHUETZT.
+        # Der Anker verweist auf einen Block -> ueber diesen den Bericht pruefen.
+        row = self._con.execute(
+            "SELECT block_id FROM report_anchors WHERE id = ?", (anchor_id,)
+        ).fetchone()
+        if row:
+            self._assert_block_editable(str(row["block_id"]))
+
         cursor = self._con.execute(
             "DELETE FROM report_anchors WHERE id = ?", (anchor_id,)
         )
