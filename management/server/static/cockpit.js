@@ -52,7 +52,8 @@
 //   Sichten koennen mehrere Faehigkeiten haben (any-of, Feld 'caps').
 //   378 = Berichts-Freigabe im Cockpit (POST /api/report/approve mit Schreib-
 //   Token, GET /api/report/verify zur Siegelpruefung).
-// Version: v0.7.378 · Build: 378 · 2026-07-10
+//   380 = Rueckgabe zur Nachbesserung (POST /api/report/return).
+// Version: v0.7.380 · Build: 380 · 2026-07-10
 // =============================================================================
 
 (function () {
@@ -741,6 +742,9 @@
                 // (Der Server prueft es ohnehin erneut — die Oberflaeche soll
                 // nur keine Aktion anbieten, die zwingend scheitern wuerde.)
                 canApprove: hasCap(state.capabilities, 'reports.approve'),
+                // Rueckgabe zur Nachbesserung: Lektor (reports.review) ODER
+                // Chefin (reports.approve — impliziert review).
+                canReview: hasCap(state.capabilities, 'reports.review'),
 
                 // FREIGABE (Schreibpfad, Build 377): POST mit Schreib-Token.
                 // Danach NEU LADEN — die Sicht zeigt nur bestaetigt
@@ -760,6 +764,25 @@
                         });
                     }).catch(function (err) {
                         log('Freigabe-Fehler', err);
+                        if (t && t.aiwSetResult) {
+                            t.aiwSetResult('Fehler: ' + err.message, true);
+                        }
+                    });
+                },
+
+                // RUECKGABE zur Nachbesserung (Build 380): submitted -> draft.
+                onReturn: function (userId, reportId) {
+                    postJson('/api/report/return', {
+                        user_id: userId, report_id: reportId
+                    }).then(function (res) {
+                        loadReports(mainEl, false, {
+                            text: 'Zur Nachbesserung zurueckgegeben (Beleg #'
+                                + res.audit_seq + '). Der Autor kann den '
+                                + 'Bericht wieder bearbeiten.',
+                            error: false
+                        });
+                    }).catch(function (err) {
+                        log('Rueckgabe-Fehler', err);
                         if (t && t.aiwSetResult) {
                             t.aiwSetResult('Fehler: ' + err.message, true);
                         }

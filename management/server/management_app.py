@@ -44,6 +44,10 @@
 #   Haertung: X-AIW-Token (Serverlauf-Token via /api/whoami), Content-Type,
 #   Origin. Lesepfade bleiben mode=ro. Dazu GET /api/assignable.
 #
+# Build 380 (Rueckgabe zur Nachbesserung): POST /api/report/return setzt einen
+#   EINGEREICHTEN Bericht (submitted) zurueck auf 'draft' — nur Lektor/Chef-
+#   Ermittlerin, auditiert. Abgenommene/versandte Berichte NIE.
+#
 # Build 377 (Berichts-Versiegelung): POST /api/report/approve (reports.approve,
 #   Scope 'alle') versiegelt einen Bericht: Beleg (coordinator) -> zentrales
 #   Siegel mit Inhaltshash (approved_reports.db) -> Durchsetzung in evidence
@@ -63,7 +67,7 @@
 #   WAL-sicheren Fingerabdruck-Cache (m009). ManagementApp kennt nun das
 #   evidence_db_dir (injizierbar; sonst aus config.yaml).
 #
-# Version: v0.7.377 · Build: 377 · 2026-07-10
+# Version: v0.7.380 · Build: 380 · 2026-07-10
 # =============================================================================
 
 import hmac
@@ -922,6 +926,63 @@ class ManagementApp:
             con.close()
         return Response.json(200, result)
 
+    def _report_return(self, person_id: int,
+                       payload: Dict[str, Any]) -> Response:
+        """
+        RUECKGABE ZUR NACHBESSERUNG (Build 380): submitted -> draft.
+
+        Berechtigt sind Lektor (reports.review) UND Chef-Ermittlerin
+        (reports.approve — impliziert reports.review, mc 2026-07-10). Der AUTOR
+        kann sich NICHT selbst zurueckholen; er hat keine dieser Faehigkeiten
+        auf fremde Berichte.
+
+        Scope 'alle' erforderlich: die Rueckgabe betrifft per Definition den
+        Bericht eines ANDEREN (des Autors).
+        """
+        policy = self.resolve_policy(person_id)
+        can_review = policy.can(CAP_REPORTS_REVIEW)
+        can_approve = policy.can(CAP_REPORTS_APPROVE)
+        if not (can_review or can_approve):
+            return self._forbidden(CAP_REPORTS_REVIEW)
+
+        scopes = []
+        if can_review:
+            scopes.append(policy.scope(CAP_REPORTS_REVIEW))
+        if can_approve:
+            scopes.append(policy.scope(CAP_REPORTS_APPROVE))
+        if "alle" not in scopes:
+            return Response.json(403, {
+                "error": "forbidden", "capability": CAP_REPORTS_REVIEW,
+                "detail": "Rueckgabe erfordert Scope 'alle'."})
+
+        try:
+            user_id = int(payload.get("user_id"))
+            report_id = int(payload.get("report_id"))
+        except (TypeError, ValueError):
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "user_id und report_id erforderlich."})
+        note = payload.get("note")
+
+        con = self._rw_con()
+        try:
+            who = self._person(con, person_id)
+            username = who["system_username"] if who else str(person_id)
+            result = self._approval_service(con).return_to_draft(
+                user_id=user_id, report_id=report_id, actor_id=person_id,
+                actor_username=username, note=note)
+        except ApprovalError as exc:
+            logger.warning("Rueckgabe abgelehnt/unvollstaendig: %s", exc)
+            return Response.json(409, {"error": "return_failed",
+                                       "detail": str(exc)})
+        except Exception as exc:
+            logger.exception("Rueckgabe fehlgeschlagen")
+            return Response.json(500, {"error": "write_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, result)
+
     def _require_assignment_scope(self, person_id: int):
         policy = self.resolve_policy(person_id)
         if not policy.can(CAP_ASSIGNMENT):
@@ -953,6 +1014,8 @@ class ManagementApp:
             return self._case_status(person_id, payload)
         if path == "/api/report/approve":
             return self._report_approve(person_id, payload)
+        if path == "/api/report/return":
+            return self._report_return(person_id, payload)
         return Response.json(404, {"error": "not_found", "path": path})
 
     # ------------------------------------------------------------- Schreiben

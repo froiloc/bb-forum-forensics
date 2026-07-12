@@ -135,7 +135,7 @@ VALID_REPORT_TYPES: frozenset[str] = frozenset({
 # BERICHTS-STATUSMODELL (verbindlich festgelegt am 2026-07-10, mc)
 # =============================================================================
 # Suchbegriff: BERICHTS-STATUSMODELL
-# Ausfuehrliche Fassung: docs/Berichts_Statusmodell.md
+# Ausfuehrliche Fassung: documents/Berichts_Statusmodell.md
 #
 # Bis Build 379 waren die vier Werte NICHT definiert (nur die Konstante, ohne
 # Beleg, ohne erzwungene Uebergaenge). Faktisch wurde ausser 'draft' nie ein

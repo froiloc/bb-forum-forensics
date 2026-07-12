@@ -38,6 +38,9 @@ class EventType:
     # --- Build 377: Berichts-Versiegelung (approved_reports.db) ---
     REPORT_APPROVED: str = "report_approved"
     REPORT_SEAL_VERIFIED: str = "report_seal_verified"
+    #: Build 380 — Rueckgabe zur Nachbesserung (submitted -> draft) durch
+    #: Lektor/Chef-Ermittlerin. Der Autor kann sich NICHT selbst zurueckholen.
+    REPORT_RETURNED: str = "report_returned"
 
     # --- Build 310: Ermittler-Verwaltung (investigators) ---
     INVESTIGATOR_CREATED: str = "investigator_created"
@@ -101,6 +104,7 @@ class EventType:
             CASE_EVENT_ADDED,
             REPORT_APPROVED,
             REPORT_SEAL_VERIFIED,
+            REPORT_RETURNED,
             INVESTIGATOR_CREATED,
             INVESTIGATOR_UPDATED,
             SUPPORT_SESSION_STARTED,

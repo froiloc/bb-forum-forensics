@@ -30,7 +30,9 @@
 //   angewandt) — sichtbar in der Sicht, nicht nur im Log.
 // Build 378: Freigabe im Cockpit — Aktionsfeld je Bericht (Freigeben /
 //   Endgueltig / Siegel pruefen) inkl. Anzeige des Pruefergebnisses.
-// Version: v0.7.378 · Build: 378 · 2026-07-10
+// Build 380: Rueckgabe zur Nachbesserung (submitted -> draft) + korrigierte
+//   Beschriftung fuer 'final' (= an StA versandt, nicht 'hoehere Freigabestufe').
+// Version: v0.7.380 · Build: 380 · 2026-07-10
 // =============================================================================
 
 (function () {
@@ -126,15 +128,31 @@
     // Rein -> in vitest pruefbar. Die Regeln spiegeln die Vorbedingungen des
     // Servers (Build 377): Freigabe nur aus 'submitted', 'final' nur aus
     // 'approved'. Ohne reports.approve bleibt nur die Siegelpruefung.
-    function availableActions(row, canApprove) {
+    function availableActions(row, canApprove, canReview) {
         var acts = [];
         if (!row) { return acts; }
+
+        // Abnahme + Versiegelung: nur aus 'submitted' (BERICHTS-STATUSMODELL).
         if (canApprove && row.status === 'submitted') {
             acts.push({ kind: 'approve', label: 'Freigeben (versiegeln)' });
         }
-        if (canApprove && row.status === 'approved') {
-            acts.push({ kind: 'final', label: 'Endgueltig freigeben' });
+
+        // RUECKGABE zur Nachbesserung (Build 380): submitted -> draft.
+        // Berechtigt sind Lektor (reports.review) UND Chefin (reports.approve,
+        // impliziert review). Der AUTOR kann sich nicht selbst zurueckholen.
+        if ((canReview || canApprove) && row.status === 'submitted') {
+            acts.push({ kind: 'return',
+                        label: 'Zur Nachbesserung zurueckgeben' });
         }
+
+        // 'final' = an die StA VERSANDT/abgeschlossen (NICHT "hoehere
+        // Freigabestufe" — siehe BERICHTS-STATUSMODELL; Beschriftung korrigiert
+        // in Build 380).
+        if (canApprove && row.status === 'approved') {
+            acts.push({ kind: 'final',
+                        label: 'Als versandt/abgeschlossen kennzeichnen' });
+        }
+
         if (row.status === 'approved' || row.status === 'final') {
             acts.push({ kind: 'verify', label: 'Siegel pruefen' });
         }
@@ -326,7 +344,8 @@
                 + ' \u2014 ' + r.title + ' (' + r.status_label + ')';
             panel.appendChild(head);
 
-            var acts = availableActions(r, !!opts.canApprove);
+            var acts = availableActions(r, !!opts.canApprove,
+                                        !!opts.canReview);
             var btns = doc.createElement('div');
             btns.className = 'aiw-report-btns';
 
@@ -341,6 +360,13 @@
                         if (typeof opts.onVerify === 'function') {
                             setResult('Pruefe Siegel \u2026', null);
                             opts.onVerify(r.user_id, r.report_id);
+                        }
+                        return;
+                    }
+                    if (a.kind === 'return') {
+                        if (typeof opts.onReturn === 'function') {
+                            setResult('Gebe zurueck \u2026', null);
+                            opts.onReturn(r.user_id, r.report_id);
                         }
                         return;
                     }

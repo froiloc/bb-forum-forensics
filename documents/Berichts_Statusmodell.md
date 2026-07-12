@@ -1,10 +1,10 @@
 # Berichts-Statusmodell (AIW)
 
-**Version:** 1.0 · **Verbindlich festgelegt:** 2026-07-10 (`mc`)
+**Version:** 1.1 · **Verbindlich festgelegt:** 2026-07-10 (`mc`)
 **Klassifikation:** VERTRAULICH — NUR FUER DEN DIENSTGEBRAUCH
 **Gilt für:** `evidence_<uid>.db`, Tabelle `reports`, Spalte `status`
 **Im Code:** `db/evidence_db.py` — Suchbegriff **`BERICHTS-STATUSMODELL`**
-**Durchsetzung:** Build 379 · **Versiegelung:** Build 377
+**Durchsetzung:** Build 379 · **Versiegelung:** Build 377 · **Rückgabe:** Build 380
 
 ---
 
@@ -116,18 +116,25 @@ Exit 2 = **Manipulationsverdacht** (oder Bericht nicht prüfbar).
 
 ---
 
-## 7. Offene Punkte (Stand Build 379)
+## 7. Umgesetzte Übergänge (Stand Build 380)
 
-1. **Ermittler-Editor:** Schaltfläche **„Zur Abnahme freigeben"**
-   (`draft → submitted`) — mit **Bestätigungsdialog**, der über die Tragweite
-   aufklärt (Autor wird gesperrt), den weiteren Prozess skizziert und die
-   Rückholmöglichkeit über Lektor/Chef-Ermittlerin nennt. **Bewusste
-   Entscheidung, kein versehentlicher Klick.** *(Endpunkt existiert noch nicht.)*
-2. **Cockpit:** Rückgabe **`submitted → draft`** durch Lektor/Chef-Ermittlerin
-   (auditierter Management-Pfad). *(Endpunkt existiert noch nicht.)*
-3. **Cockpit-Beschriftung:** „Endgültig freigeben" → **„Als versandt/
-   abgeschlossen kennzeichnen"** (der Knopf setzt `approved → final`).
+| Übergang | Umsetzung |
+|---|---|
+| `draft → submitted` | ⏳ **offen** — Ermittler-Editor, siehe §8 |
+| `submitted → draft` | ✅ `POST /api/report/return` (Cockpit; Lektor/Chefin; auditiert `report_returned`) |
+| `submitted → approved` | ✅ `POST /api/report/approve` (Cockpit; Chefin; versiegelt) |
+| `approved → final` | ✅ `POST /api/report/approve` mit `is_final` (Knopf: **„Als versandt/abgeschlossen kennzeichnen"**) |
 
 ---
 
-*Dokument-Ende · Berichts-Statusmodell v1.0 · 2026-07-10*
+## 8. Offener Punkt
+
+**Ermittler-Editor:** Schaltfläche **„Zur Abnahme freigeben"**
+(`draft → submitted`) — mit **Bestätigungsdialog**, der über die Tragweite
+aufklärt (Autor wird gesperrt), den weiteren Prozess skizziert und die
+Rückholmöglichkeit über Lektor/Chef-Ermittlerin nennt. **Bewusste Entscheidung,
+kein versehentlicher Klick.** *(Endpunkt existiert noch nicht — Build 381.)*
+
+---
+
+*Dokument-Ende · Berichts-Statusmodell v1.1 · 2026-07-10*

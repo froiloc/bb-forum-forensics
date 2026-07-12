@@ -30,7 +30,10 @@
 #   NICHT — dagegen wirkt der zentrale Hash: verify() hasht den Bericht neu und
 #   vergleicht. ABWEICHUNG = MANIPULATION, nachweisbar.
 #
-# Version: v0.7.377 · Build: 377 · 2026-07-10
+# Build 380: return_to_draft() — Rueckgabe zur Nachbesserung (submitted -> draft)
+#   durch Lektor/Chef-Ermittlerin, auditiert (REPORT_RETURNED).
+#
+# Version: v0.7.380 · Build: 380 · 2026-07-10
 # =============================================================================
 
 import logging
@@ -140,6 +143,92 @@ class ApprovalService:
         return {"ok": True, "user_id": user_id, "report_id": report_id,
                 "status": new_status, "content_sha256": digest,
                 "audit_seq": audit_seq, "seal_id": seal_id}
+
+    def return_to_draft(self, *, user_id: int, report_id: int, actor_id: int,
+                        actor_username: str,
+                        note: Optional[str] = None) -> Dict[str, Any]:
+        """
+        RUECKGABE ZUR NACHBESSERUNG (Build 380): submitted -> draft.
+
+        Nur aus 'submitted'. Ein 'approved' oder 'final' Bericht wird NIE
+        zurueckgestuft (BERICHTS-STATUSMODELL, mc 2026-07-10) — inhaltliche
+        Schwaechen eines abgenommenen Berichts werden ueber einen
+        NACHTRAGSBERICHT (report_type='addendum') behandelt.
+
+        Berechtigt sind Lektor (reports.review) und Chef-Ermittlerin
+        (reports.approve, impliziert review). Der AUTOR kann sich NICHT selbst
+        zurueckholen — das ist der Sinn der Sperre.
+
+        Nur EINE Datenbank ist betroffen (evidence) plus der Beleg
+        (coordinator): der Beleg wird ZUERST geschrieben, dann der Status
+        gesetzt. Scheitert der zweite Schritt, bleibt der Beleg stehen (der
+        Versuch hat stattgefunden) und der Aufrufer bekommt einen expliziten
+        Fehler (Grundregel 1).
+        """
+        ev = self._evidence_path(user_id)
+        sealer = ReportSealer(ev)
+
+        try:
+            status = sealer.status_of(report_id)
+        except ReportSealError as exc:
+            raise ApprovalError(str(exc))
+        if status is None:
+            raise ApprovalError("Bericht %s in Fall %s nicht gefunden."
+                                % (report_id, user_id))
+        if status != "submitted":
+            raise ApprovalError(
+                "Rueckgabe nur aus Status 'submitted' moeglich (aktuell: '%s'). "
+                "Abgenommene ('approved') und versandte ('final') Berichte "
+                "werden nicht zurueckgestuft; inhaltliche Schwaechen werden "
+                "ueber einen Nachtragsbericht behandelt." % status)
+
+        writer = CoordinatorWriter(self._con, AuditLog(self._con))
+
+        def _w(con: sqlite3.Connection) -> Dict[str, Any]:
+            return {"user_id": user_id, "report_id": report_id,
+                    "from_status": status, "to_status": "draft", "note": note}
+
+        audit_seq = writer.audited_write(
+            do_write=_w, event_type=EventType.REPORT_RETURNED,
+            actor_id=actor_id, target_type="report",
+            target_id="%d/%d" % (user_id, report_id),
+            meta={"returned_by": actor_username, "note": note})
+
+        try:
+            self._set_evidence_status(ev, report_id, "draft")
+        except sqlite3.Error as exc:
+            logger.exception("Rueckgabe fehlgeschlagen")
+            raise ApprovalError(
+                "Beleg #%d geschrieben, aber der Status konnte NICHT auf "
+                "'draft' gesetzt werden (%s). Der Bericht ist damit noch NICHT "
+                "zurueckgegeben. Bitte erneut versuchen." % (audit_seq, exc))
+
+        return {"ok": True, "user_id": user_id, "report_id": report_id,
+                "status": "draft", "audit_seq": audit_seq}
+
+    @staticmethod
+    def _set_evidence_status(ev: Path, report_id: int, status: str) -> None:
+        """
+        Setzt den Status direkt (Management-Pfad). Bewusst NICHT ueber
+        EvidenceDb.update_report_status: dessen Zustandsmaschine (Build 379)
+        schuetzt den ERMITTLER-Pfad; der Management-Pfad ist der autorisierte
+        Weg, der genau diese Uebergaenge vornehmen DARF (und dabei auditiert).
+        """
+        con = sqlite3.connect(str(ev))
+        try:
+            con.isolation_level = None
+            con.execute("BEGIN IMMEDIATE")
+            con.execute("UPDATE reports SET status=? WHERE id=?",
+                        (status, report_id))
+            con.execute("COMMIT")
+        except Exception:
+            try:
+                con.execute("ROLLBACK")
+            except Exception:
+                pass
+            raise
+        finally:
+            con.close()
 
     def verify(self, *, user_id: int, report_id: int) -> Dict[str, Any]:
         """

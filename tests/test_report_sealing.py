@@ -363,6 +363,80 @@ class ReportSealingTests(unittest.TestCase):
                                    {"user_id": 18, "report_id": 1})
         self.assertEqual(again.status, 409)
 
+    # SE08 -------------------------------------------------------------------
+    def test_se08_return_to_draft(self):
+        """
+        Build 380: Rueckgabe zur Nachbesserung (submitted -> draft).
+        Nur aus 'submitted'; abgenommene/versandte Berichte NIE.
+        """
+        svc = self._svc()
+        res = svc.return_to_draft(user_id=18, report_id=1, actor_id=1,
+                                  actor_username="h0a2898",
+                                  note="Kapitel 3 unvollstaendig")
+        self.assertTrue(res["ok"])
+        self.assertEqual(res["status"], "draft")
+
+        # Status in der evidence-DB ist gesetzt.
+        c = sqlite3.connect(self._evfile)
+        self.assertEqual(
+            c.execute("SELECT status FROM reports WHERE id=1").fetchone()[0],
+            "draft")
+        c.close()
+
+        # Der Beleg liegt im audit_log.
+        n = self.con.execute(
+            "SELECT COUNT(*) FROM audit_log WHERE event_type='report_returned' "
+            "AND target_id='18/1'").fetchone()[0]
+        self.assertEqual(n, 1)
+
+        # Aus 'draft' ist keine erneute Rueckgabe moeglich.
+        with self.assertRaises(ApprovalError):
+            svc.return_to_draft(user_id=18, report_id=1, actor_id=1,
+                                actor_username="h0a2898")
+
+    # SE09 -------------------------------------------------------------------
+    def test_se09_no_return_after_approval(self):
+        """Abgenommene und versandte Berichte werden NIE zurueckgestuft."""
+        svc = self._svc()
+        svc.approve(user_id=18, report_id=1, actor_id=1,
+                    actor_username="h0a2898")
+        with self.assertRaises(ApprovalError):
+            svc.return_to_draft(user_id=18, report_id=1, actor_id=1,
+                                actor_username="h0a2898")
+        svc.approve(user_id=18, report_id=1, actor_id=1,
+                    actor_username="h0a2898", is_final=True)
+        with self.assertRaises(ApprovalError):
+            svc.return_to_draft(user_id=18, report_id=1, actor_id=1,
+                                actor_username="h0a2898")
+
+    # SE10 -------------------------------------------------------------------
+    def test_se10_return_endpoint_rbac(self):
+        """
+        Der LEKTOR (nur reports.review) darf zurueckgeben — die Chefin auch.
+        Wer keines von beidem hat, nicht.
+        """
+        self.rbac.grant("lector", "reports.review", scope="alle", actor_id=1)
+        self.rbac.assign_role(2, "lector", actor_id=1)
+        self.con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+
+        app = ManagementApp(self._db, evidence_dir=self._ev,
+                            approved_db=self._approved)
+        # person 2 ist jetzt lector (reports.review, alle) -> darf.
+        r = app.dispatch_write(2, "/api/report/return",
+                               {"user_id": 18, "report_id": 1})
+        self.assertEqual(r.status, 200)
+        d = json.loads(r.body.decode("utf-8"))
+        self.assertEqual(d["status"], "draft")
+
+        # Zurueck auf 'submitted' (Aufbau), dann Chefin -> darf ebenfalls.
+        c = sqlite3.connect(self._evfile)
+        c.isolation_level = None
+        c.execute("UPDATE reports SET status='submitted' WHERE id=1")
+        c.close()
+        r2 = app.dispatch_write(1, "/api/report/return",
+                                {"user_id": 18, "report_id": 1})
+        self.assertEqual(r2.status, 200)
+
 
 if __name__ == "__main__":
     unittest.main()

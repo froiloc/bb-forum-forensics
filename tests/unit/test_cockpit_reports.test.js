@@ -158,22 +158,25 @@ describe("cockpit_reports.js — Berichts-Abnahme (Build 375)", () => {
 
   it("BR08: availableActions spiegelt die Server-Vorbedingungen", () => {
     const api = _api();
-    // Freigeben nur aus 'submitted' UND nur mit reports.approve.
-    let a = api.availableActions({ status: "submitted" }, true);
-    expect(a.map((x) => x.kind)).toEqual(["approve"]);
-    a = api.availableActions({ status: "submitted" }, false);
-    expect(a).toEqual([]);                     // ohne Cap keine Freigabe
+    // (Signatur ab Build 380: (row, canApprove, canReview).)
+    // Chefin auf 'submitted': freigeben UND zurueckgeben.
+    let a = api.availableActions({ status: "submitted" }, true, false);
+    expect(a.map((x) => x.kind)).toEqual(["approve", "return"]);
+    // Ohne jede Berechtigung: keine Aktion.
+    a = api.availableActions({ status: "submitted" }, false, false);
+    expect(a).toEqual([]);
 
-    // 'final' nur aus 'approved'; Siegelpruefung ist auch ohne Cap moeglich.
-    a = api.availableActions({ status: "approved" }, true);
+    // 'approved': Versand-Kennzeichnung + Siegelpruefung; KEINE Rueckgabe.
+    a = api.availableActions({ status: "approved" }, true, false);
     expect(a.map((x) => x.kind)).toEqual(["final", "verify"]);
-    a = api.availableActions({ status: "approved" }, false);
+    // Siegelpruefung geht auch ohne Freigaberecht.
+    a = api.availableActions({ status: "approved" }, false, false);
     expect(a.map((x) => x.kind)).toEqual(["verify"]);
 
     // Entwurf: nichts.
-    expect(api.availableActions({ status: "draft" }, true)).toEqual([]);
-    // Final: nur pruefen.
-    a = api.availableActions({ status: "final" }, true);
+    expect(api.availableActions({ status: "draft" }, true, true)).toEqual([]);
+    // Versandt: nur pruefen (unwiderruflich).
+    a = api.availableActions({ status: "final" }, true, true);
     expect(a.map((x) => x.kind)).toEqual(["verify"]);
   });
 
@@ -229,5 +232,59 @@ describe("cockpit_reports.js — Berichts-Abnahme (Build 375)", () => {
     const res = main.querySelector("#aiw-report-result");
     expect(res.textContent).toContain("ABWEICHUNG");
     expect(res.querySelector("dl")).toBeTruthy();   // Hash-Gegenueberstellung
+  });
+
+  // --- Build 380: Rueckgabe + korrigierte Beschriftung ---------------------
+
+  it("BR11: Rueckgabe-Aktion + korrigierte 'final'-Beschriftung", () => {
+    const api = _api();
+
+    // Lektor (nur review): darf zurueckgeben, aber NICHT freigeben.
+    let a = api.availableActions({ status: "submitted" }, false, true);
+    expect(a.map((x) => x.kind)).toEqual(["return"]);
+
+    // Chefin (approve): freigeben UND zurueckgeben.
+    a = api.availableActions({ status: "submitted" }, true, true);
+    expect(a.map((x) => x.kind)).toEqual(["approve", "return"]);
+
+    // Ohne beides: keine Aktion auf 'submitted'.
+    expect(api.availableActions({ status: "submitted" }, false, false))
+      .toEqual([]);
+
+    // 'final' ist NICHT "hoehere Freigabestufe", sondern "an StA versandt".
+    a = api.availableActions({ status: "approved" }, true, true);
+    const finalAct = a.filter((x) => x.kind === "final")[0];
+    expect(finalAct.label).toContain("versandt");
+    expect(finalAct.label).not.toContain("Endgueltig freigeben");
+
+    // Aus 'approved' gibt es KEINE Rueckgabe mehr (unwiderruflich).
+    expect(a.map((x) => x.kind)).not.toContain("return");
+  });
+
+  it("BR12: Rueckgabe-Knopf ruft onReturn", () => {
+    const win = _ctx();
+    const api = win.AIWCockpitReports;
+    const main = win.document.createElement("main");
+    const returns = [];
+    let rowClick = null;
+    function StubTab(container, opts) {
+      rowClick = opts.rowClick;
+      this.replaceData = function () {};
+    }
+    const data = _data();
+    api.renderReports(main, data, {
+      Tabulator: StubTab,
+      canApprove: false,
+      canReview: true,
+      onReturn: (u, r) => returns.push([u, r]),
+    });
+    const rows = api.toRows(data);
+    rowClick(null, { getData: () => rows[0] });   // Fall 18, 'submitted'
+    const btn = main.querySelector("#aiw-report-return");
+    expect(btn).toBeTruthy();
+    btn.click();
+    expect(returns[0]).toEqual([18, 1]);
+    // Der Lektor sieht KEINEN Freigabe-Knopf.
+    expect(main.querySelector("#aiw-report-approve")).toBeNull();
   });
 });
