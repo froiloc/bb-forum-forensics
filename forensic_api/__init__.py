@@ -17,6 +17,8 @@
 #   /_forensic/events            (GET, SSE)   -> EventsEndpoint       [B3]
 #   /_forensic/userinfo          (GET)        -> UserinfoEndpoint      [B4]
 #   /_forensic/userinfo/data     (GET)        -> UserinfoDataEndpoint  [B4]
+#   /_forensic/results           (GET)        -> ResultsEndpoint       [B4 390]
+#   /_forensic/results/assess    (POST)       -> ResultsEndpoint       [B4 390]
 #   /_forensic/userinfo/static   (GET)        -> UserinfoStaticEndpoint [B4]
 #   /_forensic/userinfo.js       (GET)        -> StaticEndpoint        [B4]
 #   /_forensic/userinfo.css      (GET)        -> StaticEndpoint        [B4]
@@ -32,9 +34,6 @@
 #   /_forensic/placeholders/library  (GET)       -> PlaceholdersEndpoint [B6]
 #   /_forensic/templates             (GET)       -> TemplatesEndpoint    [B6]
 #   /_forensic/templates/<id>        (GET)       -> TemplatesEndpoint    [B6]
-#   /_forensic/templates/full        (GET)       -> TemplatesEndpoint    [B388]
-#   /_forensic/templates/full/<key>  (GET)       -> TemplatesEndpoint    [B388]
-#   /_forensic/validation_rules      (GET)       -> ValidationRulesEndpoint [B388]
 #
 # Routing-Reihenfolge bei Praefix-Konflikten:
 #   Laengere/spezifischere Pfade werden zuerst geprueft:
@@ -140,7 +139,6 @@ class ForensicApi:
         self._trace_sequence   = None  # [KN-7]
         self._placeholders    = None  # [B6]
         self._templates_ep    = None  # [B6]
-        self._validation_rules_ep = None  # [B6, Build 388]
         self._knownusers      = None  # [BS3 Bug 2.78 Build 175]
         self._aliases         = None  # [BS3 Bug 2.79 Build 179]
         self._integrator      = None  # [BS3 Bug 2.78 Build 182]
@@ -148,6 +146,7 @@ class ForensicApi:
         self._translations     = None  # [B3/B5 Build 329]
         self._translate        = None  # [B3/B5 Build 329]
         self._translation_meta = None  # [B6 Build 341]
+        self._results          = None  # [B4 Build 390]
 
     def dispatch(
         self,
@@ -200,6 +199,30 @@ class ForensicApi:
                 self._method_not_allowed(handler)
                 return
             self._get_annotate().handle_deleted(handler, params)
+            return
+
+        # /_forensic/results/assess (POST) [B4 Build 390]
+        # Erfasst eine Bewertung des Ermittlungsergebnisses (APPEND-ONLY).
+        # Der Fall kommt aus dem Kontext, NICHT aus dem Rumpf — ein Bewerten
+        # fremder Faelle ist damit strukturell unmoeglich.
+        # WICHTIG: der laengere Pfad MUSS vor /_forensic/results geprueft werden.
+        if url_path == "/_forensic/results/assess":
+            if method != "POST":
+                self._method_not_allowed(handler)
+                return
+            body = self._read_body(handler)
+            if body is None:
+                return
+            self._get_results().handle_assess(handler, body)
+            return
+
+        # /_forensic/results (GET) [B4 Build 390]
+        # Katalog + aktueller Stand + Historie + provisorische Kennzahl.
+        if url_path == "/_forensic/results":
+            if method not in ("GET", "HEAD"):
+                self._method_not_allowed(handler)
+                return
+            self._get_results().handle(handler, params)
             return
 
         # /_forensic/status (GET)
@@ -255,10 +278,10 @@ class ForensicApi:
             "/_forensic/toolbar.css",
             "/_forensic/userinfo.js",
             "/_forensic/userinfo.css",
+            "/_forensic/userinfo_results.js",   # [B4 Build 390]
             "/_forensic/report_editor.js",      # B6 Phase 2 (umbenannt von editor.js)
             "/_forensic/report.css",            # B6 Phase 4 Stylesheet
             "/_forensic/placeholder_chips.js",  # B6 Phase 4 Chips
-            "/_forensic/validation_rules.js",   # B6 Build 389 Regel-Katalog
             "/_forensic/placeholder_wizard.js", # B6 Phase 5 Wizard
             "/_forensic/module_panel.js",       # B6 Phase 6 Panel
             "/_forensic/annotation_sidebar.js", # B6 Phase 7 Sidebar
@@ -444,19 +467,7 @@ class ForensicApi:
             self._dispatch_placeholders(handler, method, url_path, params)
             return
 
-        # /_forensic/validation_rules (GET) [B6, Build 388]
-        # Zentraler Katalog der Formatregeln (config.yaml -> validation.rules).
-        # Beleg: Bauplan Build 388 §3
-        if url_path == "/_forensic/validation_rules":
-            if method not in ("GET", "HEAD"):
-                self._method_not_allowed(handler)
-                return
-            self._get_validation_rules_ep().handle_get(handler)
-            return
-
-        # /_forensic/templates (GET, Liste),
-        # /_forensic/templates/full (GET, Vorlagenliste, Build 388),
-        # /_forensic/templates/full/<key> (GET, Vorlage mit blocks_json) und
+        # /_forensic/templates (GET, Liste) und
         # /_forensic/templates/<id> (GET, Einzelmodul) [B6]
         if url_path == "/_forensic/templates" or url_path.startswith("/_forensic/templates/"):
             if method not in ("GET", "HEAD"):
@@ -681,6 +692,13 @@ class ForensicApi:
             self._annotate = AnnotateEndpoint(self._bundle, self._context, self._config)
         return self._annotate
 
+    def _get_results(self):
+        if self._results is None:
+            from forensic_api.results_endpoint import ResultsEndpoint
+            self._results = ResultsEndpoint(
+                self._bundle, self._context, self._config)
+        return self._results
+
     def _get_status(self):
         if self._status is None:
             from forensic_api.status import StatusEndpoint
@@ -815,13 +833,6 @@ class ForensicApi:
             from forensic_api.templates_ep import TemplatesListEndpoint
             self._templates_ep = TemplatesListEndpoint(self._bundle, self._context, self._config)
         return self._templates_ep
-
-    def _get_validation_rules_ep(self):
-        """[B6/388] Lazy-Init fuer ValidationRulesEndpoint. Beleg: Bauplan Build 388 §3."""
-        if self._validation_rules_ep is None:
-            from forensic_api.validation_rules_ep import ValidationRulesEndpoint
-            self._validation_rules_ep = ValidationRulesEndpoint(self._config)
-        return self._validation_rules_ep
 
     def _get_search(self):
         """[KN-3] Lazy-Init fuer SearchEndpoint. Beleg: Bauplan KN v0.6 §12 Phase KN-3."""

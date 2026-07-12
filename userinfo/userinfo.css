@@ -1985,3 +1985,85 @@ details[open] .forensic-collapse-btn:hover {
     background: #e8edf4;
     color: #1a1f2e;
 }
+
+/* ==========================================================================
+   Ermittlungsergebnis-Bewertung (Build 390) — userinfo_results.js
+   --------------------------------------------------------------------------
+   Eng auf '.uir-*' gefasst, damit keine bestehende Karte ihr Aussehen aendert.
+   Die Karte spannt ueber die volle Breite: 10 Kriterien x 2 Extreme brauchen
+   Platz, und die Tabelle ist die Uebersicht, aus der heraus gearbeitet wird.
+   ========================================================================== */
+
+.ui-card--wide { grid-column: 1 / -1; }
+
+.uir-sub { font-size: 12px; color: #6b7280; margin-bottom: 10px; }
+.uir-readonly {
+  background: #fff8e1; border: 1px solid #ffe082; border-radius: 5px;
+  padding: 8px 12px; font-size: 12px; margin-bottom: 10px;
+}
+
+table.uir-table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.uir-table th, .uir-table td {
+  border-bottom: 1px solid #e5e7eb; padding: 7px 10px;
+  text-align: left; vertical-align: top;
+}
+.uir-table thead th { background: #eef1f6; font-weight: 600; }
+.uir-name { font-weight: 600; width: 26%; }
+.uir-cell { width: 33%; }
+.uir-val { font-variant-numeric: tabular-nums; }
+
+/* NICHT BEWERTET ist ein Befund, kein Nichts — es wird ausgeschrieben und
+   dezent hervorgehoben, damit die Luecke auffaellt. */
+.uir-cell.uir-leer .uir-val { color: #9aa0b8; font-style: italic; }
+
+.uir-i { color: #4f8ef7; font-weight: 700; cursor: help; text-align: center; }
+.uir-info { font-size: 11px; color: #9aa0b8; }
+
+.uir-hist { margin-top: 4px; font-size: 12px; }
+.uir-hist summary { cursor: pointer; color: #4f8ef7; }
+.uir-hist ul { margin: 4px 0 0; padding-left: 18px; color: #4b5563; }
+.uir-hist li { margin: 2px 0; }
+
+.uir-btn {
+  font-size: 12px; padding: 4px 10px; margin: 6px 6px 0 0;
+  border: 1px solid #cbd2dd; border-radius: 4px;
+  background: #f3f5f9; color: #1a1f2e; cursor: pointer;
+}
+.uir-btn:hover { background: #e6eaf1; }
+.uir-btn.uir-primary { background: #1a1f2e; color: #fff; border-color: #1a1f2e; }
+.uir-btn.uir-primary:hover { background: #2c3550; }
+
+/* Bearbeitungszeile: immer nur EINE offen. */
+tr.uir-editor > td { background: #f7f9fc; border-left: 4px solid #4f8ef7; }
+.uir-editor-title { font-weight: 700; margin-bottom: 8px; }
+.uir-field { display: block; margin-bottom: 8px; }
+.uir-field > span { display: block; font-size: 11px; color: #6b7280; margin-bottom: 2px; }
+.uir-field select, .uir-field textarea {
+  font-size: 13px; padding: 5px 8px; border: 1px solid #cbd2dd;
+  border-radius: 4px; min-width: 320px; background: #fff;
+}
+/* Die Semantik-Warnung der Skala (Praezision vs. Schwere). */
+.uir-hint { display: block; font-size: 11px; color: #92400e; margin-top: 3px; max-width: 520px; }
+
+/* Bestaetigung: der Vorgang ist belegpflichtig. */
+.uir-confirm:not(:empty) {
+  margin: 8px 0; padding: 10px 12px; font-size: 12px;
+  background: #fff8e1; border: 1px solid #ffe082; border-radius: 5px;
+}
+.uir-confirm-title { font-weight: 600; margin-bottom: 6px; }
+
+/* Kennzahl + VERMERK. Der Vermerk ist Teil der Zahl, nicht ihr Beiwerk. */
+.uir-score {
+  margin-top: 14px; padding: 10px 12px; background: #f3f5f9;
+  border: 1px solid #e5e7eb; border-radius: 5px; font-size: 13px;
+}
+.uir-score-val { font-weight: 700; }
+.uir-gaps { margin-top: 4px; color: #92400e; font-size: 12px; }
+.uir-vermerk {
+  margin-top: 8px; padding-top: 8px; border-top: 1px dashed #cbd2dd;
+  font-size: 11px; color: #92400e; font-weight: 600;
+}
+
+.uir-result:not(:empty) { margin-top: 10px; font-size: 13px; }
+.uir-result.ok { color: #166534; }
+.uir-result.error { color: #991b1b; font-weight: 600; }

@@ -23,7 +23,10 @@
 #   Keine Schreibzugriffe.
 #
 # Neue Datei — Baustelle 4.
-# Version: v0.1.0 · Build: 012 · 2026-04-14
+# Version: v0.7.390 · Build: 390 · 2026-07-12
+#   Build 390: BUGFIX — JOIN ging auf die seit M005 nicht mehr existierende
+#   Tabelle 'investigators' (jetzt 'person'); der Fehler wurde still zu
+#   'nicht zugewiesen'. Siehe _get_investigation_status().
 # =============================================================================
 
 from __future__ import annotations
@@ -102,33 +105,49 @@ class UserinfoDataEndpoint:
     def _get_investigation_status(self) -> "dict | None":
         """
         Liest den Ermittlungsstatus für den aktuellen Nutzer aus coordinator.db.
-        Gibt None zurück wenn coordinator.db nicht verfügbar.
 
         Baustelle 7 (Build 307): Quelle ist die autoritative Fallakte cdb.cases
-        (1:1 zur user_id) statt der 'neuesten' scrape_jobs-Zeile. Kein cases-
-        Eintrag -> None -> UI zeigt 'nicht zugewiesen'. Ergebnisform unveraendert.
-        Beleg: Bauplan B7 v0.3 §3.6, Repointing scrape_jobs -> cases.
+        (1:1 zur user_id) statt der 'neuesten' scrape_jobs-Zeile.
+
+        ── BUGFIX Build 390 (gemessen, mc 2026-07-12) ────────────────────────
+        Der JOIN ging auf **cdb.investigators**. Diese Tabelle gibt es seit
+        Migration M005 (Build 342) NICHT MEHR — sie heisst seither `person`.
+
+        Wirkung des Fehlers (schwerwiegend, weil UNSICHTBAR): der JOIN warf
+        "no such table: cdb.investigators", der breite `except` machte daraus
+        eine Log-Warnung und ein `return None`, und die Karte
+        "Ermittlungskoordination" zeigte dem Ermittler seither IMMER
+        "nicht zugewiesen" — unabhaengig davon, wie der Fall tatsaechlich
+        zugewiesen war. Kein Absturz, keine Meldung in der Oberflaeche.
+
+        Das ist genau der Fall, den GRUNDREGEL 1 verbietet: ein Fehlschlag darf
+        nicht still uebersprungen werden. Deshalb zwei Aenderungen:
+          1. JOIN auf `cdb.person` (die Tabelle, die es gibt).
+          2. Der Fehlerfall wird nicht mehr zu None geschluckt, sondern als
+             {"error": ...} an die Oberflaeche gereicht. Die Karte kann dann
+             "Status nicht lesbar: <Grund>" anzeigen statt einer Luege.
+        ──────────────────────────────────────────────────────────────────────
         """
         if self._bundle.coordinator is None:
+            # KEIN Fehler: ohne coordinator.db gibt es schlicht keine Fallakte.
+            # Das ist ein Betriebszustand, kein Fehlschlag.
             return None
 
         try:
             con = self._bundle.forensic._con  # Verbindung mit cdb-ATTACH
 
-            # Baustelle 7 (Build 307): Fallstatus aus der autoritativen Fallakte
-            # cdb.cases (1:1 zur user_id). Kein ORDER BY/LIMIT noetig; die
-            # lautlose Auslassung bei Re-Scrape (alte 'neueste Zeile'-Logik)
-            # entfaellt. Beleg: Bauplan B7 v0.3 §3.6.
             row = con.execute(
                 "SELECT c.status, c.priority, "
-                "       i.system_username AS assigned_to, c.note "
+                "       p.system_username AS assigned_to, c.note "
                 "FROM cdb.cases c "
-                "LEFT JOIN cdb.investigators i ON i.id = c.assigned_to "
+                "LEFT JOIN cdb.person p ON p.id = c.assigned_to "
                 "WHERE c.user_id = ?",
                 (self._context.user_id,),
             ).fetchone()
 
             if row is None:
+                # Fall NICHT in der Fallakte — das ist eine echte Aussage,
+                # kein Fehler (der Fall wurde noch nicht aufgenommen).
                 return None
 
             return {
@@ -138,5 +157,9 @@ class UserinfoDataEndpoint:
                 "note":        str(row["note"]) if row["note"] else None,
             }
         except Exception as exc:
-            logger.warning("_get_investigation_status: Fehler: %s", exc)
-            return None
+            # NICHT MEHR STILL (Grundregel 1): der Fehler wird protokolliert UND
+            # an die Oberflaeche gereicht. Ein "nicht zugewiesen", das in
+            # Wahrheit ein Datenbankfehler ist, waere ein Fehlbeleg.
+            logger.error("_get_investigation_status: Fallakte nicht lesbar: %s",
+                         exc)
+            return {"error": str(exc)}

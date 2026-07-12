@@ -83,7 +83,12 @@
 #         GET /api/results/stats (fallUEBERGREIFEND, verlangt Scope 'alle'),
 #         POST /api/results/assess (APPEND-ONLY). Rechte: results.view /
 #         results.edit, beide scope-faehig.
-# Version: v0.7.387 · Build: 387 · 2026-07-12
+#   391 = HOTFIX Query-Vertrag: dispatch() bekommt die Query als
+#         Dict[str, List[str]] (parse_qs). Die Handler aus 385/387 lasen sie
+#         als Skalare -> /api/calendar antwortete durchgaengig mit 400,
+#         /api/external war latent kaputt. Alle Lesestellen laufen jetzt ueber
+#         _q1(). Die Tests pruefen die ECHTE Listenform.
+# Version: v0.7.391 · Build: 391 · 2026-07-12
 # =============================================================================
 
 import hmac
@@ -447,6 +452,37 @@ class ManagementApp:
         return Response.json(404, {"error": "not_found", "path": path})
 
     # --------------------------------------------------------------- Helfer
+    @staticmethod
+    def _q1(query, key, default=None):
+        """
+        Ersten Wert eines Query-Parameters holen.
+
+        DER VERTRAG (Build 391, Hotfix): dispatch() bekommt die Query in der
+        parse_qs-Form, also Dict[str, List[str]] — die Werte sind LISTEN.
+        Die Handler aus 385/387 lasen sie als SKALARE und schickten damit
+        ['2026-07-01'] in eine Datumspruefung: /api/calendar antwortete
+        durchgaengig mit 400, /api/external war latent kaputt (es fiel nur
+        nicht auf, solange die Vorgangsliste leer war).
+
+        Warum das durch die Tests kam: die Tests riefen dispatch() mit
+        SKALAREN auf — also mit einer Form, die der echte Server NIE liefert.
+        Zwoelf gruene Tests, und der Endpunkt war trotzdem tot: die
+        "gruen aber tot"-Falle, nur an der Schnittstelle statt in der Logik.
+        Deshalb pruefen die Tests jetzt die ECHTE Listenform (QV01).
+
+        Ein Skalar wird hier trotzdem angenommen — aber NICHT, um den Vertrag
+        aufzuweichen, sondern damit ein Aufrufer, der ihn missversteht, ein
+        richtiges Ergebnis bekommt statt eines stillen 400.
+        """
+        if not query:
+            return default
+        v = query.get(key)
+        if v is None:
+            return default
+        if isinstance(v, (list, tuple)):
+            return v[0] if v else default
+        return v
+
     def _forbidden(self, capability: str) -> Response:
         return Response.json(
             403, {"error": "forbidden", "capability": capability})
@@ -1171,16 +1207,21 @@ class ManagementApp:
         if denied is not None:
             return denied
 
-        q = query or {}
-        statuses = None
-        if q.get("offen"):
-            statuses = list(OPEN_STATUSES)
-        elif q.get("status"):
-            statuses = [q["status"]]
+        # Query IMMER ueber _q1 lesen: der Server liefert parse_qs-Listen.
+        offen = self._q1(query, "offen")
+        status = self._q1(query, "status")
+        raw_user = self._q1(query, "user_id")
+        raw_stichtag = self._q1(query, "stichtag")
 
-        if q.get("user_id"):
+        statuses = None
+        if offen:
+            statuses = list(OPEN_STATUSES)
+        elif status:
+            statuses = [status]
+
+        if raw_user:
             try:
-                one = int(q["user_id"])
+                one = int(raw_user)
             except (TypeError, ValueError):
                 return Response.json(400, {"error": "bad_request",
                                            "detail": "user_id ungueltig."})
@@ -1190,8 +1231,8 @@ class ManagementApp:
                     "detail": "Fall %s ist nicht zugewiesen." % one})
             case_ids = [one]
 
-        info = (stichtag_mod.heute() if not q.get("stichtag")
-                else {"stichtag": q["stichtag"], "zeitzone": "vorgegeben",
+        info = (stichtag_mod.heute() if not raw_stichtag
+                else {"stichtag": raw_stichtag, "zeitzone": "vorgegeben",
                       "warnung": None})
 
         con = self._ro_con()
@@ -1231,9 +1272,8 @@ class ManagementApp:
         Zeitquellen. Die Rechte prueft jede Quelle selbst; fehlt eine, sagt
         sie es (Feld 'hinweise') — ein stiller Leer-Kalender waere gefaehrlich.
         """
-        q = query or {}
-        von = q.get("von")
-        bis = q.get("bis")
+        von = self._q1(query, "von")
+        bis = self._q1(query, "bis")
         if not von or not bis:
             return Response.json(400, {
                 "error": "bad_request",
@@ -1243,7 +1283,7 @@ class ManagementApp:
         con = self._ro_con()
         try:
             result = CalendarRepo(con, policy).view(
-                von=von, bis=bis, stichtag=q.get("stichtag"))
+                von=von, bis=bis, stichtag=self._q1(query, "stichtag"))
         except (CalendarError, MatterStatusError) as exc:
             return Response.json(400, {"error": "bad_request",
                                        "detail": str(exc)})
@@ -1475,9 +1515,8 @@ class ManagementApp:
         if denied is not None:
             return denied
 
-        q = query or {}
         try:
-            user_id = int(q.get("user_id"))
+            user_id = int(self._q1(query, "user_id"))
         except (TypeError, ValueError):
             return Response.json(400, {"error": "bad_request",
                                        "detail": "user_id fehlt/ungueltig."})

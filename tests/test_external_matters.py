@@ -449,7 +449,7 @@ class ExternalMattersTests(unittest.TestCase):
         app = self._app()
 
         # Chefin (Scope 'alle'): beide Vorgaenge.
-        r = app.dispatch(1, "/api/external", {"stichtag": TAG})
+        r = app.dispatch(1, "/api/external", {"stichtag": [TAG]})
         self.assertEqual(r.status, 200)
         data = json.loads(r.body)
         self.assertEqual(data["scope"], "alle")
@@ -457,7 +457,7 @@ class ExternalMattersTests(unittest.TestCase):
         self.assertEqual(len(data["kinds"]), 11)      # inkl. osint/auswertung
 
         # Mueller (Scope 'eigene'): NUR sein Fall 18.
-        r = app.dispatch(2, "/api/external", {"stichtag": TAG})
+        r = app.dispatch(2, "/api/external", {"stichtag": [TAG]})
         self.assertEqual(r.status, 200)
         data = json.loads(r.body)
         self.assertEqual(data["scope"], "eigene")
@@ -465,7 +465,7 @@ class ExternalMattersTests(unittest.TestCase):
         self.assertEqual(data["matters"][0]["user_id"], 18)
 
         # Fremder Fall ausdruecklich angefragt -> 403 (kein stilles Leer).
-        r = app.dispatch(2, "/api/external", {"user_id": "19"})
+        r = app.dispatch(2, "/api/external", {"user_id": ["19"]})
         self.assertEqual(r.status, 403)
 
         # Schmitz: kein Recht -> 403.
@@ -474,8 +474,8 @@ class ExternalMattersTests(unittest.TestCase):
 
         # Kalender
         r = app.dispatch(1, "/api/calendar",
-                         {"von": "2026-07-01", "bis": "2026-07-31",
-                          "stichtag": TAG})
+                         {"von": ["2026-07-01"], "bis": ["2026-07-31"],
+                          "stichtag": [TAG]})
         self.assertEqual(r.status, 200)
         cal = json.loads(r.body)
         self.assertEqual(cal["count"], 2)
@@ -483,6 +483,57 @@ class ExternalMattersTests(unittest.TestCase):
 
         # Fehlender Zeitraum -> 400.
         self.assertEqual(app.dispatch(1, "/api/calendar", {}).status, 400)
+
+    # ================================================================== EX13
+    def test_ex13_QUERY_VERTRAG_parse_qs_listen(self):
+        """
+        BUILD 391 — der Wachhund gegen den Fehler, der 385/387 gruen aussehen
+        liess und trotzdem tot war.
+
+        dispatch() bekommt die Query in der parse_qs-Form: Dict[str, List[str]].
+        Die Handler lasen sie als SKALARE — /api/calendar antwortete
+        durchgaengig mit 400, /api/external war LATENT kaputt (es fiel nur
+        nicht auf, solange die Vorgangsliste leer war).
+
+        Die alten Tests riefen dispatch() mit Skalaren auf — also mit einer
+        Form, die der echte Server NIE liefert. Das ist die 'gruen aber
+        tot'-Falle an der Schnittstelle. Dieser Test prueft ausschliesslich
+        die ECHTE Form — und zwar MIT DATEN, denn ohne Daten war der Fehler
+        unsichtbar.
+        """
+        # Wiedervorlage am 19.07., Stichtag 12.07., Vorwarnfrist 7 Tage
+        # -> GELB. Der Wert ist bewusst so gewaehlt, dass er NUR stimmt, wenn
+        # der Stichtag wirklich als STRING ausgewertet wurde. (Daten sind
+        # wesentlich: ohne Vorgang war der Fehler unsichtbar.)
+        self._mk(user_id=18, wv="2026-07-19")
+        app = self._app()
+
+        faelle = [
+            ("/api/calendar", {"von": ["2026-07-01"], "bis": ["2026-07-31"],
+                               "stichtag": [TAG]}),
+            ("/api/external", {"stichtag": [TAG]}),
+            ("/api/external", {"offen": ["1"]}),
+            ("/api/external", {"status": ["offen"]}),
+            ("/api/external", {"user_id": ["18"]}),
+        ]
+        for path, q in faelle:
+            r = app.dispatch(1, path, q)
+            self.assertEqual(r.status, 200,
+                             "%s mit %s -> %s" % (path, q, r.status))
+
+        # Und der Inhalt stimmt auch: der Stichtag wurde als STRING verwendet.
+        r = app.dispatch(1, "/api/external", {"stichtag": [TAG]})
+        d = json.loads(r.body)
+        self.assertEqual(d["stichtag"], TAG)
+        self.assertEqual(d["count"], 1)
+        self.assertEqual(d["matters"][0]["ampel"], "gelb")
+
+        r = app.dispatch(1, "/api/calendar",
+                         {"von": ["2026-07-01"], "bis": ["2026-07-31"],
+                          "stichtag": [TAG]})
+        cal = json.loads(r.body)
+        self.assertEqual(cal["stichtag"], TAG)
+        self.assertEqual(cal["count"], 1)
 
     # ================================================================== EX11
     def test_ex11_endpoints_write(self):

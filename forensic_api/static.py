@@ -62,6 +62,8 @@ _RESOURCES: dict[str, tuple[str, str, Path]] = {
     "/_forensic/toolbar.css":  ("toolbar.css",  "text/css; charset=utf-8",               _TOOLBAR_DIR),
     "/_forensic/userinfo.js":  ("userinfo.js",  "application/javascript; charset=utf-8", _USERINFO_DIR),
     "/_forensic/userinfo.css": ("userinfo.css", "text/css; charset=utf-8",               _USERINFO_DIR),
+    # Build 390: Erfassungsmaske Ermittlungsergebnis (Baustelle 4).
+    "/_forensic/userinfo_results.js": ("userinfo_results.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
     # B6 Phase 2: report_editor.js (umbenannt von editor.js, Build 100)
     # Beleg: Bauplan B6 v0.5 §4.1, Projektgespraech 2026-05-06
     "/_forensic/report_editor.js": ("report_editor.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
@@ -72,8 +74,6 @@ _RESOURCES: dict[str, tuple[str, str, Path]] = {
     "/_forensic/report.css":   ("report.css",   "text/css; charset=utf-8",               _USERINFO_DIR),
     # B6 Phase 4 (Chip-Rendering): Platzhalter-Parser
     "/_forensic/placeholder_chips.js": ("placeholder_chips.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
-    # Build 389: zentraler Katalog der Formatregeln (Client-Seite).
-    "/_forensic/validation_rules.js": ("validation_rules.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
     # B6 Phase 5 (Wizard): Platzhalter-Wizard
     "/_forensic/placeholder_wizard.js": ("placeholder_wizard.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
     # B6 Phase 6 (Modul-Panel): Modul-Auswahl

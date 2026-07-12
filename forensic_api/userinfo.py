@@ -464,6 +464,15 @@ class UserinfoEndpoint:
       <span style="color:#9aa0b8;font-size:12px">Lade…</span>
     </div>
 
+    <!-- Ermittlungsergebnis-Bewertung (Build 390, userinfo_results.js).
+         Eine Zeile je Kriterium, Spalten 'schwerste'/'beste'; die Bearbeitung
+         oeffnet EIN Feld unter der Zeile (mc 2026-07-12). Die Karte spannt
+         ueber die volle Breite — 10 Kriterien x 2 Extreme brauchen Platz. -->
+    <div class="ui-card ui-card--wide" id="userinfo-results" aria-live="polite">
+      <h2>Ermittlungsergebnis · Bewertung</h2>
+      <span style="color:#9aa0b8;font-size:12px">Lade…</span>
+    </div>
+
   </div>
 
   <!-- Build 088: userinfo-report-readonly AUSSERHALB von #userinfo-static.
@@ -488,6 +497,7 @@ class UserinfoEndpoint:
   <!-- Beleg: Projektgespräch 2026-05-05 -->
   <link rel="stylesheet" href="/_forensic/static/vendor/tabulator/tabulator.min.css">
   <script src="/_forensic/static/vendor/tabulator/tabulator.min.js"></script>
+  <script src="/_forensic/userinfo_results.js" defer></script>
   <script src="/_forensic/userinfo.js" defer></script>
 </body>
 </html>"""

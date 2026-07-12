@@ -1,11 +1,5 @@
-c02685f853fae0a315da40f6e97a2c05  build.json
-b7fce365c9e259ab7fc72d45cf866820  userinfo/placeholder_chips.js
-cdff30b4d028619817008392c85d24a2  userinfo/validation_rules.js
-c4380e7a0e219a610664c8f954a8360a  userinfo/placeholder_wizard.js
-2db9b5b0eff61b0dcd100ff474233860  userinfo/module_panel.js
-680a482a49afa2b22b66b9fc8f75e936  userinfo/report_editor.js
-e4289131a668555fd174752d73c50983  userinfo/report.css
-1ef47f34058d08e2b38a883b7821d757  forensic_api/report.py
-8647f0db7646a33f052b2d88802ba693  forensic_api/static.py
-4ca75534e1b5a79173233bfb20a0d6c8  forensic_api/__init__.py
-47bd984f59343406a4cc970e27728304  tests/unit/test_build389_vorlagen.test.js
+ded0bdb5e1d93b605c3b5db97ac270cc  build.json
+a7aba3fa361245a8e107d42ff23b45cb  management/server/management_app.py
+2ed16cf4e7f2e848704f6fdc87ae3311  tests/test_external_matters.py
+5e5b79b6144f83ee5c8a46eb3d2bc011  tests/test_investigation_results.py
+b95dc8777c33125c12d95a1fd32469ad  management/Bauplan_Build391_QueryContract_v0_1.md

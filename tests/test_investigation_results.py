@@ -516,7 +516,7 @@ class InvestigationResultsTests(unittest.TestCase):
         ab = [c for c in cat["criteria"] if c["code"] == "abuser"][0]
         self.assertIn("SCHWERE", ab["quality_beschreibung"])
 
-        r = app.dispatch(2, "/api/results", {"user_id": "18"})
+        r = app.dispatch(2, "/api/results", {"user_id": ["18"]})
         self.assertEqual(r.status, 200)
         d = json.loads(r.body)
         self.assertEqual(d["scope"], "eigene")
@@ -526,10 +526,10 @@ class InvestigationResultsTests(unittest.TestCase):
 
         # Fremder Fall -> 403 (kein stilles Leer).
         self.assertEqual(app.dispatch(2, "/api/results",
-                                      {"user_id": "19"}).status, 403)
+                                      {"user_id": ["19"]}).status, 403)
         # Kein Recht -> 403.
         self.assertEqual(app.dispatch(3, "/api/results",
-                                      {"user_id": "19"}).status, 403)
+                                      {"user_id": ["19"]}).status, 403)
 
         # Die STATISTIK verlangt Scope 'alle'.
         r = app.dispatch(1, "/api/results/stats", {})
@@ -538,6 +538,31 @@ class InvestigationResultsTests(unittest.TestCase):
         # Der Ermittler mit 'eigene' bekommt 403 — NICHT eine stillschweigend
         # zusammengeschrumpfte Statistik, die wie eine Gesamtauswertung aussaehe.
         self.assertEqual(app.dispatch(2, "/api/results/stats", {}).status, 403)
+
+    # ================================================================== IR14
+    def test_ir14_QUERY_VERTRAG_parse_qs_listen(self):
+        """
+        BUILD 391 — Wachhund (siehe EX13). /api/results las die user_id als
+        Skalar und antwortete deshalb am echten Server IMMER mit 400.
+        Geprueft wird ausschliesslich die ECHTE parse_qs-Form.
+        """
+        self.repo.assess(user_id=18, criterion_code="abuser",
+                         extrem="schwerste", confidence_code="verdacht",
+                         quality_code="fortlaufend", actor_id=2)
+        app = self._app()
+
+        r = app.dispatch(1, "/api/results", {"user_id": ["18"]})
+        self.assertEqual(r.status, 200)
+        d = json.loads(r.body)
+        self.assertEqual(d["user_id"], 18)
+        self.assertEqual(len(d["current"]), 1)
+
+        # Katalog und Statistik haben keine Query — sie duerfen trotzdem
+        # nicht an einem leeren Dict scheitern.
+        self.assertEqual(app.dispatch(1, "/api/results/catalog", {}).status, 200)
+        self.assertEqual(app.dispatch(1, "/api/results/stats", {}).status, 200)
+        self.assertEqual(app.dispatch(1, "/api/results/catalog", None).status,
+                         200)
 
     # ================================================================== IR12
     def test_ir12_endpoints_write(self):

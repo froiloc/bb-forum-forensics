@@ -368,6 +368,81 @@ function buildTableOfContents() {
 /**
  * Dynamische Blöcke laden und in #userinfo-dynamic einsetzen.
  */
+/**
+ * Ermittlungsergebnis-Bewertung laden und rendern (Build 390).
+ *
+ * Ein Abruf liefert alles, was die Maske braucht (Katalog + Stand + Historie
+ * + Kennzahl) — der Katalog ist DATEN (Build 387), nicht Code: die
+ * Auswahlfelder werden daraus gebaut, nicht aus einer JS-Konstante.
+ *
+ * KEIN optimistisches UI: nach jedem Schreibvorgang wird neu geladen. Und ein
+ * 403 (fehlende Faehigkeit) wird ANGEZEIGT, nicht in eine leere Karte
+ * verwandelt — der Ermittler soll wissen, WARUM er nichts sieht.
+ */
+async function loadResults(pendingMsg) {
+    const card = document.getElementById('userinfo-results');
+    if (!card) return;
+    const mod = window.AIWUserinfoResults;
+    if (!mod) {
+        card.innerHTML = `<h2>Ermittlungsergebnis · Bewertung</h2>
+            <div class="status-msg status-msg-warn">Modul nicht geladen
+            (userinfo_results.js).</div>`;
+        return;
+    }
+
+    try {
+        const resp = await fetch('/_forensic/results', {
+            headers: { 'X-Forensic-Request': 'ajax' }
+        });
+        const data = await resp.json();
+
+        if (!resp.ok) {
+            // 403/500 mit Begruendung — sie wird gezeigt, nicht verschluckt.
+            card.innerHTML = `<h2>Ermittlungsergebnis · Bewertung</h2>
+                <div class="status-msg status-msg-warn">
+                ${esc(String(data.detail || data.error || resp.status))}</div>`;
+            return;
+        }
+
+        const view = mod.renderResults(card, data, {
+            onAssess: async (body) => {
+                try {
+                    const r = await fetch('/_forensic/results/assess', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Forensic-Request': 'ajax'
+                        },
+                        body: JSON.stringify(body)
+                    });
+                    const res = await r.json();
+                    if (!r.ok) {
+                        throw new Error(res.detail || res.error || ('HTTP ' + r.status));
+                    }
+                    // Neu laden — angezeigt wird nur der bestaetigt
+                    // geschriebene Zustand.
+                    loadResults('Neuer Stand erfasst (Bewertung '
+                        + res.result_id + ', Beleg #' + res.audit_seq
+                        + '). Der bisherige Stand bleibt in der Historie.');
+                } catch (err) {
+                    loadResults('FEHLER: ' + String(err.message || err)
+                        + ' — es wurde nichts geschrieben.');
+                }
+            }
+        });
+
+        if (view && pendingMsg) {
+            view.setResult(pendingMsg, /^FEHLER/.test(pendingMsg));
+        }
+        _dbg('Ergebnisbewertung geladen:', (data.current || []).length,
+             'aktuelle Bewertungen');
+    } catch (err) {
+        card.innerHTML = `<h2>Ermittlungsergebnis · Bewertung</h2>
+            <div class="status-msg status-msg-warn">
+            Bewertung konnte nicht geladen werden: ${esc(String(err))}</div>`;
+    }
+}
+
 async function loadDynamicBlocks() {
     const container = document.getElementById('userinfo-dynamic');
     if (!container) return;
@@ -415,7 +490,17 @@ function renderDynamicBlocks(container, data) {
 
     // Ermittlungsstatus
     let statusHtml = '';
-    if (investigation_status) {
+    if (investigation_status && investigation_status.error) {
+        // Build 390 (Grundregel 1): Die Fallakte war NICHT lesbar. Frueher
+        // wurde dieser Fehler still zu 'nicht zugewiesen' — der Ermittler
+        // sah eine LUEGE statt einer Fehlermeldung (Ursache: JOIN auf die
+        // seit M005 nicht mehr existierende Tabelle 'investigators').
+        // Jetzt wird der Fehler ANGEZEIGT.
+        statusHtml = `<p class="status-msg status-msg-warn">
+            <strong>Fallakte nicht lesbar:</strong> ${esc(String(investigation_status.error))}
+            <br>Der Zuweisungs- und Statuswert unten fehlt deshalb — er ist
+            NICHT etwa leer.</p>`;
+    } else if (investigation_status) {
         const { status, priority, assigned_to, note } = investigation_status;
         statusHtml = `<p><strong>Status:</strong> ${esc(status || '–')}
             | <strong>Priorität:</strong> ${priority ?? '–'}
@@ -965,6 +1050,7 @@ function _onDOMReady() {
         initCopyButtons();
         loadStaticBlob();       // Phase-B-BLOB in #userinfo-static (Build 037)
         loadDynamicBlocks();
+        loadResults();          // Ergebnisbewertung (Build 390)
         initSSEWindow2();
         initForensicLinks();    // navigate_to_url via postMessage (Build 038)
     }
