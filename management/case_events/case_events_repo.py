@@ -47,6 +47,12 @@ EVENT_KINDS: FrozenSet[str] = frozenset(
         "status_changed",  # Spiegel: CasesRepo.set_status   (Beleg CASE_STATUS_CHANGED)
         "approved",        # Spiegel: CasesRepo.set_status('approved') (Beleg CASE_APPROVED)
         "manual",          # manueller Ermittler-Eintrag     (Beleg CASE_EVENT_ADDED)
+        # Build 385: Spiegel der externen Vorgaenge (ExternalMattersRepo;
+        # Belege EXTERNAL_MATTER_CREATED/_DEFERRED/_ANSWERED/_CLOSED).
+        # payload.action in {created, deferred, answered, closed} — damit macht
+        # der Zeitstrahl das WARTEN eines Falls sichtbar: wer wann worauf
+        # gewartet und wie oft er die Wiedervorlage verschoben hat.
+        "external_matter",
     }
 )
 

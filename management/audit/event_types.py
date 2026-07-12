@@ -86,6 +86,19 @@ class EventType:
     AVAILABILITY_SET: str = "availability_set"
     AVAILABILITY_REMOVED: str = "availability_removed"
 
+    # --- Build 385: Wiedervorlage externer Vorgaenge (external_matters) ---
+    #   Ein Beleg PRO ZUSTANDSAENDERUNG des Vorgangs. Das VERSCHIEBEN der
+    #   Wiedervorlage bekommt einen EIGENEN Typ (_DEFERRED) und nicht etwa
+    #   ein stilles UPDATE: das Verschieben IST der Vorgang, um den es hier
+    #   geht — wer wie oft verschoben hat, muss im Bericht stehen koennen.
+    #   Der Abschluss (_CLOSED) ist unwiderruflich (MatterStatus).
+    #   Freitexte stehen NICHT im Payload, nur Fakten + Textlaengen
+    #   (Sensibilitaetsregel wie bei cases.note). mc 2026-07-12.
+    EXTERNAL_MATTER_CREATED: str = "external_matter_created"
+    EXTERNAL_MATTER_DEFERRED: str = "external_matter_deferred"
+    EXTERNAL_MATTER_ANSWERED: str = "external_matter_answered"
+    EXTERNAL_MATTER_CLOSED: str = "external_matter_closed"
+
     # --- reserviert für spätere Builds (hier dokumentiert, noch nicht aktiv) ---
     # NOTIFICATION_SENT, RESTORE_PERFORMED
 
@@ -120,6 +133,10 @@ class EventType:
             AVAILABILITY_REASON_ADDED,
             AVAILABILITY_SET,
             AVAILABILITY_REMOVED,
+            EXTERNAL_MATTER_CREATED,
+            EXTERNAL_MATTER_DEFERRED,
+            EXTERNAL_MATTER_ANSWERED,
+            EXTERNAL_MATTER_CLOSED,
         }
     )
 

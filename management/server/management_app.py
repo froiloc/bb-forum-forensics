@@ -71,7 +71,13 @@
 #   WAL-sicheren Fingerabdruck-Cache (m009). ManagementApp kennt nun das
 #   evidence_db_dir (injizierbar; sonst aus config.yaml).
 #
-# Version: v0.7.383 · Build: 383 · 2026-07-10
+#   385 = WIEDERVORLAGE EXTERNER VORGAENGE (M010) + gemeinsame KALENDER-
+#         Leseschicht. GET /api/external (Vorgaenge mit Ampel, scope-gefiltert),
+#         GET /api/calendar (externe Vorgaenge + Abwesenheiten + Feiertage in
+#         EINER Sicht), POST /api/external/create|defer|answer|close (auditiert).
+#         Rechte: external.view / external.edit, BEIDE scope-faehig ('eigene' =
+#         nur zugewiesene Faelle) — der Ermittler pflegt seinen Fall selbst.
+# Version: v0.7.385 · Build: 385 · 2026-07-12
 # =============================================================================
 
 import hmac
@@ -112,6 +118,18 @@ from management.server.migration_status import MigrationStatusCheck
 from management.reports.approval_service import ApprovalService, ApprovalError
 from management.cases.case_detector import CaseDetector
 from management.cases.case_importer import CaseImporter
+from management.external.external_matters_repo import (
+    ExternalMattersError,
+    ExternalMattersRepo,
+)
+from management.external.matter_status import (
+    OPEN_STATUSES,
+    MatterStatus,
+    MatterStatusError,
+)
+from management.external import matter_kinds
+from management.calendar.calendar_repo import CalendarError, CalendarRepo
+from management.calendar import stichtag as stichtag_mod
 from db.coordinator_db import DEFAULT_SUPPORT_STALE_SEC
 from management.capacity.capacity_errors import CapacityError
 from management.workload.workload_repo import (
@@ -137,6 +155,10 @@ CAP_STATS = "stats.export_sta"
 CAP_ASSIGNMENT = "assignment.edit"
 CAP_REPORTS_REVIEW = "reports.review"
 CAP_REPORTS_APPROVE = "reports.approve"
+# Build 385: Wiedervorlage externer Vorgaenge. BEIDE sind scope-faehig —
+# 'alle' = alle Faelle, 'eigene' = nur die zugewiesenen (mc 2026-07-12).
+CAP_EXTERNAL_VIEW = "external.view"
+CAP_EXTERNAL_EDIT = "external.edit"
 
 logger = logging.getLogger(__name__)
 
@@ -393,6 +415,10 @@ class ManagementApp:
             return self._report_verify(person_id, query)
         if path == "/api/cases/detect":
             return self._cases_detect(person_id)
+        if path == "/api/external":
+            return self._external(person_id, query)
+        if path == "/api/calendar":
+            return self._calendar(person_id, query)
         if path.startswith("/static/"):
             return self._serve_static(path[len("/static/"):])
         return Response.json(404, {"error": "not_found", "path": path})
@@ -1080,6 +1106,291 @@ class ManagementApp:
             con.close()
         return Response.json(200, result)
 
+    # ================================================================
+    # WIEDERVORLAGE EXTERNER VORGAENGE (Build 385)
+    # ----------------------------------------------------------------
+    # SCOPE-AUFLOESUNG — die Kapselung dieses Moduls haengt an genau
+    # dieser Methode. Sie liefert BEWUSST drei unterscheidbare Ergebnisse:
+    #   (None,  None)   -> Scope 'alle': ALLE Faelle sind erlaubt.
+    #   (Liste, None)   -> Scope 'eigene': genau diese (ggf. NULL) Faelle.
+    #   (None,  Response) -> kein Recht: 403.
+    # Ein leerer Ermittler (keine Zuweisung) bekommt eine LEERE LISTE und
+    # NICHT 'alle'. Genau diese Verwechslung waere der klassische
+    # Kapselungsbruch ueber einen None-Wert.
+    # ================================================================
+    def _external_scope(self, person_id: int, capability: str):
+        policy = self.resolve_policy(person_id)
+        if not policy.can(capability):
+            return None, self._forbidden(capability)
+        if policy.scope(capability) == "alle":
+            return None, None
+
+        con = self._ro_con()
+        try:
+            rows = con.execute(
+                "SELECT user_id FROM cases WHERE assigned_to = ?",
+                (person_id,)).fetchall()
+        finally:
+            con.close()
+        return [int(r[0]) for r in rows], None
+
+    @staticmethod
+    def _external_allowed(case_ids, user_id: int) -> bool:
+        """None = alle erlaubt; sonst muss der Fall in der Liste stehen."""
+        return case_ids is None or int(user_id) in case_ids
+
+    def _external(self, person_id: int, query) -> Response:
+        """
+        GET /api/external — Vorgaenge mit Ampel. Optional ?offen=1, ?status=,
+        ?user_id=, ?stichtag= (Vorschau/Test).
+        """
+        case_ids, denied = self._external_scope(person_id, CAP_EXTERNAL_VIEW)
+        if denied is not None:
+            return denied
+
+        q = query or {}
+        statuses = None
+        if q.get("offen"):
+            statuses = list(OPEN_STATUSES)
+        elif q.get("status"):
+            statuses = [q["status"]]
+
+        if q.get("user_id"):
+            try:
+                one = int(q["user_id"])
+            except (TypeError, ValueError):
+                return Response.json(400, {"error": "bad_request",
+                                           "detail": "user_id ungueltig."})
+            if not self._external_allowed(case_ids, one):
+                return Response.json(403, {
+                    "error": "forbidden", "capability": CAP_EXTERNAL_VIEW,
+                    "detail": "Fall %s ist nicht zugewiesen." % one})
+            case_ids = [one]
+
+        info = (stichtag_mod.heute() if not q.get("stichtag")
+                else {"stichtag": q["stichtag"], "zeitzone": "vorgegeben",
+                      "warnung": None})
+
+        con = self._ro_con()
+        try:
+            repo = ExternalMattersRepo(con)
+            rows = repo.list_matters(user_ids=case_ids, statuses=statuses)
+            rows = repo.with_ampel(rows, info["stichtag"])
+        except (ExternalMattersError, MatterStatusError) as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Externe Vorgaenge nicht lesbar")
+            return Response.json(500, {"error": "external_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+
+        counts = {"rot": 0, "gelb": 0, "gruen": 0, "neutral": 0}
+        for r in rows:
+            if r["ampel"] in counts:
+                counts[r["ampel"]] += 1
+
+        return Response.json(200, {
+            "scope": ("eigene" if case_ids is not None else "alle"),
+            "stichtag": info["stichtag"],
+            "zeitzone": info.get("zeitzone"),
+            "stichtag_text": stichtag_mod.stichtag_text(info),
+            "kinds": list(matter_kinds.catalog()),
+            "count": len(rows),
+            "counts": counts,
+            "matters": rows,
+        })
+
+    def _calendar(self, person_id: int, query) -> Response:
+        """
+        GET /api/calendar?von=&bis= — die GEMEINSAME Sicht ueber alle
+        Zeitquellen. Die Rechte prueft jede Quelle selbst; fehlt eine, sagt
+        sie es (Feld 'hinweise') — ein stiller Leer-Kalender waere gefaehrlich.
+        """
+        q = query or {}
+        von = q.get("von")
+        bis = q.get("bis")
+        if not von or not bis:
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "von und bis (YYYY-MM-DD) sind erforderlich."})
+
+        policy = self.resolve_policy(person_id)
+        con = self._ro_con()
+        try:
+            result = CalendarRepo(con, policy).view(
+                von=von, bis=bis, stichtag=q.get("stichtag"))
+        except (CalendarError, MatterStatusError) as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Kalender nicht lesbar")
+            return Response.json(500, {"error": "calendar_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, result)
+
+    # ---------------------------------------------------- Schreiben (extern)
+    def _external_writer(self, con):
+        return ExternalMattersRepo(con, CoordinatorWriter(con, AuditLog(con)))
+
+    def _external_guard(self, person_id: int, payload, *, need_id: bool):
+        """
+        Gemeinsame Vorpruefung aller Schreibpfade:
+        Recht + Scope + (bei Aenderungen) Zugehoerigkeit des Vorgangs zum
+        erlaubten Fall. -> (case_ids, matter_id|None, None) | (None, None, Response)
+        """
+        case_ids, denied = self._external_scope(person_id, CAP_EXTERNAL_EDIT)
+        if denied is not None:
+            return None, None, denied
+        if not need_id:
+            return case_ids, None, None
+
+        try:
+            matter_id = int(payload.get("matter_id"))
+        except (TypeError, ValueError):
+            return None, None, Response.json(400, {
+                "error": "bad_request", "detail": "matter_id fehlt/ungueltig."})
+
+        con = self._ro_con()
+        try:
+            row = con.execute(
+                "SELECT user_id FROM external_matters WHERE id = ?",
+                (matter_id,)).fetchone()
+        finally:
+            con.close()
+        if row is None:
+            return None, None, Response.json(
+                400, {"error": "unknown_matter", "matter_id": matter_id})
+        if not self._external_allowed(case_ids, row[0]):
+            return None, None, Response.json(403, {
+                "error": "forbidden", "capability": CAP_EXTERNAL_EDIT,
+                "detail": "Fall %s ist nicht zugewiesen." % row[0]})
+        return case_ids, matter_id, None
+
+    def _external_create(self, person_id: int,
+                         payload: Dict[str, Any]) -> Response:
+        case_ids, _mid, denied = self._external_guard(person_id, payload,
+                                                      need_id=False)
+        if denied is not None:
+            return denied
+        try:
+            user_id = int(payload.get("user_id"))
+        except (TypeError, ValueError):
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": "user_id fehlt/ungueltig."})
+        if not self._external_allowed(case_ids, user_id):
+            return Response.json(403, {
+                "error": "forbidden", "capability": CAP_EXTERNAL_EDIT,
+                "detail": "Fall %s ist nicht zugewiesen." % user_id})
+
+        con = self._rw_con()
+        try:
+            res = self._external_writer(con).create(
+                user_id=user_id,
+                kind=str(payload.get("kind", "")),
+                betreff=str(payload.get("betreff", "")),
+                angefordert_am=str(payload.get("angefordert_am")
+                                   or stichtag_mod.heute()["stichtag"]),
+                wiedervorlage_am=str(payload.get("wiedervorlage_am", "")),
+                adressat=str(payload.get("adressat", "")),
+                aktenzeichen=payload.get("aktenzeichen"),
+                vorwarnfrist_tage=payload.get("vorwarnfrist_tage", 7),
+                actor_id=person_id,
+            )
+        except (ExternalMattersError, MatterStatusError) as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Anlage eines externen Vorgangs fehlgeschlagen")
+            return Response.json(500, {"error": "create_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, **res})
+
+    def _external_defer(self, person_id: int,
+                        payload: Dict[str, Any]) -> Response:
+        _c, matter_id, denied = self._external_guard(person_id, payload,
+                                                     need_id=True)
+        if denied is not None:
+            return denied
+        con = self._rw_con()
+        try:
+            seq = self._external_writer(con).defer(
+                matter_id,
+                wiedervorlage_am=str(payload.get("wiedervorlage_am", "")),
+                grund=str(payload.get("grund", "")),
+                vorwarnfrist_tage=payload.get("vorwarnfrist_tage"),
+                actor_id=person_id,
+            )
+        except (ExternalMattersError, MatterStatusError) as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Wiedervorlage konnte nicht verschoben werden")
+            return Response.json(500, {"error": "defer_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, "matter_id": matter_id,
+                                   "audit_seq": seq})
+
+    def _external_answer(self, person_id: int,
+                         payload: Dict[str, Any]) -> Response:
+        _c, matter_id, denied = self._external_guard(person_id, payload,
+                                                     need_id=True)
+        if denied is not None:
+            return denied
+        con = self._rw_con()
+        try:
+            seq = self._external_writer(con).answer(
+                matter_id,
+                ergebnis=str(payload.get("ergebnis", "")),
+                wiedervorlage_am=payload.get("wiedervorlage_am"),
+                actor_id=person_id,
+            )
+        except (ExternalMattersError, MatterStatusError) as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Antwort konnte nicht erfasst werden")
+            return Response.json(500, {"error": "answer_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, "matter_id": matter_id,
+                                   "audit_seq": seq})
+
+    def _external_close(self, person_id: int,
+                        payload: Dict[str, Any]) -> Response:
+        """ENDGUELTIGER Abschluss. Es gibt bewusst keinen Weg zurueck."""
+        _c, matter_id, denied = self._external_guard(person_id, payload,
+                                                     need_id=True)
+        if denied is not None:
+            return denied
+        con = self._rw_con()
+        try:
+            seq = self._external_writer(con).close(
+                matter_id,
+                status=str(payload.get("status", "")),
+                ergebnis=str(payload.get("ergebnis", "")),
+                actor_id=person_id,
+            )
+        except (ExternalMattersError, MatterStatusError) as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Abschluss fehlgeschlagen")
+            return Response.json(500, {"error": "close_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, "matter_id": matter_id,
+                                   "audit_seq": seq})
+
     def _require_assignment_scope(self, person_id: int):
         policy = self.resolve_policy(person_id)
         if not policy.can(CAP_ASSIGNMENT):
@@ -1115,6 +1426,14 @@ class ManagementApp:
             return self._report_return(person_id, payload)
         if path == "/api/cases/import":
             return self._cases_import(person_id, payload)
+        if path == "/api/external/create":
+            return self._external_create(person_id, payload)
+        if path == "/api/external/defer":
+            return self._external_defer(person_id, payload)
+        if path == "/api/external/answer":
+            return self._external_answer(person_id, payload)
+        if path == "/api/external/close":
+            return self._external_close(person_id, payload)
         return Response.json(404, {"error": "not_found", "path": path})
 
     # ------------------------------------------------------------- Schreiben

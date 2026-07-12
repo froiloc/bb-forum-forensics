@@ -59,7 +59,8 @@ ROLES: Tuple[Role, ...] = (
 
 
 # --- Faehigkeitskatalog (Beleg: Bauplan B7 v1.1 §11.3, VOLLE Aufzaehlung) -----
-#   15 Faehigkeiten. Der Katalog ist erweiterbar; hier die zur Bauzeit von 343
+#   17 Faehigkeiten (15 ab Build 343, +2 ab Build 385). Der Katalog ist
+#   erweiterbar; hier die zur Bauzeit von 343
 #   festgelegte Grundmenge. Die role->capability-ZUWEISUNGEN (Grants mit Scope)
 #   sind NICHT Teil dieses Katalogs und NICHT Teil von Schnitt (a) — sie werden
 #   in Schnitt (b) ueber die auditierte policy_admin-CLI vergeben (default-deny;
@@ -96,6 +97,16 @@ CAPABILITIES: Tuple[Capability, ...] = (
                "Arbeitszeit-/Verfuegbarkeitsdaten fuer Prognose/Gantt pflegen."),
     Capability("ops.view", "Betriebs-/Systemzustand sehen",
                "Backup-/Speicher-/Integritaets-Status der Anlage lesen."),
+    # --- Build 385: Wiedervorlage externer Vorgaenge (Seed in M010) ---------
+    #   BEIDE sind scope-faehig ('alle' = alle Faelle, 'eigene' = nur die mir
+    #   zugewiesenen). Der Ermittler bekommt 'eigene' und pflegt die Vorgaenge
+    #   seines eigenen Falls selbst — sonst waere die Chef-Ermittlerin das
+    #   Nadeloehr fuer jede Providerauskunft (mc 2026-07-12).
+    Capability("external.view", "Externe Vorgaenge sehen",
+               "Wiedervorlage externer Vorgaenge (Beschluesse, Auskuenfte) "
+               "lesen."),
+    Capability("external.edit", "Externe Vorgaenge pflegen",
+               "Externe Vorgaenge anlegen, wiedervorlegen und abschliessen."),
 )
 
 
