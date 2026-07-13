@@ -308,3 +308,55 @@ td.aiw-cal-today { box-shadow: inset 0 0 0 2px var(--akzent); }
 .aiw-cal-result:not(:empty) { margin-top: 10px; font-size: 13px; }
 .aiw-cal-result.ok    { color: #1e6b3a; }
 .aiw-cal-result.error { color: #922b21; font-weight: 600; }
+
+/* ==========================================================================
+   Ermittlungsergebnis (Build 395) — cockpit_results.js
+   --------------------------------------------------------------------------
+   Eng auf '.aiw-res-*' gefasst. Zwei Elemente MUESSEN optisch tragen:
+
+     - die KOPFZEILE ("Von 31 Faellen sind 12 noch GAR NICHT bewertet"): das
+       ist die Hauptaussage der Sicht, nicht ihre Ueberschrift. Sie ist rot,
+       sobald es blinde Flecken gibt.
+     - der VERMERK unter der Tabelle: die Score-Spalte daneben ist provisorisch
+       und mit niemandem abgestimmt. Eine Zahl ohne diesen Satz waere eine
+       unbelegte Behauptung.
+   ========================================================================== */
+
+.aiw-res-headline {
+  font-size: 14px; font-weight: 600; padding: 10px 14px; margin: 0 0 10px;
+  border-radius: 6px; background: #eafaf1; border: 1px solid #a9dfbf;
+  color: #1e6b3a;
+}
+/* Blinde Flecken: das ist ein Befund, kein Zwischenstand. */
+.aiw-res-headline.warn {
+  background: #fdecea; border-color: #f5b7b1; border-left: 5px solid var(--rot);
+  color: #922b21;
+}
+
+.aiw-res-bar { display: flex; gap: 10px; align-items: center; margin: 10px 0 8px; }
+.aiw-res-bar select {
+  font-size: 13px; padding: 5px 8px; border: 1px solid var(--line);
+  border-radius: 4px; background: var(--panel);
+}
+
+/* Der Vermerk ist Teil der Zahl, nicht ihr Beiwerk — und nicht wegklickbar. */
+.aiw-res-vermerk {
+  margin-top: 10px; padding: 10px 14px; font-size: 11px; font-weight: 600;
+  color: #7d6608; background: #fef9e7; border: 1px solid #f7dc6f;
+  border-radius: 6px;
+}
+
+/* Ein Diagramm JE KRITERIUM. Ab dem vierten eingeklappt — zehn offene
+   Diagramme machen die Seite unbedienbar. */
+.aiw-res-chartbox {
+  margin-top: 12px; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 6px; padding: 8px 12px;
+}
+.aiw-res-chartbox > summary {
+  cursor: pointer; font-size: 13px; font-weight: 600; padding: 4px 0;
+}
+.aiw-res-chart { width: 100%; height: 260px; }
+.aiw-res-note {
+  font-size: 11px; color: var(--muted); padding: 6px 2px 2px;
+  border-top: 1px dashed var(--line); margin-top: 6px;
+}

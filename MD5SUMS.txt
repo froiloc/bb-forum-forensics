@@ -1,3 +1,8 @@
-dd6330a3a6dde60ed4d99bd9793aa693  build.json
-9105bb93bb8ead54d974c59591d8cc94  userinfo/report_editor.js
-be38f094869138bacfea3b7329183ea6  tests/unit/test_build394_blocktype.test.js
+80f567ec2241a83055394e7bc867d56e  build.json
+7d5d0e063c0a7c0933b509dbbe695a03  management/server/static/cockpit_results.js
+b8f2ce4fa80d2747a1a7053022a71258  management/server/static/cockpit.js
+516b254b565da2209b28580b34424e9c  management/server/static/cockpit.html
+22f56e44729aef27485753d0cdf247d2  management/server/static/cockpit.css
+a9adb3a12958c292d469d8b72c84e562  tests/unit/test_cockpit_results.test.js
+5e1f3cc98d0a36a14fcc5b9d9e6a8275  tests/unit/test_cockpit_nav.test.js
+399bcbee5b4de22b03aaf3ffed1ac941  management/Bauplan_Build395_ResultsView_v0_1.md

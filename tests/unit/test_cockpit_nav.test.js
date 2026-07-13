@@ -76,7 +76,8 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     // Kataloglaenge bleibt (keine Mutation).
     // Build 384: 13 statt 12 Sichten (neu: 'cases' - Fall-Erkennung).
     // Build 386: 14 (neu: 'calendar' - Kalender & Wiedervorlage).
-    expect(api.VIEW_CATALOG.length).toBe(14);
+    // Build 395: 15 (neu: 'results' - Ermittlungsergebnis).
+    expect(api.VIEW_CATALOG.length).toBe(15);
   });
 
   // CN03b (Build 384) --------------------------------------------------------
@@ -106,6 +107,21 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     // die Kapselung passiert im Backend (Scope), nicht in der Navigation.
     expect(api.visibleViews({ "external.view": "eigene" }).map((x) => x.id))
       .toEqual(["calendar"]);
+  });
+
+  // CN03d (Build 395) --------------------------------------------------------
+  it("CN03d: Ermittlungsergebnis haengt an results.view", () => {
+    const api = _api();
+    const v = api.viewById("results");
+    expect(v).toBeTruthy();
+    expect(v.cap).toBe("results.view");
+    expect(v.group).toBe("Auswertung");
+
+    // Auch der Ermittler mit Scope 'eigene' sieht die Sicht — er bekommt die
+    // Abdeckung SEINER Faelle. Die fallUEBERGREIFENDE Verteilung (/stats)
+    // bleibt Scope 'alle' vorbehalten; das prueft das Backend, nicht die Nav.
+    expect(api.visibleViews({ "results.view": "eigene" }).map((x) => x.id))
+      .toEqual(["results"]);
   });
 
   // CN04 -------------------------------------------------------------------

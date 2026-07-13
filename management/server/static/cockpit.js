@@ -61,7 +61,10 @@
 //   (Monatsraster ueber ALLE Zeitquellen) + GET /api/external (Vorgangsliste)
 //   + POST /api/external/create|defer|answer|close. Recht: external.view;
 //   Schreiben nur mit external.edit.
-// Version: v0.7.386 · Build: 386 · 2026-07-12
+//   395 = Ermittlungsergebnis (cockpit_results.js): Abdeckung JE FALL (auch
+//   die NIE bewerteten — die blinden Flecken sind die Hauptaussage) +
+//   Verteilung JE KRITERIUM (nie darueber hinweg). Recht: results.view.
+// Version: v0.7.395 · Build: 395 · 2026-07-12
 // =============================================================================
 
 (function () {
@@ -111,6 +114,12 @@
         // (wer freigeben darf, muss lesen duerfen). 'caps' = any-of; 'cap' bleibt
         // fuer den Scope-Tag/Platzhalter die Leitfaehigkeit.
         { id: 'reports',    cap: 'reports.approve',      caps: ['reports.approve', 'reports.review'], group: 'Verwaltung',     label: 'Berichts-Abnahme' },
+        // Ermittlungsergebnis (Build 395). Recht: results.view. Ein Ermittler
+        // mit Scope 'eigene' sieht die Sicht ebenfalls — er bekommt dann die
+        // Abdeckung SEINER Faelle; die fallUEBERGREIFENDE Verteilung (/stats)
+        // bleibt Scope 'alle' vorbehalten und wird in der Sicht BENANNT, statt
+        // als leere Flaeche zu erscheinen.
+        { id: 'results',    cap: 'results.view',         group: 'Auswertung',     label: 'Ermittlungsergebnis' },
         { id: 'stats',      cap: 'stats.export_sta',     group: 'Auswertung',     label: 'Statistiken (StA/Fuehrung)' },
         { id: 'workload',   cap: 'workload.view',        group: 'Auswertung',     label: 'Lastverteilung' },
         { id: 'capacity',   cap: 'capacity.edit',        group: 'Auswertung',     label: 'Kapazitaet' },
@@ -845,6 +854,48 @@
         });
     }
 
+    // loadResultsView: ERMITTLUNGSERGEBNIS (Build 395, Frontend zu 387/393).
+    //
+    //   GET /api/results/coverage -> Abdeckung JE FALL (auch nie bewertete)
+    //   GET /api/results/stats    -> Verteilung je Kriterium
+    //
+    //   Die Statistik ist Scope 'alle' vorbehalten. Ein Ermittler mit 'eigene'
+    //   bekommt dort 403 — das ist KEIN Fehler, sondern die Kapselung. Die
+    //   Sicht faengt das ab und BENENNT es (statt eine leere Flaeche zu
+    //   zeigen); die Abdeckung seiner eigenen Faelle sieht er vollstaendig.
+    //   Deshalb darf ein Statistik-Fehler den GANZEN Aufbau nicht abbrechen.
+    function loadResultsView(mainEl) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitResults : null;
+        if (!mod) {
+            renderError(mainEl, 'Ergebnis-Modul nicht geladen.');
+            return;
+        }
+
+        fetchJson('/api/results/coverage').then(function (cov) {
+            return fetchJson('/api/results/stats')
+                .then(function (st) { return { cov: cov, stats: st }; })
+                .catch(function (err) {
+                    log('Statistik nicht verfuegbar:', err.message);
+                    return { cov: cov, stats: null };
+                });
+        }).then(function (both) {
+            cleanupView();
+            var res = mod.renderResults(mainEl, both.cov, both.stats, {})
+                || { charts: [] };
+            state.table = res.table || null;
+            state.charts = res.charts || [];
+            log('Ergebnis-Sicht gerendert:', both.cov.faelle_gesamt, 'Faelle,',
+                both.cov.nie_bewertet, 'nie bewertet');
+        }).catch(function (err) {
+            cleanupView();
+            renderError(mainEl,
+                'Ergebnis-Auswertung konnte nicht geladen werden: '
+                + err.message);
+        });
+    }
+
     // loadCalendar: KALENDER & WIEDERVORLAGE (Build 386, Frontend zu 385).
     //
     //   ZWEI Abrufe, EINE Sicht:
@@ -1097,6 +1148,8 @@
             loadCases(mainEl);
         } else if (viewId === 'calendar') {
             loadCalendar(mainEl);
+        } else if (viewId === 'results') {
+            loadResultsView(mainEl);
         } else if (viewId === 'reports') {
             loadReports(mainEl);
         } else {
@@ -1140,6 +1193,11 @@
                 loadStats();
             } else if (state.activeId === 'assignment') {
                 loadAssignment();
+            } else if (state.activeId === 'results') {
+                // Eine Bewertung durch einen Ermittler (Nutzerinfo-Tab,
+                // Build 390) erzeugt einen audit_log-Beleg -> die Abdeckung
+                // aendert sich. Neu messen.
+                loadResultsView();
             } else if (state.activeId === 'calendar') {
                 // Ein audit_log-Ereignis kann ein Verschieben/Abschliessen
                 // durch eine andere Person sein -> Faelligkeiten neu messen.
