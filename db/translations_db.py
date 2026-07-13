@@ -263,23 +263,42 @@ class TranslationsDb:
     def get_meta(
         self, post_id: int, source: str = "posts"
     ) -> Optional["TranslationMetaRecord"]:
-        """Bericht-Metadaten zu einem Post: Original-Text + Sprache + Provenienz.
+        """Bericht-Metadaten zu einem Post/einer PM: Original-Text + Sprache + Provenienz.
 
-        Read-only aus trdb: posts_cleaned.clean_text (bereinigter Original-Text)
-        und source_lang; die Provenienz (model_used/created_at) als LEFT JOIN auf
-        translations (LIVE-Fallback; primaer wird sie am Anker eingefroren, Build
-        340). Gibt None zurueck, wenn der Post nicht in posts_cleaned steht oder
-        trdb nicht angebunden ist (GR1: keine stille Annahme).
-        Beleg: Bauplan Build 340/341 §5.2.
+        Read-only aus trdb. Die QUELLTABELLE haengt an 'source':
+          source='posts' -> trdb.posts_cleaned  (Forenbeitraege)
+          source='pms'   -> trdb.pms_cleaned    (private Nachrichten)
+
+        Warum getrennte Tabellen (Option B, 2026-07-14): Forenpost- und PM-IDs
+        stammen aus EIGENEN, ueberlappenden ID-Raeumen. In einer gemeinsamen
+        Tabelle mit post_id als alleinigem PK haette eine PM den gleichnamigen
+        Forenpost still ueberschrieben (GR1-Verstoss). Die grosse posts_cleaned
+        bleibt dadurch unveraendert.
+
+        Die Provenienz (model_used/created_at) kommt per LEFT JOIN aus
+        trdb.translations — dort ist die Quelle Teil des Schluessels
+        (post_id, source), daher wird hier zwingend auf source gefiltert.
+        (Primaer wird die Provenienz beim Markieren eingefroren, Build 340; dies
+        ist der LIVE-Fallback.)
+
+        Gibt None zurueck, wenn die Quelltabelle fehlt (z. B. pms_cleaned vor der
+        PM-Extraktion) oder der Datensatz nicht existiert — kein stiller Fehler:
+        der Aufrufer liefert dann found:false.
+        Beleg: Bauplan Build 340/341 §5.2; Bauplan PM-Uebersetzung Option B §4.3.
         """
         if not self._available:
             return None
+        if source not in ("posts", "pms"):
+            logger.warning("TranslationsDb.get_meta: unbekannte source %r", source)
+            return None
+
+        table = "trdb.posts_cleaned" if source == "posts" else "trdb.pms_cleaned"
         try:
             row = self._con.execute(
                 "SELECT pc.post_id AS post_id, pc.clean_text AS clean_text, "
                 "       pc.source_lang AS source_lang, "
                 "       t.model_used AS model_used, t.created_at AS created_at "
-                "FROM trdb.posts_cleaned pc "
+                f"FROM {table} pc "
                 "LEFT JOIN trdb.translations t "
                 "       ON t.post_id = pc.post_id AND t.source = ? "
                 "WHERE pc.post_id = ?",
@@ -296,8 +315,12 @@ class TranslationsDb:
                 created_at=row["created_at"],
             )
         except sqlite3.OperationalError as exc:
+            # Haeufigster Fall: pms_cleaned existiert noch nicht (PM-Extraktion
+            # noch nicht gelaufen). Kein Absturz, aber IMMER protokolliert (GR1).
             logger.warning(
-                "TranslationsDb.get_meta(%r) fehlgeschlagen: %s", post_id, exc
+                "TranslationsDb.get_meta(post_id=%r, source=%r) fehlgeschlagen "
+                "(Tabelle %s evtl. nicht vorhanden): %s",
+                post_id, source, table, exc,
             )
             return None
 

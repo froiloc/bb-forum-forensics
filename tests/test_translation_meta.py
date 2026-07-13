@@ -195,3 +195,72 @@ def test_get_module_by_key_ohne_spalte_ist_none(tmp_path):
     con.execute("ATTACH DATABASE ? AS tdb", (str(tpath),))
     tdb = TemplatesDb(con)
     assert tdb.get_module_by_key(MODULE_KEY) is None
+
+
+# =============================================================================
+# Build 398: get_meta waehlt die Quelltabelle nach source
+#   source='posts' -> trdb.posts_cleaned
+#   source='pms'   -> trdb.pms_cleaned   (Option B: getrennte Tabellen, weil
+#                     Forenpost- und PM-IDs ueberlappende ID-Raeume sind)
+# =============================================================================
+
+def _make_trdb_mit_pms(path):
+    con = sqlite3.connect(str(path))
+    con.execute(
+        "CREATE TABLE posts_cleaned ("
+        "  post_id INTEGER PRIMARY KEY, clean_text TEXT NOT NULL, source_lang TEXT)"
+    )
+    con.execute(
+        "CREATE TABLE pms_cleaned ("
+        "  post_id INTEGER PRIMARY KEY, clean_text TEXT NOT NULL, source_lang TEXT)"
+    )
+    con.execute(
+        "CREATE TABLE translations ("
+        "  post_id INTEGER NOT NULL, source TEXT NOT NULL DEFAULT 'posts', "
+        "  translated_text TEXT, model_used TEXT, created_at TEXT, "
+        "  PRIMARY KEY (post_id, source))"
+    )
+    # IDENTISCHE post_id 705985 in BEIDEN Quellen -> der kritische Fall
+    con.execute("INSERT INTO posts_cleaned VALUES (705985, 'ENGLISH FORUM POST', 'en')")
+    con.execute("INSERT INTO pms_cleaned   VALUES (705985, 'ENGLISH PRIVATE MESSAGE', 'ru')")
+    con.execute("INSERT INTO translations (post_id, source, translated_text, model_used, created_at) "
+                "VALUES (705985, 'posts', 'UEB FORENPOST', 'llama3', '2026-07-01')")
+    con.execute("INSERT INTO translations (post_id, source, translated_text, model_used, created_at) "
+                "VALUES (705985, 'pms', 'UEB PM', 'llama3-pm', '2026-07-14')")
+    con.commit()
+    con.close()
+
+
+def test_get_meta_trennt_post_und_pm_bei_gleicher_id(tmp_path):
+    p = tmp_path / "translations.db"
+    _make_trdb_mit_pms(p)
+    tdb = TranslationsDb(_open_trdb(p))
+
+    post = tdb.get_meta(705985, source="posts")
+    pm = tdb.get_meta(705985, source="pms")
+
+    assert post.original_text == "ENGLISH FORUM POST"
+    assert post.source_lang == "en"
+    assert post.model_used == "llama3"
+
+    assert pm.original_text == "ENGLISH PRIVATE MESSAGE"
+    assert pm.source_lang == "ru"
+    assert pm.model_used == "llama3-pm"
+    assert pm.created_at == "2026-07-14"
+
+
+def test_get_meta_pms_ohne_pms_cleaned_ist_none(tmp_path):
+    # pms_cleaned fehlt (PM-Extraktion noch nicht gelaufen) -> None, kein Absturz
+    p = tmp_path / "translations.db"
+    _make_trdb(p)  # legt NUR posts_cleaned + translations an
+    tdb = TranslationsDb(_open_trdb(p))
+    assert tdb.get_meta(705985, source="pms") is None
+    # posts funktioniert weiterhin
+    assert tdb.get_meta(705985, source="posts") is not None
+
+
+def test_get_meta_unbekannte_source_ist_none(tmp_path):
+    p = tmp_path / "translations.db"
+    _make_trdb_mit_pms(p)
+    tdb = TranslationsDb(_open_trdb(p))
+    assert tdb.get_meta(705985, source="unbekannt") is None
