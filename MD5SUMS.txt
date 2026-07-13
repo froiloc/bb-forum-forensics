@@ -1,4 +1,6 @@
-8e29e72914960c223fbee26b62f8fab8  build.json
-8f5797dd3a14242366f115b7337a6462  forensic_api/report.py
-e0245654c32f541f2a380c4cc33fb603  management/repair_block_types.py
-f9f31e9c220bc2b4f66ae6ac6f5769fe  tests/test_build392_blocktype.py
+f69e5a217e7b7297541c652cbe4e0769  build.json
+26a98c7748435d4dd0d5d7e5a95d7d64  management/results/coverage_repo.py
+c482cbfdb2333f5961db86d401134348  management/results/results_admin.py
+8646c420fb666903ec25e2a88d74a358  management/server/management_app.py
+065f2f622c9c2df96893bb97ee8270bd  tests/test_results_coverage.py
+aea33194e95f9651e745e92a22c3dbd3  management/Bauplan_Build393_ResultsCoverage_v0_1.md

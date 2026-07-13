@@ -88,7 +88,11 @@
 #         als Skalare -> /api/calendar antwortete durchgaengig mit 400,
 #         /api/external war latent kaputt. Alle Lesestellen laufen jetzt ueber
 #         _q1(). Die Tests pruefen die ECHTE Listenform.
-# Version: v0.7.391 · Build: 391 · 2026-07-12
+#   393 = ABDECKUNG / BLINDE FLECKEN. NEU GET /api/results/coverage (eine
+#         Zeile JE FALL aus 'cases' — auch fuer NIE bewertete Faelle; /stats
+#         sieht die gar nicht). /api/results/stats weist jetzt zusaetzlich
+#         'faelle_gesamt' und 'faelle_unbewertet' aus.
+# Version: v0.7.393 · Build: 393 · 2026-07-12
 # =============================================================================
 
 import hmac
@@ -147,6 +151,7 @@ from management.results.assessment_catalog_repo import (
 )
 from management.results.results_repo import ResultsError, ResultsRepo
 from management.results.priority_scorer import PriorityScorer
+from management.results.coverage_repo import CoverageRepo
 from db.coordinator_db import DEFAULT_SUPPORT_STALE_SEC
 from management.capacity.capacity_errors import CapacityError
 from management.workload.workload_repo import (
@@ -445,6 +450,8 @@ class ManagementApp:
             return self._results_catalog(person_id)
         if path == "/api/results/stats":
             return self._results_stats(person_id)
+        if path == "/api/results/coverage":
+            return self._results_coverage(person_id, query)
         if path == "/api/results":
             return self._results(person_id, query)
         if path.startswith("/static/"):
@@ -1577,6 +1584,12 @@ class ManagementApp:
         try:
             st = ResultsRepo(con).stats()
             cat = AssessmentCatalogRepo(con).full()
+            # Build 393: 'faelle' zaehlt nur die BEWERTETEN Faelle (die Sicht
+            # v_investigation_current kennt keine anderen). Ohne die
+            # Gesamtzahl daneben liest sich das wie eine Vollerhebung. Die
+            # Differenz IST der Befund — sie wird ausdruecklich ausgewiesen.
+            gesamt = int(con.execute(
+                "SELECT COUNT(*) FROM cases").fetchone()[0])
         except Exception as exc:                       # noqa: BLE001
             logger.exception("Bewertungs-Statistik fehlgeschlagen")
             return Response.json(500, {"error": "stats_failed",
@@ -1584,6 +1597,8 @@ class ManagementApp:
         finally:
             con.close()
 
+        st["faelle_gesamt"] = gesamt
+        st["faelle_unbewertet"] = max(0, gesamt - int(st.get("faelle", 0)))
         st["catalog"] = cat
         # Die Semantik-Warnung wandert MIT: 'ordinal' bedeutet bei
         # abuser_quality SCHWERE, bei location_quality PRAEZISION. Wer diese
@@ -1593,6 +1608,41 @@ class ManagementApp:
             "hinweg: 'ordinal' misst je nach Skala Praezision ODER Schwere "
             "(siehe quality_beschreibung).")
         return Response.json(200, st)
+
+    def _results_coverage(self, person_id: int, query) -> Response:
+        """
+        GET /api/results/coverage — ABDECKUNG JE FALL, inklusive der NIE
+        BEWERTETEN.
+
+        Warum ein eigener Endpunkt und nicht ein Feld in /stats:
+        /stats liest aus v_investigation_current und sieht damit NUR Faelle mit
+        mindestens einer Bewertung. Ein Fall, den niemand angefasst hat, ist
+        dort UNSICHTBAR — nicht als Luecke gezeigt, sondern schlicht nicht da.
+        Genau diese Faelle sind aber die BLINDEN FLECKEN, nach denen die
+        Chef-Ermittlerin sucht. CoverageRepo geht deshalb von 'cases' AUS und
+        joint die Bewertungen LINKS an (Build 393).
+
+        Scope: 'alle' -> alle Faelle; 'eigene' -> die zugewiesenen. Anders als
+        /stats gibt es hier KEIN 403 fuer 'eigene': "wie vollstaendig habe ICH
+        meine Faelle bewertet" ist eine legitime Eigenfrage (mc 2026-07-12).
+        """
+        case_ids, denied = self._results_scope(person_id, CAP_RESULTS_VIEW)
+        if denied is not None:
+            return denied
+
+        con = self._ro_con()
+        try:
+            repo = CoverageRepo(con)
+            cov = repo.coverage(user_ids=case_ids)
+            cov["summary"] = repo.summary(cov)
+            cov["scope"] = ("eigene" if case_ids is not None else "alle")
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Abdeckung nicht lesbar")
+            return Response.json(500, {"error": "coverage_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, cov)
 
     def _results_assess(self, person_id: int,
                         payload: Dict[str, Any]) -> Response:

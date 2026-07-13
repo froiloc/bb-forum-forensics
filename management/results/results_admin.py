@@ -33,6 +33,7 @@ from management.results.assessment_catalog_repo import (
     AssessmentCatalogRepo,
     CatalogError,
 )
+from management.results.coverage_repo import CoverageRepo
 from management.results.priority_scorer import PriorityScorer
 from management.results.results_repo import ResultsError, ResultsRepo
 
@@ -141,6 +142,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     p.add_argument("--user-id", type=int, required=True)
 
     sub.add_parser("stats", help="Auswertung ueber alle Faelle")
+    p = sub.add_parser(
+        "coverage",
+        help="ABDECKUNG je Fall — inkl. der NIE bewerteten (blinde Flecken)")
+    p.add_argument("--nur-luecken", action="store_true",
+                   help="nur Faelle mit unvollstaendiger Bewertung")
 
     args = ap.parse_args(argv)
     con = _con(_resolve_db_path(args))
@@ -187,9 +193,57 @@ def main(argv: Optional[List[str]] = None) -> int:
             print("=" * 78)
             return 0
 
+        if args.cmd == "coverage":
+            repo = CoverageRepo(con)
+            cov = repo.coverage()
+            summ = repo.summary(cov)
+            rows = cov["faelle"]
+            if args.nur_luecken:
+                rows = [r for r in rows
+                        if r["n_bewertet"] < r["n_kriterien"]]
+
+            print("%-7s %-16s %-12s %-9s %-6s %-7s %s"
+                  % ("Fall", "Benutzername", "Zustand", "Abdeckung", "Score",
+                     "beste", "fehlende Kriterien"))
+            print("-" * 110)
+            for r in rows:
+                fehlt = ("ALLE (nie bewertet)" if r["nie_bewertet"]
+                         else (", ".join(r["unbewertet"][:3])
+                               + (" ..." if len(r["unbewertet"]) > 3 else "")
+                               if r["unbewertet"] else "-"))
+                print("%-7s %-16s %-12s %-9s %-6s %-7s %s"
+                      % (r["user_id"], (r["username"] or "")[:16],
+                         r["status"], "%d/%d" % (r["n_bewertet"],
+                                                 r["n_kriterien"]),
+                         r["score"], r["n_beste"], fehlt))
+            print("-" * 110)
+            # DIE EIGENTLICHE AUSSAGE steht am Ende und ist umrahmt: eine
+            # Statistik ueber nur die bewerteten Faelle beantwortet die
+            # falsche Frage.
+            print("Faelle gesamt: %d | vollstaendig bewertet: %d | "
+                  "mittlere Abdeckung: %s"
+                  % (summ["faelle_gesamt"], summ["voll_bewertet"],
+                     summ["abdeckung_mittel"]))
+            if summ["nie_bewertet"]:
+                line = "=" * 78
+                print(line, file=sys.stderr)
+                print("BLINDE FLECKEN: %d von %d Faellen sind NOCH GAR NICHT "
+                      "bewertet." % (summ["nie_bewertet"],
+                                     summ["faelle_gesamt"]), file=sys.stderr)
+                print("Sie erscheinen in 'stats' UEBERHAUPT NICHT — dort "
+                      "zaehlen nur bewertete Faelle.", file=sys.stderr)
+                print(line, file=sys.stderr)
+                return 2      # Handlungsbedarf, damit ein Skript es sieht
+            return 0
+
         if args.cmd == "stats":
             st = ResultsRepo(con).stats()
-            print("Bewertete Faelle: %d\n" % st["faelle"])
+            gesamt = con.execute("SELECT COUNT(*) FROM cases").fetchone()[0]
+            # Ohne die Gesamtzahl daneben liest sich 'Bewertete Faelle: 19'
+            # wie eine Vollerhebung. Die DIFFERENZ ist der Befund.
+            print("Bewertete Faelle: %d von %d (%d noch gar nicht bewertet — "
+                  "siehe 'coverage')\n"
+                  % (st["faelle"], gesamt, max(0, gesamt - st["faelle"])))
             for code in sorted(st["criteria"]):
                 c = st["criteria"][code]
                 print("%s" % code)

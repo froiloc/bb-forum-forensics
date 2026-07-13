@@ -34,6 +34,7 @@ node_modules
 tools/validation/__pycache__
 
 *__pycache__
+*.pyc
 
 anon_html.py
 *.html
