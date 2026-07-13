@@ -2331,7 +2331,35 @@
   // ===========================================================================
   var PostMarkerModule = (function () {
     // Beleg: §18.1 Bauplan — Selektor: article.post[id^="p"]
-    var POST_SELECTOR = "article.post[id^='p']";
+    //
+    // Build 396 (Baustelle 3): Der Selektor deckt jetzt BEIDE Post-Layouts ab.
+    //   1. Vollansicht (Vollmitglieder): <article class="post" id="p<id>">
+    //      — die id haengt am <article>. Beleg: §18.1 Bauplan,
+    //        tests/integration/test_highlight_module.html:30.
+    //   2. Reduzierte Ansicht (Nicht-Vollmitglieder): <div class="box type0"
+    //      id="p<id>"> mit einem ANONYMEN inneren <article> (weder Klasse noch
+    //      id). Die id haengt hier am aeusseren <div class="box">.
+    //      Beleg: Projektgespraech 2026-07-13 + jsdom-Probe Build 396 —
+    //      closest("article.post[id^='p']") lieferte auf dem reduzierten Post
+    //      null, weshalb der Post NICHT markierbar war und folglich KEIN
+    //      Annotations-Marker in der Minimap erscheinen konnte.
+    // In beiden Faellen traegt der aeusserste Container die id p<zahl>; der
+    // Numerik-Guard in postElFromTarget() schuetzt vor Fehltreffern (z.B.
+    // id="preview"), da .box[id^='p'] sonst auch Nicht-Post-Container faenge.
+    var POST_SELECTOR = "article.post[id^='p'], div.box[id^='p']";
+
+    // Build 396: Reine, vitest-testbare Aufloesung Klick-Ziel -> Post-Container.
+    // Zentralisiert die bisher inline in _onPostClick liegende Logik und macht
+    // sie ohne Stub pruefbar (Muster: config.levenshtein). Liefert den
+    // Post-Container NUR, wenn dessen id exakt dem Muster p<zahl> entspricht —
+    // damit kann der erweiterte .box-Selektor keinen Nicht-Post-Container
+    // (id="preview", id="pagelinks", …) faelschlich als Post markieren.
+    function postElFromTarget(target) {
+      var el = (target && target.closest) ? target.closest(POST_SELECTOR) : null;
+      if (!el) return null;
+      if (!/^p\d+$/.test(el.id)) return null;
+      return el;
+    }
 
     // Build 337: Eine Annotation ist eine ECHTE Ganz-Post-Markierung nur, wenn sie
     // eine post_id hat UND KEINE selection. Text-/Uebersetzungs-Marken tragen seit
@@ -2357,9 +2385,9 @@
       // Post-Markierung überschrieben (selection=null, post_id gesetzt).
       if (AnnotationPopupModule.isOpen()) return;
 
-      // Nächsten Post-Container finden
-      var target = e.target;
-      var postEl = target.closest ? target.closest(POST_SELECTOR) : null;
+      // Nächsten Post-Container finden (Build 396: ueber postElFromTarget,
+      // deckt Vollansicht UND reduzierte Ansicht ab, inkl. Numerik-Guard).
+      var postEl = postElFromTarget(e.target);
       if (!postEl) return;
 
       // Prüfen ob Textmarkierung stattfindet (dann nicht als Post markieren)
@@ -2450,11 +2478,19 @@
     ForensicToolbar.events.on("viewmode:original",  clearAll);
     ForensicToolbar.events.on("viewmode:enhanced",  restoreAll);
 
-    return { clearAll: clearAll, restoreAll: restoreAll, isWholePostMark: _isWholePostMark };
+    return {
+      clearAll: clearAll,
+      restoreAll: restoreAll,
+      isWholePostMark: _isWholePostMark,
+      // Build 396: reine Hilfslogik fuer vitest (gegen echten Code, kein Stub).
+      _test: { postElFromTarget: postElFromTarget }
+    };
   })();
 
   // Build 337: Prädikat fuer vitest freilegen (Muster config.levenshtein).
   ForensicToolbar.config.isWholePostMark = PostMarkerModule.isWholePostMark;
+  // Build 396: Post-Container-Aufloesung fuer vitest freilegen.
+  ForensicToolbar.config.postMarkerHelpers = PostMarkerModule._test;
 
   // ===========================================================================
   // PHASE 6: AnnotationPopupModule — Schwebendes Editor-Feld
@@ -4987,6 +5023,11 @@
         ".post-content",
         ".post_body",
         ".message",
+        // Build 396: reduzierter Post (Nicht-Vollmitglieder) traegt den Text in
+        // <div class="cooked">. Ohne diesen Selektor fiel der Trace-Tooltip auf
+        // den generischen Autor-Fallback zurueck. Nach .postmsg eingeordnet,
+        // damit die Vollansicht (die .postmsg besitzt) unveraendert bleibt.
+        ".cooked",
       ];
       for (var i = 0; i < contentSelectors.length; i++) {
         var contentEl = el.querySelector(contentSelectors[i]);
@@ -6059,12 +6100,32 @@
 
     // ---- Injektion --------------------------------------------------------
 
+    // Build 396 (Baustelle 3): Flaggen-Anker robust ueber beide Post-Layouts.
+    //   1. Vollansicht (Vollmitglieder): <div class="postfoot"> ...
+    //      <div class="postfootright"><ul> — unveraendert Prioritaet 1, damit
+    //      sich die Vollansicht exakt wie bisher verhaelt.
+    //   2. Reduzierte Ansicht (Nicht-Vollmitglieder): KEIN .postfoot. Die
+    //      fussleistenaehnliche Aktions-Liste ist <section class="post-actions">
+    //      <ul> (enthaelt "Antworten"); ersatzweise die obere Aktionsleiste
+    //      <div class="rate-buttons"> … <ul class="post-buttons">.
+    //      Beleg: Projektgespraech 2026-07-13 + jsdom-Probe Build 396 —
+    //      ".postfootright ul" lieferte auf dem reduzierten Post null, weshalb
+    //      _injectButton abbrach und KEINE Uebersetzungs-Flagge erschien.
+    // Reine, vitest-testbare Funktion (kein DOM-Seiteneffekt).
+    function resolveFlagAnchor(container) {
+      return container.querySelector(".postfootright ul")
+          || container.querySelector(".post-actions ul")
+          || container.querySelector(".rate-buttons ul.post-buttons")
+          || null;
+    }
+
     function _injectButton(container, postId) {
       // Doppel-Injektion vermeiden (z.B. wiederholte _apply-Laeufe).
       if (container.querySelector(".aiw-translate-flag")) return;
-      var foot = container.querySelector(".postfootright ul");
+      var foot = resolveFlagAnchor(container);
       if (!foot) {
-        _dbg("[Translation] .postfootright ul fehlt fuer post", postId);
+        _dbg("[Translation] kein Flaggen-Anker (.postfootright/.post-actions/"
+             + ".rate-buttons) fuer post", postId);
         return;
       }
       // Wrapper-<span> analog zu den vorhandenen ul-Eintraegen; traegt .aux-part.
@@ -6170,7 +6231,12 @@
       panel.appendChild(body);
 
       // Direkt unter dem .postfoot einfuegen.
-      var foot = container.querySelector(".postfoot");
+      // Build 396: reduzierte Posts haben keinen .postfoot -> hinter die
+      // Aktions-Sektion (.post-actions) einfuegen; sonst ans Container-Ende.
+      // Fuer Vollansicht-Posts bleibt das Verhalten unveraendert (.postfoot
+      // wird zuerst gefunden).
+      var foot = container.querySelector(".postfoot")
+              || container.querySelector(".post-actions");
       if (foot && foot.parentNode) {
         if (foot.nextSibling) foot.parentNode.insertBefore(panel, foot.nextSibling);
         else foot.parentNode.appendChild(panel);
@@ -6256,7 +6322,9 @@
         postIdFromContainerId: postIdFromContainerId,
         isTranslated:          isTranslated,
         clickAction:           clickAction,
-        findTranslationMark:   _findTranslationMark
+        findTranslationMark:   _findTranslationMark,
+        // Build 396: Flaggen-Anker-Aufloesung (beide Post-Layouts).
+        resolveFlagAnchor:     resolveFlagAnchor
       }
     };
   })();
