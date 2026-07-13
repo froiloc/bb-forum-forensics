@@ -687,6 +687,54 @@ async function _loadReportImpl(report) {
  * @param {Array}  blocks    Geladene Blöcke (_currentBlocks)
  * @param {number} reportId
  */
+/**
+ * Baut den Payload fuer die Aktion 'save_block' (Build 394).
+ *
+ * WARUM ES DIESE FUNKTION GIBT:
+ *   Zwei Aufrufer (_resolveAutoPlaceholders und _onPlaceholderFieldSave) wollen
+ *   nur WERTE nachtragen und hatten deshalb bis Build 391 kein block_type
+ *   mitgesendet. Der Server nahm daraufhin 'paragraph' an und schrieb den Typ
+ *   eines TABLE- oder HEADER-Blocks still um — die Tabelle verschwand aus dem
+ *   Bericht. Build 392 haertet den Server; diese Fabrik sorgt dafuer, dass die
+ *   Regel im Client nur noch an EINER Stelle steht und nicht wieder in einem
+ *   einzelnen Aufrufer vergessen werden kann.
+ *
+ * REGEL:
+ *   - blockType bekannt  -> wird mitgesendet (ausdruecklich, nicht geraten)
+ *   - blockType unbekannt -> Feld wird WEGGELASSEN. Der Server behaelt dann den
+ *     gespeicherten Typ bei (Build 392). Weglassen ist sicher; ein geratenes
+ *     'paragraph' waere es nicht.
+ *
+ * Reine Funktion (kein DOM, kein Netz) — damit im Test direkt pruefbar.
+ * Beleg: Bugbefund Projektgespraech 2026-07-12, Build 392 §1
+ *
+ * @param {Object} args
+ * @param {string} args.blockId
+ * @param {string} [args.blockType]
+ * @param {Object} args.blockData
+ * @param {string} [args.owner]
+ * @param {Object} [args.placeholderValues]  -- wird zu placeholder_values_json
+ * @returns {Object} Payload fuer _docSend('save_block', ...)
+ */
+function _buildBlockSavePayload({ blockId, blockType, blockData, owner, placeholderValues }) {
+    const payload = {
+        block_id:   blockId,
+        block_data: blockData,
+        owner:      owner || '',
+    };
+    if (blockType) {
+        payload.block_type = blockType;
+    } else {
+        console.warn('[forensic] report_editor.js: _buildBlockSavePayload: block_type fuer',
+            blockId, 'unbekannt — Feld wird weggelassen, der Server behaelt den',
+            'gespeicherten Typ bei (Build 392).');
+    }
+    if (placeholderValues !== undefined && placeholderValues !== null) {
+        payload.placeholder_values_json = JSON.stringify(placeholderValues);
+    }
+    return payload;
+}
+
 async function _resolveAutoPlaceholders(blocks, reportId) {
     if (!blocks || !blocks.length || !reportId) return;
 
@@ -750,12 +798,22 @@ async function _resolveAutoPlaceholders(blocks, reportId) {
                 _dbg('_resolveAutoPlaceholders: kein Lock — Speichern übersprungen für Block', block.block_id);
                 continue;
             }
-            const saveResp = await _docSend('save_block', {
-                block_id:                block.block_id,
-                block_data:              blockData,
-                owner:                   block.author || '',
-                placeholder_values_json: JSON.stringify(existing),
-            });
+            // Build 394 — DATENVERLUST-FIX (Gegenstueck zu Build 392):
+            // block_type MUSS mitgesendet werden. Bis Build 391 fehlte er hier,
+            // und der Server setzte ihn deshalb auf 'paragraph' zurueck — ein
+            // TABLE-Block verlor damit seinen Typ, die Tabelle verschwand aus
+            // dem Bericht. Build 392 haertet den Server (bestehender Typ bleibt
+            // erhalten, wenn keiner mitgesendet wird); DIESE Zeile ist der
+            // zweite Riegel: der Client sagt ausdruecklich, was der Block ist,
+            // statt sich auf eine Server-Annahme zu verlassen.
+            // Beleg: Bugbefund Projektgespraech 2026-07-12, Build 392 §1
+            const saveResp = await _docSend('save_block', _buildBlockSavePayload({
+                blockId:           block.block_id,
+                blockType:         block.block_type,
+                blockData:         blockData,
+                owner:             block.author || '',
+                placeholderValues: existing,
+            }));
             if (saveResp !== null) {
                 // Lokalen Cache aktualisieren
                 block.placeholder_values_json = JSON.stringify(existing);
@@ -2055,12 +2113,23 @@ async function _onPlaceholderFieldSave(blockId, fieldName, value) {
     // Bug 2.120 Fix Build 236: report_id mitsenden damit _lock_guard
     // validate_lock(lock_id, report_id) bericht-spezifisch pruefen kann.
     // Beleg: Bugfix Build 236, Projektgespraech 2026-05-18
-    const resp = await _docSend('save_block', {
-        block_id:                blockId,
-        block_data:              blockDataObj,
-        owner:                   username,
-        placeholder_values_json: JSON.stringify(newValues),
-    });
+    // Build 394 — DATENVERLUST-FIX (Gegenstueck zu Build 392):
+    // block_type MUSS mitgesendet werden. Bis Build 391 fehlte er hier, und
+    // der Server nahm daraufhin 'paragraph' an. Folge: Sobald ein Ermittler
+    // ein Formularfeld ausfuellte, das in einem TABLE- oder HEADER-Block
+    // steckt — also z. B. die SPURENNUMMER im Spurenvermerk —, verlor der
+    // Block seinen Typ und die Tabelle bzw. die Ueberschrift verschwand beim
+    // naechsten Laden. Der Typ steht in _currentBlocks (block.block_type);
+    // ist der Block dort (noch) nicht bekannt, wird KEIN Typ gesendet und der
+    // Server behaelt den gespeicherten bei (Build 392) — geraten wird nie.
+    // Beleg: Bugbefund Projektgespraech 2026-07-12, Build 392 §1
+    const resp = await _docSend('save_block', _buildBlockSavePayload({
+        blockId:           blockId,
+        blockType:         block?.block_type,
+        blockData:         blockDataObj,
+        owner:             username,
+        placeholderValues: newValues,
+    }));
     // Bug 2.25 Fix Build 286: _docSend() gibt geparste JSON-Daten zurueck
     // (via _sendRequest), kein Response-Objekt. resp.ok ist undefined — die
     // alte Pruefung `resp?.ok` war immer false, _refreshChipsInBlock wurde
@@ -2106,7 +2175,36 @@ function _refreshChipsInBlock(blockId, values) {
         const name     = chip.dataset.chipName;
         const chipType = chip.dataset.chipType;
 
-        // Nur m: und o: Chips rendern Formularwerte
+        // ------------------------------------------------------------------
+        // Build 394: AUCH a:-Chips aktualisieren.
+        //
+        // BISHER stieg diese Funktion bei a:-Chips aus ('Nur m: und o: Chips
+        // rendern Formularwerte'). _resolveAutoPlaceholders loeste die Werte
+        // zwar korrekt auf UND speicherte sie — der Chip im DOM blieb aber
+        // unveraendert. Der Ermittler sah nach dem Einfuegen einer Vorlage
+        // weiterhin die rohen Platzhalternamen und musste erst 'Aktualisieren'
+        // klicken (was den Editor komplett neu laedt und dabei hydriert).
+        // Genau das war das beobachtete Symptom 1.
+        //
+        // a:-Werte liegen in placeholder_values_json unter dem Schluessel
+        // 'auto:<query_id>' (Bug 2.53 Fix Build 138) — nicht unter dem blanken
+        // Namen. Deshalb der Praefix.
+        // Beleg: Bugbefund Projektgespraech 2026-07-12
+        // ------------------------------------------------------------------
+        if (chipType === 'a') {
+            const autoVal = values['auto:' + name];
+            if (autoVal === undefined || autoVal === null || String(autoVal) === '') {
+                // Kein aufgeloester Wert: Chip so lassen, wie er ist. Er zeigt
+                // dann weiterhin seinen Default bzw. den Query-Namen — das ist
+                // ehrlicher als ihn zu leeren.
+                return;
+            }
+            // Klassen bleiben (ph-chip-auto = gruen); nur der Text wird gesetzt.
+            chip.textContent = String(autoVal);
+            return;
+        }
+
+        // Ab hier: nur noch m: und o: (Formularwerte)
         if (chipType !== 'm' && chipType !== 'o') return;
 
         const val      = values[name];
@@ -4067,6 +4165,11 @@ _dbg('report_editor.js: Exports auf window gesetzt (Build wird async geladen)');
 // Bug 2.104 Fix Build 204: isReloading() fuer module_panel._insertModule.
 // Beleg: Bugfix Build 204, Projektgespraech 2026-05-17
 window.ReportEditor = window.ReportEditor || {};
+// Build 394: Export fuer die Regressionstests. Beide Funktionen tragen die
+// Regeln, deren Verletzung den Datenverlust ausgeloest hat — sie muessen gegen
+// den ECHTEN Code geprueft werden, nicht gegen einen Nachbau ('gruen aber tot').
+window.ReportEditor._buildBlockSavePayload = _buildBlockSavePayload;
+window.ReportEditor._refreshChipsInBlock   = _refreshChipsInBlock;
 /** Gibt true zurueck wenn _reloadEditorContent() gerade aktiv ist. */
 window.ReportEditor.isReloading = function() { return _isReloading; };
 /**
