@@ -422,6 +422,125 @@ class MentoringNotesTests(unittest.TestCase):
         r = app.dispatch(2, "/api/mentoring/notes", {})
         self.assertEqual(json.loads(r.body)["count"], 0)
 
+    # ============================================ BLOCK 2 (Build 405): Schreiben
+    # Die Schreibpfade werden ueber dispatch_write() geprueft (der Token-Check
+    # liegt davor im HTTP-Handler). app._rw_con() schreibt in DIESELBE Datei;
+    # self.con (WAL) sieht die committeten AEnderungen.
+
+    # ================================================================== MN12
+    def test_mn12_endpoint_create(self):
+        app = self._app()
+        # Mueller legt auf SEINEM Board an.
+        r = app.dispatch_write(2, "/api/mentoring/note/create", {
+            "title": "Rueckruf klaeren", "body": "Details",
+            "color": "blau", "tags": ["ruf", "ruf", " ruf "],
+            "subject_person_id": 3})
+        self.assertEqual(r.status, 200)
+        nid = json.loads(r.body)["note_id"]
+        rec = self.repo.get(nid)
+        self.assertEqual(rec.owner_id, 2)          # eigenes Board
+        self.assertEqual(rec.color, "blau")
+        self.assertEqual(rec.tags, ("ruf",))       # normalisiert
+
+        # Leere Ueberschrift -> 400.
+        r = app.dispatch_write(2, "/api/mentoring/note/create",
+                               {"title": "   "})
+        self.assertEqual(r.status, 400)
+        # Ungueltige tags-Form -> 400.
+        r = app.dispatch_write(2, "/api/mentoring/note/create",
+                               {"title": "x", "tags": "nichtliste"})
+        self.assertEqual(r.status, 400)
+        # Schmitz (kein Recht) -> 403.
+        r = app.dispatch_write(3, "/api/mentoring/note/create",
+                               {"title": "x"})
+        self.assertEqual(r.status, 403)
+
+    # ================================================================== MN13
+    def test_mn13_endpoint_update_ownership(self):
+        app = self._app()
+        own = self.repo.create(owner_id=2, title="Muellers Notiz",
+                               actor_id=2)["note_id"]
+        chef = self.repo.create(owner_id=1, title="Chefin-Notiz",
+                                actor_id=1)["note_id"]
+
+        # Mueller aendert seine eigene Notiz -> 200.
+        r = app.dispatch_write(2, "/api/mentoring/note/update",
+                               {"id": own, "status": "erledigt"})
+        self.assertEqual(r.status, 200)
+        self.assertEqual(self.repo.get(own).status, "erledigt")
+
+        # Mueller ('eigene') an FREMDER (Chefin-)Notiz -> 403.
+        r = app.dispatch_write(2, "/api/mentoring/note/update",
+                               {"id": chef, "title": "Kaperversuch"})
+        self.assertEqual(r.status, 403)
+        self.assertEqual(self.repo.get(chef).title, "Chefin-Notiz")
+
+        # Chefin ('alle') darf ein FREMDES Board pflegen -> 200.
+        r = app.dispatch_write(1, "/api/mentoring/note/update",
+                               {"id": own, "color": "gruen"})
+        self.assertEqual(r.status, 200)
+        self.assertEqual(self.repo.get(own).color, "gruen")
+
+        # Unbekannte Notiz -> 404.
+        r = app.dispatch_write(1, "/api/mentoring/note/update",
+                               {"id": 99999, "color": "gelb"})
+        self.assertEqual(r.status, 404)
+
+    # ================================================================== MN14
+    def test_mn14_endpoint_archive_restore(self):
+        app = self._app()
+        nid = self.repo.create(owner_id=2, title="zu archivieren",
+                               actor_id=2)["note_id"]
+
+        r = app.dispatch_write(2, "/api/mentoring/note/archive", {"id": nid})
+        self.assertEqual(r.status, 200)
+        seq = json.loads(r.body)["audit_seq"]
+        self.assertEqual(self._audit(seq)[0], "mentoring_note_archived")
+        self.assertTrue(self.repo.get(nid).is_archived)
+
+        r = app.dispatch_write(2, "/api/mentoring/note/restore", {"id": nid})
+        self.assertEqual(r.status, 200)
+        self.assertEqual(self._audit(json.loads(r.body)["audit_seq"])[0],
+                         "mentoring_note_restored")
+        self.assertFalse(self.repo.get(nid).is_archived)
+
+    # ================================================================== MN15
+    def test_mn15_endpoint_duplicate(self):
+        app = self._app()
+        src = self.repo.create(owner_id=2, title="Vorlage",
+                               tags=["x"], actor_id=2)["note_id"]
+        r = app.dispatch_write(2, "/api/mentoring/note/duplicate", {"id": src})
+        self.assertEqual(r.status, 200)
+        dup = json.loads(r.body)["note_id"]
+        self.assertEqual(self.repo.get(dup).title, "Vorlage (Kopie)")
+
+        # Fremdes Board ohne Scope 'alle' -> 403.
+        chef = self.repo.create(owner_id=1, title="Chef", actor_id=1)["note_id"]
+        r = app.dispatch_write(2, "/api/mentoring/note/duplicate", {"id": chef})
+        self.assertEqual(r.status, 403)
+
+    # ================================================================== MN16
+    def test_mn16_endpoint_reorder(self):
+        app = self._app()
+        a = self.repo.create(owner_id=2, title="A", actor_id=2)["note_id"]
+        b = self.repo.create(owner_id=2, title="B", actor_id=2)["note_id"]
+
+        r = app.dispatch_write(2, "/api/mentoring/note/reorder",
+                               {"ids": [b, a]})
+        self.assertEqual(r.status, 200)
+        self.assertEqual([n.id for n in self.repo.list_notes(owner_id=2)],
+                         [b, a])
+
+        # ids keine Liste -> 400.
+        r = app.dispatch_write(2, "/api/mentoring/note/reorder",
+                               {"ids": "nope"})
+        self.assertEqual(r.status, 400)
+
+        # Mueller ('eigene') will FREMDES Board (owner_id=1) umsortieren -> 403.
+        r = app.dispatch_write(2, "/api/mentoring/note/reorder",
+                               {"owner_id": 1, "ids": []})
+        self.assertEqual(r.status, 403)
+
 
 if __name__ == "__main__":
     unittest.main()

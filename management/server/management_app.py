@@ -1771,6 +1771,251 @@ class ManagementApp:
             "notes": items,
         })
 
+    # -------------------------------------- Betreuungs-Notizen: Schreiben (405)
+    #   Die Schreibpfade sind der ZWEITE Baustein (Block 2). Muster exakt wie die
+    #   externen Vorgaenge: Recht (mentoring_notes.edit) + Scope -> Eigentums-
+    #   pruefung -> Repo ueber CoordinatorWriter (jede AEnderung auditiert). Der
+    #   Token-Check (X-AIW-Token) liegt im HTTP-Handler VOR dispatch_write.
+    def _notes_writer(self, con: sqlite3.Connection) -> MentoringNotesRepo:
+        return MentoringNotesRepo(con, CoordinatorWriter(con, AuditLog(con)))
+
+    def _notes_edit_scope(self, person_id: int):
+        """
+        Prueft das Schreibrecht. -> (scope, None) | (None, Response).
+        scope: 'alle' (Vertretung/Aufsicht darf fremde Boards pflegen) |
+        'eigene'/None (nur das eigene Board).
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_MENTORING_NOTES_EDIT):
+            return None, self._forbidden(CAP_MENTORING_NOTES_EDIT)
+        return policy.scope(CAP_MENTORING_NOTES_EDIT), None
+
+    def _note_id_from(self, payload: Dict[str, Any]):
+        """Validiert die Notiz-ID. -> (note_id, None) | (None, Response)."""
+        try:
+            return int(payload.get("id")), None
+        except (TypeError, ValueError):
+            return None, Response.json(400, {
+                "error": "bad_request", "detail": "id fehlt/ungueltig."})
+
+    def _may_edit_note(self, repo: MentoringNotesRepo, note_id: int,
+                       person_id: int, scope):
+        """
+        Eigentumspruefung: wer NICHT Scope 'alle' hat, darf nur das EIGENE
+        Board aendern. -> None (erlaubt) | Response (404/403).
+        """
+        rec = repo.get(note_id)
+        if rec is None:
+            return Response.json(404, {"error": "not_found",
+                                       "note_id": note_id})
+        if scope != "alle" and rec.owner_id != person_id:
+            return Response.json(403, {
+                "error": "forbidden", "capability": CAP_MENTORING_NOTES_EDIT,
+                "detail": "Fremdes Board (Scope 'alle' erforderlich)."})
+        return None
+
+    def _note_create(self, person_id: int,
+                     payload: Dict[str, Any]) -> Response:
+        scope, denied = self._notes_edit_scope(person_id)
+        if denied is not None:
+            return denied
+        # owner_id = eigene Person; nur Scope 'alle' darf ein FREMDES Board
+        # bestuecken (z. B. Vertretung legt fuer die Chefin an).
+        owner_id = person_id
+        if scope == "alle" and payload.get("owner_id") is not None:
+            try:
+                owner_id = int(payload["owner_id"])
+            except (TypeError, ValueError):
+                return Response.json(400, {"error": "bad_request",
+                                           "detail": "owner_id ungueltig."})
+
+        tags = payload.get("tags")
+        if tags is not None and not isinstance(tags, list):
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": "tags muss eine Liste sein."})
+
+        con = self._rw_con()
+        try:
+            res = self._notes_writer(con).create(
+                owner_id=owner_id,
+                title=str(payload.get("title", "")),
+                body=str(payload.get("body", "") or ""),
+                color=str(payload.get("color", note_colors.DEFAULT_COLOR)),
+                status=str(payload.get("status", "offen")),
+                pinned=bool(payload.get("pinned", False)),
+                subject_person_id=payload.get("subject_person_id"),
+                tags=tags,
+                actor_id=person_id,
+            )
+        except MentoringNotesError as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Anlage einer Betreuungs-Notiz fehlgeschlagen")
+            return Response.json(500, {"error": "create_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, **res})
+
+    def _note_update(self, person_id: int,
+                     payload: Dict[str, Any]) -> Response:
+        scope, denied = self._notes_edit_scope(person_id)
+        if denied is not None:
+            return denied
+        note_id, err = self._note_id_from(payload)
+        if err is not None:
+            return err
+
+        # Nur ausdruecklich uebergebene Felder aendern: der Repo-Sentinel
+        # _UNSET unterscheidet "nicht uebergeben" von "auf null gesetzt".
+        # Wir bauen die kwargs allein aus im Payload VORHANDENEN Schluesseln.
+        fields = ("title", "body", "color", "status", "pinned",
+                  "subject_person_id", "tags")
+        kwargs: Dict[str, Any] = {}
+        for key in fields:
+            if key in payload:
+                kwargs[key] = payload[key]
+        if "tags" in kwargs and kwargs["tags"] is not None \
+                and not isinstance(kwargs["tags"], list):
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": "tags muss eine Liste sein."})
+
+        con = self._rw_con()
+        try:
+            repo = self._notes_writer(con)
+            forbid = self._may_edit_note(repo, note_id, person_id, scope)
+            if forbid is not None:
+                return forbid
+            seq = repo.update(note_id, actor_id=person_id, **kwargs)
+        except MentoringNotesError as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("AEnderung einer Betreuungs-Notiz fehlgeschlagen")
+            return Response.json(500, {"error": "update_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, "note_id": note_id,
+                                   "audit_seq": seq})
+
+    def _note_archive(self, person_id: int,
+                      payload: Dict[str, Any]) -> Response:
+        return self._note_flag_change(person_id, payload, archive=True)
+
+    def _note_restore(self, person_id: int,
+                      payload: Dict[str, Any]) -> Response:
+        return self._note_flag_change(person_id, payload, archive=False)
+
+    def _note_flag_change(self, person_id: int, payload: Dict[str, Any], *,
+                          archive: bool) -> Response:
+        """Gemeinsamer Pfad fuer archive()/restore() (Soft-Delete-Flag)."""
+        scope, denied = self._notes_edit_scope(person_id)
+        if denied is not None:
+            return denied
+        note_id, err = self._note_id_from(payload)
+        if err is not None:
+            return err
+
+        con = self._rw_con()
+        try:
+            repo = self._notes_writer(con)
+            forbid = self._may_edit_note(repo, note_id, person_id, scope)
+            if forbid is not None:
+                return forbid
+            if archive:
+                seq = repo.archive(note_id, actor_id=person_id)
+            else:
+                seq = repo.restore(note_id, actor_id=person_id)
+        except MentoringNotesError as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Archiv-Statuswechsel fehlgeschlagen")
+            return Response.json(500, {"error": "archive_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, "note_id": note_id,
+                                   "audit_seq": seq})
+
+    def _note_duplicate(self, person_id: int,
+                        payload: Dict[str, Any]) -> Response:
+        scope, denied = self._notes_edit_scope(person_id)
+        if denied is not None:
+            return denied
+        note_id, err = self._note_id_from(payload)
+        if err is not None:
+            return err
+
+        con = self._rw_con()
+        try:
+            repo = self._notes_writer(con)
+            # Dupliziert wird auf DASSELBE Board wie das Original — der
+            # Aufrufer muss dieses Board pflegen duerfen.
+            forbid = self._may_edit_note(repo, note_id, person_id, scope)
+            if forbid is not None:
+                return forbid
+            res = repo.duplicate(note_id, actor_id=person_id)
+        except MentoringNotesError as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Duplizieren einer Betreuungs-Notiz fehlgeschlagen")
+            return Response.json(500, {"error": "duplicate_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, **res})
+
+    def _note_reorder(self, person_id: int,
+                      payload: Dict[str, Any]) -> Response:
+        scope, denied = self._notes_edit_scope(person_id)
+        if denied is not None:
+            return denied
+        # owner_id des umzusortierenden Boards: eigenes, bei Scope 'alle' auch
+        # ein fremdes (dann explizit anzugeben).
+        owner_id = person_id
+        if payload.get("owner_id") is not None:
+            try:
+                owner_id = int(payload["owner_id"])
+            except (TypeError, ValueError):
+                return Response.json(400, {"error": "bad_request",
+                                           "detail": "owner_id ungueltig."})
+            if scope != "alle" and owner_id != person_id:
+                return Response.json(403, {
+                    "error": "forbidden",
+                    "capability": CAP_MENTORING_NOTES_EDIT,
+                    "detail": "Fremdes Board (Scope 'alle' erforderlich)."})
+
+        ids = payload.get("ids")
+        if not isinstance(ids, list):
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": "ids muss eine Liste sein."})
+        try:
+            ids = [int(i) for i in ids]
+        except (TypeError, ValueError):
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "ids muss eine Liste von Ganzzahlen sein."})
+
+        con = self._rw_con()
+        try:
+            seq = self._notes_writer(con).reorder(
+                owner_id, ids, actor_id=person_id)
+        except MentoringNotesError as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Umsortieren des Boards fehlgeschlagen")
+            return Response.json(500, {"error": "reorder_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, "owner_id": owner_id,
+                                   "count": len(ids), "audit_seq": seq})
+
     def _require_assignment_scope(self, person_id: int):
         policy = self.resolve_policy(person_id)
         if not policy.can(CAP_ASSIGNMENT):
@@ -1816,6 +2061,19 @@ class ManagementApp:
             return self._external_close(person_id, payload)
         if path == "/api/results/assess":
             return self._results_assess(person_id, payload)
+        # Build 405 (Block 2): Betreuungs-Notizen — auditierte Schreibpfade.
+        if path == "/api/mentoring/note/create":
+            return self._note_create(person_id, payload)
+        if path == "/api/mentoring/note/update":
+            return self._note_update(person_id, payload)
+        if path == "/api/mentoring/note/archive":
+            return self._note_archive(person_id, payload)
+        if path == "/api/mentoring/note/restore":
+            return self._note_restore(person_id, payload)
+        if path == "/api/mentoring/note/duplicate":
+            return self._note_duplicate(person_id, payload)
+        if path == "/api/mentoring/note/reorder":
+            return self._note_reorder(person_id, payload)
         return Response.json(404, {"error": "not_found", "path": path})
 
     # ------------------------------------------------------------- Schreiben
