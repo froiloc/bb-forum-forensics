@@ -629,14 +629,30 @@ class EvidenceDb:
 
     _LOCK_TIMEOUT_SEC: int = 90  # Sekunden bis automatischer Lock-Ablauf
 
-    def __init__(self, con: sqlite3.Connection, db_path: Optional[str] = None) -> None:
+    def __init__(self, con: sqlite3.Connection, db_path: Optional[str] = None,
+                 read_only: bool = False) -> None:
         self._con = con
         self._con.row_factory = sqlite3.Row
         # Pfad zur DB-Datei fuer get_lock() (eigene Connection, Thread-Safety).
         # Beleg: Build 098, Thread-Safety-Fix fuer SSE-Thread
         self._db_path: Optional[str] = db_path
-        self._setup_schema()
-        self._migrate_schema()
+        # Build 410 (SF-1, Vermaehlung B6xB7): read_only-Konstruktion fuer den
+        # Management-Lesepfad (Berichts-Vorschau Lektorat/Chef-Freigabe).
+        # Wird die evidence_<uid>.db NUR zum Lesen geoeffnet (URI 'mode=ro'),
+        # DUERFEN Schema-Setup und Migration NICHT laufen:
+        #   1) DDL/ALTER wuerde auf einer mode=ro-Verbindung mit
+        #      'attempt to write a readonly database' scheitern;
+        #   2) es verstiesse gegen den Migrationsvorbehalt (ab 01.07.2026) und
+        #      die Grundregel "nie zwei Schreiber pro Datei" (das Management
+        #      liegt neben dem live schreibenden Ermittler-Webserver auf dem
+        #      geteilten ./data/-Verzeichnis).
+        # Auf einer produktiv bereits migrierten DB sind Setup/Migration ohnehin
+        # No-ops -> das Ueberspringen ist verlustfrei. Default False haelt das
+        # bestehende (schreibende) Verhalten fuer den Webserver unveraendert.
+        self._read_only = read_only
+        if not read_only:
+            self._setup_schema()
+            self._migrate_schema()
         self._lock_change_event = threading.Event()
 
     # ------------------------------------------------------------------

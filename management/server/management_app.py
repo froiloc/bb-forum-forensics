@@ -275,7 +275,9 @@ class ManagementApp:
                  evidence_dir: Optional[str] = None,
                  approved_db: Optional[str] = None,
                  forensic_dir: Optional[str] = None,
-                 assets_dir: Optional[str] = None) -> None:
+                 assets_dir: Optional[str] = None,
+                 templates_db: Optional[str] = None,
+                 default_db: Optional[str] = None) -> None:
         self._db_path = db_path
         # Statische Auslieferung gekapselt (Grundregel 10). static_dir ist im
         # Test injizierbar; PROD nutzt STATIC_DIR neben diesem Modul.
@@ -291,6 +293,13 @@ class ManagementApp:
             "paths.forensic_db_dir", "./data/forensic/")
         self._assets_dir = assets_dir or self._cfg_path(
             "paths.assets_db_dir", "./data/assets/")
+        # Build 410 (SF-1): Pfade fuer die read-only Berichts-Vorschau.
+        # templates.db (tdb) traegt die {{a:}}-Query-Definitionen; default.db
+        # (ddb) dient nur dem Asset-Fallback. Beide injizierbar (Test).
+        self._templates_db = templates_db or self._cfg_path(
+            "paths.templates_db", "./data/templates.db")
+        self._default_db = default_db or self._cfg_path(
+            "paths.default_db", "./data/default.db")
         # SCHREIB-TOKEN (Build 372): pro Serverlauf zufaellig. Wird nur ueber
         # den authentifizierten GET /api/whoami ausgeliefert und muss bei JEDEM
         # Schreibzugriff im Header 'X-AIW-Token' mitgeschickt werden. Schuetzt
@@ -449,6 +458,8 @@ class ManagementApp:
             return self._reports(person_id, query)
         if path == "/api/report/verify":
             return self._report_verify(person_id, query)
+        if path == "/api/report/render":
+            return self._report_render(person_id, query)
         if path == "/api/cases/detect":
             return self._cases_detect(person_id)
         if path == "/api/external":
@@ -968,6 +979,132 @@ class ManagementApp:
             result["count"] = len(result["reports"])
         result["scope"] = scope
         return Response.json(200, result)
+
+    # =====================================================================
+    # BERICHTS-VORSCHAU (Build 410, SF-1 — Vermaehlung B6xB7).
+    #   GET /api/report/render?user_id=<uid>[&report_id=<rid>]
+    #   Read-only HTML-Vorschau des Berichtstexts fuer Lektorat (W4) und
+    #   Chef-Freigabe (W5). Byte-identisch zum Ermittler-Export, weil derselbe
+    #   DB-neutrale Renderer (report_render) auf denselben Quellen laeuft.
+    # =====================================================================
+    def _case_field(self, uid: int, column: str):
+        """Liest EIN Feld der cases-Zeile (coordinator.db, read-only)."""
+        con = self._ro_con()
+        try:
+            row = con.execute(
+                "SELECT %s AS v FROM cases WHERE user_id = ?" % column, (uid,)
+            ).fetchone()
+            return row["v"] if row is not None else None
+        except sqlite3.Error:
+            return None
+        finally:
+            con.close()
+
+    def _report_render(self, person_id: int,
+                       query: Optional[Dict[str, List[str]]]) -> Response:
+        """
+        Liefert die read-only HTML-Vorschau EINES Berichts.
+
+        RECHTE: reports.review ODER reports.approve ('approve' impliziert
+        'review'; identische Regel wie /api/reports und /api/report/verify).
+        Scope 'eigene' -> nur eigene zugewiesene Faelle; sonst 403.
+
+        Quelle: report_render.ReportSource + HtmlRenderer ueber ein
+        ausschliesslich read-only geoeffnetes ReadonlyReportBundle. Es wird
+        NICHTS in die evidence_<uid>.db geschrieben (Migrationsvorbehalt,
+        "nie zwei Schreiber pro Datei").
+        """
+        policy = self.resolve_policy(person_id)
+        can_review = policy.can(CAP_REPORTS_REVIEW)
+        can_approve = policy.can(CAP_REPORTS_APPROVE)
+        if not (can_review or can_approve):
+            return self._forbidden(CAP_REPORTS_REVIEW)
+
+        scopes = []
+        if can_review:
+            scopes.append(policy.scope(CAP_REPORTS_REVIEW))
+        if can_approve:
+            scopes.append(policy.scope(CAP_REPORTS_APPROVE))
+        scope = "alle" if "alle" in scopes else (scopes[0] if scopes else None)
+
+        q = query or {}
+        uid_raw = (q.get("user_id") or [None])[0]
+        if uid_raw is None:
+            return Response.json(400, {"error": "user_id_required"})
+        try:
+            uid = int(uid_raw)
+        except (TypeError, ValueError):
+            return Response.json(400, {"error": "user_id_invalid",
+                                       "value": uid_raw})
+
+        report_id: Optional[int] = None
+        rid_raw = (q.get("report_id") or [None])[0]
+        if rid_raw not in (None, ""):
+            try:
+                report_id = int(rid_raw)
+            except (TypeError, ValueError):
+                return Response.json(400, {"error": "report_id_invalid",
+                                           "value": rid_raw})
+
+        # Scope 'eigene': der Fall muss dem Anfragenden zugewiesen sein.
+        if scope != "alle":
+            if self._case_field(uid, "assigned_to") != person_id:
+                return self._forbidden(CAP_REPORTS_REVIEW)
+
+        # Lazy-Import: das Renderer-Paket nur bei Bedarf laden.
+        from report_render.report_source import ReportSource, NoReportError
+        from report_render.html_renderer import HtmlRenderer
+        from management.reports.readonly_report_bundle import (
+            ReadonlyReportBundle,
+        )
+
+        try:
+            bundle = ReadonlyReportBundle(
+                evidence_dir=self._evidence_dir,
+                forensic_dir=self._forensic_dir,
+                assets_dir=self._assets_dir,
+                templates_db=self._templates_db,
+                default_db=self._default_db,
+                uid=uid,
+            ).open()
+        except FileNotFoundError as exc:
+            return Response.json(404, {"error": "evidence_not_found",
+                                       "user_id": uid, "detail": str(exc)})
+
+        try:
+            username = self._case_field(uid, "username") or ("uid_%d" % uid)
+            source = ReportSource(
+                evidence=bundle.evidence,
+                templates=bundle.templates,
+                assets=bundle.assets,
+                forensic_con=bundle.connection,
+                uid=uid,
+                username=str(username),
+                generated_at=int(time.time()),   # Zeitstempel von aussen (Test/Determinismus)
+            )
+            doc = source.build(report_id)
+            body = HtmlRenderer().render(doc)
+        except NoReportError as exc:
+            return Response.json(404, {"error": "no_report",
+                                       "user_id": uid, "detail": str(exc)})
+        except Exception as exc:  # pragma: no cover - defensiver 500
+            logger.exception(
+                "Berichts-Render fehlgeschlagen (uid=%s, report_id=%s)",
+                uid, report_id,
+            )
+            return Response.json(500, {"error": "render_failed",
+                                       "detail": str(exc)})
+        finally:
+            bundle.close()
+
+        logger.info(
+            "Berichts-Vorschau: uid=%d, report_id=%s, %d Bloecke, %d Warnungen,"
+            " %d Bytes (person=%d, scope=%s)",
+            uid, doc.report_id, len(doc.blocks), len(doc.warnings), len(body),
+            person_id, scope,
+        )
+        return Response(status=200, content_type="text/html; charset=utf-8",
+                        body=body)
 
     # =====================================================================
     # BERICHTS-VERSIEGELUNG (Build 377).

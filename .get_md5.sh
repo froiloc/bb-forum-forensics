@@ -35,7 +35,7 @@ then
 fi
 
 # Create a base64 encoded version of the archive
-[ -f "${zip}" ] && base64 < "${zip}" > "${zip%*.zip}.base64"
+#[ -f "${zip}" ] && base64 < "${zip}" > "${zip%*.zip}.base64"
 
-echo ""
-echo "Created '${zip%*.zip}.base64'. Please upload to claude.ai."
+#echo ""
+#echo "Created '${zip%*.zip}.base64'. Please upload to claude.ai."
