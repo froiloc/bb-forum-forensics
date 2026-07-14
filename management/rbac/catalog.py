@@ -55,6 +55,11 @@ ROLES: Tuple[Role, ...] = (
     Role("admin", "Plattform-Administration"),
     Role("lector", "Gegenleser:in (Bericht vor StA-Uebergabe)"),
     Role("searchagent", "Recherche mit Volltextsuche"),
+    # --- Build 420 (SF-4, Vermaehlung B6xB7): Authoring-Werkzeuge W1/W2/W3 ---
+    #   Redakteur:in pflegt die Berichtsvorlagen/Bausteine/Platzhalter in
+    #   templates.db (auditiert ueber den TemplatesWriter, Build 421). Die
+    #   Chef-Ermittlerin erhaelt das Recht ueblicherweise ebenfalls (Grant).
+    Role("template_editor", "Redakteur:in (Berichtsvorlagen/Bausteine)"),
 )
 
 
@@ -126,6 +131,13 @@ CAPABILITIES: Tuple[Capability, ...] = (
     Capability("mentoring_notes.edit", "Betreuungs-Notizen pflegen",
                "Betreuungs-Notizen anlegen, aendern, archivieren, "
                "wiederherstellen und ordnen."),
+    # --- Build 420 (SF-4): Authoring der Berichtsvorlagen (Seed in M013) -----
+    #   Schreibrecht auf templates.db (Baustein-Module, Platzhalter/Queries,
+    #   Dokumentvorlagen). Der Schreibpfad selbst ist auditiert (TemplatesWriter,
+    #   Build 421). Nicht scope-behaftet: der Katalog ist fallunabhaengig.
+    Capability("templates.edit", "Berichtsvorlagen/Bausteine pflegen",
+               "Baustein-Module, Platzhalter/Queries und Dokumentvorlagen in "
+               "templates.db anlegen und pflegen (auditiert)."),
 )
 
 

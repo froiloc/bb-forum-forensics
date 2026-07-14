@@ -162,19 +162,24 @@ class ManagementRbacSchemaTests(unittest.TestCase):
         self.assertEqual(db_caps, cat_caps)
         # §11.3-Aufzaehlung: 15 ab Build 343, +2 ab Build 385, +2 ab Build 387,
         # +2 ab Build 401 ('mentoring_notes.view'/'.edit', geseedet in M012)
-        # -> 21. Der Test prueft oben bereits, dass DB-Seed und Code-Katalog
+        # -> 21; +1 ab Build 420 ('templates.edit', geseedet in M013) -> 22.
+        # Der Test prueft oben bereits, dass DB-Seed und Code-Katalog
         # DECKUNGSGLEICH sind — genau daran wuerde eine vergessene
         # Seed-Migration auffallen.
-        self.assertEqual(len(cat_caps), 21)
+        self.assertEqual(len(cat_caps), 22)
         self.assertIn("external.view", cat_caps)
         self.assertIn("external.edit", cat_caps)
+        self.assertIn("templates.edit", cat_caps)
         # Build 401: Betreuungs-Notizen (Seed in M012).
         self.assertIn("mentoring_notes.view", cat_caps)
         self.assertIn("mentoring_notes.edit", cat_caps)
         # Build 387: Ergebnisbewertung (Seed in M011).
         self.assertIn("results.view", cat_caps)
         self.assertIn("results.edit", cat_caps)
-        self.assertEqual(len(cat_roles), 6)
+        # Build 420: Redakteur:in fuer die Authoring-Werkzeuge (Seed in M013).
+        self.assertIn("template_editor", cat_roles)
+        # 6 Rollen ab Build 343, +1 ab Build 420 ('template_editor') -> 7.
+        self.assertEqual(len(cat_roles), 7)
 
     # R03 --------------------------------------------------------------------
     def test_r03_grant_and_person_role_empty(self):
