@@ -302,4 +302,94 @@ describe("cockpit_approval", () => {
     expect(main.querySelector(".aiw-approval-results").textContent)
       .toContain("HTTP 403");
   });
+
+  // --- Bewertungs-Formular (einpflegen, append-only, Build 419) -----------
+  function _catalog() {
+    return {
+      catalog_version: 2,
+      extreme: ["schwerste", "beste"],
+      confidence_items: [
+        { code: "low", label: "niedrig" }, { code: "high", label: "hoch" },
+      ],
+      criteria: [
+        { code: "identification", label: "Identifizierung",
+          quality_items: [{ code: "q1", label: "schwach" },
+                          { code: "q2", label: "gut" }] },
+        { code: "location", label: "Ort", quality_items: [] },
+      ],
+      can_edit: true,
+    };
+  }
+
+  it("AP13 qualityItemsFor", () => {
+    const api = _api();
+    const cat = _catalog();
+    expect(api.qualityItemsFor(cat, "identification").length).toBe(2);
+    expect(api.qualityItemsFor(cat, "location").length).toBe(0);
+    expect(api.qualityItemsFor(cat, "unbekannt").length).toBe(0);
+  });
+
+  it("AP14 renderAssessForm: Auswahlfelder, Kopplung, Absenden", () => {
+    const win = _ctx();
+    const api = _api(win);
+    const main = _mount(win);
+    api.renderApproval(main, _data(), { status: "submitted", canApprove: true });
+
+    let assessed = null;
+    api.renderAssessForm(_catalog(), {
+      userId: 700, onAssess: function (b) { assessed = b; },
+    });
+    const panel = main.querySelector(".aiw-approval-results");
+    expect(panel.querySelector(".aiw-approval-assess-form")).not.toBeNull();
+    expect(panel.querySelectorAll(".aiw-approval-assess-crit option").length)
+      .toBe(2);
+    expect(panel.querySelectorAll(".aiw-approval-assess-conf option").length)
+      .toBe(2);
+    expect(panel.querySelectorAll(".aiw-approval-assess-extrem option").length)
+      .toBe(2);
+    // Qualitaet fuer 'identification' = leer + 2.
+    const qual = panel.querySelector(".aiw-approval-assess-qual");
+    expect(qual.querySelectorAll("option").length).toBe(3);
+
+    // Kriteriumwechsel -> Qualitaets-Optionen ziehen nach ('location' = leer).
+    const crit = panel.querySelector(".aiw-approval-assess-crit");
+    crit.value = "location";
+    crit.dispatchEvent(new win.Event("change", { bubbles: true }));
+    expect(qual.querySelectorAll("option").length).toBe(1);
+
+    // Zurueck auf identification, Werte setzen, absenden.
+    crit.value = "identification";
+    crit.dispatchEvent(new win.Event("change", { bubbles: true }));
+    panel.querySelector(".aiw-approval-assess-extrem").value = "schwerste";
+    panel.querySelector(".aiw-approval-assess-conf").value = "high";
+    panel.querySelector(".aiw-approval-assess-qual").value = "q2";
+    panel.querySelector(".aiw-approval-assess-note").value = "geprueft";
+    panel.querySelector(".aiw-approval-assess-form").dispatchEvent(
+      new win.Event("submit", { bubbles: true, cancelable: true })
+    );
+    expect(assessed).toEqual({
+      user_id: 700, criterion_code: "identification", extrem: "schwerste",
+      confidence_code: "high", quality_code: "q2", note: "geprueft",
+    });
+  });
+
+  it("AP15 renderAssessForm: fehlende Pflichtangabe -> Fehler, kein onAssess", () => {
+    const win = _ctx();
+    const api = _api(win);
+    const main = _mount(win);
+    api.renderApproval(main, _data(), { status: "submitted", canApprove: true });
+    let assessed = null;
+    api.renderAssessForm(_catalog(), {
+      userId: 700, onAssess: function (b) { assessed = b; },
+    });
+    const panel = main.querySelector(".aiw-approval-results");
+    // Konfidenz auf leeren Wert zwingen (kein passendes <option>).
+    panel.querySelector(".aiw-approval-assess-conf").value = "";
+    panel.querySelector(".aiw-approval-assess-form").dispatchEvent(
+      new win.Event("submit", { bubbles: true, cancelable: true })
+    );
+    expect(assessed).toBeNull();
+    expect(panel.querySelector(".aiw-approval-assess-err").textContent)
+      .toContain("erforderlich");
+  });
 });

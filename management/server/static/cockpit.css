@@ -581,3 +581,25 @@ td.aiw-cal-today { box-shadow: inset 0 0 0 2px var(--akzent); }
 .aiw-approval-res-gaps {
   font-size: 12px; color: var(--gelb); margin-top: 8px; max-width: 640px;
 }
+
+/* Chef-Freigabe: Bewertungs-Formular (W5, Build 419, append-only). */
+.aiw-approval-assess-form {
+  margin-top: 10px; border-top: 1px dashed var(--line); padding-top: 8px;
+  display: flex; flex-direction: column; gap: 6px; max-width: 640px;
+}
+.aiw-approval-assess-head { margin: 0 0 4px; font-size: 13px; }
+.aiw-approval-assess-field { font-size: 12px; display: flex; gap: 6px; align-items: center; }
+.aiw-approval-assess-field select {
+  font: inherit; padding: 4px 6px; border: 1px solid var(--line);
+  border-radius: 6px; flex: 1;
+}
+.aiw-approval-assess-note {
+  font: inherit; padding: 6px 8px; border: 1px solid var(--line);
+  border-radius: 6px; width: 100%;
+}
+.aiw-approval-assess-submit {
+  align-self: flex-start; font: inherit; cursor: pointer;
+  padding: 6px 14px; border: 1px solid var(--akzent); border-radius: 6px;
+  background: var(--akzent); color: #fff;
+}
+.aiw-approval-assess-err { color: var(--rot); font-size: 12px; }

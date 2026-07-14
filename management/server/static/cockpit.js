@@ -1336,6 +1336,32 @@
         var canApprove = !!(state.capabilities
             && state.capabilities['reports.approve'] === 'alle');
 
+        // reloadResults (Build 418/419): Ergebnis (read-only) rendern und -
+        // bei results.edit - das append-only Bewertungs-Formular aus dem
+        // Katalog aufbauen. Nach JEDER Bewertung erneut aufgerufen (kein
+        // optimistisches UI: erst der bestaetigte Stand, Grundregel 1).
+        var reloadResults = function (uid) {
+            fetchJson(mod.resultsUrl(uid)).then(function (rd) {
+                mod.renderResults(rd);
+                if (rd && rd.can_edit) {
+                    fetchJson('/api/results/catalog').then(function (cat) {
+                        mod.renderAssessForm(cat, {
+                            userId: uid,
+                            onAssess: function (body) {
+                                postJson('/api/results/assess', body)
+                                    .then(function () { reloadResults(uid); })
+                                    .catch(function (e) {
+                                        mod.assessError(e && e.message);
+                                    });
+                            }
+                        });
+                    }).catch(function (e) {
+                        log('Katalog nicht ladbar', e && e.message);
+                    });
+                }
+            }).catch(function (e) { mod.resultsError(e && e.message); });
+        };
+
         var render = function () {
             fetchJson('/api/reports').then(function (data) {
                 cleanupView();
@@ -1356,14 +1382,10 @@
                             .catch(function (e) {
                                 mod.commentsError(e && e.message);
                             });
-                        // Ermittlungsergebnis (results, read-only) laden. Fehlt
-                        // das Recht results.view, meldet der Server 403 -> im
-                        // Panel sichtbar (Grundregel 1).
-                        fetchJson(mod.resultsUrl(uid))
-                            .then(function (rd) { mod.renderResults(rd); })
-                            .catch(function (e) {
-                                mod.resultsError(e && e.message);
-                            });
+                        // Ermittlungsergebnis (read-only) + ggf. Bewertungs-
+                        // Formular (results.edit). Fehlt results.view, meldet
+                        // der Server 403 -> im Panel sichtbar (Grundregel 1).
+                        reloadResults(uid);
                     },
                     onVerify: function (uid, rid) {
                         fetchJson('/api/report/verify?user_id=' + uid

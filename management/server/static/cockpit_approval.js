@@ -439,6 +439,142 @@
         }
     }
 
+    // --- Bewertungs-Formular (einpflegen, Build 419, append-only) ---------
+
+    // qualityItemsFor: die Qualitaets-Skalenpunkte des gewaehlten Kriteriums
+    // (leer, wenn das Kriterium keine Qualitaetsskala hat). REIN (vitest).
+    function qualityItemsFor(catalog, criterionCode) {
+        var crits = (catalog && catalog.criteria) ? catalog.criteria : [];
+        for (var i = 0; i < crits.length; i++) {
+            if (crits[i] && crits[i].code === criterionCode) {
+                return crits[i].quality_items || [];
+            }
+        }
+        return [];
+    }
+
+    // _fillSelect: <option>s aus items (valKey/labelFn) neu setzen.
+    function _fillSelect(sel, items, valKey, labelFn) {
+        sel.innerHTML = '';
+        (items || []).forEach(function (it) {
+            var o = document.createElement('option');
+            o.value = it[valKey];
+            o.textContent = labelFn ? labelFn(it) : (it.label || it[valKey]);
+            sel.appendChild(o);
+        });
+    }
+
+    // assessError: Fehlermeldung im Formular sichtbar machen (Grundregel 1).
+    function assessError(msg) {
+        if (!_state.resPanel) { return; }
+        var box = _state.resPanel.querySelector('.aiw-approval-assess-err');
+        if (box) { box.textContent = 'Bewertung fehlgeschlagen: '
+            + (msg || 'Fehler'); }
+    }
+
+    // renderAssessForm(catalog, opts): haengt das append-only Bewertungs-
+    // Formular UNTER den read-only Ergebnisstand (nur wenn results.edit).
+    //   catalog — GET /api/results/catalog {criteria[], confidence_items[],
+    //             extreme[]}
+    //   opts    — { userId, onAssess(body) }
+    function renderAssessForm(catalog, opts) {
+        var panel = _state.resPanel;
+        if (!panel || !catalog) { return; }
+        opts = opts || {};
+
+        var form = document.createElement('form');
+        form.className = 'aiw-approval-assess-form';
+
+        var head = document.createElement('h4');
+        head.className = 'aiw-approval-assess-head';
+        head.textContent = 'Bewertung erfassen (append-only)';
+        form.appendChild(head);
+
+        function _field(labelText, el) {
+            var lbl = document.createElement('label');
+            lbl.className = 'aiw-approval-assess-field';
+            lbl.appendChild(document.createTextNode(labelText + ' '));
+            lbl.appendChild(el);
+            form.appendChild(lbl);
+            return el;
+        }
+
+        // Kriterium.
+        var critSel = document.createElement('select');
+        critSel.className = 'aiw-approval-assess-crit';
+        _fillSelect(critSel, catalog.criteria, 'code');
+        _field('Kriterium:', critSel);
+
+        // Extrem.
+        var extSel = document.createElement('select');
+        extSel.className = 'aiw-approval-assess-extrem';
+        _fillSelect(extSel, (catalog.extreme || ['schwerste', 'beste'])
+            .map(function (e) { return { code: e }; }), 'code',
+            function (it) { return extremLabel(it.code); });
+        _field('Auspraegung:', extSel);
+
+        // Konfidenz.
+        var confSel = document.createElement('select');
+        confSel.className = 'aiw-approval-assess-conf';
+        _fillSelect(confSel, catalog.confidence_items, 'code');
+        _field('Konfidenz:', confSel);
+
+        // Qualitaet (optional; abhaengig vom Kriterium). Erste Option 'keine'.
+        var qualSel = document.createElement('select');
+        qualSel.className = 'aiw-approval-assess-qual';
+        function _refillQuality() {
+            var items = qualityItemsFor(catalog, critSel.value);
+            var withEmpty = [{ code: '', label: '— (keine Qualitaet)' }]
+                .concat(items);
+            _fillSelect(qualSel, withEmpty, 'code');
+        }
+        _refillQuality();
+        // Bei Kriteriumwechsel die Qualitaets-Optionen nachziehen (jede
+        // Kriteriumsskala kann eine andere Qualitaetsskala haben).
+        critSel.addEventListener('change', _refillQuality);
+        _field('Qualitaet:', qualSel);
+
+        // Vermerk (Freitext).
+        var note = document.createElement('textarea');
+        note.className = 'aiw-approval-assess-note';
+        note.setAttribute('rows', '2');
+        note.setAttribute('placeholder', 'Vermerk (optional)');
+        form.appendChild(note);
+
+        var submit = document.createElement('button');
+        submit.type = 'submit';
+        submit.className = 'aiw-approval-assess-submit';
+        submit.textContent = 'Bewertung erfassen';
+        form.appendChild(submit);
+
+        var err = document.createElement('div');
+        err.className = 'aiw-approval-assess-err';
+        form.appendChild(err);
+
+        form.addEventListener('submit', function (ev) {
+            ev.preventDefault();
+            err.textContent = '';
+            if (!critSel.value || !extSel.value || !confSel.value) {
+                err.textContent = 'Kriterium, Auspraegung und Konfidenz sind '
+                    + 'erforderlich.';
+                return;
+            }
+            var body = {
+                user_id: opts.userId,
+                criterion_code: critSel.value,
+                extrem: extSel.value,
+                confidence_code: confSel.value,
+                quality_code: qualSel.value || null,
+                note: (note.value || '').trim()
+            };
+            log('assess', body);
+            if (typeof opts.onAssess === 'function') { opts.onAssess(body); }
+        });
+
+        panel.appendChild(form);
+        return form;
+    }
+
     // _buildActionPanel: fuellt den Aktionsbereich fuer EINEN gewaehlten
     // Bericht r. opts.canApprove (bool) kommt aus der Policy (Scope 'alle').
     function _buildActionPanel(r, opts) {
@@ -711,6 +847,7 @@
         resultsUrl: resultsUrl,             // results (Build 418)
         extremLabel: extremLabel,
         gapLabel: gapLabel,
+        qualityItemsFor: qualityItemsFor,   // Assess-Formular (Build 419)
         // DOM
         renderApproval: renderApproval,
         renderVerify: renderVerify,
@@ -725,6 +862,8 @@
         renderResults: renderResults,           // Ermittlungsergebnis (read-only)
         resultsLoading: resultsLoading,
         resultsError: resultsError,
+        renderAssessForm: renderAssessForm,     // Bewertung einpflegen (Build 419)
+        assessError: assessError,
         cleanup: cleanup
     };
     log('Modul geladen.');
