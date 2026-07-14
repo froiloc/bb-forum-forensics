@@ -5,7 +5,7 @@
 # Serverunabhaengiges Renderer-Paket (Bauplan Build 397 §2). Nur Re-Exporte,
 # keine Logik. Von forensic_api/export.py und (ab Build 402) vom Management-
 # Server gemeinsam genutzt.
-# Version: v0.7.403 · Build: 403 · 2026-07-14 (AutoQueryResolver-Kern ergaenzt)
+# Version: v0.7.404 · Build: 404 · 2026-07-14 (PdfRenderer ergaenzt)
 # =============================================================================
 
 from report_render.report_document import (
@@ -25,6 +25,7 @@ from report_render.report_source import ReportSource, NoReportError, KNOWN_BLOCK
 from report_render.html_renderer import HtmlRenderer, CLASSIFICATION
 from report_render.docx_renderer import DocxRenderer, DocxRendererUnavailable
 from report_render.sqlite_renderer import SqliteRenderer
+from report_render.pdf_renderer import PdfRenderer, PdfRendererUnavailable
 
 __all__ = [
     "ReportDocument",
@@ -46,5 +47,7 @@ __all__ = [
     "DocxRenderer",
     "DocxRendererUnavailable",
     "SqliteRenderer",
+    "PdfRenderer",
+    "PdfRendererUnavailable",
     "CLASSIFICATION",
 ]

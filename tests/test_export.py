@@ -117,6 +117,17 @@ class TestExportEndpoint(unittest.TestCase):
         self.assertEqual(body[:16], b"SQLite format 3\x00")   # SQLite-Magic
         self.assertIn(".db", kw["extra_headers"]["Content-Disposition"])
 
+    def test_E03b_pdf_ok(self):
+        # Build 404: PDF live. reportlab in der VM (503 nur falls es fehlt).
+        ep = _make()
+        h = _Handler()
+        ep.handle_get(h, {"format": ["pdf"]})
+        status, body, kw = h.last
+        self.assertIn(status, (200, 503))
+        if status == 200:
+            self.assertEqual(body[:5], b"%PDF-")
+            self.assertIn(".pdf", kw["extra_headers"]["Content-Disposition"])
+
     def test_E04_unknown_format_400(self):
         ep = _make()
         h = _Handler()

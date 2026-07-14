@@ -17,8 +17,9 @@
 #   HtmlRenderer:        HR01-HR07  (Statuskopf R1, Bloecke, R2-Hinweise, R3)
 #   DocxRenderer:        DX01-DX03  (Status/Bloecke, R3, XSS-als-Text) [Build 402]
 #   SqliteRenderer:      SQ01-SQ04  (Tabellen/Zahlen, R2-Warnungen, Bild-Verweis, R3) [Build 402]
+#   PdfRenderer:         PD01-PD02  (valides PDF alle Blocktypen, alle Status R1) [Build 404]
 #
-# Version: v0.7.402 · Build: 402 · 2026-07-14
+# Version: v0.7.404 · Build: 404 · 2026-07-14
 # =============================================================================
 
 import json
@@ -392,6 +393,42 @@ class TestSqliteRenderer(unittest.TestCase):
             "SELECT is_known_type FROM report_blocks WHERE block_id='b_unknown'"
         ).fetchone()
         self.assertEqual(row["is_known_type"], 0)
+
+
+# -----------------------------------------------------------------------------
+# PdfRenderer (Build 404)
+# -----------------------------------------------------------------------------
+class TestPdfRenderer(unittest.TestCase):
+
+    def setUp(self):
+        self.con, self.edb = _make_edb()
+        _seed(self.con)
+        self.src = ReportSource(self.edb, None, None, None, 42, "TestNutzer", 1_700_000_000)
+
+    def _render(self, doc=None):
+        try:
+            from report_render.pdf_renderer import PdfRenderer
+        except ImportError:
+            self.skipTest("reportlab nicht installiert")
+        try:
+            return PdfRenderer().render(doc or self.src.build())
+        except Exception as exc:  # PdfRendererUnavailable o.ae.
+            if exc.__class__.__name__ == "PdfRendererUnavailable":
+                self.skipTest("reportlab nicht installiert")
+            raise
+
+    def test_PD01_valid_pdf_all_blocktypes(self):
+        pdf = self._render()
+        self.assertEqual(pdf[:5], b"%PDF-")       # PDF-Magic
+        self.assertGreater(len(pdf), 1000)        # nicht-trivialer Inhalt
+
+    def test_PD02_all_statuses_render(self):
+        # R1: jeder Status muss ohne Absturz ein valides PDF ergeben.
+        for st in ("draft", "submitted", "approved", "final", "kaputt"):
+            doc = self.src.build()
+            doc.status = st
+            pdf = self._render(doc)
+            self.assertEqual(pdf[:5], b"%PDF-", f"Status {st}")
 
 
 if __name__ == "__main__":

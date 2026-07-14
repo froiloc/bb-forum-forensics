@@ -50,6 +50,9 @@ RUNTIME_PACKAGES = [
     "lxml",
     "pyeditorjs",   # AP-E5: serverseitiger Editor.js-HTML-Export
     "python-docx",  # B6: DOCX-Export (fehlte zuvor — Build 301)
+    "reportlab",    # Build 404: PDF-Export. reportlab 5.0.0 = py3-none-any (rein
+                    # Python, 3.14-tauglich); Abh. pillow (cp314-Wheel) + charset-
+                    # normalizer werden transitiv aus setup/wheels aufgeloest.
 ]
 
 # Nur-DEV-Abhaengigkeiten

@@ -53,6 +53,11 @@ RUNTIME_PACKAGES = [
     "lxml",
     "pyeditorjs",   # AP-E5: serverseitiger Editor.js-HTML-Export
     "python-docx",  # B6: DOCX-Export
+    "reportlab",    # Build 404: PDF-Export. reportlab 5.0.0 ist py3-none-any
+                    # (rein Python). --platform/--only-binary laedt es plus die
+                    # Abhaengigkeiten pillow (cp314-Wheel je Plattform) und
+                    # charset-normalizer automatisch mit (Beleg: PyPI 2026-07-14;
+                    # Feinabnahme Build 399 §4.3 / mc §4.3).
 ]
 
 # Python-Pakete nur fuer DEV (Tests etc.)

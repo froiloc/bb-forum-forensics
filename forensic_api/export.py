@@ -24,7 +24,8 @@
 #              -> HTTP 503). Reiner Text (Editor.js-HTML entfernt), *_plain-Felder.
 #     sqlite — LEBENDIG (Build 402): selbstenthaltende .db via SqliteRenderer
 #              (meta/report_blocks/report_anchors/report_warnings/README).
-#     (pdf folgt Build 404, reportlab — mc §4.3.)
+#     pdf    — LEBENDIG (Build 404): PDF via PdfRenderer (reportlab; fehlt sie
+#              -> HTTP 503). reportlab ab 404 in der Offline-VM (mc §4.3).
 #
 #   Berichtswahl (mc §4.1):
 #     report_id optional. Fehlt er -> Bericht mit hoechster sequence_nr
@@ -33,7 +34,7 @@
 #   Zugriffssteuerung: nur eigener Fall (context.user_id).
 #   Migrationsvorbehalt: der Renderer LIEST NUR (kein Schreibpfad in evidence_<uid>.db).
 #
-# Version: v0.7.402 · Build: 402 · 2026-07-14
+# Version: v0.7.404 · Build: 404 · 2026-07-14
 # =============================================================================
 
 from __future__ import annotations
@@ -48,6 +49,7 @@ from report_render.report_source import ReportSource, NoReportError
 from report_render.html_renderer import HtmlRenderer
 from report_render.docx_renderer import DocxRenderer, DocxRendererUnavailable
 from report_render.sqlite_renderer import SqliteRenderer
+from report_render.pdf_renderer import PdfRenderer, PdfRendererUnavailable
 
 if TYPE_CHECKING:
     from server.http_server import ForensicRequestHandler
@@ -57,9 +59,9 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-#: Aktiv ausgelieferte Formate. Build 399: html. Build 402: + docx, sqlite.
-_LIVE_FORMATS = ("html", "docx", "sqlite")
-#: Bekannte, aber noch nicht (wieder) implementierte Formate -> 501. (PDF: Build 404.)
+#: Aktiv ausgelieferte Formate. 399: html. 402: +docx,sqlite. 404: +pdf.
+_LIVE_FORMATS = ("html", "docx", "sqlite", "pdf")
+#: Bekannte, aber noch nicht implementierte Formate -> 501. (Aktuell keine.)
 _PENDING_FORMATS = ()
 
 
@@ -101,7 +103,7 @@ class ExportEndpoint:
         if fmt not in _LIVE_FORMATS:
             self._send_json(
                 handler, 400,
-                {"error": "format muss html, docx oder sqlite sein",
+                {"error": "format muss html, docx, sqlite oder pdf sein",
                  "available": list(_LIVE_FORMATS)},
             )
             return
@@ -122,6 +124,8 @@ class ExportEndpoint:
             self._export_docx(handler, report_id)
         elif fmt == "sqlite":
             self._export_sqlite(handler, report_id)
+        elif fmt == "pdf":
+            self._export_pdf(handler, report_id)
 
     # ------------------------------------------------------------------
     def _build_source(self) -> ReportSource:
@@ -202,6 +206,29 @@ class ExportEndpoint:
             "application/octet-stream",
         )
         logger.info("Export SQLite: uid=%d, report_id=%s, %d Bytes", doc.uid, doc.report_id, len(body))
+
+    # ------------------------------------------------------------------
+    def _export_pdf(self, handler: "ForensicRequestHandler", report_id: Optional[int]) -> None:
+        try:
+            doc = self._build_source().build(report_id)
+        except NoReportError as exc:
+            self._send_json(handler, 404, {"error": str(exc)})
+            return
+        try:
+            body = PdfRenderer().render(doc)
+        except PdfRendererUnavailable:
+            self._send_json(
+                handler, 503,
+                {"error": "reportlab nicht installiert. Bitte Offline-Wheel bereitstellen "
+                          "(setup/wheels; reportlab in RUNTIME_PACKAGES, Build 404)."},
+            )
+            return
+        self._send_file(
+            handler, body,
+            f"bericht_{doc.uid}_{time.strftime('%Y%m%d')}.pdf",
+            "application/pdf",
+        )
+        logger.info("Export PDF: uid=%d, report_id=%s, %d Bytes", doc.uid, doc.report_id, len(body))
 
     # ------------------------------------------------------------------
     @staticmethod
