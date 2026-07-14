@@ -1257,8 +1257,16 @@
             cleanupView();
             mod.renderLectorate(mainEl, data, {
                 status: 'submitted',
+                // Bei Auswahl eines Berichts die zugrunde liegenden Belege
+                // (SF-2) laden und ins Belege-Panel rendern. Fehler werden
+                // im Panel sichtbar gemacht (Grundregel 1).
                 onSelect: function (uid, rid) {
                     log('Lektorat: Bericht gewaehlt', uid, rid);
+                    fetchJson(mod.annotationsUrl(uid, rid))
+                        .then(function (ad) { mod.renderAnnotations(ad); })
+                        .catch(function (e) {
+                            mod.annotationsError(e && e.message);
+                        });
                 }
             });
             log('Lektorat gerendert:', data && data.count, 'Berichte');

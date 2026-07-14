@@ -39,7 +39,8 @@
     // --- gekapselter Sicht-Zustand (Closure, nicht nach aussen sichtbar) --
     var _state = {
         iframe: null,     // aktuelles Vorschau-<iframe>
-        selKey: null      // aktuell gewaehlter Bericht ('uid:rid')
+        selKey: null,     // aktuell gewaehlter Bericht ('uid:rid')
+        annPanel: null    // Belege-Panel (Annotationen, SF-2, Build 414)
     };
 
     // =====================================================================
@@ -85,6 +86,34 @@
     // selectionKey: stabiler Schluessel eines Berichts (fuer die Markierung).
     function selectionKey(uid, rid) { return String(uid) + ':' + String(rid); }
 
+    // annotationsUrl: URL des Annotations-Support-Views (SF-2, Build 411).
+    function annotationsUrl(uid, rid) {
+        return '/api/report/annotations?user_id=' + encodeURIComponent(uid)
+            + '&report_id=' + encodeURIComponent(rid);
+    }
+
+    // categoryLabel: menschliche Kategoriebezeichnung. Fallback = Rohcode,
+    // damit eine unbekannte Kategorie sichtbar bleibt (Grundregel 1).
+    function categoryLabel(cat) {
+        switch (cat) {
+            case 'CAT_PERSON':   return 'Person';
+            case 'CAT_LOCATION': return 'Ort';
+            case 'CAT_CONTACT':  return 'Kontakt';
+            case 'CAT_TIME':     return 'Zeit';
+            case 'CAT_OTHER':    return 'Sonstiges';
+            default:             return cat || '—';
+        }
+    }
+
+    // forumContext: Forenkontext einer Annotation als Text ('—' wenn unbekannt,
+    // z.B. wenn fdb.post_aliases die post_id nicht fuehrt).
+    function forumContext(item) {
+        if (!item || item.topic_id == null || item.forum_id == null) {
+            return '—';
+        }
+        return 'Thema ' + item.topic_id + ' · Unterforum ' + item.forum_id;
+    }
+
     // =====================================================================
     // 2) DOM-Aufbau.
     // =====================================================================
@@ -96,6 +125,7 @@
     function cleanup() {
         _state.iframe = null;
         _state.selKey = null;
+        _state.annPanel = null;
         log('cleanup');
     }
 
@@ -168,12 +198,26 @@
             list.appendChild(empty);
         }
 
-        // Vorschau-<iframe> (read-only Berichtstext). title fuer a11y.
+        // --- Vorschau-Bereich: Berichtstext (iframe) + Belege (Annotationen) -
+        // Nebeneinander (breit) bzw. gestapelt (schmal) via CSS (flex-wrap).
+        var preview = document.createElement('div');
+        preview.className = 'aiw-lectorate-preview-wrap';
+
         var frame = document.createElement('iframe');
         frame.className = 'aiw-lectorate-preview';
         frame.title = 'Berichtstext (read-only)';
         frame.setAttribute('sandbox', 'allow-same-origin');
         _state.iframe = frame;
+
+        // Belege-Panel (SF-2, Slice 2). Startzustand: Hinweis.
+        var ann = document.createElement('div');
+        ann.className = 'aiw-lectorate-annotations';
+        _state.annPanel = ann;
+        _annHint('Bericht links auswaehlen, um die zugrunde liegenden Belege '
+            + 'zu sehen.');
+
+        preview.appendChild(frame);
+        preview.appendChild(ann);
 
         rows.forEach(function (r) {
             var key = selectionKey(r.user_id, r.id);
@@ -192,6 +236,10 @@
                 _state.selKey = key;
                 // Berichtstext read-only in den <iframe> laden.
                 frame.src = renderUrl(r.user_id, r.id);
+                // Belege-Panel auf "laedt" setzen; der eigentliche Abruf laeuft
+                // ueber opts.onSelect (cockpit.js holt /api/report/annotations
+                // und ruft danach renderAnnotations).
+                annotationsLoading();
                 log('select', key, frame.src);
                 if (typeof opts.onSelect === 'function') {
                     opts.onSelect(r.user_id, r.id);
@@ -201,9 +249,87 @@
         });
 
         wrap.appendChild(list);
-        wrap.appendChild(frame);
+        wrap.appendChild(preview);
         mainEl.appendChild(wrap);
         return wrap;
+    }
+
+    // --- Belege-Panel (SF-2) ---------------------------------------------
+
+    // _annHint: setzt das Belege-Panel auf EINEN Hinweistext (ersetzt Inhalt).
+    function _annHint(msg) {
+        if (!_state.annPanel) { return; }
+        _state.annPanel.innerHTML = '';
+        var p = document.createElement('p');
+        p.className = 'aiw-lectorate-ann-hint';
+        p.textContent = msg;
+        _state.annPanel.appendChild(p);
+    }
+
+    // Ladehinweis waehrend der Abruf von /api/report/annotations laeuft.
+    function annotationsLoading() { _annHint('Belege werden geladen …'); }
+
+    // Fehlerhinweis (kein stiller Fehlpfad, Grundregel 1).
+    function annotationsError(msg) {
+        _annHint('Belege konnten nicht geladen werden: ' + (msg || 'Fehler'));
+    }
+
+    // renderAnnotations(data): baut das Belege-Panel aus der SF-2-Antwort
+    // (data.items). Ohne aktives Panel (Sicht verlassen) ein No-op.
+    function renderAnnotations(data) {
+        var panel = _state.annPanel;
+        if (!panel) { return; }
+        panel.innerHTML = '';
+        var items = (data && data.items) ? data.items : [];
+
+        var head = document.createElement('h3');
+        head.className = 'aiw-lectorate-ann-head';
+        head.textContent = 'Belege (' + items.length + ')';
+        panel.appendChild(head);
+
+        if (!items.length) {
+            var p = document.createElement('p');
+            p.className = 'aiw-lectorate-ann-hint';
+            p.textContent = 'Zu diesem Bericht sind keine Belege verankert.';
+            panel.appendChild(p);
+            return;
+        }
+
+        items.forEach(function (it) {
+            var box = document.createElement('div');
+            box.className = 'aiw-lectorate-ann-item';
+            if (it.missing) { box.classList.add('is-missing'); }
+            if (it.deleted) { box.classList.add('is-deleted'); }
+
+            var cat = document.createElement('span');
+            cat.className = 'aiw-lectorate-ann-cat';
+            cat.textContent = categoryLabel(it.category);
+            box.appendChild(cat);
+
+            var txt = document.createElement('div');
+            txt.className = 'aiw-lectorate-ann-text';
+            // Fehlt die Annotation (Anker zeigt ins Leere) -> sichtbar machen.
+            txt.textContent = it.missing
+                ? '⚠ Beleg nicht (mehr) vorhanden (Annotation #'
+                    + it.annotation_id + ')'
+                : (it.text || '');
+            box.appendChild(txt);
+
+            var metaLine = document.createElement('div');
+            metaLine.className = 'aiw-lectorate-ann-meta';
+            var bits = [];
+            if (it.post_id != null) { bits.push('Beitrag #' + it.post_id); }
+            bits.push('Forum: ' + forumContext(it));
+            if (it.block_id) {
+                bits.push('Block ' + it.block_id
+                    + (it.block_type ? ' (' + it.block_type + ')' : ''));
+            }
+            if (it.deleted) { bits.push('geloescht'); }
+            metaLine.textContent = bits.join(' · ');
+            box.appendChild(metaLine);
+
+            panel.appendChild(box);
+        });
     }
 
     // --- oeffentliche API -------------------------------------------------
@@ -214,8 +340,14 @@
         renderUrl: renderUrl,
         reportLabel: reportLabel,
         selectionKey: selectionKey,
+        annotationsUrl: annotationsUrl,   // SF-2 (Build 414)
+        categoryLabel: categoryLabel,
+        forumContext: forumContext,
         // DOM
         renderLectorate: renderLectorate,
+        renderAnnotations: renderAnnotations,   // Belege-Panel (SF-2)
+        annotationsLoading: annotationsLoading,
+        annotationsError: annotationsError,
         cleanup: cleanup
     };
     log('Modul geladen.');

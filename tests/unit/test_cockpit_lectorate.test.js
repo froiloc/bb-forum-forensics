@@ -131,4 +131,83 @@ describe("cockpit_lectorate", () => {
     sel.dispatchEvent(new win.Event("change", { bubbles: true }));
     expect(main.querySelectorAll(".aiw-lectorate-item").length).toBe(3);
   });
+
+  // LE08 (Build 414) -------------------------------------------------------
+  it("LE08 annotationsUrl + forumContext + categoryLabel", () => {
+    const api = _api();
+    expect(api.annotationsUrl(18, 1)).toBe(
+      "/api/report/annotations?user_id=18&report_id=1"
+    );
+    expect(api.categoryLabel("CAT_PERSON")).toBe("Person");
+    expect(api.categoryLabel("CAT_UNBEKANNT")).toBe("CAT_UNBEKANNT");
+    expect(api.forumContext({ topic_id: 7, forum_id: 3 }))
+      .toBe("Thema 7 · Unterforum 3");
+    expect(api.forumContext({ topic_id: null, forum_id: null })).toBe("—");
+  });
+
+  // LE09 -------------------------------------------------------------------
+  it("LE09 renderAnnotations baut Belege mit Forenkontext", () => {
+    const win = _ctx();
+    const api = _api(win);
+    const main = win.document.createElement("div");
+    win.document.body.appendChild(main);
+    // renderLectorate setzt das Belege-Panel (annPanel) auf.
+    api.renderLectorate(main, _data(), { status: "submitted" });
+
+    api.renderAnnotations({
+      report_id: 1, anchor_count: 2,
+      items: [
+        { annotation_id: 10, block_id: "b1", block_type: "evidence",
+          anchor_text: "x", category: "CAT_PERSON", text: "Beleg A",
+          post_id: 42, topic_id: 7, forum_id: 3, missing: false,
+          deleted: false },
+        { annotation_id: 11, block_id: "b2", block_type: "paragraph",
+          anchor_text: "y", category: null, text: null, post_id: null,
+          topic_id: null, forum_id: null, missing: true, deleted: false },
+      ],
+    });
+
+    const panel = main.querySelector(".aiw-lectorate-annotations");
+    const items = panel.querySelectorAll(".aiw-lectorate-ann-item");
+    expect(items.length).toBe(2);
+    expect(panel.querySelector(".aiw-lectorate-ann-head").textContent)
+      .toContain("Belege (2)");
+    // Erster Beleg: Kategorie/Text/Forenkontext.
+    expect(items[0].querySelector(".aiw-lectorate-ann-cat").textContent)
+      .toBe("Person");
+    expect(items[0].querySelector(".aiw-lectorate-ann-text").textContent)
+      .toBe("Beleg A");
+    const meta0 = items[0].querySelector(".aiw-lectorate-ann-meta").textContent;
+    expect(meta0).toContain("Beitrag #42");
+    expect(meta0).toContain("Thema 7 · Unterforum 3");
+    // Zweiter Beleg: fehlende Annotation sichtbar gemacht.
+    expect(items[1].classList.contains("is-missing")).toBe(true);
+    expect(items[1].querySelector(".aiw-lectorate-ann-text").textContent)
+      .toContain("nicht (mehr) vorhanden");
+  });
+
+  // LE10 -------------------------------------------------------------------
+  it("LE10 renderAnnotations: keine Belege -> Hinweis", () => {
+    const win = _ctx();
+    const api = _api(win);
+    const main = win.document.createElement("div");
+    win.document.body.appendChild(main);
+    api.renderLectorate(main, _data(), { status: "submitted" });
+    api.renderAnnotations({ report_id: 1, anchor_count: 0, items: [] });
+    const panel = main.querySelector(".aiw-lectorate-annotations");
+    expect(panel.querySelectorAll(".aiw-lectorate-ann-item").length).toBe(0);
+    expect(panel.textContent).toContain("keine Belege");
+  });
+
+  // LE11 -------------------------------------------------------------------
+  it("LE11 annotationsError zeigt Fehlermeldung im Panel", () => {
+    const win = _ctx();
+    const api = _api(win);
+    const main = win.document.createElement("div");
+    win.document.body.appendChild(main);
+    api.renderLectorate(main, _data(), { status: "submitted" });
+    api.annotationsError("HTTP 500");
+    const panel = main.querySelector(".aiw-lectorate-annotations");
+    expect(panel.textContent).toContain("HTTP 500");
+  });
 });
