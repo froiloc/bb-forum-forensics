@@ -727,25 +727,49 @@
    * Zwei Formate:
    *   "p<post_id>"     → document.getElementById("p<post_id>")
    *                      (Post-Container auf viewtopic.php)
-   *   "topic:<id>"     → querySelector('a[href*="viewtopic.php?id=<id>&uid="]')
-   *                      .closest("tr")
+   *   "topic:<id>"     → viewtopic-Zeilen-Link mit exakter id → .closest("tr")
    *                      (Topic-Zeile auf viewforum.php — Build 082)
    *
-   * Beleg: HTML-Analyse viewforum.php — Links haben immer &uid= Parameter.
-   *        Selektor 'a[href*="?id=<id>&uid="]' ist eindeutig (kein Treffer
-   *        auf action=new-Links da diese kein &uid= enthalten).
+   * Build 400 (Baustelle 3): Die frühere Annahme "Links haben IMMER &uid="
+   * (Build 082) ist für die reduzierte Nicht-Vollmitglieder-Ansicht FALSCH.
+   * Beleg (Console-Diagnose 2026-07-13, /forum/viewforum.php?id=294):
+   *   traceElements = ["topic:41623"], aber die Zeile trägt den Link
+   *   'viewtopic.php?id=41623' OHNE &uid= (während andere Trace-Topics wie
+   *   190261 '…&uid=524888' tragen). Der alte Selektor
+   *   'a[href*="?id=<id>&uid="]' verlangte &uid= und lieferte für 41623 null →
+   *   weder Minimap-Marker noch Bearbeitungsstand-Rahmen (beide leiten sich
+   *   aus dem hier aufgelösten Element ab).
+   * Korrektur: &uid= ist NICHT mehr Bedingung. Stattdessen werden alle
+   *   viewtopic-Links mit 'id=<topicId>' gesammelt und per Grenz-Regex
+   *   '[?&]id=<id>(?:$|[&#])' auf die EXAKTE topic_id geprüft. Der Grenz-Check
+   *   verhindert die Präfix-Kollision 41623 ↔ 416230 (Beleg: jsdom-Probe
+   *   Build 400 — alt/neu gegenübergestellt). Das Token selbst weist die Zeile
+   *   bereits autoritativ als Spur aus; der Link dient nur der Zeilen-Auflösung
+   *   via closest("tr"), daher genügt IRGENDEIN exakter id-Link der Zeile.
    */
   function _resolveTraceElement(elemId) {
     if (!elemId) return null;
     if (elemId.startsWith("topic:")) {
       var topicId = elemId.slice(6);
-      var link = document.querySelector(
-        'a[href*="viewtopic.php?id=' + topicId + '&uid="]'
+      // Kandidaten per Attribut-Substring (schnell), dann exakte id-Grenze prüfen.
+      var links = document.querySelectorAll(
+        'a[href*="viewtopic.php?id=' + topicId + '"]'
       );
-      return link ? link.closest("tr") : null;
+      var boundary = new RegExp("[?&]id=" + topicId + "(?:$|[&#])");
+      for (var i = 0; i < links.length; i++) {
+        var href = links[i].getAttribute("href") || "";
+        if (boundary.test(href)) {
+          var tr = links[i].closest("tr");
+          if (tr) return tr;
+        }
+      }
+      return null;
     }
     return document.getElementById(elemId);
   }
+
+  // Build 400: Trace-Aufloesung fuer vitest freilegen (Muster config.levenshtein).
+  ForensicToolbar.config.resolveTraceElement = _resolveTraceElement;
 
   /**
    * AJAX-DELETE mit JSON-Body → Promise<Object>
