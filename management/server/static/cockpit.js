@@ -1253,13 +1253,41 @@
             renderError(mainEl, 'Lektorat-Modul nicht geladen.');
             return;
         }
+        // reloadComments (Build 415): Kommentare (Union, SF-3) laden und
+        // rendern. Nach JEDER Schreibaktion (Anlegen/Aufloesen) erneut
+        // aufgerufen -> die Sicht zeigt nur bestaetigt geschriebene Zustaende
+        // (kein optimistisches UI, Grundregel 1).
+        var reloadComments = function (uid, rid) {
+            fetchJson(mod.commentsUrl(uid, rid)).then(function (cd) {
+                mod.renderComments(cd, {
+                    personId: state.personId,
+                    onAdd: function (body) {
+                        postJson('/api/report/comment', body)
+                            .then(function () {
+                                reloadComments(body.user_id, body.report_id);
+                            })
+                            .catch(function (e) {
+                                mod.commentsError(e && e.message);
+                            });
+                    },
+                    onResolve: function (body) {
+                        postJson('/api/report/comment/resolve', body)
+                            .then(function () { reloadComments(uid, rid); })
+                            .catch(function (e) {
+                                mod.commentsError(e && e.message);
+                            });
+                    }
+                });
+            }).catch(function (e) { mod.commentsError(e && e.message); });
+        };
+
         fetchJson('/api/reports').then(function (data) {
             cleanupView();
             mod.renderLectorate(mainEl, data, {
                 status: 'submitted',
                 // Bei Auswahl eines Berichts die zugrunde liegenden Belege
-                // (SF-2) laden und ins Belege-Panel rendern. Fehler werden
-                // im Panel sichtbar gemacht (Grundregel 1).
+                // (SF-2) UND die Kommentare (SF-3) laden. Fehler werden im
+                // jeweiligen Panel sichtbar gemacht (Grundregel 1).
                 onSelect: function (uid, rid) {
                     log('Lektorat: Bericht gewaehlt', uid, rid);
                     fetchJson(mod.annotationsUrl(uid, rid))
@@ -1267,6 +1295,7 @@
                         .catch(function (e) {
                             mod.annotationsError(e && e.message);
                         });
+                    reloadComments(uid, rid);
                 }
             });
             log('Lektorat gerendert:', data && data.count, 'Berichte');
@@ -1405,6 +1434,9 @@
         fetchJson('/api/whoami').then(function (who) {
             log('whoami', who);
             state.capabilities = who.capabilities || {};
+            // Eigene person_id (Build 415): erlaubt der Lektorat-Sicht, die
+            // AUFLOESEN-Knoepfe nur an EIGENEN Kommentaren zu zeigen.
+            state.personId = who.person_id;
             // Schreib-Token uebernehmen (nur ueber diesen authentifizierten
             // GET erhaeltlich; Voraussetzung fuer alle POSTs).
             state.writeToken = who.write_token || null;

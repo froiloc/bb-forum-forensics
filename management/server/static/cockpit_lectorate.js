@@ -40,7 +40,8 @@
     var _state = {
         iframe: null,     // aktuelles Vorschau-<iframe>
         selKey: null,     // aktuell gewaehlter Bericht ('uid:rid')
-        annPanel: null    // Belege-Panel (Annotationen, SF-2, Build 414)
+        annPanel: null,   // Belege-Panel (Annotationen, SF-2, Build 414)
+        comPanel: null    // Kommentar-Panel (SF-3, Build 415)
     };
 
     // =====================================================================
@@ -114,6 +115,41 @@
         return 'Thema ' + item.topic_id + ' · Unterforum ' + item.forum_id;
     }
 
+    // --- Kommentare (SF-3, Build 415) ---
+    // commentsUrl: URL des Union-Lesepfads der Review-Kommentare (SF-3).
+    function commentsUrl(uid, rid) {
+        return '/api/report/comments?user_id=' + encodeURIComponent(uid)
+            + '&report_id=' + encodeURIComponent(rid);
+    }
+
+    // commentStatusLabel: menschliche Statusbezeichnung eines Kommentars.
+    function commentStatusLabel(status) {
+        switch (status) {
+            case 'pending':   return 'offen';
+            case 'addressed': return 'erledigt';
+            case 'dismissed': return 'verworfen';
+            case 'revoked':   return 'zurueckgenommen';
+            default:          return status || 'unbekannt';
+        }
+    }
+
+    // reviewerRoleLabel: Rolle der/des Kommentierenden.
+    function reviewerRoleLabel(role) {
+        switch (role) {
+            case 'supervisor': return 'Chef-Ermittlerin';
+            case 'lector':     return 'Lektorat';
+            default:           return role || '—';
+        }
+    }
+
+    // isOwnComment: gehoert der Kommentar der aktuell angemeldeten Person?
+    // (Nur eigene Kommentare koennen aufgeloest werden — der Server erzwingt es
+    // strukturell ueber den Dateipfad; das UI zeigt die Knoepfe entsprechend.)
+    function isOwnComment(comment, personId) {
+        return !!comment && personId != null
+            && Number(comment.reviewer_pid) === Number(personId);
+    }
+
     // =====================================================================
     // 2) DOM-Aufbau.
     // =====================================================================
@@ -126,6 +162,7 @@
         _state.iframe = null;
         _state.selKey = null;
         _state.annPanel = null;
+        _state.comPanel = null;
         log('cleanup');
     }
 
@@ -145,6 +182,8 @@
         mainEl.innerHTML = '';
         _state.iframe = null;
         _state.selKey = null;
+        _state.annPanel = null;
+        _state.comPanel = null;
 
         var wrap = document.createElement('div');
         wrap.className = 'aiw-lectorate';
@@ -236,10 +275,11 @@
                 _state.selKey = key;
                 // Berichtstext read-only in den <iframe> laden.
                 frame.src = renderUrl(r.user_id, r.id);
-                // Belege-Panel auf "laedt" setzen; der eigentliche Abruf laeuft
-                // ueber opts.onSelect (cockpit.js holt /api/report/annotations
-                // und ruft danach renderAnnotations).
+                // Belege- UND Kommentar-Panel auf "laedt" setzen; die Abrufe
+                // laufen ueber opts.onSelect (cockpit.js holt Annotationen +
+                // Kommentare und ruft renderAnnotations/renderComments).
                 annotationsLoading();
+                commentsLoading();
                 log('select', key, frame.src);
                 if (typeof opts.onSelect === 'function') {
                     opts.onSelect(r.user_id, r.id);
@@ -250,6 +290,14 @@
 
         wrap.appendChild(list);
         wrap.appendChild(preview);
+
+        // --- Kommentar-Panel (SF-3, Slice 3) unter dem Vorschau-Bereich. ----
+        var com = document.createElement('div');
+        com.className = 'aiw-lectorate-comments';
+        _state.comPanel = com;
+        _comHint('Bericht auswaehlen, um Kommentare zu sehen und zu erfassen.');
+        wrap.appendChild(com);
+
         mainEl.appendChild(wrap);
         return wrap;
     }
@@ -332,6 +380,170 @@
         });
     }
 
+    // --- Kommentar-Panel (SF-3) ------------------------------------------
+
+    // _comHint: setzt das Kommentar-Panel auf EINEN Hinweistext.
+    function _comHint(msg) {
+        if (!_state.comPanel) { return; }
+        _state.comPanel.innerHTML = '';
+        var p = document.createElement('p');
+        p.className = 'aiw-lectorate-com-hint';
+        p.textContent = msg;
+        _state.comPanel.appendChild(p);
+    }
+
+    function commentsLoading() { _comHint('Kommentare werden geladen …'); }
+    function commentsError(msg) {
+        _comHint('Kommentar-Aktion fehlgeschlagen: ' + (msg || 'Fehler'));
+    }
+
+    // renderComments(data, opts): baut Formular (neuer Kommentar) + Liste der
+    // vorhandenen Kommentare (Union aller Prueferinnen) in das Kommentar-Panel.
+    //   data — Antwort von /api/report/comments {user_id, report_id, comments[]}
+    //   opts — { personId, onAdd(body), onResolve(body) }
+    function renderComments(data, opts) {
+        var panel = _state.comPanel;
+        if (!panel) { return; }
+        opts = opts || {};
+        panel.innerHTML = '';
+        var comments = (data && data.comments) ? data.comments : [];
+        var uid = data ? data.user_id : null;
+        var rid = data ? data.report_id : null;
+
+        var head = document.createElement('h3');
+        head.className = 'aiw-lectorate-com-head';
+        head.textContent = 'Kommentare (' + comments.length + ')';
+        panel.appendChild(head);
+
+        // --- Formular: neuen Kommentar erfassen --------------------------
+        var form = document.createElement('form');
+        form.className = 'aiw-lectorate-com-form';
+
+        var ta = document.createElement('textarea');
+        ta.className = 'aiw-lectorate-com-text';
+        ta.setAttribute('rows', '2');
+        ta.setAttribute('placeholder', 'Kommentar zum Bericht …');
+        form.appendChild(ta);
+
+        var blockIn = document.createElement('input');
+        blockIn.type = 'text';
+        blockIn.className = 'aiw-lectorate-com-block';
+        blockIn.setAttribute('placeholder', 'Block-ID (optional)');
+        form.appendChild(blockIn);
+
+        var sug = document.createElement('textarea');
+        sug.className = 'aiw-lectorate-com-suggest';
+        sug.setAttribute('rows', '1');
+        sug.setAttribute('placeholder', 'Aenderungsvorschlag (optional)');
+        form.appendChild(sug);
+
+        var submit = document.createElement('button');
+        submit.type = 'submit';
+        submit.className = 'aiw-lectorate-com-submit';
+        submit.textContent = 'Kommentar hinzufuegen';
+        form.appendChild(submit);
+
+        var errBox = document.createElement('div');
+        errBox.className = 'aiw-lectorate-com-formerr';
+        form.appendChild(errBox);
+
+        form.addEventListener('submit', function (ev) {
+            ev.preventDefault();
+            errBox.textContent = '';
+            var text = (ta.value || '').trim();
+            if (!text) {
+                errBox.textContent = 'Bitte einen Kommentartext eingeben.';
+                return;
+            }
+            var body = {
+                user_id: uid, report_id: rid,
+                block_id: (blockIn.value || '').trim() || null,
+                comment_text: text,
+                suggested_content: (sug.value || '').trim() || null
+            };
+            log('addComment', body);
+            if (typeof opts.onAdd === 'function') { opts.onAdd(body); }
+        });
+        panel.appendChild(form);
+
+        // --- Liste vorhandener Kommentare --------------------------------
+        if (!comments.length) {
+            var none = document.createElement('p');
+            none.className = 'aiw-lectorate-com-hint';
+            none.textContent = 'Noch keine Kommentare zu diesem Bericht.';
+            panel.appendChild(none);
+            return;
+        }
+
+        comments.forEach(function (c) {
+            var box = document.createElement('div');
+            box.className = 'aiw-lectorate-com-item';
+            box.setAttribute('data-status', c.status || '');
+            if (c.status && c.status !== 'pending') {
+                box.classList.add('is-resolved');
+            }
+
+            var top = document.createElement('div');
+            top.className = 'aiw-lectorate-com-top';
+            var role = document.createElement('span');
+            role.className = 'aiw-lectorate-com-role';
+            role.textContent = reviewerRoleLabel(c.reviewer_role);
+            top.appendChild(role);
+            var st = document.createElement('span');
+            st.className = 'aiw-lectorate-com-status';
+            st.textContent = commentStatusLabel(c.status);
+            top.appendChild(st);
+            box.appendChild(top);
+
+            var body = document.createElement('div');
+            body.className = 'aiw-lectorate-com-body';
+            body.textContent = c.comment_text || '';
+            box.appendChild(body);
+
+            if (c.suggested_content) {
+                var sugv = document.createElement('div');
+                sugv.className = 'aiw-lectorate-com-suggestion';
+                sugv.textContent = 'Vorschlag: ' + c.suggested_content;
+                box.appendChild(sugv);
+            }
+
+            var meta = document.createElement('div');
+            meta.className = 'aiw-lectorate-com-meta';
+            var mbits = [];
+            if (c.block_id) { mbits.push('Block ' + c.block_id); }
+            mbits.push('Prueferin #' + c.reviewer_pid);
+            meta.textContent = mbits.join(' · ');
+            box.appendChild(meta);
+
+            // Aufloesen NUR fuer eigene, offene Kommentare (Server erzwingt es
+            // strukturell; das UI zeigt die Knoepfe nur, wo sie wirken).
+            if (isOwnComment(c, opts.personId) && c.status === 'pending') {
+                var actions = document.createElement('div');
+                actions.className = 'aiw-lectorate-com-actions';
+                [['addressed', 'Als erledigt'], ['dismissed', 'Verwerfen']]
+                    .forEach(function (a) {
+                        var btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'aiw-lectorate-com-resolve';
+                        btn.setAttribute('data-status', a[0]);
+                        btn.textContent = a[1];
+                        btn.addEventListener('click', function () {
+                            var rb = { user_id: uid, comment_id: c.comment_id,
+                                       status: a[0] };
+                            log('resolveComment', rb);
+                            if (typeof opts.onResolve === 'function') {
+                                opts.onResolve(rb);
+                            }
+                        });
+                        actions.appendChild(btn);
+                    });
+                box.appendChild(actions);
+            }
+
+            panel.appendChild(box);
+        });
+    }
+
     // --- oeffentliche API -------------------------------------------------
     window.AIWCockpitLectorate = {
         // reine Funktionen (vitest)
@@ -343,11 +555,18 @@
         annotationsUrl: annotationsUrl,   // SF-2 (Build 414)
         categoryLabel: categoryLabel,
         forumContext: forumContext,
+        commentsUrl: commentsUrl,         // SF-3 (Build 415)
+        commentStatusLabel: commentStatusLabel,
+        reviewerRoleLabel: reviewerRoleLabel,
+        isOwnComment: isOwnComment,
         // DOM
         renderLectorate: renderLectorate,
         renderAnnotations: renderAnnotations,   // Belege-Panel (SF-2)
         annotationsLoading: annotationsLoading,
         annotationsError: annotationsError,
+        renderComments: renderComments,         // Kommentar-Panel (SF-3)
+        commentsLoading: commentsLoading,
+        commentsError: commentsError,
         cleanup: cleanup
     };
     log('Modul geladen.');

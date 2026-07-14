@@ -210,4 +210,101 @@ describe("cockpit_lectorate", () => {
     const panel = main.querySelector(".aiw-lectorate-annotations");
     expect(panel.textContent).toContain("HTTP 500");
   });
+
+  // --- Kommentar-Panel (SF-3, Build 415) ---------------------------------
+  function _comData() {
+    return {
+      user_id: 700, report_id: 1, count: 2,
+      comments: [
+        { comment_id: "c1", report_id: 1, block_id: "b1", reviewer_pid: 1,
+          reviewer_role: "lector", comment_text: "Bitte praezisieren",
+          suggested_content: null, status: "pending", created_at: 1500 },
+        { comment_id: "c2", report_id: 1, block_id: null, reviewer_pid: 4,
+          reviewer_role: "supervisor", comment_text: "Chef-Anmerkung",
+          suggested_content: "Text Y", status: "addressed", created_at: 1600 },
+      ],
+    };
+  }
+
+  it("LE12 reine Kommentar-Helfer", () => {
+    const api = _api();
+    expect(api.commentsUrl(700, 1)).toBe(
+      "/api/report/comments?user_id=700&report_id=1"
+    );
+    expect(api.commentStatusLabel("pending")).toBe("offen");
+    expect(api.commentStatusLabel("addressed")).toBe("erledigt");
+    expect(api.reviewerRoleLabel("supervisor")).toBe("Chef-Ermittlerin");
+    expect(api.reviewerRoleLabel("lector")).toBe("Lektorat");
+    expect(api.isOwnComment({ reviewer_pid: 1 }, 1)).toBe(true);
+    expect(api.isOwnComment({ reviewer_pid: 4 }, 1)).toBe(false);
+  });
+
+  it("LE13 renderComments: Formular, Liste, eigene Aufloesung", () => {
+    const win = _ctx();
+    const api = _api(win);
+    const main = win.document.createElement("div");
+    win.document.body.appendChild(main);
+    api.renderLectorate(main, _data(), { status: "submitted" });
+
+    let added = null, resolved = null;
+    api.renderComments(_comData(), {
+      personId: 1,
+      onAdd: function (b) { added = b; },
+      onResolve: function (b) { resolved = b; },
+    });
+
+    const panel = main.querySelector(".aiw-lectorate-comments");
+    expect(panel.querySelector(".aiw-lectorate-com-head").textContent)
+      .toContain("Kommentare (2)");
+    const items = panel.querySelectorAll(".aiw-lectorate-com-item");
+    expect(items.length).toBe(2);
+    // c1 = eigen + offen -> Aufloesen-Knoepfe; c2 = fremd -> keine.
+    expect(items[0].querySelectorAll(".aiw-lectorate-com-resolve").length)
+      .toBe(2);
+    expect(items[1].querySelectorAll(".aiw-lectorate-com-resolve").length)
+      .toBe(0);
+    expect(items[1].classList.contains("is-resolved")).toBe(true);
+    expect(items[1].querySelector(".aiw-lectorate-com-suggestion").textContent)
+      .toContain("Text Y");
+
+    // Neuen Kommentar absenden.
+    panel.querySelector(".aiw-lectorate-com-text").value = "Neuer Hinweis";
+    panel.querySelector(".aiw-lectorate-com-form").dispatchEvent(
+      new win.Event("submit", { bubbles: true, cancelable: true })
+    );
+    expect(added).toEqual({
+      user_id: 700, report_id: 1, block_id: null,
+      comment_text: "Neuer Hinweis", suggested_content: null,
+    });
+
+    // Eigenen Kommentar aufloesen (erledigt).
+    items[0].querySelector('.aiw-lectorate-com-resolve[data-status="addressed"]')
+      .dispatchEvent(new win.Event("click", { bubbles: true }));
+    expect(resolved).toEqual({
+      user_id: 700, comment_id: "c1", status: "addressed",
+    });
+  });
+
+  it("LE14 renderComments: leerer Text -> Fehler, keine Kommentare -> Hinweis", () => {
+    const win = _ctx();
+    const api = _api(win);
+    const main = win.document.createElement("div");
+    win.document.body.appendChild(main);
+    api.renderLectorate(main, _data(), { status: "submitted" });
+
+    // keine Kommentare -> Hinweis.
+    let added = null;
+    api.renderComments({ user_id: 700, report_id: 1, count: 0, comments: [] },
+      { personId: 1, onAdd: function (b) { added = b; } });
+    const panel = main.querySelector(".aiw-lectorate-comments");
+    expect(panel.textContent).toContain("Noch keine Kommentare");
+
+    // leerer Text -> Fehlermeldung, onAdd NICHT gerufen.
+    panel.querySelector(".aiw-lectorate-com-form").dispatchEvent(
+      new win.Event("submit", { bubbles: true, cancelable: true })
+    );
+    expect(added).toBeNull();
+    expect(panel.querySelector(".aiw-lectorate-com-formerr").textContent)
+      .toContain("Kommentartext");
+  });
 });
