@@ -79,7 +79,8 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     // Build 395: 15 (neu: 'results' - Ermittlungsergebnis).
     // Build 406: 16 (neu: 'notes' - Betreuungs-Notizen).
     // Build 413: 17 (neu: 'lectorate' - Lektorat, W4 Gegenlesen).
-    expect(api.VIEW_CATALOG.length).toBe(17);
+    // Build 416: 18 (neu: 'approval' - Chef-Freigabe, W5).
+    expect(api.VIEW_CATALOG.length).toBe(18);
   });
 
   // CN03b (Build 384) --------------------------------------------------------

@@ -130,6 +130,10 @@
         // (reports.review ODER reports.approve — die Chefin liest ebenfalls
         // gegen); Leitfaehigkeit fuer den Scope-Tag ist reports.review.
         { id: 'lectorate', cap: 'reports.review',       caps: ['reports.review', 'reports.approve'], group: 'Verwaltung',     label: 'Lektorat' },
+        // Chef-Freigabe (W5, Build 416): Bericht lesen + Siegel pruefen +
+        // freigeben/zurueckweisen. Recht reports.approve (Freigeben erfordert
+        // serverseitig Scope 'alle').
+        { id: 'approval',  cap: 'reports.approve',      group: 'Verwaltung',     label: 'Chef-Freigabe' },
         // Ermittlungsergebnis (Build 395). Recht: results.view. Ein Ermittler
         // mit Scope 'eigene' sieht die Sicht ebenfalls — er bekommt dann die
         // Abdeckung SEINER Faelle; die fallUEBERGREIFENDE Verteilung (/stats)
@@ -431,6 +435,12 @@
             ? window.AIWCockpitLectorate : null;
         if (lectMod && typeof lectMod.cleanup === 'function') {
             lectMod.cleanup();
+        }
+        // Chef-Freigabe-Sicht (Build 416) abbauen.
+        var apprMod = (typeof window !== 'undefined')
+            ? window.AIWCockpitApproval : null;
+        if (apprMod && typeof apprMod.cleanup === 'function') {
+            apprMod.cleanup();
         }
     }
 
@@ -1306,6 +1316,84 @@
         });
     }
 
+    // loadApproval: CHEF-FREIGABE (W5, Build 416, Slice 1). Laedt die
+    // Berichtsliste und rendert die Freigabe-Sicht: Auswahl + read-only
+    // Berichtstext (SF-1) + Aktionen (Siegel pruefen / freigeben+versiegeln /
+    // zurueckweisen). Schreibaktionen laufen ueber postJson (X-AIW-Token); die
+    // Freigabe ist UNWIDERRUFLICH -> Rueckfrage vor dem Absenden. Nach jeder
+    // Aktion wird neu geladen (kein optimistisches UI, Grundregel 1). Belege
+    // (SF-2), Kommentare (SF-3) und Ergebnis-Mitpruefen folgen in den Slices.
+    function loadApproval(mainEl) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitApproval : null;
+        if (!mod) {
+            renderError(mainEl, 'Chef-Freigabe-Modul nicht geladen.');
+            return;
+        }
+        // Freigeben erfordert reports.approve mit Scope 'alle' (Server erzwingt
+        // es; das UI zeigt die Freigabe-Knoepfe nur dann).
+        var canApprove = !!(state.capabilities
+            && state.capabilities['reports.approve'] === 'alle');
+
+        var render = function () {
+            fetchJson('/api/reports').then(function (data) {
+                cleanupView();
+                mod.renderApproval(mainEl, data, {
+                    status: 'submitted',
+                    canApprove: canApprove,
+                    onVerify: function (uid, rid) {
+                        fetchJson('/api/report/verify?user_id=' + uid
+                                  + '&report_id=' + rid)
+                            .then(function (v) { mod.renderVerify(v); })
+                            .catch(function (e) {
+                                mod.verifyError(e && e.message);
+                            });
+                    },
+                    onApprove: function (body) {
+                        if (typeof window !== 'undefined' && window.confirm
+                            && !window.confirm('Bericht endgueltig freigeben '
+                               + 'und versiegeln? Das ist unwiderruflich.')) {
+                            return;
+                        }
+                        postJson('/api/report/approve', body)
+                            .then(function () { render(); })
+                            .catch(function (e) {
+                                if (typeof window !== 'undefined'
+                                    && window.alert) {
+                                    window.alert('Freigabe fehlgeschlagen: '
+                                        + (e && e.message));
+                                }
+                            });
+                    },
+                    onReturn: function (body) {
+                        if (typeof window !== 'undefined' && window.confirm
+                            && !window.confirm('Bericht zur Nachbesserung an '
+                               + 'den Entwurf zurueckweisen?')) {
+                            return;
+                        }
+                        postJson('/api/report/return', body)
+                            .then(function () { render(); })
+                            .catch(function (e) {
+                                if (typeof window !== 'undefined'
+                                    && window.alert) {
+                                    window.alert('Rueckweisung fehlgeschlagen: '
+                                        + (e && e.message));
+                                }
+                            });
+                    }
+                });
+                log('Chef-Freigabe gerendert:', data && data.count, 'Berichte');
+            }).catch(function (err) {
+                cleanupView();
+                renderError(mainEl,
+                    'Chef-Freigabe konnte nicht geladen werden: '
+                    + err.message);
+            });
+        };
+        render();
+    }
+
     // selectView: aktive Sicht setzen, Nav neu markieren, Inhalt dispatchen.
     // Build 349: 'dashboard' -> Overview; 'integrity' -> Integritaets-Sicht;
     // sonst Platzhalter (weitere Sichten folgen).
@@ -1350,6 +1438,8 @@
             loadReports(mainEl);
         } else if (viewId === 'lectorate') {
             loadLectorate(mainEl);
+        } else if (viewId === 'approval') {
+            loadApproval(mainEl);
         } else {
             renderPlaceholder(mainEl, viewById(viewId));
         }
@@ -1414,6 +1504,8 @@
                 loadReports();
             } else if (state.activeId === 'lectorate') {
                 loadLectorate();
+            } else if (state.activeId === 'approval') {
+                loadApproval();
             }
             // Banner global frisch halten, wenn die aktive Sicht nicht die
             // Integritaets-Sicht ist (dort geschieht es bereits oben).
