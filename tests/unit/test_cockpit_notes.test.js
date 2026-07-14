@@ -19,6 +19,14 @@
  * NT09 — Callbacks: Status-Haken -> onUpdate; 'Archivieren' -> onArchive.
  * NT10 — openEditor: leere Ueberschrift -> Fehler (kein onSubmit); gueltig ->
  *        onSubmit mit geparster Nutzlast; Abbrechen entfernt das Overlay.
+ * NT11 — (Build 407) reine Sortier-Helfer: commonOwner/moveId/anyFilterActive/
+ *        orderIds.
+ * NT12 — (Build 407) einheitliches, ungefiltertes Board -> Zieh-Griffe +
+ *        Pfeile; Pfeil ▼ ruft onReorder mit getauschter Reihenfolge.
+ * NT13 — (Build 407) aktiver Filter -> keine Griffe, Hinweis 'Filter
+ *        zuruecksetzen'.
+ * NT14 — (Build 407) gemischte Boards -> keine Griffe, Hinweis auf EIN Board.
+ * NT15 — (Build 407) Anheften ruft onUpdate({pinned:true}); Archiv ohne Griffe.
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
@@ -238,5 +246,103 @@ describe("cockpit_notes.js — Betreuungs-Notizen (Build 406)", () => {
     win.document.querySelector(".aiw-btn-ghost").click();
     expect(win.document.querySelector(".aiw-modal-overlay")).toBe(null);
     expect(submitted).toBe(null);
+  });
+
+  it("NT11: reine Sortier-Helfer", () => {
+    const api = _api();
+    expect(api.commonOwner([_note({ owner_id: 1 }), _note({ owner_id: 1 })])).toBe(1);
+    expect(api.commonOwner([_note({ owner_id: 1 }), _note({ owner_id: 2 })])).toBe(null);
+    expect(api.commonOwner([])).toBe(null);
+
+    expect(api.moveId([1, 2, 3], 2, -1)).toEqual([2, 1, 3]);
+    expect(api.moveId([1, 2, 3], 2, 1)).toEqual([1, 3, 2]);
+    expect(api.moveId([1, 2, 3], 1, -1)).toEqual([1, 2, 3]); // Randlage stabil
+    expect(api.moveId([1, 2, 3], 3, 1)).toEqual([1, 2, 3]);  // Randlage stabil
+
+    expect(api.anyFilterActive({})).toBe(false);
+    expect(api.anyFilterActive({ search: "x" })).toBe(true);
+    expect(api.anyFilterActive({ color: "gelb" })).toBe(true);
+
+    expect(api.orderIds([_note({ id: 5 }), _note({ id: 7 })])).toEqual([5, 7]);
+  });
+
+  it("NT12: einheitliches Board -> Griffe + Pfeile + onReorder", () => {
+    const api = _api();
+    const main = win.document.createElement("div");
+    let reordered = null;
+    const notes = [
+      _note({ id: 1, owner_id: 1, sort_index: 1000 }),
+      _note({ id: 2, owner_id: 1, sort_index: 2000 }),
+    ];
+    api.renderNotes(main, _data(notes), {
+      archived: false,
+      onReorder: (req) => { reordered = req; },
+    });
+
+    // Griffe vorhanden (Board sortierbar).
+    expect(main.querySelectorAll(".aiw-note-grip").length).toBe(2);
+    expect(main.querySelector(".aiw-notes-draghint").textContent)
+      .toContain("ziehen");
+
+    // ▼ auf der ERSTEN Karte -> onReorder mit getauschter Reihenfolge.
+    const firstCard = main.querySelector(".aiw-note");
+    const moveBtns = firstCard.querySelectorAll(".aiw-note-act.is-move");
+    expect(moveBtns.length).toBe(2);            // ▲ und ▼
+    moveBtns[1].dispatchEvent(new win.Event("click"));  // ▼
+    expect(reordered).toEqual({ owner_id: 1, ids: [2, 1] });
+  });
+
+  it("NT13: aktiver Filter sperrt das Sortieren", () => {
+    const api = _api();
+    api._resetUi();
+    const main = win.document.createElement("div");
+    api.renderNotes(main, _data([
+      _note({ id: 1, owner_id: 1, color: "gelb" }),
+      _note({ id: 2, owner_id: 1, color: "blau" }),
+    ]), { archived: false });
+
+    // Farbfilter setzen -> nur ein Ausschnitt sichtbar -> keine Griffe.
+    const colorSel = main.querySelectorAll(".aiw-notes-sel")[0];
+    colorSel.value = "gelb";
+    colorSel.dispatchEvent(new win.Event("change"));
+    expect(main.querySelectorAll(".aiw-note-grip").length).toBe(0);
+    expect(main.querySelector(".aiw-notes-draghint").textContent)
+      .toContain("zuruecksetzen");
+  });
+
+  it("NT14: gemischte Boards nicht sortierbar", () => {
+    const api = _api();
+    const main = win.document.createElement("div");
+    api.renderNotes(main, _data([
+      _note({ id: 1, owner_id: 1 }),
+      _note({ id: 2, owner_id: 2 }),
+    ]), { archived: false });
+    expect(main.querySelectorAll(".aiw-note-grip").length).toBe(0);
+    expect(main.querySelector(".aiw-notes-draghint").textContent)
+      .toContain("EINER Autor:in");
+  });
+
+  it("NT15: Anheften + Archiv ohne Griffe", () => {
+    const api = _api();
+    const main = win.document.createElement("div");
+    let updated = null;
+    api.renderNotes(main, _data([_note({ id: 9, owner_id: 1, pinned: false })]), {
+      archived: false,
+      onUpdate: (p) => { updated = p; },
+    });
+    // Ein-Karten-Board: 'Anheften' vorhanden.
+    const pinBtn = Array.prototype.filter.call(
+      main.querySelectorAll(".aiw-note-act"),
+      (b) => b.textContent === "Anheften")[0];
+    expect(pinBtn).toBeTruthy();
+    pinBtn.dispatchEvent(new win.Event("click"));
+    expect(updated).toEqual({ id: 9, pinned: true });
+
+    // Archiv-Ansicht: keine Griffe/Pfeile.
+    const main2 = win.document.createElement("div");
+    api.renderNotes(main2, _data([_note({ id: 9, is_archived: true })],
+                    { archived: true }), { archived: true });
+    expect(main2.querySelectorAll(".aiw-note-grip").length).toBe(0);
+    expect(main2.querySelectorAll(".aiw-note-act.is-move").length).toBe(0);
   });
 });

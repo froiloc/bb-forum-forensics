@@ -415,6 +415,13 @@
             clearInterval(state.mentoringTimer);
             state.mentoringTimer = null;
         }
+        // Drag&Drop-Handle der Betreuungs-Notizen abbauen (Build 407), damit
+        // beim Sichtwechsel keine verwaisten Listener zuruueckbleiben.
+        var notesMod = (typeof window !== 'undefined')
+            ? window.AIWCockpitNotes : null;
+        if (notesMod && typeof notesMod.cleanup === 'function') {
+            notesMod.cleanup();
+        }
     }
 
     // renderError: sichtbarer Fehlerhinweis im Hauptbereich (kein stiller Fehlpfad).
@@ -788,6 +795,15 @@
                         .then(function (r) {
                             reload({ text: 'Dupliziert (Beleg #' + r.audit_seq
                                      + ').', error: false });
+                        }).catch(fail());
+                },
+                // Drag&Drop/Pfeil-Ordnung (Build 407): EIN gebuendelter
+                // Reorder-Beleg pro Ablegen. req = {owner_id, ids}.
+                onReorder: function (req) {
+                    postJson('/api/mentoring/note/reorder', req)
+                        .then(function (r) {
+                            reload({ text: 'Reihenfolge gespeichert (Beleg #'
+                                     + r.audit_seq + ').', error: false });
                         }).catch(fail());
                 }
             });

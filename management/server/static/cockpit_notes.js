@@ -16,8 +16,17 @@
 //   meldet Absichten ueber Callbacks zurueck. Die Shell fuehrt fetch/POST aus
 //   (Schreib-Token X-AIW-Token) und laedt danach NEU — kein optimistisches UI,
 //   die Oberflaeche zeigt nur bestaetigt geschriebene Zustaende (Grundregel 1).
-//   Drag&Drop-Ordnung folgt in BLOCK 4 (dieser Build ordnet nach sort_index,
-//   den der Server liefert).
+//
+// BLOCK 4 (Build 407) — DRAG&DROP-ORDNUNG + ANHEFTEN + a11y:
+//   Karten lassen sich per Ziehen (SortableJS, vendort) umsortieren; beim
+//   Ablegen geht die NEUE Reihenfolge als EIN gebuendelter Reorder-Aufruf an den
+//   auditierten Schreibpfad. Weil ein Teil-Board (gefiltert/gesucht) nur eine
+//   UNVOLLSTAENDIGE Reihenfolge liefert und ein gemischtes Alle-Boards-Bild
+//   keine eindeutige Eigentuemerschaft hat, ist das Sortieren NUR im
+//   ungefilterten, aktiven Board EINER Autor:in aktiv (sonst ein Hinweis statt
+//   stiller Fehlordnung, Grundregel 1). Fuer die Barrierefreiheit gibt es
+//   zusaetzlich Pfeil-Schaltflaechen (nach oben/unten) — Ziehen ist nicht
+//   tastaturbedienbar. 'Anheften' hebt eine Karte dauerhaft nach oben.
 //
 // KAPSELUNG / PROJEKT-GEBOTE FUER JS:
 //   1) IIFE + 'use strict'.
@@ -33,7 +42,7 @@
 //   innerHTML. Die Freitexte stammen aus der RBAC-gekapselten Fachschicht, sind
 //   aber grundsaetzlich als fremdbestimmt zu behandeln.
 //
-// Version: v0.7.406 · Build: 406 · 2026-07-14
+// Version: v0.7.407 · Build: 407 · 2026-07-14
 // =============================================================================
 
 (function () {
@@ -134,6 +143,46 @@
         return Object.keys(seen).sort();
     }
 
+    // anyFilterActive: True, wenn Suche ODER irgendein Feinfilter gesetzt ist.
+    // Ist das der Fall, zeigt das Board nur einen AUSSCHNITT — dann ist das
+    // Umsortieren gesperrt (eine Teilreihenfolge wuerde die versteckten Karten
+    // still verschieben, Grundregel 1).
+    function anyFilterActive(f) {
+        f = f || {};
+        return !!((f.search && f.search.trim()) || f.color || f.status || f.tag);
+    }
+
+    // commonOwner: liefert die owner_id, wenn ALLE Notizen derselben Autor:in
+    // gehoeren — sonst null (leere Liste -> null). Nur ein eindeutiges Board
+    // darf sortiert werden (die gemischte Alle-Boards-Ansicht nicht).
+    function commonOwner(notes) {
+        notes = notes || [];
+        if (!notes.length) { return null; }
+        var o = notes[0].owner_id;
+        for (var i = 1; i < notes.length; i++) {
+            if (notes[i].owner_id !== o) { return null; }
+        }
+        return o;
+    }
+
+    // moveId: verschiebt 'id' in der Liste um EINE Position (dir=-1 hoch,
+    // dir=+1 runter). Reine Funktion (neue Liste); Basis der Tastatur-
+    // Bedienung (Ziehen ist nicht tastaturbedienbar). Randlagen bleiben stabil.
+    function moveId(ids, id, dir) {
+        ids = (ids || []).slice();
+        var i = ids.indexOf(id);
+        if (i < 0) { return ids; }
+        var j = i + dir;
+        if (j < 0 || j >= ids.length) { return ids; }
+        var tmp = ids[i]; ids[i] = ids[j]; ids[j] = tmp;
+        return ids;
+    }
+
+    // orderIds: reine Projektion Notizliste -> Liste der IDs (Board-Reihenfolge).
+    function orderIds(notes) {
+        return (notes || []).map(function (n) { return n.id; });
+    }
+
     // =========================================================================
     // 2) DOM-HELFER (winzig, damit der Render-Code lesbar bleibt).
     // =========================================================================
@@ -149,6 +198,17 @@
     // laedt das Board neu; Suche/Filter/aufgeklappte Karten sollen NICHT
     // zuruecksetzen). Bewusst gekapselt, nur hier sichtbar.
     var ui = { search: '', color: '', status: '', tag: '', open: {} };
+
+    // Aktives SortableJS-Handle (Drag&Drop). Genau EINES zur Zeit; vor jedem
+    // Neuaufbau des Boards und beim Sichtwechsel (cleanup) abgebaut, damit keine
+    // verwaisten Listener zuruueckbleiben.
+    var _sortable = null;
+    function destroySortable() {
+        if (_sortable) {
+            try { _sortable.destroy(); } catch (e) { /* schon abgebaut */ }
+            _sortable = null;
+        }
+    }
 
     // =========================================================================
     // 3) RENDER: Board (Kopf + Filterleiste + Kartenraster).
@@ -252,12 +312,49 @@
         var countLine = el('div', 'aiw-notes-count');
         wrap.appendChild(countLine);
 
+        // dragHint: erklaert, WARUM das Sortieren gerade (nicht) geht — statt
+        // einer stummen, unerklaerten Sperre.
+        var dragHint = el('div', 'aiw-notes-draghint');
+        wrap.appendChild(dragHint);
+
         mainEl.appendChild(wrap);
+
+        // Eindeutige Eigentuemerschaft des gezeigten Boards? Nur dann ist
+        // Sortieren ueberhaupt sinnvoll (die gemischte Alle-Boards-Ansicht und
+        // das Archiv nicht). owner ist die Ziel-owner_id des Reorder-Belegs.
+        var owner = archived ? null : commonOwner(notes);
+
+        // reorderFn: EINE gebuendelte Reorder-Absicht an die Shell (die postet
+        // + laedt neu). owner_id ist die Autor:in des Boards.
+        function reorderFn(ids) {
+            if (cb.onReorder && owner !== null) {
+                cb.onReorder({ owner_id: owner, ids: ids });
+            }
+        }
+
+        // domOrder: aktuelle Reihenfolge der Karten-IDs aus dem DOM (nach einem
+        // Zieh-Vorgang). Nicht rein (liest das DOM) — deshalb hier, nicht oben.
+        function domOrder() {
+            return Array.prototype.map.call(
+                board.querySelectorAll('.aiw-note'),
+                function (c) {
+                    return parseInt(c.getAttribute('data-note-id'), 10);
+                });
+        }
 
         // applyFilters: baut NUR das Kartenraster neu (Filterleiste bleibt,
         // damit das Suchfeld den Fokus/Cursor behaelt). Reines Neuzeichnen aus
         // der bereits geladenen Notizliste — kein Serverzugriff.
         function applyFilters() {
+            // Ein zuvor aufgesetztes Sortable abbauen, bevor das Board neu
+            // gefuellt wird (kein doppeltes Binden, kein Leck).
+            destroySortable();
+
+            var filtered = anyFilterActive(ui);
+            // Ziehen/Pfeile NUR im ungefilterten, eindeutigen, aktiven Board:
+            // ein Ausschnitt wuerde eine unvollstaendige Reihenfolge liefern.
+            var dragEnabled = (owner !== null) && !filtered;
+
             var shown = filterNotes(notes, ui);
             clear(board);
             if (!notes.length) {
@@ -268,13 +365,47 @@
                 board.appendChild(el('div', 'aiw-notes-empty',
                     'Kein Treffer fuer die aktuellen Filter.'));
             } else {
+                // Tastatur-Ordnung (a11y) arbeitet auf der aktuellen
+                // Board-Reihenfolge; bei aktiver Sortierung ist das die volle
+                // Notizliste (kein Filter).
+                var dnd = {
+                    enabled: dragEnabled,
+                    order: orderIds(shown),
+                    move: function (id, dir) { reorderFn(moveId(orderIds(shown), id, dir)); }
+                };
                 shown.forEach(function (n) {
-                    board.appendChild(renderCard(n, cb, colors, persons));
+                    board.appendChild(renderCard(n, cb, colors, persons, dnd));
                 });
             }
             countLine.textContent = shown.length + ' von ' + notes.length
                 + ' Notiz(en) angezeigt'
                 + (archived ? ' (Archiv)' : '');
+
+            // Hinweiszeile + ggf. Sortable aktivieren.
+            if (archived) {
+                dragHint.textContent = '';
+            } else if (owner === null && notes.length) {
+                dragHint.textContent = 'Sortieren nur im Board EINER Autor:in '
+                    + '(die gemischte Ansicht laesst sich nicht ordnen).';
+            } else if (filtered) {
+                dragHint.textContent = 'Zum Sortieren Suche und Filter '
+                    + 'zuruecksetzen.';
+            } else if (dragEnabled && shown.length > 1) {
+                dragHint.textContent = 'Zum Ordnen ziehen (Griff ⠿) oder die '
+                    + 'Pfeile ▲▼ nutzen.';
+            } else {
+                dragHint.textContent = '';
+            }
+
+            if (dragEnabled && typeof window !== 'undefined' && window.Sortable) {
+                _sortable = window.Sortable.create(board, {
+                    handle: '.aiw-note-grip',
+                    draggable: '.aiw-note',
+                    animation: 150,
+                    ghostClass: 'aiw-note-ghost',
+                    onEnd: function () { reorderFn(domOrder()); }
+                });
+            }
         }
 
         // Ereignisse: jede Filter-/Sucheingabe aktualisiert ui + zeichnet neu.
@@ -307,8 +438,10 @@
     // sichtbar, Rumpf erst nach Aufklappen (Zustand in ui.open gemerkt, damit
     // ein Reload die Karte nicht wieder zuklappt).
     // -------------------------------------------------------------------------
-    function renderCard(note, cb, colors, persons) {
+    function renderCard(note, cb, colors, persons, dnd) {
+        dnd = dnd || { enabled: false };
         var card = el('article', 'aiw-note');
+        card.setAttribute('data-note-id', String(note.id));   // fuer Drag-Reorder
         card.style.background = colorBg(note.color);
         card.style.borderLeft = '6px solid ' + colorEdge(note.color);
         if (note.status === 'erledigt') { card.classList.add('is-done'); }
@@ -318,8 +451,20 @@
         var hasBody = !!(note.body && note.body.trim());
         var expanded = ui.open[note.id] === true;
 
-        // --- Kopf: Status-Haken + Ueberschrift + Aufklapp-Chevron ------------
+        // --- Kopf: (Griff) + Status-Haken + Ueberschrift + Chevron -----------
         var top = el('div', 'aiw-note-top');
+
+        // Zieh-Griff — nur wenn das Board sortierbar ist (SortableJS bindet an
+        // diesen Handle). Bei angehefteten Karten weist ein Pin-Symbol darauf
+        // hin, dass sie ohnehin oben stehen.
+        if (dnd.enabled) {
+            var grip = el('span', 'aiw-note-grip', note.pinned ? '📌' : '⠿');
+            grip.title = note.pinned ? 'Angeheftet (steht oben)' : 'Ziehen zum Ordnen';
+            grip.setAttribute('aria-hidden', 'true');
+            top.appendChild(grip);
+        } else if (note.pinned) {
+            top.appendChild(el('span', 'aiw-note-grip', '📌'));
+        }
 
         // 'abarbeiten': Haken schaltet offen <-> erledigt (nur aktives Board).
         if (!note.is_archived) {
@@ -389,6 +534,30 @@
                 if (cb.onRestore) { cb.onRestore(note.id); }
             }));
         } else {
+            // Tastatur-Ordnung (a11y): Pfeile hoch/runter, wenn das Board
+            // sortierbar ist. Sie sind die barrierefreie Alternative zum Ziehen.
+            if (dnd.enabled) {
+                var up = actionBtn('▲', function () {
+                    if (dnd.move) { dnd.move(note.id, -1); }
+                }, 'is-move');
+                up.title = 'Nach oben';
+                up.setAttribute('aria-label', 'Notiz nach oben');
+                var down = actionBtn('▼', function () {
+                    if (dnd.move) { dnd.move(note.id, 1); }
+                }, 'is-move');
+                down.title = 'Nach unten';
+                down.setAttribute('aria-label', 'Notiz nach unten');
+                actions.appendChild(up);
+                actions.appendChild(down);
+            }
+            // Anheften/Loesen: hebt eine Karte dauerhaft nach oben (der Server
+            // sortiert angeheftete zuerst).
+            actions.appendChild(actionBtn(note.pinned ? 'Loesen' : 'Anheften',
+                function () {
+                    if (cb.onUpdate) {
+                        cb.onUpdate({ id: note.id, pinned: !note.pinned });
+                    }
+                }));
             actions.appendChild(actionBtn('Bearbeiten', function () {
                 openEditor({
                     colors: colors, persons: persons, note: note,
@@ -548,8 +717,15 @@
         matchesFilter: matchesFilter,
         filterNotes: filterNotes,
         allTags: allTags,
+        anyFilterActive: anyFilterActive,
+        commonOwner: commonOwner,
+        moveId: moveId,
+        orderIds: orderIds,
         renderNotes: renderNotes,
         openEditor: openEditor,
+        // cleanup: von der Shell (cockpit.js cleanupView) beim Sichtwechsel
+        // aufgerufen, damit das Drag&Drop-Handle sauber abgebaut wird.
+        cleanup: destroySortable,
         // Nur fuer Tests: erlaubt Ruecksetzen des UI-Zustands zwischen Faellen.
         _resetUi: function () { ui = { search: '', color: '', status: '', tag: '', open: {} }; }
     };

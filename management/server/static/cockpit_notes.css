@@ -8,7 +8,9 @@
  * verzichtet aus genau diesem Grund auf eine globale '.aiw-btn'-Regel).
  * Farbtoene der Karten kommen inline aus cockpit_notes.js (Server-Farbkatalog);
  * hier nur Layout, Typografie und Interaktion.
- * Version: v0.7.406 · Build: 406 · 2026-07-14
+ * Build 407: Drag&Drop-Griff, Drag-Ghost, Pfeil-Schaltflaechen (a11y),
+ *            Hinweiszeile (dragHint).
+ * Version: v0.7.407 · Build: 407 · 2026-07-14
  * ========================================================================== */
 
 /* --- Kopfzeile ------------------------------------------------------------ */
@@ -84,6 +86,14 @@
 .aiw-note.is-pinned { outline: 2px solid rgba(0,0,0,.18); }
 
 .aiw-note-top { display: flex; align-items: flex-start; gap: 8px; }
+/* Zieh-Griff (Build 407): SortableJS bindet an diesen Handle. */
+.aiw-note-grip {
+  cursor: grab; font-size: 14px; line-height: 1.2; color: #555;
+  user-select: none; margin-top: 1px;
+}
+.aiw-note-grip:active { cursor: grabbing; }
+/* Platzhalter der gerade gezogenen Karte. */
+.aiw-note-ghost { opacity: .4; outline: 2px dashed rgba(0,0,0,.35); }
 .aiw-note-check { margin-top: 3px; width: 16px; height: 16px; cursor: pointer; }
 .aiw-note-titlewrap { flex: 1; min-width: 0; }
 .aiw-note-title {
@@ -125,6 +135,12 @@
 }
 .aiw-note-act:hover { background: rgba(255,255,255,.95); }
 .aiw-note-act.is-danger:hover { background: #fde2e0; border-color: #c0392b; }
+/* Pfeil-Schaltflaechen (a11y-Ordnung): schmaler, monospace-mittig. */
+.aiw-note-act.is-move {
+  min-width: 26px; text-align: center; font-family: ui-monospace, monospace;
+  padding: 4px 6px;
+}
+.aiw-notes-draghint { font-size: 12px; color: var(--muted); margin-top: 4px; }
 
 /* --- Editor-Modal --------------------------------------------------------- */
 .aiw-modal-overlay {
