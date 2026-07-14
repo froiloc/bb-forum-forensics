@@ -38,7 +38,9 @@
         iframe: null,       // Berichtstext-<iframe>
         selKey: null,       // gewaehlter Bericht ('uid:rid')
         actionPanel: null,  // Aktionsbereich (Freigabe/Rueckgabe/Pruefung)
-        verifyBox: null     // Ausgabe der Siegelpruefung
+        verifyBox: null,    // Ausgabe der Siegelpruefung
+        annPanel: null,     // Belege-Panel (Annotationen, SF-2, Build 417)
+        comPanel: null      // Kommentar-Panel (SF-3, read-only, Build 417)
     };
 
     // =====================================================================
@@ -101,6 +103,51 @@
             + 'ab. Das ist ein Manipulationsverdacht und muss geprueft werden.';
     }
 
+    // --- Support-View: Belege (SF-2) + Kommentare (SF-3, read-only) -------
+    // Self-contained (Repo-Konvention). Fachlich deckungsgleich zu den Helfern
+    // der Lektorat-Sicht; hier read-only (die Chefin verifiziert, sie
+    // kommentiert nicht in dieser Sicht).
+    function annotationsUrl(uid, rid) {
+        return '/api/report/annotations?user_id=' + encodeURIComponent(uid)
+            + '&report_id=' + encodeURIComponent(rid);
+    }
+    function commentsUrl(uid, rid) {
+        return '/api/report/comments?user_id=' + encodeURIComponent(uid)
+            + '&report_id=' + encodeURIComponent(rid);
+    }
+    function categoryLabel(cat) {
+        switch (cat) {
+            case 'CAT_PERSON':   return 'Person';
+            case 'CAT_LOCATION': return 'Ort';
+            case 'CAT_CONTACT':  return 'Kontakt';
+            case 'CAT_TIME':     return 'Zeit';
+            case 'CAT_OTHER':    return 'Sonstiges';
+            default:             return cat || '—';
+        }
+    }
+    function forumContext(item) {
+        if (!item || item.topic_id == null || item.forum_id == null) {
+            return '—';
+        }
+        return 'Thema ' + item.topic_id + ' · Unterforum ' + item.forum_id;
+    }
+    function commentStatusLabel(status) {
+        switch (status) {
+            case 'pending':   return 'offen';
+            case 'addressed': return 'erledigt';
+            case 'dismissed': return 'verworfen';
+            case 'revoked':   return 'zurueckgenommen';
+            default:          return status || 'unbekannt';
+        }
+    }
+    function reviewerRoleLabel(role) {
+        switch (role) {
+            case 'supervisor': return 'Chef-Ermittlerin';
+            case 'lector':     return 'Lektorat';
+            default:           return role || '—';
+        }
+    }
+
     // =====================================================================
     // 2) DOM.
     // =====================================================================
@@ -110,6 +157,8 @@
         _state.selKey = null;
         _state.actionPanel = null;
         _state.verifyBox = null;
+        _state.annPanel = null;
+        _state.comPanel = null;
         log('cleanup');
     }
 
@@ -138,6 +187,156 @@
             _state.verifyBox.textContent = 'Siegelpruefung fehlgeschlagen: '
                 + (msg || 'Fehler');
         }
+    }
+
+    // --- Belege-Panel (SF-2, read-only) ----------------------------------
+    function _annHint(msg) {
+        if (!_state.annPanel) { return; }
+        _state.annPanel.innerHTML = '';
+        var p = document.createElement('p');
+        p.className = 'aiw-approval-supp-hint';
+        p.textContent = msg;
+        _state.annPanel.appendChild(p);
+    }
+    function annotationsLoading() { _annHint('Belege werden geladen …'); }
+    function annotationsError(msg) {
+        _annHint('Belege konnten nicht geladen werden: ' + (msg || 'Fehler'));
+    }
+
+    // renderAnnotations(data): Belege (Annotationen) zum Bericht anzeigen.
+    function renderAnnotations(data) {
+        var panel = _state.annPanel;
+        if (!panel) { return; }
+        panel.innerHTML = '';
+        var items = (data && data.items) ? data.items : [];
+
+        var head = document.createElement('h3');
+        head.className = 'aiw-approval-supp-head';
+        head.textContent = 'Belege (' + items.length + ')';
+        panel.appendChild(head);
+
+        if (!items.length) {
+            var none = document.createElement('p');
+            none.className = 'aiw-approval-supp-hint';
+            none.textContent = 'Zu diesem Bericht sind keine Belege verankert.';
+            panel.appendChild(none);
+            return;
+        }
+
+        items.forEach(function (it) {
+            var box = document.createElement('div');
+            box.className = 'aiw-approval-ann-item';
+            if (it.missing) { box.classList.add('is-missing'); }
+            if (it.deleted) { box.classList.add('is-deleted'); }
+
+            var cat = document.createElement('span');
+            cat.className = 'aiw-approval-ann-cat';
+            cat.textContent = categoryLabel(it.category);
+            box.appendChild(cat);
+
+            var txt = document.createElement('div');
+            txt.className = 'aiw-approval-ann-text';
+            txt.textContent = it.missing
+                ? '⚠ Beleg nicht (mehr) vorhanden (Annotation #'
+                    + it.annotation_id + ')'
+                : (it.text || '');
+            box.appendChild(txt);
+
+            var metaLine = document.createElement('div');
+            metaLine.className = 'aiw-approval-ann-meta';
+            var bits = [];
+            if (it.post_id != null) { bits.push('Beitrag #' + it.post_id); }
+            bits.push('Forum: ' + forumContext(it));
+            if (it.block_id) {
+                bits.push('Block ' + it.block_id
+                    + (it.block_type ? ' (' + it.block_type + ')' : ''));
+            }
+            if (it.deleted) { bits.push('geloescht'); }
+            metaLine.textContent = bits.join(' · ');
+            box.appendChild(metaLine);
+
+            panel.appendChild(box);
+        });
+    }
+
+    // --- Kommentar-Panel (SF-3, READ-ONLY) -------------------------------
+    // In der Freigabe-Sicht werden Kommentare NUR ANGEZEIGT (kein Anlegen/
+    // Aufloesen): die Chefin liest die Anmerkungen des Lektorats zur
+    // Entscheidungsfindung. Kommentieren geschieht in der Lektorat-Sicht (W4).
+    function _comHint(msg) {
+        if (!_state.comPanel) { return; }
+        _state.comPanel.innerHTML = '';
+        var p = document.createElement('p');
+        p.className = 'aiw-approval-supp-hint';
+        p.textContent = msg;
+        _state.comPanel.appendChild(p);
+    }
+    function commentsLoading() { _comHint('Kommentare werden geladen …'); }
+    function commentsError(msg) {
+        _comHint('Kommentare konnten nicht geladen werden: ' + (msg || 'Fehler'));
+    }
+
+    function renderComments(data) {
+        var panel = _state.comPanel;
+        if (!panel) { return; }
+        panel.innerHTML = '';
+        var comments = (data && data.comments) ? data.comments : [];
+
+        var head = document.createElement('h3');
+        head.className = 'aiw-approval-supp-head';
+        head.textContent = 'Kommentare (' + comments.length + ')';
+        panel.appendChild(head);
+
+        if (!comments.length) {
+            var none = document.createElement('p');
+            none.className = 'aiw-approval-supp-hint';
+            none.textContent = 'Noch keine Kommentare zu diesem Bericht.';
+            panel.appendChild(none);
+            return;
+        }
+
+        comments.forEach(function (c) {
+            var box = document.createElement('div');
+            box.className = 'aiw-approval-com-item';
+            box.setAttribute('data-status', c.status || '');
+            if (c.status && c.status !== 'pending') {
+                box.classList.add('is-resolved');
+            }
+
+            var top = document.createElement('div');
+            top.className = 'aiw-approval-com-top';
+            var role = document.createElement('span');
+            role.className = 'aiw-approval-com-role';
+            role.textContent = reviewerRoleLabel(c.reviewer_role);
+            top.appendChild(role);
+            var stt = document.createElement('span');
+            stt.className = 'aiw-approval-com-status';
+            stt.textContent = commentStatusLabel(c.status);
+            top.appendChild(stt);
+            box.appendChild(top);
+
+            var body = document.createElement('div');
+            body.className = 'aiw-approval-com-body';
+            body.textContent = c.comment_text || '';
+            box.appendChild(body);
+
+            if (c.suggested_content) {
+                var sugv = document.createElement('div');
+                sugv.className = 'aiw-approval-com-suggestion';
+                sugv.textContent = 'Vorschlag: ' + c.suggested_content;
+                box.appendChild(sugv);
+            }
+
+            var meta = document.createElement('div');
+            meta.className = 'aiw-approval-com-meta';
+            var mbits = [];
+            if (c.block_id) { mbits.push('Block ' + c.block_id); }
+            mbits.push('Prueferin #' + c.reviewer_pid);
+            meta.textContent = mbits.join(' · ');
+            box.appendChild(meta);
+
+            panel.appendChild(box);
+        });
     }
 
     // _buildActionPanel: fuellt den Aktionsbereich fuer EINEN gewaehlten
@@ -260,6 +459,8 @@
         _state.selKey = null;
         _state.actionPanel = null;
         _state.verifyBox = null;
+        _state.annPanel = null;
+        _state.comPanel = null;
 
         var wrap = document.createElement('div');
         wrap.className = 'aiw-approval';
@@ -346,6 +547,14 @@
                 _state.selKey = key;
                 frame.src = renderUrl(r.user_id, r.id);
                 _buildActionPanel(r, opts);
+                // Support-View (Belege + Kommentare) auf "laedt" setzen; der
+                // Abruf laeuft ueber opts.onSelect (cockpit.js holt
+                // /api/report/annotations + /api/report/comments).
+                annotationsLoading();
+                commentsLoading();
+                if (typeof opts.onSelect === 'function') {
+                    opts.onSelect(r.user_id, r.id);
+                }
                 log('select', key, frame.src);
             });
             list.appendChild(row);
@@ -353,6 +562,23 @@
 
         wrap.appendChild(list);
         wrap.appendChild(preview);
+
+        // --- Support-View (SF-2 + SF-3, read-only) unter dem Vorschau-Bereich.
+        // Zwei Panels nebeneinander (schmal: gestapelt): Belege | Kommentare.
+        var support = document.createElement('div');
+        support.className = 'aiw-approval-support';
+        var ann = document.createElement('div');
+        ann.className = 'aiw-approval-annotations';
+        _state.annPanel = ann;
+        var com = document.createElement('div');
+        com.className = 'aiw-approval-comments';
+        _state.comPanel = com;
+        support.appendChild(ann);
+        support.appendChild(com);
+        _annHint('Bericht auswaehlen, um die Belege zu sehen.');
+        _comHint('Bericht auswaehlen, um die Kommentare zu sehen.');
+        wrap.appendChild(support);
+
         mainEl.appendChild(wrap);
         return wrap;
     }
@@ -367,11 +593,23 @@
         canApprove: canApprove,
         canVerify: canVerify,
         verifyText: verifyText,
+        annotationsUrl: annotationsUrl,     // SF-2 (Build 417)
+        commentsUrl: commentsUrl,           // SF-3 (Build 417)
+        categoryLabel: categoryLabel,
+        forumContext: forumContext,
+        commentStatusLabel: commentStatusLabel,
+        reviewerRoleLabel: reviewerRoleLabel,
         // DOM
         renderApproval: renderApproval,
         renderVerify: renderVerify,
         verifyLoading: verifyLoading,
         verifyError: verifyError,
+        renderAnnotations: renderAnnotations,   // Belege (SF-2, read-only)
+        annotationsLoading: annotationsLoading,
+        annotationsError: annotationsError,
+        renderComments: renderComments,         // Kommentare (SF-3, read-only)
+        commentsLoading: commentsLoading,
+        commentsError: commentsError,
         cleanup: cleanup
     };
     log('Modul geladen.');

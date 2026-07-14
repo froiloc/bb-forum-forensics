@@ -173,4 +173,83 @@ describe("cockpit_approval", () => {
     expect(main.querySelector(".aiw-approval-action").textContent)
       .toContain("Nur vorgelegte");
   });
+
+  // --- Support-View: Belege (SF-2) + Kommentare (SF-3), Build 417 ---------
+  it("AP08 reine Support-Helfer", () => {
+    const api = _api();
+    expect(api.annotationsUrl(700, 1)).toBe(
+      "/api/report/annotations?user_id=700&report_id=1"
+    );
+    expect(api.commentsUrl(700, 1)).toBe(
+      "/api/report/comments?user_id=700&report_id=1"
+    );
+    expect(api.categoryLabel("CAT_PERSON")).toBe("Person");
+    expect(api.forumContext({ topic_id: 7, forum_id: 3 }))
+      .toBe("Thema 7 · Unterforum 3");
+    expect(api.commentStatusLabel("addressed")).toBe("erledigt");
+    expect(api.reviewerRoleLabel("supervisor")).toBe("Chef-Ermittlerin");
+  });
+
+  it("AP09 Auswahl loest onSelect; Belege + Kommentare rendern", () => {
+    const win = _ctx();
+    const api = _api(win);
+    const main = _mount(win);
+    let sel = null;
+    api.renderApproval(main, _data(), {
+      status: "submitted", canApprove: true,
+      onSelect: function (uid, rid) { sel = [uid, rid]; },
+    });
+    // Support-Panels existieren.
+    expect(main.querySelector(".aiw-approval-annotations")).not.toBeNull();
+    expect(main.querySelector(".aiw-approval-comments")).not.toBeNull();
+
+    main.querySelector(".aiw-approval-item")
+      .dispatchEvent(new win.Event("click", { bubbles: true }));
+    expect(sel).toEqual([700, 1]);
+
+    api.renderAnnotations({
+      items: [
+        { annotation_id: 10, block_id: "b1", block_type: "evidence",
+          category: "CAT_PERSON", text: "Beleg A", post_id: 42,
+          topic_id: 7, forum_id: 3, missing: false, deleted: false },
+      ],
+    });
+    const annItems = main.querySelectorAll(".aiw-approval-ann-item");
+    expect(annItems.length).toBe(1);
+    expect(main.querySelector(".aiw-approval-annotations").textContent)
+      .toContain("Beleg A");
+
+    api.renderComments({
+      comments: [
+        { comment_id: "c1", block_id: "b1", reviewer_pid: 1,
+          reviewer_role: "lector", comment_text: "Bitte praezisieren",
+          suggested_content: null, status: "pending" },
+      ],
+    });
+    const comItems = main.querySelectorAll(".aiw-approval-com-item");
+    expect(comItems.length).toBe(1);
+    expect(main.querySelector(".aiw-approval-comments").textContent)
+      .toContain("Bitte praezisieren");
+  });
+
+  it("AP10 Kommentare read-only: kein Formular, keine Aufloesen-Knoepfe", () => {
+    const win = _ctx();
+    const api = _api(win);
+    const main = _mount(win);
+    api.renderApproval(main, _data(), { status: "submitted", canApprove: true });
+    api.renderComments({
+      comments: [
+        { comment_id: "c1", reviewer_pid: 1, reviewer_role: "lector",
+          comment_text: "X", status: "pending" },
+      ],
+    });
+    const panel = main.querySelector(".aiw-approval-comments");
+    expect(panel.querySelector("form")).toBeNull();
+    expect(panel.querySelector("textarea")).toBeNull();
+    expect(panel.querySelector(".aiw-approval-com-resolve")).toBeNull();
+    // leere Belege -> Hinweis.
+    api.renderAnnotations({ items: [] });
+    expect(main.querySelector(".aiw-approval-annotations").textContent)
+      .toContain("keine Belege");
+  });
 });

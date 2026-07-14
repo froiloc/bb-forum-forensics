@@ -1342,6 +1342,21 @@
                 mod.renderApproval(mainEl, data, {
                     status: 'submitted',
                     canApprove: canApprove,
+                    // Bei Auswahl eines Berichts die Belege (SF-2) UND die
+                    // Kommentare (SF-3, read-only) laden, damit die Chefin die
+                    // Aussagen vor der Freigabe am Beleg verifizieren kann.
+                    onSelect: function (uid, rid) {
+                        fetchJson(mod.annotationsUrl(uid, rid))
+                            .then(function (ad) { mod.renderAnnotations(ad); })
+                            .catch(function (e) {
+                                mod.annotationsError(e && e.message);
+                            });
+                        fetchJson(mod.commentsUrl(uid, rid))
+                            .then(function (cd) { mod.renderComments(cd); })
+                            .catch(function (e) {
+                                mod.commentsError(e && e.message);
+                            });
+                    },
                     onVerify: function (uid, rid) {
                         fetchJson('/api/report/verify?user_id=' + uid
                                   + '&report_id=' + rid)
