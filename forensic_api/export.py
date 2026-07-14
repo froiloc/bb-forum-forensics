@@ -20,8 +20,10 @@
 #
 #   Formate:
 #     html   — LEBENDIG (Build 399): selbstenthaltendes HTML via HtmlRenderer.
-#     docx   — 501 (Not Implemented) bis Build 402. Bewusst KEIN Rueckgriff auf
-#     sqlite   den toten Altpfad — kein stiller Fehlbetrieb (GR1). Beleg: mc §9.1.
+#     docx   — LEBENDIG (Build 402): Word via DocxRenderer (python-docx; fehlt sie
+#              -> HTTP 503). Reiner Text (Editor.js-HTML entfernt), *_plain-Felder.
+#     sqlite — LEBENDIG (Build 402): selbstenthaltende .db via SqliteRenderer
+#              (meta/report_blocks/report_anchors/report_warnings/README).
 #     (pdf folgt Build 404, reportlab — mc §4.3.)
 #
 #   Berichtswahl (mc §4.1):
@@ -31,7 +33,7 @@
 #   Zugriffssteuerung: nur eigener Fall (context.user_id).
 #   Migrationsvorbehalt: der Renderer LIEST NUR (kein Schreibpfad in evidence_<uid>.db).
 #
-# Version: v0.7.399 · Build: 399 · 2026-07-13
+# Version: v0.7.402 · Build: 402 · 2026-07-14
 # =============================================================================
 
 from __future__ import annotations
@@ -44,6 +46,8 @@ from core.logger import get_logger
 
 from report_render.report_source import ReportSource, NoReportError
 from report_render.html_renderer import HtmlRenderer
+from report_render.docx_renderer import DocxRenderer, DocxRendererUnavailable
+from report_render.sqlite_renderer import SqliteRenderer
 
 if TYPE_CHECKING:
     from server.http_server import ForensicRequestHandler
@@ -53,10 +57,10 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-#: In Build 399 aktiv ausgelieferte Formate.
-_LIVE_FORMATS = ("html",)
-#: Bekannte, aber noch nicht (wieder) implementierte Formate -> 501.
-_PENDING_FORMATS = ("docx", "sqlite")
+#: Aktiv ausgelieferte Formate. Build 399: html. Build 402: + docx, sqlite.
+_LIVE_FORMATS = ("html", "docx", "sqlite")
+#: Bekannte, aber noch nicht (wieder) implementierte Formate -> 501. (PDF: Build 404.)
+_PENDING_FORMATS = ()
 
 
 class ExportEndpoint:
@@ -114,6 +118,10 @@ class ExportEndpoint:
 
         if fmt == "html":
             self._export_html(handler, report_id)
+        elif fmt == "docx":
+            self._export_docx(handler, report_id)
+        elif fmt == "sqlite":
+            self._export_sqlite(handler, report_id)
 
     # ------------------------------------------------------------------
     def _build_source(self) -> ReportSource:
@@ -155,6 +163,57 @@ class ExportEndpoint:
         logger.info(
             "Export HTML: uid=%d, report_id=%s, %d Bloecke, %d Warnungen, %d Bytes",
             doc.uid, doc.report_id, len(doc.blocks), len(doc.warnings), len(body),
+        )
+
+    # ------------------------------------------------------------------
+    def _export_docx(self, handler: "ForensicRequestHandler", report_id: Optional[int]) -> None:
+        try:
+            doc = self._build_source().build(report_id)
+        except NoReportError as exc:
+            self._send_json(handler, 404, {"error": str(exc)})
+            return
+        try:
+            body = DocxRenderer().render(doc)
+        except DocxRendererUnavailable:
+            self._send_json(
+                handler, 503,
+                {"error": "python-docx nicht installiert. Bitte 'pip install python-docx' "
+                          "bzw. Offline-Wheel bereitstellen (setup/wheels)."},
+            )
+            return
+        self._send_file(
+            handler, body,
+            f"bericht_{doc.uid}_{time.strftime('%Y%m%d')}.docx",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
+        logger.info("Export DOCX: uid=%d, report_id=%s, %d Bytes", doc.uid, doc.report_id, len(body))
+
+    # ------------------------------------------------------------------
+    def _export_sqlite(self, handler: "ForensicRequestHandler", report_id: Optional[int]) -> None:
+        try:
+            doc = self._build_source().build(report_id)
+        except NoReportError as exc:
+            self._send_json(handler, 404, {"error": str(exc)})
+            return
+        body = SqliteRenderer().render(doc)
+        self._send_file(
+            handler, body,
+            f"fallakte_{doc.uid}_{time.strftime('%Y%m%d')}.db",
+            "application/octet-stream",
+        )
+        logger.info("Export SQLite: uid=%d, report_id=%s, %d Bytes", doc.uid, doc.report_id, len(body))
+
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _send_file(handler: "ForensicRequestHandler", body: bytes,
+                   filename: str, content_type: str) -> None:
+        handler.send_response_body(
+            200, body,
+            content_type=content_type,
+            extra_headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Content-Length": str(len(body)),
+            },
         )
 
     # ------------------------------------------------------------------

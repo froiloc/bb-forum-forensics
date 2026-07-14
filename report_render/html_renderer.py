@@ -21,7 +21,7 @@
 #     Doppeltes Escaping wuerde die Ansicht vom Bildschirm des Ermittlers
 #     abweichen lassen (Parität, §6).
 #
-# Version: v0.7.399 · Build: 399 · 2026-07-13
+# Version: v0.7.402 · Build: 402 · 2026-07-14 (Bild-Anker url_hash/asset_id/size ergaenzt)
 # =============================================================================
 
 from __future__ import annotations
@@ -221,11 +221,27 @@ class HtmlRenderer:
         avail_txt = ("in assets_&lt;uid&gt;.db vorhanden" if available
                      else '<span class="image-missing">NICHT in assets_&lt;uid&gt;.db auffindbar</span>')
         cap = f'<br><span class="lbl">Bildunterschrift:</span> {caption}' if caption else ""
+        # BLOB-freier Wiederauffind-Anker (Build 402), nur wenn vorhanden.
+        anchor = ""
+        if available:
+            uh = blk.data.get("_image_url_hash")
+            aid = blk.data.get("_image_asset_id")
+            size = blk.data.get("_image_size")
+            bits = []
+            if uh:
+                bits.append(f"url_hash={_esc(uh)}")
+            if aid is not None:
+                bits.append(f"asset_id={_esc(aid)}")
+            if size is not None:
+                bits.append(f"file_size={_esc(size)} B")
+            if bits:
+                anchor = f'<br><span class="lbl">Anker:</span> {" &middot; ".join(bits)}'
         return (
             '<div class="image-ref">'
             '<span class="lbl">Bildverweis (nicht eingebettet — §§184b/184c):</span><br>'
             f'Quelle: {_esc(url) or "(keine URL)"}<br>'
             f'Status: {avail_txt}'
+            f'{anchor}'
             f'{cap}'
             '</div>'
         )

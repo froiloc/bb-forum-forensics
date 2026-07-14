@@ -12,8 +12,8 @@
 # Diese Suite prueft den umgestellten, DUENNEN Endpunkt gegen eine ECHTE
 # EvidenceDb (kein MagicMock an der Interface-Grenze):
 #   E01 -- Default-Format html -> 200, valides HTML, Content-Disposition
-#   E02 -- format=docx   -> 501 (noch nicht verfuegbar, Build 402)
-#   E03 -- format=sqlite -> 501 (noch nicht verfuegbar, Build 402)
+#   E02 -- format=docx   -> 200 (.docx/ZIP), 503 nur falls python-docx fehlt (Build 402)
+#   E03 -- format=sqlite -> 200 (SQLite-Magic) (Build 402)
 #   E04 -- unbekanntes Format -> 400
 #   E05 -- kein Bericht vorhanden -> 404
 #   E06 -- explizite report_id wird beachtet (Entwurf -> Statuskopf ENTWURF)
@@ -23,7 +23,7 @@
 # der Status liegt seit dem Editor.js-Umbau am Bericht (reports.status), nicht
 # mehr am Absatz (Befund B3). Dies ist vermerkt, nicht still geloescht (GR1).
 #
-# Version: v0.7.399 · Build: 399 · 2026-07-13
+# Version: v0.7.402 · Build: 402 · 2026-07-14
 # =============================================================================
 
 import json
@@ -96,17 +96,26 @@ class TestExportEndpoint(unittest.TestCase):
         self.assertTrue(body.decode("utf-8").startswith("<!DOCTYPE html>"))
         self.assertIn("attachment", kw["extra_headers"]["Content-Disposition"])
 
-    def test_E02_docx_501(self):
+    def test_E02_docx_ok(self):
+        # Build 402: DOCX ist live. python-docx ist in der VM installiert (503 nur
+        # falls die Bibliothek fehlt).
         ep = _make()
         h = _Handler()
         ep.handle_get(h, {"format": ["docx"]})
-        self.assertEqual(h.last[0], 501)
+        status, body, kw = h.last
+        self.assertIn(status, (200, 503))
+        if status == 200:
+            self.assertEqual(body[:2], b"PK")   # .docx = ZIP-Container
+            self.assertIn(".docx", kw["extra_headers"]["Content-Disposition"])
 
-    def test_E03_sqlite_501(self):
+    def test_E03_sqlite_ok(self):
         ep = _make()
         h = _Handler()
         ep.handle_get(h, {"format": ["sqlite"]})
-        self.assertEqual(h.last[0], 501)
+        status, body, kw = h.last
+        self.assertEqual(status, 200)
+        self.assertEqual(body[:16], b"SQLite format 3\x00")   # SQLite-Magic
+        self.assertIn(".db", kw["extra_headers"]["Content-Disposition"])
 
     def test_E04_unknown_format_400(self):
         ep = _make()

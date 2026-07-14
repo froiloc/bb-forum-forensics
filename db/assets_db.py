@@ -36,6 +36,9 @@
 #
 # Abhängigkeiten: sqlite3 — ausschließlich Stdlib
 # Version: v0.1.0 · Build: 271 · 2026-05-31
+#   Build 402 (2026-07-14): get_asset_reference() ergaenzt — BLOB-freie
+#   Referenz-Metadaten (url_hash/asset_id/mime_type/file_size) fuer den
+#   forensischen Bild-Verweis der Berichts-Ausgabe (§4.2). READ-ONLY bleibt.
 #
 # Changelog Build 270 (2026-05-31):
 #   - get_known_full_urls und get_asset_by_full_url ergänzt.
@@ -291,6 +294,49 @@ class AssetsDb:
             return row is not None
         except sqlite3.OperationalError:
             return False
+
+    def get_asset_reference(self, url: str) -> Optional[dict]:
+        """Liefert BLOB-FREIE Referenz-Metadaten eines Assets (NEU Build 402).
+
+        Zweck (Berichts-Export §4.2): Fuer den forensischen Bild-VERWEIS werden
+        stabile Wiederauffind-Anker benoetigt, OHNE die Bild-Bytes (a.data) zu
+        laden — im §§184b/184c-Kontext darf der Export-Prozess den inkriminierenden
+        Inhalt nicht beruehren. Geladen werden nur url_hash, asset_id, mime_type
+        und file_size (alle im Schema belegt: asset_urls.url_hash/asset_id,
+        assets.mime_type/file_size; vgl. Kopf dieser Datei und get_asset()).
+
+        Wendet dieselbe URL-Normalisierung an wie get_asset()/has_asset().
+
+        Returns:
+            dict {url_hash, asset_id, mime_type, file_size} oder None (unbekannt).
+        """
+        if not self._available:
+            return None
+
+        lookup_url = (
+            f"{self._forum_base_url}{url}" if self._forum_base_url else url
+        )
+        row = self._retryable_query(
+            """
+            SELECT au.url_hash, au.asset_id, a.mime_type, a.file_size
+            FROM adb.asset_urls au
+            LEFT JOIN adb.assets a ON a.id = au.asset_id
+            WHERE au.url = ? LIMIT 1
+            """,
+            (lookup_url,),
+        )
+        if row is None:
+            return None
+        try:
+            return {
+                "url_hash":  str(row[0]) if row[0] is not None else None,
+                "asset_id":  int(row[1]) if row[1] is not None else None,
+                "mime_type": str(row[2]) if row[2] else _DEFAULT_MIME_TYPE,
+                "file_size": int(row[3]) if row[3] is not None else None,
+            }
+        except (IndexError, TypeError, ValueError) as exc:
+            logger.error("get_asset_reference Extraktionsfehler fuer '%s': %s", url, exc)
+            return None
 
     def get_meta(self, key: str) -> Optional[str]:
         """

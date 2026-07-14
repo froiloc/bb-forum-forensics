@@ -27,7 +27,10 @@
 #   Migrationsvorbehalt: Dieses Modul LIEST NUR. Kein Schreibpfad in
 #   evidence_<uid>.db -> kein Migrationsvorbehalt beruehrt.
 #
-# Version: v0.7.399 · Build: 399 · 2026-07-13
+#   Build 402: Aufloesung in BEIDE Modi (html+plain) via resolver.resolve_both;
+#   BLOB-freie Bild-Anreicherung via AssetsDb.get_asset_reference.
+#
+# Version: v0.7.402 · Build: 402 · 2026-07-14
 # =============================================================================
 
 from __future__ import annotations
@@ -238,44 +241,47 @@ class ReportSource:
         except Exception:
             rb.anchors = []
 
-        # Kleiner Helfer: String aufloesen und Warnungen einsammeln.
-        def rs(text: Any) -> str:
+        # Kleiner Helfer: String in BEIDE Modi aufloesen (Build 402) und Warnungen
+        # einsammeln. Rueckgabe (html, plain). resolve_both loest {{a:}} nur einmal auf.
+        def rs(text: Any) -> tuple[str, str]:
             if text is None:
-                return ""
-            fragment, warns = resolver.resolve(str(text), values, block_id=blk.block_id)
+                return "", ""
+            h, p, warns = resolver.resolve_both(str(text), values, block_id=blk.block_id)
             doc.warnings.extend(warns)
-            return fragment
+            return h, p
 
         bt = blk.block_type
-        # Einfache Textbloecke -> resolved_text.
+        # Einfache Textbloecke -> resolved_text (+ _plain fuer DOCX/SQLite).
         if bt in ("paragraph", "header", "quote", "marker"):
-            rb.resolved_text = rs(data.get("text", ""))
+            rb.resolved_text, rb.resolved_text_plain = rs(data.get("text", ""))
             if bt == "quote":
-                rb.data["_resolved_caption"] = rs(data.get("caption", ""))
-        # Liste -> jedes Item aufloesen.
+                ch, cp = rs(data.get("caption", ""))
+                rb.data["_resolved_caption"] = ch
+                rb.data["_resolved_caption_plain"] = cp
+        # Liste -> jedes Item aufloesen (html + plain).
         elif bt == "list":
-            items = data.get("items", [])
-            rb.data["_resolved_items"] = [rs(it) for it in items] if isinstance(items, list) else []
-        # Tabelle -> jede Zelle aufloesen.
+            items = data.get("items", []) if isinstance(data.get("items"), list) else []
+            pairs = [rs(it) for it in items]
+            rb.data["_resolved_items"] = [h for h, _ in pairs]
+            rb.data["_resolved_items_plain"] = [p for _, p in pairs]
+        # Tabelle -> jede Zelle aufloesen (html + plain).
         elif bt == "table":
-            content = data.get("content", [])
-            rb.data["_resolved_rows"] = (
-                [[rs(cell) for cell in row] for row in content]
-                if isinstance(content, list) else []
-            )
+            content = data.get("content", []) if isinstance(data.get("content"), list) else []
+            grid = [[rs(cell) for cell in row] for row in content]
+            rb.data["_resolved_rows"] = [[h for h, _ in row] for row in grid]
+            rb.data["_resolved_rows_plain"] = [[p for _, p in row] for row in grid]
         # Bild -> VERWEIS statt Einbettung (§4.2).
         elif bt == "image":
             self._build_image_reference(rb, data, doc, rs)
         # delimiter -> kein Inhalt.
         # evidence -> Verweise auf Annotationen; Text (falls vorhanden) aufloesen.
         elif bt == "evidence":
-            rb.resolved_text = rs(data.get("text", ""))
+            rb.resolved_text, rb.resolved_text_plain = rs(data.get("text", ""))
             # evidence_ids unveraendert im data-Feld belassen (Renderer listet sie).
         else:
-            # unbekannter Typ: vorhandenen 'text' defensiv aufloesen, damit nichts
-            # verloren geht (GR1); der Renderer meldet den Typ zusaetzlich sichtbar.
+            # unbekannter Typ: vorhandenen 'text' defensiv aufloesen (GR1).
             if "text" in data:
-                rb.resolved_text = rs(data.get("text", ""))
+                rb.resolved_text, rb.resolved_text_plain = rs(data.get("text", ""))
 
         return rb
 
@@ -285,32 +291,48 @@ class ReportSource:
 
         - url: Quelle aus dem Editor.js-SimpleImage-Block (data['url'] bzw.
                data['file']['url']).
-        - Existenzpruefung ueber AssetsDb.has_asset(url) (laedt KEINE BLOB-Bytes!).
-          Fehlt das Asset -> WARN_MISSING_IMAGE (GR1).
-        - caption wird (falls vorhanden) platzhalter-aufgeloest.
-
-        Restpunkt (mc §9.3): content_hash und share_id als zusaetzliche, stabile
-        Wiederauffind-Anker. AssetsDb liefert diese aktuell nicht ohne BLOB-Ladung
-        (AssetRecord traegt keinen content_hash). Um im §184b-Kontext KEINE
-        Bild-Bytes in den Export-Prozess zu ziehen, wird der Verweis in Build 399
-        bewusst auf url + Existenz beschraenkt; die Anreicherung um content_hash/
-        share_id folgt in Build 402, sobald eine BLOB-freie Lesemethode ergaenzt
-        ist. Diese Beschraenkung ist dokumentiert (build.json 399), nicht still.
+        - caption wird (falls vorhanden) platzhalter-aufgeloest (html + plain).
+        - BLOB-FREIE Anreicherung (Build 402, mc §9.3): ueber
+          AssetsDb.get_asset_reference(url) werden url_hash, asset_id, mime_type
+          und file_size geladen — OHNE die Bild-Bytes (a.data) zu ziehen. Das ist
+          im §§184b/184c-Kontext bewusst so: der Export-Prozess beruehrt den
+          inkriminierenden Inhalt nie. url_hash + asset_id + file_size bilden den
+          stabilen, re-lokalisierbaren Anker. (Ein separater 'content_hash'/
+          'share_id'-Spaltenname ist im zugaenglichen assets_<uid>.db-Schema nicht
+          belegt — asset_urls: url,url_hash,asset_id,url_context,page_id;
+          assets: id,data,mime_type,file_size. Beleg: db/assets_db.py Kopf/Join.)
+        - Fehlt das Asset -> WARN_MISSING_IMAGE (GR1).
         """
         url = data.get("url")
         if not url and isinstance(data.get("file"), dict):
             url = data["file"].get("url")
         url = str(url or "")
         rb.data["_image_url"] = url
-        rb.data["_resolved_caption"] = rs(data.get("caption", ""))
+        ch, cp = rs(data.get("caption", ""))
+        rb.data["_resolved_caption"] = ch
+        rb.data["_resolved_caption_plain"] = cp
 
-        exists = False
+        ref = None
         if url and self._adb is not None:
+            # Bevorzugt die BLOB-freie Referenzmethode (Build 402); faellt auf
+            # has_asset() zurueck, falls eine aeltere AssetsDb im Einsatz ist.
+            getref = getattr(self._adb, "get_asset_reference", None)
             try:
-                exists = bool(self._adb.has_asset(url))
+                if callable(getref):
+                    ref = getref(url)
+                elif hasattr(self._adb, "has_asset") and self._adb.has_asset(url):
+                    ref = {}
             except Exception:
-                exists = False
+                ref = None
+
+        exists = ref is not None
         rb.data["_image_available"] = exists
+        if exists and isinstance(ref, dict):
+            # Nur belegte, BLOB-freie Anker uebernehmen.
+            rb.data["_image_url_hash"] = ref.get("url_hash")
+            rb.data["_image_asset_id"] = ref.get("asset_id")
+            rb.data["_image_mime"] = ref.get("mime_type")
+            rb.data["_image_size"] = ref.get("file_size")
         if not exists:
             doc.add_warning(
                 WARN_MISSING_IMAGE,

@@ -11,10 +11,14 @@
 #
 # Abdeckung:
 #   Resolver-Paritaet:   PR01-PR06  (a/m/o, XSS, unbekannt, Newline)
+#   Resolver Text-Modus: TX01-TX04  (Tags/Entities, roh vs. escaped, <br>, 399-Paritaet)
 #   ReportSource:        RS01-RS06  (Auswahl, Warnungen R2, Bild-Verweis, NoReport)
+#   Bild-Anreicherung:   IE01       (BLOB-freie Referenzfelder, Build 402)
 #   HtmlRenderer:        HR01-HR07  (Statuskopf R1, Bloecke, R2-Hinweise, R3)
+#   DocxRenderer:        DX01-DX03  (Status/Bloecke, R3, XSS-als-Text) [Build 402]
+#   SqliteRenderer:      SQ01-SQ04  (Tabellen/Zahlen, R2-Warnungen, Bild-Verweis, R3) [Build 402]
 #
-# Version: v0.7.399 · Build: 399 · 2026-07-13
+# Version: v0.7.402 · Build: 402 · 2026-07-14
 # =============================================================================
 
 import json
@@ -233,6 +237,161 @@ class TestHtmlRenderer(unittest.TestCase):
         self.assertIn("Beleg: Beitrag #5", html)   # Anker
         self.assertIn("<table class=\"report-table\">", html)
         self.assertIn("<th>A</th>", html)          # withHeadings -> erste Zeile th
+
+
+# -----------------------------------------------------------------------------
+# Resolver Text-Modus (Build 402)
+# -----------------------------------------------------------------------------
+class TestResolverTextMode(unittest.TestCase):
+
+    def setUp(self):
+        self.r = PlaceholderResolver(resolve_auto=lambda n: {"k": "V"}.get(n))
+
+    def test_TX01_text_mode_strips_tags_unescapes(self):
+        # Editor.js-HTML im Textsegment -> Tags weg, Entities aufgeloest.
+        frag, _ = self.r.resolve("<b>Hallo</b> &amp; Welt", mode="text")
+        self.assertEqual(frag, "Hallo & Welt")
+
+    def test_TX02_text_mode_value_raw_html_mode_escaped(self):
+        h, t, _ = self.r.resolve_both("{{m:x|}}", {"x": "<i>&"})
+        self.assertEqual(t, "<i>&")                    # roh im Text
+        self.assertEqual(h, "&lt;i&gt;&amp;")          # escaped im HTML
+
+    def test_TX03_br_becomes_newline_in_text(self):
+        frag, _ = self.r.resolve("A<br>B", mode="text")
+        self.assertEqual(frag, "A\nB")
+
+    def test_TX04_html_mode_identical_to_build399(self):
+        # Regressionsschutz: HTML-Serialisierung unveraendert.
+        frag, _ = self.r.resolve("X {{a:k}} Y\nZ", mode="html")
+        self.assertEqual(frag, "X V Y<br>Z")
+
+
+# -----------------------------------------------------------------------------
+# Bild-Anreicherung (BLOB-frei, Build 402)
+# -----------------------------------------------------------------------------
+class _FakeAssets:
+    """AssetsDb-Ersatz mit get_asset_reference (BLOB-frei)."""
+    def __init__(self, known):
+        self._known = known
+    def get_asset_reference(self, url):
+        if url in self._known:
+            return {"url_hash": "H" + url, "asset_id": 7, "mime_type": "image/jpeg", "file_size": 123}
+        return None
+
+
+class TestImageEnrichment(unittest.TestCase):
+
+    def test_IE01_reference_fields_present_when_known(self):
+        con, edb = _make_edb()
+        _seed(con)
+        src = ReportSource(edb, None, _FakeAssets({"/img/avatars/1.jpg"}), None,
+                           42, "u", 1_700_000_000)
+        doc = src.build()
+        img = next(b for b in doc.blocks if b.block_id == "b_img")
+        self.assertTrue(img.data["_image_available"])
+        self.assertEqual(img.data["_image_url_hash"], "H/img/avatars/1.jpg")
+        self.assertEqual(img.data["_image_asset_id"], 7)
+        self.assertEqual(img.data["_image_size"], 123)
+        # keine missing_image-Warnung
+        self.assertFalse(any(w.kind == WARN_MISSING_IMAGE for w in doc.warnings))
+
+
+# -----------------------------------------------------------------------------
+# DocxRenderer (Build 402)
+# -----------------------------------------------------------------------------
+class TestDocxRenderer(unittest.TestCase):
+
+    def setUp(self):
+        self.con, self.edb = _make_edb()
+        _seed(self.con)
+        self.src = ReportSource(self.edb, None, None, None, 42, "TestNutzer", 1_700_000_000)
+
+    def _text(self):
+        try:
+            from docx import Document
+        except ImportError:
+            self.skipTest("python-docx nicht installiert")
+        import io
+        from report_render.docx_renderer import DocxRenderer
+        body = DocxRenderer().render(self.src.build())
+        self.assertEqual(body[:2], b"PK")            # ZIP-Container
+        d = Document(io.BytesIO(body))
+        parts = [p.text for p in d.paragraphs]
+        for t in d.tables:
+            for row in t.rows:
+                for c in row.cells:
+                    parts.append(c.text)
+        return "\n".join(parts)
+
+    def test_DX01_status_and_blocks(self):
+        txt = self._text()
+        self.assertIn("ZUR ABNAHME VORGELEGT", txt)          # R1
+        self.assertIn("Kapitel", txt)                        # header
+        self.assertIn("Bildverweis", txt)                    # image ref (§4.2)
+        self.assertIn("Hinweise zur Erzeugung", txt)         # R2
+
+    def test_DX02_unknown_block_reported(self):
+        self.assertIn("Unbekannter Blocktyp 'audio'", self._text())  # R3
+
+    def test_DX03_xss_is_plain_text_not_markup(self):
+        # In DOCX ist der Wert reiner Text; er darf als Zeichenfolge erscheinen.
+        self.assertIn("<script>alert(1)</script>", self._text())
+
+
+# -----------------------------------------------------------------------------
+# SqliteRenderer (Build 402)
+# -----------------------------------------------------------------------------
+class TestSqliteRenderer(unittest.TestCase):
+
+    def setUp(self):
+        self.con, self.edb = _make_edb()
+        _seed(self.con)
+        self.src = ReportSource(self.edb, None, None, None, 42, "TestNutzer", 1_700_000_000)
+
+    def _open(self):
+        import os
+        import tempfile
+        from report_render.sqlite_renderer import SqliteRenderer
+        body = SqliteRenderer().render(self.src.build())
+        self.assertEqual(body[:16], b"SQLite format 3\x00")
+        fd, path = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        with open(path, "wb") as f:
+            f.write(body)
+        con = sqlite3.connect(path)
+        con.row_factory = sqlite3.Row
+        self.addCleanup(lambda: (con.close(), os.unlink(path)))
+        return con
+
+    def test_SQ01_tables_and_counts(self):
+        con = self._open()
+        nblocks = con.execute("SELECT COUNT(*) FROM report_blocks").fetchone()[0]
+        self.assertEqual(nblocks, 11)
+        meta = dict(con.execute("SELECT key, value FROM meta").fetchall())
+        self.assertEqual(meta["report_id"], "2")
+        self.assertEqual(meta["status"], "submitted")
+
+    def test_SQ02_warnings_persisted(self):
+        con = self._open()
+        kinds = {r[0] for r in con.execute("SELECT DISTINCT kind FROM report_warnings").fetchall()}
+        self.assertIn(WARN_MISSING_IMAGE, kinds)
+        self.assertIn(WARN_UNKNOWN_BLOCK_TYPE, kinds)
+
+    def test_SQ03_image_is_reference(self):
+        con = self._open()
+        row = con.execute(
+            "SELECT image_url, image_available FROM report_blocks WHERE block_id='b_img'"
+        ).fetchone()
+        self.assertEqual(row["image_url"], "/img/avatars/1.jpg")
+        self.assertEqual(row["image_available"], 0)   # assets=None -> nicht verfuegbar
+
+    def test_SQ04_unknown_block_flagged(self):
+        con = self._open()
+        row = con.execute(
+            "SELECT is_known_type FROM report_blocks WHERE block_id='b_unknown'"
+        ).fetchone()
+        self.assertEqual(row["is_known_type"], 0)
 
 
 if __name__ == "__main__":

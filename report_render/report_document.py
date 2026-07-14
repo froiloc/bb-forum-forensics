@@ -23,7 +23,7 @@
 #
 # Grundregeln: GR6 (Kommentieren von Intention), GR10 (eine Klasse je Datei-Zweck).
 # Beleg: mc-Festlegungen 2026-07-13; Feinabnahme Build 399 v0.1 §2.
-# Version: v0.7.399 · Build: 399 · 2026-07-13
+# Version: v0.7.402 · Build: 402 · 2026-07-14 (RenderedBlock.resolved_text_plain ergaenzt)
 # =============================================================================
 
 from __future__ import annotations
@@ -84,7 +84,8 @@ class RenderedBlock:
     """
     block_id:      str
     block_type:    str
-    resolved_text: str = ""
+    resolved_text: str = ""            # HTML-Fragment (mode='html')
+    resolved_text_plain: str = ""      # reiner Text (mode='text', Build 402: DOCX/SQLite)
     data:          dict = field(default_factory=dict)
     anchors:       list = field(default_factory=list)
     is_known_type: bool = True
