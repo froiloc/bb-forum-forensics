@@ -158,6 +158,11 @@ from management.workload.workload_repo import (
     WorkloadRepo,
     WorkloadSchemaError,
 )
+from management.mentoring_notes import note_colors
+from management.mentoring_notes.mentoring_notes_repo import (
+    MentoringNotesError,
+    MentoringNotesRepo,
+)
 
 #: Basisverzeichnis der statischen Cockpit-Assets (cockpit.* + Vendor).
 #: Liegt neben diesem Modul (management/server/static/).
@@ -186,6 +191,10 @@ CAP_EXTERNAL_EDIT = "external.edit"
 # ausdruecklich Scope 'alle' (mc 2026-07-12).
 CAP_RESULTS_VIEW = "results.view"
 CAP_RESULTS_EDIT = "results.edit"
+# Build 401: Betreuungs-Notizen. Scope-faehig: 'alle' (Vertretung/Aufsicht sieht
+# fremde Boards), sonst nur das EIGENE Board (privater Merkzettel der Leitung).
+CAP_MENTORING_NOTES_VIEW = "mentoring_notes.view"
+CAP_MENTORING_NOTES_EDIT = "mentoring_notes.edit"
 
 logger = logging.getLogger(__name__)
 
@@ -454,6 +463,10 @@ class ManagementApp:
             return self._results_coverage(person_id, query)
         if path == "/api/results":
             return self._results(person_id, query)
+        # Build 401: Betreuungs-Notizen ("Post-its") der Ermittler-Betreuung.
+        # Reiner LESE-Endpunkt (Block 1); die Schreibpfade folgen in Block 2.
+        if path == "/api/mentoring/notes":
+            return self._mentoring_notes(person_id, query)
         if path.startswith("/static/"):
             return self._serve_static(path[len("/static/"):])
         return Response.json(404, {"error": "not_found", "path": path})
@@ -1685,6 +1698,78 @@ class ManagementApp:
         finally:
             con.close()
         return Response.json(200, {"ok": True, **res})
+
+    # -------------------------------------------------- Betreuungs-Notizen (401)
+    def _mentoring_notes(self, person_id: int, query) -> Response:
+        """
+        GET /api/mentoring/notes — die Betreuungs-Notizen ("Post-its").
+
+        Sichtbarkeit: PRIVATES Board pro Autor:in. Nur wer Scope 'alle' hat
+        (Vertretung/Aufsicht), darf fremde Boards sehen und kann per ?owner_id=
+        gezielt eines waehlen; ohne Angabe sieht 'alle' saemtliche Boards.
+        Alle uebrigen sehen ausschliesslich ihr EIGENES Board (owner_id =
+        person_id) — Zweckbindung/Kapselung, default restriktiv.
+
+        Optionale Feinfilter (serverseitig): ?archived=1, ?status=, ?color=,
+        ?tag=, ?subject= (subject_person_id).
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_MENTORING_NOTES_VIEW):
+            return self._forbidden(CAP_MENTORING_NOTES_VIEW)
+        scope = policy.scope(CAP_MENTORING_NOTES_VIEW)  # 'alle' | 'eigene' | None
+
+        # owner_id-Auswahl: nur Scope 'alle' darf ein FREMDES Board waehlen.
+        owner_filter: Optional[int] = person_id
+        if scope == "alle":
+            raw_owner = self._q1(query, "owner_id")
+            if raw_owner:
+                try:
+                    owner_filter = int(raw_owner)
+                except (TypeError, ValueError):
+                    return Response.json(400, {
+                        "error": "bad_request",
+                        "detail": "owner_id ungueltig."})
+            else:
+                owner_filter = None  # alle Boards
+
+        archived = bool(self._q1(query, "archived"))
+        status = self._q1(query, "status")
+        color = self._q1(query, "color")
+        tag = self._q1(query, "tag")
+        raw_subject = self._q1(query, "subject")
+        subject = None
+        if raw_subject:
+            try:
+                subject = int(raw_subject)
+            except (TypeError, ValueError):
+                return Response.json(400, {
+                    "error": "bad_request", "detail": "subject ungueltig."})
+
+        con = self._ro_con()
+        try:
+            repo = MentoringNotesRepo(con)
+            notes = repo.list_notes(
+                owner_id=owner_filter, archived=archived, status=status,
+                color=color, tag=tag, subject_person_id=subject)
+        except MentoringNotesError as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Betreuungs-Notizen nicht lesbar")
+            return Response.json(500, {"error": "notes_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+
+        items = [n.to_json() for n in notes]
+        return Response.json(200, {
+            "scope": ("alle" if scope == "alle" else "eigene"),
+            "owner_id": owner_filter,
+            "archived": archived,
+            "colors": note_colors.catalog(),
+            "count": len(items),
+            "notes": items,
+        })
 
     def _require_assignment_scope(self, person_id: int):
         policy = self.resolve_policy(person_id)

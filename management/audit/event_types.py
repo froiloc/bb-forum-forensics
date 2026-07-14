@@ -118,6 +118,16 @@ class EventType:
     CATALOG_CRITERION_ADDED: str = "catalog_criterion_added"
     CATALOG_DEPRECATED: str = "catalog_deprecated"
 
+    # --- Build 401: Betreuungs-Notizen ("Post-its") der Ermittler-Betreuung --
+    #   Arbeitsnotizen der Leitung (KEINE Ermittlungsdaten). Jede Aenderung ist
+    #   auditiert; das Umsortieren wird GEBUENDELT belegt (ein Ereignis pro
+    #   Drop, Payload = neue Reihenfolge), nicht pro Maus-Bewegung.
+    MENTORING_NOTE_CREATED: str = "mentoring_note_created"
+    MENTORING_NOTE_UPDATED: str = "mentoring_note_updated"
+    MENTORING_NOTE_ARCHIVED: str = "mentoring_note_archived"
+    MENTORING_NOTE_RESTORED: str = "mentoring_note_restored"
+    MENTORING_NOTE_REORDERED: str = "mentoring_note_reordered"
+
     # --- reserviert für spätere Builds (hier dokumentiert, noch nicht aktiv) ---
     # NOTIFICATION_SENT, RESTORE_PERFORMED
 
@@ -161,6 +171,11 @@ class EventType:
             CATALOG_ITEM_ADDED,
             CATALOG_CRITERION_ADDED,
             CATALOG_DEPRECATED,
+            MENTORING_NOTE_CREATED,
+            MENTORING_NOTE_UPDATED,
+            MENTORING_NOTE_ARCHIVED,
+            MENTORING_NOTE_RESTORED,
+            MENTORING_NOTE_REORDERED,
         }
     )
 
