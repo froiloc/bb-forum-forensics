@@ -29,6 +29,7 @@ from management.capacity.holiday_repo import HolidayRepo
 from management.capacity.reason_repo import ReasonRepo
 from management.capacity.worktime_repo import WorktimeRepo
 from management.gateway.coordinator_writer import CoordinatorWriter
+from db.journal_policy import apply_journal_mode  # NEU Build 408
 
 
 def _resolve_db_path(args) -> str:
@@ -51,7 +52,10 @@ def _open_con(db_path: str) -> sqlite3.Connection:
     con = sqlite3.connect(db_path)
     con.isolation_level = None
     con.row_factory = sqlite3.Row
-    con.execute("PRAGMA journal_mode=WAL")
+    # Build 408: Journalmodus zentral ueber db/journal_policy.py.
+    # 'auto' = WAL bevorzugen, bei Fehlschlag (z.B. Netzlaufwerk: WAL braucht
+    # maschinenlokales Shared Memory) protokollierter Rueckfall auf DELETE.
+    apply_journal_mode(con, db_path)
     return con
 
 

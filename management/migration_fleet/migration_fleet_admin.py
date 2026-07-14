@@ -33,6 +33,7 @@ from management.migration_fleet.companion import MigrationCompanion
 from management.migration_fleet.ledger import MigrationLedger
 from management.migration_fleet.migration_db import MigrationDb
 from management.migration_fleet.planner import MigrationPlanner, TargetDb
+from db.journal_policy import apply_journal_mode  # NEU Build 408
 
 
 def _resolve_migration_db_path(args) -> str:
@@ -96,7 +97,10 @@ def _open_mdb(db_path: str, create: bool) -> sqlite3.Connection:
     con = sqlite3.connect(db_path)
     con.isolation_level = None
     con.row_factory = sqlite3.Row
-    con.execute("PRAGMA journal_mode=WAL")
+    # Build 408: Journalmodus zentral ueber db/journal_policy.py.
+    # 'auto' = WAL bevorzugen, bei Fehlschlag (z.B. Netzlaufwerk: WAL braucht
+    # maschinenlokales Shared Memory) protokollierter Rueckfall auf DELETE.
+    apply_journal_mode(con, db_path)
     return con
 
 

@@ -24,6 +24,35 @@ paths:
   translations_db: "./data/translations.db"  # NEU Build 329 — KI-Uebersetzungen (read-only ATTACH)
 
 # =============================================================================
+# Datenbank-Journalmodus (NEU Build 408).
+#
+# Belegte Ausgangslage (Diagnose 2026-07-14, Testsystem auf UNC-Share
+# \\KK31Storage15\Volume 1\..., von Windows als DriveType=4 REMOTE gemeldet):
+#   PRAGMA journal_mode=WAL  -> sqlite3.OperationalError: disk I/O error
+#   PRAGMA journal_mode=DELETE / TRUNCATE -> OK (Schreiben + Ruecklesen belegt)
+# Ursache: WAL haelt seinen wal-index in Shared Memory ('-shm', per mmap im
+# DB-Verzeichnis). Shared Memory ist maschinenlokal, daher unterstuetzt SQLite
+# WAL auf Netzwerk-Dateisystemen ausdruecklich nicht (sqlite.org/wal.html).
+#
+# journal_mode:
+#   auto      (Default) — WAL versuchen; scheitert es, protokollierter Rueckfall
+#                         auf journal_mode_fallback. Auf lokaler Platte (PROD)
+#                         greift WAL wie bisher, das Verhalten ist unveraendert.
+#   wal       — WAL erzwingen; scheitert es, bricht der Start ab (kein Rueckfall).
+#   delete    — Rollback-Journal erzwingen (Empfehlung fuer Netzlaufwerke).
+#   truncate  — wie delete, spart Verzeichnis-I/O beim Journal-Loeschen.
+#   persist   — wie delete, Journaldatei bleibt liegen.
+#
+# ACHTUNG: Diese Weiche steuert NUR, was der Server neu setzt. Bereits
+# WAL-GESTEMPELTE Bestands-DBs (Header-Byte 18/19 == 2) sind auf einem
+# Netzlaufwerk auch LESEND nicht zu oeffnen und muessen einmalig umgestempelt
+# werden:  python tools/convert_journal_mode.py --data-dir ./data --to delete
+# =============================================================================
+db:
+  journal_mode:          "auto"
+  journal_mode_fallback: "delete"
+
+# =============================================================================
 # Backup (Welle 0, Build 352 ff.). Sicherung ALLER Datenbanken per
 # transaktionalem SQLite-Snapshot ('VACUUM INTO'): das erzeugt eine saubere,
 # WAL-unabhaengige Kopie und veraendert die Quelle NICHT (Beleg: Bauplan B7 §11;

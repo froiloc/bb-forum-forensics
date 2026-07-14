@@ -49,6 +49,7 @@ import sqlite3
 import sys
 import time
 from pathlib import Path
+from db.journal_policy import apply_journal_mode  # NEU Build 408
 
 # Standardpfad passend zu config.yaml ("coordinator_db: ./data/coordinator.db")
 DEFAULT_DB_PATH = Path("./data/coordinator.db")
@@ -153,8 +154,9 @@ def setup(db_path: Path) -> None:
     con = sqlite3.connect(str(db_path))
 
     try:
-        # WAL-Modus — konsistent mit connection_manager.py
-        con.execute("PRAGMA journal_mode=WAL")
+        # Build 408: Journalmodus konsistent mit connection_manager.py, aber
+        # netzlaufwerkstauglich (WAL, sonst protokollierter Rueckfall).
+        apply_journal_mode(con, str(db_path))
 
         # ------------------------------------------------------------------
         # Tabellen anlegen (idempotent)

@@ -34,6 +34,7 @@ from pathlib import Path
 from management.audit.audit_log import AuditLog
 from management.cases.cases_repo import CasesError, CasesRepo
 from management.gateway.coordinator_writer import CoordinatorWriter
+from db.journal_policy import apply_journal_mode  # NEU Build 408
 
 
 def _resolve_db_path(args) -> str:
@@ -95,7 +96,8 @@ def main(argv=None) -> int:
     try:
         con.isolation_level = None
         con.row_factory = sqlite3.Row
-        con.execute("PRAGMA journal_mode=WAL")
+        # Build 408: siehe db/journal_policy.py (WAL, sonst Rueckfall).
+        apply_journal_mode(con, db_path)
 
         audit = AuditLog(con)
         writer = CoordinatorWriter(con, audit)

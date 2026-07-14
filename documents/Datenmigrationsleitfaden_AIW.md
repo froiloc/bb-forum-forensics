@@ -300,3 +300,27 @@ Schlägt eine Prüfung fehl: **Stop-and-Flag**, automatische Wiederherstellung a
 ---
 
 *Ende Datenmigrationsleitfaden v0.2.*
+
+---
+
+## 12. Journalmodus-Umstempelung (NEU, Build 408)
+
+**Anlass (Beleg: Diagnose 2026-07-14, Testsystem auf UNC-Share `\\KK31Storage15\Volume 1\...`, von Windows als `DriveType=4 REMOTE` gemeldet):** Der Webserver startete nicht — `PRAGMA journal_mode=WAL` scheiterte mit `disk I/O error` (erweiterter Code 8714). Ursache ist keine Fehlfunktion des Codes, sondern eine Architekturgrenze von SQLite: Der wal-index liegt in Shared Memory (`-shm`, per `mmap` im DB-Verzeichnis), und Shared Memory ist maschinenlokal. WAL wird auf Netzwerk-Dateisystemen daher ausdrücklich nicht unterstützt (sqlite.org/wal.html).
+
+**Warum das ein Migrationsthema ist:** Der Journalmodus ist eine **persistente Eigenschaft der Datei** (Header-Byte 18/19: `1` = Rollback-Journal, `2` = WAL). Eine WAL-gestempelte Datei ist auf einem Netzlaufwerk **auch lesend nicht zu öffnen**. Bestandsdateien müssen daher einmalig umgestempelt werden — das fasst produktive Dateien an und unterliegt damit diesem Leitfaden.
+
+**Gemessene Ausgangslage auf dem Testsystem:** `forensic_<uid>.db`, `evidence_<uid>.db`, `assets_<uid>.db`, `default.db`, `coordinator.db` waren WAL-gestempelt; `templates.db` und `translations.db` nicht.
+
+**Verfahren (`tools/convert_journal_mode.py`):**
+
+1. **Trockenlauf ist Default.** Geschrieben wird erst mit `--apply`.
+2. Umstempelung **in-place** über `PRAGMA locking_mode=EXCLUSIVE` → `PRAGMA journal_mode=DELETE`. In diesem Modus kommt SQLite ohne `-shm` aus (auf dem Share empirisch grün). Die 4,8 GB grosse `default.db` muss **nicht** über das Netz kopiert werden.
+3. **Kein Schemaeingriff, kein Inhaltseingriff.** Es ändert sich ausschliesslich der Header-Stempel.
+4. **Siegelnachweis:** Für `forensic_<uid>.db` wird der **inhaltsbasierte** SHA-256 vor und nach der Umstempelung mit der Funktion des Servers (`StartupChecker._compute_content_sha256`, kein Nachbau) berechnet und verglichen. Er **muss** identisch bleiben — das Siegel ist bewusst inhalts- und nicht dateibasiert. Bei Abweichung: sofortige Rückstempelung auf WAL, Abbruch, keine weitere Datei wird angefasst.
+5. **Vorbedingung wie bei jeder Migration:** Phase-1-Backup (`VACUUM INTO`) vor dem scharfen Lauf. Kein `wal_checkpoint(TRUNCATE)`.
+6. Verwaiste `-wal`/`-shm`-Reste werden nach erfolgreicher Umstempelung entfernt und **gemeldet** (Grundregel 1).
+
+**Serverseitige Weiche (`db/journal_policy.py`, `config.yaml` → `db.journal_mode`):** Default `auto` — WAL versuchen, bei Fehlschlag protokollierter Rückfall auf `delete`. Auf lokaler Platte (PROD) greift WAL wie bisher; das Verhalten dort ist unverändert.
+
+**Offen (Architekturfrage, kein Bugfix):** Mehrere Rechner, die gleichzeitig **schreibend** auf **eine** `coordinator.db` auf einem SMB-Share zugreifen, sind auch im Rollback-Journalmodus keine von SQLite unterstützte Konfiguration (Sperren über Netzwerkspeicher). Für den Produktivbetrieb ist zu klären, ob dieser Fall auftritt.
+

@@ -1,0 +1,8 @@
+22d479b8bb80b38c1e0f141a287a4c76  build.json
+a8399851564ccf706ff3a425c4802432  core/startup_checks.py
+e0834e1745183759c1236d55a61e0c54  db/journal_policy.py
+092e07b09a1f3519495980125984586d  documents/Bauplan_Build409_Journalstempel_Fruehwarnung_v0_1.md
+146cbe2eeccec63f4b2a0210f599d8eb  tests/test_journal_policy.py
+95efd23e3f9c72d12971b64eb0202a29  tests/test_startup_journal_stamps.py
+3bb37d4a0790c5dcea3908d0e02b9f24  tools/diag_sqlite_netdrive.py
+7c07d9f16d1f9fb9756678334dce026a  tools/diag_sqlite_netdrive2.py

@@ -30,6 +30,7 @@ from management.backup.backup_executor import BackupExecutor
 from management.backup.backup_planner import BackupPlanner
 from management.backup.backups_repo import BackupsRepo
 from management.gateway.coordinator_writer import CoordinatorWriter
+from db.journal_policy import apply_journal_mode  # NEU Build 408
 
 _PATH_KEYS = ("coordinator_db", "forensic_db_dir", "evidence_db_dir",
               "assets_db_dir", "default_db", "templates_db", "translations_db")
@@ -58,7 +59,10 @@ def _open_con(db_path: str) -> sqlite3.Connection:
     con = sqlite3.connect(db_path)
     con.isolation_level = None
     con.row_factory = sqlite3.Row
-    con.execute("PRAGMA journal_mode=WAL")
+    # Build 408: Journalmodus zentral ueber db/journal_policy.py.
+    # 'auto' = WAL bevorzugen, bei Fehlschlag (z.B. Netzlaufwerk: WAL braucht
+    # maschinenlokales Shared Memory) protokollierter Rueckfall auf DELETE.
+    apply_journal_mode(con, db_path)
     return con
 
 

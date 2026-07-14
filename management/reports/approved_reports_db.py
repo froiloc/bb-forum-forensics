@@ -37,6 +37,7 @@ import sqlite3
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from db.journal_policy import apply_journal_mode  # NEU Build 408
 
 _DDL = """
 CREATE TABLE IF NOT EXISTS approved_reports (
@@ -89,7 +90,8 @@ class ApprovedReportsDb:
         con = sqlite3.connect(str(self._path))
         try:
             con.isolation_level = None
-            con.execute("PRAGMA journal_mode=WAL")
+            # Build 408: siehe db/journal_policy.py (WAL, sonst Rueckfall).
+            apply_journal_mode(con, str(self._path))
             con.execute(_DDL)
             con.execute(_DDL_IDX)
         finally:

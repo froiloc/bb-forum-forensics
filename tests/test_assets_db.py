@@ -421,7 +421,15 @@ class TestConnectionManagerOhneAssetsDb(unittest.TestCase):
         ctx.assets_db     = Path(assets_path)   # NICHT vorhanden — soll kein Fehler sein
 
         config = MagicMock()
-        config.get.return_value = "memory"
+        # Build 408: Der bisherige Blanko-Mock ('get' liefert IMMER "memory")
+        # bildete den echten ConfigLoader nicht ab — der liefert fuer unbekannte
+        # Schluessel den uebergebenen Default zurueck. Seit die Journalmodus-Weiche
+        # 'db.journal_mode' abfragt (und unzulaessige Werte bewusst NICHT still
+        # auf den Default biegt), fiel diese Ungenauigkeit auf. Der Mock verhaelt
+        # sich jetzt wie ConfigLoader.get(key, default).
+        config.get.side_effect = (
+            lambda key, default=None: {"support.temp_db": "memory"}.get(key, default)
+        )
 
         from db.connection_manager import ConnectionManager
         manager = ConnectionManager(ctx, config)

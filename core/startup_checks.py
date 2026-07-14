@@ -40,6 +40,11 @@ from typing import Optional
 from core.config_loader import ConfigLoader
 from core.logger import get_logger
 from core.mode_resolver import ResolvedContext
+from db.journal_policy import (          # NEU Build 409: Fruehwarnung Journal-Stempel
+    is_network_path,
+    journal_stamp,
+    resolve_mode,
+)
 
 logger = get_logger(__name__)
 
@@ -137,6 +142,11 @@ class StartupChecker:
         self._check_forensic_db_exists()
         self._check_default_db_exists()
         self._check_coordinator_db_exists()
+        # Build 409: MUSS vor jedem SQLite-Zugriff laufen. Eine WAL-gestempelte
+        # DB laesst sich auf einem Netzlaufwerk nicht einmal oeffnen — die
+        # nachfolgenden Pruefungen wuerden dann mit einem rohen 'disk I/O error'
+        # abbrechen statt mit einer verwertbaren Meldung.
+        self._check_journal_stamps()
         self._check_forensic_db_schema_version()
         self._check_forensic_db_integrity()
         self._check_forensic_db_readonly()
@@ -146,6 +156,116 @@ class StartupChecker:
     # ------------------------------------------------------------------
     # Einzelne Prüfungen
     # ------------------------------------------------------------------
+
+    def _check_journal_stamps(self) -> None:
+        """
+        Prüft, ob eine Datenbank WAL-gestempelt auf einem Netzlaufwerk liegt.
+
+        Hintergrund (Beleg: Diagnose 2026-07-14, Testsystem auf UNC-Share):
+          Der Journalmodus ist eine PERSISTENTE Eigenschaft der Datei
+          (SQLite-Header-Byte 18/19: 1 = Rollback-Journal, 2 = WAL). Eine
+          WAL-gestempelte Datei ist auf einem Netzlaufwerk nicht zu öffnen —
+          auch nicht lesend —, weil SQLite dafür die '-shm'-Datei im Shared
+          Memory braucht und Shared Memory maschinenlokal ist.
+
+          Ohne diese Prüfung äußert sich der Zustand als roher
+          'sqlite3.OperationalError: disk I/O error' irgendwo tief im
+          Verbindungsaufbau — eine Meldung, die uns real einen halben Abend
+          gekostet hat. Die Prüfung ist billig (ein open(), 100 Bytes, kein
+          SQLite) und macht aus dem Rätsel eine Handlungsanweisung.
+          Grundregel 1: Der Zustand wird gemeldet, nicht erst beim Scheitern
+          sichtbar.
+
+        Kein Fehlalarm auf lokaler Platte: Dort ist eine WAL-gestempelte DB
+        völlig in Ordnung — der Server (bzw. journal_policy) stellt sie bei
+        Bedarf um. Hart abgebrochen wird nur bei der Kombination
+        'Netzlaufwerk UND WAL-Stempel'.
+
+        Raises:
+            StartupCheckError: Wenn mindestens eine DB WAL-gestempelt auf einem
+                               Netzlaufwerk liegt, oder wenn WAL auf einem
+                               Netzlaufwerk erzwungen wurde.
+        """
+        kandidaten: list[tuple[str, Path]] = [
+            ("forensic_db",    self._ctx.forensic_db),
+            ("evidence_db",    self._ctx.evidence_db),
+            ("default_db",     self._ctx.default_db),
+            ("coordinator_db", self._ctx.coordinator_db),
+        ]
+        # Optionale DBs — nur prüfen, wenn vorhanden.
+        for attr, label in (("assets_db", "assets_db"),):
+            pfad = getattr(self._ctx, attr, None)
+            if pfad:
+                kandidaten.append((label, Path(pfad)))
+        for key, label, default in (
+            ("paths.templates_db",    "templates_db",    "./data/templates.db"),
+            ("paths.translations_db", "translations_db", "./data/translations.db"),
+        ):
+            try:
+                kandidaten.append((label, Path(self._config.get(key, default))))
+            except Exception:  # pragma: no cover — Config-Attrappe in Tests
+                pass
+
+        betroffen: list[str] = []
+        for label, pfad in kandidaten:
+            if pfad is None or not Path(pfad).exists():
+                continue
+            stempel = journal_stamp(pfad)
+            netz = is_network_path(pfad)
+            if stempel is None:
+                # Keine lesbare SQLite-Datei — das ist Sache der anderen
+                # Prüfungen. Hier nur protokollieren, nicht still übergehen.
+                logger.debug(
+                    "Journal-Stempel nicht ermittelbar (keine SQLite-Datei?): "
+                    "%s = '%s'", label, pfad,
+                )
+                continue
+            logger.debug(
+                "Journal-Stempel: %s = %s (%s), Netzlaufwerk: %s",
+                label,
+                stempel,
+                "WAL" if stempel == 2 else "rollback-journal",
+                {True: "ja", False: "nein", None: "unbekannt"}[netz],
+            )
+            if netz is True and stempel == 2:
+                betroffen.append(f"  {label:16s} {pfad}")
+
+        if betroffen:
+            raise StartupCheckError(
+                "Diese Datenbanken sind WAL-gestempelt und liegen auf einem "
+                "Netzlaufwerk:\n"
+                + "\n".join(betroffen)
+                + "\n\nSQLite kann sie dort NICHT öffnen — auch nicht lesend. "
+                "WAL braucht die '-shm'-Datei im Shared Memory, und Shared "
+                "Memory ist maschinenlokal (sqlite.org/wal.html).\n"
+                "Abhilfe (einmalig, ändert nur den Header-Stempel, nicht den "
+                "Inhalt):\n"
+                "  python tools/convert_journal_mode.py --data-dir ./data"
+                "            (Trockenlauf)\n"
+                "  python tools/convert_journal_mode.py --data-dir ./data --apply"
+            )
+
+        # WAL erzwungen auf einem Netzlaufwerk: das kann nicht funktionieren —
+        # lieber jetzt mit Klartext abbrechen als beim ersten PRAGMA.
+        try:
+            gewuenscht = resolve_mode(self._config)
+        except Exception:  # pragma: no cover — Config-Attrappe in Tests
+            gewuenscht = "auto"
+        if gewuenscht == "wal":
+            netz_dbs = [
+                str(p) for _l, p in kandidaten
+                if p and Path(p).exists() and is_network_path(p) is True
+            ]
+            if netz_dbs:
+                raise StartupCheckError(
+                    "config.yaml erzwingt db.journal_mode: 'wal', aber die "
+                    "Datenbanken liegen auf einem Netzlaufwerk:\n  "
+                    + "\n  ".join(netz_dbs)
+                    + "\nSQLite unterstützt WAL dort nicht. Bitte "
+                    "db.journal_mode auf 'delete' (oder 'auto') setzen."
+                )
+
+        logger.debug("Journal-Stempel aller Datenbanken geprüft ✓")
 
     def _check_forensic_db_exists(self) -> None:
         """

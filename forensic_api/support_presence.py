@@ -61,6 +61,7 @@ from management.support_sessions.support_sessions_repo import (
     SupportSessionsError,
     SupportSessionsRepo,
 )
+from db.journal_policy import apply_journal_mode  # NEU Build 408
 
 logger = get_logger(__name__)
 
@@ -125,7 +126,9 @@ class SupportPresenceBinder:
             isolation_level=None,
         )
         self._con.row_factory = sqlite3.Row
-        self._con.execute("PRAGMA journal_mode=WAL")
+        # Build 408: siehe db/journal_policy.py — WAL bevorzugt, auf
+        # Netzlaufwerken protokollierter Rueckfall auf DELETE.
+        apply_journal_mode(self._con, str(coordinator_db_path), log=logger)
         self._con.execute("PRAGMA busy_timeout=%d" % _BUSY_TIMEOUT_MS)
 
         audit = AuditLog(self._con)

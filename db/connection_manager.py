@@ -67,6 +67,13 @@ from db.assets_db import AssetsDb
 from db.templates_db import TemplatesDb          # NEU Build 089
 from db.translations_db import TranslationsDb    # NEU Build 329
 from db.locking_connection import LockingConnection  # Build 325: Nebenlaeufigkeits-Serialisierung
+from db.journal_policy import (          # NEU Build 408: Journalmodus zentral
+    apply_journal_mode,
+    resolve_mode,
+    resolve_fallback,
+    JournalPolicyError,
+    NETWORK_HINT as JOURNAL_NETWORK_HINT,
+)
 
 logger = get_logger(__name__)
 
@@ -199,8 +206,19 @@ class ConnectionManager:
             con.row_factory = sqlite3.Row
             logger.debug("Haupt-DB geöffnet: '%s'", evidence_path)
 
-            # WAL-Modus für bessere Parallelität
-            con.execute("PRAGMA journal_mode=WAL")
+            # Journalmodus zentral (Build 408). 'auto' = WAL versuchen, bei
+            # Fehlschlag protokollierter Rueckfall auf ein Rollback-Journal.
+            # Beleg fuer die Notwendigkeit: Diagnose 2026-07-14 — WAL scheitert
+            # auf Netzlaufwerken mit 'disk I/O error' (Shared Memory/'-shm' ist
+            # maschinenlokal, sqlite.org/wal.html). Auf lokaler Platte greift
+            # weiterhin WAL — PROD-Verhalten unveraendert.
+            journal_mode     = resolve_mode(self._config)
+            journal_fallback = resolve_fallback(self._config)
+            apply_journal_mode(
+                con, evidence_path,
+                schema="main", mode=journal_mode, fallback=journal_fallback,
+                log=logger,
+            )
 
             # fdb: forensic_db READ-ONLY
             self._attach_readonly(con, forensic_path, "fdb")
@@ -211,7 +229,11 @@ class ConnectionManager:
             # cdb: coordinator_db READ-WRITE (nur wenn vorhanden)
             if coordinator_path.exists():
                 self._attach_readwrite(con, coordinator_path, "cdb")
-                con.execute("PRAGMA cdb.journal_mode=WAL")
+                apply_journal_mode(
+                    con, coordinator_path,
+                    schema="cdb", mode=journal_mode, fallback=journal_fallback,
+                    log=logger,
+                )
                 logger.debug("cdb angebunden: '%s'", coordinator_path)
             else:
                 logger.warning(
@@ -321,9 +343,16 @@ class ConnectionManager:
                 translations=translations,  # NEU Build 329
             )
 
+        except JournalPolicyError as exc:
+            # Build 408: Journalmodus-Probleme sind auf Netzlaufwerken der haeufigste
+            # Startfehler. Sie werden als ConnectionManagerError weitergereicht,
+            # damit main.py sie ohne Roh-Traceback im Klartext melden kann.
+            raise ConnectionManagerError(str(exc)) from exc
+
         except sqlite3.OperationalError as exc:
+            zusatz = " — " + JOURNAL_NETWORK_HINT if "disk i/o error" in str(exc).lower() else ""
             raise ConnectionManagerError(
-                f"Datenbankverbindung konnte nicht aufgebaut werden: {exc}"
+                f"Datenbankverbindung konnte nicht aufgebaut werden: {exc}{zusatz}"
             ) from exc
 
     # ------------------------------------------------------------------
@@ -372,7 +401,16 @@ class ConnectionManager:
                 logger.debug("Support-Modus: TEMP-DB-Datei '%s'", temp_db_path)
 
             con.row_factory = sqlite3.Row
-            con.execute("PRAGMA journal_mode=WAL")
+            # Build 408: siehe _open_normal(). Die Support-TEMP-DB liegt zwar
+            # in der Regel lokal (tempfile), die coordinator.db darunter aber
+            # nicht zwingend — daher dieselbe Strategie fuer beide.
+            journal_mode     = resolve_mode(self._config)
+            journal_fallback = resolve_fallback(self._config)
+            apply_journal_mode(
+                con, temp_db_path or ":memory:",
+                schema="main", mode=journal_mode, fallback=journal_fallback,
+                log=logger,
+            )
 
             # edb: evidence_db READ-ONLY (lesender Zugriff für Support)
             if evidence_path.exists():
@@ -393,7 +431,11 @@ class ConnectionManager:
             # cdb: coordinator_db READ-WRITE
             if coordinator_path.exists():
                 self._attach_readwrite(con, coordinator_path, "cdb")
-                con.execute("PRAGMA cdb.journal_mode=WAL")
+                apply_journal_mode(
+                    con, coordinator_path,
+                    schema="cdb", mode=journal_mode, fallback=journal_fallback,
+                    log=logger,
+                )
                 logger.debug("cdb angebunden (READ-WRITE): '%s'", coordinator_path)
             else:
                 logger.warning(
@@ -496,10 +538,14 @@ class ConnectionManager:
                 temp_db_path=temp_db_path,
             )
 
+        except JournalPolicyError as exc:
+            raise ConnectionManagerError(f"Support-Modus: {exc}") from exc
+
         except sqlite3.OperationalError as exc:
+            zusatz = " — " + JOURNAL_NETWORK_HINT if "disk i/o error" in str(exc).lower() else ""
             raise ConnectionManagerError(
                 f"Support-Modus: Datenbankverbindung konnte nicht aufgebaut "
-                f"werden: {exc}"
+                f"werden: {exc}{zusatz}"
             ) from exc
 
     # ------------------------------------------------------------------
