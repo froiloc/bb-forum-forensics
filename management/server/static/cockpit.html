@@ -44,10 +44,16 @@
              Verschieben (Grund Pflicht) / Abschliessen (unwiderruflich).
   Build 395: Ermittlungsergebnis (cockpit_results.js) - Abdeckung je Fall (auch
              die NIE bewerteten) + Verteilung je Kriterium (nie darueber hinweg).
-  Version: v0.7.395 · Build: 395 · 2026-07-12
+  Build 406: Betreuungs-Notizen (cockpit_notes.js/.css) - Pinboard der Ermittler-
+             Betreuung. Karten in Git-Commit-Metapher (Ueberschrift immer
+             sichtbar, Rest aufklappbar), Farbe + Tags, Status 'abarbeiten',
+             client-seitige Suche/Filter, Archiv-Umschalter, Anlegen/Bearbeiten/
+             Duplizieren. Recht: mentoring_notes.view/edit. Drag&Drop in Block 4.
+  Version: v0.7.406 · Build: 406 · 2026-07-14
   =============================================================================
 -->
 <link rel="stylesheet" href="/static/cockpit.css">
+<link rel="stylesheet" href="/static/cockpit_notes.css">
 <!--
   Tabulator.js ist management-lokal vendort. Die Overview-Sicht
   (cockpit_overview.js) rendert damit die Fall-Uebersicht als Tabelle.
@@ -64,6 +70,7 @@
 <script src="/static/cockpit_myhistory.js" defer></script>
 <script src="/static/cockpit_support.js" defer></script>
 <script src="/static/cockpit_mentoring.js" defer></script>
+<script src="/static/cockpit_notes.js" defer></script>
 <script src="/static/cockpit_stats.js" defer></script>
 <script src="/static/cockpit_assignment.js" defer></script>
 <script src="/static/cockpit_cases.js" defer></script>

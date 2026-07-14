@@ -64,7 +64,14 @@
 //   395 = Ermittlungsergebnis (cockpit_results.js): Abdeckung JE FALL (auch
 //   die NIE bewerteten — die blinden Flecken sind die Hauptaussage) +
 //   Verteilung JE KRITERIUM (nie darueber hinweg). Recht: results.view.
-// Version: v0.7.395 · Build: 395 · 2026-07-12
+//   406 = Betreuungs-Notizen (cockpit_notes.js): Pinboard der Ermittler-
+//   Betreuung. Karten in Git-Commit-Metapher (erste Zeile = Ueberschrift, immer
+//   sichtbar; Rest aufklappbar), Farbe + Tags, Status 'abarbeiten', client-
+//   seitige Suche/Filter, Archiv-Umschalter, Anlegen/Bearbeiten/Duplizieren.
+//   Recht: mentoring_notes.view (Lesen) / mentoring_notes.edit (Schreiben, POST
+//   mit X-AIW-Token). Drag&Drop-Ordnung folgt in Block 4. Neuer Nav-Eintrag
+//   'notes' (Gruppe Verwaltung) direkt neben 'mentoring'.
+// Version: v0.7.406 · Build: 406 · 2026-07-14
 // =============================================================================
 
 (function () {
@@ -110,6 +117,11 @@
         // dafuer bewusst KEINE zweite Faehigkeit ein (mc 2026-07-12).
         { id: 'cases',      cap: 'assignment.edit',      group: 'Verwaltung',     label: 'Fall-Erkennung' },
         { id: 'mentoring',  cap: 'mentoring.view',       group: 'Verwaltung',     label: 'Ermittler-Betreuung' },
+        // Betreuungs-Notizen ("Post-its", Build 406). Eigener Nav-Eintrag DIREKT
+        // neben der Ermittler-Betreuung (abgestimmt mc 2026-07-13). Recht:
+        // mentoring_notes.view. Privates Board pro Autor:in; Scope 'alle' sieht
+        // fremde Boards (Backend-Vorgabe Build 401/405).
+        { id: 'notes',      cap: 'mentoring_notes.view',  group: 'Verwaltung',     label: 'Betreuungs-Notizen' },
         // Berichts-Abnahme: 'reports.approve' ODER 'reports.review' genuegt
         // (wer freigeben darf, muss lesen duerfen). 'caps' = any-of; 'cap' bleibt
         // fuer den Scope-Tag/Platzhalter die Leitfaehigkeit.
@@ -699,6 +711,96 @@
         });
     }
 
+    // loadNotes: Betreuungs-Notizen ("Post-its", Build 406). Laedt das Board
+    // (/api/mentoring/notes, optional ?archived=1) und rendert das Pinboard
+    // ueber das cockpit_notes-Modul. JEDE Schreibaktion (Anlegen/AEndern/
+    // Archivieren/Wiederherstellen/Duplizieren) geht per POST an den
+    // auditierten Schreibpfad; danach wird NEU GELADEN (kein optimistisches UI:
+    // die Oberflaeche zeigt nur bestaetigt geschriebene Zustaende, Grundregel 1).
+    // 'opts' traegt {archived, pendingMsg} durch den Reload hindurch, damit die
+    // Archiv-Ansicht UND die Rueckmeldung nicht still verlorengehen.
+    function loadNotes(mainEl, opts) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        opts = opts || {};
+        var archived = opts.archived === true;
+        // Aktuelle Ansicht (aktiv/Archiv) merken, damit der SSE-Reload sie
+        // beibehaelt und nicht still ins aktive Board zurueckspringt.
+        state.notesArchived = archived;
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitNotes : null;
+        if (!mod) {
+            renderError(mainEl, 'Betreuungs-Notizen-Modul nicht geladen.');
+            return;
+        }
+        var url = '/api/mentoring/notes' + (archived ? '?archived=1' : '');
+        fetchJson(url).then(function (data) {
+            cleanupView();
+            // Der Reload nach einem Schreibvorgang bleibt in derselben
+            // Ansicht (aktiv/Archiv). Alle Callbacks fuehren ueber postJson und
+            // laden dieselbe Ansicht neu; die Rueckmeldung wird mitgetragen.
+            var reload = function (msg) {
+                loadNotes(mainEl, { archived: archived, pendingMsg: msg });
+            };
+            var fail = function (err) {
+                return function (e) {
+                    log('Notiz-Schreibfehler', e);
+                    reload({ text: 'Fehler: ' + (e && e.message || e),
+                             error: true });
+                };
+            };
+            mod.renderNotes(mainEl, data, {
+                archived: archived,
+                pendingMsg: opts.pendingMsg || null,
+                // Ansicht wechseln (aktiv <-> Archiv) — reiner Lesewechsel.
+                onToggleArchived: function (toArchived) {
+                    loadNotes(mainEl, { archived: toArchived });
+                },
+                onCreate: function (body) {
+                    postJson('/api/mentoring/note/create', body)
+                        .then(function (r) {
+                            reload({ text: 'Angelegt (Beleg #' + r.audit_seq
+                                     + ').', error: false });
+                        }).catch(fail());
+                },
+                onUpdate: function (body) {
+                    postJson('/api/mentoring/note/update', body)
+                        .then(function (r) {
+                            reload({ text: 'Gespeichert (Beleg #' + r.audit_seq
+                                     + ').', error: false });
+                        }).catch(fail());
+                },
+                onArchive: function (id) {
+                    postJson('/api/mentoring/note/archive', { id: id })
+                        .then(function (r) {
+                            reload({ text: 'Archiviert (Beleg #' + r.audit_seq
+                                     + ').', error: false });
+                        }).catch(fail());
+                },
+                onRestore: function (id) {
+                    postJson('/api/mentoring/note/restore', { id: id })
+                        .then(function (r) {
+                            reload({ text: 'Wiederhergestellt (Beleg #'
+                                     + r.audit_seq + ').', error: false });
+                        }).catch(fail());
+                },
+                onDuplicate: function (id) {
+                    postJson('/api/mentoring/note/duplicate', { id: id })
+                        .then(function (r) {
+                            reload({ text: 'Dupliziert (Beleg #' + r.audit_seq
+                                     + ').', error: false });
+                        }).catch(fail());
+                }
+            });
+            log('Betreuungs-Notizen gerendert:',
+                (data.notes || []).length, 'Notizen', archived ? '(Archiv)' : '');
+        }).catch(function (err) {
+            cleanupView();
+            renderError(mainEl,
+                'Betreuungs-Notizen konnten nicht geladen werden: '
+                + err.message);
+        });
+    }
+
     // loadAssignment: SCHREIB-Sicht. Laedt /api/assignable und rendert die
     // Zuweisungs-Tabelle. Jede Aenderung geht per POST an den auditierten
     // Schreibpfad; danach wird NEU GELADEN (kein optimistisches UI: die
@@ -1140,6 +1242,8 @@
             loadSupport(mainEl);
         } else if (viewId === 'mentoring') {
             loadMentoring(mainEl);
+        } else if (viewId === 'notes') {
+            loadNotes(mainEl);
         } else if (viewId === 'stats') {
             loadStats(mainEl);
         } else if (viewId === 'assignment') {
@@ -1189,6 +1293,11 @@
                 loadSupport();
             } else if (state.activeId === 'mentoring') {
                 loadMentoring();
+            } else if (state.activeId === 'notes') {
+                // Ein audit_log-Ereignis kann eine Aenderung an einer Notiz
+                // durch eine Vertretung sein -> Board neu laden. Die Archiv-
+                // Ansicht bleibt erhalten (state.notesArchived).
+                loadNotes(undefined, { archived: state.notesArchived === true });
             } else if (state.activeId === 'stats') {
                 loadStats();
             } else if (state.activeId === 'assignment') {

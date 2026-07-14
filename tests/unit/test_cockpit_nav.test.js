@@ -77,7 +77,8 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     // Build 384: 13 statt 12 Sichten (neu: 'cases' - Fall-Erkennung).
     // Build 386: 14 (neu: 'calendar' - Kalender & Wiedervorlage).
     // Build 395: 15 (neu: 'results' - Ermittlungsergebnis).
-    expect(api.VIEW_CATALOG.length).toBe(15);
+    // Build 406: 16 (neu: 'notes' - Betreuungs-Notizen).
+    expect(api.VIEW_CATALOG.length).toBe(16);
   });
 
   // CN03b (Build 384) --------------------------------------------------------

@@ -1751,6 +1751,14 @@ class ManagementApp:
             notes = repo.list_notes(
                 owner_id=owner_filter, archived=archived, status=status,
                 color=color, tag=tag, subject_person_id=subject)
+            # Personenliste fuer die Mitarbeiter-Auswahl im Editor (Feld
+            # 'Betroffene:r'). Reiner Lesezugriff; nur id + Anzeigename, kein
+            # weiteres Personendetail (Datensparsamkeit).
+            persons = [
+                {"id": int(r["id"]), "display_name": r["display_name"]}
+                for r in con.execute(
+                    "SELECT id, display_name FROM person ORDER BY display_name")
+            ]
         except MentoringNotesError as exc:
             return Response.json(400, {"error": "bad_request",
                                        "detail": str(exc)})
@@ -1767,6 +1775,7 @@ class ManagementApp:
             "owner_id": owner_filter,
             "archived": archived,
             "colors": note_colors.catalog(),
+            "persons": persons,
             "count": len(items),
             "notes": items,
         })

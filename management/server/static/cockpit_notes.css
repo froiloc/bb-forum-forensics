@@ -1,0 +1,161 @@
+/* ============================================================================
+ * management/server/static/cockpit_notes.css
+ * IT-Forensisches Ermittlungswerkzeug — Baustelle 7: Betreuungs-Notizen
+ * ============================================================================
+ * Stil des Pinboards ("Post-its", Build 406). BEWUSST GESCOPED: alle Regeln
+ * haengen an '.aiw-notes' bzw. '.aiw-modal-overlay', damit sie NICHT die
+ * uebrigen, absichtlich ungestylten Cockpit-Buttons beeinflussen (cockpit.css
+ * verzichtet aus genau diesem Grund auf eine globale '.aiw-btn'-Regel).
+ * Farbtoene der Karten kommen inline aus cockpit_notes.js (Server-Farbkatalog);
+ * hier nur Layout, Typografie und Interaktion.
+ * Version: v0.7.406 · Build: 406 · 2026-07-14
+ * ========================================================================== */
+
+/* --- Kopfzeile ------------------------------------------------------------ */
+.aiw-notes-head {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.aiw-notes-title { font-size: 18px; margin: 0; font-weight: 650; }
+.aiw-notes-spacer { flex: 1; }
+.aiw-notes-msg { font-size: 12px; }
+.aiw-notes-msg.is-ok { color: var(--gruen); }
+.aiw-notes-msg.is-error { color: var(--rot); }
+
+/* --- Buttons (nur innerhalb Notizen/Modal) -------------------------------- */
+.aiw-notes .aiw-btn, .aiw-modal-overlay .aiw-btn {
+  font: inherit; font-size: 13px; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 6px;
+  padding: 6px 12px; background: var(--panel); color: var(--ink);
+  transition: background .12s, border-color .12s;
+}
+.aiw-notes .aiw-btn:hover, .aiw-modal-overlay .aiw-btn:hover {
+  border-color: var(--akzent);
+}
+.aiw-notes .aiw-btn-primary, .aiw-modal-overlay .aiw-btn-primary {
+  background: var(--akzent); color: #fff; border-color: var(--akzent);
+}
+.aiw-notes .aiw-btn-primary:hover, .aiw-modal-overlay .aiw-btn-primary:hover {
+  filter: brightness(1.08);
+}
+.aiw-notes .aiw-btn-ghost, .aiw-modal-overlay .aiw-btn-ghost {
+  background: transparent;
+}
+
+/* --- Filterleiste --------------------------------------------------------- */
+.aiw-notes-filter {
+  display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+  margin-bottom: 14px; padding: 10px 12px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+}
+.aiw-notes-search {
+  flex: 1; min-width: 220px; font: inherit; font-size: 13px;
+  padding: 7px 10px; border: 1px solid var(--line); border-radius: 6px;
+}
+.aiw-notes-sel {
+  font: inherit; font-size: 13px; padding: 7px 8px;
+  border: 1px solid var(--line); border-radius: 6px; background: #fff;
+}
+.aiw-notes-count { font-size: 12px; color: var(--muted); margin-top: 10px; }
+
+/* --- Kartenraster (Masonry via CSS-Spalten) ------------------------------- */
+.aiw-notes-board {
+  column-width: 300px; column-gap: 16px;
+}
+.aiw-notes-empty {
+  color: var(--muted); font-size: 14px; padding: 26px 6px;
+}
+
+/* --- Einzelne Karte (Post-it) --------------------------------------------- */
+.aiw-note {
+  break-inside: avoid; -webkit-column-break-inside: avoid;
+  display: inline-block; width: 100%;
+  margin: 0 0 16px; padding: 12px 14px;
+  border-radius: 10px; border: 1px solid rgba(0,0,0,.06);
+  box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.05);
+  transition: box-shadow .15s, transform .05s;
+}
+.aiw-note:hover {
+  box-shadow: 0 2px 4px rgba(0,0,0,.12), 0 8px 22px rgba(0,0,0,.09);
+}
+.aiw-note.is-done { opacity: .72; }
+.aiw-note.is-done .aiw-note-title { text-decoration: line-through; }
+.aiw-note.is-archived { filter: grayscale(.35); opacity: .8; }
+.aiw-note.is-pinned { outline: 2px solid rgba(0,0,0,.18); }
+
+.aiw-note-top { display: flex; align-items: flex-start; gap: 8px; }
+.aiw-note-check { margin-top: 3px; width: 16px; height: 16px; cursor: pointer; }
+.aiw-note-titlewrap { flex: 1; min-width: 0; }
+.aiw-note-title {
+  font-weight: 650; font-size: 14px; line-height: 1.35;
+  color: #1c1e21; overflow-wrap: anywhere;
+}
+.aiw-note-title.is-clickable { cursor: pointer; }
+.aiw-note-chevron {
+  border: none; background: transparent; cursor: pointer;
+  font-size: 15px; line-height: 1; padding: 2px 4px; color: #333;
+}
+
+.aiw-note-meta {
+  display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0;
+}
+.aiw-note-subject {
+  font-size: 11px; font-weight: 600; color: #1c1e21;
+  background: rgba(255,255,255,.55); border-radius: 10px; padding: 2px 8px;
+}
+.aiw-note-tag {
+  font-size: 11px; color: #333;
+  background: rgba(255,255,255,.65); border-radius: 10px; padding: 2px 8px;
+}
+
+.aiw-note-body {
+  margin-top: 10px; font-size: 13px; line-height: 1.5; color: #24272b;
+  white-space: pre-wrap; overflow-wrap: anywhere;
+  border-top: 1px dashed rgba(0,0,0,.15); padding-top: 8px;
+}
+
+.aiw-note-actions {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px;
+}
+.aiw-note-act {
+  font: inherit; font-size: 12px; cursor: pointer;
+  border: 1px solid rgba(0,0,0,.14); border-radius: 6px;
+  padding: 4px 9px; background: rgba(255,255,255,.6); color: #24272b;
+  transition: background .12s;
+}
+.aiw-note-act:hover { background: rgba(255,255,255,.95); }
+.aiw-note-act.is-danger:hover { background: #fde2e0; border-color: #c0392b; }
+
+/* --- Editor-Modal --------------------------------------------------------- */
+.aiw-modal-overlay {
+  position: fixed; inset: 0; background: rgba(20,24,28,.5);
+  display: flex; align-items: center; justify-content: center; z-index: 1000;
+  padding: 20px;
+}
+.aiw-modal {
+  background: var(--panel); border-radius: 12px; width: 100%; max-width: 520px;
+  max-height: 90vh; overflow: auto; padding: 20px 22px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.3);
+}
+.aiw-modal-title { margin: 0 0 14px; font-size: 16px; font-weight: 650; }
+.aiw-modal-label {
+  display: block; font-size: 12px; color: var(--muted);
+  margin: 12px 0 5px; font-weight: 600;
+}
+.aiw-modal-text, .aiw-modal-inp {
+  width: 100%; font: inherit; font-size: 13px;
+  padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px;
+}
+.aiw-modal-text { resize: vertical; line-height: 1.5; }
+.aiw-modal-swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+.aiw-swatch {
+  width: 30px; height: 30px; border-radius: 8px;
+  border: 2px solid rgba(0,0,0,.15); cursor: pointer; padding: 0;
+}
+.aiw-swatch.is-sel {
+  outline: 2px solid var(--akzent); outline-offset: 2px;
+}
+.aiw-modal-err { color: var(--rot); font-size: 12px; min-height: 16px; margin-top: 10px; }
+.aiw-modal-actions {
+  display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px;
+}

@@ -18,3 +18,5 @@ python-docx>=1.1.0  # B6 Phase 10/11: DOCX-Export (Format B), Beleg: Bauplan B6 
 reportlab>=5.0.0  # Build 404: PDF-Export. 5.0.0 = py3-none-any (rein Python, 3.14); zieht pillow + charset-normalizer. Beleg: Feinabnahme Build 399 §4.3 / mc §4.3
 
 tzdata>=2024.1
+bs4>=0.0.2
+cssselect>=1.4.0
