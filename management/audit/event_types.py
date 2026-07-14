@@ -137,6 +137,14 @@ class EventType:
     #   KEINE Annotationsinhalte.
     REPORT_ANNOTATIONS_VIEWED: str = "report_annotations_viewed"
 
+    # --- Build 412: Kommentar-Bruecke (SF-3, Vermaehlung B6xB7) ---------------
+    #   Lektorat/Chef-Kommentare zum Berichtstext liegen in der Addendum-Datei
+    #   der jeweiligen Person (evidence_<uid>_<pid>.db), NICHT in coordinator.db.
+    #   Hier wird nur die PRUEFSPUR belegt (Fakten: wer/welcher Bericht/Block/
+    #   comment_id), KEIN Kommentartext.
+    REVIEW_COMMENT_ADDED: str = "review_comment_added"
+    REVIEW_COMMENT_RESOLVED: str = "review_comment_resolved"
+
     # --- reserviert für spätere Builds (hier dokumentiert, noch nicht aktiv) ---
     # NOTIFICATION_SENT, RESTORE_PERFORMED
 
@@ -157,6 +165,8 @@ class EventType:
             REPORT_SEAL_VERIFIED,
             REPORT_RETURNED,
             REPORT_ANNOTATIONS_VIEWED,
+            REVIEW_COMMENT_ADDED,
+            REVIEW_COMMENT_RESOLVED,
             INVESTIGATOR_CREATED,
             INVESTIGATOR_UPDATED,
             SUPPORT_SESSION_STARTED,

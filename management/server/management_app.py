@@ -462,6 +462,8 @@ class ManagementApp:
             return self._report_render(person_id, query)
         if path == "/api/report/annotations":
             return self._report_annotations(person_id, query)
+        if path == "/api/report/comments":
+            return self._report_comments(person_id, query)
         if path == "/api/cases/detect":
             return self._cases_detect(person_id)
         if path == "/api/external":
@@ -1221,32 +1223,227 @@ class ManagementApp:
         (Hash-Kette, ueber den auditierten Schreibpfad). Best-effort: bei Fehler
         nur Warnung, damit der Lesevorgang selbst nicht scheitert.
         """
+        self._audit_best_effort(
+            event_type="report_annotations_viewed", actor_id=person_id,
+            target_type="report", target_id=str(report_id),
+            payload={"user_id": uid, "report_id": report_id,
+                     "anchor_count": anchor_count, "scope": scope},
+            what="annotations-view",
+        )
+
+    def _audit_best_effort(self, *, event_type: str, actor_id: int,
+                           target_type: str, target_id: str,
+                           payload: Dict[str, Any], what: str) -> None:
+        """
+        Schreibt einen Audit-Eintrag ueber den auditierten coordinator-Pfad.
+        BEST-EFFORT: eine momentan gesperrte Kette darf den ausloesenden Vorgang
+        nicht scheitern lassen (Fehler wird protokolliert, nicht verschluckt).
+        """
         from management.audit.audit_log import AuditLog
-        from management.audit.event_types import EventType
         from management.gateway.coordinator_writer import CoordinatorWriter
         con = self._rw_con()
         try:
-            writer = CoordinatorWriter(con, AuditLog(con))
-            writer.audited_write(
-                do_write=lambda c: {
-                    "user_id": uid,
-                    "report_id": report_id,
-                    "anchor_count": anchor_count,
-                    "scope": scope,
-                },
-                event_type=EventType.REPORT_ANNOTATIONS_VIEWED,
-                actor_id=person_id,
-                target_type="report",
-                target_id=str(report_id),
+            CoordinatorWriter(con, AuditLog(con)).audited_write(
+                do_write=lambda c: payload,
+                event_type=event_type, actor_id=actor_id,
+                target_type=target_type, target_id=target_id,
             )
         except Exception as exc:
-            logger.warning(
-                "Lese-Audit (annotations) nicht geschrieben "
-                "(uid=%d, report=%d, person=%d): %s",
-                uid, report_id, person_id, exc,
-            )
+            logger.warning("Audit '%s' nicht geschrieben (%s): %s",
+                           what, target_id, exc)
         finally:
             con.close()
+
+    # =====================================================================
+    # KOMMENTAR-BRUECKE (Build 412, SF-3 — Vermaehlung B6xB7).
+    #   Lektorat (W4) / Chef-Freigabe (W5) kommentieren den Berichtstext. Die
+    #   Kommentare liegen je Person in DEREN eigener Addendum-Datei
+    #   (evidence_<uid>_<pid>.db) — NIE in der evidence_<uid>.db. "Nie zwei
+    #   Schreiber pro Datei": nur der Besitzer (pid == person_id) schreibt.
+    #     GET  /api/report/comments  — Union aller Prueferinnen (read-only)
+    #     POST /api/report/comment          — Kommentar anlegen (eigene Datei)
+    #     POST /api/report/comment/resolve  — EIGENEN Kommentar-Status setzen
+    # =====================================================================
+    def _reviewer_role(self, policy) -> str:
+        """Rolle fuer den Kommentar-Beleg: Chefin (approve) schlaegt Lektor."""
+        return "supervisor" if policy.can(CAP_REPORTS_APPROVE) else "lector"
+
+    def _block_sha256(self, uid: int, block_id: str) -> Optional[str]:
+        """
+        Hash des block_data ZUM KOMMENTARZEITPUNKT (read-only aus evidence),
+        damit eine spaetere Blockaenderung erkennbar wird. None, wenn evidence/
+        Block fehlt.
+        """
+        import hashlib
+        path = Path(self._evidence_dir) / ("evidence_%d.db" % int(uid))
+        if not path.exists():
+            return None
+        try:
+            con = sqlite3.connect("file:%s?mode=ro" % path.resolve(), uri=True)
+        except sqlite3.Error:
+            return None
+        try:
+            row = con.execute(
+                "SELECT block_data FROM report_blocks WHERE block_id = ?",
+                (block_id,),
+            ).fetchone()
+            if row is None or row[0] is None:
+                return None
+            return hashlib.sha256(str(row[0]).encode("utf-8")).hexdigest()
+        except sqlite3.Error:
+            return None
+        finally:
+            con.close()
+
+    def _report_comments(self, person_id: int,
+                         query: Optional[Dict[str, List[str]]]) -> Response:
+        """Union aller Review-Kommentare eines Berichts (read-only, JSON)."""
+        policy = self.resolve_policy(person_id)
+        can_review = policy.can(CAP_REPORTS_REVIEW)
+        can_approve = policy.can(CAP_REPORTS_APPROVE)
+        if not (can_review or can_approve):
+            return self._forbidden(CAP_REPORTS_REVIEW)
+        scopes = []
+        if can_review:
+            scopes.append(policy.scope(CAP_REPORTS_REVIEW))
+        if can_approve:
+            scopes.append(policy.scope(CAP_REPORTS_APPROVE))
+        scope = "alle" if "alle" in scopes else (scopes[0] if scopes else None)
+
+        q = query or {}
+        uid_raw = (q.get("user_id") or [None])[0]
+        if uid_raw is None:
+            return Response.json(400, {"error": "user_id_required"})
+        try:
+            uid = int(uid_raw)
+        except (TypeError, ValueError):
+            return Response.json(400, {"error": "user_id_invalid",
+                                       "value": uid_raw})
+        report_id: Optional[int] = None
+        rid_raw = (q.get("report_id") or [None])[0]
+        if rid_raw not in (None, ""):
+            try:
+                report_id = int(rid_raw)
+            except (TypeError, ValueError):
+                return Response.json(400, {"error": "report_id_invalid",
+                                           "value": rid_raw})
+        if scope != "alle":
+            if self._case_field(uid, "assigned_to") != person_id:
+                return self._forbidden(CAP_REPORTS_REVIEW)
+
+        from management.reports.review_comment_reader import ReviewCommentReader
+        comments = ReviewCommentReader(self._evidence_dir, uid).read(report_id)
+        return Response.json(200, {"user_id": uid, "report_id": report_id,
+                                   "count": len(comments), "comments": comments})
+
+    def _report_comment_create(self, person_id: int,
+                               payload: Dict[str, Any]) -> Response:
+        """Legt einen Kommentar in der EIGENEN Addendum-Datei an."""
+        policy = self.resolve_policy(person_id)
+        can_review = policy.can(CAP_REPORTS_REVIEW)
+        can_approve = policy.can(CAP_REPORTS_APPROVE)
+        if not (can_review or can_approve):
+            return self._forbidden(CAP_REPORTS_REVIEW)
+
+        try:
+            uid = int(payload.get("user_id"))
+            report_id = int(payload.get("report_id"))
+        except (TypeError, ValueError):
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "user_id und report_id erforderlich."})
+        block_id = payload.get("block_id")
+        if block_id is not None:
+            block_id = str(block_id)
+        text = (payload.get("comment_text") or "").strip()
+        if not text:
+            return Response.json(400, {"error": "empty_comment",
+                                       "detail": "comment_text erforderlich."})
+        suggested = payload.get("suggested_content")
+        if suggested is not None:
+            suggested = str(suggested)
+
+        # Scope 'eigene': nur eigene zugewiesene Faelle.
+        scope = policy.scope(CAP_REPORTS_APPROVE) if can_approve \
+            else policy.scope(CAP_REPORTS_REVIEW)
+        if scope != "alle" and self._case_field(uid, "assigned_to") != person_id:
+            return self._forbidden(CAP_REPORTS_REVIEW)
+
+        role = self._reviewer_role(policy)
+        block_hash = self._block_sha256(uid, block_id) if block_id else None
+
+        from db.review_addendum_db import open_addendum
+        db = open_addendum(self._evidence_dir, uid, person_id, create=True)
+        try:
+            cid = db.add_comment(
+                report_id=report_id, block_id=block_id, reviewer_role=role,
+                comment_text=text, suggested_content=suggested,
+                block_sha256=block_hash,
+            )
+        except Exception as exc:
+            logger.exception("Kommentar anlegen fehlgeschlagen (uid=%s)", uid)
+            return Response.json(500, {"error": "write_failed",
+                                       "detail": str(exc)})
+        finally:
+            db.close()
+
+        self._audit_best_effort(
+            event_type="review_comment_added", actor_id=person_id,
+            target_type="report", target_id=str(report_id),
+            payload={"user_id": uid, "report_id": report_id,
+                     "block_id": block_id, "comment_id": cid, "role": role},
+            what="comment-add",
+        )
+        return Response.json(200, {"comment_id": cid, "status": "pending",
+                                   "reviewer_role": role, "user_id": uid,
+                                   "report_id": report_id, "block_id": block_id})
+
+    def _report_comment_resolve(self, person_id: int,
+                                payload: Dict[str, Any]) -> Response:
+        """Setzt den Status eines EIGENEN Kommentars (owner-only ueber Pfad)."""
+        policy = self.resolve_policy(person_id)
+        if not (policy.can(CAP_REPORTS_REVIEW) or policy.can(CAP_REPORTS_APPROVE)):
+            return self._forbidden(CAP_REPORTS_REVIEW)
+        try:
+            uid = int(payload.get("user_id"))
+        except (TypeError, ValueError):
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": "user_id erforderlich."})
+        comment_id = payload.get("comment_id")
+        status = payload.get("status")
+        from db.review_addendum_db import open_addendum, VALID_STATUS
+        if not comment_id or status not in VALID_STATUS:
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "comment_id und gueltiger status erforderlich.",
+                "valid_status": list(VALID_STATUS)})
+
+        # create=False: nur die EIGENE Datei; existiert sie nicht, gibt es auch
+        # keinen eigenen Kommentar zu schliessen.
+        db = open_addendum(self._evidence_dir, uid, person_id, create=False)
+        if db is None:
+            return Response.json(404, {"error": "comment_not_found",
+                                       "comment_id": comment_id})
+        try:
+            if db.get_comment(str(comment_id)) is None:
+                return Response.json(404, {"error": "comment_not_found",
+                                           "comment_id": comment_id})
+            db.set_status(str(comment_id), str(status))
+        except Exception as exc:
+            logger.exception("Kommentar-Status setzen fehlgeschlagen")
+            return Response.json(500, {"error": "write_failed",
+                                       "detail": str(exc)})
+        finally:
+            db.close()
+
+        self._audit_best_effort(
+            event_type="review_comment_resolved", actor_id=person_id,
+            target_type="report_comment", target_id=str(comment_id),
+            payload={"user_id": uid, "comment_id": comment_id,
+                     "status": status},
+            what="comment-resolve",
+        )
+        return Response.json(200, {"comment_id": comment_id, "status": status})
 
     # =====================================================================
     # BERICHTS-VERSIEGELUNG (Build 377).
@@ -2349,6 +2546,11 @@ class ManagementApp:
             return self._external_close(person_id, payload)
         if path == "/api/results/assess":
             return self._results_assess(person_id, payload)
+        # Build 412 (SF-3): Lektorat/Chef-Kommentare (Addendum-Dateien).
+        if path == "/api/report/comment":
+            return self._report_comment_create(person_id, payload)
+        if path == "/api/report/comment/resolve":
+            return self._report_comment_resolve(person_id, payload)
         # Build 405 (Block 2): Betreuungs-Notizen — auditierte Schreibpfade.
         if path == "/api/mentoring/note/create":
             return self._note_create(person_id, payload)
