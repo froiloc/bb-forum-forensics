@@ -5,7 +5,7 @@
 # Serverunabhaengiges Renderer-Paket (Bauplan Build 397 §2). Nur Re-Exporte,
 # keine Logik. Von forensic_api/export.py und (ab Build 402) vom Management-
 # Server gemeinsam genutzt.
-# Version: v0.7.402 · Build: 402 · 2026-07-14 (Docx-/Sqlite-Renderer ergaenzt)
+# Version: v0.7.403 · Build: 403 · 2026-07-14 (AutoQueryResolver-Kern ergaenzt)
 # =============================================================================
 
 from report_render.report_document import (
@@ -20,6 +20,7 @@ from report_render.report_document import (
     WARN_MISSING_IMAGE,
 )
 from report_render.placeholder_resolver import PlaceholderResolver
+from report_render.auto_query import AutoQueryResolver, AutoResult
 from report_render.report_source import ReportSource, NoReportError, KNOWN_BLOCK_TYPES
 from report_render.html_renderer import HtmlRenderer, CLASSIFICATION
 from report_render.docx_renderer import DocxRenderer, DocxRendererUnavailable
@@ -36,6 +37,8 @@ __all__ = [
     "WARN_UNKNOWN_BLOCK_TYPE",
     "WARN_MISSING_IMAGE",
     "PlaceholderResolver",
+    "AutoQueryResolver",
+    "AutoResult",
     "ReportSource",
     "NoReportError",
     "KNOWN_BLOCK_TYPES",

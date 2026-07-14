@@ -30,18 +30,30 @@
 #   - Query-Definitionen lesen: templates_db (tdb.placeholder_queries).
 #
 # Beleg: Bauplan B6 v0.3 §3, Ausdefinitionsgespraech 2026-05-05
-# Version: v0.6.286 · Build: 286 · 2026-06-07
+# Version: v0.7.403 · Build: 403 · 2026-07-14
+#   Build 403: {{a:}}-Aufloesung (Cache->Query->SQL->Cache) in den gemeinsamen
+#   Kern report_render/auto_query.py ausgelagert (De-Duplizierung gegen
+#   report_source.py). _execute_query entfernt; Endpunkt-Verhalten unveraendert.
 # =============================================================================
 
 from __future__ import annotations
 
 import json
 import re
-import sqlite3
 import urllib.parse
 from typing import TYPE_CHECKING
 
 from core.logger import get_logger
+
+# Build 403: gemeinsamer {{a:}}-Aufloesungskern (De-Duplizierung). Bis Build 402
+# lag dieselbe Cache->Query->SQL->Cache-Logik zusaetzlich in
+# report_render/report_source.py. Jetzt Single Source of Truth.
+from report_render.auto_query import (
+    AutoQueryResolver,
+    STATUS_CACHE_HIT,
+    STATUS_NO_QUERY,
+    STATUS_SQL_ERROR,
+)
 
 if TYPE_CHECKING:
     from server.http_server import ForensicRequestHandler
@@ -294,77 +306,42 @@ class PlaceholdersEndpoint:
         cache_hits: list[str] = []
         values:     dict      = {}
 
+        # Build 403: gemeinsamer Kern. write_cache=True erhaelt das bisherige
+        # Endpunkt-Verhalten (der Cache wird befuellt).
+        auto = AutoQueryResolver(
+            self._bundle.evidence, self._bundle.templates,
+            self._bundle.connection, write_cache=True,
+        )
+
         def replace_match(m: re.Match) -> str:
             query_id = m.group(1)
             default  = m.group(2) or ""
 
-            # 1. Cache pruefen
-            cached = self._bundle.evidence.get_cache_entry(query_id, uid)
-            if cached is not None:
+            res = auto.resolve(query_id, uid)
+            if res.status == STATUS_CACHE_HIT:
                 cache_hits.append(query_id)
                 if collect_values:
-                    values[query_id] = cached
-                return cached
-
-            # 2. Query-Definition laden
-            q_rec = self._bundle.templates.get_query(query_id)
-            if q_rec is None:
-                logger.debug("resolve: query_id '%s' nicht in templates", query_id)
+                    values[query_id] = res.value
+                return res.value
+            if res.status == STATUS_NO_QUERY:
                 unresolved.append(query_id)
                 return default
-
-            # 3. SQL ausfuehren gegen fdb (forensic_db)
-            value = self._execute_query(q_rec.sql_query, uid, query_id, errors)
-            if value is None:
+            if res.status == STATUS_SQL_ERROR:
+                errors.append(query_id)
                 return default
-
-            # 4. In Cache speichern
-            self._bundle.evidence.set_cache_entry(query_id, uid, value)
+            # resolved / empty -> Wert einsetzen (und ggf. sammeln)
             if collect_values:
-                values[query_id] = value
-            return value
+                values[query_id] = res.value
+            return res.value
 
         resolved = _PLACEHOLDER_RE.sub(replace_match, body)
         return resolved, unresolved, errors, cache_hits, values
 
-    def _execute_query(
-        self,
-        sql: str,
-        uid: int,
-        query_id: str,
-        errors: list[str],
-    ) -> str | None:
-        """
-        Fuehrt eine SQL-Query gegen fdb aus.
-
-        Die Queries in placeholder_queries werden per :uid parametrisiert
-        und gegen die forensic_db (Alias 'fdb') ausgefuehrt.
-        Da die Queries in templates.db als einfache SQL-Strings vorliegen,
-        wird der fdb-Praefix eingefuegt wenn die Tabellen nicht qualifiziert sind.
-
-        Returns:
-            Ergebnis als String oder None bei Fehler.
-        """
-        try:
-            row = self._bundle.connection.execute(
-                sql, {"uid": uid}
-            ).fetchone()
-            if row is None:
-                return ""
-            # scalar: erster Wert der ersten Zeile
-            val = row[0]
-            return str(val) if val is not None else ""
-        except sqlite3.OperationalError as exc:
-            logger.warning(
-                "Platzhalter-Query '%s' fehlgeschlagen: %s", query_id, exc
-            )
-            errors.append(query_id)
-            return None
-
     def _refresh_cache(self, uid: int) -> tuple[int, list[str]]:
         """
         Invalidiert den Cache fuer uid und fuehrt alle aktiven Queries neu aus.
-        Beleg: Bauplan B6 v0.3 §3.2
+        Beleg: Bauplan B6 v0.3 §3.2; Build 403: SQL-Ausfuehrung ueber den
+        gemeinsamen Kern (AutoQueryResolver.execute_query).
 
         Returns:
             (refreshed_count, error_ids)
@@ -372,15 +349,20 @@ class PlaceholdersEndpoint:
         # Cache leeren
         self._bundle.evidence.clear_cache_for_uid(uid)
 
+        auto = AutoQueryResolver(
+            self._bundle.evidence, self._bundle.templates, self._bundle.connection,
+        )
         queries = self._bundle.templates.list_queries()
         errors: list[str] = []
         refreshed = 0
 
         for q in queries:
-            value = self._execute_query(q.sql_query, uid, q.id, errors)
-            if value is not None:
+            value, ok = auto.execute_query(q.sql_query, uid, q.id)
+            if ok:
                 self._bundle.evidence.set_cache_entry(q.id, uid, value)
                 refreshed += 1
+            else:
+                errors.append(q.id)
 
         logger.info(
             "placeholder_cache aktualisiert: uid=%d, %d Queries, %d Fehler",

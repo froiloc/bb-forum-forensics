@@ -29,8 +29,10 @@
 #
 #   Build 402: Aufloesung in BEIDE Modi (html+plain) via resolver.resolve_both;
 #   BLOB-freie Bild-Anreicherung via AssetsDb.get_asset_reference.
+#   Build 403: {{a:}}-Aufloesung ueber gemeinsamen Kern report_render/auto_query.py
+#   (write_cache=False -> Export schreibt nicht in evidence_<uid>.db).
 #
-# Version: v0.7.402 · Build: 402 · 2026-07-14
+# Version: v0.7.403 · Build: 403 · 2026-07-14
 # =============================================================================
 
 from __future__ import annotations
@@ -47,6 +49,7 @@ from report_render.report_document import (
     WARN_MISSING_IMAGE,
 )
 from report_render.placeholder_resolver import PlaceholderResolver
+from report_render.auto_query import AutoQueryResolver
 
 # -----------------------------------------------------------------------------
 # Die neun bekannten Blocktypen (Editor.js-Toolnamen).
@@ -95,55 +98,20 @@ class ReportSource:
         self._uid = uid
         self._username = username
         self._generated_at = generated_at
+        # Build 403: gemeinsamer {{a:}}-Kern. write_cache=False -> der Export LIEST
+        # den placeholder_cache nur, SCHREIBT aber NICHT in evidence_<uid>.db
+        # (streng lese-only, respektiert den Migrationsvorbehalt).
+        self._auto = AutoQueryResolver(evidence, templates, forensic_con, write_cache=False)
 
     # ------------------------------------------------------------------
-    # Auto-Aufloesung {{a:name}} — spiegelt forensic_api/placeholders.py
-    # (_resolve_body/_execute_query). De-Duplizierung von placeholders.py gegen
-    # diesen Pfad: Restpunkt Build 402 (build.json 399, nicht still).
+    # Auto-Aufloesung {{a:name}} — delegiert an den gemeinsamen Kern
+    # report_render/auto_query.py (Build 403, De-Duplizierung gegen
+    # forensic_api/placeholders.py). None => nicht auflösbar (unresolved, R2).
     # ------------------------------------------------------------------
     def _resolve_auto(self, name: str) -> Optional[str]:
-        """Liefert den Wert eines {{a:name}} oder None (nicht auflösbar).
-
-        None  -> keine Query-Definition ODER SQL-Fehler (Parität: 'unresolved').
-        ""    -> Query lief, lieferte aber nichts (Parität: placeholders.py:355).
-        Wert  -> String-Ergebnis der Query (auch aus dem Cache).
-        """
-        # 1. Cache (evidence_db.placeholder_cache)
-        try:
-            cached = self._edb.get_cache_entry(name, self._uid)
-        except Exception:
-            cached = None
-        if cached is not None:
-            return cached
-
-        # 2. Query-Definition (templates_db.placeholder_queries)
-        if self._tdb is None:
-            return None
-        try:
-            q_rec = self._tdb.get_query(name)
-        except Exception:
-            q_rec = None
-        if q_rec is None:
-            return None
-
-        # 3. SQL gegen fdb ausfuehren (:uid-Parametrisierung wie placeholders.py:349)
-        if self._fcon is None:
-            return None
-        try:
-            row = self._fcon.execute(q_rec.sql_query, {"uid": self._uid}).fetchone()
-        except sqlite3.OperationalError:
-            return None
-        val = "" if row is None else ("" if row[0] is None else str(row[0]))
-
-        # 4. In Cache schreiben (bewusst NUR nicht-leere Werte cachen? Nein:
-        #    placeholders.py cached auch "" — Parität. Der Cache liegt in der
-        #    evidence-DB; im read-only-Export-Kontext kann set fehlschlagen, das
-        #    ist unkritisch und wird geschluckt.)
-        try:
-            self._edb.set_cache_entry(name, self._uid, val)
-        except Exception:
-            pass
-        return val
+        """Wert eines {{a:name}} oder None (no_query/sql_error). "" bei leerem
+        Query-Ergebnis. Schreibt NICHT in den Cache (write_cache=False)."""
+        return self._auto.resolve_value_or_none(name, self._uid)
 
     # ------------------------------------------------------------------
     # Berichtswahl (§4.1)
