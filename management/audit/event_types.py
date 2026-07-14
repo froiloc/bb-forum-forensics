@@ -128,6 +128,15 @@ class EventType:
     MENTORING_NOTE_RESTORED: str = "mentoring_note_restored"
     MENTORING_NOTE_REORDERED: str = "mentoring_note_reordered"
 
+    # --- Build 411: Annotations-Support-View (SF-2, Vermaehlung B6xB7) --------
+    #   REPORT_ANNOTATIONS_VIEWED: ein LESENDER Zugriff auf die dem Bericht
+    #   zugrunde liegenden Annotationen (Belege) durch Lektorat/Chef-Freigabe.
+    #   Chain-of-Custody: es wird belegt, DASS jemand die Belege gesichtet hat.
+    #   Bewusst FLACH (mc 2026-07-14: "mehr Tiefe braucht es nicht") — das
+    #   Payload traegt nur Fakten (user_id, report_id, anchor_count, scope),
+    #   KEINE Annotationsinhalte.
+    REPORT_ANNOTATIONS_VIEWED: str = "report_annotations_viewed"
+
     # --- reserviert für spätere Builds (hier dokumentiert, noch nicht aktiv) ---
     # NOTIFICATION_SENT, RESTORE_PERFORMED
 
@@ -147,6 +156,7 @@ class EventType:
             REPORT_APPROVED,
             REPORT_SEAL_VERIFIED,
             REPORT_RETURNED,
+            REPORT_ANNOTATIONS_VIEWED,
             INVESTIGATOR_CREATED,
             INVESTIGATOR_UPDATED,
             SUPPORT_SESSION_STARTED,

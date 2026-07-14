@@ -460,6 +460,8 @@ class ManagementApp:
             return self._report_verify(person_id, query)
         if path == "/api/report/render":
             return self._report_render(person_id, query)
+        if path == "/api/report/annotations":
+            return self._report_annotations(person_id, query)
         if path == "/api/cases/detect":
             return self._cases_detect(person_id)
         if path == "/api/external":
@@ -1105,6 +1107,146 @@ class ManagementApp:
         )
         return Response(status=200, content_type="text/html; charset=utf-8",
                         body=body)
+
+    # =====================================================================
+    # ANNOTATIONS-SUPPORT-VIEW (Build 411, SF-2 — Vermaehlung B6xB7).
+    #   GET /api/report/annotations?user_id=<uid>[&report_id=<rid>]
+    #   Read-only: die dem Bericht zugrunde liegenden Annotationen (Belege) fuer
+    #   Lektorat (W4) und Chef-Freigabe (W5), damit Aussagen am Beleg verifiziert
+    #   werden koennen. Ein LESENDER Zugriff wird flach im coordinator.db-
+    #   audit_log belegt (Chain-of-Custody; mc 2026-07-14).
+    # =====================================================================
+    def _report_annotations(self, person_id: int,
+                            query: Optional[Dict[str, List[str]]]) -> Response:
+        """
+        Liefert die verankerten Annotationen EINES Berichts (JSON), read-only.
+
+        RECHTE: reports.review ODER reports.approve (identisch zu
+        /api/report/render). Scope 'eigene' -> nur eigene zugewiesene Faelle.
+        Es wird NICHTS in die evidence_<uid>.db geschrieben.
+        """
+        policy = self.resolve_policy(person_id)
+        can_review = policy.can(CAP_REPORTS_REVIEW)
+        can_approve = policy.can(CAP_REPORTS_APPROVE)
+        if not (can_review or can_approve):
+            return self._forbidden(CAP_REPORTS_REVIEW)
+
+        scopes = []
+        if can_review:
+            scopes.append(policy.scope(CAP_REPORTS_REVIEW))
+        if can_approve:
+            scopes.append(policy.scope(CAP_REPORTS_APPROVE))
+        scope = "alle" if "alle" in scopes else (scopes[0] if scopes else None)
+
+        q = query or {}
+        uid_raw = (q.get("user_id") or [None])[0]
+        if uid_raw is None:
+            return Response.json(400, {"error": "user_id_required"})
+        try:
+            uid = int(uid_raw)
+        except (TypeError, ValueError):
+            return Response.json(400, {"error": "user_id_invalid",
+                                       "value": uid_raw})
+
+        report_id: Optional[int] = None
+        rid_raw = (q.get("report_id") or [None])[0]
+        if rid_raw not in (None, ""):
+            try:
+                report_id = int(rid_raw)
+            except (TypeError, ValueError):
+                return Response.json(400, {"error": "report_id_invalid",
+                                           "value": rid_raw})
+
+        if scope != "alle":
+            if self._case_field(uid, "assigned_to") != person_id:
+                return self._forbidden(CAP_REPORTS_REVIEW)
+
+        from management.reports.readonly_report_bundle import (
+            ReadonlyReportBundle,
+        )
+        from management.reports.annotation_support_reader import (
+            AnnotationSupportReader,
+        )
+
+        try:
+            bundle = ReadonlyReportBundle(
+                evidence_dir=self._evidence_dir,
+                forensic_dir=self._forensic_dir,
+                assets_dir=self._assets_dir,
+                templates_db=self._templates_db,
+                default_db=self._default_db,
+                uid=uid,
+            ).open()
+        except FileNotFoundError as exc:
+            return Response.json(404, {"error": "evidence_not_found",
+                                       "user_id": uid, "detail": str(exc)})
+
+        try:
+            data = AnnotationSupportReader(bundle).read(report_id)
+        except Exception as exc:  # pragma: no cover - defensiver 500
+            logger.exception(
+                "Annotations-Support-View fehlgeschlagen (uid=%s, report_id=%s)",
+                uid, report_id,
+            )
+            return Response.json(500, {"error": "annotations_failed",
+                                       "detail": str(exc)})
+        finally:
+            bundle.close()
+
+        if data is None:
+            return Response.json(404, {"error": "no_report", "user_id": uid})
+
+        data["user_id"] = uid
+        data["scope"] = scope
+
+        # Flaches Lese-Audit (Chain-of-Custody). BEST-EFFORT: eine momentan
+        # gesperrte Audit-Kette darf dem/der Pruefer:in NICHT den Beleg-Einblick
+        # verweigern; der Fehlschlag wird protokolliert, nicht verschluckt.
+        self._audit_annotation_view(
+            person_id, uid, int(data["report_id"]),
+            int(data["anchor_count"]), scope,
+        )
+
+        logger.info(
+            "Annotations-Support-View: uid=%d, report_id=%s, %d Anker "
+            "(person=%d, scope=%s)",
+            uid, data["report_id"], data["anchor_count"], person_id, scope,
+        )
+        return Response.json(200, data)
+
+    def _audit_annotation_view(self, person_id: int, uid: int, report_id: int,
+                               anchor_count: int, scope: Optional[str]) -> None:
+        """
+        Belegt EINEN lesenden Zugriff auf die Belege im coordinator.db-audit_log
+        (Hash-Kette, ueber den auditierten Schreibpfad). Best-effort: bei Fehler
+        nur Warnung, damit der Lesevorgang selbst nicht scheitert.
+        """
+        from management.audit.audit_log import AuditLog
+        from management.audit.event_types import EventType
+        from management.gateway.coordinator_writer import CoordinatorWriter
+        con = self._rw_con()
+        try:
+            writer = CoordinatorWriter(con, AuditLog(con))
+            writer.audited_write(
+                do_write=lambda c: {
+                    "user_id": uid,
+                    "report_id": report_id,
+                    "anchor_count": anchor_count,
+                    "scope": scope,
+                },
+                event_type=EventType.REPORT_ANNOTATIONS_VIEWED,
+                actor_id=person_id,
+                target_type="report",
+                target_id=str(report_id),
+            )
+        except Exception as exc:
+            logger.warning(
+                "Lese-Audit (annotations) nicht geschrieben "
+                "(uid=%d, report=%d, person=%d): %s",
+                uid, report_id, person_id, exc,
+            )
+        finally:
+            con.close()
 
     # =====================================================================
     # BERICHTS-VERSIEGELUNG (Build 377).
