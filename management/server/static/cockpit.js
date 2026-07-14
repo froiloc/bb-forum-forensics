@@ -126,6 +126,10 @@
         // (wer freigeben darf, muss lesen duerfen). 'caps' = any-of; 'cap' bleibt
         // fuer den Scope-Tag/Platzhalter die Leitfaehigkeit.
         { id: 'reports',    cap: 'reports.approve',      caps: ['reports.approve', 'reports.review'], group: 'Verwaltung',     label: 'Berichts-Abnahme' },
+        // Lektorat (W4, Build 413): Gegenlesen des Berichtstexts. 'caps' = any-of
+        // (reports.review ODER reports.approve — die Chefin liest ebenfalls
+        // gegen); Leitfaehigkeit fuer den Scope-Tag ist reports.review.
+        { id: 'lectorate', cap: 'reports.review',       caps: ['reports.review', 'reports.approve'], group: 'Verwaltung',     label: 'Lektorat' },
         // Ermittlungsergebnis (Build 395). Recht: results.view. Ein Ermittler
         // mit Scope 'eigene' sieht die Sicht ebenfalls — er bekommt dann die
         // Abdeckung SEINER Faelle; die fallUEBERGREIFENDE Verteilung (/stats)
@@ -421,6 +425,12 @@
             ? window.AIWCockpitNotes : null;
         if (notesMod && typeof notesMod.cleanup === 'function') {
             notesMod.cleanup();
+        }
+        // Lektorat-Sicht (Build 413) abbauen (interne Referenzen loesen).
+        var lectMod = (typeof window !== 'undefined')
+            ? window.AIWCockpitLectorate : null;
+        if (lectMod && typeof lectMod.cleanup === 'function') {
+            lectMod.cleanup();
         }
     }
 
@@ -1230,6 +1240,35 @@
         });
     }
 
+    // loadLectorate: LEKTORAT (W4, Build 413, Slice 1). Laedt die Berichtsliste
+    // (/api/reports, scope-korrekt serverseitig) und rendert die Gegenlese-
+    // Sicht: Auswahl + read-only Berichtstext-Vorschau (<iframe> auf
+    // /api/report/render, SF-1). Annotationen (SF-2) und Kommentare (SF-3)
+    // folgen in den naechsten Slices (Build 414/415).
+    function loadLectorate(mainEl) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitLectorate : null;
+        if (!mod) {
+            renderError(mainEl, 'Lektorat-Modul nicht geladen.');
+            return;
+        }
+        fetchJson('/api/reports').then(function (data) {
+            cleanupView();
+            mod.renderLectorate(mainEl, data, {
+                status: 'submitted',
+                onSelect: function (uid, rid) {
+                    log('Lektorat: Bericht gewaehlt', uid, rid);
+                }
+            });
+            log('Lektorat gerendert:', data && data.count, 'Berichte');
+        }).catch(function (err) {
+            cleanupView();
+            renderError(mainEl,
+                'Lektorat konnte nicht geladen werden: ' + err.message);
+        });
+    }
+
     // selectView: aktive Sicht setzen, Nav neu markieren, Inhalt dispatchen.
     // Build 349: 'dashboard' -> Overview; 'integrity' -> Integritaets-Sicht;
     // sonst Platzhalter (weitere Sichten folgen).
@@ -1272,6 +1311,8 @@
             loadResultsView(mainEl);
         } else if (viewId === 'reports') {
             loadReports(mainEl);
+        } else if (viewId === 'lectorate') {
+            loadLectorate(mainEl);
         } else {
             renderPlaceholder(mainEl, viewById(viewId));
         }
@@ -1334,6 +1375,8 @@
                 loadCases();
             } else if (state.activeId === 'reports') {
                 loadReports();
+            } else if (state.activeId === 'lectorate') {
+                loadLectorate();
             }
             // Banner global frisch halten, wenn die aktive Sicht nicht die
             // Integritaets-Sicht ist (dort geschieht es bereits oben).
