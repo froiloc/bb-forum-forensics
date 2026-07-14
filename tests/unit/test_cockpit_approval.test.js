@@ -252,4 +252,54 @@ describe("cockpit_approval", () => {
     expect(main.querySelector(".aiw-approval-annotations").textContent)
       .toContain("keine Belege");
   });
+
+  // --- Ermittlungsergebnis (results, read-only, Build 418) ---------------
+  it("AP11 reine Ergebnis-Helfer", () => {
+    const api = _api();
+    expect(api.resultsUrl(700)).toBe("/api/results?user_id=700");
+    expect(api.extremLabel("schwerste")).toBe("schwerste Auspraegung");
+    expect(api.extremLabel("beste")).toBe("beste Auspraegung");
+    expect(api.gapLabel({ code: "x", label: "Ort" })).toBe("Ort");
+    expect(api.gapLabel("location")).toBe("location");
+  });
+
+  it("AP12 renderResults: Kennzahl, aktueller Stand, Luecken", () => {
+    const win = _ctx();
+    const api = _api(win);
+    const main = _mount(win);
+    api.renderApproval(main, _data(), { status: "submitted", canApprove: true });
+    expect(main.querySelector(".aiw-approval-results")).not.toBeNull();
+
+    api.renderResults({
+      user_id: 700, can_edit: false,
+      current: [
+        { criterion_code: "identification",
+          criterion_label: "Identifizierung", extrem: "schwerste",
+          confidence_code: "high", confidence_label: "hoch",
+          quality_code: "q2", quality_label: "gut" },
+      ],
+      score: { score: 7.5, basis: 1, vermerk: "Vorlaeufige Zahl.",
+               unbewertet: [{ code: "location", label: "Ort" }] },
+    });
+    const panel = main.querySelector(".aiw-approval-results");
+    expect(panel.querySelector(".aiw-approval-res-score").textContent)
+      .toContain("7.5");
+    const items = panel.querySelectorAll(".aiw-approval-res-item");
+    expect(items.length).toBe(1);
+    expect(items[0].textContent).toContain("Identifizierung");
+    expect(items[0].textContent).toContain("hoch");
+    expect(items[0].textContent).toContain("gut");
+    expect(panel.querySelector(".aiw-approval-res-gaps").textContent)
+      .toContain("Ort");
+
+    // Kein Ergebnis -> Hinweis.
+    api.renderResults({ user_id: 700, current: [], score: null });
+    expect(main.querySelector(".aiw-approval-results").textContent)
+      .toContain("Noch keine Ermittlungsergebnisse");
+
+    // Fehler (z.B. 403) -> sichtbar.
+    api.resultsError("HTTP 403");
+    expect(main.querySelector(".aiw-approval-results").textContent)
+      .toContain("HTTP 403");
+  });
 });

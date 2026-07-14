@@ -40,7 +40,8 @@
         actionPanel: null,  // Aktionsbereich (Freigabe/Rueckgabe/Pruefung)
         verifyBox: null,    // Ausgabe der Siegelpruefung
         annPanel: null,     // Belege-Panel (Annotationen, SF-2, Build 417)
-        comPanel: null      // Kommentar-Panel (SF-3, read-only, Build 417)
+        comPanel: null,     // Kommentar-Panel (SF-3, read-only, Build 417)
+        resPanel: null      // Ergebnis-Panel (results, read-only, Build 418)
     };
 
     // =====================================================================
@@ -148,6 +149,26 @@
         }
     }
 
+    // --- Ermittlungsergebnis (results, SF/Build 387ff., read-only) --------
+    function resultsUrl(uid) {
+        return '/api/results?user_id=' + encodeURIComponent(uid);
+    }
+    // extremLabel: das bewertete Extrem eines Kriteriums.
+    function extremLabel(e) {
+        switch (e) {
+            case 'schwerste': return 'schwerste Auspraegung';
+            case 'beste':     return 'beste Auspraegung';
+            default:          return e || '—';
+        }
+    }
+    // gapLabel: robuste Beschriftung eines nicht bewerteten Kriteriums
+    // (String-Code ODER {code,label}).
+    function gapLabel(g) {
+        if (g == null) { return '—'; }
+        return (g.label != null) ? g.label
+            : ((g.code != null) ? g.code : String(g));
+    }
+
     // =====================================================================
     // 2) DOM.
     // =====================================================================
@@ -159,6 +180,7 @@
         _state.verifyBox = null;
         _state.annPanel = null;
         _state.comPanel = null;
+        _state.resPanel = null;
         log('cleanup');
     }
 
@@ -339,6 +361,84 @@
         });
     }
 
+    // --- Ermittlungsergebnis-Panel (read-only) ---------------------------
+    function _resHint(msg) {
+        if (!_state.resPanel) { return; }
+        _state.resPanel.innerHTML = '';
+        var p = document.createElement('p');
+        p.className = 'aiw-approval-res-hint';
+        p.textContent = msg;
+        _state.resPanel.appendChild(p);
+    }
+    function resultsLoading() { _resHint('Ermittlungsergebnis wird geladen …'); }
+    function resultsError(msg) {
+        // z.B. 403 ohne Recht results.view -> sichtbar, nicht still (Grundregel 1).
+        _resHint('Ermittlungsergebnis nicht verfuegbar: ' + (msg || 'Fehler'));
+    }
+
+    // renderResults(data): AKTUELLEN Stand + provisorische Kennzahl + noch
+    // nicht bewertete Kriterien anzeigen (Quelle: GET /api/results).
+    function renderResults(data) {
+        var panel = _state.resPanel;
+        if (!panel) { return; }
+        panel.innerHTML = '';
+
+        var head = document.createElement('h3');
+        head.className = 'aiw-approval-res-head';
+        head.textContent = 'Ermittlungsergebnis (Fall)';
+        panel.appendChild(head);
+
+        var score = data && data.score;
+        if (score) {
+            var sc = document.createElement('p');
+            sc.className = 'aiw-approval-res-score';
+            sc.textContent = 'Vorlaeufige Kennzahl: ' + score.score
+                + ' (Basis: ' + (score.basis || 0) + ' bewertete Kriterien)';
+            panel.appendChild(sc);
+            if (score.vermerk) {
+                var vm = document.createElement('p');
+                vm.className = 'aiw-approval-res-vermerk';
+                vm.textContent = score.vermerk;
+                panel.appendChild(vm);
+            }
+        }
+
+        var current = (data && data.current) ? data.current : [];
+        if (!current.length) {
+            var none = document.createElement('p');
+            none.className = 'aiw-approval-res-hint';
+            none.textContent = 'Noch keine Ermittlungsergebnisse erfasst.';
+            panel.appendChild(none);
+        } else {
+            current.forEach(function (it) {
+                var row = document.createElement('div');
+                row.className = 'aiw-approval-res-item';
+                var crit = document.createElement('div');
+                crit.className = 'aiw-approval-res-crit';
+                crit.textContent = (it.criterion_label || it.criterion_code)
+                    + ' — ' + extremLabel(it.extrem);
+                row.appendChild(crit);
+                var vals = document.createElement('div');
+                vals.className = 'aiw-approval-res-vals';
+                var conf = it.confidence_label || it.confidence_code || '—';
+                var qual = it.quality_label || it.quality_code || '—';
+                vals.textContent = 'Konfidenz: ' + conf + ' · Qualitaet: ' + qual;
+                row.appendChild(vals);
+                panel.appendChild(row);
+            });
+        }
+
+        // Noch nicht bewertete Kriterien (blinde Flecken) sichtbar machen.
+        var gaps = (score && score.unbewertet) ? score.unbewertet : [];
+        if (gaps.length) {
+            var g = document.createElement('p');
+            g.className = 'aiw-approval-res-gaps';
+            g.textContent = 'Noch nicht bewertet: '
+                + gaps.map(gapLabel).join(', ');
+            panel.appendChild(g);
+        }
+    }
+
     // _buildActionPanel: fuellt den Aktionsbereich fuer EINEN gewaehlten
     // Bericht r. opts.canApprove (bool) kommt aus der Policy (Scope 'alle').
     function _buildActionPanel(r, opts) {
@@ -461,6 +561,7 @@
         _state.verifyBox = null;
         _state.annPanel = null;
         _state.comPanel = null;
+        _state.resPanel = null;
 
         var wrap = document.createElement('div');
         wrap.className = 'aiw-approval';
@@ -552,6 +653,7 @@
                 // /api/report/annotations + /api/report/comments).
                 annotationsLoading();
                 commentsLoading();
+                resultsLoading();
                 if (typeof opts.onSelect === 'function') {
                     opts.onSelect(r.user_id, r.id);
                 }
@@ -579,6 +681,13 @@
         _comHint('Bericht auswaehlen, um die Kommentare zu sehen.');
         wrap.appendChild(support);
 
+        // --- Ermittlungsergebnis (read-only, Build 418) unter dem Support-View.
+        var res = document.createElement('div');
+        res.className = 'aiw-approval-results';
+        _state.resPanel = res;
+        _resHint('Bericht auswaehlen, um das Ermittlungsergebnis zu sehen.');
+        wrap.appendChild(res);
+
         mainEl.appendChild(wrap);
         return wrap;
     }
@@ -599,6 +708,9 @@
         forumContext: forumContext,
         commentStatusLabel: commentStatusLabel,
         reviewerRoleLabel: reviewerRoleLabel,
+        resultsUrl: resultsUrl,             // results (Build 418)
+        extremLabel: extremLabel,
+        gapLabel: gapLabel,
         // DOM
         renderApproval: renderApproval,
         renderVerify: renderVerify,
@@ -610,6 +722,9 @@
         renderComments: renderComments,         // Kommentare (SF-3, read-only)
         commentsLoading: commentsLoading,
         commentsError: commentsError,
+        renderResults: renderResults,           // Ermittlungsergebnis (read-only)
+        resultsLoading: resultsLoading,
+        resultsError: resultsError,
         cleanup: cleanup
     };
     log('Modul geladen.');

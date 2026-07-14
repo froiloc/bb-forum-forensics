@@ -1356,6 +1356,14 @@
                             .catch(function (e) {
                                 mod.commentsError(e && e.message);
                             });
+                        // Ermittlungsergebnis (results, read-only) laden. Fehlt
+                        // das Recht results.view, meldet der Server 403 -> im
+                        // Panel sichtbar (Grundregel 1).
+                        fetchJson(mod.resultsUrl(uid))
+                            .then(function (rd) { mod.renderResults(rd); })
+                            .catch(function (e) {
+                                mod.resultsError(e && e.message);
+                            });
                     },
                     onVerify: function (uid, rid) {
                         fetchJson('/api/report/verify?user_id=' + uid
