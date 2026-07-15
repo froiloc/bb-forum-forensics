@@ -488,6 +488,8 @@ class ManagementApp:
             return self._report_comments(person_id, query)
         if path == "/api/templates/queries":
             return self._templates_queries(person_id)
+        if path == "/api/templates/documents":
+            return self._templates_documents(person_id)
         if path == "/api/cases/detect":
             return self._cases_detect(person_id)
         if path == "/api/external":
@@ -1511,6 +1513,112 @@ class ManagementApp:
 
         return Response.json(200, {"ok": not errors, "errors": errors,
                                    "dry_run": dry})
+
+    # =====================================================================
+    # AUTHORING: DOKUMENTVORLAGEN (Build 424, W3 — templates.db).
+    #   GET  /api/templates/documents        — Liste (Recht templates.edit)
+    #   POST /api/templates/document         — anlegen/aendern (validiert,
+    #                                          auditiert ueber TemplatesWriter,
+    #                                          target_type='template')
+    #   POST /api/templates/document/dryrun  — SCHREIBFREIE Struktur-Vorschau
+    #                                          (Validierung + Blocktyp-Zaehlung),
+    #                                          kein Write, kein Audit
+    # =====================================================================
+    def _templates_documents(self, person_id: int) -> Response:
+        """Liste der Dokumentvorlagen (read-only)."""
+        if not self.resolve_policy(person_id).can(CAP_TEMPLATES_EDIT):
+            return self._forbidden(CAP_TEMPLATES_EDIT)
+        from management.templates_admin.template_repo import TemplateAuthorRepo
+        con = self._templates_ro_con()
+        try:
+            docs = TemplateAuthorRepo(con).list()
+        except sqlite3.Error as exc:
+            return Response.json(500, {"error": "templates_read_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"count": len(docs), "documents": docs})
+
+    def _tpl_document_from_payload(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Baut das Vorlagen-dict aus dem Request-Payload (gemeinsame Basis fuer
+        Upsert und Dry-Run). 'blocks' wird als native Liste erwartet."""
+        return {
+            "template_key": payload.get("template_key"),
+            "title": payload.get("title"),
+            "description": payload.get("description"),
+            "report_type": payload.get("report_type"),
+            "blocks": payload.get("blocks"),
+            "sort_order": payload.get("sort_order") or 0,
+        }
+
+    def _templates_document_upsert(self, person_id: int,
+                                   payload: Dict[str, Any]) -> Response:
+        """
+        Legt eine Dokumentvorlage an oder aendert sie. Ablauf:
+          1. Recht templates.edit.
+          2. Statische Validierung (template_validator: key/title/report_type +
+             Blockstruktur gegen die neun bekannten Blocktypen).
+          3. Auditiertes Upsert ueber den TemplatesWriter (target_type='template').
+        """
+        if not self.resolve_policy(person_id).can(CAP_TEMPLATES_EDIT):
+            return self._forbidden(CAP_TEMPLATES_EDIT)
+
+        from management.templates_admin.template_validator import validate_static
+        from management.templates_admin.template_repo import TemplateAuthorRepo
+
+        t = self._tpl_document_from_payload(payload)
+        errors = validate_static(t)
+        if errors:
+            return Response.json(400, {"error": "validation", "errors": errors})
+
+        con = self._ro_con()
+        try:
+            who = self._person(con, person_id)
+        finally:
+            con.close()
+        changed_by = who["system_username"] if who else str(person_id)
+
+        tcon = self._templates_rw_con()
+        try:
+            result = TemplateAuthorRepo(tcon).upsert(t, changed_by=changed_by)
+        except sqlite3.Error as exc:
+            return Response.json(500, {"error": "templates_write_failed",
+                                       "detail": str(exc)})
+        finally:
+            tcon.close()
+
+        logger.info("Dokumentvorlage %s (%s) von %s",
+                    result["target_id"],
+                    "angelegt" if result["created"] else "geaendert",
+                    changed_by)
+        return Response.json(200, {"ok": True, "target_id": result["target_id"],
+                                   "created": result["created"]})
+
+    def _templates_document_dryrun(self, person_id: int,
+                                   payload: Dict[str, Any]) -> Response:
+        """
+        SCHREIBFREIE Vorschau (Build 424): validiert eine Dokumentvorlage
+        STATISCH und liefert - bei gueltiger Struktur - eine Blocktyp-Zaehlung
+        ("was steckt in der Vorlage?"). Es wird NICHTS geschrieben und NICHTS
+        auditiert. Antwort IMMER 200 mit {ok, errors, summary}; Fehler als DATEN
+        (nicht als HTTP-Fehler), damit die Editor-Maske sie anzeigen kann.
+        Recht bleibt Voraussetzung (403 ohne templates.edit).
+        """
+        if not self.resolve_policy(person_id).can(CAP_TEMPLATES_EDIT):
+            return self._forbidden(CAP_TEMPLATES_EDIT)
+
+        from management.templates_admin.template_validator import (
+            validate_static, coerce_blocks, block_type_summary,
+        )
+
+        t = self._tpl_document_from_payload(payload)
+        errors = validate_static(t)
+        summary: List[Dict[str, Any]] = []
+        if not errors:
+            blocks, _berr = coerce_blocks(t)
+            summary = block_type_summary(blocks)
+        return Response.json(200, {"ok": not errors, "errors": errors,
+                                   "summary": summary})
 
     def _report_comment_create(self, person_id: int,
                                payload: Dict[str, Any]) -> Response:
@@ -2734,6 +2842,12 @@ class ManagementApp:
         # Dry-Run), damit die Redakteur:in testen kann, BEVOR sie speichert.
         if path == "/api/templates/query/dryrun":
             return self._templates_query_dryrun(person_id, payload)
+        # Build 424 (W3): Dokumentvorlagen (report_templates) anlegen/aendern
+        # und schreibfreie Struktur-Vorschau.
+        if path == "/api/templates/document":
+            return self._templates_document_upsert(person_id, payload)
+        if path == "/api/templates/document/dryrun":
+            return self._templates_document_dryrun(person_id, payload)
         # Build 405 (Block 2): Betreuungs-Notizen — auditierte Schreibpfade.
         if path == "/api/mentoring/note/create":
             return self._note_create(person_id, payload)
