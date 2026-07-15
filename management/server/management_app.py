@@ -191,6 +191,10 @@ CAP_EXTERNAL_EDIT = "external.edit"
 # ausdruecklich Scope 'alle' (mc 2026-07-12).
 CAP_RESULTS_VIEW = "results.view"
 CAP_RESULTS_EDIT = "results.edit"
+# Build 420/422: Authoring der Berichtsvorlagen (templates.db). Nicht
+# scope-behaftet — der Katalog ist fallunabhaengig. Der Schreibpfad ist
+# auditiert (TemplatesWriter, Build 421).
+CAP_TEMPLATES_EDIT = "templates.edit"
 # Build 401: Betreuungs-Notizen. Scope-faehig: 'alle' (Vertretung/Aufsicht sieht
 # fremde Boards), sonst nur das EIGENE Board (privater Merkzettel der Leitung).
 CAP_MENTORING_NOTES_VIEW = "mentoring_notes.view"
@@ -371,6 +375,24 @@ class ManagementApp:
         con.row_factory = sqlite3.Row
         return con
 
+    def _templates_ro_con(self) -> sqlite3.Connection:
+        """READ-ONLY Verbindung zur templates.db (Autoren-Liste, Build 422)."""
+        con = sqlite3.connect("file:%s?mode=ro" % self._templates_db, uri=True)
+        con.row_factory = sqlite3.Row
+        return con
+
+    def _templates_rw_con(self) -> sqlite3.Connection:
+        """
+        SCHREIB-Verbindung zur templates.db — NUR fuer den auditierten
+        TemplatesWriter-Pfad (Build 421/422). journal_mode=delete (kein WAL,
+        Build 408/409), busy_timeout gegen kurzzeitige Sperren.
+        """
+        con = sqlite3.connect(self._templates_db, timeout=5.0)
+        con.row_factory = sqlite3.Row
+        con.execute("PRAGMA journal_mode=delete")
+        con.execute("PRAGMA busy_timeout=5000")
+        return con
+
     # ------------------------------------------------------------- Start-Check
     def startup_selfcheck(self) -> None:
         """
@@ -464,6 +486,8 @@ class ManagementApp:
             return self._report_annotations(person_id, query)
         if path == "/api/report/comments":
             return self._report_comments(person_id, query)
+        if path == "/api/templates/queries":
+            return self._templates_queries(person_id)
         if path == "/api/cases/detect":
             return self._cases_detect(person_id)
         if path == "/api/external":
@@ -1335,6 +1359,99 @@ class ManagementApp:
         comments = ReviewCommentReader(self._evidence_dir, uid).read(report_id)
         return Response.json(200, {"user_id": uid, "report_id": report_id,
                                    "count": len(comments), "comments": comments})
+
+    # =====================================================================
+    # AUTHORING: PLATZHALTER-QUERIES (Build 422, W2 — templates.db).
+    #   GET  /api/templates/queries  — Liste (Recht templates.edit)
+    #   POST /api/templates/query    — anlegen/aendern (validiert + fdb-Dry-Run,
+    #                                  auditiert ueber TemplatesWriter)
+    # =====================================================================
+    def _templates_queries(self, person_id: int) -> Response:
+        """Liste der Platzhalter-Queries (read-only)."""
+        if not self.resolve_policy(person_id).can(CAP_TEMPLATES_EDIT):
+            return self._forbidden(CAP_TEMPLATES_EDIT)
+        from management.templates_admin.query_repo import QueryAuthorRepo
+        con = self._templates_ro_con()
+        try:
+            queries = QueryAuthorRepo(con).list()
+        except sqlite3.Error as exc:
+            return Response.json(500, {"error": "templates_read_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"count": len(queries), "queries": queries})
+
+    def _templates_query_upsert(self, person_id: int,
+                                payload: Dict[str, Any]) -> Response:
+        """
+        Legt eine Platzhalter-Query an oder aendert sie. Ablauf:
+          1. Recht templates.edit.
+          2. Statische Validierung (query_validator).
+          3. Optionaler fdb-Dry-Run (wenn test_user_id gesetzt und die
+             Beispiel-forensic_<uid>.db vorhanden ist).
+          4. Auditiertes Upsert ueber den TemplatesWriter.
+        """
+        if not self.resolve_policy(person_id).can(CAP_TEMPLATES_EDIT):
+            return self._forbidden(CAP_TEMPLATES_EDIT)
+
+        from management.templates_admin.query_validator import (
+            validate_static, dry_run, QueryValidationError,
+        )
+        from management.templates_admin.query_repo import QueryAuthorRepo
+
+        q = {
+            "id": payload.get("id"),
+            "title": payload.get("title"),
+            "description": payload.get("description", ""),
+            "sql_query": payload.get("sql_query"),
+            "tags": payload.get("tags"),
+            "return_type": payload.get("return_type") or "scalar",
+        }
+        errors = validate_static(q)
+        if errors:
+            return Response.json(400, {"error": "validation", "errors": errors})
+
+        # Optionaler Dry-Run gegen eine Beispiel-fdb.
+        dry: Dict[str, Any] = {"ran": False, "reason": "kein test_user_id."}
+        test_uid_raw = payload.get("test_user_id")
+        if test_uid_raw not in (None, ""):
+            try:
+                test_uid = int(test_uid_raw)
+            except (TypeError, ValueError):
+                return Response.json(400, {"error": "bad_request",
+                                           "detail": "test_user_id ungueltig."})
+            fdb_path = "%s/forensic_%d.db" % (
+                str(self._forensic_dir).rstrip("/"), test_uid)
+            try:
+                dry = dry_run(q["sql_query"], test_uid, fdb_path,
+                              return_type=q["return_type"])
+            except QueryValidationError as exc:
+                return Response.json(400, {"error": "dry_run",
+                                           "errors": exc.errors})
+
+        # Auditiertes Upsert.
+        con = self._ro_con()
+        try:
+            who = self._person(con, person_id)
+        finally:
+            con.close()
+        changed_by = who["system_username"] if who else str(person_id)
+
+        tcon = self._templates_rw_con()
+        try:
+            result = QueryAuthorRepo(tcon).upsert(q, changed_by=changed_by)
+        except sqlite3.Error as exc:
+            return Response.json(500, {"error": "templates_write_failed",
+                                       "detail": str(exc)})
+        finally:
+            tcon.close()
+
+        logger.info("Platzhalter-Query %s (%s) von %s",
+                    result["target_id"],
+                    "angelegt" if result["created"] else "geaendert",
+                    changed_by)
+        return Response.json(200, {"ok": True, "target_id": result["target_id"],
+                                   "created": result["created"], "dry_run": dry})
 
     def _report_comment_create(self, person_id: int,
                                payload: Dict[str, Any]) -> Response:
@@ -2551,6 +2668,9 @@ class ManagementApp:
             return self._report_comment_create(person_id, payload)
         if path == "/api/report/comment/resolve":
             return self._report_comment_resolve(person_id, payload)
+        # Build 422 (W2): Platzhalter-Query anlegen/aendern (templates.db).
+        if path == "/api/templates/query":
+            return self._templates_query_upsert(person_id, payload)
         # Build 405 (Block 2): Betreuungs-Notizen — auditierte Schreibpfade.
         if path == "/api/mentoring/note/create":
             return self._note_create(person_id, payload)
