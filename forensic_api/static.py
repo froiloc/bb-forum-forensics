@@ -100,6 +100,9 @@ _RESOURCES: dict[str, tuple[str, str, Path]] = {
     "/_forensic/annotation_edit_dialog.js": ("annotation_edit_dialog.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
     # Build 429 (B4 Welle 2): Identitaets-Steckbrief.
     "/_forensic/annotation_identity_profile.js": ("annotation_identity_profile.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
+    # Build 430 (B4 Welle 3): Zeitstrahl (ECharts wird ueber die Vendor-Route
+    # /_forensic/static/vendor/echarts/echarts.min.js ausgeliefert).
+    "/_forensic/annotation_timeline.js":    ("annotation_timeline.js",    "application/javascript; charset=utf-8", _USERINFO_DIR),
     "/_forensic/annotation_recherche.js":   ("annotation_recherche.js",   "application/javascript; charset=utf-8", _USERINFO_DIR),
     "/_forensic/annotation_recherche.css":  ("annotation_recherche.css",  "text/css; charset=utf-8",               _USERINFO_DIR),
 }

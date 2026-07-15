@@ -45,6 +45,7 @@
 from __future__ import annotations
 
 import json
+import re
 import urllib.parse
 from typing import TYPE_CHECKING
 
@@ -57,6 +58,27 @@ if TYPE_CHECKING:
     from core.mode_resolver import ResolvedContext
 
 logger = get_logger(__name__)
+
+# Build 430 (B4 Welle 3): element_id-Konvention "p<postid>" (Beleg: annotations
+# der Toolbar verankern ganze Posts als element_id='p'+post_id). Fuer die
+# Inhaltszeit-Aufloesung leiten wir die post_id aus post_id ODER element_id ab.
+_ELEMENT_POST_RE = re.compile(r"^p(\d+)$")
+
+
+def _derive_post_id(rec) -> "int | None":
+    """Ermittelt die Forum-post_id einer Annotation aus post_id oder element_id."""
+    pid = getattr(rec, "post_id", None)
+    if pid is not None:
+        try:
+            return int(pid)
+        except (TypeError, ValueError):
+            pass
+    eid = getattr(rec, "element_id", None)
+    if eid:
+        match = _ELEMENT_POST_RE.match(str(eid).strip())
+        if match:
+            return int(match.group(1))
+    return None
 
 
 class AnnotationsEndpoint:
@@ -104,6 +126,19 @@ class AnnotationsEndpoint:
             logger.error("Annotationen konnten nicht geladen werden: %s", exc)
             self._error(handler, "Interner Fehler beim Laden der Annotationen", status=500)
             return
+
+        # Build 430 (B4 Welle 3): Inhaltszeit (contentTs) ADDITIV, rein lesend,
+        # aus fdb.uid_posts. Nullbar; scheitert die Aufloesung (fehlende Tabelle,
+        # unbekannte post_id), bleibt contentTs None und die Annotation erscheint
+        # im Zeitstrahl unter 'ohne Inhaltszeit' (GR1). KEINE Schemaaenderung.
+        post_time_map: "dict[int, int]" = {}
+        try:
+            needed = {pid for pid in (_derive_post_id(r) for r in records) if pid is not None}
+            if needed:
+                post_time_map = self._bundle.forensic.get_post_times(needed)
+        except Exception as exc:  # Endpunkt darf durch die Anreicherung NIE brechen
+            logger.warning("contentTs-Aufloesung uebersprungen: %s", exc)
+            post_time_map = {}
 
         # In JS-kompatibles Format umwandeln (camelCase, Timestamps in ms)
         annotations_out = []
@@ -155,6 +190,9 @@ class AnnotationsEndpoint:
                 # None = gehoert zum aktuellen Job-Benutzer (Normalfall).
                 # Gesetzt = Fremdannotation zu einem anderen Forenbenutzer.
                 "actualUid": getattr(rec, "actual_uid", None),
+                # Build 430 (B4 Welle 3): Inhaltszeit des Posts (Sekunden, UTC)
+                # oder None. Client rechnet nach ms (annotationTimeMs()).
+                "contentTs": post_time_map.get(_derive_post_id(rec)),
             })
 
         logger.debug(

@@ -173,12 +173,49 @@
 
     // ----------------------------------------------------------------- Zone M
     var center = el('div', 'air-center');
+
+    // Center-Umschalter Liste | Zeitstrahl (Build 430). Beide Sichten arbeiten
+    // ueber derselben gefilterten Menge; nur die sichtbare wird aktualisiert.
+    var cseg = el('div', 'air-seg air-center-seg');
+    var segList = el('button', 'air-seg-btn air-seg-active', 'Liste');
+    var segTime = el('button', 'air-seg-btn', 'Zeitstrahl');
+    cseg.appendChild(segList); cseg.appendChild(segTime);
+    center.appendChild(cseg);
+    this._els.segList = segList; this._els.segTime = segTime;
+    segList.addEventListener('click', function () { self._setCenterMode('list'); });
+    segTime.addEventListener('click', function () { self._setCenterMode('timeline'); });
+
     var status = el('div', 'air-status');
     this._els.status = status;
     center.appendChild(status);
+
     var list = el('div', 'air-list');
     this._els.list = list;
     center.appendChild(list);
+
+    // Zeitstrahl-Bereich (anfangs verborgen): Achsen-Umschalter, Chart-Host,
+    // "ohne Inhaltszeit"-Zeile.
+    var tlWrap = el('div', 'air-timeline-wrap');
+    tlWrap.style.display = 'none';
+    var tlBar = el('div', 'air-timeline-bar');
+    tlBar.appendChild(el('span', 'air-tl-basis-label', 'Achse:'));
+    var basisContent = el('button', 'air-seg-btn air-seg-active', 'Inhaltszeit');
+    var basisAnn = el('button', 'air-seg-btn', 'Annotationszeit');
+    tlBar.appendChild(basisContent); tlBar.appendChild(basisAnn);
+    this._els.basisContent = basisContent; this._els.basisAnn = basisAnn;
+    basisContent.addEventListener('click', function () { self._setBasis('content'); });
+    basisAnn.addEventListener('click', function () { self._setBasis('annotation'); });
+    tlWrap.appendChild(tlBar);
+    var tlHost = el('div', 'air-timeline-host');
+    this._els.tlHost = tlHost;
+    tlWrap.appendChild(tlHost);
+    var tlNote = el('div', 'air-timeline-note');
+    this._els.tlNote = tlNote;
+    tlWrap.appendChild(tlNote);
+    this._els.tlWrap = tlWrap;
+    center.appendChild(tlWrap);
+
+    this._centerMode = 'list';       // 'list' | 'timeline'
 
     // ----------------------------------------------------------------- Zone R
     // Zwei umschaltbare Panels: Identitaets-Steckbrief (Synthese der gefilterten
@@ -237,6 +274,59 @@
     // Steckbrief spiegelt die aktuell gefilterte Menge (verknuepfte Sichten §2).
     this._lastView = view;
     if (this._sideMode === 'profile') this._renderProfile(view);
+    if (this._centerMode === 'timeline') this._renderTimeline(view);
+  };
+
+  // ------- Zeitstrahl (Build 430) --------------------------------------------
+  RechercheView.prototype._setCenterMode = function (m) {
+    this._centerMode = m;
+    var isTl = (m === 'timeline');
+    this._els.list.style.display = isTl ? 'none' : '';
+    this._els.tlWrap.style.display = isTl ? '' : 'none';
+    this._els.segList.classList.toggle('air-seg-active', !isTl);
+    this._els.segTime.classList.toggle('air-seg-active', isTl);
+    if (isTl && this._lastView) this._renderTimeline(this._lastView);
+  };
+
+  RechercheView.prototype._setBasis = function (basis) {
+    if (!this._timeline) return;
+    this._timeline.setBasis(basis);
+    this._els.basisContent.classList.toggle('air-seg-active', basis === 'content');
+    this._els.basisAnn.classList.toggle('air-seg-active', basis === 'annotation');
+    if (this._lastView) this._renderTimeline(this._lastView);
+  };
+
+  RechercheView.prototype._renderTimeline = function (view) {
+    var self = this;
+    if (!window.AIWAnnotationTimeline) return;
+    if (!this._timeline) {
+      this._timeline = new window.AIWAnnotationTimeline.AnnotationTimeline();
+      this._timeline.mount(this._els.tlHost, {
+        basis: 'content',
+        onSelect: function (annId) {
+          var ann = self._store.getById(annId);
+          if (ann) self._select(ann);
+        },
+        // Gezogenes Zeitfenster -> gemeinsames Filterprädikat (alle Sichten).
+        onBrush: function (fromMs, toMs) { self._store.setPredicate({ from: fromMs, to: toMs }); }
+      });
+      // Chart auf Fenstergroesse reagieren lassen.
+      window.addEventListener('resize', function () { if (self._timeline) self._timeline.resize(); });
+    }
+    if (!this._timeline.available()) {
+      this._els.tlHost.innerHTML = '';
+      this._els.tlNote.textContent = 'Zeitstrahl nicht verfügbar (Diagramm-Bibliothek nicht geladen). '
+        + 'Die übrigen Sichten sind uneingeschränkt nutzbar.';
+      return;
+    }
+    var res = this._timeline.render(view.filtered);
+    var basis = this._timeline.getBasis();
+    var note = '';
+    if (basis === 'content' && res.withoutTime > 0) {
+      note = res.withoutTime + ' Annotation(en) ohne Inhaltszeit — nicht auf der Achse. '
+        + 'Über „Annotationszeit" sichtbar.';
+    }
+    this._els.tlNote.textContent = note;
   };
 
   // _renderProfile(view): Identitaets-Steckbrief aus der gefilterten Menge bauen.

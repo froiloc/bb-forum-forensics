@@ -392,6 +392,55 @@ class ForensicDb:
         )
 
     # ------------------------------------------------------------------
+    # Build 430 (B4 Welle 3): Inhaltszeit (Post-Zeitstempel) fuer den Zeitstrahl
+    # ------------------------------------------------------------------
+
+    def get_post_times(self, post_ids) -> "dict[int, int]":
+        """
+        Liefert die Inhaltszeit (Unix-Epoch, Sekunden, UTC) zu Forum-post_ids
+        aus fdb.uid_posts (Spalten: id, posted).
+
+        Beleg: uid_posts(id, posted) — tests/test_build388_vorlagen.py:353;
+        Tabelle dokumentiert in forensic_api/userinfo_static.py:12.
+
+        Rein lesend. DEFENSIV: existiert fdb.uid_posts in einer (aelteren)
+        forensic_db nicht, wird ein LEERES Mapping geliefert und geloggt — der
+        Zeitstrahl fuehrt die betroffenen Annotationen dann sichtbar in der Spur
+        'ohne Inhaltszeit' (kein stiller Ausfall, Grundregel 1). Der Endpunkt
+        bleibt dadurch in jedem Fall funktionsfaehig.
+
+        Args:
+            post_ids: iterable von post_ids (int).
+
+        Returns:
+            { post_id (int): posted (int, Sekunden) }
+        """
+        ids = sorted({int(p) for p in post_ids if p is not None})
+        if not ids:
+            return {}
+
+        out: "dict[int, int]" = {}
+        chunk_size = 500  # unter dem SQLite-Parameterlimit bleiben
+        try:
+            for start in range(0, len(ids), chunk_size):
+                chunk = ids[start:start + chunk_size]
+                placeholders = ",".join("?" * len(chunk))
+                rows = self._con.execute(
+                    f"SELECT id, posted FROM fdb.uid_posts WHERE id IN ({placeholders})",
+                    chunk,
+                ).fetchall()
+                for row in rows:
+                    if row["posted"] is not None:
+                        out[int(row["id"])] = int(row["posted"])
+        except sqlite3.OperationalError as exc:
+            logger.warning(
+                "get_post_times: fdb.uid_posts nicht verfuegbar (%s) — leeres Mapping",
+                exc,
+            )
+            return {}
+        return out
+
+    # ------------------------------------------------------------------
     # Build 303: pid → Seite (pages.id) + Fortschritt
     # ------------------------------------------------------------------
 

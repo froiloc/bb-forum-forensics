@@ -516,6 +516,10 @@ class UserinfoEndpoint:
   <script src="/_forensic/annotation_edit_dialog.js" defer></script>
   <!-- Build 429: Identitaets-Steckbrief (vor der orchestrierenden Sicht laden). -->
   <script src="/_forensic/annotation_identity_profile.js" defer></script>
+  <!-- Build 430: Zeitstrahl. ECharts (Apache-2.0) aus dem Vendor-Verzeichnis;
+       annotation_timeline.js vor der orchestrierenden Sicht laden. -->
+  <script src="/_forensic/static/vendor/echarts/echarts.min.js" defer></script>
+  <script src="/_forensic/annotation_timeline.js" defer></script>
   <script src="/_forensic/annotation_recherche.js" defer></script>
 </body>
 </html>"""
