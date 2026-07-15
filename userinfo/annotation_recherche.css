@@ -1,0 +1,150 @@
+/* =============================================================================
+ * userinfo/annotation_recherche.css
+ * IT-Forensisches Ermittlungswerkzeug — Baustelle 4: Annotationsrecherche
+ * -----------------------------------------------------------------------------
+ * ZWECK: Eigenstaendiges Stylesheet fuer die Recherche-Ansicht (Praefix air-).
+ *   Bewusst getrennt von report.css (Editor-Fenster) gehalten; die benoetigte
+ *   Karten-/Facettenoptik ist hier neu und schlank umgesetzt. Farbwelt an die
+ *   helle ui-card-Flaeche des Nutzerinfo-Fensters angelehnt (Akzent #1565c0).
+ * ========================================================================== */
+
+#userinfo-recherche .air-root {
+  display: grid;
+  grid-template-columns: 240px 1fr 300px;
+  gap: 14px;
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  #userinfo-recherche .air-root { grid-template-columns: 1fr; }
+}
+
+/* ---------- Zone links: Filter-Schiene ---------- */
+.air-rail {
+  font-size: 13px;
+  border-right: 1px solid #e0e0e0;
+  padding-right: 12px;
+}
+.air-rail-block { margin-bottom: 14px; }
+.air-rail-title {
+  font-weight: 600; color: #37474f; font-size: 12px;
+  text-transform: uppercase; letter-spacing: .04em;
+  margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;
+}
+.air-search, .air-select, .air-input, .air-date, .air-textarea {
+  width: 100%; box-sizing: border-box;
+  border: 1px solid #bcc4d0; border-radius: 4px;
+  padding: 6px 8px; font-size: 13px; background: #fff; color: #1a1a1a;
+}
+.air-textarea { resize: vertical; font-family: inherit; }
+.air-date { width: auto; display: inline-block; }
+.air-date-sep { margin: 0 4px; color: #888; }
+
+/* Kategorie-Tabs */
+.air-tabs { display: flex; flex-direction: column; gap: 4px; }
+.air-tab {
+  display: flex; align-items: center; gap: 6px;
+  border: 1px solid #cfd6e0; border-left-width: 4px; border-radius: 4px;
+  background: #fafbfc; padding: 5px 8px; cursor: pointer; text-align: left;
+  font-size: 13px; color: #1a1a1a;
+}
+.air-tab:hover { background: #eef3fb; }
+.air-tab-active { background: #e3f2fd; box-shadow: inset 0 0 0 1px #1565c0; }
+.air-tab-empty { opacity: .5; }
+.air-tab-icon { width: 18px; text-align: center; }
+.air-tab-label { flex: 1; }
+.air-tab-count {
+  background: #eceff1; border-radius: 10px; padding: 0 7px;
+  font-size: 11px; color: #455; min-width: 18px; text-align: center;
+}
+
+/* Sortierung */
+.air-dir { margin-top: 6px; }
+
+/* Tag-Wolke */
+.air-tagcloud { display: flex; flex-wrap: wrap; gap: 5px; }
+.air-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  border: 1px solid #bcc4d0; border-radius: 12px; background: #fff;
+  padding: 2px 8px; font-size: 12px; cursor: pointer; color: #1a1a1a;
+}
+.air-chip:hover { background: #eef3fb; }
+.air-chip-on { background: #1565c0; border-color: #1565c0; color: #fff; }
+.air-chip-on .air-chip-count { color: #cfe0f5; }
+.air-chip-count { font-size: 10px; color: #78909c; }
+.air-mode-toggle {
+  border: 1px solid #1565c0; background: #fff; color: #1565c0;
+  border-radius: 4px; font-size: 11px; font-weight: 600; padding: 1px 8px; cursor: pointer;
+}
+.air-mode-and { background: #1565c0; color: #fff; }
+
+/* Facettenlisten (Ermittler/Quelle) */
+.air-facet-list { display: flex; flex-direction: column; gap: 2px; max-height: 180px; overflow: auto; }
+.air-facet-row { display: flex; align-items: center; gap: 6px; padding: 2px 4px; border-radius: 3px; cursor: pointer; }
+.air-facet-row:hover { background: #f0f4fa; }
+.air-facet-on { background: #e3f2fd; }
+.air-facet-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.air-facet-count { font-size: 11px; color: #78909c; }
+.air-check { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; cursor: pointer; }
+.air-muted { color: #90a4ae; font-size: 12px; }
+
+/* ---------- Zone Mitte: Liste ---------- */
+.air-status { margin-bottom: 8px; font-size: 12px; color: #546e7a; }
+.air-status-count { font-weight: 600; }
+.air-status-err { color: #c62828; font-weight: 600; }
+.air-list { display: flex; flex-direction: column; gap: 8px; }
+.air-empty { color: #78909c; padding: 20px; text-align: center; font-style: italic; }
+
+.air-card {
+  border: 1px solid #d9dee6; border-left: 4px solid #90a4ae; border-radius: 5px;
+  background: #fff; padding: 9px 11px; cursor: pointer;
+}
+.air-card:hover { box-shadow: 0 1px 4px rgba(0,0,0,.10); }
+.air-card-sel { box-shadow: 0 0 0 2px #1565c0; }
+.air-card-hyp { border-style: dashed; background: #fffdf3; }
+.air-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
+.air-cat-chip { color: #fff; border-radius: 10px; padding: 1px 9px; font-size: 11px; font-weight: 600; }
+.air-card-time { font-size: 11px; color: #78909c; }
+.air-card-tags { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; }
+.air-tag { background: #eceff1; border-radius: 10px; padding: 1px 8px; font-size: 11px; color: #37474f; }
+.air-card-note { font-size: 13px; color: #263238; margin: 4px 0; white-space: pre-wrap; }
+.air-card-quote { font-size: 12px; color: #546e7a; font-style: italic; border-left: 2px solid #cfd6e0; padding-left: 8px; margin: 4px 0; }
+.air-card-meta { display: flex; gap: 12px; font-size: 11px; color: #90a4ae; margin-top: 5px; }
+.air-card-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 7px; }
+.air-card-lock { font-size: 11px; color: #b71c1c; }
+.air-inline-tag { margin-top: 7px; }
+
+/* Buttons */
+.air-btn { border: 1px solid #bcc4d0; background: #f5f7fa; color: #1a1a1a; border-radius: 4px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
+.air-btn:hover { background: #e9eef5; }
+.air-btn-primary { background: #1565c0; border-color: #1565c0; color: #fff; }
+.air-btn-primary:hover { background: #0d47a1; }
+.air-btn-secondary { background: #eceff1; }
+.air-btn-small { padding: 2px 8px; font-size: 11px; }
+.air-reset { margin-top: 6px; width: 100%; }
+
+/* ---------- Zone rechts: Detail ---------- */
+.air-side { border-left: 1px solid #e0e0e0; padding-left: 12px; }
+.air-side-title { font-weight: 600; color: #37474f; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px; }
+.air-side-soon { margin-top: 14px; font-size: 11px; color: #90a4ae; font-style: italic; border-top: 1px dashed #e0e0e0; padding-top: 8px; }
+.air-detail-empty { color: #90a4ae; font-style: italic; font-size: 12px; }
+.air-detail-cat { font-weight: 600; margin-bottom: 6px; }
+.air-detail-hyp { background: #fff3e0; color: #a54; border: 1px solid #ffe0b2; border-radius: 4px; padding: 5px 8px; font-size: 12px; margin-bottom: 6px; }
+.air-detail-note { font-size: 13px; color: #263238; margin: 6px 0; white-space: pre-wrap; }
+.air-detail-fields { margin-top: 8px; }
+.air-detail-row { display: flex; justify-content: space-between; font-size: 12px; padding: 2px 0; border-bottom: 1px solid #f0f0f0; }
+.air-detail-k { color: #78909c; }
+.air-detail-v { color: #263238; font-family: monospace; }
+.air-detail-link { display: inline-block; margin-top: 10px; color: #1565c0; text-decoration: none; font-size: 13px; }
+.air-detail-link:hover { text-decoration: underline; }
+
+/* ---------- Bearbeiten-Maske (Modal) ---------- */
+.air-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+.air-modal { background: #fff; border-radius: 8px; width: 460px; max-width: 92vw; max-height: 90vh; overflow: auto; box-shadow: 0 8px 32px rgba(0,0,0,.3); }
+.air-modal-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #e0e0e0; }
+.air-modal-title { font-weight: 600; color: #1a1a1a; }
+.air-modal-id { font-size: 11px; color: #90a4ae; font-family: monospace; }
+.air-modal-body { padding: 14px 16px; }
+.air-field-label { display: block; font-size: 12px; font-weight: 600; color: #546e7a; margin: 10px 0 4px; }
+.air-seltext { font-size: 12px; color: #546e7a; font-style: italic; background: #f5f7fa; border-radius: 4px; padding: 8px; }
+.air-modal-error { color: #c62828; font-size: 12px; margin-top: 10px; }
+.air-modal-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px; border-top: 1px solid #e0e0e0; }

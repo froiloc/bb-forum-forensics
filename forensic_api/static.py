@@ -92,6 +92,14 @@ _RESOURCES: dict[str, tuple[str, str, Path]] = {
     "/_forensic/lock_layer.js":      ("lock_layer.js",      "application/javascript; charset=utf-8", _USERINFO_DIR),
     "/_forensic/document_layer.js":  ("document_layer.js",  "application/javascript; charset=utf-8", _USERINFO_DIR),
     "/_forensic/editor_bootstrap.js":("editor_bootstrap.js","application/javascript; charset=utf-8", _USERINFO_DIR),
+    # Build 428 (B4 Welle 1): Annotationsrecherche im Nutzerinfo-Tab.
+    # Reiner Filter-Kern, Zustands-Store, Bearbeiten-Maske, orchestrierende Sicht
+    # + eigenes Stylesheet. Beleg: Bauplan_Baustelle4_Annotationsrecherche_v0_1.
+    "/_forensic/annotation_filter.js":      ("annotation_filter.js",      "application/javascript; charset=utf-8", _USERINFO_DIR),
+    "/_forensic/annotation_store.js":       ("annotation_store.js",       "application/javascript; charset=utf-8", _USERINFO_DIR),
+    "/_forensic/annotation_edit_dialog.js": ("annotation_edit_dialog.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
+    "/_forensic/annotation_recherche.js":   ("annotation_recherche.js",   "application/javascript; charset=utf-8", _USERINFO_DIR),
+    "/_forensic/annotation_recherche.css":  ("annotation_recherche.css",  "text/css; charset=utf-8",               _USERINFO_DIR),
 }
 
 # MIME-Types fuer Editor.js-Bundle-Dateien (AP-E3)

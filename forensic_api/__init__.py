@@ -292,6 +292,11 @@ class ForensicApi:
             "/_forensic/lock_layer.js",         # B6 Paket 7 Layer 4 (Build 254)
             "/_forensic/document_layer.js",     # B6 Paket 8 Layer 5 (Build 254)
             "/_forensic/editor_bootstrap.js",   # B6 Paket 9 Bootstrap (Build 254)
+            "/_forensic/annotation_filter.js",      # B4 Welle 1 Recherche (Build 428)
+            "/_forensic/annotation_store.js",       # B4 Welle 1 Recherche (Build 428)
+            "/_forensic/annotation_edit_dialog.js", # B4 Welle 1 Recherche (Build 428)
+            "/_forensic/annotation_recherche.js",   # B4 Welle 1 Recherche (Build 428)
+            "/_forensic/annotation_recherche.css",  # B4 Welle 1 Recherche (Build 428)
         ):
             if method not in ("GET", "HEAD"):
                 self._method_not_allowed(handler)

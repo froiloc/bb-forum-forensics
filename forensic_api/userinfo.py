@@ -473,6 +473,15 @@ class UserinfoEndpoint:
       <span style="color:#9aa0b8;font-size:12px">Lade…</span>
     </div>
 
+    <!-- Build 428 (B4 Welle 1): Annotationsrecherche. Drei-Zonen-Ansicht
+         (Filter-Schiene · Kartenliste · Detail) wird von annotation_recherche.js
+         in diesen Container gebaut. Rein lesend + bestehender annotate-Upsert;
+         KEINE DB-Schemaaenderung. Beleg: Bauplan_Baustelle4_Annotationsrecherche_v0_1. -->
+    <div class="ui-card ui-card--wide" id="userinfo-recherche" aria-live="polite">
+      <h2>Annotationsrecherche</h2>
+      <span style="color:#9aa0b8;font-size:12px">Lade…</span>
+    </div>
+
   </div>
 
   <!-- Build 088: userinfo-report-readonly AUSSERHALB von #userinfo-static.
@@ -499,6 +508,13 @@ class UserinfoEndpoint:
   <script src="/_forensic/static/vendor/tabulator/tabulator.min.js"></script>
   <script src="/_forensic/userinfo_results.js" defer></script>
   <script src="/_forensic/userinfo.js" defer></script>
+  <!-- Build 428 (B4 Welle 1): Annotationsrecherche. Ladereihenfolge:
+       Filter-Kern → Store → Bearbeiten-Maske → orchestrierende Sicht. -->
+  <link rel="stylesheet" href="/_forensic/annotation_recherche.css">
+  <script src="/_forensic/annotation_filter.js" defer></script>
+  <script src="/_forensic/annotation_store.js" defer></script>
+  <script src="/_forensic/annotation_edit_dialog.js" defer></script>
+  <script src="/_forensic/annotation_recherche.js" defer></script>
 </body>
 </html>"""
 
