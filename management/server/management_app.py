@@ -490,6 +490,8 @@ class ManagementApp:
             return self._templates_queries(person_id)
         if path == "/api/templates/documents":
             return self._templates_documents(person_id)
+        if path == "/api/templates/modules":
+            return self._templates_modules(person_id)
         if path == "/api/cases/detect":
             return self._cases_detect(person_id)
         if path == "/api/external":
@@ -1617,6 +1619,108 @@ class ManagementApp:
         if not errors:
             blocks, _berr = coerce_blocks(t)
             summary = block_type_summary(blocks)
+        return Response.json(200, {"ok": not errors, "errors": errors,
+                                   "summary": summary})
+
+    # =====================================================================
+    # AUTHORING: BAUSTEIN-MODULE (Build 426, W1 — templates.db).
+    #   GET  /api/templates/modules        — Liste (Recht templates.edit)
+    #   POST /api/templates/module         — anlegen/aendern (validiert,
+    #                                        auditiert ueber TemplatesWriter,
+    #                                        target_type='module')
+    #   POST /api/templates/module/dryrun  — SCHREIBFREIE Vorschau (Feldpruefung
+    #                                        + Platzhalter-Zaehlung im body),
+    #                                        kein Write, kein Audit
+    # =====================================================================
+    def _templates_modules(self, person_id: int) -> Response:
+        """Liste der Baustein-Module (read-only)."""
+        if not self.resolve_policy(person_id).can(CAP_TEMPLATES_EDIT):
+            return self._forbidden(CAP_TEMPLATES_EDIT)
+        from management.templates_admin.module_repo import ModuleAuthorRepo
+        con = self._templates_ro_con()
+        try:
+            modules = ModuleAuthorRepo(con).list()
+        except sqlite3.Error as exc:
+            return Response.json(500, {"error": "templates_read_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"count": len(modules), "modules": modules})
+
+    def _tpl_module_from_payload(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Baut das Modul-dict aus dem Payload (Basis fuer Upsert und Dry-Run)."""
+        return {
+            "module_key": payload.get("module_key"),
+            "title": payload.get("title"),
+            "description": payload.get("description"),
+            "role": payload.get("role"),
+            "topic": payload.get("topic"),
+            "body": payload.get("body"),
+            "sort_order": payload.get("sort_order") or 0,
+        }
+
+    def _templates_module_upsert(self, person_id: int,
+                                 payload: Dict[str, Any]) -> Response:
+        """
+        Legt einen Baustein an oder aendert ihn. Ablauf:
+          1. Recht templates.edit.
+          2. Statische Validierung (module_validator: key/title/role/topic/body).
+          3. Auditiertes Upsert ueber den TemplatesWriter (target_type='module').
+        """
+        if not self.resolve_policy(person_id).can(CAP_TEMPLATES_EDIT):
+            return self._forbidden(CAP_TEMPLATES_EDIT)
+
+        from management.templates_admin.module_validator import validate_static
+        from management.templates_admin.module_repo import ModuleAuthorRepo
+
+        m = self._tpl_module_from_payload(payload)
+        errors = validate_static(m)
+        if errors:
+            return Response.json(400, {"error": "validation", "errors": errors})
+
+        con = self._ro_con()
+        try:
+            who = self._person(con, person_id)
+        finally:
+            con.close()
+        changed_by = who["system_username"] if who else str(person_id)
+
+        tcon = self._templates_rw_con()
+        try:
+            result = ModuleAuthorRepo(tcon).upsert(m, changed_by=changed_by)
+        except sqlite3.Error as exc:
+            return Response.json(500, {"error": "templates_write_failed",
+                                       "detail": str(exc)})
+        finally:
+            tcon.close()
+
+        logger.info("Baustein-Modul %s (%s) von %s",
+                    result["target_id"],
+                    "angelegt" if result["created"] else "geaendert",
+                    changed_by)
+        return Response.json(200, {"ok": True, "target_id": result["target_id"],
+                                   "created": result["created"]})
+
+    def _templates_module_dryrun(self, person_id: int,
+                                 payload: Dict[str, Any]) -> Response:
+        """
+        SCHREIBFREIE Vorschau (Build 426): validiert einen Baustein STATISCH und
+        liefert - bei gueltigen Feldern - eine Platzhalter-Zaehlung des body
+        (auto/mandatory/optional). Kein Write, kein Audit. Antwort IMMER 200 mit
+        {ok, errors, summary}; Fehler als DATEN. 403 ohne templates.edit.
+        """
+        if not self.resolve_policy(person_id).can(CAP_TEMPLATES_EDIT):
+            return self._forbidden(CAP_TEMPLATES_EDIT)
+
+        from management.templates_admin.module_validator import (
+            validate_static, placeholder_summary,
+        )
+
+        m = self._tpl_module_from_payload(payload)
+        errors = validate_static(m)
+        summary: List[Dict[str, Any]] = []
+        if not errors:
+            summary = placeholder_summary(m.get("body"))
         return Response.json(200, {"ok": not errors, "errors": errors,
                                    "summary": summary})
 
@@ -2848,6 +2952,12 @@ class ManagementApp:
             return self._templates_document_upsert(person_id, payload)
         if path == "/api/templates/document/dryrun":
             return self._templates_document_dryrun(person_id, payload)
+        # Build 426 (W1): Baustein-Module (report_modules) anlegen/aendern und
+        # schreibfreie Vorschau (Feldpruefung + Platzhalter-Zaehlung im body).
+        if path == "/api/templates/module":
+            return self._templates_module_upsert(person_id, payload)
+        if path == "/api/templates/module/dryrun":
+            return self._templates_module_dryrun(person_id, payload)
         # Build 405 (Block 2): Betreuungs-Notizen — auditierte Schreibpfade.
         if path == "/api/mentoring/note/create":
             return self._note_create(person_id, payload)
