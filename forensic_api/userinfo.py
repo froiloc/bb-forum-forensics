@@ -520,6 +520,8 @@ class UserinfoEndpoint:
        annotation_timeline.js vor der orchestrierenden Sicht laden. -->
   <script src="/_forensic/static/vendor/echarts/echarts.min.js" defer></script>
   <script src="/_forensic/annotation_timeline.js" defer></script>
+  <!-- Build 431: Tag-Netz (ECharts graph) vor der orchestrierenden Sicht laden. -->
+  <script src="/_forensic/annotation_tag_network.js" defer></script>
   <script src="/_forensic/annotation_recherche.js" defer></script>
 </body>
 </html>"""

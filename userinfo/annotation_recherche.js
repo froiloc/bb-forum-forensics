@@ -56,6 +56,9 @@
     // Platzhalter ("Lade…") entfernen — h2-Ueberschrift bleibt erhalten.
     var kids = [].slice.call(container.childNodes);
     kids.forEach(function (k) { if (k.nodeType === 1 && k.tagName !== 'H2') container.removeChild(k); });
+    // Benutzername (Seitenkopf) fuer das Zentrum des Tag-Netzes.
+    var h1 = document.querySelector('.ui-header h1');
+    this._userLabel = (h1 && h1.textContent && h1.textContent.trim()) || 'Beschuldigter';
     this._root = el('div', 'air-root');
 
     // ----------------------------------------------------------------- Zone L
@@ -76,6 +79,7 @@
         self._store.setPredicate({ search: search.value });
       }, 250);
     });
+    this._els.searchInput = search;
     searchWrap.appendChild(search);
     rail.appendChild(searchWrap);
 
@@ -138,6 +142,14 @@
     sourceBlock.appendChild(sourceList);
     rail.appendChild(sourceBlock);
 
+    // Zuordnungs-Facette (Cross-Annotation, Build 431): eigene vs. Fremd-UID.
+    var crossBlock = el('div', 'air-rail-block');
+    crossBlock.appendChild(el('div', 'air-rail-title', 'Zuordnung'));
+    var crossList = el('div', 'air-facet-list');
+    this._els.crossList = crossList;
+    crossBlock.appendChild(crossList);
+    rail.appendChild(crossBlock);
+
     // Zeitraum (auf annotationTimeMs; ab Welle 3 automatisch Inhaltszeit)
     var timeBlock = el('div', 'air-rail-block');
     timeBlock.appendChild(el('div', 'air-rail-title', 'Zeitraum'));
@@ -179,11 +191,13 @@
     var cseg = el('div', 'air-seg air-center-seg');
     var segList = el('button', 'air-seg-btn air-seg-active', 'Liste');
     var segTime = el('button', 'air-seg-btn', 'Zeitstrahl');
-    cseg.appendChild(segList); cseg.appendChild(segTime);
+    var segNet = el('button', 'air-seg-btn', 'Netz');
+    cseg.appendChild(segList); cseg.appendChild(segTime); cseg.appendChild(segNet);
     center.appendChild(cseg);
-    this._els.segList = segList; this._els.segTime = segTime;
+    this._els.segList = segList; this._els.segTime = segTime; this._els.segNet = segNet;
     segList.addEventListener('click', function () { self._setCenterMode('list'); });
     segTime.addEventListener('click', function () { self._setCenterMode('timeline'); });
+    segNet.addEventListener('click', function () { self._setCenterMode('network'); });
 
     var status = el('div', 'air-status');
     this._els.status = status;
@@ -215,7 +229,19 @@
     this._els.tlWrap = tlWrap;
     center.appendChild(tlWrap);
 
-    this._centerMode = 'list';       // 'list' | 'timeline'
+    // Tag-Netz-Bereich (anfangs verborgen): Chart-Host + Hinweiszeile.
+    var netWrap = el('div', 'air-network-wrap');
+    netWrap.style.display = 'none';
+    var netHost = el('div', 'air-network-host');
+    this._els.netHost = netHost;
+    netWrap.appendChild(netHost);
+    var netNote = el('div', 'air-network-note');
+    this._els.netNote = netNote;
+    netWrap.appendChild(netNote);
+    this._els.netWrap = netWrap;
+    center.appendChild(netWrap);
+
+    this._centerMode = 'list';       // 'list' | 'timeline' | 'network'
 
     // ----------------------------------------------------------------- Zone R
     // Zwei umschaltbare Panels: Identitaets-Steckbrief (Synthese der gefilterten
@@ -267,6 +293,7 @@
     this._renderTagCloud(view);
     this._renderFacet(this._els.authorList, view.facets.authors, view.predicate.authors, 'authors', null);
     this._renderSources(view);
+    this._renderCross(view);
     this._renderStatus(view);
     this._renderList(view);
     this._els.modeBtn.textContent = (view.predicate.tagMode === 'and') ? 'UND' : 'ODER';
@@ -275,17 +302,63 @@
     this._lastView = view;
     if (this._sideMode === 'profile') this._renderProfile(view);
     if (this._centerMode === 'timeline') this._renderTimeline(view);
+    if (this._centerMode === 'network') this._renderNetwork(view);
   };
 
-  // ------- Zeitstrahl (Build 430) --------------------------------------------
+  // ------- Center-Umschaltung (Liste/Zeitstrahl/Netz, Build 430/431) ----------
   RechercheView.prototype._setCenterMode = function (m) {
     this._centerMode = m;
-    var isTl = (m === 'timeline');
-    this._els.list.style.display = isTl ? 'none' : '';
-    this._els.tlWrap.style.display = isTl ? '' : 'none';
-    this._els.segList.classList.toggle('air-seg-active', !isTl);
-    this._els.segTime.classList.toggle('air-seg-active', isTl);
-    if (isTl && this._lastView) this._renderTimeline(this._lastView);
+    this._els.list.style.display = (m === 'list') ? '' : 'none';
+    this._els.tlWrap.style.display = (m === 'timeline') ? '' : 'none';
+    this._els.netWrap.style.display = (m === 'network') ? '' : 'none';
+    this._els.segList.classList.toggle('air-seg-active', m === 'list');
+    this._els.segTime.classList.toggle('air-seg-active', m === 'timeline');
+    this._els.segNet.classList.toggle('air-seg-active', m === 'network');
+    if (m === 'timeline' && this._lastView) this._renderTimeline(this._lastView);
+    if (m === 'network' && this._lastView) this._renderNetwork(this._lastView);
+  };
+
+  // ------- Tag-Netz (Build 431) ----------------------------------------------
+  RechercheView.prototype._renderNetwork = function (view) {
+    var self = this;
+    if (!window.AIWAnnotationTagNetwork) return;
+    if (!this._network) {
+      this._network = new window.AIWAnnotationTagNetwork.TagNetworkView();
+      this._network.mount(this._els.netHost, {
+        // Klick auf Tag-Knoten: Tag im Prädikat umschalten (wie Chip-Wolke).
+        onToggleTag: function (tag) {
+          var cur = self._store.getPredicate().tags.slice();
+          var i = cur.map(function (t) { return t.toLowerCase(); }).indexOf(String(tag).toLowerCase());
+          if (i === -1) cur.push(tag); else cur.splice(i, 1);
+          self._store.setPredicate({ tags: cur });
+        },
+        // Klick auf Kategorie-Knoten: exklusiv filtern.
+        onSetCategory: function (catId) { self._store.setPredicate({ categories: [catId] }); },
+        // Klick auf Ko-Okkurrenz-Kante: auf beide Tags (UND) filtern.
+        onSetPair: function (a, b) { self._store.setPredicate({ tags: [a, b], tagMode: 'and' }); },
+        // Klick auf das Zentrum: Filter zuruecksetzen.
+        onReset: function () { self._resetFromControls(); }
+      });
+      window.addEventListener('resize', function () { if (self._network) self._network.resize(); });
+    }
+    if (!this._network.available()) {
+      this._els.netHost.innerHTML = '';
+      this._els.netNote.textContent = 'Tag-Netz nicht verfügbar (Diagramm-Bibliothek nicht geladen). '
+        + 'Die übrigen Sichten sind uneingeschränkt nutzbar.';
+      return;
+    }
+    var res = this._network.render(view.filtered, { userLabel: this._userLabel || 'Beschuldigter' });
+    var note = res.tagCount + ' Tags · ' + res.cooccurrenceEdges + ' Ko-Okkurrenz-Kanten';
+    if (res.isolatedTags && res.isolatedTags.length) {
+      note += ' · isoliert (nur an Kategorie/Zentrum): ' + res.isolatedTags.join(', ');
+    }
+    this._els.netNote.textContent = note;
+  };
+
+  // Filter zuruecksetzen inkl. Bedienelemente (vom Zentrum-Klick genutzt).
+  RechercheView.prototype._resetFromControls = function () {
+    if (this._els.searchInput) this._els.searchInput.value = '';
+    this._store.resetPredicate();
   };
 
   RechercheView.prototype._setBasis = function (basis) {
@@ -455,6 +528,37 @@
       row.appendChild(box);
       row.appendChild(el('span', 'air-facet-name', s.icon + ' ' + s.label));
       row.appendChild(el('span', 'air-facet-count', String(n)));
+      container.appendChild(row);
+    });
+  };
+
+  // Zuordnungs-Facette (Cross-Annotation): 'eigene' vs. Fremd-UID (Build 431).
+  RechercheView.prototype._renderCross = function (view) {
+    var self = this, container = this._els.crossList;
+    clear(container);
+    var counts = view.facets.cross || {};
+    var selected = view.predicate.cross;
+    var keys = Object.keys(counts).sort(function (a, b) {
+      // 'eigene' immer zuerst, dann nach Anzahl.
+      if (a === 'eigene') return -1; if (b === 'eigene') return 1;
+      return counts[b] - counts[a] || (a < b ? -1 : 1);
+    });
+    if (keys.length === 0) { container.appendChild(el('span', 'air-muted', '—')); return; }
+    keys.forEach(function (k) {
+      var on = selected.indexOf(k) !== -1;
+      var row = el('label', 'air-facet-row' + (on ? ' air-facet-on' : ''));
+      var box = el('input'); box.type = 'checkbox'; box.checked = on;
+      box.addEventListener('change', function () {
+        var cur = self._store.getPredicate().cross.slice();
+        var i = cur.indexOf(k);
+        if (box.checked && i === -1) cur.push(k);
+        else if (!box.checked && i !== -1) cur.splice(i, 1);
+        self._store.setPredicate({ cross: cur });
+      });
+      row.appendChild(box);
+      var label = (k === 'eigene') ? '👤 eigene (Job-Benutzer)' : '↪ Fremd-UID ' + k;
+      row.appendChild(el('span', 'air-facet-name', label));
+      row.appendChild(el('span', 'air-facet-count', String(counts[k])));
       container.appendChild(row);
     });
   };

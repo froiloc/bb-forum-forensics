@@ -297,6 +297,7 @@ class ForensicApi:
             "/_forensic/annotation_edit_dialog.js", # B4 Welle 1 Recherche (Build 428)
             "/_forensic/annotation_identity_profile.js", # B4 Welle 2 Steckbrief (Build 429)
             "/_forensic/annotation_timeline.js",    # B4 Welle 3 Zeitstrahl (Build 430)
+            "/_forensic/annotation_tag_network.js", # B4 Welle 4 Tag-Netz (Build 431)
             "/_forensic/annotation_recherche.js",   # B4 Welle 1 Recherche (Build 428)
             "/_forensic/annotation_recherche.css",  # B4 Welle 1 Recherche (Build 428)
         ):

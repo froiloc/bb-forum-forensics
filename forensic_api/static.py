@@ -103,6 +103,8 @@ _RESOURCES: dict[str, tuple[str, str, Path]] = {
     # Build 430 (B4 Welle 3): Zeitstrahl (ECharts wird ueber die Vendor-Route
     # /_forensic/static/vendor/echarts/echarts.min.js ausgeliefert).
     "/_forensic/annotation_timeline.js":    ("annotation_timeline.js",    "application/javascript; charset=utf-8", _USERINFO_DIR),
+    # Build 431 (B4 Welle 4): Tag-Netz (Ko-Okkurrenz-Graph, ECharts).
+    "/_forensic/annotation_tag_network.js": ("annotation_tag_network.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
     "/_forensic/annotation_recherche.js":   ("annotation_recherche.js",   "application/javascript; charset=utf-8", _USERINFO_DIR),
     "/_forensic/annotation_recherche.css":  ("annotation_recherche.css",  "text/css; charset=utf-8",               _USERINFO_DIR),
 }

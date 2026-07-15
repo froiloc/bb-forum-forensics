@@ -104,6 +104,15 @@
   // Bevorzugt die Inhaltszeit (contentTs, Sekunden) sobald vorhanden (Welle 3),
   // sonst die Annotationszeit (createdAt, bereits ms). So ist der Zeitraum-Filter
   // vorwaertskompatibel, ohne dass die View sich aendern muss.
+  // deriveCross(ann): Zuordnungs-Facette (Build 431).
+  //   'eigene'  -> actualUid == null: Annotation gilt dem Job-Benutzer (Normalfall)
+  //   '<uid>'   -> actualUid gesetzt: Fremdannotation zu einem anderen Forenbenutzer
+  // Beleg Bedeutung actualUid: forensic_api/annotations.py:154.
+  function deriveCross(ann) {
+    if (!ann || ann.actualUid == null) return 'eigene';
+    return String(ann.actualUid);
+  }
+
   function annotationTimeMs(ann) {
     if (ann && ann.contentTs != null && !isNaN(ann.contentTs)) return Number(ann.contentTs) * 1000;
     if (ann && ann.createdAt != null && !isNaN(ann.createdAt)) return Number(ann.createdAt);
@@ -149,7 +158,7 @@
   function emptyPredicate() {
     return {
       categories: [], tags: [], tagMode: 'or', authors: [], sources: [],
-      search: '', from: null, to: null, hypothesisOnly: false
+      cross: [], search: '', from: null, to: null, hypothesisOnly: false
     };
   }
 
@@ -177,6 +186,7 @@
     if (!inList(ann.category, pred.categories)) return false;
     if (!inList((ann.createdBy || ''), pred.authors)) return false;
     if (pred.sources && pred.sources.length && pred.sources.indexOf(deriveSource(ann)) === -1) return false;
+    if (pred.cross && pred.cross.length && pred.cross.indexOf(deriveCross(ann)) === -1) return false;
     if (!matchesTags(ann, pred.tags, pred.tagMode)) return false;
     if (pred.hypothesisOnly && !isHypothesis(ann)) return false;
     if (!matchesSearch(ann, pred.search)) return false;
@@ -244,7 +254,7 @@
   // ---------------------------------------------------------------------------
   function computeFacets(annotations) {
     var list = annotations || [];
-    var categories = {}, tags = {}, authors = {}, sources = {};
+    var categories = {}, tags = {}, authors = {}, sources = {}, cross = {};
     var hypotheses = 0;
     list.forEach(function (a) {
       categories[a.category] = (categories[a.category] || 0) + 1;
@@ -256,9 +266,11 @@
       authors[au] = (authors[au] || 0) + 1;
       var s = deriveSource(a);
       sources[s] = (sources[s] || 0) + 1;
+      var c = deriveCross(a);
+      cross[c] = (cross[c] || 0) + 1;
       if (isHypothesis(a)) hypotheses++;
     });
-    return { categories: categories, tags: tags, authors: authors, sources: sources, hypotheses: hypotheses, total: list.length };
+    return { categories: categories, tags: tags, authors: authors, sources: sources, cross: cross, hypotheses: hypotheses, total: list.length };
   }
 
   // Oeffentliche, reine API. Kein DOM, kein Netz — voll unit-testbar.
@@ -271,6 +283,7 @@
     SOURCES: SOURCES,
     categoryMeta: categoryMeta,
     deriveSource: deriveSource,
+    deriveCross: deriveCross,
     annotationTimeMs: annotationTimeMs,
     isHypothesis: isHypothesis,
     identityScore: identityScore,
