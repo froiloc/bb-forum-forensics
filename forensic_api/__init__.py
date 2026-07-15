@@ -295,6 +295,7 @@ class ForensicApi:
             "/_forensic/annotation_filter.js",      # B4 Welle 1 Recherche (Build 428)
             "/_forensic/annotation_store.js",       # B4 Welle 1 Recherche (Build 428)
             "/_forensic/annotation_edit_dialog.js", # B4 Welle 1 Recherche (Build 428)
+            "/_forensic/annotation_identity_profile.js", # B4 Welle 2 Steckbrief (Build 429)
             "/_forensic/annotation_recherche.js",   # B4 Welle 1 Recherche (Build 428)
             "/_forensic/annotation_recherche.css",  # B4 Welle 1 Recherche (Build 428)
         ):

@@ -181,14 +181,36 @@
     center.appendChild(list);
 
     // ----------------------------------------------------------------- Zone R
+    // Zwei umschaltbare Panels: Identitaets-Steckbrief (Synthese der gefilterten
+    // Menge, Standard) und Detail (ausgewaehlte Annotation). Build 429.
     var side = el('div', 'air-side');
-    side.appendChild(el('div', 'air-side-title', 'Detail'));
+    var seg = el('div', 'air-seg');
+    var segProfile = el('button', 'air-seg-btn air-seg-active', 'Steckbrief');
+    var segDetail = el('button', 'air-seg-btn', 'Detail');
+    seg.appendChild(segProfile); seg.appendChild(segDetail);
+    side.appendChild(seg);
+    this._els.segProfile = segProfile;
+    this._els.segDetail = segDetail;
+    segProfile.addEventListener('click', function () { self._setSideMode('profile'); });
+    segDetail.addEventListener('click', function () { self._setSideMode('detail'); });
+
+    // Host: Identitaets-Steckbrief
+    var profileHost = el('div', 'air-profile');
+    this._els.profileHost = profileHost;
+    side.appendChild(profileHost);
+    this._profile = new window.AIWIdentityProfile.IdentityProfileView();
+
+    // Host: Detail (anfangs verborgen)
     var detail = el('div', 'air-detail');
+    detail.style.display = 'none';
     detail.appendChild(el('div', 'air-detail-empty', 'Eine Annotation auswählen, um Details zu sehen.'));
     this._els.detail = detail;
     side.appendChild(detail);
-    // Hinweis auf kommende Sichten (Ehrlichkeit ueber den Ausbaustand)
-    var soon = el('div', 'air-side-soon', 'Identitäts-Steckbrief, Tag-Netz und Zeitstrahl folgen in weiteren Ausbaustufen.');
+
+    this._sideMode = 'profile';   // 'profile' | 'detail'
+
+    // Hinweis auf noch kommende Sichten (Ehrlichkeit ueber den Ausbaustand).
+    var soon = el('div', 'air-side-soon', 'Tag-Netz und Zeitstrahl folgen in weiteren Ausbaustufen.');
     side.appendChild(soon);
 
     this._root.appendChild(rail);
@@ -212,6 +234,38 @@
     this._renderList(view);
     this._els.modeBtn.textContent = (view.predicate.tagMode === 'and') ? 'UND' : 'ODER';
     this._els.modeBtn.classList.toggle('air-mode-and', view.predicate.tagMode === 'and');
+    // Steckbrief spiegelt die aktuell gefilterte Menge (verknuepfte Sichten §2).
+    this._lastView = view;
+    if (this._sideMode === 'profile') this._renderProfile(view);
+  };
+
+  // _renderProfile(view): Identitaets-Steckbrief aus der gefilterten Menge bauen.
+  RechercheView.prototype._renderProfile = function (view) {
+    var self = this;
+    this._profile.render(this._els.profileHost, view.filtered, {
+      onFocus: function (annId) { self._focusCard(annId); }
+    });
+  };
+
+  // _setSideMode(m): rechte Zone zwischen Steckbrief und Detail umschalten.
+  RechercheView.prototype._setSideMode = function (m) {
+    this._sideMode = m;
+    var isProfile = (m === 'profile');
+    this._els.profileHost.style.display = isProfile ? '' : 'none';
+    this._els.detail.style.display = isProfile ? 'none' : '';
+    this._els.segProfile.classList.toggle('air-seg-active', isProfile);
+    this._els.segDetail.classList.toggle('air-seg-active', !isProfile);
+    if (isProfile && this._lastView) this._renderProfile(this._lastView);
+  };
+
+  // _focusCard(annId): Karte in der Liste hervorheben und ins Sichtfeld holen
+  // (Rueckverlinkung aus dem Steckbrief, ohne den Steckbrief zu verlassen).
+  RechercheView.prototype._focusCard = function (annId) {
+    var card = this._els.list.querySelector('.air-card[data-ann-id="' + annId + '"]');
+    if (!card) return;
+    try { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { card.scrollIntoView(); }
+    card.classList.add('air-card-flash');
+    setTimeout(function () { card.classList.remove('air-card-flash'); }, 1200);
   };
 
   RechercheView.prototype._renderTabs = function (view) {
@@ -395,6 +449,24 @@
       var tagBtn = el('button', 'air-btn air-btn-small', '+ Tag');
       tagBtn.addEventListener('click', function (ev) { ev.stopPropagation(); self._toggleInlineTag(card, ann); });
       actions.appendChild(tagBtn);
+
+      // Vermutungs-Workflow (Build 429): einen Klick, um die Annotation als
+      // Vermutung zu markieren bzw. die Markierung aufzuheben. Trennung
+      // Vermutung/Beleg ist Pflicht (GR1); der reservierte Tag 'vermutung'
+      // steuert Optik (gestrichelt) und Steckbrief-Einordnung.
+      var isHyp = F.isHypothesis(ann);
+      var hypBtn = el('button', 'air-btn air-btn-small air-btn-hyp' + (isHyp ? ' air-btn-hyp-on' : ''),
+        isHyp ? '⚑ Vermutung aufheben' : '⚑ als Vermutung');
+      hypBtn.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        hypBtn.disabled = true;
+        var p = isHyp ? self._store.removeTag(ann, 'vermutung') : self._store.addTags(ann, ['vermutung']);
+        p.catch(function (err) {
+          hypBtn.disabled = false;
+          if (typeof console !== 'undefined') console.error('[AIW-Recherche] Vermutung-Toggle fehlgeschlagen:', err);
+        });
+      });
+      actions.appendChild(hypBtn);
     } else {
       // GR1: kein stiller Ausfall — sichtbarer Hinweis, warum nicht editierbar.
       var lock = el('span', 'air-card-lock', '🔒 nicht editierbar (fehlende local_id)');
@@ -468,6 +540,8 @@
       cards[i].classList.toggle('air-card-sel', cards[i].getAttribute('data-ann-id') === String(ann.id));
     }
     this._renderDetail(ann);
+    // Karten-Klick zeigt die Detailsicht (rechte Zone auf 'detail' schalten).
+    this._setSideMode('detail');
   };
 
   RechercheView.prototype._renderDetail = function (ann) {

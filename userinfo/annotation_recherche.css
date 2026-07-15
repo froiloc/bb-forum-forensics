@@ -137,6 +137,46 @@
 .air-detail-link { display: inline-block; margin-top: 10px; color: #1565c0; text-decoration: none; font-size: 13px; }
 .air-detail-link:hover { text-decoration: underline; }
 
+/* ---------- Build 429: Umschalter Steckbrief/Detail ---------- */
+.air-seg { display: flex; gap: 4px; margin-bottom: 10px; }
+.air-seg-btn {
+  flex: 1; border: 1px solid #bcc4d0; background: #f5f7fa; color: #37474f;
+  border-radius: 4px; padding: 5px 8px; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.air-seg-btn:hover { background: #e9eef5; }
+.air-seg-active { background: #1565c0; border-color: #1565c0; color: #fff; }
+
+/* ---------- Build 429: Identitäts-Steckbrief ---------- */
+.air-prof-head { font-size: 12px; color: #37474f; margin-bottom: 8px; }
+.air-prof-cover { font-weight: 600; }
+.air-prof-hypcount { color: #a5673f; margin-left: 4px; }
+.air-prof-empty { color: #90a4ae; font-style: italic; font-size: 12px; }
+.air-prof-section { margin-bottom: 12px; border-bottom: 1px solid #f0f0f0; padding-bottom: 8px; }
+.air-prof-tag { display: flex; align-items: center; gap: 6px; font-weight: 600; color: #263238; font-size: 13px; margin-bottom: 5px; }
+.air-prof-tag-icon { width: 18px; text-align: center; }
+.air-prof-tag-label { flex: 1; }
+.air-prof-tag-count { background: #eceff1; border-radius: 10px; padding: 0 7px; font-size: 11px; color: #455; }
+.air-prof-value { margin: 5px 0 6px; }
+.air-prof-value-hyp { opacity: .9; }
+.air-prof-value-head { display: flex; align-items: baseline; gap: 6px; }
+.air-prof-value-text { font-size: 13px; color: #1a237e; word-break: break-word; }
+.air-prof-value-hyp .air-prof-value-text { color: #6d4c41; font-style: italic; }
+.air-prof-hyp-badge { background: #fff3e0; color: #a5673f; border: 1px solid #ffe0b2; border-radius: 8px; padding: 0 6px; font-size: 10px; font-weight: 600; white-space: nowrap; }
+.air-prof-belege { margin-top: 3px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.air-prof-belege-label { font-size: 11px; color: #90a4ae; }
+.air-prof-beleg { border: 1px solid #cfd6e0; border-left-width: 3px; background: #fff; border-radius: 4px; padding: 1px 6px; font-size: 11px; cursor: pointer; color: #37474f; }
+.air-prof-beleg:hover { background: #eef3fb; }
+
+/* Vermutungs-Button an der Karte */
+.air-btn-hyp-on { background: #fff3e0; border-color: #ffcc80; color: #a5673f; }
+
+/* Fokus-Flash (Ruecksprung aus dem Steckbrief) */
+.air-card-flash { animation: air-flash 1.2s ease; }
+@keyframes air-flash {
+  0% { box-shadow: 0 0 0 3px #ffca28; }
+  100% { box-shadow: 0 0 0 0 rgba(255,202,40,0); }
+}
+
 /* ---------- Bearbeiten-Maske (Modal) ---------- */
 .air-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 9999; }
 .air-modal { background: #fff; border-radius: 8px; width: 460px; max-width: 92vw; max-height: 90vh; overflow: auto; box-shadow: 0 8px 32px rgba(0,0,0,.3); }

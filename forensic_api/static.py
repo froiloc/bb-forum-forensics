@@ -98,6 +98,8 @@ _RESOURCES: dict[str, tuple[str, str, Path]] = {
     "/_forensic/annotation_filter.js":      ("annotation_filter.js",      "application/javascript; charset=utf-8", _USERINFO_DIR),
     "/_forensic/annotation_store.js":       ("annotation_store.js",       "application/javascript; charset=utf-8", _USERINFO_DIR),
     "/_forensic/annotation_edit_dialog.js": ("annotation_edit_dialog.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
+    # Build 429 (B4 Welle 2): Identitaets-Steckbrief.
+    "/_forensic/annotation_identity_profile.js": ("annotation_identity_profile.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
     "/_forensic/annotation_recherche.js":   ("annotation_recherche.js",   "application/javascript; charset=utf-8", _USERINFO_DIR),
     "/_forensic/annotation_recherche.css":  ("annotation_recherche.css",  "text/css; charset=utf-8",               _USERINFO_DIR),
 }
