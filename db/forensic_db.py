@@ -440,6 +440,52 @@ class ForensicDb:
             return {}
         return out
 
+    def get_pm_post_times(self, pm_post_ids) -> "dict[int, int]":
+        """
+        Build 432 (B4 Welle 3, E2): Liefert die Inhaltszeit (Unix-Epoch,
+        Sekunden, UTC) zu PN-Post-IDs aus fdb.uid_pms_posts
+        (Spalten: pm_post_id, posted_ts).
+
+        Beleg Spaltenname: Entwicklerangabe 2026-07-15 (uid_pms_posts.posted_ts);
+        Tabelle dokumentiert in forensic_api/userinfo_static.py:12.
+
+        Verhalten und Defensivitaet identisch zu get_post_times(): fehlt die
+        Tabelle/Spalte, wird {} geliefert und geloggt (GR1). Getrennte Methode,
+        weil PN-IDs (pm_post_id) einen EIGENEN ID-Raum bilden — nicht mit
+        uid_posts.id vermischen.
+
+        Args:
+            pm_post_ids: iterable von pm_post_ids (int).
+
+        Returns:
+            { pm_post_id (int): posted_ts (int, Sekunden) }
+        """
+        ids = sorted({int(p) for p in pm_post_ids if p is not None})
+        if not ids:
+            return {}
+
+        out: "dict[int, int]" = {}
+        chunk_size = 500
+        try:
+            for start in range(0, len(ids), chunk_size):
+                chunk = ids[start:start + chunk_size]
+                placeholders = ",".join("?" * len(chunk))
+                rows = self._con.execute(
+                    f"SELECT pm_post_id, posted_ts FROM fdb.uid_pms_posts "
+                    f"WHERE pm_post_id IN ({placeholders})",
+                    chunk,
+                ).fetchall()
+                for row in rows:
+                    if row["posted_ts"] is not None:
+                        out[int(row["pm_post_id"])] = int(row["posted_ts"])
+        except sqlite3.OperationalError as exc:
+            logger.warning(
+                "get_pm_post_times: fdb.uid_pms_posts nicht verfuegbar (%s) — leeres Mapping",
+                exc,
+            )
+            return {}
+        return out
+
     # ------------------------------------------------------------------
     # Build 303: pid → Seite (pages.id) + Fortschritt
     # ------------------------------------------------------------------

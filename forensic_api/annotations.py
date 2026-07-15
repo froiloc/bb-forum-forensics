@@ -66,7 +66,7 @@ _ELEMENT_POST_RE = re.compile(r"^p(\d+)$")
 
 
 def _derive_post_id(rec) -> "int | None":
-    """Ermittelt die Forum-post_id einer Annotation aus post_id oder element_id."""
+    """Ermittelt die (PN-)post_id einer Annotation aus post_id oder element_id."""
     pid = getattr(rec, "post_id", None)
     if pid is not None:
         try:
@@ -79,6 +79,15 @@ def _derive_post_id(rec) -> "int | None":
         if match:
             return int(match.group(1))
     return None
+
+
+def _is_pm_url(page_url) -> bool:
+    """Build 432 (E2): erkennt PN-Seiten. PN-Ansichten laufen ueber pmsnew.php
+    (Beleg db/forensic_db.py:1248 'pmsnew.php?mdl=topic&tid='); 'pms'/'message'
+    decken die Varianten ab. Nur so wird die richtige Zeittabelle gewaehlt
+    (uid_posts vs. uid_pms_posts — GETRENNTE ID-Raeume)."""
+    u = str(page_url or "").lower()
+    return ("pms" in u) or ("message" in u)
 
 
 class AnnotationsEndpoint:
@@ -127,18 +136,33 @@ class AnnotationsEndpoint:
             self._error(handler, "Interner Fehler beim Laden der Annotationen", status=500)
             return
 
-        # Build 430 (B4 Welle 3): Inhaltszeit (contentTs) ADDITIV, rein lesend,
-        # aus fdb.uid_posts. Nullbar; scheitert die Aufloesung (fehlende Tabelle,
-        # unbekannte post_id), bleibt contentTs None und die Annotation erscheint
-        # im Zeitstrahl unter 'ohne Inhaltszeit' (GR1). KEINE Schemaaenderung.
+        # Build 430/432 (B4 Welle 3): Inhaltszeit (contentTs) ADDITIV, rein lesend.
+        # Forum-Posts aus fdb.uid_posts, PN-Posts aus fdb.uid_pms_posts (GETRENNTE
+        # ID-Raeume; Zuordnung ueber die Seiten-URL). Nullbar; scheitert die
+        # Aufloesung (fehlende Tabelle, unbekannte ID), bleibt contentTs None und
+        # die Annotation erscheint im Zeitstrahl unter 'ohne Inhaltszeit' (GR1).
+        # KEINE Schemaaenderung.
         post_time_map: "dict[int, int]" = {}
+        pm_time_map: "dict[int, int]" = {}
         try:
-            needed = {pid for pid in (_derive_post_id(r) for r in records) if pid is not None}
-            if needed:
-                post_time_map = self._bundle.forensic.get_post_times(needed)
+            post_ids = set()
+            pm_ids = set()
+            for r in records:
+                pid = _derive_post_id(r)
+                if pid is None:
+                    continue
+                if _is_pm_url(getattr(r, "page_url", None)):
+                    pm_ids.add(pid)
+                else:
+                    post_ids.add(pid)
+            if post_ids:
+                post_time_map = self._bundle.forensic.get_post_times(post_ids)
+            if pm_ids:
+                pm_time_map = self._bundle.forensic.get_pm_post_times(pm_ids)
         except Exception as exc:  # Endpunkt darf durch die Anreicherung NIE brechen
             logger.warning("contentTs-Aufloesung uebersprungen: %s", exc)
             post_time_map = {}
+            pm_time_map = {}
 
         # In JS-kompatibles Format umwandeln (camelCase, Timestamps in ms)
         annotations_out = []
@@ -190,9 +214,10 @@ class AnnotationsEndpoint:
                 # None = gehoert zum aktuellen Job-Benutzer (Normalfall).
                 # Gesetzt = Fremdannotation zu einem anderen Forenbenutzer.
                 "actualUid": getattr(rec, "actual_uid", None),
-                # Build 430 (B4 Welle 3): Inhaltszeit des Posts (Sekunden, UTC)
-                # oder None. Client rechnet nach ms (annotationTimeMs()).
-                "contentTs": post_time_map.get(_derive_post_id(rec)),
+                # Build 430/432 (B4 Welle 3): Inhaltszeit (Sekunden, UTC) oder None.
+                # PN-Posts aus pm_time_map, Forum-Posts aus post_time_map
+                # (getrennte ID-Raeume). Client rechnet nach ms (annotationTimeMs()).
+                "contentTs": (pm_time_map if _is_pm_url(rec.page_url) else post_time_map).get(_derive_post_id(rec)),
             })
 
         logger.debug(
