@@ -81,7 +81,8 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     // Build 413: 17 (neu: 'lectorate' - Lektorat, W4 Gegenlesen).
     // Build 416: 18 (neu: 'approval' - Chef-Freigabe, W5).
     // Build 423: 19 (neu: 'templates' - Platzhalter & Queries, W2).
-    expect(api.VIEW_CATALOG.length).toBe(19);
+    // Build 425: 20 (neu: 'doctemplates' - Dokumentvorlagen, W3).
+    expect(api.VIEW_CATALOG.length).toBe(20);
   });
 
   // CN03b (Build 384) --------------------------------------------------------
@@ -136,12 +137,26 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     expect(v.cap).toBe("templates.edit");
     expect(v.group).toBe("Redaktion");
 
-    // Nur wer templates.edit hat (Redakteur:in/Chef), sieht die Autoren-Maske.
+    // Nur wer templates.edit hat (Redakteur:in/Chef), sieht die Autoren-Masken.
+    // Build 425: templates.edit macht W2 UND W3 sichtbar (beide Gruppe Redaktion).
     expect(api.visibleViews({ "templates.edit": "alle" }).map((x) => x.id))
-      .toEqual(["templates"]);
+      .toEqual(["templates", "doctemplates"]);
     // Ohne das Recht ist die Sicht unsichtbar (kein Leak in die Navigation).
     expect(api.visibleViews({ "dashboard.view": "alle" }).map((x) => x.id))
       .toEqual(["dashboard"]);
+  });
+
+  // CN03f (Build 425) --------------------------------------------------------
+  it("CN03f: Dokumentvorlagen (W3) haengt an templates.edit, Gruppe Redaktion", () => {
+    const api = _api();
+    const v = api.viewById("doctemplates");
+    expect(v).toBeTruthy();
+    expect(v.cap).toBe("templates.edit");
+    expect(v.group).toBe("Redaktion");
+
+    // templates.edit macht BEIDE Redaktions-Sichten sichtbar (W2 + W3).
+    expect(api.visibleViews({ "templates.edit": "alle" }).map((x) => x.id))
+      .toEqual(["templates", "doctemplates"]);
   });
 
   // CN04 -------------------------------------------------------------------
