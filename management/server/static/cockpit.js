@@ -143,6 +143,10 @@
         // wiederverwendbare Berichts-Gerueste (report_templates). Gleiche Gruppe
         // 'Redaktion' und gleiches Recht templates.edit wie W2.
         { id: 'doctemplates', cap: 'templates.edit',    group: 'Redaktion',      label: 'Dokumentvorlagen' },
+        // Baustein-Module (W1, Build 427): Autoren-Maske der Redakteur:in fuer
+        // wiederverwendbare Textbausteine (report_modules). Gleiche Gruppe
+        // 'Redaktion' und Recht templates.edit wie W2/W3.
+        { id: 'modules',   cap: 'templates.edit',       group: 'Redaktion',      label: 'Baustein-Module' },
         // Ermittlungsergebnis (Build 395). Recht: results.view. Ein Ermittler
         // mit Scope 'eigene' sieht die Sicht ebenfalls — er bekommt dann die
         // Abdeckung SEINER Faelle; die fallUEBERGREIFENDE Verteilung (/stats)
@@ -469,6 +473,12 @@
             ? window.AIWCockpitDocTemplates : null;
         if (dtplMod && typeof dtplMod.cleanup === 'function') {
             dtplMod.cleanup();
+        }
+        // Baustein-Modul-Autorensicht (W1, Build 427) abbauen.
+        var modMod = (typeof window !== 'undefined')
+            ? window.AIWCockpitModules : null;
+        if (modMod && typeof modMod.cleanup === 'function') {
+            modMod.cleanup();
         }
     }
 
@@ -1549,6 +1559,45 @@
         });
     }
 
+    // loadModules: BAUSTEIN-MODULE (W1, Build 427). Laedt die Baustein-Liste und
+    // rendert die Autoren-Maske. Zwei Aktionen:
+    //   - Vorschau: POST /api/templates/module/dryrun (SCHREIBFREI).
+    //   - Speichern: POST /api/templates/module (auditiert) -> nach Erfolg wird
+    //     die LISTE neu geladen (kein optimistisches UI, Grundregel 1).
+    function loadModules(mainEl) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitModules : null;
+        if (!mod) {
+            renderError(mainEl, 'Baustein-Modul-Modul nicht geladen.');
+            return;
+        }
+        fetchJson('/api/templates/modules').then(function (data) {
+            cleanupView();
+            mod.renderModules(mainEl, data, {
+                onDryRun: function (payload) {
+                    postJson('/api/templates/module/dryrun', payload)
+                        .then(function (res) { mod.renderDryRun(res); })
+                        .catch(function (e) { mod.dryRunError(e && e.message); });
+                },
+                onSave: function (payload) {
+                    postJson('/api/templates/module', payload)
+                        .then(function (res) {
+                            mod.saved(res);
+                            loadModules(mainEl);
+                        })
+                        .catch(function (e) { mod.saveError(e && e.message); });
+                }
+            });
+            log('Baustein-Module gerendert:', data && data.count);
+        }).catch(function (err) {
+            cleanupView();
+            renderError(mainEl,
+                'Baustein-Module konnten nicht geladen werden: '
+                + err.message);
+        });
+    }
+
     // selectView: aktive Sicht setzen, Nav neu markieren, Inhalt dispatchen.
     // Build 349: 'dashboard' -> Overview; 'integrity' -> Integritaets-Sicht;
     // sonst Platzhalter (weitere Sichten folgen).
@@ -1599,6 +1648,8 @@
             loadTemplates(mainEl);
         } else if (viewId === 'doctemplates') {
             loadDocTemplates(mainEl);
+        } else if (viewId === 'modules') {
+            loadModules(mainEl);
         } else {
             renderPlaceholder(mainEl, viewById(viewId));
         }
@@ -1666,14 +1717,15 @@
             } else if (state.activeId === 'approval') {
                 loadApproval();
             }
-            // BEWUSST KEIN Auto-Reload der 'templates'-/'doctemplates'-Sichten
-            // (W2 Build 423, W3 Build 425): Schreibvorgaenge auf templates.db
-            // landen in templates_audit_log (eigene Tabelle), NICHT im
-            // coordinator.db-audit_log, das die SSE beobachtet -> ein Upsert
-            // loest hier ohnehin kein 'changed' aus. Wuerden wir dennoch neu
-            // laden, wuerde ein unabhaengiges Ereignis die noch nicht
-            // gespeicherte Eingabe der Autor:in verwerfen. Nach dem Speichern
-            // laden loadTemplates/loadDocTemplates die Liste selbst.
+            // BEWUSST KEIN Auto-Reload der Redaktions-Sichten 'templates'
+            // (W2 Build 423), 'doctemplates' (W3 Build 425) und 'modules'
+            // (W1 Build 427): Schreibvorgaenge auf templates.db landen in
+            // templates_audit_log (eigene Tabelle), NICHT im coordinator.db-
+            // audit_log, das die SSE beobachtet -> ein Upsert loest hier ohnehin
+            // kein 'changed' aus. Wuerden wir dennoch neu laden, wuerde ein
+            // unabhaengiges Ereignis die noch nicht gespeicherte Eingabe der
+            // Autor:in verwerfen. Nach dem Speichern laden loadTemplates/
+            // loadDocTemplates/loadModules die Liste selbst.
             // Banner global frisch halten, wenn die aktive Sicht nicht die
             // Integritaets-Sicht ist (dort geschieht es bereits oben).
             if (state.activeId !== 'integrity') {

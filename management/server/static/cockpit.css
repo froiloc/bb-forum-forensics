@@ -724,3 +724,53 @@ td.aiw-cal-today { box-shadow: inset 0 0 0 2px var(--akzent); }
 .aiw-dtpl-dry { font-size: 12px; margin: 4px 0; }
 .aiw-dtpl-dry.is-ok  { color: var(--gruen); }
 .aiw-dtpl-dry.is-err { color: var(--rot); font-weight: 600; }
+
+/* ==========================================================================
+   Baustein-Module (W1, Build 427) — cockpit_modules.js
+   --------------------------------------------------------------------------
+   BEWUSST ENG GEFASST (wie die uebrigen Sicht-Stylesheets): alle Regeln haengen
+   an '.aiw-mod-*'. Zweispaltig: links Liste + "Neu", rechts Editor-Maske
+   (module_key/Titel/Rolle/Thema/Beschreibung/body-Freitext/Sortierung) mit
+   schreibfreier Platzhalter-Vorschau. Fehler rot / OK gruen (Grundregel 1).
+   ========================================================================== */
+.aiw-mod-body { display: flex; gap: 18px; align-items: flex-start; }
+.aiw-mod-listcol { width: 300px; flex: 0 0 auto; }
+.aiw-mod-form { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 8px; max-width: 720px; }
+
+.aiw-mod-new, .aiw-mod-drybtn, .aiw-mod-save {
+  font: inherit; cursor: pointer; padding: 6px 14px;
+  border: 1px solid var(--akzent); border-radius: 6px;
+  background: var(--panel); color: var(--akzent);
+}
+.aiw-mod-save { background: var(--akzent); color: #fff; }
+.aiw-mod-new { width: 100%; margin-bottom: 10px; }
+.aiw-mod-new:hover, .aiw-mod-drybtn:hover { background: #eef2f5; }
+
+.aiw-mod-list { display: flex; flex-direction: column; gap: 4px; }
+.aiw-mod-empty { color: var(--muted); font-size: 13px; }
+.aiw-mod-item {
+  text-align: left; font: inherit; cursor: pointer; padding: 6px 10px;
+  border: 1px solid var(--line); border-radius: 6px; background: var(--panel);
+}
+.aiw-mod-item:hover { border-color: var(--muted); }
+.aiw-mod-item.is-active { border-color: var(--akzent); font-weight: 600; }
+
+.aiw-mod-field { display: flex; flex-direction: column; gap: 3px; font-size: 12px; }
+.aiw-mod-label { color: var(--muted); }
+.aiw-mod-field input, .aiw-mod-field textarea, .aiw-mod-field select {
+  font: inherit; padding: 6px 8px; border: 1px solid var(--line);
+  border-radius: 6px; width: 100%; box-sizing: border-box;
+}
+.aiw-mod-field textarea.aiw-mod-bodytext {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px;
+}
+.aiw-mod-key:disabled { background: #eef1f3; color: var(--muted); }
+
+.aiw-mod-actions { display: flex; gap: 10px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
+.aiw-mod-msg { font-size: 12px; }
+.aiw-mod-msg.is-ok  { color: var(--gruen); }
+.aiw-mod-msg.is-err { color: var(--rot); font-weight: 600; }
+.aiw-mod-dryout { min-height: 18px; }
+.aiw-mod-dry { font-size: 12px; margin: 4px 0; }
+.aiw-mod-dry.is-ok  { color: var(--gruen); }
+.aiw-mod-dry.is-err { color: var(--rot); font-weight: 600; }

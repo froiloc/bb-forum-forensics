@@ -82,7 +82,8 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     // Build 416: 18 (neu: 'approval' - Chef-Freigabe, W5).
     // Build 423: 19 (neu: 'templates' - Platzhalter & Queries, W2).
     // Build 425: 20 (neu: 'doctemplates' - Dokumentvorlagen, W3).
-    expect(api.VIEW_CATALOG.length).toBe(20);
+    // Build 427: 21 (neu: 'modules' - Baustein-Module, W1).
+    expect(api.VIEW_CATALOG.length).toBe(21);
   });
 
   // CN03b (Build 384) --------------------------------------------------------
@@ -139,8 +140,9 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
 
     // Nur wer templates.edit hat (Redakteur:in/Chef), sieht die Autoren-Masken.
     // Build 425: templates.edit macht W2 UND W3 sichtbar (beide Gruppe Redaktion).
+    // Build 427: zusaetzlich W1 ('modules') — alle drei Autoren-Werkzeuge.
     expect(api.visibleViews({ "templates.edit": "alle" }).map((x) => x.id))
-      .toEqual(["templates", "doctemplates"]);
+      .toEqual(["templates", "doctemplates", "modules"]);
     // Ohne das Recht ist die Sicht unsichtbar (kein Leak in die Navigation).
     expect(api.visibleViews({ "dashboard.view": "alle" }).map((x) => x.id))
       .toEqual(["dashboard"]);
@@ -154,9 +156,18 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     expect(v.cap).toBe("templates.edit");
     expect(v.group).toBe("Redaktion");
 
-    // templates.edit macht BEIDE Redaktions-Sichten sichtbar (W2 + W3).
+    // templates.edit macht ALLE Redaktions-Sichten sichtbar (W2 + W3 + W1).
     expect(api.visibleViews({ "templates.edit": "alle" }).map((x) => x.id))
-      .toEqual(["templates", "doctemplates"]);
+      .toEqual(["templates", "doctemplates", "modules"]);
+  });
+
+  // CN03g (Build 427) --------------------------------------------------------
+  it("CN03g: Baustein-Module (W1) haengt an templates.edit, Gruppe Redaktion", () => {
+    const api = _api();
+    const v = api.viewById("modules");
+    expect(v).toBeTruthy();
+    expect(v.cap).toBe("templates.edit");
+    expect(v.group).toBe("Redaktion");
   });
 
   // CN04 -------------------------------------------------------------------
