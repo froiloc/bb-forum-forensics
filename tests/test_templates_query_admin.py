@@ -13,8 +13,12 @@
 # TQ08 — GET /api/templates/queries: 200 mit Recht, 403 ohne.
 # TQ09 — POST /api/templates/query: anlegen + fdb-Dry-Run (ran True), Audit.
 # TQ10 — POST: statische Validierung 400; Dry-Run-Fehler (2 Spalten) 400.
+# TQ11 — POST /api/templates/query/dryrun: SCHREIBFREIE Vorschau, ran True,
+#        sample; NICHTS geschrieben (keine Query, keine Audit-Zeile).
+# TQ12 — dryrun: ungueltige Query -> ok False + errors (kein raise/400); auch
+#        hier NICHTS geschrieben.
 #
-# Version: v0.7.422 · Build: 422 · 2026-07-15
+# Version: v0.7.423 · Build: 423 · 2026-07-15
 # =============================================================================
 
 import json
@@ -276,6 +280,54 @@ class EndpointTests(unittest.TestCase):
         r2 = self._app().dispatch_write(1, "/api/templates/query", two)
         self.assertEqual(r2.status, 400)
         self.assertEqual(json.loads(r2.body.decode("utf-8"))["error"], "dry_run")
+
+    def _query_count(self):
+        con = sqlite3.connect("file:%s?mode=ro" % self._tdb, uri=True)
+        try:
+            q = con.execute("SELECT COUNT(*) FROM placeholder_queries"
+                            ).fetchone()[0]
+            a = con.execute("SELECT COUNT(*) FROM templates_audit_log"
+                            ).fetchone()[0]
+        finally:
+            con.close()
+        return q, a
+
+    def test_tq11_dryrun_is_write_free(self):
+        # Vorher: leer. Der Dry-Run darf daran NICHTS aendern.
+        self.assertEqual(self._query_count(), (0, 0))
+        body = {**_GOOD, "test_user_id": 700}
+        r = self._app().dispatch_write(1, "/api/templates/query/dryrun", body)
+        self.assertEqual(r.status, 200)
+        d = json.loads(r.body.decode("utf-8"))
+        self.assertTrue(d["ok"])
+        self.assertEqual(d["errors"], [])
+        self.assertTrue(d["dry_run"]["ran"])
+        self.assertEqual(d["dry_run"]["sample"], "bob")
+        # Kern der Zusicherung: KEIN Schreibvorgang, KEIN Audit-Beleg.
+        self.assertEqual(self._query_count(), (0, 0))
+        # Ohne Recht: 403 (auch die Vorschau ist gatet).
+        self.assertEqual(
+            self._app().dispatch_write(2, "/api/templates/query/dryrun", body)
+            .status, 403)
+
+    def test_tq12_dryrun_reports_errors_as_data(self):
+        # Ungueltige Query (schreibend): ok False + Fehlerliste, HTTP 200,
+        # nichts geschrieben.
+        bad = {**_GOOD, "sql_query": "DELETE FROM uid_profile"}
+        r = self._app().dispatch_write(1, "/api/templates/query/dryrun", bad)
+        self.assertEqual(r.status, 200)
+        d = json.loads(r.body.decode("utf-8"))
+        self.assertFalse(d["ok"])
+        self.assertTrue(len(d["errors"]) >= 1)
+        # 2-Spalten-'scalar' faellt im Dry-Run auf (als Datenfehler, nicht 400).
+        two = {**_GOOD, "sql_query": "SELECT username, registered FROM "
+               "uid_profile WHERE id=:uid", "test_user_id": 700}
+        r2 = self._app().dispatch_write(1, "/api/templates/query/dryrun", two)
+        self.assertEqual(r2.status, 200)
+        d2 = json.loads(r2.body.decode("utf-8"))
+        self.assertFalse(d2["ok"])
+        self.assertTrue(any("scalar" in e or "Spalte" in e for e in d2["errors"]))
+        self.assertEqual(self._query_count(), (0, 0))
 
 
 if __name__ == "__main__":

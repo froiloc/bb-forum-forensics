@@ -80,7 +80,8 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     // Build 406: 16 (neu: 'notes' - Betreuungs-Notizen).
     // Build 413: 17 (neu: 'lectorate' - Lektorat, W4 Gegenlesen).
     // Build 416: 18 (neu: 'approval' - Chef-Freigabe, W5).
-    expect(api.VIEW_CATALOG.length).toBe(18);
+    // Build 423: 19 (neu: 'templates' - Platzhalter & Queries, W2).
+    expect(api.VIEW_CATALOG.length).toBe(19);
   });
 
   // CN03b (Build 384) --------------------------------------------------------
@@ -125,6 +126,22 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     // bleibt Scope 'alle' vorbehalten; das prueft das Backend, nicht die Nav.
     expect(api.visibleViews({ "results.view": "eigene" }).map((x) => x.id))
       .toEqual(["results"]);
+  });
+
+  // CN03e (Build 423) --------------------------------------------------------
+  it("CN03e: Platzhalter & Queries (W2) haengt an templates.edit", () => {
+    const api = _api();
+    const v = api.viewById("templates");
+    expect(v).toBeTruthy();
+    expect(v.cap).toBe("templates.edit");
+    expect(v.group).toBe("Redaktion");
+
+    // Nur wer templates.edit hat (Redakteur:in/Chef), sieht die Autoren-Maske.
+    expect(api.visibleViews({ "templates.edit": "alle" }).map((x) => x.id))
+      .toEqual(["templates"]);
+    // Ohne das Recht ist die Sicht unsichtbar (kein Leak in die Navigation).
+    expect(api.visibleViews({ "dashboard.view": "alle" }).map((x) => x.id))
+      .toEqual(["dashboard"]);
   });
 
   // CN04 -------------------------------------------------------------------

@@ -134,6 +134,11 @@
         // freigeben/zurueckweisen. Recht reports.approve (Freigeben erfordert
         // serverseitig Scope 'alle').
         { id: 'approval',  cap: 'reports.approve',      group: 'Verwaltung',     label: 'Chef-Freigabe' },
+        // Platzhalter & Queries (W2, Build 423): Autoren-Maske der Redakteur:in
+        // fuer Einzeldaten-Platzhalter-Queries (templates.db). Eigene Gruppe
+        // 'Redaktion', in der die weiteren Autoren-Werkzeuge (W1 Bausteine, W3
+        // Dokumentvorlagen) folgen. Recht: templates.edit (Build 420).
+        { id: 'templates', cap: 'templates.edit',       group: 'Redaktion',      label: 'Platzhalter & Queries' },
         // Ermittlungsergebnis (Build 395). Recht: results.view. Ein Ermittler
         // mit Scope 'eigene' sieht die Sicht ebenfalls — er bekommt dann die
         // Abdeckung SEINER Faelle; die fallUEBERGREIFENDE Verteilung (/stats)
@@ -367,8 +372,15 @@
             return r.json().catch(function () { return {}; })
                 .then(function (data) {
                     if (!r.ok) {
-                        var detail = data.detail || data.error
-                            || ('HTTP ' + r.status);
+                        // Build 423: Fehlerantworten koennen eine strukturierte
+                        // 'errors'-Liste tragen (z.B. Query-Validierung, W2).
+                        // Diese hat Vorrang, damit ALLE konkreten Gruende sichtbar
+                        // werden statt nur des Fehlercodes (Grundregel 1: kein
+                        // stiller/unspezifischer Fehlschlag).
+                        var detail = data.detail
+                            || (data.errors && data.errors.length
+                                ? data.errors.join('; ') : null)
+                            || data.error || ('HTTP ' + r.status);
                         throw new Error(detail);
                     }
                     return data;
@@ -441,6 +453,12 @@
             ? window.AIWCockpitApproval : null;
         if (apprMod && typeof apprMod.cleanup === 'function') {
             apprMod.cleanup();
+        }
+        // Platzhalter/Query-Autorensicht (W2, Build 423) abbauen.
+        var tplMod = (typeof window !== 'undefined')
+            ? window.AIWCockpitTemplates : null;
+        if (tplMod && typeof tplMod.cleanup === 'function') {
+            tplMod.cleanup();
         }
     }
 
@@ -1439,6 +1457,49 @@
         render();
     }
 
+    // loadTemplates: PLATZHALTER & QUERIES (W2, Build 423). Laedt die Liste der
+    // Platzhalter-Queries und rendert die Autoren-Maske. Zwei Aktionen:
+    //   - Dry-Run: POST /api/templates/query/dryrun (SCHREIBFREI) -> zeigt
+    //     Validierung + fdb-Beispielwert, OHNE etwas zu speichern.
+    //   - Speichern: POST /api/templates/query (auditiert, TemplatesWriter) ->
+    //     nach Erfolg wird die LISTE neu geladen (kein optimistisches UI:
+    //     erst der bestaetigte Stand, Grundregel 1).
+    function loadTemplates(mainEl) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitTemplates : null;
+        if (!mod) {
+            renderError(mainEl, 'Platzhalter/Query-Modul nicht geladen.');
+            return;
+        }
+        fetchJson('/api/templates/queries').then(function (data) {
+            cleanupView();
+            mod.renderTemplates(mainEl, data, {
+                onDryRun: function (payload) {
+                    postJson('/api/templates/query/dryrun', payload)
+                        .then(function (res) { mod.renderDryRun(res); })
+                        .catch(function (e) { mod.dryRunError(e && e.message); });
+                },
+                onSave: function (payload) {
+                    postJson('/api/templates/query', payload)
+                        .then(function (res) {
+                            mod.saved(res);
+                            // Liste neu laden, damit ein NEUER Eintrag sofort
+                            // erscheint bzw. eine Aenderung sichtbar wird.
+                            loadTemplates(mainEl);
+                        })
+                        .catch(function (e) { mod.saveError(e && e.message); });
+                }
+            });
+            log('Platzhalter/Queries gerendert:', data && data.count);
+        }).catch(function (err) {
+            cleanupView();
+            renderError(mainEl,
+                'Platzhalter & Queries konnten nicht geladen werden: '
+                + err.message);
+        });
+    }
+
     // selectView: aktive Sicht setzen, Nav neu markieren, Inhalt dispatchen.
     // Build 349: 'dashboard' -> Overview; 'integrity' -> Integritaets-Sicht;
     // sonst Platzhalter (weitere Sichten folgen).
@@ -1485,6 +1546,8 @@
             loadLectorate(mainEl);
         } else if (viewId === 'approval') {
             loadApproval(mainEl);
+        } else if (viewId === 'templates') {
+            loadTemplates(mainEl);
         } else {
             renderPlaceholder(mainEl, viewById(viewId));
         }
@@ -1552,6 +1615,13 @@
             } else if (state.activeId === 'approval') {
                 loadApproval();
             }
+            // BEWUSST KEIN Auto-Reload der 'templates'-Sicht (W2, Build 423):
+            // Schreibvorgaenge auf templates.db landen in templates_audit_log
+            // (eigene Tabelle), NICHT im coordinator.db-audit_log, das die SSE
+            // beobachtet -> ein Query-Upsert loest hier ohnehin kein 'changed'
+            // aus. Wuerden wir dennoch neu laden, wuerde ein unabhaengiges
+            // Ereignis die noch nicht gespeicherte Eingabe der Autor:in
+            // verwerfen. Nach dem Speichern laedt loadTemplates die Liste selbst.
             // Banner global frisch halten, wenn die aktive Sicht nicht die
             // Integritaets-Sicht ist (dort geschieht es bereits oben).
             if (state.activeId !== 'integrity') {

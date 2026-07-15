@@ -1362,9 +1362,12 @@ class ManagementApp:
 
     # =====================================================================
     # AUTHORING: PLATZHALTER-QUERIES (Build 422, W2 — templates.db).
-    #   GET  /api/templates/queries  — Liste (Recht templates.edit)
-    #   POST /api/templates/query    — anlegen/aendern (validiert + fdb-Dry-Run,
-    #                                  auditiert ueber TemplatesWriter)
+    #   GET  /api/templates/queries       — Liste (Recht templates.edit)
+    #   POST /api/templates/query         — anlegen/aendern (validiert + fdb-
+    #                                       Dry-Run, auditiert ueber TemplatesWriter)
+    #   POST /api/templates/query/dryrun  — SCHREIBFREIE Vorschau (Build 423):
+    #                                       Validierung + fdb-Dry-Run, KEIN Write,
+    #                                       KEIN Audit (Test vor dem Speichern)
     # =====================================================================
     def _templates_queries(self, person_id: int) -> Response:
         """Liste der Platzhalter-Queries (read-only)."""
@@ -1452,6 +1455,62 @@ class ManagementApp:
                     changed_by)
         return Response.json(200, {"ok": True, "target_id": result["target_id"],
                                    "created": result["created"], "dry_run": dry})
+
+    def _templates_query_dryrun(self, person_id: int,
+                                payload: Dict[str, Any]) -> Response:
+        """
+        SCHREIBFREIE Vorschau (Build 423, W2-Frontend): validiert eine
+        Platzhalter-Query STATISCH und fuehrt - falls test_user_id gesetzt ist -
+        den fdb-Dry-Run READ-ONLY aus. Es wird NICHTS geschrieben und NICHTS
+        auditiert (kein Beleg entsteht, weil kein Zustand sich aendert). So kann
+        die Redakteur:in eine Query testen, BEVOR sie sie speichert (Grundregel:
+        Ueberpruefbarkeit; keine stille Fehlaufloesung).
+
+        Antwort IMMER 200 mit {ok, errors, dry_run} - die Fehler werden als
+        DATEN geliefert (nicht als HTTP-Fehler), damit die Editor-Maske sie
+        zusammen mit dem Dry-Run-Ergebnis anzeigen kann. Das Recht bleibt
+        Voraussetzung (403 ohne templates.edit); ein POST erfordert - wie jeder
+        Schreibpfad - das X-AIW-Token (im HTTP-Handler geprueft), obwohl hier
+        nichts geschrieben wird (bewusst: einheitlicher POST-Pfad, Token = wer
+        ueberhaupt Autoren-Aktionen ausloesen darf).
+        """
+        if not self.resolve_policy(person_id).can(CAP_TEMPLATES_EDIT):
+            return self._forbidden(CAP_TEMPLATES_EDIT)
+
+        from management.templates_admin.query_validator import (
+            validate_static, dry_run, QueryValidationError,
+        )
+
+        q = {
+            "id": payload.get("id"),
+            "title": payload.get("title"),
+            "description": payload.get("description", ""),
+            "sql_query": payload.get("sql_query"),
+            "tags": payload.get("tags"),
+            "return_type": payload.get("return_type") or "scalar",
+        }
+        errors = validate_static(q)
+
+        dry: Dict[str, Any] = {"ran": False, "reason": "kein test_user_id."}
+        test_uid_raw = payload.get("test_user_id")
+        # Dry-Run nur, wenn die statische Pruefung sauber ist UND eine test_user_id
+        # vorliegt (eine kaputte Query gar nicht erst gegen die fdb ausfuehren).
+        if not errors and test_uid_raw not in (None, ""):
+            try:
+                test_uid = int(test_uid_raw)
+            except (TypeError, ValueError):
+                errors.append("test_user_id ungueltig (ganze Zahl erwartet).")
+            else:
+                fdb_path = "%s/forensic_%d.db" % (
+                    str(self._forensic_dir).rstrip("/"), test_uid)
+                try:
+                    dry = dry_run(q["sql_query"], test_uid, fdb_path,
+                                  return_type=q["return_type"])
+                except QueryValidationError as exc:
+                    errors.extend(exc.errors)
+
+        return Response.json(200, {"ok": not errors, "errors": errors,
+                                   "dry_run": dry})
 
     def _report_comment_create(self, person_id: int,
                                payload: Dict[str, Any]) -> Response:
@@ -2671,6 +2730,10 @@ class ManagementApp:
         # Build 422 (W2): Platzhalter-Query anlegen/aendern (templates.db).
         if path == "/api/templates/query":
             return self._templates_query_upsert(person_id, payload)
+        # Build 423 (W2-Frontend): schreibfreie Vorschau (Validierung + fdb-
+        # Dry-Run), damit die Redakteur:in testen kann, BEVOR sie speichert.
+        if path == "/api/templates/query/dryrun":
+            return self._templates_query_dryrun(person_id, payload)
         # Build 405 (Block 2): Betreuungs-Notizen — auditierte Schreibpfade.
         if path == "/api/mentoring/note/create":
             return self._note_create(person_id, payload)

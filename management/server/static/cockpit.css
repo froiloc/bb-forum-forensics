@@ -603,3 +603,57 @@ td.aiw-cal-today { box-shadow: inset 0 0 0 2px var(--akzent); }
   background: var(--akzent); color: #fff;
 }
 .aiw-approval-assess-err { color: var(--rot); font-size: 12px; }
+
+/* ==========================================================================
+   Platzhalter & Queries (W2, Build 423) — cockpit_templates.js
+   --------------------------------------------------------------------------
+   BEWUSST ENG GEFASST (wie die uebrigen Sicht-Stylesheets): alle Regeln
+   haengen an '.aiw-tpl-*'. Zweispaltig: links Liste + "Neu", rechts die
+   Editor-Maske mit Dry-Run. Fehler-/OK-Rueckmeldungen farblich klar getrennt
+   (Grundregel 1: kein stiller Fehlschlag -> Fehler muessen auffallen).
+   ========================================================================== */
+.aiw-tpl-body { display: flex; gap: 18px; align-items: flex-start; }
+.aiw-tpl-listcol { width: 300px; flex: 0 0 auto; }
+.aiw-tpl-form { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 8px; max-width: 720px; }
+
+/* Buttons dieser Sicht (kein globales .aiw-btn, s. Hinweis oben im File). */
+.aiw-tpl-new, .aiw-tpl-drybtn, .aiw-tpl-save {
+  font: inherit; cursor: pointer; padding: 6px 14px;
+  border: 1px solid var(--akzent); border-radius: 6px;
+  background: var(--panel); color: var(--akzent);
+}
+.aiw-tpl-save { background: var(--akzent); color: #fff; }
+.aiw-tpl-new { width: 100%; margin-bottom: 10px; }
+.aiw-tpl-new:hover, .aiw-tpl-drybtn:hover { background: #eef2f5; }
+
+.aiw-tpl-list { display: flex; flex-direction: column; gap: 4px; }
+.aiw-tpl-empty { color: var(--muted); font-size: 13px; }
+.aiw-tpl-item {
+  text-align: left; font: inherit; cursor: pointer; padding: 6px 10px;
+  border: 1px solid var(--line); border-radius: 6px; background: var(--panel);
+}
+.aiw-tpl-item:hover { border-color: var(--muted); }
+.aiw-tpl-item.is-active { border-color: var(--akzent); font-weight: 600; }
+
+.aiw-tpl-field { display: flex; flex-direction: column; gap: 3px; font-size: 12px; }
+.aiw-tpl-label { color: var(--muted); }
+.aiw-tpl-field input, .aiw-tpl-field textarea, .aiw-tpl-field select {
+  font: inherit; padding: 6px 8px; border: 1px solid var(--line);
+  border-radius: 6px; width: 100%; box-sizing: border-box;
+}
+.aiw-tpl-field textarea.aiw-tpl-sql {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+.aiw-tpl-id:disabled { background: #eef1f3; color: var(--muted); }
+
+.aiw-tpl-dryrow { display: flex; gap: 8px; align-items: flex-end; margin-top: 4px; }
+.aiw-tpl-dryrow .aiw-tpl-field { flex: 1 1 auto; }
+.aiw-tpl-dryout { min-height: 18px; }
+.aiw-tpl-dry { font-size: 12px; margin: 4px 0; }
+.aiw-tpl-dry.is-ok  { color: var(--gruen); }
+.aiw-tpl-dry.is-err { color: var(--rot); font-weight: 600; }
+
+.aiw-tpl-actions { display: flex; gap: 10px; align-items: center; margin-top: 6px; }
+.aiw-tpl-msg { font-size: 12px; }
+.aiw-tpl-msg.is-ok  { color: var(--gruen); }
+.aiw-tpl-msg.is-err { color: var(--rot); font-weight: 600; }
