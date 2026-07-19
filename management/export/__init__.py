@@ -15,8 +15,11 @@
 #   (excel_case_status). Build 442 ruestet die bestehenden Sichten-Exporte
 #   (dashboard/workload/support_overview) auf den einheitlichen Rahmen um
 #   (classification_band + Erzeugungsvermerk/Pruefsumme) via context_builder.
+#   Build 443 ergaenzt das StA-Ausschleus-Verzeichnis (staging.StagingArea):
+#   gepruefte Uebergabe mit Unbedenklichkeitsvermerk (Fallregel 3), Manifest,
+#   Pruefsummen je Artefakt und Selbstverifikation.
 #
-# Version: v0.7.442 · Build: 442 · 2026-07-19
+# Version: v0.7.443 · Build: 443 · 2026-07-19
 # =============================================================================
 
 from management.export.checksum import (
@@ -36,6 +39,11 @@ from management.export.excel_case_status import (
     ExcelUnavailable,
 )
 from management.export.context_builder import build_export_context
+from management.export.staging import (
+    StagingArea,
+    StagingError,
+    UnbedenklichkeitError,
+)
 
 __all__ = [
     "content_sha256_bytes",
@@ -49,4 +57,7 @@ __all__ = [
     "CASE_STATUS_COLUMNS",
     "ExcelUnavailable",
     "build_export_context",
+    "StagingArea",
+    "StagingError",
+    "UnbedenklichkeitError",
 ]
