@@ -275,3 +275,129 @@ def test_siegelbruch_wird_nie_uebersprungen(datenverzeichnis, capsys, monkeypatc
                         "--skip-on-error", "--apply"])
     assert rc == 1
     assert "SIEGELBRUCH" in capsys.readouterr().err
+
+
+# -----------------------------------------------------------------------------
+# 9) --staging-dir: versiegelte WAL-DB auf "Netzlaufwerk" umstempeln (Build 434)
+# -----------------------------------------------------------------------------
+#
+# Hinweis zur Testumgebung: Die Tests laufen als root; os.access(W_OK) ignoriert
+# dort die Permission-Bits, sodass die tool-eigene ist_schreibgeschuetzt()-Pruefung
+# (bewusst os.access-basiert, korrekt fuer das PROD-Dienstkonto/NTFS +R) hier nicht
+# greifen wuerde. Wir ersetzen sie testweise durch eine mode-bit-basierte Variante,
+# die genau das nicht-root-Verhalten eines echten schreibgeschuetzten Files
+# nachbildet. schreibschutz_aufheben/-wiederherstellen nutzen chmod und wirken auch
+# als root korrekt.
+
+import os as _os
+import stat as _stat
+
+
+def _mode_ro(p) -> bool:
+    return not bool(Path(p).stat().st_mode & _stat.S_IWUSR)
+
+
+def _shutil_copy(src, dst):
+    import shutil
+    shutil.copy2(str(src), str(dst))
+
+
+def _baue_versiegelte_wal_db(ziel_db, mit_gefuelltem_wal, sha256_wert=None):
+    """
+    Erzeugt eine versiegelte forensic-DB im WAL-Modus.
+    mit_gefuelltem_wal=True: kopiert bei OFFENER Verbindung -> gefuelltes -wal
+    bleibt auf der Platte (PROD-Zustand). sha256_wert!=None speichert ein (falsches)
+    Siegel, um den Rueckkopier-Schutz zu pruefen.
+    """
+    quelle = ziel_db.parent / ("_bau_" + ziel_db.name)
+    con = sqlite3.connect(str(quelle))
+    con.execute("PRAGMA journal_mode=WAL")
+    con.execute("PRAGMA wal_autocheckpoint=0")
+    con.execute("CREATE TABLE pages (id INTEGER PRIMARY KEY, html TEXT)")
+    con.execute("CREATE TABLE forensic_meta (key TEXT PRIMARY KEY, value TEXT)")
+    con.execute("INSERT INTO forensic_meta VALUES ('schema_version','2')")
+    for i in range(1500):
+        con.execute("INSERT INTO pages VALUES (?,?)", (i, "seite_%d" % i))
+    con.commit()
+    echt = StartupChecker(None, None)._compute_content_sha256(con)
+    con.execute("INSERT INTO forensic_meta VALUES ('sha256', ?)",
+                (sha256_wert if sha256_wert is not None else echt,))
+    con.commit()
+
+    if mit_gefuelltem_wal:
+        for s in ("", "-wal", "-shm"):
+            src = Path(str(quelle) + s)
+            if src.exists():
+                _shutil_copy(src, Path(str(ziel_db) + s))
+        con.close()
+    else:
+        con.close()
+        _shutil_copy(quelle, ziel_db)
+
+    for s in ("", "-wal", "-shm"):
+        Path(str(quelle) + s).unlink(missing_ok=True)
+    for s in ("", "-wal", "-shm"):
+        p = Path(str(ziel_db) + s)
+        if p.exists():
+            p.chmod(0o440)
+    return echt
+
+
+def test_staging_konvertiert_versiegelte_wal_db(tmp_path, capsys, monkeypatch):
+    monkeypatch.setattr(werkzeug, "ist_schreibgeschuetzt", _mode_ro)
+    data = tmp_path / "data" / "forensic"; data.mkdir(parents=True)
+    db = data / "forensic_1488.db"
+    siegel = _baue_versiegelte_wal_db(db, mit_gefuelltem_wal=True)
+
+    assert _stempel(db) == 2
+    assert _mode_ro(db)                                  # versiegelt
+    assert Path(str(db) + "-wal").stat().st_size > 0      # gefuelltes -wal
+
+    staging = tmp_path / "lokal"; staging.mkdir()
+    rc = werkzeug.main(["--db", str(db), "--staging-dir", str(staging), "--apply"])
+    assert rc == 0
+    assert _stempel(db) == 1                              # umgestempelt
+    assert _mode_ro(db)                                  # Siegel wiederhergestellt
+    assert not Path(str(db) + "-wal").exists()            # Sidecars entfernt
+    assert not Path(str(db) + "-shm").exists()
+    assert not (staging / "_convert_forensic_1488").exists()
+
+    con = sqlite3.connect(str(db))
+    try:
+        h2 = StartupChecker(None, None)._compute_content_sha256(con)
+    finally:
+        con.close()
+    assert h2 == siegel                                   # Inhalt unveraendert
+
+    out = capsys.readouterr().out
+    assert "via Staging" in out
+    assert "Siegel-Gegenprobe OK" in out
+
+
+def test_staging_trockenlauf_schreibt_nichts(tmp_path, capsys, monkeypatch):
+    monkeypatch.setattr(werkzeug, "ist_schreibgeschuetzt", _mode_ro)
+    data = tmp_path / "data" / "forensic"; data.mkdir(parents=True)
+    db = data / "forensic_7.db"
+    _baue_versiegelte_wal_db(db, mit_gefuelltem_wal=True)
+    vorher = db.read_bytes()
+
+    staging = tmp_path / "lokal"; staging.mkdir()
+    rc = werkzeug.main(["--db", str(db), "--staging-dir", str(staging)])  # kein --apply
+    assert rc == 0
+    assert db.read_bytes() == vorher
+    assert _stempel(db) == 2
+    assert "WUERDE via Staging" in capsys.readouterr().out
+
+
+def test_staging_siegel_mismatch_schreibt_nicht_zurueck(tmp_path, capsys, monkeypatch):
+    monkeypatch.setattr(werkzeug, "ist_schreibgeschuetzt", _mode_ro)
+    data = tmp_path / "data" / "forensic"; data.mkdir(parents=True)
+    db = data / "forensic_5.db"
+    _baue_versiegelte_wal_db(db, mit_gefuelltem_wal=False, sha256_wert="0" * 64)
+
+    staging = tmp_path / "lokal"; staging.mkdir()
+    rc = werkzeug.main(["--db", str(db), "--staging-dir", str(staging), "--apply"])
+    assert rc == 1                                        # harter Abbruch
+    assert _stempel(db) == 2                              # Original UNBERUEHRT
+    assert not (data / "forensic_5.db.konvertiert").exists()
+    assert "SIEGEL" in capsys.readouterr().err

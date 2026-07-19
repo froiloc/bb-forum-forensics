@@ -59,17 +59,34 @@
 #                      (Inhalts-Hash-Abweichung einer forensic_-DB) wird dabei
 #                      AUSDRUECKLICH NICHT uebersprungen — er bleibt harter Abbruch.
 #
+# Build 434 (2026-07-19): In-Place-Pfad haerter gemacht und ein Staging-Weg fuer
+#   versiegelte WAL-DBs auf Netzlaufwerken ergaenzt. Anlass: PROD-Log 2026-07-19
+#   (db-error3) — forensic_1488.db ist versiegelt (read-only) UND WAL-gestempelt
+#   mit stehengebliebenen -wal/-shm; der erste Schreibversuch (Checkpoint zum
+#   Verlassen von WAL) scheiterte mit 'attempt to write a readonly database'.
+#     * In place: auch -wal/-shm-Schreibschutz temporaer aufheben; expliziter
+#       'PRAGMA wal_checkpoint(TRUNCATE)' vor dem Moduswechsel; bei READONLY ein
+#       klarer Hinweis auf --staging-dir.
+#     * --staging-dir LOKAL: .db(+-wal/-shm) lokal kopieren, dort umstempeln,
+#       Inhalts-Hash gegen forensic_meta['sha256'] verifizieren und ATOMAR
+#       (Nachbardatei + os.replace) zurueckkopieren. Original wird nie truncated;
+#       haelt ein Server die DB offen, scheitert der Austausch sauber (GR1).
+#
+#   python tools/convert_journal_mode.py --db D:\lokal\forensic_1488.db --apply
+#   python tools/convert_journal_mode.py --data-dir .\data --staging-dir C:\temp\conv --apply
+#
 # Exitcodes: 0 = alles gut / Trockenlauf ok
 #            1 = harter Abbruch (Siegelbruch ODER Fehler ohne --skip-on-error)
 #            2 = Lauf beendet, aber >=1 DB wegen Fehler uebersprungen (--skip-on-error)
-# Abhaengigkeiten: sqlite3, hashlib (indirekt), pathlib — Stdlib + core.startup_checks
-# Version: v0.7.433 · Build: 433 · 2026-07-19
+# Abhaengigkeiten: sqlite3, hashlib (indirekt), pathlib, shutil — Stdlib + core.startup_checks
+# Version: v0.7.434 · Build: 434 · 2026-07-19
 # =============================================================================
 
 from __future__ import annotations
 
 import argparse
 import os
+import shutil
 import sqlite3
 import stat
 import sys
@@ -194,6 +211,27 @@ def aktiver_modus(con: sqlite3.Connection) -> str:
     return str(con.execute("PRAGMA journal_mode").fetchone()[0]).strip().lower()
 
 
+def gespeicherter_siegelhash(con: sqlite3.Connection) -> Optional[str]:
+    """
+    Liest den in der DB hinterlegten Siegel-Hash (forensic_meta['sha256']).
+
+    Dient beim Staging-Rueckweg (Build 434) als ZUSAETZLICHE Absicherung: bevor
+    die konvertierte Kopie ueber das versiegelte Original kopiert wird, muss ihr
+    berechneter Inhalts-Hash mit dem gespeicherten Siegel uebereinstimmen — sonst
+    wuerde eine fremde/beschaedigte Datei zurueckgeschrieben. Fehlt der Eintrag,
+    wird None geliefert und der Aufrufer meldet das ausdruecklich (GR1).
+    """
+    try:
+        row = con.execute(
+            "SELECT value FROM forensic_meta WHERE key = 'sha256'"
+        ).fetchone()
+    except sqlite3.Error:
+        return None
+    if not row or not row[0]:
+        return None
+    return str(row[0]).strip()
+
+
 # -----------------------------------------------------------------------------
 # Verarbeitung einer Datei
 # -----------------------------------------------------------------------------
@@ -258,12 +296,30 @@ def verarbeite(db: Path, ziel: str, apply: bool) -> bool:
         alt_modus = schreibschutz_aufheben(db)
         print("    Schreibschutz temporaer aufgehoben.")
 
+    # Build 434: auch die Nebendateien entsperren. Um WAL zu verlassen, muss
+    # SQLite die -wal einchecken und -wal/-shm danach loeschen. Sind die Sidecars
+    # schreibgeschuetzt (typisch bei einer versiegelten forensic-DB, deren -wal
+    # beim seal() stehen blieb), scheitert genau dieser Aufraeumschritt.
+    sidecar_modi: list[tuple[Path, int]] = []
+    for sc in nebendateien(db):
+        if ist_schreibgeschuetzt(sc):
+            sidecar_modi.append((sc, schreibschutz_aufheben(sc)))
+    if sidecar_modi:
+        print("    Nebendateien temporaer entsperrt: "
+              + ", ".join(p.name for p, _ in sidecar_modi))
+
     try:
         con = oeffne_exklusiv(db, readonly=False)
         try:
             hash_vorher = inhalts_hash(con) if ist_forensic else None
             if hash_vorher:
                 print(f"    Inhalts-SHA256 vorher : {hash_vorher}")
+
+            # Build 434: WAL-Frames explizit einchecken, BEVOR der Modus wechselt.
+            # So scheitert ein nicht schreibbarer Datentraeger hier mit klarer
+            # Aussage, statt spaeter opak im Moduswechsel.
+            if stempel == 2:
+                con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
 
             con.execute(f"PRAGMA journal_mode={ziel}")
             jetzt = aktiver_modus(con)
@@ -298,8 +354,23 @@ def verarbeite(db: Path, ziel: str, apply: bool) -> bool:
         finally:
             con.close()
     except sqlite3.Error as exc:
-        raise ConvertError(f"SQLite-Fehler bei '{db}': {exc}") from exc
+        hinweis = ""
+        if "readonly" in str(exc).lower() or "read-only" in str(exc).lower():
+            # Build 434: der klassische Netzlaufwerk-Fall. SQLite oeffnet eine
+            # WAL-gestempelte DB dort read-only, weil es die -shm nicht etablieren
+            # kann; der erste Schreibversuch (Checkpoint) meldet dann READONLY.
+            hinweis = ("\n    HINWEIS: Auf einem Netzlaufwerk laesst sich eine "
+                       "WAL-gestempelte, versiegelte DB nicht in place umstempeln. "
+                       "Nutze --staging-dir <lokaler_pfad> — dann kopiert das "
+                       "Werkzeug die DB lokal, stempelt sie dort um, verifiziert "
+                       "den Inhalts-Hash und kopiert sie atomar zurueck.")
+        raise ConvertError(f"SQLite-Fehler bei '{db}': {exc}{hinweis}") from exc
     finally:
+        # Sidecar-Schreibschutz wiederherstellen, soweit die Datei noch existiert
+        # (nach erfolgreicher Umstempelung sind -wal/-shm ohnehin geloescht).
+        for sc, modus in sidecar_modi:
+            if sc.exists():
+                schreibschutz_wiederherstellen(sc, modus)
         if alt_modus is not None:
             schreibschutz_wiederherstellen(db, alt_modus)
             print("    Schreibschutz wiederhergestellt.")
@@ -327,6 +398,150 @@ def verarbeite(db: Path, ziel: str, apply: bool) -> bool:
 
 
 # -----------------------------------------------------------------------------
+# Verarbeitung ueber ein lokales Staging (Build 434)
+# -----------------------------------------------------------------------------
+
+def verarbeite_via_staging(db: Path, ziel: str, apply: bool,
+                           staging_dir: Path) -> bool:
+    """
+    Stempelt eine WAL-gestempelte, versiegelte DB um, die sich auf ihrem
+    Datentraeger (Netzlaufwerk) nicht in place umstempeln laesst.
+
+    Verfahren (belegt siegelneutral, Messung 2026-07-19):
+      1. .db + -wal + -shm in ein LOKALES Verzeichnis kopieren (dort funktioniert
+         die -shm, die WAL zum Verlassen braucht).
+      2. Die lokale Kopie mit exakt derselben Logik umstempeln (verarbeite()).
+         Dabei greift die Inhalts-Hash-Kontrolle (vorher == nachher).
+      3. ZUSAETZLICH: berechneten Inhalts-Hash gegen das gespeicherte Siegel
+         (forensic_meta['sha256']) pruefen — die Kopie MUSS die echte, versiegelte
+         DB sein, bevor sie zurueckgeschrieben wird.
+      4. Die konvertierte Kopie ATOMAR ueber das Original legen (erst als
+         Nachbardatei auf den Share schreiben, dann os.replace). Das Original wird
+         nie truncated; haelt ein Server es offen, scheitert der Austausch sauber,
+         ohne das Original zu beschaedigen (GR1).
+      5. Den urspruenglichen Schreibschutz (Siegel) wiederherstellen; lokale
+         Kopien entfernen.
+
+    Returns True, wenn umgestempelt (bzw. im Trockenlauf: waere), sonst False.
+    Raises SealError bei Siegelbruch, ConvertError bei operativem Fehler.
+    """
+    print(f"\n  {db}   [via Staging]")
+    stempel = header_stempel(db)
+    if stempel is None:
+        print("    KEINE SQLite-Datei — uebersprungen (gemeldet, nicht still).")
+        return False
+    if stempel == ERWARTETER_STEMPEL[ziel]:
+        print(f"    Bereits im Zielzustand fuer '{ziel}' — keine Aenderung noetig.")
+        return False
+
+    ist_forensic = db.name.startswith("forensic_")
+    print(f"    Header vorher : write_version={stempel} "
+          f"({'WAL' if stempel == 2 else 'rollback-journal'})")
+    print(f"    Groesse       : {db.stat().st_size} B")
+    print(f"    Staging-Ziel  : {staging_dir.resolve()}")
+
+    if not apply:
+        print("    WUERDE via Staging umgestempelt (Kopie -> Konvertierung -> "
+              "verifizierte Rueckkopie). Trockenlauf — nichts geschrieben.")
+        return True
+
+    if not staging_dir.is_dir():
+        raise ConvertError(f"--staging-dir nicht gefunden: {staging_dir}")
+
+    # Eigenes Unterverzeichnis je DB, um Kollisionen auszuschliessen.
+    arbeit = staging_dir / f"_convert_{db.stem}"
+    if arbeit.exists():
+        raise ConvertError(
+            f"Staging-Arbeitsverzeichnis existiert bereits (bitte aufraeumen): "
+            f"{arbeit}")
+    arbeit.mkdir(parents=True)
+    lokale_db = arbeit / db.name
+
+    try:
+        # (1) Kopieren: .db plus vorhandene Sidecars.
+        for suffix in ("", "-wal", "-shm"):
+            quelle = db.with_name(db.name + suffix)
+            if quelle.exists():
+                ziel_pfad = arbeit / quelle.name
+                shutil.copy2(str(quelle), str(ziel_pfad))
+                # Kopie muss beschreibbar sein (das Original ist versiegelt).
+                if ist_schreibgeschuetzt(ziel_pfad):
+                    schreibschutz_aufheben(ziel_pfad)
+        print("    Kopiert (inkl. vorhandener -wal/-shm).")
+
+        # (2) Lokale Umstempelung mit der REGULAEREN Logik (inkl. Hash-Kontrolle).
+        if not verarbeite(lokale_db, ziel, apply=True):
+            raise ConvertError(
+                f"Lokale Umstempelung meldete 'keine Aenderung' — unerwartet fuer "
+                f"eine WAL-DB: {db}")
+
+        # (3) Zusatz-Absicherung fuer forensic: gegen gespeichertes Siegel pruefen.
+        if ist_forensic:
+            con = sqlite3.connect(str(lokale_db), timeout=10.0)
+            try:
+                berechnet = inhalts_hash(con)
+                gespeichert = gespeicherter_siegelhash(con)
+            finally:
+                con.close()
+            if gespeichert is None:
+                print("    HINWEIS: forensic_meta['sha256'] fehlt — kann nicht gegen "
+                      "das gespeicherte Siegel pruefen (nur vorher==nachher wurde "
+                      "verifiziert). Gemeldet, nicht still uebergangen (GR1).")
+            elif berechnet != gespeichert:
+                raise SealError(
+                    "STAGING-KOPIE PASST NICHT ZUM GESPEICHERTEN SIEGEL — es wird "
+                    "NICHTS zurueckgeschrieben. "
+                    f"Datei: {db}\n  berechnet   : {berechnet}\n  "
+                    f"forensic_meta['sha256']: {gespeichert}")
+            else:
+                print(f"    Siegel-Gegenprobe OK: {berechnet}")
+
+        # (4) Atomarer Austausch: erst Nachbardatei auf dem Share, dann os.replace.
+        ersatz = db.with_name(db.name + ".konvertiert")
+        shutil.copy2(str(lokale_db), str(ersatz))
+        if header_stempel(ersatz) != ERWARTETER_STEMPEL[ziel]:
+            ersatz.unlink(missing_ok=True)
+            raise ConvertError(
+                f"Ersatzdatei hat unerwarteten Stempel — Abbruch, Original "
+                f"unberuehrt: {db}")
+
+        alt_modus = None
+        if ist_schreibgeschuetzt(db):
+            alt_modus = schreibschutz_aufheben(db)  # Siegel kurz oeffnen
+        try:
+            os.replace(str(ersatz), str(db))        # atomar auf demselben Share
+        except OSError as exc:
+            ersatz.unlink(missing_ok=True)
+            raise ConvertError(
+                f"Atomarer Austausch fehlgeschlagen (haelt ein Server die DB "
+                f"offen?): {exc}. Original UNBERUEHRT: {db}") from exc
+        finally:
+            if alt_modus is not None:
+                schreibschutz_wiederherstellen(db, alt_modus)  # Siegel wieder setzen
+
+        # Verwaiste Sidecars des Originals entfernen (Header ist jetzt rollback).
+        for rest in nebendateien(db):
+            try:
+                if ist_schreibgeschuetzt(rest):
+                    schreibschutz_aufheben(rest)
+                rest.unlink()
+                print(f"    Rest am Original entfernt: {rest.name}")
+            except OSError as exc:
+                print(f"    HINWEIS: Rest nicht entfernbar: {rest.name} ({exc!r})")
+
+        stempel_nachher = header_stempel(db)
+        if stempel_nachher != ERWARTETER_STEMPEL[ziel]:
+            raise ConvertError(
+                f"Header-Stempel am Original nach Rueckkopie unerwartet: "
+                f"{stempel_nachher} (erwartet {ERWARTETER_STEMPEL[ziel]}). {db}")
+        print(f"    UMGESTEMPELT via Staging auf '{ziel}'. ✓")
+        return True
+    finally:
+        # Lokale Kopien immer entfernen (enthalten Beweismittel-Inhalte).
+        shutil.rmtree(str(arbeit), ignore_errors=True)
+
+
+# -----------------------------------------------------------------------------
 # main
 # -----------------------------------------------------------------------------
 
@@ -350,9 +565,17 @@ def main(argv: Optional[list[str]] = None) -> int:
                          "(Inhalts-Hash-Abweichung) wird NIE uebersprungen.")
     ap.add_argument("--to", default="delete", choices=list(ALL_TARGETS),
                     help="Zielmodus (Default: delete — Empfehlung fuer Netzlaufwerke)")
+    ap.add_argument("--staging-dir", default=None,
+                    help="LOKALES Verzeichnis fuer versiegelte WAL-DBs, die sich auf "
+                         "dem Netzlaufwerk nicht in place umstempeln lassen. Die DB "
+                         "wird dorthin kopiert, lokal umgestempelt, der Inhalts-Hash "
+                         "gegen das Siegel geprueft und atomar zurueckkopiert. Greift "
+                         "nur fuer schreibgeschuetzte, WAL-gestempelte Dateien.")
     ap.add_argument("--apply", action="store_true",
                     help="SCHARF schalten. Ohne diesen Schalter wird nichts geschrieben.")
     args = ap.parse_args(argv)
+
+    staging_dir = Path(args.staging_dir) if args.staging_dir else None
 
     # --- DB-Auswahl: --db (eine Datei) hat Vorrang vor --data-dir -------------
     if args.db is not None:
@@ -391,7 +614,19 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     for db in dbs:
         try:
-            if verarbeite(db, args.to, args.apply):
+            # Build 434: eine versiegelte (schreibgeschuetzte), WAL-gestempelte DB
+            # kann auf dem Netzlaufwerk nicht in place umgestempelt werden — dann
+            # ueber das lokale Staging gehen, sofern --staging-dir gesetzt ist.
+            via_staging = (
+                staging_dir is not None
+                and header_stempel(db) == 2
+                and ist_schreibgeschuetzt(db)
+            )
+            if via_staging:
+                getan = verarbeite_via_staging(db, args.to, args.apply, staging_dir)
+            else:
+                getan = verarbeite(db, args.to, args.apply)
+            if getan:
                 geaendert += 1
         except SealError as exc:
             # Siegelbruch: IMMER harter Abbruch, unabhaengig von --skip-on-error.

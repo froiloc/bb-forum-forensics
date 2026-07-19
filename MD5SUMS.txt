@@ -1,3 +1,10 @@
-6b4a545e3d9109400d9ba7a44305da1c  tools/convert_journal_mode.py
-4e25b390fcbf69f9c7f7193fa0f02009  tests/test_convert_journal_mode.py
-849c5ccce73bc6ed2ed80b7063d70030  build.json
+3380ac7a3c15211541ad951b40620fa0  maintenance/__init__.py
+317db73bc8034aa06247e0d3b12dd068  maintenance/errors.py
+24943a06a714cf2939ee9274a210de1a  maintenance/atomic_io.py
+dabb7ac143ba4b662e8fb533bffb3cb4  maintenance/paths.py
+4aace76f31399a67a19997fdab140b4a  maintenance/window_flag.py
+5bcae417f16fe035b4df4c9abfa9f5c9  maintenance/presence_beacon.py
+9edd219ff5b183fd01c84d894346593d  maintenance/ack_file.py
+32b0d875f2b0b9ca9494f98aab5e21ac  maintenance/server_registration.py
+eb991c80f535811fb6bbb540bdd01298  tests/test_maintenance_foundation.py
+96d872524c180121ba93137bb47ec297  build.json
