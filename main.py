@@ -54,6 +54,7 @@ from __future__ import annotations
 
 import argparse
 import atexit
+import os
 import sys
 from pathlib import Path
 import subprocess
@@ -202,6 +203,18 @@ def _parse_args() -> argparse.Namespace:
             "(setzt window.FORENSIC_DEBUG=true und window.FORENSIC_EVENT_TRACE=true "
             "in allen ausgelieferten Editor-Seiten). "
             "Nur für Entwicklung/Debugging verwenden."
+        ),
+    )
+    parser.add_argument(
+        "--maintenance",
+        action="store_true",
+        default=False,
+        help=(
+            "Startet den Server als Wartungs-Test-Server: verhält sich normal "
+            "(zum Testen WÄHREND einer Wartung), meldet sich aber unter einer "
+            "UUID an und beendet sich bei Fensterende oder auf Kill. Der Start "
+            "ist NUR bei aktivem Wartungsfenster erlaubt (Schutz vor "
+            "missbräuchlicher Nutzung des Schalters)."
         ),
     )
 
@@ -410,6 +423,44 @@ def main() -> None:
     logger.info("evidence_db : '%s'", context.evidence_db)
     logger.info("default_db  : '%s'", context.default_db)
     logger.info("coordinator : '%s'", context.coordinator_db)
+
+    # ------------------------------------------------------------------
+    # Schritt 5a: Wartungsmodus-Pfade + Start-Guard (Build 436)
+    # Das Wartungsprotokoll liegt dateibasiert unter dem geteilten
+    # Datenverzeichnis (dort, wo coordinator.db liegt), damit es ueber alle VMs
+    # hinweg wirkt und keine DB benoetigt, die man gerade stillstellen will.
+    #
+    # --maintenance darf NUR bei AKTIVEM Wartungsfenster starten. Ein Start
+    # ausserhalb wird aktiv verweigert — sonst waere der Schalter ein Weg, das
+    # normale Quiesce-Verhalten zu umgehen (Schutz vor feindlicher Uebernahme).
+    # ------------------------------------------------------------------
+    from maintenance import MaintenancePaths, WindowFlag
+
+    _maint_data_dir = Path(context.coordinator_db).parent
+    _maint_paths = MaintenancePaths(_maint_data_dir)
+    try:
+        _maint_paths.verzeichnisse_anlegen()
+    except Exception as _exc:
+        logger.warning("Wartungsverzeichnisse konnten nicht angelegt werden: %s",
+                       _exc)
+
+    if args.maintenance:
+        _startfenster = WindowFlag.aktives_fenster(_maint_paths)
+        if _startfenster is None:
+            logger.error(
+                "--maintenance: Start verweigert — kein aktives Wartungsfenster.")
+            print(
+                "[FEHLER] --maintenance: Ein Start im Wartungsmodus ist NUR bei "
+                "aktivem Wartungsfenster erlaubt.\n"
+                "Es ist derzeit kein Fenster aktiv — Start verweigert "
+                "(Schutz vor missbräuchlicher Nutzung des Schalters).",
+                file=sys.stderr)
+            sys.exit(1)
+        logger.warning(
+            "LÄUFT IM WARTUNGSMODUS — window_id=%s, grund=%r. Der Server "
+            "verhält sich normal (Testbetrieb), beendet sich aber bei Fensterende "
+            "oder auf Kill.",
+            _startfenster.window_id, _startfenster.grund)
 
     # ------------------------------------------------------------------
     # Schritt 6: StartupChecker
@@ -655,14 +706,186 @@ def main() -> None:
     )
 
     # ------------------------------------------------------------------
+    # Schritt 9c: Wartungsmodus-Integration (Build 436)
+    # ------------------------------------------------------------------
+    import socket as _socket
+    import types as _types
+    from maintenance import (Aktion, AckFile, MaintenanceController,
+                             MaintenanceGate, MaintenancePoller, PresenceBeacon,
+                             ServerRegistration)
+
+    _gate = MaintenanceGate()
+    server.maintenance_gate = _gate
+
+    _mh_host = _socket.gethostname()
+    _mh_pid = os.getpid()
+    _mh_role = f"webserver:{context.user_id}"
+
+    # Anmeldung (--maintenance) bzw. Praesenz-Beacon (Normalserver)
+    _registration = None
+    _beacon = None
+    if args.maintenance:
+        _fnow = WindowFlag.aktives_fenster(_maint_paths)
+        _registration = ServerRegistration.neu(
+            role=_mh_role, host=_mh_host, pid=_mh_pid, build=_build_info.build,
+            window_id=(_fnow.window_id if _fnow else ""), port=port,
+            user_id=context.user_id, config=config_path)
+        try:
+            _registration.schreiben(_maint_paths)
+            logger.warning("Wartungs-Anmeldung geschrieben: uuid=%s", _registration.uuid)
+        except Exception as _exc:
+            logger.warning("Wartungs-Anmeldung konnte nicht geschrieben werden: %s", _exc)
+    else:
+        _beacon = PresenceBeacon(
+            role=_mh_role, host=_mh_host, pid=_mh_pid, build=_build_info.build,
+            user_id=context.user_id, port=port)
+        try:
+            _beacon.schreiben(_maint_paths)
+        except Exception as _exc:
+            logger.warning("Präsenz-Beacon konnte nicht geschrieben werden: %s", _exc)
+
+    # Laufzeit-Referenzen, die beim Resume ausgetauscht werden (Bundle/Integrator).
+    _rt = _types.SimpleNamespace(bundle=bundle, integrator=_integrator)
+    _QUIESCE_DRAIN_TIMEOUT_S = float(config.get("maintenance.drain_timeout_sec", 30))
+
+    def _ack_schreiben() -> None:
+        _f = WindowFlag.laden(_maint_paths)
+        _wid = _f.window_id if _f else ""
+        try:
+            AckFile(role=_mh_role, host=_mh_host, pid=_mh_pid,
+                    window_id=_wid).schreiben(_maint_paths)
+        except Exception as _exc:
+            logger.warning("ACK konnte nicht geschrieben werden: %s", _exc)
+
+    def _ack_entfernen() -> None:
+        try:
+            AckFile(role=_mh_role, host=_mh_host, pid=_mh_pid,
+                    window_id="").entfernen(_maint_paths)
+        except Exception:
+            pass
+
+    def _quiesce(beenden: bool) -> None:
+        logger.warning("Wartungsmodus: Quiesce startet (beenden=%s).", beenden)
+        if not _gate.block_and_drain(timeout=_QUIESCE_DRAIN_TIMEOUT_S):
+            logger.warning(
+                "Wartungsmodus: Drain-Timeout (%ss) — es liefen noch Requests "
+                "(z.B. offene SSE-Verbindung). Fahre dennoch fort.",
+                _QUIESCE_DRAIN_TIMEOUT_S)
+        try:
+            _rt.integrator.stop()
+        except Exception as _exc:
+            logger.warning("Integrator-Stop fehlgeschlagen: %s", _exc)
+        try:
+            _rt.bundle.close()
+        except Exception as _exc:
+            logger.warning("Bundle-Close fehlgeschlagen: %s", _exc)
+        _ack_schreiben()
+        logger.warning("Wartungsmodus: Quiesce abgeschlossen — DB-Verbindungen "
+                       "freigegeben, ACK geschrieben.")
+        if beenden:
+            logger.warning("Wartungsmodus: bei_aktivierung=beenden — Server wird beendet.")
+            server.shutdown()
+
+    def _resume() -> None:
+        logger.warning("Wartungsmodus: Fenster beendet — Resume.")
+        try:
+            from db.connection_manager import ConnectionManager as _CM
+            _neu = _CM(context, config).open()
+        except Exception as _exc:
+            logger.error("Resume: DB-Verbindungen konnten NICHT wieder aufgebaut "
+                         "werden: %s — Server wird beendet.", _exc, exc_info=True)
+            server.shutdown()
+            return
+        _rt.bundle = _neu
+        server.bundle = _neu
+        # Router haelt eine eigene (gecachte) Bundle-Referenz und Sub-Handler —
+        # deshalb komplett neu aufbauen. Sicher, weil das Gate blockiert ist.
+        try:
+            from server.router import Router as _Router
+            server.router = _Router(_neu, context, config, build_info=_build_info)
+        except Exception as _exc:
+            logger.error("Resume: Router-Neuaufbau fehlgeschlagen: %s — Server "
+                         "wird beendet.", _exc, exc_info=True)
+            server.shutdown()
+            return
+        try:
+            from forensic_api.cross_annotation_integrator import CrossAnnotationIntegrator as _CAI
+            _neui = _CAI(_neu, context, config)
+            _neui.start_background_polling()
+            _rt.integrator = _neui
+        except Exception as _exc:
+            logger.warning("Resume: Integrator-Neustart fehlgeschlagen: %s", _exc)
+        _ack_entfernen()
+        _gate.unblock()
+        logger.warning("Wartungsmodus: Resume abgeschlossen — Betrieb wieder aufgenommen.")
+
+    def _beenden_versionswaechter() -> None:
+        logger.warning(
+            "Wartungsmodus: Fenster beendet, aber eigener Build %d unterschreitet "
+            "min_build des Fensters — Server wird beendet, damit keine alte "
+            "Version mit neuen Daten arbeitet.", _build_info.build)
+        server.shutdown()
+
+    def _selbstbeendigung() -> None:
+        logger.warning("Wartungsmodus (--maintenance): Fenster beendet — "
+                       "Test-Server beendet sich selbst.")
+        server.shutdown()
+
+    def _kill() -> None:
+        logger.warning("Wartungsmodus (--maintenance): Kill angefordert — "
+                       "Server wird beendet.")
+        server.shutdown()
+
+    _maint_aktionen = {
+        Aktion.QUIESCE_PAUSE: lambda: _quiesce(beenden=False),
+        Aktion.QUIESCE_BEENDEN: lambda: _quiesce(beenden=True),
+        Aktion.RESUME: _resume,
+        Aktion.BEENDEN_VERSIONSWAECHTER: _beenden_versionswaechter,
+        Aktion.SELBSTBEENDIGUNG_FENSTERENDE: _selbstbeendigung,
+        Aktion.KILL: _kill,
+    }
+
+    def _touch_praesenz() -> None:
+        if _beacon is not None:
+            try:
+                _beacon.touch(_maint_paths)
+            except Exception:
+                pass
+
+    _maint_controller = MaintenanceController(
+        _maint_paths, own_build=_build_info.build,
+        im_wartungsmodus_gestartet=args.maintenance, registration=_registration)
+    _MAINT_POLL_SEC = int(config.get("maintenance.poll_interval_sec", 3))
+    _maint_poller = MaintenancePoller(
+        _maint_controller, _MAINT_POLL_SEC, _maint_aktionen,
+        logger=logger, on_touch=_touch_praesenz)
+    _maint_poller.start()
+    logger.info("Wartungsmodus-Poller gestartet (Intervall: %ds).", _MAINT_POLL_SEC)
+
+    # ------------------------------------------------------------------
     # Schritt 10: Sauberes Herunterfahren
     # ------------------------------------------------------------------
     try:
         server.serve_forever_logged()
     finally:
         logger.info("Fahre Server herunter …")
+        # Wartungsmodus: Poller stoppen und eigene Steuerdateien entfernen.
         try:
-            bundle.close()
+            _maint_poller.stop()
+        except Exception:
+            pass
+        try:
+            if _registration is not None:
+                _registration.entfernen(_maint_paths)
+            if _beacon is not None:
+                _beacon.entfernen(_maint_paths)
+            _ack_entfernen()
+        except Exception as _exc:
+            logger.warning("Wartungs-Cleanup fehlgeschlagen: %s", _exc)
+        try:
+            # Nach einem Resume ist die aktive Verbindung _rt.bundle, nicht das
+            # urspruengliche bundle — daher _rt.bundle schliessen.
+            _rt.bundle.close()
             logger.info("Datenbankverbindungen geschlossen.")
         except Exception as exc:
             logger.warning("Fehler beim Schließen der DB-Verbindungen: %s", exc)

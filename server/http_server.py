@@ -156,27 +156,57 @@ class ForensicRequestHandler(http.server.BaseHTTPRequestHandler):
         """
         Zentrale Request-Verarbeitung.
         Delegiert an router.py, fängt alle unerwarteten Ausnahmen ab.
+
+        Wartungsmodus (Build 436): Ist das Gate blockiert, wird der Request mit
+        HTTP 503 beantwortet, OHNE die DB anzufassen. Sonst wird der Request als
+        'in-flight' gezaehlt, damit ein Quiesce ihn austrudeln lassen kann,
+        bevor die DB-Verbindungen geschlossen werden.
         """
+        gate = getattr(self.server, "maintenance_gate", None)
+        if gate is not None and not gate.enter():
+            self._send_503_wartung()
+            return
         try:
-            is_ajax = (
-                self.headers.get(AJAX_HEADER, "").lower() == AJAX_HEADER_VALUE.lower()
+            try:
+                is_ajax = (
+                    self.headers.get(AJAX_HEADER, "").lower() == AJAX_HEADER_VALUE.lower()
+                )
+                self.server.router.dispatch(
+                    handler=self,
+                    method=method,
+                    path=self.path,
+                    is_ajax=is_ajax,
+                )
+            except (BrokenPipeError, ConnectionResetError):
+                # Client hat die Verbindung vorzeitig getrennt — kein Fehler.
+                # Beleg: TODO-001, Projektgespräch 2026-04-18.
+                pass
+            except Exception as exc:
+                logger.error(
+                    "Unbehandelte Ausnahme bei Request %s %s: %s",
+                    method, self.path, exc, exc_info=True,
+                )
+                self._send_500()
+        finally:
+            if gate is not None:
+                gate.leave()
+
+    def _send_503_wartung(self) -> None:
+        """HTTP 503 waehrend des Wartungsmodus (kein DB-Zugriff)."""
+        body = (
+            "<html><body><h1>Wartungsmodus</h1>"
+            "<p>Der forensische Server ist derzeit im Wartungsmodus. "
+            "Bitte in Kürze erneut versuchen.</p></body></html>"
+        ).encode("utf-8")
+        try:
+            self.send_response_body(
+                status=503,
+                body=body,
+                extra_headers={"Retry-After": "30",
+                               "X-Forensic-Status": "MAINTENANCE"},
             )
-            self.server.router.dispatch(
-                handler=self,
-                method=method,
-                path=self.path,
-                is_ajax=is_ajax,
-            )
-        except (BrokenPipeError, ConnectionResetError):
-            # Client hat die Verbindung vorzeitig getrennt — kein Fehler.
-            # Beleg: TODO-001, Projektgespräch 2026-04-18.
-            pass
-        except Exception as exc:
-            logger.error(
-                "Unbehandelte Ausnahme bei Request %s %s: %s",
-                method, self.path, exc, exc_info=True,
-            )
-            self._send_500()
+        except Exception:
+            pass  # Verbindung bereits geschlossen
 
     # ------------------------------------------------------------------
     # Hilfsme thoden für Response-Ausgabe
@@ -286,6 +316,9 @@ class ForensicHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
             raise _make_bind_error(exc, host, port) from exc
 
         self.bundle        = bundle
+        # Wartungsmodus (Build 436): wird von main.py gesetzt. Ist es None, ist
+        # der Wartungsmodus nicht aktiv und der Request-Pfad bleibt unveraendert.
+        self.maintenance_gate = None
         self.context       = context
         self.config        = config
         self.router        = Router(bundle, context, config, build_info=build_info)
