@@ -1,4 +1,5 @@
-94241a8d64d45eed3fcf73c76ae3d2bb  management.py
-172ebd6c78af4bc5092be0cf8d1be67c  management/server/management_handler.py
-d38173b96d7d246156fda42a3807f21e  tests/test_management_maintenance_gate.py
-b435f062937d9eac8f22d77a92ea5e73  build.json
+ed0142b10626518506e5c6bd91093cc8  maintenance/cli_support.py
+d236af85e719cac36ff1e94288880ec0  tools/maintenance.py
+ebd12c5c6b076d05b12fce57d590dcee  tools/maintenance_kill.py
+76116b77f74955767c56ee3b82e09709  tests/test_maintenance_cli.py
+c793863019da5fcdff921f54b3cf6629  build.json
