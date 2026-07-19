@@ -12,16 +12,18 @@
 #
 #   Build 440 legt das Fundament (checksum + ExportEnvelope, rein additiv).
 #   Build 441 ergaenzt das erste Format: Fallstatus -> Excel
-#   (excel_case_status). Weitere Exporte (B442 Retrofit je Sicht, B443 StA-
-#   Ausschleus) docken hier an.
+#   (excel_case_status). Build 442 ruestet die bestehenden Sichten-Exporte
+#   (dashboard/workload/support_overview) auf den einheitlichen Rahmen um
+#   (classification_band + Erzeugungsvermerk/Pruefsumme) via context_builder.
 #
-# Version: v0.7.441 · Build: 441 · 2026-07-19
+# Version: v0.7.442 · Build: 442 · 2026-07-19
 # =============================================================================
 
 from management.export.checksum import (
     content_sha256_bytes,
     content_sha256_text,
     canonical_rows_sha256,
+    json_payload_sha256,
 )
 from management.export.export_envelope import (
     ExportContext,
@@ -33,15 +35,18 @@ from management.export.excel_case_status import (
     CASE_STATUS_COLUMNS,
     ExcelUnavailable,
 )
+from management.export.context_builder import build_export_context
 
 __all__ = [
     "content_sha256_bytes",
     "content_sha256_text",
     "canonical_rows_sha256",
+    "json_payload_sha256",
     "ExportContext",
     "ExportEnvelope",
     "build_case_status_xlsx",
     "case_rows_digest",
     "CASE_STATUS_COLUMNS",
     "ExcelUnavailable",
+    "build_export_context",
 ]

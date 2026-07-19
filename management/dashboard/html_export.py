@@ -24,7 +24,12 @@
 # =============================================================================
 
 import json
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
+
+from management.export.checksum import json_payload_sha256
+
+if TYPE_CHECKING:
+    from management.export.export_envelope import ExportEnvelope
 
 _LEGEND = (
     '<div class="aiw-legend">\n'
@@ -46,7 +51,8 @@ def _safe_json(overview) -> str:
 
 def build_dashboard_html(overview: List[dict], css_text: str, js_text: str, *,
                          debug: bool = False,
-                         generated_at: Optional[str] = None) -> str:
+                         generated_at: Optional[str] = None,
+                         envelope: "Optional[ExportEnvelope]" = None) -> str:
     """
     Baut die self-contained Dashboard-HTML.
 
@@ -55,6 +61,11 @@ def build_dashboard_html(overview: List[dict], css_text: str, js_text: str, *,
     js_text:       Inhalt von dashboard.js (wird inline eingebettet).
     debug:         setzt window.AIW_DASHBOARD_DEBUG (PROD: False).
     generated_at:  optionaler Stand-Vermerk fuer den Kopf.
+    envelope:      optionaler ExportEnvelope (B442). Ist er gesetzt, traegt die
+                   Datei den EINHEITLICHEN Aktenkopf-Band (Klassifikation/
+                   Behoerde/Aktenzeichen) oben und den Erzeugungsvermerk +
+                   Pruefsumme (SHA-256 ueber die eingebettete Datenliste) unten.
+                   None -> unveraendertes Verhalten (Rueckwaertskompatibilitaet).
 
     Zusammenbau per Konkatenation (NICHT str.format/%), da CSS/JS geschweifte
     Klammern und '%' enthalten, die Format-Platzhalter stoeren wuerden.
@@ -65,6 +76,12 @@ def build_dashboard_html(overview: List[dict], css_text: str, js_text: str, *,
     if generated_at:
         sub += " Stand: " + generated_at + "."
 
+    # Einheitlicher Rahmen (nur wenn envelope gesetzt). Die Pruefsumme deckt die
+    # eingebettete Datenliste \u2014 vom Empfaenger unabhaengig nachrechenbar.
+    band = envelope.classification_band_html() if envelope else ""
+    foot = (envelope.footer_html(json_payload_sha256(overview))
+            if envelope else "")
+
     return (
         "<!DOCTYPE html>\n"
         '<html lang="de">\n<head>\n'
@@ -74,6 +91,7 @@ def build_dashboard_html(overview: List[dict], css_text: str, js_text: str, *,
         "<style>\n"
         + css_text +
         "\n</style>\n</head>\n<body>\n"
+        + band +
         "<h1>Ampel-Dashboard \u2014 Fall-Uebersicht</h1>\n"
         '<p class="aiw-sub">' + sub + "</p>\n"
         '<div id="aiw-dashboard-root"></div>\n'
@@ -85,5 +103,6 @@ def build_dashboard_html(overview: List[dict], css_text: str, js_text: str, *,
         "<script>\n"
         + js_text +
         "\n</script>\n"
+        + foot +
         "</body>\n</html>\n"
     )

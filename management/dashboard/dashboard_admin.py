@@ -80,8 +80,15 @@ def _fmt_ts(ts) -> str:
 _AMPEL_MARK = {"rot": "[ROT ]", "gelb": "[GELB]", "gruen": "[GRUE]"}
 
 
-def _do_export_html(rows, out_path) -> int:
-    """Serialisiert die Uebersicht und schreibt eine self-contained HTML-Datei."""
+def _do_export_html(rows, out_path, con=None, db_path=None,
+                    actor=None, behoerde=None, aktenzeichen=None) -> int:
+    """Serialisiert die Uebersicht und schreibt eine self-contained HTML-Datei.
+
+    Ist con/db_path gesetzt (B442), wird der einheitliche Export-Rahmen
+    (Aktenkopf-Band + Erzeugungsvermerk + Pruefsumme) angebracht; der
+    Kontext-Builder ist voll abgesichert und laesst den Export nie am Rahmen
+    scheitern.
+    """
     import dataclasses
     from management.dashboard.html_export import build_dashboard_html
     overview = [dataclasses.asdict(o) for o in rows]
@@ -89,8 +96,19 @@ def _do_export_html(rows, out_path) -> int:
     css = (frontend / "dashboard.css").read_text(encoding="utf-8")
     js = (frontend / "dashboard.js").read_text(encoding="utf-8")
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+
+    envelope = None
+    if con is not None and db_path is not None:
+        from management.export.context_builder import build_export_context
+        from management.export.export_envelope import ExportEnvelope
+        ctx = build_export_context(
+            con=con, db_path=db_path, behoerde=behoerde,
+            aktenzeichen=aktenzeichen or "Ampel-Dashboard (Fall-Uebersicht)",
+            actor=actor, now_utc=generated)
+        envelope = ExportEnvelope(ctx)
+
     html = build_dashboard_html(overview, css, js, debug=False,
-                                generated_at=generated)
+                                generated_at=generated, envelope=envelope)
     Path(out_path).write_text(html, encoding="utf-8")
     print("[dashboard_admin] %d Fall/Faelle -> %s (self-contained)"
           % (len(overview), out_path))
@@ -110,6 +128,10 @@ def main(argv=None) -> int:
                            help="Self-contained Dashboard-HTML erzeugen")
     p_exp.add_argument("--out", required=True,
                        help="Zielpfad der zu erzeugenden HTML-Datei")
+    p_exp.add_argument("--behoerde", default=None)
+    p_exp.add_argument("--aktenzeichen", default=None)
+    p_exp.add_argument("--actor", default=None,
+                       help="SAMAccountName der ausfuehrenden Person (Dev/Test).")
     args = parser.parse_args(argv)
 
     cfg = _load_config(args)
@@ -139,7 +161,11 @@ def main(argv=None) -> int:
             return 1
 
         if args.action == "export-html":
-            return _do_export_html(rows, args.out)
+            return _do_export_html(
+                rows, args.out, con=con, db_path=db_path,
+                actor=getattr(args, "actor", None),
+                behoerde=getattr(args, "behoerde", None),
+                aktenzeichen=getattr(args, "aktenzeichen", None))
 
         # action == "list"
         if not rows:

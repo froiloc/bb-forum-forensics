@@ -29,7 +29,12 @@
 # =============================================================================
 
 import json
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
+
+from management.export.checksum import json_payload_sha256
+
+if TYPE_CHECKING:
+    from management.export.export_envelope import ExportEnvelope
 
 _LEGEND = (
     '<div class="aiw-legend">\n'
@@ -78,7 +83,8 @@ def _integrity_banner(verify_result: Optional[dict]) -> str:
 def build_support_overview_html(records: List[dict], css_text: str, js_text: str,
                                 *, debug: bool = False,
                                 generated_at: Optional[str] = None,
-                                verify_result: Optional[dict] = None) -> str:
+                                verify_result: Optional[dict] = None,
+                                envelope: "Optional[ExportEnvelope]" = None) -> str:
     """
     Baut die self-contained Support-Historie-HTML.
 
@@ -88,6 +94,8 @@ def build_support_overview_html(records: List[dict], css_text: str, js_text: str
     debug:         setzt window.AIW_SUPPORT_OVERVIEW_DEBUG (PROD: False).
     generated_at:  optionaler Stand-Vermerk fuer den Kopf.
     verify_result: optionales audit_log-Pruefergebnis fuer das Integritaets-Banner.
+    envelope:      optionaler ExportEnvelope (B442): einheitlicher Aktenkopf-Band
+                   + Erzeugungsvermerk/Pruefsumme. None -> unveraendert.
 
     Zusammenbau per Konkatenation (NICHT str.format/%), da CSS/JS geschweifte
     Klammern und '%' enthalten, die Format-Platzhalter stoeren wuerden.
@@ -99,6 +107,10 @@ def build_support_overview_html(records: List[dict], css_text: str, js_text: str
     if generated_at:
         sub += " Stand: " + generated_at + "."
 
+    band = envelope.classification_band_html() if envelope else ""
+    foot = (envelope.footer_html(json_payload_sha256(records))
+            if envelope else "")
+
     return (
         "<!DOCTYPE html>\n"
         '<html lang="de">\n<head>\n'
@@ -108,6 +120,7 @@ def build_support_overview_html(records: List[dict], css_text: str, js_text: str
         "<style>\n"
         + css_text +
         "\n</style>\n</head>\n<body>\n"
+        + band +
         "<h1>Support-Sitzungs-Historie</h1>\n"
         '<p class="aiw-sub">' + sub + "</p>\n"
         + _integrity_banner(verify_result) +
@@ -126,5 +139,6 @@ def build_support_overview_html(records: List[dict], css_text: str, js_text: str
         "<script>\n"
         + js_text +
         "\n</script>\n"
+        + foot +
         "</body>\n</html>\n"
     )

@@ -29,6 +29,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from typing import Iterable, Sequence
 
 
@@ -78,3 +79,19 @@ def canonical_rows_sha256(tables: Iterable[tuple]) -> str:
         line = table + ":" + "|".join(repr(v) for v in seq) + "\n"
         sha.update(line.encode("utf-8"))
     return sha.hexdigest()
+
+
+def json_payload_sha256(obj) -> str:
+    """
+    Pruefsumme ueber eine JSON-serialisierbare Nutzlast (z. B. die in eine
+    HTML-Sicht eingebettete Datenliste). Kanonisch: sort_keys=True,
+    ensure_ascii=False (UTF-8 erhalten), kompakte Separatoren.
+
+    Deterministisch und vom Empfaenger unabhaengig nachrechenbar: er extrahiert
+    dieselbe Nutzlast (z. B. window.__AIW_*__) und bildet json.dumps mit
+    denselben Parametern. So traegt jede Sichten-Ausgabe eine pruefbare
+    Datensummen-Signatur, ohne von CSS-/JS-Versionen abzuhaengen.
+    """
+    canonical = json.dumps(
+        obj, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+    return content_sha256_text(canonical)

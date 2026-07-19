@@ -80,7 +80,8 @@ def _verify_result_dict(con) -> dict:
             "detail": vr.detail, "tip_seq": tip_seq, "tip_hash": tip_hash}
 
 
-def _do_export_html(con, rows, out_path) -> int:
+def _do_export_html(con, rows, out_path, db_path=None,
+                    actor=None, behoerde=None, aktenzeichen=None) -> int:
     from management.workload.html_export import build_workload_html
     records = [dataclasses.asdict(r) for r in rows]
     frontend = Path(__file__).resolve().parent / "frontend"
@@ -92,8 +93,22 @@ def _do_export_html(con, rows, out_path) -> int:
         print("[workload_admin] WARNUNG: audit_log-Kette gebrochen (%s) — "
               "Export erfolgt, Banner weist darauf hin." % verify["detail"],
               file=sys.stderr)
+
+    # B442: einheitlicher Export-Rahmen (Aktenkopf-Band + Erzeugungsvermerk +
+    # Pruefsumme). Kontext-Builder ist voll abgesichert.
+    envelope = None
+    if db_path is not None:
+        from management.export.context_builder import build_export_context
+        from management.export.export_envelope import ExportEnvelope
+        ctx = build_export_context(
+            con=con, db_path=db_path, behoerde=behoerde,
+            aktenzeichen=aktenzeichen or "Ermittler-Lastverteilung",
+            actor=actor, now_utc=generated)
+        envelope = ExportEnvelope(ctx)
+
     html = build_workload_html(records, css, js, debug=False,
-                               generated_at=generated, verify_result=verify)
+                               generated_at=generated, verify_result=verify,
+                               envelope=envelope)
     Path(out_path).write_text(html, encoding="utf-8")
     print("[workload_admin] %d Zeile(n) -> %s (self-contained)"
           % (len(records), out_path))
@@ -141,6 +156,10 @@ def main(argv=None) -> int:
                            help="Self-contained Lastverteilungs-HTML erzeugen")
     p_exp.add_argument("--out", required=True,
                        help="Zielpfad der zu erzeugenden HTML-Datei")
+    p_exp.add_argument("--behoerde", default=None)
+    p_exp.add_argument("--aktenzeichen", default=None)
+    p_exp.add_argument("--actor", default=None,
+                       help="SAMAccountName der ausfuehrenden Person (Dev/Test).")
     args = parser.parse_args(argv)
 
     cfg = _load_config(args)
@@ -168,7 +187,11 @@ def main(argv=None) -> int:
             return 1
 
         if args.action == "export-html":
-            return _do_export_html(con, rows, args.out)
+            return _do_export_html(
+                con, rows, args.out, db_path=db_path,
+                actor=getattr(args, "actor", None),
+                behoerde=getattr(args, "behoerde", None),
+                aktenzeichen=getattr(args, "aktenzeichen", None))
         return _do_list(rows)
     finally:
         con.close()

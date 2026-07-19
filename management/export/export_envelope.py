@@ -159,6 +159,24 @@ class ExportEnvelope:
                html.escape(c.behoerde), html.escape(c.aktenzeichen))
         )
 
+    def classification_band_html(self) -> str:
+        """
+        Schlanker Aktenkopf-BAND zum Einbetten OBERHALB einer Sicht, die bereits
+        eine eigene Ueberschrift traegt (die self-contained html_export.py der
+        Cockpit-Sichten). Enthaelt NUR Klassifikation + Behoerde/Aktenzeichen —
+        KEIN <h1>, um die vorhandene Seitenueberschrift nicht zu doppeln. Werte
+        html-escaped, UTF-8 erhalten.
+        """
+        c = self._ctx
+        return (
+            '<div class="aiw-export-band">\n'
+            '  <span class="aiw-klass">%s</span>\n'
+            '  <span class="aiw-akte">Behörde: %s · Aktenzeichen: %s</span>\n'
+            '</div>\n'
+            % (html.escape(c.klassifikation), html.escape(c.behoerde),
+               html.escape(c.aktenzeichen))
+        )
+
     # -- Fuss / Erzeugungsvermerk + Pruefsumme -------------------------------
 
     def footer_text(self, payload_digest: str) -> str:
