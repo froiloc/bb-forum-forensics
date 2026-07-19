@@ -166,10 +166,12 @@ class ManagementRbacSchemaTests(unittest.TestCase):
         # Der Test prueft oben bereits, dass DB-Seed und Code-Katalog
         # DECKUNGSGLEICH sind — genau daran wuerde eine vergessene
         # Seed-Migration auffallen.
-        self.assertEqual(len(cat_caps), 22)
+        self.assertEqual(len(cat_caps), 23)
         self.assertIn("external.view", cat_caps)
         self.assertIn("external.edit", cat_caps)
         self.assertIn("templates.edit", cat_caps)
+        # Wartungsmodus (Build 439): 'wartung.durchfuehren' (Seed in M014).
+        self.assertIn("wartung.durchfuehren", cat_caps)
         # Build 401: Betreuungs-Notizen (Seed in M012).
         self.assertIn("mentoring_notes.view", cat_caps)
         self.assertIn("mentoring_notes.edit", cat_caps)
@@ -178,8 +180,11 @@ class ManagementRbacSchemaTests(unittest.TestCase):
         self.assertIn("results.edit", cat_caps)
         # Build 420: Redakteur:in fuer die Authoring-Werkzeuge (Seed in M013).
         self.assertIn("template_editor", cat_roles)
-        # 6 Rollen ab Build 343, +1 ab Build 420 ('template_editor') -> 7.
-        self.assertEqual(len(cat_roles), 7)
+        # Wartungsmodus (Build 439): Rolle 'maintenance' (Seed in M014).
+        self.assertIn("maintenance", cat_roles)
+        # 6 Rollen ab Build 343, +1 ab Build 420 ('template_editor'),
+        # +1 ab Build 439 ('maintenance') -> 8.
+        self.assertEqual(len(cat_roles), 8)
 
     # R03 --------------------------------------------------------------------
     def test_r03_grant_and_person_role_empty(self):

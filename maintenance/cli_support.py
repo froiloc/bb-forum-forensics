@@ -132,3 +132,56 @@ def quiesce_status(paths: MaintenancePaths, window_id: str, stale_s: int,
         else:
             offen.append(b)
     return {"gequiesct": gequiesct, "offen": offen, "tot": tot, "fehler": fehler}
+
+
+def pruefe_wartungsberechtigung(data_dir, recovery: bool,
+                                *, os_user: Optional[str] = None) -> tuple:
+    """
+    Prueft, ob der ausfuehrende OS-Benutzer die Faehigkeit 'wartung.durchfuehren'
+    besitzt (RBAC ueber coordinator.db). Rueckgabe (ok, meldung):
+
+      DB lesbar + berechtigt        -> (True,  "erlaubt: <user>")
+      DB lesbar + NICHT berechtigt  -> (False, "verweigert: <user> ...")
+      DB nicht lesbar / Fehler:
+        recovery=False (enter)      -> (False, ... abgebrochen)   [fail-safe]
+        recovery=True  (exit/kill)  -> (True,  ... nicht blockiert) [Recovery]
+
+    Der Henne-Ei-Fall (coordinator.db gerade gesperrt) blockiert also NUR das
+    Setzen eines Fensters (enter), nie die Wiederherstellung (exit/kill).
+    """
+    import sqlite3
+    coord = Path(data_dir) / "coordinator.db"
+    try:
+        from management.server.identity import IdentityResolver
+        from management.rbac.rbac_resolver import RbacResolver
+    except Exception as exc:  # RBAC-Infrastruktur nicht importierbar
+        if recovery:
+            return (True, "RBAC nicht importierbar (%s) — Wiederherstellung "
+                          "nicht blockiert." % exc)
+        return (False, "RBAC nicht importierbar (%s) — abgebrochen." % exc)
+
+    if not coord.exists():
+        if recovery:
+            return (True, "coordinator.db fehlt (%s) — Wiederherstellung nicht "
+                          "blockiert." % coord)
+        return (False, "coordinator.db fehlt (%s) — RBAC nicht pruefbar, "
+                       "abgebrochen." % coord)
+
+    try:
+        person = IdentityResolver(str(coord)).resolve(os_user)
+        con = sqlite3.connect("file:%s?mode=ro" % coord, uri=True)
+        con.row_factory = sqlite3.Row
+        try:
+            erlaubt = RbacResolver(con).can(person["id"], "wartung.durchfuehren")
+        finally:
+            con.close()
+    except Exception as exc:
+        if recovery:
+            return (True, "RBAC nicht pruefbar (%s) — Wiederherstellung nicht "
+                          "blockiert." % exc)
+        return (False, "RBAC nicht pruefbar (%s) — abgebrochen." % exc)
+
+    wer = person.get("system_username", "?")
+    if erlaubt:
+        return (True, "erlaubt: %s" % wer)
+    return (False, "verweigert: %s hat 'wartung.durchfuehren' nicht." % wer)

@@ -39,8 +39,9 @@ if str(_REPO_ROOT) not in sys.path:
 
 from maintenance import (MaintenancePaths, PresenceBeacon,  # noqa: E402
                          ServerRegistration, WindowFlag, jetzt_epoch)
-from maintenance.cli_support import (exklusiv_pruefen, quiesce_status,  # noqa: E402
-                                     ziel_pfade)
+from maintenance.cli_support import (exklusiv_pruefen,  # noqa: E402
+                                     pruefe_wartungsberechtigung,
+                                     quiesce_status, ziel_pfade)
 
 
 def _resolve_data_dir(args) -> Path:
@@ -57,6 +58,15 @@ def cmd_enter(args) -> int:
     data_dir = _resolve_data_dir(args)
     paths = MaintenancePaths(data_dir)
     paths.verzeichnisse_anlegen()
+
+    # RBAC (Build 439): 'enter' erfordert 'wartung.durchfuehren'. Harte Pruefung —
+    # coordinator.db ist beim Fenster-Oeffnen noch normal lesbar.
+    ok, meldung = pruefe_wartungsberechtigung(data_dir, recovery=False)
+    print("[RBAC] %s" % meldung)
+    if not ok:
+        print("[FEHLER] Berechtigung fehlt — 'enter' abgebrochen.",
+              file=sys.stderr)
+        return 1
 
     if WindowFlag.aktives_fenster(paths) is not None:
         print("[FEHLER] Es ist bereits ein Wartungsfenster aktiv. "
@@ -131,6 +141,17 @@ def cmd_enter(args) -> int:
 def cmd_exit(args) -> int:
     data_dir = _resolve_data_dir(args)
     paths = MaintenancePaths(data_dir)
+
+    # RBAC (Build 439): 'exit' ist eine Wiederherstellung. Bei lesbarer
+    # coordinator.db wird 'wartung.durchfuehren' erzwungen; ist sie gerade
+    # gesperrt, wird die Wiederherstellung NICHT blockiert (nur protokolliert).
+    ok, meldung = pruefe_wartungsberechtigung(data_dir, recovery=True)
+    print("[RBAC] %s" % meldung)
+    if not ok:
+        print("[FEHLER] Berechtigung fehlt — 'exit' abgebrochen.",
+              file=sys.stderr)
+        return 1
+
     f = WindowFlag.laden(paths)
     if f is None:
         print("Kein Wartungsfenster gesetzt — nichts zu tun.")

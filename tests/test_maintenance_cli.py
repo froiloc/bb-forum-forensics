@@ -10,6 +10,7 @@
 # =============================================================================
 
 import importlib.util
+import getpass
 import sqlite3
 import threading
 import time
@@ -36,12 +37,41 @@ maint = _lade("tools/maintenance.py", "maint_cli_tool")
 killer = _lade("tools/maintenance_kill.py", "maint_kill_tool")
 
 
+def _baue_berechtigte_coordinator(pfad: Path) -> None:
+    """
+    Minimale coordinator.db, die den AKTUELLEN OS-Benutzer fuer
+    'wartung.durchfuehren' berechtigt (Rolle maintenance + Grant). Damit
+    passieren die enter/exit/kill-Tests das RBAC-Gate (Build 439). Es sind nur
+    die Tabellen enthalten, die IdentityResolver + RbacResolver lesen.
+    """
+    con = sqlite3.connect(str(pfad))
+    con.executescript(
+        "CREATE TABLE person (id INTEGER PRIMARY KEY, system_username TEXT "
+        "UNIQUE, display_name TEXT, is_investigator INT, is_supervisor INT, "
+        "is_support INT, created_at INT);"
+        "CREATE TABLE person_role (id INTEGER PRIMARY KEY, person_id INT, "
+        "role_code TEXT, revoked_at INT);"
+        "CREATE TABLE rbac_grant (id INTEGER PRIMARY KEY, role_code TEXT, "
+        "capability_code TEXT, scope TEXT, revoked_at INT);"
+    )
+    con.execute("INSERT INTO person VALUES (5, ?, 'CLI', 1, 0, 0, 0)",
+                (getpass.getuser(),))
+    con.execute("INSERT INTO person_role (person_id, role_code, revoked_at) "
+                "VALUES (5, 'maintenance', NULL)")
+    con.execute("INSERT INTO rbac_grant (role_code, capability_code, scope, "
+                "revoked_at) VALUES ('maintenance', 'wartung.durchfuehren', "
+                "NULL, NULL)")
+    con.commit()
+    con.close()
+
+
 @pytest.fixture
 def data_dir(tmp_path):
     d = tmp_path / "data"
     (d / "evidence").mkdir(parents=True)
-    # coordinator.db als Ziel des Lock-Beweises
-    sqlite3.connect(str(d / "coordinator.db")).close()
+    # coordinator.db dient sowohl als Ziel des Lock-Beweises als auch als
+    # RBAC-Quelle (Build 439): der aktuelle OS-Benutzer ist berechtigt.
+    _baue_berechtigte_coordinator(d / "coordinator.db")
     return d
 
 

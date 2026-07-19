@@ -121,11 +121,23 @@ def main(argv=None) -> int:
                     help="Maximale Wartezeit auf Beendigung in Sekunden (30).")
     args = ap.parse_args(argv)
 
-    paths = MaintenancePaths(_resolve_data_dir(args))
+    data_dir = _resolve_data_dir(args)
+    paths = MaintenancePaths(data_dir)
     paths.verzeichnisse_anlegen()
 
     if args.list:
         return cmd_list(paths)
+
+    # RBAC (Build 439): Kill ist eine Wiederherstellung. Bei lesbarer
+    # coordinator.db wird 'wartung.durchfuehren' erzwungen; ist sie gerade
+    # gesperrt, wird der Kill NICHT blockiert (nur protokolliert).
+    from maintenance.cli_support import pruefe_wartungsberechtigung
+    ok, meldung = pruefe_wartungsberechtigung(data_dir, recovery=True)
+    print("[RBAC] %s" % meldung)
+    if not ok:
+        print("[FEHLER] Berechtigung fehlt — Kill abgebrochen.", file=sys.stderr)
+        return 1
+
     return cmd_kill(paths, args.uuid, args.all, args.wait_timeout,
                     von=getpass.getuser())
 

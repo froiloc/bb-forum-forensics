@@ -1,5 +1,10 @@
-ed0142b10626518506e5c6bd91093cc8  maintenance/cli_support.py
-d236af85e719cac36ff1e94288880ec0  tools/maintenance.py
-ebd12c5c6b076d05b12fce57d590dcee  tools/maintenance_kill.py
-76116b77f74955767c56ee3b82e09709  tests/test_maintenance_cli.py
-c793863019da5fcdff921f54b3cf6629  build.json
+1affb95be5ea56352a8d7e1bc1bc9ff2  management/rbac/catalog.py
+ca309aaf31d882ef3fc8af5e8d535eb2  management/migrations/coordinator/m014_maintenance_rbac.py
+6b022e7f98808cfb5f639f19f23bcae3  maintenance/cli_support.py
+887298b9d6e20fbb61aa046cb936e5ab  tools/maintenance.py
+be181fd28222fe1c6f931fa724c92c28  tools/maintenance_kill.py
+1c3246a561d31bf6f92a024a021e24ed  tests/test_maintenance_rbac.py
+13078c0a25fef95ca919de42eb71a1d8  tests/test_maintenance_cli.py
+35ca22cff75ca7e65eca2283e1ea9709  tests/test_management_rbac_schema.py
+f9f796ad9d59a53d521b0db3c8d5472f  tests/test_management_dashboard.py
+b570293ac1251e579f4a274a0c6288e1  build.json

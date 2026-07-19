@@ -60,6 +60,11 @@ ROLES: Tuple[Role, ...] = (
     #   templates.db (auditiert ueber den TemplatesWriter, Build 421). Die
     #   Chef-Ermittlerin erhaelt das Recht ueblicherweise ebenfalls (Grant).
     Role("template_editor", "Redakteur:in (Berichtsvorlagen/Bausteine)"),
+    # --- Wartungsmodus (Sequenz A-D, Builds 435-438): Betriebsstillstand ------
+    #   Wer die Wartungs-Werkzeuge (enter/exit/kill) bedienen darf. Die
+    #   Chef-Ermittlerin (supervisor) erhaelt das Recht ueblicherweise ebenfalls
+    #   (Grant ueber policy_admin; mc 2026-07-19).
+    Role("maintenance", "Wartung / kontrollierter Betriebsstillstand"),
 )
 
 
@@ -138,6 +143,14 @@ CAPABILITIES: Tuple[Capability, ...] = (
     Capability("templates.edit", "Berichtsvorlagen/Bausteine pflegen",
                "Baustein-Module, Platzhalter/Queries und Dokumentvorlagen in "
                "templates.db anlegen und pflegen (auditiert)."),
+    # --- Wartungsmodus (Sequenz A-D): kontrollierter Betriebsstillstand -------
+    #   Wer ein Wartungsfenster setzen/aufheben und laufende Wartungs-Test-Server
+    #   beenden darf. NICHT scope-behaftet (globale Betriebshandlung, nicht
+    #   fallbezogen). Grant an 'maintenance' UND 'supervisor' ueber policy_admin
+    #   (mc 2026-07-19).
+    Capability("wartung.durchfuehren", "Wartung durchfuehren",
+               "Wartungsfenster setzen/aufheben (enter/exit) und laufende "
+               "Wartungs-Test-Server beenden (kill). Nicht fallbezogen."),
 )
 
 
