@@ -1,8 +1,4 @@
-5a7302b66468b44109528ae2abfe5e3a  maintenance/__init__.py
-d3ef8d66a41cddeea1fd265ac471965c  maintenance/gate.py
-9595a6b4da7ac97460a995497a8d6309  maintenance/controller.py
-49697d0135341c5416f0fb7ad36a32d1  maintenance/poller.py
-a5d7ab9489a8f32a63907d9ffae7ca21  server/http_server.py
-0f5afdb3047fd74f13565feb303a4974  main.py
-7a9ab22283cdbed7256ddf286bd7321c  tests/test_maintenance_controller.py
-8db66777aed85405eafa90be3d6cf274  build.json
+94241a8d64d45eed3fcf73c76ae3d2bb  management.py
+172ebd6c78af4bc5092be0cf8d1be67c  management/server/management_handler.py
+d38173b96d7d246156fda42a3807f21e  tests/test_management_maintenance_gate.py
+b435f062937d9eac8f22d77a92ea5e73  build.json

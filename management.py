@@ -28,6 +28,7 @@
 # =============================================================================
 
 import argparse
+import os
 import socket
 import sys
 import webbrowser
@@ -56,6 +57,11 @@ def _parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--open-browser", action="store_true", dest="open_browser")
     p.add_argument("--as-user", default=None, dest="as_user",
                    help="OS-Identitaet explizit setzen (system_username; Dev).")
+    p.add_argument("--maintenance", action="store_true", default=False,
+                   help="Startet als Wartungs-Test-Server: verhaelt sich normal, "
+                        "meldet sich unter einer UUID an und beendet sich bei "
+                        "Fensterende oder auf Kill. Start NUR bei aktivem "
+                        "Wartungsfenster erlaubt (Schutz vor Missbrauch).")
     return p.parse_args(argv)
 
 
@@ -110,6 +116,26 @@ def main(argv=None) -> int:
         print("[management] coordinator.db nicht gefunden: %s" % db_path,
               file=sys.stderr)
         return 1
+
+    # Wartungsmodus-Pfade (Build 437): dateibasiert unter dem geteilten
+    # Datenverzeichnis (Parent der coordinator.db), damit es ueber alle VMs wirkt.
+    from maintenance import MaintenancePaths, WindowFlag
+    _maint_paths = MaintenancePaths(Path(db_path).parent)
+    try:
+        _maint_paths.verzeichnisse_anlegen()
+    except Exception as _exc:
+        print("[management] WARNUNG: Wartungsverzeichnisse nicht anlegbar: %s"
+              % _exc, file=sys.stderr)
+
+    # --maintenance darf NUR bei aktivem Fenster starten (Schutz vor Missbrauch).
+    if args.maintenance:
+        if WindowFlag.aktives_fenster(_maint_paths) is None:
+            print("[management] --maintenance: Start verweigert — kein aktives "
+                  "Wartungsfenster. Ein Start im Wartungsmodus ist nur bei "
+                  "aktivem Fenster erlaubt.", file=sys.stderr)
+            return 1
+        print("[management] LAEUFT IM WARTUNGSMODUS (Testbetrieb). Beendet sich "
+              "bei Fensterende oder auf Kill.")
 
     app = ManagementApp(db_path)
 
@@ -176,11 +202,133 @@ def main(argv=None) -> int:
         except Exception:  # pragma: no cover
             pass
 
+    # ------------------------------------------------------------------
+    # Schritt 7: Wartungsmodus-Integration (Build 437)
+    # Per-Request-Modell: KEIN persistentes Bundle. Quiesce = neue DB-Zugriffe
+    # blocken (503) + laufende austrudeln + ACK. Resume = nur Gate freigeben
+    # (nichts wieder aufzubauen). Controller/Gate/Poller wie beim Webserver.
+    # ------------------------------------------------------------------
+    from maintenance import (Aktion, AckFile, MaintenanceController,
+                             MaintenanceGate, MaintenancePoller, PresenceBeacon,
+                             ServerRegistration)
+    from core.build_info import BuildInfo
+
+    _own_build = BuildInfo(project_root=Path(__file__).parent).build
+    _gate = MaintenanceGate()
+    server.maintenance_gate = _gate
+
+    _mh_host = socket.gethostname()
+    _mh_pid = os.getpid()
+    _mh_role = "management"
+
+    _registration = None
+    _beacon = None
+    if args.maintenance:
+        _fnow = WindowFlag.aktives_fenster(_maint_paths)
+        _registration = ServerRegistration.neu(
+            role=_mh_role, host=_mh_host, pid=_mh_pid, build=_own_build,
+            window_id=(_fnow.window_id if _fnow else ""), port=port,
+            config=args.config)
+        try:
+            _registration.schreiben(_maint_paths)
+            print("[management] Wartungs-Anmeldung: uuid=%s" % _registration.uuid)
+        except Exception as _exc:
+            print("[management] WARNUNG: Anmeldung nicht schreibbar: %s" % _exc,
+                  file=sys.stderr)
+    else:
+        _beacon = PresenceBeacon(role=_mh_role, host=_mh_host, pid=_mh_pid,
+                                 build=_own_build, port=port)
+        try:
+            _beacon.schreiben(_maint_paths)
+        except Exception as _exc:
+            print("[management] WARNUNG: Praesenz-Beacon nicht schreibbar: %s"
+                  % _exc, file=sys.stderr)
+
+    _MGMT_DRAIN_TIMEOUT_S = 30.0
+
+    def _ack_schreiben():
+        _f = WindowFlag.laden(_maint_paths)
+        _wid = _f.window_id if _f else ""
+        try:
+            AckFile(role=_mh_role, host=_mh_host, pid=_mh_pid,
+                    window_id=_wid).schreiben(_maint_paths)
+        except Exception as _exc:
+            print("[management] WARNUNG: ACK nicht schreibbar: %s" % _exc,
+                  file=sys.stderr)
+
+    def _ack_entfernen():
+        try:
+            AckFile(role=_mh_role, host=_mh_host, pid=_mh_pid,
+                    window_id="").entfernen(_maint_paths)
+        except Exception:
+            pass
+
+    def _quiesce(beenden):
+        print("[management] Wartungsmodus: Quiesce (beenden=%s)." % beenden)
+        if not _gate.block_and_drain(timeout=_MGMT_DRAIN_TIMEOUT_S):
+            print("[management] WARNUNG: Drain-Timeout — es liefen noch Requests "
+                  "(z.B. offene SSE-Verbindung).", file=sys.stderr)
+        # Kein persistentes Bundle: per-Request-Verbindungen sind mit dem Drain
+        # bereits geschlossen. Nur ACK schreiben.
+        _ack_schreiben()
+        print("[management] Wartungsmodus: Quiesce abgeschlossen (ACK geschrieben).")
+        if beenden:
+            server.shutdown()
+
+    def _resume():
+        _ack_entfernen()
+        _gate.unblock()   # Per-Request-Modell: nur freigeben, nichts neu aufbauen
+        print("[management] Wartungsmodus: Resume — Betrieb wieder aufgenommen.")
+
+    def _beenden_versionswaechter():
+        print("[management] Wartungsmodus: eigener Build %d unterschreitet "
+              "min_build — beende (keine alte Version auf neue Daten)." % _own_build)
+        server.shutdown()
+
+    def _terminate(grund):
+        print("[management] Wartungsmodus: %s — beende." % grund)
+        server.shutdown()
+
+    _aktionen = {
+        Aktion.QUIESCE_PAUSE: lambda: _quiesce(False),
+        Aktion.QUIESCE_BEENDEN: lambda: _quiesce(True),
+        Aktion.RESUME: _resume,
+        Aktion.BEENDEN_VERSIONSWAECHTER: _beenden_versionswaechter,
+        Aktion.SELBSTBEENDIGUNG_FENSTERENDE:
+            lambda: _terminate("Fensterende (--maintenance)"),
+        Aktion.KILL: lambda: _terminate("Kill angefordert (--maintenance)"),
+    }
+
+    def _touch():
+        if _beacon is not None:
+            try:
+                _beacon.touch(_maint_paths)
+            except Exception:
+                pass
+
+    _controller = MaintenanceController(
+        _maint_paths, own_build=_own_build,
+        im_wartungsmodus_gestartet=args.maintenance, registration=_registration)
+    _poller = MaintenancePoller(_controller, 3, _aktionen, on_touch=_touch)
+    _poller.start()
+
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         print("\n[management] Beende.")
     finally:
+        try:
+            _poller.stop()
+        except Exception:
+            pass
+        try:
+            if _registration is not None:
+                _registration.entfernen(_maint_paths)
+            if _beacon is not None:
+                _beacon.entfernen(_maint_paths)
+            _ack_entfernen()
+        except Exception:
+            pass
         server.server_close()
     return 0
 

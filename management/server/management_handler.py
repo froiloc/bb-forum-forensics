@@ -50,19 +50,28 @@ class ManagementRequestHandler(http.server.BaseHTTPRequestHandler):
         query = parse_qs(parts.query)
 
         if path == "/events":
-            self._handle_sse()
+            self._handle_sse()   # SSE prueft das Gate selbst (langlebige Route)
             return
 
-        app: ManagementApp = self.server.app  # type: ignore[attr-defined]
-        person_id: int = self.server.person_id  # type: ignore[attr-defined]
-        try:
-            resp = app.dispatch(person_id, path, query)
-        except Exception:
-            logger.exception("mgmt dispatch-Fehler fuer %s", path)
-            self._send_bytes(500, "application/json; charset=utf-8",
-                             b'{"error":"internal"}')
+        # Wartungsmodus (Build 437): bei blockiertem Gate HTTP 503 OHNE DB-Zugriff.
+        gate = getattr(self.server, "maintenance_gate", None)
+        if gate is not None and not gate.enter():
+            self._send_503_wartung()
             return
-        self._send_bytes(resp.status, resp.content_type, resp.body)
+        try:
+            app: ManagementApp = self.server.app  # type: ignore[attr-defined]
+            person_id: int = self.server.person_id  # type: ignore[attr-defined]
+            try:
+                resp = app.dispatch(person_id, path, query)
+            except Exception:
+                logger.exception("mgmt dispatch-Fehler fuer %s", path)
+                self._send_bytes(500, "application/json; charset=utf-8",
+                                 b'{"error":"internal"}')
+                return
+            self._send_bytes(resp.status, resp.content_type, resp.body)
+        finally:
+            if gate is not None:
+                gate.leave()
 
     # AUDITIERTER SCHREIBPFAD (Build 372). Der Server bleibt fuer alles ausser
     # den in ManagementApp.dispatch_write gelisteten Routen read-only.
@@ -78,6 +87,18 @@ class ManagementRequestHandler(http.server.BaseHTTPRequestHandler):
     _MAX_BODY = 64 * 1024
 
     def do_POST(self) -> None:
+        # Wartungsmodus (Build 437): bei blockiertem Gate HTTP 503, kein Schreibpfad.
+        gate = getattr(self.server, "maintenance_gate", None)
+        if gate is not None and not gate.enter():
+            self._send_503_wartung()
+            return
+        try:
+            self._do_POST_impl()
+        finally:
+            if gate is not None:
+                gate.leave()
+
+    def _do_POST_impl(self) -> None:
         app: ManagementApp = self.server.app  # type: ignore[attr-defined]
         person_id: int = self.server.person_id  # type: ignore[attr-defined]
         path = urlsplit(self.path).path
@@ -147,6 +168,11 @@ class ManagementRequestHandler(http.server.BaseHTTPRequestHandler):
     def _handle_sse(self) -> None:
         app: ManagementApp = self.server.app  # type: ignore[attr-defined]
         poll: float = getattr(self.server, "sse_poll_sec", DEFAULT_SSE_POLL_SEC)
+        gate = getattr(self.server, "maintenance_gate", None)
+        # Waehrend der Wartung keine NEUE SSE-Verbindung annehmen (DB-Zugriff).
+        if gate is not None and not gate.enter():
+            self._send_503_wartung()
+            return
         try:
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream; charset=utf-8")
@@ -160,6 +186,11 @@ class ManagementRequestHandler(http.server.BaseHTTPRequestHandler):
 
             while True:
                 time.sleep(poll)
+                # Beginnt eine Wartung, die SSE sauber beenden — sonst haelt diese
+                # langlebige Verbindung eine In-Flight-Zaehlung und der Drain
+                # kaeme nie durch (Build 437).
+                if gate is not None and gate.is_blocked():
+                    return
                 current = app.audit_tip_seq()
                 if current != last:
                     self.wfile.write(
@@ -173,6 +204,23 @@ class ManagementRequestHandler(http.server.BaseHTTPRequestHandler):
             return
         except Exception:
             logger.exception("mgmt SSE-Fehler")
+            return
+        finally:
+            if gate is not None:
+                gate.leave()
+
+    def _send_503_wartung(self) -> None:
+        """HTTP 503 (JSON) waehrend des Wartungsmodus."""
+        try:
+            body = b'{"error":"maintenance","detail":"Wartungsmodus aktiv."}'
+            self.send_response(503)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Retry-After", "30")
+            self.send_header("X-Forensic-Status", "MAINTENANCE")
+            self.end_headers()
+            self.wfile.write(body)
+        except (BrokenPipeError, ConnectionResetError):
             return
 
     # --------------------------------------------------------------- Senden
@@ -204,4 +252,7 @@ class ManagementHTTPServer(socketserver.ThreadingMixIn,
         self.app = app
         self.person_id = person_id
         self.sse_poll_sec = sse_poll_sec
+        # Wartungsmodus (Build 437): wird von management.py gesetzt. Ist es None,
+        # bleibt der Request-Pfad unveraendert.
+        self.maintenance_gate = None
         super().__init__((host, port), ManagementRequestHandler)
