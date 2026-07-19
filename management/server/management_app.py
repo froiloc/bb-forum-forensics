@@ -128,6 +128,8 @@ from management.support_overview.support_overview_repo import (
 )
 from management.support_sessions.support_sessions_repo import SupportSessionsRepo
 from management.stats.stats_repo import StatsRepo
+from management.stats.forecast import Forecaster, forecast_to_dict
+from management.stats.gantt import GanttModel, gantt_to_dict
 from management.reports.reports_repo import ReportsRepo
 from management.server.migration_status import MigrationStatusCheck
 from management.reports.approval_service import ApprovalService, ApprovalError
@@ -474,6 +476,10 @@ class ManagementApp:
             return self._mentoring(person_id)
         if path == "/api/stats":
             return self._stats(person_id, query)
+        if path == "/api/forecast":
+            return self._forecast(person_id)
+        if path == "/api/gantt":
+            return self._gantt(person_id)
         if path == "/api/assignable":
             return self._assignable(person_id)
         if path == "/api/reports":
@@ -904,6 +910,40 @@ class ManagementApp:
         if fmt == "csv":
             return Response.csv(200, StatsRepo.to_csv(stats))
         return Response.json(200, stats)
+
+    def _forecast(self, person_id: int) -> Response:
+        """
+        Backlog-Abbau-Prognose (3 Szenarien, read-only; Build 446/448). Wie
+        /api/results/stats eine FALLUEBERGREIFENDE Planungssicht -> verlangt
+        Scope 'alle' (sonst 403); gebunden an CAP_STATS (stats.export_sta).
+        Antwort = forecast_to_dict (Backlog, beobachtete Rate, Szenarien,
+        OFFENGELEGTE Annahmen, Kapazitaets-Kontext).
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_STATS) or policy.scope(CAP_STATS) != "alle":
+            return self._forbidden(CAP_STATS)
+        con = self._ro_con()
+        try:
+            result = Forecaster(con).compute(now_ts=int(time.time()))
+        finally:
+            con.close()
+        return Response.json(200, forecast_to_dict(result))
+
+    def _gantt(self, person_id: int) -> Response:
+        """
+        Gantt-Read-Model (Fall-Balken je Ermittler, read-only; Build 447/448).
+        Falluebergreifende Planungssicht -> Scope 'alle' (sonst 403), CAP_STATS.
+        Antwort = gantt_to_dict (Spuren mit Balken, Zeitraum, belegte Anker).
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_STATS) or policy.scope(CAP_STATS) != "alle":
+            return self._forbidden(CAP_STATS)
+        con = self._ro_con()
+        try:
+            result = GanttModel(con).build(now_ts=int(time.time()))
+        finally:
+            con.close()
+        return Response.json(200, gantt_to_dict(result))
 
     # =====================================================================
     # ZUWEISUNG — Lesepfad (GET) und AUDITIERTER SCHREIBPFAD (POST), Build 372.

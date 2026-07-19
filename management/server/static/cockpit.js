@@ -154,6 +154,7 @@
         // als leere Flaeche zu erscheinen.
         { id: 'results',    cap: 'results.view',         group: 'Auswertung',     label: 'Ermittlungsergebnis' },
         { id: 'stats',      cap: 'stats.export_sta',     group: 'Auswertung',     label: 'Statistiken (StA/Fuehrung)' },
+        { id: 'planung',    cap: 'stats.export_sta',     group: 'Auswertung',     label: 'Prognose & Gantt' },
         { id: 'workload',   cap: 'workload.view',        group: 'Auswertung',     label: 'Lastverteilung' },
         { id: 'capacity',   cap: 'capacity.edit',        group: 'Auswertung',     label: 'Kapazitaet' },
         { id: 'support',    cap: 'support_history.view', group: 'Auswertung',     label: 'Support-Historie' },
@@ -774,6 +775,40 @@
             renderError(mainEl,
                 'Statistiken konnten nicht geladen werden: ' + err.message);
         });
+    }
+
+    // loadPlanung: Prognose & Gantt (cockpit_planung.js, Build 448). Holt BEIDE
+    // read-only-Endpunkte (/api/forecast + /api/gantt) und rendert Szenario-
+    // Tabelle + zwei ECharts. Die Charts wandern nach state.charts, damit
+    // cleanupView sie beim Sichtwechsel entsorgt; je Chart ein Resize-Handler.
+    function loadPlanung(mainEl) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitPlanung : null;
+        if (!mod) {
+            renderError(mainEl, 'Planungs-Modul nicht geladen.');
+            return;
+        }
+        Promise.all([fetchJson('/api/forecast'), fetchJson('/api/gantt')])
+            .then(function (res) {
+                cleanupView();
+                var charts = mod.renderPlanung(
+                    mainEl, { forecast: res[0], gantt: res[1] }, {}) || [];
+                state.charts = charts;
+                // Resize-Handler je Chart (in cleanupView via dispose entsorgt;
+                // der Listener selbst wird ueber state.chartResize abgemeldet).
+                state.chartResize = function () {
+                    charts.forEach(function (c) {
+                        try { c.resize(); } catch (e) { log('resize', e); }
+                    });
+                };
+                window.addEventListener('resize', state.chartResize);
+                log('Planung gerendert:', charts.length, 'Diagramm(e)');
+            }).catch(function (err) {
+                cleanupView();
+                renderError(mainEl,
+                    'Prognose/Gantt konnten nicht geladen werden: ' + err.message);
+            });
     }
 
     // loadNotes: Betreuungs-Notizen ("Post-its", Build 406). Laedt das Board
@@ -1630,6 +1665,8 @@
             loadNotes(mainEl);
         } else if (viewId === 'stats') {
             loadStats(mainEl);
+        } else if (viewId === 'planung') {
+            loadPlanung(mainEl);
         } else if (viewId === 'assignment') {
             loadAssignment(mainEl);
         } else if (viewId === 'cases') {
@@ -1694,6 +1731,8 @@
                 loadNotes(undefined, { archived: state.notesArchived === true });
             } else if (state.activeId === 'stats') {
                 loadStats();
+            } else if (state.activeId === 'planung') {
+                loadPlanung();
             } else if (state.activeId === 'assignment') {
                 loadAssignment();
             } else if (state.activeId === 'results') {
