@@ -186,3 +186,92 @@ def test_rueckweg_nach_wal(datenverzeichnis):
 
 def test_fehlendes_verzeichnis(tmp_path):
     assert werkzeug.main(["--data-dir", str(tmp_path / "gibtsnicht")]) == 1
+
+
+# -----------------------------------------------------------------------------
+# 7) --db: genau EINE Datenbank konvertieren (Build 433)
+# -----------------------------------------------------------------------------
+
+def test_db_einzeldatei_konvertiert_nur_diese(datenverzeichnis, capsys):
+    """--db stempelt gezielt eine Datei um; die uebrigen bleiben unberuehrt.
+
+    Das ist der PROD-Weg: forensic_<uid>.db/evidence_<uid>.db umstempeln, ohne an
+    einer gesperrten geteilten coordinator.db zu haengen.
+    """
+    rc = werkzeug.main(["--db", str(datenverzeichnis["forensic"]), "--apply"])
+    assert rc == 0
+    assert _stempel(datenverzeichnis["forensic"]) == 1     # umgestempelt
+    assert _stempel(datenverzeichnis["evidence"]) == 2     # NICHT angefasst
+
+    ausgabe = capsys.readouterr().out
+    assert "Einzeldatei" in ausgabe
+
+    # Gegenprobe: Siegel der Beweismitteldatenbank haelt (inhaltsbasiert).
+    con = sqlite3.connect(str(datenverzeichnis["forensic"]))
+    try:
+        berechnet = StartupChecker(None, None)._compute_content_sha256(con)
+    finally:
+        con.close()
+    assert berechnet == datenverzeichnis["siegel"]
+
+
+def test_db_nicht_vorhanden_exit1(tmp_path):
+    assert werkzeug.main(["--db", str(tmp_path / "gibtsnicht.db"), "--apply"]) == 1
+
+
+# -----------------------------------------------------------------------------
+# 8) --skip-on-error: operative Fehler ueberspringen (Build 433)
+# -----------------------------------------------------------------------------
+
+def test_skip_on_error_ueberspringt_operativen_fehler(datenverzeichnis, capsys,
+                                                      monkeypatch):
+    """Ein gesperrter Datensatz (simuliert) wird gemeldet und uebersprungen,
+    die uebrigen DBs laufen normal. Exitcode 2 signalisiert 'nicht alles fertig'.
+    """
+    echt = werkzeug.verarbeite
+
+    def fake(db, ziel, apply):
+        # evidence_* verhaelt sich wie eine gesperrte DB in PROD.
+        if db.name.startswith("evidence_"):
+            raise werkzeug.ConvertError(
+                f"SQLite-Fehler bei '{db}': database is locked")
+        return echt(db, ziel, apply)
+
+    monkeypatch.setattr(werkzeug, "verarbeite", fake)
+
+    rc = werkzeug.main(["--data-dir", str(datenverzeichnis["data"]),
+                        "--skip-on-error", "--apply"])
+    assert rc == 2                                    # partiell: >=1 uebersprungen
+    assert _stempel(datenverzeichnis["forensic"]) == 1   # trotzdem konvertiert
+    assert _stempel(datenverzeichnis["evidence"]) == 2   # uebersprungen -> WAL
+
+    ausgabe = capsys.readouterr().out
+    assert "UEBERSPRUNGEN" in ausgabe
+    assert "evidence_9.db" in ausgabe                 # namentlich gemeldet (GR1)
+
+
+def test_ohne_skip_bricht_bei_operativem_fehler_ab(datenverzeichnis, monkeypatch):
+    """Rueckwaertskompatibel: ohne --skip-on-error fuehrt ein operativer Fehler
+    weiterhin zum harten Abbruch (Exitcode 1).
+    """
+    def fake(db, ziel, apply):
+        raise werkzeug.ConvertError("database is locked")
+    monkeypatch.setattr(werkzeug, "verarbeite", fake)
+    assert werkzeug.main(["--data-dir", str(datenverzeichnis["data"]),
+                          "--apply"]) == 1
+
+
+def test_siegelbruch_wird_nie_uebersprungen(datenverzeichnis, capsys, monkeypatch):
+    """Kernaussage: Ein SealError (Inhalts-Hash-Abweichung) bricht IMMER hart ab,
+    selbst mit --skip-on-error. Ehre der Beweiskraft vor Bequemlichkeit.
+    """
+    def fake(db, ziel, apply):
+        if db.name.startswith("forensic_"):
+            raise werkzeug.SealError("INHALTS-HASH HAT SICH GEAENDERT")
+        return False
+    monkeypatch.setattr(werkzeug, "verarbeite", fake)
+
+    rc = werkzeug.main(["--data-dir", str(datenverzeichnis["data"]),
+                        "--skip-on-error", "--apply"])
+    assert rc == 1
+    assert "SIEGELBRUCH" in capsys.readouterr().err

@@ -43,10 +43,27 @@
 #   python tools/convert_journal_mode.py --data-dir ./data              # Trockenlauf
 #   python tools/convert_journal_mode.py --data-dir ./data --apply      # scharf
 #   python tools/convert_journal_mode.py --data-dir ./data --to wal --apply
+#   python tools/convert_journal_mode.py --db ./data/forensic/forensic_1488.db --apply
+#   python tools/convert_journal_mode.py --data-dir ./data --skip-on-error --apply
 #
-# Exitcodes: 0 = alles gut / Trockenlauf ok, 1 = Fehler (inkl. Hash-Abweichung)
+# Build 433 (2026-07-19): Zwei Schalter ergaenzt, weil auf dem geteilten UNC-Share
+#   mehrere Server dieselbe coordinator.db offen halten und ein Lauf ueber das
+#   ganze Verzeichnis bisher an der ERSTEN gesperrten DB (alphabetisch:
+#   coordinator.db vor evidence_/forensic_) hart abbrach — die eigentlich zu
+#   konvertierenden Nutzer-DBs wurden nie erreicht. Beleg: PROD-Log 2026-07-19,
+#   forensic_1488.db/evidence_1488.db blieben WAL-gestempelt.
+#     --db PFAD        Genau EINE Datenbank konvertieren (statt --data-dir).
+#     --skip-on-error  Operative Fehler (locked, I/O, unerwarteter Stempel) werden
+#                      GEMELDET und uebersprungen, der Lauf faehrt mit den uebrigen
+#                      DBs fort (Grundregel 1: nie still). Ein SIEGELBRUCH
+#                      (Inhalts-Hash-Abweichung einer forensic_-DB) wird dabei
+#                      AUSDRUECKLICH NICHT uebersprungen — er bleibt harter Abbruch.
+#
+# Exitcodes: 0 = alles gut / Trockenlauf ok
+#            1 = harter Abbruch (Siegelbruch ODER Fehler ohne --skip-on-error)
+#            2 = Lauf beendet, aber >=1 DB wegen Fehler uebersprungen (--skip-on-error)
 # Abhaengigkeiten: sqlite3, hashlib (indirekt), pathlib — Stdlib + core.startup_checks
-# Version: v0.7.408 · Build: 408 · 2026-07-14
+# Version: v0.7.433 · Build: 433 · 2026-07-19
 # =============================================================================
 
 from __future__ import annotations
@@ -75,7 +92,24 @@ ERWARTETER_STEMPEL = {"delete": 1, "truncate": 1, "persist": 1, "wal": 2}
 
 
 class ConvertError(RuntimeError):
-    """Abbruchgrund, der eine weitere Verarbeitung verbietet."""
+    """
+    Operativer Abbruchgrund (z.B. Datei gesperrt, I/O-Fehler, unerwarteter
+    Header-Stempel). Mit --skip-on-error DARF eine solche DB uebersprungen und
+    der Lauf fortgesetzt werden — der Fehler wird dabei stets gemeldet (GR1).
+    """
+
+
+class SealError(ConvertError):
+    """
+    Siegelbruch: der INHALTS-SHA-256 einer forensic_-DB hat sich durch die
+    Umstempelung geaendert. Das darf nach Lage der Dinge nie passieren (der
+    Journalstempel steht im Header, nicht im Inhalt). Falls doch, ist es der
+    schwerwiegendste denkbare Fehler in einem Beweismittelwerkzeug.
+
+    Bewusst eine EIGENE Klasse (Unterklasse von ConvertError), damit --skip-on-error
+    ihn NICHT ueberspringen kann: ein Siegelbruch fuehrt IMMER zum harten Abbruch,
+    egal welche Schalter gesetzt sind. Ehre der Beweiskraft vor Bequemlichkeit.
+    """
 
 
 # -----------------------------------------------------------------------------
@@ -253,9 +287,10 @@ def verarbeite(db: Path, ziel: str, apply: bool) -> bool:
                         rueck = f"zurueckgestempelt auf '{aktiver_modus(con)}'"
                     except sqlite3.Error as exc2:      # pragma: no cover
                         rueck = f"RUECKSTEMPELUNG FEHLGESCHLAGEN: {exc2}"
-                    raise ConvertError(
+                    raise SealError(
                         "INHALTS-HASH HAT SICH GEAENDERT — Abbruch, keine weitere "
-                        f"Datei wird angefasst. Datei: {db}\n"
+                        f"Datei wird angefasst (auch mit --skip-on-error NICHT). "
+                        f"Datei: {db}\n"
                         f"  vorher : {hash_vorher}\n"
                         f"  nachher: {hash_nachher}\n"
                         f"  Rueckabwicklung: {rueck}"
@@ -301,39 +336,78 @@ def main(argv: Optional[list[str]] = None) -> int:
                     "(Trockenlauf ist Default)."
     )
     ap.add_argument("--data-dir", default="./data",
-                    help="Verzeichnis mit den *.db-Dateien (Default: ./data)")
+                    help="Verzeichnis mit den *.db-Dateien (Default: ./data). "
+                         "Wird ignoriert, wenn --db gesetzt ist.")
+    ap.add_argument("--db", default=None,
+                    help="Genau EINE Datenbankdatei konvertieren (Pfad). "
+                         "Nuetzlich, um gezielt eine Nutzer-DB umzustempeln, "
+                         "ohne an einer gesperrten geteilten DB (coordinator.db) "
+                         "zu haengen. Hat Vorrang vor --data-dir.")
+    ap.add_argument("--skip-on-error", action="store_true",
+                    help="Operative Fehler (locked, I/O, unerwarteter Stempel) "
+                         "melden und ueberspringen, statt abzubrechen — der Lauf "
+                         "faehrt mit den uebrigen DBs fort. Ein SIEGELBRUCH "
+                         "(Inhalts-Hash-Abweichung) wird NIE uebersprungen.")
     ap.add_argument("--to", default="delete", choices=list(ALL_TARGETS),
                     help="Zielmodus (Default: delete — Empfehlung fuer Netzlaufwerke)")
     ap.add_argument("--apply", action="store_true",
                     help="SCHARF schalten. Ohne diesen Schalter wird nichts geschrieben.")
     args = ap.parse_args(argv)
 
-    data = Path(args.data_dir)
-    if not data.is_dir():
-        print(f"[FEHLER] Datenverzeichnis nicht gefunden: {data}", file=sys.stderr)
-        return 1
+    # --- DB-Auswahl: --db (eine Datei) hat Vorrang vor --data-dir -------------
+    if args.db is not None:
+        einzel = Path(args.db)
+        if not einzel.is_file():
+            print(f"[FEHLER] --db: Datei nicht gefunden: {einzel}", file=sys.stderr)
+            return 1
+        dbs = [einzel]
+        quelle = f"Einzeldatei: {einzel.resolve()}"
+    else:
+        data = Path(args.data_dir)
+        if not data.is_dir():
+            print(f"[FEHLER] Datenverzeichnis nicht gefunden: {data}", file=sys.stderr)
+            return 1
+        dbs = sorted(data.rglob("*.db"))
+        quelle = f"Verzeichnis: {data.resolve()}"
 
     print("=" * 78)
     print(f"JOURNALMODUS-UMSTEMPELUNG — Ziel: '{args.to}' | "
           f"{'SCHARF (--apply)' if args.apply else 'TROCKENLAUF (nichts wird geschrieben)'}")
-    print(f"Verzeichnis: {data.resolve()}")
+    print(quelle)
+    if args.skip_on_error:
+        print("Modus      : --skip-on-error (operative Fehler werden gemeldet und "
+              "uebersprungen; Siegelbruch bricht dennoch hart ab)")
     print(f"SQLite     : {sqlite3.sqlite_version}")
     print("=" * 78)
 
-    dbs = sorted(data.rglob("*.db"))
     if not dbs:
         print("Keine *.db gefunden — nichts zu tun.")
         return 0
 
     geaendert = 0
-    try:
-        for db in dbs:
+    # Uebersprungene Dateien werden gesammelt und am Ende NAMENTLICH gemeldet
+    # (Grundregel 1: kein Beleg wird still uebergangen).
+    uebersprungen: list[tuple[Path, str]] = []
+
+    for db in dbs:
+        try:
             if verarbeite(db, args.to, args.apply):
                 geaendert += 1
-    except ConvertError as exc:
-        print(f"\n[ABBRUCH] {exc}", file=sys.stderr)
-        print("Es wurden KEINE weiteren Dateien angefasst.", file=sys.stderr)
-        return 1
+        except SealError as exc:
+            # Siegelbruch: IMMER harter Abbruch, unabhaengig von --skip-on-error.
+            print(f"\n[ABBRUCH — SIEGELBRUCH] {exc}", file=sys.stderr)
+            print("Es wurden KEINE weiteren Dateien angefasst.", file=sys.stderr)
+            return 1
+        except ConvertError as exc:
+            if args.skip_on_error:
+                print(f"    [UEBERSPRUNGEN wegen Fehler] {exc}", file=sys.stderr)
+                uebersprungen.append((db, str(exc)))
+                continue
+            print(f"\n[ABBRUCH] {exc}", file=sys.stderr)
+            print("Es wurden KEINE weiteren Dateien angefasst. "
+                  "(Mit --skip-on-error wuerde der Lauf die uebrigen DBs "
+                  "dennoch verarbeiten.)", file=sys.stderr)
+            return 1
 
     print("\n" + "=" * 78)
     if args.apply:
@@ -341,8 +415,20 @@ def main(argv: Optional[list[str]] = None) -> int:
     else:
         print(f"TROCKENLAUF: {geaendert} von {len(dbs)} Datenbanken WUERDEN "
               f"umgestempelt. Mit --apply scharf schalten.")
+
+    if uebersprungen:
+        # GR1: die uebersprungenen DBs werden ausdruecklich und vollstaendig
+        # aufgezaehlt, damit niemand von einem vollstaendigen Lauf ausgeht.
+        print(f"\nUEBERSPRUNGEN (wegen Fehler, --skip-on-error): {len(uebersprungen)}")
+        for db, grund in uebersprungen:
+            print(f"  {db}\n      -> {grund}")
+        print("Diese Datenbanken sind NICHT konvertiert und muessen nachgezogen "
+              "werden, sobald ihre Sperre aufgehoben ist.")
     print("=" * 78)
-    return 0
+
+    # Exitcode: 2, wenn der Lauf zwar durchlief, aber >=1 DB uebersprungen wurde.
+    # So erkennt auch eine Automatisierung, dass NICHT alles erledigt ist.
+    return 2 if uebersprungen else 0
 
 
 if __name__ == "__main__":
