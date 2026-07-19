@@ -155,6 +155,7 @@
         { id: 'results',    cap: 'results.view',         group: 'Auswertung',     label: 'Ermittlungsergebnis' },
         { id: 'stats',      cap: 'stats.export_sta',     group: 'Auswertung',     label: 'Statistiken (StA/Fuehrung)' },
         { id: 'planung',    cap: 'stats.export_sta',     group: 'Auswertung',     label: 'Prognose & Gantt' },
+        { id: 'annostats',  cap: 'stats.export_sta',     group: 'Auswertung',     label: 'Annotations-Statistik' },
         { id: 'workload',   cap: 'workload.view',        group: 'Auswertung',     label: 'Lastverteilung' },
         { id: 'capacity',   cap: 'capacity.edit',        group: 'Auswertung',     label: 'Kapazitaet' },
         { id: 'support',    cap: 'support_history.view', group: 'Auswertung',     label: 'Support-Historie' },
@@ -809,6 +810,37 @@
                 renderError(mainEl,
                     'Prognose/Gantt konnten nicht geladen werden: ' + err.message);
             });
+    }
+
+    // loadAnnostats: Annotations-Tortenstatistik (cockpit_annostats.js, Build
+    // 450). Holt /api/annotation-stats und rendert zwei ECharts-Kreise
+    // (Kategorie/Tag). Charts -> state.charts (cleanupView entsorgt); ein
+    // Resize-Handler fuer beide.
+    function loadAnnostats(mainEl) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitAnnostats : null;
+        if (!mod) {
+            renderError(mainEl, 'Annotations-Statistik-Modul nicht geladen.');
+            return;
+        }
+        fetchJson('/api/annotation-stats').then(function (data) {
+            cleanupView();
+            var charts = mod.renderAnnostats(mainEl, data, {}) || [];
+            state.charts = charts;
+            state.chartResize = function () {
+                charts.forEach(function (c) {
+                    try { c.resize(); } catch (e) { log('resize', e); }
+                });
+            };
+            window.addEventListener('resize', state.chartResize);
+            log('Annostats gerendert:', data.annotations_total, 'Annotationen');
+        }).catch(function (err) {
+            cleanupView();
+            renderError(mainEl,
+                'Annotations-Statistik konnte nicht geladen werden: '
+                + err.message);
+        });
     }
 
     // loadNotes: Betreuungs-Notizen ("Post-its", Build 406). Laedt das Board
@@ -1667,6 +1699,8 @@
             loadStats(mainEl);
         } else if (viewId === 'planung') {
             loadPlanung(mainEl);
+        } else if (viewId === 'annostats') {
+            loadAnnostats(mainEl);
         } else if (viewId === 'assignment') {
             loadAssignment(mainEl);
         } else if (viewId === 'cases') {
@@ -1733,6 +1767,8 @@
                 loadStats();
             } else if (state.activeId === 'planung') {
                 loadPlanung();
+            } else if (state.activeId === 'annostats') {
+                loadAnnostats();
             } else if (state.activeId === 'assignment') {
                 loadAssignment();
             } else if (state.activeId === 'results') {

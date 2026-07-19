@@ -130,6 +130,7 @@ from management.support_sessions.support_sessions_repo import SupportSessionsRep
 from management.stats.stats_repo import StatsRepo
 from management.stats.forecast import Forecaster, forecast_to_dict
 from management.stats.gantt import GanttModel, gantt_to_dict
+from management.stats.annotation_stats_repo import AnnotationStatsRepo
 from management.reports.reports_repo import ReportsRepo
 from management.server.migration_status import MigrationStatusCheck
 from management.reports.approval_service import ApprovalService, ApprovalError
@@ -480,6 +481,8 @@ class ManagementApp:
             return self._forecast(person_id)
         if path == "/api/gantt":
             return self._gantt(person_id)
+        if path == "/api/annotation-stats":
+            return self._annotation_stats(person_id)
         if path == "/api/assignable":
             return self._assignable(person_id)
         if path == "/api/reports":
@@ -944,6 +947,26 @@ class ManagementApp:
         finally:
             con.close()
         return Response.json(200, gantt_to_dict(result))
+
+    def _annotation_stats(self, person_id: int) -> Response:
+        """
+        Annotations-Tortenstatistik (read-only; Build 449/450). Aggregiert die
+        Fall-Annotationen nach Kategorie/Tag. SCOPE-BEWUSST: 'alle' -> alle
+        Faelle, 'eigene' -> nur eigene zugewiesene. Recht CAP_STATS. Die
+        evidence_<uid>.db werden ausschliesslich read-only gelesen.
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_STATS):
+            return self._forbidden(CAP_STATS)
+        scope = policy.scope(CAP_STATS)
+        con = self._ro_con()
+        try:
+            result = AnnotationStatsRepo(con, self._evidence_dir).compute(
+                scope=scope,
+                person_id=(None if scope == "alle" else person_id))
+        finally:
+            con.close()
+        return Response.json(200, result)
 
     # =====================================================================
     # ZUWEISUNG — Lesepfad (GET) und AUDITIERTER SCHREIBPFAD (POST), Build 372.

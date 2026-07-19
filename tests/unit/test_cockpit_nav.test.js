@@ -84,7 +84,8 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     // Build 425: 20 (neu: 'doctemplates' - Dokumentvorlagen, W3).
     // Build 427: 21 (neu: 'modules' - Baustein-Module, W1).
     // Build 448: 22 (neu: 'planung' - Prognose & Gantt, AP-2C).
-    expect(api.VIEW_CATALOG.length).toBe(22);
+    // Build 450: 23 (neu: 'annostats' - Annotations-Statistik, AP-2D).
+    expect(api.VIEW_CATALOG.length).toBe(23);
   });
 
   // CN03b (Build 384) --------------------------------------------------------
