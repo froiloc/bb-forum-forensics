@@ -64,7 +64,9 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
       "ops.view": "alle",
     };
     const ids = api.visibleViews(caps).map((v) => v.id);
-    expect(ids).toEqual(["dashboard", "workload", "integrity"]);
+    // Build 461: 'promotion' haengt ebenfalls an ops.view (Fremdforum-Promotion)
+    // und erscheint daher zusammen mit 'integrity'.
+    expect(ids).toEqual(["dashboard", "workload", "integrity", "promotion"]);
   });
 
   // CN03 -------------------------------------------------------------------
@@ -85,7 +87,8 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     // Build 427: 21 (neu: 'modules' - Baustein-Module, W1).
     // Build 448: 22 (neu: 'planung' - Prognose & Gantt, AP-2C).
     // Build 450: 23 (neu: 'annostats' - Annotations-Statistik, AP-2D).
-    expect(api.VIEW_CATALOG.length).toBe(23);
+    // Build 461: 24 (neu: 'promotion' - Fremdforum-Promotion, AP-2G).
+    expect(api.VIEW_CATALOG.length).toBe(24);
   });
 
   // CN03b (Build 384) --------------------------------------------------------

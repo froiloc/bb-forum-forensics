@@ -162,7 +162,8 @@
         { id: 'mycases',    cap: 'mycases.view',         group: 'Persoenlich',    label: 'Meine Auftraege' },
         { id: 'myhistory',  cap: 'myhistory.view',       group: 'Persoenlich',    label: 'Meine Historie' },
         { id: 'policy',     cap: 'policy.view',          group: 'Administration', label: 'Rechte / Policy' },
-        { id: 'integrity',  cap: 'ops.view',             group: 'Administration', label: 'Integritaet / Betrieb' }
+        { id: 'integrity',  cap: 'ops.view',             group: 'Administration', label: 'Integritaet / Betrieb' },
+        { id: 'promotion',  cap: 'ops.view',             group: 'Administration', label: 'Fremdforum-Promotion' }
     ];
 
     // Gueltige Scope-Werte fuer die Anzeige (weitere -> kein Tag).
@@ -1363,6 +1364,62 @@
         });
     }
 
+    // loadPromotion: FREMDFORUM-PROMOTION (Build 461, Frontend zu 460).
+    //   GET  /api/promotion          — Kandidaten (forensic da, evidence fehlt)
+    //                                  + ihr Promotions-Zustand (read, ops.view).
+    //   POST /api/promotion/decide   — auditierte Entscheidung (ops.promote).
+    // Wie ueberall gilt: KEIN optimistisches UI. Nach dem Schreiben wird die
+    // Sicht NEU geladen; die Rueckmeldung (Erfolg ODER Fehler) wird ueber
+    // 'pendingMsg' durch den Reload getragen, damit sie nicht still verloren
+    // geht (Grundregel 1). Der Kandidaten-Scan misst die PLATTE — nach einem
+    // Ereignis (SSE 'changed') kann sich der Bestand aendern -> neu messen.
+    function loadPromotion(mainEl, pendingMsg) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitPromotion : null;
+        if (!mod) {
+            renderError(mainEl, 'Promotions-Modul nicht geladen.');
+            return;
+        }
+        fetchJson('/api/promotion').then(function (data) {
+            cleanupView();
+            var canEdit = hasCap(state.capabilities, 'ops.promote');
+
+            function after(text, isError) {
+                loadPromotion(mainEl, { text: text, error: isError });
+            }
+
+            var view = mod.renderPromotion(mainEl, data, {
+                canEdit: canEdit,
+                onDecide: function (body) {
+                    postJson('/api/promotion/decide', body)
+                        .then(function (res) {
+                            after('Kandidat ' + res.user_id + ': ' + res.von
+                                + ' → ' + res.auf + ' (Beleg #'
+                                + res.audit_seq + ').', false);
+                        })
+                        .catch(function (err) {
+                            // Der Fehler wird NICHT verschluckt; danach wird der
+                            // TATSAECHLICHE Stand neu geladen.
+                            after('Fehler: ' + err.message + ' (es wurde nichts '
+                                + 'geschrieben — die Liste zeigt den '
+                                + 'tatsaechlichen Stand).', true);
+                        });
+                }
+            });
+
+            if (view && pendingMsg) {
+                view.setResult(pendingMsg.text, pendingMsg.error);
+            }
+            log('Promotion gerendert:', data.candidate_count, 'Kandidat(en)');
+        }).catch(function (err) {
+            cleanupView();
+            renderError(mainEl,
+                'Fremdforum-Promotion konnte nicht geladen werden: '
+                + err.message);
+        });
+    }
+
     // loadLectorate: LEKTORAT (W4, Build 413, Slice 1). Laedt die Berichtsliste
     // (/api/reports, scope-korrekt serverseitig) und rendert die Gegenlese-
     // Sicht: Auswahl + read-only Berichtstext-Vorschau (<iframe> auf
@@ -1687,6 +1744,8 @@
             loadOverview(mainEl);
         } else if (viewId === 'integrity') {
             loadIntegrity(mainEl);
+        } else if (viewId === 'promotion') {
+            loadPromotion(mainEl);
         } else if (viewId === 'workload') {
             loadWorkload(mainEl);
         } else if (viewId === 'capacity') {
@@ -1752,6 +1811,11 @@
                 loadOverview();
             } else if (state.activeId === 'integrity') {
                 loadIntegrity();   // aktualisiert Sicht UND Banner
+            } else if (state.activeId === 'promotion') {
+                // Eine Entscheidung (auch durch eine andere Chefin) erzeugt einen
+                // audit_log-Beleg; zudem misst die Sicht die Platte -> der
+                // Kandidatenbestand kann kippen. Also neu laden.
+                loadPromotion();
             } else if (state.activeId === 'workload') {
                 loadWorkload();
             } else if (state.activeId === 'capacity') {

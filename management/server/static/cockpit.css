@@ -804,3 +804,56 @@ td.aiw-cal-today { box-shadow: inset 0 0 0 2px var(--akzent); }
 .aiw-palette-item.aiw-palette-active .aiw-palette-grp { color: #cdd8e6; }
 .aiw-palette-lbl { font-size: 14px; }
 .aiw-palette-empty { padding: 10px 16px; color: #888; font-size: 13px; }
+
+/* ==========================================================================
+   Fremdforum-Promotion (Build 461) — cockpit_promotion.js
+   --------------------------------------------------------------------------
+   Eng auf '.aiw-promo-*' gefasst, damit keine bestehende Sicht ihr Aussehen
+   aendert. Endgueltige Aktionen (uebernommen/fremdzustaendig) werden im Panel
+   deutlich als solche markiert (gelbe Warnung), damit sie nicht versehentlich
+   ausgeloest werden — sie sind unwiderruflich (Zustandsmaschine, Build 460).
+   ========================================================================== */
+.aiw-promo-counts { margin: 10px 0 6px; display: flex; flex-wrap: wrap; gap: 8px; }
+.aiw-promo-badge { display: inline-flex; align-items: center; gap: 4px; }
+.aiw-promo-readonly { color: var(--muted); font-style: italic; }
+
+.aiw-promo-table {
+  width: 100%; border-collapse: collapse; margin-top: 12px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+  font-size: 13px;
+}
+.aiw-promo-table th, .aiw-promo-table td {
+  text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+.aiw-promo-table th { background: #f0f2f4; font-weight: 600; }
+.aiw-promo-table tr:last-child td { border-bottom: 0; }
+.aiw-promo-actions { white-space: nowrap; }
+
+.aiw-promo-btn {
+  font-size: 13px; padding: 6px 12px; margin: 2px 6px 2px 0;
+  border: 1px solid var(--line); border-radius: 4px;
+  background: #eef0f2; color: var(--ink); cursor: pointer;
+}
+.aiw-promo-btn:hover:not(:disabled) { background: #e2e7ea; }
+.aiw-promo-btn:focus-visible { outline: 2px solid var(--akzent); outline-offset: 1px; }
+
+/* Entscheidungs-Panel: gelb — die Entscheidung ist belegpflichtig. */
+.aiw-promo-panel:not(:empty) {
+  margin: 14px 0; padding: 12px 14px; font-size: 13px;
+  background: #fef9e7; border: 1px solid #f7dc6f; border-radius: 6px;
+}
+.aiw-promo-panel-title { font-weight: 600; margin-bottom: 8px; }
+.aiw-promo-warn {
+  margin: 6px 0 10px; padding: 8px 10px; color: #922b21; font-weight: 600;
+  background: #fdeded; border: 1px solid #f5b7b1; border-radius: 4px;
+}
+.aiw-promo-lbl { display: block; margin: 6px 0; color: var(--ink); }
+.aiw-promo-input {
+  margin-left: 8px; padding: 6px 8px; font-size: 13px;
+  border: 1px solid var(--line); border-radius: 4px; min-width: 260px;
+}
+
+.aiw-promo-result:not(:empty) { margin-top: 10px; font-size: 13px; }
+.aiw-promo-result.ok    { color: #1e6b3a; }
+.aiw-promo-result.error { color: #922b21; font-weight: 600; }
