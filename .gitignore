@@ -51,4 +51,5 @@ debug/devtools-network/last.har
 debug/test_2_91_console.js
 
 !management/*.md
+!documents/*.md
 !management/*.html
