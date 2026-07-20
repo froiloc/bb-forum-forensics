@@ -9,8 +9,8 @@
 #   Aufruf:  python -m management.external.case_release_admin <befehl> [...]
 #
 #     recipients                      Berechtigte AD-Empfaenger (aus config)
-#     list        [--user-id N] [--status S ...]
-#     grant       --user-id N --recipient KENNUNG --umfang bericht|akte|auszug
+#     list        [--subject-id N] [--status S ...]
+#     grant       --subject-id N --recipient KENNUNG --umfang bericht|akte|auszug
 #                 --grundlage TEXT --actor KENNUNG
 #     revoke      --id N --grund TEXT --actor KENNUNG
 #     umfang                          Katalog der Umfangsarten
@@ -20,7 +20,7 @@
 #
 #   EXIT-CODES: 0 = ok · 1 = Aufruf-/Fachfehler.
 #
-# Version: v0.7.462 · Build: 462 · 2026-07-20
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import argparse
@@ -92,7 +92,7 @@ def _print_releases(rows: List[dict]) -> None:
     print("-" * 92)
     for r in rows:
         print("%-5s %-7s %-16s %-8s %-12s %s"
-              % (r["id"], r["user_id"], (r["recipient_kennung"] or "")[:16],
+              % (r["id"], r["subject_id"], (r["recipient_kennung"] or "")[:16],
                  r["umfang"], r["status"], (r["recipient_display"] or "")[:34]))
     print("-" * 92)
 
@@ -111,11 +111,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     sub.add_parser("umfang", help="Katalog der Umfangsarten")
 
     p = sub.add_parser("list", help="Freigaben auflisten")
-    p.add_argument("--user-id", type=int, default=None)
+    p.add_argument("--subject-id", type=int, default=None)
     p.add_argument("--status", action="append", choices=list(STATUSES))
 
     p = sub.add_parser("grant", help="Fall freigeben (auditiert)")
-    p.add_argument("--user-id", type=int, required=True)
+    p.add_argument("--subject-id", type=int, required=True)
     p.add_argument("--recipient", required=True, help="AD-Kennung (NRW)")
     p.add_argument("--umfang", required=True, choices=list(UMFANG_ORDER))
     p.add_argument("--grundlage", required=True,
@@ -149,7 +149,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         if args.cmd == "list":
             repo = CaseReleaseRepo(con)
             rows = repo.list_releases(
-                user_ids=[args.user_id] if args.user_id is not None else None,
+                subject_ids=[args.subject_id] if args.subject_id is not None else None,
                 statuses=args.status)
             _print_releases(rows)
             return 0
@@ -160,11 +160,11 @@ def main(argv: Optional[List[str]] = None) -> int:
             repo = CaseReleaseRepo(
                 con, CoordinatorWriter(con, AuditLog(con)), ad=_ad(args))
             res = repo.grant(
-                user_id=args.user_id, recipient_kennung=args.recipient,
+                subject_id=args.subject_id, recipient_kennung=args.recipient,
                 umfang=args.umfang,
                 unbedenklichkeit_grundlage=args.grundlage, actor_id=actor)
             print("Fall %s an %s (%s) freigegeben — Freigabe %s (Beleg #%s)."
-                  % (args.user_id, res["recipient_kennung"],
+                  % (args.subject_id, res["recipient_kennung"],
                      res["recipient_display"], res["release_id"],
                      res["audit_seq"]))
             return 0

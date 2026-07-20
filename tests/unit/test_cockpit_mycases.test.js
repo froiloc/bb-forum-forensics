@@ -1,4 +1,6 @@
 /**
+ * Build 469: Schluesselumstellung user_id -> subject_id (M019)
+ * Version: v0.7.469 · Build: 469 · 2026-07-20
  * tests/unit/test_cockpit_mycases.test.js
  * IT-Forensisches Ermittlungswerkzeug — Baustelle 7: Cockpit Meine Auftraege
  *
@@ -35,10 +37,10 @@ function _data() {
   return {
     count: 2,
     cases: [
-      { user_id: 18, username: "b18", status: "in_progress", priority: 2,
+      { subject_id: 18, username: "b18", status: "in_progress", priority: 2,
         ampel: "gelb", event_count: 3, has_note: true,
         last_activity_at: 1000 },
-      { user_id: 20, username: "b20", status: "open", priority: 3,
+      { subject_id: 20, username: "b20", status: "open", priority: 3,
         ampel: "gruen", event_count: 0, has_note: false,
         last_activity_at: null },
     ],

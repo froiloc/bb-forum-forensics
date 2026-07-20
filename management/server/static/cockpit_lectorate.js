@@ -21,7 +21,8 @@
  *      kleine API (window.AIWCockpitLectorate). REINE Funktionen (kein DOM)
  *      sind separat exportiert und werden von vitest geprueft.
  *
- * Version: v0.7.413 · Build: 413 · 2026-07-14
+ * Build 469: Schluesselumstellung user_id -> subject_id (M019)
+ * Version: v0.7.469 · Build: 469 · 2026-07-20
  */
 (function () {
     'use strict';
@@ -68,17 +69,17 @@
         return list.filter(function (r) { return r && r.status === status; });
     }
 
-    // renderUrl: URL des read-only Berichtstexts (SF-1). user_id + report_id
+    // renderUrl: URL des read-only Berichtstexts (SF-1). subject_id + report_id
     // werden URL-kodiert (Multilingualitaet/Sonderzeichen unkritisch).
     function renderUrl(uid, rid) {
-        return '/api/report/render?user_id=' + encodeURIComponent(uid)
+        return '/api/report/render?subject_id=' + encodeURIComponent(uid)
             + '&report_id=' + encodeURIComponent(rid);
     }
 
     // reportLabel: Zeilentext eines Berichts in der Auswahl.
     function reportLabel(r) {
         if (!r) { return ''; }
-        return (r.username || ('uid ' + r.user_id)) + ' · '
+        return (r.username || ('uid ' + r.subject_id)) + ' · '
             + (r.title || '(ohne Titel)')
             + ' (' + (r.report_type || '?') + ', Nr. ' + (r.sequence_nr || '?')
             + ') — ' + statusLabel(r.status);
@@ -89,7 +90,7 @@
 
     // annotationsUrl: URL des Annotations-Support-Views (SF-2, Build 411).
     function annotationsUrl(uid, rid) {
-        return '/api/report/annotations?user_id=' + encodeURIComponent(uid)
+        return '/api/report/annotations?subject_id=' + encodeURIComponent(uid)
             + '&report_id=' + encodeURIComponent(rid);
     }
 
@@ -118,7 +119,7 @@
     // --- Kommentare (SF-3, Build 415) ---
     // commentsUrl: URL des Union-Lesepfads der Review-Kommentare (SF-3).
     function commentsUrl(uid, rid) {
-        return '/api/report/comments?user_id=' + encodeURIComponent(uid)
+        return '/api/report/comments?subject_id=' + encodeURIComponent(uid)
             + '&report_id=' + encodeURIComponent(rid);
     }
 
@@ -259,11 +260,11 @@
         preview.appendChild(ann);
 
         rows.forEach(function (r) {
-            var key = selectionKey(r.user_id, r.id);
+            var key = selectionKey(r.subject_id, r.id);
             var row = document.createElement('button');
             row.type = 'button';
             row.className = 'aiw-lectorate-item';
-            row.setAttribute('data-uid', String(r.user_id));
+            row.setAttribute('data-uid', String(r.subject_id));
             row.setAttribute('data-rid', String(r.id));
             row.setAttribute('data-key', key);
             row.textContent = reportLabel(r);
@@ -274,7 +275,7 @@
                 row.classList.add('is-active');
                 _state.selKey = key;
                 // Berichtstext read-only in den <iframe> laden.
-                frame.src = renderUrl(r.user_id, r.id);
+                frame.src = renderUrl(r.subject_id, r.id);
                 // Belege- UND Kommentar-Panel auf "laedt" setzen; die Abrufe
                 // laufen ueber opts.onSelect (cockpit.js holt Annotationen +
                 // Kommentare und ruft renderAnnotations/renderComments).
@@ -282,7 +283,7 @@
                 commentsLoading();
                 log('select', key, frame.src);
                 if (typeof opts.onSelect === 'function') {
-                    opts.onSelect(r.user_id, r.id);
+                    opts.onSelect(r.subject_id, r.id);
                 }
             });
             list.appendChild(row);
@@ -399,7 +400,7 @@
 
     // renderComments(data, opts): baut Formular (neuer Kommentar) + Liste der
     // vorhandenen Kommentare (Union aller Prueferinnen) in das Kommentar-Panel.
-    //   data — Antwort von /api/report/comments {user_id, report_id, comments[]}
+    //   data — Antwort von /api/report/comments {subject_id, report_id, comments[]}
     //   opts — { personId, onAdd(body), onResolve(body) }
     function renderComments(data, opts) {
         var panel = _state.comPanel;
@@ -407,7 +408,7 @@
         opts = opts || {};
         panel.innerHTML = '';
         var comments = (data && data.comments) ? data.comments : [];
-        var uid = data ? data.user_id : null;
+        var uid = data ? data.subject_id : null;
         var rid = data ? data.report_id : null;
 
         var head = document.createElement('h3');
@@ -456,7 +457,7 @@
                 return;
             }
             var body = {
-                user_id: uid, report_id: rid,
+                subject_id: uid, report_id: rid,
                 block_id: (blockIn.value || '').trim() || null,
                 comment_text: text,
                 suggested_content: (sug.value || '').trim() || null
@@ -528,7 +529,7 @@
                         btn.setAttribute('data-status', a[0]);
                         btn.textContent = a[1];
                         btn.addEventListener('click', function () {
-                            var rb = { user_id: uid, comment_id: c.comment_id,
+                            var rb = { subject_id: uid, comment_id: c.comment_id,
                                        status: a[0] };
                             log('resolveComment', rb);
                             if (typeof opts.onResolve === 'function') {

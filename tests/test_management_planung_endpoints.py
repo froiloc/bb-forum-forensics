@@ -11,7 +11,8 @@
 # PE03 — /api/gantt (supervisor): 200, lanes + total_bars; jeder Fall als Balken
 # PE04 — /api/gantt: 403 fuer scope 'eigene'
 #
-# Version: v0.7.448 · Build: 448 · 2026-07-19
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import json
@@ -135,7 +136,7 @@ class PlanungEndpointTests(unittest.TestCase):
         self.assertEqual(r.status, 200)
         d = json.loads(r.body.decode("utf-8"))
         self.assertEqual(d["total_bars"], 3)       # 18, 19, 20
-        bar_uids = {b["user_id"] for lane in d["lanes"] for b in lane["bars"]}
+        bar_uids = {b["subject_id"] for lane in d["lanes"] for b in lane["bars"]}
         self.assertEqual(bar_uids, {18, 19, 20})
         # Fall 20 ist unzugewiesen -> Rueckstau-Lane (assignee_id None)
         self.assertTrue(any(lane["assignee_id"] is None for lane in d["lanes"]))

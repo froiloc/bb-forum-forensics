@@ -23,7 +23,8 @@
 # der Status liegt seit dem Editor.js-Umbau am Bericht (reports.status), nicht
 # mehr am Absatz (Befund B3). Dies ist vermerkt, nicht still geloescht (GR1).
 #
-# Version: v0.7.402 · Build: 402 · 2026-07-14
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import json
@@ -50,7 +51,7 @@ class _Bundle:
 
 class _Context:
     def __init__(self, uid=42, username="TestNutzer"):
-        self.user_id = uid
+        self.subject_id = uid
         self.username = username
 
 

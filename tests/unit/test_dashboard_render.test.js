@@ -9,7 +9,7 @@
  * DR01 -- API nach dem Laden verfuegbar (window.AIWDashboard)
  * DR02 -- ampelClass(): rot/gelb/gruen + unknown
  * DR03 -- sortForDisplay(): Schwere zuerst (rot < gelb < gruen)
- * DR04 -- sortForDisplay(): Tiebreak Prioritaet, dann last_activity desc, dann user_id
+ * DR04 -- sortForDisplay(): Tiebreak Prioritaet, dann last_activity desc, dann subject_id
  * DR05 -- sortForDisplay(): mutiert die Eingabe nicht
  * DR06 -- supportLabel(): 'Support aktiv (N)' bzw. leer
  * DR07 -- assigneeLabel(): display_name > system_username > Gedankenstrich
@@ -17,7 +17,9 @@
  * DR09 -- reasonLabel(): bekannte Codes gemappt
  * DR10 -- renderInto(): Tabelle in Schwere-Reihenfolge, Ampelklassen, XSS-sicher
  *
- * Version: v0.7.322 · Build: 322 · 2026-07-04
+ * Build 469: Schluesselumstellung user_id -> subject_id (M019)
+ * Version: v0.7.469 · Build: 469 · 2026-07-20
+ 2026-07-20
  */
 
 import { describe, it, expect } from "vitest";
@@ -48,7 +50,7 @@ function _api() {
 function C(over) {
   return Object.assign(
     {
-      user_id: 1,
+      subject_id: 1,
       username: "u",
       status: "open",
       priority: 3,
@@ -85,35 +87,35 @@ describe("dashboard.js — Ampel-Dashboard Render-Schicht", () => {
   it("DR03 Sortierung: Schwere zuerst", () => {
     const D = _api();
     const out = D.sortForDisplay([
-      C({ user_id: 400, ampel: "gruen", priority: 1 }),
-      C({ user_id: 300, ampel: "gelb", priority: 1 }),
-      C({ user_id: 100, ampel: "rot", priority: 1 }),
+      C({ subject_id: 400, ampel: "gruen", priority: 1 }),
+      C({ subject_id: 300, ampel: "gelb", priority: 1 }),
+      C({ subject_id: 100, ampel: "rot", priority: 1 }),
     ]);
     expect(out.map((c) => c.ampel)).toEqual(["rot", "gelb", "gruen"]);
   });
 
-  it("DR04 Sortierung: Tiebreaks (Prio, last_activity desc, user_id)", () => {
+  it("DR04 Sortierung: Tiebreaks (Prio, last_activity desc, subject_id)", () => {
     const D = _api();
     const out = D.sortForDisplay([
-      C({ user_id: 200, ampel: "rot", priority: 2 }),
-      C({ user_id: 600, ampel: "rot", priority: 1, last_activity_at: 100 }),
-      C({ user_id: 500, ampel: "rot", priority: 1, last_activity_at: 900 }),
-      C({ user_id: 101, ampel: "rot", priority: 1, last_activity_at: 900 }),
+      C({ subject_id: 200, ampel: "rot", priority: 2 }),
+      C({ subject_id: 600, ampel: "rot", priority: 1, last_activity_at: 100 }),
+      C({ subject_id: 500, ampel: "rot", priority: 1, last_activity_at: 900 }),
+      C({ subject_id: 101, ampel: "rot", priority: 1, last_activity_at: 900 }),
     ]);
     // prio 1 vor prio 2; bei prio 1: neuere Aktivitaet (900) zuerst;
-    // bei gleicher Aktivitaet: kleinere user_id zuerst.
-    expect(out.map((c) => c.user_id)).toEqual([101, 500, 600, 200]);
+    // bei gleicher Aktivitaet: kleinere subject_id zuerst.
+    expect(out.map((c) => c.subject_id)).toEqual([101, 500, 600, 200]);
   });
 
   it("DR05 Sortierung mutiert Eingabe nicht", () => {
     const D = _api();
     const input = [
-      C({ user_id: 2, ampel: "gruen" }),
-      C({ user_id: 1, ampel: "rot" }),
+      C({ subject_id: 2, ampel: "gruen" }),
+      C({ subject_id: 1, ampel: "rot" }),
     ];
-    const before = input.map((c) => c.user_id).join(",");
+    const before = input.map((c) => c.subject_id).join(",");
     D.sortForDisplay(input);
-    expect(input.map((c) => c.user_id).join(",")).toBe(before);
+    expect(input.map((c) => c.subject_id).join(",")).toBe(before);
   });
 
   it("DR06 supportLabel", () => {
@@ -156,9 +158,9 @@ describe("dashboard.js — Ampel-Dashboard Render-Schicht", () => {
     const res = D.renderInto(
       container,
       [
-        C({ user_id: 400, ampel: "gruen", priority: 1 }),
-        C({ user_id: 100, ampel: "rot", priority: 1, username: evil }),
-        C({ user_id: 300, ampel: "gelb", priority: 1 }),
+        C({ subject_id: 400, ampel: "gruen", priority: 1 }),
+        C({ subject_id: 100, ampel: "rot", priority: 1, username: evil }),
+        C({ subject_id: 300, ampel: "gelb", priority: 1 }),
       ],
       { nowSec: 1000000 }
     );
@@ -167,8 +169,8 @@ describe("dashboard.js — Ampel-Dashboard Render-Schicht", () => {
     expect(res.rows).toBe(3);
     expect(rows.length).toBe(3);
     // Schwere-Reihenfolge: rot(100), gelb(300), gruen(400)
-    expect(rows[0].getAttribute("data-user-id")).toBe("100");
-    expect(rows[2].getAttribute("data-user-id")).toBe("400");
+    expect(rows[0].getAttribute("data-subject-id")).toBe("100");
+    expect(rows[2].getAttribute("data-subject-id")).toBe("400");
     // Ampelklasse an der Zeile
     expect(rows[0].className).toContain("aiw-ampel-rot");
     // XSS-Sicherheit: Benutzername als Text, NICHT als HTML interpretiert.

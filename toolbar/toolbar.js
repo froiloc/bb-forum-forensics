@@ -2,7 +2,16 @@
  * toolbar.js — Forensischer Werkzeugbalken
  * IT-Forensisches Ermittlungswerkzeug · Baustelle 3
  *
- * Version: v0.6.302 · Build: 302 · 2026-06-24
+ * Version: v0.7.469 · Build: 469 · 2026-07-20
+ *
+ * Aenderungen Build 469 (M019 — 2026-07-20):
+ *   Build 469: Schluesselumstellung user_id -> subject_id (M019).
+ *     /_forensic/status liefert den Fall-Schluessel jetzt als "subject_id";
+ *     _state.user_id wurde zu _state.subject_id. UNVERAENDERT blieben:
+ *     forum_user_id/forum_username (forensic_meta), die knownusers-Antwort
+ *     (default.db, Schluessel user_id) und target_user_id im annotate-Payload
+ *     (forum-semantische Fremd-uid). Historische Changelog-Eintraege unten
+ *     nennen weiterhin die damaligen Schluesselnamen.
  *
  * Aenderungen Build 302 (BS3 — 2026-06-24):
  *   PMSTableOrganizerModule._applyProgressBorders(): Fortschrittsrahmen auf
@@ -2561,7 +2570,7 @@
       // mit der aktuellen actualUid übereinstimmt. Sonst neu auflösen.
       // Beleg: Projektgespraech 2026-05-12.
       var actualUid  = ann.actualUid || null;
-      var isForign   = actualUid && actualUid !== _state.user_id &&
+      var isForign   = actualUid && actualUid !== _state.subject_id &&
                        actualUid !== _state.forumUserId;
       // Cache-Gültigkeit: aufgelöster uid muss mit actual_uid übereinstimmen
       var cacheValid = ann._resolvedActualUid &&
@@ -2654,7 +2663,7 @@
       } else {
         forumUser   = _state.forumUsername || _state.username ||
                       (_state.forumUserId ? ("uid_" + _state.forumUserId) : "—");
-        forumUserId = _state.forumUserId || _state.user_id || "—";
+        forumUserId = _state.forumUserId || _state.subject_id || "—";
       }
 
       // Kategorie-Optionen für Dropdown (Bug 2.76)
@@ -3008,7 +3017,10 @@
       var html = "";
       for (var i = 0; i < users.length; i++) {
         var u           = users[i];
-        var isActive     = (u.user_id === _state.user_id || u.user_id === _state.forumUserId);
+        // u.user_id stammt aus /_forensic/knownusers (default.db known_users,
+        // NICHT migriert — Schluessel bleibt user_id); _state.subject_id ist
+        // der Fall-Schluessel aus /status (seit M019 subject_id).
+        var isActive     = (u.user_id === _state.subject_id || u.user_id === _state.forumUserId);
         // Build 199: is_identified — polizeilich bereits identifiziert
         var isIdentified = !!(u.is_identified);
 
@@ -7970,17 +7982,20 @@
           // Bug 2.67 (Build 175): investigator_username = Ermittler (z.B. "paul"),
           // NICHT s.username = Beschuldigter (z.B. "uid_538299").
           // Beleg: Projektgespraech 2026-05-11 — status.py liefert jetzt investigator_username.
-          investigatorUsername: s.investigator_username || s.user_id || "—",
+          investigatorUsername: s.investigator_username || s.subject_id || "—",
           forumHostname:        s.forum_hostname || "",
-          // Bug 2.77/2.86 (Build 175/176): Forum-Username + user_id des Beschuldigten.
+          // Bug 2.77/2.86 (Build 175/176): Forum-Username + Fall-Schluessel des
+          // Beschuldigten. Build 469 (M019): /status liefert den Fall-Schluessel
+          // jetzt als "subject_id" (vorher "user_id"); forum_username und
+          // forum_user_id (forensic_meta) blieben unveraendert.
           // Build 176: forum_username kommt jetzt aus forensic_meta.key='username'
           // (= echter Forum-Benutzername), nicht mehr aus s.username (Fallback).
           // _state.forumUsername/forumUserId werden vom AnnotationPopupModule verwendet.
           // Beleg: Projektgespräch 2026-05-12 — Bug 2.86 (BS3).
           username:      s.username      || null,
-          user_id:       s.user_id       || null,
+          subject_id:    s.subject_id    || null,
           forumUsername: s.forum_username || s.username || null,
-          forumUserId:   s.forum_user_id  || String(s.user_id || ""),
+          forumUserId:   s.forum_user_id  || String(s.subject_id || ""),
         });
         ToolbarUIModule.updateSessionInfo();
         console.info(

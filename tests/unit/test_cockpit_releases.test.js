@@ -9,14 +9,16 @@
  * RL02 — Helfer: countsModel (fehlende -> 0), statusDotClass, allowedRevoke.
  * RL03 — renderReleases: Kopf, Kennzahlen, Freigaben-Tabelle; mit Recht
  *        Freigabe-Formular, ohne Recht Nur-Lesend-Hinweis (kein Formular).
- * RL04 — Grant-Formular: ungueltige user_id / leere Grundlage -> kein onGrant +
+ * RL04 — Grant-Formular: ungueltige subject_id / leere Grundlage -> kein onGrant +
  *        Fehlermeldung; gueltig -> onGrant mit korrektem Body.
  * RL05 — leere Empfaenger-Allowlist -> Hinweis statt Formular (Default-Deny).
  * RL06 — Widerruf: nur an aktiver Freigabe; Panel; leerer Grund -> kein
  *        onRevoke + Fehler; mit Grund -> onRevoke({release_id, grund}).
  * RL07 — widerrufene Freigabe: kein Widerruf-Button; Freitext XSS-sicher.
  *
- * Version: v0.7.463 · Build: 463 · 2026-07-20
+ * Build 469: Schluesselumstellung user_id -> subject_id (M019)
+ * Version: v0.7.469 · Build: 469 · 2026-07-20
+ 2026-07-20
  */
 
 import { describe, it, expect } from "vitest";
@@ -51,11 +53,11 @@ function _data() {
     recipients: [{ kennung: "h0b1234", display_name: "KHK Muster" }],
     ad_group: "SEC-Extern",
     releases: [
-      { id: 1, user_id: 18, fall_username: "boarder18",
+      { id: 1, subject_id: 18, fall_username: "boarder18",
         recipient_kennung: "h0b1234", recipient_display: "KHK Muster",
         umfang: "bericht", umfang_label: "Ermittlungsbericht (gesiegelt)",
         status: "freigegeben", status_label: "freigegeben" },
-      { id: 2, user_id: 19, fall_username: "boarder19",
+      { id: 2, subject_id: 19, fall_username: "boarder19",
         recipient_kennung: "h0c9999", recipient_display: "KOKin Beispiel",
         umfang: "akte", umfang_label: "vollstaendige Ermittlungsakte",
         status: "widerrufen", status_label: "widerrufen" },
@@ -118,14 +120,14 @@ describe("cockpit_releases.js — Externe Fallfreigabe (Build 463)", () => {
       canEdit: true, doc: doc, onGrant: (b) => calls.push(b),
     });
 
-    // ungueltige user_id
+    // ungueltige subject_id
     main.querySelector("#aiw-rel-grant-user").value = "abc";
     main.querySelector("#aiw-rel-grant-grundlage").value = "ok";
     main.querySelector("#aiw-rel-grant-submit").click();
     expect(calls.length).toBe(0);
     expect(main.querySelector("#aiw-rel-result").className).toContain("error");
 
-    // gueltige user_id, aber leere Grundlage
+    // gueltige subject_id, aber leere Grundlage
     main.querySelector("#aiw-rel-grant-user").value = "18";
     main.querySelector("#aiw-rel-grant-grundlage").value = "   ";
     main.querySelector("#aiw-rel-grant-submit").click();
@@ -137,7 +139,7 @@ describe("cockpit_releases.js — Externe Fallfreigabe (Build 463)", () => {
     main.querySelector("#aiw-rel-grant-submit").click();
     expect(calls.length).toBe(1);
     expect(calls[0]).toEqual({
-      user_id: 18, recipient_kennung: "h0b1234", umfang: "bericht",
+      subject_id: 18, recipient_kennung: "h0b1234", umfang: "bericht",
       unbedenklichkeit_grundlage: "StA-Freigabe 12/26",
     });
   });
@@ -198,7 +200,7 @@ describe("cockpit_releases.js — Externe Fallfreigabe (Build 463)", () => {
     const xss = doc.createElement("main");
     api.renderReleases(xss, {
       count: 1, counts: {}, recipients: [], umfang_catalog: [],
-      releases: [{ id: 3, user_id: 5, recipient_kennung: "h0b",
+      releases: [{ id: 3, subject_id: 5, recipient_kennung: "h0b",
         recipient_display: "<img src=x onerror=alert(1)>",
         umfang: "bericht", umfang_label: "b", status: "freigegeben",
         status_label: "freigegeben" }],

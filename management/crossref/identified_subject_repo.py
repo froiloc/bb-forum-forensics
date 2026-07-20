@@ -15,9 +15,10 @@
 #   subject_id == users.id; Geist: subject_id == prefix + mat_usernames.id,
 #   Beleg: Entscheidung SubjectID/Geisternutzer 2026-07-20). Bewusst KEIN FK auf
 #   cases: der Katalog ist global und betrifft teils Geister, fuer die (noch)
-#   kein Fallpaket existiert. Fuer Realnutzer joint subject_id heute schon auf
-#   cases.user_id. Die globale user_id->subject_id-Umstellung ist ein EIGENER
-#   Folge-Build (Datenmigrationsleitfaden), NICHT Teil von 468.
+#   kein Fallpaket existiert. Fuer Realnutzer joint subject_id auf
+#   cases.subject_id. Die globale user_id->subject_id-Umstellung ist mit
+#   Migration M019 (Build 469) vollzogen — dieses Modul war bereits vorher
+#   subject_id-nativ und blieb dadurch unveraendert.
 #
 # KONFIDENZ — ZWEI GETRENNTE ACHSEN (mc 2026-07-20):
 #   Achse 1 (HIER umgesetzt): Identitaets-Konfidenz, rein erkenntnisbezogen:
@@ -41,7 +42,7 @@
 #   Historie liegt im hash-verketteten audit_log. Ein No-Op (keine echte
 #   Aenderung) wirft und erzeugt KEINEN irrefuehrenden Beleg (Muster PersonRepo).
 #
-# Version: v0.7.468 · Build: 468 · 2026-07-20
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import logging

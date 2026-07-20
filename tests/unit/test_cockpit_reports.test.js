@@ -1,4 +1,6 @@
 /**
+ * Build 469: Schluesselumstellung user_id -> subject_id (M019)
+ * Version: v0.7.469 · Build: 469 · 2026-07-20
  * tests/unit/test_cockpit_reports.test.js
  * IT-Forensisches Ermittlungswerkzeug — Baustelle 7: Cockpit Berichts-Abnahme
  *
@@ -41,19 +43,19 @@ function _data() {
     rescanned: 1,
     count: 3,
     reports: [
-      { user_id: 18, username: "b18", id: 1, report_type: "interim",
+      { subject_id: 18, username: "b18", id: 1, report_type: "interim",
         sequence_nr: 1, title: "Zwischenbericht", created_by: "h002",
         created_at: 1783000000, status: "submitted", approvals: [] },
-      { user_id: 19, username: "b19", id: 1, report_type: "final",
+      { subject_id: 19, username: "b19", id: 1, report_type: "final",
         sequence_nr: 1, title: "Abschlussbericht", created_by: "h003",
         created_at: 1783100000, status: "approved",
         approvals: [{ approved_by: "h0a2898", approved_at: 1783200000,
                       is_final: false, note: null }] },
-      { user_id: 20, username: "b20", id: 1, report_type: "addendum",
+      { subject_id: 20, username: "b20", id: 1, report_type: "addendum",
         sequence_nr: 2, title: "Nachtrag", created_by: "h002",
         created_at: 1783300000, status: "draft", approvals: [] },
     ],
-    errors: [{ user_id: 21, error: "nicht lesbar: file is not a database" }],
+    errors: [{ subject_id: 21, error: "nicht lesbar: file is not a database" }],
     cases_without_db: [22, 23],
   };
 }

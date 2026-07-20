@@ -44,7 +44,8 @@
 //   ausschliesslich textContent (XSS: Freitexte stammen aus der Ermittlung,
 //   Benutzernamen aus dem beschlagnahmten Forum).
 //
-// Version: v0.7.390 · Build: 390 · 2026-07-12
+// Build 469: Schluesselumstellung user_id -> subject_id (M019)
+// Version: v0.7.469 · Build: 469 · 2026-07-20
 // =============================================================================
 
 (function () {
@@ -130,7 +131,7 @@
 
     // assessRequest: Anfrage bauen — mit Validierung VOR dem POST. Eine
     // Anfrage, die sicher scheitert, wird gar nicht erst gestellt.
-    // Die user_id fehlt ABSICHTLICH: der Server nimmt sie aus dem Kontext
+    // Die subject_id fehlt ABSICHTLICH: der Server nimmt sie aus dem Kontext
     // (der geoeffnete Fall). Sie hier mitzuschicken waere sinnlos und wuerde
     // serverseitig ohnehin ignoriert.
     function assessRequest(catalog, f) {

@@ -24,7 +24,7 @@
 #   (abschnitt,schluessel,wert) fuer die Weitergabe an Dritte.
 #
 # Beleg: Ideen §2.4 (Auswertung & Statistik StA/Fuehrung); DashboardRepo.
-# Version: v0.7.370 · Build: 370 · 2026-07-10
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import csv
@@ -98,7 +98,7 @@ class StatsRepo:
     def _throughput(self, person_id: Optional[int]):
         # Fall-Ereignisse je Kalendertag aus dem audit_log (target_type='case').
         # date(ts,'unixepoch') -> 'YYYY-MM-DD'. Fuer 'eigene' auf die eigenen
-        # Faelle eingeschraenkt (target_id ist TEXT der user_id).
+        # Faelle eingeschraenkt (target_id ist TEXT der subject_id).
         if person_id is None:
             cur = self._con.execute(
                 "SELECT date(ts,'unixepoch') AS day, COUNT(*) AS n "
@@ -108,7 +108,7 @@ class StatsRepo:
             cur = self._con.execute(
                 "SELECT date(ts,'unixepoch') AS day, COUNT(*) AS n "
                 "FROM audit_log WHERE target_type='case' AND target_id IN "
-                "  (SELECT CAST(user_id AS TEXT) FROM cases WHERE assigned_to=?) "
+                "  (SELECT CAST(subject_id AS TEXT) FROM cases WHERE assigned_to=?) "
                 "GROUP BY day ORDER BY day ASC", (person_id,))
         return [{"day": r[0], "count": r[1]} for r in cur.fetchall()]
 

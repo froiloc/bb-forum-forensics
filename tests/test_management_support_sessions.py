@@ -21,7 +21,8 @@
 # S14 — close_orphans() beendet mehrere Waisen, laesst frische stehen (Build 328)
 # S15 — verify_chain gruen nach close_orphans() (Build 328)
 #
-# Version: v0.7.328 · Build: 328 · 2026-07-07
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import os
@@ -77,6 +78,12 @@ class ManagementSupportSessionsTests(unittest.TestCase):
         )
         # support_sessions via echte Migration M003 anlegen (testet die DDL mit).
         m003_support_sessions.up(self.con)
+        # Build 469: M019-Teilschritt fuer DIESE Tabelle nachziehen. Der volle
+        # Runner-Lauf setzt alle 9 Schluesseltabellen voraus (M019.precount);
+        # hier genuegt exakt die Operation, die M019 auf support_sessions
+        # ausfuehrt (RENAME COLUMN, Weg A) — das Repo erwartet subject_id.
+        self.con.execute(
+            "ALTER TABLE support_sessions RENAME COLUMN user_id TO subject_id")
 
         AuditLog.create_schema(self.con)
         self.audit = AuditLog(self.con)
@@ -127,13 +134,13 @@ class ManagementSupportSessionsTests(unittest.TestCase):
         ).fetchone()
         return _json.loads(row["content"]) if row and row["content"] else {}
 
-    def _make_stale_session(self, user_id, supporter_id, actor_id, age_sec=10_000):
+    def _make_stale_session(self, subject_id, supporter_id, actor_id, age_sec=10_000):
         """
         Startet eine Sitzung und datiert started_at + last_heartbeat zurueck
         (realistisch: last_heartbeat >= started_at), sodass sie als Waise gilt.
         Gibt (session_id, last_heartbeat_ts) zurueck.
         """
-        sid = self.repo.start(user_id=user_id, supporter_id=supporter_id,
+        sid = self.repo.start(subject_id=subject_id, supporter_id=supporter_id,
                               actor_id=actor_id)
         ts = int(time.time()) - age_sec
         self.con.execute(
@@ -145,11 +152,11 @@ class ManagementSupportSessionsTests(unittest.TestCase):
 
     # ------------------------------------------------------------------- S01
     def test_s01_start_creates_row_and_audit(self):
-        sid = self.repo.start(user_id=42, supporter_id=1, actor_id=1)
+        sid = self.repo.start(subject_id=42, supporter_id=1, actor_id=1)
         self.assertIsInstance(sid, int)
         row = self._row(sid)
         self.assertIsNotNone(row)
-        self.assertEqual(row["user_id"], 42)
+        self.assertEqual(row["subject_id"], 42)
         self.assertEqual(row["supporter_id"], 1)
         self.assertIsNone(row["ended_at"])
         self.assertEqual(self._last_audit_type(),
@@ -157,7 +164,7 @@ class ManagementSupportSessionsTests(unittest.TestCase):
 
     # ------------------------------------------------------------------- S02
     def test_s02_heartbeat_updates_no_audit(self):
-        sid = self.repo.start(user_id=42, supporter_id=1, actor_id=1)
+        sid = self.repo.start(subject_id=42, supporter_id=1, actor_id=1)
         self._set_heartbeat(sid, 1000)  # künstlich alt
         n_aud = self._audit_count()
         ok = self.repo.heartbeat(sid)
@@ -168,7 +175,7 @@ class ManagementSupportSessionsTests(unittest.TestCase):
 
     # ------------------------------------------------------------------- S03
     def test_s03_end_sets_ended_and_audit(self):
-        sid = self.repo.start(user_id=42, supporter_id=1, actor_id=1)
+        sid = self.repo.start(subject_id=42, supporter_id=1, actor_id=1)
         seq = self.repo.end(sid, actor_id=1)
         self.assertIsNotNone(seq)
         self.assertIsNotNone(self._row(sid)["ended_at"])
@@ -177,7 +184,7 @@ class ManagementSupportSessionsTests(unittest.TestCase):
 
     # ------------------------------------------------------------------- S04
     def test_s04_end_idempotent(self):
-        sid = self.repo.start(user_id=42, supporter_id=1, actor_id=1)
+        sid = self.repo.start(subject_id=42, supporter_id=1, actor_id=1)
         self.repo.end(sid, actor_id=1)
         n_aud = self._audit_count()
         again = self.repo.end(sid, actor_id=1)
@@ -187,40 +194,40 @@ class ManagementSupportSessionsTests(unittest.TestCase):
     # ------------------------------------------------------------------- S05
     def test_s05_get_active_ignores_ended_and_stale(self):
         # aktive Sitzung
-        active = self.repo.start(user_id=42, supporter_id=1, actor_id=1)
+        active = self.repo.start(subject_id=42, supporter_id=1, actor_id=1)
         # beendete Sitzung
-        ended = self.repo.start(user_id=42, supporter_id=2, actor_id=2)
+        ended = self.repo.start(subject_id=42, supporter_id=2, actor_id=2)
         self.repo.end(ended, actor_id=2)
         # veraltete Sitzung (Heartbeat weit in der Vergangenheit)
-        stale = self.repo.start(user_id=42, supporter_id=2, actor_id=2)
+        stale = self.repo.start(subject_id=42, supporter_id=2, actor_id=2)
         self._set_heartbeat(stale, int(time.time()) - 10_000)
 
-        rows = self.repo.get_active(user_id=42, stale_sec=30)
+        rows = self.repo.get_active(subject_id=42, stale_sec=30)
         ids = [r["id"] for r in rows]
         self.assertEqual(ids, [active])
 
     # ------------------------------------------------------------------- S06
     def test_s06_get_active_counts_multiple(self):
-        self.repo.start(user_id=42, supporter_id=1, actor_id=1)
-        self.repo.start(user_id=42, supporter_id=2, actor_id=2)
+        self.repo.start(subject_id=42, supporter_id=1, actor_id=1)
+        self.repo.start(subject_id=42, supporter_id=2, actor_id=2)
         # anderer Fall — darf nicht mitzählen
-        self.repo.start(user_id=99, supporter_id=1, actor_id=1)
-        rows = self.repo.get_active(user_id=42, stale_sec=30)
+        self.repo.start(subject_id=99, supporter_id=1, actor_id=1)
+        rows = self.repo.get_active(subject_id=42, stale_sec=30)
         self.assertEqual(len(rows), 2)
         # sortiert nach started_at ASC (erster zuerst)
         self.assertEqual(rows[0]["system_username"], "h001")
 
     # ------------------------------------------------------------------- S07
     def test_s07_prune_removes_ended_and_stale_keeps_active(self):
-        active = self.repo.start(user_id=42, supporter_id=1, actor_id=1)
-        ended = self.repo.start(user_id=42, supporter_id=2, actor_id=2)
+        active = self.repo.start(subject_id=42, supporter_id=1, actor_id=1)
+        ended = self.repo.start(subject_id=42, supporter_id=2, actor_id=2)
         self.repo.end(ended, actor_id=2)
         # ended_at künstlich weit in die Vergangenheit setzen
         self.con.execute(
             "UPDATE support_sessions SET ended_at = ? WHERE id = ?",
             (int(time.time()) - 10_000, ended),
         )
-        stale = self.repo.start(user_id=43, supporter_id=1, actor_id=1)
+        stale = self.repo.start(subject_id=43, supporter_id=1, actor_id=1)
         self._set_heartbeat(stale, int(time.time()) - 10_000)
 
         deleted = self.repo.prune(older_than_sec=3600)
@@ -232,7 +239,7 @@ class ManagementSupportSessionsTests(unittest.TestCase):
 
     # ------------------------------------------------------------------- S08
     def test_s08_heartbeat_on_ended_returns_false(self):
-        sid = self.repo.start(user_id=42, supporter_id=1, actor_id=1)
+        sid = self.repo.start(subject_id=42, supporter_id=1, actor_id=1)
         self.repo.end(sid, actor_id=1)
         self.assertFalse(self.repo.heartbeat(sid))
 
@@ -243,7 +250,7 @@ class ManagementSupportSessionsTests(unittest.TestCase):
 
     # ------------------------------------------------------------------- S10
     def test_s10_chain_verifies(self):
-        sid = self.repo.start(user_id=42, supporter_id=1, actor_id=1)
+        sid = self.repo.start(subject_id=42, supporter_id=1, actor_id=1)
         self.repo.heartbeat(sid)  # kein Audit
         self.repo.end(sid, actor_id=1)
         result = self.audit.verify_chain()
@@ -272,7 +279,7 @@ class ManagementSupportSessionsTests(unittest.TestCase):
 
     # ------------------------------------------------------------------- S12
     def test_s12_close_orphans_leaves_fresh_untouched(self):
-        sid = self.repo.start(user_id=42, supporter_id=1, actor_id=1)  # frisch
+        sid = self.repo.start(subject_id=42, supporter_id=1, actor_id=1)  # frisch
         n_aud = self._audit_count()
         closed = self.repo.close_orphans(stale_sec=30)
         self.assertEqual(closed, 0)
@@ -281,7 +288,7 @@ class ManagementSupportSessionsTests(unittest.TestCase):
 
     # ------------------------------------------------------------------- S13
     def test_s13_close_orphans_skips_already_ended(self):
-        sid = self.repo.start(user_id=42, supporter_id=1, actor_id=1)
+        sid = self.repo.start(subject_id=42, supporter_id=1, actor_id=1)
         self.repo.end(sid, actor_id=1)                       # regulaer beendet
         self._set_heartbeat(sid, int(time.time()) - 10_000)  # alt, aber beendet
         n_aud = self._audit_count()
@@ -293,7 +300,7 @@ class ManagementSupportSessionsTests(unittest.TestCase):
     def test_s14_close_orphans_multiple(self):
         a, _ = self._make_stale_session(42, 1, 1)
         b, _ = self._make_stale_session(43, 2, 2)
-        fresh = self.repo.start(user_id=44, supporter_id=1, actor_id=1)  # bleibt
+        fresh = self.repo.start(subject_id=44, supporter_id=1, actor_id=1)  # bleibt
         closed = self.repo.close_orphans(stale_sec=30)
         self.assertEqual(closed, 2)
         self.assertIsNotNone(self._row(a)["ended_at"])

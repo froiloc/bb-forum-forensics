@@ -9,7 +9,8 @@
 # 'is_network_path()'. Alles andere — echte SQLite-Dateien, echte Header-Bytes,
 # echte Pruefmethode — bleibt unveraendert.
 #
-# Version: v0.7.409 · Build: 409 · 2026-07-14
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import sqlite3
@@ -47,7 +48,7 @@ def umgebung(tmp_path):
     """forensic (WAL) + evidence/default/coordinator (rollback) — wie auf S:\\."""
     ctx = SimpleNamespace(
         mode="cli",
-        user_id=9,
+        subject_id=9,
         forensic_db=_db(tmp_path / "forensic_9.db", wal=False),
         evidence_db=_db(tmp_path / "evidence_9.db", wal=False),
         default_db=_db(tmp_path / "default.db", wal=False),

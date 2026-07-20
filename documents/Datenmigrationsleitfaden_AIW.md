@@ -2,9 +2,9 @@
 
 ## IT-Forensisches Ermittlungswerkzeug Advanced Investigation Wrapper (AIW) · NRW
 
-**Version:** 0.2
-**Build-Bezug:** 315 (Code-Baseline; dieser Leitfaden ist Design-Grundlage für die Folge-Builds migration.db + Engine-Generalisierung)
-**Datum:** 2026-07-03
+**Version:** 0.3
+**Build-Bezug:** 469 (M019-Schlüsselumstellung; Abschnitte 1–12 unverändert aus v0.2/Build 315+408)
+**Datum:** 2026-07-20
 **Status:** Verbindlicher Workflow für Datenmigration im Produktivbetrieb
 **Klassifikation:** VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
 
@@ -15,6 +15,7 @@
 | Version | Build | Datum      | Änderung                                                                                                                                                              |
 | ------- | ----- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 0.1     | 303   | 2026-06-25 | Erstfassung — Migrationsleitfaden (Vier-Phasen-Workflow, Gerichtsfestigkeit, Einzel-DB)                                                                             |
+| 0.3     | 469   | 2026-07-20 | Neuer **Abschnitt 13**: Migration **M019** — globale Schlüsselumstellung `user_id` → `subject_id` in `coordinator.db` (Weg A, `RENAME COLUMN`): Vorher-Backup, Weg-A-PoC-Protokoll (`tools/poc_m019_weg_a.py`), Roll-forward, Verifikations-Checkliste, Rollback-Pfad. Beleg: mc-Freigabe 2026-07-20, PoC bestanden. |
 | 0.2     | 315   | 2026-07-03 | Fortschreibung für die **Datenbank-Flotte**: Bestandsaufnahme der vorhandenen Engine (`schema_migrations`), zentrale **`migration.db`** (Katalog/Inventar/Ledger), Rollentrennung, revidiertes Gegenzeichnungsmodell (lückenlose Belegbarkeit statt Instanz-Handunterschrift), geführter, teilautomatisierter **Companion-Workflow**, Dry-Run/Flottenplanung, Teil-Fehlschlag-Behandlung. Belege: `management/migrations/runner.py`, `management/migrate.py`, `evidence_schema_db.sql`. Grundlage: mc 2026-07-03. |
 
 > **Lesehinweis zur v0.2:** Die Abschnitte 1–5 (Prinzipien, Phase 0, Vier-Phasen-Workflow, Teamregeln, Tool-Landschaft) aus v0.1 bleiben **inhaltlich erhalten**. Neu bzw. revidiert sind: die Verfeinerung des Vieraugenprinzips in §1 und Phase 3, sowie die **neuen Abschnitte 6–11** zur Flotten-Migration. Wo v0.2 einen v0.1-Punkt präzisiert, ist dies ausdrücklich vermerkt — es wird nichts stillschweigend ersetzt (Grundregel 1).
@@ -323,4 +324,33 @@ Schlägt eine Prüfung fehl: **Stop-and-Flag**, automatische Wiederherstellung a
 **Serverseitige Weiche (`db/journal_policy.py`, `config.yaml` → `db.journal_mode`):** Default `auto` — WAL versuchen, bei Fehlschlag protokollierter Rückfall auf `delete`. Auf lokaler Platte (PROD) greift WAL wie bisher; das Verhalten dort ist unverändert.
 
 **Offen (Architekturfrage, kein Bugfix):** Mehrere Rechner, die gleichzeitig **schreibend** auf **eine** `coordinator.db` auf einem SMB-Share zugreifen, sind auch im Rollback-Journalmodus keine von SQLite unterstützte Konfiguration (Sperren über Netzwerkspeicher). Für den Produktivbetrieb ist zu klären, ob dieser Fall auftritt.
+
+---
+
+## 13. Migration M019 — Schlüsselumstellung `user_id` → `subject_id` in `coordinator.db` (NEU, Build 469)
+
+**Anlass und Entscheidung (mc 2026-07-20):** Der Ermittlungsschlüssel wird global von `user_id` auf `subject_id` (Prepper-Schema: Realnutzer `subject_id == users.id`; Geist `subject_id == prefix + mat_usernames.id`, `prefix = 1.000.000.000` beim Fall) umgestellt, damit die 552.334 Geister-Namen ohne Konto im gesamten Werkzeug schlüsselfähig werden. Belege: `claude_Entscheidung_SubjectID_Schema_Geisternutzer_2026-07-20.md`, `claude_Einstieg_Bauplan_Migration_user_id_zu_subject_id_v0_1.md`, mc-Freigabe Weg A 2026-07-20.
+
+**Betroffen:** ausschließlich `coordinator.db` — 9 Tabellen (`cases` PK, `case_events`, `external_matters`, `investigation_results` mit Trigger/View/Index, `case_release`, `scrape_jobs`, `support_sessions`, `evidence_scan_cache` PK, `forum_promotion` UNIQUE), 6 Indizes, 1 Trigger, 1 View. **Nicht betroffen:** die versiegelten Paket-DBs `evidence_/forensic_/assets_<uid>.db` (für Realnutzer gilt `subject_id == user_id`; Geister-Pakete existieren noch nicht), `default.db`, `templates.db`, sowie `approved_reports.db` (physische Spalte bleibt `user_id`, Repo-API bildet per SQL-Alias auf `subject_id` ab — verlustfrei rückbaubar; eigene Migration bei Bedarf). Der **Migrationsvorbehalt der Beweis-DBs wird nicht ausgelöst**; es gilt die **reduzierte Zeremonie** der coordinator-Zeile (§6.0), wegen Produktivdaten seit 01.07. aber mit verschärfter Verifikation.
+
+**Verfahren (Weg A):** `ALTER TABLE … RENAME COLUMN user_id TO subject_id` je Tabelle, in EINER Transaktion des MigrationRunners (`m019_subject_id_rename.py`, KIND=destructive mit precount/postcount/verify). SQLite ≥ 3.25 mit `legacy_alter_table=OFF` zieht die `REFERENCES`-Klauseln der 4 FK-Kinder sowie Trigger-/View-/Index-Rümpfe automatisch nach (derselbe Mechanismus trug M005 `investigators`→`person`). **Keine Zeile wird kopiert oder gelöscht** — das Datenverlust-Risiko ist konstruktiv null. Zusätzlich: Index-Umbenennung `scrape_jobs_user_idx`→`scrape_jobs_subject_idx`, `case_events_user_time_idx`→`case_events_subject_time_idx` (DROP+CREATE) und Meta-Beleg `subject_key_meta` (id=1, scheme='prepper-subject-id', scheme_version=1, migrated_from='user_id'; der prefix-Wert wird bewusst NICHT dupliziert — Autorität ist `mat_subject_map_meta` des Preppers).
+
+**Workflow (verbindlich, Reihenfolge einhalten):**
+
+1. **Phase 1 — Backup:** Dienste stoppen (kein offener Writer auf `coordinator.db`). `sqlite3 coordinator.db "VACUUM INTO 'backup/coordinator_pre_m019.db'"`; SHA512 + Manifest + GPG gemäß §3 Phase 1.
+2. **Weg-A-PoC auf der Kopie (Pflicht-Gate):** `python tools\poc_m019_weg_a.py backup\coordinator_pre_m019_arbeitskopie.db` (Arbeitskopie des Backups, **ohne** `--seed`!). Das Skript prüft ausgabelastig: `legacy_alter_table=0`, RENAME auf PK-Spalte, FK-/Trigger-/View-/Index-Propagation, `foreign_key_check` leer, `integrity_check` ok, Zeilenzahlen/Werte identisch, Append-only-Schutz inkl. Beleg-Kopplung `audit_seq 0→seq`. Erwartung: **„WEG A GANGBAR"**. Konsolenprotokoll zu den Phase-2-Artefakten nehmen. Meldet das Skript vorbestehende FK-Verletzungen: nicht stillschweigend weiter — erst aufklären (Grundregel 1). Fällt der PoC durch: **STOP**, Weg B (Rebuild) gemäß Einstiegs-Bauplan §3 bauen.
+3. **Roll-forward:** Code-Stand Build 469 ausrollen (Migration + Code-Sweep sind EIN atomarer Build — Alt-Code kann mit migrierter DB nicht arbeiten und umgekehrt). Dann `python -m management.migrate --coordinator-db <pfad> --deployed-by <name>` → wendet M019 an; der Runner protokolliert in `schema_migrations` + Audit-Kette (MIGRATION_APPLIED), `verify_chain()` läuft mit.
+4. **Verifikations-Checkliste (nach dem Lauf):**
+   - [ ] `schema_migrations` enthält Version 19; `row_count_before == row_count_after`.
+   - [ ] Alle 9 Tabellen: Spalte `subject_id` vorhanden, `user_id` nicht mehr (`PRAGMA table_info`).
+   - [ ] `PRAGMA foreign_key_check;` leer · `PRAGMA integrity_check;` = ok.
+   - [ ] `subject_key_meta`: (1, 'prepper-subject-id', 1, 'user_id').
+   - [ ] Audit-Kette: `verify_chain()` OK (Ausgabe von `management.migrate`).
+   - [ ] Stichprobe: bekannte Fall-IDs (z. B. via Cockpit) unter `subject_id` unverändert auffindbar.
+   - [ ] Kaltstart-Selbsttest: Management-Server startet, Cockpit-Fallliste lädt, ein Fall öffnet.
+5. **Rollback-Pfad:** Bei jedem Fehlschlag rollt der Runner die Transaktion selbst zurück (kein Teilzustand). Für den Katastrophenfall: Dienste stoppen, `coordinator.db` durch das Phase-1-Backup ersetzen (SHA512-Abgleich!), Code-Stand auf Build 468 zurücksetzen — Alt-DB und Alt-Code passen zusammen. Der Vorgang ist im Ledger/Deployment-Protokoll zu dokumentieren.
+
+**Code-Sweep (Bestandteil von Build 469, dieselbe Auslieferung):** Alle SQL-Strings, Python-/JS-Namen, Management-JSON-Keys und CLI-Flags (`--user-id`→`--subject-id`) sind subject_id-nativ (mc-Entscheidung: volle Nativität, keine Alias-Flags). **Ausnahmen (bewusst unverändert):** Schemata/Keys der nicht migrierten DBs (`known_users.user_id` in `default.db`, forensic_meta-Key `'user_id'`, `scraper_log.user_id` in evidence), forum-semantische IDs (`forum_user_id`, `target_user_id`, `actor_user_id`), Dateinamensmuster `evidence_/forensic_/assets_<uid>.db`, sowie **Lese-Fallbacks für historische audit_log-Payloads** (Alt-Einträge tragen den Key `user_id`; die Hash-Kette ist unveränderlich — Leser versuchen `subject_id`, fallen auf `user_id` zurück; neue Payloads schreiben `subject_id`).
+
+**Hinweis Betriebsskripte:** Wer `--user-id` in eigenen Aufrufskripten verwendet (z. B. Prepper-Übergabe, Admin-CLIs), muss auf `--subject-id` umstellen — die alten Flags existieren nicht mehr.
 

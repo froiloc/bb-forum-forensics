@@ -21,7 +21,7 @@
 #   im Cache mit 'error' vermerkt. Ein fehlender cases-Eintrag oder ein Fall
 #   ohne DB ist ebenfalls ein sichtbarer Zustand, kein Schweigen.
 #
-# Version: v0.7.374 · Build: 374 · 2026-07-10
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import json
@@ -64,13 +64,13 @@ class ReportsRepo:
         errors: List[Dict[str, Any]] = []
         rescanned = 0
 
-        for user_id, path in cases:
+        for subject_id, path in cases:
             fp = EvidenceScanner.fingerprint(path)
-            hit = cached.get(user_id)
+            hit = cached.get(subject_id)
             if (not force) and hit and hit["fingerprint"] == fp:
                 # Cache-Treffer: DB NICHT anfassen.
                 if hit["error"]:
-                    errors.append({"user_id": user_id, "error": hit["error"],
+                    errors.append({"subject_id": subject_id, "error": hit["error"],
                                    "cached": True})
                     continue
                 rows = json.loads(hit["reports_json"])
@@ -83,17 +83,17 @@ class ReportsRepo:
                 # der naechste Scan wuerde erneut alles einlesen (Cache wirkungs-
                 # los). Daher: Abdruck NACH dem Lesen bilden und ablegen.
                 fp_after = EvidenceScanner.fingerprint(path)
-                self._store_cache(user_id, fp_after, rows, err)
+                self._store_cache(subject_id, fp_after, rows, err)
                 if err:
-                    errors.append({"user_id": user_id, "error": err,
+                    errors.append({"subject_id": subject_id, "error": err,
                                    "cached": False})
                     continue
 
             for r in rows:
                 item = dict(r)
-                item["user_id"] = user_id
-                item["username"] = usernames.get(user_id)
-                item["assigned_to"] = assignees.get(user_id)
+                item["subject_id"] = subject_id
+                item["username"] = usernames.get(subject_id)
+                item["assigned_to"] = assignees.get(subject_id)
                 reports.append(item)
 
         # Faelle, die in coordinator.db bekannt sind, aber KEINE evidence-DB
@@ -101,7 +101,7 @@ class ReportsRepo:
         have = {uid for uid, _ in cases}
         missing = [uid for uid in usernames if uid not in have]
 
-        reports.sort(key=lambda r: (r["user_id"], r.get("sequence_nr") or 0,
+        reports.sort(key=lambda r: (r["subject_id"], r.get("sequence_nr") or 0,
                                     r.get("id") or 0))
         return {
             "evidence_dir": str(self._scanner.directory),
@@ -163,25 +163,25 @@ class ReportsRepo:
     def _load_cache(self) -> Dict[int, Dict[str, Any]]:
         try:
             cur = self._con.execute(
-                "SELECT user_id, fingerprint, reports_json, error "
+                "SELECT subject_id, fingerprint, reports_json, error "
                 "FROM evidence_scan_cache")
         except sqlite3.Error:
             return {}
         return {r[0]: {"fingerprint": r[1], "reports_json": r[2],
                        "error": r[3]} for r in cur.fetchall()}
 
-    def _store_cache(self, user_id: int, fingerprint: str,
+    def _store_cache(self, subject_id: int, fingerprint: str,
                      rows: List[Dict[str, Any]], error: Optional[str]) -> None:
         try:
             self._con.execute(
                 "INSERT INTO evidence_scan_cache "
-                "(user_id, fingerprint, reports_json, scanned_at, error) "
+                "(subject_id, fingerprint, reports_json, scanned_at, error) "
                 "VALUES (?, ?, ?, ?, ?) "
-                "ON CONFLICT(user_id) DO UPDATE SET "
+                "ON CONFLICT(subject_id) DO UPDATE SET "
                 "  fingerprint=excluded.fingerprint, "
                 "  reports_json=excluded.reports_json, "
                 "  scanned_at=excluded.scanned_at, error=excluded.error",
-                (user_id, fingerprint, json.dumps(rows, ensure_ascii=False),
+                (subject_id, fingerprint, json.dumps(rows, ensure_ascii=False),
                  int(time.time()), error))
         except sqlite3.Error as exc:
             # Cache-Fehler duerfen die Sicht nicht kippen — aber sie werden
@@ -197,13 +197,13 @@ class ReportsRepo:
     def _case_usernames(self) -> Dict[int, str]:
         try:
             return {r[0]: r[1] for r in self._con.execute(
-                "SELECT user_id, username FROM cases")}
+                "SELECT subject_id, username FROM cases")}
         except sqlite3.Error:
             return {}
 
     def _case_assignees(self) -> Dict[int, Optional[int]]:
         try:
             return {r[0]: r[1] for r in self._con.execute(
-                "SELECT user_id, assigned_to FROM cases")}
+                "SELECT subject_id, assigned_to FROM cases")}
         except sqlite3.Error:
             return {}

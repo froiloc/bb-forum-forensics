@@ -18,7 +18,8 @@
 # RF09 — json_payload_sha256 deterministisch + aenderungssensitiv
 # RF10 — dashboard mit envelope: '</script>'-Zaehlung unveraendert (2), Band kein Script
 #
-# Version: v0.7.442 · Build: 442 · 2026-07-19
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import hashlib
@@ -47,7 +48,7 @@ def _env(**over):
     return ExportEnvelope(ExportContext(**base))
 
 
-_ROWS = [{"user_id": 4201, "username": "täter_süd", "ampel": "rot"}]
+_ROWS = [{"subject_id": 4201, "username": "täter_süd", "ampel": "rot"}]
 
 
 def test_rf01_dashboard_without_envelope_unchanged():
@@ -73,7 +74,7 @@ def test_rf03_workload_with_envelope():
 
 
 def test_rf04_support_with_envelope():
-    recs = [{"session_id": 1, "user_id": 4201}]
+    recs = [{"session_id": 1, "subject_id": 4201}]
     html = build_support_overview_html(recs, "CSS", "JS", envelope=_env())
     assert 'class="aiw-export-band"' in html
     assert json_payload_sha256(recs) in html
@@ -133,7 +134,7 @@ def test_rf08_band_escapes_and_keeps_utf8():
 def test_rf09_json_digest_deterministic_and_sensitive():
     a = json_payload_sha256(_ROWS)
     assert a == json_payload_sha256([dict(_ROWS[0])])
-    changed = [{"user_id": 4201, "username": "täter_süd", "ampel": "gelb"}]
+    changed = [{"subject_id": 4201, "username": "täter_süd", "ampel": "gelb"}]
     assert json_payload_sha256(changed) != a
 
 

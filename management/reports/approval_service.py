@@ -33,7 +33,7 @@
 # Build 380: return_to_draft() — Rueckgabe zur Nachbesserung (submitted -> draft)
 #   durch Lektor/Chef-Ermittlerin, auditiert (REPORT_RETURNED).
 #
-# Version: v0.7.380 · Build: 380 · 2026-07-10
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import logging
@@ -70,10 +70,10 @@ class ApprovalService:
         self._sealdb = ApprovedReportsDb(approved_db_path)
 
     # ---------------------------------------------------------------- public
-    def approve(self, *, user_id: int, report_id: int, actor_id: int,
+    def approve(self, *, subject_id: int, report_id: int, actor_id: int,
                 actor_username: str, is_final: bool = False,
                 note: Optional[str] = None) -> Dict[str, Any]:
-        ev = self._evidence_path(user_id)
+        ev = self._evidence_path(subject_id)
         sealer = ReportSealer(ev)
 
         # --- Schritt 1: lesen + hashen (read-only) --------------------------
@@ -81,7 +81,7 @@ class ApprovalService:
             status = sealer.status_of(report_id)
             if status is None:
                 raise ApprovalError("Bericht %s in Fall %s nicht gefunden."
-                                    % (report_id, user_id))
+                                    % (report_id, subject_id))
             if is_final and status not in _FINALIZABLE:
                 raise ApprovalError(
                     "Endgueltige Freigabe nur aus Status %s moeglich "
@@ -103,20 +103,20 @@ class ApprovalService:
         def _w(con: sqlite3.Connection) -> Dict[str, Any]:
             # Der Beleg selbst traegt die Nutzlast; es gibt keine eigene
             # coordinator-Tabelle fuer Freigaben (das Siegel liegt zentral).
-            return {"user_id": user_id, "report_id": report_id,
+            return {"subject_id": subject_id, "report_id": report_id,
                     "content_sha256": digest, "is_final": bool(is_final),
                     "new_status": new_status, "note": note}
 
         audit_seq = writer.audited_write(
             do_write=_w, event_type=EventType.REPORT_APPROVED,
             actor_id=actor_id, target_type="report",
-            target_id="%d/%d" % (user_id, report_id),
+            target_id="%d/%d" % (subject_id, report_id),
             meta={"content_sha256": digest, "is_final": bool(is_final)})
 
         # --- Schritt 3: SIEGEL zentral ablegen ------------------------------
         try:
             seal_id = self._sealdb.seal(
-                user_id=user_id, report_id=report_id, content_sha256=digest,
+                subject_id=subject_id, report_id=report_id, content_sha256=digest,
                 snapshot_json=ReportSealer.snapshot_json(snap),
                 report=snap["report"], approved_by=actor_username,
                 approved_by_id=actor_id, is_final=is_final, note=note,
@@ -140,11 +140,11 @@ class ApprovalService:
                 "damit noch NICHT gegen Aenderungen gesperrt. Bitte erneut "
                 "versuchen." % (audit_seq, seal_id, exc))
 
-        return {"ok": True, "user_id": user_id, "report_id": report_id,
+        return {"ok": True, "subject_id": subject_id, "report_id": report_id,
                 "status": new_status, "content_sha256": digest,
                 "audit_seq": audit_seq, "seal_id": seal_id}
 
-    def return_to_draft(self, *, user_id: int, report_id: int, actor_id: int,
+    def return_to_draft(self, *, subject_id: int, report_id: int, actor_id: int,
                         actor_username: str,
                         note: Optional[str] = None) -> Dict[str, Any]:
         """
@@ -165,7 +165,7 @@ class ApprovalService:
         Versuch hat stattgefunden) und der Aufrufer bekommt einen expliziten
         Fehler (Grundregel 1).
         """
-        ev = self._evidence_path(user_id)
+        ev = self._evidence_path(subject_id)
         sealer = ReportSealer(ev)
 
         try:
@@ -174,7 +174,7 @@ class ApprovalService:
             raise ApprovalError(str(exc))
         if status is None:
             raise ApprovalError("Bericht %s in Fall %s nicht gefunden."
-                                % (report_id, user_id))
+                                % (report_id, subject_id))
         if status != "submitted":
             raise ApprovalError(
                 "Rueckgabe nur aus Status 'submitted' moeglich (aktuell: '%s'). "
@@ -185,13 +185,13 @@ class ApprovalService:
         writer = CoordinatorWriter(self._con, AuditLog(self._con))
 
         def _w(con: sqlite3.Connection) -> Dict[str, Any]:
-            return {"user_id": user_id, "report_id": report_id,
+            return {"subject_id": subject_id, "report_id": report_id,
                     "from_status": status, "to_status": "draft", "note": note}
 
         audit_seq = writer.audited_write(
             do_write=_w, event_type=EventType.REPORT_RETURNED,
             actor_id=actor_id, target_type="report",
-            target_id="%d/%d" % (user_id, report_id),
+            target_id="%d/%d" % (subject_id, report_id),
             meta={"returned_by": actor_username, "note": note})
 
         try:
@@ -203,7 +203,7 @@ class ApprovalService:
                 "'draft' gesetzt werden (%s). Der Bericht ist damit noch NICHT "
                 "zurueckgegeben. Bitte erneut versuchen." % (audit_seq, exc))
 
-        return {"ok": True, "user_id": user_id, "report_id": report_id,
+        return {"ok": True, "subject_id": subject_id, "report_id": report_id,
                 "status": "draft", "audit_seq": audit_seq}
 
     @staticmethod
@@ -230,14 +230,14 @@ class ApprovalService:
         finally:
             con.close()
 
-    def verify(self, *, user_id: int, report_id: int) -> Dict[str, Any]:
+    def verify(self, *, subject_id: int, report_id: int) -> Dict[str, Any]:
         """
         Nachpruefung: aktuellen Berichtsinhalt neu hashen und mit dem zentral
         hinterlegten Siegel vergleichen. ABWEICHUNG = MANIPULATION.
         """
-        seal = self._sealdb.latest_seal(user_id, report_id)
+        seal = self._sealdb.latest_seal(subject_id, report_id)
         result: Dict[str, Any] = {
-            "user_id": user_id, "report_id": report_id,
+            "subject_id": subject_id, "report_id": report_id,
             "sealed": seal is not None, "checked_at": int(time.time()),
         }
         if seal is None:
@@ -253,7 +253,7 @@ class ApprovalService:
 
         try:
             current = ReportSealer(
-                self._evidence_path(user_id)).content_hash(report_id)
+                self._evidence_path(subject_id)).content_hash(report_id)
         except ReportSealError as exc:
             result["match"] = False
             result["detail"] = ("Bericht nicht mehr lesbar: %s" % exc)
@@ -268,8 +268,8 @@ class ApprovalService:
         return result
 
     # ------------------------------------------------------------- internals
-    def _evidence_path(self, user_id: int) -> Path:
-        return self._evidence_dir / ("evidence_%d.db" % user_id)
+    def _evidence_path(self, subject_id: int) -> Path:
+        return self._evidence_dir / ("evidence_%d.db" % subject_id)
 
     @staticmethod
     def _write_evidence(ev: Path, report_id: int, new_status: str,

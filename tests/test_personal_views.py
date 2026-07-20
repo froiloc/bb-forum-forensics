@@ -10,7 +10,8 @@
 #        Markierung mine/mycase; fremde Historie bleibt aussen vor.
 # MH02 — /api/myhistory: 200; ohne Cap -> 403; limit=... greift.
 #
-# Version: v0.7.363 · Build: 363 · 2026-07-10
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import json
@@ -126,7 +127,7 @@ class PersonalViewsTests(unittest.TestCase):
     def test_mc01_mycases_only_own(self):
         app = ManagementApp(self._db)
         d = json.loads(app.dispatch(2, "/api/mycases").body.decode("utf-8"))
-        uids = {c["user_id"] for c in d["cases"]}
+        uids = {c["subject_id"] for c in d["cases"]}
         self.assertEqual(uids, {18})  # nur h002s Fall
 
     # MC02 -------------------------------------------------------------------

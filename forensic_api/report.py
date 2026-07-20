@@ -81,7 +81,8 @@
 #              btn-new-report-header aus Action-Bar entfernt (redundant).
 #              Beleg: Projektgespraech 2026-05-07
 #
-# Version: v0.6.282 · Build: 282 · 2026-06-07
+# Version: v0.7.469 · Build: 469 · 2026-07-20
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
 # Changelog Build 280 (2026-06-07):
 #   - _action_open_report: o.block_id → o["block_id"] in order_map-Comprehension.
 #     get_block_order_for_report() gibt list[dict] zurueck, kein Objekt mit Attributen.
@@ -121,12 +122,12 @@ _EDITOR_HTML = """\
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Bericht \u00b7 {subject} \u00b7 ID: {user_id}</title>
+    <title>Bericht \u00b7 {subject} \u00b7 ID: {subject_id}</title>
     <link rel="stylesheet" href="/_forensic/userinfo.css">
     <link rel="stylesheet" href="/_forensic/report.css">
   </head>
   <body id="report-editor-body"
-        data-user-id="{user_id}"
+        data-subject-id="{subject_id}"
         data-username="{username}"
         data-subject="{subject}"
         data-autosave-debounce-ms="{autosave_debounce_ms}">
@@ -134,7 +135,7 @@ _EDITOR_HTML = """\
     <!-- Fixierte Aktionsleiste (§4.2 Bauplan B6 v0.3) -->
     <header id="report-action-bar">
       <div id="report-action-bar-title">
-        📄 Bericht \u00b7 <span id="report-current-title">{investigator} / {subject} (ID: {user_id})</span>
+        📄 Bericht \u00b7 <span id="report-current-title">{investigator} / {subject} (ID: {subject_id})</span>
       </div>
       <!-- Bug 1.10 Fix Build 121: editor-report-title als div zwischen title und buttons.
            War bisher als span NACH den Buttons platziert und drückte die Leiste nach unten.
@@ -486,7 +487,7 @@ class ReportEndpoint:
         safe_subject = html_module.escape(
             forum_username
             or self._context.username
-            or f"uid_{self._context.user_id}"
+            or f"uid_{self._context.subject_id}"
         )
         autosave_ms = int(
             getattr(self._config, "get", lambda k, d: d)(
@@ -508,7 +509,7 @@ class ReportEndpoint:
             username=safe_investigator,
             subject=safe_subject,
             investigator=safe_investigator,
-            user_id=self._context.user_id,
+            subject_id=self._context.subject_id,
             autosave_debounce_ms=autosave_ms,
             web_debug_script=web_debug_script,
         )
@@ -519,8 +520,8 @@ class ReportEndpoint:
             extra_headers={"Content-Security-Policy": _EDITOR_CSP},
         )
         logger.debug(
-            "/_forensic/report (HTML) ausgeliefert: user_id=%d",
-            self._context.user_id,
+            "/_forensic/report (HTML) ausgeliefert: subject_id=%d",
+            self._context.subject_id,
         )
 
     def _handle_get_json(
@@ -642,7 +643,7 @@ class ReportEndpoint:
             # Bug 2.17 Fix Build 287: auto:-Eintraege aus placeholder_cache einweben
             "blocks":           _enrich_blocks_with_cache(
                                     blocks_payload,
-                                    edb.get_all_cache_entries(self._context.user_id),
+                                    edb.get_all_cache_entries(self._context.subject_id),
                                 ),
             "active_report_id": active_report.id if active_report else None,
             "lock": {
@@ -1408,7 +1409,7 @@ class ReportEndpoint:
         order_map = {o["block_id"]: o["sort_index"] for o in order}
 
         # Bug 2.17 Fix Build 287: auto:-Eintraege aus placeholder_cache laden
-        _cache = edb.get_all_cache_entries(self._context.user_id)
+        _cache = edb.get_all_cache_entries(self._context.subject_id)
 
         _raw_blocks = [
             {

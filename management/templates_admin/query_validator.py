@@ -16,12 +16,12 @@
 #        (Grundregel: Ueberpruefbarkeit; keine stille Fehlaufloesung).
 #
 #   Warum ':uid' der einzige Parameter: der AutoQueryResolver (report_render/
-#   auto_query.py) fuehrt die Query mit exakt {"uid": <user_id>} aus. Ein
+#   auto_query.py) fuehrt die Query mit exakt {"uid": <subject_id>} aus. Ein
 #   weiterer Parameter wuerde zur Laufzeit fehlschlagen.
 #   Warum id-Zeichenraum [A-Za-z0-9._-]: nur damit greift die Chip-Regex
 #   (_CHIP_RE), sonst waere der Platzhalter nie aufloesbar.
 #
-# Version: v0.7.422 · Build: 422 · 2026-07-14
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 from __future__ import annotations
@@ -96,7 +96,7 @@ def validate_static(q: Dict[str, Any]) -> List[str]:
     return errors
 
 
-def dry_run(sql_query: str, test_user_id: int, forensic_db_path: str,
+def dry_run(sql_query: str, test_subject_id: int, forensic_db_path: str,
             *, return_type: str = "scalar") -> Dict[str, Any]:
     """
     Fuehrt die Query READ-ONLY gegen die Beispiel-fdb aus. Wirft
@@ -116,7 +116,7 @@ def dry_run(sql_query: str, test_user_id: int, forensic_db_path: str,
         # Tabellennamen (SQLite loest ueber angebundene DBs auf) als auch
         # 'fdb.'-praefixierte Queries laufen.
         con.execute("ATTACH DATABASE ? AS fdb", (uri,))
-        cur = con.execute(sql_query, {"uid": int(test_user_id)})
+        cur = con.execute(sql_query, {"uid": int(test_subject_id)})
         row = cur.fetchone()
         ncols = len(cur.description) if cur.description else 0
     except sqlite3.Error as exc:

@@ -18,7 +18,8 @@
 # T12 — Normalmodus: ForensicDb-Instanz ist funktionsfähig (BLOB-Lookup)
 # T13 — ATTACH-Aliases: fdb, ddb, cdb korrekt angebunden
 #
-# Version: v0.1.0 · Build: 007 · 2026-04-10
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import sys, os, sqlite3, tempfile, textwrap, unittest
@@ -123,7 +124,7 @@ def _create_coordinator_db(path: Path) -> None:
         );
         CREATE TABLE scrape_jobs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL, username TEXT NOT NULL,
+            subject_id INTEGER NOT NULL, username TEXT NOT NULL,
             priority INTEGER NOT NULL DEFAULT 3,
             status TEXT NOT NULL DEFAULT 'pending',
             output_path TEXT, assigned_to INTEGER,
@@ -155,7 +156,7 @@ def _make_context(
     if coordinator_exists: _create_coordinator_db(coordinator)
 
     ctx = ResolvedContext(
-        mode=mode, user_id=42, username="testuser",
+        mode=mode, subject_id=42, username="testuser",
         forensic_db=forensic_db, evidence_db=evidence_db,
         default_db=default_db, coordinator_db=coordinator,
         assets_db=Path(coordinator).parent / "assets_42.db",
@@ -306,7 +307,7 @@ class TestConnectionManagerSupport(unittest.TestCase):
 
         cfg = self._make_support_cfg("memory")
         ctx = ResolvedContext(
-            mode="support", user_id=42, username="testuser",
+            mode="support", subject_id=42, username="testuser",
             forensic_db=forensic_db, evidence_db=evidence_db,
             default_db=default_db, coordinator_db=coordinator,
             assets_db=Path(coordinator).parent / "assets_42.db",
@@ -330,7 +331,7 @@ class TestConnectionManagerSupport(unittest.TestCase):
 
         cfg = self._make_support_cfg("file")
         ctx = ResolvedContext(
-            mode="support", user_id=42, username="testuser",
+            mode="support", subject_id=42, username="testuser",
             forensic_db=forensic_db, evidence_db=evidence_db,
             default_db=default_db, coordinator_db=coordinator,
             assets_db=Path(coordinator).parent / "assets_42.db",
@@ -354,7 +355,7 @@ class TestConnectionManagerSupport(unittest.TestCase):
 
         cfg = self._make_support_cfg("memory")
         ctx = ResolvedContext(
-            mode="support", user_id=42, username="testuser",
+            mode="support", subject_id=42, username="testuser",
             forensic_db=forensic_db, evidence_db=evidence_db,
             default_db=default_db, coordinator_db=coordinator,
             assets_db=Path(coordinator).parent / "assets_42.db",
@@ -431,7 +432,7 @@ class TestConnectionManagerClose(unittest.TestCase):
         _create_coordinator_db(coordinator)
 
         ctx = ResolvedContext(
-            mode="support", user_id=42, username="testuser",
+            mode="support", subject_id=42, username="testuser",
             forensic_db=forensic_db, evidence_db=evidence_db,
             default_db=default_db, coordinator_db=coordinator,
             assets_db=Path(coordinator).parent / "assets_42.db",
@@ -494,7 +495,7 @@ class TestAttachReadonlyUNCKompatibilitaet(unittest.TestCase):
         cfg = ConfigLoader(config_path=config_path)
 
         ctx = ResolvedContext(
-            mode="job", user_id=14, username="testuser14",
+            mode="job", subject_id=14, username="testuser14",
             forensic_db=forensic_db, evidence_db=evidence_db,
             default_db=default_db, coordinator_db=coordinator,
             assets_db=Path(self.tmp) / "assets_14.db",

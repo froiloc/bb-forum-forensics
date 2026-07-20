@@ -16,12 +16,12 @@
 #                             (Uebersprungen, wenn R1 fuer den Fall schon greift
 #                             — keine Doppelmeldung.)
 #     R3 rueckstau_hoch     — unzugewiesener Rueckstau >= backlog_high (systemisch,
-#                             user_id None). Severity 'hoch'.
+#                             subject_id None). Severity 'hoch'.
 #
 #   BELEGTREUE (GR1): jede Eskalation nennt die konkreten Signale (Tage inaktiv,
 #   Status, Zahl). Keine Regel feuert ohne belegte Bedingung. now injizierbar.
 #
-# Version: v0.7.453 · Build: 453 · 2026-07-19
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 from __future__ import annotations
@@ -46,7 +46,7 @@ class EscalationItem:
     rule_code: str
     label: str
     severity: str                  # 'hoch' | 'mittel' | 'niedrig'
-    user_id: Optional[int]         # None = systemisch (kein Einzelfall)
+    subject_id: Optional[int]         # None = systemisch (kein Einzelfall)
     message: str                   # belegte Begruendung
     days_inactive: Optional[int]
 
@@ -84,7 +84,7 @@ def evaluate_escalations(overviews: List[dict],
             unassigned += 1
         if status in _DONE_STATUSES:
             continue
-        uid = int(ov.get("user_id"))
+        uid = int(ov.get("subject_id"))
         ampel = ov.get("ampel") or "gruen"
         di = _days_inactive(ov, now)
 
@@ -93,7 +93,7 @@ def evaluate_escalations(overviews: List[dict],
             overdue_uids.add(uid)
             items.append(EscalationItem(
                 rule_code="fall_ueberfaellig", label="Fall ueberfaellig",
-                severity="hoch", user_id=uid,
+                severity="hoch", subject_id=uid,
                 message="Fall %d (%s): rote Ampel, %d Tage inaktiv (>= %d)."
                         % (uid, ov.get("username") or "?", di,
                            thresholds.red_overdue_days),
@@ -104,14 +104,14 @@ def evaluate_escalations(overviews: List[dict],
         status = ov.get("status")
         if status != "open" or ov.get("assigned_to") is None:
             continue
-        uid = int(ov.get("user_id"))
+        uid = int(ov.get("subject_id"))
         if uid in overdue_uids:
             continue
         di = _days_inactive(ov, now)
         if di is not None and di >= thresholds.stale_open_days:
             items.append(EscalationItem(
                 rule_code="fall_unbearbeitet", label="Fall unbearbeitet",
-                severity="mittel", user_id=uid,
+                severity="mittel", subject_id=uid,
                 message="Fall %d (%s): zugewiesen, Status open, %d Tage inaktiv "
                         "(>= %d)." % (uid, ov.get("username") or "?", di,
                                       thresholds.stale_open_days),
@@ -121,7 +121,7 @@ def evaluate_escalations(overviews: List[dict],
     if unassigned >= thresholds.backlog_high:
         items.append(EscalationItem(
             rule_code="rueckstau_hoch", label="Rueckstau hoch",
-            severity="hoch", user_id=None,
+            severity="hoch", subject_id=None,
             message="Unzugewiesener Rueckstau: %d Faelle (>= %d)."
                     % (unassigned, thresholds.backlog_high),
             days_inactive=None))
@@ -129,7 +129,7 @@ def evaluate_escalations(overviews: List[dict],
     # Ordnung: Severity (hoch>mittel>niedrig), dann meiste Inaktivitaet, dann uid.
     items.sort(key=lambda i: (_SEVERITY_RANK.get(i.severity, 9),
                               -(i.days_inactive or 0),
-                              (i.user_id if i.user_id is not None else -1)))
+                              (i.subject_id if i.subject_id is not None else -1)))
 
     return EscalationReport(
         generated_at=int(now), total_cases=len(overviews), items=items,
@@ -162,7 +162,7 @@ def escalation_to_dict(report: EscalationReport) -> dict:
         "count_niedrig": report.count_niedrig,
         "items": [
             {"rule_code": i.rule_code, "label": i.label, "severity": i.severity,
-             "user_id": i.user_id, "message": i.message,
+             "subject_id": i.subject_id, "message": i.message,
              "days_inactive": i.days_inactive}
             for i in report.items
         ],

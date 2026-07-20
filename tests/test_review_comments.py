@@ -16,7 +16,8 @@
 #   RC07 — Audit: 'review_comment_added' + 'review_comment_resolved' im audit_log.
 #   RC08 — resolve unbekannte comment_id -> 404.
 #
-# Version: v0.7.412 · Build: 412 · 2026-07-14
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import hashlib
@@ -150,7 +151,7 @@ class ReviewCommentsTests(unittest.TestCase):
                              templates_db=os.path.join(self._tmp, "templates.db"))
 
     def _create(self, person, **kw):
-        body = {"user_id": 700, "report_id": 1}
+        body = {"subject_id": 700, "report_id": 1}
         body.update(kw)
         return self._app().dispatch_write(person, "/api/report/comment", body)
 
@@ -186,7 +187,7 @@ class ReviewCommentsTests(unittest.TestCase):
     # RC02 -------------------------------------------------------------------
     def test_rc02_union_read(self):
         self._create(1, block_id="b1", comment_text="Hinweis A")
-        r = self._app().dispatch(1, "/api/report/comments", {"user_id": ["700"]})
+        r = self._app().dispatch(1, "/api/report/comments", {"subject_id": ["700"]})
         self.assertEqual(r.status, 200)
         d = json.loads(r.body.decode("utf-8"))
         self.assertEqual(d["count"], 1)
@@ -196,7 +197,7 @@ class ReviewCommentsTests(unittest.TestCase):
     def test_rc03_union_two_reviewers(self):
         self._create(1, block_id="b1", comment_text="Lektor-Hinweis")
         self._create(4, block_id="b1", comment_text="Chef-Hinweis")
-        r = self._app().dispatch(4, "/api/report/comments", {"user_id": ["700"]})
+        r = self._app().dispatch(4, "/api/report/comments", {"subject_id": ["700"]})
         d = json.loads(r.body.decode("utf-8"))
         self.assertEqual(d["count"], 2)
         roles = {c["reviewer_role"] for c in d["comments"]}
@@ -212,10 +213,10 @@ class ReviewCommentsTests(unittest.TestCase):
         cid = json.loads(self._create(1, block_id="b1",
                                       comment_text="X").body.decode())["comment_id"]
         r = self._app().dispatch_write(1, "/api/report/comment/resolve",
-                                       {"user_id": 700, "comment_id": cid,
+                                       {"subject_id": 700, "comment_id": cid,
                                         "status": "addressed"})
         self.assertEqual(r.status, 200)
-        rd = self._app().dispatch(1, "/api/report/comments", {"user_id": ["700"]})
+        rd = self._app().dispatch(1, "/api/report/comments", {"subject_id": ["700"]})
         got = json.loads(rd.body.decode("utf-8"))["comments"][0]
         self.assertEqual(got["status"], "addressed")
         self.assertIsNotNone(got["resolved_at"])
@@ -233,14 +234,14 @@ class ReviewCommentsTests(unittest.TestCase):
                                       comment_text="X").body.decode())["comment_id"]
         self.assertEqual(self._audit_count("review_comment_added"), 1)
         self._app().dispatch_write(1, "/api/report/comment/resolve",
-                                   {"user_id": 700, "comment_id": cid,
+                                   {"subject_id": 700, "comment_id": cid,
                                     "status": "dismissed"})
         self.assertEqual(self._audit_count("review_comment_resolved"), 1)
 
     # RC08 -------------------------------------------------------------------
     def test_rc08_resolve_unknown_404(self):
         r = self._app().dispatch_write(1, "/api/report/comment/resolve",
-                                       {"user_id": 700, "comment_id": "deadbeef",
+                                       {"subject_id": 700, "comment_id": "deadbeef",
                                         "status": "addressed"})
         self.assertEqual(r.status, 404)
 

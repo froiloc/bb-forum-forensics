@@ -32,7 +32,7 @@
 #   Fehler, ohne dass es jemand merkt. Das waere der schwerste denkbare Fehler
 #   dieses Moduls (Grundregel 1).
 #
-# Version: v0.7.387 · Build: 387 · 2026-07-12
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import logging
@@ -83,24 +83,24 @@ class ResultsRepo:
         return self._writer
 
     # ------------------------------------------------------------------- Lesen
-    def current(self, user_id: int) -> List[Dict[str, Any]]:
+    def current(self, subject_id: int) -> List[Dict[str, Any]]:
         """
         Der AKTUELLE Stand je Kriterium x Extrem (Sicht v_investigation_current),
         angereichert um die Klartext-Beschriftungen des Katalogs.
         """
         rows = self._con.execute(
-            "SELECT * FROM v_investigation_current WHERE user_id = ? "
-            "ORDER BY criterion_code, extrem", (user_id,)).fetchall()
+            "SELECT * FROM v_investigation_current WHERE subject_id = ? "
+            "ORDER BY criterion_code, extrem", (subject_id,)).fetchall()
         return [self._enrich(dict(r)) for r in rows]
 
-    def history(self, user_id: int, *,
+    def history(self, subject_id: int, *,
                 criterion_code: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Die VOLLSTAENDIGE Historie. Sie ist kein Beiwerk: sie belegt den
         Erkenntnisgewinn und ist damit selbst ein Ermittlungsergebnis.
         """
-        sql = "SELECT * FROM investigation_results WHERE user_id = ?"
-        params: List[Any] = [user_id]
+        sql = "SELECT * FROM investigation_results WHERE subject_id = ?"
+        params: List[Any] = [subject_id]
         if criterion_code:
             sql += " AND criterion_code = ?"
             params.append(criterion_code)
@@ -135,7 +135,7 @@ class ResultsRepo:
 
     # --------------------------------------------------------------- Schreiben
     def assess(
-        self, *, user_id: int, criterion_code: str, extrem: str,
+        self, *, subject_id: int, criterion_code: str, extrem: str,
         confidence_code: str, quality_code: Optional[str] = None,
         note: str = "", actor_id: Optional[int] = None,
         meta: Optional[Any] = None,
@@ -194,22 +194,22 @@ class ResultsRepo:
         state: Dict[str, Any] = {}
 
         def _w(con: sqlite3.Connection) -> Dict[str, Any]:
-            if not con.execute("SELECT 1 FROM cases WHERE user_id = ?",
-                               (user_id,)).fetchone():
-                raise ResultsError("Kein Fall user_id=%s." % user_id)
+            if not con.execute("SELECT 1 FROM cases WHERE subject_id = ?",
+                               (subject_id,)).fetchone():
+                raise ResultsError("Kein Fall subject_id=%s." % subject_id)
             cur = con.execute(
                 "INSERT INTO investigation_results "
-                "(user_id, criterion_code, extrem, confidence_code, "
+                "(subject_id, criterion_code, extrem, confidence_code, "
                 " confidence_ordinal, quality_code, quality_ordinal, "
                 " catalog_version, note, created_by, created_at, audit_seq) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)",
-                (user_id, criterion_code, extrem, confidence_code, c_ordinal,
+                (subject_id, criterion_code, extrem, confidence_code, c_ordinal,
                  quality_code, q_ordinal, catver, note or "", actor_id, now))
             state["id"] = int(cur.lastrowid)
             # Audit-Payload: FAKTEN + Zahlen, KEIN Freitext (Sensibilitaets-
             # regel wie bei cases.note und external_matters).
             return {
-                "result_id": state["id"], "user_id": user_id,
+                "result_id": state["id"], "subject_id": subject_id,
                 "criterion": criterion_code, "extrem": extrem,
                 "confidence": confidence_code, "confidence_ordinal": c_ordinal,
                 "quality": quality_code, "quality_ordinal": q_ordinal,
@@ -222,7 +222,7 @@ class ResultsRepo:
                 (seq, state["id"]))
             # Zeitstrahl: der Erkenntnisgewinn wird am Fall sichtbar.
             insert_event_row(
-                con, user_id=user_id, event_kind=EVENT_KIND,
+                con, subject_id=subject_id, event_kind=EVENT_KIND,
                 payload={
                     "result_id": state["id"], "criterion": criterion_code,
                     "criterion_label": crit["label"], "extrem": extrem,
@@ -235,24 +235,24 @@ class ResultsRepo:
 
         seq = writer.audited_write(
             do_write=_w, event_type=EventType.ASSESSMENT_RECORDED,
-            actor_id=actor_id, target_type="case", target_id=str(user_id),
+            actor_id=actor_id, target_type="case", target_id=str(subject_id),
             meta=meta, after_audit=_after,
         )
         logger.info("Bewertung %s: Fall %s / %s / %s -> %s (%d)%s",
-                    state["id"], user_id, criterion_code, extrem,
+                    state["id"], subject_id, criterion_code, extrem,
                     confidence_code, c_ordinal,
                     (" + %s" % quality_code) if quality_code else "")
         return {"result_id": state["id"], "audit_seq": seq,
                 "catalog_version": catver}
 
     # -------------------------------------------------------------- Statistik
-    def stats(self, *, user_ids: Optional[Sequence[int]] = None
+    def stats(self, *, subject_ids: Optional[Sequence[int]] = None
               ) -> Dict[str, Any]:
         """
         Auswertung ueber den AKTUELLEN Stand (nicht ueber die Historie — sonst
         zaehlte ein oft korrigierter Fall mehrfach).
 
-        user_ids=None -> alle Faelle; [] -> keine (Scope 'eigene' ohne
+        subject_ids=None -> alle Faelle; [] -> keine (Scope 'eigene' ohne
         Zuweisung). Diese Unterscheidung ist Kapselung, kein Detail.
 
         HINWEIS zur Numerik: die Mittelwerte werden je KRITERIUM gebildet, nie
@@ -264,17 +264,17 @@ class ResultsRepo:
                "       confidence_ordinal, quality_code, quality_ordinal "
                "FROM v_investigation_current")
         params: List[Any] = []
-        if user_ids is not None:
-            if not user_ids:
+        if subject_ids is not None:
+            if not subject_ids:
                 return {"faelle": 0, "criteria": {}}
-            sql += " WHERE user_id IN (%s)" % ",".join("?" for _ in user_ids)
-            params.extend(int(u) for u in user_ids)
+            sql += " WHERE subject_id IN (%s)" % ",".join("?" for _ in subject_ids)
+            params.extend(int(u) for u in subject_ids)
 
         rows = [dict(r) for r in self._con.execute(sql, params).fetchall()]
 
-        n_sql = "SELECT COUNT(DISTINCT user_id) FROM v_investigation_current"
-        if user_ids is not None:
-            n_sql += " WHERE user_id IN (%s)" % ",".join("?" for _ in user_ids)
+        n_sql = "SELECT COUNT(DISTINCT subject_id) FROM v_investigation_current"
+        if subject_ids is not None:
+            n_sql += " WHERE subject_id IN (%s)" % ",".join("?" for _ in subject_ids)
         n_faelle = int(self._con.execute(n_sql, params).fetchone()[0])
 
         crit: Dict[str, Any] = {}

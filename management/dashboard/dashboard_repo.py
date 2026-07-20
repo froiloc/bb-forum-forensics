@@ -34,12 +34,12 @@
 #   Abschnitt, greifen die Vorgabewerte (nicht-stiller Log-Hinweis).
 #   Support-Praesenz fliesst BEWUSST NICHT in die Farbe (eigenes Abzeichen).
 #   Sortierung ab Build 315: Ampel-Schwere zuerst (rot>gelb>gruen), dann
-#   Prioritaet, dann letzte Aktivitaet, dann user_id.
+#   Prioritaet, dann letzte Aktivitaet, dann subject_id.
 # ---------------------------------------------------------------------------
 #
 # Beleg: Bauplan B7 v1.0 Paragraph 10, Projektgespraech/mc 2026-07-02 (Semantik)
 #        und mc 2026-07-03 (Schwellen aus Config, Sortierung Ampel-zuerst).
-# Version: v0.7.315 · Build: 315 · 2026-07-03
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import logging
@@ -209,7 +209,7 @@ class CaseOverview:
     Aggregierte Uebersicht eines Falls fuer das Dashboard. Reines Lese-DTO.
 
     Rohsignale (aus der DB):
-        user_id, username, status, priority, assigned_to,
+        subject_id, username, status, priority, assigned_to,
         assigned_system_username, assigned_display_name, has_note,
         approved_at, total_pages_scraped, created_at, updated_at,
         event_count, last_event_kind, last_event_at,
@@ -218,7 +218,7 @@ class CaseOverview:
         last_activity_at — max(updated_at, last_event_at)
         ampel, ampel_reason — abgeleitet (siehe classify_ampel)
     """
-    user_id: int
+    subject_id: int
     username: str
     status: str
     priority: int
@@ -283,7 +283,7 @@ class DashboardRepo:
 
         Sortierung (mc 2026-07-03): Ampel-Schwere zuerst (rot > gelb >
         gruen), dann Prioritaet aufsteigend (1 zuerst), dann letzte Aktivitaet
-        absteigend, dann user_id — 'was am dringlichsten ist, steht oben'.
+        absteigend, dann subject_id — 'was am dringlichsten ist, steht oben'.
         'thresholds' stammt in der CLI aus config.yaml
         (ampel_thresholds_from_config); Vorgabe 7/21.
 
@@ -298,7 +298,7 @@ class DashboardRepo:
 
         sql = """
         SELECT
-            c.user_id                                   AS user_id,
+            c.subject_id                                   AS subject_id,
             c.username                                  AS username,
             c.status                                    AS status,
             c.priority                                  AS priority,
@@ -314,7 +314,7 @@ class DashboardRepo:
             COALESCE(ev.event_count, 0)                 AS event_count,
             ev.last_event_at                            AS last_event_at,
             (SELECT e2.event_kind FROM case_events e2
-              WHERE e2.user_id = c.user_id
+              WHERE e2.subject_id = c.subject_id
               ORDER BY e2.created_at DESC, e2.id DESC
               LIMIT 1)                                  AS last_event_kind,
             COALESCE(sp.support_count, 0)               AS support_count,
@@ -323,20 +323,20 @@ class DashboardRepo:
         LEFT JOIN person i
                ON i.id = c.assigned_to
         LEFT JOIN (
-            SELECT user_id,
+            SELECT subject_id,
                    COUNT(*)        AS event_count,
                    MAX(created_at) AS last_event_at
             FROM case_events
-            GROUP BY user_id
-        ) ev ON ev.user_id = c.user_id
+            GROUP BY subject_id
+        ) ev ON ev.subject_id = c.subject_id
         LEFT JOIN (
-            SELECT user_id,
+            SELECT subject_id,
                    COUNT(*)        AS support_count,
                    MIN(started_at) AS support_since
             FROM support_sessions
             WHERE ended_at IS NULL AND last_heartbeat >= ?
-            GROUP BY user_id
-        ) sp ON sp.user_id = c.user_id
+            GROUP BY subject_id
+        ) sp ON sp.subject_id = c.subject_id
         """
         rows = self._con.execute(sql, (sup_threshold,)).fetchall()
 
@@ -359,7 +359,7 @@ class DashboardRepo:
             )
 
             out.append(CaseOverview(
-                user_id=int(r["user_id"]),
+                subject_id=int(r["subject_id"]),
                 username=r["username"],
                 status=r["status"],
                 priority=int(r["priority"]),
@@ -385,7 +385,7 @@ class DashboardRepo:
 
         # Sortierung (mc 2026-07-03): Ampel-Schwere zuerst (rot vor gelb vor
         # gruen), dann Prioritaet aufsteigend, dann letzte Aktivitaet
-        # absteigend, dann user_id — 'was am dringlichsten ist, steht oben'.
+        # absteigend, dann subject_id — 'was am dringlichsten ist, steht oben'.
         out.sort(key=lambda o: (_AMPEL_RANK.get(o.ampel, 99), o.priority,
-                                -o.last_activity_at, o.user_id))
+                                -o.last_activity_at, o.subject_id))
         return out

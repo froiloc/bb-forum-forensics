@@ -7,7 +7,7 @@
 #   die Namensaufloesung aus person, uebergibt beides an die reine
 #   build_handovers (management.cases.handover_log). DB-Zugriff hier, Logik dort.
 #
-# Version: v0.7.455 · Build: 455 · 2026-07-19
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 from __future__ import annotations
@@ -38,16 +38,16 @@ class HandoverRepo:
             pass  # person fehlt -> nur IDs (kein Absturz, GR1)
         return out
 
-    def compute(self, *, user_id: Optional[int] = None,
+    def compute(self, *, subject_id: Optional[int] = None,
                 now: Optional[int] = None) -> HandoverReport:
         now = int(time.time()) if now is None else int(now)
 
         sql = ("SELECT seq, ts, actor_id, target_id, content FROM audit_log "
                "WHERE event_type = ?")
         params: list = [EventType.CASE_ASSIGNED]
-        if user_id is not None:
+        if subject_id is not None:
             sql += " AND target_id = ?"
-            params.append(str(user_id))
+            params.append(str(subject_id))
         sql += " ORDER BY seq ASC"
 
         events: List[dict] = []
@@ -56,14 +56,16 @@ class HandoverRepo:
                 data = json.loads(content) if content else {}
             except (ValueError, TypeError):
                 data = {}
-            # user_id bevorzugt aus target_id (kanonisch), sonst aus content.
+            # subject_id bevorzugt aus target_id (kanonisch), sonst aus content.
+            # Fallback "user_id": Legacy-Payload vor M019 (audit_log ist eine
+            # unveraenderliche Hash-Kette — Alt-Eintraege bleiben beim alten Key).
             try:
                 uid = int(target_id) if target_id is not None \
-                    else int(data.get("user_id"))
+                    else int(data.get("subject_id", data.get("user_id")))
             except (TypeError, ValueError):
                 continue  # ohne Fallbezug nicht auswertbar
             events.append({
-                "user_id": uid, "seq": int(seq), "ts": int(ts),
+                "subject_id": uid, "seq": int(seq), "ts": int(ts),
                 "actor_id": actor_id, "assigned_to": data.get("assigned_to"),
             })
 

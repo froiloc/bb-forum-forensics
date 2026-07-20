@@ -24,7 +24,7 @@
 #   sein, damit die expliziten Transaktionen greifen.
 #
 # Beleg: Bauplan B7 v0.5 §6, Projektgespräch 2026-07-01, mc 2026-07-01.
-# Version: v0.7.311 · Build: 311 · 2026-07-01
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import logging
@@ -52,7 +52,7 @@ class SupportSessionsRepo:
 
     # --------------------------------------------------------------- Schreiben
     def start(
-        self, user_id: int, supporter_id: Optional[int], *,
+        self, subject_id: int, supporter_id: Optional[int], *,
         actor_id: Optional[int] = None, meta: Optional[Any] = None,
     ) -> int:
         """
@@ -66,15 +66,15 @@ class SupportSessionsRepo:
         def _w(con: sqlite3.Connection) -> Dict[str, Any]:
             cur = con.execute(
                 "INSERT INTO support_sessions "
-                "(user_id, supporter_id, started_at, last_heartbeat) "
+                "(subject_id, supporter_id, started_at, last_heartbeat) "
                 "VALUES (?, ?, ?, ?)",
-                (user_id, supporter_id, now, now),
+                (subject_id, supporter_id, now, now),
             )
             sid = int(cur.lastrowid)
             captured["session_id"] = sid
             return {
                 "session_id": sid,
-                "user_id": user_id,
+                "subject_id": subject_id,
                 "supporter_id": supporter_id,
                 "started_at": now,
             }
@@ -84,7 +84,7 @@ class SupportSessionsRepo:
             event_type=EventType.SUPPORT_SESSION_STARTED,
             actor_id=actor_id,
             target_type="support_session",
-            target_id=str(user_id),
+            target_id=str(subject_id),
             meta=meta,
         )
         return captured["session_id"]
@@ -116,7 +116,7 @@ class SupportSessionsRepo:
         Gibt sonst die audit-seq zurück.
         """
         row = self._con.execute(
-            "SELECT user_id, started_at, ended_at FROM support_sessions WHERE id = ?",
+            "SELECT subject_id, started_at, ended_at FROM support_sessions WHERE id = ?",
             (session_id,),
         ).fetchone()
         if row is None:
@@ -126,7 +126,7 @@ class SupportSessionsRepo:
 
         now = int(time.time())
         started_at = int(row["started_at"])
-        user_id = int(row["user_id"])
+        subject_id = int(row["subject_id"])
 
         def _w(con: sqlite3.Connection) -> Dict[str, Any]:
             cur = con.execute(
@@ -141,7 +141,7 @@ class SupportSessionsRepo:
                 )
             return {
                 "session_id": session_id,
-                "user_id": user_id,
+                "subject_id": subject_id,
                 "ended_at": now,
                 "duration_sec": now - started_at,
             }
@@ -182,7 +182,7 @@ class SupportSessionsRepo:
         cutoff = int(time.time()) - stale_sec
         # Kandidaten zuerst als Snapshot lesen, dann einzeln auditiert beenden.
         orphans = self._con.execute(
-            "SELECT id, user_id, started_at, last_heartbeat "
+            "SELECT id, subject_id, started_at, last_heartbeat "
             "FROM support_sessions "
             "WHERE ended_at IS NULL AND last_heartbeat < ? "
             "ORDER BY id ASC",
@@ -192,7 +192,7 @@ class SupportSessionsRepo:
         closed = 0
         for o in orphans:
             session_id = int(o["id"])
-            user_id = int(o["user_id"])
+            subject_id = int(o["subject_id"])
             started_at = int(o["started_at"])
             ended_at = int(o["last_heartbeat"])  # ehrlicher letzter Praesenzbeleg
 
@@ -201,7 +201,7 @@ class SupportSessionsRepo:
             # Transaktion auf (Write + Audit atomar).
             def _w(
                 con: sqlite3.Connection,
-                _sid: int = session_id, _uid: int = user_id,
+                _sid: int = session_id, _uid: int = subject_id,
                 _start: int = started_at, _end: int = ended_at,
             ) -> Dict[str, Any]:
                 cur = con.execute(
@@ -217,7 +217,7 @@ class SupportSessionsRepo:
                     )
                 return {
                     "session_id": _sid,
-                    "user_id": _uid,
+                    "subject_id": _uid,
                     "ended_at": _end,
                     "duration_sec": _end - _start,
                     "reason": "orphan_timeout",
@@ -256,7 +256,7 @@ class SupportSessionsRepo:
         return n
 
     # ------------------------------------------------------------------- Lesen
-    def get_active(self, user_id: int, stale_sec: int) -> List[Dict[str, Any]]:
+    def get_active(self, subject_id: int, stale_sec: int) -> List[Dict[str, Any]]:
         """
         Aktive Support-Sitzungen eines Falls: nicht beendet UND mit Heartbeat
         innerhalb der Stale-Schwelle. Aufsteigend nach started_at (der am
@@ -267,9 +267,9 @@ class SupportSessionsRepo:
             "SELECT s.id, s.supporter_id, s.started_at, i.system_username "
             "FROM support_sessions s "
             "LEFT JOIN person i ON i.id = s.supporter_id "
-            "WHERE s.user_id = ? AND s.ended_at IS NULL AND s.last_heartbeat >= ? "
+            "WHERE s.subject_id = ? AND s.ended_at IS NULL AND s.last_heartbeat >= ? "
             "ORDER BY s.started_at ASC",
-            (user_id, threshold),
+            (subject_id, threshold),
         ).fetchall()
         return [dict(r) for r in rows]
 
@@ -282,13 +282,13 @@ class SupportSessionsRepo:
         laengsten Laufende zuerst).
         """
         rows = self._con.execute(
-            "SELECT s.id, s.user_id, c.username, s.supporter_id, "
+            "SELECT s.id, s.subject_id, c.username, s.supporter_id, "
             "       p.system_username AS supporter_system_username, "
             "       p.display_name AS supporter_display_name, "
             "       s.started_at, s.last_heartbeat "
             "FROM support_sessions s "
             "LEFT JOIN person p ON p.id = s.supporter_id "
-            "LEFT JOIN cases c ON c.user_id = s.user_id "
+            "LEFT JOIN cases c ON c.subject_id = s.subject_id "
             "WHERE s.ended_at IS NULL "
             "ORDER BY s.started_at ASC"
         ).fetchall()

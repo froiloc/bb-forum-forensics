@@ -13,7 +13,8 @@
 # WE07 — Integritaets-Banner: ok / gebrochen / ungeprueft
 # WE08 — CLI 'export-html' end-to-end gegen synthetische coordinator.db
 #
-# Version: v0.7.335 · Build: 335 · 2026-07-07
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import os
@@ -135,7 +136,7 @@ class WorkloadExportTests(unittest.TestCase):
                         deployed_by="t").run()
         writer = CoordinatorWriter(con, audit)
         cases = CasesRepo(con, writer)
-        cases.create_case(user_id=4201, username="tester", actor_id=1)
+        cases.create_case(subject_id=4201, username="tester", actor_id=1)
         cases.assign(4201, 1, actor_id=1)
         con.close()
 

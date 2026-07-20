@@ -22,7 +22,7 @@
 #             2 = mindestens eine ABWEICHUNG oder ein nicht pruefbarer Bericht
 #             1 = Aufruf-/Konfigurationsfehler
 #
-# Version: v0.7.379 · Build: 379 · 2026-07-10
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import argparse
@@ -76,7 +76,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     print("[seal_check] Pruefe %d Siegel gegen %s ..."
           % (len(seals), evidence_dir))
     for s in seals:
-        uid, rid = s["user_id"], s["report_id"]
+        uid, rid = s["subject_id"], s["report_id"]
         ev = Path(evidence_dir) / ("evidence_%d.db" % uid)
         label = "Fall %s / Bericht %s (%s)" % (uid, rid, s["title"])
         try:

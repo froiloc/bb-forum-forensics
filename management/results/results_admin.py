@@ -9,16 +9,16 @@
 #
 #   python -m management.results.results_admin <befehl> [...]
 #     catalog                      Katalog anzeigen (Kriterien + Skalen)
-#     assess   --user-id N --criterion C --extrem schwerste|beste
+#     assess   --subject-id N --criterion C --extrem schwerste|beste
 #              --confidence CODE [--quality CODE] [--note T] --actor KENNUNG
-#     current  --user-id N         aktueller Stand
-#     history  --user-id N [--criterion C]   VOLLE Historie (append-only!)
-#     score    --user-id N         provisorische Kennzahl (mit Vermerk!)
+#     current  --subject-id N         aktueller Stand
+#     history  --subject-id N [--criterion C]   VOLLE Historie (append-only!)
+#     score    --subject-id N         provisorische Kennzahl (mit Vermerk!)
 #     stats                        Auswertung ueber alle Faelle
 #
 #   --actor ist beim Schreiben Pflicht: ein Beleg ohne Handelnden ist kein Beleg.
 #
-# Version: v0.7.387 · Build: 387 · 2026-07-12
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import argparse
@@ -123,7 +123,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     sub.add_parser("catalog", help="Katalog anzeigen")
 
     p = sub.add_parser("assess", help="Bewertung erfassen (NEUE Zeile)")
-    p.add_argument("--user-id", type=int, required=True)
+    p.add_argument("--subject-id", type=int, required=True)
     p.add_argument("--criterion", required=True)
     p.add_argument("--extrem", required=True, choices=["schwerste", "beste"])
     p.add_argument("--confidence", required=True)
@@ -132,14 +132,14 @@ def main(argv: Optional[List[str]] = None) -> int:
     p.add_argument("--actor", required=True)
 
     p = sub.add_parser("current", help="aktueller Stand")
-    p.add_argument("--user-id", type=int, required=True)
+    p.add_argument("--subject-id", type=int, required=True)
 
     p = sub.add_parser("history", help="VOLLE Historie (append-only)")
-    p.add_argument("--user-id", type=int, required=True)
+    p.add_argument("--subject-id", type=int, required=True)
     p.add_argument("--criterion", default=None)
 
     p = sub.add_parser("score", help="provisorische Kennzahl")
-    p.add_argument("--user-id", type=int, required=True)
+    p.add_argument("--subject-id", type=int, required=True)
 
     sub.add_parser("stats", help="Auswertung ueber alle Faelle")
     p = sub.add_parser(
@@ -158,24 +158,24 @@ def main(argv: Optional[List[str]] = None) -> int:
             return 0
 
         if args.cmd == "current":
-            _print_rows(ResultsRepo(con).current(args.user_id),
-                        "Aktueller Stand — Fall %s:" % args.user_id)
+            _print_rows(ResultsRepo(con).current(args.subject_id),
+                        "Aktueller Stand — Fall %s:" % args.subject_id)
             return 0
 
         if args.cmd == "history":
-            rows = ResultsRepo(con).history(args.user_id,
+            rows = ResultsRepo(con).history(args.subject_id,
                                             criterion_code=args.criterion)
             _print_rows(rows, "Historie (append-only) — Fall %s, %d Eintraege:"
-                        % (args.user_id, len(rows)))
+                        % (args.subject_id, len(rows)))
             return 0
 
         if args.cmd == "score":
             repo = ResultsRepo(con)
             alle = [c["code"] for c in cat.criteria()]
             res = PriorityScorer().score_with_gaps(
-                repo.current(args.user_id), alle)
+                repo.current(args.subject_id), alle)
             print("Fall %s — provisorische Kennzahl: %s"
-                  % (args.user_id, res["score"]))
+                  % (args.subject_id, res["score"]))
             print("Basis: %d von %d Kriterien bewertet (Abdeckung %s)"
                   % (res["basis"], len(alle), res["abdeckung"]))
             for b in res["beitraege"]:
@@ -212,7 +212,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                                + (" ..." if len(r["unbewertet"]) > 3 else "")
                                if r["unbewertet"] else "-"))
                 print("%-7s %-16s %-12s %-9s %-6s %-7s %s"
-                      % (r["user_id"], (r["username"] or "")[:16],
+                      % (r["subject_id"], (r["username"] or "")[:16],
                          r["status"], "%d/%d" % (r["n_bewertet"],
                                                  r["n_kriterien"]),
                          r["score"], r["n_beste"], fehlt))
@@ -262,7 +262,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         actor = _actor_id(con, args.actor)
         repo = ResultsRepo(con, CoordinatorWriter(con, AuditLog(con)))
         res = repo.assess(
-            user_id=args.user_id, criterion_code=args.criterion,
+            subject_id=args.subject_id, criterion_code=args.criterion,
             extrem=args.extrem, confidence_code=args.confidence,
             quality_code=args.quality, note=args.note, actor_id=actor)
         print("Bewertung %s erfasst (Beleg #%s, Katalogversion %s)."

@@ -7,9 +7,9 @@
 #
 #   python -m management.cases.handover_admin
 #          [--coordinator-db PATH] [--config ./config.yaml]
-#          [--user-id N] [--reassignments-only] [--json]
+#          [--subject-id N] [--reassignments-only] [--json]
 #
-# Version: v0.7.455 · Build: 455 · 2026-07-19
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import argparse
@@ -56,7 +56,7 @@ def main(argv=None) -> int:
         description="Uebergabe-/Umverteilungsprotokoll je Fall (nur lesend).")
     p.add_argument("--coordinator-db", default=None)
     p.add_argument("--config", default="./config.yaml")
-    p.add_argument("--user-id", type=int, default=None)
+    p.add_argument("--subject-id", type=int, default=None)
     p.add_argument("--reassignments-only", action="store_true")
     p.add_argument("--json", action="store_true")
     args = p.parse_args(argv)
@@ -68,7 +68,7 @@ def main(argv=None) -> int:
     con.row_factory = sqlite3.Row
     try:
         report = HandoverRepo(con).compute(
-            user_id=args.user_id, now=int(time.time()))
+            subject_id=args.subject_id, now=int(time.time()))
     finally:
         con.close()
 
@@ -84,7 +84,7 @@ def main(argv=None) -> int:
         arrow = "%s -> %s" % (e.from_name or "(Rueckstau)",
                               e.to_name or "(Rueckstau)")
         print("  [%s] %s Fall %d: %s  durch %s"
-              % (_fmt(e.ts), e.kind, e.user_id, arrow, e.by_name or "System"))
+              % (_fmt(e.ts), e.kind, e.subject_id, arrow, e.by_name or "System"))
     return 0
 
 

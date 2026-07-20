@@ -17,7 +17,8 @@
 # WL09 — fehlende Pflichttabelle -> WorkloadSchemaError (handlungsleitend)
 # WL10 — kein Fall verloren: Summe total_cases (inkl. Rueckstau) == Fallzahl
 #
-# Version: v0.7.335 · Build: 335 · 2026-07-07
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import os
@@ -96,26 +97,26 @@ class WorkloadRepoTests(unittest.TestCase):
         # (Last und Aktivitaet sind bewusst unabhaengig testbar).
         A = 1
         # Ermittler 1 (h001): 2x gruen (closed/approved).
-        self.cases.create_case(user_id=1001, username="c_closed", actor_id=A)
+        self.cases.create_case(subject_id=1001, username="c_closed", actor_id=A)
         self.cases.assign(1001, 1, actor_id=A)
         self.cases.set_status(1001, "closed", actor_id=A)
-        self.cases.create_case(user_id=1002, username="c_appr", actor_id=A)
+        self.cases.create_case(subject_id=1002, username="c_appr", actor_id=A)
         self.cases.assign(1002, 1, actor_id=A)
         self.cases.set_status(1002, "approved", actor_id=A)
 
         # Ermittler 2 (h002): rot (idle-lang), gelb (idle-mittel), gruen (aktiv).
-        self.cases.create_case(user_id=2001, username="c_rot", actor_id=A)
+        self.cases.create_case(subject_id=2001, username="c_rot", actor_id=A)
         self.cases.assign(2001, 2, actor_id=A)               # bleibt 'open'
-        self.cases.create_case(user_id=2002, username="c_gelb", actor_id=A)
+        self.cases.create_case(subject_id=2002, username="c_gelb", actor_id=A)
         self.cases.assign(2002, 2, actor_id=A)               # bleibt 'open'
-        self.cases.create_case(user_id=2003, username="c_prog", actor_id=A)
+        self.cases.create_case(subject_id=2003, username="c_prog", actor_id=A)
         self.cases.assign(2003, 2, actor_id=A)
         self.cases.set_status(2003, "in_progress", actor_id=A)
 
         # Rueckstau (unzugewiesen): open -> rot (Regel: open & unassigned),
         # closed -> gruen.
-        self.cases.create_case(user_id=9001, username="b_open", actor_id=A)
-        self.cases.create_case(user_id=9002, username="b_closed", actor_id=A)
+        self.cases.create_case(subject_id=9001, username="b_open", actor_id=A)
+        self.cases.create_case(subject_id=9002, username="b_closed", actor_id=A)
         self.cases.set_status(9002, "closed", actor_id=A)
 
         # Zeitstempel gezielt altern, um Ampel deterministisch zu erzwingen
@@ -124,11 +125,11 @@ class WorkloadRepoTests(unittest.TestCase):
         self._age(2002, self.NOW - 10 * _DAY)   # idle 10d in [7,21) -> gelb
         self._age(2003, self.NOW)               # idle 0 -> gruen (aktiv)
 
-    def _age(self, user_id, ts):
-        self.con.execute("UPDATE cases SET updated_at=? WHERE user_id=?",
-                         (ts, user_id))
-        self.con.execute("UPDATE case_events SET created_at=? WHERE user_id=?",
-                         (ts, user_id))
+    def _age(self, subject_id, ts):
+        self.con.execute("UPDATE cases SET updated_at=? WHERE subject_id=?",
+                         (ts, subject_id))
+        self.con.execute("UPDATE case_events SET created_at=? WHERE subject_id=?",
+                         (ts, subject_id))
 
     def tearDown(self):
         self.con.close()

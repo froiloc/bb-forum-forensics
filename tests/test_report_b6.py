@@ -49,7 +49,8 @@
 # T20 -- add_anchor mit Lock -> HTTP 201
 # T21 -- add_anchor Duplikat -> HTTP 409
 #
-# Version: v0.6.099 · Build: 099 · 2026-05-06
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # Beleg: Bauplan B6 v0.3 §4, §5, Ausdefinitionsgespraech 2026-05-05
 # Phase-1-Skip: Beleg Bauplan B6 v0.5 §9, Projektgespraech 2026-05-06
 # =============================================================================
@@ -92,7 +93,7 @@ def _make_endpoint(edb: EvidenceDb, username="h001") -> ReportEndpoint:
     bundle.evidence = edb
     context = MagicMock()
     context.username = username
-    context.user_id  = 42
+    context.subject_id  = 42
     config  = MagicMock()
     config.get = MagicMock(return_value=30000)
     return ReportEndpoint(bundle, context, config)

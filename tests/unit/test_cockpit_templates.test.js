@@ -1,4 +1,6 @@
 /**
+ * Build 469: Schluesselumstellung user_id -> subject_id (M019)
+ * Version: v0.7.469 · Build: 469 · 2026-07-20
  * tests/unit/test_cockpit_templates.test.js
  * IT-Forensisches Ermittlungswerkzeug — Baustelle 7: Cockpit
  * Platzhalter & Queries (W2), FRONTEND (Build 423)
@@ -12,7 +14,7 @@
  * TT03 — queryLabel: "Titel (id)" bzw. Fallbacks.
  * TT04 — sortQueries: nach id, mutiert die Eingabe NICHT.
  * TT05 — isValidId: Spiegel der Server-Regel.
- * TT06 — buildPayload: trimmt, uebernimmt test_user_id/tags nur wenn gesetzt.
+ * TT06 — buildPayload: trimmt, uebernimmt test_subject_id/tags nur wenn gesetzt.
  * TT07 — dryRunSummary: nicht gelaufen / OK mit Wert / OK ohne Zeile.
  * TT08 — errorsText: join bzw. ''.
  * TT09 — renderTemplates: Liste (sortiert) + Editor; Klick fuellt das Formular.
@@ -116,7 +118,7 @@ describe("cockpit_templates", () => {
     const api = _api();
     const p = api.buildPayload({
       id: "  q1 ", title: " Titel ", description: "  ", sql_query:
-        "  SELECT 1  ", return_type: "list", tags: "  t ", test_user_id: " 42 ",
+        "  SELECT 1  ", return_type: "list", tags: "  t ", test_subject_id: " 42 ",
     });
     expect(p.id).toBe("q1");
     expect(p.title).toBe("Titel");
@@ -124,19 +126,19 @@ describe("cockpit_templates", () => {
     expect(p.sql_query).toBe("SELECT 1");
     expect(p.return_type).toBe("list");
     expect(p.tags).toBe("t");
-    expect(p.test_user_id).toBe("42");
+    expect(p.test_subject_id).toBe("42");
 
-    // Leere test_user_id/tags -> Felder fehlen (kein Dry-Run, kein leeres Tag).
+    // Leere test_subject_id/tags -> Felder fehlen (kein Dry-Run, kein leeres Tag).
     const p2 = api.buildPayload({ id: "q", title: "t", sql_query: "SELECT 1" });
-    expect(p2.test_user_id).toBeUndefined();
+    expect(p2.test_subject_id).toBeUndefined();
     expect(p2.tags).toBeUndefined();
     expect(p2.return_type).toBe("scalar");
   });
 
   it("TT07 dryRunSummary deckt alle Faelle ab", () => {
     const api = _api();
-    expect(api.dryRunSummary({ ran: false, reason: "kein test_user_id." }))
-      .toContain("kein test_user_id");
+    expect(api.dryRunSummary({ ran: false, reason: "kein test_subject_id." }))
+      .toContain("kein test_subject_id");
     expect(api.dryRunSummary({ ran: true, columns: 1, sample: 7 }))
       .toContain("Beispielwert: 7");
     const noRow = api.dryRunSummary({ ran: true, columns: 1, sample: null });
@@ -191,7 +193,7 @@ describe("cockpit_templates", () => {
     main.querySelector(".aiw-tpl-drybtn").dispatchEvent(new win.Event("click"));
     expect(seen).toBeTruthy();
     expect(seen.id).toBe("q_neu");
-    expect(seen.test_user_id).toBe("700");
+    expect(seen.test_subject_id).toBe("700");
     expect(seen.sql_query).toContain(":uid");
   });
 

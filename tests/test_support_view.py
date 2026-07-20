@@ -8,7 +8,8 @@
 # SV02 — scope 'eigene': nur eigene Sitzungen ODER Sitzungen an eigenen Faellen.
 # SV03 — ohne support_history.view -> 403.
 #
-# Version: v0.7.366 · Build: 366 · 2026-07-10
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import json
@@ -143,14 +144,14 @@ class SupportViewTests(unittest.TestCase):
         self.assertEqual(d["scope"], "eigene")
         # A (mine+case), B (case), C (mine) -> 3; D faellt raus.
         self.assertEqual(d["count"], 3)
-        users = sorted(s["user_id"] for s in d["sessions"])
+        users = sorted(s["subject_id"] for s in d["sessions"])
         self.assertNotIn(20, users)  # Fall 20 (fremd) nicht enthalten
         # Mindestens eine Sitzung mit mine_as_supporter und eine mit on_my_case.
         self.assertTrue(any(s["mine_as_supporter"] for s in d["sessions"]))
         self.assertTrue(any(s["on_my_case"] for s in d["sessions"]))
         # Fall-18-Sitzung des fremden Supporters 3: on_my_case True, mine False.
         b = [s for s in d["sessions"]
-             if s["user_id"] == 18 and s["supporter_id"] == 3]
+             if s["subject_id"] == 18 and s["supporter_id"] == 3]
         self.assertTrue(b and b[0]["on_my_case"] and not b[0]["mine_as_supporter"])
 
     # SV03 -------------------------------------------------------------------

@@ -8,7 +8,7 @@
 #   'letzter_touch' periodisch. Die Wartungs-CLI liest daraus, WER ACKen muss.
 #
 # Felder (Bauplan Abschnitt 3.2):
-#   role, host, pid, user_id, port, build, started_at, letzter_touch
+#   role, host, pid, subject_id, port, build, started_at, letzter_touch
 #
 # Intention:
 #   Veraltete Beacons (letzter_touch weit in der Vergangenheit) werden von der
@@ -16,7 +16,8 @@
 #   angenommen (Grundregel 1). Diese Klasse liefert dafuer nur die Rohdaten und
 #   die Alters-Pruefung; die Bewertung/Meldung macht die CLU (Build D).
 #
-# Version: v0.7.435 · Build: 435 · 2026-07-19
+# Version: v0.7.469 · Build: 469 · 2026-07-20
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
 # =============================================================================
 
 from __future__ import annotations
@@ -34,14 +35,14 @@ class PresenceBeacon:
     """Praesenz-Beacon eines laufenden Servers."""
 
     def __init__(self, role: str, host: str, pid: int, build: int,
-                 user_id: Optional[int] = None, port: Optional[int] = None,
+                 subject_id: Optional[int] = None, port: Optional[int] = None,
                  started_at: Optional[int] = None,
                  letzter_touch: Optional[int] = None) -> None:
         self.role = str(role)
         self.host = str(host)
         self.pid = int(pid)
         self.build = int(build)
-        self.user_id = int(user_id) if user_id is not None else None
+        self.subject_id = int(subject_id) if subject_id is not None else None
         self.port = int(port) if port is not None else None
         self.started_at = int(started_at) if started_at is not None else jetzt_epoch()
         self.letzter_touch = (int(letzter_touch)
@@ -50,7 +51,7 @@ class PresenceBeacon:
     def to_dict(self) -> dict:
         return {
             "role": self.role, "host": self.host, "pid": self.pid,
-            "build": self.build, "user_id": self.user_id, "port": self.port,
+            "build": self.build, "subject_id": self.subject_id, "port": self.port,
             "started_at": self.started_at, "letzter_touch": self.letzter_touch,
         }
 
@@ -59,7 +60,7 @@ class PresenceBeacon:
         return cls(
             role=erwarte(d, "role"), host=erwarte(d, "host"),
             pid=erwarte(d, "pid"), build=erwarte(d, "build"),
-            user_id=d.get("user_id"), port=d.get("port"),
+            subject_id=d.get("subject_id"), port=d.get("port"),
             started_at=d.get("started_at"), letzter_touch=d.get("letzter_touch"),
         )
 

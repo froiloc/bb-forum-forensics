@@ -20,7 +20,8 @@
 # WL07 — Der Inhaltshash bleibt nach einem abgewiesenen Schreibversuch gleich.
 # WL08 — seal_check meldet ABWEICHUNG mit Exit-Code 2, sonst 0.
 #
-# Version: v0.7.379 · Build: 379 · 2026-07-10
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import io
@@ -210,7 +211,7 @@ class ReportWriteLockTests(unittest.TestCase):
         snap = sealer.snapshot(self.report_id)
 
         db = ApprovedReportsDb(approved_db)
-        db.seal(user_id=18, report_id=self.report_id,
+        db.seal(subject_id=18, report_id=self.report_id,
                 content_sha256=snap["content_sha256"],
                 snapshot_json=ReportSealer.snapshot_json(snap),
                 report=snap["report"], approved_by="h0a2898",

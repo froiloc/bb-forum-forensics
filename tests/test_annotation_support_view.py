@@ -15,7 +15,8 @@
 #   SA06 — flaches Lese-Audit: nach dem Zugriff genau ein
 #          'report_annotations_viewed' im coordinator.db-audit_log.
 #
-# Version: v0.7.411 · Build: 411 · 2026-07-14
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import hashlib
@@ -198,7 +199,7 @@ class AnnotationSupportViewTests(unittest.TestCase):
     # SA01 -------------------------------------------------------------------
     def test_sa01_annotations_with_forum_context(self):
         r = self._app().dispatch(1, "/api/report/annotations",
-                                 {"user_id": ["700"]})
+                                 {"subject_id": ["700"]})
         self.assertEqual(r.status, 200)
         d = json.loads(r.body.decode("utf-8"))
         self.assertEqual(d["anchor_count"], 1)
@@ -215,14 +216,14 @@ class AnnotationSupportViewTests(unittest.TestCase):
     # SA02 -------------------------------------------------------------------
     def test_sa02_forbidden_without_cap(self):
         r = self._app().dispatch(2, "/api/report/annotations",
-                                 {"user_id": ["700"]})
+                                 {"subject_id": ["700"]})
         self.assertEqual(r.status, 403)
 
     # SA03 -------------------------------------------------------------------
     def test_sa03_readonly_integrity(self):
         before = _md5(self._ev700)
         r = self._app().dispatch(1, "/api/report/annotations",
-                                 {"user_id": ["700"]})
+                                 {"subject_id": ["700"]})
         self.assertEqual(r.status, 200)
         self.assertEqual(before, _md5(self._ev700))
         self.assertFalse((Path(self._evidence_dir) / "evidence_700.db-wal").exists())
@@ -230,7 +231,7 @@ class AnnotationSupportViewTests(unittest.TestCase):
     # SA04 -------------------------------------------------------------------
     def test_sa04_unknown_uid_404(self):
         r = self._app().dispatch(1, "/api/report/annotations",
-                                 {"user_id": ["999"]})
+                                 {"subject_id": ["999"]})
         self.assertEqual(r.status, 404)
         self.assertEqual(json.loads(r.body.decode("utf-8"))["error"],
                          "evidence_not_found")
@@ -238,17 +239,17 @@ class AnnotationSupportViewTests(unittest.TestCase):
     # SA05 -------------------------------------------------------------------
     def test_sa05_scope_eigene(self):
         ok = self._app().dispatch(3, "/api/report/annotations",
-                                  {"user_id": ["700"]})
+                                  {"subject_id": ["700"]})
         self.assertEqual(ok.status, 200)
         no = self._app().dispatch(3, "/api/report/annotations",
-                                  {"user_id": ["701"]})
+                                  {"subject_id": ["701"]})
         self.assertEqual(no.status, 403)
 
     # SA06 -------------------------------------------------------------------
     def test_sa06_read_access_audited(self):
         self.assertEqual(self._audit_count("report_annotations_viewed"), 0)
         r = self._app().dispatch(1, "/api/report/annotations",
-                                 {"user_id": ["700"]})
+                                 {"subject_id": ["700"]})
         self.assertEqual(r.status, 200)
         self.assertEqual(self._audit_count("report_annotations_viewed"), 1)
 

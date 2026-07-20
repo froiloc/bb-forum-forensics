@@ -22,7 +22,8 @@
 #        wird mit 403 abgewiesen.
 # EX12 — CLI: Liste, Exit 2 bei roter Ampel, add/defer/close.
 #
-# Version: v0.7.385 · Build: 385 · 2026-07-12
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import io
@@ -156,10 +157,10 @@ class ExternalMattersTests(unittest.TestCase):
     def _app(self):
         return ManagementApp(db_path=self._db)
 
-    def _mk(self, user_id=18, kind="bestandsdaten", wv="2026-07-20",
+    def _mk(self, subject_id=18, kind="bestandsdaten", wv="2026-07-20",
             betreff="Bestandsdaten Kennung xy", frist=7, actor=1):
         return self.repo.create(
-            user_id=user_id, kind=kind, betreff=betreff,
+            subject_id=subject_id, kind=kind, betreff=betreff,
             angefordert_am="2026-07-01", wiedervorlage_am=wv,
             adressat="Telekom AG", aktenzeichen="Az-1",
             vorwarnfrist_tage=frist, actor_id=actor)
@@ -248,7 +249,7 @@ class ExternalMattersTests(unittest.TestCase):
 
         row = self.repo.get(mid)
         self.assertEqual(row["status"], "offen")
-        self.assertEqual(row["user_id"], 18)
+        self.assertEqual(row["subject_id"], 18)
         self.assertEqual(row["vorwarnfrist_tage"], 7)
         # Die Kopplung Zeile <-> Beleg ist gesetzt (kein audit_seq=0).
         self.assertEqual(row["audit_seq"], seq)
@@ -267,7 +268,7 @@ class ExternalMattersTests(unittest.TestCase):
         # Zeitstrahl-Spiegel: der Fall zeigt, worauf er wartet.
         ce = self.con.execute(
             "SELECT event_kind, payload, audit_seq FROM case_events "
-            "WHERE user_id = 18 AND event_kind = 'external_matter'").fetchone()
+            "WHERE subject_id = 18 AND event_kind = 'external_matter'").fetchone()
         self.assertIsNotNone(ce)
         self.assertEqual(ce["audit_seq"], seq)
         cep = json.loads(ce["payload"])
@@ -276,16 +277,16 @@ class ExternalMattersTests(unittest.TestCase):
 
         # Unbekannte Vorgangsart und leerer Betreff werden abgewiesen.
         with self.assertRaises(ExternalMattersError):
-            self.repo.create(user_id=18, kind="quatsch", betreff="x",
+            self.repo.create(subject_id=18, kind="quatsch", betreff="x",
                              angefordert_am=TAG, wiedervorlage_am=TAG,
                              actor_id=1)
         with self.assertRaises(ExternalMattersError):
-            self.repo.create(user_id=18, kind="beschluss", betreff="  ",
+            self.repo.create(subject_id=18, kind="beschluss", betreff="  ",
                              angefordert_am=TAG, wiedervorlage_am=TAG,
                              actor_id=1)
         # Unbekannter Fall -> Fehler (keine verwaiste Zeile).
         with self.assertRaises(ExternalMattersError):
-            self.repo.create(user_id=999, kind="beschluss", betreff="x",
+            self.repo.create(subject_id=999, kind="beschluss", betreff="x",
                              angefordert_am=TAG, wiedervorlage_am=TAG,
                              actor_id=1)
 
@@ -358,7 +359,7 @@ class ExternalMattersTests(unittest.TestCase):
     def test_ex07_no_unaudited_write(self):
         readonly = ExternalMattersRepo(self.con)          # KEIN Writer
         with self.assertRaises(ExternalMattersError) as ctx:
-            readonly.create(user_id=18, kind="beschluss", betreff="x",
+            readonly.create(subject_id=18, kind="beschluss", betreff="x",
                             angefordert_am=TAG, wiedervorlage_am=TAG)
         self.assertIn("unauditierter Schreibpfad", str(ctx.exception))
         # Lesen bleibt erlaubt.
@@ -368,7 +369,7 @@ class ExternalMattersTests(unittest.TestCase):
     def test_ex08_calendar_merges_sources(self):
         # Eine Wiedervorlage im Zeitraum, eine UEBERFAELLIGE davor.
         self._mk(wv="2026-07-20", betreff="Bestandsdaten")
-        self._mk(user_id=19, wv="2026-06-01", betreff="Alter Beschluss",
+        self._mk(subject_id=19, wv="2026-06-01", betreff="Alter Beschluss",
                  kind="beschluss")
 
         # Abwesenheit (M008) + Feiertag (M008) — anderes Schreibmodell, gleiche Zeit.
@@ -443,8 +444,8 @@ class ExternalMattersTests(unittest.TestCase):
 
     # ================================================================== EX10
     def test_ex10_endpoints_read(self):
-        self._mk(user_id=18, wv="2026-07-20")
-        self._mk(user_id=19, wv="2026-07-21", kind="beschluss",
+        self._mk(subject_id=18, wv="2026-07-20")
+        self._mk(subject_id=19, wv="2026-07-21", kind="beschluss",
                  betreff="Beschluss")
         app = self._app()
 
@@ -462,10 +463,10 @@ class ExternalMattersTests(unittest.TestCase):
         data = json.loads(r.body)
         self.assertEqual(data["scope"], "eigene")
         self.assertEqual(data["count"], 1)
-        self.assertEqual(data["matters"][0]["user_id"], 18)
+        self.assertEqual(data["matters"][0]["subject_id"], 18)
 
         # Fremder Fall ausdruecklich angefragt -> 403 (kein stilles Leer).
-        r = app.dispatch(2, "/api/external", {"user_id": ["19"]})
+        r = app.dispatch(2, "/api/external", {"subject_id": ["19"]})
         self.assertEqual(r.status, 403)
 
         # Schmitz: kein Recht -> 403.
@@ -505,7 +506,7 @@ class ExternalMattersTests(unittest.TestCase):
         # -> GELB. Der Wert ist bewusst so gewaehlt, dass er NUR stimmt, wenn
         # der Stichtag wirklich als STRING ausgewertet wurde. (Daten sind
         # wesentlich: ohne Vorgang war der Fehler unsichtbar.)
-        self._mk(user_id=18, wv="2026-07-19")
+        self._mk(subject_id=18, wv="2026-07-19")
         app = self._app()
 
         faelle = [
@@ -514,7 +515,7 @@ class ExternalMattersTests(unittest.TestCase):
             ("/api/external", {"stichtag": [TAG]}),
             ("/api/external", {"offen": ["1"]}),
             ("/api/external", {"status": ["offen"]}),
-            ("/api/external", {"user_id": ["18"]}),
+            ("/api/external", {"subject_id": ["18"]}),
         ]
         for path, q in faelle:
             r = app.dispatch(1, path, q)
@@ -541,14 +542,14 @@ class ExternalMattersTests(unittest.TestCase):
 
         # Mueller legt fuer SEINEN Fall an.
         r = app.dispatch_write(2, "/api/external/create", {
-            "user_id": 18, "kind": "verkehrsdaten", "betreff": "Verkehrsdaten",
+            "subject_id": 18, "kind": "verkehrsdaten", "betreff": "Verkehrsdaten",
             "wiedervorlage_am": "2026-07-30", "vorwarnfrist_tage": 3})
         self.assertEqual(r.status, 200)
         mid = json.loads(r.body)["matter_id"]
 
         # ... aber NICHT fuer einen fremden Fall.
         r = app.dispatch_write(2, "/api/external/create", {
-            "user_id": 19, "kind": "beschluss", "betreff": "fremd",
+            "subject_id": 19, "kind": "beschluss", "betreff": "fremd",
             "wiedervorlage_am": "2026-07-30"})
         self.assertEqual(r.status, 403)
 
@@ -584,7 +585,7 @@ class ExternalMattersTests(unittest.TestCase):
 
         # Ohne Recht -> 403.
         r = app.dispatch_write(3, "/api/external/create", {
-            "user_id": 19, "kind": "osint", "betreff": "x",
+            "subject_id": 19, "kind": "osint", "betreff": "x",
             "wiedervorlage_am": "2026-08-01"})
         self.assertEqual(r.status, 403)
 
@@ -605,14 +606,14 @@ class ExternalMattersTests(unittest.TestCase):
         out = io.StringIO()
         with redirect_stdout(out):
             rc = external_admin.main([
-                "--db", self._db, "add", "--user-id", "19",
+                "--db", self._db, "add", "--subject-id", "19",
                 "--kind", "rechtshilfe", "--betreff", "Ersuchen NL",
                 "--wiedervorlage", "2026-09-01", "--actor", "h0a2898"])
         self.assertEqual(rc, 0)
         self.assertIn("angelegt", out.getvalue())
 
         mid = self.con.execute(
-            "SELECT id FROM external_matters WHERE user_id = 19"
+            "SELECT id FROM external_matters WHERE subject_id = 19"
         ).fetchone()[0]
 
         with redirect_stdout(io.StringIO()):

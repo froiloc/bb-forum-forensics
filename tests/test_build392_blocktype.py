@@ -10,6 +10,9 @@
 #      BESTEHENDEN Blocks nicht mehr ueberschreiben.
 #
 # Beleg: Bugbefund Projektgespraech 2026-07-12, Bauplan Build 392
+#
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 from __future__ import annotations
@@ -217,7 +220,7 @@ class TestSaveBlockBewahrtTypEchtDurchDenEndpunkt:
         context = MagicMock()
         context.investigator_username = "h001"
         context.username = "h001"
-        context.user_id = 42
+        context.subject_id = 42
         config = MagicMock()
         config.get = MagicMock(return_value={})
         self.ep = ReportEndpoint(bundle, context, config)

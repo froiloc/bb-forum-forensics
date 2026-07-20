@@ -16,21 +16,22 @@
 #   T02 — Modus 'job': Kein Job vorhanden → ModeResolverError
 #   T03 — Modus 'job': Systembenutzer nicht in person → ModeResolverError
 #   T04 — Modus 'job': person-Tabelle fehlt → ModeResolverError
-#   T05 — Modus 'job': forensic_db wird aus user_id abgeleitet (Build 308)
-#   T06 — Modus 'cli': user_id per CLI → ResolvedContext korrekt
-#   T07 — Modus 'cli': username per CLI → user_id aus coordinator.db aufgelöst
-#   T08 — Modus 'cli': Weder user_id noch username → ModeResolverError
+#   T05 — Modus 'job': forensic_db wird aus subject_id abgeleitet (Build 308)
+#   T06 — Modus 'cli': subject_id per CLI → ResolvedContext korrekt
+#   T07 — Modus 'cli': username per CLI → subject_id aus coordinator.db aufgelöst
+#   T08 — Modus 'cli': Weder subject_id noch username → ModeResolverError
 #   T09 — Modus 'support': Wie cli, mode='support' im Ergebnis
 #   T10 — Modus aus CLI überschreibt config.yaml (Eskalationskette)
 #   T11 — Modus aus config.yaml überschreibt Coded Default (Eskalationskette)
 #   T12 — Ungültiger Modus → ModeResolverError
 #   T13 — Dateinamensschema: forensic_<uid>.db und evidence_<uid>.db korrekt
-#   T14 — Modus 'cli': coordinator.db nicht erreichbar, user_id bekannt → Fallback
+#   T14 — Modus 'cli': coordinator.db nicht erreichbar, subject_id bekannt → Fallback
 #   T15 — ResolvedContext ist frozen (unveränderlich)
 #   T16 — Modus 'job': Mehrere Jobs → ältester mit höchster Priorität gewählt
 #   T17 — Modus 'cli': username-Lookup gibt neuesten scrape_jobs-Eintrag zurück
 #
-# Version: v0.1.0 · Build: 004 · 2026-04-10
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import sys
@@ -139,7 +140,7 @@ def _setup_coordinator_db(db_path: str) -> sqlite3.Connection:
         );
         CREATE TABLE IF NOT EXISTS scrape_jobs (
             id           INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id      INTEGER NOT NULL,
+            subject_id      INTEGER NOT NULL,
             username     TEXT NOT NULL,
             priority     INTEGER NOT NULL DEFAULT 3,
             status       TEXT NOT NULL DEFAULT 'pending',
@@ -153,7 +154,7 @@ def _setup_coordinator_db(db_path: str) -> sqlite3.Connection:
             manifest_path TEXT
         );
         CREATE TABLE IF NOT EXISTS cases (
-            user_id             INTEGER PRIMARY KEY,
+            subject_id             INTEGER PRIMARY KEY,
             username            TEXT NOT NULL,
             assigned_to         INTEGER,
             priority            INTEGER NOT NULL DEFAULT 3 CHECK(priority BETWEEN 1 AND 5),
@@ -196,7 +197,7 @@ class TestModeResolverJob(unittest.TestCase):
     def _make_db_with_job(
         self,
         system_username: str = "h012345",
-        user_id: int = 42,
+        subject_id: int = 42,
         username: str = "verdaechtiger42",
         status: str = "open",
         priority: int = 3,
@@ -219,9 +220,9 @@ class TestModeResolverJob(unittest.TestCase):
         ).fetchone()[0]
         con.execute(
             "INSERT INTO cases "
-            "(user_id, username, assigned_to, priority, status, created_at, updated_at) "
+            "(subject_id, username, assigned_to, priority, status, created_at, updated_at) "
             "VALUES (?, ?, ?, ?, ?, 100, 100)",
-            (user_id, username, investigator_id, priority, status),
+            (subject_id, username, investigator_id, priority, status),
         )
         con.commit()
         con.close()
@@ -229,12 +230,12 @@ class TestModeResolverJob(unittest.TestCase):
 
     def test_T01_job_korrekt_aufgeloest(self):
         """T01: Offener Job wird korrekt aufgelöst — alle Felder stimmen."""
-        self._make_db_with_job(user_id=42, username="verdaechtiger42")
+        self._make_db_with_job(subject_id=42, username="verdaechtiger42")
         resolver = ModeResolver(self.cfg, self.usr, {"mode": "job"})
         ctx = resolver.resolve()
 
         self.assertEqual(ctx.mode, "job")
-        self.assertEqual(ctx.user_id, 42)
+        self.assertEqual(ctx.subject_id, 42)
         self.assertEqual(ctx.username, "verdaechtiger42")
         self.assertTrue(str(ctx.forensic_db).endswith("forensic_42.db"))
         self.assertTrue(str(ctx.evidence_db).endswith("evidence_42.db"))
@@ -274,10 +275,10 @@ class TestModeResolverJob(unittest.TestCase):
         with self.assertRaises(ModeResolverError):
             resolver.resolve()
 
-    def test_T05_forensic_db_aus_user_id(self):
-        """T05 (Build 308): forensic_db wird deterministisch aus user_id abgeleitet;
+    def test_T05_forensic_db_aus_subject_id(self):
+        """T05 (Build 308): forensic_db wird deterministisch aus subject_id abgeleitet;
         der frühere output_path-Override entfällt (cases führt kein output_path)."""
-        self._make_db_with_job(user_id=42)
+        self._make_db_with_job(subject_id=42)
         resolver = ModeResolver(self.cfg, self.usr, {"mode": "job"})
         ctx = resolver.resolve()
         self.assertTrue(str(ctx.forensic_db).endswith("forensic_42.db"))
@@ -297,14 +298,14 @@ class TestModeResolverJob(unittest.TestCase):
         # Fall mit niedrigerer Priorität (höhere Zahl) → soll nicht gewählt werden
         con.execute(
             "INSERT INTO cases "
-            "(user_id, username, assigned_to, priority, status, created_at, updated_at) "
+            "(subject_id, username, assigned_to, priority, status, created_at, updated_at) "
             "VALUES (99, 'nutzer99', ?, 5, 'open', 200, 200)",
             (inv_id,),
         )
         # Fall mit höherer Priorität (kleinere Zahl) → soll gewählt werden
         con.execute(
             "INSERT INTO cases "
-            "(user_id, username, assigned_to, priority, status, created_at, updated_at) "
+            "(subject_id, username, assigned_to, priority, status, created_at, updated_at) "
             "VALUES (77, 'nutzer77', ?, 1, 'open', 300, 300)",
             (inv_id,),
         )
@@ -313,7 +314,7 @@ class TestModeResolverJob(unittest.TestCase):
 
         resolver = ModeResolver(self.cfg, self.usr, {"mode": "job"})
         ctx = resolver.resolve()
-        self.assertEqual(ctx.user_id, 77)
+        self.assertEqual(ctx.subject_id, 77)
 
 
 class TestModeResolverCli(unittest.TestCase):
@@ -328,7 +329,7 @@ class TestModeResolverCli(unittest.TestCase):
     def tearDown(self):
         reset_for_testing()
 
-    def _make_db_with_suspect(self, user_id: int, username: str) -> None:
+    def _make_db_with_suspect(self, subject_id: int, username: str) -> None:
         """Legt coordinator.db mit einem Ermittler und einem Beschuldigten-Job an."""
         db_path = self.cfg.get("paths.coordinator_db")
         con = _setup_coordinator_db(db_path)
@@ -341,49 +342,49 @@ class TestModeResolverCli(unittest.TestCase):
         ).fetchone()[0]
         con.execute(
             "INSERT INTO scrape_jobs "
-            "(user_id, username, priority, status, assigned_to, created_at) "
+            "(subject_id, username, priority, status, assigned_to, created_at) "
             "VALUES (?, ?, 3, 'pending', ?, 0)",
-            (user_id, username, inv_id),
+            (subject_id, username, inv_id),
         )
         con.commit()
         con.close()
 
-    def test_T06_cli_user_id(self):
-        """T06: Modus 'cli' mit --user-id → ResolvedContext korrekt."""
+    def test_T06_cli_subject_id(self):
+        """T06: Modus 'cli' mit --subject-id → ResolvedContext korrekt."""
         self._make_db_with_suspect(55, "nutzer55")
         resolver = ModeResolver(
-            self.cfg, self.usr, {"mode": "cli", "user_id": 55}
+            self.cfg, self.usr, {"mode": "cli", "subject_id": 55}
         )
         ctx = resolver.resolve()
         self.assertEqual(ctx.mode, "cli")
-        self.assertEqual(ctx.user_id, 55)
+        self.assertEqual(ctx.subject_id, 55)
         self.assertEqual(ctx.username, "nutzer55")
         self.assertTrue(str(ctx.forensic_db).endswith("forensic_55.db"))
 
     def test_T07_cli_username_aufloesen(self):
-        """T07: Modus 'cli' mit --username → user_id aus coordinator.db aufgelöst."""
+        """T07: Modus 'cli' mit --username → subject_id aus coordinator.db aufgelöst."""
         self._make_db_with_suspect(66, "nutzer66")
         resolver = ModeResolver(
             self.cfg, self.usr, {"mode": "cli", "username": "nutzer66"}
         )
         ctx = resolver.resolve()
-        self.assertEqual(ctx.user_id, 66)
+        self.assertEqual(ctx.subject_id, 66)
         self.assertEqual(ctx.username, "nutzer66")
 
     def test_T08_cli_weder_id_noch_name(self):
-        """T08: Weder --user-id noch --username → ModeResolverError."""
+        """T08: Weder --subject-id noch --username → ModeResolverError."""
         resolver = ModeResolver(self.cfg, self.usr, {"mode": "cli"})
         with self.assertRaises(ModeResolverError):
             resolver.resolve()
 
-    def test_T14_coordinator_db_nicht_erreichbar_mit_user_id(self):
-        """T14: coordinator.db fehlt, aber user_id bekannt → Fallback ohne username."""
+    def test_T14_coordinator_db_nicht_erreichbar_mit_subject_id(self):
+        """T14: coordinator.db fehlt, aber subject_id bekannt → Fallback ohne username."""
         # coordinator.db wird nicht angelegt → Fallback
         resolver = ModeResolver(
-            self.cfg, self.usr, {"mode": "cli", "user_id": 77}
+            self.cfg, self.usr, {"mode": "cli", "subject_id": 77}
         )
         ctx = resolver.resolve()
-        self.assertEqual(ctx.user_id, 77)
+        self.assertEqual(ctx.subject_id, 77)
         self.assertEqual(ctx.username, "uid_77")
         self.assertIsNone(ctx.investigator_id)
 
@@ -402,13 +403,13 @@ class TestModeResolverCli(unittest.TestCase):
         # (Namenswechsel des Beschuldigten zwischen zwei Jobs)
         con.execute(
             "INSERT INTO scrape_jobs "
-            "(user_id, username, priority, status, assigned_to, created_at) "
+            "(subject_id, username, priority, status, assigned_to, created_at) "
             "VALUES (88, 'alter_name', 3, 'done', ?, 100)",
             (inv_id,),
         )
         con.execute(
             "INSERT INTO scrape_jobs "
-            "(user_id, username, priority, status, assigned_to, created_at) "
+            "(subject_id, username, priority, status, assigned_to, created_at) "
             "VALUES (88, 'neuer_name', 3, 'pending', ?, 200)",
             (inv_id,),
         )
@@ -416,7 +417,7 @@ class TestModeResolverCli(unittest.TestCase):
         con.close()
 
         resolver = ModeResolver(
-            self.cfg, self.usr, {"mode": "cli", "user_id": 88}
+            self.cfg, self.usr, {"mode": "cli", "subject_id": 88}
         )
         ctx = resolver.resolve()
         # Neuester Eintrag (höchste id) soll gewählt werden
@@ -448,7 +449,7 @@ class TestModeResolverSupport(unittest.TestCase):
         ).fetchone()[0]
         con.execute(
             "INSERT INTO scrape_jobs "
-            "(user_id, username, priority, status, assigned_to, created_at) "
+            "(subject_id, username, priority, status, assigned_to, created_at) "
             "VALUES (33, 'nutzer33', 3, 'pending', ?, 0)",
             (inv_id,),
         )
@@ -456,11 +457,11 @@ class TestModeResolverSupport(unittest.TestCase):
         con.close()
 
         resolver = ModeResolver(
-            self.cfg, self.usr, {"mode": "support", "user_id": 33}
+            self.cfg, self.usr, {"mode": "support", "subject_id": 33}
         )
         ctx = resolver.resolve()
         self.assertEqual(ctx.mode, "support")
-        self.assertEqual(ctx.user_id, 33)
+        self.assertEqual(ctx.subject_id, 33)
 
 
 class TestModeResolverEscalation(unittest.TestCase):
@@ -477,7 +478,7 @@ class TestModeResolverEscalation(unittest.TestCase):
     def test_T10_cli_ueberschreibt_config(self):
         """T10: Modus aus CLI überschreibt config.yaml-Wert."""
         cfg = _make_config(self.tmp, "server:\n  mode: 'job'\n")
-        resolver = ModeResolver(cfg, self.usr, {"mode": "cli", "user_id": 1})
+        resolver = ModeResolver(cfg, self.usr, {"mode": "cli", "subject_id": 1})
         ctx = resolver.resolve()
         self.assertEqual(ctx.mode, "cli")
 
@@ -485,7 +486,7 @@ class TestModeResolverEscalation(unittest.TestCase):
         """T11: Modus aus config.yaml überschreibt Coded Default ('job')."""
         cfg = _make_config(self.tmp, "server:\n  mode: 'cli'\n")
         # Kein CLI-Modus gesetzt → config.yaml-Wert greift
-        resolver = ModeResolver(cfg, self.usr, {"user_id": 1})
+        resolver = ModeResolver(cfg, self.usr, {"subject_id": 1})
         ctx = resolver.resolve()
         self.assertEqual(ctx.mode, "cli")
 
@@ -512,7 +513,7 @@ class TestModeResolverPaths(unittest.TestCase):
     def test_T13_dateinamensschema(self):
         """T13: Dateinamensschema forensic_<uid>.db und evidence_<uid>.db korrekt."""
         resolver = ModeResolver(
-            self.cfg, self.usr, {"mode": "cli", "user_id": 123}
+            self.cfg, self.usr, {"mode": "cli", "subject_id": 123}
         )
         ctx = resolver.resolve()
         self.assertEqual(ctx.forensic_db.name, "forensic_123.db")
@@ -521,11 +522,11 @@ class TestModeResolverPaths(unittest.TestCase):
     def test_T15_resolved_context_frozen(self):
         """T15: ResolvedContext ist ein frozen dataclass — keine Mutation möglich."""
         resolver = ModeResolver(
-            self.cfg, self.usr, {"mode": "cli", "user_id": 1}
+            self.cfg, self.usr, {"mode": "cli", "subject_id": 1}
         )
         ctx = resolver.resolve()
         with self.assertRaises((AttributeError, TypeError)):
-            ctx.user_id = 999  # type: ignore
+            ctx.subject_id = 999  # type: ignore
 
 
 if __name__ == "__main__":

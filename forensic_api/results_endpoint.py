@@ -17,11 +17,11 @@
 #
 # ── DREI FESTLEGUNGEN, DIE DIE KAPSELUNG TRAGEN ──────────────────────────────
 #
-# (1) DIE user_id KOMMT NICHT AUS DEM BODY.
+# (1) DIE subject_id KOMMT NICHT AUS DEM BODY.
 #     Sie kommt aus dem ResolvedContext — also aus dem Fall, den dieser Server
 #     ueberhaupt geoeffnet hat. Ein Bewerten FREMDER Faelle ist damit
 #     STRUKTURELL unmoeglich, nicht nur durch eine Pruefung verhindert. Ein
-#     'user_id' im Body wird ausdruecklich IGNORIERT (und protokolliert) —
+#     'subject_id' im Body wird ausdruecklich IGNORIERT (und protokolliert) —
 #     nicht etwa uebernommen.
 #
 # (2) EIGENE VERBINDUNG FUER DEN SCHREIBPFAD.
@@ -39,7 +39,8 @@
 #     Ohne investigator_id (kein angemeldeter Ermittler ermittelbar) wird NICHT
 #     geschrieben: ein Beleg ohne Handelnden ist kein Beleg.
 #
-# Version: v0.7.390 · Build: 390 · 2026-07-12
+# Version: v0.7.469 · Build: 469 · 2026-07-20
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
 # =============================================================================
 
 from __future__ import annotations
@@ -120,7 +121,7 @@ class ResultsEndpoint:
         from management.results.priority_scorer import PriorityScorer
         from management.results.results_repo import ResultsRepo
 
-        user_id = int(self._context.user_id)
+        subject_id = int(self._context.subject_id)
 
         try:
             con = self._con(write=False)
@@ -150,8 +151,8 @@ class ResultsEndpoint:
             cat = AssessmentCatalogRepo(con)
             repo = ResultsRepo(con)
             catalog = cat.full()
-            current = repo.current(user_id)
-            history = repo.history(user_id)
+            current = repo.current(subject_id)
+            history = repo.history(subject_id)
             alle = [c["code"] for c in cat.criteria()]
             score = PriorityScorer().score_with_gaps(current, alle)
 
@@ -170,7 +171,7 @@ class ResultsEndpoint:
             con.close()
 
         self._json(handler, 200, {
-            "user_id": user_id,
+            "subject_id": subject_id,
             "can_edit": bool(policy.can(CAP_EDIT)),
             "catalog": catalog,
             "current": current,
@@ -178,7 +179,7 @@ class ResultsEndpoint:
             "score": score,
         })
         logger.debug("/_forensic/results: Fall %d, %d aktuelle Bewertungen, "
-                     "%d Historieneintraege", user_id, len(current),
+                     "%d Historieneintraege", subject_id, len(current),
                      len(history))
 
     # ------------------------------------------------------------------- POST
@@ -188,7 +189,7 @@ class ResultsEndpoint:
         POST /_forensic/results/assess — eine Bewertung erfassen.
 
         APPEND-ONLY: jede Erfassung ist eine NEUE Zeile mit eigenem Beleg.
-        Die user_id kommt AUSSCHLIESSLICH aus dem Kontext (s. Kopfkommentar).
+        Die subject_id kommt AUSSCHLIESSLICH aus dem Kontext (s. Kopfkommentar).
         """
         from management.audit.audit_log import AuditLog
         from management.gateway.coordinator_writer import CoordinatorWriter
@@ -205,15 +206,15 @@ class ResultsEndpoint:
                 "error": "bad_request", "detail": "JSON-Objekt erwartet."})
             return
 
-        user_id = int(self._context.user_id)
+        subject_id = int(self._context.subject_id)
 
-        # (1) Ein 'user_id' im Body wird IGNORIERT — und das wird protokolliert.
+        # (1) Ein 'subject_id' im Body wird IGNORIERT — und das wird protokolliert.
         #     Es koennte ein Versuch sein, einen fremden Fall zu bewerten.
-        if "user_id" in payload and int(payload["user_id"] or 0) != user_id:
+        if "subject_id" in payload and int(payload["subject_id"] or 0) != subject_id:
             logger.warning(
-                "/_forensic/results/assess: user_id=%s im Rumpf wird IGNORIERT "
+                "/_forensic/results/assess: subject_id=%s im Rumpf wird IGNORIERT "
                 "— bewertet wird ausschliesslich der geoeffnete Fall %d.",
-                payload.get("user_id"), user_id)
+                payload.get("subject_id"), subject_id)
 
         pid = getattr(self._context, "investigator_id", None)
         if pid is None:
@@ -243,7 +244,7 @@ class ResultsEndpoint:
 
             repo = ResultsRepo(con, CoordinatorWriter(con, AuditLog(con)))
             res = repo.assess(
-                user_id=user_id,
+                subject_id=subject_id,
                 criterion_code=str(payload.get("criterion_code", "")),
                 extrem=str(payload.get("extrem", "")),
                 confidence_code=str(payload.get("confidence_code", "")),
@@ -264,7 +265,7 @@ class ResultsEndpoint:
             con.close()
 
         logger.info("/_forensic/results/assess: Fall %d, %s/%s -> %s "
-                    "(Bewertung %s, Beleg #%s)", user_id,
+                    "(Bewertung %s, Beleg #%s)", subject_id,
                     payload.get("criterion_code"), payload.get("extrem"),
                     payload.get("confidence_code"), res["result_id"],
                     res["audit_seq"])

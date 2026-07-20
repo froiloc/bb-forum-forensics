@@ -12,7 +12,8 @@
 # RM04 — Idempotenz: direkter 2. up() dupliziert die Rechte nicht.
 # RM05 — Katalog-Bruecke: beide Rechte in catalog.py UND im DB-Seed.
 #
-# Version: v0.7.462 · Build: 462 · 2026-07-20
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import os
@@ -120,18 +121,18 @@ class MigrationM016Tests(unittest.TestCase):
         # Fall anlegen (FK), damit nur der status-CHECK greift.
         now = int(time.time())
         self.con.execute(
-            "INSERT INTO cases (user_id, username, priority, status, "
+            "INSERT INTO cases (subject_id, username, priority, status, "
             "created_at, updated_at) VALUES (7,'u7',3,'open',?,?)", (now, now))
         with self.assertRaises(sqlite3.IntegrityError):
             self.con.execute(
-                "INSERT INTO case_release (user_id, recipient_kennung, "
+                "INSERT INTO case_release (subject_id, recipient_kennung, "
                 "recipient_display, umfang, status, unbedenklichkeit_grundlage, "
                 "created_at, audit_seq, created_audit_seq) "
                 "VALUES (7,'h0b','KHK','bericht','offen','ok',?,?,?)",
                 (now, seq, seq))
         # gueltig geht durch.
         self.con.execute(
-            "INSERT INTO case_release (user_id, recipient_kennung, "
+            "INSERT INTO case_release (subject_id, recipient_kennung, "
             "recipient_display, umfang, status, unbedenklichkeit_grundlage, "
             "created_at, audit_seq, created_audit_seq) "
             "VALUES (7,'h0b','KHK','bericht','freigegeben','ok',?,?,?)",
@@ -144,7 +145,7 @@ class MigrationM016Tests(unittest.TestCase):
         now = int(time.time())
         with self.assertRaises(sqlite3.IntegrityError):
             self.con.execute(
-                "INSERT INTO case_release (user_id, recipient_kennung, "
+                "INSERT INTO case_release (subject_id, recipient_kennung, "
                 "recipient_display, umfang, status, unbedenklichkeit_grundlage, "
                 "created_at, audit_seq, created_audit_seq) "
                 "VALUES (4242,'h0b','KHK','bericht','freigegeben','ok',?,?,?)",

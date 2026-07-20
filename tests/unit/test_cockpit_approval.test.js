@@ -1,4 +1,6 @@
 /**
+ * Build 469: Schluesselumstellung user_id -> subject_id (M019)
+ * Version: v0.7.469 · Build: 469 · 2026-07-20
  * tests/unit/test_cockpit_approval.test.js
  * IT-Forensisches Ermittlungswerkzeug — Baustelle 7: Cockpit Chef-Freigabe (W5)
  *
@@ -41,9 +43,9 @@ function _data() {
   return {
     scope: "alle", count: 2,
     reports: [
-      { user_id: 700, username: "b700", id: 1, report_type: "final",
+      { subject_id: 700, username: "b700", id: 1, report_type: "final",
         sequence_nr: 1, title: "Abschluss", status: "submitted" },
-      { user_id: 701, username: "b701", id: 1, report_type: "interim",
+      { subject_id: 701, username: "b701", id: 1, report_type: "interim",
         sequence_nr: 1, title: "Zwischen", status: "approved" },
     ],
   };
@@ -70,7 +72,7 @@ describe("cockpit_approval", () => {
     expect(api.filterReports(_data(), "submitted").length).toBe(1);
     expect(api.filterReports(_data(), "alle").length).toBe(2);
     expect(api.renderUrl(700, 1)).toBe(
-      "/api/report/render?user_id=700&report_id=1"
+      "/api/report/render?subject_id=700&report_id=1"
     );
     expect(api.canApprove("submitted")).toBe(true);
     expect(api.canApprove("approved")).toBe(false);
@@ -93,7 +95,7 @@ describe("cockpit_approval", () => {
     const frame = main.querySelector("iframe.aiw-approval-preview");
     expect(frame).not.toBeNull();
     items[0].dispatchEvent(new win.Event("click", { bubbles: true }));
-    expect(frame.src).toContain("/api/report/render?user_id=700&report_id=1");
+    expect(frame.src).toContain("/api/report/render?subject_id=700&report_id=1");
     expect(main.querySelector(".aiw-approval-statusline").textContent)
       .toContain("Zur Abnahme vorgelegt");
   });
@@ -117,7 +119,7 @@ describe("cockpit_approval", () => {
     main.querySelector(".aiw-approval-approvebtn")
       .dispatchEvent(new win.Event("click", { bubbles: true }));
     expect(approved).toEqual({
-      user_id: 700, report_id: 1, is_final: true, note: "geprueft",
+      subject_id: 700, report_id: 1, is_final: true, note: "geprueft",
     });
 
     // Zurueckweisen mit Grund.
@@ -125,7 +127,7 @@ describe("cockpit_approval", () => {
     main.querySelector(".aiw-approval-returnbtn")
       .dispatchEvent(new win.Event("click", { bubbles: true }));
     expect(returned).toEqual({
-      user_id: 700, report_id: 1, note: "nachbessern",
+      subject_id: 700, report_id: 1, note: "nachbessern",
     });
   });
 
@@ -178,10 +180,10 @@ describe("cockpit_approval", () => {
   it("AP08 reine Support-Helfer", () => {
     const api = _api();
     expect(api.annotationsUrl(700, 1)).toBe(
-      "/api/report/annotations?user_id=700&report_id=1"
+      "/api/report/annotations?subject_id=700&report_id=1"
     );
     expect(api.commentsUrl(700, 1)).toBe(
-      "/api/report/comments?user_id=700&report_id=1"
+      "/api/report/comments?subject_id=700&report_id=1"
     );
     expect(api.categoryLabel("CAT_PERSON")).toBe("Person");
     expect(api.forumContext({ topic_id: 7, forum_id: 3 }))
@@ -256,7 +258,7 @@ describe("cockpit_approval", () => {
   // --- Ermittlungsergebnis (results, read-only, Build 418) ---------------
   it("AP11 reine Ergebnis-Helfer", () => {
     const api = _api();
-    expect(api.resultsUrl(700)).toBe("/api/results?user_id=700");
+    expect(api.resultsUrl(700)).toBe("/api/results?subject_id=700");
     expect(api.extremLabel("schwerste")).toBe("schwerste Auspraegung");
     expect(api.extremLabel("beste")).toBe("beste Auspraegung");
     expect(api.gapLabel({ code: "x", label: "Ort" })).toBe("Ort");
@@ -271,7 +273,7 @@ describe("cockpit_approval", () => {
     expect(main.querySelector(".aiw-approval-results")).not.toBeNull();
 
     api.renderResults({
-      user_id: 700, can_edit: false,
+      subject_id: 700, can_edit: false,
       current: [
         { criterion_code: "identification",
           criterion_label: "Identifizierung", extrem: "schwerste",
@@ -293,7 +295,7 @@ describe("cockpit_approval", () => {
       .toContain("Ort");
 
     // Kein Ergebnis -> Hinweis.
-    api.renderResults({ user_id: 700, current: [], score: null });
+    api.renderResults({ subject_id: 700, current: [], score: null });
     expect(main.querySelector(".aiw-approval-results").textContent)
       .toContain("Noch keine Ermittlungsergebnisse");
 
@@ -337,7 +339,7 @@ describe("cockpit_approval", () => {
 
     let assessed = null;
     api.renderAssessForm(_catalog(), {
-      userId: 700, onAssess: function (b) { assessed = b; },
+      subjectId: 700, onAssess: function (b) { assessed = b; },
     });
     const panel = main.querySelector(".aiw-approval-results");
     expect(panel.querySelector(".aiw-approval-assess-form")).not.toBeNull();
@@ -368,7 +370,7 @@ describe("cockpit_approval", () => {
       new win.Event("submit", { bubbles: true, cancelable: true })
     );
     expect(assessed).toEqual({
-      user_id: 700, criterion_code: "identification", extrem: "schwerste",
+      subject_id: 700, criterion_code: "identification", extrem: "schwerste",
       confidence_code: "high", quality_code: "q2", note: "geprueft",
     });
   });
@@ -380,7 +382,7 @@ describe("cockpit_approval", () => {
     api.renderApproval(main, _data(), { status: "submitted", canApprove: true });
     let assessed = null;
     api.renderAssessForm(_catalog(), {
-      userId: 700, onAssess: function (b) { assessed = b; },
+      subjectId: 700, onAssess: function (b) { assessed = b; },
     });
     const panel = main.querySelector(".aiw-approval-results");
     // Konfidenz auf leeren Wert zwingen (kein passendes <option>).

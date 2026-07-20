@@ -32,7 +32,8 @@
 //   Endgueltig / Siegel pruefen) inkl. Anzeige des Pruefergebnisses.
 // Build 380: Rueckgabe zur Nachbesserung (submitted -> draft) + korrigierte
 //   Beschriftung fuer 'final' (= an StA versandt, nicht 'hoehere Freigabestufe').
-// Version: v0.7.380 · Build: 380 · 2026-07-10
+// Build 469: Schluesselumstellung user_id -> subject_id (M019)
+// Version: v0.7.469 · Build: 469 · 2026-07-20
 // =============================================================================
 
 (function () {
@@ -80,7 +81,7 @@
         return ((data && data.reports) || []).map(function (r) {
             var ap = r.approvals || [];
             return {
-                user_id: r.user_id,
+                subject_id: r.subject_id,
                 report_id: r.id,
                 username: r.username || '',
                 title: r.title,
@@ -179,7 +180,7 @@
     // =========================================================================
 
     var _COLUMNS = [
-        { title: 'Fall', field: 'user_id' },
+        { title: 'Fall', field: 'subject_id' },
         { title: 'Benutzername', field: 'username', headerFilter: 'input' },
         { title: 'Titel', field: 'title', headerFilter: 'input' },
         { title: 'Typ', field: 'typ' },
@@ -226,7 +227,7 @@
             var ul = doc.createElement('ul');
             errs.forEach(function (e) {
                 var li = doc.createElement('li');
-                li.textContent = 'Fall ' + e.user_id + ': ' + e.error;
+                li.textContent = 'Fall ' + e.subject_id + ': ' + e.error;
                 ul.appendChild(li);
             });
             box.appendChild(ul);
@@ -340,7 +341,7 @@
 
             var head = doc.createElement('div');
             head.className = 'aiw-subhead';
-            head.textContent = 'Bericht ' + r.user_id + '/' + r.report_id
+            head.textContent = 'Bericht ' + r.subject_id + '/' + r.report_id
                 + ' \u2014 ' + r.title + ' (' + r.status_label + ')';
             panel.appendChild(head);
 
@@ -359,20 +360,20 @@
                     if (a.kind === 'verify') {
                         if (typeof opts.onVerify === 'function') {
                             setResult('Pruefe Siegel \u2026', null);
-                            opts.onVerify(r.user_id, r.report_id);
+                            opts.onVerify(r.subject_id, r.report_id);
                         }
                         return;
                     }
                     if (a.kind === 'return') {
                         if (typeof opts.onReturn === 'function') {
                             setResult('Gebe zurueck \u2026', null);
-                            opts.onReturn(r.user_id, r.report_id);
+                            opts.onReturn(r.subject_id, r.report_id);
                         }
                         return;
                     }
                     if (typeof opts.onApprove === 'function') {
                         setResult('Schreibe \u2026', null);
-                        opts.onApprove(r.user_id, r.report_id,
+                        opts.onApprove(r.subject_id, r.report_id,
                                        a.kind === 'final');
                     }
                 });

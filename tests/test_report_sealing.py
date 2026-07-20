@@ -18,7 +18,8 @@
 # SE07 — Endpunkte: 403 ohne reports.approve; 403 bei Scope 'eigene';
 #        Erfolg via dispatch_write; verify via dispatch.
 #
-# Version: v0.7.377 · Build: 377 · 2026-07-10
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import json
@@ -243,7 +244,7 @@ class ReportSealingTests(unittest.TestCase):
 
     # SE04 -------------------------------------------------------------------
     def test_se04_approve_writes_all_three(self):
-        res = self._svc().approve(user_id=18, report_id=1, actor_id=1,
+        res = self._svc().approve(subject_id=18, report_id=1, actor_id=1,
                                   actor_username="h0a2898", note="geprueft")
         self.assertTrue(res["ok"])
         self.assertEqual(res["status"], "approved")
@@ -280,22 +281,22 @@ class ReportSealingTests(unittest.TestCase):
         svc = self._svc()
         # 'final' aus 'submitted' -> abgelehnt.
         with self.assertRaises(ApprovalError):
-            svc.approve(user_id=18, report_id=1, actor_id=1,
+            svc.approve(subject_id=18, report_id=1, actor_id=1,
                         actor_username="h0a2898", is_final=True)
         # Erst freigeben ...
-        svc.approve(user_id=18, report_id=1, actor_id=1,
+        svc.approve(subject_id=18, report_id=1, actor_id=1,
                     actor_username="h0a2898")
         # ... erneute Freigabe aus 'approved' -> abgelehnt.
         with self.assertRaises(ApprovalError):
-            svc.approve(user_id=18, report_id=1, actor_id=1,
+            svc.approve(subject_id=18, report_id=1, actor_id=1,
                         actor_username="h0a2898")
         # ... aber 'final' ist jetzt moeglich.
-        res = svc.approve(user_id=18, report_id=1, actor_id=1,
+        res = svc.approve(subject_id=18, report_id=1, actor_id=1,
                           actor_username="h0a2898", is_final=True)
         self.assertEqual(res["status"], "final")
         # Unbekannter Bericht.
         with self.assertRaises(ApprovalError):
-            svc.approve(user_id=18, report_id=99, actor_id=1,
+            svc.approve(subject_id=18, report_id=99, actor_id=1,
                         actor_username="h0a2898")
 
     # SE06 -------------------------------------------------------------------
@@ -307,10 +308,10 @@ class ReportSealingTests(unittest.TestCase):
         aufdecken.
         """
         svc = self._svc()
-        svc.approve(user_id=18, report_id=1, actor_id=1,
+        svc.approve(subject_id=18, report_id=1, actor_id=1,
                     actor_username="h0a2898")
 
-        ok = svc.verify(user_id=18, report_id=1)
+        ok = svc.verify(subject_id=18, report_id=1)
         self.assertTrue(ok["sealed"])
         self.assertTrue(ok["match"])
 
@@ -320,14 +321,14 @@ class ReportSealingTests(unittest.TestCase):
                   (json.dumps({"text": "nachtraeglich geaendert"}),))
         c.close()
 
-        bad = svc.verify(user_id=18, report_id=1)
+        bad = svc.verify(subject_id=18, report_id=1)
         self.assertTrue(bad["sealed"])
         self.assertFalse(bad["match"])          # MANIPULATION nachgewiesen
         self.assertIn("ABWEICHUNG", bad["detail"])
         self.assertNotEqual(bad["current_sha256"], bad["sealed_sha256"])
 
         # Nicht versiegelter Bericht -> sealed=False, kein Fehlalarm.
-        none = svc.verify(user_id=18, report_id=99)
+        none = svc.verify(subject_id=18, report_id=99)
         self.assertFalse(none["sealed"])
         self.assertIsNone(none["match"])
 
@@ -338,12 +339,12 @@ class ReportSealingTests(unittest.TestCase):
 
         # person 2 (investigator, Scope 'eigene') -> 403.
         r403 = app.dispatch_write(2, "/api/report/approve",
-                                  {"user_id": 18, "report_id": 1})
+                                  {"subject_id": 18, "report_id": 1})
         self.assertEqual(r403.status, 403)
 
         # Supervisor -> Erfolg.
         r = app.dispatch_write(1, "/api/report/approve",
-                               {"user_id": 18, "report_id": 1,
+                               {"subject_id": 18, "report_id": 1,
                                 "note": "in Ordnung"})
         self.assertEqual(r.status, 200)
         d = json.loads(r.body.decode("utf-8"))
@@ -352,7 +353,7 @@ class ReportSealingTests(unittest.TestCase):
 
         # verify ueber den GET-Pfad.
         v = app.dispatch(1, "/api/report/verify",
-                         {"user_id": ["18"], "report_id": ["1"]})
+                         {"subject_id": ["18"], "report_id": ["1"]})
         self.assertEqual(v.status, 200)
         dv = json.loads(v.body.decode("utf-8"))
         self.assertTrue(dv["sealed"])
@@ -360,7 +361,7 @@ class ReportSealingTests(unittest.TestCase):
 
         # Erneute Freigabe (Status ist nun 'approved') -> 409 mit Begruendung.
         again = app.dispatch_write(1, "/api/report/approve",
-                                   {"user_id": 18, "report_id": 1})
+                                   {"subject_id": 18, "report_id": 1})
         self.assertEqual(again.status, 409)
 
     # SE08 -------------------------------------------------------------------
@@ -370,7 +371,7 @@ class ReportSealingTests(unittest.TestCase):
         Nur aus 'submitted'; abgenommene/versandte Berichte NIE.
         """
         svc = self._svc()
-        res = svc.return_to_draft(user_id=18, report_id=1, actor_id=1,
+        res = svc.return_to_draft(subject_id=18, report_id=1, actor_id=1,
                                   actor_username="h0a2898",
                                   note="Kapitel 3 unvollstaendig")
         self.assertTrue(res["ok"])
@@ -391,22 +392,22 @@ class ReportSealingTests(unittest.TestCase):
 
         # Aus 'draft' ist keine erneute Rueckgabe moeglich.
         with self.assertRaises(ApprovalError):
-            svc.return_to_draft(user_id=18, report_id=1, actor_id=1,
+            svc.return_to_draft(subject_id=18, report_id=1, actor_id=1,
                                 actor_username="h0a2898")
 
     # SE09 -------------------------------------------------------------------
     def test_se09_no_return_after_approval(self):
         """Abgenommene und versandte Berichte werden NIE zurueckgestuft."""
         svc = self._svc()
-        svc.approve(user_id=18, report_id=1, actor_id=1,
+        svc.approve(subject_id=18, report_id=1, actor_id=1,
                     actor_username="h0a2898")
         with self.assertRaises(ApprovalError):
-            svc.return_to_draft(user_id=18, report_id=1, actor_id=1,
+            svc.return_to_draft(subject_id=18, report_id=1, actor_id=1,
                                 actor_username="h0a2898")
-        svc.approve(user_id=18, report_id=1, actor_id=1,
+        svc.approve(subject_id=18, report_id=1, actor_id=1,
                     actor_username="h0a2898", is_final=True)
         with self.assertRaises(ApprovalError):
-            svc.return_to_draft(user_id=18, report_id=1, actor_id=1,
+            svc.return_to_draft(subject_id=18, report_id=1, actor_id=1,
                                 actor_username="h0a2898")
 
     # SE10 -------------------------------------------------------------------
@@ -423,7 +424,7 @@ class ReportSealingTests(unittest.TestCase):
                             approved_db=self._approved)
         # person 2 ist jetzt lector (reports.review, alle) -> darf.
         r = app.dispatch_write(2, "/api/report/return",
-                               {"user_id": 18, "report_id": 1})
+                               {"subject_id": 18, "report_id": 1})
         self.assertEqual(r.status, 200)
         d = json.loads(r.body.decode("utf-8"))
         self.assertEqual(d["status"], "draft")
@@ -434,7 +435,7 @@ class ReportSealingTests(unittest.TestCase):
         c.execute("UPDATE reports SET status='submitted' WHERE id=1")
         c.close()
         r2 = app.dispatch_write(1, "/api/report/return",
-                                {"user_id": 18, "report_id": 1})
+                                {"subject_id": 18, "report_id": 1})
         self.assertEqual(r2.status, 200)
 
 

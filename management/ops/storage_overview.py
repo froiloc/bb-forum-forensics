@@ -18,7 +18,7 @@
 #   temporaeren Verzeichnissen vollstaendig testbar (GR1: kein stiller Ausfall —
 #   fehlende Verzeichnisse werden mit 0 gezaehlt und vermerkt).
 #
-# Version: v0.7.454 · Build: 454 · 2026-07-19
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 from __future__ import annotations
@@ -49,7 +49,7 @@ class CategoryStorage:
 
 @dataclass(frozen=True)
 class CaseStorage:
-    user_id: int
+    subject_id: int
     forensic_bytes: Optional[int]   # None = Datei fehlt
     evidence_bytes: Optional[int]
     assets_bytes: Optional[int]
@@ -200,7 +200,7 @@ def storage_to_dict(report: StorageReport) -> dict:
             for c in report.categories
         ],
         "per_case": [
-            {"user_id": c.user_id, "forensic_bytes": c.forensic_bytes,
+            {"subject_id": c.subject_id, "forensic_bytes": c.forensic_bytes,
              "evidence_bytes": c.evidence_bytes, "assets_bytes": c.assets_bytes,
              "total_bytes": c.total_bytes}
             for c in report.per_case

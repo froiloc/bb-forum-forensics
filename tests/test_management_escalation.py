@@ -8,12 +8,13 @@
 # ES02 — R1 feuert NICHT unter der Schwelle bzw. bei gruener Ampel
 # ES03 — R2 fall_unbearbeitet: open+zugewiesen+>= stale_open_days -> mittel
 # ES04 — keine Doppelmeldung: R1-Fall wird nicht zusaetzlich von R2 gemeldet
-# ES05 — R3 rueckstau_hoch: unzugewiesen >= backlog_high -> systemisch (user_id None)
+# ES05 — R3 rueckstau_hoch: unzugewiesen >= backlog_high -> systemisch (subject_id None)
 # ES06 — abgeschlossene Faelle (approved/closed) loesen keine Fall-Eskalation aus
 # ES07 — Ordnung: hoch vor mittel; Zaehlungen korrekt
 # ES08 — thresholds_from_config None-sicher; escalation_to_dict serialisierbar
 #
-# Version: v0.7.453 · Build: 453 · 2026-07-19
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import json
@@ -34,7 +35,7 @@ _TH = EscalationThresholds(red_overdue_days=30, stale_open_days=14, backlog_high
 
 def _ov(uid, *, status="open", ampel="gruen", assigned_to=1, inactive_days=0):
     return {
-        "user_id": uid, "username": "u%d" % uid, "status": status,
+        "subject_id": uid, "username": "u%d" % uid, "status": status,
         "ampel": ampel, "assigned_to": assigned_to,
         "last_activity_at": _NOW - inactive_days * _DAY,
     }
@@ -75,7 +76,7 @@ def test_es05_backlog_systemic():
     ovs = [_ov(i, assigned_to=None, ampel="gruen") for i in range(12)]
     rep = evaluate_escalations(ovs, _TH, _NOW)
     sysitems = [i for i in rep.items if i.rule_code == "rueckstau_hoch"]
-    assert len(sysitems) == 1 and sysitems[0].user_id is None
+    assert len(sysitems) == 1 and sysitems[0].subject_id is None
     assert "12 Faelle" in sysitems[0].message
 
 

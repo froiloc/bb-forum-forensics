@@ -18,7 +18,8 @@
 # TQ12 — dryrun: ungueltige Query -> ok False + errors (kein raise/400); auch
 #        hier NICHTS geschrieben.
 #
-# Version: v0.7.423 · Build: 423 · 2026-07-15
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import json
@@ -248,7 +249,7 @@ class EndpointTests(unittest.TestCase):
                          .status, 403)
 
     def test_tq09_create_with_dry_run(self):
-        body = {**_GOOD, "test_user_id": 700}
+        body = {**_GOOD, "test_subject_id": 700}
         r = self._app().dispatch_write(1, "/api/templates/query", body)
         self.assertEqual(r.status, 200)
         d = json.loads(r.body.decode("utf-8"))
@@ -276,7 +277,7 @@ class EndpointTests(unittest.TestCase):
 
         two = {**_GOOD, "id": "user.two",
                "sql_query": "SELECT username, registered FROM uid_profile "
-                            "WHERE id=:uid", "test_user_id": 700}
+                            "WHERE id=:uid", "test_subject_id": 700}
         r2 = self._app().dispatch_write(1, "/api/templates/query", two)
         self.assertEqual(r2.status, 400)
         self.assertEqual(json.loads(r2.body.decode("utf-8"))["error"], "dry_run")
@@ -295,7 +296,7 @@ class EndpointTests(unittest.TestCase):
     def test_tq11_dryrun_is_write_free(self):
         # Vorher: leer. Der Dry-Run darf daran NICHTS aendern.
         self.assertEqual(self._query_count(), (0, 0))
-        body = {**_GOOD, "test_user_id": 700}
+        body = {**_GOOD, "test_subject_id": 700}
         r = self._app().dispatch_write(1, "/api/templates/query/dryrun", body)
         self.assertEqual(r.status, 200)
         d = json.loads(r.body.decode("utf-8"))
@@ -321,7 +322,7 @@ class EndpointTests(unittest.TestCase):
         self.assertTrue(len(d["errors"]) >= 1)
         # 2-Spalten-'scalar' faellt im Dry-Run auf (als Datenfehler, nicht 400).
         two = {**_GOOD, "sql_query": "SELECT username, registered FROM "
-               "uid_profile WHERE id=:uid", "test_user_id": 700}
+               "uid_profile WHERE id=:uid", "test_subject_id": 700}
         r2 = self._app().dispatch_write(1, "/api/templates/query/dryrun", two)
         self.assertEqual(r2.status, 200)
         d2 = json.loads(r2.body.decode("utf-8"))

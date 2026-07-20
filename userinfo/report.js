@@ -40,7 +40,13 @@
  *   - Aktivieren-Button gesperrt wenn Pflichtfelder leer
  *   Beleg: Bauplan B6 v0.3 §4.5, Build 091
  *
- * Version: v0.1.7 · Build: 097 · 2026-05-05
+ * Build 469: Schluesselumstellung user_id -> subject_id (M019) —
+ *   report.py liefert am <body id="report-editor-body"> jetzt
+ *   data-subject-id statt data-user-id; hier wird entsprechend
+ *   dataset.subjectId gelesen. Der Body-Schluessel "uid" der
+ *   placeholders-API blieb UNVERAENDERT (nur der Wert ist die subject_id).
+ *
+ * Version: v0.7.469 · Build: 469 · 2026-07-20
  * Beleg: Bauplan B6 v0.3 §4, Ausdefinitionsgespraech 2026-05-05
  */
 
@@ -902,7 +908,7 @@ function _bindActionButtons() {
             showStatus('Platzhalter werden aktualisiert…', 'ok');
             try {
                 const uid  = parseInt(
-                    document.getElementById('report-editor-body')?.dataset?.userId, 10
+                    document.getElementById('report-editor-body')?.dataset?.subjectId, 10
                 );
                 const resp = await fetch('/_forensic/placeholders/refresh', {
                     method:  'POST',
@@ -928,7 +934,7 @@ function _bindActionButtons() {
             // Phase 10: Cache aktualisieren + Druck-Kopf/Fusszeile einblenden
             // Beleg: Bauplan B6 v0.3 §7.1, Build 097
             const uid  = parseInt(
-                document.getElementById('report-editor-body')?.dataset?.userId, 10
+                document.getElementById('report-editor-body')?.dataset?.subjectId, 10
             );
             const body = document.getElementById('report-editor-body');
             const user = body?.dataset?.username ?? '';

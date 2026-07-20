@@ -13,7 +13,8 @@
 # EO07 — Integritaets-Banner: ok / gebrochen / ungeprueft
 # EO08 — CLI 'export-html' end-to-end gegen synthetische coordinator.db
 #
-# Version: v0.7.330 · Build: 330 · 2026-07-07
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import os
@@ -64,7 +65,7 @@ CREATE TABLE scrape_jobs (
 class SupportOverviewExportTests(unittest.TestCase):
 
     def _sample(self, **over):
-        base = {"session_id": 42, "user_id": 7001, "username": "u",
+        base = {"session_id": 42, "subject_id": 7001, "username": "u",
                 "supporter_id": 1, "supporter_system_username": "h001",
                 "supporter_display_name": "Support Eins",
                 "started_at": 1000, "ended_at": 1060, "duration_sec": 60,
@@ -139,7 +140,7 @@ class SupportOverviewExportTests(unittest.TestCase):
         MigrationRunner(con, discover(coordinator_migrations), audit=audit,
                         deployed_by="t").run()
         writer = CoordinatorWriter(con, audit)
-        CasesRepo(con, writer).create_case(user_id=4201, username="tester",
+        CasesRepo(con, writer).create_case(subject_id=4201, username="tester",
                                            actor_id=1)
         support = SupportSessionsRepo(con, writer)
         sid = support.start(4201, supporter_id=1, actor_id=1)

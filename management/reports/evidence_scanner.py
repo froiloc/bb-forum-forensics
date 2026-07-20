@@ -22,7 +22,7 @@
 #   Inhaltshash — niemals mtime.
 #
 # Beleg: mc 2026-07-10; Messung Build 374 (300 DBs Vollscan ~161 ms).
-# Version: v0.7.374 · Build: 374 · 2026-07-10
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import os
@@ -58,7 +58,7 @@ class EvidenceScanner:
 
     def list_cases(self) -> List[Tuple[int, Path]]:
         """
-        Alle Fall-DBs im Verzeichnis: [(user_id, pfad), ...], nach user_id.
+        Alle Fall-DBs im Verzeichnis: [(subject_id, pfad), ...], nach subject_id.
         Existiert das Verzeichnis nicht, ist die Liste leer (der Aufrufer
         meldet das; kein stiller Fehlpfad).
         """
@@ -92,6 +92,6 @@ class EvidenceScanner:
         return "|".join(parts)
 
     def fingerprints(self) -> Dict[int, str]:
-        """Fingerabdruck je Fall (user_id -> fingerprint)."""
+        """Fingerabdruck je Fall (subject_id -> fingerprint)."""
         return {uid: self.fingerprint(path)
                 for uid, path in self.list_cases()}

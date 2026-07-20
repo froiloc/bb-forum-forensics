@@ -23,7 +23,8 @@
 #   Alle angezeigten Daten stammen aus READ-ONLY-Quellen.
 #   Keine Schreibzugriffe — forensische Integrität gewahrt.
 #
-# Version: v0.1.0 · Build: 052 · 2026-04-22
+# Version: v0.7.469 · Build: 469 · 2026-07-20
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
 # =============================================================================
 
 from __future__ import annotations
@@ -124,7 +125,7 @@ class UserinfoEndpoint:
         self._config  = config
 
     def handle(self, handler: "ForensicRequestHandler") -> None:
-        user_id  = self._context.user_id
+        subject_id = self._context.subject_id
 
         # Kopf-Reform (Beleg: Bauplan Userinfo-Verschoenerung v0.2 Pkt. 4, mc
         # 2026-07-10): Der ECHTE Benutzername (users.username) und die
@@ -137,7 +138,7 @@ class UserinfoEndpoint:
         else:
             # Kein Profil (Phase B nicht gelaufen o.ae.) — bisheriger Fallback.
             # Grundregel 1: sichtbar als Platzhalter, nicht still erfunden.
-            username = self._context.username or f"uid_{user_id}"
+            username = self._context.username or f"uid_{subject_id}"
         group_display = _resolve_group_display(profile)
 
         # Alle Daten sammeln
@@ -148,12 +149,12 @@ class UserinfoEndpoint:
         page_count = self._bundle.forensic.page_count()
 
         page_html = self._render(
-            user_id, username, group_display,
+            subject_id, username, group_display,
             meta, stats, ann_counts, last_ann, page_count
         )
         body = page_html.encode("utf-8")
         handler.send_response_body(200, body, content_type="text/html; charset=utf-8")
-        logger.debug("/_forensic/userinfo ausgeliefert: user_id=%d", user_id)
+        logger.debug("/_forensic/userinfo ausgeliefert: subject_id=%d", subject_id)
 
     # ------------------------------------------------------------------
     # Daten laden
@@ -235,7 +236,7 @@ class UserinfoEndpoint:
 
     def _render(
         self,
-        user_id: int,
+        subject_id: int,
         username: str,
         group_display: str,
         meta: dict,
@@ -284,9 +285,9 @@ class UserinfoEndpoint:
                 f'</div>'
             )
             logger.debug(
-                "/_forensic/userinfo: Sperrstatus-Banner aktiv für user_id=%d "
+                "/_forensic/userinfo: Sperrstatus-Banner aktiv für subject_id=%d "
                 "(original_group=%s).",
-                user_id, orig_group_raw or "unbekannt"
+                subject_id, orig_group_raw or "unbekannt"
             )
 
         # Annotationstabelle
@@ -313,7 +314,7 @@ class UserinfoEndpoint:
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Nutzerinfo · {u} · ID: {user_id}</title>
+  <title>Nutzerinfo · {u} · ID: {subject_id}</title>
   <link rel="stylesheet" href="/_forensic/userinfo.css">
   <style>
     body {{ font-family: "Segoe UI", Arial, sans-serif; background: #f4f6fa;
@@ -498,7 +499,7 @@ class UserinfoEndpoint:
 
   <div class="ui-footer">
     Klassifikation: VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH ·
-    Benutzer-ID: {user_id} · {u}
+    Benutzer-ID: {subject_id} · {u}
   </div>
 
   <!-- Tabulator.js: Filter/Sortierung in forensic-data-Tabellen -->

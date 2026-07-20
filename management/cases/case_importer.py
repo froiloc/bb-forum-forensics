@@ -17,7 +17,7 @@
 #   NICHT aufgenommen und NICHT verschwiegen, sondern als 'skipped' gemeldet.
 #   Ein Fehlschlag bei einem Fall bricht den Rest nicht ab — er wird gemeldet.
 #
-# Version: v0.7.383 · Build: 383 · 2026-07-10
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import logging
@@ -41,18 +41,18 @@ class CaseImporter:
         self._detector = detector
 
     def import_cases(self, *, actor_id: int,
-                     user_ids: Optional[Iterable[int]] = None,
+                     subject_ids: Optional[Iterable[int]] = None,
                      all_new: bool = False) -> Dict[str, Any]:
         """
-        Nimmt Faelle auf. Entweder eine explizite Auswahl (user_ids) ODER alle
+        Nimmt Faelle auf. Entweder eine explizite Auswahl (subject_ids) ODER alle
         neu erkannten (all_new=True). Gibt einen Bericht zurueck.
         """
-        candidates = {c.user_id: c for c in self._detector.importable()}
+        candidates = {c.subject_id: c for c in self._detector.importable()}
 
         if all_new:
             wanted = list(candidates)
         else:
-            wanted = [int(u) for u in (user_ids or [])]
+            wanted = [int(u) for u in (subject_ids or [])]
 
         imported: List[Dict[str, Any]] = []
         skipped: List[Dict[str, Any]] = []
@@ -70,7 +70,7 @@ class CaseImporter:
                 # Nicht (mehr) aufnehmbar: bereits erfasst, vermisst oder
                 # unlesbar. NICHT still uebergehen (Grundregel 1).
                 skipped.append({
-                    "user_id": uid,
+                    "subject_id": uid,
                     "reason": "nicht aufnehmbar (bereits erfasst, vermisst "
                               "oder Benutzername unlesbar)"})
                 continue
@@ -80,10 +80,10 @@ class CaseImporter:
             except Exception as exc:      # Ein Fehler stoppt den Rest nicht.
                 logger.warning("Fall %s konnte nicht aufgenommen werden: %s",
                                uid, exc)
-                skipped.append({"user_id": uid, "reason": str(exc)})
+                skipped.append({"subject_id": uid, "reason": str(exc)})
                 continue
 
-            imported.append({"user_id": uid, "username": cand.username,
+            imported.append({"subject_id": uid, "username": cand.username,
                              "audit_seq": seq})
             logger.info("Fall %s (%s) aufgenommen, Beleg #%s",
                         uid, cand.username, seq)

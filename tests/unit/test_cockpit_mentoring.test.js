@@ -1,4 +1,6 @@
 /**
+ * Build 469: Schluesselumstellung user_id -> subject_id (M019)
+ * Version: v0.7.469 · Build: 469 · 2026-07-20
  * tests/unit/test_cockpit_mentoring.test.js
  * IT-Forensisches Ermittlungswerkzeug — Baustelle 7: Cockpit Ermittler-Betreuung
  *
@@ -35,11 +37,11 @@ function _data() {
   return {
     scope: "alle", stale_sec: 30, count: 2,
     sessions: [
-      { id: 7, user_id: 19, username: "b19", supporter_id: 3,
+      { id: 7, subject_id: 19, username: "b19", supporter_id: 3,
         supporter_system_username: "h003", supporter_display_name: "Gamma",
         started_at: 1000, last_heartbeat: 1100,
         heartbeat_age_sec: 150, started_ago_sec: 300, live: false },
-      { id: 5, user_id: 18, username: "b18", supporter_id: 2,
+      { id: 5, subject_id: 18, username: "b18", supporter_id: 2,
         supporter_system_username: "h002", supporter_display_name: "Mueller",
         started_at: 1400, last_heartbeat: 1490,
         heartbeat_age_sec: 5, started_ago_sec: 65, live: true },

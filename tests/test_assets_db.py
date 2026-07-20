@@ -20,7 +20,8 @@
 # T14 — AssetHandler: beide DBs leer → HTTP 404
 # T15 — ConnectionManager: fehlende assets_<uid>.db → kein Absturz beim Open
 #
-# Version: v0.1.0 · Build: 024 · 2026-04-15
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import os
@@ -413,7 +414,7 @@ class TestConnectionManagerOhneAssetsDb(unittest.TestCase):
         # ResolvedContext mocken
         ctx = MagicMock()
         ctx.mode          = "cli"
-        ctx.user_id       = 99
+        ctx.subject_id       = 99
         ctx.forensic_db   = Path(forensic_path)
         ctx.default_db    = Path(default_path)
         ctx.evidence_db   = Path(evidence_path)

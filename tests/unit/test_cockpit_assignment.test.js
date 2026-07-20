@@ -1,4 +1,6 @@
 /**
+ * Build 469: Schluesselumstellung user_id -> subject_id (M019)
+ * Version: v0.7.469 · Build: 469 · 2026-07-20
  * tests/unit/test_cockpit_assignment.test.js
  * IT-Forensisches Ermittlungswerkzeug — Baustelle 7: Cockpit Zuweisung
  *
@@ -35,9 +37,9 @@ function _api() { return _ctx().AIWCockpitAssignment; }
 function _data() {
   return {
     cases: [
-      { user_id: 18, username: "b18", assigned_to: 2,
+      { subject_id: 18, username: "b18", assigned_to: 2,
         assigned_display_name: "Mueller", priority: 3, status: "in_progress" },
-      { user_id: 19, username: "b19", assigned_to: null,
+      { subject_id: 19, username: "b19", assigned_to: null,
         assigned_display_name: null, priority: 5, status: "open" },
     ],
     investigators: [
@@ -79,17 +81,17 @@ describe("cockpit_assignment.js — Zuweisung (Build 373)", () => {
   it("AZ04: changeRequest", () => {
     const api = _api();
     expect(api.changeRequest("assign", 18, "2")).toEqual({
-      path: "/api/case/assign", body: { user_id: 18, person_id: 2 },
+      path: "/api/case/assign", body: { subject_id: 18, person_id: 2 },
     });
     // Entziehen: '' -> null
     expect(api.changeRequest("assign", 18, "")).toEqual({
-      path: "/api/case/assign", body: { user_id: 18, person_id: null },
+      path: "/api/case/assign", body: { subject_id: 18, person_id: null },
     });
     expect(api.changeRequest("priority", 18, "1")).toEqual({
-      path: "/api/case/priority", body: { user_id: 18, priority: 1 },
+      path: "/api/case/priority", body: { subject_id: 18, priority: 1 },
     });
     expect(api.changeRequest("status", 18, "closed")).toEqual({
-      path: "/api/case/status", body: { user_id: 18, status: "closed" },
+      path: "/api/case/status", body: { subject_id: 18, status: "closed" },
     });
     expect(api.changeRequest("pfui", 18, "x")).toBe(null);
   });

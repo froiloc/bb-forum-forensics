@@ -19,8 +19,11 @@
 #        verworfen (Grundregel 1)
 # SO10 — fehlende Pflichttabelle -> SupportOverviewSchemaError (handlungsleitend)
 # SO11 — verify_chain gruen nach allen Schreibvorgaengen (Belegkette intakt)
+# SO12 — Legacy-Payloads (Schluessel 'user_id', vor M019) werden per Fallback
+#        weiterhin gelesen (audit_log ist append-only)
 #
-# Version: v0.7.330 · Build: 330 · 2026-07-07
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import os
@@ -119,19 +122,19 @@ class SupportOverviewRepoTests(unittest.TestCase):
             os.rmdir(root)
 
     # ---- Hilfen: gezielte Belege direkt ins audit_log (kontrollierte Payloads)
-    def _emit_started(self, session_id, user_id, supporter_id, started_at,
+    def _emit_started(self, session_id, subject_id, supporter_id, started_at,
                      actor_id=None):
-        payload = {"session_id": session_id, "user_id": user_id,
+        payload = {"session_id": session_id, "subject_id": subject_id,
                    "supporter_id": supporter_id, "started_at": started_at}
         self.writer.audited_write(
             do_write=lambda con: payload,
             event_type=EventType.SUPPORT_SESSION_STARTED,
             actor_id=actor_id, target_type="support_session",
-            target_id=str(user_id), meta=None)
+            target_id=str(subject_id), meta=None)
 
-    def _emit_ended(self, session_id, user_id, ended_at, duration_sec,
+    def _emit_ended(self, session_id, subject_id, ended_at, duration_sec,
                    reason=None, actor_id=None):
-        payload = {"session_id": session_id, "user_id": user_id,
+        payload = {"session_id": session_id, "subject_id": subject_id,
                    "ended_at": ended_at, "duration_sec": duration_sec}
         if reason is not None:
             payload["reason"] = reason
@@ -154,7 +157,7 @@ class SupportOverviewRepoTests(unittest.TestCase):
 
     # ---- SO01: echtes start()+end() ----------------------------------------
     def test_so01_real_start_end_clean(self):
-        self.cases.create_case(user_id=7001, username="beschuldigter_a",
+        self.cases.create_case(subject_id=7001, username="beschuldigter_a",
                                actor_id=1)
         sid = self.support.start(7001, supporter_id=1, actor_id=1)
         time.sleep(0.01)
@@ -165,7 +168,7 @@ class SupportOverviewRepoTests(unittest.TestCase):
         self.assertIn(sid, by)
         r = by[sid]
         self.assertEqual(r.status, STATUS_ENDED_CLEAN)
-        self.assertEqual(r.user_id, 7001)
+        self.assertEqual(r.subject_id, 7001)
         self.assertEqual(r.username, "beschuldigter_a")
         self.assertEqual(r.supporter_id, 1)
         self.assertEqual(r.supporter_system_username, "h001")
@@ -180,7 +183,7 @@ class SupportOverviewRepoTests(unittest.TestCase):
 
     # ---- SO02: echtes start()+close_orphans() ------------------------------
     def test_so02_real_orphan_timeout(self):
-        self.cases.create_case(user_id=7002, username="beschuldigter_b",
+        self.cases.create_case(subject_id=7002, username="beschuldigter_b",
                                actor_id=1)
         sid = self.support.start(7002, supporter_id=2, actor_id=2)
         # Sitzung kuenstlich veralten lassen (Heartbeat weit in die Vergangenheit).
@@ -200,7 +203,7 @@ class SupportOverviewRepoTests(unittest.TestCase):
 
     # ---- SO03: STARTED ohne ENDED -> offen ---------------------------------
     def test_so03_open_session(self):
-        self._emit_started(session_id=51, user_id=7003, supporter_id=1,
+        self._emit_started(session_id=51, subject_id=7003, supporter_id=1,
                           started_at=1000)
         recs = SupportOverviewRepo(self.con).list_support_sessions()
         r = self._by_session(recs)[51]
@@ -213,7 +216,7 @@ class SupportOverviewRepoTests(unittest.TestCase):
 
     # ---- SO04: ENDED ohne STARTED -> herrenlos -----------------------------
     def test_so04_dangling_ended(self):
-        self._emit_ended(session_id=52, user_id=7004, ended_at=2000,
+        self._emit_ended(session_id=52, subject_id=7004, ended_at=2000,
                         duration_sec=120)
         recs = SupportOverviewRepo(self.con).list_support_sessions()
         r = self._by_session(recs)[52]
@@ -228,16 +231,16 @@ class SupportOverviewRepoTests(unittest.TestCase):
     # ---- SO05: Fall ohne cases-Eintrag -> username None, sichtbar -----------
     def test_so05_missing_case_username_none(self):
         # KEIN create_case fuer 7005.
-        self._emit_started(session_id=53, user_id=7005, supporter_id=1,
+        self._emit_started(session_id=53, subject_id=7005, supporter_id=1,
                           started_at=1500)
         recs = SupportOverviewRepo(self.con).list_support_sessions()
         r = self._by_session(recs)[53]
         self.assertIsNone(r.username)                  # kein cases-Eintrag
-        self.assertEqual(r.user_id, 7005)              # Zeile bleibt sichtbar
+        self.assertEqual(r.subject_id, 7005)              # Zeile bleibt sichtbar
 
     # ---- SO06: Supporter nicht in person ----------------------------
     def test_so06_unknown_supporter(self):
-        self._emit_started(session_id=54, user_id=7006, supporter_id=999,
+        self._emit_started(session_id=54, subject_id=7006, supporter_id=999,
                           started_at=1600)
         recs = SupportOverviewRepo(self.con).list_support_sessions()
         r = self._by_session(recs)[54]
@@ -248,11 +251,11 @@ class SupportOverviewRepoTests(unittest.TestCase):
     # ---- SO07: deterministische chronologische Ordnung ---------------------
     def test_so07_chronological_order(self):
         # Belege in NICHT-chronologischer Emit-Reihenfolge; started_at steuert.
-        self._emit_started(session_id=61, user_id=8001, supporter_id=1,
+        self._emit_started(session_id=61, subject_id=8001, supporter_id=1,
                           started_at=300)
-        self._emit_started(session_id=62, user_id=8002, supporter_id=1,
+        self._emit_started(session_id=62, subject_id=8002, supporter_id=1,
                           started_at=100)
-        self._emit_started(session_id=63, user_id=8003, supporter_id=1,
+        self._emit_started(session_id=63, subject_id=8003, supporter_id=1,
                           started_at=200)
         recs = SupportOverviewRepo(self.con).list_support_sessions()
         order = [r.session_id for r in recs]
@@ -261,11 +264,11 @@ class SupportOverviewRepoTests(unittest.TestCase):
 
     # ---- SO08: doppeltes ENDED -> anomaly, erster Beleg bleibt -------------
     def test_so08_double_ended_anomaly(self):
-        self._emit_started(session_id=71, user_id=8101, supporter_id=1,
+        self._emit_started(session_id=71, subject_id=8101, supporter_id=1,
                           started_at=500)
-        self._emit_ended(session_id=71, user_id=8101, ended_at=560,
+        self._emit_ended(session_id=71, subject_id=8101, ended_at=560,
                         duration_sec=60)
-        self._emit_ended(session_id=71, user_id=8101, ended_at=999,
+        self._emit_ended(session_id=71, subject_id=8101, ended_at=999,
                         duration_sec=499)   # zweites ENDED (darf nicht sein)
         recs = SupportOverviewRepo(self.con).list_support_sessions()
         r = self._by_session(recs)[71]
@@ -275,12 +278,12 @@ class SupportOverviewRepoTests(unittest.TestCase):
 
     # ---- SO09: fehlende session_id -> anomaly, eigener Datensatz ------------
     def test_so09_missing_session_id(self):
-        self._emit_ended_raw({"user_id": 8201, "ended_at": 700,
+        self._emit_ended_raw({"subject_id": 8201, "ended_at": 700,
                               "duration_sec": 40})   # KEIN session_id
         recs = SupportOverviewRepo(self.con).list_support_sessions()
         hits = [r for r in recs if r.anomaly == ANOMALY_MISSING_SESSION_ID]
         self.assertEqual(len(hits), 1)                 # nicht still verworfen
-        self.assertEqual(hits[0].user_id, 8201)
+        self.assertEqual(hits[0].subject_id, 8201)
 
     # ---- SO10: fehlende Pflichttabelle -------------------------------------
     def test_so10_schema_guard(self):
@@ -302,16 +305,42 @@ class SupportOverviewRepoTests(unittest.TestCase):
 
     # ---- SO11: verify_chain gruen nach allen Schreibvorgaengen --------------
     def test_so11_chain_intact(self):
-        self.cases.create_case(user_id=7009, username="c", actor_id=1)
+        self.cases.create_case(subject_id=7009, username="c", actor_id=1)
         sid = self.support.start(7009, supporter_id=1, actor_id=1)
         self.support.end(sid, actor_id=1)
-        self._emit_ended(session_id=88, user_id=7010, ended_at=10,
+        self._emit_ended(session_id=88, subject_id=7010, ended_at=10,
                         duration_sec=5)   # herrenlos, aber sauber verkettet
         vr = AuditLog(self.con).verify_chain()
         self.assertTrue(vr.ok, vr.detail)
         # Und die Uebersicht liest ueber die intakte Kette:
         recs = SupportOverviewRepo(self.con).list_support_sessions()
         self.assertTrue(any(r.session_id == sid for r in recs))
+
+    # ---- SO12: Legacy-Payloads (Schluessel 'user_id', vor M019) ------------
+    def test_so12_legacy_payload_user_id_wird_weiter_gelesen(self):
+        """SO12 (Build 469): audit_log ist eine unveraenderliche Hash-Kette —
+        VOR M019 geschriebene STARTED/ENDED-Payloads tragen den Schluessel
+        'user_id'. Der Fallback payload.get('subject_id',
+        payload.get('user_id')) im Repo muss sie weiterhin aufloesen."""
+        legacy_started = {"session_id": 91, "user_id": 8301,
+                          "supporter_id": 1, "started_at": 100}
+        self.writer.audited_write(
+            do_write=lambda con: legacy_started,
+            event_type=EventType.SUPPORT_SESSION_STARTED,
+            actor_id=1, target_type="support_session",
+            target_id="8301", meta=None)
+        legacy_ended = {"session_id": 91, "user_id": 8301,
+                        "ended_at": 160, "duration_sec": 60}
+        self.writer.audited_write(
+            do_write=lambda con: legacy_ended,
+            event_type=EventType.SUPPORT_SESSION_ENDED,
+            actor_id=1, target_type="support_session",
+            target_id="91", meta=None)
+        recs = SupportOverviewRepo(self.con).list_support_sessions()
+        r = self._by_session(recs)[91]
+        self.assertEqual(r.subject_id, 8301)     # via Legacy-Fallback aufgeloest
+        self.assertEqual(r.ended_at, 160)
+        self.assertIsNone(r.anomaly)
 
 
 if __name__ == "__main__":

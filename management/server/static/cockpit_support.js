@@ -24,7 +24,8 @@
 //
 // XSS: ausschliesslich textContent / Tabulator-plaintext (kein innerHTML).
 //
-// Version: v0.7.367 · Build: 367 · 2026-07-10
+// Build 469: Schluesselumstellung user_id -> subject_id (M019)
+// Version: v0.7.469 · Build: 469 · 2026-07-20
 // =============================================================================
 
 (function () {
@@ -106,7 +107,7 @@
         }
         return [
             ['Sitzung (session_id)', or(rec.session_id)],
-            ['Fall (user_id)', or(rec.user_id)],
+            ['Fall (subject_id)', or(rec.subject_id)],
             ['Benutzername', or(rec.username)],
             ['Supporter', supporterLabel(rec)],
             ['Start', or(fmtTs(rec.started_at))],
@@ -127,7 +128,7 @@
 
     var _COLUMNS = [
         { title: 'Sitzung', field: 'session_id' },
-        { title: 'Fall', field: 'user_id' },
+        { title: 'Fall', field: 'subject_id' },
         { title: 'Benutzername', field: 'username', headerFilter: 'input' },
         { title: 'Supporter', field: '_supporter', headerFilter: 'input' },
         { title: 'Start', field: '_started' },

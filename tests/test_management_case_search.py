@@ -5,7 +5,7 @@
 # Testsuite fuer Build 458: CaseSearchRepo + /api/search.
 #
 # CS01 — leerer Begriff -> keine Treffer
-# CS02 — numerisch: user_id-Treffer (exakt zuerst)
+# CS02 — numerisch: subject_id-Treffer (exakt zuerst)
 # CS03 — Text: username-Teilstring (case-insensitiv)
 # CS04 — scope 'eigene': nur zugewiesene Faelle
 # CS05 — LIKE-Sonderzeichen (%,_) werden woertlich gesucht (escaped)
@@ -13,7 +13,8 @@
 # CS07 — /api/search: 200 mit Treffern; 403 ohne dashboard.view
 # CS08 — /api/search: scope 'eigene' (investigator) filtert auf eigene Faelle
 #
-# Version: v0.7.458 · Build: 458 · 2026-07-19
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import json
@@ -35,7 +36,7 @@ def _con():
     con.execute("CREATE TABLE person(id INTEGER PRIMARY KEY, system_username TEXT, "
                 "display_name TEXT)")
     con.execute("INSERT INTO person VALUES(1,'h001','Chefin'),(2,'h002','Mueller')")
-    con.execute("CREATE TABLE cases(user_id INTEGER PRIMARY KEY, username TEXT, "
+    con.execute("CREATE TABLE cases(subject_id INTEGER PRIMARY KEY, username TEXT, "
                 "status TEXT, assigned_to INTEGER)")
     for uid, un, st, asg in [
         (18, "taeter_sued", "open", 2),
@@ -60,29 +61,29 @@ class CaseSearchRepoTests(unittest.TestCase):
 
     def test_cs02_numeric_userid(self):
         r = self.repo.search(q="200")
-        uids = [x["user_id"] for x in r["results"]]
+        uids = [x["subject_id"] for x in r["results"]]
         # exakter Treffer 200 vor Teiltreffer 2001
         self.assertEqual(uids[0], 200)
         self.assertIn(2001, uids)
 
     def test_cs03_username_substring_ci(self):
         r = self.repo.search(q="taeter")
-        uids = sorted(x["user_id"] for x in r["results"])
+        uids = sorted(x["subject_id"] for x in r["results"])
         self.assertEqual(uids, [18, 19])   # case-insensitiv
 
     def test_cs04_scope_eigene(self):
         r = self.repo.search(q="taeter", scope="eigene", person_id=2)
-        self.assertEqual(sorted(x["user_id"] for x in r["results"]), [18, 19])
+        self.assertEqual(sorted(x["subject_id"] for x in r["results"]), [18, 19])
         r2 = self.repo.search(q="alice", scope="eigene", person_id=2)
         self.assertEqual(r2["count"], 0)   # alice ist person 1 zugewiesen
 
     def test_cs05_like_special_literal(self):
         r = self.repo.search(q="50%")
-        self.assertEqual([x["user_id"] for x in r["results"]], [30])
+        self.assertEqual([x["subject_id"] for x in r["results"]], [30])
         # '%' wird WOERTLICH gesucht: findet nur den Fall mit literalem '%'
         # (nicht alle 5 -> kein Wildcard).
         r2 = self.repo.search(q="%")
-        self.assertEqual([x["user_id"] for x in r2["results"]], [30])
+        self.assertEqual([x["subject_id"] for x in r2["results"]], [30])
 
     def test_cs06_limit_truncated(self):
         r = self.repo.search(q="taeter", limit=1)
@@ -164,7 +165,7 @@ class SearchEndpointTests(unittest.TestCase):
         self.assertEqual(r.status, 200)
         d = json.loads(r.body.decode("utf-8"))
         self.assertEqual(d["scope"], "alle")
-        self.assertEqual(sorted(x["user_id"] for x in d["results"]), [18, 19])
+        self.assertEqual(sorted(x["subject_id"] for x in d["results"]), [18, 19])
         # person 3 hat keine Rolle -> 403
         self.assertEqual(app.dispatch(3, "/api/search", {"q": ["taeter"]}).status, 403)
 
@@ -173,7 +174,7 @@ class SearchEndpointTests(unittest.TestCase):
         d = json.loads(app.dispatch(
             2, "/api/search", {"q": ["taeter"]}).body.decode("utf-8"))
         self.assertEqual(d["scope"], "eigene")
-        self.assertEqual([x["user_id"] for x in d["results"]], [18])  # nur eigener
+        self.assertEqual([x["subject_id"] for x in d["results"]], [18])  # nur eigener
 
 
 if __name__ == "__main__":

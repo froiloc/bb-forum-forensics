@@ -16,7 +16,7 @@
 #   werden NICHT in die Schlange aufgenommen — aber GEZAEHLT (done_excluded),
 #   nicht stillschweigend verschluckt.
 #
-# Version: v0.7.452 · Build: 452 · 2026-07-19
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 from __future__ import annotations
@@ -32,7 +32,7 @@ _URGENCY_RANK = {"dringend": 0, "bald": 1, "routine": 2}
 
 @dataclass(frozen=True)
 class NextAction:
-    user_id: int
+    subject_id: int
     username: str
     action: str            # Handlungs-Kategorie
     reason: str            # belegte Begruendung (zitiert echte Signale)
@@ -91,7 +91,7 @@ def derive_action(ov: dict, scope: str) -> Optional[NextAction]:
         reason = "Status %s; %s" % (status, ampel_reason or "aktiv")
 
     return NextAction(
-        user_id=int(ov.get("user_id")), username=ov.get("username") or "?",
+        subject_id=int(ov.get("subject_id")), username=ov.get("username") or "?",
         action=action, reason=reason, urgency=urgency, priority=priority,
         ampel=ampel, status=status, assigned=assigned,
         last_activity_at=ov.get("last_activity_at"))
@@ -101,7 +101,7 @@ def build_queue(overviews: List[dict], scope: str, now: int) -> QueueResult:
     """
     REINE Warteschlangen-Bildung aus CaseOverview-dicts (dateilos testbar).
     Ordnung: Dringlichkeit (dringend>bald>routine), dann Prioritaet (1 zuerst),
-    dann laengste Inaktivitaet (aeltestes last_activity zuerst), dann user_id.
+    dann laengste Inaktivitaet (aeltestes last_activity zuerst), dann subject_id.
     """
     items: List[NextAction] = []
     done = 0
@@ -115,7 +115,7 @@ def build_queue(overviews: List[dict], scope: str, now: int) -> QueueResult:
     def _key(a: NextAction):
         # last_activity None -> als 0 (sehr alt) behandelt -> zuerst.
         la = a.last_activity_at if a.last_activity_at is not None else 0
-        return (_URGENCY_RANK.get(a.urgency, 9), a.priority, la, a.user_id)
+        return (_URGENCY_RANK.get(a.urgency, 9), a.priority, la, a.subject_id)
 
     items.sort(key=_key)
 
@@ -134,7 +134,7 @@ def queue_to_dict(result: QueueResult) -> dict:
         "actionable": result.actionable,
         "done_excluded": result.done_excluded,
         "items": [
-            {"user_id": a.user_id, "username": a.username, "action": a.action,
+            {"subject_id": a.subject_id, "username": a.username, "action": a.action,
              "reason": a.reason, "urgency": a.urgency, "priority": a.priority,
              "ampel": a.ampel, "status": a.status, "assigned": a.assigned,
              "last_activity_at": a.last_activity_at}

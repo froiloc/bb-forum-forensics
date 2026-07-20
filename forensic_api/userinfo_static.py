@@ -25,7 +25,8 @@
 #   Kein Schreibzugriff.
 #
 # Beleg: Projektgespräch 2026-04-18
-# Version: v0.1.0 · Build: 037 · 2026-04-18
+# Version: v0.7.469 · Build: 469 · 2026-07-20
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
 # =============================================================================
 
 from __future__ import annotations
@@ -68,8 +69,8 @@ class UserinfoStaticEndpoint:
             # Phase B noch nicht gelaufen oder ältere forensic_db
             logger.debug(
                 "/_forensic/userinfo/static: kein BLOB in static_pages "
-                "(user_id=%d) — 204 No Content.",
-                self._context.user_id,
+                "(subject_id=%d) — 204 No Content.",
+                self._context.subject_id,
             )
             handler.send_response_body(204, b"")
             return
@@ -80,6 +81,6 @@ class UserinfoStaticEndpoint:
         )
         logger.debug(
             "/_forensic/userinfo/static: BLOB ausgeliefert "
-            "(%d Bytes, user_id=%d).",
-            len(body), self._context.user_id,
+            "(%d Bytes, subject_id=%d).",
+            len(body), self._context.subject_id,
         )

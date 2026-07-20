@@ -23,7 +23,7 @@
 #   Offline-VM -> ExcelUnavailable (klarer 503-artiger Fehler, analog
 #   DocxRendererUnavailable/PdfRendererUnavailable), kein stiller Ausfall.
 #
-# Version: v0.7.441 · Build: 441 · 2026-07-19
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 from __future__ import annotations
@@ -44,7 +44,7 @@ class ExcelUnavailable(RuntimeError):
 # Formatierung). 'ts' -> UTC-Zeitstempel, sonst Rohwert. Die REIHENFOLGE ist
 # zugleich die Reihenfolge fuer die Pruefsumme (Rohwerte) -> stabil belegbar.
 CASE_STATUS_COLUMNS: Sequence[Tuple[str, str, str]] = (
-    ("user_id",                  "User-ID",            "raw"),
+    ("subject_id",               "Subject-ID",         "raw"),
     ("username",                 "Benutzername",       "raw"),
     ("status",                   "Fallstatus",         "raw"),
     ("priority",                 "Prioritaet",         "raw"),

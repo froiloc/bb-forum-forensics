@@ -22,7 +22,7 @@
 #             2 = 'vermisst' oder 'unlesbar' vorhanden (Pruefbedarf)
 #             1 = Aufruf-/Konfigurationsfehler
 #
-# Version: v0.7.383 · Build: 383 · 2026-07-10
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import argparse
@@ -113,7 +113,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 "A" if c["has_assets_db"] else "-",
             ])
             line = "  %s uid=%-8s %-24s [%s]" % (
-                _LABEL.get(c["status"], c["status"]), c["user_id"],
+                _LABEL.get(c["status"], c["status"]), c["subject_id"],
                 (c["username"] or "(kein Benutzername)"), arbeits)
             if c["detail"]:
                 line += "  -- %s" % c["detail"]
@@ -141,10 +141,10 @@ def main(argv: Optional[List[str]] = None) -> int:
                   % res["count"])
             for i in res["imported"]:
                 print("  + uid=%-8s %-24s Beleg #%s"
-                      % (i["user_id"], i["username"], i["audit_seq"]))
+                      % (i["subject_id"], i["username"], i["audit_seq"]))
             for sk in res["skipped"]:
                 print("  ! uid=%-8s uebersprungen: %s"
-                      % (sk["user_id"], sk["reason"]), file=sys.stderr)
+                      % (sk["subject_id"], sk["reason"]), file=sys.stderr)
         elif cn[STATUS_NEU]:
             print("")
             print("[case_detect] %d neue(r) Fall/Faelle koennen aufgenommen "

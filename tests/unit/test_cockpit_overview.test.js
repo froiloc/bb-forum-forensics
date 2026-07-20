@@ -13,13 +13,15 @@
  * OV05 — supportLabel(): 'Support aktiv (N)' bzw. ''.
  * OV06 — daysSince(): Tage seit ts (nowSec injizierbar); null bei fehlend.
  * OV07 — toRows(): abgeleitete Felder gesetzt; Eingabe unveraendert.
- * OV08 — sortRows(): Ampel-Schwere -> Prio -> letzte Aktivitaet desc -> user_id;
+ * OV08 — sortRows(): Ampel-Schwere -> Prio -> letzte Aktivitaet desc -> subject_id;
  *        gibt Kopie zurueck (mutiert nicht).
  * OV09 — columnDefs(): 10 Spalten; Ampel-Formatter rendert Farbpunkt + Grund.
  * OV10 — renderOverview(): Kopf/Scope/Count; Stub-Tabulator erhaelt sortierte
  *        Zeilen + Spalten; ohne Ctor -> null + Hinweis.
  *
- * Version: v0.7.348 · Build: 348 · 2026-07-10
+ * Build 469: Schluesselumstellung user_id -> subject_id (M019)
+ * Version: v0.7.469 · Build: 469 · 2026-07-20
+ 2026-07-20
  */
 
 import { describe, it, expect } from "vitest";
@@ -48,7 +50,7 @@ function _api() {
 function C(over) {
   return Object.assign(
     {
-      user_id: 1,
+      subject_id: 1,
       username: "u",
       status: "open",
       priority: 3,
@@ -130,7 +132,7 @@ describe("cockpit_overview.js — Overview-Sicht (Build 348)", () => {
     const api = _api();
     const input = [
       C({
-        user_id: 42,
+        subject_id: 42,
         ampel: "rot",
         ampel_reason: "inaktiv_lang",
         assigned_display_name: "Chefin",
@@ -155,18 +157,18 @@ describe("cockpit_overview.js — Overview-Sicht (Build 348)", () => {
     const api = _api();
     const rows = api.toRows(
       [
-        C({ user_id: 1, ampel: "gruen", priority: 1 }),
-        C({ user_id: 2, ampel: "rot", priority: 3 }),
-        C({ user_id: 3, ampel: "gelb", priority: 2 }),
-        C({ user_id: 4, ampel: "rot", priority: 1 }),
+        C({ subject_id: 1, ampel: "gruen", priority: 1 }),
+        C({ subject_id: 2, ampel: "rot", priority: 3 }),
+        C({ subject_id: 3, ampel: "gelb", priority: 2 }),
+        C({ subject_id: 4, ampel: "rot", priority: 1 }),
       ],
       1000000
     );
     const sorted = api.sortRows(rows);
     // rot(prio1)=4, rot(prio3)=2, gelb=3, gruen=1
-    expect(sorted.map((r) => r.user_id)).toEqual([4, 2, 3, 1]);
+    expect(sorted.map((r) => r.subject_id)).toEqual([4, 2, 3, 1]);
     // Kopie: Original-Reihenfolge unveraendert.
-    expect(rows.map((r) => r.user_id)).toEqual([1, 2, 3, 4]);
+    expect(rows.map((r) => r.subject_id)).toEqual([1, 2, 3, 4]);
   });
 
   // OV09 -------------------------------------------------------------------
@@ -206,8 +208,8 @@ describe("cockpit_overview.js — Overview-Sicht (Build 348)", () => {
       scope: "alle",
       count: 2,
       cases: [
-        C({ user_id: 1, ampel: "gruen", priority: 3 }),
-        C({ user_id: 2, ampel: "rot", priority: 1 }),
+        C({ subject_id: 1, ampel: "gruen", priority: 3 }),
+        C({ subject_id: 2, ampel: "rot", priority: 1 }),
       ],
     };
     const inst = api.renderOverview(main, data, {
@@ -223,8 +225,8 @@ describe("cockpit_overview.js — Overview-Sicht (Build 348)", () => {
     expect(main.querySelector(".aiw-pagesub").textContent).toContain(
       "2 Faelle"
     );
-    // Zeilen sortiert an Tabulator uebergeben (rot user_id=2 zuerst).
-    expect(seen.options.data.map((r) => r.user_id)).toEqual([2, 1]);
+    // Zeilen sortiert an Tabulator uebergeben (rot subject_id=2 zuerst).
+    expect(seen.options.data.map((r) => r.subject_id)).toEqual([2, 1]);
     expect(seen.options.columns.length).toBe(10);
 
     // Ohne Ctor -> null + Hinweis.

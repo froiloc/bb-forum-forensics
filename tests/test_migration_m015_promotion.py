@@ -7,12 +7,13 @@
 # PM01 — Voller Migrationslauf (M001..M015) via discover+Runner; Tabelle +
 #        Index + Faehigkeit 'ops.promote' vorhanden; 2. Runner-Lauf No-Op.
 # PM02 — CHECK-Constraint: nur die vier gespeicherten Zustaende sind erlaubt.
-# PM03 — UNIQUE(user_id): genau eine Entscheidungszeile je Kandidat.
+# PM03 — UNIQUE(subject_id): genau eine Entscheidungszeile je Kandidat.
 # PM04 — Idempotenz: direkter 2. up() ist No-op, dupliziert die Faehigkeit nicht.
 # PM05 — Katalog-Bruecke: 'ops.promote' ist im Code-Katalog (catalog.py) UND
 #        im DB-Seed (rbac_capability) — deckungsgleich (verify_catalog_present).
 #
-# Version: v0.7.460 · Build: 460 · 2026-07-20
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import os
@@ -125,26 +126,26 @@ class MigrationM015Tests(unittest.TestCase):
         with self.assertRaises(sqlite3.IntegrityError):
             self.con.execute(
                 "INSERT INTO forum_promotion "
-                "(user_id, status, created_at, audit_seq, created_audit_seq) "
+                "(subject_id, status, created_at, audit_seq, created_audit_seq) "
                 "VALUES (?, 'offen', ?, ?, ?)", (100, now, seq, seq))
         # Ein gueltiger Zustand geht durch.
         self.con.execute(
             "INSERT INTO forum_promotion "
-            "(user_id, status, created_at, audit_seq, created_audit_seq) "
+            "(subject_id, status, created_at, audit_seq, created_audit_seq) "
             "VALUES (?, 'gesichtet', ?, ?, ?)", (101, now, seq, seq))
 
     # PM03 -------------------------------------------------------------------
-    def test_pm03_unique_user_id(self):
+    def test_pm03_unique_subject_id(self):
         seq = self.con.execute("SELECT MAX(seq) FROM audit_log").fetchone()[0]
         now = int(time.time())
         self.con.execute(
             "INSERT INTO forum_promotion "
-            "(user_id, status, created_at, audit_seq, created_audit_seq) "
+            "(subject_id, status, created_at, audit_seq, created_audit_seq) "
             "VALUES (?, 'gesichtet', ?, ?, ?)", (200, now, seq, seq))
         with self.assertRaises(sqlite3.IntegrityError):
             self.con.execute(
                 "INSERT INTO forum_promotion "
-                "(user_id, status, created_at, audit_seq, created_audit_seq) "
+                "(subject_id, status, created_at, audit_seq, created_audit_seq) "
                 "VALUES (?, 'zurueckgestellt', ?, ?, ?)", (200, now, seq, seq))
 
     # PM04 -------------------------------------------------------------------

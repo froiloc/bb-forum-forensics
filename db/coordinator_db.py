@@ -24,7 +24,8 @@
 #   verfälschten Beweisen.
 #
 # Abhängigkeiten: sqlite3, time — ausschließlich Stdlib
-# Version: v0.1.0 · Build: 029 · 2026-04-15
+# Version: v0.7.469 · Build: 469 · 2026-07-20
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
 # Änderungen gegenüber Build 007 (Baustelle 3 — §11.5 Bauplan):
 #   - SupportStatusRecord: Neues Dataclass für SSE-Support-Status.
 #   - get_support_status(): Liest aktiven Support-Nutzer aus
@@ -106,7 +107,7 @@ class JobRecord:
 
     Felder:
         id            — Primärschlüssel
-        user_id       — forum.users.id des Beschuldigten
+        subject_id    — Subjekt-ID (numerisch = forum.users.id) des Beschuldigten
         username      — Benutzername des Beschuldigten
         priority      — 1 (höchste) bis 5 (niedrigste)
         status        — 'pending', 'running', 'done', 'failed'
@@ -114,7 +115,7 @@ class JobRecord:
         created_at    — Unix-Timestamp der Job-Anlage
     """
     id:           int
-    user_id:      int
+    subject_id:   int
     username:     str
     priority:     int
     status:       str
@@ -149,26 +150,26 @@ class CoordinatorDb:
     # ------------------------------------------------------------------
 
     def get_support_status(
-        self, user_id: Optional[int] = None,
+        self, subject_id: Optional[int] = None,
         stale_sec: int = DEFAULT_SUPPORT_STALE_SEC,
     ) -> SupportStatusRecord:
         """
-        Liest den Live-Support-Status zu EINEM Fall (user_id) aus
+        Liest den Live-Support-Status zu EINEM Fall (subject_id) aus
         cdb.support_sessions (Build 311). Aktiv = mindestens eine Sitzung ohne
         ended_at mit Heartbeat innerhalb stale_sec. username/since_ms beziehen
         sich auf den am längsten aktiven Supporter; count zählt alle aktiven.
 
-        Ohne user_id (kein Fallkontext) wird inaktiv zurückgegeben — der
+        Ohne subject_id (kein Fallkontext) wird inaktiv zurückgegeben — der
         Aufrufer (events.py) liefert den Fall ab Build 312.
 
         Bei Fehler oder fehlender Sitzung: inaktiver Status — kein Absturz,
         kein stilles Versagen (Grundregel 1).
         """
-        if user_id is None:
+        if subject_id is None:
             return SupportStatusRecord(active=False, username=None,
                                        since_ms=None, count=0)
         try:
-            return self._retry(self._get_support_status_once, user_id, stale_sec)
+            return self._retry(self._get_support_status_once, subject_id, stale_sec)
         except Exception as exc:
             logger.warning(
                 "get_support_status(): Fehler beim Lesen — gebe inactive zurück: %s",
@@ -178,7 +179,7 @@ class CoordinatorDb:
                                        since_ms=None, count=0)
 
     def _get_support_status_once(
-        self, user_id: int, stale_sec: int
+        self, subject_id: int, stale_sec: int
     ) -> SupportStatusRecord:
         """
         Einmaliger Versuch für get_support_status(). Liest aktive Support-
@@ -194,9 +195,9 @@ class CoordinatorDb:
             "SELECT s.started_at, i.system_username "
             "FROM cdb.support_sessions s "
             "LEFT JOIN cdb.person i ON i.id = s.supporter_id "
-            "WHERE s.user_id = ? AND s.ended_at IS NULL AND s.last_heartbeat >= ? "
+            "WHERE s.subject_id = ? AND s.ended_at IS NULL AND s.last_heartbeat >= ? "
             "ORDER BY s.started_at ASC",
-            (user_id, threshold),
+            (subject_id, threshold),
         ).fetchall()
         if not rows:
             return SupportStatusRecord(active=False, username=None,
@@ -283,7 +284,7 @@ class CoordinatorDb:
     def _get_job_by_id_once(self, job_id: int) -> Optional[JobRecord]:
         try:
             row = self._con.execute(
-                "SELECT id, user_id, username, priority, status, "
+                "SELECT id, subject_id, username, priority, status, "
                 "output_path, created_at "
                 "FROM cdb.scrape_jobs WHERE id = ?",
                 (job_id,),
@@ -376,7 +377,7 @@ class CoordinatorDb:
         """Konvertiert eine DB-Zeile in ein JobRecord."""
         return JobRecord(
             id=int(row["id"]),
-            user_id=int(row["user_id"]),
+            subject_id=int(row["subject_id"]),
             username=str(row["username"]),
             priority=int(row["priority"]),
             status=str(row["status"]),

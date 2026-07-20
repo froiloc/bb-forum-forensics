@@ -30,7 +30,7 @@
 # KEINE ZAHL OHNE VERMERK: Der Score kommt aus PriorityScorer und traegt dessen
 #   Vermerk. Er wird hier NICHT ohne ihn weitergereicht.
 #
-# Version: v0.7.393 · Build: 393 · 2026-07-12
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import logging
@@ -56,13 +56,13 @@ class CoverageRepo:
         self._scorer = PriorityScorer(weights)
 
     # ------------------------------------------------------------------ Lesen
-    def coverage(self, *, user_ids: Optional[Sequence[int]] = None
+    def coverage(self, *, subject_ids: Optional[Sequence[int]] = None
                  ) -> Dict[str, Any]:
         """
         Eine Zeile JE FALL aus 'cases' — auch fuer nie bewertete Faelle.
 
-        user_ids=None -> alle Faelle.
-        user_ids=[]   -> KEINE. Das ist die richtige Antwort fuer einen
+        subject_ids=None -> alle Faelle.
+        subject_ids=[]   -> KEINE. Das ist die richtige Antwort fuer einen
                          Ermittler ohne Zuweisung — und ausdruecklich NICHT
                          dasselbe wie 'alle'.
         """
@@ -72,29 +72,29 @@ class CoverageRepo:
         # AUSGANGSPUNKT IST 'cases' — nicht die Bewertungstabelle. Das ist der
         # ganze Punkt dieser Klasse.
         sql = (
-            "SELECT c.user_id, c.username, c.status, c.priority, "
+            "SELECT c.subject_id, c.username, c.status, c.priority, "
             "       p.system_username AS assigned_to "
             "FROM cases c "
             "LEFT JOIN person p ON p.id = c.assigned_to"
         )
         params: List[Any] = []
-        if user_ids is not None:
-            if not user_ids:
+        if subject_ids is not None:
+            if not subject_ids:
                 return self._leer(n_krit)
-            sql += " WHERE c.user_id IN (%s)" % ",".join("?" for _ in user_ids)
-            params.extend(int(u) for u in user_ids)
-        sql += " ORDER BY c.user_id"
+            sql += " WHERE c.subject_id IN (%s)" % ",".join("?" for _ in subject_ids)
+            params.extend(int(u) for u in subject_ids)
+        sql += " ORDER BY c.subject_id"
 
         faelle = [dict(r) for r in self._con.execute(sql, params).fetchall()]
 
         # Der aktuelle Stand ALLER dieser Faelle in EINEM Zug (nicht je Fall
         # eine Abfrage — bei 477.178 Nutzern waere das nicht tragbar).
-        stand = self._current_map([f["user_id"] for f in faelle])
+        stand = self._current_map([f["subject_id"] for f in faelle])
 
         out: List[Dict[str, Any]] = []
         nie = 0
         for f in faelle:
-            uid = f["user_id"]
+            uid = f["subject_id"]
             rows = stand.get(uid, [])
             schwerste = [r for r in rows if r["extrem"] == "schwerste"]
             beste = [r for r in rows if r["extrem"] == "beste"]
@@ -133,7 +133,7 @@ class CoverageRepo:
         # Sortierung: die blinden Flecken zuerst, dann die duenn bewerteten.
         # Wer die Liste oeffnet, soll sehen, WO NICHT ERMITTELT WURDE.
         out.sort(key=lambda e: (e["abdeckung"] if e["abdeckung"] is not None
-                                else 0, -e["score"], e["user_id"]))
+                                else 0, -e["score"], e["subject_id"]))
 
         return {
             "faelle_gesamt": len(out),
@@ -156,24 +156,24 @@ class CoverageRepo:
             "vermerk": VERMERK, "faelle": [],
         }
 
-    def _current_map(self, user_ids: Sequence[int]
+    def _current_map(self, subject_ids: Sequence[int]
                      ) -> Dict[int, List[Dict[str, Any]]]:
         """Aktueller Stand aller genannten Faelle, gebuendelt je Fall."""
-        if not user_ids:
+        if not subject_ids:
             return {}
-        marks = ",".join("?" for _ in user_ids)
+        marks = ",".join("?" for _ in subject_ids)
         rows = self._con.execute(
-            "SELECT user_id, criterion_code, extrem, confidence_code, "
+            "SELECT subject_id, criterion_code, extrem, confidence_code, "
             "       confidence_ordinal, quality_code, quality_ordinal, "
             "       created_at "
-            "FROM v_investigation_current WHERE user_id IN (%s)" % marks,
-            [int(u) for u in user_ids]).fetchall()
+            "FROM v_investigation_current WHERE subject_id IN (%s)" % marks,
+            [int(u) for u in subject_ids]).fetchall()
         out: Dict[int, List[Dict[str, Any]]] = {}
         for r in rows:
             d = dict(r)
             # PriorityScorer erwartet 'criterion_label' — es fehlt hier
             # bewusst nicht, es ist fuer den Score irrelevant.
-            out.setdefault(int(d["user_id"]), []).append(d)
+            out.setdefault(int(d["subject_id"]), []).append(d)
         return out
 
     # ------------------------------------------------------------- Zaehlwerk

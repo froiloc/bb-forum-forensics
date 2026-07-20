@@ -1,4 +1,6 @@
 /**
+ * Build 469: Schluesselumstellung user_id -> subject_id (M019)
+ * Version: v0.7.469 · Build: 469 · 2026-07-20
  * tests/unit/test_block_wrapper.test.js
  * Unit-Tests fuer den BlockWrapperManager in userinfo/report_editor.js
  *
@@ -42,7 +44,7 @@ function makeDOM() {
         `<!DOCTYPE html><html><body>
             <div id="report-editor-body"
                  data-username="h001"
-                 data-user-id="42"
+                 data-subject-id="42"
                  data-autosave-debounce-ms="1500"></div>
             <div id="editorjs-holder"></div>
             <aside id="support-sidebar">

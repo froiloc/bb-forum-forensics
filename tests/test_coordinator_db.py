@@ -16,7 +16,8 @@
 # T13 — Retry-Logik: OperationalError führt zu Wiederholung
 # T14 — JobRecord.output_path: NULL in DB → None im Record
 #
-# Version: v0.1.0 · Build: 007 · 2026-04-10
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import sys, os, sqlite3, tempfile, textwrap, time, unittest
@@ -69,7 +70,7 @@ def _make_cdb_attached() -> tuple[sqlite3.Connection, int, int]:
         );
         CREATE TABLE scrape_jobs (
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id       INTEGER NOT NULL,
+            subject_id       INTEGER NOT NULL,
             username      TEXT NOT NULL,
             priority      INTEGER NOT NULL DEFAULT 3,
             status        TEXT NOT NULL DEFAULT 'pending',
@@ -84,7 +85,7 @@ def _make_cdb_attached() -> tuple[sqlite3.Connection, int, int]:
         );
         CREATE TABLE support_sessions (
             id             INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id        INTEGER NOT NULL,
+            subject_id        INTEGER NOT NULL,
             supporter_id   INTEGER,
             started_at     INTEGER NOT NULL,
             last_heartbeat INTEGER NOT NULL,
@@ -102,7 +103,7 @@ def _make_cdb_attached() -> tuple[sqlite3.Connection, int, int]:
     ).fetchone()[0]
     cdb_con.execute(
         "INSERT INTO scrape_jobs "
-        "(user_id, username, priority, status, assigned_to, created_at) "
+        "(subject_id, username, priority, status, assigned_to, created_at) "
         "VALUES (42, 'verdaechtiger42', 3, 'pending', ?, 100)",
         (inv_id,),
     )
@@ -257,12 +258,12 @@ class TestCoordinatorDb(unittest.TestCase):
         now = int(_t.time())
         self.con.execute(
             "INSERT INTO cdb.support_sessions "
-            "(user_id, supporter_id, started_at, last_heartbeat) "
+            "(subject_id, supporter_id, started_at, last_heartbeat) "
             "VALUES (42, ?, ?, ?)",
             (self.inv_id, 1700000000, now),
         )
         self.con.commit()
-        r = self.cdb.get_support_status(user_id=42, stale_sec=30)
+        r = self.cdb.get_support_status(subject_id=42, stale_sec=30)
         self.assertTrue(r.active)
         self.assertEqual(r.username, "h012345")
         self.assertEqual(r.since_ms, 1700000000 * 1000)
@@ -275,12 +276,12 @@ class TestCoordinatorDb(unittest.TestCase):
         alt = int(_t.time()) - 10_000
         self.con.execute(
             "INSERT INTO cdb.support_sessions "
-            "(user_id, supporter_id, started_at, last_heartbeat) "
+            "(subject_id, supporter_id, started_at, last_heartbeat) "
             "VALUES (42, ?, ?, ?)",
             (self.inv_id, alt, alt),
         )
         self.con.commit()
-        r = self.cdb.get_support_status(user_id=42, stale_sec=30)
+        r = self.cdb.get_support_status(subject_id=42, stale_sec=30)
         self.assertFalse(r.active)
         self.assertEqual(r.count, 0)
 
@@ -294,18 +295,18 @@ class TestCoordinatorDb(unittest.TestCase):
         ).fetchone()[0]
         self.con.executemany(
             "INSERT INTO cdb.support_sessions "
-            "(user_id, supporter_id, started_at, last_heartbeat) VALUES (42, ?, ?, ?)",
+            "(subject_id, supporter_id, started_at, last_heartbeat) VALUES (42, ?, ?, ?)",
             [(self.inv_id, 1700000000, now), (sup2, 1700000500, now)],
         )
         self.con.commit()
-        r = self.cdb.get_support_status(user_id=42, stale_sec=30)
+        r = self.cdb.get_support_status(subject_id=42, stale_sec=30)
         self.assertTrue(r.active)
         self.assertEqual(r.count, 2)
         self.assertEqual(r.username, "h012345")  # frühester started_at
 
     # ------------------------------------------------------------------ D04
-    def test_D04_support_status_ohne_user_id_inaktiv(self):
-        """D04: Ohne Fallkontext (user_id=None) inaktiv — unveränderte Alt-Aufrufform."""
+    def test_D04_support_status_ohne_subject_id_inaktiv(self):
+        """D04: Ohne Fallkontext (subject_id=None) inaktiv — unveränderte Alt-Aufrufform."""
         r = self.cdb.get_support_status()
         self.assertFalse(r.active)
         self.assertEqual(r.count, 0)

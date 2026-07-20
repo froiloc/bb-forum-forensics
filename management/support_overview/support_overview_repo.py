@@ -25,7 +25,7 @@
 # REKONSTRUKTIONS-VERTRAG (belegt):
 #   Verknuepfungsschluessel ist content.session_id (in JEDEM der drei Schreib-
 #   pfade start()/end()/close_orphans() gesetzt). target_id taugt NICHT:
-#   STARTED.target_id = user_id, ENDED.target_id = session_id (Asymmetrie).
+#   STARTED.target_id = subject_id, ENDED.target_id = session_id (Asymmetrie).
 #   Der ENDED-Payload traegt supporter_id NICHT -> der Supporter kommt allein
 #   aus dem STARTED-Beleg.
 #
@@ -33,7 +33,7 @@
 #   Belege (STARTED ohne ENDED, ENDED ohne STARTED, doppeltes ENDED, fehlende
 #   session_id) werden als Datensatz mit passendem Status/anomaly GEFUEHRT.
 #
-# Version: v0.7.330 · Build: 330 · 2026-07-07
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import json
@@ -83,7 +83,7 @@ class _SessionAccumulator:
     """
 
     __slots__ = (
-        "session_id", "user_id",
+        "session_id", "subject_id",
         "supporter_id",
         "started_at", "ended_at", "duration_sec", "reason",
         "started_seq", "ended_seq", "started_ts", "ended_ts",
@@ -93,7 +93,7 @@ class _SessionAccumulator:
 
     def __init__(self, session_id: int) -> None:
         self.session_id = session_id
-        self.user_id: Optional[int] = None
+        self.subject_id: Optional[int] = None
         self.supporter_id: Optional[int] = None
         self.started_at: Optional[int] = None
         self.ended_at: Optional[int] = None
@@ -121,8 +121,11 @@ class _SessionAccumulator:
             return  # ersten Beleg behalten
         self.started_at = _as_int_or_none(payload.get("started_at"))
         self.supporter_id = _as_int_or_none(payload.get("supporter_id"))
-        if self.user_id is None:
-            self.user_id = _as_int_or_none(payload.get("user_id"))
+        if self.subject_id is None:
+            # Fallback "user_id": Legacy-Payload vor M019 (audit_log ist eine
+            # unveraenderliche Hash-Kette — Alt-Belege behalten den alten Key).
+            self.subject_id = _as_int_or_none(
+                payload.get("subject_id", payload.get("user_id")))
         self.started_seq = seq
         self.started_ts = ts
         self.started_actor_id = actor_id
@@ -137,8 +140,11 @@ class _SessionAccumulator:
         self.ended_at = _as_int_or_none(payload.get("ended_at"))
         self.duration_sec = _as_int_or_none(payload.get("duration_sec"))
         self.reason = payload.get("reason")  # None = sauberes Ende
-        if self.user_id is None:
-            self.user_id = _as_int_or_none(payload.get("user_id"))
+        if self.subject_id is None:
+            # Fallback "user_id": Legacy-Payload vor M019 (audit_log ist eine
+            # unveraenderliche Hash-Kette — Alt-Belege behalten den alten Key).
+            self.subject_id = _as_int_or_none(
+                payload.get("subject_id", payload.get("user_id")))
         self.ended_seq = seq
         self.ended_ts = ts
         self.ended_actor_id = actor_id
@@ -218,10 +224,10 @@ class SupportOverviewRepo:
         return out
 
     def _load_case_usernames(self) -> Dict[int, str]:
-        """user_id -> cases.username (Forum-Benutzername des betroffenen Nutzers)."""
+        """subject_id -> cases.username (Forum-Benutzername des betroffenen Nutzers)."""
         out: Dict[int, str] = {}
-        for r in self._con.execute("SELECT user_id, username FROM cases"):
-            out[int(r["user_id"])] = r["username"]
+        for r in self._con.execute("SELECT subject_id, username FROM cases"):
+            out[int(r["subject_id"])] = r["username"]
         return out
 
     def list_support_sessions(self) -> List[SupportSessionRecord]:
@@ -304,12 +310,12 @@ class SupportOverviewRepo:
                     sup_sys, sup_disp = found
 
             username: Optional[str] = None
-            if a.user_id is not None:
-                username = case_usernames.get(a.user_id)
+            if a.subject_id is not None:
+                username = case_usernames.get(a.subject_id)
 
             records.append(SupportSessionRecord(
                 session_id=a.session_id,
-                user_id=(a.user_id if a.user_id is not None else 0),
+                subject_id=(a.subject_id if a.subject_id is not None else 0),
                 username=username,
                 supporter_id=a.supporter_id,
                 supporter_system_username=sup_sys,

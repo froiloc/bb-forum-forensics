@@ -34,7 +34,7 @@
 #   tdb → templates.db      (optional)
 #
 # Session-ID für Support-TEMP-DB:
-#   Wird aus Unix-Timestamp + user_id gebildet.
+#   Wird aus Unix-Timestamp + subject_id gebildet.
 #   Ermöglicht mehrere gleichzeitige Support-Sessions auf demselben System.
 #
 # Forensische Relevanz:
@@ -43,7 +43,8 @@
 #   Jede Verbindungsöffnung wird im Log protokolliert (mit Pfaden).
 #
 # Abhängigkeiten: sqlite3, time, os — Stdlib + interne DB-Module
-# Version: v0.6.117 · Build: 117 · 2026-05-07
+# Version: v0.7.469 · Build: 469 · 2026-07-20
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
 # =============================================================================
 
 from __future__ import annotations
@@ -162,8 +163,8 @@ class ConnectionManager:
         """
         mode = self._ctx.mode
         logger.info(
-            "Öffne Datenbankverbindungen (Modus: '%s', user_id: %d)",
-            mode, self._ctx.user_id,
+            "Öffne Datenbankverbindungen (Modus: '%s', subject_id: %d)",
+            mode, self._ctx.subject_id,
         )
 
         if mode in ("job", "cli"):
@@ -388,7 +389,7 @@ class ConnectionManager:
                 )
                 logger.debug("Support-Modus: In-Memory TEMP-DB")
             else:
-                session_id = f"{int(time.time())}_{self._ctx.user_id}"
+                session_id = f"{int(time.time())}_{self._ctx.subject_id}"
                 temp_db_path = os.path.join(
                     tempfile.gettempdir(),
                     f"forensic_support_{session_id}.db",

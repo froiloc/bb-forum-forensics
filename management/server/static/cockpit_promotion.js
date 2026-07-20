@@ -18,12 +18,12 @@
 //     candidate_count: int,
 //     counts: { offen, gesichtet, uebernommen, zurueckgestellt, fremdzustaendig },
 //     statuses: ["gesichtet","uebernommen","zurueckgestellt","fremdzustaendig"],
-//     candidates: [ {user_id, status, status_label, grund, herkunft,
+//     candidates: [ {subject_id, status, status_label, grund, herkunft,
 //                    decided_at, decided_by, is_final}, ... ],
 //     decisions: [ ...alle forum_promotion-Zeilen (Belege)... ]
 //   }
 //
-// SCHREIBEN: opts.onDecide({user_id, status, grund, herkunft}) -> der Aufrufer
+// SCHREIBEN: opts.onDecide({subject_id, status, grund, herkunft}) -> der Aufrufer
 //   (cockpit.js) sendet POST /api/promotion/decide mit X-AIW-Token und laedt
 //   danach die Sicht NEU (KEIN optimistisches UI, Grundregel 1).
 //
@@ -38,7 +38,8 @@
 // SICHERHEIT (XSS): ALLE variablen Texte (grund, herkunft, Labels) werden via
 //   textContent gesetzt, nie via innerHTML.
 //
-// Version: v0.7.461 · Build: 461 · 2026-07-20
+// Build 469: Schluesselumstellung user_id -> subject_id (M019)
+// Version: v0.7.469 · Build: 469 · 2026-07-20
 // =============================================================================
 
 (function () {
@@ -232,7 +233,7 @@
 
             var title = doc.createElement('div');
             title.className = 'aiw-promo-panel-title';
-            title.textContent = 'Kandidat ' + row.user_id + ' ' + EM_DASH + ' '
+            title.textContent = 'Kandidat ' + row.subject_id + ' ' + EM_DASH + ' '
                 + (ACTION_LABEL[target] || target);
             panel.appendChild(title);
 
@@ -286,7 +287,7 @@
                 setResult('Speichere Entscheidung …', null);
                 if (typeof opts.onDecide === 'function') {
                     opts.onDecide({
-                        user_id: row.user_id, status: target,
+                        subject_id: row.subject_id, status: target,
                         grund: grund, herkunft: herkunft || null
                     });
                 } else {
@@ -306,7 +307,7 @@
             });
             panel.appendChild(cancel);
 
-            log('openPanel', row.user_id, '->', target, 'reason?', req);
+            log('openPanel', row.subject_id, '->', target, 'reason?', req);
         }
 
         // --- Tabelle (schlichtes, XSS-sicheres <table>) ----------------------
@@ -321,7 +322,7 @@
             table.className = 'aiw-promo-table';
             var thead = doc.createElement('thead');
             var htr = doc.createElement('tr');
-            ['Fall (user_id)', 'Zustand', 'Grund', 'Herkunft', 'Aktion']
+            ['Fall (subject_id)', 'Zustand', 'Grund', 'Herkunft', 'Aktion']
                 .forEach(function (label) {
                     var th = doc.createElement('th');
                     th.textContent = label;
@@ -346,10 +347,10 @@
     // mit Schreibrecht UND nur, soweit die Zustandsmaschine sie zulaesst.
     function _rowEl(doc, row, canEdit, openPanel) {
         var tr = doc.createElement('tr');
-        tr.setAttribute('data-uid', String(row.user_id));
+        tr.setAttribute('data-uid', String(row.subject_id));
 
         var tdId = doc.createElement('td');
-        tdId.textContent = String(row.user_id);
+        tdId.textContent = String(row.subject_id);
         tr.appendChild(tdId);
 
         var tdStatus = doc.createElement('td');
@@ -379,7 +380,7 @@
                 var b = doc.createElement('button');
                 b.type = 'button';
                 b.className = 'aiw-btn aiw-promo-btn';
-                b.setAttribute('data-uid', String(row.user_id));
+                b.setAttribute('data-uid', String(row.subject_id));
                 b.setAttribute('data-target', target);
                 b.textContent = ACTION_LABEL[target] || target;
                 b.addEventListener('click', function () {

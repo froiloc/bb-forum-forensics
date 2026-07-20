@@ -26,7 +26,7 @@
 #   der Fallakte veraendert (kein stiller Eingriff in Ermittlungsdaten, mc) —
 #   er wird gemeldet, und die Sicht zeigt ihn deutlich.
 #
-# Version: v0.7.383 · Build: 383 · 2026-07-10
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import re
@@ -45,7 +45,7 @@ STATUS_UNLESBAR = "unlesbar"
 
 @dataclass(frozen=True)
 class DetectedCase:
-    user_id: int
+    subject_id: int
     status: str                      # ok | neu | vermisst | unlesbar
     username: Optional[str]          # aus uid_profile (oder cases, wenn vermisst)
     in_cases: bool
@@ -77,7 +77,7 @@ class CaseDetector:
             username, err = self._read_username(on_disk[uid])
             if err is not None:
                 cases.append(DetectedCase(
-                    user_id=uid, status=STATUS_UNLESBAR,
+                    subject_id=uid, status=STATUS_UNLESBAR,
                     username=known.get(uid), in_cases=uid in known,
                     has_forensic_db=True,
                     has_evidence_db=self._has(self._evidence, "evidence", uid),
@@ -86,7 +86,7 @@ class CaseDetector:
                 continue
 
             cases.append(DetectedCase(
-                user_id=uid,
+                subject_id=uid,
                 status=STATUS_OK if uid in known else STATUS_NEU,
                 username=username or known.get(uid),
                 in_cases=uid in known,
@@ -98,14 +98,14 @@ class CaseDetector:
         #    Platte liegen. Diese duerfen NICHT untergehen (Grundregel 1).
         for uid in sorted(set(known) - set(on_disk)):
             cases.append(DetectedCase(
-                user_id=uid, status=STATUS_VERMISST,
+                subject_id=uid, status=STATUS_VERMISST,
                 username=known[uid], in_cases=True, has_forensic_db=False,
                 has_evidence_db=self._has(self._evidence, "evidence", uid),
                 has_assets_db=self._has(self._assets, "assets", uid),
                 detail="forensic_%d.db fehlt im Verzeichnis %s"
                        % (uid, self._forensic)))
 
-        cases.sort(key=lambda c: c.user_id)
+        cases.sort(key=lambda c: c.subject_id)
         counts = {s: 0 for s in
                   (STATUS_OK, STATUS_NEU, STATUS_VERMISST, STATUS_UNLESBAR)}
         for c in cases:
@@ -146,7 +146,7 @@ class CaseDetector:
     def _known_cases(self) -> Dict[int, str]:
         try:
             return {int(r[0]): str(r[1]) for r in self._con.execute(
-                "SELECT user_id, username FROM cases")}
+                "SELECT subject_id, username FROM cases")}
         except sqlite3.Error:
             return {}
 

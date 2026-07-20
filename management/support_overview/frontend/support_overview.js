@@ -29,7 +29,8 @@
 //   sind beliebiger UTF-8-Text aus dem beschlagnahmten Forum — nie als HTML
 //   interpretieren.
 //
-// Version: v0.7.330 · Build: 330 · 2026-07-07
+// Build 469: Schluesselumstellung user_id -> subject_id (M019)
+// Version: v0.7.469 · Build: 469 · 2026-07-20
 // =============================================================================
 
 (function () {
@@ -171,7 +172,7 @@
     var SORT_KEYS = {
         anchor: function (r) { return anchorTs(r); },
         session: function (r) { return r.session_id || 0; },
-        user: function (r) { return r.user_id || 0; },
+        user: function (r) { return r.subject_id || 0; },
         username: function (r) { return (caseUserLabel(r) || '').toLowerCase(); },
         supporter: function (r) { return (supporterLabel(r) || '').toLowerCase(); },
         start: function (r) { return (r.started_at === null
@@ -213,7 +214,7 @@
             var hay = [
                 supporterLabel(r),
                 caseUserLabel(r),
-                String(r.user_id),
+                String(r.subject_id),
                 String(r.session_id),
                 statusLabel(r.status),
                 (r.reason || ''),
@@ -241,7 +242,7 @@
     var COLUMNS = [
         { name: 'Status', key: 'status' },
         { name: 'Sitzung', key: 'session' },
-        { name: 'Fall (user_id)', key: 'user' },
+        { name: 'Fall (subject_id)', key: 'user' },
         { name: 'Benutzer', key: 'username' },
         { name: 'Supporter', key: 'supporter' },
         { name: 'Start (UTC)', key: 'start' },
@@ -310,7 +311,7 @@
 
             cell(tr, statusLabel(r.status), 'aiw-status ' + statusClass(r.status));
             cell(tr, r.session_id);
-            cell(tr, r.user_id);
+            cell(tr, r.subject_id);
             cell(tr, caseUserLabel(r), 'aiw-username');
             cell(tr, supporterLabel(r));
             cell(tr, formatTs(r.started_at));

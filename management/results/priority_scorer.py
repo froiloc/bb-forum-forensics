@@ -36,7 +36,7 @@
 #   bei abuser_quality SCHWERE, bei location_quality PRAEZISION (M011). Beides
 #   zu addieren waere Unsinn. Die Qualitaet wird nur AUSGEWIESEN.
 #
-# Version: v0.7.387 · Build: 387 · 2026-07-12
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import logging
@@ -70,7 +70,7 @@ class PriorityScorer:
 
     def score(self, current: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
         """
-        current: die Zeilen aus ResultsRepo.current(user_id).
+        current: die Zeilen aus ResultsRepo.current(subject_id).
         -> {score, beitraege[], vermerk, basis, unbewertet[]}
 
         'unbewertet' nennt die Kriterien OHNE Bewertung ausdruecklich. Ein Score

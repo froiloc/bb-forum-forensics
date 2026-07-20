@@ -8,7 +8,7 @@
 #   (a) MEINE AKTIONEN      — audit_log.actor_id == person_id
 #   (b) HISTORIE MEINER FAELLE — Fall-Ereignisse (target_type='case') zu den
 #       mir aktuell zugewiesenen Faellen (cases.assigned_to == person_id).
-#       Fall-Ereignisse adressieren den Fall ueber target_id = str(user_id)
+#       Fall-Ereignisse adressieren den Fall ueber target_id = str(subject_id)
 #       (Konvention aus cases_repo).
 #
 # Beide Mengen werden vereinigt (ein Eintrag kann beides sein: von mir UND zu
@@ -19,7 +19,7 @@
 # Bewertungsinstrument.
 #
 # Beleg: Bauplan B7 v1.1 §11; mc 2026-07-10 (kombinierte Historie).
-# Version: v0.7.363 · Build: 363 · 2026-07-10
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import sqlite3
@@ -42,7 +42,7 @@ class MyHistoryRepo:
         # Meine aktuell zugewiesenen Faelle (target_id ist TEXT im audit_log).
         my_case_ids = {
             str(r[0]) for r in self._con.execute(
-                "SELECT user_id FROM cases WHERE assigned_to = ?",
+                "SELECT subject_id FROM cases WHERE assigned_to = ?",
                 (person_id,)).fetchall()
         }
 
@@ -53,7 +53,7 @@ class MyHistoryRepo:
             "FROM audit_log "
             "WHERE actor_id = ? "
             "   OR (target_type = 'case' AND target_id IN "
-            "        (SELECT CAST(user_id AS TEXT) FROM cases "
+            "        (SELECT CAST(subject_id AS TEXT) FROM cases "
             "         WHERE assigned_to = ?)) "
             "ORDER BY seq DESC LIMIT ?",
             (person_id, person_id, limit))

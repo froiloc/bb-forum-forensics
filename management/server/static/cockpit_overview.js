@@ -11,7 +11,7 @@
 // KONVENTIONS-VERTRAG (Quelle der Wahrheit = Backend):
 //   Ampel-Vokabular (rot/gelb/gruen), ampel_reason-Codes und die Anzeige-
 //   Sortierung (Ampel-Schwere -> Prioritaet aufsteigend -> letzte Aktivitaet
-//   absteigend -> user_id) spiegeln dashboard_repo.AMPEL_* (Build 315) und
+//   absteigend -> subject_id) spiegeln dashboard_repo.AMPEL_* (Build 315) und
 //   dashboard.js. Bewusst hier eigenstaendig + eigenstaendig getestet gehalten
 //   (Split-Build 348, keine Kopplung an die getrennte Dashboard-Auslieferung);
 //   der gemeinsame Vertrag ist das Backend-Vokabular, nicht diese Datei.
@@ -28,7 +28,8 @@
 //   'plaintext'-Formatter (textContent). Eigene Formatter bauen DOM-Knoten und
 //   setzen variablen Text ausschliesslich via textContent (nie innerHTML).
 //
-// Version: v0.7.349 · Build: 349 · 2026-07-10
+// Build 469: Schluesselumstellung user_id -> subject_id (M019)
+// Version: v0.7.469 · Build: 469 · 2026-07-20
 // =============================================================================
 
 (function () {
@@ -102,7 +103,7 @@
     function toRows(cases, nowSec) {
         return (cases || []).map(function (c) {
             return {
-                user_id: c.user_id,
+                subject_id: c.subject_id,
                 username: c.username,
                 status: c.status,
                 priority: c.priority,
@@ -121,7 +122,7 @@
     }
 
     // sortRows: Standard-Anzeigeordnung (Ampel-Schwere -> Prioritaet aufsteigend
-    // -> letzte Aktivitaet absteigend -> user_id). Gibt eine sortierte KOPIE
+    // -> letzte Aktivitaet absteigend -> subject_id). Gibt eine sortierte KOPIE
     // zurueck (mutiert die Eingabe nicht). Tabulator laesst spaeter Umsortieren zu.
     function sortRows(rows) {
         var copy = (rows || []).slice();
@@ -130,7 +131,7 @@
             if (a.priority !== b.priority) { return a.priority - b.priority; }
             var la = a.last_activity_at || 0, lb = b.last_activity_at || 0;
             if (la !== lb) { return lb - la; }
-            return (a.user_id || 0) - (b.user_id || 0);
+            return (a.subject_id || 0) - (b.subject_id || 0);
         });
         return copy;
     }
@@ -155,7 +156,7 @@
                 }
             },
             { title: 'Prio', field: 'priority', sorter: 'number', hozAlign: 'right', width: 70 },
-            { title: 'User-ID', field: 'user_id', sorter: 'number', hozAlign: 'right', width: 90 },
+            { title: 'Subject-ID', field: 'subject_id', sorter: 'number', hozAlign: 'right', width: 90 },
             { title: 'Benutzer', field: 'username', formatter: 'plaintext' },
             { title: 'Status', field: 'status', formatter: 'plaintext', width: 110 },
             { title: 'Zugewiesen', field: '_assignee', formatter: 'plaintext' },
@@ -240,10 +241,10 @@
         log('renderOverview:', rows.length, 'Zeilen, scope', scope);
         return new Ctor(container, {
             data: rows,
-            // index=user_id: erlaubt focusCase(table, user_id) via getRow/
-            // scrollToRow (Kommandopalette-Fallsprung, Build 459). user_id ist
+            // index=subject_id: erlaubt focusCase(table, subject_id) via getRow/
+            // scrollToRow (Kommandopalette-Fallsprung, Build 459). subject_id ist
             // je Fall eindeutig.
-            index: 'user_id',
+            index: 'subject_id',
             columns: columnDefs(),
             layout: 'fitColumns',
             height: '65vh',
@@ -257,12 +258,12 @@
     }
 
     // =========================================================================
-    // focusCase: springt in der Tabelle zu einem Fall (user_id) und hebt die
+    // focusCase: springt in der Tabelle zu einem Fall (subject_id) und hebt die
     // Zeile kurz hervor. Fuer den Kommandopalette-Fallsprung (Build 459).
     // Voll abgesichert: fehlt die Zeile/Tabelle -> false (kein Absturz, GR1).
     // Die Hervorhebung erfolgt per Inline-Style (kein cockpit.css-Eingriff).
-    function focusCase(table, userId) {
-        if (!table || userId === null || userId === undefined
+    function focusCase(table, subjectId) {
+        if (!table || subjectId === null || subjectId === undefined
             || typeof table.getRow !== 'function') {
             return false;
         }
@@ -270,10 +271,10 @@
             if (typeof table.scrollToRow === 'function') {
                 // Tabulator v6: (index, position, ifVisible). Kann ein Promise
                 // liefern -> wir ignorieren den Rueckgabewert bewusst.
-                try { table.scrollToRow(userId, 'center', false); }
+                try { table.scrollToRow(subjectId, 'center', false); }
                 catch (e) { log('scrollToRow', e); }
             }
-            var row = table.getRow(userId);
+            var row = table.getRow(subjectId);
             if (row && typeof row.getElement === 'function') {
                 var el = row.getElement();
                 if (el) {

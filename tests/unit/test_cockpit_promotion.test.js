@@ -21,7 +21,9 @@
  * PP09 — leere Kandidatenliste -> Platzhalter; grund/herkunft via textContent
  *        (XSS-sicher).
  *
- * Version: v0.7.461 · Build: 461 · 2026-07-20
+ * Build 469: Schluesselumstellung user_id -> subject_id (M019)
+ * Version: v0.7.469 · Build: 469 · 2026-07-20
+ 2026-07-20
  */
 
 import { describe, it, expect } from "vitest";
@@ -52,11 +54,11 @@ function _sampleData() {
     counts: { offen: 1, gesichtet: 1, zurueckgestellt: 1 },
     statuses: ["gesichtet", "uebernommen", "zurueckgestellt", "fremdzustaendig"],
     candidates: [
-      { user_id: 77, status: "offen", status_label: "offen (unentschieden)",
+      { subject_id: 77, status: "offen", status_label: "offen (unentschieden)",
         grund: null, herkunft: null, is_final: false },
-      { user_id: 88, status: "gesichtet", status_label: "gesichtet",
+      { subject_id: 88, status: "gesichtet", status_label: "gesichtet",
         grund: null, herkunft: "Nachbarforum", is_final: false },
-      { user_id: 99, status: "uebernommen", status_label: "uebernommen",
+      { subject_id: 99, status: "uebernommen", status_label: "uebernommen",
         grund: null, herkunft: null, is_final: true },
     ],
     decisions: [],
@@ -181,7 +183,7 @@ describe("cockpit_promotion.js — Fremdforum-Promotion (Build 461)", () => {
     main.querySelector("#aiw-promo-confirm").click();
     expect(calls.length).toBe(1);
     expect(calls[0]).toEqual({
-      user_id: 77, status: "zurueckgestellt",
+      subject_id: 77, status: "zurueckgestellt",
       grund: "kein Fallbezug", herkunft: "Forum Y",
     });
   });
@@ -207,7 +209,7 @@ describe("cockpit_promotion.js — Fremdforum-Promotion (Build 461)", () => {
     // Ohne Grund bestaetigen -> onDecide gerufen (herkunft aus Vorbelegung).
     main.querySelector("#aiw-promo-confirm").click();
     expect(calls.length).toBe(1);
-    expect(calls[0].user_id).toBe(88);
+    expect(calls[0].subject_id).toBe(88);
     expect(calls[0].status).toBe("uebernommen");
     expect(calls[0].grund).toBe("");
   });
@@ -227,7 +229,7 @@ describe("cockpit_promotion.js — Fremdforum-Promotion (Build 461)", () => {
     const main = doc.createElement("main");
     api.renderPromotion(main, {
       candidate_count: 1, counts: {},
-      candidates: [{ user_id: 5, status: "zurueckgestellt",
+      candidates: [{ subject_id: 5, status: "zurueckgestellt",
         status_label: "zurueckgestellt",
         grund: "<img src=x onerror=alert(1)>", herkunft: null }],
     }, { canEdit: false, doc: doc });

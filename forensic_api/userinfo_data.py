@@ -23,7 +23,8 @@
 #   Keine Schreibzugriffe.
 #
 # Neue Datei — Baustelle 4.
-# Version: v0.7.390 · Build: 390 · 2026-07-12
+# Version: v0.7.469 · Build: 469 · 2026-07-20
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
 #   Build 390: BUGFIX — JOIN ging auf die seit M005 nicht mehr existierende
 #   Tabelle 'investigators' (jetzt 'person'); der Fehler wurde still zu
 #   'nicht zugewiesen'. Siehe _get_investigation_status().
@@ -107,7 +108,7 @@ class UserinfoDataEndpoint:
         Liest den Ermittlungsstatus für den aktuellen Nutzer aus coordinator.db.
 
         Baustelle 7 (Build 307): Quelle ist die autoritative Fallakte cdb.cases
-        (1:1 zur user_id) statt der 'neuesten' scrape_jobs-Zeile.
+        (1:1 zur subject_id) statt der 'neuesten' scrape_jobs-Zeile.
 
         ── BUGFIX Build 390 (gemessen, mc 2026-07-12) ────────────────────────
         Der JOIN ging auf **cdb.investigators**. Diese Tabelle gibt es seit
@@ -141,8 +142,8 @@ class UserinfoDataEndpoint:
                 "       p.system_username AS assigned_to, c.note "
                 "FROM cdb.cases c "
                 "LEFT JOIN cdb.person p ON p.id = c.assigned_to "
-                "WHERE c.user_id = ?",
-                (self._context.user_id,),
+                "WHERE c.subject_id = ?",
+                (self._context.subject_id,),
             ).fetchone()
 
             if row is None:

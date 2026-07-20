@@ -18,7 +18,9 @@
  * SR10 -- filterRecords(): Teilstring ueber Felder, leer -> alle, case-insensitiv
  * SR11 -- renderInto(): Reihenfolge, Statusklassen, Anomalie-Zeile, XSS-sicher
  *
- * Version: v0.7.330 · Build: 330 · 2026-07-07
+ * Build 469: Schluesselumstellung user_id -> subject_id (M019)
+ * Version: v0.7.469 · Build: 469 · 2026-07-20
+ 2026-07-20
  */
 
 import { describe, it, expect } from "vitest";
@@ -48,7 +50,7 @@ function R(over) {
   return Object.assign(
     {
       session_id: 1,
-      user_id: 100,
+      subject_id: 100,
       username: "u",
       supporter_id: 1,
       supporter_system_username: "h001",
@@ -188,9 +190,9 @@ describe("support_overview.js — Support-Historie Render-Schicht", () => {
     expect(A.filterRecords(recs, "alice").map((r) => r.session_id)).toEqual([1]);
     // Case-insensitiv + Supporter-Feld.
     expect(A.filterRecords(recs, "zwei").map((r) => r.session_id)).toEqual([2]);
-    // user_id als Zahl filterbar.
+    // subject_id als Zahl filterbar.
     expect(
-      A.filterRecords([R({ session_id: 9, user_id: 4242 })], "4242").length
+      A.filterRecords([R({ session_id: 9, subject_id: 4242 })], "4242").length
     ).toBe(1);
   });
 

@@ -17,13 +17,13 @@
 //     umfang_catalog: [ {code, label}, ... ],
 //     recipients: [ {kennung, display_name}, ... ],   // berechtigte NRW-Empfaenger (F4)
 //     ad_group: str|null,
-//     releases: [ {id, user_id, fall_username, recipient_kennung,
+//     releases: [ {id, subject_id, fall_username, recipient_kennung,
 //                  recipient_display, umfang, umfang_label, status,
 //                  status_label, unbedenklichkeit_grundlage, grund_widerruf}, ... ]
 //   }
 //
 // SCHREIBEN (opts, verdrahtet in cockpit.js -> postJson mit X-AIW-Token):
-//   onGrant({user_id, recipient_kennung, umfang, unbedenklichkeit_grundlage})
+//   onGrant({subject_id, recipient_kennung, umfang, unbedenklichkeit_grundlage})
 //   onRevoke({release_id, grund})
 //   KEIN optimistisches UI: nach dem Schreiben laedt cockpit.js die Sicht NEU.
 //
@@ -34,7 +34,8 @@
 //
 // SICHERHEIT (XSS): alle variablen Texte via textContent, nie via innerHTML.
 //
-// Version: v0.7.463 · Build: 463 · 2026-07-20
+// Build 469: Schluesselumstellung user_id -> subject_id (M019)
+// Version: v0.7.469 · Build: 469 · 2026-07-20
 // =============================================================================
 
 (function () {
@@ -187,7 +188,7 @@
             var title = doc.createElement('div');
             title.className = 'aiw-rel-panel-title';
             title.textContent = 'Freigabe ' + row.id + ' widerrufen '
-                + '(Fall ' + row.user_id + ' → '
+                + '(Fall ' + row.subject_id + ' → '
                 + (row.recipient_display || row.recipient_kennung) + ')';
             panel.appendChild(title);
 
@@ -299,10 +300,10 @@
             return box;
         }
 
-        // Fall (user_id)
+        // Fall (subject_id)
         var lblU = doc.createElement('label');
         lblU.className = 'aiw-rel-lbl';
-        lblU.textContent = 'Fall (user_id): ';
+        lblU.textContent = 'Fall (subject_id): ';
         var inU = doc.createElement('input');
         inU.type = 'text';
         inU.id = 'aiw-rel-grant-user';
@@ -362,7 +363,7 @@
             var raw = (inU.value || '').trim();
             var uid = parseInt(raw, 10);
             if (!raw || isNaN(uid) || String(uid) !== raw) {
-                setResult('Fall (user_id) fehlt oder ist keine ganze Zahl.',
+                setResult('Fall (subject_id) fehlt oder ist keine ganze Zahl.',
                     true);
                 return;
             }
@@ -375,7 +376,7 @@
             setResult('Erteile Freigabe …', null);
             if (typeof opts.onGrant === 'function') {
                 opts.onGrant({
-                    user_id: uid,
+                    subject_id: uid,
                     recipient_kennung: selR.value,
                     umfang: selM.value,
                     unbedenklichkeit_grundlage: grundlage
@@ -395,7 +396,7 @@
         tr.setAttribute('data-id', String(row.id));
 
         var tdFall = doc.createElement('td');
-        tdFall.textContent = row.user_id
+        tdFall.textContent = row.subject_id
             + (row.fall_username ? ' (' + row.fall_username + ')' : '');
         tr.appendChild(tdFall);
 

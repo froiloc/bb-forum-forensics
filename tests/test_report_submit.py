@@ -18,7 +18,8 @@
 # SB06 — NACH dem Einreichen ist der Bericht fuer den Autor GESPERRT
 #        (Schreibsperre aus Build 379 wirkt) — der eigentliche Zweck.
 #
-# Version: v0.7.381 · Build: 381 · 2026-07-10
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import json
@@ -48,7 +49,7 @@ def _make_endpoint(edb, username="h001"):
     # der BESCHULDIGTE. Der Ermittler steht in context.investigator_username.
     context.investigator_username = username
     context.username = "beschuldigter"
-    context.user_id = 42
+    context.subject_id = 42
     config = MagicMock()
     config.get = MagicMock(return_value=30000)
     return ReportEndpoint(bundle, context, config)

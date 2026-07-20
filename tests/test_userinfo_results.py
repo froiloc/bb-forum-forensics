@@ -14,12 +14,13 @@
 # UE04 — GET /_forensic/results: Katalog + Stand + Historie + Kennzahl.
 # UE05 — GET ohne results.view -> 403 MIT BEGRUENDUNG (nicht leere Karte).
 # UE06 — POST /_forensic/results/assess: auditiert, append-only.
-# UE07 — DIE KAPSELUNGSPROBE: eine 'user_id' im Rumpf wird IGNORIERT — bewertet
+# UE07 — DIE KAPSELUNGSPROBE: eine 'subject_id' im Rumpf wird IGNORIERT — bewertet
 #        wird ausschliesslich der geoeffnete Fall.
 # UE08 — POST ohne results.edit -> 403, es wird NICHTS geschrieben.
 # UE09 — POST ohne aufloesbaren Ermittler -> 403 (kein Beleg ohne Handelnden).
 #
-# Version: v0.7.390 · Build: 390 · 2026-07-12
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import json
@@ -137,12 +138,12 @@ class UserinfoResultsTests(unittest.TestCase):
         os.rmdir(self._tmp)
 
     # ------------------------------------------------------------------ Hilfen
-    def _endpoint(self, *, user_id=18, investigator_id=2):
+    def _endpoint(self, *, subject_id=18, investigator_id=2):
         cfg = MagicMock()
         cfg.get.side_effect = lambda key, *a: (
             self._db if key == "paths.coordinator_db" else None)
         ctx = MagicMock()
-        ctx.user_id = user_id
+        ctx.subject_id = subject_id
         ctx.investigator_id = investigator_id
         bundle = MagicMock()
         return ResultsEndpoint(bundle, ctx, cfg)
@@ -163,7 +164,7 @@ class UserinfoResultsTests(unittest.TestCase):
             self.con.execute(
                 "SELECT c.status, i.system_username FROM cases c "
                 "LEFT JOIN investigators i ON i.id = c.assigned_to "
-                "WHERE c.user_id = 18").fetchone()
+                "WHERE c.subject_id = 18").fetchone()
         self.assertIn("no such table", str(ctx.exception))
 
     # ================================================================== UE02
@@ -172,7 +173,7 @@ class UserinfoResultsTests(unittest.TestCase):
             "SELECT c.status, c.priority, p.system_username AS assigned_to, "
             "       c.note "
             "FROM cases c LEFT JOIN person p ON p.id = c.assigned_to "
-            "WHERE c.user_id = ?", (18,)).fetchone()
+            "WHERE c.subject_id = ?", (18,)).fetchone()
         self.assertIsNotNone(row)
         self.assertEqual(row["assigned_to"], "h002")     # NICHT None!
         self.assertEqual(row["status"], "open")
@@ -181,7 +182,7 @@ class UserinfoResultsTests(unittest.TestCase):
         # echte Aussage, kein Fehler.
         row19 = self.con.execute(
             "SELECT p.system_username AS assigned_to FROM cases c "
-            "LEFT JOIN person p ON p.id = c.assigned_to WHERE c.user_id = ?",
+            "LEFT JOIN person p ON p.id = c.assigned_to WHERE c.subject_id = ?",
             (19,)).fetchone()
         self.assertIsNone(row19["assigned_to"])
 
@@ -195,7 +196,7 @@ class UserinfoResultsTests(unittest.TestCase):
 
         cfg = MagicMock()
         ctx = MagicMock()
-        ctx.user_id = 18
+        ctx.subject_id = 18
         bundle = MagicMock()
         bundle.coordinator = object()          # vorhanden
         # Die ATTACH-Verbindung wirft (z. B. weil cdb fehlt).
@@ -216,7 +217,7 @@ class UserinfoResultsTests(unittest.TestCase):
     # ================================================================== UE04
     def test_ue04_get_results(self):
         repo = ResultsRepo(self.con, self.writer)
-        repo.assess(user_id=18, criterion_code="abuser", extrem="schwerste",
+        repo.assess(subject_id=18, criterion_code="abuser", extrem="schwerste",
                     confidence_code="verdacht", quality_code="fortlaufend",
                     note="Chat", actor_id=2)
         self.con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
@@ -226,7 +227,7 @@ class UserinfoResultsTests(unittest.TestCase):
         self.assertEqual(h.status, 200)
         d = h.json()
 
-        self.assertEqual(d["user_id"], 18)
+        self.assertEqual(d["subject_id"], 18)
         self.assertTrue(d["can_edit"])
         self.assertEqual(len(d["catalog"]["criteria"]), 10)
         self.assertEqual(d["catalog"]["catalog_version"], 1)
@@ -267,7 +268,7 @@ class UserinfoResultsTests(unittest.TestCase):
             row = con.execute(
                 "SELECT * FROM investigation_results WHERE id = ?",
                 (res["result_id"],)).fetchone()
-            self.assertEqual(row["user_id"], 18)
+            self.assertEqual(row["subject_id"], 18)
             self.assertEqual(row["confidence_ordinal"], 4)
             self.assertEqual(row["quality_ordinal"], 2)     # alter
             self.assertEqual(row["created_by"], 2)          # der Handelnde
@@ -286,12 +287,12 @@ class UserinfoResultsTests(unittest.TestCase):
             self.assertEqual(h2.status, 200)
             n = con.execute(
                 "SELECT COUNT(*) FROM investigation_results "
-                "WHERE user_id=18 AND criterion_code='victim_identification'"
+                "WHERE subject_id=18 AND criterion_code='victim_identification'"
             ).fetchone()[0]
             self.assertEqual(n, 2)
             cur = con.execute(
                 "SELECT confidence_code FROM v_investigation_current "
-                "WHERE user_id=18 AND criterion_code='victim_identification'"
+                "WHERE subject_id=18 AND criterion_code='victim_identification'"
             ).fetchone()[0]
             self.assertEqual(cur, "gerichtsfest")
         finally:
@@ -306,30 +307,32 @@ class UserinfoResultsTests(unittest.TestCase):
         self.assertEqual(h3.status, 400)
 
     # ================================================================== UE07
-    def test_ue07_KAPSELUNG_user_id_im_rumpf_wird_ignoriert(self):
+    def test_ue07_KAPSELUNG_subject_id_im_rumpf_wird_ignoriert(self):
         """
         Die zentrale Kapselungsprobe: Der Ermittler koennte versuchen, einen
-        FREMDEN Fall zu bewerten, indem er eine andere user_id in den Rumpf
-        schreibt. Der Endpunkt nimmt die user_id AUSSCHLIESSLICH aus dem
+        FREMDEN Fall zu bewerten, indem er eine andere subject_id in den Rumpf
+        schreibt. Der Endpunkt nimmt die subject_id AUSSCHLIESSLICH aus dem
         Kontext (dem geoeffneten Fall) — das Feld im Rumpf wird IGNORIERT.
         Fremde Faelle sind damit STRUKTURELL unmoeglich.
         """
         h = _Handler()
         body = json.dumps({
-            "user_id": 19,                       # <-- fremder Fall!
+            "subject_id": 19,                       # <-- fremder Fall!
+            "user_id": 19,                          # <-- Alt-Schluessel (vor
+                                                    #     M019): ebenso ignoriert
             "criterion_code": "abuser", "extrem": "beste",
             "confidence_code": "verdacht"}).encode("utf-8")
-        self._endpoint(user_id=18).handle_assess(h, body)
+        self._endpoint(subject_id=18).handle_assess(h, body)
         self.assertEqual(h.status, 200)
 
         con = sqlite3.connect(self._db)
         try:
             # Geschrieben wurde auf 18 — NICHT auf 19.
             n18 = con.execute(
-                "SELECT COUNT(*) FROM investigation_results WHERE user_id=18"
+                "SELECT COUNT(*) FROM investigation_results WHERE subject_id=18"
             ).fetchone()[0]
             n19 = con.execute(
-                "SELECT COUNT(*) FROM investigation_results WHERE user_id=19"
+                "SELECT COUNT(*) FROM investigation_results WHERE subject_id=19"
             ).fetchone()[0]
             self.assertEqual(n18, 1)
             self.assertEqual(n19, 0)

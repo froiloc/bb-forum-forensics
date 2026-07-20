@@ -44,7 +44,8 @@
 //   werden von vitest gegen den ECHTEN Code geprueft (UMD-Ausgang).
 //   XSS: ausschliesslich textContent.
 //
-// Version: v0.7.386 · Build: 386 · 2026-07-12
+// Build 469: Schluesselumstellung user_id -> subject_id (M019)
+// Version: v0.7.469 · Build: 469 · 2026-07-20
 // =============================================================================
 
 (function () {
@@ -191,7 +192,7 @@
         return ((data && data.matters) || []).map(function (m) {
             return {
                 id: m.id,
-                user_id: m.user_id,
+                subject_id: m.subject_id,
                 fall_username: m.fall_username || '',
                 kind: m.kind,
                 kind_label: m.kind_label || m.kind,
@@ -248,7 +249,7 @@
 
     function createRequest(f) {
         f = f || {};
-        if (!f.user_id) { return { error: 'Fall (user_id) fehlt.' }; }
+        if (!f.subject_id) { return { error: 'Fall (subject_id) fehlt.' }; }
         if (!f.kind) { return { error: 'Vorgangsart fehlt.' }; }
         if (!String(f.betreff || '').trim()) {
             return { error: 'Betreff ist Pflicht.' };
@@ -261,7 +262,7 @@
         return {
             path: '/api/external/create',
             body: {
-                user_id: parseInt(f.user_id, 10),
+                subject_id: parseInt(f.subject_id, 10),
                 kind: f.kind,
                 betreff: String(f.betreff).trim(),
                 adressat: String(f.adressat || ''),
@@ -312,7 +313,7 @@
     // confirmText: Der Bestaetigungstext nennt die Folgen beim Namen.
     function confirmText(kind, row) {
         var wer = 'Vorgang ' + (row ? row.id : '?') + ' (Fall '
-            + (row ? row.user_id : '?') + ')';
+            + (row ? row.subject_id : '?') + ')';
         if (kind === 'defer') {
             return wer + ': Die Wiedervorlage wird verschoben. Der Vorgang und '
                 + 'der Grund werden im audit_log belegt.';
@@ -334,7 +335,7 @@
     var _COLUMNS = [
         { title: 'A', field: 'ampel', width: 46, hozAlign: 'center' },
         { title: 'Nr.', field: 'id', width: 60, sorter: 'number' },
-        { title: 'Fall', field: 'user_id', width: 70, sorter: 'number' },
+        { title: 'Fall', field: 'subject_id', width: 70, sorter: 'number' },
         { title: 'Benutzername', field: 'fall_username',
           headerFilter: 'input' },
         { title: 'Art', field: 'kind_label' },
@@ -595,7 +596,7 @@
             if (!r) { return; }
 
             panel.appendChild(_el(doc, 'div', 'aiw-subhead',
-                'Vorgang ' + r.id + ' \u2014 Fall ' + r.user_id + ' ('
+                'Vorgang ' + r.id + ' \u2014 Fall ' + r.subject_id + ' ('
                 + r.fall_username + '): ' + r.kind_label + ' \u00b7 '
                 + r.status_label));
             panel.appendChild(_el(doc, 'div', 'aiw-cal-grund', r.ampel_grund));
@@ -676,8 +677,8 @@
             // Eine komfortable Fallauswahl braucht einen eigenen Endpunkt
             // ('welche Faelle darf ich?') -> vermerkt fuer einen spaeteren Build.
             var fw = _field(doc, 'aiw-cal-new-fall',
-                            'Fall (user_id) \u2014 Pflicht', 'number',
-                            (selected ? String(selected.user_id) : ''));
+                            'Fall (subject_id) \u2014 Pflicht', 'number',
+                            (selected ? String(selected.subject_id) : ''));
             form.appendChild(fw);
 
             var art = doc.createElement('select');
@@ -707,7 +708,7 @@
             var ok = _btn(doc, 'aiw-cal-new-save', 'Anlegen');
             ok.addEventListener('click', function () {
                 send(createRequest({
-                    user_id: doc.getElementById('aiw-cal-new-fall').value,
+                    subject_id: doc.getElementById('aiw-cal-new-fall').value,
                     kind: doc.getElementById('aiw-cal-new-kind').value,
                     betreff: doc.getElementById('aiw-cal-new-betreff').value,
                     adressat: doc.getElementById('aiw-cal-new-adressat').value,

@@ -13,7 +13,8 @@
 # AN07 — compute scope 'eigene': nur zugewiesene Faelle (assigned_to)
 # AN08 — Ergebnislisten absteigend nach count sortiert
 #
-# Version: v0.7.449 · Build: 449 · 2026-07-19
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import os
@@ -31,7 +32,7 @@ _NOW = 1_700_000_000
 
 def _coordinator():
     con = sqlite3.connect(":memory:")
-    con.execute("CREATE TABLE cases(user_id INTEGER PRIMARY KEY, username TEXT, "
+    con.execute("CREATE TABLE cases(subject_id INTEGER PRIMARY KEY, username TEXT, "
                 "status TEXT, assigned_to INTEGER)")
     return con
 

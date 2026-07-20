@@ -15,7 +15,8 @@
 # CD06 — Endpunkte: detect (200/403) und import (200, auditiert).
 # CD07 — CLI: Bericht + Exit 2 bei vermisst/unlesbar; --auto nimmt auf.
 #
-# Version: v0.7.383 · Build: 383 · 2026-07-10
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import io
@@ -164,7 +165,7 @@ class CaseDetectTests(unittest.TestCase):
     # CD01 -------------------------------------------------------------------
     def test_cd01_four_states(self):
         rep = self._det().detect()
-        by = {c["user_id"]: c["status"] for c in rep["cases"]}
+        by = {c["subject_id"]: c["status"] for c in rep["cases"]}
         self.assertEqual(by[18], "ok")
         self.assertEqual(by[19], "neu")
         self.assertEqual(by[20], "vermisst")
@@ -175,7 +176,7 @@ class CaseDetectTests(unittest.TestCase):
     # CD02 -------------------------------------------------------------------
     def test_cd02_username_from_uid_profile(self):
         rep = self._det().detect()
-        by = {c["user_id"]: c for c in rep["cases"]}
+        by = {c["subject_id"]: c for c in rep["cases"]}
         # Der neue Fall traegt den Namen aus uid_profile (nicht erraten).
         self.assertEqual(by[19]["username"], "boarder19")
         # Der vermisste Fall behaelt den Namen aus der Fallakte.
@@ -186,7 +187,7 @@ class CaseDetectTests(unittest.TestCase):
     # CD03 -------------------------------------------------------------------
     def test_cd03_workstate_is_not_criterion(self):
         rep = self._det().detect()
-        by = {c["user_id"]: c for c in rep["cases"]}
+        by = {c["subject_id"]: c for c in rep["cases"]}
         # 18 hat evidence + assets ...
         self.assertTrue(by[18]["has_evidence_db"])
         self.assertTrue(by[18]["has_assets_db"])
@@ -199,21 +200,21 @@ class CaseDetectTests(unittest.TestCase):
         imp = CaseImporter(self.con, self._det())
         res = imp.import_cases(actor_id=1, all_new=True)
         self.assertEqual(res["count"], 1)
-        self.assertEqual(res["imported"][0]["user_id"], 19)
+        self.assertEqual(res["imported"][0]["subject_id"], 19)
         self.assertEqual(res["imported"][0]["username"], "boarder19")
         # Der Beleg liegt im audit_log.
         self.assertGreaterEqual(self._audit_count("case_created", 19), 1)
         # Danach ist der Fall 'ok'.
-        by = {c["user_id"]: c["status"] for c in self._det().detect()["cases"]}
+        by = {c["subject_id"]: c["status"] for c in self._det().detect()["cases"]}
         self.assertEqual(by[19], "ok")
 
     # CD05 -------------------------------------------------------------------
     def test_cd05_import_skips_and_reports(self):
         imp = CaseImporter(self.con, self._det())
         # 18 ist bereits erfasst, 20 vermisst, 21 unlesbar, 99 gibt es nicht.
-        res = imp.import_cases(actor_id=1, user_ids=[18, 20, 21, 99])
+        res = imp.import_cases(actor_id=1, subject_ids=[18, 20, 21, 99])
         self.assertEqual(res["count"], 0)
-        skipped = {s["user_id"] for s in res["skipped"]}
+        skipped = {s["subject_id"] for s in res["skipped"]}
         self.assertEqual(skipped, {18, 20, 21, 99})   # nichts verschwiegen
 
     # CD06 -------------------------------------------------------------------
@@ -229,7 +230,7 @@ class CaseDetectTests(unittest.TestCase):
         self.assertEqual(app.dispatch(2, "/api/cases/detect").status, 403)
 
         # Aufnehmen (auditiert).
-        w = app.dispatch_write(1, "/api/cases/import", {"user_ids": [19]})
+        w = app.dispatch_write(1, "/api/cases/import", {"subject_ids": [19]})
         self.assertEqual(w.status, 200)
         dw = json.loads(w.body.decode("utf-8"))
         self.assertEqual(dw["count"], 1)

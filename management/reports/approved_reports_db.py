@@ -30,7 +30,16 @@
 #   im audit_log der coordinator.db (REPORT_APPROVED) und wird hier per
 #   audit_seq referenziert — die Kette bleibt damit nachvollziehbar.
 #
-# Version: v0.7.377 · Build: 377 · 2026-07-10
+# SCHLUESSEL (M019, Build 469): Die API dieses Moduls ist subject_id-nativ.
+#   Die PHYSISCHE Spalte der approved_reports.db heisst weiterhin 'user_id' —
+#   diese DB ist eine eigenstaendige Siegel-Ablage und wurde von Migration M019
+#   (nur coordinator.db) NICHT umbenannt. Bestehende Siegel-DBs aus dem
+#   Produktivbetrieb duerfen nicht angefasst werden (Migrationsvorbehalt).
+#   Nach aussen wird die Spalte per SQL-Alias 'user_id AS subject_id'
+#   abgebildet; fuer Realnutzer gilt subject_id == user_id (verlustfrei).
+#
+# Version: v0.7.469 · Build: 469 · 2026-07-20
+#   Build 469: Schluesselumstellung user_id -> subject_id (M019)
 # =============================================================================
 
 import sqlite3
@@ -42,7 +51,7 @@ from db.journal_policy import apply_journal_mode  # NEU Build 408
 _DDL = """
 CREATE TABLE IF NOT EXISTS approved_reports (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id        INTEGER NOT NULL,          -- Fall (evidence_<uid>.db)
+    user_id        INTEGER NOT NULL,          -- Fall; Wert = subject_id (Spaltenname vor M019, s. Kopf)
     report_id      INTEGER NOT NULL,          -- reports.id in jener DB
     content_sha256 TEXT    NOT NULL,          -- kanonischer Inhaltshash
     snapshot_json  TEXT    NOT NULL,          -- vollstaendiges statisches Abbild
@@ -69,9 +78,15 @@ CREATE INDEX IF NOT EXISTS approved_reports_case_idx
     ON approved_reports(user_id, report_id, approved_at)
 """
 
-_COLS = ("id", "user_id", "report_id", "content_sha256", "title",
+#: Ergebnis-Schluessel der Lese-API (subject_id-nativ, M019). Die physische
+#: Spalte heisst weiterhin user_id (s. Kopf) und wird per Alias abgebildet.
+_COLS = ("id", "subject_id", "report_id", "content_sha256", "title",
          "report_type", "sequence_nr", "created_by", "approved_by",
          "approved_by_id", "approved_at", "is_final", "note", "audit_seq")
+
+#: SELECT-Spaltenliste: physischer Spaltenname + Alias auf den API-Schluessel.
+_SELECT_COLS = ", ".join(
+    "user_id AS subject_id" if c == "subject_id" else c for c in _COLS)
 
 
 class ApprovedReportsDb:
@@ -98,7 +113,7 @@ class ApprovedReportsDb:
             con.close()
 
     # ---------------------------------------------------------------- writes
-    def seal(self, *, user_id: int, report_id: int, content_sha256: str,
+    def seal(self, *, subject_id: int, report_id: int, content_sha256: str,
              snapshot_json: str, report: Dict[str, Any], approved_by: str,
              approved_by_id: Optional[int], is_final: bool,
              note: Optional[str], audit_seq: int) -> int:
@@ -107,13 +122,15 @@ class ApprovedReportsDb:
         con = sqlite3.connect(str(self._path))
         try:
             con.isolation_level = None
+            # Spaltenname user_id: physisches Schema dieser nicht migrierten
+            # Siegel-DB (s. Kopf); der Wert IST die subject_id.
             cur = con.execute(
                 "INSERT INTO approved_reports "
                 "(user_id, report_id, content_sha256, snapshot_json, title, "
                 " report_type, sequence_nr, created_by, approved_by, "
                 " approved_by_id, approved_at, is_final, note, audit_seq) "
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                (user_id, report_id, content_sha256, snapshot_json,
+                (subject_id, report_id, content_sha256, snapshot_json,
                  report.get("title"), report.get("report_type"),
                  report.get("sequence_nr"), report.get("created_by"),
                  approved_by, approved_by_id, int(time.time()),
@@ -128,19 +145,19 @@ class ApprovedReportsDb:
             return None
         return sqlite3.connect("file:%s?mode=ro" % self._path, uri=True)
 
-    def latest_seal(self, user_id: int,
+    def latest_seal(self, subject_id: int,
                     report_id: int) -> Optional[Dict[str, Any]]:
         """Juengstes Siegel eines Berichts (oder None)."""
         con = self._ro()
         if con is None:
             return None
         try:
-            cols = ", ".join(_COLS)
+            # WHERE user_id: physischer Spaltenname (nicht migrierte DB, s. Kopf).
             row = con.execute(
                 "SELECT %s FROM approved_reports "
                 "WHERE user_id=? AND report_id=? "
-                "ORDER BY approved_at DESC, id DESC LIMIT 1" % cols,
-                (user_id, report_id)).fetchone()
+                "ORDER BY approved_at DESC, id DESC LIMIT 1" % _SELECT_COLS,
+                (subject_id, report_id)).fetchone()
             return dict(zip(_COLS, row)) if row else None
         except sqlite3.Error:
             return None
@@ -153,10 +170,9 @@ class ApprovedReportsDb:
         if con is None:
             return []
         try:
-            cols = ", ".join(_COLS)
             rows = con.execute(
                 "SELECT %s FROM approved_reports "
-                "ORDER BY approved_at DESC, id DESC" % cols).fetchall()
+                "ORDER BY approved_at DESC, id DESC" % _SELECT_COLS).fetchall()
             return [dict(zip(_COLS, r)) for r in rows]
         except sqlite3.Error:
             return []

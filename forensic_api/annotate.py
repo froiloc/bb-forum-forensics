@@ -46,7 +46,8 @@
 #     Beleg: Analyse annotate.py + evidence_db.py — kein delete_annotation()
 #     vorhanden. delete_annotation() in evidence_db.py gleichzeitig ergänzt.
 #
-# Version: v0.6.178 · Build: 178 · 2026-05-12
+# Version: v0.7.469 · Build: 469 · 2026-07-20
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
 # =============================================================================
 
 from __future__ import annotations
@@ -185,10 +186,10 @@ class AnnotateEndpoint:
         # Build 183 (Bug 2.91): Umfangreiches Debug-Logging fuer Fehleranalyse.
         logger.debug(
             "[2.91-DBG] annotate POST empfangen: page_url=%r category=%r "
-            "local_id=%r target_user_id_raw=%r investigator_id=%r user_id=%r",
+            "local_id=%r target_user_id_raw=%r investigator_id=%r subject_id=%r",
             data.get("page_url"), data.get("category"), data.get("local_id"),
             data.get("target_user_id"), self._context.investigator_id,
-            self._context.user_id,
+            self._context.subject_id,
         )
         target_user_id_raw = data.get("target_user_id")
         target_user_id: Optional[int] = None
@@ -197,15 +198,15 @@ class AnnotateEndpoint:
                 target_user_id = int(target_user_id_raw)
             except (TypeError, ValueError):
                 pass
-        # Wenn target_user_id == aktuelle user_id oder None → Normalpfad
+        # Wenn target_user_id == aktuelle subject_id oder None → Normalpfad
         is_cross = (
             target_user_id is not None
-            and target_user_id != self._context.user_id
+            and target_user_id != self._context.subject_id
         )
         logger.debug(
             "[2.91-DBG] Pfad-Entscheidung: target_user_id=%r current_uid=%r "
             "is_cross=%r",
-            target_user_id, self._context.user_id, is_cross,
+            target_user_id, self._context.subject_id, is_cross,
         )
 
         # Annotation speichern

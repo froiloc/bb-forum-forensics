@@ -9,7 +9,7 @@
 #          [--coordinator-db PATH] [--config ./config.yaml]
 #          [--scope alle|eigene] [--person-id N] [--json]
 #
-# Version: v0.7.452 · Build: 452 · 2026-07-19
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import argparse
@@ -76,7 +76,7 @@ def main(argv=None) -> int:
     mark = {"dringend": "!!", "bald": "! ", "routine": "  "}
     for a in result.items:
         print("  %s [P%d %s] Fall %d (%s): %s — %s"
-              % (mark.get(a.urgency, "  "), a.priority, a.ampel, a.user_id,
+              % (mark.get(a.urgency, "  "), a.priority, a.ampel, a.subject_id,
                  a.username, a.action, a.reason))
     return 0
 

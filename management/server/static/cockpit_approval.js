@@ -20,7 +20,8 @@
  *   REINE Funktionen separat exportiert (vitest). Self-contained (eigene
  *   kleine Helfer — Repo-Konvention: jede Cockpit-Sicht ist unabhaengig).
  *
- * Version: v0.7.416 · Build: 416 · 2026-07-14
+ * Build 469: Schluesselumstellung user_id -> subject_id (M019)
+ * Version: v0.7.469 · Build: 469 · 2026-07-20
  */
 (function () {
     'use strict';
@@ -66,13 +67,13 @@
     }
 
     function renderUrl(uid, rid) {
-        return '/api/report/render?user_id=' + encodeURIComponent(uid)
+        return '/api/report/render?subject_id=' + encodeURIComponent(uid)
             + '&report_id=' + encodeURIComponent(rid);
     }
 
     function reportLabel(r) {
         if (!r) { return ''; }
-        return (r.username || ('uid ' + r.user_id)) + ' · '
+        return (r.username || ('uid ' + r.subject_id)) + ' · '
             + (r.title || '(ohne Titel)')
             + ' (' + (r.report_type || '?') + ', Nr. ' + (r.sequence_nr || '?')
             + ') — ' + statusLabel(r.status);
@@ -109,11 +110,11 @@
     // der Lektorat-Sicht; hier read-only (die Chefin verifiziert, sie
     // kommentiert nicht in dieser Sicht).
     function annotationsUrl(uid, rid) {
-        return '/api/report/annotations?user_id=' + encodeURIComponent(uid)
+        return '/api/report/annotations?subject_id=' + encodeURIComponent(uid)
             + '&report_id=' + encodeURIComponent(rid);
     }
     function commentsUrl(uid, rid) {
-        return '/api/report/comments?user_id=' + encodeURIComponent(uid)
+        return '/api/report/comments?subject_id=' + encodeURIComponent(uid)
             + '&report_id=' + encodeURIComponent(rid);
     }
     function categoryLabel(cat) {
@@ -151,7 +152,7 @@
 
     // --- Ermittlungsergebnis (results, SF/Build 387ff., read-only) --------
     function resultsUrl(uid) {
-        return '/api/results?user_id=' + encodeURIComponent(uid);
+        return '/api/results?subject_id=' + encodeURIComponent(uid);
     }
     // extremLabel: das bewertete Extrem eines Kriteriums.
     function extremLabel(e) {
@@ -476,7 +477,7 @@
     // Formular UNTER den read-only Ergebnisstand (nur wenn results.edit).
     //   catalog — GET /api/results/catalog {criteria[], confidence_items[],
     //             extreme[]}
-    //   opts    — { userId, onAssess(body) }
+    //   opts    — { subjectId, onAssess(body) }
     function renderAssessForm(catalog, opts) {
         var panel = _state.resPanel;
         if (!panel || !catalog) { return; }
@@ -560,7 +561,7 @@
                 return;
             }
             var body = {
-                user_id: opts.userId,
+                subject_id: opts.subjectId,
                 criterion_code: critSel.value,
                 extrem: extSel.value,
                 confidence_code: confSel.value,
@@ -594,7 +595,7 @@
         vbtn.addEventListener('click', function () {
             verifyLoading();
             if (typeof opts.onVerify === 'function') {
-                opts.onVerify(r.user_id, r.id);
+                opts.onVerify(r.subject_id, r.id);
             }
         });
         panel.appendChild(vbtn);
@@ -648,7 +649,7 @@
         appBtn.textContent = 'Freigeben & versiegeln';
         appBtn.addEventListener('click', function () {
             var body = {
-                user_id: r.user_id, report_id: r.id,
+                subject_id: r.subject_id, report_id: r.id,
                 is_final: !!finalCb.checked,
                 note: (noteA.value || '').trim() || null
             };
@@ -672,7 +673,7 @@
         retBtn.textContent = 'Zurueckweisen (an Entwurf)';
         retBtn.addEventListener('click', function () {
             var body = {
-                user_id: r.user_id, report_id: r.id,
+                subject_id: r.subject_id, report_id: r.id,
                 note: (retNote.value || '').trim() || null
             };
             log('return', body);
@@ -769,11 +770,11 @@
         preview.appendChild(action);
 
         rows.forEach(function (r) {
-            var key = selectionKey(r.user_id, r.id);
+            var key = selectionKey(r.subject_id, r.id);
             var row = document.createElement('button');
             row.type = 'button';
             row.className = 'aiw-approval-item';
-            row.setAttribute('data-uid', String(r.user_id));
+            row.setAttribute('data-uid', String(r.subject_id));
             row.setAttribute('data-rid', String(r.id));
             row.setAttribute('data-key', key);
             row.textContent = reportLabel(r);
@@ -782,7 +783,7 @@
                 if (prev) { prev.classList.remove('is-active'); }
                 row.classList.add('is-active');
                 _state.selKey = key;
-                frame.src = renderUrl(r.user_id, r.id);
+                frame.src = renderUrl(r.subject_id, r.id);
                 _buildActionPanel(r, opts);
                 // Support-View (Belege + Kommentare) auf "laedt" setzen; der
                 // Abruf laeuft ueber opts.onSelect (cockpit.js holt
@@ -791,7 +792,7 @@
                 commentsLoading();
                 resultsLoading();
                 if (typeof opts.onSelect === 'function') {
-                    opts.onSelect(r.user_id, r.id);
+                    opts.onSelect(r.subject_id, r.id);
                 }
                 log('select', key, frame.src);
             });

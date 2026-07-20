@@ -16,7 +16,8 @@
 //
 // XSS: Nur textContent / Tabulator-plaintext (kein innerHTML).
 //
-// Version: v0.7.364 · Build: 364 · 2026-07-10
+// Build 469: Schluesselumstellung user_id -> subject_id (M019)
+// Version: v0.7.469 · Build: 469 · 2026-07-20
 // =============================================================================
 
 (function () {
@@ -50,7 +51,7 @@
     function toRows(data, nowSec) {
         return ((data && data.cases) || []).map(function (c) {
             return {
-                user_id: c.user_id,
+                subject_id: c.subject_id,
                 username: c.username,
                 status: c.status,
                 priority: c.priority,
@@ -67,7 +68,7 @@
     // =========================================================================
 
     var _COLUMNS = [
-        { title: 'Fall (user_id)', field: 'user_id' },
+        { title: 'Fall (subject_id)', field: 'subject_id' },
         { title: 'Benutzername', field: 'username', headerFilter: 'input' },
         { title: 'Status', field: 'status', headerFilter: 'input' },
         { title: 'Prio', field: 'priority' },

@@ -35,7 +35,8 @@ import unittest
 #   B4-DB14 update_block_order() aktualisiert sort_index korrekt
 #   B4-DB15 delete_block() cascadiert: loescht block_evidence_user + block_order
 #
-# Version: v0.6.043 · Build: 043 · 2026-04-19
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # Beleg: AP-E1, Projektgespraech 2026-04-19
 # =============================================================================
 
@@ -94,9 +95,9 @@ def _make_mock_bundle(edb=None, forensic_con=None):
     return bundle
 
 
-def _make_mock_context(user_id=999, username="testuser"):
+def _make_mock_context(subject_id=999, username="testuser"):
     ctx = MagicMock()
-    ctx.user_id               = user_id
+    ctx.subject_id               = subject_id
     ctx.username              = username
     ctx.investigator_username = username  # Build 244
     return ctx
@@ -992,7 +993,7 @@ class TestInvestigationStatusFromCases:
         """)
         con.execute("""
             CREATE TABLE cases (
-                user_id INTEGER PRIMARY KEY,
+                subject_id INTEGER PRIMARY KEY,
                 username TEXT NOT NULL,
                 assigned_to INTEGER REFERENCES person(id),
                 priority INTEGER NOT NULL DEFAULT 3,
@@ -1009,7 +1010,7 @@ class TestInvestigationStatusFromCases:
         )
         if with_case:
             con.execute(
-                "INSERT INTO cases (user_id, username, assigned_to, priority, "
+                "INSERT INTO cases (subject_id, username, assigned_to, priority, "
                 "status, note, created_at, updated_at) "
                 "VALUES (18, 'KEKa', 1, 3, 'in_progress', 'Wichtiger Hinweis', "
                 "1700000000, 1700000000)"
@@ -1024,7 +1025,7 @@ class TestInvestigationStatusFromCases:
             "SELECT c.status, c.priority, i.system_username AS assigned_to, c.note "
             "FROM cases c "
             "LEFT JOIN person i ON i.id = c.assigned_to "
-            "WHERE c.user_id = 18"
+            "WHERE c.subject_id = 18"
         ).fetchone()
 
     def test_B4_S12_fall_vorhanden_status_gelesen(self):
@@ -1056,7 +1057,7 @@ class TestInvestigationStatusFromCases:
             con.execute("""
                 CREATE TABLE scrape_jobs (
                     id INTEGER PRIMARY KEY,
-                    user_id INTEGER NOT NULL,
+                    subject_id INTEGER NOT NULL,
                     username TEXT NOT NULL,
                     status TEXT NOT NULL DEFAULT 'pending',
                     priority INTEGER NOT NULL DEFAULT 3,

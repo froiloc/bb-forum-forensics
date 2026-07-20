@@ -31,10 +31,11 @@
 #     report_id optional. Fehlt er -> Bericht mit hoechster sequence_nr
 #     (Gleichstand -> juengstes created_at). Siehe report_render/report_source.py.
 #
-#   Zugriffssteuerung: nur eigener Fall (context.user_id).
+#   Zugriffssteuerung: nur eigener Fall (context.subject_id).
 #   Migrationsvorbehalt: der Renderer LIEST NUR (kein Schreibpfad in evidence_<uid>.db).
 #
-# Version: v0.7.404 · Build: 404 · 2026-07-14
+# Version: v0.7.469 · Build: 469 · 2026-07-20
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
 # =============================================================================
 
 from __future__ import annotations
@@ -134,7 +135,7 @@ class ExportEndpoint:
         Der Zeitstempel wird HIER (im Server) gesetzt und in das reine Modul
         hineingereicht — das Modul selbst ruft nie now() (Determinismus/Test).
         """
-        uid = self._context.user_id
+        uid = self._context.subject_id
         username = self._context.username or f"uid_{uid}"
         return ReportSource(
             evidence=self._bundle.evidence,

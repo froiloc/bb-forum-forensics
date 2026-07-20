@@ -23,7 +23,7 @@
 #   Vorgabefrist 730 Tage (2-Jahres-Horizont); via config.yaml retention.* /
 #   Parameter uebersteuerbar. now injizierbar -> deterministisch/testbar.
 #
-# Version: v0.7.456 · Build: 456 · 2026-07-19
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 from __future__ import annotations
@@ -44,7 +44,7 @@ class RetentionThresholds:
 
 @dataclass(frozen=True)
 class RetentionCandidate:
-    user_id: int
+    subject_id: int
     username: str
     status: str
     reference_ts: int              # Fristbezug (approved_at bzw. updated_at)
@@ -67,7 +67,7 @@ class RetentionReport:
 def evaluate_retention(cases: List[dict], thresholds: RetentionThresholds,
                        now: int) -> RetentionReport:
     """
-    REINE Auswertung ueber cases-dicts (user_id, username, status, approved_at,
+    REINE Auswertung ueber cases-dicts (subject_id, username, status, approved_at,
     updated_at). Dateilos testbar.
     """
     now = int(now)
@@ -97,14 +97,14 @@ def evaluate_retention(cases: List[dict], thresholds: RetentionThresholds,
         days = max(0, (now - int(ref)) // _DAY)
         if days >= thresholds.retention_days:
             candidates.append(RetentionCandidate(
-                user_id=int(c.get("user_id")),
+                subject_id=int(c.get("subject_id")),
                 username=c.get("username") or "?", status=status,
                 reference_ts=int(ref), reference_field=field,
                 days_retained=days,
                 over_by_days=days - thresholds.retention_days))
 
-    # Aelteste zuerst (groesste Ueberschreitung), dann user_id.
-    candidates.sort(key=lambda x: (-x.over_by_days, x.user_id))
+    # Aelteste zuerst (groesste Ueberschreitung), dann subject_id.
+    candidates.sort(key=lambda x: (-x.over_by_days, x.subject_id))
 
     return RetentionReport(
         generated_at=now, retention_days=thresholds.retention_days,
@@ -134,7 +134,7 @@ def retention_to_dict(report: RetentionReport) -> dict:
         "without_reference": report.without_reference,
         "candidate_count": report.candidate_count,
         "candidates": [
-            {"user_id": c.user_id, "username": c.username, "status": c.status,
+            {"subject_id": c.subject_id, "username": c.username, "status": c.status,
              "reference_ts": c.reference_ts, "reference_field": c.reference_field,
              "days_retained": c.days_retained, "over_by_days": c.over_by_days}
             for c in report.candidates
@@ -153,10 +153,10 @@ class RetentionRepo:
         thresholds = thresholds or RetentionThresholds()
         now = int(time.time()) if now is None else int(now)
         rows = self._con.execute(
-            "SELECT user_id, username, status, approved_at, updated_at "
+            "SELECT subject_id, username, status, approved_at, updated_at "
             "FROM cases").fetchall()
         cases = [
-            {"user_id": r[0], "username": r[1], "status": r[2],
+            {"subject_id": r[0], "username": r[1], "status": r[2],
              "approved_at": r[3], "updated_at": r[4]}
             for r in rows
         ]

@@ -1,4 +1,6 @@
 /**
+ * Build 469: Schluesselumstellung user_id -> subject_id (M019)
+ * Version: v0.7.469 · Build: 469 · 2026-07-20
  * tests/unit/test_cockpit_planung.test.js
  * IT-Forensisches Ermittlungswerkzeug — Baustelle 7: Cockpit Prognose & Gantt
  *
@@ -62,12 +64,12 @@ function _gantt() {
     total_bars: 2,
     lanes: [
       { assignee_id: 1, assignee_name: "Müller, A", bars: [
-        { user_id: 4711, username: "täter_süd", status: "approved",
+        { subject_id: 4711, username: "täter_süd", status: "approved",
           assignee_id: 1, assignee_name: "Müller, A",
           start_ts: 1699000000, end_ts: 1699500000, ongoing: false,
           completed_ts: 1699500000 }] },
       { assignee_id: null, assignee_name: "Rueckstau", bars: [
-        { user_id: 4712, username: "<script>x", status: "open",
+        { subject_id: 4712, username: "<script>x", status: "open",
           assignee_id: null, assignee_name: null,
           start_ts: 1699200000, end_ts: 1700000000, ongoing: true,
           completed_ts: null }] },

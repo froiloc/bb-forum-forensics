@@ -9,18 +9,18 @@
 #   Promotions-Entscheidung ohne lueckenlosen Beleg (Grundregel 1).
 #
 #   KEIN case_events-Zeitstrahl-Spiegel (mc 2026-07-20): ein 'neu'-Kandidat hat
-#   noch keine cases-Zeile; ein Spiegel-Insert mit FK user_id -> cases braeche.
+#   noch keine cases-Zeile; ein Spiegel-Insert mit FK subject_id -> cases braeche.
 #   Der Beleg liegt vollstaendig im hash-verketteten audit_log.
 #
 # SENSIBILITAETSREGEL (uebernommen von CasesRepo.set_note / ExternalMattersRepo):
 #   Freitexte (grund, herkunft) gehen NICHT in den audit_log-Payload. Dort
-#   stehen nur FAKTEN (user_id, von-Zustand, auf-Zustand) und die TEXTLAENGE.
+#   stehen nur FAKTEN (subject_id, von-Zustand, auf-Zustand) und die TEXTLAENGE.
 #   Der Text selbst lebt in forum_promotion, wo die RBAC-Kapselung (ops.view)
 #   greift. Das Audit-Log ist ein Beleg, kein Aktenordner.
 #
 # EXISTENZPRUEFUNG DES KANDIDATEN:
 #   'forum_promotion' hat bewusst KEINEN FK auf cases (der Kandidat ist ggf.
-#   noch 'neu'). Ob ein user_id ueberhaupt ein GUELTIGER Fremdforum-Kandidat
+#   noch 'neu'). Ob ein subject_id ueberhaupt ein GUELTIGER Fremdforum-Kandidat
 #   ist (forensic_<uid>.db vorhanden, evidence fehlt), weiss nur die
 #   Dateisystem-Sicht (StorageOverview) — nicht diese DB-Verbindung. Der
 #   Server-Endpunkt ermittelt die aktuell gueltigen Kandidaten und uebergibt
@@ -32,7 +32,7 @@
 #   bewusst KEINE reopen()- (ausser dem erlaubten zurueckgestellt->gesichtet)
 #   und KEINE delete()-Methode.
 #
-# Version: v0.7.460 · Build: 460 · 2026-07-20
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import logging
@@ -80,61 +80,61 @@ class PromotionRepo:
         return len(text or "")
 
     def _row(self, con: sqlite3.Connection,
-             user_id: int) -> Optional[sqlite3.Row]:
+             subject_id: int) -> Optional[sqlite3.Row]:
         return con.execute(
-            "SELECT * FROM forum_promotion WHERE user_id = ?", (user_id,)
+            "SELECT * FROM forum_promotion WHERE subject_id = ?", (subject_id,)
         ).fetchone()
 
     # ------------------------------------------------------------------- Lesen
-    def get(self, user_id: int) -> Optional[Dict[str, Any]]:
+    def get(self, subject_id: int) -> Optional[Dict[str, Any]]:
         """Die Entscheidungszeile eines Kandidaten (oder None = implizit 'offen')."""
-        row = self._row(self._con, int(user_id))
+        row = self._row(self._con, int(subject_id))
         return dict(row) if row is not None else None
 
     def states_for(self,
-                   user_ids: Sequence[int]) -> Dict[int, Dict[str, Any]]:
+                   subject_ids: Sequence[int]) -> Dict[int, Dict[str, Any]]:
         """
-        Batch-Lesung: {user_id: zeile} fuer die uebergebenen Kandidaten. Fehlt
-        ein user_id im Ergebnis, hat er (noch) KEINE Zeile -> implizit 'offen'.
+        Batch-Lesung: {subject_id: zeile} fuer die uebergebenen Kandidaten. Fehlt
+        ein subject_id im Ergebnis, hat er (noch) KEINE Zeile -> implizit 'offen'.
         Leere Eingabe -> leeres Dict (kein Full-Table-Scan).
         """
-        uids = [int(u) for u in user_ids]
+        uids = [int(u) for u in subject_ids]
         if not uids:
             return {}
         marks = ",".join("?" for _ in uids)
         rows = self._con.execute(
-            "SELECT * FROM forum_promotion WHERE user_id IN (%s)" % marks,
+            "SELECT * FROM forum_promotion WHERE subject_id IN (%s)" % marks,
             uids,
         ).fetchall()
-        return {int(r["user_id"]): dict(r) for r in rows}
+        return {int(r["subject_id"]): dict(r) for r in rows}
 
     def list_all(self) -> List[Dict[str, Any]]:
         """
         ALLE Entscheidungszeilen (auch solche, deren Kandidat inzwischen
         Arbeitsstand hat und damit kein Fremdforum-Kandidat mehr ist — die
         Entscheidung bleibt als Beleg sichtbar). Sortiert: Handlungsbedarf
-        zuerst (Rang der Zustandsmaschine), dann user_id.
+        zuerst (Rang der Zustandsmaschine), dann subject_id.
         """
         rows = self._con.execute(
             "SELECT * FROM forum_promotion").fetchall()
         out = [dict(r) for r in rows]
         out.sort(key=lambda d: (PromotionStatus.rank(d["status"]),
-                                int(d["user_id"])))
+                                int(d["subject_id"])))
         return out
 
-    def annotate(self, user_ids: Sequence[int]) -> List[Dict[str, Any]]:
+    def annotate(self, subject_ids: Sequence[int]) -> List[Dict[str, Any]]:
         """
         Liste je Kandidat mit seinem (impliziten) Zustand + Klartext-Label,
         fuer die data/-Uebersicht (Build 461). Kandidaten OHNE Zeile erscheinen
         als 'offen' — sie werden NICHT verschluckt (Grundregel 1).
         """
-        states = self.states_for(user_ids)
+        states = self.states_for(subject_ids)
         out: List[Dict[str, Any]] = []
-        for uid in (int(u) for u in user_ids):
+        for uid in (int(u) for u in subject_ids):
             row = states.get(uid)
             status = row["status"] if row is not None else INITIAL
             out.append({
-                "user_id": uid,
+                "subject_id": uid,
                 "status": status,
                 "status_label": PromotionStatus.label(status),
                 "grund": (row["grund"] if row is not None else None),
@@ -144,12 +144,12 @@ class PromotionRepo:
                 "is_final": PromotionStatus.is_final(status),
             })
         out.sort(key=lambda d: (PromotionStatus.rank(d["status"]),
-                                d["user_id"]))
+                                d["subject_id"]))
         return out
 
     # --------------------------------------------------------------- Schreiben
     def record_decision(
-        self, *, user_id: int, target_status: str, grund: str = "",
+        self, *, subject_id: int, target_status: str, grund: str = "",
         herkunft: Optional[str] = None, actor_id: Optional[int] = None,
         allowed_uids: Optional[Set[int]] = None, meta: Optional[Any] = None,
     ) -> Dict[str, Any]:
@@ -158,19 +158,19 @@ class PromotionRepo:
         weiterfuehren). Prueft Uebergang + Grund-Pflicht, schreibt auditiert.
 
         allowed_uids: Menge der AKTUELL gueltigen Fremdforum-Kandidaten (vom
-          Server aus StorageOverview). Ist sie gesetzt und user_id NICHT
+          Server aus StorageOverview). Ist sie gesetzt und subject_id NICHT
           enthalten, wird die Entscheidung laut abgewiesen (kein Beleg fuer
           einen nicht existierenden Kandidaten). None = keine Kandidatenpruefung
           (z. B. reine Repo-Tests).
 
-        -> {'user_id', 'von', 'auf', 'audit_seq', 'created'}.
+        -> {'subject_id', 'von', 'auf', 'audit_seq', 'created'}.
         """
         writer = self._require_writer()
-        uid = int(user_id)
+        uid = int(subject_id)
 
         if allowed_uids is not None and uid not in allowed_uids:
             raise PromotionError(
-                "user_id=%s ist kein aktueller Fremdforum-Kandidat "
+                "subject_id=%s ist kein aktueller Fremdforum-Kandidat "
                 "(forensic_<uid>.db fehlt oder evidence_<uid>.db existiert "
                 "bereits)." % uid)
 
@@ -199,7 +199,7 @@ class PromotionRepo:
                 # keine Zeile mit audit_seq=0 committen).
                 con.execute(
                     "INSERT INTO forum_promotion "
-                    "(user_id, status, grund, herkunft, created_by, "
+                    "(subject_id, status, grund, herkunft, created_by, "
                     " created_at, decided_by, decided_at, audit_seq, "
                     " created_audit_seq) "
                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0)",
@@ -215,7 +215,7 @@ class PromotionRepo:
                 con.execute(
                     "UPDATE forum_promotion SET status = ?, grund = ?, "
                     "herkunft = ?, decided_by = ?, decided_at = ? "
-                    "WHERE user_id = ?",
+                    "WHERE subject_id = ?",
                     (target_status, (grund or None), neu_herkunft,
                      actor_id, now, uid),
                 )
@@ -223,7 +223,7 @@ class PromotionRepo:
 
             # Audit-Payload: FAKTEN, keine Freitexte (Sensibilitaetsregel).
             return {
-                "user_id": uid, "von": current, "auf": target_status,
+                "subject_id": uid, "von": current, "auf": target_status,
                 "grund_len": self._tlen(grund),
                 "herkunft_len": self._tlen(herkunft),
             }
@@ -232,12 +232,12 @@ class PromotionRepo:
             if state.get("created"):
                 con.execute(
                     "UPDATE forum_promotion SET audit_seq = ?, "
-                    "created_audit_seq = ? WHERE user_id = ?",
+                    "created_audit_seq = ? WHERE subject_id = ?",
                     (seq, seq, uid),
                 )
             else:
                 con.execute(
-                    "UPDATE forum_promotion SET audit_seq = ? WHERE user_id = ?",
+                    "UPDATE forum_promotion SET audit_seq = ? WHERE subject_id = ?",
                     (seq, uid),
                 )
 
@@ -248,6 +248,6 @@ class PromotionRepo:
         )
         logger.info("Promotion Kandidat %s: %s -> %s (Beleg seq=%d).",
                     uid, state.get("von"), target_status, seq)
-        return {"user_id": uid, "von": state.get("von"),
+        return {"subject_id": uid, "von": state.get("von"),
                 "auf": target_status, "audit_seq": seq,
                 "created": state.get("created", False)}

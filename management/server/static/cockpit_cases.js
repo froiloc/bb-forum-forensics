@@ -44,7 +44,8 @@
 // XSS: ausschliesslich textContent / Tabulator-Plaintext. Benutzernamen stammen
 //   aus dem beschlagnahmten Forum und sind grundsaetzlich fremdbestimmt.
 //
-// Version: v0.7.384 · Build: 384 · 2026-07-12
+// Build 469: Schluesselumstellung user_id -> subject_id (M019)
+// Version: v0.7.469 · Build: 469 · 2026-07-20
 // =============================================================================
 
 (function () {
@@ -99,7 +100,7 @@
     function toRows(data) {
         return ((data && data.cases) || []).map(function (c) {
             return {
-                user_id: c.user_id,
+                subject_id: c.subject_id,
                 username: c.username || '',
                 status: c.status,
                 status_label: STATUS_LABEL[c.status] || c.status,
@@ -114,10 +115,10 @@
         });
     }
 
-    // selectableIds: alle aufnehmbaren user_id (Basis fuer die Auswahl-Pruefung).
+    // selectableIds: alle aufnehmbaren subject_id (Basis fuer die Auswahl-Pruefung).
     function selectableIds(data) {
         return ((data && data.cases) || []).filter(isSelectable)
-            .map(function (c) { return c.user_id; });
+            .map(function (c) { return c.subject_id; });
     }
 
     // filterByStatus: '' (alle) oder genau ein Zustand.
@@ -159,18 +160,18 @@
         var who = c.username ? (' (' + c.username + ')') : '';
         var why = c.detail ? (' \u2014 ' + c.detail) : '';
         return (STATUS_LABEL[c.status] || c.status) + ': Fall '
-            + c.user_id + who + why;
+            + c.subject_id + who + why;
     }
 
     // importRequest: Anfrage fuer die auditierte Aufnahme. Leere Auswahl ->
     // null (der Aufrufer meldet das; wir schicken KEINEN Leer-POST, der Server
     // wuerde ihn zu Recht mit 400 abweisen).
     // KEIN {all:true}: die Auswahl bleibt bewusst explizit.
-    function importRequest(userIds) {
-        var ids = (userIds || []).map(function (u) { return parseInt(u, 10); })
+    function importRequest(subjectIds) {
+        var ids = (subjectIds || []).map(function (u) { return parseInt(u, 10); })
             .filter(function (u) { return !isNaN(u); });
         if (!ids.length) { return null; }
-        return { path: '/api/cases/import', body: { user_ids: ids } };
+        return { path: '/api/cases/import', body: { subject_ids: ids } };
     }
 
     // resultText: Rueckmeldung des Servers in Klartext. imported MIT Beleg-Nr.,
@@ -184,7 +185,7 @@
         if (imp.length) {
             parts.push(imp.length + ' Fall/Faelle aufgenommen: '
                 + imp.map(function (i) {
-                    return i.user_id + ' (' + (i.username || '?')
+                    return i.subject_id + ' (' + (i.username || '?')
                         + ', Beleg #' + i.audit_seq + ')';
                 }).join(', ') + '.');
         } else {
@@ -194,7 +195,7 @@
         if (skp.length) {
             parts.push(skp.length + ' Fall/Faelle NICHT aufgenommen: '
                 + skp.map(function (s) {
-                    return s.user_id + ' \u2014 ' + (s.reason || 'ohne Grund');
+                    return s.subject_id + ' \u2014 ' + (s.reason || 'ohne Grund');
                 }).join('; ') + '.');
         }
 
@@ -215,7 +216,7 @@
     // =========================================================================
 
     var _COLUMNS = [
-        { title: 'Fall', field: 'user_id', width: 90, sorter: 'number' },
+        { title: 'Fall', field: 'subject_id', width: 90, sorter: 'number' },
         { title: 'Benutzername', field: 'username', headerFilter: 'input' },
         { title: 'Zustand', field: 'status_label' },
         { title: 'in Fallakte', field: 'in_cases', width: 110 },
@@ -341,7 +342,7 @@
         panel.appendChild(result);
 
         // Auswahl-Zustand lebt NUR hier (kein localStorage — Projektregel).
-        var selected = {};   // { user_id: true }
+        var selected = {};   // { subject_id: true }
 
         function selectionIds() {
             return Object.keys(selected)
@@ -382,7 +383,7 @@
             // Die Namen der ausgewaehlten Faelle (aus den bereits geladenen
             // Zeilen — kein zweiter Serveraufruf).
             var chosen = rows.filter(function (r) {
-                return ids.indexOf(r.user_id) !== -1;
+                return ids.indexOf(r.subject_id) !== -1;
             });
 
             confirmBox.textContent = '';
@@ -394,7 +395,7 @@
             var ul = doc.createElement('ul');
             chosen.forEach(function (r) {
                 var li = doc.createElement('li');
-                li.textContent = 'Fall ' + r.user_id + ' \u2014 ' + r.username;
+                li.textContent = 'Fall ' + r.subject_id + ' \u2014 ' + r.username;
                 ul.appendChild(li);
             });
             confirmBox.appendChild(ul);
@@ -464,15 +465,15 @@
                 }
                 var box = doc.createElement('input');
                 box.type = 'checkbox';
-                box.checked = !!selected[d.user_id];
-                box.setAttribute('data-user-id', String(d.user_id));
+                box.checked = !!selected[d.subject_id];
+                box.setAttribute('data-subject-id', String(d.subject_id));
                 box.setAttribute('aria-label',
-                    'Fall ' + d.user_id + ' aufnehmen');
+                    'Fall ' + d.subject_id + ' aufnehmen');
                 box.addEventListener('click', function (e) {
                     e.stopPropagation();   // kein Zeilen-Klick-Nebeneffekt
                 });
                 box.addEventListener('change', function () {
-                    selected[d.user_id] = box.checked;
+                    selected[d.subject_id] = box.checked;
                     closeConfirm();        // Auswahl geaendert -> alte Frage weg
                     refreshButton();
                     log('Auswahl:', selectionIds());

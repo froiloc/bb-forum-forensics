@@ -16,7 +16,8 @@
 # T10 -- PlaceholdersEndpoint: library-Endpunkt liefert JSON-Liste
 # T11 -- PLACEHOLDER_RE: Regex matched korrekte Syntaxvarianten
 #
-# Version: v0.6.089 · Build: 089 · 2026-05-05
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # Beleg: Bauplan B6 v0.3 §3, §2.1, Ausdefinitionsgespraech 2026-05-05
 # =============================================================================
 
@@ -211,7 +212,7 @@ class TestPlaceholdersEndpoint(unittest.TestCase):
         tdb_con, tdb = _make_templates_db_with_data()
         bundle = _make_bundle(edb, tdb_con, tdb)
         context = MagicMock()
-        context.user_id = 42
+        context.subject_id = 42
         config = MagicMock()
         ep = PlaceholdersEndpoint(bundle, context, config)
         return ep, edb, tdb_con, edb_con
@@ -374,7 +375,7 @@ class TestHandleValues(unittest.TestCase):
         bundle.evidence = edb
 
         context  = MagicMock()
-        context.user_id = 1
+        context.subject_id = 1
         config   = MagicMock()
 
         ep = PlaceholdersEndpoint(bundle, context, config)

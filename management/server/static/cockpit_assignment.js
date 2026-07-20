@@ -27,7 +27,8 @@
 //
 // XSS: nur textContent / Option.text (kein innerHTML).
 //
-// Version: v0.7.373 · Build: 373 · 2026-07-10
+// Build 469: Schluesselumstellung user_id -> subject_id (M019)
+// Version: v0.7.469 · Build: 469 · 2026-07-20
 // =============================================================================
 
 (function () {
@@ -72,7 +73,7 @@
         var inv = (data && data.investigators) || [];
         return ((data && data.cases) || []).map(function (c) {
             return {
-                user_id: c.user_id,
+                subject_id: c.subject_id,
                 username: c.username,
                 assigned_to: (c.assigned_to === undefined
                     ? null : c.assigned_to),
@@ -99,12 +100,12 @@
 
     // changeRequest: baut die Schreibanforderung (Pfad + Rumpf) fuer eine
     // Aenderung. Rein -> in vitest pruefbar, ohne Netz.
-    function changeRequest(kind, userId, value) {
+    function changeRequest(kind, subjectId, value) {
         if (kind === 'assign') {
             return {
                 path: '/api/case/assign',
                 body: {
-                    user_id: userId,
+                    subject_id: subjectId,
                     // '' -> null (Zuweisung entziehen)
                     person_id: (value === '' || value === null)
                         ? null : parseInt(value, 10)
@@ -114,13 +115,13 @@
         if (kind === 'priority') {
             return {
                 path: '/api/case/priority',
-                body: { user_id: userId, priority: parseInt(value, 10) }
+                body: { subject_id: subjectId, priority: parseInt(value, 10) }
             };
         }
         if (kind === 'status') {
             return {
                 path: '/api/case/status',
-                body: { user_id: userId, status: value }
+                body: { subject_id: subjectId, status: value }
             };
         }
         return null;   // unbekannte Aenderungsart -> Aufrufer meldet Fehler
@@ -145,7 +146,7 @@
     }
 
     // renderAssignment: Kopf + Statuszeile + Tabelle mit Auswahlfeldern.
-    // opts.onChange(kind, userId, value) wird bei jeder Aenderung gerufen
+    // opts.onChange(kind, subjectId, value) wird bei jeder Aenderung gerufen
     // (die Shell fuehrt den POST aus). opts.message zeigt eine Rueckmeldung.
     // Rueckgabe: {setMessage} (die Shell meldet Erfolg/Fehler zurueck).
     function renderAssignment(mainEl, data, opts) {
@@ -198,10 +199,10 @@
         var tbody = doc.createElement('tbody');
         rows.forEach(function (r) {
             var tr = doc.createElement('tr');
-            tr.setAttribute('data-user-id', String(r.user_id));
+            tr.setAttribute('data-subject-id', String(r.subject_id));
 
             var tdId = doc.createElement('td');
-            tdId.textContent = String(r.user_id);
+            tdId.textContent = String(r.subject_id);
             tr.appendChild(tdId);
 
             var tdName = doc.createElement('td');
@@ -214,7 +215,7 @@
                 (r.assigned_to === null ? '' : String(r.assigned_to)),
                 function (v) {
                     if (typeof opts.onChange === 'function') {
-                        opts.onChange('assign', r.user_id, v);
+                        opts.onChange('assign', r.subject_id, v);
                     }
                 }));
             tr.appendChild(tdAss);
@@ -228,7 +229,7 @@
             tdPrio.appendChild(_select(doc, prios, String(r.priority),
                 function (v) {
                     if (typeof opts.onChange === 'function') {
-                        opts.onChange('priority', r.user_id, v);
+                        opts.onChange('priority', r.subject_id, v);
                     }
                 }));
             tr.appendChild(tdPrio);
@@ -240,7 +241,7 @@
             var tdSt = doc.createElement('td');
             tdSt.appendChild(_select(doc, stOpts, r.status, function (v) {
                 if (typeof opts.onChange === 'function') {
-                    opts.onChange('status', r.user_id, v);
+                    opts.onChange('status', r.subject_id, v);
                 }
             }));
             tr.appendChild(tdSt);

@@ -13,7 +13,8 @@
 # SO07 — Plattenplatz gemessen; low_disk_alert bei hoher Schwelle
 # SO08 — storage_to_dict json-serialisierbar, Schluessel vorhanden
 #
-# Version: v0.7.454 · Build: 454 · 2026-07-19
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import json
@@ -76,7 +77,7 @@ def test_so04_per_case(tmp_path):
     _mkdb(str(f / "forensic_11.db"), 70)
     rep = StorageOverview(forensic_dir=str(f), evidence_dir=str(e),
                           assets_dir=str(a)).scan(now=1)
-    by = {c.user_id: c for c in rep.per_case}
+    by = {c.subject_id: c for c in rep.per_case}
     assert by[10].total_bytes == 175
     assert by[11].forensic_bytes == 70 and by[11].evidence_bytes is None
 

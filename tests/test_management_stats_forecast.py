@@ -15,7 +15,8 @@
 # FC09 — Kapazitaets-Kontext: keine Arbeitszeitdaten -> None + Annahme (nie werfen)
 # FC10 — forecast_to_dict json-serialisierbar, stabile Schluessel
 #
-# Version: v0.7.446 · Build: 446 · 2026-07-19
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import json
@@ -39,9 +40,9 @@ _NOW = 1_700_000_000  # fixer Bezugszeitpunkt
 def _con(backlog_open=0, backlog_inprog=0, done=0,
          completions_in=0, completions_out=0):
     con = sqlite3.connect(":memory:")
-    con.execute("CREATE TABLE cases(user_id INTEGER PRIMARY KEY, status TEXT)")
+    con.execute("CREATE TABLE cases(subject_id INTEGER PRIMARY KEY, status TEXT)")
     con.execute("CREATE TABLE case_events(id INTEGER PRIMARY KEY AUTOINCREMENT, "
-                "user_id INTEGER, event_kind TEXT, created_at INTEGER)")
+                "subject_id INTEGER, event_kind TEXT, created_at INTEGER)")
     uid = 1
     for _ in range(backlog_open):
         con.execute("INSERT INTO cases VALUES(?, 'open')", (uid,)); uid += 1
@@ -51,11 +52,11 @@ def _con(backlog_open=0, backlog_inprog=0, done=0,
         con.execute("INSERT INTO cases VALUES(?, 'approved')", (uid,)); uid += 1
     # Abschluesse innerhalb 30-Tage-Fenster
     for _ in range(completions_in):
-        con.execute("INSERT INTO case_events(user_id,event_kind,created_at) "
+        con.execute("INSERT INTO case_events(subject_id,event_kind,created_at) "
                     "VALUES(1,'approved',?)", (_NOW - 5 * _DAY,))
     # Abschluesse ausserhalb (vor 40 Tagen)
     for _ in range(completions_out):
-        con.execute("INSERT INTO case_events(user_id,event_kind,created_at) "
+        con.execute("INSERT INTO case_events(subject_id,event_kind,created_at) "
                     "VALUES(1,'approved',?)", (_NOW - 40 * _DAY,))
     con.commit()
     return con

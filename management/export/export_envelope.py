@@ -26,7 +26,7 @@
 #   beliebiger UTF-8-Text aus multilingualen Quellen) werden mit html.escape()
 #   entschaerft. UTF-8 bleibt erhalten (escape kodiert nur < > & " ').
 #
-# Version: v0.7.440 · Build: 440 · 2026-07-19
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 from __future__ import annotations
@@ -50,7 +50,7 @@ class ExportContext:
 
     Pflichtfelder:
       behoerde        — z. B. "Polizei NRW — EK Zarewitsch".
-      aktenzeichen    — Fall-/Aktenkennung (z. B. user_id-Label oder Az.).
+      aktenzeichen    — Fall-/Aktenkennung (z. B. subject_id-Label oder Az.).
       ersteller       — SAMAccountName der ausfuehrenden Person (stabile
                         forensische Identitaet; NICHT der AD-Anzeigename).
       build_number    — Buildnummer des erzeugenden Werkzeugs (GR4).

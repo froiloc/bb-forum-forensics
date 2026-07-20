@@ -29,7 +29,8 @@
 #   von Stage 2 beim Versiegeln.
 #
 # Abhängigkeiten: sqlite3, hashlib, pathlib — ausschließlich Stdlib
-# Version: v0.1.0 · Build: 6 · 2026-04-10
+# Version: v0.7.469 · Build: 469 · 2026-07-20
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
 # =============================================================================
 
 import hashlib
@@ -287,7 +288,7 @@ class StartupChecker:
                     f"Datenbankdatei nicht gefunden: {label} = '{path}'\n"
                     f"Prüfen: Ist der Pfad korrekt? Wurde Stage 2 erfolgreich "
                     f"abgeschlossen?\n"
-                    f"User-ID: {self._ctx.user_id}"
+                    f"Subjekt-ID: {self._ctx.subject_id}"
                 )
             if not path.is_file():
                 raise StartupCheckError(

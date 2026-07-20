@@ -28,7 +28,8 @@
 # IR12 — Endpunkte schreibend: assess auditiert; Scope-Bruch -> 403.
 # IR13 — CLIs: results_admin (catalog/assess/history/score) und catalog_admin.
 #
-# Version: v0.7.387 · Build: 387 · 2026-07-12
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import io
@@ -224,7 +225,7 @@ class InvestigationResultsTests(unittest.TestCase):
     # ================================================================== IR03
     def test_ir03_assess_audited_and_frozen(self):
         res = self.repo.assess(
-            user_id=18, criterion_code="location_identification",
+            subject_id=18, criterion_code="location_identification",
             extrem="beste", confidence_code="wahrscheinlich",
             quality_code="ort", note="IP-Auswertung ergab Essen",
             actor_id=2)
@@ -259,15 +260,15 @@ class InvestigationResultsTests(unittest.TestCase):
 
         # Unbekanntes Kriterium / unbekannte Stufe / falsches Extrem.
         with self.assertRaises(ResultsError):
-            self.repo.assess(user_id=18, criterion_code="gibtsnicht",
+            self.repo.assess(subject_id=18, criterion_code="gibtsnicht",
                              extrem="beste", confidence_code="verdacht",
                              actor_id=2)
         with self.assertRaises(ResultsError):
-            self.repo.assess(user_id=18, criterion_code="abuser",
+            self.repo.assess(subject_id=18, criterion_code="abuser",
                              extrem="beste", confidence_code="voellig_sicher",
                              actor_id=2)
         with self.assertRaises(ResultsError):
-            self.repo.assess(user_id=18, criterion_code="abuser",
+            self.repo.assess(subject_id=18, criterion_code="abuser",
                              extrem="mittel", confidence_code="verdacht",
                              actor_id=2)
 
@@ -275,7 +276,7 @@ class InvestigationResultsTests(unittest.TestCase):
     def test_ir04_append_only_history(self):
         # Erkenntnisgewinn: Verdacht -> wahrscheinlich -> gerichtsfest.
         for conf in ("verdacht", "wahrscheinlich", "gerichtsfest"):
-            self.repo.assess(user_id=18, criterion_code="identification",
+            self.repo.assess(subject_id=18, criterion_code="identification",
                              extrem="beste", confidence_code=conf, actor_id=2)
 
         hist = self.repo.history(18, criterion_code="identification")
@@ -288,7 +289,7 @@ class InvestigationResultsTests(unittest.TestCase):
         self.assertEqual(cur[0]["confidence_label"], "gerichtsfest")
 
         # 'schwerste' und 'beste' sind UNABHAENGIG voneinander.
-        self.repo.assess(user_id=18, criterion_code="identification",
+        self.repo.assess(subject_id=18, criterion_code="identification",
                          extrem="schwerste", confidence_code="verdacht",
                          actor_id=2)
         cur = {(r["criterion_code"], r["extrem"]): r
@@ -301,7 +302,7 @@ class InvestigationResultsTests(unittest.TestCase):
     # ================================================================== IR05
     def test_ir05_append_only_enforced_by_db(self):
         rid = self.repo.assess(
-            user_id=18, criterion_code="cp_possession", extrem="schwerste",
+            subject_id=18, criterion_code="cp_possession", extrem="schwerste",
             confidence_code="verdacht", actor_id=2)["result_id"]
 
         # Der Schutz haengt NICHT allein am Repo — ein Trigger blockt auch
@@ -324,7 +325,7 @@ class InvestigationResultsTests(unittest.TestCase):
     def test_ir06_quality_without_scale_rejected(self):
         # cp_possession hat (noch) KEINE Qualitaetsskala.
         with self.assertRaises(ResultsError) as ctx:
-            self.repo.assess(user_id=18, criterion_code="cp_possession",
+            self.repo.assess(subject_id=18, criterion_code="cp_possession",
                              extrem="schwerste", confidence_code="verdacht",
                              quality_code="ort", actor_id=2)
         self.assertIn("keine Qualitaetsskala", str(ctx.exception))
@@ -332,7 +333,7 @@ class InvestigationResultsTests(unittest.TestCase):
         self.assertEqual(self.repo.current(18), [])
 
         # Ohne Qualitaet geht es.
-        self.repo.assess(user_id=18, criterion_code="cp_possession",
+        self.repo.assess(subject_id=18, criterion_code="cp_possession",
                          extrem="schwerste", confidence_code="verdacht",
                          actor_id=2)
         cur = self.repo.current(18)[0]
@@ -348,7 +349,7 @@ class InvestigationResultsTests(unittest.TestCase):
         unbemerkt.
         """
         alt = self.repo.assess(
-            user_id=18, criterion_code="location_identification",
+            subject_id=18, criterion_code="location_identification",
             extrem="beste", confidence_code="verdacht", quality_code="ort",
             actor_id=2)
         alt_row = dict(self.con.execute(
@@ -371,7 +372,7 @@ class InvestigationResultsTests(unittest.TestCase):
 
         # Eine NEUE Bewertung traegt die NEUE Katalogversion.
         neu = self.repo.assess(
-            user_id=18, criterion_code="location_identification",
+            subject_id=18, criterion_code="location_identification",
             extrem="beste", confidence_code="gerichtsfest",
             quality_code="hausnummer", actor_id=2)
         neu_row = dict(self.con.execute(
@@ -390,7 +391,7 @@ class InvestigationResultsTests(unittest.TestCase):
         self.cat.add_criterion("grooming", "Grooming (Kontaktanbahnung)",
                                sort=45, actor_id=1)
         self.assertEqual(len(self.cat.criteria()), 11)
-        self.repo.assess(user_id=18, criterion_code="grooming",
+        self.repo.assess(subject_id=18, criterion_code="grooming",
                          extrem="schwerste", confidence_code="verdacht",
                          actor_id=2)
 
@@ -405,7 +406,7 @@ class InvestigationResultsTests(unittest.TestCase):
         self.cat.set_quality_scale("cp_possession", "cp_quality", actor_id=1)
         self.assertEqual(
             self.cat.criterion("cp_possession")["quality_scale"], "cp_quality")
-        self.repo.assess(user_id=18, criterion_code="cp_possession",
+        self.repo.assess(subject_id=18, criterion_code="cp_possession",
                          extrem="schwerste", confidence_code="gerichtsfest",
                          quality_code="asserviert", actor_id=2)
 
@@ -431,21 +432,21 @@ class InvestigationResultsTests(unittest.TestCase):
             cur[("cp_possession", "schwerste")]["quality_label"], "asserviert")
         # Aber NEU bewerten kann man damit nicht mehr.
         with self.assertRaises(ResultsError):
-            self.repo.assess(user_id=19, criterion_code="cp_possession",
+            self.repo.assess(subject_id=19, criterion_code="cp_possession",
                              extrem="beste", confidence_code="verdacht",
                              quality_code="asserviert", actor_id=1)
 
     # ================================================================== IR09
     def test_ir09_scorer(self):
-        self.repo.assess(user_id=18, criterion_code="identification",
+        self.repo.assess(subject_id=18, criterion_code="identification",
                          extrem="schwerste", confidence_code="gerichtsfest",
                          actor_id=2)                              # 5
-        self.repo.assess(user_id=18, criterion_code="abuser",
+        self.repo.assess(subject_id=18, criterion_code="abuser",
                          extrem="schwerste", confidence_code="verdacht",
                          quality_code="fortlaufend", actor_id=2)  # 3
         # 'beste' geht NICHT in den Score ein (Priorisierung nach der
         # GRAVIERENDSTEN, nicht der bestbelegten Erkenntnis).
-        self.repo.assess(user_id=18, criterion_code="cp_production",
+        self.repo.assess(subject_id=18, criterion_code="cp_production",
                          extrem="beste", confidence_code="gerichtsfest",
                          actor_id=2)
 
@@ -475,14 +476,14 @@ class InvestigationResultsTests(unittest.TestCase):
 
     # ================================================================== IR10
     def test_ir10_stats(self):
-        self.repo.assess(user_id=18, criterion_code="abuser",
+        self.repo.assess(subject_id=18, criterion_code="abuser",
                          extrem="schwerste", confidence_code="verdacht",
                          quality_code="fortlaufend", actor_id=2)
-        self.repo.assess(user_id=19, criterion_code="abuser",
+        self.repo.assess(subject_id=19, criterion_code="abuser",
                          extrem="schwerste", confidence_code="gerichtsfest",
                          quality_code="ehemalig", actor_id=1)
         # Korrektur an Fall 18 -> die Statistik zaehlt nur den AKTUELLEN Stand.
-        self.repo.assess(user_id=18, criterion_code="abuser",
+        self.repo.assess(subject_id=18, criterion_code="abuser",
                          extrem="schwerste", confidence_code="wahrscheinlich",
                          quality_code="fortlaufend", actor_id=2)
 
@@ -496,12 +497,12 @@ class InvestigationResultsTests(unittest.TestCase):
         self.assertEqual(ab["qual_mittel"], 2.5)           # (3 + 2) / 2
 
         # Scope 'eigene' mit LEERER Zuweisung liefert nichts — nicht alles.
-        self.assertEqual(self.repo.stats(user_ids=[])["faelle"], 0)
-        self.assertEqual(self.repo.stats(user_ids=[18])["faelle"], 1)
+        self.assertEqual(self.repo.stats(subject_ids=[])["faelle"], 0)
+        self.assertEqual(self.repo.stats(subject_ids=[18])["faelle"], 1)
 
     # ================================================================== IR11
     def test_ir11_endpoints_read(self):
-        self.repo.assess(user_id=18, criterion_code="abuser",
+        self.repo.assess(subject_id=18, criterion_code="abuser",
                          extrem="schwerste", confidence_code="verdacht",
                          quality_code="fortlaufend", actor_id=2)
         app = self._app()
@@ -516,7 +517,7 @@ class InvestigationResultsTests(unittest.TestCase):
         ab = [c for c in cat["criteria"] if c["code"] == "abuser"][0]
         self.assertIn("SCHWERE", ab["quality_beschreibung"])
 
-        r = app.dispatch(2, "/api/results", {"user_id": ["18"]})
+        r = app.dispatch(2, "/api/results", {"subject_id": ["18"]})
         self.assertEqual(r.status, 200)
         d = json.loads(r.body)
         self.assertEqual(d["scope"], "eigene")
@@ -526,10 +527,10 @@ class InvestigationResultsTests(unittest.TestCase):
 
         # Fremder Fall -> 403 (kein stilles Leer).
         self.assertEqual(app.dispatch(2, "/api/results",
-                                      {"user_id": ["19"]}).status, 403)
+                                      {"subject_id": ["19"]}).status, 403)
         # Kein Recht -> 403.
         self.assertEqual(app.dispatch(3, "/api/results",
-                                      {"user_id": ["19"]}).status, 403)
+                                      {"subject_id": ["19"]}).status, 403)
 
         # Die STATISTIK verlangt Scope 'alle'.
         r = app.dispatch(1, "/api/results/stats", {})
@@ -542,19 +543,19 @@ class InvestigationResultsTests(unittest.TestCase):
     # ================================================================== IR14
     def test_ir14_QUERY_VERTRAG_parse_qs_listen(self):
         """
-        BUILD 391 — Wachhund (siehe EX13). /api/results las die user_id als
+        BUILD 391 — Wachhund (siehe EX13). /api/results las die subject_id als
         Skalar und antwortete deshalb am echten Server IMMER mit 400.
         Geprueft wird ausschliesslich die ECHTE parse_qs-Form.
         """
-        self.repo.assess(user_id=18, criterion_code="abuser",
+        self.repo.assess(subject_id=18, criterion_code="abuser",
                          extrem="schwerste", confidence_code="verdacht",
                          quality_code="fortlaufend", actor_id=2)
         app = self._app()
 
-        r = app.dispatch(1, "/api/results", {"user_id": ["18"]})
+        r = app.dispatch(1, "/api/results", {"subject_id": ["18"]})
         self.assertEqual(r.status, 200)
         d = json.loads(r.body)
-        self.assertEqual(d["user_id"], 18)
+        self.assertEqual(d["subject_id"], 18)
         self.assertEqual(len(d["current"]), 1)
 
         # Katalog und Statistik haben keine Query — sie duerfen trotzdem
@@ -569,7 +570,7 @@ class InvestigationResultsTests(unittest.TestCase):
         app = self._app()
 
         r = app.dispatch_write(2, "/api/results/assess", {
-            "user_id": 18, "criterion_code": "victim_identification",
+            "subject_id": 18, "criterion_code": "victim_identification",
             "extrem": "schwerste", "confidence_code": "wahrscheinlich",
             "quality_code": "alter", "note": "Chatverlauf S. 14"})
         self.assertEqual(r.status, 200)
@@ -582,21 +583,21 @@ class InvestigationResultsTests(unittest.TestCase):
 
         # Fremder Fall -> 403.
         self.assertEqual(app.dispatch_write(2, "/api/results/assess", {
-            "user_id": 19, "criterion_code": "abuser", "extrem": "beste",
+            "subject_id": 19, "criterion_code": "abuser", "extrem": "beste",
             "confidence_code": "verdacht"}).status, 403)
 
         # Ungueltige Eingaben -> 400, kein 500.
         self.assertEqual(app.dispatch_write(1, "/api/results/assess", {
-            "user_id": 18, "criterion_code": "cp_possession",
+            "subject_id": 18, "criterion_code": "cp_possession",
             "extrem": "beste", "confidence_code": "verdacht",
             "quality_code": "ort"}).status, 400)
         self.assertEqual(app.dispatch_write(1, "/api/results/assess", {
-            "user_id": 999, "criterion_code": "abuser", "extrem": "beste",
+            "subject_id": 999, "criterion_code": "abuser", "extrem": "beste",
             "confidence_code": "verdacht"}).status, 400)
 
         # Ohne Recht -> 403.
         self.assertEqual(app.dispatch_write(3, "/api/results/assess", {
-            "user_id": 19, "criterion_code": "abuser", "extrem": "beste",
+            "subject_id": 19, "criterion_code": "abuser", "extrem": "beste",
             "confidence_code": "verdacht"}).status, 403)
 
     # ================================================================== IR13
@@ -611,7 +612,7 @@ class InvestigationResultsTests(unittest.TestCase):
         out = io.StringIO()
         with redirect_stdout(out):
             rc = results_admin.main([
-                "--db", self._db, "assess", "--user-id", "18",
+                "--db", self._db, "assess", "--subject-id", "18",
                 "--criterion", "abuser", "--extrem", "schwerste",
                 "--confidence", "verdacht", "--quality", "fortlaufend",
                 "--note", "Chat 2024", "--actor", "h002"])
@@ -621,7 +622,7 @@ class InvestigationResultsTests(unittest.TestCase):
         out = io.StringIO()
         with redirect_stdout(out):
             rc = results_admin.main(["--db", self._db, "score",
-                                     "--user-id", "18"])
+                                     "--subject-id", "18"])
         self.assertEqual(rc, 0)
         # Der Vermerk steht IMMER dabei — umrahmt.
         self.assertIn("PROVISORISCH", out.getvalue())
@@ -630,7 +631,7 @@ class InvestigationResultsTests(unittest.TestCase):
         # Unbekannte Kennung -> Fehler, kein Beleg ohne Handelnden.
         with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
             rc = results_admin.main([
-                "--db", self._db, "assess", "--user-id", "18",
+                "--db", self._db, "assess", "--subject-id", "18",
                 "--criterion", "abuser", "--extrem", "beste",
                 "--confidence", "verdacht", "--actor", "gibtsnicht"])
         self.assertEqual(rc, 1)

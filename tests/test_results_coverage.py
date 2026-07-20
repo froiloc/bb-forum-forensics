@@ -21,7 +21,8 @@
 #        parse_qs-Vertrag (Build 391).
 # CV09 — CLI 'coverage': Exit 2 bei blinden Flecken, umrahmte Warnung.
 #
-# Version: v0.7.393 · Build: 393 · 2026-07-12
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import io
@@ -131,7 +132,7 @@ class ResultsCoverageTests(unittest.TestCase):
         return ManagementApp(db_path=self._db)
 
     def _by_case(self, cov):
-        return {f["user_id"]: f for f in cov["faelle"]}
+        return {f["subject_id"]: f for f in cov["faelle"]}
 
     # ================================================================== CV01
     def test_cv01_KERNBEFUND_nie_bewerteter_fall_ist_sichtbar(self):
@@ -142,7 +143,7 @@ class ResultsCoverageTests(unittest.TestCase):
         Luecke gezeigt, sondern schlicht nicht da. Genau er ist aber der blinde
         Fleck, nach dem gesucht wird.
         """
-        self.repo.assess(user_id=18, criterion_code="abuser",
+        self.repo.assess(subject_id=18, criterion_code="abuser",
                          extrem="schwerste", confidence_code="verdacht",
                          quality_code="fortlaufend", actor_id=2)
 
@@ -172,15 +173,15 @@ class ResultsCoverageTests(unittest.TestCase):
 
     # ================================================================== CV02
     def test_cv02_abdeckung_auf_schwerste_beste_separat(self):
-        self.repo.assess(user_id=18, criterion_code="abuser",
+        self.repo.assess(subject_id=18, criterion_code="abuser",
                          extrem="schwerste", confidence_code="verdacht",
                          actor_id=2)
-        self.repo.assess(user_id=18, criterion_code="identification",
+        self.repo.assess(subject_id=18, criterion_code="identification",
                          extrem="schwerste", confidence_code="gerichtsfest",
                          actor_id=2)
         # 'beste' zaehlt NICHT in die Abdeckung (mc: 'schwerste' ist die
         # Priorisierungsachse), wird aber SEPARAT ausgewiesen.
-        self.repo.assess(user_id=18, criterion_code="cp_possession",
+        self.repo.assess(subject_id=18, criterion_code="cp_possession",
                          extrem="beste", confidence_code="verdacht",
                          actor_id=2)
 
@@ -199,7 +200,7 @@ class ResultsCoverageTests(unittest.TestCase):
     # ================================================================== CV03
     def test_cv03_korrektur_erhoeht_die_abdeckung_nicht(self):
         for conf in ("verdacht", "wahrscheinlich", "gerichtsfest"):
-            self.repo.assess(user_id=18, criterion_code="abuser",
+            self.repo.assess(subject_id=18, criterion_code="abuser",
                              extrem="schwerste", confidence_code=conf,
                              actor_id=2)
         f = self._by_case(CoverageRepo(self.con).coverage())[18]
@@ -210,11 +211,11 @@ class ResultsCoverageTests(unittest.TestCase):
 
     # ================================================================== CV04
     def test_cv04_blinde_flecken_zuerst(self):
-        self.repo.assess(user_id=18, criterion_code="abuser",
+        self.repo.assess(subject_id=18, criterion_code="abuser",
                          extrem="schwerste", confidence_code="verdacht",
                          actor_id=2)
         cov = CoverageRepo(self.con).coverage()
-        ids = [f["user_id"] for f in cov["faelle"]]
+        ids = [f["subject_id"] for f in cov["faelle"]]
         # 19 und 20 (Abdeckung 0) stehen VOR 18. Wer die Liste oeffnet, soll
         # sehen, WO NICHT ERMITTELT WURDE.
         self.assertEqual(ids[-1], 18)
@@ -228,7 +229,7 @@ class ResultsCoverageTests(unittest.TestCase):
 
     # ================================================================== CV06
     def test_cv06_summary(self):
-        self.repo.assess(user_id=18, criterion_code="abuser",
+        self.repo.assess(subject_id=18, criterion_code="abuser",
                          extrem="schwerste", confidence_code="verdacht",
                          actor_id=2)
         repo = CoverageRepo(self.con)
@@ -241,7 +242,7 @@ class ResultsCoverageTests(unittest.TestCase):
 
     # ================================================================== CV07
     def test_cv07_stats_weist_die_differenz_aus(self):
-        self.repo.assess(user_id=18, criterion_code="abuser",
+        self.repo.assess(subject_id=18, criterion_code="abuser",
                          extrem="schwerste", confidence_code="verdacht",
                          actor_id=2)
         self.con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
@@ -257,7 +258,7 @@ class ResultsCoverageTests(unittest.TestCase):
 
     # ================================================================== CV08
     def test_cv08_endpunkt_coverage(self):
-        self.repo.assess(user_id=18, criterion_code="abuser",
+        self.repo.assess(subject_id=18, criterion_code="abuser",
                          extrem="schwerste", confidence_code="verdacht",
                          actor_id=2)
         self.con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
@@ -279,7 +280,7 @@ class ResultsCoverageTests(unittest.TestCase):
         d = json.loads(r.body)
         self.assertEqual(d["scope"], "eigene")
         self.assertEqual(d["faelle_gesamt"], 2)
-        self.assertEqual({f["user_id"] for f in d["faelle"]}, {18, 19})
+        self.assertEqual({f["subject_id"] for f in d["faelle"]}, {18, 19})
         # Fall 20 (nicht zugewiesen) ist NICHT dabei.
         self.assertEqual(d["summary"]["nie_bewertet"], 1)   # nur 19
 
@@ -294,7 +295,7 @@ class ResultsCoverageTests(unittest.TestCase):
 
     # ================================================================== CV09
     def test_cv09_cli_coverage(self):
-        self.repo.assess(user_id=18, criterion_code="abuser",
+        self.repo.assess(subject_id=18, criterion_code="abuser",
                          extrem="schwerste", confidence_code="verdacht",
                          actor_id=2)
         self.con.execute("PRAGMA wal_checkpoint(TRUNCATE)")

@@ -4,7 +4,7 @@
 # =============================================================================
 # Testsuite fuer Build 323: self-contained HTML-Export.
 #
-# E01 — build_dashboard_html bettet die Falldaten ein (user_id im Output)
+# E01 — build_dashboard_html bettet die Falldaten ein (subject_id im Output)
 # E02 — self-contained: CSS+JS INLINE, KEINE externen <script src>/<link href>
 # E03 — debug-Flag steuert window.AIW_DASHBOARD_DEBUG (false in PROD)
 # E04 — '</script>' aus Daten wird entschaerft (bricht die Seite nicht)
@@ -12,7 +12,8 @@
 # E06 — multilinguale UTF-8-Benutzernamen bleiben erhalten
 # E07 — CLI 'export-html' end-to-end gegen synthetische coordinator.db
 #
-# Version: v0.7.323 · Build: 323 · 2026-07-04
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import os
@@ -63,7 +64,7 @@ class DashboardExportTests(unittest.TestCase):
 
     # ---- reine Funktion -----------------------------------------------------
     def _sample(self, **over):
-        base = {"user_id": 4201, "username": "u", "status": "open",
+        base = {"subject_id": 4201, "username": "u", "status": "open",
                 "priority": 3, "ampel": "rot", "ampel_reason": "aktiv",
                 "event_count": 0, "support_active": False, "support_count": 0,
                 "last_activity_at": 0}
@@ -71,7 +72,7 @@ class DashboardExportTests(unittest.TestCase):
         return [base]
 
     def test_e01_embeds_data(self):
-        html = build_dashboard_html(self._sample(user_id=4201), "CSS", "JS")
+        html = build_dashboard_html(self._sample(subject_id=4201), "CSS", "JS")
         self.assertIn("4201", html)
 
     def test_e02_self_contained(self):
@@ -118,7 +119,7 @@ class DashboardExportTests(unittest.TestCase):
         MigrationRunner(con, discover(coordinator_migrations), audit=audit,
                         deployed_by="t").run()
         cases = CasesRepo(con, CoordinatorWriter(con, audit))
-        cases.create_case(user_id=4201, username="tester", actor_id=1)
+        cases.create_case(subject_id=4201, username="tester", actor_id=1)
         con.close()
 
     def test_e07_cli_export_end_to_end(self):

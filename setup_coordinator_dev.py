@@ -15,6 +15,15 @@
 #   vollständige Schema-Migration) ist Teil von Baustelle 5 und Baustelle 7.
 #   Dieses Skript dient ausschließlich dazu, das DEV-System lauffähig zu halten.
 #
+# M019-HINWEIS (Build 469):
+#   Migration M019 benennt in coordinator.db die Spalte user_id nach subject_id
+#   um (u.a. scrape_jobs, cases) sowie den Index scrape_jobs_user_idx nach
+#   scrape_jobs_subject_idx. Dieses Skript baut BEWUSST den Vor-M019-Stand
+#   (Spalte user_id) — die Migration benennt danach verlustfrei um (analog
+#   zur 'investigators'->'person'-Kette, siehe Deprecation-Block unten).
+#   Die Nach-Checks und der DEV-Job-Insert ermitteln die Subjekt-Spalte
+#   dynamisch, damit das Skript auf einer BEREITS migrierten DB nicht crasht.
+#
 # DEPRECATION (Build 342, Welle 0):
 #   Dieses Skript wird mittelfristig entfernt (Kennzeichnung als 'deprecated'
 #   folgt in Kürze). Es hat aktuell keine reguläre Verwendung mehr und wird
@@ -40,6 +49,9 @@
 #
 # Beleg: Bauplan_Baustelle2_Webserver_v0_4.md § 9.1
 # Beleg: Projektgespräch 2026-04-18
+# Version: v0.7.469 · Build: 469 · 2026-07-20
+# Build 469: Schluesselumstellung user_id -> subject_id (M019) — Skript baut
+#            bewusst den Vor-M019-Stand; Nach-Checks jetzt migrationsrobust.
 # =============================================================================
 
 from __future__ import annotations
@@ -147,6 +159,18 @@ def _table_exists(con: sqlite3.Connection, table: str) -> bool:
     return bool(row and row[0] > 0)
 
 
+def _subject_column(con: sqlite3.Connection, table: str) -> str:
+    """
+    M019-robust (Build 469): Ermittelt den Namen der Subjekt-Spalte einer
+    Tabelle dynamisch. Vor Migration M019 heißt sie 'user_id' (der Stand,
+    den dieses Skript anlegt), nach M019 'subject_id'. So funktionieren
+    Nach-Checks und DEV-Job-Insert auf beiden Ständen ohne Crash.
+    """
+    if _column_exists(con, table, "subject_id"):
+        return "subject_id"
+    return "user_id"
+
+
 def setup(db_path: Path) -> None:
     print(f"[setup_coordinator_dev] Zieldatenbank: {db_path.resolve()}")
 
@@ -171,8 +195,16 @@ def setup(db_path: Path) -> None:
         # bereits existierende scrape_jobs mit abweichendem DEV-Schema.
         if _column_exists(con, "scrape_jobs", "priority"):
             con.execute(DDL_SCRAPE_JOBS_IDX_STATUS)
-            con.execute(DDL_SCRAPE_JOBS_IDX_USER)
-            print("[setup_coordinator_dev] scrape_jobs-Indizes: OK")
+            # M019-robust (Build 469): Der user_id-Index kann nur auf dem
+            # Vor-M019-Stand angelegt werden. Nach der Migration heißt die
+            # Spalte subject_id und der Index scrape_jobs_subject_idx existiert
+            # bereits (von M019 angelegt) — dann nichts tun, nicht crashen.
+            if _column_exists(con, "scrape_jobs", "user_id"):
+                con.execute(DDL_SCRAPE_JOBS_IDX_USER)
+                print("[setup_coordinator_dev] scrape_jobs-Indizes: OK")
+            else:
+                print("[setup_coordinator_dev] scrape_jobs_user_idx: übersprungen "
+                      "(DB bereits M019-migriert — subject_id/scrape_jobs_subject_idx)")
         else:
             print("[setup_coordinator_dev] scrape_jobs-Indizes: übersprungen (priority fehlt)")
 
@@ -249,24 +281,27 @@ def setup(db_path: Path) -> None:
         ).fetchone()
         if paul_row:
             paul_id = paul_row[0] if not hasattr(paul_row, 'keys') else paul_row["id"]
+            # M019-robust (Build 469): Subjekt-Spalte dynamisch ermitteln —
+            # 'user_id' vor der Migration, 'subject_id' danach.
+            subj_col = _subject_column(con, "scrape_jobs")
             # Prüfen ob DEV-Job bereits vorhanden
             existing = con.execute(
-                "SELECT id FROM scrape_jobs "
-                "WHERE user_id=18 AND assigned_to=? AND status='pending'",
+                f"SELECT id FROM scrape_jobs "
+                f"WHERE {subj_col}=18 AND assigned_to=? AND status='pending'",
                 (paul_id,),
             ).fetchone()
             if not existing:
                 con.execute(
-                    """
+                    f"""
                     INSERT INTO scrape_jobs
-                        (user_id, username, priority, status, assigned_to, created_at)
+                        ({subj_col}, username, priority, status, assigned_to, created_at)
                     VALUES (18, 'DEV-Beschuldigter-uid18', 2, 'pending', ?, ?)
                     """,
                     (paul_id, int(time.time())),
                 )
-                print(f"[setup_coordinator_dev] DEV-Job user_id=18 für 'paul' (id={paul_id}) angelegt")
+                print(f"[setup_coordinator_dev] DEV-Job {subj_col}=18 für 'paul' (id={paul_id}) angelegt")
             else:
-                print(f"[setup_coordinator_dev] DEV-Job user_id=18 bereits vorhanden — übersprungen")
+                print(f"[setup_coordinator_dev] DEV-Job {subj_col}=18 bereits vorhanden — übersprungen")
             con.commit()
         else:
             print("[setup_coordinator_dev] WARNING: 'paul' nicht in investigators — kein Job angelegt")
@@ -285,12 +320,15 @@ def setup(db_path: Path) -> None:
 
         cols = [r[1] for r in con.execute("PRAGMA table_info(scrape_jobs)").fetchall()]
         assert "assigned_to" in cols, "FEHLER: assigned_to fehlt nach Migration!"
+        # M019-robust (Build 469): Spaltenname dynamisch — kein Crash auf
+        # einer bereits migrierten DB (subject_id statt user_id).
+        subj_col = _subject_column(con, "scrape_jobs")
         jobs = con.execute(
-            "SELECT id, user_id, username, status, assigned_to FROM scrape_jobs"
+            f"SELECT id, {subj_col}, username, status, assigned_to FROM scrape_jobs"
         ).fetchall()
         print(f"\n[setup_coordinator_dev] scrape_jobs ({len(jobs)} Einträge):")
         for j in jobs:
-            print(f"  id={j[0]}  user_id={j[1]}  username={j[2]}  status={j[3]}  assigned_to={j[4]}")
+            print(f"  id={j[0]}  {subj_col}={j[1]}  username={j[2]}  status={j[3]}  assigned_to={j[4]}")
         print(f"\n[setup_coordinator_dev] scrape_jobs.assigned_to: vorhanden ✓")
         print("[setup_coordinator_dev] Abgeschlossen — keine Fehler.")
 

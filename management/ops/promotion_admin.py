@@ -11,21 +11,21 @@
 #     candidates                     Aktuelle Fremdforum-Kandidaten + Zustand
 #                                     (forensic_<uid>.db vorhanden, evidence fehlt)
 #     list                           ALLE erfassten Entscheidungen (Belege)
-#     decide  --user-id N --status gesichtet|uebernommen|zurueckgestellt|
+#     decide  --subject-id N --status gesichtet|uebernommen|zurueckgestellt|
 #                                    fremdzustaendig
 #             [--grund G] [--herkunft H] [--force] --actor KENNUNG
 #
 #   --actor ist bei JEDEM Schreibbefehl Pflicht: ein Beleg ohne Handelnden ist
 #   kein Beleg (gleiche Regel wie external_admin/case_detect --auto).
 #
-#   Ohne --force prueft 'decide', dass user_id AKTUELL ein Fremdforum-Kandidat
+#   Ohne --force prueft 'decide', dass subject_id AKTUELL ein Fremdforum-Kandidat
 #   ist (Dateisystem-Scan). --force uebergeht diese Pruefung bewusst (z. B.
 #   Nachpflege eines inzwischen uebernommenen Falls) — der Uebergang selbst
 #   bleibt durch die Zustandsmaschine geschuetzt.
 #
 #   EXIT-CODES: 0 = ok · 1 = Aufruf-/Fachfehler.
 #
-# Version: v0.7.460 · Build: 460 · 2026-07-20
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import argparse
@@ -108,13 +108,13 @@ def _print_rows(rows: List[dict]) -> None:
     if not rows:
         print("Keine Eintraege.")
         return
-    print("%-10s %-16s %-8s %s" % ("user_id", "Zustand", "final", "Grund/Herkunft"))
+    print("%-10s %-16s %-8s %s" % ("subject_id", "Zustand", "final", "Grund/Herkunft"))
     print("-" * 72)
     for r in rows:
         extra = " / ".join(
             x for x in (r.get("grund") or "", r.get("herkunft") or "") if x)
         print("%-10s %-16s %-8s %s"
-              % (r["user_id"], r["status"],
+              % (r["subject_id"], r["status"],
                  "ja" if r.get("is_final") else "-", extra[:34]))
     print("-" * 72)
 
@@ -133,7 +133,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     sub.add_parser("list", help="Alle erfassten Entscheidungen (Belege)")
 
     p = sub.add_parser("decide", help="Entscheidung erfassen (auditiert)")
-    p.add_argument("--user-id", type=int, required=True)
+    p.add_argument("--subject-id", type=int, required=True)
     p.add_argument("--status", required=True, choices=list(STORED_STATUSES))
     p.add_argument("--grund", default="")
     p.add_argument("--herkunft", default=None)
@@ -162,11 +162,11 @@ def main(argv: Optional[List[str]] = None) -> int:
             allowed = None if args.force else _candidates(args)
             repo = PromotionRepo(con, CoordinatorWriter(con, AuditLog(con)))
             res = repo.record_decision(
-                user_id=args.user_id, target_status=args.status,
+                subject_id=args.subject_id, target_status=args.status,
                 grund=args.grund, herkunft=args.herkunft,
                 actor_id=actor, allowed_uids=allowed)
             print("Kandidat %s: %s -> %s (%s, Beleg #%s)."
-                  % (res["user_id"], res["von"], res["auf"],
+                  % (res["subject_id"], res["von"], res["auf"],
                      "angelegt" if res["created"] else "aktualisiert",
                      res["audit_seq"]))
             return 0

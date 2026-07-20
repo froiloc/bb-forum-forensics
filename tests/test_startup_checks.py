@@ -24,7 +24,8 @@
 #   T12 — forensic_db korrekt READ-ONLY (URI mode=ro) → kein Fehler
 #   T13 — compute_sha256_for_sealing() gibt korrekten Hex-String zurück
 #
-# Version: v0.1.0 · Build: 005 · 2026-04-10
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import sys
@@ -178,7 +179,7 @@ def _make_resolved_context(
 
     ctx = ResolvedContext(
         mode=mode,
-        user_id=42,
+        subject_id=42,
         username="testverdaechtiger",
         forensic_db=forensic_db,
         evidence_db=evidence_db,
@@ -304,7 +305,7 @@ class TestStartupChecksSchema(unittest.TestCase):
         sqlite3.connect(str(coord_db)).close()
 
         ctx = ResolvedContext(
-            mode="job", user_id=42, username="test",
+            mode="job", subject_id=42, username="test",
             forensic_db=forensic_db, evidence_db=evidence_db,
             default_db=default_db, coordinator_db=coord_db,
             assets_db=Path(coord_db).parent / "assets_42.db",
@@ -330,7 +331,7 @@ class TestStartupChecksSchema(unittest.TestCase):
         sqlite3.connect(str(coord_db)).close()
 
         ctx = ResolvedContext(
-            mode="job", user_id=42, username="test",
+            mode="job", subject_id=42, username="test",
             forensic_db=forensic_db, evidence_db=evidence_db,
             default_db=default_db, coordinator_db=coord_db,
             assets_db=Path(coord_db).parent / "assets_42.db",
@@ -346,7 +347,7 @@ class TestStartupChecksSchema(unittest.TestCase):
     def _make_ctx(self, forensic_db: Path) -> "ResolvedContext":
         """Minimaler Kontext — nur forensic_db wird vom Schema-Check genutzt."""
         return ResolvedContext(
-            mode="job", user_id=42, username="test",
+            mode="job", subject_id=42, username="test",
             forensic_db=forensic_db,
             evidence_db=Path(self.tmp) / "evidence_42.db",
             default_db=Path(self.tmp) / "default.db",
@@ -391,7 +392,7 @@ class TestStartupChecksIntegrity(unittest.TestCase):
         sqlite3.connect(str(default_db)).close()
         sqlite3.connect(str(coord_db)).close()
         return ResolvedContext(
-            mode="job", user_id=42, username="test",
+            mode="job", subject_id=42, username="test",
             forensic_db=forensic_db, evidence_db=evidence_db,
             default_db=default_db, coordinator_db=coord_db,
             assets_db=Path(coord_db).parent / "assets_42.db",

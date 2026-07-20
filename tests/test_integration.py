@@ -26,7 +26,7 @@
 #   T06 — AJAX-Request: /_forensic/page, html NULL → fetch_failed=True
 #   T07 — Asset-Request: CSS-Datei aus default_db → HTTP 200
 #   T08 — Asset-Request: unbekanntes Asset → HTTP 404
-#   T09 — /_forensic/status → JSON mit korrektem user_id
+#   T09 — /_forensic/status → JSON mit korrektem subject_id
 #   T10 — POST außerhalb /_forensic/ → HTTP 404
 #   T11 — /_forensic/annotate: vollständiger Schreibzyklus in evidence_db
 #   T12 — /_forensic/viewport: Batch wird in evidence_db gespeichert
@@ -34,7 +34,8 @@
 #   T14 — Sonderfall: URL mit ?pid= → Auflösung via post_aliases
 #   T15 — Shutdown: bundle.close() nach Server-Stop ohne Fehler
 #
-# Version: v0.1.0 · Build: 011 · 2026-04-11
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 from __future__ import annotations
@@ -286,7 +287,7 @@ def _create_coordinator_db(path: Path) -> None:
         );
         CREATE TABLE scrape_jobs (
             id           INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id      INTEGER NOT NULL,
+            subject_id      INTEGER NOT NULL,
             username     TEXT    NOT NULL,
             priority     INTEGER NOT NULL DEFAULT 3,
             status       TEXT    NOT NULL DEFAULT 'pending',
@@ -364,7 +365,7 @@ class _ServerFixture(unittest.TestCase):
 
         cls.context = ResolvedContext(
             mode="cli",
-            user_id=42,
+            subject_id=42,
             username="testnutzer",
             forensic_db=cls.forensic_path,
             evidence_db=cls.evidence_path,
@@ -461,7 +462,7 @@ class TestIntegrationStart(_ServerFixture):
         self.assertEqual(status, 200)
         data = json.loads(body)
         self.assertIn("version", data)
-        self.assertEqual(data["user_id"], 42)
+        self.assertEqual(data["subject_id"], 42)
 
     def test_T02_shell_request_bekannte_url(self):
         """T02: GET auf bekannte Forum-URL → HTTP 200, HTML-Shell mit forensic-viewport."""
@@ -560,11 +561,11 @@ class TestIntegrationStatus(_ServerFixture):
     """T09: Serverstatus-Endpunkt."""
 
     def test_T09_status_json(self):
-        """T09: /_forensic/status liefert vollständiges JSON mit korrektem user_id."""
+        """T09: /_forensic/status liefert vollständiges JSON mit korrektem subject_id."""
         status, body, _ = self._get("/_forensic/status")
         self.assertEqual(status, 200)
         data = json.loads(body)
-        self.assertEqual(data["user_id"], 42)
+        self.assertEqual(data["subject_id"], 42)
         self.assertEqual(data["username"], "testnutzer")
         self.assertEqual(data["mode"], "cli")
         self.assertIn("version", data)
@@ -693,7 +694,7 @@ class TestIntegrationShutdown(unittest.TestCase):
 
         config = _make_config(tmp)
         context = ResolvedContext(
-            mode="cli", user_id=99, username="shutdown_test",
+            mode="cli", subject_id=99, username="shutdown_test",
             forensic_db=forensic_path, evidence_db=evidence_path,
             default_db=default_path, coordinator_db=coordinator_path,
             assets_db=Path(coordinator_path).parent / "assets_42.db",

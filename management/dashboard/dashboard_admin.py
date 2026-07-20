@@ -16,7 +16,7 @@
 #          dashboard_repo.classify_ampel.
 #
 # Beleg: Bauplan B7 v0.9 Paragraph 9.5, mc 2026-07-02.
-# Version: v0.7.315 · Build: 315 · 2026-07-03
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import argparse
@@ -172,14 +172,14 @@ def main(argv=None) -> int:
             print("[dashboard_admin] Keine Faelle vorhanden.")
             return 0
 
-        print("Ampel  Prio  user_id  Status        Zuweisung     "
+        print("Ampel  Prio  subject_id  Status        Zuweisung     "
               "LetzteAkt.        Ereignis        Support")
         print("-" * 100)
         for o in rows:
             print("%-6s %4d  %7d  %-12s  %-12s  %-16s  %-14s  %s" % (
                 _AMPEL_MARK.get(o.ampel, o.ampel),
                 o.priority,
-                o.user_id,
+                o.subject_id,
                 o.status,
                 (o.assigned_system_username or "-"),
                 _fmt_ts(o.last_activity_at),

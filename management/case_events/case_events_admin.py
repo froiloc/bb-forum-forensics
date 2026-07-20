@@ -9,9 +9,9 @@
 #   entstehen NICHT hier, sondern in CasesRepo (Bauplan B7 v0.8 §8.4).
 #
 # Aufruf (Subkommandos, Muster wie person_admin, B7 §5.4):
-#   python -m management.case_events.case_events_admin list --user-id N
+#   python -m management.case_events.case_events_admin list --subject-id N
 #          [--limit K] [--coordinator-db PATH] [--config ./config.yaml]
-#   python -m management.case_events.case_events_admin add  --user-id N
+#   python -m management.case_events.case_events_admin add  --subject-id N
 #          --text "..." [--actor SYSUSER]
 #          [--coordinator-db PATH] [--config ./config.yaml]
 #
@@ -21,7 +21,7 @@
 #   - Nicht-fatal, klare Fehlermeldungen; Exit 0 = ok, 1 = Fehler.
 #
 # Beleg: Bauplan B7 v0.8 §8.5, mc 2026-07-02.
-# Version: v0.7.313 · Build: 313 · 2026-07-02
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import argparse
@@ -87,7 +87,7 @@ def main(argv=None) -> int:
         description="Ereigniszeitstrahl je Fall (case_events) anzeigen/ergänzen."
     )
     common = argparse.ArgumentParser(add_help=False)
-    common.add_argument("--user-id", type=int, required=True)
+    common.add_argument("--subject-id", type=int, required=True)
     common.add_argument("--coordinator-db", default=None)
     common.add_argument("--config", default="./config.yaml")
 
@@ -123,10 +123,10 @@ def main(argv=None) -> int:
         repo = CaseEventsRepo(con, writer)
 
         if args.action == "list":
-            events = repo.list_events(args.user_id, limit=args.limit)
+            events = repo.list_events(args.subject_id, limit=args.limit)
             if not events:
                 print("[case_events_admin] Kein Zeitstrahl-Eintrag für "
-                      "user_id=%d." % args.user_id)
+                      "subject_id=%d." % args.subject_id)
                 return 0
             for e in events:
                 who = e["created_by_username"] or "System"
@@ -145,10 +145,10 @@ def main(argv=None) -> int:
             meta = {"performed_by": getpass.getuser()}
 
         seq = repo.add_manual_event(
-            args.user_id, args.text, actor_id=actor_id, meta=meta,
+            args.subject_id, args.text, actor_id=actor_id, meta=meta,
         )
-        print("[case_events_admin] Eintrag hinzugefügt: user_id=%d "
-              "(audit seq=%d)" % (args.user_id, seq))
+        print("[case_events_admin] Eintrag hinzugefügt: subject_id=%d "
+              "(audit seq=%d)" % (args.subject_id, seq))
         return 0
     except CaseEventsError as exc:
         print("[case_events_admin] %s" % exc, file=sys.stderr)

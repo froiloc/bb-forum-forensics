@@ -11,7 +11,7 @@
 # T05 — /_forensic/annotate: ungültige Kategorie → HTTP 400
 # T06 — /_forensic/annotate: page_url fehlt → HTTP 400
 # T07 — /_forensic/annotate: ungültiges JSON → HTTP 400
-# T08 — /_forensic/status: liefert JSON mit version, mode, user_id
+# T08 — /_forensic/status: liefert JSON mit version, mode, subject_id
 # T09 — /_forensic/viewport: gültiger Batch → HTTP 200, saved=N
 # T10 — /_forensic/viewport: leerer Batch → HTTP 200, saved=0
 # T11 — /_forensic/viewport: page_url fehlt → HTTP 400
@@ -23,7 +23,8 @@
 # T17 — AnnotateEndpoint: alle sechs Kategorien werden akzeptiert
 # T18 — ViewportEndpoint: ungültige Events im Batch werden übersprungen
 #
-# Version: v0.1.0 · Build: 026 · 2026-04-15
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import sys
@@ -104,7 +105,7 @@ def _make_bundle(page=None, annotation_id=1, viewport_saved=2):
 def _make_context():
     ctx = MagicMock()
     ctx.mode                 = "cli"
-    ctx.user_id              = 42
+    ctx.subject_id              = 42
     ctx.username             = "testnutzer"
     ctx.investigator_id      = 1
     # Build 175 (Bug 2.67): investigator_username ist der Ermittler-Account
@@ -344,7 +345,7 @@ class TestForensicApiStatus(unittest.TestCase):
         reset_for_testing()
 
     def test_T08_status_response(self):
-        """T08: /_forensic/status liefert JSON mit version, mode, user_id."""
+        """T08: /_forensic/status liefert JSON mit version, mode, subject_id."""
         bundle = _make_bundle()
         api    = ForensicApi(bundle, self.ctx, self.cfg)
         resp   = _dispatch(api, "GET", "/_forensic/status")
@@ -352,7 +353,7 @@ class TestForensicApiStatus(unittest.TestCase):
         data = json.loads(resp["body"])
         self.assertIn("version", data)
         self.assertIn("mode", data)
-        self.assertEqual(data["user_id"], 42)
+        self.assertEqual(data["subject_id"], 42)
         self.assertEqual(data["username"], "testnutzer")
 
     def test_T08b_status_investigator_username(self):

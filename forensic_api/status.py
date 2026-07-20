@@ -10,7 +10,7 @@
 # Response (JSON):
 #   {
 #     "mode":             "job|cli|support",
-#     "user_id":          42,
+#     "subject_id":       42,
 #     "username":         "beschuldigter42",
 #     "investigator_id":  3,
 #     "page_count":       1234,
@@ -20,7 +20,8 @@
 #     "version":          "v0.1.0-build010"
 #   }
 #
-# Version: v0.1.0 · Build: 020 · 2026-04-15
+# Version: v0.7.469 · Build: 469 · 2026-07-20
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
 # =============================================================================
 
 from __future__ import annotations
@@ -84,13 +85,13 @@ class StatusEndpoint:
             forum_username = self._bundle.forensic.get_meta("username") or \
                              self._context.username or ""
             forum_user_id  = self._bundle.forensic.get_meta("user_id") or \
-                             str(self._context.user_id or "")
+                             str(self._context.subject_id or "")
         except Exception as exc:
             logger.warning("Statusabfrage: DB-Zugriff fehlgeschlagen: %s", exc)
             page_count       = -1
             annotation_count = -1
             forum_username   = self._context.username or ""
-            forum_user_id    = str(self._context.user_id or "")
+            forum_user_id    = str(self._context.subject_id or "")
 
         # Beleg: Projektgespräch — Bug 2.67: investigator_username war nicht im
         # Status-Response enthalten. toolbar.js nutzte fälschlicherweise
@@ -100,7 +101,7 @@ class StatusEndpoint:
         # Build 176 (Bug 2.86): forum_username + forum_user_id ergänzt.
         status = {
             "mode":                  self._context.mode,
-            "user_id":               self._context.user_id,
+            "subject_id":            self._context.subject_id,
             "username":              self._context.username,
             "investigator_id":       self._context.investigator_id,
             "investigator_username": getattr(self._context, "investigator_username", ""),

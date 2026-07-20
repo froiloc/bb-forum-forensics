@@ -1,4 +1,6 @@
 /**
+ * Build 469: Schluesselumstellung user_id -> subject_id (M019)
+ * Version: v0.7.469 · Build: 469 · 2026-07-20
  * tests/unit/test_cockpit_support.test.js
  * IT-Forensisches Ermittlungswerkzeug — Baustelle 7: Cockpit Support-Historie
  *
@@ -34,7 +36,7 @@ function _api() { return _ctx().AIWCockpitSupport; }
 
 function S(over) {
   return Object.assign({
-    session_id: 1, user_id: 18, username: "b18",
+    session_id: 1, subject_id: 18, username: "b18",
     supporter_id: 2, supporter_system_username: "h002",
     supporter_display_name: "Mueller",
     started_at: 1000, ended_at: 1600, duration_sec: 600,
@@ -49,12 +51,12 @@ function _data() {
   return {
     scope: "eigene", count: 3,
     sessions: [
-      S({ session_id: 1, user_id: 18, supporter_id: 2,
+      S({ session_id: 1, subject_id: 18, supporter_id: 2,
           mine_as_supporter: true, on_my_case: true }),   // mine
-      S({ session_id: 2, user_id: 18, supporter_id: 3,
+      S({ session_id: 2, subject_id: 18, supporter_id: 3,
           supporter_display_name: "Gamma",
           mine_as_supporter: false, on_my_case: true }),  // oncase
-      S({ session_id: 3, user_id: 19, supporter_id: 2,
+      S({ session_id: 3, subject_id: 19, supporter_id: 2,
           mine_as_supporter: true, on_my_case: false }),  // mine
     ],
   };

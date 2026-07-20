@@ -13,7 +13,7 @@
 #   Verknuepfungsschluessel ist content.session_id (Beleg: die drei Schreibpfade
 #   in support_sessions_repo.start()/end()/close_orphans() legen session_id in
 #   JEDEN Payload). target_id taugt NICHT als Schluessel, da er bei STARTED die
-#   user_id, bei ENDED die session_id traegt (belegte Asymmetrie).
+#   subject_id, bei ENDED die session_id traegt (belegte Asymmetrie).
 #
 # GRUNDREGEL 1 (kein Beleg still uebersprungen): Auch UNVOLLSTAENDIGE Sitzungen
 #   werden als Datensatz gefuehrt und sichtbar gemacht, nie verworfen:
@@ -25,7 +25,7 @@
 #   Payload uebernommen (der ehrliche, geschriebene Beleg). Bei 'offen'/
 #   'herrenlos' bleibt duration_sec None — es wird KEIN now-started errechnet.
 #
-# Version: v0.7.330 · Build: 330 · 2026-07-07
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 from dataclasses import dataclass
@@ -69,7 +69,7 @@ class SupportSessionRecord:
     Identitaet / Fall:
         session_id   — support_sessions.id aus content.session_id (Schluessel).
                        0 nur im Ausnahmefall fehlender session_id (mit anomaly).
-        user_id      — betroffener Forum-Benutzer (aus dem Payload).
+        subject_id      — betroffener Forum-Benutzer (aus dem Payload).
         username     — Forum-Benutzername aus cases.username (None, falls kein
                        cases-Eintrag existiert — Zeile bleibt trotzdem sichtbar).
 
@@ -98,7 +98,7 @@ class SupportSessionRecord:
         anomaly      — None oder ein ANOMALY_*-Code (z. B. doppeltes ENDED).
     """
     session_id: int
-    user_id: int
+    subject_id: int
     username: Optional[str]
 
     supporter_id: Optional[int]

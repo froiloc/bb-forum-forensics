@@ -38,7 +38,8 @@
 //   (vitest gegen den ECHTEN Code, UMD-Ausgang); XSS: nur textContent bzw.
 //   Tabulator-Plaintext.
 //
-// Version: v0.7.395 · Build: 395 · 2026-07-12
+// Build 469: Schluesselumstellung user_id -> subject_id (M019)
+// Version: v0.7.469 · Build: 469 · 2026-07-20
 // =============================================================================
 
 (function () {
@@ -107,7 +108,7 @@
                 fehlend = '\u2014';
             }
             return {
-                user_id: f.user_id,
+                subject_id: f.subject_id,
                 username: f.username || '',
                 status: f.status || '',
                 assigned_to: f.assigned_to || '\u2014',
@@ -224,7 +225,7 @@
 
     var _COLUMNS = [
         { title: 'A', field: 'ampel', width: 44, hozAlign: 'center' },
-        { title: 'Fall', field: 'user_id', width: 70, sorter: 'number' },
+        { title: 'Fall', field: 'subject_id', width: 70, sorter: 'number' },
         { title: 'Benutzername', field: 'username', headerFilter: 'input' },
         { title: 'Zustand', field: 'status', width: 110 },
         { title: 'Ermittler', field: 'assigned_to', width: 110 },

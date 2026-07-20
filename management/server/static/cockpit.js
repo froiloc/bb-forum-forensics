@@ -71,7 +71,8 @@
 //   Recht: mentoring_notes.view (Lesen) / mentoring_notes.edit (Schreiben, POST
 //   mit X-AIW-Token). Drag&Drop-Ordnung folgt in Block 4. Neuer Nav-Eintrag
 //   'notes' (Gruppe Verwaltung) direkt neben 'mentoring'.
-// Version: v0.7.406 · Build: 406 · 2026-07-14
+// Build 469: Schluesselumstellung user_id -> subject_id (M019)
+// Version: v0.7.469 · Build: 469 · 2026-07-20
 // =============================================================================
 
 (function () {
@@ -971,8 +972,8 @@
         fetchJson('/api/assignable').then(function (data) {
             cleanupView();
             var view = mod.renderAssignment(mainEl, data, {
-                onChange: function (kind, userId, value) {
-                    var req = mod.changeRequest(kind, userId, value);
+                onChange: function (kind, subjectId, value) {
+                    var req = mod.changeRequest(kind, subjectId, value);
                     if (!req) {
                         view.setMessage('Unbekannte Aenderungsart: ' + kind,
                                         true);
@@ -1031,9 +1032,9 @@
                 // FREIGABE (Schreibpfad, Build 377): POST mit Schreib-Token.
                 // Danach NEU LADEN — die Sicht zeigt nur bestaetigt
                 // geschriebene Zustaende (kein optimistisches UI).
-                onApprove: function (userId, reportId, isFinal) {
+                onApprove: function (subjectId, reportId, isFinal) {
                     postJson('/api/report/approve', {
-                        user_id: userId, report_id: reportId,
+                        subject_id: subjectId, report_id: reportId,
                         is_final: !!isFinal
                     }).then(function (res) {
                         loadReports(mainEl, false, {
@@ -1053,9 +1054,9 @@
                 },
 
                 // RUECKGABE zur Nachbesserung (Build 380): submitted -> draft.
-                onReturn: function (userId, reportId) {
+                onReturn: function (subjectId, reportId) {
                     postJson('/api/report/return', {
-                        user_id: userId, report_id: reportId
+                        subject_id: subjectId, report_id: reportId
                     }).then(function (res) {
                         loadReports(mainEl, false, {
                             text: 'Zur Nachbesserung zurueckgegeben (Beleg #'
@@ -1072,8 +1073,8 @@
                 },
 
                 // SIEGELPRUEFUNG (lesend): Hash neu bilden und vergleichen.
-                onVerify: function (userId, reportId) {
-                    fetchJson('/api/report/verify?user_id=' + userId
+                onVerify: function (subjectId, reportId) {
+                    fetchJson('/api/report/verify?subject_id=' + subjectId
                               + '&report_id=' + reportId)
                         .then(function (v) {
                             if (t && t.aiwShowVerify) { t.aiwShowVerify(v); }
@@ -1397,7 +1398,7 @@
                 onDecide: function (body) {
                     postJson('/api/promotion/decide', body)
                         .then(function (res) {
-                            after('Kandidat ' + res.user_id + ': ' + res.von
+                            after('Kandidat ' + res.subject_id + ': ' + res.von
                                 + ' → ' + res.auf + ' (Beleg #'
                                 + res.audit_seq + ').', false);
                         })
@@ -1456,7 +1457,7 @@
                 onGrant: function (body) {
                     postJson('/api/release/grant', body)
                         .then(function (res) {
-                            after('Fall ' + body.user_id + ' an '
+                            after('Fall ' + body.subject_id + ' an '
                                 + res.recipient_display + ' freigegeben '
                                 + '(Freigabe ' + res.release_id + ', Beleg #'
                                 + res.audit_seq + ').', false);
@@ -1624,7 +1625,7 @@
                     onAdd: function (body) {
                         postJson('/api/report/comment', body)
                             .then(function () {
-                                reloadComments(body.user_id, body.report_id);
+                                reloadComments(body.subject_id, body.report_id);
                             })
                             .catch(function (e) {
                                 mod.commentsError(e && e.message);
@@ -1696,7 +1697,7 @@
                 if (rd && rd.can_edit) {
                     fetchJson('/api/results/catalog').then(function (cat) {
                         mod.renderAssessForm(cat, {
-                            userId: uid,
+                            subjectId: uid,
                             onAssess: function (body) {
                                 postJson('/api/results/assess', body)
                                     .then(function () { reloadResults(uid); })
@@ -1738,7 +1739,7 @@
                         reloadResults(uid);
                     },
                     onVerify: function (uid, rid) {
-                        fetchJson('/api/report/verify?user_id=' + uid
+                        fetchJson('/api/report/verify?subject_id=' + uid
                                   + '&report_id=' + rid)
                             .then(function (v) { mod.renderVerify(v); })
                             .catch(function (e) {
@@ -2150,8 +2151,8 @@
                     // Fall-Sprung: zur Uebersicht wechseln und die Zeile
                     // fokussieren (state.focusCaseId wird von loadOverview nach
                     // dem Rendern ausgewertet).
-                    onSelectCase: function (userId) {
-                        state.focusCaseId = userId;
+                    onSelectCase: function (subjectId) {
+                        state.focusCaseId = subjectId;
                         selectView('dashboard');
                     }
                 });

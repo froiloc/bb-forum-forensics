@@ -15,7 +15,8 @@
 # GT09 — gantt_to_dict json-serialisierbar, Balkenzahl stimmt
 # GT10 — leere Datenlage: keine Lanes, range None (kein Absturz)
 #
-# Version: v0.7.447 · Build: 447 · 2026-07-19
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import json
@@ -35,10 +36,10 @@ def _con():
     con = sqlite3.connect(":memory:")
     con.executescript("""
         CREATE TABLE person(id INTEGER PRIMARY KEY, system_username TEXT, display_name TEXT);
-        CREATE TABLE cases(user_id INTEGER PRIMARY KEY, username TEXT, status TEXT,
+        CREATE TABLE cases(subject_id INTEGER PRIMARY KEY, username TEXT, status TEXT,
             assigned_to INTEGER, created_at INTEGER, updated_at INTEGER);
         CREATE TABLE case_events(id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER, event_kind TEXT, created_at INTEGER);
+            subject_id INTEGER, event_kind TEXT, created_at INTEGER);
         INSERT INTO person VALUES(1,'h001','Zetter, Z'),(2,'h002','Adler, A');
     """)
     return con
@@ -50,7 +51,7 @@ def _case(con, uid, status, assigned_to, created_at):
 
 
 def _ev(con, uid, kind, ts):
-    con.execute("INSERT INTO case_events(user_id,event_kind,created_at) VALUES(?,?,?)",
+    con.execute("INSERT INTO case_events(subject_id,event_kind,created_at) VALUES(?,?,?)",
                 (uid, kind, ts))
 
 
@@ -63,7 +64,7 @@ def test_gt01_start_anchor():
     _case(con, 11, "open", None, _NOW - 8 * _DAY)
     con.commit()
     res = GanttModel(con).build(now_ts=_NOW)
-    bars = {b.user_id: b for l in res.lanes for b in l.bars}
+    bars = {b.subject_id: b for l in res.lanes for b in l.bars}
     assert bars[10].start_ts == _NOW - 15 * _DAY    # fruehestes assigned
     assert bars[11].start_ts == _NOW - 8 * _DAY     # created_at
 
@@ -76,7 +77,7 @@ def test_gt02_end_and_ongoing():
     _case(con, 11, "in_progress", 1, _NOW - 10 * _DAY)  # offen
     con.commit()
     res = GanttModel(con).build(now_ts=_NOW)
-    bars = {b.user_id: b for l in res.lanes for b in l.bars}
+    bars = {b.subject_id: b for l in res.lanes for b in l.bars}
     assert bars[10].ongoing is False and bars[10].end_ts == _NOW - 5 * _DAY
     assert bars[11].ongoing is True and bars[11].end_ts == _NOW
 
@@ -140,7 +141,7 @@ def test_gt08_completed_ts():
     _case(con, 71, "open", 1, _NOW - 3 * _DAY)
     con.commit()
     res = GanttModel(con).build(now_ts=_NOW)
-    bars = {b.user_id: b for l in res.lanes for b in l.bars}
+    bars = {b.subject_id: b for l in res.lanes for b in l.bars}
     assert bars[70].completed_ts == _NOW - 2 * _DAY
     assert bars[71].completed_ts is None
 

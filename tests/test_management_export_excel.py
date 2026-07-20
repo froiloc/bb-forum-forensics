@@ -15,7 +15,8 @@
 # XL09 — ExcelUnavailable, wenn openpyxl fehlt (Import-Guard)
 # XL10 — UTF-8: multilingualer Benutzername bleibt erhalten
 #
-# Version: v0.7.441 · Build: 441 · 2026-07-19
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import builtins
@@ -60,7 +61,7 @@ def _ctx(**over):
 def _sample_rows():
     return [
         {
-            "user_id": 4711, "username": "täter_süd", "status": "in_progress",
+            "subject_id": 4711, "username": "täter_süd", "status": "in_progress",
             "priority": 1, "assigned_system_username": "h012345",
             "assigned_display_name": "Muster, Erika", "has_note": 1,
             "approved_at": None, "total_pages_scraped": 87, "event_count": 5,
@@ -70,7 +71,7 @@ def _sample_rows():
             "created_at": 1_699_000_000, "updated_at": 1_700_000_500,
         },
         {
-            "user_id": 4712, "username": "user_中文", "status": "open",
+            "subject_id": 4712, "username": "user_中文", "status": "open",
             "priority": 3, "assigned_system_username": None,
             "assigned_display_name": None, "has_note": 0,
             "approved_at": None, "total_pages_scraped": None, "event_count": 0,

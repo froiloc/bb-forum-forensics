@@ -1,4 +1,6 @@
 /**
+ * Build 469: Schluesselumstellung user_id -> subject_id (M019)
+ * Version: v0.7.469 · Build: 469 · 2026-07-20
  * tests/unit/test_cockpit_results.test.js
  * IT-Forensisches Ermittlungswerkzeug — Baustelle 7: Ermittlungsergebnis
  *
@@ -130,24 +132,24 @@ function _cov() {
     summary: { faelle_gesamt: 4, nie_bewertet: 2, voll_bewertet: 1,
                abdeckung_mittel: 0.38 },
     faelle: [
-      { user_id: 20, username: "b20", status: "open", assigned_to: null,
+      { subject_id: 20, username: "b20", status: "open", assigned_to: null,
         n_bewertet: 0, n_kriterien: 4, abdeckung: 0.0, n_beste: 0,
         unbewertet: ["identification", "location_identification", "abuser",
                      "cp_possession"],
         score: 0, hoechste_konfidenz: null, zuletzt_bewertet: null,
         nie_bewertet: true },
-      { user_id: 21, username: "b21", status: "open", assigned_to: null,
+      { subject_id: 21, username: "b21", status: "open", assigned_to: null,
         n_bewertet: 0, n_kriterien: 4, abdeckung: 0.0, n_beste: 0,
         unbewertet: ["identification", "location_identification", "abuser",
                      "cp_possession"],
         score: 0, hoechste_konfidenz: null, zuletzt_bewertet: null,
         nie_bewertet: true },
-      { user_id: 19, username: "b19", status: "in_progress",
+      { subject_id: 19, username: "b19", status: "in_progress",
         assigned_to: "h002", n_bewertet: 2, n_kriterien: 4, abdeckung: 0.5,
         n_beste: 1, unbewertet: ["location_identification", "cp_possession"],
         score: 8, hoechste_konfidenz: "gerichtsfest",
         zuletzt_bewertet: 1783000000, nie_bewertet: false },
-      { user_id: 18, username: "b18", status: "in_progress",
+      { subject_id: 18, username: "b18", status: "in_progress",
         assigned_to: "h002", n_bewertet: 4, n_kriterien: 4, abdeckung: 1.0,
         n_beste: 2, unbewertet: [], score: 14,
         hoechste_konfidenz: "gerichtsfest", zuletzt_bewertet: 1783100000,
@@ -191,19 +193,19 @@ describe("cockpit_results (Build 395)", () => {
     const rows = api.toRows(_cov());
     expect(rows).toHaveLength(4);
 
-    const r20 = rows.find((r) => r.user_id === 20);
+    const r20 = rows.find((r) => r.subject_id === 20);
     expect(r20.ampel).toBe("rot");
     // NICHT "-" und nicht leer.
     expect(r20.fehlend).toBe("ALLE (nie bewertet)");
     expect(r20.abdeckung_txt).toBe("0/4");
     expect(r20.assigned_to).toBe("\u2014");
 
-    const r19 = rows.find((r) => r.user_id === 19);
+    const r19 = rows.find((r) => r.subject_id === 19);
     expect(r19.ampel).toBe("gelb");
     expect(r19.fehlend).toContain("location_identification");
     expect(r19.abdeckung_txt).toBe("2/4");
 
-    const r18 = rows.find((r) => r.user_id === 18);
+    const r18 = rows.find((r) => r.subject_id === 18);
     expect(r18.ampel).toBe("gruen");
     expect(r18.fehlend).toBe("\u2014");
 

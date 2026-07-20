@@ -19,7 +19,7 @@
  *                                         fdb-Dry-Run), liefert {ok,errors,dry_run}
  *
  * Warum ':uid' der einzige Parameter der Query ist: der AutoQueryResolver
- *   (report_render/auto_query.py) fuehrt die Query mit exakt {"uid":<user_id>}
+ *   (report_render/auto_query.py) fuehrt die Query mit exakt {"uid":<subject_id>}
  *   aus. Das spiegeln wir im Hinweistext der Maske, damit die Autor:in es sofort
  *   sieht (der Server erzwingt es zusaetzlich, Build 422).
  *
@@ -29,7 +29,8 @@
  *   ausschliesslich via textContent/value (die Query kann beliebige Zeichen und
  *   Sprachen enthalten — multilinguales Forum).
  *
- * Version: v0.7.423 · Build: 423 · 2026-07-14
+ * Build 469: Schluesselumstellung user_id -> subject_id (M019)
+ * Version: v0.7.469 · Build: 469 · 2026-07-20
  */
 (function () {
     'use strict';
@@ -108,7 +109,7 @@
 
     // buildPayload: baut den POST-Body aus den (rohen) Feldwerten. REIN und
     // testbar. Trimmt id/title/sql; description bleibt wie eingegeben (leerer
-    // String erlaubt, NULL nicht — der Server erzwingt es). test_user_id wird
+    // String erlaubt, NULL nicht — der Server erzwingt es). test_subject_id wird
     // nur uebernommen, wenn nicht leer (sonst kein Dry-Run).
     function buildPayload(fields) {
         var f = fields || {};
@@ -124,9 +125,9 @@
         if (tags !== undefined && tags !== null && String(tags).trim() !== '') {
             payload.tags = String(tags).trim();
         }
-        var tu = f.test_user_id;
+        var tu = f.test_subject_id;
         if (tu !== undefined && tu !== null && String(tu).trim() !== '') {
-            payload.test_user_id = String(tu).trim();
+            payload.test_subject_id = String(tu).trim();
         }
         return payload;
     }
@@ -229,7 +230,7 @@
             sql_query: f.sql_query.value,
             return_type: f.return_type.value,
             tags: f.tags.value,
-            test_user_id: f.test_user_id.value
+            test_subject_id: f.test_subject_id.value
         };
     }
 
@@ -422,7 +423,7 @@
         // Feld-Referenzen buendeln (fuer _fillForm/_currentFields).
         _state.fields = {
             id: fId, title: fTitle, description: fDesc, sql_query: fSql,
-            return_type: fRt, tags: fTags, test_user_id: fTest
+            return_type: fRt, tags: fTags, test_subject_id: fTest
         };
 
         // Handler verdrahten.

@@ -25,7 +25,8 @@
 # E12 — insert_event_row mit unbekanntem event_kind -> CaseEventsError,
 #       via Gateway-Rollback bleibt NICHTS zurück (kein Teilzustand)
 #
-# Version: v0.7.313 · Build: 313 · 2026-07-02
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import json
@@ -133,10 +134,10 @@ class ManagementCaseEventsTests(unittest.TestCase):
             os.rmdir(self._tmp)
 
     # Helfer -----------------------------------------------------------------
-    def _rows(self, user_id):
+    def _rows(self, subject_id):
         return self.con.execute(
-            "SELECT * FROM case_events WHERE user_id = ? "
-            "ORDER BY created_at ASC, id ASC", (user_id,)
+            "SELECT * FROM case_events WHERE subject_id = ? "
+            "ORDER BY created_at ASC, id ASC", (subject_id,)
         ).fetchall()
 
     def _audit_count(self, event_type=None):
@@ -156,7 +157,7 @@ class ManagementCaseEventsTests(unittest.TestCase):
             "AND name='case_events'").fetchone())
         self.assertIsNotNone(self.con.execute(
             "SELECT name FROM sqlite_master WHERE type='index' "
-            "AND name='case_events_user_time_idx'").fetchone())
+            "AND name='case_events_subject_time_idx'").fetchone())
         # Zweiter Lauf: No-Op.
         second = MigrationRunner(
             self.con, self.mods, audit=self.audit, deployed_by="tester",
@@ -268,7 +269,7 @@ class ManagementCaseEventsTests(unittest.TestCase):
         # sekundengleich möglich -> Reihenfolge über id garantiert).
         self.assertEqual([e["event_kind"] for e in listed],
                          ["case_created", "assigned", "manual"])
-        self.assertTrue(all(e["user_id"] == 18 for e in listed))
+        self.assertTrue(all(e["subject_id"] == 18 for e in listed))
         # created_by aufgelöst; payload als dict.
         self.assertEqual(listed[0]["created_by_username"], "h001")
         self.assertEqual(listed[2]["created_by_username"], "h002")
@@ -300,7 +301,7 @@ class ManagementCaseEventsTests(unittest.TestCase):
 
         def _after(con, seq):
             insert_event_row(
-                con, user_id=18, event_kind="ufo", payload=None,
+                con, subject_id=18, event_kind="ufo", payload=None,
                 created_by=None, created_at=int(time.time()), audit_seq=seq,
             )
 

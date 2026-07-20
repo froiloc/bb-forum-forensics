@@ -15,7 +15,8 @@
 #        AD-Schicht.
 # CR07 — list_releases(): Labels + Fall-Benutzername.
 #
-# Version: v0.7.462 · Build: 462 · 2026-07-20
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import json
@@ -113,7 +114,7 @@ class CaseReleaseRepoTests(unittest.TestCase):
     # CR01 -------------------------------------------------------------------
     def test_cr01_grant_audited_no_freetext(self):
         res = self.repo.grant(
-            user_id=18, recipient_kennung="H0B1234", umfang="bericht",
+            subject_id=18, recipient_kennung="H0B1234", umfang="bericht",
             unbedenklichkeit_grundlage="Bericht geschwaerzt, LKA-Freigabe 12/26",
             actor_id=1)
         self.assertGreater(res["audit_seq"], 0)
@@ -140,7 +141,7 @@ class CaseReleaseRepoTests(unittest.TestCase):
     # CR02 -------------------------------------------------------------------
     def test_cr02_ad_deny(self):
         with self.assertRaises(CaseReleaseError):
-            self.repo.grant(user_id=18, recipient_kennung="h0xxxxx",
+            self.repo.grant(subject_id=18, recipient_kennung="h0xxxxx",
                             umfang="bericht",
                             unbedenklichkeit_grundlage="x", actor_id=1)
         self.assertEqual(self._count(), 0)
@@ -148,7 +149,7 @@ class CaseReleaseRepoTests(unittest.TestCase):
     # CR03 -------------------------------------------------------------------
     def test_cr03_unbedenklichkeit_required(self):
         with self.assertRaises(CaseReleaseError):
-            self.repo.grant(user_id=18, recipient_kennung="h0b1234",
+            self.repo.grant(subject_id=18, recipient_kennung="h0b1234",
                             umfang="bericht",
                             unbedenklichkeit_grundlage="   ", actor_id=1)
         self.assertEqual(self._count(), 0)
@@ -156,7 +157,7 @@ class CaseReleaseRepoTests(unittest.TestCase):
     # CR04 -------------------------------------------------------------------
     def test_cr04_unknown_case_rollback(self):
         with self.assertRaises(CaseReleaseError):
-            self.repo.grant(user_id=999, recipient_kennung="h0b1234",
+            self.repo.grant(subject_id=999, recipient_kennung="h0b1234",
                             umfang="akte",
                             unbedenklichkeit_grundlage="ok", actor_id=1)
         self.assertEqual(self._count(), 0)
@@ -164,7 +165,7 @@ class CaseReleaseRepoTests(unittest.TestCase):
     # CR05 -------------------------------------------------------------------
     def test_cr05_revoke_and_finality(self):
         res = self.repo.grant(
-            user_id=18, recipient_kennung="h0b1234", umfang="akte",
+            subject_id=18, recipient_kennung="h0b1234", umfang="akte",
             unbedenklichkeit_grundlage="freigegeben durch StA", actor_id=1)
         rid = res["release_id"]
         # Grund Pflicht.
@@ -186,21 +187,21 @@ class CaseReleaseRepoTests(unittest.TestCase):
         # ohne Writer -> kein Schreibpfad.
         ro = CaseReleaseRepo(self.con, ad=self.ad)
         with self.assertRaises(CaseReleaseError):
-            ro.grant(user_id=18, recipient_kennung="h0b1234", umfang="bericht",
+            ro.grant(subject_id=18, recipient_kennung="h0b1234", umfang="bericht",
                      unbedenklichkeit_grundlage="x", actor_id=1)
         # mit Writer, aber ohne AD -> keine Freigabe.
         no_ad = CaseReleaseRepo(self.con, self.writer)
         with self.assertRaises(CaseReleaseError):
-            no_ad.grant(user_id=18, recipient_kennung="h0b1234",
+            no_ad.grant(subject_id=18, recipient_kennung="h0b1234",
                         umfang="bericht",
                         unbedenklichkeit_grundlage="x", actor_id=1)
 
     # CR07 -------------------------------------------------------------------
     def test_cr07_list_releases(self):
-        self.repo.grant(user_id=18, recipient_kennung="h0b1234",
+        self.repo.grant(subject_id=18, recipient_kennung="h0b1234",
                         umfang="auszug",
                         unbedenklichkeit_grundlage="Teilauszug ok", actor_id=1)
-        rows = self.repo.list_releases(user_ids=[18])
+        rows = self.repo.list_releases(subject_ids=[18])
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["fall_username"], "boarder18")
         self.assertEqual(rows[0]["umfang"], "auszug")

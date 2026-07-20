@@ -11,10 +11,11 @@
 #   RR03 — READ-ONLY-Integritaet: MD5 der evidence_<uid>.db vor == nach dem
 #          Render (das Management schreibt NICHT in die evidence-DB).
 #   RR04 — unbekannte uid -> 404 (evidence_not_found), kein stiller Fehlschlag.
-#   RR05 — fehlender user_id -> 400.
+#   RR05 — fehlender subject_id -> 400.
 #   RR06 — Scope 'eigene': fremder Fall -> 403; eigener Fall -> 200.
 #
-# Version: v0.7.410 · Build: 410 · 2026-07-14
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import hashlib
@@ -178,20 +179,20 @@ class ReportRenderManagementTests(unittest.TestCase):
 
     # RR01 -------------------------------------------------------------------
     def test_rr01_render_ok(self):
-        r = self._app().dispatch(1, "/api/report/render", {"user_id": ["700"]})
+        r = self._app().dispatch(1, "/api/report/render", {"subject_id": ["700"]})
         self.assertEqual(r.status, 200)
         self.assertIn("text/html", r.content_type)
         self.assertIn(_PROBE, r.body.decode("utf-8"))
 
     # RR02 -------------------------------------------------------------------
     def test_rr02_forbidden_without_cap(self):
-        r = self._app().dispatch(2, "/api/report/render", {"user_id": ["700"]})
+        r = self._app().dispatch(2, "/api/report/render", {"subject_id": ["700"]})
         self.assertEqual(r.status, 403)
 
     # RR03 -------------------------------------------------------------------
     def test_rr03_readonly_integrity(self):
         before = _md5(self._ev700)
-        r = self._app().dispatch(1, "/api/report/render", {"user_id": ["700"]})
+        r = self._app().dispatch(1, "/api/report/render", {"subject_id": ["700"]})
         self.assertEqual(r.status, 200)
         after = _md5(self._ev700)
         self.assertEqual(before, after,
@@ -202,23 +203,23 @@ class ReportRenderManagementTests(unittest.TestCase):
 
     # RR04 -------------------------------------------------------------------
     def test_rr04_unknown_uid_404(self):
-        r = self._app().dispatch(1, "/api/report/render", {"user_id": ["999"]})
+        r = self._app().dispatch(1, "/api/report/render", {"subject_id": ["999"]})
         self.assertEqual(r.status, 404)
         self.assertEqual(json.loads(r.body.decode("utf-8"))["error"],
                          "evidence_not_found")
 
     # RR05 -------------------------------------------------------------------
-    def test_rr05_missing_user_id_400(self):
+    def test_rr05_missing_subject_id_400(self):
         r = self._app().dispatch(1, "/api/report/render", {})
         self.assertEqual(r.status, 400)
 
     # RR06 -------------------------------------------------------------------
     def test_rr06_scope_eigene(self):
         # Person 3 (Scope 'eigene') darf Fall 700 (zugewiesen) -> 200 ...
-        r_ok = self._app().dispatch(3, "/api/report/render", {"user_id": ["700"]})
+        r_ok = self._app().dispatch(3, "/api/report/render", {"subject_id": ["700"]})
         self.assertEqual(r_ok.status, 200)
         # ... aber NICHT Fall 701 (nicht zugewiesen) -> 403.
-        r_no = self._app().dispatch(3, "/api/report/render", {"user_id": ["701"]})
+        r_no = self._app().dispatch(3, "/api/report/render", {"subject_id": ["701"]})
         self.assertEqual(r_no.status, 403)
 
 

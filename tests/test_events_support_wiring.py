@@ -24,7 +24,8 @@
 #   P04 — inaktiver Status -> support_count 0
 #   P05 — Exception im Read -> inaktiv (kein Absturz)
 #
-# Version: v0.7.312 · Build: 312 · 2026-07-02
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # Beleg: Bauplan B7 v0.6 §6/§7, mc 2026-07-01.
 # =============================================================================
 
@@ -75,6 +76,11 @@ def _build_coordinator_db(path):
          (2, "h002", "Support Zwei", 1, 0, 1, now)],
     )
     m003_support_sessions.up(con)
+    # Build 469: M019-Teilschritt fuer DIESE Tabelle nachziehen. Der volle
+    # Runner-Lauf setzt alle 9 Schluesseltabellen voraus (M019.precount);
+    # hier genuegt exakt die Operation, die M019 auf support_sessions
+    # ausfuehrt (RENAME COLUMN, Weg A) — der Binder schreibt subject_id.
+    con.execute("ALTER TABLE support_sessions RENAME COLUMN user_id TO subject_id")
     AuditLog.create_schema(con)
     audit = AuditLog(con)
     con.execute("BEGIN IMMEDIATE")
@@ -94,7 +100,7 @@ class SupportPresenceBinderTests(unittest.TestCase):
         _build_coordinator_db(self.db_path)
         self.binder = SupportPresenceBinder(
             self.db_path,
-            user_id=self.USER_ID,
+            subject_id=self.USER_ID,
             supporter_id=self.SUPPORTER_ID,
         )
         # Separate READ-Verbindung fuer Verifikation. Autocommit
@@ -153,7 +159,7 @@ class SupportPresenceBinderTests(unittest.TestCase):
         self.assertIsInstance(sid, int)
         row = self._session_row(sid)
         self.assertIsNotNone(row)
-        self.assertEqual(row["user_id"], self.USER_ID)
+        self.assertEqual(row["subject_id"], self.USER_ID)
         self.assertEqual(row["supporter_id"], self.SUPPORTER_ID)
         self.assertIsNone(row["ended_at"])
         self.assertEqual(self._last_audit_type(),
@@ -218,7 +224,7 @@ class SupportPresenceBinderTests(unittest.TestCase):
         old = int(time.time()) - 100000
         self.vcon.execute(
             "INSERT INTO support_sessions "
-            "(user_id, supporter_id, started_at, last_heartbeat) "
+            "(subject_id, supporter_id, started_at, last_heartbeat) "
             "VALUES (?, ?, ?, ?)",
             (self.USER_ID, self.SUPPORTER_ID, old, old),
         )
@@ -270,8 +276,8 @@ class _FakeCoordinator:
         self._raise = raise_exc
         self.calls = []
 
-    def get_support_status(self, user_id=None, stale_sec=30):
-        self.calls.append((user_id, stale_sec))
+    def get_support_status(self, subject_id=None, stale_sec=30):
+        self.calls.append((subject_id, stale_sec))
         if self._raise:
             raise RuntimeError("simulierter Lesefehler")
         return self._record
@@ -283,9 +289,9 @@ class _FakeBundle:
 
 
 class _FakeContext:
-    def __init__(self, mode, user_id):
+    def __init__(self, mode, subject_id):
         self.mode = mode
-        self.user_id = user_id
+        self.subject_id = subject_id
 
 
 class GetSupportStatusPayloadTests(unittest.TestCase):
@@ -295,13 +301,13 @@ class GetSupportStatusPayloadTests(unittest.TestCase):
         rec = SupportStatusRecord(active=True, username="h002",
                                   since_ms=1234000, count=3)
         bundle = _FakeBundle(_FakeCoordinator(record=rec))
-        ctx = _FakeContext(mode="job", user_id=42)
+        ctx = _FakeContext(mode="job", subject_id=42)
         out = _get_support_status(bundle, ctx)
         self.assertTrue(out["support_active"])
         self.assertEqual(out["support_user"], "h002")
         self.assertEqual(out["since"], 1234000)
         self.assertEqual(out["support_count"], 3)
-        # Fall-user_id wurde an den Read durchgereicht.
+        # Fall-subject_id wurde an den Read durchgereicht.
         self.assertEqual(bundle.coordinator.calls[0][0], 42)
 
     # P02 -------------------------------------------------------------------
@@ -310,7 +316,7 @@ class GetSupportStatusPayloadTests(unittest.TestCase):
                                   since_ms=1, count=1)
         coord = _FakeCoordinator(record=rec)
         bundle = _FakeBundle(coord)
-        ctx = _FakeContext(mode="support", user_id=42)
+        ctx = _FakeContext(mode="support", subject_id=42)
         out = _get_support_status(bundle, ctx)
         self.assertFalse(out["support_active"])
         self.assertEqual(out["support_count"], 0)
@@ -320,7 +326,7 @@ class GetSupportStatusPayloadTests(unittest.TestCase):
     # P03 -------------------------------------------------------------------
     def test_p03_coordinator_none_is_inactive(self):
         bundle = _FakeBundle(None)
-        ctx = _FakeContext(mode="cli", user_id=42)
+        ctx = _FakeContext(mode="cli", subject_id=42)
         out = _get_support_status(bundle, ctx)
         self.assertFalse(out["support_active"])
         self.assertEqual(out["support_count"], 0)
@@ -330,7 +336,7 @@ class GetSupportStatusPayloadTests(unittest.TestCase):
         rec = SupportStatusRecord(active=False, username=None,
                                   since_ms=None, count=0)
         bundle = _FakeBundle(_FakeCoordinator(record=rec))
-        ctx = _FakeContext(mode="job", user_id=42)
+        ctx = _FakeContext(mode="job", subject_id=42)
         out = _get_support_status(bundle, ctx)
         self.assertFalse(out["support_active"])
         self.assertIsNone(out["support_user"])
@@ -339,7 +345,7 @@ class GetSupportStatusPayloadTests(unittest.TestCase):
     # P05 -------------------------------------------------------------------
     def test_p05_read_exception_is_inactive(self):
         bundle = _FakeBundle(_FakeCoordinator(raise_exc=True))
-        ctx = _FakeContext(mode="job", user_id=42)
+        ctx = _FakeContext(mode="job", subject_id=42)
         out = _get_support_status(bundle, ctx)
         self.assertFalse(out["support_active"])
         self.assertEqual(out["support_count"], 0)

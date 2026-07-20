@@ -10,7 +10,7 @@
 #   python -m management.stats.gantt_admin [--coordinator-db PATH]
 #          [--config ./config.yaml] [--json]
 #
-# Version: v0.7.447 · Build: 447 · 2026-07-19
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import argparse
@@ -82,7 +82,7 @@ def main(argv=None) -> int:
         for b in lane.bars:
             marker = "…laufend" if b.ongoing else "abgeschlossen"
             print("    Fall %d (%s) [%s] %s .. %s  %s"
-                  % (b.user_id, b.username, b.status,
+                  % (b.subject_id, b.username, b.status,
                      _fmt(b.start_ts), _fmt(b.end_ts), marker))
     return 0
 

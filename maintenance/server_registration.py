@@ -8,7 +8,7 @@
 #   auffindbar und — ueber das dateivermittelte Kill-Feld — beendbar.
 #
 # Felder (Bauplan Abschnitt 3.4):
-#   uuid, role, host, pid, port, user_id, build, config, started_am, window_id,
+#   uuid, role, host, pid, port, subject_id, build, config, started_am, window_id,
 #   kill_angefordert, kill_von, kill_am
 #
 # Intention:
@@ -18,7 +18,8 @@
 #   eigene Anmeldung, erkennt das, gibt DBs frei, beendet sich und entfernt seine
 #   Anmeldedatei. Deren Verschwinden ist die Bestaetigung.
 #
-# Version: v0.7.435 · Build: 435 · 2026-07-19
+# Version: v0.7.469 · Build: 469 · 2026-07-20
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
 # =============================================================================
 
 from __future__ import annotations
@@ -38,7 +39,7 @@ class ServerRegistration:
 
     def __init__(self, uuid: str, role: str, host: str, pid: int, build: int,
                  window_id: str, port: Optional[int] = None,
-                 user_id: Optional[int] = None, config: Optional[str] = None,
+                 subject_id: Optional[int] = None, config: Optional[str] = None,
                  started_am: Optional[int] = None,
                  kill_angefordert: bool = False, kill_von: Optional[str] = None,
                  kill_am: Optional[int] = None) -> None:
@@ -49,7 +50,7 @@ class ServerRegistration:
         self.build = int(build)
         self.window_id = str(window_id)
         self.port = int(port) if port is not None else None
-        self.user_id = int(user_id) if user_id is not None else None
+        self.subject_id = int(subject_id) if subject_id is not None else None
         self.config = str(config) if config is not None else None
         self.started_am = int(started_am) if started_am is not None else jetzt_epoch()
         self.kill_angefordert = bool(kill_angefordert)
@@ -59,17 +60,17 @@ class ServerRegistration:
     # --- Erzeugung / (De-)Serialisierung ------------------------------------
     @classmethod
     def neu(cls, role: str, host: str, pid: int, build: int, window_id: str,
-            port: Optional[int] = None, user_id: Optional[int] = None,
+            port: Optional[int] = None, subject_id: Optional[int] = None,
             config: Optional[str] = None) -> "ServerRegistration":
         return cls(uuid=str(_uuid.uuid4()), role=role, host=host, pid=pid,
-                   build=build, window_id=window_id, port=port, user_id=user_id,
+                   build=build, window_id=window_id, port=port, subject_id=subject_id,
                    config=config)
 
     def to_dict(self) -> dict:
         return {
             "uuid": self.uuid, "role": self.role, "host": self.host,
             "pid": self.pid, "build": self.build, "window_id": self.window_id,
-            "port": self.port, "user_id": self.user_id, "config": self.config,
+            "port": self.port, "subject_id": self.subject_id, "config": self.config,
             "started_am": self.started_am,
             "kill_angefordert": self.kill_angefordert,
             "kill_von": self.kill_von, "kill_am": self.kill_am,
@@ -81,7 +82,7 @@ class ServerRegistration:
             uuid=erwarte(d, "uuid"), role=erwarte(d, "role"),
             host=erwarte(d, "host"), pid=erwarte(d, "pid"),
             build=erwarte(d, "build"), window_id=erwarte(d, "window_id"),
-            port=d.get("port"), user_id=d.get("user_id"), config=d.get("config"),
+            port=d.get("port"), subject_id=d.get("subject_id"), config=d.get("config"),
             started_am=d.get("started_am"),
             kill_angefordert=d.get("kill_angefordert", False),
             kill_von=d.get("kill_von"), kill_am=d.get("kill_am"),

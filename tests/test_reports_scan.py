@@ -16,7 +16,8 @@
 # RS07 — /api/reports: 200 + Berichte; 403 ohne reports.review.
 # RS08 — scope 'eigene': nur Berichte zu eigenen Faellen.
 #
-# Version: v0.7.374 · Build: 374 · 2026-07-10
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import json
@@ -205,7 +206,7 @@ class ReportsScanTests(unittest.TestCase):
         res = repo.list_reports()
         self.assertEqual(res["case_db_count"], 2)
         self.assertEqual(res["count"], 2)
-        by_uid = {r["user_id"]: r for r in res["reports"]}
+        by_uid = {r["subject_id"]: r for r in res["reports"]}
         self.assertEqual(by_uid[18]["title"], "Zwischenbericht")
         self.assertEqual(by_uid[18]["status"], "submitted")
         self.assertEqual(by_uid[18]["username"], "b18")
@@ -233,7 +234,7 @@ class ReportsScanTests(unittest.TestCase):
 
         third = repo.list_reports()
         self.assertEqual(third["rescanned"], 1)
-        by_uid = {r["user_id"]: r for r in third["reports"]}
+        by_uid = {r["subject_id"]: r for r in third["reports"]}
         self.assertEqual(by_uid[19]["status"], "submitted")  # neuer Stand
 
     # RS05 -------------------------------------------------------------------
@@ -250,7 +251,7 @@ class ReportsScanTests(unittest.TestCase):
             f.write(b"kein sqlite")
         repo = ReportsRepo(self.con, self._ev)
         res = repo.list_reports()
-        errs = {e["user_id"] for e in res["errors"]}
+        errs = {e["subject_id"] for e in res["errors"]}
         self.assertIn(20, errs)            # gemeldet, nicht verschluckt
         self.assertEqual(res["count"], 2)  # die gesunden Faelle bleiben da
 
@@ -272,7 +273,7 @@ class ReportsScanTests(unittest.TestCase):
         self.assertEqual(d["scope"], "eigene")
         # person 2 ist nur Fall 18 zugewiesen.
         self.assertEqual(d["count"], 1)
-        self.assertEqual(d["reports"][0]["user_id"], 18)
+        self.assertEqual(d["reports"][0]["subject_id"], 18)
 
 
     # RS09 -------------------------------------------------------------------

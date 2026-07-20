@@ -19,7 +19,7 @@
 #   KEIN Fall geht verloren (GR1): jeder cases-Datensatz ergibt genau einen
 #   Balken. now_ts wird injiziert -> deterministisch/testbar. Nur lesend.
 #
-# Version: v0.7.447 · Build: 447 · 2026-07-19
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ _BACKLOG_LABEL = "Rueckstau"  # Sammel-Lane fuer unzugewiesene Faelle
 
 @dataclass(frozen=True)
 class GanttBar:
-    user_id: int
+    subject_id: int
     username: str
     status: str
     assignee_id: Optional[int]
@@ -69,15 +69,15 @@ class GanttModel:
         self._con = con
 
     def build(self, *, now_ts: int) -> GanttResult:
-        # Zeitanker je user_id in EINER Abfrage (kein N+1): fruehester assign,
+        # Zeitanker je subject_id in EINER Abfrage (kein N+1): fruehester assign,
         # spaetester approve.
         anchors: Dict[int, Dict[str, Optional[int]]] = {}
         for uid, kind, ts in self._con.execute(
-                "SELECT user_id, event_kind, "
+                "SELECT subject_id, event_kind, "
                 "  CASE WHEN event_kind=? THEN MIN(created_at) "
                 "       ELSE MAX(created_at) END AS ts "
                 "FROM case_events WHERE event_kind IN (?, ?) "
-                "GROUP BY user_id, event_kind",
+                "GROUP BY subject_id, event_kind",
                 (_ASSIGN_KIND, _ASSIGN_KIND, _APPROVE_KIND)):
             a = anchors.setdefault(int(uid), {"assign": None, "approve": None})
             if kind == _ASSIGN_KIND:
@@ -86,10 +86,10 @@ class GanttModel:
                 a["approve"] = int(ts)
 
         rows = self._con.execute(
-            "SELECT c.user_id, c.username, c.status, c.assigned_to, "
+            "SELECT c.subject_id, c.username, c.status, c.assigned_to, "
             "       c.created_at, i.display_name, i.system_username "
             "FROM cases c LEFT JOIN person i ON i.id = c.assigned_to "
-            "ORDER BY c.user_id ASC").fetchall()
+            "ORDER BY c.subject_id ASC").fetchall()
 
         # Lanes vorbereiten (stabile Reihenfolge: Ermittler nach Name, Rueckstau
         # zuletzt). Zwischenspeicher {assignee_id: (name, [bars])}.
@@ -123,7 +123,7 @@ class GanttModel:
                 name = display_name or system_username or ("#%d" % assignee_id)
 
             bar = GanttBar(
-                user_id=uid, username=username, status=status,
+                subject_id=uid, username=username, status=status,
                 assignee_id=assignee_id, assignee_name=(
                     None if assignee_id is None else name),
                 start_ts=start_ts, end_ts=end_ts, ongoing=ongoing,
@@ -141,7 +141,7 @@ class GanttModel:
 
         lanes = [
             GanttLane(assignee_id=k, assignee_name=lane_name[k],
-                      bars=sorted(lane_bars[k], key=lambda b: (b.start_ts, b.user_id)))
+                      bars=sorted(lane_bars[k], key=lambda b: (b.start_ts, b.subject_id)))
             for k in ordered_keys
         ]
 
@@ -163,7 +163,7 @@ def gantt_to_dict(result: GanttResult) -> dict:
         "lanes": [
             {"assignee_id": l.assignee_id, "assignee_name": l.assignee_name,
              "bars": [
-                 {"user_id": b.user_id, "username": b.username, "status": b.status,
+                 {"subject_id": b.subject_id, "username": b.username, "status": b.status,
                   "assignee_id": b.assignee_id, "assignee_name": b.assignee_name,
                   "start_ts": b.start_ts, "end_ts": b.end_ts,
                   "ongoing": b.ongoing, "completed_ts": b.completed_ts}

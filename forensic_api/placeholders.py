@@ -30,7 +30,8 @@
 #   - Query-Definitionen lesen: templates_db (tdb.placeholder_queries).
 #
 # Beleg: Bauplan B6 v0.3 §3, Ausdefinitionsgespraech 2026-05-05
-# Version: v0.7.403 · Build: 403 · 2026-07-14
+# Version: v0.7.469 · Build: 469 · 2026-07-20
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
 #   Build 403: {{a:}}-Aufloesung (Cache->Query->SQL->Cache) in den gemeinsamen
 #   Kern report_render/auto_query.py ausgelagert (De-Duplizierung gegen
 #   report_source.py). _execute_query entfernt; Endpunkt-Verhalten unveraendert.
@@ -116,7 +117,7 @@ class PlaceholdersEndpoint:
             return
 
         body_text    = data.get("body", "")
-        uid          = data.get("uid", self._context.user_id)
+        uid          = data.get("uid", self._context.subject_id)
         # Bug 2.17 Fix Build 286: return_values=true gibt zusaetzlich ein
         # {query_id: value}-Dict zurueck damit der Client die aufgeloesten
         # Werte als auto:query_id in placeholder_values_json speichern kann.
@@ -172,7 +173,7 @@ class PlaceholdersEndpoint:
             )
             return
 
-        uid = data.get("uid", self._context.user_id)
+        uid = data.get("uid", self._context.subject_id)
         try:
             uid = int(uid)
         except (TypeError, ValueError):

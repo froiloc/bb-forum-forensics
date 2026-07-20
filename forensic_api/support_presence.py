@@ -43,7 +43,8 @@
 #   Sitzungs-Bookkeeping-Fehler bricht weder den SSE-Stream noch den
 #   Lock-Grace-Pfad ab.
 #
-# Version: v0.7.312 · Build: 312 · 2026-07-02
+# Version: v0.7.469 · Build: 469 · 2026-07-20
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
 # Beleg: Bauplan B7 v0.6 §6/§7, Projektgespraech 2026-07-01, mc 2026-07-01.
 # =============================================================================
 
@@ -92,7 +93,7 @@ class SupportPresenceBinder:
     def __init__(
         self,
         coordinator_db_path: Union[str, Path],
-        user_id: int,
+        subject_id: int,
         supporter_id: Optional[int],
         *,
         stale_sec: int = 30,
@@ -106,7 +107,7 @@ class SupportPresenceBinder:
         coordinator_db_path existiert (sonst legt sqlite3 eine leere DB an,
         in der die Tabellen fehlen -> Repo-Fehler beim ersten Write).
         """
-        self._user_id = int(user_id)
+        self._subject_id = int(subject_id)
         self._supporter_id = supporter_id  # darf None sein (System/unbekannt)
         self._stale_sec = int(stale_sec)
         self._prune_older_than_sec = int(prune_older_than_sec)
@@ -136,8 +137,8 @@ class SupportPresenceBinder:
         self._repo = SupportSessionsRepo(self._con, writer)
 
         logger.info(
-            "SupportPresenceBinder bereit: user_id=%d supporter_id=%s db='%s'",
-            self._user_id, self._supporter_id, coordinator_db_path,
+            "SupportPresenceBinder bereit: subject_id=%d supporter_id=%s db='%s'",
+            self._subject_id, self._supporter_id, coordinator_db_path,
         )
 
     # ------------------------------------------------------------------ Start
@@ -163,14 +164,14 @@ class SupportPresenceBinder:
                 return existing
             try:
                 session_id = self._repo.start(
-                    self._user_id,
+                    self._subject_id,
                     self._supporter_id,
                     actor_id=self._supporter_id,
                 )
             except Exception as exc:  # noqa: BLE001 — bewusst breit, siehe Modul-Doku
                 logger.error(
-                    "begin(): Sitzungsstart fehlgeschlagen (user_id=%d): %s",
-                    self._user_id, exc,
+                    "begin(): Sitzungsstart fehlgeschlagen (subject_id=%d): %s",
+                    self._subject_id, exc,
                 )
                 return None
             self._by_client[client_id] = session_id
@@ -303,7 +304,7 @@ class SupportPresenceBinder:
                 self._con.close()
             except Exception as exc:  # noqa: BLE001
                 logger.warning("close(): Verbindung nicht sauber geschlossen: %s", exc)
-            logger.info("SupportPresenceBinder geschlossen (user_id=%d).", self._user_id)
+            logger.info("SupportPresenceBinder geschlossen (subject_id=%d).", self._subject_id)
 
     # ----------------------------------------------------------------- intern
     def _close_orphans_locked(self) -> None:

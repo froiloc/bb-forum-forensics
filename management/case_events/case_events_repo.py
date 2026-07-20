@@ -24,7 +24,7 @@
 #   in der DDL, damit neue kinds additiv bleiben (kein Tabellen-Rebuild).
 #
 # Beleg: Bauplan B7 v0.8 §8, Roadmap "Tag 2+" (v0.1), mc 2026-07-02.
-# Version: v0.7.313 · Build: 313 · 2026-07-02
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import json
@@ -77,7 +77,7 @@ def _canonical_json(obj: Any) -> str:
 def insert_event_row(
     con: sqlite3.Connection,
     *,
-    user_id: int,
+    subject_id: int,
     event_kind: str,
     payload: Optional[Dict[str, Any]],
     created_by: Optional[int],
@@ -98,10 +98,10 @@ def insert_event_row(
         raise CaseEventsError("Unbekannter event_kind: %r" % event_kind)
     con.execute(
         "INSERT INTO case_events "
-        "(user_id, event_kind, payload, created_by, created_at, audit_seq) "
+        "(subject_id, event_kind, payload, created_by, created_at, audit_seq) "
         "VALUES (?, ?, ?, ?, ?, ?)",
         (
-            user_id,
+            subject_id,
             event_kind,
             _canonical_json(payload) if payload else "",
             created_by,
@@ -121,7 +121,7 @@ class CaseEventsRepo:
 
     # ------------------------------------------------------------------- Lesen
     def list_events(
-        self, user_id: int, *, limit: Optional[int] = None
+        self, subject_id: int, *, limit: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """
         Chronologischer Zeitstrahl eines Falls (älteste zuerst; id als
@@ -130,18 +130,18 @@ class CaseEventsRepo:
         als dict zurückgegeben (leerer payload -> {}).
         """
         sql = (
-            "SELECT e.id, e.user_id, e.event_kind, e.payload, "
+            "SELECT e.id, e.subject_id, e.event_kind, e.payload, "
             "       e.created_by, i.system_username AS created_by_username, "
             "       e.created_at, e.audit_seq "
             "FROM case_events e "
             "LEFT JOIN person i ON i.id = e.created_by "
-            "WHERE e.user_id = ? "
+            "WHERE e.subject_id = ? "
             "ORDER BY e.created_at ASC, e.id ASC"
         )
-        params: tuple = (user_id,)
+        params: tuple = (subject_id,)
         if limit is not None:
             sql += " LIMIT ?"
-            params = (user_id, int(limit))
+            params = (subject_id, int(limit))
         out: List[Dict[str, Any]] = []
         for row in self._con.execute(sql, params):
             d = dict(row)
@@ -151,7 +151,7 @@ class CaseEventsRepo:
 
     # --------------------------------------------------------------- Schreiben
     def add_manual_event(
-        self, user_id: int, text: str, *,
+        self, subject_id: int, text: str, *,
         actor_id: Optional[int] = None, meta: Optional[Any] = None,
     ) -> int:
         """
@@ -166,17 +166,17 @@ class CaseEventsRepo:
         def _w(con: sqlite3.Connection) -> Dict[str, Any]:
             # Fall-Existenz INNERHALB der Schreibsperre prüfen (kein TOCTOU).
             if con.execute(
-                "SELECT 1 FROM cases WHERE user_id = ?", (user_id,)
+                "SELECT 1 FROM cases WHERE subject_id = ?", (subject_id,)
             ).fetchone() is None:
-                raise CaseEventsError("Kein Fall user_id=%s." % user_id)
+                raise CaseEventsError("Kein Fall subject_id=%s." % subject_id)
             # Audit-Payload: Faktum + Länge, NICHT der Text (Sensibilität).
-            return {"user_id": user_id, "event_kind": "manual",
+            return {"subject_id": subject_id, "event_kind": "manual",
                     "text_len": len(text)}
 
         def _after(con: sqlite3.Connection, seq: int) -> None:
             insert_event_row(
                 con,
-                user_id=user_id,
+                subject_id=subject_id,
                 event_kind="manual",
                 payload={"text": text},
                 created_by=actor_id,
@@ -186,6 +186,6 @@ class CaseEventsRepo:
 
         return self._writer.audited_write(
             do_write=_w, event_type=EventType.CASE_EVENT_ADDED,
-            actor_id=actor_id, target_type="case", target_id=str(user_id),
+            actor_id=actor_id, target_type="case", target_id=str(subject_id),
             meta=meta, after_audit=_after,
         )

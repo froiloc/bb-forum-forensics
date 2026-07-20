@@ -20,7 +20,7 @@
 #
 # coordinator.db wird AUSSCHLIESSLICH gelesen (Produktivbetrieb-Regel).
 #
-# Version: v0.7.330 · Build: 330 · 2026-07-07
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import argparse
@@ -161,14 +161,14 @@ def _do_list(rows) -> int:
     if not rows:
         print("[support_overview_admin] Keine Support-Sitzungen im audit_log.")
         return 0
-    print("Status      Sitzg  Fall(user_id)  Benutzer          Supporter        "
+    print("Status      Sitzg  Fall(subject_id)  Benutzer          Supporter        "
           "Start             Ende              Dauer     Grund          Beleg(seq)   Anomalie")
     print("-" * 150)
     for r in rows:
         print("%-10s %6s  %13s  %-16s  %-15s  %-16s  %-16s  %-8s  %-13s  %-11s  %s" % (
             _STATUS_MARK.get(r.status, "[%s]" % r.status),
             r.session_id,
-            r.user_id,
+            r.subject_id,
             (r.username or "(kein cases)")[:16],
             (r.supporter_display_name or r.supporter_system_username
              or (("id %d" % r.supporter_id) if r.supporter_id is not None

@@ -28,8 +28,8 @@
 #
 # Aufruf-Beispiele:
 #   python main.py                                  # Modus 'job' (Default)
-#   python main.py --mode cli --user-id 12345       # Modus 'cli'
-#   python main.py --mode support --user-id 12345   # Modus 'support'
+#   python main.py --mode cli --subject-id 12345    # Modus 'cli'
+#   python main.py --mode support --subject-id 12345  # Modus 'support'
 #   python main.py --mode cli --username verdaechtiger
 #   python main.py --debug                          # Debug-Logging aktivieren
 #   python main.py --config /pfad/zu/config.yaml    # Abweichender Config-Pfad
@@ -47,7 +47,8 @@
 #   abgeschlossen sind.
 #
 # Abhängigkeiten: argparse, sys — Stdlib + alle core/db/server-Module
-# Version: v0.6.299 · Build: 299 · 2026-06-24
+# Version: v0.7.469 · Build: 469 · 2026-07-20
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
 # =============================================================================
 
 from __future__ import annotations
@@ -100,17 +101,17 @@ def _parse_args() -> argparse.Namespace:
         help=(
             "Startmodus: "
             "'job' = offenen Job aus coordinator.db laden (Default), "
-            "'cli' = user-id oder username direkt angeben, "
+            "'cli' = subject-id oder username direkt angeben, "
             "'support' = wie cli, aber Schreiben in TEMP-DB."
         ),
     )
     parser.add_argument(
-        "--user-id",
+        "--subject-id",
         metavar="INT",
         type=int,
         default=None,
-        dest="user_id",
-        help="User-ID des Beschuldigten (für Modus 'cli'/'support').",
+        dest="subject_id",
+        help="Subjekt-ID des Beschuldigten (für Modus 'cli'/'support').",
     )
     parser.add_argument(
         "--username",
@@ -259,7 +260,7 @@ def _build_mode_overrides(args: argparse.Namespace) -> dict:
     """
     return {
         "mode":     args.mode,
-        "user_id":  args.user_id,
+        "subject_id": args.subject_id,
         "username": args.username,
     }
 
@@ -416,8 +417,8 @@ def main() -> None:
         sys.exit(1)
 
     logger.info(
-        "Kontext: mode='%s', user_id=%d, username='%s'",
-        context.mode, context.user_id, context.username,
+        "Kontext: mode='%s', subject_id=%d, username='%s'",
+        context.mode, context.subject_id, context.username,
     )
     logger.info("forensic_db : '%s'", context.forensic_db)
     logger.info("evidence_db : '%s'", context.evidence_db)
@@ -619,8 +620,8 @@ def main() -> None:
         _build_info.version, _build_info.build, _build_info.date,
     )
     logger.info(
-        "Ermittlung: user_id=%d ('%s'), Modus='%s'",
-        context.user_id, context.username, context.mode,
+        "Ermittlung: subject_id=%d ('%s'), Modus='%s'",
+        context.subject_id, context.username, context.mode,
     )
     if args.web_debug:
         logger.warning(
@@ -719,7 +720,7 @@ def main() -> None:
 
     _mh_host = _socket.gethostname()
     _mh_pid = os.getpid()
-    _mh_role = f"webserver:{context.user_id}"
+    _mh_role = f"webserver:{context.subject_id}"
 
     # Anmeldung (--maintenance) bzw. Praesenz-Beacon (Normalserver)
     _registration = None
@@ -729,7 +730,7 @@ def main() -> None:
         _registration = ServerRegistration.neu(
             role=_mh_role, host=_mh_host, pid=_mh_pid, build=_build_info.build,
             window_id=(_fnow.window_id if _fnow else ""), port=port,
-            user_id=context.user_id, config=config_path)
+            subject_id=context.subject_id, config=config_path)
         try:
             _registration.schreiben(_maint_paths)
             logger.warning("Wartungs-Anmeldung geschrieben: uuid=%s", _registration.uuid)
@@ -738,7 +739,7 @@ def main() -> None:
     else:
         _beacon = PresenceBeacon(
             role=_mh_role, host=_mh_host, pid=_mh_pid, build=_build_info.build,
-            user_id=context.user_id, port=port)
+            subject_id=context.subject_id, port=port)
         try:
             _beacon.schreiben(_maint_paths)
         except Exception as _exc:

@@ -25,7 +25,8 @@
 #   - Idempotent: wiederholter Aufruf schadet nicht
 #
 # Beleg: Projektgespraech 2026-05-12 — Bug 2.78 (BS3).
-# Version: v0.6.182 · Build: 182 · 2026-05-12
+# Version: v0.7.469 · Build: 469 · 2026-07-20
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
 # =============================================================================
 
 from __future__ import annotations
@@ -76,9 +77,9 @@ class CrossAnnotationIntegrator:
         Fuehrt einen einmaligen Integrationsdurchlauf aus.
         Gibt Statistik-Dict zurueck: {integrated, skipped, errors}.
         """
-        target_uid = self._context.user_id
+        target_uid = self._context.subject_id
         if target_uid is None:
-            logger.debug("CrossAnnotationIntegrator: kein user_id — uebersprungen")
+            logger.debug("CrossAnnotationIntegrator: kein subject_id — uebersprungen")
             return {"integrated": 0, "skipped": 0, "errors": 0}
 
         cdb = self._bundle.coordinator

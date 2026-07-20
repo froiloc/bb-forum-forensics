@@ -16,7 +16,8 @@
 # T10 — _is_asset_url: konfigurierte Präfixe erkannt
 # T11 — _is_asset_url: unbekannte URL gibt False zurück
 #
-# Version: v0.1.0 · Build: 008 · 2026-04-10
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import sys
@@ -80,7 +81,7 @@ def _make_mock_bundle():
 def _make_mock_context():
     context = MagicMock()
     context.mode = "cli"
-    context.user_id = 42
+    context.subject_id = 42
     context.username = "testuser"
     context.investigator_id = 1
     return context

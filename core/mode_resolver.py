@@ -11,13 +11,13 @@
 #
 #   job     — Normalbetrieb. Der Systembenutzer wird gegen die
 #             person-Tabelle in coordinator.db geprüft. Der zugewiesene
-#             Job aus scrape_jobs bestimmt user_id und forensic_db-Pfad.
+#             Job aus scrape_jobs bestimmt subject_id und forensic_db-Pfad.
 #             Kein Job vorhanden → ModeResolverError.
 #
-#   cli     — Manueller Betrieb. user_id oder username werden per CLI-Argument
+#   cli     — Manueller Betrieb. subject_id oder username werden per CLI-Argument
 #             übergeben. Die Datenbankpfade werden aus den konfigurierten
-#             Verzeichnissen und der user_id zusammengesetzt.
-#             Weder user_id noch username angegeben → ModeResolverError.
+#             Verzeichnissen und der subject_id zusammengesetzt.
+#             Weder subject_id noch username angegeben → ModeResolverError.
 #
 #   support — Nur-Lese-Betrieb. Wie cli, aber evidence_db wird als read-only
 #             angebunden; alle Schreiboperationen gehen in eine lokale TEMP-DB.
@@ -34,12 +34,13 @@
 # coordinator_db.py noch nicht initialisiert ist.
 #
 # Forensische Relevanz:
-#   Die hier ermittelte user_id ist der Schlüssel zu allen Beweismitteln.
-#   Eine falsche user_id würde Beweise eines Beschuldigten einem anderen
+#   Die hier ermittelte subject_id ist der Schlüssel zu allen Beweismitteln.
+#   Eine falsche subject_id würde Beweise eines Beschuldigten einem anderen
 #   zuordnen. Daher: harter Abbruch bei jeder Unklarheit.
 #
 # Abhängigkeiten: sqlite3, os, pathlib — Stdlib + core-Module
-# Version: v0.6.117 · Build: 117 · 2026-05-07
+# Version: v0.7.469 · Build: 469 · 2026-07-20
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
 # =============================================================================
 
 import os
@@ -68,9 +69,9 @@ class ModeResolverError(Exception):
 
     Typische Ursachen:
     - Modus 'job': Kein offener Job für den aktuellen Systembenutzer
-    - Modus 'cli'/'support': Weder --user-id noch --username angegeben
+    - Modus 'cli'/'support': Weder --subject-id noch --username angegeben
     - coordinator.db nicht erreichbar im 'job'-Modus
-    - Unbekannte user_id oder username
+    - Unbekannte subject_id oder username
     """
 
 
@@ -82,7 +83,8 @@ class ResolvedContext:
 
     Felder:
         mode            — Aufgelöster Startmodus: "job", "cli" oder "support"
-        user_id         — User-ID des zu untersuchenden Beschuldigten
+        subject_id      — Subjekt-ID (Fall-Schlüssel; numerisch identisch mit
+                          der Forum-users.id) des zu untersuchenden Beschuldigten
         username        — Benutzername des Beschuldigten (aus DB oder CLI)
         forensic_db     — Absoluter Pfad zur forensic_<uid>.db (READ-ONLY)
         evidence_db     — Absoluter Pfad zur evidence_<uid>.db
@@ -100,7 +102,7 @@ class ResolvedContext:
                           Beleg: Projektgespraech 2026-05-07
     """
     mode:                   str
-    user_id:                int
+    subject_id:             int
     username:               str
     forensic_db:            Path
     evidence_db:            Path
@@ -118,13 +120,13 @@ class ModeResolver:
     Verwendung:
         resolver = ModeResolver(config, user_resolver, cli_overrides)
         ctx = resolver.resolve()
-        print(ctx.mode, ctx.user_id, ctx.forensic_db)
+        print(ctx.mode, ctx.subject_id, ctx.forensic_db)
 
     cli_overrides ist ein Dict mit den CLI-Argumenten, die den Modus und
     die Benutzerauswahl betreffen:
         {
-            "mode":     "cli" | "job" | "support" | None,
-            "user_id":  12345 | None,
+            "mode":       "cli" | "job" | "support" | None,
+            "subject_id": 12345 | None,
             "username": "beschuldigter_name" | None,
         }
     """
@@ -185,7 +187,7 @@ class ModeResolver:
 
     def _resolve_job(self, mode: str) -> ResolvedContext:
         """
-        Löst Modus 'job' auf: Systembenutzer → coordinator.db → Job → user_id.
+        Löst Modus 'job' auf: Systembenutzer → coordinator.db → Job → subject_id.
 
         Raises:
             ModeResolverError: Wenn kein offener Job gefunden wird oder die
@@ -222,35 +224,35 @@ class ModeResolver:
                 f"  - Kein Fall zugewiesen (cases.assigned_to)\n"
                 f"  - Alle Fälle bereits abgeschlossen (status nicht 'open'/'in_progress')\n"
                 f"  - Benutzer nicht in person-Tabelle eingetragen\n"
-                f"Alternativ: Server mit --mode cli --user-id <id> starten."
+                f"Alternativ: Server mit --mode cli --subject-id <id> starten."
             )
 
-        user_id = int(job_row["user_id"])
+        subject_id = int(job_row["subject_id"])
         username = str(job_row["username"])
 
-        # Build 308: forensic_db IMMER deterministisch aus user_id ableiten
+        # Build 308: forensic_db IMMER deterministisch aus subject_id ableiten
         # (kanonisches Muster forensic_<uid>.db). Der frühere output_path-Override
         # aus dem Job-Eintrag entfällt — cases führt kein output_path, und eine
         # fremde output_path könnte sonst Beweise eines anderen Beschuldigten
         # öffnen. Beleg: Problem-1-Analyse 2026-07-01, mc.
-        forensic_db = self._build_forensic_db_path(user_id)
+        forensic_db = self._build_forensic_db_path(subject_id)
 
-        evidence_db = self._build_evidence_db_path(user_id)
+        evidence_db = self._build_evidence_db_path(subject_id)
 
         logger.info(
-            "Job gefunden: user_id=%d, username='%s', forensic_db='%s'",
-            user_id, username, forensic_db,
+            "Job gefunden: subject_id=%d, username='%s', forensic_db='%s'",
+            subject_id, username, forensic_db,
         )
 
         return ResolvedContext(
             mode=mode,
-            user_id=user_id,
+            subject_id=subject_id,
             username=username,
             forensic_db=forensic_db,
             evidence_db=evidence_db,
             default_db=self._resolve_default_db_path(),
             coordinator_db=coordinator_db,
-            assets_db=self._build_assets_db_path(user_id),   # NEU Build 017
+            assets_db=self._build_assets_db_path(subject_id),   # NEU Build 017
             investigator_id=investigator_id,
             # Build 117: system_username ist der Ermittler (SAMAccountName),
             # username ist der Beschuldigte. Beleg: Projektgespraech 2026-05-07
@@ -300,7 +302,7 @@ class ModeResolver:
         try:
             job_row = con.execute(
                 """
-                SELECT user_id, username
+                SELECT subject_id, username
                 FROM cases
                 WHERE assigned_to = ?
                   AND status IN ('open', 'in_progress')
@@ -322,68 +324,68 @@ class ModeResolver:
     def _resolve_cli_or_support(self, mode: str) -> ResolvedContext:
         """
         Löst die Modi 'cli' und 'support' auf.
-        user_id oder username müssen per CLI angegeben worden sein.
+        subject_id oder username müssen per CLI angegeben worden sein.
 
         Raises:
-            ModeResolverError: Wenn weder user_id noch username angegeben wurden,
+            ModeResolverError: Wenn weder subject_id noch username angegeben wurden,
                                oder wenn ein username nicht aufgelöst werden kann.
         """
-        cli_user_id: Optional[int] = self._cli.get("user_id")
+        cli_subject_id: Optional[int] = self._cli.get("subject_id")
         cli_username: Optional[str] = self._cli.get("username")
 
-        if cli_user_id is None and not cli_username:
+        if cli_subject_id is None and not cli_username:
             raise ModeResolverError(
-                f"Modus '{mode}' erfordert --user-id <id> oder --username <name>.\n"
+                f"Modus '{mode}' erfordert --subject-id <id> oder --username <name>.\n"
                 f"Bitte einen der beiden Parameter angeben."
             )
 
         coordinator_db = self._resolve_coordinator_db_path()
 
-        # user_id aus CLI oder via username-Lookup aus coordinator.db auflösen
-        user_id, username, investigator_id = self._resolve_user_identity(
-            cli_user_id, cli_username, coordinator_db
+        # subject_id aus CLI oder via username-Lookup aus coordinator.db auflösen
+        subject_id, username, investigator_id = self._resolve_subject_identity(
+            cli_subject_id, cli_username, coordinator_db
         )
 
-        forensic_db = self._build_forensic_db_path(user_id)
-        evidence_db = self._build_evidence_db_path(user_id)
+        forensic_db = self._build_forensic_db_path(subject_id)
+        evidence_db = self._build_evidence_db_path(subject_id)
 
         logger.info(
-            "Modus '%s': user_id=%d, username='%s', forensic_db='%s'",
-            mode, user_id, username, forensic_db,
+            "Modus '%s': subject_id=%d, username='%s', forensic_db='%s'",
+            mode, subject_id, username, forensic_db,
         )
 
         return ResolvedContext(
             mode=mode,
-            user_id=user_id,
+            subject_id=subject_id,
             username=username,
             forensic_db=forensic_db,
             evidence_db=evidence_db,
             default_db=self._resolve_default_db_path(),
             coordinator_db=coordinator_db,
-            assets_db=self._build_assets_db_path(user_id),   # NEU Build 017
+            assets_db=self._build_assets_db_path(subject_id),   # NEU Build 017
             investigator_id=investigator_id,
             # Build 117: system_username ist der Ermittler (SAMAccountName).
             # Beleg: Projektgespraech 2026-05-07
             investigator_username=self._user_resolver.system_username,
         )
 
-    def _resolve_user_identity(
+    def _resolve_subject_identity(
         self,
-        cli_user_id: Optional[int],
+        cli_subject_id: Optional[int],
         cli_username: Optional[str],
         coordinator_db: Path,
     ) -> tuple[int, str, Optional[int]]:
         """
-        Löst user_id und username des Beschuldigten auf.
+        Löst subject_id und username des Beschuldigten auf.
 
-        Wenn user_id per CLI angegeben: Diese wird verwendet. Username wird
+        Wenn subject_id per CLI angegeben: Diese wird verwendet. Username wird
         aus coordinator.db nachgeschlagen (forensic_db hat diesen Stand nicht
         immer aktuell — maßgeblich ist scrape_jobs.username).
 
-        Wenn nur username per CLI angegeben: user_id wird aus coordinator.db
+        Wenn nur username per CLI angegeben: subject_id wird aus coordinator.db
         über scrape_jobs gesucht.
 
-        Gibt (user_id, username, investigator_id) zurück.
+        Gibt (subject_id, username, investigator_id) zurück.
 
         Raises:
             ModeResolverError: Wenn die Auflösung fehlschlägt.
@@ -408,19 +410,19 @@ class ModeResolver:
                     # person-Tabelle noch nicht vorhanden — in DEV toleriert
                     pass
 
-                if cli_user_id is not None:
-                    # user_id bekannt — username nachschlagen
-                    user_id = int(cli_user_id)
-                    username = self._lookup_username(con, user_id) or f"uid_{user_id}"
-                    return user_id, username, investigator_id
+                if cli_subject_id is not None:
+                    # subject_id bekannt — username nachschlagen
+                    subject_id = int(cli_subject_id)
+                    username = self._lookup_username(con, subject_id) or f"uid_{subject_id}"
+                    return subject_id, username, investigator_id
                 else:
-                    # Nur username bekannt — user_id suchen
-                    result = self._lookup_user_id_by_name(con, cli_username)
+                    # Nur username bekannt — subject_id suchen
+                    result = self._lookup_subject_id_by_name(con, cli_username)
                     if result is None:
                         raise ModeResolverError(
                             f"Benutzername '{cli_username}' nicht in "
                             f"coordinator.db (scrape_jobs) gefunden.\n"
-                            f"Bitte --user-id verwenden oder den Benutzernamen "
+                            f"Bitte --subject-id verwenden oder den Benutzernamen "
                             f"prüfen."
                         )
                     return result[0], result[1], investigator_id
@@ -429,52 +431,52 @@ class ModeResolver:
 
         except sqlite3.OperationalError as exc:
             # coordinator.db nicht erreichbar — CLI-Modus kann trotzdem
-            # funktionieren, wenn user_id bekannt ist
-            if cli_user_id is not None:
+            # funktionieren, wenn subject_id bekannt ist
+            if cli_subject_id is not None:
                 logger.warning(
                     "coordinator.db nicht erreichbar ('%s'): %s. "
                     "Betrieb ohne Username-Lookup.",
                     coordinator_db, exc,
                 )
-                return int(cli_user_id), f"uid_{cli_user_id}", None
+                return int(cli_subject_id), f"uid_{cli_subject_id}", None
             raise ModeResolverError(
                 f"coordinator.db nicht erreichbar: '{coordinator_db}'\n"
                 f"Für Modus 'cli' mit --username ist coordinator.db erforderlich.\n"
-                f"Alternativ: --user-id verwenden."
+                f"Alternativ: --subject-id verwenden."
             ) from exc
 
     def _lookup_username(
-        self, con: sqlite3.Connection, user_id: int
+        self, con: sqlite3.Connection, subject_id: int
     ) -> Optional[str]:
         """
-        Sucht den aktuellen Benutzernamen zu einer user_id in scrape_jobs.
+        Sucht den aktuellen Benutzernamen zu einer subject_id in scrape_jobs.
         Gibt den neuesten Eintrag zurück (höchste id = jüngster Job).
         """
         try:
             row = con.execute(
                 """
                 SELECT username FROM scrape_jobs
-                WHERE user_id = ?
+                WHERE subject_id = ?
                 ORDER BY id DESC
                 LIMIT 1
                 """,
-                (user_id,),
+                (subject_id,),
             ).fetchone()
             return str(row["username"]) if row else None
         except sqlite3.OperationalError:
             return None
 
-    def _lookup_user_id_by_name(
+    def _lookup_subject_id_by_name(
         self, con: sqlite3.Connection, username: str
     ) -> Optional[tuple[int, str]]:
         """
-        Sucht user_id und username zu einem Benutzernamen in scrape_jobs.
-        Gibt (user_id, username) zurück oder None.
+        Sucht subject_id und username zu einem Benutzernamen in scrape_jobs.
+        Gibt (subject_id, username) zurück oder None.
         """
         try:
             row = con.execute(
                 """
-                SELECT user_id, username FROM scrape_jobs
+                SELECT subject_id, username FROM scrape_jobs
                 WHERE username = ?
                 ORDER BY id DESC
                 LIMIT 1
@@ -482,7 +484,7 @@ class ModeResolver:
                 (username,),
             ).fetchone()
             if row:
-                return int(row["user_id"]), str(row["username"])
+                return int(row["subject_id"]), str(row["username"])
             return None
         except sqlite3.OperationalError:
             return None
@@ -491,21 +493,21 @@ class ModeResolver:
     # Pfadzusammensetzung
     # ------------------------------------------------------------------
 
-    def _build_forensic_db_path(self, user_id: int) -> Path:
+    def _build_forensic_db_path(self, subject_id: int) -> Path:
         """
-        Setzt den Pfad zur forensic_<uid>.db aus Verzeichnis + user_id zusammen.
+        Setzt den Pfad zur forensic_<uid>.db aus Verzeichnis + subject_id zusammen.
         Dateinamensschema: forensic_<uid>.db
         """
         directory = Path(self._config.get("paths.forensic_db_dir"))
-        return (directory / f"forensic_{user_id}.db").resolve()
+        return (directory / f"forensic_{subject_id}.db").resolve()
 
-    def _build_evidence_db_path(self, user_id: int) -> Path:
+    def _build_evidence_db_path(self, subject_id: int) -> Path:
         """
-        Setzt den Pfad zur evidence_<uid>.db aus Verzeichnis + user_id zusammen.
+        Setzt den Pfad zur evidence_<uid>.db aus Verzeichnis + subject_id zusammen.
         Dateinamensschema: evidence_<uid>.db
         """
         directory = Path(self._config.get("paths.evidence_db_dir"))
-        return (directory / f"evidence_{user_id}.db").resolve()
+        return (directory / f"evidence_{subject_id}.db").resolve()
 
     def build_cross_evidence_db_path(self, target_uid: int, iid: int) -> Path:
         """
@@ -528,9 +530,9 @@ class ModeResolver:
         """Gibt den aufgelösten Pfad zur coordinator.db zurück."""
         return Path(self._config.get("paths.coordinator_db")).resolve()
 
-    def _build_assets_db_path(self, user_id: int) -> Path:
+    def _build_assets_db_path(self, subject_id: int) -> Path:
         """
-        Setzt den Pfad zur assets_<uid>.db aus Verzeichnis + user_id zusammen.
+        Setzt den Pfad zur assets_<uid>.db aus Verzeichnis + subject_id zusammen.
         Dateinamensschema: assets_<uid>.db
         Die Datei muss nicht existieren — sie entsteht erst nach dem
         asset_importer-Lauf. ConnectionManager prüft die Existenz selbst.
@@ -538,4 +540,4 @@ class ModeResolver:
         NEU Build 017
         """
         directory = Path(self._config.get("paths.assets_db_dir"))
-        return (directory / f"assets_{user_id}.db").resolve()
+        return (directory / f"assets_{subject_id}.db").resolve()

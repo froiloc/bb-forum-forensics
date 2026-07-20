@@ -9,7 +9,7 @@
 #   Eintrag. Erster Baustein des Zuweisungs-Interfaces von Baustelle 7.
 #
 # Aufruf:
-#   python -m management.cases.cases_admin --user-id N --username NAME
+#   python -m management.cases.cases_admin --subject-id N --username NAME
 #          [--assign SYSUSER] [--status open|in_progress|approved|closed]
 #          [--priority 1..5] [--note TEXT] [--actor SYSUSER]
 #          [--coordinator-db PATH] [--config ./config.yaml]
@@ -22,7 +22,7 @@
 #   Nicht-fatal, klare Fehlermeldungen; Exit 0 = ok, 1 = Fehler.
 #
 # Beleg: Bauplan B7 v0.3 §3.5, mc 2026-07-01.
-# Version: v0.7.307 · Build: 307 · 2026-07-01
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import argparse
@@ -71,7 +71,7 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         description="Auditierte Verwaltung der Fallakten (cases)."
     )
-    parser.add_argument("--user-id", type=int, required=True)
+    parser.add_argument("--subject-id", type=int, required=True)
     parser.add_argument("--username", default=None,
                         help="Forennutzername (Pflicht beim Anlegen)")
     parser.add_argument("--assign", default=None,
@@ -111,16 +111,16 @@ def main(argv=None) -> int:
         else:
             meta = {"performed_by": getpass.getuser()}
 
-        uid = args.user_id
+        uid = args.subject_id
 
         # Fall ggf. anlegen.
         if repo.get_case(uid) is None:
             if not args.username:
-                print("[cases_admin] Fall user_id=%d fehlt und kein --username "
+                print("[cases_admin] Fall subject_id=%d fehlt und kein --username "
                       "zum Anlegen angegeben." % uid, file=sys.stderr)
                 return 1
             seq = repo.create_case(uid, args.username, actor_id=actor_id, meta=meta)
-            print("[cases_admin] Fall angelegt: user_id=%d (audit seq=%d)" % (uid, seq))
+            print("[cases_admin] Fall angelegt: subject_id=%d (audit seq=%d)" % (uid, seq))
 
         # Zuweisung.
         if args.assign:

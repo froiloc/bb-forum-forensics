@@ -78,7 +78,7 @@
 #         Rechte: external.view / external.edit, BEIDE scope-faehig ('eigene' =
 #         nur zugewiesene Faelle) — der Ermittler pflegt seinen Fall selbst.
 #   387 = ERMITTLUNGSERGEBNIS-BEWERTUNG (M011). GET /api/results/catalog
-#         (Kriterien + Skalen — DATEN, kein Code), GET /api/results?user_id=
+#         (Kriterien + Skalen — DATEN, kein Code), GET /api/results?subject_id=
 #         (aktueller Stand + VOLLE Historie + provisorische Kennzahl),
 #         GET /api/results/stats (fallUEBERGREIFEND, verlangt Scope 'alle'),
 #         POST /api/results/assess (APPEND-ONLY). Rechte: results.view /
@@ -92,7 +92,7 @@
 #         Zeile JE FALL aus 'cases' — auch fuer NIE bewertete Faelle; /stats
 #         sieht die gar nicht). /api/results/stats weist jetzt zusaetzlich
 #         'faelle_gesamt' und 'faelle_unbewertet' aus.
-# Version: v0.7.393 · Build: 393 · 2026-07-12
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import hmac
@@ -246,7 +246,7 @@ _PRIORITY_MIN, _PRIORITY_MAX = 1, 5
 def _case_overview_item(c) -> Dict[str, Any]:
     """Serialisiert eine CaseOverview in das JSON-Item (Overview + Meine Faelle)."""
     return {
-        "user_id": c.user_id,
+        "subject_id": c.subject_id,
         "username": c.username,
         "status": c.status,
         "priority": c.priority,
@@ -895,7 +895,7 @@ class ManagementApp:
                 return Response.json(
                     503, {"error": "schema", "detail": str(exc)})
             my_case_ids = {r[0] for r in con.execute(
-                "SELECT user_id FROM cases WHERE assigned_to = ?",
+                "SELECT subject_id FROM cases WHERE assigned_to = ?",
                 (person_id,)).fetchall()}
         finally:
             con.close()
@@ -903,7 +903,7 @@ class ManagementApp:
         sessions = []
         for rec in records:
             mine = (rec.supporter_id == person_id)
-            oncase = (rec.user_id in my_case_ids)
+            oncase = (rec.subject_id in my_case_ids)
             if scope != "alle" and not (mine or oncase):
                 continue
             d = asdict(rec)
@@ -1167,7 +1167,7 @@ class ManagementApp:
 
     # =====================================================================
     # BERICHTS-VORSCHAU (Build 410, SF-1 — Vermaehlung B6xB7).
-    #   GET /api/report/render?user_id=<uid>[&report_id=<rid>]
+    #   GET /api/report/render?subject_id=<uid>[&report_id=<rid>]
     #   Read-only HTML-Vorschau des Berichtstexts fuer Lektorat (W4) und
     #   Chef-Freigabe (W5). Byte-identisch zum Ermittler-Export, weil derselbe
     #   DB-neutrale Renderer (report_render) auf denselben Quellen laeuft.
@@ -1177,7 +1177,7 @@ class ManagementApp:
         con = self._ro_con()
         try:
             row = con.execute(
-                "SELECT %s AS v FROM cases WHERE user_id = ?" % column, (uid,)
+                "SELECT %s AS v FROM cases WHERE subject_id = ?" % column, (uid,)
             ).fetchone()
             return row["v"] if row is not None else None
         except sqlite3.Error:
@@ -1213,13 +1213,13 @@ class ManagementApp:
         scope = "alle" if "alle" in scopes else (scopes[0] if scopes else None)
 
         q = query or {}
-        uid_raw = (q.get("user_id") or [None])[0]
+        uid_raw = (q.get("subject_id") or [None])[0]
         if uid_raw is None:
-            return Response.json(400, {"error": "user_id_required"})
+            return Response.json(400, {"error": "subject_id_required"})
         try:
             uid = int(uid_raw)
         except (TypeError, ValueError):
-            return Response.json(400, {"error": "user_id_invalid",
+            return Response.json(400, {"error": "subject_id_invalid",
                                        "value": uid_raw})
 
         report_id: Optional[int] = None
@@ -1254,7 +1254,7 @@ class ManagementApp:
             ).open()
         except FileNotFoundError as exc:
             return Response.json(404, {"error": "evidence_not_found",
-                                       "user_id": uid, "detail": str(exc)})
+                                       "subject_id": uid, "detail": str(exc)})
 
         try:
             username = self._case_field(uid, "username") or ("uid_%d" % uid)
@@ -1271,7 +1271,7 @@ class ManagementApp:
             body = HtmlRenderer().render(doc)
         except NoReportError as exc:
             return Response.json(404, {"error": "no_report",
-                                       "user_id": uid, "detail": str(exc)})
+                                       "subject_id": uid, "detail": str(exc)})
         except Exception as exc:  # pragma: no cover - defensiver 500
             logger.exception(
                 "Berichts-Render fehlgeschlagen (uid=%s, report_id=%s)",
@@ -1293,7 +1293,7 @@ class ManagementApp:
 
     # =====================================================================
     # ANNOTATIONS-SUPPORT-VIEW (Build 411, SF-2 — Vermaehlung B6xB7).
-    #   GET /api/report/annotations?user_id=<uid>[&report_id=<rid>]
+    #   GET /api/report/annotations?subject_id=<uid>[&report_id=<rid>]
     #   Read-only: die dem Bericht zugrunde liegenden Annotationen (Belege) fuer
     #   Lektorat (W4) und Chef-Freigabe (W5), damit Aussagen am Beleg verifiziert
     #   werden koennen. Ein LESENDER Zugriff wird flach im coordinator.db-
@@ -1322,13 +1322,13 @@ class ManagementApp:
         scope = "alle" if "alle" in scopes else (scopes[0] if scopes else None)
 
         q = query or {}
-        uid_raw = (q.get("user_id") or [None])[0]
+        uid_raw = (q.get("subject_id") or [None])[0]
         if uid_raw is None:
-            return Response.json(400, {"error": "user_id_required"})
+            return Response.json(400, {"error": "subject_id_required"})
         try:
             uid = int(uid_raw)
         except (TypeError, ValueError):
-            return Response.json(400, {"error": "user_id_invalid",
+            return Response.json(400, {"error": "subject_id_invalid",
                                        "value": uid_raw})
 
         report_id: Optional[int] = None
@@ -1362,7 +1362,7 @@ class ManagementApp:
             ).open()
         except FileNotFoundError as exc:
             return Response.json(404, {"error": "evidence_not_found",
-                                       "user_id": uid, "detail": str(exc)})
+                                       "subject_id": uid, "detail": str(exc)})
 
         try:
             data = AnnotationSupportReader(bundle).read(report_id)
@@ -1377,9 +1377,9 @@ class ManagementApp:
             bundle.close()
 
         if data is None:
-            return Response.json(404, {"error": "no_report", "user_id": uid})
+            return Response.json(404, {"error": "no_report", "subject_id": uid})
 
-        data["user_id"] = uid
+        data["subject_id"] = uid
         data["scope"] = scope
 
         # Flaches Lese-Audit (Chain-of-Custody). BEST-EFFORT: eine momentan
@@ -1407,7 +1407,7 @@ class ManagementApp:
         self._audit_best_effort(
             event_type="report_annotations_viewed", actor_id=person_id,
             target_type="report", target_id=str(report_id),
-            payload={"user_id": uid, "report_id": report_id,
+            payload={"subject_id": uid, "report_id": report_id,
                      "anchor_count": anchor_count, "scope": scope},
             what="annotations-view",
         )
@@ -1492,13 +1492,13 @@ class ManagementApp:
         scope = "alle" if "alle" in scopes else (scopes[0] if scopes else None)
 
         q = query or {}
-        uid_raw = (q.get("user_id") or [None])[0]
+        uid_raw = (q.get("subject_id") or [None])[0]
         if uid_raw is None:
-            return Response.json(400, {"error": "user_id_required"})
+            return Response.json(400, {"error": "subject_id_required"})
         try:
             uid = int(uid_raw)
         except (TypeError, ValueError):
-            return Response.json(400, {"error": "user_id_invalid",
+            return Response.json(400, {"error": "subject_id_invalid",
                                        "value": uid_raw})
         report_id: Optional[int] = None
         rid_raw = (q.get("report_id") or [None])[0]
@@ -1514,7 +1514,7 @@ class ManagementApp:
 
         from management.reports.review_comment_reader import ReviewCommentReader
         comments = ReviewCommentReader(self._evidence_dir, uid).read(report_id)
-        return Response.json(200, {"user_id": uid, "report_id": report_id,
+        return Response.json(200, {"subject_id": uid, "report_id": report_id,
                                    "count": len(comments), "comments": comments})
 
     # =====================================================================
@@ -1547,7 +1547,7 @@ class ManagementApp:
         Legt eine Platzhalter-Query an oder aendert sie. Ablauf:
           1. Recht templates.edit.
           2. Statische Validierung (query_validator).
-          3. Optionaler fdb-Dry-Run (wenn test_user_id gesetzt und die
+          3. Optionaler fdb-Dry-Run (wenn test_subject_id gesetzt und die
              Beispiel-forensic_<uid>.db vorhanden ist).
           4. Auditiertes Upsert ueber den TemplatesWriter.
         """
@@ -1572,14 +1572,14 @@ class ManagementApp:
             return Response.json(400, {"error": "validation", "errors": errors})
 
         # Optionaler Dry-Run gegen eine Beispiel-fdb.
-        dry: Dict[str, Any] = {"ran": False, "reason": "kein test_user_id."}
-        test_uid_raw = payload.get("test_user_id")
+        dry: Dict[str, Any] = {"ran": False, "reason": "kein test_subject_id."}
+        test_uid_raw = payload.get("test_subject_id")
         if test_uid_raw not in (None, ""):
             try:
                 test_uid = int(test_uid_raw)
             except (TypeError, ValueError):
                 return Response.json(400, {"error": "bad_request",
-                                           "detail": "test_user_id ungueltig."})
+                                           "detail": "test_subject_id ungueltig."})
             fdb_path = "%s/forensic_%d.db" % (
                 str(self._forensic_dir).rstrip("/"), test_uid)
             try:
@@ -1617,7 +1617,7 @@ class ManagementApp:
                                 payload: Dict[str, Any]) -> Response:
         """
         SCHREIBFREIE Vorschau (Build 423, W2-Frontend): validiert eine
-        Platzhalter-Query STATISCH und fuehrt - falls test_user_id gesetzt ist -
+        Platzhalter-Query STATISCH und fuehrt - falls test_subject_id gesetzt ist -
         den fdb-Dry-Run READ-ONLY aus. Es wird NICHTS geschrieben und NICHTS
         auditiert (kein Beleg entsteht, weil kein Zustand sich aendert). So kann
         die Redakteur:in eine Query testen, BEVOR sie sie speichert (Grundregel:
@@ -1648,15 +1648,15 @@ class ManagementApp:
         }
         errors = validate_static(q)
 
-        dry: Dict[str, Any] = {"ran": False, "reason": "kein test_user_id."}
-        test_uid_raw = payload.get("test_user_id")
-        # Dry-Run nur, wenn die statische Pruefung sauber ist UND eine test_user_id
+        dry: Dict[str, Any] = {"ran": False, "reason": "kein test_subject_id."}
+        test_uid_raw = payload.get("test_subject_id")
+        # Dry-Run nur, wenn die statische Pruefung sauber ist UND eine test_subject_id
         # vorliegt (eine kaputte Query gar nicht erst gegen die fdb ausfuehren).
         if not errors and test_uid_raw not in (None, ""):
             try:
                 test_uid = int(test_uid_raw)
             except (TypeError, ValueError):
-                errors.append("test_user_id ungueltig (ganze Zahl erwartet).")
+                errors.append("test_subject_id ungueltig (ganze Zahl erwartet).")
             else:
                 fdb_path = "%s/forensic_%d.db" % (
                     str(self._forensic_dir).rstrip("/"), test_uid)
@@ -1887,12 +1887,12 @@ class ManagementApp:
             return self._forbidden(CAP_REPORTS_REVIEW)
 
         try:
-            uid = int(payload.get("user_id"))
+            uid = int(payload.get("subject_id"))
             report_id = int(payload.get("report_id"))
         except (TypeError, ValueError):
             return Response.json(400, {
                 "error": "bad_request",
-                "detail": "user_id und report_id erforderlich."})
+                "detail": "subject_id und report_id erforderlich."})
         block_id = payload.get("block_id")
         if block_id is not None:
             block_id = str(block_id)
@@ -1931,12 +1931,12 @@ class ManagementApp:
         self._audit_best_effort(
             event_type="review_comment_added", actor_id=person_id,
             target_type="report", target_id=str(report_id),
-            payload={"user_id": uid, "report_id": report_id,
+            payload={"subject_id": uid, "report_id": report_id,
                      "block_id": block_id, "comment_id": cid, "role": role},
             what="comment-add",
         )
         return Response.json(200, {"comment_id": cid, "status": "pending",
-                                   "reviewer_role": role, "user_id": uid,
+                                   "reviewer_role": role, "subject_id": uid,
                                    "report_id": report_id, "block_id": block_id})
 
     def _report_comment_resolve(self, person_id: int,
@@ -1946,10 +1946,10 @@ class ManagementApp:
         if not (policy.can(CAP_REPORTS_REVIEW) or policy.can(CAP_REPORTS_APPROVE)):
             return self._forbidden(CAP_REPORTS_REVIEW)
         try:
-            uid = int(payload.get("user_id"))
+            uid = int(payload.get("subject_id"))
         except (TypeError, ValueError):
             return Response.json(400, {"error": "bad_request",
-                                       "detail": "user_id erforderlich."})
+                                       "detail": "subject_id erforderlich."})
         comment_id = payload.get("comment_id")
         status = payload.get("status")
         from db.review_addendum_db import open_addendum, VALID_STATUS
@@ -1980,7 +1980,7 @@ class ManagementApp:
         self._audit_best_effort(
             event_type="review_comment_resolved", actor_id=person_id,
             target_type="report_comment", target_id=str(comment_id),
-            payload={"user_id": uid, "comment_id": comment_id,
+            payload={"subject_id": uid, "comment_id": comment_id,
                      "status": status},
             what="comment-resolve",
         )
@@ -2015,16 +2015,16 @@ class ManagementApp:
             except ValueError:
                 return None
 
-        user_id, report_id = _int("user_id"), _int("report_id")
-        if user_id is None or report_id is None:
+        subject_id, report_id = _int("subject_id"), _int("report_id")
+        if subject_id is None or report_id is None:
             return Response.json(400, {
                 "error": "bad_request",
-                "detail": "user_id und report_id erforderlich."})
+                "detail": "subject_id und report_id erforderlich."})
 
         con = self._ro_con()
         try:
             result = self._approval_service(con).verify(
-                user_id=user_id, report_id=report_id)
+                subject_id=subject_id, report_id=report_id)
         finally:
             con.close()
         return Response.json(200, result)
@@ -2045,12 +2045,12 @@ class ManagementApp:
                 "detail": "Freigabe erfordert Scope 'alle'."})
 
         try:
-            user_id = int(payload.get("user_id"))
+            subject_id = int(payload.get("subject_id"))
             report_id = int(payload.get("report_id"))
         except (TypeError, ValueError):
             return Response.json(400, {
                 "error": "bad_request",
-                "detail": "user_id und report_id erforderlich."})
+                "detail": "subject_id und report_id erforderlich."})
         is_final = bool(payload.get("is_final", False))
         note = payload.get("note")
 
@@ -2059,7 +2059,7 @@ class ManagementApp:
             who = self._person(con, person_id)
             username = who["system_username"] if who else str(person_id)
             result = self._approval_service(con).approve(
-                user_id=user_id, report_id=report_id, actor_id=person_id,
+                subject_id=subject_id, report_id=report_id, actor_id=person_id,
                 actor_username=username, is_final=is_final, note=note)
         except ApprovalError as exc:
             # Fachlicher Fehler ODER Teilerfolg — in beiden Faellen mit klarer
@@ -2105,12 +2105,12 @@ class ManagementApp:
                 "detail": "Rueckgabe erfordert Scope 'alle'."})
 
         try:
-            user_id = int(payload.get("user_id"))
+            subject_id = int(payload.get("subject_id"))
             report_id = int(payload.get("report_id"))
         except (TypeError, ValueError):
             return Response.json(400, {
                 "error": "bad_request",
-                "detail": "user_id und report_id erforderlich."})
+                "detail": "subject_id und report_id erforderlich."})
         note = payload.get("note")
 
         con = self._rw_con()
@@ -2118,7 +2118,7 @@ class ManagementApp:
             who = self._person(con, person_id)
             username = who["system_username"] if who else str(person_id)
             result = self._approval_service(con).return_to_draft(
-                user_id=user_id, report_id=report_id, actor_id=person_id,
+                subject_id=subject_id, report_id=report_id, actor_id=person_id,
                 actor_username=username, note=note)
         except ApprovalError as exc:
             logger.warning("Rueckgabe abgelehnt/unvollstaendig: %s", exc)
@@ -2165,34 +2165,34 @@ class ManagementApp:
                       payload: Dict[str, Any]) -> Response:
         """
         Nimmt neu erkannte Faelle auf — AUDITIERT (CasesRepo.create_case ->
-        Beleg case_created je Fall). Auswahl per 'user_ids' ODER 'all': true.
+        Beleg case_created je Fall). Auswahl per 'subject_ids' ODER 'all': true.
         """
         denied = self._require_assignment_scope(person_id)
         if denied is not None:
             return denied
 
         all_new = bool(payload.get("all", False))
-        raw_ids = payload.get("user_ids") or []
+        raw_ids = payload.get("subject_ids") or []
         if not all_new and not isinstance(raw_ids, list):
             return Response.json(400, {
                 "error": "bad_request",
-                "detail": "user_ids muss eine Liste sein (oder all: true)."})
+                "detail": "subject_ids muss eine Liste sein (oder all: true)."})
         try:
-            user_ids = [int(u) for u in raw_ids]
+            subject_ids = [int(u) for u in raw_ids]
         except (TypeError, ValueError):
             return Response.json(400, {
-                "error": "bad_request", "detail": "user_ids ungueltig."})
+                "error": "bad_request", "detail": "subject_ids ungueltig."})
 
-        if not all_new and not user_ids:
+        if not all_new and not subject_ids:
             return Response.json(400, {
                 "error": "bad_request",
-                "detail": "Keine Faelle ausgewaehlt (user_ids oder all: true)."})
+                "detail": "Keine Faelle ausgewaehlt (subject_ids oder all: true)."})
 
         con = self._rw_con()
         try:
             importer = CaseImporter(con, self._detector(con))
             result = importer.import_cases(actor_id=person_id,
-                                           user_ids=user_ids,
+                                           subject_ids=subject_ids,
                                            all_new=all_new)
         except Exception as exc:
             logger.exception("Fall-Aufnahme fehlgeschlagen")
@@ -2276,7 +2276,7 @@ class ManagementApp:
     def _promotion_decide(self, person_id: int,
                           payload: Dict[str, Any]) -> Response:
         """
-        POST /api/promotion/decide — {user_id, status, grund?, herkunft?}.
+        POST /api/promotion/decide — {subject_id, status, grund?, herkunft?}.
         Recht 'ops.promote' (auditiert). Der Kandidat MUSS aktuell gueltig sein
         (Scan liefert allowed_uids) — die Zustandsmaschine erzwingt zulaessige
         Uebergaenge, das Repo die Grund-Pflicht.
@@ -2286,10 +2286,10 @@ class ManagementApp:
             return self._forbidden(CAP_OPS_PROMOTE)
 
         try:
-            user_id = int(payload.get("user_id"))
+            subject_id = int(payload.get("subject_id"))
         except (TypeError, ValueError):
             return Response.json(400, {"error": "bad_request",
-                                       "detail": "user_id fehlt/ungueltig."})
+                                       "detail": "subject_id fehlt/ungueltig."})
         status = str(payload.get("status", ""))
         grund = str(payload.get("grund", "") or "")
         herkunft = payload.get("herkunft")
@@ -2307,7 +2307,7 @@ class ManagementApp:
         try:
             repo = PromotionRepo(con, CoordinatorWriter(con, AuditLog(con)))
             res = repo.record_decision(
-                user_id=user_id, target_status=status, grund=grund,
+                subject_id=subject_id, target_status=status, grund=grund,
                 herkunft=herkunft, actor_id=person_id, allowed_uids=allowed)
         except PromotionError as exc:
             return Response.json(400, {"error": "bad_request",
@@ -2443,26 +2443,26 @@ class ManagementApp:
                                ad=self._ad_directory)
 
     def _releases(self, person_id: int, query) -> Response:
-        """GET /api/releases — Freigaben (optional ?user_id=, ?status=)."""
+        """GET /api/releases — Freigaben (optional ?subject_id=, ?status=)."""
         policy = self.resolve_policy(person_id)
         if not policy.can(CAP_RELEASE_VIEW):
             return self._forbidden(CAP_RELEASE_VIEW)
 
-        raw_user = self._q1(query, "user_id")
+        raw_user = self._q1(query, "subject_id")
         status = self._q1(query, "status")
-        user_ids = None
+        subject_ids = None
         if raw_user:
             try:
-                user_ids = [int(raw_user)]
+                subject_ids = [int(raw_user)]
             except (TypeError, ValueError):
                 return Response.json(400, {"error": "bad_request",
-                                           "detail": "user_id ungueltig."})
+                                           "detail": "subject_id ungueltig."})
         statuses = [status] if status else None
 
         con = self._ro_con()
         try:
             rows = CaseReleaseRepo(con).list_releases(
-                user_ids=user_ids, statuses=statuses)
+                subject_ids=subject_ids, statuses=statuses)
         except CaseReleaseError as exc:
             return Response.json(400, {"error": "bad_request",
                                        "detail": str(exc)})
@@ -2489,22 +2489,22 @@ class ManagementApp:
 
     def _release_grant(self, person_id: int,
                        payload: Dict[str, Any]) -> Response:
-        """POST /api/release/grant — {user_id, recipient_kennung, umfang,
+        """POST /api/release/grant — {subject_id, recipient_kennung, umfang,
         unbedenklichkeit_grundlage}. Recht release.grant (auditiert)."""
         policy = self.resolve_policy(person_id)
         if not policy.can(CAP_RELEASE_GRANT):
             return self._forbidden(CAP_RELEASE_GRANT)
 
         try:
-            user_id = int(payload.get("user_id"))
+            subject_id = int(payload.get("subject_id"))
         except (TypeError, ValueError):
             return Response.json(400, {"error": "bad_request",
-                                       "detail": "user_id fehlt/ungueltig."})
+                                       "detail": "subject_id fehlt/ungueltig."})
 
         con = self._rw_con()
         try:
             res = self._release_writer(con).grant(
-                user_id=user_id,
+                subject_id=subject_id,
                 recipient_kennung=str(payload.get("recipient_kennung", "")),
                 umfang=str(payload.get("umfang", "")),
                 unbedenklichkeit_grundlage=str(
@@ -2662,21 +2662,21 @@ class ManagementApp:
         con = self._ro_con()
         try:
             rows = con.execute(
-                "SELECT user_id FROM cases WHERE assigned_to = ?",
+                "SELECT subject_id FROM cases WHERE assigned_to = ?",
                 (person_id,)).fetchall()
         finally:
             con.close()
         return [int(r[0]) for r in rows], None
 
     @staticmethod
-    def _external_allowed(case_ids, user_id: int) -> bool:
+    def _external_allowed(case_ids, subject_id: int) -> bool:
         """None = alle erlaubt; sonst muss der Fall in der Liste stehen."""
-        return case_ids is None or int(user_id) in case_ids
+        return case_ids is None or int(subject_id) in case_ids
 
     def _external(self, person_id: int, query) -> Response:
         """
         GET /api/external — Vorgaenge mit Ampel. Optional ?offen=1, ?status=,
-        ?user_id=, ?stichtag= (Vorschau/Test).
+        ?subject_id=, ?stichtag= (Vorschau/Test).
         """
         case_ids, denied = self._external_scope(person_id, CAP_EXTERNAL_VIEW)
         if denied is not None:
@@ -2685,7 +2685,7 @@ class ManagementApp:
         # Query IMMER ueber _q1 lesen: der Server liefert parse_qs-Listen.
         offen = self._q1(query, "offen")
         status = self._q1(query, "status")
-        raw_user = self._q1(query, "user_id")
+        raw_user = self._q1(query, "subject_id")
         raw_stichtag = self._q1(query, "stichtag")
 
         statuses = None
@@ -2699,7 +2699,7 @@ class ManagementApp:
                 one = int(raw_user)
             except (TypeError, ValueError):
                 return Response.json(400, {"error": "bad_request",
-                                           "detail": "user_id ungueltig."})
+                                           "detail": "subject_id ungueltig."})
             if not self._external_allowed(case_ids, one):
                 return Response.json(403, {
                     "error": "forbidden", "capability": CAP_EXTERNAL_VIEW,
@@ -2713,7 +2713,7 @@ class ManagementApp:
         con = self._ro_con()
         try:
             repo = ExternalMattersRepo(con)
-            rows = repo.list_matters(user_ids=case_ids, statuses=statuses)
+            rows = repo.list_matters(subject_ids=case_ids, statuses=statuses)
             rows = repo.with_ampel(rows, info["stichtag"])
         except (ExternalMattersError, MatterStatusError) as exc:
             return Response.json(400, {"error": "bad_request",
@@ -2795,7 +2795,7 @@ class ManagementApp:
         con = self._ro_con()
         try:
             row = con.execute(
-                "SELECT user_id FROM external_matters WHERE id = ?",
+                "SELECT subject_id FROM external_matters WHERE id = ?",
                 (matter_id,)).fetchone()
         finally:
             con.close()
@@ -2815,19 +2815,19 @@ class ManagementApp:
         if denied is not None:
             return denied
         try:
-            user_id = int(payload.get("user_id"))
+            subject_id = int(payload.get("subject_id"))
         except (TypeError, ValueError):
             return Response.json(400, {"error": "bad_request",
-                                       "detail": "user_id fehlt/ungueltig."})
-        if not self._external_allowed(case_ids, user_id):
+                                       "detail": "subject_id fehlt/ungueltig."})
+        if not self._external_allowed(case_ids, subject_id):
             return Response.json(403, {
                 "error": "forbidden", "capability": CAP_EXTERNAL_EDIT,
-                "detail": "Fall %s ist nicht zugewiesen." % user_id})
+                "detail": "Fall %s ist nicht zugewiesen." % subject_id})
 
         con = self._rw_con()
         try:
             res = self._external_writer(con).create(
-                user_id=user_id,
+                subject_id=subject_id,
                 kind=str(payload.get("kind", "")),
                 betreff=str(payload.get("betreff", "")),
                 angefordert_am=str(payload.get("angefordert_am")
@@ -2947,7 +2947,7 @@ class ManagementApp:
         con = self._ro_con()
         try:
             rows = con.execute(
-                "SELECT user_id FROM cases WHERE assigned_to = ?",
+                "SELECT subject_id FROM cases WHERE assigned_to = ?",
                 (person_id,)).fetchall()
         finally:
             con.close()
@@ -2980,7 +2980,7 @@ class ManagementApp:
 
     def _results(self, person_id: int, query) -> Response:
         """
-        GET /api/results?user_id=N — AKTUELLER Stand + VOLLE HISTORIE + die
+        GET /api/results?subject_id=N — AKTUELLER Stand + VOLLE HISTORIE + die
         provisorische Kennzahl.
 
         Die Historie wird bewusst MITGELIEFERT: sie belegt den Erkenntnis-
@@ -2991,21 +2991,21 @@ class ManagementApp:
             return denied
 
         try:
-            user_id = int(self._q1(query, "user_id"))
+            subject_id = int(self._q1(query, "subject_id"))
         except (TypeError, ValueError):
             return Response.json(400, {"error": "bad_request",
-                                       "detail": "user_id fehlt/ungueltig."})
-        if case_ids is not None and user_id not in case_ids:
+                                       "detail": "subject_id fehlt/ungueltig."})
+        if case_ids is not None and subject_id not in case_ids:
             return Response.json(403, {
                 "error": "forbidden", "capability": CAP_RESULTS_VIEW,
-                "detail": "Fall %s ist nicht zugewiesen." % user_id})
+                "detail": "Fall %s ist nicht zugewiesen." % subject_id})
 
         con = self._ro_con()
         try:
             repo = ResultsRepo(con)
             cat = AssessmentCatalogRepo(con)
-            current = repo.current(user_id)
-            history = repo.history(user_id)
+            current = repo.current(subject_id)
+            history = repo.history(subject_id)
             alle = [c["code"] for c in cat.criteria()]
             score = PriorityScorer().score_with_gaps(current, alle)
             catver = cat.version()
@@ -3020,7 +3020,7 @@ class ManagementApp:
             con.close()
 
         return Response.json(200, {
-            "user_id": user_id,
+            "subject_id": subject_id,
             "scope": ("eigene" if case_ids is not None else "alle"),
             "catalog_version": catver,
             "current": current,
@@ -3101,7 +3101,7 @@ class ManagementApp:
         con = self._ro_con()
         try:
             repo = CoverageRepo(con)
-            cov = repo.coverage(user_ids=case_ids)
+            cov = repo.coverage(subject_ids=case_ids)
             cov["summary"] = repo.summary(cov)
             cov["scope"] = ("eigene" if case_ids is not None else "alle")
         except Exception as exc:                       # noqa: BLE001
@@ -3122,20 +3122,20 @@ class ManagementApp:
         if denied is not None:
             return denied
         try:
-            user_id = int(payload.get("user_id"))
+            subject_id = int(payload.get("subject_id"))
         except (TypeError, ValueError):
             return Response.json(400, {"error": "bad_request",
-                                       "detail": "user_id fehlt/ungueltig."})
-        if case_ids is not None and user_id not in case_ids:
+                                       "detail": "subject_id fehlt/ungueltig."})
+        if case_ids is not None and subject_id not in case_ids:
             return Response.json(403, {
                 "error": "forbidden", "capability": CAP_RESULTS_EDIT,
-                "detail": "Fall %s ist nicht zugewiesen." % user_id})
+                "detail": "Fall %s ist nicht zugewiesen." % subject_id})
 
         con = self._rw_con()
         try:
             repo = ResultsRepo(con, CoordinatorWriter(con, AuditLog(con)))
             res = repo.assess(
-                user_id=user_id,
+                subject_id=subject_id,
                 criterion_code=str(payload.get("criterion_code", "")),
                 extrem=str(payload.get("extrem", "")),
                 confidence_code=str(payload.get("confidence_code", "")),
@@ -3577,19 +3577,19 @@ class ManagementApp:
 
     # ------------------------------------------------------------- Schreiben
     def _case_id(self, con: sqlite3.Connection, payload: Dict[str, Any]):
-        """Validiert user_id und Existenz des Falls. -> (user_id, None) | (None, Response)"""
-        raw = payload.get("user_id")
+        """Validiert subject_id und Existenz des Falls. -> (subject_id, None) | (None, Response)"""
+        raw = payload.get("subject_id")
         try:
-            user_id = int(raw)
+            subject_id = int(raw)
         except (TypeError, ValueError):
             return None, Response.json(400, {
-                "error": "bad_request", "detail": "user_id fehlt/ungueltig."})
-        row = con.execute("SELECT 1 FROM cases WHERE user_id=?",
-                          (user_id,)).fetchone()
+                "error": "bad_request", "detail": "subject_id fehlt/ungueltig."})
+        row = con.execute("SELECT 1 FROM cases WHERE subject_id=?",
+                          (subject_id,)).fetchone()
         if row is None:
             return None, Response.json(400, {
-                "error": "unknown_case", "user_id": user_id})
-        return user_id, None
+                "error": "unknown_case", "subject_id": subject_id})
+        return subject_id, None
 
     def _case_assign(self, person_id: int,
                      payload: Dict[str, Any]) -> Response:
@@ -3610,7 +3610,7 @@ class ManagementApp:
 
         con = self._rw_con()
         try:
-            user_id, err = self._case_id(con, payload)
+            subject_id, err = self._case_id(con, payload)
             if err is not None:
                 return err
 
@@ -3635,7 +3635,7 @@ class ManagementApp:
 
             writer = CoordinatorWriter(con, AuditLog(con))
             seq = CasesRepo(con, writer).assign(
-                user_id, assignee, actor_id=person_id)
+                subject_id, assignee, actor_id=person_id)
         except Exception as exc:  # kein stiller Fehlschlag (Grundregel 1)
             logger.exception("Zuweisung fehlgeschlagen")
             return Response.json(500, {"error": "write_failed",
@@ -3643,7 +3643,7 @@ class ManagementApp:
         finally:
             con.close()
 
-        return Response.json(200, {"ok": True, "user_id": user_id,
+        return Response.json(200, {"ok": True, "subject_id": subject_id,
                                    "person_id": assignee, "audit_seq": seq})
 
     def _case_priority(self, person_id: int,
@@ -3665,19 +3665,19 @@ class ManagementApp:
 
         con = self._rw_con()
         try:
-            user_id, err = self._case_id(con, payload)
+            subject_id, err = self._case_id(con, payload)
             if err is not None:
                 return err
             writer = CoordinatorWriter(con, AuditLog(con))
             seq = CasesRepo(con, writer).set_priority(
-                user_id, prio, actor_id=person_id)
+                subject_id, prio, actor_id=person_id)
         except Exception as exc:
             logger.exception("Prioritaet setzen fehlgeschlagen")
             return Response.json(500, {"error": "write_failed",
                                        "detail": str(exc)})
         finally:
             con.close()
-        return Response.json(200, {"ok": True, "user_id": user_id,
+        return Response.json(200, {"ok": True, "subject_id": subject_id,
                                    "priority": prio, "audit_seq": seq})
 
     def _case_status(self, person_id: int,
@@ -3695,17 +3695,17 @@ class ManagementApp:
 
         con = self._rw_con()
         try:
-            user_id, err = self._case_id(con, payload)
+            subject_id, err = self._case_id(con, payload)
             if err is not None:
                 return err
             writer = CoordinatorWriter(con, AuditLog(con))
             seq = CasesRepo(con, writer).set_status(
-                user_id, status, actor_id=person_id)
+                subject_id, status, actor_id=person_id)
         except Exception as exc:
             logger.exception("Status setzen fehlgeschlagen")
             return Response.json(500, {"error": "write_failed",
                                        "detail": str(exc)})
         finally:
             con.close()
-        return Response.json(200, {"ok": True, "user_id": user_id,
+        return Response.json(200, {"ok": True, "subject_id": subject_id,
                                    "status": status, "audit_seq": seq})

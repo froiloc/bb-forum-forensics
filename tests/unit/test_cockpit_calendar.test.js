@@ -1,4 +1,6 @@
 /**
+ * Build 469: Schluesselumstellung user_id -> subject_id (M019)
+ * Version: v0.7.469 · Build: 469 · 2026-07-20
  * tests/unit/test_cockpit_calendar.test.js
  * IT-Forensisches Ermittlungswerkzeug — Baustelle 7: Kalender & Wiedervorlage
  *
@@ -107,14 +109,14 @@ function _ext() {
     count: 3,
     counts: { rot: 1, gelb: 1, gruen: 0, neutral: 1 },
     matters: [
-      { id: 2, user_id: 19, fall_username: "boarder19", kind: "beschluss",
+      { id: 2, subject_id: 19, fall_username: "boarder19", kind: "beschluss",
         kind_label: "Beschluss (StA / Ermittlungsrichter)",
         betreff: "Alter Beschluss", adressat: "StA Essen", aktenzeichen: null,
         angefordert_am: "2026-05-01", wiedervorlage_am: "2026-06-01",
         vorwarnfrist_tage: 7, status: "offen", status_label: "offen",
         ergebnis: null, case_status: "in_progress", ampel: "rot",
         ampel_grund: "Ueberfaellig seit 41 Tag(en)." },
-      { id: 1, user_id: 18, fall_username: "boarder18",
+      { id: 1, subject_id: 18, fall_username: "boarder18",
         kind: "bestandsdaten", kind_label: "Bestandsdatenauskunft",
         betreff: "Kennung xy", adressat: "Telekom AG", aktenzeichen: "Az-1",
         angefordert_am: "2026-07-01", wiedervorlage_am: "2026-07-16",
@@ -122,7 +124,7 @@ function _ext() {
         status_label: "beantwortet", ergebnis: "Auskunft da",
         case_status: "in_progress", ampel: "gelb",
         ampel_grund: "Faellig in 4 Tag(en) am 2026-07-16." },
-      { id: 3, user_id: 18, fall_username: "boarder18", kind: "osint",
+      { id: 3, subject_id: 18, fall_username: "boarder18", kind: "osint",
         kind_label: "OSINT", betreff: "Recherche", adressat: "",
         aktenzeichen: null, angefordert_am: "2026-06-01",
         wiedervorlage_am: "2026-06-20", vorwarnfrist_tage: 7,
@@ -245,21 +247,21 @@ describe("cockpit_calendar (Build 386)", () => {
   it("KA08 — createRequest/closeRequest: Pflichtfelder", () => {
     const api = _api();
     expect(api.createRequest({}).error).toContain("Fall");
-    expect(api.createRequest({ user_id: 18 }).error).toContain("Vorgangsart");
-    expect(api.createRequest({ user_id: 18, kind: "osint", betreff: " " })
+    expect(api.createRequest({ subject_id: 18 }).error).toContain("Vorgangsart");
+    expect(api.createRequest({ subject_id: 18, kind: "osint", betreff: " " })
       .error).toContain("Betreff");
-    expect(api.createRequest({ user_id: 18, kind: "osint", betreff: "x" })
+    expect(api.createRequest({ subject_id: 18, kind: "osint", betreff: "x" })
       .error).toContain("Wiedervorlagedatum");
 
     const ok = api.createRequest({
-      user_id: "18", kind: "osint", betreff: " Recherche ",
+      subject_id: "18", kind: "osint", betreff: " Recherche ",
       wiedervorlage_am: "2026-08-01", vorwarnfrist_tage: "3" });
     expect(ok.path).toBe("/api/external/create");
-    expect(ok.body.user_id).toBe(18);
+    expect(ok.body.subject_id).toBe(18);
     expect(ok.body.betreff).toBe("Recherche");
     expect(ok.body.vorwarnfrist_tage).toBe(3);
     // Unsinnige Frist faellt auf den Standard 7 zurueck.
-    expect(api.createRequest({ user_id: 1, kind: "osint", betreff: "x",
+    expect(api.createRequest({ subject_id: 1, kind: "osint", betreff: "x",
       wiedervorlage_am: "2026-08-01", vorwarnfrist_tage: "-5" })
       .body.vorwarnfrist_tage).toBe(7);
 
@@ -268,7 +270,7 @@ describe("cockpit_calendar (Build 386)", () => {
       .toEqual({ matter_id: 1, status: "erledigt", ergebnis: "fertig" });
 
     // Der Bestaetigungstext nennt die Unwiderruflichkeit beim Namen.
-    expect(api.confirmText("erfolglos", { id: 1, user_id: 18 }))
+    expect(api.confirmText("erfolglos", { id: 1, subject_id: 18 }))
       .toContain("ENDGUELTIG");
   });
 

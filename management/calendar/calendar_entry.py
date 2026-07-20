@@ -26,13 +26,13 @@
 #   jeweilige Quelle ohnehin freigibt. Die RBAC-Pruefung passiert in der QUELLE
 #   (CalendarSource), nicht hier — dieses Objekt ist ein reiner Traeger.
 #
-# Version: v0.7.385 · Build: 385 · 2026-07-12
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
-#: Subjektarten. 'case' = ein Fall (user_id), 'person' = ein Mitarbeiter
+#: Subjektarten. 'case' = ein Fall (subject_id), 'person' = ein Mitarbeiter
 #: (person.id), 'global' = betrifft alle (z. B. Feiertag).
 SUBJECT_KINDS = ("case", "person", "global")
 
@@ -52,7 +52,7 @@ class CalendarEntry:
     titel: str
     #: 'case' | 'person' | 'global'
     subject_kind: str
-    #: user_id (Fall) bzw. person.id; None bei 'global'.
+    #: subject_id (Fall) bzw. person.id; None bei 'global'.
     subject_id: Optional[int] = None
     #: Klartext des Subjekts (Fall-Benutzername bzw. Anzeigename).
     subject_label: str = ""

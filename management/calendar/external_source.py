@@ -24,7 +24,7 @@
 #   Scope 'eigene' -> nur die dem Ermittler ZUGEWIESENEN Faelle (cases.assigned_to).
 #   kein Recht     -> LEERE Liste + Hinweis (die Quelle schweigt nicht stumm).
 #
-# Version: v0.7.385 · Build: 385 · 2026-07-12
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import logging
@@ -72,7 +72,7 @@ class ExternalSource(CalendarSource):
         if pid is None:
             return []
         rows = self._con.execute(
-            "SELECT user_id FROM cases WHERE assigned_to = ?", (pid,)
+            "SELECT subject_id FROM cases WHERE assigned_to = ?", (pid,)
         ).fetchall()
         return [int(r[0]) for r in rows]
 
@@ -89,7 +89,7 @@ class ExternalSource(CalendarSource):
 
         repo = ExternalMattersRepo(self._con)   # rein lesend (kein Writer)
         try:
-            rows = repo.list_matters(user_ids=case_ids,
+            rows = repo.list_matters(subject_ids=case_ids,
                                      statuses=list(OPEN_STATUSES))
         except sqlite3.OperationalError as exc:
             # Tabelle fehlt (Migration M010 nicht angewandt) -> MELDEN, nicht
@@ -114,7 +114,7 @@ class ExternalSource(CalendarSource):
                 von=wv, bis=wv,                     # Zeitpunkt
                 titel="%s: %s" % (matter_kinds.label(r["kind"]), r["betreff"]),
                 subject_kind="case",
-                subject_id=int(r["user_id"]),
+                subject_id=int(r["subject_id"]),
                 subject_label=r.get("fall_username") or "",
                 ampel=r["ampel"],
                 ampel_grund=r["ampel_grund"],

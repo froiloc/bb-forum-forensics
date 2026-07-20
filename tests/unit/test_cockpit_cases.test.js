@@ -1,4 +1,6 @@
 /**
+ * Build 469: Schluesselumstellung user_id -> subject_id (M019)
+ * Version: v0.7.469 · Build: 469 · 2026-07-20
  * tests/unit/test_cockpit_cases.test.js
  * IT-Forensisches Ermittlungswerkzeug — Baustelle 7: Cockpit "Fall-Erkennung"
  *
@@ -62,7 +64,7 @@ function _fakeTabulator(doc) {
       (rows || []).forEach(function (d) {
         const tr = doc.createElement("div");
         tr.className = "fake-row";
-        tr.setAttribute("data-row-id", String(d.user_id));
+        tr.setAttribute("data-row-id", String(d.subject_id));
         (options.columns || []).forEach(function (col) {
           if (typeof col.formatter !== "function") { return; }
           const node = col.formatter({ getData: function () { return d; } });
@@ -86,19 +88,19 @@ function _data() {
     count: 5,
     counts: { ok: 1, neu: 2, vermisst: 1, unlesbar: 1 },
     cases: [
-      { user_id: 18, status: "ok", username: "b18", in_cases: true,
+      { subject_id: 18, status: "ok", username: "b18", in_cases: true,
         has_forensic_db: true, has_evidence_db: true, has_assets_db: true,
         detail: null },
-      { user_id: 19, status: "neu", username: "b19", in_cases: false,
+      { subject_id: 19, status: "neu", username: "b19", in_cases: false,
         has_forensic_db: true, has_evidence_db: false, has_assets_db: false,
         detail: null },
-      { user_id: 20, status: "neu", username: "b20", in_cases: false,
+      { subject_id: 20, status: "neu", username: "b20", in_cases: false,
         has_forensic_db: true, has_evidence_db: true, has_assets_db: false,
         detail: null },
-      { user_id: 21, status: "vermisst", username: "b21", in_cases: true,
+      { subject_id: 21, status: "vermisst", username: "b21", in_cases: true,
         has_forensic_db: false, has_evidence_db: true, has_assets_db: true,
         detail: "forensic_21.db fehlt im Verzeichnis ./data/forensic" },
-      { user_id: 22, status: "unlesbar", username: null, in_cases: false,
+      { subject_id: 22, status: "unlesbar", username: null, in_cases: false,
         has_forensic_db: true, has_evidence_db: false, has_assets_db: false,
         detail: "Tabelle 'uid_profile' fehlt" },
     ],
@@ -136,20 +138,20 @@ describe("cockpit_cases (Build 384)", () => {
     const rows = _api().toRows(_data());
     expect(rows).toHaveLength(5);
 
-    const r19 = rows.find((r) => r.user_id === 19);
+    const r19 = rows.find((r) => r.subject_id === 19);
     expect(r19.status_label).toBe("neu (aufnehmbar)");
     expect(r19.selectable).toBe(true);
     expect(r19.evidence).toBe("\u2014");   // Arbeitsstand: noch nichts
     expect(r19.forensic).toBe("ja");
 
-    const r21 = rows.find((r) => r.user_id === 21);
+    const r21 = rows.find((r) => r.subject_id === 21);
     expect(r21.status_label).toBe("VERMISST");
     expect(r21.forensic).toBe("\u2014");
     // Arbeitsstand ist da, die Quelle fehlt -> das ist der ernste Fall.
     expect(r21.evidence).toBe("ja");
     expect(r21.selectable).toBe(false);
 
-    const r22 = rows.find((r) => r.user_id === 22);
+    const r22 = rows.find((r) => r.subject_id === 22);
     expect(r22.status_label).toBe("UNLESBAR");
     expect(r22.username).toBe("");
     expect(r22.detail).toContain("uid_profile");
@@ -178,7 +180,7 @@ describe("cockpit_cases (Build 384)", () => {
   it("FE05 — warningRows/warningLine: Missstaende MIT Grund (Grundregel 1)", () => {
     const api = _api();
     const warns = api.warningRows(_data());
-    expect(warns.map((c) => c.user_id)).toEqual([21, 22]);
+    expect(warns.map((c) => c.subject_id)).toEqual([21, 22]);
 
     const l21 = api.warningLine(warns[0]);
     expect(l21).toContain("VERMISST");
@@ -198,7 +200,7 @@ describe("cockpit_cases (Build 384)", () => {
 
     const req = api.importRequest([19, "20"]);
     expect(req.path).toBe("/api/cases/import");
-    expect(req.body).toEqual({ user_ids: [19, 20] });
+    expect(req.body).toEqual({ subject_ids: [19, 20] });
     expect(req.body.all).toBeUndefined();
   });
 
@@ -206,7 +208,7 @@ describe("cockpit_cases (Build 384)", () => {
     const api = _api();
 
     const ok = api.resultText({
-      imported: [{ user_id: 19, username: "b19", audit_seq: 77 }],
+      imported: [{ subject_id: 19, username: "b19", audit_seq: 77 }],
       skipped: [], count: 1,
     });
     expect(ok.error).toBe(false);
@@ -215,8 +217,8 @@ describe("cockpit_cases (Build 384)", () => {
 
     // Ein uebersprungener Fall ist ein BEFUND, kein Erfolg.
     const mixed = api.resultText({
-      imported: [{ user_id: 19, username: "b19", audit_seq: 77 }],
-      skipped: [{ user_id: 22, reason: "Benutzername unlesbar" }],
+      imported: [{ subject_id: 19, username: "b19", audit_seq: 77 }],
+      skipped: [{ subject_id: 22, reason: "Benutzername unlesbar" }],
       count: 1,
     });
     expect(mixed.error).toBe(true);
@@ -292,7 +294,7 @@ describe("cockpit_cases (Build 384)", () => {
     api.renderCases(main, _data(), { Tabulator: _fakeTabulator(win.document) });
 
     const boxes = main.querySelectorAll("#aiw-cases-table input[type=checkbox]");
-    const ids = Array.from(boxes).map((b) => b.getAttribute("data-user-id"));
+    const ids = Array.from(boxes).map((b) => b.getAttribute("data-subject-id"));
     // Nur 19 und 20 sind 'neu' MIT Namen. 18 (ok), 21 (vermisst) und 22
     // (unlesbar) bekommen KEIN Kaestchen — die Oberflaeche bietet keine
     // Aktion an, die serverseitig zwingend scheitern wuerde.
@@ -314,7 +316,7 @@ describe("cockpit_cases (Build 384)", () => {
     expect(btn.disabled).toBe(true);
 
     // 1) Auswaehlen -> Knopf wird scharf, Zaehler stimmt.
-    const box19 = main.querySelector("input[data-user-id='19']");
+    const box19 = main.querySelector("input[data-subject-id='19']");
     box19.checked = true;
     box19.dispatchEvent(new win.Event("change"));
     expect(btn.disabled).toBe(false);
@@ -346,8 +348,8 @@ describe("cockpit_cases (Build 384)", () => {
     });
 
     const btn = main.querySelector("#aiw-cases-import");
-    const box19 = main.querySelector("input[data-user-id='19']");
-    const box20 = main.querySelector("input[data-user-id='20']");
+    const box19 = main.querySelector("input[data-subject-id='19']");
+    const box20 = main.querySelector("input[data-subject-id='20']");
 
     box19.checked = true;
     box19.dispatchEvent(new win.Event("change"));
@@ -376,7 +378,7 @@ describe("cockpit_cases (Build 384)", () => {
     expect(main.querySelector("#aiw-cases-result").classList
       .contains("ok")).toBe(true);
     view.showResult({
-      imported: [], skipped: [{ user_id: 22, reason: "unlesbar" }], count: 0,
+      imported: [], skipped: [{ subject_id: 22, reason: "unlesbar" }], count: 0,
     });
     const res = main.querySelector("#aiw-cases-result");
     expect(res.classList.contains("error")).toBe(true);
@@ -392,7 +394,7 @@ describe("cockpit_cases (Build 384)", () => {
       Tabulator: _fakeTabulator(win.document),
     });
 
-    const box19 = main.querySelector("input[data-user-id='19']");
+    const box19 = main.querySelector("input[data-subject-id='19']");
     box19.checked = true;
     box19.dispatchEvent(new win.Event("change"));
     expect(view.getSelection()).toEqual([19]);

@@ -19,7 +19,7 @@
 #   dann die Migrationen laufen lassen (M005 benennt nicht um, da 'person' schon
 #   existiert — No-op), dann ueber die Repos auditiert seeden.
 #
-# Version: v0.7.466 · Build: 466 · 2026-07-20
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import logging
@@ -57,6 +57,10 @@ CREATE TABLE person (
 )
 """
 
+# BEWUSST Alt-Schema (Spalte user_id, Stand VOR M019): der Bootstrap legt den
+# historischen Ausgangszustand an; der MigrationRunner (inkl. M019) zieht die
+# Spalte anschliessend regulaer auf subject_id nach. So wird der echte
+# Migrationspfad im Demo-Bestand mitgetestet — NICHT umbenennen.
 _OLD_SCRAPE_JOBS_DDL = """
 CREATE TABLE scrape_jobs (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -169,13 +173,13 @@ def _seed_data(con: sqlite3.Connection) -> Dict[str, Any]:
     # --- AP-2G-Artefakte (je ein Beispiel, damit die Sichten befuellt sind) --
     # Fremdforum-Promotion (uid ohne cases-FK zulaessig).
     PromotionRepo(con, writer).record_decision(
-        user_id=2001, target_status="gesichtet", herkunft="Demo-Nachbarforum",
+        subject_id=2001, target_status="gesichtet", herkunft="Demo-Nachbarforum",
         actor_id=1)
     # Externe Fallfreigabe (Demo-Empfaenger ueber eine Demo-AD-Allowlist).
     ad = ADDirectory(recipients={"demo_lka1": "KHK Demo, LKA-Musterland"},
                      group="DEMO-EK-Extern")
     CaseReleaseRepo(con, writer, ad=ad).grant(
-        user_id=1005, recipient_kennung="demo_lka1", umfang="bericht",
+        subject_id=1005, recipient_kennung="demo_lka1", umfang="bericht",
         unbedenklichkeit_grundlage="Demo-Freigabe (synthetisch, kein Realinhalt)",
         actor_id=1)
     # Onboarding-/Offboarding-Schritte.
@@ -189,7 +193,7 @@ def _seed_data(con: sqlite3.Connection) -> Dict[str, Any]:
                  note="Demo: noch aktiv, entfaellt.", actor_id=1)
     # Externer Vorgang (Wiedervorlage) fuer die Kalender-/Externsicht.
     ExternalMattersRepo(con, writer).create(
-        user_id=1001, kind="bestandsdaten", betreff="Demo-Bestandsdatenauskunft",
+        subject_id=1001, kind="bestandsdaten", betreff="Demo-Bestandsdatenauskunft",
         angefordert_am="2026-07-01", wiedervorlage_am="2026-08-01",
         adressat="Demo-Provider", actor_id=1)
 

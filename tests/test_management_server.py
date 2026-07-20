@@ -19,7 +19,8 @@
 # M10 — Live-Server SSE: /events sendet zuerst ein 'hello' im RFC-8895-Rahmen.
 # M11 — Read-Only-Nachweis: dispatch aendert audit_log nicht.
 #
-# Version: v0.7.346 · Build: 346 · 2026-07-10
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import json
@@ -157,12 +158,12 @@ class ManagementServerTests(unittest.TestCase):
         self.assertEqual(r2.status, 200)
         d2 = self._json(r2)
         self.assertEqual(d2["scope"], "eigene")
-        self.assertEqual({c["user_id"] for c in d2["cases"]}, {18})
+        self.assertEqual({c["subject_id"] for c in d2["cases"]}, {18})
 
         # Person 1 hat dashboard.view(alle) -> alle Faelle (18, 19).
         d1 = self._json(self.app.dispatch(1, "/api/overview"))
         self.assertEqual(d1["scope"], "alle")
-        self.assertEqual({c["user_id"] for c in d1["cases"]}, {18, 19})
+        self.assertEqual({c["subject_id"] for c in d1["cases"]}, {18, 19})
 
         # Person ohne Grant -> 403.
         self.repo.revoke_role(

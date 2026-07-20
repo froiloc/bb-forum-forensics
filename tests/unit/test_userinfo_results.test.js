@@ -1,4 +1,6 @@
 /**
+ * Build 469: Schluesselumstellung user_id -> subject_id (M019)
+ * Version: v0.7.469 · Build: 469 · 2026-07-20
  * tests/unit/test_userinfo_results.test.js
  * IT-Forensisches Ermittlungswerkzeug — Baustelle 4: Ergebnisbewertung
  *
@@ -9,7 +11,7 @@
  * UR02 — indexCurrent/cellText: 'nicht bewertet' ist ein BEFUND, kein Nichts.
  * UR03 — historyFor/historyLine: Verlauf mit Katalogversion und Beleg-Nr.
  * UR04 — hasQuality: Kriterien OHNE Qualitaetsskala bekommen KEIN Feld.
- * UR05 — assessRequest: Pflichtfelder; KEINE user_id im Rumpf (der Server
+ * UR05 — assessRequest: Pflichtfelder; KEINE subject_id im Rumpf (der Server
  *        nimmt sie aus dem Kontext — fremde Faelle sind strukturell
  *        unmoeglich); Qualitaet ohne Skala wird abgefangen.
  * UR06 — render: Tabelle mit EINER ZEILE JE KRITERIUM, zwei Extrem-Spalten.
@@ -70,7 +72,7 @@ function _catalog() {
 
 function _data(canEdit = true) {
   return {
-    user_id: 18,
+    subject_id: 18,
     can_edit: canEdit,
     catalog: _catalog(),
     current: [
@@ -155,7 +157,7 @@ describe("userinfo_results (Build 390)", () => {
     expect(api.hasQuality(cat, "gibtsnicht")).toBe(false);
   });
 
-  it("UR05 — assessRequest: Pflichtfelder, KEINE user_id im Rumpf", () => {
+  it("UR05 — assessRequest: Pflichtfelder, KEINE subject_id im Rumpf", () => {
     const api = _api();
     const cat = _catalog();
 
@@ -177,9 +179,9 @@ describe("userinfo_results (Build 390)", () => {
       confidence_code: "gerichtsfest", quality_code: "fortlaufend",
       note: "Beleg S. 14" });
     expect(ok.path).toBe("/_forensic/results/assess");
-    // DIE user_id FEHLT ABSICHTLICH: der Server nimmt sie aus dem Kontext.
+    // DIE subject_id FEHLT ABSICHTLICH: der Server nimmt sie aus dem Kontext.
     // Fremde Faelle sind damit strukturell unmoeglich, nicht nur verhindert.
-    expect(ok.body.user_id).toBeUndefined();
+    expect(ok.body.subject_id).toBeUndefined();
     expect(ok.body).toEqual({
       criterion_code: "abuser", extrem: "schwerste",
       confidence_code: "gerichtsfest", quality_code: "fortlaufend",

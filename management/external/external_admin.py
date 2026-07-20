@@ -9,8 +9,8 @@
 #
 #   Aufruf:  python -m management.external.external_admin <befehl> [...]
 #
-#     list    [--user-id N] [--status S ...] [--offen] [--stichtag YYYY-MM-DD]
-#     add     --user-id N --kind K --betreff T --wiedervorlage YYYY-MM-DD
+#     list    [--subject-id N] [--status S ...] [--offen] [--stichtag YYYY-MM-DD]
+#     add     --subject-id N --kind K --betreff T --wiedervorlage YYYY-MM-DD
 #             [--angefordert YYYY-MM-DD] [--adressat A] [--az AZ]
 #             [--vorwarnfrist N] --actor KENNUNG
 #     defer   --id N --wiedervorlage YYYY-MM-DD --grund G [--vorwarnfrist N]
@@ -29,7 +29,7 @@
 #         uebersieht (Grundregel 1).
 #     1 = Aufruf-/Fachfehler
 #
-# Version: v0.7.385 · Build: 385 · 2026-07-12
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import argparse
@@ -106,7 +106,7 @@ def _print_list(rows: List[dict], tag: str) -> int:
         if r["ampel"] == "rot":
             rot += 1
         print("%-5s %-7s %-16s %-11s %-14s %-6s %s"
-              % (r["id"], r["user_id"], r["kind"][:16], r["wiedervorlage_am"],
+              % (r["id"], r["subject_id"], r["kind"][:16], r["wiedervorlage_am"],
                  r["status"][:14], r["ampel"], (r["betreff"] or "")[:40]))
     print("-" * 100)
     print(stichtag_mod.stichtag_text({"stichtag": tag,
@@ -125,7 +125,7 @@ def _warn_rot(rows: List[dict]) -> None:
           % len(rot), file=sys.stderr)
     for r in rot:
         print("  [%s] Fall %s — %s: %s"
-              % (r["id"], r["user_id"], r["kind"], r["ampel_grund"]),
+              % (r["id"], r["subject_id"], r["kind"], r["ampel_grund"]),
               file=sys.stderr)
     print(line, file=sys.stderr)
 
@@ -141,14 +141,14 @@ def main(argv: Optional[List[str]] = None) -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p = sub.add_parser("list", help="Vorgaenge auflisten")
-    p.add_argument("--user-id", type=int, default=None)
+    p.add_argument("--subject-id", type=int, default=None)
     p.add_argument("--status", action="append", choices=list(STATUS_ORDER))
     p.add_argument("--offen", action="store_true",
                    help="nur offene/beantwortete Vorgaenge")
     p.add_argument("--stichtag", default=None)
 
     p = sub.add_parser("add", help="Vorgang anlegen")
-    p.add_argument("--user-id", type=int, required=True)
+    p.add_argument("--subject-id", type=int, required=True)
     p.add_argument("--kind", required=True, choices=list(matter_kinds.KIND_ORDER))
     p.add_argument("--betreff", required=True)
     p.add_argument("--wiedervorlage", required=True)
@@ -197,7 +197,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 statuses = list(OPEN_STATUSES)
             repo = _repo(con, schreibend=False)
             rows = repo.list_matters(
-                user_ids=[args.user_id] if args.user_id is not None else None,
+                subject_ids=[args.subject_id] if args.subject_id is not None else None,
                 statuses=statuses)
             rows = repo.with_ampel(rows, tag)
             _print_list(rows, tag)
@@ -209,7 +209,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
         if args.cmd == "add":
             res = repo.create(
-                user_id=args.user_id, kind=args.kind, betreff=args.betreff,
+                subject_id=args.subject_id, kind=args.kind, betreff=args.betreff,
                 angefordert_am=(args.angefordert
                                 or stichtag_mod.heute()["stichtag"]),
                 wiedervorlage_am=args.wiedervorlage,

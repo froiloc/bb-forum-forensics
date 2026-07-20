@@ -13,7 +13,8 @@
 # NA07 — build_queue: last_activity None -> als aeltestes behandelt (zuerst in Stufe)
 # NA08 — queue_to_dict: stabile Schluessel, json-serialisierbar
 #
-# Version: v0.7.452 · Build: 452 · 2026-07-19
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import json
@@ -32,7 +33,7 @@ _NOW = 1_700_000_000
 def _ov(uid, *, status="open", ampel="gruen", assigned_to=1, priority=3,
         ampel_reason="", last_activity_at=_NOW):
     return {
-        "user_id": uid, "username": "u%d" % uid, "status": status,
+        "subject_id": uid, "username": "u%d" % uid, "status": status,
         "priority": priority, "assigned_to": assigned_to, "ampel": ampel,
         "ampel_reason": ampel_reason, "last_activity_at": last_activity_at,
     }
@@ -80,7 +81,7 @@ def test_na06_ordering():
         _ov(4, ampel="rot", priority=1),                          # dringend, hoehere Prio
     ]
     q = build_queue(ovs, "alle", _NOW)
-    order = [a.user_id for a in q.items]
+    order = [a.subject_id for a in q.items]
     # dringend zuerst; unter dringend Prioritaet 1 vor 5
     assert order[0] == 4 and order[1] == 2
     assert order[-1] == 1                                          # routine zuletzt
@@ -92,7 +93,7 @@ def test_na07_none_activity_first():
         _ov(2, ampel="rot", priority=3, last_activity_at=None),   # aeltestes
     ]
     q = build_queue(ovs, "alle", _NOW)
-    assert q.items[0].user_id == 2
+    assert q.items[0].subject_id == 2
 
 
 def test_na08_to_dict():

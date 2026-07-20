@@ -22,7 +22,8 @@
 //   stets die aktuelle Rechtelage widerspiegelt (default-deny bleibt gewahrt:
 //   die Palette zeigt nur, was die Nav auch zeigt).
 //
-// Version: v0.7.457 · Build: 457 · 2026-07-19
+// Build 469: Schluesselumstellung user_id -> subject_id (M019)
+// Version: v0.7.469 · Build: 469 · 2026-07-20
 // =============================================================================
 
 (function () {
@@ -124,8 +125,8 @@
                  group: v.group || '' };
     }
     function _mkCaseItem(c) {
-        return { type: 'case', userId: c.user_id,
-                 label: 'Fall ' + c.user_id + ' · ' + (c.username || '?'),
+        return { type: 'case', subjectId: c.subject_id,
+                 label: 'Fall ' + c.subject_id + ' · ' + (c.username || '?'),
                  group: 'Fall', status: c.status };
     }
 
@@ -145,7 +146,7 @@
             li.className = 'aiw-palette-item'
                 + (i === view.sel ? ' aiw-palette-active' : '');
             if (item.type === 'case') {
-                li.setAttribute('data-case-id', String(item.userId));
+                li.setAttribute('data-case-id', String(item.subjectId));
             } else {
                 li.setAttribute('data-view-id', item.id);
             }
@@ -204,8 +205,8 @@
         if (!item) { return; }
         close();
         if (item.type === 'case') {
-            _onSelectCase(item.userId);
-            log('Fall gewaehlt:', item.userId);
+            _onSelectCase(item.subjectId);
+            log('Fall gewaehlt:', item.subjectId);
         } else {
             _onSelect(item.id);
             log('gewaehlt:', item.id);

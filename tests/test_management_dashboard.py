@@ -24,7 +24,8 @@
 # D12 — Read-Model schreibt nichts: Zeilenzahlen in cases/audit_log/case_events
 #       vor und nach list_case_overview identisch
 #
-# Version: v0.7.314 · Build: 314 · 2026-07-02
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import os
@@ -151,33 +152,33 @@ class ManagementDashboardTests(unittest.TestCase):
             os.rmdir(self._tmp)
 
     # Helfer -----------------------------------------------------------------
-    def _one(self, user_id, **kw):
+    def _one(self, subject_id, **kw):
         for o in self.dash.list_case_overview(**kw):
-            if o.user_id == user_id:
+            if o.subject_id == subject_id:
                 return o
         return None
 
     def _count(self, table):
         return self.con.execute("SELECT COUNT(*) FROM %s" % table).fetchone()[0]
 
-    def _set_activity(self, user_id, ts):
+    def _set_activity(self, subject_id, ts):
         """
         Setzt die letzte Fall-Aktivitaet deterministisch: cases.updated_at UND
         alle case_events.created_at des Falls auf ts. Damit ist
         last_activity_at == ts (unabhaengig von der realen Uhr).
         """
-        self.con.execute("UPDATE cases SET updated_at=? WHERE user_id=?",
-                         (ts, user_id))
-        self.con.execute("UPDATE case_events SET created_at=? WHERE user_id=?",
-                         (ts, user_id))
+        self.con.execute("UPDATE cases SET updated_at=? WHERE subject_id=?",
+                         (ts, subject_id))
+        self.con.execute("UPDATE case_events SET created_at=? WHERE subject_id=?",
+                         (ts, subject_id))
 
-    def _add_support(self, user_id, supporter_id, started_at, last_heartbeat,
+    def _add_support(self, subject_id, supporter_id, started_at, last_heartbeat,
                      ended_at=None):
         self.con.execute(
             "INSERT INTO support_sessions "
-            "(user_id, supporter_id, started_at, last_heartbeat, ended_at) "
+            "(subject_id, supporter_id, started_at, last_heartbeat, ended_at) "
             "VALUES (?, ?, ?, ?, ?)",
-            (user_id, supporter_id, started_at, last_heartbeat, ended_at),
+            (subject_id, supporter_id, started_at, last_heartbeat, ended_at),
         )
 
     # D01 --------------------------------------------------------------------
@@ -189,11 +190,12 @@ class ManagementDashboardTests(unittest.TestCase):
         # RBAC-Seed ops.promote); Build 462: M016 (case_release + RBAC-Seed
         # release.view/release.grant); Build 464: M017 (onboarding_item +
         # RBAC-Seed onboarding.view/onboarding.edit); Build 468: M018
-        # (identified_subject + RBAC-Seed crossref.view/crossref.edit).
+        # (identified_subject + RBAC-Seed crossref.view/crossref.edit);
+        # Build 469: M019 (Schluesselumstellung user_id -> subject_id).
         self.assertEqual(self.applied,
-                         [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+                         [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
                          if 3 not in self.applied
-                         else [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18])
+                         else [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19])
         # discover findet M001..M006 -> support_sessions (M003) IST dabei,
         # der person-Rename (M005, Build 342) ebenso wie das RBAC-Schema
         # (M006, Build 343).
@@ -295,7 +297,7 @@ class ManagementDashboardTests(unittest.TestCase):
         self.assertEqual(o.event_count, 3)
         self.assertEqual(o.last_event_kind, "manual")
         last = self.con.execute(
-            "SELECT MAX(created_at) FROM case_events WHERE user_id=24"
+            "SELECT MAX(created_at) FROM case_events WHERE subject_id=24"
         ).fetchone()[0]
         self.assertEqual(o.last_event_at, last)
 
@@ -318,7 +320,7 @@ class ManagementDashboardTests(unittest.TestCase):
         self.cases.set_priority(31, 1, actor_id=1)
         self.cases.create_case(32, "P5", actor_id=1)
         self.cases.set_priority(32, 5, actor_id=1)
-        order = [o.user_id for o in self.dash.list_case_overview()]
+        order = [o.subject_id for o in self.dash.list_case_overview()]
         self.assertEqual(order[0], 31)          # Prio 1 zuerst
         self.assertLess(order.index(30), order.index(32))  # Prio 3 vor Prio 5
 
@@ -408,8 +410,8 @@ class ManagementDashboardTests(unittest.TestCase):
         self._set_activity(51, NOW - 1 * _DAY)
 
         overview = self.dash.list_case_overview(now=NOW)
-        ids = [o.user_id for o in overview]
-        amp = {o.user_id: o.ampel for o in overview}
+        ids = [o.subject_id for o in overview]
+        amp = {o.subject_id: o.ampel for o in overview}
         # Ampel-Schwere zuerst: beide ROT vor GELB vor GRUEN; innerhalb ROT
         # (gleiche Prio) juengste Aktivitaet zuerst -> 50 vor 53.
         self.assertEqual(ids, [50, 53, 52, 51], overview)

@@ -14,11 +14,11 @@
 #        ADDirectoryError (Default-Deny). Der Anzeigename kommt aus F4.
 #     2) UNBEDENKLICHKEIT — die Pflicht-Grundlage (Fallregel 3) darf NICHT leer
 #        sein; sonst CaseReleaseError. Gleiche Linie wie export/staging.py.
-#     3) FALL EXISTIERT — user_id muss ein aufgenommener Fall sein (FK + Pruefung).
+#     3) FALL EXISTIERT — subject_id muss ein aufgenommener Fall sein (FK + Pruefung).
 #
 # SENSIBILITAETSREGEL (uebernommen von CasesRepo.set_note / ExternalMattersRepo):
 #   Freitexte (unbedenklichkeit_grundlage, grund_widerruf) gehen NICHT in den
-#   audit_log-Payload — nur FAKTEN (user_id, recipient_kennung, umfang, von->auf)
+#   audit_log-Payload — nur FAKTEN (subject_id, recipient_kennung, umfang, von->auf)
 #   und die Textlaenge. Die Empfaenger-Kennung IST ein Fakt (WER externen Zugriff
 #   erhielt) und gehoert ausdruecklich in den Beleg.
 #
@@ -27,7 +27,7 @@
 #   reopen()- und KEINE delete()-Methode; eine erneute Freigabe ist ein NEUER
 #   Record.
 #
-# Version: v0.7.462 · Build: 462 · 2026-07-20
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import logging
@@ -87,9 +87,9 @@ class CaseReleaseRepo:
     def _tlen(text: Optional[str]) -> int:
         return len(text or "")
 
-    def _case_exists(self, con: sqlite3.Connection, user_id: int) -> bool:
+    def _case_exists(self, con: sqlite3.Connection, subject_id: int) -> bool:
         return con.execute(
-            "SELECT 1 FROM cases WHERE user_id = ?", (user_id,)
+            "SELECT 1 FROM cases WHERE subject_id = ?", (subject_id,)
         ).fetchone() is not None
 
     def _row(self, con: sqlite3.Connection, release_id: int) -> sqlite3.Row:
@@ -106,27 +106,27 @@ class CaseReleaseRepo:
 
     def list_releases(
         self, *,
-        user_ids: Optional[Sequence[int]] = None,
+        subject_ids: Optional[Sequence[int]] = None,
         statuses: Optional[Sequence[str]] = None,
     ) -> List[Dict[str, Any]]:
         """
         Freigaben lesen, angereichert um den Fall-Benutzernamen und Klartext-
         Labels (Umfang/Status).
 
-        user_ids=None -> alle Faelle. user_ids=[] -> KEINE (korrekte Antwort fuer
+        subject_ids=None -> alle Faelle. subject_ids=[] -> KEINE (korrekte Antwort fuer
         einen Scope ohne Zuweisung; NICHT dasselbe wie 'alle').
         """
         sql = ("SELECT r.*, c.username AS fall_username "
-               "FROM case_release r JOIN cases c ON c.user_id = r.user_id")
+               "FROM case_release r JOIN cases c ON c.subject_id = r.subject_id")
         clauses: List[str] = []
         params: List[Any] = []
 
-        if user_ids is not None:
-            if not user_ids:
+        if subject_ids is not None:
+            if not subject_ids:
                 return []
-            marks = ",".join("?" for _ in user_ids)
-            clauses.append("r.user_id IN (%s)" % marks)
-            params.extend(int(u) for u in user_ids)
+            marks = ",".join("?" for _ in subject_ids)
+            clauses.append("r.subject_id IN (%s)" % marks)
+            params.extend(int(u) for u in subject_ids)
 
         if statuses:
             for s in statuses:
@@ -138,7 +138,7 @@ class CaseReleaseRepo:
 
         if clauses:
             sql += " WHERE " + " AND ".join(clauses)
-        sql += " ORDER BY r.status ASC, r.user_id ASC, r.id ASC"
+        sql += " ORDER BY r.status ASC, r.subject_id ASC, r.id ASC"
 
         out: List[Dict[str, Any]] = []
         for r in self._con.execute(sql, params).fetchall():
@@ -150,7 +150,7 @@ class CaseReleaseRepo:
 
     # --------------------------------------------------------------- Schreiben
     def grant(
-        self, *, user_id: int, recipient_kennung: str, umfang: str,
+        self, *, subject_id: int, recipient_kennung: str, umfang: str,
         unbedenklichkeit_grundlage: str, actor_id: Optional[int] = None,
         meta: Optional[Any] = None,
     ) -> Dict[str, Any]:
@@ -185,21 +185,21 @@ class CaseReleaseRepo:
         state: Dict[str, Any] = {}
 
         def _w(con: sqlite3.Connection) -> Dict[str, Any]:
-            if not self._case_exists(con, int(user_id)):
-                raise CaseReleaseError("Kein Fall user_id=%s." % user_id)
+            if not self._case_exists(con, int(subject_id)):
+                raise CaseReleaseError("Kein Fall subject_id=%s." % subject_id)
             cur = con.execute(
                 "INSERT INTO case_release "
-                "(user_id, recipient_kennung, recipient_display, umfang, "
+                "(subject_id, recipient_kennung, recipient_display, umfang, "
                 " status, unbedenklichkeit_grundlage, created_by, created_at, "
                 " audit_seq, created_audit_seq) "
                 "VALUES (?, ?, ?, ?, 'freigegeben', ?, ?, ?, 0, 0)",
-                (int(user_id), kennung, display, umfang,
+                (int(subject_id), kennung, display, umfang,
                  unbedenklichkeit_grundlage, actor_id, now),
             )
             state["release_id"] = int(cur.lastrowid)
             # Audit-Payload: FAKTEN, keine Freitexte (Sensibilitaetsregel).
             return {
-                "release_id": state["release_id"], "user_id": int(user_id),
+                "release_id": state["release_id"], "subject_id": int(subject_id),
                 "recipient_kennung": kennung, "umfang": umfang,
                 "status": "freigegeben",
                 "grundlage_len": self._tlen(unbedenklichkeit_grundlage),
@@ -217,7 +217,7 @@ class CaseReleaseRepo:
             target_id=None, meta=meta, after_audit=_after,
         )
         logger.info("Fall %s an %s (%s) freigegeben — Umfang %s (Beleg #%d).",
-                    user_id, kennung, display, umfang, seq)
+                    subject_id, kennung, display, umfang, seq)
         return {"release_id": state["release_id"], "audit_seq": seq,
                 "recipient_kennung": kennung, "recipient_display": display}
 
@@ -244,7 +244,7 @@ class CaseReleaseRepo:
                 ReleaseStatus.check_transition(row["status"], "widerrufen")
             except ReleaseStatusError as exc:
                 raise CaseReleaseError(str(exc)) from exc
-            ctx["user_id"] = row["user_id"]
+            ctx["subject_id"] = row["subject_id"]
             ctx["kennung"] = row["recipient_kennung"]
             ctx["von"] = row["status"]
             con.execute(
@@ -254,7 +254,7 @@ class CaseReleaseRepo:
                 (grund, actor_id, now, release_id),
             )
             return {
-                "release_id": release_id, "user_id": row["user_id"],
+                "release_id": release_id, "subject_id": row["subject_id"],
                 "recipient_kennung": row["recipient_kennung"],
                 "umfang": row["umfang"], "von": row["status"],
                 "auf": "widerrufen", "grund_len": self._tlen(grund),
@@ -272,5 +272,5 @@ class CaseReleaseRepo:
             target_id=str(release_id), meta=meta, after_audit=_after,
         )
         logger.info("Freigabe %s (Fall %s, %s) widerrufen (Beleg #%d).",
-                    release_id, ctx.get("user_id"), ctx.get("kennung"), seq)
+                    release_id, ctx.get("subject_id"), ctx.get("kennung"), seq)
         return seq

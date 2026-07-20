@@ -20,7 +20,7 @@
 #   Pfadaufloesung wie ReadonlyReportBundle/ReportsRepo: <evidence_dir>/
 #   evidence_<uid>.db, geoeffnet mit 'file:…?mode=ro'. now-Zeit injizierbar.
 #
-# Version: v0.7.449 · Build: 449 · 2026-07-19
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 from __future__ import annotations
@@ -78,17 +78,17 @@ class AnnotationStatsRepo:
         self._con = coordinator_con
         self._evidence_dir = Path(evidence_dir)
 
-    def _case_user_ids(self, scope: str, person_id: Optional[int]) -> List[int]:
-        """user_ids der Faelle im Scope. 'eigene' -> assigned_to == person_id."""
+    def _case_subject_ids(self, scope: str, person_id: Optional[int]) -> List[int]:
+        """subject_ids der Faelle im Scope. 'eigene' -> assigned_to == person_id."""
         if scope == "eigene":
             if person_id is None:
                 return []
             cur = self._con.execute(
-                "SELECT user_id FROM cases WHERE assigned_to=? ORDER BY user_id",
+                "SELECT subject_id FROM cases WHERE assigned_to=? ORDER BY subject_id",
                 (person_id,))
         else:
             cur = self._con.execute(
-                "SELECT user_id FROM cases ORDER BY user_id")
+                "SELECT subject_id FROM cases ORDER BY subject_id")
         return [int(r[0]) for r in cur.fetchall()]
 
     def _evidence_path(self, uid: int) -> Path:
@@ -117,7 +117,7 @@ class AnnotationStatsRepo:
                 person_id: Optional[int] = None,
                 now: Optional[int] = None) -> Dict[str, object]:
         now = int(time.time()) if now is None else int(now)
-        uids = self._case_user_ids(scope, person_id)
+        uids = self._case_subject_ids(scope, person_id)
 
         by_category: Dict[str, int] = {}
         by_tag: Dict[str, int] = {}

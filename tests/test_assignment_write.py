@@ -14,7 +14,8 @@
 # AS08 — HTTP-Haertung (echter Server): POST ohne Token -> 403; falscher
 #        Content-Type -> 415; PUT -> 405; korrekter POST -> 200 + Beleg.
 #
-# Version: v0.7.372 · Build: 372 · 2026-07-10
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import json
@@ -124,11 +125,11 @@ class AssignmentWriteTests(unittest.TestCase):
     def _fresh(self):
         return sqlite3.connect(self._db)
 
-    def _assigned_to(self, user_id):
+    def _assigned_to(self, subject_id):
         c = self._fresh()
         try:
-            return c.execute("SELECT assigned_to FROM cases WHERE user_id=?",
-                             (user_id,)).fetchone()[0]
+            return c.execute("SELECT assigned_to FROM cases WHERE subject_id=?",
+                             (subject_id,)).fetchone()[0]
         finally:
             c.close()
 
@@ -159,7 +160,7 @@ class AssignmentWriteTests(unittest.TestCase):
     def test_as02_assign_with_audit(self):
         app = ManagementApp(self._db)
         r = app.dispatch_write(1, "/api/case/assign",
-                               {"user_id": 18, "person_id": 2})
+                               {"subject_id": 18, "person_id": 2})
         self.assertEqual(r.status, 200)
         d = json.loads(r.body.decode("utf-8"))
         self.assertTrue(d["ok"])
@@ -172,9 +173,9 @@ class AssignmentWriteTests(unittest.TestCase):
     def test_as03_unassign(self):
         app = ManagementApp(self._db)
         app.dispatch_write(1, "/api/case/assign",
-                           {"user_id": 18, "person_id": 2})
+                           {"subject_id": 18, "person_id": 2})
         r = app.dispatch_write(1, "/api/case/assign",
-                               {"user_id": 18, "person_id": None})
+                               {"subject_id": 18, "person_id": None})
         self.assertEqual(r.status, 200)
         self.assertIsNone(self._assigned_to(18))
         self.assertGreaterEqual(self._audit("case_assigned", 18), 2)
@@ -184,7 +185,7 @@ class AssignmentWriteTests(unittest.TestCase):
         # Die Chefin weist sich selbst einen Fall zu — ausdruecklich erlaubt.
         app = ManagementApp(self._db)
         r = app.dispatch_write(1, "/api/case/assign",
-                               {"user_id": 19, "person_id": 1})
+                               {"subject_id": 19, "person_id": 1})
         self.assertEqual(r.status, 200)
         self.assertEqual(self._assigned_to(19), 1)
 
@@ -192,33 +193,33 @@ class AssignmentWriteTests(unittest.TestCase):
     def test_as05_priority_and_status(self):
         app = ManagementApp(self._db)
         r1 = app.dispatch_write(1, "/api/case/priority",
-                                {"user_id": 18, "priority": 1})
+                                {"subject_id": 18, "priority": 1})
         self.assertEqual(r1.status, 200)
         self.assertGreaterEqual(self._audit("case_priority_set", 18), 1)
 
         r2 = app.dispatch_write(1, "/api/case/status",
-                                {"user_id": 18, "status": "in_progress"})
+                                {"subject_id": 18, "status": "in_progress"})
         self.assertEqual(r2.status, 200)
         self.assertGreaterEqual(self._audit("case_status_changed", 18), 1)
 
         # Ungueltige Werte -> 400, kein Schreibvorgang.
         self.assertEqual(app.dispatch_write(
-            1, "/api/case/priority", {"user_id": 18, "priority": 9}).status, 400)
+            1, "/api/case/priority", {"subject_id": 18, "priority": 9}).status, 400)
         self.assertEqual(app.dispatch_write(
-            1, "/api/case/status", {"user_id": 18, "status": "pfui"}).status, 400)
+            1, "/api/case/status", {"subject_id": 18, "status": "pfui"}).status, 400)
 
     # AS06 -------------------------------------------------------------------
     def test_as06_validation(self):
         app = ManagementApp(self._db)
         # unbekannter Fall
         self.assertEqual(app.dispatch_write(
-            1, "/api/case/assign", {"user_id": 999, "person_id": 2}).status, 400)
+            1, "/api/case/assign", {"subject_id": 999, "person_id": 2}).status, 400)
         # unbekannte Person
         self.assertEqual(app.dispatch_write(
-            1, "/api/case/assign", {"user_id": 18, "person_id": 99}).status, 400)
+            1, "/api/case/assign", {"subject_id": 18, "person_id": 99}).status, 400)
         # Person ist kein Ermittler (Support)
         r = app.dispatch_write(1, "/api/case/assign",
-                               {"user_id": 18, "person_id": 3})
+                               {"subject_id": 18, "person_id": 3})
         self.assertEqual(r.status, 400)
         self.assertIn("not_investigator", r.body.decode("utf-8"))
         # unbekannte Schreibroute
@@ -229,11 +230,11 @@ class AssignmentWriteTests(unittest.TestCase):
         app = ManagementApp(self._db)
         # person 3: keine Rolle -> 403
         self.assertEqual(app.dispatch_write(
-            3, "/api/case/assign", {"user_id": 18, "person_id": 2}).status, 403)
+            3, "/api/case/assign", {"subject_id": 18, "person_id": 2}).status, 403)
         # person 2: investigator hat assignment.edit nur mit Scope 'eigene' ->
         # 403 (Zuweisen erfordert 'alle').
         r = app.dispatch_write(2, "/api/case/assign",
-                               {"user_id": 18, "person_id": 2})
+                               {"subject_id": 18, "person_id": 2})
         self.assertEqual(r.status, 403)
         self.assertIsNone(self._assigned_to(18))  # nichts geschrieben
 
@@ -253,7 +254,7 @@ class AssignmentWriteTests(unittest.TestCase):
             token = who["write_token"]
             self.assertTrue(token)
 
-            body = json.dumps({"user_id": 18, "person_id": 2}).encode("utf-8")
+            body = json.dumps({"subject_id": 18, "person_id": 2}).encode("utf-8")
 
             def post(headers, method="POST", data=body):
                 req = urllib.request.Request(base + "/api/case/assign",

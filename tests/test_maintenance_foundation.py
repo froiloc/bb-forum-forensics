@@ -6,7 +6,8 @@
 # ECHTE Dateien in tmp_path: atomares Schreiben/Lesen, (De-)Serialisierung,
 # Zustandslogik und das laute Melden kaputter Steuerdateien (Grundregel 1).
 #
-# Version: v0.7.435 · Build: 435 · 2026-07-19
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import json
@@ -202,11 +203,11 @@ def test_ack_roundtrip_und_fuer_fenster(paths):
 def test_registration_roundtrip(paths):
     r = ServerRegistration.neu(role="webserver:1488", host="KKVM", pid=999,
                                build=435, window_id="W1", port=8409,
-                               user_id=1488, config="config-hello77.yaml")
+                               subject_id=1488, config="config-hello77.yaml")
     r.schreiben(paths)
     geladen = ServerRegistration.laden(paths, r.uuid)
     assert geladen is not None
-    assert geladen.user_id == 1488
+    assert geladen.subject_id == 1488
     assert geladen.port == 8409
     assert geladen.kill_angefordert is False
 

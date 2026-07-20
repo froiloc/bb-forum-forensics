@@ -25,7 +25,8 @@
 // FARBEN (Spiegel cockpit.css): laufend=blau, abgeschlossen=gruen, Szenarien
 //   optimistisch/erwartet/pessimistisch = gruen/blau/rot.
 //
-// Version: v0.7.448 · Build: 448 · 2026-07-19
+// Build 469: Schluesselumstellung user_id -> subject_id (M019)
+// Version: v0.7.469 · Build: 469 · 2026-07-20
 // =============================================================================
 
 (function () {
@@ -100,13 +101,13 @@
         lanes.forEach(function (lane) {
             (lane.bars || []).forEach(function (b) {
                 tasks.push({
-                    label: 'Fall ' + b.user_id + ' (' + (b.username || '?') + ')',
+                    label: 'Fall ' + b.subject_id + ' (' + (b.username || '?') + ')',
                     lane: lane.assignee_name,
                     startMs: b.start_ts * 1000,
                     endMs: b.end_ts * 1000,
                     ongoing: !!b.ongoing,
                     status: b.status,
-                    userId: b.user_id
+                    subjectId: b.subject_id
                 });
             });
         });

@@ -48,7 +48,8 @@
 #   coordinator.db (READ-ONLY) — Support-Status
 #   evidence_<uid>.db (READ/WRITE) — Lock-Freigabe bei Grace-Period-Ablauf
 #
-# Version: v0.6.278 · Build: 278 · 2026-06-07
+# Version: v0.7.469 · Build: 469 · 2026-07-20
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
 #
 # Changelog Build 278 (2026-06-07):
 #   - Preflight-Request-Erkennung: X-Forensic-Preflight: 1.
@@ -152,14 +153,14 @@ def _get_support_status(
     stale_sec: int = _SUPPORT_STALE_SEC,
 ) -> dict:
     """
-    Liest den Live-Support-Status des Falls (context.user_id) aus
+    Liest den Live-Support-Status des Falls (context.subject_id) aus
     coordinator.db (ATTACHed 'cdb', Leseverbindung). Gibt inaktiven Status
     zurueck wenn coordinator_db nicht verfuegbar oder keine aktive Sitzung.
 
     Build 312:
-    - Reicht die Fall-user_id an get_support_status(user_id, stale_sec) —
+    - Reicht die Fall-subject_id an get_support_status(subject_id, stale_sec) —
       erst dadurch wird der in Build 311 angelegte Read scharf geschaltet
-      (ohne user_id war er bewusst inaktiv).
+      (ohne subject_id war er bewusst inaktiv).
     - Nimmt support_count (Anzahl gleichzeitig aktiver Support-Sitzungen)
       in die Nutzlast auf.
     - Im Support-Modus wird KEIN Status gelesen: der Supporter ist der
@@ -185,7 +186,7 @@ def _get_support_status(
     try:
         if hasattr(bundle.coordinator, "get_support_status"):
             status = bundle.coordinator.get_support_status(
-                context.user_id, stale_sec
+                context.subject_id, stale_sec
             )
             if status.active:
                 return {
@@ -270,7 +271,7 @@ class EventsEndpoint:
             try:
                 self._support_binder = SupportPresenceBinder(
                     coordinator_path,
-                    user_id=ctx.user_id,
+                    subject_id=ctx.subject_id,
                     supporter_id=getattr(ctx, "investigator_id", None),
                     stale_sec=_SUPPORT_STALE_SEC,
                     prune_older_than_sec=_SUPPORT_PRUNE_OLDER_THAN_SEC,

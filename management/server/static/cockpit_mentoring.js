@@ -18,7 +18,8 @@
 //
 // XSS: nur textContent / Tabulator-plaintext (kein innerHTML).
 //
-// Version: v0.7.369 · Build: 369 · 2026-07-10
+// Build 469: Schluesselumstellung user_id -> subject_id (M019)
+// Version: v0.7.469 · Build: 469 · 2026-07-20
 // =============================================================================
 
 (function () {
@@ -70,7 +71,7 @@
         return ((data && data.sessions) || []).map(function (s) {
             return {
                 id: s.id,
-                user_id: s.user_id,
+                subject_id: s.subject_id,
                 username: s.username,
                 supporter: supporterLabel(s),
                 laufzeit: fmtDuration(s.started_ago_sec),
@@ -93,7 +94,7 @@
 
     var _COLUMNS = [
         { title: 'Sitzung', field: 'id' },
-        { title: 'Fall', field: 'user_id' },
+        { title: 'Fall', field: 'subject_id' },
         { title: 'Benutzername', field: 'username', headerFilter: 'input' },
         { title: 'Supporter', field: 'supporter', headerFilter: 'input' },
         { title: 'Laufzeit', field: 'laufzeit' },

@@ -13,7 +13,8 @@
 # RT07 — thresholds_from_config None-sicher; Parameter uebersteuert
 # RT08 — RetentionRepo liest cases; retention_to_dict serialisierbar
 #
-# Version: v0.7.456 · Build: 456 · 2026-07-19
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import json
@@ -34,7 +35,7 @@ _TH = RetentionThresholds(retention_days=730)
 
 
 def _c(uid, status, *, approved_at=None, updated_at=None):
-    return {"user_id": uid, "username": "u%d" % uid, "status": status,
+    return {"subject_id": uid, "username": "u%d" % uid, "status": status,
             "approved_at": approved_at, "updated_at": updated_at}
 
 
@@ -76,7 +77,7 @@ def test_rt06_sorting_and_over_by():
     cases = [_c(1, "approved", approved_at=_NOW - 800 * _DAY),   # 70 ueber
              _c(2, "approved", approved_at=_NOW - 1100 * _DAY)]  # 370 ueber
     rep = evaluate_retention(cases, _TH, _NOW)
-    assert rep.candidates[0].user_id == 2                # groesste Ueberschreitung
+    assert rep.candidates[0].subject_id == 2                # groesste Ueberschreitung
     assert rep.candidates[0].over_by_days == 1100 - 730
 
 
@@ -91,13 +92,13 @@ def test_rt07_config():
 
 def test_rt08_repo_and_dict():
     con = sqlite3.connect(":memory:")
-    con.execute("CREATE TABLE cases(user_id INTEGER PRIMARY KEY, username TEXT, "
+    con.execute("CREATE TABLE cases(subject_id INTEGER PRIMARY KEY, username TEXT, "
                 "status TEXT, approved_at INTEGER, updated_at INTEGER)")
     con.execute("INSERT INTO cases VALUES(1,'a','approved',?,?)",
                 (_NOW - 900 * _DAY, _NOW - 10 * _DAY))
     con.execute("INSERT INTO cases VALUES(2,'b','open',NULL,?)", (_NOW,))
     con.commit()
     rep = RetentionRepo(con).compute(thresholds=_TH, now=_NOW)
-    assert rep.candidate_count == 1 and rep.candidates[0].user_id == 1
+    assert rep.candidate_count == 1 and rep.candidates[0].subject_id == 1
     d = retention_to_dict(rep)
     assert json.dumps(d, ensure_ascii=False) and d["candidate_count"] == 1

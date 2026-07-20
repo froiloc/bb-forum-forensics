@@ -1,4 +1,6 @@
 /**
+ * Build 469: Schluesselumstellung user_id -> subject_id (M019)
+ * Version: v0.7.469 · Build: 469 · 2026-07-20
  * tests/unit/test_cockpit_palette_cases.test.js
  * IT-Forensisches Ermittlungswerkzeug — Baustelle 7: Kommandopalette Fall-Suche
  *
@@ -6,7 +8,7 @@
  * Testet den ECHTEN Code (readFileSync + JSDOM) mit INJIZIERTER searchCases.
  *
  * PC01 — Fall-Treffer erscheinen (data-case-id) zusaetzlich zu Sicht-Treffern.
- * PC02 — Auswahl eines Fall-Treffers ruft onSelectCase(userId) und schliesst.
+ * PC02 — Auswahl eines Fall-Treffers ruft onSelectCase(subjectId) und schliesst.
  * PC03 — veraltete (out-of-order) Antwort wird verworfen (_searchToken).
  * PC04 — ohne searchCases (Rueckwaertskompatibilitaet) nur Sicht-Treffer.
  */
@@ -42,7 +44,7 @@ describe("cockpit_palette.js — Fall-Suche (Build 459)", () => {
   it("PC01: Fall-Treffer erscheinen zusaetzlich", async () => {
     const { win, api } = _ctx({
       searchCases: () => Promise.resolve([
-        { user_id: 18, username: "taeter_sued", status: "open" },
+        { subject_id: 18, username: "taeter_sued", status: "open" },
       ]),
     });
     api.open();
@@ -59,7 +61,7 @@ describe("cockpit_palette.js — Fall-Suche (Build 459)", () => {
     let chosen = null;
     const { win, api } = _ctx({
       searchCases: () => Promise.resolve([
-        { user_id: 42, username: "x", status: "open" },
+        { subject_id: 42, username: "x", status: "open" },
       ]),
       onSelectCase: (uid) => { chosen = uid; },
     });
@@ -84,7 +86,7 @@ describe("cockpit_palette.js — Fall-Suche (Build 459)", () => {
       searchCases: () => {
         call += 1;
         if (call === 1) { return first; }
-        return Promise.resolve([{ user_id: 2, username: "zweite", status: "open" }]);
+        return Promise.resolve([{ subject_id: 2, username: "zweite", status: "open" }]);
       },
     });
     api.open();
@@ -95,7 +97,7 @@ describe("cockpit_palette.js — Fall-Suche (Build 459)", () => {
     input.dispatchEvent(new win.Event("input", { bubbles: true }));   // Suche 2
     await _tick();
     // jetzt loest die ERSTE (veraltete) Suche auf:
-    resolveFirst([{ user_id: 1, username: "erste", status: "open" }]);
+    resolveFirst([{ subject_id: 1, username: "erste", status: "open" }]);
     await _tick();
     expect(win.document.querySelector('[data-case-id="2"]')).toBeTruthy();
     expect(win.document.querySelector('[data-case-id="1"]')).toBeNull();

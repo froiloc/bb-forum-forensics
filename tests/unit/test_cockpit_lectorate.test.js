@@ -1,4 +1,6 @@
 /**
+ * Build 469: Schluesselumstellung user_id -> subject_id (M019)
+ * Version: v0.7.469 · Build: 469 · 2026-07-20
  * tests/unit/test_cockpit_lectorate.test.js
  * IT-Forensisches Ermittlungswerkzeug — Baustelle 7: Cockpit Lektorat (W4)
  *
@@ -9,7 +11,7 @@
  * LE01 — API verfuegbar.
  * LE02 — statusLabel: deutsche Bezeichnungen (R1).
  * LE03 — filterReports: 'submitted' (Vorgabe), 'alle', leer; mutiert nicht.
- * LE04 — renderUrl: korrekte SF-1-URL (user_id/report_id).
+ * LE04 — renderUrl: korrekte SF-1-URL (subject_id/report_id).
  * LE05 — reportLabel: Zeilentext.
  * LE06 — renderLectorate: Auswahl-Liste (nur submitted) + <iframe>; Klick setzt
  *        iframe.src auf die Render-URL, markiert aktiv, ruft onSelect.
@@ -40,11 +42,11 @@ function _data() {
     scope: "alle",
     count: 3,
     reports: [
-      { user_id: 18, username: "b18", id: 1, report_type: "interim",
+      { subject_id: 18, username: "b18", id: 1, report_type: "interim",
         sequence_nr: 1, title: "Zwischenbericht", status: "submitted" },
-      { user_id: 19, username: "b19", id: 2, report_type: "final",
+      { subject_id: 19, username: "b19", id: 2, report_type: "final",
         sequence_nr: 3, title: "Abschlussbericht", status: "approved" },
-      { user_id: 20, username: "b20", id: 1, report_type: "addendum",
+      { subject_id: 20, username: "b20", id: 1, report_type: "addendum",
         sequence_nr: 2, title: "Nachtrag", status: "submitted" },
     ],
   };
@@ -81,7 +83,7 @@ describe("cockpit_lectorate", () => {
   it("LE04 renderUrl", () => {
     const api = _api();
     expect(api.renderUrl(18, 1)).toBe(
-      "/api/report/render?user_id=18&report_id=1"
+      "/api/report/render?subject_id=18&report_id=1"
     );
   });
 
@@ -113,7 +115,7 @@ describe("cockpit_lectorate", () => {
 
     // Klick auf den ersten Bericht (uid 18, rid 1).
     items[0].dispatchEvent(new win.Event("click", { bubbles: true }));
-    expect(frame.src).toContain("/api/report/render?user_id=18&report_id=1");
+    expect(frame.src).toContain("/api/report/render?subject_id=18&report_id=1");
     expect(items[0].classList.contains("is-active")).toBe(true);
     expect(picked).toEqual([18, 1]);
   });
@@ -136,7 +138,7 @@ describe("cockpit_lectorate", () => {
   it("LE08 annotationsUrl + forumContext + categoryLabel", () => {
     const api = _api();
     expect(api.annotationsUrl(18, 1)).toBe(
-      "/api/report/annotations?user_id=18&report_id=1"
+      "/api/report/annotations?subject_id=18&report_id=1"
     );
     expect(api.categoryLabel("CAT_PERSON")).toBe("Person");
     expect(api.categoryLabel("CAT_UNBEKANNT")).toBe("CAT_UNBEKANNT");
@@ -214,7 +216,7 @@ describe("cockpit_lectorate", () => {
   // --- Kommentar-Panel (SF-3, Build 415) ---------------------------------
   function _comData() {
     return {
-      user_id: 700, report_id: 1, count: 2,
+      subject_id: 700, report_id: 1, count: 2,
       comments: [
         { comment_id: "c1", report_id: 1, block_id: "b1", reviewer_pid: 1,
           reviewer_role: "lector", comment_text: "Bitte praezisieren",
@@ -229,7 +231,7 @@ describe("cockpit_lectorate", () => {
   it("LE12 reine Kommentar-Helfer", () => {
     const api = _api();
     expect(api.commentsUrl(700, 1)).toBe(
-      "/api/report/comments?user_id=700&report_id=1"
+      "/api/report/comments?subject_id=700&report_id=1"
     );
     expect(api.commentStatusLabel("pending")).toBe("offen");
     expect(api.commentStatusLabel("addressed")).toBe("erledigt");
@@ -273,7 +275,7 @@ describe("cockpit_lectorate", () => {
       new win.Event("submit", { bubbles: true, cancelable: true })
     );
     expect(added).toEqual({
-      user_id: 700, report_id: 1, block_id: null,
+      subject_id: 700, report_id: 1, block_id: null,
       comment_text: "Neuer Hinweis", suggested_content: null,
     });
 
@@ -281,7 +283,7 @@ describe("cockpit_lectorate", () => {
     items[0].querySelector('.aiw-lectorate-com-resolve[data-status="addressed"]')
       .dispatchEvent(new win.Event("click", { bubbles: true }));
     expect(resolved).toEqual({
-      user_id: 700, comment_id: "c1", status: "addressed",
+      subject_id: 700, comment_id: "c1", status: "addressed",
     });
   });
 
@@ -294,7 +296,7 @@ describe("cockpit_lectorate", () => {
 
     // keine Kommentare -> Hinweis.
     let added = null;
-    api.renderComments({ user_id: 700, report_id: 1, count: 0, comments: [] },
+    api.renderComments({ subject_id: 700, report_id: 1, count: 0, comments: [] },
       { personId: 1, onAdd: function (b) { added = b; } });
     const panel = main.querySelector(".aiw-lectorate-comments");
     expect(panel.textContent).toContain("Noch keine Kommentare");

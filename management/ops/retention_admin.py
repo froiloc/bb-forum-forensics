@@ -10,7 +10,7 @@
 #          [--coordinator-db PATH] [--config ./config.yaml]
 #          [--retention-days N] [--json]
 #
-# Version: v0.7.456 · Build: 456 · 2026-07-19
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import argparse
@@ -89,7 +89,7 @@ def main(argv=None) -> int:
     for c in report.candidates:
         print("  Fall %d (%s) [%s] Abschluss %s (%s) — %d Tage aufbewahrt "
               "(%d ueber Frist)"
-              % (c.user_id, c.username, c.status, _fmt(c.reference_ts),
+              % (c.subject_id, c.username, c.status, _fmt(c.reference_ts),
                  c.reference_field, c.days_retained, c.over_by_days))
     if not report.candidates:
         print("  (kein Kandidat)")

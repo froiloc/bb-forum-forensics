@@ -26,7 +26,8 @@
 //   'gruen-aber-tot'-Falle). Reine Funktionen fassen NIE das DOM an; nur
 //   render() beruehrt document (und wird nur im Browser/jsdom aufgerufen).
 //
-// Version: v0.7.322 · Build: 322 · 2026-07-04
+// Build 469: Schluesselumstellung user_id -> subject_id (M019)
+// Version: v0.7.469 · Build: 469 · 2026-07-20
 // =============================================================================
 
 (function () {
@@ -77,7 +78,7 @@
     // -------------------------------------------------------------------------
     // REINE FUNKTION: Sortierung fuer die Anzeige. Spiegelt die Backend-Regel
     // (Build 315): Ampel-Schwere zuerst, dann Prioritaet aufsteigend, dann
-    // letzte Aktivitaet absteigend, dann user_id. BEWUSST defensiv im Frontend
+    // letzte Aktivitaet absteigend, dann subject_id. BEWUSST defensiv im Frontend
     // dupliziert, damit die Ansicht auch bei unsortierter Eingabe korrekt ist.
     // Gibt eine NEUE Liste zurueck (keine Mutation der Eingabe).
     // -------------------------------------------------------------------------
@@ -90,7 +91,7 @@
             if (a.priority !== b.priority) { return a.priority - b.priority; }  // 1 zuerst
             var la = a.last_activity_at || 0, lb = b.last_activity_at || 0;
             if (la !== lb) { return lb - la; }                 // juengste Aktivitaet zuerst
-            return (a.user_id || 0) - (b.user_id || 0);
+            return (a.subject_id || 0) - (b.subject_id || 0);
         });
         return copy;
     }
@@ -135,7 +136,7 @@
     // Trennt strikt Daten -> Zellen; nutzt textContent (kein innerHTML) gegen
     // Injektion aus Forumsdaten (Benutzernamen sind beliebiger UTF-8-Text!).
     // -------------------------------------------------------------------------
-    var COLUMNS = ['Ampel', 'Prio', 'user_id', 'Benutzer', 'Status',
+    var COLUMNS = ['Ampel', 'Prio', 'subject_id', 'Benutzer', 'Status',
         'Zuweisung', 'Letzte Aktivitaet', 'Ereignis', 'Support', 'Ereign.', 'Notiz', 'Grund'];
 
     function cell(row, text, className) {
@@ -153,7 +154,7 @@
 
         var ordered = sortForDisplay(cases);
         log('renderInto: sortiert ->', ordered.map(function (c) {
-            return c.user_id + ':' + c.ampel;
+            return c.subject_id + ':' + c.ampel;
         }));
 
         // Vorhandenen Inhalt leeren (idempotentes Re-Rendern).
@@ -176,14 +177,14 @@
         ordered.forEach(function (c) {
             var tr = document.createElement('tr');
             tr.className = ampelClass(c.ampel);
-            tr.setAttribute('data-user-id', String(c.user_id));
+            tr.setAttribute('data-subject-id', String(c.subject_id));
 
             // Ampel-Punkt (visuell) via eigener Zelle mit Klasse.
             var ampelTd = cell(tr, '', 'aiw-ampel-dot ' + ampelClass(c.ampel));
             ampelTd.setAttribute('title', c.ampel || '');
 
             cell(tr, c.priority, 'aiw-prio');
-            cell(tr, c.user_id);
+            cell(tr, c.subject_id);
             cell(tr, c.username, 'aiw-username');
             cell(tr, c.status);
             cell(tr, assigneeLabel(c));

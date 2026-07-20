@@ -15,7 +15,8 @@
 # B09 — Repoint-Read: get_case gleiche Schlüssel; None bei fehlendem Fall
 # B10 — Audit-Kette verifiziert nach cases-Writes (inkl. M001/M002)
 #
-# Version: v0.7.307 · Build: 307 · 2026-07-01
+# Build 469: Schluesselumstellung user_id -> subject_id (M019)
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 import os
@@ -32,12 +33,8 @@ from management.audit.audit_log import AuditLog
 from management.audit.event_types import EventType
 from management.cases.cases_repo import CasesError, CasesRepo
 from management.gateway.coordinator_writer import CoordinatorWriter
-from management.migrations.coordinator import (
-    m001_audit_log,
-    m002_cases,
-    m004_case_events,
-)
-from management.migrations.runner import MigrationRunner
+import management.migrations.coordinator as coordinator_migrations
+from management.migrations.runner import MigrationRunner, discover
 
 _OLD_SCRAPE_JOBS = """
 CREATE TABLE scrape_jobs (
@@ -104,15 +101,15 @@ class ManagementCasesTests(unittest.TestCase):
              (19, "LMN",  2, "pending", now, 2, "Notiz")],
         )
 
-        # Migrationen M001 + M002 + M004 anwenden. M004 (case_events) ist ab
-        # Build 313 Pflicht für diese Suite: CasesRepo spiegelt Anlage/
-        # Zuweisung/Statuswechsel/Freigabe in den Zeitstrahl — ohne die
-        # Tabelle schlügen die Writes hart fehl (gewollt, keine stille
-        # Degradation; Bauplan B7 v0.8 §8.4). M003 (support_sessions) wird
-        # hier nicht gebraucht.
+        # Vollstaendiger Migrationslauf ueber discover() — exakt der PROD-Weg.
+        # Bis Build 468 lief hier eine Teilmenge [M001, M002, M004]; seit M019
+        # (Build 469, Spalten-Rename user_id -> subject_id) braucht CasesRepo
+        # das NACH-M019-Schema, und M019 selbst setzt alle 9 Schluesseltabellen
+        # voraus — daher jetzt der volle Lauf (wie test_management_case_events).
         self.audit = AuditLog(self.con)
+        self.mods = discover(coordinator_migrations)
         self.runner = MigrationRunner(
-            self.con, [m001_audit_log, m002_cases, m004_case_events],
+            self.con, self.mods,
             audit=self.audit, deployed_by="tester",
         )
         self.applied = self.runner.run()
@@ -147,20 +144,25 @@ class ManagementCasesTests(unittest.TestCase):
 
     # ------------------------------------------------------------------- B01
     def test_b01_rebuild_columns_and_indexes(self):
-        # Seit Build 313 wendet die Fixture auch M004 an (Spiegelung
-        # der cases-Writes braucht case_events).
-        self.assertEqual(self.applied, [1, 2, 4])
+        # Seit Build 469 laeuft die Fixture den vollen discover()-Pfad —
+        # M001 und M002 muessen weiterhin dabei sein (Rebuild-Nachweis).
+        self.assertIn(1, self.applied)
+        self.assertIn(2, self.applied)
+        self.assertIn(4, self.applied)
         cols = self._cols("scrape_jobs")
         self.assertNotIn("assigned_to", cols)
         self.assertNotIn("note", cols)
+        # NACH-M019-Stand: Schluesselspalte heisst subject_id (Build 469).
         self.assertTrue(
-            {"id", "user_id", "username", "priority", "status", "manifest_path",
+            {"id", "subject_id", "username", "priority", "status", "manifest_path",
              "output_path", "worker_id", "created_at", "started_at",
              "finished_at", "error_message"} <= cols
         )
         idx = {r[1] for r in self.con.execute("PRAGMA index_list(scrape_jobs)")}
         self.assertIn("scrape_jobs_status_idx", idx)
-        self.assertIn("scrape_jobs_user_idx", idx)
+        # M019 benennt scrape_jobs_user_idx -> scrape_jobs_subject_idx um.
+        self.assertIn("scrape_jobs_subject_idx", idx)
+        self.assertNotIn("scrape_jobs_user_idx", idx)
 
     # ------------------------------------------------------------------- B02
     def test_b02_rowcount_invariant(self):
@@ -191,7 +193,7 @@ class ManagementCasesTests(unittest.TestCase):
     def test_b04_create_case_atomic(self):
         seq = self.repo.create_case(100, "TestUser", actor_id=None)
         row = self.con.execute(
-            "SELECT status, priority FROM cases WHERE user_id = 100"
+            "SELECT status, priority FROM cases WHERE subject_id = 100"
         ).fetchone()
         self.assertEqual(row["status"], "open")
         self.assertEqual(row["priority"], 3)
@@ -206,7 +208,7 @@ class ManagementCasesTests(unittest.TestCase):
         self.repo.create_case(100, "TestUser")
         self.repo.assign(100, 2)
         row = self.con.execute(
-            "SELECT assigned_to FROM cases WHERE user_id = 100"
+            "SELECT assigned_to FROM cases WHERE subject_id = 100"
         ).fetchone()
         self.assertEqual(row["assigned_to"], 2)
         self.assertEqual(self._last_audit()["event_type"], EventType.CASE_ASSIGNED)
@@ -216,7 +218,7 @@ class ManagementCasesTests(unittest.TestCase):
         self.repo.create_case(100, "TestUser")
         self.repo.set_status(100, "approved")
         row = self.con.execute(
-            "SELECT status, approved_at FROM cases WHERE user_id = 100"
+            "SELECT status, approved_at FROM cases WHERE subject_id = 100"
         ).fetchone()
         self.assertEqual(row["status"], "approved")
         self.assertIsNotNone(row["approved_at"])
@@ -230,7 +232,7 @@ class ManagementCasesTests(unittest.TestCase):
             self.repo.set_status(100, "bogus")
         # Status unverändert, kein zusätzlicher Audit-Eintrag.
         row = self.con.execute(
-            "SELECT status FROM cases WHERE user_id = 100"
+            "SELECT status FROM cases WHERE subject_id = 100"
         ).fetchone()
         self.assertEqual(row["status"], "open")
         self.assertEqual(self._audit_count(), before)
@@ -254,7 +256,7 @@ class ManagementCasesTests(unittest.TestCase):
         case = self.repo.get_case(100)
         self.assertEqual(
             set(case.keys()),
-            {"user_id", "username", "status", "priority", "assigned_to", "note",
+            {"subject_id", "username", "status", "priority", "assigned_to", "note",
              "approved_at", "total_pages_scraped", "created_at", "updated_at"},
         )
         self.assertEqual(case["assigned_to"], "h002")  # als system_username aufgelöst
@@ -266,9 +268,11 @@ class ManagementCasesTests(unittest.TestCase):
         self.repo.set_status(100, "in_progress")
         res = self.audit.verify_chain()
         self.assertTrue(res.ok, res.detail)
-        # Genesis + M001 + M002 + M004 + 3 cases-Writes = 7 Einträge.
-        # (M004 seit Build 313 in der Fixture, s. setUp.)
-        self.assertEqual(self._audit_count(), 7)
+        # Genesis + je 1 MIGRATION_APPLIED pro discover()-Migration
+        # (seit Build 469 voller Lauf, s. setUp) + 3 cases-Writes.
+        # Nicht hart auf eine Zahl fixiert, damit kuenftige Migrationen die
+        # Suite nicht brechen — die Kette selbst ist oben verifiziert.
+        self.assertEqual(self._audit_count(), 1 + len(self.applied) + 3)
 
 
 if __name__ == "__main__":

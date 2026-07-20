@@ -13,7 +13,7 @@
 #   case_events, notifications, backups) ergänzt — niemals umbenannt, niemals
 #   wiederverwendet.
 #
-# Version: v0.7.311 · Build: 311 · 2026-07-01
+# Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
 
 from typing import FrozenSet
@@ -133,7 +133,7 @@ class EventType:
     #   zugrunde liegenden Annotationen (Belege) durch Lektorat/Chef-Freigabe.
     #   Chain-of-Custody: es wird belegt, DASS jemand die Belege gesichtet hat.
     #   Bewusst FLACH (mc 2026-07-14: "mehr Tiefe braucht es nicht") — das
-    #   Payload traegt nur Fakten (user_id, report_id, anchor_count, scope),
+    #   Payload traegt nur Fakten (subject_id, report_id, anchor_count, scope),
     #   KEINE Annotationsinhalte.
     REPORT_ANNOTATIONS_VIEWED: str = "report_annotations_viewed"
 
@@ -150,7 +150,7 @@ class EventType:
     #   ODER weiterfuehren; die Zustandsmaschine ops/promotion_status.py
     #   erzwingt zulaessige Uebergaenge). Endzustaende ('uebernommen'/
     #   'fremdzustaendig') sind unwiderruflich. Freitexte (grund, herkunft)
-    #   stehen NICHT im Payload, nur Fakten (user_id, von->auf) + Textlaengen
+    #   stehen NICHT im Payload, nur Fakten (subject_id, von->auf) + Textlaengen
     #   (Sensibilitaetsregel wie bei cases.note / external_matters). Ein Wechsel
     #   nach 'zurueckgestellt'/'fremdzustaendig' verlangt einen Grund. Kein
     #   case_events-Spiegel: ein 'neu'-Kandidat hat keine cases-Zeile. mc
@@ -161,7 +161,7 @@ class EventType:
     #   Je EIN Beleg fuer die Erteilung und den Widerruf einer externen Freigabe
     #   an einen NRW-Ermittler. Der Widerruf ist unwiderruflich (ReleaseStatus).
     #   Freitexte (Unbedenklichkeits-Grundlage, Widerrufsgrund) stehen NICHT im
-    #   Payload, nur Fakten (user_id, recipient_kennung, umfang, von->auf) +
+    #   Payload, nur Fakten (subject_id, recipient_kennung, umfang, von->auf) +
     #   Textlaengen (Sensibilitaetsregel). Die Empfaenger-Kennung IST ein Fakt
     #   (wer externen Zugriff erhielt) und gehoert in den Beleg. mc 2026-07-20.
     CASE_RELEASE_GRANTED: str = "case_release_granted"
