@@ -163,7 +163,8 @@
         { id: 'myhistory',  cap: 'myhistory.view',       group: 'Persoenlich',    label: 'Meine Historie' },
         { id: 'policy',     cap: 'policy.view',          group: 'Administration', label: 'Rechte / Policy' },
         { id: 'integrity',  cap: 'ops.view',             group: 'Administration', label: 'Integritaet / Betrieb' },
-        { id: 'promotion',  cap: 'ops.view',             group: 'Administration', label: 'Fremdforum-Promotion' }
+        { id: 'promotion',  cap: 'ops.view',             group: 'Administration', label: 'Fremdforum-Promotion' },
+        { id: 'releases',   cap: 'release.view',         group: 'Administration', label: 'Externe Fallfreigabe' }
     ];
 
     // Gueltige Scope-Werte fuer die Anzeige (weitere -> kein Tag).
@@ -1420,6 +1421,66 @@
         });
     }
 
+    // loadReleases: EXTERNE FALLFREIGABE (Build 463, Frontend zu 462).
+    //   GET  /api/releases         — Freigaben + berechtigte Empfaenger (F4) +
+    //                                Umfang-Katalog (read, release.view).
+    //   POST /api/release/grant    — Fall freigeben (release.grant, auditiert).
+    //   POST /api/release/revoke   — Freigabe widerrufen (release.grant).
+    // KEIN optimistisches UI: nach dem Schreiben Reload; die Rueckmeldung
+    // (Erfolg/Fehler) wird ueber 'pendingMsg' durch den Reload getragen (GR1).
+    function loadReleases(mainEl, pendingMsg) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitReleases : null;
+        if (!mod) {
+            renderError(mainEl, 'Freigabe-Modul nicht geladen.');
+            return;
+        }
+        fetchJson('/api/releases').then(function (data) {
+            cleanupView();
+            var canEdit = hasCap(state.capabilities, 'release.grant');
+
+            function after(text, isError) {
+                loadReleases(mainEl, { text: text, error: isError });
+            }
+            function fail(err) {
+                after('Fehler: ' + err.message + ' (es wurde nichts '
+                    + 'geschrieben — die Liste zeigt den tatsaechlichen '
+                    + 'Stand).', true);
+            }
+
+            var view = mod.renderReleases(mainEl, data, {
+                canEdit: canEdit,
+                onGrant: function (body) {
+                    postJson('/api/release/grant', body)
+                        .then(function (res) {
+                            after('Fall ' + body.user_id + ' an '
+                                + res.recipient_display + ' freigegeben '
+                                + '(Freigabe ' + res.release_id + ', Beleg #'
+                                + res.audit_seq + ').', false);
+                        }).catch(fail);
+                },
+                onRevoke: function (body) {
+                    postJson('/api/release/revoke', body)
+                        .then(function (res) {
+                            after('Freigabe ' + body.release_id + ' widerrufen '
+                                + '(Beleg #' + res.audit_seq + ').', false);
+                        }).catch(fail);
+                }
+            });
+
+            if (view && pendingMsg) {
+                view.setResult(pendingMsg.text, pendingMsg.error);
+            }
+            log('Freigaben gerendert:', data.count, 'Eintraege');
+        }).catch(function (err) {
+            cleanupView();
+            renderError(mainEl,
+                'Externe Fallfreigaben konnten nicht geladen werden: '
+                + err.message);
+        });
+    }
+
     // loadLectorate: LEKTORAT (W4, Build 413, Slice 1). Laedt die Berichtsliste
     // (/api/reports, scope-korrekt serverseitig) und rendert die Gegenlese-
     // Sicht: Auswahl + read-only Berichtstext-Vorschau (<iframe> auf
@@ -1746,6 +1807,8 @@
             loadIntegrity(mainEl);
         } else if (viewId === 'promotion') {
             loadPromotion(mainEl);
+        } else if (viewId === 'releases') {
+            loadReleases(mainEl);
         } else if (viewId === 'workload') {
             loadWorkload(mainEl);
         } else if (viewId === 'capacity') {
@@ -1816,6 +1879,10 @@
                 // audit_log-Beleg; zudem misst die Sicht die Platte -> der
                 // Kandidatenbestand kann kippen. Also neu laden.
                 loadPromotion();
+            } else if (state.activeId === 'releases') {
+                // Eine Freigabe/ein Widerruf (auch durch eine andere Person)
+                // erzeugt einen audit_log-Beleg -> Liste neu laden.
+                loadReleases();
             } else if (state.activeId === 'workload') {
                 loadWorkload();
             } else if (state.activeId === 'capacity') {

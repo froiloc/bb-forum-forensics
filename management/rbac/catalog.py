@@ -119,6 +119,18 @@ CAPABILITIES: Tuple[Capability, ...] = (
     Capability("ops.promote", "Fremdforum-Kandidaten entscheiden",
                "Fremdforum-Kandidaten uebernehmen, zurueckstellen oder als "
                "fremdzustaendig einstufen (auditiert)."),
+    # --- Build 462: Externe Fallfreigabe (Seed in M016) ---------------------
+    #   Weitergabe eines Falls an einen bestaetigten NRW-Ermittler (AD-ACL, F4)
+    #   nach Unbedenklichkeitspruefung (Fallregel 3), auditiert. NICHT scope-
+    #   behaftet: die externe Weitergabe ist eine Leitungshandlung. Lesen und
+    #   Erteilen/Widerrufen sind getrennt (Vier-Augen bleibt moeglich). Grants an
+    #   'supervisor' per policy_admin (default-deny; mc 2026-07-20).
+    Capability("release.view", "Externe Fallfreigaben sehen",
+               "Externe Fallfreigaben an NRW-Ermittler (Empfaenger, Umfang, "
+               "Zustand) lesen."),
+    Capability("release.grant", "Externe Fallfreigabe erteilen/widerrufen",
+               "Einen Fall an einen bestaetigten NRW-Ermittler freigeben oder "
+               "eine Freigabe widerrufen (auditiert, Unbedenklichkeit Pflicht)."),
     # --- Build 385: Wiedervorlage externer Vorgaenge (Seed in M010) ---------
     #   BEIDE sind scope-faehig ('alle' = alle Faelle, 'eigene' = nur die mir
     #   zugewiesenen). Der Ermittler bekommt 'eigene' und pflegt die Vorgaenge

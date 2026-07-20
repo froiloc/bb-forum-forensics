@@ -157,6 +157,16 @@ class EventType:
     #   2026-07-20.
     PROMOTION_DECIDED: str = "promotion_decided"
 
+    # --- Build 462: Externe Fallfreigabe (case_release, AP-2G) ----------------
+    #   Je EIN Beleg fuer die Erteilung und den Widerruf einer externen Freigabe
+    #   an einen NRW-Ermittler. Der Widerruf ist unwiderruflich (ReleaseStatus).
+    #   Freitexte (Unbedenklichkeits-Grundlage, Widerrufsgrund) stehen NICHT im
+    #   Payload, nur Fakten (user_id, recipient_kennung, umfang, von->auf) +
+    #   Textlaengen (Sensibilitaetsregel). Die Empfaenger-Kennung IST ein Fakt
+    #   (wer externen Zugriff erhielt) und gehoert in den Beleg. mc 2026-07-20.
+    CASE_RELEASE_GRANTED: str = "case_release_granted"
+    CASE_RELEASE_REVOKED: str = "case_release_revoked"
+
     # --- reserviert für spätere Builds (hier dokumentiert, noch nicht aktiv) ---
     # NOTIFICATION_SENT, RESTORE_PERFORMED
 
@@ -209,6 +219,8 @@ class EventType:
             MENTORING_NOTE_RESTORED,
             MENTORING_NOTE_REORDERED,
             PROMOTION_DECIDED,
+            CASE_RELEASE_GRANTED,
+            CASE_RELEASE_REVOKED,
         }
     )
 

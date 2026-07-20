@@ -170,6 +170,12 @@ from management.mentoring_notes.mentoring_notes_repo import (
 from management.ops.storage_overview import StorageOverview
 from management.ops.promotion_repo import PromotionError, PromotionRepo
 from management.ops.promotion_status import STORED_STATUSES
+from management.external.ad_directory import ADDirectory
+from management.external.case_release_repo import (
+    CaseReleaseError,
+    CaseReleaseRepo,
+)
+from management.external import release_status
 
 #: Basisverzeichnis der statischen Cockpit-Assets (cockpit.* + Vendor).
 #: Liegt neben diesem Modul (management/server/static/).
@@ -212,6 +218,10 @@ CAP_MENTORING_NOTES_EDIT = "mentoring_notes.edit"
 # behaftet: die Uebernahme eines Kandidaten ist eine Leitungshandlung.
 CAP_OPS_VIEW = "ops.view"
 CAP_OPS_PROMOTE = "ops.promote"
+# Build 462: Externe Fallfreigabe (AP-2G). Lesen und Erteilen/Widerrufen sind
+# getrennte, nicht scope-behaftete Rechte (Leitungshandlung; Vier-Augen moeglich).
+CAP_RELEASE_VIEW = "release.view"
+CAP_RELEASE_GRANT = "release.grant"
 
 logger = logging.getLogger(__name__)
 
@@ -294,7 +304,8 @@ class ManagementApp:
                  forensic_dir: Optional[str] = None,
                  assets_dir: Optional[str] = None,
                  templates_db: Optional[str] = None,
-                 default_db: Optional[str] = None) -> None:
+                 default_db: Optional[str] = None,
+                 ad_directory: Optional[ADDirectory] = None) -> None:
         self._db_path = db_path
         # Statische Auslieferung gekapselt (Grundregel 10). static_dir ist im
         # Test injizierbar; PROD nutzt STATIC_DIR neben diesem Modul.
@@ -323,6 +334,19 @@ class ManagementApp:
         # gegen Fremd-POSTs ueber Netzwerk-Bridges/Tunnel und CSRF: wer die
         # GET-Antwort nicht lesen kann, kennt das Token nicht.
         self._write_token = secrets.token_urlsafe(32)
+        # AD-Schicht (F4) fuer die externe Fallfreigabe (Build 462). Injizierbar
+        # (Test/Mock); sonst aus config.yaml (ad.release_recipients). Faellt die
+        # Konfiguration aus, bleibt die Allowlist leer -> Default-Deny; der
+        # Ausfall wird protokolliert (Grundregel 1: kein stiller Zustand).
+        if ad_directory is not None:
+            self._ad_directory = ad_directory
+        else:
+            try:
+                self._ad_directory = ADDirectory.from_config()
+            except Exception as exc:  # pragma: no cover - Konfig-Ausfall
+                logger.warning("AD-Allowlist nicht aus config.yaml lesbar "
+                               "(%s) — Default-Deny (leer).", exc)
+                self._ad_directory = ADDirectory()
 
     @staticmethod
     def _default_evidence_dir() -> str:
@@ -517,6 +541,8 @@ class ManagementApp:
             return self._cases_detect(person_id)
         if path == "/api/promotion":
             return self._promotion(person_id)
+        if path == "/api/releases":
+            return self._releases(person_id, query)
         if path == "/api/external":
             return self._external(person_id, query)
         if path == "/api/calendar":
@@ -2273,6 +2299,129 @@ class ManagementApp:
             con.close()
         return Response.json(200, {"ok": True, **res})
 
+    # ============================================================
+    # EXTERNE FALLFREIGABE (Build 462, AP-2G, Idee 26)
+    # ------------------------------------------------------------
+    #   Weitergabe eines Falls an einen bestaetigten NRW-Ermittler. Drei
+    #   Bedingungen (im Repo erzwungen): AD-ACL (F4, self._ad_directory),
+    #   Unbedenklichkeit (Pflicht-Grundlage), auditiert. Lesen: release.view;
+    #   Erteilen/Widerrufen: release.grant. Nicht scope-behaftet.
+    # ============================================================
+    def _release_writer(self, con):
+        return CaseReleaseRepo(con, CoordinatorWriter(con, AuditLog(con)),
+                               ad=self._ad_directory)
+
+    def _releases(self, person_id: int, query) -> Response:
+        """GET /api/releases — Freigaben (optional ?user_id=, ?status=)."""
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_RELEASE_VIEW):
+            return self._forbidden(CAP_RELEASE_VIEW)
+
+        raw_user = self._q1(query, "user_id")
+        status = self._q1(query, "status")
+        user_ids = None
+        if raw_user:
+            try:
+                user_ids = [int(raw_user)]
+            except (TypeError, ValueError):
+                return Response.json(400, {"error": "bad_request",
+                                           "detail": "user_id ungueltig."})
+        statuses = [status] if status else None
+
+        con = self._ro_con()
+        try:
+            rows = CaseReleaseRepo(con).list_releases(
+                user_ids=user_ids, statuses=statuses)
+        except CaseReleaseError as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Fallfreigaben nicht lesbar")
+            return Response.json(500, {"error": "releases_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+
+        counts = {"freigegeben": 0, "widerrufen": 0}
+        for r in rows:
+            if r["status"] in counts:
+                counts[r["status"]] += 1
+
+        return Response.json(200, {
+            "count": len(rows),
+            "counts": counts,
+            "umfang_catalog": list(release_status.umfang_catalog()),
+            "recipients": self._ad_directory.members(),
+            "ad_group": self._ad_directory.group,
+            "releases": rows,
+        })
+
+    def _release_grant(self, person_id: int,
+                       payload: Dict[str, Any]) -> Response:
+        """POST /api/release/grant — {user_id, recipient_kennung, umfang,
+        unbedenklichkeit_grundlage}. Recht release.grant (auditiert)."""
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_RELEASE_GRANT):
+            return self._forbidden(CAP_RELEASE_GRANT)
+
+        try:
+            user_id = int(payload.get("user_id"))
+        except (TypeError, ValueError):
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": "user_id fehlt/ungueltig."})
+
+        con = self._rw_con()
+        try:
+            res = self._release_writer(con).grant(
+                user_id=user_id,
+                recipient_kennung=str(payload.get("recipient_kennung", "")),
+                umfang=str(payload.get("umfang", "")),
+                unbedenklichkeit_grundlage=str(
+                    payload.get("unbedenklichkeit_grundlage", "")),
+                actor_id=person_id,
+            )
+        except CaseReleaseError as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Fallfreigabe fehlgeschlagen")
+            return Response.json(500, {"error": "release_grant_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, **res})
+
+    def _release_revoke(self, person_id: int,
+                        payload: Dict[str, Any]) -> Response:
+        """POST /api/release/revoke — {release_id, grund}. Recht release.grant."""
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_RELEASE_GRANT):
+            return self._forbidden(CAP_RELEASE_GRANT)
+
+        try:
+            release_id = int(payload.get("release_id"))
+        except (TypeError, ValueError):
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": "release_id fehlt/ungueltig."})
+
+        con = self._rw_con()
+        try:
+            seq = CaseReleaseRepo(
+                con, CoordinatorWriter(con, AuditLog(con))).revoke(
+                release_id, grund=str(payload.get("grund", "")),
+                actor_id=person_id)
+        except CaseReleaseError as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Widerruf der Fallfreigabe fehlgeschlagen")
+            return Response.json(500, {"error": "release_revoke_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, "release_id": release_id,
+                                   "audit_seq": seq})
+
     def _external_scope(self, person_id: int, capability: str):
         policy = self.resolve_policy(person_id)
         if not policy.can(capability):
@@ -3149,6 +3298,11 @@ class ManagementApp:
         # Build 460 (AP-2G): Fremdforum-Promotion — auditierte Entscheidung.
         if path == "/api/promotion/decide":
             return self._promotion_decide(person_id, payload)
+        # Build 462 (AP-2G): Externe Fallfreigabe — auditiert (AD-ACL + Unbedenkl.)
+        if path == "/api/release/grant":
+            return self._release_grant(person_id, payload)
+        if path == "/api/release/revoke":
+            return self._release_revoke(person_id, payload)
         # Build 412 (SF-3): Lektorat/Chef-Kommentare (Addendum-Dateien).
         if path == "/api/report/comment":
             return self._report_comment_create(person_id, payload)

@@ -88,7 +88,8 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     // Build 448: 22 (neu: 'planung' - Prognose & Gantt, AP-2C).
     // Build 450: 23 (neu: 'annostats' - Annotations-Statistik, AP-2D).
     // Build 461: 24 (neu: 'promotion' - Fremdforum-Promotion, AP-2G).
-    expect(api.VIEW_CATALOG.length).toBe(24);
+    // Build 463: 25 (neu: 'releases' - Externe Fallfreigabe, AP-2G).
+    expect(api.VIEW_CATALOG.length).toBe(25);
   });
 
   // CN03b (Build 384) --------------------------------------------------------
