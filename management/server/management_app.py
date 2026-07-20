@@ -167,6 +167,9 @@ from management.mentoring_notes.mentoring_notes_repo import (
     MentoringNotesError,
     MentoringNotesRepo,
 )
+from management.ops.storage_overview import StorageOverview
+from management.ops.promotion_repo import PromotionError, PromotionRepo
+from management.ops.promotion_status import STORED_STATUSES
 
 #: Basisverzeichnis der statischen Cockpit-Assets (cockpit.* + Vendor).
 #: Liegt neben diesem Modul (management/server/static/).
@@ -203,6 +206,12 @@ CAP_TEMPLATES_EDIT = "templates.edit"
 # fremde Boards), sonst nur das EIGENE Board (privater Merkzettel der Leitung).
 CAP_MENTORING_NOTES_VIEW = "mentoring_notes.view"
 CAP_MENTORING_NOTES_EDIT = "mentoring_notes.edit"
+# Build 460: Fremdforum-Promotion (AP-2G). Das LESEN der Kandidaten-/Zustands-
+# sicht haengt an 'ops.view' (wie die data/-Uebersicht, Build 454); das
+# ENTSCHEIDEN ist ein eigenes, auditiertes Schreibrecht. Beide NICHT scope-
+# behaftet: die Uebernahme eines Kandidaten ist eine Leitungshandlung.
+CAP_OPS_VIEW = "ops.view"
+CAP_OPS_PROMOTE = "ops.promote"
 
 logger = logging.getLogger(__name__)
 
@@ -506,6 +515,8 @@ class ManagementApp:
             return self._templates_modules(person_id)
         if path == "/api/cases/detect":
             return self._cases_detect(person_id)
+        if path == "/api/promotion":
+            return self._promotion(person_id)
         if path == "/api/external":
             return self._external(person_id, query)
         if path == "/api/calendar":
@@ -2156,6 +2167,112 @@ class ManagementApp:
     # NICHT 'alle'. Genau diese Verwechslung waere der klassische
     # Kapselungsbruch ueber einen None-Wert.
     # ================================================================
+    # ============================================================
+    # FREMDFORUM-PROMOTION (Build 460, AP-2G)
+    # ------------------------------------------------------------
+    #   Kandidaten = forensic_<uid>.db vorhanden, evidence_<uid>.db fehlt
+    #   (Dateisystem-Scan, read-only). Der ZUSTAND je Kandidat liegt in
+    #   coordinator.db (forum_promotion). Lesen: 'ops.view'. Entscheiden:
+    #   'ops.promote' (auditiert). Der Kandidaten-Scan liefert zugleich die
+    #   'allowed_uids' fuer den Schreibpfad — es kann keine Entscheidung fuer
+    #   einen Nicht-Kandidaten belegt werden (Grundregel 1).
+    # ============================================================
+    def _storage_candidates(self) -> set:
+        """Aktuelle Fremdforum-Kandidaten (read-only Dateisystem-Scan)."""
+        report = StorageOverview(
+            forensic_dir=self._forensic_dir,
+            evidence_dir=self._evidence_dir,
+            assets_dir=self._assets_dir).scan()
+        return set(report.fremdforum_candidates)
+
+    def _promotion(self, person_id: int) -> Response:
+        """
+        GET /api/promotion — Fremdforum-Kandidaten mit ihrem Promotions-Zustand
+        plus die Liste ALLER erfassten Entscheidungen (Belege). Recht 'ops.view'.
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_OPS_VIEW):
+            return self._forbidden(CAP_OPS_VIEW)
+
+        try:
+            candidates = sorted(self._storage_candidates())
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Kandidaten-Scan (data/) fehlgeschlagen")
+            return Response.json(500, {"error": "promotion_scan_failed",
+                                       "detail": str(exc)})
+
+        con = self._ro_con()
+        try:
+            repo = PromotionRepo(con)
+            rows = repo.annotate(candidates)
+            decisions = repo.list_all()
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Promotions-Sicht nicht lesbar")
+            return Response.json(500, {"error": "promotion_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+
+        counts: Dict[str, int] = {s: 0 for s in STORED_STATUSES}
+        counts["offen"] = 0
+        for r in rows:
+            counts[r["status"]] = counts.get(r["status"], 0) + 1
+
+        return Response.json(200, {
+            "candidate_count": len(candidates),
+            "counts": counts,
+            "statuses": list(STORED_STATUSES),
+            "candidates": rows,
+            "decisions": decisions,
+        })
+
+    def _promotion_decide(self, person_id: int,
+                          payload: Dict[str, Any]) -> Response:
+        """
+        POST /api/promotion/decide — {user_id, status, grund?, herkunft?}.
+        Recht 'ops.promote' (auditiert). Der Kandidat MUSS aktuell gueltig sein
+        (Scan liefert allowed_uids) — die Zustandsmaschine erzwingt zulaessige
+        Uebergaenge, das Repo die Grund-Pflicht.
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_OPS_PROMOTE):
+            return self._forbidden(CAP_OPS_PROMOTE)
+
+        try:
+            user_id = int(payload.get("user_id"))
+        except (TypeError, ValueError):
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": "user_id fehlt/ungueltig."})
+        status = str(payload.get("status", ""))
+        grund = str(payload.get("grund", "") or "")
+        herkunft = payload.get("herkunft")
+        if herkunft is not None:
+            herkunft = str(herkunft)
+
+        try:
+            allowed = self._storage_candidates()
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Kandidaten-Scan (data/) fehlgeschlagen")
+            return Response.json(500, {"error": "promotion_scan_failed",
+                                       "detail": str(exc)})
+
+        con = self._rw_con()
+        try:
+            repo = PromotionRepo(con, CoordinatorWriter(con, AuditLog(con)))
+            res = repo.record_decision(
+                user_id=user_id, target_status=status, grund=grund,
+                herkunft=herkunft, actor_id=person_id, allowed_uids=allowed)
+        except PromotionError as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Promotions-Entscheidung fehlgeschlagen")
+            return Response.json(500, {"error": "promotion_decide_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, **res})
+
     def _external_scope(self, person_id: int, capability: str):
         policy = self.resolve_policy(person_id)
         if not policy.can(capability):
@@ -3029,6 +3146,9 @@ class ManagementApp:
             return self._external_close(person_id, payload)
         if path == "/api/results/assess":
             return self._results_assess(person_id, payload)
+        # Build 460 (AP-2G): Fremdforum-Promotion — auditierte Entscheidung.
+        if path == "/api/promotion/decide":
+            return self._promotion_decide(person_id, payload)
         # Build 412 (SF-3): Lektorat/Chef-Kommentare (Addendum-Dateien).
         if path == "/api/report/comment":
             return self._report_comment_create(person_id, payload)

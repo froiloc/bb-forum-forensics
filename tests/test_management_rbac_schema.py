@@ -166,12 +166,15 @@ class ManagementRbacSchemaTests(unittest.TestCase):
         # Der Test prueft oben bereits, dass DB-Seed und Code-Katalog
         # DECKUNGSGLEICH sind — genau daran wuerde eine vergessene
         # Seed-Migration auffallen.
-        self.assertEqual(len(cat_caps), 23)
+        # +1 ab Build 460 ('ops.promote', geseedet in M015) -> 24.
+        self.assertEqual(len(cat_caps), 24)
         self.assertIn("external.view", cat_caps)
         self.assertIn("external.edit", cat_caps)
         self.assertIn("templates.edit", cat_caps)
         # Wartungsmodus (Build 439): 'wartung.durchfuehren' (Seed in M014).
         self.assertIn("wartung.durchfuehren", cat_caps)
+        # Fremdforum-Promotion (Build 460): 'ops.promote' (Seed in M015).
+        self.assertIn("ops.promote", cat_caps)
         # Build 401: Betreuungs-Notizen (Seed in M012).
         self.assertIn("mentoring_notes.view", cat_caps)
         self.assertIn("mentoring_notes.edit", cat_caps)

@@ -145,6 +145,18 @@ class EventType:
     REVIEW_COMMENT_ADDED: str = "review_comment_added"
     REVIEW_COMMENT_RESOLVED: str = "review_comment_resolved"
 
+    # --- Build 460: Fremdforum-Promotion (forum_promotion, AP-2G) ------------
+    #   EIN Beleg PRO ENTSCHEIDUNG ueber einen Fremdforum-Kandidaten (anlegen
+    #   ODER weiterfuehren; die Zustandsmaschine ops/promotion_status.py
+    #   erzwingt zulaessige Uebergaenge). Endzustaende ('uebernommen'/
+    #   'fremdzustaendig') sind unwiderruflich. Freitexte (grund, herkunft)
+    #   stehen NICHT im Payload, nur Fakten (user_id, von->auf) + Textlaengen
+    #   (Sensibilitaetsregel wie bei cases.note / external_matters). Ein Wechsel
+    #   nach 'zurueckgestellt'/'fremdzustaendig' verlangt einen Grund. Kein
+    #   case_events-Spiegel: ein 'neu'-Kandidat hat keine cases-Zeile. mc
+    #   2026-07-20.
+    PROMOTION_DECIDED: str = "promotion_decided"
+
     # --- reserviert für spätere Builds (hier dokumentiert, noch nicht aktiv) ---
     # NOTIFICATION_SENT, RESTORE_PERFORMED
 
@@ -196,6 +208,7 @@ class EventType:
             MENTORING_NOTE_ARCHIVED,
             MENTORING_NOTE_RESTORED,
             MENTORING_NOTE_REORDERED,
+            PROMOTION_DECIDED,
         }
     )
 

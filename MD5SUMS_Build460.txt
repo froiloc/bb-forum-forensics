@@ -1,0 +1,13 @@
+8f338513c6fda935dba23c8292884a04  aiw_webserver/build.json
+cbd0f85c96fdb3faf8f562eb69c84499  aiw_webserver/management/audit/event_types.py
+dc83999e64652c288f5ae0ab0534f03f  aiw_webserver/management/migrations/coordinator/m015_promotion.py
+2d486bb6cb3ee00662729f4347f7a3a5  aiw_webserver/management/ops/promotion_admin.py
+d0d4ffa86263933299de577923d36df9  aiw_webserver/management/ops/promotion_repo.py
+284dce4b5098d02f50cbe95bcde7ee92  aiw_webserver/management/ops/promotion_status.py
+dd7d7f5817fa0038631aeca5a9aaf9eb  aiw_webserver/management/rbac/catalog.py
+4c163126b85b9b55e39a6ce1e051a97d  aiw_webserver/management/server/management_app.py
+a61696fafdd65167f19c145f7d9f605d  aiw_webserver/tests/test_management_dashboard.py
+7352ef9027e1ba3381d2c86d89773587  aiw_webserver/tests/test_management_rbac_schema.py
+1e6a27b917fae937792173893fcaecec  aiw_webserver/tests/test_migration_m015_promotion.py
+f13ff519700fa91ef06c318de95b7c1f  aiw_webserver/tests/test_promotion_repo.py
+b432babe7a44d7f2010bddab2b327f81  aiw_webserver/tests/test_promotion_status.py

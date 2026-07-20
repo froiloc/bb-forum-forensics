@@ -107,6 +107,18 @@ CAPABILITIES: Tuple[Capability, ...] = (
                "Arbeitszeit-/Verfuegbarkeitsdaten fuer Prognose/Gantt pflegen."),
     Capability("ops.view", "Betriebs-/Systemzustand sehen",
                "Backup-/Speicher-/Integritaets-Status der Anlage lesen."),
+    # --- Build 460: Fremdforum-Promotion (Seed in M015) ---------------------
+    #   Schreibrecht auf die Promotions-Entscheidung ueber Fremdforum-Kandidaten
+    #   (forensic_<uid>.db vorhanden, evidence fehlt). Der Schreibpfad ist
+    #   auditiert (PromotionRepo ueber CoordinatorWriter). NICHT scope-behaftet:
+    #   die Entscheidung, ob ein Kandidat in die Ermittlung uebernommen wird, ist
+    #   eine Leitungshandlung, kein fallgebundener Vorgang. Das LESEN der Sicht
+    #   haengt an 'ops.view' (wie die data/-Uebersicht, Build 454). Der Grant an
+    #   'supervisor' ist eine operative Entscheidung der Chef-Ermittlerin
+    #   (policy_admin), NICHT Teil dieses Builds (default-deny; mc 2026-07-20).
+    Capability("ops.promote", "Fremdforum-Kandidaten entscheiden",
+               "Fremdforum-Kandidaten uebernehmen, zurueckstellen oder als "
+               "fremdzustaendig einstufen (auditiert)."),
     # --- Build 385: Wiedervorlage externer Vorgaenge (Seed in M010) ---------
     #   BEIDE sind scope-faehig ('alle' = alle Faelle, 'eigene' = nur die mir
     #   zugewiesenen). Der Ermittler bekommt 'eigene' und pflegt die Vorgaenge
