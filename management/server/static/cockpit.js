@@ -1853,6 +1853,20 @@
             // Live-Reload aktivieren.
             startSse();
 
+            // Kommandopalette (Strg-K, Build 457) initialisieren: sie holt die
+            // Sichten stets frisch (rechte-gefiltert) und springt ueber
+            // selectView. Entkoppelt -> die Palette kennt VIEW_CATALOG nicht.
+            var pal = (typeof window !== 'undefined')
+                ? window.AIWCockpitPalette : null;
+            if (pal && typeof pal.init === 'function') {
+                pal.init({
+                    getViews: function () {
+                        return visibleViews(state.capabilities);
+                    },
+                    onSelect: function (viewId) { selectView(viewId); }
+                });
+            }
+
             log('boot() fertig:', views.length, 'Sichten');
         }).catch(function (err) {
             // Kein stiller Fehlpfad: sichtbarer Hinweis + Console.
