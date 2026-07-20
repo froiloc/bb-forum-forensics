@@ -918,3 +918,60 @@ td.aiw-cal-today { box-shadow: inset 0 0 0 2px var(--akzent); }
 .aiw-rel-result:not(:empty) { margin-top: 10px; font-size: 13px; }
 .aiw-rel-result.ok    { color: #1e6b3a; }
 .aiw-rel-result.error { color: #922b21; font-weight: 600; }
+
+/* ==========================================================================
+   Onboarding/Offboarding-Checkliste (Build 465) — cockpit_onboarding.js
+   --------------------------------------------------------------------------
+   Eng auf '.aiw-onb-*' gefasst. Die Fall-Last-Warnung (offene Faelle vor dem
+   Offboarding) und das Grund-Panel (nicht_zutreffend) muessen optisch tragen.
+   ========================================================================== */
+.aiw-onb-select {
+  margin: 12px 0; padding: 12px 14px; font-size: 13px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+}
+.aiw-onb-head { margin: 12px 0 4px; font-size: 14px; }
+.aiw-onb-counts { margin: 6px 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.aiw-onb-badge { display: inline-flex; align-items: center; gap: 4px; }
+.aiw-onb-readonly { color: var(--muted); font-style: italic; }
+
+.aiw-onb-load { margin: 6px 0; font-size: 13px; color: var(--muted); }
+.aiw-onb-load-warn {
+  color: #922b21; font-weight: 600;
+  background: #fdeded; border: 1px solid #f5b7b1; border-radius: 4px;
+  padding: 6px 10px; display: inline-block;
+}
+
+.aiw-onb-lbl { display: inline-block; margin: 6px 12px 6px 0; color: var(--ink); }
+.aiw-onb-input {
+  margin-left: 8px; padding: 6px 8px; font-size: 13px;
+  border: 1px solid var(--line); border-radius: 4px; min-width: 160px;
+}
+.aiw-onb-btn {
+  font-size: 13px; padding: 6px 12px; margin: 2px 6px 2px 0;
+  border: 1px solid var(--line); border-radius: 4px;
+  background: #eef0f2; color: var(--ink); cursor: pointer;
+}
+.aiw-onb-btn:hover:not(:disabled) { background: #e2e7ea; }
+.aiw-onb-btn:focus-visible { outline: 2px solid var(--akzent); outline-offset: 1px; }
+
+.aiw-onb-table {
+  width: 100%; border-collapse: collapse; margin-top: 12px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+  font-size: 13px;
+}
+.aiw-onb-table th, .aiw-onb-table td {
+  text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+.aiw-onb-table th { background: #f0f2f4; font-weight: 600; }
+.aiw-onb-table tr:last-child td { border-bottom: 0; }
+.aiw-onb-actions { white-space: nowrap; }
+
+.aiw-onb-panel:not(:empty) {
+  margin: 14px 0; padding: 12px 14px; font-size: 13px;
+  background: #fef9e7; border: 1px solid #f7dc6f; border-radius: 6px;
+}
+.aiw-onb-panel-title { font-weight: 600; margin-bottom: 8px; }
+.aiw-onb-result:not(:empty) { margin-top: 10px; font-size: 13px; }
+.aiw-onb-result.ok    { color: #1e6b3a; }
+.aiw-onb-result.error { color: #922b21; font-weight: 600; }

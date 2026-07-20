@@ -1,0 +1,7 @@
+9a1923f3261617e467fbcf55292de318  aiw_webserver/build.json
+6d2ba547c3d50e2ee5eefe72f145cc39  aiw_webserver/management/server/static/cockpit.css
+ccb8b14d139b09cfde48651572fa9a7f  aiw_webserver/management/server/static/cockpit.html
+513b5344a99cd5b73e2650b479b3acce  aiw_webserver/management/server/static/cockpit.js
+3e34b176edea097df36e8982404b3dc9  aiw_webserver/management/server/static/cockpit_onboarding.js
+2c9c02259027d058638349d30e94c8bc  aiw_webserver/tests/unit/test_cockpit_nav.test.js
+1daa745023871ec8d6997197c2ba1c49  aiw_webserver/tests/unit/test_cockpit_onboarding.test.js

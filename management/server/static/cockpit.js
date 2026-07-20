@@ -164,7 +164,8 @@
         { id: 'policy',     cap: 'policy.view',          group: 'Administration', label: 'Rechte / Policy' },
         { id: 'integrity',  cap: 'ops.view',             group: 'Administration', label: 'Integritaet / Betrieb' },
         { id: 'promotion',  cap: 'ops.view',             group: 'Administration', label: 'Fremdforum-Promotion' },
-        { id: 'releases',   cap: 'release.view',         group: 'Administration', label: 'Externe Fallfreigabe' }
+        { id: 'releases',   cap: 'release.view',         group: 'Administration', label: 'Externe Fallfreigabe' },
+        { id: 'onboarding', cap: 'onboarding.view',      group: 'Verwaltung',     label: 'Onboarding / Offboarding' }
     ];
 
     // Gueltige Scope-Werte fuer die Anzeige (weitere -> kein Tag).
@@ -1481,6 +1482,78 @@
         });
     }
 
+    // loadOnboarding: ONBOARDING/OFFBOARDING (Build 465, Frontend zu 464).
+    //   GET  /api/onboarding?person_id=&kind=  — Checkliste + Fall-Last (read,
+    //                                            onboarding.view).
+    //   POST /api/onboarding/step              — Schritt setzen (onboarding.edit).
+    // Die gewaehlte Person/Art lebt NUR im State (kein localStorage — Projekt-
+    // regel), damit SSE-Reloads dieselbe Sicht neu laden. KEIN optimistisches UI.
+    function loadOnboarding(mainEl, personId, kind, pendingMsg) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitOnboarding : null;
+        if (!mod) {
+            renderError(mainEl, 'Onboarding-Modul nicht geladen.');
+            return;
+        }
+        var pid = (personId != null) ? personId : state.onbPerson;
+        var k = kind || state.onbKind || 'onboarding';
+        state.onbPerson = (pid != null) ? pid : null;
+        state.onbKind = k;
+
+        var view = null;
+        function after(text, isError) {
+            loadOnboarding(mainEl, pid, k, { text: text, error: isError });
+        }
+        var opts = {
+            canEdit: hasCap(state.capabilities, 'onboarding.edit'),
+            personId: pid, kind: k,
+            onLoad: function (sel) {
+                loadOnboarding(mainEl, sel.personId, sel.kind);
+            },
+            onInvalid: function (msg) { if (view) { view.setResult(msg, true); } },
+            onStep: function (body) {
+                postJson('/api/onboarding/step', body)
+                    .then(function (res) {
+                        after('Schritt „' + body.step_code + '“ → '
+                            + res.status + ' (Beleg #' + res.audit_seq + ').',
+                            false);
+                    })
+                    .catch(function (err) {
+                        after('Fehler: ' + err.message + ' (es wurde nichts '
+                            + 'geschrieben — die Liste zeigt den tatsaechlichen '
+                            + 'Stand).', true);
+                    });
+            }
+        };
+
+        // Noch keine Person gewaehlt -> nur die Auswahl (kein GET).
+        if (pid == null) {
+            cleanupView();
+            view = mod.renderOnboarding(mainEl, null, opts);
+            if (pendingMsg) { view.setResult(pendingMsg.text, pendingMsg.error); }
+            return;
+        }
+
+        fetchJson('/api/onboarding?person_id=' + encodeURIComponent(pid)
+                + '&kind=' + encodeURIComponent(k))
+            .then(function (data) {
+                cleanupView();
+                view = mod.renderOnboarding(mainEl, data, opts);
+                if (pendingMsg) {
+                    view.setResult(pendingMsg.text, pendingMsg.error);
+                }
+                log('Onboarding gerendert:', data.person_id, k);
+            })
+            .catch(function (err) {
+                cleanupView();
+                // Trotz Fehler die Auswahl zeigen, damit man korrigieren kann.
+                view = mod.renderOnboarding(mainEl, null, opts);
+                view.setResult('Konnte nicht geladen werden: ' + err.message,
+                    true);
+            });
+    }
+
     // loadLectorate: LEKTORAT (W4, Build 413, Slice 1). Laedt die Berichtsliste
     // (/api/reports, scope-korrekt serverseitig) und rendert die Gegenlese-
     // Sicht: Auswahl + read-only Berichtstext-Vorschau (<iframe> auf
@@ -1809,6 +1882,8 @@
             loadPromotion(mainEl);
         } else if (viewId === 'releases') {
             loadReleases(mainEl);
+        } else if (viewId === 'onboarding') {
+            loadOnboarding(mainEl, state.onbPerson, state.onbKind);
         } else if (viewId === 'workload') {
             loadWorkload(mainEl);
         } else if (viewId === 'capacity') {
@@ -1883,6 +1958,12 @@
                 // Eine Freigabe/ein Widerruf (auch durch eine andere Person)
                 // erzeugt einen audit_log-Beleg -> Liste neu laden.
                 loadReleases();
+            } else if (state.activeId === 'onboarding') {
+                // Nur neu laden, wenn bereits eine Person gewaehlt ist (sonst
+                // steht die Auswahl und es gibt nichts zu aktualisieren).
+                if (state.onbPerson != null) {
+                    loadOnboarding(undefined, state.onbPerson, state.onbKind);
+                }
             } else if (state.activeId === 'workload') {
                 loadWorkload();
             } else if (state.activeId === 'capacity') {
