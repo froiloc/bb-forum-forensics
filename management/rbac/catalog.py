@@ -131,6 +131,16 @@ CAPABILITIES: Tuple[Capability, ...] = (
     Capability("release.grant", "Externe Fallfreigabe erteilen/widerrufen",
                "Einen Fall an einen bestaetigten NRW-Ermittler freigeben oder "
                "eine Freigabe widerrufen (auditiert, Unbedenklichkeit Pflicht)."),
+    # --- Build 464: Onboarding/Offboarding-Checkliste (Seed in M017) --------
+    #   Personal-/Leitungsfunktion (koppelt AD-Schicht F4). NICHT scope-behaftet.
+    #   Lesen und Pflegen getrennt. Grants an 'supervisor' (ggf. 'admin') per
+    #   policy_admin (default-deny; mc 2026-07-20).
+    Capability("onboarding.view", "Onboarding-/Offboarding-Checkliste sehen",
+               "Den Stand der Onboarding-/Offboarding-Checklisten der "
+               "Mitarbeiter lesen."),
+    Capability("onboarding.edit", "Onboarding-/Offboarding-Checkliste pflegen",
+               "Checklisten-Schritte als erledigt/nicht zutreffend setzen oder "
+               "zuruecksetzen (auditiert)."),
     # --- Build 385: Wiedervorlage externer Vorgaenge (Seed in M010) ---------
     #   BEIDE sind scope-faehig ('alle' = alle Faelle, 'eigene' = nur die mir
     #   zugewiesenen). Der Ermittler bekommt 'eigene' und pflegt die Vorgaenge

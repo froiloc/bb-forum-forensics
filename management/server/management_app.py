@@ -176,6 +176,11 @@ from management.external.case_release_repo import (
     CaseReleaseRepo,
 )
 from management.external import release_status
+from management.onboarding.onboarding_repo import (
+    OnboardingError,
+    OnboardingRepo,
+)
+from management.onboarding.checklist_status import ChecklistStatus
 
 #: Basisverzeichnis der statischen Cockpit-Assets (cockpit.* + Vendor).
 #: Liegt neben diesem Modul (management/server/static/).
@@ -222,6 +227,10 @@ CAP_OPS_PROMOTE = "ops.promote"
 # getrennte, nicht scope-behaftete Rechte (Leitungshandlung; Vier-Augen moeglich).
 CAP_RELEASE_VIEW = "release.view"
 CAP_RELEASE_GRANT = "release.grant"
+# Build 464: Onboarding/Offboarding-Checkliste (AP-2G). Personal-/Leitungs-
+# funktion, nicht scope-behaftet; Lesen und Pflegen getrennt.
+CAP_ONBOARDING_VIEW = "onboarding.view"
+CAP_ONBOARDING_EDIT = "onboarding.edit"
 
 logger = logging.getLogger(__name__)
 
@@ -543,6 +552,8 @@ class ManagementApp:
             return self._promotion(person_id)
         if path == "/api/releases":
             return self._releases(person_id, query)
+        if path == "/api/onboarding":
+            return self._onboarding(person_id, query)
         if path == "/api/external":
             return self._external(person_id, query)
         if path == "/api/calendar":
@@ -2422,6 +2433,105 @@ class ManagementApp:
         return Response.json(200, {"ok": True, "release_id": release_id,
                                    "audit_seq": seq})
 
+    # ============================================================
+    # ONBOARDING/OFFBOARDING-CHECKLISTE (Build 464, AP-2G, Idee 31)
+    # ------------------------------------------------------------
+    #   Personal-/Leitungsfunktion (koppelt AD-Schicht F4 ueber die Person).
+    #   Lesen: onboarding.view; Pflegen: onboarding.edit (auditiert). Der SUBJEKT-
+    #   Parameter 'person_id' im Payload/Query ist die betroffene Person; der
+    #   ACTOR ist die eingeloggte person_id.
+    # ============================================================
+    def _onboarding(self, actor_person_id: int, query) -> Response:
+        """GET /api/onboarding?person_id=N&kind=onboarding|offboarding."""
+        policy = self.resolve_policy(actor_person_id)
+        if not policy.can(CAP_ONBOARDING_VIEW):
+            return self._forbidden(CAP_ONBOARDING_VIEW)
+
+        raw = self._q1(query, "person_id")
+        kind = self._q1(query, "kind") or "onboarding"
+        if not raw:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": "person_id erforderlich."})
+        try:
+            subject_id = int(raw)
+        except (TypeError, ValueError):
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": "person_id ungueltig."})
+        if not ChecklistStatus.is_valid_kind(kind):
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": "kind ungueltig."})
+
+        con = self._ro_con()
+        try:
+            person = self._person(con, subject_id)
+            if person is None:
+                return Response.json(404, {"error": "unknown_person",
+                                           "person_id": subject_id})
+            repo = OnboardingRepo(con)
+            steps = repo.checklist(subject_id, kind)
+            load = repo.open_case_load(subject_id)
+        except OnboardingError as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Checkliste nicht lesbar")
+            return Response.json(500, {"error": "onboarding_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+
+        counts = {"offen": 0, "erledigt": 0, "nicht_zutreffend": 0}
+        for s in steps:
+            counts[s["status"]] = counts.get(s["status"], 0) + 1
+
+        return Response.json(200, {
+            "person_id": subject_id,
+            "person": {"display_name": person.get("display_name"),
+                       "system_username": person.get("system_username")},
+            "kind": kind,
+            "kind_label": ChecklistStatus.kind_label(kind),
+            "kinds": ["onboarding", "offboarding"],
+            "counts": counts,
+            "open_case_load": load,
+            "steps": steps,
+        })
+
+    def _onboarding_step(self, actor_person_id: int,
+                         payload: Dict[str, Any]) -> Response:
+        """POST /api/onboarding/step — {person_id, kind, step_code, status,
+        note?}. Recht onboarding.edit (auditiert)."""
+        policy = self.resolve_policy(actor_person_id)
+        if not policy.can(CAP_ONBOARDING_EDIT):
+            return self._forbidden(CAP_ONBOARDING_EDIT)
+
+        try:
+            subject_id = int(payload.get("person_id"))
+        except (TypeError, ValueError):
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": "person_id fehlt/ungueltig."})
+
+        con = self._rw_con()
+        try:
+            repo = OnboardingRepo(con, CoordinatorWriter(con, AuditLog(con)))
+            res = repo.set_step(
+                person_id=subject_id,
+                kind=str(payload.get("kind", "")),
+                step_code=str(payload.get("step_code", "")),
+                status=str(payload.get("status", "")),
+                note=str(payload.get("note", "") or ""),
+                actor_id=actor_person_id,
+            )
+        except OnboardingError as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Checklisten-Schritt fehlgeschlagen")
+            return Response.json(500, {"error": "onboarding_step_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, "person_id": subject_id, **res})
+
     def _external_scope(self, person_id: int, capability: str):
         policy = self.resolve_policy(person_id)
         if not policy.can(capability):
@@ -3303,6 +3413,9 @@ class ManagementApp:
             return self._release_grant(person_id, payload)
         if path == "/api/release/revoke":
             return self._release_revoke(person_id, payload)
+        # Build 464 (AP-2G): Onboarding/Offboarding-Checkliste — auditiert.
+        if path == "/api/onboarding/step":
+            return self._onboarding_step(person_id, payload)
         # Build 412 (SF-3): Lektorat/Chef-Kommentare (Addendum-Dateien).
         if path == "/api/report/comment":
             return self._report_comment_create(person_id, payload)

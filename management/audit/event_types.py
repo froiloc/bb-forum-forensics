@@ -167,6 +167,12 @@ class EventType:
     CASE_RELEASE_GRANTED: str = "case_release_granted"
     CASE_RELEASE_REVOKED: str = "case_release_revoked"
 
+    # --- Build 464: Onboarding/Offboarding-Checkliste (onboarding_item, AP-2G) -
+    #   EIN Beleg PRO SCHRITT-AENDERUNG (erledigt/nicht_zutreffend/Reset auf
+    #   offen). Freitext (Notiz) steht NICHT im Payload, nur Fakten (person_id,
+    #   kind, step_code, status) + Textlaenge (Sensibilitaetsregel). mc 2026-07-20.
+    ONBOARDING_STEP_SET: str = "onboarding_step_set"
+
     # --- reserviert für spätere Builds (hier dokumentiert, noch nicht aktiv) ---
     # NOTIFICATION_SENT, RESTORE_PERFORMED
 
@@ -221,6 +227,7 @@ class EventType:
             PROMOTION_DECIDED,
             CASE_RELEASE_GRANTED,
             CASE_RELEASE_REVOKED,
+            ONBOARDING_STEP_SET,
         }
     )
 
