@@ -240,6 +240,10 @@
         log('renderOverview:', rows.length, 'Zeilen, scope', scope);
         return new Ctor(container, {
             data: rows,
+            // index=user_id: erlaubt focusCase(table, user_id) via getRow/
+            // scrollToRow (Kommandopalette-Fallsprung, Build 459). user_id ist
+            // je Fall eindeutig.
+            index: 'user_id',
             columns: columnDefs(),
             layout: 'fitColumns',
             height: '65vh',
@@ -253,6 +257,41 @@
     }
 
     // =========================================================================
+    // focusCase: springt in der Tabelle zu einem Fall (user_id) und hebt die
+    // Zeile kurz hervor. Fuer den Kommandopalette-Fallsprung (Build 459).
+    // Voll abgesichert: fehlt die Zeile/Tabelle -> false (kein Absturz, GR1).
+    // Die Hervorhebung erfolgt per Inline-Style (kein cockpit.css-Eingriff).
+    function focusCase(table, userId) {
+        if (!table || userId === null || userId === undefined
+            || typeof table.getRow !== 'function') {
+            return false;
+        }
+        try {
+            if (typeof table.scrollToRow === 'function') {
+                // Tabulator v6: (index, position, ifVisible). Kann ein Promise
+                // liefern -> wir ignorieren den Rueckgabewert bewusst.
+                try { table.scrollToRow(userId, 'center', false); }
+                catch (e) { log('scrollToRow', e); }
+            }
+            var row = table.getRow(userId);
+            if (row && typeof row.getElement === 'function') {
+                var el = row.getElement();
+                if (el) {
+                    el.style.transition = 'background-color .3s';
+                    var prev = el.style.backgroundColor;
+                    el.style.backgroundColor = '#fff3b0';
+                    setTimeout(function () {
+                        el.style.backgroundColor = prev || '';
+                    }, 2200);
+                }
+                return true;
+            }
+        } catch (e) {
+            log('focusCase', e);
+        }
+        return false;
+    }
+
     // 3) UMD-Ausgang.
     // =========================================================================
     var API = {
@@ -266,7 +305,8 @@
         sortRows: sortRows,
         columnDefs: columnDefs,
         scopeText: scopeText,
-        renderOverview: renderOverview
+        renderOverview: renderOverview,
+        focusCase: focusCase
     };
     if (typeof module !== 'undefined' && module.exports) { module.exports = API; }
     if (typeof window !== 'undefined') { window.AIWCockpitOverview = API; }

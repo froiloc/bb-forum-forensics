@@ -507,6 +507,14 @@
         fetchJson('/api/overview').then(function (data) {
             cleanupView();  // vorherige Artefakte vor Neuaufbau abbauen
             state.table = ov.renderOverview(mainEl, data, {});
+            // Fall-Fokus aus der Kommandopalette (Build 459): nach dem Rendern
+            // zur gewaehlten Zeile springen und sie kurz hervorheben. Danach
+            // zuruecksetzen, damit ein spaeterer Reload nicht erneut springt.
+            if (state.focusCaseId !== null && state.focusCaseId !== undefined
+                && typeof ov.focusCase === 'function') {
+                ov.focusCase(state.table, state.focusCaseId);
+                state.focusCaseId = null;
+            }
             log('Overview gerendert:', data.count, 'Faelle, scope', data.scope);
         }).catch(function (err) {
             cleanupView();
@@ -1863,7 +1871,25 @@
                     getViews: function () {
                         return visibleViews(state.capabilities);
                     },
-                    onSelect: function (viewId) { selectView(viewId); }
+                    onSelect: function (viewId) { selectView(viewId); },
+                    // Fall-Suche (Build 459): read-only /api/search. Bei Fehler/
+                    // 403 -> leere Liste (Palette bleibt fuer die Sicht-Suche
+                    // nutzbar; kein harter Fehlpfad).
+                    searchCases: function (q) {
+                        return fetchJson('/api/search?q='
+                                + encodeURIComponent(q) + '&limit=8')
+                            .then(function (data) {
+                                return (data && data.results) || [];
+                            })
+                            .catch(function () { return []; });
+                    },
+                    // Fall-Sprung: zur Uebersicht wechseln und die Zeile
+                    // fokussieren (state.focusCaseId wird von loadOverview nach
+                    // dem Rendern ausgewertet).
+                    onSelectCase: function (userId) {
+                        state.focusCaseId = userId;
+                        selectView('dashboard');
+                    }
                 });
             }
 

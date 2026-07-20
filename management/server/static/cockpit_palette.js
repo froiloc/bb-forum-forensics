@@ -71,6 +71,11 @@
 
     var _getViews = function () { return []; };
     var _onSelect = function () {};
+    // Fall-Suche (Build 459): injizierte, asynchrone Suchfunktion + Auswahl-
+    // Aktion. _searchToken verwirft veraltete (out-of-order) Antworten.
+    var _searchCases = null;
+    var _onSelectCase = function () {};
+    var _searchToken = 0;
     var _bound = false;
 
     var dom = { overlay: null, input: null, list: null };
@@ -112,33 +117,70 @@
         dom.list = list;
     }
 
-    function render(query) {
-        ensureDom();
-        view.items = filterViews(_getViews(), query);
-        view.sel = 0;
+    // Item-Fabriken: vereinheitlichen Sichten UND Fall-Treffer zu EINEM
+    // Listenmodell (view.items), damit Tastatur-Navigation beide umfasst.
+    function _mkViewItem(v) {
+        return { type: 'view', id: v.id, label: v.label || v.id,
+                 group: v.group || '' };
+    }
+    function _mkCaseItem(c) {
+        return { type: 'case', userId: c.user_id,
+                 label: 'Fall ' + c.user_id + ' · ' + (c.username || '?'),
+                 group: 'Fall', status: c.status };
+    }
+
+    // _draw: zeichnet view.items (typ-bewusst). Sicht-Items tragen
+    // data-view-id, Fall-Items data-case-id. Alles via textContent (XSS-sicher).
+    function _draw() {
         dom.list.textContent = '';
-        view.items.forEach(function (v, i) {
+        if (view.items.length === 0) {
+            var empty = document.createElement('li');
+            empty.className = 'aiw-palette-empty';
+            empty.textContent = 'Kein Treffer.';
+            dom.list.appendChild(empty);
+            return;
+        }
+        view.items.forEach(function (item, i) {
             var li = document.createElement('li');
             li.className = 'aiw-palette-item'
                 + (i === view.sel ? ' aiw-palette-active' : '');
-            li.setAttribute('data-view-id', v.id);
-            // Gruppe + Label, XSS-sicher.
+            if (item.type === 'case') {
+                li.setAttribute('data-case-id', String(item.userId));
+            } else {
+                li.setAttribute('data-view-id', item.id);
+            }
             var grp = document.createElement('span');
             grp.className = 'aiw-palette-grp';
-            grp.textContent = v.group || '';
+            grp.textContent = item.group || '';
             var lbl = document.createElement('span');
             lbl.className = 'aiw-palette-lbl';
-            lbl.textContent = v.label || v.id;
+            lbl.textContent = item.label || '';
             li.appendChild(grp);
             li.appendChild(lbl);
             li.addEventListener('click', function () { choose(i); });
             dom.list.appendChild(li);
         });
-        if (view.items.length === 0) {
-            var empty = document.createElement('li');
-            empty.className = 'aiw-palette-empty';
-            empty.textContent = 'Keine passende Sicht.';
-            dom.list.appendChild(empty);
+    }
+
+    // render: Sichten SOFORT (synchron, rechte-gefiltert). Ist eine Fall-Suche
+    // injiziert und der Begriff nicht leer, wird zusaetzlich asynchron gesucht
+    // und die Fall-Treffer angehaengt (nur, wenn die Antwort noch aktuell ist).
+    function render(query) {
+        ensureDom();
+        var token = ++_searchToken;
+        var viewItems = filterViews(_getViews(), query).map(_mkViewItem);
+        view.items = viewItems;
+        view.sel = 0;
+        _draw();
+
+        var q = String(query || '').trim();
+        if (_searchCases && q) {
+            _searchCases(q).then(function (cases) {
+                if (token !== _searchToken) { return; }   // veraltet -> verwerfen
+                var caseItems = (cases || []).map(_mkCaseItem);
+                view.items = viewItems.concat(caseItems);
+                _draw();
+            }).catch(function (e) { log('searchCases', e); });
         }
     }
 
@@ -158,11 +200,15 @@
 
     function choose(i) {
         if (typeof i === 'number') { view.sel = i; }
-        var v = view.items[view.sel];
-        if (v) {
-            close();
-            _onSelect(v.id);
-            log('gewaehlt:', v.id);
+        var item = view.items[view.sel];
+        if (!item) { return; }
+        close();
+        if (item.type === 'case') {
+            _onSelectCase(item.userId);
+            log('Fall gewaehlt:', item.userId);
+        } else {
+            _onSelect(item.id);
+            log('gewaehlt:', item.id);
         }
     }
 
@@ -209,6 +255,12 @@
         opts = opts || {};
         if (typeof opts.getViews === 'function') { _getViews = opts.getViews; }
         if (typeof opts.onSelect === 'function') { _onSelect = opts.onSelect; }
+        if (typeof opts.searchCases === 'function') {
+            _searchCases = opts.searchCases;
+        }
+        if (typeof opts.onSelectCase === 'function') {
+            _onSelectCase = opts.onSelectCase;
+        }
         if (!_bound && typeof document !== 'undefined') {
             document.addEventListener('keydown', onGlobalKeydown);
             _bound = true;
