@@ -131,6 +131,7 @@ from management.stats.stats_repo import StatsRepo
 from management.stats.forecast import Forecaster, forecast_to_dict
 from management.stats.gantt import GanttModel, gantt_to_dict
 from management.stats.annotation_stats_repo import AnnotationStatsRepo
+from management.cases.case_search_repo import CaseSearchRepo
 from management.reports.reports_repo import ReportsRepo
 from management.server.migration_status import MigrationStatusCheck
 from management.reports.approval_service import ApprovalService, ApprovalError
@@ -483,6 +484,8 @@ class ManagementApp:
             return self._gantt(person_id)
         if path == "/api/annotation-stats":
             return self._annotation_stats(person_id)
+        if path == "/api/search":
+            return self._search(person_id, query)
         if path == "/api/assignable":
             return self._assignable(person_id)
         if path == "/api/reports":
@@ -964,6 +967,35 @@ class ManagementApp:
             result = AnnotationStatsRepo(con, self._evidence_dir).compute(
                 scope=scope,
                 person_id=(None if scope == "alle" else person_id))
+        finally:
+            con.close()
+        return Response.json(200, result)
+
+    def _search(self, person_id: int,
+                query: Optional[Dict[str, List[str]]]) -> Response:
+        """
+        Fall-/Nutzer-Suche fuer die Kommandopalette (read-only; Build 458).
+        SCOPE-BEWUSST ueber CAP_OVERVIEW (dashboard.view): 'alle' -> alle
+        Faelle, 'eigene' -> nur eigene zugewiesene. Query 'q' (Pflicht) + 'limit'.
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_OVERVIEW):
+            return self._forbidden(CAP_OVERVIEW)
+        scope = policy.scope(CAP_OVERVIEW)
+
+        q = query or {}
+        term = (q.get("q") or [""])[0]
+        try:
+            limit = int((q.get("limit") or ["20"])[0])
+        except (TypeError, ValueError):
+            limit = 20
+
+        con = self._ro_con()
+        try:
+            result = CaseSearchRepo(con).search(
+                q=term, scope=scope,
+                person_id=(None if scope == "alle" else person_id),
+                limit=limit)
         finally:
             con.close()
         return Response.json(200, result)
