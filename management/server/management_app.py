@@ -181,6 +181,10 @@ from management.onboarding.onboarding_repo import (
     OnboardingRepo,
 )
 from management.onboarding.checklist_status import ChecklistStatus
+from management.audit.audit_explorer import AuditExplorer, AuditExplorerError
+from management.audit import audit_export
+from management.export.context_builder import build_export_context
+from management.export.export_envelope import ExportEnvelope
 
 #: Basisverzeichnis der statischen Cockpit-Assets (cockpit.* + Vendor).
 #: Liegt neben diesem Modul (management/server/static/).
@@ -550,6 +554,12 @@ class ManagementApp:
             return self._cases_detect(person_id)
         if path == "/api/promotion":
             return self._promotion(person_id)
+        if path == "/api/audit":
+            return self._audit(person_id, query)
+        if path == "/api/audit/facets":
+            return self._audit_facets(person_id)
+        if path == "/api/audit/export":
+            return self._audit_export(person_id, query)
         if path == "/api/releases":
             return self._releases(person_id, query)
         if path == "/api/onboarding":
@@ -2309,6 +2319,116 @@ class ManagementApp:
         finally:
             con.close()
         return Response.json(200, {"ok": True, **res})
+
+    # ============================================================
+    # AUDIT-/REVISIONS-EXPLORER (Build 467, AP-2E, Idee 24) — REIN LESEND
+    # ------------------------------------------------------------
+    #   Durchblaetterbarer, filterbarer Zugriff auf den append-only audit_log
+    #   (dieselbe Belegkette wie die Integritaets-Sicht) + gerichtsfester Export
+    #   ueber das AP-2B-ExportEnvelope. Recht: ops.view (wie 'integrity'). Kein
+    #   Schreibpfad; das Ansehen wird — wie Integritaets-/Policy-Sicht — nicht
+    #   auditiert.
+    # ============================================================
+    #: Obergrenze der Export-Zeilen (Schutz vor Riesen-Exporten; bei mehr
+    #: Treffern weist der Export "Auszug" aus — kein stiller Abschnitt, GR1).
+    _AUDIT_EXPORT_MAX = 2000
+
+    def _audit_filters(self, query) -> Dict[str, Any]:
+        """Filter-Kwargs aus der Query (event_type ist MEHRFACH zulaessig)."""
+        events = None
+        if isinstance(query, dict):
+            events = query.get("event_type") or None
+        return {
+            "event_types": events,
+            "actor_id": self._q1(query, "actor_id"),
+            "target_type": self._q1(query, "target_type"),
+            "target_id": self._q1(query, "target_id"),
+            "seq_from": self._q1(query, "seq_from"),
+            "seq_to": self._q1(query, "seq_to"),
+            "ts_from": self._q1(query, "ts_from"),
+            "ts_to": self._q1(query, "ts_to"),
+        }
+
+    @staticmethod
+    def _audit_filter_summary(f: Dict[str, Any]) -> str:
+        parts = []
+        if f.get("event_types"):
+            parts.append("Ereignis=%s" % ",".join(f["event_types"]))
+        for key, lbl in (("actor_id", "Akteur-id"), ("target_type", "Ziel-Typ"),
+                         ("target_id", "Ziel-id"), ("seq_from", "seq>="),
+                         ("seq_to", "seq<="), ("ts_from", "ts>="),
+                         ("ts_to", "ts<=")):
+            if f.get(key) not in (None, ""):
+                parts.append("%s=%s" % (lbl, f[key]))
+        return "; ".join(parts) if parts else ""
+
+    def _audit(self, person_id: int, query) -> Response:
+        """GET /api/audit — gefilterte, paginierte Audit-Seite (ops.view)."""
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_OPS_VIEW):
+            return self._forbidden(CAP_OPS_VIEW)
+        f = self._audit_filters(query)
+        con = self._ro_con()
+        try:
+            res = AuditExplorer(con).query(
+                limit=self._q1(query, "limit"),
+                offset=self._q1(query, "offset"), **f)
+        except AuditExplorerError as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Audit-Explorer nicht lesbar")
+            return Response.json(500, {"error": "audit_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, res)
+
+    def _audit_facets(self, person_id: int) -> Response:
+        """GET /api/audit/facets — vorhandene Event-Typen + Akteure (ops.view)."""
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_OPS_VIEW):
+            return self._forbidden(CAP_OPS_VIEW)
+        con = self._ro_con()
+        try:
+            res = AuditExplorer(con).facets()
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Audit-Facetten nicht lesbar")
+            return Response.json(500, {"error": "audit_facets_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, res)
+
+    def _audit_export(self, person_id: int, query) -> Response:
+        """GET /api/audit/export — gerichtsfestes HTML (ops.view, envelope)."""
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_OPS_VIEW):
+            return self._forbidden(CAP_OPS_VIEW)
+        f = self._audit_filters(query)
+        con = self._ro_con()
+        try:
+            explorer = AuditExplorer(con)
+            res = explorer.query(limit=self._AUDIT_EXPORT_MAX, offset=0, **f)
+            person = self._person(con, person_id)
+            actor = person.get("system_username") if person else None
+            ctx = build_export_context(
+                con=con, db_path=self._db_path, actor=actor,
+                aktenzeichen="Audit-/Revisions-Auszug")
+            out = audit_export.render_html(
+                res["rows"], ExportEnvelope(ctx),
+                filter_summary=self._audit_filter_summary(f),
+                total=res["total"])
+        except AuditExplorerError as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Audit-Export fehlgeschlagen")
+            return Response.json(500, {"error": "audit_export_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.html(200, out["html"])
 
     # ============================================================
     # EXTERNE FALLFREIGABE (Build 462, AP-2G, Idee 26)

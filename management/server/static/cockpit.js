@@ -163,6 +163,7 @@
         { id: 'myhistory',  cap: 'myhistory.view',       group: 'Persoenlich',    label: 'Meine Historie' },
         { id: 'policy',     cap: 'policy.view',          group: 'Administration', label: 'Rechte / Policy' },
         { id: 'integrity',  cap: 'ops.view',             group: 'Administration', label: 'Integritaet / Betrieb' },
+        { id: 'audit',      cap: 'ops.view',             group: 'Administration', label: 'Audit-Explorer' },
         { id: 'promotion',  cap: 'ops.view',             group: 'Administration', label: 'Fremdforum-Promotion' },
         { id: 'releases',   cap: 'release.view',         group: 'Administration', label: 'Externe Fallfreigabe' },
         { id: 'onboarding', cap: 'onboarding.view',      group: 'Verwaltung',     label: 'Onboarding / Offboarding' }
@@ -1554,6 +1555,51 @@
             });
     }
 
+    // loadAudit: AUDIT-/REVISIONS-EXPLORER (Build 467, AP-2E). REIN LESEND.
+    //   GET /api/audit/facets  — Filter-Auswahl (Event-Typen + Akteure).
+    //   GET /api/audit         — gefilterte, paginierte Seite.
+    //   Der "Gerichtsfeste Export" ist ein Link auf /api/audit/export mit den
+    //   ANGEWANDTEN Filtern. Filter/Offset leben im State (kein localStorage),
+    //   damit ein SSE-Reload dieselbe Sicht wiederherstellt.
+    function loadAudit(mainEl, filters, offset) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitAudit : null;
+        if (!mod) {
+            renderError(mainEl, 'Audit-Modul nicht geladen.');
+            return;
+        }
+        var f = filters || state.auditFilters || {};
+        var off = (offset != null) ? offset : (state.auditOffset || 0);
+        state.auditFilters = f;
+        state.auditOffset = off;
+
+        var qs = mod.buildQuery(f, { limit: 50, offset: off });
+        // Facetten und Seite parallel; Facetten-Fehler darf die Sicht nicht
+        // blockieren (dann eben ohne Vorauswahl-Listen).
+        fetchJson('/api/audit/facets')
+            .catch(function () { return { event_types: [], actors: [] }; })
+            .then(function (facets) {
+                return fetchJson('/api/audit?' + qs)
+                    .then(function (data) { return { facets: facets, data: data }; });
+            })
+            .then(function (both) {
+                cleanupView();
+                mod.renderAudit(mainEl, both.data, both.facets, {
+                    filters: f,
+                    onFilter: function (nf) { loadAudit(mainEl, nf, 0); },
+                    onPage: function (newOff) { loadAudit(mainEl, f, newOff); }
+                });
+                log('Audit gerendert:', both.data.total, 'Treffer');
+            })
+            .catch(function (err) {
+                cleanupView();
+                renderError(mainEl,
+                    'Audit-Explorer konnte nicht geladen werden: '
+                    + err.message);
+            });
+    }
+
     // loadLectorate: LEKTORAT (W4, Build 413, Slice 1). Laedt die Berichtsliste
     // (/api/reports, scope-korrekt serverseitig) und rendert die Gegenlese-
     // Sicht: Auswahl + read-only Berichtstext-Vorschau (<iframe> auf
@@ -1878,6 +1924,8 @@
             loadOverview(mainEl);
         } else if (viewId === 'integrity') {
             loadIntegrity(mainEl);
+        } else if (viewId === 'audit') {
+            loadAudit(mainEl, state.auditFilters, state.auditOffset);
         } else if (viewId === 'promotion') {
             loadPromotion(mainEl);
         } else if (viewId === 'releases') {
@@ -1949,6 +1997,10 @@
                 loadOverview();
             } else if (state.activeId === 'integrity') {
                 loadIntegrity();   // aktualisiert Sicht UND Banner
+            } else if (state.activeId === 'audit') {
+                // Neue Belege koennen dazugekommen sein -> Seite neu laden
+                // (gleiche Filter/Offset aus dem State).
+                loadAudit(undefined, state.auditFilters, state.auditOffset);
             } else if (state.activeId === 'promotion') {
                 // Eine Entscheidung (auch durch eine andere Chefin) erzeugt einen
                 // audit_log-Beleg; zudem misst die Sicht die Platte -> der

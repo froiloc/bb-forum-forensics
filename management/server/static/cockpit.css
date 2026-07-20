@@ -975,3 +975,45 @@ td.aiw-cal-today { box-shadow: inset 0 0 0 2px var(--akzent); }
 .aiw-onb-result:not(:empty) { margin-top: 10px; font-size: 13px; }
 .aiw-onb-result.ok    { color: #1e6b3a; }
 .aiw-onb-result.error { color: #922b21; font-weight: 600; }
+
+/* ==========================================================================
+   Audit-/Revisions-Explorer (Build 467) — cockpit_audit.js
+   --------------------------------------------------------------------------
+   Eng auf '.aiw-audit-*' gefasst. Der Payload wird umbrechend dargestellt;
+   der Export-Knopf ist als Link gestaltet (oeffnet das gerichtsfeste HTML).
+   ========================================================================== */
+.aiw-audit-bar {
+  margin: 12px 0; padding: 10px 12px; display: flex; flex-wrap: wrap;
+  align-items: center; gap: 8px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+}
+.aiw-audit-lbl { font-size: 13px; color: var(--ink); }
+.aiw-audit-input {
+  margin-left: 6px; padding: 5px 7px; font-size: 13px;
+  border: 1px solid var(--line); border-radius: 4px;
+}
+.aiw-audit-input-s { width: 90px; }
+.aiw-audit-btn {
+  font-size: 13px; padding: 6px 12px;
+  border: 1px solid var(--line); border-radius: 4px;
+  background: #eef0f2; color: var(--ink); cursor: pointer;
+  text-decoration: none; display: inline-block;
+}
+.aiw-audit-btn:hover:not(:disabled) { background: #e2e7ea; }
+.aiw-audit-btn:disabled { opacity: .5; cursor: default; }
+.aiw-audit-btn:focus-visible { outline: 2px solid var(--akzent); outline-offset: 1px; }
+.aiw-audit-export { border-color: var(--akzent); color: var(--akzent); font-weight: 600; }
+
+.aiw-audit-info { margin: 8px 0; font-size: 13px; color: var(--muted); }
+.aiw-audit-table {
+  width: 100%; border-collapse: collapse; font-size: 12px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+}
+.aiw-audit-table th, .aiw-audit-table td {
+  border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left;
+  vertical-align: top;
+}
+.aiw-audit-table th { background: #f0f2f4; font-weight: 600; }
+.aiw-audit-table tr:last-child td { border-bottom: 0; }
+.aiw-audit-payload { color: #444; word-break: break-word; max-width: 420px; }
+.aiw-audit-nav { margin: 10px 0; display: flex; gap: 8px; }

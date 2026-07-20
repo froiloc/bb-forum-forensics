@@ -64,9 +64,11 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
       "ops.view": "alle",
     };
     const ids = api.visibleViews(caps).map((v) => v.id);
-    // Build 461: 'promotion' haengt ebenfalls an ops.view (Fremdforum-Promotion)
-    // und erscheint daher zusammen mit 'integrity'.
-    expect(ids).toEqual(["dashboard", "workload", "integrity", "promotion"]);
+    // Build 461: 'promotion' haengt ebenfalls an ops.view (Fremdforum-Promotion).
+    // Build 467: 'audit' (Audit-Explorer) haengt ebenfalls an ops.view und steht
+    // in der Katalog-Reihenfolge direkt nach 'integrity'.
+    expect(ids).toEqual(
+      ["dashboard", "workload", "integrity", "audit", "promotion"]);
   });
 
   // CN03 -------------------------------------------------------------------
@@ -90,7 +92,8 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     // Build 461: 24 (neu: 'promotion' - Fremdforum-Promotion, AP-2G).
     // Build 463: 25 (neu: 'releases' - Externe Fallfreigabe, AP-2G).
     // Build 465: 26 (neu: 'onboarding' - Onboarding/Offboarding, AP-2G).
-    expect(api.VIEW_CATALOG.length).toBe(26);
+    // Build 467: 27 (neu: 'audit' - Audit-/Revisions-Explorer, AP-2E).
+    expect(api.VIEW_CATALOG.length).toBe(27);
   });
 
   // CN03b (Build 384) --------------------------------------------------------
