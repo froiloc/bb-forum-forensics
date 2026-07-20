@@ -1,5 +1,5 @@
 # Fehler im Frontend
-(Cache-buster-pre-extension: 84ee9cf4-8433-11f1-81a0-f3e03ba195a4)
+(Cache-buster-pre-extension: f374c816-843c-11f1-970d-0fb1bf8b6fdd)
 
 Ich werde in dieser Liste fortlaufend die von mir beobachteten Fehler aufführen.
 Falls diese abgeschlossen und verworfen wurden, werde ich sie durchstreichen. Alles, was nicht durchgestrichen ist, ist also noch offen und muss bearbeitet werden.
@@ -26,31 +26,31 @@ Abgeschlossene Aufgaben werden durch das Wort `erledigt` ersetzt.
 
 Quellen zum Debuggen:
 * Dieses Dokument mit den Arbeitsanweisungen und Problembeschreibungen:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.84ee9cf4-8433-11f1-81a0-f3e03ba195a4.md
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/bugs-and-tasks/last.f374c816-843c-11f1-970d-0fb1bf8b6fdd.md
 * Die Ausgabe von DevTools-Console:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.84ee9cf4-8433-11f1-81a0-f3e03ba195a4.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-console/last.f374c816-843c-11f1-970d-0fb1bf8b6fdd.log
 * Die Ausgabe von DevTools-Network:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.84ee9cf4-8433-11f1-81a0-f3e03ba195a4.har
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/devtools-network/last.f374c816-843c-11f1-970d-0fb1bf8b6fdd.har
 * Das aktuelle DOM des gesamten Dokuments als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.84ee9cf4-8433-11f1-81a0-f3e03ba195a4.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-html.f374c816-843c-11f1-970d-0fb1bf8b6fdd.html
 * Das aktuelle DOM des gesamten Body als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.84ee9cf4-8433-11f1-81a0-f3e03ba195a4.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-body.f374c816-843c-11f1-970d-0fb1bf8b6fdd.html
 * Das aktuelle DOM des gesamten Sidebar als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.84ee9cf4-8433-11f1-81a0-f3e03ba195a4.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-sidebar.f374c816-843c-11f1-970d-0fb1bf8b6fdd.html
 * Das aktuelle DOM des gesamten Main als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.84ee9cf4-8433-11f1-81a0-f3e03ba195a4.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-main.f374c816-843c-11f1-970d-0fb1bf8b6fdd.html
 * Das aktuelle DOM des Akkordeon 1 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.84ee9cf4-8433-11f1-81a0-f3e03ba195a4.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-1.f374c816-843c-11f1-970d-0fb1bf8b6fdd.html
 * Das aktuelle DOM des Akkordeon 2 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.84ee9cf4-8433-11f1-81a0-f3e03ba195a4.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-2.f374c816-843c-11f1-970d-0fb1bf8b6fdd.html
 * Das aktuelle DOM des Akkordeon 3 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.84ee9cf4-8433-11f1-81a0-f3e03ba195a4.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-3.f374c816-843c-11f1-970d-0fb1bf8b6fdd.html
 * Das aktuelle DOM des Akkordeon 4 als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.84ee9cf4-8433-11f1-81a0-f3e03ba195a4.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-accordion-4.f374c816-843c-11f1-970d-0fb1bf8b6fdd.html
 * Das aktuelle DOM des Search-Modal als HTML:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-searchmodal.84ee9cf4-8433-11f1-81a0-f3e03ba195a4.html
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/dom-dump/last-searchmodal.f374c816-843c-11f1-970d-0fb1bf8b6fdd.html
 * Die Ausgabe des aktuellen Webservers:
-https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.84ee9cf4-8433-11f1-81a0-f3e03ba195a4.log
+https://raw.githubusercontent.com/froiloc/bb-forum-forensics/refs/heads/master/debug/webserver-log/last.f374c816-843c-11f1-970d-0fb1bf8b6fdd.log
 * Die aktuellen Screenshots:
 https://github.com/froiloc/bb-forum-forensics/tree/1b5017a2f62c5a8f1825de76fc6edabb25d6bf66/debug/screenshots
 ***

@@ -24,3 +24,7 @@ bs4>=0.0.2
 cssselect>=1.4.0
 beautifulsoup4>=4.15.0
 soupsieve>=1.6.1
+ldap3>=2.9.1
+pyasn1>=0.6.4
+dotenv>=0.9.9
+python_dotenv>=1.2.2

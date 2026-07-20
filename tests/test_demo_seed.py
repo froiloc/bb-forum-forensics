@@ -1,0 +1,95 @@
+# =============================================================================
+# tests/test_demo_seed.py
+# IT-Forensisches Ermittlungswerkzeug — Baustelle 7: LKAe-Distribution (AP-2G)
+# =============================================================================
+# Testsuite fuer Build 466: demo_seed (synthetische Demo-coordinator.db).
+#
+# DS01 — seed(): DB entsteht; volle Migration; verify_chain().ok; erwartete
+#        Grundmengen (Personen, Faelle, RBAC-Faehigkeiten).
+# DS02 — AP-2G-Artefakte vorhanden (Promotion, Freigabe, Onboarding, Extern).
+# DS03 — rein synthetisch: alle Fall-Benutzernamen tragen das 'demo_'-Praefix.
+# DS04 — seed() verweigert eine bereits existierende DB (kein stilles Ueber-
+#        schreiben).
+#
+# Version: v0.7.466 · Build: 466 · 2026-07-20
+# =============================================================================
+
+import os
+import sqlite3
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from management.audit.audit_log import AuditLog
+from management.distribution import demo_seed
+
+
+class DemoSeedTests(unittest.TestCase):
+
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+        self.db = os.path.join(self._tmp, "data", "coordinator.db")
+        self.summary = demo_seed.seed(self.db)
+        self.con = sqlite3.connect(self.db)
+        self.con.row_factory = sqlite3.Row
+
+    def tearDown(self):
+        try:
+            self.con.close()
+        finally:
+            for root, _dirs, files in os.walk(self._tmp, topdown=False):
+                for fn in files:
+                    try:
+                        os.remove(os.path.join(root, fn))
+                    except OSError:
+                        pass
+                try:
+                    os.rmdir(root)
+                except OSError:
+                    pass
+
+    def _count(self, table):
+        return int(self.con.execute(
+            "SELECT COUNT(*) FROM %s" % table).fetchone()[0])
+
+    # DS01 -------------------------------------------------------------------
+    def test_ds01_valid_and_populated(self):
+        self.assertTrue(os.path.exists(self.db))
+        self.assertTrue(AuditLog(self.con).verify_chain().ok,
+                        "Demo-Audit-Kette nicht intakt")
+        self.assertEqual(self._count("person"), 4)
+        self.assertEqual(self._count("cases"), 6)
+        # Alle Migrationen -> voller RBAC-Katalog (28 ab Build 464).
+        self.assertEqual(self._count("rbac_capability"), 28)
+        # Leitung hat die Supervisor-Rolle + Grants.
+        self.assertGreater(self._count("rbac_grant"), 0)
+        self.assertEqual(self.summary["demo"], True)
+
+    # DS02 -------------------------------------------------------------------
+    def test_ds02_ap2g_artifacts(self):
+        self.assertGreaterEqual(self._count("forum_promotion"), 1)
+        self.assertGreaterEqual(self._count("case_release"), 1)
+        self.assertGreaterEqual(self._count("onboarding_item"), 1)
+        self.assertGreaterEqual(self._count("external_matters"), 1)
+
+    # DS03 -------------------------------------------------------------------
+    def test_ds03_synthetic_only(self):
+        names = [r[0] for r in self.con.execute(
+            "SELECT username FROM cases").fetchall()]
+        self.assertTrue(all(n.startswith("demo_") for n in names), names)
+        # Der Freigabe-Empfaenger ist eine Demo-Kennung.
+        rec = self.con.execute(
+            "SELECT recipient_kennung FROM case_release LIMIT 1").fetchone()
+        self.assertTrue(str(rec[0]).startswith("demo_"))
+
+    # DS04 -------------------------------------------------------------------
+    def test_ds04_refuses_existing(self):
+        with self.assertRaises(FileExistsError):
+            demo_seed.seed(self.db)
+
+
+if __name__ == "__main__":
+    unittest.main()
