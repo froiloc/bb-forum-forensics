@@ -185,6 +185,16 @@ CAPABILITIES: Tuple[Capability, ...] = (
     Capability("wartung.durchfuehren", "Wartung durchfuehren",
                "Wartungsfenster setzen/aufheben (enter/exit) und laufende "
                "Wartungs-Test-Server beenden (kill). Nicht fallbezogen."),
+    # --- Build 468 (AP-2A): Kreuzbezug/Identitaets-Katalog ------------------
+    #   Globaler Katalog identifizierter Personen (Konto->reale Person) mit
+    #   Konfidenzstufe. Seed in M018. Grant an ermittelnde Rollen ist operative
+    #   Entscheidung (default-deny), nicht Teil des Builds (mc 2026-07-20).
+    Capability("crossref.view", "Kreuzbezug/Identitaetskatalog sehen",
+               "Den Katalog identifizierter Personen (Konto->reale Person) "
+               "lesen."),
+    Capability("crossref.edit", "Kreuzbezug/Identitaetskatalog pflegen",
+               "Zuordnungen anlegen/revidieren und die Konfidenzstufe setzen "
+               "(auditiert)."),
 )
 
 

@@ -62,8 +62,9 @@ class DemoSeedTests(unittest.TestCase):
                         "Demo-Audit-Kette nicht intakt")
         self.assertEqual(self._count("person"), 4)
         self.assertEqual(self._count("cases"), 6)
-        # Alle Migrationen -> voller RBAC-Katalog (28 ab Build 464).
-        self.assertEqual(self._count("rbac_capability"), 28)
+        # Alle Migrationen -> voller RBAC-Katalog (30 ab Build 468: +2
+        # crossref.view/crossref.edit aus M018; zuvor 28 ab Build 464).
+        self.assertEqual(self._count("rbac_capability"), 30)
         # Leitung hat die Supervisor-Rolle + Grants.
         self.assertGreater(self._count("rbac_grant"), 0)
         self.assertEqual(self.summary["demo"], True)

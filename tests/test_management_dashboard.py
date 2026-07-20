@@ -188,11 +188,12 @@ class ManagementDashboardTests(unittest.TestCase):
         # maintenance/wartung.durchfuehren); Build 460: M015 (forum_promotion +
         # RBAC-Seed ops.promote); Build 462: M016 (case_release + RBAC-Seed
         # release.view/release.grant); Build 464: M017 (onboarding_item +
-        # RBAC-Seed onboarding.view/onboarding.edit).
+        # RBAC-Seed onboarding.view/onboarding.edit); Build 468: M018
+        # (identified_subject + RBAC-Seed crossref.view/crossref.edit).
         self.assertEqual(self.applied,
-                         [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+                         [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
                          if 3 not in self.applied
-                         else [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17])
+                         else [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18])
         # discover findet M001..M006 -> support_sessions (M003) IST dabei,
         # der person-Rename (M005, Build 342) ebenso wie das RBAC-Schema
         # (M006, Build 343).

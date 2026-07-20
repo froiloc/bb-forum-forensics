@@ -169,7 +169,8 @@ class ManagementRbacSchemaTests(unittest.TestCase):
         # +1 ab Build 460 ('ops.promote', geseedet in M015) -> 24.
         # +2 ab Build 462 ('release.view'/'release.grant', geseedet in M016) -> 26.
         # +2 ab Build 464 ('onboarding.view'/'onboarding.edit', in M017) -> 28.
-        self.assertEqual(len(cat_caps), 28)
+        # +2 ab Build 468 ('crossref.view'/'crossref.edit', in M018) -> 30.
+        self.assertEqual(len(cat_caps), 30)
         self.assertIn("external.view", cat_caps)
         self.assertIn("external.edit", cat_caps)
         self.assertIn("templates.edit", cat_caps)
@@ -183,6 +184,9 @@ class ManagementRbacSchemaTests(unittest.TestCase):
         # Onboarding/Offboarding (Build 464): onboarding.view/edit (Seed in M017).
         self.assertIn("onboarding.view", cat_caps)
         self.assertIn("onboarding.edit", cat_caps)
+        # Kreuzbezug/Identitaet (Build 468): crossref.view/edit (Seed in M018).
+        self.assertIn("crossref.view", cat_caps)
+        self.assertIn("crossref.edit", cat_caps)
         # Build 401: Betreuungs-Notizen (Seed in M012).
         self.assertIn("mentoring_notes.view", cat_caps)
         self.assertIn("mentoring_notes.edit", cat_caps)

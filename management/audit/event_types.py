@@ -173,6 +173,14 @@ class EventType:
     #   kind, step_code, status) + Textlaenge (Sensibilitaetsregel). mc 2026-07-20.
     ONBOARDING_STEP_SET: str = "onboarding_step_set"
 
+    # --- Build 468: Katalog identifizierter Personen (identified_subject, AP-2A)
+    #   EIN Beleg PRO ANLAGE/REVISION einer Konto->Person-Zuordnung. Der
+    #   sensible Freitext (real_identity/basis/note) steht NICHT im Payload, nur
+    #   FAKTEN (subject_id, confidence_code/ordinal, created) + Textlaengen
+    #   (Sensibilitaetsregel). Ein Ereignistyp fuer Anlage und Revision; das
+    #   Payload-Feld 'created' unterscheidet beides race-frei. mc 2026-07-20.
+    SUBJECT_IDENTITY_SET: str = "subject_identity_set"
+
     # --- reserviert für spätere Builds (hier dokumentiert, noch nicht aktiv) ---
     # NOTIFICATION_SENT, RESTORE_PERFORMED
 
@@ -228,6 +236,7 @@ class EventType:
             CASE_RELEASE_GRANTED,
             CASE_RELEASE_REVOKED,
             ONBOARDING_STEP_SET,
+            SUBJECT_IDENTITY_SET,
         }
     )
 
