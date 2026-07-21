@@ -31,7 +31,10 @@
  *   frueher folgende loadLectorate()-Reload verwarf Auswahl + iframe-Vorschau
  *   (gemeldeter Fehler). cockpit.js unterdrueckt den Reload nun anhand von
  *   hasSelection(), solange ein Bericht in Sichtung ist.
- * Version: v0.8.479 · Build: 479 · 2026-07-21
+ * Build 480: Bugfix — der Statusfilter-Wechsel reichte onTransferToTemplate
+ *   nicht mehr durch, wodurch der Knopf "Als Vorlage uebernehmen" nach jedem
+ *   Filterwechsel verschwand. Callback wird nun beim Neu-Rendern erhalten.
+ * Version: v0.8.480 · Build: 480 · 2026-07-21
  */
 (function () {
     'use strict';
@@ -274,9 +277,20 @@
             });
         // Reiner Lesewechsel: bei Statuswechsel die Liste neu rendern (die
         // Daten liegen bereits vor; kein erneuter Serverabruf noetig).
+        // Build 480 (Bugfix): onTransferToTemplate MUSS mit durchgereicht werden.
+        // Der Uebernahme-Knopf ("Als Vorlage uebernehmen") wird in
+        // renderLectorate nur erzeugt, wenn dieser Callback vorliegt
+        // (canTransfer = typeof opts.onTransferToTemplate === 'function'). Fehlte
+        // er beim Neu-Rendern nach Statuswechsel, verschwand der Knopf dauerhaft
+        // (praktisch funktionslos, da man zum Sichten meist den Status filtert).
+        // onSelect wurde bereits durchgereicht; onTransferToTemplate war die
+        // Luecke.
         sel.addEventListener('change', function () {
-            renderLectorate(mainEl, data,
-                { status: sel.value, onSelect: opts.onSelect });
+            renderLectorate(mainEl, data, {
+                status: sel.value,
+                onSelect: opts.onSelect,
+                onTransferToTemplate: opts.onTransferToTemplate
+            });
         });
         lbl.appendChild(sel);
         bar.appendChild(lbl);
