@@ -185,6 +185,7 @@ from management.crossref.identified_subject_repo import (
     CrossrefError,
     IdentifiedSubjectRepo,
 )
+from management.crossref.crossfindings_repo import CrossfindingsRepo
 from management.audit.audit_explorer import AuditExplorer, AuditExplorerError
 from management.audit import audit_export
 from management.export.context_builder import build_export_context
@@ -576,6 +577,9 @@ class ManagementApp:
         # Build 470 (AP-2A): Katalog identifizierter Personen (Konto->Person).
         if path == "/api/crossref":
             return self._crossref(person_id, query)
+        # Build 474 (AP-2A(3)): Querfund-Meta-Uebersicht (rein lesend).
+        if path == "/api/crossfindings":
+            return self._crossfindings(person_id, query)
         if path == "/api/external":
             return self._external(person_id, query)
         if path == "/api/calendar":
@@ -2697,6 +2701,39 @@ class ManagementApp:
         except Exception as exc:                       # noqa: BLE001
             logger.exception("Kreuzbezug-Katalog nicht lesbar")
             return Response.json(500, {"error": "crossref_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+
+    def _crossfindings(self, actor_person_id: int, query) -> Response:
+        """
+        GET /api/crossfindings — REIN LESENDE Meta-Uebersicht der Querfunde
+        ("Fund ueber B im Fall A") aus pending_cross_annotations, offene zuerst.
+        Optional ?only_open=1 filtert auf noch nicht integrierte Funde. Recht
+        crossref.view (gleiche F5-Familie wie der Identitaets-Katalog).
+        Duplziert NICHT die automatische Erfassung/den Transport — nur Anzeige.
+        """
+        policy = self.resolve_policy(actor_person_id)
+        if not policy.can(CAP_CROSSREF_VIEW):
+            return self._forbidden(CAP_CROSSREF_VIEW)
+
+        raw = self._q1(query, "only_open")
+        only_open = str(raw or "").lower() in ("1", "true", "yes", "ja")
+        con = self._ro_con()
+        try:
+            repo = CrossfindingsRepo(con)
+            return Response.json(200, {
+                "findings": repo.list(only_open=only_open),
+                "counts": repo.counts(),
+            })
+        except CrossrefError as exc:
+            # Fehlendes Substrat ist ein Betriebsfehler, kein Leerbefund.
+            logger.warning("Querfund-Uebersicht nicht verfuegbar: %s", exc)
+            return Response.json(503, {"error": "crossfindings_unavailable",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Querfund-Uebersicht nicht lesbar")
+            return Response.json(500, {"error": "crossfindings_failed",
                                        "detail": str(exc)})
         finally:
             con.close()
