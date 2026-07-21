@@ -1017,3 +1017,39 @@ td.aiw-cal-today { box-shadow: inset 0 0 0 2px var(--akzent); }
 .aiw-audit-table tr:last-child td { border-bottom: 0; }
 .aiw-audit-payload { color: #444; word-break: break-word; max-width: 420px; }
 .aiw-audit-nav { margin: 10px 0; display: flex; gap: 8px; }
+
+/* ==========================================================================
+   Build 471 (AP-2A(2b)): Kreuzbezug — Katalog identifizierter Personen.
+   Wiederverwendung der Basis-Variablen (--panel/--line/--gruen/--gelb/--akzent).
+   Konfidenz-Badges: verdacht (schwach) .. gesichert (stark), klar getrennt.
+   ========================================================================== */
+.aiw-xref-form {
+  margin: 12px 0; padding: 12px 14px; background: var(--panel);
+  border: 1px solid var(--line); border-radius: 6px;
+  display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center;
+}
+.aiw-xref-lbl { color: var(--ink); font-size: 14px; }
+.aiw-xref-input {
+  margin-left: 6px; padding: 4px 6px; border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.aiw-xref-result { margin: 8px 0; min-height: 1.2em; font-size: 14px; }
+.aiw-xref-result.ok { color: var(--gruen); }
+.aiw-xref-result.error { color: var(--rot); }
+.aiw-xref-readonly { font-style: italic; }
+.aiw-xref-table {
+  border-collapse: collapse; width: 100%; background: var(--panel);
+  margin-top: 12px;
+}
+.aiw-xref-table th, .aiw-xref-table td {
+  border: 1px solid var(--line); padding: 6px 10px; text-align: left;
+  vertical-align: top;
+}
+.aiw-xref-table thead th { background: #eef0f2; font-weight: 600; }
+.aiw-xref-actions { white-space: nowrap; }
+/* Konfidenz-Badges (setzen den Basis-Hintergrund von .aiw-badge bewusst neu) */
+.aiw-conf-badge { color: #fff; }
+.aiw-conf-verdacht { background: var(--gelb); color: #3a2f00; }
+.aiw-conf-wahrscheinlich { background: var(--akzent); }
+.aiw-conf-gesichert { background: var(--gruen); }
+.aiw-conf-unbekannt { background: var(--muted); }

@@ -167,7 +167,10 @@
         { id: 'audit',      cap: 'ops.view',             group: 'Administration', label: 'Audit-Explorer' },
         { id: 'promotion',  cap: 'ops.view',             group: 'Administration', label: 'Fremdforum-Promotion' },
         { id: 'releases',   cap: 'release.view',         group: 'Administration', label: 'Externe Fallfreigabe' },
-        { id: 'onboarding', cap: 'onboarding.view',      group: 'Verwaltung',     label: 'Onboarding / Offboarding' }
+        { id: 'onboarding', cap: 'onboarding.view',      group: 'Verwaltung',     label: 'Onboarding / Offboarding' },
+        // Build 471 (AP-2A(2b)): Katalog identifizierter Personen (Konto->reale
+        // Person) mit Konfidenzstufe. Auswertungs-Sicht; Recht crossref.view.
+        { id: 'crossref',   cap: 'crossref.view',        group: 'Auswertung',     label: 'Kreuzbezug' }
     ];
 
     // Gueltige Scope-Werte fuer die Anzeige (weitere -> kein Tag).
@@ -1556,6 +1559,61 @@
             });
     }
 
+    // loadCrossref: KREUZBEZUG — Katalog identifizierter Personen (Build 471,
+    //   AP-2A(2b), Frontend zu 470).
+    //   GET  /api/crossref            — Katalog (read, crossref.view).
+    //   POST /api/crossref/set        — Zuordnung anlegen/revidieren
+    //                                   (crossref.edit). KEIN optimistisches UI:
+    //                                   nach dem Schreiben Sicht NEU laden.
+    function loadCrossref(mainEl, pendingMsg) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitCrossref : null;
+        if (!mod) {
+            renderError(mainEl, 'Kreuzbezug-Modul nicht geladen.');
+            return;
+        }
+
+        var view = null;
+        function after(text, isError) {
+            loadCrossref(mainEl, { text: text, error: isError });
+        }
+        var opts = {
+            canEdit: hasCap(state.capabilities, 'crossref.edit'),
+            onSet: function (body) {
+                postJson('/api/crossref/set', body)
+                    .then(function (res) {
+                        var was = res.created ? 'angelegt' : 'revidiert';
+                        after('Zuordnung subject_id ' + body.subject_id + ' '
+                            + was + ' → ' + res.confidence_code
+                            + ' (Beleg #' + res.audit_seq + ').', false);
+                    })
+                    .catch(function (err) {
+                        after('Fehler: ' + err.message + ' (es wurde nichts '
+                            + 'geschrieben — die Liste zeigt den tatsaechlichen '
+                            + 'Stand).', true);
+                    });
+            }
+        };
+
+        fetchJson('/api/crossref')
+            .then(function (data) {
+                cleanupView();
+                view = mod.renderCrossref(mainEl, data, opts);
+                if (pendingMsg) {
+                    view.setResult(pendingMsg.text, pendingMsg.error);
+                }
+                log('Kreuzbezug gerendert:',
+                    (data && data.entries ? data.entries.length : 0));
+            })
+            .catch(function (err) {
+                cleanupView();
+                view = mod.renderCrossref(mainEl, { entries: [] }, opts);
+                view.setResult('Konnte nicht geladen werden: ' + err.message,
+                    true);
+            });
+    }
+
     // loadAudit: AUDIT-/REVISIONS-EXPLORER (Build 467, AP-2E). REIN LESEND.
     //   GET /api/audit/facets  — Filter-Auswahl (Event-Typen + Akteure).
     //   GET /api/audit         — gefilterte, paginierte Seite.
@@ -1933,6 +1991,8 @@
             loadReleases(mainEl);
         } else if (viewId === 'onboarding') {
             loadOnboarding(mainEl, state.onbPerson, state.onbKind);
+        } else if (viewId === 'crossref') {
+            loadCrossref(mainEl);
         } else if (viewId === 'workload') {
             loadWorkload(mainEl);
         } else if (viewId === 'capacity') {
@@ -2017,6 +2077,10 @@
                 if (state.onbPerson != null) {
                     loadOnboarding(undefined, state.onbPerson, state.onbKind);
                 }
+            } else if (state.activeId === 'crossref') {
+                // Eine Anlage/Revision (auch durch eine andere Person) erzeugt
+                // einen audit_log-Beleg -> Katalog neu laden.
+                loadCrossref();
             } else if (state.activeId === 'workload') {
                 loadWorkload();
             } else if (state.activeId === 'capacity') {

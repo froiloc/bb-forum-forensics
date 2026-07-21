@@ -93,7 +93,22 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     // Build 463: 25 (neu: 'releases' - Externe Fallfreigabe, AP-2G).
     // Build 465: 26 (neu: 'onboarding' - Onboarding/Offboarding, AP-2G).
     // Build 467: 27 (neu: 'audit' - Audit-/Revisions-Explorer, AP-2E).
-    expect(api.VIEW_CATALOG.length).toBe(27);
+    // Build 471: 28 (neu: 'crossref' - Kreuzbezug/identifizierte Personen, AP-2A).
+    expect(api.VIEW_CATALOG.length).toBe(28);
+  });
+
+  // CN-XREF (Build 471) ------------------------------------------------------
+  it("CN-XREF: Kreuzbezug haengt an crossref.view, Gruppe Auswertung", () => {
+    const api = _api();
+    const v = api.viewById("crossref");
+    expect(v).toBeTruthy();
+    expect(v.cap).toBe("crossref.view");
+    expect(v.group).toBe("Auswertung");
+    // Ohne Recht unsichtbar; mit Recht sichtbar.
+    expect(api.visibleViews({}).map((x) => x.id)).not.toContain("crossref");
+    expect(
+      api.visibleViews({ "crossref.view": "alle" }).map((x) => x.id)
+    ).toContain("crossref");
   });
 
   // CN03b (Build 384) --------------------------------------------------------
