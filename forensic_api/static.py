@@ -77,6 +77,15 @@ _RESOURCES: dict[str, tuple[str, str, Path]] = {
     "/_forensic/report.css":   ("report.css",   "text/css; charset=utf-8",               _USERINFO_DIR),
     # B6 Phase 4 (Chip-Rendering): Platzhalter-Parser
     "/_forensic/placeholder_chips.js": ("placeholder_chips.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
+    # Build 389: zentraler Katalog der Formatregeln (config.yaml -> validation.rules).
+    # WAR BIS BUILD 492 UNGEROUTET (in report.py eingebunden, aber in KEINER
+    # Allowlist -> HTTP 404, window.ValidationRules blieb undefined; die
+    # Live-Formatpruefung im Browser lief nie). Build 493: nachregistriert.
+    "/_forensic/validation_rules.js": ("validation_rules.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
+    # Build 491: reine Stammvater/Klon-Verknuepfungslogik (window.PlaceholderLinks),
+    # vom Wizard (Build 492) benutzt. WAR BIS BUILD 492 UNGEROUTET -> die
+    # Stammvater/Klon-Mechanik war im Browser wirkungslos. Build 493: registriert.
+    "/_forensic/placeholder_links.js": ("placeholder_links.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
     # B6 Phase 5 (Wizard): Platzhalter-Wizard
     "/_forensic/placeholder_wizard.js": ("placeholder_wizard.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
     # B6 Phase 6 (Modul-Panel): Modul-Auswahl

@@ -344,6 +344,12 @@ _EDITOR_HTML = """\
          geladen werden — der Wizard loest damit 'rule:<name>' im 5. Feld
          eines Platzhalters auf. defer erhaelt die Reihenfolge. -->
     <script src="/_forensic/validation_rules.js" defer></script>
+    <!-- 1b0) placeholder_links.js (Build 491): reine Stammvater/Klon-Logik
+         (window.PlaceholderLinks). MUSS vor placeholder_wizard.js geladen
+         werden — der Wizard (Build 492) verknuepft damit gleichnamige m/o-
+         Felder. War bis Build 492 nicht eingebunden (Feature wirkungslos);
+         Build 493 nachgetragen. -->
+    <script src="/_forensic/placeholder_links.js" defer></script>
     <!-- 1b) placeholder_wizard.js: Wizard (nach Chips, vor report.js) -->
     <script src="/_forensic/placeholder_wizard.js" defer></script>
     <!-- 1c) module_panel.js: Modul-Auswahl-Panel -->

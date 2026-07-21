@@ -284,6 +284,12 @@ class ForensicApi:
             "/_forensic/report_editor.js",      # B6 Phase 2 (umbenannt von editor.js)
             "/_forensic/report.css",            # B6 Phase 4 Stylesheet
             "/_forensic/placeholder_chips.js",  # B6 Phase 4 Chips
+            # Build 493: drei bislang UNGEROUTETE Module nachgetragen (Server
+            # lieferte 404 -> Features im Browser still tot). Beleg: Server-
+            # Test tests/test_report_assets_routing.py.
+            "/_forensic/validation_rules.js",   # Build 389: Formatregel-Katalog (war 404)
+            "/_forensic/placeholder_links.js",  # Build 491: Stammvater/Klon-Logik (war 404)
+            "/_forensic/submit_dialog.js",      # Build 382: Freigabe-Dialog (war 404; in _RESOURCES, aber nie dispatcht)
             "/_forensic/placeholder_wizard.js", # B6 Phase 5 Wizard
             "/_forensic/module_panel.js",       # B6 Phase 6 Panel
             "/_forensic/annotation_sidebar.js", # B6 Phase 7 Sidebar
