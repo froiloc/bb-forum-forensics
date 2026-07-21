@@ -57,6 +57,23 @@ function _mount(win) {
   return main;
 }
 
+// Build 483: Auswahl erfolgt jetzt ueber den Tabulator-rowClick (statt einer
+// Button-Liste). Der Tabulator-Ctor wird als Stub injiziert; die Auswahl wird
+// durch direkten Aufruf von opts.rowClick simuliert.
+function _stubTab() {
+  let made = null;
+  function StubTab(container, opts) {
+    made = { container, opts };
+    this.replaceData = function (d) { made.replaced = d; };
+    this.destroy = function () {};
+  }
+  return { StubTab, get: () => made };
+}
+function _pick(made, i) {
+  const row = made.opts.data[i || 0];
+  made.opts.rowClick({}, { getData: () => row, getElement: () => null });
+}
+
 describe("cockpit_approval", () => {
   it("AP01 API verfuegbar", () => {
     const api = _api();
@@ -85,16 +102,23 @@ describe("cockpit_approval", () => {
     expect(api.verifyText({ sealed: false })).toContain("Kein Siegel");
   });
 
-  it("AP03 renderApproval + Auswahl setzt iframe.src", () => {
+  it("AP03 renderApproval: Tabulator-Tabelle + rowClick setzt iframe.src", () => {
     const win = _ctx();
     const api = _api(win);
     const main = _mount(win);
-    api.renderApproval(main, _data(), { status: "submitted", canApprove: true });
-    const items = main.querySelectorAll(".aiw-approval-item");
-    expect(items.length).toBe(1); // nur submitted
+    const tab = _stubTab();
+    api.renderApproval(main, _data(), {
+      status: "submitted", canApprove: true, Tabulator: tab.StubTab,
+    });
+    expect(tab.get().opts.data.length).toBe(1); // nur submitted
+    // Build 483: Header-Filter + Paginierung 20/Seite.
+    const cols = tab.get().opts.columns;
+    expect(cols.find((c) => c.field === "username").headerFilter).toBe("input");
+    expect(tab.get().opts.pagination).toBe("local");
+    expect(tab.get().opts.paginationSize).toBe(20);
     const frame = main.querySelector("iframe.aiw-approval-preview");
     expect(frame).not.toBeNull();
-    items[0].dispatchEvent(new win.Event("click", { bubbles: true }));
+    _pick(tab.get());
     expect(frame.src).toContain("/api/report/render?subject_id=700&report_id=1");
     expect(main.querySelector(".aiw-approval-statusline").textContent)
       .toContain("Zur Abnahme vorgelegt");
@@ -105,13 +129,13 @@ describe("cockpit_approval", () => {
     const api = _api(win);
     const main = _mount(win);
     let approved = null, returned = null;
+    const tab = _stubTab();
     api.renderApproval(main, _data(), {
-      status: "submitted", canApprove: true,
+      status: "submitted", canApprove: true, Tabulator: tab.StubTab,
       onApprove: function (b) { approved = b; },
       onReturn: function (b) { returned = b; },
     });
-    main.querySelector(".aiw-approval-item")
-      .dispatchEvent(new win.Event("click", { bubbles: true }));
+    _pick(tab.get());
 
     // Freigeben mit Vermerk + is_final.
     main.querySelector(".aiw-approval-note").value = "geprueft";
@@ -135,9 +159,11 @@ describe("cockpit_approval", () => {
     const win = _ctx();
     const api = _api(win);
     const main = _mount(win);
-    api.renderApproval(main, _data(), { status: "submitted", canApprove: false });
-    main.querySelector(".aiw-approval-item")
-      .dispatchEvent(new win.Event("click", { bubbles: true }));
+    const tab = _stubTab();
+    api.renderApproval(main, _data(), {
+      status: "submitted", canApprove: false, Tabulator: tab.StubTab,
+    });
+    _pick(tab.get());
     expect(main.querySelector(".aiw-approval-approvebtn")).toBeNull();
     expect(main.querySelector(".aiw-approval-action").textContent)
       .toContain("reports.approve");
@@ -148,12 +174,12 @@ describe("cockpit_approval", () => {
     const api = _api(win);
     const main = _mount(win);
     let verified = null;
+    const tab = _stubTab();
     api.renderApproval(main, _data(), {
-      status: "submitted", canApprove: true,
+      status: "submitted", canApprove: true, Tabulator: tab.StubTab,
       onVerify: function (uid, rid) { verified = [uid, rid]; },
     });
-    main.querySelector(".aiw-approval-item")
-      .dispatchEvent(new win.Event("click", { bubbles: true }));
+    _pick(tab.get());
     main.querySelector(".aiw-approval-verify")
       .dispatchEvent(new win.Event("click", { bubbles: true }));
     expect(verified).toEqual([700, 1]);
@@ -168,9 +194,11 @@ describe("cockpit_approval", () => {
     const win = _ctx();
     const api = _api(win);
     const main = _mount(win);
-    api.renderApproval(main, _data(), { status: "approved", canApprove: true });
-    main.querySelector(".aiw-approval-item")
-      .dispatchEvent(new win.Event("click", { bubbles: true }));
+    const tab = _stubTab();
+    api.renderApproval(main, _data(), {
+      status: "approved", canApprove: true, Tabulator: tab.StubTab,
+    });
+    _pick(tab.get()); // erster (und einziger) Bericht im Status 'approved'
     expect(main.querySelector(".aiw-approval-approvebtn")).toBeNull();
     expect(main.querySelector(".aiw-approval-action").textContent)
       .toContain("Nur vorgelegte");
@@ -197,16 +225,16 @@ describe("cockpit_approval", () => {
     const api = _api(win);
     const main = _mount(win);
     let sel = null;
+    const tab = _stubTab();
     api.renderApproval(main, _data(), {
-      status: "submitted", canApprove: true,
+      status: "submitted", canApprove: true, Tabulator: tab.StubTab,
       onSelect: function (uid, rid) { sel = [uid, rid]; },
     });
     // Support-Panels existieren.
     expect(main.querySelector(".aiw-approval-annotations")).not.toBeNull();
     expect(main.querySelector(".aiw-approval-comments")).not.toBeNull();
 
-    main.querySelector(".aiw-approval-item")
-      .dispatchEvent(new win.Event("click", { bubbles: true }));
+    _pick(tab.get());
     expect(sel).toEqual([700, 1]);
 
     api.renderAnnotations({
@@ -393,5 +421,49 @@ describe("cockpit_approval", () => {
     expect(assessed).toBeNull();
     expect(panel.querySelector(".aiw-approval-assess-err").textContent)
       .toContain("erforderlich");
+  });
+
+  // --- Tabulator-Umbau (Build 483) --------------------------------------
+  it("AP16 toRows: Felder + Fallbacks (Grundregel 1)", () => {
+    const api = _api();
+    const rows = api.toRows(_data(), "submitted");
+    expect(rows.length).toBe(1); // nur submitted
+    expect(rows[0]).toMatchObject({
+      subject_id: 700, id: 1, username: "b700", title: "Abschluss",
+      status: "submitted", status_label: "Zur Abnahme vorgelegt",
+    });
+    expect(rows[0].typ).toBe("Abschlussbericht"); // final -> Abschlussbericht
+    const rows2 = api.toRows(
+      { reports: [{ subject_id: 88, id: 9, status: "submitted" }] }, "submitted"
+    );
+    expect(rows2[0].username).toBe("uid 88");
+    expect(rows2[0].title).toBe("(ohne Titel)");
+  });
+
+  it("AP17 statusCounts: Trefferzahl je Status + Gesamt", () => {
+    const api = _api();
+    const c = api.statusCounts(_data());
+    expect(c.submitted).toBe(1);
+    expect(c.approved).toBe(1);
+    expect(c.alle).toBe(2);
+    expect(c.draft).toBe(0);
+  });
+
+  it("AP18 Status-Schnellfilter zeigt Zaehler in den Optionen", () => {
+    const win = _ctx();
+    const api = _api(win);
+    const main = _mount(win);
+    const tab = _stubTab();
+    api.renderApproval(main, _data(), {
+      status: "submitted", canApprove: true, Tabulator: tab.StubTab,
+    });
+    const sel = main.querySelector("select.aiw-approval-status");
+    const opts = Array.from(sel.options).map((o) => o.textContent);
+    expect(opts).toContain("Zur Abnahme vorgelegt (1)");
+    expect(opts).toContain("Alle (2)");
+    // Statuswechsel tauscht die Daten via replaceData (kein Neu-Render).
+    sel.value = "alle";
+    sel.dispatchEvent(new win.Event("change", { bubbles: true }));
+    expect(tab.get().replaced.length).toBe(2);
   });
 });

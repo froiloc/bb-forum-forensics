@@ -29,7 +29,16 @@
  *   diesen Ausschlag ~2s spaeter als 'changed' -> der frueher folgende
  *   loadApproval()-Reload verwarf Auswahl + iframe-Vorschau. cockpit.js
  *   unterdrueckt den Reload nun anhand von hasSelection().
- * Version: v0.8.479 · Build: 479 · 2026-07-21
+ * Build 483 (Tabulator-Umbau, analog Lektorat 481/482): Die Auswahl-Liste
+ *   (bisher ein <button> je Bericht) wird durch eine Tabulator-Tabelle ersetzt
+ *   (Muster cockpit_reports.js, Tabulator v6.4.0). Spalten Benutzer/Titel/Typ/
+ *   Nr./Status/Verfasser/Erstellt mit Freitext-Header-Filtern, Paginierung
+ *   20/Seite (deutscher Pager), Status-Schnellfilter mit Trefferzaehlern.
+ *   Auswahl per rowClick (verdrahtet unveraendert iframe-Vorschau,
+ *   Aktionsfeld, Belege/Kommentare/Ergebnis). Statusfilter tauscht die
+ *   Tabellendaten via table.replaceData() OHNE Neu-Render. Die Chef-Freigabe
+ *   hat KEINEN Uebernahme-Knopf (nur Lektorat), daher keine Knopf-Verlegung.
+ * Version: v0.8.483 · Build: 483 · 2026-07-21
  */
 (function () {
     'use strict';
@@ -50,7 +59,13 @@
         verifyBox: null,    // Ausgabe der Siegelpruefung
         annPanel: null,     // Belege-Panel (Annotationen, SF-2, Build 417)
         comPanel: null,     // Kommentar-Panel (SF-3, read-only, Build 417)
-        resPanel: null      // Ergebnis-Panel (results, read-only, Build 418)
+        resPanel: null,     // Ergebnis-Panel (results, read-only, Build 418)
+        // Build 483 (Tabulator-Umbau, analog Lektorat 481/482): Auswahl-Liste
+        // als Tabulator-Tabelle. Instanz modul-intern; Abbau in cleanup()
+        // (cockpit.js:cleanupView ruft AIWCockpitApproval.cleanup()) und
+        // defensiv am Kopf von renderApproval.
+        table: null,        // aktuelle Tabulator-Instanz (oder null)
+        activeRowEl: null   // DOM der aktiv markierten Zeile (fuer Entmarkierung)
     };
 
     // =====================================================================
@@ -88,6 +103,56 @@
     }
 
     function selectionKey(uid, rid) { return String(uid) + ':' + String(rid); }
+
+    // --- Tabellen-Abbildung (Build 483, analog Lektorat) -----------------
+    // typeLabel: menschliche Berichtstyp-Bezeichnung (Vermerk-Sprachregel wie
+    // cockpit_reports.js/cockpit_lectorate.js). Fallback = Rohcode (Grundregel 1).
+    var TYPE_LABEL = {
+        interim:  'Vermerk',
+        addendum: 'Ergänzungsvermerk',
+        final:    'Abschlussbericht'
+    };
+    function typeLabel(t) { return TYPE_LABEL[t] || t || ''; }
+
+    // fmtTs: Unix-Sekunden -> 'YYYY-MM-DD' (leer bei 0/undefined).
+    function fmtTs(tsSec) {
+        if (!tsSec) { return ''; }
+        var d = new Date(tsSec * 1000);
+        function p(n) { return (n < 10 ? '0' : '') + n; }
+        return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+    }
+
+    // toRows: (nach Status gefilterte) Berichte -> Tabellenzeilen. REIN (vitest).
+    // Fehlende Felder werden sichtbar ersetzt, nicht verschluckt (Grundregel 1).
+    // status/subject_id/id bleiben erhalten (rowClick + _buildActionPanel).
+    function toRows(data, status) {
+        return filterReports(data, status).map(function (r) {
+            return {
+                subject_id: r.subject_id,
+                id: r.id,
+                username: r.username || ('uid ' + r.subject_id),
+                title: r.title || '(ohne Titel)',
+                typ: typeLabel(r.report_type),
+                nr: (r.sequence_nr != null ? r.sequence_nr : ''),
+                status: r.status,
+                status_label: statusLabel(r.status),
+                created_by: r.created_by || '',
+                created: fmtTs(r.created_at)
+            };
+        });
+    }
+
+    // statusCounts: Trefferzahl je Status + Gesamt (Status-Schnellfilter). REIN.
+    function statusCounts(data) {
+        var list = (data && data.reports) ? data.reports : [];
+        var c = { submitted: 0, approved: 0, final: 0, draft: 0, alle: list.length };
+        list.forEach(function (r) {
+            if (r && Object.prototype.hasOwnProperty.call(c, r.status)) {
+                c[r.status] += 1;
+            }
+        });
+        return c;
+    }
 
     // canApprove/canVerify: Aktionslogik anhand des Berichtsstatus (mc/Build
     // 378/380). Freigeben/Zurueckweisen NUR bei 'submitted'; Siegelpruefung
@@ -182,7 +247,16 @@
     // 2) DOM.
     // =====================================================================
 
+    // _destroyTable (Build 483): aktuelle Tabulator-Instanz abbauen (best-effort).
+    function _destroyTable() {
+        if (_state.table && typeof _state.table.destroy === 'function') {
+            try { _state.table.destroy(); } catch (e) { log('destroyTable', e); }
+        }
+        _state.table = null;
+    }
+
     function cleanup() {
+        _destroyTable();
         _state.iframe = null;
         _state.selKey = null;
         _state.actionPanel = null;
@@ -190,6 +264,7 @@
         _state.annPanel = null;
         _state.comPanel = null;
         _state.resPanel = null;
+        _state.activeRowEl = null;
         log('cleanup');
     }
 
@@ -709,6 +784,8 @@
         var status = opts.status || 'submitted';
         log('renderApproval', { status: status, count: (data && data.count) });
 
+        // Build 483: bestehende Tabulator-Instanz VOR dem Leeren zerstoeren.
+        _destroyTable();
         mainEl.innerHTML = '';
         _state.iframe = null;
         _state.selKey = null;
@@ -717,6 +794,7 @@
         _state.annPanel = null;
         _state.comPanel = null;
         _state.resPanel = null;
+        _state.activeRowEl = null;
 
         var wrap = document.createElement('div');
         wrap.className = 'aiw-approval';
@@ -739,37 +817,32 @@
         lbl.textContent = 'Status: ';
         var sel = document.createElement('select');
         sel.className = 'aiw-approval-status';
+        // Build 483: Status-Schnellfilter mit Trefferzaehlern je Status.
+        var _counts = statusCounts(data);
         [['submitted', 'Zur Abnahme vorgelegt'], ['approved', 'Freigegeben'],
          ['final', 'Versandt'], ['draft', 'Entwurf'], ['alle', 'Alle']]
             .forEach(function (o) {
                 var opt = document.createElement('option');
-                opt.value = o[0]; opt.textContent = o[1];
+                opt.value = o[0];
+                opt.textContent = o[1] + ' (' + (_counts[o[0]] || 0) + ')';
                 if (o[0] === status) { opt.selected = true; }
                 sel.appendChild(opt);
             });
+        // Build 483: Statuswechsel tauscht NUR die Tabellendaten (kein Neu-
+        // Render). Die Tabulator-Instanz, das Aktionsfeld und die Vorschau
+        // bleiben erhalten. (Nebeneffekt: der frueher hier vorhandene Verlust
+        // von onSelect beim Neu-Render entfaellt.)
         sel.addEventListener('change', function () {
-            renderApproval(mainEl, data, {
-                status: sel.value, canApprove: opts.canApprove,
-                onApprove: opts.onApprove, onReturn: opts.onReturn,
-                onVerify: opts.onVerify
-            });
+            if (_state.table && typeof _state.table.replaceData === 'function') {
+                _state.table.replaceData(toRows(data, sel.value));
+            }
         });
         lbl.appendChild(sel);
         bar.appendChild(lbl);
         wrap.appendChild(bar);
 
-        // Auswahl-Liste.
-        var rows = filterReports(data, status);
-        var list = document.createElement('div');
-        list.className = 'aiw-approval-list';
-        if (!rows.length) {
-            var empty = document.createElement('p');
-            empty.className = 'aiw-approval-empty';
-            empty.textContent = 'Keine Berichte im gewaehlten Status.';
-            list.appendChild(empty);
-        }
-
-        // Vorschau-Bereich: Berichtstext + Aktionen.
+        // Vorschau-Bereich: Berichtstext + Aktionen. Zuerst aufgebaut, damit der
+        // rowClick-Handler der Tabelle die frame-Referenz schliessen kann.
         var preview = document.createElement('div');
         preview.className = 'aiw-approval-preview-wrap';
         var frame = document.createElement('iframe');
@@ -781,44 +854,101 @@
         var action = document.createElement('div');
         action.className = 'aiw-approval-action';
         _state.actionPanel = action;
-        _actionHint('Bericht links auswaehlen, um ihn zu lesen und zu '
+        _actionHint('Bericht in der Tabelle auswaehlen, um ihn zu lesen und zu '
             + 'entscheiden.');
 
         preview.appendChild(frame);
         preview.appendChild(action);
 
-        rows.forEach(function (r) {
-            var key = selectionKey(r.subject_id, r.id);
-            var row = document.createElement('button');
-            row.type = 'button';
-            row.className = 'aiw-approval-item';
-            row.setAttribute('data-uid', String(r.subject_id));
-            row.setAttribute('data-rid', String(r.id));
-            row.setAttribute('data-key', key);
-            row.textContent = reportLabel(r);
-            row.addEventListener('click', function () {
-                var prev = list.querySelector('.aiw-approval-item.is-active');
-                if (prev) { prev.classList.remove('is-active'); }
-                row.classList.add('is-active');
-                _state.selKey = key;
-                frame.src = renderUrl(r.subject_id, r.id);
-                _buildActionPanel(r, opts);
-                // Support-View (Belege + Kommentare) auf "laedt" setzen; der
-                // Abruf laeuft ueber opts.onSelect (cockpit.js holt
-                // /api/report/annotations + /api/report/comments).
-                annotationsLoading();
-                commentsLoading();
-                resultsLoading();
-                if (typeof opts.onSelect === 'function') {
-                    opts.onSelect(r.subject_id, r.id);
-                }
-                log('select', key, frame.src);
-            });
-            list.appendChild(row);
-        });
-
-        wrap.appendChild(list);
+        // --- Auswahl-Tabelle (Build 483): Tabulator statt Button-Liste.
+        // Muster cockpit_reports.js/cockpit_lectorate.js. opts.Tabulator ist
+        // fuer Tests injizierbar.
+        var container = document.createElement('div');
+        container.className = 'aiw-approval-table';
+        wrap.appendChild(container);
         wrap.appendChild(preview);
+
+        // _selectReport: gemeinsame Auswahl-Logik (rowClick). Setzt die Auswahl,
+        // laedt die read-only Vorschau, baut das Aktionsfeld fuer DIESEN Bericht
+        // und stoesst ueber opts.onSelect die Belege-/Kommentar-/Ergebnis-Abrufe
+        // an. r ist die Tabellenzeile (enthaelt status/subject_id/id — genau das,
+        // was _buildActionPanel braucht). rowEl = Zeilen-DOM (Markierung).
+        function _selectReport(r, rowEl) {
+            if (!r) { return; }
+            if (_state.activeRowEl && _state.activeRowEl.classList) {
+                _state.activeRowEl.classList.remove('is-active');
+            }
+            if (rowEl && rowEl.classList) {
+                rowEl.classList.add('is-active');
+                _state.activeRowEl = rowEl;
+            }
+            _state.selKey = selectionKey(r.subject_id, r.id);
+            frame.src = renderUrl(r.subject_id, r.id);
+            _buildActionPanel(r, opts);
+            annotationsLoading();
+            commentsLoading();
+            resultsLoading();
+            if (typeof opts.onSelect === 'function') {
+                opts.onSelect(r.subject_id, r.id);
+            }
+            log('select', _state.selKey, frame.src);
+        }
+
+        var Ctor = opts.Tabulator
+            || (typeof window !== 'undefined' ? window.Tabulator : undefined);
+        if (typeof Ctor !== 'function') {
+            // Kein stiller Leerzustand (Grundregel 1): sichtbarer Hinweis.
+            var note = document.createElement('p');
+            note.className = 'aiw-approval-empty';
+            note.textContent = 'Tabellenbibliothek nicht verfuegbar.';
+            container.appendChild(note);
+            _state.table = null;
+            log('renderApproval: kein Tabulator-Ctor');
+        } else {
+            _state.table = new Ctor(container, {
+                data: toRows(data, status),
+                columns: [
+                    { title: 'Benutzer',  field: 'username',
+                      headerFilter: 'input' },
+                    { title: 'Titel',     field: 'title',
+                      headerFilter: 'input' },
+                    { title: 'Typ',       field: 'typ',
+                      headerFilter: 'input' },
+                    { title: 'Nr.',       field: 'nr', hozAlign: 'right' },
+                    { title: 'Status',    field: 'status_label',
+                      headerFilter: 'input' },
+                    { title: 'Verfasser', field: 'created_by',
+                      headerFilter: 'input' },
+                    { title: 'Erstellt',  field: 'created' }
+                ],
+                layout: 'fitColumns',
+                height: false,
+                pagination: 'local',
+                paginationSize: 20,
+                paginationCounter: 'rows',
+                locale: 'de-de',
+                langs: {
+                    'de-de': {
+                        pagination: {
+                            first: 'Erste', first_title: 'Erste Seite',
+                            last: 'Letzte', last_title: 'Letzte Seite',
+                            prev: 'Zurück', prev_title: 'Vorige Seite',
+                            next: 'Weiter', next_title: 'Nächste Seite',
+                            counter: {
+                                showing: 'Zeige', of: 'von',
+                                rows: 'Zeilen', pages: 'Seiten'
+                            }
+                        }
+                    }
+                },
+                placeholder: 'Keine Berichte im gewaehlten Status.',
+                rowClick: function (e, row) {
+                    var el = (typeof row.getElement === 'function')
+                        ? row.getElement() : null;
+                    _selectReport(row.getData(), el);
+                }
+            });
+        }
 
         // --- Support-View (SF-2 + SF-3, read-only) unter dem Vorschau-Bereich.
         // Zwei Panels nebeneinander (schmal: gestapelt): Belege | Kommentare.
@@ -854,6 +984,9 @@
         renderUrl: renderUrl,
         reportLabel: reportLabel,
         selectionKey: selectionKey,
+        toRows: toRows,                   // Tabellen-Abbildung (Build 483)
+        typeLabel: typeLabel,             // Berichtstyp-Label (Build 483)
+        statusCounts: statusCounts,       // Status-Schnellfilter-Zaehler (Build 483)
         canApprove: canApprove,
         canVerify: canVerify,
         verifyText: verifyText,

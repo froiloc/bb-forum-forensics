@@ -502,6 +502,15 @@ td.aiw-cal-today { box-shadow: inset 0 0 0 2px var(--akzent); }
 .aiw-approval-empty, .aiw-approval-hint {
   font-size: 12px; color: var(--muted);
 }
+/* Build 483: Berichtsauswahl der Chef-Freigabe als Tabulator-Tabelle. Aktive
+   Zeile ueber .is-active markiert (rowClick setzt sie). */
+.aiw-approval-table { margin-bottom: 10px; }
+.aiw-approval-table .tabulator-row.is-active {
+  background: #eef4fb;
+}
+.aiw-approval-table .tabulator-row.is-active .tabulator-cell {
+  font-weight: 600;
+}
 .aiw-approval-preview-wrap { display: flex; flex-wrap: wrap; gap: 12px; }
 .aiw-approval-preview-wrap .aiw-approval-preview {
   flex: 2 1 420px; width: auto; height: 60vh;
