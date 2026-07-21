@@ -48,7 +48,13 @@
  *   mit 20 Zeilen/Seite + deutschem Pager; (c) Status-Schnellfilter mit
  *   Trefferzaehlern je Status; (d) Uebernahme-Knopf UNTER die Tabelle verschoben
  *   (naeher an der Darstellung).
- * Version: v0.8.482 · Build: 482 · 2026-07-21
+ * Build 484: Typ- und Status-Spalte erhalten DROPDOWN-Header-Filter (list) mit
+ *   festen Werten + 'alle'. Der separate Status-<select> ueber der Tabelle
+ *   entfaellt; der Default 'Zur Abnahme vorgelegt' wird ueber initialHeaderFilter
+ *   gesetzt, die Tabelle laedt alle Zeilen. statusCounts (Zaehler am alten
+ *   Select) entfernt. Status filtert ueber den Roh-Status (rowData.status),
+ *   damit 'Versandt' waehlbar bleibt.
+ * Version: v0.8.484 · Build: 484 · 2026-07-21
  */
 (function () {
     'use strict';
@@ -137,6 +143,32 @@
     };
     function typeLabel(t) { return TYPE_LABEL[t] || t || ''; }
 
+    // --- Dropdown-Header-Filter (Build 484) ------------------------------
+    // Wertelisten fuer die list-Header-Filter. Der leere Wert '' ('alle') setzt
+    // keinen Filter (Tabulator raeumt den Spaltenfilter bei leerem Wert).
+    // Reihenfolge = Anzeigereihenfolge im Dropdown.
+    var TYP_FILTER_VALUES = {
+        '': 'alle',
+        'Vermerk': 'Vermerk',
+        'Ergänzungsvermerk': 'Ergänzungsvermerk',
+        'Abschlussbericht': 'Abschlussbericht'
+    };
+    // Status: Werte sind die ROH-Statuscodes (nicht die Labels), damit 'Versandt'
+    // waehlbar bleibt, obwohl statusLabel('final') = 'Versandt/abgeschlossen'.
+    var STATUS_FILTER_VALUES = {
+        '': 'alle',
+        'submitted': 'Zur Abnahme vorgelegt',
+        'approved': 'Freigegeben',
+        'final': 'Versandt',
+        'draft': 'Entwurf'
+    };
+    // _statusHeaderFilter: die Status-Spalte zeigt status_label, filtert aber
+    // ueber den Roh-Status der Zeile (rowData.status). Leerer Wert => alle. REIN.
+    function _statusHeaderFilter(headerValue, rowValue, rowData) {
+        if (headerValue === '' || headerValue == null) { return true; }
+        return !!rowData && rowData.status === headerValue;
+    }
+
     // fmtTs: Unix-Sekunden -> 'YYYY-MM-DD' (leere Zeichenkette bei 0/undefined).
     // Identisch zu cockpit_reports.js:fmtTs.
     function fmtTs(tsSec) {
@@ -165,20 +197,6 @@
                 created: fmtTs(r.created_at)
             };
         });
-    }
-
-    // statusCounts (Build 482): Trefferzahl je Status + Gesamt. REIN (vitest).
-    // Grundlage fuer den Status-Schnellfilter mit Zaehlern. Zaehlt ALLE Berichte
-    // (unabhaengig vom aktuellen Filter), damit die Zahlen stabil bleiben.
-    function statusCounts(data) {
-        var list = (data && data.reports) ? data.reports : [];
-        var c = { submitted: 0, approved: 0, final: 0, draft: 0, alle: list.length };
-        list.forEach(function (r) {
-            if (r && Object.prototype.hasOwnProperty.call(c, r.status)) {
-                c[r.status] += 1;
-            }
-        });
-        return c;
     }
 
     // annotationsUrl: URL des Annotations-Support-Views (SF-2, Build 411).
@@ -354,39 +372,18 @@
             + 'Status „Zur Abnahme vorgelegt".';
         wrap.appendChild(meta);
 
-        // --- Statusfilter ------------------------------------------------
-        var bar = document.createElement('div');
-        bar.className = 'aiw-lectorate-toolbar';
-        var lbl = document.createElement('label');
-        lbl.textContent = 'Status: ';
-        var sel = document.createElement('select');
-        sel.className = 'aiw-lectorate-status';
-        // Build 482: Status-Schnellfilter mit Trefferzaehlern je Status.
-        var _counts = statusCounts(data);
-        [['submitted', 'Zur Abnahme vorgelegt'], ['approved', 'Freigegeben'],
-         ['final', 'Versandt'], ['draft', 'Entwurf'], ['alle', 'Alle']]
-            .forEach(function (o) {
-                var opt = document.createElement('option');
-                opt.value = o[0];
-                opt.textContent = o[1] + ' (' + (_counts[o[0]] || 0) + ')';
-                if (o[0] === status) { opt.selected = true; }
-                sel.appendChild(opt);
-            });
-        // Build 481: Reiner Lesewechsel. Statt eines vollstaendigen Neu-Renders
-        // (frueher: renderLectorate erneut) tauschen wir NUR die Tabellendaten
-        // via table.replaceData(). Vorteile: die Tabulator-Instanz, der
-        // Uebernahme-Knopf und die Vorschau bleiben erhalten (der 480-Fehlerfall
-        // — Callback beim Neu-Rendern verloren — entfaellt damit strukturell).
-        // Die Auswahl (selKey/iframe) wird bewusst NICHT geleert: die read-only
-        // Vorschau eines bereits gewaehlten Berichts darf stehen bleiben.
-        sel.addEventListener('change', function () {
-            if (_state.table && typeof _state.table.replaceData === 'function') {
-                _state.table.replaceData(toRows(data, sel.value));
-            }
-        });
-        lbl.appendChild(sel);
-        bar.appendChild(lbl);
-        wrap.appendChild(bar);
+        // --- Status-Vorbelegung (Build 484) ------------------------------
+        // Der fruehere Status-<select> UEBER der Tabelle entfaellt. Die
+        // Statusfilterung erfolgt jetzt ausschliesslich ueber den Dropdown-
+        // Header-Filter der Status-Spalte (s. Spaltendefinition unten). Der
+        // Default (Vorgabe 'submitted' bzw. opts.status) wird ueber Tabulators
+        // initialHeaderFilter gesetzt; 'alle' => keine Vorbelegung (kein Filter).
+        // Die Tabelle laedt daher ALLE Zeilen (toRows(..., 'alle')), damit ein
+        // Statuswechsel im Header ohne Datenneuladen wirkt.
+        var _initHF = [];
+        if (status && status !== 'alle') {
+            _initHF.push({ field: 'status_label', value: status });
+        }
 
         // --- Vorschau-Bereich: Berichtstext (iframe) + Belege (Annotationen) -
         // Zuerst aufgebaut, damit der rowClick-Handler der Tabelle die
@@ -491,23 +488,35 @@
             log('renderLectorate: kein Tabulator-Ctor');
         } else {
             _state.table = new Ctor(container, {
-                data: toRows(data, status),
-                // Build 482: Freitext-Header-Filter je Spalte (Benutzer/Titel/
-                // Typ/Status/Verfasser). Nr./Erstellt bleiben ungefiltert.
+                // Build 484: ALLE Zeilen laden; die Statusfilterung uebernimmt
+                // der Dropdown-Header-Filter der Status-Spalte (Default via
+                // initialHeaderFilter). So wirkt ein Statuswechsel ohne Reload.
+                data: toRows(data, 'alle'),
+                // Build 482/484: Header-Filter je Spalte. Benutzer/Titel/
+                // Verfasser Freitext; Typ und Status als DROPDOWN (list) mit
+                // festen Werten + 'alle' (leerer Wert => kein Filter).
                 columns: [
                     { title: 'Benutzer',  field: 'username',
                       headerFilter: 'input' },
                     { title: 'Titel',     field: 'title',
                       headerFilter: 'input' },
                     { title: 'Typ',       field: 'typ',
-                      headerFilter: 'input' },
+                      headerFilter: 'list',
+                      headerFilterParams: { values: TYP_FILTER_VALUES } },
                     { title: 'Nr.',       field: 'nr', hozAlign: 'right' },
+                    // Status: die Spalte ZEIGT status_label, FILTERT aber ueber
+                    // den Roh-Status (rowData.status) — so bleibt 'Versandt'
+                    // waehlbar, obwohl das Label 'Versandt/abgeschlossen' lautet.
                     { title: 'Status',    field: 'status_label',
-                      headerFilter: 'input' },
+                      headerFilter: 'list',
+                      headerFilterParams: { values: STATUS_FILTER_VALUES },
+                      headerFilterFunc: _statusHeaderFilter },
                     { title: 'Verfasser', field: 'created_by',
                       headerFilter: 'input' },
                     { title: 'Erstellt',  field: 'created' }
                 ],
+                // Build 484: Default-Statusfilter (Vorgabe 'submitted').
+                initialHeaderFilter: _initHF,
                 layout: 'fitColumns',
                 // Build 482: Paginierung mit 20 Zeilen/Seite. height:false
                 // (kein maxHeight) — verhindert das dokumentierte Pager-Clipping
@@ -806,7 +815,7 @@
         selectionKey: selectionKey,
         toRows: toRows,                   // Tabellen-Abbildung (Build 481)
         typeLabel: typeLabel,             // Berichtstyp-Label (Build 481)
-        statusCounts: statusCounts,       // Status-Schnellfilter-Zaehler (Build 482)
+        statusFilter: _statusHeaderFilter,   // Status-Dropdown-Filter (Build 484)
         annotationsUrl: annotationsUrl,   // SF-2 (Build 414)
         categoryLabel: categoryLabel,
         forumContext: forumContext,

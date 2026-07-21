@@ -114,8 +114,10 @@ describe("cockpit_lectorate", () => {
     expect(rows2[0].title).toBe("(ohne Titel)");
   });
 
-  // LE06 (Build 481): Tabulator-Tabelle statt Button-Liste. Der Tabulator-Ctor
-  // wird als Stub injiziert (opts.Tabulator); rowClick wird direkt gerufen.
+  // LE06 (Build 481/484): Tabulator-Tabelle statt Button-Liste. Der Ctor wird
+  // als Stub injiziert; rowClick wird direkt gerufen. Build 484: die Tabelle
+  // laedt ALLE Zeilen; Typ/Status sind Dropdown-Filter; Default via
+  // initialHeaderFilter.
   it("LE06 renderLectorate: Tabulator-Tabelle + rowClick setzt iframe/onSelect", () => {
     const win = _ctx();
     const api = _api(win);
@@ -136,17 +138,29 @@ describe("cockpit_lectorate", () => {
       Tabulator: StubTab,
     });
 
-    // Nur submitted (2 Zeilen); erwartete Spalten vorhanden.
-    expect(made.opts.data.length).toBe(2);
-    const fields = made.opts.columns.map((c) => c.field);
-    expect(fields).toContain("username");
-    expect(fields).toContain("status_label");
-    // Build 482: Header-Filter je Spalte + Paginierung 20/Seite.
-    const uCol = made.opts.columns.find((c) => c.field === "username");
+    // Build 484: ALLE Zeilen geladen (Statusfilter uebernimmt der Header).
+    expect(made.opts.data.length).toBe(3);
+    const cols = made.opts.columns;
+    const uCol = cols.find((c) => c.field === "username");
     expect(uCol.headerFilter).toBe("input");
+    // Typ + Status als Dropdown (list) mit festen Werten + 'alle'.
+    const tCol = cols.find((c) => c.field === "typ");
+    expect(tCol.headerFilter).toBe("list");
+    expect(tCol.headerFilterParams.values).toMatchObject({
+      "": "alle", Vermerk: "Vermerk", Abschlussbericht: "Abschlussbericht",
+    });
+    const sCol = cols.find((c) => c.field === "status_label");
+    expect(sCol.headerFilter).toBe("list");
+    expect(sCol.headerFilterParams.values).toMatchObject({
+      "": "alle", submitted: "Zur Abnahme vorgelegt", final: "Versandt",
+    });
+    // Default-Statusfilter 'submitted' via initialHeaderFilter.
+    expect(made.opts.initialHeaderFilter).toEqual([
+      { field: "status_label", value: "submitted" },
+    ]);
+    // Paginierung bleibt.
     expect(made.opts.pagination).toBe("local");
     expect(made.opts.paginationSize).toBe(20);
-    expect(made.opts.langs["de-de"].pagination.next).toBe("Weiter");
     const frame = main.querySelector("iframe.aiw-lectorate-preview");
     expect(frame).not.toBeNull();
 
@@ -158,41 +172,8 @@ describe("cockpit_lectorate", () => {
     expect(picked).toEqual([18, 1]);
   });
 
-  it("LE07 Statuswechsel 'alle' tauscht Tabellendaten via replaceData", () => {
-    const win = _ctx();
-    const api = _api(win);
-    const main = win.document.createElement("div");
-    win.document.body.appendChild(main);
-
-    let made = null;
-    function StubTab(container, opts) {
-      made = { container, opts };
-      this.replaceData = function (d) { made.replaced = d; };
-      this.destroy = function () {};
-    }
-    api.renderLectorate(main, _data(), {
-      status: "submitted", Tabulator: StubTab,
-    });
-    expect(made.opts.data.length).toBe(2); // submitted
-
-    const sel = main.querySelector("select.aiw-lectorate-status");
-    sel.value = "alle";
-    sel.dispatchEvent(new win.Event("change", { bubbles: true }));
-    // Kein Neu-Render: dieselbe Instanz, Daten via replaceData ausgetauscht.
-    expect(made.replaced.length).toBe(3); // alle
-  });
-
-  // Build 482 (Slice 2) --------------------------------------------------
-  it("LE07b statusCounts: Trefferzahl je Status + Gesamt", () => {
-    const api = _api();
-    const c = api.statusCounts(_data());
-    expect(c.submitted).toBe(2);
-    expect(c.approved).toBe(1);
-    expect(c.alle).toBe(3);
-    expect(c.draft).toBe(0);
-  });
-
-  it("LE07c Status-Schnellfilter zeigt Zaehler in den Optionen", () => {
+  // Build 484: das Status-<select> ueber der Tabelle ist ENTFERNT.
+  it("LE07 Status-Header-Filter filtert Roh-Status; 'alle' zeigt alles", () => {
     const win = _ctx();
     const api = _api(win);
     const main = win.document.createElement("div");
@@ -200,10 +181,13 @@ describe("cockpit_lectorate", () => {
     function StubTab(container, opts) { this.opts = opts;
       this.replaceData = function () {}; this.destroy = function () {}; }
     api.renderLectorate(main, _data(), { status: "submitted", Tabulator: StubTab });
-    const sel = main.querySelector("select.aiw-lectorate-status");
-    const opts = Array.from(sel.options).map((o) => o.textContent);
-    expect(opts).toContain("Zur Abnahme vorgelegt (2)");
-    expect(opts).toContain("Alle (3)");
+    // Kein Status-<select> mehr.
+    expect(main.querySelector("select.aiw-lectorate-status")).toBeNull();
+    // Filterlogik: Roh-Status, leerer Wert => alle.
+    expect(api.statusFilter("submitted", "x", { status: "submitted" })).toBe(true);
+    expect(api.statusFilter("approved", "x", { status: "submitted" })).toBe(false);
+    expect(api.statusFilter("", "x", { status: "draft" })).toBe(true);
+    expect(api.statusFilter(null, "x", { status: "final" })).toBe(true);
   });
 
   it("LE07d Uebernahme-Knopf steht UNTER der Tabelle (DOM-Reihenfolge)", () => {
