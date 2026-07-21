@@ -421,6 +421,28 @@ class TestPlaceholderCache(unittest.TestCase):
         self.assertIsNone(self.edb.get_cache_entry("a2", 42))
         self.assertEqual(self.edb.get_cache_entry("m1", 42), "manuell")
 
+    # -- Build 495: gezieltes Lesen fuer den m/o-Prefill --------------------
+    def test_T27_get_cache_entries_for_ids(self):
+        """T27: get_cache_entries_for_ids() liefert nur die angefragten IDs."""
+        self.edb.set_cache_entry("spur", 42, "AIW-1")
+        self.edb.set_cache_entry("ampel", 42, "gruen")
+        self.edb.set_cache_entry("user.username", 42, "auto")  # a: nicht angefragt
+        got = self.edb.get_cache_entries_for_ids(42, ["spur", "ampel", "fehlt"])
+        self.assertEqual(got, {"spur": "AIW-1", "ampel": "gruen"})
+
+    def test_T28_get_cache_entries_for_ids_uid_grenze(self):
+        """T28: get_cache_entries_for_ids() respektiert die uid."""
+        self.edb.set_cache_entry("spur", 42, "A")
+        self.edb.set_cache_entry("spur", 99, "B")
+        self.assertEqual(self.edb.get_cache_entries_for_ids(42, ["spur"]), {"spur": "A"})
+        self.assertEqual(self.edb.get_cache_entries_for_ids(99, ["spur"]), {"spur": "B"})
+
+    def test_T29_get_cache_entries_for_ids_leer(self):
+        """T29: leere id-Menge -> leeres Dict (No-op)."""
+        self.edb.set_cache_entry("spur", 42, "A")
+        self.assertEqual(self.edb.get_cache_entries_for_ids(42, []), {})
+        self.assertEqual(self.edb.get_cache_entries_for_ids(42, None), {})
+
 
 class TestReportB6(unittest.TestCase):
 

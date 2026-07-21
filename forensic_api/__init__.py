@@ -290,6 +290,7 @@ class ForensicApi:
             "/_forensic/validation_rules.js",   # Build 389: Formatregel-Katalog (war 404)
             "/_forensic/placeholder_links.js",  # Build 491: Stammvater/Klon-Logik (war 404)
             "/_forensic/placeholder_defs.js",   # Build 494: m/o-DB-Definitionen fuer Feldpruefung
+            "/_forensic/placeholder_reuse.js",  # Build 495: case-weite m/o-Wiederverwendung
             "/_forensic/submit_dialog.js",      # Build 382: Freigabe-Dialog (war 404; in _RESOURCES, aber nie dispatcht)
             "/_forensic/placeholder_wizard.js", # B6 Phase 5 Wizard
             "/_forensic/module_panel.js",       # B6 Phase 6 Panel
@@ -666,6 +667,22 @@ class ForensicApi:
                 self._method_not_allowed(handler)
                 return
             self._get_placeholders().handle_values(handler)
+            return
+
+        # Build 495: case-weite Wiederverwendung von m/o-Werten
+        # (placeholder_cache Prefill/Writeback, mc-Wunsch). GET liest, POST
+        # schreibt (nur bekannte m/o-Platzhalter).
+        if url_path == "/_forensic/placeholders/cache":
+            if method in ("GET", "HEAD"):
+                self._get_placeholders().handle_cache_get(handler, params)
+                return
+            if method == "POST":
+                body = self._read_body(handler)
+                if body is None:
+                    return
+                self._get_placeholders().handle_cache_set(handler, body)
+                return
+            self._method_not_allowed(handler)
             return
 
         import json as _json

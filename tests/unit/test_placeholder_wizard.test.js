@@ -29,6 +29,7 @@ import '../../userinfo/placeholder_chips.js';
 import '../../userinfo/placeholder_links.js';   // Build 492: Stammvater/Klon
 import '../../userinfo/validation_rules.js';     // Build 494: checkTyped
 import '../../userinfo/placeholder_defs.js';     // Build 494: DB-Definitionen
+import '../../userinfo/placeholder_reuse.js';     // Build 495: case-weite Reuse
 import '../../userinfo/placeholder_wizard.js';
 
 let PlaceholderWizard;
@@ -522,5 +523,96 @@ describe('Build 494 — Feldpruefung gegen DB-Definitionen', () => {
         inp.value = 'AIW42';
         inp.dispatchEvent(new Event('input'));
         expect(inp.classList.contains('pf-input--valid')).toBe(true);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// T50-T53: Build 495 — case-weite Wiederverwendung (placeholder_cache)
+// Beleg: mc-Wunsch 2026-07-20/21, placeholder_reuse.js.
+// ---------------------------------------------------------------------------
+
+describe('Build 495 — case-weite Wiederverwendung', () => {
+
+    function _setupBody() {
+        const body = document.createElement('div');
+        body.id = 'accordion-body-form';
+        document.body.appendChild(body);
+        return body;
+    }
+    function _opts(onSave) { return { myUsername: 'h001', onSave: onSave || (async () => {}) }; }
+
+    function _ampelBlock(val) {
+        return [{
+            block_id: 'blk-A', block_type: 'paragraph', author: 'h001',
+            block_data: '{"text":"Status {{m:ampel||Ampelfarbe}}."}',
+            placeholder_values_json: val ? JSON.stringify({ ampel: val }) : null,
+        }];
+    }
+
+    beforeEach(() => {
+        // 'ampel' ist ein bekannter m/o-Platzhalter (ohne Validierung hier).
+        window.PlaceholderDefs._setForTest([
+            { id: 'ampel', type: 'm', validation: null, validation_type: null,
+              title: 'Ampel', description: '', default_value: null },
+        ]);
+        window.PlaceholderReuse._resetForTest();
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+        vi.restoreAllMocks();
+        window.PlaceholderDefs._setForTest([]);
+        window.PlaceholderReuse._resetForTest();
+        document.getElementById('accordion-body-form')?.remove();
+    });
+
+    it('T50: leeres bekanntes m/o-Feld bekommt anklickbaren Reuse-Vorschlag', async () => {
+        globalThis.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ ampel: 'gelb' }) }));
+        const body = _setupBody();
+        window.PlaceholderWizard.showPlaceholderForm(_ampelBlock(), 'blk-A', _opts());
+        await vi.waitFor(() => {
+            expect(body.querySelector('.pf-reuse-apply')).not.toBeNull();
+        });
+        expect(body.querySelector('.pf-reuse-apply').textContent).toBe('gelb');
+    });
+
+    it('T51: befuelltes Feld bekommt KEINEN Reuse-Vorschlag', async () => {
+        globalThis.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ ampel: 'gelb' }) }));
+        const body = _setupBody();
+        window.PlaceholderWizard.showPlaceholderForm(_ampelBlock('rot'), 'blk-A', _opts());
+        // kurz warten, damit ein evtl. Vorschlag erschienen waere
+        await new Promise(r => setTimeout(r, 10));
+        expect(body.querySelector('.pf-reuse-apply')).toBeNull();
+    });
+
+    it('T52: Klick auf den Vorschlag uebernimmt den Wert und entfernt den Hinweis', async () => {
+        globalThis.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ ampel: 'gelb' }) }));
+        const body = _setupBody();
+        window.PlaceholderWizard.showPlaceholderForm(_ampelBlock(), 'blk-A', _opts());
+        await vi.waitFor(() => {
+            expect(body.querySelector('.pf-reuse-apply')).not.toBeNull();
+        });
+        body.querySelector('.pf-reuse-apply').click();
+        const inp = body.querySelector('#pf-input-blk-A-ampel');
+        expect(inp.value).toBe('gelb');
+        expect(body.querySelector('.pf-reuse-apply')).toBeNull();
+    });
+
+    it('T53: Speichern eines m/o-Wertes loest Writeback (POST /cache) aus', async () => {
+        vi.useFakeTimers();
+        const posts = [];
+        globalThis.fetch = vi.fn(async (url, init) => {
+            if (init && init.method === 'POST') posts.push({ url, body: JSON.parse(init.body) });
+            return { ok: true, json: async () => ({}) };
+        });
+        const body = _setupBody();
+        window.PlaceholderWizard.showPlaceholderForm(_ampelBlock(), 'blk-A', _opts());
+        const inp = body.querySelector('#pf-input-blk-A-ampel');
+        inp.value = 'rot';
+        inp.dispatchEvent(new Event('input'));
+        await vi.advanceTimersByTimeAsync(800);   // Debounce -> _saveField -> Writeback
+        const wb = posts.find(p => p.url === '/_forensic/placeholders/cache');
+        expect(wb).toBeTruthy();
+        expect(wb.body).toEqual({ id: 'ampel', value: 'rot' });
     });
 });

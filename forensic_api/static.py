@@ -89,6 +89,9 @@ _RESOURCES: dict[str, tuple[str, str, Path]] = {
     # Build 494: m/o-Platzhalterdefinitionen aus templates.placeholders
     # (window.PlaceholderDefs), Grundlage der DB-basierten Feldpruefung im Wizard.
     "/_forensic/placeholder_defs.js": ("placeholder_defs.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
+    # Build 495: case-weite Wiederverwendung von m/o-Werten (window.PlaceholderReuse,
+    # placeholder_cache Prefill/Writeback).
+    "/_forensic/placeholder_reuse.js": ("placeholder_reuse.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
     # B6 Phase 5 (Wizard): Platzhalter-Wizard
     "/_forensic/placeholder_wizard.js": ("placeholder_wizard.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
     # B6 Phase 6 (Modul-Panel): Modul-Auswahl

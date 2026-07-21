@@ -2890,6 +2890,43 @@
     font-style: italic;
 }
 
+/* -------------------------------------------------------------------------
+   Build 495: Wiederverwendungs-Vorschlag (case-weiter m/o-Wert aus dem
+   placeholder_cache). Erscheint nur unter LEEREN bekannten m/o-Feldern; ein
+   Klick auf die Schaltflaeche uebernimmt den Wert. Nicht persistent bis zur
+   Uebernahme (saubere Trennung 'vorgeschlagen' vs. 'eingetragen').
+   Beleg: mc-Wunsch 2026-07-20/21, placeholder_wizard.js _applyReuseHints.
+   ------------------------------------------------------------------------- */
+.pf-reuse-hint {
+    font-style: normal;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.pf-reuse-apply {
+    font: inherit;
+    font-size: 10.5px;
+    padding: 1px 7px;
+    border: 1px dashed var(--color-focus, #1a73e8);
+    border-radius: 10px;
+    background: var(--color-surface, #fff);
+    color: var(--color-focus, #1a73e8);
+    cursor: pointer;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pf-reuse-apply:hover,
+.pf-reuse-apply:focus {
+    background: var(--color-focus, #1a73e8);
+    color: #fff;
+    outline: none;
+}
+
 /* ---------------------------------------------------------------------------
  * 16. Print: Formular ausblenden
  * --------------------------------------------------------------------------- */

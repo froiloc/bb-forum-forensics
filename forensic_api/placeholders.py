@@ -30,7 +30,12 @@
 #   - Query-Definitionen lesen: templates_db (tdb.placeholder_queries).
 #
 # Beleg: Bauplan B6 v0.3 §3, Ausdefinitionsgespraech 2026-05-05
-# Version: v0.8.491 · Build: 491 · 2026-07-21
+# Version: v0.8.495 · Build: 495 · 2026-07-21
+# Build 495 (Platzhalter-Neuordnung, Slice 3): case-weite Wiederverwendung von
+#   m/o-Ermittlerwerten. GET/POST /_forensic/placeholders/cache lesen/schreiben
+#   den placeholder_cache fuer m/o-Platzhalter (Prefill/Writeback, mc-Wunsch).
+#   handle_cache_set laesst NUR bekannte m/o-Platzhalter zu (Schutz des
+#   {{a:}}-Auto-Caches; Grundregel 1). Kein Schemaeingriff (bestehende Tabelle).
 # Build 491 (Platzhalter-Neuordnung, Slice 3): typbewusste Cache-Leerung.
 #   _refresh_cache leert NUR die a-Eintraege (clear_cache_for_query_ids)
 #   statt pauschal per clear_cache_for_uid — damit m/o-Ermittlerwerte im
@@ -302,6 +307,114 @@ class PlaceholdersEndpoint:
         handler.send_response_body(
             200,
             _json_ok(result),
+            content_type="application/json; charset=utf-8",
+        )
+
+    def handle_cache_get(
+        self,
+        handler: "ForensicRequestHandler",
+        params: dict,
+    ) -> None:
+        """
+        GET /_forensic/placeholders/cache?ids=a,b,c[&uid=<n>]
+
+        Liefert die fallweise gecachten m/o-Werte fuer die angegebenen
+        Platzhalter-IDs als { id: value }. Ohne ids-Parameter -> leeres Objekt
+        (der Client kennt die relevanten IDs und fragt gezielt an; ohne Filter
+        wuerden auch {{a:}}-Auto-Werte durchgereicht — das ist unerwuenscht).
+
+        Build 495 (Platzhalter-Neuordnung): Grundlage des Prefill der m/o-Felder
+        aus evidence_<uid>.db/placeholder_cache (mc-Wunsch, case-weite
+        Wiederverwendung).
+        """
+        uid = params.get("uid", [None])[0]
+        uid = int(uid) if uid is not None else self._context.subject_id
+        try:
+            uid = int(uid)
+        except (TypeError, ValueError):
+            handler.send_response_body(
+                400, _json_err("'uid' muss eine ganze Zahl sein.", "BAD_PARAM"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+
+        ids_raw = params.get("ids", [None])[0]
+        ids = [s for s in (ids_raw.split(",") if ids_raw else []) if s.strip()]
+
+        entries = self._bundle.evidence.get_cache_entries_for_ids(uid, ids)
+        handler.send_response_body(
+            200, _json_ok(entries),
+            content_type="application/json; charset=utf-8",
+        )
+
+    def handle_cache_set(
+        self,
+        handler: "ForensicRequestHandler",
+        body_bytes: bytes,
+    ) -> None:
+        """
+        POST /_forensic/placeholders/cache   Body: { "id": "...", "value": "..." }
+
+        Schreibt einen m/o-Ermittlerwert in evidence_<uid>.db/placeholder_cache,
+        damit er im Fall wiederverwendet werden kann (Writeback).
+
+        SCHUTZ (Grundregel 1 / Datenintegritaet): Es werden NUR bekannte
+        Platzhalter vom Typ m/o zugelassen. Ein 'a'-Auto-Platzhalter darf nicht
+        ueberschrieben werden (sein Cache gehoert der Query-Aufloesung), ein
+        unbekannter Bezeichner soll den case-weiten Cache nicht verunreinigen.
+        Beide Faelle -> HTTP 400, KEIN Schreibvorgang.
+        """
+        try:
+            data = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            handler.send_response_body(
+                400, _json_err(f"Ungueltiger JSON-Body: {exc}"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+
+        pid   = data.get("id")
+        value = data.get("value", "")
+        uid   = data.get("uid", self._context.subject_id)
+
+        if not isinstance(pid, str) or not pid.strip():
+            handler.send_response_body(
+                400, _json_err("'id' fehlt oder ist leer.", "BAD_PARAM"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+        if not isinstance(value, str):
+            handler.send_response_body(
+                400, _json_err("'value' muss ein String sein.", "BAD_PARAM"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+        try:
+            uid = int(uid)
+        except (TypeError, ValueError):
+            handler.send_response_body(
+                400, _json_err("'uid' muss eine ganze Zahl sein.", "BAD_PARAM"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+
+        # Nur bekannte m/o-Platzhalter duerfen fallweise wiederverwendet werden.
+        rec = self._bundle.templates.get_query(pid)
+        if rec is None or rec.type not in ("m", "o"):
+            handler.send_response_body(
+                400,
+                _json_err(
+                    "Nur bekannte m/o-Platzhalter koennen case-weit "
+                    "wiederverwendet werden.", "NOT_REUSABLE"),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+
+        self._bundle.evidence.set_cache_entry(pid, uid, value)
+        logger.info(
+            "placeholder_cache Writeback (m/o): id=%s, uid=%d", pid, uid)
+        handler.send_response_body(
+            200, _json_ok({"ok": True, "id": pid, "stored": True}),
             content_type="application/json; charset=utf-8",
         )
 

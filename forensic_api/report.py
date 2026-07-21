@@ -354,6 +354,11 @@ _EDITOR_HTML = """\
          der DB (window.PlaceholderDefs). Vor dem Wizard laden — der Wizard
          prueft m/o-Felder gegen diese Definitionen (regex/list/like). -->
     <script src="/_forensic/placeholder_defs.js" defer></script>
+    <!-- 1b2) placeholder_reuse.js (Build 495): case-weite Wiederverwendung von
+         m/o-Werten (window.PlaceholderReuse, placeholder_cache). Vor dem Wizard
+         laden — der Wizard bietet gecachte Werte als Vorschlag an und schreibt
+         eingetragene m/o-Werte zurueck. -->
+    <script src="/_forensic/placeholder_reuse.js" defer></script>
     <!-- 1b) placeholder_wizard.js: Wizard (nach Chips, vor report.js) -->
     <script src="/_forensic/placeholder_wizard.js" defer></script>
     <!-- 1c) module_panel.js: Modul-Auswahl-Panel -->

@@ -2334,6 +2334,32 @@ class EvidenceDb:
         )
         return deleted
 
+    def get_cache_entries_for_ids(self, uid: int, query_ids) -> dict:
+        """
+        Liest die placeholder_cache-Eintraege der angegebenen query_ids fuer eine
+        uid als Dict {query_id: cached_value}. Fehlende Eintraege fehlen im Dict.
+        Leere id-Menge -> leeres Dict.
+
+        Build 495 (Platzhalter-Neuordnung): Grundlage der fallweisen
+        Wiederverwendung von m/o-Ermittlerwerten (mc-Wunsch). Anders als
+        get_all_cache_entries() liefert diese Methode gezielt nur die
+        angefragten IDs — der Aufrufer (Prefill der m/o-Felder) kennt die
+        relevanten Platzhalter-IDs und bekommt keine {{a:}}-Auto-Werte
+        untergemischt.
+
+        Returns: {query_id: cached_value}
+        """
+        ids = [str(q) for q in (query_ids or [])]
+        if not ids:
+            return {}
+        placeholders = ",".join("?" for _ in ids)
+        rows = self._con.execute(
+            "SELECT query_id, cached_value FROM placeholder_cache "
+            "WHERE uid = ? AND query_id IN (%s)" % placeholders,
+            [uid, *ids],
+        ).fetchall()
+        return {str(r["query_id"]): str(r["cached_value"]) for r in rows}
+
     def clear_cache_for_query_ids(self, uid: int, query_ids) -> int:
         """
         Loescht NUR die Cache-Eintraege der angegebenen query_ids fuer eine uid.

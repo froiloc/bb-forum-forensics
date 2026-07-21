@@ -353,6 +353,113 @@ class TestPlaceholderRegex(unittest.TestCase):
             self.assertIsNone(m, f"Unerwarteter Match fuer: {text}")
 
 
+# =============================================================================
+# T30-T36: Build 495 — case-weite Wiederverwendung (placeholder_cache)
+# handle_cache_get / handle_cache_set
+# Beleg: mc-Wunsch 2026-07-20/21.
+# =============================================================================
+
+class _Rec:
+    """Minimaler QueryRecord-Ersatz (nur .type wird geprueft)."""
+    def __init__(self, t):
+        self.type = t
+
+
+class TestPlaceholderCacheEndpoint(unittest.TestCase):
+
+    def _make_endpoint(self):
+        edb_con, edb = _make_evidence_db()
+        tdb_con, tdb = _make_templates_db_with_data()
+        bundle = _make_bundle(edb, tdb_con, tdb)
+        context = MagicMock()
+        context.subject_id = 42
+        ep = PlaceholdersEndpoint(bundle, context, MagicMock())
+        return ep, edb, tdb_con, edb_con
+
+    def _capture(self, ep, method_name, *args):
+        handler = MagicMock()
+        responses = []
+        handler.send_response_body = lambda status, body, **kw: responses.append(
+            (status, json.loads(body.decode("utf-8")) if body else None)
+        )
+        getattr(ep, method_name)(handler, *args)
+        return responses
+
+    def test_T30_cache_get_liefert_nur_angefragte_ids(self):
+        """T30: handle_cache_get liefert nur die angefragten IDs."""
+        ep, edb, tdb_con, edb_con = self._make_endpoint()
+        edb.set_cache_entry("spur", 42, "AIW-1")
+        edb.set_cache_entry("ampel", 42, "gruen")
+        edb.set_cache_entry("user.username", 42, "auto")
+        responses = self._capture(ep, "handle_cache_get", {"ids": ["spur,ampel"]})
+        status, data = responses[0]
+        self.assertEqual(status, 200)
+        self.assertEqual(data, {"spur": "AIW-1", "ampel": "gruen"})
+        edb_con.close(); tdb_con.close()
+
+    def test_T31_cache_get_ohne_ids_leer(self):
+        """T31: handle_cache_get ohne ids -> leeres Objekt (kein a:-Leak)."""
+        ep, edb, tdb_con, edb_con = self._make_endpoint()
+        edb.set_cache_entry("user.username", 42, "auto")
+        responses = self._capture(ep, "handle_cache_get", {})
+        status, data = responses[0]
+        self.assertEqual(status, 200)
+        self.assertEqual(data, {})
+        edb_con.close(); tdb_con.close()
+
+    def test_T32_cache_set_speichert_m_wert(self):
+        """T32: handle_cache_set schreibt einen bekannten m-Wert zurueck."""
+        ep, edb, tdb_con, edb_con = self._make_endpoint()
+        ep._bundle.templates.get_query = MagicMock(return_value=_Rec("m"))
+        body = json.dumps({"id": "spur", "value": "AIW-42", "uid": 42}).encode()
+        responses = self._capture(ep, "handle_cache_set", body)
+        status, data = responses[0]
+        self.assertEqual(status, 200)
+        self.assertTrue(data["ok"])
+        self.assertEqual(edb.get_cache_entry("spur", 42), "AIW-42")
+        edb_con.close(); tdb_con.close()
+
+    def test_T33_cache_set_lehnt_a_typ_ab(self):
+        """T33: ein 'a'-Platzhalter darf NICHT ueberschrieben werden -> 400."""
+        ep, edb, tdb_con, edb_con = self._make_endpoint()
+        ep._bundle.templates.get_query = MagicMock(return_value=_Rec("a"))
+        body = json.dumps({"id": "user.username", "value": "boese", "uid": 42}).encode()
+        responses = self._capture(ep, "handle_cache_set", body)
+        status, data = responses[0]
+        self.assertEqual(status, 400)
+        self.assertIsNone(edb.get_cache_entry("user.username", 42))
+        edb_con.close(); tdb_con.close()
+
+    def test_T34_cache_set_lehnt_unbekannte_id_ab(self):
+        """T34: unbekannte id (get_query None) -> 400, kein Schreibvorgang."""
+        ep, edb, tdb_con, edb_con = self._make_endpoint()
+        ep._bundle.templates.get_query = MagicMock(return_value=None)
+        body = json.dumps({"id": "gibtsnicht", "value": "x", "uid": 42}).encode()
+        responses = self._capture(ep, "handle_cache_set", body)
+        status, data = responses[0]
+        self.assertEqual(status, 400)
+        self.assertIsNone(edb.get_cache_entry("gibtsnicht", 42))
+        edb_con.close(); tdb_con.close()
+
+    def test_T35_cache_set_leere_id_400(self):
+        """T35: fehlende/leere id -> 400."""
+        ep, edb, tdb_con, edb_con = self._make_endpoint()
+        body = json.dumps({"id": "  ", "value": "x", "uid": 42}).encode()
+        responses = self._capture(ep, "handle_cache_set", body)
+        self.assertEqual(responses[0][0], 400)
+        edb_con.close(); tdb_con.close()
+
+    def test_T36_cache_set_dann_get_roundtrip(self):
+        """T36: Writeback dann Prefill -> derselbe Wert (Round-Trip)."""
+        ep, edb, tdb_con, edb_con = self._make_endpoint()
+        ep._bundle.templates.get_query = MagicMock(return_value=_Rec("o"))
+        self._capture(ep, "handle_cache_set",
+                      json.dumps({"id": "ampel", "value": "gelb", "uid": 42}).encode())
+        responses = self._capture(ep, "handle_cache_get", {"ids": ["ampel"]})
+        self.assertEqual(responses[0][1], {"ampel": "gelb"})
+        edb_con.close(); tdb_con.close()
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
 

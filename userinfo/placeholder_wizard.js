@@ -85,7 +85,15 @@
  *     Definitionen werden beim Form-Oeffnen einmalig geladen und gecacht;
  *     befuellte Felder werden nach dem Laden nachvalidiert.
  *
- * Version: v0.8.494 · Build: 494 · 2026-07-21
+ *   Build 495 (Platzhalter-Neuordnung, Slice 3, Teil 4): case-weite
+ *     Wiederverwendung von m/o-Werten (window.PlaceholderReuse). _saveField
+ *     schreibt bekannte m/o-Werte in den placeholder_cache zurueck (Writeback);
+ *     _applyReuseHints bietet fuer LEERE bekannte m/o-Felder den gecachten Wert
+ *     als anklickbaren Vorschlag an (Prefill, nicht persistent bis zur
+ *     Uebernahme). _loadDefsAndReuse laedt Definitionen und danach die
+ *     case-weiten Werte. Beleg: mc-Wunsch 2026-07-20/21.
+ *
+ * Version: v0.8.495 · Build: 495 · 2026-07-21
  * Beleg: Bauplan B6 v0.5 §4.4.3; Bauplan Platzhalter_DB §2.3 (DB-Autoritaet).
  */
 
@@ -438,17 +446,53 @@ function showPlaceholderForm(blocks, focusedBlockId, opts) {
         window.CommentThread._pulseEditorBlock(_currentBlockId);
     }
 
-    // Build 494: m/o-Platzhalterdefinitionen (Validierung regex/list/like) einmalig
-    // laden. Der erste Render nutzt die evtl. noch nicht geladene DB-Definition
-    // nicht; sobald sie da ist, werden die befuellten Felder nachvalidiert.
-    // Fire-and-forget — schlaegt der Abruf fehl, bleibt es beim bisherigen
-    // Verhalten (Fallback auf das 5. Token-Feld). PlaceholderDefs cached, sodass
-    // spaetere Form-Oeffnungen die Definition synchron zur Hand haben.
-    if (window.PlaceholderDefs && typeof window.PlaceholderDefs.load === 'function'
-        && !window.PlaceholderDefs.isLoaded()) {
-        window.PlaceholderDefs.load()
-            .then(() => _revalidateFilledInputs(body))
-            .catch(() => {});
+    // Build 494/495: DB-Definitionen (Validierung) und danach die case-weiten
+    // m/o-Werte (Wiederverwendungs-Vorschlaege) laden und die Sicht aktualisieren.
+    _loadDefsAndReuse(body);
+}
+
+/**
+ * Build 494/495: Laedt die DB-Definitionen (PlaceholderDefs) und — darauf
+ * aufbauend — die case-weiten m/o-Werte (PlaceholderReuse) und aktualisiert
+ * dann Validierung und Wiederverwendungs-Vorschlaege. Reihenfolge ist wichtig:
+ * die Reuse-IDs sind nur die BEKANNTEN m/o-Platzhalter (PlaceholderDefs.get),
+ * also muessen die Definitionen zuerst geladen sein. Alles fire-and-forget;
+ * faellt etwas aus, bleibt es beim bisherigen Verhalten.
+ * @param {HTMLElement} body
+ */
+function _loadDefsAndReuse(body) {
+    const afterDefs = () => {
+        _revalidateFilledInputs(body);
+        if (!window.PlaceholderReuse
+            || typeof window.PlaceholderReuse.loadCache !== 'function') {
+            return;
+        }
+        // Reuse-IDs = bekannte m/o-Platzhalter in der aktuellen Sicht.
+        const ids = [];
+        body.querySelectorAll('.pf-input').forEach(inp => {
+            const t = inp.dataset.fieldType, n = inp.dataset.fieldName;
+            if ((t === 'm' || t === 'o') && window.PlaceholderDefs
+                && window.PlaceholderDefs.get(n)) {
+                ids.push(n);
+            }
+        });
+        if (ids.length) {
+            window.PlaceholderReuse.loadCache(ids)
+                .then(() => _applyReuseHints(body))
+                .catch(() => {});
+        } else {
+            _applyReuseHints(body);   // evtl. bereits geladener Cache
+        }
+    };
+
+    if (window.PlaceholderDefs && typeof window.PlaceholderDefs.load === 'function') {
+        if (window.PlaceholderDefs.isLoaded()) {
+            afterDefs();
+        } else {
+            window.PlaceholderDefs.load().then(afterDefs).catch(() => {});
+        }
+    } else {
+        afterDefs();
     }
 }
 
@@ -463,6 +507,56 @@ function _revalidateFilledInputs(body) {
     if (!body) return;
     body.querySelectorAll('.pf-input').forEach(inp => {
         if (String(inp.value).trim() !== '') _validateFieldLive(inp);
+    });
+}
+
+/**
+ * Build 495: Bietet fuer LEERE, bekannte m/o-Felder den case-weit gecachten
+ * Wert (PlaceholderReuse) als anklickbaren Vorschlag unter dem Feld an. Ein
+ * Klick uebernimmt den Wert (loest Eingabe -> Validierung/Propagation/Speichern
+ * inkl. Writeback aus). Bereits befuellte Felder bekommen keinen Vorschlag.
+ * Der Vorschlag ist NICHT persistent — er wird erst durch die Uebernahme zum
+ * Ermittlerwert (saubere Trennung 'vorgeschlagen' vs. 'eingetragen').
+ * @param {HTMLElement} body
+ */
+function _applyReuseHints(body) {
+    if (!body || !window.PlaceholderReuse) return;
+    body.querySelectorAll('.pf-field-group').forEach(grp => {
+        const type = grp.dataset.fieldType;
+        const name = grp.dataset.fieldName;
+        const input = grp.querySelector('.pf-input');
+        const old = grp.querySelector('.pf-reuse-hint');
+        if ((type !== 'm' && type !== 'o') || !input) {
+            if (old) old.remove();
+            return;
+        }
+        const cached = window.PlaceholderReuse.getCached(name);
+        // Nur bei LEEREM Feld und vorhandenem Cache-Wert anbieten.
+        if (String(input.value).trim() !== '' || cached == null) {
+            if (old) old.remove();
+            return;
+        }
+        const hint = old || document.createElement('div');
+        hint.className = 'pf-field-hint pf-reuse-hint';
+        hint.textContent = '';
+        const lbl = document.createElement('span');
+        lbl.textContent = 'Zuletzt im Fall: ';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'pf-reuse-apply';
+        btn.textContent = cached;
+        btn.title = 'Wert übernehmen';
+        btn.addEventListener('click', () => {
+            input.value = cached;
+            // Eingabe simulieren: validiert, propagiert (Stammvater/Klon) und
+            // speichert (inkl. Writeback im _saveField-Pfad).
+            input.dispatchEvent(new Event('input'));
+            hint.remove();
+            if (!input.disabled) input.focus();
+        });
+        hint.appendChild(lbl);
+        hint.appendChild(btn);
+        if (!old) grp.appendChild(hint);
     });
 }
 
@@ -922,6 +1016,20 @@ async function _saveField(input, opts) {
         console.debug('[PlaceholderWizard] _saveField: onSave abgeschlossen fuer', name);
     } catch (err) {
         console.warn('placeholder_wizard.js: Feld-Save fehlgeschlagen:', name, err);
+    }
+
+    // Build 495: bekannte m/o-Werte case-weit sichern (Writeback in den
+    // placeholder_cache). Nur fuer in der DB definierte m/o-Platzhalter
+    // (PlaceholderDefs.get) und nur nicht-leere Werte — der Server lehnt alles
+    // andere ohnehin ab (Schutz des {{a:}}-Auto-Caches). Fire-and-forget: der
+    // Wert ist ueber onSave bereits lokal gespeichert; das Writeback ist nur
+    // die case-weite Kopie fuer die Wiederverwendung in anderen Vermerken.
+    const type = input.dataset.fieldType;
+    if ((type === 'm' || type === 'o')
+        && window.PlaceholderDefs && window.PlaceholderReuse
+        && window.PlaceholderDefs.get(name)
+        && String(val).trim() !== '') {
+        window.PlaceholderReuse.writeback(name, val);
     }
 }
 
