@@ -22,7 +22,16 @@
  *      sind separat exportiert und werden von vitest geprueft.
  *
  * Build 469: Schluesselumstellung user_id -> subject_id (M019)
- * Version: v0.7.469 · Build: 469 · 2026-07-20
+ * Build 479: hasSelection() ergaenzt. Schutz vor selbst ausgeloestem
+ *   SSE-Reload: Das Oeffnen eines Berichts holt /api/report/annotations, was
+ *   serverseitig den Chain-of-Custody-Beleg 'report_annotations_viewed' in den
+ *   coordinator.db-audit_log schreibt (management_app.py:_audit_annotation_view;
+ *   Grundregel 1). Die SSE beobachtet die audit_log-Spitze und meldet ~2s
+ *   spaeter 'changed' (management_handler.py:_handle_sse, poll=2.0s) -> der
+ *   frueher folgende loadLectorate()-Reload verwarf Auswahl + iframe-Vorschau
+ *   (gemeldeter Fehler). cockpit.js unterdrueckt den Reload nun anhand von
+ *   hasSelection(), solange ein Bericht in Sichtung ist.
+ * Version: v0.8.479 · Build: 479 · 2026-07-21
  */
 (function () {
     'use strict';
@@ -175,6 +184,19 @@
         _state.xferMsg = null;
         log('cleanup');
     }
+
+    // hasSelection: hat die/der Nutzer:in aktuell einen Bericht geoeffnet?
+    // (Build 479) Genutzt vom SSE-'changed'-Handler in cockpit.js, um einen
+    // destruktiven Live-Reload dieser Sicht zu unterdruecken, solange ein
+    // Bericht in Sichtung ist. Hintergrund: Das Oeffnen eines Berichts erzeugt
+    // ueber /api/report/annotations ZWINGEND einen Lesebeleg im audit_log
+    // (Grundregel 1 — der Beleg darf NICHT entfallen); die SSE meldet diesen
+    // Ausschlag als 'changed'. Ein Reload wuerde die Auswahl verwerfen, und ein
+    // automatisches Wieder-Auswaehlen wuerde erneut auditieren -> Endlosschleife.
+    // Deshalb bleibt der Beleg erhalten und STATTDESSEN unterbleibt der Reload,
+    // solange hasSelection() true liefert. _state.selKey wird beim Verlassen der
+    // Sicht (cleanup) bzw. beim Neuaufbau (renderLectorate) auf null gesetzt.
+    function hasSelection() { return _state.selKey !== null; }
 
     // --- Uebernahme "Bericht als Vorlage" (Build 475) --------------------
     // _setXferMsg: Rueckmeldezeile der Uebernahme setzen ('' leert). kind:
@@ -641,6 +663,7 @@
         commentsLoading: commentsLoading,
         commentsError: commentsError,
         transferError: transferError,           // Uebernahme B6->Vorlage (Build 475)
+        hasSelection: hasSelection,             // SSE-Reload-Schutz (Build 479)
         cleanup: cleanup
     };
     log('Modul geladen.');

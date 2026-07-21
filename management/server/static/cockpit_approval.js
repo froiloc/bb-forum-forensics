@@ -21,7 +21,15 @@
  *   kleine Helfer — Repo-Konvention: jede Cockpit-Sicht ist unabhaengig).
  *
  * Build 469: Schluesselumstellung user_id -> subject_id (M019)
- * Version: v0.7.469 · Build: 469 · 2026-07-20
+ * Build 479: hasSelection() ergaenzt. Identischer Schutz wie im Lektorat
+ *   (cockpit_lectorate.js): Das Oeffnen eines Berichts holt in onSelect
+ *   /api/report/annotations, was serverseitig den Chain-of-Custody-Beleg
+ *   'report_annotations_viewed' in den coordinator.db-audit_log schreibt
+ *   (management_app.py:_audit_annotation_view; Grundregel 1). Die SSE meldet
+ *   diesen Ausschlag ~2s spaeter als 'changed' -> der frueher folgende
+ *   loadApproval()-Reload verwarf Auswahl + iframe-Vorschau. cockpit.js
+ *   unterdrueckt den Reload nun anhand von hasSelection().
+ * Version: v0.8.479 · Build: 479 · 2026-07-21
  */
 (function () {
     'use strict';
@@ -184,6 +192,16 @@
         _state.resPanel = null;
         log('cleanup');
     }
+
+    // hasSelection: hat die/der Nutzer:in aktuell einen Bericht geoeffnet?
+    // (Build 479) Genutzt vom SSE-'changed'-Handler in cockpit.js, um den
+    // destruktiven Live-Reload dieser Sicht zu unterdruecken, solange ein
+    // Bericht in Sichtung ist. Begruendung identisch zum Lektorat: das Oeffnen
+    // holt ueber /api/report/annotations einen Lesebeleg im audit_log
+    // (Grundregel 1); die SSE meldet diesen als 'changed'. Der Beleg bleibt
+    // erhalten, stattdessen unterbleibt der Reload, solange hasSelection() true
+    // liefert. _state.selKey wird in cleanup/renderApproval auf null gesetzt.
+    function hasSelection() { return _state.selKey !== null; }
 
     function _actionHint(msg) {
         if (!_state.actionPanel) { return; }
@@ -865,6 +883,7 @@
         resultsError: resultsError,
         renderAssessForm: renderAssessForm,     // Bewertung einpflegen (Build 419)
         assessError: assessError,
+        hasSelection: hasSelection,   // SSE-Reload-Schutz (Build 479)
         cleanup: cleanup
     };
     log('Modul geladen.');

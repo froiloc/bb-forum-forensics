@@ -1,0 +1,8 @@
+dc1e5cac1c5d2ddac2bcc5d437c8a7dd  aiw_webserver/build.json
+703f73c63b2445186cfe93384139fc15  aiw_webserver/management/server/static/cockpit_crossfindings.js
+cccfd52465d75237f0420e98b35a19e8  aiw_webserver/management/server/static/cockpit.js
+67e6363396a772b7bb25e8c83822859f  aiw_webserver/management/server/static/cockpit.html
+e8661bf59bd4d448f11ca5959017b6c9  aiw_webserver/management/server/static/cockpit.css
+5dfb37805e4772f029ae1777480b347c  aiw_webserver/management/claude_Bauplan_Build478_CrossfindingsCockpit_v0_1.md
+d1f3c7af892d56b6ed688cc22a381d59  aiw_webserver/tests/unit/test_cockpit_crossfindings.test.js
+0eea87355378800a59aef0a790bf37ed  aiw_webserver/tests/unit/test_cockpit_nav.test.js

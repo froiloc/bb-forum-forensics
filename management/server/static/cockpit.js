@@ -72,7 +72,15 @@
 //   mit X-AIW-Token). Drag&Drop-Ordnung folgt in Block 4. Neuer Nav-Eintrag
 //   'notes' (Gruppe Verwaltung) direkt neben 'mentoring'.
 // Build 469: Schluesselumstellung user_id -> subject_id (M019)
-// Version: v0.7.469 · Build: 469 · 2026-07-20
+// Build 479: SSE-Reload-Schutz fuer Lektorat (W4) und Chef-Freigabe (W5).
+//   Beide Sichten schreiben beim Oeffnen eines Berichts ueber
+//   /api/report/annotations einen Chain-of-Custody-Beleg in den audit_log
+//   (Grundregel 1). Die SSE meldet diesen Ausschlag ~2s spaeter als 'changed';
+//   der bisher folgende Reload verwarf die offene Auswahl + iframe-Vorschau
+//   (gemeldeter Fehler, belegt). Der 'changed'-Handler unterdrueckt den Reload
+//   nun, solange das jeweilige Modul via hasSelection() einen offenen Bericht
+//   meldet. Ohne offene Auswahl wird wie bisher nachgeladen.
+// Version: v0.8.479 · Build: 479 · 2026-07-21
 // =============================================================================
 
 (function () {
@@ -2131,6 +2139,17 @@
         }
     }
 
+    // _moduleBusy (Build 479): Meldet ein Sicht-Modul einen aktuell geoeffneten
+    // Bericht? Wird vom SSE-'changed'-Handler genutzt, um einen destruktiven
+    // Reload der Lektorat-/Freigabe-Sicht zu unterdruecken, solange dort ein
+    // Bericht in Sichtung ist (siehe Kopfkommentar Build 479). Defensiv: fehlt
+    // das Modul oder die Methode, gilt "nicht beschaeftigt" -> bisheriges
+    // Verhalten (Reload), damit ein fehlendes Skript nie einen Reload verschluckt.
+    function _moduleBusy(moduleName) {
+        var m = (typeof window !== 'undefined') ? window[moduleName] : null;
+        return !!(m && typeof m.hasSelection === 'function' && m.hasSelection());
+    }
+
     // startSse: Live-Aktualisierung. Server pollt die audit_log-Spitze; bei
     // 'changed' laedt der Client NUR die aktive Sicht neu (kein F5, §11.2/§11.1).
     // hello/keepalive sind reine Lebenszeichen. EventSource reconnectet selbst.
@@ -2216,9 +2235,36 @@
             } else if (state.activeId === 'reports') {
                 loadReports();
             } else if (state.activeId === 'lectorate') {
-                loadLectorate();
+                // Build 479: KEIN destruktiver Live-Reload, solange ein Bericht
+                // geoeffnet ist. Belegte Ursache-Wirkung:
+                //   Bericht oeffnen -> onSelect holt /api/report/annotations
+                //   -> Server schreibt Chain-of-Custody-Beleg
+                //      'report_annotations_viewed' in coordinator.db-audit_log
+                //      (management_app.py:_audit_annotation_view; Grundregel 1)
+                //   -> audit_tip_seq steigt -> SSE meldet ~2s spaeter 'changed'
+                //      (management_handler.py:_handle_sse, poll=2.0s)
+                //   -> loadLectorate() wuerde die Sicht neu aufbauen und die
+                //      Auswahl + iframe-Vorschau verwerfen (der gemeldete Bug).
+                // Ein Wieder-Auswaehlen wuerde erneut auditieren -> Endlosloop.
+                // Die Berichtsliste aendert sich nur bei Einreichen/Freigeben
+                // (selten). Ohne offene Auswahl laden wir wie bisher nach; bei
+                // Sichtwechsel (cleanup) bzw. Rueckkehr laedt die Liste frisch.
+                if (!_moduleBusy('AIWCockpitLectorate')) {
+                    loadLectorate();
+                } else {
+                    log('SSE changed: Lektorat-Reload unterdrueckt '
+                        + '(Bericht in Sichtung).');
+                }
             } else if (state.activeId === 'approval') {
-                loadApproval();
+                // Build 479: identischer Schutz wie im Lektorat — auch die
+                // Chef-Freigabe holt in onSelect /api/report/annotations und
+                // wuerde sonst durch den eigenen Lesebeleg neu geladen.
+                if (!_moduleBusy('AIWCockpitApproval')) {
+                    loadApproval();
+                } else {
+                    log('SSE changed: Freigabe-Reload unterdrueckt '
+                        + '(Bericht in Sichtung).');
+                }
             }
             // BEWUSST KEIN Auto-Reload der Redaktions-Sichten 'templates'
             // (W2 Build 423), 'doctemplates' (W3 Build 425) und 'modules'
