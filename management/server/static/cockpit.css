@@ -685,6 +685,23 @@ td.aiw-cal-today { box-shadow: inset 0 0 0 2px var(--akzent); }
 .aiw-tpl-dry { font-size: 12px; margin: 4px 0; }
 .aiw-tpl-dry.is-ok  { color: var(--gruen); }
 .aiw-tpl-dry.is-err { color: var(--rot); font-weight: 600; }
+.aiw-tpl-dry.is-warn { color: var(--gelb); font-weight: 600; }
+
+/* Build 490 (Platzhalter-Neuordnung): Typ-Feldlogik + Validierungsblock.
+   .aiw-tpl-hidden blendet die m/o-Bereiche im a-Modus aus. */
+.aiw-tpl-hidden { display: none; }
+.aiw-tpl-valwrap {
+  display: flex; flex-direction: column; gap: 6px;
+  border: 1px solid var(--line); border-radius: 6px; padding: 8px;
+  background: #fbfcfd;
+}
+.aiw-tpl-valnote { font-size: 11px; color: var(--muted); margin: 0; }
+.aiw-tpl-valcheck, .aiw-tpl-valtestout { min-height: 14px; }
+.aiw-tpl-valcheckmsg, .aiw-tpl-valtestmsg { font-size: 12px; margin: 0; }
+.aiw-tpl-valcheckmsg.is-ok, .aiw-tpl-valtestmsg.is-ok { color: var(--gruen); }
+.aiw-tpl-valcheckmsg.is-err, .aiw-tpl-valtestmsg.is-err {
+  color: var(--rot); font-weight: 600;
+}
 
 .aiw-tpl-actions { display: flex; gap: 10px; align-items: center; margin-top: 6px; }
 .aiw-tpl-msg { font-size: 12px; }

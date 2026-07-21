@@ -34,7 +34,25 @@
  *   Editor-Entwurfs (analog Dokumentvorlagen Build 487): jede Nutzer-Eingabe
  *   wird gesichert, beim Betreten/Neuladen wiederhergestellt, nach erfolgreichem
  *   Speichern verworfen. Eigener Schluessel DRAFT_KEY, nur Client, migrationsneutral.
- * Version: v0.8.488 · Build: 488 · 2026-07-21
+ * Build 490 (Platzhalter-Neuordnung, Slice 2 — Bauplan Platzhalter_DB v0.1,
+ *   mc 2026-07-21): Die Maske verwaltet jetzt ALLE drei Platzhalter-Typen aus
+ *   templates.db.placeholders (Backend Build 489):
+ *     - Typ-Dropdown 'automatisch {{a:}}' / 'verpflichtend {{m:}}' /
+ *       'optional {{o:}}';
+ *     - Feldlogik je Typ: SQL bei 'a' Pflicht, bei m/o optionale Default-
+ *       Quelle; default_value + Validierungsblock NUR bei m/o; return_type bei
+ *       m/o fest 'scalar' (Serverregel gespiegelt);
+ *     - Validierungsblock: validation_type (regex [JAVASCRIPT-Dialekt/
+ *       ECMAScript] | list [JSON-Array] | like [%/_]) + Klartext-Textarea,
+ *       LIVE-Gueltigkeitspruefung (new RegExp in try/catch — hier liegt die
+ *       verbindliche Regex-Syntaxpruefung, der Server prueft nur best-effort
+ *       mit Python-re und warnt) + TESTFELD (Beispiel-Eingabe live gegen die
+ *       Regel geprueft). Base64 ist hier NICHT im Spiel: die DB speichert
+ *       Klartext; kodiert wird erst im Token-Transport (mc-Entscheid §2.2).
+ *   Routen: GET /api/templates/placeholders, POST /api/templates/placeholder
+ *   (+/dryrun) — die Legacy-Aliase aus 489 entfallen serverseitig mit diesem
+ *   Build. Entwurfs-Zwischenspeicher auf v2 (neue Felder).
+ * Version: v0.8.490 · Build: 490 · 2026-07-21
  */
 (function () {
     'use strict';
@@ -58,7 +76,8 @@
         fields: null,     // Referenzen auf die Formularfelder
         msgEl: null,      // Rueckmeldezeile (Speichern-Ergebnis/-Fehler)
         dryEl: null,      // Ausgabebereich des Dry-Run
-        selId: null       // aktuell im Editor geladene id (null = Neu-Modus)
+        selId: null,      // aktuell im Editor geladene id (null = Neu-Modus)
+        typeUi: null      // Build 490: {apply()} — Feldlogik je Typ (a/m/o)
     };
 
     // Build 488: Browser-Zwischenspeicher (localStorage) des NOCH NICHT
@@ -66,7 +85,10 @@
     // Neuladen/Fensterwechsel verliert keine unerledigte Arbeit. EIGENER,
     // versionierter Schluessel je Sicht. Nur Client-seitig, keine DB, kein
     // Beleg-/Evidence-Bezug (migrationsneutral).
-    var DRAFT_KEY = 'aiw.templates.draft.v1';
+    // Build 490: v2 — Entwurf traegt zusaetzlich type/default_value/validation/
+    // validation_type. Alte v1-Entwuerfe werden bewusst ignoriert (anderer
+    // Schluessel), statt sie fehlerhaft zu deuten.
+    var DRAFT_KEY = 'aiw.templates.draft.v2';
 
     // _ls: sicherer Zugriff auf localStorage (Privat-Modus/Quota -> null, Feature
     // still deaktiviert, kein Crash).
@@ -96,15 +118,28 @@
         }
     }
 
-    // queryLabel: Anzeigetext eines Listeneintrags: "Titel (id)". Faellt bei
-    // fehlendem Titel auf die id zurueck, damit nie ein leerer Eintrag entsteht.
+    // typeLabel (Build 490): menschliche Typbezeichnung inkl. Token-Syntax.
+    function typeLabel(t) {
+        switch (t) {
+            case 'a': return 'automatisch {{a:}}';
+            case 'm': return 'verpflichtend {{m:}}';
+            case 'o': return 'optional {{o:}}';
+            default:  return t || '?';
+        }
+    }
+
+    // queryLabel: Anzeigetext eines Listeneintrags: "[typ] Titel (id)". Faellt
+    // bei fehlendem Titel auf die id zurueck, damit nie ein leerer Eintrag
+    // entsteht. Build 490: Typ-Praefix, damit a/m/o in der Liste unterscheidbar
+    // sind (fehlender Typ -> kein Praefix, kein stilles '[a]'-Raten).
     function queryLabel(q) {
         if (!q) { return '?'; }
         var id = (q.id === undefined || q.id === null) ? '' : String(q.id);
         var title = (q.title === undefined || q.title === null)
             ? '' : String(q.title);
-        if (title && id) { return title + ' (' + id + ')'; }
-        return title || id || '?';
+        var base = (title && id) ? (title + ' (' + id + ')')
+            : (title || id || '?');
+        return q.type ? ('[' + q.type + '] ' + base) : base;
     }
 
     // sortQueries: neue, nach id (case-insensitive) sortierte Liste. Mutiert die
@@ -132,14 +167,33 @@
     // nur uebernommen, wenn nicht leer (sonst kein Dry-Run).
     function buildPayload(fields) {
         var f = fields || {};
+        var ptype = f.type || 'a';
         var payload = {
             id: String(f.id || '').trim(),
             title: String(f.title || '').trim(),
             description: (f.description === undefined || f.description === null)
                 ? '' : String(f.description),
+            type: ptype,
             sql_query: String(f.sql_query || '').trim(),
-            return_type: f.return_type || 'scalar'
+            // Build 490: m/o strikt 'scalar' (Serverregel gespiegelt — die
+            // Default-Quelle liefert genau EINEN Wert).
+            return_type: (ptype === 'a') ? (f.return_type || 'scalar')
+                : 'scalar'
         };
+        // Build 490: default_value + Validierung nur bei m/o; bei 'a' werden
+        // sie NICHT gesendet (der Server lehnte eine a-Validierung ohnehin ab).
+        if (ptype !== 'a') {
+            var dv = f.default_value;
+            if (dv !== undefined && dv !== null && String(dv).trim() !== '') {
+                payload.default_value = String(dv);
+            }
+            var val = String(f.validation || '');
+            var vt = String(f.validation_type || '');
+            if (val.trim() !== '' && vt !== '') {
+                payload.validation = val;
+                payload.validation_type = vt;
+            }
+        }
         var tags = f.tags;
         if (tags !== undefined && tags !== null && String(tags).trim() !== '') {
             payload.tags = String(tags).trim();
@@ -174,6 +228,94 @@
         }
         return 'Dry-Run OK — ' + cols + ' Spalte(n); Beispielwert: '
             + String(res.sample);
+    }
+
+    // --- Validierungsregeln (Build 490) ----------------------------------
+    // Alle drei Pruefarten laufen CLIENTSEITIG im JavaScript-Dialekt — genau
+    // die Umgebung, in der auch der Berichts-Editor (Wizard) prueft. Fuer
+    // 'regex' ist DIES die verbindliche Syntaxpruefung (der Server prueft nur
+    // best-effort mit Python-re und WARNT; Beleg placeholder_validator.py).
+
+    // likeToRegExp: SQL-LIKE-Muster -> verankerte RegExp. % = beliebig viele
+    // Zeichen, _ = genau ein Zeichen; alles andere woertlich (escaped).
+    function likeToRegExp(pattern) {
+        var esc = String(pattern == null ? '' : pattern)
+            .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+            .replace(/%/g, '[\\s\\S]*')
+            .replace(/_/g, '[\\s\\S]');
+        return new RegExp('^' + esc + '$');
+    }
+
+    // validateRule: ist die Regel SELBST gueltig? -> {ok, error}.
+    //   regex — new RegExp(...) in try/catch (ECMAScript-Dialekt);
+    //   list  — nicht-leeres JSON-Array aus Strings;
+    //   like  — nicht leer.
+    // Leere Regel + leere Art gelten als 'keine Regel' (ok).
+    function validateRule(vtype, rule) {
+        var v = String(vtype || '');
+        var r = String(rule == null ? '' : rule);
+        if (v === '' && r.trim() === '') { return { ok: true, error: null }; }
+        if (v === '' || r.trim() === '') {
+            return { ok: false, error: 'Pruefart und Regel gehoeren '
+                + 'zusammen — bitte beides angeben.' };
+        }
+        if (v === 'regex') {
+            try { new RegExp(r); return { ok: true, error: null }; }
+            catch (e) {
+                return { ok: false, error: 'Regex ungueltig (JavaScript-'
+                    + 'Dialekt): ' + (e && e.message) };
+            }
+        }
+        if (v === 'list') {
+            var parsed;
+            try { parsed = JSON.parse(r); }
+            catch (e) {
+                return { ok: false, error: 'Kein gueltiges JSON: '
+                    + (e && e.message) };
+            }
+            if (!Array.isArray(parsed) || !parsed.length) {
+                return { ok: false, error: 'list erwartet ein NICHT-leeres '
+                    + 'JSON-Array erlaubter Werte.' };
+            }
+            for (var i = 0; i < parsed.length; i++) {
+                if (typeof parsed[i] !== 'string') {
+                    return { ok: false, error: 'list darf nur Zeichenketten '
+                        + 'enthalten.' };
+                }
+            }
+            return { ok: true, error: null };
+        }
+        if (v === 'like') {
+            if (!r.trim()) {
+                return { ok: false, error: 'like-Muster darf nicht leer sein.' };
+            }
+            return { ok: true, error: null };
+        }
+        return { ok: false, error: 'Unbekannte Pruefart: ' + v };
+    }
+
+    // testRule: prueft eine BEISPIEL-Eingabe gegen die Regel ->
+    // {ok, match, error}. ok=false, wenn die Regel selbst ungueltig ist.
+    //   regex — RegExp.test() (Anker ^/$ setzt die Autor:in selbst);
+    //   list  — exakte Mitgliedschaft im Array;
+    //   like  — verankertes LIKE-Muster (Full-Match).
+    function testRule(vtype, rule, sample) {
+        var chk = validateRule(vtype, rule);
+        if (!chk.ok) { return { ok: false, match: null, error: chk.error }; }
+        var v = String(vtype || '');
+        var s = String(sample == null ? '' : sample);
+        if (v === '') { return { ok: true, match: null, error: null }; }
+        if (v === 'regex') {
+            return { ok: true, match: new RegExp(String(rule)).test(s),
+                     error: null };
+        }
+        if (v === 'list') {
+            return { ok: true,
+                     match: JSON.parse(String(rule)).indexOf(s) !== -1,
+                     error: null };
+        }
+        // like
+        return { ok: true, match: likeToRegExp(rule).test(s), error: null };
     }
 
     // =====================================================================
@@ -220,8 +362,13 @@
             f.id.disabled = true;   // id ist der Schluessel — im Editier-Modus fix
             f.title.value = q.title || '';
             f.description.value = q.description || '';
+            f.type.value = q.type || 'a';
             f.sql_query.value = q.sql_query || '';
             f.return_type.value = q.return_type || 'scalar';
+            f.default_value.value = (q.default_value == null)
+                ? '' : q.default_value;
+            f.validation.value = (q.validation == null) ? '' : q.validation;
+            f.validation_type.value = q.validation_type || '';
             f.tags.value = q.tags || '';
             _state.selId = String(q.id);
         } else {
@@ -229,13 +376,20 @@
             f.id.disabled = false;  // Neu-Modus: id ist einzugeben
             f.title.value = '';
             f.description.value = '';
+            f.type.value = 'a';
             f.sql_query.value = '';
             f.return_type.value = 'scalar';
+            f.default_value.value = '';
+            f.validation.value = '';
+            f.validation_type.value = '';
             f.tags.value = '';
             _state.selId = null;
         }
         _setMsg('');
         renderDryRun(null);
+        // Build 490: Sichtbarkeit/Sperren je Typ + Live-Pruefungen nachziehen
+        // (typeUi wird von renderTemplates gesetzt; ohne Maske ein No-op).
+        if (_state.typeUi) { _state.typeUi.apply(); }
         _markActive();
     }
 
@@ -246,8 +400,12 @@
             id: f.id.value,
             title: f.title.value,
             description: f.description.value,
+            type: f.type.value,
             sql_query: f.sql_query.value,
             return_type: f.return_type.value,
+            default_value: f.default_value.value,
+            validation: f.validation.value,
+            validation_type: f.validation_type.value,
             tags: f.tags.value,
             test_subject_id: f.test_subject_id.value
         };
@@ -280,6 +438,15 @@
         if (!box) { return; }
         _clearNode(box);
         if (!res) { return; }
+        // Build 490: Server-WARNUNGEN (z.B. Python-re konnte die JS-Regex
+        // nicht kompilieren) sichtbar machen — sie blockieren nicht
+        // (Grundregel 11), duerfen aber nie still verschwinden (Grundregel 1).
+        if (res.warnings && res.warnings.length) {
+            var pw = document.createElement('p');
+            pw.className = 'aiw-tpl-dry is-warn';
+            pw.textContent = 'Hinweis: ' + res.warnings.join(' | ');
+            box.appendChild(pw);
+        }
         var errs = errorsText(res.errors);
         if (errs) {
             var pe = document.createElement('p');
@@ -309,8 +476,12 @@
     function saved(res) {
         var created = !!(res && res.created);
         var tid = (res && res.target_id) ? res.target_id : '?';
-        _setMsg('Query "' + tid + '" '
-            + (created ? 'angelegt.' : 'geaendert.'), 'ok');
+        // Build 490: Server-Warnungen an die Erfolgsmeldung anhaengen
+        // (gespeichert WURDE — die Warnung darf trotzdem nicht untergehen).
+        var warn = (res && res.warnings && res.warnings.length)
+            ? (' Hinweis: ' + res.warnings.join(' | ')) : '';
+        _setMsg('Platzhalter "' + tid + '" '
+            + (created ? 'angelegt.' : 'geaendert.') + warn, 'ok');
         _clearDraft();   // Build 488: gespeichert -> Zwischenspeicher verwerfen.
     }
 
@@ -358,8 +529,12 @@
         f.id.value = fl.id || '';
         f.title.value = fl.title || '';
         f.description.value = fl.description || '';
+        f.type.value = fl.type || 'a';                    // Build 490
         f.sql_query.value = fl.sql_query || '';
         f.return_type.value = fl.return_type || 'scalar';
+        f.default_value.value = fl.default_value || '';   // Build 490
+        f.validation.value = fl.validation || '';         // Build 490
+        f.validation_type.value = fl.validation_type || ''; // Build 490
         f.tags.value = fl.tags || '';
         if (f.test_subject_id) {
             f.test_subject_id.value = (fl.test_subject_id == null)
@@ -368,6 +543,7 @@
         _state.selId = (d.selId === undefined) ? null : d.selId;
         f.id.disabled = (_state.selId !== null);
         renderDryRun(null);
+        if (_state.typeUi) { _state.typeUi.apply(); }     // Build 490
         _markActive();
         _setMsg('Nicht gespeicherter Entwurf aus dem Browserspeicher '
             + 'wiederhergestellt. Speichern schliesst ihn ab.', '');
@@ -392,10 +568,11 @@
         wrap.appendChild(h);
         var sub = document.createElement('p');
         sub.className = 'aiw-pagesub';
-        sub.textContent = 'Einzeldaten-Platzhalter fuer Berichte pflegen. '
-            + 'Jede Query darf NUR lesen (SELECT/WITH) und ausschliesslich den '
-            + 'Parameter :uid verwenden. Vor dem Speichern mit "Dry-Run" gegen '
-            + 'eine Beispiel-Nutzer-ID testen.';
+        sub.textContent = 'Platzhalter fuer Berichte pflegen — automatisch '
+            + '({{a:}}, SQL-Query), verpflichtend ({{m:}}) und optional '
+            + '({{o:}}, je mit optionaler Eingabe-Validierung). SQL darf NUR '
+            + 'lesen (SELECT/WITH) und ausschliesslich den Parameter :uid '
+            + 'verwenden. Vor dem Speichern mit "Dry-Run" testen.';
         wrap.appendChild(sub);
 
         // Zweispaltiger Koerper.
@@ -418,11 +595,12 @@
         var list = document.createElement('div');
         list.className = 'aiw-tpl-list';
         _state.listEl = list;
-        var rows = sortQueries(data && data.queries);
+        // Build 490: der Server liefert 'placeholders' (Build 489).
+        var rows = sortQueries(data && data.placeholders);
         if (!rows.length) {
             var empty = document.createElement('p');
             empty.className = 'aiw-tpl-empty';
-            empty.textContent = 'Noch keine Queries angelegt.';
+            empty.textContent = 'Noch keine Platzhalter angelegt.';
             list.appendChild(empty);
         }
         rows.forEach(function (q) {
@@ -450,19 +628,74 @@
         var fDesc = _labeledField(form, 'Beschreibung', 'textarea',
             'aiw-tpl-desc');
         fDesc.rows = 2;
+
+        // --- Typ (Build 490): bestimmt die Feldlogik der Maske. -----------
+        var fType = _labeledField(form, 'Typ', 'select', 'aiw-tpl-type');
+        [['a', typeLabel('a')], ['m', typeLabel('m')], ['o', typeLabel('o')]]
+            .forEach(function (o) {
+                var opt = document.createElement('option');
+                opt.value = o[0];
+                opt.textContent = o[1];
+                fType.appendChild(opt);
+            });
+
         var fSql = _labeledField(form, 'SQL (SELECT ... :uid ...)', 'textarea',
             'aiw-tpl-sql');
+        // Referenz auf den Beschriftungs-Span (Label wechselt je Typ).
+        var fSqlLabel = fSql.parentNode.querySelector('.aiw-tpl-label');
         var fRt = _labeledField(form, 'Rueckgabetyp', 'select', 'aiw-tpl-rt');
         [['scalar', returnTypeLabel('scalar')],
          ['list', returnTypeLabel('list')],
          ['table', returnTypeLabel('table')]].forEach(function (o) {
             var opt = document.createElement('option');
-            opt.value = o[0];
             opt.textContent = o[1];
+            opt.value = o[0];
             fRt.appendChild(opt);
         });
         var fTags = _labeledField(form, 'Tags (optional)', 'text',
             'aiw-tpl-tags');
+
+        // --- Default + Validierung (Build 490, NUR m/o) --------------------
+        var fDefault = _labeledField(form, 'Default-Wert (optional)', 'text',
+            'aiw-tpl-default');
+
+        var valWrap = document.createElement('div');
+        valWrap.className = 'aiw-tpl-valwrap';
+        var fVt = _labeledField(valWrap, 'Pruefart', 'select', 'aiw-tpl-vtype');
+        [['', 'keine Pruefung'],
+         ['regex', 'Regex (JavaScript-Dialekt)'],
+         ['list', 'Werteliste (JSON-Array)'],
+         ['like', 'LIKE-Muster (% und _)']].forEach(function (o) {
+            var opt = document.createElement('option');
+            opt.value = o[0];
+            opt.textContent = o[1];
+            fVt.appendChild(opt);
+        });
+        var fVal = _labeledField(valWrap, 'Validierungsregel (Klartext)',
+            'textarea', 'aiw-tpl-validation');
+        fVal.rows = 3;
+        fVal.title = 'Regex im JavaScript-Dialekt (ECMAScript); Pruefung per '
+            + 'RegExp.test() — Anker ^ und $ bei Bedarf selbst setzen.';
+        // Unterschrift (mc-Wunsch): der unterstuetzte Dialekt steht IN der Maske.
+        var valNote = document.createElement('p');
+        valNote.className = 'aiw-tpl-valnote';
+        valNote.textContent = 'regex: JavaScript-Dialekt (ECMAScript), '
+            + 'Pruefung per RegExp.test() — Anker ^/$ selbst setzen. '
+            + 'list: JSON-Array erlaubter Werte, z.B. ["ja","nein"]. '
+            + 'like: % = beliebig viele Zeichen, _ = genau ein Zeichen '
+            + '(Full-Match). Gespeichert wird Klartext (UTF-8).';
+        valWrap.appendChild(valNote);
+        // Live-Gueltigkeitsausgabe der Regel selbst.
+        var valCheck = document.createElement('div');
+        valCheck.className = 'aiw-tpl-valcheck';
+        valWrap.appendChild(valCheck);
+        // Testfeld: Beispiel-Eingabe live gegen die Regel pruefen.
+        var testIn = _labeledField(valWrap, 'Testfeld: Beispiel-Eingabe',
+            'text', 'aiw-tpl-valtest');
+        var testOut = document.createElement('div');
+        testOut.className = 'aiw-tpl-valtestout';
+        valWrap.appendChild(testOut);
+        form.appendChild(valWrap);
 
         // Dry-Run-Zeile: Beispiel-Nutzer-ID + Button.
         var dryRow = document.createElement('div');
@@ -502,9 +735,64 @@
 
         // Feld-Referenzen buendeln (fuer _fillForm/_currentFields).
         _state.fields = {
-            id: fId, title: fTitle, description: fDesc, sql_query: fSql,
-            return_type: fRt, tags: fTags, test_subject_id: fTest
+            id: fId, title: fTitle, description: fDesc, type: fType,
+            sql_query: fSql, return_type: fRt, default_value: fDefault,
+            validation: fVal, validation_type: fVt,
+            tags: fTags, test_subject_id: fTest
         };
+
+        // --- Typ-Logik + Live-Pruefungen (Build 490) -----------------------
+        // _refreshChecks: Regel-Gueltigkeit + Testfeld-Ergebnis neu bewerten.
+        // Die verbindliche Regex-Syntaxpruefung passiert HIER (new RegExp im
+        // JS-Dialekt); der Server prueft nur best-effort (Warnung).
+        var _refreshChecks = function () {
+            _clearNode(valCheck);
+            _clearNode(testOut);
+            if ((fType.value || 'a') === 'a') { return; }
+            var vt = fVt.value;
+            var rule = fVal.value;
+            if (vt === '' && !String(rule).trim()) { return; } // keine Regel
+            var chk = validateRule(vt, rule);
+            var pc = document.createElement('p');
+            pc.className = 'aiw-tpl-valcheckmsg '
+                + (chk.ok ? 'is-ok' : 'is-err');
+            pc.textContent = chk.ok ? 'Regel gueltig.' : chk.error;
+            valCheck.appendChild(pc);
+            var sample = testIn.value;
+            if (sample === '') { return; } // ohne Beispiel keine Test-Ausgabe
+            var res = testRule(vt, rule, sample);
+            var pt = document.createElement('p');
+            if (!res.ok) {
+                pt.className = 'aiw-tpl-valtestmsg is-err';
+                pt.textContent = 'Test nicht moeglich: ' + res.error;
+            } else {
+                pt.className = 'aiw-tpl-valtestmsg '
+                    + (res.match ? 'is-ok' : 'is-err');
+                pt.textContent = res.match
+                    ? 'Beispiel-Eingabe BESTEHT die Pruefung.'
+                    : 'Beispiel-Eingabe besteht die Pruefung NICHT.';
+            }
+            testOut.appendChild(pt);
+        };
+        // _applyType: Sichtbarkeit/Sperren je Typ. a: SQL Pflicht, KEINE
+        // Validierung/Default (Serverregel); m/o: SQL optionale Default-Quelle,
+        // return_type fest 'scalar'.
+        var _applyType = function () {
+            var isA = (fType.value || 'a') === 'a';
+            fSqlLabel.textContent = isA
+                ? 'SQL (Pflicht: SELECT ... :uid ...)'
+                : 'SQL als Default-Quelle (optional: SELECT ... :uid ...)';
+            if (!isA) { fRt.value = 'scalar'; }
+            fRt.disabled = !isA;
+            fDefault.parentNode.classList.toggle('aiw-tpl-hidden', isA);
+            valWrap.classList.toggle('aiw-tpl-hidden', isA);
+            _refreshChecks();
+        };
+        _state.typeUi = { apply: _applyType };
+        fType.addEventListener('change', _applyType);
+        fVt.addEventListener('change', _refreshChecks);
+        fVal.addEventListener('input', _refreshChecks);
+        testIn.addEventListener('input', _refreshChecks);
 
         // Build 488: Jede Nutzer-Eingabe sichert den Stand im Browserspeicher.
         // Programmatische .value-Zuweisungen (_fillForm/_restoreDraft) loesen kein
@@ -544,6 +832,7 @@
         _state.msgEl = null;
         _state.dryEl = null;
         _state.selId = null;
+        _state.typeUi = null;   // Build 490
     }
 
     // -------------------------------------------------------------------------
@@ -559,6 +848,10 @@
         errorsText: errorsText,
         dryRunSummary: dryRunSummary,
         DRAFT_KEY: DRAFT_KEY,             // Browser-Zwischenspeicher (Build 488)
+        typeLabel: typeLabel,             // Platzhalter-Typen (Build 490)
+        validateRule: validateRule,       // Regel-Gueltigkeit (Build 490)
+        testRule: testRule,               // Testfeld-Logik (Build 490)
+        likeToRegExp: likeToRegExp,       // LIKE->RegExp (Build 490)
         // DOM
         renderTemplates: renderTemplates,
         renderDryRun: renderDryRun,

@@ -42,20 +42,28 @@ function _ctx() {
 }
 function _api(win) { return (win || _ctx()).AIWCockpitTemplates; }
 
+// Build 490: der Server (489) liefert 'placeholders' inkl. Typ/Validierung.
 function _data() {
   return {
-    count: 2,
-    queries: [
+    count: 3,
+    placeholders: [
       { id: "beitraege_gesamt", title: "Beitraege gesamt",
-        description: "Anzahl der Beitraege", sql_query:
+        description: "Anzahl der Beitraege", type: "a", sql_query:
           "SELECT COUNT(*) FROM fdb.posts WHERE poster_id = :uid",
+        default_value: null, validation: null, validation_type: null,
         tags: "aktivitaet", return_type: "scalar", is_active: 1,
         created_by: "red01", created_at: 1, updated_at: 1 },
       { id: "alias_liste", title: "Aliasse",
-        description: "", sql_query:
+        description: "", type: "a", sql_query:
           "SELECT username FROM fdb.uid_profile WHERE id = :uid",
+        default_value: null, validation: null, validation_type: null,
         tags: null, return_type: "list", is_active: 1,
         created_by: "red01", created_at: 1, updated_at: 1 },
+      { id: "spurennummer", title: "Spurennummer",
+        description: "", type: "m", sql_query: null,
+        default_value: "unbekannt", validation: "^[A-Z]{2}-\\d{4}$",
+        validation_type: "regex", tags: null, return_type: "scalar",
+        is_active: 1, created_by: "red01", created_at: 1, updated_at: 1 },
     ],
   };
 }
@@ -158,10 +166,13 @@ describe("cockpit_templates", () => {
     const main = win.document.getElementById("aiw-main");
     api.renderTemplates(main, _data(), {});
     const items = main.querySelectorAll(".aiw-tpl-item");
-    expect(items.length).toBe(2);
-    // Sortiert nach id: 'alias_liste' vor 'beitraege_gesamt'.
+    expect(items.length).toBe(3);
+    // Sortiert nach id: 'alias_liste' vor 'beitraege_gesamt' vor 'spurennummer'.
     expect(items[0].getAttribute("data-id")).toBe("alias_liste");
     expect(items[1].getAttribute("data-id")).toBe("beitraege_gesamt");
+    expect(items[2].getAttribute("data-id")).toBe("spurennummer");
+    // Build 490: Typ-Praefix im Listenlabel.
+    expect(items[2].textContent).toContain("[m]");
 
     // Startzustand: Neu-Modus -> id-Feld leer und editierbar.
     const idField = main.querySelector(".aiw-tpl-id");
@@ -278,5 +289,139 @@ describe("cockpit_templates", () => {
     expect(win.localStorage.getItem(api.DRAFT_KEY)).toBeTruthy();
     api.saved({ created: true, target_id: "q.x" });
     expect(win.localStorage.getItem(api.DRAFT_KEY)).toBeNull();
+  });
+
+  // --- Platzhalter-Neuordnung (Build 490) --------------------------------
+  it("TT16 typeLabel + validateRule (regex/list/like)", () => {
+    const api = _api();
+    expect(api.typeLabel("a")).toContain("{{a:}}");
+    expect(api.typeLabel("m")).toContain("verpflichtend");
+    expect(api.typeLabel("o")).toContain("optional");
+    // regex: gueltig / ungueltig (JS-Dialekt ist hier die Autoritaet).
+    expect(api.validateRule("regex", "^[A-Z]{2}-\\d{4}$").ok).toBe(true);
+    expect(api.validateRule("regex", "([").ok).toBe(false);
+    // list: JSON-Array aus Strings, nicht leer.
+    expect(api.validateRule("list", '["ja","nein"]').ok).toBe(true);
+    expect(api.validateRule("list", "kein json").ok).toBe(false);
+    expect(api.validateRule("list", "[]").ok).toBe(false);
+    expect(api.validateRule("list", '[1,2]').ok).toBe(false);
+    // like: nicht leer; keine Regel (beides leer) ist ok.
+    expect(api.validateRule("like", "SP-%").ok).toBe(true);
+    expect(api.validateRule("like", "  ").ok).toBe(false);
+    expect(api.validateRule("", "").ok).toBe(true);
+    // Art ohne Regel (und umgekehrt) -> ungueltig.
+    expect(api.validateRule("regex", "").ok).toBe(false);
+    expect(api.validateRule("", "^x$").ok).toBe(false);
+  });
+
+  it("TT17 testRule: Beispiel-Eingabe gegen die Regel", () => {
+    const api = _api();
+    expect(api.testRule("regex", "^[A-Z]{2}-\\d{4}$", "NW-2026").match)
+      .toBe(true);
+    expect(api.testRule("regex", "^[A-Z]{2}-\\d{4}$", "nw-2026").match)
+      .toBe(false);
+    expect(api.testRule("list", '["ja","nein"]', "ja").match).toBe(true);
+    expect(api.testRule("list", '["ja","nein"]', "vielleicht").match)
+      .toBe(false);
+    // like: Full-Match; % beliebig, _ genau ein Zeichen.
+    expect(api.testRule("like", "SP-%", "SP-0815").match).toBe(true);
+    expect(api.testRule("like", "SP-%", "XSP-0815").match).toBe(false);
+    expect(api.testRule("like", "A_C", "ABC").match).toBe(true);
+    expect(api.testRule("like", "A_C", "ABBC").match).toBe(false);
+    // Kaputte Regel -> ok false, kein match.
+    expect(api.testRule("regex", "([", "x").ok).toBe(false);
+  });
+
+  it("TT18 buildPayload: Typregeln (a ohne Validierung, m/o scalar)", () => {
+    const api = _api();
+    // a: keine Validierungs-/Default-Felder im Payload.
+    const pa = api.buildPayload({ id: "q1", title: "T", type: "a",
+      sql_query: "SELECT 1", return_type: "list",
+      validation: "^x$", validation_type: "regex", default_value: "d" });
+    expect(pa.type).toBe("a");
+    expect(pa.return_type).toBe("list");
+    expect("validation" in pa).toBe(false);
+    expect("default_value" in pa).toBe(false);
+    // m: return_type wird auf scalar gezwungen; Validierung nur PAARWEISE.
+    const pm = api.buildPayload({ id: "q2", title: "T", type: "m",
+      return_type: "table", default_value: "unbekannt",
+      validation: "^[A-Z]+$", validation_type: "regex" });
+    expect(pm.return_type).toBe("scalar");
+    expect(pm.validation).toBe("^[A-Z]+$");
+    expect(pm.validation_type).toBe("regex");
+    expect(pm.default_value).toBe("unbekannt");
+    const pm2 = api.buildPayload({ id: "q3", title: "T", type: "o",
+      validation: "", validation_type: "regex" });
+    expect("validation" in pm2).toBe(false);
+    expect("validation_type" in pm2).toBe(false);
+  });
+
+  it("TT19 Maske: Typ-Dropdown steuert Sichtbarkeit + return_type-Sperre", () => {
+    const win = _ctx();
+    const api = _api(win);
+    const main = win.document.getElementById("aiw-main");
+    win.localStorage.clear();
+    api.renderTemplates(main, _data(), {});
+
+    const fType = main.querySelector(".aiw-tpl-type");
+    const valWrap = main.querySelector(".aiw-tpl-valwrap");
+    const rt = main.querySelector(".aiw-tpl-rt");
+    // Startzustand (Neu-Modus, Typ a): Validierungsblock versteckt, rt frei.
+    expect(fType.value).toBe("a");
+    expect(valWrap.classList.contains("aiw-tpl-hidden")).toBe(true);
+    expect(rt.disabled).toBe(false);
+    // Dialekt-Hinweis steht in der Maske (mc-Wunsch).
+    expect(main.querySelector(".aiw-tpl-valnote").textContent)
+      .toContain("JavaScript-Dialekt");
+
+    // Umschalten auf m: Block sichtbar, rt fest 'scalar'.
+    fType.value = "m";
+    fType.dispatchEvent(new win.Event("change", { bubbles: true }));
+    expect(valWrap.classList.contains("aiw-tpl-hidden")).toBe(false);
+    expect(rt.disabled).toBe(true);
+    expect(rt.value).toBe("scalar");
+
+    // Klick auf den m-Eintrag der Liste laedt Validierung + Default.
+    const items = main.querySelectorAll(".aiw-tpl-item");
+    items[2].dispatchEvent(new win.Event("click"));
+    expect(main.querySelector(".aiw-tpl-vtype").value).toBe("regex");
+    expect(main.querySelector(".aiw-tpl-validation").value)
+      .toBe("^[A-Z]{2}-\\d{4}$");
+    expect(main.querySelector(".aiw-tpl-default").value).toBe("unbekannt");
+    // Regel-Gueltigkeit wird live gemeldet.
+    expect(main.querySelector(".aiw-tpl-valcheckmsg").textContent)
+      .toContain("gueltig");
+  });
+
+  it("TT20 Testfeld prueft live; kaputte Regel wird rot gemeldet", () => {
+    const win = _ctx();
+    const api = _api(win);
+    const main = win.document.getElementById("aiw-main");
+    win.localStorage.clear();
+    api.renderTemplates(main, _data(), {});
+    // m-Eintrag laden (Regex ^[A-Z]{2}-\d{4}$).
+    main.querySelectorAll(".aiw-tpl-item")[2]
+      .dispatchEvent(new win.Event("click"));
+
+    const testIn = main.querySelector(".aiw-tpl-valtest");
+    testIn.value = "NW-2026";
+    testIn.dispatchEvent(new win.Event("input", { bubbles: true }));
+    let out = main.querySelector(".aiw-tpl-valtestmsg");
+    expect(out.classList.contains("is-ok")).toBe(true);
+    expect(out.textContent).toContain("BESTEHT");
+
+    testIn.value = "kaputt";
+    testIn.dispatchEvent(new win.Event("input", { bubbles: true }));
+    out = main.querySelector(".aiw-tpl-valtestmsg");
+    expect(out.classList.contains("is-err")).toBe(true);
+    expect(out.textContent).toContain("NICHT");
+
+    // Kaputte Regel: Gueltigkeitsmeldung rot, Test nicht moeglich.
+    const fVal = main.querySelector(".aiw-tpl-validation");
+    fVal.value = "([";
+    fVal.dispatchEvent(new win.Event("input", { bubbles: true }));
+    const chk = main.querySelector(".aiw-tpl-valcheckmsg");
+    expect(chk.classList.contains("is-err")).toBe(true);
+    expect(chk.textContent).toContain("Regex ungueltig");
   });
 });

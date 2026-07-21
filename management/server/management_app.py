@@ -559,10 +559,10 @@ class ManagementApp:
         # entfernt, evidence_ids geleert). Rechte/Scope wie /api/report/render.
         if path == "/api/report/as-template-draft":
             return self._report_as_template_draft(person_id, query)
-        # Build 489: Platzhalter-Neuordnung (placeholders a/m/o). Der alte
-        # Pfad /api/templates/queries bleibt als LEGACY-Alias bis zum
-        # Maskenumbau (Build 490) — gleiche Antwort, danach entfernen.
-        if path in ("/api/templates/placeholders", "/api/templates/queries"):
+        # Build 489/490: Platzhalter-Neuordnung (placeholders a/m/o). Der
+        # Legacy-Alias /api/templates/queries ist mit dem Maskenumbau
+        # (Build 490) entfallen.
+        if path == "/api/templates/placeholders":
             return self._templates_placeholders(person_id)
         if path == "/api/templates/documents":
             return self._templates_documents(person_id)
@@ -1657,10 +1657,9 @@ class ManagementApp:
     #                                            auditiert, target_type
     #                                            'placeholder')
     #   POST /api/templates/placeholder/dryrun — SCHREIBFREIE Vorschau
-    #   LEGACY-ALIASE (bis die Maske in Build 490 umgestellt ist; danach
-    #   entfernen): /api/templates/queries, /api/templates/query(+/dryrun) —
-    #   gleiche Handler; fehlender 'type' im Payload wird als 'a' gedeutet
-    #   (die alte Maske kennt nur automatische Queries).
+    #   Build 490: die Legacy-Aliase (/api/templates/queries, .../query
+    #   [+/dryrun]) sind mit dem Maskenumbau entfallen. Ein fehlender 'type'
+    #   im Payload wird weiterhin defensiv als 'a' gedeutet.
     # =====================================================================
     def _templates_placeholders(self, person_id: int) -> Response:
         """Liste aller Platzhalter (read-only, alle Typen)."""
@@ -1677,10 +1676,8 @@ class ManagementApp:
                                        "detail": str(exc)})
         finally:
             con.close()
-        # 'queries' als Zweitschluessel NUR fuer die alte Maske (Build 423);
-        # faellt mit dem Maskenumbau in Build 490 weg.
         return Response.json(200, {"count": len(items),
-                                   "placeholders": items, "queries": items})
+                                   "placeholders": items})
 
     def _placeholder_from_payload(self,
                                   payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -3810,16 +3807,14 @@ class ManagementApp:
             return self._report_comment_create(person_id, payload)
         if path == "/api/report/comment/resolve":
             return self._report_comment_resolve(person_id, payload)
-        # Build 489 (W2): Platzhalter anlegen/aendern (templates.db.placeholders,
-        # Typen a/m/o + Validierung). Die alten query-Pfade bleiben als
-        # LEGACY-Aliase bis zum Maskenumbau (Build 490) — fehlender 'type' im
-        # Payload wird dort als 'a' gedeutet; danach entfernen.
-        if path in ("/api/templates/placeholder", "/api/templates/query"):
+        # Build 489/490 (W2): Platzhalter anlegen/aendern (templates.db.
+        # placeholders, Typen a/m/o + Validierung). Die Legacy-query-Pfade
+        # sind mit dem Maskenumbau (Build 490) entfallen.
+        if path == "/api/templates/placeholder":
             return self._templates_placeholder_upsert(person_id, payload)
         # Build 423/489: schreibfreie Vorschau (Validierung + fdb-Dry-Run),
         # damit die Redakteur:in testen kann, BEVOR sie speichert.
-        if path in ("/api/templates/placeholder/dryrun",
-                    "/api/templates/query/dryrun"):
+        if path == "/api/templates/placeholder/dryrun":
             return self._templates_placeholder_dryrun(person_id, payload)
         # Build 424 (W3): Dokumentvorlagen (report_templates) anlegen/aendern
         # und schreibfreie Struktur-Vorschau.

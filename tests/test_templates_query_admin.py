@@ -18,14 +18,16 @@
 # TP06 — dry_run: skalar 1 Spalte OK; 2 Spalten -> Fehler; fehlende fdb -> ran False.
 # TP07 — PlaceholderAuthorRepo.upsert: create + update (a und m), Audit-Zeilen
 #        mit target_type 'placeholder', Normalisierung ''->NULL.
-# TP08 — GET /api/templates/placeholders: 200 mit Recht, 403 ohne;
-#        LEGACY-Alias /api/templates/queries liefert dieselbe Liste.
+# TP08 — GET /api/templates/placeholders: 200 mit Recht, 403 ohne; Build 490:
+#        Legacy-Alias /api/templates/queries entfernt (404), kein
+#        'queries'-Zweitschluessel mehr.
 # TP09 — POST /api/templates/placeholder: a anlegen + fdb-Dry-Run; m mit
-#        Validierung anlegen; LEGACY-Alias /api/templates/query deutet
-#        fehlenden type als 'a'.
+#        Validierung anlegen; fehlender type -> defensiv 'a'; Legacy-
+#        Schreibpfad entfernt (404).
 # TP10 — POST: statische Validierung 400 (inkl. Typregeln); Dry-Run-Fehler 400.
 # TP11 — POST /api/templates/placeholder/dryrun: SCHREIBFREI (nichts
-#        geschrieben, kein Audit); regex-Warnung erscheint als warnings.
+#        geschrieben, kein Audit); regex-Warnung erscheint als warnings;
+#        Legacy-Dryrun-Alias entfernt (404).
 # TP12 — dryrun: ungueltiger Platzhalter -> ok False + errors als Daten.
 #
 # Beleg: Bauplan management/Bauplan_Platzhalter_DB_v0_1.md (mc 2026-07-21).
@@ -316,16 +318,18 @@ class EndpointTests(unittest.TestCase):
         return ManagementApp(self._db, templates_db=self._tdb,
                              forensic_dir=self._fdir)
 
-    def test_tp08_list_gated_und_alias(self):
-        self.assertEqual(self._app().dispatch(1, "/api/templates/placeholders")
-                         .status, 200)
-        self.assertEqual(self._app().dispatch(2, "/api/templates/placeholders")
-                         .status, 403)
-        # LEGACY-Alias (alte Maske, bis Build 490): gleiche Liste.
-        r = self._app().dispatch(1, "/api/templates/queries")
+    def test_tp08_list_gated_und_alias_entfernt(self):
+        r = self._app().dispatch(1, "/api/templates/placeholders")
         self.assertEqual(r.status, 200)
         d = json.loads(r.body.decode("utf-8"))
-        self.assertEqual(d["placeholders"], d["queries"])
+        self.assertIn("placeholders", d)
+        # Build 490: der Legacy-Zweitschluessel 'queries' ist entfallen.
+        self.assertNotIn("queries", d)
+        self.assertEqual(self._app().dispatch(2, "/api/templates/placeholders")
+                         .status, 403)
+        # Build 490: der Legacy-Alias ist ENTFERNT (Maske nutzt neue Routen).
+        self.assertEqual(self._app().dispatch(1, "/api/templates/queries")
+                         .status, 404)
 
     def test_tp09_create_a_und_m(self):
         # a: mit fdb-Dry-Run ueber den NEUEN Pfad.
@@ -345,13 +349,18 @@ class EndpointTests(unittest.TestCase):
         self.assertTrue(d2["created"])
         self.assertFalse(d2["dry_run"]["ran"])
 
-        # LEGACY-Alias: fehlender type -> 'a'.
+        # Fehlender type im Payload wird defensiv als 'a' gedeutet
+        # (Build 490: NEUE Route; die Legacy-Routen existieren nicht mehr).
         legacy = {"id": "user.alias", "title": "Alias", "description": "",
                   "sql_query": "SELECT username FROM uid_profile "
                                "WHERE id = :uid",
                   "return_type": "scalar"}
-        r3 = self._app().dispatch_write(1, "/api/templates/query", legacy)
+        r3 = self._app().dispatch_write(1, "/api/templates/placeholder",
+                                        legacy)
         self.assertEqual(r3.status, 200)
+        # Der entfernte Legacy-Schreibpfad antwortet 404.
+        self.assertEqual(self._app().dispatch_write(
+            1, "/api/templates/query", legacy).status, 404)
         con = sqlite3.connect("file:%s?mode=ro" % self._tdb, uri=True)
         try:
             rows = dict(con.execute(
@@ -407,12 +416,12 @@ class EndpointTests(unittest.TestCase):
         self.assertTrue(any("Python-re" in w for w in d["warnings"]))
         # Kern der Zusicherung: KEIN Schreibvorgang, KEIN Audit-Beleg.
         self.assertEqual(self._counts(), (0, 0))
-        # Ohne Recht: 403; LEGACY-Alias funktioniert ebenfalls.
+        # Ohne Recht: 403. Der entfernte Legacy-Dryrun-Alias antwortet 404.
         self.assertEqual(self._app().dispatch_write(
             2, "/api/templates/placeholder/dryrun", body).status, 403)
         self.assertEqual(self._app().dispatch_write(
             1, "/api/templates/query/dryrun",
-            {**_GOOD_A, "test_subject_id": 700}).status, 200)
+            {**_GOOD_A, "test_subject_id": 700}).status, 404)
         self.assertEqual(self._counts(), (0, 0))
 
     def test_tp12_dryrun_fehler_als_daten(self):

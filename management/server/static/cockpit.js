@@ -1950,16 +1950,17 @@
             renderError(mainEl, 'Platzhalter/Query-Modul nicht geladen.');
             return;
         }
-        fetchJson('/api/templates/queries').then(function (data) {
+        // Build 490 (Platzhalter-Neuordnung): neue Routen aus Build 489.
+        fetchJson('/api/templates/placeholders').then(function (data) {
             cleanupView();
             mod.renderTemplates(mainEl, data, {
                 onDryRun: function (payload) {
-                    postJson('/api/templates/query/dryrun', payload)
+                    postJson('/api/templates/placeholder/dryrun', payload)
                         .then(function (res) { mod.renderDryRun(res); })
                         .catch(function (e) { mod.dryRunError(e && e.message); });
                 },
                 onSave: function (payload) {
-                    postJson('/api/templates/query', payload)
+                    postJson('/api/templates/placeholder', payload)
                         .then(function (res) {
                             mod.saved(res);
                             // Liste neu laden, damit ein NEUER Eintrag sofort
