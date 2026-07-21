@@ -152,6 +152,43 @@ class TestBloecke(unittest.TestCase):
         self.assertEqual(b_nach.created_at, b_vor.created_at)
         self.assertEqual(b_nach.block_data, '{"text":"Neu"}')
 
+    def test_T07b_save_block_update_report_id_unveraenderlich(self):
+        """T07b (Build 477): save_block() UPDATE verschiebt einen Block NIE
+        in einen anderen Vermerk/Bericht.
+
+        Reproduziert die BERICHTS-VERTAUSCHUNG: Ein bestehender Block von
+        Vermerk A wird per save_block() mit der report_id von Vermerk B
+        gespeichert (so wie es der Auto-Save nach einem Vermerk-Wechsel tat,
+        weil DocumentLayer die report_id aus dem bereits umgeschalteten
+        ReportLayer-Kontext injiziert). Erwartung: Der Block bleibt bei A,
+        B bleibt leer.
+        Beleg: Bugfix Build 477, Fehlerbeschreibung Baustelle 6.
+        """
+        report_a = self.report_id
+        report_b = self.edb.create_report("addendum", "Vermerk B", "h001")
+
+        # Block gehoert zu Vermerk A.
+        self.edb.save_block("blk-move", report_a, "h001", "paragraph",
+                            block_data='{"text":"Inhalt A"}')
+        self.assertEqual(self.edb.get_block("blk-move").report_id, report_a)
+
+        # UPDATE desselben Blocks — faelschlich mit report_id von Vermerk B.
+        self.edb.save_block("blk-move", report_b, "h001", "paragraph",
+                            block_data='{"text":"Inhalt A – bearbeitet"}')
+
+        # Der Block MUSS bei A bleiben, der Inhalt darf aktualisiert sein.
+        b_nach = self.edb.get_block("blk-move")
+        self.assertEqual(
+            b_nach.report_id, report_a,
+            "report_id wurde bei UPDATE veraendert — Block wurde verschoben!",
+        )
+        self.assertEqual(b_nach.block_data, '{"text":"Inhalt A – bearbeitet"}')
+
+        # Gegenprobe: Vermerk B enthaelt keinen Block; Vermerk A genau einen.
+        self.assertEqual(len(self.edb.get_blocks_for_report(report_b)), 0)
+        blocks_a = self.edb.get_blocks_for_report(report_a)
+        self.assertEqual([b.block_id for b in blocks_a], ["blk-move"])
+
     def test_T08_delete_block_kaskade(self):
         """T08: delete_block() entfernt Block und alle Kaskaden-Eintraege."""
         self.edb.save_block("blk-d1", self.report_id, "h001", "paragraph", sort_index=1)

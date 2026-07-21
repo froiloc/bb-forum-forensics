@@ -1559,26 +1559,75 @@ class EvidenceDb:
 
         now = int(time.time())
         # Bestehenden Block laden um created_at zu erhalten (autor ist unveraenderlich).
+        # Build 477: report_id wird mitgelesen, weil report_id — wie author und
+        # created_at — nach dem INSERT UNVERAENDERLICH ist (siehe Guard unten).
         existing = self._con.execute(
-            "SELECT created_at, author FROM report_blocks WHERE block_id = ?",
+            "SELECT created_at, author, report_id FROM report_blocks WHERE block_id = ?",
             (block_id,),
         ).fetchone()
         if existing is not None:
-            # UPDATE: created_at und author bleiben unveraendert.
+            # -----------------------------------------------------------------
+            # Bug 2.x Fix Build 477 (BERICHTS-VERTAUSCHUNG): report_id ist bei
+            # einem UPDATE UNVERAENDERLICH.
+            #
+            # GESICHERTE ERKENNTNIS / URSACHE:
+            #   Der alte UPDATE setzte "report_id=?" mit. Der Auto-Save
+            #   (report_editor.js:_performAutoSave -> _docSend('save_block'))
+            #   sendet KEINE report_id im Payload; DocumentLayer._sendRequest
+            #   injiziert daher report_id aus dem AKTUELLEN ReportLayer-Kontext.
+            #   Beim Anlegen eines neuen Vermerks/Berichts hatte der ReportLayer
+            #   bereits auf den NEUEN Vermerk umgeschaltet, waehrend der Editor
+            #   noch die Bloecke des ALTEN Vermerks hielt. Der (redundante)
+            #   Switch-Save in _loadReportImpl schrieb diese Bloecke dann mit der
+            #   NEUEN report_id -> das UPDATE VERSCHOB die Bloecke in den neuen
+            #   Vermerk; der alte blieb leer. Persistiert, weil in
+            #   evidence_<uid>.db geschrieben.
+            #   Belege: db/evidence_db.py (alter SET report_id=?),
+            #           userinfo/document_layer.js:_sendRequest
+            #             (report_id: payload.report_id ?? ctx.reportId),
+            #           userinfo/report_editor.js:_performAutoSave
+            #             (save_block-Payload ohne report_id),
+            #           userinfo/report_editor.js:_loadReportImpl
+            #             (Switch-Save await _performAutoSave(_prevReportId)).
+            #
+            # INVARIANTE (forensisch zwingend):
+            #   Ein Beleg-Block gehoert dauerhaft zu genau EINEM Vermerk. Ein
+            #   Save darf einen Block NIE zwischen Vermerken verschieben. Diese
+            #   Regel schuetzt die Beweiskette unabhaengig von Frontend-Fehlern.
+            #
+            # GRUNDREGEL 1 (kein Beleg still uebersprungen): Ein abweichender
+            #   report_id wird NICHT stillschweigend ignoriert, sondern als
+            #   WARN protokolliert (Beleg-Spur), damit ein Verschiebeversuch
+            #   nachvollziehbar bleibt. Der Block bleibt beim urspruenglichen
+            #   Vermerk.
+            # -----------------------------------------------------------------
+            existing_report_id = existing["report_id"]
+            if existing_report_id != report_id:
+                logger.warning(
+                    "save_block: report_id-Wechsel fuer bestehenden Block %s "
+                    "ABGEWIESEN (DB=%s, angefordert=%s). report_id ist nach "
+                    "INSERT unveraenderlich; Block bleibt beim urspruenglichen "
+                    "Vermerk. Beleg: Bugfix Build 477 (Berichts-Vertauschung).",
+                    block_id, existing_report_id, report_id,
+                )
+            # Ab hier ist die effektive report_id immer die bereits gespeicherte.
+            report_id = existing_report_id
+
+            # UPDATE: created_at, author UND report_id bleiben unveraendert.
             # Bug 2.51 Fix Build 144: placeholder_values_json nur ueberschreiben
             # wenn im Request-Payload explizit enthalten. Der normale Auto-Save
             # (_performAutoSave) sendet das Feld nicht — NULL wuerde den zuvor
-            # gespeicherten Wert loeschen. Loesung: COALESCE erhalt den DB-Wert
+            # gespeicherten Wert loeschen. Loesung: DB-Wert beibehalten
             # wenn None uebergeben wird.
             # Beleg: Bugfix Build 144, Projektgespraech 2026-05-10
             if placeholder_values_json is not None:
                 self._con.execute(
                     "UPDATE report_blocks "
-                    "SET report_id=?, updated_at=?, block_type=?, block_data=?, "
+                    "SET updated_at=?, block_type=?, block_data=?, "
                     "    placeholder_values_json=?, module_id=? "
                     "WHERE block_id=?",
                     (
-                        report_id, now, block_type.strip(), block_data,
+                        now, block_type.strip(), block_data,
                         placeholder_values_json, module_id, block_id,
                     ),
                 )
@@ -1586,11 +1635,11 @@ class EvidenceDb:
                 # placeholder_values_json nicht im Request — vorhandenen DB-Wert beibehalten
                 self._con.execute(
                     "UPDATE report_blocks "
-                    "SET report_id=?, updated_at=?, block_type=?, block_data=?, "
+                    "SET updated_at=?, block_type=?, block_data=?, "
                     "    module_id=? "
                     "WHERE block_id=?",
                     (
-                        report_id, now, block_type.strip(), block_data,
+                        now, block_type.strip(), block_data,
                         module_id, block_id,
                     ),
                 )
