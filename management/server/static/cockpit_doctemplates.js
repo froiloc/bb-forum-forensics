@@ -31,7 +31,12 @@
  *   REINE Funktionen separat exportiert (vitest). XSS-sicher: variable Texte
  *   ausschliesslich via textContent/value (multilinguales Forum, UTF-8).
  *
- * Version: v0.7.425 · Build: 425 · 2026-07-15
+ * Build 487: Browser-Zwischenspeicher (localStorage) des NICHT gespeicherten
+ *   Editor-Entwurfs — ein Fensterwechsel verliert keine Arbeit mehr: jede
+ *   Nutzer-Aenderung wird gesichert, beim Betreten der Sicht wiederhergestellt,
+ *   nach erfolgreichem Speichern verworfen (Schluessel DRAFT_KEY, nur Client,
+ *   migrationsneutral). Zudem: Block-Textarea jetzt 5 Zeilen hoch (statt 2).
+ * Version: v0.8.487 · Build: 487 · 2026-07-15
  */
 (function () {
     'use strict';
@@ -77,6 +82,21 @@
         marker:    '{"text": ""}',
         evidence:  '{"text": ""}'
     };
+
+    // Build 487: Schluessel des Browser-Zwischenspeichers (localStorage) fuer den
+    // NOCH NICHT gespeicherten Editor-Entwurf. Versioniert, damit ein spaeteres
+    // Format-Update alte Staende gezielt ignorieren kann. Zweck (mc-Wunsch): ein
+    // Fensterwechsel darf unerledigte Arbeit an einer Vorlage nicht verlieren.
+    // NUR Client-seitig — keine DB, kein Beleg-/Evidence-Bezug (migrationsneutral).
+    var DRAFT_KEY = 'aiw.doctemplates.draft.v1';
+
+    // _ls: sicherer Zugriff auf localStorage. In Privat-Modus/Sandbox/bei Quota
+    // kann der Zugriff werfen -> dann null (Feature still deaktiviert, kein Crash).
+    function _ls() {
+        try {
+            return (typeof localStorage !== 'undefined') ? localStorage : null;
+        } catch (e) { return null; }
+    }
 
     // =====================================================================
     // 1) REINE FUNKTIONEN (kein DOM) — vitest.
@@ -293,7 +313,7 @@
 
             var data = document.createElement('textarea');
             data.className = 'aiw-dtpl-bdata';
-            data.rows = 2;
+            data.rows = 5;   // Build 487 (mc-Wunsch): mind. 5 Zeilen hoch.
             data.value = blk.dataText || '';
             data.addEventListener('input', function () {
                 _state.blocks[idx].dataText = data.value;
@@ -311,6 +331,7 @@
             ctr.appendChild(_ctrlBtn('✕', 'entfernen', function () {
                 _state.blocks.splice(idx, 1);
                 _renderBlocks();
+                _persistDraft();   // Build 487: Strukturaenderung sichern.
             }));
             row.appendChild(ctr);
 
@@ -336,6 +357,7 @@
         _state.blocks[idx] = _state.blocks[to];
         _state.blocks[to] = tmp;
         _renderBlocks();
+        _persistDraft();   // Build 487: Reihenfolge-Aenderung sichern.
     }
 
     // _blocksFromJson: blocks_json (String) einer Vorlage in das In-Memory-Modell
@@ -515,10 +537,87 @@
         var tid = (res && res.target_id) ? res.target_id : '?';
         _setMsg('Vorlage "' + tid + '" '
             + (created ? 'angelegt.' : 'geaendert.'), 'ok');
+        // Build 487: erfolgreich gespeichert -> der Browser-Zwischenspeicher
+        // waere jetzt veraltet und wird verworfen (der Server ist die Wahrheit).
+        _clearDraft();
     }
 
     function saveError(msg) {
         _setMsg('Speichern fehlgeschlagen: ' + (msg || 'unbekannt'), 'err');
+    }
+
+    // --- Browser-Zwischenspeicher des Entwurfs (Build 487) ---------------
+    // _draftFromState: aktuellen Editor-Zustand als serialisierbares Objekt.
+    // Kopf-Felder + Bloecke (Typ/Text) + selKey (Editier- vs. Neu-Modus).
+    function _draftFromState() {
+        return {
+            v: 1,
+            fields: _currentFields(),
+            blocks: (_state.blocks || []).map(function (b) {
+                return { type: String(b.type || 'paragraph'),
+                         dataText: String(b.dataText || '') };
+            }),
+            selKey: _state.selKey
+        };
+    }
+
+    // _persistDraft: aktuellen Zustand in den Browserspeicher schreiben (best-
+    // effort). Wird bei JEDER Nutzer-Aenderung gerufen (Eingaben ueber den form-
+    // 'input'/'change'-Listener, Blockstruktur ueber die Knopf-Handler). Ohne
+    // aufgebaute Maske (_state.fields===null, z.B. nach cleanup) ein No-op.
+    function _persistDraft() {
+        var ls = _ls();
+        if (!ls || !_state.fields) { return; }
+        try { ls.setItem(DRAFT_KEY, JSON.stringify(_draftFromState())); }
+        catch (e) { log('persistDraft', e); }
+    }
+
+    // _loadDraft: gespeicherten Entwurf lesen (oder null). Unlesbar -> null.
+    function _loadDraft() {
+        var ls = _ls();
+        if (!ls) { return null; }
+        try {
+            var s = ls.getItem(DRAFT_KEY);
+            if (!s) { return null; }
+            var d = JSON.parse(s);
+            return (d && typeof d === 'object') ? d : null;
+        } catch (e) { log('loadDraft', e); return null; }
+    }
+
+    // _clearDraft: Entwurf verwerfen — nach ERFOLGREICHEM Speichern (dann ist der
+    // Stand serverseitig persistiert und der Zwischenspeicher waere veraltet).
+    function _clearDraft() {
+        var ls = _ls();
+        if (!ls) { return; }
+        try { ls.removeItem(DRAFT_KEY); } catch (e) { log('clearDraft', e); }
+    }
+
+    // _restoreDraft: gespeicherten Entwurf in die Maske laden, OHNE ihn erneut zu
+    // persistieren (keine Schleife). template_key ist im Editier-Modus (selKey
+    // gesetzt) fix, im Neu-/Entwurfsmodus editierbar — analog _fillForm.
+    function _restoreDraft(d) {
+        var f = _state.fields;
+        if (!f || !d) { return; }
+        var fl = d.fields || {};
+        f.template_key.value = fl.template_key || '';
+        f.title.value = fl.title || '';
+        f.description.value = fl.description || '';
+        f.report_type.value = fl.report_type || 'interim';
+        f.sort_order.value = (fl.sort_order === undefined
+            || fl.sort_order === null) ? 0 : fl.sort_order;
+        _state.selKey = (d.selKey === undefined) ? null : d.selKey;
+        f.template_key.disabled = (_state.selKey !== null);
+        _state.blocks = (Array.isArray(d.blocks) ? d.blocks : []).map(
+            function (b) {
+                return { type: String(b.type || 'paragraph'),
+                         dataText: String(b.dataText || '') };
+            });
+        renderDryRun(null);
+        _renderBefund(null);
+        _renderBlocks();
+        _markActive();
+        _setMsg('Nicht gespeicherter Entwurf aus dem Browserspeicher '
+            + 'wiederhergestellt. Speichern schliesst ihn ab.', '');
     }
 
     // renderDocTemplates: Gesamtsicht. data = {count, documents}. opts:
@@ -557,7 +656,10 @@
         newBtn.type = 'button';
         newBtn.className = 'aiw-dtpl-new';
         newBtn.textContent = '+ Neue Vorlage';
-        newBtn.addEventListener('click', function () { _fillForm(null); });
+        newBtn.addEventListener('click', function () {
+            _fillForm(null);
+            _persistDraft();   // Build 487: Neu-Modus als aktuellen Entwurf sichern.
+        });
         left.appendChild(newBtn);
 
         var list = document.createElement('div');
@@ -576,7 +678,10 @@
             it.className = 'aiw-dtpl-item';
             it.setAttribute('data-key', String(t.template_key));
             it.textContent = templateLabel(t);
-            it.addEventListener('click', function () { _fillForm(t); });
+            it.addEventListener('click', function () {
+                _fillForm(t);
+                _persistDraft();   // Build 487: geladene Vorlage als Entwurf sichern.
+            });
             list.appendChild(it);
         });
         left.appendChild(list);
@@ -619,6 +724,7 @@
             _state.blocks.push({ type: 'paragraph',
                 dataText: _DATA_TEMPLATE.paragraph });
             _renderBlocks();
+            _persistDraft();   // Build 487: neuen Block sichern.
         });
         blkHead.appendChild(addBtn);
         form.appendChild(blkHead);
@@ -667,6 +773,14 @@
             report_type: fRt, sort_order: fSort
         };
 
+        // Build 487: Jede Nutzer-Eingabe in der Maske (Kopf-Felder UND die
+        // Block-Textareas/Typ-Auswahlen, die hierher blubbern) sichert den
+        // aktuellen Stand im Browserspeicher. Programmatische Aenderungen
+        // (_fillForm/_restoreDraft via .value=) loesen KEIN input/change aus und
+        // ueberschreiben den Zwischenspeicher daher nicht ungewollt.
+        form.addEventListener('input', _persistDraft);
+        form.addEventListener('change', _persistDraft);
+
         // gemeinsame Vorbereitung fuer Vorschau/Speichern: Bloecke sammeln;
         // bei Client-Fehlern (kaputtes JSON etc.) NICHT senden, sondern melden.
         var prepare = function () {
@@ -696,12 +810,22 @@
         // Startzustand: Neu-Modus.
         _fillForm(null);
 
-        // Build 475: Wurde die Sicht mit einem Entwurf aus einem Bericht
-        // betreten (Uebergabe aus dem Lektorat), diesen jetzt einfuellen. Nach
-        // dem Neu-Modus-Startzustand, damit template_key editierbar bleibt.
+        // Build 475/487: Vorrangfolge beim Betreten der Sicht:
+        //   1) Ein aus dem Lektorat uebergebener Entwurf (opts.initialDraft) hat
+        //      Vorrang — die Autor:in kam bewusst mit diesem Entwurf. Er wird
+        //      eingefuellt UND als aktueller Zwischenspeicher gesichert.
+        //   2) Sonst: ein NOCH NICHT gespeicherter Entwurf aus dem Browserspeicher
+        //      (Build 487) — damit ein Fensterwechsel keine Arbeit verliert.
+        //   3) Sonst bleibt der oben gesetzte Neu-Modus.
+        // (2) darf (3) NICHT ueberschreiben, ohne dass wirklich ein Entwurf
+        // vorliegt — _loadDraft() liefert dann null.
         if (opts.initialDraft) {
             _fillDraft(opts.initialDraft, opts.initialFindings,
                 opts.initialWarnings);
+            _persistDraft();
+        } else {
+            var _saved = _loadDraft();
+            if (_saved) { _restoreDraft(_saved); }
         }
 
         log('renderDocTemplates:', rows.length, 'Vorlagen');
@@ -736,6 +860,7 @@
         draftToRows: draftToRows,
         findingsText: findingsText,
         BLOCK_TYPES: BLOCK_TYPES,
+        DRAFT_KEY: DRAFT_KEY,             // Browser-Zwischenspeicher (Build 487)
         // DOM
         renderDocTemplates: renderDocTemplates,
         renderDryRun: renderDryRun,

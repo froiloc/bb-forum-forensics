@@ -228,4 +228,81 @@ describe("cockpit_doctemplates", () => {
     expect(dry.classList.contains("is-ok")).toBe(true);
     expect(dry.textContent).toContain("header×1, paragraph×2");
   });
+
+  // --- Browser-Zwischenspeicher + Textareahoehe (Build 487) --------------
+  it("DT12 Eingaben werden im localStorage gesichert", () => {
+    const win = _ctx();
+    const api = _api(win);
+    const main = win.document.getElementById("aiw-main");
+    win.localStorage.clear();
+    api.renderDocTemplates(main, _data(), {});
+
+    const key = main.querySelector(".aiw-dtpl-key");
+    key.value = "neu.key";
+    key.dispatchEvent(new win.Event("input", { bubbles: true }));
+    const title = main.querySelector(".aiw-dtpl-title");
+    title.value = "Neuer Titel";
+    title.dispatchEvent(new win.Event("input", { bubbles: true }));
+    // Einen Block hinzufuegen (persistiert ueber den Knopf-Handler).
+    main.querySelector(".aiw-dtpl-addblock").dispatchEvent(new win.Event("click"));
+
+    const raw = win.localStorage.getItem(api.DRAFT_KEY);
+    expect(raw).toBeTruthy();
+    const d = JSON.parse(raw);
+    expect(d.fields.template_key).toBe("neu.key");
+    expect(d.fields.title).toBe("Neuer Titel");
+    expect(d.blocks.length).toBe(1);
+    expect(d.blocks[0].type).toBe("paragraph");
+  });
+
+  it("DT13 Entwurf wird beim erneuten Betreten wiederhergestellt (Fensterwechsel)", () => {
+    const win = _ctx();
+    const api = _api(win);
+    const main = win.document.getElementById("aiw-main");
+    win.localStorage.clear();
+
+    // Erster Besuch: etwas eingeben.
+    api.renderDocTemplates(main, _data(), {});
+    const key = main.querySelector(".aiw-dtpl-key");
+    key.value = "wip.key";
+    key.dispatchEvent(new win.Event("input", { bubbles: true }));
+    const title = main.querySelector(".aiw-dtpl-title");
+    title.value = "In Arbeit";
+    title.dispatchEvent(new win.Event("input", { bubbles: true }));
+    main.querySelector(".aiw-dtpl-addblock").dispatchEvent(new win.Event("click"));
+
+    // Sicht verlassen ...
+    api.cleanup();
+    // ... und erneut betreten (gleiches Fenster/localStorage) -> Restore.
+    api.renderDocTemplates(main, _data(), {});
+    expect(main.querySelector(".aiw-dtpl-key").value).toBe("wip.key");
+    expect(main.querySelector(".aiw-dtpl-title").value).toBe("In Arbeit");
+    expect(main.querySelectorAll(".aiw-dtpl-block").length).toBe(1);
+  });
+
+  it("DT14 erfolgreiches Speichern verwirft den Zwischenspeicher", () => {
+    const win = _ctx();
+    const api = _api(win);
+    const main = win.document.getElementById("aiw-main");
+    win.localStorage.clear();
+    api.renderDocTemplates(main, _data(), {});
+    const title = main.querySelector(".aiw-dtpl-title");
+    title.value = "X";
+    title.dispatchEvent(new win.Event("input", { bubbles: true }));
+    expect(win.localStorage.getItem(api.DRAFT_KEY)).toBeTruthy();
+
+    api.saved({ created: true, target_id: "x.key" });
+    expect(win.localStorage.getItem(api.DRAFT_KEY)).toBeNull();
+  });
+
+  it("DT15 Block-Textarea ist mind. 5 Zeilen hoch", () => {
+    const win = _ctx();
+    const api = _api(win);
+    const main = win.document.getElementById("aiw-main");
+    win.localStorage.clear();
+    api.renderDocTemplates(main, _data(), {});
+    main.querySelector(".aiw-dtpl-addblock").dispatchEvent(new win.Event("click"));
+    const ta = main.querySelector(".aiw-dtpl-bdata");
+    expect(Number(ta.rows)).toBe(5);
+  });
 });

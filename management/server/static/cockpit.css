@@ -741,6 +741,8 @@ td.aiw-cal-today { box-shadow: inset 0 0 0 2px var(--akzent); }
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px;
   padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px;
   flex: 1 1 auto; min-width: 0; box-sizing: border-box;
+  /* Build 487: mind. ~5 Zeilen hoch (ergaenzt rows=5), vertikal vergroesserbar. */
+  min-height: 6.5em; resize: vertical;
 }
 .aiw-dtpl-bctrl { display: flex; flex-direction: column; gap: 2px; flex: 0 0 auto; }
 .aiw-dtpl-bbtn {
