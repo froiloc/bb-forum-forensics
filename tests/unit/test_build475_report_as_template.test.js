@@ -130,20 +130,39 @@ describe("cockpit_lectorate (Build 475)", () => {
     expect(main.querySelector(".aiw-lectorate-xfer")).toBeNull();
   });
 
+  // Build 481: Auswahl erfolgt jetzt ueber den Tabulator-rowClick (statt einer
+  // Button-Liste). Der Tabulator-Ctor wird als Stub injiziert; die Auswahl wird
+  // durch direkten Aufruf von opts.rowClick simuliert.
+  function _stubTab() {
+    let made = null;
+    function StubTab(container, opts) {
+      made = { container, opts };
+      this.replaceData = function (d) { made.replaced = d; };
+      this.destroy = function () {};
+    }
+    return { StubTab: StubTab, get: () => made };
+  }
+  function _pickFirst(made) {
+    const row = made.opts.data[0];
+    made.opts.rowClick({}, { getData: () => row, getElement: () => null });
+  }
+
   it("BT06 mit Callback: Knopf da, erst nach Auswahl aktiv, Klick ruft (uid,rid)", () => {
     const win = _win(_srcLe);
     const api = win.AIWCockpitLectorate;
     const main = win.document.getElementById("aiw-main");
+    const tab = _stubTab();
     let called = null;
     api.renderLectorate(main, _reportsData(), {
       status: "submitted",
       onTransferToTemplate: function (uid, rid) { called = [uid, rid]; },
+      Tabulator: tab.StubTab,
     });
     const btn = main.querySelector(".aiw-lectorate-xfer");
     expect(btn).not.toBeNull();
     expect(btn.disabled).toBe(true);          // vor Auswahl aus
-    // Bericht auswaehlen -> Knopf aktiv.
-    main.querySelector(".aiw-lectorate-item").click();
+    // Bericht auswaehlen (rowClick) -> Knopf aktiv.
+    _pickFirst(tab.get());
     expect(btn.disabled).toBe(false);
     // Uebernehmen -> Callback mit dem gewaehlten Bericht.
     btn.click();
@@ -154,11 +173,13 @@ describe("cockpit_lectorate (Build 475)", () => {
     const win = _win(_srcLe);
     const api = win.AIWCockpitLectorate;
     const main = win.document.getElementById("aiw-main");
+    const tab = _stubTab();
     api.renderLectorate(main, _reportsData(), {
       status: "submitted",
       onTransferToTemplate: function () {},
+      Tabulator: tab.StubTab,
     });
-    main.querySelector(".aiw-lectorate-item").click();
+    _pickFirst(tab.get());
     const btn = main.querySelector(".aiw-lectorate-xfer");
     btn.click();                       // setzt disabled=true (busy)
     expect(btn.disabled).toBe(true);

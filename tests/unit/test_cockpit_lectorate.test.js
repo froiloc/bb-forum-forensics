@@ -96,42 +96,84 @@ describe("cockpit_lectorate", () => {
     expect(s).toContain("Zur Abnahme vorgelegt");
   });
 
-  it("LE06 renderLectorate + Auswahl setzt iframe.src", () => {
+  it("LE05b toRows: Felder + Fallbacks (Grundregel 1)", () => {
+    const api = _api();
+    const rows = api.toRows(_data(), "submitted");
+    expect(rows.length).toBe(2); // nur submitted
+    expect(rows[0]).toMatchObject({
+      subject_id: 18, id: 1, username: "b18", title: "Zwischenbericht",
+      status: "submitted", status_label: "Zur Abnahme vorgelegt",
+    });
+    expect(rows[0].typ).toBe("Vermerk"); // interim -> Vermerk
+    // Fehlende Felder werden sichtbar ersetzt, nicht verschluckt.
+    const rows2 = api.toRows(
+      { reports: [{ subject_id: 77, id: 5, status: "submitted" }] },
+      "submitted"
+    );
+    expect(rows2[0].username).toBe("uid 77");
+    expect(rows2[0].title).toBe("(ohne Titel)");
+  });
+
+  // LE06 (Build 481): Tabulator-Tabelle statt Button-Liste. Der Tabulator-Ctor
+  // wird als Stub injiziert (opts.Tabulator); rowClick wird direkt gerufen.
+  it("LE06 renderLectorate: Tabulator-Tabelle + rowClick setzt iframe/onSelect", () => {
     const win = _ctx();
     const api = _api(win);
     const main = win.document.createElement("div");
     win.document.body.appendChild(main);
+
+    let made = null;
+    function StubTab(container, opts) {
+      made = { container, opts };
+      this.replaceData = function (d) { made.replaced = d; };
+      this.destroy = function () { made.destroyed = true; };
+    }
 
     let picked = null;
     api.renderLectorate(main, _data(), {
       status: "submitted",
       onSelect: function (uid, rid) { picked = [uid, rid]; },
+      Tabulator: StubTab,
     });
 
-    const items = main.querySelectorAll(".aiw-lectorate-item");
-    expect(items.length).toBe(2); // nur submitted
+    // Nur submitted (2 Zeilen); erwartete Spalten vorhanden.
+    expect(made.opts.data.length).toBe(2);
+    const fields = made.opts.columns.map((c) => c.field);
+    expect(fields).toContain("username");
+    expect(fields).toContain("status_label");
     const frame = main.querySelector("iframe.aiw-lectorate-preview");
     expect(frame).not.toBeNull();
 
-    // Klick auf den ersten Bericht (uid 18, rid 1).
-    items[0].dispatchEvent(new win.Event("click", { bubbles: true }));
+    // rowClick des ersten Berichts (uid 18, rid 1) simulieren.
+    const rowData = made.opts.data[0];
+    made.opts.rowClick({}, { getData: () => rowData, getElement: () => null });
     expect(frame.src).toContain("/api/report/render?subject_id=18&report_id=1");
-    expect(items[0].classList.contains("is-active")).toBe(true);
+    expect(api.hasSelection()).toBe(true);
     expect(picked).toEqual([18, 1]);
   });
 
-  it("LE07 Statuswechsel 'alle' zeigt mehr Zeilen", () => {
+  it("LE07 Statuswechsel 'alle' tauscht Tabellendaten via replaceData", () => {
     const win = _ctx();
     const api = _api(win);
     const main = win.document.createElement("div");
     win.document.body.appendChild(main);
-    api.renderLectorate(main, _data(), { status: "submitted" });
-    expect(main.querySelectorAll(".aiw-lectorate-item").length).toBe(2);
+
+    let made = null;
+    function StubTab(container, opts) {
+      made = { container, opts };
+      this.replaceData = function (d) { made.replaced = d; };
+      this.destroy = function () {};
+    }
+    api.renderLectorate(main, _data(), {
+      status: "submitted", Tabulator: StubTab,
+    });
+    expect(made.opts.data.length).toBe(2); // submitted
 
     const sel = main.querySelector("select.aiw-lectorate-status");
     sel.value = "alle";
     sel.dispatchEvent(new win.Event("change", { bubbles: true }));
-    expect(main.querySelectorAll(".aiw-lectorate-item").length).toBe(3);
+    // Kein Neu-Render: dieselbe Instanz, Daten via replaceData ausgetauscht.
+    expect(made.replaced.length).toBe(3); // alle
   });
 
   // LE08 (Build 414) -------------------------------------------------------

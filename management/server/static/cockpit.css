@@ -393,6 +393,15 @@ td.aiw-cal-today { box-shadow: inset 0 0 0 2px var(--akzent); }
   border-color: var(--accent, #6aa9ff); font-weight: 600;
 }
 .aiw-lectorate-empty { font-size: 12px; color: var(--muted); }
+/* Build 481 (Slice 1): Berichtsauswahl als Tabulator-Tabelle. Die aktive Zeile
+   wird ueber die Klasse .is-active markiert (rowClick setzt sie). */
+.aiw-lectorate-table { margin-bottom: 10px; }
+.aiw-lectorate-table .tabulator-row.is-active {
+  background: #eef4fb;
+}
+.aiw-lectorate-table .tabulator-row.is-active .tabulator-cell {
+  font-weight: 600;
+}
 .aiw-lectorate-preview {
   width: 100%; height: 60vh; border: 1px solid var(--line); border-radius: 6px;
   background: #fff;

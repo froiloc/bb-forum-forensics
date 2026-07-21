@@ -34,7 +34,16 @@
  * Build 480: Bugfix — der Statusfilter-Wechsel reichte onTransferToTemplate
  *   nicht mehr durch, wodurch der Knopf "Als Vorlage uebernehmen" nach jedem
  *   Filterwechsel verschwand. Callback wird nun beim Neu-Rendern erhalten.
- * Version: v0.8.480 · Build: 480 · 2026-07-21
+ * Build 481 (Tabulator-Umbau, SLICE 1): Die Auswahl-Liste (bisher ein <button>
+ *   je Bericht) wird durch eine Tabulator-Tabelle ersetzt (Muster
+ *   cockpit_reports.js, Tabulator v6.4.0). Spalten: Benutzer, Titel, Typ, Nr.,
+ *   Status, Verfasser, Erstellt. Auswahl per rowClick (verdrahtet unveraendert
+ *   iframe-Vorschau + Belege/Kommentare + Uebernahme-Knopf). Der Statusfilter
+ *   wechselt die Tabellendaten via table.replaceData() OHNE Neu-Render (damit
+ *   entfaellt der 480-Fehlerfall strukturell). SLICE 2 (Build 482) ergaenzt
+ *   Header-Filter, Paginierung (20/Seite), Status-Schnellfilter mit Zaehlern
+ *   und verschiebt den Uebernahme-Knopf UNTER die Tabelle.
+ * Version: v0.8.481 · Build: 481 · 2026-07-21
  */
 (function () {
     'use strict';
@@ -59,7 +68,13 @@
         selUid: null,     // subject_id des gewaehlten Berichts
         selRid: null,     // report_id des gewaehlten Berichts
         xferBtn: null,    // Uebernahme-Schaltflaeche (nur mit templates.edit)
-        xferMsg: null     // Rueckmeldezeile der Uebernahme
+        xferMsg: null,    // Rueckmeldezeile der Uebernahme
+        // Build 481 (Slice 1): Umstellung der Auswahl-Liste auf eine
+        // Tabulator-Tabelle (Muster cockpit_reports.js). Die Instanz wird
+        // modul-intern gehalten und in cleanup()/am Kopf von renderLectorate
+        // zerstoert (cockpit.js:cleanupView ruft AIWCockpitLectorate.cleanup()).
+        table: null,      // aktuelle Tabulator-Instanz (oder null)
+        activeRowEl: null // DOM der aktiv markierten Zeile (fuer Entmarkierung)
     };
 
     // =====================================================================
@@ -104,6 +119,48 @@
 
     // selectionKey: stabiler Schluessel eines Berichts (fuer die Markierung).
     function selectionKey(uid, rid) { return String(uid) + ':' + String(rid); }
+
+    // --- Tabellen-Abbildung (Build 481, Slice 1) -------------------------
+    // TYPE_LABEL/typeLabel: menschliche Berichtstyp-Bezeichnung. Deckungsgleich
+    // zur Berichts-Abnahme (cockpit_reports.js, Build 473 "Vermerk"-Sprachregel),
+    // damit beide Berichtstabellen dasselbe Vokabular zeigen. Fallback = Rohcode
+    // (Grundregel 1: ein unbekannter Typ bleibt sichtbar).
+    var TYPE_LABEL = {
+        interim:  'Vermerk',
+        addendum: 'Ergänzungsvermerk',
+        final:    'Abschlussbericht'
+    };
+    function typeLabel(t) { return TYPE_LABEL[t] || t || ''; }
+
+    // fmtTs: Unix-Sekunden -> 'YYYY-MM-DD' (leere Zeichenkette bei 0/undefined).
+    // Identisch zu cockpit_reports.js:fmtTs.
+    function fmtTs(tsSec) {
+        if (!tsSec) { return ''; }
+        var d = new Date(tsSec * 1000);
+        function p(n) { return (n < 10 ? '0' : '') + n; }
+        return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+    }
+
+    // toRows: bildet die (nach Status gefilterten) Berichte auf Tabellenzeilen
+    // ab. REIN (kein DOM) -> vitest-pruefbar. Fehlende Felder werden sichtbar
+    // ersetzt (username -> 'uid <subject_id>'), nicht verschluckt (Grundregel 1).
+    // subject_id/id bleiben roh erhalten (fuer die Auswahl in rowClick).
+    function toRows(data, status) {
+        return filterReports(data, status).map(function (r) {
+            return {
+                subject_id: r.subject_id,
+                id: r.id,
+                username: r.username || ('uid ' + r.subject_id),
+                title: r.title || '(ohne Titel)',
+                typ: typeLabel(r.report_type),
+                nr: (r.sequence_nr != null ? r.sequence_nr : ''),
+                status: r.status,
+                status_label: statusLabel(r.status),
+                created_by: r.created_by || '',
+                created: fmtTs(r.created_at)
+            };
+        });
+    }
 
     // annotationsUrl: URL des Annotations-Support-Views (SF-2, Build 411).
     function annotationsUrl(uid, rid) {
@@ -176,7 +233,18 @@
     // Sichtwechsel gerufen). Da renderLectorate mainEl.innerHTML neu setzt,
     // werden Knoten/Listener ohnehin ersetzt; wir loesen zusaetzlich die
     // internen Referenzen, damit nichts haengen bleibt.
+    // _destroyTable (Build 481): die aktuelle Tabulator-Instanz abbauen. Best-
+    // effort (Tabulator.destroy kann bei bereits entferntem DOM werfen), damit
+    // ein Cleanup nie den Sichtwechsel scheitern laesst.
+    function _destroyTable() {
+        if (_state.table && typeof _state.table.destroy === 'function') {
+            try { _state.table.destroy(); } catch (e) { log('destroyTable', e); }
+        }
+        _state.table = null;
+    }
+
     function cleanup() {
+        _destroyTable();
         _state.iframe = null;
         _state.selKey = null;
         _state.annPanel = null;
@@ -185,6 +253,7 @@
         _state.selRid = null;
         _state.xferBtn = null;
         _state.xferMsg = null;
+        _state.activeRowEl = null;
         log('cleanup');
     }
 
@@ -235,6 +304,11 @@
             count: (data && data.count) });
 
         // Vollstaendiger Neuaufbau (kein optimistisches UI, Grundregel 1).
+        // Build 481: eine ggf. bestehende Tabulator-Instanz VOR dem Leeren des
+        // Containers zerstoeren (verhindert haengende Instanzen/Listener). Im
+        // Normalfall ruft cockpit.js:cleanupView bereits AIWCockpitLectorate.
+        // cleanup() vor loadLectorate — dies ist die defensive Doppelabsicherung.
+        _destroyTable();
         mainEl.innerHTML = '';
         _state.iframe = null;
         _state.selKey = null;
@@ -244,6 +318,7 @@
         _state.selRid = null;
         _state.xferBtn = null;
         _state.xferMsg = null;
+        _state.activeRowEl = null;
 
         var wrap = document.createElement('div');
         wrap.className = 'aiw-lectorate';
@@ -275,43 +350,49 @@
                 if (o[0] === status) { opt.selected = true; }
                 sel.appendChild(opt);
             });
-        // Reiner Lesewechsel: bei Statuswechsel die Liste neu rendern (die
-        // Daten liegen bereits vor; kein erneuter Serverabruf noetig).
-        // Build 480 (Bugfix): onTransferToTemplate MUSS mit durchgereicht werden.
-        // Der Uebernahme-Knopf ("Als Vorlage uebernehmen") wird in
-        // renderLectorate nur erzeugt, wenn dieser Callback vorliegt
-        // (canTransfer = typeof opts.onTransferToTemplate === 'function'). Fehlte
-        // er beim Neu-Rendern nach Statuswechsel, verschwand der Knopf dauerhaft
-        // (praktisch funktionslos, da man zum Sichten meist den Status filtert).
-        // onSelect wurde bereits durchgereicht; onTransferToTemplate war die
-        // Luecke.
+        // Build 481: Reiner Lesewechsel. Statt eines vollstaendigen Neu-Renders
+        // (frueher: renderLectorate erneut) tauschen wir NUR die Tabellendaten
+        // via table.replaceData(). Vorteile: die Tabulator-Instanz, der
+        // Uebernahme-Knopf und die Vorschau bleiben erhalten (der 480-Fehlerfall
+        // — Callback beim Neu-Rendern verloren — entfaellt damit strukturell).
+        // Die Auswahl (selKey/iframe) wird bewusst NICHT geleert: die read-only
+        // Vorschau eines bereits gewaehlten Berichts darf stehen bleiben.
         sel.addEventListener('change', function () {
-            renderLectorate(mainEl, data, {
-                status: sel.value,
-                onSelect: opts.onSelect,
-                onTransferToTemplate: opts.onTransferToTemplate
-            });
+            if (_state.table && typeof _state.table.replaceData === 'function') {
+                _state.table.replaceData(toRows(data, sel.value));
+            }
         });
         lbl.appendChild(sel);
         bar.appendChild(lbl);
         wrap.appendChild(bar);
 
-        // --- Auswahl-Liste ----------------------------------------------
-        var rows = filterReports(data, status);
-        var list = document.createElement('div');
-        list.className = 'aiw-lectorate-list';
+        // --- Vorschau-Bereich: Berichtstext (iframe) + Belege (Annotationen) -
+        // Zuerst aufgebaut, damit der rowClick-Handler der Tabelle die
+        // iframe-Referenz (frame) bereits schliessen kann.
+        var preview = document.createElement('div');
+        preview.className = 'aiw-lectorate-preview-wrap';
 
-        if (!rows.length) {
-            var empty = document.createElement('p');
-            empty.className = 'aiw-lectorate-empty';
-            empty.textContent = 'Keine Berichte im gewaehlten Status.';
-            list.appendChild(empty);
-        }
+        var frame = document.createElement('iframe');
+        frame.className = 'aiw-lectorate-preview';
+        frame.title = 'Berichtstext (read-only)';
+        frame.setAttribute('sandbox', 'allow-same-origin');
+        _state.iframe = frame;
+
+        var ann = document.createElement('div');
+        ann.className = 'aiw-lectorate-annotations';
+        _state.annPanel = ann;
+        _annHint('Bericht in der Tabelle auswaehlen, um die zugrunde liegenden '
+            + 'Belege zu sehen.');
+
+        preview.appendChild(frame);
+        preview.appendChild(ann);
 
         // --- Uebernahme-Leiste (Build 475): "Bericht als Vorlage uebernehmen".
         // Nur wenn der Aufrufer (cockpit.js) einen Callback liefert — das setzt
         // er ausschliesslich bei vorhandenem Recht templates.edit. Der Knopf ist
         // erst aktiv, sobald ein Bericht gewaehlt wurde (selUid/selRid gesetzt).
+        // Slice 1: Position wie bisher (ueber der Tabelle). Slice 2 (Build 482)
+        // verschiebt die Leiste UNTER die Tabelle.
         var canTransfer = (typeof opts.onTransferToTemplate === 'function');
         if (canTransfer) {
             var xbar = document.createElement('div');
@@ -338,67 +419,76 @@
             wrap.appendChild(xbar);
         }
 
-        // --- Vorschau-Bereich: Berichtstext (iframe) + Belege (Annotationen) -
-        // Nebeneinander (breit) bzw. gestapelt (schmal) via CSS (flex-wrap).
-        var preview = document.createElement('div');
-        preview.className = 'aiw-lectorate-preview-wrap';
+        // --- Auswahl-Tabelle (Build 481, Slice 1): Tabulator statt Button-Liste.
+        // Muster cockpit_reports.js. opts.Tabulator ist fuer Tests injizierbar.
+        var container = document.createElement('div');
+        container.className = 'aiw-lectorate-table';
+        wrap.appendChild(container);
+        wrap.appendChild(preview);
 
-        var frame = document.createElement('iframe');
-        frame.className = 'aiw-lectorate-preview';
-        frame.title = 'Berichtstext (read-only)';
-        frame.setAttribute('sandbox', 'allow-same-origin');
-        _state.iframe = frame;
+        // _selectReport: gemeinsame Auswahl-Logik (rowClick). Merkt den Bericht,
+        // aktiviert den Uebernahme-Knopf, laedt die read-only Vorschau und
+        // stoesst ueber opts.onSelect die Belege-/Kommentar-Abrufe an. rowEl ist
+        // die Zeilen-DOM (fuer die visuelle Markierung), optional.
+        function _selectReport(r, rowEl) {
+            if (!r) { return; }
+            if (_state.activeRowEl && _state.activeRowEl.classList) {
+                _state.activeRowEl.classList.remove('is-active');
+            }
+            if (rowEl && rowEl.classList) {
+                rowEl.classList.add('is-active');
+                _state.activeRowEl = rowEl;
+            }
+            _state.selKey = selectionKey(r.subject_id, r.id);
+            _state.selUid = r.subject_id;
+            _state.selRid = r.id;
+            if (_state.xferBtn) {
+                _state.xferBtn.disabled = false;
+                _setXferMsg('', '');
+            }
+            frame.src = renderUrl(r.subject_id, r.id);
+            annotationsLoading();
+            commentsLoading();
+            log('select', _state.selKey, frame.src);
+            if (typeof opts.onSelect === 'function') {
+                opts.onSelect(r.subject_id, r.id);
+            }
+        }
 
-        // Belege-Panel (SF-2, Slice 2). Startzustand: Hinweis.
-        var ann = document.createElement('div');
-        ann.className = 'aiw-lectorate-annotations';
-        _state.annPanel = ann;
-        _annHint('Bericht links auswaehlen, um die zugrunde liegenden Belege '
-            + 'zu sehen.');
-
-        preview.appendChild(frame);
-        preview.appendChild(ann);
-
-        rows.forEach(function (r) {
-            var key = selectionKey(r.subject_id, r.id);
-            var row = document.createElement('button');
-            row.type = 'button';
-            row.className = 'aiw-lectorate-item';
-            row.setAttribute('data-uid', String(r.subject_id));
-            row.setAttribute('data-rid', String(r.id));
-            row.setAttribute('data-key', key);
-            row.textContent = reportLabel(r);
-            row.addEventListener('click', function () {
-                // Auswahl markieren.
-                var prev = list.querySelector('.aiw-lectorate-item.is-active');
-                if (prev) { prev.classList.remove('is-active'); }
-                row.classList.add('is-active');
-                _state.selKey = key;
-                // Build 475: gewaehlten Bericht fuer die Uebernahme merken und
-                // den Uebernahme-Knopf aktivieren (falls vorhanden).
-                _state.selUid = r.subject_id;
-                _state.selRid = r.id;
-                if (_state.xferBtn) {
-                    _state.xferBtn.disabled = false;
-                    _setXferMsg('', '');
-                }
-                // Berichtstext read-only in den <iframe> laden.
-                frame.src = renderUrl(r.subject_id, r.id);
-                // Belege- UND Kommentar-Panel auf "laedt" setzen; die Abrufe
-                // laufen ueber opts.onSelect (cockpit.js holt Annotationen +
-                // Kommentare und ruft renderAnnotations/renderComments).
-                annotationsLoading();
-                commentsLoading();
-                log('select', key, frame.src);
-                if (typeof opts.onSelect === 'function') {
-                    opts.onSelect(r.subject_id, r.id);
+        var Ctor = opts.Tabulator
+            || (typeof window !== 'undefined' ? window.Tabulator : undefined);
+        if (typeof Ctor !== 'function') {
+            // Kein stiller Leerzustand (Grundregel 1): sichtbarer Hinweis.
+            var note = document.createElement('p');
+            note.className = 'aiw-lectorate-empty';
+            note.textContent = 'Tabellenbibliothek nicht verfuegbar.';
+            container.appendChild(note);
+            _state.table = null;
+            log('renderLectorate: kein Tabulator-Ctor');
+        } else {
+            _state.table = new Ctor(container, {
+                data: toRows(data, status),
+                columns: [
+                    { title: 'Benutzer',  field: 'username' },
+                    { title: 'Titel',     field: 'title' },
+                    { title: 'Typ',       field: 'typ' },
+                    { title: 'Nr.',       field: 'nr', hozAlign: 'right' },
+                    { title: 'Status',    field: 'status_label' },
+                    { title: 'Verfasser', field: 'created_by' },
+                    { title: 'Erstellt',  field: 'created' }
+                ],
+                layout: 'fitColumns',
+                height: '440px',
+                // Kein stiller Leerzustand: sichtbarer Hinweis bei 0 Zeilen.
+                placeholder: 'Keine Berichte im gewaehlten Status.',
+                // Zeilenklick -> Auswahl dieses Berichts.
+                rowClick: function (e, row) {
+                    var el = (typeof row.getElement === 'function')
+                        ? row.getElement() : null;
+                    _selectReport(row.getData(), el);
                 }
             });
-            list.appendChild(row);
-        });
-
-        wrap.appendChild(list);
-        wrap.appendChild(preview);
+        }
 
         // --- Kommentar-Panel (SF-3, Slice 3) unter dem Vorschau-Bereich. ----
         var com = document.createElement('div');
@@ -661,6 +751,8 @@
         renderUrl: renderUrl,
         reportLabel: reportLabel,
         selectionKey: selectionKey,
+        toRows: toRows,                   // Tabellen-Abbildung (Build 481)
+        typeLabel: typeLabel,             // Berichtstyp-Label (Build 481)
         annotationsUrl: annotationsUrl,   // SF-2 (Build 414)
         categoryLabel: categoryLabel,
         forumContext: forumContext,
