@@ -53,6 +53,7 @@
         blocks: null,     // In-Memory-Modell der Bloecke: [{type, dataText}]
         msgEl: null,      // Rueckmeldezeile
         dryEl: null,      // Ausgabe der Struktur-Vorschau
+        befundEl: null,   // Unverfaenglichkeits-Befund (Build 475, Report->Vorlage)
         selKey: null      // aktuell geladene template_key (null = Neu-Modus)
     };
 
@@ -191,6 +192,40 @@
     function errorsText(errors) {
         if (!errors || !errors.length) { return ''; }
         return errors.join('; ');
+    }
+
+    // -- Build 475: "Bericht als Vorlage uebernehmen" -------------------------
+    // draftToRows: die block-Objekte eines Entwurfs ({block_type, block_data})
+    // in das In-Memory-Modell [{type, dataText}] umsetzen. block_data ist HIER
+    // bereits ein Objekt (nicht ein blocks_json-String wie beim Laden aus der
+    // DB), daher direkt huebsch serialisieren, damit die supervisor:in es
+    // sichten/bearbeiten kann. REIN und testbar (vitest).
+    function draftToRows(draft) {
+        var out = [];
+        var blocks = (draft && draft.blocks) || [];
+        if (!Array.isArray(blocks)) { return out; }
+        blocks.forEach(function (blk) {
+            if (blk && typeof blk === 'object') {
+                out.push({
+                    type: String(blk.block_type || 'paragraph'),
+                    dataText: JSON.stringify(blk.block_data || {}, null, 2)
+                });
+            }
+        });
+        return out;
+    }
+
+    // findingsText: die Sanitisierungs-Befunde zu einer lesbaren Liste
+    // verdichten (Grundregel 1: jede Entfernung sichtbar). REIN (vitest).
+    function findingsText(findings) {
+        if (!findings || !findings.length) { return ''; }
+        return findings.map(function (f) {
+            var pos = (f && f.block_index !== undefined && f.block_index !== null)
+                ? ('Block ' + f.block_index) : 'Block ?';
+            var bt = (f && f.block_type) ? (' [' + f.block_type + ']') : '';
+            var det = (f && (f.detail || f.action)) || '';
+            return pos + bt + ': ' + det;
+        }).join(' · ');
     }
 
     // =====================================================================
@@ -352,6 +387,63 @@
         }
         _setMsg('');
         renderDryRun(null);
+        _renderBefund(null);   // Build 475: Befund nur beim Entwurfs-Uebertrag
+        _renderBlocks();
+        _markActive();
+    }
+
+    // _renderBefund: den Unverfaenglichkeits-Befund (Build 475) anzeigen. Eine
+    // Liste der serverseitig entfernten Inhalte (Platzhalter-Werte, evidence_ids)
+    // und Warnungen. findings=null/[] leert den Bereich. XSS-sicher (textContent).
+    function _renderBefund(findings, warnings) {
+        var box = _state.befundEl;
+        if (!box) { return; }
+        _clearNode(box);
+        var all = [];
+        (findings || []).forEach(function (f) { all.push(f); });
+        (warnings || []).forEach(function (w) {
+            all.push({ block_index: w.block_index, block_type: w.block_type,
+                detail: (w.detail || w.code) });
+        });
+        if (!all.length) { return; }
+        var head = document.createElement('p');
+        head.className = 'aiw-dtpl-befund-head';
+        head.textContent = 'Unverfaenglichkeits-Befund (' + all.length
+            + ') — bitte pruefen: die folgenden fallbezogenen Inhalte wurden '
+            + 'beim Uebernehmen entfernt.';
+        box.appendChild(head);
+        var ul = document.createElement('ul');
+        ul.className = 'aiw-dtpl-befund-list';
+        all.forEach(function (f) {
+            var li = document.createElement('li');
+            var pos = (f.block_index !== undefined && f.block_index !== null)
+                ? ('Block ' + f.block_index) : 'Block ?';
+            var bt = f.block_type ? (' [' + f.block_type + ']') : '';
+            li.textContent = pos + bt + ': ' + (f.detail || f.action || '');
+            ul.appendChild(li);
+        });
+        box.appendChild(ul);
+    }
+
+    // _fillDraft: einen aus einem Bericht erzeugten ENTWURF in die Editor-Maske
+    // laden (Build 475). NEU-MODUS: template_key bleibt EDITIERBAR (kein stilles
+    // Ueberschreiben einer bestehenden Vorlage), selKey=null. Der Befund zeigt,
+    // was beim Uebernehmen entfernt wurde (Grundregel 1).
+    function _fillDraft(draft, findings, warnings) {
+        var f = _state.fields;
+        if (!f || !draft) { return; }
+        f.template_key.value = draft.template_key || '';
+        f.template_key.disabled = false;   // Neu-Modus: Schluessel editierbar
+        f.title.value = draft.title || '';
+        f.description.value = draft.description || '';
+        f.report_type.value = draft.report_type || 'interim';
+        f.sort_order.value = 0;
+        _state.blocks = draftToRows(draft);
+        _state.selKey = null;              // Neu-Modus (nie Overschreiben)
+        _setMsg('Entwurf aus Bericht uebernommen — bitte Unverfaenglichkeit '
+            + 'pruefen, dann template_key/Titel setzen und speichern.', 'ok');
+        renderDryRun(null);
+        _renderBefund(findings, warnings);
         _renderBlocks();
         _markActive();
     }
@@ -557,6 +649,12 @@
         _state.dryEl = dry;
         form.appendChild(dry);
 
+        // Build 475: Befund-Bereich fuer "Bericht als Vorlage uebernehmen".
+        var befund = document.createElement('div');
+        befund.className = 'aiw-dtpl-befund';
+        _state.befundEl = befund;
+        form.appendChild(befund);
+
         body.appendChild(form);
         wrap.appendChild(body);
         mainEl.appendChild(wrap);
@@ -594,6 +692,15 @@
 
         // Startzustand: Neu-Modus.
         _fillForm(null);
+
+        // Build 475: Wurde die Sicht mit einem Entwurf aus einem Bericht
+        // betreten (Uebergabe aus dem Lektorat), diesen jetzt einfuellen. Nach
+        // dem Neu-Modus-Startzustand, damit template_key editierbar bleibt.
+        if (opts.initialDraft) {
+            _fillDraft(opts.initialDraft, opts.initialFindings,
+                opts.initialWarnings);
+        }
+
         log('renderDocTemplates:', rows.length, 'Vorlagen');
         return wrap;
     }
@@ -605,6 +712,7 @@
         _state.blocks = null;
         _state.msgEl = null;
         _state.dryEl = null;
+        _state.befundEl = null;
         _state.selKey = null;
     }
 
@@ -622,6 +730,8 @@
         buildPayload: buildPayload,
         summaryText: summaryText,
         errorsText: errorsText,
+        draftToRows: draftToRows,
+        findingsText: findingsText,
         BLOCK_TYPES: BLOCK_TYPES,
         // DOM
         renderDocTemplates: renderDocTemplates,

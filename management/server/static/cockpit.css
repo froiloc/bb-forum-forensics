@@ -364,6 +364,21 @@ td.aiw-cal-today { box-shadow: inset 0 0 0 2px var(--akzent); }
 /* Lektorat-Sicht (W4, Build 413, Slice 1) — Auswahl + read-only Vorschau. */
 .aiw-lectorate-meta { font-size: 12px; color: var(--muted); margin: 2px 0 8px; }
 .aiw-lectorate-toolbar { margin: 4px 0 10px; }
+
+/* Build 475: Uebernahme-Leiste "Bericht als Vorlage uebernehmen". */
+.aiw-lectorate-xferbar {
+  display: flex; gap: 10px; align-items: center; margin: 2px 0 10px;
+  flex-wrap: wrap;
+}
+.aiw-lectorate-xfer {
+  padding: 6px 12px; border: 1px solid var(--akzent); border-radius: 6px;
+  background: var(--panel); color: var(--akzent); cursor: pointer; font: inherit;
+}
+.aiw-lectorate-xfer:hover:not(:disabled) { background: #eef4fb; }
+.aiw-lectorate-xfer:disabled { opacity: 0.5; cursor: default; }
+.aiw-lectorate-xfermsg { font-size: 12px; }
+.aiw-lectorate-xfermsg.is-ok  { color: var(--gruen); }
+.aiw-lectorate-xfermsg.is-err { color: var(--rot); font-weight: 600; }
 .aiw-lectorate-list {
   display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px;
   max-height: 220px; overflow: auto;
@@ -724,6 +739,16 @@ td.aiw-cal-today { box-shadow: inset 0 0 0 2px var(--akzent); }
 .aiw-dtpl-dry { font-size: 12px; margin: 4px 0; }
 .aiw-dtpl-dry.is-ok  { color: var(--gruen); }
 .aiw-dtpl-dry.is-err { color: var(--rot); font-weight: 600; }
+
+/* Build 475: Unverfaenglichkeits-Befund bei "Bericht als Vorlage uebernehmen". */
+.aiw-dtpl-befund { margin: 6px 0 0; }
+.aiw-dtpl-befund-head {
+  font-size: 12px; font-weight: 600; color: var(--akzent); margin: 4px 0;
+}
+.aiw-dtpl-befund-list {
+  margin: 2px 0 0; padding-left: 18px; font-size: 12px; color: var(--muted);
+}
+.aiw-dtpl-befund-list li { margin: 2px 0; }
 
 /* ==========================================================================
    Baustein-Module (W1, Build 427) — cockpit_modules.js

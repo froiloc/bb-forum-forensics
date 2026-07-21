@@ -42,7 +42,12 @@
         iframe: null,     // aktuelles Vorschau-<iframe>
         selKey: null,     // aktuell gewaehlter Bericht ('uid:rid')
         annPanel: null,   // Belege-Panel (Annotationen, SF-2, Build 414)
-        comPanel: null    // Kommentar-Panel (SF-3, Build 415)
+        comPanel: null,   // Kommentar-Panel (SF-3, Build 415)
+        // Build 475: "Bericht als Vorlage uebernehmen"
+        selUid: null,     // subject_id des gewaehlten Berichts
+        selRid: null,     // report_id des gewaehlten Berichts
+        xferBtn: null,    // Uebernahme-Schaltflaeche (nur mit templates.edit)
+        xferMsg: null     // Rueckmeldezeile der Uebernahme
     };
 
     // =====================================================================
@@ -164,7 +169,32 @@
         _state.selKey = null;
         _state.annPanel = null;
         _state.comPanel = null;
+        _state.selUid = null;
+        _state.selRid = null;
+        _state.xferBtn = null;
+        _state.xferMsg = null;
         log('cleanup');
+    }
+
+    // --- Uebernahme "Bericht als Vorlage" (Build 475) --------------------
+    // _setXferMsg: Rueckmeldezeile der Uebernahme setzen ('' leert). kind:
+    // '' | 'err' | 'ok'. XSS-sicher (textContent).
+    function _setXferMsg(text, kind) {
+        if (!_state.xferMsg) { return; }
+        _state.xferMsg.textContent = text || '';
+        _state.xferMsg.className = 'aiw-lectorate-xfermsg'
+            + (kind ? (' is-' + kind) : '');
+    }
+
+    // transferError: von cockpit.js gerufen, wenn der Entwurf NICHT geholt
+    // werden konnte (Grundregel 1: kein stiller Fehlpfad). Reaktiviert den
+    // Knopf, damit die supervisor:in es erneut versuchen kann.
+    function transferError(msg) {
+        _setXferMsg('Uebernahme fehlgeschlagen: ' + (msg || 'Fehler'), 'err');
+        if (_state.xferBtn
+            && _state.selUid !== null && _state.selRid !== null) {
+            _state.xferBtn.disabled = false;
+        }
     }
 
     // renderLectorate(mainEl, data, opts)
@@ -185,6 +215,10 @@
         _state.selKey = null;
         _state.annPanel = null;
         _state.comPanel = null;
+        _state.selUid = null;
+        _state.selRid = null;
+        _state.xferBtn = null;
+        _state.xferMsg = null;
 
         var wrap = document.createElement('div');
         wrap.className = 'aiw-lectorate';
@@ -238,6 +272,36 @@
             list.appendChild(empty);
         }
 
+        // --- Uebernahme-Leiste (Build 475): "Bericht als Vorlage uebernehmen".
+        // Nur wenn der Aufrufer (cockpit.js) einen Callback liefert — das setzt
+        // er ausschliesslich bei vorhandenem Recht templates.edit. Der Knopf ist
+        // erst aktiv, sobald ein Bericht gewaehlt wurde (selUid/selRid gesetzt).
+        var canTransfer = (typeof opts.onTransferToTemplate === 'function');
+        if (canTransfer) {
+            var xbar = document.createElement('div');
+            xbar.className = 'aiw-lectorate-xferbar';
+            var xbtn = document.createElement('button');
+            xbtn.type = 'button';
+            xbtn.className = 'aiw-lectorate-xfer';
+            xbtn.textContent = 'Als Vorlage uebernehmen';
+            xbtn.disabled = true;   // erst nach Berichtsauswahl
+            xbtn.title = 'Aus dem gewaehlten Bericht eine Dokumentvorlage '
+                + 'erzeugen (fallbezogene Platzhalter-Werte werden entfernt).';
+            xbtn.addEventListener('click', function () {
+                if (_state.selUid === null || _state.selRid === null) { return; }
+                _setXferMsg('Uebernehme Bericht in Vorlage …', '');
+                xbtn.disabled = true;
+                opts.onTransferToTemplate(_state.selUid, _state.selRid);
+            });
+            _state.xferBtn = xbtn;
+            xbar.appendChild(xbtn);
+            var xmsg = document.createElement('span');
+            xmsg.className = 'aiw-lectorate-xfermsg';
+            _state.xferMsg = xmsg;
+            xbar.appendChild(xmsg);
+            wrap.appendChild(xbar);
+        }
+
         // --- Vorschau-Bereich: Berichtstext (iframe) + Belege (Annotationen) -
         // Nebeneinander (breit) bzw. gestapelt (schmal) via CSS (flex-wrap).
         var preview = document.createElement('div');
@@ -274,6 +338,14 @@
                 if (prev) { prev.classList.remove('is-active'); }
                 row.classList.add('is-active');
                 _state.selKey = key;
+                // Build 475: gewaehlten Bericht fuer die Uebernahme merken und
+                // den Uebernahme-Knopf aktivieren (falls vorhanden).
+                _state.selUid = r.subject_id;
+                _state.selRid = r.id;
+                if (_state.xferBtn) {
+                    _state.xferBtn.disabled = false;
+                    _setXferMsg('', '');
+                }
                 // Berichtstext read-only in den <iframe> laden.
                 frame.src = renderUrl(r.subject_id, r.id);
                 // Belege- UND Kommentar-Panel auf "laedt" setzen; die Abrufe
@@ -568,6 +640,7 @@
         renderComments: renderComments,         // Kommentar-Panel (SF-3)
         commentsLoading: commentsLoading,
         commentsError: commentsError,
+        transferError: transferError,           // Uebernahme B6->Vorlage (Build 475)
         cleanup: cleanup
     };
     log('Modul geladen.');

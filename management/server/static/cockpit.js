@@ -353,7 +353,11 @@
         sse: null,
         // Schreib-Token (Build 372/373): kommt aus /api/whoami und MUSS bei
         // jedem POST als 'X-AIW-Token' mitgeschickt werden.
-        writeToken: null
+        writeToken: null,
+        // Build 475: Uebergabe eines aus einem Bericht erzeugten Vorlagen-
+        // Entwurfs vom Lektorat an die Dokumentvorlagen-Sicht. {draft, findings,
+        // warnings} oder null. Wird von loadDocTemplates EINMALIG konsumiert.
+        pendingTemplateDraft: null
     };
 
     // fetchJson: kleiner Wrapper mit DEV-Logging und klarer Fehlermeldung.
@@ -1700,6 +1704,36 @@
             }).catch(function (e) { mod.commentsError(e && e.message); });
         };
 
+        // Build 475: "Als Vorlage uebernehmen" nur anbieten, wenn das Recht
+        // templates.edit vorliegt (das Speichern der Vorlage erfordert es
+        // ohnehin). Ohne das Recht bleibt der Knopf aus -> das Modul rendert ihn
+        // dann gar nicht (Callback fehlt).
+        var canEditTemplates = hasCap(state.capabilities, 'templates.edit');
+        var onTransfer = canEditTemplates
+            ? function (uid, rid) {
+                var url = '/api/report/as-template-draft?subject_id='
+                    + encodeURIComponent(uid) + '&report_id='
+                    + encodeURIComponent(rid);
+                fetchJson(url).then(function (res) {
+                    if (!res || !res.ok || !res.draft) {
+                        throw new Error('Der Server lieferte keinen Entwurf.');
+                    }
+                    // Entwurf fuer die naechste Sicht hinterlegen und in die
+                    // Dokumentvorlagen wechseln (dort sichten + speichern).
+                    state.pendingTemplateDraft = {
+                        draft: res.draft,
+                        findings: res.findings || [],
+                        warnings: res.warnings || []
+                    };
+                    selectView('doctemplates');
+                }).catch(function (e) {
+                    // Kein stiller Fehlpfad (Grundregel 1): Fehler im Lektorat
+                    // sichtbar machen und den Knopf wieder aktivieren.
+                    mod.transferError(e && e.message);
+                });
+            }
+            : null;
+
         fetchJson('/api/reports').then(function (data) {
             cleanupView();
             mod.renderLectorate(mainEl, data, {
@@ -1715,7 +1749,9 @@
                             mod.annotationsError(e && e.message);
                         });
                     reloadComments(uid, rid);
-                }
+                },
+                // Build 475: Uebernahme in eine Dokumentvorlage (nur mit Recht).
+                onTransferToTemplate: onTransfer
             });
             log('Lektorat gerendert:', data && data.count, 'Berichte');
         }).catch(function (err) {
@@ -1904,6 +1940,12 @@
             renderError(mainEl, 'Dokumentvorlagen-Modul nicht geladen.');
             return;
         }
+        // Build 475: einen aus dem Lektorat uebergebenen Vorlagen-Entwurf
+        // EINMALIG konsumieren. Sofort aus dem State loeschen, damit ein spaeter
+        // Neu-Laden (z.B. nach dem Speichern) den Entwurf NICHT erneut anwendet.
+        var pending = state.pendingTemplateDraft;
+        state.pendingTemplateDraft = null;
+
         fetchJson('/api/templates/documents').then(function (data) {
             cleanupView();
             mod.renderDocTemplates(mainEl, data, {
@@ -1919,7 +1961,11 @@
                             loadDocTemplates(mainEl);
                         })
                         .catch(function (e) { mod.saveError(e && e.message); });
-                }
+                },
+                // Build 475: Entwurf aus Bericht (oder null im Normalfall).
+                initialDraft: pending ? pending.draft : null,
+                initialFindings: pending ? pending.findings : null,
+                initialWarnings: pending ? pending.warnings : null
             });
             log('Dokumentvorlagen gerendert:', data && data.count);
         }).catch(function (err) {

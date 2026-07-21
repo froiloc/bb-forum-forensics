@@ -554,6 +554,11 @@ class ManagementApp:
             return self._report_annotations(person_id, query)
         if path == "/api/report/comments":
             return self._report_comments(person_id, query)
+        # Build 475: Bericht als Vorlage uebernehmen — schreibfreier Entwurf
+        # (read-only aus evidence_<uid>.db; Sanitisierung: Platzhalter-Werte
+        # entfernt, evidence_ids geleert). Rechte/Scope wie /api/report/render.
+        if path == "/api/report/as-template-draft":
+            return self._report_as_template_draft(person_id, query)
         if path == "/api/templates/queries":
             return self._templates_queries(person_id)
         if path == "/api/templates/documents":
@@ -1532,6 +1537,111 @@ class ManagementApp:
         comments = ReviewCommentReader(self._evidence_dir, uid).read(report_id)
         return Response.json(200, {"subject_id": uid, "report_id": report_id,
                                    "count": len(comments), "comments": comments})
+
+    # =====================================================================
+    # BERICHT ALS VORLAGE UEBERNEHMEN (Build 475 — Vermaehlung B6xB7).
+    #   GET /api/report/as-template-draft?subject_id=<uid>[&report_id=<rid>]
+    #   Liefert einen schreibfreien Vorlagen-ENTWURF aus einem bestehenden
+    #   Bericht. Read-only (ReadonlyReportBundle, mode=ro) — schreibt NICHTS in
+    #   evidence_<uid>.db. Die Sanitisierung (Platzhalter-Werte entfernt,
+    #   evidence_ids geleert) liegt zentral im ReportTemplateExtractor.
+    #
+    #   RECHTE: reports.review ODER reports.approve (identisch zu
+    #   /api/report/render); Scope 'eigene' -> nur zugewiesene Faelle. Das
+    #   SPEICHERN der Vorlage erfordert zusaetzlich templates.edit und laeuft
+    #   ueber den bestehenden auditierten Pfad POST /api/templates/document —
+    #   die Doppelbindung schraenkt das Feature faktisch auf die 'supervisor'
+    #   ein (operative Grant-Entscheidung, nicht Teil dieses Builds).
+    # =====================================================================
+    def _report_as_template_draft(self, person_id: int,
+                                  query: Optional[Dict[str, List[str]]]
+                                  ) -> Response:
+        policy = self.resolve_policy(person_id)
+        can_review = policy.can(CAP_REPORTS_REVIEW)
+        can_approve = policy.can(CAP_REPORTS_APPROVE)
+        if not (can_review or can_approve):
+            return self._forbidden(CAP_REPORTS_REVIEW)
+
+        scopes = []
+        if can_review:
+            scopes.append(policy.scope(CAP_REPORTS_REVIEW))
+        if can_approve:
+            scopes.append(policy.scope(CAP_REPORTS_APPROVE))
+        scope = "alle" if "alle" in scopes else (scopes[0] if scopes else None)
+
+        q = query or {}
+        uid_raw = (q.get("subject_id") or [None])[0]
+        if uid_raw is None:
+            return Response.json(400, {"error": "subject_id_required"})
+        try:
+            uid = int(uid_raw)
+        except (TypeError, ValueError):
+            return Response.json(400, {"error": "subject_id_invalid",
+                                       "value": uid_raw})
+
+        report_id: Optional[int] = None
+        rid_raw = (q.get("report_id") or [None])[0]
+        if rid_raw not in (None, ""):
+            try:
+                report_id = int(rid_raw)
+            except (TypeError, ValueError):
+                return Response.json(400, {"error": "report_id_invalid",
+                                           "value": rid_raw})
+
+        # Scope 'eigene': der Fall muss dem Anfragenden zugewiesen sein
+        # (identische Regel wie _report_render).
+        if scope != "alle":
+            if self._case_field(uid, "assigned_to") != person_id:
+                return self._forbidden(CAP_REPORTS_REVIEW)
+
+        from management.reports.readonly_report_bundle import (
+            ReadonlyReportBundle,
+        )
+        from management.templates_admin.report_template_extractor import (
+            ReportTemplateExtractor, NoReportForTemplateError,
+        )
+
+        try:
+            bundle = ReadonlyReportBundle(
+                evidence_dir=self._evidence_dir,
+                forensic_dir=self._forensic_dir,
+                assets_dir=self._assets_dir,
+                templates_db=self._templates_db,
+                default_db=self._default_db,
+                uid=uid,
+            ).open()
+        except FileNotFoundError as exc:
+            return Response.json(404, {"error": "evidence_not_found",
+                                       "subject_id": uid, "detail": str(exc)})
+
+        try:
+            result = ReportTemplateExtractor(bundle.evidence).build_draft(
+                report_id)
+        except NoReportForTemplateError as exc:
+            return Response.json(404, {"error": "no_report",
+                                       "subject_id": uid, "detail": str(exc)})
+        except Exception as exc:  # pragma: no cover - defensiver 500
+            logger.exception(
+                "as-template-draft fehlgeschlagen (uid=%s, report_id=%s)",
+                uid, report_id,
+            )
+            return Response.json(500, {"error": "draft_failed",
+                                       "detail": str(exc)})
+        finally:
+            bundle.close()
+
+        logger.info(
+            "Vorlagen-Entwurf aus Bericht: uid=%d report_id=%s, %d Bloecke, "
+            "%d Befunde, %d Warnungen (person=%d, scope=%s)",
+            uid, result.get("report_id"), len(result["draft"]["blocks"]),
+            len(result["findings"]), len(result["warnings"]), person_id, scope,
+        )
+        return Response.json(200, {
+            "ok": True,
+            "draft": result["draft"],
+            "findings": result["findings"],
+            "warnings": result["warnings"],
+        })
 
     # =====================================================================
     # AUTHORING: PLATZHALTER-QUERIES (Build 422, W2 — templates.db).
