@@ -1078,3 +1078,30 @@ td.aiw-cal-today { box-shadow: inset 0 0 0 2px var(--akzent); }
 .aiw-conf-wahrscheinlich { background: var(--akzent); }
 .aiw-conf-gesichert { background: var(--gruen); }
 .aiw-conf-unbekannt { background: var(--muted); }
+
+/* ==========================================================================
+   Build 478 (AP-2A(3)): Querfunde — rein lesende Meta-Uebersicht.
+   Status-Badges: offen (Handlungsbedarf) = gelb, integriert (erledigt) = gruen.
+   ========================================================================== */
+.aiw-cf-controls {
+  margin: 12px 0; display: flex; gap: 16px; align-items: center;
+}
+.aiw-cf-lbl { color: var(--ink); font-size: 14px; }
+.aiw-cf-counts {
+  margin: 6px 0 10px; color: var(--muted); font-size: 14px; font-weight: 600;
+}
+.aiw-cf-result { margin: 8px 0; min-height: 1.2em; font-size: 14px; }
+.aiw-cf-result.error { color: var(--rot); }
+.aiw-cf-table {
+  border-collapse: collapse; width: 100%; background: var(--panel);
+  margin-top: 8px;
+}
+.aiw-cf-table th, .aiw-cf-table td {
+  border: 1px solid var(--line); padding: 6px 10px; text-align: left;
+  vertical-align: top;
+}
+.aiw-cf-table thead th { background: #eef0f2; font-weight: 600; }
+.aiw-cf-badge { color: #fff; }
+.aiw-cf-offen { background: var(--gelb); color: #3a2f00; }
+.aiw-cf-integriert { background: var(--gruen); }
+.aiw-cf-unbekannt { background: var(--muted); }

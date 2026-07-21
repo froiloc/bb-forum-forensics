@@ -170,7 +170,10 @@
         { id: 'onboarding', cap: 'onboarding.view',      group: 'Verwaltung',     label: 'Onboarding / Offboarding' },
         // Build 471 (AP-2A(2b)): Katalog identifizierter Personen (Konto->reale
         // Person) mit Konfidenzstufe. Auswertungs-Sicht; Recht crossref.view.
-        { id: 'crossref',   cap: 'crossref.view',        group: 'Auswertung',     label: 'Kreuzbezug' }
+        { id: 'crossref',   cap: 'crossref.view',        group: 'Auswertung',     label: 'Kreuzbezug' },
+        // Build 478 (AP-2A(3)): Querfund-Meta-Uebersicht (rein lesend, Frontend
+        // zu /api/crossfindings). Gleiche F5-Familie; Recht crossref.view.
+        { id: 'crossfindings', cap: 'crossref.view',     group: 'Auswertung',     label: 'Querfunde' }
     ];
 
     // Gueltige Scope-Werte fuer die Anzeige (weitere -> kein Tag).
@@ -1618,6 +1621,46 @@
             });
     }
 
+    // loadCrossfindings: QUERFUND-META-UEBERSICHT (Build 478, AP-2A(3), Frontend
+    //   zu 474). REIN LESEND. GET /api/crossfindings (Recht crossref.view;
+    //   optional ?only_open=1). KEIN SSE-Refresh — Querfunde entstehen ueber die
+    //   automatische forensic_api-Pipeline, nicht ueber den audit_log; ein SSE-
+    //   Trigger wuerde nicht feuern. Stattdessen manuelles „Aktualisieren".
+    //   503 (Substrat fehlt) -> Fehlerzustand, KEINE leere Liste (Grundregel 1).
+    function loadCrossfindings(mainEl, onlyOpen) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        onlyOpen = onlyOpen === true;
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitCrossfindings : null;
+        if (!mod) {
+            renderError(mainEl, 'Querfunde-Modul nicht geladen.');
+            return;
+        }
+
+        var opts = {
+            onlyOpen: onlyOpen,
+            onReload: function (next) {
+                // State merken, damit ein View-Wechsel den Filter beibehaelt.
+                state.cfOnlyOpen = (next === true);
+                loadCrossfindings(mainEl, state.cfOnlyOpen);
+            }
+        };
+        var url = '/api/crossfindings' + (onlyOpen ? '?only_open=1' : '');
+
+        fetchJson(url)
+            .then(function (data) {
+                cleanupView();
+                mod.renderCrossfindings(mainEl, data, opts);
+                log('Querfunde gerendert:',
+                    (data && data.findings ? data.findings.length : 0));
+            })
+            .catch(function (err) {
+                // Auch 503 landet hier — als Fehlerzustand anzeigen, NICHT leer.
+                cleanupView();
+                mod.renderCrossfindings(mainEl, { error: err.message }, opts);
+            });
+    }
+
     // loadAudit: AUDIT-/REVISIONS-EXPLORER (Build 467, AP-2E). REIN LESEND.
     //   GET /api/audit/facets  — Filter-Auswahl (Event-Typen + Akteure).
     //   GET /api/audit         — gefilterte, paginierte Seite.
@@ -2039,6 +2082,8 @@
             loadOnboarding(mainEl, state.onbPerson, state.onbKind);
         } else if (viewId === 'crossref') {
             loadCrossref(mainEl);
+        } else if (viewId === 'crossfindings') {
+            loadCrossfindings(mainEl, state.cfOnlyOpen === true);
         } else if (viewId === 'workload') {
             loadWorkload(mainEl);
         } else if (viewId === 'capacity') {
