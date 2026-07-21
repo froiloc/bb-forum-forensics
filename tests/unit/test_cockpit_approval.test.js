@@ -110,10 +110,24 @@ describe("cockpit_approval", () => {
     api.renderApproval(main, _data(), {
       status: "submitted", canApprove: true, Tabulator: tab.StubTab,
     });
-    expect(tab.get().opts.data.length).toBe(1); // nur submitted
-    // Build 483: Header-Filter + Paginierung 20/Seite.
+    // Build 485: ALLE Zeilen geladen (Statusfilter uebernimmt der Header).
+    expect(tab.get().opts.data.length).toBe(2);
     const cols = tab.get().opts.columns;
     expect(cols.find((c) => c.field === "username").headerFilter).toBe("input");
+    // Typ + Status als Dropdown (list) mit festen Werten + 'alle'.
+    const tCol = cols.find((c) => c.field === "typ");
+    expect(tCol.headerFilter).toBe("list");
+    expect(tCol.headerFilterParams.values).toMatchObject({
+      "": "alle", Vermerk: "Vermerk", Abschlussbericht: "Abschlussbericht",
+    });
+    const sCol = cols.find((c) => c.field === "status_label");
+    expect(sCol.headerFilter).toBe("list");
+    expect(sCol.headerFilterParams.values).toMatchObject({
+      "": "alle", submitted: "Zur Abnahme vorgelegt", final: "Versandt",
+    });
+    expect(tab.get().opts.initialHeaderFilter).toEqual([
+      { field: "status_label", value: "submitted" },
+    ]);
     expect(tab.get().opts.pagination).toBe("local");
     expect(tab.get().opts.paginationSize).toBe(20);
     const frame = main.querySelector("iframe.aiw-approval-preview");
@@ -198,7 +212,9 @@ describe("cockpit_approval", () => {
     api.renderApproval(main, _data(), {
       status: "approved", canApprove: true, Tabulator: tab.StubTab,
     });
-    _pick(tab.get()); // erster (und einziger) Bericht im Status 'approved'
+    // Build 485: es werden ALLE Zeilen geladen; der freigegebene Bericht (701)
+    // ist Index 1 ([0]=submitted 700, [1]=approved 701).
+    _pick(tab.get(), 1);
     expect(main.querySelector(".aiw-approval-approvebtn")).toBeNull();
     expect(main.querySelector(".aiw-approval-action").textContent)
       .toContain("Nur vorgelegte");
@@ -423,7 +439,7 @@ describe("cockpit_approval", () => {
       .toContain("erforderlich");
   });
 
-  // --- Tabulator-Umbau (Build 483) --------------------------------------
+  // --- Tabulator-Umbau (Build 483/485) ----------------------------------
   it("AP16 toRows: Felder + Fallbacks (Grundregel 1)", () => {
     const api = _api();
     const rows = api.toRows(_data(), "submitted");
@@ -440,16 +456,9 @@ describe("cockpit_approval", () => {
     expect(rows2[0].title).toBe("(ohne Titel)");
   });
 
-  it("AP17 statusCounts: Trefferzahl je Status + Gesamt", () => {
-    const api = _api();
-    const c = api.statusCounts(_data());
-    expect(c.submitted).toBe(1);
-    expect(c.approved).toBe(1);
-    expect(c.alle).toBe(2);
-    expect(c.draft).toBe(0);
-  });
-
-  it("AP18 Status-Schnellfilter zeigt Zaehler in den Optionen", () => {
+  // Build 485: das Status-<select> ueber der Tabelle ist ENTFERNT; Filterung
+  // ueber den Dropdown-Header-Filter der Status-Spalte.
+  it("AP17 Status-Header-Filter filtert Roh-Status; 'alle' zeigt alles", () => {
     const win = _ctx();
     const api = _api(win);
     const main = _mount(win);
@@ -457,13 +466,10 @@ describe("cockpit_approval", () => {
     api.renderApproval(main, _data(), {
       status: "submitted", canApprove: true, Tabulator: tab.StubTab,
     });
-    const sel = main.querySelector("select.aiw-approval-status");
-    const opts = Array.from(sel.options).map((o) => o.textContent);
-    expect(opts).toContain("Zur Abnahme vorgelegt (1)");
-    expect(opts).toContain("Alle (2)");
-    // Statuswechsel tauscht die Daten via replaceData (kein Neu-Render).
-    sel.value = "alle";
-    sel.dispatchEvent(new win.Event("change", { bubbles: true }));
-    expect(tab.get().replaced.length).toBe(2);
+    expect(main.querySelector("select.aiw-approval-status")).toBeNull();
+    expect(api.statusFilter("submitted", "x", { status: "submitted" })).toBe(true);
+    expect(api.statusFilter("approved", "x", { status: "submitted" })).toBe(false);
+    expect(api.statusFilter("", "x", { status: "draft" })).toBe(true);
+    expect(api.statusFilter(null, "x", { status: "final" })).toBe(true);
   });
 });
