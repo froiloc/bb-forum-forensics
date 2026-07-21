@@ -181,6 +181,10 @@ from management.onboarding.onboarding_repo import (
     OnboardingRepo,
 )
 from management.onboarding.checklist_status import ChecklistStatus
+from management.crossref.identified_subject_repo import (
+    CrossrefError,
+    IdentifiedSubjectRepo,
+)
 from management.audit.audit_explorer import AuditExplorer, AuditExplorerError
 from management.audit import audit_export
 from management.export.context_builder import build_export_context
@@ -235,6 +239,11 @@ CAP_RELEASE_GRANT = "release.grant"
 # funktion, nicht scope-behaftet; Lesen und Pflegen getrennt.
 CAP_ONBOARDING_VIEW = "onboarding.view"
 CAP_ONBOARDING_EDIT = "onboarding.edit"
+
+# Build 468 (AP-2A): Kreuzbezug/Identitaetskatalog (Konto->reale Person).
+# Global, nicht scope-behaftet; Lesen und Pflegen getrennt. Seed in M018.
+CAP_CROSSREF_VIEW = "crossref.view"
+CAP_CROSSREF_EDIT = "crossref.edit"
 
 logger = logging.getLogger(__name__)
 
@@ -564,6 +573,9 @@ class ManagementApp:
             return self._releases(person_id, query)
         if path == "/api/onboarding":
             return self._onboarding(person_id, query)
+        # Build 470 (AP-2A): Katalog identifizierter Personen (Konto->Person).
+        if path == "/api/crossref":
+            return self._crossref(person_id, query)
         if path == "/api/external":
             return self._external(person_id, query)
         if path == "/api/calendar":
@@ -2652,6 +2664,86 @@ class ManagementApp:
             con.close()
         return Response.json(200, {"ok": True, "person_id": subject_id, **res})
 
+    # ---------------------------------------------------------------- AP-2A
+    def _crossref(self, actor_person_id: int, query) -> Response:
+        """
+        GET /api/crossref — Katalog identifizierter Personen (Konto->reale
+        Person), staerkste Konfidenz zuerst. Optional ?subject_id=N liefert
+        genau einen Eintrag (404, wenn unbekannt). Recht crossref.view.
+        Global, NICHT scope-behaftet (der Katalog ist falluebergreifend und
+        erfasst auch Geister ohne Fallpaket).
+        """
+        policy = self.resolve_policy(actor_person_id)
+        if not policy.can(CAP_CROSSREF_VIEW):
+            return self._forbidden(CAP_CROSSREF_VIEW)
+
+        raw = self._q1(query, "subject_id")
+        con = self._ro_con()
+        try:
+            repo = IdentifiedSubjectRepo(con)
+            if raw:
+                try:
+                    sid = int(raw)
+                except (TypeError, ValueError):
+                    return Response.json(
+                        400, {"error": "bad_request",
+                              "detail": "subject_id ungueltig."})
+                entry = repo.get(sid)
+                if entry is None:
+                    return Response.json(
+                        404, {"error": "unknown_subject", "subject_id": sid})
+                return Response.json(200, {"entry": entry})
+            return Response.json(200, {"entries": repo.list()})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Kreuzbezug-Katalog nicht lesbar")
+            return Response.json(500, {"error": "crossref_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+
+    def _crossref_set(self, actor_person_id: int,
+                      payload: Dict[str, Any]) -> Response:
+        """
+        POST /api/crossref/set — {subject_id, real_identity, confidence_code,
+        basis?, note?}. Legt eine Zuordnung an ODER revidiert die bestehende
+        (je subject_id genau ein Eintrag), auditiert. Recht crossref.edit.
+        Die Sensibilitaetsregel (Freitext nie im Audit-Payload) liegt im Repo;
+        der Endpunkt reicht nur durch. Ein No-Op (identische Werte) -> 400.
+        """
+        policy = self.resolve_policy(actor_person_id)
+        if not policy.can(CAP_CROSSREF_EDIT):
+            return self._forbidden(CAP_CROSSREF_EDIT)
+
+        try:
+            subject_id = int(payload.get("subject_id"))
+        except (TypeError, ValueError):
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": "subject_id fehlt/ungueltig."})
+
+        note_raw = payload.get("note")
+        con = self._rw_con()
+        try:
+            repo = IdentifiedSubjectRepo(
+                con, CoordinatorWriter(con, AuditLog(con)))
+            res = repo.upsert(
+                subject_id=subject_id,
+                real_identity=str(payload.get("real_identity", "") or ""),
+                confidence_code=str(payload.get("confidence_code", "") or ""),
+                basis=str(payload.get("basis", "") or ""),
+                note=(None if note_raw is None else str(note_raw)),
+                actor_id=actor_person_id,
+            )
+        except CrossrefError as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Kreuzbezug-Eintrag fehlgeschlagen")
+            return Response.json(500, {"error": "crossref_set_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, **res})
+
     def _external_scope(self, person_id: int, capability: str):
         policy = self.resolve_policy(person_id)
         if not policy.can(capability):
@@ -3536,6 +3628,9 @@ class ManagementApp:
         # Build 464 (AP-2G): Onboarding/Offboarding-Checkliste — auditiert.
         if path == "/api/onboarding/step":
             return self._onboarding_step(person_id, payload)
+        # Build 470 (AP-2A): Katalog identifizierter Personen — auditiert.
+        if path == "/api/crossref/set":
+            return self._crossref_set(person_id, payload)
         # Build 412 (SF-3): Lektorat/Chef-Kommentare (Addendum-Dateien).
         if path == "/api/report/comment":
             return self._report_comment_create(person_id, payload)
