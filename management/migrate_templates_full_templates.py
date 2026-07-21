@@ -323,9 +323,18 @@ def apply_migration(con: sqlite3.Connection, dry_run: bool = False) -> dict:
             con.execute(_DDL_REPORT_TEMPLATES_ACTIVE_IDX)
 
     # --- 2) Queries -------------------------------------------------------
+    # Build 489 (Platzhalter-Neuordnung): Ziel ist die einheitliche Tabelle
+    # 'placeholders' (Typ 'a'). REIHENFOLGE der Standalone-Migrationen:
+    # migrate_templates_placeholders ZUERST — dieses Skript bricht sonst mit
+    # klarer Ansage ab (kein stilles Seeden in eine Alt-Tabelle).
+    if not _table_exists(con, "placeholders"):
+        raise SystemExit(
+            "[migrate-full-templates] Tabelle 'placeholders' fehlt — bitte "
+            "zuerst 'python -m management.migrate_templates_placeholders' "
+            "ausfuehren (Build 489).")
     for q in _NEW_QUERIES:
         exists = con.execute(
-            "SELECT 1 FROM placeholder_queries WHERE id = ?", (q["id"],)
+            "SELECT 1 FROM placeholders WHERE id = ?", (q["id"],)
         ).fetchone()
         if exists:
             # GRUNDREGEL 1: NICHT ueberschreiben. Eine bereits vorhandene Query
@@ -337,10 +346,10 @@ def apply_migration(con: sqlite3.Connection, dry_run: bool = False) -> dict:
         if dry_run:
             continue
         con.execute(
-            "INSERT INTO placeholder_queries "
-            "(id, title, description, sql_query, tags, return_type, "
+            "INSERT INTO placeholders "
+            "(id, title, description, type, sql_query, tags, return_type, "
             " is_active, created_by, created_at, updated_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?)",
+            "VALUES (?, ?, ?, 'a', ?, ?, ?, 1, ?, ?, ?)",
             (q["id"], q["title"], q["description"], q["sql_query"],
              q["tags"], q["return_type"], actor, now, now),
         )

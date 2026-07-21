@@ -15,26 +15,38 @@ CREATE TABLE IF NOT EXISTS "report_modules" (
 	"module_key"	TEXT,
 	PRIMARY KEY("id" AUTOINCREMENT)
 );
-DROP TABLE IF EXISTS "placeholder_queries";
-CREATE TABLE IF NOT EXISTS "placeholder_queries" (
+DROP TABLE IF EXISTS "placeholders";
+-- Build 489 (Platzhalter-Neuordnung): einheitliche Tabelle fuer ALLE drei
+-- Platzhalter-Typen (a=automatisch, m=verpflichtend, o=optional) inkl.
+-- Validierung (validation im KLARTEXT UTF-8; 'list' = JSON-Array).
+-- Migration aus placeholder_queries: management/migrate_templates_placeholders.py.
+CREATE TABLE IF NOT EXISTS "placeholders" (
 	"id"	TEXT NOT NULL,
 	"title"	TEXT NOT NULL,
-	"description"	TEXT NOT NULL,
-	"sql_query"	TEXT NOT NULL,
+	"description"	TEXT NOT NULL DEFAULT '',
+	"type"	TEXT NOT NULL CHECK("type" IN ('a', 'm', 'o')),
+	"sql_query"	TEXT,
+	"default_value"	TEXT,
+	"validation"	TEXT,
+	"validation_type"	TEXT CHECK("validation_type" IN ('regex', 'list', 'like')),
 	"tags"	TEXT,
-	"return_type"	TEXT NOT NULL CHECK("return_type" IN ('scalar', 'list', 'table')),
+	"return_type"	TEXT NOT NULL DEFAULT 'scalar' CHECK("return_type" IN ('scalar', 'list', 'table')),
 	"is_active"	INTEGER NOT NULL DEFAULT 1,
 	"created_by"	TEXT NOT NULL,
 	"created_at"	INTEGER NOT NULL,
 	"updated_at"	INTEGER NOT NULL,
-	PRIMARY KEY("id")
+	PRIMARY KEY("id"),
+	CHECK("type" <> 'a' OR "sql_query" IS NOT NULL),
+	CHECK("type" <> 'a' OR "validation" IS NULL),
+	CHECK(("validation" IS NULL) = ("validation_type" IS NULL)),
+	CHECK("type" = 'a' OR "sql_query" IS NULL OR "return_type" = 'scalar')
 );
 DROP TABLE IF EXISTS "templates_audit_log";
 CREATE TABLE IF NOT EXISTS "templates_audit_log" (
 	"id"	INTEGER,
 	"action"	TEXT NOT NULL,
 	"target_id"	TEXT NOT NULL,
-	"target_type"	TEXT NOT NULL CHECK("target_type" IN ('module', 'query')),
+	"target_type"	TEXT NOT NULL CHECK("target_type" IN ('module', 'query', 'template', 'placeholder')),
 	"changed_by"	TEXT NOT NULL,
 	"changed_at"	INTEGER NOT NULL,
 	"old_value"	TEXT,
@@ -70,13 +82,14 @@ DROP INDEX IF EXISTS "rm_active_idx";
 CREATE INDEX IF NOT EXISTS "rm_active_idx" ON "report_modules" (
 	"is_active"
 );
-DROP INDEX IF EXISTS "pq_tags_idx";
-CREATE INDEX IF NOT EXISTS "pq_tags_idx" ON "placeholder_queries" (
-	"tags"
-);
-DROP INDEX IF EXISTS "pq_active_idx";
-CREATE INDEX IF NOT EXISTS "pq_active_idx" ON "placeholder_queries" (
+DROP INDEX IF EXISTS "ph_type_idx";
+CREATE INDEX IF NOT EXISTS "ph_type_idx" ON "placeholders" (
+	"type",
 	"is_active"
+);
+DROP INDEX IF EXISTS "ph_tags_idx";
+CREATE INDEX IF NOT EXISTS "ph_tags_idx" ON "placeholders" (
+	"tags"
 );
 DROP INDEX IF EXISTS "rt_key_idx";
 CREATE UNIQUE INDEX IF NOT EXISTS "rt_key_idx" ON "report_templates" (

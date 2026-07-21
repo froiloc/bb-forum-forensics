@@ -72,7 +72,7 @@ class ReportSource:
 
     Args:
         evidence:     EvidenceDb-Instanz (report_blocks, report_block_order, Anker, Cache).
-        templates:    TemplatesDb-Instanz (placeholder_queries) — darf None sein.
+        templates:    TemplatesDb-Instanz (placeholders, Build 489) — darf None sein.
         assets:       AssetsDb-Instanz (Bild-Existenzpruefung) — darf None sein.
         forensic_con: sqlite3.Connection mit ATTACH-Alias 'fdb' fuer {{a:}}-Queries
                       — darf None sein (dann sind {{a:}} nicht auflösbar -> Warnung).

@@ -30,7 +30,12 @@
 #   - Query-Definitionen lesen: templates_db (tdb.placeholder_queries).
 #
 # Beleg: Bauplan B6 v0.3 §3, Ausdefinitionsgespraech 2026-05-05
-# Version: v0.7.469 · Build: 469 · 2026-07-20
+# Version: v0.8.489 · Build: 489 · 2026-07-21
+# Build 489 (Platzhalter-Neuordnung): Query-Definitionen kommen aus
+#   templates.placeholders (statt placeholder_queries; Migration:
+#   management/migrate_templates_placeholders.py). Die library liefert alle
+#   Typen a/m/o inkl. validation/validation_type/default_value; der
+#   Cache-Refresh fuehrt nur 'a'-Definitionen aus.
 # Build 469: Schluesselumstellung user_id -> subject_id (M019)
 #   Build 403: {{a:}}-Aufloesung (Cache->Query->SQL->Cache) in den gemeinsamen
 #   Kern report_render/auto_query.py ausgelagert (De-Duplizierung gegen
@@ -264,17 +269,27 @@ class PlaceholdersEndpoint:
         tags   = params.get("tags",   [None])[0]
         search = params.get("search", [None])[0]
 
+        # Build 489 (Platzhalter-Neuordnung): die Bibliothek liefert jetzt ALLE
+        # Typen (a/m/o) inkl. Validierungsregeln — der Berichts-Editor (Wizard/
+        # Chips, Slice 3/Build 491) bezieht seine Definitionen von hier, statt
+        # sie nur aus Inline-Token-Parametern zu lesen (DB-Autoritaet,
+        # Bauplan Platzhalter_DB §2.3). validation ist KLARTEXT (UTF-8);
+        # eine Base64-Kodierung passiert erst im Token-Transport (mc §2.2).
         queries = self._bundle.templates.list_queries(
             tags=tags, search=search
         )
 
         result = [
             {
-                "id":          q.id,
-                "title":       q.title,
-                "description": q.description,
-                "tags":        q.tags.split(",") if q.tags else [],
-                "return_type": q.return_type,
+                "id":              q.id,
+                "title":           q.title,
+                "description":     q.description,
+                "tags":            q.tags.split(",") if q.tags else [],
+                "return_type":     q.return_type,
+                "type":            q.type,
+                "default_value":   q.default_value,
+                "validation":      q.validation,
+                "validation_type": q.validation_type,
             }
             for q in queries
         ]
@@ -353,7 +368,13 @@ class PlaceholdersEndpoint:
         auto = AutoQueryResolver(
             self._bundle.evidence, self._bundle.templates, self._bundle.connection,
         )
-        queries = self._bundle.templates.list_queries()
+        # Build 489: NUR 'a'-Definitionen ausfuehren. m/o-Eintraege haben
+        # hoechstens eine Default-Quelle und gehoeren nicht in den Auto-Refresh.
+        # WIEDERVORLAGE (Slice 3/Build 491): sobald m/o-ERMITTLERWERTE im
+        # placeholder_cache liegen, darf clear_cache_for_uid() oben nicht mehr
+        # pauschal leeren, sondern nur die a-Eintraege — sonst gehen erfasste
+        # Werte verloren.
+        queries = self._bundle.templates.list_queries(types=["a"])
         errors: list[str] = []
         refreshed = 0
 

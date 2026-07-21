@@ -24,11 +24,13 @@
 #
 # Audit-Vokabular:
 #   templates_audit_log.target_type ist per CHECK auf ('module','query',
-#   'template') beschraenkt — 'template' erst NACH migrate_templates_audit_check
-#   (Build 421). Ein Audit mit 'template' auf einer nicht migrierten DB scheitert
-#   an der CHECK-Constraint -> die Transaktion rollt zurueck (kein Teilschreiben).
+#   'template','placeholder') beschraenkt — 'template' seit
+#   migrate_templates_audit_check (Build 421), 'placeholder' seit
+#   migrate_templates_placeholders (Build 489). Ein Audit mit einem noch nicht
+#   migrierten Wert scheitert an der CHECK-Constraint -> die Transaktion rollt
+#   zurueck (kein Teilschreiben).
 #
-# Version: v0.7.421 · Build: 421 · 2026-07-14
+# Version: v0.8.489 · Build: 489 · 2026-07-21
 # =============================================================================
 
 from __future__ import annotations
@@ -91,7 +93,8 @@ class TemplatesWriter:
         neue id einer Zeile).
 
         action      — z.B. 'create'|'update'|'deactivate'
-        target_type — 'module'|'query'|'template' (per CHECK erzwungen)
+        target_type — 'module'|'query'|'template'|'placeholder' (per CHECK
+                      erzwungen; 'placeholder' seit Build 489)
         changed_by  — auditierte Urheber-Kennung (system_username o.ae.)
         """
         now = int(ts if ts is not None else time.time())

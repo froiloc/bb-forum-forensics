@@ -32,6 +32,9 @@
 #   sql_error — SQL-Fehler oder keine forensische Verbindung
 #
 # Version: v0.7.403 · Build: 403 · 2026-07-14
+# Build 489 (Platzhalter-Neuordnung): templates.placeholders traegt jetzt alle
+#   Typen a/m/o. resolve() fuehrt NUR 'a'-Definitionen aus; ein Typ-Mismatch
+#   gilt als no_query (sichtbarer Default-Rueckfall statt stiller Ausfuehrung).
 # =============================================================================
 
 from __future__ import annotations
@@ -131,6 +134,17 @@ class AutoQueryResolver:
         q_rec = self._tdb.get_query(query_id)
         if q_rec is None:
             logger.debug("resolve: query_id '%s' nicht in templates", query_id)
+            return AutoResult(None, STATUS_NO_QUERY)
+
+        # Build 489 (Platzhalter-Neuordnung): die Tabelle placeholders traegt
+        # jetzt AUCH m/o-Definitionen. Ein {{a:...}}-Token darf nur eine
+        # 'a'-Definition ausfuehren — ein Typ-Mismatch (z.B. {{a:x}} auf einer
+        # m-Definition) gilt als no_query und faellt damit sichtbar auf den
+        # Default zurueck (R2-Warnung beim Rendern; kein stilles Ausfuehren
+        # einer m/o-Default-Quelle im a-Pfad).
+        if getattr(q_rec, "type", "a") != "a":
+            logger.debug("resolve: '%s' ist Typ '%s' (kein 'a') — no_query",
+                         query_id, getattr(q_rec, "type", "?"))
             return AutoResult(None, STATUS_NO_QUERY)
 
         value, ok = self.execute_query(q_rec.sql_query, uid, query_id)

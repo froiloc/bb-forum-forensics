@@ -205,9 +205,12 @@ def templates_con():
             body TEXT NOT NULL, sort_order INTEGER NOT NULL DEFAULT 0,
             is_active INTEGER NOT NULL DEFAULT 1, created_by TEXT NOT NULL,
             created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
-        CREATE TABLE placeholder_queries (
+        CREATE TABLE placeholders (
             id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT NOT NULL,
-            sql_query TEXT NOT NULL, tags TEXT, return_type TEXT NOT NULL,
+            type TEXT NOT NULL DEFAULT 'a' CHECK (type IN ('a','m','o')),
+            sql_query TEXT, default_value TEXT, validation TEXT,
+            validation_type TEXT,
+            tags TEXT, return_type TEXT NOT NULL,
             is_active INTEGER NOT NULL DEFAULT 1, created_by TEXT NOT NULL,
             created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
         CREATE TABLE templates_audit_log (
@@ -247,16 +250,16 @@ class TestSeedMigration:
     def test_bestehende_query_wird_nicht_ueberschrieben(self, templates_con):
         """Eine im Betrieb angepasste Query darf nicht stillschweigend zurueckfallen."""
         templates_con.execute(
-            "INSERT INTO placeholder_queries "
-            "(id, title, description, sql_query, tags, return_type, is_active, "
-            " created_by, created_at, updated_at) "
-            "VALUES ('user.shares_total','ANGEPASST','x','SELECT 99','t','scalar',"
-            "1,'mensch',1,1)"
+            "INSERT INTO placeholders "
+            "(id, title, description, type, sql_query, tags, return_type, "
+            " is_active, created_by, created_at, updated_at) "
+            "VALUES ('user.shares_total','ANGEPASST','x','a','SELECT 99','t',"
+            "'scalar',1,'mensch',1,1)"
         )
         rep = apply_migration(templates_con)
         assert "user.shares_total" in rep["queries_skipped"]
         row = templates_con.execute(
-            "SELECT title, sql_query FROM placeholder_queries WHERE id='user.shares_total'"
+            "SELECT title, sql_query FROM placeholders WHERE id='user.shares_total'"
         ).fetchone()
         assert row["title"] == "ANGEPASST"
         assert row["sql_query"] == "SELECT 99"

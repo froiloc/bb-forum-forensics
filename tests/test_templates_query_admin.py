@@ -1,25 +1,35 @@
 # =============================================================================
 # tests/test_templates_query_admin.py
 # IT-Forensisches Ermittlungswerkzeug — Baustelle 7: Management-Interface
-# Vermaehlung B6xB7 — W2 (Build 422): Platzhalter-Query-Authoring (Backend)
+# Platzhalter-Neuordnung (Build 489, Slice 1): Platzhalter-Authoring (Backend)
 # =============================================================================
-# TQ01 — validate_static: gueltige Query -> keine Fehler.
-# TQ02 — validate_static: id-Zeichenraum, Pflichtfelder.
-# TQ03 — validate_static: kein SELECT / verbotenes Schluesselwort / ';' .
-# TQ04 — validate_static: nur ':uid' als Parameter (kein '?', kein :fremd).
-# TQ05 — validate_static: return_type-Pruefung.
-# TQ06 — dry_run: skalar 1 Spalte OK; 2 Spalten -> Fehler; fehlende fdb -> ran False.
-# TQ07 — QueryAuthorRepo.upsert: create + update, je mit Audit-Zeile (query).
-# TQ08 — GET /api/templates/queries: 200 mit Recht, 403 ohne.
-# TQ09 — POST /api/templates/query: anlegen + fdb-Dry-Run (ran True), Audit.
-# TQ10 — POST: statische Validierung 400; Dry-Run-Fehler (2 Spalten) 400.
-# TQ11 — POST /api/templates/query/dryrun: SCHREIBFREIE Vorschau, ran True,
-#        sample; NICHTS geschrieben (keine Query, keine Audit-Zeile).
-# TQ12 — dryrun: ungueltige Query -> ok False + errors (kein raise/400); auch
-#        hier NICHTS geschrieben.
+# Nachfolger der Query-Admin-Suite (Build 422): das Authoring verwaltet jetzt
+# die einheitliche Tabelle templates.db.placeholders (Typen a/m/o inkl.
+# Validierung; placeholder_repo/placeholder_validator statt query_repo/
+# query_validator). Der Dateiname bleibt (kein Datei-Delete im Zip-Workflow).
 #
-# Build 469: Schluesselumstellung user_id -> subject_id (M019)
-# Version: v0.7.469 · Build: 469 · 2026-07-20
+# TP01 — validate_static: gueltiger a-Platzhalter -> keine Fehler/Warnungen.
+# TP02 — validate_static: id-Zeichenraum, Pflichtfelder, Typ-Pflicht.
+# TP03 — validate_static: SQL-Regeln (SELECT-only, ';', :uid, Verbotsliste).
+# TP04 — validate_static: Typregeln — a braucht sql_query + verbietet
+#        Validierung; m/o verlangen return_type 'scalar'.
+# TP05 — validate_static: Validierungsarten — Paarigkeit, regex-Warnung
+#        (Python-re scheitert -> WARNUNG, kein Fehler), list-JSON, like.
+# TP06 — dry_run: skalar 1 Spalte OK; 2 Spalten -> Fehler; fehlende fdb -> ran False.
+# TP07 — PlaceholderAuthorRepo.upsert: create + update (a und m), Audit-Zeilen
+#        mit target_type 'placeholder', Normalisierung ''->NULL.
+# TP08 — GET /api/templates/placeholders: 200 mit Recht, 403 ohne;
+#        LEGACY-Alias /api/templates/queries liefert dieselbe Liste.
+# TP09 — POST /api/templates/placeholder: a anlegen + fdb-Dry-Run; m mit
+#        Validierung anlegen; LEGACY-Alias /api/templates/query deutet
+#        fehlenden type als 'a'.
+# TP10 — POST: statische Validierung 400 (inkl. Typregeln); Dry-Run-Fehler 400.
+# TP11 — POST /api/templates/placeholder/dryrun: SCHREIBFREI (nichts
+#        geschrieben, kein Audit); regex-Warnung erscheint als warnings.
+# TP12 — dryrun: ungueltiger Platzhalter -> ok False + errors als Daten.
+#
+# Beleg: Bauplan management/Bauplan_Platzhalter_DB_v0_1.md (mc 2026-07-21).
+# Version: v0.8.489 · Build: 489 · 2026-07-21
 # =============================================================================
 
 import json
@@ -39,30 +49,28 @@ from management.migrations.runner import MigrationRunner, discover
 from management.gateway.coordinator_writer import CoordinatorWriter
 from management.rbac.rbac_repo import RbacRepo
 from management.server.management_app import ManagementApp
-from management.templates_admin.query_validator import (
-    validate_static, dry_run, QueryValidationError,
+from management.templates_admin.placeholder_validator import (
+    validate_static, dry_run, PlaceholderValidationError,
 )
-from management.templates_admin.query_repo import QueryAuthorRepo
+from management.templates_admin.placeholder_repo import PlaceholderAuthorRepo
+from management.migrate_templates_placeholders import (
+    DDL_PLACEHOLDERS, DDL_INDEXES,
+)
 
-_DDL_QUERIES = """
-CREATE TABLE placeholder_queries (
-    id TEXT NOT NULL PRIMARY KEY, title TEXT NOT NULL, description TEXT NOT NULL,
-    sql_query TEXT NOT NULL, tags TEXT,
-    return_type TEXT NOT NULL CHECK (return_type IN ('scalar','list','table')),
-    is_active INTEGER NOT NULL DEFAULT 1, created_by TEXT NOT NULL,
-    created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
-)
-"""
 _DDL_AUDIT = """
 CREATE TABLE templates_audit_log (
     id INTEGER PRIMARY KEY AUTOINCREMENT, action TEXT NOT NULL, target_id TEXT NOT NULL,
-    target_type TEXT NOT NULL CHECK (target_type IN ('module','query','template')),
+    target_type TEXT NOT NULL CHECK (target_type IN ('module','query','template','placeholder')),
     changed_by TEXT NOT NULL, changed_at INTEGER NOT NULL, old_value TEXT, new_value TEXT
 )
 """
-_GOOD = {"id": "user.name", "title": "Name", "description": "",
-         "sql_query": "SELECT username FROM uid_profile WHERE id = :uid",
-         "return_type": "scalar"}
+_GOOD_A = {"id": "user.name", "title": "Name", "description": "", "type": "a",
+           "sql_query": "SELECT username FROM uid_profile WHERE id = :uid",
+           "return_type": "scalar"}
+_GOOD_M = {"id": "spurennummer", "title": "Spurennummer", "description": "",
+           "type": "m", "default_value": "unbekannt",
+           "validation": "^[A-Z]{2}-\\d{4}$", "validation_type": "regex",
+           "return_type": "scalar"}
 
 _PERSON = """
 CREATE TABLE person (
@@ -89,7 +97,9 @@ CREATE TABLE scrape_jobs (
 def _mk_templates_db(path):
     con = sqlite3.connect(path)
     try:
-        con.execute(_DDL_QUERIES)
+        con.execute(DDL_PLACEHOLDERS)
+        for ddl in DDL_INDEXES:
+            con.execute(ddl)
         con.execute(_DDL_AUDIT)
         con.commit()
     finally:
@@ -108,52 +118,102 @@ def _mk_forensic_db(path):
 
 
 class ValidatorTests(unittest.TestCase):
-    def test_tq01_good(self):
-        self.assertEqual(validate_static(_GOOD), [])
+    def test_tp01_good_a(self):
+        self.assertEqual(validate_static(_GOOD_A), ([], []))
 
-    def test_tq02_id_and_required(self):
-        self.assertTrue(any("id" in e for e in validate_static(
-            {**_GOOD, "id": "bad id!"})))
-        self.assertTrue(any("title" in e for e in validate_static(
-            {**_GOOD, "title": "  "})))
-        self.assertTrue(any("description" in e for e in validate_static(
-            {**_GOOD, "description": None})))
+    def test_tp02_id_required_type(self):
+        errs, _ = validate_static({**_GOOD_A, "id": "bad id!"})
+        self.assertTrue(any("id" in e for e in errs))
+        errs, _ = validate_static({**_GOOD_A, "title": "  "})
+        self.assertTrue(any("title" in e for e in errs))
+        errs, _ = validate_static({**_GOOD_A, "description": None})
+        self.assertTrue(any("description" in e for e in errs))
+        errs, _ = validate_static({**_GOOD_A, "type": ""})
+        self.assertTrue(any("type" in e for e in errs))
+        errs, _ = validate_static({**_GOOD_A, "type": "x"})
+        self.assertTrue(any("type" in e for e in errs))
 
-    def test_tq03_select_only(self):
-        self.assertTrue(validate_static(
-            {**_GOOD, "sql_query": "DELETE FROM uid_profile"}))
-        self.assertTrue(validate_static(
-            {**_GOOD, "sql_query": "UPDATE uid_profile SET x=1"}))
-        self.assertTrue(validate_static(
-            {**_GOOD, "sql_query": "SELECT 1; DROP TABLE x"}))
-        # gueltiges WITH ... SELECT ist erlaubt.
+    def test_tp03_sql_regeln(self):
+        errs, _ = validate_static(
+            {**_GOOD_A, "sql_query": "DELETE FROM uid_profile"})
+        self.assertTrue(errs)
+        errs, _ = validate_static(
+            {**_GOOD_A, "sql_query": "SELECT 1; DROP TABLE x"})
+        self.assertTrue(errs)
+        errs, _ = validate_static(
+            {**_GOOD_A, "sql_query": "SELECT username FROM uid_profile "
+                                     "WHERE id=?"})
+        self.assertTrue(errs)
+        errs, _ = validate_static(
+            {**_GOOD_A, "sql_query": "SELECT u FROM t WHERE a=:uid AND b=:x"})
+        self.assertTrue(errs)
         self.assertEqual(validate_static(
-            {**_GOOD, "sql_query": "WITH t AS (SELECT 1 AS a) SELECT a FROM t"}),
-            [])
+            {**_GOOD_A,
+             "sql_query": "WITH t AS (SELECT 1 AS a) SELECT a FROM t"}),
+            ([], []))
 
-    def test_tq04_only_uid_param(self):
-        self.assertTrue(validate_static(
-            {**_GOOD, "sql_query": "SELECT username FROM uid_profile WHERE id=?"}))
-        self.assertTrue(validate_static(
-            {**_GOOD, "sql_query": "SELECT username FROM uid_profile "
-                                   "WHERE id=:uid AND x=:other"}))
+    def test_tp04_typregeln(self):
+        # a ohne sql_query -> Fehler.
+        errs, _ = validate_static({**_GOOD_A, "sql_query": ""})
+        self.assertTrue(any("Pflicht" in e for e in errs))
+        # a mit Validierung -> Fehler (mc: kein Ermittler-Einfluss).
+        errs, _ = validate_static({**_GOOD_A, "validation": "^x$",
+                                   "validation_type": "regex"})
+        self.assertTrue(any("KEINE Validierung" in e for e in errs))
+        # m ohne Query ist gueltig; m mit Query verlangt scalar.
+        self.assertEqual(validate_static(_GOOD_M)[0], [])
+        errs, _ = validate_static({**_GOOD_M, "sql_query": "SELECT 1",
+                                   "return_type": "table"})
+        self.assertTrue(any("scalar" in e for e in errs))
+        # o ohne alles (nur id/title) ist gueltig.
+        errs, warns = validate_static({"id": "notiz", "title": "Notiz",
+                                       "description": "", "type": "o"})
+        self.assertEqual((errs, warns), ([], []))
 
-    def test_tq05_return_type(self):
-        self.assertTrue(validate_static({**_GOOD, "return_type": "matrix"}))
+    def test_tp05_validierungsarten(self):
+        # Paarigkeit.
+        errs, _ = validate_static({**_GOOD_M, "validation_type": None})
+        self.assertTrue(any("PAARWEISE" in e for e in errs))
+        errs, _ = validate_static({**_GOOD_M, "validation": None})
+        self.assertTrue(any("PAARWEISE" in e for e in errs))
+        # regex: kaputtes Muster -> WARNUNG, kein Fehler (JS-Dialekt massgeblich).
+        errs, warns = validate_static({**_GOOD_M, "validation": "(["})
+        self.assertEqual(errs, [])
+        self.assertTrue(any("Python-re" in w for w in warns))
+        # list: JSON-Array Pflicht.
+        errs, _ = validate_static({**_GOOD_M, "validation": "kein json",
+                                   "validation_type": "list"})
+        self.assertTrue(any("JSON" in e for e in errs))
+        errs, _ = validate_static({**_GOOD_M, "validation": "[]",
+                                   "validation_type": "list"})
+        self.assertTrue(any("leer" in e.lower() for e in errs))
+        self.assertEqual(validate_static(
+            {**_GOOD_M, "validation": '["ja","nein"]',
+             "validation_type": "list"}), ([], []))
+        # like: nicht leer.
+        errs, _ = validate_static({**_GOOD_M, "validation": "  ",
+                                   "validation_type": "like"})
+        self.assertTrue(any("like" in e for e in errs))
+        self.assertEqual(validate_static(
+            {**_GOOD_M, "validation": "SP-%", "validation_type": "like"}),
+            ([], []))
+        # unbekannte Art.
+        errs, _ = validate_static({**_GOOD_M, "validation_type": "fuzzy"})
+        self.assertTrue(any("validation_type" in e for e in errs))
 
-    def test_tq06_dry_run(self):
+    def test_tp06_dry_run(self):
         tmp = tempfile.mkdtemp()
         try:
             fdb = os.path.join(tmp, "forensic_700.db")
             _mk_forensic_db(fdb)
-            r = dry_run(_GOOD["sql_query"], 700, fdb)
+            r = dry_run(_GOOD_A["sql_query"], 700, fdb)
             self.assertTrue(r["ran"])
             self.assertEqual(r["columns"], 1)
             self.assertEqual(r["sample"], "bob")
-            with self.assertRaises(QueryValidationError):
+            with self.assertRaises(PlaceholderValidationError):
                 dry_run("SELECT username, registered FROM uid_profile "
                         "WHERE id=:uid", 700, fdb)
-            miss = dry_run(_GOOD["sql_query"], 701,
+            miss = dry_run(_GOOD_A["sql_query"], 701,
                            os.path.join(tmp, "forensic_701.db"))
             self.assertFalse(miss["ran"])
         finally:
@@ -175,23 +235,37 @@ class RepoTests(unittest.TestCase):
                 os.remove(os.path.join(root, f))
         os.rmdir(self._tmp)
 
-    def test_tq07_upsert_create_and_update(self):
+    def test_tp07_upsert_create_update_und_normalisierung(self):
         con = sqlite3.connect(self._db)
         con.execute("PRAGMA journal_mode=delete")
         try:
-            repo = QueryAuthorRepo(con)
-            r1 = repo.upsert(_GOOD, changed_by="h004")
+            repo = PlaceholderAuthorRepo(con)
+            r1 = repo.upsert(_GOOD_A, changed_by="h004")
             self.assertTrue(r1["created"])
-            r2 = repo.upsert({**_GOOD, "title": "Neuer Name"}, changed_by="h004")
+            r2 = repo.upsert({**_GOOD_A, "title": "Neuer Name"},
+                             changed_by="h004")
             self.assertFalse(r2["created"])
-            row = con.execute("SELECT title FROM placeholder_queries "
+            row = con.execute("SELECT title, type FROM placeholders "
                               "WHERE id='user.name'").fetchone()
-            self.assertEqual(row[0], "Neuer Name")
-            # Zwei Audit-Zeilen (create + update), target_type 'query'.
-            n = con.execute("SELECT COUNT(*) FROM templates_audit_log "
-                            "WHERE target_id='user.name' AND target_type='query'"
-                            ).fetchone()[0]
-            self.assertEqual(n, 2)
+            self.assertEqual(tuple(row), ("Neuer Name", "a"))
+
+            # m-Platzhalter mit Validierung; leere Strings -> NULL
+            # (sonst kollidierte '' mit der Paarigkeits-CHECK).
+            repo.upsert({**_GOOD_M, "sql_query": "", "tags": ""},
+                        changed_by="h004")
+            row = con.execute(
+                "SELECT type, sql_query, validation, validation_type, tags, "
+                "default_value FROM placeholders WHERE id='spurennummer'"
+            ).fetchone()
+            self.assertEqual(tuple(row),
+                             ("m", None, "^[A-Z]{2}-\\d{4}$", "regex", None,
+                              "unbekannt"))
+
+            # Drei Audit-Zeilen, alle target_type 'placeholder'.
+            n = con.execute(
+                "SELECT COUNT(*) FROM templates_audit_log "
+                "WHERE target_type='placeholder'").fetchone()[0]
+            self.assertEqual(n, 3)
         finally:
             con.close()
 
@@ -242,93 +316,123 @@ class EndpointTests(unittest.TestCase):
         return ManagementApp(self._db, templates_db=self._tdb,
                              forensic_dir=self._fdir)
 
-    def test_tq08_list_gated(self):
-        self.assertEqual(self._app().dispatch(1, "/api/templates/queries")
+    def test_tp08_list_gated_und_alias(self):
+        self.assertEqual(self._app().dispatch(1, "/api/templates/placeholders")
                          .status, 200)
-        self.assertEqual(self._app().dispatch(2, "/api/templates/queries")
+        self.assertEqual(self._app().dispatch(2, "/api/templates/placeholders")
                          .status, 403)
+        # LEGACY-Alias (alte Maske, bis Build 490): gleiche Liste.
+        r = self._app().dispatch(1, "/api/templates/queries")
+        self.assertEqual(r.status, 200)
+        d = json.loads(r.body.decode("utf-8"))
+        self.assertEqual(d["placeholders"], d["queries"])
 
-    def test_tq09_create_with_dry_run(self):
-        body = {**_GOOD, "test_subject_id": 700}
-        r = self._app().dispatch_write(1, "/api/templates/query", body)
+    def test_tp09_create_a_und_m(self):
+        # a: mit fdb-Dry-Run ueber den NEUEN Pfad.
+        body = {**_GOOD_A, "test_subject_id": 700}
+        r = self._app().dispatch_write(1, "/api/templates/placeholder", body)
         self.assertEqual(r.status, 200)
         d = json.loads(r.body.decode("utf-8"))
         self.assertTrue(d["created"])
         self.assertTrue(d["dry_run"]["ran"])
         self.assertEqual(d["dry_run"]["sample"], "bob")
-        # in der Liste sichtbar + Audit vorhanden.
-        lst = json.loads(self._app().dispatch(1, "/api/templates/queries")
-                         .body.decode("utf-8"))
-        self.assertEqual(lst["count"], 1)
+
+        # m: mit Validierung; ohne sql_query wird der Dry-Run uebersprungen.
+        r2 = self._app().dispatch_write(1, "/api/templates/placeholder",
+                                        dict(_GOOD_M))
+        self.assertEqual(r2.status, 200)
+        d2 = json.loads(r2.body.decode("utf-8"))
+        self.assertTrue(d2["created"])
+        self.assertFalse(d2["dry_run"]["ran"])
+
+        # LEGACY-Alias: fehlender type -> 'a'.
+        legacy = {"id": "user.alias", "title": "Alias", "description": "",
+                  "sql_query": "SELECT username FROM uid_profile "
+                               "WHERE id = :uid",
+                  "return_type": "scalar"}
+        r3 = self._app().dispatch_write(1, "/api/templates/query", legacy)
+        self.assertEqual(r3.status, 200)
         con = sqlite3.connect("file:%s?mode=ro" % self._tdb, uri=True)
         try:
-            n = con.execute("SELECT COUNT(*) FROM templates_audit_log "
-                            "WHERE target_type='query'").fetchone()[0]
+            rows = dict(con.execute(
+                "SELECT id, type FROM placeholders").fetchall())
+            n_audit = con.execute(
+                "SELECT COUNT(*) FROM templates_audit_log "
+                "WHERE target_type='placeholder'").fetchone()[0]
         finally:
             con.close()
-        self.assertEqual(n, 1)
+        self.assertEqual(rows, {"user.name": "a", "spurennummer": "m",
+                                "user.alias": "a"})
+        self.assertEqual(n_audit, 3)
 
-    def test_tq10_validation_and_dry_run_errors(self):
-        bad = {**_GOOD, "sql_query": "DELETE FROM uid_profile"}
-        r1 = self._app().dispatch_write(1, "/api/templates/query", bad)
+    def test_tp10_validation_und_dry_run_fehler(self):
+        bad = {**_GOOD_A, "sql_query": "DELETE FROM uid_profile"}
+        r1 = self._app().dispatch_write(1, "/api/templates/placeholder", bad)
         self.assertEqual(r1.status, 400)
         self.assertEqual(json.loads(r1.body.decode("utf-8"))["error"],
                          "validation")
+        # Typregel-Fehler (a mit Validierung).
+        bad2 = {**_GOOD_A, "validation": "^x$", "validation_type": "regex"}
+        r2 = self._app().dispatch_write(1, "/api/templates/placeholder", bad2)
+        self.assertEqual(r2.status, 400)
 
-        two = {**_GOOD, "id": "user.two",
+        two = {**_GOOD_A, "id": "user.two",
                "sql_query": "SELECT username, registered FROM uid_profile "
                             "WHERE id=:uid", "test_subject_id": 700}
-        r2 = self._app().dispatch_write(1, "/api/templates/query", two)
-        self.assertEqual(r2.status, 400)
-        self.assertEqual(json.loads(r2.body.decode("utf-8"))["error"], "dry_run")
+        r3 = self._app().dispatch_write(1, "/api/templates/placeholder", two)
+        self.assertEqual(r3.status, 400)
+        self.assertEqual(json.loads(r3.body.decode("utf-8"))["error"],
+                         "dry_run")
 
-    def _query_count(self):
+    def _counts(self):
         con = sqlite3.connect("file:%s?mode=ro" % self._tdb, uri=True)
         try:
-            q = con.execute("SELECT COUNT(*) FROM placeholder_queries"
-                            ).fetchone()[0]
+            q = con.execute("SELECT COUNT(*) FROM placeholders").fetchone()[0]
             a = con.execute("SELECT COUNT(*) FROM templates_audit_log"
                             ).fetchone()[0]
         finally:
             con.close()
         return q, a
 
-    def test_tq11_dryrun_is_write_free(self):
-        # Vorher: leer. Der Dry-Run darf daran NICHTS aendern.
-        self.assertEqual(self._query_count(), (0, 0))
-        body = {**_GOOD, "test_subject_id": 700}
-        r = self._app().dispatch_write(1, "/api/templates/query/dryrun", body)
+    def test_tp11_dryrun_schreibfrei_mit_warnung(self):
+        self.assertEqual(self._counts(), (0, 0))
+        # Kaputte JS-Regex aus Python-Sicht -> ok True, aber warnings gefuellt.
+        body = {**_GOOD_M, "validation": "(["}
+        r = self._app().dispatch_write(
+            1, "/api/templates/placeholder/dryrun", body)
         self.assertEqual(r.status, 200)
         d = json.loads(r.body.decode("utf-8"))
         self.assertTrue(d["ok"])
         self.assertEqual(d["errors"], [])
-        self.assertTrue(d["dry_run"]["ran"])
-        self.assertEqual(d["dry_run"]["sample"], "bob")
+        self.assertTrue(any("Python-re" in w for w in d["warnings"]))
         # Kern der Zusicherung: KEIN Schreibvorgang, KEIN Audit-Beleg.
-        self.assertEqual(self._query_count(), (0, 0))
-        # Ohne Recht: 403 (auch die Vorschau ist gatet).
-        self.assertEqual(
-            self._app().dispatch_write(2, "/api/templates/query/dryrun", body)
-            .status, 403)
+        self.assertEqual(self._counts(), (0, 0))
+        # Ohne Recht: 403; LEGACY-Alias funktioniert ebenfalls.
+        self.assertEqual(self._app().dispatch_write(
+            2, "/api/templates/placeholder/dryrun", body).status, 403)
+        self.assertEqual(self._app().dispatch_write(
+            1, "/api/templates/query/dryrun",
+            {**_GOOD_A, "test_subject_id": 700}).status, 200)
+        self.assertEqual(self._counts(), (0, 0))
 
-    def test_tq12_dryrun_reports_errors_as_data(self):
-        # Ungueltige Query (schreibend): ok False + Fehlerliste, HTTP 200,
-        # nichts geschrieben.
-        bad = {**_GOOD, "sql_query": "DELETE FROM uid_profile"}
-        r = self._app().dispatch_write(1, "/api/templates/query/dryrun", bad)
+    def test_tp12_dryrun_fehler_als_daten(self):
+        bad = {**_GOOD_A, "sql_query": "DELETE FROM uid_profile"}
+        r = self._app().dispatch_write(
+            1, "/api/templates/placeholder/dryrun", bad)
         self.assertEqual(r.status, 200)
         d = json.loads(r.body.decode("utf-8"))
         self.assertFalse(d["ok"])
         self.assertTrue(len(d["errors"]) >= 1)
-        # 2-Spalten-'scalar' faellt im Dry-Run auf (als Datenfehler, nicht 400).
-        two = {**_GOOD, "sql_query": "SELECT username, registered FROM "
+        two = {**_GOOD_A, "sql_query": "SELECT username, registered FROM "
                "uid_profile WHERE id=:uid", "test_subject_id": 700}
-        r2 = self._app().dispatch_write(1, "/api/templates/query/dryrun", two)
+        r2 = self._app().dispatch_write(
+            1, "/api/templates/placeholder/dryrun", two)
         self.assertEqual(r2.status, 200)
         d2 = json.loads(r2.body.decode("utf-8"))
         self.assertFalse(d2["ok"])
-        self.assertTrue(any("scalar" in e or "Spalte" in e for e in d2["errors"]))
-        self.assertEqual(self._query_count(), (0, 0))
+        self.assertTrue(any("scalar" in e or "Spalte" in e
+                            for e in d2["errors"]))
+        self.assertEqual(self._counts(), (0, 0))
 
 
 if __name__ == "__main__":

@@ -57,10 +57,14 @@ def _make_templates_db_with_data() -> tuple[sqlite3.Connection, TemplatesDb]:
             is_active INTEGER NOT NULL DEFAULT 1,
             created_by TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
         );
-        CREATE TABLE IF NOT EXISTS placeholder_queries (
+        CREATE TABLE IF NOT EXISTS placeholders (
             id TEXT NOT NULL PRIMARY KEY, title TEXT NOT NULL,
-            description TEXT NOT NULL, sql_query TEXT NOT NULL,
-            tags TEXT, return_type TEXT NOT NULL
+            description TEXT NOT NULL DEFAULT '',
+            type TEXT NOT NULL CHECK (type IN ('a','m','o')),
+            sql_query TEXT, default_value TEXT,
+            validation TEXT,
+            validation_type TEXT CHECK (validation_type IN ('regex','list','like')),
+            tags TEXT, return_type TEXT NOT NULL DEFAULT 'scalar'
             CHECK (return_type IN ('scalar','list','table')),
             is_active INTEGER NOT NULL DEFAULT 1,
             created_by TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
@@ -68,7 +72,7 @@ def _make_templates_db_with_data() -> tuple[sqlite3.Connection, TemplatesDb]:
         CREATE TABLE IF NOT EXISTS templates_audit_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             action TEXT NOT NULL, target_id TEXT NOT NULL,
-            target_type TEXT NOT NULL CHECK (target_type IN ('module','query')),
+            target_type TEXT NOT NULL CHECK (target_type IN ('module','query','template','placeholder')),
             changed_by TEXT NOT NULL, changed_at INTEGER NOT NULL,
             old_value TEXT, new_value TEXT
         );
@@ -89,8 +93,8 @@ def _make_templates_db_with_data() -> tuple[sqlite3.Connection, TemplatesDb]:
         ("user.id",       "Benutzer-ID",  "SELECT id FROM uid_profile WHERE id = :uid",       "identitaet,id"),
     ]:
         con.execute(
-            "INSERT INTO placeholder_queries (id, title, description, sql_query, tags, return_type, created_by, created_at, updated_at) "
-            "VALUES (?, ?, ?, ?, ?, 'scalar', 'test', ?, ?)",
+            "INSERT INTO placeholders (id, title, description, type, sql_query, tags, return_type, created_by, created_at, updated_at) "
+            "VALUES (?, ?, ?, 'a', ?, ?, 'scalar', 'test', ?, ?)",
             (qid, title, f"Gibt {title} zurueck.", sql, tags, now, now)
         )
     con.commit()
@@ -160,7 +164,7 @@ class TestTemplatesDbMitDaten(unittest.TestCase):
         """T02: list_queries() liefert alle aktiven Queries."""
         rows = self.con.execute(
             "SELECT id, title, description, sql_query, tags, return_type, is_active "
-            "FROM placeholder_queries WHERE is_active = 1"
+            "FROM placeholders WHERE is_active = 1"
         ).fetchall()
         self.assertEqual(len(rows), 2)
         ids = {r["id"] for r in rows}
@@ -171,7 +175,7 @@ class TestTemplatesDbMitDaten(unittest.TestCase):
         """T03: get_query() liefert QueryRecord mit korrekten Feldern."""
         row = self.con.execute(
             "SELECT id, title, description, sql_query, tags, return_type, is_active "
-            "FROM placeholder_queries WHERE id = 'user.username' AND is_active = 1"
+            "FROM placeholders WHERE id = 'user.username' AND is_active = 1"
         ).fetchone()
         self.assertIsNotNone(row)
         self.assertEqual(row["title"], "Benutzername")
@@ -191,11 +195,11 @@ class TestTemplatesDbMitDaten(unittest.TestCase):
     def test_T05_list_queries_tag_filter(self):
         """T05: list_queries() mit tag-Filter liefert nur passende Queries."""
         rows = self.con.execute(
-            "SELECT id FROM placeholder_queries WHERE tags LIKE '%identitaet%' AND is_active=1"
+            "SELECT id FROM placeholders WHERE tags LIKE '%identitaet%' AND is_active=1"
         ).fetchall()
         self.assertEqual(len(rows), 2)
         rows_id = self.con.execute(
-            "SELECT id FROM placeholder_queries WHERE tags LIKE '%,id%' AND is_active=1"
+            "SELECT id FROM placeholders WHERE tags LIKE '%,id%' AND is_active=1"
         ).fetchall()
         self.assertEqual(len(rows_id), 1)
         self.assertEqual(rows_id[0]["id"], "user.id")

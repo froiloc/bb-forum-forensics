@@ -559,8 +559,11 @@ class ManagementApp:
         # entfernt, evidence_ids geleert). Rechte/Scope wie /api/report/render.
         if path == "/api/report/as-template-draft":
             return self._report_as_template_draft(person_id, query)
-        if path == "/api/templates/queries":
-            return self._templates_queries(person_id)
+        # Build 489: Platzhalter-Neuordnung (placeholders a/m/o). Der alte
+        # Pfad /api/templates/queries bleibt als LEGACY-Alias bis zum
+        # Maskenumbau (Build 490) — gleiche Antwort, danach entfernen.
+        if path in ("/api/templates/placeholders", "/api/templates/queries"):
+            return self._templates_placeholders(person_id)
         if path == "/api/templates/documents":
             return self._templates_documents(person_id)
         if path == "/api/templates/modules":
@@ -1644,76 +1647,116 @@ class ManagementApp:
         })
 
     # =====================================================================
-    # AUTHORING: PLATZHALTER-QUERIES (Build 422, W2 — templates.db).
-    #   GET  /api/templates/queries       — Liste (Recht templates.edit)
-    #   POST /api/templates/query         — anlegen/aendern (validiert + fdb-
-    #                                       Dry-Run, auditiert ueber TemplatesWriter)
-    #   POST /api/templates/query/dryrun  — SCHREIBFREIE Vorschau (Build 423):
-    #                                       Validierung + fdb-Dry-Run, KEIN Write,
-    #                                       KEIN Audit (Test vor dem Speichern)
+    # AUTHORING: PLATZHALTER (Build 489, W2 — templates.db.placeholders).
+    #   Nachfolger der Platzhalter-Queries (Build 422): EINE Tabelle fuer alle
+    #   drei Typen a/m/o inkl. Validierung (Bauplan Platzhalter_DB v0.1,
+    #   mc-Freigabe 2026-07-21).
+    #   GET  /api/templates/placeholders       — Liste (Recht templates.edit)
+    #   POST /api/templates/placeholder        — anlegen/aendern (validiert +
+    #                                            optionaler fdb-Dry-Run,
+    #                                            auditiert, target_type
+    #                                            'placeholder')
+    #   POST /api/templates/placeholder/dryrun — SCHREIBFREIE Vorschau
+    #   LEGACY-ALIASE (bis die Maske in Build 490 umgestellt ist; danach
+    #   entfernen): /api/templates/queries, /api/templates/query(+/dryrun) —
+    #   gleiche Handler; fehlender 'type' im Payload wird als 'a' gedeutet
+    #   (die alte Maske kennt nur automatische Queries).
     # =====================================================================
-    def _templates_queries(self, person_id: int) -> Response:
-        """Liste der Platzhalter-Queries (read-only)."""
+    def _templates_placeholders(self, person_id: int) -> Response:
+        """Liste aller Platzhalter (read-only, alle Typen)."""
         if not self.resolve_policy(person_id).can(CAP_TEMPLATES_EDIT):
             return self._forbidden(CAP_TEMPLATES_EDIT)
-        from management.templates_admin.query_repo import QueryAuthorRepo
+        from management.templates_admin.placeholder_repo import (
+            PlaceholderAuthorRepo,
+        )
         con = self._templates_ro_con()
         try:
-            queries = QueryAuthorRepo(con).list()
+            items = PlaceholderAuthorRepo(con).list()
         except sqlite3.Error as exc:
             return Response.json(500, {"error": "templates_read_failed",
                                        "detail": str(exc)})
         finally:
             con.close()
-        return Response.json(200, {"count": len(queries), "queries": queries})
+        # 'queries' als Zweitschluessel NUR fuer die alte Maske (Build 423);
+        # faellt mit dem Maskenumbau in Build 490 weg.
+        return Response.json(200, {"count": len(items),
+                                   "placeholders": items, "queries": items})
 
-    def _templates_query_upsert(self, person_id: int,
-                                payload: Dict[str, Any]) -> Response:
+    def _placeholder_from_payload(self,
+                                  payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Payload -> Platzhalter-Dict. Fehlender type -> 'a' (Legacy-Maske)."""
+        return {
+            "id": payload.get("id"),
+            "title": payload.get("title"),
+            "description": payload.get("description", ""),
+            "type": payload.get("type") or "a",
+            "sql_query": payload.get("sql_query"),
+            "default_value": payload.get("default_value"),
+            "validation": payload.get("validation"),
+            "validation_type": payload.get("validation_type"),
+            "tags": payload.get("tags"),
+            "return_type": payload.get("return_type") or "scalar",
+        }
+
+    def _placeholder_dry(self, p: Dict[str, Any],
+                         payload: Dict[str, Any],
+                         errors: List[str]) -> Dict[str, Any]:
+        """Optionaler fdb-Dry-Run der (Default-)Query. Fehler -> errors."""
+        from management.templates_admin.placeholder_validator import (
+            dry_run, PlaceholderValidationError,
+        )
+        if not str(p.get("sql_query") or "").strip():
+            return {"ran": False,
+                    "reason": "kein sql_query (statischer Platzhalter)."}
+        test_uid_raw = payload.get("test_subject_id")
+        if test_uid_raw in (None, ""):
+            return {"ran": False, "reason": "kein test_subject_id."}
+        try:
+            test_uid = int(test_uid_raw)
+        except (TypeError, ValueError):
+            errors.append("test_subject_id ungueltig (ganze Zahl erwartet).")
+            return {"ran": False, "reason": "test_subject_id ungueltig."}
+        fdb_path = "%s/forensic_%d.db" % (
+            str(self._forensic_dir).rstrip("/"), test_uid)
+        try:
+            return dry_run(p["sql_query"], test_uid, fdb_path,
+                           return_type=p["return_type"])
+        except PlaceholderValidationError as exc:
+            errors.extend(exc.errors)
+            return {"ran": True, "failed": True}
+
+    def _templates_placeholder_upsert(self, person_id: int,
+                                      payload: Dict[str, Any]) -> Response:
         """
-        Legt eine Platzhalter-Query an oder aendert sie. Ablauf:
+        Legt einen Platzhalter an oder aendert ihn. Ablauf:
           1. Recht templates.edit.
-          2. Statische Validierung (query_validator).
-          3. Optionaler fdb-Dry-Run (wenn test_subject_id gesetzt und die
-             Beispiel-forensic_<uid>.db vorhanden ist).
-          4. Auditiertes Upsert ueber den TemplatesWriter.
+          2. Statische Validierung (placeholder_validator; Typregeln a/m/o).
+             warnings blockieren NICHT (Grundregel 11), errors -> 400.
+          3. Optionaler fdb-Dry-Run (nur wenn sql_query + test_subject_id).
+          4. Auditiertes Upsert (TemplatesWriter, target_type 'placeholder').
         """
         if not self.resolve_policy(person_id).can(CAP_TEMPLATES_EDIT):
             return self._forbidden(CAP_TEMPLATES_EDIT)
 
-        from management.templates_admin.query_validator import (
-            validate_static, dry_run, QueryValidationError,
+        from management.templates_admin.placeholder_validator import (
+            validate_static,
         )
-        from management.templates_admin.query_repo import QueryAuthorRepo
+        from management.templates_admin.placeholder_repo import (
+            PlaceholderAuthorRepo,
+        )
 
-        q = {
-            "id": payload.get("id"),
-            "title": payload.get("title"),
-            "description": payload.get("description", ""),
-            "sql_query": payload.get("sql_query"),
-            "tags": payload.get("tags"),
-            "return_type": payload.get("return_type") or "scalar",
-        }
-        errors = validate_static(q)
+        p = self._placeholder_from_payload(payload)
+        errors, warnings = validate_static(p)
         if errors:
-            return Response.json(400, {"error": "validation", "errors": errors})
+            return Response.json(400, {"error": "validation", "errors": errors,
+                                       "warnings": warnings})
 
-        # Optionaler Dry-Run gegen eine Beispiel-fdb.
-        dry: Dict[str, Any] = {"ran": False, "reason": "kein test_subject_id."}
-        test_uid_raw = payload.get("test_subject_id")
-        if test_uid_raw not in (None, ""):
-            try:
-                test_uid = int(test_uid_raw)
-            except (TypeError, ValueError):
-                return Response.json(400, {"error": "bad_request",
-                                           "detail": "test_subject_id ungueltig."})
-            fdb_path = "%s/forensic_%d.db" % (
-                str(self._forensic_dir).rstrip("/"), test_uid)
-            try:
-                dry = dry_run(q["sql_query"], test_uid, fdb_path,
-                              return_type=q["return_type"])
-            except QueryValidationError as exc:
-                return Response.json(400, {"error": "dry_run",
-                                           "errors": exc.errors})
+        dry_errors: List[str] = []
+        dry = self._placeholder_dry(p, payload, dry_errors)
+        if dry_errors:
+            return Response.json(400, {"error": "dry_run",
+                                       "errors": dry_errors,
+                                       "warnings": warnings})
 
         # Auditiertes Upsert.
         con = self._ro_con()
@@ -1725,75 +1768,59 @@ class ManagementApp:
 
         tcon = self._templates_rw_con()
         try:
-            result = QueryAuthorRepo(tcon).upsert(q, changed_by=changed_by)
+            result = PlaceholderAuthorRepo(tcon).upsert(
+                p, changed_by=changed_by)
         except sqlite3.Error as exc:
             return Response.json(500, {"error": "templates_write_failed",
                                        "detail": str(exc)})
         finally:
             tcon.close()
 
-        logger.info("Platzhalter-Query %s (%s) von %s",
-                    result["target_id"],
+        logger.info("Platzhalter %s [%s] (%s) von %s",
+                    result["target_id"], p["type"],
                     "angelegt" if result["created"] else "geaendert",
                     changed_by)
         return Response.json(200, {"ok": True, "target_id": result["target_id"],
-                                   "created": result["created"], "dry_run": dry})
+                                   "created": result["created"],
+                                   "dry_run": dry, "warnings": warnings})
 
-    def _templates_query_dryrun(self, person_id: int,
-                                payload: Dict[str, Any]) -> Response:
+    def _templates_placeholder_dryrun(self, person_id: int,
+                                      payload: Dict[str, Any]) -> Response:
         """
-        SCHREIBFREIE Vorschau (Build 423, W2-Frontend): validiert eine
-        Platzhalter-Query STATISCH und fuehrt - falls test_subject_id gesetzt ist -
-        den fdb-Dry-Run READ-ONLY aus. Es wird NICHTS geschrieben und NICHTS
-        auditiert (kein Beleg entsteht, weil kein Zustand sich aendert). So kann
-        die Redakteur:in eine Query testen, BEVOR sie sie speichert (Grundregel:
-        Ueberpruefbarkeit; keine stille Fehlaufloesung).
+        SCHREIBFREIE Vorschau (Build 423/489, W2-Frontend): validiert einen
+        Platzhalter STATISCH (Typregeln a/m/o) und fuehrt - falls sql_query und
+        test_subject_id gesetzt sind - den fdb-Dry-Run READ-ONLY aus. Es wird
+        NICHTS geschrieben und NICHTS auditiert (kein Beleg entsteht, weil kein
+        Zustand sich aendert). So kann die Redakteur:in testen, BEVOR sie
+        speichert (Grundregel: Ueberpruefbarkeit; keine stille Fehlaufloesung).
 
-        Antwort IMMER 200 mit {ok, errors, dry_run} - die Fehler werden als
-        DATEN geliefert (nicht als HTTP-Fehler), damit die Editor-Maske sie
-        zusammen mit dem Dry-Run-Ergebnis anzeigen kann. Das Recht bleibt
-        Voraussetzung (403 ohne templates.edit); ein POST erfordert - wie jeder
-        Schreibpfad - das X-AIW-Token (im HTTP-Handler geprueft), obwohl hier
-        nichts geschrieben wird (bewusst: einheitlicher POST-Pfad, Token = wer
-        ueberhaupt Autoren-Aktionen ausloesen darf).
+        Antwort IMMER 200 mit {ok, errors, warnings, dry_run} - Fehler werden
+        als DATEN geliefert (nicht als HTTP-Fehler), damit die Editor-Maske sie
+        zusammen mit dem Dry-Run-Ergebnis anzeigen kann. warnings (z.B.
+        Python-re konnte eine JS-Regex nicht kompilieren) blockieren nicht
+        (Grundregel 11). Das Recht bleibt Voraussetzung (403 ohne
+        templates.edit); ein POST erfordert - wie jeder Schreibpfad - das
+        X-AIW-Token (im HTTP-Handler geprueft), obwohl hier nichts geschrieben
+        wird (bewusst: einheitlicher POST-Pfad).
         """
         if not self.resolve_policy(person_id).can(CAP_TEMPLATES_EDIT):
             return self._forbidden(CAP_TEMPLATES_EDIT)
 
-        from management.templates_admin.query_validator import (
-            validate_static, dry_run, QueryValidationError,
+        from management.templates_admin.placeholder_validator import (
+            validate_static,
         )
 
-        q = {
-            "id": payload.get("id"),
-            "title": payload.get("title"),
-            "description": payload.get("description", ""),
-            "sql_query": payload.get("sql_query"),
-            "tags": payload.get("tags"),
-            "return_type": payload.get("return_type") or "scalar",
-        }
-        errors = validate_static(q)
+        p = self._placeholder_from_payload(payload)
+        errors, warnings = validate_static(p)
 
         dry: Dict[str, Any] = {"ran": False, "reason": "kein test_subject_id."}
-        test_uid_raw = payload.get("test_subject_id")
-        # Dry-Run nur, wenn die statische Pruefung sauber ist UND eine test_subject_id
-        # vorliegt (eine kaputte Query gar nicht erst gegen die fdb ausfuehren).
-        if not errors and test_uid_raw not in (None, ""):
-            try:
-                test_uid = int(test_uid_raw)
-            except (TypeError, ValueError):
-                errors.append("test_subject_id ungueltig (ganze Zahl erwartet).")
-            else:
-                fdb_path = "%s/forensic_%d.db" % (
-                    str(self._forensic_dir).rstrip("/"), test_uid)
-                try:
-                    dry = dry_run(q["sql_query"], test_uid, fdb_path,
-                                  return_type=q["return_type"])
-                except QueryValidationError as exc:
-                    errors.extend(exc.errors)
+        # Dry-Run nur, wenn die statische Pruefung sauber ist (eine kaputte
+        # Query gar nicht erst gegen die fdb ausfuehren).
+        if not errors:
+            dry = self._placeholder_dry(p, payload, errors)
 
         return Response.json(200, {"ok": not errors, "errors": errors,
-                                   "dry_run": dry})
+                                   "warnings": warnings, "dry_run": dry})
 
     # =====================================================================
     # AUTHORING: DOKUMENTVORLAGEN (Build 424, W3 — templates.db).
@@ -3783,13 +3810,17 @@ class ManagementApp:
             return self._report_comment_create(person_id, payload)
         if path == "/api/report/comment/resolve":
             return self._report_comment_resolve(person_id, payload)
-        # Build 422 (W2): Platzhalter-Query anlegen/aendern (templates.db).
-        if path == "/api/templates/query":
-            return self._templates_query_upsert(person_id, payload)
-        # Build 423 (W2-Frontend): schreibfreie Vorschau (Validierung + fdb-
-        # Dry-Run), damit die Redakteur:in testen kann, BEVOR sie speichert.
-        if path == "/api/templates/query/dryrun":
-            return self._templates_query_dryrun(person_id, payload)
+        # Build 489 (W2): Platzhalter anlegen/aendern (templates.db.placeholders,
+        # Typen a/m/o + Validierung). Die alten query-Pfade bleiben als
+        # LEGACY-Aliase bis zum Maskenumbau (Build 490) — fehlender 'type' im
+        # Payload wird dort als 'a' gedeutet; danach entfernen.
+        if path in ("/api/templates/placeholder", "/api/templates/query"):
+            return self._templates_placeholder_upsert(person_id, payload)
+        # Build 423/489: schreibfreie Vorschau (Validierung + fdb-Dry-Run),
+        # damit die Redakteur:in testen kann, BEVOR sie speichert.
+        if path in ("/api/templates/placeholder/dryrun",
+                    "/api/templates/query/dryrun"):
+            return self._templates_placeholder_dryrun(person_id, payload)
         # Build 424 (W3): Dokumentvorlagen (report_templates) anlegen/aendern
         # und schreibfreie Struktur-Vorschau.
         if path == "/api/templates/document":

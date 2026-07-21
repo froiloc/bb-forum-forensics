@@ -164,7 +164,7 @@ def test_get_module_by_key(tmp_path):
     tpath = tmp_path / "templates.db"
     c = sqlite3.connect(str(tpath))
     c.execute(_REPORT_MODULES_DDL)
-    c.execute("CREATE TABLE placeholder_queries (id TEXT PRIMARY KEY)")
+    c.execute("CREATE TABLE placeholders (id TEXT PRIMARY KEY, type TEXT NOT NULL DEFAULT 'a')")
     c.commit()
     apply_migration(c)
     c.close()
@@ -183,7 +183,7 @@ def test_get_module_by_key_ohne_spalte_ist_none(tmp_path):
     tpath = tmp_path / "templates_old.db"
     c = sqlite3.connect(str(tpath))
     c.execute(_REPORT_MODULES_DDL)
-    c.execute("CREATE TABLE placeholder_queries (id TEXT PRIMARY KEY)")
+    c.execute("CREATE TABLE placeholders (id TEXT PRIMARY KEY, type TEXT NOT NULL DEFAULT 'a')")
     c.execute(
         "INSERT INTO report_modules (title, role, topic, body, created_by, created_at, updated_at) "
         "VALUES ('X','legal','T','B','system',0,0)"

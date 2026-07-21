@@ -13,8 +13,8 @@
 #   Bereitgestellte Methoden:
 #     get_module(id)         -- Einzelnes Modul mit Body
 #     list_modules(role, topic, search) -- Gefilterte Modulliste fuer Auswahl-Panel
-#     get_query(query_id)    -- Einzelne Query-Definition aus placeholder_queries
-#     list_queries(tags, search) -- Gefilterte Query-Bibliothek
+#     get_query(query_id)    -- Einzelne Platzhalter-Definition aus placeholders
+#     list_queries(tags, search, types) -- Gefilterte Platzhalter-Bibliothek
 #
 #   Abhaengigkeiten:
 #     sqlite3 -- ausschliesslich Stdlib
@@ -25,7 +25,11 @@
 #   Ergebnisse und protokollieren einen WARNING-Log — kein Absturz.
 #
 # Beleg: Bauplan B6 v0.3 §2.1, §3.3, Projektgespraech 2026-05-05
-# Version: v0.6.089 · Build: 089 · 2026-05-05
+# Build 489 (Platzhalter-Neuordnung): Kerntabelle placeholder_queries ->
+#   placeholders (Typen a/m/o, default_value, validation, validation_type;
+#   Migration: management/migrate_templates_placeholders.py). QueryRecord um
+#   die neuen Felder erweitert; list_queries um den types-Filter.
+# Version: v0.8.489 · Build: 489 · 2026-07-21
 # =============================================================================
 
 from __future__ import annotations
@@ -60,16 +64,26 @@ class ModuleRecord:
 
 @dataclass
 class QueryRecord:
-    """Eine Query-Definition aus templates.placeholder_queries.
-    Beleg: Bauplan B6 v0.3 §2.1, §3.4
+    """Eine Platzhalter-Definition aus templates.placeholders.
+
+    Build 489 (Platzhalter-Neuordnung): die Tabelle traegt jetzt ALLE drei
+    Typen (a=automatisch, m=verpflichtend, o=optional) inkl. Validierung.
+    Der Klassenname bleibt QueryRecord (alle Aufrufer nutzen nur Attribute;
+    fuer a-Eintraege IST es weiterhin die Query-Definition).
+    Beleg: Bauplan B6 v0.3 §2.1, §3.4; Bauplan Platzhalter_DB v0.1 §3.1.
     """
-    id:          str    # query_id, z.B. 'user.username'
+    id:          str    # Token-Name, z.B. 'user.username' ({{a:user.username}})
     title:       str
     description: str
-    sql_query:   str
+    sql_query:   Optional[str]   # a: Pflicht; m/o: optionale Default-Quelle
     tags:        Optional[str]   # CSV-String, z.B. 'identitaet,name'
     return_type: str
     is_active:   bool
+    # --- Build 489 ---
+    type:            str = "a"            # 'a' | 'm' | 'o'
+    default_value:   Optional[str] = None
+    validation:      Optional[str] = None # KLARTEXT (regex/list-JSON/like)
+    validation_type: Optional[str] = None # 'regex' | 'list' | 'like'
 
 
 @dataclass
@@ -128,8 +142,10 @@ class TemplatesDb:
         Wird einmalig beim Init aufgerufen.
         """
         try:
+            # Build 489: Kerntabelle ist jetzt 'placeholders' (Neuordnung;
+            # Migration: management/migrate_templates_placeholders.py).
             self._con.execute(
-                "SELECT 1 FROM tdb.placeholder_queries LIMIT 1"
+                "SELECT 1 FROM tdb.placeholders LIMIT 1"
             )
             logger.debug("TemplatesDb: tdb verfuegbar und initialisiert.")
             return True
@@ -271,10 +287,12 @@ class TemplatesDb:
 
     def get_query(self, query_id: str) -> Optional[QueryRecord]:
         """
-        Gibt eine einzelne Query-Definition zurueck.
+        Gibt eine einzelne Platzhalter-Definition zurueck (JEDEN Typs — der
+        Aufrufer prueft rec.type; die {{a:}}-Aufloesung tut das in
+        report_render/auto_query.py, Build 489).
 
         Args:
-            query_id: Primaerschluessel aus tdb.placeholder_queries,
+            query_id: Primaerschluessel aus tdb.placeholders,
                       z.B. 'user.username'.
 
         Returns:
@@ -284,9 +302,10 @@ class TemplatesDb:
             return None
         try:
             row = self._con.execute(
-                "SELECT id, title, description, sql_query, tags, "
+                "SELECT id, title, description, type, sql_query, "
+                "       default_value, validation, validation_type, tags, "
                 "       return_type, is_active "
-                "FROM tdb.placeholder_queries "
+                "FROM tdb.placeholders "
                 "WHERE id = ? AND is_active = 1",
                 (query_id,),
             ).fetchone()
@@ -301,30 +320,40 @@ class TemplatesDb:
         self,
         tags: Optional[str] = None,
         search: Optional[str] = None,
+        types: Optional[list] = None,
     ) -> list[QueryRecord]:
         """
-        Liefert die durchsuchbare Query-Bibliothek.
+        Liefert die durchsuchbare Platzhalter-Bibliothek.
 
         Filter:
-            tags:   Kommagetrennte Tag-Liste. Nur Queries zurueckgeben,
+            tags:   Kommagetrennte Tag-Liste. Nur Eintraege zurueckgeben,
                     deren tags-Feld mindestens einen der angegebenen Tags
                     enthaelt (LIKE-Suche je Tag).
             search: Volltextsuche in title und description (LIKE).
+            types:  Liste der Platzhalter-Typen (z.B. ['a']); None = alle.
+                    (Build 489: die Cache-Aktualisierung filtert auf 'a',
+                    die Editor-Bibliothek liest ALLE Typen.)
 
-        Nur aktive Queries (is_active = 1) werden zurueckgegeben.
+        Nur aktive Eintraege (is_active = 1) werden zurueckgegeben.
         Sortierung: id ASC.
-        Beleg: Bauplan B6 v0.3 §3.3
+        Beleg: Bauplan B6 v0.3 §3.3; Bauplan Platzhalter_DB v0.1 §4.
         """
         if not self._available:
             return []
         try:
             sql = (
-                "SELECT id, title, description, sql_query, tags, "
+                "SELECT id, title, description, type, sql_query, "
+                "       default_value, validation, validation_type, tags, "
                 "       return_type, is_active "
-                "FROM tdb.placeholder_queries "
+                "FROM tdb.placeholders "
                 "WHERE is_active = 1"
             )
             params: list = []
+
+            if types:
+                sql += (" AND type IN (%s)"
+                        % ",".join("?" for _ in types))
+                params.extend(types)
 
             if tags:
                 # Jeder angegebene Tag muss in tags-CSV enthalten sein (LIKE)
@@ -436,12 +465,19 @@ class TemplatesDb:
 
     @staticmethod
     def _row_to_query(row: sqlite3.Row) -> QueryRecord:
+        # Build 489: sql_query darf NULL sein (m/o ohne Default-Quelle) —
+        # str(None) waere der String 'None' und damit eine stille Luege.
         return QueryRecord(
             id=str(row["id"]),
             title=str(row["title"]),
             description=str(row["description"]),
-            sql_query=str(row["sql_query"]),
+            sql_query=(str(row["sql_query"])
+                       if row["sql_query"] is not None else None),
             tags=row["tags"],
             return_type=str(row["return_type"]),
             is_active=bool(row["is_active"]),
+            type=str(row["type"]),
+            default_value=row["default_value"],
+            validation=row["validation"],
+            validation_type=row["validation_type"],
         )
