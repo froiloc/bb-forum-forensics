@@ -373,6 +373,54 @@ class TestPlaceholderCache(unittest.TestCase):
         self.assertIsNone(self.edb.get_cache_entry("user.username", 42))
         self.assertEqual(self.edb.get_cache_entry("user.username", 99), "UserB")
 
+    # -- Build 491: typbewusste Cache-Leerung (clear_cache_for_query_ids) -----
+    # Beleg: mc-Wunsch Platzhalter-Neuordnung Slice 3; forensic_api/
+    # placeholders.py _refresh_cache; Grundregel 1 (kein stiller Verlust).
+
+    def test_T23_clear_query_ids_nur_genannte(self):
+        """T23: clear_cache_for_query_ids() loescht NUR die genannten query_ids.
+
+        Kernszenario der 489-Wiedervorlage: ein a-Platzhalter (user.username)
+        und ein manuell wiederverwendeter m-Wert (spurennummer) liegen im
+        Cache derselben uid. Ein /refresh leert nur die a-Eintraege — der
+        m-Ermittlerwert MUSS erhalten bleiben.
+        """
+        self.edb.set_cache_entry("user.username", 42, "UserA")
+        self.edb.set_cache_entry("spurennummer", 42, "AIW-2024-0815")
+        deleted = self.edb.clear_cache_for_query_ids(42, ["user.username"])
+        self.assertEqual(deleted, 1)
+        self.assertIsNone(self.edb.get_cache_entry("user.username", 42))
+        self.assertEqual(
+            self.edb.get_cache_entry("spurennummer", 42), "AIW-2024-0815"
+        )
+
+    def test_T24_clear_query_ids_respektiert_uid(self):
+        """T24: clear_cache_for_query_ids() greift nur die uebergebene uid an."""
+        self.edb.set_cache_entry("user.username", 42, "UserA")
+        self.edb.set_cache_entry("user.username", 99, "UserB")
+        deleted = self.edb.clear_cache_for_query_ids(42, ["user.username"])
+        self.assertEqual(deleted, 1)
+        self.assertIsNone(self.edb.get_cache_entry("user.username", 42))
+        self.assertEqual(self.edb.get_cache_entry("user.username", 99), "UserB")
+
+    def test_T25_clear_query_ids_leere_menge_noop(self):
+        """T25: leere query_ids-Menge ist ein No-op (0 geloescht, nichts weg)."""
+        self.edb.set_cache_entry("user.username", 42, "UserA")
+        self.assertEqual(self.edb.clear_cache_for_query_ids(42, []), 0)
+        self.assertEqual(self.edb.clear_cache_for_query_ids(42, None), 0)
+        self.assertEqual(self.edb.get_cache_entry("user.username", 42), "UserA")
+
+    def test_T26_clear_query_ids_mehrere(self):
+        """T26: mehrere query_ids werden gemeinsam geleert, Rest bleibt."""
+        self.edb.set_cache_entry("a1", 42, "v1")
+        self.edb.set_cache_entry("a2", 42, "v2")
+        self.edb.set_cache_entry("m1", 42, "manuell")
+        deleted = self.edb.clear_cache_for_query_ids(42, ["a1", "a2"])
+        self.assertEqual(deleted, 2)
+        self.assertIsNone(self.edb.get_cache_entry("a1", 42))
+        self.assertIsNone(self.edb.get_cache_entry("a2", 42))
+        self.assertEqual(self.edb.get_cache_entry("m1", 42), "manuell")
+
 
 class TestReportB6(unittest.TestCase):
 

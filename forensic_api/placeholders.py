@@ -30,7 +30,12 @@
 #   - Query-Definitionen lesen: templates_db (tdb.placeholder_queries).
 #
 # Beleg: Bauplan B6 v0.3 §3, Ausdefinitionsgespraech 2026-05-05
-# Version: v0.8.489 · Build: 489 · 2026-07-21
+# Version: v0.8.491 · Build: 491 · 2026-07-21
+# Build 491 (Platzhalter-Neuordnung, Slice 3): typbewusste Cache-Leerung.
+#   _refresh_cache leert NUR die a-Eintraege (clear_cache_for_query_ids)
+#   statt pauschal per clear_cache_for_uid — damit m/o-Ermittlerwerte im
+#   placeholder_cache (fallweise Wiederverwendung, mc-Wunsch) erhalten bleiben.
+#   Loest die 489-Wiedervorlage auf. Beleg: Grundregel 1.
 # Build 489 (Platzhalter-Neuordnung): Query-Definitionen kommen aus
 #   templates.placeholders (statt placeholder_queries; Migration:
 #   management/migrate_templates_placeholders.py). Die library liefert alle
@@ -362,19 +367,27 @@ class PlaceholdersEndpoint:
         Returns:
             (refreshed_count, error_ids)
         """
-        # Cache leeren
-        self._bundle.evidence.clear_cache_for_uid(uid)
-
         auto = AutoQueryResolver(
             self._bundle.evidence, self._bundle.templates, self._bundle.connection,
         )
         # Build 489: NUR 'a'-Definitionen ausfuehren. m/o-Eintraege haben
         # hoechstens eine Default-Quelle und gehoeren nicht in den Auto-Refresh.
-        # WIEDERVORLAGE (Slice 3/Build 491): sobald m/o-ERMITTLERWERTE im
-        # placeholder_cache liegen, darf clear_cache_for_uid() oben nicht mehr
-        # pauschal leeren, sondern nur die a-Eintraege — sonst gehen erfasste
-        # Werte verloren.
         queries = self._bundle.templates.list_queries(types=["a"])
+
+        # Build 491 (Slice 3, 489-Wiedervorlage aufgeloest): der Cache darf
+        # NICHT mehr pauschal per clear_cache_for_uid() geleert werden. Seit der
+        # Platzhalter-Neuordnung koennen im placeholder_cache auch m/o-Werte
+        # liegen — fallweise wiederverwendete Ermittler-Eingaben (mc-Wunsch:
+        # {{m:}}/{{o:}} referenzieren eine Query auf evidence_<uid>.db/
+        # placeholder_cache) oder handverlesene Vorbelegungen. Ein Auto-Refresh
+        # iteriert ausschliesslich a-Definitionen und darf daher auch nur DEREN
+        # Cache-Eintraege verwerfen. Alles andere waere ein stiller Datenverlust
+        # und verstiesse gegen Grundregel 1 (kein Beleg darf still
+        # uebersprungen/verworfen werden).
+        # Beleg: db/evidence_db.py clear_cache_for_query_ids (Build 491).
+        a_ids = [q.id for q in queries]
+        self._bundle.evidence.clear_cache_for_query_ids(uid, a_ids)
+
         errors: list[str] = []
         refreshed = 0
 

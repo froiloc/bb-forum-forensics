@@ -2312,11 +2312,17 @@ class EvidenceDb:
 
     def clear_cache_for_uid(self, uid: int) -> int:
         """
-        Loescht alle Cache-Eintraege fuer eine uid.
-        Wird aufgerufen durch POST /refresh.
+        Loescht ALLE Cache-Eintraege fuer eine uid.
         Beleg: Bauplan B6 v0.5 §3.2
 
         Returns: Anzahl geloeschter Eintraege.
+
+        ACHTUNG (Build 491, Platzhalter-Neuordnung): Seit Build 489 kann der
+        placeholder_cache AUCH manuell erfasste m/o-Werte enthalten
+        (fallweise Wiederverwendung, mc-Wunsch). Der /refresh-Pfad darf daher
+        NICHT mehr pauschal leeren, sondern nur die automatischen ({{a:}})
+        Eintraege — dafuer clear_cache_for_query_ids(). Diese Methode leert
+        weiterhin ALLES und ist nur fuer echte Voll-Zuruecksetzungen gedacht.
         """
         cursor = self._con.execute(
             "DELETE FROM placeholder_cache WHERE uid = ?", (uid,)
@@ -2325,6 +2331,36 @@ class EvidenceDb:
         deleted = cursor.rowcount
         logger.info(
             "placeholder_cache geleert: uid=%d, %d Eintraege entfernt", uid, deleted
+        )
+        return deleted
+
+    def clear_cache_for_query_ids(self, uid: int, query_ids) -> int:
+        """
+        Loescht NUR die Cache-Eintraege der angegebenen query_ids fuer eine uid.
+
+        Build 491 (Platzhalter-Neuordnung): Der /refresh-Pfad ermittelt die
+        Menge der 'a'-Platzhalter aus templates.placeholders und leert exakt
+        diese — manuell erfasste m/o-Werte im placeholder_cache bleiben damit
+        erhalten (kein Datenverlust an Ermittler-Eingaben). Leere Menge -> No-op.
+        Beleg: Grundregel 1 (kein Beleg darf still verworfen werden);
+               forensic_api/placeholders.py _refresh_cache (Build 491).
+
+        Returns: Anzahl geloeschter Eintraege.
+        """
+        ids = [str(q) for q in (query_ids or [])]
+        if not ids:
+            return 0
+        placeholders = ",".join("?" for _ in ids)
+        cursor = self._con.execute(
+            "DELETE FROM placeholder_cache WHERE uid = ? AND query_id IN (%s)"
+            % placeholders,
+            [uid, *ids],
+        )
+        self._con.commit()
+        deleted = cursor.rowcount
+        logger.info(
+            "placeholder_cache (nur a-Platzhalter) geleert: uid=%d, "
+            "%d/%d Eintraege entfernt", uid, deleted, len(ids)
         )
         return deleted
 
