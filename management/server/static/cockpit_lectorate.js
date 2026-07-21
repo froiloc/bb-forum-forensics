@@ -43,7 +43,12 @@
  *   entfaellt der 480-Fehlerfall strukturell). SLICE 2 (Build 482) ergaenzt
  *   Header-Filter, Paginierung (20/Seite), Status-Schnellfilter mit Zaehlern
  *   und verschiebt den Uebernahme-Knopf UNTER die Tabelle.
- * Version: v0.8.481 · Build: 481 · 2026-07-21
+ * Build 482 (Tabulator-Umbau, SLICE 2): (a) Spalten-Header-Filter (Benutzer/
+ *   Titel/Typ/Status/Verfasser als Freitext-Filter); (b) Paginierung 'local'
+ *   mit 20 Zeilen/Seite + deutschem Pager; (c) Status-Schnellfilter mit
+ *   Trefferzaehlern je Status; (d) Uebernahme-Knopf UNTER die Tabelle verschoben
+ *   (naeher an der Darstellung).
+ * Version: v0.8.482 · Build: 482 · 2026-07-21
  */
 (function () {
     'use strict';
@@ -160,6 +165,20 @@
                 created: fmtTs(r.created_at)
             };
         });
+    }
+
+    // statusCounts (Build 482): Trefferzahl je Status + Gesamt. REIN (vitest).
+    // Grundlage fuer den Status-Schnellfilter mit Zaehlern. Zaehlt ALLE Berichte
+    // (unabhaengig vom aktuellen Filter), damit die Zahlen stabil bleiben.
+    function statusCounts(data) {
+        var list = (data && data.reports) ? data.reports : [];
+        var c = { submitted: 0, approved: 0, final: 0, draft: 0, alle: list.length };
+        list.forEach(function (r) {
+            if (r && Object.prototype.hasOwnProperty.call(c, r.status)) {
+                c[r.status] += 1;
+            }
+        });
+        return c;
     }
 
     // annotationsUrl: URL des Annotations-Support-Views (SF-2, Build 411).
@@ -342,11 +361,14 @@
         lbl.textContent = 'Status: ';
         var sel = document.createElement('select');
         sel.className = 'aiw-lectorate-status';
+        // Build 482: Status-Schnellfilter mit Trefferzaehlern je Status.
+        var _counts = statusCounts(data);
         [['submitted', 'Zur Abnahme vorgelegt'], ['approved', 'Freigegeben'],
          ['final', 'Versandt'], ['draft', 'Entwurf'], ['alle', 'Alle']]
             .forEach(function (o) {
                 var opt = document.createElement('option');
-                opt.value = o[0]; opt.textContent = o[1];
+                opt.value = o[0];
+                opt.textContent = o[1] + ' (' + (_counts[o[0]] || 0) + ')';
                 if (o[0] === status) { opt.selected = true; }
                 sel.appendChild(opt);
             });
@@ -391,11 +413,12 @@
         // Nur wenn der Aufrufer (cockpit.js) einen Callback liefert — das setzt
         // er ausschliesslich bei vorhandenem Recht templates.edit. Der Knopf ist
         // erst aktiv, sobald ein Bericht gewaehlt wurde (selUid/selRid gesetzt).
-        // Slice 1: Position wie bisher (ueber der Tabelle). Slice 2 (Build 482)
-        // verschiebt die Leiste UNTER die Tabelle.
+        // Build 482 (Slice 2): Die Leiste wird UNTER der Tabelle eingehaengt
+        // (naeher an der Darstellung) — hier nur GEBAUT, Einhaengen s. unten.
+        var xbar = null;
         var canTransfer = (typeof opts.onTransferToTemplate === 'function');
         if (canTransfer) {
-            var xbar = document.createElement('div');
+            xbar = document.createElement('div');
             xbar.className = 'aiw-lectorate-xferbar';
             var xbtn = document.createElement('button');
             xbtn.type = 'button';
@@ -416,14 +439,15 @@
             xmsg.className = 'aiw-lectorate-xfermsg';
             _state.xferMsg = xmsg;
             xbar.appendChild(xmsg);
-            wrap.appendChild(xbar);
         }
 
-        // --- Auswahl-Tabelle (Build 481, Slice 1): Tabulator statt Button-Liste.
+        // --- Auswahl-Tabelle (Build 481/482): Tabulator statt Button-Liste.
         // Muster cockpit_reports.js. opts.Tabulator ist fuer Tests injizierbar.
         var container = document.createElement('div');
         container.className = 'aiw-lectorate-table';
         wrap.appendChild(container);
+        // Build 482: Uebernahme-Leiste UNTER der Tabelle (naeher an der Auswahl).
+        if (xbar) { wrap.appendChild(xbar); }
         wrap.appendChild(preview);
 
         // _selectReport: gemeinsame Auswahl-Logik (rowClick). Merkt den Bericht,
@@ -468,17 +492,46 @@
         } else {
             _state.table = new Ctor(container, {
                 data: toRows(data, status),
+                // Build 482: Freitext-Header-Filter je Spalte (Benutzer/Titel/
+                // Typ/Status/Verfasser). Nr./Erstellt bleiben ungefiltert.
                 columns: [
-                    { title: 'Benutzer',  field: 'username' },
-                    { title: 'Titel',     field: 'title' },
-                    { title: 'Typ',       field: 'typ' },
+                    { title: 'Benutzer',  field: 'username',
+                      headerFilter: 'input' },
+                    { title: 'Titel',     field: 'title',
+                      headerFilter: 'input' },
+                    { title: 'Typ',       field: 'typ',
+                      headerFilter: 'input' },
                     { title: 'Nr.',       field: 'nr', hozAlign: 'right' },
-                    { title: 'Status',    field: 'status_label' },
-                    { title: 'Verfasser', field: 'created_by' },
+                    { title: 'Status',    field: 'status_label',
+                      headerFilter: 'input' },
+                    { title: 'Verfasser', field: 'created_by',
+                      headerFilter: 'input' },
                     { title: 'Erstellt',  field: 'created' }
                 ],
                 layout: 'fitColumns',
-                height: '440px',
+                // Build 482: Paginierung mit 20 Zeilen/Seite. height:false
+                // (kein maxHeight) — verhindert das dokumentierte Pager-Clipping
+                // (Beleg: userinfo.js buildTabulatorConfig, Console-Diagnose
+                // 2026-07-10). Deutscher Pager ueber locale/langs.
+                height: false,
+                pagination: 'local',
+                paginationSize: 20,
+                paginationCounter: 'rows',
+                locale: 'de-de',
+                langs: {
+                    'de-de': {
+                        pagination: {
+                            first: 'Erste', first_title: 'Erste Seite',
+                            last: 'Letzte', last_title: 'Letzte Seite',
+                            prev: 'Zurück', prev_title: 'Vorige Seite',
+                            next: 'Weiter', next_title: 'Nächste Seite',
+                            counter: {
+                                showing: 'Zeige', of: 'von',
+                                rows: 'Zeilen', pages: 'Seiten'
+                            }
+                        }
+                    }
+                },
                 // Kein stiller Leerzustand: sichtbarer Hinweis bei 0 Zeilen.
                 placeholder: 'Keine Berichte im gewaehlten Status.',
                 // Zeilenklick -> Auswahl dieses Berichts.
@@ -753,6 +806,7 @@
         selectionKey: selectionKey,
         toRows: toRows,                   // Tabellen-Abbildung (Build 481)
         typeLabel: typeLabel,             // Berichtstyp-Label (Build 481)
+        statusCounts: statusCounts,       // Status-Schnellfilter-Zaehler (Build 482)
         annotationsUrl: annotationsUrl,   // SF-2 (Build 414)
         categoryLabel: categoryLabel,
         forumContext: forumContext,

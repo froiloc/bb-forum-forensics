@@ -141,6 +141,12 @@ describe("cockpit_lectorate", () => {
     const fields = made.opts.columns.map((c) => c.field);
     expect(fields).toContain("username");
     expect(fields).toContain("status_label");
+    // Build 482: Header-Filter je Spalte + Paginierung 20/Seite.
+    const uCol = made.opts.columns.find((c) => c.field === "username");
+    expect(uCol.headerFilter).toBe("input");
+    expect(made.opts.pagination).toBe("local");
+    expect(made.opts.paginationSize).toBe(20);
+    expect(made.opts.langs["de-de"].pagination.next).toBe("Weiter");
     const frame = main.querySelector("iframe.aiw-lectorate-preview");
     expect(frame).not.toBeNull();
 
@@ -174,6 +180,51 @@ describe("cockpit_lectorate", () => {
     sel.dispatchEvent(new win.Event("change", { bubbles: true }));
     // Kein Neu-Render: dieselbe Instanz, Daten via replaceData ausgetauscht.
     expect(made.replaced.length).toBe(3); // alle
+  });
+
+  // Build 482 (Slice 2) --------------------------------------------------
+  it("LE07b statusCounts: Trefferzahl je Status + Gesamt", () => {
+    const api = _api();
+    const c = api.statusCounts(_data());
+    expect(c.submitted).toBe(2);
+    expect(c.approved).toBe(1);
+    expect(c.alle).toBe(3);
+    expect(c.draft).toBe(0);
+  });
+
+  it("LE07c Status-Schnellfilter zeigt Zaehler in den Optionen", () => {
+    const win = _ctx();
+    const api = _api(win);
+    const main = win.document.createElement("div");
+    win.document.body.appendChild(main);
+    function StubTab(container, opts) { this.opts = opts;
+      this.replaceData = function () {}; this.destroy = function () {}; }
+    api.renderLectorate(main, _data(), { status: "submitted", Tabulator: StubTab });
+    const sel = main.querySelector("select.aiw-lectorate-status");
+    const opts = Array.from(sel.options).map((o) => o.textContent);
+    expect(opts).toContain("Zur Abnahme vorgelegt (2)");
+    expect(opts).toContain("Alle (3)");
+  });
+
+  it("LE07d Uebernahme-Knopf steht UNTER der Tabelle (DOM-Reihenfolge)", () => {
+    const win = _ctx();
+    const api = _api(win);
+    const main = win.document.createElement("div");
+    win.document.body.appendChild(main);
+    function StubTab(container, opts) { this.opts = opts;
+      this.replaceData = function () {}; this.destroy = function () {}; }
+    api.renderLectorate(main, _data(), {
+      status: "submitted",
+      onTransferToTemplate: function () {},
+      Tabulator: StubTab,
+    });
+    const table = main.querySelector(".aiw-lectorate-table");
+    const xbar = main.querySelector(".aiw-lectorate-xferbar");
+    expect(table).not.toBeNull();
+    expect(xbar).not.toBeNull();
+    // compareDocumentPosition: FOLLOWING (4) => xbar kommt NACH der Tabelle.
+    const rel = table.compareDocumentPosition(xbar);
+    expect(rel & win.Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   // LE08 (Build 414) -------------------------------------------------------
