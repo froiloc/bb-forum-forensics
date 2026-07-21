@@ -60,6 +60,9 @@ _ICONS_DIR     = _BASE_DIR / "static" / "icons"    # Build 114: Plugin-Icons
 _RESOURCES: dict[str, tuple[str, str, Path]] = {
     "/_forensic/toolbar.js":   ("toolbar.js",   "application/javascript; charset=utf-8", _TOOLBAR_DIR),
     "/_forensic/toolbar.css":  ("toolbar.css",  "text/css; charset=utf-8",               _TOOLBAR_DIR),
+    # Build 471 (BS3): Scrollpositions-Wiederherstellung pro Seite (eigene Klasse,
+    # Grundregel 10). Wird in shell_handler.py NACH toolbar.js eingebunden.
+    "/_forensic/scroll_memory.js": ("scroll_memory.js", "application/javascript; charset=utf-8", _TOOLBAR_DIR),
     "/_forensic/userinfo.js":  ("userinfo.js",  "application/javascript; charset=utf-8", _USERINFO_DIR),
     "/_forensic/userinfo.css": ("userinfo.css", "text/css; charset=utf-8",               _USERINFO_DIR),
     # Build 390: Erfassungsmaske Ermittlungsergebnis (Baustelle 4).

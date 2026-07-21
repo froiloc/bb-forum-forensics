@@ -65,6 +65,9 @@ _BUILD_NR = _get_build_nr()
 # Konstante Shell-Bestandteile
 _TOOLBAR_CSS_TAG = f'<link rel="stylesheet" href="/_forensic/toolbar.css?v={_BUILD_NR}">'
 _TOOLBAR_JS_TAG  = f'<script src="/_forensic/toolbar.js?v={_BUILD_NR}"></script>'
+# Build 471 (BS3): Scrollpositions-Wiederherstellung pro Seite. MUSS nach
+# toolbar.js geladen werden, da es ForensicToolbar.events (page:loaded) abonniert.
+_SCROLL_MEMORY_JS_TAG = f'<script src="/_forensic/scroll_memory.js?v={_BUILD_NR}"></script>'
 # Build 086: Tabulator.js wird in userinfo.py eingebunden (eigenes Fenster).
 # Beleg: Projektgespräch 2026-05-05 — shell_handler lädt für Hauptfenster, nicht Userinfo-Tab.
 
@@ -180,4 +183,5 @@ class ShellHandler:
 </head>
 {_SHELL_BODY}
 {_TOOLBAR_JS_TAG}
+{_SCROLL_MEMORY_JS_TAG}
 </html>"""

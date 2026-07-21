@@ -276,6 +276,8 @@ class ForensicApi:
         if url_path in (
             "/_forensic/toolbar.js",
             "/_forensic/toolbar.css",
+            "/_forensic/scroll_memory.js",      # Build 471 (BS3): Scrollpositions-Merker
+
             "/_forensic/userinfo.js",
             "/_forensic/userinfo.css",
             "/_forensic/userinfo_results.js",   # [B4 Build 390]
