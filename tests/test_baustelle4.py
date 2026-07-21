@@ -1201,6 +1201,126 @@ class TestReportsEndpoint:
 
 
 # ---------------------------------------------------------------------------
+# TestReportRename (Build 473 — editierbarer Vermerksname)
+# ---------------------------------------------------------------------------
+
+class TestReportRename:
+    """
+    Build 473: Umbenennen eines Vermerks (reports.title).
+
+    DB-Ebene: evidence_db.update_report_title().
+    Endpunkt: ReportsEndpoint.handle_rename() (POST /_forensic/report/rename).
+
+    KERNINVARIANTE (Siegel-Integritaet): Der Inhaltshash umfasst die reports-Zeile
+    INKLUSIVE 'title' (report_sealer._REPORT_COLS). Umbenennen daher NUR im
+    Status 'draft'. Beleg: Auftrag 2026-07-21.
+    """
+
+    # ---- DB-Ebene ------------------------------------------------------
+
+    def _import_err(self):
+        import sys, os
+        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if project_dir not in sys.path:
+            sys.path.insert(0, project_dir)
+        from db.evidence_db import EvidenceDbError
+        return EvidenceDbError
+
+    def test_db_rename_draft_ok(self, in_memory_evidence_db):
+        """RN-DB01: Umbenennen im Entwurf aendert den Titel."""
+        edb = in_memory_evidence_db
+        rid = edb.create_report("interim", "Alter Name", "h001")
+        assert edb.update_report_title(rid, "Neuer Name", "h001") is True
+        assert edb.get_report(rid).title == "Neuer Name"
+
+    def test_db_rename_empty_raises(self, in_memory_evidence_db):
+        """RN-DB02: Leerer Titel -> EvidenceDbError."""
+        edb = in_memory_evidence_db
+        rid = edb.create_report("interim", "Alter Name", "h001")
+        with pytest.raises(self._import_err(), match="leer"):
+            edb.update_report_title(rid, "   ", "h001")
+
+    def test_db_rename_unknown_raises(self, in_memory_evidence_db):
+        """RN-DB03: Unbekannte id -> EvidenceDbError."""
+        edb = in_memory_evidence_db
+        with pytest.raises(self._import_err(), match="existiert nicht"):
+            edb.update_report_title(9999, "Egal", "h001")
+
+    def test_db_rename_non_draft_rejected(self, in_memory_evidence_db):
+        """RN-DB04: Nicht-'draft' (Siegel-Integritaet) -> EvidenceDbError.
+
+        Belegt die Kerninvariante: ein bereits vorgelegter Vermerk darf NICHT
+        umbenannt werden, da der Titel Teil des Inhaltshashes ist.
+        """
+        edb = in_memory_evidence_db
+        rid = edb.create_report("interim", "Alter Name", "h001")
+        # Status hart auf 'submitted' setzen (Vorlage zur Abnahme).
+        edb._con.execute(
+            "UPDATE reports SET status='submitted' WHERE id=?", (rid,)
+        )
+        edb._con.commit()
+        with pytest.raises(self._import_err(), match="draft"):
+            edb.update_report_title(rid, "Neuer Name", "h001")
+        # Titel unveraendert.
+        assert edb.get_report(rid).title == "Alter Name"
+
+    # ---- Endpunkt-Ebene ------------------------------------------------
+
+    def _make_ep(self, edb):
+        import sys, os
+        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if project_dir not in sys.path:
+            sys.path.insert(0, project_dir)
+        from forensic_api.reports import ReportsEndpoint
+        bundle = _make_endpoint_bundle(edb)
+        ctx    = _make_context_with_name()
+        return ReportsEndpoint(bundle, ctx, MagicMock())
+
+    def test_ep_rename_ok(self, in_memory_evidence_db):
+        """RN-EP01: POST rename gueltig -> HTTP 200, Titel geaendert."""
+        edb = in_memory_evidence_db
+        rid = edb.create_report("interim", "Alter Name", "h001")
+        ep  = self._make_ep(edb)
+        resp = {}
+        body = json.dumps({"id": rid, "title": "Neuer Name"}).encode()
+        ep.handle_rename(_make_mock_handler(resp), body)
+        assert resp['status'] == 200
+        assert json.loads(resp['body'])['title'] == "Neuer Name"
+        assert edb.get_report(rid).title == "Neuer Name"
+
+    def test_ep_rename_missing_title(self, in_memory_evidence_db):
+        """RN-EP02: POST rename ohne title -> HTTP 400."""
+        edb = in_memory_evidence_db
+        rid = edb.create_report("interim", "Alter Name", "h001")
+        ep  = self._make_ep(edb)
+        resp = {}
+        ep.handle_rename(_make_mock_handler(resp), json.dumps({"id": rid}).encode())
+        assert resp['status'] == 400
+
+    def test_ep_rename_missing_id(self, in_memory_evidence_db):
+        """RN-EP03: POST rename ohne id -> HTTP 400."""
+        ep  = self._make_ep(in_memory_evidence_db)
+        resp = {}
+        ep.handle_rename(_make_mock_handler(resp), json.dumps({"title": "X"}).encode())
+        assert resp['status'] == 400
+
+    def test_ep_rename_non_draft_conflict(self, in_memory_evidence_db):
+        """RN-EP04: POST rename auf nicht-'draft' -> HTTP 409."""
+        edb = in_memory_evidence_db
+        rid = edb.create_report("interim", "Alter Name", "h001")
+        edb._con.execute(
+            "UPDATE reports SET status='approved' WHERE id=?", (rid,)
+        )
+        edb._con.commit()
+        ep  = self._make_ep(edb)
+        resp = {}
+        body = json.dumps({"id": rid, "title": "Neuer Name"}).encode()
+        ep.handle_rename(_make_mock_handler(resp), body)
+        assert resp['status'] == 409
+        assert edb.get_report(rid).title == "Alter Name"
+
+
+# ---------------------------------------------------------------------------
 # TestEditorBlockEndpoint
 # ---------------------------------------------------------------------------
 

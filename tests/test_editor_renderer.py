@@ -322,7 +322,10 @@ class TestEditorHtmlRenderer:
         result = renderer.render_report(report, blocks)
 
         assert "<article" in result
-        assert "Zwischenbericht" in result
+        # Build 473: interim-Anzeigelabel ist jetzt "Vermerk" (statt "Zwischenbericht").
+        # DB-Schluessel 'interim' unveraendert. "1. Zwischenbericht" bleibt als
+        # freier Titel (report.title) erhalten. Beleg: Auftrag 2026-07-21.
+        assert "Vermerk" in result
         assert "1. Zwischenbericht" in result
         assert "h012345" in result
         assert "Inhalt des Berichts." in result

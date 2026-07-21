@@ -3528,3 +3528,46 @@
     font-style: italic;
     color: #5b6b7b;
 }
+
+/* =========================================================================
+   Build 473 — Vermerksnamenszeile (editierbarer Titel ueber dem Editor)
+   -------------------------------------------------------------------------
+   Randlose Eingabezeile, die optisch nicht an ein Formularfeld erinnert und
+   erst bei Fokus einen Rahmen erhaelt. Steht direkt ueber dem Editor.js-Holder.
+   Beleg: Auftrag 2026-07-21.
+   ========================================================================= */
+.report-name-bar {
+    margin: 4px 0 2px 0;
+}
+.report-name-input {
+    width: 100%;
+    box-sizing: border-box;
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.3;
+    padding: 6px 8px;
+    color: var(--color-text, #1a1a1a);
+    background: transparent;
+    /* randlos: kein sichtbarer Rahmen im Ruhezustand */
+    border: 1px solid transparent;
+    border-radius: 4px;
+    outline: none;
+    transition: border-color 0.12s ease, background-color 0.12s ease;
+}
+.report-name-input::placeholder {
+    color: var(--color-text-muted, #999);
+    font-weight: 400;
+    font-style: italic;
+}
+.report-name-input:hover:not(:disabled) {
+    background: var(--color-bg-hover, #f5f5f5);
+}
+/* erst bei Fokus zu einer umrahmten Eingabezeile werden */
+.report-name-input:focus {
+    border-color: var(--color-focus, #1a73e8);
+    background: var(--color-bg, #ffffff);
+}
+.report-name-input:disabled {
+    color: var(--color-text-muted, #888);
+    cursor: default;
+}

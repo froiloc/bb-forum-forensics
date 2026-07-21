@@ -1338,6 +1338,73 @@ class EvidenceDb:
         ).fetchone()
         return self._row_to_report(row) if row else None
 
+    def update_report_title(
+        self,
+        report_id: int,
+        title: str,
+        updated_by: str,
+    ) -> bool:
+        """
+        Aendert den Titel (Namen) eines Vermerks/Berichts.
+
+        Build 473 (Feature "editierbarer Vermerksname", mc 2026-07-21):
+        Der Ermittler kann den Namen des Vermerks nachtraeglich aendern
+        (Vermerksnamenszeile ueber dem Editor). NUR im Status 'draft' zulaessig.
+
+        BELEG (Siegel-Integritaet): Der Inhaltshash eines Berichts umfasst die
+        gesamte 'reports'-Zeile INKLUSIVE 'title'
+        (management/reports/report_sealer.py:_REPORT_COLS enthaelt "title",
+        _hash() serialisiert die reports-Zeile). Ein Umbenennen nach der
+        Versiegelung (Status 'approved'/'final') wuerde daher das Siegel
+        brechen. Deshalb ist die Umbenennung strikt auf 'draft' begrenzt;
+        'submitted' ist bereits zur Abnahme vorgelegt und wird ebenfalls
+        abgelehnt, damit der Lektor keinen abweichenden Titel vorfindet.
+
+        Kein Schemaeingriff (bestehende Spalte 'title') -> migrationsneutral,
+        Stichtag 01.07.2026 gewahrt.
+
+        Args:
+            report_id:  id des Berichts.
+            title:      Neuer, nicht-leerer Titel.
+            updated_by: SAMAccountName des Aendernden (fuer das Protokoll).
+
+        Returns:
+            True bei Erfolg.
+
+        Raises:
+            EvidenceDbError: Bei leerem Titel, unbekanntem Bericht oder
+                             wenn der Bericht nicht (mehr) im Status 'draft' ist.
+        """
+        if not title.strip():
+            raise EvidenceDbError("Vermerksname darf nicht leer sein.")
+
+        row = self._con.execute(
+            "SELECT status FROM reports WHERE id = ?",
+            (report_id,),
+        ).fetchone()
+        if row is None:
+            raise EvidenceDbError(f"Bericht id={report_id} existiert nicht.")
+
+        status = str(row["status"])
+        if status != "draft":
+            raise EvidenceDbError(
+                "Der Vermerk kann nur im Entwurf ('draft') umbenannt werden. "
+                f"Aktueller Status: '{status}'. Ein bereits vorgelegter oder "
+                "versiegelter Vermerk darf nicht umbenannt werden "
+                "(Siegel-Integritaet)."
+            )
+
+        self._con.execute(
+            "UPDATE reports SET title = ? WHERE id = ?",
+            (title.strip(), report_id),
+        )
+        self._con.commit()
+        logger.info(
+            "Vermerk umbenannt: id=%d neuer_titel='%s' durch '%s'",
+            report_id, title.strip(), updated_by,
+        )
+        return True
+
     def update_report_status(
         self,
         report_id: int,

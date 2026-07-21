@@ -32,11 +32,13 @@ from report_render.report_document import ReportDocument, RenderedBlock
 
 CLASSIFICATION = "VERTRAULICH — IT-FORENSISCHES ERMITTLUNGSWERKZEUG NRW"
 
-#: Anzeigenamen der Berichtstypen. Beleg: userinfo/report.js:231-233.
+#: Anzeigenamen der Berichtstypen. Build 473 (Refactoring "Bericht" -> "Vermerk",
+#: mc 2026-07-21): Labels umbenannt; DB-Schluessel unveraendert (migrationsneutral).
+#: Beleg: Auftrag 2026-07-21.
 REPORT_TYPE_LABELS = {
-    "interim":  "Zwischenbericht",
+    "interim":  "Vermerk",
     "final":    "Abschlussbericht",
-    "addendum": "Nachtrag",
+    "addendum": "Ergänzungsvermerk",
 }
 
 #: Menschenlesbare Beschreibung der Warn-Arten fuer den Hinweis-Abschnitt (R2).

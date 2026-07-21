@@ -57,10 +57,14 @@
         approved: 'freigegeben',
         final: 'final'
     };
+    // Build 473 (Refactoring "Bericht" -> "Vermerk", mc 2026-07-21): Anzeigelabels
+    // umbenannt; DB-Schluessel unveraendert (migrationsneutral). Reihenfolge
+    // interim -> addendum -> final ('Abschlussbericht' an letzter Stelle).
+    // Beleg: Auftrag 2026-07-21.
     var TYPE_LABEL = {
-        interim: 'Zwischenbericht',
-        final: 'Abschlussbericht',
-        addendum: 'Nachtrag'
+        interim: 'Vermerk',
+        addendum: 'Ergänzungsvermerk',
+        final: 'Abschlussbericht'
     };
     var STATUS_ORDER = ['submitted', 'draft', 'approved', 'final'];
 

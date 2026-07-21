@@ -71,7 +71,7 @@ describe("cockpit_reports.js — Berichts-Abnahme (Build 375)", () => {
     const api = _api();
     const rows = api.toRows(_data());
     expect(rows.length).toBe(3);
-    expect(rows[0].typ).toBe("Zwischenbericht");
+    expect(rows[0].typ).toBe("Vermerk");  // Build 473: interim-Label "Zwischenbericht" -> "Vermerk"
     expect(rows[0].status_label).toBe("eingereicht");
     expect(rows[0].freigaben).toBe(0);
     expect(rows[1].freigaben).toBe(1);

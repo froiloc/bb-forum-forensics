@@ -135,7 +135,7 @@ _EDITOR_HTML = """\
     <!-- Fixierte Aktionsleiste (§4.2 Bauplan B6 v0.3) -->
     <header id="report-action-bar">
       <div id="report-action-bar-title">
-        📄 Bericht \u00b7 <span id="report-current-title">{investigator} / {subject} (ID: {subject_id})</span>
+        📄 Vermerk \u00b7 <span id="report-current-title">{investigator} / {subject} (ID: {subject_id})</span>
       </div>
       <!-- Bug 1.10 Fix Build 121: editor-report-title als div zwischen title und buttons.
            War bisher als span NACH den Buttons platziert und drückte die Leiste nach unten.
@@ -149,7 +149,7 @@ _EDITOR_HTML = """\
              Wird aktiv sobald ein Bericht geladen ist (disabled -> enabled durch JS).
              Beleg: Bugfix Build 136, Projektgespraech 2026-05-09 -->
         <button class="report-btn" id="btn-save-now"
-          title="Bericht jetzt speichern (Strg+S)" disabled>
+          title="Vermerk jetzt speichern (Strg+S)" disabled>
           💾 Speichern
         </button>
         <button class="report-btn" id="btn-refresh-placeholders"
@@ -159,12 +159,12 @@ _EDITOR_HTML = """\
         <!-- Bug 1.9 Fix Build 121: ✎ → 🖶 (Drucker-Symbol).
              Beleg: Bugfix Build 121, Projektgespraech 2026-05-08 -->
         <button class="report-btn" id="btn-print"
-          title="Bericht drucken" disabled>
+          title="Vermerk drucken" disabled>
           🖶 Drucken
         </button>
         <div class="report-export-wrap">
           <button class="report-btn" id="btn-export"
-            title="Bericht exportieren" disabled>
+            title="Vermerk exportieren" disabled>
             &#x2b07; Export &#x25be;
           </button>
           <div id="export-dropdown" class="report-export-dropdown" style="display:none">
@@ -198,6 +198,17 @@ _EDITOR_HTML = """\
         <div id="report-selector-container"></div>
         <!-- Status-Meldungen -->
         <div id="report-status-msg"></div>
+        <!-- Build 473: Vermerksnamenszeile (randlos, wird bei Fokus umrahmt).
+             Steht ueber dem Editor.js-Holder. Der Name entspricht reports.title.
+             Default-Verhalten: solange nicht manuell entkoppelt, spiegelt der Name
+             die erste Ueberschrift (H1) des Editors. Details/Heuristik in
+             report_editor.js (_nameManual). Beleg: Auftrag 2026-07-21. -->
+        <div id="report-name-bar" class="report-name-bar" style="display:none">
+          <input id="report-name-input" class="report-name-input" type="text"
+                 placeholder="Vermerksname"
+                 title="Name des Vermerks. Leeren und bestaetigen = wieder automatisch aus der ersten Ueberschrift."
+                 autocomplete="off" spellcheck="false" disabled>
+        </div>
         <!-- Editor-Bereich: EditorJS-Holder direkt in report-main-col.
              Beleg: Bauplan B6 §4.3, Build 113, Projektgespraech 2026-05-07 -->
         <div id="editorjs-holder" class="editorjs-holder"></div>

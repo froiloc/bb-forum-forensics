@@ -82,12 +82,14 @@
     // 1) REINE FUNKTIONEN (kein DOM) — vitest.
     // =====================================================================
 
-    // reportTypeLabel: Klartext zum Berichtstyp (Fallback: Rohwert).
+    // reportTypeLabel: Klartext zum Vermerkstyp (Fallback: Rohwert).
+    // Build 473 (Refactoring "Bericht" -> "Vermerk", mc 2026-07-21): Labels
+    // umbenannt; DB-Schluessel (Klammerzusatz) unveraendert. Beleg: Auftrag 2026-07-21.
     function reportTypeLabel(rt) {
         switch (rt) {
-            case 'interim':  return 'Zwischenbericht (interim)';
+            case 'interim':  return 'Vermerk (interim)';
             case 'final':    return 'Abschlussbericht (final)';
-            case 'addendum': return 'Nachtrag (addendum)';
+            case 'addendum': return 'Ergänzungsvermerk (addendum)';
             default:         return rt || '';
         }
     }
@@ -589,10 +591,11 @@
         var fTitle = _labeledField(form, 'Titel', 'text', 'aiw-dtpl-title');
         var fDesc = _labeledField(form, 'Beschreibung (optional)', 'textarea',
             'aiw-dtpl-desc');
-        var fRt = _labeledField(form, 'Berichtstyp', 'select', 'aiw-dtpl-rt');
+        var fRt = _labeledField(form, 'Vermerkstyp', 'select', 'aiw-dtpl-rt');
+        // Build 473: Reihenfolge interim -> addendum -> final (Abschlussbericht zuletzt).
         [['interim', reportTypeLabel('interim')],
-         ['final', reportTypeLabel('final')],
-         ['addendum', reportTypeLabel('addendum')]].forEach(function (o) {
+         ['addendum', reportTypeLabel('addendum')],
+         ['final', reportTypeLabel('final')]].forEach(function (o) {
             var opt = document.createElement('option');
             opt.value = o[0];
             opt.textContent = o[1];

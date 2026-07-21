@@ -145,8 +145,47 @@ const SIDEBAR_MAX_ANNOTATIONS = 200;
 // Modul-Zustand
 // ---------------------------------------------------------------------------
 
+/**
+ * Build 473 (Refactoring "Bericht" -> "Vermerk", mc 2026-07-21):
+ * Zentrale Anzeigelabels der Vermerkstypen (eine Quelle statt mehrerer
+ * Inline-Maps). DB-Schluessel ('interim'/'final'/'addendum') bleiben
+ * UNVERAENDERT -> migrationsneutral (Stichtag 01.07.2026). Reihenfolge im
+ * Objekt spiegelt die gewuenschte Anzeige-Reihenfolge: 'Abschlussbericht'
+ * (final) an letzter Stelle. Beleg: Auftrag 2026-07-21.
+ */
+const TYPE_LABELS = Object.freeze({
+    interim:  'Vermerk',
+    addendum: 'Ergänzungsvermerk',
+    final:    'Abschlussbericht',
+});
+
 /** Aktuell geladener Bericht (ReportRecord) oder null */
 let _currentReport = null;
+
+// -------------------------------------------------------------------------
+// Build 473 — Feature "editierbarer Vermerksname" (Vermerksnamenszeile).
+// -------------------------------------------------------------------------
+// _nameManual: In-Memory-Zustand pro geladenem Vermerk. true => der Name
+//   wurde manuell von der ersten Ueberschrift entkoppelt; die automatische
+//   Synchronisation (erste H1 -> Name) ist AUS.
+//   BEWUSST OHNE persistentes DB-Flag: Der Zustand wird beim Laden per
+//   Heuristik rekonstruiert (Name != erste H1 => manuell). Kein Schemaeingriff
+//   -> migrationsneutral (Stichtag 01.07.2026). Beleg: Entscheidung
+//   "Heuristik ohne Flag", Auftrag 2026-07-21.
+// KONSEQUENZ (dokumentiert): Ein bei der Anlage gesetzter Name macht Name==H1;
+//   nach einem Reload liest die Heuristik das als "automatisch". Der manuelle
+//   Lock ueberlebt also nur die laufende Sitzung. Das ist die bewusste
+//   Nebenwirkung der flag-losen Loesung.
+let _nameManual = false;
+// Debounce-Timer fuer die Persistenz der Auto-Sync-Umbenennung.
+let _nameSaveTimer = null;
+// Uebergabe vom Anlage-Dialog an die Editor-Init: mit welchem Text die erste
+// H1 als "Title-Element" vorbelegt wird und ob der Name als manuell gilt.
+// Wird vom naechsten _initNameBar() konsumiert (der naechste Ladevorgang nach
+// dem Anlegen ist der neu erzeugte Vermerk). { text, manual } oder null.
+let _pendingInitialHeading = null;
+// Debounce (ms) fuer das Speichern des Namens bei automatischer Synchronisation.
+const NAME_SYNC_DEBOUNCE_MS = 600;
 
 /** Aktuell geladene Bloecke (fuer Sidebar-Formular) */
 let _currentBlocks = [];
@@ -299,7 +338,7 @@ async function initReportSelector(preselectId = null) {
     const container = document.getElementById('report-selector-container');
     if (!container) return;
 
-    container.innerHTML = '<span class="loading-spinner"></span> Lade Berichte…';
+    container.innerHTML = '<span class="loading-spinner"></span> Lade Vermerke…';
 
     let reports = [];
     try {
@@ -311,24 +350,24 @@ async function initReportSelector(preselectId = null) {
         reports = data.reports || [];
     } catch (err) {
         container.innerHTML = `<div class="status-msg status-msg-error">
-            Berichte konnten nicht geladen werden: ${window.esc ? esc(String(err)) : String(err)}
+            Vermerke konnten nicht geladen werden: ${window.esc ? esc(String(err)) : String(err)}
         </div>`;
         return;
     }
 
     // UI aufbauen
-    const typeLabels = { interim: 'Zwischenbericht', final: 'Abschlussbericht', addendum: 'Nachtrag' };
+    // Build 473: zentrale TYPE_LABELS statt Inline-Map.
     const options = reports.map(r =>
-        `<option value="${r.id}">${r.sequence_nr}. ${typeLabels[r.report_type] || r.report_type}: ${r.title}</option>`
+        `<option value="${r.id}">${r.sequence_nr}. ${TYPE_LABELS[r.report_type] || r.report_type}: ${r.title}</option>`
     ).join('');
 
     container.innerHTML = `
         <div id="report-selector-bar">
-            <label for="report-select" class="report-selector-label">Bericht:</label>
+            <label for="report-select" class="report-selector-label">Vermerk:</label>
             <select id="report-select" class="report-select">
-                ${reports.length ? options : '<option value="">— Noch kein Bericht —</option>'}
+                ${reports.length ? options : '<option value="">— Noch kein Vermerk —</option>'}
             </select>
-            <button class="editor-btn" id="btn-new-report" title="Neuen Bericht anlegen">+ Neuer Bericht</button>
+            <button class="editor-btn" id="btn-new-report" title="Neuen Vermerk anlegen">+ Neuer Vermerk</button>
             <span id="report-selector-status"></span>
         </div>`;
 
@@ -361,17 +400,26 @@ async function initReportSelector(preselectId = null) {
 }
 
 /**
- * Dialog zum Anlegen eines neuen Berichts.
+ * Dialog zum Anlegen eines neuen Vermerks.
+ *
+ * Build 473 (Feature "editierbarer Vermerksname"):
+ *   - Reihenfolge der Typen: Vermerk (interim), Ergaenzungsvermerk (addendum),
+ *     Abschlussbericht (final) — 'Abschlussbericht' an letzter Stelle.
+ *   - Der Name ist jetzt OPTIONAL. Wird er angegeben (Way 1), wandert er in die
+ *     erste Ueberschrift (H1) und gilt als manuell gesetzt. Bleibt er leer
+ *     (Way 2), pflegt sich der Name automatisch aus der ersten Ueberschrift.
+ * Beleg: Auftrag 2026-07-21.
  * @param {Array} existingReports
  */
 function openNewReportDialog(existingReports) {
     document.getElementById('new-report-dialog')?.remove();
 
     const hasFinal = existingReports.some(r => r.report_type === 'final');
+    // Reihenfolge: interim -> addendum -> final ('Abschlussbericht' zuletzt).
     const typeOpts = [
-        { value: 'interim',  label: 'Zwischenbericht' },
-        { value: 'final',    label: 'Abschlussbericht', disabled: hasFinal },
-        { value: 'addendum', label: 'Nachtragsbericht' },
+        { value: 'interim',  label: TYPE_LABELS.interim  },
+        { value: 'addendum', label: TYPE_LABELS.addendum },
+        { value: 'final',    label: TYPE_LABELS.final, disabled: hasFinal },
     ];
 
     const dialog = document.createElement('div');
@@ -379,9 +427,9 @@ function openNewReportDialog(existingReports) {
     dialog.className = 'editor-dialog';
     dialog.innerHTML = `
         <div class="editor-dialog-inner">
-            <h3 style="margin:0 0 12px 0;font-size:14px">Neuen Bericht anlegen</h3>
+            <h3 style="margin:0 0 12px 0;font-size:14px">Neuen Vermerk anlegen</h3>
             <div style="margin-bottom:8px">
-                <label style="font-size:12px;display:block;margin-bottom:4px">Berichtstyp:</label>
+                <label style="font-size:12px;display:block;margin-bottom:4px">Vermerkstyp:</label>
                 <select id="new-report-type" class="report-select">
                     ${typeOpts.map(o =>
                         `<option value="${o.value}" ${o.disabled ? 'disabled' : ''}>${o.label}</option>`
@@ -389,9 +437,9 @@ function openNewReportDialog(existingReports) {
                 </select>
             </div>
             <div style="margin-bottom:12px">
-                <label style="font-size:12px;display:block;margin-bottom:4px">Titel:</label>
+                <label style="font-size:12px;display:block;margin-bottom:4px">Name (optional):</label>
                 <input id="new-report-title" type="text" class="report-text-input"
-                    placeholder="z.B. 1. Zwischenbericht – Ermittlungsstand Q2 2026">
+                    placeholder="Leer lassen = Name folgt automatisch der ersten Ueberschrift">
             </div>
             <div style="display:flex;gap:8px">
                 <button class="editor-btn editor-btn-primary" id="btn-create-report">Anlegen</button>
@@ -420,13 +468,18 @@ function openNewReportDialog(existingReports) {
     document.getElementById('btn-cancel-new-report')?.addEventListener('click', (evt) => { window._uevt?.(evt, 'report_editor', 'click:btn-cancel-new-report'); dialog.remove(); }); // B200
     document.getElementById('btn-create-report')?.addEventListener('click', async (evt) => {
         window._uevt?.(evt, 'report_editor', 'click:btn-create-report'); // B200
-        const type  = document.getElementById('new-report-type').value;
-        const title = document.getElementById('new-report-title').value.trim();
-        if (!title) {
-            document.getElementById('new-report-title').focus();
-            return;
-        }
-        // Paket 9: Bericht anlegen über ReportLayer (atomare Bericht+Lock-Transaktion).
+        const type = document.getElementById('new-report-type').value;
+        // Build 473: Name ist optional. Way 1 (Name gesetzt) -> H1 = Name, manuell.
+        // Way 2 (leer) -> Default-Titel, erste H1 pflegt den Namen automatisch.
+        const nameInput = document.getElementById('new-report-title').value.trim();
+        // Der DB-Titel darf nicht leer sein (reports.title NOT NULL). Bei Way 2
+        // dient ein neutraler Default, den die Auto-Synchronisation ersetzt,
+        // sobald eine Ueberschrift getippt wird.
+        const effectiveTitle = nameInput || 'Neuer Vermerk';
+        // Seed fuer die Editor-Init: erste H1 vorbelegen; manuell nur bei Way 1.
+        _pendingInitialHeading = { text: nameInput, manual: !!nameInput };
+
+        // Paket 9: Vermerk anlegen über ReportLayer (atomare Bericht+Lock-Transaktion).
         // Beleg: Paket 9, ReportLayer.create(), LockLayer._onReportCreated()
         const _oldRid218 = _currentReport?.id ?? null;
         if (window.lockLayer?.lockId && _oldRid218) {
@@ -436,10 +489,15 @@ function openNewReportDialog(existingReports) {
             await new Promise(r => setTimeout(r, 100));
         }
         try {
-            if (!window.reportLayer) { _selectorStatus('reportLayer nicht verfügbar', 'error'); return; }
-            await window.reportLayer.create(type, title);
+            if (!window.reportLayer) {
+                _pendingInitialHeading = null;
+                _selectorStatus('reportLayer nicht verfügbar', 'error');
+                return;
+            }
+            await window.reportLayer.create(type, effectiveTitle);
             dialog.remove();
         } catch (err) {
+            _pendingInitialHeading = null;  // Seed verwerfen, damit er nicht faelschlich greift
             _selectorStatus(String(err), 'error');
         }
     });
@@ -448,6 +506,253 @@ function openNewReportDialog(existingReports) {
 function _selectorStatus(msg, level) {
     const el = document.getElementById('report-selector-status');
     if (el) el.innerHTML = `<span class="status-msg status-msg-${level}" style="font-size:11px">${msg}</span>`;
+}
+
+// ===========================================================================
+// Build 473 — Vermerksnamenszeile (editierbarer Titel + Auto-Sync erste H1)
+// ---------------------------------------------------------------------------
+// Zusammenspiel:
+//   * Der Name entspricht reports.title (Metadatum). Persistiert wird ueber
+//     POST /_forensic/report/rename (nur Status 'draft', Siegel-Integritaet).
+//   * Solange der Name NICHT manuell entkoppelt ist (_nameManual === false),
+//     spiegelt er bei jeder Aenderung die erste Ueberschrift (H1) des Editors.
+//   * Manuelles Aendern der Namenszeile setzt _nameManual (sobald der Wert von
+//     der Ueberschrift abweicht) und beendet die Synchronisation.
+//   * Leeren + Bestaetigen der Namenszeile reaktiviert die Synchronisation
+//     (Name := aktuelle Ueberschrift).
+// Beleg: Auftrag 2026-07-21; Entscheidung "Heuristik ohne Flag".
+// ===========================================================================
+
+/**
+ * Liefert den reinen Text der ersten Ueberschrift (H1/Header-Block) des
+ * Editors oder '' wenn der erste Block kein Header ist bzw. der Editor nicht
+ * bereit ist. Inline-HTML (Marker/Chips) wird entfernt — der Name ist reiner
+ * Text.
+ * @returns {Promise<string>}
+ */
+async function _firstHeadingText() {
+    if (!_editor || typeof _editor.save !== 'function') return '';
+    let data;
+    try {
+        data = await _editor.save();
+    } catch (_) {
+        return '';
+    }
+    const first = data && Array.isArray(data.blocks) ? data.blocks[0] : null;
+    if (!first || first.type !== 'header') return '';
+    const raw = (first.data && typeof first.data.text === 'string') ? first.data.text : '';
+    // HTML-Tags entfernen und einfache HTML-Entities zurueckwandeln.
+    const tmp = document.createElement('div');
+    tmp.innerHTML = raw;
+    return (tmp.textContent || '').trim();
+}
+
+/**
+ * Setzt den sichtbaren Wert der Namenszeile — aber NICHT waehrend der Nutzer
+ * gerade darin tippt (Fokus), um die Eingabe nicht zu ueberschreiben.
+ * @param {string} v
+ */
+function _setNameInputValue(v) {
+    const input = document.getElementById('report-name-input');
+    if (!input) return;
+    if (document.activeElement === input) return;
+    input.value = v == null ? '' : v;
+}
+
+/** Aktualisiert die Titelanzeige in der Aktionsleiste (#editor-report-title). */
+function _updateActionBarTitle() {
+    const titleEl = document.getElementById('editor-report-title');
+    if (titleEl && _currentReport) {
+        const lbl = TYPE_LABELS[_currentReport.report_type] || _currentReport.report_type;
+        titleEl.textContent =
+            `${_currentReport.sequence_nr}. ${lbl}: ${_currentReport.title}`;
+    }
+}
+
+/** Aktualisiert den Text der zugehoerigen <option> im Auswahl-Dropdown. */
+function _updateSelectorOptionLabel() {
+    const sel = document.getElementById('report-select');
+    if (!sel || !_currentReport) return;
+    const opt = sel.querySelector(`option[value="${_currentReport.id}"]`);
+    if (opt) {
+        const lbl = TYPE_LABELS[_currentReport.report_type] || _currentReport.report_type;
+        opt.textContent =
+            `${_currentReport.sequence_nr}. ${lbl}: ${_currentReport.title}`;
+    }
+}
+
+/**
+ * Persistiert den Namen (title) serverseitig via Rename-Endpunkt.
+ * @param {number} reportId
+ * @param {string} title
+ * @returns {Promise<boolean>} true bei Erfolg.
+ */
+async function _persistTitle(reportId, title) {
+    try {
+        const resp = await fetch('/_forensic/report/rename', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Forensic-Request': 'ajax' },
+            body:    JSON.stringify({ id: reportId, title }),
+        });
+        if (!resp.ok) {
+            const d = await resp.json().catch(() => ({}));
+            _selectorStatus(`Umbenennen fehlgeschlagen: ${d.error || resp.status}`, 'error');
+            return false;
+        }
+        return true;
+    } catch (err) {
+        _selectorStatus(`Netzwerkfehler beim Umbenennen: ${err}`, 'error');
+        return false;
+    }
+}
+
+/** Debounce fuer die Persistenz der automatischen Namens-Synchronisation. */
+function _scheduleTitlePersist(reportId, title) {
+    if (_nameSaveTimer) clearTimeout(_nameSaveTimer);
+    _nameSaveTimer = setTimeout(() => {
+        _persistTitle(reportId, title).catch(() => {});
+    }, NAME_SYNC_DEBOUNCE_MS);
+}
+
+/**
+ * Auto-Sync-Hook: Wird aus onChange gerufen. Wenn die Synchronisation aktiv
+ * ist (_nameManual === false) und der Vermerk im Entwurf steht, uebernimmt der
+ * Name die (geaenderte) erste Ueberschrift. Ist die Ueberschrift leer, bleibt
+ * der bisherige Name erhalten (ein Name darf nicht leer werden).
+ */
+async function _maybeSyncNameFromHeading() {
+    if (_nameManual) return;
+    if (!_currentReport || _currentReport.status !== 'draft') return;
+    const heading = await _firstHeadingText();
+    if (!heading) return;
+    if (heading === (_currentReport.title || '')) return;
+    _currentReport.title = heading;
+    _setNameInputValue(heading);
+    _updateActionBarTitle();
+    _updateSelectorOptionLabel();
+    _scheduleTitlePersist(_currentReport.id, heading);
+}
+
+/**
+ * Verarbeitet das Bestaetigen der Namenszeile (Blur/Enter).
+ *   - leer  -> Auto-Sync reaktivieren, Name := erste Ueberschrift.
+ *   - sonst -> Name := Eingabe; _nameManual = (Eingabe != erste Ueberschrift).
+ */
+async function _submitNameChange() {
+    if (!_currentReport || _currentReport.status !== 'draft') return;
+    const input = document.getElementById('report-name-input');
+    if (!input) return;
+    const val     = (input.value || '').trim();
+    const heading = await _firstHeadingText();
+
+    if (val === '') {
+        // Leeren + Bestaetigen: Synchronisation wieder aufnehmen.
+        _nameManual = false;
+        const newTitle = heading || _currentReport.title;  // Fallback: alten Namen behalten
+        input.value = newTitle;
+        if (newTitle !== _currentReport.title) {
+            _currentReport.title = newTitle;
+            _updateActionBarTitle();
+            _updateSelectorOptionLabel();
+            await _persistTitle(_currentReport.id, newTitle);
+        }
+        return;
+    }
+
+    // Nicht-leer: manuell, sobald der Name von der Ueberschrift abweicht.
+    _nameManual = (val !== heading);
+    if (val !== _currentReport.title) {
+        _currentReport.title = val;
+        _updateActionBarTitle();
+        _updateSelectorOptionLabel();
+        await _persistTitle(_currentReport.id, val);
+    }
+}
+
+/**
+ * Initialisiert die Namenszeile fuer den geladenen Vermerk:
+ *   - Bar einblenden, Wert = report.title.
+ *   - Editierbar nur im Entwurf ('draft') UND mit gehaltenem Lock.
+ *   - _nameManual per Heuristik rekonstruieren (Name != erste H1 => manuell).
+ *   - Ausstehende Anlage-Vorbelegung (_pendingInitialHeading) einspielen:
+ *     die erste H1 mit dem Namen belegen und ggf. als manuell markieren.
+ * @param {object} report ReportRecord
+ */
+async function _initNameBar(report) {
+    const bar   = document.getElementById('report-name-bar');
+    const input = document.getElementById('report-name-input');
+    if (!bar || !input) return;
+
+    bar.style.display = '';
+    input.value = report.title || '';
+
+    const writable = (report.status === 'draft') && !!(window.lockLayer?.lockId);
+    input.disabled = !writable;
+
+    // Einmalig Listener verdrahten (Blur + Enter). Kapselung: Guard-Flag.
+    if (!input._nameHandlersBound) {
+        input._nameHandlersBound = true;
+        input.addEventListener('keydown', (evt) => {
+            if (evt.key === 'Enter') {
+                evt.preventDefault();
+                input.blur();  // loest 'change'/blur-Persistenz aus
+            }
+        });
+        input.addEventListener('blur', (evt) => {
+            window._uevt?.(evt, 'report_editor', 'blur:report-name-input');
+            _submitNameChange().catch(err =>
+                console.warn('report_editor.js: _submitNameChange fehlgeschlagen:', err));
+        });
+    }
+
+    // Editor bereit abwarten, dann erste H1 bestimmen.
+    try { if (_editor?.isReady) await _editor.isReady; } catch (_) {}
+
+    // Anlage-Vorbelegung: die erste H1 mit dem Namen belegen (Way 1/2).
+    // Der naechste Ladevorgang nach dem Anlegen ist der neu erzeugte Vermerk.
+    if (_pendingInitialHeading) {
+        const pend = _pendingInitialHeading;
+        _pendingInitialHeading = null;
+        await _seedInitialHeading(report, pend.text, pend.manual);
+        return;
+    }
+
+    // Regulaeres Laden: _nameManual per Heuristik rekonstruieren.
+    const heading = await _firstHeadingText();
+    _nameManual = (report.title || '') !== heading;
+}
+
+/**
+ * Legt bei der Anlage eines Vermerks die erste H1 als "Title-Element" an
+ * (Way 1: mit eingegebenem Namen -> manuell; Way 2: leer -> Auto-Sync).
+ * Setzt _nameManual entsprechend und persistiert den Block per Auto-Save.
+ * @param {object}  report
+ * @param {string}  text   Vorbelegungstext der H1 ('' erlaubt).
+ * @param {boolean} manual true => Name gilt als manuell gesetzt.
+ */
+async function _seedInitialHeading(report, text, manual) {
+    _nameManual = !!manual;
+    if (!_editor || !window.lockLayer?.lockId) return;
+    try {
+        // Programmatisch einfuegen ohne Auto-Save-Schleife (Guard wie bei
+        // module_panel-Inserts). Beleg: _isProgrammaticInsert, Build 202.
+        window.ReportEditor?.beginProgrammaticInsert?.();
+        try {
+            await _editor.blocks.insert(
+                'header',
+                { text: text || '', level: 1 },
+                {},
+                0,     // an den Anfang
+                true,  // needToFocus
+            );
+        } finally {
+            window.ReportEditor?.endProgrammaticInsert?.();
+        }
+        // Persistieren (legt den neuen Header-Block serverseitig an).
+        await _performAutoSave(report.id);
+    } catch (err) {
+        console.warn('report_editor.js: _seedInitialHeading fehlgeschlagen:', err);
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -587,12 +892,8 @@ async function _loadReportImpl(report) {
         });
     }
 
-    // Titel aktualisieren
-    const titleEl = document.getElementById('editor-report-title');
-    if (titleEl) {
-        const typeLabels = { interim: 'Zwischenbericht', final: 'Abschlussbericht', addendum: 'Nachtrag' };
-        titleEl.textContent = `${report.sequence_nr}. ${typeLabels[report.report_type] || report.report_type}: ${report.title}`;
-    }
+    // Titel aktualisieren (Build 473: zentrale TYPE_LABELS via _updateActionBarTitle).
+    _updateActionBarTitle();
 
     // Bestehenden Editor zerstoeren
     // WICHTIG: Editor.js destroy() entfernt den holder-DOM-Knoten.
@@ -611,13 +912,15 @@ async function _loadReportImpl(report) {
     // Beleg: Projektgespraech 2026-05-07
     const editorContainer = document.getElementById('report-main-col');
     if (editorContainer && !document.getElementById('editorjs-holder')) {
-        // Holder nach report-selector-container + report-status-msg einfuegen
-        const statusEl = document.getElementById('report-status-msg');
+        // Build 473: Holder MUSS UNTER der Vermerksnamenszeile (#report-name-bar)
+        // liegen. Anker daher bevorzugt die Namenszeile, sonst die Statuszeile.
+        const anchorEl = document.getElementById('report-name-bar')
+                      || document.getElementById('report-status-msg');
         const newHolder = document.createElement('div');
         newHolder.id = 'editorjs-holder';
         newHolder.className = 'editorjs-holder';
-        if (statusEl && statusEl.nextSibling) {
-            editorContainer.insertBefore(newHolder, statusEl.nextSibling);
+        if (anchorEl && anchorEl.nextSibling) {
+            editorContainer.insertBefore(newHolder, anchorEl.nextSibling);
         } else {
             editorContainer.appendChild(newHolder);
         }
@@ -660,6 +963,11 @@ async function _loadReportImpl(report) {
     }
 
     _initEditorJs(existingBlocks, report.id);
+
+    // Build 473: Vermerksnamenszeile initialisieren (nach Editor-Init; wartet
+    // intern auf _editor.isReady, um die erste Ueberschrift bestimmen zu koennen).
+    _initNameBar(report).catch(err =>
+        console.warn('report_editor.js: _initNameBar fehlgeschlagen:', err));
 
     // Bug 2.17 Fix Build 286: Automatische Platzhalter ({{a:query_id}})
     // im Hintergrund auflösen und als auto:query_id in placeholder_values_json
@@ -926,6 +1234,13 @@ function _initEditorJs(blocks, reportId) {
             // Der Block wurde bereits per POST save_block server-seitig gespeichert.
             // Beleg: Bugfix Build 202, Projektgespraech 2026-05-17
             if (_isProgrammaticInsert) return;
+
+            // Build 473: Vermerksname automatisch aus der ersten Ueberschrift
+            // pflegen (nur wenn nicht manuell entkoppelt). Bewusst fire-and-forget,
+            // damit der Editor-Fluss nicht blockiert; die Persistenz ist debounced.
+            // Beleg: Auftrag 2026-07-21.
+            _maybeSyncNameFromHeading().catch(err =>
+                console.warn('report_editor.js: _maybeSyncNameFromHeading:', err));
 
             // Bug 2.30/2.60 Fix Build 146: Nach Block-Move Formular-Sortierung
             // aktualisieren und focusedId beibehalten.

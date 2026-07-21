@@ -430,6 +430,20 @@ class ForensicApi:
                 self._method_not_allowed(handler)
                 return
 
+        # /_forensic/report/rename (POST) [Build 473 — editierbarer Vermerksname]
+        # Vor /_forensic/report pruefen (laengerer Pfad zuerst).
+        # Beleg: Auftrag 2026-07-21, ReportsEndpoint.handle_rename()
+        if url_path == "/_forensic/report/rename":
+            if method == "POST":
+                body = self._read_body(handler)
+                if body is None:
+                    return
+                self._get_reports().handle_rename(handler, body)
+                return
+            else:
+                self._method_not_allowed(handler)
+                return
+
         # /_forensic/report (GET, POST) [B4]
         if url_path == "/_forensic/report":
             if method == "GET":

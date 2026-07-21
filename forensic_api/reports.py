@@ -220,3 +220,78 @@ class ReportsEndpoint:
             "Bericht angelegt: id=%d type='%s' title='%s' von '%s' lock_id=%s",
             report_id, report_type, title, investigator, lock_id or "keiner",
         )
+
+    def handle_rename(
+        self,
+        handler: "ForensicRequestHandler",
+        body_bytes: bytes,
+    ) -> None:
+        """
+        POST /_forensic/report/rename — Titel (Namen) eines Vermerks aendern.
+
+        Build 473 (Feature "editierbarer Vermerksname", mc 2026-07-21):
+        Body: { "id": N, "title": "..." }
+        Response 200: { "id": N, "title": "..." }
+
+        Kein Lock erforderlich (betrifft nur Metadaten, analog zum Anlegen).
+        Die Umbenennung ist serverseitig auf Status 'draft' begrenzt
+        (Siegel-Integritaet, siehe evidence_db.update_report_title()).
+        Beleg: Auftrag 2026-07-21.
+        """
+        try:
+            data = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            handler.send_response_body(
+                400, _json_err(f"Ungueltiger JSON-Body: {exc}"),
+                content_type=_CT_JSON,
+            )
+            return
+
+        try:
+            report_id = int(data.get("id"))
+        except (TypeError, ValueError):
+            handler.send_response_body(
+                400, _json_err("'id' fehlt oder ist keine Zahl", "MISSING_FIELD"),
+                content_type=_CT_JSON,
+            )
+            return
+
+        title = str(data.get("title", "")).strip()
+        if not title:
+            handler.send_response_body(
+                400, _json_err("'title' fehlt oder leer", "MISSING_FIELD"),
+                content_type=_CT_JSON,
+            )
+            return
+
+        investigator = self._context.investigator_username
+
+        try:
+            self._bundle.evidence.update_report_title(
+                report_id=report_id,
+                title=title,
+                updated_by=investigator,
+            )
+        except EvidenceDbError as exc:
+            # Nicht-'draft', unbekannter Bericht, leerer Titel.
+            handler.send_response_body(
+                409, _json_err(str(exc), "CONFLICT"),
+                content_type=_CT_JSON,
+            )
+            return
+        except Exception as exc:  # pragma: no cover - defensiv
+            logger.error("update_report_title fehlgeschlagen: %s", exc)
+            handler.send_response_body(
+                500, _json_err("Interner Datenbankfehler"),
+                content_type=_CT_JSON,
+            )
+            return
+
+        body = json.dumps(
+            {"id": report_id, "title": title}, ensure_ascii=False
+        ).encode("utf-8")
+        handler.send_response_body(200, body, content_type=_CT_JSON)
+        logger.info(
+            "Vermerk umbenannt: id=%d title='%s' von '%s'",
+            report_id, title, investigator,
+        )

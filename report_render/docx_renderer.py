@@ -31,8 +31,10 @@ from report_render.report_document import ReportDocument, RenderedBlock
 
 CLASSIFICATION = "VERTRAULICH — IT-FORENSISCHES ERMITTLUNGSWERKZEUG NRW"
 
+# Build 473 (Refactoring "Bericht" -> "Vermerk", mc 2026-07-21): Anzeigelabels
+# umbenannt; DB-Schluessel unveraendert (migrationsneutral). Beleg: Auftrag 2026-07-21.
 REPORT_TYPE_LABELS = {
-    "interim": "Zwischenbericht", "final": "Abschlussbericht", "addendum": "Nachtrag",
+    "interim": "Vermerk", "final": "Abschlussbericht", "addendum": "Ergänzungsvermerk",
 }
 WARNING_LABELS = {
     "unresolved_placeholder": "Nicht auflösbarer Platzhalter (Default eingesetzt)",

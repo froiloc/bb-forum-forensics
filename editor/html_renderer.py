@@ -577,10 +577,16 @@ class EditorHtmlRenderer:
 
         Beleg: AP-E5, Projektgespraech 2026-04-19
         """
+        # Build 473 (Refactoring "Bericht" -> "Vermerk", mc 2026-07-21):
+        # Anzeigelabels der Berichtstypen umbenannt. DB-Schluessel
+        # ('interim'/'final'/'addendum') bleiben UNVERAENDERT -> migrationsneutral
+        # (kein Eingriff in evidence_<uid>.db-Schema, Stichtag 01.07.2026 gewahrt).
+        # Beleg: Projektauftrag 2026-07-21 ("Zwischenbericht"->"Vermerk",
+        # "Nachtragsbericht"->"Ergaenzungsvermerk", "Abschlussbericht" bleibt).
         type_labels = {
-            "interim":  "Zwischenbericht",
+            "interim":  "Vermerk",
             "final":    "Abschlussbericht",
-            "addendum": "Nachtragsbericht",
+            "addendum": "Ergänzungsvermerk",
         }
         type_label = type_labels.get(report.report_type, report.report_type)
         body_html  = self.render(blocks)
