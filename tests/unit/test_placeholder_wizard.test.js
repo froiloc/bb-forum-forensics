@@ -24,8 +24,9 @@
 /**
  * @vitest-environment jsdom
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import '../../userinfo/placeholder_chips.js';
+import '../../userinfo/placeholder_links.js';   // Build 492: Stammvater/Klon
 import '../../userinfo/placeholder_wizard.js';
 
 let PlaceholderWizard;
@@ -275,5 +276,157 @@ describe('Phase 6 — Sidebar-Formular', () => {
         const b2 = body.querySelector('[data-block-id="blk-002"]');
         expect(b2?.classList.contains('pf-block-group--focused')).toBe(true);
         expect(b1?.classList.contains('pf-block-group--blurred')).toBe(true);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// T30-T36: Build 492 — Stammvater/Klon-Verdrahtung (Platzhalter-Neuordnung
+// Slice 3, Teil 2). Gleichnamige m/o-Felder ueber mehrere Bloecke.
+// Beleg: mc-Wunsch 2026-07-20/21, userinfo/placeholder_wizard.js Build 492.
+// ---------------------------------------------------------------------------
+
+describe('Build 492 — Stammvater/Klon-Verdrahtung', () => {
+
+    function _setupBody() {
+        const body = document.createElement('div');
+        body.id = 'accordion-body-form';
+        document.body.appendChild(body);
+        return body;
+    }
+
+    // Zwei Bloecke, beide mit demselben m:-Feld 'spur'.
+    function _twoSpurBlocks(valuesA = null, valuesB = null) {
+        return [
+            {
+                block_id: 'blk-A', block_type: 'paragraph', author: 'h001',
+                block_data: '{"text":"Kopf {{m:spur||Spurennummer}}."}',
+                placeholder_values_json: valuesA,
+            },
+            {
+                block_id: 'blk-B', block_type: 'paragraph', author: 'h001',
+                block_data: '{"text":"Fazit {{m:spur||Spurennummer}}."}',
+                placeholder_values_json: valuesB,
+            },
+        ];
+    }
+
+    function _opts(onSave) {
+        return { myUsername: 'h001', onSave: onSave || (async () => {}) };
+    }
+
+    function _input(body, blockId) {
+        return body.querySelector(`#pf-input-${blockId}-spur`);
+    }
+
+    afterEach(() => {
+        vi.useRealTimers();
+        document.getElementById('accordion-body-form')?.remove();
+    });
+
+    it('T30: leer + leer -> keine Rolle, kein Badge', () => {
+        const body = _setupBody();
+        window.PlaceholderWizard.showPlaceholderForm(
+            _twoSpurBlocks(), 'blk-A', _opts());
+        expect(body.querySelector('.pf-role-badge')).toBeNull();
+        expect(body.querySelector('.pf-role--stammvater')).toBeNull();
+    });
+
+    it('T31: Eingabe macht Feld zum Stammvater und propagiert an den Klon', () => {
+        const body = _setupBody();
+        window.PlaceholderWizard.showPlaceholderForm(
+            _twoSpurBlocks(), 'blk-A', _opts());
+
+        const a = _input(body, 'blk-A');
+        a.value = 'AIW-42';
+        a.dispatchEvent(new Event('input'));
+
+        // Klon in blk-B uebernimmt den Wert LIVE
+        expect(_input(body, 'blk-B').value).toBe('AIW-42');
+        // Rollen-Markierung
+        const gA = body.querySelector('[data-block-id="blk-A"][data-field-name="spur"]');
+        const gB = body.querySelector('[data-block-id="blk-B"][data-field-name="spur"]');
+        expect(gA.classList.contains('pf-role--stammvater')).toBe(true);
+        expect(gB.classList.contains('pf-role--klon')).toBe(true);
+        expect(gA.querySelector('.pf-role-badge').textContent).toBe('Stammvater');
+        expect(gB.querySelector('.pf-role-badge').textContent).toBe('Klon');
+    });
+
+    it('T32: Klon-Wert wird ueber onSave mitgespeichert (Bericht rendert korrekt)', () => {
+        vi.useFakeTimers();
+        const body = _setupBody();
+        const saved = [];
+        window.PlaceholderWizard.showPlaceholderForm(
+            _twoSpurBlocks(), 'blk-A',
+            _opts(async (blockId, name, val) => { saved.push([blockId, name, val]); }));
+
+        const a = _input(body, 'blk-A');
+        a.value = 'AIW-42';
+        a.dispatchEvent(new Event('input'));
+        vi.advanceTimersByTime(800);   // Debounce (700ms) ueberspringen
+
+        // Sowohl Stammvater- als auch Klon-Block werden gespeichert
+        expect(saved).toContainEqual(['blk-A', 'spur', 'AIW-42']);
+        expect(saved).toContainEqual(['blk-B', 'spur', 'AIW-42']);
+    });
+
+    it('T33: Klon koppelt sich ab, wenn er einen EIGENEN Wert bekommt', () => {
+        const body = _setupBody();
+        window.PlaceholderWizard.showPlaceholderForm(
+            _twoSpurBlocks(), 'blk-A', _opts());
+
+        _input(body, 'blk-A').value = 'AIW-42';
+        _input(body, 'blk-A').dispatchEvent(new Event('input'));
+
+        const b = _input(body, 'blk-B');
+        b.value = 'AIW-99';
+        b.dispatchEvent(new Event('input'));
+
+        const gB = body.querySelector('[data-block-id="blk-B"][data-field-name="spur"]');
+        expect(b.value).toBe('AIW-99');
+        expect(gB.classList.contains('pf-role--eigenstaendig')).toBe(true);
+        expect(gB.querySelector('.pf-role-badge')).toBeNull();  // eigenstaendig unmarkiert
+    });
+
+    it('T34: Stammvater-Aenderung zieht den Klon live nach', () => {
+        const body = _setupBody();
+        window.PlaceholderWizard.showPlaceholderForm(
+            _twoSpurBlocks(), 'blk-A', _opts());
+
+        const a = _input(body, 'blk-A');
+        a.value = 'AIW-42';
+        a.dispatchEvent(new Event('input'));
+        a.value = 'AIW-4242';
+        a.dispatchEvent(new Event('input'));
+
+        expect(_input(body, 'blk-B').value).toBe('AIW-4242');
+    });
+
+    it('T35: Initiales Rendern spiegelt den Stammvater-Wert in den Klon', () => {
+        const body = _setupBody();
+        // blk-A hat bereits einen gespeicherten Wert, blk-B nicht.
+        window.PlaceholderWizard.showPlaceholderForm(
+            _twoSpurBlocks('{"spur":"AIW-7"}', null), 'blk-A', _opts());
+
+        expect(_input(body, 'blk-A').value).toBe('AIW-7');
+        expect(_input(body, 'blk-B').value).toBe('AIW-7');   // Klon spiegelt
+        const gA = body.querySelector('[data-block-id="blk-A"][data-field-name="spur"]');
+        const gB = body.querySelector('[data-block-id="blk-B"][data-field-name="spur"]');
+        expect(gA.classList.contains('pf-role--stammvater')).toBe(true);
+        expect(gB.classList.contains('pf-role--klon')).toBe(true);
+    });
+
+    it('T36: a:-Felder nehmen nicht an der Verknuepfung teil (kein Absturz)', () => {
+        const body = _setupBody();
+        const blocks = [{
+            block_id: 'blk-A', block_type: 'paragraph', author: 'h001',
+            block_data: '{"text":"{{a:user.username}} und {{m:spur||Spur}}"}',
+            placeholder_values_json: null,
+        }];
+        window.PlaceholderWizard.showPlaceholderForm(blocks, 'blk-A', _opts());
+        // Nur das m:-Feld hat ein Input; kein a:-Input.
+        expect(body.querySelectorAll('.pf-input')).toHaveLength(1);
+        const s = _input(body, 'blk-A');
+        s.value = 'X';
+        expect(() => s.dispatchEvent(new Event('input'))).not.toThrow();
     });
 });

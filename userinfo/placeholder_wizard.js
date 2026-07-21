@@ -57,7 +57,26 @@
  *     Rueckwaerts-Kompatibilitaet fuer open()/openAtField() erhalten.
  *     Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06.
  *
- * Version: v0.6.136 · Build: 136 · 2026-05-09
+ *   Build 492 (Platzhalter-Neuordnung, Slice 3, Teil 2): Stammvater/Klon.
+ *     Verdrahtung der reinen Verknuepfungslogik aus placeholder_links.js
+ *     (window.PlaceholderLinks, Build 491) in das Sidebar-Formular:
+ *     - _buildLinkState() baut beim Rendern den Verknuepfungszustand ueber
+ *       ALLE Bloecke des Vermerks (gleichnamige m/o-Felder).
+ *     - _renderField() zeigt Klon-Felder mit dem Stammvater-Wert (displayValue)
+ *       und markiert jedes Feld optisch mit seiner Rolle (Stammvater/Klon,
+ *       Badge + linker Rahmen).
+ *     - _propagateLinks() zieht bei jeder Eingabe die Klone LIVE nach
+ *       (applyInput -> Klon-Inputs setzen, validieren, speichern) und
+ *       aktualisiert die Rollen-Markierung.
+ *     ABGRENZUNG: Die dauerhafte Persistenz der explizit/Klon-Unterscheidung
+ *     (Wieder-Anhaengen nach Neuladen, 'abgeleitet'-Marker) beruehrt
+ *     placeholder_values_json in evidence_<uid>.db und steht unter
+ *     Migrationsvorbehalt -> Folge-Build. In DIESEM Build werden Klon-Werte
+ *     ueber den normalen onSave-Pfad mitgespeichert (Bericht rendert korrekt);
+ *     die Unterscheidung lebt in der Sitzung im _linkState.
+ *     Beleg: mc-Wunsch 2026-07-20/21, Bauplan_Platzhalter_DB §Slice3.
+ *
+ * Version: v0.8.492 · Build: 492 · 2026-07-21
  * Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06
  */
 
@@ -156,6 +175,167 @@ let _currentBlocks   = [];     // alle Bloecke des Berichts
 let _currentOpts     = {};     // { myUsername, onSave }
 let _saveTimers      = {};     // Debounce-Timer { "blockId:fieldName": timer }
 
+// Build 492: Stammvater/Klon-Verknuepfungszustand ueber ALLE Bloecke des
+// Vermerks. Wird bei jedem showPlaceholderForm() neu aus den placeholder_
+// values_json der Bloecke aufgebaut und bei jeder Eingabe fortgeschrieben
+// (reine Logik in window.PlaceholderLinks, Build 491). null wenn die
+// Verknuepfungsbibliothek nicht geladen ist (defensive Degradation: dann
+// verhaelt sich das Formular exakt wie vor 492).
+let _linkState       = null;
+
+// ---------------------------------------------------------------------------
+// Build 492: Stammvater/Klon — Zustandsaufbau und Rollen-Markierung
+// ---------------------------------------------------------------------------
+
+/**
+ * Baut den Verknuepfungszustand (Stammvater/Klon) ueber alle Bloecke.
+ *
+ * Die Feld-Reihenfolge MUSS der sichtbaren Reihenfolge entsprechen (Block-
+ * reihenfolge, je Block erst m:, dann o:), weil die Erst-Stammvater-Wahl in
+ * placeholder_links.createState() in Dokumentreihenfolge erfolgt — nur so
+ * stimmt die im Formular markierte Rolle mit der Logik ueberein.
+ * Ein Feld gilt als EXPLIZIT befuellt, wenn im placeholder_values_json des
+ * eigenen Blocks ein nicht-leerer Wert steht.
+ *
+ * @param {Array} blocks
+ * @returns {object|null} PlaceholderLinks-State oder null
+ */
+function _buildLinkState(blocks) {
+    if (!window.PlaceholderLinks || !window.PlaceholderChips) return null;
+    const chips = window.PlaceholderChips;
+    const fieldRefs      = [];
+    const explicitValues = {};
+
+    for (const block of (blocks || [])) {
+        let blockData = {};
+        try {
+            blockData = typeof block.block_data === 'string'
+                ? JSON.parse(block.block_data)
+                : (block.block_data || {});
+        } catch (_) {}
+
+        let values = {};
+        try {
+            if (block.placeholder_values_json) {
+                values = JSON.parse(block.placeholder_values_json);
+            }
+        } catch (_) {}
+
+        const mF = chips.extractFieldsFromBlockData(blockData, 'm').map(f => ({ ...f, type: 'm' }));
+        const oF = chips.extractFieldsFromBlockData(blockData, 'o').map(f => ({ ...f, type: 'o' }));
+        for (const f of [...mF, ...oF]) {
+            fieldRefs.push({ blockId: block.block_id, name: f.name, type: f.type });
+            const v = values[f.name];
+            if (v != null && String(v).trim() !== '') {
+                const k = window.PlaceholderLinks.fieldKey(block.block_id, f.name);
+                explicitValues[k] = String(v);
+            }
+        }
+    }
+
+    return window.PlaceholderLinks.createState(fieldRefs, explicitValues);
+}
+
+/**
+ * Menschliche Beschriftung fuer die Feldrolle (leer = keine Markierung).
+ * @param {string} role
+ * @returns {string}
+ */
+function _roleLabel(role) {
+    if (role === 'stammvater') return 'Stammvater';
+    if (role === 'klon')       return 'Klon';
+    return '';   // 'eigenstaendig' und 'leer' bleiben unmarkiert
+}
+
+/**
+ * Findet die Feld-Gruppe (.pf-field-group) eines Feldes ueber die
+ * data-Attribute — ohne CSS-Selektor-Injektion (blockId/name koennen
+ * Sonderzeichen enthalten).
+ * @returns {HTMLElement|null}
+ */
+function _findFieldGroup(blockId, name) {
+    const groups = document.querySelectorAll('.pf-field-group');
+    for (const g of groups) {
+        if (g.dataset.blockId === blockId && g.dataset.fieldName === name) return g;
+    }
+    return null;
+}
+
+/**
+ * Setzt die Rollen-Markierung (CSS-Klasse + Badge) einer Feld-Gruppe LIVE.
+ * @param {string} blockId
+ * @param {string} name
+ * @param {string} role  -- 'stammvater'|'klon'|'eigenstaendig'|'leer'
+ */
+function _applyRoleToGroup(blockId, name, role) {
+    const grp = _findFieldGroup(blockId, name);
+    if (!grp) return;
+
+    grp.classList.remove('pf-role--stammvater', 'pf-role--klon',
+                         'pf-role--eigenstaendig', 'pf-role--leer');
+    grp.classList.add('pf-role--' + role);
+    grp.setAttribute('data-role', role);
+
+    const label = grp.querySelector('.pf-label');
+    if (!label) return;
+    let badge = label.querySelector('.pf-role-badge');
+    const txt = _roleLabel(role);
+    if (!txt) {
+        if (badge) badge.remove();
+        return;
+    }
+    if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'pf-role-badge';
+        label.appendChild(badge);
+    }
+    badge.textContent = txt;
+    badge.classList.remove('pf-role-badge--stammvater', 'pf-role-badge--klon');
+    badge.classList.add('pf-role-badge--' + role);
+}
+
+/**
+ * Verarbeitet eine Eingabe und zieht die Klon-Felder LIVE nach.
+ * Wird aus dem 'input'-Listener aufgerufen (nach _validateFieldLive).
+ *
+ * WARUM keine Voll-Neuzeichnung des Formulars: showPlaceholderForm() wuerde
+ * den DOM ersetzen und damit Fokus/Cursor zerstoeren (vgl. Bugfixes 142/117).
+ * Hier werden ausschliesslich die betroffenen Geschwister-Inputs gezielt
+ * aktualisiert — keine Rueckkopplungsschleife.
+ *
+ * @param {HTMLInputElement} input
+ * @param {Object} opts  -- { onSave }
+ */
+function _propagateLinks(input, opts) {
+    if (!window.PlaceholderLinks || !_linkState) return;
+    const type = input.dataset.fieldType;
+    if (type !== 'm' && type !== 'o') return;   // a: nimmt nicht teil
+
+    const blockId = input.dataset.blockId;
+    const name    = input.dataset.fieldName;
+
+    const res = window.PlaceholderLinks.applyInput(_linkState, blockId, name, input.value);
+    _linkState = res.state;
+
+    // Rolle des getippten Feldes kann sich geaendert haben (leer -> Stammvater,
+    // Klon -> eigenstaendig, ...).
+    _applyRoleToGroup(blockId, name,
+        window.PlaceholderLinks.classify(_linkState, blockId, name));
+
+    // Klone nachziehen: Wert setzen, validieren, speichern, Rolle markieren.
+    for (const upd of res.updates) {
+        const sib = document.getElementById(`pf-input-${upd.blockId}-${upd.name}`);
+        if (sib && sib.value !== upd.value) {
+            sib.value = upd.value;
+            _validateFieldLive(sib);
+            // Klon-Wert mitspeichern, damit der Bericht ihn rendern kann.
+            _scheduleFieldSave(sib, opts);
+        }
+        _applyRoleToGroup(upd.blockId, upd.name,
+            window.PlaceholderLinks.classify(_linkState, upd.blockId, upd.name));
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Sidebar-Formular rendern
 // ---------------------------------------------------------------------------
@@ -184,6 +364,10 @@ function showPlaceholderForm(blocks, focusedBlockId, opts) {
     _currentBlocks  = blocks || [];
     _currentBlockId = focusedBlockId || null;
     _currentOpts    = opts || {};
+
+    // Build 492: Stammvater/Klon-Zustand ueber alle Bloecke neu aufbauen, BEVOR
+    // gerendert wird — _renderField liest daraus Rolle und angezeigten Wert.
+    _linkState = _buildLinkState(_currentBlocks);
 
     // Build 141 Logging: Zeigt ob onSave korrekt uebergeben wird.
     console.debug('[PlaceholderWizard] showPlaceholderForm:',
@@ -369,12 +553,31 @@ function _renderField(field, values, blockId) {
     // bei Eingabe — kein CSS erforderlich, native Browser-Funktionalitaet).
     // Beleg: Bugfix Build 136, Projektgespraech 2026-05-09
     const savedVal  = values[field.name] ?? null;
-    const val       = savedVal !== null ? savedVal : '';
+    let   val       = savedVal !== null ? savedVal : '';
+
+    // Build 492: Bei einem KLON (gleichnamiges m/o-Feld ohne eigenen Wert)
+    // wird der Stammvater-Wert angezeigt (displayValue). Der eigene Wert hat
+    // Vorrang. So sieht der Ermittler den gespiegelten Wert sofort, ohne ihn
+    // erneut eintippen zu muessen (mc-Wunsch). Rolle fuer die Markierung.
+    let role = 'leer';
+    if (_linkState && window.PlaceholderLinks
+        && (field.type === 'm' || field.type === 'o')) {
+        val  = window.PlaceholderLinks.displayValue(_linkState, blockId, field.name);
+        role = window.PlaceholderLinks.classify(_linkState, blockId, field.name);
+    }
+
     const isM       = field.type === 'm';
     const label     = _esc(field.description || field.name);
     const inputId   = `pf-input-${_esc(blockId)}-${_esc(field.name)}`;
     const reqMark   = isM ? ' <span class="pf-required" aria-hidden="true">*</span>' : '';
     const hasVal    = String(val).trim() !== '';
+
+    // Build 492: Rollen-Badge (nur Stammvater/Klon werden markiert).
+    const roleLbl   = _roleLabel(role);
+    const roleBadge = roleLbl
+        ? ` <span class="pf-role-badge pf-role-badge--${role}">${_esc(roleLbl)}</span>`
+        : '';
+    const roleCls   = ` pf-role--${role}`;
 
     // Validierungsstatus.
     //
@@ -401,12 +604,13 @@ function _renderField(field, values, blockId) {
         if (spec && spec.hint) ruleHint = spec.hint;
     }
 
-    return `<div class="pf-field-group"
+    return `<div class="pf-field-group${roleCls}"
                  data-block-id="${_esc(blockId)}"
                  data-field-name="${_esc(field.name)}"
-                 data-field-type="${_esc(field.type)}">
+                 data-field-type="${_esc(field.type)}"
+                 data-role="${_esc(role)}">
         <label class="pf-label" for="${inputId}">
-            ${label}${reqMark}
+            ${label}${reqMark}${roleBadge}
         </label>
         <div class="pf-input-wrap">
             <input class="pf-input${validCls}"
@@ -474,6 +678,11 @@ function _bindFormEvents(body, blocks, opts) {
         input.addEventListener('input', (evt) => {
             window._uevt?.(evt, 'placeholder_wizard', 'input:pf-input', { field: input.dataset.fieldName }); // B200
             _validateFieldLive(input);
+            // Build 492: Stammvater/Klon LIVE nachziehen (gleichnamige Felder).
+            // MUSS vor _scheduleFieldSave des getippten Feldes laufen, damit die
+            // Rolle (leer->Stammvater) korrekt gesetzt ist; die Klone werden
+            // innerhalb von _propagateLinks selbst gespeichert.
+            _propagateLinks(input, opts);
             _scheduleFieldSave(input, opts);
         });
 

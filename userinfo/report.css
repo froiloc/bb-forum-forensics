@@ -2782,6 +2782,50 @@
     font-weight: 700;
 }
 
+/* -------------------------------------------------------------------------
+   Build 492: Stammvater/Klon-Markierung (Platzhalter-Neuordnung, Slice 3).
+   Gleichnamige m/o-Felder eines Vermerks sind verknuepft: das erste explizit
+   befuellte Feld ist der STAMMVATER, noch leere gleichnamige Felder sind
+   KLONE und spiegeln dessen Wert live. Beide werden optisch gekennzeichnet
+   (linker Akzentrahmen an der Feld-Gruppe + Badge in der Beschriftung).
+   'eigenstaendig' und 'leer' bleiben bewusst unmarkiert.
+   Beleg: mc-Wunsch 2026-07-20/21, userinfo/placeholder_wizard.js Build 492.
+   ------------------------------------------------------------------------- */
+.pf-field-group.pf-role--stammvater {
+    border-left: 3px solid var(--color-focus, #1a73e8);
+    padding-left: 6px;
+}
+
+.pf-field-group.pf-role--klon {
+    border-left: 3px dashed var(--color-text-muted, #888);
+    padding-left: 6px;
+}
+
+/* Rollen-Badge in der Beschriftung */
+.pf-role-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 0 5px;
+    border-radius: 8px;
+    font-size: 9.5px;
+    font-weight: 600;
+    line-height: 15px;
+    vertical-align: middle;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.pf-role-badge--stammvater {
+    color: #fff;
+    background: var(--color-focus, #1a73e8);
+}
+
+.pf-role-badge--klon {
+    color: var(--color-text, #333);
+    background: var(--color-surface-alt, #e8eaed);
+    border: 1px dashed var(--color-text-muted, #888);
+}
+
 .pf-input-wrap {
     display: flex;
     gap: 4px;
