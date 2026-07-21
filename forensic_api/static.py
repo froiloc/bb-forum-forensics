@@ -86,6 +86,9 @@ _RESOURCES: dict[str, tuple[str, str, Path]] = {
     # vom Wizard (Build 492) benutzt. WAR BIS BUILD 492 UNGEROUTET -> die
     # Stammvater/Klon-Mechanik war im Browser wirkungslos. Build 493: registriert.
     "/_forensic/placeholder_links.js": ("placeholder_links.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
+    # Build 494: m/o-Platzhalterdefinitionen aus templates.placeholders
+    # (window.PlaceholderDefs), Grundlage der DB-basierten Feldpruefung im Wizard.
+    "/_forensic/placeholder_defs.js": ("placeholder_defs.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
     # B6 Phase 5 (Wizard): Platzhalter-Wizard
     "/_forensic/placeholder_wizard.js": ("placeholder_wizard.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
     # B6 Phase 6 (Modul-Panel): Modul-Auswahl

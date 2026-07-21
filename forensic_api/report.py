@@ -350,6 +350,10 @@ _EDITOR_HTML = """\
          Felder. War bis Build 492 nicht eingebunden (Feature wirkungslos);
          Build 493 nachgetragen. -->
     <script src="/_forensic/placeholder_links.js" defer></script>
+    <!-- 1b1) placeholder_defs.js (Build 494): m/o-Platzhalterdefinitionen aus
+         der DB (window.PlaceholderDefs). Vor dem Wizard laden — der Wizard
+         prueft m/o-Felder gegen diese Definitionen (regex/list/like). -->
+    <script src="/_forensic/placeholder_defs.js" defer></script>
     <!-- 1b) placeholder_wizard.js: Wizard (nach Chips, vor report.js) -->
     <script src="/_forensic/placeholder_wizard.js" defer></script>
     <!-- 1c) module_panel.js: Modul-Auswahl-Panel -->

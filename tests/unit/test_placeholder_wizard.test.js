@@ -27,6 +27,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import '../../userinfo/placeholder_chips.js';
 import '../../userinfo/placeholder_links.js';   // Build 492: Stammvater/Klon
+import '../../userinfo/validation_rules.js';     // Build 494: checkTyped
+import '../../userinfo/placeholder_defs.js';     // Build 494: DB-Definitionen
 import '../../userinfo/placeholder_wizard.js';
 
 let PlaceholderWizard;
@@ -428,5 +430,97 @@ describe('Build 492 — Stammvater/Klon-Verdrahtung', () => {
         const s = _input(body, 'blk-A');
         s.value = 'X';
         expect(() => s.dispatchEvent(new Event('input'))).not.toThrow();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// T40-T44: Build 494 — Feldpruefung gegen DB-Definitionen (PlaceholderDefs)
+// Beleg: Bauplan Platzhalter_DB §2.3 (DB-Autoritaet), mc-Entscheid 2026-07-21.
+// ---------------------------------------------------------------------------
+
+describe('Build 494 — Feldpruefung gegen DB-Definitionen', () => {
+
+    function _setupBody() {
+        const body = document.createElement('div');
+        body.id = 'accordion-body-form';
+        document.body.appendChild(body);
+        return body;
+    }
+
+    function _opts() { return { myUsername: 'h001', onSave: async () => {} }; }
+
+    // Block mit m:-Feld 'ampel' (in DB als list definiert).
+    function _ampelBlock(val) {
+        return [{
+            block_id: 'blk-A', block_type: 'paragraph', author: 'h001',
+            block_data: '{"text":"Status {{m:ampel||Ampelfarbe}}."}',
+            placeholder_values_json: val ? JSON.stringify({ ampel: val }) : null,
+        }];
+    }
+
+    beforeEach(() => {
+        // DB-Definition: 'ampel' ist eine Werteliste, 'spur' eine Regex.
+        window.PlaceholderDefs._setForTest([
+            { id: 'ampel', type: 'm', validation: '["rot","gelb","gruen"]',
+              validation_type: 'list', title: 'Ampel', description: '', default_value: null },
+            { id: 'spur', type: 'm', validation: '^AIW[0-9]+$',
+              validation_type: 'regex', title: 'Spur', description: '', default_value: null },
+        ]);
+    });
+
+    afterEach(() => {
+        window.PlaceholderDefs._setForTest([]);
+        document.getElementById('accordion-body-form')?.remove();
+    });
+
+    it('T40: gueltiger Listenwert -> pf-input--valid', () => {
+        const body = _setupBody();
+        window.PlaceholderWizard.showPlaceholderForm(_ampelBlock('gruen'), 'blk-A', _opts());
+        const inp = body.querySelector('#pf-input-blk-A-ampel');
+        expect(inp.classList.contains('pf-input--valid')).toBe(true);
+    });
+
+    it('T41: unzulaessiger Listenwert -> Warnung beim Tippen', () => {
+        const body = _setupBody();
+        window.PlaceholderWizard.showPlaceholderForm(_ampelBlock(), 'blk-A', _opts());
+        const inp = body.querySelector('#pf-input-blk-A-ampel');
+        inp.value = 'lila';
+        inp.dispatchEvent(new Event('input'));
+        expect(inp.classList.contains('pf-input--warn')).toBe(true);
+        const err = body.querySelector('#pf-err-blk-A-ampel');
+        expect(err.textContent).toMatch(/Liste/);
+    });
+
+    it('T42: gueltiger Listenwert beim Tippen -> valid', () => {
+        const body = _setupBody();
+        window.PlaceholderWizard.showPlaceholderForm(_ampelBlock(), 'blk-A', _opts());
+        const inp = body.querySelector('#pf-input-blk-A-ampel');
+        inp.value = 'rot';
+        inp.dispatchEvent(new Event('input'));
+        expect(inp.classList.contains('pf-input--valid')).toBe(true);
+    });
+
+    it('T43: DB-Definition (list) erzeugt Hinweis mit zulaessigen Werten', () => {
+        const body = _setupBody();
+        window.PlaceholderWizard.showPlaceholderForm(_ampelBlock(), 'blk-A', _opts());
+        expect(body.innerHTML).toContain('Zulässige Werte');
+        expect(body.innerHTML).toContain('rot');
+    });
+
+    it('T44: Regex-DB-Definition greift beim Tippen', () => {
+        const body = _setupBody();
+        const block = [{
+            block_id: 'blk-A', block_type: 'paragraph', author: 'h001',
+            block_data: '{"text":"Spur {{m:spur||Spurennummer}}."}',
+            placeholder_values_json: null,
+        }];
+        window.PlaceholderWizard.showPlaceholderForm(block, 'blk-A', _opts());
+        const inp = body.querySelector('#pf-input-blk-A-spur');
+        inp.value = 'XY';
+        inp.dispatchEvent(new Event('input'));
+        expect(inp.classList.contains('pf-input--warn')).toBe(true);
+        inp.value = 'AIW42';
+        inp.dispatchEvent(new Event('input'));
+        expect(inp.classList.contains('pf-input--valid')).toBe(true);
     });
 });

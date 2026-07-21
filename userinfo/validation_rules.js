@@ -42,10 +42,17 @@
  *   window.ValidationRules.resolve(rawField) -- aus dem 5. Platzhalterfeld
  *   window.ValidationRules.normalize(rule, wert)  -- transform anwenden
  *   window.ValidationRules.check(rule, wert)      -- { ok, value, message }
+ *   window.ValidationRules.checkTyped(vtype, rule, wert) -- DB-Validierung (Build 494)
+ *   window.ValidationRules.likeToRegExp(muster)   -- SQL-LIKE -> RegExp (Build 494)
  *   window.ValidationRules.isLoaded()
  *
- * Version: v0.7.389 · Build: 389 · 2026-07-12
- * Beleg: Bauplan Build 389 §3, Projektgespraech 2026-07-12
+ * Build 494 (Platzhalter-Neuordnung, Slice 3, Teil 3): checkTyped()/likeToRegExp()
+ *   fuer die KLARTEXT-Validierung aus templates.placeholders
+ *   (validation_type regex/list/like, Build 489). Semantik deckungsgleich zur
+ *   Management-Maske (cockpit_templates.js, Build 490) und zur Serverpruefung.
+ *
+ * Version: v0.8.494 · Build: 494 · 2026-07-21
+ * Beleg: Bauplan Build 389 §3; mc-Entscheid 2026-07-21 (Klartext, list=JSON-Array).
  */
 
 (function() {
@@ -275,6 +282,116 @@ function check(rawField, value) {
 }
 
 // ---------------------------------------------------------------------------
+// Build 494: Typisierte Pruefung fuer DB-Platzhalterdefinitionen
+// (templates.placeholders.validation_type IN ('regex','list','like')).
+//
+// WARUM getrennt von check(): check() bedient das 5. Platzhalterfeld im
+// Modultext (rule:-Katalogverweis ODER Base64-Regex, mit transform). checkTyped()
+// bedient dagegen die KLARTEXT-Validierung aus der Datenbank (Build 489):
+//   regex -> ECMAScript-RegExp
+//   list  -> JSON-Array erlaubter Werte (exakte Mitgliedschaft)
+//   like  -> SQL-LIKE-Muster (% = beliebig viele, _ = genau ein Zeichen),
+//            verankert (Full-Match)
+// Die Semantik ist DECKUNGSGLEICH zur Management-Maske (cockpit_templates.js
+// likeToRegExp/testRule, Build 490) und zur Serverpruefung — Browser (Komfort)
+// und Server (Zusicherung) muessen dasselbe Ergebnis liefern.
+// Beleg: mc-Entscheid 2026-07-21 (Klartext, list=JSON-Array), Bauplan
+//        Platzhalter_DB §2.2/§2.3.
+// ---------------------------------------------------------------------------
+
+/**
+ * SQL-LIKE-Muster -> verankerte RegExp. % = beliebig viele Zeichen,
+ * _ = genau ein Zeichen. Alle uebrigen Regex-Metazeichen werden maskiert.
+ * IDENTISCH zu cockpit_templates.js::likeToRegExp (Build 490).
+ * @param {string} pattern
+ * @returns {RegExp}
+ */
+function likeToRegExp(pattern) {
+    const esc = String(pattern == null ? '' : pattern)
+        .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        .replace(/%/g, '[\\s\\S]*')
+        .replace(/_/g, '[\\s\\S]');
+    return new RegExp('^' + esc + '$');
+}
+
+/**
+ * Prueft einen Wert gegen eine DB-Platzhalterdefinition.
+ *
+ * @param {string} validationType  '' | 'regex' | 'list' | 'like'
+ * @param {string} validation      KLARTEXT-Regel (Regex / JSON-Array / LIKE-Muster)
+ * @param {string} value
+ * @returns {{ok: boolean, value: string, message: string}}
+ *
+ * Ohne Pruefart oder ohne Regel gibt es nichts zu pruefen -> ok. Eine
+ * fehlerhafte hinterlegte Regel oder eine unbekannte Pruefart wird NICHT als
+ * gueltig durchgewunken (Grundregel 1) — der Ermittler soll den Missstand
+ * sofort sehen. checkTyped() normalisiert NICHT (die DB-Validierung kennt
+ * keinen transform); der eingegebene Wert wird unveraendert zurueckgegeben.
+ */
+function checkTyped(validationType, validation, value) {
+    const raw  = String(value == null ? '' : value);
+    const vt   = String(validationType || '');
+    const rule = String(validation == null ? '' : validation);
+
+    // Keine Pruefart oder leere Regel -> nichts zu pruefen.
+    if (vt === '' || rule.trim() === '') {
+        return { ok: true, value: raw, message: '' };
+    }
+
+    if (vt === 'regex') {
+        let re;
+        try {
+            re = new RegExp(rule);
+        } catch (err) {
+            console.error('[ValidationRules] checkTyped: ungueltige Regex:', rule, err);
+            return { ok: false, value: raw,
+                     message: 'Die hinterlegte Formatregel ist fehlerhaft.' };
+        }
+        return re.test(raw)
+            ? { ok: true,  value: raw, message: '' }
+            : { ok: false, value: raw,
+                message: 'Eingabe entspricht nicht dem geforderten Format.' };
+    }
+
+    if (vt === 'list') {
+        let arr;
+        try {
+            arr = JSON.parse(rule);
+        } catch (err) {
+            console.error('[ValidationRules] checkTyped: ungueltige Werteliste:', rule, err);
+            return { ok: false, value: raw,
+                     message: 'Die hinterlegte Werteliste ist fehlerhaft.' };
+        }
+        if (!Array.isArray(arr)) {
+            return { ok: false, value: raw,
+                     message: 'Die hinterlegte Werteliste ist fehlerhaft.' };
+        }
+        return arr.indexOf(raw) !== -1
+            ? { ok: true,  value: raw, message: '' }
+            : { ok: false, value: raw,
+                message: 'Eingabe ist kein zulässiger Wert aus der Liste.' };
+    }
+
+    if (vt === 'like') {
+        let re;
+        try {
+            re = likeToRegExp(rule);
+        } catch (err) {
+            console.error('[ValidationRules] checkTyped: ungueltiges LIKE-Muster:', rule, err);
+            return { ok: false, value: raw,
+                     message: 'Das hinterlegte Muster ist fehlerhaft.' };
+        }
+        return re.test(raw)
+            ? { ok: true,  value: raw, message: '' }
+            : { ok: false, value: raw,
+                message: 'Eingabe entspricht nicht dem geforderten Muster.' };
+    }
+
+    // Unbekannte Pruefart -> Grundregel 1: nicht durchwinken.
+    return { ok: false, value: raw, message: 'Unbekannte Prüfart: ' + vt };
+}
+
+// ---------------------------------------------------------------------------
 // window-Export
 // ---------------------------------------------------------------------------
 
@@ -286,6 +403,9 @@ window.ValidationRules = {
     normalize,
     check,
     applyTransform,
+    // Build 494: typisierte DB-Validierung (regex/list/like).
+    likeToRegExp,
+    checkTyped,
     // Nur fuer Tests: Katalog direkt setzen, ohne HTTP.
     _setRulesForTest(rules) { _rules = rules || {}; },
 };

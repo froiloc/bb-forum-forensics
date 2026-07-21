@@ -76,8 +76,17 @@
  *     die Unterscheidung lebt in der Sitzung im _linkState.
  *     Beleg: mc-Wunsch 2026-07-20/21, Bauplan_Platzhalter_DB §Slice3.
  *
- * Version: v0.8.492 · Build: 492 · 2026-07-21
- * Beleg: Bauplan B6 v0.5 §4.4.3, Projektgespraech 2026-05-06
+ *   Build 494 (Platzhalter-Neuordnung, Slice 3, Teil 3): m/o-Felder werden
+ *     gegen die DB-Definition (window.PlaceholderDefs, validation_type
+ *     regex/list/like) geprueft — die DB ist Autoritaet fuer bekannte IDs
+ *     (Build 489). Fehlt eine DB-Definition, greift weiterhin das 5. Token-Feld
+ *     (rule:-Katalog/Base64). _fieldCheck() buendelt die Vorrang-Logik;
+ *     _defHint() zeigt zulaessige Werte (list) bzw. das Muster (like).
+ *     Definitionen werden beim Form-Oeffnen einmalig geladen und gecacht;
+ *     befuellte Felder werden nach dem Laden nachvalidiert.
+ *
+ * Version: v0.8.494 · Build: 494 · 2026-07-21
+ * Beleg: Bauplan B6 v0.5 §4.4.3; Bauplan Platzhalter_DB §2.3 (DB-Autoritaet).
  */
 
 (function() {
@@ -428,6 +437,33 @@ function showPlaceholderForm(blocks, focusedBlockId, opts) {
         && typeof window.CommentThread?._pulseEditorBlock === 'function') {
         window.CommentThread._pulseEditorBlock(_currentBlockId);
     }
+
+    // Build 494: m/o-Platzhalterdefinitionen (Validierung regex/list/like) einmalig
+    // laden. Der erste Render nutzt die evtl. noch nicht geladene DB-Definition
+    // nicht; sobald sie da ist, werden die befuellten Felder nachvalidiert.
+    // Fire-and-forget — schlaegt der Abruf fehl, bleibt es beim bisherigen
+    // Verhalten (Fallback auf das 5. Token-Feld). PlaceholderDefs cached, sodass
+    // spaetere Form-Oeffnungen die Definition synchron zur Hand haben.
+    if (window.PlaceholderDefs && typeof window.PlaceholderDefs.load === 'function'
+        && !window.PlaceholderDefs.isLoaded()) {
+        window.PlaceholderDefs.load()
+            .then(() => _revalidateFilledInputs(body))
+            .catch(() => {});
+    }
+}
+
+/**
+ * Build 494: Validiert alle bereits befuellten Eingabefelder erneut. Wird nach
+ * dem asynchronen Laden der DB-Definitionen aufgerufen, damit deren Regeln
+ * (regex/list/like) auch beim ersten Form-Oeffnen greifen. Leere Felder werden
+ * ausgelassen (kein verfruehtes Pflichtfeld-Rot beim Laden).
+ * @param {HTMLElement} body
+ */
+function _revalidateFilledInputs(body) {
+    if (!body) return;
+    body.querySelectorAll('.pf-input').forEach(inp => {
+        if (String(inp.value).trim() !== '') _validateFieldLive(inp);
+    });
 }
 
 /**
@@ -538,6 +574,62 @@ function _renderBlockGroup(block, focusedBlockId) {
 }
 
 /**
+ * Build 494: Prueft einen Feldwert. Die DB-Definition (window.PlaceholderDefs,
+ * validation_type regex/list/like) hat fuer bekannte m/o-IDs VORRANG (DB-
+ * Autoritaet, Build 489) und wird ueber ValidationRules.checkTyped geprueft.
+ * Ist keine DB-Definition vorhanden, greift der bisherige Weg ueber das
+ * 5. Token-Feld (rule:-Katalog oder Base64-Regex, ValidationRules.check).
+ *
+ * @param {string} name       Feldname (= m/o-Platzhalter-ID)
+ * @param {string} fieldType  'm' | 'o' | (a: nimmt nicht teil)
+ * @param {string} b64re      5. Token-Feld (rule:/Base64) oder leer
+ * @param {string} val        aktueller Wert
+ * @returns {{ok: boolean, value: string, message: string}}
+ */
+function _fieldCheck(name, fieldType, b64re, val) {
+    // DB-Definition zuerst (Autoritaet fuer bekannte m/o-IDs).
+    if ((fieldType === 'm' || fieldType === 'o')
+        && window.PlaceholderDefs && window.ValidationRules
+        && typeof window.ValidationRules.checkTyped === 'function') {
+        const def = window.PlaceholderDefs.get(name);
+        if (def && def.validation && def.validation_type) {
+            return window.ValidationRules.checkTyped(
+                def.validation_type, def.validation, val);
+        }
+    }
+    // Fallback: 5. Token-Feld (rule:-Katalog oder Base64-Regex).
+    if (b64re && window.ValidationRules
+        && typeof window.ValidationRules.check === 'function') {
+        return window.ValidationRules.check(b64re, val);
+    }
+    return { ok: true, value: val, message: '' };
+}
+
+/**
+ * Build 494: Menschlicher Hinweistext zur DB-Definition eines m/o-Feldes.
+ * list -> zulaessige Werte, like -> Muster. Fuer regex gibt es keinen
+ * DB-Hinweis (das Muster selbst ist keine Hilfe) -> leer.
+ * @param {object|null} def
+ * @returns {string}
+ */
+function _defHint(def) {
+    if (!def || !def.validation || !def.validation_type) return '';
+    if (def.validation_type === 'list') {
+        try {
+            const arr = JSON.parse(def.validation);
+            if (Array.isArray(arr) && arr.length) {
+                return 'Zulässige Werte: ' + arr.join(', ');
+            }
+        } catch (_) {}
+        return '';
+    }
+    if (def.validation_type === 'like') {
+        return 'Muster: ' + def.validation;
+    }
+    return '';
+}
+
+/**
  * Rendert ein einzelnes Eingabefeld.
  * @param {Object} field   -- { name, defaultVal, description, b64regex, type }
  * @param {Object} values  -- aktuelle Werte
@@ -586,20 +678,24 @@ function _renderField(field, values, blockId) {
     // zentralen Katalog ('rule:spurennummer', neu) ODER eine Base64-Regex
     // (Alt-Form) — ValidationRules.check() erkennt beide. Damit bleiben alle
     // bestehenden Bausteine unveraendert gueltig.
-    // Beleg: Bauplan Build 389 §3
+    // Beleg: Bauplan Build 389 §3; Build 494: DB-Definition (PlaceholderDefs)
+    // hat Vorrang (_fieldCheck).
+    const dbDef = (window.PlaceholderDefs && (field.type === 'm' || field.type === 'o'))
+        ? window.PlaceholderDefs.get(field.name)
+        : null;
+
     let validCls = '';
-    if (hasVal && field.b64regex && window.ValidationRules) {
-        const res = window.ValidationRules.check(field.b64regex, val);
+    if (hasVal) {
+        const res = _fieldCheck(field.name, field.type, field.b64regex, val);
         validCls = res.ok ? ' pf-input--valid' : ' pf-input--warn';
-    } else if (hasVal) {
-        validCls = ' pf-input--valid';
     }
 
     // Hinweistext der Regel (z.B. 'AIW/R3X/... gefolgt von Ziffern'). Ohne ihn
     // saehe der Ermittler im Fehlerfall nur 'entspricht nicht dem Format' —
-    // ohne zu erfahren, WAS erwartet wird.
-    let ruleHint = '';
-    if (field.b64regex && window.ValidationRules) {
+    // ohne zu erfahren, WAS erwartet wird. Build 494: DB-Definition zuerst
+    // (zulaessige Werte / Muster), sonst der rule:-Katalog-Hinweis.
+    let ruleHint = _defHint(dbDef);
+    if (!ruleHint && field.b64regex && window.ValidationRules) {
         const spec = window.ValidationRules.resolve(field.b64regex);
         if (spec && spec.hint) ruleHint = spec.hint;
     }
@@ -740,6 +836,8 @@ function _validateFieldLive(input) {
     );
     const val  = input.value.trim();
     const isM  = input.dataset.fieldType === 'm';
+    const type = input.dataset.fieldType;
+    const name = input.dataset.fieldName;
     const b64re = input.dataset.b64regex;
 
     // Klassen-Reset
@@ -757,13 +855,13 @@ function _validateFieldLive(input) {
     // vierten Zeichen noch unvollstaendig). Die harte Pruefung erfolgt beim
     // Verlassen des Feldes (_normalizeAndValidateField) und ein zweites Mal
     // serverseitig beim Einreichen (report.py::_validate_report_fields).
-    if (b64re && window.ValidationRules) {
-        const res = window.ValidationRules.check(b64re, val);
-        if (!res.ok) {
-            input.classList.add('pf-input--warn');
-            if (errEl) errEl.textContent = res.message;
-            return;
-        }
+    // Build 494: DB-Definition (PlaceholderDefs) hat Vorrang (regex/list/like);
+    // sonst greift der rule:-Katalog / die Base64-Regex — beides ueber _fieldCheck.
+    const res = _fieldCheck(name, type, b64re, val);
+    if (!res.ok) {
+        input.classList.add('pf-input--warn');
+        if (errEl) errEl.textContent = res.message;
+        return;
     }
 
     // Alles OK

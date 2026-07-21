@@ -289,6 +289,7 @@ class ForensicApi:
             # Test tests/test_report_assets_routing.py.
             "/_forensic/validation_rules.js",   # Build 389: Formatregel-Katalog (war 404)
             "/_forensic/placeholder_links.js",  # Build 491: Stammvater/Klon-Logik (war 404)
+            "/_forensic/placeholder_defs.js",   # Build 494: m/o-DB-Definitionen fuer Feldpruefung
             "/_forensic/submit_dialog.js",      # Build 382: Freigabe-Dialog (war 404; in _RESOURCES, aber nie dispatcht)
             "/_forensic/placeholder_wizard.js", # B6 Phase 5 Wizard
             "/_forensic/module_panel.js",       # B6 Phase 6 Panel
