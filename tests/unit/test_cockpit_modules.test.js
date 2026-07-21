@@ -187,4 +187,52 @@ describe("cockpit_modules", () => {
     expect(dry.classList.contains("is-ok")).toBe(true);
     expect(dry.textContent).toContain("auto×2, mandatory×1");
   });
+
+  // --- Browser-Zwischenspeicher (Build 488) -----------------------------
+  it("MO11 Eingaben werden im localStorage gesichert", () => {
+    const win = _ctx();
+    const api = _api(win);
+    const main = win.document.getElementById("aiw-main");
+    win.localStorage.clear();
+    api.renderModules(main, _data(), {});
+    const key = main.querySelector(".aiw-mod-key");
+    key.value = "wip.key";
+    key.dispatchEvent(new win.Event("input", { bubbles: true }));
+    const bodyt = main.querySelector(".aiw-mod-bodytext");
+    bodyt.value = "In Arbeit {{a:x}}";
+    bodyt.dispatchEvent(new win.Event("input", { bubbles: true }));
+    const raw = win.localStorage.getItem(api.DRAFT_KEY);
+    expect(raw).toBeTruthy();
+    const d = JSON.parse(raw);
+    expect(d.fields.module_key).toBe("wip.key");
+    expect(d.fields.body).toBe("In Arbeit {{a:x}}");
+  });
+
+  it("MO12 Entwurf wird beim erneuten Betreten wiederhergestellt", () => {
+    const win = _ctx();
+    const api = _api(win);
+    const main = win.document.getElementById("aiw-main");
+    win.localStorage.clear();
+    api.renderModules(main, _data(), {});
+    const bodyt = main.querySelector(".aiw-mod-bodytext");
+    bodyt.value = "Erhaltener Text";
+    bodyt.dispatchEvent(new win.Event("input", { bubbles: true }));
+    api.cleanup();
+    api.renderModules(main, _data(), {});
+    expect(main.querySelector(".aiw-mod-bodytext").value).toBe("Erhaltener Text");
+  });
+
+  it("MO13 erfolgreiches Speichern verwirft den Zwischenspeicher", () => {
+    const win = _ctx();
+    const api = _api(win);
+    const main = win.document.getElementById("aiw-main");
+    win.localStorage.clear();
+    api.renderModules(main, _data(), {});
+    const title = main.querySelector(".aiw-mod-title");
+    title.value = "X";
+    title.dispatchEvent(new win.Event("input", { bubbles: true }));
+    expect(win.localStorage.getItem(api.DRAFT_KEY)).toBeTruthy();
+    api.saved({ created: true, target_id: "m.x" });
+    expect(win.localStorage.getItem(api.DRAFT_KEY)).toBeNull();
+  });
 });

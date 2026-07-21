@@ -30,7 +30,11 @@
  *   Sprachen enthalten — multilinguales Forum).
  *
  * Build 469: Schluesselumstellung user_id -> subject_id (M019)
- * Version: v0.7.469 · Build: 469 · 2026-07-20
+ * Build 488: Browser-Zwischenspeicher (localStorage) des NICHT gespeicherten
+ *   Editor-Entwurfs (analog Dokumentvorlagen Build 487): jede Nutzer-Eingabe
+ *   wird gesichert, beim Betreten/Neuladen wiederhergestellt, nach erfolgreichem
+ *   Speichern verworfen. Eigener Schluessel DRAFT_KEY, nur Client, migrationsneutral.
+ * Version: v0.8.488 · Build: 488 · 2026-07-21
  */
 (function () {
     'use strict';
@@ -56,6 +60,21 @@
         dryEl: null,      // Ausgabebereich des Dry-Run
         selId: null       // aktuell im Editor geladene id (null = Neu-Modus)
     };
+
+    // Build 488: Browser-Zwischenspeicher (localStorage) des NOCH NICHT
+    // gespeicherten Editor-Entwurfs (analog Dokumentvorlagen, Build 487) — ein
+    // Neuladen/Fensterwechsel verliert keine unerledigte Arbeit. EIGENER,
+    // versionierter Schluessel je Sicht. Nur Client-seitig, keine DB, kein
+    // Beleg-/Evidence-Bezug (migrationsneutral).
+    var DRAFT_KEY = 'aiw.templates.draft.v1';
+
+    // _ls: sicherer Zugriff auf localStorage (Privat-Modus/Quota -> null, Feature
+    // still deaktiviert, kein Crash).
+    function _ls() {
+        try {
+            return (typeof localStorage !== 'undefined') ? localStorage : null;
+        } catch (e) { return null; }
+    }
 
     // id-Zeichenraum — DECKUNGSGLEICH mit dem Server (query_validator._ID_RE)
     // und der Chip-Regex des Berichtseditors. Nur damit ist der Platzhalter
@@ -292,11 +311,66 @@
         var tid = (res && res.target_id) ? res.target_id : '?';
         _setMsg('Query "' + tid + '" '
             + (created ? 'angelegt.' : 'geaendert.'), 'ok');
+        _clearDraft();   // Build 488: gespeichert -> Zwischenspeicher verwerfen.
     }
 
     // saveError: Speicherfehler (inkl. Server-Validierung) sichtbar machen.
     function saveError(msg) {
         _setMsg('Speichern fehlgeschlagen: ' + (msg || 'unbekannt'), 'err');
+    }
+
+    // --- Browser-Zwischenspeicher des Entwurfs (Build 488) ---------------
+    // _draftFromState: aktuellen Editor-Zustand serialisierbar. Kopf-Felder +
+    // selId (Editier- vs. Neu-Modus).
+    function _draftFromState() {
+        return { v: 1, fields: _currentFields(), selId: _state.selId };
+    }
+    // _persistDraft: aktuellen Stand sichern (best-effort). Ohne Maske No-op.
+    function _persistDraft() {
+        var ls = _ls();
+        if (!ls || !_state.fields) { return; }
+        try { ls.setItem(DRAFT_KEY, JSON.stringify(_draftFromState())); }
+        catch (e) { log('persistDraft', e); }
+    }
+    // _loadDraft: gespeicherten Entwurf lesen (oder null bei fehlend/unlesbar).
+    function _loadDraft() {
+        var ls = _ls();
+        if (!ls) { return null; }
+        try {
+            var s = ls.getItem(DRAFT_KEY);
+            if (!s) { return null; }
+            var d = JSON.parse(s);
+            return (d && typeof d === 'object') ? d : null;
+        } catch (e) { log('loadDraft', e); return null; }
+    }
+    // _clearDraft: nach erfolgreichem Speichern verwerfen (Server ist Wahrheit).
+    function _clearDraft() {
+        var ls = _ls();
+        if (!ls) { return; }
+        try { ls.removeItem(DRAFT_KEY); } catch (e) { log('clearDraft', e); }
+    }
+    // _restoreDraft: Entwurf in die Maske laden, OHNE erneut zu persistieren.
+    // id ist der Schluessel: im Editier-Modus (selId gesetzt) fix, sonst editierbar.
+    function _restoreDraft(d) {
+        var f = _state.fields;
+        if (!f || !d) { return; }
+        var fl = d.fields || {};
+        f.id.value = fl.id || '';
+        f.title.value = fl.title || '';
+        f.description.value = fl.description || '';
+        f.sql_query.value = fl.sql_query || '';
+        f.return_type.value = fl.return_type || 'scalar';
+        f.tags.value = fl.tags || '';
+        if (f.test_subject_id) {
+            f.test_subject_id.value = (fl.test_subject_id == null)
+                ? '' : fl.test_subject_id;
+        }
+        _state.selId = (d.selId === undefined) ? null : d.selId;
+        f.id.disabled = (_state.selId !== null);
+        renderDryRun(null);
+        _markActive();
+        _setMsg('Nicht gespeicherter Entwurf aus dem Browserspeicher '
+            + 'wiederhergestellt. Speichern schliesst ihn ab.', '');
     }
 
     // renderTemplates: Gesamtsicht aufbauen. data = {count, queries}. opts:
@@ -335,7 +409,10 @@
         newBtn.type = 'button';
         newBtn.className = 'aiw-btn aiw-tpl-new';
         newBtn.textContent = '+ Neue Query';
-        newBtn.addEventListener('click', function () { _fillForm(null); });
+        newBtn.addEventListener('click', function () {
+            _fillForm(null);
+            _persistDraft();   // Build 488: Neu-Modus als aktuellen Entwurf sichern.
+        });
         left.appendChild(newBtn);
 
         var list = document.createElement('div');
@@ -354,7 +431,10 @@
             it.className = 'aiw-tpl-item';
             it.setAttribute('data-id', String(q.id));
             it.textContent = queryLabel(q);
-            it.addEventListener('click', function () { _fillForm(q); });
+            it.addEventListener('click', function () {
+                _fillForm(q);
+                _persistDraft();   // Build 488: geladene Query als Entwurf sichern.
+            });
             list.appendChild(it);
         });
         left.appendChild(list);
@@ -426,6 +506,12 @@
             return_type: fRt, tags: fTags, test_subject_id: fTest
         };
 
+        // Build 488: Jede Nutzer-Eingabe sichert den Stand im Browserspeicher.
+        // Programmatische .value-Zuweisungen (_fillForm/_restoreDraft) loesen kein
+        // input/change aus und ueberschreiben den Speicher daher nicht ungewollt.
+        form.addEventListener('input', _persistDraft);
+        form.addEventListener('change', _persistDraft);
+
         // Handler verdrahten.
         dryBtn.addEventListener('click', function () {
             _setMsg('');
@@ -442,6 +528,11 @@
 
         // Startzustand: Neu-Modus (leeres Formular).
         _fillForm(null);
+        // Build 488: Ein noch nicht gespeicherter Entwurf aus dem Browserspeicher
+        // hat Vorrang vor dem leeren Neu-Modus (Fensterwechsel/Neuladen verliert
+        // keine Arbeit). Ohne Entwurf liefert _loadDraft() null -> Neu-Modus.
+        var _saved = _loadDraft();
+        if (_saved) { _restoreDraft(_saved); }
         log('renderTemplates:', rows.length, 'Queries');
         return wrap;
     }
@@ -467,6 +558,7 @@
         buildPayload: buildPayload,
         errorsText: errorsText,
         dryRunSummary: dryRunSummary,
+        DRAFT_KEY: DRAFT_KEY,             // Browser-Zwischenspeicher (Build 488)
         // DOM
         renderTemplates: renderTemplates,
         renderDryRun: renderDryRun,

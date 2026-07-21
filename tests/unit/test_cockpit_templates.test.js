@@ -230,4 +230,53 @@ describe("cockpit_templates", () => {
     expect(dry.classList.contains("is-ok")).toBe(true);
     expect(dry.textContent).toContain("Beispielwert: 5");
   });
+
+  // --- Browser-Zwischenspeicher (Build 488) -----------------------------
+  it("TT13 Eingaben werden im localStorage gesichert", () => {
+    const win = _ctx();
+    const api = _api(win);
+    const main = win.document.getElementById("aiw-main");
+    win.localStorage.clear();
+    api.renderTemplates(main, _data(), {});
+    const id = main.querySelector(".aiw-tpl-id");
+    id.value = "q_wip";
+    id.dispatchEvent(new win.Event("input", { bubbles: true }));
+    const title = main.querySelector(".aiw-tpl-title");
+    title.value = "In Arbeit";
+    title.dispatchEvent(new win.Event("input", { bubbles: true }));
+    const raw = win.localStorage.getItem(api.DRAFT_KEY);
+    expect(raw).toBeTruthy();
+    const d = JSON.parse(raw);
+    expect(d.fields.id).toBe("q_wip");
+    expect(d.fields.title).toBe("In Arbeit");
+  });
+
+  it("TT14 Entwurf wird beim erneuten Betreten wiederhergestellt", () => {
+    const win = _ctx();
+    const api = _api(win);
+    const main = win.document.getElementById("aiw-main");
+    win.localStorage.clear();
+    api.renderTemplates(main, _data(), {});
+    const sql = main.querySelector(".aiw-tpl-sql");
+    sql.value = "SELECT 42 WHERE :uid = :uid";
+    sql.dispatchEvent(new win.Event("input", { bubbles: true }));
+    api.cleanup();
+    api.renderTemplates(main, _data(), {});
+    expect(main.querySelector(".aiw-tpl-sql").value)
+      .toBe("SELECT 42 WHERE :uid = :uid");
+  });
+
+  it("TT15 erfolgreiches Speichern verwirft den Zwischenspeicher", () => {
+    const win = _ctx();
+    const api = _api(win);
+    const main = win.document.getElementById("aiw-main");
+    win.localStorage.clear();
+    api.renderTemplates(main, _data(), {});
+    const title = main.querySelector(".aiw-tpl-title");
+    title.value = "X";
+    title.dispatchEvent(new win.Event("input", { bubbles: true }));
+    expect(win.localStorage.getItem(api.DRAFT_KEY)).toBeTruthy();
+    api.saved({ created: true, target_id: "q.x" });
+    expect(win.localStorage.getItem(api.DRAFT_KEY)).toBeNull();
+  });
 });

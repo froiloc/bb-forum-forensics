@@ -29,7 +29,11 @@
  *   PROD); ausfuehrliche Kommentare; Kapselung; REINE Funktionen separat
  *   exportiert (vitest). XSS-sicher via textContent/value (multilingual, UTF-8).
  *
- * Version: v0.7.427 · Build: 427 · 2026-07-15
+ * Build 488: Browser-Zwischenspeicher (localStorage) des NICHT gespeicherten
+ *   Editor-Entwurfs (analog Dokumentvorlagen Build 487): jede Nutzer-Eingabe
+ *   wird gesichert, beim Betreten/Neuladen wiederhergestellt, nach erfolgreichem
+ *   Speichern verworfen. Eigener Schluessel DRAFT_KEY, nur Client, migrationsneutral.
+ * Version: v0.8.488 · Build: 488 · 2026-07-21
  */
 (function () {
     'use strict';
@@ -46,6 +50,16 @@
     var _state = {
         listEl: null, fields: null, msgEl: null, dryEl: null, selKey: null
     };
+
+    // Build 488: Browser-Zwischenspeicher (localStorage) des NOCH NICHT
+    // gespeicherten Editor-Entwurfs (analog Dokumentvorlagen Build 487). Eigener
+    // versionierter Schluessel. Nur Client-seitig, migrationsneutral.
+    var DRAFT_KEY = 'aiw.modules.draft.v1';
+    function _ls() {
+        try {
+            return (typeof localStorage !== 'undefined') ? localStorage : null;
+        } catch (e) { return null; }
+    }
 
     // Stabiler Schluessel-Zeichenraum (Spiegel der Server-Regel _KEY_RE).
     var _KEY_RE = /^[A-Za-z0-9._-]+$/;
@@ -265,10 +279,58 @@
         var tid = (res && res.target_id) ? res.target_id : '?';
         _setMsg('Baustein "' + tid + '" '
             + (created ? 'angelegt.' : 'geaendert.'), 'ok');
+        _clearDraft();   // Build 488: gespeichert -> Zwischenspeicher verwerfen.
     }
 
     function saveError(msg) {
         _setMsg('Speichern fehlgeschlagen: ' + (msg || 'unbekannt'), 'err');
+    }
+
+    // --- Browser-Zwischenspeicher des Entwurfs (Build 488) ---------------
+    function _draftFromState() {
+        return { v: 1, fields: _currentFields(), selKey: _state.selKey };
+    }
+    function _persistDraft() {
+        var ls = _ls();
+        if (!ls || !_state.fields) { return; }
+        try { ls.setItem(DRAFT_KEY, JSON.stringify(_draftFromState())); }
+        catch (e) { log('persistDraft', e); }
+    }
+    function _loadDraft() {
+        var ls = _ls();
+        if (!ls) { return null; }
+        try {
+            var s = ls.getItem(DRAFT_KEY);
+            if (!s) { return null; }
+            var d = JSON.parse(s);
+            return (d && typeof d === 'object') ? d : null;
+        } catch (e) { log('loadDraft', e); return null; }
+    }
+    function _clearDraft() {
+        var ls = _ls();
+        if (!ls) { return; }
+        try { ls.removeItem(DRAFT_KEY); } catch (e) { log('clearDraft', e); }
+    }
+    // _restoreDraft: Entwurf laden, OHNE erneut zu persistieren. module_key ist
+    // der Schluessel: im Editier-Modus (selKey gesetzt) fix, sonst editierbar.
+    function _restoreDraft(d) {
+        var f = _state.fields;
+        if (!f || !d) { return; }
+        var fl = d.fields || {};
+        f.module_key.value = fl.module_key || '';
+        f.title.value = fl.title || '';
+        f.description.value = fl.description || '';
+        f.role.value = fl.role || 'body';
+        f.topic.value = fl.topic || '';
+        f.body.value = fl.body || '';
+        f.sort_order.value = (fl.sort_order === undefined
+            || fl.sort_order === null) ? 0 : fl.sort_order;
+        _state.selKey = (d.selKey === undefined) ? null : d.selKey;
+        f.module_key.disabled = (_state.selKey !== null);
+        renderDryRun(null);
+        _markActive();
+        _setMsg('Nicht gespeicherter Entwurf aus dem Browserspeicher '
+            + 'wiederhergestellt. Speichern schliesst ihn ab.', '');
     }
 
     // renderModules: Gesamtsicht. data = {count, modules}. opts:
@@ -305,7 +367,10 @@
         newBtn.type = 'button';
         newBtn.className = 'aiw-mod-new';
         newBtn.textContent = '+ Neuer Baustein';
-        newBtn.addEventListener('click', function () { _fillForm(null); });
+        newBtn.addEventListener('click', function () {
+            _fillForm(null);
+            _persistDraft();   // Build 488: Neu-Modus als aktuellen Entwurf sichern.
+        });
         left.appendChild(newBtn);
 
         var list = document.createElement('div');
@@ -324,7 +389,10 @@
             it.className = 'aiw-mod-item';
             it.setAttribute('data-key', String(m.module_key));
             it.textContent = moduleLabel(m);
-            it.addEventListener('click', function () { _fillForm(m); });
+            it.addEventListener('click', function () {
+                _fillForm(m);
+                _persistDraft();   // Build 488: geladenen Baustein als Entwurf sichern.
+            });
             list.appendChild(it);
         });
         left.appendChild(list);
@@ -385,6 +453,11 @@
             description: fDesc, body: fBody, sort_order: fSort
         };
 
+        // Build 488: jede Nutzer-Eingabe sichert den Stand (programmatische
+        // .value-Zuweisungen loesen kein input/change aus -> kein Ueberschreiben).
+        form.addEventListener('input', _persistDraft);
+        form.addEventListener('change', _persistDraft);
+
         dryBtn.addEventListener('click', function () {
             _setMsg('');
             if (typeof opts.onDryRun === 'function') {
@@ -399,6 +472,10 @@
         });
 
         _fillForm(null);
+        // Build 488: noch nicht gespeicherter Entwurf aus dem Browserspeicher
+        // hat Vorrang vor dem leeren Neu-Modus (Neuladen verliert keine Arbeit).
+        var _saved = _loadDraft();
+        if (_saved) { _restoreDraft(_saved); }
         log('renderModules:', rows.length, 'Bausteine');
         return wrap;
     }
@@ -424,6 +501,7 @@
         summaryText: summaryText,
         errorsText: errorsText,
         ROLES: ROLES,
+        DRAFT_KEY: DRAFT_KEY,             // Browser-Zwischenspeicher (Build 488)
         // DOM
         renderModules: renderModules,
         renderDryRun: renderDryRun,
