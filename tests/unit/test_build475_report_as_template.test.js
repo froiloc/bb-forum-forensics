@@ -136,7 +136,9 @@ describe("cockpit_lectorate (Build 475)", () => {
   function _stubTab() {
     let made = null;
     function StubTab(container, opts) {
-      made = { container, opts };
+      made = { container, opts, handlers: {} };
+      // Build 486: rowClick wird via table.on() angehaengt.
+      this.on = function (ev, fn) { made.handlers[ev] = fn; };
       this.replaceData = function (d) { made.replaced = d; };
       this.destroy = function () {};
     }
@@ -144,7 +146,7 @@ describe("cockpit_lectorate (Build 475)", () => {
   }
   function _pickFirst(made) {
     const row = made.opts.data[0];
-    made.opts.rowClick({}, { getData: () => row, getElement: () => null });
+    made.handlers.rowClick({}, { getData: () => row, getElement: () => null });
   }
 
   it("BT06 mit Callback: Knopf da, erst nach Auswahl aktiv, Klick ruft (uid,rid)", () => {

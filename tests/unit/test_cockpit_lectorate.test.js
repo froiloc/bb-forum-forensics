@@ -126,7 +126,9 @@ describe("cockpit_lectorate", () => {
 
     let made = null;
     function StubTab(container, opts) {
-      made = { container, opts };
+      made = { container, opts, handlers: {} };
+      // Build 486: rowClick wird ueber die Event-API angehaengt (table.on).
+      this.on = function (ev, fn) { made.handlers[ev] = fn; };
       this.replaceData = function (d) { made.replaced = d; };
       this.destroy = function () { made.destroyed = true; };
     }
@@ -149,6 +151,8 @@ describe("cockpit_lectorate", () => {
     expect(tCol.headerFilterParams.values).toMatchObject({
       "": "alle", Vermerk: "Vermerk", Abschlussbericht: "Abschlussbericht",
     });
+    // Build 486: Typ-Dropdown exakter Full-Match ('=').
+    expect(tCol.headerFilterFunc).toBe("=");
     const sCol = cols.find((c) => c.field === "status_label");
     expect(sCol.headerFilter).toBe("list");
     expect(sCol.headerFilterParams.values).toMatchObject({
@@ -164,9 +168,10 @@ describe("cockpit_lectorate", () => {
     const frame = main.querySelector("iframe.aiw-lectorate-preview");
     expect(frame).not.toBeNull();
 
-    // rowClick des ersten Berichts (uid 18, rid 1) simulieren.
+    // Build 486: rowClick via table.on registriert -> ueber handlers aufrufen.
+    expect(typeof made.handlers.rowClick).toBe("function");
     const rowData = made.opts.data[0];
-    made.opts.rowClick({}, { getData: () => rowData, getElement: () => null });
+    made.handlers.rowClick({}, { getData: () => rowData, getElement: () => null });
     expect(frame.src).toContain("/api/report/render?subject_id=18&report_id=1");
     expect(api.hasSelection()).toBe(true);
     expect(picked).toEqual([18, 1]);
@@ -179,7 +184,8 @@ describe("cockpit_lectorate", () => {
     const main = win.document.createElement("div");
     win.document.body.appendChild(main);
     function StubTab(container, opts) { this.opts = opts;
-      this.replaceData = function () {}; this.destroy = function () {}; }
+      this.on = function () {}; this.replaceData = function () {};
+      this.destroy = function () {}; }
     api.renderLectorate(main, _data(), { status: "submitted", Tabulator: StubTab });
     // Kein Status-<select> mehr.
     expect(main.querySelector("select.aiw-lectorate-status")).toBeNull();
@@ -196,7 +202,8 @@ describe("cockpit_lectorate", () => {
     const main = win.document.createElement("div");
     win.document.body.appendChild(main);
     function StubTab(container, opts) { this.opts = opts;
-      this.replaceData = function () {}; this.destroy = function () {}; }
+      this.on = function () {}; this.replaceData = function () {};
+      this.destroy = function () {}; }
     api.renderLectorate(main, _data(), {
       status: "submitted",
       onTransferToTemplate: function () {},

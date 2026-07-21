@@ -43,7 +43,11 @@
  *   <select> ueber der Tabelle entfaellt; Default 'Zur Abnahme vorgelegt' via
  *   initialHeaderFilter, Tabelle laedt alle Zeilen. statusCounts entfernt.
  *   Status filtert ueber den Roh-Status (rowData.status).
- * Version: v0.8.485 · Build: 485 · 2026-07-21
+ * Build 486: Zwei Bugfixes (analog Lektorat). (a) Zeilenklick reagierte nicht —
+ *   'rowClick' ist in Tabulator v6.4.0 KEINE Konstruktor-Option; Handler nun via
+ *   table.on('rowClick', ...). (b) Typ-Dropdown exakter Full-Match ueber
+ *   headerFilterFunc '=' (Teilstring 'Vermerk' traf sonst 'Ergänzungsvermerk').
+ * Version: v0.8.486 · Build: 486 · 2026-07-21
  */
 (function () {
     'use strict';
@@ -914,9 +918,13 @@
                       headerFilter: 'input' },
                     { title: 'Titel',     field: 'title',
                       headerFilter: 'input' },
+                    // Build 486: exakter Full-Match ('='), sonst wuerde der
+                    // list-Default als Teilstring 'Vermerk' auch in
+                    // 'Ergänzungsvermerk' finden.
                     { title: 'Typ',       field: 'typ',
                       headerFilter: 'list',
-                      headerFilterParams: { values: TYP_FILTER_VALUES } },
+                      headerFilterParams: { values: TYP_FILTER_VALUES },
+                      headerFilterFunc: '=' },
                     { title: 'Nr.',       field: 'nr', hozAlign: 'right' },
                     // Zeigt status_label, filtert ueber den Roh-Status.
                     { title: 'Status',    field: 'status_label',
@@ -949,13 +957,19 @@
                         }
                     }
                 },
-                placeholder: 'Keine Berichte im gewaehlten Status.',
-                rowClick: function (e, row) {
+                placeholder: 'Keine Berichte im gewaehlten Status.'
+            });
+            // Build 486 (Bugfix): 'rowClick' ist in Tabulator v6.4.0 KEINE
+            // Konstruktor-Option und wurde ignoriert (kein Klick-Effekt); der
+            // Zeilenklick wird nun ueber die Event-API angehaengt. Defensiv:
+            // nur wenn .on vorhanden ist.
+            if (_state.table && typeof _state.table.on === 'function') {
+                _state.table.on('rowClick', function (e, row) {
                     var el = (typeof row.getElement === 'function')
                         ? row.getElement() : null;
                     _selectReport(row.getData(), el);
-                }
-            });
+                });
+            }
         }
 
         // --- Support-View (SF-2 + SF-3, read-only) unter dem Vorschau-Bereich.

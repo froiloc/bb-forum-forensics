@@ -54,7 +54,14 @@
  *   gesetzt, die Tabelle laedt alle Zeilen. statusCounts (Zaehler am alten
  *   Select) entfernt. Status filtert ueber den Roh-Status (rowData.status),
  *   damit 'Versandt' waehlbar bleibt.
- * Version: v0.8.484 · Build: 484 · 2026-07-21
+ * Build 486: Zwei Bugfixes. (a) Zeilenklick reagierte nicht — 'rowClick' ist in
+ *   Tabulator v6.4.0 KEINE Konstruktor-Option und wurde ignoriert; der Handler
+ *   wird nun via table.on('rowClick', ...) angehaengt. (b) Der Typ-Dropdown
+ *   matchte als Teilstring ('Vermerk' traf auch 'Ergänzungsvermerk'); jetzt
+ *   exakter Full-Match ueber headerFilterFunc '='. Status war bereits exakt;
+ *   die Eingabezeilen-Filter (Benutzer/Titel/Verfasser) bleiben bewusst
+ *   case-insensitiv/teilstring.
+ * Version: v0.8.486 · Build: 486 · 2026-07-21
  */
 (function () {
     'use strict';
@@ -500,9 +507,13 @@
                       headerFilter: 'input' },
                     { title: 'Titel',     field: 'title',
                       headerFilter: 'input' },
+                    // Build 486: exakter Full-Match ('='), sonst wuerde der
+                    // list-Default als Teilstring 'Vermerk' auch in
+                    // 'Ergänzungsvermerk' finden.
                     { title: 'Typ',       field: 'typ',
                       headerFilter: 'list',
-                      headerFilterParams: { values: TYP_FILTER_VALUES } },
+                      headerFilterParams: { values: TYP_FILTER_VALUES },
+                      headerFilterFunc: '=' },
                     { title: 'Nr.',       field: 'nr', hozAlign: 'right' },
                     // Status: die Spalte ZEIGT status_label, FILTERT aber ueber
                     // den Roh-Status (rowData.status) — so bleibt 'Versandt'
@@ -542,14 +553,22 @@
                     }
                 },
                 // Kein stiller Leerzustand: sichtbarer Hinweis bei 0 Zeilen.
-                placeholder: 'Keine Berichte im gewaehlten Status.',
-                // Zeilenklick -> Auswahl dieses Berichts.
-                rowClick: function (e, row) {
+                placeholder: 'Keine Berichte im gewaehlten Status.'
+            });
+            // Build 486 (Bugfix): In dieser Tabulator-Version (v6.4.0) ist
+            // 'rowClick' KEINE registrierte Tabellen-Option (nur rowClickMenu/
+            // rowClickPopup) — ein rowClick im Konstruktor wird still ignoriert,
+            // weshalb ein Zeilenklick keine Reaktion zeigte. Der Zeilenklick wird
+            // daher ueber die Event-API angehaengt (Beleg: Console-Diagnose, der
+            // via table.on('rowClick') registrierte Listener feuert). Defensiv:
+            // nur wenn .on vorhanden ist.
+            if (_state.table && typeof _state.table.on === 'function') {
+                _state.table.on('rowClick', function (e, row) {
                     var el = (typeof row.getElement === 'function')
                         ? row.getElement() : null;
                     _selectReport(row.getData(), el);
-                }
-            });
+                });
+            }
         }
 
         // --- Kommentar-Panel (SF-3, Slice 3) unter dem Vorschau-Bereich. ----

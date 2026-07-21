@@ -63,7 +63,9 @@ function _mount(win) {
 function _stubTab() {
   let made = null;
   function StubTab(container, opts) {
-    made = { container, opts };
+    made = { container, opts, handlers: {} };
+    // Build 486: rowClick wird via table.on() angehaengt.
+    this.on = function (ev, fn) { made.handlers[ev] = fn; };
     this.replaceData = function (d) { made.replaced = d; };
     this.destroy = function () {};
   }
@@ -71,7 +73,7 @@ function _stubTab() {
 }
 function _pick(made, i) {
   const row = made.opts.data[i || 0];
-  made.opts.rowClick({}, { getData: () => row, getElement: () => null });
+  made.handlers.rowClick({}, { getData: () => row, getElement: () => null });
 }
 
 describe("cockpit_approval", () => {
@@ -120,6 +122,8 @@ describe("cockpit_approval", () => {
     expect(tCol.headerFilterParams.values).toMatchObject({
       "": "alle", Vermerk: "Vermerk", Abschlussbericht: "Abschlussbericht",
     });
+    // Build 486: Typ-Dropdown exakter Full-Match ('=').
+    expect(tCol.headerFilterFunc).toBe("=");
     const sCol = cols.find((c) => c.field === "status_label");
     expect(sCol.headerFilter).toBe("list");
     expect(sCol.headerFilterParams.values).toMatchObject({
