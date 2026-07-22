@@ -25,18 +25,42 @@
 #                                  auch vom Management-Server geoeffnet)
 #   Lokal (C:, DriveType=3 FIXED) ist WAL unauffaellig.
 #
-# Strategie ('auto', Default):
-#   1. WAL versuchen — das ist der PROD-Pfad. Gelingt er (lokale Platte), ist das
-#      Verhalten bitidentisch zu vor Build 408.
-#   2. Scheitert er, wird NICHT still weitergemacht (Grundregel 1): WARNING mit
-#      Pfad, Basis- und erweitertem SQLite-Fehlercode und Klartextursache, dann
-#      Rueckfall auf den Rollback-Journalmodus (Default: DELETE).
-#   3. Der tatsaechlich aktive Modus wird ZURUECKGELESEN und geprueft. Ein
+# =============================================================================
+# WAL-VERBOT (Build 499, mc-Anweisung 2026-07-22 — PROD-Vorfall Citrix):
+#   WAL wird PROJEKTWEIT NICHT MEHR VERWENDET. Nirgendwo, von niemandem.
+#
+#   Anlass: In der PROD-Umgebung (Citrix) tarnt sich das geteilte Laufwerk als
+#   lokale Platte (DriveType=3 FIXED). Die bisherige 'auto'-Strategie versuchte
+#   WAL ZUERST — das PRAGMA GELANG scheinbar, die Datei wurde WAL-gestempelt,
+#   und sobald ein zweiter Host/Session die -shm/-wal sperrte, war die DB nicht
+#   mehr zu oeffnen ('database disk image is malformed'). Die Laufwerksart ist
+#   auf solchen Umgebungen NICHT verlaesslich erkennbar — deshalb hilft keine
+#   bessere Heuristik, sondern nur das Verbot (mc: "WAL DARF nicht mehr genutzt
+#   werden. Nirgendwo und von niemandem!").
+#
+#   Konsequenzen in diesem Modul:
+#     * 'wal' ist KEIN zulaessiger Konfigurationswert mehr (harter Fehler mit
+#       Klartext — kein stilles Umbiegen, Grundregel 1).
+#     * 'auto' versucht KEIN WAL mehr; es setzt direkt den Rollback-Rueckfall
+#       (Default DELETE). 'auto' bleibt als Wert erlaubt, damit bestehende
+#       config.yaml-Dateien nicht brechen.
+#     * Nach jedem Setzen wird der aktive Modus zurueckgelesen; meldet SQLite
+#       'wal' (z.B. WAL-gestempelte, read-only geoeffnete Datei), wird der
+#       Betrieb VERWEIGERT (JournalPolicyError) — niemals stiller WAL-Betrieb.
+#     * SELBSTHEILUNG: Das Setzen eines Rollback-Modus auf einer WAL-gestempelten,
+#       schreibbaren Datei checkpointet deren -wal verlustfrei ein und entfernt
+#       den WAL-Stempel (SQLite-Semantik von 'PRAGMA journal_mode=DELETE').
+#       Read-only-/gesperrte Dateien: tools/convert_journal_mode.py.
+#
+# Strategie ('auto', seit Build 499):
+#   1. KEIN WAL-Versuch. Direkt den Rollback-Rueckfallmodus setzen
+#      (Default: DELETE).
+#   2. Der tatsaechlich aktive Modus wird ZURUECKGELESEN und geprueft. Ein
 #      erfolgreiches PRAGMA allein ist kein Beleg ('gruen aber tot' vermeiden):
 #      SQLite meldet z.B. bei read-only geoeffneten DBs den ALTEN Modus zurueck,
 #      ohne einen Fehler zu werfen.
-#   4. Gelingt auch der Rueckfall nicht, wird hart abgebrochen (JournalPolicyError)
-#      — mit Klartext, was zu tun ist.
+#   3. Gelingt das nicht, wird hart abgebrochen (JournalPolicyError) — mit
+#      Klartext, was zu tun ist.
 #
 # Wichtig — was dieser Helfer NICHT kann:
 #   Eine bereits WAL-GESTEMPELTE Datei (Header-Byte 18/19 == 2) laesst sich auf
@@ -45,11 +69,11 @@
 #
 # Konfiguration (config.yaml):
 #   db:
-#     journal_mode:          auto | wal | delete | truncate | persist
+#     journal_mode:          auto | delete | truncate | persist   ('wal' VERBOTEN)
 #     journal_mode_fallback: delete | truncate | persist
 #
 # Abhaengigkeiten: sqlite3, logging — Stdlib + core.logger
-# Version: v0.7.408 · Build: 408 · 2026-07-14
+# Version: v0.8.499 · Build: 499 · 2026-07-22
 # =============================================================================
 
 from __future__ import annotations
@@ -64,8 +88,23 @@ from core.logger import get_logger
 logger = get_logger(__name__)
 
 # Zulaessige Werte fuer db.journal_mode.
-# 'auto' ist kein SQLite-Modus, sondern unsere Strategie (WAL, sonst Rueckfall).
-VALID_MODES = ("auto", "wal", "delete", "truncate", "persist")
+# 'auto' ist kein SQLite-Modus, sondern unsere Strategie — seit Build 499:
+# direkt der Rollback-Rueckfall, KEIN WAL-Versuch mehr. 'wal' ist VERBOTEN
+# (mc 2026-07-22) und bewusst NICHT in dieser Liste; er wird in resolve_mode/
+# apply_journal_mode mit einer eigenen Klartextmeldung abgewiesen.
+VALID_MODES = ("auto", "delete", "truncate", "persist")
+
+# Klartext des Verbots — an jeder Abweisung identisch, damit die Ursache
+# unmissverstaendlich ist (Grundregel 1: melden, nicht raten lassen).
+WAL_BAN = (
+    "WAL ist projektweit VERBOTEN (Build 499, Anweisung mc 2026-07-22). "
+    "Hintergrund: In der PROD-Citrix-Umgebung tarnt sich das geteilte Laufwerk "
+    "als lokale Platte; ein WAL-Stempel macht die Datei dort unbrauchbar "
+    "('database disk image is malformed'), sobald eine zweite Maschine die "
+    "-shm/-wal sperrt. Zulaessig sind: auto (= Rollback-Rueckfall), delete, "
+    "truncate, persist. Bereits WAL-gestempelte Dateien einmalig umstempeln: "
+    "python tools/convert_journal_mode.py --data-dir ./data --apply"
+)
 
 # Zulaessige Rueckfallziele. MEMORY/OFF sind bewusst NICHT dabei: beide geben
 # die Absturzsicherheit auf (kein Rollback-Journal auf Platte). In einem
@@ -195,6 +234,10 @@ def resolve_mode(config, key: str = "db.journal_mode") -> str:
     """
     raw = config.get(key, DEFAULT_MODE) if config is not None else DEFAULT_MODE
     mode = str(raw or DEFAULT_MODE).strip().lower()
+    # Build 499: 'wal' bekommt eine EIGENE, unmissverstaendliche Meldung —
+    # das ist kein Tippfehler des Konfigurierenden, sondern ein Verbot.
+    if mode == "wal":
+        raise JournalPolicyError(f"{key} = 'wal' ist unzulaessig. {WAL_BAN}")
     if mode not in VALID_MODES:
         raise JournalPolicyError(
             f"Unzulaessiger Wert fuer {key}: '{raw}'. "
@@ -268,6 +311,13 @@ def apply_journal_mode(
     """
     lg = log or logger
 
+    # Build 499: WAL ist verboten — eigene, unmissverstaendliche Meldung fuer
+    # direkte Aufrufer, die den Konfigurationsweg (resolve_mode) umgehen.
+    if str(mode).strip().lower() == "wal":
+        raise JournalPolicyError(
+            f"Journalmodus 'wal' fuer '{db_path}' (schema='{schema}') "
+            f"verweigert. {WAL_BAN}"
+        )
     if mode not in VALID_MODES:
         raise JournalPolicyError(
             f"Unzulaessiger Journalmodus: '{mode}'. Erlaubt: {', '.join(VALID_MODES)}."
@@ -280,80 +330,52 @@ def apply_journal_mode(
 
     prefix = "" if schema in ("", "main") else f"{schema}."
 
-    # --- Fall 1: expliziter Modus (kein Rueckfall, kein Ratespiel) ------------
-    if mode != "auto":
-        try:
-            aktiv = _set_and_read_back(con, prefix, mode)
-        except sqlite3.Error as exc:
-            raise JournalPolicyError(
-                f"Journalmodus '{mode}' konnte fuer '{db_path}' (schema='{schema}') "
-                f"nicht gesetzt werden. {describe_sqlite_error(exc)}. {NETWORK_HINT}"
-            ) from exc
-        if aktiv == MEMORY_MODE and mode != MEMORY_MODE:
-            lg.debug(
-                "In-Memory-Datenbank (db='%s', schema='%s'): journal_mode bleibt "
-                "'memory' — kein Journal auf Platte noetig.", db_path, schema,
-            )
-            return aktiv
-        if aktiv != mode:
-            raise JournalPolicyError(
-                f"Journalmodus '{mode}' wurde fuer '{db_path}' (schema='{schema}') "
-                f"NICHT uebernommen — aktiv ist '{aktiv}'. "
-                f"(Kein stiller Weiterbetrieb: Grundregel 1.) {NETWORK_HINT}"
-            )
+    # Build 499: 'auto' bedeutet seit dem WAL-Verbot: direkt der Rollback-
+    # Rueckfall. KEIN WAL-Versuch — auf Laufwerken, die sich als lokal tarnen
+    # (PROD-Citrix), wuerde er 'gelingen' und die Datei WAL-stempeln.
+    ziel = fallback if mode == "auto" else mode
+    if mode == "auto":
         lg.debug(
-            "Journalmodus '%s' gesetzt (schema='%s', db='%s').",
-            aktiv, schema, db_path,
+            "journal_mode 'auto' -> '%s' (WAL projektweit verboten, Build 499; "
+            "schema='%s', db='%s').", ziel, schema, db_path,
+        )
+
+    try:
+        aktiv = _set_and_read_back(con, prefix, ziel)
+    except sqlite3.Error as exc:
+        raise JournalPolicyError(
+            f"Journalmodus '{ziel}' konnte fuer '{db_path}' (schema='{schema}') "
+            f"nicht gesetzt werden. {describe_sqlite_error(exc)}. {NETWORK_HINT}"
+        ) from exc
+
+    if aktiv == MEMORY_MODE:
+        lg.debug(
+            "In-Memory-Datenbank (db='%s', schema='%s'): journal_mode bleibt "
+            "'memory' — kein Journal auf Platte noetig.", db_path, schema,
         )
         return aktiv
 
-    # --- Fall 2: 'auto' — erst WAL, sonst Rueckfall ---------------------------
-    try:
-        aktiv = _set_and_read_back(con, prefix, "wal")
-        if aktiv == "wal":
-            lg.debug(
-                "Journalmodus 'wal' gesetzt (schema='%s', db='%s').", schema, db_path
-            )
-            return aktiv
-        if aktiv == MEMORY_MODE:
-            lg.debug(
-                "In-Memory-Datenbank (db='%s', schema='%s'): journal_mode bleibt "
-                "'memory' — kein Journal auf Platte noetig.", db_path, schema,
-            )
-            return aktiv
-        # Kein Fehler, aber auch kein WAL: SQLite meldet in diesem Fall den alten
-        # Modus zurueck (z.B. bei read-only geoeffneter Datei). Das ist genau der
-        # Fall, den ein reines try/except NICHT faengt.
-        grund = f"PRAGMA lief fehlerfrei durch, aktiv blieb aber '{aktiv}'"
-    except sqlite3.Error as exc:
-        grund = describe_sqlite_error(exc)
-
-    lg.warning(
-        "WAL-Modus nicht verfuegbar fuer '%s' (schema='%s'): %s. "
-        "Rueckfall auf '%s'. %s",
-        db_path, schema, grund, fallback, NETWORK_HINT,
-    )
-
-    try:
-        aktiv = _set_and_read_back(con, prefix, fallback)
-    except sqlite3.Error as exc:
+    # Build 499: RIEGEL — es darf unter keinen Umstaenden in WAL weitergelaufen
+    # werden. SQLite meldet 'wal' z.B. dann zurueck, wenn die Datei WAL-gestempelt
+    # ist und read-only geoeffnet wurde (das Setz-PRAGMA laeuft fehlerfrei durch,
+    # aendert aber nichts). Frueher waere das stiller WAL-Betrieb gewesen.
+    if aktiv == "wal":
         raise JournalPolicyError(
-            f"Weder 'wal' noch Rueckfall '{fallback}' konnten fuer '{db_path}' "
-            f"(schema='{schema}') gesetzt werden. {describe_sqlite_error(exc)}. "
-            f"{NETWORK_HINT}"
-        ) from exc
-
-    if aktiv != fallback:
-        raise JournalPolicyError(
-            f"Rueckfall-Journalmodus '{fallback}' wurde fuer '{db_path}' "
-            f"(schema='{schema}') NICHT uebernommen — aktiv ist '{aktiv}'. "
-            f"{NETWORK_HINT}"
+            f"'{db_path}' (schema='{schema}') laeuft nach dem Setzen von "
+            f"'{ziel}' weiterhin in WAL — Betrieb verweigert. Die Datei ist "
+            f"vermutlich WAL-gestempelt und nicht schreibbar (read-only/"
+            f"gesperrt). {WAL_BAN} {NETWORK_HINT}"
         )
 
-    lg.info(
-        "Journalmodus-Rueckfall aktiv: '%s' (schema='%s', db='%s'). "
-        "Parallelitaet ist damit geringer als mit WAL — das ist gewollt und "
-        "protokolliert.",
+    if aktiv != ziel:
+        raise JournalPolicyError(
+            f"Journalmodus '{ziel}' wurde fuer '{db_path}' (schema='{schema}') "
+            f"NICHT uebernommen — aktiv ist '{aktiv}'. "
+            f"(Kein stiller Weiterbetrieb: Grundregel 1.) {NETWORK_HINT}"
+        )
+
+    lg.debug(
+        "Journalmodus '%s' gesetzt (schema='%s', db='%s').",
         aktiv, schema, db_path,
     )
     return aktiv

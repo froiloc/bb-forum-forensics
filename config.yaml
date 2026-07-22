@@ -34,12 +34,18 @@ paths:
 # DB-Verzeichnis). Shared Memory ist maschinenlokal, daher unterstuetzt SQLite
 # WAL auf Netzwerk-Dateisystemen ausdruecklich nicht (sqlite.org/wal.html).
 #
-# journal_mode:
-#   auto      (Default) — WAL versuchen; scheitert es, protokollierter Rueckfall
-#                         auf journal_mode_fallback. Auf lokaler Platte (PROD)
-#                         greift WAL wie bisher, das Verhalten ist unveraendert.
-#   wal       — WAL erzwingen; scheitert es, bricht der Start ab (kein Rueckfall).
-#   delete    — Rollback-Journal erzwingen (Empfehlung fuer Netzlaufwerke).
+# WAL-VERBOT (Build 499, mc 2026-07-22 — PROD-Vorfall Citrix):
+#   WAL wird projektweit NICHT MEHR verwendet. 'wal' ist als Wert VERBOTEN und
+#   fuehrt zum harten Startabbruch mit Klartext. Grund: In der PROD-Citrix-
+#   Umgebung tarnt sich das geteilte Laufwerk als lokale Platte; ein WAL-Stempel
+#   macht die Datei dort unbrauchbar ('database disk image is malformed'),
+#   sobald eine zweite Maschine die -shm/-wal sperrt. Die Laufwerksart ist dort
+#   nicht verlaesslich erkennbar — deshalb das generelle Verbot statt Heuristik.
+#
+# journal_mode (zulaessig: auto | delete | truncate | persist — 'wal' VERBOTEN):
+#   auto      (Default) — seit Build 499: setzt DIREKT journal_mode_fallback
+#                         (kein WAL-Versuch mehr).
+#   delete    — Rollback-Journal (Empfehlung, hier gesetzt).
 #   truncate  — wie delete, spart Verzeichnis-I/O beim Journal-Loeschen.
 #   persist   — wie delete, Journaldatei bleibt liegen.
 #
@@ -49,7 +55,9 @@ paths:
 # werden:  python tools/convert_journal_mode.py --data-dir ./data --to delete
 # =============================================================================
 db:
-  journal_mode:          "auto"
+  # Build 499: hart 'delete' (nicht 'auto') — doppelt abgesichert. Selbst wenn
+  # jemand hier 'auto' setzt, versucht der Code seit Build 499 kein WAL mehr.
+  journal_mode:          "delete"
   journal_mode_fallback: "delete"
 
 # =============================================================================

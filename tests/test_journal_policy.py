@@ -105,38 +105,32 @@ def aktiv(con) -> str:
 
 
 # -----------------------------------------------------------------------------
-# 1) Regelfall (PROD, lokale Platte): 'auto' liefert WAL — unveraendertes Verhalten
+# 1) WAL-VERBOT (Build 499): 'auto' liefert NIE WAL — direkt der Rollback-Modus.
+#    (Frueher lieferte 'auto' auf lokaler Platte WAL; das ist projektweit
+#     abgeschafft, weil das PROD-Citrix-Laufwerk sich als lokal tarnt.)
 # -----------------------------------------------------------------------------
 
-def test_auto_setzt_wal_auf_lokaler_platte(db):
+def test_auto_setzt_delete_nicht_wal(db):
     con, pfad = db
-    assert apply_journal_mode(con, pfad, mode="auto") == "wal"
-    assert aktiv(con) == "wal"
+    # Selbst auf lokaler Platte (wo WAL frueher gesetzt wurde): jetzt delete.
+    assert apply_journal_mode(con, pfad, mode="auto") == "delete"
+    assert aktiv(con) == "delete"
 
 
-# -----------------------------------------------------------------------------
-# 2) Netzlaufwerk: WAL scheitert -> protokollierter Rueckfall auf DELETE
-# -----------------------------------------------------------------------------
-
-def test_auto_faellt_auf_delete_zurueck_wenn_wal_scheitert(db):
+def test_auto_versucht_KEIN_wal_mehr(db):
+    # Die Netzlaufwerk-Attrappe wirft NUR bei 'journal_mode=wal'. Wenn 'auto'
+    # kein WAL mehr versucht, wird sie GAR NICHT ausgeloest (wal_versuche == 0).
     con, pfad = db
     fake = NetzlaufwerkConnection(con)
-    log = LoggerAttrappe()
-
-    ergebnis = apply_journal_mode(fake, pfad, mode="auto", fallback="delete", log=log)
-
+    ergebnis = apply_journal_mode(fake, pfad, mode="auto", fallback="delete")
     assert ergebnis == "delete"
-    assert aktiv(con) == "delete"        # echt zurueckgelesen, nicht behauptet
-    assert fake.wal_versuche == 1        # WAL wurde zuerst versucht
-    # Kein stiller Rueckfall (Grundregel 1):
-    assert "WAL-Modus nicht verfuegbar" in log.text
-    assert "disk I/O error" in log.text
+    assert aktiv(con) == "delete"
+    assert fake.wal_versuche == 0        # <-- WAL wird NICHT (mehr) versucht
 
 
 def test_rueckfall_auf_truncate_ist_konfigurierbar(db):
     con, pfad = db
-    fake = NetzlaufwerkConnection(con)
-    assert apply_journal_mode(fake, pfad, mode="auto", fallback="truncate") == "truncate"
+    assert apply_journal_mode(con, pfad, mode="auto", fallback="truncate") == "truncate"
     assert aktiv(con) == "truncate"
 
 
@@ -159,16 +153,32 @@ class _Cursor:
         return self._row
 
 
-def test_auto_erkennt_nicht_uebernommenes_wal_und_faellt_zurueck(db):
-    con, pfad = db
-    log = LoggerAttrappe()
+def test_auto_setzt_delete_und_liest_delete_zurueck(db):
+    # 'auto' setzt delete; die Attrappe meldet delete zurueck -> uebernommen.
     ergebnis = apply_journal_mode(
-        StillIgnorierendeConnection(), pfad, mode="auto", fallback="delete", log=log
+        StillIgnorierendeConnection(), "x.db", mode="auto", fallback="delete"
     )
-    # WAL wurde fehlerfrei 'gesetzt', aktiv blieb 'delete' -> das ist der
-    # Rueckfallfall, den ein reines try/except NICHT faengt.
     assert ergebnis == "delete"
-    assert "aktiv blieb aber 'delete'" in log.text
+
+
+# -----------------------------------------------------------------------------
+# 3b) WAL-VERBOT: ein zurueckgelesenes 'wal' verweigert den Betrieb (Riegel).
+#     Tritt real auf, wenn eine WAL-gestempelte Datei read-only geoeffnet wird:
+#     das Setz-PRAGMA laeuft durch, aendert aber nichts -> aktiv bleibt 'wal'.
+# -----------------------------------------------------------------------------
+
+class WalHartnaeckigConnection:
+    """PRAGMA laeuft fehlerfrei, aktiver Modus bleibt aber 'wal' (read-only WAL)."""
+
+    def execute(self, sql: str, *args):
+        return _Cursor(["wal"])
+
+
+def test_riegel_verweigert_wenn_aktiv_wal_bleibt(db):
+    with pytest.raises(JournalPolicyError) as exc:
+        apply_journal_mode(WalHartnaeckigConnection(), "x.db", mode="delete")
+    assert "WAL" in str(exc.value)
+    assert "verweigert" in str(exc.value).lower() or "verboten" in str(exc.value).lower()
 
 
 # -----------------------------------------------------------------------------
@@ -180,13 +190,21 @@ def test_expliziter_modus_delete(db):
     assert apply_journal_mode(con, pfad, mode="delete") == "delete"
 
 
-def test_expliziter_modus_wal_bricht_ab_wenn_er_scheitert(db):
+def test_expliziter_modus_wal_ist_verboten(db):
+    # Build 499: 'wal' ist projektweit verboten — apply weist ihn mit eigenem
+    # Klartext ab, OHNE die DB anzufassen.
     con, pfad = db
-    fake = NetzlaufwerkConnection(con)
     with pytest.raises(JournalPolicyError) as exc:
-        apply_journal_mode(fake, pfad, mode="wal")
-    assert "Netzlaufwerk" in str(exc.value)     # Klartexthinweis liegt bei
+        apply_journal_mode(con, pfad, mode="wal")
+    assert "verboten" in str(exc.value).lower() or "verweigert" in str(exc.value).lower()
     assert aktiv(con) != "wal"
+
+
+def test_resolve_mode_verbietet_wal():
+    # Build 499: db.journal_mode: 'wal' in der config -> harter Fehler.
+    with pytest.raises(JournalPolicyError) as exc:
+        resolve_mode(KonfigAttrappe({"db.journal_mode": "wal"}))
+    assert "wal" in str(exc.value).lower()
 
 
 def test_unzulaessiger_modus(db):
@@ -207,8 +225,9 @@ def test_schema_praefix_wirkt_auf_attach(tmp_path):
     con = sqlite3.connect(str(haupt))
     try:
         con.execute("ATTACH DATABASE ? AS cdb", (str(cdb),))
-        assert apply_journal_mode(con, cdb, schema="cdb", mode="auto") == "wal"
-        assert str(con.execute("PRAGMA cdb.journal_mode").fetchone()[0]).lower() == "wal"
+        # Build 499: 'auto' setzt auch auf dem ATTACH-Alias delete, NICHT wal.
+        assert apply_journal_mode(con, cdb, schema="cdb", mode="auto") == "delete"
+        assert str(con.execute("PRAGMA cdb.journal_mode").fetchone()[0]).lower() == "delete"
         # main bleibt unberuehrt (Default 'delete')
         assert aktiv(con) == "delete"
     finally:

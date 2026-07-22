@@ -168,16 +168,21 @@ def test_zweiter_lauf_ist_idempotent(datenverzeichnis, capsys):
 
 
 # -----------------------------------------------------------------------------
-# 5) Rueckweg — 'delete' -> 'wal' (fuer den Fall, dass eine DB lokal betrieben wird)
+# 5) WAL-VERBOT (Build 499): '--to wal' ist entfernt. Das Werkzeug darf WAL
+#    nicht mehr ERZEUGEN ("von niemandem") — argparse weist die Wahl ab.
 # -----------------------------------------------------------------------------
 
-def test_rueckweg_nach_wal(datenverzeichnis):
+def test_to_wal_ist_verboten(datenverzeichnis):
+    import pytest
+    # Ungueltige --choices fuehren zu argparse-Exit(2).
+    with pytest.raises(SystemExit) as exc:
+        werkzeug.main(["--data-dir", str(datenverzeichnis["data"]),
+                       "--to", "wal", "--apply"])
+    assert exc.value.code == 2
+    # Die DBs bleiben rollback-gestempelt (nichts wurde auf WAL gedreht).
     werkzeug.main(["--data-dir", str(datenverzeichnis["data"]), "--apply"])
-    rc = werkzeug.main(["--data-dir", str(datenverzeichnis["data"]),
-                        "--to", "wal", "--apply"])
-    assert rc == 0
-    assert _stempel(datenverzeichnis["evidence"]) == 2
-    assert _stempel(datenverzeichnis["forensic"]) == 2
+    assert _stempel(datenverzeichnis["evidence"]) == 1
+    assert _stempel(datenverzeichnis["forensic"]) == 1
 
 
 # -----------------------------------------------------------------------------

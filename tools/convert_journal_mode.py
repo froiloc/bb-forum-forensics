@@ -102,10 +102,14 @@ from core.startup_checks import StartupChecker  # noqa: E402
 
 # Rollback-Modi (Header-Stempel 1) gegenueber WAL (Header-Stempel 2).
 ROLLBACK_MODES = ("delete", "truncate", "persist")
-ALL_TARGETS = ROLLBACK_MODES + ("wal",)
+# Build 499 (WAL-Verbot, mc 2026-07-22): 'wal' ist KEIN zulaessiges Ziel mehr —
+# auch dieses manuelle Werkzeug darf WAL nicht mehr ERZEUGEN ("von niemandem").
+# Es konvertiert ausschliesslich VON WAL WEG (Rollback). Der Rueckweg zu WAL ist
+# absichtlich entfernt.
+ALL_TARGETS = ROLLBACK_MODES
 
-# Erwarteter Header-Stempel je Zielmodus.
-ERWARTETER_STEMPEL = {"delete": 1, "truncate": 1, "persist": 1, "wal": 2}
+# Erwarteter Header-Stempel je Zielmodus (nur Rollback; WAL entfaellt).
+ERWARTETER_STEMPEL = {"delete": 1, "truncate": 1, "persist": 1}
 
 
 class ConvertError(RuntimeError):
@@ -334,22 +338,23 @@ def verarbeite(db: Path, ziel: str, apply: bool) -> bool:
                 print(f"    Inhalts-SHA256 nachher: {hash_nachher}")
                 if hash_nachher != hash_vorher:
                     # Darf nach Lage der Dinge nicht passieren (der Stempel steht im
-                    # Header, nicht im Inhalt). Falls doch: sofort zurueckdrehen und
-                    # abbrechen — lieber ein nicht startender Server als eine
-                    # Beweismitteldatenbank mit gebrochenem Siegel.
-                    rueck = "nicht versucht"
-                    try:
-                        con.execute("PRAGMA journal_mode=wal")
-                        rueck = f"zurueckgestempelt auf '{aktiver_modus(con)}'"
-                    except sqlite3.Error as exc2:      # pragma: no cover
-                        rueck = f"RUECKSTEMPELUNG FEHLGESCHLAGEN: {exc2}"
+                    # Header, nicht im Inhalt — der Inhalt aendert sich beim
+                    # Moduswechsel nicht). Falls doch: HART abbrechen.
+                    # Build 499 (WAL-Verbot): NICHT auf WAL zurueckstempeln — der
+                    # Stempelwechsel hat keinen Inhalt veraendert, es gibt also
+                    # nichts inhaltlich zurueckzudrehen; und WAL darf nirgends mehr
+                    # erzeugt werden. Lieber ein nicht startender Server als eine
+                    # Beweismitteldatenbank mit gebrochenem Siegel ODER ein neuer
+                    # WAL-Stempel.
                     raise SealError(
                         "INHALTS-HASH HAT SICH GEAENDERT — Abbruch, keine weitere "
                         f"Datei wird angefasst (auch mit --skip-on-error NICHT). "
                         f"Datei: {db}\n"
                         f"  vorher : {hash_vorher}\n"
                         f"  nachher: {hash_nachher}\n"
-                        f"  Rueckabwicklung: {rueck}"
+                        f"  Hinweis: Der Stempel wurde NICHT auf WAL "
+                        f"zurueckgesetzt (WAL-Verbot, Build 499); der Inhalt ist "
+                        f"unveraendert. Datei manuell pruefen."
                     )
         finally:
             con.close()

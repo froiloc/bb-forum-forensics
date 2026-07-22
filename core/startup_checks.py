@@ -44,7 +44,6 @@ from core.mode_resolver import ResolvedContext
 from db.journal_policy import (          # NEU Build 409: Fruehwarnung Journal-Stempel
     is_network_path,
     journal_stamp,
-    resolve_mode,
 )
 
 logger = get_logger(__name__)
@@ -246,25 +245,24 @@ class StartupChecker:
                 "  python tools/convert_journal_mode.py --data-dir ./data --apply"
             )
 
-        # WAL erzwungen auf einem Netzlaufwerk: das kann nicht funktionieren —
-        # lieber jetzt mit Klartext abbrechen als beim ersten PRAGMA.
+        # Build 499 (WAL-Verbot, mc 2026-07-22): 'wal' ist als config-Wert
+        # projektweit verboten — und zwar UNABHAENGIG von der Laufwerksart, weil
+        # sich das PROD-Citrix-Laufwerk als lokal tarnt und die Erkennung damit
+        # nicht verlaesslich ist. Der Rohwert wird direkt gelesen (nicht ueber
+        # resolve_mode, das seinerseits schon wirft), damit der Startabbruch hier
+        # einen klaren, eigenen Text bekommt (Grundregel 1).
         try:
-            gewuenscht = resolve_mode(self._config)
+            roh = str(self._config.get("db.journal_mode", "auto")).strip().lower()
         except Exception:  # pragma: no cover — Config-Attrappe in Tests
-            gewuenscht = "auto"
-        if gewuenscht == "wal":
-            netz_dbs = [
-                str(p) for _l, p in kandidaten
-                if p and Path(p).exists() and is_network_path(p) is True
-            ]
-            if netz_dbs:
-                raise StartupCheckError(
-                    "config.yaml erzwingt db.journal_mode: 'wal', aber die "
-                    "Datenbanken liegen auf einem Netzlaufwerk:\n  "
-                    + "\n  ".join(netz_dbs)
-                    + "\nSQLite unterstützt WAL dort nicht. Bitte "
-                    "db.journal_mode auf 'delete' (oder 'auto') setzen."
-                )
+            roh = "auto"
+        if roh == "wal":
+            raise StartupCheckError(
+                "config.yaml setzt db.journal_mode: 'wal' — das ist projektweit "
+                "VERBOTEN (Build 499). WAL macht die Datenbank auf dem geteilten "
+                "PROD-Laufwerk (Citrix, tarnt sich als lokal) unbrauchbar, sobald "
+                "eine zweite Maschine die -shm/-wal sperrt. Bitte db.journal_mode "
+                "auf 'delete' (oder 'auto') setzen."
+            )
 
         logger.debug("Journal-Stempel aller Datenbanken geprüft ✓")
 

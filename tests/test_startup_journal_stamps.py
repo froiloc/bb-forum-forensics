@@ -97,13 +97,18 @@ def test_unbekannte_laufwerksart_loest_keinen_fehlalarm_aus(umgebung, monkeypatc
     StartupChecker(ctx, KonfigAttrappe())._check_journal_stamps()
 
 
-def test_erzwungenes_wal_auf_netzlaufwerk_bricht_ab(umgebung, monkeypatch):
+def test_config_wal_bricht_immer_ab(umgebung, monkeypatch):
+    # Build 499 (WAL-Verbot): db.journal_mode: 'wal' bricht den Start ab —
+    # UNABHAENGIG von der Laufwerksart (das PROD-Citrix-Laufwerk tarnt sich als
+    # lokal, deshalb darf die Erkennung keine Rolle mehr spielen).
     ctx, _ = umgebung
-    monkeypatch.setattr(sc, "is_network_path", lambda p: True)
+    # bewusst als NICHT-Netzlaufwerk markiert: es muss trotzdem abbrechen.
+    monkeypatch.setattr(sc, "is_network_path", lambda p: False)
     cfg = KonfigAttrappe({"db.journal_mode": "wal"})
     with pytest.raises(StartupCheckError) as exc:
         StartupChecker(ctx, cfg)._check_journal_stamps()
     assert "journal_mode" in str(exc.value)
+    assert "wal" in str(exc.value).lower()
 
 
 def test_pruefung_laeuft_vor_dem_ersten_sqlite_zugriff():
