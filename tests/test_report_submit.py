@@ -160,5 +160,93 @@ class SubmitReportTests(unittest.TestCase):
         self.assertTrue(self.edb.add_comment("b1", "h001", "Anmerkung"))
 
 
+class SubmitDbValidationTests(unittest.TestCase):
+    """
+    Build 498: Beim Einreichen werden m/o-Felder VERBINDLICH gegen die
+    DB-Definition (templates.placeholders) geprueft — deckungsgleich zum
+    Browser (checkTyped). Ein direkter POST kann die Serverpruefung nicht
+    umgehen.
+    """
+
+    def setUp(self):
+        self.con, self.edb = _make_db()
+        self.report_id = self.edb.create_report("interim", "Zwischenbericht", "h001")
+        # Block mit einem m-Platzhalter 'ampel'.
+        self.edb.save_block(
+            "b1", self.report_id, "h001", "paragraph",
+            '{"text":"Status {{m:ampel||Ampelfarbe}}."}', sort_index=1)
+        self.lock_id = self.edb.acquire_lock(self.report_id, "h001", "sse-db-001")
+
+    def tearDown(self):
+        self.con.close()
+
+    def _endpoint_with_def(self, rec):
+        """ReportEndpoint, dessen templates.get_query den QueryRecord rec liefert."""
+        ep = _make_endpoint(self.edb, username="h001")
+        ep._bundle.templates.get_query = MagicMock(return_value=rec)
+        return ep
+
+    def _rec(self, **kw):
+        from db.templates_db import QueryRecord
+        base = dict(id="ampel", title="Ampel", description="",
+                    sql_query=None, tags=None, return_type="scalar",
+                    is_active=True, type="m", default_value=None,
+                    validation='["rot","gelb","gruen"]', validation_type="list",
+                    validation_ci=0)
+        base.update(kw)
+        return QueryRecord(**base)
+
+    _BLOCK_DATA = '{"text":"Status {{m:ampel||Ampelfarbe}}."}'
+
+    def _set_value(self, val):
+        self.edb.update_block("b1", self._BLOCK_DATA,
+                              '{"ampel":"%s"}' % val, "h001")
+
+    def _submit(self, ep):
+        handler, responses = _make_handler(self.lock_id)
+        ep.handle_post(handler, json.dumps(
+            {"action": "submit_report", "report_id": self.report_id}
+        ).encode("utf-8"))
+        return responses
+
+    def test_db01_invalid_value_rejected(self):
+        """Unzulaessiger Listenwert -> 422 VALIDATION_FAILED, Status bleibt draft."""
+        self._set_value("lila")
+        r = self._submit(self._endpoint_with_def(self._rec()))
+        self.assertEqual(r[0][0], 422)
+        self.assertEqual(r[0][1]["code"], "VALIDATION_FAILED")
+        self.assertTrue(any(v["field"] == "ampel"
+                            for v in r[0][1]["violations"]))
+        self.assertEqual(self.edb.get_report(self.report_id).status, "draft")
+
+    def test_db02_valid_value_accepted(self):
+        """Zulaessiger Wert -> Einreichen gelingt (200, submitted)."""
+        self._set_value("gruen")
+        r = self._submit(self._endpoint_with_def(self._rec()))
+        self.assertEqual(r[0][0], 200)
+        self.assertEqual(self.edb.get_report(self.report_id).status, "submitted")
+
+    def test_db03_ci_accepts_other_case(self):
+        """validation_ci=1 -> Grossschreibung wird akzeptiert."""
+        self._set_value("ROT")
+        r = self._submit(self._endpoint_with_def(self._rec(validation_ci=1)))
+        self.assertEqual(r[0][0], 200)
+        self.assertEqual(self.edb.get_report(self.report_id).status, "submitted")
+
+    def test_db04_ci_off_rejects_other_case(self):
+        """Ohne ci wird 'ROT' gegen ['rot',...] abgelehnt."""
+        self._set_value("ROT")
+        r = self._submit(self._endpoint_with_def(self._rec(validation_ci=0)))
+        self.assertEqual(r[0][0], 422)
+        self.assertEqual(self.edb.get_report(self.report_id).status, "draft")
+
+    def test_db05_empty_mandatory_rejected(self):
+        """Leeres Pflichtfeld mit DB-Definition -> abgelehnt."""
+        self._set_value("")
+        r = self._submit(self._endpoint_with_def(self._rec()))
+        self.assertEqual(r[0][0], 422)
+        self.assertEqual(self.edb.get_report(self.report_id).status, "draft")
+
+
 if __name__ == "__main__":
     unittest.main()

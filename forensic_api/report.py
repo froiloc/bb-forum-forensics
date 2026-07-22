@@ -81,7 +81,12 @@
 #              btn-new-report-header aus Action-Bar entfernt (redundant).
 #              Beleg: Projektgespraech 2026-05-07
 #
-# Version: v0.7.469 · Build: 469 · 2026-07-20
+# Version: v0.8.498 · Build: 498 · 2026-07-22
+# Build 498: _validate_report_fields prueft m/o-Felder beim Einreichen
+#   VERBINDLICH gegen die DB-Definition (templates.placeholders,
+#   validation_type regex/list/like inkl. validation_ci) — DB-Autoritaet mit
+#   Vorrang vor dem rule:-Katalog, deckungsgleich zu validation_rules.js.
+#   Kern in core/typed_validation.py::check_typed.
 # Build 469: Schluesselumstellung user_id -> subject_id (M019)
 # Changelog Build 280 (2026-06-07):
 #   - _action_open_report: o.block_id → o["block_id"] in order_map-Comprehension.
@@ -1981,6 +1986,10 @@ class ReportEndpoint:
         """
         from core.placeholder_syntax import PlaceholderSyntax
         from core.validation_rules import ValidationRules
+        # Build 498: serverseitige, verbindliche Pruefung der DB-Definition
+        # (validation_type regex/list/like inkl. validation_ci) — deckungsgleich
+        # zu userinfo/validation_rules.js::checkTyped (Ermittler-Komfort).
+        from core.typed_validation import check_typed
 
         rules = ValidationRules(self._config)
         violations: list[dict] = []
@@ -2013,6 +2022,40 @@ class ReportEndpoint:
 
                 raw_value = str(values.get(field.name, "") or "").strip()
                 rule_name = field.rule_name
+
+                # Build 498: DB-Definition hat VORRANG (DB-Autoritaet, Build 489/
+                # 494) — genau wie im Browser (_fieldCheck). Ist der Feldname ein
+                # bekannter m/o-Platzhalter mit hinterlegter Validierung, wird
+                # verbindlich per check_typed geprueft; der rule:-Katalog-Pfad
+                # wird dann uebersprungen.
+                db_def = None
+                try:
+                    db_def = self._bundle.templates.get_query(field.name)
+                except Exception:  # noqa: BLE001 — Templates-DB darf submit nicht sprengen
+                    db_def = None
+
+                if (db_def is not None and db_def.type in ("m", "o")
+                        and db_def.validation and db_def.validation_type):
+                    if not raw_value:
+                        # Leeres Pflichtfeld: ablehnen; leeres optionales: ok.
+                        if field.type == "m":
+                            violations.append({
+                                "block_id": blk.block_id,
+                                "field":    field.name,
+                                "message":  ("Pflichtfeld «%s» ist leer."
+                                             % field.name),
+                            })
+                        continue
+                    ok, msg = check_typed(
+                        db_def.validation_type, db_def.validation,
+                        raw_value, db_def.validation_ci)
+                    if not ok:
+                        violations.append({
+                            "block_id": blk.block_id,
+                            "field":    field.name,
+                            "message":  "%s: %s" % (field.name, msg),
+                        })
+                    continue  # DB-Autoritaet — rule:-Katalog nicht zusaetzlich
 
                 if not rule_name:
                     # Kein Regelverweis -> keine Formatpruefung moeglich.
