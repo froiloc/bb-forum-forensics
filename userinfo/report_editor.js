@@ -69,7 +69,15 @@
  *     ausgefuehrt damit der gedruckte Stand mit der DB synchron ist.
  *     Beleg: Bugfix Build 134, Projektgespraech 2026-05-09.
  *
- * Version: v0.6.286 · Build: 286 · 2026-06-07
+ *   Build 496 (2026-07-22): Freigabe-Button "Zur Abnahme freigeben" portiert.
+ *     Der Knopf (und _submitReport) lagen im seit Build 100 nicht mehr
+ *     geladenen userinfo/report.js — im Produktivbetrieb wirkungslos (per
+ *     Resource-Timing bestaetigt). Hier neu in report_editor.js: Slot im
+ *     Selector, _renderSubmitButton (canSubmit-gated, nach jedem Laden), und
+ *     _submitReport ueber den Lock-gesicherten _docSend-Pfad.
+ *     Beleg: Diagnose-Console 2026-07-22; documents/Berichts_Statusmodell.md.
+ *
+ * Version: v0.8.496 · Build: 496 · 2026-07-22
  * Paket 9: Alle direkten fetch()-Schreiboperationen auf _docSend()/DocumentLayer
  * umgestellt. EditorState.lockId → lockLayer.lockId. Polling-Mechanismus
  * durch reaktiven LockLayer ersetzt. skipReinit/_pendingReportSwitchId entfernt.
@@ -368,6 +376,7 @@ async function initReportSelector(preselectId = null) {
                 ${reports.length ? options : '<option value="">— Noch kein Vermerk —</option>'}
             </select>
             <button class="editor-btn" id="btn-new-report" title="Neuen Vermerk anlegen">+ Neuer Vermerk</button>
+            <span id="btn-submit-report-slot"></span>
             <span id="report-selector-status"></span>
         </div>`;
 
@@ -506,6 +515,80 @@ function openNewReportDialog(existingReports) {
 function _selectorStatus(msg, level) {
     const el = document.getElementById('report-selector-status');
     if (el) el.innerHTML = `<span class="status-msg status-msg-${level}" style="font-size:11px">${msg}</span>`;
+}
+
+// ---------------------------------------------------------------------------
+// Build 496 — Freigabe-Button "Zur Abnahme freigeben"
+// ---------------------------------------------------------------------------
+// HINTERGRUND: Der Knopf und seine Logik lagen bis Build 495 in userinfo/
+// report.js. Diese Datei wurde jedoch bereits mit Build 100 durch
+// report_editor.js im HTML-Template abgeloest und wird NICHT mehr geladen
+// (per Resource-Timing bestaetigt: report.js wird nie angefordert). Der in
+// Build 382 dort ergaenzte Knopf war damit im Produktivbetrieb wirkungslos.
+// Build 493 hatte nur das Routing von submit_dialog.js repariert (der Dialog),
+// nicht den Knopf, der ihn oeffnet. Build 496 portiert Knopf + Einreichen-
+// Aktion originalgetreu in report_editor.js, wo Selector, _currentReport,
+// Benutzername und der Lock-gesicherte POST-Pfad (_docSend) bereits vorliegen.
+// Beleg: documents/Berichts_Statusmodell.md; Diagnose-Console 2026-07-22.
+
+/**
+ * Rendert den Knopf "Zur Abnahme freigeben" in den Selector-Slot.
+ * Erscheint NUR beim EIGENEN Vermerk im Status 'draft'
+ * (SubmitDialog.canSubmit — created_by === Benutzername && status === 'draft').
+ * Der Server prueft das erneut (Build 381); die Oberflaeche ist keine
+ * Sicherheitsgrenze, sie bietet nur keine zwingend scheiternde Aktion an.
+ */
+function _renderSubmitButton() {
+    const slot = document.getElementById('btn-submit-report-slot');
+    if (!slot) return;
+    slot.textContent = '';
+
+    const dlg = window.SubmitDialog;
+    if (!dlg || !_currentReport) return;
+
+    const username = document.getElementById('report-editor-body')?.dataset?.username || '';
+    if (!dlg.canSubmit(_currentReport, username)) {
+        // Fremder Vermerk oder nicht mehr im Status 'draft' -> kein Knopf.
+        return;
+    }
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'editor-btn editor-btn-primary';
+    btn.id = 'btn-submit-report';
+    btn.title = 'Vermerk zur Abnahme an die Chef-Ermittlerin freigeben';
+    btn.textContent = 'Zur Abnahme freigeben';
+    btn.addEventListener('click', (evt) => {
+        window._uevt?.(evt, 'report_editor', 'click:btn-submit-report',
+                       { reportId: _currentReport.id }); // B200
+        // Zweistufige, bewusste Entscheidung ueber den Bestaetigungsdialog
+        // (Tragweite/Prozess/Rueckholung) — kein versehentlicher Klick.
+        dlg.open(document, _currentReport.title, () => _submitReport(_currentReport.id));
+    });
+    slot.appendChild(btn);
+}
+
+/**
+ * Fuehrt das Einreichen aus (nach bestaetigtem Dialog). Nutzt den bestehenden
+ * Lock-gesicherten POST-Pfad (_docSend -> DocumentLayer). Der Server-Handler
+ * action=='submit_report' (draft -> submitted) verlangt den Lock (_require_lock)
+ * und prueft Verfasser + Status erneut.
+ * @param {number} reportId
+ */
+async function _submitReport(reportId) {
+    const data = await _docSend('submit_report', { report_id: reportId });
+    if (!data) return;   // Fehler wurde bereits ueber DocumentLayer-Events gemeldet
+
+    // Die Server-Antwort nennt die Tragweite im Klartext (Build 381) — genau die
+    // zeigen wir an, statt einen eigenen Text zu erfinden.
+    const msg = (window.esc ? esc(data.message || '') : (data.message || ''))
+        || 'Vermerk zur Abnahme freigegeben.';
+    _selectorStatus(msg, 'ok');
+
+    // Status/Sperre/Knopf neu aufbauen: der aktuelle Entry-Point laedt die
+    // Vermerksliste (mit neuem Status 'submitted') und den Vermerk erneut,
+    // wodurch _renderSubmitButton den Knopf korrekt ausblendet.
+    await initReportSelector(reportId);
 }
 
 // ===========================================================================
@@ -976,6 +1059,12 @@ async function _loadReportImpl(report) {
     _resolveAutoPlaceholders(existingBlocks, report.id).catch(err =>
         console.warn('report_editor.js: _resolveAutoPlaceholders fehlgeschlagen:', err)
     );
+
+    // Build 496: Freigabe-Button ("Zur Abnahme freigeben") fuer den soeben
+    // geladenen Vermerk (re)rendern. Erscheint nur beim eigenen Bericht im
+    // Status 'draft' (SubmitDialog.canSubmit). Muss nach jedem Laden laufen,
+    // weil sich der Status geaendert haben kann. Beleg: siehe _renderSubmitButton.
+    _renderSubmitButton();
 }
 
 /**
@@ -4485,6 +4574,10 @@ window.ReportEditor = window.ReportEditor || {};
 // den ECHTEN Code geprueft werden, nicht gegen einen Nachbau ('gruen aber tot').
 window.ReportEditor._buildBlockSavePayload = _buildBlockSavePayload;
 window.ReportEditor._refreshChipsInBlock   = _refreshChipsInBlock;
+// Build 496: Freigabe-Button gegen den ECHTEN Code pruefen (nicht Nachbau).
+// _setCurrentReportForTest setzt den internen _currentReport-Zustand im Test.
+window.ReportEditor._renderSubmitButton       = _renderSubmitButton;
+window.ReportEditor._setCurrentReportForTest  = function (r) { _currentReport = r; };
 /** Gibt true zurueck wenn _reloadEditorContent() gerade aktiv ist. */
 window.ReportEditor.isReloading = function() { return _isReloading; };
 /**
