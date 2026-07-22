@@ -34,8 +34,8 @@ from typing import Any, Dict, List, Optional
 from management.gateway.templates_writer import TemplatesWriter
 
 _COLS = ("id, title, description, type, sql_query, default_value, "
-         "validation, validation_type, tags, return_type, is_active, "
-         "created_by, created_at, updated_at")
+         "validation, validation_type, validation_ci, tags, return_type, "
+         "is_active, created_by, created_at, updated_at")
 
 
 def _nullable(v: Any) -> Optional[str]:
@@ -85,6 +85,8 @@ class PlaceholderAuthorRepo:
         default_value = _nullable(p.get("default_value"))
         validation = _nullable(p.get("validation"))
         vtype = _nullable(p.get("validation_type"))
+        # Build 497: case-insensitive-Flag. Nur 0/1; alles Wahrheitswertige -> 1.
+        vci = 1 if p.get("validation_ci") in (1, "1", True, "true", "on") else 0
         tags = _nullable(p.get("tags"))
         rt = p.get("return_type") or "scalar"
 
@@ -97,13 +99,15 @@ class PlaceholderAuthorRepo:
                  "default_value": src.get("default_value"),
                  "validation": src.get("validation"),
                  "validation_type": src.get("validation_type"),
+                 "validation_ci": src.get("validation_ci"),
                  "return_type": src.get("return_type")},
                 ensure_ascii=False)
 
         new_value = _canon({"title": title, "type": ptype, "sql_query": sql,
                             "default_value": default_value,
                             "validation": validation,
-                            "validation_type": vtype, "return_type": rt})
+                            "validation_type": vtype, "validation_ci": vci,
+                            "return_type": rt})
         old_value = _canon(existing) if existing is not None else None
 
         def _do_write(con: sqlite3.Connection) -> Dict[str, Any]:
@@ -111,19 +115,20 @@ class PlaceholderAuthorRepo:
                 con.execute(
                     "INSERT INTO placeholders "
                     "(id, title, description, type, sql_query, default_value, "
-                    " validation, validation_type, tags, return_type, "
-                    " is_active, created_by, created_at, updated_at) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)",
+                    " validation, validation_type, validation_ci, tags, "
+                    " return_type, is_active, created_by, created_at, updated_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)",
                     (pid, title, desc, ptype, sql, default_value, validation,
-                     vtype, tags, rt, changed_by, now, now))
+                     vtype, vci, tags, rt, changed_by, now, now))
             else:
                 con.execute(
                     "UPDATE placeholders SET title=?, description=?, type=?, "
                     "sql_query=?, default_value=?, validation=?, "
-                    "validation_type=?, tags=?, return_type=?, updated_at=? "
+                    "validation_type=?, validation_ci=?, tags=?, return_type=?, "
+                    "updated_at=? "
                     "WHERE id=?",
                     (title, desc, ptype, sql, default_value, validation,
-                     vtype, tags, rt, now, pid))
+                     vtype, vci, tags, rt, now, pid))
             return {"target_id": pid, "old_value": old_value,
                     "new_value": new_value}
 

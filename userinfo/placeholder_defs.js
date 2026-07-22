@@ -72,6 +72,8 @@ function _index(items) {
             default_value:   it.default_value ?? null,
             validation:      it.validation ?? null,
             validation_type: it.validation_type ?? null,
+            // Build 497: case-insensitive-Flag (0/1) fuer die Feldpruefung.
+            validation_ci:   it.validation_ci ? 1 : 0,
         };
     }
     return idx;

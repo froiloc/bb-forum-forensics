@@ -84,6 +84,8 @@ class QueryRecord:
     default_value:   Optional[str] = None
     validation:      Optional[str] = None # KLARTEXT (regex/list-JSON/like)
     validation_type: Optional[str] = None # 'regex' | 'list' | 'like'
+    # --- Build 497 ---
+    validation_ci:   int = 0              # 0 = case-sensitive, 1 = ignorieren
 
 
 @dataclass
@@ -303,7 +305,8 @@ class TemplatesDb:
         try:
             row = self._con.execute(
                 "SELECT id, title, description, type, sql_query, "
-                "       default_value, validation, validation_type, tags, "
+                "       default_value, validation, validation_type, "
+                "       validation_ci, tags, "
                 "       return_type, is_active "
                 "FROM tdb.placeholders "
                 "WHERE id = ? AND is_active = 1",
@@ -343,7 +346,8 @@ class TemplatesDb:
         try:
             sql = (
                 "SELECT id, title, description, type, sql_query, "
-                "       default_value, validation, validation_type, tags, "
+                "       default_value, validation, validation_type, "
+                "       validation_ci, tags, "
                 "       return_type, is_active "
                 "FROM tdb.placeholders "
                 "WHERE is_active = 1"
@@ -480,4 +484,9 @@ class TemplatesDb:
             default_value=row["default_value"],
             validation=row["validation"],
             validation_type=row["validation_type"],
+            # Build 497: validation_ci — defensiv gegen eine (noch) nicht
+            # migrierte DB (Spalte fehlt) -> 0. Nach der Migration liegt der
+            # Wert vor. Beleg: management/migrate_templates_ci.py.
+            validation_ci=(int(row["validation_ci"] or 0)
+                           if "validation_ci" in row.keys() else 0),
         )

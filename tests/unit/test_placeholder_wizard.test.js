@@ -508,6 +508,19 @@ describe('Build 494 — Feldpruefung gegen DB-Definitionen', () => {
         expect(body.innerHTML).toContain('rot');
     });
 
+    it('T45: validation_ci -> Feldpruefung ignoriert Gross-/Kleinschreibung', () => {
+        window.PlaceholderDefs._setForTest([
+            { id: 'ampel', type: 'm', validation: '["rot","gelb","gruen"]',
+              validation_type: 'list', validation_ci: 1, title: 'A', description: '', default_value: null },
+        ]);
+        const body = _setupBody();
+        window.PlaceholderWizard.showPlaceholderForm(_ampelBlock(), 'blk-A', _opts());
+        const inp = body.querySelector('#pf-input-blk-A-ampel');
+        inp.value = 'ROT';   // Grossbuchstaben — mit ci gueltig
+        inp.dispatchEvent(new Event('input'));
+        expect(inp.classList.contains('pf-input--valid')).toBe(true);
+    });
+
     it('T44: Regex-DB-Definition greift beim Tippen', () => {
         const body = _setupBody();
         const block = [{

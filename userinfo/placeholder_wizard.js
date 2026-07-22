@@ -687,8 +687,9 @@ function _fieldCheck(name, fieldType, b64re, val) {
         && typeof window.ValidationRules.checkTyped === 'function') {
         const def = window.PlaceholderDefs.get(name);
         if (def && def.validation && def.validation_type) {
+            // Build 497: validation_ci (case-insensitive) mit durchreichen.
             return window.ValidationRules.checkTyped(
-                def.validation_type, def.validation, val);
+                def.validation_type, def.validation, val, def.validation_ci);
         }
     }
     // Fallback: 5. Token-Feld (rule:-Katalog oder Base64-Regex).

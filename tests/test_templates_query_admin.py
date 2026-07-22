@@ -103,6 +103,11 @@ def _mk_templates_db(path):
         for ddl in DDL_INDEXES:
             con.execute(ddl)
         con.execute(_DDL_AUDIT)
+        # Build 497: Spalte validation_ci ergaenzen (Produktivstand nach der
+        # 497-Migration). Direkt via ADD_COLUMN_SQL — ohne die Audit-Zeile der
+        # Migration, damit die Audit-Zaehlung der Upsert-Tests unberuehrt bleibt.
+        from management.migrate_templates_ci import ADD_COLUMN_SQL as _CI_SQL
+        con.execute(_CI_SQL)
         con.commit()
     finally:
         con.close()
@@ -268,6 +273,24 @@ class RepoTests(unittest.TestCase):
                 "SELECT COUNT(*) FROM templates_audit_log "
                 "WHERE target_type='placeholder'").fetchone()[0]
             self.assertEqual(n, 3)
+        finally:
+            con.close()
+
+    def test_tp13_validation_ci_roundtrip(self):
+        """Build 497: validation_ci wird gespeichert und gelesen (0/1)."""
+        con = sqlite3.connect(self._db)
+        con.execute("PRAGMA journal_mode=delete")
+        try:
+            repo = PlaceholderAuthorRepo(con)
+            # ci=1 anlegen
+            repo.upsert({**_GOOD_M, "validation_ci": 1}, changed_by="h004")
+            self.assertEqual(repo.get("spurennummer")["validation_ci"], 1)
+            # ci wieder abschalten (Update)
+            repo.upsert({**_GOOD_M, "validation_ci": 0}, changed_by="h004")
+            self.assertEqual(repo.get("spurennummer")["validation_ci"], 0)
+            # a-Platzhalter ohne ci -> 0 (Default)
+            repo.upsert(_GOOD_A, changed_by="h004")
+            self.assertEqual(repo.get("user.name")["validation_ci"], 0)
         finally:
             con.close()
 

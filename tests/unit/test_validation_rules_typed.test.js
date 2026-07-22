@@ -111,4 +111,30 @@ describe('likeToRegExp()', () => {
         expect(re.test('abYc')).toBe(true);     // % = 0
         expect(re.test('aXXXbc')).toBe(false);   // _ fehlt
     });
+
+    it('T13: ci -> RegExp mit i-Flag', () => {
+        expect(VR.likeToRegExp('abc', true).test('ABC')).toBe(true);
+        expect(VR.likeToRegExp('abc', false).test('ABC')).toBe(false);
+    });
+});
+
+describe('checkTyped() — Case-Insensitivity (Build 497)', () => {
+    it('T14: regex ci -> Gross-/Kleinschreibung ignoriert', () => {
+        expect(VR.checkTyped('regex', '^abc$', 'ABC', true).ok).toBe(true);
+        expect(VR.checkTyped('regex', '^abc$', 'ABC', false).ok).toBe(false);
+        // ohne ci-Argument (undefined) = case-sensitive (Abwaertskompat.)
+        expect(VR.checkTyped('regex', '^abc$', 'ABC').ok).toBe(false);
+    });
+
+    it('T15: list ci -> Mitgliedschaft ohne Ruecksicht auf Schreibweise', () => {
+        const rule = JSON.stringify(['Rot', 'Gruen']);
+        expect(VR.checkTyped('list', rule, 'rot', true).ok).toBe(true);
+        expect(VR.checkTyped('list', rule, 'ROT', true).ok).toBe(true);
+        expect(VR.checkTyped('list', rule, 'rot', false).ok).toBe(false);
+    });
+
+    it('T16: like ci -> Muster case-insensitive', () => {
+        expect(VR.checkTyped('like', 'AIW%', 'aiw-42', true).ok).toBe(true);
+        expect(VR.checkTyped('like', 'AIW%', 'aiw-42', false).ok).toBe(false);
+    });
 });

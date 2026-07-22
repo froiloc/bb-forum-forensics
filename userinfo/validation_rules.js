@@ -51,8 +51,13 @@
  *   (validation_type regex/list/like, Build 489). Semantik deckungsgleich zur
  *   Management-Maske (cockpit_templates.js, Build 490) und zur Serverpruefung.
  *
- * Version: v0.8.494 · Build: 494 · 2026-07-21
- * Beleg: Bauplan Build 389 §3; mc-Entscheid 2026-07-21 (Klartext, list=JSON-Array).
+ * Build 497: checkTyped()/likeToRegExp() erhalten einen ci-Parameter
+ *   (validation_ci) — case-insensitive fuer regex/list/like (RegExp-Flag 'i'
+ *   bzw. Kleinschreibungsvergleich). JS kennt kein Inline-(?i); das Flag wird
+ *   am Konstruktor gesetzt (mc 2026-07-22).
+ *
+ * Version: v0.8.497 · Build: 497 · 2026-07-22
+ * Beleg: Bauplan Build 389 §3; mc-Entscheid 2026-07-21/22.
  */
 
 (function() {
@@ -302,16 +307,17 @@ function check(rawField, value) {
 /**
  * SQL-LIKE-Muster -> verankerte RegExp. % = beliebig viele Zeichen,
  * _ = genau ein Zeichen. Alle uebrigen Regex-Metazeichen werden maskiert.
- * IDENTISCH zu cockpit_templates.js::likeToRegExp (Build 490).
+ * IDENTISCH zu cockpit_templates.js::likeToRegExp (Build 490/497).
  * @param {string} pattern
+ * @param {boolean} [ci]  Build 497: true -> Gross-/Kleinschreibung ignorieren ('i'-Flag)
  * @returns {RegExp}
  */
-function likeToRegExp(pattern) {
+function likeToRegExp(pattern, ci) {
     const esc = String(pattern == null ? '' : pattern)
         .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
         .replace(/%/g, '[\\s\\S]*')
         .replace(/_/g, '[\\s\\S]');
-    return new RegExp('^' + esc + '$');
+    return new RegExp('^' + esc + '$', ci ? 'i' : '');
 }
 
 /**
@@ -320,6 +326,11 @@ function likeToRegExp(pattern) {
  * @param {string} validationType  '' | 'regex' | 'list' | 'like'
  * @param {string} validation      KLARTEXT-Regel (Regex / JSON-Array / LIKE-Muster)
  * @param {string} value
+ * @param {boolean|number} [ci]    Build 497: case-insensitive (validation_ci).
+ *                                  regex/like -> RegExp-Flag 'i';
+ *                                  list -> Vergleich in Kleinschreibung.
+ *                                  JavaScript kennt KEIN Inline-(?i); das Flag
+ *                                  wird am Konstruktor gesetzt (mc 2026-07-22).
  * @returns {{ok: boolean, value: string, message: string}}
  *
  * Ohne Pruefart oder ohne Regel gibt es nichts zu pruefen -> ok. Eine
@@ -328,10 +339,11 @@ function likeToRegExp(pattern) {
  * sofort sehen. checkTyped() normalisiert NICHT (die DB-Validierung kennt
  * keinen transform); der eingegebene Wert wird unveraendert zurueckgegeben.
  */
-function checkTyped(validationType, validation, value) {
-    const raw  = String(value == null ? '' : value);
-    const vt   = String(validationType || '');
-    const rule = String(validation == null ? '' : validation);
+function checkTyped(validationType, validation, value, ci) {
+    const raw   = String(value == null ? '' : value);
+    const vt    = String(validationType || '');
+    const rule  = String(validation == null ? '' : validation);
+    const insens = !!ci;
 
     // Keine Pruefart oder leere Regel -> nichts zu pruefen.
     if (vt === '' || rule.trim() === '') {
@@ -341,7 +353,7 @@ function checkTyped(validationType, validation, value) {
     if (vt === 'regex') {
         let re;
         try {
-            re = new RegExp(rule);
+            re = new RegExp(rule, insens ? 'i' : '');
         } catch (err) {
             console.error('[ValidationRules] checkTyped: ungueltige Regex:', rule, err);
             return { ok: false, value: raw,
@@ -366,7 +378,10 @@ function checkTyped(validationType, validation, value) {
             return { ok: false, value: raw,
                      message: 'Die hinterlegte Werteliste ist fehlerhaft.' };
         }
-        return arr.indexOf(raw) !== -1
+        // Build 497: bei ci Vergleich in Kleinschreibung (locale-unabhaengig).
+        const needle = insens ? raw.toLowerCase() : raw;
+        const found  = arr.some(v => (insens ? String(v).toLowerCase() : String(v)) === needle);
+        return found
             ? { ok: true,  value: raw, message: '' }
             : { ok: false, value: raw,
                 message: 'Eingabe ist kein zulässiger Wert aus der Liste.' };
@@ -375,7 +390,7 @@ function checkTyped(validationType, validation, value) {
     if (vt === 'like') {
         let re;
         try {
-            re = likeToRegExp(rule);
+            re = likeToRegExp(rule, insens);
         } catch (err) {
             console.error('[ValidationRules] checkTyped: ungueltiges LIKE-Muster:', rule, err);
             return { ok: false, value: raw,

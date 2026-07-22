@@ -52,7 +52,12 @@
  *   Routen: GET /api/templates/placeholders, POST /api/templates/placeholder
  *   (+/dryrun) — die Legacy-Aliase aus 489 entfallen serverseitig mit diesem
  *   Build. Entwurfs-Zwischenspeicher auf v2 (neue Felder).
- * Version: v0.8.490 · Build: 490 · 2026-07-21
+ * Build 497 (Case-Insensitivity): Validierungsblock erhaelt einen Schalter
+ *   'Gross-/Kleinschreibung ignorieren' (validation_ci, 0/1) fuer regex/list/like.
+ *   buildPayload/_currentFields/_fillForm/_restoreDraft/testRule/likeToRegExp
+ *   beruecksichtigen ihn; deckungsgleich zu validation_rules.js (Ermittler) und
+ *   Server. Beleg: mc 2026-07-22.
+ * Version: v0.8.497 · Build: 497 · 2026-07-22
  */
 (function () {
     'use strict';
@@ -192,6 +197,9 @@
             if (val.trim() !== '' && vt !== '') {
                 payload.validation = val;
                 payload.validation_type = vt;
+                // Build 497: case-insensitive-Flag (0/1) — nur paarweise mit
+                // einer aktiven Validierung sinnvoll.
+                payload.validation_ci = f.validation_ci ? 1 : 0;
             }
         }
         var tags = f.tags;
@@ -238,12 +246,13 @@
 
     // likeToRegExp: SQL-LIKE-Muster -> verankerte RegExp. % = beliebig viele
     // Zeichen, _ = genau ein Zeichen; alles andere woertlich (escaped).
-    function likeToRegExp(pattern) {
+    // Build 497: ci=true -> RegExp-Flag 'i' (case-insensitive).
+    function likeToRegExp(pattern, ci) {
         var esc = String(pattern == null ? '' : pattern)
             .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
             .replace(/%/g, '[\\s\\S]*')
             .replace(/_/g, '[\\s\\S]');
-        return new RegExp('^' + esc + '$');
+        return new RegExp('^' + esc + '$', ci ? 'i' : '');
     }
 
     // validateRule: ist die Regel SELBST gueltig? -> {ok, error}.
@@ -299,23 +308,29 @@
     //   regex — RegExp.test() (Anker ^/$ setzt die Autor:in selbst);
     //   list  — exakte Mitgliedschaft im Array;
     //   like  — verankertes LIKE-Muster (Full-Match).
-    function testRule(vtype, rule, sample) {
+    // Build 497: ci (validation_ci) -> case-insensitive fuer regex/list/like.
+    function testRule(vtype, rule, sample, ci) {
         var chk = validateRule(vtype, rule);
         if (!chk.ok) { return { ok: false, match: null, error: chk.error }; }
         var v = String(vtype || '');
         var s = String(sample == null ? '' : sample);
+        var insens = !!ci;
         if (v === '') { return { ok: true, match: null, error: null }; }
         if (v === 'regex') {
-            return { ok: true, match: new RegExp(String(rule)).test(s),
+            return { ok: true,
+                     match: new RegExp(String(rule), insens ? 'i' : '').test(s),
                      error: null };
         }
         if (v === 'list') {
-            return { ok: true,
-                     match: JSON.parse(String(rule)).indexOf(s) !== -1,
-                     error: null };
+            var needle = insens ? s.toLowerCase() : s;
+            var arr = JSON.parse(String(rule));
+            var found = arr.some(function (x) {
+                return (insens ? String(x).toLowerCase() : String(x)) === needle;
+            });
+            return { ok: true, match: found, error: null };
         }
         // like
-        return { ok: true, match: likeToRegExp(rule).test(s), error: null };
+        return { ok: true, match: likeToRegExp(rule, insens).test(s), error: null };
     }
 
     // =====================================================================
@@ -369,6 +384,7 @@
                 ? '' : q.default_value;
             f.validation.value = (q.validation == null) ? '' : q.validation;
             f.validation_type.value = q.validation_type || '';
+            if (f.validation_ci) { f.validation_ci.checked = !!q.validation_ci; } // Build 497
             f.tags.value = q.tags || '';
             _state.selId = String(q.id);
         } else {
@@ -382,6 +398,7 @@
             f.default_value.value = '';
             f.validation.value = '';
             f.validation_type.value = '';
+            if (f.validation_ci) { f.validation_ci.checked = false; }   // Build 497
             f.tags.value = '';
             _state.selId = null;
         }
@@ -406,6 +423,7 @@
             default_value: f.default_value.value,
             validation: f.validation.value,
             validation_type: f.validation_type.value,
+            validation_ci: (f.validation_ci && f.validation_ci.checked) ? 1 : 0, // Build 497
             tags: f.tags.value,
             test_subject_id: f.test_subject_id.value
         };
@@ -535,6 +553,7 @@
         f.default_value.value = fl.default_value || '';   // Build 490
         f.validation.value = fl.validation || '';         // Build 490
         f.validation_type.value = fl.validation_type || ''; // Build 490
+        if (f.validation_ci) { f.validation_ci.checked = !!fl.validation_ci; } // Build 497
         f.tags.value = fl.tags || '';
         if (f.test_subject_id) {
             f.test_subject_id.value = (fl.test_subject_id == null)
@@ -685,6 +704,19 @@
             + 'like: % = beliebig viele Zeichen, _ = genau ein Zeichen '
             + '(Full-Match). Gespeichert wird Klartext (UTF-8).';
         valWrap.appendChild(valNote);
+        // Build 497: Case-Insensitivity-Schalter. Gilt fuer alle drei Pruefarten
+        // (regex/list/like). JavaScript kennt kein Inline-(?i); das 'i'-Flag wird
+        // am RegExp-Konstruktor gesetzt bzw. der Listenvergleich in Kleinschreibung
+        // gefuehrt (mc 2026-07-22).
+        var ciLabel = document.createElement('label');
+        ciLabel.className = 'aiw-tpl-cilabel';
+        var fCi = document.createElement('input');
+        fCi.type = 'checkbox';
+        fCi.className = 'aiw-tpl-vci';
+        ciLabel.appendChild(fCi);
+        ciLabel.appendChild(document.createTextNode(
+            ' Gross-/Kleinschreibung ignorieren (regex/list/like)'));
+        valWrap.appendChild(ciLabel);
         // Live-Gueltigkeitsausgabe der Regel selbst.
         var valCheck = document.createElement('div');
         valCheck.className = 'aiw-tpl-valcheck';
@@ -738,6 +770,7 @@
             id: fId, title: fTitle, description: fDesc, type: fType,
             sql_query: fSql, return_type: fRt, default_value: fDefault,
             validation: fVal, validation_type: fVt,
+            validation_ci: fCi,   // Build 497
             tags: fTags, test_subject_id: fTest
         };
 
@@ -760,7 +793,7 @@
             valCheck.appendChild(pc);
             var sample = testIn.value;
             if (sample === '') { return; } // ohne Beispiel keine Test-Ausgabe
-            var res = testRule(vt, rule, sample);
+            var res = testRule(vt, rule, sample, fCi.checked);   // Build 497: ci
             var pt = document.createElement('p');
             if (!res.ok) {
                 pt.className = 'aiw-tpl-valtestmsg is-err';
@@ -792,6 +825,7 @@
         fType.addEventListener('change', _applyType);
         fVt.addEventListener('change', _refreshChecks);
         fVal.addEventListener('input', _refreshChecks);
+        fCi.addEventListener('change', _refreshChecks);   // Build 497
         testIn.addEventListener('input', _refreshChecks);
 
         // Build 488: Jede Nutzer-Eingabe sichert den Stand im Browserspeicher.

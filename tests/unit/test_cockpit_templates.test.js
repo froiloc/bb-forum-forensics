@@ -356,6 +356,53 @@ describe("cockpit_templates", () => {
     expect("validation_type" in pm2).toBe(false);
   });
 
+  it("TT21 Case-Insensitivity (Build 497): testRule + buildPayload", () => {
+    const api = _api();
+    // testRule mit ci=true ignoriert Gross-/Kleinschreibung (alle drei Arten).
+    expect(api.testRule("regex", "^[A-Z]{2}-\\d{4}$", "nw-2026", true).match)
+      .toBe(true);
+    expect(api.testRule("list", '["Ja","Nein"]', "ja", true).match).toBe(true);
+    expect(api.testRule("like", "SP-%", "sp-0815", true).match).toBe(true);
+    // ohne ci bleibt es case-sensitive.
+    expect(api.testRule("like", "SP-%", "sp-0815", false).match).toBe(false);
+    // likeToRegExp ci-Flag.
+    expect(api.likeToRegExp("abc", true).test("ABC")).toBe(true);
+    // buildPayload: validation_ci nur paarweise mit aktiver Validierung.
+    const pm = api.buildPayload({ id: "q", title: "T", type: "m",
+      validation: "^[A-Z]+$", validation_type: "regex", validation_ci: 1 });
+    expect(pm.validation_ci).toBe(1);
+    const pm0 = api.buildPayload({ id: "q", title: "T", type: "m",
+      validation: "^[A-Z]+$", validation_type: "regex" });
+    expect(pm0.validation_ci).toBe(0);
+    // ohne Validierung kein validation_ci.
+    const pm2 = api.buildPayload({ id: "q", title: "T", type: "m",
+      validation: "", validation_type: "" });
+    expect("validation_ci" in pm2).toBe(false);
+  });
+
+  it("TT22 Maske: ci-Checkbox landet in _currentFields/Payload", () => {
+    const win = _ctx();
+    const api = _api(win);
+    const main = win.document.getElementById("aiw-main");
+    win.localStorage.clear();
+    let saved = null;
+    api.renderTemplates(main, _data(), { onSave: (p) => { saved = p; } });
+    // Auf Typ 'm' schalten (Validierungsblock sichtbar), Regel + ci setzen.
+    const fType = main.querySelector(".aiw-tpl-type");
+    fType.value = "m";
+    fType.dispatchEvent(new win.Event("change"));
+    main.querySelector(".aiw-tpl-id").value = "spur";
+    main.querySelector(".aiw-tpl-title").value = "Spur";
+    main.querySelector(".aiw-tpl-vtype").value = "like";
+    main.querySelector(".aiw-tpl-validation").value = "SP-%";
+    const ci = main.querySelector(".aiw-tpl-vci");
+    expect(ci).not.toBeNull();
+    ci.checked = true;
+    main.querySelector(".aiw-tpl-save").click();
+    expect(saved).not.toBeNull();
+    expect(saved.validation_ci).toBe(1);
+  });
+
   it("TT19 Maske: Typ-Dropdown steuert Sichtbarkeit + return_type-Sperre", () => {
     const win = _ctx();
     const api = _api(win);

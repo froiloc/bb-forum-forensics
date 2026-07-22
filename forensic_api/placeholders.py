@@ -300,6 +300,7 @@ class PlaceholdersEndpoint:
                 "default_value":   q.default_value,
                 "validation":      q.validation,
                 "validation_type": q.validation_type,
+                "validation_ci":   q.validation_ci,
             }
             for q in queries
         ]

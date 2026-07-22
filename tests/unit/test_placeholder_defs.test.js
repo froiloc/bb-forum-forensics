@@ -53,6 +53,15 @@ describe('PlaceholderDefs — Index/Zugriff', () => {
         expect(PD.get(null)).toBeNull();
     });
 
+    it('T02b: validation_ci wird als 0/1 indiziert (Build 497)', () => {
+        PD._setForTest([
+            { id: 'a', type: 'm', validation: 'x', validation_type: 'like', validation_ci: 1 },
+            { id: 'b', type: 'm', validation: 'y', validation_type: 'like' },  // fehlt -> 0
+        ]);
+        expect(PD.get('a').validation_ci).toBe(1);
+        expect(PD.get('b').validation_ci).toBe(0);
+    });
+
     it('T03: isLoaded()', () => {
         PD._setForTest(LIB);
         expect(PD.isLoaded()).toBe(true);

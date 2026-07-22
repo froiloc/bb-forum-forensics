@@ -1691,6 +1691,8 @@ class ManagementApp:
             "default_value": payload.get("default_value"),
             "validation": payload.get("validation"),
             "validation_type": payload.get("validation_type"),
+            # Build 497: case-insensitive-Flag (0/1) fuer regex/list/like.
+            "validation_ci": payload.get("validation_ci"),
             "tags": payload.get("tags"),
             "return_type": payload.get("return_type") or "scalar",
         }
