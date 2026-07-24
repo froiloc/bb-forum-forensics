@@ -1399,3 +1399,73 @@ tr.aiw-cff-nichtrelevant { opacity: 0.7; }
 }
 .aiw-cff-reasonlbl { margin-left: 10px; }
 .aiw-cff-reasoninput { min-width: 320px; }
+
+/* ===========================================================================
+ * Build 510 (AP-2A/A3) — Sicht "Identitäts-Gruppen" (Merge/Split).
+ * Gescopt mit '.aiw-merge-'. Die KONFIDENZ-Badges werden bewusst NICHT neu
+ * definiert: sie nutzen die '.aiw-conf-*'-Klassen der Kreuzbezug-Sicht
+ * (Build 471). Gleiche Achse, gleiche Optik — eine zweite Farbsprache fuer
+ * dieselbe Bedeutung waere eine Fehlerquelle.
+ * ======================================================================== */
+
+.aiw-merge-counts {
+    color: var(--ink-muted, #667);
+    font-size: 14px;
+    margin: 4px 0 10px 0;
+}
+
+/* Der Gruppenbefund ist eine AUSSAGE, kein Nebentext — deshalb abgesetzt. */
+.aiw-merge-group {
+    font-size: 14px;
+    margin: 8px 0;
+    padding: 6px 10px;
+    border-left: 3px solid var(--akzent, #3a6ea5);
+    background: var(--flaeche-2, #f4f6fb);
+}
+
+.aiw-merge-search,
+.aiw-merge-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin: 8px 0;
+}
+.aiw-merge-search { margin-bottom: 14px; }
+
+.aiw-merge-lbl { color: var(--ink); font-size: 14px; }
+.aiw-merge-input { margin-left: 4px; padding: 3px 6px; }
+.aiw-merge-toggle { display: inline-flex; align-items: center; gap: 4px; }
+
+.aiw-merge-result { margin: 8px 0; min-height: 1.2em; font-size: 14px; }
+.aiw-merge-result.ok { color: var(--gruen); }
+.aiw-merge-result.error { color: var(--rot); }
+
+/* Konfliktmeldungen des Servers koennen lang sein (sie nennen die beteiligten
+ * subject_ids und den Ausweg) — sie duerfen umbrechen statt abzuschneiden. */
+.aiw-merge-result { white-space: normal; word-break: break-word; }
+
+.aiw-merge-error { color: var(--rot); font-size: 14px; margin: 10px 0; }
+
+.aiw-merge-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.aiw-merge-table th,
+.aiw-merge-table td {
+    text-align: left;
+    padding: 5px 8px;
+    border-bottom: 1px solid var(--linie, #dde);
+    vertical-align: top;
+}
+
+/* Getrennte Zeilen bleiben LESBAR, aber sichtbar zurueckgenommen — sie sind
+ * ein anderer Erkenntnisstand, kein Muell (gleiche Linie wie beim Alias). */
+.aiw-merge-getrennt { opacity: 0.55; }
+
+.aiw-merge-actions { white-space: nowrap; }
+.aiw-merge-actions .aiw-merge-btn { margin-right: 4px; }
+
+.aiw-merge-editrow > td,
+.aiw-merge-reasonrow > td {
+    background: var(--flaeche-2, #f4f4fa);
+    padding: 8px;
+}
+.aiw-merge-reasonrow .aiw-merge-reason { min-width: 320px; }

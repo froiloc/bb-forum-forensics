@@ -204,7 +204,14 @@
         // KEINE Identifizierung haben; ein Anbau haette diese Faelle
         // unsichtbar gemacht (Grundregel 1). Gleiche F5-Familie, Recht
         // crossref.view (Pflegen zusaetzlich crossref.edit).
-        { id: 'alias',      cap: 'crossref.view',        group: 'Auswertung',     label: 'Aliasse' }
+        { id: 'alias',      cap: 'crossref.view',        group: 'Auswertung',     label: 'Aliasse' },
+        // Build 510 (AP-2A/A3, Idee 11): Identitaets-Gruppen (Merge/Split,
+        // Frontend zu 509). EIGENE Sicht — eine Zusammenfuehrung besteht
+        // UNABHAENGIG davon, ob eines der Konten identifiziert oder mit
+        // Aliassen versehen ist; gerade der haeufige Fall ist "dieselbe
+        // Person, aber noch unbekannt WER". Recht crossref.view
+        // (Pflegen zusaetzlich crossref.edit).
+        { id: 'merge',      cap: 'crossref.view',        group: 'Auswertung',     label: 'Identitäts-Gruppen' }
     ];
 
     // Gueltige Scope-Werte fuer die Anzeige (weitere -> kein Tag).
@@ -2026,6 +2033,114 @@
             });
     }
 
+    // loadMerge: IDENTITAETS-GRUPPEN (Build 510, AP-2A/A3, Frontend zu 509).
+    //   GET  /api/merge  (?subject_id=N -> ganze Gruppe, ?include_split=1)
+    //   POST /api/merge/set | /api/merge/split | /api/merge/remerge
+    //   KEIN optimistisches UI. SSE-Refresh ist hier RICHTIG: Merge/Split
+    //   laufen ueber den coordinator-audit_log, der Strom feuert.
+    //   KONFLIKTMELDUNGEN DES SERVERS WERDEN WOERTLICH DURCHGEREICHT — sie
+    //   nennen die beteiligten subject_ids und den konstruktiven Ausweg; eine
+    //   Zusammenfassung waere hier ein Informationsverlust.
+    function loadMerge(mainEl, pendingMsg) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitMerge : null;
+        if (!mod) {
+            renderError(mainEl, 'Identitaets-Modul nicht geladen.');
+            return;
+        }
+
+        var query = state.mergeQuery || '';
+        var inclSplit = state.mergeInclSplit === true;
+        var view = null;
+        function after(text, isError) {
+            loadMerge(mainEl, { text: text, error: isError });
+        }
+        function fail(err) {
+            after('Fehler: ' + err.message + ' (es wurde nichts geschrieben — '
+                + 'die Liste zeigt den tatsaechlichen Stand).', true);
+        }
+
+        var opts = {
+            canEdit: hasCap(state.capabilities, 'crossref.edit'),
+            query: query,
+            includeSplit: inclSplit,
+            onSearch: function (term) {
+                state.mergeQuery = String(term || '').trim();
+                loadMerge(mainEl);
+            },
+            onToggleSplit: function (next) {
+                state.mergeInclSplit = (next === true);
+                loadMerge(mainEl);
+            },
+            onMerge: function (body) {
+                postJson('/api/merge/set', body)
+                    .then(function (res) {
+                        after('Konto ' + res.merged_subject_id
+                            + ' dem Primärkonto ' + res.primary_subject_id
+                            + ' zugeordnet (Zusammenführung #' + res.merge_id
+                            + ', Beleg #' + res.audit_seq + ').', false);
+                    })
+                    .catch(fail);
+            },
+            onRevise: function (body) {
+                postJson('/api/merge/set', body)
+                    .then(function (res) {
+                        after('Zusammenführung #' + res.merge_id
+                            + ' revidiert (Beleg #' + res.audit_seq + ').',
+                            false);
+                    })
+                    .catch(fail);
+            },
+            onSplit: function (body) {
+                postJson('/api/merge/split', body)
+                    .then(function (res) {
+                        after('Zusammenführung #' + res.merge_id
+                            + ' getrennt (Beleg #' + res.audit_seq + '). Die '
+                            + 'Zeile bleibt als Beleg erhalten.', false);
+                    })
+                    .catch(fail);
+            },
+            onRemerge: function (body) {
+                postJson('/api/merge/remerge', body)
+                    .then(function (res) {
+                        after('Trennung von #' + res.merge_id
+                            + ' zurückgenommen (Beleg #' + res.audit_seq
+                            + ').', false);
+                    })
+                    .catch(fail);
+            }
+        };
+
+        var url = '/api/merge';
+        var params = [];
+        // Nur eine reine Zahl ist eine subject_id — alles andere waere eine
+        // stille Fehlinterpretation.
+        if (query && /^\d+$/.test(query)) {
+            params.push('subject_id=' + encodeURIComponent(query));
+        }
+        if (inclSplit) { params.push('include_split=1'); }
+        if (params.length) { url += '?' + params.join('&'); }
+
+        fetchJson(url)
+            .then(function (data) {
+                cleanupView();
+                view = mod.renderMerge(mainEl, data, opts);
+                if (pendingMsg) {
+                    view.setResult(pendingMsg.text, pendingMsg.error);
+                }
+                log('Identitaets-Gruppen gerendert:',
+                    (data && data.entries ? data.entries.length : 0));
+            })
+            .catch(function (err) {
+                cleanupView();
+                view = mod.renderMerge(mainEl, { error: err.message }, opts);
+                if (pendingMsg) {
+                    view.setResult(pendingMsg.text, pendingMsg.error);
+                }
+            });
+    }
+
     // loadAudit: AUDIT-/REVISIONS-EXPLORER (Build 467, AP-2E). REIN LESEND.
     //   GET /api/audit/facets  — Filter-Auswahl (Event-Typen + Akteure).
     //   GET /api/audit         — gefilterte, paginierte Seite.
@@ -2454,6 +2569,8 @@
             loadCrossfindings(mainEl, state.cfOnlyOpen === true);
         } else if (viewId === 'alias') {
             loadAlias(mainEl);
+        } else if (viewId === 'merge') {
+            loadMerge(mainEl);
         } else if (viewId === 'workload') {
             loadWorkload(mainEl);
         } else if (viewId === 'capacity') {
@@ -2559,6 +2676,10 @@
                 // Eine Anlage/Revision (auch durch eine andere Person) erzeugt
                 // einen audit_log-Beleg -> Katalog neu laden.
                 loadCrossref();
+            } else if (state.activeId === 'merge') {
+                // Build 510: Merge/Split laufen ueber den coordinator-
+                // audit_log — der SSE-Strom feuert korrekt.
+                loadMerge();
             } else if (state.activeId === 'alias') {
                 // Build 505: Alias-Aenderungen laufen ueber den coordinator-
                 // audit_log — der SSE-Strom feuert also korrekt (anders als bei
