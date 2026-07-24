@@ -246,6 +246,11 @@ from management.audit.audit_explorer import AuditExplorer, AuditExplorerError
 from management.audit import audit_export
 from management.export.context_builder import build_export_context
 from management.export.export_envelope import ExportEnvelope
+# Build 511 (AP-2B/B1): generischer Akten-Export je Cockpit-Sicht. Er liest
+# AUSSCHLIESSLICH ueber den bestehenden dispatch() und erbt damit die
+# Rechtepruefung der jeweiligen Sicht — es entsteht KEIN zweiter Lesepfad.
+from management.export.view_export_catalog import known_view_ids, spec_for
+from management.export.view_renderer import ViewExportRenderer, query_summary
 
 #: Basisverzeichnis der statischen Cockpit-Assets (cockpit.* + Vendor).
 #: Liegt neben diesem Modul (management/server/static/).
@@ -681,6 +686,9 @@ class ManagementApp:
         # Build 509 (AP-2A, Idee 11): Identitaets-Gruppen (Merge/Split).
         if path == "/api/merge":
             return self._merge(person_id, query)
+        # Build 511 (AP-2B/B1): Akten-Export der aktiven Sicht.
+        if path == "/api/view/export":
+            return self._view_export(person_id, query)
         if path == "/api/external":
             return self._external(person_id, query)
         if path == "/api/calendar":
@@ -3620,6 +3628,98 @@ class ManagementApp:
             actor_person_id, "reinstate",
             lambda repo: repo.reinstate(
                 alias_id=alias_id, actor_id=actor_person_id))
+
+    # ---------------------------------------------------------------- Build 511
+    # Akten-Export je Cockpit-Sicht (AP-2B/B1, Idee 5).
+
+    def _view_export(self, actor_person_id: int, query) -> Response:
+        """
+        GET /api/view/export?view=<id> — druckbarer, gerichtsfester Akten-Export
+        der angegebenen Sicht. Weitere Query-Parameter werden UNVERAENDERT an
+        den Sicht-Endpunkt durchgereicht (z. B. capacity?start=, onboarding?
+        person_id=, alias?q=), damit der Export genau den Ausschnitt abbildet,
+        den die Ermittlerin vor sich hat.
+
+        KEINE EIGENE RECHTEPRUEFUNG — und das ist Absicht: der Export ruft den
+        Sicht-Endpunkt ueber den BESTEHENDEN dispatch() auf und erbt dadurch
+        dessen Faehigkeitspruefung, Scope und Fehlerbilder. Ein zweiter,
+        selbstgebauter Rechtepfad koennte vom ersten abdriften und dabei ein
+        Recht uebersehen; dieser kann es konstruktiv nicht. Wer die Sicht nicht
+        sehen darf, bekommt vom inneren dispatch() ein 403 — und genau das
+        wird unveraendert weitergereicht.
+
+        Statuscodes: unbekannte/nicht exportierbare Sicht -> 404 (mit der Liste
+        der bekannten IDs); jeder Nicht-200-Status des Sicht-Endpunkts wird
+        1:1 durchgereicht (403 bleibt 403, 503 bleibt 503, 400 bleibt 400).
+        """
+        raw_view = self._q1(query, "view")
+        spec = spec_for(str(raw_view or ""))
+        if spec is None:
+            return Response.json(404, {
+                "error": "unknown_view",
+                "view": raw_view,
+                "detail": "Fuer diese Sicht ist kein Akten-Export hinterlegt.",
+                "known": list(known_view_ids()),
+            })
+
+        # Query ohne 'view' an den Sicht-Endpunkt weiterreichen.
+        inner = {}
+        if isinstance(query, dict):
+            inner = {k: v for k, v in query.items() if k != "view"}
+
+        try:
+            inner_resp = self.dispatch(actor_person_id, spec.api_path, inner)
+        except Exception as exc:                       # noqa: BLE001
+            # HAERTUNG (bei der Umsetzung von B1 aufgefallen, Test VE07): ein
+            # Sicht-Handler kann eine Ausnahme durchreichen, wenn eine
+            # NACHGELAGERTE Quelle fehlt (z. B. templates.db nicht vorhanden ->
+            # sqlite3.OperationalError aus _templates_ro_con). Der Export darf
+            # daran nicht ZERBRECHEN — sonst waere er zerbrechlicher als die
+            # Sicht, die er abbildet. Er meldet den Fehler stattdessen als 500
+            # und NENNT den inneren Endpunkt, damit die Ursache auffindbar ist.
+            # Das Verhalten der Sicht selbst bleibt unveraendert (kein Eingriff
+            # in fremde Handler).
+            logger.exception("Sicht-Endpunkt %s hat eine Ausnahme "
+                             "durchgereicht", spec.api_path)
+            return Response.json(500, {
+                "error": "view_export_failed",
+                "view": spec.view_id,
+                "detail": "Der Sicht-Endpunkt %s ist nicht abrufbar: %s"
+                          % (spec.api_path, exc)})
+
+        if inner_resp.status != 200:
+            # EHRLICH DURCHREICHEN: der Export beschoenigt nichts. Ein 403 des
+            # Sicht-Endpunkts ist ein 403 des Exports; ein 503 (fehlendes
+            # Substrat) bleibt ein 503 — kein leeres Dokument, das
+            # Vollstaendigkeit vortaeuschte (Grundregel 1).
+            return inner_resp
+
+        try:
+            data = json.loads(inner_resp.body.decode("utf-8"))
+        except (ValueError, UnicodeDecodeError) as exc:
+            logger.exception("Sicht-Antwort nicht lesbar (%s)", spec.api_path)
+            return Response.json(500, {"error": "view_export_failed",
+                                       "detail": "Antwort von %s nicht "
+                                                 "auswertbar: %s"
+                                                 % (spec.api_path, exc)})
+
+        con = self._ro_con()
+        try:
+            person = self._person(con, actor_person_id)
+            actor = person.get("system_username") if person else None
+            ctx = build_export_context(
+                con=con, db_path=self._db_path, actor=actor,
+                aktenzeichen=spec.label)
+            out = ViewExportRenderer(spec).render(
+                data, ExportEnvelope(ctx),
+                query_summary=query_summary(inner))
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Akten-Export fehlgeschlagen (%s)", spec.view_id)
+            return Response.json(500, {"error": "view_export_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.html(200, out)
 
     # ---------------------------------------------------------------- Build 509
     # Identitaets-Merge/Split (AP-2A, Idee 11). Recht crossref.view/edit.
