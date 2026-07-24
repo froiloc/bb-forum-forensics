@@ -98,7 +98,8 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     // Build 502: 30 (neu: 'adsync' - AD-Abgleich, personnel.sync).
     // Build 503: 30 ('adsync' ERSETZT durch 'personnel' -
     //             Personalverwaltung mit eingebundenem AD-Abgleich).
-    expect(api.VIEW_CATALOG.length).toBe(30);
+    // Build 505: 31 (neu: 'alias' - globaler Alias-Katalog, AP-2A/A1).
+    expect(api.VIEW_CATALOG.length).toBe(31);
   });
 
   // CN-QUERFUND (Build 478) --------------------------------------------------
@@ -112,6 +113,21 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     expect(
       api.visibleViews({ "crossref.view": "alle" }).map((x) => x.id)
     ).toContain("crossfindings");
+  });
+
+  // CN-ALIAS (Build 505) -----------------------------------------------------
+  it("CN-ALIAS: Aliasse haengt an crossref.view, Gruppe Auswertung", () => {
+    const api = _api();
+    const v = api.viewById("alias");
+    expect(v).toBeTruthy();
+    expect(v.cap).toBe("crossref.view");
+    expect(v.group).toBe("Auswertung");
+    expect(v.label).toBe("Aliasse");
+    // default-deny: ohne Recht unsichtbar.
+    expect(api.visibleViews({}).map((x) => x.id)).not.toContain("alias");
+    expect(
+      api.visibleViews({ "crossref.view": "alle" }).map((x) => x.id)
+    ).toContain("alias");
   });
 
   // CN-XREF (Build 471) ------------------------------------------------------

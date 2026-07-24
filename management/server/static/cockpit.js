@@ -197,7 +197,14 @@
         { id: 'crossref',   cap: 'crossref.view',        group: 'Auswertung',     label: 'Kreuzbezug' },
         // Build 478 (AP-2A(3)): Querfund-Meta-Uebersicht (rein lesend, Frontend
         // zu /api/crossfindings). Gleiche F5-Familie; Recht crossref.view.
-        { id: 'crossfindings', cap: 'crossref.view',     group: 'Auswertung',     label: 'Querfunde' }
+        { id: 'crossfindings', cap: 'crossref.view',     group: 'Auswertung',     label: 'Querfunde' },
+        // Build 505 (AP-2A/A1, Idee 8): globaler Alias-Katalog (Frontend zu
+        // 504). EIGENE Sicht statt Anbau an 'crossref': Aliasse existieren
+        // UNABHAENGIG vom Identitaetskatalog — ein Konto kann Aliasse und
+        // KEINE Identifizierung haben; ein Anbau haette diese Faelle
+        // unsichtbar gemacht (Grundregel 1). Gleiche F5-Familie, Recht
+        // crossref.view (Pflegen zusaetzlich crossref.edit).
+        { id: 'alias',      cap: 'crossref.view',        group: 'Auswertung',     label: 'Aliasse' }
     ];
 
     // Gueltige Scope-Werte fuer die Anzeige (weitere -> kein Tag).
@@ -1859,6 +1866,119 @@
             });
     }
 
+    // loadAlias: GLOBALER ALIAS-KATALOG (Build 505, AP-2A/A1, Frontend zu 504).
+    //   GET  /api/alias                    — Katalog / ?q= Rueckwaertssuche /
+    //                                        ?subject_id=N / ?include_retracted=1
+    //   POST /api/alias/add|update|retract|reinstate  (crossref.edit)
+    //   KEIN optimistisches UI: nach jedem Schreiben wird die Sicht NEU geladen,
+    //   damit auch ein serverseitig ABGELEHNTER Schreibversuch (Duplikat,
+    //   fehlender Grund) den tatsaechlichen Stand zeigt.
+    //   SSE-Refresh ist hier RICHTIG (anders als bei 'crossfindings'): Alias-
+    //   Aenderungen laufen ueber den coordinator-audit_log, der Strom feuert.
+    //   Such-/Filterzustand lebt im State (kein localStorage), damit ein
+    //   SSE-Reload oder ein View-Wechsel dieselbe Sicht wiederherstellt.
+    function loadAlias(mainEl, pendingMsg) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitAlias : null;
+        if (!mod) {
+            renderError(mainEl, 'Alias-Modul nicht geladen.');
+            return;
+        }
+
+        var query = state.aliasQuery || '';
+        var inclRetr = state.aliasInclRetracted === true;
+        var view = null;
+        function after(text, isError) {
+            loadAlias(mainEl, { text: text, error: isError });
+        }
+        function fail(err) {
+            after('Fehler: ' + err.message + ' (es wurde nichts geschrieben — '
+                + 'die Liste zeigt den tatsaechlichen Stand).', true);
+        }
+
+        var opts = {
+            canEdit: hasCap(state.capabilities, 'crossref.edit'),
+            query: query,
+            includeRetracted: inclRetr,
+            onSearch: function (term) {
+                state.aliasQuery = String(term || '').trim();
+                loadAlias(mainEl);
+            },
+            onToggleRetracted: function (next) {
+                state.aliasInclRetracted = (next === true);
+                loadAlias(mainEl);
+            },
+            onAdd: function (body) {
+                postJson('/api/alias/add', body)
+                    .then(function (res) {
+                        after('Alias erfasst (Eintrag #' + res.alias_id
+                            + ', Beleg #' + res.audit_seq + ').', false);
+                    })
+                    .catch(fail);
+            },
+            onUpdate: function (body) {
+                postJson('/api/alias/update', body)
+                    .then(function (res) {
+                        after('Eintrag #' + res.alias_id + ' geändert '
+                            + '(Beleg #' + res.audit_seq + ').', false);
+                    })
+                    .catch(fail);
+            },
+            onRetract: function (body) {
+                postJson('/api/alias/retract', body)
+                    .then(function (res) {
+                        after('Eintrag #' + res.alias_id + ' widerrufen '
+                            + '(Beleg #' + res.audit_seq + '). Die Zeile '
+                            + 'bleibt als Beleg erhalten.', false);
+                    })
+                    .catch(fail);
+            },
+            onReinstate: function (body) {
+                postJson('/api/alias/reinstate', body)
+                    .then(function (res) {
+                        after('Widerruf von Eintrag #' + res.alias_id
+                            + ' zurückgenommen (Beleg #' + res.audit_seq
+                            + ').', false);
+                    })
+                    .catch(fail);
+            }
+        };
+
+        // Die Suchmaske ist bewusst EIN Feld: eine reine Zahl wird als Konto
+        // gelesen, alles andere als Name. Zwei getrennte Felder haetten die
+        // Ermittlerin bei jeder Suche zu einer Entscheidung gezwungen, die das
+        // Werkzeug selbst treffen kann.
+        var url = '/api/alias';
+        var params = [];
+        if (query) {
+            params.push(/^\d+$/.test(query)
+                ? ('subject_id=' + encodeURIComponent(query))
+                : ('q=' + encodeURIComponent(query)));
+        }
+        if (inclRetr) { params.push('include_retracted=1'); }
+        if (params.length) { url += '?' + params.join('&'); }
+
+        fetchJson(url)
+            .then(function (data) {
+                cleanupView();
+                view = mod.renderAlias(mainEl, data, opts);
+                if (pendingMsg) {
+                    view.setResult(pendingMsg.text, pendingMsg.error);
+                }
+                log('Aliasse gerendert:',
+                    (data && data.entries ? data.entries.length : 0));
+            })
+            .catch(function (err) {
+                // Ladefehler als FEHLER anzeigen, nicht als leeren Katalog.
+                cleanupView();
+                view = mod.renderAlias(mainEl, { error: err.message }, opts);
+                if (pendingMsg) {
+                    view.setResult(pendingMsg.text, pendingMsg.error);
+                }
+            });
+    }
+
     // loadAudit: AUDIT-/REVISIONS-EXPLORER (Build 467, AP-2E). REIN LESEND.
     //   GET /api/audit/facets  — Filter-Auswahl (Event-Typen + Akteure).
     //   GET /api/audit         — gefilterte, paginierte Seite.
@@ -2285,6 +2405,8 @@
             loadCrossref(mainEl);
         } else if (viewId === 'crossfindings') {
             loadCrossfindings(mainEl, state.cfOnlyOpen === true);
+        } else if (viewId === 'alias') {
+            loadAlias(mainEl);
         } else if (viewId === 'workload') {
             loadWorkload(mainEl);
         } else if (viewId === 'capacity') {
@@ -2390,6 +2512,12 @@
                 // Eine Anlage/Revision (auch durch eine andere Person) erzeugt
                 // einen audit_log-Beleg -> Katalog neu laden.
                 loadCrossref();
+            } else if (state.activeId === 'alias') {
+                // Build 505: Alias-Aenderungen laufen ueber den coordinator-
+                // audit_log — der SSE-Strom feuert also korrekt (anders als bei
+                // 'crossfindings', deren Substrat die forensic_api-Pipeline
+                // schreibt). Such-/Filterzustand bleibt im State erhalten.
+                loadAlias();
             } else if (state.activeId === 'workload') {
                 loadWorkload();
             } else if (state.activeId === 'capacity') {
