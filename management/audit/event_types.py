@@ -210,6 +210,23 @@ class EventType:
     #   created) + Textlaenge (Sensibilitaetsregel wie M018). mc 2026-07-24.
     CROSSFINDING_FEEDBACK_SET: str = "crossfinding_feedback_set"
 
+    # --- Build 509: Identitaets-Merge/Split (subject_merge, M025, Idee 11) ---
+    #   "Konto A und Konto B werden von DERSELBEN natuerlichen Person
+    #   betrieben" — eine HYPOTHESE, gestuetzt auf Indizien, und deshalb
+    #   umkehrbar. VIER Ereignistypen, weil die vier Vorgaenge forensisch
+    #   verschieden schwer wiegen: SUBJECT_MERGED (neue Hypothese),
+    #   SUBJECT_MERGE_REVISED (Konfidenz reift), SUBJECT_SPLIT (die Hypothese
+    #   traegt NICHT mehr — die wichtigste Aussage von allen, sie muss im
+    #   Audit-Explorer eigenstaendig auffindbar sein) und SUBJECT_REMERGED
+    #   (die Trennung war ihrerseits ein Irrtum).
+    #   Der sensible Freitext (basis/split_reason) steht NICHT im Payload, nur
+    #   FAKTEN (primary_subject_id, merged_subject_id, confidence_code/ordinal,
+    #   is_active) + Textlaengen (Sensibilitaetsregel wie M018). mc 2026-07-24.
+    SUBJECT_MERGED: str = "subject_merged"
+    SUBJECT_MERGE_REVISED: str = "subject_merge_revised"
+    SUBJECT_SPLIT: str = "subject_split"
+    SUBJECT_REMERGED: str = "subject_remerged"
+
     # --- Build 501: AD-Abgleich der Ermittlerstammdaten (M020, ad_sync) -------
     #   AD_SYNC_RUN: EIN Beleg PRO ABGLEICH-LAUF (Klammer) mit den Zaehlern
     #   (neu/umbenannt/Kandidaten) und der Quellgruppe — auch ein Lauf OHNE
@@ -290,6 +307,10 @@ class EventType:
             SUBJECT_ALIAS_RETRACTED,
             SUBJECT_ALIAS_REINSTATED,
             CROSSFINDING_FEEDBACK_SET,
+            SUBJECT_MERGED,
+            SUBJECT_MERGE_REVISED,
+            SUBJECT_SPLIT,
+            SUBJECT_REMERGED,
             AD_SYNC_RUN,
             PERSON_DEACTIVATED,
             PERSON_DEACTIVATION_ABORTED,

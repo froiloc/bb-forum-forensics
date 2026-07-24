@@ -239,6 +239,9 @@ from management.crossref.crossfinding_channel_repo import (
 from management.crossref.crossfinding_channel_status import (
     CrossfindingChannelError,
 )
+# Build 509 (AP-2A, Idee 11): Identitaets-Merge/Split. Gleiche F5-Familie,
+# gleiche Rechte crossref.view/edit (keine Rechte-Inflation).
+from management.crossref.subject_merge_repo import SubjectMergeRepo
 from management.audit.audit_explorer import AuditExplorer, AuditExplorerError
 from management.audit import audit_export
 from management.export.context_builder import build_export_context
@@ -675,6 +678,9 @@ class ManagementApp:
         # Build 504 (AP-2A, Idee 8): globaler Alias-Katalog + Rueckwaertssuche.
         if path == "/api/alias":
             return self._alias(person_id, query)
+        # Build 509 (AP-2A, Idee 11): Identitaets-Gruppen (Merge/Split).
+        if path == "/api/merge":
+            return self._merge(person_id, query)
         if path == "/api/external":
             return self._external(person_id, query)
         if path == "/api/calendar":
@@ -3615,6 +3621,168 @@ class ManagementApp:
             lambda repo: repo.reinstate(
                 alias_id=alias_id, actor_id=actor_person_id))
 
+    # ---------------------------------------------------------------- Build 509
+    # Identitaets-Merge/Split (AP-2A, Idee 11). Recht crossref.view/edit.
+    # Global, NICHT scope-behaftet: eine Identitaets-Gruppe ist per Definition
+    # falluebergreifend.
+
+    def _merge(self, actor_person_id: int, query) -> Response:
+        """
+        GET /api/merge — Identitaets-Zusammenfuehrungen.
+          ?subject_id=N        -> die GANZE Gruppe dieses Kontos (unabhaengig
+                                  davon, ob N das Primaerkonto ist)
+          ?include_split=1     -> getrennte Zeilen mitliefern (sie sind ein
+                                  anderer Erkenntnisstand, kein Leerbefund)
+          (ohne Parameter)     -> alle aktiven Zusammenfuehrungen
+        Recht crossref.view.
+        """
+        policy = self.resolve_policy(actor_person_id)
+        if not policy.can(CAP_CROSSREF_VIEW):
+            return self._forbidden(CAP_CROSSREF_VIEW)
+
+        raw_sid = self._q1(query, "subject_id")
+        incl_raw = self._q1(query, "include_split")
+        include_split = str(incl_raw or "").lower() in ("1", "true", "yes", "ja")
+
+        con = self._ro_con()
+        try:
+            repo = SubjectMergeRepo(con)
+            body: Dict[str, Any] = {
+                "counts": repo.counts(),
+                # Die Konfidenz-Stufen kommen vom SERVER — dieselbe Achse wie
+                # im Identitaetskatalog (M018), damit die Oberflaeche keine
+                # Stufe anbieten kann, die die DDL-CHECK ablehnt.
+                "confidence": [
+                    {"code": "verdacht", "label": "Verdacht", "ordinal": 10},
+                    {"code": "wahrscheinlich", "label": "wahrscheinlich",
+                     "ordinal": 20},
+                    {"code": "gesichert", "label": "gesichert", "ordinal": 30},
+                ],
+            }
+            if raw_sid:
+                try:
+                    sid = int(raw_sid)
+                except (TypeError, ValueError):
+                    return Response.json(
+                        400, {"error": "bad_request",
+                              "detail": "subject_id ungueltig."})
+                body["group"] = repo.group_of(sid)
+                body["entries"] = body["group"]["merges"]
+                body["mode"] = "group"
+            else:
+                body["entries"] = repo.list(include_split=include_split)
+                body["mode"] = "all"
+            return Response.json(200, body)
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Identitaets-Gruppen nicht lesbar")
+            return Response.json(500, {"error": "merge_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+
+    def _merge_write(self, actor_person_id: int, what: str, run) -> Response:
+        """
+        Gemeinsamer Rahmen der drei schreibenden Merge-Routen. Fachliche
+        Konflikte (Kette, Doppelzuordnung, Selbstverschmelzung, fehlender
+        Grund) kommen als 400 MIT dem sprechenden Text des Repos zurueck — die
+        Ermittlerin braucht den konkreten Konflikt samt der beteiligten
+        subject_ids, nicht dessen Zusammenfassung.
+        """
+        policy = self.resolve_policy(actor_person_id)
+        if not policy.can(CAP_CROSSREF_EDIT):
+            return self._forbidden(CAP_CROSSREF_EDIT)
+        con = self._rw_con()
+        try:
+            repo = SubjectMergeRepo(con, CoordinatorWriter(con, AuditLog(con)))
+            res = run(repo)
+        except CrossrefError as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except sqlite3.IntegrityError as exc:
+            # Letzte Verteidigungslinie: die DDL-CHECK/der UNIQUE-Index. Wenn
+            # sie greift, ist eine Repo-Pruefung durchgerutscht — das ist ein
+            # fachlicher Konflikt, kein Serverfehler, und wird auch so gemeldet.
+            logger.warning("Merge-Integritaetsregel gegriffen: %s", exc)
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": "Integritaetsregel verletzt: "
+                                                 + str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Merge-Schreibzugriff (%s) fehlgeschlagen", what)
+            return Response.json(500, {"error": "merge_%s_failed" % what,
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, **res})
+
+    def _merge_set(self, actor_person_id: int,
+                   payload: Dict[str, Any]) -> Response:
+        """
+        POST /api/merge/set — anlegen ODER revidieren.
+          mit 'merge_id'  -> revise (Konfidenz/Basis reifen lassen)
+          sonst           -> merge {primary_subject_id, merged_subject_id,
+                                    basis, confidence_code}
+        Die beteiligten Konten sind bewusst NICHT revidierbar: eine andere
+        Paarung ist eine andere Hypothese und entsteht durch split() + merge().
+        """
+        merge_id = payload.get("merge_id")
+        if merge_id is not None:
+            try:
+                mid = int(merge_id)
+            except (TypeError, ValueError):
+                return Response.json(400, {"error": "bad_request",
+                                           "detail": "merge_id ungueltig."})
+            basis = payload.get("basis")
+            conf = payload.get("confidence_code")
+            return self._merge_write(
+                actor_person_id, "revise",
+                lambda repo: repo.revise(
+                    merge_id=mid,
+                    basis=(None if basis is None else str(basis)),
+                    confidence_code=(None if conf is None else str(conf)),
+                    actor_id=actor_person_id))
+
+        try:
+            primary = int(payload.get("primary_subject_id"))
+            merged = int(payload.get("merged_subject_id"))
+        except (TypeError, ValueError):
+            return Response.json(
+                400, {"error": "bad_request",
+                      "detail": "primary_subject_id/merged_subject_id "
+                                "fehlen oder sind ungueltig."})
+        return self._merge_write(
+            actor_person_id, "set",
+            lambda repo: repo.merge(
+                primary_subject_id=primary, merged_subject_id=merged,
+                basis=str(payload.get("basis", "") or ""),
+                confidence_code=str(payload.get("confidence_code", "") or ""),
+                actor_id=actor_person_id))
+
+    def _merge_split(self, actor_person_id: int,
+                     payload: Dict[str, Any]) -> Response:
+        """POST /api/merge/split — {merge_id, reason}. Grund ist Pflicht."""
+        try:
+            mid = int(payload.get("merge_id"))
+        except (TypeError, ValueError):
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": "merge_id fehlt/ungueltig."})
+        return self._merge_write(
+            actor_person_id, "split",
+            lambda repo: repo.split(
+                merge_id=mid, reason=str(payload.get("reason", "") or ""),
+                actor_id=actor_person_id))
+
+    def _merge_remerge(self, actor_person_id: int,
+                       payload: Dict[str, Any]) -> Response:
+        """POST /api/merge/remerge — {merge_id}. Trennung zuruecknehmen."""
+        try:
+            mid = int(payload.get("merge_id"))
+        except (TypeError, ValueError):
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": "merge_id fehlt/ungueltig."})
+        return self._merge_write(
+            actor_person_id, "remerge",
+            lambda repo: repo.remerge(merge_id=mid, actor_id=actor_person_id))
+
     def _external_scope(self, person_id: int, capability: str):
         policy = self.resolve_policy(person_id)
         if not policy.can(capability):
@@ -4536,6 +4704,13 @@ class ManagementApp:
             return self._alias_retract(person_id, payload)
         if path == "/api/alias/reinstate":
             return self._alias_reinstate(person_id, payload)
+        # Build 509 (AP-2A, Idee 11): Identitaets-Merge/Split — auditiert.
+        if path == "/api/merge/set":
+            return self._merge_set(person_id, payload)
+        if path == "/api/merge/split":
+            return self._merge_split(person_id, payload)
+        if path == "/api/merge/remerge":
+            return self._merge_remerge(person_id, payload)
         # Build 412 (SF-3): Lektorat/Chef-Kommentare (Addendum-Dateien).
         if path == "/api/report/comment":
             return self._report_comment_create(person_id, payload)
