@@ -172,7 +172,8 @@ class ManagementRbacSchemaTests(unittest.TestCase):
         # +2 ab Build 468 ('crossref.view'/'crossref.edit', in M018) -> 30.
         # +1 ab Build 501 ('personnel.sync', geseedet in M020) -> 31.
         # +2 ab Build 503 ('personnel.view'/'personnel.edit', M021) -> 33.
-        self.assertEqual(len(cat_caps), 33)
+        # +1 ab Build 515 ('escalation.view', geseedet in M026) -> 34.
+        self.assertEqual(len(cat_caps), 34)
         self.assertIn("external.view", cat_caps)
         self.assertIn("external.edit", cat_caps)
         self.assertIn("templates.edit", cat_caps)
@@ -189,6 +190,8 @@ class ManagementRbacSchemaTests(unittest.TestCase):
         # Kreuzbezug/Identitaet (Build 468): crossref.view/edit (Seed in M018).
         self.assertIn("crossref.view", cat_caps)
         self.assertIn("crossref.edit", cat_caps)
+        # Eskalationen (Build 515): escalation.view (Seed in M026).
+        self.assertIn("escalation.view", cat_caps)
         # Build 401: Betreuungs-Notizen (Seed in M012).
         self.assertIn("mentoring_notes.view", cat_caps)
         self.assertIn("mentoring_notes.edit", cat_caps)

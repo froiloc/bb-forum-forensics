@@ -204,6 +204,14 @@ from management.workload.overload import (
     overload_to_dict,
     OverloadThresholds,
 )
+# Build 515 (AP-2G / Idee 23): Eskalationen. Wie bei der Ueberlastwarnung war
+# das Read-Model aus Build 453 bis hierher nur ueber die CLI erreichbar.
+from management.cases.escalation import (
+    escalation_thresholds_from_config,
+    escalation_to_dict,
+    EscalationThresholds,
+)
+from management.cases.escalation_repo import EscalationRepo
 from management.mentoring_notes import note_colors
 from management.mentoring_notes.mentoring_notes_repo import (
     MentoringNotesError,
@@ -334,6 +342,14 @@ CAP_PERSONNEL_SYNC = "personnel.sync"
 # die Grants der Rollen-MATRIX (rbac_grant) bleiben der CLI vorbehalten.
 CAP_PERSONNEL_VIEW = "personnel.view"
 CAP_PERSONNEL_EDIT = "personnel.edit"
+
+# Build 515 (AP-2G / Idee 23): Eskalationen (Seed in M026). BEWUSST NICHT
+# scope-behaftet — die Sicht beantwortet die Frage "wo bleibt etwas liegen,
+# das NIEMAND anfasst". Auf 'eigene' verengt haette sie genau die Faelle
+# ausgeblendet, um derentwillen es sie gibt (die unzugewiesenen), und waere
+# damit ein irrefuehrender Beleg. Wer sie nicht sehen soll, bekommt den Grant
+# nicht (default-deny). Analogie: CAP_PERSONNEL_SYNC.
+CAP_ESCALATION_VIEW = "escalation.view"
 
 logger = logging.getLogger(__name__)
 
@@ -621,6 +637,9 @@ class ManagementApp:
             return self._integrity(person_id)
         if path == "/api/workload":
             return self._workload(person_id)
+        # Build 515 (AP-2G / Idee 23): Eskalationen, auswertend.
+        if path == "/api/escalations":
+            return self._escalations(person_id)
         if path == "/api/capacity":
             return self._capacity(person_id, query)
         if path == "/api/policy":
@@ -928,6 +947,71 @@ class ManagementApp:
                                    "loads": items,
                                    "overload": overload,
                                    "overload_assessments": assessments})
+
+    def _escalation_thresholds(self) -> EscalationThresholds:
+        """
+        Schwellen der Eskalationsregeln aus config.yaml (escalation.*).
+
+        Wie bei der Ueberlastwarnung (Build 513): faellt die Konfiguration aus,
+        gelten die Vorgaben aus Build 453 — und der Ausfall wird
+        PROTOKOLLIERT. Die angewandten Schwellen fahren in der Antwort mit,
+        damit jede gemeldete Eskalation nachrechenbar ist.
+        """
+        try:
+            from core.config_loader import ConfigLoader
+            return escalation_thresholds_from_config(ConfigLoader().as_dict())
+        except Exception as exc:  # pragma: no cover - Konfig-Ausfall
+            logger.warning("Eskalations-Schwellen nicht aus config.yaml lesbar "
+                           "(%s) — Vorgaben aus Build 453.", exc)
+            return EscalationThresholds()
+
+    def _escalations(self, person_id: int) -> Response:
+        """
+        Eskalationen (read-only, Build 515 zu Build 453 / AP-2G, Idee 23).
+
+        NICHT SCOPE-BEHAFTET — und das ist eine bewusste Entscheidung, keine
+        Nachlaessigkeit: die Sicht beantwortet die Frage "wo bleibt etwas
+        liegen, das NIEMAND anfasst". Die wichtigste Regel (rueckstau_hoch)
+        traegt subject_id=None, weil sie GAR KEINEM Fall und damit auch keiner
+        Person zuzuordnen ist. Auf 'eigene' verengt haette die Sicht genau die
+        Faelle nicht gezeigt, um derentwillen es sie gibt. Die Zugangskontrolle
+        laeuft deshalb ueber das Recht selbst (escalation.view, default-deny),
+        nicht ueber einen Ausschnitt.
+
+        ANTWORT: escalation_to_dict + 'thresholds'. Die Schwellen fahren MIT,
+        weil eine Eskalationsmeldung ohne ihren Massstab nicht nachpruefbar
+        waere ('30 Tage inaktiv' ist erst mit '>= 30' eine Aussage).
+
+        BEWUSSTE LUECKE, die dieser Build NICHT schliesst: es gibt weiterhin
+        keinen Weg, eine Eskalation zu QUITTIEREN. Die Sicht ist rein
+        auswertend. Der auditierte Schreibpfad ist als eigenes Arbeitspaket
+        angesetzt (Befund Uebergabe 440-453 §3.3) — er bekommt eine eigene
+        Faehigkeit, damit ein Lese-Grant nie ein Schreibrecht mitbringt.
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_ESCALATION_VIEW):
+            return self._forbidden(CAP_ESCALATION_VIEW)
+
+        thresholds = self._escalation_thresholds()
+        now = int(time.time())
+        con = self._ro_con()
+        try:
+            report = EscalationRepo(con).compute(thresholds=thresholds,
+                                                 now=now)
+        finally:
+            con.close()
+
+        payload = escalation_to_dict(report)
+        payload["thresholds"] = {
+            "red_overdue_days": thresholds.red_overdue_days,
+            "stale_open_days": thresholds.stale_open_days,
+            "backlog_high": thresholds.backlog_high,
+        }
+        # 'acknowledgeable' sagt der Sicht ausdruecklich, dass es (noch) keinen
+        # Quittierungsweg gibt. Ohne diese Angabe muesste das Frontend es
+        # RATEN — und ein geratener Zustand ist in diesem Projekt kein Beleg.
+        payload["acknowledgeable"] = False
+        return Response.json(200, payload)
 
     def _capacity(self, person_id: int,
                   query: Optional[Dict[str, List[str]]]) -> Response:

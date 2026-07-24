@@ -219,6 +219,19 @@ CAPABILITIES: Tuple[Capability, ...] = (
                "Rollen-Flags setzen und Rollenzuweisungen erteilen/widerrufen "
                "(auditiert; Grants der Rollen-Matrix bleiben der CLI "
                "vorbehalten)."),
+    # --- Build 515 (AP-2G / Idee 23): Eskalationen (Seed in M026) -----------
+    #   Das Read-Model aus Build 453 wird als Cockpit-Sicht erreichbar. BEWUSST
+    #   NICHT scope-behaftet: eine Eskalationsliste ist ein Aufsichtsinstrument
+    #   der Fallverteilung — sie beantwortet die Frage "wo bleibt etwas liegen,
+    #   das NIEMAND anfasst". Auf 'eigene' verengt haette sie genau die Faelle
+    #   nicht gezeigt, um derentwillen es sie gibt (die unzugewiesenen), und
+    #   waere damit ein irrefuehrender Beleg. Wer sie nicht haben soll, bekommt
+    #   den Grant nicht (default-deny) — Analogie: personnel.sync.
+    #   Grant an 'supervisor' per policy_admin.
+    Capability("escalation.view", "Eskalationen sehen",
+               "Belegte Eskalationen aus dem Fallzustand lesen (ueberfaellige "
+               "rote Faelle, unbearbeitete offene Faelle, systemischer "
+               "Rueckstau) — auswertend, nicht fallbezogen scope-behaftet."),
 )
 
 
