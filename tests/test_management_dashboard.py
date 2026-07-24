@@ -208,13 +208,16 @@ class ManagementDashboardTests(unittest.TestCase):
         # Tabelle + Seed escalation.ack; rein additiv, keine Zeile beruehrt);
         # Build 519: M028 (RBAC-Seed nextactions.view fuer die Arbeitsschlange,
         # AP-2F/Idee 22 — reiner Capability-Seed, keine Zeile beruehrt).
+        # Build 520: M029 (RBAC-Seed handover.view fuer das Uebergabe-
+        # Protokoll, AP-2G/Idee 30 — reiner Capability-Seed; die Sicht
+        # rekonstruiert aus dem audit_log und braucht KEINE eigene Tabelle).
         self.assertEqual(self.applied,
                          [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-                          17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]
+                          17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
                          if 3 not in self.applied
                          else [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
                                15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
-                               27, 28])
+                               27, 28, 29])
         # discover findet M001..M006 -> support_sessions (M003) IST dabei,
         # der person-Rename (M005, Build 342) ebenso wie das RBAC-Schema
         # (M006, Build 343).

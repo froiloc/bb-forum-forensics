@@ -255,6 +255,18 @@ CAPABILITIES: Tuple[Capability, ...] = (
                "Die priorisierte Arbeitsschlange lesen (naechste sinnvolle "
                "Handlung je offenem Fall, mit belegter Begruendung). Scope "
                "'eigene' = eigene Faelle, 'alle' = alle Faelle."),
+    # --- Build 520 (AP-2G / Idee 30): Uebergabe-Protokoll (Seed in M029) -----
+    #   "Wer hat wann welchen Fall an wen uebergeben" — rekonstruiert aus der
+    #   unveraenderlichen audit_log-Kette (CASE_ASSIGNED). BEWUSST NICHT
+    #   scope-behaftet, gleiche Begruendung wie 'escalation.view': ein
+    #   Uebergabe-Protokoll handelt von der BEZIEHUNG zwischen Personen. Auf
+    #   die eigenen Eintraege verengt entstuende ein Protokoll MIT LUECKEN,
+    #   das vollstaendig AUSSIEHT — und dessen Zaehler (Uebergaben, betroffene
+    #   Faelle) dann etwas anderes bedeuteten als sie sagen. Wer es nicht
+    #   sehen soll, bekommt den Grant nicht (default-deny).
+    Capability("handover.view", "Uebergabe-Protokoll sehen",
+               "Nachvollziehen, wer wann welchen Fall an wen uebergeben hat "
+               "(rekonstruiert aus der Audit-Kette; rein lesend)."),
 )
 
 

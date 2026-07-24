@@ -146,6 +146,16 @@ VIEW_EXPORTS: Tuple[ViewExportSpec, ...] = (
         api_path="/api/next_actions",
         sections=(SectionSpec("items", "Arbeitsschlange"),),
     ),
+    # Build 520 (AP-2G / Idee 30): das Uebergabe-Protokoll ist ein
+    # Revisionsbeleg. 'filter_subject_id' erscheint ueber den Auto-Modus
+    # (Regel 2) im Dokument und der angewandte Parameter zusaetzlich im
+    # Dokumentkopf - ein gefiltertes Protokoll darf nicht wie ein
+    # vollstaendiges aussehen.
+    ViewExportSpec(
+        view_id="handover", label="Übergabe-Protokoll",
+        api_path="/api/handover",
+        sections=(SectionSpec("entries", "Übergaben"),),
+    ),
     ViewExportSpec(
         view_id="capacity", label="Kapazität",
         api_path="/api/capacity", requires=("start",),

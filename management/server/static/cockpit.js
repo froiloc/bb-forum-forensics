@@ -199,6 +199,13 @@
         { id: 'policy',     cap: 'policy.view',          group: 'Administration', label: 'Rechte / Policy' },
         { id: 'integrity',  cap: 'ops.view',             group: 'Administration', label: 'Integritaet / Betrieb' },
         { id: 'audit',      cap: 'ops.view',             group: 'Administration', label: 'Audit-Explorer' },
+        // Build 520 (AP-2G / Idee 30): Uebergabe-Protokoll (Frontend zu 520).
+        // Gruppe 'Administration' DIREKT neben dem Audit-Explorer, denn es ist
+        // dieselbe Art Werkzeug: eine LESART der unveraenderlichen Audit-Kette.
+        // Eigenes Recht 'handover.view' (Seed M029, default-deny) und BEWUSST
+        // NICHT scope-behaftet — auf die eigenen Eintraege verengt entstuende
+        // ein Protokoll MIT LUECKEN, das vollstaendig aussieht.
+        { id: 'handover',   cap: 'handover.view',        group: 'Administration', label: 'Übergabe-Protokoll' },
         { id: 'promotion',  cap: 'ops.view',             group: 'Administration', label: 'Fremdforum-Promotion' },
         { id: 'releases',   cap: 'release.view',         group: 'Administration', label: 'Externe Fallfreigabe' },
         { id: 'onboarding', cap: 'onboarding.view',      group: 'Verwaltung',     label: 'Onboarding / Offboarding' },
@@ -712,6 +719,42 @@
         }).catch(function (err) {
             cleanupView();
             mod.renderNextActions(mainEl, { error: err.message }, {});
+        });
+    }
+
+    // loadHandover: /api/handover holen und ueber cockpit_handover.js rendern
+    // (Build 520 / AP-2G, Idee 30). 'subject' schraenkt auf EINEN Fall ein und
+    // wird in state.hvSubject gehalten, damit ein Sichtwechsel und der
+    // SSE-Reload den Ausschnitt beibehalten — und damit der Akten-Export
+    // denselben Ausschnitt abbildet wie die Sicht.
+    function loadHandover(mainEl, subject) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitHandover : null;
+        if (!mod) {
+            renderError(mainEl, 'Uebergabe-Modul nicht geladen.');
+            return;
+        }
+        if (subject !== undefined) { state.hvSubject = subject || null; }
+        var url = '/api/handover';
+        if (state.hvSubject) {
+            url += '?subject_id=' + encodeURIComponent(state.hvSubject);
+        }
+        var opts = {
+            onFilter: function (next) {
+                state.hvSubject = next || null;
+                refreshExportButton();   // der Export folgt dem Ausschnitt
+                loadHandover(mainEl);
+            }
+        };
+        fetchJson(url).then(function (data) {
+            cleanupView();
+            mod.renderHandover(mainEl, data, opts);
+            log('Uebergaben gerendert:', (data.entries || []).length,
+                'Filter', data.filter_subject_id);
+        }).catch(function (err) {
+            cleanupView();
+            mod.renderHandover(mainEl, { error: err.message }, opts);
         });
     }
 
@@ -2682,7 +2725,12 @@
         // (der Umfang kommt aus dem Recht), also braucht sie auch keinen
         // exportParams-Zweig; der Export bildet zwangslaeufig denselben
         // Ausschnitt ab wie die Sicht.
-        nextactions: 1
+        nextactions: 1,
+        // Build 520: das Uebergabe-Protokoll ist ein Revisionsbeleg. Es KENNT
+        // einen Filter (subject_id) — der Export bekommt ihn ueber
+        // exportParams mit, sonst zeigte das Dokument den ganzen Bestand,
+        // waehrend die Sicht auf einen Fall eingeschraenkt ist.
+        handover: 1
     };
 
     // exportParams: die Sicht-Parameter, die der Export MITBEKOMMEN muss, damit
@@ -2692,6 +2740,10 @@
     function exportParams(viewId, st) {
         st = st || {};
         var p = {};
+        // Build 520: der Fall-Ausschnitt des Uebergabe-Protokolls.
+        if (viewId === 'handover') {
+            if (st.hvSubject) { p.subject_id = st.hvSubject; }
+        }
         if (viewId === 'alias') {
             if (st.aliasQuery) {
                 p[/^\d+$/.test(st.aliasQuery) ? 'subject_id' : 'q'] =
@@ -2803,6 +2855,8 @@
             loadEscalation(mainEl);
         } else if (viewId === 'nextactions') {
             loadNextActions(mainEl);
+        } else if (viewId === 'handover') {
+            loadHandover(mainEl);
         } else if (viewId === 'capacity') {
             loadCapacity(mainEl);
         } else if (viewId === 'policy') {
@@ -2918,6 +2972,12 @@
                 loadAlias();
             } else if (state.activeId === 'workload') {
                 loadWorkload();
+            } else if (state.activeId === 'handover') {
+                // Eine neue Zuweisung erzeugt genau den audit_log-Beleg, aus
+                // dem dieses Protokoll besteht -> neu laden. Der eingestellte
+                // Ausschnitt (state.hvSubject) bleibt erhalten, sonst wuerde
+                // ein fremdes Ereignis die Untersuchung eines Falls abbrechen.
+                loadHandover();
             } else if (state.activeId === 'nextactions') {
                 // Die Arbeitsschlange leitet sich AUSSCHLIESSLICH aus dem
                 // Fallzustand ab; genau dessen Aenderungen erzeugen die

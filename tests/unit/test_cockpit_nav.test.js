@@ -102,7 +102,8 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     // Build 510: 32 (neu: 'merge' - Identitaets-Gruppen, AP-2A/A3).
     // Build 516: 33 (neu: 'escalation' - Eskalationen, AP-2G/Idee 23).
     // Build 519: 34 (neu: 'nextactions' - Naechstbeste Aktion, AP-2F/Idee 22).
-    expect(api.VIEW_CATALOG.length).toBe(34);
+    // Build 520: 35 (neu: 'handover' - Uebergabe-Protokoll, AP-2G/Idee 30).
+    expect(api.VIEW_CATALOG.length).toBe(35);
   });
 
   // CN-QUERFUND (Build 478) --------------------------------------------------

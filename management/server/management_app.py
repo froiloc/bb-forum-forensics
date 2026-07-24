@@ -216,6 +216,10 @@ from management.cases.escalation_repo import EscalationRepo
 # Eskalation war das Read-Model aus Build 452/469 nur ueber die CLI da.
 from management.cases.next_actions import queue_to_dict
 from management.cases.next_actions_repo import NextActionsRepo
+# Build 520 (AP-2G / Idee 30): Uebergabe-Protokoll. Ebenfalls nur ueber die
+# CLI erreichbar gewesen (Build 455/469).
+from management.cases.handover_log import handover_to_dict
+from management.cases.handover_repo import HandoverRepo
 # Build 517 (AP-2G / Idee 23): der auditierte SCHREIBPFAD zur Eskalation
 # (Quittierung). Befund Uebergabe 440-453 §3.3 — bis Build 516 war die Sicht
 # rein auswertend.
@@ -376,6 +380,13 @@ CAP_ESCALATION_ACK = "escalation.ack"
 # CAP_ESCALATION_VIEW verengt der Scope hier keinen Beleg, sondern
 # beantwortet eine andere Frage.
 CAP_NEXTACTIONS_VIEW = "nextactions.view"
+
+# Build 520 (AP-2G / Idee 30): Uebergabe-Protokoll (Seed in M029). NICHT
+# scope-behaftet, gleiche Begruendung wie CAP_ESCALATION_VIEW: ein
+# Protokoll ueber UEBERGABEN handelt von der Beziehung zwischen
+# Personen; auf die eigenen Eintraege verengt entstuende ein Protokoll
+# MIT LUECKEN, das vollstaendig aussieht.
+CAP_HANDOVER_VIEW = "handover.view"
 
 logger = logging.getLogger(__name__)
 
@@ -669,6 +680,9 @@ class ManagementApp:
         # Build 519 (AP-2F / Idee 22): Naechstbeste Aktion (Arbeitsschlange).
         if path == "/api/next_actions":
             return self._next_actions(person_id)
+        # Build 520 (AP-2G / Idee 30): Uebergabe-Protokoll.
+        if path == "/api/handover":
+            return self._handover(person_id, query)
         if path == "/api/capacity":
             return self._capacity(person_id, query)
         if path == "/api/policy":
@@ -1104,6 +1118,55 @@ class ManagementApp:
         # ANGEWANDTE Wert; wer die Antwort spaeter liest, soll auch sehen,
         # welches Recht dahinterstand (None = kein Scope gesetzt -> 'eigene').
         payload["granted_scope"] = scope
+        return Response.json(200, payload)
+
+    def _handover(self, person_id: int,
+                  query: Optional[Dict[str, List[str]]]) -> Response:
+        """
+        Uebergabe-Protokoll (read-only, Build 520 zu Build 455/469, Idee 30).
+
+        Query: subject_id (optional) — auf EINEN Fall einschraenken.
+
+        NICHT SCOPE-BEHAFTET, gleiche Begruendung wie bei den Eskalationen:
+        ein Uebergabe-Protokoll handelt von der BEZIEHUNG zwischen Personen.
+        Auf die eigenen Eintraege verengt entstuende ein Protokoll MIT
+        LUECKEN, das vollstaendig AUSSIEHT — und dessen Zaehler dann etwas
+        anderes bedeuteten als sie sagen ('3 Uebergaben' hiesse in Wahrheit
+        '3 Uebergaben, an denen ich beteiligt war'). Der Zugang laeuft
+        deshalb ueber das Recht selbst (handover.view, default-deny).
+
+        QUELLE IST DIE AUDIT-KETTE, NICHT EIN ZWEITES REGISTER: das Protokoll
+        wird aus den unveraenderlichen CASE_ASSIGNED-Belegen rekonstruiert.
+        Es gibt also nichts, was nachtraeglich 'aufgeraeumt' werden koennte —
+        und es kann nicht von der Fallakte abweichen.
+
+        DER FILTER FAEHRT MIT ('filter_subject_id'): ein gefiltertes Protokoll
+        sieht sonst aus wie ein vollstaendiges mit wenigen Eintraegen. Der
+        Akten-Export uebernimmt den Wert in den Dokumentkopf.
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_HANDOVER_VIEW):
+            return self._forbidden(CAP_HANDOVER_VIEW)
+
+        roh = self._q1(query, "subject_id", "")
+        subject_id: Optional[int] = None
+        if roh not in (None, ""):
+            try:
+                subject_id = int(roh)
+            except (TypeError, ValueError):
+                return Response.json(400, {
+                    "error": "bad_request",
+                    "detail": "subject_id muss eine ganze Zahl sein."})
+
+        con = self._ro_con()
+        try:
+            report = HandoverRepo(con).compute(subject_id=subject_id,
+                                               now=int(time.time()))
+        finally:
+            con.close()
+
+        payload = handover_to_dict(report)
+        payload["filter_subject_id"] = subject_id
         return Response.json(200, payload)
 
     def _escalation_ack(self, actor_person_id: int,

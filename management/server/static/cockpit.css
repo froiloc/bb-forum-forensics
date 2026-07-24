@@ -1749,3 +1749,62 @@ tr.aiw-cff-nichtrelevant { opacity: 0.7; }
   border-radius: 6px; padding: 12px 16px; margin: 0 0 14px;
   color: #1d6b45; font-size: 13px;
 }
+
+/* ========================================================================
+ * Build 520 (AP-2G / Idee 30) — UEBERGABE-PROTOKOLL.
+ *
+ * Die BELEGNUMMER (#seq) steht ganz links und in Ziffernbreite. Sie ist
+ * die Position in der unveraenderlichen Audit-Hashkette und damit das,
+ * was diese Sicht von einer bequemen Liste zu einem Beleg macht — jede
+ * Zeile ist gegen den Audit-Explorer nachpruefbar.
+ *
+ * Die drei Arten bekommen unterschiedliche Farben, weil sie fachlich
+ * verschieden schwer sind: eine RUECKGABE in den Rueckstau (rot) ist
+ * etwas anderes als eine Uebergabe an eine namentlich benannte Person
+ * (gelb) oder eine Erstzuweisung (gruen).
+ * ======================================================================== */
+
+.aiw-hv-bar { display: flex; gap: 8px; align-items: center; margin: 0 0 12px; }
+.aiw-hv-filter {
+  padding: 3px 6px; font-size: 13px; min-width: 200px;
+  border: 1px solid var(--line, #b9c2cc); border-radius: 3px;
+}
+.aiw-hv-btn {
+  padding: 3px 10px; font-size: 13px; white-space: nowrap;
+  border: 1px solid var(--line, #b9c2cc); border-radius: 3px;
+  background: var(--flaeche-2, #f4f6fb); cursor: pointer;
+}
+.aiw-hv-btn:hover { background: var(--flaeche-3, #e6ebf5); }
+.aiw-hv-btn:focus-visible { outline: 2px solid var(--akzent, #3a6ea5); }
+
+.aiw-hv-table {
+  width: 100%; border-collapse: collapse; margin: 0 0 14px; font-size: 13px;
+}
+.aiw-hv-table th {
+  text-align: left; padding: 6px 8px; font-weight: 600; white-space: nowrap;
+  border-bottom: 2px solid var(--line, #d5dbe1);
+}
+.aiw-hv-table td {
+  padding: 6px 8px; border-bottom: 1px solid var(--line, #e6eaee);
+  vertical-align: top;
+}
+.aiw-hv-row.is-initial    { box-shadow: inset 4px 0 0 var(--gruen); }
+.aiw-hv-row.is-uebergabe  { box-shadow: inset 4px 0 0 var(--gelb); }
+.aiw-hv-row.is-rueckgabe  { box-shadow: inset 4px 0 0 var(--rot); }
+.aiw-hv-row.is-unbekannt  { box-shadow: inset 4px 0 0 #7f8c8d; outline: 1px dashed #7f8c8d; }
+
+/* Die Belegnummer — der Nachweisanker der Zeile. */
+.aiw-hv-seq {
+  font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600;
+}
+.aiw-hv-ts, .aiw-hv-case { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.aiw-hv-kind { white-space: nowrap; }
+
+.aiw-hv-leer {
+  background: #f4f6f8; border: 1px solid #cfd6dd;
+  border-left: 5px solid #7f8c8d;
+  border-radius: 6px; padding: 12px 16px; margin: 0 0 14px;
+  color: #33383d; font-size: 13px;
+}
+/* Herkunftsvermerk — erklaert, warum diese Sicht nicht manipulierbar ist. */
+.aiw-hv-foot { font-size: 12px; color: #4a5158; max-width: 780px; }
