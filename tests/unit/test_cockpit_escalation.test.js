@@ -168,13 +168,24 @@ describe("cockpit_escalation.js (Build 516)", () => {
   });
 
   // ES06 --------------------------------------------------------------------
-  it("ES06: der fehlende Quittierungsweg wird benannt", () => {
+  //
+  // NEU GEFASST IN BUILD 518: bis Build 517 gab es ueberhaupt keinen
+  // Schreibpfad; der Test verlangte deshalb, dass die Ansage bei
+  // acknowledgeable=true LEER wird. Seit Build 518 ist der Kasten in beiden
+  // Faellen belegt — er sagt dann, WAS Quittieren bedeutet, und vor allem,
+  // dass es KEIN Erledigen ist. Diese Aussage darf gerade dann nicht fehlen,
+  // wenn jemand den Knopf tatsaechlich druecken kann. Die Feinheiten
+  // ('gibt es nicht' vs. 'darfst du nicht') pruefen QA05.
+  it("ES06: die Quittierungs-Ansage ist immer belegt", () => {
     const api = _api();
+    // Ohne die Angaben aus Build 517 (aeltere Antwort): NICHT raten.
     expect(api.ackText(D({ acknowledgeable: false }))).toContain(
       "nicht möglich"
     );
-    // Kommt der Schreibpfad, verschwindet die Ansage von selbst.
-    expect(api.ackText(D({ acknowledgeable: true }))).toBe("");
+    // Mit Schreibrecht: die Ansage bleibt — und benennt die Grenze.
+    const darf = api.ackText(D({ acknowledgeable: true }));
+    expect(darf).not.toBe("");
+    expect(darf).toContain("KEIN Erledigen");
   });
 
   // ES07 --------------------------------------------------------------------

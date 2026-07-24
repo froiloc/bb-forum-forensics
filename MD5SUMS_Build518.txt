@@ -1,0 +1,11 @@
+# MD5-Pruefsummen Build 518 (aiw_webserver, v0.8.518) — erzeugt 2026-07-24
+# Basis: Build 517. Bitte VOR dem Einspielen gegen die VM abgleichen.
+# HINWEIS: cockpit.html faellt unter die .gitignore-Regel '*.html' -> git add -f
+#
+ad7f7a84733f84d9ebbc7343d6721f0a  build.json
+33ce7352bcf84182792d9021a1870f72  management/server/static/cockpit_escalation.js
+479fc3f136a5ffb09e388f3f2a33599e  management/server/static/cockpit.js
+822e41bb09793fc519912665608dcc8f  management/server/static/cockpit.css
+b9f1565cd8d453b185570c212899f98c  management/server/static/cockpit.html
+b6adb402ecb4ff927ab13cc4e10e0442  tests/unit/test_cockpit_escalation_ack.test.js
+4f6ff41b0902e1d0049cd27a057499e0  tests/unit/test_cockpit_escalation.test.js

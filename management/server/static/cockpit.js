@@ -620,7 +620,15 @@
     // macht. Wuerden wir hier nur renderError aufrufen und die Sicht leeren,
     // saehe der Ausfall der Erhebung genauso aus wie ein Leerbefund — und ein
     // Leerbefund waere die Behauptung "es liegt nichts an" (Grundregel 1).
-    function loadEscalation(mainEl) {
+    //
+    // BUILD 518: zusaetzlich die auditierte QUITTIERUNG (POST). KEIN
+    // optimistisches UI — nach jedem Schreibvorgang wird die Sicht NEU
+    // GELADEN, damit auch eine ABGELEHNTE Aenderung den echten Stand zeigt
+    // (dieselbe Linie wie beim Querfund-Rueckkanal, Build 508). Ob die
+    // Bedienelemente ueberhaupt erscheinen, entscheidet AUSSCHLIESSLICH der
+    // Server ueber 'acknowledgeable' — das Frontend leitet kein Recht selbst
+    // ab; der Server prueft ohnehin ein zweites Mal.
+    function loadEscalation(mainEl, pendingMsg) {
         mainEl = mainEl || document.getElementById('aiw-main');
         var mod = (typeof window !== 'undefined')
             ? window.AIWCockpitEscalation : null;
@@ -628,13 +636,50 @@
             renderError(mainEl, 'Eskalations-Modul nicht geladen.');
             return;
         }
+
+        function after(text, isError) {
+            loadEscalation(mainEl, { text: text, error: isError });
+        }
+
+        var opts = {
+            message: pendingMsg,
+            onAck: function (body) {
+                postJson('/api/escalations/ack', body)
+                    .then(function (r) {
+                        after('Quittiert (Vermerk #' + r.ack_id
+                            + ', Beleg #' + r.audit_seq + '). Die Meldung '
+                            + 'bleibt stehen, bis die Ursache behoben ist.',
+                            false);
+                    })
+                    .catch(function (err) {
+                        after('Fehler: ' + err.message + ' (es wurde nichts '
+                            + 'geschrieben — die Liste zeigt den '
+                            + 'unveraenderten Stand).', true);
+                    });
+            },
+            onRevoke: function (body) {
+                postJson('/api/escalations/ack/revoke', body)
+                    .then(function (r) {
+                        after('Vermerk #' + r.ack_id + ' widerrufen '
+                            + '(Beleg #' + r.audit_seq + '). Der urspruengliche '
+                            + 'Vermerk bleibt als Beleg erhalten.', false);
+                    })
+                    .catch(function (err) {
+                        after('Fehler: ' + err.message + ' (es wurde nichts '
+                            + 'geschrieben — die Liste zeigt den '
+                            + 'unveraenderten Stand).', true);
+                    });
+            }
+        };
+
         fetchJson('/api/escalations').then(function (data) {
             cleanupView();
-            mod.renderEscalation(mainEl, data, {});
-            log('Eskalationen gerendert:', (data.items || []).length);
+            mod.renderEscalation(mainEl, data, opts);
+            log('Eskalationen gerendert:', (data.items || []).length,
+                'quittierbar:', data.acknowledgeable);
         }).catch(function (err) {
             cleanupView();
-            mod.renderEscalation(mainEl, { error: err.message }, {});
+            mod.renderEscalation(mainEl, { error: err.message }, opts);
         });
     }
 

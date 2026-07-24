@@ -1636,3 +1636,61 @@ tr.aiw-cff-nichtrelevant { opacity: 0.7; }
   border-left: 4px solid var(--gelb);
   border-radius: 6px; padding: 8px 12px; max-width: 780px;
 }
+
+/* ========================================================================
+ * Build 518 (AP-2G / Idee 23) — QUITTIERUNG in der Eskalations-Sicht.
+ *
+ * WICHTIG FUER DIE GESTALTUNG: eine quittierte Meldung wird NICHT
+ * abgeschwaecht. Kein Ausgrauen, keine geringere Deckkraft, keine
+ * Verschiebung nach unten. Der Vermerk sagt "gesehen", nicht "erledigt" —
+ * der Fall liegt weiter. Wuerde die Zeile blasser, waere das eine
+ * gestalterische Behauptung, die die Daten nicht hergeben (Grundregel 1).
+ * Der Vermerk bekommt deshalb NUR eine eigene Zelle, keine Wirkung auf die
+ * Zeile.
+ *
+ * Ein UEBERHOLTER Vermerk (ack.outdated: der Fall ist heute laenger
+ * inaktiv als bei der Quittierung) wird dagegen sehr wohl hervorgehoben —
+ * das ist eine Verschlechterung und keine Beruhigung.
+ * ======================================================================== */
+
+.aiw-esk-ackcell { min-width: 260px; }
+
+.aiw-esk-ackline {
+  font-size: 12px;
+  color: #4a5158;
+  margin-bottom: 4px;
+}
+.aiw-esk-ackline.is-keiner { color: #7f8c8d; font-style: italic; }
+.aiw-esk-ackline.is-gueltig { color: #1d6b45; }
+/* Ueberholt: die Lage hat sich seit dem Vermerk VERSCHLECHTERT. */
+.aiw-esk-ackline.is-ueberholt {
+  color: #922b21;
+  font-weight: 600;
+}
+
+.aiw-esk-actions { display: flex; gap: 6px; align-items: center; }
+.aiw-esk-reason {
+  flex: 1 1 auto;
+  min-width: 140px;
+  padding: 3px 6px;
+  font-size: 12px;
+  border: 1px solid var(--line, #b9c2cc);
+  border-radius: 3px;
+}
+.aiw-esk-btn {
+  padding: 3px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+  border: 1px solid var(--line, #b9c2cc);
+  border-radius: 3px;
+  background: var(--flaeche-2, #f4f6fb);
+  cursor: pointer;
+}
+.aiw-esk-btn:hover { background: var(--flaeche-3, #e6ebf5); }
+.aiw-esk-btn:focus-visible { outline: 2px solid var(--akzent, #3a6ea5); }
+
+/* Rueckmeldeleiste der Schreibvorgaenge. Sie ist IMMER im Aufbau, damit
+   eine Meldung den Neuaufbau der Sicht ueberlebt. */
+.aiw-esk-result { font-size: 13px; margin: 0 0 10px; min-height: 1em; }
+.aiw-esk-result.is-ok  { color: var(--gruen); }
+.aiw-esk-result.is-err { color: var(--rot); font-weight: 600; }
