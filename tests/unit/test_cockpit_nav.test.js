@@ -101,7 +101,8 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     // Build 505: 31 (neu: 'alias' - globaler Alias-Katalog, AP-2A/A1).
     // Build 510: 32 (neu: 'merge' - Identitaets-Gruppen, AP-2A/A3).
     // Build 516: 33 (neu: 'escalation' - Eskalationen, AP-2G/Idee 23).
-    expect(api.VIEW_CATALOG.length).toBe(33);
+    // Build 519: 34 (neu: 'nextactions' - Naechstbeste Aktion, AP-2F/Idee 22).
+    expect(api.VIEW_CATALOG.length).toBe(34);
   });
 
   // CN-QUERFUND (Build 478) --------------------------------------------------

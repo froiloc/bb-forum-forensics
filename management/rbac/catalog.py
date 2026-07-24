@@ -242,6 +242,19 @@ CAPABILITIES: Tuple[Capability, ...] = (
                "Eine Eskalation mit Pflichtbegruendung als gesehen vermerken "
                "und einen Vermerk mit Pflichtgrund widerrufen (auditiert; die "
                "Eskalation bleibt sichtbar — quittieren ist kein Erledigen)."),
+    # --- Build 519 (AP-2F / Idee 22): Naechstbeste Aktion (Seed in M028) -----
+    #   Die priorisierte, BELEGTE Arbeitsschlange. Anders als 'escalation.view'
+    #   ist diese Sicht SCHEIN-scope-behaftet gemeint: mit Scope 'eigene' sieht
+    #   eine Ermittlerin ihre eigene Schlange, mit 'alle' die der ganzen
+    #   Dienststelle. Beides ist sinnvoll und beides ist etwas anderes — der
+    #   Scope entscheidet nicht ueber Sichtbarkeit einer Randzeile, sondern
+    #   ueber den ZWECK der Sicht (Selbstorganisation vs. Verteilung).
+    #   Grant an 'investigator' (eigene) und 'supervisor' (alle) per
+    #   policy_admin; default-deny.
+    Capability("nextactions.view", "Naechstbeste Aktion sehen",
+               "Die priorisierte Arbeitsschlange lesen (naechste sinnvolle "
+               "Handlung je offenem Fall, mit belegter Begruendung). Scope "
+               "'eigene' = eigene Faelle, 'alle' = alle Faelle."),
 )
 
 

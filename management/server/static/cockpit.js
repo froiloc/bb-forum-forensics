@@ -138,6 +138,13 @@
         // Fall und damit zu keiner Person; auf 'eigene' verengt haette die
         // Sicht genau die Faelle ausgeblendet, um derentwillen es sie gibt.
         { id: 'escalation', cap: 'escalation.view',      group: 'Ueberblick',     label: 'Eskalationen' },
+        // Build 519 (AP-2F / Idee 22): Naechstbeste Aktion (Frontend zu 519).
+        // Gruppe 'Ueberblick' neben Dashboard und Eskalationen: alle drei
+        // beantworten 'worauf muss ich JETZT schauen' — das Dashboard mit
+        // Zustaenden, die Eskalationen mit Schwellenverletzungen, diese Sicht
+        // mit der naechsten HANDLUNG. SCOPE-BEHAFTET: mit 'eigene' ist es die
+        // eigene Arbeitsschlange, mit 'alle' die Verteilsicht der Leitung.
+        { id: 'nextactions', cap: 'nextactions.view',    group: 'Ueberblick',     label: 'Nächstbeste Aktion' },
         { id: 'assignment', cap: 'assignment.edit',      group: 'Verwaltung',     label: 'Zuweisung' },
         // Fall-Erkennung (Build 384): haengt an DERSELBEN Faehigkeit wie die
         // Zuweisung — das Backend (Build 383) schuetzt /api/cases/detect und
@@ -680,6 +687,31 @@
         }).catch(function (err) {
             cleanupView();
             mod.renderEscalation(mainEl, { error: err.message }, opts);
+        });
+    }
+
+    // loadNextActions: /api/next_actions holen und ueber
+    // cockpit_nextactions.js rendern (Build 519 / AP-2F, Idee 22).
+    //
+    // Wie bei den Eskalationen wird ein Fehlschlag als {error: ...} an das
+    // Modul DURCHGEREICHT statt die Sicht zu leeren: eine leere Schlange im
+    // Fehlerfall haette 'nichts zu tun' behauptet (Grundregel 1).
+    function loadNextActions(mainEl) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitNextActions : null;
+        if (!mod) {
+            renderError(mainEl, 'Modul "Naechstbeste Aktion" nicht geladen.');
+            return;
+        }
+        fetchJson('/api/next_actions').then(function (data) {
+            cleanupView();
+            mod.renderNextActions(mainEl, data, {});
+            log('Naechstbeste Aktion gerendert:', (data.items || []).length,
+                'scope', data.scope);
+        }).catch(function (err) {
+            cleanupView();
+            mod.renderNextActions(mainEl, { error: err.message }, {});
         });
     }
 
@@ -2644,7 +2676,13 @@
         // Sie kennt KEINEN Filter — es gibt entsprechend auch keinen Zweig in
         // exportParams; der Export bildet zwangslaeufig denselben Ausschnitt
         // ab wie die Sicht.
-        escalation: 1
+        escalation: 1,
+        // Build 519: die Arbeitsschlange belegt, was zu einem Zeitpunkt
+        // anstand — ein Beleg fuer die Leitung. Sie kennt keinen Filter
+        // (der Umfang kommt aus dem Recht), also braucht sie auch keinen
+        // exportParams-Zweig; der Export bildet zwangslaeufig denselben
+        // Ausschnitt ab wie die Sicht.
+        nextactions: 1
     };
 
     // exportParams: die Sicht-Parameter, die der Export MITBEKOMMEN muss, damit
@@ -2763,6 +2801,8 @@
             loadWorkload(mainEl);
         } else if (viewId === 'escalation') {
             loadEscalation(mainEl);
+        } else if (viewId === 'nextactions') {
+            loadNextActions(mainEl);
         } else if (viewId === 'capacity') {
             loadCapacity(mainEl);
         } else if (viewId === 'policy') {
@@ -2878,6 +2918,13 @@
                 loadAlias();
             } else if (state.activeId === 'workload') {
                 loadWorkload();
+            } else if (state.activeId === 'nextactions') {
+                // Die Arbeitsschlange leitet sich AUSSCHLIESSLICH aus dem
+                // Fallzustand ab; genau dessen Aenderungen erzeugen die
+                // audit_log-Belege, auf die die SSE triggert. Eine erledigte
+                // Aufgabe darf nicht stehen bleiben. Die Sicht haelt keinen
+                // Eingabezustand, den ein Reload verwerfen koennte.
+                loadNextActions();
             } else if (state.activeId === 'escalation') {
                 // Eskalationen leiten sich AUSSCHLIESSLICH aus dem Fallzustand
                 // ab (Status, Zuweisung, letzte Aktivitaet). Genau diese

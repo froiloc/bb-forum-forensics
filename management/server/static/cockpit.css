@@ -1694,3 +1694,58 @@ tr.aiw-cff-nichtrelevant { opacity: 0.7; }
 .aiw-esk-result { font-size: 13px; margin: 0 0 10px; min-height: 1em; }
 .aiw-esk-result.is-ok  { color: var(--gruen); }
 .aiw-esk-result.is-err { color: var(--rot); font-weight: 600; }
+
+/* ========================================================================
+ * Build 519 (AP-2F / Idee 22) — NAECHSTBESTE AKTION (Arbeitsschlange).
+ *
+ * Die BEGRUENDUNGS-Spalte bekommt bewusst den meisten Platz. Eine
+ * Arbeitsschlange, die nur die Handlung nennt, ist ein Befehl; eine, die
+ * ihre Grundlage zeigt, ist ein Beleg. Sie wird deshalb NICHT gekuerzt
+ * und NICHT in ein Tooltip verschoben.
+ *
+ * 'is-unbekannt' faengt eine kuenftige Dringlichkeitsstufe ab: sie faellt
+ * durch die gestrichelte Umrandung auf, statt still wie 'routine'
+ * auszusehen.
+ * ======================================================================== */
+
+.aiw-na-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 14px;
+  font-size: 13px;
+}
+.aiw-na-table th {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 2px solid var(--line, #d5dbe1);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.aiw-na-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line, #e6eaee);
+  vertical-align: top;
+}
+.aiw-na-row.is-dringend  { box-shadow: inset 4px 0 0 var(--rot); }
+.aiw-na-row.is-bald      { box-shadow: inset 4px 0 0 var(--gelb); }
+.aiw-na-row.is-routine   { box-shadow: inset 4px 0 0 var(--gruen); }
+.aiw-na-row.is-unbekannt { box-shadow: inset 4px 0 0 #7f8c8d; outline: 1px dashed #7f8c8d; }
+
+.aiw-na-urg { font-weight: 600; white-space: nowrap; }
+.aiw-na-case, .aiw-na-ts, .aiw-na-ampel, .aiw-na-status {
+  white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.aiw-na-action { font-weight: 600; }
+/* Die Grundlage der Empfehlung — breiteste Spalte, ungekuerzt. */
+.aiw-na-reason { color: #33383d; min-width: 280px; }
+/* 'NICHT zugewiesen' ist die Aussage, auf die es hier ankommt. */
+.aiw-na-assigned { white-space: nowrap; }
+
+/* Echter Leerbefund — gruen, MIT der Grundlage (Zahl der geprueften Faelle).
+   Ein blosses "keine Eintraege" waere nicht nachpruefbar. */
+.aiw-na-leer {
+  background: #eafaf1; border: 1px solid #a9dfbf;
+  border-left: 5px solid var(--gruen);
+  border-radius: 6px; padding: 12px 16px; margin: 0 0 14px;
+  color: #1d6b45; font-size: 13px;
+}

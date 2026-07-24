@@ -212,6 +212,10 @@ from management.cases.escalation import (
     EscalationThresholds,
 )
 from management.cases.escalation_repo import EscalationRepo
+# Build 519 (AP-2F / Idee 22): Naechstbeste Aktion. Wie bei Ueberlast und
+# Eskalation war das Read-Model aus Build 452/469 nur ueber die CLI da.
+from management.cases.next_actions import queue_to_dict
+from management.cases.next_actions_repo import NextActionsRepo
 # Build 517 (AP-2G / Idee 23): der auditierte SCHREIBPFAD zur Eskalation
 # (Quittierung). Befund Uebergabe 440-453 §3.3 — bis Build 516 war die Sicht
 # rein auswertend.
@@ -364,6 +368,14 @@ CAP_ESCALATION_VIEW = "escalation.view"
 # nicht fuer die Behoerde festhalten, dass etwas gesehen und veranlasst wurde.
 # Ein Lese-Grant darf nie ein Schreibrecht mitbringen.
 CAP_ESCALATION_ACK = "escalation.ack"
+
+# Build 519 (AP-2F / Idee 22): Naechstbeste Aktion (Seed in M028).
+# SCOPE-BEHAFTET, und hier bestimmt der Scope den ZWECK der Sicht:
+# 'eigene' = die eigene Arbeitsschlange (Selbstorganisation), 'alle' =
+# die der ganzen Dienststelle (Verteilung). Anders als bei
+# CAP_ESCALATION_VIEW verengt der Scope hier keinen Beleg, sondern
+# beantwortet eine andere Frage.
+CAP_NEXTACTIONS_VIEW = "nextactions.view"
 
 logger = logging.getLogger(__name__)
 
@@ -654,6 +666,9 @@ class ManagementApp:
         # Build 515 (AP-2G / Idee 23): Eskalationen, auswertend.
         if path == "/api/escalations":
             return self._escalations(person_id)
+        # Build 519 (AP-2F / Idee 22): Naechstbeste Aktion (Arbeitsschlange).
+        if path == "/api/next_actions":
+            return self._next_actions(person_id)
         if path == "/api/capacity":
             return self._capacity(person_id, query)
         if path == "/api/policy":
@@ -1047,6 +1062,48 @@ class ManagementApp:
         payload["acknowledgeable"] = bool(
             migriert and policy.can(CAP_ESCALATION_ACK))
         payload["ack_migrated"] = migriert
+        return Response.json(200, payload)
+
+    def _next_actions(self, person_id: int) -> Response:
+        """
+        Naechstbeste Aktion (read-only, Build 519 zu Build 452/469, Idee 22).
+
+        SCOPE ENTSCHEIDET UEBER DEN ZWECK, NICHT UEBER DIE VOLLSTAENDIGKEIT:
+        mit 'alle' ist es die Verteilsicht der Leitung, mit 'eigene' die
+        eigene Arbeitsschlange. Beide sind IN SICH vollstaendig — anders als
+        bei der Lastverteilung (Build 513) faellt hier nichts heraus, was zur
+        Beurteilung des Gezeigten noetig waere. Deshalb braucht diese Sicht
+        auch keinen 'scope_limited'-Hinweis: 'meine Faelle' ist die Frage,
+        nicht ein Ausschnitt der Antwort. Der angewandte Scope faehrt
+        trotzdem MIT (das Read-Model liefert ihn), damit der Akten-Export
+        nicht offenlaesst, wessen Schlange abgebildet ist.
+
+        ZAEHLUNG STATT VERSCHWEIGEN: abgeschlossene Faelle brauchen keine
+        Aktion und stehen nicht in der Schlange — sie werden aber GEZAEHLT
+        ('done_excluded', Build 452). Ohne diese Zahl saehe eine kurze
+        Schlange bei vielen Faellen wie ein Datenfehler aus.
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_NEXTACTIONS_VIEW):
+            return self._forbidden(CAP_NEXTACTIONS_VIEW)
+        scope = policy.scope(CAP_NEXTACTIONS_VIEW)  # 'alle' | 'eigene' | None
+
+        # Default restriktiv: alles ausser einem ausdruecklichen 'alle' wird
+        # als 'eigene' behandelt (Linie _workload).
+        wirksam = "alle" if scope == "alle" else "eigene"
+
+        con = self._ro_con()
+        try:
+            result = NextActionsRepo(con).compute(
+                scope=wirksam, person_id=person_id, now=int(time.time()))
+        finally:
+            con.close()
+
+        payload = queue_to_dict(result)
+        # Der GRANT-Scope faehrt zusaetzlich mit: 'scope' im Read-Model ist der
+        # ANGEWANDTE Wert; wer die Antwort spaeter liest, soll auch sehen,
+        # welches Recht dahinterstand (None = kein Scope gesetzt -> 'eigene').
+        payload["granted_scope"] = scope
         return Response.json(200, payload)
 
     def _escalation_ack(self, actor_person_id: int,

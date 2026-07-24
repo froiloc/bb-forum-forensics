@@ -174,7 +174,8 @@ class ManagementRbacSchemaTests(unittest.TestCase):
         # +2 ab Build 503 ('personnel.view'/'personnel.edit', M021) -> 33.
         # +1 ab Build 515 ('escalation.view', geseedet in M026) -> 34.
         # +1 ab Build 517 ('escalation.ack', geseedet in M027) -> 35.
-        self.assertEqual(len(cat_caps), 35)
+        # +1 ab Build 519 ('nextactions.view', geseedet in M028) -> 36.
+        self.assertEqual(len(cat_caps), 36)
         self.assertIn("external.view", cat_caps)
         self.assertIn("external.edit", cat_caps)
         self.assertIn("templates.edit", cat_caps)
@@ -195,6 +196,8 @@ class ManagementRbacSchemaTests(unittest.TestCase):
         self.assertIn("escalation.view", cat_caps)
         # Quittierung (Build 517): escalation.ack (Seed in M027).
         self.assertIn("escalation.ack", cat_caps)
+        # Naechstbeste Aktion (Build 519): nextactions.view (Seed in M028).
+        self.assertIn("nextactions.view", cat_caps)
         # Build 401: Betreuungs-Notizen (Seed in M012).
         self.assertIn("mentoring_notes.view", cat_caps)
         self.assertIn("mentoring_notes.edit", cat_caps)

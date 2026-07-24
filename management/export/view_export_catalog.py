@@ -137,6 +137,15 @@ VIEW_EXPORTS: Tuple[ViewExportSpec, ...] = (
             SectionSpec("items", "Gemeldete Eskalationen"),
         ),
     ),
+    # Build 519 (AP-2F / Idee 22): die Arbeitsschlange belegt, was zu einem
+    # bestimmten Zeitpunkt anstand. Sie hat KEINEN eigenen Abschnitt fuer den
+    # Umfang - 'scope'/'granted_scope' erscheinen ueber den Auto-Modus
+    # (Regel 2) unter 'Weitere Daten' und stehen zusaetzlich im Dokumentkopf.
+    ViewExportSpec(
+        view_id="nextactions", label="Nächstbeste Aktion",
+        api_path="/api/next_actions",
+        sections=(SectionSpec("items", "Arbeitsschlange"),),
+    ),
     ViewExportSpec(
         view_id="capacity", label="Kapazität",
         api_path="/api/capacity", requires=("start",),

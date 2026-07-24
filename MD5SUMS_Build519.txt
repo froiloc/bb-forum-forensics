@@ -1,0 +1,19 @@
+# MD5-Pruefsummen Build 519 (aiw_webserver, v0.8.519) — erzeugt 2026-07-24
+# Basis: Build 518. Bitte VOR dem Einspielen gegen die VM abgleichen.
+# HINWEIS: cockpit.html faellt unter die .gitignore-Regel '*.html' -> git add -f
+#
+a4c497d069e77cc9accccf7bfae6aac3  build.json
+7bbff5ec9f7f1b29ca44ed15a885100b  management/rbac/catalog.py
+6b8aa0fb570f5847f6a3d7e1f06d0b93  management/migrations/coordinator/m028_nextactions_rbac.py
+7b7fe846e48dfd0fc08a9675ca1070be  management/server/management_app.py
+45bf8c4a85377b5158f153f83873bd8b  management/export/view_export_catalog.py
+b331830af58f513c001bbdb79f4d2ead  management/server/static/cockpit_nextactions.js
+bb51c2da8b9367d529ccfe1d81790673  management/server/static/cockpit.js
+240a4488446c83a373fdb5ce1c87626c  management/server/static/cockpit.html
+865aeb22d670fc84acfc1c7ba8e63c0f  management/server/static/cockpit.css
+47f337d82214c574bce5da2c2d558332  tests/test_management_next_actions_api.py
+a5fd3329f25219399050f47ed090d9fa  tests/unit/test_cockpit_nextactions.test.js
+154e62f6d0445b35a5e772e70fafea02  tests/unit/test_cockpit_nav.test.js
+99a22f698789e2579983901bed8a17a9  tests/test_management_rbac_schema.py
+9486d3ff2fc4dfedb05e7f01fcd563aa  tests/test_demo_seed.py
+50c063300fde6aa78fffbd2f2c9173e3  tests/test_management_dashboard.py

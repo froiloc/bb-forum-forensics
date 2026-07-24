@@ -66,7 +66,10 @@
   Build 518: Quittierung IN der Eskalations-Sicht (Recht escalation.ack).
              Quittieren ist KEIN Erledigen — die Meldung bleibt stehen und
              traegt ihren Vermerk; Widerruf statt Loeschen.
-  Version: v0.8.518 · Build: 518 · 2026-07-24
+  Build 519: Naechstbeste Aktion (cockpit_nextactions.js) — AP-2F/Idee 22,
+             priorisierte Arbeitsschlange. Recht: nextactions.view (scope-
+             behaftet: 'eigene' = eigene Schlange, 'alle' = Verteilsicht).
+  Version: v0.8.519 · Build: 519 · 2026-07-24
   =============================================================================
 -->
 <link rel="stylesheet" href="/static/cockpit.css">
@@ -90,6 +93,9 @@
 <!-- Eskalationen (AP-2G/Idee 23, Build 516): rein auswertende Sicht zu
      /api/escalations. Recht: escalation.view (Seed M026, default-deny). -->
 <script src="/static/cockpit_escalation.js" defer></script>
+<!-- Naechstbeste Aktion (AP-2F/Idee 22, Build 519): priorisierte, belegte
+     Arbeitsschlange zu /api/next_actions. Recht: nextactions.view. -->
+<script src="/static/cockpit_nextactions.js" defer></script>
 <script src="/static/cockpit_capacity.js" defer></script>
 <script src="/static/cockpit_policy.js" defer></script>
 <script src="/static/cockpit_mycases.js" defer></script>
