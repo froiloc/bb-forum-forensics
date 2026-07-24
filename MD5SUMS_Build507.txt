@@ -1,0 +1,13 @@
+# MD5-Pruefsummen Build 507 (aiw_webserver, v0.8.507) — erzeugt 2026-07-24
+# Basis: Build 506 (1fbeccd). Bitte VOR dem Einspielen gegen die VM abgleichen.
+#
+2ba765b28f5f480d93b6050ce78f35a7  build.json
+623a02d09b3766fd49c00f157951962a  management/crossref/crossfinding_channel_status.py
+8ee2b048c7e7a2a2ae01871b16da70b1  management/crossref/crossfinding_channel_repo.py
+be25e38c9770c9efa71aa0940acd9b9c  management/migrations/coordinator/m024_crossfinding_feedback.py
+38a9d3dbd0e5378042a48d55657b56de  management/audit/event_types.py
+941fb58c17610453926316d52aeecb9a  management/server/management_app.py
+068c4a60f31126d048fe2368853e8279  tests/test_crossfinding_channel_status.py
+d08261adcf02427eae80483ff234f14a  tests/test_crossfinding_channel_repo.py
+ecb78d0cdcaefd08689ae4328ba22a07  tests/test_crossfindings_api.py
+0fd0c3763328115982fe289f7f551d0f  tests/test_management_dashboard.py

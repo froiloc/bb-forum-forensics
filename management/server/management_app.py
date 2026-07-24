@@ -231,6 +231,14 @@ from management.crossref.crossfindings_repo import CrossfindingsRepo
 # CrossrefError und die Rechte crossref.view/edit der gleichen F5-Familie mit
 # (keine Rechte-Inflation — Entscheidungslinie Build 474 §3).
 from management.crossref.subject_alias_repo import ALIAS_KINDS, SubjectAliasRepo
+# Build 507 (AP-2A, Idee 7): Querfund-Rueckkanal. Die Zustandslogik liegt in
+# crossfinding_channel_status.py (reine Logik) — hier wird sie nur verdrahtet.
+from management.crossref.crossfinding_channel_repo import (
+    CrossfindingChannelRepo,
+)
+from management.crossref.crossfinding_channel_status import (
+    CrossfindingChannelError,
+)
 from management.audit.audit_explorer import AuditExplorer, AuditExplorerError
 from management.audit import audit_export
 from management.export.context_builder import build_export_context
@@ -3298,11 +3306,20 @@ class ManagementApp:
 
     def _crossfindings(self, actor_person_id: int, query) -> Response:
         """
-        GET /api/crossfindings — REIN LESENDE Meta-Uebersicht der Querfunde
-        ("Fund ueber B im Fall A") aus pending_cross_annotations, offene zuerst.
-        Optional ?only_open=1 filtert auf noch nicht integrierte Funde. Recht
-        crossref.view (gleiche F5-Familie wie der Identitaets-Katalog).
+        GET /api/crossfindings — Meta-Uebersicht der Querfunde ("Fund ueber B
+        im Fall A") aus pending_cross_annotations. Recht crossref.view.
         Duplziert NICHT die automatische Erfassung/den Transport — nur Anzeige.
+
+        ZWEI UNABHAENGIGE FILTER (bewusst getrennt, sie meinen Verschiedenes):
+          ?only_open=1            TRANSPORTstand: noch nicht integriert.
+          ?only_unacknowledged=1  RUECKKANALstand (Build 507): noch nicht
+                                  quittiert/bewertet.
+
+        RUECKWAERTSVERTRAEGLICH (Build 507): 'findings' und 'counts' behalten
+        exakt ihre bisherige Form und Bedeutung; der Rueckkanal kommt ADDITIV
+        als Felder 'feedback_*'/'allowed_next' je Zeile und als eigener Block
+        'feedback_counts' hinzu. Das Frontend aus Build 478 bleibt damit
+        unveraendert gueltig.
         """
         policy = self.resolve_policy(actor_person_id)
         if not policy.can(CAP_CROSSREF_VIEW):
@@ -3310,12 +3327,19 @@ class ManagementApp:
 
         raw = self._q1(query, "only_open")
         only_open = str(raw or "").lower() in ("1", "true", "yes", "ja")
+        raw_unack = self._q1(query, "only_unacknowledged")
+        only_unack = str(raw_unack or "").lower() in ("1", "true", "yes", "ja")
         con = self._ro_con()
         try:
             repo = CrossfindingsRepo(con)
+            channel = CrossfindingChannelRepo(con)
             return Response.json(200, {
-                "findings": repo.list(only_open=only_open),
+                # Transport-Sicht (Build 474) — Form unveraendert.
+                "findings": channel.list_with_status(
+                    only_open=only_open, only_unacknowledged=only_unack),
                 "counts": repo.counts(),
+                # Rueckkanal-Sicht (Build 507) — additiv.
+                "feedback_counts": channel.counts(),
             })
         except CrossrefError as exc:
             # Fehlendes Substrat ist ein Betriebsfehler, kein Leerbefund.
@@ -3367,6 +3391,62 @@ class ManagementApp:
         except Exception as exc:                       # noqa: BLE001
             logger.exception("Kreuzbezug-Eintrag fehlgeschlagen")
             return Response.json(500, {"error": "crossref_set_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, **res})
+
+    def _crossfindings_decide(self, actor_person_id: int,
+                              payload: Dict[str, Any]) -> Response:
+        """
+        POST /api/crossfindings/decide — {finding_id, status_code, reason?}.
+        Fuehrt einen Querfund im RUECKKANAL in den Zielzustand (zugestellt /
+        quittiert / verwertet / nicht_relevant), auditiert. Recht crossref.edit.
+
+        Fehlerbilder, bewusst unterschieden:
+          400 unzulaessiger Uebergang / fehlender Pflichttext / unbekannter
+              Zielzustand  -> FACHLICH, mit sprechendem Text aus der
+              Zustandsmaschine (die Ermittlerin soll den Grund lesen koennen).
+          404 unbekannter Querfund.
+          503 fehlendes Substrat (Linie Build 474: Betriebsfehler != Leerbefund).
+        """
+        policy = self.resolve_policy(actor_person_id)
+        if not policy.can(CAP_CROSSREF_EDIT):
+            return self._forbidden(CAP_CROSSREF_EDIT)
+
+        try:
+            finding_id = int(payload.get("finding_id"))
+        except (TypeError, ValueError):
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": "finding_id fehlt/ungueltig."})
+        target = str(payload.get("status_code", "") or "")
+
+        con = self._rw_con()
+        try:
+            repo = CrossfindingChannelRepo(
+                con, CoordinatorWriter(con, AuditLog(con)))
+            res = repo.decide(
+                finding_id=finding_id, target_status=target,
+                reason=str(payload.get("reason", "") or ""),
+                actor_id=actor_person_id)
+        except CrossfindingChannelError as exc:
+            # Zustandsmaschine: unzulaessiger Uebergang / Pflichttext fehlt.
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except CrossrefError as exc:
+            text = str(exc)
+            if "Unbekannter Querfund" in text:
+                return Response.json(404, {"error": "unknown_finding",
+                                           "finding_id": finding_id,
+                                           "detail": text})
+            if "pending_cross_annotations fehlt" in text:
+                return Response.json(503, {"error": "crossfindings_unavailable",
+                                           "detail": text})
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": text})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Querfund-Entscheidung fehlgeschlagen")
+            return Response.json(500, {"error": "crossfindings_decide_failed",
                                        "detail": str(exc)})
         finally:
             con.close()
@@ -4440,6 +4520,9 @@ class ManagementApp:
         # Build 470 (AP-2A): Katalog identifizierter Personen — auditiert.
         if path == "/api/crossref/set":
             return self._crossref_set(person_id, payload)
+        # Build 507 (AP-2A, Idee 7): Querfund-Rueckkanal — auditiert.
+        if path == "/api/crossfindings/decide":
+            return self._crossfindings_decide(person_id, payload)
         # Build 504 (AP-2A, Idee 8): globaler Alias-Katalog — auditiert.
         # Vier getrennte Routen statt einer Sammelroute: Anlegen, Aendern,
         # Widerrufen und Zuruecknehmen sind fachlich verschieden schwer; eine

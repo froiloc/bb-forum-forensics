@@ -16,7 +16,16 @@
 #             entfernter Waechter genau der stille Leerbefund waere, den
 #             Grundregel 1 verbietet.
 #
-# Version: v0.8.506 · Build: 506 · 2026-07-24 (M023-Anpassung)
+# CX-API06 — POST /api/crossfindings/decide ohne 'crossref.edit' -> 403.
+# CX-API07 — decide -> GET zeigt den Rueckkanal-Zustand; die ALTFELDER aus
+#            Build 474 sind unveraendert vorhanden (Rueckwaertsvertraeglichkeit).
+# CX-API08 — unzulaessiger Uebergang -> 400 mit sprechendem Text; fehlender
+#            Pflichttext -> 400.
+# CX-API09 — unbekannter finding_id -> 404 (nicht 400, nicht 500).
+# CX-API10 — Filter ?only_unacknowledged=1 wirkt auf den RUECKKANAL, waehrend
+#            ?only_open=1 weiterhin auf den TRANSPORT wirkt.
+#
+# Version: v0.8.507 · Build: 507 · 2026-07-24 (Rueckkanal-Endpunkte)
 # =============================================================================
 
 import json
@@ -94,6 +103,9 @@ class CrossfindingsApiTests(unittest.TestCase):
         self.writer = CoordinatorWriter(self.con, self.audit)
         self.rbac = RbacRepo(self.con, self.writer)
         self.rbac.grant("supervisor", "crossref.view", scope="alle", actor_id=1)
+        # Build 507: der Rueckkanal schreibt -> crossref.edit. Person 2 bleibt
+        # bewusst OHNE dieses Recht (Deny-Nachweis CX-API06).
+        self.rbac.grant("supervisor", "crossref.edit", scope="alle", actor_id=1)
         self.rbac.assign_role(1, "supervisor", actor_id=1)
         self.rbac.assign_role(2, "investigator", actor_id=1)
         self.app = ManagementApp(self.db_path)
@@ -122,6 +134,14 @@ class CrossfindingsApiTests(unittest.TestCase):
             [(1, 800, "/x/e1.db", "a1", self.now - 20, None),
              (1, 801, "/x/e2.db", "a2", self.now - 5, self.now)])
         self.con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+
+    def _first_finding_id(self):
+        """id des OFFENEN Fundes (subject 800) — Build 507 braucht die echte
+        pending_cross_annotations.id, nicht die subject_id."""
+        row = self.con.execute(
+            "SELECT id FROM pending_cross_annotations "
+            "WHERE annotation_local_id='a1'").fetchone()
+        return int(row["id"])
 
     # CX-API01 ---------------------------------------------------------------
     def test_api01_forbidden_without_view(self):
@@ -221,6 +241,102 @@ class CrossfindingsApiTests(unittest.TestCase):
         self.assertEqual(body["findings"], [])
         self.assertEqual(body["counts"],
                          {"total": 0, "offen": 0, "integriert": 0})
+
+
+    # CX-API06 (Build 507) ---------------------------------------------------
+    def test_api06_decide_forbidden_without_edit(self):
+        self._pca_with_rows()
+        fid = self._first_finding_id()
+        r = self.app.dispatch_write(2, "/api/crossfindings/decide", {
+            "finding_id": fid, "status_code": "quittiert"})
+        self.assertEqual(r.status, 403)
+        self.assertEqual(self._json(r)["capability"], "crossref.edit")
+
+    # CX-API07 (Build 507) ---------------------------------------------------
+    def test_api07_decide_then_get(self):
+        self._pca_with_rows()
+        fid = self._first_finding_id()
+
+        r = self.app.dispatch_write(1, "/api/crossfindings/decide", {
+            "finding_id": fid, "status_code": "quittiert"})
+        self.assertEqual(r.status, 200)
+        body = self._json(r)
+        self.assertTrue(body["ok"])
+        self.assertTrue(body["created"])
+        self.assertGreater(body["audit_seq"], 0)
+
+        got = self._json(self.app.dispatch(1, "/api/crossfindings"))
+        zeile = [f for f in got["findings"] if f["id"] == fid][0]
+        self.assertEqual(zeile["feedback_status"], "quittiert")
+        self.assertFalse(zeile["feedback_final"])
+        self.assertEqual(zeile["decided_name"], "Chefin")
+        # Der Rueckkanal-Block kommt ADDITIV dazu ...
+        self.assertEqual(got["feedback_counts"]["quittiert"], 1)
+        self.assertEqual(got["feedback_counts"]["offen"], 1)
+        # ... und die ALTFELDER aus Build 474 sind unveraendert vorhanden.
+        for feld in ("id", "subject_id", "source_iid", "source_name",
+                     "has_case", "annotation_local_id", "db_path",
+                     "created_at", "integrated_at", "status"):
+            self.assertIn(feld, zeile, feld)
+        self.assertEqual(got["counts"],
+                         {"total": 2, "offen": 1, "integriert": 1})
+
+    # CX-API08 (Build 507) ---------------------------------------------------
+    def test_api08_invalid_transition_and_missing_reason(self):
+        self._pca_with_rows()
+        fid = self._first_finding_id()
+
+        # Pflichttext fehlt -> 400 mit sprechendem Text.
+        r_leer = self.app.dispatch_write(1, "/api/crossfindings/decide", {
+            "finding_id": fid, "status_code": "verwertet", "reason": "  "})
+        self.assertEqual(r_leer.status, 400)
+        self.assertIn("Pflichtangabe", self._json(r_leer)["detail"])
+
+        # Endzustand setzen ...
+        self.app.dispatch_write(1, "/api/crossfindings/decide", {
+            "finding_id": fid, "status_code": "nicht_relevant",
+            "reason": "Namensdoppel"})
+        # ... und dann zurueckdrehen wollen -> 400, nicht 500.
+        r_back = self.app.dispatch_write(1, "/api/crossfindings/decide", {
+            "finding_id": fid, "status_code": "quittiert"})
+        self.assertEqual(r_back.status, 400)
+        self.assertIn("ENDGUELTIG", self._json(r_back)["detail"])
+
+        # Unbekannter Zielzustand -> ebenfalls 400.
+        r_bad = self.app.dispatch_write(1, "/api/crossfindings/decide", {
+            "finding_id": fid, "status_code": "quatsch"})
+        self.assertEqual(r_bad.status, 400)
+
+        # Fehlende finding_id -> 400.
+        self.assertEqual(self.app.dispatch_write(
+            1, "/api/crossfindings/decide",
+            {"status_code": "quittiert"}).status, 400)
+
+    # CX-API09 (Build 507) ---------------------------------------------------
+    def test_api09_unknown_finding_404(self):
+        self._pca_with_rows()
+        r = self.app.dispatch_write(1, "/api/crossfindings/decide", {
+            "finding_id": 999999, "status_code": "quittiert"})
+        self.assertEqual(r.status, 404)
+        self.assertEqual(self._json(r)["error"], "unknown_finding")
+
+    # CX-API10 (Build 507) ---------------------------------------------------
+    def test_api10_unacknowledged_filter(self):
+        self._pca_with_rows()
+        fid = self._first_finding_id()
+        self.app.dispatch_write(1, "/api/crossfindings/decide", {
+            "finding_id": fid, "status_code": "quittiert"})
+
+        # RUECKKANAL-Filter: der quittierte Fund faellt raus.
+        unack = self._json(self.app.dispatch(
+            1, "/api/crossfindings", {"only_unacknowledged": ["1"]}))
+        self.assertNotIn(fid, [f["id"] for f in unack["findings"]])
+        self.assertEqual(len(unack["findings"]), 1)
+
+        # TRANSPORT-Filter wirkt weiterhin eigenstaendig (fid ist der offene).
+        offen = self._json(self.app.dispatch(
+            1, "/api/crossfindings", {"only_open": ["1"]}))
+        self.assertEqual([f["id"] for f in offen["findings"]], [fid])
 
 
 if __name__ == "__main__":

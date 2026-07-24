@@ -197,6 +197,19 @@ class EventType:
     SUBJECT_ALIAS_RETRACTED: str = "subject_alias_retracted"
     SUBJECT_ALIAS_REINSTATED: str = "subject_alias_reinstated"
 
+    # --- Build 507: Querfund-Rueckkanal (crossfinding_feedback, M024, Idee 7)
+    #   EIN Beleg PRO ZUSTANDSUEBERGANG im menschlichen Umgang mit einem
+    #   Querfund. Er beantwortet, was 'integrated_at' NICHT beantwortet: hat
+    #   ein MENSCH den Fund gesehen, und was ist daraus geworden?
+    #   EIN Ereignistyp fuer alle Uebergaenge (Muster ONBOARDING_STEP_SET /
+    #   PROMOTION_DECIDED): das Payload traegt 'von' und 'nach', damit der
+    #   Audit-Explorer jeden Schritt exakt rekonstruieren kann, ohne dass die
+    #   Typmenge mit jeder Zustandserweiterung waechst.
+    #   Der Freitext (Grund bei 'nicht_relevant', Basis bei 'verwertet') steht
+    #   NICHT im Payload, nur FAKTEN (finding_id, subject_id, von, nach,
+    #   created) + Textlaenge (Sensibilitaetsregel wie M018). mc 2026-07-24.
+    CROSSFINDING_FEEDBACK_SET: str = "crossfinding_feedback_set"
+
     # --- Build 501: AD-Abgleich der Ermittlerstammdaten (M020, ad_sync) -------
     #   AD_SYNC_RUN: EIN Beleg PRO ABGLEICH-LAUF (Klammer) mit den Zaehlern
     #   (neu/umbenannt/Kandidaten) und der Quellgruppe — auch ein Lauf OHNE
@@ -276,6 +289,7 @@ class EventType:
             SUBJECT_ALIAS_UPDATED,
             SUBJECT_ALIAS_RETRACTED,
             SUBJECT_ALIAS_REINSTATED,
+            CROSSFINDING_FEEDBACK_SET,
             AD_SYNC_RUN,
             PERSON_DEACTIVATED,
             PERSON_DEACTIVATION_ABORTED,
