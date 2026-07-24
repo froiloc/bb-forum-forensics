@@ -2539,6 +2539,107 @@
         });
     }
 
+    // =========================================================================
+    // Build 512 (AP-2B/B1): AKTEN-EXPORT der aktiven Sicht.
+    //
+    // Der Knopf ist bewusst EIN Knopf in der Kopfzeile und nicht 29 Knoepfe in
+    // 29 Sichten: er gehoert zur Shell, weil er fuer JEDE exportierbare Sicht
+    // dasselbe tut. So kann eine kuenftige Sicht ihn auch nicht vergessen.
+    //
+    // Die Liste unten spiegelt management/export/view_export_catalog.py. Sie
+    // ist bewusst KEINE zweite Wahrheitsquelle fuer die Rechte: der Server
+    // prueft ohnehin (der Export erbt die Rechtepruefung der Sicht). Sie
+    // steuert NUR, ob der Knopf ANGEBOTEN wird — ein Knopf, der verlaesslich
+    // 404 liefert, waere schlechter als kein Knopf. Faellt die Liste einmal
+    // auseinander, ist der schlimmste Fall eine 404-Seite, kein Datenverlust.
+    var EXPORTABLE_VIEWS = {
+        dashboard: 1, calendar: 1, assignment: 1, cases: 1, mentoring: 1,
+        reports: 1, templates: 1, doctemplates: 1, modules: 1, results: 1,
+        stats: 1, planung: 1, annostats: 1, workload: 1, capacity: 1,
+        support: 1, mycases: 1, myhistory: 1, policy: 1, integrity: 1,
+        audit: 1, promotion: 1, releases: 1, onboarding: 1, personnel: 1,
+        crossref: 1, crossfindings: 1, alias: 1, merge: 1
+    };
+
+    // exportParams: die Sicht-Parameter, die der Export MITBEKOMMEN muss, damit
+    // das Dokument genau den Ausschnitt abbildet, den die Ermittlerin vor sich
+    // hat. Ein Export des GANZEN Bestands, wo die Sicht gefiltert ist, waere
+    // ein irrefuehrender Beleg. REIN (kein DOM) -> vitest-pruefbar.
+    function exportParams(viewId, st) {
+        st = st || {};
+        var p = {};
+        if (viewId === 'alias') {
+            if (st.aliasQuery) {
+                p[/^\d+$/.test(st.aliasQuery) ? 'subject_id' : 'q'] =
+                    st.aliasQuery;
+            }
+            if (st.aliasInclRetracted) { p.include_retracted = '1'; }
+        } else if (viewId === 'merge') {
+            if (st.mergeQuery && /^\d+$/.test(st.mergeQuery)) {
+                p.subject_id = st.mergeQuery;
+            }
+            if (st.mergeInclSplit) { p.include_split = '1'; }
+        } else if (viewId === 'crossfindings') {
+            if (st.cfOnlyOpen) { p.only_open = '1'; }
+            if (st.cfOnlyUnack) { p.only_unacknowledged = '1'; }
+        } else if (viewId === 'onboarding') {
+            if (st.onbPerson != null) { p.person_id = String(st.onbPerson); }
+            if (st.onbKind) { p.kind = st.onbKind; }
+        } else if (viewId === 'capacity') {
+            if (st.capacityPeriod && st.capacityPeriod.start) {
+                p.start = st.capacityPeriod.start;
+            }
+            if (st.capacityPeriod && st.capacityPeriod.end) {
+                p.end = st.capacityPeriod.end;
+            }
+        }
+        return p;
+    }
+
+    // exportUrl: /api/view/export mit view + Sicht-Parametern. REIN.
+    function exportUrl(viewId, st) {
+        var parts = ['view=' + encodeURIComponent(viewId)];
+        var p = exportParams(viewId, st);
+        Object.keys(p).forEach(function (k) {
+            parts.push(encodeURIComponent(k) + '=' + encodeURIComponent(p[k]));
+        });
+        return '/api/view/export?' + parts.join('&');
+    }
+
+    function isExportable(viewId) {
+        return EXPORTABLE_VIEWS[viewId] === 1;
+    }
+
+    // refreshExportButton: blendet den Knopf je nach aktiver Sicht ein/aus und
+    // haelt sein Ziel aktuell. Wird bei JEDEM Sichtwechsel gerufen.
+    function refreshExportButton() {
+        var btn = document.getElementById('aiw-export-btn');
+        if (!btn) { return; }
+        // Den href zusaetzlich BEIM KLICK neu berechnen: mehrere Sichten
+        // aendern ihren Filter, ohne selectView zu rufen (z. B. der
+        // 'nur offene'-Umschalter der Querfunde). Ohne das truege der Knopf
+        // einen veralteten Ausschnitt — und ein Export, der einen ANDEREN
+        // Ausschnitt zeigt als die Sicht, waere ein irrefuehrender Beleg.
+        if (!btn.getAttribute('data-wired')) {
+            btn.setAttribute('data-wired', '1');
+            btn.addEventListener('click', function () {
+                if (state.activeId && isExportable(state.activeId)) {
+                    btn.setAttribute('href', exportUrl(state.activeId, state));
+                }
+            });
+        }
+        var vid = state.activeId;
+        if (!vid || !isExportable(vid)) {
+            btn.style.display = 'none';
+            btn.removeAttribute('href');
+            return;
+        }
+        btn.style.display = '';
+        btn.setAttribute('href', exportUrl(vid, state));
+        btn.setAttribute('title', 'Druckbare Aktenfassung dieser Sicht '
+            + '(öffnet in einem neuen Tab)');
+    }
+
     // selectView: aktive Sicht setzen, Nav neu markieren, Inhalt dispatchen.
     // Build 349: 'dashboard' -> Overview; 'integrity' -> Integritaets-Sicht;
     // sonst Platzhalter (weitere Sichten folgen).
@@ -2549,6 +2650,7 @@
         var mainEl = document.getElementById('aiw-main');
         var views = visibleViews(state.capabilities);
         buildNav(navEl, views, state.capabilities, state.activeId, selectView);
+        refreshExportButton();
         if (viewId === 'dashboard') {
             loadOverview(mainEl);
         } else if (viewId === 'integrity') {
@@ -2897,7 +2999,12 @@
         setWho: setWho,
         buildNav: buildNav,
         renderPlaceholder: renderPlaceholder,
-        boot: boot
+        boot: boot,
+        // Build 512 (AP-2B/B1): Akten-Export. Reine Funktionen -> vitest.
+        isExportable: isExportable,
+        exportParams: exportParams,
+        exportUrl: exportUrl,
+        EXPORTABLE_VIEWS: EXPORTABLE_VIEWS
     };
     if (typeof module !== 'undefined' && module.exports) { module.exports = API; }
     if (typeof window !== 'undefined') { window.AIWCockpit = API; }

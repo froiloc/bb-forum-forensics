@@ -1469,3 +1469,45 @@ tr.aiw-cff-nichtrelevant { opacity: 0.7; }
     padding: 8px;
 }
 .aiw-merge-reasonrow .aiw-merge-reason { min-width: 320px; }
+
+/* ===========================================================================
+ * Build 512 (AP-2B/B1) — Akten-Export-Knopf in der Kopfzeile.
+ * Er sitzt neben der Nutzerkennung, weil er zur SHELL gehoert und nicht zu
+ * einer einzelnen Sicht: er tut fuer jede exportierbare Sicht dasselbe.
+ * ======================================================================== */
+
+.aiw-export-btn {
+    display: inline-block;
+    margin-right: 12px;
+    padding: 3px 10px;
+    border: 1px solid var(--linie, #b9c2cc);
+    border-radius: 3px;
+    background: var(--flaeche-2, #f4f6fb);
+    color: var(--ink, #1c1e21);
+    font-size: 13px;
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.aiw-export-btn:hover { background: var(--flaeche-3, #e6ebf5); }
+.aiw-export-btn:focus-visible { outline: 2px solid var(--akzent, #3a6ea5); }
+
+/* Das Cockpit selbst ist eine ARBEITSoberflaeche und nicht fuer Papier
+ * gedacht: wer es direkt druckt, bekommt den Hinweis auf den Akten-Export
+ * statt einer zerrissenen Bildschirmseite. Die druckbare Fassung erzeugt
+ * management/export/view_renderer.py (eigenes @media print). */
+@media print {
+    .aiw-side, .aiw-top, .aiw-integrity { display: none !important; }
+    .aiw-frame { display: block; }
+    .aiw-main { margin: 0; padding: 0; }
+    .aiw-main::before {
+        content: "Hinweis: Für die Akte bitte den „Akten-Export“ verwenden — "
+                 "er trägt Aktenkopf, Erzeugungsvermerk und Prüfsumme.";
+        display: block;
+        border: 1px solid #922b21;
+        color: #922b21;
+        padding: 6px 8px;
+        margin-bottom: 10px;
+        font-size: 12px;
+    }
+}

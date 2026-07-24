@@ -56,7 +56,9 @@
              mit Rueckwaertssuche und Widerruf statt Loeschung.
   Build 510: Identitaets-Gruppen (cockpit_merge.js) — Merge/Split (AP-2A/A3),
              umkehrbar und auditiert.
-  Version: v0.8.510 · Build: 510 · 2026-07-24
+  Build 512: Akten-Export (AP-2B/B1) — ein Knopf in der Kopfzeile, der die
+             AKTIVE Sicht als druckbare Aktenfassung oeffnet.
+  Version: v0.8.512 · Build: 512 · 2026-07-24
   =============================================================================
 -->
 <link rel="stylesheet" href="/static/cockpit.css">
@@ -122,6 +124,16 @@
   <h1>AIW &mdash; Verwaltung</h1>
   <span class="aiw-badge">VS-NfD</span>
   <span class="spacer"></span>
+  <!--
+    Build 512 (AP-2B/B1): Akten-Export der AKTIVEN Sicht. EIN Knopf in der
+    Shell statt 29 Knoepfe in 29 Sichten - so kann eine kuenftige Sicht ihn
+    nicht vergessen. cockpit.js blendet ihn aus, wenn die aktive Sicht keinen
+    Export hat, und haelt das Ziel aktuell (auch beim Klick).
+    target=_blank: die Aktenfassung oeffnet daneben, die Arbeitssicht bleibt
+    stehen. rel=noopener aus Prinzip (kein window.opener-Zugriff).
+  -->
+  <a class="aiw-export-btn" id="aiw-export-btn" target="_blank"
+     rel="noopener" style="display:none">Akten-Export</a>
   <!-- Wird von cockpit.js aus /api/whoami gefuellt (display_name via textContent). -->
   <span class="aiw-who" id="aiw-who">&hellip;</span>
 </header>
