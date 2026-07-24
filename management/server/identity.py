@@ -18,7 +18,13 @@
 #   user_id=1 (Forum-Systemeintrag) ist hier ohne Belang: system_username ist der
 #   Windows-Kontoname der ERMITTLERIN, kein Forum-Benutzer.
 #
-# Version: v0.7.346 · Build: 346 · 2026-07-10
+# Build 501 (AD-Abgleich, Bauplan Build501_502 §5): INAKTIVE Konten
+#   (person.is_active=0, M020 — "Ruhestand"/AD-Entfernung) werden ABGEWIESEN:
+#   ein entfernter Ermittler darf sich nicht mehr am Management-Portal
+#   anmelden. DEFENSIV: fehlt die Spalte (DB vor M020), gilt das Konto als
+#   aktiv (Altbestand bricht nicht).
+#
+# Version: v0.8.501 · Build: 501 · 2026-07-24
 # =============================================================================
 
 import getpass
@@ -65,10 +71,11 @@ class IdentityResolver:
 
         con = self._ro_con()
         try:
+            # SELECT * statt fester Spaltenliste: liefert die M020-Spalten
+            # (is_active, ...) mit, wenn vorhanden, und bricht auf Altbestand
+            # vor M020 nicht (Build 501, defensives Lesen wie PersonRepo).
             row = con.execute(
-                "SELECT id, system_username, display_name, is_investigator, "
-                "       is_supervisor, is_support, created_at "
-                "FROM person WHERE system_username = ?",
+                "SELECT * FROM person WHERE system_username = ?",
                 (name,),
             ).fetchone()
         finally:
@@ -80,4 +87,16 @@ class IdentityResolver:
                 "Anlegen ueber 'python -m management.person.person_admin "
                 "create'." % name
             )
-        return dict(row)
+
+        d = dict(row)
+        # Build 501: inaktive Konten abweisen (kein stiller Teilzugang).
+        if not d.get("is_active", 1):
+            raise IdentityError(
+                "OS-Benutzer %r ist deaktiviert (seit %s%s) und hat keinen "
+                "Zugang zum Management-Portal mehr. Reaktivierung nur ueber "
+                "den AD-Abgleich (Bestaetigungswort) durch die Aufsicht."
+                % (name, d.get("deactivated_at"),
+                   (", Grund: %s" % d["deactivated_reason"])
+                   if d.get("deactivated_reason") else "")
+            )
+        return d

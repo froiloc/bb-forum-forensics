@@ -27,7 +27,18 @@
 #   list_investigators() -> list_persons(). Rein mechanisch, verlustfrei.
 #   Belege der Audit-Kette (target_type='investigator', EventType.
 #   INVESTIGATOR_*) bleiben unveraendert (historische Semantik).
-# Version: v0.7.342 · Build: 342 · 2026-07-10
+# Build 501 (AD-Abgleich, Bauplan Build501_502 §5):
+#   - Lesepfade liefern zusaetzlich is_active/deactivated_at/deactivated_reason
+#     (M020). DEFENSIV: fehlen die Spalten (DB vor M020), wird is_active=1
+#     angenommen, damit Lesewerkzeuge auf Altbestand nicht brechen.
+#   - NEU deactivate()/reactivate(): der "Ruhestand"-Schalter. Deaktivieren
+#     setzt is_active=0 + Zeitstempel + Begruendung — NIE ein DELETE (mc
+#     2026-07-24). Reaktivieren setzt is_active=1 zurueck; die vorherigen
+#     Werte stehen im Audit-Payload (alt->neu). Die WOERTLICHE Bestaetigung
+#     ("Entfernen"/"Reaktivieren") ist bewusst NICHT hier, sondern im
+#     Workflow (ad_sync/sync_executor.py) verankert — das Repo bleibt die
+#     generische, auditierte Stammdaten-Schicht.
+# Version: v0.8.501 · Build: 501 · 2026-07-24
 # =============================================================================
 
 import logging
@@ -42,6 +53,14 @@ logger = logging.getLogger(__name__)
 
 #: Änderbare Flag-Felder (system_username ist Identität und bleibt unverändert).
 _FLAG_FIELDS = ("is_investigator", "is_supervisor", "is_support")
+
+#: Spalten des Basisschemas (vor M020).
+_BASE_COLS = ("id, system_username, display_name, is_investigator, "
+              "is_supervisor, is_support, created_at")
+
+#: Zusatzspalten aus M020 (Build 501). Fehlen sie (Altbestand), wird beim
+#: Lesen is_active=1 / deactivated_at=None / deactivated_reason=None ergänzt.
+_ACTIVE_COLS = ("is_active", "deactivated_at", "deactivated_reason")
 
 
 class PersonError(Exception):
@@ -61,9 +80,8 @@ class PersonRepo:
     def list_persons(self) -> List[Dict[str, Any]]:
         """Alle Ermittler, aufsteigend nach system_username."""
         rows = self._con.execute(
-            "SELECT id, system_username, display_name, is_investigator, "
-            "       is_supervisor, is_support, created_at "
-            "FROM person ORDER BY system_username ASC"
+            "SELECT %s FROM person ORDER BY system_username ASC"
+            % self._select_cols(self._con)
         ).fetchall()
         return [self._as_dict(r) for r in rows]
 
@@ -220,6 +238,131 @@ class PersonRepo:
             meta=meta,
         )
 
+    # ------------------------------------------ Ruhestand (Build 501, M020)
+    def deactivate(
+        self,
+        *,
+        id: Optional[int] = None,
+        system_username: Optional[str] = None,
+        reason: str,
+        actor_id: Optional[int] = None,
+        meta: Optional[Any] = None,
+    ) -> int:
+        """
+        Schaltet einen Ermittler INAKTIV (is_active=0, Zeitstempel,
+        Begruendung) — NIE ein DELETE (mc 2026-07-24; FK cases.assigned_to).
+        Rollen-Flags und person_role bleiben als historischer Beleg
+        unangetastet. Wirft PersonError bei unbekanntem Ermittler, bereits
+        inaktivem Konto, leerer Begruendung oder fehlender M020. Gibt die
+        audit_log-seq zurueck (Beleg PERSON_DEACTIVATED).
+
+        Die woertliche Supervisor-Bestaetigung ("Entfernen") prueft der
+        Workflow (ad_sync/sync_executor.py) — siehe Kopfkommentar.
+        """
+        reason = (reason or "").strip()
+        if not reason:
+            raise PersonError("Begruendung (reason) darf nicht leer sein.")
+        now = int(time.time())
+
+        def _w(con: sqlite3.Connection) -> Dict[str, Any]:
+            row = self._require_m020_row(
+                con, id=id, system_username=system_username)
+            if not row["is_active"]:
+                raise PersonError(
+                    "Ermittler %r ist bereits inaktiv (deaktiviert am %s)."
+                    % (row["system_username"], row["deactivated_at"]))
+            con.execute(
+                "UPDATE person SET is_active = 0, deactivated_at = ?, "
+                "deactivated_reason = ? WHERE id = ?",
+                (now, reason, int(row["id"])),
+            )
+            return {
+                "id": int(row["id"]),
+                "system_username": row["system_username"],
+                "display_name": row["display_name"],
+                "is_active": {"alt": 1, "neu": 0},
+                "deactivated_at": now,
+                "reason": reason,
+            }
+
+        return self._writer.audited_write(
+            do_write=_w,
+            event_type=EventType.PERSON_DEACTIVATED,
+            actor_id=actor_id,
+            target_type="investigator",
+            target_id=str(system_username if system_username is not None else id),
+            meta=meta,
+        )
+
+    def reactivate(
+        self,
+        *,
+        id: Optional[int] = None,
+        system_username: Optional[str] = None,
+        actor_id: Optional[int] = None,
+        meta: Optional[Any] = None,
+    ) -> int:
+        """
+        Nimmt einen inaktiven Ermittler wieder in Betrieb (is_active=1;
+        deactivated_at/-reason werden geleert — die vorherigen Werte stehen
+        im Audit-Payload alt->neu, nichts geht verloren). Wirft PersonError
+        bei unbekanntem Ermittler, aktivem Konto oder fehlender M020. Gibt
+        die audit_log-seq zurueck (Beleg PERSON_REACTIVATED).
+        """
+        def _w(con: sqlite3.Connection) -> Dict[str, Any]:
+            row = self._require_m020_row(
+                con, id=id, system_username=system_username)
+            if row["is_active"]:
+                raise PersonError(
+                    "Ermittler %r ist bereits aktiv." % row["system_username"])
+            con.execute(
+                "UPDATE person SET is_active = 1, deactivated_at = NULL, "
+                "deactivated_reason = NULL WHERE id = ?",
+                (int(row["id"]),),
+            )
+            return {
+                "id": int(row["id"]),
+                "system_username": row["system_username"],
+                "display_name": row["display_name"],
+                "is_active": {"alt": 0, "neu": 1},
+                "deactivated_at": {"alt": row["deactivated_at"], "neu": None},
+                "deactivated_reason": {"alt": row["deactivated_reason"],
+                                       "neu": None},
+            }
+
+        return self._writer.audited_write(
+            do_write=_w,
+            event_type=EventType.PERSON_REACTIVATED,
+            actor_id=actor_id,
+            target_type="investigator",
+            target_id=str(system_username if system_username is not None else id),
+            meta=meta,
+        )
+
+    @staticmethod
+    def _require_m020_row(
+        con: sqlite3.Connection,
+        *,
+        id: Optional[int] = None,
+        system_username: Optional[str] = None,
+    ) -> sqlite3.Row:
+        """
+        Liest eine person-Zeile und verlangt die M020-Spalten (Schreibpfade
+        des Ruhestands-Schalters duerfen auf einer Alt-DB nicht still einen
+        anderen Zustand vortaeuschen).
+        """
+        have = {r[1] for r in con.execute("PRAGMA table_info(person)")}
+        if not all(c in have for c in _ACTIVE_COLS):
+            raise PersonError(
+                "person.is_active fehlt — Migration M020 ist nicht "
+                "angewandt (python -m management.migrate).")
+        row = PersonRepo._get_row(con, id=id, system_username=system_username)
+        if row is None:
+            raise PersonError(
+                "Unbekannter Ermittler (id=%r, system_username=%r)."
+                % (id, system_username))
+        return row
+
     # ------------------------------------------------------------------ intern
     @staticmethod
     def _get_row(
@@ -233,23 +376,34 @@ class PersonRepo:
             raise PersonError(
                 "Genau eines von id / system_username muss angegeben werden."
             )
+        cols = PersonRepo._select_cols(con)
         if id is not None:
             return con.execute(
-                "SELECT id, system_username, display_name, is_investigator, "
-                "       is_supervisor, is_support, created_at "
-                "FROM person WHERE id = ?",
+                "SELECT %s FROM person WHERE id = ?" % cols,
                 (id,),
             ).fetchone()
         return con.execute(
-            "SELECT id, system_username, display_name, is_investigator, "
-            "       is_supervisor, is_support, created_at "
-            "FROM person WHERE system_username = ?",
+            "SELECT %s FROM person WHERE system_username = ?" % cols,
             (system_username,),
         ).fetchone()
 
     @staticmethod
+    def _select_cols(con: sqlite3.Connection) -> str:
+        """
+        Spaltenliste fuer person-SELECTs. Enthaelt die M020-Spalten nur, wenn
+        die DB sie hat (DEFENSIV — Lesewerkzeuge auf Altbestand vor M020
+        duerfen nicht brechen; Schreibpfade deactivate/reactivate verlangen
+        M020 ausdruecklich).
+        """
+        have = {r[1] for r in con.execute("PRAGMA table_info(person)")}
+        if all(c in have for c in _ACTIVE_COLS):
+            return _BASE_COLS + ", " + ", ".join(_ACTIVE_COLS)
+        return _BASE_COLS
+
+    @staticmethod
     def _as_dict(row: sqlite3.Row) -> Dict[str, Any]:
-        return {
+        keys = set(row.keys())
+        d = {
             "id": int(row["id"]),
             "system_username": row["system_username"],
             "display_name": row["display_name"],
@@ -257,4 +411,12 @@ class PersonRepo:
             "is_supervisor": bool(row["is_supervisor"]),
             "is_support": bool(row["is_support"]),
             "created_at": int(row["created_at"]),
+            # M020 (Build 501): Altbestand ohne die Spalten gilt als aktiv.
+            "is_active": bool(row["is_active"]) if "is_active" in keys else True,
+            "deactivated_at": (int(row["deactivated_at"])
+                               if "deactivated_at" in keys
+                               and row["deactivated_at"] is not None else None),
+            "deactivated_reason": (row["deactivated_reason"]
+                                   if "deactivated_reason" in keys else None),
         }
+        return d

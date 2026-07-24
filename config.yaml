@@ -125,6 +125,34 @@ validation:
       transform: "upper"
       hint:      "Behoerdenkuerzel (AIW, R3X, FBL, AMZ oder BRU) gefolgt von Ziffern, z. B. AIW12345"
 
+# =============================================================================
+# Active Directory (Build 501, Bauplan Build501_502 §2).
+#
+# ad.ldap.* — die vier Verbindungsparameter des AD-Abgleichs. Sie ersetzen die
+# .env-Variablen des in der PROD-Umgebung verifizierten PoC 'get-members4.py'
+# (Zuordnung PoC -> config: DOMAIN_DNS_NAME -> domain_dns_name,
+# LDAP_BASE_DN -> base_dn, LDAP_USER_BASE -> user_base,
+# TARGET_GROUP_NAME -> target_group).
+#
+# Die echten Dienst-Werte werden NICHT eingecheckt, sondern durch die
+# Administration in der VM eingetragen. LEERE Werte => der AD-Abgleich bricht
+# mit einem klaren Konfigurationsfehler ab (DEFAULT-DENY, kein stilles
+# Ueberspringen — Grundregel 1).
+#
+# Authentifizierung: Kerberos/SSPI der angemeldeten Windows-Sitzung (wie PoC);
+# es werden KEINE Zugangsdaten in der Konfiguration hinterlegt.
+#
+# In dieser Sektion wohnt ausserdem die Empfaenger-Allowlist der externen
+# Fallfreigabe (ad.release_recipients / ad.release_group, Build 462) — sie
+# bleibt unveraendert und ist hier bewusst nicht vorbelegt (Default-Deny).
+# =============================================================================
+ad:
+  ldap:
+    domain_dns_name: ""   # DNS-Name der AD-Domaene, z. B. "polizei.example.nrw"
+    base_dn: ""           # Suchbasis der Gruppenaufloesung, z. B. "DC=polizei,DC=example,DC=nrw"
+    user_base: ""         # Suchbasis der Benutzeraufloesung (OU der Konten)
+    target_group: ""      # AD-Gruppe der Ermittler:innen (cn), rekursiv aufgeloest
+
 hosts_management:
   enabled: false
 

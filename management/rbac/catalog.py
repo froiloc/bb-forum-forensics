@@ -195,6 +195,17 @@ CAPABILITIES: Tuple[Capability, ...] = (
     Capability("crossref.edit", "Kreuzbezug/Identitaetskatalog pflegen",
                "Zuordnungen anlegen/revidieren und die Konfidenzstufe setzen "
                "(auditiert)."),
+    # --- Build 501: AD-Abgleich der Ermittlerstammdaten (Seed in M020) ------
+    #   Abgleich person <-> Active-Directory-Gruppe (Neuaufnahme als
+    #   investigator, protokollierte Namensaenderung, Deaktivierung NUR nach
+    #   woertlicher Bestaetigung "Entfernen" — nie Loeschen). NICHT scope-
+    #   behaftet: Personalstammdaten sind eine Leitungsangelegenheit. Grant an
+    #   'supervisor' (ggf. 'admin') per policy_admin (default-deny; Bauplan
+    #   Build501_502 §4; mc 2026-07-24).
+    Capability("personnel.sync", "AD-Abgleich durchfuehren",
+               "Ermittlerstammdaten mit der Active-Directory-Gruppe abgleichen "
+               "(Vorschau, Neuaufnahme, Namensaenderung, bestaetigte "
+               "Deaktivierung/Reaktivierung — auditiert, nie Loeschen)."),
 )
 
 

@@ -181,6 +181,25 @@ class EventType:
     #   Payload-Feld 'created' unterscheidet beides race-frei. mc 2026-07-20.
     SUBJECT_IDENTITY_SET: str = "subject_identity_set"
 
+    # --- Build 501: AD-Abgleich der Ermittlerstammdaten (M020, ad_sync) -------
+    #   AD_SYNC_RUN: EIN Beleg PRO ABGLEICH-LAUF (Klammer) mit den Zaehlern
+    #   (neu/umbenannt/Kandidaten) und der Quellgruppe — auch ein Lauf OHNE
+    #   Abweichungen ist eine Erkenntnis und wird belegt. Die Einzelaenderungen
+    #   tragen ihre EIGENEN Belege: Neuaufnahme = INVESTIGATOR_CREATED +
+    #   ROLE_ASSIGNED (historische Semantik, m005-Prinzip), Namensaenderung =
+    #   INVESTIGATOR_UPDATED (Diff alt->neu).
+    #   PERSON_DEACTIVATED: Inaktiv-Schaltung (is_active 1->0) NACH woertlicher
+    #   Supervisor-Bestaetigung "Entfernen" — NIE ein Loeschen (mc 2026-07-24).
+    #   PERSON_DEACTIVATION_ABORTED: der protokollierte ABBRUCH der
+    #   Entfernen-Frage (Glitch-Schutz) — keine Datenaenderung, nur Beleg.
+    #   PERSON_REACTIVATED: Wiederinbetriebnahme (is_active 0->1) nach
+    #   woertlicher Bestaetigung "Reaktivieren" (historische Rollen werden
+    #   wieder wirksam). Beleg: Bauplan Build501_502 §5/§6.
+    AD_SYNC_RUN: str = "ad_sync_run"
+    PERSON_DEACTIVATED: str = "person_deactivated"
+    PERSON_DEACTIVATION_ABORTED: str = "person_deactivation_aborted"
+    PERSON_REACTIVATED: str = "person_reactivated"
+
     # --- reserviert für spätere Builds (hier dokumentiert, noch nicht aktiv) ---
     # NOTIFICATION_SENT, RESTORE_PERFORMED
 
@@ -237,6 +256,10 @@ class EventType:
             CASE_RELEASE_REVOKED,
             ONBOARDING_STEP_SET,
             SUBJECT_IDENTITY_SET,
+            AD_SYNC_RUN,
+            PERSON_DEACTIVATED,
+            PERSON_DEACTIVATION_ABORTED,
+            PERSON_REACTIVATED,
         }
     )
 

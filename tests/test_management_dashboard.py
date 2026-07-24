@@ -191,11 +191,14 @@ class ManagementDashboardTests(unittest.TestCase):
         # release.view/release.grant); Build 464: M017 (onboarding_item +
         # RBAC-Seed onboarding.view/onboarding.edit); Build 468: M018
         # (identified_subject + RBAC-Seed crossref.view/crossref.edit);
-        # Build 469: M019 (Schluesselumstellung user_id -> subject_id).
+        # Build 469: M019 (Schluesselumstellung user_id -> subject_id);
+        # Build 501: M020 (person.is_active/deactivated_* + RBAC-Seed
+        # personnel.sync).
         self.assertEqual(self.applied,
-                         [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+                         [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
                          if 3 not in self.applied
-                         else [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19])
+                         else [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
+                               15, 16, 17, 18, 19, 20])
         # discover findet M001..M006 -> support_sessions (M003) IST dabei,
         # der person-Rename (M005, Build 342) ebenso wie das RBAC-Schema
         # (M006, Build 343).
