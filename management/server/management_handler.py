@@ -16,7 +16,9 @@
 #   'keepalive'. Kein Wiederverwenden der B3/4-SSE-Maschinerie, nur ihr RFC-8895-
 #   Rahmenformat (format_sse_event).
 #
-# Version: v0.7.346 · Build: 346 · 2026-07-10
+# Build 503: Cache-Control 'no-cache' fuer ALLE Nicht-SSE-Antworten
+#   (_send_bytes) — Vorfall 2026-07-24: veraltete cockpit.html im Browser-Cache.
+# Version: v0.8.503 · Build: 503 · 2026-07-24
 # =============================================================================
 
 import http.server
@@ -229,6 +231,17 @@ class ManagementRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(status)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(body)))
+            # Build 503 (Vorfall 2026-07-24): OHNE Cache-Control hielt der
+            # Browser eine veraltete cockpit.html im Cache — die neue Sicht
+            # 'AD-Abgleich' meldete "Modul nicht geladen", weil die alte HTML
+            # cockpit_adsync.js nie referenzierte (und der Server folglich
+            # auch keinen 404 loggte). 'no-cache' erzwingt die Revalidierung
+            # bei JEDEM Zugriff; ohne Validatoren (ETag/Last-Modified —
+            # bewusst nicht ausgebaut) ist das ein frischer Abruf. Der Server
+            # laeuft lokal (127.0.0.2), der Overhead ist bedeutungslos;
+            # dafuer greifen Deploys sofort. Gilt fuer ALLE Nicht-SSE-
+            # Antworten (SSE setzt no-cache bereits selbst).
+            self.send_header("Cache-Control", "no-cache")
             self.end_headers()
             self.wfile.write(body)
         except (BrokenPipeError, ConnectionResetError):

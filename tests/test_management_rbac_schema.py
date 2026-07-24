@@ -171,7 +171,8 @@ class ManagementRbacSchemaTests(unittest.TestCase):
         # +2 ab Build 464 ('onboarding.view'/'onboarding.edit', in M017) -> 28.
         # +2 ab Build 468 ('crossref.view'/'crossref.edit', in M018) -> 30.
         # +1 ab Build 501 ('personnel.sync', geseedet in M020) -> 31.
-        self.assertEqual(len(cat_caps), 31)
+        # +2 ab Build 503 ('personnel.view'/'personnel.edit', M021) -> 33.
+        self.assertEqual(len(cat_caps), 33)
         self.assertIn("external.view", cat_caps)
         self.assertIn("external.edit", cat_caps)
         self.assertIn("templates.edit", cat_caps)

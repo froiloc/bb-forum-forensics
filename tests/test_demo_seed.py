@@ -65,7 +65,8 @@ class DemoSeedTests(unittest.TestCase):
         # Alle Migrationen -> voller RBAC-Katalog (30 ab Build 468: +2
         # crossref.view/crossref.edit aus M018; zuvor 28 ab Build 464).
         # +1 ab Build 501: personnel.sync aus M020 -> 31.
-        self.assertEqual(self._count("rbac_capability"), 31)
+        # +2 ab Build 503: personnel.view/personnel.edit aus M021 -> 33.
+        self.assertEqual(self._count("rbac_capability"), 33)
         # Leitung hat die Supervisor-Rolle + Grants.
         self.assertGreater(self._count("rbac_grant"), 0)
         self.assertEqual(self.summary["demo"], True)

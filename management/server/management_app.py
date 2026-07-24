@@ -107,7 +107,16 @@
 #         reactivate; Bestaetigungswort "Entfernen"/"Reaktivieren" wird
 #         SERVERSEITIG geprueft — nie Loeschen, nur is_active=0). Tor fuer
 #         alle drei: CAP_PERSONNEL_SYNC (Seed M020, default-deny).
-# Version: v0.8.502 · Build: 502 · 2026-07-24
+#   503 = PERSONALVERWALTUNG (Bauplan Build503). NEU GET /api/personnel
+#         (Liste: Personen + Aktiv-Status + Flags + aktive Rollenzuweisungen +
+#         Rollenkatalog; Recht personnel.view, KEIN AD-Zugriff), POST
+#         /api/personnel/flags (PersonRepo.update, Diff-Beleg), POST
+#         /api/personnel/role/assign|revoke (RbacRepo, ROLE_ASSIGNED/
+#         ROLE_REVOKED, Soft-Revoke). Recht personnel.edit (Seed M021).
+#         SELBSTSCHUTZ: die eigene Person ist ueber die Oberflaeche
+#         unantastbar (Lockout-Schutz; CLI bleibt offen). Die Grants der
+#         Rollen-Matrix (rbac_grant) bleiben bewusst CLI-only (policy_admin).
+# Version: v0.8.503 · Build: 503 · 2026-07-24
 # =============================================================================
 
 import hmac
@@ -198,7 +207,11 @@ from management.ad_sync.sync_executor import (
 )
 from management.ad_sync.sync_plan import AdSyncPlanError
 from management.external.ldap_group_reader import LdapError, LdapGroupReader
-from management.person.person_repo import PersonError
+from management.person.person_repo import PersonError, PersonRepo
+# Build 503 (Personalverwaltung): Lesemodell + auditierte Schreibwege der
+# Personal-Seite (Flags via PersonRepo, Rollenzuweisungen via RbacRepo).
+from management.person.person_overview_repo import PersonOverviewRepo
+from management.rbac.rbac_repo import RbacError, RbacRepo
 from management.external.case_release_repo import (
     CaseReleaseError,
     CaseReleaseRepo,
@@ -280,6 +293,11 @@ CAP_CROSSREF_EDIT = "crossref.edit"
 # default-deny — die woertliche Bestaetigung "Entfernen"/"Reaktivieren"
 # wird ZUSAETZLICH serverseitig je Einzelfall geprueft).
 CAP_PERSONNEL_SYNC = "personnel.sync"
+
+# Build 503: Personalverwaltung (Seed in M021). Lesen und Pflegen getrennt;
+# die Grants der Rollen-MATRIX (rbac_grant) bleiben der CLI vorbehalten.
+CAP_PERSONNEL_VIEW = "personnel.view"
+CAP_PERSONNEL_EDIT = "personnel.edit"
 
 logger = logging.getLogger(__name__)
 
@@ -633,6 +651,9 @@ class ManagementApp:
         # gefragt, die coordinator.db NICHT veraendert).
         if path == "/api/adsync":
             return self._adsync(person_id)
+        # Build 503: Personalverwaltung — Liste (rein lesend, KEIN AD-Zugriff).
+        if path == "/api/personnel":
+            return self._personnel(person_id)
         # Build 470 (AP-2A): Katalog identifizierter Personen (Konto->Person).
         if path == "/api/crossref":
             return self._crossref(person_id, query)
@@ -3040,6 +3061,197 @@ class ManagementApp:
                                    "system_username": sam,
                                    "audit_seq": seq})
 
+    # -------------------------------------------- Personalverwaltung (Build 503)
+    def _personnel(self, actor_person_id: int) -> Response:
+        """
+        GET /api/personnel — Personalliste (Recht personnel.view): Personen
+        inkl. Aktiv-Status/Flags + aktive Rollenzuweisungen + Rollenkatalog.
+        can_edit/can_sync steuern NUR die Anzeige der Bedienelemente; jede
+        Schreibroute prueft ihr Recht selbst (kein Vertrauen in den Client).
+        REIN LESEND, KEIN AD-Zugriff (der AD-Abschnitt der Seite laedt
+        /api/adsync separat und nur auf Nutzerhandlung).
+        """
+        policy = self.resolve_policy(actor_person_id)
+        if not policy.can(CAP_PERSONNEL_VIEW):
+            return self._forbidden(CAP_PERSONNEL_VIEW)
+
+        con = self._ro_con()
+        try:
+            data = PersonOverviewRepo(con).overview()
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Personalliste nicht lesbar")
+            return Response.json(500, {"error": "personnel_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+
+        return Response.json(200, {
+            **data,
+            "actor_person_id": actor_person_id,
+            "can_edit": policy.can(CAP_PERSONNEL_EDIT),
+            "can_sync": policy.can(CAP_PERSONNEL_SYNC),
+        })
+
+    def _personnel_self_guard(self, actor_person_id: int,
+                              target_person_id: int) -> Optional[Response]:
+        """
+        SELBSTSCHUTZ (Bauplan Build503 §3): die eigene Person ist ueber die
+        Oberflaeche unantastbar — eigene Flags/Rollen zu aendern waere ein
+        Ein-Klick-Lockout (z. B. eigenes supervisor-Flag/Rolle entziehen).
+        Der auditierte CLI-Weg (person_admin/rbac_admin) bleibt dafuer offen.
+        """
+        if int(target_person_id) == int(actor_person_id):
+            return Response.json(400, {
+                "error": "self_guard",
+                "detail": "Die eigene Person kann ueber die Oberflaeche "
+                          "nicht veraendert werden (Lockout-Schutz). "
+                          "Bitte den CLI-Weg nutzen (person_admin/"
+                          "rbac_admin)."})
+        return None
+
+    def _personnel_flags(self, actor_person_id: int,
+                         payload: Dict[str, Any]) -> Response:
+        """
+        POST /api/personnel/flags — {person_id, is_investigator?,
+        is_supervisor?, is_support?} (Recht personnel.edit). Auditiert ueber
+        PersonRepo.update (INVESTIGATOR_UPDATED, Diff alt->neu).
+        """
+        policy = self.resolve_policy(actor_person_id)
+        if not policy.can(CAP_PERSONNEL_EDIT):
+            return self._forbidden(CAP_PERSONNEL_EDIT)
+
+        try:
+            target_id = int(payload.get("person_id"))
+        except (TypeError, ValueError):
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": "person_id fehlt/ungueltig."})
+        guard = self._personnel_self_guard(actor_person_id, target_id)
+        if guard is not None:
+            return guard
+
+        # Nur explizit mitgeschickte Flags werden geaendert (None = unberuehrt).
+        def _flag(name: str) -> Optional[bool]:
+            return (bool(payload[name]) if name in payload
+                    and payload[name] is not None else None)
+
+        con = self._rw_con()
+        try:
+            repo = PersonRepo(con, CoordinatorWriter(con, AuditLog(con)))
+            seq = repo.update(
+                id=target_id,
+                is_investigator=_flag("is_investigator"),
+                is_supervisor=_flag("is_supervisor"),
+                is_support=_flag("is_support"),
+                actor_id=actor_person_id,
+                meta={"quelle": "personnel_ui"},
+            )
+        except PersonError as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Flag-Aenderung fehlgeschlagen")
+            return Response.json(500, {"error": "personnel_flags_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, "person_id": target_id,
+                                   "audit_seq": seq})
+
+    def _personnel_role_assign(self, actor_person_id: int,
+                               payload: Dict[str, Any]) -> Response:
+        """
+        POST /api/personnel/role/assign — {person_id, role_code} (Recht
+        personnel.edit). Auditiert ueber RbacRepo.assign_role (ROLE_ASSIGNED;
+        die person_role-Zeile traegt audit_seq des Belegs).
+        """
+        policy = self.resolve_policy(actor_person_id)
+        if not policy.can(CAP_PERSONNEL_EDIT):
+            return self._forbidden(CAP_PERSONNEL_EDIT)
+
+        try:
+            target_id = int(payload.get("person_id"))
+        except (TypeError, ValueError):
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": "person_id fehlt/ungueltig."})
+        role_code = str(payload.get("role_code", "") or "").strip()
+        if not role_code:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": "role_code fehlt."})
+        # Selbst-Zuweisung ist ungefaehrlich (erweitert nur), aber der
+        # Symmetrie und Klarheit halber gilt der Selbstschutz fuer ALLE
+        # Personnel-Schreibwege gleichermassen (eine Regel, keine Ausnahmen).
+        guard = self._personnel_self_guard(actor_person_id, target_id)
+        if guard is not None:
+            return guard
+
+        con = self._rw_con()
+        try:
+            repo = RbacRepo(con, CoordinatorWriter(con, AuditLog(con)))
+            seq = repo.assign_role(target_id, role_code,
+                                   actor_id=actor_person_id,
+                                   meta={"quelle": "personnel_ui"})
+        except RbacError as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Rollenzuweisung fehlgeschlagen")
+            return Response.json(500, {"error": "personnel_assign_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, "person_id": target_id,
+                                   "role_code": role_code, "audit_seq": seq})
+
+    def _personnel_role_revoke(self, actor_person_id: int,
+                               payload: Dict[str, Any]) -> Response:
+        """
+        POST /api/personnel/role/revoke — {person_role_id} (Recht
+        personnel.edit). Soft-Revoke ueber RbacRepo.revoke_role (ROLE_REVOKED;
+        die Zeile bleibt als Beleg erhalten). Selbstschutz: die eigene
+        Zuweisung ist nicht widerrufbar (Lockout).
+        """
+        policy = self.resolve_policy(actor_person_id)
+        if not policy.can(CAP_PERSONNEL_EDIT):
+            return self._forbidden(CAP_PERSONNEL_EDIT)
+
+        try:
+            person_role_id = int(payload.get("person_role_id"))
+        except (TypeError, ValueError):
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "person_role_id fehlt/ungueltig."})
+
+        con = self._rw_con()
+        try:
+            row = con.execute(
+                "SELECT person_id FROM person_role WHERE id=?",
+                (person_role_id,)).fetchone()
+            if row is None:
+                return Response.json(400, {
+                    "error": "bad_request",
+                    "detail": "Unbekannte person_role_id=%s."
+                              % person_role_id})
+            guard = self._personnel_self_guard(actor_person_id,
+                                               int(row["person_id"]))
+            if guard is not None:
+                return guard
+            repo = RbacRepo(con, CoordinatorWriter(con, AuditLog(con)))
+            seq = repo.revoke_role(person_role_id,
+                                   actor_id=actor_person_id,
+                                   meta={"quelle": "personnel_ui"})
+        except RbacError as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Rollen-Widerruf fehlgeschlagen")
+            return Response.json(500, {"error": "personnel_revoke_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True,
+                                   "person_role_id": person_role_id,
+                                   "audit_seq": seq})
+
     # ---------------------------------------------------------------- AP-2A
     def _crossref(self, actor_person_id: int, query) -> Response:
         """
@@ -4048,6 +4260,13 @@ class ManagementApp:
             return self._adsync_apply(person_id)
         if path == "/api/adsync/decide":
             return self._adsync_decide(person_id, payload)
+        # Build 503: Personalverwaltung — auditierte Schreibwege.
+        if path == "/api/personnel/flags":
+            return self._personnel_flags(person_id, payload)
+        if path == "/api/personnel/role/assign":
+            return self._personnel_role_assign(person_id, payload)
+        if path == "/api/personnel/role/revoke":
+            return self._personnel_role_revoke(person_id, payload)
         # Build 470 (AP-2A): Katalog identifizierter Personen — auditiert.
         if path == "/api/crossref/set":
             return self._crossref_set(person_id, payload)

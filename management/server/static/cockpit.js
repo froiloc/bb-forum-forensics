@@ -86,7 +86,11 @@
 // Build 502 (AD-Abgleich): Nav-Eintrag 'adsync' (personnel.sync) + loadAdSync
 //   (Vorschau/apply/decide). BEWUSST ohne SSE-Auto-Reload: jeder Reload ist
 //   eine Live-LDAP-Anfrage (siehe Kommentar an loadAdSync).
-// Version: v0.8.502 · Build: 502 · 2026-07-24
+// Build 503 (Personalverwaltung): Nav-Eintrag 'personnel' (personnel.view)
+//   ERSETZT 'adsync' — der AD-Abgleich ist jetzt LAZY-Abschnitt der
+//   Personal-Seite (_adsyncInto, Wiederverwendung von AIWCockpitAdSync).
+//   SSE-Reload laedt nur die Personenliste, nie den AD-Abschnitt.
+// Version: v0.8.503 · Build: 503 · 2026-07-24
 // =============================================================================
 
 (function () {
@@ -182,9 +186,12 @@
         { id: 'promotion',  cap: 'ops.view',             group: 'Administration', label: 'Fremdforum-Promotion' },
         { id: 'releases',   cap: 'release.view',         group: 'Administration', label: 'Externe Fallfreigabe' },
         { id: 'onboarding', cap: 'onboarding.view',      group: 'Verwaltung',     label: 'Onboarding / Offboarding' },
-        // Build 502: AD-Abgleich der Ermittlerstammdaten (personnel.sync,
-        // Seed M020, default-deny — Grant an supervisor via policy_admin).
-        { id: 'adsync',     cap: 'personnel.sync',       group: 'Verwaltung',     label: 'AD-Abgleich' },
+        // Build 503: Personalverwaltung (personnel.view, Seed M021) ERSETZT
+        // den separaten Eintrag 'adsync' aus Build 502 — der AD-Abgleich ist
+        // jetzt ABSCHNITT der Personal-Seite (mc 2026-07-24: "Auf jener Seite
+        // sollte dann auch die Einbindung sein"); sein Abschnitt erscheint
+        // dort nur mit personnel.sync.
+        { id: 'personnel',  cap: 'personnel.view',       group: 'Verwaltung',     label: 'Personalverwaltung' },
         // Build 471 (AP-2A(2b)): Katalog identifizierter Personen (Konto->reale
         // Person) mit Konfidenzstufe. Auswertungs-Sicht; Recht crossref.view.
         { id: 'crossref',   cap: 'crossref.view',        group: 'Auswertung',     label: 'Kreuzbezug' },
@@ -1617,77 +1624,143 @@
             });
     }
 
-    // loadAdSync: AD-ABGLEICH (Build 502, Frontend zum Sync-Kern Build 501).
-    //   GET  /api/adsync         — Vorschau (read, personnel.sync). Fragt das
-    //                              LIVE-AD ab (kann je nach DC etwas dauern).
-    //   POST /api/adsync/apply   — Neuaufnahmen + Namensaenderungen.
-    //   POST /api/adsync/decide  — Einzel-Entscheidung mit Bestaetigungswort
-    //                              (serverseitig geprueft).
-    //   KEIN optimistisches UI: nach JEDEM Schreiben wird die Sicht neu
-    //   geladen (frische AD-Vorschau). BEWUSST kein SSE-Auto-Reload dieser
-    //   Sicht: jeder Reload waere eine Live-LDAP-Anfrage; die Vorschau wird
-    //   nur auf Nutzerhandlung (Sichtwechsel/Schreiben) neu geholt.
-    function loadAdSync(mainEl, pendingMsg) {
+    // loadPersonnel: PERSONALVERWALTUNG (Build 503; ersetzt die separate
+    //   AD-Abgleich-Sicht aus Build 502 — der Abgleich ist jetzt Abschnitt).
+    //   GET  /api/personnel               — Liste (read, personnel.view,
+    //                                       KEIN AD-Zugriff).
+    //   POST /api/personnel/flags         — Rollen-Flag setzen (personnel.edit).
+    //   POST /api/personnel/role/assign   — Rolle zuweisen (personnel.edit).
+    //   POST /api/personnel/role/revoke   — Zuweisung widerrufen (Soft-Revoke).
+    //   AD-Abschnitt (personnel.sync): LAZY via _adsyncInto — /api/adsync wird
+    //   erst auf Nutzerhandlung geholt (Live-LDAP). Nach einer AD-Aktion wird
+    //   die Sicht MIT offenem Abschnitt neu geladen (genau EIN frischer
+    //   LDAP-Abruf nach eigener Aktion); der SSE-Reload laedt NUR die Liste.
+    //   KEIN optimistisches UI: nach jedem Schreiben wird neu geladen.
+    function loadPersonnel(mainEl, pendingMsg, adsyncOpen) {
         mainEl = mainEl || document.getElementById('aiw-main');
         var mod = (typeof window !== 'undefined')
-            ? window.AIWCockpitAdSync : null;
+            ? window.AIWCockpitPersonnel : null;
         if (!mod) {
-            renderError(mainEl, 'AD-Abgleich-Modul nicht geladen.');
+            renderError(mainEl, 'Personalverwaltungs-Modul nicht geladen.');
             return;
         }
         var view = null;
-        function after(text, isError) {
-            loadAdSync(mainEl, { text: text, error: isError });
+        function after(text, isError, keepAdsync) {
+            loadPersonnel(mainEl, { text: text, error: isError },
+                keepAdsync === true);
+        }
+        // _post: gemeinsame Schreib-Huelle der Listen-Aktionen. Fehler laden
+        // die Sicht ebenfalls neu — die Liste zeigt danach den tatsaechlichen
+        // Stand (es wurde nichts geschrieben).
+        function _post(url, body, okText) {
+            postJson(url, body)
+                .then(function (res) { after(okText(res), false, false); })
+                .catch(function (err) {
+                    after('Fehler: ' + err.message + ' (es wurde nichts '
+                        + 'geschrieben — die Liste zeigt den tatsaechlichen '
+                        + 'Stand).', true, false);
+                });
         }
         var opts = {
-            onApply: function () {
-                postJson('/api/adsync/apply', {})
-                    .then(function (res) {
-                        after(res.created.length + ' Neuaufnahmen, '
-                            + res.renamed.length + ' Namensaenderungen '
-                            + 'vollzogen (Lauf-Beleg #' + res.run_seq + ').',
-                            false);
-                    })
-                    .catch(function (err) {
-                        after('Fehler: ' + err.message + ' (es wurde ggf. '
-                            + 'nur ein Teil vollzogen — die Sicht zeigt den '
-                            + 'tatsaechlichen Stand).', true);
-                    });
+            adsyncOpen: adsyncOpen === true,
+            onFlags: function (body) {
+                _post('/api/personnel/flags', body, function (res) {
+                    return 'Flags aktualisiert (Beleg #' + res.audit_seq
+                        + ').';
+                });
             },
-            onDecide: function (body) {
-                postJson('/api/adsync/decide', body)
-                    .then(function (res) {
-                        var verb = { deactivate: 'deaktiviert (nur inaktiv, '
-                                + 'nicht geloescht)',
-                            abort: 'Abbruch protokolliert',
-                            reactivate: 'reaktiviert' }[res.action]
-                            || res.action;
-                        after(res.system_username + ': ' + verb
-                            + ' (Beleg #' + res.audit_seq + ').', false);
-                    })
-                    .catch(function (err) {
-                        // Falsches Wort/Fachfehler: Sicht NICHT neu laden
-                        // (Eingaben erhalten), nur die Ergebniszeile setzen.
-                        if (view) {
-                            view.setResult('Nicht vollzogen: ' + err.message,
-                                true);
-                        }
-                    });
+            onAssign: function (body) {
+                _post('/api/personnel/role/assign', body, function (res) {
+                    return 'Rolle ' + res.role_code + ' zugewiesen (Beleg #'
+                        + res.audit_seq + ').';
+                });
+            },
+            onRevoke: function (body) {
+                _post('/api/personnel/role/revoke', body, function (res) {
+                    return 'Zuweisung widerrufen (Soft-Revoke, Beleg #'
+                        + res.audit_seq + ').';
+                });
+            },
+            onAdsyncLoad: function (box, setResult) {
+                _adsyncInto(box, setResult, after);
             }
         };
-        fetchJson('/api/adsync')
+        fetchJson('/api/personnel')
             .then(function (data) {
                 cleanupView();
-                view = mod.renderAdSync(mainEl, data, opts);
+                view = mod.renderPersonnel(mainEl, data, opts);
                 if (pendingMsg) {
                     view.setResult(pendingMsg.text, pendingMsg.error);
                 }
-                log('AD-Abgleich gerendert:', data.counts);
+                log('Personalverwaltung gerendert:',
+                    (data.persons || []).length, 'Personen');
             })
             .catch(function (err) {
                 cleanupView();
-                renderError(mainEl, 'AD-Abgleich konnte nicht geladen '
-                    + 'werden: ' + err.message);
+                renderError(mainEl, 'Personalverwaltung konnte nicht '
+                    + 'geladen werden: ' + err.message);
+            });
+    }
+
+    // _adsyncInto: laedt die AD-Vorschau (/api/adsync) in den Abschnitts-
+    //   Container der Personal-Seite und verdrahtet die Vollzugs-Callbacks
+    //   der WIEDERVERWENDETEN Komponente AIWCockpitAdSync (Build 502).
+    //   after(text, isError, keepAdsync=true) laedt die GANZE Sicht neu und
+    //   oeffnet den AD-Abschnitt wieder (frische Vorschau nach eigener Aktion).
+    function _adsyncInto(containerEl, setResult, after) {
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitAdSync : null;
+        if (!mod) {
+            setResult('AD-Abgleich-Modul nicht geladen.', true);
+            return;
+        }
+        var sub = null;
+        fetchJson('/api/adsync')
+            .then(function (data) {
+                sub = mod.renderAdSync(containerEl, data, {
+                    onApply: function () {
+                        postJson('/api/adsync/apply', {})
+                            .then(function (res) {
+                                after(res.created.length + ' Neuaufnahmen, '
+                                    + res.renamed.length
+                                    + ' Namensaenderungen vollzogen '
+                                    + '(Lauf-Beleg #' + res.run_seq + ').',
+                                    false, true);
+                            })
+                            .catch(function (err) {
+                                after('Fehler: ' + err.message + ' (es wurde '
+                                    + 'ggf. nur ein Teil vollzogen — die '
+                                    + 'Sicht zeigt den tatsaechlichen '
+                                    + 'Stand).', true, true);
+                            });
+                    },
+                    onDecide: function (body) {
+                        postJson('/api/adsync/decide', body)
+                            .then(function (res) {
+                                var verb = { deactivate: 'deaktiviert (nur '
+                                        + 'inaktiv, nicht geloescht)',
+                                    abort: 'Abbruch protokolliert',
+                                    reactivate: 'reaktiviert' }[res.action]
+                                    || res.action;
+                                after(res.system_username + ': ' + verb
+                                    + ' (Beleg #' + res.audit_seq + ').',
+                                    false, true);
+                            })
+                            .catch(function (err) {
+                                // Falsches Wort/Fachfehler: NICHT neu laden
+                                // (Eingaben erhalten), nur Ergebniszeile.
+                                if (sub) {
+                                    sub.setResult('Nicht vollzogen: '
+                                        + err.message, true);
+                                }
+                            });
+                    }
+                });
+                log('AD-Abschnitt gerendert:', data.counts);
+            })
+            .catch(function (err) {
+                setResult('AD-Vorschau konnte nicht geladen werden: '
+                    + err.message, true);
             });
     }
 
@@ -2206,8 +2279,8 @@
             loadReleases(mainEl);
         } else if (viewId === 'onboarding') {
             loadOnboarding(mainEl, state.onbPerson, state.onbKind);
-        } else if (viewId === 'adsync') {
-            loadAdSync(mainEl);
+        } else if (viewId === 'personnel') {
+            loadPersonnel(mainEl);
         } else if (viewId === 'crossref') {
             loadCrossref(mainEl);
         } else if (viewId === 'crossfindings') {
@@ -2307,6 +2380,12 @@
                 if (state.onbPerson != null) {
                     loadOnboarding(undefined, state.onbPerson, state.onbKind);
                 }
+            } else if (state.activeId === 'personnel') {
+                // Personal-/Rollenaenderungen (auch durch andere) erzeugen
+                // audit_log-Belege -> LISTE neu laden. Der AD-Abschnitt wird
+                // dabei bewusst NICHT geladen (jeder Abruf waere eine
+                // Live-LDAP-Anfrage; er bleibt Nutzerhandlung).
+                loadPersonnel();
             } else if (state.activeId === 'crossref') {
                 // Eine Anlage/Revision (auch durch eine andere Person) erzeugt
                 // einen audit_log-Beleg -> Katalog neu laden.

@@ -206,6 +206,19 @@ CAPABILITIES: Tuple[Capability, ...] = (
                "Ermittlerstammdaten mit der Active-Directory-Gruppe abgleichen "
                "(Vorschau, Neuaufnahme, Namensaenderung, bestaetigte "
                "Deaktivierung/Reaktivierung — auditiert, nie Loeschen)."),
+    # --- Build 503: Personalverwaltung (Seed in M021) -----------------------
+    #   Die Personal-Seite des Cockpits (mc 2026-07-24: "Seite zum Verwalten
+    #   der Anwender", mit eingebundenem AD-Abgleich). Lesen und Pflegen
+    #   getrennt; die Grants der Rollen-MATRIX (rbac_grant) bleiben bewusst
+    #   der auditierten CLI (policy_admin) vorbehalten. Grants an 'supervisor'
+    #   per policy_admin (default-deny).
+    Capability("personnel.view", "Personalliste sehen",
+               "Personen mit Aktiv-Status, Rollen-Flags und Rollenzuweisungen "
+               "lesen."),
+    Capability("personnel.edit", "Personal pflegen",
+               "Rollen-Flags setzen und Rollenzuweisungen erteilen/widerrufen "
+               "(auditiert; Grants der Rollen-Matrix bleiben der CLI "
+               "vorbehalten)."),
 )
 
 

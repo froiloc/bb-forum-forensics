@@ -193,12 +193,13 @@ class ManagementDashboardTests(unittest.TestCase):
         # (identified_subject + RBAC-Seed crossref.view/crossref.edit);
         # Build 469: M019 (Schluesselumstellung user_id -> subject_id);
         # Build 501: M020 (person.is_active/deactivated_* + RBAC-Seed
-        # personnel.sync).
+        # personnel.sync); Build 503: M021 (RBAC-Seed personnel.view/edit).
         self.assertEqual(self.applied,
-                         [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+                         [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+                          17, 18, 19, 20, 21]
                          if 3 not in self.applied
                          else [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
-                               15, 16, 17, 18, 19, 20])
+                               15, 16, 17, 18, 19, 20, 21])
         # discover findet M001..M006 -> support_sessions (M003) IST dabei,
         # der person-Rename (M005, Build 342) ebenso wie das RBAC-Schema
         # (M006, Build 343).

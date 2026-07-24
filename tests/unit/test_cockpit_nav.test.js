@@ -96,6 +96,8 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     // Build 471: 28 (neu: 'crossref' - Kreuzbezug/identifizierte Personen, AP-2A).
     // Build 478: 29 (neu: 'crossfindings' - Querfund-Meta-Uebersicht, AP-2A).
     // Build 502: 30 (neu: 'adsync' - AD-Abgleich, personnel.sync).
+    // Build 503: 30 ('adsync' ERSETZT durch 'personnel' -
+    //             Personalverwaltung mit eingebundenem AD-Abgleich).
     expect(api.VIEW_CATALOG.length).toBe(30);
   });
 
