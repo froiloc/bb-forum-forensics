@@ -246,6 +246,22 @@ class EventType:
     PERSON_DEACTIVATION_ABORTED: str = "person_deactivation_aborted"
     PERSON_REACTIVATED: str = "person_reactivated"
 
+    # --- Build 517: Quittierung von Eskalationen (escalation_ack, M027) ------
+    #   ESCALATION_ACKNOWLEDGED: EIN Beleg je Vermerk "Eskalation <rule_code>
+    #   an <subject_id> gesehen, veranlasst wurde ...". Das ist eine
+    #   AUFSICHTSENTSCHEIDUNG und muss eigenstaendig im Audit-Explorer
+    #   auffindbar sein — sie sagt aus, dass eine Leitung von einem Missstand
+    #   WUSSTE (Befund Uebergabe 440-453 §3.3).
+    #   ESCALATION_ACK_REVOKED: der WIDERRUF eines Vermerks mit Pflichtgrund.
+    #   Bewusst ein EIGENER Typ und kein Payload-Merkmal: ein Widerruf ist die
+    #   Aussage, dass eine frueher festgehaltene Bewertung nicht mehr traegt —
+    #   dieselbe Begruendung wie bei SUBJECT_ALIAS_RETRACTED (Build 504).
+    #   Der Freitext (reason/revoke_reason) steht NICHT im Payload, nur FAKTEN
+    #   (ack_id, rule_code, subject_id, days_inactive_at_ack) + Textlaengen
+    #   (Sensibilitaetsregel wie M018/M022).
+    ESCALATION_ACKNOWLEDGED: str = "escalation_acknowledged"
+    ESCALATION_ACK_REVOKED: str = "escalation_ack_revoked"
+
     # --- reserviert für spätere Builds (hier dokumentiert, noch nicht aktiv) ---
     # NOTIFICATION_SENT, RESTORE_PERFORMED
 
@@ -315,6 +331,8 @@ class EventType:
             PERSON_DEACTIVATED,
             PERSON_DEACTIVATION_ABORTED,
             PERSON_REACTIVATED,
+            ESCALATION_ACKNOWLEDGED,
+            ESCALATION_ACK_REVOKED,
         }
     )
 

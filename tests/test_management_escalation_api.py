@@ -24,8 +24,9 @@
 #        weggefiltert (sie ist der eigentliche Zweck der Sicht)
 # EA08 — echter Leerbefund: keine Eskalation -> items leer, Zaehler 0,
 #        total_cases weiterhin belegt (Leerbefund != fehlende Erhebung)
-# EA09 — 'acknowledgeable' ist ausdruecklich false: der Quittierungsweg fehlt
-#        noch und wird BENANNT statt vom Frontend geraten
+# EA09 — 'acknowledgeable' ist ausdruecklich false und wird BENANNT statt vom
+#        Frontend geraten (in Build 517 neu gefasst: seither ist der Grund
+#        das fehlende RECHT, nicht mehr der fehlende Schreibpfad)
 # EA10 — die Faehigkeit ist im Katalog UND in der Migrationskette (M026);
 #        ein Katalogeintrag ohne Seed waere ein toter Grant
 #
@@ -269,14 +270,25 @@ class EscalationApiTests(unittest.TestCase):
         # Die Erhebung HAT stattgefunden — belegt durch die Fallzahl.
         self.assertEqual(d["total_cases"], 1)
 
-    # EA09 — die fehlende Faehigkeit wird BENANNT, nicht verschwiegen.
-    def test_ea09_quittierung_ausdruecklich_nicht_moeglich(self):
-        self.assertIs(self._get(1)["acknowledgeable"], False)
-        # Und es gibt tatsaechlich keinen Schreibweg dafuer.
+    # EA09 — der fehlende Quittierungsweg wird BENANNT, nicht verschwiegen.
+    #
+    #        NEU GEFASST IN BUILD 517: bis Build 516 gab es UEBERHAUPT keinen
+    #        Schreibpfad (der Test verlangte hier 404). Seit Build 517 gibt es
+    #        ihn — dieses Fixture erteilt person 1 aber bewusst NUR
+    #        'escalation.view'. Genau dieser Fall ist die eigentliche Probe:
+    #        'acknowledgeable' muss false sein, weil das RECHT fehlt, waehrend
+    #        'ack_migrated' true bleibt, weil die STRUKTUR da ist. Die Sicht
+    #        darf beides nicht verwechseln — 'darfst du nicht' und 'gibt es
+    #        nicht' sind zwei verschiedene Aussagen.
+    def test_ea09_quittierung_ohne_recht(self):
+        d = self._get(1)
+        self.assertIs(d["acknowledgeable"], False)
+        self.assertIs(d["ack_migrated"], True)
         r = self.app.dispatch_write(1, "/api/escalations/ack",
                                     {"rule_code": "fall_ueberfaellig",
-                                     "subject_id": 1})
-        self.assertEqual(r.status, 404)
+                                     "subject_id": 1, "reason": "gesehen"})
+        self.assertEqual(r.status, 403)
+        self.assertEqual(self._json(r)["capability"], "escalation.ack")
 
     # EA10 — Katalog UND Seed. Ein Katalogeintrag ohne Migration waere ein
     #        toter Grant: der Resolver faende die Faehigkeit nie in der DB.

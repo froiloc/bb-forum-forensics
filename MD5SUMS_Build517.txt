@@ -1,0 +1,14 @@
+# MD5-Pruefsummen Build 517 (aiw_webserver, v0.8.517) — erzeugt 2026-07-24
+# Basis: Build 516. Bitte VOR dem Einspielen gegen die VM abgleichen.
+#
+3229a7d2b74fb3b4359e0a012de59e6a  build.json
+d4224299484f36b9d67be0999889d18a  management/migrations/coordinator/m027_escalation_ack.py
+d7a6adfa9f0931c5dc9256d4d1f13938  management/cases/escalation_ack_repo.py
+8a4aa3a68ae7b41b56cacf81f75022e1  management/rbac/catalog.py
+2e65b0780751694d321358b0facfd223  management/audit/event_types.py
+52709375959b769b7dd222fbe2ac8fdf  management/server/management_app.py
+bf764dd49a20717f8dcc59a0b5b90c29  tests/test_management_escalation_ack.py
+c7b86af1a102635beaf83035a2c77d24  tests/test_management_escalation_api.py
+a8c8b5e489a4ec8f082d47856489b3cd  tests/test_management_rbac_schema.py
+f4021cb18e452fb894e761fb745427ee  tests/test_demo_seed.py
+8abe24bc969f1e8f313e116fd7b65d66  tests/test_management_dashboard.py

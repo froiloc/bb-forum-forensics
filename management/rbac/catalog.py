@@ -232,6 +232,16 @@ CAPABILITIES: Tuple[Capability, ...] = (
                "Belegte Eskalationen aus dem Fallzustand lesen (ueberfaellige "
                "rote Faelle, unbearbeitete offene Faelle, systemischer "
                "Rueckstau) — auswertend, nicht fallbezogen scope-behaftet."),
+    # --- Build 517 (AP-2G / Idee 23): Quittierung (Seed in M027) ------------
+    #   EIGENE Faehigkeit neben 'escalation.view': wer Eskalationen SEHEN darf,
+    #   darf damit noch lange nicht fuer die Behoerde festhalten, dass etwas
+    #   gesehen und veranlasst wurde. Ein Lese-Grant darf nie ein Schreibrecht
+    #   mitbringen. Quittieren ist KEIN Erledigen — die Eskalation bleibt
+    #   sichtbar und traegt ihren Vermerk (Befund Uebergabe 440-453 §3.3).
+    Capability("escalation.ack", "Eskalationen quittieren",
+               "Eine Eskalation mit Pflichtbegruendung als gesehen vermerken "
+               "und einen Vermerk mit Pflichtgrund widerrufen (auditiert; die "
+               "Eskalation bleibt sichtbar — quittieren ist kein Erledigen)."),
 )
 
 

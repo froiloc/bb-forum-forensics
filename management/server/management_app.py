@@ -212,6 +212,14 @@ from management.cases.escalation import (
     EscalationThresholds,
 )
 from management.cases.escalation_repo import EscalationRepo
+# Build 517 (AP-2G / Idee 23): der auditierte SCHREIBPFAD zur Eskalation
+# (Quittierung). Befund Uebergabe 440-453 §3.3 — bis Build 516 war die Sicht
+# rein auswertend.
+from management.cases.escalation_ack_repo import (
+    annotate_items,
+    EscalationAckError,
+    EscalationAckRepo,
+)
 from management.mentoring_notes import note_colors
 from management.mentoring_notes.mentoring_notes_repo import (
     MentoringNotesError,
@@ -350,6 +358,12 @@ CAP_PERSONNEL_EDIT = "personnel.edit"
 # damit ein irrefuehrender Beleg. Wer sie nicht sehen soll, bekommt den Grant
 # nicht (default-deny). Analogie: CAP_PERSONNEL_SYNC.
 CAP_ESCALATION_VIEW = "escalation.view"
+
+# Build 517 (AP-2G / Idee 23): Quittierung (Seed in M027). EIGENE Faehigkeit
+# neben escalation.view — wer Eskalationen SEHEN darf, darf damit noch lange
+# nicht fuer die Behoerde festhalten, dass etwas gesehen und veranlasst wurde.
+# Ein Lese-Grant darf nie ein Schreibrecht mitbringen.
+CAP_ESCALATION_ACK = "escalation.ack"
 
 logger = logging.getLogger(__name__)
 
@@ -1007,11 +1021,116 @@ class ManagementApp:
             "stale_open_days": thresholds.stale_open_days,
             "backlog_high": thresholds.backlog_high,
         }
-        # 'acknowledgeable' sagt der Sicht ausdruecklich, dass es (noch) keinen
-        # Quittierungsweg gibt. Ohne diese Angabe muesste das Frontend es
-        # RATEN — und ein geratener Zustand ist in diesem Projekt kein Beleg.
-        payload["acknowledgeable"] = False
+
+        # Build 517: Vermerke an die Meldungen heften. KEINE Meldung wird
+        # dabei entfernt oder umsortiert — Quittieren ist KEIN Erledigen
+        # (Begruendung ausfuehrlich in escalation_ack_repo.py). Faellt M027
+        # aus (noch nicht migriert), bleibt 'ack' ueberall None UND
+        # 'acknowledgeable' false: die Sicht meldet dann 'nicht moeglich'
+        # statt eine leere Vermerklage zu zeigen, die wie 'nichts quittiert'
+        # laese (Grundregel 1).
+        con = self._ro_con()
+        try:
+            ack_repo = EscalationAckRepo(con)
+            migriert = ack_repo.table_exists(con)
+            acks = ack_repo.list_active() if migriert else []
+            namen = ack_repo.names() if migriert else {}
+        finally:
+            con.close()
+        payload["items"] = annotate_items(payload.get("items", []), acks,
+                                          namen)
+
+        # 'acknowledgeable' sagt der Sicht AUSDRUECKLICH, ob dieser Aufrufer
+        # quittieren kann. Ohne diese Angabe muesste das Frontend es RATEN —
+        # und ein geratener Zustand ist in diesem Projekt kein Beleg. Beide
+        # Bedingungen muessen erfuellt sein: die Struktur (M027) UND das Recht.
+        payload["acknowledgeable"] = bool(
+            migriert and policy.can(CAP_ESCALATION_ACK))
+        payload["ack_migrated"] = migriert
         return Response.json(200, payload)
+
+    def _escalation_ack(self, actor_person_id: int,
+                        payload: Dict[str, Any]) -> Response:
+        """
+        POST /api/escalations/ack — {rule_code, subject_id?, reason,
+        days_inactive?}. Recht escalation.ack (auditiert).
+
+        subject_id DARF FEHLEN oder null sein: die systemische Regel
+        'rueckstau_hoch' gehoert zu keinem Fall. Das ist hier ein GUELTIGER
+        Wert und kein Eingabefehler — ein Pflichtfeld haette die wichtigste
+        Meldung der Sicht unquittierbar gemacht.
+        """
+        policy = self.resolve_policy(actor_person_id)
+        if not policy.can(CAP_ESCALATION_ACK):
+            return self._forbidden(CAP_ESCALATION_ACK)
+
+        con = self._rw_con()
+        try:
+            repo = EscalationAckRepo(con, CoordinatorWriter(con, AuditLog(con)))
+            if not repo.table_exists(con):
+                return Response.json(503, {
+                    "error": "not_migrated",
+                    "detail": "Migration M027 (escalation_ack) ist nicht "
+                              "angewandt — es kann nichts quittiert werden."})
+            res = repo.acknowledge(
+                rule_code=str(payload.get("rule_code", "")),
+                subject_id=payload.get("subject_id"),
+                reason=str(payload.get("reason", "") or ""),
+                days_inactive=payload.get("days_inactive"),
+                actor_id=actor_person_id,
+            )
+        except EscalationAckError as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Quittierung fehlgeschlagen")
+            return Response.json(500, {"error": "escalation_ack_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, **res})
+
+    def _escalation_ack_revoke(self, actor_person_id: int,
+                               payload: Dict[str, Any]) -> Response:
+        """
+        POST /api/escalations/ack/revoke — {ack_id, reason}. Recht
+        escalation.ack (auditiert).
+
+        WIDERRUF STATT LOESCHUNG: die Zeile bleibt als Beleg stehen. Ein
+        stilles Loeschen wuerde die Erkenntnis 'es wurde einmal quittiert'
+        vernichten — und gerade die ist die aufsichtsrelevante.
+        """
+        policy = self.resolve_policy(actor_person_id)
+        if not policy.can(CAP_ESCALATION_ACK):
+            return self._forbidden(CAP_ESCALATION_ACK)
+
+        try:
+            ack_id = int(payload.get("ack_id"))
+        except (TypeError, ValueError):
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": "ack_id fehlt/ungueltig."})
+
+        con = self._rw_con()
+        try:
+            repo = EscalationAckRepo(con, CoordinatorWriter(con, AuditLog(con)))
+            if not repo.table_exists(con):
+                return Response.json(503, {
+                    "error": "not_migrated",
+                    "detail": "Migration M027 (escalation_ack) ist nicht "
+                              "angewandt."})
+            res = repo.revoke(ack_id=ack_id,
+                              reason=str(payload.get("reason", "") or ""),
+                              actor_id=actor_person_id)
+        except EscalationAckError as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Widerruf einer Quittierung fehlgeschlagen")
+            return Response.json(500, {"error": "escalation_ack_revoke_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, **res})
 
     def _capacity(self, person_id: int,
                   query: Optional[Dict[str, List[str]]]) -> Response:
@@ -4893,6 +5012,12 @@ class ManagementApp:
                 "error": "bad_request",
                 "detail": "JSON-Objekt als Rumpf erwartet."})
 
+        # Build 517 (AP-2G / Idee 23): auditierte Quittierung einer Eskalation
+        # und deren Widerruf. Recht escalation.ack (NICHT escalation.view).
+        if path == "/api/escalations/ack":
+            return self._escalation_ack(person_id, payload)
+        if path == "/api/escalations/ack/revoke":
+            return self._escalation_ack_revoke(person_id, payload)
         if path == "/api/case/assign":
             return self._case_assign(person_id, payload)
         if path == "/api/case/priority":
