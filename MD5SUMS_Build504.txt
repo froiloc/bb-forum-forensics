@@ -1,0 +1,15 @@
+# MD5-Pruefsummen Build 504 (aiw_webserver, v0.8.504) — erzeugt 2026-07-24
+# Basis: HEAD 5541fa0 (v0.8.503). Bitte VOR dem Einspielen gegen die VM abgleichen.
+#
+f886c5c8fa7b6c8721c790b0c6779436  build.json
+b825d3846dc8bbfe99d3f7129986c79b  management/claude_Bauplan_A1_AliasKatalog_v0_1.md
+48200074ae0d9e5c8e024e5865e0837c  management/claude_Bauplan_A2_QuerfundRueckkanal_v0_1.md
+c98dbf44124d79098c82986ad00e8c51  management/claude_Bauplan_A3_MergeSplit_v0_1.md
+20fcb549cc3bc3e95d3954894f1e961e  management/claude_Bauplan_A4_Governance_PCA_v0_1.md
+d83d7576fa1e525a8a08b922cd8683c2  management/migrations/coordinator/m022_subject_alias.py
+be47a4f73651f430b75e76afd75c8634  management/crossref/subject_alias_repo.py
+e413e393125e85bd5d51ade7c25a6f7e  management/audit/event_types.py
+b59f98009929bd666697e5a251cef2be  management/server/management_app.py
+79670e8495ce2c73e05184e78758286a  tests/test_subject_alias_repo.py
+13b6729256264ad4caa51290de1e7cca  tests/test_alias_api.py
+a15e95f338875dfddd5a950fd094bd4a  tests/test_management_dashboard.py

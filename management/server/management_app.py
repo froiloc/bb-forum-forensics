@@ -227,6 +227,10 @@ from management.crossref.identified_subject_repo import (
     IdentifiedSubjectRepo,
 )
 from management.crossref.crossfindings_repo import CrossfindingsRepo
+# Build 504 (AP-2A, Idee 8): globaler Alias-Katalog. Nutzt die Fehlerklasse
+# CrossrefError und die Rechte crossref.view/edit der gleichen F5-Familie mit
+# (keine Rechte-Inflation — Entscheidungslinie Build 474 §3).
+from management.crossref.subject_alias_repo import ALIAS_KINDS, SubjectAliasRepo
 from management.audit.audit_explorer import AuditExplorer, AuditExplorerError
 from management.audit import audit_export
 from management.export.context_builder import build_export_context
@@ -660,6 +664,9 @@ class ManagementApp:
         # Build 474 (AP-2A(3)): Querfund-Meta-Uebersicht (rein lesend).
         if path == "/api/crossfindings":
             return self._crossfindings(person_id, query)
+        # Build 504 (AP-2A, Idee 8): globaler Alias-Katalog + Rueckwaertssuche.
+        if path == "/api/alias":
+            return self._alias(person_id, query)
         if path == "/api/external":
             return self._external(person_id, query)
         if path == "/api/calendar":
@@ -3365,6 +3372,169 @@ class ManagementApp:
             con.close()
         return Response.json(200, {"ok": True, **res})
 
+    # ---------------------------------------------------------------- Build 504
+    # Globaler Alias-Katalog (AP-2A, Idee 8). Recht crossref.view/edit —
+    # bewusst wiederverwendet (gleiche F5-Familie wie Identitaetskatalog und
+    # Querfunde; Entscheidungslinie Build 474 §3). Global, NICHT scope-behaftet:
+    # ein Alias ist genau dann wertvoll, wenn er FALLUEBERGREIFEND sichtbar ist.
+
+    def _alias(self, actor_person_id: int, query) -> Response:
+        """
+        GET /api/alias — Alias-Katalog. Drei Betriebsarten:
+          ?q=<Begriff>       RUECKWAERTSSUCHE "welche Konten fuehren den Namen?"
+          ?subject_id=N      Aliasse EINES Kontos
+          (ohne Parameter)   ganzer Katalog
+        ?include_retracted=1 nimmt widerrufene Eintraege mit auf (sie sind kein
+        Leerbefund, sondern ein anderer Erkenntnisstand — Grundregel 1).
+        Recht crossref.view.
+        """
+        policy = self.resolve_policy(actor_person_id)
+        if not policy.can(CAP_CROSSREF_VIEW):
+            return self._forbidden(CAP_CROSSREF_VIEW)
+
+        raw_sid = self._q1(query, "subject_id")
+        term = self._q1(query, "q")
+        incl_raw = self._q1(query, "include_retracted")
+        include_retracted = str(incl_raw or "").lower() in (
+            "1", "true", "yes", "ja")
+
+        con = self._ro_con()
+        try:
+            repo = SubjectAliasRepo(con)
+            if term:
+                entries = repo.search(
+                    str(term), include_retracted=include_retracted)
+                mode = "search"
+            elif raw_sid:
+                try:
+                    sid = int(raw_sid)
+                except (TypeError, ValueError):
+                    return Response.json(
+                        400, {"error": "bad_request",
+                              "detail": "subject_id ungueltig."})
+                entries = repo.list(
+                    subject_id=sid, include_retracted=include_retracted)
+                mode = "subject"
+            else:
+                entries = repo.list(include_retracted=include_retracted)
+                mode = "all"
+            return Response.json(200, {
+                "entries": entries,
+                "counts": repo.counts(),
+                "mode": mode,
+                # Die Arten-Liste kommt vom SERVER, damit die Oberflaeche keine
+                # Auswahl anbieten kann, die die DDL-CHECK spaeter ablehnt.
+                "kinds": [{"code": c, "label": l}
+                          for c, l in ALIAS_KINDS.items()],
+            })
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Alias-Katalog nicht lesbar")
+            return Response.json(500, {"error": "alias_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+
+    def _alias_write(self, actor_person_id: int, what: str,
+                     run) -> Response:
+        """
+        Gemeinsamer Rahmen der vier schreibenden Alias-Routen: Rechtepruefung,
+        Verbindung, einheitliche Fehlerbilder. 'run(repo)' fuehrt die eigentliche
+        Repo-Methode aus. So bleibt die Fehlerbehandlung an EINER Stelle —
+        vier Kopien waeren vier Gelegenheiten, sie auseinanderlaufen zu lassen.
+        """
+        policy = self.resolve_policy(actor_person_id)
+        if not policy.can(CAP_CROSSREF_EDIT):
+            return self._forbidden(CAP_CROSSREF_EDIT)
+        con = self._rw_con()
+        try:
+            repo = SubjectAliasRepo(con, CoordinatorWriter(con, AuditLog(con)))
+            res = run(repo)
+        except CrossrefError as exc:
+            # Fachlicher Fehler (Duplikat, No-Op, fehlender Grund, unbekannter
+            # Eintrag): 400 mit sprechendem Text — die Ermittlerin soll den
+            # konkreten Konflikt sehen, nicht ein generisches "geht nicht".
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Alias-Schreibzugriff (%s) fehlgeschlagen", what)
+            return Response.json(500, {"error": "alias_%s_failed" % what,
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, **res})
+
+    def _alias_add(self, actor_person_id: int,
+                   payload: Dict[str, Any]) -> Response:
+        """POST /api/alias/add — {subject_id, alias, kind_code, basis?, note?}."""
+        try:
+            subject_id = int(payload.get("subject_id"))
+        except (TypeError, ValueError):
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": "subject_id fehlt/ungueltig."})
+        note_raw = payload.get("note")
+        return self._alias_write(
+            actor_person_id, "add",
+            lambda repo: repo.add(
+                subject_id=subject_id,
+                alias=str(payload.get("alias", "") or ""),
+                kind_code=str(payload.get("kind_code", "") or ""),
+                basis=str(payload.get("basis", "") or ""),
+                note=(None if note_raw is None else str(note_raw)),
+                actor_id=actor_person_id))
+
+    def _alias_update(self, actor_person_id: int,
+                      payload: Dict[str, Any]) -> Response:
+        """
+        POST /api/alias/update — {alias_id, kind_code?, basis?, note?}.
+        Der ALIASTEXT ist bewusst nicht aenderbar (Repo-Kopfkommentar): ein
+        anderer Text ist eine andere Erkenntnis und entsteht durch
+        retract() + add().
+        """
+        try:
+            alias_id = int(payload.get("alias_id"))
+        except (TypeError, ValueError):
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": "alias_id fehlt/ungueltig."})
+        kind = payload.get("kind_code")
+        basis = payload.get("basis")
+        note = payload.get("note")
+        return self._alias_write(
+            actor_person_id, "update",
+            lambda repo: repo.update(
+                alias_id=alias_id,
+                kind_code=(None if kind is None else str(kind)),
+                basis=(None if basis is None else str(basis)),
+                note=(None if note is None else str(note)),
+                actor_id=actor_person_id))
+
+    def _alias_retract(self, actor_person_id: int,
+                       payload: Dict[str, Any]) -> Response:
+        """POST /api/alias/retract — {alias_id, reason}. Grund ist Pflicht."""
+        try:
+            alias_id = int(payload.get("alias_id"))
+        except (TypeError, ValueError):
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": "alias_id fehlt/ungueltig."})
+        return self._alias_write(
+            actor_person_id, "retract",
+            lambda repo: repo.retract(
+                alias_id=alias_id,
+                reason=str(payload.get("reason", "") or ""),
+                actor_id=actor_person_id))
+
+    def _alias_reinstate(self, actor_person_id: int,
+                         payload: Dict[str, Any]) -> Response:
+        """POST /api/alias/reinstate — {alias_id}. Widerruf zuruecknehmen."""
+        try:
+            alias_id = int(payload.get("alias_id"))
+        except (TypeError, ValueError):
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": "alias_id fehlt/ungueltig."})
+        return self._alias_write(
+            actor_person_id, "reinstate",
+            lambda repo: repo.reinstate(
+                alias_id=alias_id, actor_id=actor_person_id))
+
     def _external_scope(self, person_id: int, capability: str):
         policy = self.resolve_policy(person_id)
         if not policy.can(capability):
@@ -4270,6 +4440,19 @@ class ManagementApp:
         # Build 470 (AP-2A): Katalog identifizierter Personen — auditiert.
         if path == "/api/crossref/set":
             return self._crossref_set(person_id, payload)
+        # Build 504 (AP-2A, Idee 8): globaler Alias-Katalog — auditiert.
+        # Vier getrennte Routen statt einer Sammelroute: Anlegen, Aendern,
+        # Widerrufen und Zuruecknehmen sind fachlich verschieden schwer; eine
+        # Sammelroute haette die Absicht des Aufrufers verwischt (und im
+        # Audit-Explorer waere nur noch ein einziger Routenname sichtbar).
+        if path == "/api/alias/add":
+            return self._alias_add(person_id, payload)
+        if path == "/api/alias/update":
+            return self._alias_update(person_id, payload)
+        if path == "/api/alias/retract":
+            return self._alias_retract(person_id, payload)
+        if path == "/api/alias/reinstate":
+            return self._alias_reinstate(person_id, payload)
         # Build 412 (SF-3): Lektorat/Chef-Kommentare (Addendum-Dateien).
         if path == "/api/report/comment":
             return self._report_comment_create(person_id, payload)

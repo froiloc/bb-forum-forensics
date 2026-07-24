@@ -181,6 +181,22 @@ class EventType:
     #   Payload-Feld 'created' unterscheidet beides race-frei. mc 2026-07-20.
     SUBJECT_IDENTITY_SET: str = "subject_identity_set"
 
+    # --- Build 504: Globaler Alias-Katalog (subject_alias, M022, AP-2A/Idee 8)
+    #   "Konto <subject_id> tritt AUSSERDEM unter dem Namen <alias> auf".
+    #   VIER Ereignistypen statt eines: anders als bei SUBJECT_IDENTITY_SET
+    #   (dort EINE Zeile je Konto, Anlage und Revision sind fachlich dasselbe)
+    #   sind hier Anlage, inhaltliche Aenderung, WIDERRUF und ZURUECKNAHME vier
+    #   verschieden schwere Vorgaenge — ein Widerruf ist eine Aussage darueber,
+    #   dass eine frueher belegte Erkenntnis nicht mehr traegt, und muss im
+    #   Audit-Explorer eigenstaendig auffindbar sein (Grundregel 1).
+    #   Der sensible Freitext (alias/basis/note/retracted_reason) steht NICHT
+    #   im Payload, nur FAKTEN (alias_id, subject_id, kind_code, is_active) +
+    #   Textlaengen (Sensibilitaetsregel wie M018). mc 2026-07-24.
+    SUBJECT_ALIAS_ADDED: str = "subject_alias_added"
+    SUBJECT_ALIAS_UPDATED: str = "subject_alias_updated"
+    SUBJECT_ALIAS_RETRACTED: str = "subject_alias_retracted"
+    SUBJECT_ALIAS_REINSTATED: str = "subject_alias_reinstated"
+
     # --- Build 501: AD-Abgleich der Ermittlerstammdaten (M020, ad_sync) -------
     #   AD_SYNC_RUN: EIN Beleg PRO ABGLEICH-LAUF (Klammer) mit den Zaehlern
     #   (neu/umbenannt/Kandidaten) und der Quellgruppe — auch ein Lauf OHNE
@@ -256,6 +272,10 @@ class EventType:
             CASE_RELEASE_REVOKED,
             ONBOARDING_STEP_SET,
             SUBJECT_IDENTITY_SET,
+            SUBJECT_ALIAS_ADDED,
+            SUBJECT_ALIAS_UPDATED,
+            SUBJECT_ALIAS_RETRACTED,
+            SUBJECT_ALIAS_REINSTATED,
             AD_SYNC_RUN,
             PERSON_DEACTIVATED,
             PERSON_DEACTIVATION_ABORTED,
