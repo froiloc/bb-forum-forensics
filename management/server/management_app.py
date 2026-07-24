@@ -188,6 +188,22 @@ from management.workload.workload_repo import (
     WorkloadRepo,
     WorkloadSchemaError,
 )
+# Build 513 (AP-2F/Idee 21: Ueberlastwarnung SICHTBAR machen). Das Read-Model
+# aus Build 451 war bis hierher nur ueber die CLI erreichbar — es hatte keinen
+# Weg ins Cockpit. Es wird BEWUSST NICHT als eigene Sicht angebunden, sondern in
+# die bestehende Lastverteilung ('/api/workload') hineingezogen: die Warnung ist
+# eine BEWERTUNG genau der Zahlen, die dort ohnehin stehen. Eine zweite Sicht
+# haette dieselben Zahlen ein zweites Mal geholt und koennte — bei zwei
+# getrennten Abfragen zu zwei Zeitpunkten — einen ANDEREN Stand zeigen als die
+# Sicht daneben. Das waere ein widerspruechlicher Beleg. Deshalb wird der Report
+# hier aus DERSELBEN, bereits geladenen Lastliste gebildet (build_report ist
+# rein) statt ueber OverloadEvaluator ein zweites Mal zu messen.
+from management.workload.overload import (
+    build_report as build_overload_report,
+    overload_thresholds_from_config,
+    overload_to_dict,
+    OverloadThresholds,
+)
 from management.mentoring_notes import note_colors
 from management.mentoring_notes.mentoring_notes_repo import (
     MentoringNotesError,
@@ -824,6 +840,26 @@ class ManagementApp:
             "tip_seq": tip_seq,
         })
 
+    def _overload_thresholds(self) -> OverloadThresholds:
+        """
+        Grenzwerte der Ueberlastwarnung aus config.yaml (workload.overload.*).
+
+        Faellt die Konfiguration aus, gelten die Vorgaben aus Build 451 — und
+        der Ausfall wird PROTOKOLLIERT (Grundregel 1: kein stiller Zustand).
+        Eine fehlende Konfiguration darf die Lastverteilung nicht ausfallen
+        lassen; sie darf aber auch nicht unbemerkt andere Schwellen benutzen.
+        Die Antwort traegt die tatsaechlich angewandten Schwellen deshalb
+        IMMER mit (max_active_cases/max_red_cases/backlog_alert) — der
+        Empfaenger kann jede Einstufung nachrechnen.
+        """
+        try:
+            from core.config_loader import ConfigLoader
+            return overload_thresholds_from_config(ConfigLoader().as_dict())
+        except Exception as exc:  # pragma: no cover - Konfig-Ausfall
+            logger.warning("Ueberlast-Schwellen nicht aus config.yaml lesbar "
+                           "(%s) — Vorgaben aus Build 451.", exc)
+            return OverloadThresholds()
+
     def _workload(self, person_id: int) -> Response:
         """
         Lastverteilung je Ermittler (read-only). Nutzt WorkloadRepo; liefert je
@@ -831,16 +867,44 @@ class ManagementApp:
         Scope-aware analog _overview: 'alle' -> volle Verteilungssicht;
         'eigene' (oder ungesetzt) -> nur die EIGENE Last-Zeile (Rueckstau und
         fremde Ermittler bleiben gekapselt; Zweckbindung, default restriktiv).
+
+        Build 513 (AP-2F / Idee 21): zusaetzlich die AKTIVE Ueberlastwarnung.
+        ZWEI ENTWURFSENTSCHEIDUNGEN, die den Beleg tragen:
+
+        (1) SELBE MESSUNG. Der Report wird aus der bereits geladenen Lastliste
+            gebildet (build_report, rein) — nicht ueber einen zweiten
+            Datenbankgang. Warnung und Balken koennen so nie auseinanderlaufen.
+            'now' wird EINMAL bestimmt und in beide Richtungen gereicht.
+
+        (2) NACH dem Scope-Filter bewertet. Wer nur die eigene Zeile sehen darf,
+            bekommt auch nur eine Warnung ueber sich selbst; fremde Ueberlast
+            und der systemische Rueckstau bleiben gekapselt (Zweckbindung).
+            Die Rueckstau-Zeile traegt investigator_id 0 und faellt durch
+            denselben Filter — backlog_size ist dann 0 und backlog_alarm false.
+            Das ist KEIN Leerbefund im Sinne von 'kein Rueckstau', sondern ein
+            NICHT ERHOBENER Wert; die Antwort weist das ueber
+            'overload.scope_limited' aus, damit die Sicht es benennen kann.
+
+        ANTWORTFORM: 'overload' traegt NUR Skalare (Schwellen + Zaehler), die
+        Einzelbewertungen stehen daneben in 'overload_assessments'. Grund: der
+        Akten-Export (Build 511/512) rendert eine flache Abbildung als
+        Schluessel-Wert-Tabelle und eine Zeilenliste als Tabelle. Waeren die
+        Bewertungen im dict verschachtelt, stuenden sie im Aktenexport als
+        JSON-Klumpen in EINER Zelle — lesbar, aber kein brauchbarer Beleg.
+        Es ist bewusst KEINE Doppelablage: jede Angabe steht genau einmal.
         """
         policy = self.resolve_policy(person_id)
         if not policy.can(CAP_WORKLOAD):
             return self._forbidden(CAP_WORKLOAD)
         scope = policy.scope(CAP_WORKLOAD)  # 'alle' | 'eigene' | None
 
+        # EIN Zeitstempel fuer Messung UND Bewertung (siehe (1) oben).
+        now = int(time.time())
+
         con = self._ro_con()
         try:
             try:
-                loads = WorkloadRepo(con).list_workload()
+                loads = WorkloadRepo(con).list_workload(now=now)
             except WorkloadSchemaError as exc:
                 return Response.json(
                     503, {"error": "schema", "detail": str(exc)})
@@ -851,8 +915,19 @@ class ManagementApp:
             loads = [l for l in loads if l.investigator_id == person_id]
 
         items = [asdict(l) for l in loads]
+
+        report = build_overload_report(loads, self._overload_thresholds(), now)
+        overload = overload_to_dict(report)
+        # Einzelbewertungen ausgliedern (siehe ANTWORTFORM oben). pop statt
+        # copy: 'overload' darf sie NICHT zusaetzlich enthalten, sonst haetten
+        # wir zwei Wahrheitsquellen fuer dieselbe Aussage.
+        assessments = overload.pop("assessments", [])
+        overload["scope_limited"] = (scope != "alle")
+
         return Response.json(200, {"scope": scope, "count": len(items),
-                                   "loads": items})
+                                   "loads": items,
+                                   "overload": overload,
+                                   "overload_assessments": assessments})
 
     def _capacity(self, person_id: int,
                   query: Optional[Dict[str, List[str]]]) -> Response:

@@ -115,7 +115,15 @@ VIEW_EXPORTS: Tuple[ViewExportSpec, ...] = (
     ViewExportSpec(
         view_id="workload", label="Lastverteilung",
         api_path="/api/workload", note=_HAT_SPEZIALEXPORT,
-        sections=(SectionSpec("loads", "Last je Ermittler:in"),),
+        # Build 513 (AP-2F/Idee 21): die Ueberlastwarnung gehoert MIT in die
+        # Akte. Sie waere ueber den Auto-Modus (Regel 2) ohnehin unter
+        # 'Weitere Daten' erschienen; hier bekommt sie einen benannten Platz in
+        # der Reihenfolge, in der man sie liest: erst der Alarm, dann die Last.
+        sections=(
+            SectionSpec("overload", "Überlastwarnung (Schwellen und Zähler)"),
+            SectionSpec("overload_assessments", "Überlast je Ermittler:in"),
+            SectionSpec("loads", "Last je Ermittler:in"),
+        ),
     ),
     ViewExportSpec(
         view_id="capacity", label="Kapazität",
