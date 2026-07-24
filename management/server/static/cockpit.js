@@ -83,7 +83,10 @@
 // Build 500: 'Meine Auftraege' reicht onLaunch durch -> POST /api/case/launch
 //   startet den Forensik-Server (main.py) fuer einen zugewiesenen Fall; Erfolg/
 //   Fehler als Banner (loadMyCases mit pendingMsg neu geladen).
-// Version: v0.8.500 · Build: 500 · 2026-07-22
+// Build 502 (AD-Abgleich): Nav-Eintrag 'adsync' (personnel.sync) + loadAdSync
+//   (Vorschau/apply/decide). BEWUSST ohne SSE-Auto-Reload: jeder Reload ist
+//   eine Live-LDAP-Anfrage (siehe Kommentar an loadAdSync).
+// Version: v0.8.502 · Build: 502 · 2026-07-24
 // =============================================================================
 
 (function () {
@@ -179,6 +182,9 @@
         { id: 'promotion',  cap: 'ops.view',             group: 'Administration', label: 'Fremdforum-Promotion' },
         { id: 'releases',   cap: 'release.view',         group: 'Administration', label: 'Externe Fallfreigabe' },
         { id: 'onboarding', cap: 'onboarding.view',      group: 'Verwaltung',     label: 'Onboarding / Offboarding' },
+        // Build 502: AD-Abgleich der Ermittlerstammdaten (personnel.sync,
+        // Seed M020, default-deny — Grant an supervisor via policy_admin).
+        { id: 'adsync',     cap: 'personnel.sync',       group: 'Verwaltung',     label: 'AD-Abgleich' },
         // Build 471 (AP-2A(2b)): Katalog identifizierter Personen (Konto->reale
         // Person) mit Konfidenzstufe. Auswertungs-Sicht; Recht crossref.view.
         { id: 'crossref',   cap: 'crossref.view',        group: 'Auswertung',     label: 'Kreuzbezug' },
@@ -1611,6 +1617,80 @@
             });
     }
 
+    // loadAdSync: AD-ABGLEICH (Build 502, Frontend zum Sync-Kern Build 501).
+    //   GET  /api/adsync         — Vorschau (read, personnel.sync). Fragt das
+    //                              LIVE-AD ab (kann je nach DC etwas dauern).
+    //   POST /api/adsync/apply   — Neuaufnahmen + Namensaenderungen.
+    //   POST /api/adsync/decide  — Einzel-Entscheidung mit Bestaetigungswort
+    //                              (serverseitig geprueft).
+    //   KEIN optimistisches UI: nach JEDEM Schreiben wird die Sicht neu
+    //   geladen (frische AD-Vorschau). BEWUSST kein SSE-Auto-Reload dieser
+    //   Sicht: jeder Reload waere eine Live-LDAP-Anfrage; die Vorschau wird
+    //   nur auf Nutzerhandlung (Sichtwechsel/Schreiben) neu geholt.
+    function loadAdSync(mainEl, pendingMsg) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitAdSync : null;
+        if (!mod) {
+            renderError(mainEl, 'AD-Abgleich-Modul nicht geladen.');
+            return;
+        }
+        var view = null;
+        function after(text, isError) {
+            loadAdSync(mainEl, { text: text, error: isError });
+        }
+        var opts = {
+            onApply: function () {
+                postJson('/api/adsync/apply', {})
+                    .then(function (res) {
+                        after(res.created.length + ' Neuaufnahmen, '
+                            + res.renamed.length + ' Namensaenderungen '
+                            + 'vollzogen (Lauf-Beleg #' + res.run_seq + ').',
+                            false);
+                    })
+                    .catch(function (err) {
+                        after('Fehler: ' + err.message + ' (es wurde ggf. '
+                            + 'nur ein Teil vollzogen — die Sicht zeigt den '
+                            + 'tatsaechlichen Stand).', true);
+                    });
+            },
+            onDecide: function (body) {
+                postJson('/api/adsync/decide', body)
+                    .then(function (res) {
+                        var verb = { deactivate: 'deaktiviert (nur inaktiv, '
+                                + 'nicht geloescht)',
+                            abort: 'Abbruch protokolliert',
+                            reactivate: 'reaktiviert' }[res.action]
+                            || res.action;
+                        after(res.system_username + ': ' + verb
+                            + ' (Beleg #' + res.audit_seq + ').', false);
+                    })
+                    .catch(function (err) {
+                        // Falsches Wort/Fachfehler: Sicht NICHT neu laden
+                        // (Eingaben erhalten), nur die Ergebniszeile setzen.
+                        if (view) {
+                            view.setResult('Nicht vollzogen: ' + err.message,
+                                true);
+                        }
+                    });
+            }
+        };
+        fetchJson('/api/adsync')
+            .then(function (data) {
+                cleanupView();
+                view = mod.renderAdSync(mainEl, data, opts);
+                if (pendingMsg) {
+                    view.setResult(pendingMsg.text, pendingMsg.error);
+                }
+                log('AD-Abgleich gerendert:', data.counts);
+            })
+            .catch(function (err) {
+                cleanupView();
+                renderError(mainEl, 'AD-Abgleich konnte nicht geladen '
+                    + 'werden: ' + err.message);
+            });
+    }
+
     // loadCrossref: KREUZBEZUG — Katalog identifizierter Personen (Build 471,
     //   AP-2A(2b), Frontend zu 470).
     //   GET  /api/crossref            — Katalog (read, crossref.view).
@@ -2126,6 +2206,8 @@
             loadReleases(mainEl);
         } else if (viewId === 'onboarding') {
             loadOnboarding(mainEl, state.onbPerson, state.onbKind);
+        } else if (viewId === 'adsync') {
+            loadAdSync(mainEl);
         } else if (viewId === 'crossref') {
             loadCrossref(mainEl);
         } else if (viewId === 'crossfindings') {

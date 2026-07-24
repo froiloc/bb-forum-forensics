@@ -98,7 +98,16 @@
 #         CAP_MYCASES; serverseitige Eigentuemer-Pruefung (assigned_to==Aufrufer,
 #         sonst 403). KEIN DB-Schreibzugriff -> migrationsneutral. Start ueber
 #         die gekapselte Klasse management/cases/case_launcher.py (injizierbar).
-# Version: v0.8.500 · Build: 500 · 2026-07-22
+#   502 = AD-ABGLEICH (Bauplan Build501_502 §7; Kern aus Build 501). NEU
+#         GET /api/adsync (Vorschau, rein lesend, mode=ro; Live-AD ueber
+#         injizierbaren Provider, PROD lazy LdapGroupReader.from_config),
+#         POST /api/adsync/apply (Neuaufnahmen als investigator + Namens-
+#         aenderungen; Plan wird SERVERSEITIG frisch gebildet),
+#         POST /api/adsync/decide (Einzel-Entscheidung deactivate/abort/
+#         reactivate; Bestaetigungswort "Entfernen"/"Reaktivieren" wird
+#         SERVERSEITIG geprueft — nie Loeschen, nur is_active=0). Tor fuer
+#         alle drei: CAP_PERSONNEL_SYNC (Seed M020, default-deny).
+# Version: v0.8.502 · Build: 502 · 2026-07-24
 # =============================================================================
 
 import hmac
@@ -179,6 +188,17 @@ from management.ops.storage_overview import StorageOverview
 from management.ops.promotion_repo import PromotionError, PromotionRepo
 from management.ops.promotion_status import STORED_STATUSES
 from management.external.ad_directory import ADDirectory
+# Build 502 (AD-Abgleich, Bauplan Build501_502 §7): Cockpit-Anbindung des in
+# Build 501 gebauten Sync-Kerns (zweiter Bedienweg neben der CLI, mc E2).
+from management.ad_sync.sync_executor import (
+    AdSyncError,
+    CONFIRM_DEACTIVATE,
+    CONFIRM_REACTIVATE,
+    SyncExecutor,
+)
+from management.ad_sync.sync_plan import AdSyncPlanError
+from management.external.ldap_group_reader import LdapError, LdapGroupReader
+from management.person.person_repo import PersonError
 from management.external.case_release_repo import (
     CaseReleaseError,
     CaseReleaseRepo,
@@ -253,6 +273,13 @@ CAP_ONBOARDING_EDIT = "onboarding.edit"
 # Global, nicht scope-behaftet; Lesen und Pflegen getrennt. Seed in M018.
 CAP_CROSSREF_VIEW = "crossref.view"
 CAP_CROSSREF_EDIT = "crossref.edit"
+
+# Build 502: AD-Abgleich der Ermittlerstammdaten (Seed in M020). EINE
+# Faehigkeit fuer Vorschau UND Vollzug: wer abgleichen darf, traegt die
+# Leitungsverantwortung dafuer (Grant an 'supervisor' per policy_admin,
+# default-deny — die woertliche Bestaetigung "Entfernen"/"Reaktivieren"
+# wird ZUSAETZLICH serverseitig je Einzelfall geprueft).
+CAP_PERSONNEL_SYNC = "personnel.sync"
 
 logger = logging.getLogger(__name__)
 
@@ -337,8 +364,15 @@ class ManagementApp:
                  templates_db: Optional[str] = None,
                  default_db: Optional[str] = None,
                  ad_directory: Optional[ADDirectory] = None,
-                 case_launcher: Optional[CaseLauncher] = None) -> None:
+                 case_launcher: Optional[CaseLauncher] = None,
+                 ad_members_provider: Optional[Any] = None) -> None:
         self._db_path = db_path
+        # Build 502: Mitgliederquelle des AD-Abgleichs (F4-Muster, injizierbar:
+        # Test = Mock, PROD = LdapGroupReader aus config.yaml). BEWUSST lazy —
+        # erst beim ersten /api/adsync-Aufruf gebaut, damit ein Server ohne
+        # ad.ldap-Konfiguration normal startet und der Konfigurationsfehler
+        # als Klartext IN der Sicht erscheint (kein Startabbruch fuer alle).
+        self._ad_members_provider = ad_members_provider
         # Build 500: Startet den Forensik-Server (main.py) fuer einen Fall.
         # Injizierbar (Test: Fake ohne echten Prozess-Spawn); PROD: Default-
         # CaseLauncher mit plattformabhaengigem, losgeloestem Popen.
@@ -595,6 +629,10 @@ class ManagementApp:
             return self._releases(person_id, query)
         if path == "/api/onboarding":
             return self._onboarding(person_id, query)
+        # Build 502: AD-Abgleich — Vorschau (rein lesend; das Live-AD wird
+        # gefragt, die coordinator.db NICHT veraendert).
+        if path == "/api/adsync":
+            return self._adsync(person_id)
         # Build 470 (AP-2A): Katalog identifizierter Personen (Konto->Person).
         if path == "/api/crossref":
             return self._crossref(person_id, query)
@@ -2817,6 +2855,191 @@ class ManagementApp:
             con.close()
         return Response.json(200, {"ok": True, "person_id": subject_id, **res})
 
+    # ------------------------------------------------- AD-Abgleich (Build 502)
+    def _adsync_provider(self):
+        """
+        Mitgliederquelle des AD-Abgleichs: injiziert (Test) oder lazy aus
+        config.yaml (PROD). Wirft LdapError bei leerer ad.ldap-Konfiguration
+        (DEFAULT-DENY) — der Aufrufer uebersetzt das in eine Klartext-Antwort.
+        """
+        if self._ad_members_provider is not None:
+            return self._ad_members_provider
+        return LdapGroupReader.from_config()
+
+    class _NullProvider:
+        """
+        Platzhalter fuer /api/adsync/decide: die Einzel-Entscheidung arbeitet
+        NUR auf der coordinator.db und darf nicht daran scheitern, dass das
+        Live-AD gerade nicht erreichbar/konfiguriert ist (die Kandidatenliste
+        stammt aus der zuvor geladenen Vorschau). fetch_members() ist hier
+        bewusst verboten — ein Aufruf waere ein Programmierfehler.
+        """
+        target_group = ""
+
+        def fetch_members(self):  # pragma: no cover — Schutzgelaender
+            raise AdSyncError(
+                "Interner Fehler: decide-Pfad darf das AD nicht abfragen.")
+
+    def _adsync(self, actor_person_id: int) -> Response:
+        """
+        GET /api/adsync — Vorschau des AD-Abgleichs (Recht personnel.sync).
+        REIN LESEND: Live-AD abfragen, Plan bilden, KEIN Beleg, KEIN Write
+        (mode=ro-Verbindung; erst der Vollzug belegt). Liefert zusaetzlich
+        die woertlichen Bestaetigungen, damit die Oberflaeche exakt die
+        serverseitig geprueften Worte anzeigt (eine Wahrheitsquelle).
+        """
+        policy = self.resolve_policy(actor_person_id)
+        if not policy.can(CAP_PERSONNEL_SYNC):
+            return self._forbidden(CAP_PERSONNEL_SYNC)
+
+        try:
+            provider = self._adsync_provider()
+        except LdapError as exc:
+            return Response.json(502, {"error": "ldap_failed",
+                                       "detail": str(exc)})
+        con = self._ro_con()
+        try:
+            executor = SyncExecutor(
+                con, CoordinatorWriter(con, AuditLog(con)), provider)
+            plan = executor.preview()
+        except LdapError as exc:
+            return Response.json(502, {"error": "ldap_failed",
+                                       "detail": str(exc)})
+        except AdSyncPlanError as exc:
+            # Glitch-Schutz (leere/mehrdeutige AD-Antwort): Klartext statt
+            # eines Plans, der alle Ermittler zu Kandidaten machen wuerde.
+            return Response.json(502, {"error": "ad_plan_invalid",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("AD-Abgleich-Vorschau fehlgeschlagen")
+            return Response.json(500, {"error": "adsync_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+
+        return Response.json(200, {
+            "group": provider.target_group,
+            "confirm": {"deactivate": CONFIRM_DEACTIVATE,
+                        "reactivate": CONFIRM_REACTIVATE},
+            **plan.as_dict(),
+        })
+
+    def _adsync_apply(self, actor_person_id: int) -> Response:
+        """
+        POST /api/adsync/apply — vollzieht die NICHT bestaetigungspflichtigen
+        Planteile (Neuaufnahmen als investigator [Flag + person_role],
+        Namensaenderungen) und schreibt die AD_SYNC_RUN-Klammer. Kandidaten
+        werden hier NIE angefasst (Einzel-Entscheidung via /api/adsync/decide).
+        Recht personnel.sync; der Plan wird SERVERSEITIG frisch aus dem AD
+        gebildet (kein Client-Plan wird akzeptiert — die Oberflaeche liefert
+        keine Daten, nur den Anstoss).
+        """
+        policy = self.resolve_policy(actor_person_id)
+        if not policy.can(CAP_PERSONNEL_SYNC):
+            return self._forbidden(CAP_PERSONNEL_SYNC)
+
+        try:
+            provider = self._adsync_provider()
+        except LdapError as exc:
+            return Response.json(502, {"error": "ldap_failed",
+                                       "detail": str(exc)})
+        con = self._rw_con()
+        try:
+            executor = SyncExecutor(
+                con, CoordinatorWriter(con, AuditLog(con)), provider)
+            plan = executor.preview()
+            summary = executor.apply_automatic(
+                plan, actor_id=actor_person_id)
+        except LdapError as exc:
+            return Response.json(502, {"error": "ldap_failed",
+                                       "detail": str(exc)})
+        except AdSyncPlanError as exc:
+            return Response.json(502, {"error": "ad_plan_invalid",
+                                       "detail": str(exc)})
+        except AdSyncError as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("AD-Abgleich-Vollzug fehlgeschlagen")
+            return Response.json(500, {"error": "adsync_apply_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+
+        return Response.json(200, {
+            "ok": True,
+            "created": summary["created"],
+            "renamed": summary["renamed"],
+            "run_seq": summary["run_seq"],
+            "counts": plan.counts(),
+        })
+
+    def _adsync_decide(self, actor_person_id: int,
+                       payload: Dict[str, Any]) -> Response:
+        """
+        POST /api/adsync/decide — Einzel-Entscheidung ueber einen Kandidaten:
+          {system_username, action: 'deactivate'|'abort'|'reactivate',
+           confirmation?, note?, display_name_ad?}
+        Recht personnel.sync. Das Bestaetigungswort wird SERVERSEITIG geprueft
+        (SyncExecutor — nie nur im Browser). Ein falsches Wort bei 'deactivate'/
+        'reactivate' ist HIER kein automatischer Abbruch-Beleg (anders als der
+        one-shot-CLI-Dialog): die Oberflaeche ist interaktiv, der Nutzer kann
+        korrigieren; der protokollierte Abbruch ist die EIGENE, bewusste
+        Aktion 'abort' (mc 2026-07-24: Abbruch wird protokolliert).
+        """
+        policy = self.resolve_policy(actor_person_id)
+        if not policy.can(CAP_PERSONNEL_SYNC):
+            return self._forbidden(CAP_PERSONNEL_SYNC)
+
+        sam = str(payload.get("system_username", "") or "").strip()
+        action = str(payload.get("action", "") or "").strip()
+        if not sam:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": "system_username fehlt."})
+        if action not in ("deactivate", "abort", "reactivate"):
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "action muss deactivate|abort|reactivate sein."})
+
+        confirmation = str(payload.get("confirmation", "") or "")
+        note = str(payload.get("note", "") or "")
+        display_name_ad = payload.get("display_name_ad")
+
+        con = self._rw_con()
+        try:
+            executor = SyncExecutor(
+                con, CoordinatorWriter(con, AuditLog(con)),
+                self._NullProvider())
+            if action == "deactivate":
+                seq = executor.deactivate(
+                    sam, confirmation=confirmation,
+                    actor_id=actor_person_id)
+            elif action == "abort":
+                seq = executor.abort_deactivation(
+                    sam, actor_id=actor_person_id, note=note)
+            else:
+                seq = executor.reactivate(
+                    sam, confirmation=confirmation,
+                    actor_id=actor_person_id,
+                    display_name_ad=(str(display_name_ad)
+                                     if display_name_ad else None))
+        except (AdSyncError, PersonError) as exc:
+            # Falsches Bestaetigungswort, unbekannte Kennung, bereits
+            # (in)aktives Konto oder fehlende M020 — Klartext, KEINE
+            # Datenaenderung (die Sicht zeigt weiter den Ist-Stand).
+            return Response.json(400, {"error": "confirmation_rejected",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("AD-Abgleich-Entscheidung fehlgeschlagen")
+            return Response.json(500, {"error": "adsync_decide_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+
+        return Response.json(200, {"ok": True, "action": action,
+                                   "system_username": sam,
+                                   "audit_seq": seq})
+
     # ---------------------------------------------------------------- AP-2A
     def _crossref(self, actor_person_id: int, query) -> Response:
         """
@@ -3819,6 +4042,12 @@ class ManagementApp:
         # Build 464 (AP-2G): Onboarding/Offboarding-Checkliste — auditiert.
         if path == "/api/onboarding/step":
             return self._onboarding_step(person_id, payload)
+        # Build 502: AD-Abgleich — automatischer Teil (Neuaufnahmen +
+        # Namensaenderungen) bzw. Einzel-Entscheidung mit Bestaetigungswort.
+        if path == "/api/adsync/apply":
+            return self._adsync_apply(person_id)
+        if path == "/api/adsync/decide":
+            return self._adsync_decide(person_id, payload)
         # Build 470 (AP-2A): Katalog identifizierter Personen — auditiert.
         if path == "/api/crossref/set":
             return self._crossref_set(person_id, payload)
