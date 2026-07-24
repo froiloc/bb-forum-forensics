@@ -125,6 +125,18 @@ VIEW_EXPORTS: Tuple[ViewExportSpec, ...] = (
             SectionSpec("loads", "Last je Ermittler:in"),
         ),
     ),
+    # Build 516 (AP-2G / Idee 23): die Eskalationsliste ist ein Beleg fuer die
+    # Leitung ("dies lag zu diesem Zeitpunkt an") und gehoert damit in die
+    # Akte. Die Schwellen bekommen einen EIGENEN, benannten Abschnitt VOR den
+    # Meldungen: ohne den Massstab ist keine der Meldungen nachrechenbar.
+    ViewExportSpec(
+        view_id="escalation", label="Eskalationen",
+        api_path="/api/escalations",
+        sections=(
+            SectionSpec("thresholds", "Angewandter Maßstab"),
+            SectionSpec("items", "Gemeldete Eskalationen"),
+        ),
+    ),
     ViewExportSpec(
         view_id="capacity", label="Kapazität",
         api_path="/api/capacity", requires=("start",),

@@ -1570,3 +1570,69 @@ tr.aiw-cff-nichtrelevant { opacity: 0.7; }
   background: #f4f6f8; border-color: #cfd6dd;
   border-left-color: #7f8c8d; color: #33383d;
 }
+
+/* ========================================================================
+ * Build 516 (AP-2G / Idee 23) — ESKALATIONEN.
+ *
+ * Eine rein auswertende Liste. Die Schwere traegt die Farbe, damit sie
+ * ohne Lesen erfassbar ist; die BEGRUENDUNG bleibt aber immer im Klartext
+ * daneben stehen — Farbe allein ist kein Beleg (und fuer Menschen mit
+ * Farbsehschwaeche gar keiner). Deshalb steht die Schwere ZUSAETZLICH als
+ * Wort in der ersten Spalte.
+ *
+ * 'is-unbekannt' faengt eine Schwere ab, die das Backend spaeter einmal
+ * ergaenzt: sie faellt dann durch die gestrichelte Umrandung AUF, statt
+ * still wie 'niedrig' auszusehen.
+ * ======================================================================== */
+
+.aiw-esk-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 14px;
+  font-size: 13px;
+}
+.aiw-esk-table th {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 2px solid var(--line, #d5dbe1);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.aiw-esk-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line, #e6eaee);
+  vertical-align: top;
+}
+.aiw-esk-row.is-hoch     { box-shadow: inset 4px 0 0 var(--rot); }
+.aiw-esk-row.is-mittel   { box-shadow: inset 4px 0 0 var(--gelb); }
+.aiw-esk-row.is-niedrig  { box-shadow: inset 4px 0 0 var(--gruen); }
+.aiw-esk-row.is-unbekannt { box-shadow: inset 4px 0 0 #7f8c8d; outline: 1px dashed #7f8c8d; }
+.aiw-esk-sev { font-weight: 600; white-space: nowrap; }
+.aiw-esk-target, .aiw-esk-days { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.aiw-esk-msg { color: #33383d; }
+
+/* Echter Leerbefund — gruen, weil es hier tatsaechlich eine gute Nachricht
+   ist, UND mit der Angabe, worauf er sich stuetzt (Zahl der geprueften
+   Faelle). Ein blosses "keine Eintraege" waere nicht nachpruefbar. */
+.aiw-esk-leer {
+  background: #eafaf1; border: 1px solid #a9dfbf;
+  border-left: 5px solid var(--gruen);
+  border-radius: 6px; padding: 12px 16px; margin: 0 0 14px;
+  color: #1d6b45; font-size: 13px;
+}
+
+/* Der angewandte Massstab. Steht IMMER da, auch beim Leerbefund. */
+.aiw-esk-foot {
+  font-size: 12px; color: #4a5158; margin: 0 0 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Ansage zum fehlenden Quittierungsweg. Bewusst als sichtbarer Hinweis und
+   nicht als stilles Fehlen eines Knopfes: 'kein Knopf' laesst offen, ob die
+   Faehigkeit fehlt oder nur das RECHT. */
+.aiw-esk-ack {
+  font-size: 12px; color: #7d6608;
+  background: #fef9e7; border: 1px solid #f7dc6f;
+  border-left: 4px solid var(--gelb);
+  border-radius: 6px; padding: 8px 12px; max-width: 780px;
+}

@@ -58,7 +58,12 @@
              umkehrbar und auditiert.
   Build 512: Akten-Export (AP-2B/B1) — ein Knopf in der Kopfzeile, der die
              AKTIVE Sicht als druckbare Aktenfassung oeffnet.
-  Version: v0.8.512 · Build: 512 · 2026-07-24
+  Build 514: Ueberlastwarnung (AP-2F/Idee 21) als Banner IN der Lastverteilung
+             (cockpit_workload.js) — keine eigene Sicht, damit Warnung und
+             Balken aus EINER Messung stammen.
+  Build 516: Eskalationen (cockpit_escalation.js) — AP-2G/Idee 23, rein
+             auswertende Sicht zu /api/escalations. Recht: escalation.view.
+  Version: v0.8.516 · Build: 516 · 2026-07-24
   =============================================================================
 -->
 <link rel="stylesheet" href="/static/cockpit.css">
@@ -79,6 +84,9 @@
 <script src="/static/cockpit_adsync.js" defer></script>
 <script src="/static/cockpit_personnel.js" defer></script>
 <script src="/static/cockpit_workload.js" defer></script>
+<!-- Eskalationen (AP-2G/Idee 23, Build 516): rein auswertende Sicht zu
+     /api/escalations. Recht: escalation.view (Seed M026, default-deny). -->
+<script src="/static/cockpit_escalation.js" defer></script>
 <script src="/static/cockpit_capacity.js" defer></script>
 <script src="/static/cockpit_policy.js" defer></script>
 <script src="/static/cockpit_mycases.js" defer></script>

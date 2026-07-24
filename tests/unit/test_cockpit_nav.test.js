@@ -100,7 +100,8 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     //             Personalverwaltung mit eingebundenem AD-Abgleich).
     // Build 505: 31 (neu: 'alias' - globaler Alias-Katalog, AP-2A/A1).
     // Build 510: 32 (neu: 'merge' - Identitaets-Gruppen, AP-2A/A3).
-    expect(api.VIEW_CATALOG.length).toBe(32);
+    // Build 516: 33 (neu: 'escalation' - Eskalationen, AP-2G/Idee 23).
+    expect(api.VIEW_CATALOG.length).toBe(33);
   });
 
   // CN-QUERFUND (Build 478) --------------------------------------------------

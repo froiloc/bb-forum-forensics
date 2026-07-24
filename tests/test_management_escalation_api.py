@@ -29,7 +29,11 @@
 # EA10 — die Faehigkeit ist im Katalog UND in der Migrationskette (M026);
 #        ein Katalogeintrag ohne Seed waere ein toter Grant
 #
-# Version: v0.8.515 · Build: 515 · 2026-07-24
+# Ergaenzt in Build 516 (Frontend/Sicht):
+# EA11 — Akten-Export der Sicht traegt Massstab UND Meldungen, Massstab zuerst
+# EA12 — der Export erbt die Rechtepruefung der Sicht (kein zweiter Rechtepfad)
+#
+# Version: v0.8.516 · Build: 516 · 2026-07-24
 # =============================================================================
 
 import json
@@ -46,6 +50,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import management.migrations.coordinator as coordinator_migrations
 from management.audit.audit_log import AuditLog
 from management.cases.cases_repo import CasesRepo
+from management.export.view_export_catalog import spec_for
 from management.gateway.coordinator_writer import CoordinatorWriter
 from management.migrations.runner import MigrationRunner, discover
 from management.rbac import catalog
@@ -285,6 +290,37 @@ class EscalationApiTests(unittest.TestCase):
         cat = {c.code: (c.label, c.description) for c in catalog.CAPABILITIES}
         self.assertEqual((row["label"], row["description"]),
                          cat["escalation.view"])
+
+    # EA11 (Build 516) — Akten-Export der Sicht. Die Eskalationsliste ist ein
+    #        Beleg fuer die Leitung ("dies lag zu diesem Zeitpunkt an") und
+    #        gehoert damit in die Akte. Der MASSSTAB muss darin stehen, sonst
+    #        ist keine der Meldungen nachrechenbar.
+    def test_ea11_aktenexport(self):
+        spec = spec_for("escalation")
+        self.assertIsNotNone(spec, "Sicht 'escalation' fehlt im Export-Katalog")
+        keys = [s.key for s in spec.sections]
+        self.assertIn("thresholds", keys)
+        self.assertIn("items", keys)
+        self.assertLess(keys.index("thresholds"), keys.index("items"),
+                        "der Massstab gehoert VOR die Meldungen")
+
+        grenze = self._get(1)["thresholds"]["red_overdue_days"]
+        self.cases.create_case(7005, "alt_rot_export", actor_id=1)
+        self.cases.assign(7005, 2, actor_id=1)
+        self._age_case(7005, grenze + 2)
+
+        r = self.app.dispatch(1, "/api/view/export", {"view": ["escalation"]})
+        self.assertEqual(r.status, 200)
+        html = r.body.decode("utf-8")
+        self.assertIn("Angewandter Maßstab", html)
+        self.assertIn("Gemeldete Eskalationen", html)
+        self.assertIn("7005", html)
+
+    # EA12 (Build 516) — der Export erbt die Rechtepruefung der Sicht. Ein
+    #        zweiter Rechtepfad koennte abdriften; dieser kann es nicht.
+    def test_ea12_export_erbt_das_recht(self):
+        r = self.app.dispatch(2, "/api/view/export", {"view": ["escalation"]})
+        self.assertEqual(r.status, 403)
 
 
 if __name__ == "__main__":

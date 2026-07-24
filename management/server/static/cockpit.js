@@ -129,6 +129,15 @@
         // Ermittler (Scope 'eigene') die seines Falls. Recht: external.view
         // (Backend-Vorgabe aus Build 385).
         { id: 'calendar',   cap: 'external.view',        group: 'Ueberblick',     label: 'Kalender & Wiedervorlage' },
+        // Build 516 (AP-2G / Idee 23): Eskalationen (Frontend zu 515). Gruppe
+        // 'Ueberblick', weil die Sicht dieselbe Frage beantwortet wie das
+        // Dashboard — "worauf muss ich JETZT schauen" —, nur zugespitzt auf
+        // das, was ueber eine Schwelle gelaufen ist. Eigenes Recht
+        // 'escalation.view' (Seed M026, default-deny) und BEWUSST NICHT
+        // scope-behaftet: die wichtigste Regel (Rueckstau) gehoert zu keinem
+        // Fall und damit zu keiner Person; auf 'eigene' verengt haette die
+        // Sicht genau die Faelle ausgeblendet, um derentwillen es sie gibt.
+        { id: 'escalation', cap: 'escalation.view',      group: 'Ueberblick',     label: 'Eskalationen' },
         { id: 'assignment', cap: 'assignment.edit',      group: 'Verwaltung',     label: 'Zuweisung' },
         // Fall-Erkennung (Build 384): haengt an DERSELBEN Faehigkeit wie die
         // Zuweisung — das Backend (Build 383) schuetzt /api/cases/detect und
@@ -600,6 +609,32 @@
             cleanupView();
             renderError(mainEl,
                 'Lastverteilung konnte nicht geladen werden: ' + err.message);
+        });
+    }
+
+    // loadEscalation: /api/escalations holen und ueber cockpit_escalation.js
+    // rendern (Build 516 / AP-2G, Idee 23).
+    //
+    // FEHLER WERDEN DURCHGEREICHT, NICHT VERSCHLUCKT: ein Fehlschlag landet als
+    // {error: <text>} im Modul, das daraus einen AUSDRUECKLICHEN Fehlerzustand
+    // macht. Wuerden wir hier nur renderError aufrufen und die Sicht leeren,
+    // saehe der Ausfall der Erhebung genauso aus wie ein Leerbefund — und ein
+    // Leerbefund waere die Behauptung "es liegt nichts an" (Grundregel 1).
+    function loadEscalation(mainEl) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitEscalation : null;
+        if (!mod) {
+            renderError(mainEl, 'Eskalations-Modul nicht geladen.');
+            return;
+        }
+        fetchJson('/api/escalations').then(function (data) {
+            cleanupView();
+            mod.renderEscalation(mainEl, data, {});
+            log('Eskalationen gerendert:', (data.items || []).length);
+        }).catch(function (err) {
+            cleanupView();
+            mod.renderEscalation(mainEl, { error: err.message }, {});
         });
     }
 
@@ -2558,7 +2593,13 @@
         stats: 1, planung: 1, annostats: 1, workload: 1, capacity: 1,
         support: 1, mycases: 1, myhistory: 1, policy: 1, integrity: 1,
         audit: 1, promotion: 1, releases: 1, onboarding: 1, personnel: 1,
-        crossref: 1, crossfindings: 1, alias: 1, merge: 1
+        crossref: 1, crossfindings: 1, alias: 1, merge: 1,
+        // Build 516: die Eskalationsliste ist ein Beleg fuer die Leitung
+        // ("dies lag zu diesem Zeitpunkt an") und gehoert damit in die Akte.
+        // Sie kennt KEINEN Filter — es gibt entsprechend auch keinen Zweig in
+        // exportParams; der Export bildet zwangslaeufig denselben Ausschnitt
+        // ab wie die Sicht.
+        escalation: 1
     };
 
     // exportParams: die Sicht-Parameter, die der Export MITBEKOMMEN muss, damit
@@ -2675,6 +2716,8 @@
             loadMerge(mainEl);
         } else if (viewId === 'workload') {
             loadWorkload(mainEl);
+        } else if (viewId === 'escalation') {
+            loadEscalation(mainEl);
         } else if (viewId === 'capacity') {
             loadCapacity(mainEl);
         } else if (viewId === 'policy') {
@@ -2790,6 +2833,15 @@
                 loadAlias();
             } else if (state.activeId === 'workload') {
                 loadWorkload();
+            } else if (state.activeId === 'escalation') {
+                // Eskalationen leiten sich AUSSCHLIESSLICH aus dem Fallzustand
+                // ab (Status, Zuweisung, letzte Aktivitaet). Genau diese
+                // Aenderungen erzeugen coordinator-audit_log-Belege, auf die
+                // die SSE triggert — ein Live-Reload ist hier also nicht nur
+                // erlaubt, sondern noetig: eine Eskalation, die inzwischen
+                // erledigt ist, darf nicht stehen bleiben. Die Sicht haelt
+                // keinen Eingabezustand, den ein Reload verwerfen koennte.
+                loadEscalation();
             } else if (state.activeId === 'capacity') {
                 loadCapacity(undefined, state.capacityPeriod);
             } else if (state.activeId === 'policy') {
