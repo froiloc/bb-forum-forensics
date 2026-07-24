@@ -9,7 +9,10 @@
  *   Rollen-Umschalter (die Identitaet ist server-seitig fixiert; Rechte kommen
  *   aus /api/whoami, nicht aus einem UI-Schalter).
  *
- * Version: v0.7.349 · Build: 349 · 2026-07-10
+ * Version: v0.8.500 · Build: 500 · 2026-07-22
+ * Build 500: scoped Stil fuer den Fallstart aus 'Meine Auftraege'
+ *            (.aiw-mycases-btn, .aiw-mycases-banner) — bewusst eng gefasst,
+ *            analog zu den .aiw-cases-*-Regeln (kein globales .aiw-btn).
  * ============================================================================= */
 
 :root {
@@ -1148,3 +1151,31 @@ td.aiw-cal-today { box-shadow: inset 0 0 0 2px var(--akzent); }
 .aiw-cf-offen { background: var(--gelb); color: #3a2f00; }
 .aiw-cf-integriert { background: var(--gruen); }
 .aiw-cf-unbekannt { background: var(--muted); }
+
+/* ==========================================================================
+   Fallstart aus 'Meine Auftraege' (Build 500) — cockpit_mycases.js
+   --------------------------------------------------------------------------
+   BEWUSST ENG GEFASST (analog .aiw-cases-*): nur '.aiw-mycases-*'. Kein
+   globales '.aiw-btn' (siehe Hinweis oben im File). Beleg: Bauplan Build 500.
+   ========================================================================== */
+
+/* Start-Knopf je Zeile: kompakt, klar als Aktion erkennbar. */
+.aiw-mycases-btn {
+  font: inherit; font-size: 13px; padding: 4px 10px; cursor: pointer;
+  color: #fff; background: var(--gruen, #1e8449);
+  border: 1px solid rgba(0, 0, 0, 0.15); border-radius: 5px;
+}
+.aiw-mycases-btn:hover { filter: brightness(0.95); }
+.aiw-mycases-btn:disabled { opacity: 0.6; cursor: default; }
+
+/* Rueckmeldebanner nach einem Startversuch (Erfolg/Fehler). */
+.aiw-mycases-banner {
+  border-radius: 6px; padding: 10px 14px; margin: 0 0 12px; font-size: 13px;
+  border: 1px solid var(--line);
+}
+.aiw-mycases-banner.is-ok {
+  background: #eafaf1; border-color: #abebc6; color: #196f3d;
+}
+.aiw-mycases-banner.is-error {
+  background: #fdecea; border-color: #f5b7b1; color: #922b21;
+}

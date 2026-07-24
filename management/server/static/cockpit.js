@@ -80,7 +80,10 @@
 //   (gemeldeter Fehler, belegt). Der 'changed'-Handler unterdrueckt den Reload
 //   nun, solange das jeweilige Modul via hasSelection() einen offenen Bericht
 //   meldet. Ohne offene Auswahl wird wie bisher nachgeladen.
-// Version: v0.8.479 · Build: 479 · 2026-07-21
+// Build 500: 'Meine Auftraege' reicht onLaunch durch -> POST /api/case/launch
+//   startet den Forensik-Server (main.py) fuer einen zugewiesenen Fall; Erfolg/
+//   Fehler als Banner (loadMyCases mit pendingMsg neu geladen).
+// Version: v0.8.500 · Build: 500 · 2026-07-22
 // =============================================================================
 
 (function () {
@@ -640,7 +643,15 @@
 
     // loadMyCases: /api/mycases holen und als persoenliche Fall-Liste rendern
     // (cockpit_mycases.js). Einzelne Tabulator-Instanz -> state.table.
-    function loadMyCases(mainEl) {
+    //
+    // Build 500 (Fallstart aus dem Portal): reicht ein onLaunch-Callback durch.
+    // Ein Klick auf "Fall starten" sendet POST /api/case/launch (auditfrei, kein
+    // DB-Schreibzugriff — der Server prueft nur die Eigentuemerschaft und startet
+    // den Forensik-Server main.py fuer den Fall). Erfolg/Fehler werden als Banner
+    // ueber der Tabelle gezeigt; dazu wird die Sicht mit pendingMsg neu geladen.
+    // opts.pendingMsg wird beim Reload EINMALIG angezeigt.
+    function loadMyCases(mainEl, opts) {
+        opts = opts || {};
         mainEl = mainEl || document.getElementById('aiw-main');
         var mod = (typeof window !== 'undefined')
             ? window.AIWCockpitMyCases : null;
@@ -650,7 +661,33 @@
         }
         fetchJson('/api/mycases').then(function (data) {
             cleanupView();
-            state.table = mod.renderMyCases(mainEl, data, {});
+            // Rueckmeldung eines Startversuchs in DERSELBEN Sicht neu laden.
+            var reload = function (msg) {
+                loadMyCases(mainEl, { pendingMsg: msg });
+            };
+            state.table = mod.renderMyCases(mainEl, data, {
+                pendingMsg: opts.pendingMsg || null,
+                onLaunch: function (subjectId) {
+                    log('Fallstart angefordert fuer subject_id=', subjectId);
+                    postJson('/api/case/launch', { subject_id: subjectId })
+                        .then(function (r) {
+                            reload({
+                                text: 'Fall ' + subjectId + ' gestartet '
+                                    + '(PID ' + (r && r.pid) + '). Der '
+                                    + 'Forensik-Browser oeffnet sich in Kuerze.',
+                                error: false
+                            });
+                        })
+                        .catch(function (e) {
+                            reload({
+                                text: 'Fall ' + subjectId + ' konnte nicht '
+                                    + 'gestartet werden: '
+                                    + (e && e.message || e),
+                                error: true
+                            });
+                        });
+                }
+            });
             log('Meine Auftraege gerendert:', data.count);
         }).catch(function (err) {
             cleanupView();

@@ -92,7 +92,13 @@
 #         Zeile JE FALL aus 'cases' — auch fuer NIE bewertete Faelle; /stats
 #         sieht die gar nicht). /api/results/stats weist jetzt zusaetzlich
 #         'faelle_gesamt' und 'faelle_unbewertet' aus.
-# Version: v0.7.469 · Build: 469 · 2026-07-20
+#   500 = FALLSTART AUS DEM PORTAL. NEU POST /api/case/launch: startet den
+#         Forensik-Server (main.py --mode cli --subject-id <id> --auto-port
+#         --open-browser) fuer einen dem Aufrufer ZUGEWIESENEN Fall. Tor:
+#         CAP_MYCASES; serverseitige Eigentuemer-Pruefung (assigned_to==Aufrufer,
+#         sonst 403). KEIN DB-Schreibzugriff -> migrationsneutral. Start ueber
+#         die gekapselte Klasse management/cases/case_launcher.py (injizierbar).
+# Version: v0.8.500 · Build: 500 · 2026-07-22
 # =============================================================================
 
 import hmac
@@ -107,6 +113,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from management.audit.audit_log import AuditLog
 from management.cases.cases_repo import CasesRepo
+# Build 500: Fallstart aus dem Portal — startet main.py fuer einen Fall.
+from management.cases.case_launcher import CaseLauncher, CaseLaunchError
 from management.gateway.coordinator_writer import CoordinatorWriter
 from management.dashboard.dashboard_repo import (
     DashboardRepo,
@@ -328,8 +336,13 @@ class ManagementApp:
                  assets_dir: Optional[str] = None,
                  templates_db: Optional[str] = None,
                  default_db: Optional[str] = None,
-                 ad_directory: Optional[ADDirectory] = None) -> None:
+                 ad_directory: Optional[ADDirectory] = None,
+                 case_launcher: Optional[CaseLauncher] = None) -> None:
         self._db_path = db_path
+        # Build 500: Startet den Forensik-Server (main.py) fuer einen Fall.
+        # Injizierbar (Test: Fake ohne echten Prozess-Spawn); PROD: Default-
+        # CaseLauncher mit plattformabhaengigem, losgeloestem Popen.
+        self._case_launcher = case_launcher or CaseLauncher()
         # Statische Auslieferung gekapselt (Grundregel 10). static_dir ist im
         # Test injizierbar; PROD nutzt STATIC_DIR neben diesem Modul.
         self._static = StaticAssets(static_dir or STATIC_DIR)
@@ -3774,6 +3787,11 @@ class ManagementApp:
             return self._case_priority(person_id, payload)
         if path == "/api/case/status":
             return self._case_status(person_id, payload)
+        # Build 500: Fallstart aus dem Portal. Startet den Forensik-Server
+        # (main.py) fuer einen dem Aufrufer zugewiesenen Fall. KEIN DB-Schreib-
+        # zugriff (migrationsneutral) — nur Eigentuemer-Lesepruefung + Spawn.
+        if path == "/api/case/launch":
+            return self._case_launch(person_id, payload)
         if path == "/api/report/approve":
             return self._report_approve(person_id, payload)
         if path == "/api/report/return":
@@ -3979,3 +3997,73 @@ class ManagementApp:
             con.close()
         return Response.json(200, {"ok": True, "subject_id": subject_id,
                                    "status": status, "audit_seq": seq})
+
+    def _case_launch(self, person_id: int,
+                     payload: Dict[str, Any]) -> Response:
+        """
+        Startet den FORENSIK-Webserver (main.py) fuer einen dem Aufrufer
+        zugewiesenen Fall (Build 500). Beide Server laufen in derselben VM.
+
+        Sicherheits-/Fachregeln (mc 2026-07-22):
+          - Tor ist dieselbe Capability wie die Sicht 'Meine Auftraege'
+            (CAP_MYCASES). Wer die eigenen Faelle nicht sehen darf, darf auch
+            keinen starten.
+          - EIGENTUEMER-PRUEFUNG: Es duerfen NUR Faelle gestartet werden, die dem
+            Aufrufer zugewiesen sind (cases.assigned_to == person_id). Fremde
+            Faelle -> 403. Das ist die serverseitige Durchsetzung von 'nur eigene
+            zugewiesene Faelle' (nicht nur ein UI-Filter).
+          - KEIN DB-Schreibzugriff: reine Lesepruefung (mode=ro) + Prozess-Spawn.
+            Damit ist der Endpoint migrationsneutral (kein Schema-/DB-Eingriff,
+            kein neuer EventType) — bewusst gewaehlt fuer den Produktivbetrieb
+            ab 01.07.2026. Der Start selbst wird (wie start.bat) NICHT in
+            coordinator.db auditiert; ein spaeterer Audit-Beleg bliebe als
+            eigene Entscheidung nachruestbar (siehe Uebergabe Build 500).
+          - Fehlerpolitik (E2): NUR starten, START-ZEIT-Fehler melden. Fehlende
+            fallspezifische DBs fuehren zum harten Abbruch IN main.py (im
+            losgeloesten Prozess) und sind daher hier nicht sichtbar.
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_MYCASES):
+            return self._forbidden(CAP_MYCASES)
+
+        # subject_id validieren (Existenz + Eigentuemer) — read-only.
+        con = self._ro_con()
+        try:
+            subject_id, err = self._case_id(con, payload)
+            if err is not None:
+                return err
+            row = con.execute(
+                "SELECT assigned_to FROM cases WHERE subject_id=?",
+                (subject_id,)).fetchone()
+        finally:
+            con.close()
+
+        # Eigentuemer-Durchsetzung: nur der zugewiesene Ermittler darf starten.
+        assigned_to = row["assigned_to"] if row is not None else None
+        if assigned_to != person_id:
+            logger.warning(
+                "Fallstart abgewiesen: person_id=%s ist nicht Eigentuemer von "
+                "subject_id=%s (assigned_to=%s).",
+                person_id, subject_id, assigned_to)
+            return Response.json(403, {
+                "error": "not_owner",
+                "subject_id": subject_id,
+                "detail": "Fall ist nicht Ihnen zugewiesen."})
+
+        # Start. START-ZEIT-Fehler werden als klare 500-Antwort gemeldet
+        # (Grundregel 1: kein stiller Fehlschlag).
+        try:
+            info = self._case_launcher.launch(subject_id)
+        except CaseLaunchError as exc:
+            logger.exception("Fallstart fehlgeschlagen (subject_id=%s)",
+                             subject_id)
+            return Response.json(500, {
+                "error": "launch_failed",
+                "subject_id": subject_id,
+                "detail": str(exc)})
+
+        return Response.json(200, {
+            "ok": True,
+            "launched": True,
+            "subject_id": subject_id,
+            "pid": info.get("pid")})

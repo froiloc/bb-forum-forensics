@@ -1,6 +1,7 @@
 /**
+ * Build 500: Fallstart aus dem Portal — Aktionsspalte/Banner/onLaunch (MYC06-09)
  * Build 469: Schluesselumstellung user_id -> subject_id (M019)
- * Version: v0.7.469 · Build: 469 · 2026-07-20
+ * Version: v0.8.500 · Build: 500 · 2026-07-22
  * tests/unit/test_cockpit_mycases.test.js
  * IT-Forensisches Ermittlungswerkzeug — Baustelle 7: Cockpit Meine Auftraege
  *
@@ -12,6 +13,13 @@
  * MYC03 — toRows: Faelle -> Zeilen (has_note -> 'Notiz'/'', since_days).
  * MYC04 — renderMyCases: Kopf/count + Stub-Tabulator.
  * MYC05 — renderMyCases ohne Tabulator -> Platzhalter + null.
+ *
+ * Build 500 (Fallstart aus dem Portal):
+ * MYC06 — columnsFor: ohne onLaunch nur Basisspalten; mit onLaunch +Aktion.
+ * MYC07 — actionColumn-Formatter: liefert <button>, Klick ruft onLaunch(sid)
+ *         und deaktiviert den Knopf (Doppelklick-Schutz).
+ * MYC08 — renderMyCases mit onLaunch: Aktionsspalte in den Tabulator-Optionen.
+ * MYC09 — pendingMsg -> Banner (is-ok/is-error) mit Text (XSS: textContent).
  */
 
 import { describe, it, expect } from "vitest";
@@ -91,5 +99,73 @@ describe("cockpit_mycases.js — Meine Auftraege (Build 364)", () => {
     const inst = api.renderMyCases(main, _data(), { Tabulator: null });
     expect(inst).toBe(null);
     expect(main.querySelector(".aiw-placeholder")).toBeTruthy();
+  });
+
+  it("MYC06: columnsFor — Aktionsspalte nur mit onLaunch", () => {
+    const api = _api();
+    const base = api.columnsFor();
+    const withAction = api.columnsFor(function () {});
+    expect(withAction.length).toBe(base.length + 1);
+    const last = withAction[withAction.length - 1];
+    expect(last.title).toBe("Aktion");
+    expect(typeof last.formatter).toBe("function");
+  });
+
+  it("MYC07: actionColumn-Formatter — Button + Klick ruft onLaunch(sid)", () => {
+    const win = _ctx();
+    const api = win.AIWCockpitMyCases;
+    // document global fuer den Formatter bereitstellen (nutzt globales document).
+    const prevDoc = globalThis.document;
+    globalThis.document = win.document;
+    try {
+      let called = null;
+      const col = api.actionColumn(function (sid) { called = sid; });
+      // Fake-Zelle wie Tabulator sie dem Formatter uebergibt.
+      const btn = col.formatter({ getValue: () => 18 });
+      expect(btn.tagName).toBe("BUTTON");
+      expect(btn.textContent).toBe("Fall starten");
+      expect(btn.getAttribute("data-subject-id")).toBe("18");
+      btn.dispatchEvent(new win.Event("click"));
+      expect(called).toBe(18);
+      expect(btn.disabled).toBe(true);
+      expect(btn.textContent).toBe("Startet…");
+    } finally {
+      globalThis.document = prevDoc;
+    }
+  });
+
+  it("MYC08: renderMyCases mit onLaunch — Aktionsspalte in Tabulator-Optionen", () => {
+    const win = _ctx();
+    const api = win.AIWCockpitMyCases;
+    const main = win.document.createElement("main");
+    let made = null;
+    function StubTab(container, opts) { made = { container, opts }; }
+    api.renderMyCases(main, _data(), {
+      Tabulator: StubTab,
+      onLaunch: function () {},
+    });
+    const cols = made.opts.columns;
+    expect(cols[cols.length - 1].title).toBe("Aktion");
+  });
+
+  it("MYC09: pendingMsg -> Banner (is-ok / is-error, textContent)", () => {
+    const win = _ctx();
+    const api = win.AIWCockpitMyCases;
+    const main = win.document.createElement("main");
+    function StubTab() {}
+    api.renderMyCases(main, _data(), {
+      Tabulator: StubTab,
+      pendingMsg: { text: "Fall 18 gestartet.", error: false },
+    });
+    const ok = main.querySelector(".aiw-mycases-banner.is-ok");
+    expect(ok).toBeTruthy();
+    expect(ok.textContent).toBe("Fall 18 gestartet.");
+
+    const main2 = win.document.createElement("main");
+    api.renderMyCases(main2, _data(), {
+      Tabulator: StubTab,
+      pendingMsg: { text: "Fehlgeschlagen", error: true },
+    });
+    expect(main2.querySelector(".aiw-mycases-banner.is-error")).toBeTruthy();
   });
 });
