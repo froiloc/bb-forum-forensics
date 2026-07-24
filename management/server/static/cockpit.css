@@ -1511,3 +1511,62 @@ tr.aiw-cff-nichtrelevant { opacity: 0.7; }
         font-size: 12px;
     }
 }
+
+/* ========================================================================
+ * Build 514 (AP-2F / Idee 21) — UEBERLASTWARNUNG in der Lastverteilung.
+ *
+ * Das Banner wird IMMER gerendert, auch wenn nichts zu melden ist. Ein
+ * Banner, das nur im Alarmfall existiert, laesst offen, ob gerade nichts
+ * los ist oder ob die Pruefung ausgefallen ist — genau diese beiden Faelle
+ * muessen unterscheidbar bleiben (Grundregel 1). Deshalb VIER Zustaende
+ * mit VIER Erscheinungsbildern:
+ *
+ *   is-overload  rot   — mindestens eine Person UEBER der Grenze
+ *   is-warn      gelb  — an der Grenze oder Rueckstau-Alarm
+ *   is-ok        gruen — geprueft, nichts zu melden
+ *   is-none      grau  — NICHT geprueft (kein overload-Block in der Antwort)
+ *
+ * 'is-none' ist bewusst NEUTRAL und nicht gruen: 'nicht geprueft' darf nie
+ * wie 'in Ordnung' aussehen.
+ *
+ * Die Farbgebung spiegelt die bestehenden Warnbloecke (.aiw-cases-warn,
+ * .aiw-cal-hints) — dieselbe Bedeutung soll dieselbe Farbe haben.
+ * ======================================================================== */
+
+.aiw-overload {
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin: 0 0 16px;
+  font-size: 13px;
+  border: 1px solid var(--line, #d5dbe1);
+  border-left: 5px solid var(--line, #d5dbe1);
+  background: #f4f6f8;
+  color: #33383d;
+}
+.aiw-overload-title { font-weight: 600; margin-bottom: 6px; }
+.aiw-overload ul { margin: 0; padding-left: 20px; }
+.aiw-overload li { margin: 2px 0; font-variant-numeric: tabular-nums; }
+.aiw-overload-foot {
+  margin-top: 8px;
+  font-size: 12px;
+  opacity: .85;
+  font-variant-numeric: tabular-nums;
+}
+
+.aiw-overload.is-overload {
+  background: #fdecea; border-color: #f5b7b1;
+  border-left-color: var(--rot); color: #922b21;
+}
+.aiw-overload.is-warn {
+  background: #fef9e7; border-color: #f7dc6f;
+  border-left-color: var(--gelb); color: #7d6608;
+}
+.aiw-overload.is-ok {
+  background: #eafaf1; border-color: #a9dfbf;
+  border-left-color: var(--gruen); color: #1d6b45;
+}
+/* 'nicht geprueft' — neutral grau, NIE gruen. */
+.aiw-overload.is-none {
+  background: #f4f6f8; border-color: #cfd6dd;
+  border-left-color: #7f8c8d; color: #33383d;
+}

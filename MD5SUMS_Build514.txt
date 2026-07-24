@@ -1,0 +1,7 @@
+# MD5-Pruefsummen Build 514 (aiw_webserver, v0.8.514) — erzeugt 2026-07-24
+# Basis: Build 513. Bitte VOR dem Einspielen gegen die VM abgleichen.
+#
+725095afbd50dbc15d372cdbcfad2437  build.json
+054f6b75d2d5e0a156cc2a8348e90b4d  management/server/static/cockpit_workload.js
+c40b53add60ca0957d69702de9adb84e  management/server/static/cockpit.css
+646a81c03e42142bc9495a8a491bd026  tests/unit/test_cockpit_workload_overload.test.js
