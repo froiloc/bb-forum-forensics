@@ -11,16 +11,24 @@
 #   Koordination (welcher Fund betrifft welches Ziel-Subjekt, von wem, offen
 #   oder integriert). Der aktive Rueckkanal (Idee 7) ist ein SPAETERER Build.
 #
-# Substrat 'pending_cross_annotations' (angelegt in db/coordinator_db.py zur
-#   Laufzeit, NICHT in der Migrationskette; Spalten:
-#   source_iid, target_uid, db_path, annotation_local_id, created_at,
-#   integrated_at). WIR LESEN ES WIE-ES-IST (mc 2026-07-20). Die Ueberfuehrung
-#   in die Migrationskette + subject_id-Angleichung ist ein eigener spaeterer
-#   Governance-Punkt.
+# Substrat 'pending_cross_annotations'. Spalten: source_iid, target_uid,
+#   db_path, annotation_local_id, created_at, integrated_at.
+#   STAND SEIT BUILD 506 (Governance A4, Migration M023): die Tabelle ist in
+#   die MIGRATIONSKETTE ueberfuehrt und traegt zusaetzlich die VIRTUELL
+#   GENERIERTE Spalte 'subject_id AS (target_uid)'. Dieses Repo liest seither
+#   'subject_id' NATIV. (Bis Build 505 lag die DDL nur zur Laufzeit in
+#   db/coordinator_db.py und der Schluessel hiess ausschliesslich 'target_uid'
+#   — mc 2026-07-20: "wie-es-ist lesen", als eigener Governance-Punkt vermerkt.)
 #
-# NORMALISIERUNG: 'target_uid' ist das Ziel-Subjekt eines Fundes -> in der
-#   Ausgabe als 'subject_id' gefuehrt (Prepper-Schema, konsistent mit dem
-#   restlichen Werkzeug). Best-effort-Joins auf person (Quell-Ermittler) und
+# VERTRAEGLICHKEITS-ZWEIG: Fehlt die generierte Spalte (coordinator.db vor
+#   M023, etwa eine Alt-Fixture), faellt das Repo BELEGT auf 'target_uid'
+#   zurueck und protokolliert das — statt mit 'no such column' zu scheitern.
+#   Die AUSGABEFORM ist in beiden Faellen identisch ('subject_id'), damit das
+#   Frontend aus Build 478 unveraendert gueltig bleibt.
+#
+# NORMALISIERUNG: Das Ziel-Subjekt eines Fundes wird in der Ausgabe als
+#   'subject_id' gefuehrt (Prepper-Schema, konsistent mit dem restlichen
+#   Werkzeug). Best-effort-Joins auf person (Quell-Ermittler) und
 #   cases (Fall-Kontext). GRUNDREGEL 1: nicht zuordenbare Zeilen werden
 #   NICHT verschluckt, sondern mit leerem Kontext (source_name=None,
 #   has_case=false) sichtbar gemacht.
@@ -62,20 +70,48 @@ class CrossfindingsRepo:
                 "pending_cross_annotations fehlt — coordinator.db nicht "
                 "vollstaendig initialisiert. Kein stiller Leerbefund.")
 
+    def _subject_column(self) -> str:
+        """
+        Liefert den Spaltennamen des Ziel-Subjekts: 'subject_id' (kanonisch ab
+        M023) oder 'target_uid' (Alt-Stand). PRAGMA table_xinfo statt
+        table_info — table_info VERSCHWEIGT generierte Spalten, und
+        'subject_id' IST eine (Build 506).
+        """
+        try:
+            rows = self._con.execute(
+                "PRAGMA table_xinfo(pending_cross_annotations)").fetchall()
+        except sqlite3.DatabaseError:
+            rows = []
+        names = {str(r[1]) for r in rows}
+        if "subject_id" in names:
+            return "subject_id"
+        logger.info(
+            "pending_cross_annotations ohne generierte Spalte 'subject_id' "
+            "(coordinator.db vor Migration M023) — lese ersatzweise "
+            "'target_uid'. Die Ausgabeform bleibt unveraendert.")
+        return "target_uid"
+
     # ------------------------------------------------------------------- Lesen
     def list(self, only_open: bool = False) -> List[Dict[str, Any]]:
         """Querfunde, offene zuerst, dann neueste zuerst. only_open filtert auf
         noch nicht integrierte Funde."""
         self._require_substrate()
+        col = self._subject_column()
         where = "WHERE pca.integrated_at IS NULL" if only_open else ""
+        # Der Spaltenname stammt AUSSCHLIESSLICH aus _subject_column() und ist
+        # damit auf zwei feste Literale beschraenkt — keine Fremdeingabe, also
+        # keine Injektionsflaeche. Er wird als 'target_subject' ausgegeben,
+        # damit _as_dict nur EINEN Namen kennen muss.
         sql = (
-            "SELECT pca.id, pca.source_iid, pca.target_uid, pca.db_path, "
-            "       pca.annotation_local_id, pca.created_at, pca.integrated_at, "
+            "SELECT pca.id, pca.source_iid, pca.%s AS target_subject, "
+            "       pca.db_path, pca.annotation_local_id, pca.created_at, "
+            "       pca.integrated_at, "
             "       p.display_name AS source_name, "
             "       c.subject_id  AS case_subject "
             "FROM pending_cross_annotations pca "
             "LEFT JOIN person p ON p.id = pca.source_iid "
-            "LEFT JOIN cases  c ON c.subject_id = pca.target_uid "
+            "LEFT JOIN cases  c ON c.subject_id = pca.%s "
+            % (col, col)
             + where +
             " ORDER BY (pca.integrated_at IS NOT NULL) ASC, "
             "          pca.created_at DESC, pca.id DESC"
@@ -104,8 +140,10 @@ class CrossfindingsRepo:
         integ = r["integrated_at"]
         return {
             "id": int(r["id"]),
-            # target_uid -> subject_id (Prepper-Schema, normalisiert)
-            "subject_id": int(r["target_uid"]),
+            # Ausgabename ist IMMER 'subject_id' (Prepper-Schema) — ob die
+            # Quelle die generierte Spalte (ab M023) oder das alte
+            # 'target_uid' war, ist fuer den Aufrufer unerheblich.
+            "subject_id": int(r["target_subject"]),
             "source_iid": int(r["source_iid"]),
             # None, wenn der Quell-Ermittler nicht (mehr) zuordenbar ist —
             # die Zeile bleibt trotzdem sichtbar (Grundregel 1).

@@ -405,6 +405,23 @@ class CoordinatorDb:
             # dass es uebersprungen wurde, legen wir sie hier nach.
             # Beleg: Webserver-Log 2026-05-12 — coordinator.db verfuegbar aber
             # pending_cross_annotations-Eintrag fehlte lautlos.
+            #
+            # ACHTUNG (Build 506, Governance A4): Die KANONISCHE DDL dieser
+            # Tabelle liegt seit Migration M023
+            # (management/migrations/coordinator/m023_pca_into_chain.py) in der
+            # MIGRATIONSKETTE. Das folgende executescript bleibt bewusst als
+            # Absicherung gegen den urspruenglichen Bug 2.78 bestehen (eine
+            # coordinator.db ohne gelaufene Migration soll den Querfund-
+            # Transport nicht lautlos verschlucken) — es ist aber nicht mehr
+            # die Wahrheitsquelle. WER HIER ETWAS AENDERT, MUSS M023
+            # MITAENDERN; sonst laufen die beiden Stellen auseinander.
+            # M023 ergaenzt zusaetzlich die VIRTUELL GENERIERTE Spalte
+            # 'subject_id AS (target_uid)' (Schluesselangleichung ans
+            # Prepper-Schema). Sie wird hier NICHT geschrieben und darf es auch
+            # nicht: generierte Spalten sind nicht beschreibbar — der INSERT
+            # unten fuellt weiterhin nur 'target_uid', und SQLite leitet
+            # 'subject_id' daraus ab. Genau deshalb koennen die beiden nie
+            # divergieren.
             self._con.executescript("""
                 CREATE TABLE IF NOT EXISTS pending_cross_annotations (
                     id                   INTEGER PRIMARY KEY AUTOINCREMENT,

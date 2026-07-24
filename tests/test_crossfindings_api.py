@@ -9,8 +9,14 @@
 #            Status offen/integriert.
 # CX-API03 — ?only_open=1 filtert auf offene Funde.
 # CX-API04 — Substrat fehlt -> 503 (kein stiller Leerbefund, Grundregel 1).
+#             SEIT BUILD 506 (M023) bringt die Migrationskette das Substrat
+#             mit; der Fall kann in einer migrierten coordinator.db nicht mehr
+#             eintreten. Der Test baut deshalb ausdruecklich eine DB OHNE
+#             gelaufene Kette — der Waechter wird NICHT entfernt, weil ein
+#             entfernter Waechter genau der stille Leerbefund waere, den
+#             Grundregel 1 verbietet.
 #
-# Version: v0.8.474 · Build: 474 · 2026-07-20
+# Version: v0.8.506 · Build: 506 · 2026-07-24 (M023-Anpassung)
 # =============================================================================
 
 import json
@@ -107,7 +113,8 @@ class CrossfindingsApiTests(unittest.TestCase):
         return json.loads(resp.body.decode("utf-8"))
 
     def _pca_with_rows(self):
-        self.con.execute(_PCA)
+        # M023 (Build 506) legt 'pending_cross_annotations' bereits in der
+        # Kette an — hier wird deshalb nur noch BEFUELLT, nicht mehr erzeugt.
         self.con.executemany(
             "INSERT INTO pending_cross_annotations "
             "(source_iid, target_uid, db_path, annotation_local_id, "
@@ -146,10 +153,74 @@ class CrossfindingsApiTests(unittest.TestCase):
 
     # CX-API04 ---------------------------------------------------------------
     def test_api04_substrate_missing_503(self):
-        # pending_cross_annotations wurde NICHT angelegt -> 503, kein leeres 200.
+        """
+        Fehlendes Substrat ist ein BETRIEBSFEHLER (503), kein Leerbefund (200
+        mit leerer Liste). Seit M023 legt die Kette die Tabelle an, deshalb
+        wird hier eine coordinator.db OHNE gelaufene Kette gebaut — nur mit
+        dem Minimum, das ManagementApp fuer die Rechtepruefung braucht.
+        """
+        bare_dir = tempfile.mkdtemp()
+        bare_path = os.path.join(bare_dir, "coordinator.db")
+        bare = sqlite3.connect(bare_path)
+        try:
+            bare.isolation_level = None
+            bare.row_factory = sqlite3.Row
+            # Schema der Rechte-Aufloesung aus der ECHTEN Kette holen, aber
+            # NUR bis M022 — M023 ist genau die Migration, die das Substrat
+            # anlegen wuerde.
+            mods = [m for m in discover(coordinator_migrations)
+                    if m.VERSION < 23]
+            now = int(time.time())
+            bare.execute(_PERSON)
+            bare.execute(
+                "INSERT INTO person (id, system_username, display_name, "
+                "is_investigator, is_supervisor, is_support, created_at) "
+                "VALUES (1, 'h001', 'Chefin', 1, 1, 0, ?)", (now,))
+            bare.execute(_OLD_SCRAPE_JOBS)
+            audit = AuditLog(bare)
+            MigrationRunner(bare, mods, audit=audit,
+                            deployed_by="tester").run()
+            rbac = RbacRepo(bare, CoordinatorWriter(bare, audit))
+            rbac.grant("supervisor", "crossref.view", scope="alle",
+                       actor_id=1)
+            rbac.assign_role(1, "supervisor", actor_id=1)
+            # Belegen, dass die Vorbedingung wirklich gilt:
+            self.assertIsNone(bare.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' "
+                "AND name='pending_cross_annotations'").fetchone())
+            bare.close()
+
+            app = ManagementApp(bare_path)
+            r = app.dispatch(1, "/api/crossfindings")
+            self.assertEqual(r.status, 503)
+            self.assertEqual(self._json(r)["error"],
+                             "crossfindings_unavailable")
+        finally:
+            try:
+                bare.close()
+            except Exception:      # noqa: BLE001 — schon geschlossen
+                pass
+            for fn in os.listdir(bare_dir):
+                try:
+                    os.remove(os.path.join(bare_dir, fn))
+                except OSError:
+                    pass
+            os.rmdir(bare_dir)
+
+    # CX-API05 (Build 506) ---------------------------------------------------
+    def test_api05_substrat_kommt_aus_der_kette(self):
+        """
+        Der positive Gegenbeweis zu API04 und der eigentliche Zweck von M023:
+        in einer regulaer migrierten coordinator.db ist das Substrat DA — der
+        Endpunkt antwortet mit 200 und einem echten Leerbefund (0 Funde),
+        statt mit 503. Genau das schliesst die Luecke aus Bug 2.78.
+        """
         r = self.app.dispatch(1, "/api/crossfindings")
-        self.assertEqual(r.status, 503)
-        self.assertEqual(self._json(r)["error"], "crossfindings_unavailable")
+        self.assertEqual(r.status, 200)
+        body = self._json(r)
+        self.assertEqual(body["findings"], [])
+        self.assertEqual(body["counts"],
+                         {"total": 0, "offen": 0, "integriert": 0})
 
 
 if __name__ == "__main__":

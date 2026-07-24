@@ -195,13 +195,15 @@ class ManagementDashboardTests(unittest.TestCase):
         # Build 501: M020 (person.is_active/deactivated_* + RBAC-Seed
         # personnel.sync); Build 503: M021 (RBAC-Seed personnel.view/edit);
         # Build 504: M022 (subject_alias — globaler Alias-Katalog, OHNE
-        # RBAC-Seed: crossref.view/edit aus M018 werden wiederverwendet).
+        # RBAC-Seed: crossref.view/edit aus M018 werden wiederverwendet);
+        # Build 506: M023 (Governance A4 — pending_cross_annotations in die
+        # Kette + generierte Spalte subject_id; additiv, keine Zeile beruehrt).
         self.assertEqual(self.applied,
                          [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-                          17, 18, 19, 20, 21, 22]
+                          17, 18, 19, 20, 21, 22, 23]
                          if 3 not in self.applied
                          else [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
-                               15, 16, 17, 18, 19, 20, 21, 22])
+                               15, 16, 17, 18, 19, 20, 21, 22, 23])
         # discover findet M001..M006 -> support_sessions (M003) IST dabei,
         # der person-Rename (M005, Build 342) ebenso wie das RBAC-Schema
         # (M006, Build 343).

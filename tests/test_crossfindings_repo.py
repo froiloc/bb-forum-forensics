@@ -10,9 +10,20 @@
 # CR03 — Join auf person (source_name); nicht zuordenbarer source_iid ->
 #        source_name None, Zeile bleibt sichtbar (Grundregel 1).
 # CR04 — counts(): total/offen/integriert.
-# CR05 — Substrat fehlt -> CrossrefError (kein stiller Leerbefund).
+# CR05 — Substrat fehlt -> CrossrefError (kein stiller Leerbefund). SEIT
+#        BUILD 506 (M023) legt die MIGRATIONSKETTE die Tabelle selbst an, der
+#        Fall kann in einer migrierten coordinator.db also nicht mehr
+#        eintreten. Der Waechter bleibt trotzdem noetig (und getestet) fuer
+#        eine DB, die die Kette NIE gelaufen ist — der Test baut dafuer jetzt
+#        ausdruecklich eine solche DB. Er wird NICHT geloescht: ein
+#        entfernter Waechter waere genau der stille Leerbefund, den
+#        Grundregel 1 verbietet.
+# CR06 — VERTRAEGLICHKEIT (Build 506): eine coordinator.db im ALT-Zustand
+#        (Tabelle ohne die generierte Spalte 'subject_id') wird weiterhin
+#        gelesen; die Ausgabeform ist identisch.
 #
-# Version: v0.8.474 · Build: 474 · 2026-07-20
+# Version: v0.8.506 · Build: 506 · 2026-07-24 (M023: Substrat kommt aus der
+#          Kette; _mk_pca ist dadurch ein No-op, CR05 baut eine eigene DB)
 # =============================================================================
 
 import os
@@ -99,7 +110,20 @@ class CrossfindingsRepoTests(unittest.TestCase):
             os.rmdir(self._tmp)
 
     def _mk_pca(self):
-        self.con.execute(_PCA)
+        """
+        Frueher legte dieser Helfer 'pending_cross_annotations' an. SEIT
+        MIGRATION M023 (Build 506) bringt die Kette die Tabelle bereits mit —
+        ein zweites CREATE liefe auf 'table already exists'. Der Helfer bleibt
+        als benannte Stelle erhalten (er dokumentiert, welche Tests das
+        Substrat brauchen) und stellt seine Vorbedingung jetzt nur noch SICHER,
+        statt sie zu erzeugen.
+        """
+        present = self.con.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' "
+            "AND name='pending_cross_annotations'").fetchone()
+        self.assertIsNotNone(
+            present,
+            "pending_cross_annotations fehlt — M023 haette sie anlegen muessen.")
 
     def _add(self, sid, iid, local_id, created, integrated=None):
         self.con.execute(
@@ -162,12 +186,68 @@ class CrossfindingsRepoTests(unittest.TestCase):
 
     # CR05 -------------------------------------------------------------------
     def test_cr05_substrat_fehlt_wirft(self):
-        # pending_cross_annotations wurde NICHT angelegt.
-        repo = CrossfindingsRepo(self.con)
-        with self.assertRaises(CrossrefError):
-            repo.list()
-        with self.assertRaises(CrossrefError):
-            repo.counts()
+        """
+        Der Waechter gegen den stillen Leerbefund. Seit M023 (Build 506) legt
+        die Migrationskette das Substrat selbst an — deshalb wird hier
+        ausdruecklich eine coordinator.db OHNE gelaufene Kette gebaut, damit
+        der Fall ueberhaupt eintreten kann. Genau so bleibt belegt, dass ein
+        fehlendes Substrat als BETRIEBSFEHLER (503/Exception) und nicht als
+        "keine Querfunde" erscheint.
+        """
+        bare_path = os.path.join(self._tmp, "bare.db")
+        bare = sqlite3.connect(bare_path)
+        try:
+            bare.row_factory = sqlite3.Row
+            repo = CrossfindingsRepo(bare)
+            with self.assertRaises(CrossrefError):
+                repo.list()
+            with self.assertRaises(CrossrefError):
+                repo.counts()
+        finally:
+            bare.close()
+
+    # CR06 -------------------------------------------------------------------
+    def test_cr06_vertraeglichkeit_ohne_generierte_spalte(self):
+        """
+        Build 506: eine coordinator.db im ALT-Zustand (Tabelle vorhanden, aber
+        ohne die generierte Spalte 'subject_id') muss weiterhin lesbar sein —
+        das Repo faellt belegt auf 'target_uid' zurueck. Die AUSGABEFORM ist in
+        beiden Faellen identisch, damit das Frontend aus Build 478 unveraendert
+        gueltig bleibt.
+        """
+        alt_path = os.path.join(self._tmp, "alt.db")
+        alt = sqlite3.connect(alt_path)
+        try:
+            alt.row_factory = sqlite3.Row
+            alt.execute(_PERSON)
+            alt.execute(
+                "INSERT INTO person (id, system_username, display_name, "
+                "created_at) VALUES (1, 'h001', 'Ermittler Eins', ?)",
+                (self.now,))
+            alt.execute("CREATE TABLE cases (subject_id INTEGER)")
+            alt.execute(_PCA)          # ALTE Form: nur target_uid
+            alt.execute(
+                "INSERT INTO pending_cross_annotations "
+                "(source_iid, target_uid, db_path, annotation_local_id, "
+                " created_at) VALUES (1, 4711, '/x/e.db', 'a1', ?)",
+                (self.now,))
+            alt.commit()
+
+            repo = CrossfindingsRepo(alt)
+            self.assertEqual(repo._subject_column(), "target_uid")
+            rows = repo.list()
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0]["subject_id"], 4711)
+            self.assertEqual(rows[0]["status"], "offen")
+            self.assertEqual(repo.counts()["total"], 1)
+        finally:
+            alt.close()
+
+        # ... und im NEUEN Zustand (Kette gelaufen) ist es die generierte
+        # Spalte — derselbe Ausgabename, andere Quelle.
+        self._mk_pca()
+        self.assertEqual(CrossfindingsRepo(self.con)._subject_column(),
+                         "subject_id")
 
 
 if __name__ == "__main__":
