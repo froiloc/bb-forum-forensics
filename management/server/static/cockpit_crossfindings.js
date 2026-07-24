@@ -8,13 +8,37 @@
 //   Ermittler, Status (offen/integriert), Zeiten. Erfassung + Transport laufen
 //   AUTOMATISCH (forensic_api) — hier wird NICHTS geschrieben.
 //
+// ERWEITERT IN BUILD 508 (Idee 7, Frontend zu 507): der QUERFUND-RUECKKANAL.
+//   'integrated_at' belegt nur, dass die TECHNIK den Fund kopiert hat. Ob ein
+//   MENSCH ihn gesehen und was daraus geworden ist, zeigt und setzt jetzt
+//   diese Sicht (Zustaende offen -> zugestellt -> quittiert -> verwertet bzw.
+//   nicht_relevant). Der ANBAU an diese Sicht ist hier richtig (anders als beim
+//   Alias-Katalog, Build 505): der Rueckkanal betrifft GENAU DIE ZEILE, die
+//   diese Sicht schon zeigt — eine zweite Sicht haette den Fund und seinen
+//   Bearbeitungsstand auseinandergerissen.
+//
 // Datenform GET /api/crossfindings (ManagementApp._crossfindings):
 //   { findings: [ {id, subject_id, source_iid, source_name, has_case,
 //                  annotation_local_id, db_path, created_at, integrated_at,
-//                  status}, ... ],
-//     counts: { total, offen, integriert } }
+//                  status,
+//                  // ab Build 508 additiv:
+//                  feedback_status, feedback_label, feedback_final,
+//                  feedback_reason, decided_by, decided_name, decided_at,
+//                  allowed_next: [{code,label,reason_required,reason_meaning}]
+//                 }, ... ],
+//     counts: { total, offen, integriert },            // TRANSPORT (Build 474)
+//     feedback_counts: { offen, zugestellt, quittiert, // RUECKKANAL (Build 507)
+//                        verwertet, nicht_relevant, gesamt } }
 //   Bei fehlendem Substrat liefert der Endpunkt 503; loadCrossfindings reicht
 //   das als {error: <text>} an renderCrossfindings weiter.
+//
+// SCHREIBEN (nur mit crossref.edit):
+//   onDecide({finding_id, status_code, reason}) -> POST /api/crossfindings/decide
+//   Die zulaessigen Folgezustaende kommen VOM SERVER (allowed_next je Zeile) —
+//   das Frontend erfindet KEINE Uebergaenge. Verlangt ein Zustand einen
+//   Pflichttext (Basis bei 'verwertet', Grund bei 'nicht_relevant'), erscheint
+//   das Feld und der Absende-Knopf prueft es, BEVOR er den Server behelligt.
+//   KEIN optimistisches UI: nach der Entscheidung laedt cockpit.js neu.
 //
 // GRUNDREGEL 1 (kein stiller Leerbefund): Ein 503/Fehler zeigt „Uebersicht
 //   derzeit nicht verfuegbar" — NICHT eine leere Liste, die faelschlich „keine
@@ -30,7 +54,7 @@
 // KAPSELUNG / GEBOTE: IIFE + 'use strict'; DEV-Logging; ausfuehrliche
 //   Kommentare; reine Helfer ohne DOM (vitest); UMD-Export. XSS: textContent.
 //
-// Version: v0.8.478 · Build: 478 · 2026-07-21
+// Version: v0.8.508 · Build: 508 · 2026-07-24 (Rueckkanal, Idee 7)
 // =============================================================================
 
 (function () {
@@ -69,6 +93,55 @@
         return (data && Array.isArray(data.findings)) ? data.findings : [];
     }
 
+    // ---------------------------------------------------- Rueckkanal (508)
+    // Reihenfolge = Handlungsbedarf (deckungsgleich mit STATUS_ORDER in
+    // crossfinding_channel_status.py). Wird NUR fuer Beschriftung/Klassen
+    // benutzt — welche Uebergaenge erlaubt sind, sagt allein der Server.
+    var FEEDBACK_LABEL = {
+        offen: 'offen',
+        zugestellt: 'zugestellt',
+        quittiert: 'quittiert',
+        verwertet: 'verwertet',
+        nicht_relevant: 'nicht relevant'
+    };
+
+    // feedbackLabel: Anzeigetext des Rueckkanal-Zustands. Der Server schickt
+    // 'feedback_label' mit; diese Funktion ist der Rueckfall (und die reine,
+    // testbare Form).
+    function feedbackLabel(code) {
+        return FEEDBACK_LABEL[code] || String(code == null ? '' : code);
+    }
+
+    // feedbackClass: CSS-Suffix. 'offen' wird ABSICHTLICH hervorgehoben — das
+    // ist der handlungsbeduerftige Fall, und ihn zu uebersehen ist genau der
+    // Fehler, den dieser Rueckkanal verhindern soll.
+    function feedbackClass(code) {
+        if (code === 'verwertet') { return 'aiw-cff-verwertet'; }
+        if (code === 'nicht_relevant') { return 'aiw-cff-nichtrelevant'; }
+        if (code === 'quittiert') { return 'aiw-cff-quittiert'; }
+        if (code === 'zugestellt') { return 'aiw-cff-zugestellt'; }
+        if (code === 'offen') { return 'aiw-cff-offen'; }
+        return 'aiw-cff-unbekannt';
+    }
+
+    // allowedNext: die vom SERVER gelieferten Folgezustaende einer Zeile.
+    // Fehlt das Feld (alter Server), ist die Liste leer -> die Sicht bietet
+    // KEINE Aktion an, statt einen Uebergang zu raten.
+    function allowedNext(f) {
+        return (f && Array.isArray(f.allowed_next)) ? f.allowed_next : [];
+    }
+
+    // feedbackCountsText: Kopfzeile des Rueckkanals.
+    function feedbackCountsText(data) {
+        var c = (data && data.feedback_counts) ? data.feedback_counts : null;
+        if (!c) { return ''; }
+        return 'Rückkanal — offen: ' + (c.offen || 0)
+            + '  ·  zugestellt: ' + (c.zugestellt || 0)
+            + '  ·  quittiert: ' + (c.quittiert || 0)
+            + '  ·  verwertet: ' + (c.verwertet || 0)
+            + '  ·  nicht relevant: ' + (c.nicht_relevant || 0);
+    }
+
     // fmtTs: Epoch-Sekunden -> lokal lesbar; 0/None -> Gedankenstrich.
     function fmtTs(epoch) {
         var n = parseInt(epoch, 10);
@@ -90,6 +163,7 @@
         if (!mainEl || !doc) { return; }
         data = data || {};
         var onlyOpen = opts.onlyOpen === true;
+        var canEdit = opts.canEdit === true;
 
         mainEl.textContent = '';
 
@@ -105,7 +179,7 @@
             + 'laufen automatisch — diese Sicht ist rein lesend.';
         mainEl.appendChild(sub);
 
-        // --- Steuerleiste: „nur offene" + Aktualisieren ----------------------
+        // --- Steuerleiste: zwei Filter + Aktualisieren -----------------------
         mainEl.appendChild(_controls(doc, onlyOpen, opts));
 
         // --- Fehler-/Nichtverfuegbar-Zustand (Grundregel 1) ------------------
@@ -124,10 +198,32 @@
             || { total: 0, offen: 0, integriert: 0 };
         var head = doc.createElement('div');
         head.className = 'aiw-cf-counts';
-        head.textContent = 'offen: ' + (counts.offen || 0)
+        head.textContent = 'Transport — offen: ' + (counts.offen || 0)
             + '  ·  integriert: ' + (counts.integriert || 0)
             + '  ·  gesamt: ' + (counts.total || 0);
         mainEl.appendChild(head);
+
+        // Rueckkanal-Kopfzeile (Build 508). Nur, wenn der Server sie liefert —
+        // gegen einen aelteren Server bleibt die Sicht so unveraendert
+        // bedienbar, statt eine Zeile aus Nullen zu erfinden.
+        var fbText = feedbackCountsText(data);
+        if (fbText) {
+            var fbHead = doc.createElement('div');
+            fbHead.className = 'aiw-cf-counts aiw-cff-counts';
+            fbHead.textContent = fbText;
+            mainEl.appendChild(fbHead);
+        }
+
+        // Ergebniszeile der Rueckkanal-Aktionen.
+        var result = doc.createElement('div');
+        result.className = 'aiw-cf-result';
+        result.id = 'aiw-cff-result';
+        function setResult(text, isError) {
+            result.textContent = text || '';
+            result.classList.toggle('error', isError === true);
+            result.classList.toggle('ok', isError === false);
+        }
+        mainEl.appendChild(result);
 
         // --- Tabelle / echter Leerbefund -------------------------------------
         var rows = findings(data);
@@ -146,7 +242,8 @@
         table.className = 'aiw-cf-table';
         var thead = doc.createElement('thead');
         var htr = doc.createElement('tr');
-        ['subject_id', 'Quell-Ermittler', 'Status', 'angelegt', 'integriert']
+        ['subject_id', 'Quell-Ermittler', 'Transport', 'Rückkanal',
+         'angelegt', 'integriert', '']
             .forEach(function (label) {
                 var th = doc.createElement('th');
                 th.textContent = label;
@@ -157,7 +254,7 @@
 
         var tbody = doc.createElement('tbody');
         rows.forEach(function (f) {
-            tbody.appendChild(_rowEl(doc, f));
+            tbody.appendChild(_rowEl(doc, f, canEdit, setResult, opts));
         });
         table.appendChild(tbody);
         mainEl.appendChild(table);
@@ -166,11 +263,26 @@
             ')');
     }
 
-    // _controls: „nur offene"-Umschalter + Aktualisieren. Beide loesen
-    // opts.onReload(onlyOpen) aus (cockpit.js laedt neu).
+    // _controls: ZWEI Filter + Aktualisieren.
+    //
+    // Die beiden Filter meinen bewusst VERSCHIEDENES und sind deshalb
+    // ausfuehrlich beschriftet — eine Verwechslung waere folgenschwer:
+    //   „nur offene (Transport)"  -> die Technik hat den Fund noch nicht
+    //                                kopiert. Loest sich von selbst.
+    //   „nur unquittierte (Rückkanal)" -> noch KEIN Mensch hat den Fund
+    //                                bestaetigt. Das ist die Arbeit.
+    // Beide loesen opts.onReload(onlyOpen, onlyUnack) aus (cockpit.js laedt
+    // neu). Der Aktualisieren-Knopf bleibt (kein SSE, s. Kopfkommentar).
     function _controls(doc, onlyOpen, opts) {
+        var onlyUnack = opts.onlyUnacknowledged === true;
         var bar = doc.createElement('div');
         bar.className = 'aiw-cf-controls';
+
+        function fire(nextOpen, nextUnack) {
+            if (typeof opts.onReload === 'function') {
+                opts.onReload(nextOpen === true, nextUnack === true);
+            }
+        }
 
         var lbl = doc.createElement('label');
         lbl.className = 'aiw-cf-lbl';
@@ -179,13 +291,24 @@
         cb.id = 'aiw-cf-onlyopen';
         cb.checked = onlyOpen;
         cb.addEventListener('change', function () {
-            if (typeof opts.onReload === 'function') {
-                opts.onReload(cb.checked === true);
-            }
+            fire(cb.checked === true, onlyUnack);
         });
         lbl.appendChild(cb);
-        lbl.appendChild(doc.createTextNode(' nur offene'));
+        lbl.appendChild(doc.createTextNode(' nur offene (Transport)'));
         bar.appendChild(lbl);
+
+        var lbl2 = doc.createElement('label');
+        lbl2.className = 'aiw-cf-lbl';
+        var cb2 = doc.createElement('input');
+        cb2.type = 'checkbox';
+        cb2.id = 'aiw-cf-onlyunack';
+        cb2.checked = onlyUnack;
+        cb2.addEventListener('change', function () {
+            fire(onlyOpen, cb2.checked === true);
+        });
+        lbl2.appendChild(cb2);
+        lbl2.appendChild(doc.createTextNode(' nur unquittierte (Rückkanal)'));
+        bar.appendChild(lbl2);
 
         var btn = doc.createElement('button');
         btn.type = 'button';
@@ -193,18 +316,19 @@
         btn.className = 'aiw-btn aiw-cf-btn';
         btn.textContent = 'Aktualisieren';
         btn.addEventListener('click', function () {
-            if (typeof opts.onReload === 'function') {
-                opts.onReload(onlyOpen);
-            }
+            fire(onlyOpen, onlyUnack);
         });
         bar.appendChild(btn);
         return bar;
     }
 
-    // _rowEl: eine Querfund-Zeile.
-    function _rowEl(doc, f) {
+    // _rowEl: eine Querfund-Zeile. Ab Build 508 mit Rueckkanal-Spalte und —
+    // bei crossref.edit — der Entscheidungs-Aktion.
+    function _rowEl(doc, f, canEdit, setResult, opts) {
         var tr = doc.createElement('tr');
         tr.setAttribute('data-subject', String(f.subject_id));
+        tr.setAttribute('data-finding-id', String(f.id));
+        tr.className = feedbackClass(f.feedback_status || 'offen');
 
         var tdSid = doc.createElement('td');
         tdSid.textContent = String(f.subject_id);
@@ -225,16 +349,158 @@
         tdStatus.appendChild(badge);
         tr.appendChild(tdStatus);
 
-        var tdCreated = doc.createElement('td');
-        tdCreated.textContent = fmtTs(f.created_at);
-        tr.appendChild(tdCreated);
+        // --- Rueckkanal-Spalte (Build 508) -------------------------------
+        var tdFb = doc.createElement('td');
+        var fbBadge = doc.createElement('span');
+        fbBadge.className = 'aiw-badge aiw-cff-badge '
+            + feedbackClass(f.feedback_status || 'offen');
+        // Der Server schickt das Label mit; feedbackLabel ist der Rueckfall.
+        fbBadge.textContent = f.feedback_label
+            || feedbackLabel(f.feedback_status || 'offen');
+        tdFb.appendChild(fbBadge);
+        // Wer hat entschieden — und mit welcher Begruendung? Beides gehoert
+        // sichtbar in die Zeile: die Entscheidung IST das Ermittlungsergebnis.
+        if (f.decided_name || f.feedback_reason) {
+            var meta = doc.createElement('div');
+            meta.className = 'aiw-cff-meta';
+            var teile = [];
+            if (f.decided_name) { teile.push(f.decided_name); }
+            if (f.decided_at) { teile.push(fmtTs(f.decided_at)); }
+            meta.textContent = teile.join(' · ');
+            tdFb.appendChild(meta);
+            if (f.feedback_reason) {
+                var rs = doc.createElement('div');
+                rs.className = 'aiw-cff-reason';
+                // XSS: Freitext der Ermittlerin — immer textContent.
+                rs.textContent = f.feedback_reason;
+                tdFb.appendChild(rs);
+            }
+        }
+        tr.appendChild(tdFb);
+
+        var tdCreated2 = doc.createElement('td');
+        tdCreated2.textContent = fmtTs(f.created_at);
+        tr.appendChild(tdCreated2);
 
         var tdInteg = doc.createElement('td');
         tdInteg.textContent = (f.integrated_at != null)
             ? fmtTs(f.integrated_at) : EM_DASH;
         tr.appendChild(tdInteg);
 
+        // --- Aktionsspalte -----------------------------------------------
+        var tdAct = doc.createElement('td');
+        tdAct.className = 'aiw-cff-actions';
+        var next = allowedNext(f);
+        if (!canEdit) {
+            tdAct.textContent = EM_DASH;
+        } else if (next.length === 0) {
+            // Endzustand (oder alter Server ohne allowed_next): KEINE Aktion.
+            // Lieber gar nichts anbieten als einen Uebergang raten.
+            tdAct.textContent = f.feedback_final ? 'abgeschlossen' : EM_DASH;
+        } else {
+            tdAct.appendChild(_decideBtn(doc, f, next, setResult, opts));
+        }
+        tr.appendChild(tdAct);
+
         return tr;
+    }
+
+    // _decideBtn: oeffnet die Entscheidungszeile. Bewusst INLINE (kein Modal),
+    // damit der Kontext der Nachbarfunde sichtbar bleibt.
+    function _decideBtn(doc, f, next, setResult, opts) {
+        var b = doc.createElement('button');
+        b.type = 'button';
+        b.className = 'aiw-btn aiw-cf-btn aiw-cff-decide';
+        b.setAttribute('data-finding-id', String(f.id));
+        b.textContent = 'Bewerten';
+        b.addEventListener('click', function () {
+            var row = b.parentNode && b.parentNode.parentNode;
+            if (!row || row.getAttribute('data-deciding') === '1') { return; }
+            row.setAttribute('data-deciding', '1');
+            row.parentNode.insertBefore(
+                _decideRow(doc, f, next, setResult, opts), row.nextSibling);
+        });
+        return b;
+    }
+
+    // _decideRow: Auswahl NUR aus den vom Server gelieferten Folgezustaenden.
+    // Das Grund-/Basis-Feld erscheint genau dann, wenn der GEWAEHLTE Zustand
+    // es verlangt — und die Beschriftung sagt, was gemeint ist (Basis vs.
+    // Grund). Der Absende-Knopf prueft die Pflichtangabe, BEVOR er den Server
+    // behelligt; verbindlich prueft ohnehin die Zustandsmaschine im Server.
+    function _decideRow(doc, f, next, setResult, opts) {
+        var host = doc.createElement('tr');
+        host.className = 'aiw-cff-decidrow';
+        var td = doc.createElement('td');
+        td.setAttribute('colspan', '7');
+
+        var sel = doc.createElement('select');
+        sel.className = 'aiw-cf-input aiw-cff-target';
+        next.forEach(function (n) {
+            var o = doc.createElement('option');
+            o.value = n.code;
+            o.textContent = n.label || feedbackLabel(n.code);
+            sel.appendChild(o);
+        });
+
+        var lblReason = doc.createElement('label');
+        lblReason.className = 'aiw-cf-lbl aiw-cff-reasonlbl';
+        var reasonText = doc.createElement('span');
+        lblReason.appendChild(reasonText);
+        var inR = doc.createElement('input');
+        inR.type = 'text';
+        inR.className = 'aiw-cf-input aiw-cff-reasoninput';
+        lblReason.appendChild(inR);
+
+        function currentSpec() {
+            for (var i = 0; i < next.length; i++) {
+                if (next[i].code === sel.value) { return next[i]; }
+            }
+            return null;
+        }
+        // syncReason: blendet das Pflichtfeld zustandsabhaengig ein/aus.
+        function syncReason() {
+            var spec = currentSpec();
+            var noetig = !!(spec && spec.reason_required);
+            lblReason.style.display = noetig ? '' : 'none';
+            reasonText.textContent = noetig
+                ? ((spec.reason_meaning || 'Begründung') + ': ')
+                : '';
+        }
+        sel.addEventListener('change', syncReason);
+        syncReason();
+
+        var go = doc.createElement('button');
+        go.type = 'button';
+        go.className = 'aiw-btn aiw-cf-btn aiw-cff-decide-go';
+        go.textContent = 'Entscheidung belegen';
+        go.addEventListener('click', function () {
+            var spec = currentSpec();
+            var reason = String(inR.value || '').trim();
+            if (spec && spec.reason_required && !reason) {
+                setResult('Pflichtangabe fehlt: '
+                    + (spec.reason_meaning || 'Begründung')
+                    + '. Ohne sie wird nichts geschrieben.', true);
+                return;
+            }
+            setResult('Schreibe Entscheidung …', null);
+            if (typeof opts.onDecide === 'function') {
+                opts.onDecide({
+                    finding_id: f.id,
+                    status_code: sel.value,
+                    reason: reason
+                });
+            } else {
+                setResult('Kein Schreibpfad verdrahtet.', true);
+            }
+        });
+
+        td.appendChild(doc.createTextNode('Neuer Stand: '));
+        td.appendChild(sel);
+        td.appendChild(lblReason);
+        td.appendChild(go);
+        host.appendChild(td);
+        return host;
     }
 
     // =========================================================================
@@ -245,7 +511,12 @@
         statusClass: statusClass,
         findings: findings,
         fmtTs: fmtTs,
-        renderCrossfindings: renderCrossfindings
+        renderCrossfindings: renderCrossfindings,
+        // Build 508 (Rueckkanal)
+        feedbackLabel: feedbackLabel,
+        feedbackClass: feedbackClass,
+        allowedNext: allowedNext,
+        feedbackCountsText: feedbackCountsText
     };
     if (typeof module !== 'undefined' && module.exports) { module.exports = API; }
     if (typeof window !== 'undefined') { window.AIWCockpitCrossfindings = API; }

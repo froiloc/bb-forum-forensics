@@ -1341,3 +1341,61 @@ td.aiw-cal-today { box-shadow: inset 0 0 0 2px var(--akzent); }
     padding: 8px;
 }
 .aiw-alias-reasonrow .aiw-alias-reason { min-width: 320px; }
+
+/* ===========================================================================
+ * Build 508 (AP-2A/A2) — QUERFUND-RUECKKANAL in der Sicht "Querfunde".
+ * Gescopt mit '.aiw-cff-'. Die Farben kommen aus den Basis-Variablen; die
+ * Abstufung folgt dem Handlungsbedarf: 'offen' faellt auf, 'verwertet' und
+ * 'nicht relevant' treten zurueck.
+ * ======================================================================== */
+
+.aiw-cff-counts { margin-top: 2px; }
+
+/* Zeilen-Einfaerbung nach Rueckkanal-Stand. Bewusst zurueckhaltend: die
+ * Tabelle soll lesbar bleiben, nicht bunt werden. */
+tr.aiw-cff-offen > td { background: var(--flaeche-warn, #fff8e6); }
+tr.aiw-cff-verwertet,
+tr.aiw-cff-nichtrelevant { opacity: 0.7; }
+
+/* Badges. 'offen' ist der handlungsbeduerftige Fall und wird hervorgehoben —
+ * ihn zu uebersehen ist genau der Fehler, den der Rueckkanal verhindern soll. */
+.aiw-cff-badge { font-weight: 600; }
+.aiw-cff-offen.aiw-cff-badge {
+    background: var(--gelb, #e6a700);
+    color: #201800;
+}
+.aiw-cff-zugestellt.aiw-cff-badge { background: var(--flaeche-2, #eef); }
+.aiw-cff-quittiert.aiw-cff-badge { background: var(--flaeche-2, #e6eefc); }
+.aiw-cff-verwertet.aiw-cff-badge {
+    background: var(--gruen, #2e7d32);
+    color: #fff;
+}
+.aiw-cff-nichtrelevant.aiw-cff-badge {
+    background: var(--flaeche-2, #e4e4e4);
+    color: var(--ink-muted, #555);
+}
+
+/* Wer hat wann entschieden, und mit welcher Begruendung — beides gehoert
+ * sichtbar in die Zeile: die Entscheidung IST das Ermittlungsergebnis. */
+.aiw-cff-meta {
+    font-size: 12px;
+    color: var(--ink-muted, #667);
+    margin-top: 2px;
+}
+.aiw-cff-reason {
+    font-size: 12px;
+    margin-top: 2px;
+    font-style: italic;
+    word-break: break-word;
+}
+
+.aiw-cff-actions { white-space: nowrap; }
+
+/* Entscheidungszeile: INLINE statt Modal, damit die Nachbarfunde sichtbar
+ * bleiben (dieselbe Abwaegung wie bei den Alias-Aktionen, Build 505). */
+.aiw-cff-decidrow > td {
+    background: var(--flaeche-2, #f4f4fa);
+    padding: 8px;
+}
+.aiw-cff-reasonlbl { margin-left: 10px; }
+.aiw-cff-reasoninput { min-width: 320px; }

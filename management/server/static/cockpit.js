@@ -1832,9 +1832,10 @@
     //   automatische forensic_api-Pipeline, nicht ueber den audit_log; ein SSE-
     //   Trigger wuerde nicht feuern. Stattdessen manuelles „Aktualisieren".
     //   503 (Substrat fehlt) -> Fehlerzustand, KEINE leere Liste (Grundregel 1).
-    function loadCrossfindings(mainEl, onlyOpen) {
+    function loadCrossfindings(mainEl, onlyOpen, pendingMsg) {
         mainEl = mainEl || document.getElementById('aiw-main');
         onlyOpen = onlyOpen === true;
+        var onlyUnack = state.cfOnlyUnack === true;
         var mod = (typeof window !== 'undefined')
             ? window.AIWCockpitCrossfindings : null;
         if (!mod) {
@@ -1842,28 +1843,74 @@
             return;
         }
 
+        var view = null;
+        function after(text, isError) {
+            loadCrossfindings(mainEl, onlyOpen, { text: text, error: isError });
+        }
+
         var opts = {
             onlyOpen: onlyOpen,
-            onReload: function (next) {
-                // State merken, damit ein View-Wechsel den Filter beibehaelt.
-                state.cfOnlyOpen = (next === true);
+            onlyUnacknowledged: onlyUnack,
+            // Build 508: Bewerten braucht crossref.edit. Ohne das Recht zeigt
+            // die Sicht den Rueckkanal-Stand, bietet aber KEINE Aktion an.
+            canEdit: hasCap(state.capabilities, 'crossref.edit'),
+            onReload: function (nextOpen, nextUnack) {
+                // State merken, damit ein View-Wechsel die Filter beibehaelt.
+                state.cfOnlyOpen = (nextOpen === true);
+                state.cfOnlyUnack = (nextUnack === true);
                 loadCrossfindings(mainEl, state.cfOnlyOpen);
+            },
+            // Build 508: auditierte Rueckkanal-Entscheidung. KEIN
+            // optimistisches UI — nach dem Schreiben wird neu geladen, damit
+            // auch eine ABGELEHNTE Entscheidung den echten Stand zeigt.
+            onDecide: function (body) {
+                postJson('/api/crossfindings/decide', body)
+                    .then(function (res) {
+                        after('Querfund #' + body.finding_id + ' -> '
+                            + res.status_code + ' (Beleg #' + res.audit_seq
+                            + ').', false);
+                    })
+                    .catch(function (err) {
+                        after('Fehler: ' + err.message + ' (es wurde nichts '
+                            + 'geschrieben — die Liste zeigt den '
+                            + 'tatsaechlichen Stand).', true);
+                    });
             }
         };
-        var url = '/api/crossfindings' + (onlyOpen ? '?only_open=1' : '');
+
+        var params = [];
+        if (onlyOpen) { params.push('only_open=1'); }
+        if (onlyUnack) { params.push('only_unacknowledged=1'); }
+        var url = '/api/crossfindings'
+            + (params.length ? ('?' + params.join('&')) : '');
 
         fetchJson(url)
             .then(function (data) {
                 cleanupView();
-                mod.renderCrossfindings(mainEl, data, opts);
+                view = mod.renderCrossfindings(mainEl, data, opts);
+                if (pendingMsg) { _cfMsg(pendingMsg); }
                 log('Querfunde gerendert:',
                     (data && data.findings ? data.findings.length : 0));
             })
             .catch(function (err) {
                 // Auch 503 landet hier — als Fehlerzustand anzeigen, NICHT leer.
                 cleanupView();
-                mod.renderCrossfindings(mainEl, { error: err.message }, opts);
+                view = mod.renderCrossfindings(mainEl, { error: err.message },
+                                               opts);
+                if (pendingMsg) { _cfMsg(pendingMsg); }
             });
+    }
+
+    // _cfMsg: schreibt die Rueckmeldung einer Rueckkanal-Entscheidung in die
+    // Ergebniszeile der frisch gerenderten Sicht. Bewusst ueber die id statt
+    // ueber einen Rueckgabewert: renderCrossfindings ist (historisch) eine
+    // reine Zeichenfunktion ohne Handle, und das soll so bleiben.
+    function _cfMsg(msg) {
+        var el = document.getElementById('aiw-cff-result');
+        if (!el || !msg) { return; }
+        el.textContent = msg.text || '';
+        el.classList.toggle('error', msg.error === true);
+        el.classList.toggle('ok', msg.error === false);
     }
 
     // loadAlias: GLOBALER ALIAS-KATALOG (Build 505, AP-2A/A1, Frontend zu 504).
