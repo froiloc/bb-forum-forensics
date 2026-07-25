@@ -14,7 +14,12 @@
  *            analog zu den .aiw-cases-*-Regeln (kein globales .aiw-btn).
  * Build 502 (AD-Abgleich): .aiw-adsync-* (Sicht AD-Abgleich).
  * Build 503 (Personalverwaltung): .aiw-pers-* (Liste + AD-Abschnitt).
- * Version: v0.8.503 · Build: 503 · 2026-07-24
+ * Build 522 (Prognosebericht, AP-3F): .aiw-fc-* (Verweise auf den Bericht in
+ *            der Sicht 'Prognose & Gantt'). Weiterhin KEIN globales .aiw-btn.
+ * Build 525 (Fristen/Verjaehrung, AP-3A): .aiw-lim-*. Die Farbwahl ist dort
+ *            eine AUSSAGE: violett = UNGEPRUEFT (nicht gruen, nicht grau),
+ *            rot nur fuer die abgelaufene Frist, blau fuer 'ruht'.
+ * Version: v0.8.525 · Build: 525 · 2026-07-25
  * ============================================================================= */
 
 :root {
@@ -1873,3 +1878,138 @@ tr.aiw-cff-nichtrelevant { opacity: 0.7; }
 .aiw-rt-foot {
   font-size: 12px; color: #4a5158; font-variant-numeric: tabular-nums;
 }
+
+/* ==========================================================================
+   Prognosebericht-Verweise (Build 522, AP-3F/Idee 40) — cockpit_planung.js
+   --------------------------------------------------------------------------
+   BEWUSST ENG GEFASST ('.aiw-fc-*'): kein globales '.aiw-btn' (siehe Hinweis
+   im Dateikopf und Build 500). Die Verweise sehen wie Aktionen aus, sind aber
+   <a>-Elemente — sie oeffnen ein DOKUMENT in einem neuen Reiter.
+
+   DER HINWEIS IST NICHT ROT: 'keine belastbare Prognose' ist kein Missstand
+   der Anlage, sondern eine Aussage ueber die Datenlage. Rot heisst in diesem
+   Cockpit durchgehend 'Missstand' (vgl. Build 521, .aiw-rt-*). Hier ist die
+   Lage in Ordnung — das Werkzeug haelt sich an seine Grenze und sagt es.
+   ========================================================================== */
+.aiw-fc-actions {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  margin: 0 0 14px;
+}
+.aiw-fc-reportlink {
+  font: inherit; font-size: 13px; padding: 5px 12px; cursor: pointer;
+  text-decoration: none; color: var(--akzent, #0b5394);
+  background: var(--panel, #fff);
+  border: 1px solid var(--akzent, #0b5394); border-radius: 6px;
+}
+.aiw-fc-reportlink:hover { background: #eef2f5; }
+.aiw-fc-reportlink:focus-visible { outline: 2px solid var(--akzent, #0b5394); }
+.aiw-fc-note {
+  font-size: 12px; color: #7d6608; background: #fcf3cf;
+  border: 1px solid #f4d03f; border-radius: 6px; padding: 4px 10px;
+}
+
+/* ==========================================================================
+   Fristen / Verjaehrung (Build 525, AP-3A/Idee 32) — cockpit_limitation.js
+   --------------------------------------------------------------------------
+   BEWUSST ENG GEFASST ('.aiw-lim-*'): kein globales '.aiw-btn' (siehe
+   Dateikopf und Build 500).
+
+   DIE FARBWAHL IST HIER EINE AUSSAGE, kein Geschmack:
+   * ROT (--rot) nur fuer 'ueberschritten' — der einzige Zustand, der einen
+     unumkehrbaren Verlust ankuendigt.
+   * ORANGE (--gelb) fuer 'knapp'.
+   * VIOLETT fuer 'ohne_tatzeit'/'ohne_fassung'. Diese Faelle sind NICHT gruen
+     und NICHT grau: sie sind UNGEPRUEFT. Grau hiesse 'unwichtig', gruen hiesse
+     'in Ordnung' — beides waere eine Falschaussage. Violett kommt in diesem
+     Cockpit nirgends sonst vor und faellt genau deshalb auf.
+   * BLAU (--akzent) fuer 'ruht' — die Lage ist in Ordnung, nur nicht
+     berechenbar (dieselbe Lesart wie der blaue Loeschvorbehalt in Build 521).
+   * GRUEN nur fuer 'offen'.
+   * GRAU fuer 'keine_aussage' (der Parametersatz ist unbestaetigt; das ist
+     kein Missstand der Faelle, sondern ein offener Vorgang der Leitung).
+
+   DER VERJAEHRUNGSVORBEHALT ist BLAU, solange er vorliegt (das Werkzeug haelt
+   sich an seine Grenze) und ROT, wenn er FEHLT — genau wie in Build 521.
+   ========================================================================== */
+.aiw-lim-vorbehalt {
+  border-radius: 6px; padding: 12px 16px; margin: 0 0 12px; font-size: 13px;
+  border: 1px solid #aed6f1; border-left: 5px solid var(--akzent, #0b5394);
+  background: #eaf2fa; color: #14456e;
+}
+.aiw-lim-vorbehalt.is-fehlt {
+  background: #fdecea; border-color: #f5b7b1;
+  border-left-color: var(--rot, #c0392b); color: #922b21; font-weight: 600;
+}
+
+/* Der Grund, wenn die Sicht stumm ist. GRAU-GELB: es ist kein Fehler, sondern
+   ein offener Vorgang (juristische Bestaetigung steht aus). */
+.aiw-lim-stumm {
+  border-radius: 6px; padding: 12px 16px; margin: 0 0 12px; font-size: 13px;
+  background: #f4f6f7; border: 1px solid #d5dbe1;
+  border-left: 5px solid var(--muted, #606770); color: #3d4144;
+}
+
+.aiw-lim-zaehler {
+  font-size: 13px; color: #3d4144; margin: 0 0 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.aiw-lim-actions {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin: 0 0 14px;
+}
+.aiw-lim-actions-label { font-size: 13px; color: var(--muted, #606770); }
+.aiw-lim-schwelle {
+  font: inherit; font-size: 13px; padding: 4px 10px; cursor: pointer;
+  color: var(--akzent, #0b5394); background: var(--panel, #fff);
+  border: 1px solid var(--akzent, #0b5394); border-radius: 5px;
+}
+.aiw-lim-schwelle:hover { background: #eef2f5; }
+.aiw-lim-schwelle.is-active {
+  background: var(--akzent, #0b5394); color: #fff; font-weight: 600;
+}
+
+.aiw-lim-table {
+  width: 100%; border-collapse: collapse; margin: 0 0 14px; font-size: 13px;
+}
+.aiw-lim-table th {
+  text-align: left; padding: 6px 8px; font-weight: 600; white-space: nowrap;
+  border-bottom: 2px solid var(--line, #d5dbe1);
+}
+.aiw-lim-table td {
+  padding: 6px 8px; border-bottom: 1px solid var(--line, #e6eaee);
+  vertical-align: top;
+}
+.aiw-lim-case, .aiw-lim-tat, .aiw-lim-ablauf, .aiw-lim-rest {
+  white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.aiw-lim-rest { font-weight: 600; }
+.aiw-lim-quelle, .aiw-lim-datenlage { color: #4a5158; font-size: 12px; }
+
+/* Der farbige Balken links an der Zeile traegt den Zustand. */
+.aiw-lim-row.is-ueberschritten { box-shadow: inset 4px 0 0 var(--rot, #c0392b); }
+.aiw-lim-row.is-knapp          { box-shadow: inset 4px 0 0 var(--gelb, #d68910); }
+.aiw-lim-row.is-ungeprueft     { box-shadow: inset 4px 0 0 #7d3c98; }
+.aiw-lim-row.is-ruht           { box-shadow: inset 4px 0 0 var(--akzent, #0b5394); }
+.aiw-lim-row.is-offen          { box-shadow: inset 4px 0 0 var(--gruen, #1e8449); }
+.aiw-lim-row.is-stumm          { box-shadow: inset 4px 0 0 var(--muted, #606770); }
+/* Ein Zustand, den das Frontend nicht kennt, wird SCHWARZ markiert und faellt
+   damit auf — er darf nicht wie ein bekannter Zustand aussehen. */
+.aiw-lim-row.is-unbekannt      { box-shadow: inset 4px 0 0 #000000; }
+
+.aiw-lim-row.is-ueberschritten .aiw-lim-zustand { color: #922b21; font-weight: 600; }
+.aiw-lim-row.is-ungeprueft .aiw-lim-zustand     { color: #5b2c6f; font-weight: 600; }
+
+.aiw-lim-leer {
+  background: #f4f6f7; border: 1px solid #d5dbe1;
+  border-left: 5px solid var(--muted, #606770);
+  border-radius: 6px; padding: 12px 16px; margin: 0 0 14px;
+  color: #3d4144; font-size: 13px;
+}
+.aiw-lim-foot {
+  font-size: 12px; color: #4a5158; font-variant-numeric: tabular-nums;
+  margin-bottom: 10px;
+}
+.aiw-lim-vorbehalte { font-size: 12px; color: #4a5158; }
+.aiw-lim-vorbehalte summary { cursor: pointer; }
+.aiw-lim-vorbehalte li { margin: 4px 0; }

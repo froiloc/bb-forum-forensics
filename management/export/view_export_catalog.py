@@ -32,7 +32,9 @@
 #   Alle uebrigen Sichten des VIEW_CATALOG sind erfasst (Test VE08 prueft das
 #   gegen cockpit.js, damit eine kuenftige neue Sicht nicht still durchfaellt).
 #
-# Version: v0.8.511 · Build: 511 · 2026-07-24
+# Build 525: +Sicht 'limitation' (AP-3A, Fristen) MIT dem
+#   Verjaehrungsvorbehalt als 'note'.
+# Version: v0.8.525 · Build: 525 · 2026-07-25
 # =============================================================================
 
 from __future__ import annotations
@@ -168,6 +170,29 @@ VIEW_EXPORTS: Tuple[ViewExportSpec, ...] = (
              "kann nichts löschen; das Löschen von Beweismitteln ist eine "
              "Governance-Entscheidung außerhalb dieses Systems.",
         sections=(SectionSpec("candidates", "Fälle über der Frist"),),
+    ),
+    # Build 525 (AP-3A / Idee 32): die Fristenliste ist ein Leitungsbeleg
+    # ("zu diesem Zeitpunkt stand es so"). Der Vorbehalt steht als 'note' MIT
+    # im Dokument — eine Aktenfassung, die als Feststellung der Verjaehrung
+    # gelesen wuerde, waere der folgenschwerste Irrtum, den dieser Export
+    # ausloesen koennte. Die Kennzahlen (zaehler, datenlage — darunter die
+    # WICHTIGE Zahl der Faelle ohne belegten Tatzeitpunkt), der angewandte
+    # Massstab und die Vorbehalte erscheinen ueber den Auto-Modus (Regel 2)
+    # unter "Weitere Daten" und gehen damit nicht verloren.
+    ViewExportSpec(
+        view_id="limitation", label="Fristen (Verjährung §§ 78 ff. StGB)",
+        api_path="/api/limitation",
+        note="Diese Aufstellung STELLT KEINE VERJÄHRUNG FEST. Sie zeigt die "
+             "UNUNTERBROCHENE Frist; Unterbrechungen nach § 78c StGB sind dem "
+             "Werkzeug nicht bekannt und können die Frist neu in Gang gesetzt "
+             "haben. Ist der Verjährungs-Parametersatz nicht juristisch "
+             "bestätigt, enthält die Aufstellung KEINE Fristeinstufung, "
+             "sondern den Grund dafür.",
+        sections=(SectionSpec(
+            "rows", "Fälle mit Fristlage",
+            order=("subject_id", "username", "ampel", "tatzeit_tag",
+                   "massgeblich_norm", "massgeblich_ablauf_tag",
+                   "restlaufzeit_tage", "tatzeit_befund")),),
     ),
     ViewExportSpec(
         view_id="capacity", label="Kapazität",

@@ -26,7 +26,24 @@
 //   optimistisch/erwartet/pessimistisch = gruen/blau/rot.
 //
 // Build 469: Schluesselumstellung user_id -> subject_id (M019)
-// Version: v0.7.469 · Build: 469 · 2026-07-20
+//
+// Build 522 (AP-3F / Idee 40): Die Sicht bekommt zwei Verweise auf den
+//   PROGNOSEBERICHT (GET /api/forecast/report) — als PDF und als HTML.
+//   ENTWURFSENTSCHEIDUNGEN dazu:
+//     a) Es sind <a>-Verweise und keine Knoepfe mit fetch(). Der Bericht ist
+//        ein DOKUMENT; ein Verweis oeffnet ihn in einem neuen Reiter, wo der
+//        Browser Anzeige, Speichern und Drucken schon kann. Ein fetch() haette
+//        dieselbe Datei durch JavaScript gereicht, ohne etwas hinzuzufuegen.
+//        Es ist derselbe Mechanismus wie beim Akten-Export der Shell
+//        (cockpit.js refreshExportButton, Build 511).
+//     b) Der Verweis traegt das RUECKBLICKFENSTER mit, sobald die Sicht eines
+//        kennt. Ein Beleg, der einen ANDEREN Ausschnitt zeigt als die Sicht,
+//        aus der er heraus erzeugt wurde, waere irrefuehrend (dieselbe
+//        Begruendung wie exportParams in cockpit.js).
+//     c) reportUrl() ist eine REINE Funktion und wird von vitest geprueft —
+//        die Verkabelung der Adresse ist die Stelle, an der ein Tippfehler
+//        unbemerkt bliebe (der Verweis wuerde dann einfach 404 liefern).
+// Version: v0.8.522 · Build: 522 · 2026-07-25
 // =============================================================================
 
 (function () {
@@ -168,6 +185,27 @@
         };
     }
 
+    // reportUrl: Adresse des Prognoseberichts (Build 522). REIN.
+    //   format          — 'pdf' (Vorgabe) oder 'html'. Ein anderer Wert wird
+    //                     NICHT stillschweigend zu 'pdf' gemacht: er wird
+    //                     durchgereicht, damit der Server ihn mit 400 und der
+    //                     Liste der gueltigen Werte beantwortet. Ein Frontend,
+    //                     das Eingaben heimlich korrigiert, verbirgt Fehler.
+    //   lookbackDays    — optional; nur wenn eine POSITIVE ganze Zahl vorliegt,
+    //                     wird der Parameter angehaengt. Sonst gilt die
+    //                     serverseitige Vorgabe (30 Tage) — und zwar SICHTBAR,
+    //                     weil sie im Bericht unter 'Grundlage' steht.
+    function reportUrl(format, lookbackDays) {
+        var fmt = (format === undefined || format === null || format === '')
+            ? 'pdf' : String(format);
+        var url = '/api/forecast/report?format=' + encodeURIComponent(fmt);
+        var n = Number(lookbackDays);
+        if (isFinite(n) && Math.floor(n) === n && n > 0) {
+            url += '&lookback_days=' + encodeURIComponent(String(n));
+        }
+        return url;
+    }
+
     function fmtDate(ts) {
         if (ts === null || ts === undefined) { return '-'; }
         var d = new Date(ts * 1000);
@@ -201,6 +239,48 @@
             + ' offene Faelle · beobachtete Rate: ' + rate + ' Faelle/Tag'
             + (forecast.data_sufficient ? '' : ' · keine belastbare Prognose');
         mainEl.appendChild(sub);
+
+        // -- Prognosebericht (Build 522) ---------------------------------------
+        // Die Verweise stehen OBEN, direkt unter der Kennzahlzeile: wer den
+        // Beleg braucht, holt ihn, ohne an Tabelle und zwei Diagrammen
+        // vorbeizuscrollen. Das Rueckblickfenster der Prognose faehrt mit
+        // (siehe Kopfkommentar b) — die Antwort nennt es selbst in
+        // 'lookback_days', wir erfinden hier keinen Wert.
+        // KLASSENNAMEN BEWUSST SICHT-GEBUNDEN ('.aiw-fc-*'): cockpit.css
+        // verbietet ausdruecklich ein globales '.aiw-btn' (cockpit.css Kopf,
+        // Build 500 und Z. 142), weil eine solche Regel das Aussehen aller
+        // bislang ungestylten Sichten mit veraendern wuerde. Dieser Build
+        // haelt sich daran, statt eine Ausnahme zu machen.
+        var actions = document.createElement('div');
+        actions.className = 'aiw-fc-actions';
+        [{ fmt: 'pdf', label: 'Prognosebericht als PDF',
+           title: 'Prognosebericht (3 Szenarien) als PDF — öffnet in einem '
+                + 'neuen Tab' },
+         { fmt: 'html', label: 'als HTML',
+           title: 'Dieselbe Fassung als druckbares HTML' }
+        ].forEach(function (spec) {
+            var a = document.createElement('a');
+            a.className = 'aiw-fc-reportlink';
+            a.setAttribute('href', reportUrl(spec.fmt, forecast.lookback_days));
+            a.setAttribute('target', '_blank');
+            // noopener: der Bericht laeuft in einem eigenen Reiter und darf
+            // keinen Zugriff auf window.opener des Cockpits bekommen.
+            a.setAttribute('rel', 'noopener');
+            a.setAttribute('title', spec.title);
+            a.textContent = spec.label;          // XSS-sicher
+            actions.appendChild(a);
+        });
+        // EHRLICHER HINWEIS an der Bedienstelle: ist die Datenlage duenn, sagt
+        // der Bericht das oben — aber der Mensch soll es SCHON HIER wissen,
+        // bevor er einen Beleg erzeugt, den er der Leitung vorlegt.
+        if (forecast.data_sufficient !== true) {
+            var warn = document.createElement('span');
+            warn.className = 'aiw-fc-note';
+            warn.textContent = 'Hinweis: keine belastbare Prognose — der '
+                + 'Bericht weist das als Vorbehalt aus.';
+            actions.appendChild(warn);
+        }
+        mainEl.appendChild(actions);
 
         // -- Prognose-Tabelle --------------------------------------------------
         var rows = forecastRows(forecast);
@@ -287,6 +367,7 @@
         forecastOption: forecastOption,
         ganttTasks: ganttTasks,
         ganttOption: ganttOption,
+        reportUrl: reportUrl,
         fmtDate: fmtDate,
         renderPlanung: renderPlanung
     };

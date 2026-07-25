@@ -214,14 +214,18 @@ class ManagementDashboardTests(unittest.TestCase):
         # Build 521: M030 (RBAC-Seed retention.view fuer die Fristenuebersicht,
         # AP-2G/Idee 29 — reiner Capability-Seed; EIGENES Recht statt ops.view,
         # weil die Sicht Beschuldigten-Kontonamen zeigt).
+        # Build 524: M031 (RBAC-Seed limitation.view fuer den Verjaehrungs-
+        # Monitor, AP-3A/Idee 32 — reiner Capability-Seed; EIGENES Recht, weil
+        # die Sicht Beschuldigten-Kontonamen UND eine rechtliche Einschaetzung
+        # mit unumkehrbarer Folge zusammen zeigt).
         self.assertEqual(self.applied,
                          [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
                           17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
-                          30]
+                          30, 31]
                          if 3 not in self.applied
                          else [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
                                15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
-                               27, 28, 29, 30])
+                               27, 28, 29, 30, 31])
         # discover findet M001..M006 -> support_sessions (M003) IST dabei,
         # der person-Rename (M005, Build 342) ebenso wie das RBAC-Schema
         # (M006, Build 343).

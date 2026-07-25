@@ -74,7 +74,18 @@
   Build 521: Aufbewahrungsfristen (cockpit_retention.js) — AP-2G/Idee 29,
              reiner PRUEFVORSCHLAG. Recht: retention.view. Diese Sicht kann
              NICHT loeschen; es gibt dafuer keinen Weg im Werkzeug.
-  Version: v0.8.521 · Build: 521 · 2026-07-24
+  Build 522: Prognosebericht (AP-3F/Idee 40) — die Sicht 'Prognose & Gantt'
+             (cockpit_planung.js) bekommt zwei Verweise auf
+             GET /api/forecast/report (PDF und HTML). KEINE neue Sicht und
+             KEIN neues Script: der Bericht enthaelt keine Angabe, die die
+             Sicht nicht schon zeigt, und laeuft deshalb auch auf demselben
+             Recht (stats.export_sta, Scope 'alle').
+  Build 525: Fristen/Verjaehrung (cockpit_limitation.js) — AP-3A/Idee 32,
+             Sicht zu /api/limitation. Recht: limitation.view. DIESE SICHT
+             STELLT KEINE VERJAEHRUNG FEST; sie zeigt die ununterbrochene
+             Frist und ist ohne bestaetigten Parametersatz bewusst STUMM
+             (Datenlage bleibt sichtbar, nur die Rechtsfolge fehlt).
+  Version: v0.8.525 · Build: 525 · 2026-07-25
   =============================================================================
 -->
 <link rel="stylesheet" href="/static/cockpit.css">
@@ -107,6 +118,11 @@
 <!-- Aufbewahrungsfristen (AP-2G/Idee 29, Build 521): PRUEFVORSCHLAG zu
      /api/retention. Recht: retention.view. LOESCHT NICHTS. -->
 <script src="/static/cockpit_retention.js" defer></script>
+<!-- Fristen/Verjaehrung (AP-3A/Idee 32, Build 525): Fristbeginn je Fall aus
+     forensic_<uid>.db und die rechnerische Frist nach §§ 78 ff. StGB.
+     STELLT KEINE VERJAEHRUNG FEST und ist ohne bestaetigten Parametersatz
+     bewusst stumm. -->
+<script src="/static/cockpit_limitation.js" defer></script>
 <script src="/static/cockpit_capacity.js" defer></script>
 <script src="/static/cockpit_policy.js" defer></script>
 <script src="/static/cockpit_mycases.js" defer></script>

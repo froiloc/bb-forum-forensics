@@ -1,0 +1,8 @@
+# MD5-Pruefsummen Build 526 (aiw_webserver, v0.8.526) — erzeugt 2026-07-25
+# Basis: Build 525. FIX zu Build 522 (Tests verlangten reportlab bedingungslos).
+# Es wird NUR die Testdatei geaendert — kein Produktivcode, keine Migration.
+# Zum Nachweis der Konfliktfreiheit: die MD5 der Testdatei aus Build 522 war
+# 74189bb72aee66ffcf61a6703ef0dc93 und ist bis Build 525 unveraendert geblieben.
+#
+1ae56cf1a21144c6142940f1c596cd83  build.json
+8128e353835b39a25ac4bc52c1eae870  tests/test_management_forecast_report.py

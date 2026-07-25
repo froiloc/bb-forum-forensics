@@ -24,7 +24,12 @@
 #   niemals umbenannt oder wiederverwendet. Ein Umbenennen wuerde bestehende
 #   Grants/Rollenzuweisungen forensisch entwerten.
 #
-# Version: v0.7.343 · Build: 343 · 2026-07-10
+# Build 524: +limitation.view (AP-3A, Seed in M031). Auszaehlung am Code-Stand
+#   524: 39 Faehigkeiten, 8 Rollen (vorher 38 Faehigkeiten). Die Zahl steht hier
+#   BEWUSST als nachgezaehlter Wert und nicht als Fortschreibung fruehrerer
+#   Notizen — die Angabe "32 -> 36" in build.json 521 zaehlte etwas anderes
+#   (Anker in test_management_rbac_schema.py), nicht die Katalogtupel.
+# Version: v0.8.524 · Build: 524 · 2026-07-25
 # =============================================================================
 
 from typing import FrozenSet, NamedTuple, Tuple
@@ -279,6 +284,21 @@ CAPABILITIES: Tuple[Capability, ...] = (
                "Faelle lesen, deren Aufbewahrungsfrist ueberschritten ist "
                "(Pruefvorschlag). Loeschen ist damit AUSDRUECKLICH NICHT "
                "verbunden — es gibt dafuer keinen Weg im Werkzeug."),
+    # --- Build 524 (AP-3A / Idee 32): Verjaehrungsfristen (Seed in M031) -----
+    #   EIGENES Recht, nicht 'ops.view' und nicht 'dashboard.view'. Die Sicht
+    #   zeigt zwei Dinge ZUSAMMEN, die keine bestehende Sicht zusammen zeigt:
+    #   eine Liste von Faellen mit Beschuldigten-Kontonamen UND eine
+    #   rechtliche Einschaetzung mit unumkehrbarer Folge (eine verjaehrte Tat
+    #   ist nicht heilbar). Wer die Anlage betreut, braucht beides nicht; wer
+    #   das Ampel-Dashboard liest, bekommt damit noch keine Fristbewertung.
+    #   NICHT scope-behaftet (wie escalation.view): auf 'eigene' verengt haette
+    #   die Sicht genau die Faelle nicht gezeigt, um derentwillen es sie gibt —
+    #   die unzugewiesenen, bei denen die Frist trotzdem laeuft.
+    #   Grant an 'supervisor' per policy_admin (default-deny).
+    Capability("limitation.view", "Verjaehrungsfristen sehen",
+               "Faelle mit der rechnerischen Verjaehrungsfrist (§§ 78 ff. "
+               "StGB) lesen. Die Sicht stellt KEINE Verjaehrung fest und ist "
+               "ohne bestaetigten Parametersatz stumm."),
 )
 
 

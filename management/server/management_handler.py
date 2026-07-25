@@ -18,7 +18,11 @@
 #
 # Build 503: Cache-Control 'no-cache' fuer ALLE Nicht-SSE-Antworten
 #   (_send_bytes) — Vorfall 2026-07-24: veraltete cockpit.html im Browser-Cache.
-# Version: v0.8.503 · Build: 503 · 2026-07-24
+# Build 522 (AP-3F): _send_bytes gibt zusaetzlich die 'extra_headers' der
+#   Antwort aus (heute nur 'Content-Disposition' fuer den Prognose-PDF). Die
+#   Pruefung auf Zeilenumbrueche (Response Splitting) sitzt HIER, an der Stelle,
+#   die die Kopfzeile schreibt — nicht bei den Aufrufern.
+# Version: v0.8.522 · Build: 522 · 2026-07-25
 # =============================================================================
 
 import http.server
@@ -70,7 +74,8 @@ class ManagementRequestHandler(http.server.BaseHTTPRequestHandler):
                 self._send_bytes(500, "application/json; charset=utf-8",
                                  b'{"error":"internal"}')
                 return
-            self._send_bytes(resp.status, resp.content_type, resp.body)
+            self._send_bytes(resp.status, resp.content_type, resp.body,
+                             getattr(resp, "extra_headers", ()))
         finally:
             if gate is not None:
                 gate.leave()
@@ -226,11 +231,31 @@ class ManagementRequestHandler(http.server.BaseHTTPRequestHandler):
             return
 
     # --------------------------------------------------------------- Senden
-    def _send_bytes(self, status: int, content_type: str, body: bytes) -> None:
+    def _send_bytes(self, status: int, content_type: str, body: bytes,
+                    extra_headers=()) -> None:
         try:
             self.send_response(status)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(body)))
+            # Build 522 (AP-3F): Zusatz-Kopfzeilen der Antwort (heute nur
+            # 'Content-Disposition' fuer den Prognose-PDF).
+            #
+            # HAERTUNG AN DIESER STELLE, nicht beim Aufrufer: Ein '\r' oder '\n'
+            # in Name oder Wert waere eine Kopfzeilen-Injektion (Response
+            # Splitting). Die Werte kommen zwar aus dem eigenen Code
+            # (Response.pdf begrenzt den Dateinamen bereits), aber die Pruefung
+            # gehoert dorthin, wo die Kopfzeile TATSAECHLICH geschrieben wird —
+            # sonst haengt die Sicherheit daran, dass jeder kuenftige Aufrufer
+            # daran denkt. Eine verdaechtige Kopfzeile wird VERWORFEN und
+            # PROTOKOLLIERT (nicht stillschweigend gesaeubert: eine veraenderte
+            # Kopfzeile waere ein anderer Beleg als der beabsichtigte).
+            for name, value in (extra_headers or ()):
+                sname, svalue = str(name), str(value)
+                if any(c in sname or c in svalue for c in ("\r", "\n")):
+                    logger.warning("Zusatz-Kopfzeile verworfen (Zeilenumbruch "
+                                   "im Namen oder Wert): %r", sname)
+                    continue
+                self.send_header(sname, svalue)
             # Build 503 (Vorfall 2026-07-24): OHNE Cache-Control hielt der
             # Browser eine veraltete cockpit.html im Cache — die neue Sicht
             # 'AD-Abgleich' meldete "Modul nicht geladen", weil die alte HTML

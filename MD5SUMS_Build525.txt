@@ -1,0 +1,13 @@
+# MD5-Pruefsummen Build 525 (aiw_webserver, v0.8.525) — erzeugt 2026-07-25
+# Basis: Build 524. Bitte VOR dem Einspielen gegen die VM abgleichen.
+# HINWEIS: cockpit.html faellt unter die .gitignore-Regel '*.html' -> git add -f
+# ACHTUNG: setzt die Builds 523 (Rechenschicht) und 524 (Endpunkt) voraus.
+#
+a606fd6fec0aaaef0fc4357c23f44732  build.json
+df1e2f0096a69023c5868b37a376fd36  management/server/static/cockpit_limitation.js
+a29aed1fe8cee5badfbb3fc965bd2e21  management/server/static/cockpit.js
+afdf58647eabbfd273e2570c84f6d56e  management/server/static/cockpit.html
+d05a48c4f75c4d157e85c9b98055c1b4  management/server/static/cockpit.css
+182a7866d3cfd1bd00372ede24a2db01  management/export/view_export_catalog.py
+0d58db35c527c328025e55c0df4de2f7  tests/unit/test_cockpit_limitation.test.js
+feef75f6d7eaa37d0b0eddd223d1ee70  tests/unit/test_cockpit_nav.test.js

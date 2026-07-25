@@ -104,7 +104,10 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     // Build 519: 34 (neu: 'nextactions' - Naechstbeste Aktion, AP-2F/Idee 22).
     // Build 520: 35 (neu: 'handover' - Uebergabe-Protokoll, AP-2G/Idee 30).
     // Build 521: 36 (neu: 'retention' - Aufbewahrungsfristen, AP-2G/Idee 29).
-    expect(api.VIEW_CATALOG.length).toBe(36);
+    // Build 525: 37 (neu: 'limitation' - Fristen/Verjaehrung,
+    //           AP-3A/Idee 32; Gruppe 'Auswertung', Recht
+    //           limitation.view).
+    expect(api.VIEW_CATALOG.length).toBe(37);
   });
 
   // CN-QUERFUND (Build 478) --------------------------------------------------

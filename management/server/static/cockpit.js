@@ -191,6 +191,11 @@
         { id: 'stats',      cap: 'stats.export_sta',     group: 'Auswertung',     label: 'Statistiken (StA/Fuehrung)' },
         { id: 'planung',    cap: 'stats.export_sta',     group: 'Auswertung',     label: 'Prognose & Gantt' },
         { id: 'annostats',  cap: 'stats.export_sta',     group: 'Auswertung',     label: 'Annotations-Statistik' },
+        // Build 525 (AP-3A / Idee 32): Verjaehrungsfristen. Gruppe
+        // 'Auswertung' und NICHT 'Administration': die Sicht wertet den
+        // FALLBESTAND aus (Tatzeitpunkte, Fristen), nicht den Zustand der
+        // Anlage. Eigenes Recht 'limitation.view' (Seed M031).
+        { id: 'limitation', cap: 'limitation.view',      group: 'Auswertung',     label: 'Fristen (Verjaehrung)' },
         { id: 'workload',   cap: 'workload.view',        group: 'Auswertung',     label: 'Lastverteilung' },
         { id: 'capacity',   cap: 'capacity.edit',        group: 'Auswertung',     label: 'Kapazitaet' },
         { id: 'support',    cap: 'support_history.view', group: 'Auswertung',     label: 'Support-Historie' },
@@ -788,6 +793,45 @@
         }).catch(function (err) {
             cleanupView();
             mod.renderRetention(mainEl, { error: err.message }, {});
+        });
+    }
+
+    // loadLimitation: /api/limitation holen und die Fristensicht rendern
+    // (cockpit_limitation.js, Build 525).
+    //
+    // DIE VORWARNSCHWELLE LEBT IM STATE, nicht in der Sicht: der SSE-Reload
+    // muss DIESELBE Schwelle verwenden, sonst springt die Ampelfarbe bei einem
+    // fremden Fall-Abschluss unvermittelt um, und niemand koennte sich das
+    // erklaeren. Muster: state.capacityPeriod (Build 360).
+    //
+    // KEIN SCHREIBPFAD: der einzige Rueckruf (onVorwarn) ruft diese Funktion
+    // erneut auf — er aendert die ANSICHT, nie einen Beleg.
+    function loadLimitation(mainEl, vorwarnTage) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitLimitation : null;
+        if (!mod) {
+            renderError(mainEl, 'Fristen-Modul nicht geladen.');
+            return;
+        }
+        if (vorwarnTage !== undefined && vorwarnTage !== null) {
+            state.limitationVorwarn = Number(vorwarnTage);
+        }
+        var url = '/api/limitation';
+        if (state.limitationVorwarn) {
+            url += '?vorwarn_tage='
+                + encodeURIComponent(String(state.limitationVorwarn));
+        }
+        fetchJson(url).then(function (data) {
+            cleanupView();
+            mod.renderLimitation(mainEl, data, {
+                onVorwarn: function (tage) { loadLimitation(mainEl, tage); }
+            });
+            log('Fristen gerendert:', (data.rows || []).length, 'Zeilen;',
+                'Aussage moeglich:', data.aussage_moeglich);
+        }).catch(function (err) {
+            cleanupView();
+            mod.renderLimitation(mainEl, { error: err.message }, {});
         });
     }
 
@@ -2768,7 +2812,13 @@
         // diesem Zeitpunkt standen N Faelle ueber der Frist'). Kein Filter,
         // also kein exportParams-Zweig. Der Loeschvorbehalt faehrt ueber
         // 'deletes_nothing' in das Dokument mit.
-        retention: 1
+        retention: 1,
+        // Build 525: die Fristenliste ist ein Governance-/Leitungsbeleg ('zu
+        // diesem Zeitpunkt standen N Fristen so'). Sie KENNT einen Parameter
+        // (vorwarn_tage) — er geht ueber exportParams mit, sonst zeigte das
+        // Dokument eine andere Vorwarnschwelle als die Sicht, und die Schwelle
+        // entscheidet ueber die Ampelfarbe.
+        limitation: 1
     };
 
     // exportParams: die Sicht-Parameter, die der Export MITBEKOMMEN muss, damit
@@ -2805,6 +2855,14 @@
             }
             if (st.capacityPeriod && st.capacityPeriod.end) {
                 p.end = st.capacityPeriod.end;
+            }
+        } else if (viewId === 'limitation') {
+            // Build 525: die Vorwarnschwelle entscheidet ueber die
+            // Ampelfarbe. Fehlte sie im Export, zeigte die Aktenfassung
+            // andere Farben als die Sicht, aus der sie erzeugt wurde — ein
+            // irrefuehrender Beleg.
+            if (st.limitationVorwarn) {
+                p.vorwarn_tage = String(st.limitationVorwarn);
             }
         }
         return p;
@@ -2913,6 +2971,10 @@
             loadNotes(mainEl);
         } else if (viewId === 'stats') {
             loadStats(mainEl);
+        } else if (viewId === 'limitation') {
+            // Build 525: die Fristensicht. Sie braucht keinen Vorlauf — die
+            // Vorwarnschwelle kommt aus dem State (oder der Server-Vorgabe).
+            loadLimitation(mainEl);
         } else if (viewId === 'planung') {
             loadPlanung(mainEl);
         } else if (viewId === 'annostats') {
@@ -3012,6 +3074,12 @@
                 loadAlias();
             } else if (state.activeId === 'workload') {
                 loadWorkload();
+            } else if (state.activeId === 'limitation') {
+                // Ein neu aufgenommener Fall (CASE_CREATED) erzeugt einen
+                // audit_log-Beleg und kann eine NEUE, moeglicherweise schon
+                // knappe Frist in die Liste bringen -> neu messen. Die im
+                // State gehaltene Vorwarnschwelle bleibt dabei erhalten.
+                loadLimitation();
             } else if (state.activeId === 'retention') {
                 // Ein Fall-Abschluss (status closed/approved) erzeugt einen
                 // audit_log-Beleg und kann die Fristenlage aendern -> neu

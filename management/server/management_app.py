@@ -116,7 +116,32 @@
 #         SELBSTSCHUTZ: die eigene Person ist ueber die Oberflaeche
 #         unantastbar (Lockout-Schutz; CLI bleibt offen). Die Grants der
 #         Rollen-Matrix (rbac_grant) bleiben bewusst CLI-only (policy_admin).
-# Version: v0.8.503 · Build: 503 · 2026-07-24
+#   522 = PROGNOSEBERICHT (AP-3F / Idee 40). NEU GET /api/forecast/report
+#         ?format=pdf|html[&lookback_days=N] — die Backlog-Abbau-Prognose als
+#         vorlegbarer Beleg (management/stats/forecast_report.py, HTML und PDF
+#         aus DENSELBEN reinen Funktionen). Rechte ABSICHTLICH identisch zu
+#         /api/forecast (stats.export_sta + Scope 'alle'): der Bericht zeigt
+#         keine Angabe, die die Sicht 'planung' nicht schon zeigt — ein
+#         eigenes Recht waere eine zweite Stelle zum Vergessen. Unbekanntes
+#         Format -> 400 MIT Nennung der gueltigen Werte (kein stiller
+#         Rueckfall auf PDF); fehlendes reportlab -> 503 mit Klartext (kein
+#         leeres PDF, kein stiller Formatwechsel). Response bekommt dafuer das
+#         additive Feld 'extra_headers' (Content-Disposition) und die Fabrik
+#         Response.pdf. Rein lesend, keine Migration.
+#   524 = FRISTEN-/VERJAEHRUNGS-MONITOR (AP-3A / Idee 32). NEU GET
+#         '/api/limitation[?vorwarn_tage=N]' — je Fall der Fristbeginn aus
+#         forensic_<uid>.db (uid_posts.posted / uid_pms_posts.posted_ts,
+#         read-only) und die rechnerische Frist nach §§ 78 ff. StGB.
+#         EIGENES Recht 'limitation.view' (Seed M031), NICHT scope-
+#         behaftet. DIE SICHT STELLT KEINE VERJAEHRUNG FEST — die Antwort
+#         traegt 'stellt_keine_verjaehrung_fest' MIT, und der Befund lautet
+#         'rechnerisch ueberschritten', nie 'verjaehrt'. UNBESTAETIGTER
+#         Parametersatz -> 200 MIT 'aussage_moeglich': false und Grund
+#         (Fallliste und Datenlage sind trotzdem vollstaendig da);
+#         UNBRAUCHBARER Parametersatz -> 503 (das ist etwas anderes und
+#         darf nicht wie ein Bestaetigungsmangel aussehen). Rein lesend,
+#         keine Datenaenderung.
+# Version: v0.8.524 · Build: 524 · 2026-07-25
 # =============================================================================
 
 import hmac
@@ -155,6 +180,25 @@ from management.support_overview.support_overview_repo import (
 from management.support_sessions.support_sessions_repo import SupportSessionsRepo
 from management.stats.stats_repo import StatsRepo
 from management.stats.forecast import Forecaster, forecast_to_dict
+# Build 524 (AP-3A / Idee 32): Fristen-/Verjaehrungs-Monitor. Der Parametersatz
+# wird bei JEDEM Abruf frisch geladen und geprueft — so wirkt eine Bestaetigung
+# durch die StA ohne Serverneustart, und ein fehlerhaft geaenderter Satz faellt
+# beim naechsten Abruf auf (statt bis zum naechsten Neustart zu wirken).
+from management.deadlines.limitation import DEFAULT_VORWARN_TAGE
+from management.deadlines.limitation_params import (
+    LimitationParamsError,
+    load_params,
+)
+from management.deadlines.limitation_repo import LimitationRepo
+# Build 522 (AP-3F / Idee 40): Prognosebericht (3 Szenarien) als HTML/PDF.
+# reportlab wird ERST in build_forecast_report_pdf importiert -> dieser Import
+# bleibt auch ohne die Bibliothek moeglich; ihr Fehlen meldet der Endpunkt als
+# 503 (Muster forensic_api/export.py:219-224).
+from management.stats.forecast_report import (
+    ForecastReportUnavailable,
+    build_forecast_report_html,
+    build_forecast_report_pdf,
+)
 from management.stats.gantt import GanttModel, gantt_to_dict
 from management.stats.annotation_stats_repo import AnnotationStatsRepo
 from management.cases.case_search_repo import CaseSearchRepo
@@ -402,6 +446,14 @@ CAP_HANDOVER_VIEW = "handover.view"
 # Kontonamen. Wer die Anlage betreut, braucht diese Namen nicht.
 CAP_RETENTION_VIEW = "retention.view"
 
+# Build 524 (AP-3A / Idee 32): Verjaehrungsfristen (Seed in M031). EIGENES
+# Recht statt 'ops.view' oder 'dashboard.view': die Sicht zeigt eine Liste von
+# Faellen MIT Beschuldigten-Kontonamen UND eine rechtliche Einschaetzung mit
+# unumkehrbarer Folge zusammen. NICHT scope-behaftet (wie CAP_ESCALATION_VIEW):
+# auf 'eigene' verengt haette sie genau die Faelle nicht gezeigt, um
+# derentwillen es sie gibt — die unzugewiesenen, bei denen die Frist laeuft.
+CAP_LIMITATION_VIEW = "limitation.view"
+
 logger = logging.getLogger(__name__)
 
 # Zulaessige Werte fuer die auditierten Schreibpfade (Build 372).
@@ -430,11 +482,27 @@ def _case_overview_item(c) -> Dict[str, Any]:
 
 @dataclass(frozen=True)
 class Response:
-    """HTTP-Antwort als reines Datenobjekt (Status, Content-Type, Body-Bytes)."""
+    """
+    HTTP-Antwort als reines Datenobjekt (Status, Content-Type, Body-Bytes).
+
+    Build 522 (AP-3F): zusaetzlich 'extra_headers' — eine Folge von
+    (Name, Wert)-Paaren, die der HTTP-Handler unveraendert mitsendet. Sie ist
+    ein TUPEL und nicht ein Dict, damit die Antwort weiterhin unveraenderlich
+    (frozen) und die Reihenfolge der Kopfzeilen deterministisch bleibt — eine
+    Antwort, die einmal gestempelt ist, wird nicht nachtraeglich veraendert
+    (dasselbe Prinzip wie beim ExportContext).
+
+    ANLASS: Der Prognosebericht wird als PDF ausgeliefert. Ohne
+    'Content-Disposition' wuerde der Browser eine Datei mit dem Namen des
+    Endpunktpfades anbieten ('report'), was in einer Akte nicht zuordenbar
+    waere. Das Feld hat einen Vorgabewert -> alle bestehenden
+    Response-Erzeugungen bleiben unveraendert gueltig (rein additiv).
+    """
 
     status: int
     content_type: str
     body: bytes
+    extra_headers: Tuple[Tuple[str, str], ...] = ()
 
     @staticmethod
     def json(status: int, payload: Any) -> "Response":
@@ -458,6 +526,35 @@ class Response:
             status=status,
             content_type="text/csv; charset=utf-8",
             body=text.encode("utf-8"),
+        )
+
+    @staticmethod
+    def pdf(status: int, data: bytes, *,
+            filename: Optional[str] = None) -> "Response":
+        """
+        PDF-Antwort (Build 522).
+
+        'inline' und NICHT 'attachment': der Server laeuft lokal (127.0.0.2),
+        die Ermittlerin will den Beleg zuerst SEHEN und dann entscheiden, ob er
+        in die Akte geht. Der Dateiname wird auf harmlose Zeichen begrenzt —
+        ein Kopfzeilenwert mit Anfuehrungszeichen, Semikolon oder Zeilenumbruch
+        waere eine Kopfzeilen-Injektion (die Werte kommen zwar hier aus dem
+        Code, aber die Absicherung gehoert an die Stelle, die die Kopfzeile
+        BAUT, nicht an ihre Aufrufer).
+        """
+        headers: Tuple[Tuple[str, str], ...] = ()
+        if filename:
+            safe = "".join(
+                ch for ch in str(filename)
+                if ch.isalnum() or ch in ("-", "_", ".")
+            ) or "bericht.pdf"
+            headers = (("Content-Disposition",
+                        'inline; filename="%s"' % safe),)
+        return Response(
+            status=status,
+            content_type="application/pdf",
+            body=data,
+            extra_headers=headers,
         )
 
 
@@ -700,6 +797,9 @@ class ManagementApp:
         # Build 521 (AP-2G / Idee 29): Aufbewahrungsfristen (Pruefvorschlag).
         if path == "/api/retention":
             return self._retention(person_id)
+        # Build 524 (AP-3A / Idee 32): Verjaehrungsfristen (§§ 78 ff. StGB).
+        if path == "/api/limitation":
+            return self._limitation(person_id, query)
         if path == "/api/capacity":
             return self._capacity(person_id, query)
         if path == "/api/policy":
@@ -716,6 +816,14 @@ class ManagementApp:
             return self._stats(person_id, query)
         if path == "/api/forecast":
             return self._forecast(person_id)
+        # Build 522 (AP-3F / Idee 40): Prognosebericht als PDF (oder HTML).
+        # MUSS VOR '/api/forecast' geprueft werden? Nein — die Pfade sind
+        # verschieden lang und werden exakt verglichen (kein Praefix-Match),
+        # die Reihenfolge ist hier also unerheblich. Der Eintrag steht
+        # trotzdem direkt daneben, damit beide Wege zur Prognose an einer
+        # Stelle sichtbar sind.
+        if path == "/api/forecast/report":
+            return self._forecast_report(person_id, query)
         if path == "/api/gantt":
             return self._gantt(person_id)
         if path == "/api/annotation-stats":
@@ -1243,6 +1351,97 @@ class ManagementApp:
         payload["deletes_nothing"] = True
         return Response.json(200, payload)
 
+    # ---------------------------------------------------------------- Build 524
+    # AP-3A / Idee 32: Fristen-/Verjaehrungs-Monitor (§§ 78 ff. StGB).
+
+    def _limitation(self, person_id: int, query) -> Response:
+        """
+        GET /api/limitation[?vorwarn_tage=N] — der Fristenmonitor.
+
+        DIESE SICHT STELLT KEINE VERJAEHRUNG FEST. Sie rechnet die
+        UNUNTERBROCHENE Frist und nennt jede Annahme, die dabei eingeht.
+        Unterbrechungen nach § 78c StGB sind dem Werkzeug nicht bekannt und
+        koennen die Frist neu in Gang gesetzt haben; deshalb sagt keine Antwort
+        'verjaehrt', sondern 'rechnerisch ueberschritten — juristische Pruefung
+        erforderlich'.
+
+        IST DER PARAMETERSATZ NICHT BESTAETIGT, LIEFERT DIE ANTWORT DEN GRUND
+        UND KEINE AMPEL. Das ist kein Fehler und kein 503: die Fallliste, die
+        Datenlage je Fall und die Vorbehalte sind vollstaendig da und nuetzlich
+        (man sieht sofort, fuer wie viele Faelle ueberhaupt ein Tatzeitpunkt
+        belegt ist). Nur die Rechtsfolge fehlt — und sie fehlt SICHTBAR
+        ('aussage_moeglich': false + 'verweigerungsgrund').
+
+        IST DER PARAMETERSATZ UNBRAUCHBAR (Selbstpruefung schlaegt an), ist das
+        etwas ANDERES und wird als 503 gemeldet: dann stimmt an der
+        Konfiguration etwas nicht, und das darf nicht wie ein blosser
+        Bestaetigungsmangel aussehen.
+
+        NICHT SCOPE-BEHAFTET (CAP_LIMITATION_VIEW, Seed M031): Fristenkontrolle
+        ist eine Leitungsaufgabe, und die gefaehrlichsten Faelle sind gerade die
+        UNZUGEWIESENEN.
+
+        REIN LESEND: coordinator.db und alle forensic_<uid>.db mit mode=ro.
+        Kein CoordinatorWriter, kein Schreibpfad — der Migrationsvorbehalt ab
+        01.07.2026 ist NICHT beruehrt.
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_LIMITATION_VIEW):
+            return self._forbidden(CAP_LIMITATION_VIEW)
+
+        # Die Vorwarnschwelle ist uebersteuerbar (die Leitung will je nach Lage
+        # 6 oder 18 Monate sehen). Ein unbrauchbarer Wert ist ein 400 — NICHT
+        # ein stillschweigend ersetzter Vorgabewert, denn die Schwelle
+        # entscheidet ueber die Ampelfarbe und muss nachrechenbar bleiben.
+        raw = self._q1(query, "vorwarn_tage")
+        vorwarn = DEFAULT_VORWARN_TAGE
+        if raw is not None and str(raw) != "":
+            try:
+                vorwarn = int(raw)
+            except (TypeError, ValueError):
+                return Response.json(400, {
+                    "error": "bad_request",
+                    "detail": "vorwarn_tage muss eine ganze Zahl sein."})
+            if vorwarn < 0:
+                return Response.json(400, {
+                    "error": "bad_request",
+                    "detail": "vorwarn_tage darf nicht negativ sein."})
+
+        try:
+            params = load_params()
+        except LimitationParamsError as exc:
+            # UNBRAUCHBARER Satz != unbestaetigter Satz. Der Unterschied gehoert
+            # in den Statuscode, damit er im Betrieb nicht untergeht.
+            logger.error("Verjaehrungs-Parametersatz unbrauchbar: %s", exc)
+            return Response.json(503, {
+                "error": "limitation_params_invalid",
+                "detail": str(exc),
+                "hinweis": "Der Parametersatz management/deadlines/"
+                           "limitation_params.json ist in sich "
+                           "widerspruechlich oder nicht lesbar. Pruefen mit: "
+                           "python -m management.deadlines.limitation_admin "
+                           "pruefen"})
+
+        con = self._ro_con()
+        try:
+            report = LimitationRepo(con, self._forensic_dir).compute(
+                params=params, now_ts=int(time.time()), vorwarn_tage=vorwarn)
+        except Exception as exc:                        # noqa: BLE001
+            logger.exception("Fristenmonitor fehlgeschlagen")
+            return Response.json(500, {"error": "limitation_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+
+        payload = report.to_dict()
+        # Die Zusicherung faehrt MIT — wie 'deletes_nothing' bei den
+        # Aufbewahrungsfristen (Build 521). Eine Fristliste ohne diesen Satz
+        # koennte als Feststellung der Verjaehrung missverstanden werden, und
+        # das waere die folgenschwerste Fehldeutung, die dieses Werkzeug
+        # zulassen koennte.
+        payload["stellt_keine_verjaehrung_fest"] = True
+        return Response.json(200, payload)
+
     def _escalation_ack(self, actor_person_id: int,
                         payload: Dict[str, Any]) -> Response:
         """
@@ -1605,6 +1804,106 @@ class ManagementApp:
         finally:
             con.close()
         return Response.json(200, gantt_to_dict(result))
+
+    # ---------------------------------------------------------------- Build 522
+    # AP-3F / Idee 40: Prognosebericht (3 Szenarien) als vorlegbarer Beleg.
+
+    def _forecast_report(self, person_id: int, query) -> Response:
+        """
+        GET /api/forecast/report?format=pdf|html — der Prognosebericht.
+
+        RECHTE GENAU WIE /api/forecast: CAP_STATS ('stats.export_sta') UND
+        Scope 'alle'. Das ist bewusst KEIN eigenes Recht — der Bericht enthaelt
+        keine einzige Angabe, die die Sicht 'planung' nicht schon zeigt. Ein
+        zweites Recht haette nur eine zweite Stelle geschaffen, an der ein
+        Grant vergessen werden kann; und ein Export, der MEHR darf als die
+        Sicht, waere ein Loch in der Zweckbindung.
+
+        FORMAT: 'pdf' (Vorgabe) oder 'html'. Ein unbekanntes Format ist ein
+        400 mit Nennung der gueltigen Werte — NICHT ein stiller Rueckfall auf
+        PDF. Wer 'xlsx' anfragt, soll erfahren, dass es das nicht gibt, statt
+        etwas anderes zu bekommen, als er wollte.
+
+        FEHLT reportlab -> 503 mit Klartext und Hinweis auf das Offline-Wheel
+        (Muster forensic_api/export.py:219-224). Kein leeres PDF, kein Rueckfall
+        auf HTML: ein anderes Format als das angeforderte waere eine stille
+        Ersetzung.
+
+        DER BERICHT SCHREIBT NICHTS. Rein lesend (mode=ro), kein
+        CoordinatorWriter, keine Migration — der Migrationsvorbehalt ab
+        01.07.2026 ist nicht beruehrt.
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_STATS) or policy.scope(CAP_STATS) != "alle":
+            return self._forbidden(CAP_STATS)
+
+        fmt = str(self._q1(query, "format") or "pdf").lower()
+        if fmt not in ("pdf", "html"):
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "Unbekanntes Format '%s'. Gueltig: pdf, html." % fmt,
+                "known": ["pdf", "html"],
+            })
+
+        # Das Rueckblickfenster ist uebersteuerbar (wie in der CLI), damit der
+        # Beleg denselben Ausschnitt abbilden kann, den die Leitung betrachtet.
+        # Ein unbrauchbarer Wert ist ein 400 — nicht ein stillschweigend
+        # ersetzter Vorgabewert, der die Zahlen unerklaerlich machen wuerde.
+        raw_lb = self._q1(query, "lookback_days")
+        lookback = 30
+        if raw_lb is not None and str(raw_lb) != "":
+            try:
+                lookback = int(raw_lb)
+            except (TypeError, ValueError):
+                return Response.json(400, {
+                    "error": "bad_request",
+                    "detail": "lookback_days muss eine ganze Zahl sein."})
+            if lookback <= 0:
+                return Response.json(400, {
+                    "error": "bad_request",
+                    "detail": "lookback_days muss > 0 sein."})
+
+        con = self._ro_con()
+        try:
+            result = Forecaster(con).compute(now_ts=int(time.time()),
+                                             lookback_days=lookback)
+            forecast = forecast_to_dict(result)
+            person = self._person(con, person_id)
+            actor = person.get("system_username") if person else None
+            ctx = build_export_context(
+                con=con, db_path=self._db_path, actor=actor,
+                aktenzeichen="Prognosebericht (3 Szenarien)")
+        except Exception as exc:                        # noqa: BLE001
+            logger.exception("Prognosebericht fehlgeschlagen")
+            return Response.json(500, {"error": "forecast_report_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+
+        if fmt == "html":
+            return Response.html(
+                200, build_forecast_report_html(forecast, ctx))
+
+        try:
+            data = build_forecast_report_pdf(forecast, ctx)
+        except ForecastReportUnavailable as exc:
+            return Response.json(503, {
+                "error": "pdf_unavailable",
+                "detail": "reportlab nicht installiert (%s). Bitte "
+                          "Offline-Wheel bereitstellen (setup/wheels; "
+                          "reportlab in RUNTIME_PACKAGES, Build 404)." % exc})
+        except Exception as exc:                        # noqa: BLE001
+            logger.exception("PDF-Erzeugung des Prognoseberichts "
+                             "fehlgeschlagen")
+            return Response.json(500, {"error": "forecast_report_failed",
+                                       "detail": str(exc)})
+
+        # Der Dateiname traegt den Stichtag — ein Prognosebeleg ohne Stichtag
+        # ist in der Akte nicht zuordenbar (zwei Prognosen unterscheiden sich
+        # nur durch ihn).
+        stichtag = str(forecast.get("now_day") or "ohne-datum")
+        return Response.pdf(200, data,
+                            filename="AIW-Prognose_%s.pdf" % stichtag)
 
     def _annotation_stats(self, person_id: int) -> Response:
         """
