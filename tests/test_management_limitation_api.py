@@ -36,6 +36,29 @@
 #          zeigt bewusst auch unzugewiesene Faelle).
 #   LM17 — Der Endpunkt schreibt NICHTS: audit_log-Spitze unveraendert.
 #   LM18 — M031 hat 'limitation.view' geseedet (Migrationskette angewandt).
+#
+# BUILD 527 — die Befunde aus der PROD-Messung (uid_posts OHNE Spalte 'posted'):
+#   LM19 — Tabelle da, aber die Zeitspalte fehlt, und es gibt KEINE zweite
+#          Quelle -> befund 'zeitspalte_unlesbar'. Der Detailtext sagt
+#          UNBEKANNT und behauptet NICHT 'kein Zeitstempel gesetzt' (das war der
+#          Fehler aus Build 524). Der SQLite-Grund faehrt mit.
+#   LM20 — Spalte fehlt in EINER Quelle, die andere liefert einen Wert ->
+#          befund 'belegt_unvollstaendig' und NICHT 'belegt'. Der Fristbeginn
+#          ist gesetzt, aber die Zeile traegt den Ausfall MIT — das war der
+#          gefaehrlichere der beiden Fehler, weil die Zahl vollwertig aussah.
+#   LM21 — 'ohne_tatzeit' bleibt dem Fall vorbehalten, in dem Tabelle UND
+#          Spalte lesbar sind und trotzdem nichts drinsteht. Die drei Lagen sind
+#          damit unterscheidbar.
+#   LM22 — Das Aggregat: 'quellenfehler' zaehlt je Fehlertext die Faelle,
+#          'faelle_mit_quellenfehler' die betroffenen Faelle. Ein bei ALLEN
+#          Faellen gleicher Fehler ist ein Schema-Befund, und die Zahl sagt das.
+#   LM23 — Der Ausfall steht in den HINWEISEN der Antwort (nicht nur im
+#          Serverprotokoll) und dort GANZ VORNE.
+#   LM24 — Sortierung: bei gleicher Ampel steht das eingeschraenkt Belegte VOR
+#          dem vollstaendig Belegten.
+#   LM25 — DATENLAGE_BEFUNDE nennt alle tatsaechlich erzeugten Befunde (und
+#          keinen, der nicht erzeugt wird) — dieselbe Zusicherung wie LC13 fuer
+#          die Ampelzustaende.
 # =============================================================================
 
 import json
@@ -56,6 +79,8 @@ from management.audit.audit_log import AuditLog                     # noqa: E402
 from management.cases.cases_repo import CasesRepo                   # noqa: E402
 from management.deadlines.limitation_params import load_params      # noqa: E402
 from management.deadlines.limitation_repo import (                  # noqa: E402
+    BEFUNDE_MIT_TATZEIT,
+    DATENLAGE_BEFUNDE,
     HINWEIS_FETCHED_AT,
     HINWEIS_SHARES,
     ZEITQUELLEN,
@@ -100,7 +125,8 @@ def _ts(tag: str) -> int:
 
 
 def _forensic_db(pfad: Path, *, posts=None, pms=None,
-                 mit_posts_tabelle=True, mit_pms_tabelle=False) -> None:
+                 mit_posts_tabelle=True, mit_pms_tabelle=False,
+                 posts_spalte="posted", pms_spalte="posted_ts") -> None:
     """
     Baut eine minimale forensic_<uid>.db.
 
@@ -111,12 +137,16 @@ def _forensic_db(pfad: Path, *, posts=None, pms=None,
     con = sqlite3.connect(str(pfad))
     try:
         if mit_posts_tabelle:
-            con.execute("CREATE TABLE uid_posts (id INTEGER, posted INTEGER)")
+            # posts_spalte ist einstellbar, um den PROD-Befund nachzustellen:
+            # die Tabelle uid_posts EXISTIERT, traegt aber KEINE Spalte
+            # 'posted' (Messung 2026-07-25, 162 von 162 Dateien).
+            con.execute("CREATE TABLE uid_posts (id INTEGER, %s INTEGER)"
+                        % posts_spalte)
             for i, p in enumerate(posts or []):
                 con.execute("INSERT INTO uid_posts VALUES (?,?)", (i + 1, p))
         if mit_pms_tabelle:
             con.execute("CREATE TABLE uid_pms_posts "
-                        "(pm_post_id INTEGER, posted_ts INTEGER)")
+                        "(pm_post_id INTEGER, %s INTEGER)" % pms_spalte)
             for i, p in enumerate(pms or []):
                 con.execute("INSERT INTO uid_pms_posts VALUES (?,?)",
                             (500 + i, p))
@@ -200,6 +230,106 @@ class TestReadTatzeit(unittest.TestCase):
         self.assertNotIn("pages.fetched_at", spalten)
         for _t, _s, beleg in ZEITQUELLEN:
             self.assertTrue(beleg.strip())
+
+
+class TestBuild527Befunde(unittest.TestCase):
+    """
+    LM19-LM21, LM25 — die drei Lagen, die Build 524 in einen Topf geworfen hat.
+
+    Anlass ist ein ECHTER Befund: in den forensic_<uid>.db der Dienststelle
+    existiert die Spalte 'uid_posts.posted' nicht ('no such column: posted',
+    162 von 162 Dateien, Messung 2026-07-25).
+    """
+
+    def setUp(self):
+        self.dir = Path(tempfile.mkdtemp())
+
+    def tearDown(self):
+        shutil.rmtree(self.dir, ignore_errors=True)
+
+    def test_LM19_zeitspalte_unlesbar_statt_falscher_aussage(self):
+        p = self.dir / "forensic_21.db"
+        # Tabelle da, Spalte HEISST ANDERS -> der Zugriff scheitert.
+        _forensic_db(p, posts=[1647216000], posts_spalte="post_time")
+        t = read_tatzeit(p, 21, "nutzer21")
+        self.assertEqual(t.befund, "zeitspalte_unlesbar")
+        self.assertIsNone(t.spaeteste_ts)
+        # DER KERN: es wird NICHT behauptet, es sei kein Zeitstempel gesetzt.
+        self.assertNotIn("kein einziger Zeitstempel", t.detail)
+        self.assertIn("UNBEKANNT", t.detail)
+        # Der SQLite-Grund faehrt mit — sonst sucht man im falschen Ort.
+        self.assertTrue(t.quellen_fehler)
+        self.assertIn("no such column", " ".join(t.quellen_fehler))
+        self.assertIn("uid_posts.posted", " ".join(t.quellen_fehler))
+
+    def test_LM20_belegt_unvollstaendig_ist_nicht_belegt(self):
+        p = self.dir / "forensic_22.db"
+        # uid_posts unbrauchbar, uid_pms_posts liefert einen Wert — genau die
+        # Lage, die in der DEV-Messung 18 Faelle als 'belegt' ausgewiesen hat.
+        _forensic_db(p, posts=[1647216000], posts_spalte="post_time",
+                     pms=[1700000000], mit_pms_tabelle=True)
+        t = read_tatzeit(p, 22, "nutzer22")
+        self.assertEqual(t.befund, "belegt_unvollstaendig")
+        self.assertNotEqual(t.befund, "belegt")
+        # Der Fristbeginn IST gesetzt (aus der lesbaren Quelle) ...
+        self.assertEqual(t.spaeteste_ts, 1700000000)
+        self.assertEqual(t.quellen, ("uid_pms_posts.posted_ts",))
+        # ... aber die Zeile traegt den Ausfall UND seine Richtung mit.
+        self.assertTrue(t.quellen_fehler)
+        self.assertIn("zu frueh angesetzt", t.detail)
+        # Und er gilt weiterhin als Fall MIT Tatzeit (die Frist wird gerechnet).
+        self.assertIn(t.befund, BEFUNDE_MIT_TATZEIT)
+
+    def test_LM21_ohne_tatzeit_bleibt_der_echte_leerbefund(self):
+        p = self.dir / "forensic_23.db"
+        # Tabelle UND Spalte lesbar, aber nur NULL-Werte.
+        _forensic_db(p, posts=[None, None])
+        t = read_tatzeit(p, 23, "nutzer23")
+        self.assertEqual(t.befund, "ohne_tatzeit")
+        self.assertEqual(t.quellen_fehler, ())
+        self.assertIn("lesbar", t.detail)
+        self.assertIn("kein einziger Zeitstempel", t.detail)
+
+    def test_LM25_datenlage_befunde_vollstaendig(self):
+        """Jeder deklarierte Befund wird erzeugt, und kein anderer."""
+        erzeugt = set()
+        # belegt
+        p1 = self.dir / "forensic_31.db"
+        _forensic_db(p1, posts=[1647216000])
+        erzeugt.add(read_tatzeit(p1, 31, "a").befund)
+        # belegt_unvollstaendig
+        p2 = self.dir / "forensic_32.db"
+        _forensic_db(p2, posts=[1], posts_spalte="x", pms=[1700000000],
+                     mit_pms_tabelle=True)
+        erzeugt.add(read_tatzeit(p2, 32, "b").befund)
+        # ohne_tatzeit
+        p3 = self.dir / "forensic_33.db"
+        _forensic_db(p3, posts=[None])
+        erzeugt.add(read_tatzeit(p3, 33, "c").befund)
+        # zeitspalte_unlesbar
+        p4 = self.dir / "forensic_34.db"
+        _forensic_db(p4, posts=[1], posts_spalte="x")
+        erzeugt.add(read_tatzeit(p4, 34, "d").befund)
+        # ohne_zeittabelle
+        p5 = self.dir / "forensic_35.db"
+        _forensic_db(p5, mit_posts_tabelle=False)
+        con = sqlite3.connect(str(p5))
+        con.execute("CREATE TABLE pages (page_id INTEGER)")
+        con.commit()
+        con.close()
+        erzeugt.add(read_tatzeit(p5, 35, "e").befund)
+        # ohne_forensic_db
+        erzeugt.add(read_tatzeit(self.dir / "forensic_36.db", 36, "f").befund)
+        # nicht_lesbar
+        p7 = self.dir / "forensic_37.db"
+        p7.write_bytes(b"kein sqlite")
+        erzeugt.add(read_tatzeit(p7, 37, "g").befund)
+
+        self.assertEqual(erzeugt, set(DATENLAGE_BEFUNDE),
+                         "deklariert-aber-nicht-erzeugt: %s / "
+                         "erzeugt-aber-nicht-deklariert: %s"
+                         % (set(DATENLAGE_BEFUNDE) - erzeugt,
+                            erzeugt - set(DATENLAGE_BEFUNDE)))
 
 
 class TestLimitationRepoAndApi(unittest.TestCase):
@@ -400,6 +530,81 @@ class TestLimitationRepoAndApi(unittest.TestCase):
         self.assertEqual(self._get(1).status, 200)
         self.assertEqual(self._get(1, {"vorwarn_tage": ["30"]}).status, 200)
         self.assertEqual(self.app.audit_tip_seq(), tip)
+
+    def test_LM22_quellenfehler_aggregat(self):
+        """Ein bei ALLEN Faellen gleicher Fehler ist ein Schema-Befund."""
+        # Zwei Faelle mit falscher Spalte, einer davon mit lesbarer PN-Quelle.
+        _forensic_db(self.forensic / "forensic_105.db",
+                     posts=[_ts("2022-01-01")], posts_spalte="post_time")
+        _forensic_db(self.forensic / "forensic_106.db",
+                     posts=[_ts("2022-01-01")], posts_spalte="post_time",
+                     pms=[_ts("2023-05-05")], mit_pms_tabelle=True)
+        cases = CasesRepo(self.con, self.writer)
+        cases.create_case(105, "spalte_fehlt", actor_id=1)
+        cases.create_case(106, "teilweise", actor_id=1)
+
+        con, repo = self._repo()
+        try:
+            r = repo.compute(params=self.params, now_ts=_ts("2026-07-25"))
+        finally:
+            con.close()
+
+        self.assertEqual(r.faelle_mit_quellenfehler, 2)
+        self.assertEqual(sum(r.quellenfehler.values()), 2)
+        schluessel = " ".join(r.quellenfehler.keys())
+        self.assertIn("uid_posts.posted", schluessel)
+        self.assertIn("no such column", schluessel)
+        self.assertEqual(r.datenlage.get("zeitspalte_unlesbar"), 1)
+        self.assertEqual(r.datenlage.get("belegt_unvollstaendig"), 1)
+        # Die Summe bleibt stimmig — kein Fall verschwindet, keiner doppelt.
+        self.assertEqual(sum(r.datenlage.values()), r.faelle_gesamt)
+
+    def test_LM23_ausfall_steht_in_den_hinweisen_ganz_vorne(self):
+        """
+        Das Serverprotokoll sieht niemand, der die Liste liest. Der Ausfall
+        gehoert deshalb in die ANTWORT — und dort an die erste Stelle.
+        """
+        _forensic_db(self.forensic / "forensic_107.db",
+                     posts=[_ts("2022-01-01")], posts_spalte="post_time")
+        CasesRepo(self.con, self.writer).create_case(107, "x", actor_id=1)
+
+        con, repo = self._repo()
+        try:
+            r = repo.compute(params=self.params, now_ts=_ts("2026-07-25"))
+        finally:
+            con.close()
+        self.assertIn("DATENLAGE EINGESCHRAENKT", r.hinweise[0])
+        self.assertIn("no such column", r.hinweise[0])
+        # Die bestehenden Hinweise bleiben erhalten (nichts wird verdraengt).
+        self.assertIn(HINWEIS_SHARES, r.hinweise)
+        self.assertIn(HINWEIS_FETCHED_AT, r.hinweise)
+        # Ohne Ausfall steht der Hinweis NICHT da (er soll etwas bedeuten).
+        con2, repo2 = self._repo()
+        try:
+            r2 = repo2.compute(params=self.params, now_ts=_ts("2026-07-25"),
+                               subject_ids=[101])
+        finally:
+            con2.close()
+        self.assertNotIn("DATENLAGE EINGESCHRAENKT", " ".join(r2.hinweise))
+
+    def test_LM24_eingeschraenktes_steht_vor_vollstaendigem(self):
+        """Bei gleicher Ampel zuerst die Zeile, deren Zahl unter Vorbehalt steht."""
+        _forensic_db(self.forensic / "forensic_108.db",
+                     posts=[_ts("2024-08-01")], posts_spalte="post_time",
+                     pms=[_ts("2024-08-01")], mit_pms_tabelle=True)
+        CasesRepo(self.con, self.writer).create_case(108, "teilweise",
+                                                    actor_id=1)
+        con, repo = self._repo()
+        try:
+            r = repo.compute(params=self.params, now_ts=_ts("2026-07-25"))
+        finally:
+            con.close()
+        # Alle Ampeln sind 'keine_aussage' (Satz unbestaetigt) -> die
+        # Reihenfolge entscheidet sich am Vorbehalt.
+        befunde = [row.tatzeit.befund for row in r.rows]
+        self.assertIn("belegt_unvollstaendig", befunde)
+        self.assertLess(befunde.index("belegt_unvollstaendig"),
+                        befunde.index("belegt"))
 
     def test_LM18_m031_hat_geseedet(self):
         self.assertIn(31, self.applied)

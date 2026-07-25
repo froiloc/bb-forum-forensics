@@ -38,27 +38,58 @@
 #   und macht sichtbar, wenn zwischen erster und letzter Handlung Jahre liegen.
 #
 # NICHTS WIRD STILL UEBERSPRUNGEN (Grundregel 1). Jeder Fall landet in genau
-#   einer Zeile, auch wenn er unlesbar ist. Vier Befundarten werden GEZAEHLT und
+#   einer Zeile, auch wenn er unlesbar ist. SECHS Befundarten werden GEZAEHLT und
 #   BENANNT:
-#     ohne_forensic_db     — Fall in 'cases', aber keine forensic_<uid>.db.
-#     ohne_zeittabelle     — Datei da, aber weder uid_posts noch uid_pms_posts.
-#     nicht_lesbar         — Datei da, aber nicht oeffenbar/lesbar (mit Grund).
-#     ohne_tatzeit         — Tabellen da, aber kein einziger Zeitstempel.
+#     ohne_forensic_db      — Fall in 'cases', aber keine forensic_<uid>.db.
+#     ohne_zeittabelle      — Datei da, aber weder uid_posts noch uid_pms_posts.
+#     nicht_lesbar          — Datei da, aber nicht oeffenbar/lesbar (mit Grund).
+#     zeitspalte_unlesbar   — Tabelle da, aber KEINE Zeitspalte lesbar (Grund
+#                             mit). NEU in Build 527.
+#     belegt_unvollstaendig — Zeitstempel gefunden, ABER mindestens eine Quelle
+#                             war nicht lesbar. NEU in Build 527.
+#     ohne_tatzeit          — Tabellen und Spalten lesbar, aber kein einziger
+#                             Zeitstempel gesetzt.
 #   Ein Monitor, der solche Faelle weglaesst, saehe nach vollstaendiger Pruefung
 #   aus und waere der gefaehrlichste denkbare Beleg.
+#
+# BUILD 527 — WAS HIER FALSCH WAR (Befund aus der PROD-Messung 2026-07-25):
+#   In den ECHTEN forensic_<uid>.db existiert die Spalte 'uid_posts.posted'
+#   NICHT ('no such column: posted', 162 von 162 Dateien). Build 524 hat daraus
+#   ZWEI falsche Aussagen gemacht, und beide waren Grundregel-1-Verstoesse:
+#
+#   (a) Schlug der Spaltenzugriff fehl und lieferte auch die zweite Quelle
+#       nichts, meldete der Fall 'ohne_tatzeit' mit dem Text 'Zeittabelle(n)
+#       vorhanden, aber kein einziger Zeitstempel gesetzt'. Das war SCHLICHT
+#       FALSCH: es war nicht 'kein Zeitstempel gesetzt', sondern 'die Spalte war
+#       nicht lesbar'. Der Unterschied entscheidet darueber, ob man in den Daten
+#       oder im Code sucht.
+#
+#   (b) Schlug uid_posts fehl, lieferte aber uid_pms_posts einen Wert, meldete
+#       der Fall schlicht 'belegt' — OHNE jede Spur, dass die STAERKERE Quelle
+#       ausgefallen war. Der Fristbeginn stuetzte sich dann allein auf private
+#       Nachrichten. Das ist die gefaehrlichere der beiden Fehlwirkungen: die
+#       Zahl sah vollwertig aus. (Richtung des Fehlers: fehlen spaetere
+#       Beitraege, wird der Fristbeginn ZU FRUEH angesetzt, die Frist also zu
+#       kurz gerechnet — der Fall erscheint DRINGENDER als er ist. Das ist die
+#       ungefaehrliche Richtung, aber ein Bericht mit falschem Datum bleibt
+#       falsch.)
+#
+#   Seit Build 527 gilt: ein Fall mit ausgefallener Quelle ist NIE einfach
+#   'belegt'. Und der Ausfall wird EINMAL je Abruf zusammengefasst protokolliert
+#   statt 162-mal einzeln (der Log-Schwall der Messung war selbst ein Befund).
 #
 # REIN LESEND: coordinator.db und alle forensic_<uid>.db werden mit
 #   file:...?mode=ro geoeffnet (Muster management/reports/reports_repo.py:122).
 #   Der Migrationsvorbehalt ab 01.07.2026 ist NICHT beruehrt.
 #
-# Version: v0.8.524 · Build: 524 · 2026-07-25
+# Version: v0.8.527 · Build: 527 · 2026-07-25
 # =============================================================================
 
 from __future__ import annotations
 
 import logging
 import sqlite3
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
@@ -97,6 +128,18 @@ HINWEIS_FETCHED_AT = (
 )
 
 
+#: Die Befundarten der Datenlage. Als Konstante, damit die Oberflaeche sie
+#  gegen ihre eigene Aufzaehlung halten kann — ein neuer Befund ohne Platz in
+#  der Sicht wuerde sonst aus der Zaehlung fallen (Build 527).
+DATENLAGE_BEFUNDE: Tuple[str, ...] = (
+    "belegt", "belegt_unvollstaendig", "ohne_tatzeit", "zeitspalte_unlesbar",
+    "ohne_zeittabelle", "ohne_forensic_db", "nicht_lesbar",
+)
+
+#: Die Befunde, bei denen ein Fristbeginn VORLIEGT (mit oder ohne Einschraenkung).
+BEFUNDE_MIT_TATZEIT: Tuple[str, ...] = ("belegt", "belegt_unvollstaendig")
+
+
 @dataclass(frozen=True)
 class CaseTatzeit:
     """Der belegte Tatzeitrahmen eines Falls (oder der Grund, warum keiner da ist)."""
@@ -104,11 +147,13 @@ class CaseTatzeit:
     username: str
     frueheste_ts: Optional[int]
     spaeteste_ts: Optional[int]
-    quellen: Tuple[str, ...]        # welche Tabellen etwas geliefert haben
-    befund: str                     # 'belegt' | 'ohne_forensic_db' |
-    #                                 'ohne_zeittabelle' | 'nicht_lesbar' |
-    #                                 'ohne_tatzeit'
+    quellen: Tuple[str, ...]        # welche Quellen etwas geliefert haben
+    befund: str                     # s. DATENLAGE_BEFUNDE
     detail: str
+    # Build 527: welche Quellen NICHT lesbar waren, je Eintrag mit dem
+    # SQLite-Grund. Das Feld ist auch bei 'belegt_unvollstaendig' gefuellt —
+    # gerade dort ist es die eigentliche Information.
+    quellen_fehler: Tuple[str, ...] = ()
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -117,6 +162,7 @@ class CaseTatzeit:
             "spaeteste_ts": self.spaeteste_ts,
             "quellen": list(self.quellen),
             "befund": self.befund, "detail": self.detail,
+            "quellen_fehler": list(self.quellen_fehler),
         }
 
 
@@ -158,6 +204,12 @@ class LimitationReport:
     zaehler: Dict[str, int]         # je Ampelzustand
     datenlage: Dict[str, int]       # je Tatzeit-Befund
     rows: Tuple[LimitationRow, ...]
+    # Build 527: das AGGREGAT der Lesefehler — Fehlertext -> Anzahl Faelle.
+    # Es ersetzt den Protokoll-Schwall durch EINE nachpruefbare Zahl und macht
+    # den systematischen Ausfall sichtbar: '162 Faelle, ein und derselbe
+    # Fehler' ist eine Schema-Aussage, '1 Fall' waere eine Datei-Aussage.
+    quellenfehler: Dict[str, int] = field(default_factory=dict)
+    faelle_mit_quellenfehler: int = 0
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -175,6 +227,9 @@ class LimitationReport:
             "faelle_gesamt": self.faelle_gesamt,
             "zaehler": dict(self.zaehler),
             "datenlage": dict(self.datenlage),
+            "quellenfehler": dict(self.quellenfehler),
+            "faelle_mit_quellenfehler": self.faelle_mit_quellenfehler,
+            "datenlage_befunde": list(DATENLAGE_BEFUNDE),
             "rows": [r.to_dict() for r in self.rows],
         }
 
@@ -192,6 +247,11 @@ def read_tatzeit(path: Path, subject_id: int, username: str) -> CaseTatzeit:
     Reine E/A-Funktion ohne Rechtsbewertung — dadurch getrennt testbar. Sie
     wirft NICHT: jeder Fehlerfall wird zu einem benannten Befund, damit der
     Fall in der Liste BLEIBT.
+
+    Build 527: ein Lesefehler an einer Zeitquelle wird MITGEFUEHRT
+    (quellen_fehler) und aendert den Befund. Frueher verschwand er in einer
+    Protokollzeile, und der Fall sah entweder unverdaechtig ('belegt') oder
+    falsch beschrieben ('kein Zeitstempel gesetzt') aus.
     """
     if not path.exists():
         return CaseTatzeit(
@@ -219,16 +279,21 @@ def read_tatzeit(path: Path, subject_id: int, username: str) -> CaseTatzeit:
         frueheste: Optional[int] = None
         spaeteste: Optional[int] = None
         quellen: List[str] = []
+        fehler: List[str] = []
         for tabelle, spalte, _beleg in vorhanden:
             try:
                 row = con.execute(
                     "SELECT MIN(%s), MAX(%s) FROM %s WHERE %s IS NOT NULL"
                     % (spalte, spalte, tabelle, spalte)).fetchone()
             except sqlite3.Error as exc:
-                # EINE unlesbare Tabelle darf die andere nicht mitreissen; der
-                # Grund wird aber vermerkt (kein stiller Teilbefund).
-                logger.warning("limitation: %s.%s nicht lesbar (%s)",
-                               tabelle, spalte, exc)
+                # EINE unlesbare Quelle darf die andere nicht mitreissen — aber
+                # sie darf auch nicht in einer Protokollzeile verschwinden. Der
+                # Grund faehrt am Fall MIT (Build 527). Protokolliert wird hier
+                # nur auf DEBUG; die Zusammenfassung macht LimitationRepo EINMAL
+                # je Abruf (bei 162 Dateien waren es sonst 162 Warnungen).
+                fehler.append("%s.%s: %s" % (tabelle, spalte, exc))
+                logger.debug("limitation: %s.%s in %s nicht lesbar (%s)",
+                             tabelle, spalte, path.name, exc)
                 continue
             if row is None or row[0] is None:
                 continue
@@ -238,12 +303,35 @@ def read_tatzeit(path: Path, subject_id: int, username: str) -> CaseTatzeit:
             quellen.append("%s.%s" % (tabelle, spalte))
 
         if spaeteste is None:
+            # ZWEI VERSCHIEDENE LAGEN, die frueher beide 'ohne_tatzeit' hiessen.
+            if fehler:
+                return CaseTatzeit(
+                    subject_id=subject_id, username=username,
+                    frueheste_ts=None, spaeteste_ts=None, quellen=(),
+                    befund="zeitspalte_unlesbar",
+                    detail="KEINE Zeitquelle lesbar — es ist damit UNBEKANNT, "
+                           "ob Zeitstempel vorliegen: %s" % "; ".join(fehler),
+                    quellen_fehler=tuple(fehler))
             return CaseTatzeit(
                 subject_id=subject_id, username=username, frueheste_ts=None,
                 spaeteste_ts=None, quellen=(), befund="ohne_tatzeit",
-                detail="Zeittabelle(n) vorhanden (%s), aber kein einziger "
-                       "Zeitstempel gesetzt"
+                detail="Zeittabelle(n) und Spalten lesbar (%s), aber kein "
+                       "einziger Zeitstempel gesetzt"
                        % ", ".join(q[0] for q in vorhanden))
+
+        if fehler:
+            # DER GEFAEHRLICHE FALL: es gibt einen Wert, aber nicht aus allen
+            # Quellen. Er ist NIE einfach 'belegt'.
+            return CaseTatzeit(
+                subject_id=subject_id, username=username,
+                frueheste_ts=frueheste, spaeteste_ts=spaeteste,
+                quellen=tuple(quellen), befund="belegt_unvollstaendig",
+                detail="Fristbeginn NUR aus %s gebildet; nicht lesbar war: %s. "
+                       "Fehlen dadurch SPAETERE Handlungen, ist der "
+                       "Fristbeginn zu frueh angesetzt und die Frist zu kurz "
+                       "gerechnet — der Fall erscheint dringender als er ist."
+                       % (", ".join(quellen), "; ".join(fehler)),
+                quellen_fehler=tuple(fehler))
 
         return CaseTatzeit(
             subject_id=subject_id, username=username, frueheste_ts=frueheste,
@@ -307,11 +395,17 @@ class LimitationRepo:
         rows: List[LimitationRow] = []
         zaehler: Dict[str, int] = {}
         datenlage: Dict[str, int] = {}
+        quellenfehler: Dict[str, int] = {}
+        mit_fehler = 0
 
         for subject_id, username in self._cases(subject_ids):
             pfad = self._forensic / ("forensic_%d.db" % subject_id)
             tatzeit = read_tatzeit(pfad, subject_id, username)
             datenlage[tatzeit.befund] = datenlage.get(tatzeit.befund, 0) + 1
+            if tatzeit.quellen_fehler:
+                mit_fehler += 1
+                for eintrag in tatzeit.quellen_fehler:
+                    quellenfehler[eintrag] = quellenfehler.get(eintrag, 0) + 1
             a = assess_limitation(tatzeit_ts=tatzeit.spaeteste_ts,
                                   params=params, now_ts=now_ts,
                                   vorwarn_tage=vorwarn_tage)
@@ -322,11 +416,43 @@ class LimitationRepo:
                 "ohne_fassung": 3, "ruht": 4, "offen": 5, "keine_aussage": 6}
         rows.sort(key=lambda r: (
             rang.get(r.assessment.ampel, 9),
+            # Build 527: bei gleicher Ampel steht das EINGESCHRAENKT Belegte
+            # vorn. Wer die Liste von oben liest, sieht zuerst die Zeilen, deren
+            # Zahl unter Vorbehalt steht.
+            0 if r.tatzeit.quellen_fehler else 1,
             r.assessment.restlaufzeit_tage
             if r.assessment.restlaufzeit_tage is not None else 10 ** 9,
             r.tatzeit.subject_id))
 
+        # EINE Zusammenfassung statt einer Warnung je Datei. Ein Fehler, der bei
+        # ALLEN Faellen gleich lautet, ist ein Schema-Befund und keine
+        # Dateistoerung — genau das soll die Zeile sagen.
+        if quellenfehler:
+            logger.warning(
+                "limitation: bei %d von %d Faellen war eine Zeitquelle nicht "
+                "lesbar. Aufschluesselung: %s", mit_fehler, len(rows),
+                "; ".join("%s (%dx)" % (k, v)
+                          for k, v in sorted(quellenfehler.items())))
+
         grund = params.verweigerungsgrund()
+
+        # Der Lesefehler gehoert in die HINWEISE der Antwort, nicht nur ins
+        # Protokoll: die Sicht und der Export zeigen die Hinweise, das
+        # Serverprotokoll sieht niemand, der die Liste liest.
+        hinweise = [HINWEIS_SHARES, HINWEIS_FETCHED_AT]
+        if quellenfehler:
+            hinweise.insert(0,
+                "ACHTUNG — DATENLAGE EINGESCHRAENKT: bei %d von %d Faellen war "
+                "eine Zeitquelle nicht lesbar (%s). Faelle mit dem Befund "
+                "'belegt_unvollstaendig' tragen einen Fristbeginn, der NUR aus "
+                "den lesbaren Quellen gebildet ist; Faelle mit "
+                "'zeitspalte_unlesbar' tragen gar keinen. Vor einer "
+                "Fristentscheidung ist die Ursache zu klaeren."
+                % (mit_fehler, len(rows),
+                   "; ".join("%s (%dx)" % (k, v)
+                             for k, v in sorted(quellenfehler.items()))))
+        hinweise = tuple(hinweise)
+
         # Der Stichtag kommt aus der Rechenschicht, damit es genau EINE Stelle
         # gibt, die Unix-Sekunden in einen Kalendertag umrechnet.
         stichtag = assess_limitation(
@@ -341,6 +467,7 @@ class LimitationRepo:
             params_bestaetigt_am=params.bestaetigt_am,
             vorgabe_tatbestaende=params.vorgabe_tatbestaende,
             vorbehalte=params.vorbehalte,
-            hinweise=(HINWEIS_SHARES, HINWEIS_FETCHED_AT),
+            hinweise=hinweise,
             faelle_gesamt=len(rows), zaehler=zaehler, datenlage=datenlage,
-            rows=tuple(rows))
+            rows=tuple(rows), quellenfehler=quellenfehler,
+            faelle_mit_quellenfehler=mit_fehler)

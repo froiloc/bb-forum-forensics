@@ -64,7 +64,10 @@
 //   UMD-Ausgang -> vitest testet den ECHTEN Code. Alle Texte ueber textContent
 //   (Kontonamen sind beliebiger UTF-8 aus einem multilingualen Forum).
 //
-// Version: v0.8.525 · Build: 525 · 2026-07-25
+// Build 527: generische Datenlage-Zaehlung (ein neuer Befund kann nicht
+//   mehr aus der Summe fallen) + Ausfall-Hinweis 'quellenfehler' direkt
+//   unter dem Vorbehalt + SQLite-Grund am Zellen-Titel.
+// Version: v0.8.527 · Build: 527 · 2026-07-25
 // =============================================================================
 
 (function () {
@@ -175,21 +178,77 @@
         return teile.join(' · ');
     }
 
+    // Klartext je Datenlage-Befund. Ein hier UNBEKANNTER Befund wird mit seinem
+    // Rohnamen gezeigt statt weggelassen (Build 527).
+    var DATENLAGE_LABEL = {
+        belegt: 'Tatzeitpunkt belegt',
+        belegt_unvollstaendig: 'belegt, aber EINGESCHRÄNKT (eine Zeitquelle '
+            + 'war nicht lesbar)',
+        ohne_tatzeit: 'kein Zeitstempel gesetzt',
+        zeitspalte_unlesbar: 'Zeitspalte NICHT LESBAR (unbekannt, ob '
+            + 'Zeitstempel vorliegen)',
+        ohne_zeittabelle: 'keine Zeittabelle',
+        ohne_forensic_db: 'keine forensic-Datei',
+        nicht_lesbar: 'Datei nicht lesbar'
+    };
+
+    // Welche Befunde bedeuten 'ein Fristbeginn liegt vor'? Spiegel von
+    // BEFUNDE_MIT_TATZEIT in limitation_repo.py.
+    var BEFUNDE_MIT_TATZEIT = ['belegt', 'belegt_unvollstaendig'];
+
+    function datenlageLabel(befund) {
+        return DATENLAGE_LABEL[befund] || ('unbekannter Befund ('
+            + String(befund) + ')');
+    }
+
     // datenlageText: die Datenlage in Zahlen. Die UNGEPRUEFTEN stehen VORNE —
     // ohne sie saehe eine kurze Befundliste wie eine vollstaendige Pruefung
     // aus (dieselbe Entscheidung wie 'without_reference' in Build 521).
+    //
+    // BUILD 527 — DIE ZAEHLUNG IST JETZT GENERISCH. Vorher waren die vier
+    // damals bekannten Befunde einzeln addiert. Als das Backend zwei neue
+    // Befunde bekam ('zeitspalte_unlesbar', 'belegt_unvollstaendig'), waeren
+    // sie aus der Summe GEFALLEN — die Sicht haette dann weniger ungepruefte
+    // Faelle gemeldet, als es gab. Genau diese Art stiller Untererfassung soll
+    // hier nicht moeglich sein: 'ohne Tatzeitpunkt' wird als Rest gerechnet
+    // (Gesamt minus die Befunde MIT Tatzeit), und die Aufschluesselung listet
+    // ALLE gelieferten Schluessel, auch unbekannte.
     function datenlageText(data) {
         var d = data || {};
         var dl = d.datenlage || {};
-        var ungeprueft = (dl.ohne_forensic_db || 0) + (dl.ohne_zeittabelle || 0)
-            + (dl.nicht_lesbar || 0) + (dl.ohne_tatzeit || 0);
-        return (d.faelle_gesamt || 0) + ' Fälle; ' + ungeprueft
-            + ' davon OHNE belegten Tatzeitpunkt (' + (dl.belegt || 0)
-            + ' mit). Aufschlüsselung: '
-            + 'keine forensic-Datei ' + (dl.ohne_forensic_db || 0) + ', '
-            + 'keine Zeittabelle ' + (dl.ohne_zeittabelle || 0) + ', '
-            + 'nicht lesbar ' + (dl.nicht_lesbar || 0) + ', '
-            + 'Tabelle ohne Zeitstempel ' + (dl.ohne_tatzeit || 0) + '.';
+        var gesamt = d.faelle_gesamt || 0;
+        var mit = 0;
+        BEFUNDE_MIT_TATZEIT.forEach(function (k) { mit += (dl[k] || 0); });
+        var ohne = Math.max(0, gesamt - mit);
+        var teile = Object.keys(dl).sort().map(function (k) {
+            return datenlageLabel(k) + ': ' + dl[k];
+        });
+        return gesamt + ' Fälle; ' + ohne + ' davon OHNE belegten '
+            + 'Tatzeitpunkt (' + mit + ' mit). Aufschlüsselung: '
+            + (teile.length ? teile.join(' · ') : 'keine Angaben') + '.';
+    }
+
+    // quellenfehlerText: das Aggregat der Lesefehler — oder null.
+    // Es ersetzt einen Schwall von Protokollzeilen durch eine nachpruefbare
+    // Zahl. Ein bei ALLEN Faellen gleicher Fehler ist ein Schema-Befund, und
+    // der Satz sagt das ausdruecklich.
+    function quellenfehlerText(data) {
+        var d = data || {};
+        var qf = d.quellenfehler || {};
+        var schluessel = Object.keys(qf);
+        if (!schluessel.length) { return null; }
+        var betroffen = d.faelle_mit_quellenfehler || 0;
+        var gesamt = d.faelle_gesamt || 0;
+        var alle = (gesamt > 0 && betroffen === gesamt);
+        return 'DATENLAGE EINGESCHRÄNKT: bei ' + betroffen + ' von ' + gesamt
+            + ' Fällen war eine Zeitquelle nicht lesbar'
+            + (alle ? ' — bei ALLEN, das deutet auf das Datenbankschema und '
+                    + 'nicht auf einzelne Dateien'
+                    : '')
+            + '. ' + schluessel.sort().map(function (k) {
+                return k + ' (' + qf[k] + '×)';
+            }).join(' · ')
+            + '. Vor einer Fristentscheidung ist die Ursache zu klären.';
     }
 
     // zaehlerText: die Ampelverteilung, in der Reihenfolge der Dringlichkeit.
@@ -301,6 +360,18 @@
             mainEl.appendChild(_el(doc, 'div', 'aiw-lim-stumm', stumm));
         }
 
+        // (2b) Build 527: der Lesefehler-Ausfall. Er steht DIREKT unter dem
+        // Vorbehalt und NICHT unten bei den Hinweisen — er entscheidet
+        // darueber, ob die Zahlen in der Tabelle ueberhaupt belastbar sind,
+        // und ist damit keine Fussnote. Rot, weil es hier tatsaechlich ein
+        // Missstand ist (anders als der blaue Verjaehrungsvorbehalt: dort
+        // haelt sich das Werkzeug an seine Grenze, hier fehlt ihm etwas).
+        var qfehler = quellenfehlerText(data);
+        if (qfehler) {
+            mainEl.appendChild(_el(doc, 'div', 'aiw-lim-quellenfehler',
+                qfehler));
+        }
+
         // (3) Datenlage und Ampelverteilung.
         mainEl.appendChild(_el(doc, 'p', 'aiw-pagesub', datenlageText(data)));
         if (!stumm) {
@@ -373,8 +444,15 @@
                 // Die Datenlage steht IN der Zeile: 'keine forensic-Datei' ist
                 // eine andere Lage als 'Tabelle ohne Zeitstempel', und beide
                 // erklaeren, warum die Frist leer bleibt.
-                tr.appendChild(_el(doc, 'td', 'aiw-lim-datenlage',
-                    r.tatzeit_befund || '—'));
+                var dz = _el(doc, 'td', 'aiw-lim-datenlage',
+                    datenlageLabel(r.tatzeit_befund));
+                // Der SQLite-Grund gehoert an die Zelle, nicht in ein
+                // Protokoll: wer die Zeile sieht, soll die Ursache erfahren.
+                if (r.quellen_fehler && r.quellen_fehler.length) {
+                    dz.className += ' is-eingeschraenkt';
+                    dz.setAttribute('title', r.quellen_fehler.join(' | '));
+                }
+                tr.appendChild(dz);
                 tbody.appendChild(tr);
             });
             tbl.appendChild(tbody);
@@ -432,6 +510,10 @@
         stummText: stummText,
         massstabText: massstabText,
         datenlageText: datenlageText,
+        datenlageLabel: datenlageLabel,
+        quellenfehlerText: quellenfehlerText,
+        DATENLAGE_LABEL: DATENLAGE_LABEL,
+        BEFUNDE_MIT_TATZEIT: BEFUNDE_MIT_TATZEIT,
         zaehlerText: zaehlerText,
         restText: restText,
         quellenText: quellenText,

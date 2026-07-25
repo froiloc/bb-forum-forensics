@@ -39,7 +39,23 @@
  *          ihn mit der Tageszahl auf; sie ist der EINZIGE Knopf der Sicht.
  *   LV15 — Kontonamen mit Markup bleiben Text (textContent), UTF-8 erhalten.
  *   LV16 — Die Datenlage steht IN der Zeile (erklaert, warum die Frist leer
- *          bleibt) und wird aufgeschluesselt.
+ *          bleibt), als KLARTEXT (Build 527), und wird aufgeschluesselt.
+ *
+ * BUILD 527 — Befunde aus der PROD-Messung (uid_posts ohne Spalte 'posted'):
+ *   LV17 — Ein NEUER Befund faellt NICHT aus der Zaehlung. Vorher waren die vier
+ *          bekannten Befunde einzeln addiert; ein fuenfter waere unbemerkt
+ *          verschwunden und die Sicht haette zu wenige ungepruefte Faelle
+ *          gemeldet. Jetzt wird 'ohne Tatzeitpunkt' als REST gerechnet und jeder
+ *          gelieferte Schluessel gelistet — auch ein unbekannter.
+ *   LV18 — 'belegt_unvollstaendig' zaehlt als MIT Tatzeitpunkt, wird aber
+ *          ausdruecklich als EINGESCHRAENKT benannt.
+ *   LV19 — Der Lesefehler-Ausfall steht in eigenem Bereich VOR der Tabelle,
+ *          nennt Zahl und SQLite-Ursache, sagt bei 'alle Faelle betroffen'
+ *          ausdruecklich, dass das auf das SCHEMA deutet — und der Grund haengt
+ *          am Titel der betroffenen Zelle. Ohne Ausfall erscheint er NICHT.
+ *   LV20 — Die Frontend-Labels decken genau die DATENLAGE_BEFUNDE des Backends
+ *          ab (aus limitation_repo.py gelesen, nicht abgeschrieben) — wie LV08
+ *          fuer die Ampelzustaende.
  * =============================================================================
  */
 
@@ -408,19 +424,110 @@ describe("Build 525 — Cockpit-Sicht Fristen (AP-3A)", () => {
         ],
       })
     );
+    // Build 527: die Zelle zeigt KLARTEXT statt des Rohcodes — der Rohcode
+    // sagte einer Ermittlerin nichts.
+    const api = win.AIWCockpitLimitation;
     const zellen = Array.from(
       main.querySelectorAll("td.aiw-lim-datenlage")
     ).map((td) => td.textContent);
     expect(zellen).toEqual([
-      "belegt", "ohne_forensic_db", "nicht_lesbar", "ohne_tatzeit",
+      api.datenlageLabel("belegt"),
+      api.datenlageLabel("ohne_forensic_db"),
+      api.datenlageLabel("nicht_lesbar"),
+      api.datenlageLabel("ohne_tatzeit"),
     ]);
     const sub = main.querySelector(".aiw-pagesub").textContent;
     expect(sub).toContain("3 davon OHNE belegten Tatzeitpunkt");
-    expect(sub).toContain("keine forensic-Datei 1");
-    expect(sub).toContain("nicht lesbar 1");
-    expect(sub).toContain("Tabelle ohne Zeitstempel 1");
+    expect(sub).toContain("keine forensic-Datei: 1");
+    expect(sub).toContain("Datei nicht lesbar: 1");
+    expect(sub).toContain("kein Zeitstempel gesetzt: 1");
     // Die Quelle des Fristbeginns steht ebenfalls in der Zeile.
     expect(main.querySelector("td.aiw-lim-quelle").textContent)
       .toBe("uid_posts.posted");
+  });
+
+  // ===========================================================================
+  // Build 527 — die Befunde aus der PROD-Messung (uid_posts ohne 'posted').
+  // ===========================================================================
+
+  it("LV17: ein NEUER Befund fällt nicht aus der Zählung", () => {
+    // Der eigentliche Regressionsschutz: vor Build 527 waren die vier damals
+    // bekannten Befunde EINZELN addiert. Ein neuer Befund waere aus der Summe
+    // gefallen, und die Sicht haette weniger ungepruefte Faelle gemeldet, als
+    // es gab. Hier steht ein frei erfundener Befund — die Rechnung muss
+    // trotzdem aufgehen.
+    const api = _api();
+    const t = api.datenlageText({
+      faelle_gesamt: 10,
+      datenlage: { belegt: 4, voellig_neuer_befund: 6 },
+    });
+    expect(t).toContain("6 davon OHNE belegten Tatzeitpunkt");
+    expect(t).toContain("4 mit");
+    // Und der unbekannte Befund wird BENANNT statt weggelassen.
+    expect(t).toContain("unbekannter Befund (voellig_neuer_befund): 6");
+  });
+
+  it("LV18: 'belegt_unvollstaendig' zählt als MIT Tatzeitpunkt", () => {
+    const api = _api();
+    expect(api.BEFUNDE_MIT_TATZEIT).toEqual(["belegt",
+                                             "belegt_unvollstaendig"]);
+    const t = api.datenlageText({
+      faelle_gesamt: 5,
+      datenlage: { belegt: 2, belegt_unvollstaendig: 3 },
+    });
+    expect(t).toContain("0 davon OHNE belegten Tatzeitpunkt");
+    expect(t).toContain("5 mit");
+    // Aber die Einschraenkung wird ausdruecklich benannt.
+    expect(api.datenlageLabel("belegt_unvollstaendig"))
+      .toContain("EINGESCHRÄNKT");
+  });
+
+  it("LV19: der Lesefehler-Ausfall steht oben und nennt die Ursache", () => {
+    const win = _win();
+    const api = win.AIWCockpitLimitation;
+    const d = D({
+      faelle_gesamt: 3,
+      faelle_mit_quellenfehler: 3,
+      quellenfehler: { "uid_posts.posted: no such column: posted": 3 },
+      datenlage: { zeitspalte_unlesbar: 3 },
+      rows: [R({ ampel: "ohne_tatzeit", tatzeit_befund: "zeitspalte_unlesbar",
+                 quellen: [], restlaufzeit_tage: null,
+                 quellen_fehler: ["uid_posts.posted: no such column: posted"] })],
+    });
+    // Reine Funktion: der Satz nennt Zahl, Ursache und die Schlussfolgerung.
+    const t = api.quellenfehlerText(d);
+    expect(t).toContain("DATENLAGE EINGESCHRÄNKT");
+    expect(t).toContain("no such column");
+    expect(t).toContain("bei ALLEN");        // 3 von 3 -> Schema-Befund
+    expect(t).toContain("Ursache zu klären");
+    // Ohne Fehler gibt es den Satz NICHT (er soll etwas bedeuten).
+    expect(api.quellenfehlerText(D())).toBeNull();
+
+    // Im DOM: eigener Bereich, und er steht VOR der Tabelle.
+    const main = _render(win, d);
+    const box = main.querySelector(".aiw-lim-quellenfehler");
+    expect(box).not.toBeNull();
+    const tbl = main.querySelector("table.aiw-lim-table");
+    expect(
+      box.compareDocumentPosition(tbl) &
+        win.Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    // Und der SQLite-Grund haengt an der Zelle der betroffenen Zeile.
+    const zelle = main.querySelector("td.aiw-lim-datenlage");
+    expect(zelle.className).toContain("is-eingeschraenkt");
+    expect(zelle.getAttribute("title")).toContain("no such column");
+  });
+
+  it("LV20: Frontend-Labels deckeln die Backend-Befunde ab", () => {
+    // Wie LV08 fuer die Ampel: die Liste im Python-Modul ist die Wahrheit.
+    const py = readFileSync("management/deadlines/limitation_repo.py", "utf-8");
+    const m = py.match(/DATENLAGE_BEFUNDE[^=]*=\s*\(([\s\S]*?)\)/);
+    expect(m).not.toBeNull();
+    const be = (m[1].match(/"([a-z_]+)"/g) || [])
+      .map((x) => x.replace(/"/g, ""))
+      .sort();
+    const fe = Object.keys(_api().DATENLAGE_LABEL).sort();
+    expect(be.length).toBe(7);
+    expect(fe).toEqual(be);
   });
 });

@@ -1,0 +1,12 @@
+# MD5-Pruefsummen Build 527 (aiw_webserver, v0.8.527) — erzeugt 2026-07-25
+# Basis: Build 526 (origin/master a398192). KORREKTURBUILD zu 524/525.
+# Anlass: 'uid_posts.posted' existiert in den echten forensic_<uid>.db NICHT.
+# Kein Produktivcode ausser limitation_repo.py und der Sicht; keine Migration.
+#
+32ee64351cda9cd26b025476417c0127  build.json
+17cf6bc25d4a422bed5c969068a666d9  management/deadlines/limitation_repo.py
+6ec845cac3fe9dafb074f0276556aa13  management/server/static/cockpit_limitation.js
+1e34c5eb63e5b18f8c87eda2e247dc35  management/server/static/cockpit.css
+00c42fb449b4ce47ab2966851425fad1  tests/test_management_limitation_api.py
+4328792155c09d20be0bf2a706f8069b  tests/unit/test_cockpit_limitation.test.js
+9cf470d4c83e3ece22caf37fb221931f  tools/diag_limitation_laufzeit.py

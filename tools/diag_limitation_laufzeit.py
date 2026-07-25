@@ -42,7 +42,13 @@
 # ERWARTETE AUSGABE: ein Block 'ERGEBNIS ZUM ZURUECKMELDEN' am Ende. Genau
 #   diesen Block bitte zurueckschicken — je einmal aus DEV und aus PROD.
 #
-# Version: v0.8.526 · 2026-07-25 · Diagnose, NICHT Teil des Produktivsystems
+# v2 (2026-07-25, nach der ersten Messung): (a) SCHEMA-SONDE ergaenzt, die
+#   die ECHTEN Spaltennamen und den Zeitkandidaten BELEGT statt zu raten;
+#   (b) Fehlklassifikation behoben — v1 zaehlte 'Spalte fehlt' als 'Datei
+#   nicht lesbar' und meldete '0 lesbar, 25 nicht', obwohl alle Dateien
+#   tadellos lesbar waren. Eine irreführende Diagnose im Diagnosewerkzeug
+#   ist der schlechteste Ort fuer einen solchen Fehler.
+# Version: v0.8.527 · 2026-07-25 · Diagnose, NICHT Teil des Produktivsystems
 # =============================================================================
 
 from __future__ import annotations
@@ -56,6 +62,7 @@ import sqlite3
 import statistics
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 # Das Werkzeug laeuft aus dem Projektverzeichnis (wie tools/maintenance.py).
@@ -146,8 +153,17 @@ def kosten_je_datei(forensic_dir: str, hoechstens: int = 25) -> dict:
     Misst, was das Oeffnen + MIN/MAX EINER forensic_<uid>.db kostet.
 
     Das ist die Groesse, mit der man hochrechnet: Gesamtzeit ~ Dateizahl x
-    Einzelkosten. Es werden hoechstens 'hoechstens' Dateien angefasst, damit
-    das Werkzeug auch bei grossem Bestand schnell fertig ist.
+    Einzelkosten.
+
+    KORREKTUR NACH DER MESSUNG VOM 2026-07-25 (Fehler in v1 dieses Werkzeugs):
+    v1 hat 'Spalte fehlt' als 'Datei nicht lesbar' gezaehlt und deshalb
+    '0 lesbar, 25 nicht' gemeldet — obwohl ALLE 25 Dateien tadellos lesbar
+    waren und lediglich eine SPALTE anders heisst. Das war eine irreführende
+    Diagnose in einem Diagnosewerkzeug, also der schlechteste Ort dafuer. Die
+    drei Lagen werden jetzt getrennt gezaehlt:
+        lesbar        — Datei offen, mindestens eine Zeitspalte abgefragt
+        spalte_fehlt  — Datei offen, aber die erwartete Spalte existiert nicht
+        nicht_lesbar  — Datei laesst sich nicht oeffnen
     """
     d = Path(forensic_dir)
     if not d.is_dir():
@@ -155,34 +171,123 @@ def kosten_je_datei(forensic_dir: str, hoechstens: int = 25) -> dict:
     kandidaten = sorted(
         [e for e in d.iterdir() if _FORENSIC_RE.match(e.name)])[:hoechstens]
 
-    zeiten, lesbar, unlesbar = [], 0, 0
+    zeiten = []
+    lesbar = spalte_fehlt = nicht_lesbar = 0
+    gruende = {}
     for pfad in kandidaten:
         t0 = time.perf_counter()
         try:
             con = sqlite3.connect("file:%s?mode=ro" % pfad, uri=True)
-            try:
-                # Genau die Abfragen, die limitation_repo.read_tatzeit macht.
-                for tabelle, spalte in (("uid_posts", "posted"),
-                                        ("uid_pms_posts", "posted_ts")):
-                    da = con.execute(
-                        "SELECT 1 FROM sqlite_master WHERE type IN "
-                        "('table','view') AND name=?", (tabelle,)).fetchone()
-                    if da:
-                        con.execute("SELECT MIN(%s), MAX(%s) FROM %s "
-                                    "WHERE %s IS NOT NULL"
-                                    % (spalte, spalte, tabelle,
-                                       spalte)).fetchone()
+        except sqlite3.Error as exc:
+            nicht_lesbar += 1
+            gruende[str(exc)] = gruende.get(str(exc), 0) + 1
+            zeiten.append(time.perf_counter() - t0)
+            continue
+        try:
+            treffer = fehler = 0
+            for tabelle, spalte in (("uid_posts", "posted"),
+                                    ("uid_pms_posts", "posted_ts")):
+                da = con.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type IN "
+                    "('table','view') AND name=?", (tabelle,)).fetchone()
+                if not da:
+                    continue
+                try:
+                    con.execute("SELECT MIN(%s), MAX(%s) FROM %s "
+                                "WHERE %s IS NOT NULL"
+                                % (spalte, spalte, tabelle,
+                                   spalte)).fetchone()
+                    treffer += 1
+                except sqlite3.Error as exc:
+                    fehler += 1
+                    schluessel = "%s.%s: %s" % (tabelle, spalte, exc)
+                    gruende[schluessel] = gruende.get(schluessel, 0) + 1
+            if treffer:
                 lesbar += 1
-            finally:
-                con.close()
-        except sqlite3.Error:
-            unlesbar += 1
+            elif fehler:
+                spalte_fehlt += 1
+            else:
+                lesbar += 1          # Tabellen fehlen ganz — auch das ist lesbar
+        except sqlite3.Error as exc:
+            nicht_lesbar += 1
+            gruende[str(exc)] = gruende.get(str(exc), 0) + 1
+        finally:
+            con.close()
         zeiten.append(time.perf_counter() - t0)
 
     lo, med, hi = _kennzahlen(zeiten)
     return {"gemessene_dateien": len(kandidaten), "lesbar": lesbar,
-            "unlesbar": unlesbar, "min_s": lo, "median_s": med, "max_s": hi,
-            "summe_s": sum(zeiten)}
+            "spalte_fehlt": spalte_fehlt, "nicht_lesbar": nicht_lesbar,
+            "gruende": gruende,
+            "min_s": lo, "median_s": med, "max_s": hi, "summe_s": sum(zeiten)}
+
+
+def schema_sonde(forensic_dir: str, hoechstens: int = 3) -> dict:
+    """
+    ERMITTELT DIE ECHTEN SPALTENNAMEN — der eigentliche Zweck von v2.
+
+    Ausgegeben werden NUR STRUKTURangaben: Tabellennamen, Spaltennamen, Typen
+    und je Spalte, ob die Werte wie ein Unix-Zeitstempel aussehen. Es wird KEIN
+    einzelner Wert ausgegeben; der Zeitbereich wird ueber die Stichprobe
+    ZUSAMMENGEFASST, damit kein einzelner Fall daraus ablesbar ist
+    (Fallregel 3).
+
+    Damit laesst sich belegen — nicht raten —, welche Spalte der
+    Beitragszeitpunkt ist.
+    """
+    d = Path(forensic_dir)
+    if not d.is_dir():
+        return {}
+    kandidaten = sorted(
+        [e for e in d.iterdir() if _FORENSIC_RE.match(e.name)])[:hoechstens]
+
+    tabellen_gesehen = set()
+    spalten = {}          # "tabelle.spalte" -> {typ, nichtnull, min, max}
+    for pfad in kandidaten:
+        try:
+            con = sqlite3.connect("file:%s?mode=ro" % pfad, uri=True)
+        except sqlite3.Error:
+            continue
+        try:
+            namen = [r[0] for r in con.execute(
+                "SELECT name FROM sqlite_master WHERE type IN "
+                "('table','view') AND name LIKE 'uid_%' ORDER BY name")]
+            tabellen_gesehen.update(namen)
+            for tabelle in ("uid_posts", "uid_pms_posts"):
+                if tabelle not in namen:
+                    continue
+                for zeile in con.execute("PRAGMA table_info(%s)" % tabelle):
+                    spalte, typ = zeile[1], (zeile[2] or "")
+                    key = "%s.%s" % (tabelle, spalte)
+                    eintrag = spalten.setdefault(
+                        key, {"typ": typ, "nichtnull": 0, "min": None,
+                              "max": None, "zeitkandidat": False})
+                    try:
+                        row = con.execute(
+                            "SELECT COUNT(%s), MIN(%s), MAX(%s) FROM %s"
+                            % (spalte, spalte, spalte, tabelle)).fetchone()
+                    except sqlite3.Error:
+                        continue
+                    if not row or not row[0]:
+                        continue
+                    eintrag["nichtnull"] += int(row[0])
+                    for wert, feld, fn in ((row[1], "min", min),
+                                           (row[2], "max", max)):
+                        try:
+                            z = int(wert)
+                        except (TypeError, ValueError):
+                            continue
+                        eintrag[feld] = z if eintrag[feld] is None \
+                            else fn(eintrag[feld], z)
+                    # Plausibler Epoch-Bereich: 1996-01-01 .. 2036-01-01.
+                    if eintrag["min"] is not None \
+                            and 820454400 <= eintrag["min"] <= 2082758400 \
+                            and 820454400 <= (eintrag["max"] or 0) <= 2082758400:
+                        eintrag["zeitkandidat"] = True
+        finally:
+            con.close()
+    return {"dateien": len(kandidaten),
+            "uid_tabellen": sorted(tabellen_gesehen), "spalten": spalten}
 
 
 # ------------------------------------------- (3) Rechenschicht direkt
@@ -321,11 +426,34 @@ def main(argv=None) -> int:
              b["forensic_bytes_groesste"] / 1048576.0))
     print()
 
+    sch = schema_sonde(forensic_dir)
+    print("--- SCHEMA-SONDE (nur Struktur, KEINE Werte) ---")
+    if sch.get("dateien"):
+        print("  Stichprobe               : %d Dateien" % sch["dateien"])
+        print("  uid_*-Tabellen           : %s"
+              % ", ".join(sch["uid_tabellen"]))
+        for key in sorted(sch["spalten"]):
+            e = sch["spalten"][key]
+            zeit = ""
+            if e["zeitkandidat"]:
+                von = datetime.fromtimestamp(e["min"], tz=timezone.utc).date()
+                bis = datetime.fromtimestamp(e["max"], tz=timezone.utc).date()
+                zeit = "  <== ZEITKANDIDAT (%s .. %s)" % (von, bis)
+            print("    %-34s %-8s nichtnull=%-8d%s"
+                  % (key, e["typ"] or "?", e["nichtnull"], zeit))
+    else:
+        print("  keine forensic_<uid>.db gefunden.")
+    print()
+
     k = kosten_je_datei(forensic_dir)
     print("--- KOSTEN EINER EINZELNEN DATEI (Stichprobe) ---")
     if k.get("gemessene_dateien"):
-        print("  gemessen                 : %d Dateien (%d lesbar, %d nicht)"
-              % (k["gemessene_dateien"], k["lesbar"], k["unlesbar"]))
+        print("  gemessen                 : %d Dateien "
+              "(%d lesbar, %d mit fehlender Spalte, %d nicht oeffenbar)"
+              % (k["gemessene_dateien"], k["lesbar"], k["spalte_fehlt"],
+                 k["nicht_lesbar"]))
+        for grund, n in sorted(k.get("gruende", {}).items()):
+            print("      Grund: %s (%dx)" % (grund, n))
         print("  je Datei min/median/max  : %s / %s / %s"
               % (_fmt(k["min_s"]), _fmt(k["median_s"]), _fmt(k["max_s"])))
         if b["forensic_dateien"]:
@@ -393,7 +521,7 @@ def main(argv=None) -> int:
 
     if args.json:
         print()
-        print(json.dumps({"bestand": b, "je_datei": k, "direkt": d,
+        print(json.dumps({"bestand": b, "je_datei": k, "schema": sch, "direkt": d,
                           "http": h}, ensure_ascii=False, indent=2,
                          default=str))
     return 0
