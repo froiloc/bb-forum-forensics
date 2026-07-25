@@ -8,26 +8,25 @@
 #   reine Rechenschicht (limitation.py) darauf rechnen.
 #
 # WORAUS DER FRISTBEGINN GEBILDET WIRD (belegt, nicht geraten):
-#   * fdb.uid_posts.posted       — Zeitpunkt eines Forumsbeitrags, Unix-Sekunden
-#                                  (Beleg: db/forensic_db.py:401-434; Spalten
-#                                  belegt in tests/test_build388_vorlagen.py:356)
-#   * fdb.uid_pms_posts.posted_ts — Zeitpunkt einer privaten Nachricht,
-#                                  Unix-Sekunden (Beleg: db/forensic_db.py:
-#                                  447-480; SCHWAECHERER Beleg — der Spaltenname
-#                                  beruht auf einer Entwicklerangabe vom
-#                                  2026-07-15, vermerkt in tests/
-#                                  test_build432_pm_content_ts.py:11)
+#   Die massgebliche Liste ist die Konstante ZEITQUELLEN weiter unten — dort
+#   traegt jede Quelle ihren eigenen Belegtext. Sie wird hier NICHT wiederholt.
+#
+#   WARUM NICHT: Bis Build 529 stand an dieser Stelle eine zweite, von Hand
+#   gepflegte Aufzaehlung. Build 528 hat die Konstante korrigiert (die echten
+#   Spalten heissen 'posted_ts', nicht 'posted') — der Kopfkommentar blieb
+#   stehen und behauptete danach zwei Dinge, die ich selbst schon
+#   zurueckgenommen hatte: die Spalte 'uid_posts.posted' und die Aussage, fuer
+#   geteilte Dateien existiere kein Zeitstempel (uid_shares.posted_ts gibt es,
+#   mit eigenem Index). Zwei Wahrheitsquellen fuer dieselbe Tatsache laufen
+#   auseinander, und die falsche wird gelesen. Es gibt jetzt nur noch eine.
 #
 #   NICHT VERWENDET: pages.fetched_at. Das ist der SICHERUNGSZEITPUNKT des
 #   Scrapers und hat mit der Tatzeit nichts zu tun; eine Verwechslung wuerde
-#   jede Frist um Jahre verschieben. Ebenso NICHT uid_profile.registered (die
-#   Registrierung ist keine Tathandlung).
+#   jede Frist um Jahre verschieben.
 #
-#   NICHT VORHANDEN: ein Zeitstempel je geteilter Datei (share_id). Recherche
-#   2026-07-25: im Repository ist kein solcher Wert referenziert, es gibt nur
-#   den Zaehler uid_stats.stat_key='shares_total'. Teilungsakte gehen deshalb
-#   NICHT in den Fristbeginn ein — das ist eine LUECKE und wird als solche
-#   gemeldet (Feld 'hinweise'), nicht durch einen Ersatzwert ueberbrueckt.
+#   uid_profile.registered ist KEINE Tathandlung und geht deshalb nicht in die
+#   Zeitquellen ein. Seit Build 530 dient sie als ERSATZANKER (s. u.) — das ist
+#   etwas anderes und wird auch anders gekennzeichnet.
 #
 # DIE SPAETESTE HANDLUNG IST DER FRISTBEGINN — und die frueheste steht daneben.
 #   Begruendung: § 78a StGB knuepft an die BEENDIGUNG an; die spaeteste belegte
@@ -78,11 +77,25 @@
 #   'belegt'. Und der Ausfall wird EINMAL je Abruf zusammengefasst protokolliert
 #   statt 162-mal einzeln (der Log-Schwall der Messung war selbst ein Befund).
 #
+# BUILD 530 — DIE ANKERKASKADE (mc, 2026-07-25):
+#   belegte Tathandlung -> Registrierungsdatum -> erste ueber die 100a-Massnahme
+#   protokollierte ERFOLGREICHE Anmeldung -> nichts.
+#
+#   'befund' bleibt dabei UNVERAENDERT die Aussage ueber die AKTIVITAETSquellen.
+#   Der Anker steht in eigenen Feldern (anker_art, anker_ts, anker_beleg). Beide
+#   Achsen werden bewusst nicht vermischt: sonst waere ein Fall mit Ersatzanker
+#   nicht mehr von einem mit belegter Tathandlung zu unterscheiden, und genau
+#   dieser Unterschied entscheidet ueber die Belastbarkeit der Zahl.
+#
+#   Der Ersatzanker wird NUR gelesen, wenn keine Tathandlung mit Zeitstempel
+#   vorliegt — nicht 'zusaetzlich' und nicht 'zum Vergleich'. Ein Wert, den man
+#   nicht braucht, sollte man auch nicht holen.
+#
 # REIN LESEND: coordinator.db und alle forensic_<uid>.db werden mit
 #   file:...?mode=ro geoeffnet (Muster management/reports/reports_repo.py:122).
 #   Der Migrationsvorbehalt ab 01.07.2026 ist NICHT beruehrt.
 #
-# Version: v0.8.528 · Build: 528 · 2026-07-25
+# Version: v0.8.530 · Build: 530 · 2026-07-25
 # =============================================================================
 
 from __future__ import annotations
@@ -94,7 +107,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from management.deadlines.limitation import (
+    ANKER_ARTEN,
     DEFAULT_VORWARN_TAGE,
+    FESTSTELLUNGEN,
     LimitationAssessment,
     assess_limitation,
 )
@@ -134,6 +149,42 @@ ZEITQUELLEN: Tuple[Tuple[str, str, str], ...] = (
     ("uid_downloads", "time_ts",
      "belegt: forensic_uid.db.schema.sql (Tabelle uid_downloads, Index "
      "uid_dl_ts_idx); Sonde DEV/PROD 2026-07-25 — 2024-02-10 .. 2024-02-16"),
+)
+
+#: Die ERSATZANKER (Build 530) — in der Reihenfolge, in der sie versucht werden.
+#  (art, Tabelle, Spalte, Zusatzbedingung oder None, Belegqualitaet)
+#
+#  SIE SIND KEINE TATHANDLUNGEN. Sie werden nur herangezogen, wenn KEINE der
+#  vier Zeitquellen einen Wert liefert, und sie erzeugen nie eine 'festgestellte'
+#  Aussage. Die Reihenfolge ist von mc am 2026-07-25 festgelegt worden:
+#  Registrierungsdatum -> erste ueber die 100a-Massnahme protokollierte
+#  Anmeldung -> NULL.
+#
+#  WARUM DIE ERSTE UND NICHT DIE LETZTE ANMELDUNG: Der Ersatzanker soll den
+#  fruehestmoeglichen Fristablauf erzeugen, damit der Fall eher zu frueh als zu
+#  spaet auffaellt. Die spaeteste Anmeldung waere der guenstigere, aber
+#  gefaehrlichere Wert.
+#
+#  BEWUSST NICHT VERWENDET: uid_profile.last_active und uid_profile.last_visit.
+#  Beide stehen im DDL und waeren als 'Beendigung' im Sinne des § 78a StGB auf
+#  den ersten Blick der passendere Anker — sie liegen aber SPAETER, erzeugen
+#  also eine laengere Restlaufzeit und lassen den Fall harmloser erscheinen. Bei
+#  einem Wert, den niemand festgestellt hat, ist das die falsche Richtung. Die
+#  Entscheidung ist hier vermerkt, damit sie nicht als Versehen gelesen wird;
+#  mc kann sie umdrehen, dann aendert sich genau diese Tabelle.
+#
+#  'login_success = 1': Eine fehlgeschlagene Anmeldung belegt nicht, dass der
+#  Kontoinhaber im Forum war — sie kann von jedem stammen, der das Passwort
+#  raet. Nur erfolgreiche Anmeldungen zaehlen.
+ERSATZQUELLEN: Tuple[Tuple[str, str, str, Optional[str], str], ...] = (
+    ("registrierung", "uid_profile", "registered", None,
+     "belegt: forensic_uid.db.schema.sql (Tabelle uid_profile, Spalte "
+     "'registered' INTEGER); Sonde DEV/PROD 2026-07-25. ACHTUNG: die Spalte "
+     "enthaelt Epoch-0-Werte (1970-01-01) als Platzhalter fuer 'unbekannt' — "
+     "der Plausibilitaetsrahmen faengt sie ab."),
+    ("anmeldung", "uid_surveillance", "logged_at", "login_success = 1",
+     "belegt: forensic_uid.db.schema.sql (Tabelle uid_surveillance, Spalten "
+     "'logged_at' und 'login_success', Index uid_surv_ts_idx)"),
 )
 
 #: Plausibilitaetsrahmen fuer einen Tatzeitpunkt (Unix-Sekunden).
@@ -177,6 +228,23 @@ HINWEIS_FETCHED_AT = (
     "NICHT als Tatzeit verwendet."
 )
 
+#: Build 530 — der wichtigste Hinweis dieses Monitors, solange es keine
+#  festgestellten Tatzeitpunkte gibt. Er steht in JEDER Antwort, damit niemand
+#  eine Zahl aus dieser Liste in einen Bericht uebernimmt.
+#
+#  ER IST EINE ZUSTANDSAUSSAGE, KEINE DAUERAUSSAGE: sobald Ermittlerinnen
+#  Tatzeitpunkte feststellen, tragen die betreffenden Zeilen 'festgestellt',
+#  und die Verteilung in 'feststellung_verteilung' zeigt es. Der Text bleibt
+#  richtig, weil er sagt, was die VORLAEUFIGEN Zeilen bedeuten — nicht, dass
+#  alle Zeilen vorlaeufig seien.
+HINWEIS_FESTSTELLUNG = (
+    "VORLAEUFIG UND FESTGESTELLT: Jede Zeile traegt in 'feststellung', worauf "
+    "sie beruht. 'vorlaeufig' heisst, dass das Datum aus den gesicherten Daten "
+    "stammt und von KEINER Ermittlerin festgestellt wurde — es ist ein "
+    "Arbeitswert fuer die Priorisierung. Der Bericht darf nur FESTGESTELLTE "
+    "Daten zitieren; das Feld 'zitierfaehig' sagt es je Zeile."
+)
+
 
 #: Die Befundarten der Datenlage. Als Konstante, damit die Oberflaeche sie
 #  gegen ihre eigene Aufzaehlung halten kann — ein neuer Befund ohne Platz in
@@ -208,6 +276,17 @@ class CaseTatzeit:
     # gehen nicht in die Spanne ein, verschwinden aber auch nicht: eine hohe
     # Zahl deutet darauf, dass eine Spalte etwas anderes fuehrt als eine Zeit.
     unplausible_werte: int = 0
+    # -- Build 530: der Ersatzanker ------------------------------------------
+    # 'aktivitaet' | 'registrierung' | 'anmeldung' | 'keine'. WELCHER Zeitpunkt
+    # der Rechnung zugrunde liegt. 'befund' bleibt unveraendert die Aussage
+    # ueber die AKTIVITAETSquellen — die beiden Achsen werden bewusst nicht
+    # vermischt, sonst waere ein Fall mit Ersatzanker nicht mehr von einem mit
+    # belegter Tathandlung zu unterscheiden.
+    anker_art: str = "keine"
+    anker_ts: Optional[int] = None
+    anker_beleg: str = ""
+    # Ersatzquellen, die nicht lesbar waren (mit SQLite-Grund).
+    ersatz_fehler: Tuple[str, ...] = ()
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -218,6 +297,10 @@ class CaseTatzeit:
             "befund": self.befund, "detail": self.detail,
             "quellen_fehler": list(self.quellen_fehler),
             "unplausible_werte": self.unplausible_werte,
+            "anker_art": self.anker_art,
+            "anker_ts": self.anker_ts,
+            "anker_beleg": self.anker_beleg,
+            "ersatz_fehler": list(self.ersatz_fehler),
         }
 
 
@@ -238,6 +321,15 @@ class LimitationRow:
         out["tatzeit_detail"] = self.tatzeit.detail
         out["befund"] = self.assessment.befund
         out["detail"] = self.tatzeit.detail
+        # 'anker_art' steht in BEIDEN Teilen und ist per Konstruktion gleich
+        # (compute() reicht den Wert des Tatzeitteils an die Rechenschicht
+        # weiter). Beide bleiben trotzdem erhalten und werden VERGLICHEN — eine
+        # stille Abweichung waere ein Fehler in der Verdrahtung, und der soll
+        # sich zeigen, statt von der Reihenfolge im dict verdeckt zu werden.
+        out["tatzeit_anker_art"] = self.tatzeit.anker_art
+        out["anker_art"] = self.assessment.anker_art
+        out["anker_art_stimmig"] = (
+            self.tatzeit.anker_art == self.assessment.anker_art)
         return out
 
 
@@ -270,6 +362,12 @@ class LimitationReport:
     # darauf, dass eine Spalte etwas anderes fuehrt als eine Zeit.
     unplausible_werte: int = 0
     faelle_mit_unplausiblen: int = 0
+    # Build 530: Verteilung ueber die beiden zur Ampel orthogonalen Achsen.
+    # Sie beantworten die Leitungsfrage 'worauf beruhen diese Zahlen?' in
+    # einem Blick — ohne dass jemand 162 Zeilen durchsehen muss.
+    anker_verteilung: Dict[str, int] = field(default_factory=dict)
+    feststellung_verteilung: Dict[str, int] = field(default_factory=dict)
+    ersatzfehler: Dict[str, int] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -293,6 +391,11 @@ class LimitationReport:
             "faelle_mit_unplausiblen": self.faelle_mit_unplausiblen,
             "plausibel_von": PLAUSIBEL_VON, "plausibel_bis": PLAUSIBEL_BIS,
             "datenlage_befunde": list(DATENLAGE_BEFUNDE),
+            "anker_verteilung": dict(self.anker_verteilung),
+            "feststellung_verteilung": dict(self.feststellung_verteilung),
+            "ersatzfehler": dict(self.ersatzfehler),
+            "anker_arten": list(ANKER_ARTEN),
+            "feststellungen": list(FESTSTELLUNGEN),
             "rows": [r.to_dict() for r in self.rows],
         }
 
@@ -307,6 +410,44 @@ def _table_exists(con: sqlite3.Connection, name: str) -> bool:
     return con.execute(
         "SELECT 1 FROM sqlite_master WHERE type IN ('table','view') AND name=?",
         (name,)).fetchone() is not None
+
+
+def _lese_ersatzanker(con: sqlite3.Connection
+                      ) -> Tuple[str, Optional[int], str, Tuple[str, ...]]:
+    """
+    Der Ersatzanker (Build 530) — nur aufzurufen, wenn KEINE Tathandlung mit
+    Zeitstempel vorliegt.
+
+    -> (art, ts, beleg, fehler). art ist 'keine', wenn nichts gefunden wurde.
+
+    Es wird der FRUEHESTE plausible Wert genommen (MIN), und die Quellen werden
+    in der von mc festgelegten Reihenfolge versucht: Registrierung vor erster
+    protokollierter Anmeldung. Die erste Quelle, die einen plausiblen Wert
+    liefert, gewinnt — es wird NICHT ueber Quellen hinweg das Minimum gebildet,
+    weil die Reihenfolge eine Rangfolge der Aussagekraft ist und kein
+    Rechenweg.
+
+    Wie ueberall in diesem Modul: eine unlesbare Quelle wirft nicht, sie wird
+    BENANNT und mitgefuehrt.
+    """
+    fehler: List[str] = []
+    for art, tabelle, spalte, bedingung, beleg in ERSATZQUELLEN:
+        if not _table_exists(con, tabelle):
+            fehler.append("%s: Tabelle nicht vorhanden" % tabelle)
+            continue
+        where = "%s BETWEEN ? AND ?" % spalte
+        if bedingung:
+            where += " AND %s" % bedingung
+        try:
+            row = con.execute(
+                "SELECT MIN(%s) FROM %s WHERE %s" % (spalte, tabelle, where),
+                (PLAUSIBEL_VON, PLAUSIBEL_BIS)).fetchone()
+        except sqlite3.Error as exc:
+            fehler.append("%s.%s: %s" % (tabelle, spalte, exc))
+            continue
+        if row is not None and row[0] is not None:
+            return art, int(row[0]), beleg, tuple(fehler)
+    return "keine", None, "", tuple(fehler)
 
 
 def read_tatzeit(path: Path, subject_id: int, username: str) -> CaseTatzeit:
@@ -339,11 +480,14 @@ def read_tatzeit(path: Path, subject_id: int, username: str) -> CaseTatzeit:
     try:
         vorhanden = [q for q in ZEITQUELLEN if _table_exists(con, q[0])]
         if not vorhanden:
+            art, a_ts, a_beleg, a_fehler = _lese_ersatzanker(con)
             return CaseTatzeit(
                 subject_id=subject_id, username=username, frueheste_ts=None,
                 spaeteste_ts=None, quellen=(), befund="ohne_zeittabelle",
                 detail="weder %s vorhanden"
-                       % " noch ".join(q[0] for q in ZEITQUELLEN))
+                       % " noch ".join(q[0] for q in ZEITQUELLEN),
+                anker_art=art, anker_ts=a_ts, anker_beleg=a_beleg,
+                ersatz_fehler=a_fehler)
 
         frueheste: Optional[int] = None
         spaeteste: Optional[int] = None
@@ -391,6 +535,9 @@ def read_tatzeit(path: Path, subject_id: int, username: str) -> CaseTatzeit:
             quellen.append("%s.%s" % (tabelle, spalte))
 
         if spaeteste is None:
+            # KEINE Tathandlung mit Zeitstempel -> jetzt (und NUR jetzt) darf
+            # der Ersatzanker herangezogen werden (Build 530).
+            art, a_ts, a_beleg, a_fehler = _lese_ersatzanker(con)
             # ZWEI VERSCHIEDENE LAGEN, die frueher beide 'ohne_tatzeit' hiessen.
             if fehler:
                 return CaseTatzeit(
@@ -400,7 +547,9 @@ def read_tatzeit(path: Path, subject_id: int, username: str) -> CaseTatzeit:
                     detail="KEINE Zeitquelle lesbar — es ist damit UNBEKANNT, "
                            "ob Zeitstempel vorliegen: %s" % "; ".join(fehler),
                     quellen_fehler=tuple(fehler),
-                    unplausible_werte=unplausibel)
+                    unplausible_werte=unplausibel,
+                    anker_art=art, anker_ts=a_ts, anker_beleg=a_beleg,
+                    ersatz_fehler=a_fehler)
             return CaseTatzeit(
                 subject_id=subject_id, username=username, frueheste_ts=None,
                 spaeteste_ts=None, quellen=(), befund="ohne_tatzeit",
@@ -409,7 +558,9 @@ def read_tatzeit(path: Path, subject_id: int, username: str) -> CaseTatzeit:
                        "(%d Wert(e) lagen ausserhalb und sind nicht "
                        "eingegangen)"
                        % (", ".join(q[0] for q in vorhanden), unplausibel),
-                unplausible_werte=unplausibel)
+                unplausible_werte=unplausibel,
+                anker_art=art, anker_ts=a_ts, anker_beleg=a_beleg,
+                ersatz_fehler=a_fehler)
 
         if fehler:
             # DER GEFAEHRLICHE FALL: es gibt einen Wert, aber nicht aus allen
@@ -424,14 +575,18 @@ def read_tatzeit(path: Path, subject_id: int, username: str) -> CaseTatzeit:
                        "gerechnet — der Fall erscheint dringender als er ist."
                        % (", ".join(quellen), "; ".join(fehler)),
                 quellen_fehler=tuple(fehler),
-                unplausible_werte=unplausibel)
+                unplausible_werte=unplausibel,
+                anker_art="aktivitaet", anker_ts=spaeteste,
+                anker_beleg="; ".join(quellen))
 
         return CaseTatzeit(
             subject_id=subject_id, username=username, frueheste_ts=frueheste,
             spaeteste_ts=spaeteste, quellen=tuple(quellen), befund="belegt",
             detail="Fristbeginn = spaeteste belegte Tathandlung (§ 78a StGB); "
                    "frueheste Handlung zum Vergleich mitgefuehrt",
-            unplausible_werte=unplausibel)
+            unplausible_werte=unplausibel,
+            anker_art="aktivitaet", anker_ts=spaeteste,
+            anker_beleg="; ".join(quellen))
     except sqlite3.Error as exc:
         return CaseTatzeit(
             subject_id=subject_id, username=username, frueheste_ts=None,
@@ -490,6 +645,9 @@ class LimitationRepo:
         zaehler: Dict[str, int] = {}
         datenlage: Dict[str, int] = {}
         quellenfehler: Dict[str, int] = {}
+        ersatzfehler: Dict[str, int] = {}
+        anker_verteilung: Dict[str, int] = {}
+        feststellung_verteilung: Dict[str, int] = {}
         mit_fehler = 0
         unplausibel_gesamt = 0
         mit_unplausiblen = 0
@@ -505,20 +663,42 @@ class LimitationRepo:
                 mit_fehler += 1
                 for eintrag in tatzeit.quellen_fehler:
                     quellenfehler[eintrag] = quellenfehler.get(eintrag, 0) + 1
-            a = assess_limitation(tatzeit_ts=tatzeit.spaeteste_ts,
+            for eintrag in tatzeit.ersatz_fehler:
+                ersatzfehler[eintrag] = ersatzfehler.get(eintrag, 0) + 1
+            # Build 530: gerechnet wird ab dem ANKER, nicht mehr fest ab der
+            # spaetesten Tathandlung. Bei 'aktivitaet' sind beide identisch;
+            # bei einem Ersatzanker ist anker_ts der einzige verfuegbare Wert.
+            #
+            # festgestellt=False ist hier KEIN Vorgabewert aus Bequemlichkeit,
+            # sondern der belegte Stand: eine von einer Ermittlerin
+            # FESTGESTELLTE Tatzeit gibt es in den ausgewerteten Datenbanken
+            # noch nicht (annotations fuehrt keine Tatzeitspalte, Stand
+            # 2026-07-25). Sobald es sie gibt, aendert sich GENAU diese Zeile.
+            a = assess_limitation(tatzeit_ts=tatzeit.anker_ts,
                                   params=params, now_ts=now_ts,
-                                  vorwarn_tage=vorwarn_tage)
+                                  vorwarn_tage=vorwarn_tage,
+                                  anker_art=tatzeit.anker_art,
+                                  festgestellt=False)
             zaehler[a.ampel] = zaehler.get(a.ampel, 0) + 1
+            anker_verteilung[a.anker_art] = (
+                anker_verteilung.get(a.anker_art, 0) + 1)
+            feststellung_verteilung[a.feststellung] = (
+                feststellung_verteilung.get(a.feststellung, 0) + 1)
             rows.append(LimitationRow(tatzeit=tatzeit, assessment=a))
 
         rang = {"ueberschritten": 0, "knapp": 1, "ohne_tatzeit": 2,
-                "ohne_fassung": 3, "ruht": 4, "offen": 5, "keine_aussage": 6}
+                "ohne_anker": 3, "ohne_fassung": 4, "ruht": 5, "offen": 6,
+                "keine_aussage": 7}
         rows.sort(key=lambda r: (
             rang.get(r.assessment.ampel, 9),
             # Build 527: bei gleicher Ampel steht das EINGESCHRAENKT Belegte
             # vorn. Wer die Liste von oben liest, sieht zuerst die Zeilen, deren
             # Zahl unter Vorbehalt steht.
             0 if r.tatzeit.quellen_fehler else 1,
+            # Build 530: danach das auf einem ERSATZANKER Beruhende. Auch das
+            # ist eine Zahl unter Vorbehalt, nur eine Stufe schwaecher.
+            0 if r.assessment.anker_art in ("registrierung", "anmeldung")
+            else 1,
             r.assessment.restlaufzeit_tage
             if r.assessment.restlaufzeit_tage is not None else 10 ** 9,
             r.tatzeit.subject_id))
@@ -538,7 +718,29 @@ class LimitationRepo:
         # Der Lesefehler gehoert in die HINWEISE der Antwort, nicht nur ins
         # Protokoll: die Sicht und der Export zeigen die Hinweise, das
         # Serverprotokoll sieht niemand, der die Liste liest.
-        hinweise = [HINWEIS_QUELLEN, HINWEIS_FETCHED_AT]
+        hinweise = [HINWEIS_QUELLEN, HINWEIS_FETCHED_AT, HINWEIS_FESTSTELLUNG]
+        ersatz_anzahl = sum(anker_verteilung.get(a, 0)
+                            for a in ("registrierung", "anmeldung"))
+        if ersatz_anzahl:
+            hinweise.insert(0,
+                "%d von %d Faellen tragen einen ERSATZANKER (Registrierung: "
+                "%d, erste protokollierte Anmeldung: %d) statt einer belegten "
+                "Tathandlung. Diese Zeitpunkte liegen am ANFANG der "
+                "Zugehoerigkeit, waehrend § 78a StGB an die BEENDIGUNG "
+                "anknuepft — die dort ausgewiesenen Fristablaeufe sind ZU FRUEH "
+                "und die Faelle erscheinen DRINGENDER, als sie nach den "
+                "bekannten Tatsachen sind. Sie sind Arbeitswerte, keine "
+                "Fristfeststellungen."
+                % (ersatz_anzahl, len(rows),
+                   anker_verteilung.get("registrierung", 0),
+                   anker_verteilung.get("anmeldung", 0)))
+        if ersatzfehler:
+            hinweise.insert(0,
+                "Bei der Ermittlung des Ersatzankers war mindestens eine Quelle "
+                "nicht lesbar: %s. Betroffene Faelle koennen deshalb ohne Anker "
+                "dastehen, obwohl einer vorhanden waere."
+                % "; ".join("%s (%dx)" % (k, v)
+                            for k, v in sorted(ersatzfehler.items())))
         if unplausibel_gesamt:
             hinweise.insert(0,
                 "%d Zeitwert(e) in %d Fall/Faellen lagen AUSSERHALB des "
@@ -580,4 +782,7 @@ class LimitationRepo:
             rows=tuple(rows), quellenfehler=quellenfehler,
             faelle_mit_quellenfehler=mit_fehler,
             unplausible_werte=unplausibel_gesamt,
-            faelle_mit_unplausiblen=mit_unplausiblen)
+            faelle_mit_unplausiblen=mit_unplausiblen,
+            anker_verteilung=anker_verteilung,
+            feststellung_verteilung=feststellung_verteilung,
+            ersatzfehler=ersatzfehler)

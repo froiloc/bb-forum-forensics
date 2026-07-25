@@ -126,6 +126,25 @@ class Offence:
     anker_grundlage: str
     fundstelle: str
 
+    @property
+    def ersatzanker_zulaessig(self) -> bool:
+        """
+        Darf fuer diesen Tatbestand IRGENDEIN Ersatzanker verwendet werden?
+
+        Das Feld heisst 'anker_registrierung_zulaessig', weil die Regel von mc
+        am Registrierungsdatum entwickelt wurde. Sie gilt aber fuer JEDEN
+        Ersatzanker — auch fuer die erste protokollierte Anmeldung —, weil beide
+        dieselbe Frage beantworten: darf aus der blossen Zugehoerigkeit zum
+        Forum auf eine Tathandlung DIESES Tatbestands geschlossen werden? Fuer
+        §§ 176/176a lautet die Antwort nein, gleichgueltig ob man auf die
+        Registrierung oder auf einen Login sieht.
+
+        Diese Eigenschaft existiert, damit der Rechencode den zutreffenden Namen
+        benutzen kann, ohne dass eine weitere Schema-Fassung noetig wird. Wird
+        das Feld spaeter umbenannt, aendert sich genau diese eine Zeile.
+        """
+        return self.anker_registrierung_zulaessig
+
     def gilt_am(self, tag: date) -> bool:
         """Gilt diese Fassung an einem bestimmten Tag (Tatzeitrecht, § 2 StGB)?"""
         if tag < date.fromisoformat(self.gueltig_von):

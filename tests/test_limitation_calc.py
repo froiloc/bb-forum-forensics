@@ -70,6 +70,14 @@
 #   LC12 — to_dict ist vollstaendig und JSON-serialisierbar (Endpunkt-Vertrag).
 #   LC13 — AMPEL_ZUSTAENDE deckt alle tatsaechlich erzeugten Zustaende ab (ein
 #          neuer Zustand ohne Eintrag waere in der Sicht farblos/unsichtbar).
+#
+# RECHENSCHICHT, BUILD 530 (vorlaeufig/festgestellt, Ersatzanker):
+#   LC14 — 'festgestellt' ist der EINZIGE zitierfaehige Zustand; eine belegte
+#          Tathandlung allein macht eine Zeile NICHT zitierfaehig.
+#   LC15 — to_dict traegt die neuen Achsen und bleibt JSON-faehig.
+#   LC16 — Eine UNBEKANNTE Ankerart wird zu 'keine' und NICHT auf 'aktivitaet'
+#          zurechtgebogen: die staerkste Aussage aus dem schwaechsten Wissen
+#          waere genau der Fehler, den dieses Modul verhindern soll.
 # =============================================================================
 
 import json
@@ -83,8 +91,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from management.deadlines.limitation import (                      # noqa: E402
     AMPEL_ZUSTAENDE,
+    ANKER_ARTEN,
     BEFUND_RUHT,
     DEFAULT_VORWARN_TAGE,
+    FESTSTELLUNGEN,
     add_years,
     assess_limitation,
 )
@@ -522,17 +532,20 @@ class TestLimitationCalc(unittest.TestCase):
     def test_LC13_ampel_zustaende_vollstaendig(self):
         erzeugt = set()
         faelle = (
-            (None, self.p_entwurf, None),                     # keine_aussage
-            (None, self.p_ok, None),                          # ohne_tatzeit
-            (_ts("2019-05-01"), self.p_ok, None),             # ohne_fassung
-            (_ts("2022-03-14"), self.p_ok, ["176_abs1"]),     # ruht
-            (_ts("2021-08-01"), self.p_ok, ["184b_abs3"]),    # ueberschritten?
-            (_ts("2022-03-14"), self.p_ok, ["184b_abs3"]),    # knapp
-            (_ts("2024-08-01"), self.p_ok, ["184b_abs3"]),    # offen
+            (None, self.p_entwurf, None, "aktivitaet"),       # keine_aussage
+            (None, self.p_ok, None, "aktivitaet"),            # ohne_tatzeit
+            (_ts("2019-05-01"), self.p_ok, None, "aktivitaet"),      # ohne_fassung
+            (_ts("2022-03-14"), self.p_ok, ["176_abs1"], "aktivitaet"),   # ruht
+            (_ts("2021-08-01"), self.p_ok, ["184b_abs3"], "aktivitaet"),  # ueberschr.
+            (_ts("2022-03-14"), self.p_ok, ["184b_abs3"], "aktivitaet"),  # knapp
+            (_ts("2024-08-01"), self.p_ok, ["184b_abs3"], "aktivitaet"),  # offen
+            # Build 530: Ersatzanker fuer einen Tatbestand, der ihn nicht
+            # zulaesst (§ 176 Abs. 1) -> 'ohne_anker'.
+            (_ts("2022-03-14"), self.p_ok, ["176_abs1"], "registrierung"),
         )
-        for tatzeit, params, codes in faelle:
+        for tatzeit, params, codes, art in faelle:
             erzeugt.add(assess_limitation(
-                tatzeit_ts=tatzeit, params=params,
+                tatzeit_ts=tatzeit, params=params, anker_art=art,
                 now_ts=_ts("2026-08-08"), offence_codes=codes).ampel)
         self.assertTrue(erzeugt.issubset(set(AMPEL_ZUSTAENDE)),
                         "Nicht abgedeckte Zustaende: %s"
@@ -543,6 +556,59 @@ class TestLimitationCalc(unittest.TestCase):
         self.assertEqual(erzeugt, set(AMPEL_ZUSTAENDE),
                          "Deklariert aber nicht erzeugt: %s"
                          % (set(AMPEL_ZUSTAENDE) - erzeugt))
+
+    def test_LC14_nur_festgestelltes_ist_zitierfaehig(self):
+        """
+        Der Bericht darf nur Festgestelltes zitieren. Eine belegte Tathandlung
+        ist ein BELEG, aber keine FESTSTELLUNG — den Unterschied macht ein
+        Mensch, nicht die Datenbank.
+        """
+        gemeinsam = dict(tatzeit_ts=_ts("2022-03-14"), params=self.p_ok,
+                         now_ts=self.stichtag, offence_codes=["184b_abs3"])
+        vor = assess_limitation(anker_art="aktivitaet", festgestellt=False,
+                                **gemeinsam)
+        self.assertEqual(vor.feststellung, "vorlaeufig")
+        self.assertFalse(vor.to_dict()["zitierfaehig"])
+        self.assertTrue(vor.befund.startswith("VORLAEUFIG —"), vor.befund)
+
+        fest = assess_limitation(anker_art="aktivitaet", festgestellt=True,
+                                 **gemeinsam)
+        self.assertEqual(fest.feststellung, "festgestellt")
+        self.assertTrue(fest.to_dict()["zitierfaehig"])
+        self.assertEqual(fest.anker_vermerke, ())
+        self.assertFalse(fest.befund.startswith("VORLAEUFIG"))
+        # Die Rechtsfolge selbst ist in beiden Faellen dieselbe — die Achsen
+        # sind unabhaengig, und genau das ist der Sinn der Trennung.
+        self.assertEqual(vor.ampel, fest.ampel)
+        self.assertEqual(vor.restlaufzeit_tage, fest.restlaufzeit_tage)
+
+        # Ohne Datum: weder vorlaeufig noch festgestellt, sondern 'ohne'.
+        leer = assess_limitation(tatzeit_ts=None, params=self.p_ok,
+                                 now_ts=self.stichtag)
+        self.assertEqual(leer.feststellung, "ohne")
+        self.assertEqual(leer.anker_art, "keine")
+
+    def test_LC15_to_dict_traegt_die_neuen_achsen(self):
+        a = assess_limitation(tatzeit_ts=_ts("2022-03-14"), params=self.p_ok,
+                              now_ts=self.stichtag, anker_art="registrierung",
+                              offence_codes=["176_abs1", "184b_abs3"])
+        d = json.loads(json.dumps(a.to_dict(), ensure_ascii=False))
+        for key in ("feststellung", "anker_art", "anker_vermerke",
+                    "ohne_anker", "zitierfaehig"):
+            self.assertIn(key, d)
+        self.assertIn(d["feststellung"], FESTSTELLUNGEN)
+        self.assertIn(d["anker_art"], ANKER_ARTEN)
+        self.assertEqual(d["ohne_anker"], ["176_abs1"])
+
+    def test_LC16_unbekannte_ankerart_wird_nicht_zurechtgebogen(self):
+        a = assess_limitation(tatzeit_ts=_ts("2022-03-14"), params=self.p_ok,
+                              now_ts=self.stichtag,
+                              anker_art="irgendwas_neues",
+                              offence_codes=["184b_abs3"])
+        self.assertEqual(a.anker_art, "keine")
+        # 'keine' ist KEIN Ersatzanker -> die tatbestandsbezogene Sperre greift
+        # nicht, aber die Zeile ist und bleibt vorlaeufig.
+        self.assertEqual(a.feststellung, "vorlaeufig")
 
     def test_LC13b_befund_ruht_wortlaut(self):
         """Der Ruhen-Befund nennt Norm UND Grund der Unberechenbarkeit."""

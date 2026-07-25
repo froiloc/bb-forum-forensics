@@ -29,10 +29,12 @@
 //   die trotzdem Ampeln zeigte, haette eine unbestaetigte Rechtsfolge
 //   behauptet. Beides waere falsch.
 //
-// SIEBEN ZUSTAENDE, SIEBEN FARBEN (Spiegel cockpit.css .aiw-lim-*):
+// ACHT ZUSTAENDE (Spiegel cockpit.css .aiw-lim-*):
 //   ueberschritten — rot     (Frist rechnerisch abgelaufen)
 //   knapp          — orange  (unter der Vorwarnschwelle)
 //   ohne_tatzeit   — violett (UNGEPRUEFT: kein Fristbeginn belegt)
+//   ohne_anker     — violett (UNGEPRUEFT: Ersatzanker fuer diese Tatbestaende
+//                             nicht zugelassen — Build 530)
 //   ohne_fassung   — violett (UNGEPRUEFT: keine Fassung zur Tatzeit hinterlegt)
 //   ruht           — blau    (§ 78b Abs. 1 Nr. 1 StGB, nicht berechenbar)
 //   offen          — gruen   (Restlaufzeit ueber der Schwelle)
@@ -41,6 +43,20 @@
 //   nicht unverdaechtig, sondern unbekannt. Eine eigene, auffaellige Farbe ist
 //   hier kein Zierrat, sondern der Unterschied zwischen 'geprueft' und
 //   'ungeprueft'.
+//
+// BUILD 530 — DIE GRUNDLAGE STEHT IN DER ZEILE, NICHT IN DER AMPEL:
+//   Die Ampel sagt die RECHTSFOLGE. Zwei weitere, davon unabhaengige Angaben
+//   sagen, worauf sie beruht:
+//     feststellung — 'festgestellt' | 'vorlaeufig' | 'ohne'
+//     anker_art    — 'aktivitaet' | 'registrierung' | 'anmeldung' | 'keine'
+//   Sie bekommen eine EIGENE Spalte und eine eigene Auszeichnung statt weiterer
+//   Ampelfarben. Grund: 'vorlaeufig' ist keine Art von Ampel, sondern eine
+//   Eigenschaft der Grundlage — presst man beides in eine Farbskala, wird
+//   'vorlaeufig ueberschritten' unsichtbar, und das ist die operativ
+//   wichtigste Kombination (Frist rechnerisch abgelaufen, Datum nie geprueft).
+//
+//   HEUTE IST JEDE ZEILE 'vorlaeufig'. Das ist kein Anzeigefehler: eine von
+//   einer Ermittlerin festgestellte Tatzeit gibt es in den Daten noch nicht.
 //
 // Datenform GET /api/limitation (ManagementApp._limitation):
 //   { stichtag, vorwarn_tage, aussage_moeglich, verweigerungsgrund,
@@ -64,10 +80,13 @@
 //   UMD-Ausgang -> vitest testet den ECHTEN Code. Alle Texte ueber textContent
 //   (Kontonamen sind beliebiger UTF-8 aus einem multilingualen Forum).
 //
+// Build 530: Spalte 'Grundlage' (Feststellung + Ankerart), Zustand
+//   'ohne_anker', Ersatzanker-Hinweis oben, zweite Zusicherung
+//   'nur_festgestellte_zitierfaehig' wird geprueft und gemeldet.
 // Build 527: generische Datenlage-Zaehlung (ein neuer Befund kann nicht
 //   mehr aus der Summe fallen) + Ausfall-Hinweis 'quellenfehler' direkt
 //   unter dem Vorbehalt + SQLite-Grund am Zellen-Titel.
-// Version: v0.8.527 · Build: 527 · 2026-07-25
+// Version: v0.8.530 · Build: 530 · 2026-07-25
 // =============================================================================
 
 (function () {
@@ -97,17 +116,39 @@
         ohne_tatzeit:   { cls: 'is-ungeprueft',
                           label: 'UNGEPRÜFT — kein Fristbeginn belegt',
                           rang: 2 },
+        ohne_anker:     { cls: 'is-ungeprueft',
+                          label: 'UNGEPRÜFT — Ersatzanker für diese '
+                               + 'Tatbestände nicht zugelassen',
+                          rang: 3 },
         ohne_fassung:   { cls: 'is-ungeprueft',
                           label: 'UNGEPRÜFT — keine Fassung zur Tatzeit',
-                          rang: 3 },
+                          rang: 4 },
         ruht:           { cls: 'is-ruht',
                           label: 'ruht möglicherweise (§ 78b I Nr. 1 StGB)',
-                          rang: 4 },
-        offen:          { cls: 'is-offen', label: 'Frist läuft', rang: 5 },
+                          rang: 5 },
+        offen:          { cls: 'is-offen', label: 'Frist läuft', rang: 6 },
         keine_aussage:  { cls: 'is-stumm',
                           label: 'keine Aussage (Parametersatz unbestätigt)',
-                          rang: 6 }
+                          rang: 7 }
     };
+
+    // Build 530: Klartext der beiden ZUR AMPEL ORTHOGONALEN Achsen. Wie bei
+    // DATENLAGE_LABEL gilt: ein hier unbekannter Wert wird mit seinem Rohnamen
+    // gezeigt und NICHT auf einen bekannten abgebildet.
+    var FESTSTELLUNG_LABEL = {
+        festgestellt: 'festgestellt',
+        vorlaeufig: 'VORLÄUFIG',
+        ohne: 'ohne Datum'
+    };
+    var ANKER_LABEL = {
+        aktivitaet: 'belegte Tathandlung',
+        registrierung: 'ERSATZANKER: Registrierung',
+        anmeldung: 'ERSATZANKER: erste protokollierte Anmeldung',
+        keine: 'kein Anker'
+    };
+    // Welche Ankerarten sind ERSATZ (und damit erklärungsbedürftig)? Spiegel
+    // von ERSATZANKER_ARTEN in limitation.py.
+    var ERSATZANKER_ARTEN = ['registrierung', 'anmeldung'];
 
     // =========================================================================
     // 1) REINE FUNKTIONEN (kein DOM).
@@ -251,6 +292,93 @@
             + '. Vor einer Fristentscheidung ist die Ursache zu klären.';
     }
 
+    // -------------------------------------------------------------------------
+    // Build 530: Grundlage der Zahl (Feststellung + Ankerart).
+    // -------------------------------------------------------------------------
+
+    function feststellungLabel(wert) {
+        return FESTSTELLUNG_LABEL[wert]
+            || ('unbekannte Feststellung (' + String(wert) + ')');
+    }
+
+    function ankerLabel(wert) {
+        return ANKER_LABEL[wert] || ('unbekannter Anker (' + String(wert) + ')');
+    }
+
+    function istErsatzanker(wert) {
+        return ERSATZANKER_ARTEN.indexOf(wert) >= 0;
+    }
+
+    // grundlageText: der Zellinhalt der Spalte 'Grundlage'. Kurz genug fuer
+    // eine Tabellenzelle; der ausfuehrliche Wortlaut steht als title (die
+    // Vermerke des Backends, wortgleich).
+    function grundlageText(row) {
+        var r = row || {};
+        return feststellungLabel(r.feststellung) + ' · ' + ankerLabel(r.anker_art);
+    }
+
+    // grundlageTitle: die Vermerke des Backends WORTGLEICH. Sie werden hier
+    // nicht neu formuliert — eine zweite Formulierung waere eine zweite
+    // Wahrheitsquelle.
+    function grundlageTitle(row) {
+        var v = (row && row.anker_vermerke) || [];
+        return v.length ? v.join(' | ') : '';
+    }
+
+    // zitierhinweisText: die zweite Zusicherung des Backends. Fehlt sie, wird
+    // das GEMELDET — genau wie beim Verjaehrungsvorbehalt. Eine Sicht, die
+    // stillschweigend weiterarbeitet, wenn eine Zusicherung wegfaellt, ist
+    // keine Kontrolle.
+    function zitierhinweisText(data) {
+        var d = data || {};
+        if (d.nur_festgestellte_zitierfaehig === true) {
+            return 'Der Bericht darf nur FESTGESTELLTE Daten zitieren. '
+                + 'Vorläufige Zeilen sind Arbeitswerte für die Priorisierung '
+                + 'und keine Fristfeststellungen.';
+        }
+        return 'ACHTUNG: Die Antwort trägt die Zusicherung zur '
+            + 'Zitierfähigkeit NICHT mit. Übernehmen Sie keine Zeile in einen '
+            + 'Bericht, bevor die Herkunft der Antwort geklärt ist.';
+    }
+
+    function zitierhinweisOk(data) {
+        return !!(data && data.nur_festgestellte_zitierfaehig === true);
+    }
+
+    // ersatzankerText: wie viele Zeilen auf einem Ersatzanker beruhen — oder
+    // null. Der Satz nennt AUSDRUECKLICH die Fehlerrichtung: der Anker liegt am
+    // Anfang der Zugehoerigkeit, § 78a StGB knuepft an die Beendigung an, die
+    // Faelle erscheinen also dringender als sie sind. Wer das nicht weiss,
+    // liest die Liste falsch.
+    function ersatzankerText(data) {
+        var d = data || {};
+        var av = d.anker_verteilung || {};
+        var n = 0;
+        ERSATZANKER_ARTEN.forEach(function (k) { n += (av[k] || 0); });
+        if (!n) { return null; }
+        return n + ' von ' + (d.faelle_gesamt || 0) + ' Fällen beruhen auf '
+            + 'einem ERSATZANKER (Registrierung: ' + (av.registrierung || 0)
+            + ', erste protokollierte Anmeldung: ' + (av.anmeldung || 0)
+            + ') statt auf einer belegten Tathandlung. Diese Zeitpunkte liegen '
+            + 'am ANFANG der Zugehörigkeit, während § 78a StGB an die '
+            + 'BEENDIGUNG anknüpft — die Fristabläufe sind dort ZU FRÜH und '
+            + 'die Fälle erscheinen DRINGENDER, als sie nach den bekannten '
+            + 'Tatsachen sind.';
+    }
+
+    // feststellungText: die Verteilung ueber 'festgestellt'/'vorlaeufig'. Sie
+    // wird GENERISCH gezaehlt (alle gelieferten Schluessel), damit ein neuer
+    // Wert nicht aus der Summe faellt — dieselbe Entscheidung wie bei der
+    // Datenlage in Build 527.
+    function feststellungText(data) {
+        var fv = (data && data.feststellung_verteilung) || {};
+        var schluessel = Object.keys(fv);
+        if (!schluessel.length) { return null; }
+        return 'Grundlage der Zahlen: ' + schluessel.sort().map(function (k) {
+            return feststellungLabel(k) + ': ' + fv[k];
+        }).join(' · ') + '.';
+    }
+
     // zaehlerText: die Ampelverteilung, in der Reihenfolge der Dringlichkeit.
     // Zustaende mit 0 werden WEGGELASSEN — aber 'ueberschritten' und 'knapp'
     // werden IMMER genannt, auch mit 0: die Abwesenheit einer Fristgefahr ist
@@ -372,8 +500,25 @@
                 qfehler));
         }
 
+        // (2c) Build 530: die zweite Zusicherung (Zitierfaehigkeit) und der
+        // Ersatzanker-Hinweis. Beide stehen OBEN, weil sie darueber
+        // entscheiden, was mit den Zahlen geschehen darf — nicht unten bei den
+        // Fussnoten.
+        mainEl.appendChild(_el(doc, 'div',
+            'aiw-lim-zitierhinweis '
+            + (zitierhinweisOk(data) ? 'is-ok' : 'is-fehlt'),
+            zitierhinweisText(data)));
+        var eatext = ersatzankerText(data);
+        if (eatext) {
+            mainEl.appendChild(_el(doc, 'div', 'aiw-lim-ersatzanker', eatext));
+        }
+
         // (3) Datenlage und Ampelverteilung.
         mainEl.appendChild(_el(doc, 'p', 'aiw-pagesub', datenlageText(data)));
+        var ftext = feststellungText(data);
+        if (ftext) {
+            mainEl.appendChild(_el(doc, 'p', 'aiw-lim-feststellung', ftext));
+        }
         if (!stumm) {
             mainEl.appendChild(_el(doc, 'p', 'aiw-lim-zaehler',
                 zaehlerText(data)));
@@ -415,7 +560,7 @@
             var tbl = _el(doc, 'table', 'aiw-lim-table');
             var thead = doc.createElement('thead');
             var trh = doc.createElement('tr');
-            ['Fall', 'Zustand', 'Fristbeginn (späteste Tat)', 'Quelle',
+            ['Fall', 'Zustand', 'Grundlage', 'Fristbeginn', 'Quelle',
              'Maßgebliche Norm', 'Fristablauf', 'Restlaufzeit', 'Datenlage']
                 .forEach(function (h) {
                     trh.appendChild(_el(doc, 'th', null, h));
@@ -432,6 +577,19 @@
                 tr.appendChild(_el(doc, 'td', 'aiw-lim-case',
                     r.subject_id + ' · ' + (r.username || '?')));
                 tr.appendChild(_el(doc, 'td', 'aiw-lim-zustand', info.label));
+                // Build 530: die Grundlage. Sie bekommt eigene Klassen statt
+                // einer Ampelfarbe — die Zeile soll BEIDES gleichzeitig zeigen
+                // koennen ('rot' UND 'vorlaeufig').
+                var gz = _el(doc, 'td', 'aiw-lim-grundlage', grundlageText(r));
+                if (r.feststellung === 'vorlaeufig') {
+                    gz.className += ' is-vorlaeufig';
+                }
+                if (istErsatzanker(r.anker_art)) {
+                    gz.className += ' is-ersatzanker';
+                }
+                var gt = grundlageTitle(r);
+                if (gt) { gz.setAttribute('title', gt); }
+                tr.appendChild(gz);
                 tr.appendChild(_el(doc, 'td', 'aiw-lim-tat',
                     r.tatzeit_tag || '—'));
                 tr.appendChild(_el(doc, 'td', 'aiw-lim-quelle',
@@ -514,6 +672,18 @@
         quellenfehlerText: quellenfehlerText,
         DATENLAGE_LABEL: DATENLAGE_LABEL,
         BEFUNDE_MIT_TATZEIT: BEFUNDE_MIT_TATZEIT,
+        FESTSTELLUNG_LABEL: FESTSTELLUNG_LABEL,
+        ANKER_LABEL: ANKER_LABEL,
+        ERSATZANKER_ARTEN: ERSATZANKER_ARTEN,
+        feststellungLabel: feststellungLabel,
+        ankerLabel: ankerLabel,
+        istErsatzanker: istErsatzanker,
+        grundlageText: grundlageText,
+        grundlageTitle: grundlageTitle,
+        zitierhinweisText: zitierhinweisText,
+        zitierhinweisOk: zitierhinweisOk,
+        ersatzankerText: ersatzankerText,
+        feststellungText: feststellungText,
         zaehlerText: zaehlerText,
         restText: restText,
         quellenText: quellenText,

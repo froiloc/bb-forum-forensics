@@ -1440,6 +1440,11 @@ class ManagementApp:
         # das waere die folgenschwerste Fehldeutung, die dieses Werkzeug
         # zulassen koennte.
         payload["stellt_keine_verjaehrung_fest"] = True
+        # Build 530: die zweite Zusicherung, nach demselben Muster. Sie sagt,
+        # was mit den Zahlen NICHT geschehen darf. Ohne sie waere die Regel
+        # 'der Bericht zitiert nur Festgestelltes' nur eine Absprache; mit ihr
+        # ist sie Bestandteil jeder Antwort und damit pruefbar.
+        payload["nur_festgestellte_zitierfaehig"] = True
         return Response.json(200, payload)
 
     def _escalation_ack(self, actor_person_id: int,

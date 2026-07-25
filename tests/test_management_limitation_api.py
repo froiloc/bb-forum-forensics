@@ -87,10 +87,31 @@ from management.deadlines.limitation_repo import (                  # noqa: E402
     LimitationRepo,
     read_tatzeit,
 )
+from management.deadlines.limitation import assess_limitation       # noqa: E402
 from management.gateway.coordinator_writer import CoordinatorWriter  # noqa: E402
 from management.migrations.runner import MigrationRunner, discover   # noqa: E402
 from management.rbac.rbac_repo import RbacRepo                       # noqa: E402
 from management.server.management_app import ManagementApp           # noqa: E402
+
+def _params_bestaetigt():
+    """
+    Der AUSGELIEFERTE Parametersatz mit gesetzter Bestaetigung.
+
+    Warum eine Kopie und nicht die Datei: der ausgelieferte Satz ist bewusst
+    UNBESTAETIGT (LP02), und ein bestaetigter Satz im Repository waere eine
+    Rechtsauskunft, die niemand erteilt hat. Fuer die Rechenschicht braucht es
+    aber einen bestaetigten Satz — also wird er hier, und nur hier, erzeugt.
+    """
+    raw = json.loads(
+        Path("management/deadlines/limitation_params.json"
+             ).read_text(encoding="utf-8"))
+    raw["bestaetigt"] = True
+    raw["bestaetigt_von"] = "StA Testfixture"
+    raw["bestaetigt_am"] = "2026-07-25"
+    ziel = Path(tempfile.mkdtemp()) / "params_ok.json"
+    ziel.write_text(json.dumps(raw, ensure_ascii=False), encoding="utf-8")
+    return load_params(ziel)
+
 
 _PERSON = """
 CREATE TABLE person (
@@ -127,7 +148,8 @@ def _ts(tag: str) -> int:
 def _forensic_db(pfad: Path, *, posts=None, pms=None, shares=None,
                  downloads=None, mit_posts_tabelle=True,
                  mit_pms_tabelle=False, posts_spalte="posted_ts",
-                 pms_spalte="posted_ts") -> None:
+                 pms_spalte="posted_ts",
+                 registriert=None, anmeldungen=None) -> None:
     """
     Baut eine minimale forensic_<uid>.db mit dem ECHTEN Schema.
 
@@ -188,6 +210,31 @@ def _forensic_db(pfad: Path, *, posts=None, pms=None, shares=None,
                     "INSERT INTO uid_downloads (id, post_id, cat_id, "
                     "group_id, time_ts) VALUES (?,?,?,?,?)",
                     (i + 1, 800 + i, 1, 1, t))
+        if registriert is not None:
+            # Build 530: ERSATZANKER 1 — uid_profile.registered. Das DDL fuehrt
+            # die Tabelle mit 40+ Spalten; hier stehen die, die der Anker
+            # braucht. 'registered' ist im DDL INTEGER und traegt in den echten
+            # Daten auch Epoch-0-Werte (Platzhalter fuer 'unbekannt') — genau
+            # deshalb greift der Plausibilitaetsrahmen.
+            con.execute(
+                "CREATE TABLE uid_profile (id INTEGER PRIMARY KEY, "
+                "username TEXT NOT NULL, registered INTEGER, "
+                "last_active INTEGER, last_visit INTEGER)")
+            con.execute(
+                "INSERT INTO uid_profile (id, username, registered) "
+                "VALUES (?,?,?)", (1, "n", registriert))
+        if anmeldungen is not None:
+            # Build 530: ERSATZANKER 2 — uid_surveillance.logged_at. Es zaehlen
+            # NUR erfolgreiche Anmeldungen; die Vorrichtung liefert deshalb
+            # Paare (ts, login_success), damit der Filter geprueft werden kann.
+            con.execute(
+                "CREATE TABLE uid_surveillance (id INTEGER PRIMARY KEY "
+                "AUTOINCREMENT, username TEXT NOT NULL, password TEXT, "
+                "logged_at INTEGER, login_success INTEGER, import_note TEXT)")
+            for ts, erfolg in anmeldungen:
+                con.execute(
+                    "INSERT INTO uid_surveillance (username, logged_at, "
+                    "login_success) VALUES (?,?,?)", ("n", ts, erfolg))
         con.commit()
     finally:
         con.close()
@@ -722,6 +769,143 @@ class TestLimitationRepoAndApi(unittest.TestCase):
             "SELECT code FROM rbac_capability WHERE code='limitation.view'"
         ).fetchone()
         self.assertIsNotNone(row)
+
+
+class TestBuild530Ersatzanker(unittest.TestCase):
+    """
+    LM29-LM36 — die Ankerkaskade und die Unterscheidung vorlaeufig/festgestellt.
+
+    Die Kaskade ist von mc am 2026-07-25 festgelegt worden: belegte Tathandlung
+    -> Registrierungsdatum -> erste ueber die 100a-Massnahme protokollierte
+    Anmeldung -> nichts. Der Ersatzanker ist tatbestandsabhaengig zulaessig
+    (Parametersatz, Build 529).
+    """
+
+    def setUp(self):
+        self.dir = Path(tempfile.mkdtemp())
+        self.params = _params_bestaetigt()
+
+    def tearDown(self):
+        shutil.rmtree(self.dir, ignore_errors=True)
+
+    def test_LM29_tathandlung_schlaegt_ersatzanker(self):
+        """
+        Liegt eine belegte Tathandlung vor, wird der Ersatzanker NICHT
+        herangezogen — auch nicht, wenn er frueher liegt. Sonst waere die
+        Reihenfolge keine Rangfolge, sondern ein Minimum.
+        """
+        p = self.dir / "forensic_60.db"
+        _forensic_db(p, posts=[_ts("2023-05-05")],
+                     registriert=_ts("2019-01-10"),
+                     anmeldungen=[(_ts("2019-02-01"), 1)])
+        t = read_tatzeit(p, 60, "n60")
+        self.assertEqual(t.befund, "belegt")
+        self.assertEqual(t.anker_art, "aktivitaet")
+        self.assertEqual(t.anker_ts, _ts("2023-05-05"))
+
+    def test_LM30_registrierung_vor_anmeldung(self):
+        """Reihenfolge der Quellen: Registrierung gewinnt."""
+        p = self.dir / "forensic_61.db"
+        _forensic_db(p, posts=[], registriert=_ts("2020-06-06"),
+                     anmeldungen=[(_ts("2019-01-01"), 1)])
+        t = read_tatzeit(p, 61, "n61")
+        # Die Datenlage-Aussage bleibt unveraendert: es gibt KEINE Tathandlung.
+        self.assertEqual(t.befund, "ohne_tatzeit")
+        self.assertIsNone(t.spaeteste_ts)
+        # Aber es gibt einen Anker — und er ist als Ersatz gekennzeichnet.
+        self.assertEqual(t.anker_art, "registrierung")
+        self.assertEqual(t.anker_ts, _ts("2020-06-06"))
+        self.assertIn("uid_profile", t.anker_beleg)
+
+    def test_LM31_anmeldung_nur_bei_erfolg_und_nur_die_erste(self):
+        """
+        Eine FEHLGESCHLAGENE Anmeldung belegt nicht, dass der Kontoinhaber im
+        Forum war — sie kann von jedem stammen, der das Passwort raet. Und es
+        zaehlt die ERSTE erfolgreiche, nicht die frueheste ueberhaupt.
+        """
+        p = self.dir / "forensic_62.db"
+        _forensic_db(p, posts=[],
+                     anmeldungen=[(_ts("2019-01-01"), 0),     # Fehlversuch
+                                  (_ts("2021-04-04"), 1),
+                                  (_ts("2022-09-09"), 1)])
+        t = read_tatzeit(p, 62, "n62")
+        self.assertEqual(t.anker_art, "anmeldung")
+        self.assertEqual(t.anker_ts, _ts("2021-04-04"))
+
+    def test_LM32_epoch_null_wird_kein_anker(self):
+        """
+        uid_profile.registered fuehrt in den echten Daten Epoch-0-Werte als
+        Platzhalter fuer 'unbekannt' (Sonde 2026-07-25). Daraus darf KEIN
+        Fristbeginn entstehen — er saehe plausibel aus und waere frei erfunden.
+        """
+        p = self.dir / "forensic_63.db"
+        _forensic_db(p, posts=[], registriert=0,
+                     anmeldungen=[(_ts("2021-04-04"), 1)])
+        t = read_tatzeit(p, 63, "n63")
+        # Die Registrierung faellt aus dem Rahmen -> die naechste Quelle greift.
+        self.assertEqual(t.anker_art, "anmeldung")
+        self.assertEqual(t.anker_ts, _ts("2021-04-04"))
+
+    def test_LM33_kein_anker_bleibt_kein_anker(self):
+        p = self.dir / "forensic_64.db"
+        _forensic_db(p, posts=[])
+        t = read_tatzeit(p, 64, "n64")
+        self.assertEqual(t.anker_art, "keine")
+        self.assertIsNone(t.anker_ts)
+
+    def test_LM34_ersatzanker_ist_nie_festgestellt(self):
+        """
+        Ein Ersatzanker erzeugt eine VORLAEUFIGE Aussage — und zwar auch dann,
+        wenn der Aufrufer 'festgestellt' behauptet. Ein Hilfswert kann keine
+        Feststellung sein.
+        """
+        a = assess_limitation(
+            tatzeit_ts=_ts("2022-03-14"), params=self.params,
+            now_ts=_ts("2026-07-25"), offence_codes=["184b_abs3"],
+            anker_art="registrierung", festgestellt=True)
+        self.assertEqual(a.feststellung, "vorlaeufig")
+        self.assertFalse(a.to_dict()["zitierfaehig"])
+        self.assertTrue(any("ERSATZANKER" in v for v in a.anker_vermerke))
+        # Und die Marke steht VORNE im Befund, nicht am Ende.
+        self.assertTrue(a.befund.startswith("ERSATZANKER —"), a.befund)
+
+    def test_LM35_ersatzanker_wird_je_tatbestand_zugelassen(self):
+        """
+        § 176 Abs. 1 laesst den Ersatzanker nicht zu (mc), § 184b Abs. 3 schon.
+        Der unzulaessige Tatbestand verschwindet NICHT, er bekommt den Zustand
+        'ohne_anker' samt Begruendung aus dem Parametersatz.
+        """
+        a = assess_limitation(
+            tatzeit_ts=_ts("2022-03-14"), params=self.params,
+            now_ts=_ts("2026-07-25"),
+            offence_codes=["176_abs1", "184b_abs3"],
+            anker_art="registrierung")
+        zustaende = {d.code: d.zustand for d in a.deadlines}
+        self.assertEqual(zustaende["176_abs1"], "ohne_anker")
+        self.assertEqual(zustaende["184b_abs3"], "berechnet")
+        self.assertEqual(a.ohne_anker, ("176_abs1",))
+        # Die Begruendung des Parametersatzes faehrt am Fall mit.
+        hinweis = next(d.hinweis for d in a.deadlines
+                       if d.code == "176_abs1")
+        self.assertIn("Forumsmitglied", hinweis)
+        # Bei einer belegten Tathandlung greift die Sperre NICHT.
+        b = assess_limitation(
+            tatzeit_ts=_ts("2022-03-14"), params=self.params,
+            now_ts=_ts("2026-07-25"), offence_codes=["176_abs1"],
+            anker_art="aktivitaet")
+        self.assertEqual(b.ampel, "ruht")
+        self.assertEqual(b.ohne_anker, ())
+
+    def test_LM36_alle_tatbestaende_gesperrt_ergibt_ohne_anker(self):
+        a = assess_limitation(
+            tatzeit_ts=_ts("2022-03-14"), params=self.params,
+            now_ts=_ts("2026-07-25"), offence_codes=["176_abs1"],
+            anker_art="anmeldung")
+        self.assertEqual(a.ampel, "ohne_anker")
+        self.assertFalse(a.aussage_moeglich)
+        self.assertIn("UNGEPRUEFT", a.befund)
+        # Das Wort 'verjaehrt' kommt auch hier nicht vor.
+        self.assertNotIn("verjaehrt", a.befund.lower())
 
 
 if __name__ == "__main__":  # pragma: no cover

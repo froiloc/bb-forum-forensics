@@ -19,6 +19,9 @@
  * Build 525 (Fristen/Verjaehrung, AP-3A): .aiw-lim-*. Die Farbwahl ist dort
  *            eine AUSSAGE: violett = UNGEPRUEFT (nicht gruen, nicht grau),
  *            rot nur fuer die abgelaufene Frist, blau fuer 'ruht'.
+ * Build 530 (Fristen, Grundlage der Zahl): .aiw-lim-zitierhinweis,
+ *            .aiw-lim-ersatzanker, .aiw-lim-feststellung,
+ *            .aiw-lim-grundlage[.is-vorlaeufig|.is-ersatzanker].
  * Build 527 (Fristen, Ausfall einer Zeitquelle): .aiw-lim-quellenfehler,
  *            .aiw-lim-datenlage.is-eingeschraenkt.
  * Version: v0.8.527 · Build: 527 · 2026-07-25
@@ -2033,3 +2036,41 @@ tr.aiw-cff-nichtrelevant { opacity: 0.7; }
 .aiw-lim-datenlage.is-eingeschraenkt {
   color: #922b21; font-weight: 600; cursor: help;
 }
+
+/* --------------------------------------------------------------------------
+   Build 530 — GRUNDLAGE DER ZAHL (AP-3A). Diese Auszeichnungen liegen NEBEN
+   der Ampel und nicht in ihr: eine Zeile kann gleichzeitig rot ('Frist
+   rechnerisch abgelaufen') und vorlaeufig ('Datum von niemandem festgestellt')
+   sein, und genau diese Kombination ist die dringlichste, die es hier gibt.
+   Waeren beide in einer Farbskala, wuerde eine von beiden Aussagen verdeckt.
+
+   GELB fuer 'vorlaeufig' — dieselbe Sprache wie die Tatzeit-Anmahnung in der
+   Annotationsmaske (heller Hintergrund, kein Blinken, kein Rot): es ist kein
+   Missstand, sondern eine offene Arbeit.
+   -------------------------------------------------------------------------- */
+.aiw-lim-zitierhinweis {
+  border-radius: 6px; padding: 10px 16px; margin: 0 0 12px; font-size: 13px;
+  background: #eaf2fa; border: 1px solid #aed6f1;
+  border-left: 5px solid var(--akzent, #0b5394); color: #14456e;
+}
+.aiw-lim-zitierhinweis.is-fehlt {
+  background: #fdecea; border-color: #f5b7b1;
+  border-left-color: var(--rot, #c0392b); color: #922b21; font-weight: 600;
+}
+/* Der Ersatzanker-Hinweis: GELB, weil die Zahlen brauchbar, aber systematisch
+   zu frueh sind — eine Einschraenkung, kein Fehler. */
+.aiw-lim-ersatzanker {
+  border-radius: 6px; padding: 10px 16px; margin: 0 0 12px; font-size: 13px;
+  background: #fdf6e3; border: 1px solid #f0d9a0;
+  border-left: 5px solid var(--gelb, #d68910); color: #7d5a10;
+}
+.aiw-lim-feststellung {
+  font-size: 13px; color: #3d4144; margin: 0 0 10px;
+  font-variant-numeric: tabular-nums;
+}
+.aiw-lim-grundlage { color: #4a5158; font-size: 12px; }
+.aiw-lim-grundlage.is-vorlaeufig {
+  background: #fdf6e3; color: #7d5a10; font-weight: 600;
+}
+.aiw-lim-grundlage.is-ersatzanker { cursor: help; text-decoration: underline
+  dotted #d68910; }

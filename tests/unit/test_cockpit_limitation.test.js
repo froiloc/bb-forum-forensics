@@ -23,7 +23,7 @@
  *          ist ausdruecklich NICHT 'is-offen' und nicht 'is-stumm'.
  *   LV07 — Ein UNBEKANNTER Ampelwert wird als solcher gekennzeichnet
  *          (is-unbekannt) und NICHT auf einen bekannten abgebildet.
- *   LV08 — Die Frontend-Zustandstabelle deckt genau die sieben Zustaende des
+ *   LV08 — Die Frontend-Zustandstabelle deckt genau die ACHT Zustaende des
  *          Backends ab (AMPEL_ZUSTAENDE in management/deadlines/limitation.py).
  *   LV09 — restText: null -> '—' (NIE '0'); 0 -> '0 T (heute)'; negativ ->
  *          benannt als ueberschritten.
@@ -56,6 +56,26 @@
  *   LV20 — Die Frontend-Labels decken genau die DATENLAGE_BEFUNDE des Backends
  *          ab (aus limitation_repo.py gelesen, nicht abgeschrieben) — wie LV08
  *          fuer die Ampelzustaende.
+ *
+ * BUILD 530 — Grundlage der Zahl (Ersatzanker, vorlaeufig/festgestellt):
+ *   LV21 — Die Spalte 'Grundlage' steht in JEDER Zeile und nennt Feststellung
+ *          UND Ankerart. Eine vorlaeufige Zeile ist gekennzeichnet — und zwar
+ *          ZUSAETZLICH zur Ampel, nicht anstelle: eine rote Zeile bleibt rot.
+ *   LV22 — Die Vermerke des Backends haengen WORTGLEICH am title der Zelle;
+ *          die Sicht formuliert sie NICHT neu.
+ *   LV23 — Fehlt 'nur_festgestellte_zitierfaehig', MELDET die Sicht das in
+ *          eigener Auszeichnung (wie LV04 fuer den Verjaehrungsvorbehalt).
+ *   LV24 — Der Ersatzanker-Hinweis erscheint nur, wenn es Ersatzanker gibt,
+ *          nennt die Zahl je Art und die FEHLERRICHTUNG (zu frueh, wirkt
+ *          dringender). Ohne Ersatzanker erscheint er NICHT.
+ *   LV25 — Die Feststellungs-Verteilung wird GENERISCH gezaehlt: ein
+ *          unbekannter Wert faellt nicht aus der Summe, sondern wird mit
+ *          seinem Rohnamen genannt (wie LV17 fuer die Datenlage).
+ *   LV26 — Die Frontend-Labels decken genau ANKER_ARTEN und FESTSTELLUNGEN des
+ *          Backends ab (aus limitation.py gelesen) — wie LV08 und LV20.
+ *   LV27 — 'ohne_anker' ist ein UNGEPRUEFT-Zustand und ausdruecklich nicht
+ *          'is-offen': ein unzulaessiger Ersatzanker macht einen Fall nicht
+ *          unverdaechtig.
  * =============================================================================
  */
 
@@ -93,6 +113,14 @@ function _api() {
   return _win().AIWCockpitLimitation;
 }
 
+// Build 530: dieselbe Fensterinstanz fuer API UND Rendern. Zwei Instanzen
+// waeren zwei Welten — ein in der einen erzeugtes Element gehoerte nicht zur
+// anderen, und die Vergleiche waeren stillschweigend bedeutungslos.
+function _api2() {
+  const win = _win();
+  return { win: win, api: win.AIWCockpitLimitation };
+}
+
 function R(over) {
   return Object.assign(
     {
@@ -111,6 +139,12 @@ function R(over) {
       restlaufzeit_tage: 232,
       deadlines: [],
       ohne_fassung: [],
+      feststellung: "vorlaeufig",
+      anker_art: "aktivitaet",
+      anker_vermerke: ["VORLAEUFIG — das zugrunde liegende Datum ist von "
+                       + "KEINER Ermittlerin festgestellt worden."],
+      ohne_anker: [],
+      zitierfaehig: false,
     },
     over || {}
   );
@@ -134,6 +168,10 @@ function D(over) {
       zaehler: { knapp: 1 },
       datenlage: { belegt: 1 },
       stellt_keine_verjaehrung_fest: true,
+      nur_festgestellte_zitierfaehig: true,
+      anker_verteilung: { aktivitaet: 1 },
+      feststellung_verteilung: { vorlaeufig: 1 },
+      ersatzfehler: {},
       rows: [R()],
     },
     over || {}
@@ -153,6 +191,9 @@ describe("Build 525 — Cockpit-Sicht Fristen (AP-3A)", () => {
       "ampelInfo", "ampelZustaende", "vorbehaltText", "vorbehaltOk",
       "stummText", "massstabText", "datenlageText", "zaehlerText",
       "restText", "quellenText", "rows", "renderLimitation",
+      "grundlageText", "grundlageTitle", "zitierhinweisText",
+      "zitierhinweisOk", "ersatzankerText", "feststellungText",
+      "feststellungLabel", "ankerLabel", "istErsatzanker",
     ].forEach((k) => expect(typeof api[k]).toBe("function"));
     expect(typeof api.AMPEL).toBe("object");
   });
@@ -297,7 +338,7 @@ describe("Build 525 — Cockpit-Sicht Fristen (AP-3A)", () => {
   it("LV08: Frontend deckt genau die Backend-Zustaende ab", () => {
     const fe = _api().ampelZustaende().sort();
     const be = backendZustaende().sort();
-    expect(be.length).toBe(7);
+    expect(be.length).toBe(8);
     expect(fe).toEqual(be);
   });
 
@@ -529,5 +570,138 @@ describe("Build 525 — Cockpit-Sicht Fristen (AP-3A)", () => {
     const fe = Object.keys(_api().DATENLAGE_LABEL).sort();
     expect(be.length).toBe(7);
     expect(fe).toEqual(be);
+  });
+
+  // ===========================================================================
+  // BUILD 530 — Grundlage der Zahl.
+  // ===========================================================================
+
+  it("LV21: die Grundlage steht in der Zeile, ZUSAETZLICH zur Ampel", () => {
+    const { win } = _api2();
+    const main = _render(
+      win,
+      D({
+        zaehler: { ueberschritten: 1 },
+        rows: [
+          R({
+            ampel: "ueberschritten",
+            feststellung: "vorlaeufig",
+            anker_art: "registrierung",
+          }),
+        ],
+      })
+    );
+    const zelle = main.querySelector("td.aiw-lim-grundlage");
+    expect(zelle).not.toBeNull();
+    expect(zelle.textContent).toContain("VORLÄUFIG");
+    expect(zelle.textContent).toContain("ERSATZANKER");
+    expect(zelle.className).toContain("is-vorlaeufig");
+    expect(zelle.className).toContain("is-ersatzanker");
+    // DIE ENTSCHEIDENDE ZUSICHERUNG: die Ampel bleibt unberuehrt. Genau diese
+    // Kombination — rechnerisch abgelaufen UND nie festgestellt — waere in
+    // einer einzigen Farbskala nicht darstellbar gewesen.
+    const zeile = main.querySelector("tr.aiw-lim-row");
+    expect(zeile.className).toContain("is-ueberschritten");
+    expect(zeile.getAttribute("data-ampel")).toBe("ueberschritten");
+  });
+
+  it("LV22: die Vermerke haengen wortgleich am title", () => {
+    const { win, api } = _api2();
+    const vermerk = "VORLAEUFIG — ein ganz bestimmter Wortlaut des Backends.";
+    const row = R({ anker_vermerke: [vermerk] });
+    expect(api.grundlageTitle(row)).toBe(vermerk);
+    const main = _render(win, D({ rows: [row] }));
+    expect(
+      main.querySelector("td.aiw-lim-grundlage").getAttribute("title")
+    ).toBe(vermerk);
+  });
+
+  it("LV23: fehlende Zitier-Zusicherung wird GEMELDET", () => {
+    const { win, api } = _api2();
+    expect(api.zitierhinweisOk(D())).toBe(true);
+    const ohne = D();
+    delete ohne.nur_festgestellte_zitierfaehig;
+    expect(api.zitierhinweisOk(ohne)).toBe(false);
+    expect(api.zitierhinweisText(ohne)).toContain("ACHTUNG");
+    const main = _render(win, ohne);
+    const box = main.querySelector(".aiw-lim-zitierhinweis");
+    expect(box).not.toBeNull();
+    expect(box.className).toContain("is-fehlt");
+  });
+
+  it("LV24: Ersatzanker-Hinweis nur mit Ersatzankern, mit Fehlerrichtung", () => {
+    const { win, api } = _api2();
+    // Ohne Ersatzanker: kein Hinweis (er soll etwas bedeuten).
+    expect(api.ersatzankerText(D())).toBeNull();
+    expect(_render(win, D()).querySelector(".aiw-lim-ersatzanker")).toBeNull();
+
+    const d = D({
+      faelle_gesamt: 5,
+      anker_verteilung: { aktivitaet: 2, registrierung: 2, anmeldung: 1 },
+      feststellung_verteilung: { vorlaeufig: 5 },
+    });
+    const t = api.ersatzankerText(d);
+    expect(t).toContain("3 von 5");
+    expect(t).toContain("Registrierung: 2");
+    expect(t).toContain("Anmeldung: 1");
+    // Die Fehlerrichtung MUSS dastehen, sonst liest jemand die Liste falsch.
+    expect(t).toContain("ZU FRÜH");
+    expect(t).toContain("DRINGENDER");
+    expect(t).toContain("§ 78a StGB");
+    const box = _render(win, d).querySelector(".aiw-lim-ersatzanker");
+    expect(box).not.toBeNull();
+  });
+
+  it("LV25: unbekannte Feststellung faellt nicht aus der Summe", () => {
+    const api = _api();
+    const t = api.feststellungText(
+      D({ feststellung_verteilung: { vorlaeufig: 3, zukunftswert: 2 } })
+    );
+    expect(t).toContain("VORLÄUFIG: 3");
+    // Der unbekannte Wert wird GENANNT statt weggelassen.
+    expect(t).toContain("zukunftswert");
+    expect(t).toContain("2");
+    // Ohne Verteilung gibt es den Satz nicht.
+    expect(api.feststellungText(D({ feststellung_verteilung: {} }))).toBeNull();
+  });
+
+  it("LV26: Frontend-Labels decken ANKER_ARTEN und FESTSTELLUNGEN ab", () => {
+    // Wie LV08/LV20: die Listen im Python-Modul sind die Wahrheit.
+    const py = readFileSync("management/deadlines/limitation.py", "utf-8");
+    const lies = (name) => {
+      const m = py.match(
+        new RegExp(name + "[^=]*=\\s*\\(([\\s\\S]*?)\\)")
+      );
+      expect(m).not.toBeNull();
+      return (m[1].match(/"([a-z_]+)"/g) || [])
+        .map((x) => x.replace(/"/g, ""))
+        .sort();
+    };
+    const api = _api();
+    expect(Object.keys(api.ANKER_LABEL).sort()).toEqual(lies("ANKER_ARTEN"));
+    expect(Object.keys(api.FESTSTELLUNG_LABEL).sort()).toEqual(
+      lies("FESTSTELLUNGEN")
+    );
+    expect(api.ERSATZANKER_ARTEN.slice().sort()).toEqual(
+      lies("ERSATZANKER_ARTEN")
+    );
+  });
+
+  it("LV27: 'ohne_anker' ist ungeprueft, nicht offen", () => {
+    const { win, api } = _api2();
+    expect(api.ampelInfo("ohne_anker").cls).toBe("is-ungeprueft");
+    expect(api.ampelInfo("ohne_anker").label).toContain("UNGEPRÜFT");
+    const main = _render(
+      win,
+      D({
+        zaehler: { ohne_anker: 1 },
+        rows: [R({ ampel: "ohne_anker", anker_art: "registrierung",
+                   restlaufzeit_tage: null, massgeblich_norm: null })],
+      })
+    );
+    const zeile = main.querySelector("tr.aiw-lim-row");
+    expect(zeile.className).toContain("is-ungeprueft");
+    expect(zeile.className).not.toContain("is-offen");
+    expect(zeile.className).not.toContain("is-stumm");
   });
 });
