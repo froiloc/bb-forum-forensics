@@ -71,7 +71,10 @@
              behaftet: 'eigene' = eigene Schlange, 'alle' = Verteilsicht).
   Build 520: Uebergabe-Protokoll (cockpit_handover.js) — AP-2G/Idee 30,
              Lesart der unveraenderlichen Audit-Kette. Recht: handover.view.
-  Version: v0.8.520 · Build: 520 · 2026-07-24
+  Build 521: Aufbewahrungsfristen (cockpit_retention.js) — AP-2G/Idee 29,
+             reiner PRUEFVORSCHLAG. Recht: retention.view. Diese Sicht kann
+             NICHT loeschen; es gibt dafuer keinen Weg im Werkzeug.
+  Version: v0.8.521 · Build: 521 · 2026-07-24
   =============================================================================
 -->
 <link rel="stylesheet" href="/static/cockpit.css">
@@ -101,6 +104,9 @@
 <!-- Uebergabe-Protokoll (AP-2G/Idee 30, Build 520): Lesart der Audit-Kette
      zu /api/handover. Recht: handover.view (Seed M029, default-deny). -->
 <script src="/static/cockpit_handover.js" defer></script>
+<!-- Aufbewahrungsfristen (AP-2G/Idee 29, Build 521): PRUEFVORSCHLAG zu
+     /api/retention. Recht: retention.view. LOESCHT NICHTS. -->
+<script src="/static/cockpit_retention.js" defer></script>
 <script src="/static/cockpit_capacity.js" defer></script>
 <script src="/static/cockpit_policy.js" defer></script>
 <script src="/static/cockpit_mycases.js" defer></script>

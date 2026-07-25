@@ -156,6 +156,19 @@ VIEW_EXPORTS: Tuple[ViewExportSpec, ...] = (
         api_path="/api/handover",
         sections=(SectionSpec("entries", "Übergaben"),),
     ),
+    # Build 521 (AP-2G / Idee 29): Governance-Beleg ("zu diesem Zeitpunkt
+    # standen N Faelle ueber der Frist"). Die Kennzahlen - darunter die
+    # WICHTIGE Zahl 'without_reference' (ungeprueft) - und der Loeschvorbehalt
+    # 'deletes_nothing' erscheinen ueber den Auto-Modus (Regel 2) unter
+    # 'Weitere Daten' und gehen damit nicht verloren.
+    ViewExportSpec(
+        view_id="retention", label="Aufbewahrungsfristen (Prüfvorschlag)",
+        api_path="/api/retention",
+        note="Dies ist ein PRÜFVORSCHLAG. Das Werkzeug löscht nichts und "
+             "kann nichts löschen; das Löschen von Beweismitteln ist eine "
+             "Governance-Entscheidung außerhalb dieses Systems.",
+        sections=(SectionSpec("candidates", "Fälle über der Frist"),),
+    ),
     ViewExportSpec(
         view_id="capacity", label="Kapazität",
         api_path="/api/capacity", requires=("start",),

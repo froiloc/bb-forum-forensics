@@ -176,7 +176,8 @@ class ManagementRbacSchemaTests(unittest.TestCase):
         # +1 ab Build 517 ('escalation.ack', geseedet in M027) -> 35.
         # +1 ab Build 519 ('nextactions.view', geseedet in M028) -> 36.
         # +1 ab Build 520 ('handover.view', geseedet in M029) -> 37.
-        self.assertEqual(len(cat_caps), 37)
+        # +1 ab Build 521 ('retention.view', geseedet in M030) -> 38.
+        self.assertEqual(len(cat_caps), 38)
         self.assertIn("external.view", cat_caps)
         self.assertIn("external.edit", cat_caps)
         self.assertIn("templates.edit", cat_caps)
@@ -201,6 +202,8 @@ class ManagementRbacSchemaTests(unittest.TestCase):
         self.assertIn("nextactions.view", cat_caps)
         # Uebergabe-Protokoll (Build 520): handover.view (Seed in M029).
         self.assertIn("handover.view", cat_caps)
+        # Aufbewahrungsfristen (Build 521): retention.view (Seed in M030).
+        self.assertIn("retention.view", cat_caps)
         # Build 401: Betreuungs-Notizen (Seed in M012).
         self.assertIn("mentoring_notes.view", cat_caps)
         self.assertIn("mentoring_notes.edit", cat_caps)

@@ -206,6 +206,13 @@
         // NICHT scope-behaftet — auf die eigenen Eintraege verengt entstuende
         // ein Protokoll MIT LUECKEN, das vollstaendig aussieht.
         { id: 'handover',   cap: 'handover.view',        group: 'Administration', label: 'Übergabe-Protokoll' },
+        // Build 521 (AP-2G / Idee 29): Aufbewahrungsfristen (Frontend zu 521).
+        // Gruppe 'Administration' — es ist eine Governance-/Betriebsaufgabe.
+        // EIGENES Recht 'retention.view' statt 'ops.view': die uebrigen
+        // ops.view-Sichten zeigen den Zustand der ANLAGE, diese eine LISTE VON
+        // FAELLEN mit Beschuldigten-Kontonamen. MIT DIESEM EINTRAG IST KEIN
+        // LOESCHEN VERBUNDEN - die Sicht ist rein auswertend.
+        { id: 'retention',  cap: 'retention.view',       group: 'Administration', label: 'Aufbewahrungsfristen' },
         { id: 'promotion',  cap: 'ops.view',             group: 'Administration', label: 'Fremdforum-Promotion' },
         { id: 'releases',   cap: 'release.view',         group: 'Administration', label: 'Externe Fallfreigabe' },
         { id: 'onboarding', cap: 'onboarding.view',      group: 'Verwaltung',     label: 'Onboarding / Offboarding' },
@@ -755,6 +762,32 @@
         }).catch(function (err) {
             cleanupView();
             mod.renderHandover(mainEl, { error: err.message }, opts);
+        });
+    }
+
+    // loadRetention: /api/retention holen und ueber cockpit_retention.js
+    // rendern (Build 521 / AP-2G, Idee 29).
+    //
+    // BEWUSST OHNE Schreibpfad-Verdrahtung: diese Sicht kann nichts loeschen,
+    // und es soll auch nichts danach aussehen. Ein Fehlschlag wird als
+    // {error: ...} durchgereicht — eine leere Kandidatenliste im Fehlerfall
+    // haette 'keine Frist ueberschritten' behauptet (Grundregel 1).
+    function loadRetention(mainEl) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitRetention : null;
+        if (!mod) {
+            renderError(mainEl, 'Aufbewahrungs-Modul nicht geladen.');
+            return;
+        }
+        fetchJson('/api/retention').then(function (data) {
+            cleanupView();
+            mod.renderRetention(mainEl, data, {});
+            log('Aufbewahrung gerendert:', (data.candidates || []).length,
+                'Kandidaten,', data.without_reference, 'ungeprueft');
+        }).catch(function (err) {
+            cleanupView();
+            mod.renderRetention(mainEl, { error: err.message }, {});
         });
     }
 
@@ -2730,7 +2763,12 @@
         // einen Filter (subject_id) — der Export bekommt ihn ueber
         // exportParams mit, sonst zeigte das Dokument den ganzen Bestand,
         // waehrend die Sicht auf einen Fall eingeschraenkt ist.
-        handover: 1
+        handover: 1,
+        // Build 521: die Fristenuebersicht ist ein Governance-Beleg ('zu
+        // diesem Zeitpunkt standen N Faelle ueber der Frist'). Kein Filter,
+        // also kein exportParams-Zweig. Der Loeschvorbehalt faehrt ueber
+        // 'deletes_nothing' in das Dokument mit.
+        retention: 1
     };
 
     // exportParams: die Sicht-Parameter, die der Export MITBEKOMMEN muss, damit
@@ -2857,6 +2895,8 @@
             loadNextActions(mainEl);
         } else if (viewId === 'handover') {
             loadHandover(mainEl);
+        } else if (viewId === 'retention') {
+            loadRetention(mainEl);
         } else if (viewId === 'capacity') {
             loadCapacity(mainEl);
         } else if (viewId === 'policy') {
@@ -2972,6 +3012,11 @@
                 loadAlias();
             } else if (state.activeId === 'workload') {
                 loadWorkload();
+            } else if (state.activeId === 'retention') {
+                // Ein Fall-Abschluss (status closed/approved) erzeugt einen
+                // audit_log-Beleg und kann die Fristenlage aendern -> neu
+                // messen. Kein Eingabezustand, der verloren gehen koennte.
+                loadRetention();
             } else if (state.activeId === 'handover') {
                 // Eine neue Zuweisung erzeugt genau den audit_log-Beleg, aus
                 // dem dieses Protokoll besteht -> neu laden. Der eingestellte

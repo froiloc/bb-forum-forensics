@@ -1808,3 +1808,68 @@ tr.aiw-cff-nichtrelevant { opacity: 0.7; }
 }
 /* Herkunftsvermerk — erklaert, warum diese Sicht nicht manipulierbar ist. */
 .aiw-hv-foot { font-size: 12px; color: #4a5158; max-width: 780px; }
+
+/* ========================================================================
+ * Build 521 (AP-2G / Idee 29) — AUFBEWAHRUNGSFRISTEN.
+ *
+ * Der LOESCHVORBEHALT steht ganz oben und ist auffaellig gestaltet — er
+ * ist nicht die Fussnote dieser Sicht, sondern ihre wichtigste Aussage.
+ * Eine Kandidatenliste ohne ihn koennte als Arbeitsauftrag missverstanden
+ * werden.
+ *
+ * Bewusst NICHT rot: rot bedeutet in diesem Cockpit durchgehend
+ * 'Missstand'. Hier ist die Lage aber in Ordnung — das Werkzeug haelt
+ * sich an seine Grenze. Deshalb blau (Hinweis/Rechtsrahmen). ROT wird die
+ * Flaeche nur, wenn die Zusicherung FEHLT — dann ist tatsaechlich etwas
+ * nicht in Ordnung.
+ *
+ * Diese Sicht hat KEINE Knopf-Stile, weil sie keine Knoepfe hat. Das ist
+ * Absicht und keine Auslassung.
+ * ======================================================================== */
+
+.aiw-rt-vorbehalt {
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin: 0 0 14px;
+  font-size: 13px;
+  font-weight: 600;
+  max-width: 860px;
+}
+.aiw-rt-vorbehalt.is-ok {
+  background: #eaf2fb; border: 1px solid #a9c6e8;
+  border-left: 5px solid #3a6ea5; color: #1f3f66;
+}
+/* Die Zusicherung fehlt — DAS ist ein Missstand. */
+.aiw-rt-vorbehalt.is-fehlt {
+  background: #fdecea; border: 1px solid #f5b7b1;
+  border-left: 5px solid var(--rot); color: #922b21;
+}
+
+.aiw-rt-table {
+  width: 100%; border-collapse: collapse; margin: 0 0 14px; font-size: 13px;
+}
+.aiw-rt-table th {
+  text-align: left; padding: 6px 8px; font-weight: 600; white-space: nowrap;
+  border-bottom: 2px solid var(--line, #d5dbe1);
+}
+.aiw-rt-table td {
+  padding: 6px 8px; border-bottom: 1px solid var(--line, #e6eaee);
+  vertical-align: top;
+}
+.aiw-rt-case, .aiw-rt-ts, .aiw-rt-days, .aiw-rt-over, .aiw-rt-status {
+  white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+/* Das Bezugsfeld entscheidet ueber das Ergebnis und ist damit nachpruefbare
+   Tatsache, keine Nebensache. */
+.aiw-rt-field { white-space: nowrap; color: #4a5158; }
+.aiw-rt-over { font-weight: 600; }
+
+.aiw-rt-leer {
+  background: #eafaf1; border: 1px solid #a9dfbf;
+  border-left: 5px solid var(--gruen);
+  border-radius: 6px; padding: 12px 16px; margin: 0 0 14px;
+  color: #1d6b45; font-size: 13px;
+}
+.aiw-rt-foot {
+  font-size: 12px; color: #4a5158; font-variant-numeric: tabular-nums;
+}

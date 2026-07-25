@@ -211,13 +211,17 @@ class ManagementDashboardTests(unittest.TestCase):
         # Build 520: M029 (RBAC-Seed handover.view fuer das Uebergabe-
         # Protokoll, AP-2G/Idee 30 — reiner Capability-Seed; die Sicht
         # rekonstruiert aus dem audit_log und braucht KEINE eigene Tabelle).
+        # Build 521: M030 (RBAC-Seed retention.view fuer die Fristenuebersicht,
+        # AP-2G/Idee 29 — reiner Capability-Seed; EIGENES Recht statt ops.view,
+        # weil die Sicht Beschuldigten-Kontonamen zeigt).
         self.assertEqual(self.applied,
                          [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-                          17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
+                          17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+                          30]
                          if 3 not in self.applied
                          else [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
                                15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
-                               27, 28, 29])
+                               27, 28, 29, 30])
         # discover findet M001..M006 -> support_sessions (M003) IST dabei,
         # der person-Rename (M005, Build 342) ebenso wie das RBAC-Schema
         # (M006, Build 343).

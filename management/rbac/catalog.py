@@ -267,6 +267,18 @@ CAPABILITIES: Tuple[Capability, ...] = (
     Capability("handover.view", "Uebergabe-Protokoll sehen",
                "Nachvollziehen, wer wann welchen Fall an wen uebergeben hat "
                "(rekonstruiert aus der Audit-Kette; rein lesend)."),
+    # --- Build 521 (AP-2G / Idee 29): Aufbewahrungsfristen (Seed in M030) ----
+    #   EIGENES Recht statt Wiederverwendung von 'ops.view'. Begruendung: die
+    #   uebrigen ops.view-Sichten zeigen den Zustand der ANLAGE (Backup,
+    #   Speicher, Integritaet). Diese Sicht zeigt eine LISTE VON FAELLEN mit
+    #   Beschuldigten-Kontonamen. Wer die Anlage betreut, braucht diese Namen
+    #   nicht — eine Wiederverwendung waere ein Zweckbindungsverstoss, keine
+    #   Sparsamkeit. Nicht scope-behaftet: Fristenkontrolle ist eine
+    #   Leitungsaufgabe. Grant an 'supervisor' per policy_admin (default-deny).
+    Capability("retention.view", "Aufbewahrungsfristen sehen",
+               "Faelle lesen, deren Aufbewahrungsfrist ueberschritten ist "
+               "(Pruefvorschlag). Loeschen ist damit AUSDRUECKLICH NICHT "
+               "verbunden — es gibt dafuer keinen Weg im Werkzeug."),
 )
 
 

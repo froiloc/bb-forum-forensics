@@ -220,6 +220,14 @@ from management.cases.next_actions_repo import NextActionsRepo
 # CLI erreichbar gewesen (Build 455/469).
 from management.cases.handover_log import handover_to_dict
 from management.cases.handover_repo import HandoverRepo
+# Build 521 (AP-2G / Idee 29): Aufbewahrungsfristen. Letztes der fuenf
+# Read-Models aus Uebergabe 440-453, die nur ueber die CLI erreichbar waren.
+from management.ops.retention import (
+    retention_thresholds_from_config,
+    retention_to_dict,
+    RetentionRepo,
+    RetentionThresholds,
+)
 # Build 517 (AP-2G / Idee 23): der auditierte SCHREIBPFAD zur Eskalation
 # (Quittierung). Befund Uebergabe 440-453 §3.3 — bis Build 516 war die Sicht
 # rein auswertend.
@@ -387,6 +395,12 @@ CAP_NEXTACTIONS_VIEW = "nextactions.view"
 # Personen; auf die eigenen Eintraege verengt entstuende ein Protokoll
 # MIT LUECKEN, das vollstaendig aussieht.
 CAP_HANDOVER_VIEW = "handover.view"
+
+# Build 521 (AP-2G / Idee 29): Aufbewahrungsfristen (Seed in M030).
+# EIGENES Recht statt 'ops.view': die uebrigen ops.view-Sichten zeigen den
+# Zustand der ANLAGE, diese eine LISTE VON FAELLEN mit Beschuldigten-
+# Kontonamen. Wer die Anlage betreut, braucht diese Namen nicht.
+CAP_RETENTION_VIEW = "retention.view"
 
 logger = logging.getLogger(__name__)
 
@@ -683,6 +697,9 @@ class ManagementApp:
         # Build 520 (AP-2G / Idee 30): Uebergabe-Protokoll.
         if path == "/api/handover":
             return self._handover(person_id, query)
+        # Build 521 (AP-2G / Idee 29): Aufbewahrungsfristen (Pruefvorschlag).
+        if path == "/api/retention":
+            return self._retention(person_id)
         if path == "/api/capacity":
             return self._capacity(person_id, query)
         if path == "/api/policy":
@@ -1167,6 +1184,63 @@ class ManagementApp:
 
         payload = handover_to_dict(report)
         payload["filter_subject_id"] = subject_id
+        return Response.json(200, payload)
+
+    def _retention_thresholds(self) -> RetentionThresholds:
+        """
+        Aufbewahrungsfrist aus config.yaml (retention.retention_days).
+
+        Wie bei Ueberlast (513) und Eskalation (515): faellt die Konfiguration
+        aus, gilt die Vorgabe aus Build 456 — und der Ausfall wird
+        PROTOKOLLIERT. Die angewandte Frist faehrt in der Antwort mit, damit
+        jede Einstufung nachrechenbar ist.
+        """
+        try:
+            from core.config_loader import ConfigLoader
+            return retention_thresholds_from_config(ConfigLoader().as_dict())
+        except Exception as exc:  # pragma: no cover - Konfig-Ausfall
+            logger.warning("Aufbewahrungsfrist nicht aus config.yaml lesbar "
+                           "(%s) — Vorgabe aus Build 456.", exc)
+            return RetentionThresholds()
+
+    def _retention(self, person_id: int) -> Response:
+        """
+        Aufbewahrungsfristen (read-only, Build 521 zu Build 456, Idee 29).
+
+        DIESE SICHT LOESCHT NICHTS UND KANN NICHTS LOESCHEN. Sie erhebt einen
+        PRUEFVORSCHLAG. Es gibt im gesamten Werkzeug keinen Weg, aus dieser
+        Antwort eine Loeschung auszuloesen — das ist keine noch fehlende
+        Bequemlichkeit, sondern Absicht: das Loeschen von Beweismitteln ist
+        eine Governance-Entscheidung ausserhalb dieses Systems. Die Antwort
+        traegt diese Aussage deshalb ausdruecklich als 'deletes_nothing' mit,
+        damit keine Sicht und kein spaeterer Automat sie ueberlesen kann.
+
+        NICHT SCOPE-BEHAFTET: Fristenkontrolle ist eine Leitungsaufgabe.
+
+        DREI ZAHLEN, DIE ZUSAMMENGEHOEREN (aus Build 456): total_cases,
+        closed_cases und 'without_reference'. Die letzte ist die wichtigste:
+        Faelle, bei denen KEIN Bezugszeitpunkt ermittelbar war. Sie sind
+        weder Kandidat noch unverdaechtig — sie sind UNGEPRUEFT. Wuerde man
+        sie weglassen, saehe eine kurze Kandidatenliste wie eine
+        vollstaendige Pruefung aus (Grundregel 1).
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_RETENTION_VIEW):
+            return self._forbidden(CAP_RETENTION_VIEW)
+
+        thresholds = self._retention_thresholds()
+        con = self._ro_con()
+        try:
+            report = RetentionRepo(con).compute(thresholds=thresholds,
+                                                now=int(time.time()))
+        finally:
+            con.close()
+
+        payload = retention_to_dict(report)
+        # Die Zusicherung faehrt MIT. Sie ist hier keine Verzierung: eine
+        # Kandidatenliste ohne den ausdruecklichen Loeschvorbehalt koennte
+        # spaeter als Arbeitsauftrag missverstanden werden.
+        payload["deletes_nothing"] = True
         return Response.json(200, payload)
 
     def _escalation_ack(self, actor_person_id: int,
