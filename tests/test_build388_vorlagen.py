@@ -353,10 +353,11 @@ class TestNeueQueries:
         con = sqlite3.connect(":memory:")
         con.executescript("""
             CREATE TABLE uid_profile(id INTEGER, registered INTEGER, last_active INTEGER);
-            CREATE TABLE uid_posts(id INTEGER, posted INTEGER);
+            -- Build 528: ECHTES Schema (forensic_uid.db.schema.sql).
+            CREATE TABLE uid_posts (post_id INTEGER PRIMARY KEY, topic_id INTEGER, forum_id INTEGER, posted_ts INTEGER, active INTEGER DEFAULT 1, is_topic_starter INTEGER DEFAULT 0);
             CREATE TABLE uid_stats(stat_key TEXT PRIMARY KEY, val_reported INT, val_computed INT);
             INSERT INTO uid_profile VALUES (4711, 1663681740, 1710460800);
-            INSERT INTO uid_posts VALUES (1, 1664000000), (2, 1700000000);
+            INSERT INTO uid_posts (post_id, posted_ts) VALUES (1, 1664000000), (2, 1700000000);
             INSERT INTO uid_stats VALUES ('pm_topics_total', NULL, 7),
                                          ('shares_total', NULL, 4);
         """)

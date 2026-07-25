@@ -48,8 +48,13 @@ def _make_fdb(with_uid_posts=True):
     if with_uid_posts:
         con.executescript(
             """
-            CREATE TABLE uid_posts (id INTEGER, posted INTEGER);
-            INSERT INTO uid_posts VALUES (12345, 1664000000), (67890, 1700000000), (500, NULL);
+            -- Build 528: ECHTES Schema aus forensic_uid.db.schema.sql.
+            -- Vorher stand hier 'uid_posts(id, posted)' — eine
+            -- Vorrichtung, die die Welt baute, die der Code
+            -- erwartete. Der Test war gruen, das Feature lief in
+            -- PROD nie.
+            CREATE TABLE uid_posts (post_id INTEGER PRIMARY KEY, topic_id INTEGER, forum_id INTEGER, posted_ts INTEGER, active INTEGER DEFAULT 1, is_topic_starter INTEGER DEFAULT 0);
+            INSERT INTO uid_posts (post_id, posted_ts) VALUES (12345, 1664000000), (67890, 1700000000), (500, NULL);
             """
         )
     con.commit()

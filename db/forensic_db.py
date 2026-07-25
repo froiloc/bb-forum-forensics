@@ -398,10 +398,21 @@ class ForensicDb:
     def get_post_times(self, post_ids) -> "dict[int, int]":
         """
         Liefert die Inhaltszeit (Unix-Epoch, Sekunden, UTC) zu Forum-post_ids
-        aus fdb.uid_posts (Spalten: id, posted).
+        aus fdb.uid_posts (Spalten: post_id, posted_ts).
 
-        Beleg: uid_posts(id, posted) — tests/test_build388_vorlagen.py:353;
-        Tabelle dokumentiert in forensic_api/userinfo_static.py:12.
+        BELEG (Build 528, KORREKTUR): forensic_uid.db.schema.sql — das
+        vollstaendige DDL der forensic_<uid>.db, uebergeben am 2026-07-25,
+        bestaetigt durch zwei Sondenlaeufe in DEV und PROD.
+
+        WAS HIER BIS BUILD 527 STAND UND WARUM ES FALSCH WAR: Die Spalten waren
+        als 'id' und 'posted' angegeben, mit tests/test_build388_vorlagen.py:356
+        als Beleg. Diese Zeile ist eine TESTVORRICHTUNG, die die Tabelle SELBST
+        mit genau diesen Spalten anlegt — ein zirkulaerer Beleg. In den echten
+        Datenbanken heissen sie 'post_id' und 'posted_ts'. Die Abfrage schlug
+        deshalb in PROD IMMER fehl; die defensive Behandlung unten hat den
+        Fehlschlag abgefangen und ein leeres Mapping geliefert, so dass die
+        Inhaltszeit des Zeitstrahls seit Build 430 NIE funktioniert hat, ohne
+        dass es auffiel (Befund aus der Laufzeitmessung mc 2026-07-25).
 
         Rein lesend. DEFENSIV: existiert fdb.uid_posts in einer (aelteren)
         forensic_db nicht, wird ein LEERES Mapping geliefert und geloggt — der
@@ -426,12 +437,13 @@ class ForensicDb:
                 chunk = ids[start:start + chunk_size]
                 placeholders = ",".join("?" * len(chunk))
                 rows = self._con.execute(
-                    f"SELECT id, posted FROM fdb.uid_posts WHERE id IN ({placeholders})",
+                    f"SELECT post_id, posted_ts FROM fdb.uid_posts "
+                    f"WHERE post_id IN ({placeholders})",
                     chunk,
                 ).fetchall()
                 for row in rows:
-                    if row["posted"] is not None:
-                        out[int(row["id"])] = int(row["posted"])
+                    if row["posted_ts"] is not None:
+                        out[int(row["post_id"])] = int(row["posted_ts"])
         except sqlite3.OperationalError as exc:
             logger.warning(
                 "get_post_times: fdb.uid_posts nicht verfuegbar (%s) — leeres Mapping",

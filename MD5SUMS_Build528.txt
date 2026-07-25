@@ -1,0 +1,16 @@
+# MD5-Pruefsummen Build 528 (aiw_webserver, v0.8.528) — erzeugt 2026-07-25
+# Basis: Build 527 (origin/master 814f9da).
+# SCHEMA-KORREKTUR: uid_posts(post_id, posted_ts) statt (id, posted);
+# +uid_shares.posted_ts und uid_downloads.time_ts als Tathandlungen;
+# +Plausibilitaetsrahmen. Beleg: forensic_uid.db.schema.sql (mc 2026-07-25).
+# tools/diag_limitation_laufzeit.py ist die Sonde v4.
+#
+6ab8918451f5ef76eec2347148684d52  build.json
+a58a8ce0601b0edc02a8e9e13dc987ef  management/deadlines/limitation_repo.py
+a768b4e255b5c10f371f1e9dfb19e571  db/forensic_db.py
+085ec6f9768dc63867fc54c9be080539  management/migrate_templates_full_templates.py
+97f65168ae37b61571ed05ef58966172  tests/test_management_limitation_api.py
+85b9314edc1e255c4da4a00bbe1fea91  tests/test_build388_vorlagen.py
+6f33f11c8df14b2aadecd4bb8c01cbe4  tests/test_build430_content_ts.py
+3183a384dd8a42686fe3bae509e095f2  tests/test_build432_pm_content_ts.py
+39daef35c3256dee5e173e18acd0e72f  tools/diag_limitation_laufzeit.py

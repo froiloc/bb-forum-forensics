@@ -40,8 +40,9 @@ def _make_fdb(with_pms=True):
             scrape_context TEXT DEFAULT 'user', method TEXT DEFAULT 'GET'
         );
         CREATE TABLE page_aliases (url_raw TEXT PRIMARY KEY, page_id INTEGER);
-        CREATE TABLE uid_posts (id INTEGER, posted INTEGER);
-        INSERT INTO uid_posts VALUES (12345, 1664000000);
+        -- Build 528: ECHTES Schema (forensic_uid.db.schema.sql).
+        CREATE TABLE uid_posts (post_id INTEGER PRIMARY KEY, topic_id INTEGER, forum_id INTEGER, posted_ts INTEGER, active INTEGER DEFAULT 1, is_topic_starter INTEGER DEFAULT 0);
+        INSERT INTO uid_posts (post_id, posted_ts) VALUES (12345, 1664000000);
         """
     )
     if with_pms:

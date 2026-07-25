@@ -127,9 +127,15 @@ _NEW_QUERIES = [
         # belegbaren Aktivitaetszeitraum, und ein erfundener waere schlimmer
         # als 'unbekannt'.
         "sql_query": (
-            "SELECT CASE WHEN (SELECT MIN(posted) FROM uid_posts) IS NULL "
+            # Build 528 (KORREKTUR): 'posted' -> 'posted_ts'. Die Spalte
+            # 'posted' existiert in den echten forensic_<uid>.db NICHT; das DDL
+            # (forensic_uid.db.schema.sql, uebergeben 2026-07-25) fuehrt
+            # 'posted_ts'. Bis Build 527 schlug diese Query in PROD IMMER fehl,
+            # der Platzhalter blieb also unaufgeloest und fiel auf seinen
+            # Default 'unbekannt' — ohne dass jemand den Grund erfuhr.
+            "SELECT CASE WHEN (SELECT MIN(posted_ts) FROM uid_posts) IS NULL "
             "THEN '' ELSE "
-            "strftime('%d.%m.%Y', datetime((SELECT MIN(posted) FROM uid_posts), 'unixepoch')) "
+            "strftime('%d.%m.%Y', datetime((SELECT MIN(posted_ts) FROM uid_posts), 'unixepoch')) "
             "|| ' bis ' || "
             "strftime('%d.%m.%Y', datetime((SELECT last_active FROM uid_profile "
             "WHERE id = :uid), 'unixepoch')) END"

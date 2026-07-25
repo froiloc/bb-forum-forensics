@@ -82,7 +82,7 @@ from management.deadlines.limitation_repo import (                  # noqa: E402
     BEFUNDE_MIT_TATZEIT,
     DATENLAGE_BEFUNDE,
     HINWEIS_FETCHED_AT,
-    HINWEIS_SHARES,
+    HINWEIS_QUELLEN,
     ZEITQUELLEN,
     LimitationRepo,
     read_tatzeit,
@@ -124,32 +124,70 @@ def _ts(tag: str) -> int:
                                 tzinfo=timezone.utc).timestamp())
 
 
-def _forensic_db(pfad: Path, *, posts=None, pms=None,
-                 mit_posts_tabelle=True, mit_pms_tabelle=False,
-                 posts_spalte="posted", pms_spalte="posted_ts") -> None:
+def _forensic_db(pfad: Path, *, posts=None, pms=None, shares=None,
+                 downloads=None, mit_posts_tabelle=True,
+                 mit_pms_tabelle=False, posts_spalte="posted_ts",
+                 pms_spalte="posted_ts") -> None:
     """
-    Baut eine minimale forensic_<uid>.db.
+    Baut eine minimale forensic_<uid>.db mit dem ECHTEN Schema.
 
-    Die Tabellen tragen genau die Spalten, die der Code liest — Beleg fuer die
-    DDL: tests/test_build430_content_ts.py:51 (uid_posts) und
-    tests/test_build432_pm_content_ts.py:50 (uid_pms_posts).
+    BELEG (Build 528): forensic_uid.db.schema.sql — das vollstaendige DDL,
+    uebergeben am 2026-07-25, bestaetigt durch Sondenlaeufe in DEV und PROD.
+
+    BIS BUILD 527 STAND HIER 'uid_posts(id, posted)' — eine Vorrichtung, die
+    die Welt baute, die der Code erwartete. Dieser Test war deshalb gruen,
+    waehrend das Feature in PROD nie lief. Die Spaltennamen dieser Vorrichtung
+    stammen jetzt aus dem DDL und nicht mehr aus dem Code, den sie pruefen
+    soll.
+
+    posts_spalte ist einstellbar, um den Zustand VOR der Korrektur
+    nachzustellen (Tabelle da, Spalte anders benannt).
     """
     con = sqlite3.connect(str(pfad))
     try:
         if mit_posts_tabelle:
-            # posts_spalte ist einstellbar, um den PROD-Befund nachzustellen:
-            # die Tabelle uid_posts EXISTIERT, traegt aber KEINE Spalte
-            # 'posted' (Messung 2026-07-25, 162 von 162 Dateien).
-            con.execute("CREATE TABLE uid_posts (id INTEGER, %s INTEGER)"
-                        % posts_spalte)
-            for i, p in enumerate(posts or []):
-                con.execute("INSERT INTO uid_posts VALUES (?,?)", (i + 1, p))
+            con.execute(
+                "CREATE TABLE uid_posts (post_id INTEGER PRIMARY KEY, "
+                "topic_id INTEGER, forum_id INTEGER, %s INTEGER, "
+                "active INTEGER DEFAULT 1, is_topic_starter INTEGER DEFAULT 0)"
+                % posts_spalte)
+            for i, t in enumerate(posts or []):
+                con.execute(
+                    "INSERT INTO uid_posts (post_id, topic_id, forum_id, %s) "
+                    "VALUES (?,?,?,?)" % posts_spalte, (i + 1, 10, 20, t))
         if mit_pms_tabelle:
-            con.execute("CREATE TABLE uid_pms_posts "
-                        "(pm_post_id INTEGER, %s INTEGER)" % pms_spalte)
-            for i, p in enumerate(pms or []):
-                con.execute("INSERT INTO uid_pms_posts VALUES (?,?)",
-                            (500 + i, p))
+            con.execute(
+                "CREATE TABLE uid_pms_posts (pm_post_id INTEGER PRIMARY KEY, "
+                "pm_topic_id INTEGER, topic_subject TEXT, %s INTEGER, "
+                "active INTEGER DEFAULT 1, is_topic_starter INTEGER DEFAULT 0)"
+                % pms_spalte)
+            for i, t in enumerate(pms or []):
+                con.execute(
+                    "INSERT INTO uid_pms_posts (pm_post_id, pm_topic_id, %s) "
+                    "VALUES (?,?,?)" % pms_spalte, (500 + i, 7, t))
+        if shares is not None:
+            # Build 528: Teilungsakte sind eine Tathandlungs-Quelle
+            # (Verbreiten, § 184b Abs. 1 S. 1 Nr. 1).
+            con.execute(
+                "CREATE TABLE uid_shares (id INTEGER PRIMARY KEY, "
+                "source_table TEXT, source_id INTEGER, post_id INTEGER, "
+                "topic_id INTEGER, posted_ts INTEGER, filename TEXT)")
+            for i, t in enumerate(shares):
+                con.execute(
+                    "INSERT INTO uid_shares (id, source_table, source_id, "
+                    "post_id, posted_ts) VALUES (?,?,?,?,?)",
+                    (i + 1, "t", 1, 900 + i, t))
+        if downloads is not None:
+            # Build 528: Abrufe/Downloads (Sich-Verschaffen, § 184b Abs. 3).
+            con.execute(
+                "CREATE TABLE uid_downloads (id INTEGER PRIMARY KEY, "
+                "post_id INTEGER, cat_id INTEGER, group_id INTEGER, "
+                "time_ts INTEGER, post_subject TEXT)")
+            for i, t in enumerate(downloads):
+                con.execute(
+                    "INSERT INTO uid_downloads (id, post_id, cat_id, "
+                    "group_id, time_ts) VALUES (?,?,?,?,?)",
+                    (i + 1, 800 + i, 1, 1, t))
         con.commit()
     finally:
         con.close()
@@ -174,7 +212,7 @@ class TestReadTatzeit(unittest.TestCase):
         self.assertEqual(t.frueheste_ts, _ts("2021-08-01"))
         self.assertEqual(t.spaeteste_ts, _ts("2024-02-02"))
         self.assertEqual(set(t.quellen),
-                         {"uid_posts.posted", "uid_pms_posts.posted_ts"})
+                         {"uid_posts.posted_ts", "uid_pms_posts.posted_ts"})
 
     def test_LM02_nur_posts(self):
         p = self.dir / "forensic_12.db"
@@ -182,7 +220,7 @@ class TestReadTatzeit(unittest.TestCase):
         t = read_tatzeit(p, 12, "nutzer12")
         self.assertEqual(t.befund, "belegt")
         self.assertEqual(t.spaeteste_ts, _ts("2022-03-14"))
-        self.assertEqual(t.quellen, ("uid_posts.posted",))
+        self.assertEqual(t.quellen, ("uid_posts.posted_ts",))
 
     def test_LM03_datei_fehlt(self):
         t = read_tatzeit(self.dir / "forensic_13.db", 13, "nutzer13")
@@ -223,13 +261,80 @@ class TestReadTatzeit(unittest.TestCase):
 
     def test_LM07_zeitquellen_sind_belegt_und_abgeschlossen(self):
         spalten = {"%s.%s" % (t, s) for t, s, _b in ZEITQUELLEN}
-        self.assertEqual(spalten,
-                         {"uid_posts.posted", "uid_pms_posts.posted_ts"})
+        self.assertEqual(spalten, {"uid_posts.posted_ts",
+                                   "uid_pms_posts.posted_ts",
+                                   "uid_shares.posted_ts",
+                                   "uid_downloads.time_ts"})
         # pages.fetched_at ist der SICHERUNGSZEITPUNKT und darf nie als Tatzeit
         # dienen — eine Verwechslung wuerde jede Frist um Jahre verschieben.
         self.assertNotIn("pages.fetched_at", spalten)
+        # Und die Belege verweisen auf das DDL, NICHT auf eine Testvorrichtung.
+        for _t, _sp, beleg in ZEITQUELLEN:
+            self.assertIn("forensic_uid.db.schema.sql", beleg)
+            self.assertNotIn("test_build", beleg)
         for _t, _s, beleg in ZEITQUELLEN:
             self.assertTrue(beleg.strip())
+
+
+class TestBuild528Quellen(unittest.TestCase):
+    """
+    LM26-LM28 — die Korrekturen aus dem Schema-Beleg (Build 528).
+
+    Anlass: mc hat am 2026-07-25 das vollstaendige DDL uebergeben
+    (forensic_uid.db.schema.sql). Es belegt die echten Spaltennamen UND zwei
+    Tathandlungs-Quellen, die Build 524 nicht kannte.
+    """
+
+    def setUp(self):
+        self.dir = Path(tempfile.mkdtemp())
+
+    def tearDown(self):
+        shutil.rmtree(self.dir, ignore_errors=True)
+
+    def test_LM26_teilung_und_download_sind_tathandlungen(self):
+        """
+        Ein Teilungsakt bzw. ein Download NACH dem letzten Beitrag verschiebt
+        den Fristbeginn nach hinten. Vor Build 528 fielen beide unter den
+        Tisch, und der Fristbeginn lag damit ZU FRUEH.
+        """
+        p = self.dir / "forensic_41.db"
+        _forensic_db(p, posts=[_ts("2021-03-01")],
+                     shares=[_ts("2023-06-15")],
+                     downloads=[_ts("2024-02-10")])
+        t = read_tatzeit(p, 41, "nutzer41")
+        self.assertEqual(t.befund, "belegt")
+        # Der Download ist die spaeteste Handlung -> er bestimmt den Beginn.
+        self.assertEqual(t.spaeteste_ts, _ts("2024-02-10"))
+        self.assertEqual(t.frueheste_ts, _ts("2021-03-01"))
+        self.assertEqual(set(t.quellen),
+                         {"uid_posts.posted_ts", "uid_shares.posted_ts",
+                          "uid_downloads.time_ts"})
+
+    def test_LM27_unplausible_werte_werden_verworfen_und_gezaehlt(self):
+        """
+        Epoch 0 ('unbekannt') und ein Wert weit in der Zukunft duerfen keine
+        Frist erzeugen — sie werden aber GEZAEHLT, nicht verschwiegen.
+        """
+        p = self.dir / "forensic_42.db"
+        _forensic_db(p, posts=[0, _ts("2022-05-05"), 4102444800])  # 0 und 2100
+        t = read_tatzeit(p, 42, "nutzer42")
+        self.assertEqual(t.befund, "belegt")
+        # Nur der plausible Wert bildet die Spanne.
+        self.assertEqual(t.frueheste_ts, _ts("2022-05-05"))
+        self.assertEqual(t.spaeteste_ts, _ts("2022-05-05"))
+        # Und die beiden anderen sind nicht verschwunden.
+        self.assertEqual(t.unplausible_werte, 2)
+
+    def test_LM28_nur_unplausible_werte_sind_kein_tatzeitpunkt(self):
+        """Ein Konto, dessen einzige Zeitwerte Epoch 0 sind, hat keine Tatzeit."""
+        p = self.dir / "forensic_43.db"
+        _forensic_db(p, posts=[0, 0])
+        t = read_tatzeit(p, 43, "nutzer43")
+        self.assertEqual(t.befund, "ohne_tatzeit")
+        self.assertIsNone(t.spaeteste_ts)
+        self.assertEqual(t.unplausible_werte, 2)
+        # Der Text nennt die Zahl — sonst saehe es wie ein leeres Konto aus.
+        self.assertIn("ausserhalb", t.detail)
 
 
 class TestBuild527Befunde(unittest.TestCase):
@@ -250,7 +355,7 @@ class TestBuild527Befunde(unittest.TestCase):
     def test_LM19_zeitspalte_unlesbar_statt_falscher_aussage(self):
         p = self.dir / "forensic_21.db"
         # Tabelle da, Spalte HEISST ANDERS -> der Zugriff scheitert.
-        _forensic_db(p, posts=[1647216000], posts_spalte="post_time")
+        _forensic_db(p, posts=[1647216000], posts_spalte="posted")
         t = read_tatzeit(p, 21, "nutzer21")
         self.assertEqual(t.befund, "zeitspalte_unlesbar")
         self.assertIsNone(t.spaeteste_ts)
@@ -266,7 +371,7 @@ class TestBuild527Befunde(unittest.TestCase):
         p = self.dir / "forensic_22.db"
         # uid_posts unbrauchbar, uid_pms_posts liefert einen Wert — genau die
         # Lage, die in der DEV-Messung 18 Faelle als 'belegt' ausgewiesen hat.
-        _forensic_db(p, posts=[1647216000], posts_spalte="post_time",
+        _forensic_db(p, posts=[1647216000], posts_spalte="posted",
                      pms=[1700000000], mit_pms_tabelle=True)
         t = read_tatzeit(p, 22, "nutzer22")
         self.assertEqual(t.befund, "belegt_unvollstaendig")
@@ -299,7 +404,7 @@ class TestBuild527Befunde(unittest.TestCase):
         erzeugt.add(read_tatzeit(p1, 31, "a").befund)
         # belegt_unvollstaendig
         p2 = self.dir / "forensic_32.db"
-        _forensic_db(p2, posts=[1], posts_spalte="x", pms=[1700000000],
+        _forensic_db(p2, posts=[1], posts_spalte="posted", pms=[1700000000],
                      mit_pms_tabelle=True)
         erzeugt.add(read_tatzeit(p2, 32, "b").befund)
         # ohne_tatzeit
@@ -308,7 +413,7 @@ class TestBuild527Befunde(unittest.TestCase):
         erzeugt.add(read_tatzeit(p3, 33, "c").befund)
         # zeitspalte_unlesbar
         p4 = self.dir / "forensic_34.db"
-        _forensic_db(p4, posts=[1], posts_spalte="x")
+        _forensic_db(p4, posts=[1], posts_spalte="posted")
         erzeugt.add(read_tatzeit(p4, 34, "d").befund)
         # ohne_zeittabelle
         p5 = self.dir / "forensic_35.db"
@@ -468,9 +573,14 @@ class TestLimitationRepoAndApi(unittest.TestCase):
             r = repo.compute(params=self.params, now_ts=_ts("2026-07-25"))
         finally:
             con.close()
-        self.assertIn(HINWEIS_SHARES, r.hinweise)
+        self.assertIn(HINWEIS_QUELLEN, r.hinweise)
         self.assertIn(HINWEIS_FETCHED_AT, r.hinweise)
-        self.assertTrue(any("share_id" in h for h in r.hinweise))
+        # Build 528: der Hinweis nennt jetzt ALLE VIER Quellen — und
+        # dass Teilungsakte und Downloads seit 528 dabei sind.
+        self.assertTrue(any("uid_shares.posted_ts" in h
+                            for h in r.hinweise))
+        self.assertTrue(any("uid_downloads.time_ts" in h
+                            for h in r.hinweise))
         # Und die Vorbehalte des Parametersatzes ebenso.
         self.assertGreaterEqual(len(r.vorbehalte), 4)
 
@@ -535,9 +645,9 @@ class TestLimitationRepoAndApi(unittest.TestCase):
         """Ein bei ALLEN Faellen gleicher Fehler ist ein Schema-Befund."""
         # Zwei Faelle mit falscher Spalte, einer davon mit lesbarer PN-Quelle.
         _forensic_db(self.forensic / "forensic_105.db",
-                     posts=[_ts("2022-01-01")], posts_spalte="post_time")
+                     posts=[_ts("2022-01-01")], posts_spalte="posted")
         _forensic_db(self.forensic / "forensic_106.db",
-                     posts=[_ts("2022-01-01")], posts_spalte="post_time",
+                     posts=[_ts("2022-01-01")], posts_spalte="posted",
                      pms=[_ts("2023-05-05")], mit_pms_tabelle=True)
         cases = CasesRepo(self.con, self.writer)
         cases.create_case(105, "spalte_fehlt", actor_id=1)
@@ -565,7 +675,7 @@ class TestLimitationRepoAndApi(unittest.TestCase):
         gehoert deshalb in die ANTWORT — und dort an die erste Stelle.
         """
         _forensic_db(self.forensic / "forensic_107.db",
-                     posts=[_ts("2022-01-01")], posts_spalte="post_time")
+                     posts=[_ts("2022-01-01")], posts_spalte="posted")
         CasesRepo(self.con, self.writer).create_case(107, "x", actor_id=1)
 
         con, repo = self._repo()
@@ -576,7 +686,7 @@ class TestLimitationRepoAndApi(unittest.TestCase):
         self.assertIn("DATENLAGE EINGESCHRAENKT", r.hinweise[0])
         self.assertIn("no such column", r.hinweise[0])
         # Die bestehenden Hinweise bleiben erhalten (nichts wird verdraengt).
-        self.assertIn(HINWEIS_SHARES, r.hinweise)
+        self.assertIn(HINWEIS_QUELLEN, r.hinweise)
         self.assertIn(HINWEIS_FETCHED_AT, r.hinweise)
         # Ohne Ausfall steht der Hinweis NICHT da (er soll etwas bedeuten).
         con2, repo2 = self._repo()
@@ -590,7 +700,7 @@ class TestLimitationRepoAndApi(unittest.TestCase):
     def test_LM24_eingeschraenktes_steht_vor_vollstaendigem(self):
         """Bei gleicher Ampel zuerst die Zeile, deren Zahl unter Vorbehalt steht."""
         _forensic_db(self.forensic / "forensic_108.db",
-                     posts=[_ts("2024-08-01")], posts_spalte="post_time",
+                     posts=[_ts("2024-08-01")], posts_spalte="posted",
                      pms=[_ts("2024-08-01")], mit_pms_tabelle=True)
         CasesRepo(self.con, self.writer).create_case(108, "teilweise",
                                                     actor_id=1)

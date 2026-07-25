@@ -82,7 +82,7 @@
 #   file:...?mode=ro geoeffnet (Muster management/reports/reports_repo.py:122).
 #   Der Migrationsvorbehalt ab 01.07.2026 ist NICHT beruehrt.
 #
-# Version: v0.8.527 · Build: 527 · 2026-07-25
+# Version: v0.8.528 · Build: 528 · 2026-07-25
 # =============================================================================
 
 from __future__ import annotations
@@ -103,22 +103,72 @@ from management.deadlines.limitation_params import LimitationParams
 logger = logging.getLogger(__name__)
 
 #: Die ausgewerteten Zeitquellen: (Tabelle, Spalte, Belegqualitaet).
-#  Als Konstante, damit ein Test sie gegen den Modulkopf halten kann und eine
-#  spaetere Ergaenzung nicht unbemerkt eine neue Quelle einfuehrt.
+#
+#  BELEG (Build 528): das VOLLSTAENDIGE DDL der forensic_<uid>.db, von mc am
+#  2026-07-25 als 'forensic_uid.db.schema.sql' uebergeben, bestaetigt durch zwei
+#  unabhaengige Sondenlaeufe (DEV und PROD, je 7 Dateien,
+#  tools/diag_limitation_laufzeit.py). DAS IST EIN BELEG AUS DEN ECHTEN DATEN —
+#  im Unterschied zu Build 524, das sich auf eine TESTVORRICHTUNG gestuetzt hat
+#  (tests/test_build388_vorlagen.py legte 'uid_posts(id, posted)' selbst an; die
+#  Spalten heissen in Wirklichkeit 'post_id' und 'posted_ts').
+#
+#  VIER TATHANDLUNGS-QUELLEN, nicht mehr zwei. Die beiden neuen sind fuer die
+#  verfahrensgegenstaendlichen Tatbestaende die AUSSAGEKRAEFTIGSTEN:
+#    * uid_shares.posted_ts    — Teilen einer Datei: die Handlung des
+#                                Verbreitens (§ 184b Abs. 1 S. 1 Nr. 1).
+#    * uid_downloads.time_ts   — Abruf/Download: die Handlung des
+#                                Sich-Verschaffens bzw. des Abrufs
+#                                (§ 184b Abs. 1 S. 1 Nr. 2, Abs. 3).
+#  Beide fehlten in Build 524. Ein Fall, dessen spaeteste Handlung ein Download
+#  oder ein Teilungsakt war, bekam dort einen ZU FRUEHEN Fristbeginn.
 ZEITQUELLEN: Tuple[Tuple[str, str, str], ...] = (
-    ("uid_posts", "posted", "belegt (db/forensic_db.py:401-434)"),
+    ("uid_posts", "posted_ts",
+     "belegt: forensic_uid.db.schema.sql (Tabelle uid_posts); Sonde DEV/PROD "
+     "2026-07-25 — 7562 Werte, 2019-02-28 .. 2024-07-06"),
     ("uid_pms_posts", "posted_ts",
-     "schwaecherer Beleg — Spaltenname aus Entwicklerangabe 2026-07-15 "
-     "(db/forensic_db.py:447-480)"),
+     "belegt: forensic_uid.db.schema.sql (Tabelle uid_pms_posts); Sonde "
+     "DEV/PROD 2026-07-25 — 8813 Werte, 2019-12-26 .. 2024-07-06"),
+    ("uid_shares", "posted_ts",
+     "belegt: forensic_uid.db.schema.sql (Tabelle uid_shares, Index "
+     "uid_shares_ts_idx); Sonde DEV/PROD 2026-07-25 — 2023-01-08 .. 2024-05-12"),
+    ("uid_downloads", "time_ts",
+     "belegt: forensic_uid.db.schema.sql (Tabelle uid_downloads, Index "
+     "uid_dl_ts_idx); Sonde DEV/PROD 2026-07-25 — 2024-02-10 .. 2024-02-16"),
 )
 
-#: Der Hinweis auf die bekannte Datenluecke. Faehrt in JEDER Antwort mit.
-HINWEIS_SHARES = (
-    "Teilungsakte (share_id) gehen NICHT in den Fristbeginn ein: fuer geteilte "
-    "Dateien existiert in den ausgewerteten Datenbanken kein Zeitstempel, nur "
-    "der Zaehler uid_stats.stat_key='shares_total'. Ist eine Teilung die "
-    "spaeteste Tathandlung, ist der hier ausgewiesene Fristbeginn ZU FRUEH "
-    "angesetzt — die Frist waere also laenger, nicht kuerzer."
+#: Plausibilitaetsrahmen fuer einen Tatzeitpunkt (Unix-Sekunden).
+#
+#  WARUM ES IHN GIBT: Ein INTEGER ist noch kein Zeitstempel. Die Sonde hat am
+#  2026-07-25 zwei Gegenbeispiele geliefert — 'uid_profile.id' faellt
+#  rechnerisch in den Epoch-Bereich (Forum-Benutzer-IDs liegen um 1,0 Mrd.), und
+#  'uid_profile.registered' enthaelt Werte von 1970-01-01, also Epoch 0 als
+#  Platzhalter fuer 'unbekannt'. Ohne Rahmen entstuende daraus eine Frist, die
+#  plausibel AUSSIEHT.
+#
+#  DIE GRENZEN SIND KEINE ERFINDUNG: mc am 2026-07-25 — "Das Forum war zwischen
+#  2019 und 2024 aktiv." Der Rahmen liegt grosszuegig darum (2018-01-01 bis
+#  2027-01-01): er soll GROBE Fehlgriffe abfangen, nicht Feinheiten aussortieren.
+#
+#  KEIN STILLES VERWERFEN: Werte ausserhalb des Rahmens werden GEZAEHLT und in
+#  der Antwort ausgewiesen. Ein weggelassener Wert, von dem niemand erfaehrt,
+#  waere genau der Fehler, den dieser Rahmen verhindern soll.
+PLAUSIBEL_VON = 1514764800     # 2018-01-01T00:00:00Z
+PLAUSIBEL_BIS = 1798761600     # 2027-01-01T00:00:00Z
+
+#: KORREKTUR EINER FALSCHEN AUSSAGE AUS BUILD 524 (Build 528).
+#
+#  Dort stand, fuer geteilte Dateien (share_id) existiere KEIN Zeitstempel. DAS
+#  WAR FALSCH. Die Aussage beruhte auf einer Suche im QUELLTEXT dieses Projekts
+#  — dort wird kein solcher Wert benutzt — und ich habe daraus geschlossen, es
+#  gebe ihn nicht. Das ist ein Fehlschluss von 'der Code verwendet es nicht' auf
+#  'die Daten haben es nicht'. uid_shares hat eine Spalte 'posted_ts' MIT
+#  eigenem Index; sie ist seit Build 528 eine Tathandlungs-Quelle.
+HINWEIS_QUELLEN = (
+    "Als Tathandlung gewertet werden: Beitraege (uid_posts.posted_ts), private "
+    "Nachrichten (uid_pms_posts.posted_ts), Teilungsakte "
+    "(uid_shares.posted_ts) und Abrufe/Downloads (uid_downloads.time_ts). "
+    "Teilungsakte und Downloads sind seit Build 528 erfasst; in Build 524 "
+    "fehlten sie, weshalb der Fristbeginn dort zu frueh angesetzt sein konnte."
 )
 
 #: Der Hinweis auf den bewusst NICHT verwendeten Sicherungszeitpunkt.
@@ -154,6 +204,10 @@ class CaseTatzeit:
     # SQLite-Grund. Das Feld ist auch bei 'belegt_unvollstaendig' gefuellt —
     # gerade dort ist es die eigentliche Information.
     quellen_fehler: Tuple[str, ...] = ()
+    # Build 528: Zahl der Zeitwerte AUSSERHALB des Plausibilitaetsrahmens. Sie
+    # gehen nicht in die Spanne ein, verschwinden aber auch nicht: eine hohe
+    # Zahl deutet darauf, dass eine Spalte etwas anderes fuehrt als eine Zeit.
+    unplausible_werte: int = 0
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -163,6 +217,7 @@ class CaseTatzeit:
             "quellen": list(self.quellen),
             "befund": self.befund, "detail": self.detail,
             "quellen_fehler": list(self.quellen_fehler),
+            "unplausible_werte": self.unplausible_werte,
         }
 
 
@@ -210,6 +265,11 @@ class LimitationReport:
     # Fehler' ist eine Schema-Aussage, '1 Fall' waere eine Datei-Aussage.
     quellenfehler: Dict[str, int] = field(default_factory=dict)
     faelle_mit_quellenfehler: int = 0
+    # Build 528: Summe der Zeitwerte ausserhalb des Plausibilitaetsrahmens und
+    # die Zahl der betroffenen Faelle. Systematisch hohe Werte sind ein Hinweis
+    # darauf, dass eine Spalte etwas anderes fuehrt als eine Zeit.
+    unplausible_werte: int = 0
+    faelle_mit_unplausiblen: int = 0
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -229,9 +289,18 @@ class LimitationReport:
             "datenlage": dict(self.datenlage),
             "quellenfehler": dict(self.quellenfehler),
             "faelle_mit_quellenfehler": self.faelle_mit_quellenfehler,
+            "unplausible_werte": self.unplausible_werte,
+            "faelle_mit_unplausiblen": self.faelle_mit_unplausiblen,
+            "plausibel_von": PLAUSIBEL_VON, "plausibel_bis": PLAUSIBEL_BIS,
             "datenlage_befunde": list(DATENLAGE_BEFUNDE),
             "rows": [r.to_dict() for r in self.rows],
         }
+
+
+def _tag_iso(ts: int) -> str:
+    """Unix-Sekunden -> ISO-Tag (UTC). Nur fuer Meldungstexte."""
+    from datetime import datetime, timezone
+    return datetime.fromtimestamp(int(ts), tz=timezone.utc).date().isoformat()
 
 
 def _table_exists(con: sqlite3.Connection, name: str) -> bool:
@@ -280,11 +349,24 @@ def read_tatzeit(path: Path, subject_id: int, username: str) -> CaseTatzeit:
         spaeteste: Optional[int] = None
         quellen: List[str] = []
         fehler: List[str] = []
+        unplausibel = 0
         for tabelle, spalte, _beleg in vorhanden:
             try:
+                # EINE Abfrage, ein Tabellendurchlauf: Spanne der PLAUSIBLEN
+                # Werte UND die Zahl der verworfenen. Der Filter steht in SQL
+                # und nicht in Python, damit auch bei Millionen Zeilen nur zwei
+                # Zahlen zurueckkommen; die verworfenen werden GEZAEHLT und
+                # spaeter ausgewiesen (kein stilles Verwerfen).
                 row = con.execute(
-                    "SELECT MIN(%s), MAX(%s) FROM %s WHERE %s IS NOT NULL"
-                    % (spalte, spalte, tabelle, spalte)).fetchone()
+                    "SELECT MIN(CASE WHEN %s BETWEEN ? AND ? THEN %s END), "
+                    "       MAX(CASE WHEN %s BETWEEN ? AND ? THEN %s END), "
+                    "       SUM(CASE WHEN %s IS NOT NULL "
+                    "                AND (%s < ? OR %s > ?) THEN 1 ELSE 0 END) "
+                    "FROM %s"
+                    % (spalte, spalte, spalte, spalte, spalte, spalte, spalte,
+                       tabelle),
+                    (PLAUSIBEL_VON, PLAUSIBEL_BIS, PLAUSIBEL_VON,
+                     PLAUSIBEL_BIS, PLAUSIBEL_VON, PLAUSIBEL_BIS)).fetchone()
             except sqlite3.Error as exc:
                 # EINE unlesbare Quelle darf die andere nicht mitreissen — aber
                 # sie darf auch nicht in einer Protokollzeile verschwinden. Der
@@ -295,7 +377,13 @@ def read_tatzeit(path: Path, subject_id: int, username: str) -> CaseTatzeit:
                 logger.debug("limitation: %s.%s in %s nicht lesbar (%s)",
                              tabelle, spalte, path.name, exc)
                 continue
+            if row is not None and row[2]:
+                unplausibel += int(row[2])
             if row is None or row[0] is None:
+                # Kein plausibler Wert in dieser Quelle. Das ist KEIN Fehler der
+                # Quelle — sie kann schlicht leer sein — und wird deshalb hier
+                # nicht vermerkt; die Zahl der unplausiblen Werte steht bereits
+                # in 'unplausibel'.
                 continue
             lo, hi = int(row[0]), int(row[1])
             frueheste = lo if frueheste is None else min(frueheste, lo)
@@ -311,13 +399,17 @@ def read_tatzeit(path: Path, subject_id: int, username: str) -> CaseTatzeit:
                     befund="zeitspalte_unlesbar",
                     detail="KEINE Zeitquelle lesbar — es ist damit UNBEKANNT, "
                            "ob Zeitstempel vorliegen: %s" % "; ".join(fehler),
-                    quellen_fehler=tuple(fehler))
+                    quellen_fehler=tuple(fehler),
+                    unplausible_werte=unplausibel)
             return CaseTatzeit(
                 subject_id=subject_id, username=username, frueheste_ts=None,
                 spaeteste_ts=None, quellen=(), befund="ohne_tatzeit",
                 detail="Zeittabelle(n) und Spalten lesbar (%s), aber kein "
-                       "einziger Zeitstempel gesetzt"
-                       % ", ".join(q[0] for q in vorhanden))
+                       "einziger Zeitstempel im Plausibilitaetsrahmen "
+                       "(%d Wert(e) lagen ausserhalb und sind nicht "
+                       "eingegangen)"
+                       % (", ".join(q[0] for q in vorhanden), unplausibel),
+                unplausible_werte=unplausibel)
 
         if fehler:
             # DER GEFAEHRLICHE FALL: es gibt einen Wert, aber nicht aus allen
@@ -331,13 +423,15 @@ def read_tatzeit(path: Path, subject_id: int, username: str) -> CaseTatzeit:
                        "Fristbeginn zu frueh angesetzt und die Frist zu kurz "
                        "gerechnet — der Fall erscheint dringender als er ist."
                        % (", ".join(quellen), "; ".join(fehler)),
-                quellen_fehler=tuple(fehler))
+                quellen_fehler=tuple(fehler),
+                unplausible_werte=unplausibel)
 
         return CaseTatzeit(
             subject_id=subject_id, username=username, frueheste_ts=frueheste,
             spaeteste_ts=spaeteste, quellen=tuple(quellen), befund="belegt",
             detail="Fristbeginn = spaeteste belegte Tathandlung (§ 78a StGB); "
-                   "frueheste Handlung zum Vergleich mitgefuehrt")
+                   "frueheste Handlung zum Vergleich mitgefuehrt",
+            unplausible_werte=unplausibel)
     except sqlite3.Error as exc:
         return CaseTatzeit(
             subject_id=subject_id, username=username, frueheste_ts=None,
@@ -397,11 +491,16 @@ class LimitationRepo:
         datenlage: Dict[str, int] = {}
         quellenfehler: Dict[str, int] = {}
         mit_fehler = 0
+        unplausibel_gesamt = 0
+        mit_unplausiblen = 0
 
         for subject_id, username in self._cases(subject_ids):
             pfad = self._forensic / ("forensic_%d.db" % subject_id)
             tatzeit = read_tatzeit(pfad, subject_id, username)
             datenlage[tatzeit.befund] = datenlage.get(tatzeit.befund, 0) + 1
+            if tatzeit.unplausible_werte:
+                unplausibel_gesamt += tatzeit.unplausible_werte
+                mit_unplausiblen += 1
             if tatzeit.quellen_fehler:
                 mit_fehler += 1
                 for eintrag in tatzeit.quellen_fehler:
@@ -439,7 +538,16 @@ class LimitationRepo:
         # Der Lesefehler gehoert in die HINWEISE der Antwort, nicht nur ins
         # Protokoll: die Sicht und der Export zeigen die Hinweise, das
         # Serverprotokoll sieht niemand, der die Liste liest.
-        hinweise = [HINWEIS_SHARES, HINWEIS_FETCHED_AT]
+        hinweise = [HINWEIS_QUELLEN, HINWEIS_FETCHED_AT]
+        if unplausibel_gesamt:
+            hinweise.insert(0,
+                "%d Zeitwert(e) in %d Fall/Faellen lagen AUSSERHALB des "
+                "Plausibilitaetsrahmens (%s bis %s) und sind nicht in die "
+                "Fristrechnung eingegangen. Sie sind damit nicht verschwiegen, "
+                "aber auch nicht verwertet — eine hohe Zahl deutet darauf, dass "
+                "eine Spalte etwas anderes fuehrt als eine Zeit."
+                % (unplausibel_gesamt, mit_unplausiblen,
+                   _tag_iso(PLAUSIBEL_VON), _tag_iso(PLAUSIBEL_BIS)))
         if quellenfehler:
             hinweise.insert(0,
                 "ACHTUNG — DATENLAGE EINGESCHRAENKT: bei %d von %d Faellen war "
@@ -470,4 +578,6 @@ class LimitationRepo:
             hinweise=hinweise,
             faelle_gesamt=len(rows), zaehler=zaehler, datenlage=datenlage,
             rows=tuple(rows), quellenfehler=quellenfehler,
-            faelle_mit_quellenfehler=mit_fehler)
+            faelle_mit_quellenfehler=mit_fehler,
+            unplausible_werte=unplausibel_gesamt,
+            faelle_mit_unplausiblen=mit_unplausiblen)
