@@ -35,7 +35,29 @@
 #
 # KEIN DATENBANKZUGRIFF, KEINE UHR. Der Pfad ist injizierbar -> testbar.
 #
-# Version: v0.8.523 · Build: 523 · 2026-07-25
+# BUILD 529 — SCHEMA-FASSUNG 2. Zwei Pflichtfelder je Tatbestand kommen hinzu:
+#
+#   anker_registrierung_zulaessig (bool) — Darf fuer DIESEN Tatbestand das
+#     Registrierungsdatum als ERSATZANKER dienen, wenn keine Tathandlung mit
+#     Zeitstempel belegt ist? Die Regel stammt von mc (2026-07-25): Ein
+#     Missbrauch nach §§ 176/176a geschieht nicht notwendigerweise als
+#     Forumsmitglied (unzulaessig), das Verbreiten und Sich-Verschaffen nach
+#     §§ 184b/184c mit grosser Wahrscheinlichkeit schon (zulaessig).
+#
+#   anker_grundlage (str) — die Begruendung dazu, mit Urheber und Datum. Eine
+#     Ja/Nein-Entscheidung ueber eine Rechtsfolge ohne Begruendung waere in der
+#     Akte wertlos; deshalb ist das Feld PFLICHT und darf nicht leer sein.
+#
+#   WARUM PFLICHT UND NICHT MIT VORGABEWERT: ein Vorgabewert waere eine stille
+#     Entscheidung fuer jeden kuenftig hinzugefuegten Tatbestand — und zwar in
+#     der gefaehrlichen Richtung, wenn er 'true' hiesse. Wer einen Tatbestand
+#     ergaenzt, muss die Frage beantworten (Grundregel 1).
+#
+#   AUSGEWERTET wird das Merkmal ab Build 530 (Ankerkaskade im Read-Model). In
+#     Build 529 wird es NUR geladen und geprueft — die Daten kommen vor ihrer
+#     Verwendung, damit die Kaskade gegen einen bereits gepruefen Satz baut.
+#
+# Version: v0.8.529 · Build: 529 · 2026-07-25
 # =============================================================================
 
 from __future__ import annotations
@@ -49,7 +71,12 @@ from typing import Any, Dict, List, Optional, Tuple
 #: Die einzige vom Code verstandene Schema-Fassung. Eine hoehere Nummer wird
 #  ABGELEHNT (nicht "bestmoeglich" gelesen) — ein unbekanntes Feld koennte
 #  genau die Einschraenkung sein, die die Aussage veraendert.
-SCHEMA_VERSION = 1
+#
+#  Ebenso wird eine NIEDRIGERE Nummer abgelehnt: ein Satz der Fassung 1 kennt
+#  'anker_registrierung_zulaessig' nicht, und ein fehlendes Merkmal wuerde vom
+#  Code entweder erraten oder stillschweigend uebergangen. Beides ist bei einer
+#  Rechtsfolge unzulaessig. Fassung 2 seit Build 529.
+SCHEMA_VERSION = 2
 
 #: Vorgabepfad des Parametersatzes (neben diesem Modul).
 DEFAULT_PARAMS_PATH = Path(__file__).with_name("limitation_params.json")
@@ -77,6 +104,11 @@ class Offence:
     frist_jahre     — Verjaehrungsfrist in Jahren (§ 78 Abs. 3 StGB).
     ruht_bis_30     — True, wenn § 78b Abs. 1 Nr. 1 StGB greift. Dann weist der
                       Monitor KEINE Restlaufzeit aus (Opferalter unbekannt).
+    anker_registrierung_zulaessig
+                    — True, wenn das Registrierungsdatum fuer DIESEN Tatbestand
+                      als Ersatzanker dienen darf (Build 529; ausgewertet ab
+                      Build 530). Siehe Modulkopf.
+    anker_grundlage — die Begruendung dazu. PFLICHT, darf nicht leer sein.
     """
     code: str
     norm: str
@@ -90,6 +122,8 @@ class Offence:
     frist_grundlage: str
     ruht_bis_30: bool
     ruht_grundlage: str
+    anker_registrierung_zulaessig: bool
+    anker_grundlage: str
     fundstelle: str
 
     def gilt_am(self, tag: date) -> bool:
@@ -113,6 +147,9 @@ class Offence:
             "frist_grundlage": self.frist_grundlage,
             "ruht_bis_30": self.ruht_bis_30,
             "ruht_grundlage": self.ruht_grundlage,
+            "anker_registrierung_zulaessig":
+                self.anker_registrierung_zulaessig,
+            "anker_grundlage": self.anker_grundlage,
             "fundstelle": self.fundstelle,
         }
 
@@ -267,7 +304,7 @@ def _offence_from(node: Dict[str, Any], idx: int) -> Offence:
 
     for pflicht in ("norm", "bezeichnung", "strafrahmen",
                     "hoechststrafe_grundlage", "frist_grundlage",
-                    "ruht_grundlage", "fundstelle"):
+                    "ruht_grundlage", "anker_grundlage", "fundstelle"):
         wert = _need(node, pflicht, "%s (%s)" % (kontext, code))
         if not str(wert).strip():
             raise LimitationParamsError(
@@ -281,6 +318,21 @@ def _offence_from(node: Dict[str, Any], idx: int) -> Offence:
             "unklarer Wert wuerde hier ueber eine Fristaussage entscheiden."
             % (kontext, code, ruht))
 
+    # Build 529: dieselbe Haerte wie bei 'ruht_bis_30' — und aus demselben
+    # Grund. Das Merkmal entscheidet darueber, ob fuer einen Fall OHNE belegte
+    # Tathandlung ueberhaupt eine Frist gerechnet wird. Ein fehlender oder
+    # unklarer Wert (None, 0, "true" als Zeichenkette) wuerde hier stillschwei-
+    # gend zu einer Entscheidung werden, die niemand getroffen hat.
+    anker = _need(node, "anker_registrierung_zulaessig",
+                  "%s (%s)" % (kontext, code))
+    if not isinstance(anker, bool):
+        raise LimitationParamsError(
+            "%s (%s): 'anker_registrierung_zulaessig' muss true oder false sein "
+            "(war %r). Das Merkmal entscheidet, ob fuer einen Fall ohne belegte "
+            "Tathandlung eine Frist aus dem Registrierungsdatum gerechnet wird "
+            "— ein unklarer Wert waere eine stille Entscheidung."
+            % (kontext, code, anker))
+
     return Offence(
         code=code, norm=str(node["norm"]),
         bezeichnung=str(node["bezeichnung"]),
@@ -290,6 +342,8 @@ def _offence_from(node: Dict[str, Any], idx: int) -> Offence:
         hoechststrafe_grundlage=str(node["hoechststrafe_grundlage"]),
         frist_jahre=frist, frist_grundlage=str(node["frist_grundlage"]),
         ruht_bis_30=bool(ruht), ruht_grundlage=str(node["ruht_grundlage"]),
+        anker_registrierung_zulaessig=bool(anker),
+        anker_grundlage=str(node["anker_grundlage"]),
         fundstelle=str(node["fundstelle"]))
 
 
@@ -349,7 +403,10 @@ def load_params(path: Optional[Any] = None) -> LimitationParams:
         raise LimitationParamsError(
             "Unbekannte schema_version %r (dieser Code versteht %d). Der Satz "
             "wird NICHT bestmoeglich gelesen — ein unbekanntes Feld koennte "
-            "genau die Einschraenkung sein, die die Aussage aendert."
+            "genau die Einschraenkung sein, die die Aussage aendert. Bei einer "
+            "NIEDRIGEREN Fassung gilt dasselbe umgekehrt: einem Satz der "
+            "Fassung 1 fehlt 'anker_registrierung_zulaessig', und ein fehlendes "
+            "Merkmal duerfte hier weder erraten noch uebergangen werden."
             % (version, SCHEMA_VERSION))
 
     bestaetigt = raw.get("bestaetigt")

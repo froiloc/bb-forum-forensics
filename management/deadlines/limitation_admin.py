@@ -98,6 +98,14 @@ def cmd_zeigen(args) -> int:
               % (o.frist_jahre, o.frist_grundlage))
         print("    Ruhen § 78b:    %s (%s)"
               % ("JA" if o.ruht_bis_30 else "nein", o.ruht_grundlage))
+        # Build 529: Das Ankermerkmal wird MIT ausgegeben. Wer den Satz vor der
+        # Bestaetigung liest, muss auch diese Entscheidung sehen — sie
+        # entscheidet mit darueber, fuer welche Faelle ueberhaupt eine Frist
+        # gerechnet wird.
+        print("    Ersatzanker:    %s (%s)"
+              % ("Registrierung ZULAESSIG"
+                 if o.anker_registrierung_zulaessig
+                 else "Registrierung UNZULAESSIG", o.anker_grundlage))
         print("    Fundstelle:     %s" % o.fundstelle)
     return 0
 

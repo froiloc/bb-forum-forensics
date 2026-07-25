@@ -1,7 +1,7 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "stand": "2026-07-25",
-  "erzeugt_durch": "Build 523 (AP-3A), Entwurf zur Bestaetigung durch die StA",
+  "erzeugt_durch": "Build 523 (AP-3A), erweitert in Build 529 (§§ 184a, 184k, 184l als Beifang; Merkmal 'anker_registrierung_zulaessig' je Tatbestand). Entwurf zur Bestaetigung durch die StA.",
   "bestaetigt": false,
   "bestaetigt_von": null,
   "bestaetigt_am": null,
@@ -10,7 +10,8 @@
     "UNTERBRECHUNGEN NICHT BERUECKSICHTIGT: § 78c StGB (u. a. Bekanntgabe der Verfahrenseinleitung, richterliche Beschlagnahme-/Durchsuchungsanordnung, Anklageerhebung) laesst die Frist neu beginnen. Diese Tatsachen sind fallindividuelle Verfahrensvorgaenge und stehen nicht in den ausgewerteten Datenbanken. Jede Fristangabe dieses Monitors ist die UNUNTERBROCHENE Frist und damit die FRUEHESTMOEGLICHE.",
     "RUHEN NICHT BERECHENBAR: § 78b Abs. 1 Nr. 1 StGB laesst die Frist bis zur Vollendung des 30. Lebensjahres des OPFERS ruhen. Ein Geburtsdatum des Opfers liegt in diesen Daten nicht vor. Bei den betroffenen Tatbestaenden weist der Monitor deshalb 'ruht moeglicherweise' aus und KEINE Restlaufzeit.",
     "TATBESTAND NICHT AUS DEN DATEN BELEGT: Welcher Tatbestand im Einzelfall verwirklicht ist, ist eine rechtliche Bewertung und steht in keiner ausgewerteten Tabelle. Der Monitor rechnet deshalb mit dem unten hinterlegten Vorgabesatz und weist die MASSGEBLICHE (kuerzeste) Frist aus. Welcher Tatbestand sie erzeugt, steht in der Antwort dabei.",
-    "KEINE TAGESGENAUIGKEIT: Der Fristablauf wird kalendarisch aus dem Tatzeitpunkt fortgeschrieben. Die genaue Berechnung nach §§ 78a StGB, 187 f. BGB kann um einen Tag abweichen. Der Monitor ist ein FRUEHWARNGERAET mit Monatsvorlauf, kein Ersatz fuer die juristische Fristpruefung im Einzelfall."
+    "KEINE TAGESGENAUIGKEIT: Der Fristablauf wird kalendarisch aus dem Tatzeitpunkt fortgeschrieben. Die genaue Berechnung nach §§ 78a StGB, 187 f. BGB kann um einen Tag abweichen. Der Monitor ist ein FRUEHWARNGERAET mit Monatsvorlauf, kein Ersatz fuer die juristische Fristpruefung im Einzelfall.",
+    "ANTRAGSFRISTEN WERDEN NICHT BERECHNET: § 184k StGB ist relatives Antragsdelikt ('Die Tat wird nur auf Antrag verfolgt, es sei denn, dass die Strafverfolgungsbehoerde wegen des besonderen oeffentlichen Interesses ... ein Einschreiten von Amts wegen fuer geboten haelt'). Die Antragsfrist des § 77b StGB (drei Monate ab Kenntnis) ist eine ANDERE Uhr als die Verfolgungsverjaehrung; dieser Monitor berechnet und ueberwacht sie NICHT. Aus einer gruenen Ampel folgt deshalb NICHT, dass ein Strafantrag noch gestellt werden kann."
   ],
   "vorgabe_tatbestaende": [
     "184b_abs1_s1_nr1_2_4",
@@ -18,7 +19,7 @@
     "184c_abs1",
     "184c_abs3"
   ],
-  "vorgabe_begruendung": "Die typischen Forumshandlungen der Nutzerschaft (Verbreiten/Zugaenglichmachen, Sich-Verschaffen, Abruf und Besitz) — und ausdruecklich NICHT §§ 176/176a, weil dort § 78b Abs. 1 Nr. 1 StGB greift und der Monitor dann ohnehin keine Restlaufzeit ausweisen darf. Der Vorgabesatz erzeugt damit die kuerzesten und operativ gefaehrlichsten Fristen.",
+  "vorgabe_begruendung": "Die typischen Forumshandlungen der Nutzerschaft (Verbreiten/Zugaenglichmachen, Sich-Verschaffen, Abruf und Besitz) — und ausdruecklich NICHT §§ 176/176a, weil dort § 78b Abs. 1 Nr. 1 StGB greift und der Monitor dann ohnehin keine Restlaufzeit ausweisen darf. Der Vorgabesatz erzeugt damit die kuerzesten und operativ gefaehrlichsten Fristen. ERGAENZUNG BUILD 529: §§ 184a, 184k und 184l sind als Beifang hinterlegt, aber BEWUSST NICHT im Vorgabesatz — mc am 2026-07-25: 'Sie sind nicht der Kern unserer Ermittlungen, lediglich ein Beifang.' Die Aufnahme waere fristneutral und ist nachrechenbar: alle vier neuen Eintraege tragen eine Frist von fuenf Jahren, also genau die kuerzeste Frist, die der Vorgabesatz mit 184b_abs3 und 184c_abs1 ohnehin schon enthaelt. Sie koennen ueber den Parameter 'offence_codes' einzeln herangezogen werden.",
   "tatbestaende": [
     {
       "code": "176_abs1",
@@ -33,6 +34,8 @@
       "frist_grundlage": "§ 78 Abs. 3 Nr. 2 StGB (Hoechststrafe von mehr als zehn Jahren)",
       "ruht_bis_30": true,
       "ruht_grundlage": "§ 78b Abs. 1 Nr. 1 StGB (§§ 176 bis 178 erfasst)",
+      "anker_registrierung_zulaessig": false,
+      "anker_grundlage": "UNZULAESSIG. mc (Chefermittler) am 2026-07-25: Ein Missbrauch nach §§ 176/176a geschieht NICHT notwendigerweise als Forumsmitglied — aus der Registrierung folgt fuer diese Tatbestaende kein Anhalt auf eine Tathandlung. Ohne belegte Tatzeit bleibt der Fall hier ohne Fristbeginn. Ohnehin ruht die Frist nach § 78b Abs. 1 Nr. 1 StGB, sodass der Monitor auch mit Anker keine Restlaufzeit ausweisen wuerde.",
       "fundstelle": "§ 176 StGB i. d. F. des Gesetzes zur Bekaempfung sexualisierter Gewalt gegen Kinder vom 16.06.2021 (BGBl. I S. 1810), in Kraft 01.07.2021; abgerufen dejure.org/gesetze/StGB/176.html am 2026-07-25"
     },
     {
@@ -48,6 +51,8 @@
       "frist_grundlage": "§ 78 Abs. 3 Nr. 3 StGB (mehr als fuenf bis zehn Jahre)",
       "ruht_bis_30": true,
       "ruht_grundlage": "§ 78b Abs. 1 Nr. 1 StGB (§§ 176 bis 178 erfasst)",
+      "anker_registrierung_zulaessig": false,
+      "anker_grundlage": "UNZULAESSIG. mc (Chefermittler) am 2026-07-25: Ein Missbrauch nach §§ 176/176a geschieht NICHT notwendigerweise als Forumsmitglied — aus der Registrierung folgt fuer diese Tatbestaende kein Anhalt auf eine Tathandlung. Ohne belegte Tatzeit bleibt der Fall hier ohne Fristbeginn. Ohnehin ruht die Frist nach § 78b Abs. 1 Nr. 1 StGB, sodass der Monitor auch mit Anker keine Restlaufzeit ausweisen wuerde.",
       "fundstelle": "§ 176a StGB i. d. F. vom 16.06.2021 (BGBl. I S. 1810), in Kraft 01.07.2021; abgerufen dejure.org/gesetze/StGB/176a.html am 2026-07-25. ACHTUNG: § 176a a. F. (bis 30.06.2021) war der SCHWERE sexuelle Missbrauch (heute § 176c) — ein inhaltlich ANDERER Tatbestand. Fassungen vor dem 01.07.2021 sind hier bewusst NICHT hinterlegt (nachzureichen)."
     },
     {
@@ -63,6 +68,8 @@
       "frist_grundlage": "§ 78 Abs. 3 Nr. 3 StGB (mehr als fuenf bis zehn Jahre)",
       "ruht_bis_30": false,
       "ruht_grundlage": "§ 78b Abs. 1 Nr. 1 StGB erfasst aus § 184b NUR Absatz 1 Satz 1 Nummer 3 (Herstellen) — diese Nummern also NICHT. Das ist der operativ entscheidende Punkt: hier laeuft die Frist ab Tatbeendigung durch.",
+      "anker_registrierung_zulaessig": true,
+      "anker_grundlage": "ZULAESSIG. mc (Chefermittler) am 2026-07-25: Das Verbreiten und Sich-Verschaffen nach §§ 184b/184c geschieht mit grosser Wahrscheinlichkeit ALS Forumsmitglied; § 184b Abs. 2 knuepft ueberdies an das Handeln als Bandenmitglied an, wofuer die Mitgliedschaft im Forum ein Anknuepfungspunkt ist. Das Registrierungsdatum ist damit der frueheste belegte Hinweis auf eine einschlaegige Taetigkeit. RICHTUNG DES FEHLERS: der Anker liegt ZU FRUEH (§ 78a StGB knuepft an die Beendigung an), der Fristablauf wird also zu frueh gerechnet und der Fall erscheint DRINGENDER als er ist — die ungefaehrliche Richtung, aber die Aussage ist zwingend als VORLAEUFIG zu kennzeichnen.",
       "fundstelle": "§ 184b StGB i. d. F. des Gesetzes zur Anpassung der Mindeststrafen (BGBl. 2024 I Nr. 213 vom 24.06.2024), in Kraft 28.06.2024; abgerufen dejure.org/gesetze/StGB/184b.html am 2026-07-25"
     },
     {
@@ -78,6 +85,8 @@
       "frist_grundlage": "§ 78 Abs. 3 Nr. 3 StGB (mehr als fuenf bis zehn Jahre)",
       "ruht_bis_30": true,
       "ruht_grundlage": "§ 78b Abs. 1 Nr. 1 StGB nennt § 184b Abs. 1 Satz 1 Nr. 3 ausdruecklich (auch i. V. m. Abs. 2)",
+      "anker_registrierung_zulaessig": true,
+      "anker_grundlage": "ZULAESSIG. mc (Chefermittler) am 2026-07-25: Das Verbreiten und Sich-Verschaffen nach §§ 184b/184c geschieht mit grosser Wahrscheinlichkeit ALS Forumsmitglied; § 184b Abs. 2 knuepft ueberdies an das Handeln als Bandenmitglied an, wofuer die Mitgliedschaft im Forum ein Anknuepfungspunkt ist. Das Registrierungsdatum ist damit der frueheste belegte Hinweis auf eine einschlaegige Taetigkeit. RICHTUNG DES FEHLERS: der Anker liegt ZU FRUEH (§ 78a StGB knuepft an die Beendigung an), der Fristablauf wird also zu frueh gerechnet und der Fall erscheint DRINGENDER als er ist — die ungefaehrliche Richtung, aber die Aussage ist zwingend als VORLAEUFIG zu kennzeichnen.",
       "fundstelle": "wie 184b_abs1_s1_nr1_2_4"
     },
     {
@@ -93,6 +102,8 @@
       "frist_grundlage": "§ 78 Abs. 3 Nr. 4 StGB (mehr als ein Jahr bis fuenf Jahre)",
       "ruht_bis_30": false,
       "ruht_grundlage": "von § 78b Abs. 1 Nr. 1 StGB nicht erfasst",
+      "anker_registrierung_zulaessig": true,
+      "anker_grundlage": "ZULAESSIG. mc (Chefermittler) am 2026-07-25: Das Verbreiten und Sich-Verschaffen nach §§ 184b/184c geschieht mit grosser Wahrscheinlichkeit ALS Forumsmitglied; § 184b Abs. 2 knuepft ueberdies an das Handeln als Bandenmitglied an, wofuer die Mitgliedschaft im Forum ein Anknuepfungspunkt ist. Das Registrierungsdatum ist damit der frueheste belegte Hinweis auf eine einschlaegige Taetigkeit. RICHTUNG DES FEHLERS: der Anker liegt ZU FRUEH (§ 78a StGB knuepft an die Beendigung an), der Fristablauf wird also zu frueh gerechnet und der Fall erscheint DRINGENDER als er ist — die ungefaehrliche Richtung, aber die Aussage ist zwingend als VORLAEUFIG zu kennzeichnen.",
       "fundstelle": "wie 184b_abs1_s1_nr1_2_4"
     },
     {
@@ -108,6 +119,8 @@
       "frist_grundlage": "§ 78 Abs. 3 Nr. 2 StGB (mehr als zehn Jahre)",
       "ruht_bis_30": false,
       "ruht_grundlage": "§ 78b Abs. 1 Nr. 1 StGB erfasst Abs. 2 nur i. V. m. Abs. 1 Satz 1 Nr. 3. Wo die Bandentat auf dem Herstellen beruht, ist stattdessen 184b_abs1_s1_nr3 anzuwenden — diese Unterscheidung ist eine juristische Bewertung und wird vom Werkzeug NICHT getroffen.",
+      "anker_registrierung_zulaessig": true,
+      "anker_grundlage": "ZULAESSIG. mc (Chefermittler) am 2026-07-25: Das Verbreiten und Sich-Verschaffen nach §§ 184b/184c geschieht mit grosser Wahrscheinlichkeit ALS Forumsmitglied; § 184b Abs. 2 knuepft ueberdies an das Handeln als Bandenmitglied an, wofuer die Mitgliedschaft im Forum ein Anknuepfungspunkt ist. Das Registrierungsdatum ist damit der frueheste belegte Hinweis auf eine einschlaegige Taetigkeit. RICHTUNG DES FEHLERS: der Anker liegt ZU FRUEH (§ 78a StGB knuepft an die Beendigung an), der Fristablauf wird also zu frueh gerechnet und der Fall erscheint DRINGENDER als er ist — die ungefaehrliche Richtung, aber die Aussage ist zwingend als VORLAEUFIG zu kennzeichnen.",
       "fundstelle": "wie 184b_abs1_s1_nr1_2_4"
     },
     {
@@ -123,6 +136,8 @@
       "frist_grundlage": "§ 78 Abs. 3 Nr. 4 StGB (mehr als ein Jahr bis fuenf Jahre)",
       "ruht_bis_30": false,
       "ruht_grundlage": "von § 78b Abs. 1 Nr. 1 StGB nicht erfasst",
+      "anker_registrierung_zulaessig": true,
+      "anker_grundlage": "ZULAESSIG. mc (Chefermittler) am 2026-07-25: Das Verbreiten und Sich-Verschaffen nach §§ 184b/184c geschieht mit grosser Wahrscheinlichkeit ALS Forumsmitglied; § 184b Abs. 2 knuepft ueberdies an das Handeln als Bandenmitglied an, wofuer die Mitgliedschaft im Forum ein Anknuepfungspunkt ist. Das Registrierungsdatum ist damit der frueheste belegte Hinweis auf eine einschlaegige Taetigkeit. RICHTUNG DES FEHLERS: der Anker liegt ZU FRUEH (§ 78a StGB knuepft an die Beendigung an), der Fristablauf wird also zu frueh gerechnet und der Fall erscheint DRINGENDER als er ist — die ungefaehrliche Richtung, aber die Aussage ist zwingend als VORLAEUFIG zu kennzeichnen.",
       "fundstelle": "wie 184b_abs1_s1_nr1_2_4"
     },
     {
@@ -138,6 +153,8 @@
       "frist_grundlage": "§ 78 Abs. 3 Nr. 4 StGB (mehr als ein Jahr bis fuenf Jahre)",
       "ruht_bis_30": false,
       "ruht_grundlage": "§ 78b Abs. 1 Nr. 1 StGB nennt § 184c nicht",
+      "anker_registrierung_zulaessig": true,
+      "anker_grundlage": "ZULAESSIG. mc (Chefermittler) am 2026-07-25: Das Verbreiten und Sich-Verschaffen nach §§ 184b/184c geschieht mit grosser Wahrscheinlichkeit ALS Forumsmitglied; § 184b Abs. 2 knuepft ueberdies an das Handeln als Bandenmitglied an, wofuer die Mitgliedschaft im Forum ein Anknuepfungspunkt ist. Das Registrierungsdatum ist damit der frueheste belegte Hinweis auf eine einschlaegige Taetigkeit. RICHTUNG DES FEHLERS: der Anker liegt ZU FRUEH (§ 78a StGB knuepft an die Beendigung an), der Fristablauf wird also zu frueh gerechnet und der Fall erscheint DRINGENDER als er ist — die ungefaehrliche Richtung, aber die Aussage ist zwingend als VORLAEUFIG zu kennzeichnen.",
       "fundstelle": "§ 184c StGB i. d. F. vom 16.06.2021 (BGBl. I S. 1810), in Kraft 01.07.2021; abgerufen dejure.org/gesetze/StGB/184c.html am 2026-07-25"
     },
     {
@@ -153,6 +170,8 @@
       "frist_grundlage": "§ 78 Abs. 3 Nr. 4 StGB (mehr als ein Jahr bis fuenf Jahre)",
       "ruht_bis_30": false,
       "ruht_grundlage": "§ 78b Abs. 1 Nr. 1 StGB nennt § 184c nicht",
+      "anker_registrierung_zulaessig": true,
+      "anker_grundlage": "ZULAESSIG. mc (Chefermittler) am 2026-07-25: Das Verbreiten und Sich-Verschaffen nach §§ 184b/184c geschieht mit grosser Wahrscheinlichkeit ALS Forumsmitglied; § 184b Abs. 2 knuepft ueberdies an das Handeln als Bandenmitglied an, wofuer die Mitgliedschaft im Forum ein Anknuepfungspunkt ist. Das Registrierungsdatum ist damit der frueheste belegte Hinweis auf eine einschlaegige Taetigkeit. RICHTUNG DES FEHLERS: der Anker liegt ZU FRUEH (§ 78a StGB knuepft an die Beendigung an), der Fristablauf wird also zu frueh gerechnet und der Fall erscheint DRINGENDER als er ist — die ungefaehrliche Richtung, aber die Aussage ist zwingend als VORLAEUFIG zu kennzeichnen.",
       "fundstelle": "wie 184c_abs1"
     },
     {
@@ -168,6 +187,8 @@
       "frist_grundlage": "§ 78 Abs. 3 Nr. 4 StGB (mehr als ein Jahr bis fuenf Jahre)",
       "ruht_bis_30": false,
       "ruht_grundlage": "§ 78b Abs. 1 Nr. 1 StGB nennt § 184c nicht",
+      "anker_registrierung_zulaessig": true,
+      "anker_grundlage": "ZULAESSIG. mc (Chefermittler) am 2026-07-25: Das Verbreiten und Sich-Verschaffen nach §§ 184b/184c geschieht mit grosser Wahrscheinlichkeit ALS Forumsmitglied; § 184b Abs. 2 knuepft ueberdies an das Handeln als Bandenmitglied an, wofuer die Mitgliedschaft im Forum ein Anknuepfungspunkt ist. Das Registrierungsdatum ist damit der frueheste belegte Hinweis auf eine einschlaegige Taetigkeit. RICHTUNG DES FEHLERS: der Anker liegt ZU FRUEH (§ 78a StGB knuepft an die Beendigung an), der Fristablauf wird also zu frueh gerechnet und der Fall erscheint DRINGENDER als er ist — die ungefaehrliche Richtung, aber die Aussage ist zwingend als VORLAEUFIG zu kennzeichnen.",
       "fundstelle": "wie 184c_abs1"
     },
     {
@@ -183,6 +204,8 @@
       "frist_grundlage": "§ 78 Abs. 3 Nr. 3 StGB (mehr als fuenf bis zehn Jahre)",
       "ruht_bis_30": false,
       "ruht_grundlage": "§ 78b Abs. 1 Nr. 1 StGB erfasst aus § 184b NUR Absatz 1 Satz 1 Nummer 3 (Herstellen) — diese Nummern also NICHT.",
+      "anker_registrierung_zulaessig": true,
+      "anker_grundlage": "ZULAESSIG. mc (Chefermittler) am 2026-07-25: Das Verbreiten und Sich-Verschaffen nach §§ 184b/184c geschieht mit grosser Wahrscheinlichkeit ALS Forumsmitglied; § 184b Abs. 2 knuepft ueberdies an das Handeln als Bandenmitglied an, wofuer die Mitgliedschaft im Forum ein Anknuepfungspunkt ist. Das Registrierungsdatum ist damit der frueheste belegte Hinweis auf eine einschlaegige Taetigkeit. RICHTUNG DES FEHLERS: der Anker liegt ZU FRUEH (§ 78a StGB knuepft an die Beendigung an), der Fristablauf wird also zu frueh gerechnet und der Fall erscheint DRINGENDER als er ist — die ungefaehrliche Richtung, aber die Aussage ist zwingend als VORLAEUFIG zu kennzeichnen.",
       "fundstelle": "§ 184b StGB i. d. F. des Gesetzes zur Bekaempfung sexualisierter Gewalt gegen Kinder vom 16.06.2021 (BGBl. I S. 1810), in Kraft 01.07.2021, gueltig bis 27.06.2024. Hoechststrafen belegt durch KriPoZ, 'Das Gesetz zur Anpassung der Mindeststrafen bei den Besitzdelikten des § 184b StGB' (kripoz.de, 31.05.2024), abgerufen am 2026-07-25: Abs. 1 a. F. 'Freiheitsstrafe von einem Jahr bis zu zehn Jahren', Abs. 3 a. F. 'Freiheitsstrafe von einem Jahr bis zu fuenf Jahren'. FRISTNEUTRAL gegenueber der Fassung ab 28.06.2024: die Reform hat nur die MINDESTstrafen gesenkt, § 78 Abs. 3 StGB knuepft an die HOECHSTstrafe an."
     },
     {
@@ -198,6 +221,8 @@
       "frist_grundlage": "§ 78 Abs. 3 Nr. 3 StGB (mehr als fuenf bis zehn Jahre)",
       "ruht_bis_30": true,
       "ruht_grundlage": "§ 78b Abs. 1 Nr. 1 StGB nennt § 184b Abs. 1 Satz 1 Nr. 3 ausdruecklich (auch i. V. m. Abs. 2)",
+      "anker_registrierung_zulaessig": true,
+      "anker_grundlage": "ZULAESSIG. mc (Chefermittler) am 2026-07-25: Das Verbreiten und Sich-Verschaffen nach §§ 184b/184c geschieht mit grosser Wahrscheinlichkeit ALS Forumsmitglied; § 184b Abs. 2 knuepft ueberdies an das Handeln als Bandenmitglied an, wofuer die Mitgliedschaft im Forum ein Anknuepfungspunkt ist. Das Registrierungsdatum ist damit der frueheste belegte Hinweis auf eine einschlaegige Taetigkeit. RICHTUNG DES FEHLERS: der Anker liegt ZU FRUEH (§ 78a StGB knuepft an die Beendigung an), der Fristablauf wird also zu frueh gerechnet und der Fall erscheint DRINGENDER als er ist — die ungefaehrliche Richtung, aber die Aussage ist zwingend als VORLAEUFIG zu kennzeichnen.",
       "fundstelle": "§ 184b StGB i. d. F. des Gesetzes zur Bekaempfung sexualisierter Gewalt gegen Kinder vom 16.06.2021 (BGBl. I S. 1810), in Kraft 01.07.2021, gueltig bis 27.06.2024. Hoechststrafen belegt durch KriPoZ, 'Das Gesetz zur Anpassung der Mindeststrafen bei den Besitzdelikten des § 184b StGB' (kripoz.de, 31.05.2024), abgerufen am 2026-07-25: Abs. 1 a. F. 'Freiheitsstrafe von einem Jahr bis zu zehn Jahren', Abs. 3 a. F. 'Freiheitsstrafe von einem Jahr bis zu fuenf Jahren'. FRISTNEUTRAL gegenueber der Fassung ab 28.06.2024: die Reform hat nur die MINDESTstrafen gesenkt, § 78 Abs. 3 StGB knuepft an die HOECHSTstrafe an."
     },
     {
@@ -213,6 +238,8 @@
       "frist_grundlage": "§ 78 Abs. 3 Nr. 4 StGB (mehr als ein Jahr bis fuenf Jahre)",
       "ruht_bis_30": false,
       "ruht_grundlage": "von § 78b Abs. 1 Nr. 1 StGB nicht erfasst",
+      "anker_registrierung_zulaessig": true,
+      "anker_grundlage": "ZULAESSIG. mc (Chefermittler) am 2026-07-25: Das Verbreiten und Sich-Verschaffen nach §§ 184b/184c geschieht mit grosser Wahrscheinlichkeit ALS Forumsmitglied; § 184b Abs. 2 knuepft ueberdies an das Handeln als Bandenmitglied an, wofuer die Mitgliedschaft im Forum ein Anknuepfungspunkt ist. Das Registrierungsdatum ist damit der frueheste belegte Hinweis auf eine einschlaegige Taetigkeit. RICHTUNG DES FEHLERS: der Anker liegt ZU FRUEH (§ 78a StGB knuepft an die Beendigung an), der Fristablauf wird also zu frueh gerechnet und der Fall erscheint DRINGENDER als er ist — die ungefaehrliche Richtung, aber die Aussage ist zwingend als VORLAEUFIG zu kennzeichnen.",
       "fundstelle": "§ 184b StGB i. d. F. des Gesetzes zur Bekaempfung sexualisierter Gewalt gegen Kinder vom 16.06.2021 (BGBl. I S. 1810), in Kraft 01.07.2021, gueltig bis 27.06.2024. Hoechststrafen belegt durch KriPoZ, 'Das Gesetz zur Anpassung der Mindeststrafen bei den Besitzdelikten des § 184b StGB' (kripoz.de, 31.05.2024), abgerufen am 2026-07-25: Abs. 1 a. F. 'Freiheitsstrafe von einem Jahr bis zu zehn Jahren', Abs. 3 a. F. 'Freiheitsstrafe von einem Jahr bis zu fuenf Jahren'. FRISTNEUTRAL gegenueber der Fassung ab 28.06.2024: die Reform hat nur die MINDESTstrafen gesenkt, § 78 Abs. 3 StGB knuepft an die HOECHSTstrafe an. HINWEIS: Der Strafrahmen des Satzes 2 a. F. ist in der ausgewerteten Quelle nicht gesondert genannt — dieser Eintrag ist der einzige mit schwacher Belegqualitaet und ist gesondert zu bestaetigen."
     },
     {
@@ -228,6 +255,8 @@
       "frist_grundlage": "§ 78 Abs. 3 Nr. 2 StGB (mehr als zehn Jahre)",
       "ruht_bis_30": false,
       "ruht_grundlage": "§ 78b Abs. 1 Nr. 1 StGB erfasst Abs. 2 nur i. V. m. Abs. 1 Satz 1 Nr. 3.",
+      "anker_registrierung_zulaessig": true,
+      "anker_grundlage": "ZULAESSIG. mc (Chefermittler) am 2026-07-25: Das Verbreiten und Sich-Verschaffen nach §§ 184b/184c geschieht mit grosser Wahrscheinlichkeit ALS Forumsmitglied; § 184b Abs. 2 knuepft ueberdies an das Handeln als Bandenmitglied an, wofuer die Mitgliedschaft im Forum ein Anknuepfungspunkt ist. Das Registrierungsdatum ist damit der frueheste belegte Hinweis auf eine einschlaegige Taetigkeit. RICHTUNG DES FEHLERS: der Anker liegt ZU FRUEH (§ 78a StGB knuepft an die Beendigung an), der Fristablauf wird also zu frueh gerechnet und der Fall erscheint DRINGENDER als er ist — die ungefaehrliche Richtung, aber die Aussage ist zwingend als VORLAEUFIG zu kennzeichnen.",
       "fundstelle": "§ 184b StGB i. d. F. des Gesetzes zur Bekaempfung sexualisierter Gewalt gegen Kinder vom 16.06.2021 (BGBl. I S. 1810), in Kraft 01.07.2021, gueltig bis 27.06.2024. Hoechststrafen belegt durch KriPoZ, 'Das Gesetz zur Anpassung der Mindeststrafen bei den Besitzdelikten des § 184b StGB' (kripoz.de, 31.05.2024), abgerufen am 2026-07-25: Abs. 1 a. F. 'Freiheitsstrafe von einem Jahr bis zu zehn Jahren', Abs. 3 a. F. 'Freiheitsstrafe von einem Jahr bis zu fuenf Jahren'. FRISTNEUTRAL gegenueber der Fassung ab 28.06.2024: die Reform hat nur die MINDESTstrafen gesenkt, § 78 Abs. 3 StGB knuepft an die HOECHSTstrafe an."
     },
     {
@@ -243,12 +272,84 @@
       "frist_grundlage": "§ 78 Abs. 3 Nr. 4 StGB (mehr als ein Jahr bis fuenf Jahre)",
       "ruht_bis_30": false,
       "ruht_grundlage": "von § 78b Abs. 1 Nr. 1 StGB nicht erfasst",
+      "anker_registrierung_zulaessig": true,
+      "anker_grundlage": "ZULAESSIG. mc (Chefermittler) am 2026-07-25: Das Verbreiten und Sich-Verschaffen nach §§ 184b/184c geschieht mit grosser Wahrscheinlichkeit ALS Forumsmitglied; § 184b Abs. 2 knuepft ueberdies an das Handeln als Bandenmitglied an, wofuer die Mitgliedschaft im Forum ein Anknuepfungspunkt ist. Das Registrierungsdatum ist damit der frueheste belegte Hinweis auf eine einschlaegige Taetigkeit. RICHTUNG DES FEHLERS: der Anker liegt ZU FRUEH (§ 78a StGB knuepft an die Beendigung an), der Fristablauf wird also zu frueh gerechnet und der Fall erscheint DRINGENDER als er ist — die ungefaehrliche Richtung, aber die Aussage ist zwingend als VORLAEUFIG zu kennzeichnen.",
       "fundstelle": "§ 184b StGB i. d. F. des Gesetzes zur Bekaempfung sexualisierter Gewalt gegen Kinder vom 16.06.2021 (BGBl. I S. 1810), in Kraft 01.07.2021, gueltig bis 27.06.2024. Hoechststrafen belegt durch KriPoZ, 'Das Gesetz zur Anpassung der Mindeststrafen bei den Besitzdelikten des § 184b StGB' (kripoz.de, 31.05.2024), abgerufen am 2026-07-25: Abs. 1 a. F. 'Freiheitsstrafe von einem Jahr bis zu zehn Jahren', Abs. 3 a. F. 'Freiheitsstrafe von einem Jahr bis zu fuenf Jahren'. FRISTNEUTRAL gegenueber der Fassung ab 28.06.2024: die Reform hat nur die MINDESTstrafen gesenkt, § 78 Abs. 3 StGB knuepft an die HOECHSTstrafe an."
+    },
+    {
+      "code": "184a",
+      "norm": "§ 184a StGB",
+      "bezeichnung": "Verbreitung gewalt- oder tierpornographischer Inhalte",
+      "gueltig_von": "2021-01-01",
+      "gueltig_bis": null,
+      "strafrahmen": "Freiheitsstrafe bis zu drei Jahren oder Geldstrafe",
+      "hoechststrafe_monate": 36,
+      "hoechststrafe_grundlage": "Wortlaut der Norm",
+      "frist_jahre": 5,
+      "frist_grundlage": "§ 78 Abs. 3 Nr. 4 StGB (mehr als ein Jahr bis fuenf Jahre)",
+      "ruht_bis_30": false,
+      "ruht_grundlage": "§ 78b Abs. 1 Nr. 1 StGB zaehlt abschliessend auf: '§§ 174 bis 174c, 176 bis 178, 182, 184b Absatz 1 Satz 1 Nummer 3, auch in Verbindung mit Absatz 2, §§ 225, 226a und 237'. § 184a ist darin NICHT genannt (geprueft dejure.org/gesetze/StGB/78b.html am 2026-07-25).",
+      "anker_registrierung_zulaessig": true,
+      "anker_grundlage": "ZULAESSIG — ANALOGIESCHLUSS DES WERKZEUGS, VON mc NICHT AUSDRUECKLICH ENTSCHIEDEN. § 184a erfasst wie §§ 184b/184c ein VERBREITUNGSdelikt; die Tathandlung ist forumstypisch. Der Schluss ist aus mcs Regel fuer §§ 184b/184c uebernommen und VOR der Freigabe des Parametersatzes gesondert zu bestaetigen.",
+      "fundstelle": "§ 184a StGB i. d. F. des Sechzigsten Gesetzes zur Aenderung des Strafgesetzbuches — Modernisierung des Schriftenbegriffs (in Kraft 01.01.2021); abgerufen dejure.org/gesetze/StGB/184a.html am 2026-07-25: 'Freiheitsstrafe bis zu drei Jahren oder Geldstrafe'."
+    },
+    {
+      "code": "184k",
+      "norm": "§ 184k StGB",
+      "bezeichnung": "Verletzung des Intimbereichs durch Bildaufnahmen",
+      "gueltig_von": "2021-01-01",
+      "gueltig_bis": null,
+      "strafrahmen": "Freiheitsstrafe bis zu zwei Jahren oder Geldstrafe",
+      "hoechststrafe_monate": 24,
+      "hoechststrafe_grundlage": "Wortlaut der Norm",
+      "frist_jahre": 5,
+      "frist_grundlage": "§ 78 Abs. 3 Nr. 4 StGB (mehr als ein Jahr bis fuenf Jahre)",
+      "ruht_bis_30": false,
+      "ruht_grundlage": "§ 78b Abs. 1 Nr. 1 StGB zaehlt abschliessend auf: '§§ 174 bis 174c, 176 bis 178, 182, 184b Absatz 1 Satz 1 Nummer 3, auch in Verbindung mit Absatz 2, §§ 225, 226a und 237'. § 184k ist darin NICHT genannt (geprueft dejure.org/gesetze/StGB/78b.html am 2026-07-25).",
+      "anker_registrierung_zulaessig": false,
+      "anker_grundlage": "UNZULAESSIG — ANALOGIESCHLUSS DES WERKZEUGS, VON mc NICHT AUSDRUECKLICH ENTSCHIEDEN. § 184k erfasst die Herstellung einer Bildaufnahme aus dem Intimbereich; das ist eine Handlung in der koerperlichen Welt, die mit der Forumsmitgliedschaft nichts zu tun hat. Aus der Registrierung folgt dafuer kein Anhalt.",
+      "fundstelle": "§ 184k StGB, eingefuegt durch das Neunundfuenfzigste Gesetz zur Aenderung des Strafgesetzbuches — Verbesserung des Persoenlichkeitsschutzes bei Bildaufnahmen vom 09.10.2020 (BGBl. I S. 2075), in Kraft 01.01.2021; abgerufen dejure.org/gesetze/StGB/184k.html am 2026-07-25: 'Freiheitsstrafe bis zu zwei Jahren oder mit Geldstrafe'. Keine Aenderung 2024/2025 ausgewiesen."
+    },
+    {
+      "code": "184l_abs1",
+      "norm": "§ 184l Abs. 1 StGB",
+      "bezeichnung": "Inverkehrbringen, Herstellen, Anbieten und Handeltreiben (Sexpuppen mit kindlichem Erscheinungsbild)",
+      "gueltig_von": "2021-07-01",
+      "gueltig_bis": null,
+      "strafrahmen": "Freiheitsstrafe bis zu fuenf Jahren oder Geldstrafe",
+      "hoechststrafe_monate": 60,
+      "hoechststrafe_grundlage": "Wortlaut der Norm",
+      "frist_jahre": 5,
+      "frist_grundlage": "§ 78 Abs. 3 Nr. 4 StGB (mehr als ein Jahr bis fuenf Jahre)",
+      "ruht_bis_30": false,
+      "ruht_grundlage": "§ 78b Abs. 1 Nr. 1 StGB zaehlt abschliessend auf: '§§ 174 bis 174c, 176 bis 178, 182, 184b Absatz 1 Satz 1 Nummer 3, auch in Verbindung mit Absatz 2, §§ 225, 226a und 237'. § 184l ist darin NICHT genannt (geprueft dejure.org/gesetze/StGB/78b.html am 2026-07-25).",
+      "anker_registrierung_zulaessig": false,
+      "anker_grundlage": "UNZULAESSIG — ANALOGIESCHLUSS DES WERKZEUGS, VON mc NICHT AUSDRUECKLICH ENTSCHIEDEN. § 184l erfasst Handel, Erwerb und Besitz koerperlicher Gegenstaende. Auch wenn ein Handel ueber das Forum angebahnt sein KANN, folgt das nicht aus der blossen Registrierung. Im Zweifel gegen den Ersatzanker.",
+      "fundstelle": "§ 184l StGB, eingefuegt durch das Gesetz zur Bekaempfung sexualisierter Gewalt gegen Kinder vom 16.06.2021 (BGBl. I S. 1810), in Kraft 01.07.2021; abgerufen dejure.org/gesetze/StGB/184l.html und strafgesetzbuch-stgb.de/stgb/184l.html am 2026-07-25: Abs. 1 'Freiheitsstrafe bis zu fuenf Jahren oder Geldstrafe', Abs. 2 'Freiheitsstrafe bis zu drei Jahren oder Geldstrafe'."
+    },
+    {
+      "code": "184l_abs2",
+      "norm": "§ 184l Abs. 2 StGB",
+      "bezeichnung": "Erwerb, Besitz und Verbringen (Sexpuppen mit kindlichem Erscheinungsbild)",
+      "gueltig_von": "2021-07-01",
+      "gueltig_bis": null,
+      "strafrahmen": "Freiheitsstrafe bis zu drei Jahren oder Geldstrafe",
+      "hoechststrafe_monate": 36,
+      "hoechststrafe_grundlage": "Wortlaut der Norm",
+      "frist_jahre": 5,
+      "frist_grundlage": "§ 78 Abs. 3 Nr. 4 StGB (mehr als ein Jahr bis fuenf Jahre)",
+      "ruht_bis_30": false,
+      "ruht_grundlage": "§ 78b Abs. 1 Nr. 1 StGB zaehlt abschliessend auf: '§§ 174 bis 174c, 176 bis 178, 182, 184b Absatz 1 Satz 1 Nummer 3, auch in Verbindung mit Absatz 2, §§ 225, 226a und 237'. § 184l ist darin NICHT genannt (geprueft dejure.org/gesetze/StGB/78b.html am 2026-07-25).",
+      "anker_registrierung_zulaessig": false,
+      "anker_grundlage": "UNZULAESSIG — ANALOGIESCHLUSS DES WERKZEUGS, VON mc NICHT AUSDRUECKLICH ENTSCHIEDEN. § 184l erfasst Handel, Erwerb und Besitz koerperlicher Gegenstaende. Auch wenn ein Handel ueber das Forum angebahnt sein KANN, folgt das nicht aus der blossen Registrierung. Im Zweifel gegen den Ersatzanker.",
+      "fundstelle": "§ 184l StGB, eingefuegt durch das Gesetz zur Bekaempfung sexualisierter Gewalt gegen Kinder vom 16.06.2021 (BGBl. I S. 1810), in Kraft 01.07.2021; abgerufen dejure.org/gesetze/StGB/184l.html und strafgesetzbuch-stgb.de/stgb/184l.html am 2026-07-25: Abs. 1 'Freiheitsstrafe bis zu fuenf Jahren oder Geldstrafe', Abs. 2 'Freiheitsstrafe bis zu drei Jahren oder Geldstrafe'."
     }
   ],
   "fehlende_fassungen": [
     "Alle Fassungen VOR dem 01.07.2021 (§§ 176, 176a, 184b, 184c a. F.). Sie sind BEWUSST NICHT geschaetzt worden. Fuer § 184b Abs. 1 a. F. (bis 30.06.2021) ist der Unterschied fristrelevant: die Hoechststrafe betrug fuenf Jahre (Frist 5 Jahre) statt spaeter zehn Jahre (Frist 10 Jahre). Solange diese Eintraege fehlen, meldet der Monitor fuer Tatzeitpunkte vor dem 01.07.2021 ausdruecklich 'keine gueltige Fassung hinterlegt' — er rechnet NICHT mit einer spaeteren Fassung weiter (das waere ein Verstoss gegen § 2 Abs. 1 StGB und gegen Grundregel 1).",
     "§§ 176, 176a, 184c: nur die Fassung ab 01.07.2021 ist hinterlegt. Weil bei §§ 176/176a ohnehin das Ruhen nach § 78b Abs. 1 Nr. 1 StGB greift und der Monitor dort keine Restlaufzeit ausweist, ist die Luecke dort weniger folgenreich als bei § 184c — dessen Fassung vor dem 01.07.2021 fehlt und nachzureichen ist.",
-    "§ 184b Abs. 1 Satz 2 (Fassung 2021-2024): der einzige Eintrag mit SCHWACHER Belegqualitaet (Strafrahmen nicht unabhaengig geprueft). Gesondert gegenzulesen."
+    "§ 184b Abs. 1 Satz 2 (Fassung 2021-2024): der einzige Eintrag mit SCHWACHER Belegqualitaet (Strafrahmen nicht unabhaengig geprueft). Gesondert gegenzulesen.",
+    "§ 184a: nur die Fassung ab 01.01.2021 ('Inhalte', 60. StrAendG) ist hinterlegt. Die Vorgaengerfassung ('Schriften', bis 31.12.2020) hatte nach dem ausgewerteten Wortlaut denselben Strafrahmen und damit dieselbe Frist — die Luecke ist fristneutral, sie ist aber NICHT geschlossen. Fuer Tatzeitpunkte in 2019/2020 meldet der Monitor 'keine gueltige Fassung hinterlegt'. Da das Forum ab 2019 aktiv war, wird diese Luecke praktisch.",
+    "§§ 184k und 184l existierten vor dem 01.01.2021 bzw. dem 01.07.2021 NICHT. Das ist KEINE Luecke des Parametersatzes, sondern die Rechtslage: fuer Handlungen davor kommen sie nach § 1 StGB und § 2 Abs. 1 StGB nicht in Betracht. Der Befund 'keine gueltige Fassung hinterlegt' bedeutet bei diesen beiden Normen also 'nach dieser Norm nicht strafbar' und NICHT 'Daten fehlen'. Diese Unterscheidung ist bei der Auswertung zu beachten."
   ]
 }

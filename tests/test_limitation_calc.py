@@ -25,6 +25,29 @@
 #          ausserhalb jeder Spanne -> None (Befund, kein Rueckfall).
 #   LP12 — Fehlende Datei / kaputtes JSON -> LimitationParamsError.
 #
+# LADESCHICHT, SCHEMA-FASSUNG 2 (Build 529 — Ersatzanker-Merkmal):
+#   LP13 — Jeder Eintrag traegt 'anker_registrierung_zulaessig' (bool) UND
+#          eine nicht-leere 'anker_grundlage'.
+#   LP14 — Fehlendes Merkmal -> Fehler (kein Vorgabewert, keine stille
+#          Entscheidung fuer kuenftig ergaenzte Tatbestaende).
+#   LP15 — Nicht-boolescher Wert ('true', 1, null) -> Fehler. Geprueft wird
+#          der TYP, nicht die Wahrheit — "true" waere in Python wahr.
+#   LP16 — Leere 'anker_grundlage' -> Fehler.
+#   LP17 — schema_version 1 (die alte Fassung) -> Fehler; die Meldung nennt
+#          das fehlende Merkmal beim Namen.
+#   LP18 — Die Ankerregel folgt mcs Vorgabe: §§ 176/176a unzulaessig,
+#          §§ 184a/184b/184c zulaessig, §§ 184k/184l unzulaessig — und ALLE
+#          Fassungen eines Codes tragen dieselbe Regel (sonst haenge die
+#          Zulaessigkeit am Tatzeitpunkt, den es gerade nicht gibt).
+#   LP19 — §§ 184a, 184k, 184l sind hinterlegt: Hoechststrafen, Frist nach
+#          § 78 Abs. 3 Nr. 4 StGB, ruht_bis_30 false, Fundstelle vorhanden.
+#   LP20 — Inkrafttreten wird NICHT rueckdatiert (§ 1, § 2 Abs. 1 StGB):
+#          einen Tag vor Inkrafttreten liefert fassung_am() None.
+#   LP21 — Der Vorgabesatz bleibt unveraendert, und die Fristneutralitaet
+#          der Beifang-Normen wird NACHGERECHNET statt behauptet.
+#   LP22 — Der Vorbehalt zur Antragsfrist (§ 77b StGB, § 184k als relatives
+#          Antragsdelikt) steht im Satz.
+#
 # RECHENSCHICHT (limitation.py):
 #   LC01 — Nicht bestaetigter Satz -> ampel 'keine_aussage', KEINE Restlaufzeit,
 #          Grund im Befund. Auch mit vorhandener Tatzeit.
@@ -53,7 +76,7 @@ import json
 import sys
 import tempfile
 import unittest
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -104,7 +127,7 @@ def _params_bestaetigt():
 
 
 class TestLimitationParams(unittest.TestCase):
-    """LP01-LP12 — die Ladeschicht und ihre Selbstpruefung."""
+    """LP01-LP22 — die Ladeschicht und ihre Selbstpruefung."""
 
     def test_LP01_ausgelieferter_satz_laedt(self):
         p = load_params()
@@ -207,6 +230,136 @@ class TestLimitationParams(unittest.TestCase):
         kaputt.write_text("{das ist kein json", encoding="utf-8")
         with self.assertRaises(LimitationParamsError):
             load_params(kaputt)
+
+    # -- Build 529: Schema-Fassung 2 (Ersatzanker-Merkmal) --------------------
+
+    def test_LP13_jeder_eintrag_hat_ankerregel_mit_begruendung(self):
+        """
+        Das Merkmal entscheidet, ob fuer einen Fall OHNE belegte Tathandlung
+        eine Frist gerechnet wird. Es muss deshalb bei JEDEM Eintrag stehen und
+        eine Begruendung tragen — eine unbegruendete Ja/Nein-Entscheidung ueber
+        eine Rechtsfolge waere in der Akte wertlos.
+        """
+        for o in load_params().offences:
+            self.assertIsInstance(o.anker_registrierung_zulaessig, bool, o.code)
+            self.assertTrue(o.anker_grundlage.strip(), o.code)
+
+    def test_LP14_fehlendes_ankermerkmal_wird_zurueckgewiesen(self):
+        raw = _raw()
+        del raw["tatbestaende"][0]["anker_registrierung_zulaessig"]
+        with self.assertRaises(LimitationParamsError) as ctx:
+            load_params(_write(raw))
+        self.assertIn("anker_registrierung_zulaessig", str(ctx.exception))
+
+    def test_LP15_ankermerkmal_muss_boolesch_sein(self):
+        # Die Zeichenkette "true" ist in Python wahr — genau deshalb wird hier
+        # auf den TYP geprueft und nicht auf die Wahrheit.
+        for wert in ("true", 1, None):
+            raw = _raw()
+            raw["tatbestaende"][0]["anker_registrierung_zulaessig"] = wert
+            with self.assertRaises(LimitationParamsError) as ctx:
+                load_params(_write(raw))
+            self.assertIn("true oder false", str(ctx.exception))
+
+    def test_LP16_leere_ankerbegruendung_wird_zurueckgewiesen(self):
+        raw = _raw()
+        raw["tatbestaende"][0]["anker_grundlage"] = "   "
+        with self.assertRaises(LimitationParamsError) as ctx:
+            load_params(_write(raw))
+        self.assertIn("anker_grundlage", str(ctx.exception))
+
+    def test_LP17_alte_schema_fassung_wird_zurueckgewiesen(self):
+        """
+        Ein Satz der Fassung 1 kennt das Ankermerkmal nicht. Er darf NICHT
+        'bestmoeglich' gelesen werden — sonst entschiede der Code ueber eine
+        Frage, die der Satz nicht beantwortet.
+        """
+        raw = _raw()
+        raw["schema_version"] = 1
+        with self.assertRaises(LimitationParamsError) as ctx:
+            load_params(_write(raw))
+        self.assertIn("anker_registrierung_zulaessig", str(ctx.exception))
+
+    def test_LP18_ankerregel_folgt_der_vorgabe_von_mc(self):
+        """
+        mc am 2026-07-25: §§ 176/176a unzulaessig (Missbrauch geschieht nicht
+        notwendigerweise als Forumsmitglied), §§ 184b/184c zulaessig.
+        """
+        nach_code = {}
+        for o in load_params().offences:
+            nach_code.setdefault(o.code, []).append(o)
+        for code, fassungen in nach_code.items():
+            erwartet = code.startswith(("184a", "184b", "184c"))
+            for o in fassungen:
+                self.assertEqual(o.anker_registrierung_zulaessig, erwartet,
+                                 "%s (%s..%s)" % (code, o.gueltig_von,
+                                                  o.gueltig_bis))
+            # Alle Fassungen EINES Codes muessen dieselbe Regel tragen — sonst
+            # haenge die Zulaessigkeit des Ankers am Tatzeitpunkt, den es in
+            # genau diesem Fall ja gerade NICHT gibt.
+            self.assertEqual(
+                len({o.anker_registrierung_zulaessig for o in fassungen}), 1,
+                code)
+
+    def test_LP19_neue_tatbestaende_184a_184k_184l(self):
+        """
+        Build 529: die Beifang-Normen sind hinterlegt, tragen alle die
+        Fuenfjahresfrist des § 78 Abs. 3 Nr. 4 StGB und ruhen NICHT — der
+        Katalog des § 78b Abs. 1 Nr. 1 StGB nennt keine von ihnen.
+        """
+        p = load_params()
+        nach_code = {o.code: o for o in p.offences}
+        for code, monate in (("184a", 36), ("184k", 24),
+                             ("184l_abs1", 60), ("184l_abs2", 36)):
+            self.assertIn(code, nach_code)
+            o = nach_code[code]
+            self.assertEqual(o.hoechststrafe_monate, monate, code)
+            self.assertEqual(o.frist_jahre, 5, code)
+            self.assertFalse(o.ruht_bis_30, code)
+            self.assertIn("dejure.org", o.fundstelle, code)
+
+    def test_LP20_inkrafttreten_wird_nicht_rueckdatiert(self):
+        """
+        §§ 184k/184l gab es 2019/2020 nicht (§ 1, § 2 Abs. 1 StGB). Der Satz
+        darf fuer Tatzeitpunkte davor KEINE Fassung liefern.
+        """
+        p = load_params()
+        for code, erster_tag in (("184k", date(2021, 1, 1)),
+                                 ("184l_abs1", date(2021, 7, 1)),
+                                 ("184l_abs2", date(2021, 7, 1)),
+                                 ("184a", date(2021, 1, 1))):
+            self.assertIsNone(
+                p.fassung_am(code, erster_tag - timedelta(days=1)), code)
+            self.assertIsNotNone(p.fassung_am(code, erster_tag), code)
+
+    def test_LP21_vorgabesatz_unveraendert_und_fristneutral(self):
+        """
+        Die Beifang-Normen gehoeren NICHT in den Vorgabesatz (mc). Und ihre
+        Aufnahme waere fristneutral — das ist nachrechenbar und wird hier
+        nachgerechnet, statt es nur zu behaupten: alle vier tragen fuenf Jahre,
+        also genau die kuerzeste Frist, die der Vorgabesatz ohnehin enthaelt.
+        """
+        p = load_params()
+        self.assertNotIn("184a", p.vorgabe_tatbestaende)
+        self.assertNotIn("184k", p.vorgabe_tatbestaende)
+        self.assertNotIn("184l_abs1", p.vorgabe_tatbestaende)
+        self.assertNotIn("184l_abs2", p.vorgabe_tatbestaende)
+        kuerzeste_vorgabe = min(
+            o.frist_jahre for o in p.offences
+            if o.code in p.vorgabe_tatbestaende)
+        for code in ("184a", "184k", "184l_abs1", "184l_abs2"):
+            o = next(x for x in p.offences if x.code == code)
+            self.assertGreaterEqual(o.frist_jahre, kuerzeste_vorgabe, code)
+
+    def test_LP22_vorbehalt_zur_antragsfrist_ist_vorhanden(self):
+        """
+        § 184k ist relatives Antragsdelikt. Die Frist des § 77b StGB ist eine
+        ANDERE Uhr und wird hier nicht berechnet — wer das nicht weiss, koennte
+        aus einer gruenen Ampel den falschen Schluss ziehen.
+        """
+        vorbehalte = " ".join(load_params().vorbehalte)
+        self.assertIn("§ 77b", vorbehalte)
+        self.assertIn("Antrag", vorbehalte)
 
 
 class TestLimitationCalc(unittest.TestCase):
