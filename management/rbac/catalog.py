@@ -328,6 +328,27 @@ CAPABILITIES: Tuple[Capability, ...] = (
                "Zu einer Annotation den festgestellten Tatzeitraum (Beginn "
                "und/oder Ende) erfassen, korrigieren oder zuruecknehmen. "
                "Append-only mit Beleg in der Beweismitteldatenbank."),
+    # --- Build 536 (AP-3B): Dringlichkeitsmatrix (Seed in M033) -------------
+    #   EIGENES Recht, nicht 'dashboard.view' und nicht 'limitation.view'.
+    #   Das Ampel-Dashboard zeigt den BEARBEITUNGSSTAND je Fall; die Matrix
+    #   zeigt eine RANGFOLGE und stuetzt sich dabei auf die Verjaehrungsfrist,
+    #   deren Ablauf unumkehrbar ist. Und sie zeigt neben der Frist den
+    #   ARBEITSSTAND fremder Faelle (Abdeckung der Bewertung, hoechste
+    #   Konfidenz, Identitaetszuordnung) — wer die Fristen sehen darf, darf
+    #   damit noch nicht sehen, wie weit die Kolleginnen sind.
+    #
+    #   NICHT scope-behaftet: eine Rangfolge ueber den eigenen Arbeitsvorrat
+    #   waere keine. Auf 'eigene' verengt zeigte sie genau die Faelle nicht,
+    #   um derentwillen es sie gibt — die unzugewiesenen.
+    #
+    #   MIT DIESEM RECHT IST KEINE PRIORISIERUNG VERBUNDEN. Die Matrix
+    #   schreibt NICHT in cases.priority; sie ist ein Vorschlag, den ein
+    #   Mensch sieht, und ausdruecklich KEINE Beweiswuerdigung (§ 261 StPO).
+    #   Grant an 'supervisor' per policy_admin (default-deny).
+    Capability("matrix.view", "Dringlichkeitsmatrix sehen",
+               "Die Rangfolge der Faelle nach Bearbeitungsdringlichkeit und "
+               "Erkenntnislage lesen. Die Matrix ist ein VORSCHLAG und keine "
+               "Beweiswuerdigung (§ 261 StPO); sie schreibt keine Prioritaet."),
 )
 
 

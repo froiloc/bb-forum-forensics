@@ -1,0 +1,10 @@
+de4522940f3c1e92894ff8ad90249e56  build.json
+47809e7d953df9ed6a76cda11013d793  management/results/matrix_weights.json
+368c3390da80aedde435656a0aef0e64  management/results/matrix_weights.py
+78eea70d820b848643b767b6f39c8f6e  management/results/urgency_matrix.py
+7b2b844bd6a6faf7227330035ee2c5ac  management/migrations/coordinator/m033_matrix_rbac.py
+caa305d52b111a85381a31b671cfc653  management/rbac/catalog.py
+e29cc69e526a39b26495d95dfd0ad58a  tests/test_urgency_matrix.py
+410266d3cb4202f6b2002a793c573c5b  tests/test_management_rbac_schema.py
+3cada1d295a9ff99d9b52b8c2878adbf  tests/test_demo_seed.py
+946935c3c7af41865f532faaa2d3abc4  tests/test_management_dashboard.py

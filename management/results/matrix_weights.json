@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "stand": "2026-07-26",
+  "erzeugt_durch": "Build 536 (AP-3B). Werte aus Klaerung_AP3B_Gewichtungsmodell_261_v0_1.md §4, ergaenzt um die Festlegungen aus Entscheidungen_2026-07-26_AP3B_Matrix.md (M-1 bis M-3).",
+
+  "zweckbindung": "BEARBEITUNGSDRINGLICHKEIT, KEINE BEWEISWUERDIGUNG. Diese Matrix sagt, welcher Fall als naechstes Arbeitskraft bekommen soll — das ist eine Ressourcenentscheidung der Behoerde. Sie sagt NICHT, wie schwer eine Tat wiegt oder wie belastet eine Person ist. § 261 StPO ordnet die freie Beweiswuerdigung dem Gericht zu; eine Zahl, die sie vorwegnaehme, waere in der Akte ein Angriffspunkt gegen die gesamte Auswertung.",
+
+  "vorbehalte": [
+    "KEINE MASSNAHME ALLEIN AUF DIESE ZAHL. Die Matrix ist ein Vorschlag, den ein Mensch sieht und bewertet. Sie schreibt NICHT in cases.priority.",
+    "KEINE SCHWERE-ACHSE. Es gibt bewusst keine Achse 'Tatschwere' oder 'Risiko der Person' (Entscheidung mc 2026-07-26, § 261 StPO). Beide Achsen sind verfahrensbezogen.",
+    "DIE DRINGLICHKEIT SAGT NICHTS UEBER DIE BELASTBARKEIT DER FRIST. Sie wird ungekuerzt vergeben, gleich worauf die Frist beruht; die Belastbarkeit steht als EIGENE Angabe daneben (Entscheidung mc M-1). Wer nur die Zahl liest, liest die Haelfte.",
+    "QUALITAETSWERTE GEHEN NICHT EIN. 'ordinal' bedeutet bei abuser_quality SCHWERE, bei location_quality PRAEZISION — beides zu addieren waere Unsinn (Uebernahme aus priority_scorer.py:34-39)."
+  ],
+
+  "schwellen": {
+    "dringlichkeit_prozent": 50,
+    "erkenntnislage_prozent": 50,
+    "begruendung": "Die Quadrantengrenze liegt bei der Haelfte des jeweils ERREICHBAREN Hoechstwerts, nicht bei einer festen Punktzahl. Damit verschiebt sich die Grenze automatisch mit, wenn unten ein Gewicht geaendert wird — sonst wuerde eine Gewichtsanpassung stillschweigend auch die Quadranteneinteilung verschieben."
+  },
+
+  "dringlichkeit": {
+    "frist_knapp": 40,
+    "frist_knapp_tage_bis": 365,
+    "frist_mittel": 20,
+    "frist_mittel_tage_bis": 1095,
+    "wiedervorlage_ueberfaellig": 15,
+    "eskalation_aktiv": 15,
+    "liegezeit": 10,
+    "liegezeit_tage_ab": 90,
+    "unzugewiesen": 10,
+
+    "begruendung_frist": "Restlaufzeit < 12 Monate = 40 (nicht heilbar), 12-36 Monate = 20. ACHTUNG, BEWUSSTE ABWEICHUNG VON DER KLAERUNG v0.2 §3: dort war vorgeschlagen, statt einer eigenen Tagesgrenze den Ampelzustand 'knapp' zu lesen, weil DEFAULT_VORWARN_TAGE ohnehin 365 ist. Das waere falsch gewesen — die Vorwarnschwelle ist in der Fristensicht EINSTELLBAR (vorwarn_tage im Abruf). Die Matrix haette dann ihre Bedeutung geaendert, sobald jemand einen Regler verschiebt. Die Tagesgrenzen stehen deshalb HIER und sind von der Sicht unabhaengig.",
+
+    "begruendung_liegezeit": "90 Tage ist die VIERTE Liegezeit-Schwelle im Werkzeug. Die anderen drei: Ampel amber 7 / rot 21 (dashboard_repo.py:95-96, aus config.yaml dashboard.ampel.*) und Eskalation red_overdue 30 / stale_open 14 (escalation.py:39-41). Sie sind bewusst nicht zusammengelegt: die Ampel bewertet den Bearbeitungsfluss, die Eskalation meldet einen Missstand, und diese Schwelle sagt, ab wann ein Fall in der PRIORISIERUNG Gewicht bekommt. Wer eine davon aendert, aendert nicht die anderen — und soll das wissen.",
+
+    "begruendung_eskalation": "Es zaehlt JEDE aktive Eskalationsmeldung, quittiert oder nicht. Eine Quittierung ist KEIN Erledigen (m027_escalation_ack.py:15-22 woertlich: 'Die Eskalation VERSCHWINDET NICHT aus der Liste'). Quittierte aus der Dringlichkeit herauszunehmen waere genau die Umgehung, die M027 ausschliesst. Der Punktwert ist derselbe, ob eine oder mehrere Meldungen vorliegen — die Zahl der Meldungen steht in den Beitraegen."
+  },
+
+  "erkenntnislage": {
+    "abdeckung_max": 40,
+
+    "konfidenz": {
+      "unbestimmt": 0,
+      "kein_anhalt": 0,
+      "anhaltspunkt": 10,
+      "verdacht": 20,
+      "wahrscheinlich": 30,
+      "gerichtsfest": 40
+    },
+    "begruendung_konfidenz": "FESTE ZUORDNUNGSTABELLE ALLER SECHS CODES (Entscheidung mc M-2, abweichend von meinem Vorschlag, relativ zum Skalenmaximum zu rechnen). Grund fuer die feste Tabelle: die Abstaende lassen sich fachlich setzen statt rechnerisch gleichzuverteilen, und 'kein_anhalt' darf bewusst 0 tragen — das ist eine ECHTE Aussage ('geprueft, nichts gefunden'), keine fehlende. Die echten Ordinalwerte der Skala sind 0-5 (m011_investigation_results.py:278-283); die Punkte hier sind eine EIGENE Abbildung und ausdruecklich nicht confidence_ordinal. WICHTIG: die Skala ist Daten und im Betrieb aenderbar (catalog_admin-CLI). Ein CODE, DEN DIESE TABELLE NICHT KENNT, ERGIBT NICHT 0 — er wird benannt, der Fall gilt als nicht bestimmbar, und der Test MW07 haelt die Tabelle gegen den Katalog.",
+
+    "identitaet": {
+      "verdacht": 7,
+      "wahrscheinlich": 13,
+      "gesichert": 20
+    },
+    "begruendung_identitaet": "ABGESTUFT statt pauschal (Entscheidung mc M-3). identified_subject fuehrt eine EIGENE, per CHECK eingefrorene Skala (m018_identified_subject.py:64-66): verdacht/wahrscheinlich/gesichert mit Ordinal 10/20/30. Zwei der Codes heissen wie in der Konfidenzskala oben, tragen dort aber 3 und 4 — die beiden Tabellen duerfen NICHT verwechselt werden. Eine bloss VERMUTETE Zuordnung mit einer GESICHERTEN gleichzusetzen waere bei genau dem Merkmal, um dessentwillen das Werkzeug gebaut wird, die folgenreichste Gleichsetzung von allen.",
+
+    "ausgeschlossene_kriterien": ["identification"],
+    "begruendung_ausschluss": "Das Kriterium 'identification' (m011:308) wird bei der Abdeckung UND bei der hoechsten Konfidenz uebersprungen, weil dieselbe Erkenntnis sonst zweimal in die Y-Achse eingeht — einmal ueber das Kriterium, einmal ueber identified_subject (Entscheidung mc M-3). FOLGE, die sichtbar sein muss: die Abdeckung der Matrix rechnet ueber NEUN statt zehn Kriterien. Die bestehende Sicht /api/results/coverage bleibt unveraendert bei zehn — dort ist die Frage eine andere."
+  }
+}
