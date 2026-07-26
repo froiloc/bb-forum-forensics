@@ -1,0 +1,4 @@
+b3d25fa6cc4044fb254f925710919c2c  build.json
+a7807b3b6d7a9a7073c77f75c299a7f3  management/server/static/cockpit_stats.js
+dee4321585e21c9ba396d4e1d9ef32c6  tests/unit/test_cockpit_tabellen_ux.test.js
+caa9711c54b82efaf747c115642ba22f  tests/unit/test_cockpit_stats.test.js

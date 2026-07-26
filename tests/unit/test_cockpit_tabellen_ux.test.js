@@ -231,6 +231,29 @@ const REGISTER = [
       ],
     }),
   },
+  // --- Build 552 ------------------------------------------------------------
+  // Statistiken: die Sicht besteht ueberwiegend aus Diagrammen; nur der Reiter
+  // 'Ermittler' fuehrt eine Tabelle. Sie bekommt eine eigene Kennung
+  // ('stats_assign'), damit spaetere Tabellen in derselben Sicht nicht mit ihr
+  // um Hilfe-Anker und Bedienzustand streiten.
+  {
+    name: "stats (Ermittler)", datei: "cockpit_stats.js",
+    global: "AIWCockpitStats", render: "renderStats",
+    sicht: "stats_assign", zeilen: 3,
+    daten: () => ({
+      scope: "alle", generated_at: 1000,
+      totals: { cases: 4, assigned: 3, unassigned: 1, events: 12 },
+      by_status: { open: 2, in_progress: 1, approved: 1, closed: 0 },
+      by_priority: { "1": 0, "2": 1, "3": 3, "4": 0, "5": 0 },
+      by_ampel: { gruen: 2, gelb: 1, rot: 1 },
+      by_assignee: [
+        { person_id: 2, display_name: "Mueller", count: 2 },
+        { person_id: 3, display_name: "Gamma", count: 1 },
+      ],
+      throughput_by_day: [{ day: "2026-07-09", count: 3 }],
+    }),
+  },
+
   // --- Build 551 ------------------------------------------------------------
   {
     name: "calendar", zeilenklick: true, datei: "cockpit_calendar.js",
@@ -363,6 +386,11 @@ function _zeichne(eintrag, win, main, mitTabulator) {
 function _tabelleVon(eintrag, view) {
   if (Array.isArray(view)) { return view[eintrag.index || 0]; }
   if (view && view.table) { return view.table; }
+  // Sichten, die mehrere Artefakte zurueckgeben (Statistiken: Diagramme UND
+  // Tabellen), liefern ihre Tabellen in einem Feld 'tables'.
+  if (view && Array.isArray(view.tables)) {
+    return view.tables[eintrag.index || 0];
+  }
   return view;
 }
 

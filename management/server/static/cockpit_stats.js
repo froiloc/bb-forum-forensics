@@ -134,6 +134,27 @@
         return d;
     }
 
+    // _tk / _mitHilfe (Build 552): gemeinsames Tabellen-Werkzeug + Hilfe-Anker
+    // der Spaltenkoepfe. LAZY; die Spalten werden KOPIERT.
+    function _tk() {
+        return (typeof window !== 'undefined' && window.AIWTableKit)
+            ? window.AIWTableKit : null;
+    }
+    function _mitHilfe(cols, sicht, doc) {
+        var TK = _tk();
+        if (!TK || !doc || !TK.titelMitHilfe) { return cols; }
+        return cols.map(function (c) {
+            var neu = {};
+            Object.keys(c).forEach(function (k) { neu[k] = c[k]; });
+            if (c.field && !c.titleFormatter) {
+                neu.titleFormatter = TK.titelMitHilfe(
+                    doc, c.title || c.field,
+                    sicht + '.spalte.' + String(c.field).toLowerCase());
+            }
+            return neu;
+        });
+    }
+
     // renderStats: Kopf + Downloads + Reiter (Tabs). opts.ECharts/opts.Tabulator
     // injizierbar; opts.onDownloadCsv/opts.onDownloadJson werden von den Buttons
     // gerufen. Rueckgabe: {charts:[...], tables:[...]} fuer den Abbau.
@@ -236,17 +257,29 @@
             contents.dist.appendChild(note);
         }
 
-        // --- Tab "Ermittler": Tabulator.
+        // --- Tab "Ermittler": Tabulator (Build 552 ueber das gemeinsame
+        // Tabellen-Werkzeug: Kopffilter, Trefferzahl, 'Filter zuruecksetzen',
+        // gesicherter Bedienzustand, Hilfe-Anker).
         var assignTable = null;
-        if (typeof Tab === 'function') {
-            var tdiv = doc.createElement('div');
-            tdiv.id = 'aiw-stats-assign';
-            contents.assign.appendChild(tdiv);
-            assignTable = new Tab(tdiv, {
-                data: assigneeRows(data), columns: _ASSIGN_COLUMNS,
-                layout: 'fitColumns', height: '320px'
-            });
-            tables.push(assignTable);
+        var TK = _tk();
+        var assignRows = assigneeRows(data);
+        if (TK) {
+            assignTable = TK.tabelleAufbauen(doc, contents.assign, {
+                sicht: 'stats_assign',
+                rows: assignRows,
+                columns: _mitHilfe(_ASSIGN_COLUMNS, 'stats_assign', doc),
+                Ctor: Tab,
+                einheit: 'Ermittler:innen',
+                tabulator: { height: '320px' }
+            }).table;
+            if (assignTable) { tables.push(assignTable); }
+        } else {
+            // Kein stiller Leerzustand: die Zahl steht da (Grundregel 1).
+            var tnote = doc.createElement('div');
+            tnote.className = 'aiw-placeholder';
+            tnote.textContent = 'Gemeinsames Tabellen-Werkzeug nicht geladen '
+                + '— es liegen ' + assignRows.length + ' Ermittler:innen vor.';
+            contents.assign.appendChild(tnote);
         }
 
         // Tab-Wechsel: Sichtbarkeit umschalten + Charts der Ansicht resizen.
