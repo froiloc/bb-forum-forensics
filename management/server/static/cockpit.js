@@ -282,9 +282,10 @@
         // Sichten einrichtet. Gruppe 'Persoenlich', weil sie ausschliesslich
         // die EIGENE Oberflaeche betrifft.
         //
-        // 'immer: true' — SIE IST DIE EINZIGE SICHT OHNE RECHTEPRUEFUNG, und
-        // das ist Absicht. Es gibt an ihr nichts zu schuetzen: sie zeigt keine
-        // Fall- und keine Personendaten, sondern nur die eigene Einrichtung.
+        // 'immer: true' — SIE IST DIE EINZIGE SICHT OHNE RECHTEPRUEFUNG.
+        // BESTAETIGT von mc am 2026-07-26; das ist Absicht. Es gibt an ihr
+        // nichts zu schuetzen: sie zeigt keine Fall- und keine
+        // Personendaten, sondern nur die eigene Einrichtung.
         // Haengte sie an einem Recht, muesste jemand dieses Recht erst
         // erteilen (default-deny) — und bis dahin kaeme niemand an seine
         // eigenen Einstellungen. Ein Recht, das man niemandem sinnvoll

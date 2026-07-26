@@ -307,4 +307,81 @@ describe("cockpit_tablekit.js — gemeinsames Tabellen-Werkzeug (Build 534)", ()
     // Ohne Tabelle: kein Absturz, aber auch keine Erfolgsmeldung.
     expect(api.filterLoeschen(null)).toBe(false);
   });
+
+  // ==========================================================================
+  // Build 548 — Anker fuer die spaetere Schnellhilfe
+  // ==========================================================================
+
+  // TK14 ---------------------------------------------------------------------
+  it("TK14: hilfeGueltig erzwingt das Muster <sicht>.<bereich>.<name>", () => {
+    const TK = _api();
+    expect(TK.hilfeGueltig("personnel.werkzeug.filter_entfernen")).toBe(true);
+    expect(TK.hilfeGueltig("personnel.spalte.rollen")).toBe(true);
+    expect(TK.hilfeGueltig("a.b")).toBe(true);
+    // Zu wenig Abschnitte, Grossbuchstaben, Bindestriche, Leerzeichen,
+    // fuehrende Ziffern, leere Abschnitte: alles unzulaessig.
+    ["einteilig", "Personnel.werkzeug.x", "a.b-c", "a.b c", "1a.b",
+     "a..b", "a.", ".b", "", null, undefined, 42].forEach((id) => {
+      expect(TK.hilfeGueltig(id), String(id)).toBe(false);
+    });
+  });
+
+  // TK15 ---------------------------------------------------------------------
+  it("TK15: hilfeAnker setzt gueltige Kennungen und VERWIRFT krumme", () => {
+    const win = _ctx();
+    const TK = win.AIWTableKit;
+    const doc = win.document;
+
+    const gut = TK.hilfeAnker(doc.createElement("span"), "x.y.z");
+    expect(gut.getAttribute("data-hilfe-id")).toBe("x.y.z");
+
+    // Eine krumme Kennung wird NICHT gesetzt. Begruendung im Modulkopf: die
+    // Schnellhilfe umrandete das Element spaeter, faende aber keinen Text —
+    // lieber kein Rahmen als ein Rahmen ohne Inhalt.
+    const warnungen = [];
+    win.console.warn = (m) => warnungen.push(m);
+    const schlecht = TK.hilfeAnker(doc.createElement("span"), "KRUMM");
+    expect(schlecht.hasAttribute("data-hilfe-id")).toBe(false);
+    // Und der Fehlgriff ist nicht still.
+    expect(warnungen.length).toBe(1);
+    expect(warnungen[0]).toContain("KRUMM");
+
+    // Kein Element -> kein Absturz.
+    expect(() => TK.hilfeAnker(null, "x.y.z")).not.toThrow();
+  });
+
+  // TK16 ---------------------------------------------------------------------
+  it("TK16: die Werkzeugleiste vergibt die Anker selbst", () => {
+    const win = _ctx();
+    const TK = win.AIWTableKit;
+
+    // MIT Sichtkennung: die Anker entstehen automatisch. Das ist der Gewinn
+    // des gemeinsamen Werkzeugs — jede kuenftige Sicht erbt sie, ohne dass
+    // jemand daran denken muss.
+    const mit = TK.werkzeugleiste(win.document, { id: "t", sicht: "demo" });
+    expect(TK.hilfeIds(mit.el)).toEqual([
+      "demo.werkzeug.filter_entfernen",
+      "demo.werkzeug.trefferzahl",
+    ]);
+
+    // OHNE Sichtkennung: LIEBER GAR KEIN ANKER als ein falscher. Ein
+    // 'undefined.werkzeug.…' waere ein toter Link.
+    const ohne = TK.werkzeugleiste(win.document, { id: "t" });
+    expect(TK.hilfeIds(ohne.el)).toEqual([]);
+  });
+
+  // TK17 ---------------------------------------------------------------------
+  it("TK17: titelMitHilfe — Spaltenkopf mit Anker und Tooltip, XSS-sicher", () => {
+    const win = _ctx();
+    const TK = win.AIWTableKit;
+    const f = TK.titelMitHilfe(
+      win.document, "Rollen <b>x</b>", "demo.spalte.rollen", "Erklärung"
+    );
+    const el = f();
+    expect(el.getAttribute("data-hilfe-id")).toBe("demo.spalte.rollen");
+    expect(el.title).toBe("Erklärung");
+    // Der Titel ist TEXT, kein Markup.
+    expect(el.textContent).toBe("Rollen <b>x</b>");
+    expect(el.querySelector("b")).toBeNull();
+  });
 });

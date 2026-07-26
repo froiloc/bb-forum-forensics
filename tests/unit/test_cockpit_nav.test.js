@@ -17,7 +17,8 @@
  * CN09 — setWho(): Anzeigename via textContent (XSS-sicher).
  * CN10 — renderPlaceholder(): Leerzustand mit Sicht-Label bzw. default-deny-Hinweis.
  *
- * BUILD 546 (AP-3G) — EINE AUSNAHME VON DEFAULT-DENY, HIER AUSGESCHRIEBEN:
+ * BUILD 546 (AP-3G) — EINE AUSNAHME VON DEFAULT-DENY, BESTAETIGT VON mc AM
+ * 2026-07-26, HIER AUSGESCHRIEBEN:
  * Die Sicht 'viewprefs' ("Ansicht anpassen") traegt 'immer: true' und
  * erscheint OHNE Rechtepruefung. Sie ist damit in JEDER Erwartung dieser
  * Suite zusaetzlich enthalten — das ist kein Aufweichen der Zusicherung,

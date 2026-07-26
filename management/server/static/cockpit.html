@@ -104,7 +104,6 @@
 <script src="/static/cockpit_releases.js" defer></script>
 <script src="/static/cockpit_onboarding.js" defer></script>
 <script src="/static/cockpit_adsync.js" defer></script>
-<script src="/static/cockpit_personnel.js" defer></script>
 <script src="/static/cockpit_workload.js" defer></script>
 <!-- Eskalationen (AP-2G/Idee 23, Build 516): rein auswertende Sicht zu
      /api/escalations. Recht: escalation.view (Seed M026, default-deny). -->
@@ -153,13 +152,20 @@
 <script src="/static/cockpit_palette.js" defer></script>
 <!-- Build 534: gemeinsames Tabellen-Werkzeug (Kopffilter, Spaltenwahl,
      Filter zuruecksetzen, gesicherte Sortierung). MUSS VOR den Sichten
-     stehen, die es benutzen (cockpit_assignment.js, cockpit_cases.js):
-     sie greifen beim Rendern auf window.AIWTableKit zu. Alle Skripte
-     tragen 'defer' und laufen daher in DOKUMENTREIHENFOLGE — die
-     Reihenfolge dieser Zeilen ist also die Ladereihenfolge. -->
+     stehen, die es benutzen (cockpit_assignment.js, cockpit_cases.js,
+     seit Build 548 auch cockpit_personnel.js): sie greifen beim Rendern
+     auf window.AIWTableKit zu. Alle Skripte tragen 'defer' und laufen
+     daher in DOKUMENTREIHENFOLGE — die Reihenfolge dieser Zeilen ist
+     also die Ladereihenfolge.
+     Build 548: cockpit_personnel.js ist aus dem Block weiter oben
+     HIERHER gewandert. Der Zugriff dort ist zwar lazy gekapselt (_tk()),
+     die Zeile stuende oben aber im Widerspruch zu genau dieser Regel —
+     und eine Regel, von der eine Ausnahme herumliegt, wird beim
+     naechsten Umbau uebersehen. -->
 <script src="/static/cockpit_tablekit.js" defer></script>
 <script src="/static/cockpit_assignment.js" defer></script>
 <script src="/static/cockpit_cases.js" defer></script>
+<script src="/static/cockpit_personnel.js" defer></script>
 <script src="/static/cockpit_calendar.js" defer></script>
 <script src="/static/cockpit_results.js" defer></script>
 <script src="/static/cockpit_crossref.js" defer></script>

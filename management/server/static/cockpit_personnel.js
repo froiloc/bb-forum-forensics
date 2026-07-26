@@ -43,7 +43,39 @@
 //   fassen NIE das DOM an -> vitest; opts.doc injizierbar (JSDOM).
 // SICHERHEIT (XSS): alle variablen Texte via textContent.
 //
-// Version: v0.8.503 · Build: 503 · 2026-07-24
+// BUILD 548 — TABULATOR + GEMEINSAMES TABELLEN-WERKZEUG (mc 2026-07-26):
+//   Die Personenliste war eine handgebaute <table> ohne Sortierung und ohne
+//   Filter. Sie ist jetzt eine Tabulator-Tabelle mit Kopffiltern,
+//   Trefferzaehler, 'Filter zuruecksetzen' und gesicherter Sortierung — also
+//   dieselbe Bedienung wie in der Zuweisung und der Fall-Erkennung.
+//
+//   DIE ALTE BEGRUENDUNG WAR UEBERHOLT, NICHT FALSCH. Hier stand: "kein
+//   Tabulator: die Zeilen tragen interaktive Elemente, die wir exakt
+//   kontrollieren wollen". Das galt fuer Build 503 — das gemeinsame Werkzeug
+//   kam erst mit Build 534, und seither steckt cockpit_cases.js (:528-552)
+//   nachweislich Auswahlkaestchen mit eigenen Ereignisbehandlern in
+//   Tabulator-Zellen, cockpit_assignment.js zusaetzlich Auswahllisten und
+//   Knoepfe. Die Kontrolle ueber die Zellen geht durch Tabulator NICHT
+//   verloren: sie entstehen weiterhin hier, in eigenen Formattern.
+//
+//   WAS SICH NICHT AENDERT — und das ist der Punkt bei einer Schreib-Sicht:
+//   der SELBSTSCHUTZ (die eigene Zeile traegt keine Bedienelemente), das
+//   Fehlen optimistischer Anzeige (nach jedem Schreiben laedt cockpit.js neu)
+//   und der lazy AD-Abschnitt. Alle drei sind unveraendert und weiterhin
+//   durch Tests gedeckt.
+//
+//   FILTER AUF WAHRHEITSWERTEN: die drei Flag-Spalten wuerden als true/false
+//   eine Auswahlliste 'true'/'false' erzeugen. Deshalb tragen die Zeilen je
+//   Flag ZUSAETZLICH ein Textfeld 'ja'/'nein' (toRows) — danach wird
+//   gefiltert und sortiert, waehrend der Formatter den Wahrheitswert nimmt.
+//   Ein Filter, den man nicht lesen kann, wird nicht benutzt.
+//
+//   HILFE-ANKER (data-hilfe-id): Spaltenkoepfe und Bedienelemente tragen
+//   stabile Kennungen fuer die spaetere Schnellhilfe. Sie kosten jetzt fast
+//   nichts; spaeter waeren dafuer alle Sichten ein zweites Mal anzufassen.
+//
+// Version: v0.8.548 · Build: 548 · 2026-07-26 (Tabulator + tablekit)
+//   Build 503: Erstfassung (handgebaute Tabelle).
 // =============================================================================
 
 (function () {
@@ -62,6 +94,16 @@
     }
 
     var EM_DASH = '—';
+    var SICHT = 'personnel';   // Praefix der Hilfe-Anker + Zustandsschluessel
+
+    // Zugriff auf das gemeinsame Tabellen-Werkzeug. LAZY (in der Funktion,
+    // nicht beim Laden): die Skripte tragen alle 'defer' und laufen in
+    // Dokumentreihenfolge, aber ein spaeterer Umbau der Reihenfolge soll diese
+    // Sicht nicht lautlos brechen. Muster cockpit_assignment.js:131.
+    function _tk() {
+        return (typeof window !== 'undefined' && window.AIWTableKit)
+            ? window.AIWTableKit : null;
+    }
 
     //: Reihenfolge + Beschriftung der Flag-Spalten (person-Schema, Build 310).
     var FLAGS = [
@@ -107,6 +149,220 @@
         return !!(data && data.can_edit) && !isSelf(person, data);
     }
 
+    // toRows: Personen -> Tabellenzeilen. REIN (kein DOM) und damit
+    // vitest-geprueft; hier entstehen alle abgeleiteten Felder, nach denen
+    // gefiltert und sortiert wird.
+    //
+    // WARUM ABGELEITETE FELDER STATT FILTER AUF DEN ROHWERTEN:
+    //   * 'status' ist 'aktiv'/'inaktiv' — zwei Werte, also eine Auswahlliste.
+    //     Der VOLLE Text (mit Zeitpunkt und Grund) steht in 'status_detail'
+    //     und erscheint als Tooltip; er taugt nicht als Filterwert, weil er
+    //     bei jeder Person anders lautet.
+    //   * 'f_<flag>' ist 'ja'/'nein' statt true/false — siehe Modulkopf.
+    //   * 'rollen_text' macht die Rollen ueberhaupt erst durchsuchbar
+    //     ("wer hat searchagent?"). Die Chips selbst sind DOM und filterbar
+    //     waeren sie nicht.
+    function toRows(data) {
+        var d = data || {};
+        return (d.persons || []).map(function (p) {
+            var row = {
+                id: p.id,
+                system_username: p.system_username || '',
+                display_name: p.display_name || '',
+                status: (p.is_active === false) ? 'inaktiv' : 'aktiv',
+                status_detail: statusText(p),
+                rollen: (p.roles || []).slice(),
+                rollen_text: (p.roles || []).map(function (r) {
+                    return r.role_code;
+                }).join(', '),
+                ist_selbst: isSelf(p, d),
+                editierbar: canEditRow(p, d),
+                _person: p
+            };
+            FLAGS.forEach(function (f) {
+                row[f.key] = p[f.key] === true;
+                row['f_' + f.key] = (p[f.key] === true) ? 'ja' : 'nein';
+            });
+            return row;
+        });
+    }
+
+    // spalten: die Spaltendefinition inklusive Formatter.
+    // Braucht 'doc' (Formatter bauen DOM) und 'opts' (Rueckrufe).
+    function spalten(doc, data, opts) {
+        var TK = _tk();
+        function titel(text, id, erklaerung) {
+            return (TK && TK.titelMitHilfe)
+                ? TK.titelMitHilfe(doc, text, SICHT + '.spalte.' + id,
+                                   erklaerung)
+                : undefined;
+        }
+        function anker(el, id) {
+            return (TK && TK.hilfeAnker) ? TK.hilfeAnker(el, id) : el;
+        }
+
+        var cols = [
+            {
+                title: 'Kennung', field: 'system_username', widthGrow: 2,
+                titleFormatter: titel('Kennung', 'kennung',
+                    'Anmeldename aus dem Active Directory.'),
+                formatter: function (cell) {
+                    var d = cell.getData();
+                    var sp = doc.createElement('span');
+                    sp.className = 'aiw-pers-kennung'
+                        + (d.ist_selbst ? ' self' : '')
+                        + (d.status === 'inaktiv' ? ' inactive' : '');
+                    sp.textContent = d.system_username
+                        + (d.ist_selbst ? ' (ich)' : '');
+                    if (d.ist_selbst) {
+                        sp.title = 'Ihre eigene Kennung — an der eigenen '
+                            + 'Person sind keine Änderungen möglich '
+                            + '(Lockout-Schutz).';
+                    }
+                    return sp;
+                }
+            },
+            {
+                title: 'Anzeigename', field: 'display_name', widthGrow: 2,
+                titleFormatter: titel('Anzeigename', 'anzeigename',
+                    'Name aus dem Active Directory.'),
+                formatter: 'plaintext'
+            },
+            {
+                title: 'Status', field: 'status', width: 110,
+                titleFormatter: titel('Status', 'status',
+                    'Aktiv oder deaktiviert. Bei Deaktivierten nennt der '
+                    + 'Tooltip Zeitpunkt und Grund.'),
+                formatter: function (cell) {
+                    var d = cell.getData();
+                    var sp = doc.createElement('span');
+                    sp.className = 'aiw-pers-status ' + d.status;
+                    sp.textContent = d.status;
+                    sp.title = d.status_detail;
+                    return sp;
+                }
+            }
+        ];
+
+        // --- Die drei Flag-Spalten -----------------------------------------
+        FLAGS.forEach(function (f) {
+            cols.push({
+                title: f.label, field: 'f_' + f.key, width: 120,
+                hozAlign: 'center',
+                titleFormatter: titel(f.label, f.key.replace('is_', ''),
+                    'Merkmal der Person. Es steuert, wo sie zur Auswahl '
+                    + 'angeboten wird — nicht ihre Rechte; die kommen aus '
+                    + 'den Rollen.'),
+                formatter: function (cell) {
+                    var d = cell.getData();
+                    if (!d.editierbar) {
+                        var sp = doc.createElement('span');
+                        sp.textContent = d[f.key] ? '✓' : EM_DASH;
+                        sp.title = d.ist_selbst
+                            ? 'Eigene Person — nicht änderbar.'
+                            : 'Kein Änderungsrecht.';
+                        return sp;
+                    }
+                    var cb = doc.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.className = 'aiw-pers-flag-cb';
+                    cb.checked = d[f.key] === true;
+                    cb.setAttribute('aria-label',
+                        f.label + ' für ' + d.system_username);
+                    anker(cb, SICHT + '.bedienung.flag');
+                    cb.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                    });
+                    cb.addEventListener('change', function () {
+                        var body = { person_id: d.id };
+                        body[f.key] = cb.checked;
+                        if (typeof opts.onFlags === 'function') {
+                            opts.onFlags(body);
+                        }
+                    });
+                    return cb;
+                }
+            });
+        });
+
+        // --- Rollen: Chips + Zuweisen-Auswahl ------------------------------
+        cols.push({
+            title: 'Rollen', field: 'rollen_text', widthGrow: 3,
+            titleFormatter: titel('Rollen', 'rollen',
+                'Aktive Rollenzuweisungen. Sie tragen die Rechte. Der '
+                + 'Filter durchsucht die Rollenkürzel.'),
+            formatter: function (cell) {
+                var d = cell.getData();
+                var wrap = doc.createElement('div');
+                wrap.className = 'aiw-pers-roles';
+
+                d.rollen.forEach(function (r) {
+                    var chip = doc.createElement('span');
+                    chip.className = 'aiw-pers-chip';
+                    var lbl = doc.createElement('span');
+                    lbl.textContent = r.role_code;
+                    lbl.title = r.label || r.role_code;
+                    chip.appendChild(lbl);
+                    if (d.editierbar) {
+                        var x = doc.createElement('button');
+                        x.type = 'button';
+                        x.className = 'aiw-pers-chip-x';
+                        x.textContent = '×';
+                        x.title = 'Zuweisung widerrufen (auditiert, '
+                            + 'Soft-Revoke)';
+                        x.setAttribute('aria-label',
+                            'Rolle ' + r.role_code + ' widerrufen');
+                        anker(x, SICHT + '.bedienung.rolle_widerrufen');
+                        x.addEventListener('click', function (e) {
+                            e.stopPropagation();
+                            if (typeof opts.onRevoke === 'function') {
+                                opts.onRevoke(
+                                    { person_role_id: r.person_role_id });
+                            }
+                        });
+                        chip.appendChild(x);
+                    }
+                    wrap.appendChild(chip);
+                });
+
+                if (d.editierbar) {
+                    var candidates = assignableRoles(d._person,
+                                                     (data || {}).roles_catalog);
+                    if (candidates.length) {
+                        var sel = doc.createElement('select');
+                        sel.className = 'aiw-pers-assign-sel';
+                        sel.setAttribute('aria-label',
+                            'Rolle zuweisen für ' + d.system_username);
+                        anker(sel, SICHT + '.bedienung.rolle_zuweisen');
+                        var ph = doc.createElement('option');
+                        ph.value = '';
+                        ph.textContent = 'Rolle zuweisen …';
+                        sel.appendChild(ph);
+                        candidates.forEach(function (r) {
+                            var o = doc.createElement('option');
+                            o.value = r.code;
+                            o.textContent = r.code + ' (' + r.label + ')';
+                            sel.appendChild(o);
+                        });
+                        sel.addEventListener('click', function (e) {
+                            e.stopPropagation();
+                        });
+                        sel.addEventListener('change', function () {
+                            if (!sel.value) { return; }
+                            if (typeof opts.onAssign === 'function') {
+                                opts.onAssign({ person_id: d.id,
+                                                role_code: sel.value });
+                            }
+                        });
+                        wrap.appendChild(sel);
+                    }
+                }
+                return wrap;
+            }
+        });
+        return cols;
+    }
+
     // ---------------------------------------------------------------- Render
     function renderPersonnel(mainEl, data, opts) {
         opts = opts || {};
@@ -139,8 +395,100 @@
         }
         mainEl.appendChild(result);
 
-        // --- Personenliste ---------------------------------------------------
-        mainEl.appendChild(_table(doc, data, opts));
+        // --- Personenliste als Tabulator-Tabelle (Build 548) -----------------
+        var TK = _tk();
+        var rows = toRows(data);
+        var cols = spalten(doc, data, opts);
+        var table = null;
+        var leiste = null;
+
+        var host = doc.createElement('div');
+        host.className = 'aiw-pers-table';
+        host.id = 'aiw-pers-table';
+
+        var Ctor = opts.Tabulator
+            || (typeof window !== 'undefined' ? window.Tabulator : undefined);
+
+        if (!Ctor || !TK) {
+            // KEIN STILLER AUSFALL: fehlt die Tabellenbibliothek oder das
+            // gemeinsame Werkzeug, sagt die Sicht das — statt eine leere
+            // Flaeche zu zeigen, die wie 'keine Anwender vorhanden' aussieht
+            // (Grundregel 1). Muster cockpit_cases.js (FE11).
+            var warn = doc.createElement('div');
+            warn.className = 'aiw-placeholder';
+            warn.textContent = !Ctor
+                ? 'Tabellenbibliothek nicht verfügbar — die Personenliste '
+                  + 'kann nicht angezeigt werden. Es sind '
+                  + rows.length + ' Anwender hinterlegt.'
+                : 'Gemeinsames Tabellen-Werkzeug nicht geladen — die '
+                  + 'Personenliste kann nicht angezeigt werden. Es sind '
+                  + rows.length + ' Anwender hinterlegt.';
+            mainEl.appendChild(warn);
+        } else {
+            // Werkzeugleiste ZUERST in den Baum (sie steht ueber der Tabelle);
+            // die Rueckrufe zeigen auf 'table', das gleich danach entsteht.
+            leiste = TK.werkzeugleiste(doc, {
+                id: 'aiw-pers-tk',
+                sicht: SICHT,
+                onFilterLoeschen: function () {
+                    TK.filterLoeschen(table);
+                    zustandSichern();
+                }
+            });
+            mainEl.appendChild(leiste.el);
+            mainEl.appendChild(host);
+
+            var felder = cols.map(function (c) { return c.field; })
+                .filter(function (f) { return !!f; });
+
+            function zustandSichern() {
+                TK.zustandSchreiben(SICHT, TK.zustandAusTabelle(table));
+            }
+            function trefferAktualisieren() {
+                if (!leiste || !table) { return; }
+                var sichtbar = rows.length;
+                try {
+                    if (typeof table.getDataCount === 'function') {
+                        sichtbar = table.getDataCount('active');
+                    }
+                } catch (e) { log('Trefferzahl nicht lesbar', e); }
+                leiste.setTreffer(sichtbar, rows.length);
+            }
+
+            table = new Ctor(host, {
+                data: rows,
+                layout: 'fitColumns',
+                index: 'id',
+                columns: TK.spaltenMitFilter(rows, cols),
+                initialSort: [{ column: 'system_username', dir: 'asc' }],
+                // Zeilenmarkierung: eigene Person und Deaktivierte sind auf
+                // einen Blick zu erkennen. Die Klassen sind dieselben wie
+                // bisher, damit Stil und Tests nicht auseinanderlaufen.
+                rowFormatter: function (row) {
+                    var d = row.getData();
+                    var el = row.getElement();
+                    if (!el || !el.classList) { return; }
+                    el.classList.add('aiw-pers-row');
+                    if (d.ist_selbst) { el.classList.add('self'); }
+                    if (d.status === 'inaktiv') { el.classList.add('inactive'); }
+                },
+                dataFiltered: function () {
+                    trefferAktualisieren();
+                    zustandSichern();
+                },
+                dataSorted: function () { zustandSichern(); }
+            });
+
+            // Gesicherten Bedienzustand anwenden. Felder, die es nicht mehr
+            // gibt, werden BENANNT statt verschluckt — ein Filter, der
+            // lautlos wegfaellt, wirkt wie ein veraendertes Ergebnis.
+            var uebergangen = TK.zustandAnwenden(
+                table, TK.zustandLesen(SICHT), felder);
+            if (uebergangen.length) {
+                log('gesicherter Zustand teilweise übergangen:', uebergangen);
+            }
+            trefferAktualisieren();
+        }
 
         // --- AD-Abgleich (lazy, nur mit personnel.sync) ----------------------
         if (data.can_sync) {
@@ -179,131 +527,7 @@
         }
 
         log('gerendert:', (data.persons || []).length, 'Personen');
-        return { setResult: setResult };
-    }
-
-    // _table: die Personenliste als DOM-Tabelle (kein Tabulator: die Zeilen
-    // tragen interaktive Elemente, die wir exakt kontrollieren wollen).
-    function _table(doc, data, opts) {
-        var table = doc.createElement('table');
-        table.className = 'aiw-pers-table';
-
-        var thead = doc.createElement('thead');
-        var trh = doc.createElement('tr');
-        ['Kennung', 'Anzeigename', 'Status'].concat(
-            FLAGS.map(function (f) { return f.label; }),
-            ['Rollen']
-        ).forEach(function (t) {
-            var th = doc.createElement('th');
-            th.textContent = t;
-            trh.appendChild(th);
-        });
-        thead.appendChild(trh);
-        table.appendChild(thead);
-
-        var tbody = doc.createElement('tbody');
-        (data.persons || []).forEach(function (p) {
-            tbody.appendChild(_row(doc, p, data, opts));
-        });
-        table.appendChild(tbody);
-        return table;
-    }
-
-    function _row(doc, p, data, opts) {
-        var tr = doc.createElement('tr');
-        tr.className = 'aiw-pers-row'
-            + (p.is_active === false ? ' inactive' : '')
-            + (isSelf(p, data) ? ' self' : '');
-
-        var tdU = doc.createElement('td');
-        tdU.textContent = p.system_username
-            + (isSelf(p, data) ? ' (ich)' : '');
-        tr.appendChild(tdU);
-
-        var tdN = doc.createElement('td');
-        tdN.textContent = p.display_name;
-        tr.appendChild(tdN);
-
-        var tdS = doc.createElement('td');
-        tdS.textContent = statusText(p);
-        tr.appendChild(tdS);
-
-        var editable = canEditRow(p, data);
-
-        // Flags: Checkbox (editierbar) oder reiner Text.
-        FLAGS.forEach(function (f) {
-            var td = doc.createElement('td');
-            td.className = 'aiw-pers-flag';
-            if (editable) {
-                var cb = doc.createElement('input');
-                cb.type = 'checkbox';
-                cb.checked = p[f.key] === true;
-                cb.addEventListener('change', function () {
-                    var body = { person_id: p.id };
-                    body[f.key] = cb.checked;
-                    if (typeof opts.onFlags === 'function') {
-                        opts.onFlags(body);
-                    }
-                });
-                td.appendChild(cb);
-            } else {
-                td.textContent = p[f.key] === true ? '✓' : EM_DASH;
-            }
-            tr.appendChild(td);
-        });
-
-        // Rollen: Chips (+ Widerruf) + Zuweisen-Dropdown.
-        var tdR = doc.createElement('td');
-        tdR.className = 'aiw-pers-roles';
-        (p.roles || []).forEach(function (r) {
-            var chip = doc.createElement('span');
-            chip.className = 'aiw-pers-chip';
-            var lbl = doc.createElement('span');
-            lbl.textContent = r.role_code;
-            lbl.title = r.label || r.role_code;
-            chip.appendChild(lbl);
-            if (editable) {
-                var x = doc.createElement('button');
-                x.type = 'button';
-                x.className = 'aiw-pers-chip-x';
-                x.textContent = '×';
-                x.title = 'Zuweisung widerrufen (auditiert, Soft-Revoke)';
-                x.addEventListener('click', function () {
-                    if (typeof opts.onRevoke === 'function') {
-                        opts.onRevoke({ person_role_id: r.person_role_id });
-                    }
-                });
-                chip.appendChild(x);
-            }
-            tdR.appendChild(chip);
-        });
-        if (editable) {
-            var candidates = assignableRoles(p, data.roles_catalog);
-            if (candidates.length) {
-                var sel = doc.createElement('select');
-                sel.className = 'aiw-pers-assign-sel';
-                var ph = doc.createElement('option');
-                ph.value = '';
-                ph.textContent = 'Rolle zuweisen …';
-                sel.appendChild(ph);
-                candidates.forEach(function (r) {
-                    var o = doc.createElement('option');
-                    o.value = r.code;
-                    o.textContent = r.code + ' (' + r.label + ')';
-                    sel.appendChild(o);
-                });
-                sel.addEventListener('change', function () {
-                    if (!sel.value) { return; }
-                    if (typeof opts.onAssign === 'function') {
-                        opts.onAssign({ person_id: p.id,
-                                        role_code: sel.value });
-                    }
-                });
-                tdR.appendChild(sel);
-            }
-        }
-        tr.appendChild(tdR);
-        return tr;
+        return { setResult: setResult, table: table, leiste: leiste };
     }
 
     // ------------------------------------------------------------------ Export
@@ -314,7 +538,10 @@
         assignableRoles: assignableRoles,
         isSelf: isSelf,
         canEditRow: canEditRow,
-        FLAGS: FLAGS
+        toRows: toRows,
+        spalten: spalten,
+        FLAGS: FLAGS,
+        SICHT: SICHT
     };
     if (typeof window !== 'undefined') {
         window.AIWCockpitPersonnel = api;

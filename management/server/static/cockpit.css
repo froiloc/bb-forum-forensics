@@ -2787,3 +2787,22 @@ tr.aiw-cff-nichtrelevant { opacity: 0.7; }
     color: #7a6420; font-size: 11px;
 }
 .aiw-kachel-slot { margin-top: 8px; }
+
+/* =============================================================================
+   Build 548 (UX): Personalverwaltung als Tabulator-Tabelle.
+   Die Klassen aiw-pers-row/.self/.inactive und aiw-pers-chip* bleiben, damit
+   Stil und Tests nicht auseinanderlaufen — sie haengen jetzt nur an
+   Tabulator-Zeilen statt an <tr>.
+   ============================================================================= */
+.aiw-pers-kennung.self { font-weight: 600; }
+.aiw-pers-kennung.inactive { color: #8a969d; }
+.aiw-pers-status { padding: 1px 7px; border-radius: 9px; font-size: 12px; }
+.aiw-pers-status.aktiv { background: #e7f2e9; color: #2c6b3c; }
+.aiw-pers-status.inaktiv { background: #f0f2f3; color: #6b7880; }
+.aiw-pers-flag-cb { cursor: pointer; }
+.aiw-pers-roles { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+
+/* Der Spaltentitel traegt den Hilfe-Anker (titelMitHilfe). Im spaeteren
+   Schnellhilfe-Modus wird er umrandet; bis dahin ist er ein normaler Titel
+   mit Tooltip. */
+.aiw-tk-titel { cursor: help; }

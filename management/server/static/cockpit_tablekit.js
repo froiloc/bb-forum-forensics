@@ -57,7 +57,24 @@
 //
 // XSS: ausschliesslich textContent / Option.text (kein innerHTML).
 //
-// Version: v0.8.534 · Build: 534 · 2026-07-26
+// BUILD 548 — ANKER FUER DIE SPAETERE SCHNELLHILFE (mc 2026-07-26):
+//   Jedes Bedienelement, das dieses Werkzeug erzeugt, bekommt ein stabiles
+//   'data-hilfe-id'. Die Schnellhilfe (Overlay-Modus, in dem umrandete
+//   Elemente anklickbar werden) gibt es noch NICHT — die Anker entstehen
+//   trotzdem jetzt, weil sie beim Umbau der Tabellen fast nichts kosten und
+//   spaeter 22 Sichten ein ZWEITES Mal anzufassen waeren.
+//
+//   DIE ANKER SIND EIN VERSPRECHEN, KEINE DEKORATION. Eine Kennung, die sich
+//   spaeter aendert, macht einen Hilfetext stumm — deshalb: Muster erzwungen
+//   (HILFE_MUSTER), Eindeutigkeit im Test geprueft, und wer die Werkzeugleiste
+//   dieses Moduls benutzt, bekommt die Anker automatisch. Genau das ist der
+//   Gewinn des gemeinsamen Werkzeugs: EINE Stelle vergibt sie fuer alle.
+//
+//   MUSTER: '<sicht>.<bereich>.<name>', Kleinbuchstaben, Punkte als Trenner.
+//   Beispiele: 'personnel.werkzeug.filter_entfernen', 'personnel.spalte.rollen'.
+//
+// Version: v0.8.548 · Build: 548 · 2026-07-26 (Hilfe-Anker)
+//   Build 534: Erstfassung (Kopffilter, Spaltenwahl, Zustandssicherung).
 // =============================================================================
 
 (function () {
@@ -531,6 +548,73 @@
         };
     }
 
+    // =========================================================================
+    // Build 548: ANKER FUER DIE SCHNELLHILFE.
+    // =========================================================================
+
+    //: Zulaessige Form einer Hilfe-Kennung: '<sicht>.<bereich>.<name>', also
+    //  mindestens zwei Punkte-Abschnitte, Kleinbuchstaben/Ziffern/Unterstrich.
+    var HILFE_MUSTER = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/;
+
+    // hilfeGueltig: reine Pruefung (vitest).
+    function hilfeGueltig(id) {
+        return typeof id === 'string' && HILFE_MUSTER.test(id);
+    }
+
+    // hilfeAnker: haengt die Kennung an ein Element und gibt es zurueck.
+    //
+    // EINE UNGUELTIGE KENNUNG WIRD NICHT GESETZT, sondern gemeldet. Ein
+    // stillschweigend falsch geschriebener Anker waere schlimmer als gar
+    // keiner: die Schnellhilfe umrandete das Element spaeter, faende aber
+    // keinen Text — und der Anwender klickte ins Leere. Lieber gar kein
+    // Rahmen als ein Rahmen ohne Inhalt.
+    function hilfeAnker(el, id) {
+        if (!el) { return el; }
+        if (!hilfeGueltig(id)) {
+            // eslint-disable-next-line no-console
+            if (typeof console !== 'undefined' && console.warn) {
+                console.warn('[AIW-Tabelle] Hilfe-Kennung verworfen (Muster '
+                    + '<sicht>.<bereich>.<name>): ' + id);
+            }
+            return el;
+        }
+        el.setAttribute('data-hilfe-id', id);
+        return el;
+    }
+
+    // hilfeIds: alle Anker unterhalb eines Knotens, in Dokumentreihenfolge.
+    // Dient der spaeteren Schnellhilfe UND den Tests (Eindeutigkeit).
+    function hilfeIds(root) {
+        if (!root || typeof root.querySelectorAll !== 'function') { return []; }
+        var raus = [];
+        var knoten = root.querySelectorAll('[data-hilfe-id]');
+        for (var i = 0; i < knoten.length; i++) {
+            raus.push(knoten[i].getAttribute('data-hilfe-id'));
+        }
+        return raus;
+    }
+
+    // titelMitHilfe: ein Spaltenkopf, der einen Hilfe-Anker traegt.
+    //
+    // Rueckgabe ist eine Funktion fuer Tabulators 'titleFormatter' — die
+    // einzige Stelle, an der sich an einen von der Bibliothek gebauten
+    // Spaltenkopf ein eigenes Attribut haengen laesst. Spaltenkoepfe sind das
+    // ERSTE, was eine Schnellhilfe erklaeren muss ("was steht in dieser
+    // Spalte?"), deshalb bekommen sie Anker und nicht nur die Knoepfe.
+    //
+    // 'titel' wird via textContent gesetzt (XSS), 'erklaerung' landet als
+    // title-Attribut — das ist die SOFORT wirksame Kurzhilfe, auch ohne
+    // Schnellhilfe-Modus.
+    function titelMitHilfe(doc, titel, hilfeId, erklaerung) {
+        return function () {
+            var sp = doc.createElement('span');
+            sp.className = 'aiw-tk-titel';
+            sp.textContent = titel;
+            if (erklaerung) { sp.title = erklaerung; }
+            return hilfeAnker(sp, hilfeId);
+        };
+    }
+
     // werkzeugleiste: die gemeinsame Leiste ueber jeder Listentabelle.
     //   Aufbau (von links): eigene Bedienelemente der Sicht — Spaltenwahl —
     //   'Filter zurueckesetzen' — Trefferanzeige.
@@ -545,24 +629,34 @@
             if (el) { leiste.appendChild(el); }
         });
 
+        // Build 548: 'sicht' ist die Kennung der Sicht fuer die Hilfe-Anker
+        // (z. B. 'personnel'). Fehlt sie, bleiben die Anker WEG statt falsch
+        // zu heissen — ein Anker 'undefined.werkzeug.…' waere ein toter Link.
+        var sicht = opts.sicht || null;
+        function anker(el, teil) {
+            return sicht ? hilfeAnker(el, sicht + '.werkzeug.' + teil) : el;
+        }
+
         var wahl = null;
         if (opts.spaltenwahl) {
             wahl = spaltenwahl(doc, opts.spaltenwahl);
+            anker(wahl.el, 'spaltenwahl');
             leiste.appendChild(wahl.el);
         }
 
-        leiste.appendChild(_btn(doc, (opts.id || 'aiw-tk') + '-clear',
+        leiste.appendChild(anker(_btn(doc, (opts.id || 'aiw-tk') + '-clear',
             'Filter zurücksetzen',
             function () {
                 if (typeof opts.onFilterLoeschen === 'function') {
                     opts.onFilterLoeschen();
                 }
             },
-            'Entfernt ALLE Spaltenfilter dieser Sicht.'));
+            'Entfernt ALLE Spaltenfilter dieser Sicht.'), 'filter_entfernen'));
 
         var treffer = doc.createElement('span');
         treffer.className = 'aiw-tk-treffer';
         treffer.id = (opts.id || 'aiw-tk') + '-treffer';
+        anker(treffer, 'trefferzahl');
         leiste.appendChild(treffer);
 
         return {
@@ -628,7 +722,13 @@
         zustandAnwenden: zustandAnwenden,
         spaltenwahl: spaltenwahl,
         werkzeugleiste: werkzeugleiste,
-        filterLoeschen: filterLoeschen
+        filterLoeschen: filterLoeschen,
+        // Build 548: Anker fuer die spaetere Schnellhilfe.
+        HILFE_MUSTER: HILFE_MUSTER,
+        hilfeGueltig: hilfeGueltig,
+        hilfeAnker: hilfeAnker,
+        hilfeIds: hilfeIds,
+        titelMitHilfe: titelMitHilfe
     };
     if (typeof module !== 'undefined' && module.exports) { module.exports = API; }
     if (typeof window !== 'undefined') { window.AIWTableKit = API; }

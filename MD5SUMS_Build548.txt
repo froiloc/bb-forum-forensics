@@ -1,0 +1,11 @@
+5089556371c4eb70d690a63e0311e8e1  build.json
+ffdb18790f66885bf21657c91405be28  management/server/static/cockpit_tablekit.js
+e1c5793a4cff4314d8ce3cf56867ae09  management/server/static/cockpit_personnel.js
+8fc7c666c22cc19145bbdf72bbfc2410  management/server/static/cockpit.js
+aef7cb6aa1f2ef5e59cdaac2a2ad55f3  management/server/static/cockpit.html
+7cc14bc404a8f64120c2ca2fcaa9c5c0  management/server/static/cockpit.css
+647e40e1318823b67351dfbccac6cb35  management/Bauplan_UX_Tabellen_Builds548ff_v0_1.md
+6d66fe1610177a2ff680c8f0efa97135  management/UEBERGABE_AP3G_Builds545-547_Modulsteuerung.md
+53e5ee3864753b1b7b4f9f1ca3c2fec4  tests/unit/test_cockpit_personnel.test.js
+6533e13f8f687965e0fcac7b825f9f5b  tests/unit/test_cockpit_tablekit.test.js
+5b51d2c5b6a7943dd9270a21310b969d  tests/unit/test_cockpit_nav.test.js

@@ -106,18 +106,22 @@ Begründung im Quelltext und Testabdeckung (DB04).
 
 ---
 
-## 4. Was Bestätigung braucht
+## 4. Entschieden am 2026-07-26 (mc)
 
-1. **`viewprefs` trägt `immer: true`** — die einzige Sicht ohne Rechteprüfung.
+Alle drei Punkte sind **bestätigt**; am Code ändert sich dadurch nichts. Die
+Nachträge in `cockpit.js` und `test_cockpit_nav.test.js` sind mit Build 548
+eingepflegt.
+
+1. **`viewprefs` trägt `immer: true`** ✅ **bestätigt** — die einzige Sicht ohne Rechteprüfung.
    An ihr gibt es nichts zu schützen, und bei default-deny käme niemand an seine
    eigenen Einstellungen, bis jemand ein Recht erteilt, das man niemandem
    sinnvoll vorenthalten kann. **CN02b** riegelt ab, dass sie die einzige
    bleibt. Zehn bestehende JS-Tests mussten dafür angepasst werden — sie nennen
    die Ausnahme jetzt ausdrücklich, statt sie zu verschweigen.
-2. **Der Zähler in der Navigation** (Abschnitt 2.2). Ihre Freigabe betraf das
-   Dashboard; für die Navigation steht die konservative Fassung. Soll sie
-   fallen, ist es ein Einzeiler.
-3. **Der Kachel-Umfang** — acht Kacheln, alle aus bestehenden Endpunkten.
+2. **Der Zähler in der Navigation** (Abschnitt 2.2) ✅ **bestätigt** — er
+   bleibt. Für das Dashboard gilt weiterhin volle Gestaltungsfreiheit ohne
+   Zähler; der Unterschied ist gewollt.
+3. **Der Kachel-Umfang** ✅ **bestätigt** — acht Kacheln sind ausreichend.
    Weitere sind je ein Eintrag in `viewpref_katalog.WIDGETS` plus ein
    Reduzierer; **VP24** erzwingt, dass beides zusammen kommt.
 
