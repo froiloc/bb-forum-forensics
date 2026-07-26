@@ -8,10 +8,16 @@
 #
 # I01 — Baseline m001 (evidence): stempelt v1, schema_migrations entsteht,
 #       keine Datenaenderung; zweiter Lauf idempotent
+#       BUILD 532: Die evidence-Kette hat jetzt ZWEI Migrationen (m001 Baseline,
+#       m002 annotation_tatzeit). Die Erwartungen sind entsprechend auf [1, 2]
+#       bzw. Version 2 angehoben. Dass dieser Test beim Hinzufuegen von m002
+#       fehlgeschlagen ist, ist die gewollte Wirkung eines Ankers — er haelt die
+#       Kettenlaenge fest, damit eine neue Migration nicht unbemerkt mitlaeuft.
 # I02 — Baseline-Guard: leere DB (keine Fachtabelle) -> Abbruch, kein Stempel
 # I03 — Katalog deckt evidence/forensic/assets nach sync ab; reconcile ohne Drift
-# I04 — Executor happy path: evidence v0->v1; Ledger started+ok; db_registry
-#       aktualisiert; Instanz integer; Backup erzeugt
+# I04 — Executor happy path: evidence v0->v2 (seit Build 532; vorher v0->v1);
+#       Ledger started+ok; db_registry aktualisiert; Instanz integer; Backup
+#       erzeugt
 # I05 — dry_run: nichts passiert (kein Backup, kein Ledger, Quelle bit-identisch)
 # I06 — Backup-Pflicht: dry_run=False ohne backup_dir -> ValueError
 # I07 — Verify-Fehler -> Restore: Bad-Migration (loescht Zeilen) erkannt; Instanz
@@ -143,8 +149,9 @@ class MigrationExecutorTests(unittest.TestCase):
         applied = MigrationRunner(con, discover(evidence_pkg), audit=None,
                                   deployed_by="t").run()
         con.close()
-        self.assertEqual(applied, [1])
-        self.assertEqual(read_instance_version(path), 1)
+        # Build 532: m001 (Baseline) UND m002 (annotation_tatzeit).
+        self.assertEqual(applied, [1, 2])
+        self.assertEqual(read_instance_version(path), 2)
         # schema_migrations existiert, Fachdaten unveraendert.
         self.assertEqual(RowcountVerifier.table_rowcounts(path)["annotations"],
                          before["annotations"])
@@ -184,14 +191,15 @@ class MigrationExecutorTests(unittest.TestCase):
         res = ex.execute_instance(TargetDb("evidence", path, uid=18),
                                   dry_run=False, verifier="h002")
         self.assertEqual(res.status, "ok")
-        self.assertEqual((res.from_version, res.to_version), (0, 1))
-        self.assertEqual(read_instance_version(path), 1)
+        # Build 532: die evidence-Kette endet bei Version 2.
+        self.assertEqual((res.from_version, res.to_version), (0, 2))
+        self.assertEqual(read_instance_version(path), 2)
         # Ledger: started + ok
         runs = self.ledger.list_runs(db_kind="evidence", uid=18)
         self.assertEqual([r["status"] for r in runs], ["started", "ok"])
         # db_registry aktualisiert
         reg = self.mdb.list_registry("evidence")
-        self.assertEqual(reg[0].current_version, 1)
+        self.assertEqual(reg[0].current_version, 2)
         self.assertEqual(reg[0].last_status, "ok")
         # Backup existiert
         self.assertTrue(os.path.exists(res.backup_path))
