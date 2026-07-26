@@ -306,4 +306,237 @@ describe("cockpit_alias.js (Build 505, AP-2A/A1)", () => {
     expect(el.querySelector(".aiw-placeholder")).toBeNull();
     expect(el.querySelector("table")).toBeNull();
   });
+
+  // =========================================================================
+  // BUILD 600 — NAMENSAUFLOESUNG
+  //
+  // AS20 — aufloesungText: die DREI Zustaende sind unterscheidbar. 'nicht
+  //        gefunden' ist NICHT dasselbe wie 'nicht abfragbar', und keiner von
+  //        beiden darf wie ein Erfolg aussehen (Grundregel 1).
+  // AS21 — kaskadenText nennt die NICHT gelisteten Treffer der zweiten Stufe.
+  //        Ohne diesen Satz saehe die Kaskade vollstaendig aus.
+  // AS22 — Formular: Kennung eintippen -> onResolve wird gerufen, das Ergebnis
+  //        steht unter dem Feld.
+  // AS23 — Formular: Namenssuche -> Treffer anklicken -> subject_id gesetzt
+  //        UND sofort rueckwaerts bestaetigt (zwei Anzeigen, eine Wahrheit).
+  // AS24 — Katalogsuche: der Namensblock erscheint samt Quellen-Hinweis; ein
+  //        Klick auf einen Treffer fuehrt in den Katalog dieses Kontos.
+  // AS25 — Keine ganze Zahl -> es wird gar nicht erst gefragt, und die Sicht
+  //        sagt warum.
+  // =========================================================================
+
+  /** Antwort von GET /api/names?subject_id=… */
+  function _aufloesung(over) {
+    return Object.assign({
+      subject_id: 4711, name: "Panther", gefunden: true,
+      quelle: "fallakte", quelle_label: "Fallakte (in Bearbeitung)",
+      detail: "Fall in der Fallakte (Status: open)",
+      aliasse: [], hinweise: [],
+      quellen_hinweis: "… nicht 'gibt es nicht'.",
+    }, over || {});
+  }
+
+  /** Antwort von GET /api/names?q=… */
+  function _suche(over) {
+    return Object.assign({
+      begriff: "Panther", quelle: "fallakte",
+      quelle_label: "Fallakte (in Bearbeitung)",
+      treffer: [{ subject_id: 4711, name: "Panther", quelle: "fallakte",
+                  quelle_label: "Fallakte (in Bearbeitung)",
+                  detail: "Fall in der Fallakte (Status: open)" }],
+      gesamt: 1, gekuerzt: false,
+      weitere_treffer: { forenkonto: 3 },
+      hinweise: [],
+      quellen_hinweis: "Abgefragt werden die Fallakte und die globale "
+        + "Namensliste … nicht 'gibt es nicht'.",
+    }, over || {});
+  }
+
+  it("AS20: aufloesungText unterscheidet gefunden / leer / Fehler", () => {
+    const api = _api();
+
+    const ok = api.aufloesungText(_aufloesung());
+    expect(ok.art).toBe("ok");
+    expect(ok.text).toContain("Panther");
+    // Die QUELLE gehoert dazu: ein Name aus der Fallakte ist ein anderer
+    // Beleg als einer aus der globalen Namensliste.
+    expect(ok.text).toContain("Fallakte");
+
+    // Aliasse fahren mit, ersetzen den Kontonamen aber nicht.
+    const mitAlias = api.aufloesungText(_aufloesung({ aliasse: ["Luchs"] }));
+    expect(mitAlias.text).toContain("Panther");
+    expect(mitAlias.text).toContain("Luchs");
+
+    // Nicht gefunden -> gelb, und NICHT als Erfolg.
+    const leer = api.aufloesungText(
+      _aufloesung({ gefunden: false, name: null }));
+    expect(leer.art).toBe("leer");
+    expect(leer.text).toContain("Kein Name gefunden");
+    expect(leer.text).toContain("abgefragten Quellen");
+
+    // Nicht ABFRAGBAR ist etwas anderes als nicht gefunden — die Hinweise
+    // machen daraus einen Fehlerzustand.
+    const kaputt = api.aufloesungText(_aufloesung({
+      gefunden: false, name: null,
+      hinweise: ["default.db nicht gefunden — die globale Namensliste wurde "
+                 + "NICHT abgefragt."],
+    }));
+    expect(kaputt.art).toBe("fehler");
+    expect(kaputt.text).toContain("NICHT abgefragt");
+
+    // Netzfehler.
+    expect(api.aufloesungText({ fehler: "HTTP 503" }).art).toBe("fehler");
+    // Nichts angefragt.
+    expect(api.aufloesungText(null).art).toBe("wartet");
+  });
+
+  it("AS21: kaskadenText verschweigt die zweite Stufe nicht", () => {
+    const api = _api();
+    const t = api.kaskadenText(_suche());
+    expect(t).toContain("1 Treffer");
+    // DER KERN: die Kaskade endet bei der ersten Quelle mit Treffer — die
+    // Zahl der uebrigen MUSS dastehen, sonst sieht das Ergebnis vollstaendig
+    // aus und ist es nicht.
+    expect(t).toContain("3 Treffer in der globalen");
+    expect(t).toContain("nicht gelistet");
+
+    // Ohne zweite Stufe kein Satz darueber.
+    const ohne = api.kaskadenText(_suche({ weitere_treffer: {} }));
+    expect(ohne).not.toContain("Außerdem");
+
+    // Gekuerzte Liste wird als solche benannt.
+    const viel = api.kaskadenText(_suche({ gesamt: 900, gekuerzt: true }));
+    expect(viel).toContain("900");
+    expect(viel).toContain("gekürzt");
+
+    // Hinweise (z. B. Mindestlaenge) fahren mit.
+    const kurz = api.kaskadenText(_suche({
+      treffer: [], gesamt: 0, weitere_treffer: {},
+      hinweise: ["Die globale Namensliste wurde NICHT abgefragt: sie verlangt "
+                 + "mindestens 4 Zeichen."],
+    }));
+    expect(kurz).toContain("Kein Treffer");
+    expect(kurz).toContain("mindestens 4 Zeichen");
+  });
+
+  it("AS22: subject_id eintippen loest den Namen auf", async () => {
+    const win = _win();
+    const api = win.AIWCockpitAlias;
+    const el = _mount(win);
+    const gefragt = [];
+    api.renderAlias(el, _data(), {
+      doc: win.document, canEdit: true,
+      onResolve: function (sid, cb) { gefragt.push(sid); cb(_aufloesung()); },
+    });
+
+    const sid = el.querySelector("#aiw-alias-sid");
+    const anzeige = el.querySelector("#aiw-alias-sidname");
+    expect(sid).toBeTruthy();
+    expect(anzeige).toBeTruthy();
+
+    sid.value = "4711";
+    sid.dispatchEvent(new win.Event("input"));
+    // Der Abruf ist entprellt — zuerst steht nur der Zwischenstand da.
+    expect(anzeige.textContent).toContain("Löse auf");
+    await new Promise((r) => setTimeout(r, 420));
+
+    expect(gefragt).toEqual([4711]);
+    expect(anzeige.textContent).toContain("Panther");
+    expect(anzeige.classList.contains("ok")).toBe(true);
+  });
+
+  it("AS23: Namenssuche fuellt die Kennung und bestaetigt sie", async () => {
+    const win = _win();
+    const api = win.AIWCockpitAlias;
+    const el = _mount(win);
+    const aufgeloest = [];
+    api.renderAlias(el, _data(), {
+      doc: win.document, canEdit: true,
+      onNameSearch: function (term, cb) { cb(_suche({ begriff: term })); },
+      onResolve: function (sid, cb) { aufgeloest.push(sid); cb(_aufloesung()); },
+    });
+
+    const feld = el.querySelector("#aiw-alias-namesearch");
+    feld.value = "Panther";
+    el.querySelector("#aiw-alias-namesearch-btn")
+      .dispatchEvent(new win.Event("click"));
+
+    const zeilen = el.querySelectorAll(
+      "#aiw-alias-treffer .aiw-alias-treffer-zeile");
+    expect(zeilen).toHaveLength(1);
+    expect(zeilen[0].textContent).toContain("Panther");
+    expect(zeilen[0].textContent).toContain("4711");
+    // Auch hier steht die zweite Stufe der Kaskade da.
+    expect(el.querySelector(".aiw-alias-treffer-kopf").textContent)
+      .toContain("3 Treffer in der globalen");
+
+    zeilen[0].dispatchEvent(new win.Event("click"));
+    // Die Kennung ist gesetzt ...
+    expect(el.querySelector("#aiw-alias-sid").value).toBe("4711");
+    // ... und es wurde NICHTS geschrieben (die Meldung sagt es ausdruecklich).
+    expect(el.querySelector("#aiw-alias-result").textContent)
+      .toContain("nichts geschrieben");
+    // ... und die Uebernahme wird rueckwaerts bestaetigt.
+    await new Promise((r) => setTimeout(r, 420));
+    expect(aufgeloest).toEqual([4711]);
+  });
+
+  it("AS24: Katalogsuche zeigt den Namensblock mit Quellen-Hinweis", () => {
+    const win = _win();
+    const api = win.AIWCockpitAlias;
+    const el = _mount(win);
+    const gewaehlt = [];
+    api.renderAlias(el, _data(), {
+      doc: win.document, canEdit: false,
+      query: "Panther",
+      namen: _suche(),
+      onSubject: function (sid) { gewaehlt.push(sid); },
+    });
+
+    const block = el.querySelector("#aiw-alias-namen");
+    expect(block).toBeTruthy();
+    expect(block.textContent).toContain("Namensauflösung");
+    expect(block.textContent).toContain("3 Treffer in der globalen");
+    // Der Quellen-Hinweis steht IMMER da.
+    expect(el.querySelector(".aiw-alias-namen-fuss").textContent)
+      .toContain("nicht 'gibt es nicht'");
+
+    block.querySelector(".aiw-alias-treffer-zeile")
+      .dispatchEvent(new win.Event("click"));
+    expect(gewaehlt).toEqual([4711]);
+
+    // Ohne Suchbegriff kein Block (er beantwortet eine Frage, die niemand
+    // gestellt hat).
+    const el2 = _mount(win);
+    api.renderAlias(el2, _data(), { doc: win.document, namen: _suche() });
+    expect(el2.querySelector("#aiw-alias-namen")).toBeNull();
+  });
+
+  it("AS25: keine ganze Zahl -> es wird gar nicht erst gefragt", async () => {
+    const win = _win();
+    const api = win.AIWCockpitAlias;
+    const el = _mount(win);
+    const gefragt = [];
+    api.renderAlias(el, _data(), {
+      doc: win.document, canEdit: true,
+      onResolve: function (sid, cb) { gefragt.push(sid); cb(_aufloesung()); },
+    });
+
+    const sid = el.querySelector("#aiw-alias-sid");
+    sid.value = "47xy";
+    sid.dispatchEvent(new win.Event("input"));
+    await new Promise((r) => setTimeout(r, 420));
+
+    // Keine Anfrage — und die Sicht sagt WARUM, statt still nichts zu tun.
+    expect(gefragt).toEqual([]);
+    expect(el.querySelector("#aiw-alias-sidname").textContent)
+      .toContain("Keine ganze Zahl");
+
+    // Leeres Feld -> Anzeige leert sich wieder.
+    sid.value = "";
+    sid.dispatchEvent(new win.Event("input"));
+    await new Promise((r) => setTimeout(r, 420));
+    expect(el.querySelector("#aiw-alias-sidname").textContent).toBe("");
+    expect(gefragt).toEqual([]);
+  });
 });

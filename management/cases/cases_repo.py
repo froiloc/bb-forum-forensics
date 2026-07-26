@@ -10,8 +10,8 @@
 #   Fallzuweisung/Statusänderung ohne lückenlosen Audit-Eintrag.
 #   (Beleg: Bauplan B7 v0.3 §3.4, mc 2026-07-01)
 #
-# Version: v0.8.533 · Build: 533 · 2026-07-26
-#   Build 533: assign()/set_priority() sind in eine BAUENDE (assign_unit,
+# Version: v0.8.534 · Build: 534 · 2026-07-26
+#   Build 534: assign()/set_priority() sind in eine BAUENDE (assign_unit,
 #   priority_unit -> WriteUnit) und eine ausfuehrende Haelfte geteilt, damit die
 #   Sammelzuweisung (management/cases/cases_batch_repo.py) dieselbe
 #   Schreiblogik in EINER Transaktion mehrfach verwenden kann. Das Verhalten
@@ -107,7 +107,7 @@ class CasesRepo:
             after_audit=_after,
         )
 
-    # Build 533 (Sammelzuweisung): assign/set_priority sind in eine BAUENDE
+    # Build 534 (Sammelzuweisung): assign/set_priority sind in eine BAUENDE
     # und eine AUSFUEHRENDE Haelfte geteilt. Die bauende (*_unit) liefert eine
     # WriteUnit, ohne sie auszufuehren — nur so kann die Sammelzuweisung
     # (CasesBatchRepo) 80 Aenderungen in EINE Transaktion legen, ohne die

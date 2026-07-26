@@ -16,7 +16,7 @@
 #   gehalten, sodass das Tip-Lesen der Hash-Kette + der Insert atomar und gegen
 #   konkurrierende Schreiber serialisiert sind (kein Race auf prev_hash).
 #
-# Build 533 (Sammelzuweisung): audited_write_many() — MEHRERE fachliche Writes
+# Build 534 (Sammelzuweisung): audited_write_many() — MEHRERE fachliche Writes
 #   mit je EIGENEM Audit-Beleg in EINER Transaktion.
 #
 #   ANLASS: mc musste am 2026-07-25 ueber 80 Faelle einzeln zuweisen. Jede
@@ -32,12 +32,12 @@
 #   zuordnen. Die Belege sind ueber die Hash-Kette ohnehin verkettet, ihre
 #   Zusammengehoerigkeit ist also aus den fortlaufenden seq ablesbar.
 #
-#   audited_write() ist seit Build 533 der Einzelfall von audited_write_many()
+#   audited_write() ist seit Build 534 der Einzelfall von audited_write_many()
 #   — die Reihenfolge Write -> Audit -> after_audit steht damit an genau EINER
 #   Stelle. Zwei Kopien derselben Reihenfolge waeren zwei Wahrheiten, von denen
 #   irgendwann eine gepflegt wird und die andere nicht.
 #
-# Version: v0.8.533 · Build: 533 · 2026-07-26 (audited_write_many)
+# Version: v0.8.534 · Build: 534 · 2026-07-26 (audited_write_many)
 #   Build 313: after_audit-Hook, Bauplan B7 v0.8 §8.3
 # =============================================================================
 
@@ -127,7 +127,7 @@ class CoordinatorWriter:
 
         Gibt die seq des Audit-Eintrags zurück.
 
-        Build 533: delegiert an audited_write_many() — der Einzelfall ist die
+        Build 534: delegiert an audited_write_many() — der Einzelfall ist die
         Liste mit einem Element. Verhalten und Rückgabe unverändert.
         """
         seq = self.audited_write_many([WriteUnit(
@@ -144,7 +144,7 @@ class CoordinatorWriter:
     def audited_write_many(self, units: Sequence[WriteUnit]) -> List[int]:
         """
         Führt MEHRERE WriteUnits in EINER Transaktion aus und gibt ihre
-        audit_log-seq in der Reihenfolge der Einheiten zurück (Build 533).
+        audit_log-seq in der Reihenfolge der Einheiten zurück (Build 534).
 
         Jede Einheit erhält ihren EIGENEN Audit-Eintrag — es gibt keinen
         Sammelbeleg (Begründung im Modulkopf). Wirft irgendeine Einheit, wird

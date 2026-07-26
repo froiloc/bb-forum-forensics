@@ -433,7 +433,12 @@
         // Build 475: Uebergabe eines aus einem Bericht erzeugten Vorlagen-
         // Entwurfs vom Lektorat an die Dokumentvorlagen-Sicht. {draft, findings,
         // warnings} oder null. Wird von loadDocTemplates EINMALIG konsumiert.
-        pendingTemplateDraft: null
+        pendingTemplateDraft: null,
+        // Build 600: Ergebnis der Namensaufloesung zur aktuellen
+        // Alias-Suche (GET /api/names). Lebt im State und NICHT im
+        // localStorage: es ist ein Abfrageergebnis, kein Bedienzustand — es
+        // waere nach einem Neustart schlicht falsch.
+        aliasNamen: null
     };
 
     // fetchJson: kleiner Wrapper mit DEV-Logging und klarer Fehlermeldung.
@@ -1284,7 +1289,7 @@
     // still verloren (Grundregel 1).
     //
     // BUILD 534 — DER ENTSCHEIDENDE UNTERSCHIED ZU VORHER:
-    //   Bis Build 533 lud diese Funktion nach JEDER Einzelaenderung ALLES neu
+    //   Bis einschliesslich v0.8.532 lud diese Funktion nach JEDER Einzelaenderung ALLES neu
     //   und baute die Tabelle neu auf. Damit sprangen Sortierung, Bildlauf und
     //   jede getroffene Auswahl — und der naechste rasche Klick traf eine
     //   ANDERE Zeile als die, auf die der Anwender gezielt hatte (belegter
@@ -2292,9 +2297,44 @@
             canEdit: hasCap(state.capabilities, 'crossref.edit'),
             query: query,
             includeRetracted: inclRetr,
+            // Build 600: Ergebnis der Namensaufloesung zur Katalogsuche.
+            // Wird unten NACH /api/alias nachgeladen und die Sicht neu
+            // gezeichnet — die Aliasse sollen nicht auf die zweite Quelle
+            // warten muessen.
+            namen: state.aliasNamen || null,
             onSearch: function (term) {
                 state.aliasQuery = String(term || '').trim();
+                state.aliasNamen = null;   // altes Ergebnis NIE stehen lassen
                 loadAlias(mainEl);
+            },
+            // Build 600: ein Treffer der Namensaufloesung fuehrt in den
+            // Katalog DIESES Kontos — die Bruecke Name -> Konto -> Aliasse.
+            onSubject: function (sid) {
+                state.aliasQuery = String(sid);
+                state.aliasNamen = null;
+                loadAlias(mainEl);
+            },
+            // Build 600: RUECKWAERTS (Kennung -> Name) fuer die
+            // Kontrollanzeige unter dem subject_id-Feld. Ein Fehlschlag wird
+            // BENANNT und nicht als Leerbefund ausgegeben (Grundregel 1) —
+            // 'kein Name gefunden' und 'nicht abfragbar' sind verschiedene
+            // Aussagen mit verschiedenen Folgen.
+            onResolve: function (sid, cb) {
+                fetchJson('/api/names?subject_id=' + encodeURIComponent(sid))
+                    .then(function (d) { cb(d); })
+                    .catch(function (err) {
+                        log('Namensaufloesung fehlgeschlagen', err);
+                        cb({ fehler: err.message });
+                    });
+            },
+            // Build 600: VORWAERTS (Name -> Kennungen).
+            onNameSearch: function (term, cb) {
+                fetchJson('/api/names?q=' + encodeURIComponent(term))
+                    .then(function (d) { cb(d); })
+                    .catch(function (err) {
+                        log('Namenssuche fehlgeschlagen', err);
+                        cb({ fehler: err.message });
+                    });
             },
             onToggleRetracted: function (next) {
                 state.aliasInclRetracted = (next === true);
@@ -2350,6 +2390,38 @@
         if (inclRetr) { params.push('include_retracted=1'); }
         if (params.length) { url += '?' + params.join('&'); }
 
+        // Build 600: die Namensaufloesung zur Katalogsuche wird NACH dem
+        // Katalog geholt und die Sicht dann EINMAL neu gezeichnet. Grund: der
+        // Aliaskatalog liegt in derselben coordinator.db und ist sofort da;
+        // die globale Namensliste (default.db, rund 477.000 Zeilen) kann
+        // dauern. Die Sicht soll nicht auf die zweite Quelle warten.
+        // Ein Fehlschlag der ZWEITEN Quelle laesst den Katalog stehen und
+        // wird BENANNT — er darf die Hauptsicht nicht mit sich reissen.
+        function namenNachladen(term) {
+            if (!term) { return; }
+            fetchJson('/api/names?' + (/^\d+$/.test(term)
+                    ? ('subject_id=' + encodeURIComponent(term))
+                    : ('q=' + encodeURIComponent(term))))
+                .then(function (n) {
+                    state.aliasNamen = n;
+                    // Nur neu zeichnen, wenn die Sicht noch dieselbe Suche
+                    // zeigt — sonst ueberschriebe eine spaet eintreffende
+                    // Antwort eine inzwischen andere Suche.
+                    if (state.aliasQuery === term
+                            && state.activeId === 'alias') {
+                        loadAlias(mainEl);
+                    }
+                })
+                .catch(function (err) {
+                    log('Namensaufloesung nicht ladbar', err);
+                    state.aliasNamen = { fehler: err.message, treffer: [] };
+                    if (state.aliasQuery === term
+                            && state.activeId === 'alias') {
+                        loadAlias(mainEl);
+                    }
+                });
+        }
+
         fetchJson(url)
             .then(function (data) {
                 cleanupView();
@@ -2357,6 +2429,7 @@
                 if (pendingMsg) {
                     view.setResult(pendingMsg.text, pendingMsg.error);
                 }
+                if (query && !state.aliasNamen) { namenNachladen(query); }
                 log('Aliasse gerendert:',
                     (data && data.entries ? data.entries.length : 0));
             })

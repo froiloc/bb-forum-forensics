@@ -2216,3 +2216,66 @@ tr.aiw-cff-nichtrelevant { opacity: 0.7; }
   cursor: help;
   text-decoration: underline dotted #2e86c1;
 }
+
+/* ===========================================================================
+   BUILD 600 — NAMENSAUFLOESUNG IN DER ALIAS-SICHT
+   ---------------------------------------------------------------------------
+   Angehaengt ans Dateiende, wie Parallelbetrieb Welle 3 §4 es fuer diese
+   gemeinsame Datei vorschreibt ("Ausschliesslich ans Dateiende anhaengen,
+   niemals in eine bestehende Regelgruppe einfuegen").
+
+   FARBSPRACHE, unveraendert aus dem uebrigen Cockpit uebernommen:
+     gruen  = aufgeloest (gesicherte Zuordnung)
+     gelb   = nicht gefunden ODER eine Quelle war nicht abfragbar
+     grau   = laeuft gerade / keine Eingabe
+   Ein nicht aufgeloester Name ist BEWUSST gelb und nicht neutral: er ist ein
+   offener Punkt, kein Normalzustand (dieselbe Sprache wie 'vorlaeufig' beim
+   Fristbeginn).
+   ========================================================================= */
+
+/* Kontrollanzeige unter dem subject_id-Feld. */
+.aiw-alias-sidname {
+  font-size: 13px; margin: -4px 0 8px; padding: 4px 8px;
+  border-radius: 4px; min-height: 1.2em;
+  font-variant-numeric: tabular-nums;
+}
+.aiw-alias-sidname.ok     { background: #eaf7ee; color: #1e6b33; }
+.aiw-alias-sidname.leer   { background: #fdf6e3; color: #7d5a10; }
+.aiw-alias-sidname.fehler { background: #fdf6e3; color: #7d5a10;
+                            font-weight: 600; }
+.aiw-alias-sidname.wartet { background: #f2f4f6; color: #6b7580; }
+
+/* Namenssuche im Anlageformular (Name -> Kennung). */
+.aiw-alias-namensuche {
+  margin: 6px 0 10px; padding: 8px 10px;
+  background: #f6f8fa; border: 1px solid #d7dce1; border-radius: 6px;
+}
+
+/* Trefferliste — Schaltflaechen, keine Links: sie loesen eine Uebernahme aus
+   und fuehren nirgendwohin. */
+.aiw-alias-treffer { margin-top: 6px; }
+.aiw-alias-treffer-kopf {
+  font-size: 12px; color: #4a5158; margin-bottom: 4px;
+}
+.aiw-alias-treffer-kopf.fehler { color: #922b21; font-weight: 600; }
+.aiw-alias-treffer-zeile {
+  display: block; width: 100%; text-align: left; cursor: pointer;
+  border: 1px solid #d7dce1; border-radius: 4px; background: #ffffff;
+  padding: 5px 10px; margin: 2px 0; font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.aiw-alias-treffer-zeile:hover { background: #eef3f8; border-color: #b9c2cb; }
+
+/* Namensaufloesung unter der Katalogsuche. */
+.aiw-alias-namen {
+  margin: 8px 0 12px; padding: 8px 12px;
+  background: #f6f8fa; border: 1px solid #d7dce1; border-radius: 6px;
+  border-left: 4px solid var(--akzent, #0b5394);
+}
+.aiw-alias-namen-kopf { font-size: 13px; color: #3d4144; }
+
+/* Der Quellen-Hinweis. Klein, aber IMMER da: er ist der Unterschied zwischen
+   "gibt es nicht" und "hier nicht gesucht". */
+.aiw-alias-namen-fuss {
+  margin-top: 6px; font-size: 11px; color: #6b7580; line-height: 1.45;
+}

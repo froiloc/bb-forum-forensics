@@ -1,6 +1,6 @@
 # =============================================================================
 # management/cases/cases_batch_repo.py
-# IT-Forensisches Ermittlungswerkzeug — Baustelle 7: Zuweisung (Build 533)
+# IT-Forensisches Ermittlungswerkzeug — Baustelle 7: Zuweisung (Build 534)
 # =============================================================================
 # Zweck:
 #   SAMMELZUWEISUNG: viele Faelle in EINEM Vorgang einem Ermittler zuweisen
@@ -53,7 +53,7 @@
 #   zurueckzunehmen. Nachruestbar ist er jederzeit — CasesRepo hat set_status,
 #   es fehlte nur die Absicht.
 #
-# Version: v0.8.533 · Build: 533 · 2026-07-26
+# Version: v0.8.534 · Build: 534 · 2026-07-26
 # =============================================================================
 
 from __future__ import annotations
