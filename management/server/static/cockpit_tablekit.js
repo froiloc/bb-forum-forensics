@@ -678,6 +678,163 @@
         };
     }
 
+    // =========================================================================
+    // Build 549: tabelleAufbauen — DIE GANZE VERDRAHTUNG AN EINER STELLE.
+    // =========================================================================
+    //
+    // WARUM DAS HIERHER GEHOERT: die Schritte 'Werkzeugleiste bauen, Filter an
+    // die Spalten haengen, Tabelle erzeugen, Trefferzahl fuehren,
+    // Bedienzustand sichern und wiederherstellen' sind in JEDER Listensicht
+    // dieselben. Beim Ausrollen auf 21 Sichten waeren daraus 21 Beinahe-Kopien
+    // geworden — und die erste, die nachgebessert wird, laesst die uebrigen
+    // zwanzig zurueck. Genau davor warnt der Kopf dieses Moduls ("zwei
+    // Sichten, die dasselbe TUN, sollen es nicht nur AEHNLICH tun").
+    //
+    // Die Sicht liefert nur noch, was sie WIRKLICH unterscheidet: ihre
+    // Kennung, ihre Zeilen, ihre Spalten und ihre eigenen Tabulator-Optionen.
+    //
+    // opts:
+    //   sicht        — Kennung ('mycases'). Praefix der Hilfe-Anker UND
+    //                  Schluessel der Zustandssicherung. PFLICHT.
+    //   id           — Praefix der DOM-Kennungen (Vorgabe: 'aiw-' + sicht).
+    //   rows         — die Zeilen (Array).
+    //   columns      — Spalten OHNE Filter; die haengt diese Funktion an.
+    //   Ctor         — Tabulator-Konstruktor (injizierbar fuer Tests).
+    //   tabulator    — weitere Tabulator-Optionen (index, height,
+    //                  rowFormatter, placeholder ...). Sie werden
+    //                  DURCHGEREICHT und haben Vorrang, damit eine Sicht ihre
+    //                  Besonderheiten behaelt (z. B. index:'subject_id' fuer
+    //                  den Fallsprung der Kommandopalette).
+    //   eigene       — eigene Bedienelemente fuer die Leiste (Array von DOM).
+    //   spaltenwahl  — optional, s. spaltenwahl().
+    //   ohneZustand  — true: nicht sichern/wiederherstellen (z. B. wenn die
+    //                  Sicht ihre Zeilen bei jedem Aufruf neu zusammenstellt).
+    //   einheit      — Substantiv der Zeilen ('Anwender', 'Fälle', ...) fuer
+    //                  die Ersatzmeldung. Rueckfall: 'Datensätze'.
+    //
+    // Rueckgabe: { table, leiste, host, felder }. table ist NULL, wenn kein
+    // Konstruktor da ist — und dann steht ein AUSDRUECKLICHER Hinweis MIT
+    // Zeilenzahl im Baum. Eine leere Flaeche saehe aus wie 'keine Daten
+    // vorhanden' (Grundregel 1).
+    function tabelleAufbauen(doc, mainEl, opts) {
+        opts = opts || {};
+        var sicht = opts.sicht;
+        var id = opts.id || ('aiw-' + (sicht || 'tk'));
+        var rows = opts.rows || [];
+        var cols = opts.columns || [];
+
+        if (!doc || !mainEl) { return { table: null, leiste: null,
+                                        host: null, felder: [] }; }
+        if (!sicht) {
+            // Ohne Kennung gaebe es weder brauchbare Hilfe-Anker noch einen
+            // Schluessel fuer die Zustandssicherung. Das ist ein Bauversehen
+            // und wird gemeldet, nicht stillschweigend umgangen.
+            // eslint-disable-next-line no-console
+            if (typeof console !== 'undefined' && console.warn) {
+                console.warn('[AIW-Tabelle] tabelleAufbauen ohne "sicht" — '
+                    + 'Hilfe-Anker und Zustandssicherung entfallen.');
+            }
+        }
+
+        var host = doc.createElement('div');
+        host.className = 'aiw-tk-host';
+        host.id = id + '-table';
+
+        if (typeof opts.Ctor !== 'function') {
+            // DIE ZAHL STEHT IMMER DA, und sie steht mit dem Substantiv der
+            // Sicht ('3 Anwender', nicht '3 Datensätze'). Vereinheitlichung
+            // darf nicht damit bezahlt werden, dass die Meldung nichts mehr
+            // sagt — 'Datensätze' ist nur der Rueckfall, wenn eine Sicht
+            // nichts angibt.
+            var note = doc.createElement('div');
+            note.className = 'aiw-placeholder';
+            note.textContent = 'Tabellenbibliothek nicht verfügbar — die '
+                + 'Tabelle kann nicht angezeigt werden. Es liegen '
+                + rows.length + ' ' + (opts.einheit || 'Datensätze')
+                + ' vor.';
+            mainEl.appendChild(note);
+            return { table: null, leiste: null, host: null, felder: [] };
+        }
+
+        var table = null;
+        var felder = cols.map(function (c) { return c.field; })
+            .filter(function (f) { return !!f; });
+
+        function sichern() {
+            if (opts.ohneZustand || !sicht || !table) { return; }
+            zustandSchreiben(sicht, zustandAusTabelle(table));
+        }
+
+        var leiste = werkzeugleiste(doc, {
+            id: id + '-tk',
+            sicht: sicht,
+            eigene: opts.eigene || [],
+            spaltenwahl: opts.spaltenwahl,
+            onFilterLoeschen: function () {
+                filterLoeschen(table);
+                sichern();
+            }
+        });
+        mainEl.appendChild(leiste.el);
+        mainEl.appendChild(host);
+
+        function treffer() {
+            if (!table) { return; }
+            var sichtbar = rows.length;
+            try {
+                if (typeof table.getDataCount === 'function') {
+                    sichtbar = table.getDataCount('active');
+                }
+            } catch (e) { log('Trefferzahl nicht lesbar', e); }
+            leiste.setTreffer(sichtbar, rows.length);
+        }
+
+        // Grundoptionen; die Sicht kann jede davon ueberschreiben.
+        var tabOpts = {
+            data: rows,
+            layout: 'fitColumns',
+            columns: spaltenMitFilter(rows, cols)
+        };
+        var eigen = opts.tabulator || {};
+        Object.keys(eigen).forEach(function (k) { tabOpts[k] = eigen[k]; });
+
+        // Die beiden Rueckrufe werden UMHUELLT statt ersetzt: eine Sicht darf
+        // eigene Handler haben, ohne dass Trefferzahl oder Sicherung
+        // ausfallen. Zwei Verhaltensweisen an einer Stelle sind eine zu viel.
+        var eigFiltered = tabOpts.dataFiltered;
+        tabOpts.dataFiltered = function () {
+            treffer();
+            sichern();
+            if (typeof eigFiltered === 'function') {
+                eigFiltered.apply(this, arguments);
+            }
+        };
+        var eigSorted = tabOpts.dataSorted;
+        tabOpts.dataSorted = function () {
+            sichern();
+            if (typeof eigSorted === 'function') {
+                eigSorted.apply(this, arguments);
+            }
+        };
+
+        table = new opts.Ctor(host, tabOpts);
+
+        if (!opts.ohneZustand && sicht) {
+            var uebergangen = zustandAnwenden(table, zustandLesen(sicht),
+                                              felder);
+            if (uebergangen.length) {
+                // Kein stiller Verlust: ein Filter, der lautlos wegfaellt,
+                // wirkt wie ein veraendertes Ergebnis.
+                log('gesicherter Zustand teilweise übergangen:', uebergangen);
+            }
+        }
+        treffer();
+
+        log('Tabelle aufgebaut:', sicht, rows.length, 'Zeilen,',
+            felder.length, 'Felder');
+        return { table: table, leiste: leiste, host: host, felder: felder };
+    }
+
     // filterLoeschen: entfernt ALLE Kopffilter einer Tabelle.
     // Gekapselt, weil zwei Sichten dieselbe Schaltflaeche haben und beide
     // dieselbe Wirkung zeigen muessen.
@@ -728,7 +885,9 @@
         hilfeGueltig: hilfeGueltig,
         hilfeAnker: hilfeAnker,
         hilfeIds: hilfeIds,
-        titelMitHilfe: titelMitHilfe
+        titelMitHilfe: titelMitHilfe,
+        // Build 549: die gesamte Verdrahtung einer Listentabelle.
+        tabelleAufbauen: tabelleAufbauen
     };
     if (typeof module !== 'undefined' && module.exports) { module.exports = API; }
     if (typeof window !== 'undefined') { window.AIWTableKit = API; }

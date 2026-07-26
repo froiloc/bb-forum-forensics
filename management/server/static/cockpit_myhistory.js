@@ -90,6 +90,30 @@
         { title: 'Herkunft', field: 'herkunft', headerFilter: 'input' }
     ];
 
+    // _tk / _mitHilfe (Build 549): Zugriff auf das gemeinsame Tabellen-Werkzeug
+    // und die HILFE-ANKER der Spaltenkoepfe. LAZY, damit die Ladereihenfolge
+    // diese Sicht nicht lautlos brechen kann. Die Spalten werden KOPIERT —
+    // die Modulkonstante bleibt unberuehrt, sonst wuechse sie bei jedem Aufruf
+    // einen weiteren Formatter an.
+    function _tk() {
+        return (typeof window !== 'undefined' && window.AIWTableKit)
+            ? window.AIWTableKit : null;
+    }
+    function _mitHilfe(cols, sicht, doc) {
+        var TK = _tk();
+        if (!TK || !doc || !TK.titelMitHilfe) { return cols; }
+        return cols.map(function (c) {
+            var neu = {};
+            Object.keys(c).forEach(function (k) { neu[k] = c[k]; });
+            if (c.field && !c.titleFormatter) {
+                neu.titleFormatter = TK.titelMitHilfe(
+                    doc, c.title || c.field,
+                    sicht + '.spalte.' + String(c.field).toLowerCase());
+            }
+            return neu;
+        });
+    }
+
     // renderMyHistory: Kopf + Tabulator-Zeitleiste. opts.Tabulator injizierbar.
     // Rueckgabe: Tabulator-Instanz (oder null).
     function renderMyHistory(mainEl, data, opts) {
@@ -111,28 +135,34 @@
             + events.length + ' Eintraege, ' + myCaseCount + ' eigene Faelle).';
         mainEl.appendChild(sub);
 
-        var container = document.createElement('div');
-        container.id = 'aiw-myhistory-table';
-        mainEl.appendChild(container);
-
+        // Build 549 (UX): Aufbau ueber das gemeinsame Tabellen-Werkzeug.
+        var doc = (typeof document !== 'undefined') ? document : null;
+        var TK = _tk();
         var Ctor = opts.Tabulator
             || (typeof window !== 'undefined' ? window.Tabulator : undefined);
-        if (typeof Ctor !== 'function') {
-            var note = document.createElement('div');
+        var rows = toRows(data);
+
+        if (!TK || !doc) {
+            var note = (doc || document).createElement('div');
             note.className = 'aiw-placeholder';
-            note.textContent = 'Tabellenbibliothek nicht verfuegbar.';
-            container.appendChild(note);
-            log('renderMyHistory: kein Tabulator-Ctor');
+            note.textContent = 'Gemeinsames Tabellen-Werkzeug nicht geladen — '
+                + 'es liegen ' + rows.length + ' Einträge vor.';
+            mainEl.appendChild(note);
+            log('renderMyHistory: kein TableKit');
             return null;
         }
 
-        var rows = toRows(data);
         log('renderMyHistory:', rows.length, 'Eintraege,', myCaseCount,
             'eigene Faelle');
-        return new Ctor(container, {
-            data: rows, columns: _COLUMNS,
-            layout: 'fitColumns', height: '480px'
+        var auf = TK.tabelleAufbauen(doc, mainEl, {
+            sicht: 'myhistory',
+            rows: rows,
+            columns: _mitHilfe(_COLUMNS, 'myhistory', doc),
+            Ctor: Ctor,
+            einheit: 'Einträge',
+            tabulator: { height: '480px' }
         });
+        return auf.table;
     }
 
     // =========================================================================

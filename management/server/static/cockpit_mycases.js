@@ -129,9 +129,42 @@
     }
 
     // columnsFor: Basisspalten, optional um die Aktionsspalte erweitert.
-    function columnsFor(onLaunch) {
-        if (typeof onLaunch !== 'function') { return _COLUMNS.slice(); }
-        return _COLUMNS.concat([actionColumn(onLaunch)]);
+    //
+    // Build 549: 'doc' ist optional und dient allein den HILFE-ANKERN der
+    // Spaltenkoepfe. Ohne doc bleiben die Spalten unveraendert — bestehende
+    // Aufrufe (und Tests) brechen dadurch nicht.
+    function columnsFor(onLaunch, doc) {
+        var basis = (typeof onLaunch !== 'function')
+            ? _COLUMNS.slice()
+            : _COLUMNS.concat([actionColumn(onLaunch)]);
+        return _mitHilfe(basis, 'mycases', doc);
+    }
+
+    // _tk / _mitHilfe: Zugriff auf das gemeinsame Tabellen-Werkzeug und das
+    // Anhaengen der Hilfe-Anker an die Spaltenkoepfe. LAZY, damit die
+    // Ladereihenfolge diese Sicht nicht lautlos brechen kann.
+    function _tk() {
+        return (typeof window !== 'undefined' && window.AIWTableKit)
+            ? window.AIWTableKit : null;
+    }
+
+    // _mitHilfe: haengt jedem Spaltenkopf einen stabilen Anker an
+    // ('<sicht>.spalte.<feld>'). Die Spalten werden dabei KOPIERT — die
+    // Modulkonstante _COLUMNS bleibt unberuehrt, sonst wuechse sie bei jedem
+    // Aufruf einen weiteren Formatter an.
+    function _mitHilfe(cols, sicht, doc) {
+        var TK = _tk();
+        if (!TK || !doc || !TK.titelMitHilfe) { return cols; }
+        return cols.map(function (c) {
+            var neu = {};
+            Object.keys(c).forEach(function (k) { neu[k] = c[k]; });
+            if (c.field && !c.titleFormatter) {
+                neu.titleFormatter = TK.titelMitHilfe(
+                    doc, c.title || c.field,
+                    sicht + '.spalte.' + String(c.field).toLowerCase());
+            }
+            return neu;
+        });
     }
 
     // renderBanner: haengt (falls vorhanden) eine Rueckmeldung ueber die Tabelle.
@@ -175,29 +208,38 @@
         // Rueckmeldung eines vorangegangenen Startversuchs (Build 500).
         renderBanner(mainEl, opts.pendingMsg);
 
-        var container = document.createElement('div');
-        container.id = 'aiw-mycases-table';
-        mainEl.appendChild(container);
-
+        // Build 549 (UX): Aufbau ueber das gemeinsame Tabellen-Werkzeug —
+        // Kopffilter, Trefferzahl, 'Filter zuruecksetzen', gesicherte
+        // Sortierung und die Hilfe-Anker entstehen dort, nicht hier.
+        var doc = (typeof document !== 'undefined') ? document : null;
+        var TK = _tk();
         var Ctor = opts.Tabulator
             || (typeof window !== 'undefined' ? window.Tabulator : undefined);
-        if (typeof Ctor !== 'function') {
-            var note = document.createElement('div');
+        var rows = toRows(data, opts.nowSec);
+
+        if (!TK || !doc) {
+            // Kein stiller Ausfall: die Zahl steht da, auch wenn die Tabelle
+            // fehlt (Grundregel 1).
+            var note = (doc || document).createElement('div');
             note.className = 'aiw-placeholder';
-            note.textContent = 'Tabellenbibliothek nicht verfuegbar.';
-            container.appendChild(note);
-            log('renderMyCases: kein Tabulator-Ctor');
+            note.textContent = 'Gemeinsames Tabellen-Werkzeug nicht geladen — '
+                + 'es liegen ' + rows.length + ' Fälle vor.';
+            mainEl.appendChild(note);
+            log('renderMyCases: kein TableKit');
             return null;
         }
 
-        var rows = toRows(data, opts.nowSec);
         log('renderMyCases:', rows.length, 'Faelle',
             (typeof opts.onLaunch === 'function') ? '(mit Start)' : '(nur Lesen)');
-        return new Ctor(container, {
-            data: rows,
-            columns: columnsFor(opts.onLaunch),
-            layout: 'fitColumns', height: '420px'
+        var auf = TK.tabelleAufbauen(doc, mainEl, {
+            sicht: 'mycases',
+            rows: rows,
+            columns: columnsFor(opts.onLaunch, doc),
+            Ctor: Ctor,
+            einheit: 'Fälle',
+            tabulator: { height: '420px' }
         });
+        return auf.table;
     }
 
     // =========================================================================

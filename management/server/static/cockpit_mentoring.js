@@ -102,6 +102,30 @@
         { title: 'Status', field: 'status' }
     ];
 
+    // _tk / _mitHilfe (Build 549): Zugriff auf das gemeinsame Tabellen-Werkzeug
+    // und die HILFE-ANKER der Spaltenkoepfe. LAZY, damit die Ladereihenfolge
+    // diese Sicht nicht lautlos brechen kann. Die Spalten werden KOPIERT —
+    // die Modulkonstante bleibt unberuehrt, sonst wuechse sie bei jedem Aufruf
+    // einen weiteren Formatter an.
+    function _tk() {
+        return (typeof window !== 'undefined' && window.AIWTableKit)
+            ? window.AIWTableKit : null;
+    }
+    function _mitHilfe(cols, sicht, doc) {
+        var TK = _tk();
+        if (!TK || !doc || !TK.titelMitHilfe) { return cols; }
+        return cols.map(function (c) {
+            var neu = {};
+            Object.keys(c).forEach(function (k) { neu[k] = c[k]; });
+            if (c.field && !c.titleFormatter) {
+                neu.titleFormatter = TK.titelMitHilfe(
+                    doc, c.title || c.field,
+                    sicht + '.spalte.' + String(c.field).toLowerCase());
+            }
+            return neu;
+        });
+    }
+
     // renderMentoring: Kopf + Tabulator (stale-Zeilen hervorgehoben). Rueckgabe:
     // Tabulator-Instanz (oder null).
     function renderMentoring(mainEl, data, opts) {
@@ -125,34 +149,47 @@
             + 'Aktualisiert automatisch.';
         mainEl.appendChild(sub);
 
-        var container = doc.createElement('div');
-        container.id = 'aiw-mentoring-table';
-        mainEl.appendChild(container);
-
+        log('renderMentoring:', sessions.length, 'laufend,', stale, 'stale');
+        // Build 549 (UX): Aufbau ueber das gemeinsame Tabellen-Werkzeug.
+        // Der eigene rowFormatter bleibt — er wird DURCHGEREICHT, nicht
+        // ersetzt.
+        //
+        // Der frueher hier stehende EIGENE Ersatzpfad ('Tabellenbibliothek
+        // nicht verfuegbar.') ist entfallen: er nannte die Zahl der Sitzungen
+        // NICHT und war damit genau die leere Flaeche, die wie 'es laeuft
+        // nichts' aussieht. Jetzt gibt es einen Ersatzpfad, und er zaehlt.
+        var TK = _tk();
         var Ctor = opts.Tabulator
             || (typeof window !== 'undefined' ? window.Tabulator : undefined);
-        if (typeof Ctor !== 'function') {
+        var rows = toRows(data);
+        if (!TK) {
             var note = doc.createElement('div');
             note.className = 'aiw-placeholder';
-            note.textContent = 'Tabellenbibliothek nicht verfuegbar.';
-            container.appendChild(note);
-            log('renderMentoring: kein Tabulator-Ctor');
+            note.textContent = 'Gemeinsames Tabellen-Werkzeug nicht geladen — '
+                + 'es laufen ' + rows.length + ' Sitzungen.';
+            mainEl.appendChild(note);
+            log('renderMentoring: kein TableKit');
             return null;
         }
-
-        log('renderMentoring:', sessions.length, 'laufend,', stale, 'stale');
-        return new Ctor(container, {
-            data: toRows(data), columns: _COLUMNS,
-            layout: 'fitColumns', height: '440px',
-            // Stale-Zeilen (Betreuungsbedarf) dezent hervorheben.
-            rowFormatter: function (row) {
-                var d = row.getData();
-                if (d && !d._live) {
-                    try { row.getElement().style.background = COL_STALE_BG; }
-                    catch (e) { /* jsdom/Stub ohne getElement */ }
+        var auf = TK.tabelleAufbauen(doc, mainEl, {
+            sicht: 'mentoring',
+            rows: rows,
+            columns: _mitHilfe(_COLUMNS, 'mentoring', doc),
+            Ctor: Ctor,
+            einheit: 'Sitzungen',
+            tabulator: {
+                height: '440px',
+                // Stale-Zeilen (Betreuungsbedarf) dezent hervorheben.
+                rowFormatter: function (row) {
+                    var d = row.getData();
+                    if (d && !d._live) {
+                        try { row.getElement().style.background = COL_STALE_BG; }
+                        catch (e) { /* jsdom/Stub ohne getElement */ }
+                    }
                 }
             }
         });
+        return auf.table;
     }
 
     // =========================================================================

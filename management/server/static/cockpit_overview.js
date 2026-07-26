@@ -199,6 +199,28 @@
     // 2) DOM/RENDER (nur Browser/jsdom).
     // =========================================================================
 
+    // _tk / _mitHilfe (Build 549): Zugriff auf das gemeinsame Tabellen-Werkzeug
+    // und die HILFE-ANKER der Spaltenkoepfe. LAZY, damit die Ladereihenfolge
+    // diese Sicht nicht lautlos brechen kann.
+    function _tk() {
+        return (typeof window !== 'undefined' && window.AIWTableKit)
+            ? window.AIWTableKit : null;
+    }
+    function _mitHilfe(cols, sicht, doc) {
+        var TK = _tk();
+        if (!TK || !doc || !TK.titelMitHilfe) { return cols; }
+        return cols.map(function (c) {
+            var neu = {};
+            Object.keys(c).forEach(function (k) { neu[k] = c[k]; });
+            if (c.field && !c.titleFormatter) {
+                neu.titleFormatter = TK.titelMitHilfe(
+                    doc, c.title || c.field,
+                    sicht + '.spalte.' + String(c.field).toLowerCase());
+            }
+            return neu;
+        });
+    }
+
     // renderOverview: baut Kopf + Tabulator-Tabelle in mainEl. data = Antwort
     // von /api/overview ({scope, count, cases}). opts.Tabulator injizierbar
     // (Default window.Tabulator); opts.nowSec fuer daysSince (Testbarkeit).
@@ -222,39 +244,49 @@
         sub.textContent = scopeText(scope) + ' (' + cases.length + ' Faelle)';
         mainEl.appendChild(sub);
 
-        var container = document.createElement('div');
-        container.id = 'aiw-overview-table';
-        mainEl.appendChild(container);
-
+        // Build 549 (UX): Aufbau ueber das gemeinsame Tabellen-Werkzeug.
+        //
+        // 'index: subject_id' WIRD DURCHGEREICHT und ist hier nicht optional:
+        // daran haengt focusCase(table, subject_id) und damit der Fallsprung
+        // der Kommandopalette (Build 459). Ohne den Index fuehrte Strg-K zwar
+        // weiterhin zur Uebersicht, koennte dort aber nichts mehr
+        // hervorheben — ein stiller Ausfall.
+        var doc = (typeof document !== 'undefined') ? document : null;
+        var TK = _tk();
         var rows = sortRows(toRows(cases, opts.nowSec));
         var Ctor = opts.Tabulator
             || (typeof window !== 'undefined' ? window.Tabulator : undefined);
-        if (typeof Ctor !== 'function') {
-            var note = document.createElement('div');
+
+        if (!TK || !doc) {
+            var note = (doc || document).createElement('div');
             note.className = 'aiw-placeholder';
-            note.textContent = 'Tabellenbibliothek nicht verfuegbar.';
-            container.appendChild(note);
-            log('renderOverview: kein Tabulator-Ctor');
+            note.textContent = 'Gemeinsames Tabellen-Werkzeug nicht geladen — '
+                + 'es liegen ' + rows.length + ' Fälle im Umfang.';
+            mainEl.appendChild(note);
+            log('renderOverview: kein TableKit');
             return null;
         }
 
         log('renderOverview:', rows.length, 'Zeilen, scope', scope);
-        return new Ctor(container, {
-            data: rows,
-            // index=subject_id: erlaubt focusCase(table, subject_id) via getRow/
-            // scrollToRow (Kommandopalette-Fallsprung, Build 459). subject_id ist
-            // je Fall eindeutig.
-            index: 'subject_id',
-            columns: columnDefs(),
-            layout: 'fitColumns',
-            height: '65vh',
-            placeholder: 'Keine Faelle im Umfang.',
-            rowFormatter: function (row) {
-                // Ampel-Zeilenklasse (dezente Faerbung, konsistent zum Dashboard).
-                var d = row.getData();
-                row.getElement().classList.add('aiw-row-' + (d.ampel || 'none'));
+        var auf = TK.tabelleAufbauen(doc, mainEl, {
+            sicht: 'overview',
+            rows: rows,
+            columns: _mitHilfe(columnDefs(), 'overview', doc),
+            Ctor: Ctor,
+            einheit: 'Fälle',
+            tabulator: {
+                index: 'subject_id',
+                height: '65vh',
+                placeholder: 'Keine Faelle im Umfang.',
+                rowFormatter: function (row) {
+                    // Ampel-Zeilenklasse (dezent, konsistent zum Dashboard).
+                    var d = row.getData();
+                    row.getElement().classList.add(
+                        'aiw-row-' + (d.ampel || 'none'));
+                }
             }
         });
+        return auf.table;
     }
 
     // =========================================================================

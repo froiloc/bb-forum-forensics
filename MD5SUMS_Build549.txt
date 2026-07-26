@@ -1,0 +1,14 @@
+662fd6232e07b90acead71016ab5c196  build.json
+7cb279eabb9cd39e23fc39e406327255  management/server/static/cockpit_tablekit.js
+7f762e807811288bddc22dc183afbd19  management/server/static/cockpit_overview.js
+cc8f6c7d68217a7b8528a93d4c80a26c  management/server/static/cockpit_mycases.js
+09fabd26114f9fbabc4af54eb4c62cb1  management/server/static/cockpit_myhistory.js
+dd3cb6d9fb4bc407e6fe6a21af12bbb8  management/server/static/cockpit_mentoring.js
+da864c6d9c40a310cf43c6925a7747bd  management/server/static/cockpit_personnel.js
+16398711257435736a2e11f158510597  tests/unit/test_cockpit_tabellen_ux.test.js
+691aa2f4041049c79a5cf6372c446b17  tests/unit/test_cockpit_overview.test.js
+44cfe65c4f77ac22315113c3d6c0943a  tests/unit/test_cockpit_overview_focus.test.js
+1f5b7f73682c8ef365856dfc1624c008  tests/unit/test_cockpit_mycases.test.js
+5c8fb6a1720353640fe6034f6700084d  tests/unit/test_cockpit_myhistory.test.js
+ca0fd6443249cd22f76cf7909958e8b9  tests/unit/test_cockpit_mentoring.test.js
+e447cf219ec03af243cba6c7e82f3457  tests/unit/test_cockpit_personnel.test.js

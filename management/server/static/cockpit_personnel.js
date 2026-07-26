@@ -269,7 +269,13 @@
                     cb.checked = d[f.key] === true;
                     cb.setAttribute('aria-label',
                         f.label + ' für ' + d.system_username);
-                    anker(cb, SICHT + '.bedienung.flag');
+                    // Je Merkmal ein EIGENER Anker: 'Ermittler:in',
+                    // 'Supervisor' und 'Support' bedeuten Verschiedenes und
+                    // brauchen spaeter verschiedene Erklaerungen. Ein
+                    // gemeinsamer Anker haette drei Begriffe in einen Text
+                    // gezwungen.
+                    anker(cb, SICHT + '.bedienung.'
+                        + f.key.replace('is_', 'flag_'));
                     cb.addEventListener('click', function (e) {
                         e.stopPropagation();
                     });
@@ -395,99 +401,61 @@
         }
         mainEl.appendChild(result);
 
-        // --- Personenliste als Tabulator-Tabelle (Build 548) -----------------
+        // --- Personenliste als Tabulator-Tabelle -----------------------------
+        // Build 549: die Verdrahtung (Werkzeugleiste, Kopffilter,
+        // Trefferzahl, Zustandssicherung, Hilfe-Anker) kommt jetzt aus
+        // TK.tabelleAufbauen und steht nicht mehr hier.
+        //
+        // DAS WAR EIN BEFUND DER KONFORMITAETSSUITE, kein Aufräumen: Build 548
+        // hatte die Leiste von Hand verdrahtet und ihr die Kennung
+        // 'aiw-pers-tk' gegeben, waehrend alle uebrigen Sichten
+        // 'aiw-<sicht>-tk' benutzen. Ausgerechnet die Sicht, die Vorlage sein
+        // soll, waere die Ausnahme gewesen.
         var TK = _tk();
         var rows = toRows(data);
         var cols = spalten(doc, data, opts);
         var table = null;
         var leiste = null;
 
-        var host = doc.createElement('div');
-        host.className = 'aiw-pers-table';
-        host.id = 'aiw-pers-table';
-
         var Ctor = opts.Tabulator
             || (typeof window !== 'undefined' ? window.Tabulator : undefined);
 
-        if (!Ctor || !TK) {
-            // KEIN STILLER AUSFALL: fehlt die Tabellenbibliothek oder das
-            // gemeinsame Werkzeug, sagt die Sicht das — statt eine leere
-            // Flaeche zu zeigen, die wie 'keine Anwender vorhanden' aussieht
-            // (Grundregel 1). Muster cockpit_cases.js (FE11).
+        if (!TK) {
             var warn = doc.createElement('div');
             warn.className = 'aiw-placeholder';
-            warn.textContent = !Ctor
-                ? 'Tabellenbibliothek nicht verfügbar — die Personenliste '
-                  + 'kann nicht angezeigt werden. Es sind '
-                  + rows.length + ' Anwender hinterlegt.'
-                : 'Gemeinsames Tabellen-Werkzeug nicht geladen — die '
-                  + 'Personenliste kann nicht angezeigt werden. Es sind '
-                  + rows.length + ' Anwender hinterlegt.';
+            warn.textContent = 'Gemeinsames Tabellen-Werkzeug nicht geladen — '
+                + 'die Personenliste kann nicht angezeigt werden. Es sind '
+                + rows.length + ' Anwender hinterlegt.';
             mainEl.appendChild(warn);
         } else {
-            // Werkzeugleiste ZUERST in den Baum (sie steht ueber der Tabelle);
-            // die Rueckrufe zeigen auf 'table', das gleich danach entsteht.
-            leiste = TK.werkzeugleiste(doc, {
-                id: 'aiw-pers-tk',
+            var auf = TK.tabelleAufbauen(doc, mainEl, {
                 sicht: SICHT,
-                onFilterLoeschen: function () {
-                    TK.filterLoeschen(table);
-                    zustandSichern();
+                rows: rows,
+                columns: cols,
+                Ctor: Ctor,
+                einheit: 'Anwender',
+                tabulator: {
+                    index: 'id',
+                    initialSort: [{ column: 'system_username', dir: 'asc' }],
+                    // Zeilenmarkierung: eigene Person und Deaktivierte sind
+                    // auf einen Blick zu erkennen. Die Klassen sind dieselben
+                    // wie vor dem Umbau, damit Stil und Tests nicht
+                    // auseinanderlaufen.
+                    rowFormatter: function (row) {
+                        var d = row.getData();
+                        var el = row.getElement();
+                        if (!el || !el.classList) { return; }
+                        el.classList.add('aiw-pers-row');
+                        if (d.ist_selbst) { el.classList.add('self'); }
+                        if (d.status === 'inaktiv') {
+                            el.classList.add('inactive');
+                        }
+                    }
                 }
             });
-            mainEl.appendChild(leiste.el);
-            mainEl.appendChild(host);
-
-            var felder = cols.map(function (c) { return c.field; })
-                .filter(function (f) { return !!f; });
-
-            function zustandSichern() {
-                TK.zustandSchreiben(SICHT, TK.zustandAusTabelle(table));
-            }
-            function trefferAktualisieren() {
-                if (!leiste || !table) { return; }
-                var sichtbar = rows.length;
-                try {
-                    if (typeof table.getDataCount === 'function') {
-                        sichtbar = table.getDataCount('active');
-                    }
-                } catch (e) { log('Trefferzahl nicht lesbar', e); }
-                leiste.setTreffer(sichtbar, rows.length);
-            }
-
-            table = new Ctor(host, {
-                data: rows,
-                layout: 'fitColumns',
-                index: 'id',
-                columns: TK.spaltenMitFilter(rows, cols),
-                initialSort: [{ column: 'system_username', dir: 'asc' }],
-                // Zeilenmarkierung: eigene Person und Deaktivierte sind auf
-                // einen Blick zu erkennen. Die Klassen sind dieselben wie
-                // bisher, damit Stil und Tests nicht auseinanderlaufen.
-                rowFormatter: function (row) {
-                    var d = row.getData();
-                    var el = row.getElement();
-                    if (!el || !el.classList) { return; }
-                    el.classList.add('aiw-pers-row');
-                    if (d.ist_selbst) { el.classList.add('self'); }
-                    if (d.status === 'inaktiv') { el.classList.add('inactive'); }
-                },
-                dataFiltered: function () {
-                    trefferAktualisieren();
-                    zustandSichern();
-                },
-                dataSorted: function () { zustandSichern(); }
-            });
-
-            // Gesicherten Bedienzustand anwenden. Felder, die es nicht mehr
-            // gibt, werden BENANNT statt verschluckt — ein Filter, der
-            // lautlos wegfaellt, wirkt wie ein veraendertes Ergebnis.
-            var uebergangen = TK.zustandAnwenden(
-                table, TK.zustandLesen(SICHT), felder);
-            if (uebergangen.length) {
-                log('gesicherter Zustand teilweise übergangen:', uebergangen);
-            }
-            trefferAktualisieren();
+            table = auf.table;
+            leiste = auf.leiste;
+            if (auf.host) { auf.host.classList.add('aiw-pers-table'); }
         }
 
         // --- AD-Abgleich (lazy, nur mit personnel.sync) ----------------------

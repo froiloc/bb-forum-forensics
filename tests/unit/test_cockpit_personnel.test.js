@@ -291,7 +291,7 @@ describe("cockpit_personnel", () => {
     // In der TABELLE gibt es keine Bedienelemente. (Die Werkzeugleiste hat
     // einen Knopf 'Filter zuruecksetzen' — der ist kein Schreibvorgang und
     // deshalb hier ausdruecklich ausgenommen.)
-    const tabelle = main.querySelector("#aiw-pers-table");
+    const tabelle = main.querySelector("#aiw-personnel-table");
     expect(tabelle.querySelectorAll("input,select").length).toBe(0);
     expect(main.querySelectorAll(".aiw-pers-chip-x").length).toBe(0);
   });
@@ -441,11 +441,11 @@ describe("cockpit_personnel", () => {
     const main = w.document.createElement("div");
     const view = _render(w, main, _data());
     expect(view.leiste).toBeTruthy();
-    const leiste = main.querySelector("#aiw-pers-tk");
+    const leiste = main.querySelector("#aiw-personnel-tk");
     expect(leiste).toBeTruthy();
-    expect(main.querySelector("#aiw-pers-tk-treffer").textContent)
+    expect(main.querySelector("#aiw-personnel-tk-treffer").textContent)
       .toBe("3 Zeilen");
-    const clear = main.querySelector("#aiw-pers-tk-clear");
+    const clear = main.querySelector("#aiw-personnel-tk-clear");
     expect(clear).toBeTruthy();
     // Der Knopf wirkt auf die Tabelle (Attrappe merkt sich das).
     view.table.setHeaderFilterValue("status", "aktiv");
@@ -479,13 +479,15 @@ describe("cockpit_personnel", () => {
     _render(w, main, _data());
 
     // Aus der Werkzeugleiste (vom gemeinsamen Werkzeug vergeben).
-    const ausLeiste = TK.hilfeIds(main.querySelector("#aiw-pers-tk"));
+    const ausLeiste = TK.hilfeIds(main.querySelector("#aiw-personnel-tk"));
     expect(ausLeiste).toContain("personnel.werkzeug.filter_entfernen");
     expect(ausLeiste).toContain("personnel.werkzeug.trefferzahl");
 
     // Aus den Bedienelementen der Zeilen (von dieser Sicht vergeben).
     const alle = TK.hilfeIds(main);
-    expect(alle).toContain("personnel.bedienung.flag");
+    expect(alle).toContain("personnel.bedienung.flag_investigator");
+    expect(alle).toContain("personnel.bedienung.flag_supervisor");
+    expect(alle).toContain("personnel.bedienung.flag_support");
     expect(alle).toContain("personnel.bedienung.rolle_widerrufen");
     expect(alle).toContain("personnel.bedienung.rolle_zuweisen");
 
