@@ -45,7 +45,9 @@
 # Ermittlerdaten).
 #
 # NUMMERNKREIS: m035 stammt aus dem Kreis der Instanz A (m033-m039), festgelegt
-# in management/Parallelbetrieb_Welle3_v0_1.md §5.
+# in management/Parallelbetrieb_Welle3_v0_1.md §5. Der Parallelbetrieb ist
+# seit dem 2026-07-26 beendet; die Kette lautet nach Build 544 durchgehend
+# 33, 34, 35, 36.
 # Version: v0.8.542 · Build: 542 · 2026-07-26
 # =============================================================================
 

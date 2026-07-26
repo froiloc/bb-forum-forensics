@@ -329,7 +329,7 @@ class EventType:
     #   Genau das waere die Umgehung der ganzen Zweckbindung.
     #
     #   FULLTEXT_RELEASE_GRANTED / _REVOKED: die Inhaltsfreigabe der Stufe 2
-    #   und ihr Widerruf (Tabelle fulltext_release, M040). Der Widerruf ist
+    #   und ihr Widerruf (Tabelle fulltext_release, M036). Der Widerruf ist
     #   ein EIGENER Typ und kein Payload-Merkmal — er ist die Aussage, dass
     #   eine frueher erteilte Befugnis nicht mehr traegt; dieselbe Begruendung
     #   wie bei ESCALATION_ACK_REVOKED und SUBJECT_ALIAS_RETRACTED.

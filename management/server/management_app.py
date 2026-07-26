@@ -484,7 +484,8 @@ CAP_MATRIX_VIEW = "matrix.view"
 # Faellen), wuerde aber als Sicherheitsgewinn verbucht. Die Kapselung leistet in
 # Modell B die Stufe 2, nicht der Scope.
 CAP_FULLTEXT_SEARCH = "evidence.fulltext_search"
-# CAP_FULLTEXT_RELEASE (Seed in M040, Build 561) ist das Recht, ANDEREN den
+# CAP_FULLTEXT_RELEASE (Seed in M036, Build 561; bis Build 543 M040)
+# ist das Recht, ANDEREN den
 # Inhalt fremder Faelle zu OEFFNEN. Wer sucht, gibt damit nichts frei; wer
 # freigibt, sucht damit nicht.
 CAP_FULLTEXT_RELEASE = "fulltext.release"
@@ -6633,7 +6634,7 @@ class ManagementApp:
                         "Code."),
             "vollstaendig": bool(zwecke),
             "detail": (None if zwecke else
-                       "Der Zweckkatalog ist leer — die Migration M040 ist "
+                       "Der Zweckkatalog ist leer — die Migration M036 ist "
                        "vermutlich nicht angewandt. Es ist NICHT gesagt, dass "
                        "keine Zwecke vorgesehen sind.")})
 

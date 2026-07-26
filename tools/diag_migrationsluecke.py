@@ -14,6 +14,15 @@
 #
 #   Erwartete Ausgabe (gemessen 2026-07-26, Container):
 #     Lauf 1 (Instanz B liefert zuerst, nur m040): [40]
+#
+#  NACHTRAG Build 544 (2026-07-26): Die Nummern 33-40 in diesem Skript sind
+#  ATTRAPPEN — das Skript baut sie selbst (s. mk() unten) und haengt an keiner
+#  echten Migrationsdatei. Es ist der BELEG DES BEFUNDES und ausdruecklich
+#  keine Beschreibung des aktuellen Nummernstands. Es bleibt deshalb
+#  unveraendert, obwohl 'm040_fulltext_release.py' inzwischen 'm036...' heisst:
+#  ein Beleg, der rueckwirkend umgeschrieben wird, ist kein Beleg mehr.
+#  DER BEFUND SELBST GILT WEITER — die Umnummerierung hat die konkrete Luecke
+#  beseitigt, nicht die Ursache im MigrationRunner.
 #     Lauf 2 (Instanz A liefert m033-m039 nach):   []
 #     -> sieben Migrationen still verloren.
 #

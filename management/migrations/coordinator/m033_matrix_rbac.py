@@ -46,7 +46,8 @@
 # Ermittlerdaten).
 #
 # NUMMERNKREIS: m033 stammt aus dem Kreis der Instanz A (m033-m039), festgelegt
-# in management/Parallelbetrieb_Welle3_v0_1.md §5. Instanz B benutzt m040-m049.
+# in management/Parallelbetrieb_Welle3_v0_1.md §5. Instanz B benutzte m040-m049; der Parallelbetrieb ist seit dem
+# 2026-07-26 beendet und m040 auf m036 umnummeriert (Build 544).
 # Version: v0.8.536 · Build: 536 · 2026-07-26
 # =============================================================================
 

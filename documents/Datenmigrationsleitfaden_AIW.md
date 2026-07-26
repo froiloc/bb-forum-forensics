@@ -2,8 +2,8 @@
 
 ## IT-Forensisches Ermittlungswerkzeug Advanced Investigation Wrapper (AIW) · NRW
 
-**Version:** 0.6
-**Build-Bezug:** 563 (coordinator-Migration M040, AP-3E/Instanz B; Abschnitt 15 unverändert aus v0.5/Build 540, Abschnitt 14 aus v0.4/Build 533, Abschnitte 1–13 aus v0.3/Build 469)
+**Version:** 0.7
+**Build-Bezug:** 544 (Umnummerierung M040 → M036 und Ende des Parallelbetriebs; Abschnitt 16 aus v0.6/Build 563 mit korrigierter Nummer, Abschnitt 15 aus v0.5/Build 540, Abschnitt 14 aus v0.4/Build 533, Abschnitte 1–13 aus v0.3/Build 469)
 **Datum:** 2026-07-26
 **Status:** Verbindlicher Workflow für Datenmigration im Produktivbetrieb
 **Klassifikation:** VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
@@ -15,6 +15,7 @@
 | Version | Build | Datum      | Änderung                                                                                                                                                              |
 | ------- | ----- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 0.6     | 563   | 2026-07-26 | Neuer **Abschnitt 16**: die coordinator-Migration **M040** (`fulltext_zweck`, `fulltext_release`, Recht `fulltext.release`) für die fallübergreifende Volltextsuche (AP-3E, Instanz B) — rein additiv, **keine** Beweismitteldatenbank berührt. Enthält den **Sperrvermerk**: M040 darf erst eingespielt werden, wenn Instanz A ihre Migrationen m035–m039 geliefert hat, weil der `MigrationRunner` einen Höchststand statt einer Menge führt und später gelieferte niedrigere Nummern sonst **still übersprungen** würden (Beleg: `management/Vermerk_Migrationsluecke_Parallelbetrieb_v0_1.md`, reproduziert mit `tools/diag_migrationsluecke.py`). Neues Prüfwerkzeug `tools/pruefe_migrationskette.py`. *Anmerkung: zu v0.5 (Abschnitt 15, M034) gibt es keine Zeile in dieser Tabelle — der Kopf wurde fortgeschrieben, die Historie nicht. Hier nur vermerkt, nicht von mir nachgetragen.* |
+| 0.7     | 544   | 2026-07-26 | Neuer **Abschnitt 17**: Umnummerierung **M040 → M036** und Ende des Parallelbetriebs. Die Kette ist wieder lückenlos (1–36); der Sperrvermerk aus v0.6 ist damit **erledigt**, die Ursache im `MigrationRunner` **nicht** — `tools/pruefe_migrationskette.py` bleibt vor jedem Einspielen verbindlich. Abschnitt 16 wurde auf die neue Nummer gezogen (verbindliche Betriebsanweisung); die Belegdokumente (`diag_migrationsluecke.py`, Vermerk, Baupläne) behalten ihre Nummern und ihren Wortlaut. |
 | 0.4     | 533   | 2026-07-26 | Neuer **Abschnitt 14**: die evidence-Migrationen **M002** (`annotation_tatzeit`, Build 532) und **M003** (`evidence_audit_log` + Genesis, Build 533) — die ersten Strukturänderungen an einer Beweismitteldatenbank nach dem 01.07.2026. Beide additiv und datenneutral, nachgewiesen über Inhaltshashes (TZ04/EA03). Enthält den ausdrücklichen Vermerk, dass der Eintrag für M002 bis hierher **gefehlt** hat. Beleg: Entscheidung mc 2026-07-26 (eigene Beleg-Kette in der evidence-Datei statt Best-Effort-Eintrag in `coordinator.db`). |
 | 0.1     | 303   | 2026-06-25 | Erstfassung — Migrationsleitfaden (Vier-Phasen-Workflow, Gerichtsfestigkeit, Einzel-DB)                                                                             |
 | 0.3     | 469   | 2026-07-20 | Neuer **Abschnitt 13**: Migration **M019** — globale Schlüsselumstellung `user_id` → `subject_id` in `coordinator.db` (Weg A, `RENAME COLUMN`): Vorher-Backup, Weg-A-PoC-Protokoll (`tools/poc_m019_weg_a.py`), Roll-forward, Verifikations-Checkliste, Rollback-Pfad. Beleg: mc-Freigabe 2026-07-20, PoC bestanden. |
@@ -478,18 +479,30 @@ Die Vergabe an `lector` ist eine Festlegung von mc (Entscheidung C-1, 2026-07-26
 
 ---
 
-## 16. Coordinator-Migration M040 — Inhaltsfreigabe der Volltextsuche (NEU, Build 561)
+## 16. Coordinator-Migration M036 — Inhaltsfreigabe der Volltextsuche (NEU, Build 561)
+
+> **NUMMERNÄNDERUNG (Build 544, 2026-07-26):** Diese Migration hieß bis Build
+> 543 **M036**. Sie ist mit dem Ende des Parallelbetriebs auf die nächste freie
+> Nummer **36** gerückt; die Kette ist damit lückenlos. Der ursprüngliche
+> Abschnitt ist unten inhaltlich erhalten, aber auf die neue Nummer gezogen —
+> er ist eine **verbindliche Betriebsanweisung** und muss die Nummer nennen,
+> die im Paket steht. Die Begründung der Änderung steht in §17.
 
 > **Kurzfassung:** Rein additiv, **nur `coordinator.db`**, zwei neue Tabellen und
 > ein neuer RBAC-Seed. **Keine** Beweismitteldatenbank ist berührt, der
-> Migrationsvorbehalt seit dem 01.07.2026 greift nicht. Es gibt aber einen
-> **Sperrvermerk zur Reihenfolge** — s. §16.1. Der ist der eigentliche Grund,
-> warum dieser Abschnitt existiert.
+> Migrationsvorbehalt seit dem 01.07.2026 greift nicht. Der frühere
+> **Sperrvermerk zur Reihenfolge** (§16.1) ist mit der Umnummerierung
+> **erledigt** — die Ursache besteht aber fort, s. §17.3.
 
-### 16.1 SPERRVERMERK — Reihenfolge vor Inhalt
+### 16.1 Der frühere Sperrvermerk — ERLEDIGT, die Ursache nicht
 
-**M040 darf erst eingespielt werden, wenn Instanz A ihre Migrationen
-m035–m039 eingespielt hat** (oder mc festgestellt hat, dass es keine gibt).
+**Bis Build 543 galt:** M036 durfte erst eingespielt werden, wenn Instanz A ihre
+Migrationen m035–m039 eingespielt hatte. **Das ist mit der Umnummerierung
+gegenstandslos:** die Datei trägt jetzt die 36 und steht damit hinter m035.
+Der Runner sortiert selbst nach `VERSION`.
+
+**Was bleibt:** die Ursache im `MigrationRunner`. Vor jedem Einspielen gilt
+weiterhin `python tools/pruefe_migrationskette.py --db data/coordinator.db`.
 
 **Grund** (reproduziert am 2026-07-26 mit `tools/diag_migrationsluecke.py`;
 ausführlich in `management/Vermerk_Migrationsluecke_Parallelbetrieb_v0_1.md`):
@@ -501,7 +514,7 @@ if mod.VERSION <= current:            # runner.py:119
     self._check_checksum(mod); continue
 ```
 
-Läuft M040 vor m035–m039, werden diese Migrationen **für immer
+Läuft M036 vor m035–m039, werden diese Migrationen **für immer
 übersprungen**: `run()` meldet dann „Keine ausstehenden Migrationen" für einen
 Zustand, in dem sieben Schemaänderungen fehlen. `_check_checksum` schweigt
 dabei, weil es zu einer nie angewandten Version gar keine Registry-Zeile gibt
@@ -525,7 +538,7 @@ Produktivdatenbank unbedenklich.
 **Die Nummer 40 ist vorläufig.** Solange diese Migration in keiner Datenbank
 gelaufen ist, kostet ihre Umbenennung nichts. Danach ist sie unantastbar.
 
-### 16.2 Was M040 anlegt
+### 16.2 Was M036 anlegt
 
 | Objekt | Art | Inhalt |
 | ------ | --- | ------ |
@@ -557,7 +570,7 @@ vorher/nachher.
 ### 16.4 Verifikations-Checkliste
 
 - [ ] `tools/pruefe_migrationskette.py` liefert Exit **0** (§16.1).
-- [ ] `schema_migrations` enthält die Version von M040, `kind='additive'`.
+- [ ] `schema_migrations` enthält die Version von M036, `kind='additive'`.
 - [ ] `SELECT COUNT(*) FROM fulltext_zweck` = **4**; die Codes stimmen mit
       `management/search/zweck_vokabular.py` überein.
 - [ ] Die drei Indizes aus §16.2 existieren.
@@ -565,7 +578,7 @@ vorher/nachher.
       Zeile; die Gesamtzahl der Fähigkeiten ist **44**.
 - [ ] `PRAGMA integrity_check;` = ok.
 - [ ] Zeilenzahlen aller **bestehenden** Tabellen unverändert gegenüber dem
-      Backup (M040 fasst keine an).
+      Backup (M036 fasst keine an).
 
 ### 16.5 Grants (nach dem Einspielen, default-deny)
 
@@ -588,3 +601,49 @@ kein Teilzustand. Für den Katastrophenfall gilt der Weg aus §3 Phase 1
 migrierten Datei arbeiten** — die beiden neuen Tabellen stören ihn nicht. Ein
 Rückbau der Datei ist also nur nötig, wenn die Migration selbst beanstandet
 wird, nicht wegen eines Code-Problems.
+
+---
+
+## 17. Umnummerierung M040 → M036 und Ende des Parallelbetriebs (NEU, Build 544)
+
+### 17.1 Was geändert wurde
+
+`management/migrations/coordinator/m040_fulltext_release.py` heißt seit Build 544 **`m036_fulltext_release.py`** und trägt `VERSION = 36`. Die coordinator-Kette lautet damit durchgehend **1–36, lückenlos**.
+
+**Die Umbenennung war zulässig, weil diese Migration in keiner einzigen Datenbank gelaufen ist** (bestätigt mc, 2026-07-26: „Daten und Datenbanken wurden noch nicht angefasst"). Ab dem ersten Lauf wäre sie unmöglich gewesen: die Nummer steht dann in `schema_migrations`, in der Prüfsumme der Registry-Zeile und im Audit-Beleg der Anwendung.
+
+### 17.2 Warum überhaupt
+
+Die getrennten Nummernkreise des Parallelbetriebs (A: m033–m039, B: m040–m049) haben eine Lücke 35–39 erzeugt. Der `MigrationRunner` führt einen **Höchststand** und keine Menge (`runner.py:110-123`): wäre M040 zuerst gelaufen, wären m035–m039 **für immer übersprungen** worden — ohne Fehler, ohne Warnung, und `run()` hätte „keine ausstehenden Migrationen" gemeldet. Mit dem Ende des Parallelbetriebs entfällt der Grund für die Kreise; die Lücke wird geschlossen, solange es nichts kostet.
+
+**Nachgestellt am 2026-07-26** (zwei Läufe gegen eine Speicherdatenbank):
+
+```
+erst m040, dann m035  ->  neu angewandt: []      35 in Registry: False   metrics.view: NEIN
+erst m035, dann m040  ->  35: True | 40: True                            metrics.view: JA
+```
+
+### 17.3 Was die Umnummerierung NICHT leistet
+
+**Sie beseitigt die konkrete Lücke, nicht ihre Ursache.** Der Runner führt weiterhin einen Höchststand. Läuft künftig eine hohe Nummer vor einer niedrigeren — etwa weil ein unvollständiges Paket eingespielt wird —, entsteht dieselbe Falle erneut.
+
+**Verbindlich vor jedem Einspielen:**
+
+```
+python tools/pruefe_migrationskette.py --db data/coordinator.db
+```
+
+Exit 0 = unbedenklich · 2 = Lücke unterhalb des Höchststands · 3 = die Datenbank kennt eine Version, die es im Code nicht gibt.
+
+### 17.4 Die nächste freie Nummer
+
+**37 — und sie ist gefahrlos.** Genau das ist der Gewinn: der Höchststand der Kette liegt wieder unmittelbar oberhalb der zuletzt vergebenen Nummer. Wäre M040 gelaufen, wären 37–39 dauerhaft unbrauchbar gewesen.
+
+### 17.5 Was bewusst NICHT geändert wurde
+
+`tools/diag_migrationsluecke.py`, `management/Vermerk_Migrationsluecke_Parallelbetrieb_v0_1.md`, `management/Bauplan_AP3E_Builds560-563_Volltextsuche_v0_1.md` und `management/Parallelbetrieb_Welle_3_Aufgabenteilung_und_Vereinigung.md` behalten ihre Nummern und ihren Wortlaut. Sie sind **Belege des Befundes** und keine Beschreibung des aktuellen Nummernstands; ein Vermerk, der rückwirkend so umgeschrieben wird, als hätte es die 40 nie gegeben, ist kein Vermerk mehr. Das Diagnoseskript hat lediglich einen Nachtrag im Kopf erhalten, der das ausdrücklich sagt.
+
+### 17.6 Reihenfolge beim Einspielen
+
+M034 (Build 540) → M035 (Build 542) → M036 (Build 544). Der `MigrationRunner` sortiert selbst nach `VERSION`; gefährlich ist ausschließlich der Lauf **mit einem unvollständigen Paket**. Nach dem Lauf erwartet: `schema_migrations` enthält 36, `rbac_capability` zählt **45**.
+

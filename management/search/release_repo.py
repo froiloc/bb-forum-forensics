@@ -42,7 +42,7 @@
 #   Zeile bleibt als Beleg stehen. Die Erkenntnis "diese Person durfte einmal
 #   in diesen Fall sehen" ist die aufsichtsrelevante — sie zu loeschen waere
 #   ein stiller Beweisverlust (Grundregel 1). Danach ist eine erneute Freigabe
-#   moeglich; der partielle UNIQUE-Index (M040) laesst genau das zu.
+#   moeglich; der partielle UNIQUE-Index (M036) laesst genau das zu.
 #
 # ── SENSIBILITAET ──────────────────────────────────────────────────────────
 #
@@ -126,7 +126,7 @@ class FulltextReleaseRepo:
     @staticmethod
     def table_exists(con: sqlite3.Connection) -> bool:
         """
-        True, wenn M040 angewandt ist.
+        True, wenn M036 angewandt ist.
 
         Der Aufrufer MUSS das unterscheiden koennen: 'keine Freigaben' und
         'die Tabelle gibt es noch nicht' sehen sonst gleich aus, und das
@@ -287,7 +287,7 @@ class FulltextReleaseRepo:
 
         def _w(con: sqlite3.Connection) -> Dict[str, Any]:
             # Fachregel INNERHALB der Transaktion (BEGIN IMMEDIATE) pruefen.
-            # Der partielle UNIQUE-Index aus M040 wuerde sie ebenfalls
+            # Der partielle UNIQUE-Index aus M036 wuerde sie ebenfalls
             # durchsetzen — aber mit einer Meldung, die niemandem hilft.
             vorhanden = self._aktive(con, sid, pid)
             if vorhanden is not None:

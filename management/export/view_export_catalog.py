@@ -41,7 +41,7 @@
 #                 (3) EIN GENERISCHER EXPORT WUERDE DIE STUFE-2-SPERRE
 #                 UMGEHEN. Die Trefferlage nennt fremde Faelle; der INHALT ist
 #                 gesperrt und nur ueber eine belegte Freigabe zugaenglich
-#                 (fulltext_release, M040). Ein Export, der an dieser Stelle
+#                 (fulltext_release, M036). Ein Export, der an dieser Stelle
 #                 vorbeigeht, machte das ganze Freigabemodell wirkungslos —
 #                 und zwar in einem Dokument, das anschliessend in einer Akte
 #                 liegt. Ein Export der SUCHE ist deshalb nicht 'noch nicht

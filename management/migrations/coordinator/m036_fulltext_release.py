@@ -1,35 +1,57 @@
 # =============================================================================
-# management/migrations/coordinator/m040_fulltext_release.py
+# management/migrations/coordinator/m036_fulltext_release.py
 # IT-Forensisches Ermittlungswerkzeug — Baustelle 7: Volltextsuche (AP-3E, B561)
 # =============================================================================
 #
 #  ┌──────────────────────────────────────────────────────────────────────────┐
-#  │  ⚠  SPERRVERMERK — DIESE MIGRATION IST NOCH NICHT EINZUSPIELEN.          │
+#  │  NUMMER: 36 — ENDGUELTIG (umnummeriert in Build 544, 2026-07-26).        │
 #  │                                                                          │
-#  │  ENTSCHEIDUNG mc 2026-07-26: die Migrationen der Instanzen werden        │
-#  │  STRIKT SERIALISIERT. Instanz A liefert m035-m039 ZUERST; erst danach    │
-#  │  bekommt diese Datei ihre endgueltige Nummer.                            │
+#  │  DIESE DATEI HIESS BIS BUILD 543 'm040_fulltext_release.py' mit          │
+#  │  VERSION = 40. Sie trug bis dahin einen SPERRVERMERK, weil der           │
+#  │  Nummernkreis der Instanz A (m035-m039) noch offen war und ein Lauf      │
+#  │  von M040 die niedrigeren Nummern fuer immer uebersprungen haette.       │
 #  │                                                                          │
-#  │  GRUND (reproduziert, tools/diag_migrationsluecke.py; Vermerk            │
-#  │  management/Vermerk_Migrationsluecke_Parallelbetrieb_v0_1.md):           │
-#  │  MigrationRunner fuehrt einen HOECHSTSTAND (MAX(version)) und keine      │
-#  │  Menge angewandter Versionen (runner.py:97-123). Laeuft m040 VOR         │
-#  │  m035-m039, werden diese Migrationen fuer immer UEBERSPRUNGEN — ohne   │
-#  │  ohne Fehler, ohne Warnung, ohne Registry-Eintrag. run() meldet dann     │
-#  │  "keine ausstehenden Migrationen" fuer einen Zustand, in dem sieben      │
-#  │  Schemaaenderungen fehlen.                                               │
+#  │  DER PARALLELBETRIEB IST BEENDET (Entscheidung mc 2026-07-26). Instanz   │
+#  │  A hat m033, m034 und m035 geliefert und keine weitere Nummer belegt.    │
+#  │  Diese Datei ist damit auf die naechste freie Nummer 36 gerueckt; die    │
+#  │  Kette ist wieder LUECKENLOS (33, 34, 35, 36). DER SPERRVERMERK IST      │
+#  │  DAMIT ERLEDIGT.                                                         │
 #  │                                                                          │
-#  │  VOR DEM EINSPIELEN AUSFUEHREN:                                          │
+#  │  DIE UMBENENNUNG WAR ZULAESSIG, WEIL DIESE MIGRATION IN KEINER EINZIGEN  │
+#  │  DATENBANK GELAUFEN IST (bestaetigt mc 2026-07-26: "Daten und           │
+#  │  Datenbanken wurden noch nicht angefasst"). Ab dem ersten Lauf ist die   │
+#  │  Nummer unantastbar — sie steht dann in 'schema_migrations' und in der   │
+#  │  Audit-Kette.                                                            │
+#  │                                                                          │
+#  │  DIE NAECHSTE FREIE NUMMER IST 37, und sie ist gefahrlos. Genau das ist  │
+#  │  der Gewinn dieser Umnummerierung: der Hoechststand der Kette liegt      │
+#  │  wieder unmittelbar oberhalb der zuletzt vergebenen Nummer. Waere M040   │
+#  │  gelaufen, waeren 37-39 fuer immer verbrannt gewesen — jede spaeter      │
+#  │  gelieferte Migration mit einer dieser Nummern haette unterhalb des      │
+#  │  Hoechststands gelegen und waere STILL uebersprungen worden.             │
+#  │                                                                          │
+#  │  DIE FALLE SELBST BESTEHT FORT — die Umnummerierung beseitigt nur die    │
+#  │  konkrete Luecke, nicht ihre Ursache: MigrationRunner fuehrt einen       │
+#  │  HOECHSTSTAND (MAX(version)) und keine Menge angewandter Versionen       │
+#  │  (runner.py:110-123). Laeuft irgendwann eine hohe Nummer vor einer       │
+#  │  niedrigeren, wird die niedrigere fuer immer uebersprungen — ohne        │
+#  │  Fehler, ohne Warnung, ohne Registry-Eintrag; run() meldet dann          │
+#  │  "keine ausstehenden Migrationen" fuer einen unvollstaendigen Zustand.   │
+#  │  Beleg: tools/diag_migrationsluecke.py; Vermerk                          │
+#  │  management/Vermerk_Migrationsluecke_Parallelbetrieb_v0_1.md.            │
+#  │                                                                          │
+#  │  VOR JEDEM EINSPIELEN AUSFUEHREN:                                        │
 #  │      python tools/pruefe_migrationskette.py --db <coordinator.db>        │
 #  │  Der Befehl meldet jede Migration, die im Paket liegt, aber nicht in     │
 #  │  schema_migrations steht. Exit 0 = unbedenklich.                         │
 #  │                                                                          │
-#  │  DIE NUMMER IST VORLAEUFIG. Bis diese Datei in IRGENDEINER Datenbank     │
-#  │  gelaufen ist, kostet ihre Umbenennung nichts. Danach ist sie            │
-#  │  unantastbar.                                                            │
+#  │  REIHENFOLGE BEIM EINSPIELEN: m035 (Build 542) VOR m036. Der             │
+#  │  MigrationRunner erledigt das von selbst, wenn beide Dateien im          │
+#  │  Paket liegen — er sortiert nach VERSION. Gefaehrlich ist nur der Lauf   │
+#  │  MIT EINEM UNVOLLSTAENDIGEN PAKET.                                       │
 #  └──────────────────────────────────────────────────────────────────────────┘
 #
-# Migration M040 — coordinator.db (ADDITIV)
+# Migration M036 — coordinator.db (ADDITIV)
 #   Legt das Datenmodell der INHALTSFREIGABE fuer die falluebergreifende
 #   Volltextsuche an:
 #     * fulltext_zweck   — Katalog der Zweckcodes (geseedet aus einer
@@ -104,7 +126,7 @@
 #   darf ihr Laufzeitverhalten nie aendern (sonst Nichtdeterminismus trotz
 #   gleicher Checksumme). Die Bruecke ist der Test FR02
 #   (tests/test_management_search_release.py): er verankert
-#   "M040-Seed == zweck_vokabular.py" ZUR BAUZEIT.
+#   "M036-Seed == zweck_vokabular.py" ZUR BAUZEIT.
 #
 # IDEMPOTENZ: CREATE TABLE/INDEX IF NOT EXISTS + INSERT OR IGNORE + Guard +
 #   Inline-Verifikation.
@@ -125,7 +147,7 @@ import time
 
 logger = logging.getLogger(__name__)
 
-VERSION = 40
+VERSION = 36
 NAME = "Inhaltsfreigabe der Volltextsuche (fulltext_zweck, fulltext_release)"
 KIND = "additive"
 
@@ -263,7 +285,7 @@ def _zweck_exists(con: sqlite3.Connection, code: str) -> bool:
 def up(con: sqlite3.Connection) -> None:
     if not _table_exists(con, "rbac_capability"):
         raise RuntimeError(
-            "M040: rbac_capability fehlt — M006 ist nicht angewandt. "
+            "M036: rbac_capability fehlt — M006 ist nicht angewandt. "
             "Reihenfolge der Migrationen pruefen.")
 
     done = (all(_table_exists(con, t) for t in _TABLES)
@@ -271,7 +293,7 @@ def up(con: sqlite3.Connection) -> None:
             and all(_zweck_exists(con, z) for z, _l, _b, _f in _SEED_ZWECKE)
             and all(_cap_exists(con, c) for c, _l, _d in _SEED_CAPS))
     if done:
-        logger.info("M040: fulltext_release bereits vorhanden — No-op.")
+        logger.info("M036: fulltext_release bereits vorhanden — No-op.")
         return
 
     now = int(time.time())
@@ -299,20 +321,20 @@ def up(con: sqlite3.Connection) -> None:
     # --- Inline-Verifikation (Verstoss -> raise -> ROLLBACK im Runner) -------
     for t in _TABLES:
         if not _table_exists(con, t):
-            raise RuntimeError("M040: Tabelle '%s' fehlt nach up()." % t)
+            raise RuntimeError("M036: Tabelle '%s' fehlt nach up()." % t)
     for ix, _ddl in _INDICES:
         if not _index_exists(con, ix):
-            raise RuntimeError("M040: Index '%s' fehlt nach up()." % ix)
+            raise RuntimeError("M036: Index '%s' fehlt nach up()." % ix)
     for code, _l, _b, _f in _SEED_ZWECKE:
         if not _zweck_exists(con, code):
-            raise RuntimeError("M040: Zweckcode '%s' fehlt nach dem Seed."
+            raise RuntimeError("M036: Zweckcode '%s' fehlt nach dem Seed."
                                % code)
     for code, _l, _d in _SEED_CAPS:
         if not _cap_exists(con, code):
-            raise RuntimeError("M040: Faehigkeit '%s' fehlt nach dem Seed."
+            raise RuntimeError("M036: Faehigkeit '%s' fehlt nach dem Seed."
                                % code)
 
-    logger.info("M040: fulltext_zweck (%d Codes) + fulltext_release + %d "
+    logger.info("M036: fulltext_zweck (%d Codes) + fulltext_release + %d "
                 "Indizes angelegt, Faehigkeit %s geseedet.",
                 len(_SEED_ZWECKE), len(_INDICES),
                 ", ".join(c for c, _l, _d in _SEED_CAPS))

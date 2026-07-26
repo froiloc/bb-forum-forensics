@@ -371,7 +371,7 @@ CAPABILITIES: Tuple[Capability, ...] = (
                "serverseitig gesperrt: wer einen Fall bearbeitet hat, kann ihn "
                "nicht pruefen."),
     # --- Build 561 (AP-3E, Instanz B): Inhaltsfreigabe der Volltextsuche ----
-    #   Seed in M040. ANKERDELTA: 43 -> 44 Faehigkeiten (Basis 43 ist der beim
+    #   Seed in M036 (bis Build 543 M040). ANKERDELTA: 43 -> 44 Faehigkeiten (Basis 43 ist der beim
     #   Rebase auf v0.8.540 VORGEFUNDENE Stand, nicht der der Bauzeit;
     #   Parallelbetrieb §6 Nr. 2).
     #

@@ -5,7 +5,7 @@
 # Zweck:
 #   Die ZWECKCODES der falluebergreifenden Volltextsuche — WAHRHEITSQUELLE IM
 #   CODE. Die Katalogtabelle 'fulltext_zweck' in coordinator.db wird aus dieser
-#   Liste geseedet (M040), damit die FK-Integritaet von 'fulltext_release'
+#   Liste geseedet (M036), damit die FK-Integritaet von 'fulltext_release'
 #   gesichert ist.
 #
 #   Kein Klassenmodul (Grundregel 10 betrifft Klassen) — Konstanten und reine

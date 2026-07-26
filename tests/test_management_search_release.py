@@ -2,7 +2,7 @@
 # tests/test_management_search_release.py
 # IT-Forensisches Ermittlungswerkzeug — Baustelle 7: Volltextsuche (AP-3E, B561)
 # =============================================================================
-# Testsuite fuer Build 561: Migration M040 (fulltext_zweck, fulltext_release),
+# Testsuite fuer Build 561: Migration M036 (fulltext_zweck, fulltext_release),
 # Zweckcode-Vokabular, Recht 'fulltext.release', EventTypes und der auditierte
 # Schreibpfad der Inhaltsfreigabe (Modell B, Stufe 2).
 #
@@ -14,9 +14,9 @@
 #   Fremdschluessel im DDL STEHT, sondern dass die DATENBANK den falschen
 #   Wert ABLEHNT — auch dann, wenn man am Repository vorbeischreibt.
 #
-# FR01 — M040 legt beide Tabellen, drei Indizes und die Faehigkeit an;
+# FR01 — M036 legt beide Tabellen, drei Indizes und die Faehigkeit an;
 #        zweiter Lauf ist ein No-op (Idempotenz)
-# FR02 — QUERPROBE M040-SEED <-> zweck_vokabular.py: Codes, Labels und
+# FR02 — QUERPROBE M036-SEED <-> zweck_vokabular.py: Codes, Labels und
 #        Freitextpflicht stimmen ueberein. Liefen sie auseinander, boete die
 #        Sicht etwas an, das der Fremdschluessel ablehnt
 # FR03 — pruefe(): unbekannter Code, fehlender Pflichtfreitext und Freitext
@@ -40,7 +40,13 @@
 # FR14 — ohne Gateway und ohne Handelnden wird NICHTS geschrieben
 # FR15 — Rollback: schlaegt der Fachwrite fehl, bleibt weder Zeile noch Beleg
 # FR16 — die drei neuen EventTypes sind gueltig und in ALL
-# FR17 — zweck_katalog() liefert die DB-Liste; ohne M040 leer statt Absturz
+# FR17 — zweck_katalog() liefert die DB-Liste; ohne M036 leer statt Absturz
+# FR18 — DIE ALTE DATEI IST WEG (Build 544). Nach der Umnummerierung M040 ->
+#        M036 darf es GENAU EINE fulltext_release-Migration geben und KEINE
+#        mit VERSION 40. Liegen beide im Paket, laeuft erst 36 (legt die
+#        Tabellen an) und danach 40 (No-op, registriert sich aber) — die
+#        Kette stuende dann bei 40 und die Nummern 37-39 waeren verbrannt.
+#        Der Test macht aus einer Loeschanweisung eine Pruefung.
 #
 # Version: v0.8.561 · Build: 561 · 2026-07-26
 # =============================================================================
@@ -101,10 +107,10 @@ CREATE TABLE scrape_jobs (
 """
 
 #: Die Migration dieses Builds. Die Nummer ist VORLAEUFIG (Sperrvermerk im
-#  Dateikopf von m040_fulltext_release.py) — wird sie geaendert, aendert sie
+#  Dateikopf von m036_fulltext_release.py) — wird sie geaendert, aendert sie
 #  sich HIER MIT, und der Test findet sie ueber das Modul statt ueber die Zahl.
-_M040 = next(m for m in discover(coordinator_migrations)
-             if m.__name__.endswith("m040_fulltext_release"))
+_M036 = next(m for m in discover(coordinator_migrations)
+             if m.__name__.endswith("m036_fulltext_release"))
 
 
 class ReleaseTestBasis(unittest.TestCase):
@@ -176,7 +182,7 @@ class ReleaseTestBasis(unittest.TestCase):
 # ====================================================== FR01 · FR02 · FR16
 class TestMigrationUndVokabular(ReleaseTestBasis):
 
-    def test_fr01_m040_legt_alles_an_und_ist_idempotent(self):
+    def test_fr01_m036_legt_alles_an_und_ist_idempotent(self):
         for tabelle in ("fulltext_zweck", "fulltext_release"):
             self.assertIsNotNone(self.con.execute(
                 "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
@@ -195,13 +201,13 @@ class TestMigrationUndVokabular(ReleaseTestBasis):
         # Idempotenz: ein zweiter up()-Lauf darf nichts kaputtmachen.
         vorher = self.con.execute(
             "SELECT COUNT(*) FROM fulltext_zweck").fetchone()[0]
-        _M040.up(self.con)
+        _M036.up(self.con)
         self.assertEqual(vorher, self.con.execute(
             "SELECT COUNT(*) FROM fulltext_zweck").fetchone()[0])
 
     def test_fr02_seed_deckt_sich_mit_dem_vokabular(self):
         """
-        Der Seed in M040 ist eine EINGEFRORENE Kopie (m005-Prinzip) — die
+        Der Seed in M036 ist eine EINGEFRORENE Kopie (m005-Prinzip) — die
         Migration importiert zweck_vokabular.py absichtlich NICHT. Diese
         Bruecke haelt beide zur BAUZEIT zusammen. Liefen sie auseinander,
         boete die Auswahlliste der Sicht einen Code an, den der
@@ -213,7 +219,7 @@ class TestMigrationUndVokabular(ReleaseTestBasis):
         aus_code = {z.code: (z.label, z.beschreibung, z.freitext_pflicht)
                     for z in zv.ZWECKE}
         self.assertEqual(aus_code, aus_db,
-                         "M040-Seed und zweck_vokabular.py sind auseinander "
+                         "M036-Seed und zweck_vokabular.py sind auseinander "
                          "gelaufen.")
 
     def test_fr16_eventtypes(self):
@@ -490,7 +496,7 @@ class TestSichtbarkeit(ReleaseTestBasis):
 # ======================================================================= FR17
 class TestOhneMigration(unittest.TestCase):
 
-    def test_fr17_ohne_m040_leer_statt_absturz(self):
+    def test_fr17_ohne_m036_leer_statt_absturz(self):
         """
         'Keine Freigaben' und 'die Tabelle gibt es noch nicht' duerfen sich
         unterscheiden lassen — das zweite ist ein Betriebsbefund (Migration
@@ -509,6 +515,39 @@ class TestOhneMigration(unittest.TestCase):
         self.assertEqual(GRUND_GESPERRT, repo.darf_inhalt_sehen(
             subject_id=6114, person_id=3)["grund"])
         con.close()
+
+
+class UmnummerierungTests(unittest.TestCase):
+    """FR18 — die Umnummerierung M040 -> M036 ist vollstaendig."""
+
+    def test_fr18_keine_zweite_fulltext_migration(self):
+        """
+        EINE Loeschanweisung, die niemand prueft, ist eine Bitte. Dieser Test
+        macht daraus eine Zusicherung: bleibt beim Einspielen die alte Datei
+        'm040_fulltext_release.py' liegen, bricht die Suite — statt dass die
+        Kette still auf 40 springt und die Nummern 37-39 verbrennt.
+        """
+        module = list(discover(coordinator_migrations))
+        fulltext = [m for m in module
+                    if "fulltext_release" in m.__name__]
+        self.assertEqual(
+            len(fulltext), 1,
+            "Es darf GENAU EINE fulltext_release-Migration geben; gefunden: %r"
+            % [m.__name__ for m in fulltext])
+        self.assertTrue(fulltext[0].__name__.endswith("m036_fulltext_release"),
+                        fulltext[0].__name__)
+        self.assertEqual(fulltext[0].VERSION, 36)
+
+        versionen = [m.VERSION for m in module]
+        self.assertNotIn(
+            40, versionen,
+            "Version 40 darf es nicht mehr geben — die alte Datei "
+            "m040_fulltext_release.py ist zu LOESCHEN (Build 544).")
+        # Und die Kette ist wieder LUECKENLOS: keine Zahl fehlt zwischen 1 und
+        # dem Hoechststand. Genau das war der Zweck der Umnummerierung.
+        self.assertEqual(sorted(versionen), list(range(1, max(versionen) + 1)),
+                         "Die coordinator-Kette hat eine Luecke: %r"
+                         % sorted(versionen))
 
 
 if __name__ == "__main__":  # pragma: no cover

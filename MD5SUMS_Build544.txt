@@ -1,0 +1,17 @@
+633e7143625210106776ee55e6275dc2  build.json
+fde9a00d46a129ff1f445b8c2311fc99  documents/Datenmigrationsleitfaden_AIW.md
+a384be9f27f55341fae88a2d575a6e84  management/audit/event_types.py
+69765ae20f3826e97a45fc905f1b79f0  management/export/view_export_catalog.py
+bac84b1d16d8ccbff601d00607210dac  management/rbac/catalog.py
+472a5116e654e44f5a120b4c0a3f85ae  management/migrations/coordinator/m033_matrix_rbac.py
+a6e0a0e711f42adefe62bf84fd06e1c7  management/migrations/coordinator/m035_metrics_rbac.py
+c382b71456ebb0a6a834b099890676a6  management/migrations/coordinator/m036_fulltext_release.py
+3430c5982d87959e6c7638857679afc9  management/search/release_repo.py
+2b6f07dded7e77eefc7796a3f49302b5  management/search/zweck_vokabular.py
+1761c696304f49b5866e82441537749e  management/server/management_app.py
+f652b09c1eb9ac6d898431979c4f9cf8  management/server/static/cockpit.js
+40a547e31dac6d1ee81b5d2dc8e53500  tools/diag_migrationsluecke.py
+fa2869416c81aa12a4d4dc4374c6921b  tests/test_management_search_release.py
+560d128eaefd13bb7f867ce02532d969  tests/test_management_rbac_schema.py
+f4a3e0821666a33f639ebdb22b766904  tests/test_demo_seed.py
+69e6a029332f1de24a3c66dee1d3850e  tests/test_management_dashboard.py

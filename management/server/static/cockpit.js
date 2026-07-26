@@ -275,7 +275,7 @@
         //
         // DIE SICHT ZEIGT IN STUFE 1 KEINEN TEXT. Wer den Inhalt eines
         // fremden Falls sehen will, braucht eine belegte Freigabe
-        // (fulltext.release, M040) — die Sperre steht in der Zeile, samt
+        // (fulltext.release, M036) — die Sperre steht in der Zeile, samt
         // dem Weg zur Anfrage.
         { id: 'search',     cap: 'evidence.fulltext_search', group: 'Auswertung', label: 'Volltextsuche' }
     ];
