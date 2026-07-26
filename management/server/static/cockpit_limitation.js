@@ -48,7 +48,8 @@
 //   Die Ampel sagt die RECHTSFOLGE. Zwei weitere, davon unabhaengige Angaben
 //   sagen, worauf sie beruht:
 //     feststellung — 'festgestellt' | 'vorlaeufig' | 'ohne'
-//     anker_art    — 'aktivitaet' | 'registrierung' | 'anmeldung' | 'keine'
+//     anker_art    — 'tatzeit' | 'aktivitaet' | 'registrierung' | 'anmeldung'
+//                    | 'keine'   (Build 535: 'tatzeit' neu)
 //   Sie bekommen eine EIGENE Spalte und eine eigene Auszeichnung statt weiterer
 //   Ampelfarben. Grund: 'vorlaeufig' ist keine Art von Ampel, sondern eine
 //   Eigenschaft der Grundlage — presst man beides in eine Farbskala, wird
@@ -141,6 +142,11 @@
         ohne: 'ohne Datum'
     };
     var ANKER_LABEL = {
+        // Build 535: die staerkste Grundlage, die es gibt — und die einzige,
+        // die zitierfaehig ist. Ohne diesen Eintrag zeigte die Sicht
+        // 'unbekannter Anker (tatzeit)' — kein stiller Fehler, aber eine
+        // schlechte Auskunft an genau der wichtigsten Stelle.
+        tatzeit: 'FESTGESTELLTE Tatzeit',
         aktivitaet: 'belegte Tathandlung',
         registrierung: 'ERSATZANKER: Registrierung',
         anmeldung: 'ERSATZANKER: erste protokollierte Anmeldung',
@@ -321,7 +327,16 @@
     // nicht neu formuliert — eine zweite Formulierung waere eine zweite
     // Wahrheitsquelle.
     function grundlageTitle(row) {
-        var v = (row && row.anker_vermerke) || [];
+        var r = row || {};
+        var v = (r.anker_vermerke || []).slice();
+        // Build 535: bei mehreren festgestellten Tatzeitraeumen traegt das
+        // Backend den UEBERGANGENEN Zeitpunkt im Klartext mit
+        // ('tatzeit_feststellung_detail'). Er wird hier WORTGLEICH angehaengt
+        // und NICHT neu formuliert — sonst entstuende eine zweite
+        // Wahrheitsquelle fuer dieselbe Tatsache.
+        if (r.tatzeit_mehrdeutig && r.tatzeit_feststellung_detail) {
+            v.push(String(r.tatzeit_feststellung_detail));
+        }
         return v.length ? v.join(' | ') : '';
     }
 
@@ -586,6 +601,14 @@
                 }
                 if (istErsatzanker(r.anker_art)) {
                     gz.className += ' is-ersatzanker';
+                }
+                // Build 535: mehrere festgestellte Tatzeitraeume mit
+                // VERSCHIEDENER Beendigung. Verankert ist die frueheste
+                // (Entscheidung mc 2026-07-26) — die uebergangene spaeteste
+                // gehoert an die Zeile, sonst ist sie unsichtbar.
+                if (r.tatzeit_mehrdeutig) {
+                    gz.className += ' is-mehrdeutig';
+                    gz.textContent = gz.textContent + ' · mehrdeutig';
                 }
                 var gt = grundlageTitle(r);
                 if (gt) { gz.setAttribute('title', gt); }

@@ -76,6 +76,7 @@ import platform
 import re
 import sqlite3
 import statistics
+from typing import Optional
 import sys
 import time
 from datetime import datetime, timezone
@@ -463,7 +464,7 @@ def _sonde_ausgeben(sch: dict) -> None:
 # ------------------------------------------- (3) Rechenschicht direkt
 
 def messung_direkt(coordinator_db: str, forensic_dir: str,
-                   runs: int) -> dict:
+                   evidence_dir: Optional[str], runs: int) -> dict:
     """
     Misst LimitationRepo.compute() OHNE HTTP — die eigentliche Datenbankarbeit.
 
@@ -487,7 +488,12 @@ def messung_direkt(coordinator_db: str, forensic_dir: str,
         con = _ro(coordinator_db)
         try:
             t0 = time.perf_counter()
-            bericht = LimitationRepo(con, forensic_dir).compute(
+            # Build 535: evidence_dir gehoert in die MESSUNG, nicht nur in
+            # den Betrieb. Ohne es misst man einen Monitor, den es so nicht
+            # gibt — die Tatzeit-Abfrage ist ein zusaetzlicher Dateizugriff je
+            # Fall und genau die Art Kosten, die auf einem Netzlaufwerk
+            # durchschlaegt (Faktor DEV->PROD rund 24, Messung 2026-07-25).
+            bericht = LimitationRepo(con, forensic_dir, evidence_dir).compute(
                 params=params, now_ts=int(time.time()))
             zeiten.append(time.perf_counter() - t0)
         finally:
@@ -553,6 +559,9 @@ def main(argv=None) -> int:
         description="Misst die Laufzeit des Fristenmonitors. REIN LESEND.")
     p.add_argument("--coordinator-db", default=None)
     p.add_argument("--forensic-dir", default=None)
+    # Build 535: das evidence-Verzeichnis gehoert in die Messung. Ohne es
+    # misst man einen Monitor, den es so nicht gibt.
+    p.add_argument("--evidence-dir", default=None)
     p.add_argument("--runs", type=int, default=3,
                    help="Wiederholungen (Vorgabe 3; der erste Lauf wird "
                         "getrennt ausgewiesen).")
@@ -571,6 +580,8 @@ def main(argv=None) -> int:
         "paths.coordinator_db", "./data/coordinator.db")
     forensic_dir = args.forensic_dir or _cfg(
         "paths.forensic_db_dir", "./data/forensic/")
+    evidence_dir = args.evidence_dir or _cfg(
+        "paths.evidence_db_dir", "./data/evidence/")
 
     if not Path(coordinator_db).exists():
         print("[diag] coordinator.db nicht gefunden: %s" % coordinator_db,
@@ -584,6 +595,7 @@ def main(argv=None) -> int:
     print("System      : %s %s" % (platform.system(), platform.release()))
     print("coordinator : %s" % coordinator_db)
     print("forensic    : %s" % forensic_dir)
+    print("evidence    : %s" % evidence_dir)
     print()
 
     b = bestand(coordinator_db, forensic_dir)
@@ -623,7 +635,7 @@ def main(argv=None) -> int:
         print("  keine forensic_<uid>.db gefunden.")
     print()
 
-    d = messung_direkt(coordinator_db, forensic_dir, args.runs)
+    d = messung_direkt(coordinator_db, forensic_dir, evidence_dir, args.runs)
     print("--- RECHENSCHICHT DIREKT (ohne HTTP) ---")
     if "fehler" in d:
         print("  FEHLER: %s" % d["fehler"])

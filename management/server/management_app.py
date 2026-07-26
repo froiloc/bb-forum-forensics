@@ -1438,7 +1438,13 @@ class ManagementApp:
 
         con = self._ro_con()
         try:
-            report = LimitationRepo(con, self._forensic_dir).compute(
+            # Build 535: evidence_dir MUSS mit — sonst traegt jede Zeile den
+            # Befund 'nicht_geprueft' und der Bericht sagt, dass die
+            # festgestellte Tatzeit nicht ausgewertet wurde. Das ist die
+            # gewollte Wirkung fuer Aufrufer, die es nicht mitgeben; hier ist
+            # es vorhanden und wird gereicht.
+            report = LimitationRepo(
+                con, self._forensic_dir, self._evidence_dir).compute(
                 params=params, now_ts=int(time.time()), vorwarn_tage=vorwarn)
         except Exception as exc:                        # noqa: BLE001
             logger.exception("Fristenmonitor fehlgeschlagen")

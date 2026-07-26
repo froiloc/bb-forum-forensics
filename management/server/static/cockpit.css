@@ -2190,3 +2190,29 @@ tr.aiw-cff-nichtrelevant { opacity: 0.7; }
 .tabulator .tabulator-cell[tabulator-field^="stat_"] {
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------------------------------------------------------------------------
+ * Build 535 (AP-3A): mehrere festgestellte Tatzeitraeume mit verschiedener
+ * Beendigung. Verankert ist die FRUEHESTE (Entscheidung mc 2026-07-26); die
+ * uebergangene spaeteste steht im title der Zelle.
+ *
+ * AUFGESETZT AUF DEN STAND 0.8.534c — die vorangehenden Bloecke (Steuerkopf,
+ * Spaltenwahl, Stapelzuweisung) stammen aus mcs Oberflaechen-Branch und sind
+ * NICHT angetastet. Diese Regel ist bewusst ANGEHAENGT statt in die
+ * Fristen-Regelgruppe bei '.aiw-lim-grundlage' eingefuegt: ein Anhang laesst
+ * sich zusammenfuehren, ein Einschub mitten in eine bestehende Gruppe erzeugt
+ * Konflikte.
+ *
+ * KEINE Ampelfarbe: die Mehrdeutigkeit ist eine Aussage ueber die GRUNDLAGE,
+ * nicht ueber die Rechtsfolge. Die Zeile soll beides gleichzeitig zeigen
+ * koennen — dieselbe Ueberlegung wie bei .is-vorlaeufig und .is-ersatzanker.
+ *
+ * Die gepunktete Unterstreichung in Blau grenzt sie zugleich von
+ * .is-ersatzanker (orange, gepunktet) ab: beide bedeuten
+ * 'erklaerungsbeduerftig', aber aus entgegengesetzten Gruenden — dort ein
+ * Hilfswert, hier eine Auswahl unter mehreren Feststellungen.
+ * ------------------------------------------------------------------------- */
+.aiw-lim-grundlage.is-mehrdeutig {
+  cursor: help;
+  text-decoration: underline dotted #2e86c1;
+}

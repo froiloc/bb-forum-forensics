@@ -1,0 +1,10 @@
+33f35edca2003444ca16632627343490  build.json
+01103dfe6b8c4c1d86762e2e25a6e9cc  management/deadlines/tatzeit_anker.py
+7a6d2481f9ad8cdc2d3130afa452a29f  management/deadlines/limitation.py
+ef7c4e6ffa5d9b2b4f412ea15f0b68ea  management/deadlines/limitation_repo.py
+a6df546345cad57e5762d3955a22ad3d  management/server/management_app.py
+cf73009f34adc209733cbc67289474c8  management/server/static/cockpit_limitation.js
+2dee342dec12df5f8a68e09c0a2f5052  management/server/static/cockpit.css
+e4a1c353bdae7621e457b27a37e29b11  tools/diag_limitation_laufzeit.py
+a39fd4dde04df558f9406a037a9cf393  tests/test_limitation_tatzeit.py
+cc094e26de1379d74090174d3b1cd7ea  tests/unit/test_cockpit_limitation_tatzeit.test.js

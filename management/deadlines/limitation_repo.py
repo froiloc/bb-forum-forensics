@@ -95,14 +95,29 @@
 #   file:...?mode=ro geoeffnet (Muster management/reports/reports_repo.py:122).
 #   Der Migrationsvorbehalt ab 01.07.2026 ist NICHT beruehrt.
 #
-# Version: v0.8.530 · Build: 530 · 2026-07-25
+# Build 535: Die FESTGESTELLTE Tatzeit wird ausgewertet. Bis Build 534 stand
+#   in compute() fest 'festgestellt=False' — mit dem ausdruecklichen Vermerk,
+#   dass sich GENAU diese Zeile aendert, sobald es festgestellte Tatzeiten
+#   gibt. Sie gibt es seit Build 533/534 (annotation_tatzeit + Maske), und die
+#   Umschaltung ist vollzogen. Gelesen wird ueber
+#   management/deadlines/tatzeit_anker.py (eigene Datei, Grundregel 10) aus
+#   evidence_<uid>.db, READ-ONLY.
+#
+#   RANGFOLGE: eine festgestellte Tatzeit schlaegt jeden anderen Anker, auch
+#   wenn sie frueher liegt als die spaeteste belegte Tathandlung. Das ist der
+#   Sinn der Achse 'feststellung' aus Build 530.
+#
+#   OHNE evidence_dir WIRD NICHT STILL WEITERGERECHNET: dann traegt jede Zeile
+#   den Befund 'nicht_geprueft' und der Bericht einen Hinweis.
+#
+# Version: v0.8.535 · Build: 535 · 2026-07-26
 # =============================================================================
 
 from __future__ import annotations
 
 import logging
 import sqlite3
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
@@ -114,6 +129,12 @@ from management.deadlines.limitation import (
     assess_limitation,
 )
 from management.deadlines.limitation_params import LimitationParams
+from management.deadlines.tatzeit_anker import (
+    TATZEIT_BEFUNDE,
+    TatzeitAnker,
+    nicht_geprueft,
+    read_tatzeit_anker,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -309,10 +330,25 @@ class LimitationRow:
     """Eine Zeile des Monitors: Tatzeitrahmen + Fristeinschaetzung."""
     tatzeit: CaseTatzeit
     assessment: LimitationAssessment
+    # Build 535: die Lage der FESTGESTELLTEN Tatzeit. Optional, damit
+    # bestehende Aufrufer (Tests, Werkzeuge) eine Zeile ohne sie bauen
+    # koennen — im Monitor ist sie IMMER gesetzt, notfalls mit dem Befund
+    # 'nicht_geprueft'.
+    tatzeit_anker: Optional[TatzeitAnker] = None
 
     def to_dict(self) -> Dict[str, Any]:
         out = self.tatzeit.to_dict()
         out.update(self.assessment.to_dict())
+        # Build 535: die Felder der festgestellten Tatzeit tragen alle das
+        # Praefix 'tatzeit_feststellung_'/'tatzeit_' und ueberschreiben deshalb
+        # nichts. Fehlt der Anker ganz (Aufrufer ohne Build-535-Kenntnis), wird
+        # das AUSGEWIESEN und nicht als "nichts festgestellt" ausgegeben.
+        if self.tatzeit_anker is not None:
+            out.update(self.tatzeit_anker.to_dict())
+        else:
+            out["tatzeit_feststellung_befund"] = "nicht_geprueft"
+            out["tatzeit_feststellung_detail"] = (
+                "Diese Zeile wurde ohne Tatzeit-Auswertung gebaut.")
         # 'befund' kommt in BEIDEN Teilen vor und bedeutet Verschiedenes: im
         # Tatzeitteil die Datenlage, in der Einschaetzung die Rechtsfolge. Die
         # Datenlage wird deshalb umbenannt statt ueberschrieben — ein
@@ -368,6 +404,14 @@ class LimitationReport:
     anker_verteilung: Dict[str, int] = field(default_factory=dict)
     feststellung_verteilung: Dict[str, int] = field(default_factory=dict)
     ersatzfehler: Dict[str, int] = field(default_factory=dict)
+    # Build 535: die Lage der FESTGESTELLTEN Tatzeit, getrennt von der
+    # Datenlage der Aktivitaetsquellen. Zusammengelegt waere nicht mehr zu
+    # sehen, ob einem Fall die Feststellung fehlt oder die Aktivitaetsdaten.
+    tatzeit_befunde: Dict[str, int] = field(default_factory=dict)
+    tatzeitfehler: Dict[str, int] = field(default_factory=dict)
+    #: Faelle mit MEHREREN festgestellten Tatzeitraeumen verschiedener
+    #  Beendigung. Nur dort ist die Auswahl 'frueheste' eine Entscheidung.
+    faelle_mehrdeutig: int = 0
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -396,6 +440,10 @@ class LimitationReport:
             "ersatzfehler": dict(self.ersatzfehler),
             "anker_arten": list(ANKER_ARTEN),
             "feststellungen": list(FESTSTELLUNGEN),
+            "tatzeit_befunde": dict(self.tatzeit_befunde),
+            "tatzeit_befund_arten": list(TATZEIT_BEFUNDE),
+            "tatzeitfehler": dict(self.tatzeitfehler),
+            "faelle_mehrdeutig": self.faelle_mehrdeutig,
             "rows": [r.to_dict() for r in self.rows],
         }
 
@@ -608,9 +656,21 @@ class LimitationRepo:
     Faelle trifft der Endpunkt; Fristenkontrolle ist eine Leitungsaufgabe.
     """
 
-    def __init__(self, con: sqlite3.Connection, forensic_dir: Any) -> None:
+    def __init__(self, con: sqlite3.Connection, forensic_dir: Any,
+                 evidence_dir: Any = None) -> None:
+        """
+        evidence_dir — Verzeichnis der evidence_<uid>.db, aus denen die
+        FESTGESTELLTE Tatzeit gelesen wird (Build 535).
+
+        FEHLT ES, WIRD NICHT STILL WEITERGERECHNET. Jede Zeile bekommt dann den
+        Befund 'nicht_geprueft' und der Bericht einen Hinweis. Der Unterschied
+        zwischen "nachgesehen und nichts gefunden" und "nicht nachgesehen"
+        entscheidet darueber, ob jemand nachsieht — er darf nicht in einem
+        Vorgabewert verschwinden (Grundregel 1).
+        """
         self._con = con
         self._forensic = Path(forensic_dir)
+        self._evidence = Path(evidence_dir) if evidence_dir else None
 
     def _cases(self, subject_ids: Optional[Sequence[int]] = None
                ) -> List[Tuple[int, str]]:
@@ -627,6 +687,24 @@ class LimitationRepo:
         sql += " ORDER BY subject_id"
         return [(int(r[0]), str(r[1] or "?"))
                 for r in self._con.execute(sql, args).fetchall()]
+
+    def _tatzeit_anker(self, subject_id: int) -> TatzeitAnker:
+        """
+        Die festgestellte Tatzeit eines Falls (Build 535).
+
+        Ohne evidence-Verzeichnis wird NICHT nachgesehen — und das wird auch so
+        gesagt. 'nicht_geprueft' ist ein eigener Befund und ausdruecklich nicht
+        dasselbe wie 'ohne_feststellung': das eine heisst "nicht nachgesehen",
+        das andere "nachgesehen, nichts gefunden". In einer Ermittlungsakte
+        duerfen die beiden nicht gleich aussehen.
+        """
+        if self._evidence is None:
+            return nicht_geprueft(
+                subject_id,
+                "Kein evidence-Verzeichnis uebergeben — die festgestellte "
+                "Tatzeit wurde NICHT geprueft.")
+        return read_tatzeit_anker(
+            self._evidence / ("evidence_%d.db" % subject_id), subject_id)
 
     def compute(self, *, params: LimitationParams, now_ts: int,
                 vorwarn_tage: int = DEFAULT_VORWARN_TAGE,
@@ -648,6 +726,13 @@ class LimitationRepo:
         ersatzfehler: Dict[str, int] = {}
         anker_verteilung: Dict[str, int] = {}
         feststellung_verteilung: Dict[str, int] = {}
+        # Build 535: die Lage der FESTGESTELLTEN Tatzeit, getrennt gefuehrt von
+        # der Datenlage der Aktivitaetsquellen. Zwei Achsen, zwei Zaehlungen —
+        # zusammengelegt waere nicht mehr zu sehen, ob ein Fall keine
+        # Feststellung hat oder keine Aktivitaetsdaten.
+        tatzeit_befunde: Dict[str, int] = {}
+        tatzeitfehler: Dict[str, int] = {}
+        mehrdeutig_gesamt = 0
         mit_fehler = 0
         unplausibel_gesamt = 0
         mit_unplausiblen = 0
@@ -669,22 +754,59 @@ class LimitationRepo:
             # spaetesten Tathandlung. Bei 'aktivitaet' sind beide identisch;
             # bei einem Ersatzanker ist anker_ts der einzige verfuegbare Wert.
             #
-            # festgestellt=False ist hier KEIN Vorgabewert aus Bequemlichkeit,
-            # sondern der belegte Stand: eine von einer Ermittlerin
-            # FESTGESTELLTE Tatzeit gibt es in den ausgewerteten Datenbanken
-            # noch nicht (annotations fuehrt keine Tatzeitspalte, Stand
-            # 2026-07-25). Sobald es sie gibt, aendert sich GENAU diese Zeile.
-            a = assess_limitation(tatzeit_ts=tatzeit.anker_ts,
+            # --- Build 535: DIE UMSCHALTUNG ---------------------------------
+            # Bis Build 534 stand hier fest 'festgestellt=False', mit dem
+            # Vermerk: "eine von einer Ermittlerin FESTGESTELLTE Tatzeit gibt
+            # es in den ausgewerteten Datenbanken noch nicht ... Sobald es sie
+            # gibt, aendert sich GENAU diese Zeile." Sie gibt es seit Build
+            # 533/534, und dies ist die angekuendigte Aenderung.
+            #
+            # RANGFOLGE: Eine festgestellte Tatzeit SCHLAEGT jeden anderen
+            # Anker — auch dann, wenn sie frueher liegt als die spaeteste
+            # belegte Tathandlung. Das ist der Sinn der Achse 'feststellung':
+            # was ein Mensch festgestellt hat, wiegt schwerer als was aus
+            # Aktivitaetsdaten abgeleitet wurde. Der Aktivitaetsbefund
+            # ('tatzeit.befund') bleibt davon UNBERUEHRT und wird weiter
+            # ausgewiesen — die beiden Achsen werden nicht vermischt.
+            anker = self._tatzeit_anker(subject_id)
+            tatzeit_befunde[anker.befund] = tatzeit_befunde.get(
+                anker.befund, 0) + 1
+            for eintrag in anker.fehler:
+                tatzeitfehler[eintrag] = tatzeitfehler.get(eintrag, 0) + 1
+            if anker.mehrdeutig:
+                mehrdeutig_gesamt += 1
+
+            if anker.hat_anker:
+                anker_ts = anker.frueheste_beendigung
+                anker_art = "tatzeit"
+                festgestellt = True
+            else:
+                anker_ts = tatzeit.anker_ts
+                anker_art = tatzeit.anker_art
+                festgestellt = False
+
+            # Der Tatzeitteil der Zeile fuehrt DENSELBEN Anker wie die
+            # Rechenschicht — sonst schluege die Stimmigkeitspruefung in
+            # LimitationRow.to_dict() an, und zwar zu Recht.
+            if anker.hat_anker:
+                tatzeit = replace(
+                    tatzeit, anker_art="tatzeit", anker_ts=anker_ts,
+                    anker_beleg="festgestellte Tatzeit aus "
+                                "evidence_%d.db (annotation_tatzeit); %s"
+                                % (subject_id, anker.detail))
+
+            a = assess_limitation(tatzeit_ts=anker_ts,
                                   params=params, now_ts=now_ts,
                                   vorwarn_tage=vorwarn_tage,
-                                  anker_art=tatzeit.anker_art,
-                                  festgestellt=False)
+                                  anker_art=anker_art,
+                                  festgestellt=festgestellt)
             zaehler[a.ampel] = zaehler.get(a.ampel, 0) + 1
             anker_verteilung[a.anker_art] = (
                 anker_verteilung.get(a.anker_art, 0) + 1)
             feststellung_verteilung[a.feststellung] = (
                 feststellung_verteilung.get(a.feststellung, 0) + 1)
-            rows.append(LimitationRow(tatzeit=tatzeit, assessment=a))
+            rows.append(LimitationRow(tatzeit=tatzeit, assessment=a,
+                                      tatzeit_anker=anker))
 
         rang = {"ueberschritten": 0, "knapp": 1, "ohne_tatzeit": 2,
                 "ohne_anker": 3, "ohne_fassung": 4, "ruht": 5, "offen": 6,
@@ -698,6 +820,11 @@ class LimitationRepo:
             # Build 530: danach das auf einem ERSATZANKER Beruhende. Auch das
             # ist eine Zahl unter Vorbehalt, nur eine Stufe schwaecher.
             0 if r.assessment.anker_art in ("registrierung", "anmeldung")
+            else 1,
+            # Build 535: bei sonst gleichem Rang steht das MEHRDEUTIGE vorn —
+            # ein Fall mit mehreren festgestellten Tatzeitraeumen traegt eine
+            # Auswahlentscheidung in sich und gehoert vor einen eindeutigen.
+            0 if (r.tatzeit_anker is not None and r.tatzeit_anker.mehrdeutig)
             else 1,
             r.assessment.restlaufzeit_tage
             if r.assessment.restlaufzeit_tage is not None else 10 ** 9,
@@ -719,6 +846,56 @@ class LimitationRepo:
         # Protokoll: die Sicht und der Export zeigen die Hinweise, das
         # Serverprotokoll sieht niemand, der die Liste liest.
         hinweise = [HINWEIS_QUELLEN, HINWEIS_FETCHED_AT, HINWEIS_FESTSTELLUNG]
+
+        # --- Build 535: die Lage der festgestellten Tatzeit ------------------
+        # Reihenfolge der Einfuegungen: das Dringendste zuletzt eingefuegt,
+        # weil insert(0) nach vorne schiebt. Das Dringendste ist hier "gar
+        # nicht geprueft" — eine Liste, die aussieht wie ausgewertet, es aber
+        # nicht ist, waere der gefaehrlichste denkbare Beleg.
+        anzahl_festgestellt = tatzeit_befunde.get("festgestellt", 0)
+        if anzahl_festgestellt:
+            hinweise.insert(0,
+                "%d von %d Faellen rechnen mit einer FESTGESTELLTEN Tatzeit "
+                "(Ankerart 'tatzeit'). Bei mehreren festgestellten "
+                "Tatzeitraeumen verankert die FRUEHESTE Beendigung die Frist "
+                "(Entscheidung mc 2026-07-26); die spaeteste faehrt je Zeile "
+                "in 'tatzeit_spaeteste_beendigung' mit und rechnet NICHT. "
+                "ACHTUNG — das ist die Gegenrichtung zu den Aktivitaetsdaten, "
+                "wo die SPAETESTE Handlung verankert."
+                % (anzahl_festgestellt, len(rows)))
+        if mehrdeutig_gesamt:
+            hinweise.insert(0,
+                "%d Fall/Faelle tragen MEHRERE festgestellte Tatzeitraeume mit "
+                "verschiedener Beendigung. Dort ist die Auswahl des Ankers "
+                "eine Entscheidung und keine Ablesung — ob mehrere Handlungen "
+                "eine Tat im Rechtssinne bilden, bewertet dieses Werkzeug "
+                "NICHT." % mehrdeutig_gesamt)
+        if tatzeitfehler:
+            hinweise.insert(0,
+                "Beim Lesen der festgestellten Tatzeit war mindestens eine "
+                "Abfrage nicht ausfuehrbar: %s. Betroffene Faelle koennen "
+                "deshalb ohne Feststellung dastehen, obwohl eine vorhanden "
+                "waere."
+                % "; ".join("%s (%dx)" % (k, v)
+                            for k, v in sorted(tatzeitfehler.items())))
+        anzahl_ohne_tabelle = tatzeit_befunde.get("ohne_tabelle", 0)
+        if anzahl_ohne_tabelle:
+            hinweise.insert(0,
+                "%d von %d Beweismitteldatenbanken fuehren die Tabelle "
+                "'annotation_tatzeit' NICHT — die evidence-Migration m002 ist "
+                "dort nicht angewandt. Fuer diese Faelle ist NICHT gesagt, "
+                "dass nichts festgestellt wurde; es wurde nur nichts gefunden, "
+                "weil es den Ort dafuer noch nicht gibt."
+                % (anzahl_ohne_tabelle, len(rows)))
+        anzahl_ungeprueft = tatzeit_befunde.get("nicht_geprueft", 0)
+        if anzahl_ungeprueft:
+            hinweise.insert(0,
+                "DIE FESTGESTELLTE TATZEIT WURDE NICHT GEPRUEFT (%d von %d "
+                "Faellen): dem Monitor wurde kein evidence-Verzeichnis "
+                "uebergeben. Alle Zeilen beruhen ausschliesslich auf "
+                "Aktivitaetsdaten und Ersatzankern und sind damit durchweg "
+                "VORLAEUFIG — auch dort, wo eine Feststellung vorliegen mag."
+                % (anzahl_ungeprueft, len(rows)))
         ersatz_anzahl = sum(anker_verteilung.get(a, 0)
                             for a in ("registrierung", "anmeldung"))
         if ersatz_anzahl:
@@ -785,4 +962,7 @@ class LimitationRepo:
             faelle_mit_unplausiblen=mit_unplausiblen,
             anker_verteilung=anker_verteilung,
             feststellung_verteilung=feststellung_verteilung,
-            ersatzfehler=ersatzfehler)
+            ersatzfehler=ersatzfehler,
+            tatzeit_befunde=tatzeit_befunde,
+            tatzeitfehler=tatzeitfehler,
+            faelle_mehrdeutig=mehrdeutig_gesamt)

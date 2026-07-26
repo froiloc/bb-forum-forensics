@@ -130,8 +130,16 @@ BEFUND_OHNE_TATZEIT = (
 #  'anmeldung'     — ERSATZANKER: erste ueber die 100a-Massnahme protokollierte
 #                    erfolgreiche Anmeldung.
 #  'keine'         — es gibt kein Datum.
-ANKER_ARTEN: Tuple[str, ...] = ("aktivitaet", "registrierung", "anmeldung",
-                                "keine")
+#  Build 535: 'tatzeit' ist hinzugekommen — die von einer Ermittlerin
+#  FESTGESTELLTE Tatzeit aus annotation_tatzeit. Sie als 'aktivitaet' zu
+#  fuehren waere falsch: anker_art sagt, WOHER das Datum stammt, und eine
+#  Feststellung stammt nicht aus einer Aktivitaetstabelle. Sie ist auch KEIN
+#  Ersatzanker (s. ERSATZANKER_ARTEN) — im Gegenteil, sie ist der staerkste
+#  Anker, den es gibt, und unterliegt deshalb keiner tatbestandsbezogenen
+#  Zulassung. Der Anker ANKER_ARTEN=4 aus Build 530 steigt damit auf 5; das ist
+#  eine bewusste Anpassung, keine Umgehung.
+ANKER_ARTEN: Tuple[str, ...] = ("tatzeit", "aktivitaet", "registrierung",
+                                "anmeldung", "keine")
 
 #: Die Ersatzanker — also die Anker, die KEINE belegte Tathandlung sind und
 #  deshalb der tatbestandsbezogenen Zulassung beduerfen (§ 78a StGB).
@@ -285,6 +293,12 @@ def _tag(ts: int) -> date:
 #: Klartext je Ankerart — fuer den Vermerk. Als Tabelle, damit die Bezeichnung
 #  an EINER Stelle steht und in Antwort, Vermerk und Sicht nicht auseinanderlaeuft.
 ANKER_BEZEICHNUNG: Dict[str, str] = {
+    # Build 535: bewusst "FRUEHESTEN" — bei mehreren festgestellten
+    # Tatzeitraeumen verankert die frueheste Beendigung (Entscheidung mc
+    # 2026-07-26). Das ist die Gegenrichtung zu 'aktivitaet', und der Text sagt
+    # es, damit niemand die beiden Zeilen fuer dasselbe haelt.
+    "tatzeit": "der FRUEHESTEN von einer Ermittlerin festgestellten "
+               "Tatzeit-Beendigung",
     "aktivitaet": "der spaetesten belegten Tathandlung",
     "registrierung": "dem Registrierungsdatum (uid_profile.registered)",
     "anmeldung": "der ersten ueber die 100a-Massnahme protokollierten "
