@@ -489,6 +489,25 @@ CAP_FULLTEXT_SEARCH = "evidence.fulltext_search"
 # freigibt, sucht damit nicht.
 CAP_FULLTEXT_RELEASE = "fulltext.release"
 
+# --- Build 540/541 (AP-3C): QS-Stichprobe (Seed in M034) -------------
+# ZWEI Rechte, ausdruecklich GETRENNT (Muster release.view /
+# release.grant): wer die Stichprobe SEHEN darf, darf damit noch nicht
+# PRUEFEN. Nur so bleibt Vier-Augen moeglich. Beide NICHT scope-behaftet
+# — eine Stichprobe ueber den eigenen Arbeitsvorrat waere keine.
+#
+# ZWECKBINDUNG: AUSWERTUNGSQUALITAET, KEIN MITARBEITER-BEWERTUNGS-
+# INSTRUMENT. Sie wird NICHT hier formuliert, sondern woertlich aus
+# management/qs/qs_vokabular.py uebernommen und faehrt in jeder Antwort
+# mit — eine zweite Formulierung waere eine zweite Wahrheitsquelle.
+CAP_QS_VIEW = "qs.view"
+CAP_QS_EDIT = "qs.edit"
+
+# --- Build 542 (AP-3C): Ermittler-Metriken (Seed in M035) ------------
+# EIGENES Recht, nicht 'qs.view' und nicht 'stats.export_sta'
+# (Begruendung: management/migrations/coordinator/m035_metrics_rbac.py).
+# NICHT scope-behaftet; die Antwort enthaelt KEINEN Personenbezug.
+CAP_METRICS_VIEW = "metrics.view"
+
 logger = logging.getLogger(__name__)
 
 # Zulaessige Werte fuer die auditierten Schreibpfade (Build 372).
@@ -841,6 +860,16 @@ class ManagementApp:
         #     (management/Parallelbetrieb_Welle3_v0_1.md §4).
         if path == "/api/matrix":
             return self._matrix(person_id, query)
+        # --- Build 541 (AP-3C): QS-Stichprobe ---------------------------
+        #     Eigener Block, damit er sich im Parallelbetrieb zusammenfuehren
+        #     laesst (management/Parallelbetrieb_Welle3_v0_1.md §4).
+        if path == "/api/qs":
+            return self._qs(person_id, query)
+        if path == "/api/qs/recheck":
+            return self._qs_recheck(person_id, query)
+        # --- Build 542 (AP-3C): Ermittler-Metriken ----------------------
+        if path == "/api/metrics":
+            return self._metrics(person_id, query)
         if path == "/api/capacity":
             return self._capacity(person_id, query)
         if path == "/api/policy":
@@ -1614,6 +1643,246 @@ class ManagementApp:
         report["ist_keine_beweiswuerdigung"] = True
         report["schreibt_keine_prioritaet"] = True
         return Response.json(200, report)
+
+    # --- Build 541 (AP-3C): QS-Stichprobe -----------------------------------
+    def _qs(self, person_id: int, query: Dict[str, Any]) -> Response:
+        """
+        GET /api/qs — Ziehungen mit Prueflingen und Ergebnissen. Recht
+        'qs.view'.
+
+        NICHT SCOPE-BEHAFTET: eine Stichprobe ueber den eigenen Arbeitsvorrat
+        waere keine.
+
+        DIE ANTWORT SAGT AUCH, WAS DER ABRUFENDE NICHT DARF. 'darf_pruefen'
+        je Fall kommt aus derselben Regel, die der Schreibpfad durchsetzt
+        (QsRepo.darf_pruefen) — die Sicht kann einen gesperrten Fall damit
+        vorab kennzeichnen. DIE SPERRE SELBST WIRKT IM SERVER: diese Angabe
+        ist eine Bequemlichkeit, keine Kontrolle.
+
+        REIN LESEND: coordinator.db mit mode=ro.
+        """
+        from management.qs.qs_repo import QsRepo
+
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_QS_VIEW):
+            return self._forbidden(CAP_QS_VIEW)
+
+        con = self._ro_con()
+        try:
+            repo = QsRepo(con)
+            bericht = repo.liste()
+            # Je Prueflings-Zeile: darf DIESE Person ihn pruefen?
+            for z in bericht.get("ziehungen", []):
+                for it in z.get("faelle", []):
+                    darf, gruende = repo.darf_pruefen(
+                        int(it["subject_id"]), int(person_id))
+                    it["darf_pruefen"] = darf
+                    it["sperrgruende"] = gruende
+        except Exception as exc:                        # noqa: BLE001
+            logger.exception("QS-Sicht fehlgeschlagen")
+            return Response.json(500, {"error": "qs_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+
+        bericht["darf_pruefen_recht"] = policy.can(CAP_QS_EDIT)
+        return Response.json(200, bericht)
+
+    def _qs_recheck(self, person_id: int, query: Dict[str, Any]) -> Response:
+        """
+        GET /api/qs/recheck?sample_id=N — eine gespeicherte Ziehung NACHRECHNEN.
+
+        Das ist der eigentliche Zweck des mitgeschriebenen Keims: gegen den
+        Vorwurf der gezielten Auswahl hilft nur, dass es jemand nachrechnen
+        KANN. Recht 'qs.view' (Lesen genuegt — Nachrechnen aendert nichts).
+
+        EINE ABWEICHUNG IST KEIN FEHLER UND KEIN 500. Die Grundgesamtheit
+        aendert sich im laufenden Betrieb; die Antwort sagt das ausdruecklich
+        und ueberlaesst die Bewertung dem Menschen.
+        """
+        from management.qs.qs_repo import QsError, QsRepo
+
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_QS_VIEW):
+            return self._forbidden(CAP_QS_VIEW)
+
+        roh = self._q1(query, "sample_id")
+        try:
+            sample_id = int(roh)
+        except (TypeError, ValueError):
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "sample_id muss eine ganze Zahl sein."})
+
+        con = self._ro_con()
+        try:
+            return Response.json(200, QsRepo(con).nachziehen(sample_id))
+        except QsError as exc:
+            return Response.json(400, {"error": "qs_invalid",
+                                       "detail": str(exc)})
+        except Exception as exc:                        # noqa: BLE001
+            logger.exception("QS-Nachziehen fehlgeschlagen")
+            return Response.json(500, {"error": "qs_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+
+    def _qs_draw(self, person_id: int, payload: Dict[str, Any]) -> Response:
+        """
+        POST /api/qs/draw — {seed?, anteil?, hoechstens?, verfahren?,
+        bemerkung?}. Recht 'qs.edit' (auditiert).
+
+        DER KEIM DARF MITGEGEBEN WERDEN, und das ist Absicht: nur so laesst
+        sich eine Ziehung bewusst wiederholen. Fehlt er, wird EINER ERZEUGT
+        und mitgeschrieben — nie eine Ziehung ohne Keim. Der erzeugte Keim
+        stammt aus der Uhr und ist damit selbst nachvollziehbar; ein
+        kryptografischer Zufall waere hier ein Fehler (s.
+        management/qs/qs_sampler.py).
+        """
+        from management.qs.qs_repo import QsError, QsRepo
+
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_QS_EDIT):
+            return self._forbidden(CAP_QS_EDIT)
+
+        payload = payload or {}
+        try:
+            seed = int(payload.get("seed")) if payload.get("seed") is not None \
+                else int(time.time())
+            anteil = float(payload.get("anteil", 0.1))
+            hoechstens = int(payload.get("hoechstens", 10))
+        except (TypeError, ValueError) as exc:
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "seed/anteil/hoechstens muessen Zahlen sein (%s)."
+                          % exc})
+        verfahren = str(payload.get("verfahren") or "geschichtet")
+        bemerkung = str(payload.get("bemerkung") or "")
+
+        con = self._rw_con()
+        try:
+            repo = QsRepo(con, CoordinatorWriter(con, AuditLog(con)))
+            out = repo.ziehen(seed=seed, anteil=anteil, hoechstens=hoechstens,
+                              verfahren=verfahren, bemerkung=bemerkung,
+                              actor_id=person_id)
+        except QsError as exc:
+            return Response.json(400, {"error": "qs_invalid",
+                                       "detail": str(exc)})
+        except Exception as exc:                        # noqa: BLE001
+            logger.exception("QS-Ziehung fehlgeschlagen")
+            return Response.json(500, {"error": "qs_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, out)
+
+    def _qs_review(self, person_id: int, payload: Dict[str, Any]) -> Response:
+        """
+        POST /api/qs/review — {sample_id, subject_id, ergebnis, begruendung}.
+        Recht 'qs.edit' (auditiert).
+
+        DREI ABWEISUNGSGRUENDE, DREI STATUSCODES, und der Unterschied ist
+        fachlich:
+          403 ohne 'qs.edit'                — darf gar nicht pruefen.
+          403 bei SELBSTPRUEFUNG            — darf DIESEN Fall nicht pruefen.
+          400 bei unbrauchbarer Eingabe     — darf, hat aber falsch ausgefuellt.
+        Die Selbstpruefung als 400 zu melden waere irrefuehrend: an der Eingabe
+        ist nichts zu bessern.
+        """
+        from management.qs.qs_repo import (
+            QsError, QsRepo, QsSelbstpruefungError,
+        )
+
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_QS_EDIT):
+            return self._forbidden(CAP_QS_EDIT)
+
+        payload = payload or {}
+        try:
+            sample_id = int(payload.get("sample_id"))
+            subject_id = int(payload.get("subject_id"))
+        except (TypeError, ValueError):
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "sample_id und subject_id muessen ganze Zahlen "
+                          "sein."})
+        ergebnis = str(payload.get("ergebnis") or "")
+        begruendung = str(payload.get("begruendung") or "")
+
+        con = self._rw_con()
+        try:
+            repo = QsRepo(con, CoordinatorWriter(con, AuditLog(con)))
+            out = repo.pruefen(sample_id=sample_id, subject_id=subject_id,
+                               ergebnis=ergebnis, begruendung=begruendung,
+                               actor_id=person_id)
+        except QsSelbstpruefungError as exc:
+            # KEIN 400: an der Eingabe ist nichts zu bessern.
+            return Response.json(403, {"error": "qs_selbstpruefung",
+                                       "capability": CAP_QS_EDIT,
+                                       "detail": str(exc)})
+        except QsError as exc:
+            return Response.json(400, {"error": "qs_invalid",
+                                       "detail": str(exc)})
+        except Exception as exc:                        # noqa: BLE001
+            logger.exception("QS-Pruefung fehlgeschlagen")
+            return Response.json(500, {"error": "qs_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, out)
+
+
+    # --- Build 542 (AP-3C): Ermittler-Metriken ------------------------------
+    def _metrics(self, person_id: int, query: Dict[str, Any]) -> Response:
+        """
+        GET /api/metrics[?substanz=1] — Kennzahlen zur Auswertungsqualitaet.
+        Recht 'metrics.view'.
+
+        AGGREGIERT WIRD UEBER FAELLE, NICHT UEBER PERSONEN. Die Antwort traegt
+        'keine_personenrangfolge' und die Zweckbindung WORTGLEICH aus
+        management/metrics/metrics_vokabular.py — eine zweite Formulierung
+        waere eine zweite Wahrheitsquelle. Die Lastverteilung JE ERMITTLER gibt
+        es weiterhin nur unter /api/workload, mit eigenem Recht und eigenem
+        Scope.
+
+        '?substanz=1' schaltet den teuren Block zu (ein Dateizugriff je
+        zugewiesenem Fall auf evidence_<uid>.db). Ohne ihn sagt die Antwort
+        ausdruecklich, dass NICHT NACHGESEHEN wurde — sie behauptet nicht, es
+        gebe keine Faelle ohne Substanz. Muster: die Fristkomponente der Matrix
+        (Build 538). Die Dauer faehrt in 'dauer_substanz_ms' mit.
+
+        REIN LESEND: coordinator.db und alle evidence_<uid>.db mit mode=ro.
+        """
+        from management.metrics.metrics_repo import MetricsRepo
+
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_METRICS_VIEW):
+            return self._forbidden(CAP_METRICS_VIEW)
+
+        roh = self._q1(query, "substanz")
+        mit_substanz = False
+        if roh is not None and str(roh) != "":
+            if str(roh) in ("1", "true", "ja"):
+                mit_substanz = True
+            elif str(roh) in ("0", "false", "nein"):
+                mit_substanz = False
+            else:
+                return Response.json(400, {
+                    "error": "bad_request",
+                    "detail": "substanz muss 0/1 (bzw. false/true, nein/ja) "
+                              "sein — '%s' wurde nicht verstanden." % roh})
+
+        con = self._ro_con()
+        try:
+            bericht = MetricsRepo(con, self._evidence_dir).compute(
+                now_ts=int(time.time()), mit_substanz=mit_substanz)
+        except Exception as exc:                        # noqa: BLE001
+            logger.exception("Metriken fehlgeschlagen")
+            return Response.json(500, {"error": "metrics_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, bericht)
 
     def _escalation_ack(self, actor_person_id: int,
                         payload: Dict[str, Any]) -> Response:
@@ -5852,6 +6121,14 @@ class ManagementApp:
             return self._external_close(person_id, payload)
         if path == "/api/results/assess":
             return self._results_assess(person_id, payload)
+        # --- Build 541 (AP-3C): QS-Stichprobe, auditierte Schreibwege ----
+        #     ZWEI Routen statt einer Sammelroute: Ziehen und Pruefen sind
+        #     fachlich verschiedene Handlungen verschiedener Personen zu
+        #     verschiedenen Zeiten (Muster der vier Alias-Routen, Build 504).
+        if path == "/api/qs/draw":
+            return self._qs_draw(person_id, payload)
+        if path == "/api/qs/review":
+            return self._qs_review(person_id, payload)
         # Build 460 (AP-2G): Fremdforum-Promotion — auditierte Entscheidung.
         if path == "/api/promotion/decide":
             return self._promotion_decide(person_id, payload)

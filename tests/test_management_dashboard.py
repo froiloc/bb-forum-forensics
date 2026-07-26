@@ -254,7 +254,7 @@ class ManagementDashboardTests(unittest.TestCase):
         #     python tools/pruefe_migrationskette.py --db <coordinator.db>
         _BASIS = [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
                   19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]
-        _INSTANZ_A = [33, 34]      # Builds 536/539, AP-3B und AP-3C
+        _INSTANZ_A = [33, 34, 35]  # Builds 536/540/542, AP-3B und AP-3C
         _INSTANZ_B = [40]          # Build 561, AP-3E
         _ALLE = _BASIS + _INSTANZ_A + _INSTANZ_B
         self.assertEqual(self.applied,

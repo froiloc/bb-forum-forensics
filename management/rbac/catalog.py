@@ -397,6 +397,26 @@ CAPABILITIES: Tuple[Capability, ...] = (
                "eines ihr NICHT zugewiesenen Falls erteilen oder widerrufen. "
                "Auditiert, mit Pflichtbegruendung; eine Freigabe je Fall und "
                "Person."),
+
+    # --- AP-3C (Build 542, Seed in M035): Ermittler-Metriken ---------------
+    #   EIGENES Recht und ausdruecklich NICHT 'qs.view': die QS-Stichprobe
+    #   zeigt ein Pruefergebnis ZU EINEM FALL, mit Namen und Begruendung im
+    #   Klartext; die Metriken zeigen AGGREGATE ueber viele Faelle. Wer das
+    #   Lagebild sehen darf, darf damit noch nicht die Begruendung lesen, mit
+    #   der eine Kollegin die Arbeit einer anderen bewertet hat.
+    #
+    #   AUCH NICHT 'stats.export_sta': jenes Recht steht fuer den Export an
+    #   StA und Fuehrung. Die Metriken sind eine INNENSICHT der Dienststelle
+    #   und sollen nicht ueber dasselbe Recht mit hinauswandern.
+    #
+    #   NICHT scope-behaftet — ein Lagebild ueber den eigenen Arbeitsvorrat
+    #   waere keines. Es gibt dafuer KEINEN Personenbezug: aggregiert wird
+    #   ueber FAELLE, nicht ueber Personen.
+    Capability("metrics.view", "Ermittler-Metriken sehen",
+               "Kennzahlen zum Zustand der Auswertung und zur Verteilung der "
+               "Arbeit lesen. AUSWERTUNGSQUALITAET, KEIN MITARBEITER-"
+               "BEWERTUNGSINSTRUMENT: keine Leistungsdaten, keine Rangfolge "
+               "zwischen Personen."),
 )
 
 

@@ -114,7 +114,11 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     //           AP-3E/Idee 38, Instanz B; Gruppe 'Auswertung', Recht
     //           evidence.fulltext_search). ANKER BEWUSST ANGEPASST auf
     //           den beim Rebase vorgefundenen Stand 38.
-    expect(api.VIEW_CATALOG.length).toBe(39);
+    // Build 543: 40 (neu: 'qs' - QS & Metriken, AP-3C; Gruppe
+    //           'Auswertung', Recht qs.view aus M034 - das Ziehen und
+    //           Pruefen haengt zusaetzlich an qs.edit, der Kennzahlenteil
+    //           an metrics.view aus M035).
+    expect(api.VIEW_CATALOG.length).toBe(40);
   });
 
   // CN-QUERFUND (Build 478) --------------------------------------------------

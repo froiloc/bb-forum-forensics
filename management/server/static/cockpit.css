@@ -2527,3 +2527,160 @@ tr.aiw-cff-nichtrelevant { opacity: 0.7; }
    (quellen_verifikation.py). Er wird bewusst nicht hervorgehoben: er ist
    eine Anzeigehilfe, kein Zitat — wer zitieren will, öffnet den Fall. */
 .aiw-search-text { margin: .35rem 0 0 0; white-space: pre-wrap; }
+
+/* ==========================================================================
+   Build 543 (AP-3C) — QS & Metriken (cockpit_qs.js).
+
+   ANGEHAENGT AM DATEIENDE, nicht in bestehende Bloecke eingefuegt: diese Datei
+   wird im Parallelbetrieb von mehreren Zweigen beruehrt
+   (management/Parallelbetrieb_Welle3_v0_1.md §4 — "am Rand arbeiten, nie in
+   der Mitte"). Alle Klassen tragen das eigene Praefix 'aiw-qs-'.
+
+   FARBLOGIK — hier BEWUSST ZURUECKHALTEND. Es gibt keine Skala von gruen nach
+   rot ueber die vier Ergebniscodes: 'nachzuarbeiten' ist kein schlechteres
+   'in Ordnung', sondern ein anderer Befund. Rot ist dem einen Fall
+   vorbehalten, in dem die Auswertung so nicht in die Akte kann — und auch
+   dort heisst rot "hier ist etwas zu tun" und nicht "hier hat jemand
+   versagt".
+   ========================================================================== */
+
+/* Die Zweckbindung. Blau — sie ist kein Missstand, sondern die Grenze, an die
+   sich das Werkzeug haelt. Fehlt sie, wird daraus rot. */
+.aiw-qs-zweck {
+  border-radius: 6px; padding: 12px 16px; margin: 0 0 12px; font-size: 13px;
+  border: 1px solid #aed6f1; border-left: 5px solid var(--akzent, #0b5394);
+  background: #eaf2fa; color: #14456e;
+}
+.aiw-qs-zweck.is-fehlt {
+  background: #fdecea; border-color: #f5b7b1;
+  border-left-color: var(--rot, #c0392b); color: #922b21; font-weight: 600;
+}
+
+/* Der Vorschlagscharakter der Ziehung — grau: kein Fehler, ein Hinweis. */
+.aiw-qs-vorschlag {
+  border-radius: 6px; padding: 10px 16px; margin: 0 0 12px; font-size: 12px;
+  background: #f4f6f7; border: 1px solid #d5dbe1;
+  border-left: 5px solid var(--muted, #606770); color: #3d4144;
+}
+
+/* Ein fehlgeschlagener Schreibversuch. Er bleibt stehen, bis der naechste
+   Versuch laeuft — insbesondere der 403 der Selbstpruefungssperre. */
+.aiw-qs-fehler {
+  border-radius: 6px; padding: 10px 16px; margin: 0 0 12px; font-size: 13px;
+  background: #fdecea; border: 1px solid #f5b7b1;
+  border-left: 5px solid var(--rot, #c0392b); color: #922b21; font-weight: 600;
+}
+
+.aiw-qs-actions { margin: 0 0 14px; display: flex; align-items: center; gap: 8px;
+  flex-wrap: wrap; }
+.aiw-qs-actions-label, .aiw-qs-actions-hinweis {
+  font-size: 12px; color: #4a5158;
+}
+.aiw-qs-draw, .aiw-qs-substanz {
+  cursor: pointer; border: 1px solid #d7dce1; border-radius: 4px;
+  background: #ffffff; padding: 5px 12px; font-size: 12px;
+}
+.aiw-qs-draw:hover, .aiw-qs-substanz:hover {
+  background: #eef3f8; border-color: #b9c2cb;
+}
+.aiw-qs-substanz.is-active {
+  background: var(--akzent, #0b5394); border-color: var(--akzent, #0b5394);
+  color: #ffffff; font-weight: 600;
+}
+
+/* Eine Ziehung. */
+.aiw-qs-ziehung {
+  margin: 0 0 20px; padding: 0 0 0 12px;
+  border-left: 5px solid var(--akzent, #0b5394);
+}
+.aiw-qs-ziehung-titel { margin: 0 0 2px; font-size: 15px; }
+/* DER NACHWEIS. Er steht oben und in Zahlenschrift: der Keim ist das, was die
+   Ziehung ueberhaupt zu einem Beleg macht. */
+.aiw-qs-nachweis {
+  margin: 0 0 6px; font-size: 12px; color: #4a5158;
+  font-variant-numeric: tabular-nums;
+}
+.aiw-qs-zaehler, .aiw-qs-bemerkung {
+  margin: 0 0 6px; font-size: 12px; color: #4a5158;
+}
+
+.aiw-qs-table {
+  width: 100%; border-collapse: collapse; margin: 0 0 8px; font-size: 13px;
+}
+.aiw-qs-table th {
+  text-align: left; padding: 6px 8px; font-weight: 600; white-space: nowrap;
+  border-bottom: 2px solid var(--line, #d5dbe1);
+}
+.aiw-qs-table td {
+  padding: 6px 8px; border-bottom: 1px solid var(--line, #e6eaee);
+  vertical-align: top;
+}
+.aiw-qs-pos, .aiw-qs-case { white-space: nowrap;
+  font-variant-numeric: tabular-nums; }
+
+/* Die vier Ergebnisse. KEINE Skala: vier Zustaende, vier Markierungen. */
+.aiw-qs-row.is-offen      { box-shadow: inset 4px 0 0 var(--muted, #606770); }
+.aiw-qs-row.is-ok         { box-shadow: inset 4px 0 0 var(--gruen, #1e8449); }
+.aiw-qs-row.is-nacharbeit { box-shadow: inset 4px 0 0 #d68910; }
+.aiw-qs-row.is-ruecklauf  { box-shadow: inset 4px 0 0 var(--rot, #c0392b); }
+.aiw-qs-row.is-unklar     { box-shadow: inset 4px 0 0 #7d3c98; }
+/* Ein Code, den das Frontend nicht kennt, wird SCHWARZ markiert und faellt
+   damit auf — er darf nicht wie ein bekannter aussehen. */
+.aiw-qs-row.is-unbekannt  { box-shadow: inset 4px 0 0 #000000; }
+.aiw-qs-row.is-unklar .aiw-qs-ergebnis { color: #5b2c6f; font-weight: 600; }
+
+/* Die Sperrmeldung steht IN der Zeile, wo das Formular gestanden haette. */
+.aiw-qs-begr.is-gesperrt {
+  color: #5b2c6f; font-size: 12px; font-weight: 600;
+}
+
+/* Das Erfassungsformular. */
+.aiw-qs-form { display: flex; flex-direction: column; gap: 4px; }
+.aiw-qs-ergebnis-wahl { font-size: 12px; padding: 3px 6px; }
+.aiw-qs-begruendung {
+  font-size: 12px; padding: 4px 6px; border: 1px solid #d7dce1;
+  border-radius: 4px; resize: vertical; min-width: 220px;
+}
+.aiw-qs-speichern {
+  cursor: pointer; border: 1px solid #d7dce1; border-radius: 4px;
+  background: #ffffff; padding: 4px 10px; font-size: 12px; align-self: start;
+}
+.aiw-qs-speichern:hover { background: #eef3f8; border-color: #b9c2cb; }
+.aiw-qs-formfehler {
+  font-size: 12px; color: #922b21; font-weight: 600;
+}
+
+.aiw-qs-ausserhalb {
+  margin: 6px 0 0; padding: 8px 12px; font-size: 12px;
+  background: #fdf6e3; border: 1px solid #e8d9a8;
+  border-left: 4px solid #d68910; border-radius: 6px; color: #7a5b00;
+}
+.aiw-qs-ausserhalb h4 { margin: 0 0 4px; font-size: 12px; }
+.aiw-qs-ausserhalb ul { margin: 0; padding-left: 16px; }
+
+.aiw-qs-leer {
+  background: #f4f6f7; border: 1px solid #d5dbe1;
+  border-left: 5px solid var(--muted, #606770);
+  border-radius: 6px; padding: 12px 16px; margin: 0 0 14px;
+  color: #3d4144; font-size: 13px;
+}
+
+/* Der Kennzahlenteil. */
+.aiw-qs-metriken {
+  margin: 18px 0 0; padding: 12px 0 0;
+  border-top: 2px solid var(--line, #d5dbe1);
+}
+.aiw-qs-metrik-titel { margin: 0 0 8px; font-size: 15px; }
+.aiw-qs-kennzahl { margin: 0 0 6px; font-size: 13px; color: #3d4144; }
+.aiw-qs-abdeckung { margin: 0 0 10px; padding-left: 18px; font-size: 12px;
+  color: #4a5158; font-variant-numeric: tabular-nums; }
+/* Der Ausreisser-Kopf traegt die DEUTUNG. Er ist bewusst nicht rot: ein
+   Ausreisser ist ein Hinweis auf Pruefbedarf, kein Missstand. */
+.aiw-qs-ausreisser-kopf {
+  margin: 10px 0 4px; font-size: 12px; color: #7a5b00; font-weight: 600;
+}
+.aiw-qs-ausreisser { margin: 0 0 10px; padding-left: 18px; font-size: 12px;
+  color: #4a5158; }
+.aiw-qs-ausreisser li { margin: 3px 0; }
+.aiw-qs-hinweis { margin: 4px 0; font-size: 12px; color: #4a5158; }
+.aiw-qs-fehler { font-size: 13px; }

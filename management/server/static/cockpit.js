@@ -204,6 +204,15 @@
         // ihren Bewertungen sind. NICHT scope-behaftet — eine Rangfolge ueber
         // den eigenen Arbeitsvorrat waere keine.
         { id: 'matrix',     cap: 'matrix.view',          group: 'Auswertung',     label: 'Dringlichkeit & Erkenntnislage' },
+        // Build 543 (AP-3C): QS & Metriken. Gruppe 'Auswertung' — die Sicht
+        // wertet den FALLBESTAND aus (Stichprobe, Abdeckung, Liegezeiten),
+        // nicht den Zustand der Anlage. EIGENES Recht 'qs.view' (Seed M034);
+        // das Ziehen und Pruefen haengt zusaetzlich an 'qs.edit', der
+        // Kennzahlenteil an 'metrics.view' (M035). NICHT scope-behaftet: eine
+        // Stichprobe ueber den eigenen Arbeitsvorrat waere keine.
+        //
+        // AUSWERTUNGSQUALITAET, KEIN MITARBEITER-BEWERTUNGSINSTRUMENT.
+        { id: 'qs',         cap: 'qs.view',              group: 'Auswertung',     label: 'QS & Metriken' },
         { id: 'workload',   cap: 'workload.view',        group: 'Auswertung',     label: 'Lastverteilung' },
         { id: 'capacity',   cap: 'capacity.edit',        group: 'Auswertung',     label: 'Kapazitaet' },
         { id: 'support',    cap: 'support_history.view', group: 'Auswertung',     label: 'Support-Historie' },
@@ -1014,6 +1023,75 @@
             cleanupView();
             mod.renderInhalt(mainEl, { error: err.message,
                                        subject_id: subjectId }, hooks);
+        });
+    }
+
+    // loadQs: /api/qs UND /api/metrics holen und die Sicht rendern
+    // (cockpit_qs.js, Build 543).
+    //
+    // ZWEI ENDPUNKTE, EINE SICHT — und zwei getrennte Rechte. Fehlt
+    // 'metrics.view', antwortet /api/metrics mit 403; die Sicht zeigt dann den
+    // Kennzahlenteil als AUSGEFALLEN und nicht als leer. Ein 403 auf dem einen
+    // Endpunkt darf die Sicht nicht als Ganzes unbrauchbar machen — und ein
+    // leerer Kennzahlenblock saehe aus wie 'nichts auffaellig'.
+    //
+    // DER SUBSTANZ-UMFANG LEBT IM STATE (state.qsSubstanz), damit der
+    // SSE-Reload denselben Umfang laedt — Muster state.limitationVorwarn
+    // (Build 525) und state.matrixFristen (Build 539). Der teure Block ist
+    // ausgeschaltet, solange ihn niemand anfordert: er oeffnet EINE Datei je
+    // zugewiesenem Fall.
+    //
+    // KEIN OPTIMISTISCHES UI: nach jedem Schreibvorgang wird NEU GELADEN. Ein
+    // Pruefergebnis, das in der Oberflaeche steht, aber nicht in der Datenbank,
+    // waere in einem forensischen Werkzeug die schlimmste Art von Anzeige.
+    // Schlaegt ein Schreibversuch fehl, wird die Sicht MIT der Fehlermeldung
+    // neu aufgebaut — insbesondere der 403 aus der Selbstpruefungssperre ist
+    // genau die Meldung, die jemand lesen soll.
+    function loadQs(mainEl, substanz, fehler) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitQs : null;
+        if (!mod) {
+            renderError(mainEl, 'QS-Modul nicht geladen.');
+            return;
+        }
+        if (substanz !== undefined && substanz !== null) {
+            state.qsSubstanz = !!substanz;
+        }
+        var metrikUrl = '/api/metrics?substanz='
+            + (state.qsSubstanz ? '1' : '0');
+
+        Promise.all([
+            fetchJson('/api/qs'),
+            fetchJson(metrikUrl).catch(function (err) {
+                return { error: err.message };
+            })
+        ]).then(function (beides) {
+            cleanupView();
+            mod.renderQs(mainEl, beides[0], {
+                metrik: beides[1],
+                fehler: fehler || null,
+                onDraw: function () {
+                    postJson('/api/qs/draw', {}).then(function () {
+                        loadQs(mainEl);
+                    }).catch(function (err) {
+                        loadQs(mainEl, undefined, err.message);
+                    });
+                },
+                onReview: function (nutzlast) {
+                    postJson('/api/qs/review', nutzlast).then(function () {
+                        loadQs(mainEl);
+                    }).catch(function (err) {
+                        loadQs(mainEl, undefined, err.message);
+                    });
+                },
+                onSubstanz: function (mit) { loadQs(mainEl, mit); }
+            });
+            log('QS gerendert:', (beides[0].ziehungen || []).length,
+                'Ziehungen; Substanz:', state.qsSubstanz);
+        }).catch(function (err) {
+            cleanupView();
+            mod.renderQs(mainEl, { error: err.message }, {});
         });
     }
 
@@ -3172,7 +3250,13 @@
         // mit. Ohne ihn zeigte das Dokument womoeglich Fristbeitraege, die die
         // Sicht gar nicht geladen hatte, oder umgekehrt; die Zahlen der
         // X-Achse waeren dann andere als die auf dem Bildschirm.
-        matrix: 1
+        matrix: 1,
+        // Build 543: die QS-Stichprobe ist ein Governance-Beleg ('zu diesem
+        // Zeitpunkt war dies gezogen und dies geprueft'). Sie kennt keinen
+        // Filter; der Substanz-Umfang der KENNZAHLEN ist kein Parameter von
+        // /api/qs und geht deshalb nicht mit — das Dokument bildet die
+        // STICHPROBE ab, nicht die Kennzahlen.
+        qs: 1
     };
 
     // exportParams: die Sicht-Parameter, die der Export MITBEKOMMEN muss, damit
@@ -3342,6 +3426,10 @@
             // Build 525: die Fristensicht. Sie braucht keinen Vorlauf — die
             // Vorwarnschwelle kommt aus dem State (oder der Server-Vorgabe).
             loadLimitation(mainEl);
+        } else if (viewId === 'qs') {
+            // Build 543: QS & Metriken. Der Substanz-Umfang kommt aus dem
+            // State; Vorgabe ist OHNE (Begruendung bei loadQs).
+            loadQs(mainEl);
         } else if (viewId === 'matrix') {
             // Build 539: die Matrix. Der Fristen-Umfang kommt aus dem State;
             // Vorgabe ist OHNE Fristen (Begruendung bei loadMatrix).
@@ -3451,6 +3539,13 @@
                 // knappe Frist in die Liste bringen -> neu messen. Die im
                 // State gehaltene Vorwarnschwelle bleibt dabei erhalten.
                 loadLimitation();
+            } else if (state.activeId === 'qs') {
+                // Build 543: eine neue Ziehung und jedes Pruefergebnis
+                // erzeugen einen audit_log-Beleg; ausserdem aendern
+                // Fallabschluesse die Grundgesamtheit und die Kennzahlen.
+                // Der eingestellte Substanz-Umfang bleibt erhalten, sonst
+                // laedt ein fremdes Ereignis ungefragt die teure Variante.
+                loadQs();
             } else if (state.activeId === 'matrix') {
                 // Build 539: fast jedes auditierte Ereignis kann die Rangfolge
                 // veraendern — eine neue Bewertung hebt die Erkenntnislage,

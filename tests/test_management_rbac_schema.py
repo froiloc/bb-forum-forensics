@@ -187,7 +187,8 @@ class ManagementRbacSchemaTests(unittest.TestCase):
         #   Instanz B). Der Anker ist beim REBASE auf den vorgefundenen
         #   Stand 43 aufgesetzt worden (Parallelbetrieb §6 Nr. 2/3);
         #   die Verschiebung auf 43 stammt von Instanz A. -> 44.
-        self.assertEqual(len(cat_caps), 44)
+        # +1 ab Build 542 ('metrics.view', geseedet in M035) -> 45.
+        self.assertEqual(len(cat_caps), 45)
         self.assertIn("external.view", cat_caps)
         self.assertIn("external.edit", cat_caps)
         self.assertIn("templates.edit", cat_caps)

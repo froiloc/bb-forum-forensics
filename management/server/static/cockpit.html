@@ -129,6 +129,13 @@
      und werden von der Sicht geprueft. Laedt die Verjaehrungsfristen erst
      auf Anforderung; ohne sie ist jede Dringlichkeit eine UNTERGRENZE. -->
 <script src="/static/cockpit_matrix.js" defer></script>
+<!-- QS & Metriken (AP-3C, Build 543): Sicht zu /api/qs und /api/metrics.
+     Rechte: qs.view (Lesen), qs.edit (Ziehen/Pruefen), metrics.view.
+     AUSWERTUNGSQUALITAET, KEIN MITARBEITER-BEWERTUNGSINSTRUMENT — die
+     Zweckbindung kommt aus den Antworten und wird von der Sicht geprueft.
+     Die SELBSTPRUEFUNGSSPERRE wird hier nur ANGEZEIGT; sie wirkt im
+     Server (management/qs/qs_repo.py). -->
+<script src="/static/cockpit_qs.js" defer></script>
 <script src="/static/cockpit_capacity.js" defer></script>
 <script src="/static/cockpit_policy.js" defer></script>
 <script src="/static/cockpit_mycases.js" defer></script>

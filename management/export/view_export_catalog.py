@@ -239,6 +239,35 @@ VIEW_EXPORTS: Tuple[ViewExportSpec, ...] = (
                    "dringlichkeit_belastbarkeit", "dringlichkeit_grund",
                    "erkenntnislage", "n_kriterien_matrix")),),
     ),
+    # Build 543 (AP-3C): die QS-Stichprobe ist ein Governance-Beleg ("zu
+    # diesem Zeitpunkt war dies gezogen und dies geprüft"). Die ZWECKBINDUNG
+    # steht als 'note' MIT im Dokument: eine Aktenfassung, die als Bewertung
+    # von Mitarbeiterinnen gelesen würde, wäre der folgenschwerste Irrtum, den
+    # dieser Export auslösen könnte. Der ZUFALLSKEIM erscheint über den
+    # Auto-Modus (Regel 2) unter "Weitere Daten" — ohne ihn wäre die Ziehung
+    # im Dokument nicht nachrechenbar und damit kein Beleg.
+    #
+    # NICHT im Katalog: /api/metrics. Die Kennzahlen sind eine INNENSICHT der
+    # Dienststelle auf ihre eigene Auswertungsqualität; sie gehören nicht in
+    # eine Ermittlungsakte, und ein Export würde genau das nahelegen. Das ist
+    # kein "noch nicht gebaut", sondern eine Entscheidung — nachrüstbar in
+    # einer Zeile, wenn die Leitung sie anders trifft.
+    ViewExportSpec(
+        view_id="qs", label="QS-Stichprobe (Auswertungsqualität)",
+        api_path="/api/qs",
+        note="AUSWERTUNGSQUALITÄT, KEIN MITARBEITER-BEWERTUNGSINSTRUMENT. "
+             "Diese Aufstellung prüft die AUSWERTUNG von Fällen — sie erhebt "
+             "keine Leistungsdaten, bildet keine Rangfolge zwischen Personen "
+             "und darf zu keiner dienstlichen Beurteilung herangezogen "
+             "werden. Ein Prüfergebnis ist ein Befund zur Sache. Die gezogenen "
+             "Fälle sind ein VORSCHLAG; Abweichungen sind zulässig und in der "
+             "Aufstellung als solche ausgewiesen.",
+        sections=(SectionSpec("ziehungen", "Ziehungen und Prüfergebnisse",
+                              order=("id", "gezogen_at", "gezogen_von_name",
+                                     "verfahren", "seed", "grundgesamtheit_n",
+                                     "stichprobe_n", "geprueft_n",
+                                     "offen_n")),),
+    ),
     ViewExportSpec(
         view_id="capacity", label="Kapazität",
         api_path="/api/capacity", requires=("start",),
