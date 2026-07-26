@@ -711,6 +711,9 @@
     //                  Sicht ihre Zeilen bei jedem Aufruf neu zusammenstellt).
     //   einheit      — Substantiv der Zeilen ('Anwender', 'Fälle', ...) fuer
     //                  die Ersatzmeldung. Rueckfall: 'Datensätze'.
+    //   onRowClick   — Handler(e, row) fuer den Zeilenklick. NICHT ueber
+    //                  'tabulator.rowClick' setzen: das ist in Tabulator v6
+    //                  keine Konstruktoroption und wird IGNORIERT (s. u.).
     //
     // Rueckgabe: { table, leiste, host, felder }. table ist NULL, wenn kein
     // Konstruktor da ist — und dann steht ein AUSDRUECKLICHER Hinweis MIT
@@ -817,7 +820,38 @@
             }
         };
 
+        // ROWCLICK IST IN TABULATOR v6.4.0 KEINE KONSTRUKTOR-OPTION.
+        //
+        // Wer ihn dort hineinschreibt, bekommt KEINEN Fehler — der Handler
+        // wird schlicht ignoriert, und der Zeilenklick tut nichts. Genau das
+        // ist zweimal passiert: cockpit_support.js (seit Build 367; die Sicht
+        // versprach in ihrer eigenen Unterzeile "Zeile anklicken fuer
+        // Details") und cockpit_reports.js (seit Build 378). Build 486 hat es
+        // in Lektorat und Chef-Freigabe repariert, die beiden anderen aber
+        // nie erreicht.
+        //
+        // Deshalb steht der Weg jetzt HIER: 'onRowClick' wird nach dem
+        // Erzeugen ueber table.on() angehaengt. Eine Sicht kann es nicht mehr
+        // falsch machen, und UX08 der Konformitaetssuite weist einen
+        // rowClick in den Konstruktoroptionen zurueck.
+        if (tabOpts.rowClick) {
+            // eslint-disable-next-line no-console
+            if (typeof console !== 'undefined' && console.warn) {
+                console.warn('[AIW-Tabelle] "rowClick" in den '
+                    + 'Konstruktoroptionen wird von Tabulator v6 IGNORIERT — '
+                    + 'bitte opts.onRowClick verwenden. Sicht: ' + sicht);
+            }
+            if (!opts.onRowClick) { opts.onRowClick = tabOpts.rowClick; }
+            delete tabOpts.rowClick;
+        }
+
         table = new opts.Ctor(host, tabOpts);
+
+        if (typeof opts.onRowClick === 'function'
+                && table && typeof table.on === 'function') {
+            try { table.on('rowClick', opts.onRowClick); }
+            catch (e) { log('rowClick nicht anhaengbar', e); }
+        }
 
         if (!opts.ohneZustand && sicht) {
             var uebergangen = zustandAnwenden(table, zustandLesen(sicht),

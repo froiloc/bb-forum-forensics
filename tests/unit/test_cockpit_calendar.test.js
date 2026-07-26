@@ -34,11 +34,19 @@ const _src = readFileSync(
   "utf-8"
 );
 
+// Build 551: das gemeinsame Tabellen-Werkzeug MUSS im Kontext liegen — genau
+// wie im Browser. Ohne es faellt die Sicht in ihren Ersatzpfad.
+const _tkSrc = readFileSync(
+  "management/server/static/cockpit_tablekit.js",
+  "utf-8"
+);
+
 function _ctx() {
   const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", {
     runScripts: "dangerously",
     url: "http://localhost",
   });
+  dom.window.eval(_tkSrc);
   dom.window.eval(_src);
   return dom.window;
 }

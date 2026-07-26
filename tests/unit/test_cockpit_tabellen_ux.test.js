@@ -87,6 +87,10 @@ function _fakeTabulator(doc) {
     this.getColumns = function () { return []; };
     this.setSort = function () {};
     this.destroy = function () {};
+    // Build 551: Tabulator v6 haengt Zeilenklicks ueber .on() an, nicht ueber
+    // eine Konstruktoroption. Die Attrappe merkt sich, was registriert wurde.
+    this.handler = {};
+    this.on = function (ev, fn) { self.handler[ev] = fn; };
   };
 }
 
@@ -187,13 +191,13 @@ const REGISTER = [
   // Werkzeugleiste, eigene Hilfe-Anker und einen eigenen gesicherten
   // Bedienzustand hat.
   {
-    name: "support (meine)", datei: "cockpit_support.js",
+    name: "support (meine)", zeilenklick: true, datei: "cockpit_support.js",
     global: "AIWCockpitSupport", render: "renderSupport",
     sicht: "support_mine", zeilen: 2, index: 0,
     daten: () => _supportDaten(),
   },
   {
-    name: "support (an meinen Faellen)", datei: "cockpit_support.js",
+    name: "support (an meinen Faellen)", zeilenklick: true, datei: "cockpit_support.js",
     global: "AIWCockpitSupport", render: "renderSupport",
     sicht: "support_oncase", zeilen: 1, index: 1,
     daten: () => _supportDaten(),
@@ -211,7 +215,7 @@ const REGISTER = [
     daten: () => _policyDaten(),
   },
   {
-    name: "reports", datei: "cockpit_reports.js",
+    name: "reports", zeilenklick: true, datei: "cockpit_reports.js",
     global: "AIWCockpitReports", render: "renderReports",
     sicht: "reports", zeilen: 2,
     daten: () => ({
@@ -226,6 +230,20 @@ const REGISTER = [
           created_at: 1783100000, status: "approved", approvals: [] },
       ],
     }),
+  },
+  // --- Build 551 ------------------------------------------------------------
+  {
+    name: "calendar", zeilenklick: true, datei: "cockpit_calendar.js",
+    global: "AIWCockpitCalendar", render: "renderCalendar",
+    sicht: "calendar", zeilen: 2,
+    // renderCalendar nimmt VIER Argumente: Kalenderraster UND externe
+    // Vorgaenge. Deshalb ein eigener Aufruf — die Zeilen der Tabelle stammen
+    // aus dem DRITTEN Argument.
+    daten: () => _calendarExt(),
+    aufruf: (api, main, opts) => api.renderCalendar(
+      main, { von: "2026-07-01", bis: "2026-07-31", entries: [] },
+      _calendarExt(), Object.assign({ ym: "2026-07" }, opts)
+    ),
   },
   {
     name: "results", datei: "cockpit_results.js",
@@ -275,6 +293,25 @@ function _policyDaten() {
         role_code: "supervisor", audit_seq: 37 },
     ],
     counts: { grants: 2, assignments: 1 },
+  };
+}
+
+function _calendarExt() {
+  return {
+    scope: "alle", stichtag: "2026-07-26", stichtag_text: "26.07.2026",
+    zeitzone: "Europe/Berlin", count: 2,
+    counts: { rot: 1, gelb: 1, gruen: 0, neutral: 0 },
+    kinds: [{ code: "anfrage", label: "Anfrage" }],
+    matters: [
+      { id: 1, subject_id: 18, kind: "anfrage", kind_label: "Anfrage",
+        betreff: "Auskunft A", adressat: "StA", status: "offen",
+        status_label: "Offen", wiedervorlage_am: "2026-07-01",
+        ampel: "rot", ampel_grund: "ueberfaellig" },
+      { id: 2, subject_id: 19, kind: "anfrage", kind_label: "Anfrage",
+        betreff: "Auskunft B", adressat: "StA", status: "offen",
+        status_label: "Offen", wiedervorlage_am: "2026-07-27",
+        ampel: "gelb", ampel_grund: "faellig" },
+    ],
   };
 }
 
@@ -445,6 +482,37 @@ describe("Konformitaet der Listensichten (Build 549)", () => {
         // erwartete Zahl nennt, nicht der erste.
         const trifft = hinweise.some((t) => t.indexOf(String(e.zeilen)) >= 0);
         expect(trifft, e.name + ": " + JSON.stringify(hinweise)).toBe(true);
+      });
+
+      // UX08 -----------------------------------------------------------------
+      it("UX08: kein 'rowClick' in den Konstruktoroptionen", () => {
+        const win = _ctx(e.datei);
+        const main = win.document.createElement("div");
+        win.document.body.appendChild(main);
+        const view = _zeichne(e, win, main, true);
+        const table = _tabelleVon(e, view);
+
+        // ROWCLICK IST IN TABULATOR v6.4.0 KEINE KONSTRUKTOROPTION. Wer ihn
+        // dort hineinschreibt, bekommt KEINEN Fehler — der Handler wird
+        // schlicht ignoriert und der Zeilenklick tut nichts. Genau so war die
+        // Detailansicht der Support-Historie seit Build 367 tot und die
+        // Zeilenauswahl der Berichts-Abnahme seit Build 378. Diese Pruefung
+        // macht aus dem Wissen eine Zusicherung.
+        expect(
+          "rowClick" in table.options,
+          e.name + ": rowClick gehoert an tabelleAufbauen(opts.onRowClick)"
+        ).toBe(false);
+
+        // UX09: und wo ein Zeilenklick VERSPROCHEN wird, muss er auch
+        // ankommen. Die blosse Abwesenheit der falschen Option beweist noch
+        // nicht, dass der Handler haengt — genau diese Luecke hat den Fehler
+        // jahrelang unsichtbar gehalten.
+        if (e.zeilenklick) {
+          expect(
+            typeof table.handler.rowClick,
+            e.name + ": kein rowClick-Handler angehaengt"
+          ).toBe("function");
+        }
       });
     });
   });

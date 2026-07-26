@@ -209,9 +209,22 @@ describe("cockpit_reports.js — Berichts-Abnahme (Build 375)", () => {
     const approvals = [];
     const verifies = [];
     let rowClick = null;
+    // Build 551: der Zeilenklick wird in Tabulator v6.4.0 ueber table.on()
+    // angehaengt, NICHT als Konstruktoroption uebergeben — als Option wurde er
+    // stillschweigend IGNORIERT, die Zeilenauswahl dieser Sicht war also seit
+    // Build 378 tot. Die Attrappe nimmt den Handler jetzt dort entgegen, wo
+    // ihn auch die Bibliothek entgegennimmt; sonst pruefte dieser Test
+    // weiterhin eine Mechanik, die es gar nicht gibt.
     function StubTab(container, opts) {
-      rowClick = opts.rowClick;
+      this.options = opts;
+      this.on = function (ev, fn) { if (ev === "rowClick") { rowClick = fn; } };
       this.replaceData = function () {};
+      this.getDataCount = function () { return (opts.data || []).length; };
+      this.setHeaderFilterValue = function () {};
+      this.clearHeaderFilter = function () {};
+      this.clearFilter = function () {};
+      this.getSorters = function () { return []; };
+      this.getColumns = function () { return []; };
     }
     const data = _data();
     const t = api.renderReports(main, data, {
@@ -279,9 +292,22 @@ describe("cockpit_reports.js — Berichts-Abnahme (Build 375)", () => {
     const main = win.document.createElement("main");
     const returns = [];
     let rowClick = null;
+    // Build 551: der Zeilenklick wird in Tabulator v6.4.0 ueber table.on()
+    // angehaengt, NICHT als Konstruktoroption uebergeben — als Option wurde er
+    // stillschweigend IGNORIERT, die Zeilenauswahl dieser Sicht war also seit
+    // Build 378 tot. Die Attrappe nimmt den Handler jetzt dort entgegen, wo
+    // ihn auch die Bibliothek entgegennimmt; sonst pruefte dieser Test
+    // weiterhin eine Mechanik, die es gar nicht gibt.
     function StubTab(container, opts) {
-      rowClick = opts.rowClick;
+      this.options = opts;
+      this.on = function (ev, fn) { if (ev === "rowClick") { rowClick = fn; } };
       this.replaceData = function () {};
+      this.getDataCount = function () { return (opts.data || []).length; };
+      this.setHeaderFilterValue = function () {};
+      this.clearHeaderFilter = function () {};
+      this.clearFilter = function () {};
+      this.getSorters = function () { return []; };
+      this.getColumns = function () { return []; };
     }
     const data = _data();
     api.renderReports(main, data, {

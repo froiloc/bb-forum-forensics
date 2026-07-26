@@ -373,6 +373,27 @@
         return wrap;
     }
 
+    // _tk / _mitHilfe (Build 551): gemeinsames Tabellen-Werkzeug + Hilfe-Anker
+    // der Spaltenkoepfe. LAZY; die Spalten werden KOPIERT.
+    function _tk() {
+        return (typeof window !== 'undefined' && window.AIWTableKit)
+            ? window.AIWTableKit : null;
+    }
+    function _mitHilfe(cols, sicht, doc) {
+        var TK = _tk();
+        if (!TK || !doc || !TK.titelMitHilfe) { return cols; }
+        return cols.map(function (c) {
+            var neu = {};
+            Object.keys(c).forEach(function (k) { neu[k] = c[k]; });
+            if (c.field && !c.titleFormatter) {
+                neu.titleFormatter = TK.titelMitHilfe(
+                    doc, c.title || c.field,
+                    sicht + '.spalte.' + String(c.field).toLowerCase());
+            }
+            return neu;
+        });
+    }
+
     // renderCalendar: die gesamte Sicht.
     //   cal   — Antwort von /api/calendar
     //   ext   — Antwort von /api/external
@@ -734,29 +755,46 @@
         // --- Tabelle ----------------------------------------------------------
         var Ctor = opts.Tabulator
             || (typeof window !== 'undefined' ? window.Tabulator : undefined);
-        if (typeof Ctor !== 'function') {
+        var TK = _tk();
+        if (typeof Ctor !== 'function' || !TK) {
+            // Build 551: die ZAHL gehoert in die Ersatzmeldung — ohne sie
+            // saehe der Ausfall aus wie ein Leerbefund (Grundregel 1).
             container.appendChild(_el(doc, 'div', 'aiw-placeholder',
-                'Tabellenbibliothek nicht verfuegbar. Raster, Warnungen und '
-                + 'Stichtag oben sind dennoch gueltig.'));
-            log('renderCalendar: kein Tabulator-Ctor');
+                'Tabellenbibliothek nicht verfügbar — es liegen '
+                + rows.length + ' Vorgänge vor. Raster, Warnungen und '
+                + 'Stichtag oben sind dennoch gültig.'));
+            log('renderCalendar: kein Tabulator-Ctor/TableKit');
             return { table: null, setResult: setResult,
                      getSelected: function () { return selected; },
                      selectRow: selectRow, openForm: openForm };
         }
 
-        var table = new Ctor(container, {
-            data: rows,
-            columns: _COLUMNS,
-            layout: 'fitColumns',
-            height: '360px',
-            rowFormatter: function (row) {
-                var el = row.getElement();
-                if (el && el.classList) {
-                    el.classList.add('aiw-row-' + row.getData().ampel);
+        // Build 551 (UX): Aufbau ueber das gemeinsame Tabellen-Werkzeug.
+        //
+        // DER ZEILENKLICK GEHT UEBER onRowClick UND NICHT ueber
+        // tabulator.rowClick: letzteres ist in Tabulator v6.4.0 keine
+        // Konstruktoroption und wurde IGNORIERT. Diese Sicht hat den Vorgang
+        // beim Anklicken einer Zeile seit Build 386 nicht ausgewaehlt — ohne
+        // Fehlermeldung. Derselbe Fehler steckte in support und reports;
+        // Lektorat und Chef-Freigabe waren in Build 486 bereits repariert
+        // worden, die uebrigen drei nie.
+        var table = TK.tabelleAufbauen(doc, container, {
+            sicht: 'calendar',
+            rows: rows,
+            columns: _mitHilfe(_COLUMNS, 'calendar', doc),
+            Ctor: Ctor,
+            einheit: 'Vorgänge',
+            onRowClick: function (e, row) { selectRow(row.getData()); },
+            tabulator: {
+                height: '360px',
+                rowFormatter: function (row) {
+                    var el = row.getElement();
+                    if (el && el.classList) {
+                        el.classList.add('aiw-row-' + row.getData().ampel);
+                    }
                 }
-            },
-            rowClick: function (e, row) { selectRow(row.getData()); }
-        });
+            }
+        }).table;
 
         sel.addEventListener('change', function () {
             var f = filterByAmpel(rows, sel.value);

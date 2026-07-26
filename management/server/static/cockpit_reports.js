@@ -349,10 +349,11 @@
             rows: rows,
             columns: _mitHilfe(_COLUMNS, 'reports', doc),
             Ctor: Ctor, einheit: 'Berichte',
-            tabulator: {
-                height: '440px',
-                rowClick: function (e, row) { selectRow(row.getData()); }
-            }
+            // Build 551: ueber onRowClick (s. cockpit_tablekit.js) — als
+            // Konstruktoroption wurde der Handler seit Build 378 ignoriert,
+            // die Zeilenauswahl fuer das Aktionsfeld funktionierte also nicht.
+            onRowClick: function (e, row) { selectRow(row.getData()); },
+            tabulator: { height: '440px' }
         }).table;
 
         // --- AKTIONSFELD (Build 378) ---------------------------------------

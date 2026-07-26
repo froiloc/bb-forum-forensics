@@ -261,12 +261,15 @@
             columns: _mitHilfe(_COLUMNS, sicht, doc),
             Ctor: Ctor,
             einheit: 'Sitzungen',
-            tabulator: {
-                height: '260px',
-                rowClick: function (e, row) {
-                    showDetail(modalRoot, doc, row.getData());
-                }
-            }
+            // Build 551: ueber onRowClick, NICHT ueber tabulator.rowClick —
+            // letzteres ist in Tabulator v6.4.0 keine Konstruktoroption und
+            // wurde ignoriert. Die Unterzeile dieser Sicht verspricht "Zeile
+            // anklicken fuer Details"; seit Build 367 tat sie nichts.
+
+            onRowClick: function (e, row) {
+                showDetail(modalRoot, doc, row.getData());
+            },
+            tabulator: { height: '260px' }
         });
         return auf.table;
     }
