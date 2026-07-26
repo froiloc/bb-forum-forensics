@@ -194,6 +194,32 @@ VIEW_EXPORTS: Tuple[ViewExportSpec, ...] = (
                    "massgeblich_norm", "massgeblich_ablauf_tag",
                    "restlaufzeit_tage", "tatzeit_befund")),),
     ),
+    # Build 539 (AP-3B): die Matrix ist ein Leitungsbeleg ("zu diesem Zeitpunkt
+    # standen N Fälle im Feld 'dringend bei dünner Erkenntnislage'"). Die
+    # ZWECKBINDUNG steht als 'note' MIT im Dokument — eine Aktenfassung, die
+    # als Bewertung der Beschuldigten gelesen würde, wäre nach § 261 StPO ein
+    # Angriffspunkt gegen die gesamte Auswertung, und das ist die
+    # folgenschwerste Fehldeutung, die dieser Export auslösen könnte. Die
+    # Kennzahlen (quadranten, belastbarkeit_verteilung, fehlende_quellen), der
+    # angewandte Maßstab und die Vorbehalte erscheinen über den Auto-Modus
+    # (Regel 2) unter "Weitere Daten" und gehen damit nicht verloren.
+    ViewExportSpec(
+        view_id="matrix", label="Dringlichkeit & Erkenntnislage",
+        api_path="/api/matrix",
+        note="Diese Aufstellung IST KEINE BEWEISWÜRDIGUNG. § 261 StPO ordnet "
+             "die freie Beweiswürdigung dem Gericht zu; die Zahlen ordnen "
+             "ausschließlich die BEARBEITUNGSDRINGLICHKEIT und schreiben "
+             "keine Priorität fort. Ist die Spalte 'Dringlichkeit' mit "
+             "'mind.' ausgewiesen, war die Verjährungsfrist NICHT geladen "
+             "oder nicht bestimmbar — der Wert ist dann eine UNTERGRENZE und "
+             "ausdrücklich keine Aussage über geringe Dringlichkeit.",
+        sections=(SectionSpec(
+            "zellen", "Fälle nach Dringlichkeit und Erkenntnislage",
+            order=("subject_id", "username", "quadrant", "dringlichkeit",
+                   "dringlichkeit_mindestens", "dringlichkeit_bestimmbar",
+                   "dringlichkeit_belastbarkeit", "dringlichkeit_grund",
+                   "erkenntnislage", "n_kriterien_matrix")),),
+    ),
     ViewExportSpec(
         view_id="capacity", label="Kapazität",
         api_path="/api/capacity", requires=("start",),

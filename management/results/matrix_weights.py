@@ -111,6 +111,21 @@ class MatrixGewichte:
                 + (max(self.identitaet.values()) if self.identitaet else 0))
 
     @property
+    def frist_max(self) -> int:
+        """
+        Der groesste FRISTBEITRAG allein (Build 539).
+
+        Er faehrt in der Antwort mit, weil die Sicht ohne ihn nicht sagen kann,
+        WIEVIEL fehlt, solange die Fristen nicht geladen sind. Sie soll das
+        nicht aus 'dringlichkeit_max' zurueckrechnen muessen — eine solche
+        Rechnung im Frontend waere eine zweite Stelle, an der die Gewichtung
+        steht, und sie waere still falsch, sobald ein Beitrag hinzukommt.
+        Dieselbe Ausschlussregel wie in dringlichkeit_max: 'frist_knapp' und
+        'frist_mittel' schliessen einander aus.
+        """
+        return max(self.frist_knapp, self.frist_mittel)
+
+    @property
     def schwelle_dringlichkeit(self) -> float:
         return self.dringlichkeit_max * self.schwelle_dringlichkeit_prozent / 100.0
 
@@ -125,6 +140,9 @@ class MatrixGewichte:
             "zweckbindung": self.zweckbindung,
             "vorbehalte": list(self.vorbehalte),
             "dringlichkeit_max": self.dringlichkeit_max,
+            # Build 539: der Fristanteil einzeln — die Sicht sagt damit, WIEVIEL
+            # fehlt, solange die Fristen nicht geladen sind.
+            "frist_max": self.frist_max,
             "erkenntnislage_max": self.erkenntnislage_max,
             "schwelle_dringlichkeit": round(self.schwelle_dringlichkeit, 2),
             "schwelle_erkenntnislage": round(self.schwelle_erkenntnislage, 2),

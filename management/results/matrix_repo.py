@@ -91,11 +91,34 @@ class MatrixRepo:
     """Sammelt die Tatsachen je Fall und laesst den Rechenkern rechnen."""
 
     def __init__(self, con: sqlite3.Connection,
-                 gewichte: MatrixGewichte) -> None:
+                 gewichte: MatrixGewichte,
+                 forensic_dir: Optional[str] = None,
+                 evidence_dir: Optional[str] = None,
+                 params_pfad: Optional[Any] = None) -> None:
+        """
+        forensic_dir/evidence_dir sind fuer die FRISTKOMPONENTE (X-1) noetig.
+
+        BEIDE SIND OPTIONAL, UND DAS FEHLEN IST KEIN FEHLER, SONDERN EIN
+        BEFUND. Ein Aufrufer ohne Verzeichnisse bekommt eine Matrix ohne
+        Fristbeitraege — mit 'fristen_geladen': false und einem benannten
+        Grund in 'fehlende_quellen'. Ein stillschweigend weggelassener
+        Fristbeitrag saehe aus wie 'keine Frist' und damit wie 'nicht eilig'
+        (Build 537, Punkt 3).
+
+        params_pfad uebersteuert den Verjaehrungs-Parametersatz. Der Betrieb
+        laesst ihn WEG (dann gilt management/deadlines/limitation_params.json);
+        er existiert, weil der ausgelieferte Satz absichtlich UNBESTAETIGT ist
+        und ein bestaetigter Satz im Repository eine Rechtsauskunft waere, die
+        niemand gegeben hat (Muster: tests/test_management_limitation_api.py,
+        _params_bestaetigt()).
+        """
         self._con = con
         self._con.row_factory = sqlite3.Row
         self._g = gewichte
         self._matrix = UrgencyMatrix(gewichte)
+        self._forensic_dir = forensic_dir
+        self._evidence_dir = evidence_dir
+        self._params_pfad = params_pfad
 
     # ------------------------------------------------------------------ Sammeln
     def _tage(self, ov: Dict[str, Any], now: int) -> Optional[int]:
@@ -187,9 +210,69 @@ class MatrixRepo:
             out.setdefault(int(r["subject_id"]), []).append(dict(r))
         return out
 
+    # ---------------------------------------------------------- Fristen (X-1)
+    def _fristen(self, ids: Sequence[int], now: int
+                 ) -> Tuple[Dict[int, Dict[str, Any]], Dict[str, Any]]:
+        """
+        subject_id -> LimitationRow.to_dict(), plus die Kopfangaben des
+        Fristenmonitors.
+
+        DIE MATRIX RECHNET DIE FRIST NICHT SELBST NACH. Sie ruft
+        LimitationRepo.compute() — dieselbe Rechnung, die /api/limitation
+        ausliefert. Zwei Fristrechnungen ueber denselben Bestand waeren zwei
+        Wahrheiten, und die Verjaehrung ist der letzte Ort, an dem man sich
+        das leisten koennte.
+
+        DER TEURE TEIL DER MATRIX STECKT HIER: LimitationRepo oeffnet JE FALL
+        bis zu zwei Dateien (forensic_<uid>.db fuer die Aktivitaetsdaten,
+        evidence_<uid>.db fuer die festgestellte Tatzeit) — alle uebrigen
+        Beitraege zusammen kosten fuenf Abfragen auf EINER Verbindung. Deshalb
+        ist dieser Teil abschaltbar, und deshalb wird seine Dauer gemessen und
+        ausgewiesen.
+
+        DER PARAMETERSATZ WIRD HIER GELADEN UND NICHT DURCHGEREICHT, damit ein
+        Aufrufer ihn nicht versehentlich weglassen kann. Ist er UNBRAUCHBAR,
+        wirft diese Methode — der Aufrufer entscheidet dann (compute faengt es
+        und BENENNT es). Ist er nur NICHT BESTAETIGT, ist das kein Fehler:
+        der Monitor liefert dann Zeilen mit Ampel 'keine_aussage', und genau
+        das ist die richtige Antwort. Sie faellt im Rechenkern ins fuenfte Feld
+        (AMPEL_MIT_FRIST ist eine Positivliste) — mit dem Grund
+        'keine_aussage' und NICHT 'nicht_geladen'. Der Unterschied ist der
+        zwischen "nicht nachgesehen" und "nachgesehen, keine Aussage moeglich".
+        """
+        # Spaeter Import: der Fristenmonitor zieht limitation_params nach, und
+        # matrix_repo soll ohne Fristverzeichnisse importierbar bleiben.
+        from management.deadlines.limitation_params import load_params
+        from management.deadlines.limitation_repo import LimitationRepo
+
+        params = (load_params(self._params_pfad) if self._params_pfad
+                  else load_params())
+        repo = LimitationRepo(self._con, self._forensic_dir,
+                              self._evidence_dir)
+        bericht = repo.compute(params=params, now_ts=now,
+                               subject_ids=list(ids))
+
+        zeilen: Dict[int, Dict[str, Any]] = {}
+        for row in bericht.rows:
+            zeilen[int(row.tatzeit.subject_id)] = row.to_dict()
+
+        kopf = {
+            "aussage_moeglich": bericht.aussage_moeglich,
+            "verweigerungsgrund": bericht.verweigerungsgrund,
+            "params_stand": bericht.params_stand,
+            "params_bestaetigt": bericht.params_bestaetigt,
+            "vorwarn_tage": bericht.vorwarn_tage,
+            "vorbehalte": list(bericht.vorbehalte),
+            "zaehler": dict(bericht.zaehler),
+            "faelle_mit_quellenfehler": bericht.faelle_mit_quellenfehler,
+            "faelle_mehrdeutig": bericht.faelle_mehrdeutig,
+        }
+        return zeilen, kopf
+
     # ------------------------------------------------------------------ Rechnen
     def compute(self, *, now_ts: Optional[int] = None,
-                subject_ids: Optional[Sequence[int]] = None
+                subject_ids: Optional[Sequence[int]] = None,
+                mit_fristen: bool = True
                 ) -> Dict[str, Any]:
         """
         Die Matrix ueber alle (oder die genannten) Faelle.
@@ -198,13 +281,17 @@ class MatrixRepo:
         ist eine Auswahl und bedeutet ausdruecklich nicht 'alle' (Muster
         coverage_repo.py:64-67, limitation_repo.py:677-680).
 
-        OHNE FRISTBEITRAEGE (Build 537). Jede Zeile traegt deshalb
-        dringlichkeit_bestimmbar=false mit dem Grund 'nicht_geladen'; der
-        ausgewiesene Wert ist eine Untergrenze. Build 538 schliesst die Frist an.
+        mit_fristen=False laesst X-1 WEG. Der Aufrufer bekommt dann exakt das
+        Verhalten aus Build 537: jede Zelle traegt dringlichkeit_bestimmbar
+        false mit dem Grund 'nicht_geladen', 'fristen_geladen' ist false, und
+        der Wert in 'dringlichkeit_mindestens' ist eine UNTERGRENZE. Das ist
+        die schnelle Sicht fuer den Ueberblick — sie luegt nicht, sie sagt
+        weniger, und sie sagt WELCHES weniger.
         """
         now = int(time.time()) if now_ts is None else int(now_ts)
         stichtag = datetime.fromtimestamp(now, tz=timezone.utc).date().isoformat()
         fehlende_quellen: List[str] = []
+        t_start = time.monotonic()
 
         # --- (1) Fallübersicht: eine Aggregatabfrage ------------------------
         overviews = [dataclasses.asdict(o)
@@ -252,6 +339,37 @@ class MatrixRepo:
             identitaeten = {}
             fehlende_quellen.append("Identitaetszuordnungen (%s)" % exc)
 
+        # --- (2b) die Fristkomponente X-1 (Build 538) ----------------------
+        #     Der teuerste Teil: bis zu zwei Dateizugriffe JE FALL. Er ist
+        #     abschaltbar, er wird gemessen, und sein Ausbleiben wird in JEDER
+        #     Zeile ausgewiesen — nie stillschweigend als 'keine Frist'.
+        fristen: Dict[int, Dict[str, Any]] = {}
+        fristen_kopf: Optional[Dict[str, Any]] = None
+        fristen_geladen = False
+        dauer_fristen_ms: Optional[int] = None
+
+        if not mit_fristen:
+            fehlende_quellen.append(
+                "Fristen (nicht angefordert: mit_fristen=False)")
+        elif not self._forensic_dir:
+            fehlende_quellen.append(
+                "Fristen (kein forensic-Verzeichnis uebergeben — es wurde "
+                "NICHT nachgesehen)")
+        else:
+            t_frist = time.monotonic()
+            try:
+                fristen, fristen_kopf = self._fristen(ids, now)
+                fristen_geladen = True
+            except Exception as exc:                    # noqa: BLE001
+                # Auch der unbrauchbare Parametersatz landet hier. Er ist ein
+                # Grund, die FRIST wegzulassen — kein Grund, die ganze Matrix
+                # zu verweigern: die uebrigen fuenf Beitraege sind davon
+                # unberuehrt. Was fehlt, steht in 'fehlende_quellen'.
+                logger.exception("Matrix: Fristkomponente nicht ladbar")
+                fehlende_quellen.append("Fristen (%s)" % exc)
+            finally:
+                dauer_fristen_ms = int((time.monotonic() - t_frist) * 1000)
+
         # --- (3) je Fall zusammenfuegen und rechnen ------------------------
         faelle = []
         for ov in overviews:
@@ -259,8 +377,11 @@ class MatrixRepo:
             faelle.append({
                 "subject_id": sid,
                 "username": ov.get("username") or "?",
-                # Build 538 setzt hier den Fristbericht ein.
-                "limitation": None,
+                # Build 538: der Fristbericht. Fehlt die Zeile zu EINEM Fall,
+                # bleibt sie None — dieser eine Fall traegt dann 'nicht_
+                # geladen', die uebrigen ihre echte Frist. Ein Vorgabewert
+                # waere hier eine erfundene Frist.
+                "limitation": fristen.get(sid),
                 "wiedervorlage_ueberfaellig": vorgaenge.get(sid, 0) > 0,
                 "eskalationen": eskalationen.get(sid, 0),
                 "tage_ohne_ereignis": self._tage(ov, now),
@@ -282,18 +403,38 @@ class MatrixRepo:
             for c in z.unbekannte_codes:
                 unbekannte[c] = unbekannte.get(c, 0) + 1
 
-        hinweise = self._hinweise(zellen, fehlende_quellen, unbekannte)
+        # Build 538: fehlt einem EINZELNEN Fall die Fristzeile, obwohl die
+        # Fristen geladen wurden, ist das ein Widerspruch (der Monitor liefert
+        # zu jedem Fall aus 'cases' eine Zeile). Er wird gezaehlt und benannt,
+        # nicht geglaettet.
+        ohne_fristzeile = 0
+        if fristen_geladen:
+            ohne_fristzeile = sum(1 for i in ids if i not in fristen)
+
+        hinweise = self._hinweise(
+            zellen, fehlende_quellen, unbekannte,
+            fristen_geladen=fristen_geladen, fristen_kopf=fristen_kopf,
+            ohne_fristzeile=ohne_fristzeile)
 
         out: Dict[str, Any] = {
             "stichtag": stichtag,
             "faelle_gesamt": len(zellen),
-            "fristen_geladen": False,
+            "fristen_geladen": fristen_geladen,
+            "fristen_angefordert": bool(mit_fristen),
+            "fristen_kopf": fristen_kopf,
+            "faelle_ohne_fristzeile": ohne_fristzeile,
             "quadranten": quadranten,
             "belastbarkeit_verteilung": belastbarkeit,
             "unbekannte_codes": unbekannte,
             "fehlende_quellen": fehlende_quellen,
             "hinweise": hinweise,
             "zellen": [z.to_dict() for z in zellen],
+            # LAUFZEIT: sie faehrt MIT, statt nur im Protokoll zu stehen.
+            # Die Fristkomponente ist der einzige Teil, der mit der Zahl der
+            # Faelle in DATEIZUGRIFFEN waechst; wer sie abschaltet, will
+            # nachlesen koennen, was das gebracht hat.
+            "dauer_gesamt_ms": int((time.monotonic() - t_start) * 1000),
+            "dauer_fristen_ms": dauer_fristen_ms,
         }
         out.update(self._g.to_dict())
         return out
@@ -302,19 +443,57 @@ class MatrixRepo:
     @staticmethod
     def _hinweise(zellen: Sequence[MatrixZelle],
                   fehlende_quellen: Sequence[str],
-                  unbekannte: Dict[str, int]) -> List[str]:
+                  unbekannte: Dict[str, int],
+                  *,
+                  fristen_geladen: bool = False,
+                  fristen_kopf: Optional[Dict[str, Any]] = None,
+                  ohne_fristzeile: int = 0) -> List[str]:
         """
         Die Hinweise der Antwort. Reihenfolge: das Dringendste zuletzt
         eingefuegt, weil insert(0) nach vorn schiebt.
         """
         n = len(zellen)
-        hinweise: List[str] = [
-            "Die Fristbeitraege sind in diesem Stand NICHT geladen. Jede Zeile "
-            "traegt deshalb 'dringlichkeit_bestimmbar': false mit dem Grund "
-            "'nicht_geladen', und der Wert in 'dringlichkeit_mindestens' ist "
-            "eine UNTERGRENZE — kein Fall ist so wenig dringlich, wie er hier "
-            "aussieht.",
-        ]
+        hinweise: List[str] = []
+
+        if not fristen_geladen:
+            hinweise.append(
+                "Die Fristbeitraege sind in diesem Stand NICHT geladen. Jede "
+                "Zeile traegt deshalb 'dringlichkeit_bestimmbar': false mit "
+                "dem Grund 'nicht_geladen', und der Wert in "
+                "'dringlichkeit_mindestens' ist eine UNTERGRENZE — kein Fall "
+                "ist so wenig dringlich, wie er hier aussieht.")
+        else:
+            hinweise.append(
+                "Die Fristbeitraege stammen aus DERSELBEN Rechnung wie "
+                "/api/limitation (LimitationRepo.compute) — die Matrix rechnet "
+                "die Verjaehrung nicht eigenstaendig nach. DIESE SICHT STELLT "
+                "KEINE VERJAEHRUNG FEST: § 78c StGB (Unterbrechung) ist dem "
+                "Werkzeug nicht bekannt, ein 'ueberschritten' heisst "
+                "rechnerisch ueberschritten und verlangt juristische Pruefung.")
+            kopf = fristen_kopf or {}
+            if not kopf.get("aussage_moeglich", True):
+                # DER WICHTIGSTE FALL IM AUSLIEFERUNGSZUSTAND: der
+                # Parametersatz ist ein Entwurf (limitation_params.json:
+                # 'bestaetigt': false). Der Monitor verweigert dann JEDE
+                # Fristaussage, und die Matrix darf das nicht wie 'keine
+                # Frist' aussehen lassen.
+                hinweise.insert(0,
+                    "DIE FRISTEN WURDEN GELADEN, ABER DER FRISTENMONITOR "
+                    "VERWEIGERT JEDE AUSSAGE: %s. Alle Zeilen stehen deshalb "
+                    "mit dem Grund 'keine_aussage' im fuenften Feld — das ist "
+                    "NICHT 'nicht_geladen' und erst recht nicht 'keine "
+                    "Frist'. Die Dringlichkeit dieser Matrix beruht bis zur "
+                    "Bestaetigung des Parametersatzes allein auf den fuenf "
+                    "uebrigen Beitraegen."
+                    % (kopf.get("verweigerungsgrund")
+                       or "kein Grund angegeben"))
+            if ohne_fristzeile:
+                hinweise.insert(0,
+                    "WIDERSPRUCH: zu %d von %d Faellen kam KEINE Fristzeile "
+                    "zurueck, obwohl die Fristen geladen wurden. Diese Faelle "
+                    "tragen 'nicht_geladen' und sind damit erkennbar — "
+                    "trotzdem gehoert die Ursache geklaert."
+                    % (ohne_fristzeile, n))
 
         unbestimmbar = sum(1 for z in zellen
                            if z.quadrant == "nicht_bestimmbar")

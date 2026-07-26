@@ -2279,3 +2279,162 @@ tr.aiw-cff-nichtrelevant { opacity: 0.7; }
 .aiw-alias-namen-fuss {
   margin-top: 6px; font-size: 11px; color: #6b7580; line-height: 1.45;
 }
+
+/* ==========================================================================
+   Build 539 (AP-3B) — Dringlichkeit & Erkenntnislage (cockpit_matrix.js).
+
+   ANGEHAENGT AM DATEIENDE, nicht in die bestehenden Bloecke eingefuegt: diese
+   Datei wird im Parallelbetrieb von mehreren Zweigen beruehrt
+   (management/Parallelbetrieb_Welle3_v0_1.md §4 — "am Rand arbeiten, nie in
+   der Mitte"). Alle Klassen tragen das eigene Praefix 'aiw-mx-'.
+
+   FARBLOGIK, durchgehend wie im uebrigen Cockpit:
+     blau  = das Werkzeug haelt sich an seine Grenze (Zweckbindung, Zusicherung)
+     rot   = Missstand (fehlende Quelle, fehlende Zusicherung, Widerspruch)
+     grau  = offener Vorgang, kein Fehler
+     lila  = UNGEPRUEFT — ausdruecklich weder gruen noch grau. Ein Fall im
+             fuenften Feld ist nicht unverdaechtig, sondern unbekannt.
+   ========================================================================== */
+
+/* Die Zweckbindung (§ 261 StPO). Blau — sie ist kein Missstand, sondern die
+   Grenze, an die sich das Werkzeug haelt. Fehlt sie, wird daraus rot. */
+.aiw-mx-zweck {
+  border-radius: 6px; padding: 12px 16px; margin: 0 0 12px; font-size: 13px;
+  border: 1px solid #aed6f1; border-left: 5px solid var(--akzent, #0b5394);
+  background: #eaf2fa; color: #14456e;
+}
+.aiw-mx-zweck.is-fehlt {
+  background: #fdecea; border-color: #f5b7b1;
+  border-left-color: var(--rot, #c0392b); color: #922b21; font-weight: 600;
+}
+
+/* Die zweite Zusicherung: schreibt keine Prioritaet. */
+.aiw-mx-prio {
+  border-radius: 6px; padding: 10px 16px; margin: 0 0 12px; font-size: 12px;
+  background: #f4f8fb; border: 1px solid #d5dbe1;
+  border-left: 5px solid var(--akzent, #0b5394); color: #3d4144;
+}
+.aiw-mx-prio.is-fehlt {
+  background: #fdecea; border-color: #f5b7b1;
+  border-left-color: var(--rot, #c0392b); color: #922b21; font-weight: 600;
+}
+
+/* Der Ladezustand der Fristen. GRAU, wenn sie fehlen: das ist kein Fehler,
+   sondern ein bewusst nicht angeforderter Teil. Gruen-blau, wenn geladen. */
+.aiw-mx-fristen {
+  border-radius: 6px; padding: 10px 16px; margin: 0 0 12px; font-size: 12px;
+  background: #f4f6f7; border: 1px solid #d5dbe1;
+  border-left: 5px solid var(--muted, #606770); color: #3d4144;
+}
+.aiw-mx-fristen.is-geladen {
+  background: #eaf7ef; border-color: #bfe3cd;
+  border-left-color: var(--gruen, #1e8449); color: #1d5c37;
+}
+
+/* Ausgefallene Quellen und unbekannte Codes: ROT, denn hier fehlt dem Werkzeug
+   etwas, das es haben sollte. */
+.aiw-mx-quellen, .aiw-mx-codes {
+  border-radius: 6px; padding: 10px 16px; margin: 0 0 12px; font-size: 12px;
+  background: #fdecea; border: 1px solid #f5b7b1;
+  border-left: 5px solid var(--rot, #c0392b); color: #922b21;
+}
+
+.aiw-mx-belastbarkeit { font-size: 12px; color: #4a5158; margin: 0 0 10px; }
+
+/* Der Fristen-Schalter. */
+.aiw-mx-actions { margin: 0 0 14px; display: flex; align-items: center; gap: 6px; }
+.aiw-mx-actions-label { font-size: 12px; color: #4a5158; margin-right: 4px; }
+.aiw-mx-schalter {
+  cursor: pointer; border: 1px solid #d7dce1; border-radius: 4px;
+  background: #ffffff; padding: 4px 10px; font-size: 12px;
+}
+.aiw-mx-schalter:hover { background: #eef3f8; border-color: #b9c2cb; }
+.aiw-mx-schalter.is-active {
+  background: var(--akzent, #0b5394); border-color: var(--akzent, #0b5394);
+  color: #ffffff; font-weight: 600;
+}
+
+/* Die Gruppen (Quadranten). Der farbige Balken links traegt die Einordnung;
+   der Klartext daneben traegt die BEDEUTUNG — eine Farbe allein erklaert
+   nichts, und diese Sicht muss in einer Dienstbesprechung erklaerbar sein. */
+.aiw-mx-gruppe {
+  margin: 0 0 18px; padding: 0 0 0 12px;
+  border-left: 5px solid var(--muted, #606770);
+}
+.aiw-mx-gruppe-titel { margin: 0 0 2px; font-size: 15px; }
+.aiw-mx-gruppe-sub { margin: 0 0 8px; font-size: 12px; color: #4a5158; }
+
+/* LILA fuer das fuenfte Feld — dieselbe Farbe wie 'ungeprueft' im
+   Fristenmonitor (.aiw-lim-row.is-ungeprueft). Das ist Absicht: es ist
+   derselbe Sachverhalt. */
+.aiw-mx-gruppe.is-unbestimmbar { border-left-color: #7d3c98; }
+.aiw-mx-gruppe.is-unbestimmbar .aiw-mx-gruppe-titel { color: #5b2c6f; }
+.aiw-mx-gruppe.is-gefaehrlich  { border-left-color: var(--rot, #c0392b); }
+.aiw-mx-gruppe.is-gefaehrlich .aiw-mx-gruppe-titel { color: #922b21; }
+.aiw-mx-gruppe.is-arbeitsreif  { border-left-color: #d68910; }
+.aiw-mx-gruppe.is-belegt       { border-left-color: var(--akzent, #0b5394); }
+.aiw-mx-gruppe.is-nachrangig   { border-left-color: var(--gruen, #1e8449); }
+/* Ein Quadrant, den das Frontend nicht kennt, wird SCHWARZ markiert und faellt
+   damit auf — er darf nicht wie ein bekannter aussehen. */
+.aiw-mx-gruppe.is-unbekannt    { border-left-color: #000000; }
+
+.aiw-mx-table {
+  width: 100%; border-collapse: collapse; margin: 0 0 6px; font-size: 13px;
+}
+.aiw-mx-table th {
+  text-align: left; padding: 6px 8px; font-weight: 600; white-space: nowrap;
+  border-bottom: 2px solid var(--line, #d5dbe1);
+}
+.aiw-mx-table td {
+  padding: 6px 8px; border-bottom: 1px solid var(--line, #e6eaee);
+  vertical-align: top;
+}
+.aiw-mx-case, .aiw-mx-x, .aiw-mx-y, .aiw-mx-krit {
+  white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.aiw-mx-x { font-weight: 600; }
+
+/* 'mind. N' ist KEINE Zahl im selben Sinn wie ein bestimmter Wert. Die
+   Kursivierung ist deshalb kein Zierrat, sondern der sichtbare Unterschied
+   zwischen einer Aussage und einer Untergrenze. */
+.aiw-mx-x.is-unbestimmt { font-style: italic; color: #5b2c6f; font-weight: 600; }
+/* Stimmt die Summe der Beitraege nicht mit dem Wert ueberein, ist das ein
+   Fehler — er wird SICHTBAR und nicht geglaettet. */
+.aiw-mx-x.is-unstimmig {
+  background: #fdecea; color: #922b21; text-decoration: underline wavy;
+}
+
+.aiw-mx-belast { font-size: 12px; }
+.aiw-mx-belast.is-vorlaeufig { color: #7d3c98; font-weight: 600; }
+.aiw-mx-belast.is-festgestellt { color: #1d5c37; }
+.aiw-mx-belast.is-ohne-frist { color: #6b7580; }
+.aiw-mx-belast.is-unbekannt { color: #000000; font-weight: 600; }
+
+/* Der Aufklappbereich je Zeile. IMMER GESCHLOSSEN beim Aufbau — die
+   Oberflaeche bleibt klar (mc 2026-07-26 zum Tatzeit-Feld, Build 534), und wer
+   die Begruendung braucht, holt sie sich. */
+.aiw-mx-details { font-size: 12px; }
+.aiw-mx-details summary { cursor: pointer; color: #4a5158; }
+.aiw-mx-beitraege { margin: 6px 0 0; }
+.aiw-mx-beitraege h4 { margin: 6px 0 2px; font-size: 12px; color: #3d4144; }
+.aiw-mx-beitraege ul { margin: 0; padding-left: 16px; }
+.aiw-mx-beitrag { margin: 3px 0; line-height: 1.45; }
+.aiw-mx-punkte {
+  display: inline-block; min-width: 34px; font-weight: 600;
+  font-variant-numeric: tabular-nums; color: #14456e;
+}
+.aiw-mx-code { font-weight: 600; margin-right: 6px; }
+.aiw-mx-grund { color: #4a5158; }
+.aiw-mx-leer { color: #6b7580; font-style: italic; margin: 2px 0; }
+
+.aiw-mx-vermerke { margin-top: 8px; }
+.aiw-mx-vermerke h4 { margin: 0 0 2px; font-size: 12px; color: #922b21; }
+.aiw-mx-vermerke ul { margin: 0; padding-left: 16px; }
+.aiw-mx-vermerke li { margin: 3px 0; color: #4a5158; }
+
+.aiw-mx-foot {
+  margin: 10px 0 8px; font-size: 11px; color: #6b7580; line-height: 1.5;
+}
+.aiw-mx-vorbehalte { font-size: 12px; color: #4a5158; }
+.aiw-mx-vorbehalte summary { cursor: pointer; }
+.aiw-mx-vorbehalte li { margin: 4px 0; }

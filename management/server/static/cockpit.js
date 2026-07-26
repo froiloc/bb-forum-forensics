@@ -196,6 +196,14 @@
         // FALLBESTAND aus (Tatzeitpunkte, Fristen), nicht den Zustand der
         // Anlage. Eigenes Recht 'limitation.view' (Seed M031).
         { id: 'limitation', cap: 'limitation.view',      group: 'Auswertung',     label: 'Fristen (Verjaehrung)' },
+        // Build 539 (AP-3B): Dringlichkeit & Erkenntnislage. Gruppe
+        // 'Auswertung' wie die Fristensicht — beide werten den FALLBESTAND
+        // aus, nicht den Zustand der Anlage. EIGENES Recht 'matrix.view'
+        // (Seed M033) und NICHT 'limitation.view': wer die Fristen sehen
+        // darf, darf damit noch nicht sehen, wie weit die Kolleginnen mit
+        // ihren Bewertungen sind. NICHT scope-behaftet — eine Rangfolge ueber
+        // den eigenen Arbeitsvorrat waere keine.
+        { id: 'matrix',     cap: 'matrix.view',          group: 'Auswertung',     label: 'Dringlichkeit & Erkenntnislage' },
         { id: 'workload',   cap: 'workload.view',        group: 'Auswertung',     label: 'Lastverteilung' },
         { id: 'capacity',   cap: 'capacity.edit',        group: 'Auswertung',     label: 'Kapazitaet' },
         { id: 'support',    cap: 'support_history.view', group: 'Auswertung',     label: 'Support-Historie' },
@@ -845,6 +853,54 @@
         }).catch(function (err) {
             cleanupView();
             mod.renderLimitation(mainEl, { error: err.message }, {});
+        });
+    }
+
+    // loadMatrix: /api/matrix holen und die Matrix rendern (cockpit_matrix.js,
+    // Build 539).
+    //
+    // DAS NACHLADEN DER FRISTEN LEBT IM STATE, nicht in der Sicht — dieselbe
+    // Ueberlegung wie bei state.limitationVorwarn (Build 525): der SSE-Reload
+    // muss DENSELBEN Umfang laden, sonst verschwaende oder erschiene der
+    // Fristanteil bei einem fremden Fall-Ereignis von selbst, und niemand
+    // koennte sich das erklaeren.
+    //
+    // DIE VORGABE IST 'OHNE FRISTEN', und das ist eine Messentscheidung und
+    // keine Geschmacksfrage: die Fristkomponente oeffnet je Fall bis zu zwei
+    // Dateien. Container-Messung (Build 538): Faktor 13-14 gegenueber den
+    // uebrigen fuenf Beitraegen, rund 0,7 ms je Fall. Fuer PROD (Netzlaufwerk)
+    // steht die Messung aus; der Fristenmonitor lag dort um den Faktor 24
+    // ueber DEV. Bis diese Zahl vorliegt, waere ein sofortiges Mitladen eine
+    // Wette. Die Sicht SAGT in jedem Zustand, was fehlt — sie luegt nicht, sie
+    // sagt weniger. Sobald die PROD-Zahl da ist, ist die Umstellung EINE
+    // Zeile (state.matrixFristen = true).
+    //
+    // KEIN SCHREIBPFAD: der einzige Rueckruf (onFristen) ruft diese Funktion
+    // erneut auf — er aendert die ANSICHT, nie einen Beleg.
+    function loadMatrix(mainEl, mitFristen) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitMatrix : null;
+        if (!mod) {
+            renderError(mainEl, 'Matrix-Modul nicht geladen.');
+            return;
+        }
+        if (mitFristen !== undefined && mitFristen !== null) {
+            state.matrixFristen = !!mitFristen;
+        }
+        var url = '/api/matrix?fristen='
+            + (state.matrixFristen ? '1' : '0');
+        fetchJson(url).then(function (data) {
+            cleanupView();
+            mod.renderMatrix(mainEl, data, {
+                onFristen: function (mit) { loadMatrix(mainEl, mit); }
+            });
+            log('Matrix gerendert:', (data.zellen || []).length, 'Zellen;',
+                'Fristen geladen:', data.fristen_geladen,
+                '; Dauer', data.dauer_gesamt_ms, 'ms');
+        }).catch(function (err) {
+            cleanupView();
+            mod.renderMatrix(mainEl, { error: err.message }, {});
         });
     }
 
@@ -2996,7 +3052,14 @@
         // (vorwarn_tage) — er geht ueber exportParams mit, sonst zeigte das
         // Dokument eine andere Vorwarnschwelle als die Sicht, und die Schwelle
         // entscheidet ueber die Ampelfarbe.
-        limitation: 1
+        limitation: 1,
+        // Build 539: die Matrix ist ein LEITUNGSBELEG ('zu diesem Zeitpunkt
+        // standen N Faelle im Feld "dringend bei duenner Erkenntnislage"'),
+        // und sie kennt einen Parameter (fristen) — er geht ueber exportParams
+        // mit. Ohne ihn zeigte das Dokument womoeglich Fristbeitraege, die die
+        // Sicht gar nicht geladen hatte, oder umgekehrt; die Zahlen der
+        // X-Achse waeren dann andere als die auf dem Bildschirm.
+        matrix: 1
     };
 
     // exportParams: die Sicht-Parameter, die der Export MITBEKOMMEN muss, damit
@@ -3042,6 +3105,14 @@
             if (st.limitationVorwarn) {
                 p.vorwarn_tage = String(st.limitationVorwarn);
             }
+        } else if (viewId === 'matrix') {
+            // Build 539: der Fristen-Umfang. Er wird IMMER mitgegeben, auch
+            // wenn er false ist — anders als bei den uebrigen Sichten, wo ein
+            // fehlender Parameter 'Vorgabe' bedeutet. Grund: die Vorgabe des
+            // ENDPUNKTS ist 'mit Fristen', die der SICHT ist 'ohne'. Liesse man
+            // den Parameter weg, exportierte die Aktenfassung eine ANDERE
+            // X-Achse als die, aus der sie erzeugt wurde.
+            p.fristen = st.matrixFristen ? '1' : '0';
         }
         return p;
     }
@@ -3153,6 +3224,10 @@
             // Build 525: die Fristensicht. Sie braucht keinen Vorlauf — die
             // Vorwarnschwelle kommt aus dem State (oder der Server-Vorgabe).
             loadLimitation(mainEl);
+        } else if (viewId === 'matrix') {
+            // Build 539: die Matrix. Der Fristen-Umfang kommt aus dem State;
+            // Vorgabe ist OHNE Fristen (Begruendung bei loadMatrix).
+            loadMatrix(mainEl);
         } else if (viewId === 'planung') {
             loadPlanung(mainEl);
         } else if (viewId === 'annostats') {
@@ -3258,6 +3333,15 @@
                 // knappe Frist in die Liste bringen -> neu messen. Die im
                 // State gehaltene Vorwarnschwelle bleibt dabei erhalten.
                 loadLimitation();
+            } else if (state.activeId === 'matrix') {
+                // Build 539: fast jedes auditierte Ereignis kann die Rangfolge
+                // veraendern — eine neue Bewertung hebt die Erkenntnislage,
+                // eine Zuweisung nimmt den Beitrag 'unzugewiesen' weg, ein
+                // neuer externer Vorgang kann ueberfaellig werden. Neu messen.
+                // Der eingestellte Fristen-Umfang (state.matrixFristen) bleibt
+                // erhalten, sonst laedt ein fremdes Ereignis ungefragt die
+                // teure Variante nach.
+                loadMatrix();
             } else if (state.activeId === 'retention') {
                 // Ein Fall-Abschluss (status closed/approved) erzeugt einen
                 // audit_log-Beleg und kann die Fristenlage aendern -> neu

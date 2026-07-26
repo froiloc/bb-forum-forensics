@@ -107,7 +107,10 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     // Build 525: 37 (neu: 'limitation' - Fristen/Verjaehrung,
     //           AP-3A/Idee 32; Gruppe 'Auswertung', Recht
     //           limitation.view).
-    expect(api.VIEW_CATALOG.length).toBe(37);
+    // Build 539: 38 (neu: 'matrix' - Dringlichkeit & Erkenntnislage,
+    //           AP-3B; Gruppe 'Auswertung', EIGENES Recht matrix.view
+    //           aus M033 - ausdruecklich NICHT limitation.view).
+    expect(api.VIEW_CATALOG.length).toBe(38);
   });
 
   // CN-QUERFUND (Build 478) --------------------------------------------------
