@@ -19,6 +19,8 @@
 #   /_forensic/userinfo/data     (GET)        -> UserinfoDataEndpoint  [B4]
 #   /_forensic/results           (GET)        -> ResultsEndpoint       [B4 390]
 #   /_forensic/results/assess    (POST)       -> ResultsEndpoint       [B4 390]
+#   /_forensic/tatzeit           (GET, POST)  -> TatzeitEndpoint    [AP-3A 533]
+#   /_forensic/tatzeit/clear     (POST)       -> TatzeitEndpoint    [AP-3A 533]
 #   /_forensic/userinfo/static   (GET)        -> UserinfoStaticEndpoint [B4]
 #   /_forensic/userinfo.js       (GET)        -> StaticEndpoint        [B4]
 #   /_forensic/userinfo.css      (GET)        -> StaticEndpoint        [B4]
@@ -147,6 +149,7 @@ class ForensicApi:
         self._translate        = None  # [B3/B5 Build 329]
         self._translation_meta = None  # [B6 Build 341]
         self._results          = None  # [B4 Build 390]
+        self._tatzeit          = None  # [AP-3A Build 533]
 
     def dispatch(
         self,
@@ -223,6 +226,39 @@ class ForensicApi:
                 self._method_not_allowed(handler)
                 return
             self._get_results().handle(handler, params)
+            return
+
+        # /_forensic/tatzeit/clear (POST) [AP-3A Build 533]
+        # Nimmt eine erfasste Tatzeitangabe zurueck (deleted_at, KEINE
+        # Nachfolgeversion). Eigener Pfad statt eines Merkmals im Rumpf, weil
+        # eine Ruecknahme fachlich etwas anderes ist als eine Korrektur — sie
+        # traegt einen eigenen Ereignistyp (TATZEIT_CLEARED).
+        # WICHTIG: der laengere Pfad MUSS vor /_forensic/tatzeit geprueft werden.
+        if url_path == "/_forensic/tatzeit/clear":
+            if method != "POST":
+                self._method_not_allowed(handler)
+                return
+            body = self._read_body(handler)
+            if body is None:
+                return
+            self._get_tatzeit().handle_clear(handler, body)
+            return
+
+        # /_forensic/tatzeit (GET -> lesen, POST -> erfassen/ersetzen)
+        # [AP-3A Build 533]
+        # Der Fall kommt aus dem Kontext, NICHT aus dem Rumpf — die Tatzeit
+        # landet zwangslaeufig in der evidence-Datei des geoeffneten Falls.
+        if url_path == "/_forensic/tatzeit":
+            if method in ("GET", "HEAD"):
+                self._get_tatzeit().handle(handler, params)
+                return
+            if method == "POST":
+                body = self._read_body(handler)
+                if body is None:
+                    return
+                self._get_tatzeit().handle_set(handler, body)
+                return
+            self._method_not_allowed(handler)
             return
 
         # /_forensic/status (GET)
@@ -746,6 +782,13 @@ class ForensicApi:
             self._results = ResultsEndpoint(
                 self._bundle, self._context, self._config)
         return self._results
+
+    def _get_tatzeit(self):
+        if self._tatzeit is None:
+            from forensic_api.tatzeit_endpoint import TatzeitEndpoint
+            self._tatzeit = TatzeitEndpoint(
+                self._bundle, self._context, self._config)
+        return self._tatzeit
 
     def _get_status(self):
         if self._status is None:

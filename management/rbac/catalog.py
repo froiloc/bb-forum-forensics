@@ -299,6 +299,35 @@ CAPABILITIES: Tuple[Capability, ...] = (
                "Faelle mit der rechnerischen Verjaehrungsfrist (§§ 78 ff. "
                "StGB) lesen. Die Sicht stellt KEINE Verjaehrung fest und ist "
                "ohne bestaetigten Parametersatz stumm."),
+    # --- Build 533 (AP-3A): Tatzeitraum erfassen (Seed in M032) -------------
+    #   EIN Recht, kein Paar aus view/edit. Begruendung: Die Tatzeit ist Teil
+    #   der Annotation, und wer die Annotation sehen darf, sieht sie ohnehin —
+    #   ein eigenes Leserecht wuerde eine Trennung behaupten, die es in der
+    #   Oberflaeche nicht gibt und die niemand durchhalten koennte. Das
+    #   SCHREIBEN dagegen ist eine eigenstaendige Handlung mit rechtlicher
+    #   Tragweite und bekommt deshalb sein eigenes Recht.
+    #
+    #   WARUM NICHT 'results.edit' MITBENUTZEN: Dort wird eine Ermittlungs-
+    #   BEWERTUNG erfasst (Konfidenz, Qualitaet je Kriterium). Hier wird eine
+    #   TATSACHENANGABE festgestellt, aus der eine Frist gerechnet wird, deren
+    #   Ablauf unumkehrbar ist. Das sind verschiedene Erkenntnisarten; eine
+    #   Wiederverwendung waere ein Zweckbindungsverstoss, keine Sparsamkeit
+    #   (dieselbe Abgrenzung wie retention.view/M030 und limitation.view/M031).
+    #
+    #   NICHT scope-behaftet — und hier aus einem anderen Grund als sonst: Der
+    #   forensische Server hat immer nur GENAU EINEN Fall geoeffnet, und die
+    #   subject_id kommt aus dem ResolvedContext, nie aus dem Rumpf
+    #   (forensic_api/results_endpoint.py:20-27). Ein Scope 'eigene' waere
+    #   wirkungslose Doppelung einer Schranke, die schon strukturell steht.
+    #
+    #   MIT DIESEM RECHT IST KEINE FRISTAUSSAGE VERBUNDEN. Es erlaubt, eine
+    #   Tatzeit zu ERFASSEN. Ob daraus eine Frist gerechnet wird, entscheidet
+    #   allein der bestaetigte Parametersatz (limitation_params.json).
+    #   Grant an 'investigator' und 'supervisor' per policy_admin (default-deny).
+    Capability("tatzeit.edit", "Tatzeitraum erfassen",
+               "Zu einer Annotation den festgestellten Tatzeitraum (Beginn "
+               "und/oder Ende) erfassen, korrigieren oder zuruecknehmen. "
+               "Append-only mit Beleg in der Beweismitteldatenbank."),
 )
 
 

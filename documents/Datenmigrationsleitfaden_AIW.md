@@ -2,9 +2,9 @@
 
 ## IT-Forensisches Ermittlungswerkzeug Advanced Investigation Wrapper (AIW) · NRW
 
-**Version:** 0.3
-**Build-Bezug:** 469 (M019-Schlüsselumstellung; Abschnitte 1–12 unverändert aus v0.2/Build 315+408)
-**Datum:** 2026-07-20
+**Version:** 0.4
+**Build-Bezug:** 533 (evidence-Migrationen M002/M003; Abschnitte 1–13 unverändert aus v0.3/Build 469)
+**Datum:** 2026-07-26
 **Status:** Verbindlicher Workflow für Datenmigration im Produktivbetrieb
 **Klassifikation:** VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
 
@@ -14,6 +14,7 @@
 
 | Version | Build | Datum      | Änderung                                                                                                                                                              |
 | ------- | ----- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0.4     | 533   | 2026-07-26 | Neuer **Abschnitt 14**: die evidence-Migrationen **M002** (`annotation_tatzeit`, Build 532) und **M003** (`evidence_audit_log` + Genesis, Build 533) — die ersten Strukturänderungen an einer Beweismitteldatenbank nach dem 01.07.2026. Beide additiv und datenneutral, nachgewiesen über Inhaltshashes (TZ04/EA03). Enthält den ausdrücklichen Vermerk, dass der Eintrag für M002 bis hierher **gefehlt** hat. Beleg: Entscheidung mc 2026-07-26 (eigene Beleg-Kette in der evidence-Datei statt Best-Effort-Eintrag in `coordinator.db`). |
 | 0.1     | 303   | 2026-06-25 | Erstfassung — Migrationsleitfaden (Vier-Phasen-Workflow, Gerichtsfestigkeit, Einzel-DB)                                                                             |
 | 0.3     | 469   | 2026-07-20 | Neuer **Abschnitt 13**: Migration **M019** — globale Schlüsselumstellung `user_id` → `subject_id` in `coordinator.db` (Weg A, `RENAME COLUMN`): Vorher-Backup, Weg-A-PoC-Protokoll (`tools/poc_m019_weg_a.py`), Roll-forward, Verifikations-Checkliste, Rollback-Pfad. Beleg: mc-Freigabe 2026-07-20, PoC bestanden. |
 | 0.2     | 315   | 2026-07-03 | Fortschreibung für die **Datenbank-Flotte**: Bestandsaufnahme der vorhandenen Engine (`schema_migrations`), zentrale **`migration.db`** (Katalog/Inventar/Ledger), Rollentrennung, revidiertes Gegenzeichnungsmodell (lückenlose Belegbarkeit statt Instanz-Handunterschrift), geführter, teilautomatisierter **Companion-Workflow**, Dry-Run/Flottenplanung, Teil-Fehlschlag-Behandlung. Belege: `management/migrations/runner.py`, `management/migrate.py`, `evidence_schema_db.sql`. Grundlage: mc 2026-07-03. |
@@ -353,4 +354,60 @@ Schlägt eine Prüfung fehl: **Stop-and-Flag**, automatische Wiederherstellung a
 **Code-Sweep (Bestandteil von Build 469, dieselbe Auslieferung):** Alle SQL-Strings, Python-/JS-Namen, Management-JSON-Keys und CLI-Flags (`--user-id`→`--subject-id`) sind subject_id-nativ (mc-Entscheidung: volle Nativität, keine Alias-Flags). **Ausnahmen (bewusst unverändert):** Schemata/Keys der nicht migrierten DBs (`known_users.user_id` in `default.db`, forensic_meta-Key `'user_id'`, `scraper_log.user_id` in evidence), forum-semantische IDs (`forum_user_id`, `target_user_id`, `actor_user_id`), Dateinamensmuster `evidence_/forensic_/assets_<uid>.db`, sowie **Lese-Fallbacks für historische audit_log-Payloads** (Alt-Einträge tragen den Key `user_id`; die Hash-Kette ist unveränderlich — Leser versuchen `subject_id`, fallen auf `user_id` zurück; neue Payloads schreiben `subject_id`).
 
 **Hinweis Betriebsskripte:** Wer `--user-id` in eigenen Aufrufskripten verwendet (z. B. Prepper-Übergabe, Admin-CLIs), muss auf `--subject-id` umstellen — die alten Flags existieren nicht mehr.
+
+
+---
+
+## 14. Evidence-Migrationen M002 und M003 — die ersten Strukturänderungen an `evidence_<uid>.db` (NEU, Build 533)
+
+> **Nachtrag, ausdrücklich benannt:** Für **M002** (Build 532, `annotation_tatzeit`) fehlte hier bis Build 533 ein Eintrag, obwohl es die **erste** Strukturänderung an einer Beweismitteldatenbank nach dem 01.07.2026 war. Die Begründung der Migration selbst ist im Modulkopf und in `build.json` vollständig belegt; was fehlte, war die Aufnahme in diesen Leitfaden. Sie wird hier nachgeholt — nicht stillschweigend, sondern als Auslassung kenntlich gemacht (Grundregel 1).
+
+### 14.1 Was betroffen ist
+
+| Migration | Build | DB-Art | Wirkung | KIND |
+| --- | --- | --- | --- | --- |
+| **M002** | 532 | `evidence_<uid>.db` | Neue Tabelle `annotation_tatzeit` + 4 Indizes | additive |
+| **M003** | 533 | `evidence_<uid>.db` | Neue Tabelle `evidence_audit_log` (Hash-Kette) + 2 Append-only-Trigger + Genesis-Zeile | additive |
+
+**Nicht betroffen:** `forensic_<uid>.db`, `assets_<uid>.db`, `coordinator.db`, `default.db`, `templates.db`, `approved_reports.db`.
+
+**Beide Migrationen sind additiv und datenneutral.** Es wird ausschließlich Neues angelegt; keine bestehende Tabelle wird angefasst — kein `UPDATE`, kein `ALTER TABLE`, kein `DELETE`. Das ist **nachgewiesen, nicht behauptet**: TZ04 (M002) und EA03 (M003) bilden vor und nach dem Lauf einen **Inhaltshash** der Bestandstabellen und vergleichen ihn. Ein Vergleich der Datei-Prüfsumme wäre hier untauglich — die Datei ändert sich zwangsläufig, weil eine Tabelle hinzukommt.
+
+**Der Migrationsvorbehalt ist damit gewahrt.** Verlustfreie Migration ist bei rein additiven Änderungen konstruktiv erfüllt: es gibt keinen Bestand, der überführt werden müsste. Die volle Zeremonie der Beweis-DB-Zeile (§6.0) gilt trotzdem — die Fleet erzwingt für Beweis-DB-Arten **immer** ein Backup (`management/migration_fleet/catalog.py:_requires_backup`).
+
+### 14.2 Warum M003 überhaupt nötig war
+
+Bis Build 532 gab es in `evidence_<uid>.db` **keinen Beleg für fachliche Schreibvorgänge**. Das Schema (`db/evidence_db.py:231-459`) führt 16 Tabellen; die beiden mit „Audit" im Kommentar — `report_opened` (:386) und `lock_takeover_requests` (:358) — sind zweckfremd. `save_annotation` (:847-949) schreibt und committet direkt (:947).
+
+Für die **Tatzeit** ist das nicht tragbar: aus ihr wird eine Verjährungsfrist gerechnet, und deren Ablauf ist nicht heilbar. Ein Beleg in `coordinator.db` wäre **dateiübergreifend** und damit nicht atomar — die Best-Effort-Variante (Muster `management_app.py:2316-2337`) loggt einen Fehlschlag lediglich (:2333-2335), und das ist das stille Überspringen eines Belegs, das Grundregel 1 verbietet. **Entscheidung mc 2026-07-26:** eigene Kette in der evidence-Datei.
+
+### 14.3 Reihenfolge (verbindlich)
+
+M002 **vor** M003 — der Runner erzwingt das über `VERSION`. Beide brechen ab, wenn die Tabelle `annotations` fehlt: dann ist die Datei keine evidence-DB, und es bleibt **kein Teilzustand** (TZ08 / EA10).
+
+M003 bricht außerdem ab, wenn `evidence_audit_log` bereits mit **abweichendem Aufbau** existiert (EA11) — sonst wäre ab diesem Lauf ein fremder Aufbau der offiziell geprüfte.
+
+### 14.4 Workflow je Instanz
+
+1. **Phase 1 — Backup.** Von der Fleet erzwungen; zusätzlich SHA512 + Manifest gemäß §3 Phase 1. **Kein offener Writer:** Der forensische Server hält `evidence_<uid>.db` als Hauptverbindung offen (`db/connection_manager.py:203`). Er ist für den Lauf zu stoppen — sonst schlägt `BEGIN IMMEDIATE` fehl und die Migration bricht sauber ab (kein Teilzustand, aber auch kein Fortschritt).
+2. **Trockenlauf** über den Planner (`dry_run=True`): ändert nichts, erzeugt kein Backup, lässt die Quelle bit-identisch (I05).
+3. **Kleine Charge zuerst** (`--grenze 3`), dann der Gesamtbestand mit Protokoll.
+4. **Verifikations-Checkliste je Instanz:**
+   - [ ] `schema_migrations` enthält Version 2 **und** 3, beide `kind='additive'`.
+   - [ ] `PRAGMA table_info("annotation_tatzeit")` — 16 Spalten in der Reihenfolge aus `M002.ERWARTETE_SPALTEN`.
+   - [ ] `PRAGMA table_info("evidence_audit_log")` — 10 Spalten in der Reihenfolge aus `M003.ERWARTETE_SPALTEN`, **ohne** Foreign Key.
+   - [ ] Genau **eine** Zeile in `evidence_audit_log`: `seq=1`, `event_type='genesis'`, `target_id='evidence'`. (Der Runner schreibt für den evidence-Strang **kein** `MIGRATION_APPLIED` — er läuft dort ohne `AuditLog`. Der Beleg für die Migration selbst liegt in `schema_migrations` und im Fleet-Ledger.)
+   - [ ] `EvidenceAuditLog(con).verify_chain().ok` ist `True`.
+   - [ ] Append-only-Trigger greifen: ein `UPDATE`/`DELETE` auf `evidence_audit_log` wird abgewiesen.
+   - [ ] `PRAGMA integrity_check;` = ok.
+   - [ ] Zeilenzahl in `annotations` **unverändert** gegenüber dem Backup.
+5. **Rollback-Pfad:** Bei jedem Fehlschlag rollt der Runner die Transaktion selbst zurück. Für den Katastrophenfall: Dienste stoppen, Datei aus dem Phase-1-Backup ersetzen (SHA512-Abgleich!), Code-Stand zurücksetzen. Zu beachten: **Alt-Code kann mit der migrierten Datei arbeiten** (die neuen Tabellen stören ihn nicht) — der Rückbau der Datei ist also nur nötig, wenn die Migration selbst beanstandet wird, nicht wegen eines Code-Problems.
+
+### 14.5 Was die Prüfsumme angeht
+
+Wie schon bei Build 531 vermerkt: `CREATE INDEX` und `CREATE TABLE` **ändern die Datei-Prüfsumme** (gemessen 2026-07-26: 77.824 → 143.360 B bei 5.000 Zeilen), der **Inhaltshash der Bestandstabellen bleibt unverändert**. Für die Beweiskette zählt der innere Hash. Die neue Datei-Prüfsumme ist nach dem Lauf im Manifest **fortzuschreiben**, nicht mit der alten zu vergleichen.
+
+### 14.6 Ab wann die Kette lückenlos ist
+
+Die Kette beginnt mit der Genesis-Zeile aus M003. **Sie belegt nichts, was vor ihr geschah** — Annotationen, die vor Build 533 erfasst wurden, tragen keinen Kettenbeleg, weil es zu ihrer Zeit keine Kette gab. Das ist keine Lücke, die geschlossen werden kann, und sie darf nicht so aussehen, als wäre sie eine: der Genesis-Zeitstempel ist der Beginn der Belegbarkeit dieser Datei und in der Akte als solcher zu benennen.
 

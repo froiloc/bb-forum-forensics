@@ -262,6 +262,43 @@ class EventType:
     ESCALATION_ACKNOWLEDGED: str = "escalation_acknowledged"
     ESCALATION_ACK_REVOKED: str = "escalation_ack_revoked"
 
+    # --- Build 533: Tatzeitraum zu einer Annotation (annotation_tatzeit) -----
+    #   ACHTUNG — DIESE BEIDEN WERTE STEHEN IN EINER ANDEREN KETTE ALS ALLE
+    #   ANDEREN. Sie werden nicht nach coordinator.db geschrieben, sondern in
+    #   'evidence_audit_log' INNERHALB der jeweiligen evidence_<uid>.db
+    #   (management/audit/evidence_audit_log.py, angelegt von der
+    #   evidence-Migration m003). Grund: der fachliche Write geht in
+    #   'annotation_tatzeit' in derselben Datei, und nur so committen Write und
+    #   Beleg gemeinsam oder gar nicht (Entscheidung mc 2026-07-26; die
+    #   Best-Effort-Variante nach dem Muster REVIEW_COMMENT_* wurde
+    #   ausdruecklich verworfen, weil dort ein Fehlschlag nur geloggt wird).
+    #
+    #   Das Vokabular ist trotzdem HIER definiert und nicht dort, weil
+    #   EventType.is_valid() die einzige Stelle ist, an der ein Ereignistyp
+    #   gueltig wird — zwei Vokabulare waeren die sicherste Art, sie
+    #   auseinanderlaufen zu lassen. EvidenceAuditLog.append() prueft gegen
+    #   genau diese Menge.
+    #
+    #   TATZEIT_SET: eine Tatzeitangabe wurde erfasst ODER durch eine neue
+    #   Version ersetzt (append-only, version_nr/prev_id — wie bei
+    #   'annotations' selbst, db/evidence_db.py:884-919). Bewusst EIN Typ fuer
+    #   beides: fachlich ist die Korrektur einer Tatzeit dieselbe Handlung wie
+    #   ihre Ersterfassung, und der Unterschied steht im Payload (version_nr,
+    #   prev_id).
+    #   TATZEIT_CLEARED: eine Tatzeitangabe wurde zurueckgenommen
+    #   (deleted_at gesetzt, keine Nachfolgeversion). Eigener Typ, weil das die
+    #   Aussage ist, dass eine frueher FESTGESTELLTE Zeit nicht mehr traegt —
+    #   dieselbe Begruendung wie bei ESCALATION_ACK_REVOKED und
+    #   SUBJECT_ALIAS_RETRACTED.
+    #
+    #   SENSIBILITAETSREGEL wie M018/M022: im Payload stehen nur FAKTEN
+    #   (tatzeit_id, annotation_id, art, von_ts, bis_ts, genauigkeit, quelle-
+    #   CODE, version_nr, prev_id) — NIEMALS der Wortlaut der Annotation und
+    #   niemals der Freitext einer 'sonstiges'-Quelle. Fuer Freitexte nur ihre
+    #   Laenge.
+    TATZEIT_SET: str = "tatzeit_set"
+    TATZEIT_CLEARED: str = "tatzeit_cleared"
+
     # --- reserviert für spätere Builds (hier dokumentiert, noch nicht aktiv) ---
     # NOTIFICATION_SENT, RESTORE_PERFORMED
 
@@ -333,6 +370,10 @@ class EventType:
             PERSON_REACTIVATED,
             ESCALATION_ACKNOWLEDGED,
             ESCALATION_ACK_REVOKED,
+            # Build 533 — geschrieben in evidence_audit_log, nicht in
+            # coordinator.audit_log (s. Kommentar bei der Definition).
+            TATZEIT_SET,
+            TATZEIT_CLEARED,
         }
     )
 

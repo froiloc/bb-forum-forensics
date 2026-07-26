@@ -178,7 +178,8 @@ class ManagementRbacSchemaTests(unittest.TestCase):
         # +1 ab Build 520 ('handover.view', geseedet in M029) -> 37.
         # +1 ab Build 521 ('retention.view', geseedet in M030) -> 38.
         # +1 ab Build 524 ('limitation.view', geseedet in M031) -> 39.
-        self.assertEqual(len(cat_caps), 39)
+        # +1 ab Build 533 ('tatzeit.edit', geseedet in M032) -> 40.
+        self.assertEqual(len(cat_caps), 40)
         self.assertIn("external.view", cat_caps)
         self.assertIn("external.edit", cat_caps)
         self.assertIn("templates.edit", cat_caps)
