@@ -1,0 +1,12 @@
+fb429b67296ec39adcbcf933ea480295  build.json
+6b4cb05d30fec80d99fe6dab460c52c7  documents/Datenmigrationsleitfaden_AIW.md
+908aef54ede8efe604bf10e34f07d8f7  management/qs/__init__.py
+b105c0e32f5825dad87178001aa443e6  management/qs/qs_vokabular.py
+68d3348c5b564482d9abaf7d4f06402a  management/qs/qs_sampler.py
+5f986f22abd6a0611cafe0c2a11d9bd9  management/migrations/coordinator/m034_qs_stichprobe.py
+5415faf7dc64b79cd4553f0bd6f925f3  management/rbac/catalog.py
+d9c925716513708cd96dc2489fd17157  management/audit/event_types.py
+6f8b3cc80ceed4ece33d29670c7a3e7f  tests/test_qs_sampler.py
+d9ae0bf933b347aa80cbdc5c55fcee5b  tests/test_demo_seed.py
+59bde1e832e29632ddf5b7fa12dfeaef  tests/test_management_rbac_schema.py
+6b674621b90a6de7e2d462f51203c732  tests/test_management_dashboard.py

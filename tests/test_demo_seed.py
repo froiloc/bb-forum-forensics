@@ -74,7 +74,8 @@ class DemoSeedTests(unittest.TestCase):
         # +1 ab Build 524: limitation.view aus M031 -> 39.
         # +1 ab Build 533: tatzeit.edit aus M032 -> 40.
         # +1 ab Build 536: matrix.view aus M033 -> 41.
-        self.assertEqual(self._count("rbac_capability"), 41)
+        # +2 ab Build 540: qs.view/qs.edit aus M034 -> 43.
+        self.assertEqual(self._count("rbac_capability"), 43)
         # Leitung hat die Supervisor-Rolle + Grants.
         self.assertGreater(self._count("rbac_grant"), 0)
         self.assertEqual(self.summary["demo"], True)

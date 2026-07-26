@@ -225,14 +225,18 @@ class ManagementDashboardTests(unittest.TestCase):
         # Build 536: M033 (RBAC-Seed matrix.view fuer die
         # Dringlichkeitsmatrix, AP-3B — reiner Capability-Seed; EIGENES Recht,
         # weil die Sicht neben der Frist den ARBEITSSTAND fremder Faelle zeigt).
+        # Build 540: M034 (QS-Stichprobe, AP-3C — drei Tabellen
+        # qs_sample/qs_sample_item/qs_review PLUS die Rechte qs.view/qs.edit.
+        # Erster Build der Welle 3, der neue Ermittlerdaten anlegt; rein
+        # additiv und nur in coordinator.db, deshalb ohne Migrationsvorbehalt).
         self.assertEqual(self.applied,
                          [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
                           17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
-                          30, 31, 32, 33]
+                          30, 31, 32, 33, 34]
                          if 3 not in self.applied
                          else [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
                                15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
-                               27, 28, 29, 30, 31, 32, 33])
+                               27, 28, 29, 30, 31, 32, 33, 34])
         # discover findet M001..M006 -> support_sessions (M003) IST dabei,
         # der person-Rename (M005, Build 342) ebenso wie das RBAC-Schema
         # (M006, Build 343).

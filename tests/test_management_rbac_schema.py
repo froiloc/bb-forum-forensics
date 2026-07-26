@@ -180,7 +180,10 @@ class ManagementRbacSchemaTests(unittest.TestCase):
         # +1 ab Build 524 ('limitation.view', geseedet in M031) -> 39.
         # +1 ab Build 533 ('tatzeit.edit', geseedet in M032) -> 40.
         # +1 ab Build 536 ('matrix.view', geseedet in M033) -> 41.
-        self.assertEqual(len(cat_caps), 41)
+        # +2 ab Build 540 ('qs.view'/'qs.edit', geseedet in M034) -> 43.
+        #   GETRENNT und nicht zusammengefasst: nur so bleibt
+        #   Vier-Augen moeglich (Muster release.view/release.grant).
+        self.assertEqual(len(cat_caps), 43)
         self.assertIn("external.view", cat_caps)
         self.assertIn("external.edit", cat_caps)
         self.assertIn("templates.edit", cat_caps)

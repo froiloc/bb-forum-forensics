@@ -299,6 +299,27 @@ class EventType:
     TATZEIT_SET: str = "tatzeit_set"
     TATZEIT_CLEARED: str = "tatzeit_cleared"
 
+    # --- AP-3C (Build 540): QS-Stichprobe -----------------------------------
+    #   QS_SAMPLE_DRAWN: EINE Ziehung. Der Payload traegt AUSSCHLIESSLICH die
+    #   Angaben, die sie NACHRECHENBAR machen — Verfahren, KEIM, Groesse der
+    #   Grundgesamtheit, Stichprobengroesse, Schichtgroessen und die gezogenen
+    #   subject_id. Ohne den Keim im Beleg waere die Ziehung gegen den Vorwurf
+    #   der gezielten Auswahl nicht zu verteidigen.
+    #
+    #   QS_REVIEW_RECORDED: EIN Pruefergebnis zu EINEM Fall. Eigener Typ und
+    #   nicht ein zweiter Payload von QS_SAMPLE_DRAWN, weil es eine andere
+    #   Handlung einer anderen Person zu einer anderen Zeit ist.
+    #
+    #   SENSIBILITAETSREGEL wie M018/M022/M002: im Payload stehen nur FAKTEN
+    #   (sample_id, subject_id, ergebnis-CODE, Laenge der Begruendung,
+    #   ausserhalb_der_ziehung) — NIEMALS der WORTLAUT der Begruendung. Sie
+    #   kann Angaben zur Sache und zur Arbeitsweise einer namentlich bekannten
+    #   Person enthalten; im unveraenderlichen Audit-Protokoll hat sie deshalb
+    #   nichts zu suchen. Sie steht in qs_review.begruendung und ist dort ueber
+    #   die Sicht zugaenglich.
+    QS_SAMPLE_DRAWN: str = "qs_sample_drawn"
+    QS_REVIEW_RECORDED: str = "qs_review_recorded"
+
     # --- reserviert für spätere Builds (hier dokumentiert, noch nicht aktiv) ---
     # NOTIFICATION_SENT, RESTORE_PERFORMED
 
@@ -374,6 +395,10 @@ class EventType:
             # coordinator.audit_log (s. Kommentar bei der Definition).
             TATZEIT_SET,
             TATZEIT_CLEARED,
+            # Build 540 (AP-3C) — QS-Stichprobe, geschrieben in
+            # coordinator.audit_log ueber CoordinatorWriter.
+            QS_SAMPLE_DRAWN,
+            QS_REVIEW_RECORDED,
         }
     )
 

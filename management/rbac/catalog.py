@@ -349,6 +349,27 @@ CAPABILITIES: Tuple[Capability, ...] = (
                "Die Rangfolge der Faelle nach Bearbeitungsdringlichkeit und "
                "Erkenntnislage lesen. Die Matrix ist ein VORSCHLAG und keine "
                "Beweiswuerdigung (§ 261 StPO); sie schreibt keine Prioritaet."),
+
+    # --- AP-3C (Build 540, Seed in M034): QS-Stichprobe ---------------------
+    #   ZWEI Rechte, ausdruecklich GETRENNT (Muster release.view /
+    #   release.grant): wer die Stichprobe sehen darf, darf damit noch nicht
+    #   pruefen. Nur so bleibt Vier-Augen moeglich.
+    #
+    #   ZWECKBINDUNG: AUSWERTUNGSQUALITAET, KEIN MITARBEITER-BEWERTUNGS-
+    #   INSTRUMENT. Sie steht in jeder Antwort, jeder Sicht und jedem Export
+    #   (management/qs/qs_vokabular.py: ZWECKBINDUNG).
+    #
+    #   NICHT scope-behaftet: eine Stichprobe ueber den eigenen Arbeitsvorrat
+    #   waere keine. Grant an 'supervisor' UND 'lector' (Entscheidung mc
+    #   C-1) per policy_admin; default-deny.
+    Capability("qs.view", "QS-Stichproben sehen",
+               "Ziehungen und Pruefergebnisse der Qualitaetssicherung lesen. "
+               "AUSWERTUNGSQUALITAET, KEIN MITARBEITER-BEWERTUNGSINSTRUMENT."),
+    Capability("qs.edit", "QS-Stichproben ziehen und pruefen",
+               "Eine Stichprobe ziehen und Pruefergebnisse mit "
+               "Pflichtbegruendung erfassen. Die SELBSTPRUEFUNG ist "
+               "serverseitig gesperrt: wer einen Fall bearbeitet hat, kann ihn "
+               "nicht pruefen."),
 )
 
 

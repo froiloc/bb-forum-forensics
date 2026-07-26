@@ -2,8 +2,8 @@
 
 ## IT-Forensisches Ermittlungswerkzeug Advanced Investigation Wrapper (AIW) · NRW
 
-**Version:** 0.4
-**Build-Bezug:** 533 (evidence-Migrationen M002/M003; Abschnitte 1–13 unverändert aus v0.3/Build 469)
+**Version:** 0.5
+**Build-Bezug:** 540 (coordinator-Migration M034 — erste Migration der Welle 3, die neue Ermittlerdaten anlegt; Abschnitt 14 unverändert aus v0.4/Build 533, Abschnitte 1–13 aus v0.3/Build 469)
 **Datum:** 2026-07-26
 **Status:** Verbindlicher Workflow für Datenmigration im Produktivbetrieb
 **Klassifikation:** VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
@@ -410,4 +410,68 @@ Wie schon bei Build 531 vermerkt: `CREATE INDEX` und `CREATE TABLE` **ändern di
 ### 14.6 Ab wann die Kette lückenlos ist
 
 Die Kette beginnt mit der Genesis-Zeile aus M003. **Sie belegt nichts, was vor ihr geschah** — Annotationen, die vor Build 533 erfasst wurden, tragen keinen Kettenbeleg, weil es zu ihrer Zeit keine Kette gab. Das ist keine Lücke, die geschlossen werden kann, und sie darf nicht so aussehen, als wäre sie eine: der Genesis-Zeitstempel ist der Beginn der Belegbarkeit dieser Datei und in der Akte als solcher zu benennen.
+
+---
+
+## 15. Migration M034 — QS-Stichprobe in `coordinator.db` (NEU, Build 540)
+
+### 15.1 Warum dieser Abschnitt überhaupt nötig ist
+
+M034 ist die **erste Migration der Welle 3, die neue Ermittlerdaten anlegt** — Prüfergebnisse, die von Menschen erzeugt werden und in einen Vermerk eingehen können. Für alle bisherigen Migrationen dieser Welle (M032 `tatzeit.edit`, M033 `matrix.view`) galt: reine Rechte-Seeds, keine Daten, kein Vorbehalt. Hier ist das anders, und deshalb steht es hier.
+
+### 15.2 Warum sie trotzdem ohne Migrationsvorbehalt läuft
+
+Drei nachprüfbare Gründe:
+
+1. **Nur `coordinator.db`.** Die unter Vorbehalt stehenden Dateien `evidence_<uid>.db`, `forensic_<uid>.db` und `assets_<uid>.db` werden **nicht angefasst**.
+2. **Rein additiv.** Drei neue Tabellen (`qs_sample`, `qs_sample_item`, `qs_review`), drei neue Indizes, zwei neue Fähigkeiten. **Keine** bestehende Tabelle wird geändert, keine Spalte umbenannt, keine Zeile angefasst.
+3. **Es gibt nichts zu migrieren.** Vor M034 existierten diese Tabellen nicht; ein Datenverlust ist damit begrifflich ausgeschlossen. Die verlustfreie Migration ist trivial erfüllt.
+
+**Ab dem ersten geschriebenen Prüfergebnis gilt der Vorbehalt allerdings für diese Tabellen mit.** Eine spätere Strukturänderung an `qs_review` — etwa ein zusätzliches Pflichtfeld — ist migrationspflichtig, und zwar mit demselben Aufwand wie bei den `evidence_<uid>.db`. Wer eine solche Änderung plant, beginnt bei Abschnitt 3.
+
+### 15.3 Reihenfolge (verbindlich)
+
+M034 setzt `person`, `cases`, `audit_log` und `rbac_capability` voraus und **scheitert laut**, wenn eine davon fehlt. Sie läuft nach M033 und vor allem, was danach kommt. Die Migrationskette der `coordinator.db` lautet nach diesem Build durchgehend 1–34.
+
+### 15.4 Workflow
+
+```
+# 1. Sicherung (wie immer VOR jedem Lauf)
+copy coordinator.db coordinator.db.vor_m034
+
+# 2. Trockenlauf
+python -m management.migrations.migrate_admin plan --db coordinator.db
+
+# 3. Anwenden
+python -m management.migrations.migrate_admin up --db coordinator.db --actor <SYSUSER>
+
+# 4. Nachweis
+python -m management.migrations.migrate_admin status --db coordinator.db
+python -m management.audit.audit_admin verify --db coordinator.db
+```
+
+Erwartet nach Schritt 4: `schema_migrations` enthält Version 34, die Audit-Kette ist intakt, und `rbac_capability` zählt **43** Einträge.
+
+### 15.5 Die Selbstprüfung der Migration
+
+M034 prüft nach dem Anlegen **in einem SAVEPOINT, der immer zurückgerollt wird**, ob die CHECK-Bedingungen auch greifen: eine leere Begründung, ein unbekanntes Ergebnis, ein unbekanntes Verfahren und eine Stichprobe größer als die Grundgesamtheit müssen alle abgewiesen werden. Ein geschriebener, aber unwirksamer CHECK wäre schlimmer als keiner — er erzeugt Vertrauen, das er nicht trägt. Muster: M002 (Build 532).
+
+Fehlen Person, Fall oder Audit-Eintrag (frische, leere Datenbank), wird die Probe **übersprungen und das protokolliert**. Eine Probe gegen leere Fremdschlüssel würde etwas anderes messen als gemeint.
+
+### 15.6 Die Prüfsumme
+
+`CREATE TABLE` und `CREATE INDEX` ändern die **Datei**-Prüfsumme der `coordinator.db`; der Inhalt der Bestandstabellen bleibt unberührt. Die neue Prüfsumme ist nach dem Lauf im Manifest **fortzuschreiben**, nicht mit der alten zu vergleichen (wie in §14.5 für die `evidence_<uid>.db`).
+
+### 15.7 Die Rechte müssen danach vergeben werden
+
+M034 seedet die Fähigkeiten `qs.view` und `qs.edit`, **nicht** die Zuweisung an eine Rolle (default-deny). Ohne Grant sieht niemand die Stichprobe:
+
+```
+python -m management.rbac.rbac_admin grant --role supervisor --capability qs.view  --actor <SYSUSER>
+python -m management.rbac.rbac_admin grant --role supervisor --capability qs.edit  --actor <SYSUSER>
+python -m management.rbac.rbac_admin grant --role lector     --capability qs.view  --actor <SYSUSER>
+python -m management.rbac.rbac_admin grant --role lector     --capability qs.edit  --actor <SYSUSER>
+```
+
+Die Vergabe an `lector` ist eine Festlegung von mc (Entscheidung C-1, 2026-07-26) und kein Vorschlag: prüfte die Supervisorin allein, wäre sie genau dann das Nadelöhr, wenn die Fallzahl steigt.
 
