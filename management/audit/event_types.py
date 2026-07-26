@@ -320,6 +320,37 @@ class EventType:
     QS_SAMPLE_DRAWN: str = "qs_sample_drawn"
     QS_REVIEW_RECORDED: str = "qs_review_recorded"
 
+    # --- Build 561 (AP-3E, Instanz B): falluebergreifende Volltextsuche ----
+    #   FULLTEXT_SEARCHED: EIN Beleg je Abfrage — Stufe 1 UND Stufe 2, UND
+    #   AUCH BEIM LEERBEFUND (Klaerung AP-3E v0.2 §6 Nr. 1, Entscheidungen mc
+    #   §1). Der Leerbefund ist der wichtigste Teil dieser Regel: ohne ihn
+    #   liesse sich durch geschicktes Suchen SPURENFREI SONDIEREN — man
+    #   probiert Namen durch und nur die Treffer hinterlassen eine Spur.
+    #   Genau das waere die Umgehung der ganzen Zweckbindung.
+    #
+    #   FULLTEXT_RELEASE_GRANTED / _REVOKED: die Inhaltsfreigabe der Stufe 2
+    #   und ihr Widerruf (Tabelle fulltext_release, M040). Der Widerruf ist
+    #   ein EIGENER Typ und kein Payload-Merkmal — er ist die Aussage, dass
+    #   eine frueher erteilte Befugnis nicht mehr traegt; dieselbe Begruendung
+    #   wie bei ESCALATION_ACK_REVOKED und SUBJECT_ALIAS_RETRACTED.
+    #
+    #   Diese drei Werte gehen in die REGULAERE Kette (coordinator.audit_log),
+    #   nicht in evidence_audit_log: der fachliche Write geht nach
+    #   coordinator.db, und die Suche selbst schreibt in keiner
+    #   Beweismitteldatenbank auch nur ein Byte (sie liest 'mode=ro').
+    #
+    #   SENSIBILITAETSREGEL wie M018/M022/M027: im Payload stehen FAKTEN
+    #   (release_id, subject_id, person_id, zweck_code, Trefferzahl,
+    #   Suchmodus) und TEXTLAENGEN — NIEMALS die Begruendung und niemals der
+    #   Freitext einer 'sonstiges'-Zweckangabe. DER SUCHBEGRIFF ist die
+    #   EINZIGE bewusste Ausnahme: Klaerung §6 Nr. 1 zaehlt ihn ausdruecklich
+    #   auf, und ohne ihn belegte der Eintrag nichts. Der Preis — ein
+    #   Suchbegriff kann ein Klarname sein — ist im Modulkopf von
+    #   management/search/search_service.py benannt.
+    FULLTEXT_SEARCHED: str = "fulltext_searched"
+    FULLTEXT_RELEASE_GRANTED: str = "fulltext_release_granted"
+    FULLTEXT_RELEASE_REVOKED: str = "fulltext_release_revoked"
+
     # --- reserviert für spätere Builds (hier dokumentiert, noch nicht aktiv) ---
     # NOTIFICATION_SENT, RESTORE_PERFORMED
 
@@ -399,6 +430,10 @@ class EventType:
             # coordinator.audit_log ueber CoordinatorWriter.
             QS_SAMPLE_DRAWN,
             QS_REVIEW_RECORDED,
+            # --- Build 561 (AP-3E, Instanz B) ---
+            FULLTEXT_SEARCHED,
+            FULLTEXT_RELEASE_GRANTED,
+            FULLTEXT_RELEASE_REVOKED,
         }
     )
 

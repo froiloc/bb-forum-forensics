@@ -183,7 +183,11 @@ class ManagementRbacSchemaTests(unittest.TestCase):
         # +2 ab Build 540 ('qs.view'/'qs.edit', geseedet in M034) -> 43.
         #   GETRENNT und nicht zusammengefasst: nur so bleibt
         #   Vier-Augen moeglich (Muster release.view/release.grant).
-        self.assertEqual(len(cat_caps), 43)
+        # +1 ab Build 561 ('fulltext.release', geseedet in M040 — AP-3E,
+        #   Instanz B). Der Anker ist beim REBASE auf den vorgefundenen
+        #   Stand 43 aufgesetzt worden (Parallelbetrieb §6 Nr. 2/3);
+        #   die Verschiebung auf 43 stammt von Instanz A. -> 44.
+        self.assertEqual(len(cat_caps), 44)
         self.assertIn("external.view", cat_caps)
         self.assertIn("external.edit", cat_caps)
         self.assertIn("templates.edit", cat_caps)

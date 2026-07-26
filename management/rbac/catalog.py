@@ -370,6 +370,33 @@ CAPABILITIES: Tuple[Capability, ...] = (
                "Pflichtbegruendung erfassen. Die SELBSTPRUEFUNG ist "
                "serverseitig gesperrt: wer einen Fall bearbeitet hat, kann ihn "
                "nicht pruefen."),
+    # --- Build 561 (AP-3E, Instanz B): Inhaltsfreigabe der Volltextsuche ----
+    #   Seed in M040. ANKERDELTA: 43 -> 44 Faehigkeiten (Basis 43 ist der beim
+    #   Rebase auf v0.8.540 VORGEFUNDENE Stand, nicht der der Bauzeit;
+    #   Parallelbetrieb §6 Nr. 2).
+    #
+    #   WARUM EIN EIGENES RECHT UND NICHT 'release.grant' (M016): dort geht es
+    #   um die EXTERNE Fallfreigabe an eine andere Dienststelle — anderer
+    #   Empfaengerkreis, andere Zweckbindung, andere Rechtsgrundlage. Hier
+    #   geht es um die Sichtbarkeit des Arbeitsstands INNERHALB des Hauses.
+    #   Eine Wiederverwendung waere ein Zweckbindungsverstoss, keine
+    #   Sparsamkeit (dieselbe Abgrenzung wie tatzeit.edit gegenueber
+    #   results.edit).
+    #
+    #   NICHT scope-behaftet: der Sinn der Freigabe ist gerade der Zugriff auf
+    #   einen FREMDEN Fall. Ein Scope 'eigene' waere die Aufhebung der
+    #   Funktion, nicht ihre Absicherung.
+    #
+    #   ABGRENZUNG ZU 'evidence.fulltext_search' (seit M006 im Katalog): das
+    #   ist das Recht, ueberhaupt zu SUCHEN (Stufe 1). Dieses hier ist das
+    #   Recht, anderen den INHALT fremder Faelle zu OEFFNEN (Stufe 2). Wer
+    #   sucht, gibt damit nichts frei; wer freigibt, sucht damit nicht.
+    #   Grant an 'supervisor' per policy_admin (default-deny).
+    Capability("fulltext.release", "Inhaltsfreigabe der Volltextsuche erteilen",
+               "Einer Person den Zugriff auf den Trefferinhalt (Stufe 2) "
+               "eines ihr NICHT zugewiesenen Falls erteilen oder widerrufen. "
+               "Auditiert, mit Pflichtbegruendung; eine Freigabe je Fall und "
+               "Person."),
 )
 
 

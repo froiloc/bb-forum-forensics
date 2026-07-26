@@ -29,6 +29,25 @@
 #   - 'lectorate'/'approval' — beide arbeiten auf /api/reports, das ueber die
 #                 Sicht 'reports' bereits exportierbar ist; ein zweiter,
 #                 inhaltsgleicher Export haette nur Verwirrung gestiftet.
+#   - 'search'  — die falluebergreifende Volltextsuche (AP-3E, Build 563).
+#                 DREI GRUENDE, und der dritte waere allein schon zwingend:
+#                 (1) Sie hat KEINEN BESTAND. Es gibt nichts, was sich
+#                 exportieren liesse — nur das Ergebnis einer Abfrage, die
+#                 jemand gerade gestellt hat.
+#                 (2) Ihre Endpunkte sind POST und verlangen eine
+#                 PFLICHT-Zweckangabe (Entscheidung mc 2026-07-26, E-3). Der
+#                 Export ruft 'api_path' ueber dispatch() auf, also per GET
+#                 und ohne Rumpf — er koennte sie gar nicht mitgeben.
+#                 (3) EIN GENERISCHER EXPORT WUERDE DIE STUFE-2-SPERRE
+#                 UMGEHEN. Die Trefferlage nennt fremde Faelle; der INHALT ist
+#                 gesperrt und nur ueber eine belegte Freigabe zugaenglich
+#                 (fulltext_release, M040). Ein Export, der an dieser Stelle
+#                 vorbeigeht, machte das ganze Freigabemodell wirkungslos —
+#                 und zwar in einem Dokument, das anschliessend in einer Akte
+#                 liegt. Ein Export der SUCHE ist deshalb nicht 'noch nicht
+#                 gebaut', sondern ausgeschlossen. Was in die Akte gehoert,
+#                 ist der einzelne, gegen die Quelle verifizierte Treffer —
+#                 und der wird ueber den Fall exportiert, dem er gehoert.
 #   Alle uebrigen Sichten des VIEW_CATALOG sind erfasst (Test VE08 prueft das
 #   gegen cockpit.js, damit eine kuenftige neue Sicht nicht still durchfaellt).
 #

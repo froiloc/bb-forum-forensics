@@ -254,7 +254,21 @@
         // Aliassen versehen ist; gerade der haeufige Fall ist "dieselbe
         // Person, aber noch unbekannt WER". Recht crossref.view
         // (Pflegen zusaetzlich crossref.edit).
-        { id: 'merge',      cap: 'crossref.view',        group: 'Auswertung',     label: 'Identitäts-Gruppen' }
+        { id: 'merge',      cap: 'crossref.view',        group: 'Auswertung',     label: 'Identitäts-Gruppen' },
+        // Build 563 (AP-3E / Idee 38, Instanz B): fallUEBERGREIFENDE
+        // Volltextsuche. Gruppe 'Auswertung' neben Aliassen und
+        // Identitaets-Gruppen: alle drei beantworten dieselbe Frage —
+        // "gehoert das zusammen?" —, diese hier als einzige ueber die
+        // Grenze des eigenen Falls hinweg. Recht 'evidence.fulltext_search'
+        // (seit M006 im Katalog, default-deny) und BEWUSST NICHT
+        // scope-behaftet: auf 'eigene' verengt beantwortete die Sicht genau
+        // die Frage nicht, fuer die es sie gibt.
+        //
+        // DIE SICHT ZEIGT IN STUFE 1 KEINEN TEXT. Wer den Inhalt eines
+        // fremden Falls sehen will, braucht eine belegte Freigabe
+        // (fulltext.release, M040) — die Sperre steht in der Zeile, samt
+        // dem Weg zur Anfrage.
+        { id: 'search',     cap: 'evidence.fulltext_search', group: 'Auswertung', label: 'Volltextsuche' }
     ];
 
     // Gueltige Scope-Werte fuer die Anzeige (weitere -> kein Tag).
@@ -901,6 +915,105 @@
         }).catch(function (err) {
             cleanupView();
             mod.renderMatrix(mainEl, { error: err.message }, {});
+        });
+    }
+
+    // loadSearch / loadSearchInhalt: die falluebergreifende Volltextsuche
+    // (cockpit_search.js, Builds 560-563).
+    //
+    // DIE SUCHE IST EIN POST UND KEIN GET, obwohl sie fachlich nichts
+    // schreibt: jede Abfrage IST ein Beleg (FULLTEXT_SEARCHED), auch der
+    // Leerbefund. Deshalb laeuft sie ueber postJson (X-AIW-Token) und wird
+    // NIE automatisch ausgeloest — weder beim Oeffnen der Sicht noch beim
+    // SSE-Reload. Eine Sicht, die sich selbst neu sucht, erzeugte Belege
+    // ohne menschliche Handlung, und genau die waeren wertlos.
+    //
+    // Der Zweckkatalog kommt aus der DATENBANK (GET /api/fulltext/zwecke),
+    // damit die Maske genau das anbietet, was der Fremdschluessel annimmt.
+    function loadSearch(mainEl, zustand) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitSearch : null;
+        if (!mod) {
+            renderError(mainEl, 'Volltextsuche-Modul nicht geladen.');
+            return;
+        }
+        if (zustand) { state.searchZustand = zustand; }
+        var hooks = {
+            zwecke: state.searchZwecke || [],
+            zustand: state.searchZustand || {},
+            onSuche: function (z) { sucheAusfuehren(mainEl, z); },
+            onInhalt: function (uid) { loadSearchInhalt(mainEl, uid); },
+            onAnfrage: function (uid) {
+                window.alert(
+                    'Der Inhalt von Fall ' + uid + ' ist gesperrt.\n\n'
+                    + 'Bitte die Chef-Ermittlerin um eine Inhaltsfreigabe '
+                    + 'bitten; sie erteilt sie unter Angabe von Zweck und '
+                    + 'Begruendung. Eine Freigabe gilt je Fall und Person, '
+                    + 'nicht je Abfrage.');
+            }
+        };
+        // Der Katalog wird EINMAL je Sitzung geholt; danach steht er im
+        // State. Ohne ihn wird die Maske trotzdem gezeichnet — nur ohne
+        // Auswahl, und der Server weist die Abfrage dann mit Klartext ab.
+        if (state.searchZwecke) {
+            cleanupView();
+            mod.renderSearch(mainEl, state.searchDaten || {}, hooks);
+            return;
+        }
+        fetchJson('/api/fulltext/zwecke').then(function (k) {
+            state.searchZwecke = k.zwecke || [];
+            hooks.zwecke = state.searchZwecke;
+            cleanupView();
+            mod.renderSearch(mainEl, state.searchDaten || {}, hooks);
+            log('Zweckkatalog geladen:', state.searchZwecke.length, 'Codes');
+        }).catch(function (err) {
+            cleanupView();
+            mod.renderSearch(mainEl, { error: err.message }, hooks);
+        });
+    }
+
+    function sucheAusfuehren(mainEl, z) {
+        state.searchZustand = z;
+        postJson('/api/fulltext/lage', {
+            begriff: z.begriff, modus: z.modus,
+            zweck_code: z.zweck_code, zweck_freitext: z.zweck_freitext
+        }).then(function (data) {
+            state.searchDaten = data;
+            loadSearch(mainEl);
+            log('Trefferlage:', (data.faelle || []).length, 'Faelle');
+        }).catch(function (err) {
+            state.searchDaten = { error: err.message };
+            loadSearch(mainEl);
+        });
+    }
+
+    function loadSearchInhalt(mainEl, subjectId) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitSearch : null;
+        if (!mod) {
+            renderError(mainEl, 'Volltextsuche-Modul nicht geladen.');
+            return;
+        }
+        var z = state.searchZustand || {};
+        var hooks = {
+            onZurueck: function () { loadSearch(mainEl); },
+            onAnfrage: function () {
+                window.alert('Bitte die Chef-Ermittlerin um eine '
+                    + 'Inhaltsfreigabe bitten.');
+            }
+        };
+        postJson('/api/fulltext/inhalt', {
+            begriff: z.begriff, modus: z.modus, subject_id: subjectId,
+            zweck_code: z.zweck_code, zweck_freitext: z.zweck_freitext
+        }).then(function (data) {
+            cleanupView();
+            mod.renderInhalt(mainEl, data, hooks);
+        }).catch(function (err) {
+            cleanupView();
+            mod.renderInhalt(mainEl, { error: err.message,
+                                       subject_id: subjectId }, hooks);
         });
     }
 
@@ -3204,6 +3317,11 @@
             loadHandover(mainEl);
         } else if (viewId === 'retention') {
             loadRetention(mainEl);
+        } else if (viewId === 'search') {
+            // Build 563 (AP-3E): die Volltextsuche. Sie SUCHT BEIM OEFFNEN
+            // NICHT — die Maske erscheint leer. Ein automatischer Lauf
+            // erzeugte einen Beleg ohne menschliche Handlung.
+            loadSearch(mainEl);
         } else if (viewId === 'capacity') {
             loadCapacity(mainEl);
         } else if (viewId === 'policy') {

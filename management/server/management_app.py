@@ -476,6 +476,19 @@ CAP_LIMITATION_VIEW = "limitation.view"
 # waere keine.
 CAP_MATRIX_VIEW = "matrix.view"
 
+# --- Build 562 (AP-3E / Idee 38, Instanz B): Volltextsuche -------------------
+# CAP_FULLTEXT_SEARCH liegt seit M006 im Katalog und ist das Recht, ueberhaupt
+# zu SUCHEN (Stufe 1). NICHT scope-faehig, default-deny (Entscheidung mc
+# 2026-07-26, E-2): eine auf die eigenen Faelle beschraenkte Suche beantwortet
+# genau die Frage nicht, fuer die die Funktion gebaut wird (Kreuzbezug ZWISCHEN
+# Faellen), wuerde aber als Sicherheitsgewinn verbucht. Die Kapselung leistet in
+# Modell B die Stufe 2, nicht der Scope.
+CAP_FULLTEXT_SEARCH = "evidence.fulltext_search"
+# CAP_FULLTEXT_RELEASE (Seed in M040, Build 561) ist das Recht, ANDEREN den
+# Inhalt fremder Faelle zu OEFFNEN. Wer sucht, gibt damit nichts frei; wer
+# freigibt, sucht damit nicht.
+CAP_FULLTEXT_RELEASE = "fulltext.release"
+
 logger = logging.getLogger(__name__)
 
 # Zulaessige Werte fuer die auditierten Schreibpfade (Build 372).
@@ -949,6 +962,18 @@ class ManagementApp:
         if path == "/api/names":
             return self._names(person_id, query)
 
+        # --- Build 562 (AP-3E / Idee 38, Instanz B): Volltextsuche ---------
+        # NUR die Katalog-/Statusauskunft ist ein GET. DIE SUCHE SELBST IST
+        # EIN POST (s. dispatch_write): jede Abfrage schreibt einen Beleg
+        # (FULLTEXT_SEARCHED, auch der Leerbefund), und ein GET, der schreibt,
+        # erzeugte bei jedem Seitenwechsel und jedem Neuladen einen weiteren
+        # Beleg — die Protokollspalte waere binnen Tagen unbrauchbar.
+        if path == "/api/fulltext/zwecke":
+            return self._fulltext_zwecke(person_id)
+        if path == "/api/fulltext/indexstand":
+            return self._fulltext_indexstand(person_id)
+        if path == "/api/fulltext/releases":
+            return self._fulltext_releases(person_id, query)
         if path.startswith("/static/"):
             return self._serve_static(path[len("/static/"):])
         return Response.json(404, {"error": "not_found", "path": path})
@@ -5916,6 +5941,21 @@ class ManagementApp:
             return self._note_duplicate(person_id, payload)
         if path == "/api/mentoring/note/reorder":
             return self._note_reorder(person_id, payload)
+        # --- Build 562 (AP-3E / Idee 38, Instanz B): Volltextsuche ---------
+        # DIE SUCHE IST EIN POST UND KEIN GET, obwohl sie nichts Fachliches
+        # schreibt. Begruendung: jede Abfrage IST ein Beleg (Klaerung §6
+        # Nr. 1) — auch der Leerbefund, sonst liesse sich spurenfrei
+        # sondieren. Ein GET, der belegt, erzeugte bei jedem Neuladen einen
+        # weiteren Eintrag; ausserdem traegt der POST-Rumpf die
+        # PFLICHT-Zweckangabe (E-3), die in einer URL nichts zu suchen hat.
+        if path == "/api/fulltext/lage":
+            return self._fulltext_lage(person_id, payload)
+        if path == "/api/fulltext/inhalt":
+            return self._fulltext_inhalt(person_id, payload)
+        if path == "/api/fulltext/release/grant":
+            return self._fulltext_release_grant(person_id, payload)
+        if path == "/api/fulltext/release/revoke":
+            return self._fulltext_release_revoke(person_id, payload)
         return Response.json(404, {"error": "not_found", "path": path})
 
     # ------------------------------------------------------------- Schreiben
@@ -6245,3 +6285,297 @@ class ManagementApp:
             "launched": True,
             "subject_id": subject_id,
             "pid": info.get("pid")})
+
+    # =====================================================================
+    # --- Build 562 (AP-3E / Idee 38, Instanz B): Volltextsuche ------------
+    # =====================================================================
+    # Hier steht AUSSCHLIESSLICH die Anbindung: Recht pruefen, Rumpf
+    # auspacken, Fachfehler in HTTP uebersetzen. Die Fachlogik liegt
+    # vollstaendig in der eigenen Zone (management/search/**), wie
+    # Parallelbetrieb §4 es fuer diese Datei verlangt.
+
+    def _search_index_pfad(self) -> str:
+        """
+        Pfad der search_index.db.
+
+        Sie liegt NEBEN den Beweismitteln, nicht darin — ein Hilfsmittel, das
+        jederzeit geloescht werden darf. Aus der Konfiguration lesbar
+        (paths.search_index_db); ohne Eintrag der Standard neben
+        coordinator.db, damit die Anlage auch ohne Konfigurationsaenderung
+        laeuft. Der Rueckfall wird protokolliert (Grundregel 1).
+        """
+        try:
+            from core.config_loader import ConfigLoader
+            wert = ConfigLoader().get("paths.search_index_db")
+            if wert:
+                return str(wert)
+        except Exception as exc:  # pragma: no cover — Konfig-Ausfall
+            logger.warning("search_index_db nicht aus config.yaml lesbar "
+                           "(%s) — Standard neben coordinator.db.", exc)
+        return str(Path(self._db_path).parent / "search_index.db")
+
+    def _fulltext_service(self, con):
+        """
+        Baut den Suchdienst. Wirft SearchIndexFehler, wenn FTS5/trigram
+        fehlen — der Aufrufer uebersetzt das in eine 503 mit Klartext. KEIN
+        Rueckfall auf LIKE: er faende nur einen Teil und schwiege darueber.
+        """
+        from db.search_index_db import SearchIndexDb
+        from management.gateway.coordinator_writer import CoordinatorWriter
+        from management.search.search_service import FulltextSearchService
+        index = SearchIndexDb(self._search_index_pfad())
+        writer = CoordinatorWriter(con, AuditLog(con))
+        return index, FulltextSearchService(
+            coordinator_con=con, index_db=index,
+            evidence_dir=self._evidence_dir, writer=writer)
+
+    def _fulltext_zwecke(self, person_id: int) -> Response:
+        """
+        GET /api/fulltext/zwecke — die Auswahlliste der Zweckcodes (E-3).
+
+        AUS DER DATENBANK, nicht aus dem Code: die Sicht soll genau das
+        anbieten, was der Fremdschluessel auch annimmt. Liefen Katalogtabelle
+        und Vokabular auseinander, faellt es hier auf und nicht erst beim
+        Schreiben.
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_FULLTEXT_SEARCH):
+            return self._forbidden(CAP_FULLTEXT_SEARCH)
+        from management.search.release_repo import FulltextReleaseRepo
+        con = self._ro_con()
+        try:
+            repo = FulltextReleaseRepo(con, None)
+            zwecke = repo.zweck_katalog()
+        finally:
+            con.close()
+        return Response.json(200, {
+            "zwecke": zwecke,
+            "hinweis": ("Die Zweckangabe ist bei JEDER Abfrage Pflicht. Der "
+                        "Anteil von 'sonstiges' ist die Kennzahl dafuer, ob "
+                        "diese Liste vollstaendig ist — steigt er, fehlt ein "
+                        "Code."),
+            "vollstaendig": bool(zwecke),
+            "detail": (None if zwecke else
+                       "Der Zweckkatalog ist leer — die Migration M040 ist "
+                       "vermutlich nicht angewandt. Es ist NICHT gesagt, dass "
+                       "keine Zwecke vorgesehen sind.")})
+
+    def _fulltext_indexstand(self, person_id: int) -> Response:
+        """GET /api/fulltext/indexstand — wie aktuell ist der Index?"""
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_FULLTEXT_SEARCH):
+            return self._forbidden(CAP_FULLTEXT_SEARCH)
+        con = self._ro_con()
+        index = None
+        try:
+            index, dienst = self._fulltext_service(con)
+            return Response.json(200, dienst.indexstand())
+        except Exception as exc:
+            return self._fulltext_fehler(exc)
+        finally:
+            if index is not None:
+                index.close()
+            con.close()
+
+    def _fulltext_releases(self, person_id: int, query) -> Response:
+        """
+        GET /api/fulltext/releases[?subject_id=N] — bestehende Freigaben.
+
+        OHNE Parameter: die eigenen ('was darf ich sehen?') — dafuer genuegt
+        das Suchrecht. MIT subject_id: wer darf in DIESEN Fall sehen — das ist
+        die Aufsichtsrichtung und verlangt 'fulltext.release'.
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_FULLTEXT_SEARCH):
+            return self._forbidden(CAP_FULLTEXT_SEARCH)
+        raw = self._q1(query, "subject_id")
+        from management.search.release_repo import FulltextReleaseRepo
+        con = self._ro_con()
+        try:
+            repo = FulltextReleaseRepo(con, None)
+            if raw in (None, ""):
+                return Response.json(200, {
+                    "richtung": "eigene",
+                    "person_id": person_id,
+                    "freigaben": repo.fuer_person(person_id)})
+            if not policy.can(CAP_FULLTEXT_RELEASE):
+                return self._forbidden(CAP_FULLTEXT_RELEASE)
+            try:
+                uid = int(raw)
+            except (TypeError, ValueError):
+                return Response.json(400, {
+                    "error": "bad_request",
+                    "detail": "subject_id ungueltig."})
+            return Response.json(200, {
+                "richtung": "fall",
+                "subject_id": uid,
+                "freigaben": repo.fuer_fall(uid)})
+        finally:
+            con.close()
+
+    def _fulltext_lage(self, person_id: int,
+                       payload: Dict[str, Any]) -> Response:
+        """
+        POST /api/fulltext/lage — STUFE 1: Trefferlage OHNE Textausschnitt.
+
+        Rumpf: {begriff, zweck_code, zweck_freitext?, modus?}
+        Frei fuer alle mit 'evidence.fulltext_search' (kein Scope, E-2).
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_FULLTEXT_SEARCH):
+            return self._forbidden(CAP_FULLTEXT_SEARCH)
+        con = self._rw_con()
+        index = None
+        try:
+            index, dienst = self._fulltext_service(con)
+            return Response.json(200, dienst.lage(
+                begriff=payload.get("begriff") or "",
+                person_id=person_id,
+                zweck_code=payload.get("zweck_code"),
+                zweck_freitext=payload.get("zweck_freitext"),
+                modus=payload.get("modus") or "wort"))
+        except Exception as exc:
+            return self._fulltext_fehler(exc)
+        finally:
+            if index is not None:
+                index.close()
+            con.close()
+
+    def _fulltext_inhalt(self, person_id: int,
+                         payload: Dict[str, Any]) -> Response:
+        """
+        POST /api/fulltext/inhalt — STUFE 2: die Treffer EINES Falls mit Text.
+
+        Rumpf: {begriff, subject_id, zweck_code, zweck_freitext?, modus?}
+
+        EINE ABWEISUNG IST HIER KEIN 403. Die Antwort kommt mit 200 und
+        'erlaubt': false samt Grund — denn die Abweisung ist ein
+        ERMITTLUNGSERGEBNIS ('zu diesem Fall gibt es etwas, aber Sie duerfen
+        es nicht sehen; hier ist der Weg zur Freigabe') und kein
+        Berechtigungsfehler. Ein 403 sagte 'Sie haben hier nichts verloren' —
+        das waere sachlich falsch und wuerde die Ermittlerin von dem Schritt
+        abhalten, den das Modell gerade vorsieht. Das FEHLENDE SUCHRECHT ist
+        dagegen sehr wohl ein 403 (s. oben).
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_FULLTEXT_SEARCH):
+            return self._forbidden(CAP_FULLTEXT_SEARCH)
+        try:
+            uid = int(payload.get("subject_id"))
+        except (TypeError, ValueError):
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "subject_id fehlt/ungueltig."})
+        con = self._rw_con()
+        index = None
+        try:
+            index, dienst = self._fulltext_service(con)
+            return Response.json(200, dienst.inhalt(
+                begriff=payload.get("begriff") or "",
+                subject_id=uid, person_id=person_id,
+                zweck_code=payload.get("zweck_code"),
+                zweck_freitext=payload.get("zweck_freitext"),
+                modus=payload.get("modus") or "wort"))
+        except Exception as exc:
+            return self._fulltext_fehler(exc)
+        finally:
+            if index is not None:
+                index.close()
+            con.close()
+
+    def _fulltext_release_grant(self, person_id: int,
+                                payload: Dict[str, Any]) -> Response:
+        """
+        POST /api/fulltext/release/grant — Inhaltsfreigabe erteilen.
+
+        Rumpf: {subject_id, person_id, zweck_code, zweck_freitext?,
+                begruendung}
+        Recht: 'fulltext.release' (NICHT 'evidence.fulltext_search' — wer
+        sucht, gibt damit nichts frei).
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_FULLTEXT_RELEASE):
+            return self._forbidden(CAP_FULLTEXT_RELEASE)
+        from management.gateway.coordinator_writer import CoordinatorWriter
+        from management.search.release_repo import (
+            FulltextReleaseFehler, FulltextReleaseRepo)
+        con = self._rw_con()
+        try:
+            repo = FulltextReleaseRepo(con, CoordinatorWriter(con,
+                                                              AuditLog(con)))
+            erg = repo.erteile(
+                subject_id=payload.get("subject_id"),
+                person_id=payload.get("person_id"),
+                zweck_code=payload.get("zweck_code"),
+                zweck_freitext=payload.get("zweck_freitext"),
+                begruendung=payload.get("begruendung") or "",
+                actor_id=person_id)
+            return Response.json(200, {"ok": True, **erg})
+        except FulltextReleaseFehler as exc:
+            return Response.json(400, {"error": "release_failed",
+                                       "detail": str(exc)})
+        except (TypeError, ValueError) as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+
+    def _fulltext_release_revoke(self, person_id: int,
+                                 payload: Dict[str, Any]) -> Response:
+        """
+        POST /api/fulltext/release/revoke — Inhaltsfreigabe widerrufen.
+
+        Rumpf: {release_id, reason}. Die Zeile BLEIBT stehen; nur is_active
+        kippt. Ein stilles Loeschen vernichtete die Erkenntnis "es wurde
+        einmal freigegeben", und gerade die ist die aufsichtsrelevante.
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_FULLTEXT_RELEASE):
+            return self._forbidden(CAP_FULLTEXT_RELEASE)
+        from management.gateway.coordinator_writer import CoordinatorWriter
+        from management.search.release_repo import (
+            FulltextReleaseFehler, FulltextReleaseRepo)
+        con = self._rw_con()
+        try:
+            repo = FulltextReleaseRepo(con, CoordinatorWriter(con,
+                                                              AuditLog(con)))
+            erg = repo.widerrufe(
+                release_id=payload.get("release_id"),
+                reason=payload.get("reason") or "",
+                actor_id=person_id)
+            return Response.json(200, {"ok": True, **erg})
+        except FulltextReleaseFehler as exc:
+            return Response.json(400, {"error": "revoke_failed",
+                                       "detail": str(exc)})
+        except (TypeError, ValueError) as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+
+    @staticmethod
+    def _fulltext_fehler(exc: Exception) -> Response:
+        """
+        Uebersetzt die Fachfehler der Suche in HTTP — jeder mit Klartext.
+
+        DREI VERSCHIEDENE LAGEN, DREI VERSCHIEDENE ANTWORTEN:
+          * SearchIndexFehler -> 503. Die Anlage kann nicht suchen (FTS5 oder
+            trigram fehlen, Indexdatei nicht anlegbar). Das ist ein
+            BETRIEBSZUSTAND und darf nicht wie ein Leerbefund aussehen.
+          * FulltextSearchFehler -> 400. Die ANFRAGE ist unbrauchbar (fehlende
+            oder falsche Zweckangabe). Der Klartext nennt die zulaessigen
+            Codes, damit die Sicht ihn anzeigen kann.
+          * alles andere -> weiterreichen. Ein unerwarteter Fehler wird NICHT
+            zu einer freundlichen 400 verkleinert; er gehoert ins Protokoll
+            und in die 500 des Handlers.
+        """
+        from db.search_index_db import SearchIndexFehler
+        from management.search.search_service import FulltextSearchFehler
+        if isinstance(exc, SearchIndexFehler):
+            logger.error("Volltextsuche nicht betriebsbereit: %s", exc)
+            return Response.json(503, {
+                "error": "index_unavailable", "detail": str(exc)})
+        if isinstance(exc, FulltextSearchFehler):
+            return Response.json(400, {
+                "error": "bad_request", "detail": str(exc)})
+        raise exc

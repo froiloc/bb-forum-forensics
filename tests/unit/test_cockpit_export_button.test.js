@@ -40,7 +40,13 @@ function _api() {
 
 // Deckungsgleich mit _BEWUSST_OHNE_EXPORT in tests/test_view_export_api.py
 // und mit dem Kommentar in view_export_catalog.py.
-const OHNE_EXPORT = ["notes", "lectorate", "approval"];
+// Build 563 (AP-3E, Instanz B): "search" kommt hinzu. Die
+// falluebergreifende Volltextsuche hat KEINEN Bestand, ihre Endpunkte
+// sind POST mit PFLICHT-Zweckangabe, und ein generischer Export wuerde
+// die Stufe-2-Sperre umgehen — er stellte fremden Arbeitsstand in ein
+// Dokument, das anschliessend in einer Akte liegt. Ausfuehrlich in
+// management/export/view_export_catalog.py.
+const OHNE_EXPORT = ["notes", "lectorate", "approval", "search"];
 
 describe("cockpit.js — Akten-Export-Knopf (Build 512, AP-2B/B1)", () => {
   // EX01 ---------------------------------------------------------------------

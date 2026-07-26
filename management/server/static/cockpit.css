@@ -2438,3 +2438,92 @@ tr.aiw-cff-nichtrelevant { opacity: 0.7; }
 .aiw-mx-vorbehalte { font-size: 12px; color: #4a5158; }
 .aiw-mx-vorbehalte summary { cursor: pointer; }
 .aiw-mx-vorbehalte li { margin: 4px 0; }
+
+/* ===========================================================================
+   Build 563 (AP-3E / Idee 38, Instanz B): Fallübergreifende Volltextsuche.
+   AUSSCHLIESSLICH ANS DATEIENDE ANGEHÄNGT (Parallelbetrieb §4) — keine
+   bestehende Regelgruppe ist angefasst, und dieser Block steht HINTER dem
+   letzten Block von mc (Stand 0.8.536b). Alle Selektoren tragen das Präfix
+   'aiw-search', damit sie mit nichts kollidieren können.
+
+   DIE EINZIGE GESTALTERISCHE ENTSCHEIDUNG MIT FACHLICHER BEDEUTUNG:
+   '.aiw-search-stand--warn' hebt den Kopf hervor, sobald der Indexstand
+   NICHT belastbar ist. Ein Index, der drei Tage alt ist, liefert eine
+   Trefferlage von vor drei Tagen; steht das unauffällig da, liest es
+   niemand — und ein Leerbefund sähe aus wie „es gibt nichts".
+   =========================================================================== */
+
+.aiw-search { display: flex; flex-direction: column; gap: .75rem; }
+
+.aiw-search-stand {
+    padding: .5rem .75rem;
+    border-left: 4px solid #9aa5b1;
+    background: #f4f6f8;
+    font-size: .9rem;
+}
+.aiw-search-stand--warn {
+    border-left-color: #b8860b;
+    background: #fdf6e3;
+    font-weight: 600;
+}
+
+.aiw-search-maske {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    align-items: center;
+}
+.aiw-search-begriff { min-width: 16rem; }
+.aiw-search-freitext { min-width: 18rem; }
+.aiw-search-freitext:disabled { background: #eceff1; }
+
+.aiw-search-warn { color: #8a5a00; margin: .25rem 0; }
+.aiw-search-leer { color: #52606d; font-style: italic; }
+.aiw-search-summe { margin: .25rem 0; }
+
+.aiw-search-liste { display: flex; flex-direction: column; gap: .5rem; }
+
+.aiw-search-fall, .aiw-search-treffer {
+    border: 1px solid #cbd2d9;
+    border-radius: 4px;
+    padding: .5rem .75rem;
+}
+.aiw-search-fall-kopf {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: baseline;
+}
+/* Die drei Fassungen stehen NEBENEINANDER und werden nie summiert
+   (index_vokabular.FASSUNGEN). Zurückhaltend gesetzt, damit die Zahl
+   'aktuell' nicht optisch untergeht. */
+.aiw-search-fassung { color: #52606d; font-size: .9rem; }
+
+.aiw-search-meta {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: .1rem .75rem;
+    margin: .4rem 0 .2rem 0;
+}
+.aiw-search-meta dt { color: #52606d; font-size: .85rem; }
+.aiw-search-meta dd { margin: 0; font-size: .9rem; }
+
+.aiw-search-sicht {
+    display: flex;
+    gap: .75rem;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: .35rem;
+    font-size: .9rem;
+}
+.aiw-search-gesperrt {
+    border: 1px dashed #b8860b;
+    border-radius: 4px;
+    padding: .75rem;
+    background: #fdf6e3;
+}
+.aiw-search-herkunft { color: #52606d; font-size: .85rem; }
+/* Der Ausschnitt stammt AUS DER QUELLE und ist gegen sie verifiziert
+   (quellen_verifikation.py). Er wird bewusst nicht hervorgehoben: er ist
+   eine Anzeigehilfe, kein Zitat — wer zitieren will, öffnet den Fall. */
+.aiw-search-text { margin: .35rem 0 0 0; white-space: pre-wrap; }

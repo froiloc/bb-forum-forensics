@@ -229,14 +229,38 @@ class ManagementDashboardTests(unittest.TestCase):
         # qs_sample/qs_sample_item/qs_review PLUS die Rechte qs.view/qs.edit.
         # Erster Build der Welle 3, der neue Ermittlerdaten anlegt; rein
         # additiv und nur in coordinator.db, deshalb ohne Migrationsvorbehalt).
+        # Build 561: M040 (fulltext_zweck + fulltext_release + Seed
+        # fulltext.release — AP-3E/Idee 38, Instanz B; NEUE Tabellen, rein
+        # additiv, keine Zeile beruehrt).
+        #
+        # DIE LISTE IST BEWUSST AUS DREI TEILEN ZUSAMMENGESETZT statt als ein
+        # Literal geschrieben: im Parallelbetrieb muessen BEIDE Instanzen hier
+        # eintragen, und ein gemeinsames Literal hiesse, dass beide dieselbe
+        # Zeile anfassen. So hat jede ihre eigene (Parallelbetrieb §4,
+        # "am Rand arbeiten, nie in der Mitte").
+        #
+        # ACHTUNG — DIE LUECKE 35..39 IST BEABSICHTIGT UND KEIN FEHLER.
+        # Parallelbetrieb §5 weist Instanz A den Kreis m033-m039 zu (m033/m034
+        # sind geliefert) und Instanz B den Kreis m040-m049.
+        #
+        # DASS DIESE LUECKE IN DER LAUFENDEN ANLAGE GEFAEHRLICH IST, steht in
+        # management/Vermerk_Migrationsluecke_Parallelbetrieb_v0_1.md: der
+        # MigrationRunner fuehrt einen HOECHSTSTAND und keine Menge, weshalb
+        # m035-m039 nach einem Lauf von M040 STILL uebersprungen wuerden. mc
+        # hat am 2026-07-26 entschieden, die Migrationen deshalb STRIKT ZU
+        # SERIALISIEREN. Im TEST ist die Luecke unschaedlich (jede Ausfuehrung
+        # beginnt mit einer frischen Datenbank und wendet alle Module in einem
+        # Lauf an) — IN DER VM IST SIE ES NICHT. Vor jedem Einspielen:
+        #     python tools/pruefe_migrationskette.py --db <coordinator.db>
+        _BASIS = [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
+                  19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]
+        _INSTANZ_A = [33, 34]      # Builds 536/539, AP-3B und AP-3C
+        _INSTANZ_B = [40]          # Build 561, AP-3E
+        _ALLE = _BASIS + _INSTANZ_A + _INSTANZ_B
         self.assertEqual(self.applied,
-                         [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-                          17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
-                          30, 31, 32, 33, 34]
+                         sorted(_ALLE)
                          if 3 not in self.applied
-                         else [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
-                               15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
-                               27, 28, 29, 30, 31, 32, 33, 34])
+                         else sorted(_ALLE + [3]))
         # discover findet M001..M006 -> support_sessions (M003) IST dabei,
         # der person-Rename (M005, Build 342) ebenso wie das RBAC-Schema
         # (M006, Build 343).

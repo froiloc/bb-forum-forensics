@@ -75,7 +75,9 @@ class DemoSeedTests(unittest.TestCase):
         # +1 ab Build 533: tatzeit.edit aus M032 -> 40.
         # +1 ab Build 536: matrix.view aus M033 -> 41.
         # +2 ab Build 540: qs.view/qs.edit aus M034 -> 43.
-        self.assertEqual(self._count("rbac_capability"), 43)
+        # +1 ab Build 561: fulltext.release aus M040 (AP-3E, Instanz B)
+        #   -> 44. Basis 43 ist der beim Rebase vorgefundene Stand.
+        self.assertEqual(self._count("rbac_capability"), 44)
         # Leitung hat die Supervisor-Rolle + Grants.
         self.assertGreater(self._count("rbac_grant"), 0)
         self.assertEqual(self.summary["demo"], True)

@@ -110,7 +110,11 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     // Build 539: 38 (neu: 'matrix' - Dringlichkeit & Erkenntnislage,
     //           AP-3B; Gruppe 'Auswertung', EIGENES Recht matrix.view
     //           aus M033 - ausdruecklich NICHT limitation.view).
-    expect(api.VIEW_CATALOG.length).toBe(38);
+    // Build 563: 39 (neu: 'search' - falluebergreifende Volltextsuche,
+    //           AP-3E/Idee 38, Instanz B; Gruppe 'Auswertung', Recht
+    //           evidence.fulltext_search). ANKER BEWUSST ANGEPASST auf
+    //           den beim Rebase vorgefundenen Stand 38.
+    expect(api.VIEW_CATALOG.length).toBe(39);
   });
 
   // CN-QUERFUND (Build 478) --------------------------------------------------

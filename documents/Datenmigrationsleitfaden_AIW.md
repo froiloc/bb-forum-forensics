@@ -2,8 +2,8 @@
 
 ## IT-Forensisches Ermittlungswerkzeug Advanced Investigation Wrapper (AIW) · NRW
 
-**Version:** 0.5
-**Build-Bezug:** 540 (coordinator-Migration M034 — erste Migration der Welle 3, die neue Ermittlerdaten anlegt; Abschnitt 14 unverändert aus v0.4/Build 533, Abschnitte 1–13 aus v0.3/Build 469)
+**Version:** 0.6
+**Build-Bezug:** 563 (coordinator-Migration M040, AP-3E/Instanz B; Abschnitt 15 unverändert aus v0.5/Build 540, Abschnitt 14 aus v0.4/Build 533, Abschnitte 1–13 aus v0.3/Build 469)
 **Datum:** 2026-07-26
 **Status:** Verbindlicher Workflow für Datenmigration im Produktivbetrieb
 **Klassifikation:** VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
@@ -14,6 +14,7 @@
 
 | Version | Build | Datum      | Änderung                                                                                                                                                              |
 | ------- | ----- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0.6     | 563   | 2026-07-26 | Neuer **Abschnitt 16**: die coordinator-Migration **M040** (`fulltext_zweck`, `fulltext_release`, Recht `fulltext.release`) für die fallübergreifende Volltextsuche (AP-3E, Instanz B) — rein additiv, **keine** Beweismitteldatenbank berührt. Enthält den **Sperrvermerk**: M040 darf erst eingespielt werden, wenn Instanz A ihre Migrationen m035–m039 geliefert hat, weil der `MigrationRunner` einen Höchststand statt einer Menge führt und später gelieferte niedrigere Nummern sonst **still übersprungen** würden (Beleg: `management/Vermerk_Migrationsluecke_Parallelbetrieb_v0_1.md`, reproduziert mit `tools/diag_migrationsluecke.py`). Neues Prüfwerkzeug `tools/pruefe_migrationskette.py`. *Anmerkung: zu v0.5 (Abschnitt 15, M034) gibt es keine Zeile in dieser Tabelle — der Kopf wurde fortgeschrieben, die Historie nicht. Hier nur vermerkt, nicht von mir nachgetragen.* |
 | 0.4     | 533   | 2026-07-26 | Neuer **Abschnitt 14**: die evidence-Migrationen **M002** (`annotation_tatzeit`, Build 532) und **M003** (`evidence_audit_log` + Genesis, Build 533) — die ersten Strukturänderungen an einer Beweismitteldatenbank nach dem 01.07.2026. Beide additiv und datenneutral, nachgewiesen über Inhaltshashes (TZ04/EA03). Enthält den ausdrücklichen Vermerk, dass der Eintrag für M002 bis hierher **gefehlt** hat. Beleg: Entscheidung mc 2026-07-26 (eigene Beleg-Kette in der evidence-Datei statt Best-Effort-Eintrag in `coordinator.db`). |
 | 0.1     | 303   | 2026-06-25 | Erstfassung — Migrationsleitfaden (Vier-Phasen-Workflow, Gerichtsfestigkeit, Einzel-DB)                                                                             |
 | 0.3     | 469   | 2026-07-20 | Neuer **Abschnitt 13**: Migration **M019** — globale Schlüsselumstellung `user_id` → `subject_id` in `coordinator.db` (Weg A, `RENAME COLUMN`): Vorher-Backup, Weg-A-PoC-Protokoll (`tools/poc_m019_weg_a.py`), Roll-forward, Verifikations-Checkliste, Rollback-Pfad. Beleg: mc-Freigabe 2026-07-20, PoC bestanden. |
@@ -475,3 +476,115 @@ python -m management.rbac.rbac_admin grant --role lector     --capability qs.edi
 
 Die Vergabe an `lector` ist eine Festlegung von mc (Entscheidung C-1, 2026-07-26) und kein Vorschlag: prüfte die Supervisorin allein, wäre sie genau dann das Nadelöhr, wenn die Fallzahl steigt.
 
+---
+
+## 16. Coordinator-Migration M040 — Inhaltsfreigabe der Volltextsuche (NEU, Build 561)
+
+> **Kurzfassung:** Rein additiv, **nur `coordinator.db`**, zwei neue Tabellen und
+> ein neuer RBAC-Seed. **Keine** Beweismitteldatenbank ist berührt, der
+> Migrationsvorbehalt seit dem 01.07.2026 greift nicht. Es gibt aber einen
+> **Sperrvermerk zur Reihenfolge** — s. §16.1. Der ist der eigentliche Grund,
+> warum dieser Abschnitt existiert.
+
+### 16.1 SPERRVERMERK — Reihenfolge vor Inhalt
+
+**M040 darf erst eingespielt werden, wenn Instanz A ihre Migrationen
+m035–m039 eingespielt hat** (oder mc festgestellt hat, dass es keine gibt).
+
+**Grund** (reproduziert am 2026-07-26 mit `tools/diag_migrationsluecke.py`;
+ausführlich in `management/Vermerk_Migrationsluecke_Parallelbetrieb_v0_1.md`):
+`MigrationRunner` führt einen **Höchststand** und keine Menge —
+
+```python
+current = MAX(version) FROM schema_migrations
+if mod.VERSION <= current:            # runner.py:119
+    self._check_checksum(mod); continue
+```
+
+Läuft M040 vor m035–m039, werden diese Migrationen **für immer
+übersprungen**: `run()` meldet dann „Keine ausstehenden Migrationen" für einen
+Zustand, in dem sieben Schemaänderungen fehlen. `_check_checksum` schweigt
+dabei, weil es zu einer nie angewandten Version gar keine Registry-Zeile gibt
+(`runner.py:207-209`).
+
+mc hat am 2026-07-26 entschieden, die Migrationen der Instanzen **strikt zu
+serialisieren**, statt den Runner zu ändern. Diese Entscheidung verhindert, dass
+die Falle **ausgelöst** wird; sie entschärft sie nicht.
+
+**Vor jedem Einspielen — verbindlich:**
+
+```
+python tools/pruefe_migrationskette.py --db data/coordinator.db
+```
+
+Exit `0` = unbedenklich · `2` = **Lücke unterhalb des Höchststands** (diese
+Migrationen laufen nie mehr) · `3` = die Datenbank kennt eine Version, die es im
+Code nicht gibt. Das Werkzeug ist rein lesend (`mode=ro`) und auch auf einer
+Produktivdatenbank unbedenklich.
+
+**Die Nummer 40 ist vorläufig.** Solange diese Migration in keiner Datenbank
+gelaufen ist, kostet ihre Umbenennung nichts. Danach ist sie unantastbar.
+
+### 16.2 Was M040 anlegt
+
+| Objekt | Art | Inhalt |
+| ------ | --- | ------ |
+| `fulltext_zweck` | Katalogtabelle | die vier Zweckcodes (`kreuzbezug_nickname`, `alias_pruefung`, `wiedervorlage`, `sonstiges`) |
+| `fulltext_release` | Fachtabelle | wer darf den Trefferinhalt welches **fremden** Falls sehen, zu welchem Zweck, erteilt von wem, wann, Widerruf |
+| `ux_fulltext_release_aktiv` | partieller UNIQUE-Index | höchstens **eine** gültige Freigabe je (Fall, Person) |
+| `ix_fulltext_release_person` / `_fall` | Index | die beiden Abfragerichtungen |
+| `fulltext.release` | RBAC-Seed | Recht, eine Inhaltsfreigabe zu erteilen/widerrufen |
+
+Der Zweckkatalog ist eine **eingefrorene Kopie** von
+`management/search/zweck_vokabular.py` (m005-Prinzip: eine angewandte Migration
+darf ihr Laufzeitverhalten nie ändern). Die Brücke zwischen beiden ist der Test
+**FR02**, der sie zur Bauzeit gegeneinander hält.
+
+### 16.3 Migrationsklasse und Vorbehalt
+
+Rein **additiv**, ausschließlich `coordinator.db`, ausschließlich **neue**
+Tabellen. Keine bestehende Zeile wird angefasst, keine Spalte umgebaut. Die
+Ermittler-Ergebnisdatenbanken (`evidence_`/`forensic_`/`assets_<uid>.db`) sind
+**nicht berührt** — es kann kein bestehendes Wissen verloren gehen.
+
+Der Vollständigkeit halber, weil es zum selben Arbeitspaket gehört: die
+Volltextsuche **liest** alle `evidence_<uid>.db` ausschließlich mit `mode=ro`
+und legt ihren FTS5-Index in einer eigenen, jederzeit verwerfbaren
+`search_index.db` ab (Build 560). Auch von dieser Seite ist der
+Migrationsvorbehalt nicht berührt; Test SI22 belegt das über SHA-512
+vorher/nachher.
+
+### 16.4 Verifikations-Checkliste
+
+- [ ] `tools/pruefe_migrationskette.py` liefert Exit **0** (§16.1).
+- [ ] `schema_migrations` enthält die Version von M040, `kind='additive'`.
+- [ ] `SELECT COUNT(*) FROM fulltext_zweck` = **4**; die Codes stimmen mit
+      `management/search/zweck_vokabular.py` überein.
+- [ ] Die drei Indizes aus §16.2 existieren.
+- [ ] `SELECT 1 FROM rbac_capability WHERE code='fulltext.release'` liefert eine
+      Zeile; die Gesamtzahl der Fähigkeiten ist **44**.
+- [ ] `PRAGMA integrity_check;` = ok.
+- [ ] Zeilenzahlen aller **bestehenden** Tabellen unverändert gegenüber dem
+      Backup (M040 fasst keine an).
+
+### 16.5 Grants (nach dem Einspielen, default-deny)
+
+```
+python -m management.rbac.rbac_admin grant --role supervisor \
+       --capability fulltext.release --actor <SYSUSER>
+python -m management.rbac.rbac_admin grant --role supervisor \
+       --capability evidence.fulltext_search --actor <SYSUSER>
+```
+
+`evidence.fulltext_search` liegt seit M006 im Katalog und ist **nicht** neu. Die
+Rolle `searchagent` bleibt vorerst **ohne Grant** — Ausweitung erst nach einer
+Lastmessung (Entscheidungen mc §1 E-2).
+
+### 16.6 Rollback
+
+Bei jedem Fehlschlag rollt der Runner die Transaktion selbst zurück; es bleibt
+kein Teilzustand. Für den Katastrophenfall gilt der Weg aus §3 Phase 1
+(Backup einspielen, SHA512-Abgleich). Zu beachten: **Alt-Code kann mit der
+migrierten Datei arbeiten** — die beiden neuen Tabellen stören ihn nicht. Ein
+Rückbau der Datei ist also nur nötig, wenn die Migration selbst beanstandet
+wird, nicht wegen eines Code-Problems.

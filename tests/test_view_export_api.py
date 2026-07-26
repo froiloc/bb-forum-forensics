@@ -78,7 +78,14 @@ CREATE TABLE scrape_jobs (
 #: Sichten, die BEWUSST keinen generischen Akten-Export haben. Deckungsgleich
 #  mit dem Kommentar in view_export_catalog.py — hier als pruefbare Liste, damit
 #  die Begruendung nicht nur im Fliesstext steht.
-_BEWUSST_OHNE_EXPORT = {"notes", "lectorate", "approval"}
+_BEWUSST_OHNE_EXPORT = {"notes", "lectorate", "approval",
+                        # Build 563 (AP-3E, Instanz B): die
+                        # Volltextsuche. Begruendung ausfuehrlich in
+                        # view_export_catalog.py — kurz: sie hat keinen
+                        # Bestand, ihre Endpunkte sind POST mit
+                        # PFLICHT-Zweckangabe, und ein generischer
+                        # Export wuerde die Stufe-2-Sperre umgehen.
+                        "search"}
 
 
 class ViewExportApiTests(unittest.TestCase):
