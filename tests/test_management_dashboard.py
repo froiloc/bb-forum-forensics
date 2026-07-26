@@ -233,34 +233,51 @@ class ManagementDashboardTests(unittest.TestCase):
         # fulltext.release — AP-3E/Idee 38, Instanz B; NEUE Tabellen, rein
         # additiv, keine Zeile beruehrt).
         #
-        # DIE LISTE IST BEWUSST AUS DREI TEILEN ZUSAMMENGESETZT statt als ein
-        # Literal geschrieben: im Parallelbetrieb muessen BEIDE Instanzen hier
-        # eintragen, und ein gemeinsames Literal hiesse, dass beide dieselbe
-        # Zeile anfassen. So hat jede ihre eigene (Parallelbetrieb §4,
-        # "am Rand arbeiten, nie in der Mitte").
+        # Build 545: M037 (person_view_pref — AP-3G/Idee 37, persoenliche
+        # Ansichtseinstellung; EINE neue Tabelle, rein additiv, kein
+        # Rechte-Seed).
         #
-        # ACHTUNG — DIE LUECKE 35..39 IST BEABSICHTIGT UND KEIN FEHLER.
-        # Parallelbetrieb §5 weist Instanz A den Kreis m033-m039 zu (m033/m034
-        # sind geliefert) und Instanz B den Kreis m040-m049 (aufgehoben, s. Build 544).
+        # DIE LISTE STAND BIS BUILD 544 IN DREI TEILEN (_BASIS/_INSTANZ_A/
+        # _INSTANZ_B). Der Grund dafuer war der Parallelbetrieb: beide
+        # Instanzen mussten hier eintragen, und ein gemeinsames Literal hiesse,
+        # dass beide dieselbe Zeile anfassen (Parallelbetrieb §4, "am Rand
+        # arbeiten, nie in der Mitte"). DER PARALLELBETRIEB IST SEIT BUILD 544
+        # BEENDET — es gibt wieder einen Entwicklungsstrang, also wieder eine
+        # Liste. Die Dreiteilung ohne ihren Grund weiterzuschleppen hiesse,
+        # eine Vorsichtsmassnahme gegen eine Lage zu fuehren, die es nicht mehr
+        # gibt.
         #
-        # DASS DIESE LUECKE IN DER LAUFENDEN ANLAGE GEFAEHRLICH IST, steht in
-        # management/Vermerk_Migrationsluecke_Parallelbetrieb_v0_1.md: der
-        # MigrationRunner fuehrt einen HOECHSTSTAND und keine Menge, weshalb
-        # m035-m039 nach einem Lauf von M036 STILL uebersprungen wuerden. mc
-        # hat am 2026-07-26 entschieden, die Migrationen deshalb STRIKT ZU
-        # SERIALISIEREN. Im TEST ist die Luecke unschaedlich (jede Ausfuehrung
-        # beginnt mit einer frischen Datenbank und wendet alle Module in einem
-        # Lauf an) — IN DER VM IST SIE ES NICHT. Vor jedem Einspielen:
+        # DIE FRUEHERE LUECKE 35..39 GIBT ES NICHT MEHR. Der bisherige
+        # Kommentar an dieser Stelle ("die Luecke ist beabsichtigt und kein
+        # Fehler") beschrieb den Stand vor der Umnummerierung M040 -> M036 und
+        # waere jetzt schlicht falsch; die Kette laeuft lueckenlos 1-37.
+        # Der BEFUND dazu bleibt unangetastet, wo er hingehoert:
+        # management/Vermerk_Migrationsluecke_Parallelbetrieb_v0_1.md und
+        # tools/diag_migrationsluecke.py (Build 544, Leitfaden §17.5).
+        #
+        # WAS BLEIBT: der MigrationRunner fuehrt weiterhin einen HOECHSTSTAND
+        # und keine Menge. Laeuft kuenftig eine hohe Nummer vor einer
+        # niedrigeren — etwa weil ein UNVOLLSTAENDIGES Paket eingespielt wird
+        # —, entsteht dieselbe Falle erneut. Im TEST ist das unschaedlich (jede
+        # Ausfuehrung beginnt mit einer frischen Datenbank und wendet alle
+        # Module in EINEM Lauf an) — IN DER VM IST ES DAS NICHT. Vor jedem
+        # Einspielen verbindlich:
         #     python tools/pruefe_migrationskette.py --db <coordinator.db>
-        _BASIS = [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
-                  19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]
-        _INSTANZ_A = [33, 34, 35]  # Builds 536/540/542, AP-3B und AP-3C
-        _INSTANZ_B = [36]          # Build 561, AP-3E (umnummeriert in Build 544)
-        _ALLE = _BASIS + _INSTANZ_A + _INSTANZ_B
+        _ALLE = [1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
+                 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+                 33, 34, 35, 36, 37]
         self.assertEqual(self.applied,
                          sorted(_ALLE)
                          if 3 not in self.applied
                          else sorted(_ALLE + [3]))
+        # Und die Kette ist LUECKENLOS. Bisher pruefte D01 nur die Menge; eine
+        # Luecke haette dieselbe Menge ergeben koennen, wenn jemand sie oben
+        # miteingetragen haette. Nach der Lehre aus Build 544 wird sie hier
+        # ausdruecklich nachgerechnet.
+        self.assertEqual(sorted(self.applied),
+                         list(range(1, max(self.applied) + 1)),
+                         "Die coordinator-Kette hat eine Luecke: %r"
+                         % sorted(self.applied))
         # discover findet M001..M006 -> support_sessions (M003) IST dabei,
         # der person-Rename (M005, Build 342) ebenso wie das RBAC-Schema
         # (M006, Build 343).

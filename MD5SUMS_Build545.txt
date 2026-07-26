@@ -1,0 +1,11 @@
+fa2fe4538434ce1b35719711ddcd1321  build.json
+46e2ea44712f67cbf4aef34b2aa310d2  management/audit/event_types.py
+0383032ab089e77fcc14d2cb023ac270  management/migrations/coordinator/m037_view_pref.py
+f238d4158bea9e65bf4fd5db29ff9521  management/viewprefs/__init__.py
+9a3a61d768971cc5b3870707b5dedd6d  management/viewprefs/viewpref_katalog.py
+68db2ca46d1e62563f48ead8f5436023  management/viewprefs/viewpref_repo.py
+60c35d53ee4679e7841b32c456d81855  management/server/management_app.py
+2092eeec5d85fd25ec13f764da8ade2a  management/Bauplan_AP3G_Builds545-547_Modulsteuerung_v0_1.md
+7345d9715d56dbcec6c2b261147ce5e6  documents/Datenmigrationsleitfaden_AIW.md
+c7ea82dc90c5389e092ba0c59568c7fd  tests/test_management_viewprefs.py
+322602be22675247ee261ce8579d17d1  tests/test_management_dashboard.py

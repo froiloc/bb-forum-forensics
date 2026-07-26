@@ -1004,6 +1004,16 @@ class ManagementApp:
             return self._fulltext_indexstand(person_id)
         if path == "/api/fulltext/releases":
             return self._fulltext_releases(person_id, query)
+
+        # --- Build 545 (AP-3G / Idee 37): persoenliche Ansichtseinstellung --
+        # OHNE FAEHIGKEITSPRUEFUNG, und das ist keine Luecke: die Antwort
+        # enthaelt ausschliesslich die EIGENE Einrichtung der Oberflaeche und
+        # einen statischen Katalog. Ein eigenes Recht haette nur die Frage
+        # aufgeworfen, wer es wem entzieht. Der Rechtefilter wirkt dort, wo er
+        # hingehoert — an den Kacheln ('erlaubt') und, ZULETZT, an den Sichten
+        # im Browser.
+        if path == "/api/viewprefs":
+            return self._viewprefs(person_id)
         if path.startswith("/static/"):
             return self._serve_static(path[len("/static/"):])
         return Response.json(404, {"error": "not_found", "path": path})
@@ -6232,6 +6242,14 @@ class ManagementApp:
             return self._fulltext_inhalt(person_id, payload)
         if path == "/api/fulltext/release/grant":
             return self._fulltext_release_grant(person_id, payload)
+        # --- Build 545 (AP-3G): Ansichtseinstellung speichern/zuruecksetzen
+        # POST und nicht GET, weil geschrieben wird; der Token-Check liegt
+        # bereits im Handler VOR dieser Stelle.
+        if path == "/api/viewprefs":
+            return self._viewprefs_speichern(person_id, payload)
+        if path == "/api/viewprefs/reset":
+            return self._viewprefs_zuruecksetzen(person_id, payload)
+
         if path == "/api/fulltext/release/revoke":
             return self._fulltext_release_revoke(person_id, payload)
         return Response.json(404, {"error": "not_found", "path": path})
@@ -6857,3 +6875,147 @@ class ManagementApp:
             return Response.json(400, {
                 "error": "bad_request", "detail": str(exc)})
         raise exc
+
+    # =========================================================================
+    # Build 545 (AP-3G / Idee 37): persoenliche Ansichtseinstellung
+    # =========================================================================
+    #
+    # DREI ENDPUNKTE, EINE REGEL: eine Person kann ausschliesslich ihre
+    # EIGENE Oberflaeche einrichten. Es gibt deshalb keinen person_id-
+    # Parameter, den man setzen koennte — die handelnde Person IST die
+    # betroffene. Der Repo prueft das ein zweites Mal (Gueretel und
+    # Hosentraeger; die Pruefung dort ist die fachlich massgebliche).
+    #
+    # KEINE FAEHIGKEIT AN DIESEN ENDPUNKTEN. Begruendung im Kopf von
+    # m037_view_pref.py: eine Vorliebe kann keine Sicht oeffnen, fuer die das
+    # Recht fehlt, weil der Rechtefilter ZULETZT laeuft. Was sie kann, ist
+    # etwas ausblenden — und dagegen hilft kein Recht, sondern Sichtbarkeit
+    # (Zaehler in der Navigation, Erreichbarkeit ueber die Kommandopalette,
+    # Ruecksetzen mit einem Klick; Build 546).
+
+    def _viewprefs(self, person_id: int) -> Response:
+        """
+        GET /api/viewprefs — die eigene Einstellung UND der Katalog dessen,
+        was einstellbar ist.
+
+        WARUM DER KATALOG MITKOMMT statt in einem zweiten Endpunkt zu
+        stehen: die Oberflaeche braucht immer beides zugleich, und zwei
+        Abrufe koennten in dem Moment auseinanderlaufen, in dem eine Kachel
+        wegfaellt. So ist die Antwort in sich stimmig.
+
+        JE KACHEL STEHT 'erlaubt' — die Auskunft des SERVERS darueber, ob die
+        speisende Faehigkeit vorliegt. Der Browser leitet das nicht selbst ab:
+        die Zuordnung Kachel -> Recht wird an genau einer Stelle gefuehrt
+        (viewpref_katalog.py), und das ist die Stelle, die der Server kennt.
+        """
+        from management.viewprefs import viewpref_katalog as vpkat
+        from management.viewprefs.viewpref_repo import ViewPrefRepo
+
+        con = self._ro_con()
+        try:
+            p = self._person(con, person_id)
+            if p is None:
+                return Response.json(404, {"error": "unknown_person",
+                                           "person_id": person_id})
+            gespeichert = ViewPrefRepo(con).lade(person_id)
+        finally:
+            con.close()
+
+        policy = self.resolve_policy(person_id)
+        widgets = [{
+            "key": w.key, "label": w.label, "beschreibung": w.beschreibung,
+            "cap": w.cap, "standard": bool(w.standard),
+            "erlaubt": bool(policy.can(w.cap)),
+        } for w in vpkat.WIDGETS]
+
+        return Response.json(200, {
+            "person_id": person_id,
+            "sichten": gespeichert["sichten"],
+            "widgets": gespeichert["widgets"],
+            # Gespeicherte Eintraege, die der Katalog nicht (mehr) kennt.
+            # Sie werden BENANNT statt uebergangen (Grundregel 1); die
+            # Oberflaeche zeigt sie als Hinweis mit Aufraeum-Vorschlag.
+            "unbekannt": gespeichert["unbekannt"],
+            "katalog": {
+                "sichten": list(vpkat.STEUERBARE_SICHTEN),
+                "nicht_steuerbar": dict(vpkat.NICHT_STEUERBAR),
+                "widgets": widgets,
+                "standard_widgets": list(vpkat.standard_widgets()),
+            },
+        })
+
+    def _viewprefs_speichern(self, person_id: int,
+                             payload: Dict[str, Any]) -> Response:
+        """
+        POST /api/viewprefs — {'sichten': [...], 'widgets': [...]}.
+
+        Beide Felder sind einzeln optional; die nicht genannte Art bleibt
+        unberuehrt. Ein Eintrag ist entweder die blosse Kennung ('dashboard')
+        oder {'key': ..., 'sichtbar': true|false}. Die REIHENFOLGE der Liste
+        ist die Reihenfolge — eine mitgeschickte Position gaebe es zweimal.
+        """
+        from management.viewprefs.viewpref_repo import (
+            ViewPrefFehler, ViewPrefRepo)
+
+        if "sichten" not in payload and "widgets" not in payload:
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "Weder 'sichten' noch 'widgets' angegeben — es "
+                          "gaebe nichts zu speichern."})
+
+        con = self._rw_con()
+        try:
+            repo = ViewPrefRepo(con, CoordinatorWriter(con, AuditLog(con)))
+            res = repo.speichern(
+                person_id=person_id,
+                sichten=payload.get("sichten"),
+                widgets=payload.get("widgets"),
+                actor_id=person_id)
+        except ViewPrefFehler as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Speichern der Ansichtseinstellung "
+                             "fehlgeschlagen")
+            return Response.json(500, {"error": "viewprefs_write_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, "person_id": person_id,
+                                   "gespeichert": res["gespeichert"],
+                                   "audit_seqs": res["audit_seqs"]})
+
+    def _viewprefs_zuruecksetzen(self, person_id: int,
+                                 payload: Dict[str, Any]) -> Response:
+        """
+        POST /api/viewprefs/reset — {'art': 'sicht'|'widget'|'alle'}.
+
+        Ohne Angabe: 'alle'. Danach gilt wieder die Werkseinstellung.
+        """
+        from management.viewprefs.viewpref_repo import (
+            ViewPrefFehler, ViewPrefRepo)
+
+        art = payload.get("art", "alle")
+        if not isinstance(art, str):
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": "'art' muss eine "
+                                                 "Zeichenkette sein."})
+        con = self._rw_con()
+        try:
+            repo = ViewPrefRepo(con, CoordinatorWriter(con, AuditLog(con)))
+            res = repo.zuruecksetzen(person_id=person_id, art=art,
+                                     actor_id=person_id)
+        except ViewPrefFehler as exc:
+            return Response.json(400, {"error": "bad_request",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Zuruecksetzen der Ansichtseinstellung "
+                             "fehlgeschlagen")
+            return Response.json(500, {"error": "viewprefs_reset_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, "person_id": person_id,
+                                   "arten": res["arten"],
+                                   "geloescht": res["geloescht"],
+                                   "audit_seq": res["audit_seq"]})

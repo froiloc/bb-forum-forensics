@@ -351,6 +351,34 @@ class EventType:
     FULLTEXT_RELEASE_GRANTED: str = "fulltext_release_granted"
     FULLTEXT_RELEASE_REVOKED: str = "fulltext_release_revoked"
 
+    # --- Build 545 (AP-3G): persoenliche Ansichtseinstellung ---------------
+    #   VIEW_PREF_SET: eine Person hat ihre Navigationsordnung oder ihre
+    #   Kachelauswahl gespeichert (Tabelle person_view_pref, M037). EIN
+    #   Beleg je Speichervorgang und Art — nicht je Zeile (40 Sichten ergaeben
+    #   sonst 40 Belege fuer einen Klick) und nicht je Ziehen mit der Maus
+    #   (das waere Bedienkosmetik in einer Hash-Kette).
+    #
+    #   WARUM DAS UEBERHAUPT IN DIE KETTE GEHOERT, obwohl es keine
+    #   Ermittlungsdaten sind: die Einstellung entscheidet, WAS eine Person in
+    #   ihrer Oberflaeche sieht. Wer eine Eskalationssicht ausgeblendet hatte,
+    #   hat sie nicht uebersehen, sondern abgestellt — das ist ein Unterschied,
+    #   der sich spaeter niemand mehr aus dem Gedaechtnis rekonstruiert. Der
+    #   Payload traegt deshalb den VOLLSTAENDIGEN Zustand nach der Aenderung
+    #   ('reihenfolge', 'ausgeblendet', 'anzahl') und kein Delta.
+    #
+    #   VIEW_PREF_RESET: Ruecksetzen auf die Werkseinstellung (die Zeilen
+    #   werden geloescht). Eigener Typ und kein Payload-Merkmal, aus demselben
+    #   Grund wie bei den uebrigen Widerrufen: es ist die Aussage, dass eine
+    #   frueher getroffene Einrichtung nicht mehr gilt. Was sie war, steht im
+    #   letzten VIEW_PREF_SET derselben Person.
+    #
+    #   SENSIBILITAETSREGEL: hier unkritisch, aber ausdruecklich festgehalten —
+    #   im Payload stehen ausschliesslich KATALOGSCHLUESSEL (view_id,
+    #   widget_key). Kein Fallbezug, keine subject_id, kein Freitext; die
+    #   Einstellung kann konstruktiv keinen tragen.
+    VIEW_PREF_SET: str = "view_pref_set"
+    VIEW_PREF_RESET: str = "view_pref_reset"
+
     # --- reserviert für spätere Builds (hier dokumentiert, noch nicht aktiv) ---
     # NOTIFICATION_SENT, RESTORE_PERFORMED
 
@@ -434,6 +462,9 @@ class EventType:
             FULLTEXT_SEARCHED,
             FULLTEXT_RELEASE_GRANTED,
             FULLTEXT_RELEASE_REVOKED,
+            # --- Build 545 (AP-3G) ---
+            VIEW_PREF_SET,
+            VIEW_PREF_RESET,
         }
     )
 

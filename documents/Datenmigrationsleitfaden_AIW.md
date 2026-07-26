@@ -2,8 +2,8 @@
 
 ## IT-Forensisches Ermittlungswerkzeug Advanced Investigation Wrapper (AIW) · NRW
 
-**Version:** 0.7
-**Build-Bezug:** 544 (Umnummerierung M040 → M036 und Ende des Parallelbetriebs; Abschnitt 16 aus v0.6/Build 563 mit korrigierter Nummer, Abschnitt 15 aus v0.5/Build 540, Abschnitt 14 aus v0.4/Build 533, Abschnitte 1–13 aus v0.3/Build 469)
+**Version:** 0.8
+**Build-Bezug:** 545 (Abschnitt 18: Coordinator-Migration M037 `person_view_pref`); 544 (Umnummerierung M040 → M036 und Ende des Parallelbetriebs; Abschnitt 16 aus v0.6/Build 563 mit korrigierter Nummer, Abschnitt 15 aus v0.5/Build 540, Abschnitt 14 aus v0.4/Build 533, Abschnitte 1–13 aus v0.3/Build 469)
 **Datum:** 2026-07-26
 **Status:** Verbindlicher Workflow für Datenmigration im Produktivbetrieb
 **Klassifikation:** VERTRAULICH — NUR FÜR DEN DIENSTGEBRAUCH
@@ -15,6 +15,7 @@
 | Version | Build | Datum      | Änderung                                                                                                                                                              |
 | ------- | ----- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 0.6     | 563   | 2026-07-26 | Neuer **Abschnitt 16**: die coordinator-Migration **M040** (`fulltext_zweck`, `fulltext_release`, Recht `fulltext.release`) für die fallübergreifende Volltextsuche (AP-3E, Instanz B) — rein additiv, **keine** Beweismitteldatenbank berührt. Enthält den **Sperrvermerk**: M040 darf erst eingespielt werden, wenn Instanz A ihre Migrationen m035–m039 geliefert hat, weil der `MigrationRunner` einen Höchststand statt einer Menge führt und später gelieferte niedrigere Nummern sonst **still übersprungen** würden (Beleg: `management/Vermerk_Migrationsluecke_Parallelbetrieb_v0_1.md`, reproduziert mit `tools/diag_migrationsluecke.py`). Neues Prüfwerkzeug `tools/pruefe_migrationskette.py`. *Anmerkung: zu v0.5 (Abschnitt 15, M034) gibt es keine Zeile in dieser Tabelle — der Kopf wurde fortgeschrieben, die Historie nicht. Hier nur vermerkt, nicht von mir nachgetragen.* |
+| 0.8     | 545   | 2026-07-26 | Neuer **Abschnitt 18**: die coordinator-Migration **M037** (`person_view_pref`) für die persönliche Ansichtseinstellung (AP-3G, Idee 37) — rein additiv, eine neue Tabelle, **keine** Beweismitteldatenbank berührt, **kein** Rechte-Seed. Erste Migration nach dem Ende des Parallelbetriebs; die Kette ist lückenlos 1–37. |
 | 0.7     | 544   | 2026-07-26 | Neuer **Abschnitt 17**: Umnummerierung **M040 → M036** und Ende des Parallelbetriebs. Die Kette ist wieder lückenlos (1–36); der Sperrvermerk aus v0.6 ist damit **erledigt**, die Ursache im `MigrationRunner` **nicht** — `tools/pruefe_migrationskette.py` bleibt vor jedem Einspielen verbindlich. Abschnitt 16 wurde auf die neue Nummer gezogen (verbindliche Betriebsanweisung); die Belegdokumente (`diag_migrationsluecke.py`, Vermerk, Baupläne) behalten ihre Nummern und ihren Wortlaut. |
 | 0.4     | 533   | 2026-07-26 | Neuer **Abschnitt 14**: die evidence-Migrationen **M002** (`annotation_tatzeit`, Build 532) und **M003** (`evidence_audit_log` + Genesis, Build 533) — die ersten Strukturänderungen an einer Beweismitteldatenbank nach dem 01.07.2026. Beide additiv und datenneutral, nachgewiesen über Inhaltshashes (TZ04/EA03). Enthält den ausdrücklichen Vermerk, dass der Eintrag für M002 bis hierher **gefehlt** hat. Beleg: Entscheidung mc 2026-07-26 (eigene Beleg-Kette in der evidence-Datei statt Best-Effort-Eintrag in `coordinator.db`). |
 | 0.1     | 303   | 2026-06-25 | Erstfassung — Migrationsleitfaden (Vier-Phasen-Workflow, Gerichtsfestigkeit, Einzel-DB)                                                                             |
@@ -647,3 +648,64 @@ Exit 0 = unbedenklich · 2 = Lücke unterhalb des Höchststands · 3 = die Daten
 
 M034 (Build 540) → M035 (Build 542) → M036 (Build 544). Der `MigrationRunner` sortiert selbst nach `VERSION`; gefährlich ist ausschließlich der Lauf **mit einem unvollständigen Paket**. Nach dem Lauf erwartet: `schema_migrations` enthält 36, `rbac_capability` zählt **45**.
 
+---
+
+## 18. Coordinator-Migration M037 — persönliche Ansichtseinstellung (NEU, Build 545)
+
+**Arbeitspaket:** AP-3G (Welle 3, Idee 37) · **Baubasis:** `9f11b97` (v0.8.544)
+
+### 18.1 Was sie anlegt
+
+Eine Tabelle in `coordinator.db`:
+
+| Tabelle | Zweck |
+|---|---|
+| `person_view_pref` | Reihenfolge und Sichtbarkeit der Cockpit-Sichten sowie Auswahl und Reihenfolge der Kacheln im Überblick — je Person. |
+
+Dazu ein Index `ix_person_view_pref_person`. **Kein Rechte-Seed:** AP-3G braucht
+keine neue Fähigkeit (Bauplan Welle 3 §4). `rbac_capability` zählt nach dem Lauf
+unverändert **45**.
+
+### 18.2 Warum sie unbedenklich ist
+
+* **Nur `coordinator.db`.** `evidence_<uid>.db`, `forensic_<uid>.db` und
+  `assets_<uid>.db` werden **nicht** berührt.
+* **Rein additiv.** Eine neue Tabelle, sonst nichts. Keine Spalte umbenannt,
+  keine Zeile angefasst — eine verlustfreie Migration ist trivial erfüllt, weil
+  es nichts zu migrieren gibt.
+* **Kein `executescript()`.** Jede Anweisung einzeln, damit ein Fehler den
+  `MigrationRunner` in den Rollback zwingt (Lehre aus M019).
+* **Es entstehen Ermittlerdaten, aber keine Ermittlungsdaten.** Die Zeilen sagen
+  aus, *wie* jemand seine Oberfläche eingerichtet hat, nie *was* er ermittelt
+  hat. Kein Fallbezug, keine `subject_id`, kein Freitext — die Tabelle kann
+  konstruktiv keinen tragen.
+
+### 18.3 Selbstprüfung in der Migration
+
+Neben den üblichen Prüfungen (Vorbedingungen, Spaltensatz, Index) prüft M037 den
+`CHECK` auf `art` **am Verhalten** statt am DDL-Text: ein unzulässiger Wert wird
+probeweise eingefügt und muss scheitern; der Probeschreibvorgang läuft in einem
+`SAVEPOINT` und wird sofort zurückgenommen. Ein CHECK, den niemand ausprobiert
+hat, ist eine Behauptung.
+
+### 18.4 Reihenfolge und Erwartung
+
+M035 (Build 542) → M036 (Build 544) → **M037 (dieser Build)**. Der
+`MigrationRunner` sortiert selbst nach `VERSION`; gefährlich ist ausschließlich
+der Lauf **mit einem unvollständigen Paket**.
+
+**Verbindlich vor dem Einspielen** (unverändert aus §17.3):
+
+```
+python tools/pruefe_migrationskette.py --db data/coordinator.db
+```
+
+Nach dem Lauf erwartet: `schema_migrations` enthält **37**, `rbac_capability`
+zählt **45**, `person_view_pref` existiert und ist **leer**.
+
+### 18.5 Rückweg
+
+Es gibt keinen `down()` — wie bei allen Migrationen dieses Projekts. Der Rückweg
+ist die Sicherung von vor dem Lauf. Praktisch ist er hier aber folgenlos: eine
+leere Tabelle ohne Fremdbezug zu behalten kostet nichts, und die Anwendung
+kommt ohne gespeicherte Einstellung mit der Werkseinstellung aus.
