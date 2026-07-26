@@ -1,0 +1,21 @@
+# MD5SUMS Build 534 (Zweig feature/b7-zuweisung-tabulator, Basis ba03943)
+# Erzeugt 2026-07-26. Bitte in der VM gegenpruefen (Grundregel 8):
+#   md5sum -c MD5SUMS_Build534.txt   (aus dem Verzeichnis UEBER aiw_webserver/)
+fc432f49128920e0dc42cb876986db97  aiw_webserver/build.json
+e24ce97e0d1affc0c9dd4d1b689b512e  aiw_webserver/management/Bauplan_Builds533-534_ZuweisungTabulator_v0_1.md
+b634567e96f89bbf20b8aff1f114ac59  aiw_webserver/management/cases/cases_batch_repo.py
+307da20ffb3c4089d91ca32c1322bc1a  aiw_webserver/management/cases/cases_repo.py
+366860fbc3287d7de6ebe62a2a0768ad  aiw_webserver/management/gateway/coordinator_writer.py
+4b8a3fc56dbcdd8705d2e5c2c3ae2545  aiw_webserver/management/server/management_app.py
+cee0559ea24cc9ccb9bedb6fe92b011d  aiw_webserver/management/server/static/cockpit.css
+7cb40360486ed20279414e1dafc24af5  aiw_webserver/management/server/static/cockpit.html
+eb85cbf3c1276c5d45264d56f497331c  aiw_webserver/management/server/static/cockpit.js
+f669dd497c953c6374393f3adda14707  aiw_webserver/management/server/static/cockpit_assignment.js
+99f55cc06cb183e5b823e8cb6a9b21a4  aiw_webserver/management/server/static/cockpit_cases.js
+5059140a5b2a0178bc78a44503595f65  aiw_webserver/management/server/static/cockpit_tablekit.js
+70d559b5b0a9c96175a714b1d69a5a20  aiw_webserver/management/stats/uid_stats_repo.py
+a3dbcd73863dee96e3e0837cb4e596e6  aiw_webserver/tests/test_assignment_batch.py
+841b1a703015d081ec79c41bd67e4866  aiw_webserver/tests/test_uid_stats_repo.py
+302ce0e122a6ea4dcbf6dd54ce7dc457  aiw_webserver/tests/unit/test_cockpit_assignment.test.js
+a7637cfa5742d36bb089dd94bbdef26b  aiw_webserver/tests/unit/test_cockpit_cases.test.js
+d21bbaa33c29c0fe6bf32ea985ee2d58  aiw_webserver/tests/unit/test_cockpit_tablekit.test.js

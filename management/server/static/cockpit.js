@@ -479,7 +479,15 @@
                             || (data.errors && data.errors.length
                                 ? data.errors.join('; ') : null)
                             || data.error || ('HTTP ' + r.status);
-                        throw new Error(detail);
+                        var fehler = new Error(detail);
+                        // Build 534: EINZELbeanstandungen mitfuehren. Die
+                        // Sammelzuweisung (/api/case/assign_batch) meldet je
+                        // beanstandeten Fall eine eigene Zeile; ginge sie hier
+                        // verloren, saehe der Anwender nur 'N Beanstandungen'
+                        // und muesste raten, welche (Grundregel 1).
+                        fehler.zeilen = (data.zeilen && data.zeilen.length)
+                            ? data.zeilen : [];
+                        throw fehler;
                     }
                     return data;
                 });
@@ -1271,10 +1279,32 @@
 
     // loadAssignment: SCHREIB-Sicht. Laedt /api/assignable und rendert die
     // Zuweisungs-Tabelle. Jede Aenderung geht per POST an den auditierten
-    // Schreibpfad; danach wird NEU GELADEN (kein optimistisches UI: die
-    // Oberflaeche zeigt nur bestaetigt geschriebene Zustaende). 'pendingMsg'
-    // traegt die Rueckmeldung (Erfolg ODER Fehler) durch den Reload hindurch —
-    // so bleibt sie sichtbar und geht nicht still verloren (Grundregel 1).
+    // Schreibpfad. 'pendingMsg' traegt die Rueckmeldung (Erfolg ODER Fehler)
+    // durch einen Neuaufbau hindurch — so bleibt sie sichtbar und geht nicht
+    // still verloren (Grundregel 1).
+    //
+    // BUILD 534 — DER ENTSCHEIDENDE UNTERSCHIED ZU VORHER:
+    //   Bis Build 533 lud diese Funktion nach JEDER Einzelaenderung ALLES neu
+    //   und baute die Tabelle neu auf. Damit sprangen Sortierung, Bildlauf und
+    //   jede getroffene Auswahl — und der naechste rasche Klick traf eine
+    //   ANDERE Zeile als die, auf die der Anwender gezielt hatte (belegter
+    //   Betriebsbefund mc 2026-07-25: ueber 80 Zuweisungen am Stueck, dabei
+    //   "haeufig und unbeabsichtigt das falsche Element umgestellt"). Das war
+    //   eine von der Oberflaeche GEBAUTE Fehlbedienungsfalle, kein
+    //   Anwenderfehler.
+    //
+    //   Jetzt gilt: die BESTAETIGTE Serverantwort aktualisiert NUR die
+    //   betroffene Zeile (view.bestaetige). 'Kein optimistisches UI' bleibt
+    //   dabei unangetastet — die Sicht zeigt weiterhin ausschliesslich
+    //   Zustaende, die der Server bestaetigt hat; sie baut nur nicht mehr
+    //   alles ringsherum neu auf.
+    //
+    //   NACH EINEM STAPEL wird weiterhin VOLLSTAENDIG neu geladen. Das ist
+    //   Absicht: ein Stapel verschiebt die Last aller Ermittler (die Zahl in
+    //   der Ermittler-Auswahl) und beruehrt bis zu hunderte Zeilen — dort ist
+    //   der frische Serverstand die ehrlichere Darstellung, und der Anwender
+    //   hat den Vorgang bewusst abgeschlossen (kein rascher Klick, der ins
+    //   Leere gehen koennte).
     function loadAssignment(mainEl, pendingMsg) {
         mainEl = mainEl || document.getElementById('aiw-main');
         var mod = (typeof window !== 'undefined')
@@ -1286,6 +1316,8 @@
         fetchJson('/api/assignable').then(function (data) {
             cleanupView();
             var view = mod.renderAssignment(mainEl, data, {
+
+                // --- EINZELaenderung ---------------------------------------
                 onChange: function (kind, subjectId, value) {
                     var req = mod.changeRequest(kind, subjectId, value);
                     if (!req) {
@@ -1293,22 +1325,73 @@
                                         true);
                         return;
                     }
-                    view.setMessage('Schreibe \u2026', false);
+                    view.setMessage('Schreibe …', false);
                     postJson(req.path, req.body).then(function (res) {
-                        loadAssignment(mainEl, {
-                            text: 'Gespeichert (Beleg #' + res.audit_seq + ').',
-                            error: false
-                        });
+                        // Nur die betroffene Zeile — kein Neuaufbau.
+                        // Uebernommen wird der Wert, den der SERVER
+                        // zurueckmeldet, nicht der, den die Zelle hatte.
+                        var bestaetigt = {};
+                        if (kind === 'assign') {
+                            bestaetigt.assigned_to =
+                                (res.person_id === undefined
+                                    ? null : res.person_id);
+                        } else if (kind === 'priority') {
+                            bestaetigt.priority = res.priority;
+                        } else if (kind === 'status') {
+                            bestaetigt.status = res.status;
+                        }
+                        view.bestaetige(subjectId, bestaetigt,
+                            'Gespeichert (Beleg #' + res.audit_seq + ').');
                     }).catch(function (err) {
                         log('Schreibfehler', err);
-                        // Neu laden -> keine ungeschriebene Auswahl bleibt
-                        // stehen; die Fehlermeldung wird mitgetragen.
-                        loadAssignment(mainEl, {
-                            text: 'Fehler: ' + err.message, error: true
-                        });
+                        // Die Zeile bleibt auf dem bestaetigten Stand; der
+                        // Fehler wird benannt, nie still verschluckt.
+                        view.verwerfe(subjectId, mod.fehlerMeldung(err)
+                            + ' — es wurde NICHTS geschrieben.');
                     });
+                },
+
+                // --- SAMMELZUWEISUNG ---------------------------------------
+                onBatch: function (changes) {
+                    postJson('/api/case/assign_batch', { changes: changes })
+                        .then(function (res) {
+                            // Erst die Meldung bauen, dann neu laden — so
+                            // ueberlebt sie den Neuaufbau (s. o.).
+                            var m = mod.batchMeldung(res);
+                            loadAssignment(mainEl, { text: m.text,
+                                                     error: m.error });
+                        }).catch(function (err) {
+                            log('Sammelzuweisung fehlgeschlagen', err);
+                            // KEIN Neuaufbau: der Server hat NICHTS
+                            // geschrieben (erst pruefen, dann schreiben). Die
+                            // getroffene Auswahl bleibt damit gueltig, und der
+                            // Anwender kann sie berichtigen, statt achtzig
+                            // Kaestchen neu anzuklicken.
+                            view.setMessage(mod.fehlerMeldung(err)
+                                + ' — es wurde NICHTS geschrieben. Die '
+                                + 'Auswahl bleibt bestehen.', true);
+                            view.setSammelmodus(true);
+                        });
+                },
+
+                // --- KENNZAHLEN (spaeterer, eigener Abruf) -----------------
+                onStats: function () {
+                    fetchJson('/api/assignable/stats')
+                        .then(function (payload) {
+                            view.setStats(payload);
+                        }).catch(function (err) {
+                            // Die Zuweisung bleibt arbeitsfaehig — aber der
+                            // Ausfall wird BENANNT, damit niemand leere
+                            // Spalten fuer 'keine Werte' haelt.
+                            log('Kennzahlen nicht ladbar', err);
+                            view.setMessage('Kennzahlen (uid_stats) konnten '
+                                + 'nicht geladen werden: ' + err.message
+                                + '. Die Zuweisung selbst ist davon nicht '
+                                + 'betroffen.', true);
+                        });
                 }
             });
+            if (view) { state.table = view.table; }
             if (view && pendingMsg) {
                 view.setMessage(pendingMsg.text, pendingMsg.error);
             }
@@ -1611,6 +1694,28 @@
                             error: true
                         });
                     });
+                },
+
+                // Build 534: Kennzahlen (uid_stats) fuer die angezeigten
+                // Kennungen — auch fuer die NOCH NICHT aufgenommenen. Genau
+                // die sind hier der Regelfall: ueber ihre Aufnahme wird in
+                // dieser Sicht entschieden, und dafuer will man wissen, ob ein
+                // Fall 12 oder 40.000 Beitraege hat.
+                onStats: function (ids) {
+                    if (!ids || !ids.length) { return; }
+                    fetchJson('/api/assignable/stats?subject_ids='
+                              + ids.join(','))
+                        .then(function (payload) { view.setStats(payload); })
+                        .catch(function (err) {
+                            // Die Fall-Erkennung bleibt arbeitsfaehig — aber
+                            // der Ausfall wird BENANNT, damit niemand leere
+                            // Spalten fuer 'keine Werte' haelt.
+                            log('Kennzahlen nicht ladbar', err);
+                            view.setResult('Kennzahlen (uid_stats) konnten '
+                                + 'nicht geladen werden: ' + err.message
+                                + '. Die Fall-Erkennung selbst ist davon '
+                                + 'nicht betroffen.', true);
+                        });
                 }
             });
             state.table = view && view.table;

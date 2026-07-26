@@ -2074,3 +2074,119 @@ tr.aiw-cff-nichtrelevant { opacity: 0.7; }
 }
 .aiw-lim-grundlage.is-ersatzanker { cursor: help; text-decoration: underline
   dotted #d68910; }
+
+/* ===========================================================================
+   BUILD 534 — GEMEINSAMES TABELLEN-WERKZEUG (cockpit_tablekit.js)
+   ---------------------------------------------------------------------------
+   Die Gestaltung steht hier EINMAL und gilt fuer jede Sicht, die das Werkzeug
+   benutzt (derzeit Zuweisung und Fall-Erkennung). Das ist der sichtbare Teil
+   des Auftrags vom 2026-07-26: "Es geht darum, die Masken einheitlicher zu
+   gestalten, sodass sie dasselbe Look and Feel ermoeglichen." Zwei Kopien
+   dieser Regeln waeren zwei Erscheinungsbilder, sobald eine davon einmal
+   angefasst wird.
+   ========================================================================= */
+
+/* Der FIXIERTE Steuerkopf. Er bleibt beim Blaettern stehen, damit man bei 80
+   Zeilen zum Absenden nicht erst nach oben scrollen muss (ausdruecklicher
+   Wunsch mc 2026-07-26). 'top: 0' bezieht sich auf den scrollenden Vorfahren;
+   der Hintergrund ist deckend, sonst schienen Tabellenzeilen durch. */
+.aiw-tk-kopf {
+  position: sticky; top: 0; z-index: 20;
+  background: var(--flaeche, #ffffff);
+  padding: 8px 0 6px; margin: 0 0 6px;
+  border-bottom: 1px solid #d7dce1;
+}
+
+.aiw-tk-leiste {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+}
+
+.aiw-tk-btn {
+  font-size: 13px; padding: 5px 12px; white-space: nowrap;
+}
+.aiw-tk-btn.aktiv {
+  background: var(--akzent, #0b5394); color: #ffffff; border-color: #0b5394;
+}
+.aiw-btn-primaer:not(:disabled) {
+  background: var(--akzent, #0b5394); color: #ffffff; border-color: #0b5394;
+}
+
+/* Trefferanzeige: 'x von y (gefiltert)'. Nach einem Filterwechsel ist
+   'wie viele sehe ich gerade' die erste Frage — deshalb steht sie in der
+   Leiste und nicht irgendwo unter der Tabelle. */
+.aiw-tk-treffer {
+  margin-left: auto; font-size: 12px; color: #4a5158;
+  font-variant-numeric: tabular-nums;
+}
+.aiw-tk-treffer.gefiltert { color: #7d5a10; font-weight: 600; }
+
+.aiw-tk-hinweis {
+  font-size: 12px; color: #7d5a10; background: #fdf6e3;
+  border: 1px solid #f0d9a0; border-radius: 6px; padding: 6px 10px;
+}
+
+/* --- Spaltenwahl ------------------------------------------------------- */
+.aiw-tk-spaltenwahl { position: relative; }
+
+/* Das Klappfeld liegt UEBER der Tabelle (absolut positioniert) statt sie zu
+   verschieben: sonst spraenge die Tabelle beim Auf- und Zuklappen, und man
+   verloere die Zeile, die man gerade im Blick hatte. */
+.aiw-tk-spaltenfeld {
+  display: none; position: absolute; top: 100%; left: 0; z-index: 40;
+  min-width: 260px; max-height: 320px; overflow-y: auto;
+  background: #ffffff; border: 1px solid #b9c2cb; border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15); padding: 6px 4px;
+}
+.aiw-tk-spaltenfeld.offen { display: block; }
+
+.aiw-tk-spaltenzeile {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 10px; font-size: 13px; cursor: pointer;
+}
+.aiw-tk-spaltenzeile:hover { background: #eef3f8; }
+.aiw-tk-spaltenname { font-family: ui-monospace, Consolas, monospace; }
+.aiw-tk-spaltenzahl {
+  margin-left: auto; color: #6b7580; font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===========================================================================
+   BUILD 534 — ZUWEISUNG: SAMMELMODUS
+   ========================================================================= */
+
+.aiw-assign-batchbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin-top: 8px; padding: 8px 10px;
+  background: #eef3f8; border: 1px solid #b9c2cb; border-radius: 6px;
+}
+.aiw-assign-batchbar[hidden] { display: none; }
+.aiw-assign-batchlabel { font-size: 13px; color: #3d4144; }
+.aiw-assign-batchselect { font-size: 13px; padding: 4px 6px; }
+.aiw-assign-batchstand {
+  margin-left: auto; font-size: 12px; color: #4a5158;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 'Auswahl umkehren' im Spaltenkopf der Kaestchen-Spalte. */
+.aiw-assign-invert {
+  border: 1px solid #b9c2cb; background: #ffffff; border-radius: 4px;
+  cursor: pointer; font-size: 13px; line-height: 1; padding: 2px 5px;
+}
+.aiw-assign-invert:hover { background: #eef3f8; }
+
+/* Eine VORMERKUNG ist eine Absichtserklaerung, kein geschriebener Zustand.
+   Sie muss sich deshalb deutlich von einer bestaetigten Zelle unterscheiden —
+   sonst waere sie genau das optimistische UI, das dieses Werkzeug nicht haben
+   darf. Gestrichelter Rahmen + gelber Grund = 'noch offen', dieselbe Sprache
+   wie beim vorlaeufigen Fristbeginn. */
+.aiw-assign-vormerk {
+  background: #fdf6e3 !important; color: #7d5a10 !important;
+  font-weight: 600; outline: 1px dashed #d68910; outline-offset: -2px;
+}
+
+.aiw-row-gewaehlt { background: #e8f1fb !important; }
+
+/* Kennzahl-Zellen: Ziffern untereinander lesbar halten. */
+.tabulator .tabulator-cell[tabulator-field^="stat_"] {
+  font-variant-numeric: tabular-nums;
+}

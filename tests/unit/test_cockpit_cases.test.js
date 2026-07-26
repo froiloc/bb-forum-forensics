@@ -25,6 +25,19 @@
  *        Abbrechen schreibt NICHTS.
  * FE11 — renderCases ohne Tabellenbibliothek: Warnbereich und Zaehler stehen
  *        TROTZDEM (die Warnung darf nicht an einer Bibliothek scheitern).
+ *
+ * BUILD 534 — VEREINHEITLICHUNG MIT DER ZUWEISUNG (mc 2026-07-26):
+ * FE12 — Mit dem gemeinsamen Tabellen-Werkzeug: JEDE Spalte traegt einen
+ *        Filter, und die Werkzeugleiste (Spaltenwahl, 'Filter zuruecksetzen',
+ *        Trefferanzeige) steht in der Sicht.
+ * FE13 — Die Kennzahlen werden fuer die ANGEZEIGTEN Kennungen angefordert —
+ *        auch fuer die NOCH NICHT aufgenommenen. Genau die sind hier der
+ *        Regelfall (ueber ihre Aufnahme wird in dieser Sicht entschieden).
+ * FE14 — setStats blendet die gewaehlte Kennzahl-Spalte ein; ein Fall ohne
+ *        lesbare forensic-DB zeigt '—' und NICHT 0 (Grundregel 1).
+ * FE15 — 'Filter zuruecksetzen' setzt AUCH den Zustands-Schnellfilter zurueck
+ *        (eine Schaltflaeche, die einen Filter stehen liesse, waere eine halbe
+ *        Zusicherung).
  */
 
 import { describe, it, expect, vi } from "vitest";
@@ -35,6 +48,14 @@ const _src = readFileSync(
   "management/server/static/cockpit_cases.js",
   "utf-8"
 );
+// Build 534: das gemeinsame Tabellen-Werkzeug. Es wird NUR in _ctxTK()
+// geladen — die Anker FE01-FE11 laufen bewusst weiter OHNE es, damit belegt
+// bleibt, dass die Sicht auch ohne das Werkzeug bedienbar ist (kein stiller
+// Funktionsverlust, sondern ein geprueftes Rueckfallverhalten).
+const _srcKit = readFileSync(
+  "management/server/static/cockpit_tablekit.js",
+  "utf-8"
+);
 
 function _ctx() {
   const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", {
@@ -42,6 +63,18 @@ function _ctx() {
     url: "http://localhost",
   });
   dom.window.eval(_src);
+  return dom.window;
+}
+
+/** Kontext MIT gemeinsamem Tabellen-Werkzeug (Build 534). */
+function _ctxTK() {
+  const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", {
+    runScripts: "dangerously",
+    url: "http://localhost",
+  });
+  dom.window.eval(_srcKit);
+  dom.window.eval(_src);
+  dom.window.localStorage.clear();
   return dom.window;
 }
 function _api() { return _ctx().AIWCockpitCases; }
@@ -426,5 +459,206 @@ describe("cockpit_cases (Build 384)", () => {
       .toContain("Tabellenbibliothek nicht verfuegbar");
     // Ohne Tabelle gibt es keine Auswahl -> kein Schreibvorgang.
     expect(main.querySelector("#aiw-cases-import").disabled).toBe(true);
+  });
+
+  // =========================================================================
+  // BUILD 534 — mit dem gemeinsamen Tabellen-Werkzeug.
+  // =========================================================================
+
+  /** Reichere Attrappe: kennt setColumns/on/getData('active'), damit die
+   *  Filter- und Spaltenwege WIRKLICH durchlaufen werden. */
+  function _fakeTabulator2(doc) {
+    return function (container, options) {
+      const self = this;
+      this.container = container;
+      this.options = options;
+      this.data = (options.data || []).slice();
+      this._handler = {};
+      this._filter = [];
+
+      this._render = function () {
+        container.textContent = "";
+        (self.data || []).forEach(function (d) {
+          const tr = doc.createElement("div");
+          tr.className = "fake-row";
+          tr.setAttribute("data-row-id", String(d.subject_id));
+          (self.options.columns || []).forEach(function (col) {
+            if (typeof col.formatter !== "function") { return; }
+            const el = doc.createElement("span");
+            el.setAttribute("data-field", col.field);
+            const node = col.formatter({
+              getData: function () { return d; },
+              getElement: function () { return el; },
+              getField: function () { return col.field; },
+            });
+            if (node && node.nodeType) { tr.appendChild(node); }
+            else if (node !== undefined && node !== null) {
+              el.textContent = String(node);
+              tr.appendChild(el);
+            }
+          });
+          container.appendChild(tr);
+        });
+      };
+
+      this.on = function (n, fn) { self._handler[n] = fn; };
+      this.getData = function () { return self.data; };
+      this.setColumns = function (c) { self.options.columns = c; self._render(); };
+      this.getColumnDefinitions = function () { return self.options.columns; };
+      this.replaceData = function (d) { self.data = d; self._render(); };
+      this.setHeaderFilterValue = function (f, v) {
+        self._filter.push({ field: f, value: v });
+      };
+      this.getHeaderFilters = function () { return self._filter; };
+      this.getSorters = function () { return []; };
+      this.setSort = function () {};
+      this.clearHeaderFilter = function () { self._filter = []; };
+      this.clearFilter = function () {};
+      this._render();
+    };
+  }
+
+  /** Kennzahlen wie /api/assignable/stats sie liefert. Fall 19 ist bewusst
+   *  NICHT gelesen — daran haengt FE14. */
+  function _stats() {
+    return {
+      katalog: [{ key: "posts_total", faelle: 2 }],
+      vorgeschlagen: ["posts_total"],
+      probleme: [{ subject_id: 19, befund: "ohne_forensic_db",
+                   detail: "forensic_19.db fehlt" }],
+      stats: {
+        18: { befund: "gelesen", werte: { posts_total: { c: 42, r: 42, d: 0 } } },
+        19: { befund: "ohne_forensic_db", werte: {} },
+      },
+    };
+  }
+
+  it("FE12 — jede Spalte filterbar + gemeinsame Werkzeugleiste", () => {
+    const win = _ctxTK();
+    const api = win.AIWCockpitCases;
+    const main = _main(win);
+    const view = api.renderCases(main, _data(), {
+      Tabulator: _fakeTabulator2(win.document),
+    });
+
+    // Werkzeugleiste wie in der Zuweisung.
+    expect(main.querySelector("#aiw-cases-spalten")).toBeTruthy();
+    expect(main.querySelector("#aiw-cases-tk-clear")).toBeTruthy();
+    expect(main.querySelector("#aiw-cases-tk-treffer")).toBeTruthy();
+    // Der Zustands-Schnellfilter bleibt (er traegt die Zaehlung je Zustand).
+    expect(main.querySelector("#aiw-cases-filter").options).toHaveLength(5);
+
+    // JEDE Datenspalte traegt einen Filter — vorher hatte ihn nur eine.
+    const spalten = view.table.options.columns;
+    const ohne = spalten.filter(function (c) {
+      return c.field && c.field !== "selectable" && !c.headerFilter;
+    });
+    expect(ohne).toEqual([]);
+    // Die Auswahlspalte bleibt ausgenommen (ein Filter auf Kaestchen waere
+    // sinnlos).
+    expect(spalten[0].field).toBe("selectable");
+    expect(spalten[0].headerFilter).toBeUndefined();
+    // 'Zustand' hat wenige Werte -> Auswahlliste MIT Mehrfachauswahl.
+    const zustand = spalten.filter(function (c) {
+      return c.field === "status_label";
+    })[0];
+    expect(zustand.headerFilter).toBe("list");
+    expect(zustand.headerFilterParams.multiselect).toBe(true);
+    // 'Benutzername' bleibt Freitext (Suche nach Namensteilen).
+    const name = spalten.filter(function (c) {
+      return c.field === "username";
+    })[0];
+    expect(name.headerFilter).toBe("input");
+  });
+
+  it("FE13 — Kennzahlen werden fuer ALLE angezeigten Kennungen angefordert",
+     () => {
+    const win = _ctxTK();
+    const api = win.AIWCockpitCases;
+    const main = _main(win);
+    const angefragt = [];
+    const view = api.renderCases(main, _data(), {
+      Tabulator: _fakeTabulator2(win.document),
+      onStats: function (ids) { angefragt.push(ids); },
+    });
+    view.table._handler.tableBuilt();
+
+    // ALLE fuenf Kennungen — auch 19/20 ('neu', noch NICHT in der Fallakte)
+    // und 22 ('unlesbar'). Genau fuer die entscheidet man hier ueber die
+    // Aufnahme; sie wegzulassen waere die gefaehrlichste Auslassung dieser
+    // Sicht.
+    expect(angefragt).toHaveLength(1);
+    expect(angefragt[0]).toEqual([18, 19, 20, 21, 22]);
+  });
+
+  it("FE14 — setStats: Kennzahl-Spalte erscheint, '—' statt 0", () => {
+    const win = _ctxTK();
+    const api = win.AIWCockpitCases;
+    const main = _main(win);
+    const view = api.renderCases(main, _data(), {
+      Tabulator: _fakeTabulator2(win.document),
+    });
+
+    view.setStats(_stats());
+
+    // Die vorgeschlagene Spalte ist nach dem Ankreuzen sichtbar.
+    const box = main.querySelector("input[data-stat-key='posts_total']");
+    expect(box).toBeTruthy();
+    box.checked = true;
+    box.dispatchEvent(new win.Event("change"));
+
+    const felder = view.table.options.columns.map(function (c) {
+      return c.field;
+    });
+    expect(felder).toContain("stat_posts_total");
+
+    // Der Wert haengt als ZAHL an der Zeile (sonst nicht sortierbar) ...
+    const z18 = view.table.getData().filter(function (r) {
+      return r.subject_id === 18;
+    })[0];
+    expect(z18.stat_posts_total).toBe(42);
+    // ... und ein Fall OHNE lesbare forensic-DB traegt null, NICHT 0.
+    const z19 = view.table.getData().filter(function (r) {
+      return r.subject_id === 19;
+    })[0];
+    expect(z19.stat_posts_total).toBe(null);
+
+    // In der Zelle steht '—'. Eine 0 saehe aus wie eine Feststellung.
+    const zellen = main.querySelectorAll(
+      "#aiw-cases-table [data-field='stat_posts_total']");
+    const texte = Array.from(zellen).map(function (e) {
+      return e.textContent;
+    });
+    expect(texte).toContain("42");
+    expect(texte).toContain(win.AIWTableKit.UNBEKANNT_TEXT);
+    expect(texte).not.toContain("0");
+  });
+
+  it("FE15 — 'Filter zuruecksetzen' raeumt AUCH den Schnellfilter", () => {
+    const win = _ctxTK();
+    const api = win.AIWCockpitCases;
+    const main = _main(win);
+    const view = api.renderCases(main, _data(), {
+      Tabulator: _fakeTabulator2(win.document),
+    });
+
+    const sel = main.querySelector("#aiw-cases-filter");
+    sel.value = "vermisst";
+    sel.dispatchEvent(new win.Event("change"));
+    expect(view.table.getData()).toHaveLength(1);
+
+    view.table.setHeaderFilterValue("username", "b1");
+    expect(view.table.getHeaderFilters()).toHaveLength(1);
+
+    main.querySelector("#aiw-cases-tk-clear")
+      .dispatchEvent(new win.Event("click"));
+
+    // Beides ist weg — sonst hiesse die Schaltflaeche 'Filter zuruecksetzen'
+    // und liesse einen Filter stehen.
+    expect(view.table.getHeaderFilters()).toHaveLength(0);
+    expect(sel.value).toBe("");
+    expect(view.table.getData()).toHaveLength(5);
+    expect(main.querySelector("#aiw-cases-result").textContent)
+      .toContain("Alle Filter entfernt");
   });
 });

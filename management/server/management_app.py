@@ -156,6 +156,13 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from management.audit.audit_log import AuditLog
 from management.cases.cases_repo import CasesRepo
+# Build 533: Sammelzuweisung — viele Faelle in EINER Transaktion, ein
+# audit_log-Beleg JE FALL (kein Sammelbeleg).
+from management.cases.cases_batch_repo import (
+    BatchChange,
+    CasesBatchError,
+    CasesBatchRepo,
+)
 # Build 500: Fallstart aus dem Portal — startet main.py fuer einen Fall.
 from management.cases.case_launcher import CaseLauncher, CaseLaunchError
 from management.gateway.coordinator_writer import CoordinatorWriter
@@ -179,6 +186,8 @@ from management.support_overview.support_overview_repo import (
 )
 from management.support_sessions.support_sessions_repo import SupportSessionsRepo
 from management.stats.stats_repo import StatsRepo
+# Build 533: Kennzahlen je Fall (uid_stats) fuer die Spalten der Zuweisung.
+from management.stats.uid_stats_repo import UidStatsRepo
 from management.stats.forecast import Forecaster, forecast_to_dict
 # Build 524 (AP-3A / Idee 32): Fristen-/Verjaehrungs-Monitor. Der Parametersatz
 # wird bei JEDEM Abruf frisch geladen und geprueft — so wirkt eine Bestaetigung
@@ -832,6 +841,11 @@ class ManagementApp:
             return self._search(person_id, query)
         if path == "/api/assignable":
             return self._assignable(person_id)
+        # Build 533: Kennzahlen je Fall aus den forensic_<uid>.db (uid_stats).
+        # EIGENER Endpunkt, damit die Zuweisung nicht auf eine Nebenquelle
+        # wartet (Begruendung: management/stats/uid_stats_repo.py, Kopf).
+        if path == "/api/assignable/stats":
+            return self._assignable_stats(person_id, query)
         if path == "/api/reports":
             return self._reports(person_id, query)
         if path == "/api/report/verify":
@@ -2010,6 +2024,87 @@ class ManagementApp:
             "statuses": list(_CASE_STATUSES),
             "priority_min": _PRIORITY_MIN, "priority_max": _PRIORITY_MAX,
         })
+
+    #: Build 533: Obergrenze der ausdruecklich angefragten Kennungen in
+    #  /api/assignable/stats?subject_ids=… Sie schuetzt vor einer URL, die den
+    #  Server dazu braechte, beliebig viele Dateien zu oeffnen. Der Wert liegt
+    #  weit ueber der Zahl der derzeit gefuehrten Faelle; wer wirklich ALLE
+    #  will, laesst den Parameter weg.
+    _STATS_MAX_IDS = 2000
+
+    def _assignable_stats(self, person_id: int,
+                          query: Optional[Dict[str, List[str]]]) -> Response:
+        """
+        Kennzahlen je Fall aus uid_stats der forensic_<uid>.db (Build 533).
+
+        Zweck: die Zuweisungs-Sicht soll zusaetzliche Spalten anbieten koennen
+        (Beitraege, private Nachrichten, Downloads, geteilte Dateien und was
+        sonst in uid_stats steht). Welche Spalten es GIBT, steht erst nach dem
+        Lesen fest — uid_stats ist key-value. Die Antwort enthaelt deshalb
+        einen KATALOG, aus dem die Oberflaeche ihre Spaltenauswahl baut.
+
+        RECHTE: dieselben wie /api/assignable (assignment.edit, Scope 'alle').
+        Wer die Zuweisung nicht sehen darf, bekommt auch ihre Kennzahlen nicht.
+
+        'force=1' umgeht den prozesslokalen Fingerabdruck-Speicher und liest
+        alle Dateien neu — niemand soll einem Zwischenspeicher ausgeliefert
+        sein, dem er nicht traut (Muster /api/reports).
+
+        'subject_ids=18,19,20' liest GENAU diese Kennungen — auch solche, die
+        (noch) NICHT in der Fallakte stehen. Das braucht die Sicht
+        'Fall-Erkennung': dort werden die auf der Platte gefundenen
+        forensic_<uid>.db gezeigt, BEVOR sie aufgenommen sind. Ohne diesen
+        Weg haette ausgerechnet die Sicht, in der man ueber die Aufnahme
+        entscheidet, keine Kennzahlen (mc 2026-07-26: einheitliche Masken).
+
+        REIN LESEND. Die forensic_<uid>.db werden mit mode=ro geoeffnet; der
+        Migrationsvorbehalt ab 01.07.2026 ist nicht beruehrt.
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_ASSIGNMENT):
+            return self._forbidden(CAP_ASSIGNMENT)
+        if policy.scope(CAP_ASSIGNMENT) != "alle":
+            return Response.json(403, {
+                "error": "forbidden", "capability": CAP_ASSIGNMENT,
+                "detail": "Zuweisen erfordert Scope 'alle'."})
+
+        q = query or {}
+        force = (q.get("force") or ["0"])[0] in ("1", "true", "yes")
+
+        roh_ids = (q.get("subject_ids") or [""])[0].strip()
+        subject_ids: Optional[List[int]] = None
+        if roh_ids:
+            teile = [t.strip() for t in roh_ids.split(",") if t.strip()]
+            if len(teile) > self._STATS_MAX_IDS:
+                return Response.json(400, {
+                    "error": "too_many",
+                    "detail": "%d Kennungen ueberschreiten die Grenze von %d."
+                              % (len(teile), self._STATS_MAX_IDS)})
+            try:
+                subject_ids = [int(t) for t in teile]
+            except ValueError:
+                # Kein Teil-Ergebnis aus einer halb lesbaren Liste: eine
+                # unlesbare Kennung wuerde sonst still fehlen, und die Liste
+                # saehe vollstaendig aus (Grundregel 1).
+                return Response.json(400, {
+                    "error": "bad_request",
+                    "detail": "subject_ids enthaelt eine unlesbare Kennung: "
+                              "%r" % roh_ids})
+
+        con = self._ro_con()
+        try:
+            report = UidStatsRepo(con, self._forensic_dir).collect(
+                subject_ids=subject_ids, use_cache=not force)
+        except Exception as exc:   # kein stiller Fehlschlag (Grundregel 1)
+            logger.exception("Kennzahlen-Abruf fehlgeschlagen")
+            return Response.json(500, {"error": "stats_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+
+        payload = report.to_dict()
+        payload["forensic_dir"] = str(self._forensic_dir)
+        return Response.json(200, payload)
 
     def _reports(self, person_id: int,
                  query: Optional[Dict[str, List[str]]]) -> Response:
@@ -5518,6 +5613,10 @@ class ManagementApp:
             return self._escalation_ack_revoke(person_id, payload)
         if path == "/api/case/assign":
             return self._case_assign(person_id, payload)
+        # Build 533: Sammelzuweisung (viele Faelle in EINER Transaktion, ein
+        # Beleg JE FALL). Begruendung: management/cases/cases_batch_repo.py.
+        if path == "/api/case/assign_batch":
+            return self._case_assign_batch(person_id, payload)
         if path == "/api/case/priority":
             return self._case_priority(person_id, payload)
         if path == "/api/case/status":
@@ -5704,6 +5803,129 @@ class ManagementApp:
 
         return Response.json(200, {"ok": True, "subject_id": subject_id,
                                    "person_id": assignee, "audit_seq": seq})
+
+    #: Build 533: Obergrenze eines Stapels der Sammelzuweisung.
+    #  SIE IST KEINE FACHLICHE GRENZE, sondern ein Schutz gegen einen
+    #  entgleisten oder boesartigen Rumpf: ein Stapel haelt waehrend seiner
+    #  Transaktion die Schreibsperre auf coordinator.db, und eine Anfrage mit
+    #  einer Million Eintraegen wuerde den Server fuer alle blockieren.
+    #  Der Wert ist grosszuegig ueber dem groessten bekannten Bedarf gewaehlt
+    #  (mc am 2026-07-25: gut 80 Faelle) und liegt ueber der Gesamtzahl der
+    #  derzeit gefuehrten Faelle, damit 'alle auf einmal' moeglich bleibt.
+    #  WIRD SIE UEBERSCHRITTEN, wird der Stapel ABGELEHNT und nicht etwa
+    #  gekuerzt — eine stille Kuerzung waere genau die Art von Auslassung, die
+    #  Grundregel 1 verbietet.
+    _BATCH_MAX = 1000
+
+    def _case_assign_batch(self, person_id: int,
+                           payload: Dict[str, Any]) -> Response:
+        """
+        SAMMELZUWEISUNG (Build 533): weist viele Faelle in EINEM Vorgang zu
+        und/oder setzt ihre Prioritaet.
+
+        Rumpf:
+            {"changes": [{"subject_id": 18, "person_id": 4, "priority": 2},
+                         {"subject_id": 19, "person_id": null}, ...]}
+
+        Je Eintrag sind 'person_id' und 'priority' einzeln optional; mindestens
+        eines muss da sein. 'person_id': null bedeutet ausdruecklich ENTZIEHEN
+        — deshalb wird zwischen 'Feld fehlt' und 'Feld ist null' unterschieden
+        (derselbe Wachwert-Kniff wie in _case_assign).
+
+        Antwort (200): je EINGEREICHTEM Fall eine Ergebniszeile, auch fuer die
+        unveraenderten; dazu die Zahl der erzeugten Belege. Antwort (400) bei
+        Beanstandungen: die Liste der Beanstandungen — und es wurde NICHTS
+        geschrieben (erst pruefen, dann schreiben).
+        """
+        denied = self._require_assignment_scope(person_id)
+        if denied is not None:
+            return denied
+
+        roh = payload.get("changes")
+        if not isinstance(roh, list):
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "'changes' muss eine Liste sein."})
+        if not roh:
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "'changes' ist leer — es gibt nichts zu schreiben."})
+        if len(roh) > self._BATCH_MAX:
+            return Response.json(400, {
+                "error": "too_many",
+                "detail": "Stapel mit %d Eintraegen ueberschreitet die Grenze "
+                          "von %d. Es wurde NICHTS geschrieben."
+                          % (len(roh), self._BATCH_MAX)})
+
+        changes: List[BatchChange] = []
+        maengel: List[str] = []
+        for i, eintrag in enumerate(roh):
+            if not isinstance(eintrag, dict):
+                maengel.append("Eintrag %d ist kein Objekt." % i)
+                continue
+            try:
+                subject_id = int(eintrag.get("subject_id"))
+            except (TypeError, ValueError):
+                maengel.append("Eintrag %d: subject_id fehlt/ungueltig." % i)
+                continue
+
+            assign = "person_id" in eintrag
+            ziel: Optional[int] = None
+            if assign and eintrag.get("person_id") is not None:
+                try:
+                    ziel = int(eintrag.get("person_id"))
+                except (TypeError, ValueError):
+                    maengel.append("Eintrag %d (Fall %d): person_id ungueltig."
+                                   % (i, subject_id))
+                    continue
+
+            prio: Optional[int] = None
+            if eintrag.get("priority") is not None:
+                try:
+                    prio = int(eintrag.get("priority"))
+                except (TypeError, ValueError):
+                    maengel.append("Eintrag %d (Fall %d): priority ungueltig."
+                                   % (i, subject_id))
+                    continue
+
+            changes.append(BatchChange(subject_id=subject_id, assign=assign,
+                                       person_id=ziel, priority=prio))
+
+        if maengel:
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "%d Beanstandung(en) im Rumpf — es wurde NICHTS "
+                          "geschrieben." % len(maengel),
+                "zeilen": maengel})
+
+        con = self._rw_con()
+        try:
+            repo = CasesBatchRepo(con, CoordinatorWriter(con, AuditLog(con)),
+                                  priority_min=_PRIORITY_MIN,
+                                  priority_max=_PRIORITY_MAX)
+            ergebnisse = repo.apply(changes, actor_id=person_id)
+        except CasesBatchError as exc:
+            # Fachliche Beanstandung VOR dem Schreiben — kein Serverfehler.
+            return Response.json(400, {"error": "batch_rejected",
+                                       "detail": exc.detail,
+                                       "zeilen": list(exc.zeilen)})
+        except Exception as exc:
+            logger.exception("Sammelzuweisung fehlgeschlagen")
+            return Response.json(500, {"error": "write_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+
+        belege = sum(len(r.audit_seqs) for r in ergebnisse)
+        geschrieben = sum(1 for r in ergebnisse if r.ergebnis == "geschrieben")
+        return Response.json(200, {
+            "ok": True,
+            "eingereicht": len(ergebnisse),
+            "geschrieben": geschrieben,
+            "unveraendert": len(ergebnisse) - geschrieben,
+            "belege": belege,
+            "results": [r.to_dict() for r in ergebnisse],
+        })
 
     def _case_priority(self, person_id: int,
                        payload: Dict[str, Any]) -> Response:

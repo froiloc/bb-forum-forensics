@@ -138,6 +138,13 @@
 <script src="/static/cockpit_planung.js" defer></script>
 <script src="/static/cockpit_annostats.js" defer></script>
 <script src="/static/cockpit_palette.js" defer></script>
+<!-- Build 534: gemeinsames Tabellen-Werkzeug (Kopffilter, Spaltenwahl,
+     Filter zuruecksetzen, gesicherte Sortierung). MUSS VOR den Sichten
+     stehen, die es benutzen (cockpit_assignment.js, cockpit_cases.js):
+     sie greifen beim Rendern auf window.AIWTableKit zu. Alle Skripte
+     tragen 'defer' und laufen daher in DOKUMENTREIHENFOLGE — die
+     Reihenfolge dieser Zeilen ist also die Ladereihenfolge. -->
+<script src="/static/cockpit_tablekit.js" defer></script>
 <script src="/static/cockpit_assignment.js" defer></script>
 <script src="/static/cockpit_cases.js" defer></script>
 <script src="/static/cockpit_calendar.js" defer></script>

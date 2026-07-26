@@ -215,16 +215,38 @@
     // 2) DOM/RENDER (nur Browser/jsdom).
     // =========================================================================
 
+    // Build 534: JEDE Spalte ist filterbar (mc 2026-07-26: "In der
+    // Fall-Erkennung sollten aber alle Spalten filterbar sein"). Die
+    // Filterart bestimmt NICHT diese Liste, sondern das gemeinsame
+    // Tabellen-Werkzeug aus den DATEN: wenige verschiedene Werte -> Auswahl
+    // mit Mehrfachauswahl, sonst Freitext. 'filter_text' erzwingt Freitext
+    // dort, wo man nach Teilen sucht statt aus einer Liste zu waehlen
+    // (Benutzername, Hinweis) — eine Auswahlliste mit 163 Namen waere
+    // unbedienbar, auch wenn die Schwelle es zuliesse.
+    //
+    // Der frueher hier stehende 'headerFilter: input' auf 'username' ist
+    // entfallen: er ist jetzt der Regelfall und steht nicht mehr als
+    // Einzelfall da (eine Spalte mit Filter und sieben ohne war die eigentliche
+    // Unstimmigkeit).
     var _COLUMNS = [
-        { title: 'Fall', field: 'subject_id', width: 90, sorter: 'number' },
-        { title: 'Benutzername', field: 'username', headerFilter: 'input' },
+        { title: 'Fall', field: 'subject_id', width: 90, sorter: 'number',
+          filter_text: true },
+        { title: 'Benutzername', field: 'username', filter_text: true },
         { title: 'Zustand', field: 'status_label' },
         { title: 'in Fallakte', field: 'in_cases', width: 110 },
         { title: 'forensic', field: 'forensic', width: 100 },
         { title: 'evidence', field: 'evidence', width: 100 },
         { title: 'assets', field: 'assets', width: 90 },
-        { title: 'Hinweis', field: 'detail' }
+        { title: 'Hinweis', field: 'detail', filter_text: true }
     ];
+
+    //: Kennung dieser Sicht fuer den gesicherten Bedienzustand (localStorage).
+    var SICHT_ID = 'cases';
+
+    function _tk() {
+        return (typeof window !== 'undefined' && window.AIWTableKit)
+            ? window.AIWTableKit : null;
+    }
 
     // Zeilenfaerbung: Missstaende rot, Aufnehmbares gelb (Ampel-Vokabular des
     // Cockpits, vgl. Overview-Sicht Build 348).
@@ -236,8 +258,10 @@
 
     // renderCases: baut die gesamte Sicht auf.
     //   opts.Tabulator   — injizierbarer Ctor (Tests); sonst window.Tabulator
+    //   opts.TableKit    — injizierbares Tabellen-Werkzeug (Tests)
     //   opts.onImport(ids) — die Shell fuehrt den POST aus (Schreib-Token!)
-    // Rueckgabe: { table, setResult, showResult, getSelection }
+    //   opts.onStats(ids)  — die Shell holt die Kennzahlen (Build 534)
+    // Rueckgabe: { table, setResult, showResult, getSelection, setStats }
     //   'table' kann null sein (keine Tabellenbibliothek) — die Bedienelemente
     //   und der Warnbereich stehen TROTZDEM (Grundregel 1: die Warnung darf
     //   nicht an einer fehlenden Bibliothek scheitern).
@@ -245,11 +269,17 @@
         opts = opts || {};
         if (!mainEl) { return null; }
         var doc = mainEl.ownerDocument || document;
+        var tk = opts.TableKit || _tk();
         mainEl.textContent = '';
 
         var rows = toRows(data);
         var warns = warningRows(data);
         var counts = (data && data.counts) || {};
+
+        // Build 534: Kennzahlen (uid_stats) — dieselbe Mechanik wie in der
+        // Zuweisung, damit beide Masken gleich bedient werden.
+        var statsDaten = null;
+        var gewaehlteStats = [];
 
         // --- Kopf ------------------------------------------------------------
         var h = doc.createElement('h2');
@@ -293,9 +323,14 @@
             mainEl.appendChild(warnBox);
         }
 
-        // --- Bedienleiste: Statusfilter --------------------------------------
+        // --- Bedienleiste ----------------------------------------------------
+        // Build 534: Der Zustands-Schnellfilter bleibt (er traegt die ZAEHLUNG
+        // je Zustand und ist mit einem Griff bedient), bekommt aber die
+        // gemeinsame Werkzeugleiste an die Seite — dieselbe wie in der
+        // Zuweisung: Spaltenwahl, 'Filter zuruecksetzen', Trefferanzeige.
+        // Beide Masken sehen damit gleich aus UND verhalten sich gleich.
         var bar = doc.createElement('div');
-        bar.className = 'aiw-cases-bar';
+        bar.className = 'aiw-cases-bar aiw-tk-kopf';
 
         var sel = doc.createElement('select');
         sel.id = 'aiw-cases-filter';
@@ -309,7 +344,41 @@
             o.text = (STATUS_LABEL[s] || s) + ' (' + (counts[s] || 0) + ')';
             sel.appendChild(o);
         });
-        bar.appendChild(sel);
+
+        var leiste = null;
+        if (tk) {
+            leiste = tk.werkzeugleiste(doc, {
+                id: 'aiw-cases-tk',
+                eigene: [sel],
+                spaltenwahl: {
+                    id: 'aiw-cases-spalten',
+                    katalog: [],
+                    gewaehlt: [],
+                    onChange: function (keys) {
+                        gewaehlteStats = keys;
+                        spaltenNeuSetzen();
+                        zustandSichern();
+                    }
+                },
+                onFilterLoeschen: function () {
+                    tk.filterLoeschen(table);
+                    // Auch der Zustands-Schnellfilter gehoert dazu — sonst
+                    // hiesse die Schaltflaeche 'Filter zuruecksetzen' und
+                    // liesse einen Filter stehen. Genau solche halben
+                    // Zusicherungen kosten Vertrauen in das Werkzeug.
+                    sel.value = '';
+                    if (table && typeof table.replaceData === 'function') {
+                        try { table.replaceData(datenZeilen()); }
+                        catch (e) { log(e); }
+                    }
+                    zustandSichern();
+                    setResult('Alle Filter entfernt.', false);
+                }
+            });
+            bar.appendChild(leiste.el);
+        } else {
+            bar.appendChild(sel);
+        }
         mainEl.appendChild(bar);
 
         // --- Tabelle ---------------------------------------------------------
@@ -443,7 +512,7 @@
             log('renderCases: kein Tabulator-Ctor');
             return {
                 table: null, setResult: setResult, showResult: showResult,
-                getSelection: selectionIds
+                getSelection: selectionIds, setStats: function () {}
             };
         }
 
@@ -452,9 +521,10 @@
         // bewusst KEIN "alles auswaehlen" im Spaltenkopf. Ein eigener Formatter
         // macht diese Regel im Code sichtbar, statt sie einer Bibliotheksoption
         // anzuvertrauen.
-        var columns = [{
+        var auswahlSpalte = {
             title: '', field: 'selectable', width: 44, headerSort: false,
             hozAlign: 'center',
+            kein_filter: true,       // ein Filter auf Kaestchen waere sinnlos
             formatter: function (cell) {
                 var d = cell.getData();
                 if (!d.selectable) {
@@ -480,12 +550,61 @@
                 });
                 return box;
             }
-        }].concat(_COLUMNS);
+        };
+
+        // datenZeilen: die Zeilen fuer die Tabelle — mit den Werten der
+        // gewaehlten Kennzahl-Spalten AN DER ZEILE. Ohne diesen Schritt waere
+        // eine Kennzahl-Spalte sichtbar, aber nicht sortier- und filterbar
+        // (Tabulator arbeitet ueber Felder, nicht ueber den Formatter).
+        function datenZeilen(basis) {
+            var liste = basis || filterByStatus(rows, sel.value);
+            if (tk && statsDaten && gewaehlteStats.length) {
+                return tk.statFelder(liste, statsDaten.stats || {},
+                                     gewaehlteStats);
+            }
+            return liste;
+        }
+
+        function spaltenBauen() {
+            var spalten = [auswahlSpalte].concat(_COLUMNS);
+            if (tk && statsDaten) {
+                var s = tk.statSpalten((statsDaten.katalog || []),
+                                       gewaehlteStats,
+                                       (statsDaten.stats || {}));
+                if (s.unbekannt.length) {
+                    log('Unbekannte Kennzahl-Spalten uebergangen:',
+                        s.unbekannt);
+                }
+                spalten = spalten.concat(s.spalten);
+            }
+            return tk ? tk.spaltenMitFilter(rows, spalten) : spalten;
+        }
+
+        function spaltenNeuSetzen() {
+            if (!table || typeof table.setColumns !== 'function') { return; }
+            try { table.setColumns(spaltenBauen()); }
+            catch (e) { log('setColumns fehlgeschlagen:', e); }
+            if (typeof table.replaceData === 'function') {
+                try { table.replaceData(datenZeilen()); } catch (e2) { log(e2); }
+            }
+        }
+
+        function zustandSichern() {
+            if (!tk || !table) { return; }
+            tk.zustandSchreiben(SICHT_ID,
+                tk.zustandAusTabelle(table, gewaehlteStats));
+        }
+
+        var gesichert = tk ? tk.zustandLesen(SICHT_ID) : null;
+        if (gesichert && gesichert.spalten) {
+            gewaehlteStats = gesichert.spalten.slice();
+        }
 
         var table = new Ctor(container, {
-            data: rows,
-            columns: columns,
+            data: datenZeilen(rows),
+            columns: spaltenBauen(),
             layout: 'fitColumns',
+            index: 'subject_id',
             height: '440px',
             rowFormatter: function (row) {
                 var el = row.getElement();
@@ -495,6 +614,68 @@
             }
         });
 
+        // Build 534: gesicherten Bedienzustand anwenden und Aenderungen
+        // sichern. Dieselben Ereignisse wie in der Zuweisung — beide Sichten
+        // merken sich Sortierung und Filter auf dieselbe Weise.
+        if (typeof table.on === 'function') {
+            table.on('tableBuilt', function () {
+                if (tk && gesichert) {
+                    var felder = (table.getColumnDefinitions
+                        ? table.getColumnDefinitions() : [])
+                        .map(function (c) { return c.field; })
+                        .filter(Boolean);
+                    var weg = tk.zustandAnwenden(table, gesichert, felder);
+                    if (weg.length) {
+                        log('Gesicherter Zustand teilweise uebergangen:', weg);
+                    }
+                }
+                trefferAnzeigen();
+                // Kennzahlen NACH der Tabelle anfordern — die Sicht ist
+                // sofort arbeitsfaehig, auch wenn die forensic-Dateien
+                // langsam sind. Angefragt werden GENAU die angezeigten
+                // Kennungen, auch die noch nicht aufgenommenen.
+                if (typeof opts.onStats === 'function') {
+                    opts.onStats(rows.map(function (r) {
+                        return r.subject_id;
+                    }));
+                }
+            });
+            table.on('dataFiltered', function () {
+                trefferAnzeigen();
+                zustandSichern();
+            });
+            table.on('dataSorted', function () { zustandSichern(); });
+        }
+
+        function trefferAnzeigen() {
+            if (!leiste) { return; }
+            var sichtbar = rows.length;
+            try {
+                var d = (typeof table.getData === 'function')
+                    ? table.getData('active') : null;
+                if (Array.isArray(d)) { sichtbar = d.length; }
+            } catch (e) { log('getData(active) fehlgeschlagen:', e); }
+            leiste.setTreffer(sichtbar, rows.length);
+        }
+
+        // setStats: die Kennzahlen sind da (eigener, spaeterer Abruf).
+        //   Nicht gelesene Faelle werden BENANNT — in ihren Zellen steht '—'
+        //   und NIE eine 0 (Grundregel 1; die Regel selbst steht im
+        //   gemeinsamen Tabellen-Werkzeug).
+        function setStats(payload) {
+            statsDaten = payload || null;
+            if (leiste && leiste.spaltenwahl && statsDaten) {
+                leiste.spaltenwahl.setKatalog(statsDaten.katalog || []);
+                gewaehlteStats = leiste.spaltenwahl.getGewaehlt();
+            }
+            spaltenNeuSetzen();
+            var probleme = (statsDaten && statsDaten.probleme) || [];
+            if (probleme.length) {
+                log('Kennzahlen: ' + probleme.length + ' Fall/Faelle ohne '
+                    + 'lesbare forensic-Datenbank.');
+            }
+        }
+
         // Statusfilter: lokal (die Daten liegen bereits vollstaendig vor).
         // Die AUSWAHL bleibt dabei erhalten (sie lebt in 'selected', nicht im
         // DOM) — ein Filterwechsel darf keine getroffene Auswahl still
@@ -502,10 +683,16 @@
         sel.addEventListener('change', function () {
             var filtered = filterByStatus(rows, sel.value);
             if (typeof table.replaceData === 'function') {
-                table.replaceData(filtered);
+                // Build 534: ueber datenZeilen(), damit die Kennzahl-Felder
+                // auch nach einem Wechsel des Schnellfilters an den Zeilen
+                // haengen — sonst waeren die Zusatzspalten danach leer, und
+                // das saehe aus wie 'keine Werte' statt wie 'nicht neu
+                // angehaengt'.
+                table.replaceData(datenZeilen(filtered));
             }
             closeConfirm();
             refreshButton();
+            trefferAnzeigen();
             log('Filter:', sel.value || '(alle)', '->', filtered.length,
                 'Zeilen; Auswahl unveraendert:', selectionIds());
         });
@@ -515,7 +702,7 @@
 
         return {
             table: table, setResult: setResult, showResult: showResult,
-            getSelection: selectionIds
+            getSelection: selectionIds, setStats: setStats
         };
     }
 

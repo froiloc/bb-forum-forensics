@@ -10,7 +10,13 @@
 #   Fallzuweisung/Statusänderung ohne lückenlosen Audit-Eintrag.
 #   (Beleg: Bauplan B7 v0.3 §3.4, mc 2026-07-01)
 #
-# Version: v0.7.469 · Build: 469 · 2026-07-20
+# Version: v0.8.533 · Build: 533 · 2026-07-26
+#   Build 533: assign()/set_priority() sind in eine BAUENDE (assign_unit,
+#   priority_unit -> WriteUnit) und eine ausfuehrende Haelfte geteilt, damit die
+#   Sammelzuweisung (management/cases/cases_batch_repo.py) dieselbe
+#   Schreiblogik in EINER Transaktion mehrfach verwenden kann. Das Verhalten
+#   der oeffentlichen Methoden ist unveraendert; ihre Rueckgabe ist weiterhin
+#   die audit_log-seq des EINEN Belegs.
 #   Build 469: Schluesselumstellung user_id -> subject_id (M019)
 #   Build 313: create_case/assign/set_status spiegeln zusätzlich eine
 #   Zeitstrahl-Zeile nach case_events (after_audit-Hook, atomar mit Write
@@ -27,7 +33,7 @@ from typing import Any, Dict, Optional
 
 from management.audit.event_types import EventType
 from management.case_events.case_events_repo import insert_event_row
-from management.gateway.coordinator_writer import CoordinatorWriter
+from management.gateway.coordinator_writer import CoordinatorWriter, WriteUnit
 
 logger = logging.getLogger(__name__)
 
@@ -101,11 +107,22 @@ class CasesRepo:
             after_audit=_after,
         )
 
-    def assign(
+    # Build 533 (Sammelzuweisung): assign/set_priority sind in eine BAUENDE
+    # und eine AUSFUEHRENDE Haelfte geteilt. Die bauende (*_unit) liefert eine
+    # WriteUnit, ohne sie auszufuehren — nur so kann die Sammelzuweisung
+    # (CasesBatchRepo) 80 Aenderungen in EINE Transaktion legen, ohne die
+    # Schreiblogik ein zweites Mal hinzuschreiben. Zwei Kopien derselben
+    # UPDATE-Anweisung waeren zwei Wahrheiten; die Sammelzuweisung schriebe
+    # dann irgendwann etwas anderes als die Einzelzuweisung, und niemand
+    # merkte es. Das Verhalten der oeffentlichen Methoden ist UNVERAENDERT.
+
+    def assign_unit(
         self, subject_id: int, person_id: Optional[int], *,
         actor_id: Optional[int] = None, meta: Optional[Any] = None,
-    ) -> int:
-        now = int(time.time())
+        now: Optional[int] = None,
+    ) -> WriteUnit:
+        """Baut die Schreibeinheit EINER Zuweisung (führt sie NICHT aus)."""
+        now = int(time.time()) if now is None else int(now)
 
         def _w(con: sqlite3.Connection) -> Dict[str, Any]:
             cur = con.execute(
@@ -125,11 +142,18 @@ class CasesRepo:
                 created_by=actor_id, created_at=now, audit_seq=seq,
             )
 
-        return self._writer.audited_write(
+        return WriteUnit(
             do_write=_w, event_type=EventType.CASE_ASSIGNED,
-            actor_id=actor_id, target_type="case", target_id=str(subject_id), meta=meta,
-            after_audit=_after,
+            actor_id=actor_id, target_type="case", target_id=str(subject_id),
+            meta=meta, after_audit=_after,
         )
+
+    def assign(
+        self, subject_id: int, person_id: Optional[int], *,
+        actor_id: Optional[int] = None, meta: Optional[Any] = None,
+    ) -> int:
+        return self._writer.audited_write_many([self.assign_unit(
+            subject_id, person_id, actor_id=actor_id, meta=meta)])[0]
 
     def set_status(
         self, subject_id: int, status: str, *,
@@ -174,11 +198,19 @@ class CasesRepo:
             after_audit=_after,
         )
 
-    def set_priority(
+    def priority_unit(
         self, subject_id: int, priority: int, *,
         actor_id: Optional[int] = None, meta: Optional[Any] = None,
-    ) -> int:
-        now = int(time.time())
+        now: Optional[int] = None,
+    ) -> WriteUnit:
+        """
+        Baut die Schreibeinheit EINER Prioritaetsaenderung (fuehrt sie NICHT aus).
+
+        KEINE Spiegelung nach case_events — bewusst und unveraendert seit
+        Build 313 (mc 2026-07-02: der Zeitstrahl fuehrt Zuweisungen,
+        Statuswechsel und Freigaben, nicht jede Prioritaetsstufe).
+        """
+        now = int(time.time()) if now is None else int(now)
 
         def _w(con: sqlite3.Connection) -> Dict[str, Any]:
             cur = con.execute(
@@ -189,10 +221,18 @@ class CasesRepo:
                 raise CasesError("Kein Fall subject_id=%s." % subject_id)
             return {"subject_id": subject_id, "priority": priority}
 
-        return self._writer.audited_write(
+        return WriteUnit(
             do_write=_w, event_type=EventType.CASE_PRIORITY_SET,
-            actor_id=actor_id, target_type="case", target_id=str(subject_id), meta=meta,
+            actor_id=actor_id, target_type="case", target_id=str(subject_id),
+            meta=meta,
         )
+
+    def set_priority(
+        self, subject_id: int, priority: int, *,
+        actor_id: Optional[int] = None, meta: Optional[Any] = None,
+    ) -> int:
+        return self._writer.audited_write_many([self.priority_unit(
+            subject_id, priority, actor_id=actor_id, meta=meta)])[0]
 
     def set_note(
         self, subject_id: int, note: Optional[str], *,
