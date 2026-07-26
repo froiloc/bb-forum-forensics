@@ -26,11 +26,18 @@ const _srcDt = readFileSync(
   "management/server/static/cockpit_doctemplates.js", "utf-8");
 const _srcLe = readFileSync(
   "management/server/static/cockpit_lectorate.js", "utf-8");
+// Build 553: das gemeinsame Tabellen-Werkzeug MUSS im Kontext liegen — genau
+// wie im Browser (cockpit.html laedt es vor den Sichten). Ohne es faellt das
+// Lektorat in seinen Ersatzpfad und die Tabelle, an der die Auswahl haengt,
+// entsteht gar nicht erst.
+const _srcTk = readFileSync(
+  "management/server/static/cockpit_tablekit.js", "utf-8");
 
 function _win(src) {
   const dom = new JSDOM(
     "<!DOCTYPE html><html><body><div id='aiw-main'></div></body></html>",
     { runScripts: "dangerously", url: "http://localhost" });
+  dom.window.eval(_srcTk);
   dom.window.eval(src);
   return dom.window;
 }

@@ -340,6 +340,27 @@
     //   opts — { status?: 'submitted'|'approved'|'final'|'draft'|'alle',
     //            onSelect?: function(uid, rid){}   // Benachrichtigung (Logging)
     //          }
+    // _tk / _mitHilfe (Build 553): gemeinsames Tabellen-Werkzeug + Hilfe-Anker
+    // der Spaltenkoepfe. LAZY; die Spalten werden KOPIERT.
+    function _tk() {
+        return (typeof window !== 'undefined' && window.AIWTableKit)
+            ? window.AIWTableKit : null;
+    }
+    function _mitHilfe(cols, sicht, doc) {
+        var TK = _tk();
+        if (!TK || !doc || !TK.titelMitHilfe) { return cols; }
+        return cols.map(function (c) {
+            var neu = {};
+            Object.keys(c).forEach(function (k) { neu[k] = c[k]; });
+            if (c.field && !c.titleFormatter) {
+                neu.titleFormatter = TK.titelMitHilfe(
+                    doc, c.title || c.field,
+                    sicht + '.spalte.' + String(c.field).toLowerCase());
+            }
+            return neu;
+        });
+    }
+
     // Baut: Kopf + Statusfilter + Auswahl-Liste + Vorschau-<iframe>.
     function renderLectorate(mainEl, data, opts) {
         opts = opts || {};
@@ -485,90 +506,102 @@
 
         var Ctor = opts.Tabulator
             || (typeof window !== 'undefined' ? window.Tabulator : undefined);
-        if (typeof Ctor !== 'function') {
-            // Kein stiller Leerzustand (Grundregel 1): sichtbarer Hinweis.
+        var TK = _tk();
+        if (typeof Ctor !== 'function' || !TK) {
+            // Kein stiller Leerzustand (Grundregel 1): sichtbarer Hinweis —
+            // Build 553 zusaetzlich MIT der Zahl. Ohne sie saehe der Ausfall
+            // aus wie 'keine Berichte vorhanden'.
             var note = document.createElement('p');
-            note.className = 'aiw-lectorate-empty';
-            note.textContent = 'Tabellenbibliothek nicht verfuegbar.';
+            note.className = 'aiw-lectorate-empty aiw-placeholder';
+            note.textContent = 'Tabellenbibliothek nicht verfügbar — es '
+                + 'liegen ' + toRows(data, 'alle').length + ' Berichte vor.';
             container.appendChild(note);
             _state.table = null;
-            log('renderLectorate: kein Tabulator-Ctor');
+            log('renderLectorate: kein Tabulator-Ctor/TableKit');
         } else {
-            _state.table = new Ctor(container, {
-                // Build 484: ALLE Zeilen laden; die Statusfilterung uebernimmt
-                // der Dropdown-Header-Filter der Status-Spalte (Default via
-                // initialHeaderFilter). So wirkt ein Statuswechsel ohne Reload.
-                data: toRows(data, 'alle'),
-                // Build 482/484: Header-Filter je Spalte. Benutzer/Titel/
+            // Build 553 (UX): Aufbau ueber das gemeinsame Tabellen-Werkzeug.
+            // Werkzeugleiste, Trefferzahl, 'Filter zuruecksetzen', gesicherter
+            // Bedienzustand und Hilfe-Anker kommen von dort.
+            //
+            // DIE HANDGESETZTEN FILTER BLEIBEN UNANGETASTET: spaltenMitFilter
+            // fuellt nur Felder, die NICHT ausdruecklich gesetzt sind. Der exakte
+            // Full-Match beim Typ (Build 486) und die Statusfilterung ueber den
+            // ROH-Status (_statusHeaderFilter) haengen an dieser Sicht und duerfen
+            // nicht von der Automatik ueberschrieben werden.
+            //
+            // Der Zeilenklick laeuft ueber onRowClick (tabelleAufbauen haengt ihn
+            // ueber table.on an) — als Konstruktoroption wird er von Tabulator
+            // v6.4.0 still ignoriert (Befund Build 486, im Werkzeug seit 551).
+            _state.table = TK.tabelleAufbauen(document, container, {
+                sicht: 'lectorate',
+                rows: toRows(data, 'alle'),
+                // Build 482/484: Kopffilter je Spalte. Benutzer/Titel/
                 // Verfasser Freitext; Typ und Status als DROPDOWN (list) mit
                 // festen Werten + 'alle' (leerer Wert => kein Filter).
-                columns: [
-                    { title: 'Benutzer',  field: 'username',
-                      headerFilter: 'input' },
-                    { title: 'Titel',     field: 'title',
-                      headerFilter: 'input' },
-                    // Build 486: exakter Full-Match ('='), sonst wuerde der
-                    // list-Default als Teilstring 'Vermerk' auch in
-                    // 'Ergänzungsvermerk' finden.
-                    { title: 'Typ',       field: 'typ',
-                      headerFilter: 'list',
-                      headerFilterParams: { values: TYP_FILTER_VALUES },
-                      headerFilterFunc: '=' },
-                    { title: 'Nr.',       field: 'nr', hozAlign: 'right' },
-                    // Status: die Spalte ZEIGT status_label, FILTERT aber ueber
-                    // den Roh-Status (rowData.status) — so bleibt 'Versandt'
-                    // waehlbar, obwohl das Label 'Versandt/abgeschlossen' lautet.
-                    { title: 'Status',    field: 'status_label',
-                      headerFilter: 'list',
-                      headerFilterParams: { values: STATUS_FILTER_VALUES },
-                      headerFilterFunc: _statusHeaderFilter },
-                    { title: 'Verfasser', field: 'created_by',
-                      headerFilter: 'input' },
-                    { title: 'Erstellt',  field: 'created' }
-                ],
-                // Build 484: Default-Statusfilter (Vorgabe 'submitted').
-                initialHeaderFilter: _initHF,
-                layout: 'fitColumns',
-                // Build 482: Paginierung mit 20 Zeilen/Seite. height:false
-                // (kein maxHeight) — verhindert das dokumentierte Pager-Clipping
-                // (Beleg: userinfo.js buildTabulatorConfig, Console-Diagnose
-                // 2026-07-10). Deutscher Pager ueber locale/langs.
-                height: false,
-                pagination: 'local',
-                paginationSize: 20,
-                paginationCounter: 'rows',
-                locale: 'de-de',
-                langs: {
-                    'de-de': {
-                        pagination: {
-                            first: 'Erste', first_title: 'Erste Seite',
-                            last: 'Letzte', last_title: 'Letzte Seite',
-                            prev: 'Zurück', prev_title: 'Vorige Seite',
-                            next: 'Weiter', next_title: 'Nächste Seite',
-                            counter: {
-                                showing: 'Zeige', of: 'von',
-                                rows: 'Zeilen', pages: 'Seiten'
-                            }
-                        }
-                    }
-                },
-                // Kein stiller Leerzustand: sichtbarer Hinweis bei 0 Zeilen.
-                placeholder: 'Keine Berichte im gewaehlten Status.'
-            });
-            // Build 486 (Bugfix): In dieser Tabulator-Version (v6.4.0) ist
-            // 'rowClick' KEINE registrierte Tabellen-Option (nur rowClickMenu/
-            // rowClickPopup) — ein rowClick im Konstruktor wird still ignoriert,
-            // weshalb ein Zeilenklick keine Reaktion zeigte. Der Zeilenklick wird
-            // daher ueber die Event-API angehaengt (Beleg: Console-Diagnose, der
-            // via table.on('rowClick') registrierte Listener feuert). Defensiv:
-            // nur wenn .on vorhanden ist.
-            if (_state.table && typeof _state.table.on === 'function') {
-                _state.table.on('rowClick', function (e, row) {
+                columns: _mitHilfe([
+                        { title: 'Benutzer',  field: 'username',
+                          headerFilter: 'input' },
+                        { title: 'Titel',     field: 'title',
+                          headerFilter: 'input' },
+                        // Build 486: exakter Full-Match ('='), sonst wuerde der
+                        // list-Default als Teilstring 'Vermerk' auch in
+                        // 'Ergänzungsvermerk' finden.
+                        { title: 'Typ',       field: 'typ',
+                          headerFilter: 'list',
+                          headerFilterParams: { values: TYP_FILTER_VALUES },
+                          headerFilterFunc: '=' },
+                        { title: 'Nr.',       field: 'nr', hozAlign: 'right' },
+                        // Status: die Spalte ZEIGT status_label, FILTERT aber ueber
+                        // den Roh-Status (rowData.status) — so bleibt 'Versandt'
+                        // waehlbar, obwohl das Label 'Versandt/abgeschlossen' lautet.
+                        { title: 'Status',    field: 'status_label',
+                          headerFilter: 'list',
+                          headerFilterParams: { values: STATUS_FILTER_VALUES },
+                          headerFilterFunc: _statusHeaderFilter },
+                        { title: 'Verfasser', field: 'created_by',
+                          headerFilter: 'input' },
+                        { title: 'Erstellt',  field: 'created' }
+                ], 'lectorate', document),
+                Ctor: Ctor,
+                einheit: 'Berichte',
+                onRowClick: function (e, row) {
                     var el = (typeof row.getElement === 'function')
                         ? row.getElement() : null;
                     _selectReport(row.getData(), el);
-                });
-            }
+                },
+                tabulator: {
+                    // Build 484: Default-Statusfilter (Vorgabe 'submitted').
+                    // ALLE Zeilen sind geladen; die Statusfilterung uebernimmt
+                    // der Dropdown-Kopffilter der Status-Spalte, damit ein
+                    // Statuswechsel ohne Neuladen wirkt.
+                    initialHeaderFilter: _initHF,
+                    // Build 482: Paginierung mit 20 Zeilen/Seite. height:false
+                    // (kein maxHeight) — verhindert das dokumentierte Pager-Clipping
+                    // (Beleg: userinfo.js buildTabulatorConfig, Console-Diagnose
+                    // 2026-07-10). Deutscher Pager ueber locale/langs.
+                    height: false,
+                    pagination: 'local',
+                    paginationSize: 20,
+                    paginationCounter: 'rows',
+                    locale: 'de-de',
+                    langs: {
+                        'de-de': {
+                            pagination: {
+                                first: 'Erste', first_title: 'Erste Seite',
+                                last: 'Letzte', last_title: 'Letzte Seite',
+                                prev: 'Zurück', prev_title: 'Vorige Seite',
+                                next: 'Weiter', next_title: 'Nächste Seite',
+                                counter: {
+                                    showing: 'Zeige', of: 'von',
+                                    rows: 'Zeilen', pages: 'Seiten'
+                                }
+                            }
+                        }
+                    },
+                    // Kein stiller Leerzustand: sichtbarer Hinweis bei 0 Zeilen.
+                    placeholder: 'Keine Berichte im gewaehlten Status.'
+                }
+            }).table;
         }
 
         // --- Kommentar-Panel (SF-3, Slice 3) unter dem Vorschau-Bereich. ----
@@ -826,6 +859,11 @@
 
     // --- oeffentliche API -------------------------------------------------
     window.AIWCockpitLectorate = {
+        // Build 553: die Tabulator-Instanz nach aussen. renderLectorate gibt
+        // das Wrapper-Element zurueck, nicht die Tabelle — ohne diesen Zugang
+        // koennte die Konformitaetssuite die Sicht nicht pruefen, und ein
+        // Aufraeumen beim Sichtwechsel muesste raten.
+        getTable: function () { return _state.table; },
         // reine Funktionen (vitest)
         statusLabel: statusLabel,
         filterReports: filterReports,

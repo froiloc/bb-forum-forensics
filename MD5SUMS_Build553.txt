@@ -1,0 +1,5 @@
+132a6b7729db913cb32ac9e56ae64ea2  build.json
+686b6f204e9fe27aacc727ee0b1b12ac  management/server/static/cockpit_lectorate.js
+03c2f991d7ab5f92e3a1c46ae684ab4e  tests/unit/test_cockpit_tabellen_ux.test.js
+abe6c3bbf63fb90223074fb8c37ab503  tests/unit/test_cockpit_lectorate.test.js
+25aaa7aaeca73b4e2a012a6703eaf0d2  tests/unit/test_build475_report_as_template.test.js

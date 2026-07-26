@@ -231,6 +231,29 @@ const REGISTER = [
       ],
     }),
   },
+  // --- Build 553 ------------------------------------------------------------
+  // Lektorat: eine der beiden Sichten mit HANDGESETZTEN Filtern (exakter
+  // Full-Match beim Typ, Statusfilterung ueber den ROH-Status). UX04 belegt,
+  // dass die Automatik sie NICHT ueberschrieben hat — spaltenMitFilter fuellt
+  // nur, was nicht ausdruecklich gesetzt ist.
+  {
+    name: "lectorate", zeilenklick: true, ueberGetTable: true,
+    datei: "cockpit_lectorate.js",
+    global: "AIWCockpitLectorate", render: "renderLectorate",
+    sicht: "lectorate", zeilen: 3,
+    daten: () => ({
+      scope: "alle", count: 3,
+      reports: [
+        { subject_id: 18, username: "b18", id: 1, report_type: "interim",
+          sequence_nr: 1, title: "Zwischenbericht", status: "submitted" },
+        { subject_id: 19, username: "b19", id: 2, report_type: "final",
+          sequence_nr: 3, title: "Abschlussbericht", status: "approved" },
+        { subject_id: 20, username: "b20", id: 1, report_type: "addendum",
+          sequence_nr: 2, title: "Nachtrag", status: "submitted" },
+      ],
+    }),
+  },
+
   // --- Build 552 ------------------------------------------------------------
   // Statistiken: die Sicht besteht ueberwiegend aus Diagrammen; nur der Reiter
   // 'Ermittler' fuehrt eine Tabelle. Sie bekommt eine eigene Kennung
@@ -383,7 +406,10 @@ function _zeichne(eintrag, win, main, mitTabulator) {
 /** Die Tabelle einer bestimmten Sicht aus dem Rueckgabewert holen.
  *  Sichten mit MEHREREN Tabellen liefern ein Array; dann entscheidet der
  *  Index im Register. */
-function _tabelleVon(eintrag, view) {
+function _tabelleVon(eintrag, view, win) {
+  // Manche Sichten geben ihr Wrapper-Element zurueck und halten die Tabelle im
+  // Modulzustand; sie legen sie ueber getTable() offen.
+  if (eintrag.ueberGetTable) { return win[eintrag.global].getTable(); }
   if (Array.isArray(view)) { return view[eintrag.index || 0]; }
   if (view && view.table) { return view.table; }
   // Sichten, die mehrere Artefakte zurueckgeben (Statistiken: Diagramme UND
@@ -420,7 +446,7 @@ describe("Konformitaet der Listensichten (Build 549)", () => {
         const main = win.document.createElement("div");
         win.document.body.appendChild(main);
         const view = _zeichne(e, win, main, true);
-        const table = _tabelleVon(e, view);
+        const table = _tabelleVon(e, view, win);
 
         const knopf = main.querySelector("#aiw-" + e.sicht + "-tk-clear");
         expect(knopf, e.name + ": kein Zuruecksetzen-Knopf").toBeTruthy();
@@ -438,7 +464,7 @@ describe("Konformitaet der Listensichten (Build 549)", () => {
         const main = win.document.createElement("div");
         win.document.body.appendChild(main);
         const view = _zeichne(e, win, main, true);
-        const table = _tabelleVon(e, view);
+        const table = _tabelleVon(e, view, win);
 
         const cols = table.options.columns || [];
         expect(cols.length).toBeGreaterThan(0);
@@ -518,7 +544,7 @@ describe("Konformitaet der Listensichten (Build 549)", () => {
         const main = win.document.createElement("div");
         win.document.body.appendChild(main);
         const view = _zeichne(e, win, main, true);
-        const table = _tabelleVon(e, view);
+        const table = _tabelleVon(e, view, win);
 
         // ROWCLICK IST IN TABULATOR v6.4.0 KEINE KONSTRUKTOROPTION. Wer ihn
         // dort hineinschreibt, bekommt KEINEN Fehler — der Handler wird
