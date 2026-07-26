@@ -277,7 +277,22 @@
         // fremden Falls sehen will, braucht eine belegte Freigabe
         // (fulltext.release, M036) — die Sperre steht in der Zeile, samt
         // dem Weg zur Anfrage.
-        { id: 'search',     cap: 'evidence.fulltext_search', group: 'Auswertung', label: 'Volltextsuche' }
+        { id: 'search',     cap: 'evidence.fulltext_search', group: 'Auswertung', label: 'Volltextsuche' },
+        // Build 546 (AP-3G / Idee 37): die Sicht, mit der man die uebrigen
+        // Sichten einrichtet. Gruppe 'Persoenlich', weil sie ausschliesslich
+        // die EIGENE Oberflaeche betrifft.
+        //
+        // 'immer: true' — SIE IST DIE EINZIGE SICHT OHNE RECHTEPRUEFUNG, und
+        // das ist Absicht. Es gibt an ihr nichts zu schuetzen: sie zeigt keine
+        // Fall- und keine Personendaten, sondern nur die eigene Einrichtung.
+        // Haengte sie an einem Recht, muesste jemand dieses Recht erst
+        // erteilen (default-deny) — und bis dahin kaeme niemand an seine
+        // eigenen Einstellungen. Ein Recht, das man niemandem sinnvoll
+        // vorenthalten kann, ist keines.
+        //
+        // Sie steht ausserdem in NICHT_STEUERBAR (viewpref_katalog.py): wer
+        // sie ausblenden koennte, mauerte sich den Rueckweg zu.
+        { id: 'viewprefs',  cap: null, immer: true, group: 'Persoenlich', label: 'Ansicht anpassen' }
     ];
 
     // Gueltige Scope-Werte fuer die Anzeige (weitere -> kein Tag).
@@ -311,12 +326,109 @@
         return v.cap;
     }
 
-    function visibleViews(capabilities) {
-        return VIEW_CATALOG.filter(function (v) {
+    // Build 546: visibleViews arbeitet jetzt auf einer UEBERGEBENEN Liste
+    // (Vorgabe: der Katalog). Das ist die Voraussetzung dafuer, dass der
+    // Rechtefilter ZULETZT laufen kann — er bekommt die bereits nach der
+    // Vorliebe geordnete Liste und nicht umgekehrt (s. navViews).
+    //
+    // 'immer: true' umgeht die Rechtepruefung. Genau EIN Katalogeintrag traegt
+    // das Merkmal ('viewprefs'); die Begruendung steht dort.
+    function visibleViews(capabilities, views) {
+        var quelle = views || VIEW_CATALOG;
+        return quelle.filter(function (v) {
+            if (v.immer === true) { return true; }
             return viewCaps(v).some(function (c) {
                 return hasCap(capabilities, c);
             });
         });
+    }
+
+    // =========================================================================
+    // Build 546 (AP-3G / Idee 37): persoenliche Ansichtseinstellung anwenden.
+    //
+    // REIHENFOLGE, DIE NICHT VERHANDELBAR IST (Bauplan Welle 3 §3):
+    //     VIEW_CATALOG  ->  applyViewPrefs  ->  visibleViews(capabilities)
+    // Der Rechtefilter steht HINTEN. applyViewPrefs kann konstruktiv nichts
+    // hinzufuegen — es ordnet und markiert nur —, also kann eine Vorliebe
+    // keine Sicht einblenden, fuer die das Recht fehlt. Wird ein Recht spaeter
+    // entzogen, verschwindet die Sicht trotz gespeicherter Vorliebe.
+    // =========================================================================
+
+    // applyViewPrefs: ordnet 'views' nach der gespeicherten Vorliebe und
+    // markiert jeden Eintrag mit 'versteckt'. Gibt eine NEUE Liste mit NEUEN
+    // Objekten zurueck (der Katalog bleibt unberuehrt).
+    //
+    // prefs: [{key, sichtbar}] in gewuenschter Reihenfolge (aus /api/viewprefs).
+    //
+    // SICHTEN, DIE DIE VORLIEBE NICHT KENNT, STEHEN HINTEN UND SIND SICHTBAR.
+    // Das ist die wichtigste Entscheidung dieser Funktion: eine Sicht, die es
+    // bei der letzten Speicherung noch nicht gab, darf nicht dadurch
+    // unsichtbar werden, dass jemand vor einem halben Jahr etwas eingerichtet
+    // hat. Ein neuer Eintrag soll AUFFALLEN und nicht verschwinden
+    // (Grundregel 1, sinngemaess).
+    function applyViewPrefs(views, prefs) {
+        var quelle = views || [];
+        if (!prefs || !prefs.length) {
+            return quelle.map(function (v) {
+                var k = {};
+                for (var f in v) {
+                    if (Object.prototype.hasOwnProperty.call(v, f)) { k[f] = v[f]; }
+                }
+                k.versteckt = false;
+                return k;
+            });
+        }
+
+        var rang = {};
+        var sichtbarkeit = {};
+        prefs.forEach(function (p, i) {
+            if (!p || typeof p.key !== 'string') { return; }
+            rang[p.key] = i;
+            sichtbarkeit[p.key] = (p.sichtbar !== false);
+        });
+
+        var bekannt = [];
+        var unbekannt = [];   // vom Katalog, aber nicht von der Vorliebe
+        quelle.forEach(function (v, i) {
+            var kopie = {};
+            for (var f in v) {
+                if (Object.prototype.hasOwnProperty.call(v, f)) { kopie[f] = v[f]; }
+            }
+            if (Object.prototype.hasOwnProperty.call(rang, v.id)) {
+                kopie.versteckt = !sichtbarkeit[v.id];
+                kopie._rang = rang[v.id];
+                bekannt.push(kopie);
+            } else {
+                kopie.versteckt = false;
+                kopie._rang = i;
+                unbekannt.push(kopie);
+            }
+        });
+        bekannt.sort(function (a, b) { return a._rang - b._rang; });
+        unbekannt.sort(function (a, b) { return a._rang - b._rang; });
+
+        return bekannt.concat(unbekannt).map(function (v) {
+            delete v._rang;
+            return v;
+        });
+    }
+
+    // navViews: die Sichten, die in der Navigation ERSCHEINEN — geordnet nach
+    // Vorliebe, gefiltert nach Recht (in DIESER Reihenfolge), ohne die
+    // versteckten.
+    function navViews(capabilities, prefs) {
+        return visibleViews(capabilities,
+                            applyViewPrefs(VIEW_CATALOG, prefs))
+            .filter(function (v) { return v.versteckt !== true; });
+    }
+
+    // hiddenCount: wie viele Sichten hat die Person ausgeblendet, die sie
+    // sehen DUERFTE? Nur diese Zahl gehoert in die Navigation — Sichten ohne
+    // Recht sind nicht 'ausgeblendet', sondern nicht vorhanden, und sie
+    // mitzuzaehlen waere eine Auskunft ueber fremde Rechte.
+    function hiddenCount(capabilities, prefs) {
+        return visibleViews(capabilities, applyViewPrefs(VIEW_CATALOG, prefs))
+            .filter(function (v) { return v.versteckt === true; }).length;
     }
 
     // scopeTag: Scope-Text fuer die Nav ('alle'/'eigene') oder '' (kein Tag,
@@ -378,7 +490,10 @@
     // (aus visibleViews), capabilities fuer die Scope-Tags, activeId markiert
     // die aktive Sicht, onSelect(viewId) wird bei Klick aufgerufen.
     // XSS-sicher: alle variablen Texte via textContent.
-    function buildNav(navEl, views, capabilities, activeId, onSelect) {
+    // Build 546: zusaetzlicher Parameter 'versteckt' (Anzahl ausgeblendeter
+    // Sichten). Optional — fehlt er, verhaelt sich buildNav wie bisher.
+    function buildNav(navEl, views, capabilities, activeId, onSelect,
+                      versteckt) {
         if (!navEl) { return; }
         navEl.textContent = '';
         var lastGroup = null;
@@ -413,7 +528,33 @@
             });
             navEl.appendChild(b);
         });
-        log('Nav gebaut:', views.length, 'Sichten, aktiv:', activeId);
+
+        // Build 546 (AP-3G): DER ZAEHLER DER AUSGEBLENDETEN SICHTEN.
+        //
+        // Er ist die Gegenleistung dafuer, dass Ausblenden ueberhaupt erlaubt
+        // ist. Eine ausgeblendete Eskalationssicht koennte eine uebersehene
+        // Eskalation bedeuten; deshalb darf nichts STILL verschwinden. Die
+        // Zeile steht dauerhaft in der Navigation, nennt die Zahl und fuehrt
+        // mit einem Klick dorthin, wo man es rueckgaengig macht.
+        //
+        // Gezaehlt werden NUR Sichten, die die Person sehen duerfte. Sichten
+        // ohne Recht sind nicht 'ausgeblendet', sondern nicht vorhanden.
+        if (typeof versteckt === 'number' && versteckt > 0) {
+            var hint = document.createElement('button');
+            hint.className = 'aiw-navhidden';
+            hint.setAttribute('type', 'button');
+            hint.textContent = versteckt === 1
+                ? '1 Sicht ausgeblendet'
+                : (versteckt + ' Sichten ausgeblendet');
+            hint.title = 'Ausgeblendete Sichten bleiben über die '
+                + 'Kommandopalette (Strg-K) erreichbar. Klicken zum Anpassen.';
+            hint.addEventListener('click', function () {
+                if (typeof onSelect === 'function') { onSelect('viewprefs'); }
+            });
+            navEl.appendChild(hint);
+        }
+        log('Nav gebaut:', views.length, 'Sichten, aktiv:', activeId,
+            'ausgeblendet:', versteckt || 0);
     }
 
     // renderPlaceholder: Leerzustand fuer die gewaehlte Sicht (Build 347). Die
@@ -450,6 +591,12 @@
     // table = aktuelle Tabulator-Instanz (Build 348, Overview); sse = EventSource.
     var state = {
         capabilities: {}, activeId: null,
+        // Build 546 (AP-3G): die gespeicherte Ansichtseinstellung dieser
+        // Person. [] heisst 'nichts gespeichert' -> Werkseinstellung; null
+        // heisst 'noch nicht geladen'. Der Unterschied ist wichtig, damit ein
+        // AUSGEFALLENER Abruf nicht wie 'nichts eingestellt' aussieht.
+        viewPrefs: null,
+        viewPrefsFehler: null,
         table: null,        // aktuelle Tabulator-Instanz (Overview)
         tables: [],         // mehrere Tabulator-Instanzen (Policy-Sicht)
         charts: [],         // mehrere ECharts-Instanzen (Statistik-Sicht)
@@ -614,6 +761,13 @@
         if (modMod && typeof modMod.cleanup === 'function') {
             modMod.cleanup();
         }
+        // Build 546 (AP-3G): das Sortable der Einstellsicht abbauen, sonst
+        // bleiben beim Sichtwechsel verwaiste Listener zurueck.
+        var vpMod = (typeof window !== 'undefined')
+            ? window.AIWCockpitViewPrefs : null;
+        if (vpMod && typeof vpMod.cleanup === 'function') {
+            vpMod.cleanup();
+        }
     }
 
     // renderError: sichtbarer Fehlerhinweis im Hauptbereich (kein stiller Fehlpfad).
@@ -652,6 +806,87 @@
             cleanupView();
             renderError(mainEl,
                 'Uebersicht konnte nicht geladen werden: ' + err.message);
+        });
+    }
+
+    // =========================================================================
+    // Build 546 (AP-3G / Idee 37): die Sicht "Ansicht anpassen".
+    //
+    // Die Zeilen, die die Sicht bearbeitet, entstehen HIER — nicht im Modul.
+    // Grund: nur die Shell kennt beides, den Katalog und die Rechte. Sie
+    // reicht die BEREITS RECHTE-GEFILTERTE, nach der Vorliebe geordnete Liste
+    // hinein; das Modul kann deshalb konstruktiv nichts einblenden, was nicht
+    // erlaubt ist.
+    //
+    // 'viewprefs' selbst wird herausgenommen: die Sicht, mit der man einstellt,
+    // darf sich nicht selbst wegstellen (Server-Gegenstueck: NICHT_STEUERBAR
+    // in viewpref_katalog.py).
+    // =========================================================================
+    function viewPrefRows() {
+        return visibleViews(state.capabilities,
+                            applyViewPrefs(VIEW_CATALOG, state.viewPrefs))
+            .filter(function (v) { return v.id !== 'viewprefs'; })
+            .map(function (v) {
+                return { id: v.id, label: v.label, group: v.group,
+                         versteckt: v.versteckt === true };
+            });
+    }
+
+    function loadViewPrefs(mainEl) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitViewPrefs : null;
+        if (!mod) {
+            renderError(mainEl, 'Modul "Ansicht anpassen" nicht geladen.');
+            return;
+        }
+        cleanupView();
+        mod.renderViewPrefs(mainEl, {
+            rows: viewPrefRows(),
+            gespeichert: state.viewPrefs || [],
+            unbekannt: state.viewPrefsUnbekannt || [],
+            fehler: state.viewPrefsFehler
+        }, {
+            // KEIN OPTIMISTISCHES UI: erst schreiben, dann den ECHTEN Stand
+            // neu holen und die Navigation daraus aufbauen. Ein abgewiesener
+            // Speichervorgang darf sich nicht als Erfolg anfuehlen.
+            onSave: function (nutzlast) {
+                postJson('/api/viewprefs', { sichten: nutzlast })
+                    .then(function () {
+                        // ERST nach der Bestaetigung des Servers ist der
+                        // Entwurf ueberholt — nicht schon beim Klick.
+                        mod.nachErfolg();
+                        return neuLadenUndZeichnen(mainEl);
+                    })
+                    .catch(function (err) {
+                        renderError(mainEl,
+                            'Speichern fehlgeschlagen: ' + err.message);
+                    });
+            },
+            onReset: function () {
+                postJson('/api/viewprefs/reset', { art: 'sicht' })
+                    .then(function () {
+                        mod.nachErfolg();
+                        return neuLadenUndZeichnen(mainEl);
+                    })
+                    .catch(function (err) {
+                        renderError(mainEl,
+                            'Zuruecksetzen fehlgeschlagen: ' + err.message);
+                    });
+            }
+        });
+    }
+
+    // neuLadenUndZeichnen: den gespeicherten Stand frisch holen, die Navigation
+    // neu bauen und die Einstellsicht neu zeichnen. Eine Stelle, damit
+    // Speichern und Zuruecksetzen nicht auseinanderlaufen koennen.
+    function neuLadenUndZeichnen(mainEl) {
+        return fetchJson('/api/viewprefs').then(function (vp) {
+            state.viewPrefs = (vp && vp.sichten) || [];
+            state.viewPrefsKatalog = (vp && vp.katalog) || null;
+            state.viewPrefsUnbekannt = (vp && vp.unbekannt) || [];
+            state.viewPrefsFehler = null;
+            selectView('viewprefs');   // baut Nav + Sicht neu auf
         });
     }
 
@@ -3362,15 +3597,50 @@
     // Build 349: 'dashboard' -> Overview; 'integrity' -> Integritaets-Sicht;
     // sonst Platzhalter (weitere Sichten folgen).
     function selectView(viewId) {
+        // Build 546 (AP-3G, mc 2026-07-26): WARNUNG BEIM VERLASSEN MIT
+        // UNGESPEICHERTEN AENDERUNGEN.
+        //
+        // Die Frage steht VOR cleanupView(), denn cleanupView() setzt das
+        // Merkmal zurueck — danach waere nicht mehr feststellbar, dass etwas
+        // offen war. Wer abbricht, bleibt auf der Sicht; ihr Zustand ist
+        // unberuehrt, weil noch nichts abgebaut wurde.
+        //
+        // Der Zwischenstand liegt zusaetzlich im localStorage (Muster Build
+        // 487/488), er ginge also selbst dann nicht verloren, wenn jemand die
+        // Frage uebersieht. Die Warnung ist trotzdem da: einen Verlust
+        // nachtraeglich reparieren zu koennen ersetzt nicht den Hinweis, dass
+        // gerade etwas offen ist.
+        if (state.activeId === 'viewprefs' && viewId !== 'viewprefs') {
+            var vpm = (typeof window !== 'undefined')
+                ? window.AIWCockpitViewPrefs : null;
+            if (vpm && typeof vpm.hatUngespeichertes === 'function'
+                    && vpm.hatUngespeichertes()
+                    && typeof window.confirm === 'function') {
+                var weiter = window.confirm(
+                    'Die Ansichtseinstellung ist nicht gespeichert. '
+                    + 'Bereich trotzdem verlassen?\n\n'
+                    + 'Der Zwischenstand bleibt erhalten und wird beim '
+                    + 'nächsten Aufruf wiederhergestellt.');
+                if (!weiter) {
+                    log('Sichtwechsel abgebrochen (ungespeicherte Ansicht)');
+                    return;
+                }
+            }
+        }
         state.activeId = viewId;
         cleanupView();  // beim Sichtwechsel offene Tabelle/Diagramm abbauen
         var navEl = document.getElementById('aiw-nav');
         var mainEl = document.getElementById('aiw-main');
-        var views = visibleViews(state.capabilities);
-        buildNav(navEl, views, state.capabilities, state.activeId, selectView);
+        // Build 546 (AP-3G): geordnet nach Vorliebe, gefiltert nach Recht
+        // (in dieser Reihenfolge), ohne die versteckten.
+        var views = navViews(state.capabilities, state.viewPrefs);
+        buildNav(navEl, views, state.capabilities, state.activeId, selectView,
+                 hiddenCount(state.capabilities, state.viewPrefs));
         refreshExportButton();
         if (viewId === 'dashboard') {
             loadOverview(mainEl);
+        } else if (viewId === 'viewprefs') {
+            loadViewPrefs(mainEl);
         } else if (viewId === 'integrity') {
             loadIntegrity(mainEl);
         } else if (viewId === 'audit') {
@@ -3680,6 +3950,14 @@
 
     function boot() {
         log('boot() Start');
+        // Build 546 (AP-3G): erst die Identitaet, dann die Ansichtseinstellung.
+        //
+        // EIN FEHLSCHLAG BEIM ZWEITEN ABRUF DARF DEN START NICHT VERHINDERN,
+        // aber er darf auch nicht wie 'nichts eingestellt' aussehen. Deshalb
+        // faengt der catch den Fehler ab, merkt ihn in state.viewPrefsFehler
+        // (die Einstellsicht zeigt ihn an) und laesst das Cockpit mit der
+        // WERKSEINSTELLUNG hochkommen. Eine Oberflaeche, die wegen einer
+        // Bedienvorliebe gar nicht startet, waere die schlechtere Antwort.
         fetchJson('/api/whoami').then(function (who) {
             log('whoami', who);
             state.capabilities = who.capabilities || {};
@@ -3695,14 +3973,30 @@
             setWho(document.getElementById('aiw-who'),
                    who.display_name, who.system_username);
 
-            var views = visibleViews(state.capabilities);
+            return fetchJson('/api/viewprefs').then(function (vp) {
+                state.viewPrefs = (vp && vp.sichten) || [];
+                state.viewPrefsKatalog = (vp && vp.katalog) || null;
+                state.viewPrefsUnbekannt = (vp && vp.unbekannt) || [];
+                log('Ansichtseinstellung geladen:',
+                    state.viewPrefs.length, 'Sichten');
+            }).catch(function (err) {
+                state.viewPrefs = [];
+                state.viewPrefsFehler = err.message;
+                // eslint-disable-next-line no-console
+                console.warn('[AIW-Cockpit] Ansichtseinstellung nicht '
+                    + 'ladbar — Werkseinstellung: ' + err.message);
+            });
+        }).then(function () {
+
+            var views = navViews(state.capabilities, state.viewPrefs);
             state.activeId = firstViewId(views);
             // Erste Sicht ueber selectView anzeigen (laedt ggf. die Overview).
             if (state.activeId) {
                 selectView(state.activeId);
             } else {
                 buildNav(document.getElementById('aiw-nav'), views,
-                         state.capabilities, null, selectView);
+                         state.capabilities, null, selectView,
+                         hiddenCount(state.capabilities, state.viewPrefs));
                 renderPlaceholder(document.getElementById('aiw-main'), null);
             }
 
@@ -3712,6 +4006,22 @@
             if (state.activeId !== 'integrity') {
                 refreshBanner();
             }
+
+            // Build 546 (AP-3G): dieselbe Warnung beim Schliessen/Neuladen
+            // des Fensters. Der Browser zeigt seinen eigenen Text (der
+            // Rueckgabewert wird seit langem ignoriert) — entscheidend ist,
+            // DASS gefragt wird.
+            window.addEventListener('beforeunload', function (e) {
+                var vpm = window.AIWCockpitViewPrefs;
+                if (state.activeId === 'viewprefs' && vpm
+                        && typeof vpm.hatUngespeichertes === 'function'
+                        && vpm.hatUngespeichertes()) {
+                    e.preventDefault();
+                    e.returnValue = '';
+                    return '';
+                }
+                return undefined;
+            });
 
             // Live-Reload aktivieren.
             startSse();
@@ -3784,6 +4094,10 @@
         viewCaps: viewCaps,
         effectiveCap: effectiveCap,
         visibleViews: visibleViews,
+        // Build 546 (AP-3G): reine Funktionen der Ansichtseinstellung.
+        applyViewPrefs: applyViewPrefs,
+        navViews: navViews,
+        hiddenCount: hiddenCount,
         scopeTag: scopeTag,
         firstViewId: firstViewId,
         groupSequence: groupSequence,

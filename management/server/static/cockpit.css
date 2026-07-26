@@ -2684,3 +2684,50 @@ tr.aiw-cff-nichtrelevant { opacity: 0.7; }
 .aiw-qs-ausreisser li { margin: 3px 0; }
 .aiw-qs-hinweis { margin: 4px 0; font-size: 12px; color: #4a5158; }
 .aiw-qs-fehler { font-size: 13px; }
+
+/* =============================================================================
+   Build 546 (AP-3G / Idee 37): Sicht "Ansicht anpassen" + Zaehler in der Nav.
+   ============================================================================= */
+
+/* DER ZAEHLER DER AUSGEBLENDETEN SICHTEN. Er sitzt dauerhaft am Fuss der
+   Navigation und ist die Gegenleistung dafuer, dass Ausblenden erlaubt ist:
+   nichts verschwindet still. Bewusst zurueckhaltend, aber nicht unsichtbar. */
+.aiw-navhidden {
+    display: block; width: 100%; margin-top: 10px; padding: 6px 10px;
+    border: 1px dashed #b6c0c6; border-radius: 4px; background: transparent;
+    color: #5a6b75; font: inherit; font-size: 12px; text-align: left;
+    cursor: pointer;
+}
+.aiw-navhidden:hover { background: #e2e7ea; color: #24343d; }
+.aiw-navhidden:focus-visible { outline: 2px solid var(--akzent); outline-offset: -2px; }
+
+.aiw-vp-fehler {
+    margin: 8px 0; padding: 8px 10px; border-left: 4px solid #b03030;
+    background: #fbeeee; font-size: 13px;
+}
+.aiw-vp-hinweis {
+    margin: 8px 0; padding: 8px 10px; border-left: 4px solid #c08a20;
+    background: #fdf6e6; font-size: 13px;
+}
+.aiw-vp-zahlen { margin: 10px 0 6px; color: #5a6b75; font-size: 13px; }
+
+.aiw-vp-liste { max-width: 720px; }
+.aiw-vp-zeile {
+    display: flex; align-items: center; gap: 10px;
+    padding: 6px 8px; border: 1px solid #dfe4e7; border-radius: 4px;
+    margin-bottom: 4px; background: #fff;
+}
+/* Ausgeblendetes wird NICHT versteckt, sondern an seinem Platz durchgestrichen
+   gezeigt — sonst muesste man raten, was fehlt. */
+.aiw-vp-zeile.is-versteckt { background: #f4f6f7; color: #8a969d; }
+.aiw-vp-zeile.is-versteckt .aiw-vp-label { text-decoration: line-through; }
+.aiw-vp-griff { cursor: grab; color: #99a5ac; user-select: none; }
+.aiw-vp-label { flex: 1; }
+.aiw-vp-gruppe { color: #8a969d; font-size: 12px; }
+.aiw-vp-pfeil {
+    border: 1px solid #cfd6da; border-radius: 3px; background: #fff;
+    color: #4a5b65; cursor: pointer; padding: 1px 7px; font-size: 12px;
+}
+.aiw-vp-pfeil:disabled { opacity: .35; cursor: default; }
+.aiw-vp-leiste { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+.aiw-vp-meldung { color: #5a6b75; font-size: 12px; }

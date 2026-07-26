@@ -85,7 +85,14 @@ _BEWUSST_OHNE_EXPORT = {"notes", "lectorate", "approval",
                         # Bestand, ihre Endpunkte sind POST mit
                         # PFLICHT-Zweckangabe, und ein generischer
                         # Export wuerde die Stufe-2-Sperre umgehen.
-                        "search"}
+                        "search",
+                        # Build 546 (AP-3G): die Sicht "Ansicht anpassen".
+                        # Sie hat KEINEN Bestand, der in eine Akte gehoerte —
+                        # sie zeigt die persoenliche Einrichtung der
+                        # Oberflaeche und keinen einzigen Fall- oder
+                        # Personendatensatz. Ein Export waere ein leeres Blatt
+                        # mit Briefkopf.
+                        "viewprefs"}
 
 
 class ViewExportApiTests(unittest.TestCase):

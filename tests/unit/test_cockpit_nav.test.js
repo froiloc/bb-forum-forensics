@@ -17,6 +17,22 @@
  * CN09 — setWho(): Anzeigename via textContent (XSS-sicher).
  * CN10 — renderPlaceholder(): Leerzustand mit Sicht-Label bzw. default-deny-Hinweis.
  *
+ * BUILD 546 (AP-3G) — EINE AUSNAHME VON DEFAULT-DENY, HIER AUSGESCHRIEBEN:
+ * Die Sicht 'viewprefs' ("Ansicht anpassen") traegt 'immer: true' und
+ * erscheint OHNE Rechtepruefung. Sie ist damit in JEDER Erwartung dieser
+ * Suite zusaetzlich enthalten — das ist kein Aufweichen der Zusicherung,
+ * sondern ihre praezisere Fassung. Begruendung: an dieser Sicht gibt es
+ * nichts zu schuetzen (keine Fall-, keine Personendaten, nur die eigene
+ * Oberflaeche), und bei default-deny kaeme niemand an seine eigenen
+ * Einstellungen, bis jemand ein Recht erteilt, das man niemandem sinnvoll
+ * vorenthalten kann.
+ *
+ * DAMIT DIE AUSNAHME EINE AUSNAHME BLEIBT, prueft CN02b, dass 'viewprefs' der
+ * EINZIGE Katalogeintrag mit 'immer' ist. Ohne diesen Riegel koennte eine
+ * spaetere Sicht dasselbe Merkmal bekommen, ohne dass jemand entscheidet.
+ * CN11/CN12 pruefen zusaetzlich den Zaehler ausgeblendeter Sichten in der
+ * Navigation.
+ *
  * Version: v0.7.347 · Build: 347 · 2026-07-10
  */
 
@@ -67,16 +83,37 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     // Build 461: 'promotion' haengt ebenfalls an ops.view (Fremdforum-Promotion).
     // Build 467: 'audit' (Audit-Explorer) haengt ebenfalls an ops.view und steht
     // in der Katalog-Reihenfolge direkt nach 'integrity'.
+    // Build 546: 'viewprefs' faehrt IMMER mit (s. Kopf dieser Datei).
     expect(ids).toEqual(
-      ["dashboard", "workload", "integrity", "audit", "promotion"]);
+      ["dashboard", "workload", "integrity", "audit", "promotion",
+       "viewprefs"]);
+  });
+
+  // CN02b ------------------------------------------------------------------
+  it("CN02b: 'viewprefs' ist der EINZIGE Eintrag ohne Rechtepruefung", () => {
+    const api = _api();
+    const immer = api.VIEW_CATALOG.filter((v) => v.immer === true).map(
+      (v) => v.id
+    );
+    expect(immer).toEqual(["viewprefs"]);
+    // Und jede andere Sicht nennt eine Faehigkeit — eine Sicht ohne Recht und
+    // ohne 'immer' waere fuer niemanden erreichbar (stiller Ausfall).
+    const ohneCap = api.VIEW_CATALOG.filter(
+      (v) => v.immer !== true && !v.cap && !(v.caps && v.caps.length)
+    ).map((v) => v.id);
+    expect(ohneCap).toEqual([]);
   });
 
   // CN03 -------------------------------------------------------------------
   it("CN03: leere capabilities -> leer; Katalog unveraendert", () => {
     const api = _api();
-    expect(api.visibleViews({})).toEqual([]);
-    expect(api.visibleViews(null)).toEqual([]);
-    expect(api.visibleViews(undefined)).toEqual([]);
+    // Build 546: ohne jede Faehigkeit bleibt GENAU EINE Sicht — die eigene
+    // Ansichtseinstellung. Default-deny gilt fuer alles andere unveraendert.
+    expect(api.visibleViews({}).map((v) => v.id)).toEqual(["viewprefs"]);
+    expect(api.visibleViews(null).map((v) => v.id)).toEqual(["viewprefs"]);
+    expect(api.visibleViews(undefined).map((v) => v.id)).toEqual([
+      "viewprefs",
+    ]);
     // Kataloglaenge bleibt (keine Mutation).
     // Build 384: 13 statt 12 Sichten (neu: 'cases' - Fall-Erkennung).
     // Build 386: 14 (neu: 'calendar' - Kalender & Wiedervorlage).
@@ -118,7 +155,8 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     //           'Auswertung', Recht qs.view aus M034 - das Ziehen und
     //           Pruefen haengt zusaetzlich an qs.edit, der Kennzahlenteil
     //           an metrics.view aus M035).
-    expect(api.VIEW_CATALOG.length).toBe(40);
+    // Build 546: 41 (neu: 'viewprefs' - Ansicht anpassen, AP-3G/Idee 37).
+    expect(api.VIEW_CATALOG.length).toBe(41);
   });
 
   // CN-QUERFUND (Build 478) --------------------------------------------------
@@ -188,9 +226,9 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
 
     // Wer zuweisen darf, sieht auch die Fall-Erkennung - und nur der.
     expect(api.visibleViews({ "assignment.edit": "alle" }).map((x) => x.id))
-      .toEqual(["assignment", "cases"]);
+      .toEqual(["assignment", "cases", "viewprefs"]);
     expect(api.visibleViews({ "dashboard.view": "eigene" }).map((x) => x.id))
-      .toEqual(["dashboard"]);
+      .toEqual(["dashboard", "viewprefs"]);
   });
 
   // CN03c (Build 386) --------------------------------------------------------
@@ -204,7 +242,7 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     // Der Ermittler mit Scope 'eigene' sieht die Sicht ebenso wie die Chefin —
     // die Kapselung passiert im Backend (Scope), nicht in der Navigation.
     expect(api.visibleViews({ "external.view": "eigene" }).map((x) => x.id))
-      .toEqual(["calendar"]);
+      .toEqual(["calendar", "viewprefs"]);
   });
 
   // CN03d (Build 395) --------------------------------------------------------
@@ -219,7 +257,7 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     // Abdeckung SEINER Faelle. Die fallUEBERGREIFENDE Verteilung (/stats)
     // bleibt Scope 'alle' vorbehalten; das prueft das Backend, nicht die Nav.
     expect(api.visibleViews({ "results.view": "eigene" }).map((x) => x.id))
-      .toEqual(["results"]);
+      .toEqual(["results", "viewprefs"]);
   });
 
   // CN03e (Build 423) --------------------------------------------------------
@@ -234,10 +272,10 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     // Build 425: templates.edit macht W2 UND W3 sichtbar (beide Gruppe Redaktion).
     // Build 427: zusaetzlich W1 ('modules') — alle drei Autoren-Werkzeuge.
     expect(api.visibleViews({ "templates.edit": "alle" }).map((x) => x.id))
-      .toEqual(["templates", "doctemplates", "modules"]);
+      .toEqual(["templates", "doctemplates", "modules", "viewprefs"]);
     // Ohne das Recht ist die Sicht unsichtbar (kein Leak in die Navigation).
     expect(api.visibleViews({ "dashboard.view": "alle" }).map((x) => x.id))
-      .toEqual(["dashboard"]);
+      .toEqual(["dashboard", "viewprefs"]);
   });
 
   // CN03f (Build 425) --------------------------------------------------------
@@ -250,7 +288,7 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
 
     // templates.edit macht ALLE Redaktions-Sichten sichtbar (W2 + W3 + W1).
     expect(api.visibleViews({ "templates.edit": "alle" }).map((x) => x.id))
-      .toEqual(["templates", "doctemplates", "modules"]);
+      .toEqual(["templates", "doctemplates", "modules", "viewprefs"]);
   });
 
   // CN03g (Build 427) --------------------------------------------------------
@@ -296,10 +334,13 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
       "workload.view": "alle", // Auswertung
     };
     const views = api.visibleViews(caps);
+    // Build 546: 'viewprefs' steht in der Gruppe 'Persoenlich' und faehrt
+    // immer mit — die Gruppe erscheint deshalb auch ohne mycases/myhistory.
     expect(api.groupSequence(views)).toEqual([
       "Ueberblick",
       "Verwaltung",
       "Auswertung",
+      "Persoenlich",
     ]);
   });
 
@@ -318,8 +359,10 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
 
     const groups = nav.querySelectorAll(".aiw-navgroup");
     const items = nav.querySelectorAll(".aiw-navitem");
+    // Build 546: 'viewprefs' kommt in der Gruppe 'Persoenlich' hinzu (dort
+    // steht bereits 'mycases') -> weiterhin 2 Gruppen, aber 3 Eintraege.
     expect(groups.length).toBe(2); // Ueberblick, Persoenlich
-    expect(items.length).toBe(2);
+    expect(items.length).toBe(3);
 
     // Aktive Sicht markiert.
     const active = nav.querySelector(".aiw-navitem.active");
@@ -330,6 +373,47 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
       (t) => t.textContent
     );
     expect(tags.sort()).toEqual(["alle", "eigene"]);
+  });
+
+  // CN11 -------------------------------------------------------------------
+  it("CN11: buildNav zeigt den Zaehler ausgeblendeter Sichten", () => {
+    const win = _makeContext();
+    const api = win.AIWCockpit;
+    const nav = win.document.createElement("nav");
+    win.document.body.appendChild(nav);
+    const caps = { "dashboard.view": "alle" };
+
+    // Ohne Ausgeblendetes: KEINE Zeile (kein Laerm).
+    api.buildNav(nav, api.visibleViews(caps), caps, null, () => {}, 0);
+    expect(nav.querySelectorAll(".aiw-navhidden").length).toBe(0);
+
+    // Mit Ausgeblendetem: die Zeile steht da und nennt die Zahl. Sie ist die
+    // Gegenleistung dafuer, dass Ausblenden erlaubt ist — nichts verschwindet
+    // still.
+    api.buildNav(nav, api.visibleViews(caps), caps, null, () => {}, 3);
+    const hint = nav.querySelector(".aiw-navhidden");
+    expect(hint).not.toBe(null);
+    expect(hint.textContent).toBe("3 Sichten ausgeblendet");
+    // Singular sauber.
+    api.buildNav(nav, api.visibleViews(caps), caps, null, () => {}, 1);
+    expect(nav.querySelector(".aiw-navhidden").textContent).toBe(
+      "1 Sicht ausgeblendet"
+    );
+  });
+
+  // CN12 -------------------------------------------------------------------
+  it("CN12: Klick auf den Zaehler fuehrt zur Einstellsicht", () => {
+    const win = _makeContext();
+    const api = win.AIWCockpit;
+    const nav = win.document.createElement("nav");
+    win.document.body.appendChild(nav);
+    const caps = { "dashboard.view": "alle" };
+    let gewaehlt = null;
+    api.buildNav(nav, api.visibleViews(caps), caps, null, (id) => {
+      gewaehlt = id;
+    }, 2);
+    nav.querySelector(".aiw-navhidden").dispatchEvent(new win.Event("click"));
+    expect(gewaehlt).toBe("viewprefs");
   });
 
   // CN08 -------------------------------------------------------------------

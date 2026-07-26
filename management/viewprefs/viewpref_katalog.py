@@ -92,9 +92,16 @@ STEUERBARE_SICHTEN: Tuple[str, ...] = (
 
 #: Sichten, die es im Cockpit gibt, die aber bewusst NICHT steuerbar sind.
 #  Jeder Eintrag braucht einen Grund — eine wortlose Ausnahmeliste waere eine
-#  Hintertuer. In Build 545 ist die Liste leer; Build 546 traegt 'viewprefs'
-#  ein (die Sicht, mit der man einstellt, darf sich nicht selbst wegstellen).
-NICHT_STEUERBAR: Dict[str, str] = {}
+#  Hintertuer.
+NICHT_STEUERBAR: Dict[str, str] = {
+    # Build 546: die Sicht, mit der man einstellt, darf sich nicht selbst
+    # wegstellen. Waere sie ausblendbar, koennte sich jemand mit einem Klick
+    # den Rueckweg zumauern — und der einzige Ausweg waere ein Eingriff in die
+    # Datenbank. Sie traegt ausserdem als EINZIGE Sicht kein Recht
+    # ('immer: true' in cockpit.js), weil es an ihr nichts zu schuetzen gibt.
+    "viewprefs": "Die Einstellsicht selbst — sonst liesse sich der Rueckweg "
+                 "zumauern.",
+}
 
 
 @dataclass(frozen=True)

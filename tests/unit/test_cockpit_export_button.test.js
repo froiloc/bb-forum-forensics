@@ -46,7 +46,13 @@ function _api() {
 // die Stufe-2-Sperre umgehen — er stellte fremden Arbeitsstand in ein
 // Dokument, das anschliessend in einer Akte liegt. Ausfuehrlich in
 // management/export/view_export_catalog.py.
-const OHNE_EXPORT = ["notes", "lectorate", "approval", "search"];
+// Build 546 (AP-3G): 'viewprefs' ("Ansicht anpassen") hat KEINEN Bestand, der
+// in eine Akte gehoerte — sie zeigt die persoenliche Einrichtung der
+// Oberflaeche und keinen einzigen Fall- oder Personendatensatz. Ein Export
+// waere ein leeres Blatt mit Briefkopf. Wer nachvollziehen will, wie jemand
+// seine Oberflaeche eingerichtet hatte, findet das im audit_log
+// (view_pref_set traegt den vollstaendigen Zustand).
+const OHNE_EXPORT = ["notes", "lectorate", "approval", "search", "viewprefs"];
 
 describe("cockpit.js — Akten-Export-Knopf (Build 512, AP-2B/B1)", () => {
   // EX01 ---------------------------------------------------------------------

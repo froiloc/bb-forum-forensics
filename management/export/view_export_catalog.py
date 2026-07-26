@@ -48,12 +48,22 @@
 #                 gebaut', sondern ausgeschlossen. Was in die Akte gehoert,
 #                 ist der einzelne, gegen die Quelle verifizierte Treffer —
 #                 und der wird ueber den Fall exportiert, dem er gehoert.
+#   - 'viewprefs' — die Sicht "Ansicht anpassen" (AP-3G, Build 546). Sie hat
+#                 KEINEN Bestand, der in eine Akte gehoerte: sie zeigt
+#                 ausschliesslich die persoenliche Einrichtung der Oberflaeche
+#                 (Reihenfolge und Sichtbarkeit von Nav-Eintraegen) und keinen
+#                 einzigen Fall- oder Personendatensatz. Ein Akten-Export waere
+#                 ein leeres Blatt mit Briefkopf. Wer nachvollziehen will, WIE
+#                 eine Person ihre Oberflaeche eingerichtet hatte, findet das
+#                 im audit_log (view_pref_set traegt den vollstaendigen
+#                 Zustand) und damit an der Stelle, an der es hingehoert.
 #   Alle uebrigen Sichten des VIEW_CATALOG sind erfasst (Test VE08 prueft das
 #   gegen cockpit.js, damit eine kuenftige neue Sicht nicht still durchfaellt).
 #
 # Build 525: +Sicht 'limitation' (AP-3A, Fristen) MIT dem
 #   Verjaehrungsvorbehalt als 'note'.
-# Version: v0.8.525 · Build: 525 · 2026-07-25
+# Build 546: 'viewprefs' in die Ausnahmeliste (Begruendung oben).
+# Version: v0.8.546 · Build: 546 · 2026-07-26
 # =============================================================================
 
 from __future__ import annotations
