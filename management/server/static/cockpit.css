@@ -2731,3 +2731,59 @@ tr.aiw-cff-nichtrelevant { opacity: 0.7; }
 .aiw-vp-pfeil:disabled { opacity: .35; cursor: default; }
 .aiw-vp-leiste { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
 .aiw-vp-meldung { color: #5a6b75; font-size: 12px; }
+
+/* =============================================================================
+   Build 547 (AP-3G / Idee 37): Kachelflaeche des Ueberblicks.
+   ============================================================================= */
+.aiw-db-kopf { display: flex; align-items: center; gap: 14px; }
+.aiw-db-waehler {
+    margin: 10px 0 16px; padding: 10px 12px; border: 1px solid #dfe4e7;
+    border-radius: 4px; background: #fafbfc;
+}
+.aiw-db-wliste { max-width: 760px; margin-bottom: 10px; }
+.aiw-db-wzeile { display: flex; align-items: center; gap: 10px; padding: 4px 0; }
+.aiw-db-wlabel { min-width: 210px; }
+.aiw-db-wbeschr { flex: 1; color: #8a969d; font-size: 12px; }
+
+/* Raster: schmale Kacheln nebeneinander, breite (Steckplatz) ueber die volle
+   Breite — so behaelt die eingebettete Fall-Tabelle ihren Platz. */
+.aiw-db-raster {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px; margin-top: 12px;
+}
+.aiw-kachel {
+    border: 1px solid #dfe4e7; border-radius: 5px; background: #fff;
+    padding: 10px 12px;
+}
+.aiw-kachel.is-breit { grid-column: 1 / -1; }
+/* AUSGEFALLEN IST NICHT LEER — der Unterschied ist auch sichtbar. */
+.aiw-kachel.is-fehler { border-color: #b03030; background: #fbeeee; }
+.aiw-kachel-titel { font-size: 12px; color: #5a6b75; text-transform: uppercase;
+    letter-spacing: .04em; }
+.aiw-kachel-zahl { font-size: 30px; line-height: 1.15; }
+.aiw-kachel-unter { color: #5a6b75; font-size: 13px; }
+.aiw-kachel-leer { margin-top: 6px; color: #8a969d; font-size: 13px;
+    font-style: italic; }
+.aiw-kachel-fehler { margin-top: 6px; color: #8a2020; font-size: 13px; }
+.aiw-kachel-liste { list-style: none; margin: 8px 0 0; padding: 0; }
+.aiw-kachel-zeile {
+    padding: 3px 0 3px 8px; border-left: 3px solid transparent;
+    font-size: 13px; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.aiw-kachel-zeile.stufe-rot, .aiw-kachel-zeile.stufe-hoch {
+    border-left-color: #b03030; }
+.aiw-kachel-zeile.stufe-gelb, .aiw-kachel-zeile.stufe-mittel {
+    border-left-color: #c08a20; }
+.aiw-kachel-zeile.stufe-gruen, .aiw-kachel-zeile.stufe-niedrig {
+    border-left-color: #3d8a4f; }
+/* Die beiden Reduktionshinweise und der Vorbehalt. Zurueckhaltend, aber
+   IMMER da, wo gefiltert oder abgeschnitten wurde. */
+.aiw-kachel-grundlage, .aiw-kachel-hinweis {
+    margin-top: 6px; color: #8a969d; font-size: 11px;
+}
+.aiw-kachel-vorbehalt {
+    margin-top: 6px; padding-top: 5px; border-top: 1px dotted #dfe4e7;
+    color: #7a6420; font-size: 11px;
+}
+.aiw-kachel-slot { margin-top: 8px; }

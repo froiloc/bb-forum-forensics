@@ -50,6 +50,13 @@
 #   VP22 — POST /api/viewprefs/reset -> 200, danach ist nichts gespeichert.
 #   VP23 — M037 seedet KEIN Recht (AP-3G braucht keines).
 #
+# KATALOG GEGEN FRONTEND (Build 547):
+#   VP24 — Zu JEDER Kachel des Katalogs gibt es im Browser einen Reduzierer,
+#          und umgekehrt. Eine Kachel ohne Reduzierer waere dauerhaft leer,
+#          ein Reduzierer ohne Kachel toter Code — beides ohne Fehlermeldung.
+#   VP25 — 'viewprefs' ist nicht steuerbar und traegt einen Grund; die
+#          Einstellsicht darf sich nicht selbst wegstellen.
+#
 # Version: v0.8.545 · Build: 545 · 2026-07-26
 # =============================================================================
 
@@ -554,6 +561,58 @@ class TestEndpunkte(_Basis):
         self.assertNotIn("rbac_capability", quelle,
                          "M037 fasst rbac_capability an — AP-3G soll kein "
                          "Recht anlegen.")
+
+
+class TestKatalogGegenFrontend(unittest.TestCase):
+    """VP24-VP25 — Build 547. Ohne Datenbank."""
+
+    # ===================================================================== VP24
+    def test_VP24_jede_kachel_hat_einen_reduzierer(self):
+        """
+        Der Kachel-Katalog steht im Server, die Darstellung im Browser. Ohne
+        diesen Abgleich faellt beides irgendwann auseinander, UND ZWAR
+        LAUTLOS: eine Kachel ohne Reduzierer bliebe dauerhaft leer (sie
+        bekaeme nur einen Fehlertext, den niemand als Bauversehen erkennt),
+        ein Reduzierer ohne Kachel waere toter Code. Verfahren wie VP01/VE08.
+        """
+        js = Path("management/server/static/cockpit_dashboard.js").read_text(
+            encoding="utf-8")
+        block = js.split("var REDUZIERER = {", 1)[1].split("};", 1)[0]
+        reduzierer = set(re.findall(r"^\s*([a-z_]+):", block, re.MULTILINE))
+        self.assertGreater(len(reduzierer), 5, "REDUZIERER nicht erkannt")
+
+        katalog = {w.key for w in kat.WIDGETS}
+        self.assertEqual(
+            katalog - reduzierer, set(),
+            "Kacheln ohne Reduzierer (waeren dauerhaft leer): %r"
+            % sorted(katalog - reduzierer))
+        self.assertEqual(
+            reduzierer - katalog, set(),
+            "Reduzierer ohne Kachel (toter Code): %r"
+            % sorted(reduzierer - katalog))
+
+        # KEIN ENDPUNKT ALS ZEICHENKETTE IM MODUL. Die Pfade holt die Shell
+        # aus dem Katalog des Servers (w.api_path); staenden sie zusaetzlich
+        # als Literal im Browser, gaebe es zwei Listen von Pfaden und damit
+        # zwei Wahrheiten.
+        #
+        # Geprueft wird auf ZITIERTE Vorkommen. Die Pfade stehen im Modul
+        # sehr wohl in KOMMENTAREN (je Reduzierer die Quellenangabe) — das
+        # ist Dokumentation und ausdruecklich erwuenscht. Die erste Fassung
+        # dieses Tests hat beides verwechselt und ist daran gescheitert.
+        literale = set(re.findall(r"['\"](/api/[a-z_/-]+)['\"]", js))
+        self.assertEqual(
+            literale, set(),
+            "cockpit_dashboard.js nennt Endpunkte als Zeichenkette: %r "
+            "— die Pfade gehoeren allein in viewpref_katalog.WIDGETS."
+            % sorted(literale))
+
+    # ===================================================================== VP25
+    def test_VP25_einstellsicht_ist_nicht_steuerbar(self):
+        self.assertIn("viewprefs", kat.NICHT_STEUERBAR)
+        self.assertNotIn("viewprefs", kat.STEUERBARE_SICHTEN)
+        self.assertTrue(kat.NICHT_STEUERBAR["viewprefs"].strip())
+        self.assertFalse(kat.ist_bekannt(kat.ART_SICHT, "viewprefs"))
 
 
 if __name__ == "__main__":  # pragma: no cover

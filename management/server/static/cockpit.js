@@ -596,6 +596,11 @@
         // heisst 'noch nicht geladen'. Der Unterschied ist wichtig, damit ein
         // AUSGEFALLENER Abruf nicht wie 'nichts eingestellt' aussieht.
         viewPrefs: null,
+        // Build 547: die Kachelauswahl des Ueberblicks. null = nichts
+        // gespeichert -> Werkseinstellung; [] = alle Kacheln abgewaehlt.
+        viewPrefsWidgets: null,
+        viewPrefsKatalog: null,
+        viewPrefsUnbekannt: [],
         viewPrefsFehler: null,
         table: null,        // aktuelle Tabulator-Instanz (Overview)
         tables: [],         // mehrere Tabulator-Instanzen (Policy-Sicht)
@@ -783,29 +788,106 @@
     // loadOverview: /api/overview holen und als Tabulator-Tabelle rendern
     // (cockpit_overview.js). Wird bei Sichtwahl 'dashboard' UND bei SSE-'changed'
     // auf der aktiven Overview-Sicht aufgerufen.
+    // =========================================================================
+    // Build 547 (AP-3G / Idee 37): DER UEBERBLICK IST EINE KACHELFLAECHE.
+    //
+    // Jede Kachel speist sich aus einem BESTEHENDEN lesenden Endpunkt; dieses
+    // Arbeitspaket legt keinen neuen Datenweg an. Die Abrufe laufen PARALLEL
+    // und jeder faengt seinen Fehler SELBST — faellt einer aus, zeigt genau
+    // diese Kachel den Ausfall, und die uebrigen stehen trotzdem. Ein
+    // gemeinsamer catch haette den ganzen Ueberblick leergeraeumt, und ein
+    // leerer Ueberblick saehe aus wie 'es liegt nichts an'.
+    //
+    // 'fallampel' ist ein STECKPLATZ: die Kachel bekommt einen leeren Rumpf,
+    // in den DIESE Funktion die ECHTE Tabulator-Uebersicht zeichnet
+    // (cockpit_overview.renderOverview). Damit bleibt der Fall-Sprung der
+    // Kommandopalette (focusCase, Build 459) unveraendert heil — er haengt an
+    // genau dieser Instanz.
+    // =========================================================================
     function loadOverview(mainEl) {
         mainEl = mainEl || document.getElementById('aiw-main');
+        var db = (typeof window !== 'undefined')
+            ? window.AIWCockpitDashboard : null;
         var ov = (typeof window !== 'undefined') ? window.AIWCockpitOverview : null;
-        if (!ov) {
-            renderError(mainEl, 'Overview-Modul nicht geladen.');
+        if (!db || !ov) {
+            renderError(mainEl, 'Ueberblick-Module nicht geladen.');
             return;
         }
-        fetchJson('/api/overview').then(function (data) {
-            cleanupView();  // vorherige Artefakte vor Neuaufbau abbauen
-            state.table = ov.renderOverview(mainEl, data, {});
-            // Fall-Fokus aus der Kommandopalette (Build 459): nach dem Rendern
-            // zur gewaehlten Zeile springen und sie kurz hervorheben. Danach
-            // zuruecksetzen, damit ein spaeterer Reload nicht erneut springt.
-            if (state.focusCaseId !== null && state.focusCaseId !== undefined
-                && typeof ov.focusCase === 'function') {
-                ov.focusCase(state.table, state.focusCaseId);
-                state.focusCaseId = null;
+
+        var kacheln = db.aktiveKacheln(state.viewPrefsWidgets,
+                                       state.viewPrefsKatalog);
+        // 'fallampel' traegt den Steckplatz. Das Merkmal steht hier und nicht
+        // im Server-Katalog: es ist eine reine Darstellungsfrage des Browsers.
+        kacheln = kacheln.map(function (w) {
+            var k = {};
+            for (var f in w) {
+                if (Object.prototype.hasOwnProperty.call(w, f)) { k[f] = w[f]; }
             }
-            log('Overview gerendert:', data.count, 'Faelle, scope', data.scope);
+            k.slot = (w.key === 'fallampel');
+            return k;
+        });
+
+        // Je Kachel EIN Abruf, parallel, mit eigenem catch.
+        var abrufe = kacheln.map(function (w) {
+            return fetchJson(w.api_path).then(function (d) {
+                return { key: w.key, daten: d };
+            }).catch(function (err) {
+                return { key: w.key, daten: { fehler: err.message } };
+            });
+        });
+
+        Promise.all(abrufe).then(function (ergebnisse) {
+            cleanupView();  // vorherige Artefakte vor Neuaufbau abbauen
+            var modelle = {};
+            var rohdaten = {};
+            ergebnisse.forEach(function (e) {
+                rohdaten[e.key] = e.daten;
+                modelle[e.key] = db.reduziere(e.key, e.daten);
+            });
+
+            db.renderDashboard(mainEl, {
+                kacheln: kacheln, modelle: modelle,
+                katalog: state.viewPrefsKatalog, prefs: state.viewPrefsWidgets
+            }, {
+                // Steckplatz: die ECHTE Uebersicht in den Kachelrumpf.
+                onSlot: function (key, rumpfEl) {
+                    if (key !== 'fallampel') { return; }
+                    var d = rohdaten.fallampel;
+                    if (!d || d.fehler) { return; }
+                    state.table = ov.renderOverview(rumpfEl, d, {});
+                    // Fall-Fokus aus der Kommandopalette (Build 459): nach dem
+                    // Rendern zur gewaehlten Zeile springen. Danach
+                    // zuruecksetzen, damit ein spaeterer Reload nicht erneut
+                    // springt.
+                    if (state.focusCaseId !== null
+                            && state.focusCaseId !== undefined
+                            && typeof ov.focusCase === 'function') {
+                        ov.focusCase(state.table, state.focusCaseId);
+                        state.focusCaseId = null;
+                    }
+                },
+                // KEIN OPTIMISTISCHES UI: schreiben, dann den ECHTEN Stand neu
+                // holen und daraus zeichnen.
+                onSpeichern: function (nutzlast) {
+                    postJson('/api/viewprefs', { widgets: nutzlast })
+                        .then(function () {
+                            return fetchJson('/api/viewprefs');
+                        }).then(function (vp) {
+                            uebernimmViewPrefs(vp);
+                            loadOverview(mainEl);
+                        }).catch(function (err) {
+                            renderError(mainEl,
+                                'Speichern fehlgeschlagen: ' + err.message);
+                        });
+                }
+            });
+            log('Ueberblick gerendert:', kacheln.length, 'Kacheln');
         }).catch(function (err) {
+            // Hierher kommt nur, was NICHT aus einem Einzelabruf stammt (die
+            // fangen selbst) — also ein Fehler im Aufbau der Flaeche.
             cleanupView();
             renderError(mainEl,
-                'Uebersicht konnte nicht geladen werden: ' + err.message);
+                'Ueberblick konnte nicht aufgebaut werden: ' + err.message);
         });
     }
 
@@ -877,15 +959,31 @@
         });
     }
 
+    // uebernimmViewPrefs: die Antwort von /api/viewprefs in den Zustand.
+    //
+    // AN GENAU EINER STELLE, weil sie an drei Orten gebraucht wird (boot,
+    // Speichern der Sichten, Speichern der Kacheln). Drei Kopien liefen
+    // irgendwann auseinander.
+    //
+    // 'widgets' bleibt null, wenn der Server nichts Gespeichertes meldet —
+    // null heisst WERKSEINSTELLUNG, [] heisst 'alle Kacheln abgewaehlt'. Wer
+    // beides gleich behandelt, gibt jemandem die Werkseinstellung zurueck, der
+    // sie ausdruecklich abgewaehlt hat.
+    function uebernimmViewPrefs(vp) {
+        state.viewPrefs = (vp && vp.sichten) || [];
+        state.viewPrefsKatalog = (vp && vp.katalog) || null;
+        state.viewPrefsUnbekannt = (vp && vp.unbekannt) || [];
+        state.viewPrefsWidgets = (vp && vp.widgets && vp.widgets.length)
+            ? vp.widgets : null;
+        state.viewPrefsFehler = null;
+    }
+
     // neuLadenUndZeichnen: den gespeicherten Stand frisch holen, die Navigation
     // neu bauen und die Einstellsicht neu zeichnen. Eine Stelle, damit
     // Speichern und Zuruecksetzen nicht auseinanderlaufen koennen.
     function neuLadenUndZeichnen(mainEl) {
         return fetchJson('/api/viewprefs').then(function (vp) {
-            state.viewPrefs = (vp && vp.sichten) || [];
-            state.viewPrefsKatalog = (vp && vp.katalog) || null;
-            state.viewPrefsUnbekannt = (vp && vp.unbekannt) || [];
-            state.viewPrefsFehler = null;
+            uebernimmViewPrefs(vp);
             selectView('viewprefs');   // baut Nav + Sicht neu auf
         });
     }
@@ -3974,11 +4072,10 @@
                    who.display_name, who.system_username);
 
             return fetchJson('/api/viewprefs').then(function (vp) {
-                state.viewPrefs = (vp && vp.sichten) || [];
-                state.viewPrefsKatalog = (vp && vp.katalog) || null;
-                state.viewPrefsUnbekannt = (vp && vp.unbekannt) || [];
+                uebernimmViewPrefs(vp);
                 log('Ansichtseinstellung geladen:',
-                    state.viewPrefs.length, 'Sichten');
+                    state.viewPrefs.length, 'Sichten,',
+                    (state.viewPrefsWidgets || []).length, 'Kacheln');
             }).catch(function (err) {
                 state.viewPrefs = [];
                 state.viewPrefsFehler = err.message;
