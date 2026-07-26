@@ -346,6 +346,7 @@ class ForensicApi:
             "/_forensic/annotation_tag_network.js", # B4 Welle 4 Tag-Netz (Build 431)
             "/_forensic/annotation_recherche.js",   # B4 Welle 1 Recherche (Build 428)
             "/_forensic/annotation_recherche.css",  # B4 Welle 1 Recherche (Build 428)
+            "/_forensic/tatzeit_panel.js",      # AP-3A Tatzeit-Aufklappbereich (Build 534)
         ):
             if method not in ("GET", "HEAD"):
                 self._method_not_allowed(handler)

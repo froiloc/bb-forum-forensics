@@ -68,6 +68,11 @@ _TOOLBAR_JS_TAG  = f'<script src="/_forensic/toolbar.js?v={_BUILD_NR}"></script>
 # Build 471 (BS3): Scrollpositions-Wiederherstellung pro Seite. MUSS nach
 # toolbar.js geladen werden, da es ForensicToolbar.events (page:loaded) abonniert.
 _SCROLL_MEMORY_JS_TAG = f'<script src="/_forensic/scroll_memory.js?v={_BUILD_NR}"></script>'
+# Build 534 (AP-3A): Aufklappbereich "Tatzeitraum" im Annotations-Popup.
+# MUSS nach toolbar.js geladen werden — toolbar.js prueft beim Oeffnen des
+# Popups auf window.TatzeitPanel. Fehlt die Datei, protokolliert toolbar.js
+# eine Warnung und laesst den Bereich weg (kein stiller Ausfall).
+_TATZEIT_PANEL_JS_TAG = f'<script src="/_forensic/tatzeit_panel.js?v={_BUILD_NR}"></script>'
 # Build 086: Tabulator.js wird in userinfo.py eingebunden (eigenes Fenster).
 # Beleg: Projektgespräch 2026-05-05 — shell_handler lädt für Hauptfenster, nicht Userinfo-Tab.
 
@@ -184,4 +189,5 @@ class ShellHandler:
 {_SHELL_BODY}
 {_TOOLBAR_JS_TAG}
 {_SCROLL_MEMORY_JS_TAG}
+{_TATZEIT_PANEL_JS_TAG}
 </html>"""

@@ -2890,3 +2890,211 @@ body.aiw-view-original .aux-part { display: none !important; }
   word-break: break-word;
   color: #1d202b;
 }
+
+/* ===========================================================================
+ * Build 534 (AP-3A): Aufklappbereich "Tatzeitraum" im Annotations-Popup
+ * ---------------------------------------------------------------------------
+ * Entscheidung mc 2026-07-26: Der Bereich ist AUFKLAPPBAR und beim Oeffnen
+ * des Popups IMMER ZU — die Maske traegt schon Kategorie, Benutzer, Notiz,
+ * Tags und markierten Text, und nicht jede Annotation braucht eine Tatzeit.
+ *
+ * DIE MAHNUNG SITZT DESHALB AUF DER AUFKLAPPZEILE, nicht am Feld. Die
+ * urspruengliche Festlegung ("hellgelber Feldhintergrund + Warnzeichen",
+ * Uebergabe §2.2 Nr. 8) laesst sich an einem zugeklappten Feld nicht
+ * umsetzen — man saehe die Farbe nie. Absicht und Wirkung bleiben, der Ort
+ * wandert.
+ *
+ * STATISCH, KEINE ANIMATION. Ausdruecklich so festgelegt, damit keine
+ * prefers-reduced-motion-Sonderbehandlung noetig ist.
+ *
+ * FARBWAHL: #fff3cd auf #7a5b00 ist NICHT neu erfunden, sondern die bereits
+ * im Projekt verwendete Warnfarbe (.aiw-translation-head). Auf dem dunklen
+ * Popup traegt sie zusaetzlich als Hell-Dunkel-Kontrast — die Zeile faellt
+ * auf, ohne zu blinken. Kontrast rund 7:1 (WCAG AA erfuellt).
+ * ======================================================================== */
+
+.forensic-tatzeit {
+  margin: 0 0 10px 0;
+  border: 1px solid #3a4060;
+  border-radius: 4px;
+  background: #212636;
+}
+
+.forensic-tatzeit-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 9px;
+  cursor: pointer;
+  border-radius: 3px;
+  list-style: none;
+  user-select: none;
+}
+
+/* Das Standard-Dreieck wuerde in zwei Browsern verschieden sitzen; die Zeile
+   bekommt stattdessen ein eigenes, das ueber [open] rotiert — ohne Uebergang,
+   also ohne Animation. */
+.forensic-tatzeit-summary::-webkit-details-marker { display: none; }
+.forensic-tatzeit-summary::marker { content: ""; }
+.forensic-tatzeit-summary::before {
+  content: "\25B8";
+  flex-shrink: 0;
+  font-size: 11px;
+  opacity: 0.75;
+}
+.forensic-tatzeit[open] > .forensic-tatzeit-summary::before {
+  content: "\25BE";
+}
+
+.forensic-tatzeit-summary:focus-visible {
+  outline: 2px solid #4f8ef7;
+  outline-offset: 1px;
+}
+
+.forensic-tatzeit-caption {
+  font-size: 11px;
+  font-weight: 600;
+  color: #7a8aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex: 1 1 auto;
+}
+
+.forensic-tatzeit-status {
+  font-size: 11px;
+  color: #8890a8;
+  font-family: monospace;
+  text-align: right;
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- Die Mahnung: nur bei §§ 176/184 UND nur solange nichts erfasst ist.
+       Sobald ein Wert steht, wird die Klasse ENTFERNT — Farbe und Symbol
+       verschwinden ganz, nicht nur blasser (Festlegung mc). --- */
+.forensic-tatzeit-summary--mahnung {
+  background: #fff3cd;
+}
+.forensic-tatzeit-summary--mahnung .forensic-tatzeit-caption,
+.forensic-tatzeit-summary--mahnung .forensic-tatzeit-status {
+  color: #7a5b00;
+}
+.forensic-tatzeit-summary--mahnung::before {
+  color: #7a5b00;
+  opacity: 1;
+}
+
+.forensic-tatzeit-body {
+  padding: 8px 9px 10px 9px;
+  border-top: 1px solid #2d3550;
+}
+
+.forensic-tatzeit-hinweis {
+  font-size: 11px;
+  color: #8890a8;
+  font-style: italic;
+  margin-bottom: 8px;
+  line-height: 1.45;
+}
+
+.forensic-tatzeit-fehler {
+  font-size: 11px;
+  color: #ffd0d0;
+  background: #4a2020;
+  border: 1px solid #7a3030;
+  border-radius: 3px;
+  padding: 5px 8px;
+  margin-bottom: 8px;
+  line-height: 1.45;
+}
+
+.forensic-tatzeit-leer {
+  font-size: 11px;
+  color: #8890a8;
+  font-style: italic;
+  margin-bottom: 8px;
+}
+
+.forensic-tatzeit-liste {
+  list-style: none;
+  margin: 0 0 10px 0;
+  padding: 0;
+}
+
+.forensic-tatzeit-eintrag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 5px 7px;
+  margin-bottom: 4px;
+  background: #252b3e;
+  border: 1px solid #2d3550;
+  border-radius: 3px;
+}
+
+.forensic-tatzeit-eintrag-wert {
+  font-size: 12px;
+  color: #c8d0e8;
+  font-family: monospace;
+  flex: 0 0 auto;
+}
+
+.forensic-tatzeit-eintrag-meta {
+  font-size: 10px;
+  color: #8890a8;
+  flex: 1 1 auto;
+}
+
+.forensic-tatzeit-form {
+  border: none;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.forensic-tatzeit-artwahl {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 8px;
+}
+.forensic-tatzeit-artwahl label {
+  font-size: 12px;
+  color: #c8d0e8;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.forensic-tatzeit-zeile {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.forensic-tatzeit-datum {
+  width: auto;
+  flex: 1 1 120px;
+  min-width: 120px;
+}
+
+.forensic-tatzeit-meldung {
+  font-size: 11px;
+  color: #8890a8;
+  min-height: 15px;
+  margin: 6px 0;
+  line-height: 1.45;
+}
+.forensic-tatzeit-meldung--fehler {
+  color: #ffb0b0;
+}
+
+.forensic-tatzeit-btn-set {
+  width: 100%;
+}

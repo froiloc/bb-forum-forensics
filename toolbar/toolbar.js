@@ -2547,6 +2547,10 @@
 
     var _currentAnn   = null;  // Aktuell bearbeitete Annotation
     var _popupEl      = null;  // DOM-Element des Popups
+    // Build 534 (AP-3A): Instanz des Tatzeit-Aufklappbereichs. Die gesamte
+    // Logik liegt in toolbar/tatzeit_panel.js (Grundregel 10) — hier steht nur
+    // die Referenz, damit Kategoriewechsel und Schliessen sie erreichen.
+    var _tatzeitPanel = null;
 
     // Bug 2.78 (Build 176): Kein Cache mehr — Typeahead-Suche lädt bei Eingabe.
     // Build 175-Cache (_knownUsersCache/_knownUsersLoading) entfernt.
@@ -2630,6 +2634,14 @@
         HighlightModule.clearAll();
         HighlightModule.restoreAll();
         MinimapModule.refresh();
+      }
+      // Build 534 (AP-3A): Der Tatzeit-Bereich schreibt SOFORT und ueber
+      // seinen eigenen, auditierten Endpunkt — es gibt hier nichts
+      // nachzureichen. Abgeraeumt wird er trotzdem ausdruecklich, damit keine
+      // Referenz auf ein entferntes DOM-Element zurueckbleibt.
+      if (_tatzeitPanel) {
+        try { _tatzeitPanel.destroy(); } catch (e) { /* egal */ }
+        _tatzeitPanel = null;
       }
       if (_popupEl) {
         _popupEl.remove();
@@ -2752,6 +2764,16 @@
             'style="display:none"></div>'
           : '') +
 
+        // Build 534 (AP-3A): Ankerpunkt fuer den Aufklappbereich "Tatzeitraum".
+        // ABSICHTLICH NUR EIN LEERES DIV. Der Bereich wird von
+        // toolbar/tatzeit_panel.js gefuellt (Grundregel 10) — toolbar.js kennt
+        // weder seine Felder noch seinen Endpunkt. Fehlt die Datei, bleibt das
+        // div leer und das Popup funktioniert unveraendert weiter.
+        // ZUGEKLAPPT beim Oeffnen (mc 2026-07-26: die Oberflaeche klar halten;
+        // nicht jede Annotation braucht eine Tatzeit). Die Mahnung bei
+        // fehlender Angabe sitzt deshalb auf der Aufklappzeile, nicht am Feld.
+        '<div id="forensic-popup-tatzeit-mount"></div>' +
+
         // Markierter Text (wenn vorhanden)
         (ann.selection ?
           '<label class="forensic-popup-label">Markierter Text:</label>' +
@@ -2775,6 +2797,37 @@
       // Fokus auf Notiz-Feld (§8 Bauplan)
       var txtArea = document.getElementById("forensic-popup-text");
       if (txtArea) txtArea.focus();
+
+      // --- Build 534 (AP-3A): Tatzeit-Aufklappbereich einhaengen ------------
+      // Die Datei wird in shell_handler.py NACH toolbar.js geladen. Fehlt sie
+      // (alter Cache, unvollstaendiger Rollout), wird das ausdruecklich
+      // PROTOKOLLIERT und das Popup laeuft ohne den Bereich weiter — ein
+      // stiller Ausfall waere hier besonders unangenehm, weil eine fehlende
+      // Tatzeitmaske aussieht wie "hier ist nichts zu erfassen".
+      _tatzeitPanel = null;
+      var mount = document.getElementById("forensic-popup-tatzeit-mount");
+      if (mount && typeof window.TatzeitPanel === "function") {
+        _tatzeitPanel = new window.TatzeitPanel({
+          container: mount,
+          ann: ann,
+          readOnly: readOnly,
+          ajaxGet: ajaxGet,
+          ajaxPost: ajaxPost,
+          // Eine noch nicht gespeicherte Annotation hat keine ID, an der die
+          // Tatzeit haengen koennte. Der Bereich darf sie deshalb selbst
+          // speichern — das Popup bleibt dabei offen, damit ein Fehlschlag
+          // sichtbar ist.
+          saveAnnotation: function () {
+            return AnnotationStoreModule.syncAnnotation(ann);
+          },
+          announce: function (t) {
+            try { AccessibilityModule.announce(t); } catch (e) { /* egal */ }
+          },
+        }).mount();
+      } else if (mount) {
+        console.warn("[Forensic] tatzeit_panel.js nicht geladen — der " +
+                     "Aufklappbereich 'Tatzeitraum' fehlt in diesem Popup.");
+      }
 
       // --- Event-Listener ---
 
@@ -2821,6 +2874,13 @@
             _dbg("[Popup] Kategorie geändert:", oldCat, "→", newCat,
                  "| Highlight neu gerendert");
           }
+
+          // Build 534 (AP-3A): Die Mahnung "Tatzeit fehlt" gilt nur fuer
+          // §§ 176/184 und muss dem Dropdown SOFORT folgen — sonst wechselt
+          // jemand auf 176 und sieht erst beim naechsten Oeffnen, dass etwas
+          // fehlt. Auch bei unveraenderter _currentAnn ausgefuehrt (der
+          // Zweig oben laeuft nur bei echter Aenderung).
+          if (_tatzeitPanel) { _tatzeitPanel.setCategory(newCat); }
         });
       }
 

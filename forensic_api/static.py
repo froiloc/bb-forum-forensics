@@ -63,6 +63,11 @@ _RESOURCES: dict[str, tuple[str, str, Path]] = {
     # Build 471 (BS3): Scrollpositions-Wiederherstellung pro Seite (eigene Klasse,
     # Grundregel 10). Wird in shell_handler.py NACH toolbar.js eingebunden.
     "/_forensic/scroll_memory.js": ("scroll_memory.js", "application/javascript; charset=utf-8", _TOOLBAR_DIR),
+    # Build 534 (AP-3A): Aufklappbereich "Tatzeitraum" im Annotations-Popup
+    # (eigene Klasse, Grundregel 10). Wird in shell_handler.py NACH toolbar.js
+    # eingebunden — toolbar.js haengt ihn im Popup ueber window.TatzeitPanel
+    # ein und laeuft ohne ihn (mit Warnung) weiter.
+    "/_forensic/tatzeit_panel.js": ("tatzeit_panel.js", "application/javascript; charset=utf-8", _TOOLBAR_DIR),
     "/_forensic/userinfo.js":  ("userinfo.js",  "application/javascript; charset=utf-8", _USERINFO_DIR),
     "/_forensic/userinfo.css": ("userinfo.css", "text/css; charset=utf-8",               _USERINFO_DIR),
     # Build 390: Erfassungsmaske Ermittlungsergebnis (Baustelle 4).
