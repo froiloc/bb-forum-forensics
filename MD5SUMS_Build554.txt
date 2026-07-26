@@ -1,0 +1,4 @@
+a06b715daee0ef8ce9772a8aa0c1b3d1  build.json
+249223ab3ba3b45618f975068b27b834  management/server/static/cockpit_approval.js
+17fca998c7a3e2ded27a60f741d2dd15  tests/unit/test_cockpit_tabellen_ux.test.js
+5d70c3ddeaf05f8b1e673fd41084ec42  tests/unit/test_cockpit_approval.test.js

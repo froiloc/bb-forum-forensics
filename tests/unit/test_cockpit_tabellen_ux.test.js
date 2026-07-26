@@ -231,6 +231,30 @@ const REGISTER = [
       ],
     }),
   },
+  // --- Build 554 ------------------------------------------------------------
+  // Chef-Freigabe: letzte Sicht der Gruppe B. Wie das Lektorat mit
+  // handgesetzten Filtern und Blaetterung.
+  {
+    name: "approval", zeilenklick: true, ueberGetTable: true,
+    datei: "cockpit_approval.js",
+    global: "AIWCockpitApproval", render: "renderApproval",
+    sicht: "approval", zeilen: 3,
+    daten: () => ({
+      scope: "alle", count: 3,
+      reports: [
+        { subject_id: 18, username: "b18", id: 1, report_type: "interim",
+          sequence_nr: 1, title: "Zwischenbericht", status: "submitted",
+          created_by: "h002", created_at: 1783000000, approvals: [] },
+        { subject_id: 19, username: "b19", id: 2, report_type: "final",
+          sequence_nr: 3, title: "Abschlussbericht", status: "approved",
+          created_by: "h003", created_at: 1783100000, approvals: [] },
+        { subject_id: 20, username: "b20", id: 1, report_type: "addendum",
+          sequence_nr: 2, title: "Nachtrag", status: "submitted",
+          created_by: "h002", created_at: 1783200000, approvals: [] },
+      ],
+    }),
+  },
+
   // --- Build 553 ------------------------------------------------------------
   // Lektorat: eine der beiden Sichten mit HANDGESETZTEN Filtern (exakter
   // Full-Match beim Typ, Statusfilterung ueber den ROH-Status). UX04 belegt,

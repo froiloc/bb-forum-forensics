@@ -28,12 +28,18 @@ const _src = readFileSync(
   "management/server/static/cockpit_approval.js",
   "utf-8"
 );
+// Build 554: das gemeinsame Tabellen-Werkzeug MUSS im Kontext liegen — genau
+// wie im Browser. Ohne es faellt die Sicht in ihren Ersatzpfad und die
+// Tabelle, an der die Auswahl haengt, entsteht gar nicht erst.
+const _srcTkA = readFileSync(
+  "management/server/static/cockpit_tablekit.js", "utf-8");
 
 function _ctx() {
   const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", {
     runScripts: "dangerously",
     url: "http://localhost",
   });
+  dom.window.eval(_srcTkA);
   dom.window.eval(_src);
   return dom.window;
 }

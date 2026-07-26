@@ -800,6 +800,27 @@
 
     // renderApproval(mainEl, data, opts)
     //   data — /api/reports (reports[], scope, ...).
+    // _tk / _mitHilfe (Build 554): gemeinsames Tabellen-Werkzeug + Hilfe-Anker
+    // der Spaltenkoepfe. LAZY; die Spalten werden KOPIERT.
+    function _tk() {
+        return (typeof window !== 'undefined' && window.AIWTableKit)
+            ? window.AIWTableKit : null;
+    }
+    function _mitHilfe(cols, sicht, doc) {
+        var TK = _tk();
+        if (!TK || !doc || !TK.titelMitHilfe) { return cols; }
+        return cols.map(function (c) {
+            var neu = {};
+            Object.keys(c).forEach(function (k) { neu[k] = c[k]; });
+            if (c.field && !c.titleFormatter) {
+                neu.titleFormatter = TK.titelMitHilfe(
+                    doc, c.title || c.field,
+                    sicht + '.spalte.' + String(c.field).toLowerCase());
+            }
+            return neu;
+        });
+    }
+
     //   opts — { status?, canApprove?, onApprove, onReturn, onVerify }
     function renderApproval(mainEl, data, opts) {
         opts = opts || {};
@@ -897,79 +918,93 @@
 
         var Ctor = opts.Tabulator
             || (typeof window !== 'undefined' ? window.Tabulator : undefined);
-        if (typeof Ctor !== 'function') {
-            // Kein stiller Leerzustand (Grundregel 1): sichtbarer Hinweis.
+        var TK = _tk();
+        if (typeof Ctor !== 'function' || !TK) {
+            // Kein stiller Leerzustand (Grundregel 1): sichtbarer Hinweis —
+            // Build 554 zusaetzlich MIT der Zahl. Ohne sie saehe der Ausfall
+            // aus wie 'keine Berichte zur Freigabe'.
             var note = document.createElement('p');
-            note.className = 'aiw-approval-empty';
-            note.textContent = 'Tabellenbibliothek nicht verfuegbar.';
+            note.className = 'aiw-approval-empty aiw-placeholder';
+            note.textContent = 'Tabellenbibliothek nicht verfügbar — es '
+                + 'liegen ' + toRows(data, 'alle').length + ' Berichte vor.';
             container.appendChild(note);
             _state.table = null;
-            log('renderApproval: kein Tabulator-Ctor');
+            log('renderApproval: kein Tabulator-Ctor/TableKit');
         } else {
-            _state.table = new Ctor(container, {
+            // Build 554 (UX): Aufbau ueber das gemeinsame Tabellen-Werkzeug —
+            // Werkzeugleiste, Trefferzahl, 'Filter zuruecksetzen', gesicherter
+            // Bedienzustand und Hilfe-Anker kommen von dort.
+            //
+            // DIE HANDGESETZTEN FILTER BLEIBEN UNANGETASTET (wie im Lektorat,
+            // Build 553): spaltenMitFilter fuellt nur, was NICHT ausdruecklich
+            // gesetzt ist. Der exakte Full-Match beim Typ und die
+            // Statusfilterung ueber den ROH-Status haengen an dieser Sicht.
+            //
+            // Der Zeilenklick laeuft ueber onRowClick; als Konstruktoroption
+            // wird er von Tabulator v6.4.0 still ignoriert (Befund Build 486,
+            // im gemeinsamen Werkzeug abgesichert seit Build 551).
+            _state.table = TK.tabelleAufbauen(document, container, {
+                sicht: 'approval',
+                rows: toRows(data, 'alle'),
                 // Build 485: ALLE Zeilen laden; Statusfilterung uebernimmt der
                 // Dropdown-Header-Filter der Status-Spalte (Default via
                 // initialHeaderFilter).
-                data: toRows(data, 'alle'),
                 // Build 483/485: Benutzer/Titel/Verfasser Freitext; Typ und
                 // Status als DROPDOWN (list) mit festen Werten + 'alle'.
-                columns: [
-                    { title: 'Benutzer',  field: 'username',
-                      headerFilter: 'input' },
-                    { title: 'Titel',     field: 'title',
-                      headerFilter: 'input' },
-                    // Build 486: exakter Full-Match ('='), sonst wuerde der
-                    // list-Default als Teilstring 'Vermerk' auch in
-                    // 'Ergänzungsvermerk' finden.
-                    { title: 'Typ',       field: 'typ',
-                      headerFilter: 'list',
-                      headerFilterParams: { values: TYP_FILTER_VALUES },
-                      headerFilterFunc: '=' },
-                    { title: 'Nr.',       field: 'nr', hozAlign: 'right' },
-                    // Zeigt status_label, filtert ueber den Roh-Status.
-                    { title: 'Status',    field: 'status_label',
-                      headerFilter: 'list',
-                      headerFilterParams: { values: STATUS_FILTER_VALUES },
-                      headerFilterFunc: _statusHeaderFilter },
-                    { title: 'Verfasser', field: 'created_by',
-                      headerFilter: 'input' },
-                    { title: 'Erstellt',  field: 'created' }
-                ],
-                // Build 485: Default-Statusfilter (Vorgabe 'submitted').
-                initialHeaderFilter: _initHF,
-                layout: 'fitColumns',
-                height: false,
-                pagination: 'local',
-                paginationSize: 20,
-                paginationCounter: 'rows',
-                locale: 'de-de',
-                langs: {
-                    'de-de': {
-                        pagination: {
-                            first: 'Erste', first_title: 'Erste Seite',
-                            last: 'Letzte', last_title: 'Letzte Seite',
-                            prev: 'Zurück', prev_title: 'Vorige Seite',
-                            next: 'Weiter', next_title: 'Nächste Seite',
-                            counter: {
-                                showing: 'Zeige', of: 'von',
-                                rows: 'Zeilen', pages: 'Seiten'
-                            }
-                        }
-                    }
-                },
-                placeholder: 'Keine Berichte im gewaehlten Status.'
-            });
-            // Build 486 (Bugfix): 'rowClick' ist in Tabulator v6.4.0 KEINE
-            // Konstruktor-Option und wurde ignoriert (kein Klick-Effekt); der
-            // Zeilenklick wird nun ueber die Event-API angehaengt. Defensiv:
-            // nur wenn .on vorhanden ist.
-            if (_state.table && typeof _state.table.on === 'function') {
-                _state.table.on('rowClick', function (e, row) {
+                columns: _mitHilfe([
+                        { title: 'Benutzer',  field: 'username',
+                          headerFilter: 'input' },
+                        { title: 'Titel',     field: 'title',
+                          headerFilter: 'input' },
+                        // Build 486: exakter Full-Match ('='), sonst wuerde der
+                        // list-Default als Teilstring 'Vermerk' auch in
+                        // 'Ergänzungsvermerk' finden.
+                        { title: 'Typ',       field: 'typ',
+                          headerFilter: 'list',
+                          headerFilterParams: { values: TYP_FILTER_VALUES },
+                          headerFilterFunc: '=' },
+                        { title: 'Nr.',       field: 'nr', hozAlign: 'right' },
+                        // Zeigt status_label, filtert ueber den Roh-Status.
+                        { title: 'Status',    field: 'status_label',
+                          headerFilter: 'list',
+                          headerFilterParams: { values: STATUS_FILTER_VALUES },
+                          headerFilterFunc: _statusHeaderFilter },
+                        { title: 'Verfasser', field: 'created_by',
+                          headerFilter: 'input' },
+                        { title: 'Erstellt',  field: 'created' }
+                ], 'approval', document),
+                Ctor: Ctor,
+                einheit: 'Berichte',
+                onRowClick: function (e, row) {
                     var el = (typeof row.getElement === 'function')
                         ? row.getElement() : null;
                     _selectReport(row.getData(), el);
-                });
-            }
+                },
+                tabulator: {
+                    // Build 485: Default-Statusfilter (Vorgabe 'submitted').
+                    initialHeaderFilter: _initHF,
+                    height: false,
+                    pagination: 'local',
+                    paginationSize: 20,
+                    paginationCounter: 'rows',
+                    locale: 'de-de',
+                    langs: {
+                        'de-de': {
+                            pagination: {
+                                first: 'Erste', first_title: 'Erste Seite',
+                                last: 'Letzte', last_title: 'Letzte Seite',
+                                prev: 'Zurück', prev_title: 'Vorige Seite',
+                                next: 'Weiter', next_title: 'Nächste Seite',
+                                counter: {
+                                    showing: 'Zeige', of: 'von',
+                                    rows: 'Zeilen', pages: 'Seiten'
+                                }
+                            }
+                        }
+                    },
+                    placeholder: 'Keine Berichte im gewaehlten Status.'
+                }
+            }).table;
         }
 
         // --- Support-View (SF-2 + SF-3, read-only) unter dem Vorschau-Bereich.
@@ -1000,6 +1035,10 @@
     }
 
     window.AIWCockpitApproval = {
+        // Build 554: die Tabulator-Instanz nach aussen (wie im Lektorat,
+        // Build 553). renderApproval gibt das Wrapper-Element zurueck und
+        // haelt die Tabelle im Modulzustand.
+        getTable: function () { return _state.table; },
         // reine Funktionen (vitest)
         statusLabel: statusLabel,
         filterReports: filterReports,
