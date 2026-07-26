@@ -1,6 +1,6 @@
 # =============================================================================
 # tests/test_uid_stats_repo.py
-# IT-Forensisches Ermittlungswerkzeug — Baustelle 7: Zuweisung (Build 533)
+# IT-Forensisches Ermittlungswerkzeug — Baustelle 7: Zuweisung (Build 534)
 # =============================================================================
 # Testsuite fuer management/stats/uid_stats_repo.py und den Endpunkt
 # GET /api/assignable/stats.
@@ -19,7 +19,7 @@
 # US08 — Endpunkt: 200 mit Recht, 403 ohne; JEDER Fall steht in 'stats'.
 # US09 — leere Auswahl bedeutet KEINE Faelle (nicht 'alle').
 #
-# Version: v0.8.533 · Build: 533 · 2026-07-26
+# Version: v0.8.534 · Build: 534 · 2026-07-26
 # =============================================================================
 
 import json

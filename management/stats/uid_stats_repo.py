@@ -1,6 +1,6 @@
 # =============================================================================
 # management/stats/uid_stats_repo.py
-# IT-Forensisches Ermittlungswerkzeug — Baustelle 7: Zuweisung (Build 533)
+# IT-Forensisches Ermittlungswerkzeug — Baustelle 7: Zuweisung (Build 534)
 # =============================================================================
 # Zweck:
 #   Liefert der Zuweisungs-Sicht die KENNZAHLEN je Fall aus der Tabelle
@@ -65,7 +65,7 @@
 #   steht. Er wird unter einer Sperre gefuehrt, weil der Management-Server
 #   Anfragen nebenlaeufig bedient.
 #
-# Version: v0.8.533 · Build: 533 · 2026-07-26
+# Version: v0.8.534 · Build: 534 · 2026-07-26
 # =============================================================================
 
 from __future__ import annotations
@@ -201,7 +201,7 @@ def read_uid_stats(path: Path, subject_id: int) -> CaseStats:
                          detail="nicht oeffenbar: %s" % exc)
 
     try:
-        # EIGENER FEHLER, GEFUNDEN UND BEHOBEN (Build 533, Test US05):
+        # EIGENER FEHLER, GEFUNDEN UND BEHOBEN (Build 534, Test US05):
         # Der erste Entwurf hat _table_exists UNGESCHUETZT aufgerufen. Das war
         # falsch, und zwar aus einem Grund, den man dem Code nicht ansieht:
         # sqlite3.connect() OEFFNET keine Datei — es merkt sich nur den Pfad.

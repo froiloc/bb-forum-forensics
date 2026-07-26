@@ -45,7 +45,33 @@
 //   fassen NIE das DOM an -> vitest; opts.doc injizierbar (JSDOM).
 // SICHERHEIT (XSS): alle variablen Texte via textContent.
 //
-// Version: v0.8.505 · Build: 505 · 2026-07-24
+// BUILD 600 — NAMENSAUFLOESUNG (Auftrag mc 2026-07-26):
+//   "Unsere Ermittler sind mit den Namen der Forennutzer vertraut, aber
+//   nicht mit den user_id oder subject_id. [...] In jedem Fall ist es den
+//   Anwendern nicht zuzumuten, die subject_id zu kennen."
+//
+//   DREI ERGAENZUNGEN, alle ueber GET /api/names (crossref.view):
+//   1) Unter dem Feld 'subject_id' steht der aufgeloeste Benutzername —
+//      MIT seiner Herkunft (Fallakte oder globale Namensliste). Reine
+//      Kontrollanzeige: sie sagt, ob die richtige Nummer erwischt wurde,
+//      BEVOR ein Beleg entsteht.
+//   2) Daneben eine Namenssuche: Namen eintippen, Treffer waehlen, die
+//      Kennung wird gesetzt. Der Ermittler muss sie nie selbst kennen.
+//   3) Unter der Katalogsuche das Ergebnis derselben Aufloesung — der
+//      Katalog kennt nur ERFASSTE Aliasse, die Suche meint aber meist
+//      den Namen als solchen.
+//
+//   DIE KASKADE UND IHR PREIS: gesucht wird erst in der Fallakte, dann
+//   in der globalen Namensliste (Festlegung mc 2026-07-26). Eine
+//   Kaskade, die schweigt, sieht aus wie ein vollstaendiges Ergebnis —
+//   deshalb nennt 'kaskadenText' die ZAHL der nicht gelisteten Treffer
+//   der zweiten Stufe. Und weil Namen OHNE Forenkonto (die 'Geister')
+//   in KEINER Quelle dieses Servers stehen, traegt jede Antwort den
+//   Hinweis, dass ein Leerbefund 'in den abgefragten Quellen nicht
+//   gefunden' heisst und nicht 'gibt es nicht' (Grundregel 1).
+//
+// Version: v0.8.600 · 2026-07-26
+//   Build 505: Erstfassung der Sicht (AP-2A, Idee 8)
 // =============================================================================
 
 (function () {
@@ -164,6 +190,88 @@
     }
 
     // =========================================================================
+    // NAMENSAUFLOESUNG (Build 600) — reine Funktionen.
+    //
+    // ANLASS (mc 2026-07-26): "Unsere Ermittler sind mit den Namen der
+    // Forennutzer vertraut, aber nicht mit den user_id oder subject_id. [...]
+    // In jedem Fall ist es den Anwendern nicht zuzumuten, die subject_id zu
+    // kennen."
+    //
+    // Die Texte stehen HIER und nicht im DOM-Teil, damit vitest sie prueft:
+    // gerade die Unterscheidung "nicht gefunden" vs. "nicht abgefragt" ist
+    // eine Aussage mit forensischem Gewicht und keine Kosmetik.
+    // =========================================================================
+
+    // aufloesungText: was unter dem subject_id-Feld steht.
+    //   -> { text, art }   art: 'ok' | 'leer' | 'fehler' | 'wartet'
+    //
+    // DREI ZUSTAENDE, DIE NICHT VERWECHSELT WERDEN DUERFEN:
+    //   'ok'     — ein Name ist da, MIT seiner Quelle. Die Quelle gehoert
+    //              dazu: ein Name aus der Fallakte ist ein anderer Beleg als
+    //              einer aus der globalen Namensliste.
+    //   'leer'   — in den ABGEFRAGTEN Quellen nichts gefunden. Das ist NICHT
+    //              "gibt es nicht" — die Geister (Namen ohne Forenkonto)
+    //              stehen in keiner Quelle dieses Servers.
+    //   'fehler' — eine Quelle war nicht abfragbar. Das darf NIE wie ein
+    //              Leerbefund aussehen (Grundregel 1).
+    function aufloesungText(data) {
+        if (!data) { return { text: '', art: 'wartet' }; }
+        if (data.fehler) {
+            return { text: 'Name nicht auflösbar: ' + String(data.fehler),
+                     art: 'fehler' };
+        }
+        if (data.gefunden === true && data.name) {
+            var t = '„' + String(data.name) + '"';
+            if (data.quelle_label) { t += ' — ' + String(data.quelle_label); }
+            if (data.aliasse && data.aliasse.length) {
+                t += ' · Aliasse: ' + data.aliasse.join(', ');
+            }
+            return { text: t, art: 'ok' };
+        }
+        // Nicht gefunden. Die HINWEISE sind hier die eigentliche Information
+        // (fehlende default.db, Geisterband, …) und werden mitgezeigt.
+        var txt = 'Kein Name gefunden — in den abgefragten Quellen.';
+        var h = (data.hinweise || []);
+        if (h.length) { txt += ' ' + h.join(' '); }
+        return { text: txt, art: (h.length ? 'fehler' : 'leer') };
+    }
+
+    // trefferLabel: eine Zeile der Namenssuche.
+    function trefferLabel(t) {
+        if (!t) { return ''; }
+        return String(t.name || '?') + '  (subject_id ' + t.subject_id + ')';
+    }
+
+    // kaskadenText: die Zusammenfassung ueber der Trefferliste.
+    //
+    // WARUM DIE ZWEITE ZAHL DA STEHT: die Suche laeuft als KASKADE (erst
+    // Fallakte, dann globale Namensliste — Festlegung mc 2026-07-26). Eine
+    // Kaskade, die schweigt, sieht aus wie ein vollstaendiges Ergebnis. Der
+    // gesuchte Zweitaccount ist aber genau der Treffer, den sie verschweigen
+    // wuerde. Deshalb nennt die Zeile die Zahl der NICHT gelisteten Treffer.
+    function kaskadenText(data) {
+        if (!data) { return ''; }
+        var n = (data.treffer || []).length;
+        var teile = [];
+        if (n === 0) {
+            teile.push('Kein Treffer in ' + (data.quelle_label || 'der Quelle')
+                       + '.');
+        } else {
+            teile.push(n + ' Treffer in ' + (data.quelle_label || '?')
+                       + (data.gekuerzt
+                          ? ' (von ' + data.gesamt + ' — Liste gekürzt)' : ''));
+        }
+        var w = (data.weitere_treffer || {});
+        if (w.forenkonto) {
+            teile.push('Außerdem ' + w.forenkonto + ' Treffer in der globalen '
+                       + 'Namensliste der Forenkonten — hier nicht gelistet '
+                       + '(die Suche endet bei der ersten Quelle mit Treffer).');
+        }
+        (data.hinweise || []).forEach(function (h) { teile.push(h); });
+        return teile.join(' ');
+    }
+
+    // =========================================================================
     // 1) DOM: Sicht rendern.
     // =========================================================================
     function renderAlias(mainEl, data, opts) {
@@ -205,6 +313,17 @@
         }
 
         mainEl.appendChild(_searchBar(doc, opts));
+
+        // --- Build 600: Namensauflösung zur Katalogsuche ------------------
+        // Der Katalog kennt nur Namen, die jemand ALS ALIAS erfasst hat. Wer
+        // hier sucht, meint aber meist den Namen als solchen. Deshalb steht
+        // unter der Suche das Ergebnis der Namensauflösung (Fallakte, dann
+        // globale Namensliste der Forenkonten) — mit ihrer Herkunft und mit
+        // dem, was die Kaskade NICHT gelistet hat.
+        if (opts.query && opts.namen) {
+            mainEl.appendChild(_namensBlock(doc, opts));
+        }
+
         if (canEdit) {
             mainEl.appendChild(_form(doc, kindList, setResult, opts));
         } else {
@@ -325,6 +444,46 @@
         return box;
     }
 
+    // _namensBlock: Ergebnis der Namensaufloesung unter der Katalogsuche
+    // (Build 600). Ein Klick auf einen Treffer sucht den Katalog nach
+    // DIESEM Konto ab — die Bruecke vom Namen zum Konto zum Aliaskatalog.
+    function _namensBlock(doc, opts) {
+        var daten = opts.namen || {};
+        var box = doc.createElement('div');
+        box.className = 'aiw-alias-namen';
+        box.id = 'aiw-alias-namen';
+
+        var kopf = doc.createElement('div');
+        kopf.className = 'aiw-alias-namen-kopf';
+        kopf.textContent = 'Namensauflösung: ' + kaskadenText(daten);
+        box.appendChild(kopf);
+
+        (daten.treffer || []).forEach(function (t) {
+            var b = doc.createElement('button');
+            b.type = 'button';
+            b.className = 'aiw-alias-treffer-zeile';
+            b.setAttribute('data-subject-id', String(t.subject_id));
+            b.textContent = trefferLabel(t);
+            b.title = String(t.detail || '');
+            b.addEventListener('click', function () {
+                if (typeof opts.onSubject === 'function') {
+                    opts.onSubject(t.subject_id);
+                }
+            });
+            box.appendChild(b);
+        });
+
+        // Der Quellen-Hinweis steht IMMER da — er ist der Unterschied zwischen
+        // "gibt es nicht" und "hier nicht gesucht".
+        if (daten.quellen_hinweis) {
+            var fuss = doc.createElement('div');
+            fuss.className = 'aiw-alias-namen-fuss';
+            fuss.textContent = String(daten.quellen_hinweis);
+            box.appendChild(fuss);
+        }
+        return box;
+    }
+
     // _form: Anlage. Bewusst NUR Anlage — der Aliastext ist unveraenderlich
     // (Server-Regel: ein anderer Text ist eine andere Erkenntnis und entsteht
     // durch Widerruf + Neuanlage). Art/Basis/Notiz werden ueber die
@@ -335,6 +494,133 @@
 
         var inSid = _field(doc, box, 'subject_id (Forenkonto): ',
             'aiw-alias-sid', 'text');
+
+        // --- Build 600: RUECKWAERTS — Kennung eingetippt, Name darunter --
+        // Reine Kontrollanzeige, kein Pflichtfeld. Sie sagt dem Ermittler, ob
+        // er die richtige Nummer erwischt hat, BEVOR er einen Beleg erzeugt.
+        var sidName = doc.createElement('div');
+        sidName.className = 'aiw-alias-sidname';
+        sidName.id = 'aiw-alias-sidname';
+        box.appendChild(sidName);
+
+        function zeigeAufloesung(daten) {
+            var a = aufloesungText(daten);
+            sidName.textContent = a.text;
+            sidName.classList.remove('ok', 'leer', 'fehler', 'wartet');
+            sidName.classList.add(a.art);
+        }
+
+        // Der Abruf laeuft entprellt: bei jedem Tastendruck eine Anfrage zu
+        // schicken waere bei einer sechsstelligen Nummer ein halbes Dutzend
+        // ueberfluessiger Abfragen. 350 ms sind lang genug fuer eine zuegige
+        // Eingabe und kurz genug, um wie eine Sofortanzeige zu wirken.
+        var entprellung = null;
+        function aufloesenAnstossen() {
+            var roh = String(inSid.value || '').trim();
+            if (entprellung) { clearTimeout(entprellung); entprellung = null; }
+            if (!roh) { zeigeAufloesung(null); return; }
+            var sid = parseInt(roh, 10);
+            if (String(sid) !== roh || isNaN(sid)) {
+                // Keine ganze Zahl -> gar nicht erst fragen, aber SAGEN warum.
+                sidName.textContent = 'Keine ganze Zahl — es wird nicht '
+                    + 'aufgelöst.';
+                sidName.classList.remove('ok', 'leer', 'fehler');
+                sidName.classList.add('wartet');
+                return;
+            }
+            sidName.textContent = 'Löse auf …';
+            sidName.classList.remove('ok', 'leer', 'fehler');
+            sidName.classList.add('wartet');
+            entprellung = setTimeout(function () {
+                if (typeof opts.onResolve === 'function') {
+                    opts.onResolve(sid, zeigeAufloesung);
+                } else {
+                    zeigeAufloesung({ fehler: 'kein Auflösungspfad verdrahtet' });
+                }
+            }, 350);
+        }
+        inSid.addEventListener('input', aufloesenAnstossen);
+        inSid.addEventListener('change', aufloesenAnstossen);
+
+        // --- Build 600: VORWAERTS — Namen suchen, Kennung uebernehmen ----
+        // Das ist der eigentliche Zweck des Auftrags: der Ermittler kennt den
+        // NAMEN. Er tippt ihn hier ein, waehlt aus den Treffern, und die
+        // Kennung wird gesetzt — er muss sie nie selbst kennen.
+        var suchBox = doc.createElement('div');
+        suchBox.className = 'aiw-alias-namensuche';
+
+        var inSuche = _field(doc, suchBox, 'Konto über den Namen suchen: ',
+            'aiw-alias-namesearch', 'text');
+
+        var btnSuche = doc.createElement('button');
+        btnSuche.type = 'button';
+        btnSuche.id = 'aiw-alias-namesearch-btn';
+        btnSuche.className = 'aiw-btn aiw-alias-btn';
+        btnSuche.textContent = 'Konto suchen';
+        suchBox.appendChild(btnSuche);
+
+        var trefferBox = doc.createElement('div');
+        trefferBox.className = 'aiw-alias-treffer';
+        trefferBox.id = 'aiw-alias-treffer';
+        suchBox.appendChild(trefferBox);
+
+        function zeigeTreffer(daten) {
+            trefferBox.textContent = '';
+            if (!daten) { return; }
+            if (daten.fehler) {
+                var e = doc.createElement('div');
+                e.className = 'aiw-alias-treffer-kopf fehler';
+                e.textContent = 'Suche fehlgeschlagen: ' + String(daten.fehler);
+                trefferBox.appendChild(e);
+                return;
+            }
+            var kopf = doc.createElement('div');
+            kopf.className = 'aiw-alias-treffer-kopf';
+            kopf.textContent = kaskadenText(daten);
+            trefferBox.appendChild(kopf);
+
+            (daten.treffer || []).forEach(function (t) {
+                var b = doc.createElement('button');
+                b.type = 'button';
+                b.className = 'aiw-alias-treffer-zeile';
+                b.setAttribute('data-subject-id', String(t.subject_id));
+                b.textContent = trefferLabel(t);
+                b.title = String(t.detail || '');
+                b.addEventListener('click', function () {
+                    // Uebernehmen heisst: Kennung setzen UND sofort
+                    // rueckwaerts bestaetigen. Der Ermittler sieht damit an
+                    // ZWEI Stellen dasselbe — die Uebernahme kann nicht
+                    // unbemerkt die falsche Zeile erwischen.
+                    inSid.value = String(t.subject_id);
+                    aufloesenAnstossen();
+                    setResult('Konto ' + t.subject_id + ' („' + t.name
+                        + '") übernommen. Es wurde nichts geschrieben.', false);
+                });
+                trefferBox.appendChild(b);
+            });
+        }
+
+        function sucheAnstossen() {
+            var term = String(inSuche.value || '').trim();
+            if (!term) {
+                zeigeTreffer(null);
+                setResult('Bitte einen Namen eingeben.', true);
+                return;
+            }
+            trefferBox.textContent = 'Suche …';
+            if (typeof opts.onNameSearch === 'function') {
+                opts.onNameSearch(term, zeigeTreffer);
+            } else {
+                zeigeTreffer({ fehler: 'kein Suchpfad verdrahtet' });
+            }
+        }
+        btnSuche.addEventListener('click', sucheAnstossen);
+        inSuche.addEventListener('keydown', function (ev) {
+            if (ev && ev.key === 'Enter') { sucheAnstossen(); }
+        });
+
+        box.appendChild(suchBox);
+
         var inAlias = _field(doc, box, 'Alias/Name: ', 'aiw-alias-name',
             'text');
 
@@ -604,6 +890,9 @@
         statusClass: statusClass,
         fmtTs: fmtTs,
         buildAddPayload: buildAddPayload,
+        aufloesungText: aufloesungText,
+        trefferLabel: trefferLabel,
+        kaskadenText: kaskadenText,
         validateAdd: validateAdd,
         renderAlias: renderAlias,
         KINDS_FALLBACK: KINDS_FALLBACK

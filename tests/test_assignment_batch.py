@@ -1,6 +1,6 @@
 # =============================================================================
 # tests/test_assignment_batch.py
-# IT-Forensisches Ermittlungswerkzeug — Baustelle 7: Zuweisung (Build 533)
+# IT-Forensisches Ermittlungswerkzeug — Baustelle 7: Zuweisung (Build 534)
 # =============================================================================
 # Testsuite fuer die SAMMELZUWEISUNG: management/cases/cases_batch_repo.py und
 # POST /api/case/assign_batch.
@@ -18,7 +18,7 @@
 # AB08 — Der Einzelschreibweg ist unveraendert (Regressionsanker fuer die
 #        Aufteilung von assign()/set_priority() in *_unit + Ausfuehrung).
 #
-# Version: v0.8.533 · Build: 533 · 2026-07-26
+# Version: v0.8.534 · Build: 534 · 2026-07-26
 # =============================================================================
 
 import json
@@ -315,7 +315,7 @@ class AssignmentBatchTests(unittest.TestCase):
     def test_ab08_einzelweg_unveraendert(self):
         """
         Regressionsanker fuer die Aufteilung in *_unit + Ausfuehrung
-        (Build 533). Der Einzelweg muss sich verhalten wie vorher: EIN Beleg,
+        (Build 534). Der Einzelweg muss sich verhalten wie vorher: EIN Beleg,
         dessen seq zurueckgegeben wird.
         """
         seq = self.cases.assign(18, 2, actor_id=1)
