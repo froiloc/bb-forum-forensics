@@ -205,21 +205,70 @@
         modalRoot.style.display = 'none';
     }
 
-    function _sectionTable(mainEl, doc, titleText, list, Ctor, modalRoot) {
+    // _tk / _mitHilfe (Build 550): gemeinsames Tabellen-Werkzeug + Hilfe-Anker
+    // der Spaltenkoepfe. LAZY, damit die Ladereihenfolge diese Sicht nicht
+    // lautlos brechen kann. Die Spalten werden KOPIERT — die Modulkonstante
+    // bleibt unberuehrt.
+    function _tk() {
+        return (typeof window !== 'undefined' && window.AIWTableKit)
+            ? window.AIWTableKit : null;
+    }
+    function _mitHilfe(cols, sicht, doc) {
+        var TK = _tk();
+        if (!TK || !doc || !TK.titelMitHilfe) { return cols; }
+        return cols.map(function (c) {
+            var neu = {};
+            Object.keys(c).forEach(function (k) { neu[k] = c[k]; });
+            if (c.field && !c.titleFormatter) {
+                neu.titleFormatter = TK.titelMitHilfe(
+                    doc, c.title || c.field,
+                    sicht + '.spalte.' + String(c.field).toLowerCase());
+            }
+            return neu;
+        });
+    }
+
+    // _sectionTable: EIN Abschnitt der Support-Historie.
+    //
+    // BUILD 550 — JEDER ABSCHNITT BEKOMMT EINE EIGENE KENNUNG ('support_mine',
+    // 'support_oncase', 'support_weitere'). Das ist keine Kosmetik: die
+    // Kennung ist zugleich das Praefix der Hilfe-Anker UND der Schluessel der
+    // Zustandssicherung. Teilten sich die drei Abschnitte eine Kennung,
+    // ueberschriebe der zuletzt gezeichnete die Sortierung und Filter der
+    // beiden anderen — und ein Hilfetext koennte nicht mehr sagen, welcher
+    // Abschnitt gemeint ist. UX07 der Konformitaetssuite prueft genau das.
+    function _sectionTable(mainEl, doc, titleText, list, Ctor, modalRoot,
+                           sicht) {
         if (!list.length) { return null; }
+        var TK = _tk();
         var h = doc.createElement('h3');
         h.className = 'aiw-subhead';
         h.textContent = titleText + ' (' + list.length + ')';
         mainEl.appendChild(h);
-        var container = doc.createElement('div');
-        mainEl.appendChild(container);
-        return new Ctor(container, {
-            data: list.map(decorate), columns: _COLUMNS,
-            layout: 'fitColumns', height: '260px',
-            rowClick: function (e, row) {
-                showDetail(modalRoot, doc, row.getData());
+
+        var rows = list.map(decorate);
+        if (!TK) {
+            var note = doc.createElement('div');
+            note.className = 'aiw-placeholder';
+            note.textContent = 'Gemeinsames Tabellen-Werkzeug nicht geladen — '
+                + 'es liegen ' + rows.length + ' Sitzungen vor.';
+            mainEl.appendChild(note);
+            return null;
+        }
+        var auf = TK.tabelleAufbauen(doc, mainEl, {
+            sicht: sicht,
+            rows: rows,
+            columns: _mitHilfe(_COLUMNS, sicht, doc),
+            Ctor: Ctor,
+            einheit: 'Sitzungen',
+            tabulator: {
+                height: '260px',
+                rowClick: function (e, row) {
+                    showDetail(modalRoot, doc, row.getData());
+                }
             }
         });
+        return auf.table;
     }
 
     // renderSupport: Kopf + bis zu drei Abschnitts-Tabellen + Modal. Rueckgabe:
@@ -248,25 +297,19 @@
 
         var Ctor = opts.Tabulator
             || (typeof window !== 'undefined' ? window.Tabulator : undefined);
-        if (typeof Ctor !== 'function') {
-            var note = doc.createElement('div');
-            note.className = 'aiw-placeholder';
-            note.textContent = 'Tabellenbibliothek nicht verfuegbar.';
-            mainEl.appendChild(note);
-            log('renderSupport: kein Tabulator-Ctor');
-            return [];
-        }
 
         var modalRoot = createModalRoot(doc);
         mainEl.appendChild(modalRoot);
 
         var tables = [];
-        [['Meine Sitzungen', buckets.mine],
-         ['An meinen Faellen', buckets.oncase],
-         ['Weitere Sitzungen', buckets.weitere]].forEach(function (sec) {
-            var t = _sectionTable(mainEl, doc, sec[0], sec[1], Ctor, modalRoot);
-            if (t) { tables.push(t); }
-        });
+        [['Meine Sitzungen', buckets.mine, 'support_mine'],
+         ['An meinen Faellen', buckets.oncase, 'support_oncase'],
+         ['Weitere Sitzungen', buckets.weitere, 'support_weitere']]
+            .forEach(function (sec) {
+                var t = _sectionTable(mainEl, doc, sec[0], sec[1], Ctor,
+                                      modalRoot, sec[2]);
+                if (t) { tables.push(t); }
+            });
 
         log('renderSupport:', buckets.mine.length, 'eigene,',
             buckets.oncase.length, 'an Faellen,', buckets.weitere.length,

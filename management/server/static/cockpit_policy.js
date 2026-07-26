@@ -152,6 +152,27 @@
         mainEl.appendChild(wrap);
     }
 
+    // _tk / _mitHilfe (Build 550): gemeinsames Tabellen-Werkzeug + Hilfe-Anker
+    // der Spaltenkoepfe. LAZY; die Spalten werden KOPIERT.
+    function _tk() {
+        return (typeof window !== 'undefined' && window.AIWTableKit)
+            ? window.AIWTableKit : null;
+    }
+    function _mitHilfe(cols, sicht, doc) {
+        var TK = _tk();
+        if (!TK || !doc || !TK.titelMitHilfe) { return cols; }
+        return cols.map(function (c) {
+            var neu = {};
+            Object.keys(c).forEach(function (k) { neu[k] = c[k]; });
+            if (c.field && !c.titleFormatter) {
+                neu.titleFormatter = TK.titelMitHilfe(
+                    doc, c.title || c.field,
+                    sicht + '.spalte.' + String(c.field).toLowerCase());
+            }
+            return neu;
+        });
+    }
+
     // renderPolicy: Kopf + Grants-Tabelle + Zuweisungs-Tabelle + Katalog.
     // opts.Tabulator injizierbar (Default window.Tabulator). Rueckgabe: Array
     // der Tabulator-Instanzen (fuer den sauberen Abbau beim Sichtwechsel).
@@ -180,24 +201,37 @@
         if (typeof Ctor !== 'function') {
             var note = document.createElement('div');
             note.className = 'aiw-placeholder';
-            note.textContent = 'Tabellenbibliothek nicht verfuegbar.';
+            note.textContent = 'Tabellenbibliothek nicht verfügbar — es '
+                + 'liegen ' + grantRows(data).length + ' Grants und '
+                + assignmentRows(data).length + ' Zuweisungen vor.';
             mainEl.appendChild(note);
             _catalog(mainEl, data);
             log('renderPolicy: kein Tabulator-Ctor');
             return [];
         }
 
-        var grantsC = _section(mainEl, 'Grants (Rolle \u2192 Faehigkeit)');
-        var grantsTable = new Ctor(grantsC, {
-            data: grantRows(data), columns: _GRANT_COLUMNS,
-            layout: 'fitColumns', height: '320px'
-        });
+        // Build 550: beide Tabellen ueber das gemeinsame Werkzeug, mit je
+        // EIGENER Kennung. Zwei Tabellen unter einer Kennung teilten sich
+        // Hilfe-Anker UND gesicherten Bedienzustand und ueberschrieben sich
+        // gegenseitig.
+        var doc0 = mainEl.ownerDocument || document;
+        _section(mainEl, 'Grants (Rolle \u2192 Faehigkeit)');
+        var grantsTable = _tk().tabelleAufbauen(doc0, mainEl, {
+            sicht: 'policy_grants',
+            rows: grantRows(data),
+            columns: _mitHilfe(_GRANT_COLUMNS, 'policy_grants', doc0),
+            Ctor: Ctor, einheit: 'Grants',
+            tabulator: { height: '320px' }
+        }).table;
 
-        var assignC = _section(mainEl, 'Rollen-Zuweisungen (Person \u2192 Rolle)');
-        var assignTable = new Ctor(assignC, {
-            data: assignmentRows(data), columns: _ASSIGN_COLUMNS,
-            layout: 'fitColumns', height: '260px'
-        });
+        _section(mainEl, 'Rollen-Zuweisungen (Person \u2192 Rolle)');
+        var assignTable = _tk().tabelleAufbauen(doc0, mainEl, {
+            sicht: 'policy_assign',
+            rows: assignmentRows(data),
+            columns: _mitHilfe(_ASSIGN_COLUMNS, 'policy_assign', doc0),
+            Ctor: Ctor, einheit: 'Zuweisungen',
+            tabulator: { height: '260px' }
+        }).table;
 
         _catalog(mainEl, data);
 

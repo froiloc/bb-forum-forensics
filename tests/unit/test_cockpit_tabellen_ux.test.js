@@ -181,7 +181,121 @@ const REGISTER = [
       actor_person_id: 1, can_edit: true, can_sync: false,
     }),
   },
+  // --- Build 550 ------------------------------------------------------------
+  // Support: DREI Abschnitte in EINER Sicht, jeder mit eigener Kennung. Sie
+  // sind hier als getrennte Eintraege gefuehrt, weil jeder eine eigene
+  // Werkzeugleiste, eigene Hilfe-Anker und einen eigenen gesicherten
+  // Bedienzustand hat.
+  {
+    name: "support (meine)", datei: "cockpit_support.js",
+    global: "AIWCockpitSupport", render: "renderSupport",
+    sicht: "support_mine", zeilen: 2, index: 0,
+    daten: () => _supportDaten(),
+  },
+  {
+    name: "support (an meinen Faellen)", datei: "cockpit_support.js",
+    global: "AIWCockpitSupport", render: "renderSupport",
+    sicht: "support_oncase", zeilen: 1, index: 1,
+    daten: () => _supportDaten(),
+  },
+  {
+    name: "policy (Grants)", datei: "cockpit_policy.js",
+    global: "AIWCockpitPolicy", render: "renderPolicy",
+    sicht: "policy_grants", zeilen: 2, index: 0,
+    daten: () => _policyDaten(),
+  },
+  {
+    name: "policy (Zuweisungen)", datei: "cockpit_policy.js",
+    global: "AIWCockpitPolicy", render: "renderPolicy",
+    sicht: "policy_assign", zeilen: 1, index: 1,
+    daten: () => _policyDaten(),
+  },
+  {
+    name: "reports", datei: "cockpit_reports.js",
+    global: "AIWCockpitReports", render: "renderReports",
+    sicht: "reports", zeilen: 2,
+    daten: () => ({
+      scope: "alle", evidence_dir: "./data/evidence/", case_db_count: 2,
+      rescanned: 0, count: 2,
+      reports: [
+        { subject_id: 18, username: "b18", id: 1, report_type: "interim",
+          sequence_nr: 1, title: "Zwischenbericht", created_by: "h002",
+          created_at: 1783000000, status: "submitted", approvals: [] },
+        { subject_id: 19, username: "b19", id: 1, report_type: "final",
+          sequence_nr: 1, title: "Abschlussbericht", created_by: "h003",
+          created_at: 1783100000, status: "approved", approvals: [] },
+      ],
+    }),
+  },
+  {
+    name: "results", datei: "cockpit_results.js",
+    global: "AIWCockpitResults", render: "renderResults",
+    sicht: "results", zeilen: 2,
+    daten: () => _resultsCov(),
+    aufruf: (api, main, opts) => api.renderResults(main, _resultsCov(),
+                                                  null, opts),
+  },
 ];
+
+/** Fixtures, die von mehreren Register-Eintraegen geteilt werden. */
+function _supportDaten() {
+  const S = (o) => Object.assign({
+    session_id: 1, subject_id: 18, username: "b18", supporter_id: 2,
+    supporter_system_username: "h002", supporter_display_name: "Mueller",
+    started_at: 1000, ended_at: 1600, duration_sec: 600,
+    end_reason: "closed", mine_as_supporter: false, on_my_case: false,
+  }, o);
+  return {
+    scope: "eigene", count: 3,
+    sessions: [
+      S({ session_id: 1, mine_as_supporter: true, on_my_case: true }),
+      S({ session_id: 2, supporter_id: 3, supporter_display_name: "Gamma",
+          mine_as_supporter: false, on_my_case: true }),
+      S({ session_id: 3, subject_id: 19, username: "b19",
+          mine_as_supporter: true, on_my_case: false }),
+    ],
+  };
+}
+
+function _policyDaten() {
+  return {
+    scope: "alle",
+    roles: [{ code: "supervisor", label: "Chef-Ermittlerin" },
+            { code: "investigator", label: "Ermittler:in" }],
+    capabilities: [{ code: "policy.view", label: "RBAC-Richtlinie einsehen" },
+                   { code: "mycases.view", label: "Eigene Faelle sehen" }],
+    grants: [
+      { role_code: "supervisor", capability_code: "policy.view",
+        scope: "alle", audit_seq: 42, note: "" },
+      { role_code: "investigator", capability_code: "mycases.view",
+        scope: "eigene", audit_seq: 43, note: "PoC" },
+    ],
+    assignments: [
+      { person_id: 5, system_username: "h0a2898", display_name: "Chefin",
+        role_code: "supervisor", audit_seq: 37 },
+    ],
+    counts: { grants: 2, assignments: 1 },
+  };
+}
+
+function _resultsCov() {
+  return {
+    faelle_gesamt: 2, nie_bewertet: 1, n_kriterien: 4, catalog_version: 1,
+    vermerk: "PROVISORISCH", scope: "alle",
+    summary: { faelle_gesamt: 2, nie_bewertet: 1, voll_bewertet: 0,
+               abdeckung_mittel: 0.25 },
+    faelle: [
+      { subject_id: 20, username: "b20", status: "open", assigned_to: null,
+        n_bewertet: 0, n_kriterien: 4, abdeckung: 0.0, n_beste: 0,
+        unbewertet: ["identification"], score: 0, hoechste_konfidenz: null,
+        zuletzt_bewertet: null, nie_bewertet: true, ampel: "rot" },
+      { subject_id: 21, username: "b21", status: "open", assigned_to: 2,
+        n_bewertet: 2, n_kriterien: 4, abdeckung: 0.5, n_beste: 1,
+        unbewertet: ["abuser"], score: 3, hoechste_konfidenz: "hoch",
+        zuletzt_bewertet: 1783000000, nie_bewertet: false, ampel: "gelb" },
+    ],
+  };
+}
 
 function _ctx(datei) {
   const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", {
@@ -198,7 +312,21 @@ function _zeichne(eintrag, win, main, mitTabulator) {
   const opts = {};
   if (mitTabulator) { opts.Tabulator = _fakeTabulator(win.document); }
   if (eintrag.brauchtDoc) { opts.doc = win.document; }
+  // 'aufruf' fuer Sichten mit abweichender Signatur (renderResults nimmt
+  // Abdeckung UND Statistik). Der Regelfall bleibt (main, daten, opts).
+  if (typeof eintrag.aufruf === "function") {
+    return eintrag.aufruf(api, main, opts);
+  }
   return api[eintrag.render](main, eintrag.daten(), opts);
+}
+
+/** Die Tabelle einer bestimmten Sicht aus dem Rueckgabewert holen.
+ *  Sichten mit MEHREREN Tabellen liefern ein Array; dann entscheidet der
+ *  Index im Register. */
+function _tabelleVon(eintrag, view) {
+  if (Array.isArray(view)) { return view[eintrag.index || 0]; }
+  if (view && view.table) { return view.table; }
+  return view;
 }
 
 describe("Konformitaet der Listensichten (Build 549)", () => {
@@ -227,7 +355,7 @@ describe("Konformitaet der Listensichten (Build 549)", () => {
         const main = win.document.createElement("div");
         win.document.body.appendChild(main);
         const view = _zeichne(e, win, main, true);
-        const table = view && view.table ? view.table : view;
+        const table = _tabelleVon(e, view);
 
         const knopf = main.querySelector("#aiw-" + e.sicht + "-tk-clear");
         expect(knopf, e.name + ": kein Zuruecksetzen-Knopf").toBeTruthy();
@@ -245,7 +373,7 @@ describe("Konformitaet der Listensichten (Build 549)", () => {
         const main = win.document.createElement("div");
         win.document.body.appendChild(main);
         const view = _zeichne(e, win, main, true);
-        const table = view && view.table ? view.table : view;
+        const table = _tabelleVon(e, view);
 
         const cols = table.options.columns || [];
         expect(cols.length).toBeGreaterThan(0);
@@ -267,11 +395,24 @@ describe("Konformitaet der Listensichten (Build 549)", () => {
         // Die Werkzeugleiste vergibt sie automatisch — sie MUESSEN da sein.
         expect(ids, e.name).toContain(e.sicht + ".werkzeug.filter_entfernen");
         expect(ids, e.name).toContain(e.sicht + ".werkzeug.trefferzahl");
+        // Jeder Anker gehoert zu EINER der Kennungen DIESER Datei. Ein
+        // fremdes Praefix waere ein Kopierfehler und spaeter ein falscher
+        // Hilfetext.
+        //
+        // Geprueft wird gegen die Kennungen der DATEI und nicht gegen die
+        // eine Kennung des Eintrags: eine Sicht mit mehreren Abschnitten
+        // (Support, Policy) zeichnet in einem Durchgang alle Abschnitte und
+        // erzeugt damit zwangslaeufig auch deren Anker. Die erste Fassung
+        // dieser Pruefung hat genau das uebersehen.
+        const erlaubtePraefixe = REGISTER
+          .filter((x) => x.datei === e.datei)
+          .map((x) => x.sicht);
         ids.forEach((id) => {
           expect(TK.hilfeGueltig(id), e.name + ": " + id).toBe(true);
-          // Jeder Anker gehoert zu SEINER Sicht — ein fremdes Praefix waere
-          // ein Kopierfehler und spaeter ein falscher Hilfetext.
-          expect(id.split(".")[0], e.name + ": " + id).toBe(e.sicht);
+          expect(
+            erlaubtePraefixe.indexOf(id.split(".")[0]) >= 0,
+            e.name + ": fremdes Praefix in " + id
+          ).toBe(true);
         });
         // EINDEUTIGKEIT GILT NUR FUER DIE WERKZEUGLEISTE. Zeilen- und
         // Spaltenanker wiederholen sich naturgemaess (drei Flag-Kaestchen mal
@@ -292,11 +433,18 @@ describe("Konformitaet der Listensichten (Build 549)", () => {
         win.document.body.appendChild(main);
         _zeichne(e, win, main, false);   // kein Ctor
 
-        const hinweis = main.querySelector(".aiw-placeholder");
-        expect(hinweis, e.name + ": kein Hinweis").toBeTruthy();
+        const hinweise = Array.from(
+          main.querySelectorAll(".aiw-placeholder")
+        ).map((n) => n.textContent);
+        expect(hinweise.length, e.name + ": kein Hinweis").toBeGreaterThan(0);
         // ENTSCHEIDEND: die Zahl steht da. Eine leere Flaeche saehe aus wie
         // 'keine Daten vorhanden'.
-        expect(hinweis.textContent, e.name).toContain(String(e.zeilen));
+        //
+        // Sichten mit MEHREREN Abschnitten (Support, Policy) erzeugen je
+        // Abschnitt einen Hinweis — geprueft wird deshalb, ob IRGENDEINER die
+        // erwartete Zahl nennt, nicht der erste.
+        const trifft = hinweise.some((t) => t.indexOf(String(e.zeilen)) >= 0);
+        expect(trifft, e.name + ": " + JSON.stringify(hinweise)).toBe(true);
       });
     });
   });

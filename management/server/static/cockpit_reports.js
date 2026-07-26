@@ -247,6 +247,27 @@
         return box;
     }
 
+    // _tk / _mitHilfe (Build 550): gemeinsames Tabellen-Werkzeug + Hilfe-Anker
+    // der Spaltenkoepfe. LAZY; die Spalten werden KOPIERT.
+    function _tk() {
+        return (typeof window !== 'undefined' && window.AIWTableKit)
+            ? window.AIWTableKit : null;
+    }
+    function _mitHilfe(cols, sicht, doc) {
+        var TK = _tk();
+        if (!TK || !doc || !TK.titelMitHilfe) { return cols; }
+        return cols.map(function (c) {
+            var neu = {};
+            Object.keys(c).forEach(function (k) { neu[k] = c[k]; });
+            if (c.field && !c.titleFormatter) {
+                neu.titleFormatter = TK.titelMitHilfe(
+                    doc, c.title || c.field,
+                    sicht + '.spalte.' + String(c.field).toLowerCase());
+            }
+            return neu;
+        });
+    }
+
     // renderReports: Kopf + Scan-Info + Neu-einlesen + Statusfilter + Tabelle
     // + Hinweise. opts.Tabulator injizierbar; opts.onForceRescan() und
     // opts.onFilter(status) werden von den Bedienelementen gerufen.
@@ -314,20 +335,25 @@
         if (typeof Ctor !== 'function') {
             var note = doc.createElement('div');
             note.className = 'aiw-placeholder';
-            note.textContent = 'Tabellenbibliothek nicht verfuegbar.';
+            note.textContent = 'Tabellenbibliothek nicht verfügbar — es '
+                + 'liegen ' + rows.length + ' Berichte vor.';
             container.appendChild(note);
             log('renderReports: kein Tabulator-Ctor');
             return null;
         }
 
-        var table = new Ctor(container, {
-            data: rows, columns: _COLUMNS,
-            layout: 'fitColumns', height: '440px',
-            // Zeilenklick -> Aktionsfeld fuer DIESEN Bericht (Build 378).
-            rowClick: function (e, row) {
-                selectRow(row.getData());
+        // Build 550: Aufbau ueber das gemeinsame Tabellen-Werkzeug. Der
+        // Zeilenklick (Aktionsfeld, Build 378) wird DURCHGEREICHT.
+        var table = _tk().tabelleAufbauen(doc, container, {
+            sicht: 'reports',
+            rows: rows,
+            columns: _mitHilfe(_COLUMNS, 'reports', doc),
+            Ctor: Ctor, einheit: 'Berichte',
+            tabulator: {
+                height: '440px',
+                rowClick: function (e, row) { selectRow(row.getData()); }
             }
-        });
+        }).table;
 
         // --- AKTIONSFELD (Build 378) ---------------------------------------
         // Bewusst KEINE Knoepfe in den Tabellenzellen: die Freigabe ist ein

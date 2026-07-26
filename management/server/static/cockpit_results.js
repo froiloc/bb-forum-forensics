@@ -248,6 +248,27 @@
         return e;
     }
 
+    // _tk / _mitHilfe (Build 550): gemeinsames Tabellen-Werkzeug + Hilfe-Anker
+    // der Spaltenkoepfe. LAZY; die Spalten werden KOPIERT.
+    function _tk() {
+        return (typeof window !== 'undefined' && window.AIWTableKit)
+            ? window.AIWTableKit : null;
+    }
+    function _mitHilfe(cols, sicht, doc) {
+        var TK = _tk();
+        if (!TK || !doc || !TK.titelMitHilfe) { return cols; }
+        return cols.map(function (c) {
+            var neu = {};
+            Object.keys(c).forEach(function (k) { neu[k] = c[k]; });
+            if (c.field && !c.titleFormatter) {
+                neu.titleFormatter = TK.titelMitHilfe(
+                    doc, c.title || c.field,
+                    sicht + '.spalte.' + String(c.field).toLowerCase());
+            }
+            return neu;
+        });
+    }
+
     // renderResults: die Sicht.
     //   cov   — /api/results/coverage
     //   stats — /api/results/stats   (kann null sein: Scope 'eigene' -> 403)
@@ -308,23 +329,28 @@
         var Ctor = opts.Tabulator
             || (typeof window !== 'undefined' ? window.Tabulator : undefined);
         if (typeof Ctor === 'function') {
-            table = new Ctor(tblBox, {
-                data: rows,
-                columns: _COLUMNS,
-                layout: 'fitColumns',
-                height: '380px',
-                // STANDARDSORTIERUNG: Abdeckung aufsteigend — die LUECKEN
-                // zuerst. BEWUSST NICHT nach Score (mc 2026-07-12): eine
-                // Voreinstellung nach der provisorischen Kennzahl wuerde eine
-                // Priorisierung suggerieren, die niemand abgesegnet hat.
-                initialSort: [{ column: 'abdeckung', dir: 'asc' }],
-                rowFormatter: function (row) {
-                    var el = row.getElement();
-                    if (el && el.classList) {
-                        el.classList.add('aiw-row-' + row.getData().ampel);
+            // Build 550: Aufbau ueber das gemeinsame Tabellen-Werkzeug.
+            table = _tk().tabelleAufbauen(doc, tblBox, {
+                sicht: 'results',
+                rows: rows,
+                columns: _mitHilfe(_COLUMNS, 'results', doc),
+                Ctor: Ctor, einheit: 'Fälle',
+                tabulator: {
+                    height: '380px',
+                    // STANDARDSORTIERUNG: Abdeckung aufsteigend — die LUECKEN
+                    // zuerst. BEWUSST NICHT nach Score (mc 2026-07-12): eine
+                    // Voreinstellung nach der provisorischen Kennzahl wuerde
+                    // eine Priorisierung suggerieren, die niemand abgesegnet
+                    // hat.
+                    initialSort: [{ column: 'abdeckung', dir: 'asc' }],
+                    rowFormatter: function (row) {
+                        var el = row.getElement();
+                        if (el && el.classList) {
+                            el.classList.add('aiw-row-' + row.getData().ampel);
+                        }
                     }
                 }
-            });
+            }).table;
             sel.addEventListener('change', function () {
                 var f = filterRows(rows, sel.value);
                 if (typeof table.replaceData === 'function') {
@@ -333,9 +359,13 @@
                 log('Filter:', sel.value || '(alle)', '->', f.length);
             });
         } else {
+            // Build 550: die ZAHL gehoert in die Ersatzmeldung (derselbe
+            // Befund wie bei cockpit_mentoring.js in Build 549). Ohne sie
+            // saehe der Ausfall aus wie ein Leerbefund.
             tblBox.appendChild(_el(doc, 'div', 'aiw-placeholder',
-                'Tabellenbibliothek nicht verfuegbar. Die Aussage oben ist '
-                + 'dennoch gueltig.'));
+                'Tabellenbibliothek nicht verfügbar — es liegen '
+                + rows.length + ' Fälle vor. Die Aussage oben ist dennoch '
+                + 'gültig.'));
         }
 
         // --- Verteilungen JE KRITERIUM ---------------------------------------
