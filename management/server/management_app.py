@@ -156,7 +156,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from management.audit.audit_log import AuditLog
 from management.cases.cases_repo import CasesRepo
-# Build 534: Sammelzuweisung — viele Faelle in EINER Transaktion, ein
+# Build 533: Sammelzuweisung — viele Faelle in EINER Transaktion, ein
 # audit_log-Beleg JE FALL (kein Sammelbeleg).
 from management.cases.cases_batch_repo import (
     BatchChange,
@@ -186,7 +186,7 @@ from management.support_overview.support_overview_repo import (
 )
 from management.support_sessions.support_sessions_repo import SupportSessionsRepo
 from management.stats.stats_repo import StatsRepo
-# Build 534: Kennzahlen je Fall (uid_stats) fuer die Spalten der Zuweisung.
+# Build 533: Kennzahlen je Fall (uid_stats) fuer die Spalten der Zuweisung.
 from management.stats.uid_stats_repo import UidStatsRepo
 from management.stats.forecast import Forecaster, forecast_to_dict
 # Build 524 (AP-3A / Idee 32): Fristen-/Verjaehrungs-Monitor. Der Parametersatz
@@ -332,9 +332,6 @@ from management.crossref.crossfindings_repo import CrossfindingsRepo
 # CrossrefError und die Rechte crossref.view/edit der gleichen F5-Familie mit
 # (keine Rechte-Inflation — Entscheidungslinie Build 474 §3).
 from management.crossref.subject_alias_repo import ALIAS_KINDS, SubjectAliasRepo
-# Build 600 (Oberflaechen-Zweig): Namensaufloesung fuer die Alias-Sicht —
-# subject_id <-> Benutzername ueber Fallakte und globale Namensliste.
-from management.crossref.name_resolver import NameResolver
 # Build 507 (AP-2A, Idee 7): Querfund-Rueckkanal. Die Zustandslogik liegt in
 # crossfinding_channel_status.py (reine Logik) — hier wird sie nur verdrahtet.
 from management.crossref.crossfinding_channel_repo import (
@@ -465,6 +462,16 @@ CAP_RETENTION_VIEW = "retention.view"
 # auf 'eigene' verengt haette sie genau die Faelle nicht gezeigt, um
 # derentwillen es sie gibt — die unzugewiesenen, bei denen die Frist laeuft.
 CAP_LIMITATION_VIEW = "limitation.view"
+
+# --- Build 536/537 (AP-3B): Dringlichkeitsmatrix (Seed in M033) ------
+# EIGENES Recht, nicht 'dashboard.view' und nicht 'limitation.view'.
+# Das Dashboard zeigt den BEARBEITUNGSSTAND je Fall; die Matrix zeigt eine
+# RANGFOLGE und daneben den ARBEITSSTAND fremder Faelle (Abdeckung der
+# Bewertung, hoechste Konfidenz, Identitaetszuordnung). Wer die Fristen
+# sehen darf, darf damit noch nicht sehen, wie weit die Kolleginnen sind.
+# NICHT scope-behaftet: eine Rangfolge ueber den eigenen Arbeitsvorrat
+# waere keine.
+CAP_MATRIX_VIEW = "matrix.view"
 
 logger = logging.getLogger(__name__)
 
@@ -812,6 +819,12 @@ class ManagementApp:
         # Build 524 (AP-3A / Idee 32): Verjaehrungsfristen (§§ 78 ff. StGB).
         if path == "/api/limitation":
             return self._limitation(person_id, query)
+        # --- Build 537 (AP-3B): Dringlichkeits-/Erkenntnislage-Matrix ---
+        #     Eigener Block am Ende der Fristen-Gruppe, damit er sich
+        #     im Parallelbetrieb zusammenfuehren laesst
+        #     (management/Parallelbetrieb_Welle3_v0_1.md §4).
+        if path == "/api/matrix":
+            return self._matrix(person_id, query)
         if path == "/api/capacity":
             return self._capacity(person_id, query)
         if path == "/api/policy":
@@ -844,7 +857,7 @@ class ManagementApp:
             return self._search(person_id, query)
         if path == "/api/assignable":
             return self._assignable(person_id)
-        # Build 534: Kennzahlen je Fall aus den forensic_<uid>.db (uid_stats).
+        # Build 533: Kennzahlen je Fall aus den forensic_<uid>.db (uid_stats).
         # EIGENER Endpunkt, damit die Zuweisung nicht auf eine Nebenquelle
         # wartet (Begruendung: management/stats/uid_stats_repo.py, Kopf).
         if path == "/api/assignable/stats":
@@ -925,14 +938,6 @@ class ManagementApp:
         # Reiner LESE-Endpunkt (Block 1); die Schreibpfade folgen in Block 2.
         if path == "/api/mentoring/notes":
             return self._mentoring_notes(person_id, query)
-        # --- Build 600: Namensaufloesung (Oberflaechen-Zweig) ------------
-        # Steht am ENDE der Routenliste — so schreibt es Parallelbetrieb
-        # Welle 3 §4 fuer diese gemeinsame Datei vor ("am Rand arbeiten, nie in
-        # der Mitte"). Die Fachlogik liegt in management/crossref/
-        # name_resolver.py; hier steht nur die Route.
-        if path == "/api/names":
-            return self._names(person_id, query)
-
         if path.startswith("/static/"):
             return self._serve_static(path[len("/static/"):])
         return Response.json(404, {"error": "not_found", "path": path})
@@ -1477,6 +1482,65 @@ class ManagementApp:
         # ist sie Bestandteil jeder Antwort und damit pruefbar.
         payload["nur_festgestellte_zitierfaehig"] = True
         return Response.json(200, payload)
+
+    # --- Build 537 (AP-3B): Dringlichkeits-/Erkenntnislage-Matrix -----------
+    def _matrix(self, person_id: int, query: Dict[str, Any]) -> Response:
+        """
+        GET /api/matrix — die Rangfolge der Faelle nach Bearbeitungs-
+        dringlichkeit (X) und Erkenntnislage (Y). Recht 'matrix.view'.
+
+        NICHT SCOPE-BEHAFTET, aus demselben Grund wie der Fristenmonitor: eine
+        Rangfolge ueber den eigenen Arbeitsvorrat waere keine, und die
+        gefaehrlichsten Faelle sind gerade die UNZUGEWIESENEN.
+
+        REIN LESEND: coordinator.db mit mode=ro. Kein CoordinatorWriter, kein
+        Schreibpfad. Die Matrix schreibt insbesondere NICHT in cases.priority
+        (Entscheidung mc) — sie ist ein Vorschlag, den ein Mensch bewertet.
+
+        OHNE FRISTBEITRAEGE (Build 537). Jede Zeile sagt das ausdruecklich;
+        Build 538 schliesst die Frist an. Die Antwort traegt
+        'fristen_geladen': false, damit die Sicht es nicht raten muss.
+        """
+        from management.results.matrix_repo import MatrixRepo
+        from management.results.matrix_weights import (
+            MatrixWeightsError, load_weights,
+        )
+
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_MATRIX_VIEW):
+            return self._forbidden(CAP_MATRIX_VIEW)
+
+        try:
+            gewichte = load_weights()
+        except MatrixWeightsError as exc:
+            # UNBRAUCHBARER Gewichtungssatz -> KEINE Matrix. Dieselbe Haltung
+            # wie beim Verjaehrungs-Parametersatz: lieber gar keine Zahl als
+            # eine, deren Zustandekommen niemand beschlossen hat.
+            logger.error("Matrix-Gewichtungssatz unbrauchbar: %s", exc)
+            return Response.json(503, {
+                "error": "matrix_weights_invalid",
+                "detail": str(exc),
+                "hinweis": "management/results/matrix_weights.json ist in sich "
+                           "widerspruechlich oder nicht lesbar. Die Matrix "
+                           "rechnet nicht mit geratenen Gewichten."})
+
+        con = self._ro_con()
+        try:
+            report = MatrixRepo(con, gewichte).compute(now_ts=int(time.time()))
+        except Exception as exc:                        # noqa: BLE001
+            logger.exception("Matrix fehlgeschlagen")
+            return Response.json(500, {"error": "matrix_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+
+        # Die Zusicherungen fahren MIT — Muster 'stellt_keine_verjaehrung_fest'
+        # (Build 524) und 'deletes_nothing' (Build 521). Eine Rangfolge ohne
+        # diese Saetze koennte als Bewertung der Beschuldigten gelesen werden,
+        # und das waere hier die folgenschwerste Fehldeutung.
+        report["ist_keine_beweiswuerdigung"] = True
+        report["schreibt_keine_prioritaet"] = True
+        return Response.json(200, report)
 
     def _escalation_ack(self, actor_person_id: int,
                         payload: Dict[str, Any]) -> Response:
@@ -2042,7 +2106,7 @@ class ManagementApp:
             "priority_min": _PRIORITY_MIN, "priority_max": _PRIORITY_MAX,
         })
 
-    #: Build 534: Obergrenze der ausdruecklich angefragten Kennungen in
+    #: Build 533: Obergrenze der ausdruecklich angefragten Kennungen in
     #  /api/assignable/stats?subject_ids=… Sie schuetzt vor einer URL, die den
     #  Server dazu braechte, beliebig viele Dateien zu oeffnen. Der Wert liegt
     #  weit ueber der Zahl der derzeit gefuehrten Faelle; wer wirklich ALLE
@@ -2052,7 +2116,7 @@ class ManagementApp:
     def _assignable_stats(self, person_id: int,
                           query: Optional[Dict[str, List[str]]]) -> Response:
         """
-        Kennzahlen je Fall aus uid_stats der forensic_<uid>.db (Build 534).
+        Kennzahlen je Fall aus uid_stats der forensic_<uid>.db (Build 533).
 
         Zweck: die Zuweisungs-Sicht soll zusaetzliche Spalten anbieten koennen
         (Beitraege, private Nachrichten, Downloads, geteilte Dateien und was
@@ -4416,62 +4480,6 @@ class ManagementApp:
         finally:
             con.close()
 
-    def _names(self, actor_person_id: int, query) -> Response:
-        """
-        GET /api/names — NAMENSAUFLOESUNG (Oberflaechen-Zweig, Build 600).
-
-        Zwei Betriebsarten, sich gegenseitig ausschliessend:
-          ?subject_id=N   RUECKWAERTS: Kennung -> Benutzername
-          ?q=<Begriff>    VORWAERTS:   Name -> Kennung(en), KASKADE
-                          Fallakte, dann globale Namensliste (mc 2026-07-26)
-
-        ANLASS (mc 2026-07-26): "Unsere Ermittler sind mit den Namen der
-        Forennutzer vertraut, aber nicht mit den user_id oder subject_id. [...]
-        In jedem Fall ist es den Anwendern nicht zuzumuten, die subject_id zu
-        kennen."
-
-        RECHT: crossref.view — dasselbe wie /api/alias, denn dieser Endpunkt
-        speist genau dessen Sicht. KEINE neue Faehigkeit: der Katalog in
-        management/rbac/catalog.py bleibt unangetastet, damit dieser Build im
-        Parallelbetrieb keinen Ankerwert verschiebt (Welle 3 §6).
-
-        REIN LESEND. coordinator.db und default.db werden mit mode=ro
-        geoeffnet; der Migrationsvorbehalt ab 01.07.2026 ist nicht beruehrt.
-        """
-        policy = self.resolve_policy(actor_person_id)
-        if not policy.can(CAP_CROSSREF_VIEW):
-            return self._forbidden(CAP_CROSSREF_VIEW)
-
-        raw_sid = self._q1(query, "subject_id")
-        term = self._q1(query, "q")
-
-        if raw_sid is None and not term:
-            return Response.json(400, {
-                "error": "bad_request",
-                "detail": "Entweder 'subject_id' oder 'q' angeben."})
-
-        con = self._ro_con()
-        try:
-            resolver = NameResolver(con, self._default_db)
-            if raw_sid is not None:
-                try:
-                    sid = int(raw_sid)
-                except (TypeError, ValueError):
-                    return Response.json(400, {
-                        "error": "bad_request",
-                        "detail": "subject_id ungueltig."})
-                payload = resolver.aufloesen(sid)
-                return Response.json(200, dict(payload.to_dict(),
-                                               modus="aufloesung"))
-            payload = resolver.suchen(str(term))
-            return Response.json(200, dict(payload.to_dict(), modus="suche"))
-        except Exception as exc:                       # noqa: BLE001
-            logger.exception("Namensaufloesung fehlgeschlagen")
-            return Response.json(500, {"error": "names_failed",
-                                       "detail": str(exc)})
-        finally:
-            con.close()
-
     def _alias_write(self, actor_person_id: int, what: str,
                      run) -> Response:
         """
@@ -5686,7 +5694,7 @@ class ManagementApp:
             return self._escalation_ack_revoke(person_id, payload)
         if path == "/api/case/assign":
             return self._case_assign(person_id, payload)
-        # Build 534: Sammelzuweisung (viele Faelle in EINER Transaktion, ein
+        # Build 533: Sammelzuweisung (viele Faelle in EINER Transaktion, ein
         # Beleg JE FALL). Begruendung: management/cases/cases_batch_repo.py.
         if path == "/api/case/assign_batch":
             return self._case_assign_batch(person_id, payload)
@@ -5877,7 +5885,7 @@ class ManagementApp:
         return Response.json(200, {"ok": True, "subject_id": subject_id,
                                    "person_id": assignee, "audit_seq": seq})
 
-    #: Build 534: Obergrenze eines Stapels der Sammelzuweisung.
+    #: Build 533: Obergrenze eines Stapels der Sammelzuweisung.
     #  SIE IST KEINE FACHLICHE GRENZE, sondern ein Schutz gegen einen
     #  entgleisten oder boesartigen Rumpf: ein Stapel haelt waehrend seiner
     #  Transaktion die Schreibsperre auf coordinator.db, und eine Anfrage mit
@@ -5893,7 +5901,7 @@ class ManagementApp:
     def _case_assign_batch(self, person_id: int,
                            payload: Dict[str, Any]) -> Response:
         """
-        SAMMELZUWEISUNG (Build 534): weist viele Faelle in EINEM Vorgang zu
+        SAMMELZUWEISUNG (Build 533): weist viele Faelle in EINEM Vorgang zu
         und/oder setzt ihre Prioritaet.
 
         Rumpf:
