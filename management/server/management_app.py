@@ -237,6 +237,14 @@ from management.results.priority_scorer import PriorityScorer
 from management.results.coverage_repo import CoverageRepo
 from db.coordinator_db import DEFAULT_SUPPORT_STALE_SEC
 from management.capacity.capacity_errors import CapacityError
+# --- Build 558: Kapazitaetspflege ueber die Oberflaeche -----------------
+#   Die vier Repos schreiben AUSSCHLIESSLICH ueber CoordinatorWriter
+#   (Write + Beleg in EINER Transaktion, audit_seq an der Datenzeile).
+#   Sie waren seit Build 355-357 nur ueber capacity_admin.py erreichbar.
+from management.capacity.worktime_repo import WorktimeRepo
+from management.capacity.availability_repo import AvailabilityRepo
+from management.capacity.holiday_repo import HolidayRepo
+from management.capacity.reason_repo import ReasonRepo
 from management.workload.workload_repo import (
     WorkloadRepo,
     WorkloadSchemaError,
@@ -1014,6 +1022,15 @@ class ManagementApp:
         # im Browser.
         if path == "/api/viewprefs":
             return self._viewprefs(person_id)
+
+        # --- Build 558: Kapazitaets-Stammdaten (Pflegegrundlage) ----------
+        # GETRENNT von /api/capacity, weil es etwas ANDERES ist: dort steht
+        # das ERGEBNIS der Rechnung (Basis/Netto je Person), hier stehen die
+        # EINGANGSDATEN, die man aendern kann. Eine Sammelroute haette die
+        # Pflegemaske gezwungen, das Ergebnis mitzuladen, das sie nicht
+        # braucht - und den Rechner bei jedem Tastendruck laufen zu lassen.
+        if path == "/api/capacity/stammdaten":
+            return self._capacity_stammdaten(person_id, query)
         if path.startswith("/static/"):
             return self._serve_static(path[len("/static/"):])
         return Response.json(404, {"error": "not_found", "path": path})
@@ -2053,6 +2070,436 @@ class ManagementApp:
         return Response.json(200, {"scope": scope, "count": len(caps),
                                    "start": start, "end": end,
                                    "capacities": caps})
+
+    # ==================================================================
+    # Build 558 — KAPAZITAETSPFLEGE (Schreibwege)
+    # ==================================================================
+    # WARUM DIESER BUILD: Schema (m008), Schreibpfade (vier Repos ueber
+    # CoordinatorWriter) und Belegarten (event_types.py:82-87) stehen seit
+    # Build 355-357 vollstaendig - erreichbar waren sie aber NUR ueber die
+    # Kommandozeile (management/capacity/capacity_admin.py). Die Sicht aus
+    # Build 360 zeigte Personen ohne Regel-Arbeitszeit folglich als graue
+    # Balken ("keine Basis"): der Mangel war sichtbar, aber im Werkzeug nicht
+    # behebbar. Hier steht deshalb NUR Rechte-, Scope- und Nutzlastpruefung;
+    # jede Fachregel (Minutenschranken, genau EINES von value_pct/
+    # value_minutes, aktiver reason_code, Zeitraumfolge) bleibt in den Repos,
+    # damit Oberflaeche und Kommandozeile nicht auseinanderlaufen koennen.
+    #
+    # KEIN NEUES RECHT, KEINE MIGRATION (mc 2026-07-29). 'capacity.edit' ist
+    # das Recht der Personalverantwortlichen. Die Unterscheidung traegt der
+    # SCOPE, den der Lesepfad seit Build 359 bereits auswertet:
+    #     'alle'   -> Kapazitaet BELIEBIGER Personen setzen (Leitung).
+    #     'eigene' -> ausschliesslich die EIGENE Kapazitaet (Selbstpflege).
+    # Damit ist die Selbstpflege GEBAUT, aber NICHT VERGEBEN - sie bleibt bis
+    # zu einer ausdruecklichen Grant-Entscheidung unerreichbar. Eine
+    # Aufspaltung in capacity.view/capacity.edit wurde VERWORFEN: keine
+    # Migration im Bestand schreibt jemals einen Grant (rbac_grant.audit_seq
+    # ist NOT NULL mit FK auf audit_log - eine Migration kann ein Recht gar
+    # nicht BELEGT vergeben). Ein neues Leserecht waere also im Katalog
+    # gestanden, ohne dass es jemand hat, und die Kapazitaetssicht waere fuer
+    # alle dunkel geworden, bis jemand von Hand nachvergibt. Genau die stille
+    # Funktionsluecke, die Grundregel 1 verbietet.
+    #
+    # ANLAGENWEITE DATEN SIND NICHT SELBSTPFLEGBAR. Feiertage und
+    # Abwesenheitsgruende gehoeren keiner Person, sondern der Anlage: wer sie
+    # aendert, verschiebt die Rechnung ALLER Personen. Sie verlangen deshalb
+    # hart scope='alle'.
+    #
+    # KEIN SELBSTSCHUTZ-VERBOT, anders als bei /api/personnel/* (dort
+    # management_app.py:116-118). Dort schuetzt es davor, sich selbst aus dem
+    # eigenen Konto auszusperren. Eine Arbeitszeit sperrt niemanden aus; ein
+    # Verbot haette nur verhindert, dass die Leitung ihre EIGENE Kapazitaet
+    # eintraegt. Belegt wird jede Aenderung ohnehin (mc 2026-07-29:
+    # "Alles wird dokumentiert und das reicht als Kontrolle aus").
+
+    def _capacity_guard(self, actor_person_id: int, *,
+                        target_person_id: Optional[int] = None,
+                        anlagenweit: bool = False):
+        """
+        Gemeinsame Rechte-/Scope-Pruefung aller Kapazitaets-Schreibwege.
+
+        -> None            : erlaubt
+        -> Response (403)  : abgelehnt, MIT Begruendung (nie leer, nie stumm)
+
+        'anlagenweit=True' fuer Feiertage/Gruende: diese verlangen scope='alle'
+        unabhaengig von einer Zielperson.
+        """
+        policy = self.resolve_policy(actor_person_id)
+        if not policy.can(CAP_CAPACITY):
+            return self._forbidden(CAP_CAPACITY)
+        scope = policy.scope(CAP_CAPACITY)
+        if scope == "alle":
+            return None
+        if anlagenweit:
+            return Response.json(403, {
+                "error": "forbidden", "capability": CAP_CAPACITY,
+                "detail": "Scope 'eigene': anlagenweite Daten (Feiertage, "
+                          "Abwesenheitsgruende) wirken auf ALLE Personen und "
+                          "sind nicht selbstpflegbar."})
+        if target_person_id is None or target_person_id != actor_person_id:
+            return Response.json(403, {
+                "error": "forbidden", "capability": CAP_CAPACITY,
+                "detail": "Scope 'eigene': nur die eigene Kapazitaet "
+                          "(person_id=%s)." % actor_person_id})
+        return None
+
+    @staticmethod
+    def _capacity_int(payload: Dict[str, Any], key: str,
+                      default: Optional[int] = None):
+        """
+        Ganzzahl aus der Nutzlast. -> (wert, None) | (None, Response 400).
+        Fehlt der Schluessel UND es gibt kein Default, ist das ein Fehler -
+        kein stilles Ersetzen durch 0 (das waere eine erfundene Arbeitszeit).
+        """
+        raw = payload.get(key, "__missing__")
+        if raw == "__missing__" or raw is None:
+            if default is None:
+                return None, Response.json(400, {
+                    "error": "bad_request", "detail": "%s fehlt." % key})
+            return default, None
+        try:
+            return int(raw), None
+        except (TypeError, ValueError):
+            return None, Response.json(400, {
+                "error": "bad_request",
+                "detail": "%s ist keine Ganzzahl (%r)." % (key, raw)})
+
+    def _capacity_repos(self, con: sqlite3.Connection):
+        """Die vier Repos an EINEM CoordinatorWriter (ein Beleg je Schreibung)."""
+        writer = CoordinatorWriter(con, AuditLog(con))
+        return (WorktimeRepo(con, writer), AvailabilityRepo(con, writer),
+                HolidayRepo(con, writer), ReasonRepo(con, writer))
+
+    # ------------------------------------------------------------- lesen
+    def _capacity_stammdaten(self, person_id: int,
+                             query: Optional[Dict[str, List[str]]]) -> Response:
+        """
+        GET /api/capacity/stammdaten[?person_id=N] — die PFLEGBAREN Rohdaten
+        hinter der Rechnung: Regel-Arbeitszeiten, Abwesenheiten, Feiertage,
+        Gruendekatalog. Recht 'capacity.edit'.
+
+        Scope 'alle'   -> ohne person_id ALLE Personen, mit person_id gefiltert.
+        Scope 'eigene' -> immer und ausschliesslich die eigene Person; eine
+                          abweichende person_id wird ABGELEHNT und nicht etwa
+                          stillschweigend auf die eigene umgebogen (sonst
+                          zeigte die Maske Daten unter fremder Ueberschrift).
+
+        Feiertage und Gruende sind anlagenweit und stehen JEDEM zu, der die
+        Sicht sehen darf: ohne sie waeren die eigenen Abwesenheitszeilen nicht
+        lesbar (reason_code waere ein nackter Code).
+        """
+        policy = self.resolve_policy(person_id)
+        if not policy.can(CAP_CAPACITY):
+            return self._forbidden(CAP_CAPACITY)
+        scope = policy.scope(CAP_CAPACITY)
+
+        target: Optional[int] = None
+        raw = self._q1(query, "person_id")
+        if raw is not None:
+            try:
+                target = int(raw)
+            except (TypeError, ValueError):
+                return Response.json(400, {
+                    "error": "bad_request", "detail": "person_id ungueltig."})
+        if scope != "alle":
+            if target is not None and target != person_id:
+                return Response.json(403, {
+                    "error": "forbidden", "capability": CAP_CAPACITY,
+                    "detail": "Scope 'eigene': nur die eigenen Stammdaten."})
+            target = person_id
+
+        con = self._ro_con()
+        try:
+            wt, av, ho, re_ = self._capacity_repos(con)
+            worktimes = wt.list_worktime(target)
+            availability = av.list_availability(target)
+            holidays = ho.list_holidays()
+            reasons = re_.list_reasons()
+        finally:
+            con.close()
+
+        return Response.json(200, {
+            "scope": scope, "person_id": target,
+            "worktimes": worktimes, "availability": availability,
+            "holidays": holidays, "reasons": reasons,
+            "counts": {"worktimes": len(worktimes),
+                       "availability": len(availability),
+                       "holidays": len(holidays),
+                       "reasons": len(reasons)},
+            # Die Rechenarten sind SCHEMAGEBUNDEN (m008: CHECK(kind IN ...))
+            # und traegt die Arithmetik in capacity_calculator.py:110
+            # (netto = max(basis - einschraenkungen, garantie_boden)). Sie
+            # gehen deshalb als feste Liste an die Oberflaeche - anders als
+            # die Gruende, die frei erweiterbar sind.
+            "kinds": [{"code": "einschraenkung", "label": "Einschraenkung"},
+                      {"code": "garantie", "label": "Garantie (Mindestboden)"}],
+        })
+
+    # ---------------------------------------------------------- schreiben
+    def _capacity_worktime_set(self, actor_person_id: int,
+                               payload: Dict[str, Any]) -> Response:
+        """
+        POST /api/capacity/worktime — {person_id, effective_from,
+        mon_min..sun_min, effective_to?}. Recht 'capacity.edit'.
+
+        APPEND-ONLY (mc 2026-07-10, Entscheidung 2): jede Schreibung erzeugt
+        eine NEUE datierte Zeile; die Vorgaengerin wird NICHT geschlossen. Der
+        Leser (Build 358) nimmt die Zeile mit groesstem effective_from <=
+        Stichtag. Die Oberflaeche muss das benennen, sonst wirkt eine Korrektur
+        wie ein Verlust der alten Angabe - sie steht aber noch da, als Beleg.
+        """
+        target_id, err = self._capacity_int(payload, "person_id")
+        if err is not None:
+            return err
+        denied = self._capacity_guard(actor_person_id,
+                                      target_person_id=target_id)
+        if denied is not None:
+            return denied
+
+        effective_from = str(payload.get("effective_from", "") or "").strip()
+        if not effective_from:
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "effective_from fehlt (ISO-Datum)."})
+        effective_to = payload.get("effective_to") or None
+
+        minuten: Dict[str, int] = {}
+        for tag in ("mon_min", "tue_min", "wed_min", "thu_min", "fri_min",
+                    "sat_min", "sun_min"):
+            wert, err = self._capacity_int(payload, tag, default=0)
+            if err is not None:
+                return err
+            minuten[tag] = wert
+
+        con = self._rw_con()
+        try:
+            wt, _, _, _ = self._capacity_repos(con)
+            seq = wt.set_worktime(target_id, effective_from=effective_from,
+                                  effective_to=effective_to,
+                                  actor_id=actor_person_id,
+                                  meta={"quelle": "capacity_ui"}, **minuten)
+        except CapacityError as exc:
+            return Response.json(400, {"error": "capacity",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Arbeitszeit setzen fehlgeschlagen")
+            return Response.json(500, {"error": "capacity_worktime_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, "person_id": target_id,
+                                   "effective_from": effective_from,
+                                   "audit_seq": seq})
+
+    def _capacity_availability_set(self, actor_person_id: int,
+                                   payload: Dict[str, Any]) -> Response:
+        """
+        POST /api/capacity/availability — {person_id, period_start, period_end,
+        kind, value_pct? | value_minutes?, reason_code?, note?}.
+        Recht 'capacity.edit'.
+
+        'kind' wird NICHT hier geprueft: das Repo kennt die Positivliste
+        ('garantie'/'einschraenkung'), das Schema erzwingt sie per CHECK. Eine
+        zweite Kopie der Liste an dieser Stelle wuerde eines Tages von der
+        ersten abweichen.
+        """
+        target_id, err = self._capacity_int(payload, "person_id")
+        if err is not None:
+            return err
+        denied = self._capacity_guard(actor_person_id,
+                                      target_person_id=target_id)
+        if denied is not None:
+            return denied
+
+        period_start = str(payload.get("period_start", "") or "").strip()
+        period_end = str(payload.get("period_end", "") or "").strip()
+        kind = str(payload.get("kind", "") or "").strip()
+        if not (period_start and period_end and kind):
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "period_start, period_end und kind sind Pflicht."})
+
+        value_pct = payload.get("value_pct")
+        value_minutes = payload.get("value_minutes")
+        try:
+            value_pct = None if value_pct is None else int(value_pct)
+            value_minutes = (None if value_minutes is None
+                             else int(value_minutes))
+        except (TypeError, ValueError):
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "value_pct/value_minutes muessen Ganzzahlen sein."})
+
+        reason_code = payload.get("reason_code") or None
+        note = payload.get("note") or None
+
+        con = self._rw_con()
+        try:
+            _, av, _, _ = self._capacity_repos(con)
+            seq = av.set_availability(
+                target_id, period_start=period_start, period_end=period_end,
+                kind=kind, value_pct=value_pct, value_minutes=value_minutes,
+                reason_code=reason_code, note=note,
+                actor_id=actor_person_id, meta={"quelle": "capacity_ui"})
+        except CapacityError as exc:
+            return Response.json(400, {"error": "capacity",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Abwesenheit setzen fehlgeschlagen")
+            return Response.json(500, {"error": "capacity_availability_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, "person_id": target_id,
+                                   "audit_seq": seq})
+
+    def _capacity_availability_remove(self, actor_person_id: int,
+                                      payload: Dict[str, Any]) -> Response:
+        """
+        POST /api/capacity/availability/remove — {entry_id}. Soft-Delete.
+
+        DIE FALLE: die Zielperson steht NICHT in der Nutzlast, sondern an der
+        Zeile. Die Scope-Pruefung muss die person_id des Eintrags deshalb
+        ZUERST lesen - sonst koennte eine selbstpflegende Person fremde
+        Eintraege ueber deren ID entfernen, obwohl sie sie nie sehen konnte.
+        """
+        entry_id, err = self._capacity_int(payload, "entry_id")
+        if err is not None:
+            return err
+
+        con = self._rw_con()
+        try:
+            row = con.execute(
+                "SELECT person_id FROM availability_entry WHERE id=?",
+                (entry_id,)).fetchone()
+            if row is None:
+                return Response.json(400, {
+                    "error": "bad_request",
+                    "detail": "Unbekannte entry_id=%s." % entry_id})
+            denied = self._capacity_guard(actor_person_id,
+                                          target_person_id=int(row[0]))
+            if denied is not None:
+                return denied
+            _, av, _, _ = self._capacity_repos(con)
+            seq = av.remove_availability(entry_id, actor_id=actor_person_id,
+                                         meta={"quelle": "capacity_ui"})
+        except CapacityError as exc:
+            return Response.json(400, {"error": "capacity",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Abwesenheit entfernen fehlgeschlagen")
+            return Response.json(500, {"error": "capacity_availability_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, "entry_id": entry_id,
+                                   "audit_seq": seq})
+
+    def _capacity_holiday_add(self, actor_person_id: int,
+                              payload: Dict[str, Any]) -> Response:
+        """POST /api/capacity/holiday — {day, label, region?}. Nur scope 'alle'."""
+        denied = self._capacity_guard(actor_person_id, anlagenweit=True)
+        if denied is not None:
+            return denied
+        day = str(payload.get("day", "") or "").strip()
+        label = str(payload.get("label", "") or "").strip()
+        if not (day and label):
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "day (ISO-Datum) und label sind Pflicht."})
+        region = payload.get("region") or None
+
+        con = self._rw_con()
+        try:
+            _, _, ho, _ = self._capacity_repos(con)
+            seq = ho.add_holiday(day, label, region=region,
+                                 actor_id=actor_person_id,
+                                 meta={"quelle": "capacity_ui"})
+        except CapacityError as exc:
+            return Response.json(400, {"error": "capacity",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Feiertag anlegen fehlgeschlagen")
+            return Response.json(500, {"error": "capacity_holiday_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, "day": day,
+                                   "audit_seq": seq})
+
+    def _capacity_holiday_remove(self, actor_person_id: int,
+                                 payload: Dict[str, Any]) -> Response:
+        """POST /api/capacity/holiday/remove — {holiday_id}. Nur scope 'alle'."""
+        denied = self._capacity_guard(actor_person_id, anlagenweit=True)
+        if denied is not None:
+            return denied
+        holiday_id, err = self._capacity_int(payload, "holiday_id")
+        if err is not None:
+            return err
+
+        con = self._rw_con()
+        try:
+            row = con.execute("SELECT 1 FROM holiday WHERE id=?",
+                              (holiday_id,)).fetchone()
+            if row is None:
+                return Response.json(400, {
+                    "error": "bad_request",
+                    "detail": "Unbekannte holiday_id=%s." % holiday_id})
+            _, _, ho, _ = self._capacity_repos(con)
+            seq = ho.remove_holiday(holiday_id, actor_id=actor_person_id,
+                                    meta={"quelle": "capacity_ui"})
+        except CapacityError as exc:
+            return Response.json(400, {"error": "capacity",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Feiertag entfernen fehlgeschlagen")
+            return Response.json(500, {"error": "capacity_holiday_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, "holiday_id": holiday_id,
+                                   "audit_seq": seq})
+
+    def _capacity_reason_add(self, actor_person_id: int,
+                             payload: Dict[str, Any]) -> Response:
+        """
+        POST /api/capacity/reason — {code, label, sort?}. Nur scope 'alle'.
+
+        DER FREI ERWEITERBARE KATALOG (mc 2026-07-29): "Urlaub", "Krank",
+        "Schulung", "anderer Dienstauftrag" - welche Abwesenheitsarten im Lauf
+        der Zeit legitim sind, entscheidet die Leitung, nicht der Code. Genau
+        deshalb ist 'reason_code' ein Katalog und 'kind' eine feste Rechenart:
+        die eine Liste waechst, die andere darf es nicht.
+        """
+        denied = self._capacity_guard(actor_person_id, anlagenweit=True)
+        if denied is not None:
+            return denied
+        code = str(payload.get("code", "") or "").strip()
+        label = str(payload.get("label", "") or "").strip()
+        if not (code and label):
+            return Response.json(400, {
+                "error": "bad_request", "detail": "code und label sind Pflicht."})
+        sort, err = self._capacity_int(payload, "sort", default=0)
+        if err is not None:
+            return err
+
+        con = self._rw_con()
+        try:
+            _, _, _, re_ = self._capacity_repos(con)
+            seq = re_.add_reason(code, label, sort=sort,
+                                 actor_id=actor_person_id,
+                                 meta={"quelle": "capacity_ui"})
+        except CapacityError as exc:
+            return Response.json(400, {"error": "capacity",
+                                       "detail": str(exc)})
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Abwesenheitsgrund anlegen fehlgeschlagen")
+            return Response.json(500, {"error": "capacity_reason_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, "code": code,
+                                   "audit_seq": seq})
 
     def _policy(self, person_id: int) -> Response:
         """
@@ -6252,6 +6699,28 @@ class ManagementApp:
 
         if path == "/api/fulltext/release/revoke":
             return self._fulltext_release_revoke(person_id, payload)
+
+        # --- Build 558: Kapazitaetspflege, auditierte Schreibwege -------
+        # SECHS Routen statt einer Sammelroute: es sind sechs fachlich
+        # verschiedene Handlungen mit verschiedenen Belegarten
+        # (WORKTIME_SET, AVAILABILITY_SET/_REMOVED, HOLIDAY_ADDED/
+        # _REMOVED, AVAILABILITY_REASON_ADDED). Eine Sammelroute muesste
+        # die Belegart aus der Nutzlast RATEN - und ein falsch geratener
+        # Beleg ist schlimmer als gar keiner. Muster: die vier
+        # Alias-Routen (Build 504) und /api/qs/draw|review (Build 541).
+        if path == "/api/capacity/worktime":
+            return self._capacity_worktime_set(person_id, payload)
+        if path == "/api/capacity/availability":
+            return self._capacity_availability_set(person_id, payload)
+        if path == "/api/capacity/availability/remove":
+            return self._capacity_availability_remove(person_id, payload)
+        if path == "/api/capacity/holiday":
+            return self._capacity_holiday_add(person_id, payload)
+        if path == "/api/capacity/holiday/remove":
+            return self._capacity_holiday_remove(person_id, payload)
+        if path == "/api/capacity/reason":
+            return self._capacity_reason_add(person_id, payload)
+
         return Response.json(404, {"error": "not_found", "path": path})
 
     # ------------------------------------------------------------- Schreiben
