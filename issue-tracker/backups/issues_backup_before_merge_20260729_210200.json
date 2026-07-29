@@ -190,27 +190,26 @@
     },
     {
       "id": "b67f7424-230a-4b54-b078-8c8b607188bf",
-      "type": "documentation",
-      "status": "resolved",
-      "priority": "low",
-      "title": "Schema: affected_version akzeptiert kein Suffix wie '0.8.560a'",
-      "affected_version": "0.8.560",
-      "resolved_in_version": "0.8.566",
       "reporter": "Claude",
       "reported_at": "2026-07-29T15:20:00+00:00",
       "assigned_to": "Claude",
+      "type": "documentation",
+      "status": "open",
+      "priority": "low",
+      "title": "Schema: affected_version akzeptiert kein Suffix wie '0.8.560a'",
+      "affected_version": "0.8.560",
       "tags": [
         "Issue-Tracker",
         "Schema"
       ],
+      "description": "issue-tracker.schema.json setzt fuer affected_version, target_version und resolved_in_version das Muster ^\\\\d+\\\\.\\\\d+\\\\.\\\\d+$. Der Commit a92a6f8 traegt jedoch die Bezeichnung '0.8.560a'. Solche Zwischenstaende lassen sich im Tracker derzeit nicht benennen - man muesste auf '0.8.560' runden und die Unterscheidung im Text nachtragen.",
+      "expected_behavior": "Entweder das Muster erweitern (z.B. ^\\\\d+\\\\.\\\\d+\\\\.\\\\d+[a-z]?$) oder Zwischenstaende bewusst nicht als eigene Version fuehren.",
       "updates": [
         {
-          "timestamp": "2026-07-29T18:40:00+00:00",
+          "timestamp": "2026-07-29T15:20:00+00:00",
           "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "Build 566: Muster auf ^\\\\d+\\\\.\\\\d+\\\\.\\\\d+[a-z]?$ erweitert, an allen drei Stellen. Die Grenze bleibt eng - EIN Kleinbuchstabe, kein Freitext: '0.8.560ab', 'v0.8.560' und '0.8.560-rc1' werden weiter abgewiesen, sonst waere aus dem Versionsfeld ein Notizzettel geworden. IT02."
+          "action": "comment",
+          "comment": "Nur gemeldet, nicht geaendert: das Schema ist deine Festlegung, und beide Wege sind vertretbar."
         }
       ]
     },
@@ -488,7 +487,7 @@
       "description": "Der Name einer Person ändert sich. Das sollte im System darstellbar sein.",
       "expected_behavior": "Der Name der Person kann geändert werden.",
       "actual_behavior": "Der Name der Person ist nicht änderbar.",
-      "status": "closed",
+      "status": "open",
       "priority": "high",
       "severity": "trivial",
       "assigned_to": "Claude",
@@ -512,14 +511,6 @@
           "old_value": "",
           "new_value": "",
           "comment": "Issue erstellt"
-        },
-        {
-          "timestamp": "2026-07-29T19:06:59.495793+00:00",
-          "author": "developer",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "closed",
-          "comment": "Schnell geschlossen"
         }
       ]
     },
@@ -745,118 +736,6 @@
           "comment": "Importiert aus eintraege_claude_Build565.json"
         }
       ]
-    },
-    {
-      "id": "d76b5ab4-bd9b-489b-b43c-5b9b0729b728",
-      "type": "bug",
-      "status": "resolved",
-      "priority": "medium",
-      "severity": "minor",
-      "title": "Schema verbot null, obwohl der Tracker selbst null schreibt",
-      "affected_version": "0.8.560",
-      "resolved_in_version": "0.8.566",
-      "reporter": "Claude",
-      "reported_at": "2026-07-29T18:40:00+00:00",
-      "assigned_to": "Claude",
-      "tags": [
-        "Issue-Tracker",
-        "Schema",
-        "Nebenbefund"
-      ],
-      "description": "Beim Erweitern des Versionsmusters stellte sich heraus, dass der Bestand das Schema GAR NICHT einhielt - unabhaengig von der Aenderung. target_version und resolved_in_version standen als 'string', der Tracker schreibt fuer nicht gesetzte Versionen aber 'null'. Betroffen waren 7 von 21 Live-Eintraegen UND die mitgelieferte Beispieldatei issue-tracker.example.json.",
-      "expected_behavior": "Das Schema beschreibt, was der Tracker tatsaechlich schreibt; Bestand und Beispieldatei validieren.",
-      "actual_behavior": "Jede Validierung des Bestands brach am ersten Eintrag ohne target_version ab. Eine mitgelieferte Beispieldatei, die das eigene Schema verletzt, ist eine Anleitung zum Fehler.",
-      "updates": [
-        {
-          "timestamp": "2026-07-29T18:40:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "Build 566: die beiden OPTIONALEN Versionsfelder duerfen jetzt null sein; affected_version bleibt als Pflichtfeld string. Danach validieren Live-Bestand (21 Eintraege) und Beispieldatei. IT03, IT04, IT05."
-        },
-        {
-          "timestamp": "2026-07-29T19:02:00.528660+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build566.json"
-        }
-      ]
-    },
-    {
-      "id": "5ff7e883-aeda-4456-9890-6760a9168d19",
-      "type": "improvement",
-      "status": "resolved",
-      "priority": "low",
-      "title": "Regressionstest fuer das Trackerschema (ohne jsonschema)",
-      "affected_version": "0.8.566",
-      "resolved_in_version": "0.8.566",
-      "reporter": "Claude",
-      "reported_at": "2026-07-29T18:40:00+00:00",
-      "assigned_to": "Claude",
-      "tags": [
-        "Issue-Tracker",
-        "Tests"
-      ],
-      "description": "Die beiden Schemafehler waren jahrelang unbemerkt, weil nichts sie geprueft hat. tests/test_issue_tracker_schema.py prueft jetzt Muster, Typen, die Beispieldatei und - soweit vorhanden - den Live-Bestand. BEWUSST OHNE das Paket 'jsonschema': es ist keine Projektabhaengigkeit (issue-tracker/requirements.txt fuehrt es nicht), ein Test daraufhin waere in der VM rot. Gegenprobe gefahren: gegen das ALTE Schema fallen 4 von 5 Pruefungen durch - der Test ist nicht 'gruen aber tot'.",
-      "updates": [
-        {
-          "timestamp": "2026-07-29T18:40:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "IT05 prueft auch den Live-Bestand. Faellt er einmal rot aus, ist das eine echte Meldung: dann steht eine unzulaessige Versionsangabe in data/issues.json."
-        },
-        {
-          "timestamp": "2026-07-29T19:02:00.528703+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build566.json"
-        }
-      ]
-    },
-    {
-      "id": "28887526-b1bb-43d9-b61c-7e161bcfe41b",
-      "type": "improvement",
-      "status": "closed",
-      "priority": "high",
-      "severity": "trivial",
-      "title": "Personennamen aenderbar machen - Konflikt mit dem AD-Abgleich",
-      "affected_version": "0.8.561",
-      "reporter": "Claude",
-      "reported_at": "2026-07-29T18:40:00+00:00",
-      "assigned_to": "Alex",
-      "related_to": [
-        "62e240e0-ab07-4e55-bce2-111393f3c39f"
-      ],
-      "tags": [
-        "Person",
-        "Namen",
-        "AD-Sync",
-        "Entscheidung"
-      ],
-      "description": "Messung zu 62e240e0. PersonRepo.update kann display_name BEREITS aendern (auditiert, Beleg INVESTIGATOR_UPDATED mit {alt,neu}); es fehlt nur der HTTP-Endpunkt und das Eingabefeld - wie seinerzeit bei der Kapazitaet. ABER: der AD-Abgleich benennt zurueck. sync_plan.py:137 erzeugt fuer JEDE aktive Person, deren system_username im AD steht und deren display_name vom AD-displayName abweicht, einen 'rename'-Eintrag; sync_executor.py:137 vollzieht ihn bei /api/adsync/apply ohne Rueckfrage. Eine von Hand gesetzte Namensaenderung waere damit beim naechsten Abgleich still verschwunden.",
-      "expected_behavior": "Entscheidung erforderlich, siehe Chat: (A) manuelle Aenderung mit Hinweis, dass der AD-Abgleich sie zuruecknimmt; (B) Kennzeichen 'manuell gepflegt', das den Abgleich die Abweichung nur MELDEN statt ueberschreiben laesst (Migration noetig); (C) kein manueller Weg, stattdessen sichtbar machen, dass der Name aus dem AD stammt.",
-      "updates": [
-        {
-          "timestamp": "2026-07-29T18:40:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "Nicht gebaut, weil jede der drei Varianten eine andere Datenhaltung bedeutet - (B) braucht eine Migration. Ein Alleingang haette entweder eine Falle eingebaut (A ohne Hinweis) oder eine Migration ohne Freigabe."
-        },
-        {
-          "timestamp": "2026-07-29T19:02:00.528713+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build566.json"
-        },
-        {
-          "timestamp": "2026-07-29T19:05:54.150712+00:00",
-          "author": "Alex",
-          "action": "status_change",
-          "old_value": "in_progress",
-          "new_value": "closed",
-          "comment": "Wird bereits über eine Änderung der Quelle im Active Directory abgegolten. Daher ist keine Erweiterung hier notwendig."
-        }
-      ],
-      "resolved_in_version": "0.8.566"
     }
   ]
 }

@@ -1,0 +1,4 @@
+4db68fbb21db7cb2d4315120d3aa140b  build.json
+6de7bade9c149dd18ea302c357dbe884  issue-tracker/issue-tracker.schema.json
+13622f73bd9aebc52796ed68c525e40e  tests/test_issue_tracker_schema.py
+ca3f0ef1e71442d7d47dde0c35ccdb40  issue-tracker/eintraege_claude_Build566.json

@@ -34,8 +34,8 @@
           },
           "affected_version": {
             "type": "string",
-            "pattern": "^\\d+\\.\\d+\\.\\d+$",
-            "description": "Betroffene Version (SemVer)"
+            "pattern": "^\\d+\\.\\d+\\.\\d+[a-z]?$",
+            "description": "Betroffene Version (SemVer, optional mit Zwischenstand-Suffix: 0.8.560a)"
           },
           "reporter": {
             "type": "string",
@@ -100,14 +100,14 @@
             "description": "Verwandte Issue-IDs"
           },
           "resolved_in_version": {
-            "type": "string",
-            "pattern": "^\\d+\\.\\d+\\.\\d+$",
-            "description": "Umsetzung in Version"
+            "type": ["string", "null"],
+            "pattern": "^\\d+\\.\\d+\\.\\d+[a-z]?$",
+            "description": "Umsetzung in Version (SemVer, optional mit Zwischenstand-Suffix)"
           },
           "target_version": {
-            "type": "string",
-            "pattern": "^\\d+\\.\\d+\\.\\d+$",
-            "description": "Geplante Version für Fix/Feature"
+            "type": ["string", "null"],
+            "pattern": "^\\d+\\.\\d+\\.\\d+[a-z]?$",
+            "description": "Geplante Version für Fix/Feature (SemVer, optional mit Zwischenstand-Suffix)"
           },
           "environment": {
             "type": "object",

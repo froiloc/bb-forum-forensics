@@ -232,15 +232,51 @@ issue_manager = IssueManager(config.ISSUES_FILE)
 # ============================================================================
 
 STATUS_FLOW = {
-    "open": ["in_progress", "wont_fix", "duplicate", "cannot_reproduce"],
-    "in_progress": ["review", "open"],
-    "review": ["testing", "in_progress"],
-    "testing": ["resolved", "in_progress"],
-    "resolved": ["closed", "testing"],
-    "closed": ["open"],
-    "wont_fix": [],
-    "duplicate": [],
-    "cannot_reproduce": ["open"]
+    "open": [
+        "in_progress",      # Bearbeitung beginnen
+        "resolved",         # Direkt als gelöst markieren (z.B. für triviale Fixes)
+        "closed",           # Direkt schließen (z.B. Duplikat erkannt)
+        "wont_fix",         # Wird nicht behoben
+        "duplicate",        # Ist ein Duplikat
+        "cannot_reproduce"  # Nicht reproduzierbar
+    ],
+    "in_progress": [
+        "review",           # Zum Review
+        "resolved",         # Direkt lösen (ohne formalen Review)
+        "closed",           # Schließen (z.B. obsolet geworden)
+        "open",             # Zurück zu offen
+        "cannot_reproduce"  # Stellt sich als nicht reproduzierbar heraus
+    ],
+    "review": [
+        "testing",          # Zum Testen
+        "in_progress",      # Zurück in Bearbeitung
+        "resolved",         # Direkt als gelöst markieren
+        "open"              # Zurück zu offen
+    ],
+    "testing": [
+        "resolved",         # Test bestanden
+        "in_progress",      # Zurück in Bearbeitung (Bug gefunden)
+        "open"              # Zurück zu offen
+    ],
+    "resolved": [
+        "closed",           # Endgültig schließen
+        "testing",          # Wieder testen
+        "in_progress",      # Wieder öffnen für Nacharbeit
+        "open"              # Wieder vollständig öffnen
+    ],
+    "closed": [
+        "open"              # Wieder öffnen
+    ],
+    "wont_fix": [
+        "open"              # Doch bearbeiten
+    ],
+    "duplicate": [
+        "open"              # Neue Bewertung
+    ],
+    "cannot_reproduce": [
+        "open",             # Wieder öffnen mit mehr Infos
+        "closed"            # Endgültig schließen
+    ]
 }
 
 STATUS_LABELS = {
