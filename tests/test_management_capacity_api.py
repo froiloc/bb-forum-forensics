@@ -48,8 +48,17 @@
 # KP21 - scope 'eigene' kann fremde Zeilen weder entfernen noch
 #        ersetzen - auch nicht, indem als Zielperson man selbst
 #        angegeben wird.
+# KP22 - Stammdaten OHNE Schalter: entfernte Zeilen fehlen in der
+#        Liste, ihre ZAHL steht aber trotzdem in der Antwort.
+# KP23 - Stammdaten MIT ?include_deleted=1: entfernte Zeilen sind
+#        dabei und als solche erkennbar (deleted_at gesetzt).
+# KP24 - der Schalter wirkt auf ALLE VIER Bestaende, nicht nur auf
+#        die Arbeitszeiten.
+# KP25 - der Schalter aendert NICHTS an Rechten und Scope: eine
+#        selbstpflegende Person sieht auch entfernte Zeilen nur
+#        von sich.
 #
-# Version: v0.8.560 . Build: 560 . 2026-07-29
+# Version: v0.8.562 . Build: 562 . 2026-07-29
 # =============================================================================
 
 import json
@@ -598,6 +607,118 @@ class CapacityApiTests(unittest.TestCase):
         self.assertIsNone(self.con.execute(
             "SELECT deleted_at FROM person_worktime WHERE id=?",
             (wid,)).fetchone()["deleted_at"])
+
+    # KP22 ---------------------------------------------------------------
+    def test_kp22_ohne_schalter_fehlt_die_zeile_aber_nicht_ihre_zahl(self):
+        """Der Kern von Grundregel 1 an dieser Stelle: eine ausgeblendete
+        Zeile darf nicht spurlos verschwinden. Wer die Zahl nicht sieht, weiss
+        nicht, dass es etwas einzublenden GIBT."""
+        self._grant("supervisor", "alle", 1)
+        self._standardzeit()
+        self._reload()
+        wid = self.con.execute(
+            "SELECT id FROM person_worktime WHERE person_id=2").fetchone()["id"]
+        self._app().dispatch_write(1, "/api/capacity/worktime/remove",
+                                   {"worktime_id": wid})
+
+        r = self._app().dispatch(1, "/api/capacity/stammdaten", {})
+        self.assertEqual(r.status, 200, r.body)
+        b = self._body(r)
+        self.assertEqual(b["include_deleted"], False)
+        self.assertEqual(b["counts"]["worktimes"], 0)
+        self.assertEqual(b["entfernt"]["worktimes"], 1)
+
+    # KP23 ---------------------------------------------------------------
+    def test_kp23_mit_schalter_sind_entfernte_zeilen_dabei(self):
+        self._grant("supervisor", "alle", 1)
+        self._standardzeit()
+        self._reload()
+        wid = self.con.execute(
+            "SELECT id FROM person_worktime WHERE person_id=2").fetchone()["id"]
+        self._app().dispatch_write(1, "/api/capacity/worktime/remove",
+                                   {"worktime_id": wid})
+
+        r = self._app().dispatch(1, "/api/capacity/stammdaten",
+                                 {"include_deleted": ["1"]})
+        self.assertEqual(r.status, 200, r.body)
+        b = self._body(r)
+        self.assertEqual(b["include_deleted"], True)
+        self.assertEqual(b["counts"]["worktimes"], 1)
+        self.assertEqual(b["entfernt"]["worktimes"], 1)
+        # Und sie ist ALS entfernt erkennbar - sonst saehe sie aus wie eine
+        # gueltige Regel.
+        self.assertIsNotNone(b["worktimes"][0]["deleted_at"])
+        # Die Namensaufloesung greift auch hier (Build 559).
+        self.assertEqual(b["worktimes"][0]["display_name"], "Mueller")
+
+    # KP24 ---------------------------------------------------------------
+    def test_kp24_schalter_wirkt_auf_alle_vier_bestaende(self):
+        self._grant("supervisor", "alle", 1)
+        app = self._app()
+        app.dispatch_write(1, "/api/capacity/reason",
+                           {"code": "urlaub", "label": "Urlaub"})
+        app.dispatch_write(1, "/api/capacity/availability", {
+            "person_id": 2, "period_start": "2026-07-06",
+            "period_end": "2026-07-10", "kind": "einschraenkung",
+            "value_minutes": 600})
+        app.dispatch_write(1, "/api/capacity/holiday",
+                           {"day": "2026-07-08", "label": "Testfeiertag"})
+        self._standardzeit()
+        self._reload()
+
+        aid = self.con.execute("SELECT id FROM availability_entry").fetchone()["id"]
+        hid = self.con.execute("SELECT id FROM holiday").fetchone()["id"]
+        wid = self.con.execute(
+            "SELECT id FROM person_worktime").fetchone()["id"]
+        app = self._app()
+        app.dispatch_write(1, "/api/capacity/availability/remove",
+                           {"entry_id": aid})
+        app.dispatch_write(1, "/api/capacity/holiday/remove",
+                           {"holiday_id": hid})
+        app.dispatch_write(1, "/api/capacity/worktime/remove",
+                           {"worktime_id": wid})
+
+        ohne = self._body(self._app().dispatch(
+            1, "/api/capacity/stammdaten", {}))
+        self.assertEqual([ohne["counts"]["worktimes"],
+                          ohne["counts"]["availability"],
+                          ohne["counts"]["holidays"]], [0, 0, 0])
+        self.assertEqual([ohne["entfernt"]["worktimes"],
+                          ohne["entfernt"]["availability"],
+                          ohne["entfernt"]["holidays"]], [1, 1, 1])
+
+        mit = self._body(self._app().dispatch(
+            1, "/api/capacity/stammdaten", {"include_deleted": ["1"]}))
+        self.assertEqual([mit["counts"]["worktimes"],
+                          mit["counts"]["availability"],
+                          mit["counts"]["holidays"]], [1, 1, 1])
+
+    # KP25 ---------------------------------------------------------------
+    def test_kp25_schalter_haengelt_rechte_und_scope_nicht_aus(self):
+        """Der Schalter ist eine ANZEIGE-Frage, keine Rechtefrage. Er darf
+        weder das Recht ersetzen noch den Scope aufweichen."""
+        self._grant("supervisor", "alle", 1)
+        self._app().dispatch_write(1, "/api/capacity/worktime", {
+            "person_id": 3, "effective_from": "2026-01-01", "mon_min": 480})
+        self._reload()
+        wid = self.con.execute(
+            "SELECT id FROM person_worktime WHERE person_id=3").fetchone()["id"]
+        self._app().dispatch_write(1, "/api/capacity/worktime/remove",
+                                   {"worktime_id": wid})
+
+        # Ohne Recht: 403, auch mit Schalter.
+        r = self._app().dispatch(3, "/api/capacity/stammdaten",
+                                 {"include_deleted": ["1"]})
+        self.assertEqual(r.status, 403, r.body)
+
+        # Mit scope 'eigene': nur die eigenen (entfernten) Zeilen.
+        self._grant("investigator", "eigene", 2)
+        b = self._body(self._app().dispatch(
+            2, "/api/capacity/stammdaten", {"include_deleted": ["1"]}))
+        self.assertEqual(b["person_id"], 2)
+        self.assertEqual(b["counts"]["worktimes"], 0)
+        self.assertEqual(b["entfernt"]["worktimes"], 0,
+                         "Fremde entfernte Zeile wurde mitgezaehlt.")
 
 
 if __name__ == "__main__":

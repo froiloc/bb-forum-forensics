@@ -2189,7 +2189,8 @@ class ManagementApp:
     def _capacity_stammdaten(self, person_id: int,
                              query: Optional[Dict[str, List[str]]]) -> Response:
         """
-        GET /api/capacity/stammdaten[?person_id=N] — die PFLEGBAREN Rohdaten
+        GET /api/capacity/stammdaten[?person_id=N][&include_deleted=1] — die
+        PFLEGBAREN Rohdaten
         hinter der Rechnung: Regel-Arbeitszeiten, Abwesenheiten, Feiertage,
         Gruendekatalog. Recht 'capacity.edit'.
 
@@ -2223,13 +2224,43 @@ class ManagementApp:
                     "detail": "Scope 'eigene': nur die eigenen Stammdaten."})
             target = person_id
 
+        # BUILD 562 — ENTFERNTE ZEILEN. 'Entfernen' ist in der Kapazitaet ein
+        # SOFT-DELETE: die Zeile bleibt in der Datenbank und traegt deleted_at.
+        # Sichtbar war sie danach nirgends mehr - und damit war eine
+        # Auslassung entstanden, von der die Oberflaeche nichts wusste.
+        #
+        # ZWEI DINGE, DIE ZUSAMMENGEHOEREN:
+        #   a) ?include_deleted=1 liefert sie mit aus.
+        #   b) Die Zahl der ausgeblendeten Zeilen steht IMMER in der Antwort,
+        #      auch ohne den Schalter. Sonst kann niemand wissen, dass es
+        #      etwas einzublenden GIBT - eine stille Auslassung waere genau
+        #      das, was Grundregel 1 verbietet.
+        #
+        # Deshalb wird EINMAL mit include_deleted=True gelesen und danach
+        # gezaehlt bzw. gefiltert: eine zweite Abfrage nur zum Zaehlen koennte
+        # ein anderes Ergebnis liefern als die erste (und waere teurer).
+        include_deleted = self._q1(query, "include_deleted") in (
+            "1", "true", "ja", "yes")
+
         con = self._ro_con()
         try:
             wt, av, ho, re_ = self._capacity_repos(con)
-            worktimes = wt.list_worktime(target)
-            availability = av.list_availability(target)
-            holidays = ho.list_holidays()
-            reasons = re_.list_reasons()
+            alle_wt = wt.list_worktime(target, include_deleted=True)
+            alle_av = av.list_availability(target, include_deleted=True)
+            alle_ho = ho.list_holidays(include_deleted=True)
+            alle_re = re_.list_reasons(include_deleted=True)
+
+            def _geteilt(zeilen):
+                """-> (sichtbare Zeilen, Zahl der entfernten)."""
+                entfernt = [z for z in zeilen if z.get("deleted_at")]
+                sichtbar = zeilen if include_deleted else [
+                    z for z in zeilen if not z.get("deleted_at")]
+                return sichtbar, len(entfernt)
+
+            worktimes, ent_wt = _geteilt(alle_wt)
+            availability, ent_av = _geteilt(alle_av)
+            holidays, ent_ho = _geteilt(alle_ho)
+            reasons, ent_re = _geteilt(alle_re)
 
             # NAMEN GEHOEREN DAZU (Nachtrag Build 559). Die Repos liefern
             # ausschliesslich person_id - fachlich richtig, denn sie kennen
@@ -2270,6 +2301,7 @@ class ManagementApp:
         return Response.json(200, {
             "scope": scope, "person_id": target,
             "persons": personen,
+            "include_deleted": include_deleted,
             "worktimes": worktimes, "availability": availability,
             "holidays": holidays, "reasons": reasons,
             "counts": {"worktimes": len(worktimes),
@@ -2277,6 +2309,11 @@ class ManagementApp:
                        "holidays": len(holidays),
                        "reasons": len(reasons),
                        "persons": len(personen)},
+            # IMMER dabei, auch wenn nicht eingeblendet wird: erst diese Zahl
+            # macht die Auslassung sichtbar. Bei include_deleted=1 sind die
+            # gezaehlten Zeilen zugleich die mitgelieferten.
+            "entfernt": {"worktimes": ent_wt, "availability": ent_av,
+                         "holidays": ent_ho, "reasons": ent_re},
             # Die Rechenarten sind SCHEMAGEBUNDEN (m008: CHECK(kind IN ...))
             # und traegt die Arithmetik in capacity_calculator.py:110
             # (netto = max(basis - einschraenkungen, garantie_boden)). Sie
