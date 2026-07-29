@@ -304,7 +304,16 @@ class ViewExportApiTests(unittest.TestCase):
         js = Path("management/server/static/cockpit.js").read_text(
             encoding="utf-8")
         block = js.split("VIEW_CATALOG", 1)[1].split("];", 1)[0]
-        cockpit_ids = set(re.findall(r"\{\s*id:\s*'([a-z]+)'", block))
+        # BEFUND Build 559 (zweites Vorkommen, s. auch
+        # tests/test_management_viewprefs.py): der Ausdruck lautete
+        # [a-z]+ und fand eine Sicht-Kennung MIT UNTERSTRICH nicht.
+        # Hier haette das nicht bloss eine Luecke verdeckt, sondern
+        # einen Fehlalarm erzeugt: die neue Sicht steht im
+        # Export-Katalog, wurde im Cockpit aber nicht gefunden -> (a)
+        # meldete "Export-Katalog nennt Sichten, die es nicht gibt".
+        # Das Muster war offenbar kopiert; beide Stellen sind
+        # korrigiert.
+        cockpit_ids = set(re.findall(r"\{\s*id:\s*'([a-z_]+)'", block))
         self.assertGreater(len(cockpit_ids), 25, "VIEW_CATALOG nicht erkannt")
 
         export_ids = set(known_view_ids())

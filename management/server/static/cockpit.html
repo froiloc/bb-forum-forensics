@@ -166,6 +166,10 @@
 <script src="/static/cockpit_assignment.js" defer></script>
 <script src="/static/cockpit_cases.js" defer></script>
 <script src="/static/cockpit_personnel.js" defer></script>
+<!-- Build 559: Kapazitaetspflege. Wie cockpit_personnel.js greift sie
+     beim Rendern auf cockpit_tablekit.js zu und steht deshalb NACH
+     dessen Einbindung. -->
+<script src="/static/cockpit_capacity_pflege.js" defer></script>
 <script src="/static/cockpit_calendar.js" defer></script>
 <script src="/static/cockpit_results.js" defer></script>
 <script src="/static/cockpit_crossref.js" defer></script>

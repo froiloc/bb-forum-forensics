@@ -157,7 +157,9 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     //           Pruefen haengt zusaetzlich an qs.edit, der Kennzahlenteil
     //           an metrics.view aus M035).
     // Build 546: 41 (neu: 'viewprefs' - Ansicht anpassen, AP-3G/Idee 37).
-    expect(api.VIEW_CATALOG.length).toBe(41);
+    // Build 559: 42 (neu: 'capacity_pflege' — Kapazitaetspflege,
+    // Pflegeflaeche neben der Auswertung 'capacity').
+    expect(api.VIEW_CATALOG.length).toBe(42);
   });
 
   // CN-QUERFUND (Build 478) --------------------------------------------------

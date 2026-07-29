@@ -88,6 +88,9 @@ STEUERBARE_SICHTEN: Tuple[str, ...] = (
     "policy", "integrity", "audit", "handover", "retention",
     "promotion", "releases", "onboarding", "personnel",
     "crossref", "crossfindings", "alias", "merge", "search",
+    # Build 559: die Pflegeflaeche der Kapazitaet. Steuerbar wie jede
+    # andere Arbeitssicht — wer sie nicht braucht, blendet sie aus.
+    "capacity_pflege",
 )
 
 #: Sichten, die es im Cockpit gibt, die aber bewusst NICHT steuerbar sind.

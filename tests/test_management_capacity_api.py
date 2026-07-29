@@ -31,8 +31,12 @@
 #        Zeile; wird sie nicht zuerst gelesen, ist das Loch offen.)
 # KP12 - Arbeitszeit zweimal gesetzt -> ZWEI Zeilen (append-only), und der
 #        Rechner nimmt die juengere Regel.
+# KP13 - Stammdaten unter scope 'eigene': Personenliste auf die eigene
+#        Person verkuerzt, fremde person_id -> 403.
+# KP14 - Zeile ohne zugehoerige Person wird als 'unbekannt (#id)'
+#        AUSGEWIESEN, nicht weggelassen (Grundregel 1).
 #
-# Version: v0.8.558 . Build: 558 . 2026-07-29
+# Version: v0.8.559 . Build: 559 . 2026-07-29
 # =============================================================================
 
 import json
@@ -280,6 +284,48 @@ class CapacityApiTests(unittest.TestCase):
         # Die Rechenarten sind schemagebunden und gehen als feste Liste raus.
         self.assertEqual(sorted(k["code"] for k in b["kinds"]),
                          ["einschraenkung", "garantie"])
+        # Nachtrag Build 559: Namen gehoeren dazu, sonst zeigt die
+        # Pflegemaske "#2" statt "Mueller".
+        self.assertEqual(b["worktimes"][0]["display_name"], "Mueller")
+        self.assertEqual(b["counts"]["persons"], 3)
+
+    # KP13 ---------------------------------------------------------------
+    def test_kp13_stammdaten_scope_eigene_nur_eigene_person(self):
+        """Scope 'eigene': die Personenliste schrumpft auf die eigene Person,
+        und eine abweichende person_id wird ABGELEHNT statt stillschweigend
+        auf die eigene umgebogen - sonst stuenden fremde Ueberschriften
+        ueber eigenen Daten."""
+        self._grant("investigator", "eigene", 2)
+        app = self._app()
+
+        fremd = app.dispatch(2, "/api/capacity/stammdaten",
+                             {"person_id": ["3"]})
+        self.assertEqual(fremd.status, 403, fremd.body)
+
+        r = app.dispatch(2, "/api/capacity/stammdaten", {})
+        self.assertEqual(r.status, 200, r.body)
+        b = self._body(r)
+        self.assertEqual(b["person_id"], 2)
+        self.assertEqual([p["id"] for p in b["persons"]], [2])
+
+    # KP14 ---------------------------------------------------------------
+    def test_kp14_zeile_ohne_person_wird_benannt(self):
+        """Eine Arbeitszeit-Zeile, zu der es keine (Ermittler-)Person mehr
+        gibt, verschwindet NICHT aus der Liste und bekommt auch keinen leeren
+        Namen: sie wird als 'unbekannt (#id)' ausgewiesen. Ein stilles
+        Weglassen waere genau die Auslassung, die Grundregel 1 verbietet."""
+        self._grant("supervisor", "alle", 1)
+        self._standardzeit()
+        self._reload()
+        # Person 2 ist keine Ermittlerin mehr -> faellt aus der Namensliste.
+        self.con.execute("UPDATE person SET is_investigator=0 WHERE id=2")
+
+        r = self._app().dispatch(1, "/api/capacity/stammdaten", {})
+        self.assertEqual(r.status, 200, r.body)
+        zeilen = self._body(r)["worktimes"]
+        self.assertEqual(len(zeilen), 1, "Zeile wurde stillschweigend "
+                                         "weggelassen.")
+        self.assertEqual(zeilen[0]["display_name"], "unbekannt (#2)")
 
     # KP07 ---------------------------------------------------------------
     def test_kp07_fachfehler_wird_400_mit_begruendung(self):

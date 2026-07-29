@@ -205,7 +205,14 @@ class TestKatalog(unittest.TestCase):
         js = Path("management/server/static/cockpit.js").read_text(
             encoding="utf-8")
         block = js.split("VIEW_CATALOG", 1)[1].split("];", 1)[0]
-        cockpit_ids = set(re.findall(r"\{\s*id:\s*'([a-z]+)'", block))
+        # BEFUND Build 559: der Ausdruck lautete [a-z]+ und haette eine
+        # Sicht-Kennung MIT UNTERSTRICH gar nicht erst gefunden. Der
+        # Test waere gruen geblieben, waehrend die neue Sicht weder
+        # steuerbar noch ausdruecklich ausgenommen gewesen waere —
+        # also genau die stille Luecke, die er verhindern soll. Bis
+        # Build 558 trug keine Kennung einen Unterstrich; der Fehler
+        # war latent. 'capacity_pflege' ist die erste.
+        cockpit_ids = set(re.findall(r"\{\s*id:\s*'([a-z_]+)'", block))
         self.assertGreater(len(cockpit_ids), 25, "VIEW_CATALOG nicht erkannt")
 
         steuerbar = set(kat.STEUERBARE_SICHTEN)

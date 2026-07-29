@@ -293,7 +293,17 @@
         //
         // Sie steht ausserdem in NICHT_STEUERBAR (viewpref_katalog.py): wer
         // sie ausblenden koennte, mauerte sich den Rueckweg zu.
-        { id: 'viewprefs',  cap: null, immer: true, group: 'Persoenlich', label: 'Ansicht anpassen' }
+        { id: 'viewprefs',  cap: null, immer: true, group: 'Persoenlich', label: 'Ansicht anpassen' },
+        // Build 559: Kapazitaetspflege. EIGENE Sicht neben der
+        // Auswertung ('capacity'), nach demselben Muster wie
+        // 'policy' (nur lesend) / 'personnel' (Pflege). Recht ist
+        // 'capacity.edit' — dasselbe wie bei der Auswertung; den
+        // Unterschied traegt der SCOPE ('alle' = alle Personen,
+        // 'eigene' = Selbstpflege, heute an niemanden vergeben).
+        // Gruppe 'Verwaltung' und nicht 'Auswertung': dort sucht
+        // eine personalverantwortliche Person, neben der
+        // Personalverwaltung (mc 2026-07-29).
+        { id: 'capacity_pflege', cap: 'capacity.edit',   group: 'Verwaltung',     label: 'Kapazitaetspflege' }
     ];
 
     // Gueltige Scope-Werte fuer die Anzeige (weitere -> kein Tag).
@@ -2639,6 +2649,94 @@
             });
     }
 
+    // loadCapacityPflege: KAPAZITAETSPFLEGE (Build 559).
+    //   GET  /api/capacity/stammdaten        — die vier pflegbaren Bestaende
+    //                                          (capacity.edit; scope-aware).
+    //   POST /api/capacity/worktime          — Regel-Arbeitszeit (append-only).
+    //   POST /api/capacity/availability      — Abwesenheit/Garantie.
+    //   POST /api/capacity/availability/remove
+    //   POST /api/capacity/holiday | /holiday/remove | /reason
+    //   KEIN optimistisches UI: nach JEDEM Schreiben wird neu geladen — auch
+    //   nach einem Fehler, denn dann zeigt die Liste den tatsaechlichen Stand
+    //   (es wurde nichts geschrieben). Muster: loadPersonnel (Build 503).
+    function loadCapacityPflege(mainEl, pendingMsg) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var mod = (typeof window !== 'undefined')
+            ? window.AIWCockpitCapacityPflege : null;
+        if (!mod) {
+            renderError(mainEl, 'Kapazitaetspflege-Modul nicht geladen.');
+            return;
+        }
+        var view = null;
+        function after(text, isError) {
+            loadCapacityPflege(mainEl, { text: text, error: isError });
+        }
+        function _post(url, body, okText) {
+            postJson(url, body)
+                .then(function (res) { after(okText(res), false); })
+                .catch(function (err) {
+                    after('Fehler: ' + err.message + ' (es wurde nichts '
+                        + 'geschrieben — die Listen zeigen den tatsaechlichen '
+                        + 'Stand).', true);
+                });
+        }
+        var opts = {
+            onWorktimeSet: function (body) {
+                _post('/api/capacity/worktime', body, function (res) {
+                    return 'Arbeitszeit ab ' + res.effective_from
+                        + ' gespeichert — die bisherige Regel bleibt als '
+                        + 'Beleg bestehen (Beleg #' + res.audit_seq + ').';
+                });
+            },
+            onAvailabilitySet: function (body) {
+                _post('/api/capacity/availability', body, function (res) {
+                    return 'Abwesenheit gespeichert (Beleg #'
+                        + res.audit_seq + ').';
+                });
+            },
+            onAvailabilityRemove: function (entryId) {
+                _post('/api/capacity/availability/remove',
+                    { entry_id: entryId }, function (res) {
+                        return 'Abwesenheit entfernt (Soft-Revoke, Beleg #'
+                            + res.audit_seq + ').';
+                    });
+            },
+            onHolidayAdd: function (body) {
+                _post('/api/capacity/holiday', body, function (res) {
+                    return 'Feiertag ' + res.day + ' angelegt (Beleg #'
+                        + res.audit_seq + ').';
+                });
+            },
+            onHolidayRemove: function (holidayId) {
+                _post('/api/capacity/holiday/remove',
+                    { holiday_id: holidayId }, function (res) {
+                        return 'Feiertag entfernt (Beleg #'
+                            + res.audit_seq + ').';
+                    });
+            },
+            onReasonAdd: function (body) {
+                _post('/api/capacity/reason', body, function (res) {
+                    return 'Grund "' + res.code + '" angelegt (Beleg #'
+                        + res.audit_seq + ').';
+                });
+            }
+        };
+        fetchJson('/api/capacity/stammdaten')
+            .then(function (data) {
+                cleanupView();
+                view = mod.renderCapacityPflege(mainEl, data, opts);
+                if (pendingMsg && view && view.setResult) {
+                    view.setResult(pendingMsg.text, pendingMsg.error);
+                }
+                log('Kapazitaetspflege gerendert:', data.counts);
+            })
+            .catch(function (err) {
+                cleanupView();
+                renderError(mainEl, 'Kapazitaetspflege konnte nicht geladen '
+                    + 'werden: ' + err.message);
+            });
+    }
+
     // _adsyncInto: laedt die AD-Vorschau (/api/adsync) in den Abschnitts-
     //   Container der Personal-Seite und verdrahtet die Vollzugs-Callbacks
     //   der WIEDERVERWENDETEN Komponente AIWCockpitAdSync (Build 502).
@@ -3550,6 +3648,10 @@
         support: 1, mycases: 1, myhistory: 1, policy: 1, integrity: 1,
         audit: 1, promotion: 1, releases: 1, onboarding: 1, personnel: 1,
         crossref: 1, crossfindings: 1, alias: 1, merge: 1,
+        // Build 559: die Eingangsdaten der Kapazitaetsrechnung. Eigener
+        // Export neben 'capacity' (dort steht das Ergebnis, hier die
+        // Grundlage) — s. view_export_catalog.py.
+        capacity_pflege: 1,
         // Build 516: die Eskalationsliste ist ein Beleg fuer die Leitung
         // ("dies lag zu diesem Zeitpunkt an") und gehoert damit in die Akte.
         // Sie kennt KEINEN Filter — es gibt entsprechend auch keinen Zweig in
@@ -3752,6 +3854,8 @@
             loadOnboarding(mainEl, state.onbPerson, state.onbKind);
         } else if (viewId === 'personnel') {
             loadPersonnel(mainEl);
+        } else if (viewId === 'capacity_pflege') {
+            loadCapacityPflege(mainEl);
         } else if (viewId === 'crossref') {
             loadCrossref(mainEl);
         } else if (viewId === 'crossfindings') {
@@ -3880,6 +3984,12 @@
                 if (state.onbPerson != null) {
                     loadOnboarding(undefined, state.onbPerson, state.onbKind);
                 }
+            } else if (state.activeId === 'capacity_pflege') {
+                // Kapazitaetsaenderungen (auch durch andere) erzeugen
+                // audit_log-Belege -> die vier Listen neu laden. Der
+                // Rechner laeuft dabei NICHT mit: die Pflegesicht holt
+                // Stammdaten, nicht das Ergebnis.
+                loadCapacityPflege();
             } else if (state.activeId === 'personnel') {
                 // Personal-/Rollenaenderungen (auch durch andere) erzeugen
                 // audit_log-Belege -> LISTE neu laden. Der AD-Abschnitt wird

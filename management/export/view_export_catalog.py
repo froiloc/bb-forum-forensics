@@ -283,6 +283,20 @@ VIEW_EXPORTS: Tuple[ViewExportSpec, ...] = (
         api_path="/api/capacity", requires=("start",),
         sections=(SectionSpec("capacities", "Kapazitäten"),),
     ),
+    # Build 559: die PFLEGEFLAECHE der Kapazitaet. Sie bekommt einen eigenen
+    # Export und keine Ausnahme, weil ihr Bestand ein anderer ist als der von
+    # 'capacity': dort steht das ERGEBNIS der Rechnung (Basis/Netto je Person
+    # und Zeitraum), hier stehen die EINGANGSDATEN, aus denen es entsteht.
+    # Wer spaeter belegen muss, WARUM eine Kapazitaet so ausgewiesen war,
+    # braucht die Regel-Arbeitszeit und die Abwesenheit, nicht nur die Summe.
+    ViewExportSpec(
+        view_id="capacity_pflege", label="Kapazitätspflege",
+        api_path="/api/capacity/stammdaten",
+        sections=(SectionSpec("worktimes", "Regel-Arbeitszeiten"),
+                  SectionSpec("availability", "Abwesenheiten und Garantien"),
+                  SectionSpec("holidays", "Feiertage"),
+                  SectionSpec("reasons", "Abwesenheitsgründe")),
+    ),
     ViewExportSpec(
         view_id="support", label="Support-Historie",
         api_path="/api/support", note=_HAT_SPEZIALEXPORT,

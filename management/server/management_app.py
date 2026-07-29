@@ -2215,17 +2215,53 @@ class ManagementApp:
             availability = av.list_availability(target)
             holidays = ho.list_holidays()
             reasons = re_.list_reasons()
+
+            # NAMEN GEHOEREN DAZU (Nachtrag Build 559). Die Repos liefern
+            # ausschliesslich person_id - fachlich richtig, denn sie kennen
+            # die Personentabelle nicht. Eine Pflegemaske, die "#7" statt
+            # "Mueller" anzeigt, ist fuer eine Leitung mit zwanzig Personen
+            # aber unbenutzbar, und ein zweiter Abruf ueber /api/personnel
+            # waere hier falsch: er verlangt 'personnel.view', das eine
+            # Person mit 'capacity.edit' nicht haben muss. Die Aufloesung
+            # gehoert deshalb an diese Stelle.
+            personen = [
+                {"id": r[0], "system_username": r[1], "display_name": r[2]}
+                for r in con.execute(
+                    "SELECT id, system_username, display_name FROM person "
+                    "WHERE is_investigator=1 ORDER BY id ASC").fetchall()]
+            if scope != "alle":
+                personen = [p for p in personen if p["id"] == person_id]
+            namen = {p["id"]: p for p in personen}
+
+            def _mit_namen(zeilen):
+                """Anzeigename an jede Zeile. FEHLT die Person, wird das
+                BENANNT und nicht verschwiegen: eine Arbeitszeit ohne
+                zugehoerigen Personendatensatz ist ein Befund, kein
+                Darstellungsproblem (Grundregel 1)."""
+                for z in zeilen:
+                    pid = z.get("person_id")
+                    treffer = namen.get(pid)
+                    z["display_name"] = (treffer["display_name"] if treffer
+                                         else "unbekannt (#%s)" % pid)
+                    z["system_username"] = (treffer["system_username"]
+                                            if treffer else None)
+                return zeilen
+
+            worktimes = _mit_namen(worktimes)
+            availability = _mit_namen(availability)
         finally:
             con.close()
 
         return Response.json(200, {
             "scope": scope, "person_id": target,
+            "persons": personen,
             "worktimes": worktimes, "availability": availability,
             "holidays": holidays, "reasons": reasons,
             "counts": {"worktimes": len(worktimes),
                        "availability": len(availability),
                        "holidays": len(holidays),
-                       "reasons": len(reasons)},
+                       "reasons": len(reasons),
+                       "persons": len(personen)},
             # Die Rechenarten sind SCHEMAGEBUNDEN (m008: CHECK(kind IN ...))
             # und traegt die Arithmetik in capacity_calculator.py:110
             # (netto = max(basis - einschraenkungen, garantie_boden)). Sie

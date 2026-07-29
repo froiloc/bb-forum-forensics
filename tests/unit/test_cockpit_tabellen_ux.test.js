@@ -366,7 +366,80 @@ const REGISTER = [
     aufruf: (api, main, opts) => api.renderResults(main, _resultsCov(),
                                                   null, opts),
   },
+  // --- Build 559: Kapazitaetspflege, VIER Tabellen in EINER Sicht ----------
+  // Muster 'policy (Grants)'/'policy (Zuweisungen)': eine Datei, ein Render,
+  // mehrere Register-Eintraege mit 'index'. Die Sicht liefert ihre Tabellen
+  // in 'tables'.
+  {
+    name: "capacity_pflege (Arbeitszeiten)",
+    datei: "cockpit_capacity_pflege.js",
+    global: "AIWCockpitCapacityPflege", render: "renderCapacityPflege",
+    sicht: "capacity_worktime", zeilen: 2, index: 0,
+    daten: () => _cappDaten(),
+  },
+  {
+    name: "capacity_pflege (Abwesenheiten)",
+    datei: "cockpit_capacity_pflege.js",
+    global: "AIWCockpitCapacityPflege", render: "renderCapacityPflege",
+    sicht: "capacity_availability", zeilen: 1, index: 1,
+    daten: () => _cappDaten(),
+  },
+  {
+    name: "capacity_pflege (Feiertage)",
+    datei: "cockpit_capacity_pflege.js",
+    global: "AIWCockpitCapacityPflege", render: "renderCapacityPflege",
+    sicht: "capacity_holiday", zeilen: 1, index: 2,
+    daten: () => _cappDaten(),
+  },
+  {
+    name: "capacity_pflege (Gruende)",
+    datei: "cockpit_capacity_pflege.js",
+    global: "AIWCockpitCapacityPflege", render: "renderCapacityPflege",
+    sicht: "capacity_reason", zeilen: 2, index: 3,
+    daten: () => _cappDaten(),
+  },
 ];
+
+/** Stammdaten-Antwort (GET /api/capacity/stammdaten), scope 'alle'. */
+function _cappDaten() {
+  return {
+    scope: "alle", person_id: null,
+    persons: [
+      { id: 2, system_username: "h002", display_name: "Mueller" },
+      { id: 3, system_username: "h003", display_name: "Gamma" },
+    ],
+    worktimes: [
+      { id: 1, person_id: 2, display_name: "Mueller", system_username: "h002",
+        mon_min: 480, tue_min: 480, wed_min: 480, thu_min: 480, fri_min: 480,
+        sat_min: 0, sun_min: 0, effective_from: "2026-01-01",
+        effective_to: null, audit_seq: 11 },
+      { id: 2, person_id: 3, display_name: "Gamma", system_username: "h003",
+        mon_min: 300, tue_min: 300, wed_min: 300, thu_min: 300, fri_min: 300,
+        sat_min: 0, sun_min: 0, effective_from: "2026-02-01",
+        effective_to: null, audit_seq: 12 },
+    ],
+    availability: [
+      { id: 5, person_id: 2, display_name: "Mueller",
+        period_start: "2026-07-06", period_end: "2026-07-10",
+        kind: "einschraenkung", value_pct: 50, value_minutes: null,
+        reason_code: "urlaub", note: "Jahresurlaub", audit_seq: 13 },
+    ],
+    holidays: [
+      { id: 9, day: "2026-07-08", label: "Testfeiertag", region: null,
+        audit_seq: 14 },
+    ],
+    reasons: [
+      { code: "urlaub", label: "Urlaub", sort: 10, audit_seq: 15 },
+      { code: "krank", label: "Krank", sort: 20, audit_seq: 16 },
+    ],
+    counts: { worktimes: 2, availability: 1, holidays: 1, reasons: 2,
+              persons: 2 },
+    kinds: [
+      { code: "einschraenkung", label: "Einschraenkung" },
+      { code: "garantie", label: "Garantie (Mindestboden)" },
+    ],
+  };
+}
 
 /** Fixtures, die von mehreren Register-Eintraegen geteilt werden. */
 function _supportDaten() {

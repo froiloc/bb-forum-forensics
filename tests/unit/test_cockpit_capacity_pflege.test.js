@@ -1,0 +1,271 @@
+/**
+ * tests/unit/test_cockpit_capacity_pflege.test.js
+ * IT-Forensisches Ermittlungswerkzeug — Baustelle 7
+ * =============================================================================
+ * Testsuite fuer Build 559: die Pflegeflaeche der Kapazitaet.
+ *
+ * Die Konformitaet der vier Tabellen (Werkzeugleiste, Filter, Trefferzahl,
+ * Hilfe-Anker) prueft bereits test_cockpit_tabellen_ux.test.js ueber vier
+ * Register-Eintraege. HIER steht das, was DIESE Sicht ausmacht:
+ *
+ * CP01 — wochenSumme addiert die sieben Wochentage und vertraegt Luecken.
+ * CP02 — wertText zeigt Prozent ODER Minuten, nie beides, nie "null".
+ * CP03 — ein Grund, den es im Katalog nicht (mehr) gibt, wird als
+ *        "code (unbekannt)" AUSGEWIESEN und nicht zu einer leeren Zelle.
+ * CP04 — die Rechenart-Auswahl kommt aus data.kinds (Server), nicht aus einer
+ *        im Frontend nachgebauten Liste.
+ * CP05 — scope 'eigene': keine Personenauswahl, KEINE Schreibformulare fuer
+ *        Feiertage/Gruende — und die Tabellen stehen trotzdem.
+ * CP06 — scope 'eigene': der Grund fuer die fehlenden Formulare STEHT DA.
+ * CP07 — der Append-only-Hinweis steht an den Arbeitszeiten.
+ * CP08 — ohne Tabellenmechanik: Ersatzmeldung MIT Zeilenzahl je Abschnitt
+ *        (Grundregel 1) statt leerer Flaeche.
+ * CP09 — die Schreib-Rueckrufe bekommen genau das, was der Endpunkt erwartet;
+ *        leere Zahlenfelder werden zu null und NICHT zu 0.
+ * CP10 — Freitext wird als Text gesetzt, nicht als Auszeichnung (XSS).
+ *
+ * Version: v0.8.559 · Build: 559 · 2026-07-29
+ */
+
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "fs";
+import { JSDOM } from "jsdom";
+
+const _tkSrc = readFileSync(
+  "management/server/static/cockpit_tablekit.js",
+  "utf-8"
+);
+const _src = readFileSync(
+  "management/server/static/cockpit_capacity_pflege.js",
+  "utf-8"
+);
+
+/** Tabulator-Attrappe: ruft die Spalten-Formatter auf, damit die Knoepfe der
+ *  Aktionsspalte wirklich entstehen (die Lehre aus Build 555). */
+function _fakeTabulator(doc) {
+  return function (host, options) {
+    this.options = options;
+    this.data = options.data || [];
+    (this.data || []).forEach(function (d) {
+      const tr = doc.createElement("div");
+      tr.className = "fake-row";
+      (options.columns || []).forEach(function (col) {
+        let node = null;
+        if (typeof col.formatter === "function") {
+          try {
+            node = col.formatter({
+              getData: () => d,
+              getValue: () => d[col.field],
+            });
+          } catch (e) { /* unerheblich */ }
+        } else {
+          node = doc.createElement("span");
+          node.textContent = String(d[col.field] === undefined ? "" : d[col.field]);
+        }
+        if (node && node.nodeType) { tr.appendChild(node); }
+      });
+      host.appendChild(tr);
+    });
+    this.setFilter = function () {};
+    this.clearFilter = function () {};
+    this.clearHeaderFilter = function () {};
+    this.getHeaderFilters = function () { return []; };
+    this.getSorters = function () { return []; };
+    this.getDataCount = function (m) { return m ? this.data.length : this.data.length; };
+    this.on = function () {};
+    this.getColumns = function () { return []; };
+  };
+}
+
+function _win(mitTk) {
+  const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", {
+    runScripts: "dangerously",
+    url: "http://localhost",
+  });
+  if (mitTk !== false) { dom.window.eval(_tkSrc); }
+  dom.window.eval(_src);
+  return dom.window;
+}
+
+function _daten(scope) {
+  return {
+    scope: scope || "alle",
+    person_id: scope === "eigene" ? 2 : null,
+    persons: [
+      { id: 2, system_username: "h002", display_name: "Mueller" },
+      { id: 3, system_username: "h003", display_name: "Gamma" },
+    ],
+    worktimes: [
+      { id: 1, person_id: 2, display_name: "Mueller", mon_min: 480,
+        tue_min: 480, wed_min: 480, thu_min: 480, fri_min: 480, sat_min: 0,
+        sun_min: 0, effective_from: "2026-01-01", effective_to: null,
+        audit_seq: 11 },
+    ],
+    availability: [
+      { id: 5, person_id: 2, display_name: "Mueller",
+        period_start: "2026-07-06", period_end: "2026-07-10",
+        kind: "einschraenkung", value_pct: 50, value_minutes: null,
+        reason_code: "urlaub", note: "Jahresurlaub", audit_seq: 13 },
+    ],
+    holidays: [
+      { id: 9, day: "2026-07-08", label: "Testfeiertag", region: null,
+        audit_seq: 14 },
+    ],
+    reasons: [{ code: "urlaub", label: "Urlaub", sort: 10, audit_seq: 15 }],
+    counts: { worktimes: 1, availability: 1, holidays: 1, reasons: 1,
+              persons: 2 },
+    kinds: [
+      { code: "einschraenkung", label: "Einschraenkung" },
+      { code: "garantie", label: "Garantie (Mindestboden)" },
+    ],
+  };
+}
+
+function _zeichne(win, opts) {
+  const main = win.document.createElement("div");
+  win.document.body.appendChild(main);
+  const o = Object.assign({ Tabulator: _fakeTabulator(win.document) },
+                          opts || {});
+  const view = win.AIWCockpitCapacityPflege.renderCapacityPflege(
+    main, o._daten || _daten("alle"), o);
+  return { main, view };
+}
+
+describe("Kapazitaetspflege (Build 559)", () => {
+  // CP01 --------------------------------------------------------------------
+  it("CP01: wochenSumme addiert sieben Tage und vertraegt Luecken", () => {
+    const api = _win().AIWCockpitCapacityPflege;
+    expect(api.wochenSumme({
+      mon_min: 480, tue_min: 480, wed_min: 480, thu_min: 480, fri_min: 480,
+      sat_min: 0, sun_min: 0,
+    })).toBe(2400);
+    // Fehlende und unbrauchbare Werte zaehlen als 0 — die Summe bleibt eine
+    // Zahl und wird nicht zu NaN, das in der Zelle als "NaN" stuende.
+    expect(api.wochenSumme({ mon_min: 60 })).toBe(60);
+    expect(api.wochenSumme({ mon_min: "viel" })).toBe(0);
+    expect(api.wochenSumme(null)).toBe(0);
+  });
+
+  // CP02 --------------------------------------------------------------------
+  it("CP02: wertText zeigt Prozent ODER Minuten, nie 'null'", () => {
+    const api = _win().AIWCockpitCapacityPflege;
+    expect(api.wertText({ value_pct: 50, value_minutes: null })).toBe("50 %");
+    expect(api.wertText({ value_pct: null, value_minutes: 600 }))
+      .toBe("600 min");
+    expect(api.wertText({ value_pct: null, value_minutes: null })).toBe("");
+    // 0 ist eine ANGABE und darf nicht als "keine Angabe" durchfallen.
+    expect(api.wertText({ value_pct: 0, value_minutes: null })).toBe("0 %");
+  });
+
+  // CP03 --------------------------------------------------------------------
+  it("CP03: unbekannter Grund wird ausgewiesen, nicht verschwiegen", () => {
+    const api = _win().AIWCockpitCapacityPflege;
+    const katalog = [{ code: "urlaub", label: "Urlaub" }];
+    expect(api.reasonLabel("urlaub", katalog)).toBe("Urlaub");
+    expect(api.reasonLabel("stillgelegt", katalog))
+      .toBe("stillgelegt (unbekannt)");
+    expect(api.reasonLabel(null, katalog)).toBe("");
+  });
+
+  // CP04 --------------------------------------------------------------------
+  it("CP04: die Rechenart-Auswahl stammt aus data.kinds", () => {
+    const win = _win();
+    const daten = _daten("alle");
+    daten.kinds = [{ code: "sonderart", label: "Sonderart vom Server" }];
+    const { main } = _zeichne(win, { _daten: daten });
+    const sel = main.querySelector("#aiw-capp-av-art");
+    expect(sel).toBeTruthy();
+    const werte = Array.prototype.map.call(sel.options, (o) => o.value);
+    // Genau das, was der Server geschickt hat — keine eingebaute Liste.
+    expect(werte).toEqual(["sonderart"]);
+  });
+
+  // CP05 --------------------------------------------------------------------
+  it("CP05: scope 'eigene' ohne Personenauswahl und ohne anlagenweite Formulare", () => {
+    const win = _win();
+    const { main } = _zeichne(win, { _daten: _daten("eigene") });
+    expect(main.querySelector("#aiw-capp-wt-person")).toBeNull();
+    expect(main.querySelector("#aiw-capp-av-person")).toBeNull();
+    expect(main.querySelector("#aiw-capp-ho-save")).toBeNull();
+    expect(main.querySelector("#aiw-capp-re-save")).toBeNull();
+    // Die TABELLEN stehen trotzdem — ohne den Gruendekatalog waere der
+    // reason_code in den eigenen Zeilen ein nackter Code.
+    expect(main.querySelector("#aiw-capacity_holiday-tk")).toBeTruthy();
+    expect(main.querySelector("#aiw-capacity_reason-tk")).toBeTruthy();
+  });
+
+  // CP06 --------------------------------------------------------------------
+  it("CP06: der Grund fuer die fehlenden Formulare steht da", () => {
+    const win = _win();
+    const { main } = _zeichne(win, { _daten: _daten("eigene") });
+    const text = main.textContent;
+    expect(text).toContain("nur die eigene Kapazitaet");
+    // Nicht nur \"geht nicht\", sondern WARUM: Wirkung auf alle Personen.
+    expect(text).toContain("wirken auf alle Personen");
+  });
+
+  // CP07 --------------------------------------------------------------------
+  it("CP07: der Append-only-Hinweis steht an den Arbeitszeiten", () => {
+    const win = _win();
+    const { main } = _zeichne(win, {});
+    const text = main.textContent;
+    expect(text).toContain("NEUE Zeile");
+    expect(text).toContain("bleibt stehen");
+  });
+
+  // CP08 --------------------------------------------------------------------
+  it("CP08: ohne Tabellenmechanik steht die Zahl je Abschnitt", () => {
+    const win = _win(false);           // tablekit NICHT geladen
+    const main = win.document.createElement("div");
+    win.document.body.appendChild(main);
+    win.AIWCockpitCapacityPflege.renderCapacityPflege(main, _daten("alle"), {});
+    const platz = main.querySelectorAll(".aiw-placeholder");
+    expect(platz.length).toBe(4);      // vier Abschnitte, vier Meldungen
+    const texte = Array.prototype.map.call(platz, (p) => p.textContent);
+    // Jede Meldung nennt Zahl UND Substantiv — "1 Feiertage", nicht
+    // "keine Daten".
+    expect(texte.some((t) => /1 Arbeitszeit-Regeln/.test(t))).toBe(true);
+    expect(texte.some((t) => /1 Feiertage/.test(t))).toBe(true);
+  });
+
+  // CP09 --------------------------------------------------------------------
+  it("CP09: die Schreib-Rueckrufe liefern die Nutzlast des Endpunkts", () => {
+    const win = _win();
+    let wt = null, av = null;
+    const { main } = _zeichne(win, {
+      onWorktimeSet: (b) => { wt = b; },
+      onAvailabilitySet: (b) => { av = b; },
+    });
+
+    main.querySelector("#aiw-capp-wt-ab").value = "2026-08-01";
+    main.querySelector("#aiw-capp-wt-mon_min").value = "420";
+    main.querySelector("#aiw-capp-wt-save").dispatchEvent(
+      new win.Event("click"));
+    expect(wt.effective_from).toBe("2026-08-01");
+    expect(wt.mon_min).toBe(420);
+    expect(wt.person_id).toBe(2);      // erster Eintrag der Auswahlliste
+
+    main.querySelector("#aiw-capp-av-von").value = "2026-09-01";
+    main.querySelector("#aiw-capp-av-bis").value = "2026-09-05";
+    main.querySelector("#aiw-capp-av-min").value = "600";
+    main.querySelector("#aiw-capp-av-save").dispatchEvent(
+      new win.Event("click"));
+    expect(av.value_minutes).toBe(600);
+    // LEER heisst null, nicht 0: eine 0 waere die Angabe "null Prozent" und
+    // verstiesse gegen die Regel 'genau EINES von beiden'.
+    expect(av.value_pct).toBeNull();
+    expect(av.kind).toBe("einschraenkung");
+  });
+
+  // CP10 --------------------------------------------------------------------
+  it("CP10: Freitext wird als Text gesetzt, nicht als Auszeichnung", () => {
+    const win = _win();
+    const daten = _daten("alle");
+    daten.availability[0].note = "<img src=x onerror=alert(1)>";
+    daten.holidays[0].label = "<script>boom()</script>";
+    const { main } = _zeichne(win, { _daten: daten });
+    expect(main.querySelector("img")).toBeNull();
+    expect(main.querySelector("script")).toBeNull();
+    expect(main.textContent).toContain("onerror=alert(1)");
+  });
+});
