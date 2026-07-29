@@ -34,10 +34,31 @@
   --ink: #1c1e21; --muted: #606770;
 }
 * { box-sizing: border-box; }
+/* Build 566: DIE SHELL BEKOMMT EINE FESTE HOEHE.
+ *
+ * Vorher teilten Navigationsleiste und Sicht EINE Bildlaufflaeche - die des
+ * Dokuments. Zwei Folgen, beide von mc gemeldet: wer einen Navigationseintrag
+ * unterhalb des Sichtrands anklickte, schob damit auch die Sicht nach oben aus
+ * dem Bild (sie erschien "unvollstaendig"), und die Leiste liess sich nicht
+ * fuer sich bewegen.
+ *
+ * Der Rahmen bekommt deshalb eine feste Hoehe, und Leiste und Sicht bilden je
+ * eine eigene Bildlaufflaeche. BEWUSST ueber flex und NICHT ueber
+ * 'height: calc(100vh - 84px)': der Integritaets-Banner wird ohne 'ops.view'
+ * ausgeblendet (.aiw-integrity-hidden), die 84px waeren dann falsch und
+ * liessen unten einen leeren Streifen stehen. Die Spaltenaufteilung rechnet
+ * selbst nach.
+ */
+html { height: 100%; }
 body {
   font-family: system-ui, "Segoe UI", Roboto, sans-serif;
   color: var(--ink); background: var(--bg); margin: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;          /* das DOKUMENT scrollt nicht mehr */
 }
+header.aiw-top, .aiw-integrity { flex: 0 0 auto; }
 a { color: inherit; }
 
 /* Kopfleiste --------------------------------------------------------------- */
@@ -67,10 +88,15 @@ header.aiw-top {
 .aiw-integrity.aiw-integrity-hidden { display: none; }
 
 /* Rahmenlayout ------------------------------------------------------------- */
-.aiw-frame { display: flex; min-height: calc(100vh - 84px); }
+/* min-height: 0 ist der Kern des Ganzen: ohne diese Zeile weigert sich ein
+ * Flex-Kind, unter seine Inhaltshoehe zu schrumpfen - die inneren
+ * overflow-Regeln griffen dann nie, und alles bliebe beim alten Verhalten. */
+.aiw-frame { display: flex; flex: 1 1 auto; min-height: 0; }
 nav.aiw-side {
   width: 232px; background: #eef1f3; border-right: 1px solid var(--line);
   padding: 12px 0; flex-shrink: 0;
+  overflow-y: auto;          /* eigene Bildlaufflaeche */
+  overscroll-behavior: contain;   /* am Ende nicht die Sicht mitziehen */
 }
 .aiw-navgroup {
   padding: 6px 16px 4px; font-size: 11px; text-transform: uppercase;
@@ -1507,9 +1533,18 @@ tr.aiw-cff-nichtrelevant { opacity: 0.7; }
  * statt einer zerrissenen Bildschirmseite. Die druckbare Fassung erzeugt
  * management/export/view_renderer.py (eigenes @media print). */
 @media print {
+    /* Build 566: die Bildschirm-Shell hat eine FESTE Hoehe und einen eigenen
+     * Bildlauf. Auf Papier waere das fatal - der Ausdruck braeche nach einer
+     * Seite ab, weil der Rest im nicht gedruckten Bildlauf steckt. Fuer den
+     * Druck wird die Aufteilung deshalb vollstaendig zurueckgenommen. */
+    html, body {
+        height: auto !important;
+        display: block !important;
+        overflow: visible !important;
+    }
     .aiw-side, .aiw-top, .aiw-integrity { display: none !important; }
-    .aiw-frame { display: block; }
-    .aiw-main { margin: 0; padding: 0; }
+    .aiw-frame { display: block; height: auto; min-height: 0; }
+    .aiw-main { margin: 0; padding: 0; overflow: visible !important; }
     .aiw-main::before {
         content: "Hinweis: Für die Akte bitte den „Akten-Export“ verwenden — "
                  "er trägt Aktenkopf, Erzeugungsvermerk und Prüfsumme.";

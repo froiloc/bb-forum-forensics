@@ -3896,6 +3896,52 @@
     // selectView: aktive Sicht setzen, Nav neu markieren, Inhalt dispatchen.
     // Build 349: 'dashboard' -> Overview; 'integrity' -> Integritaets-Sicht;
     // sonst Platzhalter (weitere Sichten folgen).
+    // sichtNachOben: die neue Sicht beginnt bei ihrer ersten Zeile.
+    //
+    // Build 566 (Befund mc): vorher teilten Leiste und Sicht EINE
+    // Bildlaufflaeche - die des Dokuments. Wer einen Navigationseintrag
+    // unterhalb des Sichtrands anklickte, schob damit auch die neue Sicht
+    // nach oben aus dem Bild; sie erschien "unvollstaendig", obwohl sie
+    // vollstaendig da war. Das CSS trennt die Flaechen jetzt; DIESE Zeile
+    // sorgt dafuer, dass die Sicht auch beim Wechsel oben anfaengt - das
+    // ergibt sich NICHT von selbst, weil der Bildlaufstand eines Elements
+    // erhalten bleibt, wenn man nur seinen Inhalt austauscht.
+    //
+    // window.scrollTo zusaetzlich: sollte das Dokument doch einmal einen
+    // Bildlauf haben (sehr schmales Fenster, oder eine aeltere cockpit.css
+    // im Cache des Browsers), waere sonst nur die halbe Wirkung da.
+    function sichtNachOben(mainEl) {
+        if (mainEl && typeof mainEl.scrollTop === 'number') {
+            mainEl.scrollTop = 0;
+        }
+        if (typeof window !== 'undefined'
+                && typeof window.scrollTo === 'function') {
+            window.scrollTo(0, 0);
+        }
+    }
+
+    // navEintragZeigen: den aktiven Eintrag in der Leiste sichtbar halten.
+    //
+    // Die Kehrseite der eigenen Bildlaufflaeche: buildNav baut die Leiste bei
+    // JEDEM Sichtwechsel neu auf, und eine neu aufgebaute Leiste steht wieder
+    // ganz oben. Wer einen Eintrag weit unten waehlt, saehe danach seine
+    // eigene Auswahl nicht mehr. scrollIntoView({block:'nearest'}) bewegt nur
+    // dann, wenn der Eintrag tatsaechlich ausserhalb liegt - ein Eintrag im
+    // sichtbaren Bereich bleibt, wo er ist, und die Leiste zappelt nicht.
+    function navEintragZeigen(navEl) {
+        if (!navEl || typeof navEl.querySelector !== 'function') { return; }
+        var aktiv = navEl.querySelector('.aiw-navitem.active');
+        if (aktiv && typeof aktiv.scrollIntoView === 'function') {
+            try {
+                aktiv.scrollIntoView({ block: 'nearest' });
+            } catch (e) {
+                // Aeltere Umgebungen kennen die Optionen nicht; ein Sprung
+                // ist besser als eine Ausnahme mitten im Sichtwechsel.
+                aktiv.scrollIntoView();
+            }
+        }
+    }
+
     function selectView(viewId) {
         // Build 546 (AP-3G, mc 2026-07-26): WARNUNG BEIM VERLASSEN MIT
         // UNGESPEICHERTEN AENDERUNGEN.
@@ -3936,6 +3982,8 @@
         var views = navViews(state.capabilities, state.viewPrefs);
         buildNav(navEl, views, state.capabilities, state.activeId, selectView,
                  hiddenCount(state.capabilities, state.viewPrefs));
+        sichtNachOben(mainEl);
+        navEintragZeigen(navEl);
         refreshExportButton();
         if (viewId === 'dashboard') {
             loadOverview(mainEl);
@@ -4411,6 +4459,8 @@
         viewById: viewById,
         setWho: setWho,
         buildNav: buildNav,
+        sichtNachOben: sichtNachOben,
+        navEintragZeigen: navEintragZeigen,
         renderPlaceholder: renderPlaceholder,
         boot: boot,
         // Build 512 (AP-2B/B1): Akten-Export. Reine Funktionen -> vitest.

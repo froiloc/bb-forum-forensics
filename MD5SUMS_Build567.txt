@@ -1,0 +1,6 @@
+0709a57920c2c7f99fefb52b70ab4a6c  build.json
+554663afaffb47b33f4f66ae019a71bf  management/server/static/cockpit.css
+aa4285bd9ea595ef2d79c2e52c39a4e4  management/server/static/cockpit.js
+c8893be7894c33c0b1ba7c10d171bbbc  management/Bauplan_Build567_Bildlaufflaechen_v0_1.md
+c6af3d89799ff811d2dc796c5aa9b174  tests/unit/test_cockpit_scroll.test.js
+f18f747497752335356f5dfe1f729722  issue-tracker/eintraege_claude_Build567.json

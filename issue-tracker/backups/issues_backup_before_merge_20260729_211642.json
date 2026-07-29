@@ -480,57 +480,92 @@
     {
       "id": "62e240e0-ab07-4e55-bce2-111393f3c39f",
       "type": "improvement",
-      "status": "closed",
-      "priority": "high",
-      "severity": "trivial",
       "title": "Personennamen änderbar machen",
       "affected_version": "0.8.561",
       "reporter": "Alex",
-      "reported_at": "2026-07-29T15:45:00+00:00",
-      "assigned_to": "Alex",
-      "related_to": [
-        "28887526-b1bb-43d9-b61c-7e161bcfe41b"
-      ],
+      "reported_at": "2026-07-29T15:47:58.811897+00:00",
+      "prerequisites": "Eine Person wurde eingepflegt. Der Name einer Person ändert sich, beispielsweise durch Heirat oder Scheidung, oder Genderwechsel.",
+      "description": "Der Name einer Person ändert sich. Das sollte im System darstellbar sein.",
+      "expected_behavior": "Der Name der Person kann geändert werden.",
+      "actual_behavior": "Der Name der Person ist nicht änderbar.",
+      "status": "closed",
+      "priority": "high",
+      "severity": "trivial",
+      "assigned_to": "Claude",
+      "related_to": [],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14",
+        "database": "coordinator.db"
+      },
       "tags": [
         "Person",
-        "Namen",
-        "AD-Sync"
+        "Namen"
       ],
+      "attachments": [],
       "updates": [
         {
-          "timestamp": "2026-07-29T19:20:00+00:00",
-          "author": "Claude",
+          "timestamp": "2026-07-29T15:47:58.811942+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Issue erstellt"
+        },
+        {
+          "timestamp": "2026-07-29T19:06:59.495793+00:00",
+          "author": "developer",
           "action": "status_change",
           "old_value": "open",
           "new_value": "closed",
-          "comment": "Entscheidung mc 2026-07-29: KEIN manueller Aenderungsweg. Die Namenspflege findet im Active Directory statt, der AD-Abgleich zieht nach (sync_plan.py:137 / sync_executor.py:137, Beleg INVESTIGATOR_UPDATED mit {alt,neu}). Damit gibt es EINE massgebliche Quelle - ein zweiter Weg haette sie aufgeweicht, und eine von Hand gesetzte Aenderung waere beim naechsten Abgleich still verschwunden. Kein Code geaendert; der Bedarf ist durch vorhandene Funktion gedeckt."
+          "comment": "Schnell geschlossen"
         }
       ]
     },
     {
       "id": "fbfc418c-7fd8-4766-96f2-a95f78ad5e72",
       "type": "improvement",
-      "status": "resolved",
-      "priority": "high",
-      "severity": "major",
       "title": "Navigationsleiste unabhängig scrollbar, Sicht beim Öffnen immer oben",
       "affected_version": "0.8.561",
-      "resolved_in_version": "0.8.567",
       "reporter": "Alex",
-      "reported_at": "2026-07-29T15:53:56.245152+00:00",
+      "reported_at": "2026-07-29T15:53:56.245105+00:00",
+      "prerequisites": "Das Management hat viele Sichten über die vergebene Rolle aktiv. Mehr als auf einer Seite in der Navigationsleiste dargestellt werden können.",
+      "description": "Derzeit haben alle Darstellungen im Management dasselbe Scroll-Element. Das bedeutet, dass viele Einträge in der Navigationsleiste auch die Sicht über den oberen Rand hinaus verschieben, wenn man einen Eintrag in der Navigationsleiste auswählt, der unterhalb der Seitenhöhe ist. Dadurch wird die Sicht im ersten Moment \"unvollständig\" angezeigt.",
+      "expected_behavior": "1) Wenn eine Sicht über die Navigationsleiste ausgewählt wird, scrollt die Sicht nach ganz oben, um die Sicht von der ersten Zeile an anzuzeigen.\r\n2) Die Navigationsleiste sollte unabhängig vom Sicht-Fenster scrollen können.",
+      "actual_behavior": "Navigationsleiste und Sicht-Fenster haben eine gemeinsame Scrollfläche.",
+      "status": "open",
+      "priority": "high",
+      "severity": "major",
       "assigned_to": "Claude",
+      "related_to": [],
+      "resolved_in_version": null,
+      "target_version": "None",
+      "environment": {
+        "python_version": "3.14",
+        "database": "coordinator.db"
+      },
       "tags": [
         "Sichten",
         "Navigationsleiste"
       ],
+      "attachments": [],
       "updates": [
         {
-          "timestamp": "2026-07-29T19:20:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "Build 567. Ursache: .aiw-frame hatte nur min-height, also wuchs der Rahmen mit dem Inhalt und das DOKUMENT scrollte - das overflow:auto an main.aiw-main lief deshalb ins Leere. Behoben ueber ein Spaltenlayout mit fester Hoehe; Leiste und Sicht haben nun je eine eigene Flaeche. selectView setzt die Sicht beim Wechsel nach oben. SC01-SC06."
+          "timestamp": "2026-07-29T15:53:56.245152+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Issue erstellt"
+        },
+        {
+          "timestamp": "2026-07-29T19:08:45.219120+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Issue aktualisiert"
         }
       ]
     },
@@ -805,50 +840,31 @@
         "AD-Sync",
         "Entscheidung"
       ],
+      "description": "Messung zu 62e240e0. PersonRepo.update kann display_name BEREITS aendern (auditiert, Beleg INVESTIGATOR_UPDATED mit {alt,neu}); es fehlt nur der HTTP-Endpunkt und das Eingabefeld - wie seinerzeit bei der Kapazitaet. ABER: der AD-Abgleich benennt zurueck. sync_plan.py:137 erzeugt fuer JEDE aktive Person, deren system_username im AD steht und deren display_name vom AD-displayName abweicht, einen 'rename'-Eintrag; sync_executor.py:137 vollzieht ihn bei /api/adsync/apply ohne Rueckfrage. Eine von Hand gesetzte Namensaenderung waere damit beim naechsten Abgleich still verschwunden.",
+      "expected_behavior": "Entscheidung erforderlich, siehe Chat: (A) manuelle Aenderung mit Hinweis, dass der AD-Abgleich sie zuruecknimmt; (B) Kennzeichen 'manuell gepflegt', das den Abgleich die Abweichung nur MELDEN statt ueberschreiben laesst (Migration noetig); (C) kein manueller Weg, stattdessen sichtbar machen, dass der Name aus dem AD stammt.",
       "updates": [
         {
-          "timestamp": "2026-07-29T19:20:00+00:00",
+          "timestamp": "2026-07-29T18:40:00+00:00",
           "author": "Claude",
+          "action": "comment",
+          "comment": "Nicht gebaut, weil jede der drei Varianten eine andere Datenhaltung bedeutet - (B) braucht eine Migration. Ein Alleingang haette entweder eine Falle eingebaut (A ohne Hinweis) oder eine Migration ohne Freigabe."
+        },
+        {
+          "timestamp": "2026-07-29T19:02:00.528713+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build566.json"
+        },
+        {
+          "timestamp": "2026-07-29T19:05:54.150712+00:00",
+          "author": "Alex",
           "action": "status_change",
           "old_value": "in_progress",
           "new_value": "closed",
-          "comment": "Entschieden: Variante C (AD als alleinige Quelle). Der Befund bleibt als Begruendung stehen, damit die Frage nicht in einem Jahr erneut aufgemacht wird."
+          "comment": "Wird bereits über eine Änderung der Quelle im Active Directory abgegolten. Daher ist keine Erweiterung hier notwendig."
         }
-      ]
-    },
-    {
-      "id": "7f3c9b21-4d5e-4a6f-9c8d-1e2f3a4b5c6d",
-      "type": "improvement",
-      "status": "resolved",
-      "priority": "medium",
-      "title": "Aktiver Navigationseintrag muss nach dem Neuaufbau sichtbar bleiben",
-      "affected_version": "0.8.567",
-      "resolved_in_version": "0.8.567",
-      "reporter": "Claude",
-      "reported_at": "2026-07-29T19:20:00+00:00",
-      "assigned_to": "Claude",
-      "related_to": [
-        "fbfc418c-7fd8-4766-96f2-a95f78ad5e72"
       ],
-      "tags": [
-        "Navigationsleiste",
-        "Nebenbefund"
-      ],
-      "description": "Kehrseite der eigenen Bildlaufflaeche: buildNav baut die Leiste bei JEDEM Sichtwechsel neu auf, und eine neu aufgebaute Leiste steht wieder ganz oben. Wer einen Eintrag weit unten waehlt, saehe seine eigene Auswahl danach nicht mehr - ein neues Aergernis anstelle des alten.",
-      "updates": [
-        {
-          "timestamp": "2026-07-29T19:20:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "Build 567: navEintragZeigen mit scrollIntoView({block:'nearest'}). 'nearest' ist der Punkt - ein bereits sichtbarer Eintrag bleibt stehen, die Leiste zappelt nicht bei jedem Wechsel. SC02, SC04."
-        },
-        {
-          "timestamp": "2026-07-29T19:16:42.440756+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build567.json"
-        }
-      ]
+      "resolved_in_version": "0.8.566"
     }
   ]
 }
