@@ -54,3 +54,4 @@ debug/test_2_91_console.js
 !documents/*.md
 !management/*.html
 !issue-tracker/
+!issue-tracker/data
