@@ -76,7 +76,17 @@
 //   Transaktion. Das ist noetig, seit der Server eine zweite aktive Regel zum
 //   selben Stichtag zurueckweist - und es ist der Weg, den mc gesucht hat.
 //
-// Version: v0.8.561 · Build: 561 · 2026-07-29
+// BUILD 563 — ENTFERNTE ZEILEN. 'Entfernen' ist ein Soft-Delete; die Zeile
+//   bleibt in der Datenbank. Die Sicht zeigt jetzt BEIDES: eine Umschaltung
+//   blendet sie ein, und AUCH WENN SIE AUS IST, steht die Zahl der
+//   ausgeblendeten Zeilen da. Eine Umschaltung allein waere eine, die niemand
+//   betaetigt - weil niemand ahnt, dass es etwas einzublenden gibt.
+//   Eingeblendete entfernte Zeilen werden GEKENNZEICHNET (Spalte 'Stand' und
+//   Zeilenklasse), sonst saehen sie aus wie gueltige Regeln; und ihre
+//   Aktionsknoepfe entfallen, weil ein zweites Entfernen ohnehin abgewiesen
+//   wuerde und 'Bearbeiten' eine stillgelegte Zeile ersetzen wollte.
+//
+// Version: v0.8.563 · Build: 563 · 2026-07-29
 // =============================================================================
 
 (function () {
@@ -186,6 +196,8 @@
                 effective_from: z.effective_from || '',
                 effective_to: z.effective_to || '(offen)',
                 woche_min: wochenSumme(z),
+                stand: istEntfernt(z) ? 'entfernt' : 'aktiv',
+                _entfernt: istEntfernt(z),
                 audit_seq: z.audit_seq
             };
             TAGE.forEach(function (t) {
@@ -208,6 +220,8 @@
                 wert: wertText(z),
                 grund: reasonLabel(z.reason_code, reasons),
                 note: z.note || '',
+                stand: istEntfernt(z) ? 'entfernt' : 'aktiv',
+                _entfernt: istEntfernt(z),
                 audit_seq: z.audit_seq
             };
         });
@@ -217,7 +231,9 @@
         return ((data && data.holidays) || []).map(function (z) {
             return {
                 id: z.id, day: z.day || '', label: z.label || '',
-                region: z.region || '(alle)', audit_seq: z.audit_seq
+                region: z.region || '(alle)',
+                stand: istEntfernt(z) ? 'entfernt' : 'aktiv',
+                _entfernt: istEntfernt(z), audit_seq: z.audit_seq
             };
         });
     }
@@ -227,12 +243,33 @@
             return {
                 code: z.code, label: z.label || '',
                 sort: (typeof z.sort === 'number') ? z.sort : 0,
-                audit_seq: z.audit_seq
+                stand: istEntfernt(z) ? 'entfernt' : 'aktiv',
+                _entfernt: istEntfernt(z), audit_seq: z.audit_seq
             };
         });
     }
 
     function darfAnlagenweit(scope) { return scope === 'alle'; }
+
+    // istEntfernt: eine Zeile gilt als entfernt, sobald deleted_at gesetzt
+    // ist. 0 ist KEIN gueltiger Zeitstempel in diesem Schema, aber auch kein
+    // Grund, eine Zeile faelschlich fuer aktiv zu halten - deshalb die
+    // Pruefung auf "vorhanden" statt auf "wahr".
+    function istEntfernt(zeile) {
+        return !!(zeile && zeile.deleted_at !== null
+                  && zeile.deleted_at !== undefined);
+    }
+
+    // ausgeblendetText: die Zahl der NICHT gezeigten Zeilen in Worte fassen.
+    // Rueckgabe null heisst "es ist nichts ausgeblendet" - dann steht auch
+    // kein Hinweis da, statt eines Hinweises ueber null Zeilen.
+    function ausgeblendetText(anzahl, einheit) {
+        if (!anzahl) { return null; }
+        return anzahl === 1
+            ? ('1 entfernte Zeile ist ausgeblendet (' + einheit + ').')
+            : (anzahl + ' entfernte Zeilen sind ausgeblendet ('
+               + einheit + ').');
+    }
 
     // heuteIso: Vorbelegung des Stichtags. Ein leeres Pflichtfeld, das erst
     // der Server bemaengelt, ist eine Falle (Befund mc, Build 560).
@@ -395,6 +432,44 @@
             ergebnis.className = 'aiw-result' + (istFehler ? ' aiw-error' : '');
         }
 
+        // UMSCHALTUNG 'auch entfernte anzeigen' (Build 563). Sie sitzt im
+        // Kopf und gilt fuer ALLE VIER Bestaende gemeinsam - vier einzelne
+        // Schalter waeren vier Orte, an denen man den Ueberblick verlieren
+        // kann. Der Zustand kommt vom Server zurueck (data.include_deleted),
+        // nicht aus dem Frontend: sonst koennte der Haken gesetzt sein,
+        // waehrend die Liste noch die alte Antwort zeigt.
+        var entferntZahlen = (data && data.entfernt) || {};
+        var zeigeEntfernte = !!(data && data.include_deleted);
+        var schalterZeile = _el('div', 'aiw-capp-schalter');
+        var schalter = document.createElement('input');
+        schalter.type = 'checkbox';
+        schalter.id = 'aiw-capp-entfernte';
+        schalter.checked = zeigeEntfernte;
+        schalter.addEventListener('change', function () {
+            if (typeof opts.onEntfernteUmschalten === 'function') {
+                opts.onEntfernteUmschalten(schalter.checked);
+            }
+        });
+        var schalterLabel = document.createElement('label');
+        schalterLabel.setAttribute('for', 'aiw-capp-entfernte');
+        schalterLabel.className = 'aiw-label';
+        schalterLabel.textContent = 'Auch entfernte Zeilen anzeigen';
+        schalterZeile.appendChild(schalter);
+        schalterZeile.appendChild(schalterLabel);
+        var gesamtEntfernt = ['worktimes', 'availability', 'holidays',
+                              'reasons'].reduce(function (s2, k) {
+            return s2 + (entferntZahlen[k] || 0);
+        }, 0);
+        schalterZeile.appendChild(_el('span', 'aiw-hint',
+            gesamtEntfernt
+                ? (zeigeEntfernte
+                    ? (gesamtEntfernt + ' entfernte Zeile(n) sind eingeblendet '
+                       + 'und gekennzeichnet.')
+                    : (gesamtEntfernt + ' entfernte Zeile(n) sind derzeit '
+                       + 'ausgeblendet.'))
+                : 'Es ist nichts entfernt.'));
+        mainEl.appendChild(schalterZeile);
+
         // FELDMARKIERUNG: der Server nennt seit Build 560 das schuldige Feld.
         // Kennt er keines, wird auch keines markiert - ein geratenes rotes
         // Feld waere schlimmer als gar keines.
@@ -413,7 +488,17 @@
 
         var tables = [];
 
-        function bauen(sicht, box, rows, columns, einheit, eigene) {
+        function bauen(sicht, box, rows, columns, einheit, eigene, entferntZahl) {
+            // JE ABSCHNITT die eigene Zahl - eine Gesamtzahl im Kopf sagt
+            // nicht, WO etwas fehlt. Der Hinweis entfaellt, sobald die Zeilen
+            // eingeblendet sind (dann stehen sie ja da).
+            if (!zeigeEntfernte) {
+                var hinw = ausgeblendetText(entferntZahl, einheit);
+                if (hinw) {
+                    box.appendChild(_el('p', 'aiw-hint aiw-capp-ausgeblendet',
+                                        hinw));
+                }
+            }
             if (!tk || typeof tk.tabelleAufbauen !== 'function') {
                 // KEIN STILLER AUSFALL: die Zahl steht da, auch wenn die
                 // Tabellenmechanik fehlt. Eine leere Flaeche saehe aus wie
@@ -429,7 +514,16 @@
                 einheit: einheit, eigene: eigene || [],
                 tabulator: {
                     layout: 'fitColumns',
-                    placeholder: 'Keine ' + einheit + ' erfasst.'
+                    placeholder: 'Keine ' + einheit + ' erfasst.',
+                    // Entfernte Zeilen bekommen eine eigene Klasse. OHNE
+                    // Kennzeichnung saehen sie aus wie gueltige Regeln - und
+                    // genau das waere schlimmer als sie wegzulassen.
+                    rowFormatter: function (row) {
+                        var d = row.getData ? row.getData() : null;
+                        if (d && d._entfernt && row.getElement) {
+                            row.getElement().classList.add('aiw-zeile-entfernt');
+                        }
+                    }
                 }
             });
             tables.push(r ? r.table : null);
@@ -457,6 +551,9 @@
                          hozAlign: 'right' });
         spaltenWt.push({ title: 'Beleg', field: 'audit_seq',
                          hozAlign: 'right' });
+        if (zeigeEntfernte) {
+            spaltenWt.push({ title: 'Stand', field: 'stand' });
+        }
 
         // ERSETZEN-MODUS: haelt die Zeile fest, die 'Bearbeiten' gewaehlt hat.
         // Solange sie gesetzt ist, geht das Speichern auf /replace statt auf
@@ -563,6 +660,13 @@
             formatter: function (cell) {
                 var d = cell.getData ? cell.getData() : {};
                 var box = _el('span', 'aiw-aktionen');
+                if (d._entfernt) {
+                    // Kein Knopf auf einer stillgelegten Zeile: ein zweites
+                    // Entfernen wiese der Server ohnehin ab, und 'Bearbeiten'
+                    // wollte eine Zeile ersetzen, die nicht mehr gilt.
+                    box.appendChild(_el('span', 'aiw-hint', 'entfernt'));
+                    return box;
+                }
                 var bE = _knopf('', 'Bearbeiten', function () {
                     if (typeof opts.onWorktimeEdit === 'function') {
                         opts.onWorktimeEdit(d);
@@ -584,7 +688,7 @@
         });
 
         bauen('capacity_worktime', boxWt, worktimeRows(data), spaltenWt,
-              'Arbeitszeit-Regeln');
+              'Arbeitszeit-Regeln', [], entferntZahlen.worktimes);
 
         // -------------------------------------------------- 2) Abwesenheiten
         var boxAv = _abschnitt(mainEl, 'capacity_availability',
@@ -662,8 +766,12 @@
                 }
             }));
         boxAv.appendChild(formAv);
+        if (zeigeEntfernte) {
+            spaltenAv.splice(spaltenAv.length - 1, 0,
+                             { title: 'Stand', field: 'stand' });
+        }
         bauen('capacity_availability', boxAv, availabilityRows(data),
-              spaltenAv, 'Abwesenheiten');
+              spaltenAv, 'Abwesenheiten', [], entferntZahlen.availability);
 
         // ------------------------------------------------------ 3) Feiertage
         var boxHo = _abschnitt(mainEl, 'capacity_holiday', 'Feiertage',
@@ -706,8 +814,12 @@
                 }));
             boxHo.appendChild(formHo);
         }
+        if (zeigeEntfernte) {
+            spaltenHo.splice(spaltenHo.length - 1, 0,
+                             { title: 'Stand', field: 'stand' });
+        }
         bauen('capacity_holiday', boxHo, holidayRows(data), spaltenHo,
-              'Feiertage');
+              'Feiertage', [], entferntZahlen.holidays);
 
         // ------------------------------------------------------- 4) Gruende
         var boxRe = _abschnitt(mainEl, 'capacity_reason',
@@ -747,8 +859,11 @@
                 }));
             boxRe.appendChild(formRe);
         }
+        if (zeigeEntfernte) {
+            spaltenRe.push({ title: 'Stand', field: 'stand' });
+        }
         bauen('capacity_reason', boxRe, reasonRows(data), spaltenRe,
-              'Abwesenheitsgruende');
+              'Abwesenheitsgruende', [], entferntZahlen.reasons);
 
         // ------------------------------------------------ Minutenrechner
         // ZIELVERFOLGUNG: der Rechner schreibt in das Feld, das zuletzt
@@ -824,6 +939,8 @@
         reasonRows: reasonRows,
         darfAnlagenweit: darfAnlagenweit,
         heuteIso: heuteIso,
+        istEntfernt: istEntfernt,
+        ausgeblendetText: ausgeblendetText,
         VORGABEN: VORGABEN,
         uebernahmeText: uebernahmeText,
         renderCapacityPflege: renderCapacityPflege

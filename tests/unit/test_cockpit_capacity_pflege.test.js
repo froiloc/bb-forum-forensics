@@ -33,8 +33,14 @@
  *        Speichern geht auf ERSETZEN statt auf Anlegen.
  * CP16 — uebernahmeText schreibt aus, WAS uebernommen wurde.
  * CP17 — die Aktionsspalte bietet Bearbeiten UND Entfernen je Zeile.
+ * CP18 — die Zahl ausgeblendeter Zeilen steht da, AUCH wenn der Schalter aus
+ *        ist — sonst ahnt niemand, dass es etwas einzublenden gibt.
+ * CP19 — ist nichts entfernt, steht auch kein Hinweis (kein "0 Zeilen").
+ * CP20 — eingeschalteter Schalter: Spalte 'Stand', Zeilenklasse, und die
+ *        Aktionsknoepfe entfallen auf entfernten Zeilen.
+ * CP21 — Umschalten ruft den Rueckruf mit dem neuen Zustand.
  *
- * Version: v0.8.561 · Build: 561 · 2026-07-29
+ * Version: v0.8.563 · Build: 563 · 2026-07-29
  */
 
 import { describe, it, expect } from "vitest";
@@ -401,5 +407,91 @@ describe("Kapazitaetspflege (Build 559)", () => {
     expect(bearbeitet.id).toBe(1);
     knoepfe[1].dispatchEvent(new win.Event("click"));
     expect(entfernt).toBe(1);
+  });
+
+  // CP18 --------------------------------------------------------------------
+  it("CP18: ausgeblendete Zeilen werden gezaehlt, auch wenn sie fehlen", () => {
+    const win = _win();
+    const daten = _daten("alle");
+    daten.include_deleted = false;
+    daten.entfernt = { worktimes: 2, availability: 1, holidays: 0,
+                       reasons: 0 };
+    const { main } = _zeichne(win, { _daten: daten });
+
+    // Im Kopf die Gesamtzahl ...
+    expect(main.querySelector(".aiw-capp-schalter").textContent)
+      .toMatch(/3 entfernte Zeile\(n\) sind derzeit ausgeblendet/);
+    // ... und je Abschnitt die eigene. Eine Gesamtzahl allein sagt nicht, WO
+    // etwas fehlt.
+    const hinweise = Array.prototype.map.call(
+      main.querySelectorAll(".aiw-capp-ausgeblendet"), (e) => e.textContent);
+    expect(hinweise.length).toBe(2);
+    expect(hinweise.some((t) => /2 entfernte Zeilen.*Arbeitszeit-Regeln/.test(t)))
+      .toBe(true);
+    expect(hinweise.some((t) => /1 entfernte Zeile .*Abwesenheiten/.test(t)))
+      .toBe(true);
+    expect(main.querySelector("#aiw-capp-entfernte").checked).toBe(false);
+  });
+
+  // CP19 --------------------------------------------------------------------
+  it("CP19: ist nichts entfernt, steht auch kein Hinweis", () => {
+    const win = _win();
+    const daten = _daten("alle");
+    daten.entfernt = { worktimes: 0, availability: 0, holidays: 0,
+                       reasons: 0 };
+    const { main } = _zeichne(win, { _daten: daten });
+    expect(main.querySelectorAll(".aiw-capp-ausgeblendet").length).toBe(0);
+    expect(main.querySelector(".aiw-capp-schalter").textContent)
+      .toContain("Es ist nichts entfernt.");
+    // Kein Hinweis ueber null Zeilen.
+    expect(win.AIWCockpitCapacityPflege.ausgeblendetText(0, "X")).toBeNull();
+  });
+
+  // CP20 --------------------------------------------------------------------
+  it("CP20: eingeblendete entfernte Zeilen sind gekennzeichnet und gesperrt", () => {
+    const win = _win();
+    const daten = _daten("alle");
+    daten.include_deleted = true;
+    daten.entfernt = { worktimes: 1, availability: 0, holidays: 0,
+                       reasons: 0 };
+    daten.worktimes[0].deleted_at = 1785000000;
+    let entfernt = null;
+    const { main } = _zeichne(win, {
+      _daten: daten, onWorktimeRemove: (id) => { entfernt = id; },
+    });
+
+    expect(main.querySelector("#aiw-capp-entfernte").checked).toBe(true);
+    // Die Aufbereitung markiert sie ...
+    const zeilen = win.AIWCockpitCapacityPflege.worktimeRows(daten);
+    expect(zeilen[0].stand).toBe("entfernt");
+    expect(zeilen[0]._entfernt).toBe(true);
+    // ... und die Aktionsspalte gibt keine Knoepfe her: ein zweites Entfernen
+    // wiese der Server ohnehin ab.
+    expect(main.querySelectorAll(".aiw-aktionen .aiw-btn-klein").length).toBe(0);
+    expect(main.querySelector(".aiw-aktionen").textContent).toBe("entfernt");
+    expect(entfernt).toBeNull();
+
+    // Solange nichts eingeblendet ist, gibt es die Spalte 'Stand' nicht -
+    // eine Spalte, in der ausnahmslos "aktiv" steht, ist Ballast.
+    const ohne = _daten("alle");
+    ohne.include_deleted = false;
+    const zweit = _zeichne(_win(), { _daten: ohne });
+    expect(zweit.main.textContent).not.toContain("Stand");
+  });
+
+  // CP21 --------------------------------------------------------------------
+  it("CP21: Umschalten meldet den neuen Zustand", () => {
+    const win = _win();
+    let zustand = null;
+    const { main } = _zeichne(win, {
+      onEntfernteUmschalten: (an) => { zustand = an; },
+    });
+    const box = main.querySelector("#aiw-capp-entfernte");
+    box.checked = true;
+    box.dispatchEvent(new win.Event("change"));
+    expect(zustand).toBe(true);
+    box.checked = false;
+    box.dispatchEvent(new win.Event("change"));
+    expect(zustand).toBe(false);
   });
 });

@@ -2912,3 +2912,23 @@ tr.aiw-cff-nichtrelevant { opacity: 0.7; }
     opacity: .75;
 }
 .aiw-rechner .aiw-btn { margin: 0 .6rem; }
+
+/* --- Build 563: entfernte Zeilen ---------------------------------------- */
+/* Sie werden nicht versteckt, sondern GEKENNZEICHNET: eine stillgelegte Regel,
+   die aussieht wie eine gueltige, waere schlimmer als eine, die gar nicht da
+   ist. Durchstreichen allein reicht nicht (schlecht lesbar bei Zahlen), daher
+   zusaetzlich gedaempft und mit eigener Spalte 'Stand'. */
+.aiw-capp-schalter {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    margin: .4rem 0 .8rem 0;
+}
+.aiw-capp-ausgeblendet {
+    margin: .2rem 0 .4rem 0;
+    font-style: italic;
+}
+.aiw-zeile-entfernt {
+    opacity: .55;
+    text-decoration: line-through;
+}

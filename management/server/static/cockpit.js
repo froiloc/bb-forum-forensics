@@ -2686,7 +2686,7 @@
             renderError(mainEl, 'Kapazitaetspflege-Modul nicht geladen.');
             return;
         }
-        // uebergabe = { text, error, feld, formular } — was ueber das
+        // uebergabe = { text, error, feld, formular, entfernte } — was ueber das
         // Neuladen hinweg erhalten bleibt (Build 561). OHNE das leert jedes
         // Neuladen das Stichtagsfeld, und die naechste Eingabe scheitert am
         // Server, ohne dass jemand versteht, warum (Befund mc, Build 560).
@@ -2695,7 +2695,8 @@
 
         function after(text, isError, feld, formular) {
             loadCapacityPflege(mainEl, { text: text, error: isError,
-                                         feld: feld, formular: formular });
+                                         feld: feld, formular: formular,
+                                         entfernte: uebergabe.entfernte });
         }
         function _post(url, body, okText, formularNachher) {
             // Der Zustand wird VOR dem Absenden festgehalten: nach dem
@@ -2763,7 +2764,23 @@
             onWorktimeEditAbort: function () {
                 loadCapacityPflege(mainEl, {
                     text: 'Bearbeitung abgebrochen. Es wurde nichts geaendert.',
-                    error: false });
+                    error: false, entfernte: uebergabe.entfernte });
+            },
+            // Build 563: die Umschaltung laedt NEU, statt im Browser zu
+            // filtern. Der Server entscheidet, was sichtbar ist - ein
+            // Frontend-Filter koennte Zeilen zeigen, die das Recht oder der
+            // Scope gar nicht hergibt.
+            onEntfernteUmschalten: function (an) {
+                loadCapacityPflege(mainEl, {
+                    text: an
+                        ? 'Entfernte Zeilen eingeblendet. Sie sind in der '
+                          + 'Spalte "Stand" gekennzeichnet und nicht mehr '
+                          + 'bearbeitbar.'
+                        : 'Entfernte Zeilen ausgeblendet. Ihre Zahl steht '
+                          + 'weiterhin ueber jeder Liste.',
+                    error: false, entfernte: an,
+                    formular: (view && view.formularLesen)
+                        ? view.formularLesen() : null });
             },
             onAvailabilitySet: function (body) {
                 _post('/api/capacity/availability', body, function (res) {
@@ -2798,7 +2815,8 @@
                 });
             }
         };
-        fetchJson('/api/capacity/stammdaten')
+        fetchJson('/api/capacity/stammdaten'
+                  + (uebergabe.entfernte ? '?include_deleted=1' : ''))
             .then(function (data) {
                 cleanupView();
                 _capacityPersonen = data.persons || [];
