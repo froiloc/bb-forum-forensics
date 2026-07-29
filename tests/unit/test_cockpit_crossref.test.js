@@ -26,13 +26,79 @@ const _src = readFileSync(
   "utf-8"
 );
 
+// Build 555: das gemeinsame Tabellen-Werkzeug MUSS im Kontext liegen — genau
+// wie im Browser (cockpit.html laedt es vor den Sichten). Ohne es faellt die
+// Sicht in ihren Ersatzpfad, und der Test wuerde die Tabelle gar nicht mehr
+// beruehren ('gruen aber tot').
+const _tkSrc = readFileSync(
+  "management/server/static/cockpit_tablekit.js",
+  "utf-8"
+);
+
+/** Tabulator-Attrappe: haelt die Daten, ruft die Spalten-Formatter auf und
+ *  haengt die erzeugten Knoten in den Container, damit die Bedienelemente im
+ *  DOM anklickbar sind. Ohne den Formatter-Aufruf wuerde der Revidieren-Weg
+ *  gar nicht beruehrt. */
+function _fakeTabulator(doc) {
+  return function (host, options) {
+    const self = this;
+    this.options = options;
+    this.data = options.data || [];
+    this._filters = [];
+    this.data.forEach(function (d) {
+      const tr = doc.createElement("div");
+      tr.className = "fake-row";
+      tr.setAttribute("data-subject", String(d.subject_id));
+      (options.columns || []).forEach(function (col) {
+        // Spalten OHNE Formatter gibt Tabulator als Text aus — die Attrappe
+        // muss das nachbilden, sonst fehlten genau die Textspalten im
+        // geprueften DOM (und der XSS-Test liefe ins Leere).
+        if (typeof col.formatter !== "function") {
+          const sp = doc.createElement("span");
+          sp.textContent = String(
+            d[col.field] === undefined || d[col.field] === null
+              ? "" : d[col.field]
+          );
+          tr.appendChild(sp);
+          return;
+        }
+        const node = col.formatter({
+          getData: function () { return d; },
+          getValue: function () { return d[col.field]; },
+        });
+        if (node && node.nodeType) { tr.appendChild(node); }
+      });
+      host.appendChild(tr);
+    });
+    this.getDataCount = function () { return self.data.length; };
+    this.setHeaderFilterValue = function (f, v) { self._filters.push([f, v]); };
+    this.clearHeaderFilter = function () { self._filters = []; };
+    this.clearFilter = function () { self._filters = []; };
+    this.getHeaderFilters = function () { return self._filters; };
+    this.getSorters = function () { return []; };
+    this.getColumns = function () { return []; };
+    this.on = function () {};
+    this.destroy = function () {};
+  };
+}
+
 function _win() {
   const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", {
     runScripts: "dangerously",
     url: "http://localhost",
   });
+  dom.window.eval(_tkSrc);
   dom.window.eval(_src);
   return dom.window;
+}
+
+/** renderCrossref mit eingespritzter Attrappe. */
+function _render(win, main, data, opts) {
+  return win.AIWCockpitCrossref.renderCrossref(
+    main, data,
+    Object.assign({ doc: win.document, Tabulator: _fakeTabulator(win.document) },
+                  opts || {})
+  );
 }
 function _api() {
   return _win().AIWCockpitCrossref;
@@ -134,22 +200,40 @@ describe("cockpit_crossref", () => {
   });
 
   // CX05 --------------------------------------------------------------------
-  it("CX05: Katalog rendert Tabelle, Badge-Klasse, Zellinhalte", () => {
+  it("CX05: Katalog rendert Zeilen, Badge-Klasse, Zellinhalte", () => {
     const win = _win();
-    const api = win.AIWCockpitCrossref;
     const el = _mount(win);
-    api.renderCrossref(el, _entries(), { doc: win.document, canEdit: false });
+    _render(win, el, _entries(), { canEdit: false });
 
-    const rows = el.querySelectorAll(".aiw-xref-table tbody tr");
+    // Build 555: die Zeilen entstehen jetzt in Tabulator, nicht in einer
+    // handgebauten <table>. Geprueft wird dieselbe Zusicherung an der neuen
+    // Struktur.
+    const rows = el.querySelectorAll(".fake-row");
     expect(rows.length).toBe(2);
-    // Erste Zeile = gesichert (staerkste zuerst kommt aus dem Server; hier
-    // pruefen wir nur die Badge-Klasse anhand des Codes).
+    // Erste Zeile = gesichert. Die REIHENFOLGE DES SERVERS bleibt erhalten
+    // (staerkste Konfidenz zuerst) — die Tabelle setzt bewusst kein
+    // initialSort.
     const badge = rows[0].querySelector(".aiw-conf-badge");
     expect(badge.className).toContain("aiw-conf-gesichert");
     expect(rows[0].getAttribute("data-subject")).toBe("993008244");
     expect(rows[0].textContent).toContain("Max Mustermann");
-    // Ohne Recht keine Revidieren-Buttons.
+    // Ohne Recht keine Revidieren-Knoepfe.
     expect(el.querySelector(".aiw-xref-revise")).toBeNull();
+  });
+
+  // CX05b -------------------------------------------------------------------
+  it("CX05b: mit Recht ein Revidieren-Knopf je Zeile, der das Formular fuellt", () => {
+    const win = _win();
+    const doc = win.document;
+    const el = _mount(win);
+    _render(win, el, _entries(), { canEdit: true });
+
+    const knoepfe = el.querySelectorAll(".aiw-xref-revise");
+    expect(knoepfe.length).toBe(2);
+    knoepfe[0].dispatchEvent(new win.Event("click"));
+    // Der Knopf uebertraegt die Zeile ins Formular (Revision vorbereiten).
+    expect(doc.getElementById("aiw-xref-sid").value).toBe("993008244");
+    expect(doc.getElementById("aiw-xref-real").value).toBe("Max Mustermann");
   });
 
   // CX06 --------------------------------------------------------------------
@@ -193,17 +277,116 @@ describe("cockpit_crossref", () => {
   // CX07 --------------------------------------------------------------------
   it("CX07: reale Person XSS-sicher (textContent, kein Markup)", () => {
     const win = _win();
-    const api = win.AIWCockpitCrossref;
     const el = _mount(win);
     const evil = '<img src=x onerror=alert(1)>';
-    api.renderCrossref(el, {
+    _render(win, el, {
       entries: [{ subject_id: 9, real_identity: evil,
         confidence_code: "verdacht", confidence_ordinal: 10, basis: "",
         note: null, updated_at: 1700000000 }],
-    }, { doc: win.document, canEdit: false });
+    }, { canEdit: false });
 
     // Der boesartige String erscheint als TEXT, nicht als <img>-Element.
     expect(el.querySelector("img")).toBeNull();
     expect(el.textContent).toContain(evil);
+  });
+
+  // ==========================================================================
+  // Build 555 — Tabulator + gemeinsames Tabellen-Werkzeug
+  // ==========================================================================
+
+  // CX08 ---------------------------------------------------------------------
+  it("CX08: toRows — abgeleitete Felder, Reihenfolge des Servers bleibt", () => {
+    const api = _api();
+    const rows = api.toRows(_entries());
+    expect(rows.length).toBe(2);
+
+    // DIE REIHENFOLGE IST EINE AUSSAGE: der Server liefert die staerkste
+    // Konfidenz zuerst. toRows sortiert NICHT um.
+    expect(rows.map((r) => r.subject_id)).toEqual([993008244, 5]);
+
+    expect(rows[0].konfidenz).toBe("gesichert");
+    expect(rows[0].konfidenz_rang).toBe(30);
+    expect(rows[1].konfidenz).toBe("Verdacht");
+    expect(rows[1].konfidenz_rang).toBe(10);
+
+    // Leere Freitexte werden zum Gedankenstrich: eine leere Zelle sieht aus
+    // wie ein Anzeigefehler, '—' sagt 'nichts hinterlegt'.
+    expect(rows[1].basis).toBe("—");
+    expect(rows[0].basis).toBe("Zahlung");
+
+    // Der Rohzeitpunkt bleibt neben dem formatierten stehen (Sortierung).
+    expect(rows[0].updated_at).toBe(1700000500);
+    expect(typeof rows[0].geaendert).toBe("string");
+
+    // Ein UNBEKANNTER Code verschwindet nicht, er bekommt Rang 0 und
+    // sortiert zuletzt (Grundregel 1).
+    const fremd = api.toRows({
+      entries: [{ subject_id: 1, confidence_code: "quatsch", updated_at: 1 }],
+    });
+    expect(fremd[0].konfidenz).toBe("quatsch");
+    expect(fremd[0].konfidenz_rang).toBe(0);
+  });
+
+  // CX09 ---------------------------------------------------------------------
+  it("CX09: die Konfidenz sortiert nach BEWEISSTAERKE, nicht alphabetisch", () => {
+    const win = _win();
+    const api = win.AIWCockpitCrossref;
+    const cols = api.spalten(win.document, false);
+    const konf = cols.find((c) => c.field === "konfidenz");
+    expect(typeof konf.sorter).toBe("function");
+
+    const zeile = (code) => ({
+      getData: () => ({ konfidenz_rang: api.confidenceRang(code) }),
+    });
+
+    // ALPHABETISCH stuende 'gesichert' vor 'Verdacht' vor 'wahrscheinlich'.
+    // Eine Spalte, die nach Beweisstaerke aussieht und alphabetisch sortiert,
+    // waere in einem Beweismittelwerkzeug irrefuehrend.
+    expect(konf.sorter(null, null, zeile("verdacht"),
+                       zeile("gesichert"))).toBeLessThan(0);
+    expect(konf.sorter(null, null, zeile("gesichert"),
+                       zeile("wahrscheinlich"))).toBeGreaterThan(0);
+    expect(konf.sorter(null, null, zeile("wahrscheinlich"),
+                       zeile("wahrscheinlich"))).toBe(0);
+    // Unbekannt sortiert unter allem Bekannten.
+    expect(konf.sorter(null, null, zeile("quatsch"),
+                       zeile("verdacht"))).toBeLessThan(0);
+  });
+
+  // CX10 ---------------------------------------------------------------------
+  it("CX10: 'geaendert' sortiert ueber den Rohwert, nicht ueber den Text", () => {
+    const win = _win();
+    const api = win.AIWCockpitCrossref;
+    const cols = api.spalten(win.document, false);
+    const sp = cols.find((c) => c.field === "geaendert");
+    expect(typeof sp.sorter).toBe("function");
+
+    // Eine Textsortierung ueber '01.12.2025' vs. '02.01.2026' waere falsch
+    // herum. Geprueft wird deshalb der Rohwert.
+    const a = { getData: () => ({ updated_at: 1700000000 }) };
+    const b = { getData: () => ({ updated_at: 1800000000 }) };
+    expect(sp.sorter(null, null, a, b)).toBeLessThan(0);
+    expect(sp.sorter(null, null, b, a)).toBeGreaterThan(0);
+    // Fehlender Zeitpunkt -> 0, also ganz unten statt NaN.
+    const leer = { getData: () => ({}) };
+    expect(sp.sorter(null, null, leer, a)).toBeLessThan(0);
+  });
+
+  // CX11 ---------------------------------------------------------------------
+  it("CX11: die Aktionsspalte traegt keinen Filter", () => {
+    const win = _win();
+    const api = win.AIWCockpitCrossref;
+    const cols = api.spalten(win.document, true);
+    const akt = cols.find((c) => c.field === "aktion");
+    expect(akt.kein_filter).toBe(true);
+    // Und das gemeinsame Werkzeug haelt sich daran.
+    const mitFilter = win.AIWTableKit.spaltenMitFilter(
+      api.toRows(_entries()), cols
+    );
+    const aktMF = mitFilter.find((c) => c.field === "aktion");
+    expect(aktMF.headerFilter).toBeUndefined();
+    // Alle uebrigen Spalten haben einen.
+    mitFilter.filter((c) => c.field && c.field !== "aktion")
+      .forEach((c) => { expect(c.headerFilter, c.field).toBeTruthy(); });
   });
 });

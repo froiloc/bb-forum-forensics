@@ -1,0 +1,5 @@
+a7c47c50b1b0d13e0ae81190e1aa4a86  build.json
+049f55f5e94f8bb79af74f9b0aefd157  management/server/static/cockpit_crossref.js
+6236f61509fd751c501a58d0b48d79a5  management/Bauplan_UX_Tabellen_Builds548ff_v0_1.md
+c0a4d6fc759aa0cf85b1becec6d9c0cf  tests/unit/test_cockpit_crossref.test.js
+c5a35dc91244d217c71817c2d464b204  tests/unit/test_cockpit_tabellen_ux.test.js

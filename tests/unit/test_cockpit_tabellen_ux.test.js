@@ -231,6 +231,26 @@ const REGISTER = [
       ],
     }),
   },
+  // --- Build 555 ------------------------------------------------------------
+  // Kreuzbezug: ERSTE Sicht der Gruppe C — vorher eine handgebaute <table>.
+  {
+    name: "crossref", datei: "cockpit_crossref.js",
+    global: "AIWCockpitCrossref", render: "renderCrossref",
+    sicht: "crossref", zeilen: 2, brauchtDoc: true,
+    // Die Aktionsspalte traegt Knoepfe — ein Filter darauf waere sinnlos.
+    ohneFilter: ["aktion"],
+    daten: () => ({
+      entries: [
+        { id: 2, subject_id: 993008244, real_identity: "Max Mustermann",
+          confidence_code: "gesichert", confidence_ordinal: 30,
+          basis: "Zahlung", note: null, updated_at: 1700000500 },
+        { id: 1, subject_id: 5, real_identity: "Unbekannt A",
+          confidence_code: "verdacht", confidence_ordinal: 10, basis: "",
+          note: "nur ein Indiz", updated_at: 1700000100 },
+      ],
+    }),
+  },
+
   // --- Build 554 ------------------------------------------------------------
   // Chef-Freigabe: letzte Sicht der Gruppe B. Wie das Lektorat mit
   // handgesetzten Filtern und Blaetterung.
@@ -492,10 +512,28 @@ describe("Konformitaet der Listensichten (Build 549)", () => {
 
         const cols = table.options.columns || [];
         expect(cols.length).toBeGreaterThan(0);
+
+        // AUSNAHMEN SIND ZULAESSIG, ABER SIE MUESSEN BENANNT SEIN. Ein Filter
+        // auf einer Spalte mit Knoepfen waere sinnlos; eine Spalte, die
+        // STILLSCHWEIGEND keinen Filter bekommt, waere dagegen ein Versehen.
+        // Deshalb steht die Ausnahme im Register und nicht im Code der Sicht.
+        const erlaubtOhne = e.ohneFilter || [];
         const ohne = cols
           .filter((c) => c.field && !c.headerFilter)
           .map((c) => c.field);
-        expect(ohne, e.name + ": Spalten ohne Filter").toEqual([]);
+        expect(
+          ohne.filter((f) => erlaubtOhne.indexOf(f) === -1),
+          e.name + ": Spalten ohne Filter"
+        ).toEqual([]);
+
+        // Und die Ausnahmeliste ist nicht veraltet: jede genannte Spalte gibt
+        // es auch. Sonst bliebe eine Ausnahme stehen, deren Spalte laengst
+        // umbenannt wurde — und die naechste Luecke faellt durch.
+        const felder = cols.map((c) => c.field);
+        erlaubtOhne.forEach((f) => {
+          expect(felder.indexOf(f) >= 0, e.name + ": '" + f
+            + "' steht in ohneFilter, existiert aber nicht").toBe(true);
+        });
       });
 
       // UX05 -----------------------------------------------------------------

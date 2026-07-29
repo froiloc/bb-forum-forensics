@@ -29,7 +29,26 @@
 //   fassen NIE das DOM an -> vitest; opts.doc injizierbar (JSDOM).
 // SICHERHEIT (XSS): alle variablen Texte via textContent.
 //
-// Version: v0.8.471 · Build: 471 · 2026-07-20
+// BUILD 555 — TABULATOR + GEMEINSAMES TABELLEN-WERKZEUG:
+//   Der Katalog war eine handgebaute <table> ohne Sortierung und ohne Filter.
+//   Er ist jetzt eine Tabulator-Tabelle mit Kopffiltern, Trefferzaehler,
+//   'Filter zuruecksetzen' und gesicherter Sortierung — dieselbe Bedienung wie
+//   in allen uebrigen Listensichten.
+//
+//   DIE KONFIDENZSPALTE HAT EINEN EIGENEN SORTIERER, und das ist kein Detail:
+//   die Werte heissen 'Verdacht', 'wahrscheinlich' und 'gesichert';
+//   ALPHABETISCH stuende 'gesichert' vor 'Verdacht' vor 'wahrscheinlich'. Eine
+//   Spalte, die nach Beweisstaerke aussieht und alphabetisch sortiert, waere
+//   in einem Beweismittelwerkzeug irrefuehrend. Sortiert wird ueber den Rang
+//   (10/20/30, deckungsgleich mit der Ordinalkarte des Repos und dem
+//   DDL-CHECK aus M018).
+//
+//   DIE REIHENFOLGE DES SERVERS BLEIBT: er liefert die staerkste Konfidenz
+//   zuerst, und das ist eine Aussage. Die Tabelle bekommt deshalb bewusst
+//   KEIN 'initialSort'.
+//
+// Version: v0.8.555 · Build: 555 · 2026-07-26 (Tabulator + tablekit)
+//   Build 471: Erstfassung (handgebaute Tabelle).
 // =============================================================================
 
 (function () {
@@ -58,8 +77,45 @@
         gesichert: 'gesichert'
     };
 
+    var SICHT = 'crossref';   // Praefix der Hilfe-Anker + Zustandsschluessel
+
+    //: Beweisstaerke als Zahl. Sie steuert die SORTIERUNG der Konfidenzspalte.
+    //  Die Reihenfolge deckt sich mit der Ordinalkarte des Repos (10/20/30)
+    //  und dem DDL-CHECK aus M018.
+    var CONFIDENCE_RANG = { verdacht: 10, wahrscheinlich: 20, gesichert: 30 };
+
     // ------------------------------------------------------------------ Helfer
     // (rein — kein DOM, damit unter vitest direkt pruefbar)
+
+    // _tk / _mitHilfe (Build 555): gemeinsames Tabellen-Werkzeug + Hilfe-Anker
+    // der Spaltenkoepfe. LAZY, damit die Ladereihenfolge diese Sicht nicht
+    // lautlos brechen kann.
+    function _tk() {
+        return (typeof window !== 'undefined' && window.AIWTableKit)
+            ? window.AIWTableKit : null;
+    }
+    function _mitHilfe(cols, sicht, doc) {
+        var TK = _tk();
+        if (!TK || !doc || !TK.titelMitHilfe) { return cols; }
+        return cols.map(function (c) {
+            var neu = {};
+            Object.keys(c).forEach(function (k) { neu[k] = c[k]; });
+            if (c.field && !c.titleFormatter) {
+                neu.titleFormatter = TK.titelMitHilfe(
+                    doc, c.title || c.field,
+                    sicht + '.spalte.' + String(c.field).toLowerCase());
+            }
+            return neu;
+        });
+    }
+
+    // confidenceRang: Beweisstaerke als Zahl (unbekannt -> 0, also ganz unten).
+    // Ein unbekannter Code verschwindet damit NICHT, er sortiert nur zuletzt
+    // (Grundregel 1).
+    function confidenceRang(code) {
+        return Object.prototype.hasOwnProperty.call(CONFIDENCE_RANG, code)
+            ? CONFIDENCE_RANG[code] : 0;
+    }
 
     // confidenceLabel: Anzeigetext einer Stufe (unbekannt -> Rohwert).
     function confidenceLabel(code) {
@@ -89,6 +145,41 @@
         } catch (e) {
             return String(epoch);
         }
+    }
+
+    // toRows: Katalogeintraege -> Tabellenzeilen. REIN (kein DOM).
+    //
+    // Hier entstehen die abgeleiteten Felder, nach denen gefiltert und sortiert
+    // wird:
+    //   * 'konfidenz' traegt das LABEL ('Verdacht'/'wahrscheinlich'/
+    //     'gesichert') — drei Werte, also eine Auswahlliste. Der Code bleibt
+    //     als 'confidence_code' erhalten (Badge-Farbe), der RANG als
+    //     'konfidenz_rang' (Sortierung, s. spalten()).
+    //   * 'geaendert' ist der bereits formatierte Zeitpunkt; der Rohwert
+    //     'updated_at' bleibt daneben stehen, weil danach sortiert wird —
+    //     eine Textsortierung ueber '26.07.2026' waere keine Zeitsortierung.
+    //   * Leere Freitexte werden zu '—'. Das ist NICHT Kosmetik: eine leere
+    //     Zelle sieht aus wie ein Anzeigefehler, ein Gedankenstrich sagt
+    //     'nichts hinterlegt'.
+    //
+    // DIE REIHENFOLGE DER EINGABE BLEIBT ERHALTEN. Der Server liefert die
+    // staerkste Konfidenz zuerst (management_app._crossref); diese Funktion
+    // sortiert NICHT um, und die Tabelle bekommt bewusst kein 'initialSort'.
+    function toRows(data) {
+        return entries(data).map(function (e) {
+            return {
+                subject_id: e.subject_id,
+                real_identity: e.real_identity || EM_DASH,
+                konfidenz: confidenceLabel(e.confidence_code),
+                konfidenz_rang: confidenceRang(e.confidence_code),
+                confidence_code: e.confidence_code,
+                basis: e.basis || EM_DASH,
+                note: e.note || '',
+                geaendert: fmtTs(e.updated_at),
+                updated_at: e.updated_at,
+                _eintrag: e
+            };
+        });
     }
 
     // buildPayload: Formularfelder -> POST-Body. REIN. subject_id als Zahl;
@@ -156,39 +247,127 @@
         }
         mainEl.appendChild(result);
 
-        // --- Katalog-Tabelle -------------------------------------------------
-        var rows = entries(data);
-        if (rows.length === 0) {
-            var empty = doc.createElement('p');
-            empty.className = 'aiw-placeholder';
-            empty.textContent = 'Noch keine Zuordnung im Katalog.';
-            mainEl.appendChild(empty);
-            log('renderCrossref: leerer Katalog, canEdit', canEdit);
-            return { setResult: setResult };
+        // --- Katalog-Tabelle (Build 555: Tabulator + gemeinsames Werkzeug) ---
+        //
+        // DER LEERE KATALOG BEKOMMT KEINE SONDERBEHANDLUNG MEHR. Frueher gab
+        // es hier einen fruehen Ausstieg mit einem Absatz statt einer Tabelle;
+        // damit fehlten bei leerem Katalog auch Werkzeugleiste und
+        // Trefferzahl, und die Sicht sah anders aus als alle anderen. Jetzt
+        // steht die Tabelle immer, und der Leerzustand ist Tabulators
+        // 'placeholder' — derselbe Weg wie in Lektorat und Chef-Freigabe.
+        var TK = _tk();
+        var rows = toRows(data);
+        var Ctor = opts.Tabulator
+            || (typeof window !== 'undefined' ? window.Tabulator : undefined);
+
+        if (!TK) {
+            // Kein stiller Ausfall: die Zahl steht da (Grundregel 1).
+            var note = doc.createElement('p');
+            note.className = 'aiw-placeholder';
+            note.textContent = 'Gemeinsames Tabellen-Werkzeug nicht geladen — '
+                + 'es liegen ' + rows.length + ' Zuordnungen vor.';
+            mainEl.appendChild(note);
+            log('renderCrossref: kein TableKit');
+            return { setResult: setResult, table: null };
         }
 
-        var table = doc.createElement('table');
-        table.className = 'aiw-xref-table';
-        var thead = doc.createElement('thead');
-        var htr = doc.createElement('tr');
-        ['subject_id', 'reale Person', 'Konfidenz', 'Basis', 'geaendert', '']
-            .forEach(function (label) {
-                var th = doc.createElement('th');
-                th.textContent = label;
-                htr.appendChild(th);
-            });
-        thead.appendChild(htr);
-        table.appendChild(thead);
-
-        var tbody = doc.createElement('tbody');
-        rows.forEach(function (e) {
-            tbody.appendChild(_rowEl(doc, e, canEdit));
+        var auf = TK.tabelleAufbauen(doc, mainEl, {
+            sicht: SICHT,
+            rows: rows,
+            columns: _mitHilfe(spalten(doc, canEdit), SICHT, doc),
+            Ctor: Ctor,
+            einheit: 'Zuordnungen',
+            tabulator: {
+                index: 'subject_id',
+                height: '420px',
+                placeholder: 'Noch keine Zuordnung im Katalog.'
+                // BEWUSST KEIN 'initialSort': der Server liefert die
+                // staerkste Konfidenz zuerst (management_app._crossref), und
+                // diese Reihenfolge ist eine Aussage. Eine Voreinstellung
+                // wuerde sie ueberschreiben.
+            }
         });
-        table.appendChild(tbody);
-        mainEl.appendChild(table);
 
         log('renderCrossref:', rows.length, 'Eintraege, canEdit', canEdit);
-        return { setResult: setResult };
+        return { setResult: setResult, table: auf.table };
+    }
+
+    // spalten: die Spaltendefinition der Katalogtabelle (Build 555).
+    // Braucht 'doc' (Formatter bauen DOM) und 'canEdit' (Aktionsspalte).
+    function spalten(doc, canEdit) {
+        return [
+            { title: 'subject_id', field: 'subject_id', width: 120,
+              hozAlign: 'right' },
+            { title: 'reale Person', field: 'real_identity', widthGrow: 2 },
+            {
+                title: 'Konfidenz', field: 'konfidenz', width: 150,
+                // EIGENER SORTIERER — und das ist keine Feinheit.
+                //
+                // Die Werte heissen 'Verdacht', 'wahrscheinlich' und
+                // 'gesichert'. Alphabetisch sortiert stuende 'gesichert' vor
+                // 'Verdacht' vor 'wahrscheinlich'. Eine Spalte, die nach
+                // BEWEISSTAERKE aussieht und alphabetisch sortiert, waere in
+                // einem Beweismittelwerkzeug irrefuehrend. Sortiert wird
+                // deshalb ueber den Rang (10/20/30), der sich mit der
+                // Ordinalkarte des Repos und dem DDL-CHECK aus M018 deckt.
+                sorter: function (a, b, aRow, bRow) {
+                    return aRow.getData().konfidenz_rang
+                        - bRow.getData().konfidenz_rang;
+                },
+                formatter: function (cell) {
+                    var d = cell.getData();
+                    var badge = doc.createElement('span');
+                    badge.className = 'aiw-badge aiw-conf-badge '
+                        + confidenceClass(d.confidence_code);
+                    badge.textContent = d.konfidenz;
+                    return badge;
+                }
+            },
+            { title: 'Basis', field: 'basis', widthGrow: 2 },
+            {
+                title: 'geändert', field: 'geaendert', width: 170,
+                // Sortiert wird ueber den ROHWERT. Eine Textsortierung ueber
+                // '26.07.2026' waere keine Zeitsortierung.
+                sorter: function (a, b, aRow, bRow) {
+                    return (aRow.getData().updated_at || 0)
+                        - (bRow.getData().updated_at || 0);
+                }
+            },
+            {
+                title: '', field: 'aktion', width: 130, headerSort: false,
+                hozAlign: 'center',
+                kein_filter: true,   // ein Filter auf Knoepfen waere sinnlos
+                formatter: function (cell) {
+                    var d = cell.getData();
+                    if (!canEdit) {
+                        var dash = doc.createElement('span');
+                        dash.textContent = EM_DASH;
+                        dash.title = 'Zum Pflegen fehlt das Recht '
+                            + '„crossref.edit“.';
+                        return dash;
+                    }
+                    var b = doc.createElement('button');
+                    b.type = 'button';
+                    b.className = 'aiw-btn aiw-xref-btn aiw-xref-revise';
+                    b.setAttribute('data-subject', String(d.subject_id));
+                    b.textContent = 'Revidieren';
+                    b.setAttribute('aria-label',
+                        'Zuordnung für subject_id ' + d.subject_id
+                        + ' revidieren');
+                    var TK = _tk();
+                    if (TK && TK.hilfeAnker) {
+                        TK.hilfeAnker(b, SICHT + '.bedienung.revidieren');
+                    }
+                    b.addEventListener('click', function (ev) {
+                        if (ev && typeof ev.stopPropagation === 'function') {
+                            ev.stopPropagation();
+                        }
+                        _fillForm(doc, d._eintrag);
+                    });
+                    return b;
+                }
+            }
+        ];
     }
 
     // _form: Anlage/Revision. Ein Formular fuer beides — je subject_id genau ein
@@ -272,55 +451,6 @@
         return inp;
     }
 
-    // _rowEl: eine Katalogzeile. Bei canEdit ein „Revidieren“-Knopf, der die
-    // Formularfelder mit den Werten der Zeile vorbefuellt (Konfidenz reift).
-    function _rowEl(doc, e, canEdit) {
-        var tr = doc.createElement('tr');
-        tr.setAttribute('data-subject', String(e.subject_id));
-
-        var tdSid = doc.createElement('td');
-        tdSid.textContent = String(e.subject_id);
-        tr.appendChild(tdSid);
-
-        var tdReal = doc.createElement('td');
-        tdReal.textContent = e.real_identity || EM_DASH;
-        tr.appendChild(tdReal);
-
-        var tdConf = doc.createElement('td');
-        var badge = doc.createElement('span');
-        badge.className = 'aiw-badge aiw-conf-badge ' + confidenceClass(
-            e.confidence_code);
-        badge.textContent = confidenceLabel(e.confidence_code);
-        tdConf.appendChild(badge);
-        tr.appendChild(tdConf);
-
-        var tdBasis = doc.createElement('td');
-        tdBasis.textContent = e.basis || EM_DASH;
-        tr.appendChild(tdBasis);
-
-        var tdTs = doc.createElement('td');
-        tdTs.textContent = fmtTs(e.updated_at);
-        tr.appendChild(tdTs);
-
-        var tdAct = doc.createElement('td');
-        tdAct.className = 'aiw-xref-actions';
-        if (canEdit) {
-            var b = doc.createElement('button');
-            b.type = 'button';
-            b.className = 'aiw-btn aiw-xref-btn aiw-xref-revise';
-            b.setAttribute('data-subject', String(e.subject_id));
-            b.textContent = 'Revidieren';
-            b.addEventListener('click', function () {
-                _fillForm(doc, e);
-            });
-            tdAct.appendChild(b);
-        } else {
-            tdAct.textContent = EM_DASH;
-        }
-        tr.appendChild(tdAct);
-        return tr;
-    }
-
     // _fillForm: uebertraegt eine Zeile ins Formular (Revision vorbereiten).
     // Greift auf die per id adressierbaren Felder zu; tut nichts, wenn das
     // Formular fehlt (nur-lesend).
@@ -355,7 +485,11 @@
         fmtTs: fmtTs,
         buildPayload: buildPayload,
         renderCrossref: renderCrossref,
-        CONFIDENCE: CONFIDENCE
+        CONFIDENCE: CONFIDENCE,
+        // Build 555: reine Abbildung + Spaltendefinition (vitest).
+        confidenceRang: confidenceRang,
+        toRows: toRows,
+        spalten: spalten
     };
     if (typeof module !== 'undefined' && module.exports) { module.exports = API; }
     if (typeof window !== 'undefined') { window.AIWCockpitCrossref = API; }
