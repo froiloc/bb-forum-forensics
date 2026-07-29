@@ -1,0 +1,188 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Software Issue Tracker",
+  "type": "object",
+  "properties": {
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "title",
+          "affected_version",
+          "reporter",
+          "reported_at",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Eindeutige Fehler-ID"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["bug", "feature_request", "improvement", "documentation", "refactoring"],
+            "description": "Art des Eintrags"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 80,
+            "description": "Kurzbeschreibung"
+          },
+          "affected_version": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d+\\.\\d+$",
+            "description": "Betroffene Version (SemVer)"
+          },
+          "reporter": {
+            "type": "string",
+            "description": "Name des Melders"
+          },
+          "reported_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Zeitpunkt der Meldung"
+          },
+          "prerequisites": {
+            "type": "string",
+            "description": "Voraussetzungen für Reproduktion"
+          },
+          "description": {
+            "type": "string",
+            "description": "Detaillierte Beschreibung"
+          },
+          "expected_behavior": {
+            "type": "string",
+            "description": "Erwartetes Verhalten"
+          },
+          "actual_behavior": {
+            "type": "string",
+            "description": "Tatsächliches Verhalten"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "in_progress",
+              "review",
+              "testing",
+              "resolved",
+              "closed",
+              "wont_fix",
+              "duplicate",
+              "cannot_reproduce"
+            ],
+            "description": "Aktueller Status"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["critical", "high", "medium", "low", "wishlist"],
+            "description": "Priorität"
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["blocker", "critical", "major", "minor", "trivial", "enhancement"],
+            "description": "Schweregrad (nur bei Bugs relevant)"
+          },
+          "assigned_to": {
+            "type": "string",
+            "description": "Zuständiger Entwickler"
+          },
+          "related_to": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Verwandte Issue-IDs"
+          },
+          "resolved_in_version": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d+\\.\\d+$",
+            "description": "Umsetzung in Version"
+          },
+          "target_version": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d+\\.\\d+$",
+            "description": "Geplante Version für Fix/Feature"
+          },
+          "environment": {
+            "type": "object",
+            "properties": {
+              "os": {"type": "string"},
+              "browser": {"type": "string"},
+              "python_version": {"type": "string"},
+              "database": {"type": "string"}
+            },
+            "description": "Umgebungsinformationen"
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "filename": {"type": "string"},
+                "path": {"type": "string"},
+                "description": {"type": "string"}
+              }
+            },
+            "description": "Anhänge (Screenshots, Logs)"
+          },
+          "updates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["timestamp", "author", "action"],
+              "properties": {
+                "timestamp": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "author": {"type": "string"},
+                "action": {
+                  "type": "string",
+                  "enum": [
+                    "comment",
+                    "status_change",
+                    "assignment",
+                    "priority_change",
+                    "version_update",
+                    "attachment_added",
+                    "relation_added"
+                  ]
+                },
+                "old_value": {"type": "string"},
+                "new_value": {"type": "string"},
+                "comment": {"type": "string"}
+              }
+            },
+            "description": "Zeitstempelverkettete Updates"
+          },
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Tags für Filterung"
+          },
+          "estimated_hours": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Geschätzter Aufwand in Stunden"
+          },
+          "actual_hours": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Tatsächlicher Aufwand in Stunden"
+          },
+          "due_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Fälligkeitsdatum"
+          }
+        }
+      }
+    }
+  }
+}

@@ -80,6 +80,7 @@ class EventType:
     #   erhaelt einen eigenen '_REMOVED'-Beleg (append-only; kein hartes DELETE).
     #   mc 2026-07-10.
     WORKTIME_SET: str = "worktime_set"
+    WORKTIME_REMOVED: str = "worktime_removed"
     HOLIDAY_ADDED: str = "holiday_added"
     HOLIDAY_REMOVED: str = "holiday_removed"
     AVAILABILITY_REASON_ADDED: str = "availability_reason_added"
@@ -411,6 +412,7 @@ class EventType:
             ROLE_REVOKED,
             BACKUP_CREATED,
             WORKTIME_SET,
+            WORKTIME_REMOVED,
             HOLIDAY_ADDED,
             HOLIDAY_REMOVED,
             AVAILABILITY_REASON_ADDED,

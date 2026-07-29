@@ -35,8 +35,21 @@
 #        Person verkuerzt, fremde person_id -> 403.
 # KP14 - Zeile ohne zugehoerige Person wird als 'unbekannt (#id)'
 #        AUSGEWIESEN, nicht weggelassen (Grundregel 1).
+# KP15 - DUBLETTENSPERRE: eine zweite AKTIVE Regel zum selben Stichtag
+#        wird zurueckgewiesen - mit Feldangabe 'effective_from'.
+# KP16 - Entfernen ist SOFT-DELETE: Zeile bleibt, deleted_at gesetzt,
+#        Beleg WORKTIME_REMOVED TRAEGT DIE ENTFERNTEN WERTE.
+# KP17 - nach dem Entfernen ist der Stichtag wieder frei.
+# KP18 - Ersetzen: EINE Transaktion, ZWEI Belege, am Ende genau EINE
+#        aktive Zeile mit dem neuen Wert.
+# KP19 - Ersetzen schlaegt fehl -> NICHTS bleibt zurueck (weder die
+#        entfernte Zeile noch ein Beleg): Rollback der ganzen Einheit.
+# KP20 - Feldangabe im Fehler: ungueltige Minutenzahl nennt das Feld.
+# KP21 - scope 'eigene' kann fremde Zeilen weder entfernen noch
+#        ersetzen - auch nicht, indem als Zielperson man selbst
+#        angegeben wird.
 #
-# Version: v0.8.559 . Build: 559 . 2026-07-29
+# Version: v0.8.560 . Build: 560 . 2026-07-29
 # =============================================================================
 
 import json
@@ -423,6 +436,168 @@ class CapacityApiTests(unittest.TestCase):
         # Und der Rechner nimmt fuer Mo-Fr 06.-10.07. die juengere ab dem 09.
         r = CapacityCalculator(self.con).compute(2, "2026-07-06", "2026-07-10")
         self.assertEqual(r.basis, 3 * 480 + 2 * 300)
+
+    # KP15 ---------------------------------------------------------------
+    def test_kp15_dublettensperre(self):
+        self._grant("supervisor", "alle", 1)
+        self.assertEqual(self._standardzeit().status, 200)
+        r = self._app().dispatch_write(1, "/api/capacity/worktime", {
+            "person_id": 2, "effective_from": "2026-01-01", "mon_min": 478})
+        self.assertEqual(r.status, 400, r.body)
+        b = self._body(r)
+        self.assertEqual(b["feld"], "effective_from")
+        self.assertIn("bereits eine", b["detail"])
+
+        self._reload()
+        # UND ES IST NICHTS ENTSTANDEN - kein halber Schreibvorgang.
+        self.assertEqual(self.con.execute(
+            "SELECT COUNT(*) FROM person_worktime WHERE person_id=2"
+        ).fetchone()[0], 1)
+
+    # KP16 ---------------------------------------------------------------
+    def test_kp16_entfernen_ist_soft_delete_mit_werten_im_beleg(self):
+        self._grant("supervisor", "alle", 1)
+        self._standardzeit()
+        self._reload()
+        wid = self.con.execute(
+            "SELECT id FROM person_worktime WHERE person_id=2").fetchone()["id"]
+
+        r = self._app().dispatch_write(1, "/api/capacity/worktime/remove",
+                                       {"worktime_id": wid})
+        self.assertEqual(r.status, 200, r.body)
+        seq = self._body(r)["audit_seq"]
+        self.assertEqual(self._event(seq), EventType.WORKTIME_REMOVED)
+
+        self._reload()
+        row = self.con.execute(
+            "SELECT deleted_at FROM person_worktime WHERE id=?",
+            (wid,)).fetchone()
+        self.assertIsNotNone(row, "Zeile wurde hart geloescht.")
+        self.assertIsNotNone(row["deleted_at"])
+
+        # Der Beleg traegt die entfernten Werte - sonst stuende in der Akte
+        # nur "Zeile entfernt".
+        # Die Nutzlast des Belegs steht in der Spalte 'content'
+        # (audit_log.py:220), nicht in 'payload'.
+        inhalt = json.loads(self.con.execute(
+            "SELECT content FROM audit_log WHERE seq=?", (seq,)).fetchone()[0])
+        self.assertEqual(inhalt["minutes"]["mon_min"], 480)
+        self.assertEqual(inhalt["effective_from"], "2026-01-01")
+
+        # Zweites Entfernen erzeugt KEINEN Beleg ohne Wirkung.
+        r2 = self._app().dispatch_write(1, "/api/capacity/worktime/remove",
+                                        {"worktime_id": wid})
+        self.assertEqual(r2.status, 400, r2.body)
+
+    # KP17 ---------------------------------------------------------------
+    def test_kp17_nach_entfernen_ist_der_stichtag_wieder_frei(self):
+        self._grant("supervisor", "alle", 1)
+        self._standardzeit()
+        self._reload()
+        wid = self.con.execute(
+            "SELECT id FROM person_worktime WHERE person_id=2").fetchone()["id"]
+        self._app().dispatch_write(1, "/api/capacity/worktime/remove",
+                                   {"worktime_id": wid})
+        r = self._app().dispatch_write(1, "/api/capacity/worktime", {
+            "person_id": 2, "effective_from": "2026-01-01", "mon_min": 478})
+        self.assertEqual(r.status, 200, r.body)
+
+    # KP18 ---------------------------------------------------------------
+    def test_kp18_ersetzen_zwei_belege_eine_aktive_zeile(self):
+        self._grant("supervisor", "alle", 1)
+        self._standardzeit()
+        self._reload()
+        wid = self.con.execute(
+            "SELECT id FROM person_worktime WHERE person_id=2").fetchone()["id"]
+
+        r = self._app().dispatch_write(1, "/api/capacity/worktime/replace", {
+            "worktime_id": wid, "person_id": 2,
+            "effective_from": "2026-01-01",
+            "mon_min": 478, "tue_min": 478, "wed_min": 478, "thu_min": 478,
+            "fri_min": 478})
+        self.assertEqual(r.status, 200, r.body)
+        b = self._body(r)
+        self.assertEqual(self._event(b["entfernt_seq"]),
+                         EventType.WORKTIME_REMOVED)
+        self.assertEqual(self._event(b["gesetzt_seq"]), EventType.WORKTIME_SET)
+        # Zwei EIGENE Belege, kein Sammelbeleg - und sie stehen unmittelbar
+        # hintereinander in der Kette (eine Transaktion).
+        self.assertEqual(b["gesetzt_seq"], b["entfernt_seq"] + 1)
+
+        self._reload()
+        aktiv = self.con.execute(
+            "SELECT mon_min FROM person_worktime "
+            "WHERE person_id=2 AND deleted_at IS NULL").fetchall()
+        self.assertEqual([z["mon_min"] for z in aktiv], [478])
+        # Die alte Zeile ist NICHT verschwunden, nur stillgelegt.
+        self.assertEqual(self.con.execute(
+            "SELECT COUNT(*) FROM person_worktime WHERE person_id=2"
+        ).fetchone()[0], 2)
+
+    # KP19 ---------------------------------------------------------------
+    def test_kp19_ersetzen_rollt_bei_fehler_vollstaendig_zurueck(self):
+        """Der gefaehrlichste Fall: das Entfernen gelingt, das Setzen bricht
+        ab. Bliebe der erste Schritt stehen, haette die Person zum Stichtag
+        GAR KEINE Regel mehr - stiller Datenverlust durch eine Korrektur."""
+        self._grant("supervisor", "alle", 1)
+        self._standardzeit()
+        self._reload()
+        wid = self.con.execute(
+            "SELECT id FROM person_worktime WHERE person_id=2").fetchone()["id"]
+        vorher = self.con.execute(
+            "SELECT MAX(seq) FROM audit_log").fetchone()[0]
+
+        r = self._app().dispatch_write(1, "/api/capacity/worktime/replace", {
+            "worktime_id": wid, "person_id": 2,
+            "effective_from": "2026-01-01", "mon_min": 99999})
+        self.assertEqual(r.status, 400, r.body)
+        self.assertEqual(self._body(r)["feld"], "mon_min")
+
+        self._reload()
+        row = self.con.execute(
+            "SELECT mon_min, deleted_at FROM person_worktime WHERE id=?",
+            (wid,)).fetchone()
+        self.assertIsNone(row["deleted_at"], "Zeile blieb entfernt zurueck.")
+        self.assertEqual(row["mon_min"], 480)
+        self.assertEqual(self.con.execute(
+            "SELECT MAX(seq) FROM audit_log").fetchone()[0], vorher,
+            "Es ist ein Beleg ohne Wirkung zurueckgeblieben.")
+
+    # KP20 ---------------------------------------------------------------
+    def test_kp20_feldangabe_im_fehler(self):
+        self._grant("supervisor", "alle", 1)
+        r = self._app().dispatch_write(1, "/api/capacity/worktime", {
+            "person_id": 2, "effective_from": "2026-01-01",
+            "mon_min": 99999})
+        self.assertEqual(r.status, 400, r.body)
+        self.assertEqual(self._body(r)["feld"], "mon_min")
+
+    # KP21 ---------------------------------------------------------------
+    def test_kp21_scope_eigene_greift_bei_entfernen_und_ersetzen(self):
+        self._grant("supervisor", "alle", 1)
+        self._app().dispatch_write(1, "/api/capacity/worktime", {
+            "person_id": 3, "effective_from": "2026-01-01", "mon_min": 480})
+        self._reload()
+        wid = self.con.execute(
+            "SELECT id FROM person_worktime WHERE person_id=3").fetchone()["id"]
+
+        self._grant("investigator", "eigene", 2)
+        app = self._app()
+        r = app.dispatch_write(2, "/api/capacity/worktime/remove",
+                               {"worktime_id": wid})
+        self.assertEqual(r.status, 403, r.body)
+
+        # Und auch nicht ueber den Umweg "Zielperson bin ich selbst": die
+        # Pruefung laeuft gegen BEIDE Personen.
+        r2 = app.dispatch_write(2, "/api/capacity/worktime/replace", {
+            "worktime_id": wid, "person_id": 2,
+            "effective_from": "2026-01-01", "mon_min": 478})
+        self.assertEqual(r2.status, 403, r2.body)
+
+        self._reload()
+        self.assertIsNone(self.con.execute(
+            "SELECT deleted_at FROM person_worktime WHERE id=?",
+            (wid,)).fetchone()["deleted_at"])
 
 
 if __name__ == "__main__":

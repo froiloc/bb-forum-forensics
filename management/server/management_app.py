@@ -2164,6 +2164,21 @@ class ManagementApp:
                 "error": "bad_request",
                 "detail": "%s ist keine Ganzzahl (%r)." % (key, raw)})
 
+    @staticmethod
+    def _capacity_fehler(exc: CapacityError) -> Response:
+        """
+        CapacityError -> 400. Build 560: die Antwort nennt das schuldige FELD,
+        wenn die Ausnahme es kennt, damit die Pflegemaske das Eingabefeld
+        markieren kann. Kennt sie es nicht, steht 'feld' NICHT in der Antwort -
+        die Oberflaeche zeigt dann die Meldung ohne Markierung, statt
+        irgendein Feld zu raten.
+        """
+        body = {"error": "capacity", "detail": str(exc)}
+        feld = getattr(exc, "feld", None)
+        if feld:
+            body["feld"] = feld
+        return Response.json(400, body)
+
     def _capacity_repos(self, con: sqlite3.Connection):
         """Die vier Repos an EINEM CoordinatorWriter (ein Beleg je Schreibung)."""
         writer = CoordinatorWriter(con, AuditLog(con))
@@ -2315,8 +2330,7 @@ class ManagementApp:
                                   actor_id=actor_person_id,
                                   meta={"quelle": "capacity_ui"}, **minuten)
         except CapacityError as exc:
-            return Response.json(400, {"error": "capacity",
-                                       "detail": str(exc)})
+            return self._capacity_fehler(exc)
         except Exception as exc:                       # noqa: BLE001
             logger.exception("Arbeitszeit setzen fehlgeschlagen")
             return Response.json(500, {"error": "capacity_worktime_failed",
@@ -2326,6 +2340,121 @@ class ManagementApp:
         return Response.json(200, {"ok": True, "person_id": target_id,
                                    "effective_from": effective_from,
                                    "audit_seq": seq})
+
+    def _capacity_worktime_remove(self, actor_person_id: int,
+                                 payload: Dict[str, Any]) -> Response:
+        """
+        POST /api/capacity/worktime/remove — {worktime_id}. SOFT-DELETE.
+
+        Wie beim Entfernen einer Abwesenheit steht die Zielperson NICHT in der
+        Nutzlast, sondern an der Zeile: die person_id wird deshalb VOR der
+        Scope-Pruefung gelesen.
+        """
+        worktime_id, err = self._capacity_int(payload, "worktime_id")
+        if err is not None:
+            return err
+
+        con = self._rw_con()
+        try:
+            row = con.execute(
+                "SELECT person_id FROM person_worktime WHERE id=?",
+                (worktime_id,)).fetchone()
+            if row is None:
+                return Response.json(400, {
+                    "error": "bad_request",
+                    "detail": "Unbekannte worktime_id=%s." % worktime_id,
+                    "feld": "worktime_id"})
+            denied = self._capacity_guard(actor_person_id,
+                                          target_person_id=int(row[0]))
+            if denied is not None:
+                return denied
+            wt, _, _, _ = self._capacity_repos(con)
+            seq = wt.remove_worktime(worktime_id, actor_id=actor_person_id,
+                                     meta={"quelle": "capacity_ui"})
+        except CapacityError as exc:
+            return self._capacity_fehler(exc)
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Arbeitszeit entfernen fehlgeschlagen")
+            return Response.json(500, {"error": "capacity_worktime_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, "worktime_id": worktime_id,
+                                   "audit_seq": seq})
+
+    def _capacity_worktime_replace(self, actor_person_id: int,
+                                   payload: Dict[str, Any]) -> Response:
+        """
+        POST /api/capacity/worktime/replace — {worktime_id, person_id,
+        effective_from, mon_min..sun_min, effective_to?}.
+
+        ERSETZEN IST EINE EIGENE HANDLUNG und nicht zwei Aufrufe hintereinander:
+        zwischen einem Entfernen und einem Setzen laege sonst ein Zustand, in
+        dem die Person zum Stichtag GAR KEINE Regel hat - und bricht der zweite
+        Aufruf ab, bleibt sie darin stehen. Das Repo fuehrt beides in EINER
+        Transaktion mit ZWEI Belegen aus (audited_write_many).
+
+        DIE SCOPE-PRUEFUNG LAEUFT ZWEIMAL: einmal gegen die Person der ALTEN
+        Zeile, einmal gegen die Zielperson der neuen. Sonst koennte eine
+        selbstpflegende Person eine fremde Zeile entfernen, indem sie als
+        Zielperson sich selbst angibt.
+        """
+        worktime_id, err = self._capacity_int(payload, "worktime_id")
+        if err is not None:
+            return err
+        target_id, err = self._capacity_int(payload, "person_id")
+        if err is not None:
+            return err
+
+        effective_from = str(payload.get("effective_from", "") or "").strip()
+        if not effective_from:
+            return Response.json(400, {
+                "error": "bad_request",
+                "detail": "effective_from fehlt (ISO-Datum).",
+                "feld": "effective_from"})
+        effective_to = payload.get("effective_to") or None
+
+        minuten: Dict[str, int] = {}
+        for tag in ("mon_min", "tue_min", "wed_min", "thu_min", "fri_min",
+                    "sat_min", "sun_min"):
+            wert, err = self._capacity_int(payload, tag, default=0)
+            if err is not None:
+                return err
+            minuten[tag] = wert
+
+        con = self._rw_con()
+        try:
+            row = con.execute(
+                "SELECT person_id FROM person_worktime WHERE id=?",
+                (worktime_id,)).fetchone()
+            if row is None:
+                return Response.json(400, {
+                    "error": "bad_request",
+                    "detail": "Unbekannte worktime_id=%s." % worktime_id,
+                    "feld": "worktime_id"})
+            for pid in (int(row[0]), target_id):
+                denied = self._capacity_guard(actor_person_id,
+                                              target_person_id=pid)
+                if denied is not None:
+                    return denied
+            wt, _, _, _ = self._capacity_repos(con)
+            seqs = wt.replace_worktime(
+                worktime_id, target_id, effective_from=effective_from,
+                effective_to=effective_to, actor_id=actor_person_id,
+                meta={"quelle": "capacity_ui"}, **minuten)
+        except CapacityError as exc:
+            return self._capacity_fehler(exc)
+        except Exception as exc:                       # noqa: BLE001
+            logger.exception("Arbeitszeit ersetzen fehlgeschlagen")
+            return Response.json(500, {"error": "capacity_worktime_failed",
+                                       "detail": str(exc)})
+        finally:
+            con.close()
+        return Response.json(200, {"ok": True, "worktime_id": worktime_id,
+                                   "person_id": target_id,
+                                   "effective_from": effective_from,
+                                   "audit_seq": seqs["gesetzt_seq"],
+                                   **seqs})
 
     def _capacity_availability_set(self, actor_person_id: int,
                                    payload: Dict[str, Any]) -> Response:
@@ -2378,8 +2507,7 @@ class ManagementApp:
                 reason_code=reason_code, note=note,
                 actor_id=actor_person_id, meta={"quelle": "capacity_ui"})
         except CapacityError as exc:
-            return Response.json(400, {"error": "capacity",
-                                       "detail": str(exc)})
+            return self._capacity_fehler(exc)
         except Exception as exc:                       # noqa: BLE001
             logger.exception("Abwesenheit setzen fehlgeschlagen")
             return Response.json(500, {"error": "capacity_availability_failed",
@@ -2420,8 +2548,7 @@ class ManagementApp:
             seq = av.remove_availability(entry_id, actor_id=actor_person_id,
                                          meta={"quelle": "capacity_ui"})
         except CapacityError as exc:
-            return Response.json(400, {"error": "capacity",
-                                       "detail": str(exc)})
+            return self._capacity_fehler(exc)
         except Exception as exc:                       # noqa: BLE001
             logger.exception("Abwesenheit entfernen fehlgeschlagen")
             return Response.json(500, {"error": "capacity_availability_failed",
@@ -2452,8 +2579,7 @@ class ManagementApp:
                                  actor_id=actor_person_id,
                                  meta={"quelle": "capacity_ui"})
         except CapacityError as exc:
-            return Response.json(400, {"error": "capacity",
-                                       "detail": str(exc)})
+            return self._capacity_fehler(exc)
         except Exception as exc:                       # noqa: BLE001
             logger.exception("Feiertag anlegen fehlgeschlagen")
             return Response.json(500, {"error": "capacity_holiday_failed",
@@ -2485,8 +2611,7 @@ class ManagementApp:
             seq = ho.remove_holiday(holiday_id, actor_id=actor_person_id,
                                     meta={"quelle": "capacity_ui"})
         except CapacityError as exc:
-            return Response.json(400, {"error": "capacity",
-                                       "detail": str(exc)})
+            return self._capacity_fehler(exc)
         except Exception as exc:                       # noqa: BLE001
             logger.exception("Feiertag entfernen fehlgeschlagen")
             return Response.json(500, {"error": "capacity_holiday_failed",
@@ -2526,8 +2651,7 @@ class ManagementApp:
                                  actor_id=actor_person_id,
                                  meta={"quelle": "capacity_ui"})
         except CapacityError as exc:
-            return Response.json(400, {"error": "capacity",
-                                       "detail": str(exc)})
+            return self._capacity_fehler(exc)
         except Exception as exc:                       # noqa: BLE001
             logger.exception("Abwesenheitsgrund anlegen fehlgeschlagen")
             return Response.json(500, {"error": "capacity_reason_failed",
@@ -6746,6 +6870,10 @@ class ManagementApp:
         # Alias-Routen (Build 504) und /api/qs/draw|review (Build 541).
         if path == "/api/capacity/worktime":
             return self._capacity_worktime_set(person_id, payload)
+        if path == "/api/capacity/worktime/remove":
+            return self._capacity_worktime_remove(person_id, payload)
+        if path == "/api/capacity/worktime/replace":
+            return self._capacity_worktime_replace(person_id, payload)
         if path == "/api/capacity/availability":
             return self._capacity_availability_set(person_id, payload)
         if path == "/api/capacity/availability/remove":

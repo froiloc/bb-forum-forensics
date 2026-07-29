@@ -1,0 +1,77 @@
+{
+  "issues": [
+    {
+      "id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+      "type": "bug",
+      "title": "Login schlägt fehl bei Sonderzeichen im Passwort",
+      "affected_version": "1.2.0",
+      "reporter": "max.mustermann",
+      "reported_at": "2026-07-29T10:30:00Z",
+      "prerequisites": "Benutzerkonto mit Passwort das & oder % enthält",
+      "description": "Wenn ein Benutzer versucht sich mit einem Passwort anzumelden, das Sonderzeichen wie & oder % enthält, schlägt die Anmeldung mit einem 500er Fehler fehl.",
+      "expected_behavior": "Login sollte mit allen gültigen Sonderzeichen funktionieren",
+      "actual_behavior": "HTTP 500 Internal Server Error bei speziellen Sonderzeichen",
+      "status": "in_progress",
+      "priority": "high",
+      "severity": "major",
+      "assigned_to": "anna.schmidt",
+      "related_to": ["b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e"],
+      "resolved_in_version": null,
+      "target_version": "1.2.1",
+      "environment": {
+        "os": "Ubuntu 22.04",
+        "browser": "Chrome 126",
+        "python_version": "3.11",
+        "database": "PostgreSQL 15"
+      },
+      "tags": ["authentication", "security", "backend"],
+      "updates": [
+        {
+          "timestamp": "2026-07-29T10:30:00Z",
+          "author": "max.mustermann",
+          "action": "comment",
+          "comment": "Fehler tritt reproduzierbar auf"
+        },
+        {
+          "timestamp": "2026-07-29T11:00:00Z",
+          "author": "anna.schmidt",
+          "action": "status_change",
+          "old_value": "open",
+          "new_value": "in_progress",
+          "comment": "Übernehme den Bug, vermute URL-Encoding Problem"
+        }
+      ]
+    },
+    {
+      "id": "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
+      "type": "feature_request",
+      "title": "Dark Mode für Dashboard implementieren",
+      "affected_version": "1.2.0",
+      "reporter": "lisa.meyer",
+      "reported_at": "2026-07-28T14:00:00Z",
+      "description": "Viele Benutzer wünschen sich einen Dark Mode für bessere Lesbarkeit bei Nacht",
+      "expected_behavior": "Umschaltbarer Dark Mode mit angepassten Farben",
+      "status": "open",
+      "priority": "medium",
+      "severity": "enhancement",
+      "target_version": "1.3.0",
+      "tags": ["ui", "ux", "accessibility"],
+      "updates": [
+        {
+          "timestamp": "2026-07-28T14:00:00Z",
+          "author": "lisa.meyer",
+          "action": "comment",
+          "comment": "Feature Request von Kundenfeedback abgeleitet"
+        },
+        {
+          "timestamp": "2026-07-28T16:30:00Z",
+          "author": "product.owner",
+          "action": "priority_change",
+          "old_value": "low",
+          "new_value": "medium",
+          "comment": "Aufgrund hoher Nachfrage hochgestuft"
+        }
+      ]
+    }
+  ]
+}

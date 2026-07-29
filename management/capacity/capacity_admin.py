@@ -5,6 +5,8 @@
 # capacity_admin — auditierte CLI-Verwaltung der Kapazitaets-Datenbasis.
 # Build 356: Regel-Arbeitszeit (person_worktime) + Feiertage (holiday).
 #   set-worktime / list-worktime
+# Build 560: remove-worktime / replace-worktime (Soft-Delete bzw.
+#   Ersetzen in EINER Transaktion; noetig seit der Dublettensperre).
 #   add-holiday / remove-holiday / list-holidays
 # Build 357: Gruende (availability_reason) + Verfuegbarkeit (availability_entry).
 #   add-reason / list-reasons
@@ -97,6 +99,49 @@ def cmd_set_worktime(con, args) -> int:
         return 2
     print("[capacity_admin] Arbeitszeit fuer person=%d gesetzt "
           "(ab %s, audit seq=%d)." % (pid, args.effective_from, seq))
+    return 0
+
+
+def cmd_remove_worktime(con, args) -> int:
+    """
+    Build 560: Arbeitszeit-Regel entfernen (SOFT-DELETE). Die Zeile bleibt in
+    der Datenbank und traegt deleted_at; der Beleg WORKTIME_REMOVED enthaelt
+    die entfernten Werte.
+    """
+    actor_id, _ = _resolve_actor(con, args.actor)
+    repo = WorktimeRepo(con, CoordinatorWriter(con, AuditLog(con)))
+    try:
+        seq = repo.remove_worktime(args.worktime_id, actor_id=actor_id)
+    except CapacityError as exc:
+        print("[capacity_admin] %s" % exc, file=sys.stderr)
+        return 2
+    print("[capacity_admin] Arbeitszeit-Zeile #%d entfernt (Soft-Delete, "
+          "audit seq=%d)." % (args.worktime_id, seq))
+    return 0
+
+
+def cmd_replace_worktime(con, args) -> int:
+    """
+    Build 560: Regel ERSETZEN - entfernen und neu setzen in EINER Transaktion,
+    mit zwei eigenen Belegen. Der Weg, der seit der Dublettensperre noetig ist,
+    wenn zum selben Stichtag korrigiert wird.
+    """
+    actor_id, _ = _resolve_actor(con, args.actor)
+    pid = _person_id(con, args)
+    repo = WorktimeRepo(con, CoordinatorWriter(con, AuditLog(con)))
+    try:
+        seqs = repo.replace_worktime(
+            args.worktime_id, pid, effective_from=args.effective_from,
+            effective_to=args.effective_to,
+            mon_min=args.mon, tue_min=args.tue, wed_min=args.wed,
+            thu_min=args.thu, fri_min=args.fri, sat_min=args.sat,
+            sun_min=args.sun, actor_id=actor_id)
+    except CapacityError as exc:
+        print("[capacity_admin] %s" % exc, file=sys.stderr)
+        return 2
+    print("[capacity_admin] Arbeitszeit-Zeile #%d ersetzt (entfernt seq=%d, "
+          "gesetzt seq=%d)." % (args.worktime_id, seqs["entfernt_seq"],
+                                seqs["gesetzt_seq"]))
     return 0
 
 
@@ -255,6 +300,31 @@ def _build_parser() -> argparse.ArgumentParser:
         p_sw.add_argument("--%s" % d, type=int, default=0,
                           help="Minuten am %s" % d)
 
+    # --- Build 560: Entfernen und Ersetzen -------------------------------
+    # Beide Wege gibt es auch in der Oberflaeche. Sie hier NACHZUZIEHEN ist
+    # kein Selbstzweck: seit der Dublettensperre laeuft eine Korrektur zum
+    # selben Stichtag ueber 'replace-worktime'. Ohne dieses Kommando bekaeme
+    # jemand an der Kommandozeile einen Fehler, wo bisher etwas durchlief -
+    # ohne zu erfahren, wie es richtig geht.
+    p_xw = sub.add_parser("remove-worktime", parents=[common, actor],
+                          help="Regel-Arbeitszeit entfernen (Soft-Delete).")
+    p_xw.add_argument("--worktime-id", dest="worktime_id", type=int,
+                      required=True)
+
+    p_rw = sub.add_parser("replace-worktime", parents=[common, actor],
+                          help="Regel-Arbeitszeit ersetzen (entfernen und neu "
+                               "setzen in EINER Transaktion).")
+    p_rw.add_argument("--worktime-id", dest="worktime_id", type=int,
+                      required=True)
+    p_rw.add_argument("--person-id", type=int, default=None)
+    p_rw.add_argument("--person", default=None, help="system_username")
+    p_rw.add_argument("--from", dest="effective_from", required=True,
+                      help="effective_from (ISO-Datum)")
+    p_rw.add_argument("--to", dest="effective_to", default=None)
+    for d in ("mon", "tue", "wed", "thu", "fri", "sat", "sun"):
+        p_rw.add_argument("--%s" % d, type=int, default=0,
+                          help="Minuten am %s" % d)
+
     p_lw = sub.add_parser("list-worktime", parents=[common],
                           help="Arbeitszeit-Regeln zeigen.")
     p_lw.add_argument("--person-id", type=int, default=None)
@@ -314,6 +384,8 @@ def _build_parser() -> argparse.ArgumentParser:
 
 _DISPATCH = {
     "set-worktime": cmd_set_worktime,
+    "remove-worktime": cmd_remove_worktime,
+    "replace-worktime": cmd_replace_worktime,
     "list-worktime": cmd_list_worktime,
     "add-holiday": cmd_add_holiday,
     "remove-holiday": cmd_remove_holiday,
