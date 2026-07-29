@@ -57,6 +57,33 @@
 //
 // XSS: ausschliesslich textContent / Option.text (kein innerHTML).
 //
+// ── BUILD 556 — WANN EINE TABELLE DIESES WERKZEUG BEKOMMT ──────────────────
+//
+//   NICHT JEDE TABELLE IST EINE LISTENTABELLE. Die Regel (mc 2026-07-26,
+//   Bauplan UX/Tabellen §2.2):
+//
+//       Eine Tabelle bekommt Filter und Sortierung nur, wenn ihre ZEILENZAHL
+//       VARIABEL ist und ihre REIHENFOLGE KEINE AUSSAGE TRAEGT. Feste,
+//       fachlich geordnete Zeilenmengen bleiben schlichte <table>.
+//
+//   Der Grund ist nicht Sparsamkeit, sondern Schaden: eine anklickbare
+//   Sortierspalte laedt dazu ein, eine Ordnung aufzuloesen, die etwas bedeutet.
+//   Zwei Beispiele aus diesem Baum:
+//     * Die Prognose zeigt IMMER drei Szenarien (optimistisch → erwartet →
+//       pessimistisch). Nach 'Restdauer' sortiert liest sich die Liste wie eine
+//       Rangfolge, die niemand behauptet hat.
+//     * Die Offboarding-Checkliste hat eine fachlich zwingende Folge (Rechte
+//       entziehen VOR Zugang sperren). Sie umsortierbar zu machen, waere bei
+//       einer Liste, deren Zweck das Sichtbarmachen VERGESSENER Schritte ist,
+//       ein Eigentor.
+//
+//   Ein Filter ueber eine feste, kurze Zeilenmenge grenzt ohnehin nichts ein.
+//
+//   DIE REGEL IST ERZWUNGEN, nicht nur aufgeschrieben: UX10 in
+//   tests/unit/test_cockpit_tabellen_ux.test.js verlangt, dass jede Datei mit
+//   einer handgebauten Tabelle entweder umgebaut oder AUSDRUECKLICH mit Grund
+//   ausgenommen ist — und dass die Ausnahmeliste nicht veraltet.
+//
 // BUILD 548 — ANKER FUER DIE SPAETERE SCHNELLHILFE (mc 2026-07-26):
 //   Jedes Bedienelement, das dieses Werkzeug erzeugt, bekommt ein stabiles
 //   'data-hilfe-id'. Die Schnellhilfe (Overlay-Modus, in dem umrandete

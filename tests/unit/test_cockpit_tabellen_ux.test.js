@@ -30,7 +30,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "fs";
+import { readFileSync, readdirSync } from "fs";
 import { JSDOM } from "jsdom";
 
 const _tkSrc = readFileSync(
@@ -424,6 +424,50 @@ function _resultsCov() {
   };
 }
 
+/** Sichten mit handgebauter Tabelle, die BEWUSST nicht umgebaut werden.
+ *  Jeder Eintrag braucht einen Grund — eine wortlose Ausnahmeliste waere eine
+ *  Hintertuer. UX10 haelt die Liste gegen den tatsaechlichen Baumzustand. */
+const AUSGENOMMEN = {
+  // --- Feste Zeilenmenge, bedeutungstragende Reihenfolge (Regel §2.2) -------
+  "cockpit_planung.js":
+    "Szenarien-Tabelle der Prognose: forecast.py:98-105 erzeugt IMMER genau " +
+    "drei Zeilen (optimistisch/erwartet/pessimistisch). Ein Filter ueber drei " +
+    "feste Zeilen grenzt nichts ein, und eine Sortierung zerstoerte die " +
+    "Reihenfolge, die die Aussage traegt.",
+  "cockpit_onboarding.js":
+    "Checkliste mit fester Schrittfolge: checklist_status.py:43-58 friert je " +
+    "Art GENAU FUENF Schritte ein. Beim Offboarding ist die Reihenfolge " +
+    "fachlich zwingend (Rechte entziehen VOR Zugang sperren, Faelle " +
+    "umverteilen VOR dem Sperren). Eine Sortierspalte laedt dazu ein, genau " +
+    "diese Ordnung aufzuloesen — bei einer Liste, deren Zweck es ist, " +
+    "vergessene Schritte sichtbar zu machen. Zudem zeigt die Sicht immer nur " +
+    "EINE Checkliste fuer EINE Person: es gibt nichts zu durchsuchen.",
+
+  // --- Serverseitige Filterung/Blaetterung (Regel §2) -----------------------
+  "cockpit_audit.js":
+    "Der Audit-Explorer filtert und blaettert SERVERSEITIG " +
+    "(/api/audit/facets, offset). Ein client-seitiger Kopffilter durchsuchte " +
+    "nur die geladene Seite und meldete '3 Treffer', waehrend auf dem Server " +
+    "300 liegen — eine falsche Aussage in einem Beweismittelwerkzeug. Ein " +
+    "Umbau braucht zuerst einen serverseitigen Filterweg.",
+
+  // --- Noch offen (Regel erfuellt, Umbau steht aus) -------------------------
+  // Diese Eintraege sind KEINE dauerhaften Ausnahmen. Sie stehen hier, damit
+  // UX10 greift, und verschwinden mit dem jeweiligen Umbau.
+  "cockpit_alias.js":
+    "NOCH OFFEN (kein Ausnahmegrund): variable Aliasliste, Umbau steht aus.",
+  "cockpit_crossfindings.js":
+    "NOCH OFFEN (kein Ausnahmegrund): variable Querfundliste, Umbau steht aus.",
+  "cockpit_merge.js":
+    "NOCH OFFEN (kein Ausnahmegrund): variable Gruppenliste, Umbau steht aus.",
+  "cockpit_promotion.js":
+    "NOCH OFFEN (kein Ausnahmegrund): variable Kandidatenliste aus dem " +
+    "Dateibestand, Umbau steht aus.",
+  "cockpit_releases.js":
+    "NOCH OFFEN (kein Ausnahmegrund): wachsende Liste externer Fallfreigaben, " +
+    "Umbau steht aus.",
+};
+
 function _ctx(datei) {
   const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", {
     runScripts: "dangerously",
@@ -634,6 +678,50 @@ describe("Konformitaet der Listensichten (Build 549)", () => {
   });
 
   // Übergreifend --------------------------------------------------------------
+
+  // UX10 -----------------------------------------------------------------------
+  it("UX10: keine handgebaute Tabelle entkommt unbemerkt", () => {
+    // DIE REGEL (Bauplan UX/Tabellen §2.2, Build 556):
+    //   Eine Tabelle bekommt Filter und Sortierung nur, wenn ihre Zeilenzahl
+    //   VARIABEL ist und ihre Reihenfolge KEINE Aussage traegt. Feste, fachlich
+    //   geordnete Zeilenmengen bleiben schlichte <table>.
+    //
+    // Diese Pruefung macht aus der Regel eine Zusicherung: jede Datei, die noch
+    // eine handgebaute Tabelle enthaelt, muss AUSDRUECKLICH ausgenommen sein —
+    // mit Grund. Ohne sie bliebe eine uebersehene Sicht einfach liegen und
+    // saehe aus wie eine Entscheidung. Verfahren wie _BEWUSST_OHNE_EXPORT beim
+    // Akten-Export (VE08).
+    const alle = readdirSync("management/server/static")
+      .filter((f) => f.startsWith("cockpit_") && f.endsWith(".js"));
+    const mitHandtabelle = alle.filter((f) =>
+      readFileSync("management/server/static/" + f, "utf-8")
+        .indexOf("createElement('table')") >= 0
+    );
+    expect(mitHandtabelle.length).toBeGreaterThan(0); // sonst greift nichts
+
+    const offen = mitHandtabelle.filter(
+      (f) => !Object.prototype.hasOwnProperty.call(AUSGENOMMEN, f)
+    );
+    expect(
+      offen,
+      "Handgebaute Tabelle ohne Eintrag in AUSGENOMMEN — entweder umbauen " +
+        "oder die Ausnahme begruenden"
+    ).toEqual([]);
+
+    // Und die Ausnahmeliste veraltet nicht: eine Datei, die keine Handtabelle
+    // mehr hat (weil sie umgebaut wurde), darf nicht als Ausnahme stehen
+    // bleiben — sonst deckt der Eintrag spaeter eine neue Luecke zu.
+    const veraltet = Object.keys(AUSGENOMMEN).filter(
+      (f) => mitHandtabelle.indexOf(f) === -1
+    );
+    expect(veraltet, "Ausnahme ohne Handtabelle (veraltet)").toEqual([]);
+
+    // Jede Ausnahme traegt einen Grund im Klartext.
+    Object.keys(AUSGENOMMEN).forEach((f) => {
+      expect(AUSGENOMMEN[f].length, f + " ohne Begruendung").toBeGreaterThan(30);
+    });
+  });
+
   it("UX07: das Register ist widerspruchsfrei", () => {
     const namen = REGISTER.map((e) => e.name);
     const sichten = REGISTER.map((e) => e.sicht);

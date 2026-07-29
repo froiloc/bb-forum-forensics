@@ -5,7 +5,7 @@ Hand liegt*. […] Es muss einfach zu erlernen sein, Fehler verzeihen und
 unterstützen, und es muss eine schnelle Orientierung geben."
 **Builds:** 548 ff. · **Baubasis:** 0.8.547
 **Migration:** keine · **Neue Rechte:** keine
-**Version:** 0.2 · 2026-07-26 (Build 555: `planung`-Entscheidung, Stand des Ausrollens, §7)
+**Version:** 0.3 · 2026-07-26 (Build 556: Kriterium §2.2 samt Durchsetzung via UX10, `onboarding`-Entscheidung §2.3, geprüfte Zugehörigkeit §6.1)
 
 ---
 
@@ -41,7 +41,7 @@ Kopffilter aus `tablekit`.
 Entscheidung mc 2026-07-26: beide zunächst außen vor; die Volltextsuche wird
 ohnehin erst erprobt.
 
-### 2.1 `planung` bleibt ebenfalls draußen (entschieden Build 555)
+### 2.1 `planung` bleibt draußen (entschieden Build 555)
 
 Das war der **offene Punkt 1** dieses Bauplans. Gemessen statt vermutet:
 
@@ -62,6 +62,42 @@ Daraus folgt zweierlei:
 
 Die Tabelle bleibt daher eine schlichte `<table>`. Gruppe C umfasst damit
 **acht** Sichten.
+
+### 2.2 Die Regel dahinter (Build 556)
+
+Zweimal derselbe Befund ergibt ein Kriterium. Es fehlte in v0.1 und steht
+seither hier — **und in `cockpit_tablekit.js`, wo es gelesen wird**:
+
+> Eine Tabelle bekommt Filter und Sortierung nur, wenn ihre **Zeilenzahl
+> variabel** ist und ihre **Reihenfolge keine Aussage trägt**. Feste, fachlich
+> geordnete Zeilenmengen bleiben schlichte `<table>`.
+
+Der Grund ist nicht Sparsamkeit, sondern **Schaden**: eine anklickbare
+Sortierspalte lädt dazu ein, eine Ordnung aufzulösen, die etwas bedeutet. Und
+ein Filter über fünf feste Zeilen grenzt ohnehin nichts ein.
+
+**Die Regel ist erzwungen, nicht nur aufgeschrieben.** `UX10` der
+Konformitätssuite verlangt, dass jede Datei mit einer handgebauten Tabelle
+entweder umgebaut *oder* ausdrücklich mit Grund ausgenommen ist — und dass die
+Ausnahmeliste nicht veraltet (ein Eintrag, dessen Tabelle längst umgebaut wurde,
+würde später eine neue Lücke zudecken). Verfahren wie `_BEWUSST_OHNE_EXPORT`
+beim Akten-Export. Die Gegenprobe ist gefahren: entfernt man einen Eintrag,
+bricht der Test.
+
+### 2.3 `onboarding` bleibt draußen (entschieden Build 556)
+
+`management/onboarding/checklist_status.py:43-58` friert je Art **genau fünf**
+Schritte ein:
+
+| Onboarding | Offboarding |
+|---|---|
+| Person → AD-Gruppe → Rolle → Einweisung → Zugang | Rechte entziehen → Fälle umverteilen → Zugang sperren → AD-Gruppe → Notizen |
+
+Beim Offboarding ist die Reihenfolge **fachlich zwingend**. Der Dateikopf der
+Sicht sagt selbst, worum es geht: „Ein vergessener Schritt (z. B. nicht
+entzogene Rechte) wäre ein Governance-Risiko". Eine Sortierspalte wäre hier ein
+Eigentor. Außerdem zeigt die Sicht immer nur **eine** Checkliste für **eine**
+Person — es gibt nichts zu durchsuchen.
 
 ---
 
@@ -137,6 +173,22 @@ und wird damit zur Vorlage für die übrigen acht. Was hier trägt, trägt über
 
 **Neu hinzugekommen ist nichts** — wohl aber ein Befund, der über dieses
 Arbeitspaket hinausweist: siehe §7.
+
+---
+
+## 6.1 Geprüfte Zugehörigkeit (Stand Build 556)
+
+Nach dem Kriterium aus §2.2 geprüft — gemessen an den Server-Katalogen, nicht
+vermutet:
+
+| Sicht | Zeilenquelle | Ergebnis |
+|---|---|---|
+| `promotion` | Fremdforum-Kandidaten aus dem Dateibestand (forensic ohne evidence) | **variabel → Umbau** |
+| `releases` | erfasste externe Fallfreigaben, wachsend | **variabel → Umbau** |
+| `alias`, `crossfindings`, `merge` | Ermittlungsdaten, wachsend | **variabel → Umbau** |
+| `planung` | `forecast.py:98-105` — immer 3 Szenarien | **draußen** (§2.1) |
+| `onboarding` | `checklist_status.py:43-58` — immer 5 Schritte | **draußen** (§2.3) |
+| `audit`, `search` | serverseitig gefiltert/geblättert | **draußen** (§2) |
 
 ---
 

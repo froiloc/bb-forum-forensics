@@ -1,0 +1,4 @@
+487c70d2f12378e2230d062167667cb7  build.json
+dc4c1f4b424e3759141b6541e39b1139  management/server/static/cockpit_tablekit.js
+ede379965cc60d27a7e29a5a8b2cf0a3  management/Bauplan_UX_Tabellen_Builds548ff_v0_1.md
+d078a8b1ca2d17ac16e68fa91bad2fa9  tests/unit/test_cockpit_tabellen_ux.test.js
