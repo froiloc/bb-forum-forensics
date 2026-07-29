@@ -1,0 +1,4 @@
+85c0acf223638ee339cf1bb00314014d  build.json
+e8a48a1e5369037ead0df5f1550c6103  management/server/static/cockpit_promotion.js
+150b2f01f9ef8e42f80d46eff8ebdef3  tests/unit/test_cockpit_promotion.test.js
+ff3526cdcafe71b3df6f8effe7d158c4  tests/unit/test_cockpit_tabellen_ux.test.js

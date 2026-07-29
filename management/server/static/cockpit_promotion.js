@@ -153,6 +153,137 @@
         return Array.isArray(data.candidates) ? data.candidates : [];
     }
 
+    var SICHT = 'promotion';   // Praefix der Hilfe-Anker + Zustandsschluessel
+
+    // _tk / _mitHilfe (Build 557): gemeinsames Tabellen-Werkzeug + Hilfe-Anker
+    // der Spaltenkoepfe. LAZY, damit die Ladereihenfolge diese Sicht nicht
+    // lautlos brechen kann.
+    function _tk() {
+        return (typeof window !== 'undefined' && window.AIWTableKit)
+            ? window.AIWTableKit : null;
+    }
+    function _mitHilfe(cols, sicht, doc) {
+        var TK = _tk();
+        if (!TK || !doc || !TK.titelMitHilfe) { return cols; }
+        return cols.map(function (c) {
+            var neu = {};
+            Object.keys(c).forEach(function (k) { neu[k] = c[k]; });
+            if (c.field && !c.titleFormatter) {
+                neu.titleFormatter = TK.titelMitHilfe(
+                    doc, c.title || c.field,
+                    sicht + '.spalte.' + String(c.field).toLowerCase());
+            }
+            return neu;
+        });
+    }
+
+    // statusRang: der Zustand als Zahl — die Stellung im ARBEITSABLAUF.
+    //
+    // Sie steuert die Sortierung der Zustandsspalte. ALPHABETISCH stuende
+    // 'fremdzustaendig' vor 'gesichtet' vor 'offen' — also der Endzustand vor
+    // dem Handlungsbedarf. Eine Spalte, die nach Bearbeitungsstand aussieht
+    // und alphabetisch sortiert, fuehrt genau die in die Irre, die sehen will,
+    // was noch zu tun ist. Sortiert wird deshalb ueber STATUS_ORDER
+    // (offen -> gesichtet -> zurueckgestellt -> uebernommen ->
+    // fremdzustaendig), also Handlungsbedarf zuerst — dieselbe Ordnung, die
+    // countsModel() schon fuer die Zaehlerzeile benutzt.
+    //
+    // Ein unbekannter Zustand bekommt einen Rang HINTER allen bekannten: er
+    // verschwindet nicht, er sortiert zuletzt (Grundregel 1).
+    function statusRang(status) {
+        var i = STATUS_ORDER.indexOf(status == null ? INITIAL : status);
+        return (i === -1) ? STATUS_ORDER.length : i;
+    }
+
+    // toRows: Kandidaten -> Tabellenzeilen. REIN (kein DOM).
+    //
+    // Abgeleitete Felder:
+    //   * 'zustand' traegt das LABEL — fuenf Werte, also eine Auswahlliste.
+    //     Der Code bleibt als 'status' erhalten (Ampelpunkt), der Rang als
+    //     'zustand_rang' (Sortierung, s. o.).
+    //   * Leere Freitexte werden zu '—': eine leere Zelle sieht aus wie ein
+    //     Anzeigefehler, ein Gedankenstrich sagt 'nichts hinterlegt'.
+    function toRows(data) {
+        return candidateRows(data).map(function (row) {
+            return {
+                subject_id: row.subject_id,
+                status: row.status,
+                zustand: row.status_label || statusLabel(row.status),
+                zustand_rang: statusRang(row.status),
+                grund: row.grund || EM_DASH,
+                herkunft: row.herkunft || EM_DASH,
+                is_final: isFinal(row.status),
+                _kandidat: row
+            };
+        });
+    }
+
+    // spalten: die Spaltendefinition (Build 557). Braucht 'doc' (Formatter
+    // bauen DOM), 'canEdit' und den Rueckruf fuer das Begruendungs-Panel.
+    function spalten(doc, canEdit, openPanel) {
+        return [
+            { title: 'Fall (subject_id)', field: 'subject_id', width: 170,
+              hozAlign: 'right' },
+            {
+                title: 'Zustand', field: 'zustand', width: 220,
+                // Sortiert nach ARBEITSABLAUF, nicht alphabetisch (s.
+                // statusRang) — Handlungsbedarf zuerst.
+                sorter: function (a, b, aRow, bRow) {
+                    return aRow.getData().zustand_rang
+                        - bRow.getData().zustand_rang;
+                },
+                formatter: function (cell) {
+                    var d = cell.getData();
+                    var wrap = doc.createElement('span');
+                    var dot = doc.createElement('span');
+                    dot.className = 'dot ' + statusDotClass(d.status);
+                    wrap.appendChild(dot);
+                    var tx = doc.createElement('span');
+                    tx.textContent = ' ' + d.zustand;
+                    wrap.appendChild(tx);
+                    return wrap;
+                }
+            },
+            { title: 'Grund', field: 'grund', widthGrow: 2 },
+            { title: 'Herkunft', field: 'herkunft', widthGrow: 1 },
+            {
+                title: 'Aktion', field: 'aktion', width: 260,
+                headerSort: false,
+                kein_filter: true,   // ein Filter auf Knoepfen waere sinnlos
+                formatter: function (cell) {
+                    var d = cell.getData();
+                    var box = doc.createElement('span');
+                    box.className = 'aiw-promo-actions';
+                    var actions = allowedActions(d.status);
+                    if (!canEdit || !actions.length) {
+                        box.textContent = d.is_final ? 'endgueltig' : EM_DASH;
+                        return box;
+                    }
+                    actions.forEach(function (target) {
+                        var b = doc.createElement('button');
+                        b.type = 'button';
+                        b.className = 'aiw-btn aiw-promo-btn';
+                        b.setAttribute('data-uid', String(d.subject_id));
+                        b.setAttribute('data-target', target);
+                        b.textContent = ACTION_LABEL[target] || target;
+                        var TK = _tk();
+                        if (TK && TK.hilfeAnker) {
+                            TK.hilfeAnker(b, SICHT + '.bedienung.entscheiden');
+                        }
+                        b.addEventListener('click', function (ev) {
+                            if (ev && typeof ev.stopPropagation === 'function') {
+                                ev.stopPropagation();
+                            }
+                            openPanel(d._kandidat, target);
+                        });
+                        box.appendChild(b);
+                    });
+                    return box;
+                }
+            }
+        ];
+    }
+
     // =========================================================================
     // 1) DOM: Sicht rendern.
     // =========================================================================
@@ -310,87 +441,50 @@
             log('openPanel', row.subject_id, '->', target, 'reason?', req);
         }
 
-        // --- Tabelle (schlichtes, XSS-sicheres <table>) ----------------------
-        if (!rows.length) {
+        // --- Tabelle (Build 557: Tabulator + gemeinsames Werkzeug) -----------
+        //
+        // DER LEERE FALL BEKOMMT KEINE SONDERBEHANDLUNG MEHR. Frueher stand
+        // bei null Kandidaten ein Absatz STATT einer Tabelle; damit fehlten
+        // dort auch Werkzeugleiste und Trefferzahl, und die Sicht sah anders
+        // aus als alle anderen. Jetzt steht die Tabelle immer, und der
+        // Leerzustand ist Tabulators 'placeholder' — mit demselben Wortlaut
+        // wie bisher, denn er erklaert, WARUM nichts da ist (kein Fall mit
+        // forensic-, aber ohne evidence-Datei).
+        var TK = _tk();
+        var tabRows = toRows(data);
+        var Ctor = opts.Tabulator
+            || (typeof window !== 'undefined' ? window.Tabulator : undefined);
+
+        if (!TK) {
             var none = doc.createElement('p');
             none.className = 'aiw-placeholder';
-            none.textContent = 'Zurzeit keine Fremdforum-Kandidaten '
-                + '(kein Fall mit forensic-, aber ohne evidence-Datei).';
+            none.textContent = 'Gemeinsames Tabellen-Werkzeug nicht geladen — '
+                + 'es liegen ' + tabRows.length + ' Kandidaten vor.';
             mainEl.appendChild(none);
-        } else {
-            var table = doc.createElement('table');
-            table.className = 'aiw-promo-table';
-            var thead = doc.createElement('thead');
-            var htr = doc.createElement('tr');
-            ['Fall (subject_id)', 'Zustand', 'Grund', 'Herkunft', 'Aktion']
-                .forEach(function (label) {
-                    var th = doc.createElement('th');
-                    th.textContent = label;
-                    htr.appendChild(th);
-                });
-            thead.appendChild(htr);
-            table.appendChild(thead);
-
-            var tbody = doc.createElement('tbody');
-            rows.forEach(function (row) {
-                tbody.appendChild(_rowEl(doc, row, canEdit, openPanel));
-            });
-            table.appendChild(tbody);
-            mainEl.appendChild(table);
+            log('renderPromotion: kein TableKit');
+            return { setResult: setResult, table: null };
         }
 
-        log('renderPromotion:', rows.length, 'Kandidat(en), canEdit', canEdit);
-        return { setResult: setResult };
-    }
+        var auf = TK.tabelleAufbauen(doc, mainEl, {
+            sicht: SICHT,
+            rows: tabRows,
+            columns: _mitHilfe(spalten(doc, canEdit, openPanel), SICHT, doc),
+            Ctor: Ctor,
+            einheit: 'Kandidaten',
+            tabulator: {
+                index: 'subject_id',
+                height: '420px',
+                placeholder: 'Zurzeit keine Fremdforum-Kandidaten '
+                    + '(kein Fall mit forensic-, aber ohne evidence-Datei).'
+                // KEIN 'initialSort': der Server liefert die Kandidaten in
+                // seiner Ordnung, und eine Voreinstellung wuerde sie
+                // ueberschreiben.
+            }
+        });
 
-    // _rowEl: eine Tabellenzeile fuer einen Kandidaten. Aktionen erscheinen nur
-    // mit Schreibrecht UND nur, soweit die Zustandsmaschine sie zulaesst.
-    function _rowEl(doc, row, canEdit, openPanel) {
-        var tr = doc.createElement('tr');
-        tr.setAttribute('data-uid', String(row.subject_id));
-
-        var tdId = doc.createElement('td');
-        tdId.textContent = String(row.subject_id);
-        tr.appendChild(tdId);
-
-        var tdStatus = doc.createElement('td');
-        var dot = doc.createElement('span');
-        dot.className = 'dot ' + statusDotClass(row.status);
-        tdStatus.appendChild(dot);
-        var stx = doc.createElement('span');
-        stx.textContent = ' ' + (row.status_label || statusLabel(row.status));
-        tdStatus.appendChild(stx);
-        tr.appendChild(tdStatus);
-
-        var tdGrund = doc.createElement('td');
-        tdGrund.textContent = row.grund || EM_DASH;
-        tr.appendChild(tdGrund);
-
-        var tdHerk = doc.createElement('td');
-        tdHerk.textContent = row.herkunft || EM_DASH;
-        tr.appendChild(tdHerk);
-
-        var tdAct = doc.createElement('td');
-        tdAct.className = 'aiw-promo-actions';
-        var actions = allowedActions(row.status);
-        if (!canEdit || !actions.length) {
-            tdAct.textContent = isFinal(row.status) ? 'endgueltig' : EM_DASH;
-        } else {
-            actions.forEach(function (target) {
-                var b = doc.createElement('button');
-                b.type = 'button';
-                b.className = 'aiw-btn aiw-promo-btn';
-                b.setAttribute('data-uid', String(row.subject_id));
-                b.setAttribute('data-target', target);
-                b.textContent = ACTION_LABEL[target] || target;
-                b.addEventListener('click', function () {
-                    openPanel(row, target);
-                });
-                tdAct.appendChild(b);
-            });
-        }
-        tr.appendChild(tdAct);
-        return tr;
+        log('renderPromotion:', tabRows.length, 'Kandidat(en), canEdit',
+            canEdit);
+        return { setResult: setResult, table: auf.table };
     }
 
     // =========================================================================
@@ -405,6 +499,10 @@
         statusDotClass: statusDotClass,
         countsModel: countsModel,
         candidateRows: candidateRows,
+        // Build 557: reine Abbildung + Spaltendefinition (vitest).
+        statusRang: statusRang,
+        toRows: toRows,
+        spalten: spalten,
         // DOM
         renderPromotion: renderPromotion,
         // Konstanten (fuer Tests/Introspektion)

@@ -231,6 +231,29 @@ const REGISTER = [
       ],
     }),
   },
+  // --- Build 557 ------------------------------------------------------------
+  {
+    name: "promotion", datei: "cockpit_promotion.js",
+    global: "AIWCockpitPromotion", render: "renderPromotion",
+    sicht: "promotion", zeilen: 2, brauchtDoc: true,
+    ohneFilter: ["aktion"],   // Knoepfe — ein Filter darauf waere sinnlos
+    daten: () => ({
+      candidate_count: 2,
+      counts: { offen: 1, gesichtet: 0, uebernommen: 1,
+                zurueckgestellt: 0, fremdzustaendig: 0 },
+      statuses: ["gesichtet", "uebernommen", "zurueckgestellt",
+                 "fremdzustaendig"],
+      candidates: [
+        { subject_id: 77, status: "offen", status_label: "offen",
+          grund: null, herkunft: null, is_final: false },
+        { subject_id: 99, status: "uebernommen",
+          status_label: "in Ermittlung uebernommen", grund: "geprüft",
+          herkunft: "Forum X", is_final: true },
+      ],
+      decisions: [],
+    }),
+  },
+
   // --- Build 555 ------------------------------------------------------------
   // Kreuzbezug: ERSTE Sicht der Gruppe C — vorher eine handgebaute <table>.
   {
@@ -460,9 +483,6 @@ const AUSGENOMMEN = {
     "NOCH OFFEN (kein Ausnahmegrund): variable Querfundliste, Umbau steht aus.",
   "cockpit_merge.js":
     "NOCH OFFEN (kein Ausnahmegrund): variable Gruppenliste, Umbau steht aus.",
-  "cockpit_promotion.js":
-    "NOCH OFFEN (kein Ausnahmegrund): variable Kandidatenliste aus dem " +
-    "Dateibestand, Umbau steht aus.",
   "cockpit_releases.js":
     "NOCH OFFEN (kein Ausnahmegrund): wachsende Liste externer Fallfreigaben, " +
     "Umbau steht aus.",

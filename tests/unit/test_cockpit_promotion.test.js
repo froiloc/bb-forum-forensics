@@ -35,13 +35,76 @@ const _src = readFileSync(
   "utf-8"
 );
 
+// Build 557: das gemeinsame Tabellen-Werkzeug MUSS im Kontext liegen — genau
+// wie im Browser (cockpit.html laedt es vor den Sichten). Ohne es faellt die
+// Sicht in ihren Ersatzpfad, und der Test wuerde die Tabelle gar nicht mehr
+// beruehren ('gruen aber tot').
+const _tkSrc = readFileSync(
+  "management/server/static/cockpit_tablekit.js",
+  "utf-8"
+);
+
+/** Tabulator-Attrappe: haelt die Daten und ruft die Spalten-Formatter auf,
+ *  damit die Aktions-Knoepfe im DOM anklickbar sind. Spalten OHNE Formatter
+ *  gibt sie als Text aus — sonst fehlten genau die Textspalten im geprueften
+ *  DOM (Lehre aus Build 555). */
+function _fakeTabulator(doc) {
+  return function (host, options) {
+    const self = this;
+    this.options = options;
+    this.data = options.data || [];
+    this._filters = [];
+    this.data.forEach(function (d) {
+      const tr = doc.createElement("div");
+      tr.className = "fake-row";
+      tr.setAttribute("data-uid", String(d.subject_id));
+      (options.columns || []).forEach(function (col) {
+        if (typeof col.formatter !== "function") {
+          const sp = doc.createElement("span");
+          sp.textContent = String(
+            d[col.field] === undefined || d[col.field] === null
+              ? "" : d[col.field]
+          );
+          tr.appendChild(sp);
+          return;
+        }
+        const node = col.formatter({
+          getData: function () { return d; },
+          getValue: function () { return d[col.field]; },
+        });
+        if (node && node.nodeType) { tr.appendChild(node); }
+      });
+      host.appendChild(tr);
+    });
+    this.getDataCount = function () { return self.data.length; };
+    this.setHeaderFilterValue = function (f, v) { self._filters.push([f, v]); };
+    this.clearHeaderFilter = function () { self._filters = []; };
+    this.clearFilter = function () { self._filters = []; };
+    this.getHeaderFilters = function () { return self._filters; };
+    this.getSorters = function () { return []; };
+    this.getColumns = function () { return []; };
+    this.on = function () {};
+    this.destroy = function () {};
+  };
+}
+
 function _win() {
   const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", {
     runScripts: "dangerously",
     url: "http://localhost",
   });
+  dom.window.eval(_tkSrc);
   dom.window.eval(_src);
   return dom.window;
+}
+
+/** renderPromotion mit eingespritzter Attrappe. */
+function _render(win, main, data, opts) {
+  return win.AIWCockpitPromotion.renderPromotion(
+    main, data,
+    Object.assign({ doc: win.document, Tabulator: _fakeTabulator(win.document) },
+                  opts || {})
+  );
 }
 
 function _api() {
@@ -134,11 +197,13 @@ describe("cockpit_promotion.js — Fremdforum-Promotion (Build 461)", () => {
 
     // mit Recht: Aktions-Buttons vorhanden (offen -> 4).
     const main = doc.createElement("main");
-    api.renderPromotion(main, _sampleData(), { canEdit: true, doc: doc });
+    _render(win, main, _sampleData(), { canEdit: true });
     expect(main.querySelector(".aiw-pagehead").textContent).toContain(
       "Fremdforum-Promotion"
     );
-    expect(main.querySelectorAll(".aiw-promo-table tbody tr").length).toBe(3);
+    // Build 557: die Zeilen entstehen jetzt in Tabulator, nicht in einer
+    // handgebauten <table>. Dieselbe Zusicherung an der neuen Struktur.
+    expect(main.querySelectorAll(".fake-row").length).toBe(3);
     const btns77 = main.querySelectorAll('button[data-uid="77"]');
     expect(btns77.length).toBe(4);
     // Endgueltiger Kandidat 99 -> keine Aktions-Buttons.
@@ -146,7 +211,7 @@ describe("cockpit_promotion.js — Fremdforum-Promotion (Build 461)", () => {
 
     // ohne Recht: Hinweis + keine Buttons.
     const main2 = doc.createElement("main");
-    api.renderPromotion(main2, _sampleData(), { canEdit: false, doc: doc });
+    _render(win, main2, _sampleData(), { canEdit: false });
     expect(main2.querySelector(".aiw-promo-readonly")).toBeTruthy();
     expect(main2.querySelectorAll("button[data-target]").length).toBe(0);
   });
@@ -158,8 +223,8 @@ describe("cockpit_promotion.js — Fremdforum-Promotion (Build 461)", () => {
     const doc = win.document;
     const main = doc.createElement("main");
     const calls = [];
-    api.renderPromotion(main, _sampleData(), {
-      canEdit: true, doc: doc,
+    _render(win, main, _sampleData(), {
+      canEdit: true,
       onDecide: (body) => calls.push(body),
     });
 
@@ -195,8 +260,8 @@ describe("cockpit_promotion.js — Fremdforum-Promotion (Build 461)", () => {
     const doc = win.document;
     const main = doc.createElement("main");
     const calls = [];
-    api.renderPromotion(main, _sampleData(), {
-      canEdit: true, doc: doc,
+    _render(win, main, _sampleData(), {
+      canEdit: true,
       onDecide: (body) => calls.push(body),
     });
 
@@ -220,20 +285,113 @@ describe("cockpit_promotion.js — Fremdforum-Promotion (Build 461)", () => {
     const api = win.AIWCockpitPromotion;
     const doc = win.document;
 
+    // Build 557: der Leerzustand ist jetzt Tabulators 'placeholder' statt
+    // eines Absatzes ANSTELLE der Tabelle. Die Tabelle steht also auch bei
+    // null Kandidaten — samt Werkzeugleiste und Trefferzahl, damit die Sicht
+    // nicht anders aussieht als alle anderen.
     const empty = doc.createElement("main");
-    api.renderPromotion(empty, { candidate_count: 0, counts: {}, candidates: [] },
-      { canEdit: true, doc: doc });
-    expect(empty.querySelector(".aiw-placeholder")).toBeTruthy();
-    expect(empty.querySelector(".aiw-promo-table")).toBe(null);
+    const leerView = _render(win, empty,
+      { candidate_count: 0, counts: {}, candidates: [] }, { canEdit: true });
+    expect(leerView.table).toBeTruthy();
+    expect(empty.querySelectorAll(".fake-row").length).toBe(0);
+    expect(empty.querySelector("#aiw-promotion-tk-treffer").textContent)
+      .toBe("0 Zeilen");
+    // Der ERKLAERENDE Wortlaut ist erhalten geblieben — er sagt, WARUM nichts
+    // da ist. (Die Attrappe zeichnet ihn nicht; geprueft wird die Vorgabe an
+    // Tabulator.)
+    expect(leerView.table.options.placeholder)
+      .toContain("keine Fremdforum-Kandidaten");
 
     const main = doc.createElement("main");
-    api.renderPromotion(main, {
+    _render(win, main, {
       candidate_count: 1, counts: {},
       candidates: [{ subject_id: 5, status: "zurueckgestellt",
         status_label: "zurueckgestellt",
         grund: "<img src=x onerror=alert(1)>", herkunft: null }],
-    }, { canEdit: false, doc: doc });
+    }, { canEdit: false });
     expect(main.querySelector("img")).toBe(null);
     expect(main.textContent).toContain("<img src=x onerror=alert(1)>");
+  });
+
+  // ==========================================================================
+  // Build 557 — Tabulator + gemeinsames Tabellen-Werkzeug
+  // ==========================================================================
+
+  // PP10 ---------------------------------------------------------------------
+  it("PP10: statusRang folgt dem ARBEITSABLAUF, nicht dem Alphabet", () => {
+    const api = _api();
+    // ALPHABETISCH stuende 'fremdzustaendig' vor 'gesichtet' vor 'offen' —
+    // also der Endzustand vor dem Handlungsbedarf. Genau das waere fuer die
+    // Chef-Ermittlerin irrefuehrend, die sehen will, was noch zu tun ist.
+    expect(api.statusRang("offen")).toBeLessThan(api.statusRang("gesichtet"));
+    expect(api.statusRang("gesichtet"))
+      .toBeLessThan(api.statusRang("zurueckgestellt"));
+    expect(api.statusRang("zurueckgestellt"))
+      .toBeLessThan(api.statusRang("uebernommen"));
+    expect(api.statusRang("uebernommen"))
+      .toBeLessThan(api.statusRang("fremdzustaendig"));
+
+    // null == 'offen' (die implizite Eingangslage).
+    expect(api.statusRang(null)).toBe(api.statusRang("offen"));
+    // Unbekannt sortiert HINTER allem Bekannten — es verschwindet nicht.
+    expect(api.statusRang("quatsch"))
+      .toBeGreaterThan(api.statusRang("fremdzustaendig"));
+  });
+
+  // PP11 ---------------------------------------------------------------------
+  it("PP11: toRows — abgeleitete Felder, Gedankenstrich statt leerer Zelle", () => {
+    const api = _api();
+    const rows = api.toRows({
+      candidates: [
+        { subject_id: 7, status: "offen", grund: "", herkunft: "" },
+        { subject_id: 8, status: "uebernommen",
+          status_label: "in Ermittlung uebernommen",
+          grund: "geprueft", herkunft: "EK" },
+      ],
+    });
+    expect(rows.map((r) => r.subject_id)).toEqual([7, 8]);
+    expect(rows[0].zustand).toBe("offen (unentschieden)");
+    expect(rows[0].zustand_rang).toBe(0);
+    expect(rows[0].is_final).toBe(false);
+    // Leere Freitexte -> '—'. Eine leere Zelle sieht aus wie ein
+    // Anzeigefehler.
+    expect(rows[0].grund).toBe("—");
+    expect(rows[0].herkunft).toBe("—");
+
+    expect(rows[1].zustand).toBe("in Ermittlung uebernommen");
+    expect(rows[1].is_final).toBe(true);
+    expect(rows[1].grund).toBe("geprueft");
+
+    // Die Eingabe bleibt unberuehrt.
+    const d = { candidates: [{ subject_id: 1, status: "offen" }] };
+    api.toRows(d);
+    expect(d.candidates[0].grund).toBeUndefined();
+  });
+
+  // PP12 ---------------------------------------------------------------------
+  it("PP12: spalten — feste Folge; die Aktionsspalte traegt keinen Filter", () => {
+    const win = _win();
+    const api = win.AIWCockpitPromotion;
+    const cols = api.spalten(win.document, true, () => {});
+    expect(cols.map((c) => c.field)).toEqual([
+      "subject_id", "zustand", "grund", "herkunft", "aktion",
+    ]);
+    const akt = cols.find((c) => c.field === "aktion");
+    expect(akt.kein_filter).toBe(true);
+    expect(akt.headerSort).toBe(false);
+
+    // Der Sortierer der Zustandsspalte greift auf den Rang zu.
+    const zustand = cols.find((c) => c.field === "zustand");
+    const zeile = (r) => ({ getData: () => ({ zustand_rang: r }) });
+    expect(zustand.sorter(null, null, zeile(0), zeile(3))).toBeLessThan(0);
+
+    // Und das gemeinsame Werkzeug haengt an alle uebrigen Spalten Filter.
+    const mitFilter = win.AIWTableKit.spaltenMitFilter(
+      api.toRows(_sampleData()), cols
+    );
+    expect(mitFilter.find((c) => c.field === "aktion").headerFilter)
+      .toBeUndefined();
+    mitFilter.filter((c) => c.field && c.field !== "aktion")
+      .forEach((c) => { expect(c.headerFilter, c.field).toBeTruthy(); });
   });
 });
