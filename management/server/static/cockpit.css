@@ -3014,3 +3014,53 @@ button.aiw-navgroup:focus-visible {
   flex: 1 1 auto; font-weight: 400; font-size: 12px; color: var(--muted);
 }
 .aiw-vp-liste .aiw-vp-zeile { margin-left: 14px; }
+
+/* ===========================================================================
+   Build 569 — Suchfeld der Navigationsleiste
+   ---------------------------------------------------------------------------
+   Das Feld sitzt in einem EIGENEN Fach (.aiw-navsuche) oberhalb der
+   Eintragsliste (.aiw-navliste). Grund: buildNav leert das Fach, in das es
+   zeichnet — laege das Feld darin, waere bei jedem Tastendruck der Fokus weg.
+   =========================================================================== */
+.aiw-navsuche {
+    padding: 0 10px 8px 10px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 6px;
+}
+.aiw-navsuche-feld {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 4px 6px;
+    font: inherit;
+    font-size: .9em;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+}
+.aiw-navsuche-info {
+    margin-top: 3px;
+    font-size: .78em;
+    opacity: .7;
+    min-height: 1em;         /* kein Springen, wenn die Zeile leer ist */
+}
+.aiw-navsuche-leer {
+    padding: 8px 12px;
+    font-size: .85em;
+    font-style: italic;
+    opacity: .8;
+}
+
+/* Eine ausgeblendete Sicht, die wegen der Suche (oder weil sie offen ist)
+   dennoch dasteht. Ohne Kennzeichen saehe sie aus wie eine normale
+   Eintragung — und die naechste Frage waere, warum sie nach dem Leeren des
+   Suchfelds wieder verschwindet. */
+.aiw-navitem-versteckt { opacity: .72; }
+.aiw-navitem-vmark {
+    margin-left: auto;
+    padding: 0 4px;
+    font-size: .68em;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    opacity: .8;
+}

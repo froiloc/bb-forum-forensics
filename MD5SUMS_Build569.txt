@@ -1,0 +1,6 @@
+f08fe5eab9ebca1416025cdc97ed9d5d  build.json
+bff5b8fb763012909e652145ef5ea9b1  management/server/static/cockpit.js
+a5710673c4e69cf5e3384f2cd0045878  management/server/static/cockpit.css
+4dbf83b85bacd3827e4c4980acff9bd7  management/Bauplan_Build569_Navigationssuche_v0_1.md
+e74d1547de3dbf793f2a3cfb9dc4b581  tests/unit/test_cockpit_navsuche.test.js
+38b0d5da88c1612a7beb2aff8c1e6bd6  issue-tracker/eintraege_claude_Build569.json

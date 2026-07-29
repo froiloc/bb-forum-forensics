@@ -123,12 +123,14 @@
     //    'ops.view'), da das Backend /api/integrity bereitstellt (Build 346).
     // =========================================================================
     var VIEW_CATALOG = [
-        { id: 'dashboard',  cap: 'dashboard.view',       group: 'Ueberblick',     label: 'Dashboard' },
+        { id: 'dashboard',  cap: 'dashboard.view',       group: 'Ueberblick',     label: 'Dashboard',
+          stichworte: 'ueberblick kacheln startseite lage zusammenfassung' },
         // Kalender & Wiedervorlage (Build 386). Gruppe 'Ueberblick', weil die
         // Sicht BEIDE Rollen bedient: die Chefin sieht alle Faelligkeiten, der
         // Ermittler (Scope 'eigene') die seines Falls. Recht: external.view
         // (Backend-Vorgabe aus Build 385).
-        { id: 'calendar',   cap: 'external.view',        group: 'Ueberblick',     label: 'Kalender & Wiedervorlage' },
+        { id: 'calendar',   cap: 'external.view',        group: 'Ueberblick',     label: 'Kalender & Wiedervorlage',
+          stichworte: 'termine wiedervorlage frist erinnerung monat woche kalender' },
         // Build 516 (AP-2G / Idee 23): Eskalationen (Frontend zu 515). Gruppe
         // 'Ueberblick', weil die Sicht dieselbe Frage beantwortet wie das
         // Dashboard — "worauf muss ich JETZT schauen" —, nur zugespitzt auf
@@ -137,65 +139,82 @@
         // scope-behaftet: die wichtigste Regel (Rueckstau) gehoert zu keinem
         // Fall und damit zu keiner Person; auf 'eigene' verengt haette die
         // Sicht genau die Faelle ausgeblendet, um derentwillen es sie gibt.
-        { id: 'escalation', cap: 'escalation.view',      group: 'Ueberblick',     label: 'Eskalationen' },
+        { id: 'escalation', cap: 'escalation.view',      group: 'Ueberblick',     label: 'Eskalationen',
+          stichworte: 'eskalation ueberfaellig alarm rot dringend liegengeblieben' },
         // Build 519 (AP-2F / Idee 22): Naechstbeste Aktion (Frontend zu 519).
         // Gruppe 'Ueberblick' neben Dashboard und Eskalationen: alle drei
         // beantworten 'worauf muss ich JETZT schauen' — das Dashboard mit
         // Zustaenden, die Eskalationen mit Schwellenverletzungen, diese Sicht
         // mit der naechsten HANDLUNG. SCOPE-BEHAFTET: mit 'eigene' ist es die
         // eigene Arbeitsschlange, mit 'alle' die Verteilsicht der Leitung.
-        { id: 'nextactions', cap: 'nextactions.view',    group: 'Ueberblick',     label: 'Nächstbeste Aktion' },
-        { id: 'assignment', cap: 'assignment.edit',      group: 'Fallsteuerung',     label: 'Zuweisung' },
+        { id: 'nextactions', cap: 'nextactions.view',    group: 'Ueberblick',     label: 'Nächstbeste Aktion',
+          stichworte: 'vorschlag empfehlung naechster schritt todo aufgabe prioritaet' },
+        { id: 'assignment', cap: 'assignment.edit',      group: 'Fallsteuerung',     label: 'Zuweisung',
+          stichworte: 'zuweisen verteilen sachbearbeiter zustaendigkeit uebertragen fall' },
         // Fall-Erkennung (Build 384): haengt an DERSELBEN Faehigkeit wie die
         // Zuweisung — das Backend (Build 383) schuetzt /api/cases/detect und
         // /api/cases/import mit 'assignment.edit' (Scope 'alle'). Wir fuehren
         // dafuer bewusst KEINE zweite Faehigkeit ein (mc 2026-07-12).
-        { id: 'cases',      cap: 'assignment.edit',      group: 'Fallsteuerung',     label: 'Fall-Erkennung' },
-        { id: 'mentoring',  cap: 'mentoring.view',       group: 'Betreuung',     label: 'Ermittler-Betreuung' },
+        { id: 'cases',      cap: 'assignment.edit',      group: 'Fallsteuerung',     label: 'Fall-Erkennung',
+          stichworte: 'fall anlegen erkennung neuaufnahme portal beschuldigter akte' },
+        { id: 'mentoring',  cap: 'mentoring.view',       group: 'Betreuung',     label: 'Ermittler-Betreuung',
+          stichworte: 'betreuung mentor anleitung begleitung einarbeitung ermittler' },
         // Betreuungs-Notizen ("Post-its", Build 406). Eigener Nav-Eintrag DIREKT
         // neben der Ermittler-Betreuung (abgestimmt mc 2026-07-13). Recht:
         // mentoring_notes.view. Privates Board pro Autor:in; Scope 'alle' sieht
         // fremde Boards (Backend-Vorgabe Build 401/405).
-        { id: 'notes',      cap: 'mentoring_notes.view',  group: 'Betreuung',     label: 'Betreuungs-Notizen' },
+        { id: 'notes',      cap: 'mentoring_notes.view',  group: 'Betreuung',     label: 'Betreuungs-Notizen',
+          stichworte: 'notiz vermerk betreuungsnotiz gespraech protokoll' },
         // Berichts-Abnahme: 'reports.approve' ODER 'reports.review' genuegt
         // (wer freigeben darf, muss lesen duerfen). 'caps' = any-of; 'cap' bleibt
         // fuer den Scope-Tag/Platzhalter die Leitfaehigkeit.
-        { id: 'reports',    cap: 'reports.approve',      caps: ['reports.approve', 'reports.review'], group: 'Abnahme',     label: 'Berichts-Abnahme' },
+        { id: 'reports',    cap: 'reports.approve',      caps: ['reports.approve', 'reports.review'], group: 'Abnahme',     label: 'Berichts-Abnahme',
+          stichworte: 'bericht abnahme pruefung freigeben entwurf vermerk akte' },
         // Lektorat (W4, Build 413): Gegenlesen des Berichtstexts. 'caps' = any-of
         // (reports.review ODER reports.approve — die Chefin liest ebenfalls
         // gegen); Leitfaehigkeit fuer den Scope-Tag ist reports.review.
-        { id: 'lectorate', cap: 'reports.review',       caps: ['reports.review', 'reports.approve'], group: 'Abnahme',     label: 'Lektorat' },
+        { id: 'lectorate', cap: 'reports.review',       caps: ['reports.review', 'reports.approve'], group: 'Abnahme',     label: 'Lektorat',
+          stichworte: 'lektorat korrektur sprache rechtschreibung durchsicht text' },
         // Chef-Freigabe (W5, Build 416): Bericht lesen + Siegel pruefen +
         // freigeben/zurueckweisen. Recht reports.approve (Freigeben erfordert
         // serverseitig Scope 'alle').
-        { id: 'approval',  cap: 'reports.approve',      group: 'Abnahme',     label: 'Chef-Freigabe' },
+        { id: 'approval',  cap: 'reports.approve',      group: 'Abnahme',     label: 'Chef-Freigabe',
+          stichworte: 'freigabe chef leitung genehmigung siegel abschluss' },
         // Platzhalter & Queries (W2, Build 423): Autoren-Maske der Redakteur:in
         // fuer Einzeldaten-Platzhalter-Queries (templates.db). Eigene Gruppe
         // 'Redaktion', in der die weiteren Autoren-Werkzeuge (W1 Bausteine, W3
         // Dokumentvorlagen) folgen. Recht: templates.edit (Build 420).
-        { id: 'templates', cap: 'templates.edit',       group: 'Redaktion',      label: 'Platzhalter & Queries' },
+        { id: 'templates', cap: 'templates.edit',       group: 'Redaktion',      label: 'Platzhalter & Queries',
+          stichworte: 'platzhalter query vorlage baustein variable feldnamen' },
         // Dokumentvorlagen (W3, Build 425): Autoren-Maske der Redakteur:in fuer
         // wiederverwendbare Berichts-Gerueste (report_templates). Gleiche Gruppe
         // 'Redaktion' und gleiches Recht templates.edit wie W2.
-        { id: 'doctemplates', cap: 'templates.edit',    group: 'Redaktion',      label: 'Dokumentvorlagen' },
+        { id: 'doctemplates', cap: 'templates.edit',    group: 'Redaktion',      label: 'Dokumentvorlagen',
+          stichworte: 'dokumentvorlage vorlage bericht layout gliederung docx' },
         // Baustein-Module (W1, Build 427): Autoren-Maske der Redakteur:in fuer
         // wiederverwendbare Textbausteine (report_modules). Gleiche Gruppe
         // 'Redaktion' und Recht templates.edit wie W2/W3.
-        { id: 'modules',   cap: 'templates.edit',       group: 'Redaktion',      label: 'Baustein-Module' },
+        { id: 'modules',   cap: 'templates.edit',       group: 'Redaktion',      label: 'Baustein-Module',
+          stichworte: 'baustein modul textbaustein module_key vorschau bibliothek' },
         // Ermittlungsergebnis (Build 395). Recht: results.view. Ein Ermittler
         // mit Scope 'eigene' sieht die Sicht ebenfalls — er bekommt dann die
         // Abdeckung SEINER Faelle; die fallUEBERGREIFENDE Verteilung (/stats)
         // bleibt Scope 'alle' vorbehalten und wird in der Sicht BENANNT, statt
         // als leere Flaeche zu erscheinen.
-        { id: 'results',    cap: 'results.view',         group: 'Auswertung',     label: 'Ermittlungsergebnis' },
-        { id: 'stats',      cap: 'stats.export_sta',     group: 'Kennzahlen',     label: 'Statistiken (StA/Fuehrung)' },
-        { id: 'planung',    cap: 'stats.export_sta',     group: 'Kennzahlen',     label: 'Prognose & Gantt' },
-        { id: 'annostats',  cap: 'stats.export_sta',     group: 'Auswertung',     label: 'Annotations-Statistik' },
+        { id: 'results',    cap: 'results.view',         group: 'Auswertung',     label: 'Ermittlungsergebnis',
+          stichworte: 'ermittlungsergebnis erkenntnis befund ergebnis bewertung' },
+        { id: 'stats',      cap: 'stats.export_sta',     group: 'Kennzahlen',     label: 'Statistiken (StA/Fuehrung)',
+          stichworte: 'statistik kennzahl staatsanwaltschaft fuehrung zahlen diagramm' },
+        { id: 'planung',    cap: 'stats.export_sta',     group: 'Kennzahlen',     label: 'Prognose & Gantt',
+          stichworte: 'prognose gantt planung szenario termin dauer hochrechnung' },
+        { id: 'annostats',  cap: 'stats.export_sta',     group: 'Auswertung',     label: 'Annotations-Statistik',
+          stichworte: 'annotation markierung statistik tag schlagwort verteilung' },
         // Build 525 (AP-3A / Idee 32): Verjaehrungsfristen. Gruppe
         // 'Auswertung' und NICHT 'Administration': die Sicht wertet den
         // FALLBESTAND aus (Tatzeitpunkte, Fristen), nicht den Zustand der
         // Anlage. Eigenes Recht 'limitation.view' (Seed M031).
-        { id: 'limitation', cap: 'limitation.view',      group: 'Auswertung',     label: 'Fristen (Verjaehrung)' },
+        { id: 'limitation', cap: 'limitation.view',      group: 'Auswertung',     label: 'Fristen (Verjaehrung)',
+          stichworte: 'frist verjaehrung ablauf stichtag paragraph fristenkontrolle' },
         // Build 539 (AP-3B): Dringlichkeit & Erkenntnislage. Gruppe
         // 'Auswertung' wie die Fristensicht — beide werten den FALLBESTAND
         // aus, nicht den Zustand der Anlage. EIGENES Recht 'matrix.view'
@@ -203,7 +222,8 @@
         // darf, darf damit noch nicht sehen, wie weit die Kolleginnen mit
         // ihren Bewertungen sind. NICHT scope-behaftet — eine Rangfolge ueber
         // den eigenen Arbeitsvorrat waere keine.
-        { id: 'matrix',     cap: 'matrix.view',          group: 'Auswertung',     label: 'Dringlichkeit & Erkenntnislage' },
+        { id: 'matrix',     cap: 'matrix.view',          group: 'Auswertung',     label: 'Dringlichkeit & Erkenntnislage',
+          stichworte: 'dringlichkeit erkenntnislage matrix gewichtung ampel prioritaet' },
         // Build 543 (AP-3C): QS & Metriken. Gruppe 'Auswertung' — die Sicht
         // wertet den FALLBESTAND aus (Stichprobe, Abdeckung, Liegezeiten),
         // nicht den Zustand der Anlage. EIGENES Recht 'qs.view' (Seed M034);
@@ -212,58 +232,77 @@
         // Stichprobe ueber den eigenen Arbeitsvorrat waere keine.
         //
         // AUSWERTUNGSQUALITAET, KEIN MITARBEITER-BEWERTUNGSINSTRUMENT.
-        { id: 'qs',         cap: 'qs.view',              group: 'Kennzahlen',     label: 'QS & Metriken' },
-        { id: 'workload',   cap: 'workload.view',        group: 'Kennzahlen',     label: 'Lastverteilung' },
-        { id: 'capacity',   cap: 'capacity.edit',        group: 'Kennzahlen',     label: 'Kapazitaet' },
-        { id: 'support',    cap: 'support_history.view', group: 'Kennzahlen',     label: 'Support-Historie' },
-        { id: 'mycases',    cap: 'mycases.view',         group: 'Persoenlich',    label: 'Meine Auftraege' },
-        { id: 'myhistory',  cap: 'myhistory.view',       group: 'Persoenlich',    label: 'Meine Historie' },
-        { id: 'policy',     cap: 'policy.view',          group: 'Administration', label: 'Rechte / Policy' },
-        { id: 'integrity',  cap: 'ops.view',             group: 'Administration', label: 'Integritaet / Betrieb' },
-        { id: 'audit',      cap: 'ops.view',             group: 'Administration', label: 'Audit-Explorer' },
+        { id: 'qs',         cap: 'qs.view',              group: 'Kennzahlen',     label: 'QS & Metriken',
+          stichworte: 'qualitaetssicherung stichprobe metrik pruefung vieraugen kontrolle' },
+        { id: 'workload',   cap: 'workload.view',        group: 'Kennzahlen',     label: 'Lastverteilung',
+          stichworte: 'last auslastung verteilung arbeitsmenge pensum ermittler' },
+        { id: 'capacity',   cap: 'capacity.edit',        group: 'Kennzahlen',     label: 'Kapazitaet',
+          stichworte: 'kapazitaet auswertung arbeitszeit verfuegbarkeit netto diagramm' },
+        { id: 'support',    cap: 'support_history.view', group: 'Kennzahlen',     label: 'Support-Historie',
+          stichworte: 'support historie hilfe anfrage sitzung unterstuetzung' },
+        { id: 'mycases',    cap: 'mycases.view',         group: 'Persoenlich',    label: 'Meine Auftraege',
+          stichworte: 'meine auftraege eigene faelle zugewiesen persoenlich' },
+        { id: 'myhistory',  cap: 'myhistory.view',       group: 'Persoenlich',    label: 'Meine Historie',
+          stichworte: 'meine historie eigene taetigkeit verlauf chronik persoenlich' },
+        { id: 'policy',     cap: 'policy.view',          group: 'Administration', label: 'Rechte / Policy',
+          stichworte: 'recht rolle policy berechtigung faehigkeit grant rbac' },
+        { id: 'integrity',  cap: 'ops.view',             group: 'Administration', label: 'Integritaet / Betrieb',
+          stichworte: 'integritaet betrieb pruefsumme hashkette backup speicher system' },
+        { id: 'audit',      cap: 'ops.view',             group: 'Administration', label: 'Audit-Explorer',
+          stichworte: 'audit beleg protokoll kette nachweis revision ereignis' },
         // Build 520 (AP-2G / Idee 30): Uebergabe-Protokoll (Frontend zu 520).
         // Gruppe 'Administration' DIREKT neben dem Audit-Explorer, denn es ist
         // dieselbe Art Werkzeug: eine LESART der unveraenderlichen Audit-Kette.
         // Eigenes Recht 'handover.view' (Seed M029, default-deny) und BEWUSST
         // NICHT scope-behaftet — auf die eigenen Eintraege verengt entstuende
         // ein Protokoll MIT LUECKEN, das vollstaendig aussieht.
-        { id: 'handover',   cap: 'handover.view',        group: 'Administration', label: 'Übergabe-Protokoll' },
+        { id: 'handover',   cap: 'handover.view',        group: 'Administration', label: 'Übergabe-Protokoll',
+          stichworte: 'uebergabe protokoll schichtwechsel dienstuebergabe abgabe' },
         // Build 521 (AP-2G / Idee 29): Aufbewahrungsfristen (Frontend zu 521).
         // Gruppe 'Administration' — es ist eine Governance-/Betriebsaufgabe.
         // EIGENES Recht 'retention.view' statt 'ops.view': die uebrigen
         // ops.view-Sichten zeigen den Zustand der ANLAGE, diese eine LISTE VON
         // FAELLEN mit Beschuldigten-Kontonamen. MIT DIESEM EINTRAG IST KEIN
         // LOESCHEN VERBUNDEN - die Sicht ist rein auswertend.
-        { id: 'retention',  cap: 'retention.view',       group: 'Administration', label: 'Aufbewahrungsfristen' },
-        { id: 'promotion',  cap: 'ops.view',             group: 'Administration', label: 'Fremdforum-Promotion' },
-        { id: 'releases',   cap: 'release.view',         group: 'Administration', label: 'Externe Fallfreigabe' },
-        { id: 'onboarding', cap: 'onboarding.view',      group: 'Betreuung',     label: 'Onboarding / Offboarding' },
+        { id: 'retention',  cap: 'retention.view',       group: 'Administration', label: 'Aufbewahrungsfristen',
+          stichworte: 'aufbewahrung loeschfrist retention archivierung lebensdauer' },
+        { id: 'promotion',  cap: 'ops.view',             group: 'Administration', label: 'Fremdforum-Promotion',
+          stichworte: 'fremdforum promotion externes forum uebernahme quelle' },
+        { id: 'releases',   cap: 'release.view',         group: 'Administration', label: 'Externe Fallfreigabe',
+          stichworte: 'freigabe extern fallfreigabe lka verteilung weitergabe' },
+        { id: 'onboarding', cap: 'onboarding.view',      group: 'Betreuung',     label: 'Onboarding / Offboarding',
+          stichworte: 'onboarding offboarding eintritt austritt checkliste zugang' },
         // Build 503: Personalverwaltung (personnel.view, Seed M021) ERSETZT
         // den separaten Eintrag 'adsync' aus Build 502 — der AD-Abgleich ist
         // jetzt ABSCHNITT der Personal-Seite (mc 2026-07-24: "Auf jener Seite
         // sollte dann auch die Einbindung sein"); sein Abschnitt erscheint
         // dort nur mit personnel.sync.
-        { id: 'personnel',  cap: 'personnel.view',       group: 'Personal',     label: 'Personalverwaltung' },
+        { id: 'personnel',  cap: 'personnel.view',       group: 'Personal',     label: 'Personalverwaltung',
+          stichworte: 'personal person mitarbeiter rolle konto stammdaten ad' },
         // Build 471 (AP-2A(2b)): Katalog identifizierter Personen (Konto->reale
         // Person) mit Konfidenzstufe. Auswertungs-Sicht; Recht crossref.view.
-        { id: 'crossref',   cap: 'crossref.view',        group: 'Identitaeten',     label: 'Kreuzbezug' },
+        { id: 'crossref',   cap: 'crossref.view',        group: 'Identitaeten',     label: 'Kreuzbezug',
+          stichworte: 'kreuzbezug querverweis verbindung bezug verknuepfung' },
         // Build 478 (AP-2A(3)): Querfund-Meta-Uebersicht (rein lesend, Frontend
         // zu /api/crossfindings). Gleiche F5-Familie; Recht crossref.view.
-        { id: 'crossfindings', cap: 'crossref.view',     group: 'Identitaeten',     label: 'Querfunde' },
+        { id: 'crossfindings', cap: 'crossref.view',     group: 'Identitaeten',     label: 'Querfunde',
+          stichworte: 'querfund fremder fall hinweis stpo rueckkanal meldung' },
         // Build 505 (AP-2A/A1, Idee 8): globaler Alias-Katalog (Frontend zu
         // 504). EIGENE Sicht statt Anbau an 'crossref': Aliasse existieren
         // UNABHAENGIG vom Identitaetskatalog — ein Konto kann Aliasse und
         // KEINE Identifizierung haben; ein Anbau haette diese Faelle
         // unsichtbar gemacht (Grundregel 1). Gleiche F5-Familie, Recht
         // crossref.view (Pflegen zusaetzlich crossref.edit).
-        { id: 'alias',      cap: 'crossref.view',        group: 'Identitaeten',     label: 'Aliasse' },
+        { id: 'alias',      cap: 'crossref.view',        group: 'Identitaeten',     label: 'Aliasse',
+          stichworte: 'alias nickname zweitname benutzername schreibweise' },
         // Build 510 (AP-2A/A3, Idee 11): Identitaets-Gruppen (Merge/Split,
         // Frontend zu 509). EIGENE Sicht — eine Zusammenfuehrung besteht
         // UNABHAENGIG davon, ob eines der Konten identifiziert oder mit
         // Aliassen versehen ist; gerade der haeufige Fall ist "dieselbe
         // Person, aber noch unbekannt WER". Recht crossref.view
         // (Pflegen zusaetzlich crossref.edit).
-        { id: 'merge',      cap: 'crossref.view',        group: 'Identitaeten',     label: 'Identitäts-Gruppen' },
+        { id: 'merge',      cap: 'crossref.view',        group: 'Identitaeten',     label: 'Identitäts-Gruppen',
+          stichworte: 'identitaet gruppe zusammenfuehren merge split person subjekt' },
         // Build 563 (AP-3E / Idee 38, Instanz B): fallUEBERGREIFENDE
         // Volltextsuche. Gruppe 'Auswertung' neben Aliassen und
         // Identitaets-Gruppen: alle drei beantworten dieselbe Frage —
@@ -277,7 +316,8 @@
         // fremden Falls sehen will, braucht eine belegte Freigabe
         // (fulltext.release, M036) — die Sperre steht in der Zeile, samt
         // dem Weg zur Anfrage.
-        { id: 'search',     cap: 'evidence.fulltext_search', group: 'Auswertung', label: 'Volltextsuche' },
+        { id: 'search',     cap: 'evidence.fulltext_search', group: 'Auswertung', label: 'Volltextsuche',
+          stichworte: 'volltextsuche suchen begriff fundstelle beweismittel text' },
         // Build 546 (AP-3G / Idee 37): die Sicht, mit der man die uebrigen
         // Sichten einrichtet. Gruppe 'Persoenlich', weil sie ausschliesslich
         // die EIGENE Oberflaeche betrifft.
@@ -293,7 +333,8 @@
         //
         // Sie steht ausserdem in NICHT_STEUERBAR (viewpref_katalog.py): wer
         // sie ausblenden koennte, mauerte sich den Rueckweg zu.
-        { id: 'viewprefs',  cap: null, immer: true, group: 'Persoenlich', label: 'Ansicht anpassen' },
+        { id: 'viewprefs',  cap: null, immer: true, group: 'Persoenlich', label: 'Ansicht anpassen',
+          stichworte: 'ansicht anpassen reihenfolge ausblenden navigation gruppen kacheln' },
         // Build 559: Kapazitaetspflege. EIGENE Sicht neben der
         // Auswertung ('capacity'), nach demselben Muster wie
         // 'policy' (nur lesend) / 'personnel' (Pflege). Recht ist
@@ -303,7 +344,8 @@
         // Gruppe 'Verwaltung' und nicht 'Auswertung': dort sucht
         // eine personalverantwortliche Person, neben der
         // Personalverwaltung (mc 2026-07-29).
-        { id: 'capacity_pflege', cap: 'capacity.edit',   group: 'Personal',     label: 'Kapazitaetspflege' }
+        { id: 'capacity_pflege', cap: 'capacity.edit',   group: 'Personal',     label: 'Kapazitaetspflege',
+          stichworte: 'arbeitszeit urlaub krank schulung abwesenheit feiertag minuten pflege' }
     ];
 
     // Gueltige Scope-Werte fuer die Anzeige (weitere -> kein Tag).
@@ -482,6 +524,87 @@
         'Administration', 'Persoenlich'
     ];
 
+    // =====================================================================
+    // NAVIGATIONSSUCHE (Build 569, Ticket ace2cc2a)
+    // =====================================================================
+    // WOGEGEN GESUCHT WIRD: Beschriftung, Gruppe und die GEPFLEGTEN
+    // Stichworte am Katalogeintrag ('stichworte'). Ausdruecklich NICHT die
+    // Texte der Masken selbst - die entstehen erst mit Serverdaten, und ein
+    // aus den Quellen geerntetes Verzeichnis waere bei der PFLEGE
+    // veraltbar: jemand aendert eine Maske, niemand fuehrt den Generator
+    // aus, und die Suche findet die Sicht ab dann nicht mehr, ohne dass es
+    // auffaellt. Statt dessen pflegt der Maintainer einer Sicht ihre
+    // Stichworte mit (mc 2026-07-29), und die Konformitaetspruefung
+    // NS10/NS11 verlangt sie fuer JEDE Sicht - Vergessen faellt sofort auf.
+    //
+    // UMLAUTE IN BEIDE RICHTUNGEN: der Katalog mischt Schreibweisen
+    // ('Naechstbeste Aktion' neben 'Fristen (Verjaehrung)', 'Kapazitaet'
+    // neben 'Identitaets-Gruppen'). Wer 'kapazität' eingibt, muss
+    // 'Kapazitaet' finden, und wer 'naechstbeste' tippt, muss 'Nächstbeste'
+    // finden. Deshalb wird auf BEIDEN Seiten gefaltet - Suchbegriff UND
+    // Suchtext -, nicht nur auf einer.
+    function suchNormal(text) {
+        return String(text === null || text === undefined ? '' : text)
+            .toLowerCase()
+            .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue')
+            .replace(/ß/g, 'ss')
+            .replace(/[^a-z0-9]+/g, ' ')
+            .trim();
+    }
+
+    // sichtSuchtext: der Wortschatz EINER Sicht, normalisiert.
+    function sichtSuchtext(v) {
+        if (!v) { return ''; }
+        return suchNormal([v.label, v.group, v.stichworte, v.id].join(' '));
+    }
+
+    // suchBegriffe: Eingabe -> Liste normalisierter Begriffe.
+    function suchBegriffe(query) {
+        var n = suchNormal(query);
+        return n ? n.split(' ').filter(function (t) { return t.length > 0; }) : [];
+    }
+
+    // sichtPasst: ALLE Begriffe muessen vorkommen (UND). Eingrenzen verhaelt
+    // sich damit so, wie man es erwartet: jedes weitere Wort macht die Liste
+    // kuerzer, nicht laenger. Teilwortsuche - 'kapa' findet 'kapazitaet'.
+    function sichtPasst(v, begriffe) {
+        if (!begriffe || !begriffe.length) { return true; }
+        var text = sichtSuchtext(v);
+        for (var i = 0; i < begriffe.length; i++) {
+            if (text.indexOf(begriffe[i]) === -1) { return false; }
+        }
+        return true;
+    }
+
+    // navSuche: filtert eine SCHON rechtegefilterte und geordnete Liste.
+    // Die Reihenfolge bleibt unangetastet - keine Trefferwertung (mc).
+    //
+    // WICHTIG: diese Funktion bekommt NIE den VIEW_CATALOG, sondern immer
+    // das Ergebnis von navViewsAlle(). Sonst verriete das Suchfeld, welche
+    // Sichten es gibt, fuer die einem das Recht fehlt. NS08 prueft das.
+    function navSuche(views, query) {
+        var begriffe = suchBegriffe(query);
+        if (!begriffe.length) { return (views || []).slice(); }
+        return (views || []).filter(function (v) {
+            return sichtPasst(v, begriffe);
+        });
+    }
+
+    // navViewsAlle: wie navViews, aber MIT den ausgeblendeten Sichten (das
+    // Merkmal 'versteckt' bleibt an der Zeile stehen).
+    //
+    // Grundlage der Suche (mc 2026-07-29): "So sollen auch Sichten gefunden
+    // werden, die sonst ausgeblendet sind. Das ermoeglicht es eine
+    // aufgeraeumte Navigation zu haben und dennoch an die gewuenschte Sicht
+    // zu gelangen." Das Recht bleibt die Grenze - ausgeblendet ist eine
+    // Aufraeum-Entscheidung, kein Rechteentzug.
+    function navViewsAlle(capabilities, prefs) {
+        var angewandt = applyViewPrefs(VIEW_CATALOG, prefs);
+        return nachGruppenOrdnen(
+            visibleViews(capabilities, angewandt),
+            (prefs && prefs.length) ? null : GROUP_ORDER);
+    }
+
     // nachGruppenOrdnen: bringt eine flache Sichtliste in GRUPPENREINE Form —
     // jede Gruppe steht am Stueck, in der Reihenfolge 'gruppenfolge' (fehlende
     // Gruppen hinten, nach erstem Auftreten). Die Reihenfolge INNERHALB einer
@@ -566,6 +689,75 @@
         }
     }
 
+    // navGeruest: legt die zwei Faecher der Leiste an und gibt das Fach fuer
+    // die EINTRAEGE zurueck. Idempotent - mehrfaches Aufrufen aendert nichts.
+    //
+    // WARUM UEBERHAUPT: buildNav leert das Element, das es bekommt
+    // (navEl.textContent = ''). Laege das Suchfeld darin, wuerde es bei JEDEM
+    // Tastendruck neu gebaut - Fokus und Schreibmarke waeren weg, und nach dem
+    // ersten Buchstaben waere Schluss. Das Feld bekommt deshalb ein eigenes
+    // Fach, das buildNav nie anfasst.
+    function navGeruest(navEl) {
+        if (!navEl) { return null; }
+        var suchfach = navEl.querySelector(':scope > .aiw-navsuche');
+        var liste = navEl.querySelector(':scope > .aiw-navliste');
+        if (!suchfach) {
+            suchfach = document.createElement('div');
+            suchfach.className = 'aiw-navsuche';
+            navEl.appendChild(suchfach);
+        }
+        if (!liste) {
+            liste = document.createElement('div');
+            liste.className = 'aiw-navliste';
+            navEl.appendChild(liste);
+        }
+        return liste;
+    }
+
+    // buildNavSuche: das Suchfeld. Wird BEIM ERSTEN MAL gebaut und danach nur
+    // noch gepflegt - das Element bleibt dasselbe, damit der Fokus beim Tippen
+    // erhalten bleibt. Der Wert wird nur gesetzt, wenn er abweicht: ein
+    // Zuweisen des gleichen Wertes wuerde in manchen Browsern die
+    // Schreibmarke ans Ende springen lassen.
+    function buildNavSuche(navEl, wert, onEingabe, trefferInfo) {
+        if (!navEl) { return null; }
+        navGeruest(navEl);
+        var fach = navEl.querySelector(':scope > .aiw-navsuche');
+        var feld = fach.querySelector('.aiw-navsuche-feld');
+        if (!feld) {
+            feld = document.createElement('input');
+            feld.type = 'search';
+            feld.className = 'aiw-navsuche-feld';
+            feld.id = 'aiw-navsuche-feld';
+            feld.setAttribute('placeholder', 'Sicht suchen \u2026');
+            feld.setAttribute('aria-label',
+                              'Sichten nach Begriff oder Stichwort filtern');
+            feld.setAttribute('autocomplete', 'off');
+            fach.appendChild(feld);
+            var info = document.createElement('div');
+            info.className = 'aiw-navsuche-info';
+            fach.appendChild(info);
+            feld.addEventListener('input', function () {
+                if (typeof onEingabe === 'function') { onEingabe(feld.value); }
+            });
+            // Escape leert das Feld - der schnellste Weg zurueck zur
+            // vollstaendigen Leiste, ohne die Maus zu benutzen.
+            feld.addEventListener('keydown', function (ev) {
+                if (ev.key === 'Escape' && feld.value !== '') {
+                    feld.value = '';
+                    if (typeof onEingabe === 'function') { onEingabe(''); }
+                }
+            });
+        }
+        var soll = (wert === undefined || wert === null) ? '' : String(wert);
+        if (feld.value !== soll) { feld.value = soll; }
+        var infoEl = fach.querySelector('.aiw-navsuche-info');
+        if (infoEl) {
+            infoEl.textContent = trefferInfo || '';
+        }
+        return feld;
+    }
+
     // buildNav: Navigation in 'navEl' neu aufbauen. views = sichtbare Sichten
     // (aus visibleViews), capabilities fuer die Scope-Tags, activeId markiert
     // die aktive Sicht, onSelect(viewId) wird bei Klick aufgerufen.
@@ -608,10 +800,17 @@
     }
 
     function buildNav(navEl, views, capabilities, activeId, onSelect,
-                      versteckt) {
+                      versteckt, suchInfo) {
         if (!navEl) { return; }
         navEl.textContent = '';
+        var sucheAktiv = !!(suchInfo && suchInfo.aktiv);
         var zu = navZuLesen();
+        // SOLANGE GEFILTERT WIRD, IST ALLES OFFEN. Ein Treffer, der in einer
+        // zugeklappten Gruppe steckt, waere eine stille Auslassung - die Suche
+        // haette ihn gefunden und die Leiste zeigte ihn nicht. Der gemerkte
+        // Klappzustand bleibt unberuehrt und gilt wieder, sobald das Feld leer
+        // ist.
+        if (sucheAktiv) { zu = {}; }
         // EINE EINGEKLAPPTE GRUPPE MIT DER AKTIVEN SICHT WIRD AUFGEKLAPPT.
         // Sonst waere die eigene Auswahl unsichtbar, und die Leiste behauptete
         // stillschweigend, es gebe sie nicht.
@@ -648,7 +847,7 @@
                         var neu = navGruppeUmschalten(navZuLesen(), gruppe);
                         navZuSchreiben(neu);
                         buildNav(navEl, views, capabilities, activeId,
-                                 onSelect, versteckt);
+                                 onSelect, versteckt, suchInfo);
                     });
                 })(v.group);
                 lastGroup = v.group;
@@ -661,6 +860,22 @@
             var labelSpan = document.createElement('span');
             labelSpan.textContent = v.label;
             b.appendChild(labelSpan);
+
+            // AUSGEBLENDETE SICHT, DIE TROTZDEM DASTEHT (Build 569).
+            // Sie erscheint, weil die Suche sie gefunden hat oder weil sie
+            // gerade aktiv ist. Ohne Kennzeichen saehe sie aus wie eine
+            // normale Eintragung - und die naechste Frage waere, warum sie
+            // nach dem Leeren des Suchfelds wieder verschwindet.
+            if (v.versteckt === true) {
+                b.classList.add('aiw-navitem-versteckt');
+                var vm = document.createElement('span');
+                vm.className = 'aiw-navitem-vmark';
+                vm.textContent = 'ausgeblendet';
+                vm.title = 'Diese Sicht ist in "Ansicht anpassen" '
+                    + 'ausgeblendet und erscheint hier nur wegen der Suche '
+                    + 'oder weil sie gerade geoeffnet ist.';
+                b.appendChild(vm);
+            }
 
             var scope = scopeTag(effectiveCap(v, capabilities), capabilities);
             if (scope) {
@@ -680,6 +895,17 @@
             // alten Verhalten statt bei einer leeren Leiste.
             (gruppenKoerper || navEl).appendChild(b);
         });
+
+        // KEIN TREFFER WIRD BENANNT, MIT ZAHL (Build 569). Eine leere Leiste
+        // saehe wie ein Fehler aus; die Zahl sagt, wogegen gesucht wurde.
+        if (sucheAktiv && views.length === 0) {
+            var leer = document.createElement('div');
+            leer.className = 'aiw-navsuche-leer';
+            var n = (typeof suchInfo.gesamt === 'number') ? suchInfo.gesamt : 0;
+            leer.textContent = 'Kein Treffer unter ' + n
+                + (n === 1 ? ' erreichbaren Sicht.' : ' erreichbaren Sichten.');
+            navEl.appendChild(leer);
+        }
 
         // Build 546 (AP-3G): DER ZAEHLER DER AUSGEBLENDETEN SICHTEN.
         //
@@ -743,6 +969,12 @@
     // table = aktuelle Tabulator-Instanz (Build 348, Overview); sse = EventSource.
     var state = {
         capabilities: {}, activeId: null,
+        // Build 569: der aktuelle Suchbegriff der Navigationsleiste. Er wird
+        // NICHT gespeichert - weder auf dem Server noch im localStorage. Ein
+        // Filter ist ein Moment und keine Vorliebe; wer die Anwendung neu
+        // oeffnet, will die vollstaendige Leiste sehen und nicht raten
+        // muessen, warum die Haelfte fehlt.
+        navSuche: '',
         // Build 546 (AP-3G): die gespeicherte Ansichtseinstellung dieser
         // Person. [] heisst 'nichts gespeichert' -> Werkseinstellung; null
         // heisst 'noch nicht geladen'. Der Unterschied ist wichtig, damit ein
@@ -4083,6 +4315,53 @@
         }
     }
 
+    // navLeisteZeichnen: Suchfeld und Eintragsliste in EINEM Zug (Build 569).
+    //
+    // Reihenfolge der Schritte ist bedeutsam:
+    //   1) navViewsAlle  — nach Vorliebe geordnet, nach RECHT gefiltert,
+    //                      gruppenrein, MIT den ausgeblendeten.
+    //   2) navSuche      — filtert nur noch innerhalb dieser Liste. Der
+    //                      VIEW_CATALOG wird hier NIE angefasst; sonst
+    //                      verriete das Suchfeld, welche Sichten es gibt,
+    //                      fuer die einem das Recht fehlt.
+    //   3) Ohne Suche fallen die ausgeblendeten heraus — bis auf die GERADE
+    //      AKTIVE. Sonst zeigte die Leiste eine Sicht nicht an, die im
+    //      Hauptfenster offen steht, und behauptete damit stillschweigend,
+    //      es gebe sie nicht.
+    function navLeisteZeichnen(navEl) {
+        navEl = navEl || document.getElementById('aiw-nav');
+        if (!navEl) { return; }
+        var liste = navGeruest(navEl);
+        var alle = navViewsAlle(state.capabilities, state.viewPrefs);
+        var frage = state.navSuche || '';
+        var aktiv = frage.trim() !== '';
+        var gezeigt;
+        if (aktiv) {
+            gezeigt = navSuche(alle, frage);
+        } else {
+            gezeigt = alle.filter(function (v) {
+                return v.versteckt !== true || v.id === state.activeId;
+            });
+        }
+        var info = '';
+        if (aktiv) {
+            var vt = gezeigt.filter(function (v) {
+                return v.versteckt === true;
+            }).length;
+            info = gezeigt.length + ' von ' + alle.length
+                + (gezeigt.length === 1 ? ' Sicht' : ' Sichten')
+                + (vt ? (', davon ' + vt + ' ausgeblendet') : '');
+        }
+        buildNavSuche(navEl, frage, function (wert) {
+            state.navSuche = wert;
+            navLeisteZeichnen(navEl);
+        }, info);
+        buildNav(liste, gezeigt, state.capabilities, state.activeId,
+                 selectView, aktiv ? 0 : hiddenCount(state.capabilities,
+                                                     state.viewPrefs),
+                 { aktiv: aktiv, gesamt: alle.length });
+    }
+
     function selectView(viewId) {
         // Build 546 (AP-3G, mc 2026-07-26): WARNUNG BEIM VERLASSEN MIT
         // UNGESPEICHERTEN AENDERUNGEN.
@@ -4118,11 +4397,7 @@
         cleanupView();  // beim Sichtwechsel offene Tabelle/Diagramm abbauen
         var navEl = document.getElementById('aiw-nav');
         var mainEl = document.getElementById('aiw-main');
-        // Build 546 (AP-3G): geordnet nach Vorliebe, gefiltert nach Recht
-        // (in dieser Reihenfolge), ohne die versteckten.
-        var views = navViews(state.capabilities, state.viewPrefs);
-        buildNav(navEl, views, state.capabilities, state.activeId, selectView,
-                 hiddenCount(state.capabilities, state.viewPrefs));
+        navLeisteZeichnen(navEl);
         sichtNachOben(mainEl);
         navEintragZeigen(navEl);
         refreshExportButton();
@@ -4490,9 +4765,7 @@
             if (state.activeId) {
                 selectView(state.activeId);
             } else {
-                buildNav(document.getElementById('aiw-nav'), views,
-                         state.capabilities, null, selectView,
-                         hiddenCount(state.capabilities, state.viewPrefs));
+                navLeisteZeichnen(document.getElementById('aiw-nav'));
                 renderPlaceholder(document.getElementById('aiw-main'), null);
             }
 
@@ -4600,8 +4873,17 @@
         viewById: viewById,
         setWho: setWho,
         buildNav: buildNav,
+        buildNavSuche: buildNavSuche,
+        navGeruest: navGeruest,
         navGruppeUmschalten: navGruppeUmschalten,
         GROUP_ORDER: GROUP_ORDER,
+        suchNormal: suchNormal,
+        sichtSuchtext: sichtSuchtext,
+        suchBegriffe: suchBegriffe,
+        sichtPasst: sichtPasst,
+        navSuche: navSuche,
+        navLeisteZeichnen: navLeisteZeichnen,
+        navViewsAlle: navViewsAlle,
         nachGruppenOrdnen: nachGruppenOrdnen,
         sichtNachOben: sichtNachOben,
         navEintragZeigen: navEintragZeigen,

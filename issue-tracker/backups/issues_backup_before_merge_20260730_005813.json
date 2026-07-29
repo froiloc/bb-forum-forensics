@@ -527,28 +527,39 @@
     {
       "id": "ace2cc2a-85be-41af-8d34-509d0d6f2d28",
       "type": "feature_request",
-      "status": "resolved",
-      "priority": "high",
-      "severity": "major",
       "title": "Suchfeld für Navigationsleiste ",
       "affected_version": "0.8.560",
-      "resolved_in_version": "0.8.569",
       "reporter": "Alex",
       "reported_at": "2026-07-29T16:00:32.556107+00:00",
+      "prerequisites": "Es gibt viele Sichten im Management und die Orientierung fällt zunehmend schwerer. Das Auffinden von Konfigurations und Darstellungssichten ist dadurch erschwert.",
+      "description": "Am oberen Ende der Navigation soll ein Filter/Such-Element angezeigt werden. Das Eingabefeld soll dazu dienen, mittels Schlagworten und Wortteilen die gewünschte Sicht schnell zu finden. So sollen die Wörter aus den Masken der Sichten für eine Volltextsuche herhalten. Ist ein eingegebener Begriff als Text oder Schlagwort einer Sicht zugeordnet, so wird diese Sicht in der Navigationsleiste als Verknüpfung eingeblendet. Die Reihenfolge ergibt sich aus der voreingestellten Reihenfolge. Es gibt keine besondere Sortierung der Suchtreffer.",
+      "expected_behavior": "Begriffe und Schlagworte helfen Sichten besser zu finden. Der Benutzer kann einen Begriff eingeben und findet so schneller zur gesuchten Sicht.",
+      "actual_behavior": "Der Benutzer muss genau wissen, wie der Name der Sicht ist und wo die Sicht in er Navigationsleiste verankert ist, um zu ihr zu gelangen.",
+      "status": "open",
+      "priority": "high",
+      "severity": "major",
       "assigned_to": "Claude",
+      "related_to": [],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14",
+        "database": "coordinator.db"
+      },
       "tags": [
         "Navigationsleiste",
         "Sichten",
         "Suche"
       ],
+      "attachments": [],
       "updates": [
         {
-          "timestamp": "2026-07-29T21:40:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "Build 569. Gesucht wird in Beschriftung, Gruppe, Kennung und gepflegten Stichworten (alle 42 Sichten haben welche; NS10/NS11 erzwingen das). Umlauttolerant in beide Richtungen, Teilwort, mehrere Begriffe als UND, Reihenfolge der Voreinstellung ohne Trefferwertung. Ausgeblendete Sichten werden gefunden und gekennzeichnet. Die Rechtegrenze bleibt hart: gefiltert wird nur innerhalb von navViewsAlle. NS01-NS15."
+          "timestamp": "2026-07-29T16:00:32.556136+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Issue erstellt"
         }
       ]
     },
@@ -901,73 +912,6 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eintraege_claude_Build568.json"
-        }
-      ]
-    },
-    {
-      "id": "5c1a7e39-2b46-4d08-8f71-3a9d0e6b4c52",
-      "type": "improvement",
-      "status": "resolved",
-      "priority": "medium",
-      "title": "Ausgeblendete, aber geoeffnete Sicht fehlte in der Leiste",
-      "affected_version": "0.8.546",
-      "resolved_in_version": "0.8.569",
-      "reporter": "Claude",
-      "reported_at": "2026-07-29T21:40:00+00:00",
-      "assigned_to": "Claude",
-      "related_to": [
-        "ace2cc2a-85be-41af-8d34-509d0d6f2d28"
-      ],
-      "tags": [
-        "Navigationsleiste",
-        "Nebenbefund"
-      ],
-      "description": "Ergab sich aus der Entscheidung, ausgeblendete Sichten suchbar zu machen: wer eine ausgeblendete Sicht ueber die Suche oeffnet und danach das Suchfeld leert, hatte eine offene Sicht ohne Eintrag in der Navigation. Die Leiste behauptete damit stillschweigend, es gebe die Sicht nicht.",
-      "expected_behavior": "Die gerade aktive Sicht steht immer in der Leiste - notfalls mit dem Kennzeichen 'ausgeblendet'.",
-      "updates": [
-        {
-          "timestamp": "2026-07-29T21:40:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "Build 569: navLeisteZeichnen nimmt die aktive Sicht auch dann auf, wenn sie ausgeblendet ist."
-        },
-        {
-          "timestamp": "2026-07-29T22:58:13.626246+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build569.json"
-        }
-      ]
-    },
-    {
-      "id": "9d4b6f80-1c53-4a27-b6e8-72f5a3c19d64",
-      "type": "bug",
-      "status": "resolved",
-      "priority": "low",
-      "severity": "trivial",
-      "title": "Eigener Testfehler: NS13 war vakuum-gruen (falscher localStorage-Schluessel)",
-      "affected_version": "0.8.569",
-      "resolved_in_version": "0.8.569",
-      "reporter": "Claude",
-      "reported_at": "2026-07-29T21:40:00+00:00",
-      "assigned_to": "Claude",
-      "tags": [
-        "Tests",
-        "gruen-aber-tot"
-      ],
-      "description": "NS13 sollte pruefen, dass eingeklappte Gruppen waehrend der Suche geoeffnet werden. Der Klappzustand wurde unter dem geratenen Schluessel 'aiw_nav_zu' gesetzt; er heisst 'aiw.cockpit.navZu.v1'. Der Zustand kam also nie an, die Gruppen waren ohnehin offen, und der Test bestaetigte sich selbst.",
-      "updates": [
-        {
-          "timestamp": "2026-07-29T21:40:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "Behoben: echter Schluessel plus GEGENPROBE - ohne aktive Suche muessen die Gruppen nachweislich zu sein. Ohne die Gegenprobe waere derselbe Fehler beim naechsten Umbenennen wieder moeglich."
-        },
-        {
-          "timestamp": "2026-07-29T22:58:13.626359+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build569.json"
         }
       ]
     }
