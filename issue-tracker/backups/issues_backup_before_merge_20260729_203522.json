@@ -161,30 +161,27 @@
     },
     {
       "id": "6dab3c7e-bb04-4c60-aa97-ee7b364f580b",
-      "type": "improvement",
-      "status": "duplicate",
-      "priority": "low",
-      "title": "Kapazitaetspflege: entfernte Zeilen auf Wunsch mit anzeigen",
-      "affected_version": "0.8.561",
       "reporter": "Claude",
       "reported_at": "2026-07-29T15:20:00+00:00",
       "assigned_to": "Claude",
-      "related_to": [
-        "a4f0d8d7-cd6d-4a38-a3af-78fe5b17bfcb"
-      ],
+      "type": "improvement",
+      "status": "open",
+      "priority": "low",
+      "title": "Kapazitaetspflege: entfernte Zeilen auf Wunsch mit anzeigen",
+      "affected_version": "0.8.561",
+      "target_version": "0.8.562",
       "tags": [
         "Kapazitaet",
-        "duplicate"
+        "Backend",
+        "Frontend"
       ],
-      "description": "Ueberholt. Derselbe Sachverhalt wird unter a4f0d8d7-cd6d-4a38-a3af-78fe5b17bfcb gefuehrt und ist dort mit den Builds 562 (Backend) und 563 (Frontend) erledigt.",
+      "description": "Entfernen ist ein Soft-Delete; die Zeile bleibt in der Datenbank. In der Pflegesicht ist sie danach jedoch unsichtbar. Eine Umschaltung 'auch entfernte anzeigen' wuerde die Nachvollziehbarkeit sichtbar machen. WorktimeRepo.list_worktime kann das bereits (include_deleted); es fehlt der Durchgriff in GET /api/capacity/stammdaten (Backend) und die Umschaltung (Frontend). Zwei Builds nach Festlegung 363.",
       "updates": [
         {
-          "timestamp": "2026-07-29T17:55:00+00:00",
+          "timestamp": "2026-07-29T15:20:00+00:00",
           "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "duplicate",
-          "comment": "Auf Weisung mc als Duplikat geschlossen. Der Eintrag entstand, als das Vorhaben geplant wurde; der Erledigungseintrag kam mit der Umsetzung dazu."
+          "action": "comment",
+          "comment": "Aus Build 561 bewusst herausgehalten, um den Frontend-Build nicht mit einer Backend-Aenderung zu vermischen."
         }
       ]
     },
@@ -312,28 +309,39 @@
     {
       "id": "a1480978-899d-44a6-8c67-8561dbcbd474",
       "type": "bug",
-      "status": "resolved",
-      "priority": "medium",
-      "severity": "major",
       "title": "bestehende Bausteine nicht vorschaufähig oder änderbar",
       "affected_version": "0.8.560",
-      "resolved_in_version": "0.8.565",
       "reporter": "Alex",
-      "reported_at": "2026-07-29T16:40:00+00:00",
-      "assigned_to": "Claude",
+      "reported_at": "2026-07-29T14:46:58.125638+00:00",
+      "prerequisites": "Management-System wird gestartet. Recht zum Einsehen und Ändern von Templates ist der aktuellen Rolle zugeordnet.",
+      "description": "Bestehende Einträge für Bausteinmodule haben keinen Wert in `module_key`. Das Feld `module_key` ist ein Pflichtfeld. Es muss gesetzt sein, um eine Vorschau anzuzeigen oder eine Änderung an dem Bausteinmodul vorzunehmen. Da das Eingabefeld `module_key` read-only ist, kann der Wert nicht gesetzt werden.",
+      "expected_behavior": "Wenigstens, wenn `module_key` nicht gesetzt ist, muss es im Frontend editierbar sein, mitgesendet werden können und im Backend übernommen werden.\r\n\r\nEine Vorschau des Bausteinmoduls ist möglich.\r\nEine Änderung des Bausteinmoduls ist möglich.",
+      "actual_behavior": "Es kann keine Vorschau erzeugt werden.\r\nEs kann keine Änderung vorgenommen werden.",
+      "status": "open",
+      "priority": "medium",
+      "severity": "major",
+      "assigned_to": "",
+      "related_to": [],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14",
+        "database": "templates.db"
+      },
       "tags": [
         "Preview",
         "Änderung",
         "Bausteinmodule"
       ],
+      "attachments": [],
       "updates": [
         {
-          "timestamp": "2026-07-29T17:55:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "Build 564 (Backend) + 565 (Frontend). WICHTIGER NEBENBEFUND: der reine Frontend-Fix haette den Schaden vergroessert. ModuleAuthorRepo.upsert adressierte die Zeile AUSSCHLIESSLICH ueber module_key - ein neu getippter Schluessel haette nichts gefunden und eine ZWEITE Zeile angelegt, die alte waere unerreichbar daneben stehen geblieben. Deshalb im Repo ein Nachtragspfad ueber die Zeilen-id, der NUR bei module_key IS NULL greift. TM20-TM26, MK01-MK03."
+          "timestamp": "2026-07-29T14:46:58.125677+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Issue erstellt"
         }
       ]
     },
@@ -647,69 +655,6 @@
           "author": "Claude",
           "action": "comment",
           "comment": "Build 563: onEntfernteUmschalten laedt die Sicht neu mit ?include_deleted=1. Der Zustand des Hakens kommt aus der Antwort (data.include_deleted), nicht aus dem Frontend - sonst koennte der Haken gesetzt sein, waehrend die Liste noch die alte Antwort zeigt. KP25 prueft serverseitig, dass der Schalter weder Recht noch Scope aushebelt."
-        }
-      ]
-    },
-    {
-      "id": "f6c285e2-f9e4-4cbc-8c35-f7df6e0cfa93",
-      "reporter": "Alex",
-      "reported_at": "2026-07-29T17:55:00+00:00",
-      "assigned_to": "Claude",
-      "type": "improvement",
-      "status": "resolved",
-      "priority": "low",
-      "severity": "minor",
-      "title": "Live-Aktualisierung Zielfeld im Minuterechner",
-      "affected_version": "0.8.561",
-      "resolved_in_version": "0.8.565",
-      "tags": [
-        "Minutenrechner",
-        "Frontend"
-      ],
-      "description": "Die Zielanzeige im Minutenrechner wurde nur bei Eingaben IM Rechner aufgefrischt. Wer das Fenster offen liess und draussen ein anderes Feld anklickte, sah weiter das alte Ziel.",
-      "updates": [
-        {
-          "timestamp": "2026-07-29T17:55:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "Mein Fehler aus Build 561. Build 565: der Rechner horcht auf focusin am Dokument - bewusst nicht auf 'click', weil man mit der Tabulatortaste ebenso das Feld wechselt. Ereignisse aus dem Rechner selbst werden uebergangen, sonst ueberschriebe ein Klick in 'Stunden' die Zielanzeige. Der Horcher wird beim Schliessen abgemeldet. MR11, MR12."
-        },
-        {
-          "timestamp": "2026-07-29T18:35:22.146656+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build565.json"
-        }
-      ]
-    },
-    {
-      "id": "219838e4-e4eb-430f-97a5-e0620c4f715d",
-      "reporter": "Claude",
-      "reported_at": "2026-07-29T17:55:00+00:00",
-      "assigned_to": "Claude",
-      "type": "documentation",
-      "status": "open",
-      "priority": "low",
-      "title": "module_key: 8 Altbausteine brauchen einen Nachtrag",
-      "affected_version": "0.8.565",
-      "tags": [
-        "Bausteinmodule",
-        "Betrieb"
-      ],
-      "description": "Nach Auskunft mc haben 8 Bausteine keinen module_key. Sie sind seit Build 565 einzeln in der Maske nachtragbar (Vorschlag aus dem Titel). Ein Sammelskript wurde bewusst NICHT gebaut: bei acht Zeilen ist es mehr Werkzeug als Arbeit, und jede Kennung sollte einmal bewusst gelesen werden - sie ist danach endgueltig.",
-      "expected_behavior": "Alle 8 Bausteine tragen eine Kennung; der Eintrag kann danach geschlossen werden.",
-      "updates": [
-        {
-          "timestamp": "2026-07-29T17:55:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "Als Merkposten gefuehrt, damit der Nachtrag nicht auf halbem Weg liegen bleibt."
-        },
-        {
-          "timestamp": "2026-07-29T18:35:22.146729+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build565.json"
         }
       ]
     }

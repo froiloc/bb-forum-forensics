@@ -48,7 +48,9 @@
     }
 
     var _state = {
-        listEl: null, fields: null, msgEl: null, dryEl: null, selKey: null
+        listEl: null, fields: null, msgEl: null, dryEl: null,
+        selKey: null, selId: null, nachtragId: null,
+        keyHinweisEl: null
     };
 
     // Build 488: Browser-Zwischenspeicher (localStorage) des NOCH NICHT
@@ -120,12 +122,40 @@
         return _KEY_RE.test(String(key || ''));
     }
 
+    // schluesselVorschlag: aus einem Titel eine zulaessige Kennung bauen
+    // (Build 565). Ein leeres Pflichtfeld ohne Anhalt ist eine Falle - wer
+    // acht Altbausteine nachtragen muss, soll nicht achtmal ueberlegen
+    // muessen, wie ein Schluessel auszusehen hat. Der Vorschlag ist frei
+    // ueberschreibbar; er wird NIE automatisch gespeichert.
+    //
+    // Regeln: Umlaute ausschreiben (sonst faellt 'Beschluss' zu 'Beschluss'
+    // und 'Anhörung' zu 'Anhrung' zusammen), alles klein, jede unzulaessige
+    // Folge zu einem Punkt, Raender abschneiden. Der erlaubte Zeichenraum
+    // ist [A-Za-z0-9._-] (module_validator).
+    function schluesselVorschlag(titel, rolle) {
+        var t = String(titel || '').toLowerCase();
+        t = t.replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue')
+             .replace(/ß/g, 'ss');
+        t = t.replace(/[^a-z0-9]+/g, '.').replace(/^\.+|\.+$/g, '');
+        if (!t) { return ''; }
+        var r = String(rolle || '').replace(/[^a-z0-9]+/g, '');
+        // Praefix aus der Rolle, wie beim Bestand ('intro.standard',
+        // 'legal.ki_uebersetzung'): so bleibt die Liste sortierbar.
+        return r ? (r + '.' + t) : t;
+    }
+
     // buildPayload: Feldwerte zum POST-Body. REIN. module_key/title/topic werden
     // getrimmt; body NICHT (Freitext bleibt exakt erhalten); description wie
     // eingegeben (leer erlaubt); sort_order als Zahl.
     function buildPayload(fields) {
         var f = fields || {};
         return {
+            // Build 564/565: die id wird NUR mitgesendet, wenn ein Schluessel
+            // nachzutragen ist. Sonst bliebe sie ein zweiter Adressweg neben
+            // dem module_key - und zwei Adresswege auf dieselbe Zeile sind
+            // einer zu viel.
+            id: (f.id === undefined || f.id === null || f.id === '')
+                ? undefined : f.id,
             module_key: String(f.module_key || '').trim(),
             title: String(f.title || '').trim(),
             description: (f.description === undefined || f.description === null)
@@ -184,8 +214,22 @@
         var f = _state.fields;
         if (!f) { return; }
         if (m) {
+            // BUILD 565 - ALTBESTAND OHNE SCHLUESSEL.
+            // Bis Build 564 war das Feld im Editier-Modus IMMER gesperrt. Das
+            // ist fuer Bausteine MIT Schluessel richtig (er ist eine stabile
+            // Kennung, auf die Berichtsvorlagen verweisen) - fuer Altzeilen
+            // OHNE Schluessel war es eine Sackgasse: sie liessen sich weder
+            // in der Vorschau ansehen noch aendern, weil die Validierung den
+            // Schluessel verlangt und niemand ihn eintragen konnte.
+            var hatKey = !!(m.module_key);
             f.module_key.value = m.module_key || '';
-            f.module_key.disabled = true;   // Schluessel im Editier-Modus fix
+            f.module_key.disabled = hatKey;
+            _state.nachtragId = hatKey ? null : m.id;
+            if (!hatKey) {
+                // Vorschlag setzen, aber NICHT speichern - das tut erst der
+                // Anwender mit dem Speichern-Knopf.
+                f.module_key.value = schluesselVorschlag(m.title, m.role);
+            }
             f.title.value = m.title || '';
             f.description.value = m.description || '';
             f.role.value = m.role || 'body';
@@ -193,7 +237,11 @@
             f.body.value = m.body || '';
             f.sort_order.value = (m.sort_order === undefined
                 || m.sort_order === null) ? 0 : m.sort_order;
-            _state.selKey = String(m.module_key);
+            // selKey adressiert die Zeile in der Liste. Bei einer Altzeile
+            // gibt es keinen Schluessel - dann wird ueber die id adressiert,
+            // sonst stuende dort der Text "null".
+            _state.selKey = hatKey ? String(m.module_key) : null;
+            _state.selId = m.id;
         } else {
             f.module_key.value = '';
             f.module_key.disabled = false;  // Neu-Modus: Schluessel eingeben
@@ -204,15 +252,41 @@
             f.body.value = '';
             f.sort_order.value = 0;
             _state.selKey = null;
+            _state.selId = null;
+            _state.nachtragId = null;
         }
+        _renderKeyHinweis();
         _setMsg('');
         renderDryRun(null);
         _markActive();
     }
 
+    // _renderKeyHinweis: erklaert den Zustand des Schluesselfeldes.
+    function _renderKeyHinweis() {
+        var el = _state.keyHinweisEl;
+        if (!el) { return; }
+        el.classList.remove('aiw-mod-keyhinweis-warn');
+        if (_state.nachtragId) {
+            el.textContent = 'Dieser Baustein stammt aus der Zeit vor der '
+                + 'Schluessel-Einfuehrung und hat noch keine Kennung. Ohne sie '
+                + 'ist weder Vorschau noch Aenderung moeglich. Der Vorschlag '
+                + 'ist aus dem Titel gebildet und frei aenderbar — nach dem '
+                + 'Speichern ist die Kennung ENDGUELTIG, weil '
+                + 'Berichtsvorlagen ueber sie auf den Baustein verweisen.';
+            el.classList.add('aiw-mod-keyhinweis-warn');
+        } else if (_state.selKey) {
+            el.textContent = 'Die Kennung ist fest: Berichtsvorlagen verweisen '
+                + 'ueber sie auf diesen Baustein.';
+        } else {
+            el.textContent = 'Kennung frei waehlbar; nach dem ersten Speichern '
+                + 'bleibt sie unveraendert.';
+        }
+    }
+
     function _currentFields() {
         var f = _state.fields;
         return {
+            id: _state.nachtragId,
             module_key: f.module_key.value,
             title: f.title.value,
             description: f.description.value,
@@ -227,8 +301,11 @@
         if (!_state.listEl) { return; }
         var items = _state.listEl.querySelectorAll('.aiw-mod-item');
         Array.prototype.forEach.call(items, function (it) {
-            var on = (_state.selKey !== null
-                && it.getAttribute('data-key') === _state.selKey);
+            var kennung = _state.selKey !== null
+                ? _state.selKey
+                : (_state.selId ? ('#id:' + _state.selId) : null);
+            var on = (kennung !== null
+                && it.getAttribute('data-key') === kennung);
             it.classList.toggle('is-active', on);
         });
     }
@@ -288,7 +365,8 @@
 
     // --- Browser-Zwischenspeicher des Entwurfs (Build 488) ---------------
     function _draftFromState() {
-        return { v: 1, fields: _currentFields(), selKey: _state.selKey };
+        return { v: 1, fields: _currentFields(), selKey: _state.selKey,
+                 selId: _state.selId, nachtragId: _state.nachtragId };
     }
     function _persistDraft() {
         var ls = _ls();
@@ -326,7 +404,13 @@
         f.sort_order.value = (fl.sort_order === undefined
             || fl.sort_order === null) ? 0 : fl.sort_order;
         _state.selKey = (d.selKey === undefined) ? null : d.selKey;
+        _state.selId = (d.selId === undefined) ? null : d.selId;
+        _state.nachtragId = (d.nachtragId === undefined) ? null : d.nachtragId;
+        // Im Nachtragsmodus bleibt das Feld OFFEN, auch nach dem Wiederholen
+        // eines Entwurfs - sonst waere die Sackgasse nach einem Neuladen
+        // zurueck.
         f.module_key.disabled = (_state.selKey !== null);
+        _renderKeyHinweis();
         renderDryRun(null);
         _markActive();
         _setMsg('Nicht gespeicherter Entwurf aus dem Browserspeicher '
@@ -387,7 +471,11 @@
             var it = document.createElement('button');
             it.type = 'button';
             it.className = 'aiw-mod-item';
-            it.setAttribute('data-key', String(m.module_key));
+            // Altzeilen haben keinen Schluessel - dann traegt der
+            // Eintrag seine id, damit die Markierung nicht auf dem
+            // Text 'null' beruht.
+            it.setAttribute('data-key', m.module_key
+                ? String(m.module_key) : ('#id:' + m.id));
             it.textContent = moduleLabel(m);
             it.addEventListener('click', function () {
                 _fillForm(m);
@@ -404,6 +492,13 @@
 
         var fKey = _labeledField(form, 'module_key (A-Z a-z 0-9 . _ -)', 'text',
             'aiw-mod-key');
+        // Build 565: Hinweiszeile DIREKT unter dem Feld. Sie sagt, warum das
+        // Feld gerade gesperrt oder offen ist - ein Feld, das mal geht und mal
+        // nicht, ohne dass jemand sagt warum, wirkt kaputt.
+        var keyHinweis = document.createElement('p');
+        keyHinweis.className = 'aiw-mod-keyhinweis';
+        form.appendChild(keyHinweis);
+        _state.keyHinweisEl = keyHinweis;
         var fTitle = _labeledField(form, 'Titel', 'text', 'aiw-mod-title');
         var fRole = _labeledField(form, 'Rolle', 'select', 'aiw-mod-role');
         ROLES.forEach(function (r) {
@@ -486,6 +581,8 @@
         _state.msgEl = null;
         _state.dryEl = null;
         _state.selKey = null;
+        _state.selId = null;
+        _state.nachtragId = null;
     }
 
     // -------------------------------------------------------------------------
@@ -498,6 +595,7 @@
         sortModules: sortModules,
         isValidKey: isValidKey,
         buildPayload: buildPayload,
+        schluesselVorschlag: schluesselVorschlag,
         summaryText: summaryText,
         errorsText: errorsText,
         ROLES: ROLES,

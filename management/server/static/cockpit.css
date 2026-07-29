@@ -2932,3 +2932,18 @@ tr.aiw-cff-nichtrelevant { opacity: 0.7; }
     opacity: .55;
     text-decoration: line-through;
 }
+
+/* --- Build 565: module_key nachtragen ----------------------------------- */
+/* Die Hinweiszeile steht direkt unter dem Schluesselfeld. Ein Feld, das mal
+   gesperrt und mal offen ist, ohne dass jemand sagt warum, wirkt kaputt. */
+.aiw-mod-keyhinweis {
+    margin: .15rem 0 .6rem 0;
+    font-size: .85em;
+    opacity: .75;
+}
+.aiw-mod-keyhinweis-warn {
+    opacity: 1;
+    padding: .35rem .5rem;
+    border-left: 4px solid var(--aiw-warn, #b8860b);
+    background: var(--aiw-warn-bg, #fff8e1);
+}

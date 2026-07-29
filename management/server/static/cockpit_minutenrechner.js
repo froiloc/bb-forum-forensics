@@ -31,7 +31,12 @@
 //   still ein halber Arbeitstag weniger. Das ist kein Schoenheitsfehler,
 //   sondern ein Datenfehler, und deshalb wird umgesetzt statt gewarnt.
 //
-// Version: v0.8.561 · Build: 561 · 2026-07-29
+// BUILD 565: die Zielanzeige folgt dem Fokus. Bis dahin wurde sie nur bei
+//   Eingaben IM Rechner aufgefrischt - wer draussen ein anderes Feld anklickte,
+//   sah weiter das alte Ziel und erfuhr erst beim Uebernehmen, wohin der Wert
+//   ging (Befund mc).
+//
+// Version: v0.8.565 · Build: 565 · 2026-07-29
 // =============================================================================
 
 (function () {
@@ -219,6 +224,7 @@
         wurzel.appendChild(uebernehmen);
 
         var letztes = null;            // letztes gueltiges Ergebnis
+        var doc = host.ownerDocument || document;
 
         function aktualisieren() {
             var r = rechnen(fStunden.value, fMinuten.value, fProzent.value);
@@ -242,6 +248,24 @@
         [fStunden, fMinuten, fProzent].forEach(function (f) {
             f.addEventListener('input', aktualisieren);
         });
+
+        // BEFUND mc (Build 561): die Zielzeile wurde NUR bei Eingaben IM
+        // Rechner neu geschrieben. Wer das Fenster offen liess und draussen
+        // ein anderes Feld anklickte, sah weiter das alte Ziel - und erfuhr
+        // erst beim Uebernehmen, wohin der Wert wirklich ging. Das ist genau
+        // die Sorte Ueberraschung, die man bei sieben gleichartigen Feldern
+        // nicht haben will.
+        //
+        // Der Rechner horcht deshalb auf FOCUSIN am Dokument. Bewusst nicht
+        // auf 'click': mit der Tabulatortaste wechselt man ebenso das Feld,
+        // und ein Klick, der keinen Fokus setzt, ist kein Zielwechsel.
+        // Ereignisse aus dem Rechner selbst werden uebergangen, sonst
+        // ueberschriebe ein Klick in 'Stunden' die Zielanzeige.
+        function zielBeobachten(ev) {
+            if (wurzel.contains(ev.target)) { return; }
+            aktualisieren();
+        }
+        doc.addEventListener('focusin', zielBeobachten);
 
         uebernehmen.addEventListener('click', function () {
             var r = aktualisieren();
@@ -281,13 +305,13 @@
             wurzel.style.top = Math.max(0, ev.clientY - dy) + 'px';
         }
         function loslassen() { zieht = false; }
-        var doc = host.ownerDocument || document;
         doc.addEventListener('mousemove', bewegen);
         doc.addEventListener('mouseup', loslassen);
 
         function schliessen() {
             doc.removeEventListener('mousemove', bewegen);
             doc.removeEventListener('mouseup', loslassen);
+            doc.removeEventListener('focusin', zielBeobachten);
             if (wurzel.parentNode) { wurzel.parentNode.removeChild(wurzel); }
             log('geschlossen');
         }

@@ -236,3 +236,63 @@ describe("cockpit_modules", () => {
     expect(win.localStorage.getItem(api.DRAFT_KEY)).toBeNull();
   });
 });
+
+describe("Bausteinmodule — module_key nachtragen (Build 565)", () => {
+  const _win = () => {
+    const { JSDOM } = require("jsdom");
+    const { readFileSync } = require("fs");
+    const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", {
+      runScripts: "dangerously", url: "http://localhost",
+    });
+    dom.window.eval(
+      readFileSync("management/server/static/cockpit_modules.js", "utf-8"));
+    return dom.window;
+  };
+
+  // MK01 --------------------------------------------------------------------
+  it("MK01: schluesselVorschlag baut eine zulaessige Kennung aus dem Titel", () => {
+    const api = _win().AIWCockpitModules;
+    expect(api.schluesselVorschlag("Tatvorwurf", "intro"))
+      .toBe("intro.tatvorwurf");
+    // Umlaute werden AUSGESCHRIEBEN, nicht geloescht: sonst fielen
+    // "Anhoerung" und "Anhrung" zusammen.
+    expect(api.schluesselVorschlag("Anhörung des Beschuldigten", "legal"))
+      .toBe("legal.anhoerung.des.beschuldigten");
+    expect(api.schluesselVorschlag("Maßnahme", "body")).toBe("body.massnahme");
+    // Nur unzulaessige Zeichen -> kein Vorschlag, statt eines Schluessels
+    // aus lauter Punkten.
+    expect(api.schluesselVorschlag("!!!", "intro")).toBe("");
+    expect(api.schluesselVorschlag("", "intro")).toBe("");
+  });
+
+  // MK02 --------------------------------------------------------------------
+  it("MK02: der Vorschlag haelt den erlaubten Zeichenraum ein", () => {
+    const api = _win().AIWCockpitModules;
+    const KEY_RE = /^[A-Za-z0-9._-]+$/;
+    ["Tatvorwurf", "Anhörung des Beschuldigten", "Maßnahme 3 (Teil B)",
+     "Schluss/Ausblick"].forEach((t) => {
+      const v = api.schluesselVorschlag(t, "intro");
+      expect(KEY_RE.test(v)).toBe(true);
+      // Keine doppelten Punkte und keine Randpunkte.
+      expect(v).not.toMatch(/\.\./);
+      expect(v).not.toMatch(/^\.|\.$/);
+    });
+  });
+
+  // MK03 --------------------------------------------------------------------
+  it("MK03: buildPayload sendet die id nur im Nachtragsfall", () => {
+    const api = _win().AIWCockpitModules;
+    const ohne = api.buildPayload({ module_key: "a.b", title: "T",
+                                    role: "intro", topic: "X", body: "Y" });
+    expect(ohne.id).toBeUndefined();
+
+    const mit = api.buildPayload({ id: 7, module_key: "a.b", title: "T",
+                                   role: "intro", topic: "X", body: "Y" });
+    expect(mit.id).toBe(7);
+    // Leerwerte sind KEIN Nachtrag — sonst ginge eine id="" hinaus und der
+    // Server muesste raten, was gemeint ist.
+    expect(api.buildPayload({ id: "", module_key: "a.b" }).id).toBeUndefined();
+    expect(api.buildPayload({ id: null, module_key: "a.b" }).id)
+      .toBeUndefined();
+  });
+});

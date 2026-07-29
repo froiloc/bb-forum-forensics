@@ -1,0 +1,7 @@
+e2e72978c29c3ff5ab41c6cb102a5d7a  build.json
+609877496dd31c16fc47fca5051546fb  management/server/static/cockpit_modules.js
+5f2f9a93fdd48b29305290eccb80b94e  management/server/static/cockpit_minutenrechner.js
+fafca370f59dc34122844eec36cb2e42  management/server/static/cockpit.css
+9766db1cd6049f4eb8fa6fd2a000ee06  tests/unit/test_cockpit_modules.test.js
+ca129f6596fda1c8e36c9a998b3b91b0  tests/unit/test_cockpit_minutenrechner.test.js
+51ca7e8ceb14b0d6903b0902e0cd2bee  issue-tracker/eintraege_claude_Build565.json

@@ -18,8 +18,12 @@
  * MR09 — das Fenster schliesst NUR ueber das X: Klick daneben und Escape
  *        lassen es offen (sonst koennte man kein Formularfeld anklicken).
  * MR10 — Ziehen an der Titelzeile verschiebt, Ziehen im Eingabefeld nicht.
+ * MR11 — die Zielanzeige folgt dem FOKUS ausserhalb des Rechners (Befund mc
+ *        zu Build 561: sie wurde erst beim Uebernehmen aufgefrischt).
+ * MR12 — ein Fokuswechsel INNERHALB des Rechners aendert das Ziel nicht, und
+ *        nach dem Schliessen horcht nichts mehr.
  *
- * Version: v0.8.561 · Build: 561 · 2026-07-29
+ * Version: v0.8.565 · Build: 565 · 2026-07-29
  */
 
 import { describe, it, expect } from "vitest";
@@ -185,5 +189,61 @@ describe("Minutenrechner (Build 561)", () => {
     maus(win.document, "mousemove", 400, 400);
     maus(win.document, "mouseup", 400, 400);
     expect(r.wurzel.style.left).toBe(vorher);
+  });
+
+  // MR11 --------------------------------------------------------------------
+  it("MR11: die Zielanzeige folgt dem Fokus ausserhalb des Rechners", () => {
+    const win = _win();
+    const doc = win.document;
+    const a = doc.createElement("input");
+    a.id = "aiw-capp-wt-mon_min";
+    const b = doc.createElement("input");
+    b.id = "aiw-capp-wt-fri_min";
+    doc.body.appendChild(a);
+    doc.body.appendChild(b);
+
+    let ziel = a;
+    a.addEventListener("focusin", () => { ziel = a; });
+    b.addEventListener("focusin", () => { ziel = b; });
+
+    const r = win.AIWMinutenrechner.oeffnen({
+      host: doc.body,
+      zielGeben: () => ({ id: ziel.id,
+                          label: win.AIWMinutenrechner.zielName(ziel.id) }),
+    });
+    const zeile = r.wurzel.querySelector("#aiw-rechner-ziel");
+    expect(zeile.textContent).toContain("Montag");
+
+    // Fokus auf ein anderes Feld — die Anzeige muss SOFORT folgen, nicht
+    // erst beim Uebernehmen.
+    b.dispatchEvent(new win.Event("focusin", { bubbles: true }));
+    expect(zeile.textContent).toContain("Freitag");
+    expect(zeile.textContent).not.toContain("Montag");
+  });
+
+  // MR12 --------------------------------------------------------------------
+  it("MR12: Fokus im Rechner aendert nichts, nach dem Schliessen ist Ruhe", () => {
+    const win = _win();
+    const doc = win.document;
+    let abfragen = 0;
+    const r = win.AIWMinutenrechner.oeffnen({
+      host: doc.body,
+      zielGeben: () => { abfragen += 1; return { id: "x", label: "Ziel" }; },
+    });
+    const nachStart = abfragen;
+
+    // Ein Klick ins Stunden-Feld ist KEIN Zielwechsel — sonst ueberschriebe
+    // die Bedienung des Rechners die Zielanzeige.
+    r.wurzel.querySelector("#aiw-rechner-h")
+      .dispatchEvent(new win.Event("focusin", { bubbles: true }));
+    expect(abfragen).toBe(nachStart);
+
+    r.wurzel.querySelector("#aiw-rechner-zu")
+      .dispatchEvent(new win.Event("click"));
+    // Nach dem Schliessen darf kein Horcher zurueckbleiben.
+    const c = doc.createElement("input");
+    doc.body.appendChild(c);
+    c.dispatchEvent(new win.Event("focusin", { bubbles: true }));
+    expect(abfragen).toBe(nachStart);
   });
 });
