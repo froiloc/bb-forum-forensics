@@ -686,6 +686,12 @@
                         // und muesste raten, welche (Grundregel 1).
                         fehler.zeilen = (data.zeilen && data.zeilen.length)
                             ? data.zeilen : [];
+                        // Build 560/561: manche Antworten nennen das
+                        // SCHULDIGE FELD ('feld'). Ginge es hier verloren,
+                        // koennte keine Maske es markieren und der Anwender
+                        // muesste bei sieben gleichartigen Eingabefeldern
+                        // raten, welches gemeint ist (Grundregel 1).
+                        fehler.feld = data.feld || null;
                         throw fehler;
                     }
                     return data;
@@ -2659,7 +2665,20 @@
     //   KEIN optimistisches UI: nach JEDEM Schreiben wird neu geladen — auch
     //   nach einem Fehler, denn dann zeigt die Liste den tatsaechlichen Stand
     //   (es wurde nichts geschrieben). Muster: loadPersonnel (Build 503).
-    function loadCapacityPflege(mainEl, pendingMsg) {
+    // _capacityPersonen: die zuletzt geladene Personenliste. Sie dient nur
+    // der Rueckmeldung ("Gespeichert: Mueller, ab ..."). Eine ID in der
+    // Erfolgsmeldung waere fuer den Ausfuellenden wertlos.
+    var _capacityPersonen = [];
+    function _personName(personId) {
+        var treffer = null;
+        _capacityPersonen.forEach(function (p) {
+            if (p && p.id === personId) { treffer = p; }
+        });
+        return treffer ? (treffer.display_name || treffer.system_username)
+                       : ('#' + personId);
+    }
+
+    function loadCapacityPflege(mainEl, uebergabe) {
         mainEl = mainEl || document.getElementById('aiw-main');
         var mod = (typeof window !== 'undefined')
             ? window.AIWCockpitCapacityPflege : null;
@@ -2667,26 +2686,84 @@
             renderError(mainEl, 'Kapazitaetspflege-Modul nicht geladen.');
             return;
         }
+        // uebergabe = { text, error, feld, formular } — was ueber das
+        // Neuladen hinweg erhalten bleibt (Build 561). OHNE das leert jedes
+        // Neuladen das Stichtagsfeld, und die naechste Eingabe scheitert am
+        // Server, ohne dass jemand versteht, warum (Befund mc, Build 560).
+        uebergabe = uebergabe || {};
         var view = null;
-        function after(text, isError) {
-            loadCapacityPflege(mainEl, { text: text, error: isError });
+
+        function after(text, isError, feld, formular) {
+            loadCapacityPflege(mainEl, { text: text, error: isError,
+                                         feld: feld, formular: formular });
         }
-        function _post(url, body, okText) {
+        function _post(url, body, okText, formularNachher) {
+            // Der Zustand wird VOR dem Absenden festgehalten: nach dem
+            // Neuladen ist das alte DOM weg.
+            var zustand = (view && view.formularLesen)
+                ? view.formularLesen() : null;
             postJson(url, body)
-                .then(function (res) { after(okText(res), false); })
+                .then(function (res) {
+                    after(okText(res), false, null,
+                          formularNachher === undefined ? zustand
+                                                        : formularNachher);
+                })
                 .catch(function (err) {
-                    after('Fehler: ' + err.message + ' (es wurde nichts '
-                        + 'geschrieben — die Listen zeigen den tatsaechlichen '
-                        + 'Stand).', true);
+                    // Im Fehlerfall bleibt ALLES stehen - es wurde nichts
+                    // geschrieben, und der Anwender soll nicht neu tippen.
+                    after('Fehler: ' + err.message + ' — es wurde nichts '
+                        + 'geschrieben, die Eingaben bleiben stehen.',
+                        true, err.feld || null, zustand);
                 });
         }
         var opts = {
+            formular: uebergabe.formular || null,
             onWorktimeSet: function (body) {
                 _post('/api/capacity/worktime', body, function (res) {
-                    return 'Arbeitszeit ab ' + res.effective_from
-                        + ' gespeichert — die bisherige Regel bleibt als '
-                        + 'Beleg bestehen (Beleg #' + res.audit_seq + ').';
+                    return mod.uebernahmeText(
+                        _personName(body.person_id), res.effective_from,
+                        body, res.audit_seq, false);
                 });
+            },
+            onWorktimeReplace: function (body) {
+                _post('/api/capacity/worktime/replace', body, function (res) {
+                    return mod.uebernahmeText(
+                        _personName(body.person_id), res.effective_from,
+                        body, res.gesetzt_seq, true);
+                // Nach dem Ersetzen faellt der Bearbeitungsmodus weg: die
+                // Zeile, die er festhielt, gibt es nicht mehr.
+                }, { worktime: { person_id: body.person_id,
+                                 effective_from: body.effective_from } });
+            },
+            onWorktimeRemove: function (worktimeId) {
+                _post('/api/capacity/worktime/remove',
+                    { worktime_id: worktimeId }, function (res) {
+                        return 'Arbeitszeit-Zeile #' + worktimeId
+                            + ' entfernt. Sie bleibt in der Datenbank '
+                            + 'stehen und faellt nur aus Rechnung und Liste '
+                            + '(Beleg #' + res.audit_seq + ').';
+                    });
+            },
+            onWorktimeEdit: function (zeile) {
+                // SCHREIBT NICHTS: fuellt nur das Formular und schaltet den
+                // Modus um. Erst das Speichern ersetzt.
+                var vorgabe = { person_id: zeile.person_id,
+                                effective_from: zeile.effective_from,
+                                _ersetzt_id: zeile.id };
+                ['mon_min', 'tue_min', 'wed_min', 'thu_min', 'fri_min',
+                 'sat_min', 'sun_min'].forEach(function (k) {
+                    vorgabe[k] = zeile[k];
+                });
+                loadCapacityPflege(mainEl, {
+                    text: 'Zeile #' + zeile.id + ' zum Bearbeiten geladen. '
+                        + 'Speichern ersetzt sie; die alte Zeile bleibt als '
+                        + 'Beleg erhalten.',
+                    error: false, formular: { worktime: vorgabe } });
+            },
+            onWorktimeEditAbort: function () {
+                loadCapacityPflege(mainEl, {
+                    text: 'Bearbeitung abgebrochen. Es wurde nichts geaendert.',
+                    error: false });
             },
             onAvailabilitySet: function (body) {
                 _post('/api/capacity/availability', body, function (res) {
@@ -2724,9 +2801,13 @@
         fetchJson('/api/capacity/stammdaten')
             .then(function (data) {
                 cleanupView();
+                _capacityPersonen = data.persons || [];
                 view = mod.renderCapacityPflege(mainEl, data, opts);
-                if (pendingMsg && view && view.setResult) {
-                    view.setResult(pendingMsg.text, pendingMsg.error);
+                if (uebergabe.text && view && view.setResult) {
+                    view.setResult(uebergabe.text, uebergabe.error);
+                }
+                if (uebergabe.feld && view && view.markiereFeld) {
+                    view.markiereFeld(uebergabe.feld);
                 }
                 log('Kapazitaetspflege gerendert:', data.counts);
             })

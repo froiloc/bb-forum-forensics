@@ -2806,3 +2806,109 @@ tr.aiw-cff-nichtrelevant { opacity: 0.7; }
    Schnellhilfe-Modus wird er umrandet; bis dahin ist er ein normaler Titel
    mit Tooltip. */
 .aiw-tk-titel { cursor: help; }
+
+/* ===========================================================================
+   Build 561 — Kapazitaetspflege und Minutenrechner
+   ---------------------------------------------------------------------------
+   ANHANG ANS DATEIENDE (mc 2026-07-29). Es wurde KEINE bestehende Regel
+   angefasst; alle Selektoren hier sind neu und mit 'aiw-capp-' bzw.
+   'aiw-rechner' praefixiert. Die Feinheiten regeln wir, wenn sie drankommen —
+   dieser Block sorgt zunaechst nur dafuer, dass die Sicht benutzbar ist und
+   das Rechnerfenster ueberhaupt als Fenster erkennbar wird.
+   =========================================================================== */
+
+/* --- Pflegeformulare ---------------------------------------------------- */
+.aiw-capp-section { margin-bottom: 1.5rem; }
+
+.aiw-capp-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .35rem .6rem;
+    margin: .5rem 0 .75rem 0;
+    padding: .6rem;
+    border: 1px solid var(--aiw-border, #ccc);
+    border-radius: 4px;
+}
+.aiw-capp-form .aiw-label { font-size: .85em; opacity: .8; }
+.aiw-capp-form input.aiw-input { width: 8em; }
+.aiw-capp-form input.aiw-minutenfeld { width: 5em; }
+
+/* Vorgabenzeile: Hinweis und die beiden Griffe dazu. */
+.aiw-capp-vorgaben {
+    flex-basis: 100%;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin-top: .25rem;
+}
+
+/* Bearbeitungsmodus: muss ins Auge fallen, weil das Speichern hier eine
+   ANDERE Wirkung hat als sonst (es ersetzt eine bestehende Zeile). */
+.aiw-capp-ersetzt {
+    flex-basis: 100%;
+    margin: .25rem 0;
+    padding: .4rem .6rem;
+    border-left: 4px solid var(--aiw-warn, #b8860b);
+    background: var(--aiw-warn-bg, #fff8e1);
+    font-size: .9em;
+}
+
+/* Feldmarkierung im Fehlerfall (Build 560 liefert 'feld'). */
+.aiw-feldfehler {
+    border: 2px solid var(--aiw-error, #c0392b) !important;
+    background: var(--aiw-error-bg, #fdecea) !important;
+}
+
+.aiw-aktionen { display: inline-flex; gap: .3rem; }
+.aiw-btn-klein { padding: .1rem .45rem; font-size: .85em; }
+
+/* --- Minutenrechner ----------------------------------------------------- */
+/* Bewusst KEIN Ueberlagerungsschirm: das Fenster sperrt die Seite nicht, weil
+   man bei offenem Rechner ein Eingabefeld im Formular anklicken koennen soll,
+   um das Ergebnis dorthin zu uebernehmen. Position und z-index setzt das
+   Modul inline, weil sie beim Ziehen ohnehin berechnet werden. */
+.aiw-rechner {
+    width: 17rem;
+    padding: 0 0 .6rem 0;
+    border: 1px solid var(--aiw-border, #999);
+    border-radius: 5px;
+    background: var(--aiw-bg, #fff);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, .25);
+}
+.aiw-rechner-kopf {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: .35rem .5rem;
+    background: var(--aiw-head-bg, #eee);
+    border-bottom: 1px solid var(--aiw-border, #ccc);
+    cursor: move;              /* der Griff zum Ziehen */
+    user-select: none;
+}
+.aiw-rechner-titel { font-weight: 600; font-size: .9em; }
+.aiw-rechner-zu {
+    border: 0;
+    background: transparent;
+    font-size: 1.1em;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 .2rem;
+}
+.aiw-rechner-koerper {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: .3rem .5rem;
+    padding: .6rem .6rem .3rem .6rem;
+}
+.aiw-rechner-ergebnis {
+    margin: .2rem .6rem;
+    font-weight: 600;
+}
+.aiw-rechner-ziel {
+    margin: 0 .6rem .4rem .6rem;
+    font-size: .85em;
+    opacity: .75;
+}
+.aiw-rechner .aiw-btn { margin: 0 .6rem; }

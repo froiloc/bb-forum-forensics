@@ -169,6 +169,9 @@
 <!-- Build 559: Kapazitaetspflege. Wie cockpit_personnel.js greift sie
      beim Rendern auf cockpit_tablekit.js zu und steht deshalb NACH
      dessen Einbindung. -->
+<!-- Build 561: Minutenrechner. STEHT VOR der Pflegesicht, weil diese
+     ihn beim Rendern ueber window.AIWMinutenrechner sucht. -->
+<script src="/static/cockpit_minutenrechner.js" defer></script>
 <script src="/static/cockpit_capacity_pflege.js" defer></script>
 <script src="/static/cockpit_calendar.js" defer></script>
 <script src="/static/cockpit_results.js" defer></script>

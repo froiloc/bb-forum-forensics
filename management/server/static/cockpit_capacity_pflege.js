@@ -51,7 +51,32 @@
 //   Standardformatter setzen Werte per textContent; die eigenen Formatter
 //   dieser Datei bauen Knoepfe und schreiben Text ebenfalls nur so.
 //
-// Version: v0.8.559 · Build: 559 · 2026-07-29
+// BUILD 561 — WAS mc BEIM TESTEN GEFUNDEN HAT, UND WARUM ES SCHLIMMER WAR,
+//   ALS ES AUSSAH: nach dem Speichern lud die Sicht neu und zeichnete das
+//   Formular VOLLSTAENDIG NEU - dabei wurde auch das Stichtagsfeld geleert.
+//   Wer danach einen Wert korrigierte, schickte ihn OHNE Datum ab; der Server
+//   lehnte mit 400 ab. Es sah aus, als nehme das Werkzeug keine Aenderungen
+//   mehr an - fuer keine Person. Ein leeres Pflichtfeld, das erst der Server
+//   bemaengelt, ist eine Falle; und die Personenauswahl sprang zusaetzlich auf
+//   den ersten Eintrag zurueck, was im schlimmsten Fall auf die FALSCHE Person
+//   geschrieben haette. Vier Netze dagegen:
+//     1) Der Formularzustand ueberlebt das Neuladen (opts.formular).
+//     2) Die Personenauswahl behaelt die getroffene Wahl.
+//     3) Das Stichtagsfeld ist mit dem heutigen Tag vorbelegt.
+//     4) Die Rueckmeldung schreibt aus, WAS uebernommen wurde - nicht nur
+//        "gespeichert".
+//   Im Fehlerfall markiert die Maske ausserdem das schuldige Feld anhand von
+//   'feld' aus der Antwort (Build 560). Bei sieben Minutenfeldern nebeneinander
+//   ist ein Satz unter dem Formular sonst eine Suchaufgabe.
+//
+// ENTFERNEN UND BEARBEITEN (Build 560/561): 'Entfernen' ist ein SOFT-DELETE -
+//   die Zeile bleibt in der Datenbank und faellt nur aus Rechnung und Liste.
+//   'Bearbeiten' fuellt das Formular aus der Zeile und schaltet auf ERSETZEN:
+//   das Speichern entfernt dann die alte Zeile und schreibt die neue in EINER
+//   Transaktion. Das ist noetig, seit der Server eine zweite aktive Regel zum
+//   selben Stichtag zurueckweist - und es ist der Weg, den mc gesucht hat.
+//
+// Version: v0.8.561 · Build: 561 · 2026-07-29
 // =============================================================================
 
 (function () {
@@ -209,6 +234,38 @@
 
     function darfAnlagenweit(scope) { return scope === 'alle'; }
 
+    // heuteIso: Vorbelegung des Stichtags. Ein leeres Pflichtfeld, das erst
+    // der Server bemaengelt, ist eine Falle (Befund mc, Build 560).
+    function heuteIso(jetzt) {
+        var d = jetzt ? new Date(jetzt) : new Date();
+        function zwei(n) { return (n < 10 ? '0' : '') + n; }
+        return d.getFullYear() + '-' + zwei(d.getMonth() + 1) + '-'
+            + zwei(d.getDate());
+    }
+
+    // TAGESVORGABEN (mc 2026-07-29). Die Zahlen stehen NICHT im Code, weil der
+    // Code sie braeuchte, sondern weil der Ausfuellende sie sonst nachschlagen
+    // muss. Sie sind eine Hilfe, keine Regel: eintragen kann man jeden Wert.
+    var VORGABEN = [
+        { code: 'angestellte', label: 'Angestellte', minuten: 478 },
+        { code: 'beamte', label: 'Beamte', minuten: 492 }
+    ];
+
+    // uebernahmeText: schreibt aus, WAS gespeichert wurde. "Gespeichert" allein
+    // laesst offen, ob der eigene Tippfehler mitgespeichert wurde.
+    function uebernahmeText(person, ab, minuten, beleg, ersetzt) {
+        var teile = [];
+        TAGE.forEach(function (t) {
+            teile.push(t.kurz + ' ' + (minuten[t.feld] || 0));
+        });
+        return (ersetzt ? 'Ersetzt' : 'Gespeichert') + ': ' + person
+            + ', ab ' + ab + ' — ' + teile.join(', ')
+            + ' (Woche ' + wochenSumme(minuten) + ' min, Beleg #' + beleg + ')'
+            + (ersetzt
+                ? '. Die alte Zeile bleibt als Beleg erhalten.'
+                : '');
+    }
+
     // =========================================================================
     // 2) DOM / RENDER.
     // =========================================================================
@@ -318,6 +375,13 @@
         var kinds = (data && data.kinds) || [];
         var reasons = (data && data.reasons) || [];
 
+        // FORMULARZUSTAND (Build 561): die zuletzt eingegebenen Werte kommen
+        // vom Lader zurueck und werden wieder eingesetzt. Ohne das leert jedes
+        // Neuladen das Stichtagsfeld, und die naechste Eingabe scheitert am
+        // Server - genau der Befund von mc.
+        var f = opts.formular || {};
+        var wtVorgabe = f.worktime || {};
+
         var h = _el('h2', 'aiw-pagehead', 'Kapazitaetspflege');
         mainEl.appendChild(h);
         mainEl.appendChild(_el('p', 'aiw-pagesub', scopeText(scope)));
@@ -329,6 +393,22 @@
         function setResult(text, istFehler) {
             ergebnis.textContent = text || '';
             ergebnis.className = 'aiw-result' + (istFehler ? ' aiw-error' : '');
+        }
+
+        // FELDMARKIERUNG: der Server nennt seit Build 560 das schuldige Feld.
+        // Kennt er keines, wird auch keines markiert - ein geratenes rotes
+        // Feld waere schlimmer als gar keines.
+        function markiereFeld(feldName) {
+            Array.prototype.forEach.call(
+                mainEl.querySelectorAll('.aiw-feldfehler'),
+                function (e) { e.classList.remove('aiw-feldfehler'); });
+            if (!feldName) { return null; }
+            var el = mainEl.querySelector('[data-feld="' + feldName + '"]');
+            if (el) {
+                el.classList.add('aiw-feldfehler');
+                if (typeof el.focus === 'function') { el.focus(); }
+            }
+            return el;
         }
 
         var tables = [];
@@ -378,39 +458,131 @@
         spaltenWt.push({ title: 'Beleg', field: 'audit_seq',
                          hozAlign: 'right' });
 
+        // ERSETZEN-MODUS: haelt die Zeile fest, die 'Bearbeiten' gewaehlt hat.
+        // Solange sie gesetzt ist, geht das Speichern auf /replace statt auf
+        // /worktime - der einzige Weg, der seit der Dublettensperre eine
+        // Korrektur zum SELBEN Stichtag zulaesst.
+        var ersetztId = (f.worktime && f.worktime._ersetzt_id) || null;
+
         var formWt = _el('div', 'aiw-capp-form');
         var wtPerson = anlagenweit
             ? _auswahl('aiw-capp-wt-person', personen, 'id', 'display_name')
             : null;
         if (wtPerson) {
+            wtPerson.setAttribute('data-feld', 'person_id');
+            if (wtVorgabe.person_id !== undefined
+                    && wtVorgabe.person_id !== null) {
+                wtPerson.value = String(wtVorgabe.person_id);
+            }
             formWt.appendChild(_el('label', 'aiw-label', 'Person'));
             formWt.appendChild(wtPerson);
         }
-        var wtAb = _feld('date', 'aiw-capp-wt-ab', 'gueltig ab');
+        var wtAb = _feld('date', 'aiw-capp-wt-ab', 'gueltig ab',
+                         wtVorgabe.effective_from || heuteIso());
+        wtAb.setAttribute('data-feld', 'effective_from');
         formWt.appendChild(_el('label', 'aiw-label', 'Gueltig ab'));
         formWt.appendChild(wtAb);
         var wtFelder = {};
         TAGE.forEach(function (t) {
             formWt.appendChild(_el('label', 'aiw-label', t.kurz));
+            var v = (wtVorgabe[t.feld] === undefined
+                     || wtVorgabe[t.feld] === null)
+                ? '0' : String(wtVorgabe[t.feld]);
             wtFelder[t.feld] = _feld('number', 'aiw-capp-wt-' + t.feld,
-                                     'min', '0');
+                                     'min', v);
+            wtFelder[t.feld].setAttribute('data-feld', t.feld);
+            wtFelder[t.feld].classList.add('aiw-minutenfeld');
             formWt.appendChild(wtFelder[t.feld]);
         });
-        formWt.appendChild(_knopf('aiw-capp-wt-save', 'Arbeitszeit speichern',
+
+        // Tagesvorgaben: Hinweis UND Griff. Wer die Zahl liest, traegt sie
+        // danach ohnehin siebenmal ein - der Knopf nimmt genau diesen Schritt ab
+        // (Mo-Fr auf den Wert, Sa/So auf 0).
+        var hinweis = _el('div', 'aiw-capp-vorgaben');
+        hinweis.appendChild(_el('span', 'aiw-hint',
+            'Ueblich sind ' + VORGABEN.map(function (v) {
+                return v.label + ' ' + v.minuten + ' min/Tag';
+            }).join(', ') + '. Abweichungen sind zulaessig.'));
+        VORGABEN.forEach(function (v) {
+            hinweis.appendChild(_knopf('aiw-capp-wt-vorgabe-' + v.code,
+                v.label + ' (' + v.minuten + ')', function () {
+                    TAGE.forEach(function (t) {
+                        var werktag = t.feld !== 'sat_min'
+                            && t.feld !== 'sun_min';
+                        wtFelder[t.feld].value = werktag ? String(v.minuten) : '0';
+                    });
+                }));
+        });
+        formWt.appendChild(hinweis);
+
+        function wtNutzlast() {
+            var body = {
+                person_id: wtPerson ? Number(wtPerson.value)
+                                    : (data && data.person_id),
+                effective_from: wtAb.value
+            };
+            TAGE.forEach(function (t) {
+                body[t.feld] = Number(wtFelder[t.feld].value || 0);
+            });
+            return body;
+        }
+
+        if (ersetztId) {
+            var warnung = _el('p', 'aiw-capp-ersetzt',
+                'Bearbeitungsmodus: Speichern ERSETZT Zeile #' + ersetztId
+                + '. Die alte Zeile wird stillgelegt und bleibt als Beleg '
+                + 'erhalten.');
+            formWt.appendChild(warnung);
+            formWt.appendChild(_knopf('aiw-capp-wt-abbrechen',
+                'Bearbeitung abbrechen', function () {
+                    if (typeof opts.onWorktimeEditAbort === 'function') {
+                        opts.onWorktimeEditAbort();
+                    }
+                }));
+        }
+
+        formWt.appendChild(_knopf('aiw-capp-wt-save',
+            ersetztId ? 'Zeile ersetzen' : 'Arbeitszeit speichern',
             function () {
-                var body = {
-                    person_id: wtPerson ? Number(wtPerson.value)
-                                        : (data && data.person_id),
-                    effective_from: wtAb.value
-                };
-                TAGE.forEach(function (t) {
-                    body[t.feld] = Number(wtFelder[t.feld].value || 0);
-                });
-                if (typeof opts.onWorktimeSet === 'function') {
+                var body = wtNutzlast();
+                if (ersetztId) {
+                    body.worktime_id = ersetztId;
+                    if (typeof opts.onWorktimeReplace === 'function') {
+                        opts.onWorktimeReplace(body);
+                    }
+                } else if (typeof opts.onWorktimeSet === 'function') {
                     opts.onWorktimeSet(body);
                 }
             }));
         boxWt.appendChild(formWt);
+
+        // Aktionsspalte: Bearbeiten UND Entfernen. 'Bearbeiten' schreibt
+        // nichts - es fuellt nur das Formular und schaltet den Modus um.
+        spaltenWt.push({
+            title: 'Aktion', field: '_aktion', headerSort: false,
+            formatter: function (cell) {
+                var d = cell.getData ? cell.getData() : {};
+                var box = _el('span', 'aiw-aktionen');
+                var bE = _knopf('', 'Bearbeiten', function () {
+                    if (typeof opts.onWorktimeEdit === 'function') {
+                        opts.onWorktimeEdit(d);
+                    }
+                });
+                bE.classList.add('aiw-btn-klein');
+                bE.setAttribute('data-id', String(d.id));
+                var bX = _knopf('', 'Entfernen', function () {
+                    if (typeof opts.onWorktimeRemove === 'function') {
+                        opts.onWorktimeRemove(d.id);
+                    }
+                });
+                bX.classList.add('aiw-btn-klein');
+                bX.setAttribute('data-id', String(d.id));
+                box.appendChild(bE);
+                box.appendChild(bX);
+                return box;
+            }
+        });
+
         bauen('capacity_worktime', boxWt, worktimeRows(data), spaltenWt,
               'Arbeitszeit-Regeln');
 
@@ -446,14 +618,19 @@
             formAv.appendChild(avPerson);
         }
         var avVon = _feld('date', 'aiw-capp-av-von');
+        avVon.setAttribute('data-feld', 'period_start');
         var avBis = _feld('date', 'aiw-capp-av-bis');
+        avBis.setAttribute('data-feld', 'period_end');
         // Die Rechenarten kommen VOM SERVER (data.kinds) — keine zweite Kopie.
         var avArt = _auswahl('aiw-capp-av-art', kinds, 'code', 'label');
         var avGrund = _auswahl('aiw-capp-av-grund',
             [{ code: '', label: '(kein Grund)' }].concat(reasons),
             'code', 'label');
         var avPct = _feld('number', 'aiw-capp-av-pct', 'Prozent');
+        avPct.setAttribute('data-feld', 'value_pct');
         var avMin = _feld('number', 'aiw-capp-av-min', 'Minuten');
+        avMin.setAttribute('data-feld', 'value_minutes');
+        avMin.classList.add('aiw-minutenfeld');
         var avNotiz = _feld('text', 'aiw-capp-av-note', 'Notiz');
         [['Von', avVon], ['Bis', avBis], ['Rechenart', avArt],
          ['Grund', avGrund], ['Prozent', avPct], ['Minuten', avMin],
@@ -573,8 +750,61 @@
         bauen('capacity_reason', boxRe, reasonRows(data), spaltenRe,
               'Abwesenheitsgruende');
 
-        log('gerendert: scope', scope, '/ Tabellen', tables.length);
-        return { tables: tables, setResult: setResult };
+        // ------------------------------------------------ Minutenrechner
+        // ZIELVERFOLGUNG: der Rechner schreibt in das Feld, das zuletzt
+        // angeklickt wurde. Er selbst kennt die Felder nicht (eigene Datei,
+        // Grundregel 10) - die Sicht sagt ihm, wohin.
+        var letztesZiel = null;
+        Array.prototype.forEach.call(
+            mainEl.querySelectorAll('.aiw-minutenfeld'),
+            function (feld) {
+                feld.addEventListener('focus', function () {
+                    letztesZiel = feld;
+                });
+            });
+
+        var Rechner = opts.Rechner
+            || (typeof window !== 'undefined' ? window.AIWMinutenrechner
+                                              : null);
+        var rechnerAuf = null;
+        var knopfRechner = _knopf('aiw-capp-rechner', 'Minutenrechner',
+            function () {
+                if (!Rechner || typeof Rechner.oeffnen !== 'function') {
+                    // KEIN STILLER AUSFALL.
+                    setResult('Der Minutenrechner ist nicht geladen '
+                        + '(cockpit_minutenrechner.js).', true);
+                    return;
+                }
+                if (rechnerAuf && rechnerAuf.istOffen()) {
+                    rechnerAuf.aktualisieren();
+                    return;
+                }
+                rechnerAuf = Rechner.oeffnen({
+                    host: mainEl.ownerDocument.body,
+                    zielGeben: function () {
+                        if (!letztesZiel) { return null; }
+                        return { id: letztesZiel.id,
+                                 label: Rechner.zielName(letztesZiel.id) };
+                    },
+                    uebernehmen: function (minuten) {
+                        if (!letztesZiel) { return; }
+                        letztesZiel.value = String(minuten);
+                    }
+                });
+            });
+        knopfRechner.classList.add('aiw-btn-klein');
+        h.appendChild(knopfRechner);
+
+        log('gerendert: scope', scope, '/ Tabellen', tables.length,
+            '/ Ersetzen-Modus', ersetztId);
+        return { tables: tables, setResult: setResult,
+                 rechnerSteuerung: function () { return rechnerAuf; },
+                 markiereFeld: markiereFeld,
+                 formularLesen: function () {
+                     var z = wtNutzlast();
+                     z._ersetzt_id = ersetztId;
+                     return { worktime: z };
+                 } };
     }
 
     // =========================================================================
@@ -593,6 +823,9 @@
         holidayRows: holidayRows,
         reasonRows: reasonRows,
         darfAnlagenweit: darfAnlagenweit,
+        heuteIso: heuteIso,
+        VORGABEN: VORGABEN,
+        uebernahmeText: uebernahmeText,
         renderCapacityPflege: renderCapacityPflege
     };
     if (typeof module !== 'undefined' && module.exports) { module.exports = API; }

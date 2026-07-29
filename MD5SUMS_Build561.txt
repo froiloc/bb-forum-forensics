@@ -1,0 +1,10 @@
+759f1a0a8dda539825fe0535d42c4271  build.json
+c5b3fe31ef76edf622a59fa483c404ff  management/server/static/cockpit_minutenrechner.js
+1891cc50f8387c816fa5c49b276a960c  management/server/static/cockpit_capacity_pflege.js
+b38f2c57afed4b3dad17c27206890a70  management/server/static/cockpit.js
+5f9e27ba381184aa175a3a33662b8868  management/server/static/cockpit.html
+c8d61f71938cce69155c192ef268d81b  management/server/static/cockpit.css
+19f34a25c4a9d77b1f1950d1389fbea7  management/Bauplan_Build561_KapazitaetspflegeBedienbarkeit_v0_1.md
+43ad83d2636047905c371b08d727a274  tests/unit/test_cockpit_minutenrechner.test.js
+ee2e232e46647bc5b0618e7412aec69e  tests/unit/test_cockpit_capacity_pflege.test.js
+86267e2b56638d8631a5e872a7f0e744  issue-tracker/eintraege_claude_Build561.json

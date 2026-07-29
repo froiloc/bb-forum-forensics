@@ -23,8 +23,18 @@
  * CP09 — die Schreib-Rueckrufe bekommen genau das, was der Endpunkt erwartet;
  *        leere Zahlenfelder werden zu null und NICHT zu 0.
  * CP10 — Freitext wird als Text gesetzt, nicht als Auszeichnung (XSS).
+ * CP11 — der Formularzustand ueberlebt das Neuzeichnen (Befund mc, B560):
+ *        Stichtag, Personenauswahl und Minutenwerte stehen wieder da.
+ * CP12 — ohne Zustand ist der Stichtag mit HEUTE vorbelegt, nicht leer.
+ * CP13 — markiereFeld setzt die Markierung genau auf das genannte Feld und
+ *        raeumt eine vorherige weg; ein unbekanntes Feld markiert NICHTS.
+ * CP14 — die Tagesvorgaben setzen Mo-Fr und nullen Sa/So.
+ * CP15 — Bearbeitungsmodus: Knopfbeschriftung, Warnhinweis, Abbruch, und das
+ *        Speichern geht auf ERSETZEN statt auf Anlegen.
+ * CP16 — uebernahmeText schreibt aus, WAS uebernommen wurde.
+ * CP17 — die Aktionsspalte bietet Bearbeiten UND Entfernen je Zeile.
  *
- * Version: v0.8.559 · Build: 559 · 2026-07-29
+ * Version: v0.8.561 · Build: 561 · 2026-07-29
  */
 
 import { describe, it, expect } from "vitest";
@@ -267,5 +277,129 @@ describe("Kapazitaetspflege (Build 559)", () => {
     expect(main.querySelector("img")).toBeNull();
     expect(main.querySelector("script")).toBeNull();
     expect(main.textContent).toContain("onerror=alert(1)");
+  });
+
+  // CP11 --------------------------------------------------------------------
+  it("CP11: der Formularzustand ueberlebt das Neuzeichnen", () => {
+    const win = _win();
+    const { main } = _zeichne(win, {
+      formular: { worktime: { person_id: 3, effective_from: "2026-08-01",
+                              mon_min: 478, tue_min: 478 } },
+    });
+    // Genau der Fall, an dem mc haengenblieb: nach dem Speichern war das
+    // Stichtagsfeld leer, und jede weitere Eingabe scheiterte am Server.
+    expect(main.querySelector("#aiw-capp-wt-ab").value).toBe("2026-08-01");
+    expect(main.querySelector("#aiw-capp-wt-person").value).toBe("3");
+    expect(main.querySelector("#aiw-capp-wt-mon_min").value).toBe("478");
+  });
+
+  // CP12 --------------------------------------------------------------------
+  it("CP12: ohne Zustand ist der Stichtag mit heute vorbelegt", () => {
+    const win = _win();
+    const { main } = _zeichne(win, {});
+    const wert = main.querySelector("#aiw-capp-wt-ab").value;
+    expect(wert).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(wert).toBe(win.AIWCockpitCapacityPflege.heuteIso());
+  });
+
+  // CP13 --------------------------------------------------------------------
+  it("CP13: markiereFeld trifft genau ein Feld und raeumt vorher auf", () => {
+    const win = _win();
+    const { main, view } = _zeichne(win, {});
+    view.markiereFeld("effective_from");
+    expect(main.querySelectorAll(".aiw-feldfehler").length).toBe(1);
+    expect(main.querySelector(".aiw-feldfehler").id)
+      .toBe("aiw-capp-wt-ab");
+
+    view.markiereFeld("mon_min");
+    expect(main.querySelectorAll(".aiw-feldfehler").length).toBe(1);
+    expect(main.querySelector(".aiw-feldfehler").id)
+      .toBe("aiw-capp-wt-mon_min");
+
+    // Ein unbekanntes Feld markiert NICHTS — ein geratenes rotes Feld waere
+    // schlimmer als gar keines.
+    view.markiereFeld("gibtesnicht");
+    expect(main.querySelectorAll(".aiw-feldfehler").length).toBe(0);
+  });
+
+  // CP14 --------------------------------------------------------------------
+  it("CP14: die Tagesvorgaben setzen Mo-Fr und nullen das Wochenende", () => {
+    const win = _win();
+    const { main } = _zeichne(win, {});
+    main.querySelector("#aiw-capp-wt-vorgabe-angestellte")
+      .dispatchEvent(new win.Event("click"));
+    expect(main.querySelector("#aiw-capp-wt-mon_min").value).toBe("478");
+    expect(main.querySelector("#aiw-capp-wt-fri_min").value).toBe("478");
+    expect(main.querySelector("#aiw-capp-wt-sat_min").value).toBe("0");
+
+    main.querySelector("#aiw-capp-wt-vorgabe-beamte")
+      .dispatchEvent(new win.Event("click"));
+    expect(main.querySelector("#aiw-capp-wt-mon_min").value).toBe("492");
+    // Der Hinweis nennt beide Zahlen auch im Text.
+    expect(main.textContent).toContain("478");
+    expect(main.textContent).toContain("492");
+  });
+
+  // CP15 --------------------------------------------------------------------
+  it("CP15: Bearbeitungsmodus ersetzt, statt anzulegen", () => {
+    const win = _win();
+    let ersetzt = null, angelegt = null, abgebrochen = false;
+    const { main } = _zeichne(win, {
+      formular: { worktime: { person_id: 2, effective_from: "2026-01-01",
+                              mon_min: 480, _ersetzt_id: 7 } },
+      onWorktimeReplace: (b) => { ersetzt = b; },
+      onWorktimeSet: (b) => { angelegt = b; },
+      onWorktimeEditAbort: () => { abgebrochen = true; },
+    });
+    // Der Modus MUSS sichtbar sein: das Speichern hat hier eine andere
+    // Wirkung als sonst.
+    expect(main.querySelector("#aiw-capp-wt-save").textContent)
+      .toBe("Zeile ersetzen");
+    expect(main.textContent).toContain("ERSETZT Zeile #7");
+
+    main.querySelector("#aiw-capp-wt-save").dispatchEvent(new win.Event("click"));
+    expect(angelegt).toBeNull();
+    expect(ersetzt.worktime_id).toBe(7);
+    expect(ersetzt.mon_min).toBe(480);
+
+    main.querySelector("#aiw-capp-wt-abbrechen")
+      .dispatchEvent(new win.Event("click"));
+    expect(abgebrochen).toBe(true);
+  });
+
+  // CP16 --------------------------------------------------------------------
+  it("CP16: uebernahmeText schreibt aus, was uebernommen wurde", () => {
+    const api = _win().AIWCockpitCapacityPflege;
+    const t = api.uebernahmeText("Mueller", "2026-01-01",
+      { mon_min: 478, tue_min: 478, wed_min: 478, thu_min: 478,
+        fri_min: 478, sat_min: 0, sun_min: 0 }, 41, false);
+    expect(t).toContain("Mueller");
+    expect(t).toContain("2026-01-01");
+    expect(t).toContain("Mo 478");
+    expect(t).toContain("Woche 2390 min");
+    expect(t).toContain("Beleg #41");
+
+    const e = api.uebernahmeText("Mueller", "2026-01-01",
+      { mon_min: 478 }, 42, true);
+    expect(e).toMatch(/^Ersetzt/);
+    expect(e).toContain("alte Zeile bleibt");
+  });
+
+  // CP17 --------------------------------------------------------------------
+  it("CP17: die Aktionsspalte bietet Bearbeiten und Entfernen", () => {
+    const win = _win();
+    let bearbeitet = null, entfernt = null;
+    const { main } = _zeichne(win, {
+      onWorktimeEdit: (z) => { bearbeitet = z; },
+      onWorktimeRemove: (id) => { entfernt = id; },
+    });
+    const knoepfe = Array.prototype.filter.call(
+      main.querySelectorAll(".aiw-aktionen .aiw-btn-klein"),
+      () => true);
+    expect(knoepfe.length).toBe(2);
+    knoepfe[0].dispatchEvent(new win.Event("click"));
+    expect(bearbeitet.id).toBe(1);
+    knoepfe[1].dispatchEvent(new win.Event("click"));
+    expect(entfernt).toBe(1);
   });
 });
