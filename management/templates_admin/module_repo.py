@@ -25,6 +25,18 @@ from typing import Any, Dict, List, Optional
 from management.gateway.templates_writer import TemplatesWriter
 
 
+class ModuleKeyAssignError(Exception):
+    """
+    Build 564: Ein module_key laesst sich nicht (so) nachtragen. Traegt das
+    schuldige Feld mit, damit die Maske es markieren kann - dasselbe Muster
+    wie CapacityError seit Build 560.
+    """
+
+    def __init__(self, message: str, feld: str = None) -> None:
+        super().__init__(message)
+        self.feld = feld
+
+
 class ModuleAuthorRepo:
     """Lese-/Schreibzugriff auf templates.db.report_modules."""
 
@@ -48,6 +60,18 @@ class ModuleAuthorRepo:
             "FROM report_modules WHERE module_key = ?", (key,)).fetchone()
         return dict(row) if row is not None else None
 
+    def get_by_id(self, row_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Build 564: Zugriff ueber die Zeilen-id. Noetig fuer den EINZIGEN Fall,
+        in dem der module_key als Adresse nicht taugt - naemlich wenn er noch
+        gar nicht vergeben ist (Altbestand vor der Schluessel-Migration).
+        """
+        row = self._con.execute(
+            "SELECT id, module_key, title, description, role, topic, body, "
+            "sort_order, is_active, created_by, created_at, updated_at "
+            "FROM report_modules WHERE id = ?", (row_id,)).fetchone()
+        return dict(row) if row is not None else None
+
     # ------------------------------------------------------------------
     def upsert(self, m: Dict[str, Any], changed_by: str,
                *, ts: Optional[int] = None) -> Dict[str, Any]:
@@ -57,8 +81,54 @@ class ModuleAuthorRepo:
         created(bool)} zurueck.
         """
         key = str(m["module_key"]).strip()
-        existing = self.get_by_key(key)
-        created = existing is None
+
+        # ------------------------------------------------------------------
+        # BUILD 564 - SCHLUESSEL NACHTRAGEN.
+        # Bis hierher adressierte der Upsert AUSSCHLIESSLICH ueber module_key.
+        # Fuer Altzeilen ohne Schluessel war das eine Sackgasse: sie liessen
+        # sich nicht ansprechen, und ein neu getippter Schluessel haette nichts
+        # gefunden - der Upsert haette eine ZWEITE Zeile angelegt und die alte
+        # unerreichbar daneben stehen lassen. Aus einem gesperrten Baustein
+        # waeren zwei geworden.
+        #
+        # Deshalb der Sonderweg ueber die Zeilen-id, und NUR fuer diesen einen
+        # Fall: ist eine id angegeben und traegt die Zeile noch KEINEN
+        # Schluessel, wird sie per id aktualisiert und bekommt ihn zugewiesen.
+        #
+        # DER SCHLUESSEL IST DANACH ENDGUELTIG (mc 2026-07-29). Er ist eine
+        # STABILE Kennung (Build 341): Berichtsvorlagen verweisen ueber ihn auf
+        # den Baustein. Wanderte er, braeche jede referenzierende Vorlage - und
+        # zwar still, denn ein nicht gefundener Baustein faellt erst beim
+        # Erzeugen des Berichts auf. Ein Umtragen wird deshalb ABGEWIESEN.
+        # ------------------------------------------------------------------
+        nachtrag_id = m.get("id")
+        nachtrag = False
+        if nachtrag_id is not None and str(nachtrag_id) != "":
+            ziel = self.get_by_id(int(nachtrag_id))
+            if ziel is None:
+                raise ModuleKeyAssignError(
+                    "Unbekanntes Baustein-Modul (id=%s)." % nachtrag_id, "id")
+            if ziel.get("module_key"):
+                raise ModuleKeyAssignError(
+                    "Das Modul traegt bereits den Schluessel '%s'. Ein "
+                    "module_key ist eine stabile Kennung, auf die "
+                    "Berichtsvorlagen verweisen - er wird nicht umgetragen."
+                    % ziel["module_key"], "module_key")
+            kollision = self.get_by_key(key)
+            if kollision is not None:
+                # VOR dem Schreiben pruefen: der partielle Unique-Index wuerde
+                # sonst einen IntegrityError werfen, und der sagt dem
+                # Ausfuellenden nichts.
+                raise ModuleKeyAssignError(
+                    "Der Schluessel '%s' ist bereits vergeben (Modul id=%s, "
+                    "'%s')." % (key, kollision["id"], kollision["title"]),
+                    "module_key")
+            nachtrag = True
+            existing = ziel
+            created = False
+        else:
+            existing = self.get_by_key(key)
+            created = existing is None
         now = int(ts if ts is not None else time.time())
 
         title = str(m["title"]).strip()
@@ -72,16 +142,23 @@ class ModuleAuthorRepo:
         # Kanonische Vorher/Nachher-Werte fuer den Audit (nur Fakten, kompakt;
         # der volle body-Text wird NICHT in den Audit kopiert — er kann sehr
         # lang sein; die Laenge genuegt als Beleg der Aenderung).
-        new_value = json.dumps({"title": title, "role": role, "topic": topic,
-                                "body_len": len(body)}, ensure_ascii=False)
-        old_value = None
+        neu_dict = {"title": title, "role": role, "topic": topic,
+                    "body_len": len(body)}
+        alt_dict = None
         if existing is not None:
-            old_value = json.dumps(
-                {"title": existing.get("title"),
-                 "role": existing.get("role"),
-                 "topic": existing.get("topic"),
-                 "body_len": len(str(existing.get("body") or ""))},
-                ensure_ascii=False)
+            alt_dict = {"title": existing.get("title"),
+                        "role": existing.get("role"),
+                        "topic": existing.get("topic"),
+                        "body_len": len(str(existing.get("body") or ""))}
+        if nachtrag:
+            # DIE ZUWEISUNG IST EINE EIGENE TATSACHE und gehoert benannt.
+            # Ohne sie stuende in der Akte nur "geaendert", und wer wann
+            # welchen Schluessel vergeben hat, waere nicht mehr feststellbar.
+            alt_dict["module_key"] = None
+            neu_dict["module_key"] = key
+        new_value = json.dumps(neu_dict, ensure_ascii=False)
+        old_value = (None if alt_dict is None
+                     else json.dumps(alt_dict, ensure_ascii=False))
 
         def _do_write(con: sqlite3.Connection) -> Dict[str, Any]:
             if created:
@@ -92,6 +169,15 @@ class ModuleAuthorRepo:
                     "VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)",
                     (title, desc, role, topic, body, sort_order,
                      changed_by, now, now, key))
+            elif nachtrag:
+                # UEBER DIE id, nicht ueber den Schluessel: den gibt es an
+                # dieser Zeile ja noch nicht.
+                con.execute(
+                    "UPDATE report_modules SET module_key=?, title=?, "
+                    "description=?, role=?, topic=?, body=?, sort_order=?, "
+                    "updated_at=? WHERE id=? AND module_key IS NULL",
+                    (key, title, desc, role, topic, body, sort_order, now,
+                     int(nachtrag_id)))
             else:
                 con.execute(
                     "UPDATE report_modules SET title=?, description=?, role=?, "
@@ -106,4 +192,5 @@ class ModuleAuthorRepo:
             do_write=_do_write,
             action=("create" if created else "update"),
             target_type="module", changed_by=changed_by, ts=now)
-        return {"target_id": key, "created": created}
+        return {"target_id": key, "created": created,
+                "nachtrag": nachtrag}

@@ -38,7 +38,9 @@ from management.server.management_app import ManagementApp
 from management.templates_admin.module_validator import (
     validate_static, placeholder_summary, ROLES,
 )
-from management.templates_admin.module_repo import ModuleAuthorRepo
+from management.templates_admin.module_repo import (
+    ModuleAuthorRepo, ModuleKeyAssignError,
+)
 
 # report_modules (inkl. module_key + partieller UNIQUE-Index) + templates_audit_log.
 _DDL_MODULES = """
@@ -171,6 +173,123 @@ class RepoTests(unittest.TestCase):
         finally:
             con.close()
 
+    # ------------------------------------------------------------------
+    # Build 564: module_key an Altzeilen nachtragen.
+    # ------------------------------------------------------------------
+    def _altzeile(self, con, titel="Alter Baustein"):
+        """Eine Zeile wie aus der Zeit vor der Schluessel-Migration:
+        vollstaendig, aber module_key IS NULL."""
+        con.execute(
+            "INSERT INTO report_modules (title, description, role, topic, "
+            " body, sort_order, is_active, created_by, created_at, "
+            " updated_at, module_key) "
+            "VALUES (?, '', 'intro', 'Einleitung', 'Text', 0, 1, "
+            "        'alt', 1, 1, NULL)", (titel,))
+        return con.execute("SELECT id FROM report_modules WHERE title=?",
+                           (titel,)).fetchone()[0]
+
+    def test_tm20_nachtrag_aktualisiert_die_altzeile(self):
+        """Der Kern: es darf KEINE zweite Zeile entstehen. Genau das waere
+        passiert, wenn man nur das Eingabefeld entsperrt haette - der Upsert
+        haette unter dem neuen Schluessel nichts gefunden und eingefuegt."""
+        con = sqlite3.connect(self._db)
+        con.execute("PRAGMA journal_mode=delete")
+        try:
+            rid = self._altzeile(con)
+            repo = ModuleAuthorRepo(con)
+            r = repo.upsert({**_GOOD, "id": rid,
+                             "module_key": "alt.nachgetragen"},
+                            changed_by="h004")
+            self.assertFalse(r["created"])
+            self.assertTrue(r["nachtrag"])
+
+            self.assertEqual(con.execute(
+                "SELECT COUNT(*) FROM report_modules").fetchone()[0], 1,
+                "Es ist eine zweite Zeile entstanden.")
+            row = con.execute(
+                "SELECT module_key, title FROM report_modules WHERE id=?",
+                (rid,)).fetchone()
+            self.assertEqual(row[0], "alt.nachgetragen")
+            self.assertEqual(row[1], _GOOD["title"])
+        finally:
+            con.close()
+
+    def test_tm21_beleg_nennt_die_zuweisung(self):
+        """Ohne diesen Nachweis stuende in der Akte nur 'geaendert' - wer wann
+        welchen Schluessel vergeben hat, waere nicht feststellbar."""
+        con = sqlite3.connect(self._db)
+        con.execute("PRAGMA journal_mode=delete")
+        try:
+            rid = self._altzeile(con)
+            ModuleAuthorRepo(con).upsert(
+                {**_GOOD, "id": rid, "module_key": "alt.nachgetragen"},
+                changed_by="h004")
+            row = con.execute(
+                "SELECT old_value, new_value FROM templates_audit_log "
+                "WHERE target_id='alt.nachgetragen' AND target_type='module' "
+                "ORDER BY id DESC LIMIT 1").fetchone()
+            alt_j = json.loads(row[0])
+            neu_j = json.loads(row[1])
+            self.assertIn("module_key", alt_j)
+            self.assertIsNone(alt_j["module_key"])
+            self.assertEqual(neu_j["module_key"], "alt.nachgetragen")
+        finally:
+            con.close()
+
+    def test_tm22_kein_umtragen_eines_vorhandenen_schluessels(self):
+        """Der module_key ist eine STABILE Kennung: Berichtsvorlagen verweisen
+        ueber ihn. Wanderte er, braeche jede Vorlage - und zwar still."""
+        con = sqlite3.connect(self._db)
+        con.execute("PRAGMA journal_mode=delete")
+        try:
+            repo = ModuleAuthorRepo(con)
+            repo.upsert(_GOOD, changed_by="h004")
+            rid = con.execute(
+                "SELECT id FROM report_modules "
+                "WHERE module_key='intro.standard'").fetchone()[0]
+            with self.assertRaises(ModuleKeyAssignError) as ctx:
+                repo.upsert({**_GOOD, "id": rid, "module_key": "ganz.anders"},
+                            changed_by="h004")
+            self.assertEqual(ctx.exception.feld, "module_key")
+            self.assertEqual(con.execute(
+                "SELECT module_key FROM report_modules WHERE id=?",
+                (rid,)).fetchone()[0], "intro.standard")
+        finally:
+            con.close()
+
+    def test_tm23_kollision_wird_vor_dem_schreiben_erkannt(self):
+        """Der partielle Unique-Index wuerde einen IntegrityError werfen - der
+        sagt dem Ausfuellenden nichts. Die Meldung nennt stattdessen, WER den
+        Schluessel schon hat."""
+        con = sqlite3.connect(self._db)
+        con.execute("PRAGMA journal_mode=delete")
+        try:
+            repo = ModuleAuthorRepo(con)
+            repo.upsert(_GOOD, changed_by="h004")
+            rid = self._altzeile(con)
+            with self.assertRaises(ModuleKeyAssignError) as ctx:
+                repo.upsert({**_GOOD, "id": rid,
+                             "module_key": "intro.standard"},
+                            changed_by="h004")
+            self.assertEqual(ctx.exception.feld, "module_key")
+            self.assertIn("bereits vergeben", str(ctx.exception))
+            self.assertIsNone(con.execute(
+                "SELECT module_key FROM report_modules WHERE id=?",
+                (rid,)).fetchone()[0])
+        finally:
+            con.close()
+
+    def test_tm24_unbekannte_id(self):
+        con = sqlite3.connect(self._db)
+        con.execute("PRAGMA journal_mode=delete")
+        try:
+            with self.assertRaises(ModuleKeyAssignError) as ctx:
+                ModuleAuthorRepo(con).upsert({**_GOOD, "id": 9999},
+                                             changed_by="h004")
+            self.assertEqual(ctx.exception.feld, "id")
+        finally:
+            con.close()
+
 
 class EndpointTests(unittest.TestCase):
     def setUp(self):
@@ -246,6 +365,71 @@ class EndpointTests(unittest.TestCase):
         self.assertEqual(json.loads(r2.body.decode("utf-8"))["error"],
                          "validation")
         self.assertEqual(self._counts(), (1, 1))
+
+    # ------------------------------------------------------------------
+    # Build 564: der HTTP-Vertrag, auf den die Maske aufbaut.
+    # ------------------------------------------------------------------
+    def _altzeile_http(self, titel="Alter Baustein"):
+        con = sqlite3.connect(self._tdb)
+        try:
+            con.execute(
+                "INSERT INTO report_modules (title, description, role, topic, "
+                " body, sort_order, is_active, created_by, created_at, "
+                " updated_at, module_key) "
+                "VALUES (?, '', 'intro', 'Einleitung', 'Text', 0, 1, 'alt', "
+                "        1, 1, NULL)", (titel,))
+            con.commit()
+            return con.execute("SELECT id FROM report_modules WHERE title=?",
+                               (titel,)).fetchone()[0]
+        finally:
+            con.close()
+
+    def test_tm25_http_nachtrag_und_feldangabe(self):
+        rid = self._altzeile_http()
+        app = self._app()
+
+        r = app.dispatch_write(1, "/api/templates/module",
+                               {**_GOOD, "id": rid,
+                                "module_key": "alt.nachgetragen"})
+        self.assertEqual(r.status, 200, r.body)
+        b = json.loads(r.body.decode("utf-8"))
+        self.assertTrue(b["nachtrag"])
+        self.assertFalse(b["created"])
+
+        # Ein zweiter Versuch traegt jetzt einen Schluessel -> 400 MIT Feld,
+        # nicht 500. Die Maske braucht das Feld, um es zu markieren.
+        r2 = app.dispatch_write(1, "/api/templates/module",
+                                {**_GOOD, "id": rid,
+                                 "module_key": "noch.anders"})
+        self.assertEqual(r2.status, 400, r2.body)
+        b2 = json.loads(r2.body.decode("utf-8"))
+        self.assertEqual(b2["feld"], "module_key")
+
+    def test_tm26_dryrun_prueft_den_nachtrag_mit(self):
+        """Sonst saehe die Vorschau gruen aus und das Speichern schluege fehl -
+        der Ausfuellende haette die Vorschau umsonst gemacht."""
+        app = self._app()
+        app.dispatch_write(1, "/api/templates/module", dict(_GOOD))
+        rid = self._altzeile_http("Zweiter Alter")
+
+        r = app.dispatch_write(1, "/api/templates/module/dryrun",
+                               {**_GOOD, "id": rid,
+                                "module_key": "intro.standard"})
+        self.assertEqual(r.status, 200, r.body)
+        b = json.loads(r.body.decode("utf-8"))
+        self.assertFalse(b["ok"])
+        self.assertTrue(any("bereits vergeben" in e for e in b["errors"]),
+                        b["errors"])
+
+        # Und der Dry-Run bleibt SCHREIBFREI: die Altzeile hat weiterhin
+        # keinen Schluessel.
+        con = sqlite3.connect(self._tdb)
+        try:
+            self.assertIsNone(con.execute(
+                "SELECT module_key FROM report_modules WHERE id=?",
+                (rid,)).fetchone()[0])
+        finally:
+            con.close()
 
     def test_tm08_dryrun_is_write_free(self):
         self.assertEqual(self._counts(), (0, 0))

@@ -4003,8 +4003,16 @@ class ManagementApp:
         return Response.json(200, {"count": len(modules), "modules": modules})
 
     def _tpl_module_from_payload(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Baut das Modul-dict aus dem Payload (Basis fuer Upsert und Dry-Run)."""
+        """
+        Baut das Modul-dict aus dem Payload (Basis fuer Upsert und Dry-Run).
+
+        Build 564: 'id' wird MITGEFUEHRT. Sie ist nur fuer EINEN Fall da - das
+        Nachtragen eines fehlenden module_key an einer Altzeile. Der Validator
+        ignoriert sie; das Repo entscheidet, ob sie greift (nur bei
+        module_key IS NULL) und weist jeden anderen Gebrauch zurueck.
+        """
         return {
+            "id": payload.get("id"),
             "module_key": payload.get("module_key"),
             "title": payload.get("title"),
             "description": payload.get("description"),
@@ -4026,7 +4034,9 @@ class ManagementApp:
             return self._forbidden(CAP_TEMPLATES_EDIT)
 
         from management.templates_admin.module_validator import validate_static
-        from management.templates_admin.module_repo import ModuleAuthorRepo
+        from management.templates_admin.module_repo import (
+            ModuleAuthorRepo, ModuleKeyAssignError,
+        )
 
         m = self._tpl_module_from_payload(payload)
         errors = validate_static(m)
@@ -4043,18 +4053,28 @@ class ManagementApp:
         tcon = self._templates_rw_con()
         try:
             result = ModuleAuthorRepo(tcon).upsert(m, changed_by=changed_by)
+        except ModuleKeyAssignError as exc:
+            # 400 statt 500: das ist eine Beanstandung der Eingabe, kein
+            # Serverfehler - und sie NENNT das schuldige Feld, damit die
+            # Maske es markieren kann (Muster aus Build 560).
+            body = {"error": "validation", "errors": [str(exc)]}
+            if getattr(exc, "feld", None):
+                body["feld"] = exc.feld
+            return Response.json(400, body)
         except sqlite3.Error as exc:
             return Response.json(500, {"error": "templates_write_failed",
                                        "detail": str(exc)})
         finally:
             tcon.close()
 
-        logger.info("Baustein-Modul %s (%s) von %s",
+        logger.info("Baustein-Modul %s (%s%s) von %s",
                     result["target_id"],
                     "angelegt" if result["created"] else "geaendert",
+                    ", Schluessel nachgetragen" if result.get("nachtrag") else "",
                     changed_by)
         return Response.json(200, {"ok": True, "target_id": result["target_id"],
-                                   "created": result["created"]})
+                                   "created": result["created"],
+                                   "nachtrag": bool(result.get("nachtrag"))})
 
     def _templates_module_dryrun(self, person_id: int,
                                  payload: Dict[str, Any]) -> Response:
@@ -4073,6 +4093,43 @@ class ManagementApp:
 
         m = self._tpl_module_from_payload(payload)
         errors = validate_static(m)
+
+        # Build 564: Wird ein Schluessel NACHGETRAGEN (id gesetzt), prueft die
+        # Vorschau denselben Weg wie das Speichern - schreibfrei. Sonst saehe
+        # die Vorschau gruen aus und das Speichern schluege fehl, und der
+        # Ausfuellende haette die Vorschau umsonst gemacht.
+        if not errors and m.get("id") not in (None, ""):
+            from management.templates_admin.module_repo import (
+                ModuleAuthorRepo, ModuleKeyAssignError,
+            )
+            tcon = self._templates_ro_con()
+            try:
+                repo = ModuleAuthorRepo(tcon)
+                ziel = repo.get_by_id(int(m["id"]))
+                schluessel = str(m.get("module_key") or "").strip()
+                if ziel is None:
+                    errors.append("Unbekanntes Baustein-Modul (id=%s)."
+                                  % m["id"])
+                elif ziel.get("module_key"):
+                    errors.append(
+                        "Das Modul traegt bereits den Schluessel '%s'. Ein "
+                        "module_key ist eine stabile Kennung, auf die "
+                        "Berichtsvorlagen verweisen - er wird nicht "
+                        "umgetragen." % ziel["module_key"])
+                else:
+                    kollision = repo.get_by_key(schluessel)
+                    if kollision is not None:
+                        errors.append(
+                            "Der Schluessel '%s' ist bereits vergeben "
+                            "(Modul id=%s, '%s')."
+                            % (schluessel, kollision["id"],
+                               kollision["title"]))
+            except (ValueError, sqlite3.Error) as exc:
+                errors.append("Pruefung des Schluessels fehlgeschlagen: %s"
+                              % exc)
+            finally:
+                tcon.close()
+
         summary: List[Dict[str, Any]] = []
         if not errors:
             summary = placeholder_summary(m.get("body"))
