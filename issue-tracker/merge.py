@@ -18,6 +18,7 @@ Funktionen:
 """
 
 import json
+import os
 import sys
 import uuid
 import shutil
@@ -251,7 +252,8 @@ class IssueMergeEngine:
             return
         
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_path = self.target_file.parent / f"issues_backup_before_merge_{timestamp}.json"
+        BACKUP_DIR: Path = Path(os.getenv("BACKUP_DIR", "./backups"))
+        backup_path = BACKUP_DIR / f"issues_backup_before_merge_{timestamp}.json"
         
         try:
             shutil.copy2(self.target_file, backup_path)

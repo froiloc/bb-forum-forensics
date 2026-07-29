@@ -145,30 +145,30 @@
         // mit der naechsten HANDLUNG. SCOPE-BEHAFTET: mit 'eigene' ist es die
         // eigene Arbeitsschlange, mit 'alle' die Verteilsicht der Leitung.
         { id: 'nextactions', cap: 'nextactions.view',    group: 'Ueberblick',     label: 'Nächstbeste Aktion' },
-        { id: 'assignment', cap: 'assignment.edit',      group: 'Verwaltung',     label: 'Zuweisung' },
+        { id: 'assignment', cap: 'assignment.edit',      group: 'Fallsteuerung',     label: 'Zuweisung' },
         // Fall-Erkennung (Build 384): haengt an DERSELBEN Faehigkeit wie die
         // Zuweisung — das Backend (Build 383) schuetzt /api/cases/detect und
         // /api/cases/import mit 'assignment.edit' (Scope 'alle'). Wir fuehren
         // dafuer bewusst KEINE zweite Faehigkeit ein (mc 2026-07-12).
-        { id: 'cases',      cap: 'assignment.edit',      group: 'Verwaltung',     label: 'Fall-Erkennung' },
-        { id: 'mentoring',  cap: 'mentoring.view',       group: 'Verwaltung',     label: 'Ermittler-Betreuung' },
+        { id: 'cases',      cap: 'assignment.edit',      group: 'Fallsteuerung',     label: 'Fall-Erkennung' },
+        { id: 'mentoring',  cap: 'mentoring.view',       group: 'Betreuung',     label: 'Ermittler-Betreuung' },
         // Betreuungs-Notizen ("Post-its", Build 406). Eigener Nav-Eintrag DIREKT
         // neben der Ermittler-Betreuung (abgestimmt mc 2026-07-13). Recht:
         // mentoring_notes.view. Privates Board pro Autor:in; Scope 'alle' sieht
         // fremde Boards (Backend-Vorgabe Build 401/405).
-        { id: 'notes',      cap: 'mentoring_notes.view',  group: 'Verwaltung',     label: 'Betreuungs-Notizen' },
+        { id: 'notes',      cap: 'mentoring_notes.view',  group: 'Betreuung',     label: 'Betreuungs-Notizen' },
         // Berichts-Abnahme: 'reports.approve' ODER 'reports.review' genuegt
         // (wer freigeben darf, muss lesen duerfen). 'caps' = any-of; 'cap' bleibt
         // fuer den Scope-Tag/Platzhalter die Leitfaehigkeit.
-        { id: 'reports',    cap: 'reports.approve',      caps: ['reports.approve', 'reports.review'], group: 'Verwaltung',     label: 'Berichts-Abnahme' },
+        { id: 'reports',    cap: 'reports.approve',      caps: ['reports.approve', 'reports.review'], group: 'Abnahme',     label: 'Berichts-Abnahme' },
         // Lektorat (W4, Build 413): Gegenlesen des Berichtstexts. 'caps' = any-of
         // (reports.review ODER reports.approve — die Chefin liest ebenfalls
         // gegen); Leitfaehigkeit fuer den Scope-Tag ist reports.review.
-        { id: 'lectorate', cap: 'reports.review',       caps: ['reports.review', 'reports.approve'], group: 'Verwaltung',     label: 'Lektorat' },
+        { id: 'lectorate', cap: 'reports.review',       caps: ['reports.review', 'reports.approve'], group: 'Abnahme',     label: 'Lektorat' },
         // Chef-Freigabe (W5, Build 416): Bericht lesen + Siegel pruefen +
         // freigeben/zurueckweisen. Recht reports.approve (Freigeben erfordert
         // serverseitig Scope 'alle').
-        { id: 'approval',  cap: 'reports.approve',      group: 'Verwaltung',     label: 'Chef-Freigabe' },
+        { id: 'approval',  cap: 'reports.approve',      group: 'Abnahme',     label: 'Chef-Freigabe' },
         // Platzhalter & Queries (W2, Build 423): Autoren-Maske der Redakteur:in
         // fuer Einzeldaten-Platzhalter-Queries (templates.db). Eigene Gruppe
         // 'Redaktion', in der die weiteren Autoren-Werkzeuge (W1 Bausteine, W3
@@ -188,8 +188,8 @@
         // bleibt Scope 'alle' vorbehalten und wird in der Sicht BENANNT, statt
         // als leere Flaeche zu erscheinen.
         { id: 'results',    cap: 'results.view',         group: 'Auswertung',     label: 'Ermittlungsergebnis' },
-        { id: 'stats',      cap: 'stats.export_sta',     group: 'Auswertung',     label: 'Statistiken (StA/Fuehrung)' },
-        { id: 'planung',    cap: 'stats.export_sta',     group: 'Auswertung',     label: 'Prognose & Gantt' },
+        { id: 'stats',      cap: 'stats.export_sta',     group: 'Kennzahlen',     label: 'Statistiken (StA/Fuehrung)' },
+        { id: 'planung',    cap: 'stats.export_sta',     group: 'Kennzahlen',     label: 'Prognose & Gantt' },
         { id: 'annostats',  cap: 'stats.export_sta',     group: 'Auswertung',     label: 'Annotations-Statistik' },
         // Build 525 (AP-3A / Idee 32): Verjaehrungsfristen. Gruppe
         // 'Auswertung' und NICHT 'Administration': die Sicht wertet den
@@ -212,10 +212,10 @@
         // Stichprobe ueber den eigenen Arbeitsvorrat waere keine.
         //
         // AUSWERTUNGSQUALITAET, KEIN MITARBEITER-BEWERTUNGSINSTRUMENT.
-        { id: 'qs',         cap: 'qs.view',              group: 'Auswertung',     label: 'QS & Metriken' },
-        { id: 'workload',   cap: 'workload.view',        group: 'Auswertung',     label: 'Lastverteilung' },
-        { id: 'capacity',   cap: 'capacity.edit',        group: 'Auswertung',     label: 'Kapazitaet' },
-        { id: 'support',    cap: 'support_history.view', group: 'Auswertung',     label: 'Support-Historie' },
+        { id: 'qs',         cap: 'qs.view',              group: 'Kennzahlen',     label: 'QS & Metriken' },
+        { id: 'workload',   cap: 'workload.view',        group: 'Kennzahlen',     label: 'Lastverteilung' },
+        { id: 'capacity',   cap: 'capacity.edit',        group: 'Kennzahlen',     label: 'Kapazitaet' },
+        { id: 'support',    cap: 'support_history.view', group: 'Kennzahlen',     label: 'Support-Historie' },
         { id: 'mycases',    cap: 'mycases.view',         group: 'Persoenlich',    label: 'Meine Auftraege' },
         { id: 'myhistory',  cap: 'myhistory.view',       group: 'Persoenlich',    label: 'Meine Historie' },
         { id: 'policy',     cap: 'policy.view',          group: 'Administration', label: 'Rechte / Policy' },
@@ -237,33 +237,33 @@
         { id: 'retention',  cap: 'retention.view',       group: 'Administration', label: 'Aufbewahrungsfristen' },
         { id: 'promotion',  cap: 'ops.view',             group: 'Administration', label: 'Fremdforum-Promotion' },
         { id: 'releases',   cap: 'release.view',         group: 'Administration', label: 'Externe Fallfreigabe' },
-        { id: 'onboarding', cap: 'onboarding.view',      group: 'Verwaltung',     label: 'Onboarding / Offboarding' },
+        { id: 'onboarding', cap: 'onboarding.view',      group: 'Betreuung',     label: 'Onboarding / Offboarding' },
         // Build 503: Personalverwaltung (personnel.view, Seed M021) ERSETZT
         // den separaten Eintrag 'adsync' aus Build 502 — der AD-Abgleich ist
         // jetzt ABSCHNITT der Personal-Seite (mc 2026-07-24: "Auf jener Seite
         // sollte dann auch die Einbindung sein"); sein Abschnitt erscheint
         // dort nur mit personnel.sync.
-        { id: 'personnel',  cap: 'personnel.view',       group: 'Verwaltung',     label: 'Personalverwaltung' },
+        { id: 'personnel',  cap: 'personnel.view',       group: 'Personal',     label: 'Personalverwaltung' },
         // Build 471 (AP-2A(2b)): Katalog identifizierter Personen (Konto->reale
         // Person) mit Konfidenzstufe. Auswertungs-Sicht; Recht crossref.view.
-        { id: 'crossref',   cap: 'crossref.view',        group: 'Auswertung',     label: 'Kreuzbezug' },
+        { id: 'crossref',   cap: 'crossref.view',        group: 'Identitaeten',     label: 'Kreuzbezug' },
         // Build 478 (AP-2A(3)): Querfund-Meta-Uebersicht (rein lesend, Frontend
         // zu /api/crossfindings). Gleiche F5-Familie; Recht crossref.view.
-        { id: 'crossfindings', cap: 'crossref.view',     group: 'Auswertung',     label: 'Querfunde' },
+        { id: 'crossfindings', cap: 'crossref.view',     group: 'Identitaeten',     label: 'Querfunde' },
         // Build 505 (AP-2A/A1, Idee 8): globaler Alias-Katalog (Frontend zu
         // 504). EIGENE Sicht statt Anbau an 'crossref': Aliasse existieren
         // UNABHAENGIG vom Identitaetskatalog — ein Konto kann Aliasse und
         // KEINE Identifizierung haben; ein Anbau haette diese Faelle
         // unsichtbar gemacht (Grundregel 1). Gleiche F5-Familie, Recht
         // crossref.view (Pflegen zusaetzlich crossref.edit).
-        { id: 'alias',      cap: 'crossref.view',        group: 'Auswertung',     label: 'Aliasse' },
+        { id: 'alias',      cap: 'crossref.view',        group: 'Identitaeten',     label: 'Aliasse' },
         // Build 510 (AP-2A/A3, Idee 11): Identitaets-Gruppen (Merge/Split,
         // Frontend zu 509). EIGENE Sicht — eine Zusammenfuehrung besteht
         // UNABHAENGIG davon, ob eines der Konten identifiziert oder mit
         // Aliassen versehen ist; gerade der haeufige Fall ist "dieselbe
         // Person, aber noch unbekannt WER". Recht crossref.view
         // (Pflegen zusaetzlich crossref.edit).
-        { id: 'merge',      cap: 'crossref.view',        group: 'Auswertung',     label: 'Identitäts-Gruppen' },
+        { id: 'merge',      cap: 'crossref.view',        group: 'Identitaeten',     label: 'Identitäts-Gruppen' },
         // Build 563 (AP-3E / Idee 38, Instanz B): fallUEBERGREIFENDE
         // Volltextsuche. Gruppe 'Auswertung' neben Aliassen und
         // Identitaets-Gruppen: alle drei beantworten dieselbe Frage —
@@ -303,7 +303,7 @@
         // Gruppe 'Verwaltung' und nicht 'Auswertung': dort sucht
         // eine personalverantwortliche Person, neben der
         // Personalverwaltung (mc 2026-07-29).
-        { id: 'capacity_pflege', cap: 'capacity.edit',   group: 'Verwaltung',     label: 'Kapazitaetspflege' }
+        { id: 'capacity_pflege', cap: 'capacity.edit',   group: 'Personal',     label: 'Kapazitaetspflege' }
     ];
 
     // Gueltige Scope-Werte fuer die Anzeige (weitere -> kein Tag).
@@ -428,9 +428,13 @@
     // Vorliebe, gefiltert nach Recht (in DIESER Reihenfolge), ohne die
     // versteckten.
     function navViews(capabilities, prefs) {
-        return visibleViews(capabilities,
-                            applyViewPrefs(VIEW_CATALOG, prefs))
+        var sichtbar = visibleViews(capabilities,
+                                    applyViewPrefs(VIEW_CATALOG, prefs))
             .filter(function (v) { return v.versteckt !== true; });
+        // Ohne gespeicherte Vorliebe gilt die Vorgabefolge; mit Vorliebe gilt
+        // die eigene (erstes Auftreten in der gespeicherten Liste).
+        return nachGruppenOrdnen(sichtbar,
+                                 (prefs && prefs.length) ? null : GROUP_ORDER);
     }
 
     // hiddenCount: wie viele Sichten hat die Person ausgeblendet, die sie
@@ -458,6 +462,71 @@
 
     // groupSequence: geordnete, eindeutige Gruppenfolge der sichtbaren Sichten
     // (bestimmt die Reihenfolge der Nav-Gruppenkoepfe).
+    // GROUP_ORDER (Build 568): die VORGABE-Reihenfolge der Gruppen. Sie steht
+    // hier ausdruecklich und ergibt sich NICHT mehr aus der Katalogfolge:
+    // welche Sicht zufaellig als erste ihrer Gruppe im Katalog steht, ist eine
+    // Nebensache der Dateipflege und taugt nicht als Aussage darueber, in
+    // welcher Ordnung jemand arbeitet.
+    //
+    // Die Folge liest sich als Arbeitsweg: Ueberblick -> Fall -> Betreuung ->
+    // Abnahme -> Redaktion -> Auswertung -> Identitaeten -> Kennzahlen ->
+    // Personal -> Administration, und ganz zuletzt das Persoenliche
+    // (Einstellungen sucht man am Ende, nicht in der Mitte).
+    //
+    // WER SEINE EIGENE ORDNUNG GESPEICHERT HAT, dem gilt seine eigene: dann
+    // bestimmt das erste Auftreten in der gespeicherten Liste die
+    // Gruppenfolge, und GROUP_ORDER bleibt aussen vor.
+    var GROUP_ORDER = [
+        'Ueberblick', 'Fallsteuerung', 'Betreuung', 'Abnahme', 'Redaktion',
+        'Auswertung', 'Identitaeten', 'Kennzahlen', 'Personal',
+        'Administration', 'Persoenlich'
+    ];
+
+    // nachGruppenOrdnen: bringt eine flache Sichtliste in GRUPPENREINE Form —
+    // jede Gruppe steht am Stueck, in der Reihenfolge 'gruppenfolge' (fehlende
+    // Gruppen hinten, nach erstem Auftreten). Die Reihenfolge INNERHALB einer
+    // Gruppe bleibt unangetastet.
+    //
+    // WARUM DAS NOETIG IST (Befund Build 568): die Vorlieben sind eine FLACHE
+    // Liste, und die Bedienoberflaeche liess bis Build 567 freies Umsortieren
+    // ueber Gruppengrenzen zu. buildNav setzt einen Gruppenkopf, sobald sich
+    // v.group aendert - eine verschraenkte Liste erzeugte deshalb DENSELBEN
+    // Gruppenkopf mehrfach. Nachweisbar mit der Folge
+    // Ueberblick/dashboard -> Verwaltung/assignment -> Ueberblick/calendar:
+    // drei Koepfe fuer zwei Gruppen. groupSequence zaehlte dabei zwei, buildNav
+    // zeichnete drei - die beiden waren sich nicht einig.
+    //
+    // Diese Funktion stellt die Gruppenreinheit beim LESEN her. Damit ist der
+    // Fehler auch fuer Vorlieben behoben, die bereits verschraenkt in der
+    // Datenbank stehen - ohne Migration, ohne dass jemand etwas nachpflegen
+    // muss. UNBEKANNTE Gruppen werden ANGEHAENGT, nie verworfen (Grundregel 1).
+    function nachGruppenOrdnen(views, gruppenfolge) {
+        var liste = views || [];
+        var proGruppe = {};
+        var erstesAuftreten = [];
+        liste.forEach(function (v) {
+            var g = v && v.group;
+            if (!Object.prototype.hasOwnProperty.call(proGruppe, g)) {
+                proGruppe[g] = [];
+                erstesAuftreten.push(g);
+            }
+            proGruppe[g].push(v);
+        });
+        var folge = [];
+        (gruppenfolge || []).forEach(function (g) {
+            if (Object.prototype.hasOwnProperty.call(proGruppe, g)
+                    && folge.indexOf(g) === -1) { folge.push(g); }
+        });
+        erstesAuftreten.forEach(function (g) {
+            if (folge.indexOf(g) === -1) { folge.push(g); }
+        });
+        var out = [];
+        folge.forEach(function (g) {
+            out = out.concat(proGruppe[g]);
+        });
+        return out;
+    }
+
     function groupSequence(views) {
         var seen = {};
         var out = [];
@@ -503,17 +572,85 @@
     // XSS-sicher: alle variablen Texte via textContent.
     // Build 546: zusaetzlicher Parameter 'versteckt' (Anzahl ausgeblendeter
     // Sichten). Optional — fehlt er, verhaelt sich buildNav wie bisher.
+    // --- Build 568: EINGEKLAPPTE GRUPPEN -----------------------------------
+    // Der Zustand liegt im localStorage und NICHT auf dem Server (mc
+    // 2026-07-29: "Das ist alles Kosmetik. Kosmetik kann in den
+    // localStorage."). Er sagt nichts ueber die Arbeitsweise aus, nur
+    // darueber, was gerade zugeklappt ist - und er darf ruhig am Arbeitsplatz
+    // haengenbleiben.
+    var NAV_ZU_KEY = 'aiw.cockpit.navZu.v1';
+
+    function navZuLesen() {
+        try {
+            var roh = window.localStorage.getItem(NAV_ZU_KEY);
+            var d = roh ? JSON.parse(roh) : null;
+            return (d && typeof d === 'object') ? d : {};
+        } catch (e) {
+            // Kein Speicher, kein Problem: dann ist eben alles aufgeklappt.
+            return {};
+        }
+    }
+
+    function navZuSchreiben(zu) {
+        try {
+            window.localStorage.setItem(NAV_ZU_KEY, JSON.stringify(zu || {}));
+        } catch (e) { log('navZu nicht speicherbar', e); }
+    }
+
+    // navGruppeUmschalten: reine Zustandsrechnung, damit sie pruefbar ist.
+    function navGruppeUmschalten(zu, gruppe) {
+        var k = {};
+        for (var f in (zu || {})) {
+            if (Object.prototype.hasOwnProperty.call(zu, f)) { k[f] = zu[f]; }
+        }
+        k[gruppe] = !k[gruppe];
+        return k;
+    }
+
     function buildNav(navEl, views, capabilities, activeId, onSelect,
                       versteckt) {
         if (!navEl) { return; }
         navEl.textContent = '';
+        var zu = navZuLesen();
+        // EINE EINGEKLAPPTE GRUPPE MIT DER AKTIVEN SICHT WIRD AUFGEKLAPPT.
+        // Sonst waere die eigene Auswahl unsichtbar, und die Leiste behauptete
+        // stillschweigend, es gebe sie nicht.
+        views.forEach(function (v) {
+            if (v.id === activeId) { zu[v.group] = false; }
+        });
         var lastGroup = null;
+        var gruppenKoerper = null;
         views.forEach(function (v) {
             if (v.group !== lastGroup) {
-                var g = document.createElement('div');
+                var g = document.createElement('button');
                 g.className = 'aiw-navgroup';
-                g.textContent = v.group;
+                g.setAttribute('type', 'button');
+                g.setAttribute('data-group', v.group);
+                var zuGeklappt = zu[v.group] === true;
+                g.setAttribute('aria-expanded', zuGeklappt ? 'false' : 'true');
+                var pfeil = document.createElement('span');
+                pfeil.className = 'aiw-navgroup-pfeil';
+                pfeil.textContent = zuGeklappt ? '\u25B8' : '\u25BE';
+                g.appendChild(pfeil);
+                var gname = document.createElement('span');
+                gname.textContent = v.group;
+                g.appendChild(gname);
                 navEl.appendChild(g);
+
+                gruppenKoerper = document.createElement('div');
+                gruppenKoerper.className = 'aiw-navgroup-koerper';
+                gruppenKoerper.setAttribute('data-group-body', v.group);
+                if (zuGeklappt) { gruppenKoerper.hidden = true; }
+                navEl.appendChild(gruppenKoerper);
+
+                (function (gruppe) {
+                    g.addEventListener('click', function () {
+                        var neu = navGruppeUmschalten(navZuLesen(), gruppe);
+                        navZuSchreiben(neu);
+                        buildNav(navEl, views, capabilities, activeId,
+                                 onSelect, versteckt);
+                    });
+                })(v.group);
                 lastGroup = v.group;
             }
             var b = document.createElement('button');
@@ -537,7 +674,11 @@
                 log('Nav-Klick', v.id);
                 if (typeof onSelect === 'function') { onSelect(v.id); }
             });
-            navEl.appendChild(b);
+            // In den Gruppenkoerper, damit das Einklappen genau die Eintraege
+            // dieser Gruppe trifft. Der Rueckfall auf navEl greift nur, wenn
+            // buildNav ohne Gruppen aufgerufen wuerde - dann bleibt es beim
+            // alten Verhalten statt bei einer leeren Leiste.
+            (gruppenKoerper || navEl).appendChild(b);
         });
 
         // Build 546 (AP-3G): DER ZAEHLER DER AUSGEBLENDETEN SICHTEN.
@@ -4459,6 +4600,9 @@
         viewById: viewById,
         setWho: setWho,
         buildNav: buildNav,
+        navGruppeUmschalten: navGruppeUmschalten,
+        GROUP_ORDER: GROUP_ORDER,
+        nachGruppenOrdnen: nachGruppenOrdnen,
         sichtNachOben: sichtNachOben,
         navEintragZeigen: navEintragZeigen,
         renderPlaceholder: renderPlaceholder,

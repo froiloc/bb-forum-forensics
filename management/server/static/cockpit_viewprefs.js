@@ -121,6 +121,93 @@
         return liste;
     }
 
+    // ======================================================================
+    // Build 568 — ZWEI EBENEN: Gruppen und Sichten darin.
+    // ======================================================================
+    // Gespeichert wird weiterhin EINE FLACHE LISTE (person_view_pref, eine
+    // Position je Sicht) - mc 2026-07-29: "Schoen flach halten. Das ist nur
+    // Kosmetik. Keine Rechtfertigung fuer hohen Aufwand."
+    //
+    // Die zweite Ebene braucht dafuer kein eigenes Feld, sondern nur eine
+    // ZUSAGE an die flache Liste: jede Gruppe steht am Stueck. Dann ist die
+    // Gruppenfolge das erste Auftreten, und die Folge innerhalb der Gruppe ist
+    // die flache Folge. Beide Bewegungen unten halten diese Zusage ein - und
+    // damit kann die Bedienoberflaeche gar nicht mehr erzeugen, was bis
+    // Build 567 moeglich war: eine verschraenkte Liste, die in der Navigation
+    // denselben Gruppenkopf zweimal erscheinen liess.
+
+    // gruppenAus: flache Liste -> [{ gruppe, zeilen: [...] }], gruppenrein und
+    // in der Reihenfolge des ersten Auftretens.
+    function gruppenAus(rows) {
+        var proGruppe = {};
+        var folge = [];
+        (rows || []).forEach(function (r) {
+            var g = r && r.group;
+            if (!Object.prototype.hasOwnProperty.call(proGruppe, g)) {
+                proGruppe[g] = [];
+                folge.push(g);
+            }
+            proGruppe[g].push(r);
+        });
+        return folge.map(function (g) {
+            return { gruppe: g, zeilen: proGruppe[g] };
+        });
+    }
+
+    // flachAus: [{gruppe, zeilen}] -> flache Liste. Gegenstueck zu gruppenAus.
+    function flachAus(bloecke) {
+        var out = [];
+        (bloecke || []).forEach(function (b) {
+            out = out.concat(b.zeilen || []);
+        });
+        return out;
+    }
+
+    // gruppeVerschieben: eine GANZE Gruppe um 'delta' Plaetze bewegen. Ein Zug
+    // ueber den Rand ist wirkungslos, kein Fehler (wie bei 'verschiebe').
+    function gruppeVerschieben(rows, gruppe, delta) {
+        var bloecke = gruppenAus(rows);
+        var i = -1;
+        for (var n = 0; n < bloecke.length; n++) {
+            if (bloecke[n].gruppe === gruppe) { i = n; break; }
+        }
+        if (i < 0) { return (rows || []).slice(); }
+        var ziel = i + delta;
+        if (ziel < 0 || ziel >= bloecke.length) {
+            return (rows || []).slice();
+        }
+        var tmp = bloecke[i];
+        bloecke[i] = bloecke[ziel];
+        bloecke[ziel] = tmp;
+        return flachAus(bloecke);
+    }
+
+    // verschiebeInGruppe: eine Sicht NUR innerhalb ihrer Gruppe bewegen. Am
+    // Rand der Gruppe ist Schluss - ein Zug darueber hinaus wuerde die Sicht
+    // in eine fremde Gruppe tragen, und die Zugehoerigkeit einer Sicht ist
+    // eine Festlegung des Katalogs, keine Frage der persoenlichen Ordnung.
+    function verschiebeInGruppe(rows, key, delta) {
+        var bloecke = gruppenAus(rows);
+        for (var b = 0; b < bloecke.length; b++) {
+            var z = bloecke[b].zeilen;
+            for (var i = 0; i < z.length; i++) {
+                if (z[i] && z[i].id === key) {
+                    var ziel = i + delta;
+                    if (ziel < 0 || ziel >= z.length) {
+                        return (rows || []).slice();
+                    }
+                    var neu = z.slice();
+                    var tmp = neu[i];
+                    neu[i] = neu[ziel];
+                    neu[ziel] = tmp;
+                    bloecke[b] = { gruppe: bloecke[b].gruppe, zeilen: neu };
+                    return flachAus(bloecke);
+                }
+            }
+        }
+        return (rows || []).slice();
+    }
+
     // umschalten: Sichtbarkeit eines Eintrags kippen. NEUE Liste, NEUE Objekte
     // (die Eingabe bleibt unberuehrt — sonst haette die Shell einen veraenderten
     // Katalog in der Hand).
@@ -306,7 +393,8 @@
         mainEl.appendChild(el('h2', 'aiw-pagehead', 'Ansicht anpassen'));
         mainEl.appendChild(el('p', 'aiw-pagesub',
             'Reihenfolge und Sichtbarkeit der Bereiche in der linken '
-            + 'Navigation. Die Einstellung gilt nur für Sie.'));
+            + 'Navigation — Gruppen untereinander, Bereiche innerhalb ihrer '
+            + 'Gruppe. Die Einstellung gilt nur für Sie.'));
 
         // Kein stiller Fehlpfad: ein fehlgeschlagener Abruf sieht NICHT aus
         // wie "nichts eingestellt".
@@ -368,7 +456,50 @@
                 + ' sichtbar · ' + z.versteckt + ' ausgeblendet';
 
             liste.textContent = '';
-            rows.forEach(function (r, idx) {
+            // Build 568: ZWEI EBENEN. Die Gruppen bilden die aeussere Ordnung,
+            // die Sichten die innere. Beide werden mit denselben Pfeilen
+            // bedient - eine Ebene mit Pfeilen und eine mit Ziehen waere zwei
+            // Bedienarten fuer dieselbe Sache.
+            var bloecke = gruppenAus(rows);
+            bloecke.forEach(function (block, gidx) {
+                var gkopf = el('div', 'aiw-vp-gruppenkopf');
+                gkopf.setAttribute('data-group', block.gruppe);
+
+                var gname = el('span', 'aiw-vp-gruppenname', block.gruppe);
+                gkopf.appendChild(gname);
+                var gzahl = el('span', 'aiw-vp-gruppenzahl',
+                    block.zeilen.length + (block.zeilen.length === 1
+                        ? ' Bereich' : ' Bereiche'));
+                gkopf.appendChild(gzahl);
+
+                var gup = el('button', 'aiw-vp-pfeil', '▲');
+                gup.setAttribute('type', 'button');
+                gup.setAttribute('aria-label',
+                    'Gruppe "' + block.gruppe + '" nach oben');
+                gup.disabled = (gidx === 0);
+                gup.addEventListener('click', function () {
+                    rows = gruppeVerschieben(rows, block.gruppe, -1);
+                    zeichne();
+                });
+                var gdown = el('button', 'aiw-vp-pfeil', '▼');
+                gdown.setAttribute('type', 'button');
+                gdown.setAttribute('aria-label',
+                    'Gruppe "' + block.gruppe + '" nach unten');
+                gdown.disabled = (gidx === bloecke.length - 1);
+                gdown.addEventListener('click', function () {
+                    rows = gruppeVerschieben(rows, block.gruppe, 1);
+                    zeichne();
+                });
+                gkopf.appendChild(gup);
+                gkopf.appendChild(gdown);
+                liste.appendChild(gkopf);
+
+                block.zeilen.forEach(function (r, idx) {
+                    _zeileZeichnen(r, idx, block.zeilen.length);
+                });
+            });
+
+            function _zeileZeichnen(r, idx, anzahlInGruppe) {
                 var zeile = el('div', 'aiw-vp-zeile'
                     + (r.versteckt ? ' is-versteckt' : ''));
                 zeile.setAttribute('role', 'listitem');
@@ -394,7 +525,8 @@
                 var lab = el('label', 'aiw-vp-label', r.label);
                 lab.setAttribute('for', cb2.id);
                 zeile.appendChild(lab);
-                zeile.appendChild(el('span', 'aiw-vp-gruppe', r.group));
+                // Die Gruppe steht jetzt im Kopf darueber - sie ein zweites
+                // Mal je Zeile zu wiederholen waere Laerm.
 
                 // Pfeile: Ziehen ist nicht tastaturbedienbar (a11y, Muster
                 // cockpit_notes.js Build 407).
@@ -403,22 +535,24 @@
                 up.setAttribute('aria-label', 'Nach oben');
                 up.disabled = (idx === 0);
                 up.addEventListener('click', function () {
-                    rows = verschiebe(rows, r.id, -1);
+                    rows = verschiebeInGruppe(rows, r.id, -1);
                     zeichne();
                 });
                 var down = el('button', 'aiw-vp-pfeil', '▼');
                 down.setAttribute('type', 'button');
                 down.setAttribute('aria-label', 'Nach unten');
-                down.disabled = (idx === rows.length - 1);
+                // Am Rand der GRUPPE ist Schluss, nicht am Rand der Liste:
+                // die Zugehoerigkeit einer Sicht legt der Katalog fest.
+                down.disabled = (idx === anzahlInGruppe - 1);
                 down.addEventListener('click', function () {
-                    rows = verschiebe(rows, r.id, 1);
+                    rows = verschiebeInGruppe(rows, r.id, 1);
                     zeichne();
                 });
                 zeile.appendChild(up);
                 zeile.appendChild(down);
 
                 liste.appendChild(zeile);
-            });
+            }
 
             // Der ungespeicherte Zustand wird an EINER Stelle bestimmt und
             // von dort aus sowohl gemerkt (Warnung beim Verlassen) als auch
@@ -498,6 +632,10 @@
 
     var API = {
         verschiebe: verschiebe,
+        gruppenAus: gruppenAus,
+        flachAus: flachAus,
+        gruppeVerschieben: gruppeVerschieben,
+        verschiebeInGruppe: verschiebeInGruppe,
         umschalten: umschalten,
         zuNutzlast: zuNutzlast,
         zusammenfassung: zusammenfassung,

@@ -168,7 +168,7 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     const v = api.viewById("crossfindings");
     expect(v).toBeTruthy();
     expect(v.cap).toBe("crossref.view");
-    expect(v.group).toBe("Auswertung");
+    expect(v.group).toBe("Identitaeten");
     expect(api.visibleViews({}).map((x) => x.id)).not.toContain("crossfindings");
     expect(
       api.visibleViews({ "crossref.view": "alle" }).map((x) => x.id)
@@ -176,13 +176,13 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
   });
 
   // CN-MERGE (Build 510) -----------------------------------------------------
-  it("CN-MERGE: Identitaets-Gruppen haengen an crossref.view, Gruppe Auswertung",
+  it("CN-MERGE: Identitaets-Gruppen haengen an crossref.view, Gruppe Identitaeten",
      () => {
     const api = _api();
     const v = api.viewById("merge");
     expect(v).toBeTruthy();
     expect(v.cap).toBe("crossref.view");
-    expect(v.group).toBe("Auswertung");
+    expect(v.group).toBe("Identitaeten");
     // default-deny: ohne Recht unsichtbar.
     expect(api.visibleViews({}).map((x) => x.id)).not.toContain("merge");
     expect(
@@ -196,7 +196,7 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     const v = api.viewById("alias");
     expect(v).toBeTruthy();
     expect(v.cap).toBe("crossref.view");
-    expect(v.group).toBe("Auswertung");
+    expect(v.group).toBe("Identitaeten");
     expect(v.label).toBe("Aliasse");
     // default-deny: ohne Recht unsichtbar.
     expect(api.visibleViews({}).map((x) => x.id)).not.toContain("alias");
@@ -211,7 +211,7 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     const v = api.viewById("crossref");
     expect(v).toBeTruthy();
     expect(v.cap).toBe("crossref.view");
-    expect(v.group).toBe("Auswertung");
+    expect(v.group).toBe("Identitaeten");
     // Ohne Recht unsichtbar; mit Recht sichtbar.
     expect(api.visibleViews({}).map((x) => x.id)).not.toContain("crossref");
     expect(
@@ -225,7 +225,7 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     const v = api.viewById("cases");
     expect(v).toBeTruthy();
     expect(v.cap).toBe("assignment.edit");
-    expect(v.group).toBe("Verwaltung");
+    expect(v.group).toBe("Fallsteuerung");
 
     // Wer zuweisen darf, sieht auch die Fall-Erkennung - und nur der.
     expect(api.visibleViews({ "assignment.edit": "alle" }).map((x) => x.id))
@@ -332,17 +332,20 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     const api = _api();
     const caps = {
       "dashboard.view": "alle", // Ueberblick
-      "assignment.edit": "alle", // Verwaltung
-      "reports.approve": "alle", // Verwaltung (Duplikat der Gruppe)
-      "workload.view": "alle", // Auswertung
+      "assignment.edit": "alle", // Fallsteuerung (Zuweisung UND Fall-Erkennung)
+      "reports.approve": "alle", // Abnahme
+      "workload.view": "alle", // Kennzahlen
     };
     const views = api.visibleViews(caps);
     // Build 546: 'viewprefs' steht in der Gruppe 'Persoenlich' und faehrt
     // immer mit — die Gruppe erscheint deshalb auch ohne mycases/myhistory.
+    // Build 568: groupSequence liest die KATALOGfolge; die Vorgabefolge
+    // GROUP_ORDER wirkt erst in navViews (siehe CN-GRP03).
     expect(api.groupSequence(views)).toEqual([
       "Ueberblick",
-      "Verwaltung",
-      "Auswertung",
+      "Fallsteuerung",
+      "Abnahme",
+      "Kennzahlen",
       "Persoenlich",
     ]);
   });

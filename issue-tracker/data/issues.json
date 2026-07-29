@@ -380,38 +380,28 @@
     {
       "id": "ffbfb7f5-1f30-4c8e-a5b1-ea473a0bfa4c",
       "type": "feature_request",
-      "title": "Navigationsleiste - Gruppen aufräumen",
-      "affected_version": "0.8.560",
-      "reporter": "Alex",
-      "reported_at": "2026-07-29T15:29:14.365607+00:00",
-      "prerequisites": "Es sind viele Berechtigungen auf Sichten im Management per Rolle zugreifbar.",
-      "description": "Die Navigationsleiste im Management ist unaufgeräumt. Die einzelnen Sichten sollen Gruppenweise dargestellt werden. Derzeit gibt es ein Durcheinander an Sichten, die dem Thema \"Verwaltung\" zugeordnet werden.\r\n\r\nDie Ordnung sollte Gruppenweise erfolgen.\r\n\r\nEbenso sollte Gruppenweise eingeklappt werden können",
-      "expected_behavior": "Die Navigationsleiste wirkt aufgeräumter.",
-      "actual_behavior": "",
-      "status": "open",
+      "status": "resolved",
       "priority": "high",
       "severity": "minor",
-      "assigned_to": "",
-      "related_to": [],
-      "resolved_in_version": null,
-      "target_version": null,
-      "environment": {
-        "python_version": "3.14"
-      },
+      "title": "Navigationsleiste - Gruppen aufräumen",
+      "affected_version": "0.8.560",
+      "resolved_in_version": "0.8.568",
+      "reporter": "Alex",
+      "reported_at": "2026-07-29T15:50:00+00:00",
+      "assigned_to": "Claude",
       "tags": [
         "Navigationsleiste",
         "Gruppen",
         "Sichten"
       ],
-      "attachments": [],
       "updates": [
         {
-          "timestamp": "2026-07-29T15:29:14.365634+00:00",
-          "author": "Alex",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "Issue erstellt"
+          "timestamp": "2026-07-29T20:30:00+00:00",
+          "author": "Claude",
+          "action": "status_change",
+          "old_value": "open",
+          "new_value": "resolved",
+          "comment": "Build 568. Neuer Zuschnitt: 6 -> 11 Gruppen, 'Verwaltung' (10) und 'Auswertung' (15) aufgeteilt; nur group-Zeichenketten geaendert, keine Kennung und kein Recht. Gruppen sind einklappbar (Zustand im localStorage nach Entscheidung mc), und 'Ansicht anpassen' ordnet auf ZWEI Ebenen: Gruppen als Block, Sichten innerhalb ihrer Gruppe. Ohne Schemaaenderung - die flache Speicherung bleibt. GRP01-GRP12."
         }
       ]
     },
@@ -847,6 +837,81 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eintraege_claude_Build567.json"
+        }
+      ]
+    },
+    {
+      "id": "3fb9f16e-79d5-44a9-a3d7-4cbc316df543",
+      "type": "improvement",
+      "title": "Dashboard Tiles erstellen",
+      "affected_version": "0.8.568",
+      "reporter": "Alex",
+      "reported_at": "2026-07-29T20:01:13.358237+00:00",
+      "prerequisites": "Die notwendigen Endpunkte stehen bereits.",
+      "description": "Die Templates für die einzelnen Dashboard-Tiles müssen erstellt werden.",
+      "expected_behavior": "Jedes Dashboard Tile, welches ausgewählt ist, wird auch visualisiert und aktualisiert sich selbständig, sollte das Teil seiner Funktion sein. Meist ist das aber nicht notwendig, da es eigentlich kaum Änderungen in Echtzeit gibt.",
+      "actual_behavior": "Derzeit wird nur er Block mit einem 404 angezeigt, dass die Dashboard-Tiles nicht verfügbar sind.",
+      "status": "open",
+      "priority": "high",
+      "severity": "major",
+      "assigned_to": "Claude",
+      "related_to": [],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14",
+        "database": "coordinator.db"
+      },
+      "tags": [
+        "Dashboard"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-07-29T20:01:13.358291+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Issue erstellt"
+        }
+      ]
+    },
+    {
+      "id": "3b9e5c14-7a28-4f61-9d03-6c5e8a1b2d4f",
+      "type": "bug",
+      "status": "resolved",
+      "priority": "medium",
+      "severity": "minor",
+      "title": "Gruppenkopf erschien mehrfach, wenn Sichten umsortiert wurden",
+      "affected_version": "0.8.546",
+      "resolved_in_version": "0.8.568",
+      "reporter": "Claude",
+      "reported_at": "2026-07-29T20:30:00+00:00",
+      "assigned_to": "Claude",
+      "related_to": [
+        "ffbfb7f5-1f30-4c8e-a5b1-ea473a0bfa4c"
+      ],
+      "tags": [
+        "Navigationsleiste",
+        "Nebenbefund",
+        "AP-3G"
+      ],
+      "description": "Die Ansichtsvorlieben sind eine FLACHE Liste, und die Bedienoberflaeche liess freies Umsortieren ueber Gruppengrenzen zu. buildNav setzt einen Gruppenkopf, sobald sich v.group aendert - eine verschraenkte Reihenfolge erzeugte denselben Kopf mehrfach. Am laufenden Code belegt: Ueberblick/dashboard -> Verwaltung/assignment -> Ueberblick/calendar ergab DREI Koepfe, waehrend groupSequence ZWEI Gruppen meldete.",
+      "expected_behavior": "Jeder Gruppenkopf erscheint genau einmal.",
+      "actual_behavior": "Wer umsortierte, konnte sich die Leiste zerlegen; groupSequence und buildNav hatten verschiedene Vorstellungen davon, was eine Gruppe ist.",
+      "updates": [
+        {
+          "timestamp": "2026-07-29T20:30:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "comment": "Behoben durch nachGruppenOrdnen beim LESEN: die Liste wird gruppenrein gemacht, bevor sie in die Navigation geht. Wirkt damit auch fuer Vorlieben, die bereits verschraenkt gespeichert sind, ohne die Daten anzufassen. GRP01, GRP04, GRP07."
+        },
+        {
+          "timestamp": "2026-07-29T22:24:23.536871+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build568.json"
         }
       ]
     }

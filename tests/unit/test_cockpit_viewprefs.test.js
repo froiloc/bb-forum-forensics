@@ -383,9 +383,20 @@ describe("cockpit_viewprefs.js — Render (Build 546)", () => {
     expect(main.textContent).toContain("1 sichtbar");
     expect(main.textContent).toContain("1 ausgeblendet");
     // Pfeile an den Raendern sind gesperrt.
+    // Build 568: die Pfeile bewegen NUR INNERHALB der Gruppe. 'a' und 'b'
+    // sind je die einzige Sicht ihrer Gruppe - beide Richtungen sind deshalb
+    // gesperrt. Vorher war der Abwaertspfeil von 'a' offen, weil sich Sichten
+    // frei ueber Gruppengrenzen schieben liessen; genau das erzeugte in der
+    // Navigation doppelte Gruppenkoepfe (Ticket ffbfb7f5).
     const pfeile0 = zeilen[0].querySelectorAll(".aiw-vp-pfeil");
     expect(pfeile0[0].disabled).toBe(true);
-    expect(pfeile0[1].disabled).toBe(false);
+    expect(pfeile0[1].disabled).toBe(true);
+    // Die GRUPPEN dagegen lassen sich bewegen - die aeussere Ebene.
+    const gkoepfe = main.querySelectorAll(".aiw-vp-gruppenkopf");
+    expect(gkoepfe.length).toBe(2);
+    const gpfeile = gkoepfe[0].querySelectorAll(".aiw-vp-pfeil");
+    expect(gpfeile[0].disabled).toBe(true);     // erste Gruppe, nicht hoeher
+    expect(gpfeile[1].disabled).toBe(false);    // aber nach unten
   });
 
   // VF17 ---------------------------------------------------------------------
@@ -407,9 +418,15 @@ describe("cockpit_viewprefs.js — Render (Build 546)", () => {
     const main = win.document.createElement("div");
     win.document.body.appendChild(main);
     let gesehen = null;
+    // Build 568: zwei Sichten in DERSELBEN Gruppe - nur dort ist eine
+    // Bewegung ueberhaupt noch moeglich.
+    const ROWS2 = [
+      { id: "a", label: "Alpha", group: "Ueberblick" },
+      { id: "b", label: "Beta", group: "Ueberblick", versteckt: true },
+    ];
     M.renderViewPrefs(
       main,
-      { rows: ROWS, gespeichert: GESPEICHERT },
+      { rows: ROWS2, gespeichert: GESPEICHERT },
       { onSave: (n) => { gesehen = n; } }
     );
     // 'b' nach oben.

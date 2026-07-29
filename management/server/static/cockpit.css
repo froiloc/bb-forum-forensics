@@ -2982,3 +2982,35 @@ tr.aiw-cff-nichtrelevant { opacity: 0.7; }
     border-left: 4px solid var(--aiw-warn, #b8860b);
     background: var(--aiw-warn-bg, #fff8e1);
 }
+
+/* --- Build 568: Gruppen einklappen -------------------------------------- */
+/* Der Gruppenkopf ist jetzt eine Schaltflaeche. Er soll trotzdem aussehen wie
+   eine Ueberschrift und nicht wie ein Knopf - deshalb werden die
+   Browser-Vorgaben zurueckgenommen und nur ein Zeigefinger und ein Pfeil
+   ergaenzt. */
+button.aiw-navgroup {
+  display: flex; align-items: center; gap: 6px;
+  width: 100%; text-align: left;
+  background: none; border: 0; font: inherit;
+  cursor: pointer;
+}
+button.aiw-navgroup:hover { background: #e2e7ea; }
+button.aiw-navgroup:focus-visible {
+  outline: 2px solid var(--akzent); outline-offset: -2px;
+}
+.aiw-navgroup-pfeil { font-size: 10px; line-height: 1; opacity: .7; }
+
+/* --- Build 568: zwei Ebenen in "Ansicht anpassen" ----------------------- */
+.aiw-vp-gruppenkopf {
+  display: flex; align-items: center; gap: 8px;
+  margin: 14px 0 4px; padding: 4px 6px;
+  background: #eef1f3; border-radius: 3px;
+  font-weight: 600;
+}
+.aiw-vp-gruppenname { flex: 0 0 auto; }
+/* Die Zahl steht am Kopf, damit man eine ueberfuellte Gruppe sieht, ohne sie
+   abzuzaehlen - genau der Befund aus dem Ticket. */
+.aiw-vp-gruppenzahl {
+  flex: 1 1 auto; font-weight: 400; font-size: 12px; color: var(--muted);
+}
+.aiw-vp-liste .aiw-vp-zeile { margin-left: 14px; }
