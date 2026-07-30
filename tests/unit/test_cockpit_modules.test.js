@@ -296,3 +296,105 @@ describe("Bausteinmodule — module_key nachtragen (Build 565)", () => {
       .toBeUndefined();
   });
 });
+
+describe("Bausteinmodule — Zustand des Schlüsselfeldes (Build 575)", () => {
+  const DRAFT_KEY = "aiw.modules.draft.v1";
+
+  /** Datensatz mit einem Altbaustein OHNE Kennung. */
+  function _mitAltbaustein() {
+    return {
+      count: 2,
+      modules: [
+        { id: 7, module_key: null, title: "Alter Baustein", description: "",
+          role: "intro", topic: "Einleitung", body: "Text", sort_order: 0,
+          is_active: 1, created_by: "alt", created_at: 1, updated_at: 1 },
+        { id: 8, module_key: "intro.std", title: "Standard", description: "",
+          role: "intro", topic: "Einleitung", body: "Text", sort_order: 1,
+          is_active: 1, created_by: "red", created_at: 1, updated_at: 1 },
+      ],
+    };
+  }
+
+  function _feld(main) { return main.querySelector(".aiw-mod-key"); }
+  function _hinweis(main) {
+    return main.querySelector(".aiw-mod-keyhinweis");
+  }
+
+  // MK04 --------------------------------------------------------------------
+  it("MK04: frisches Formular — Feld offen und leer", () => {
+    const win = _ctx();
+    const main = win.document.getElementById("aiw-main");
+    _api(win).renderModules(main, _mitAltbaustein(), {});
+    const f = _feld(main);
+    expect(f).toBeTruthy();
+    // Der von mc gemeldete Zustand war GESPERRT UND LEER — genau das darf es
+    // nicht geben: eine Sperre, hinter der nichts steht.
+    expect(f.disabled).toBe(false);
+    expect(f.value).toBe("");
+  });
+
+  // MK05 --------------------------------------------------------------------
+  it("MK05: Baustein MIT Kennung sperrt, Altbaustein OHNE oeffnet", () => {
+    const win = _ctx();
+    const main = win.document.getElementById("aiw-main");
+    _api(win).renderModules(main, _mitAltbaustein(), {});
+    const eintraege = main.querySelectorAll(".aiw-mod-item");
+    expect(eintraege.length).toBe(2);
+
+    // Der Altbaustein (ohne Kennung) -> Feld OFFEN, mit Vorschlag.
+    eintraege[0].dispatchEvent(new win.Event("click", { bubbles: true }));
+    let f = _feld(main);
+    expect(f.disabled).toBe(false);
+    expect(f.value).toBe("intro.alter.baustein");
+    expect(_hinweis(main).textContent).toContain("ENDGUELTIG");
+
+    // Der Baustein mit Kennung -> Feld FEST, Wert die Kennung.
+    eintraege[1].dispatchEvent(new win.Event("click", { bubbles: true }));
+    f = _feld(main);
+    expect(f.disabled).toBe(true);
+    expect(f.value).toBe("intro.std");
+    expect(_hinweis(main).textContent).toContain("fest");
+  });
+
+  // MK06 --------------------------------------------------------------------
+  it("MK06: ALTENTWURF erzeugt keine Sperre ohne Inhalt", () => {
+    const win = _ctx();
+    // Ein Entwurf aus der Zeit VOR Build 565: selKey traegt die ZEICHENKETTE
+    // "null" (damals String(m.module_key)), das Schluesselfeld ist leer, und
+    // es gibt weder selId noch nachtragId. Beim Wiederherstellen ergab das
+    // genau das von mc gemeldete Bild: disabled und leer.
+    win.localStorage.setItem(DRAFT_KEY, JSON.stringify({
+      v: 1, selKey: "null",
+      fields: { module_key: "", title: "Alter Baustein", description: "",
+                role: "intro", topic: "Einleitung", body: "Text",
+                sort_order: 0 },
+    }));
+    const main = win.document.getElementById("aiw-main");
+    _api(win).renderModules(main, _mitAltbaustein(), {});
+
+    const f = _feld(main);
+    expect(f.value).toBe("");
+    // DIE KERNAUSSAGE: kein gesperrtes Leerfeld mehr.
+    expect(f.disabled).toBe(false);
+  });
+
+  // MK07 --------------------------------------------------------------------
+  it("MK07: Altentwurf mit bekannter Zeile warnt vor falscher Zuordnung", () => {
+    const win = _ctx();
+    // Hier ist selId bekannt, nachtragId aber nicht — Speichern wuerde eine
+    // ZWEITE Zeile anlegen statt die alte zu ergaenzen. Das muss dastehen.
+    win.localStorage.setItem(DRAFT_KEY, JSON.stringify({
+      v: 1, selKey: null, selId: 7,
+      fields: { module_key: "", title: "Alter Baustein", description: "",
+                role: "intro", topic: "Einleitung", body: "Text",
+                sort_order: 0 },
+    }));
+    const main = win.document.getElementById("aiw-main");
+    _api(win).renderModules(main, _mitAltbaustein(), {});
+
+    expect(_feld(main).disabled).toBe(false);
+    const h = _hinweis(main).textContent;
+    expect(h).toContain("erneut anklicken");
+    expect(_hinweis(main).className).toContain("aiw-mod-keyhinweis-warn");
+  });
+});

@@ -3074,22 +3074,14 @@
         fetchJson('/api/overview').then(function (data) {
             cleanupView();
             mainEl.textContent = '';
-            var kopf = document.createElement('h2');
-            kopf.className = 'aiw-pagehead';
-            kopf.textContent = 'Fallübersicht';
-            mainEl.appendChild(kopf);
-            var unter = document.createElement('p');
-            unter.className = 'aiw-pagesub';
-            unter.textContent = (typeof data.count === 'number'
-                ? (data.count + (data.count === 1 ? ' Fall' : ' Fälle'))
-                : '') + ' · vollständiger Bestand'
-                + (data.scope === 'eigene' ? ' im eigenen Umfang' : '');
-            mainEl.appendChild(unter);
-            var rumpf = document.createElement('div');
-            rumpf.className = 'aiw-faelle-tabelle';
-            mainEl.appendChild(rumpf);
-
-            state.table = ov.renderOverview(rumpf, data, {});
+            // BUILD 575: KEIN EIGENER KOPF MEHR. renderOverview schreibt seit
+            // Build 349 selbst eine Ueberschrift und eine Unterzeile - und
+            // die ist die bessere, weil sie den Umfang nennt ('alle Faelle
+            // (Gesamtsicht)') und nicht nur die Zahl. Mein zusaetzlicher Kopf
+            // aus Build 574 stand darueber und ergab denselben Titel zweimal
+            // (Befund mc). Ein Titel gehoert an EINE Stelle; ich nehme die
+            // aeltere und reichere sie nicht doppelt an.
+            state.table = ov.renderOverview(mainEl, data, {});
             // Fall-Fokus aus der Kommandopalette (Build 459, hierher verlegt in
             // Build 574): nach dem Rendern zur gewaehlten Zeile springen und
             // danach zuruecksetzen, damit ein spaeteres Neuladen nicht erneut

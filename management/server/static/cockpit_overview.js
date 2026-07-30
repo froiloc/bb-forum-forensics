@@ -236,7 +236,11 @@
 
         var h = document.createElement('h2');
         h.className = 'aiw-pagehead';
-        h.textContent = 'Fall-Uebersicht';
+        // Build 575: Titel gleich der Sicht-Beschriftung im VIEW_CATALOG
+        // ('Fallübersicht'). Vorher stand hier 'Fall-Uebersicht' - dieselbe
+        // Sache in zwei Schreibweisen, und die Navigation nannte sie anders
+        // als die Seite selbst.
+        h.textContent = 'Fallübersicht';
         mainEl.appendChild(h);
 
         var sub = document.createElement('p');

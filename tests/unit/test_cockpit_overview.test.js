@@ -228,7 +228,7 @@ describe("cockpit_overview.js — Overview-Sicht (Build 348)", () => {
 
     expect(inst).toBeInstanceOf(StubTab);
     expect(main.querySelector(".aiw-pagehead").textContent).toBe(
-      "Fall-Uebersicht"
+      "Fallübersicht"
     );
     expect(main.querySelector(".aiw-pagesub").textContent).toContain("alle");
     expect(main.querySelector(".aiw-pagesub").textContent).toContain(

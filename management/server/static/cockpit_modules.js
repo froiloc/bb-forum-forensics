@@ -223,7 +223,6 @@
             // Schluessel verlangt und niemand ihn eintragen konnte.
             var hatKey = !!(m.module_key);
             f.module_key.value = m.module_key || '';
-            f.module_key.disabled = hatKey;
             _state.nachtragId = hatKey ? null : m.id;
             if (!hatKey) {
                 // Vorschlag setzen, aber NICHT speichern - das tut erst der
@@ -244,7 +243,6 @@
             _state.selId = m.id;
         } else {
             f.module_key.value = '';
-            f.module_key.disabled = false;  // Neu-Modus: Schluessel eingeben
             f.title.value = '';
             f.description.value = '';
             f.role.value = 'body';
@@ -255,10 +253,37 @@
             _state.selId = null;
             _state.nachtragId = null;
         }
-        _renderKeyHinweis();
+        // Build 575: EINE Regel fuer Sperre UND Hinweis - abgeleitet aus dem
+        // Wert im Feld, nicht aus einem Zustandsfeld.
+        _schluesselFeldStand();
         _setMsg('');
         renderDryRun(null);
         _markActive();
+    }
+
+    // _schluesselFeldStand: DIE EINZIGE Regel fuer Sperre und Hinweis des
+    // Schluesselfeldes (Build 575).
+    //
+    // WARUM DAS NOETIG WAR: es gab DREI unabhaengige Ausdruecke dafuer -
+    // _fillForm mit Modul (disabled = hatKey), _fillForm ohne Modul
+    // (disabled = false) und die Entwurfs-Wiederherstellung
+    // (disabled = selKey !== null). Der dritte kannte den Nachtragsmodus
+    // nicht. Ein Entwurf aus der Zeit VOR Build 565 traegt selKey als die
+    // Zeichenkette "null" (damals: String(m.module_key)) und ein leeres
+    // module_key-Feld - beim Wiederherstellen ergab das genau das von mc
+    // gemeldete Bild: GESPERRT UND LEER, also wieder die Sackgasse.
+    //
+    // Die neue Regel leitet den Zustand aus dem WERT ab und nicht aus einem
+    // Zustandsfeld: ein Feld mit Schluessel ist fest, ein leeres ist offen.
+    // Damit kann kein Zustand aus irgendeiner Quelle mehr eine Sperre
+    // erzeugen, hinter der nichts steht.
+    function _schluesselFeldStand() {
+        var f = _state.fields;
+        if (!f || !f.module_key) { return; }
+        var wert = String(f.module_key.value || '').trim();
+        var nachtrag = !!_state.nachtragId;
+        f.module_key.disabled = (!nachtrag && wert !== '');
+        _renderKeyHinweis();
     }
 
     // _renderKeyHinweis: erklaert den Zustand des Schluesselfeldes.
@@ -277,6 +302,16 @@
         } else if (_state.selKey) {
             el.textContent = 'Die Kennung ist fest: Berichtsvorlagen verweisen '
                 + 'ueber sie auf diesen Baustein.';
+        } else if (_state.selId) {
+            // Ein bestehendes Modul ohne Kennung, dessen Zeilen-id wir NICHT
+            // kennen (alter Entwurf). Speichern wuerde hier eine ZWEITE Zeile
+            // anlegen statt die alte zu ergaenzen - deshalb der ausdrueckliche
+            // Hinweis, das Modul neu aus der Liste zu waehlen.
+            el.textContent = 'Dieser Entwurf stammt aus einer aelteren Fassung '
+                + 'und kann die Kennung nicht sicher zuordnen. Bitte den '
+                + 'Baustein links erneut anklicken, dann wird sie korrekt '
+                + 'nachgetragen.';
+            el.classList.add('aiw-mod-keyhinweis-warn');
         } else {
             el.textContent = 'Kennung frei waehlbar; nach dem ersten Speichern '
                 + 'bleibt sie unveraendert.';
@@ -406,11 +441,14 @@
         _state.selKey = (d.selKey === undefined) ? null : d.selKey;
         _state.selId = (d.selId === undefined) ? null : d.selId;
         _state.nachtragId = (d.nachtragId === undefined) ? null : d.nachtragId;
-        // Im Nachtragsmodus bleibt das Feld OFFEN, auch nach dem Wiederholen
-        // eines Entwurfs - sonst waere die Sackgasse nach einem Neuladen
-        // zurueck.
-        f.module_key.disabled = (_state.selKey !== null);
-        _renderKeyHinweis();
+        // Build 575: KEINE eigene Sperrlogik mehr. Ein Entwurf aus einer
+        // aelteren Fassung kann selKey als Zeichenkette "null" tragen; das
+        // wird hier abgefangen, damit daraus keine Sperre ohne Inhalt wird.
+        if (_state.selKey === 'null' || _state.selKey === 'undefined'
+                || _state.selKey === '') {
+            _state.selKey = null;
+        }
+        _schluesselFeldStand();
         renderDryRun(null);
         _markActive();
         _setMsg('Nicht gespeicherter Entwurf aus dem Browserspeicher '
@@ -596,6 +634,7 @@
         isValidKey: isValidKey,
         buildPayload: buildPayload,
         schluesselVorschlag: schluesselVorschlag,
+        _schluesselFeldStand: _schluesselFeldStand,
         summaryText: summaryText,
         errorsText: errorsText,
         ROLES: ROLES,

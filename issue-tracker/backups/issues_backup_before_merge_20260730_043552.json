@@ -669,30 +669,32 @@
     },
     {
       "id": "219838e4-e4eb-430f-97a5-e0620c4f715d",
-      "type": "bug",
-      "status": "resolved",
-      "priority": "medium",
-      "severity": "major",
-      "title": "module_key-Feld weiterhin gesperrt und leer",
-      "affected_version": "0.8.565",
-      "resolved_in_version": "0.8.575",
-      "reporter": "Alex",
-      "reported_at": "2026-07-30T04:20:00+00:00",
+      "reporter": "Claude",
+      "reported_at": "2026-07-29T17:55:00+00:00",
       "assigned_to": "Claude",
+      "type": "documentation",
+      "status": "open",
+      "priority": "low",
+      "title": "module_key: 8 Altbausteine brauchen einen Nachtrag",
+      "affected_version": "0.8.565",
       "tags": [
         "Bausteinmodule",
-        "Frontend"
+        "Betrieb"
       ],
-      "description": "Trotz Build 565 blieb das Feld gesperrt und leer. Ursache: es gab DREI unabhaengige Ausdruecke fuer den Feldzustand, und der in der Entwurfs-Wiederherstellung kannte den Nachtragsmodus nicht. Ein Entwurf aus der Zeit vor Build 565 traegt selKey als Zeichenkette 'null' und ein leeres Schluesselfeld - daraus entstand eine Sperre ohne Inhalt.",
-      "expected_behavior": "Ohne Kennung ist das Feld offen; mit Kennung ist es fest. Nie gesperrt und leer.",
+      "description": "Nach Auskunft mc haben 8 Bausteine keinen module_key. Sie sind seit Build 565 einzeln in der Maske nachtragbar (Vorschlag aus dem Titel). Ein Sammelskript wurde bewusst NICHT gebaut: bei acht Zeilen ist es mehr Werkzeug als Arbeit, und jede Kennung sollte einmal bewusst gelesen werden - sie ist danach endgueltig.",
+      "expected_behavior": "Alle 8 Bausteine tragen eine Kennung; der Eintrag kann danach geschlossen werden.",
       "updates": [
         {
-          "timestamp": "2026-07-30T04:20:00+00:00",
+          "timestamp": "2026-07-29T17:55:00+00:00",
           "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "Build 575: _schluesselFeldStand() ist die einzige Regel und leitet Sperre und Hinweis aus dem WERT ab, nicht aus einem Zustandsfeld. Altentwuerfe mit der Zeichenkette 'null' werden abgefangen; kennt ein Altentwurf die Zeilen-id nicht, fordert die Maske ausdruecklich zum erneuten Anklicken auf, weil ein Speichern sonst eine zweite Zeile anlegen wuerde. MK04-MK07, Gegenprobe gefahren."
+          "action": "comment",
+          "comment": "Als Merkposten gefuehrt, damit der Nachtrag nicht auf halbem Weg liegen bleibt."
+        },
+        {
+          "timestamp": "2026-07-29T18:35:22.146729+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build565.json"
         }
       ]
     },
@@ -1186,38 +1188,6 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eintraege_claude_Build574.json"
-        }
-      ]
-    },
-    {
-      "id": "6f19b2c4-8a53-4d71-b0e6-3c74f5e8a19b",
-      "type": "bug",
-      "status": "resolved",
-      "priority": "low",
-      "severity": "minor",
-      "title": "Fallübersicht zeigte den Titel doppelt",
-      "affected_version": "0.8.574",
-      "resolved_in_version": "0.8.575",
-      "reporter": "Alex",
-      "reported_at": "2026-07-30T04:20:00+00:00",
-      "assigned_to": "Claude",
-      "tags": [
-        "Sichten",
-        "Frontend"
-      ],
-      "description": "renderOverview schreibt seit Build 349 selbst Ueberschrift und Unterzeile; loadFaelle setzte in Build 574 eine zweite darueber - derselbe Titel zweimal, in zwei Schreibweisen.",
-      "updates": [
-        {
-          "timestamp": "2026-07-30T04:20:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "Build 575: eigener Kopf entfernt, die aeltere Fassung bleibt (sie nennt den Umfang und nicht nur die Zahl). Schreibweise auf 'Fallübersicht' vereinheitlicht - gleich der Sicht-Beschriftung im VIEW_CATALOG."
-        },
-        {
-          "timestamp": "2026-07-30T02:35:52.038843+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build575.json"
         }
       ]
     }
