@@ -178,5 +178,106 @@ class MigrateDbsToolTests(unittest.TestCase):
         self.assertNotIn("default", dbs)
 
 
+class LageEindeutigTests(unittest.TestCase):
+    """
+    Build 586: die Lage wird BENANNT, nicht aus dem Register erschlossen.
+
+    Befund mc (2026-07-30): 'evidence_1488.db  0 von 3  OFFEN: 1,2,3' war
+    zweideutig. Es kam allein daraus, dass schema_migrations fehlte - und das
+    kann zweierlei heissen: die Migrationen sind nicht gelaufen, ODER ihre
+    Wirkungen sind da und nur der Eintrag fehlt. Bei den Fall-Datenbanken ist
+    Letzteres der plausible Normalfall, weil m001 datenneutral ist.
+
+    LG01 - fehlende FACHLICHE Tabellen -> 'wirkung_fehlt', mit Nennung.
+    LG02 - Tabellen da, kein Register -> 'nur_eintrag_fehlt' (kein Notstand).
+    LG03 - das Register ist eine SONDERSPUR: sein Fehlen allein ist nie
+           'Wirkung fehlt'.
+    LG04 - forensic ist versiegelt und zaehlt NIE als Luecke.
+    LG05 - der genannte Befehl ist der ZUSTAENDIGE (Build 585 nannte fuer
+           evidence/assets faelschlich den coordinator-Runner).
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+        self.data = Path(self._tmp) / "data"
+        for unter in ("evidence", "assets", "forensic"):
+            (self.data / unter).mkdir(parents=True)
+
+    def _evidence(self, mit_tabellen: bool, mit_register: bool):
+        pfad = self.data / "evidence" / "evidence_1488.db"
+        con = sqlite3.connect(str(pfad))
+        con.execute("CREATE TABLE annotations (id INTEGER)")
+        if mit_tabellen:
+            con.execute("CREATE TABLE annotation_tatzeit (id INTEGER)")
+            con.execute("CREATE TABLE evidence_audit_log (id INTEGER)")
+        if mit_register:
+            con.execute("CREATE TABLE schema_migrations (version INTEGER, "
+                        "name TEXT, kind TEXT, checksum TEXT, "
+                        "applied_at INTEGER)")
+            for v in (1, 2, 3):
+                con.execute("INSERT INTO schema_migrations VALUES "
+                            "(?,'x','additive','y',0)", (v,))
+        con.commit()
+        con.close()
+        return pfad
+
+    # LG01 ---------------------------------------------------------------
+    def test_lg01_fehlende_tabellen_sind_wirkung_fehlt(self):
+        pfad = self._evidence(mit_tabellen=False, mit_register=False)
+        befund = mdt.fall_befund(pfad, "evidence")
+        self.assertEqual(befund["lage"], "wirkung_fehlt")
+        self.assertEqual(befund["fachlich_fehlt"], [2, 3])
+        _, zeilen, _ = mdt.bericht(self.data, 1488, None)
+        text = "\n".join(zeilen)
+        self.assertIn("annotation_tatzeit", text)
+        self.assertIn("evidence_audit_log", text)
+
+    # LG02 ---------------------------------------------------------------
+    def test_lg02_nur_eintrag_fehlt_ist_kein_notstand(self):
+        pfad = self._evidence(mit_tabellen=True, mit_register=False)
+        befund = mdt.fall_befund(pfad, "evidence")
+        self.assertEqual(befund["lage"], "nur_eintrag_fehlt")
+        self.assertEqual(befund["fachlich_fehlt"], [])
+        _, zeilen, _ = mdt.bericht(self.data, 1488, None)
+        text = "\n".join(zeilen)
+        self.assertIn("nur der Registereintrag fehlt", text)
+        self.assertIn("Kein Notstand", text)
+
+    # LG03 ---------------------------------------------------------------
+    def test_lg03_register_ist_sonderspur(self):
+        """assets hat NUR die Registerspur - ihr Fehlen darf nie wie ein
+        fachlicher Ausfall klingen."""
+        sqlite3.connect(str(self.data / "assets" / "assets_1488.db")).close()
+        befund = mdt.fall_befund(
+            self.data / "assets" / "assets_1488.db", "assets")
+        self.assertEqual(befund["fachlich_fehlt"], [])
+        self.assertEqual(befund["lage"], "nur_eintrag_fehlt")
+
+    # LG04 ---------------------------------------------------------------
+    def test_lg04_forensic_zaehlt_nie(self):
+        self._evidence(mit_tabellen=True, mit_register=True)
+        sqlite3.connect(
+            str(self.data / "forensic" / "forensic_1488.db")).close()
+        offen, zeilen, dbs = mdt.bericht(self.data, 1488, None)
+        text = "\n".join(zeilen)
+        self.assertIn("versiegelt", text)
+        self.assertIn("keine Luecke", text)
+        self.assertNotIn("forensic", dbs)
+
+    # LG05 ---------------------------------------------------------------
+    def test_lg05_zustaendiger_befehl(self):
+        """
+        Build 585 nannte fuer evidence/assets 'python -m management.migrate' -
+        das behandelt aber NUR coordinator.db. mc hat den Befehl ausgefuehrt,
+        'bereits aktuell' gelesen und nichts veraendert vorgefunden.
+        """
+        self.assertIn("migration_fleet", mdt.BEFEHL["evidence"])
+        self.assertIn("companion", mdt.BEFEHL["evidence"])
+        self.assertIn("migration_fleet", mdt.BEFEHL["assets"])
+        # Und fuer coordinator weiterhin der richtige.
+        self.assertIn("management.migrate", mdt.BEFEHL["coordinator"])
+        self.assertNotIn("migration_fleet", mdt.BEFEHL["coordinator"])
+
+
 if __name__ == "__main__":
     unittest.main()

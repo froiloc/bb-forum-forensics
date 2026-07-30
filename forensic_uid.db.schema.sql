@@ -22,8 +22,8 @@ DROP TABLE IF EXISTS "page_aliases";
 CREATE TABLE IF NOT EXISTS "page_aliases" (
 	"url_raw"	TEXT NOT NULL,
 	"page_id"	INTEGER NOT NULL,
-	PRIMARY KEY("url_raw"),
-	FOREIGN KEY("page_id") REFERENCES "pages"("id")
+	FOREIGN KEY("page_id") REFERENCES "pages"("id"),
+	PRIMARY KEY("url_raw")
 );
 DROP TABLE IF EXISTS "post_aliases";
 CREATE TABLE IF NOT EXISTS "post_aliases" (
@@ -574,5 +574,13 @@ CREATE INDEX IF NOT EXISTS "uid_att_source_idx" ON "uid_attestations" (
 DROP INDEX IF EXISTS "uid_att_heuristic_idx";
 CREATE INDEX IF NOT EXISTS "uid_att_heuristic_idx" ON "uid_attestations" (
 	"heuristic_confidence"
+);
+DROP INDEX IF EXISTS "aiw_uid_posts_posted_ts_idx";
+CREATE INDEX IF NOT EXISTS "aiw_uid_posts_posted_ts_idx" ON "uid_posts" (
+	"posted_ts"
+);
+DROP INDEX IF EXISTS "aiw_uid_pms_posts_posted_ts_idx";
+CREATE INDEX IF NOT EXISTS "aiw_uid_pms_posts_posted_ts_idx" ON "uid_pms_posts" (
+	"posted_ts"
 );
 COMMIT;
