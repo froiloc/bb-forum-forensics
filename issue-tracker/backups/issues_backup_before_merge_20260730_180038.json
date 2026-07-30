@@ -1825,26 +1825,35 @@
     {
       "id": "6b0c4e19-73a5-4d82-9c61-8ae5f27d3016",
       "type": "documentation",
-      "status": "resolved",
+      "status": "open",
       "priority": "high",
-      "title": "templates.db der VM war vor Build 489 und brauchte zwei Migrationen",
+      "title": "templates.db der VM ist vermutlich vor Build 489 und braucht die Migration",
       "affected_version": "0.8.582",
-      "resolved_in_version": "0.8.584",
       "reporter": "Claude",
       "reported_at": "2026-07-30T15:00:00+00:00",
       "assigned_to": "Alex",
+      "related_to": [
+        "b5e8207c-14d9-4f63-a870-2e93c145b0af"
+      ],
       "tags": [
         "Betrieb",
         "Migration"
       ],
+      "prerequisites": "data/templates.db, Dateidatum 13. Juli 2026.",
+      "description": "Build 489 (21. Juli) hat die Kerntabelle placeholder_queries in placeholders umbenannt. Die templates.db auf der VM traegt das Datum 13. Juli - die Migration ist also vermutlich nie darauf gelaufen. Folge: TemplatesDb liefert seit dem 21. Juli leere Listen; bis Build 579 STILL, seither als sichtbare Meldung.",
+      "expected_behavior": "Pruefen mit: sqlite3 data/templates.db \".tables\". Steht dort placeholder_queries, dann nach einer Sicherung management/migrate_templates_placeholders.py ausfuehren.",
       "updates": [
         {
-          "timestamp": "2026-07-30T18:00:00+00:00",
+          "timestamp": "2026-07-30T15:00:00+00:00",
           "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "BESTAETIGT durch die Tabellenliste von mc: placeholder_queries statt placeholders. Es fehlten ZWEI Migrationen - Build 489 (Platzhalter-Neuordnung) und Build 497 (validation_ci). Beide wurden ausgefuehrt; Bausteine, Vorlagen und Einzeldaten laden wieder."
+          "action": "comment",
+          "comment": "Vermutung, nicht Befund - bestaetigt ist sie erst mit der Tabellenliste. Deshalb als offener Punkt und nicht als geschlossene Ursache gefuehrt."
+        },
+        {
+          "timestamp": "2026-07-30T15:07:02.004125+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build582.json"
         }
       ]
     },
@@ -1912,160 +1921,6 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eintraege_claude_Build583.json"
-        }
-      ]
-    },
-    {
-      "id": "84c1e6b2-70d3-4f95-b8a4-0e2517c9f3ad",
-      "type": "bug",
-      "status": "resolved",
-      "priority": "high",
-      "severity": "major",
-      "title": "Zustandspruefung sah nur die Tabelle, nicht ihre Spalten",
-      "affected_version": "0.8.579",
-      "resolved_in_version": "0.8.584",
-      "reporter": "Alex",
-      "reported_at": "2026-07-30T18:00:00+00:00",
-      "assigned_to": "Claude",
-      "tags": [
-        "Robustheit",
-        "Grundregel1",
-        "Diagnose"
-      ],
-      "description": "Nach der 489er-Migration meldete zustand() 'ok', weil die Tabelle 'placeholders' existierte - die Bibliothek blieb trotzdem leer, weil die Spalte 'validation_ci' fehlte (Build 497). Eine halb migrierte Datenbank besteht die Existenzpruefung und liefert nichts.",
-      "expected_behavior": "Die Pruefung nennt fehlende SPALTEN und die zustaendige Migration.",
-      "updates": [
-        {
-          "timestamp": "2026-07-30T18:00:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "Build 584: ERWARTETE_SPALTEN aus den SELECTs abgelesen; fehlt eine, nennt zustand() Tabelle, Spalte und Migrationsskript. GS01-GS04."
-        },
-        {
-          "timestamp": "2026-07-30T16:00:38.449011+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build584.json"
-        }
-      ]
-    },
-    {
-      "id": "0d5a9271-3c48-4e60-97b1-6fa8420ed3c5",
-      "type": "improvement",
-      "status": "in_progress",
-      "priority": "medium",
-      "title": "templates.db braucht einen echten Migrations-Runner",
-      "affected_version": "0.8.584",
-      "target_version": "0.8.586",
-      "reporter": "Claude",
-      "reported_at": "2026-07-30T18:00:00+00:00",
-      "assigned_to": "Claude",
-      "tags": [
-        "Architektur",
-        "Migration"
-      ],
-      "updates": [
-        {
-          "timestamp": "2026-07-30T20:00:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "in_progress",
-          "comment": "Build 585: tools/migrate-dbs.py bindet die fuenf Skripte ein und glaettet ihre uneinheitlichen Schnittstellen an einer Stelle. Idempotenz gemessen (zweiter Lauf aendert nichts), damit Weg (b) tragfaehig ist. Ein echtes Register in templates.db bleibt offen - der Standsbericht liest weiterhin Spuren."
-        }
-      ]
-    },
-    {
-      "id": "c3f80e54-9a16-4d72-bb05-8e194a2f76d1",
-      "type": "improvement",
-      "status": "open",
-      "priority": "low",
-      "title": "Muster: schwache Pruefungen erzeugen unwirkliche Testvorrichtungen",
-      "affected_version": "0.8.584",
-      "reporter": "Claude",
-      "reported_at": "2026-07-30T18:00:00+00:00",
-      "assigned_to": "Claude",
-      "tags": [
-        "Tests",
-        "Lehre"
-      ],
-      "description": "Zweimal in Folge musste eine Testvorrichtung angepasst werden, weil sie einen Zustand abbildete, den es real nicht geben kann: test_placeholders::T10 (Tabellen in der Hauptdatenbank statt als tdb) und _con_mit_tdb() (placeholders nur mit id-Spalte). Beide fielen erst auf, als die Produktionspruefung strenger wurde.",
-      "expected_behavior": "Wo eine Pruefung schwach ist, richten sich die Vorrichtungen danach ein - und die Suite prueft gegen eine Welt, die es nicht gibt. Lohnt einen Durchgang durch die uebrigen DB-Vorrichtungen.",
-      "updates": [
-        {
-          "timestamp": "2026-07-30T18:00:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "Als Merkposten festgehalten, nicht als Auftrag."
-        },
-        {
-          "timestamp": "2026-07-30T16:00:38.449208+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build584.json"
-        }
-      ]
-    },
-    {
-      "id": "7b3c02e8-4d61-4a97-85f0-9c14e6d8b520",
-      "type": "improvement",
-      "status": "open",
-      "priority": "high",
-      "title": "Startpruefung des Migrationsstands in BEIDEN Servern",
-      "affected_version": "0.8.585",
-      "target_version": "0.8.586",
-      "reporter": "Alex",
-      "reported_at": "2026-07-30T20:00:00+00:00",
-      "assigned_to": "Claude",
-      "tags": [
-        "Betriebssicherheit",
-        "Migration"
-      ],
-      "description": "Heute prueft nur der Management-Server, und nur coordinator.db (MigrationStatusCheck, Build 376). Der Forensik-Server prueft gar nichts, obwohl er sechs Datenbanken oeffnet - darunter templates.db, deren Luecke am 30.07. einen halben Tag gekostet hat.",
-      "expected_behavior": "Beide Server melden beim Start einen unvollstaendigen Migrationsstand - deutlich, unter Nennung des Befehls, und OHNE selbst zu migrieren (Festlegung mc, wie Build 376).",
-      "updates": [
-        {
-          "timestamp": "2026-07-30T20:00:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "Die Auskunftsfunktionen liegen mit Build 584/585 vor; es fehlt die Einbindung in die beiden Startpfade."
-        },
-        {
-          "timestamp": "2026-07-30T16:52:02.476706+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build585.json"
-        }
-      ]
-    },
-    {
-      "id": "a80f5c93-2e17-4b46-9d38-51c07a2fe6b4",
-      "type": "documentation",
-      "status": "open",
-      "priority": "low",
-      "title": "Die templates.db-Migrationen saeen auch Inhalte",
-      "affected_version": "0.8.585",
-      "reporter": "Claude",
-      "reported_at": "2026-07-30T20:00:00+00:00",
-      "assigned_to": "Claude",
-      "tags": [
-        "Migration",
-        "Dokumentation"
-      ],
-      "description": "Beim Messen der Idempotenz aufgefallen: die Migrationen aendern nicht nur das Schema, sie legen auch Inhalte an - Standardvorlagen, den Rechtshinweis nach § 187 GVG und vier Platzhalter (user.activity_range, user.pm_conversations, user.registered_datetime, user.shares_total). Das ist beabsichtigt, steht aber nirgends zusammengefasst.",
-      "expected_behavior": "Im Datenmigrationsleitfaden festhalten, welche Migration welche Saat mitbringt - sonst ueberrascht es beim naechsten Neuaufbau.",
-      "updates": [
-        {
-          "timestamp": "2026-07-30T20:00:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "Merkposten, kein Auftrag."
-        },
-        {
-          "timestamp": "2026-07-30T16:52:02.476851+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build585.json"
         }
       ]
     }

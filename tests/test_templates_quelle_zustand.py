@@ -59,9 +59,26 @@ class _Bundle:
 
 
 def _con_mit_tdb():
+    """
+    Eine tdb in der GESTALT, die der Lesecode erwartet.
+
+    Build 584: vorher legte diese Vorrichtung 'placeholders' nur mit einer
+    id-Spalte an - einen Zustand, den es real nicht geben kann. Solange
+    zustand() nur die EXISTENZ pruefte, fiel das nicht auf. Seit es die
+    GESTALT prueft, schon: die Vorrichtung muss die Wirklichkeit abbilden,
+    sonst prueft die Suite gegen eine Welt, die es nicht gibt.
+    """
     con = sqlite3.connect(":memory:")
     con.execute('ATTACH DATABASE ":memory:" AS tdb')
-    con.execute("CREATE TABLE tdb.placeholders (id INTEGER)")
+    con.execute(
+        "CREATE TABLE tdb.placeholders (id TEXT, title TEXT, "
+        "description TEXT, type TEXT, sql_query TEXT, default_value TEXT, "
+        "validation TEXT, validation_type TEXT, validation_ci INTEGER, "
+        "tags TEXT, return_type TEXT, is_active INTEGER)")
+    con.execute(
+        "CREATE TABLE tdb.report_modules (id INTEGER, title TEXT, "
+        "description TEXT, role TEXT, topic TEXT, body TEXT, "
+        "sort_order INTEGER, is_active INTEGER, module_key TEXT)")
     con.execute(
         "CREATE TABLE tdb.report_templates (id INTEGER, template_key TEXT, "
         "title TEXT, description TEXT, report_type TEXT, blocks_json TEXT, "
@@ -212,6 +229,112 @@ class ZustandGenauerTests(unittest.TestCase):
         # viel Zeit wie gar keine.
         self.assertIn("massnahme", b)
         self.assertIn("migrate_templates_placeholders.py", b["massnahme"])
+
+
+class GestaltUndStandTests(unittest.TestCase):
+    """
+    Build 584: die GESTALT, nicht nur die Existenz — und ein Standsbericht.
+
+    Befund mc (2026-07-30): nach der Migration auf Build 489 war die Tabelle
+    'placeholders' da, zustand() meldete 'ok', und die Platzhalter-Bibliothek
+    blieb trotzdem leer. list_queries liest die Spalte 'validation_ci', die
+    erst Build 497 nachtraegt; die Abfrage scheiterte und wurde geschluckt.
+    Meine Pruefung aus Build 579 sah nur, DASS es die Tabelle gibt.
+
+    GS01 - eine fehlende Spalte wird erkannt und BENANNT.
+    GS02 - die Meldung nennt die zustaendige Migration.
+    GS03 - vollstaendige Gestalt -> 'ok'.
+    GS04 - eine fehlende TABELLE meldet weiterhin zustand(), nicht die
+           Spaltenpruefung (kein doppelter Befund fuer dieselbe Sache).
+    GS05 - der Standsbericht erkennt angewandte und fehlende Migrationen und
+           liefert den passenden Rueckgabewert.
+    GS06 - jede Migration im Bericht traegt eine Spur UND einen Befehl.
+    """
+
+    def _con(self, mit_ci=True, mit_placeholders=True):
+        con = sqlite3.connect(":memory:")
+        con.row_factory = sqlite3.Row
+        con.execute('ATTACH DATABASE ":memory:" AS tdb')
+        if mit_placeholders:
+            ci = ", validation_ci INTEGER NOT NULL DEFAULT 0" if mit_ci else ""
+            con.execute(
+                "CREATE TABLE tdb.placeholders (id TEXT, title TEXT, "
+                "description TEXT, type TEXT, sql_query TEXT, "
+                "default_value TEXT, validation TEXT, validation_type TEXT, "
+                "tags TEXT, return_type TEXT, is_active INTEGER%s)" % ci)
+        con.execute(
+            "CREATE TABLE tdb.report_modules (id INTEGER, title TEXT, "
+            "description TEXT, role TEXT, topic TEXT, body TEXT, "
+            "sort_order INTEGER, is_active INTEGER, module_key TEXT)")
+        con.execute(
+            "CREATE TABLE tdb.report_templates (id INTEGER, template_key TEXT, "
+            "title TEXT, description TEXT, report_type TEXT, "
+            "blocks_json TEXT, sort_order INTEGER, is_active INTEGER)")
+        return con
+
+    # GS01 ---------------------------------------------------------------
+    def test_gs01_fehlende_spalte_wird_benannt(self):
+        t = TemplatesDb(self._con(mit_ci=False))
+        self.assertEqual(t.fehlende_spalten(),
+                         {"placeholders": ["validation_ci"]})
+        art, meldung = t.zustand()
+        self.assertEqual(art, TemplatesDb.ZUSTAND_FEHLER)
+        self.assertIn("placeholders.validation_ci", meldung)
+
+    # GS02 ---------------------------------------------------------------
+    def test_gs02_meldung_nennt_die_migration(self):
+        _, meldung = TemplatesDb(self._con(mit_ci=False)).zustand()
+        # Eine Meldung, die nicht sagt, was zu tun ist, kostet genauso viel
+        # Zeit wie gar keine.
+        self.assertIn("migrate_templates_ci.py", meldung)
+        self.assertIn("497", meldung)
+
+    # GS03 ---------------------------------------------------------------
+    def test_gs03_vollstaendig_ist_ok(self):
+        t = TemplatesDb(self._con(mit_ci=True))
+        self.assertEqual(t.fehlende_spalten(), {})
+        self.assertEqual(t.zustand(), (TemplatesDb.ZUSTAND_OK, ""))
+
+    # GS04 ---------------------------------------------------------------
+    def test_gs04_fehlende_tabelle_bleibt_sache_von_zustand(self):
+        t = TemplatesDb(self._con(mit_placeholders=False))
+        # Die Spaltenpruefung schweigt zu fehlenden Tabellen ...
+        self.assertNotIn("placeholders", t.fehlende_spalten())
+        # ... zustand() nicht.
+        art, meldung = t.zustand()
+        self.assertEqual(art, TemplatesDb.ZUSTAND_FEHLER)
+        self.assertIn("Kerntabelle", meldung)
+
+    # GS05 ---------------------------------------------------------------
+    def test_gs05_standsbericht(self):
+        from management.templates_db_status import bericht, MIGRATIONEN
+        con = sqlite3.connect(":memory:")
+        con.executescript(
+            "CREATE TABLE report_modules (id INTEGER, module_key TEXT);"
+            "CREATE TABLE report_templates (id INTEGER, template_key TEXT);"
+            "CREATE TABLE templates_audit_log (id INTEGER, target_type TEXT "
+            "  CHECK (target_type IN ('module','query','template')));")
+        anzahl, zeilen = bericht(con, "/pfad/templates.db")
+        text = "\n".join(zeilen)
+        # 'placeholders' und 'validation_ci' fehlen -> zwei Migrationen offen.
+        self.assertEqual(anzahl, 2)
+        self.assertIn("migrate_templates_placeholders", text)
+        self.assertIn("migrate_templates_ci.py", text)
+        # Der Pfad wird in die Befehle eingesetzt, damit man sie kopieren kann.
+        self.assertIn("/pfad/templates.db", text)
+        # Angewandtes wird als angewandt gezeigt.
+        self.assertIn("[x] Build 341", text)
+
+    # GS06 ---------------------------------------------------------------
+    def test_gs06_jede_migration_hat_spur_und_befehl(self):
+        from management.templates_db_status import MIGRATIONEN, spur_gefunden
+        con = sqlite3.connect(":memory:")
+        for name, build, spur, befehl in MIGRATIONEN:
+            self.assertTrue(name and isinstance(build, int))
+            self.assertIn(spur[0], ("tabelle", "spalte", "check"))
+            self.assertIn("{db}", befehl, name)
+            # Die Spurart muss auswertbar sein (leere DB -> False, kein Fehler).
+            self.assertFalse(spur_gefunden(con, spur), name)
 
 
 if __name__ == "__main__":

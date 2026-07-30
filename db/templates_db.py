@@ -160,6 +160,53 @@ class TemplatesDb:
     # Zustand ist jetzt ABFRAGBAR, und der Endpunkt kann eine ehrliche
     # Antwort geben statt einer leeren Liste.
     # ------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # BUILD 584 - DIE GESTALT, NICHT NUR DIE EXISTENZ.
+    #
+    # Anlass: nach der Migration auf Build 489 war die Tabelle 'placeholders'
+    # da, zustand() meldete 'ok' - und die Platzhalter-Bibliothek blieb
+    # trotzdem leer. Der Grund lag eine Ebene feiner: list_queries liest die
+    # Spalte 'validation_ci', die erst Build 497 nachtraegt. Die Abfrage
+    # scheiterte, wurde vom except-Zweig geschluckt und ergab eine leere
+    # Liste - also wieder 'es gibt keine' statt 'ich konnte nicht nachsehen'.
+    #
+    # Meine Pruefung aus Build 579 hat nur die EXISTENZ der Tabelle geprueft.
+    # Das genuegt nicht: eine halb migrierte Datenbank hat alle Tabellen und
+    # trotzdem nicht die noetigen Spalten.
+    #
+    # Diese Zuordnung nennt je Tabelle die Spalten, die der LESECODE dieser
+    # Klasse tatsaechlich braucht (aus den SELECTs abgelesen, nicht geraten) -
+    # und zu den nachtraeglich hinzugekommenen die zustaendige Migration. Damit
+    # sagt die Meldung nicht nur WAS fehlt, sondern WAS ZU TUN IST.
+    # ------------------------------------------------------------------
+    ERWARTETE_SPALTEN = {
+        "placeholders": (
+            "id", "title", "description", "type", "sql_query",
+            "default_value", "validation", "validation_type",
+            "validation_ci", "tags", "return_type", "is_active",
+        ),
+        "report_modules": (
+            "id", "title", "description", "role", "topic", "body",
+            "sort_order", "is_active", "module_key",
+        ),
+        "report_templates": (
+            "id", "template_key", "title", "description", "report_type",
+            "blocks_json", "sort_order", "is_active",
+        ),
+    }
+
+    # Welche Migration bringt welche Spalte? Nur fuer die nachtraeglich
+    # ergaenzten - bei allen anderen waere die Datenbank so alt, dass ein
+    # Neuaufbau (setup_templates.py) der richtige Weg ist.
+    SPALTEN_MIGRATION = {
+        ("placeholders", "validation_ci"):
+            "management/migrate_templates_ci.py (Build 497)",
+        ("report_modules", "module_key"):
+            "management/migrate_templates_module_key.py (Build 341)",
+        ("report_templates", "template_key"):
+            "management/migrate_templates_full_templates.py (Build 388)",
+    }
+
     ZUSTAND_OK = "ok"
     ZUSTAND_NICHT_ANGEBUNDEN = "nicht_angebunden"
     ZUSTAND_FEHLER = "fehler"
@@ -178,6 +225,12 @@ class TemplatesDb:
         """
         try:
             self._con.execute("SELECT 1 FROM tdb.placeholders LIMIT 1")
+            # Build 584: die Tabelle ist da - aber hat sie auch die Spalten,
+            # die der Lesecode braucht? Eine halb migrierte Datenbank besteht
+            # die Existenzpruefung und liefert trotzdem nichts.
+            fehlend = self.fehlende_spalten()
+            if fehlend:
+                return (self.ZUSTAND_FEHLER, self._spaltenmeldung(fehlend))
             return (self.ZUSTAND_OK, "")
         except sqlite3.OperationalError as exc:
             # BUILD 582 - DREI FAELLE STATT ZWEI, weil sie VERSCHIEDENE
@@ -196,6 +249,48 @@ class TemplatesDb:
             return self._zustand_genauer(str(exc))
         except sqlite3.Error as exc:
             return (self.ZUSTAND_FEHLER, str(exc))
+
+    def fehlende_spalten(self) -> dict:
+        """
+        Welche erwarteten Spalten fehlen? -> {tabelle: [spalte, ...]}
+
+        Leeres Ergebnis heisst: die Gestalt passt. Tabellen, die es (noch)
+        nicht gibt, werden hier NICHT gemeldet - dafuer ist zustand()
+        zustaendig; sonst stuenden zwei Befunde fuer dieselbe Sache da.
+        """
+        fehlend = {}
+        for tabelle, spalten in self.ERWARTETE_SPALTEN.items():
+            try:
+                vorhanden = {r[1] for r in self._con.execute(
+                    "PRAGMA tdb.table_info(%s)" % tabelle).fetchall()}
+            except sqlite3.Error:
+                continue
+            if not vorhanden:
+                continue          # Tabelle fehlt - Sache von zustand()
+            luecke = [s for s in spalten if s not in vorhanden]
+            if luecke:
+                fehlend[tabelle] = luecke
+        return fehlend
+
+    def _spaltenmeldung(self, fehlend: dict) -> str:
+        """Aus der Luecke eine Meldung machen, die die MASSNAHME nennt."""
+        teile = []
+        migrationen = []
+        for tabelle in sorted(fehlend):
+            for spalte in fehlend[tabelle]:
+                teile.append("%s.%s" % (tabelle, spalte))
+                skript = self.SPALTEN_MIGRATION.get((tabelle, spalte))
+                if skript and skript not in migrationen:
+                    migrationen.append(skript)
+        text = ("templates.db ist angebunden, aber unvollstaendig migriert. "
+                "Es fehlen die Spalten: %s." % ", ".join(teile))
+        if migrationen:
+            text += " Abhilfe: %s ausfuehren." % " und ".join(migrationen)
+        else:
+            text += (" Zu dieser Luecke ist keine einzelne Migration bekannt - "
+                     "vermutlich ist die Datei aelter als der Migrationspfad; "
+                     "dann ist ein Neuaufbau mit setup_templates.py der Weg.")
+        return text
 
     def _zustand_genauer(self, urspruenglich: str) -> tuple:
         """

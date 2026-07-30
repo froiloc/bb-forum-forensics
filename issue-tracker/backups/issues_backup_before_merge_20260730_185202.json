@@ -1952,26 +1952,34 @@
     {
       "id": "0d5a9271-3c48-4e60-97b1-6fa8420ed3c5",
       "type": "improvement",
-      "status": "in_progress",
+      "status": "open",
       "priority": "medium",
       "title": "templates.db braucht einen echten Migrations-Runner",
       "affected_version": "0.8.584",
-      "target_version": "0.8.586",
       "reporter": "Claude",
       "reported_at": "2026-07-30T18:00:00+00:00",
       "assigned_to": "Claude",
+      "related_to": [
+        "84c1e6b2-70d3-4f95-b8a4-0e2517c9f3ad"
+      ],
       "tags": [
         "Architektur",
         "Migration"
       ],
+      "description": "Anders als die uebrigen Datenbanken (Fleet-Registrierung in migration.db) hat templates.db keinen Runner: fuenf Migrationen sind einzeln aufzurufen und muessen erinnert werden. Genau deshalb blieben zwei davon monatelang unbemerkt aus. templates_db_status.py (Build 584) ersetzt das Erinnern durch Nachsehen - ein Runner mit Registertabelle waere die groessere, saubere Loesung.",
+      "expected_behavior": "Ein Aufruf bringt templates.db auf den aktuellen Stand und protokolliert das - so wie bei den uebrigen Datenbanken.",
       "updates": [
         {
-          "timestamp": "2026-07-30T20:00:00+00:00",
+          "timestamp": "2026-07-30T18:00:00+00:00",
           "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "in_progress",
-          "comment": "Build 585: tools/migrate-dbs.py bindet die fuenf Skripte ein und glaettet ihre uneinheitlichen Schnittstellen an einer Stelle. Idempotenz gemessen (zweiter Lauf aendert nichts), damit Weg (b) tragfaehig ist. Ein echtes Register in templates.db bleibt offen - der Standsbericht liest weiterhin Spuren."
+          "action": "comment",
+          "comment": "Bewusst nicht in Build 584 mitgemacht: ein Runner ist ein eigenes Vorhaben mit eigener Sorgfalt, kein Anhaengsel einer Fehlersuche."
+        },
+        {
+          "timestamp": "2026-07-30T16:00:38.449122+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build584.json"
         }
       ]
     },
@@ -2003,69 +2011,6 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eintraege_claude_Build584.json"
-        }
-      ]
-    },
-    {
-      "id": "7b3c02e8-4d61-4a97-85f0-9c14e6d8b520",
-      "type": "improvement",
-      "status": "open",
-      "priority": "high",
-      "title": "Startpruefung des Migrationsstands in BEIDEN Servern",
-      "affected_version": "0.8.585",
-      "target_version": "0.8.586",
-      "reporter": "Alex",
-      "reported_at": "2026-07-30T20:00:00+00:00",
-      "assigned_to": "Claude",
-      "tags": [
-        "Betriebssicherheit",
-        "Migration"
-      ],
-      "description": "Heute prueft nur der Management-Server, und nur coordinator.db (MigrationStatusCheck, Build 376). Der Forensik-Server prueft gar nichts, obwohl er sechs Datenbanken oeffnet - darunter templates.db, deren Luecke am 30.07. einen halben Tag gekostet hat.",
-      "expected_behavior": "Beide Server melden beim Start einen unvollstaendigen Migrationsstand - deutlich, unter Nennung des Befehls, und OHNE selbst zu migrieren (Festlegung mc, wie Build 376).",
-      "updates": [
-        {
-          "timestamp": "2026-07-30T20:00:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "Die Auskunftsfunktionen liegen mit Build 584/585 vor; es fehlt die Einbindung in die beiden Startpfade."
-        },
-        {
-          "timestamp": "2026-07-30T16:52:02.476706+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build585.json"
-        }
-      ]
-    },
-    {
-      "id": "a80f5c93-2e17-4b46-9d38-51c07a2fe6b4",
-      "type": "documentation",
-      "status": "open",
-      "priority": "low",
-      "title": "Die templates.db-Migrationen saeen auch Inhalte",
-      "affected_version": "0.8.585",
-      "reporter": "Claude",
-      "reported_at": "2026-07-30T20:00:00+00:00",
-      "assigned_to": "Claude",
-      "tags": [
-        "Migration",
-        "Dokumentation"
-      ],
-      "description": "Beim Messen der Idempotenz aufgefallen: die Migrationen aendern nicht nur das Schema, sie legen auch Inhalte an - Standardvorlagen, den Rechtshinweis nach § 187 GVG und vier Platzhalter (user.activity_range, user.pm_conversations, user.registered_datetime, user.shares_total). Das ist beabsichtigt, steht aber nirgends zusammengefasst.",
-      "expected_behavior": "Im Datenmigrationsleitfaden festhalten, welche Migration welche Saat mitbringt - sonst ueberrascht es beim naechsten Neuaufbau.",
-      "updates": [
-        {
-          "timestamp": "2026-07-30T20:00:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "Merkposten, kein Auftrag."
-        },
-        {
-          "timestamp": "2026-07-30T16:52:02.476851+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build585.json"
         }
       ]
     }

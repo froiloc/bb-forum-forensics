@@ -1,0 +1,5 @@
+57edd76173032c7aa13de12be2074770  build.json
+9d116311304c03cb2fac89ca894cb1bb  tools/migrate-dbs.py
+00bc6ac0278f9fdb0255ad3312d876b4  tests/test_migrate_dbs_tool.py
+c9e0732d52b7c5921871b81107eb4f29  tests/fixtures_templates_schema.sql
+364f53a9321eed1f47b4291f8b52db26  issue-tracker/eintraege_claude_Build585.json
