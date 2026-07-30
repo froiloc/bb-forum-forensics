@@ -76,7 +76,14 @@
     }
 
     var EM_DASH = '\u2014';
-    var MAX_ZEILEN = 5;
+    // BUILD 573: von 5 auf 3. Ein Dashboard soll wenig lesen und viel
+    // schauen lassen (Festlegung mc). Fuenf Zeilen je Kachel waren der Grund,
+    // warum die Kacheln zu Textbloecken wurden; drei genuegen, um die
+    // Groessenordnung an einem Beispiel festzumachen, und der vollstaendige
+    // Bestand steht ohnehin in der zugehoerigen Sicht. Die Zahl der
+    // ausgelassenen Zeilen nennt die Fusszeile ('3/9') - abgeschnitten wird
+    // sichtbar, nicht still.
+    var MAX_ZEILEN = 3;
 
     // =========================================================================
     // 1) REINE FUNKTIONEN (kein DOM). Genau diese testet vitest.
@@ -107,6 +114,14 @@
             leer: false, fehler: text || 'Abruf fehlgeschlagen'
         };
     }
+    // kurzHinweis: '3 von 9 angezeigt' -> '3/9'. Die Aussage bleibt, die
+    // Zeichenzahl drittelt sich. Passt das Muster nicht, wird der Text
+    // UNVERAENDERT durchgelassen — Raten waere schlimmer als Laenge.
+    function kurzHinweis(text) {
+        var m = /(\d+)\s+von\s+(\d+)/.exec(String(text || ''));
+        return m ? (m[1] + '/' + m[2]) : String(text || '');
+    }
+
     function modell(o) {
         var m = {
             kopf: EM_DASH, unterzeile: '', zeilen: [], gesamt: null,
@@ -466,6 +481,21 @@
                 + 'lässt sich der Überblick zusammenstellen.'));
         }
 
+        // BUILD 573 - DIAGRAMME ERST EINHAENGEN, WENN ALLES IM DOM STEHT.
+        //
+        // Der Fehler, den das behebt: cb.onDiagramm() wurde gerufen, WAEHREND
+        // die Kachel noch nicht im Dokument hing (raster.appendChild kam erst
+        // danach). echarts.init() misst dann Breite und Hoehe NULL, zeichnet
+        // eine leere Leinwand und richtet sich nie neu aus. Von aussen sah das
+        // aus wie "Diagramme fehlen": die Leinwand war da (Sonde mc: canvas 1,
+        // chartH 132), nur eben leer.
+        //
+        // Deshalb werden die Auftraege gesammelt und NACH der Schleife
+        // ausgefuehrt. Zu diesem Zeitpunkt hat jede Kachel eine messbare
+        // Groesse. Der Test DB24 prueft genau das - er verlangt, dass das
+        // Zielelement beim Aufruf 'isConnected' ist.
+        var diagrammAuftraege = [];
+
         kacheln.forEach(function (w) {
             var m = modelle[w.key] || fehlerModell('Keine Daten geladen.');
             var kachel = el('div', 'aiw-kachel'
@@ -499,9 +529,7 @@
                     var slotChart = el('div', 'aiw-kachel-chart');
                     slotChart.setAttribute('data-chart-key', w.key);
                     kachel.appendChild(slotChart);
-                    if (typeof cb.onDiagramm === 'function') {
-                        cb.onDiagramm(w.key, slotChart, slotOption);
-                    }
+                    diagrammAuftraege.push([w.key, slotChart, slotOption]);
                 }
                 var rumpf = el('div', 'aiw-kachel-slot');
                 kachel.appendChild(rumpf);
@@ -530,9 +558,7 @@
                 var chartHost = el('div', 'aiw-kachel-chart');
                 chartHost.setAttribute('data-chart-key', w.key);
                 kachel.appendChild(chartHost);
-                if (typeof cb.onDiagramm === 'function') {
-                    cb.onDiagramm(w.key, chartHost, option);
-                }
+                diagrammAuftraege.push([w.key, chartHost, option]);
             }
             if (m.leer) {
                 kachel.appendChild(el('div', 'aiw-kachel-leer',
@@ -547,22 +573,46 @@
                 });
                 kachel.appendChild(ul);
             }
-            // DIE BEIDEN REDUKTIONSHINWEISE. Sie stehen in JEDER Kachel, die
-            // filtert oder abschneidet — sonst saehe ein Ausschnitt wie ein
-            // vollstaendiges Bild aus.
-            if (m.grundlage) {
-                kachel.appendChild(el('div', 'aiw-kachel-grundlage',
-                                      m.grundlage));
-            }
-            if (m.hinweis) {
-                kachel.appendChild(el('div', 'aiw-kachel-hinweis', m.hinweis));
-            }
-            if (m.vorbehalt) {
-                kachel.appendChild(el('div', 'aiw-kachel-vorbehalt',
-                                      m.vorbehalt));
+            // BUILD 573 - EINE FUSSZEILE STATT DREIER ABSAETZE.
+            //
+            // Grundlage, Reduktionshinweis und Vorbehalt sind PFLICHT: ein
+            // Ausschnitt darf nicht wie ein vollstaendiges Bild aussehen, und
+            // eine Zahl mit Rechtsfolge nicht ohne ihren Vorbehalt stehen.
+            // Als drei Absaetze uebereinander machten sie aus der Kachel aber
+            // einen Beipackzettel (Befund mc) - und eine Kachel, die man lesen
+            // MUSS, ist keine Kachel.
+            //
+            // Der Ausweg ist nicht Weglassen, sondern VERDICHTEN: die
+            // Kurzformen stehen in einer Zeile, der vollstaendige Wortlaut
+            // steht im title-Attribut UND unveraendert in der zugehoerigen
+            // Sicht, in der man auf die Zahl hin handelt. Verschwiegen wird
+            // nichts - ein Vorbehalt bleibt als Wort sichtbar, auch wenn sein
+            // Wortlaut einen Zeigerhalt entfernt liegt.
+            var fussTeile = [];
+            var fussVoll = [];
+            if (m.hinweis) { fussTeile.push(kurzHinweis(m.hinweis)); }
+            if (m.grundlage) { fussTeile.push('Auswahl'); }
+            if (m.vorbehalt) { fussTeile.push('Vorbehalt'); }
+            [m.hinweis, m.grundlage, m.vorbehalt].forEach(function (t) {
+                if (t) { fussVoll.push(t); }
+            });
+            if (fussTeile.length) {
+                var fuss = el('div', 'aiw-kachel-fuss'
+                    + (m.vorbehalt ? ' hat-vorbehalt' : ''),
+                    fussTeile.join(' · '));
+                fuss.setAttribute('title', fussVoll.join('\n'));
+                kachel.appendChild(fuss);
             }
             raster.appendChild(kachel);
         });
+
+        // JETZT stehen alle Kacheln im Dokument und haben eine messbare
+        // Groesse — erst hier duerfen die Diagramme entstehen.
+        if (typeof cb.onDiagramm === 'function') {
+            diagrammAuftraege.forEach(function (a) {
+                cb.onDiagramm(a[0], a[1], a[2]);
+            });
+        }
 
         // --- Kachelwaehler ---------------------------------------------------
         // Bewusst SCHLICHT: Auswahl per Haken, Reihenfolge per Pfeil. Im
@@ -660,6 +710,7 @@
         REDUZIERER: REDUZIERER,
         ampelRang: ampelRang,
         hinweisReduktion: hinweisReduktion,
+        kurzHinweis: kurzHinweis,
         fehlerModell: fehlerModell,
         reduziere: reduziere,
         reduceFallampel: reduceFallampel,

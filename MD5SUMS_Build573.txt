@@ -1,0 +1,5 @@
+0b247c8302369fba124b84e3284998b9  build.json
+6cdedeb52e4d05752c0599c33fb26140  management/server/static/cockpit_dashboard.js
+19ecfe7bcc9d563f0fc91a21f261f3a2  management/server/static/cockpit.css
+2f78c8974078cdd0aac4b06fb773210d  tests/unit/test_cockpit_dashboard.test.js
+1db0c5ac9666e39b94108a72589c1aae  issue-tracker/eintraege_claude_Build573.json

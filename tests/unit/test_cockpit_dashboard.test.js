@@ -49,6 +49,15 @@
  *          wenn eine Option mitgeliefert wuerde.
  *   DB21 — Build 570: 'tonung' faerbt die ganze Kachel (fuer die
  *          diagrammlose Ja/Nein-Aussage der Audit-Kette).
+ *   DB24 — Build 573: DIE WICHTIGSTE. Beim Aufruf von onDiagramm MUSS das
+ *          Zielelement im Dokument haengen (isConnected). Vorher wurde es
+ *          gerufen, WAEHREND die Kachel noch nicht eingehaengt war -
+ *          echarts.init() misst dann 0x0 und zeichnet eine leere Leinwand.
+ *          Von aussen sah das aus wie "keine Diagramme".
+ *   DB25 — Build 573: die drei Pflichthinweise stehen in EINER Fusszeile, der
+ *          volle Wortlaut im title. Nichts verschwindet.
+ *   DB26 — Build 573: kurzHinweis verdichtet '3 von 9 angezeigt' zu '3/9' und
+ *          laesst Unbekanntes unveraendert durch.
  *   DB22 — Build 572: AUCH DIE STECKPLATZ-KACHEL bekommt ihr Diagramm, und
  *          zwar VOR der eingebetteten Tabelle. Der Steckplatz-Zweig stieg
  *          vorher vor dem Diagrammblock aus der Funktion aus; DB18 fiel das
@@ -512,15 +521,23 @@ describe("cockpit_dashboard.js — Render (Build 547)", () => {
       {}
     );
     const k = main.querySelector('[data-widget-key="fristen"]');
-    expect(k.querySelector(".aiw-kachel-hinweis").textContent).toBe(
-      "5 von 9 angezeigt"
-    );
-    expect(k.querySelector(".aiw-kachel-grundlage").textContent).toContain(
-      "von 20"
-    );
-    expect(k.querySelector(".aiw-kachel-vorbehalt").textContent).toContain(
-      "Unterbrechungen"
-    );
+    // BUILD 573: die drei Pflichtangaben stehen nicht mehr als drei Absaetze
+    // untereinander, sondern verdichtet in EINER Fusszeile — der Wortlaut
+    // liegt im title. Die ZUSICHERUNG dieser Pruefung ist unveraendert: keine
+    // der drei Angaben darf verschwinden. Nur ihre Form hat sich geaendert
+    // (Befund mc: als drei Absaetze wurde die Kachel ein Beipackzettel).
+    const fuss = k.querySelector(".aiw-kachel-fuss");
+    expect(fuss).not.toBe(null);
+    // Reduktionshinweis: sichtbar als Kurzform (3 von 9 nach MAX_ZEILEN=3).
+    expect(fuss.textContent).toContain("3/9");
+    // Grundlage und Vorbehalt: als Marke sichtbar ...
+    expect(fuss.textContent).toContain("Auswahl");
+    expect(fuss.textContent).toContain("Vorbehalt");
+    // ... und im Wortlaut erhalten.
+    const voll = fuss.getAttribute("title");
+    expect(voll).toContain("3 von 9 angezeigt");
+    expect(voll).toContain("von 20");
+    expect(voll).toContain("Unterbrechungen");
   });
 
   // DB18 ---------------------------------------------------------------------
@@ -754,5 +771,103 @@ describe("cockpit_dashboard.js — Render (Build 547)", () => {
     expect(min[min.length - 1]).toBeGreaterThanOrEqual(400);
     // Und die eingebettete Tabelle bekommt einen Deckel.
     expect(css).toMatch(/\.aiw-kachel-slot\s*\{[^}]*max-height/);
+  });
+
+  // DB24 ---------------------------------------------------------------------
+  it("DB24: beim Diagramm-Aufruf haengt das Ziel im Dokument", () => {
+    const win = _ctx();
+    const D = _api(win);
+    const main = _mount(win);
+    const zustand = [];
+
+    D.renderDashboard(
+      main,
+      {
+        kacheln: [
+          { key: "fallampel", label: "Fall-Übersicht", slot: true },
+          { key: "eskalationen", label: "Eskalationen" },
+          { key: "meine_auftraege", label: "Meine Aufträge" },
+        ],
+        modelle: {
+          fallampel: D.reduceFallampel({ count: 1, cases: [{ ampel: "rot" }] }),
+          eskalationen: D.reduceEskalationen({
+            items: [{ severity: "hoch", days_inactive: 4, label: "A" }] }),
+          meine_auftraege: D.reduceMeineAuftraege({ count: 1,
+            cases: [{ ampel: "gelb", username: "x" }] }),
+        },
+        diagramme: {
+          fallampel: { animation: false, series: [] },
+          eskalationen: { animation: false, series: [] },
+          meine_auftraege: { animation: false, series: [] },
+        },
+        katalog: KAT,
+      },
+      {
+        onSlot: () => {},
+        onDiagramm: (k, el) => {
+          zustand.push({ key: k, verbunden: el.isConnected });
+        },
+      }
+    );
+
+    expect(zustand.length).toBe(3);
+    // OHNE diese Zusicherung misst echarts.init() 0x0 und zeichnet ins Nichts.
+    zustand.forEach((z) => {
+      expect(z.verbunden).toBe(true);
+    });
+  });
+
+  // DB25 ---------------------------------------------------------------------
+  it("DB25: Pflichthinweise in einer Fusszeile, voller Wortlaut im title", () => {
+    const win = _ctx();
+    const D = _api(win);
+    const main = _mount(win);
+
+    D.renderDashboard(main, {
+      kacheln: [{ key: "fristen", label: "Fristen" }],
+      modelle: {
+        fristen: D.reduceFristen({
+          params_bestaetigt: true, aussage_moeglich: true,
+          vorwarn_tage: 90, faelle_gesamt: 84,
+          vorbehalte: ["Ruhenszeiten sind nicht berücksichtigt."],
+          rows: [1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => ({
+            aussage_moeglich: true, restlaufzeit_tage: n,
+            username: "nutzer_" + n, ampel: "rot",
+          })),
+        }),
+      },
+      katalog: KAT,
+    }, {});
+
+    const kachel = main.querySelector('[data-widget-key="fristen"]');
+    // Genau EINE Fusszeile — nicht drei Absaetze (der Beipackzettel-Befund).
+    const fuesse = kachel.querySelectorAll(".aiw-kachel-fuss");
+    expect(fuesse.length).toBe(1);
+    expect(kachel.querySelectorAll(".aiw-kachel-grundlage").length).toBe(0);
+    expect(kachel.querySelectorAll(".aiw-kachel-vorbehalt").length).toBe(0);
+
+    const fuss = fuesse[0];
+    // Kurzform sichtbar ...
+    expect(fuss.textContent).toContain("3/9");
+    expect(fuss.textContent).toContain("Vorbehalt");
+    expect(fuss.className).toContain("hat-vorbehalt");
+    // ... voller Wortlaut erhalten. NICHTS verschwindet.
+    expect(fuss.getAttribute("title")).toContain("Ruhenszeiten");
+    expect(fuss.getAttribute("title")).toContain("belegtem Anker");
+
+    // Und die Liste ist auf drei Zeilen begrenzt.
+    expect(kachel.querySelectorAll(".aiw-kachel-zeile").length).toBe(3);
+  });
+
+  // DB26 ---------------------------------------------------------------------
+  it("DB26: kurzHinweis verdichtet und raet nicht", () => {
+    const D = _api(_ctx());
+    expect(D.kurzHinweis("3 von 9 angezeigt")).toBe("3/9");
+    expect(D.kurzHinweis("12 von 248 angezeigt")).toBe("12/248");
+    // Passt das Muster nicht, bleibt der Text UNVERAENDERT — Raten waere
+    // schlimmer als Laenge.
+    expect(D.kurzHinweis("nur fällige Vorgänge")).toBe("nur fällige Vorgänge");
+    expect(D.kurzHinweis("")).toBe("");
+    expect(D.kurzHinweis(null)).toBe("");
   });
 });

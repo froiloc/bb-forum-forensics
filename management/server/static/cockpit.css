@@ -3168,3 +3168,77 @@ button.aiw-navgroup:focus-visible {
     .aiw-kachel-chart { height: 150px; }
     .aiw-kachel.is-breit .aiw-kachel-chart { height: 180px; }
 }
+
+/* ===========================================================================
+   Build 573 — Kacheln mit einheitlicher Höhe, Diagramm als Hauptsache
+   ---------------------------------------------------------------------------
+   FESTLEGUNG mc: "Dashboard bedeutet, wenig lesen, viel schauen. Und die
+   Kacheln sollten eine homogene Höhe haben."
+
+   Der Weg dahin ist nicht, Höhen zu erzwingen, sondern den INHALT zu
+   begrenzen und dem Diagramm den Rest zu geben:
+
+   (a) Feste Rasterzeilenhöhe. Jede Kachel ist exakt so hoch wie die Zeile —
+       homogen, ohne dass eine einzelne Kachel alle anderen streckt (das war
+       der 923-Pixel-Befund).
+   (b) Die Kachel ist eine Flex-Spalte, und die Diagrammfläche nimmt den
+       ÜBRIGEN Platz (flex: 1). Kürzerer Text heißt damit automatisch
+       größeres Diagramm — genau die gewünschte Gewichtung.
+   (c) Listenzeilen sind EINZEILIG mit Auslassungspunkten. Eine lange
+       Fallbezeichnung kann die Kachel nicht mehr aufblähen.
+   (d) Grundlage, Reduktionshinweis und Vorbehalt stehen in EINER Fußzeile;
+       der vollständige Wortlaut liegt im title-Attribut und unverändert in
+       der zugehörigen Sicht.
+   =========================================================================== */
+.aiw-db-raster {
+    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+    grid-auto-rows: 268px;
+    align-items: stretch;
+}
+.aiw-kachel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+}
+.aiw-kachel-titel, .aiw-kachel-zahl, .aiw-kachel-unter { flex: 0 0 auto; }
+.aiw-kachel-zahl { font-size: 34px; font-weight: 500; }
+
+/* Das Diagramm ist die Hauptsache und bekommt den übrigen Platz. */
+.aiw-kachel-chart {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 96px;
+    margin: 8px -4px 4px -4px;
+}
+.aiw-kachel.is-breit .aiw-kachel-chart { height: auto; }
+
+/* Ohne Diagramm füllt die Liste den Platz, damit die Kachel nicht oben klebt. */
+.aiw-kachel-liste { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.aiw-kachel-zeile {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Eine Zeile für alle Vorbehalte, unaufdringlich aber nicht unsichtbar. */
+.aiw-kachel-fuss {
+    flex: 0 0 auto;
+    margin-top: auto;
+    padding-top: 6px;
+    font-size: 11px;
+    color: #8a969d;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: help;
+}
+.aiw-kachel-fuss.hat-vorbehalt { color: #b5730c; }
+
+/* Die eingebettete Tabelle bleibt bis zur eigenen Sicht gedeckelt. */
+.aiw-kachel.is-breit { grid-row: span 2; }
+.aiw-kachel-slot { flex: 1 1 auto; min-height: 0; max-height: none; }
+
+@media (min-width: 1900px) {
+    .aiw-db-raster { grid-auto-rows: 300px; }
+}
