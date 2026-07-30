@@ -48,6 +48,8 @@
 #   VP20 — POST mit unbekanntem Schluessel -> 400, der ihn nennt.
 #   VP21 — GET schreibt NICHTS (Audit-Spitze unveraendert).
 #   VP22 — POST /api/viewprefs/reset -> 200, danach ist nichts gespeichert.
+#   VP24 — Build 571: JEDES Feld von WidgetSpec kommt im Browser an
+#          (Anlass: 'api_path' fehlte, alle acht Kacheln 404).
 #   VP23 — M037 seedet KEIN Recht (AP-3G braucht keines).
 #
 # KATALOG GEGEN FRONTEND (Build 547):
@@ -494,6 +496,50 @@ class TestEndpunkte(_Basis):
         b2 = json.loads(self._get(2).body)
         self.assertTrue(all(not w["erlaubt"]
                             for w in b2["katalog"]["widgets"]))
+
+    # ===================================================================== VP24
+    #
+    # BUILD 571: KEIN FELD DES KACHELKATALOGS DARF UNTERWEGS VERLORENGEHEN.
+    #
+    # Anlass ist ein Fehler aus dem Betrieb: 'api_path' fehlte in der Antwort.
+    # Der Browser holt die Daten jeder Kachel selbst (loadOverview:
+    # fetchJson(w.api_path)); ohne das Feld war es dort 'undefined', fetch
+    # holte die relative Adresse "undefined", und ALLE ACHT Kacheln meldeten
+    # "Nicht abrufbar: HTTP 404 bei undefined". Kein Routing-, kein
+    # Rechtefehler - ein nicht transportiertes Feld.
+    #
+    # Diese Pruefung liest die Felder von WidgetSpec und verlangt sie in der
+    # Antwort. Wer ein Feld ABSICHTLICH nicht ausliefern will, traegt es unten
+    # MIT GRUND ein - eine wortlose Ausnahmeliste waere eine Hintertuer.
+    NICHT_TRANSPORTIERT = {
+        # (derzeit leer: alles, was WidgetSpec fuehrt, gehoert in den Browser)
+    }
+
+    def test_VP24_kachelkatalog_transportiert_jedes_feld(self):
+        from dataclasses import fields as _fields
+        r = self._get(1)
+        self.assertEqual(r.status, 200)
+        b = json.loads(r.body)
+        widgets = b["katalog"]["widgets"]
+        self.assertEqual(len(widgets), len(kat.WIDGETS))
+
+        soll = {f.name for f in _fields(kat.WidgetSpec)}
+        soll -= set(self.NICHT_TRANSPORTIERT)
+        for w in widgets:
+            fehlt = sorted(soll - set(w.keys()))
+            self.assertEqual(
+                fehlt, [],
+                "Kachel %r: Feld(er) %s kommen nicht im Browser an."
+                % (w.get("key"), fehlt))
+
+        # Und der Pfad ist nicht nur DA, sondern auch RICHTIG - ein leerer
+        # oder falscher Pfad waere derselbe Ausfall in neuer Verkleidung.
+        erwartet = {x.key: x.api_path for x in kat.WIDGETS}
+        for w in widgets:
+            self.assertEqual(w["api_path"], erwartet[w["key"]])
+            self.assertTrue(str(w["api_path"]).startswith("/api/"),
+                            "Kachel %r hat keinen brauchbaren Pfad: %r"
+                            % (w["key"], w["api_path"]))
 
     # ===================================================================== VP17
     def test_VP17_unbekannte_person_404(self):

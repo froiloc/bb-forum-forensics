@@ -3064,3 +3064,107 @@ button.aiw-navgroup:focus-visible {
     border-radius: 2px;
     opacity: .8;
 }
+
+/* ===========================================================================
+   Build 570 — Diagramme und Tönung der Überblick-Kacheln
+   ---------------------------------------------------------------------------
+   ANHANG ANS DATEIENDE; die Grundregeln der Kachel (.aiw-kachel, -titel,
+   -zahl, -unter, -liste) aus Build 545 bleiben unberührt. Hier kommt nur
+   dazu, was das Diagramm und die Einfärbung brauchen.
+
+   ZUR HÖHE: die Diagrammfläche hat eine FESTE Höhe. ECharts braucht beim
+   init() eine messbare Höhe — ein Behälter, der sich erst durch seinen Inhalt
+   aufspannt, ist zu diesem Zeitpunkt 0 Pixel hoch, und das Diagramm bliebe
+   unsichtbar. Das ist kein Schönheitswert, sondern die Voraussetzung dafür,
+   dass überhaupt etwas erscheint.
+   =========================================================================== */
+.aiw-kachel-chart {
+    height: 132px;
+    margin: 10px -4px 2px -4px;
+}
+.aiw-kachel.is-breit .aiw-kachel-chart { height: 150px; }
+
+/* Fehlt die Bibliothek, sagt die Kachel das — statt einer leeren Fläche,
+   die wie ein Datenausfall aussieht. */
+.aiw-kachel-chart-fehlt {
+    height: auto;
+    padding: 8px 0;
+    font-size: 12px;
+    font-style: italic;
+    color: #8a969d;
+}
+
+/* --- Tönung ganzer Kacheln ---------------------------------------------- */
+/* Für Kacheln OHNE Diagramm, deren Aussage binär ist (Zustand der
+   Audit-Kette). Sie sollen ohne Lesen erkennbar sein — genau das ist der
+   Zweck eines Überblicks. Der linke Balken trägt die Aussage, der
+   Hintergrund bleibt dezent, damit die Kachel nicht schreit. */
+.aiw-kachel.ton-gruen {
+    border-left: 4px solid #1e8449;
+    background: #f2f9f4;
+}
+.aiw-kachel.ton-gruen .aiw-kachel-zahl { color: #1e8449; }
+.aiw-kachel.ton-rot {
+    border-left: 4px solid #c0392b;
+    background: #fdf2f0;
+}
+.aiw-kachel.ton-rot .aiw-kachel-zahl {
+    color: #c0392b;
+    font-weight: 700;
+    letter-spacing: .02em;
+}
+.aiw-kachel.ton-gelb {
+    border-left: 4px solid #d68910;
+    background: #fdf8ee;
+}
+.aiw-kachel.ton-gelb .aiw-kachel-zahl { color: #b5730c; }
+
+/* Die Reduktionshinweise stehen unter dem Diagramm und dürfen es optisch
+   nicht überstimmen — sie sind Pflicht, aber nicht die Hauptsache. */
+.aiw-kachel-grundlage, .aiw-kachel-hinweis, .aiw-kachel-vorbehalt {
+    font-size: 11px;
+    line-height: 1.35;
+}
+
+/* ===========================================================================
+   Build 572 — Geometrie des Kachelrasters
+   ---------------------------------------------------------------------------
+   BEFUND VOM LEBENDEN SYSTEM (Sonde mc, 2026-07-30): auf einem 2261 px
+   breiten Hauptbereich erzeugte 'minmax(260px, 1fr)' ACHT Spalten à 272 px,
+   und 'align-items: normal' (= stretch) zog alle sieben Kacheln einer Zeile
+   auf die Höhe der höchsten — gemessen 272 breit × 923 hoch. Ein 132 px hohes
+   Diagramm geht in einer 923 px hohen Säule optisch unter; genau deshalb waren
+   die Diagramme "nicht zu sehen", obwohl fünf Leinwände gezeichnet waren.
+
+   Zwei Ursachen, zwei Zeilen:
+
+   (a) DIE SPALTENZAHL WIRD BEGRENZT, nicht die Kachelbreite. 'auto-fill' mit
+       kleinem Minimum maximiert die Spaltenzahl — je breiter der Schirm, desto
+       schmaler die Kachel. Das ist genau falsch herum. Mit 420 px Minimum
+       ergibt derselbe Bereich fünf Spalten à ~440 px; bei 1400 px sind es
+       drei, bei 900 px zwei. Die Kachel wird also mit dem Schirm GRÖSSER.
+
+   (b) 'align-items: start' beendet das Strecken. Jede Kachel ist nur so hoch
+       wie ihr Inhalt. Eine Kachel mit fünf Listenzeilen macht ihre Nachbarn
+       nicht mehr mit.
+   =========================================================================== */
+.aiw-db-raster {
+    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+    align-items: start;
+}
+
+/* Die eingebettete Fall-Tabelle darf das Dashboard nicht auffressen. Gemessen
+   waren es 1001 px für eine Kachel — mehr als der halbe Bildschirm für ein
+   Detail, das die Sicht "Fall-Übersicht" ohnehin vollständig zeigt. Der
+   Deckel macht aus dem Detail wieder eine Beigabe. */
+.aiw-kachel-slot {
+    max-height: 360px;
+    overflow: auto;
+}
+
+/* Auf breiten Schirmen bekommt die breite Kachel mehr Diagrammhöhe — dort ist
+   Platz, und der Ring wird lesbarer. */
+@media (min-width: 1600px) {
+    .aiw-kachel-chart { height: 150px; }
+    .aiw-kachel.is-breit .aiw-kachel-chart { height: 180px; }
+}

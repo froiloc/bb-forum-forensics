@@ -111,7 +111,7 @@
         var m = {
             kopf: EM_DASH, unterzeile: '', zeilen: [], gesamt: null,
             gezeigt: 0, hinweis: '', grundlage: '', vorbehalt: '',
-            leer: false, fehler: null
+            leer: false, fehler: null, tonung: null
         };
         for (var k in (o || {})) {
             if (Object.prototype.hasOwnProperty.call(o, k)) { m[k] = o[k]; }
@@ -336,11 +336,16 @@
             return modell({
                 kopf: 'unversehrt',
                 unterzeile: 'Spitze bei seq ' + zahl(data.tip_seq),
+                // Build 570: 'tonung' faerbt die GANZE Kachel. Diese Kachel
+                // bekommt bewusst kein Diagramm (Ja/Nein-Aussage), aber sie
+                // soll ohne Lesen erkennbar sein - das ist der Zweck eines
+                // Ueberblicks.
+                tonung: 'gruen',
                 zeilen: [], gesamt: null, leer: false
             });
         }
         return modell({
-            kopf: 'BRUCH',
+            kopf: 'BRUCH', tonung: 'rot',
             unterzeile: 'erster Fehler bei seq '
                 + (data.first_bad_seq === null || data.first_bad_seq === undefined
                     ? EM_DASH : data.first_bad_seq),
@@ -465,7 +470,8 @@
             var m = modelle[w.key] || fehlerModell('Keine Daten geladen.');
             var kachel = el('div', 'aiw-kachel'
                 + (w.slot ? ' is-breit' : '')
-                + (m.fehler ? ' is-fehler' : ''));
+                + (m.fehler ? ' is-fehler' : '')
+                + (m.tonung ? ' ton-' + m.tonung : ''));
             kachel.setAttribute('data-widget-key', w.key);
             kachel.appendChild(el('div', 'aiw-kachel-titel', w.label));
 
@@ -479,9 +485,25 @@
             }
 
             if (w.slot) {
-                var rumpf = el('div', 'aiw-kachel-slot');
+                // BUILD 572: DER STECKPLATZ-ZWEIG STIEG VOR DEM DIAGRAMMBLOCK
+                // AUS. Die Fall-Uebersicht bekam deshalb NIE ihren Ampelring -
+                // sie war nur die eingebettete Tabelle. Der Fehler fiel im
+                // Test nicht auf, weil DB18 mit Kacheln OHNE Steckplatz
+                // prueft; er fiel erst am lebenden System auf (chartH '—').
+                // Jetzt kommt das Diagramm auch hier, und zwar VOR der
+                // Tabelle: erst der Eindruck, dann das Detail.
                 kachel.appendChild(el('div', 'aiw-kachel-unter',
                     m.kopf + ' Fälle · ' + m.unterzeile));
+                var slotOption = (data.diagramme || {})[w.key];
+                if (slotOption) {
+                    var slotChart = el('div', 'aiw-kachel-chart');
+                    slotChart.setAttribute('data-chart-key', w.key);
+                    kachel.appendChild(slotChart);
+                    if (typeof cb.onDiagramm === 'function') {
+                        cb.onDiagramm(w.key, slotChart, slotOption);
+                    }
+                }
+                var rumpf = el('div', 'aiw-kachel-slot');
                 kachel.appendChild(rumpf);
                 raster.appendChild(kachel);
                 if (typeof cb.onSlot === 'function') { cb.onSlot(w.key, rumpf); }
@@ -491,6 +513,26 @@
             kachel.appendChild(el('div', 'aiw-kachel-zahl', m.kopf));
             if (m.unterzeile) {
                 kachel.appendChild(el('div', 'aiw-kachel-unter', m.unterzeile));
+            }
+
+            // --- DIAGRAMM (Build 570) ---------------------------------------
+            // Der Steckplatz entsteht GENAU DANN, wenn es fuer diese Kachel
+            // eine Option gibt. Die Entscheidung, welche Kachel eine bekommt,
+            // faellt in cockpit_dashboard_charts.optionFuer() - hier wird sie
+            // nicht wiederholt, sonst gaebe es zwei Wahrheiten darueber.
+            //
+            // Die Reihenfolge im Kachelrumpf ist Absicht: Titel, ZAHL, FORM,
+            // dann Einzelzeilen. Der Blick soll von der Groessenordnung ueber
+            // die Verteilung zum Detail gehen - und beim Detail darf er
+            // aufhoeren, ohne etwas zu verpassen.
+            var option = (data.diagramme || {})[w.key];
+            if (option) {
+                var chartHost = el('div', 'aiw-kachel-chart');
+                chartHost.setAttribute('data-chart-key', w.key);
+                kachel.appendChild(chartHost);
+                if (typeof cb.onDiagramm === 'function') {
+                    cb.onDiagramm(w.key, chartHost, option);
+                }
             }
             if (m.leer) {
                 kachel.appendChild(el('div', 'aiw-kachel-leer',

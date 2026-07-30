@@ -1235,10 +1235,36 @@
                 modelle[e.key] = db.reduziere(e.key, e.daten);
             });
 
+            // Build 570: je Kachel EINE ECharts-Option — oder keine. Die
+            // Entscheidung faellt in optionFuer(); Kacheln ohne Option sind
+            // Absicht und in DIAGRAMMLOS begruendet (Ja/Nein-Aussagen).
+            var dc = (typeof window !== 'undefined')
+                ? window.AIWCockpitDashboardCharts : null;
+            var diagramme = {};
+            if (dc) {
+                kacheln.forEach(function (w) {
+                    var opt = dc.optionFuer(w.key, rohdaten[w.key]);
+                    if (opt) { diagramme[w.key] = opt; }
+                });
+            }
+
             db.renderDashboard(mainEl, {
-                kacheln: kacheln, modelle: modelle,
+                kacheln: kacheln, modelle: modelle, diagramme: diagramme,
                 katalog: state.viewPrefsKatalog, prefs: state.viewPrefsWidgets
             }, {
+                // Diagramme in die Steckplaetze haengen. JEDE Instanz wird in
+                // state.charts vermerkt, weil cleanupView() sie beim
+                // Sichtwechsel entsorgt - sonst bleiben Leinwaende und
+                // Resize-Horcher zurueck, und das Dashboard wird bei jedem
+                // Besuch etwas langsamer.
+                onDiagramm: function (key, hostEl, option) {
+                    if (!dc) { return; }
+                    var inst = dc.zeichne(hostEl, option);
+                    if (inst) {
+                        state.charts = state.charts || [];
+                        state.charts.push(inst);
+                    }
+                },
                 // Steckplatz: die ECHTE Uebersicht in den Kachelrumpf.
                 onSlot: function (key, rumpfEl) {
                     if (key !== 'fallampel') { return; }

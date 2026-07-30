@@ -7649,9 +7649,28 @@ class ManagementApp:
             con.close()
 
         policy = self.resolve_policy(person_id)
+        # BUILD 571 - 'api_path' WAR VERGESSEN, und zwar folgenschwer.
+        #
+        # Der Browser holt die Daten JEDER Kachel selbst (loadOverview:
+        # fetchJson(w.api_path)). Fehlt das Feld in dieser Antwort, ist es dort
+        # 'undefined' - fetch holt dann die relative Adresse "undefined", fuer
+        # die es keine Route gibt. Ergebnis: ALLE ACHT Kacheln meldeten
+        # "Nicht abrufbar: HTTP 404 bei undefined". Das war kein Routing- und
+        # kein Rechtefehler, sondern ein nicht transportiertes Feld.
+        #
+        # Es gibt keinen Grund, den Pfad zurueckzuhalten: er steht ohnehin im
+        # Quelltext des Browsers, und die Rechte prueft der Endpunkt selbst.
+        # Zurueckgehalten wurde er auch nicht absichtlich - er ist beim
+        # Aufschreiben der Liste durchgefallen.
+        #
+        # Gegen eine Wiederholung: tests/test_management_viewprefs.py prueft,
+        # dass JEDES Feld von WidgetSpec in dieser Antwort ankommt. Ein neues
+        # Feld, das der Browser braucht, faellt damit sofort auf statt erst im
+        # Betrieb.
         widgets = [{
             "key": w.key, "label": w.label, "beschreibung": w.beschreibung,
             "cap": w.cap, "standard": bool(w.standard),
+            "api_path": w.api_path,
             "erlaubt": bool(policy.can(w.cap)),
         } for w in vpkat.WIDGETS]
 

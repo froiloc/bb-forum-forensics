@@ -832,26 +832,37 @@
     {
       "id": "3fb9f16e-79d5-44a9-a3d7-4cbc316df543",
       "type": "improvement",
-      "status": "resolved",
-      "priority": "high",
-      "severity": "major",
       "title": "Dashboard Tiles erstellen",
       "affected_version": "0.8.568",
-      "resolved_in_version": "0.8.570",
       "reporter": "Alex",
-      "reported_at": "2026-07-29T16:10:00+00:00",
+      "reported_at": "2026-07-29T20:01:13.358237+00:00",
+      "prerequisites": "Die notwendigen Endpunkte stehen bereits.",
+      "description": "Die Templates für die einzelnen Dashboard-Tiles müssen erstellt werden.",
+      "expected_behavior": "Jedes Dashboard Tile, welches ausgewählt ist, wird auch visualisiert und aktualisiert sich selbständig, sollte das Teil seiner Funktion sein. Meist ist das aber nicht notwendig, da es eigentlich kaum Änderungen in Echtzeit gibt.",
+      "actual_behavior": "Derzeit wird nur er Block mit einem 404 angezeigt, dass die Dashboard-Tiles nicht verfügbar sind.",
+      "status": "open",
+      "priority": "high",
+      "severity": "major",
       "assigned_to": "Claude",
+      "related_to": [],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14",
+        "database": "coordinator.db"
+      },
       "tags": [
         "Dashboard"
       ],
+      "attachments": [],
       "updates": [
         {
-          "timestamp": "2026-07-29T23:10:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "Build 570: sechs der acht Kacheln bekommen eine ECharts-Form (Ampelring, Liegezeit-Balken, Restlaufzeit-Balken, Anteilsbalken, Lastbalken mit Grenzlinie), zwei ausdruecklich keine - jede Auslassung ist in DIAGRAMMLOS begruendet. Eine Farbe bedeutet in jeder Kachel dasselbe. Keine Form ohne Aussage: die Fristenkachel bleibt diagrammlos, wenn der Parametersatz nicht bestaetigt ist. DC01-DC12, DB18-DB21."
+          "timestamp": "2026-07-29T20:01:13.358291+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Issue erstellt"
         }
       ]
     },
@@ -957,138 +968,6 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eintraege_claude_Build569.json"
-        }
-      ]
-    },
-    {
-      "id": "c74e2b18-3d95-4c60-a1f8-8b2e6d5019a7",
-      "type": "bug",
-      "status": "resolved",
-      "priority": "medium",
-      "severity": "major",
-      "title": "Dashboard-Kacheln melden 404 - api_path fehlte im Katalog",
-      "affected_version": "0.8.568",
-      "resolved_in_version": "0.8.571",
-      "reporter": "Alex",
-      "reported_at": "2026-07-29T23:10:00+00:00",
-      "assigned_to": "Claude",
-      "tags": [
-        "Dashboard",
-        "Console-First"
-      ],
-      "updates": [
-        {
-          "timestamp": "2026-07-30T00:20:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "cannot_reproduce",
-          "new_value": "resolved",
-          "comment": "Aufgeklaert aus dem HTML, das mc geliefert hat: 'HTTP 404 bei undefined' - die Meldung nennt sonst die Adresse, hier stand das Wort undefined. Ursache: die Serialisierung des Kachelkatalogs in _viewprefs (management_app.py:7652) transportierte api_path nicht. Der Browser holt die Daten jeder Kachel selbst, hatte also undefined und rief die entsprechende relative Adresse - 404 bei intakten Endpunkten und intakten Rechten. Fix: eine Zeile. Build 571, geprueft durch VP24 mit Gegenprobe."
-        }
-      ]
-    },
-    {
-      "id": "e2a91f47-6c38-4b52-9d17-05fb8c3e7a61",
-      "type": "improvement",
-      "status": "resolved",
-      "priority": "medium",
-      "title": "Konformitaetspruefung: kein Katalogfeld darf unterwegs verlorengehen",
-      "affected_version": "0.8.571",
-      "resolved_in_version": "0.8.571",
-      "reporter": "Claude",
-      "reported_at": "2026-07-30T00:20:00+00:00",
-      "assigned_to": "Claude",
-      "related_to": [
-        "c74e2b18-3d95-4c60-a1f8-8b2e6d5019a7"
-      ],
-      "tags": [
-        "Tests",
-        "Testhaertung",
-        "Dashboard"
-      ],
-      "description": "Der api_path-Fehler lag in einer Luecke ZWISCHEN zwei Dingen, die je fuer sich in Ordnung waren: jeder Pfad des Katalogs hatte eine echte Route, und alle Skripte waren eingebunden - aber der Pfad erreichte den Browser nicht. Solche Luecken findet nur eine Pruefung, die beide Seiten gegeneinander haelt.",
-      "updates": [
-        {
-          "timestamp": "2026-07-30T00:20:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "VP24 liest die Felder von WidgetSpec per dataclasses.fields und verlangt jedes in der Antwort von GET /api/viewprefs; absichtliche Auslassungen brauchen einen Eintrag MIT Grund in NICHT_TRANSPORTIERT. Zusaetzlich wird geprueft, dass der Pfad richtig ist und nicht nur vorhanden."
-        },
-        {
-          "timestamp": "2026-07-29T23:42:45.138564+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build571.json"
-        }
-      ]
-    },
-    {
-      "id": "b8d3f052-49a1-4e77-93c6-2c7f14e6b8d9",
-      "type": "bug",
-      "status": "resolved",
-      "priority": "high",
-      "severity": "major",
-      "title": "Kacheln als schmale Saeulen - Rasterspalten maximiert und gestreckt",
-      "affected_version": "0.8.570",
-      "resolved_in_version": "0.8.572",
-      "reporter": "Alex",
-      "reported_at": "2026-07-30T01:05:00+00:00",
-      "assigned_to": "Claude",
-      "tags": [
-        "Dashboard",
-        "CSS",
-        "Layout"
-      ],
-      "description": "Gemessen (Sonde, Hauptbereich 2328x1251): das Raster erzeugte ACHT Spalten a 272px, und align-items 'normal' zog alle sieben Kacheln einer Zeile auf 923px Hoehe. Ein 132px hohes Diagramm geht darin unter - die Diagramme waren gezeichnet (5 Leinwaende), aber nicht wahrnehmbar.",
-      "expected_behavior": "Wenige, breite Kacheln; jede nur so hoch wie ihr Inhalt.",
-      "actual_behavior": "272 breit x 923 hoch, achtspaltig, alle gleich hoch.",
-      "updates": [
-        {
-          "timestamp": "2026-07-30T01:05:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "Build 572: minmax-Minimum von 260px auf 420px (auto-fill maximiert die SPALTENZAHL - je breiter der Schirm, desto schmaler die Kachel, genau falsch herum) und align-items:start gegen das Strecken. DB23 haelt beides gegen das Stylesheet fest."
-        },
-        {
-          "timestamp": "2026-07-29T23:59:51.065620+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build572.json"
-        }
-      ]
-    },
-    {
-      "id": "a1c76e34-8f20-4b95-bd18-6e39c250a7f4",
-      "type": "bug",
-      "status": "resolved",
-      "priority": "medium",
-      "severity": "minor",
-      "title": "Fall-Uebersicht bekam kein Diagramm (Steckplatz-Zweig stieg zu frueh aus)",
-      "affected_version": "0.8.570",
-      "resolved_in_version": "0.8.572",
-      "reporter": "Claude",
-      "reported_at": "2026-07-30T01:05:00+00:00",
-      "assigned_to": "Claude",
-      "related_to": [
-        "b8d3f052-49a1-4e77-93c6-2c7f14e6b8d9"
-      ],
-      "tags": [
-        "Dashboard",
-        "Tests"
-      ],
-      "description": "renderDashboard stieg im Zweig fuer die eingebettete Tabelle (w.slot) VOR dem Diagrammblock aus der Funktion aus. Die Fall-Uebersicht bekam deshalb nie ihren Ampelring und war nur die 1001px hohe Tabelle. DB18 fiel es nicht auf, weil es mit Kacheln OHNE Steckplatz prueft - der Zweig lag ausserhalb jeder Pruefung.",
-      "updates": [
-        {
-          "timestamp": "2026-07-30T01:05:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "Build 572: Diagramm auch im Steckplatz-Zweig, und zwar VOR der Tabelle. DB22 prueft Aufruf, Reihenfolge und den Gegenfall ohne Option. Zusaetzlich Deckel auf die Tabelle (max-height 360px) - sie ist im Ueberblick eine Beigabe, kein Hauptgegenstand."
-        },
-        {
-          "timestamp": "2026-07-29T23:59:51.065641+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build572.json"
         }
       ]
     }

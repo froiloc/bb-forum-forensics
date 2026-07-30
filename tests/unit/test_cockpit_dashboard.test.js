@@ -41,6 +41,18 @@
  *   DB16 — renderDashboard(): Kacheln, Steckplatz-Rueckruf, und eine
  *          ausgefallene Kachel sieht anders aus als eine leere.
  *   DB17 — renderDashboard(): Reduktionshinweise und Vorbehalt erscheinen.
+ *   DB18 — Build 570: der Diagramm-Steckplatz entsteht GENAU fuer die Kacheln
+ *          mit Option; der Rueckruf bekommt Schluessel, Element und Option.
+ *   DB19 — Build 570: die Reihenfolge im Kachelrumpf ist Zahl -> Diagramm ->
+ *          Liste. Der Blick soll von der Groessenordnung zum Detail gehen.
+ *   DB20 — Build 570: eine ausgefallene Kachel bekommt KEIN Diagramm, auch
+ *          wenn eine Option mitgeliefert wuerde.
+ *   DB21 — Build 570: 'tonung' faerbt die ganze Kachel (fuer die
+ *          diagrammlose Ja/Nein-Aussage der Audit-Kette).
+ *   DB22 — Build 572: AUCH DIE STECKPLATZ-KACHEL bekommt ihr Diagramm, und
+ *          zwar VOR der eingebetteten Tabelle. Der Steckplatz-Zweig stieg
+ *          vorher vor dem Diagrammblock aus der Funktion aus; DB18 fiel das
+ *          nicht auf, weil es mit Kacheln OHNE Steckplatz prueft.
  *   DB18 — Kachelwaehler: onSpeichern bekommt Auswahl UND Reihenfolge.
  *
  * Version: v0.8.547 · Build: 547 · 2026-07-26
@@ -550,5 +562,197 @@ describe("cockpit_dashboard.js — Render (Build 547)", () => {
       { key: "eskalationen", sichtbar: true },
       { key: "fallampel", sichtbar: true },
     ]);
+  });
+
+  // DB18 ---------------------------------------------------------------------
+  it("DB18: Diagramm-Steckplatz nur fuer Kacheln mit Option", () => {
+    const win = _ctx();
+    const D = _api(win);
+    const main = _mount(win);
+    const gerufen = [];
+    const opt = { animation: false, series: [] };
+
+    D.renderDashboard(
+      main,
+      {
+        kacheln: [
+          { key: "eskalationen", label: "Eskalationen" },
+          { key: "kettenzustand", label: "Audit-Kette" },
+        ],
+        modelle: {
+          eskalationen: D.reduceEskalationen({ items: [{ severity: "hoch",
+            days_inactive: 5, label: "X" }] }),
+          kettenzustand: D.reduceKettenzustand({ ok: true, tip_seq: 7 }),
+        },
+        // NUR die Eskalationskachel hat eine Option.
+        diagramme: { eskalationen: opt },
+        katalog: KAT,
+      },
+      { onDiagramm: (k, el, o) => { gerufen.push([k, el, o]); } }
+    );
+
+    expect(gerufen.length).toBe(1);
+    expect(gerufen[0][0]).toBe("eskalationen");
+    expect(gerufen[0][2]).toBe(opt);
+    expect(main.querySelectorAll(".aiw-kachel-chart").length).toBe(1);
+    expect(main.querySelector('[data-chart-key="eskalationen"]')).toBeTruthy();
+    // Die diagrammlose Kachel bekommt keinen leeren Behaelter — ein leerer
+    // Kasten saehe wie ein nicht geladenes Diagramm aus.
+    expect(main.querySelector('[data-widget-key="kettenzustand"] '
+      + '.aiw-kachel-chart')).toBeNull();
+  });
+
+  // DB19 ---------------------------------------------------------------------
+  it("DB19: Reihenfolge im Rumpf ist Zahl, Diagramm, Liste", () => {
+    const win = _ctx();
+    const D = _api(win);
+    const main = _mount(win);
+
+    D.renderDashboard(
+      main,
+      {
+        kacheln: [{ key: "eskalationen", label: "Eskalationen" }],
+        modelle: {
+          eskalationen: D.reduceEskalationen({
+            items: [{ severity: "hoch", days_inactive: 9, label: "A" }],
+            count_hoch: 1, count_mittel: 0, count_niedrig: 0,
+          }),
+        },
+        diagramme: { eskalationen: { animation: false, series: [] } },
+        katalog: KAT,
+      },
+      { onDiagramm: () => {} }
+    );
+
+    const kachel = main.querySelector('[data-widget-key="eskalationen"]');
+    const klassen = [...kachel.children].map((c) => c.className);
+    const iZahl = klassen.indexOf("aiw-kachel-zahl");
+    const iChart = klassen.indexOf("aiw-kachel-chart");
+    const iListe = klassen.indexOf("aiw-kachel-liste");
+    expect(iZahl).toBeGreaterThanOrEqual(0);
+    expect(iChart).toBeGreaterThan(iZahl);
+    expect(iListe).toBeGreaterThan(iChart);
+  });
+
+  // DB20 ---------------------------------------------------------------------
+  it("DB20: eine ausgefallene Kachel bekommt kein Diagramm", () => {
+    const win = _ctx();
+    const D = _api(win);
+    const main = _mount(win);
+    let gerufen = 0;
+
+    D.renderDashboard(
+      main,
+      {
+        kacheln: [{ key: "eskalationen", label: "Eskalationen" }],
+        modelle: { eskalationen: D.fehlerModell("HTTP 404") },
+        diagramme: { eskalationen: { animation: false, series: [] } },
+        katalog: KAT,
+      },
+      { onDiagramm: () => { gerufen += 1; } }
+    );
+
+    // Ein Diagramm auf ausgefallenen Daten waere eine Form ohne Grundlage.
+    expect(gerufen).toBe(0);
+    expect(main.querySelectorAll(".aiw-kachel-chart").length).toBe(0);
+    expect(main.querySelector(".aiw-kachel-fehler").textContent)
+      .toContain("HTTP 404");
+  });
+
+  // DB21 ---------------------------------------------------------------------
+  it("DB21: tonung faerbt die ganze Kachel", () => {
+    const win = _ctx();
+    const D = _api(win);
+    const main = _mount(win);
+
+    D.renderDashboard(main, {
+      kacheln: [{ key: "kettenzustand", label: "Audit-Kette" }],
+      modelle: { kettenzustand: D.reduceKettenzustand({ ok: true,
+                                                        tip_seq: 7 }) },
+      katalog: KAT,
+    }, {});
+    expect(main.querySelector('[data-widget-key="kettenzustand"]').className)
+      .toContain("ton-gruen");
+
+    const main2 = _mount(win);
+    D.renderDashboard(main2, {
+      kacheln: [{ key: "kettenzustand", label: "Audit-Kette" }],
+      modelle: { kettenzustand: D.reduceKettenzustand({ ok: false,
+                                                        first_bad_seq: 12 }) },
+      katalog: KAT,
+    }, {});
+    const kachel2 = main2.querySelector('[data-widget-key="kettenzustand"]');
+    expect(kachel2.className).toContain("ton-rot");
+    expect(kachel2.querySelector(".aiw-kachel-zahl").textContent).toBe("BRUCH");
+  });
+
+  // DB22 ---------------------------------------------------------------------
+  it("DB22: auch die Steckplatz-Kachel bekommt ihr Diagramm", () => {
+    const win = _ctx();
+    const D = _api(win);
+    const main = _mount(win);
+    const gerufen = [];
+    let slotEl = null;
+    const opt = { animation: false, series: [] };
+
+    D.renderDashboard(
+      main,
+      {
+        kacheln: [{ key: "fallampel", label: "Fall-Übersicht", slot: true }],
+        modelle: {
+          fallampel: D.reduceFallampel({ count: 2,
+            cases: [{ ampel: "rot" }, { ampel: "gelb" }] }),
+        },
+        diagramme: { fallampel: opt },
+        katalog: KAT,
+      },
+      {
+        onDiagramm: (k, el, o) => { gerufen.push([k, o]); },
+        onSlot: (k, el) => { slotEl = el; },
+      }
+    );
+
+    // Der Ring MUSS kommen — vorher blieb die Kachel die nackte Tabelle.
+    expect(gerufen.length).toBe(1);
+    expect(gerufen[0][0]).toBe("fallampel");
+    expect(gerufen[0][1]).toBe(opt);
+    expect(slotEl).not.toBe(null);
+
+    // Und die Reihenfolge: erst der Eindruck, dann das Detail.
+    const kachel = main.querySelector('[data-widget-key="fallampel"]');
+    const klassen = [...kachel.children].map((c) => c.className);
+    expect(klassen.indexOf("aiw-kachel-chart"))
+      .toBeLessThan(klassen.indexOf("aiw-kachel-slot"));
+
+    // Ohne Option bleibt es beim alten Verhalten (kein leerer Behaelter).
+    const main2 = _mount(win);
+    let gerufen2 = 0;
+    D.renderDashboard(main2, {
+      kacheln: [{ key: "fallampel", label: "Fall-Übersicht", slot: true }],
+      modelle: { fallampel: D.reduceFallampel({ count: 0, cases: [] }) },
+      katalog: KAT,
+    }, { onDiagramm: () => { gerufen2 += 1; }, onSlot: () => {} });
+    expect(gerufen2).toBe(0);
+    expect(main2.querySelectorAll(".aiw-kachel-chart").length).toBe(0);
+  });
+
+  // DB23 ---------------------------------------------------------------------
+  it("DB23: das Raster begrenzt die Spaltenzahl und streckt nicht", () => {
+    const css = readFileSync("management/server/static/cockpit.css", "utf-8");
+    // Der gemessene Fehler: 8 Spalten a 272px auf 2261px, alle Kacheln auf
+    // 923px gestreckt. Beide Ursachen muessen im Stylesheet behoben sein.
+    const bloecke = [...css.matchAll(/\.aiw-db-raster\s*\{[^}]*\}/g)]
+      .map((m) => m[0]);
+    const zusammen = bloecke.join("\n");
+    expect(bloecke.length).toBeGreaterThan(0);
+    expect(zusammen).toMatch(/align-items:\s*start/);
+    const min = [...zusammen.matchAll(/minmax\((\d+)px/g)]
+      .map((m) => parseInt(m[1], 10));
+    expect(min.length).toBeGreaterThan(0);
+    // Das WIRKSAME (letzte) Minimum muss deutlich ueber 260px liegen, sonst
+    // maximiert 'auto-fill' auf breiten Schirmen wieder die Spaltenzahl.
+    expect(min[min.length - 1]).toBeGreaterThanOrEqual(400);
+    // Und die eingebettete Tabelle bekommt einen Deckel.
+    expect(css).toMatch(/\.aiw-kachel-slot\s*\{[^}]*max-height/);
   });
 });

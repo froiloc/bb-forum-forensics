@@ -963,132 +963,36 @@
     {
       "id": "c74e2b18-3d95-4c60-a1f8-8b2e6d5019a7",
       "type": "bug",
-      "status": "resolved",
+      "status": "cannot_reproduce",
       "priority": "medium",
       "severity": "major",
-      "title": "Dashboard-Kacheln melden 404 - api_path fehlte im Katalog",
+      "title": "Dashboard-Kacheln melden 404 - statisch nicht nachstellbar",
       "affected_version": "0.8.568",
-      "resolved_in_version": "0.8.571",
       "reporter": "Alex",
       "reported_at": "2026-07-29T23:10:00+00:00",
-      "assigned_to": "Claude",
+      "assigned_to": "Alex",
+      "related_to": [
+        "3fb9f16e-79d5-44a9-a3d7-4cbc316df543"
+      ],
       "tags": [
         "Dashboard",
         "Console-First"
       ],
+      "description": "Im Ursprungsticket 3fb9f16e heisst es: 'Derzeit wird nur der Block mit einem 404 angezeigt, dass die Dashboard-Tiles nicht verfuegbar sind.' Statisch geprueft und NICHT bestaetigt: alle acht api_path des Kachelkatalogs liegen im Lese-Dispatcher, alle 51 in cockpit.html eingebundenen Skripte existieren, cockpit_dashboard.js ist eingebunden, Reduzierer und Render-Schleife sind seit Build 545/547 vollstaendig.",
+      "expected_behavior": "Die Kacheln laden ihre Daten ohne 404.",
+      "actual_behavior": "Bericht aus dem Betrieb; Ursache aus dem Quellstand nicht ableitbar.",
       "updates": [
         {
-          "timestamp": "2026-07-30T00:20:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "cannot_reproduce",
-          "new_value": "resolved",
-          "comment": "Aufgeklaert aus dem HTML, das mc geliefert hat: 'HTTP 404 bei undefined' - die Meldung nennt sonst die Adresse, hier stand das Wort undefined. Ursache: die Serialisierung des Kachelkatalogs in _viewprefs (management_app.py:7652) transportierte api_path nicht. Der Browser holt die Daten jeder Kachel selbst, hatte also undefined und rief die entsprechende relative Adresse - 404 bei intakten Endpunkten und intakten Rechten. Fix: eine Zeile. Build 571, geprueft durch VP24 mit Gegenprobe."
-        }
-      ]
-    },
-    {
-      "id": "e2a91f47-6c38-4b52-9d17-05fb8c3e7a61",
-      "type": "improvement",
-      "status": "resolved",
-      "priority": "medium",
-      "title": "Konformitaetspruefung: kein Katalogfeld darf unterwegs verlorengehen",
-      "affected_version": "0.8.571",
-      "resolved_in_version": "0.8.571",
-      "reporter": "Claude",
-      "reported_at": "2026-07-30T00:20:00+00:00",
-      "assigned_to": "Claude",
-      "related_to": [
-        "c74e2b18-3d95-4c60-a1f8-8b2e6d5019a7"
-      ],
-      "tags": [
-        "Tests",
-        "Testhaertung",
-        "Dashboard"
-      ],
-      "description": "Der api_path-Fehler lag in einer Luecke ZWISCHEN zwei Dingen, die je fuer sich in Ordnung waren: jeder Pfad des Katalogs hatte eine echte Route, und alle Skripte waren eingebunden - aber der Pfad erreichte den Browser nicht. Solche Luecken findet nur eine Pruefung, die beide Seiten gegeneinander haelt.",
-      "updates": [
-        {
-          "timestamp": "2026-07-30T00:20:00+00:00",
+          "timestamp": "2026-07-29T23:10:00+00:00",
           "author": "Claude",
           "action": "comment",
-          "comment": "VP24 liest die Felder von WidgetSpec per dataclasses.fields und verlangt jedes in der Antwort von GET /api/viewprefs; absichtliche Auslassungen brauchen einen Eintrag MIT Grund in NICHT_TRANSPORTIERT. Zusaetzlich wird geprueft, dass der Pfad richtig ist und nicht nur vorhanden."
+          "comment": "Nach Console-First-Protokoll: bitte am lebenden System die Browser-Konsole und den Netzwerkreiter beim Betreten des Ueberblicks aufnehmen - WELCHER Pfad 404 liefert. Ohne das waere jeder Fix geraten. Moegliche Kandidaten, die sich nur im Betrieb zeigen: eine Kachel, deren Recht die Rolle nicht hat (dann antwortet der Endpunkt 403, nicht 404), oder ein veralteter Browser-Cache mit einer alten cockpit.html."
         },
         {
-          "timestamp": "2026-07-29T23:42:45.138564+00:00",
+          "timestamp": "2026-07-29T23:22:37.870624+00:00",
           "author": "merge-tool",
           "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build571.json"
-        }
-      ]
-    },
-    {
-      "id": "b8d3f052-49a1-4e77-93c6-2c7f14e6b8d9",
-      "type": "bug",
-      "status": "resolved",
-      "priority": "high",
-      "severity": "major",
-      "title": "Kacheln als schmale Saeulen - Rasterspalten maximiert und gestreckt",
-      "affected_version": "0.8.570",
-      "resolved_in_version": "0.8.572",
-      "reporter": "Alex",
-      "reported_at": "2026-07-30T01:05:00+00:00",
-      "assigned_to": "Claude",
-      "tags": [
-        "Dashboard",
-        "CSS",
-        "Layout"
-      ],
-      "description": "Gemessen (Sonde, Hauptbereich 2328x1251): das Raster erzeugte ACHT Spalten a 272px, und align-items 'normal' zog alle sieben Kacheln einer Zeile auf 923px Hoehe. Ein 132px hohes Diagramm geht darin unter - die Diagramme waren gezeichnet (5 Leinwaende), aber nicht wahrnehmbar.",
-      "expected_behavior": "Wenige, breite Kacheln; jede nur so hoch wie ihr Inhalt.",
-      "actual_behavior": "272 breit x 923 hoch, achtspaltig, alle gleich hoch.",
-      "updates": [
-        {
-          "timestamp": "2026-07-30T01:05:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "Build 572: minmax-Minimum von 260px auf 420px (auto-fill maximiert die SPALTENZAHL - je breiter der Schirm, desto schmaler die Kachel, genau falsch herum) und align-items:start gegen das Strecken. DB23 haelt beides gegen das Stylesheet fest."
-        },
-        {
-          "timestamp": "2026-07-29T23:59:51.065620+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build572.json"
-        }
-      ]
-    },
-    {
-      "id": "a1c76e34-8f20-4b95-bd18-6e39c250a7f4",
-      "type": "bug",
-      "status": "resolved",
-      "priority": "medium",
-      "severity": "minor",
-      "title": "Fall-Uebersicht bekam kein Diagramm (Steckplatz-Zweig stieg zu frueh aus)",
-      "affected_version": "0.8.570",
-      "resolved_in_version": "0.8.572",
-      "reporter": "Claude",
-      "reported_at": "2026-07-30T01:05:00+00:00",
-      "assigned_to": "Claude",
-      "related_to": [
-        "b8d3f052-49a1-4e77-93c6-2c7f14e6b8d9"
-      ],
-      "tags": [
-        "Dashboard",
-        "Tests"
-      ],
-      "description": "renderDashboard stieg im Zweig fuer die eingebettete Tabelle (w.slot) VOR dem Diagrammblock aus der Funktion aus. Die Fall-Uebersicht bekam deshalb nie ihren Ampelring und war nur die 1001px hohe Tabelle. DB18 fiel es nicht auf, weil es mit Kacheln OHNE Steckplatz prueft - der Zweig lag ausserhalb jeder Pruefung.",
-      "updates": [
-        {
-          "timestamp": "2026-07-30T01:05:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "Build 572: Diagramm auch im Steckplatz-Zweig, und zwar VOR der Tabelle. DB22 prueft Aufruf, Reihenfolge und den Gegenfall ohne Option. Zusaetzlich Deckel auf die Tabelle (max-height 360px) - sie ist im Ueberblick eine Beigabe, kein Hauptgegenstand."
-        },
-        {
-          "timestamp": "2026-07-29T23:59:51.065641+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build572.json"
+          "comment": "Importiert aus eintraege_claude_Build570.json"
         }
       ]
     }
