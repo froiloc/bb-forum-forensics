@@ -1,0 +1,7 @@
+f71e10b3029b9d3734e8a5f51cff0b18  build.json
+97c5c06ba57b62efe149166d8452403b  management/server/static/cockpit_baustein_vorschau.js
+eb738678ae7a97ae59c02e37fecf0c26  management/server/static/cockpit_modules.js
+82f22771d21e30e7c1f0e6f32c2e41d2  management/server/static/cockpit.html
+88a6aeacaca6e6c6a714b62880cf404f  management/server/static/cockpit.css
+fe32e080b6b66e04fee7e697e7a1439e  tests/unit/test_cockpit_baustein_vorschau.test.js
+31a2f53ccd9fb1eb23cff537a2fa93d6  issue-tracker/eintraege_claude_Build577.json

@@ -259,6 +259,10 @@
         _setMsg('');
         renderDryRun(null);
         _markActive();
+        // Build 577: die Vorschau folgt dem Formular - auch wenn es
+        // programmatisch gefuellt wurde (Auswahl aus der Liste, Entwurf).
+        // Programmatische .value-Zuweisungen loesen kein 'input' aus.
+        _vorschauAktualisieren();
     }
 
     // _schluesselFeldStand: DIE EINZIGE Regel fuer Sperre und Hinweis des
@@ -287,6 +291,64 @@
     }
 
     // _renderKeyHinweis: erklaert den Zustand des Schluesselfeldes.
+    // ------------------------------------------------------------------
+    // BUILD 577 - VORSCHAU DES BAUSTEINS.
+    //
+    // Zeigt den Baustein so, wie ihn der Ermittler spaeter IM BERICHTSEDITOR
+    // sieht: Editor.js im Nur-Lese-Modus, Platzhalter als Chips. Die
+    // Umschaltung 'Vorschau / Rohansicht' merkt sich NICHTS - sie ist ein
+    // Moment, keine Vorliebe. Die Rohansicht bleibt erreichbar, damit dem
+    // Redakteur der genaue Text nicht genommen wird.
+    // ------------------------------------------------------------------
+    function _vorschauAufbauen(form) {
+        var kopf = document.createElement('div');
+        kopf.className = 'aiw-mod-vorschau-kopf';
+        var titel = document.createElement('span');
+        titel.className = 'aiw-mod-vorschau-titel';
+        titel.textContent = 'Vorschau (Ansicht im Berichtseditor)';
+        kopf.appendChild(titel);
+        var schalter = document.createElement('button');
+        schalter.type = 'button';
+        schalter.className = 'aiw-btn aiw-btn-klein';
+        schalter.id = 'aiw-mod-vorschau-schalter';
+        schalter.textContent = 'Rohansicht';
+        kopf.appendChild(schalter);
+        form.appendChild(kopf);
+
+        var host = document.createElement('div');
+        host.className = 'aiw-mod-vorschau';
+        host.id = 'aiw-mod-vorschau';
+        form.appendChild(host);
+        _state.vorschauEl = host;
+
+        var vs = (typeof window !== 'undefined')
+            ? window.AIWBausteinVorschau : null;
+        if (vs && typeof vs.erzeuge === 'function') {
+            _state.vorschau = vs.erzeuge(host, {});
+        } else {
+            // KEIN STILLER AUSFALL - die Flaeche sagt, was fehlt.
+            host.textContent = 'Vorschau-Modul nicht geladen '
+                + '(cockpit_baustein_vorschau.js).';
+            host.classList.add('ist-warnung');
+        }
+
+        schalter.addEventListener('click', function () {
+            _state.vorschauAn = !_state.vorschauAn;
+            schalter.textContent = _state.vorschauAn ? 'Rohansicht' : 'Vorschau';
+            host.hidden = !_state.vorschauAn;
+            if (_state.vorschauAn) { _vorschauAktualisieren(); }
+            else if (_state.vorschau) { _state.vorschau.aus(); }
+        });
+    }
+
+    // _vorschauAktualisieren: aus dem AKTUELLEN Formularzustand, nicht aus dem
+    // gespeicherten Datensatz - der Redakteur soll sehen, was er gerade tippt.
+    function _vorschauAktualisieren() {
+        if (!_state.vorschauAn || !_state.vorschau || !_state.fields) { return; }
+        var f = _state.fields;
+        _state.vorschau.zeige({ body: f.body ? f.body.value : '' });
+    }
+
     function _renderKeyHinweis() {
         var el = _state.keyHinweisEl;
         if (!el) { return; }
@@ -449,6 +511,7 @@
             _state.selKey = null;
         }
         _schluesselFeldStand();
+        _vorschauAktualisieren();
         renderDryRun(null);
         _markActive();
         _setMsg('Nicht gespeicherter Entwurf aus dem Browserspeicher '
@@ -537,6 +600,9 @@
         keyHinweis.className = 'aiw-mod-keyhinweis';
         form.appendChild(keyHinweis);
         _state.keyHinweisEl = keyHinweis;
+        _state.vorschauEl = null;
+        _state.vorschau = null;
+        _state.vorschauAn = true;
         var fTitle = _labeledField(form, 'Titel', 'text', 'aiw-mod-title');
         var fRole = _labeledField(form, 'Rolle', 'select', 'aiw-mod-role');
         ROLES.forEach(function (r) {
@@ -591,6 +657,21 @@
         form.addEventListener('input', _persistDraft);
         form.addEventListener('change', _persistDraft);
 
+        // BUILD 577: DIE VORSCHAU ENTSTEHT ERST JETZT — nach mainEl.appendChild.
+        // Editor.js misst beim Aufbau die Groesse seines Behaelters; auf einem
+        // noch nicht eingehaengten Element sind das NULL Pixel, und es zeichnet
+        // ins Nichts. Genau dieser Fehler hat in Build 570 bis 573 die
+        // Kacheldiagramme unsichtbar gemacht; die Lehre steht hier als Zeile.
+        _vorschauAufbauen(form);
+
+        // Beim Tippen mitlaufen, aber entprellt: Editor.js baut je Aktualisierung
+        // eine Instanz auf, und das bei jedem Tastendruck waere Verschwendung.
+        var vsTimer = null;
+        fBody.addEventListener('input', function () {
+            if (vsTimer) { clearTimeout(vsTimer); }
+            vsTimer = setTimeout(_vorschauAktualisieren, 350);
+        });
+
         dryBtn.addEventListener('click', function () {
             _setMsg('');
             if (typeof opts.onDryRun === 'function') {
@@ -634,6 +715,7 @@
         isValidKey: isValidKey,
         buildPayload: buildPayload,
         schluesselVorschlag: schluesselVorschlag,
+        _vorschauAktualisieren: _vorschauAktualisieren,
         _schluesselFeldStand: _schluesselFeldStand,
         summaryText: summaryText,
         errorsText: errorsText,

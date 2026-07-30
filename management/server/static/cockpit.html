@@ -192,6 +192,13 @@
 <script src="/static/cockpit_doctemplates.js" defer></script>
 <!-- Baustein-Module (W1, Build 427): Autoren-Maske fuer Textbausteine
      (report_modules) mit Freitext-body und Platzhalter-Vorschau. -->
+<!-- Build 576/577: GETEILTE Dateien aus Baustelle 6 (nicht kopiert, siehe
+     GETEILTE_ASSETS in management_app.py). Editor.js und der Chip-Renderer
+     tragen die Bausteinvorschau; ohne sie sagt die Vorschau, was fehlt. -->
+<link rel="stylesheet" href="/static/shared/placeholder_chips.css">
+<script src="/static/shared/editor.bundle.js" defer></script>
+<script src="/static/shared/placeholder_chips.js" defer></script>
+<script src="/static/cockpit_baustein_vorschau.js" defer></script>
 <script src="/static/cockpit_modules.js" defer></script>
 <!-- Fallübergreifende Volltextsuche (AP-3E/Idee 38, Build 563):
      Modell B, zweistufig. Stufe 1 zeigt KEINEN Text; der Inhalt eines

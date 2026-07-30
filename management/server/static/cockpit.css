@@ -3249,3 +3249,56 @@ button.aiw-navgroup:focus-visible {
    Kein Deckel und kein eigener Bildlauf — die Sicht selbst scrollt, seit
    Build 567 in ihrer eigenen Fläche. */
 .aiw-faelle-tabelle { margin-top: 10px; }
+
+/* ===========================================================================
+   Build 577 — Vorschau eines Textbausteins
+   ---------------------------------------------------------------------------
+   Sie zeigt die Ansicht des BERICHTSEDITORS: Editor.js im Nur-Lese-Modus,
+   Platzhalter als Chips. Die Chip-Stile kommen aus der geteilten Datei
+   /static/shared/placeholder_chips.css (Build 576) — hier steht nur der
+   Rahmen, damit die beiden nicht auseinanderlaufen können.
+
+   ZUR MINDESTHÖHE: Editor.js misst beim Aufbau die Größe seines Behälters.
+   Ein Behälter ohne Höhe ergäbe eine leere Zeichenfläche — dieselbe Falle wie
+   bei den Kacheldiagrammen in Build 570.
+   =========================================================================== */
+.aiw-mod-vorschau-kopf {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .6rem;
+    margin: 14px 0 4px 0;
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
+}
+.aiw-mod-vorschau-titel {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #5a6b75;
+}
+.aiw-mod-vorschau {
+    min-height: 90px;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: #fff;
+}
+.aiw-mod-vorschau.ist-warnung,
+.aiw-mod-vorschau-meldung.ist-warnung {
+    color: #b5730c;
+    font-style: italic;
+}
+.aiw-mod-vorschau-meldung {
+    margin: 0 0 6px 0;
+    font-size: 12px;
+    color: #8a969d;
+}
+.aiw-mod-vorschau-meldung:empty { display: none; }
+
+/* Editor.js bringt eigene Innenabstände mit, die in einer schmalen Maske zu
+   viel sind. Nur der Rahmen wird gedämpft — an den Blöcken selbst wird
+   NICHTS geändert, damit die Vorschau die Ansicht des Berichtseditors bleibt
+   und nicht eine eigene Gestaltung erfindet. */
+.aiw-mod-vorschau .codex-editor__redactor { padding-bottom: 0 !important; }
+.aiw-mod-vorschau .ce-block:first-child { margin-top: 0; }

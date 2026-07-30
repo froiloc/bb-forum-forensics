@@ -274,28 +274,39 @@
     {
       "id": "64edd18a-e5b2-4da8-9d8c-53714207e73d",
       "type": "feature_request",
-      "status": "resolved",
-      "priority": "wishlist",
-      "severity": "enhancement",
       "title": "Preview von Text-Bausteinen in `editor.js`-Ansicht",
       "affected_version": "0.8.560",
-      "resolved_in_version": "0.8.577",
       "reporter": "Alex",
-      "reported_at": "2026-07-29T14:39:24+00:00",
-      "assigned_to": "Claude",
+      "reported_at": "2026-07-29T14:39:24.475532+00:00",
+      "prerequisites": "`editor.js` wird auch in der `management`-Oberfläche eingebunden. Derzeit existiert es nur im Berichtseditor (Baustelle 6).",
+      "description": "Derzeit ist die Ansicht von Text-Bausteinen im Management-Werkzeug sehr technisch. Es wäre aber hilfreich, wenn wenigstens die fertige Ansicht in einer Vorschau mit Hilfe des `editor.js` gerendert werden würde.",
+      "expected_behavior": "Die Ansicht wird als `editor.js` Ansicht (in einer Vorschau) gerendert.",
+      "actual_behavior": "",
+      "status": "open",
+      "priority": "wishlist",
+      "severity": "enhancement",
+      "assigned_to": "",
+      "related_to": [],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14",
+        "database": "templates.db"
+      },
       "tags": [
         "Feature",
         "Preview",
         "Editor.js"
       ],
+      "attachments": [],
       "updates": [
         {
-          "timestamp": "2026-07-30T08:00:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "Build 576 (geteilte Dateien) + 577 (Vorschau). Gezeigt wird die Ansicht des Berichtseditors - Editor.js nur lesend, Platzhalter als Chips. Die Exportfassung waere die falsche Wahl gewesen: html_renderer.py loest Platzhalter nicht auf, dort stuende roher Text. Zukunftsfest: sobald ein Baustein block_type/block_data traegt (Build 578), benutzt die Vorschau sie unveraendert. BV01-BV10."
+          "timestamp": "2026-07-29T14:39:24.475567+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Issue erstellt"
         }
       ]
     },
@@ -1429,42 +1440,6 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eintraege_claude_Build576.json"
-        }
-      ]
-    },
-    {
-      "id": "f0a3c85b-6d17-4e92-b40a-19c62d5f83e7",
-      "type": "bug",
-      "status": "open",
-      "priority": "medium",
-      "severity": "major",
-      "title": "Fehlende templates.db bricht die Verbindung statt einen Fehler zu melden",
-      "affected_version": "0.8.576",
-      "target_version": "0.8.579",
-      "reporter": "Alex",
-      "reported_at": "2026-07-30T08:00:00+00:00",
-      "assigned_to": "Claude",
-      "tags": [
-        "Berichtseditor",
-        "Robustheit",
-        "Grundregel1"
-      ],
-      "prerequisites": "templates.db ist nicht am erwarteten Ort.",
-      "description": "Beim Test von Build 576 waren Bausteine, Einzelplatzhalter und Vorlagen im Berichtseditor nicht ladbar; der Browser meldete nur 'Failed to fetch'. Ursache war eine verschobene templates.db (der Prepper hatte sie per mov geholt) - aber die MELDUNG war das Problem: _handle_template_list ruft list_templates() ohne jede Fehlerbehandlung. Fehlt die Datei, fliegt die Ausnahme aus dem Handler, die Verbindung stirbt, und der Browser erfaehrt nichts. Die Fehlersuche kostete eine Runde.",
-      "expected_behavior": "Ein benannter Fehler mit Status und Text ('templates.db nicht erreichbar: <Pfad>'), damit die Ursache in einer Sekunde ablesbar ist.",
-      "actual_behavior": "Verbindungsabbruch ohne Antwort ('Failed to fetch').",
-      "updates": [
-        {
-          "timestamp": "2026-07-30T08:00:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "Nicht der Anwender hat den Fehler gemacht, sondern die Fehlerbehandlung fehlt. Betrifft alle Datenendpunkte, die eine der Nebendatenbanken oeffnen - lohnt eine gemeinsame Huelle statt einzelner try/except."
-        },
-        {
-          "timestamp": "2026-07-30T13:02:37.056896+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build577.json"
         }
       ]
     }
