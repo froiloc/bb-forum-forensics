@@ -88,6 +88,20 @@ VIEW_EXPORTS: Tuple[ViewExportSpec, ...] = (
                                      "ampel_reason", "prioritaet",
                                      "zugewiesen_an")),),
     ),
+    # Build 574: die FALLUEBERSICHT als eigene Sicht. Sie bekommt einen
+    # eigenen Export und keine Ausnahme: seit die Kachel 'fallampel' auf
+    # Kompaktform steht (Ring + drei dringendste Faelle), ist DIESE Sicht der
+    # Ort, an dem der vollstaendige Fallbestand sichtbar ist. Dieselben
+    # Abschnitte und dieselbe Spaltenfolge wie beim Dashboard-Export - es ist
+    # derselbe Bestand, nur an seinem neuen Ort.
+    ViewExportSpec(
+        view_id="faelle", label="Fallübersicht",
+        api_path="/api/overview",
+        sections=(SectionSpec("cases", "Fälle",
+                              order=("subject_id", "status", "ampel",
+                                     "ampel_reason", "prioritaet",
+                                     "zugewiesen_an")),),
+    ),
     ViewExportSpec(
         view_id="calendar", label="Kalender & Wiedervorlage",
         api_path="/api/external",

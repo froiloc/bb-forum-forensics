@@ -157,6 +157,18 @@
         // dafuer bewusst KEINE zweite Faehigkeit ein (mc 2026-07-12).
         { id: 'cases',      cap: 'assignment.edit',      group: 'Fallsteuerung',     label: 'Fall-Erkennung',
           stichworte: 'fall anlegen erkennung neuaufnahme portal beschuldigter akte' },
+        // Build 574: FALLUEBERSICHT. Die vollstaendige Falltabelle hatte bis
+        // hierher KEINE eigene Sicht - sie war in die Kachel 'fallampel' des
+        // Ueberblicks eingebettet und damit die einzige Stelle im Werkzeug, an
+        // der sie ueberhaupt vorkam. Als die Kachel auf Kompaktform umgestellt
+        // wurde (Ring + drei dringendste Faelle, mc 2026-07-30), waere sie
+        // ohne diese Sicht STILL verschwunden - und mit ihr der Fall-Sprung
+        // der Kommandopalette, der genau in diese Tabelle zielte.
+        // Recht: 'dashboard.view' - dasselbe, das die Kachel und der speisende
+        // Endpunkt /api/overview ohnehin pruefen. Es entsteht also KEIN neuer
+        // Zugang, nur ein zweiter Weg zu demselben Bestand.
+        { id: 'faelle',     cap: 'dashboard.view',       group: 'Fallsteuerung',     label: 'Fallübersicht',
+          stichworte: 'fall uebersicht tabelle ampel liste alle faelle bestand prioritaet zuweisung' },
         { id: 'mentoring',  cap: 'mentoring.view',       group: 'Betreuung',     label: 'Ermittler-Betreuung',
           stichworte: 'betreuung mentor anleitung begleitung einarbeitung ermittler' },
         // Betreuungs-Notizen ("Post-its", Build 406). Eigener Nav-Eintrag DIREKT
@@ -1206,16 +1218,16 @@
 
         var kacheln = db.aktiveKacheln(state.viewPrefsWidgets,
                                        state.viewPrefsKatalog);
-        // 'fallampel' traegt den Steckplatz. Das Merkmal steht hier und nicht
-        // im Server-Katalog: es ist eine reine Darstellungsfrage des Browsers.
-        kacheln = kacheln.map(function (w) {
-            var k = {};
-            for (var f in w) {
-                if (Object.prototype.hasOwnProperty.call(w, f)) { k[f] = w[f]; }
-            }
-            k.slot = (w.key === 'fallampel');
-            return k;
-        });
+        // Build 574: KEINE Kachel traegt mehr einen Steckplatz. 'fallampel'
+        // bettete bis hierher die vollstaendige Falltabelle ein - gemessene
+        // 1001 Pixel fuer eine Kachel, also mehr als der halbe Bildschirm fuer
+        // ein Detail. Die Tabelle hat jetzt ihre eigene Sicht ('faelle'), und
+        // die Kachel ist eine Kompaktuebersicht: Ampelring plus die drei
+        // dringendsten Faelle (Festlegung mc 2026-07-30).
+        //
+        // Die Steckplatz-Mechanik BLEIBT im Renderer - sie ist getestet und
+        // kostet nichts. Wer spaeter eine Kachel mit eingebettetem Bauteil
+        // braucht, setzt hier wieder ein slot-Merkmal.
 
         // Je Kachel EIN Abruf, parallel, mit eigenem catch.
         var abrufe = kacheln.map(function (w) {
@@ -1265,23 +1277,9 @@
                         state.charts.push(inst);
                     }
                 },
-                // Steckplatz: die ECHTE Uebersicht in den Kachelrumpf.
-                onSlot: function (key, rumpfEl) {
-                    if (key !== 'fallampel') { return; }
-                    var d = rohdaten.fallampel;
-                    if (!d || d.fehler) { return; }
-                    state.table = ov.renderOverview(rumpfEl, d, {});
-                    // Fall-Fokus aus der Kommandopalette (Build 459): nach dem
-                    // Rendern zur gewaehlten Zeile springen. Danach
-                    // zuruecksetzen, damit ein spaeterer Reload nicht erneut
-                    // springt.
-                    if (state.focusCaseId !== null
-                            && state.focusCaseId !== undefined
-                            && typeof ov.focusCase === 'function') {
-                        ov.focusCase(state.table, state.focusCaseId);
-                        state.focusCaseId = null;
-                    }
-                },
+                // Build 574: der Steckplatz-Rueckruf ist entfallen - keine
+                // Kachel traegt mehr ein eingebettetes Bauteil. Die
+                // vollstaendige Falltabelle steht in der Sicht 'faelle'.
                 // KEIN OPTIMISTISCHES UI: schreiben, dann den ECHTEN Stand neu
                 // holen und daraus zeichnen.
                 onSpeichern: function (nutzlast) {
@@ -3054,6 +3052,60 @@
             });
     }
 
+    // loadFaelle: FALLUEBERSICHT (Build 574).
+    //
+    // Dieselbe Tabelle, dieselbe Quelle (/api/overview) und dieselbe
+    // Renderfunktion (cockpit_overview.renderOverview) wie bisher im
+    // Kachel-Steckplatz - nur mit dem Platz, den eine Tabelle mit einigen
+    // hundert Zeilen braucht. Das Recht prueft der Endpunkt.
+    //
+    // HIER LANDET AUCH DER FALL-SPRUNG der Kommandopalette (Strg-K). Vorher
+    // zielte er auf 'dashboard' und wurde im Steckplatz ausgewertet; mit der
+    // Kompaktkachel gaebe es dort keine Zeile mehr, auf die man springen
+    // koennte.
+    function loadFaelle(mainEl) {
+        mainEl = mainEl || document.getElementById('aiw-main');
+        var ov = (typeof window !== 'undefined')
+            ? window.AIWCockpitOverview : null;
+        if (!ov) {
+            renderError(mainEl, 'Fall-Uebersichts-Modul nicht geladen.');
+            return;
+        }
+        fetchJson('/api/overview').then(function (data) {
+            cleanupView();
+            mainEl.textContent = '';
+            var kopf = document.createElement('h2');
+            kopf.className = 'aiw-pagehead';
+            kopf.textContent = 'Fallübersicht';
+            mainEl.appendChild(kopf);
+            var unter = document.createElement('p');
+            unter.className = 'aiw-pagesub';
+            unter.textContent = (typeof data.count === 'number'
+                ? (data.count + (data.count === 1 ? ' Fall' : ' Fälle'))
+                : '') + ' · vollständiger Bestand'
+                + (data.scope === 'eigene' ? ' im eigenen Umfang' : '');
+            mainEl.appendChild(unter);
+            var rumpf = document.createElement('div');
+            rumpf.className = 'aiw-faelle-tabelle';
+            mainEl.appendChild(rumpf);
+
+            state.table = ov.renderOverview(rumpf, data, {});
+            // Fall-Fokus aus der Kommandopalette (Build 459, hierher verlegt in
+            // Build 574): nach dem Rendern zur gewaehlten Zeile springen und
+            // danach zuruecksetzen, damit ein spaeteres Neuladen nicht erneut
+            // springt.
+            if (state.focusCaseId !== null && state.focusCaseId !== undefined
+                    && typeof ov.focusCase === 'function') {
+                ov.focusCase(state.table, state.focusCaseId);
+                state.focusCaseId = null;
+            }
+        }).catch(function (err) {
+            cleanupView();
+            renderError(mainEl, 'Fallübersicht konnte nicht geladen werden: '
+                + err.message);
+        });
+    }
+
     // loadCapacityPflege: KAPAZITAETSPFLEGE (Build 559).
     //   GET  /api/capacity/stammdaten        — die vier pflegbaren Bestaende
     //                                          (capacity.edit; scope-aware).
@@ -4146,6 +4198,8 @@
         support: 1, mycases: 1, myhistory: 1, policy: 1, integrity: 1,
         audit: 1, promotion: 1, releases: 1, onboarding: 1, personnel: 1,
         crossref: 1, crossfindings: 1, alias: 1, merge: 1,
+        // Build 574: der vollstaendige Fallbestand an seinem neuen Ort.
+        faelle: 1,
         // Build 559: die Eingangsdaten der Kapazitaetsrechnung. Eigener
         // Export neben 'capacity' (dort steht das Ergebnis, hier die
         // Grundlage) — s. view_export_catalog.py.
@@ -4502,6 +4556,8 @@
             loadAnnostats(mainEl);
         } else if (viewId === 'assignment') {
             loadAssignment(mainEl);
+        } else if (viewId === 'faelle') {
+            loadFaelle(mainEl);
         } else if (viewId === 'cases') {
             loadCases(mainEl);
         } else if (viewId === 'calendar') {
@@ -4552,6 +4608,8 @@
             // Aktive Sicht neu laden (kein F5, §11.2/§11.1):
             if (state.activeId === 'dashboard') {
                 loadOverview();
+            } else if (state.activeId === 'faelle') {
+                loadFaelle();
             } else if (state.activeId === 'integrity') {
                 loadIntegrity();   // aktualisiert Sicht UND Banner
             } else if (state.activeId === 'audit') {
@@ -4846,9 +4904,13 @@
                     // Fall-Sprung: zur Uebersicht wechseln und die Zeile
                     // fokussieren (state.focusCaseId wird von loadOverview nach
                     // dem Rendern ausgewertet).
+                    // Build 574: Ziel ist die Sicht 'faelle' und nicht mehr
+                    // der Ueberblick. Dort steht die vollstaendige Tabelle;
+                    // die Kompaktkachel des Ueberblicks zeigt nur noch drei
+                    // Faelle, ein Sprung dorthin ginge meist ins Leere.
                     onSelectCase: function (subjectId) {
                         state.focusCaseId = subjectId;
-                        selectView('dashboard');
+                        selectView('faelle');
                     }
                 });
             }

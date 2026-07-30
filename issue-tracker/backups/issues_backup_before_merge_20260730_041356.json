@@ -1156,40 +1156,6 @@
           "comment": "Importiert aus eintraege_claude_Build573.json"
         }
       ]
-    },
-    {
-      "id": "7ae5c1d8-93f4-4b02-a6d1-4f28e70b95c3",
-      "type": "improvement",
-      "status": "resolved",
-      "priority": "high",
-      "title": "Eigene Sicht 'Fallübersicht' für den vollständigen Fallbestand",
-      "affected_version": "0.8.573",
-      "resolved_in_version": "0.8.574",
-      "reporter": "Alex",
-      "reported_at": "2026-07-30T03:30:00+00:00",
-      "assigned_to": "Claude",
-      "tags": [
-        "Dashboard",
-        "Sichten",
-        "Fallsteuerung"
-      ],
-      "description": "Die vollstaendige Falltabelle war ausschliesslich in die Kachel 'fallampel' eingebettet - die einzige Stelle im Werkzeug, an der sie vorkam. Mit der Umstellung der Kachel auf Kompaktform waeren sie und der Fall-Sprung der Kommandopalette still verschwunden.",
-      "updates": [
-        {
-          "timestamp": "2026-07-30T03:30:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "Build 574: neue Sicht 'faelle' (Gruppe Fallsteuerung, Recht dashboard.view - kein neuer Zugang). Die Kachel zeigt jetzt Ampelring plus drei dringendste Faelle und BENENNT die Reduktion. Der Fall-Sprung zielt auf die neue Sicht. VIEW_CATALOG 42 -> 43; beide Server-Kataloge nachgezogen."
-        },
-        {
-          "timestamp": "2026-07-30T02:13:56.899938+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build574.json"
-        }
-      ]
     }
   ]
 }

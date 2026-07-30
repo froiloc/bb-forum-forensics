@@ -85,8 +85,11 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     // Build 467: 'audit' (Audit-Explorer) haengt ebenfalls an ops.view und steht
     // in der Katalog-Reihenfolge direkt nach 'integrity'.
     // Build 546: 'viewprefs' faehrt IMMER mit (s. Kopf dieser Datei).
+    // Build 574: 'faelle' (Fallübersicht) haengt am selben Recht
+    // 'dashboard.view' wie der Ueberblick und steht in der Katalogfolge in der
+    // Gruppe 'Fallsteuerung' - also direkt nach 'dashboard'.
     expect(ids).toEqual(
-      ["dashboard", "workload", "integrity", "audit", "promotion",
+      ["dashboard", "faelle", "workload", "integrity", "audit", "promotion",
        "viewprefs"]);
   });
 
@@ -159,7 +162,8 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     // Build 546: 41 (neu: 'viewprefs' - Ansicht anpassen, AP-3G/Idee 37).
     // Build 559: 42 (neu: 'capacity_pflege' — Kapazitaetspflege,
     // Pflegeflaeche neben der Auswertung 'capacity').
-    expect(api.VIEW_CATALOG.length).toBe(42);
+    // Build 574: 43 (neu: 'faelle' — Fallübersicht).
+    expect(api.VIEW_CATALOG.length).toBe(43);
   });
 
   // CN-QUERFUND (Build 478) --------------------------------------------------
@@ -231,7 +235,7 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     expect(api.visibleViews({ "assignment.edit": "alle" }).map((x) => x.id))
       .toEqual(["assignment", "cases", "viewprefs"]);
     expect(api.visibleViews({ "dashboard.view": "eigene" }).map((x) => x.id))
-      .toEqual(["dashboard", "viewprefs"]);
+      .toEqual(["dashboard", "faelle", "viewprefs"]);
   });
 
   // CN03c (Build 386) --------------------------------------------------------
@@ -278,7 +282,7 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
       .toEqual(["templates", "doctemplates", "modules", "viewprefs"]);
     // Ohne das Recht ist die Sicht unsichtbar (kein Leak in die Navigation).
     expect(api.visibleViews({ "dashboard.view": "alle" }).map((x) => x.id))
-      .toEqual(["dashboard", "viewprefs"]);
+      .toEqual(["dashboard", "faelle", "viewprefs"]);
   });
 
   // CN03f (Build 425) --------------------------------------------------------
@@ -367,8 +371,11 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     const items = nav.querySelectorAll(".aiw-navitem");
     // Build 546: 'viewprefs' kommt in der Gruppe 'Persoenlich' hinzu (dort
     // steht bereits 'mycases') -> weiterhin 2 Gruppen, aber 3 Eintraege.
-    expect(groups.length).toBe(2); // Ueberblick, Persoenlich
-    expect(items.length).toBe(3);
+    // Build 574: DREI Gruppen. Mit 'dashboard.view' kommt jetzt auch
+    // 'faelle' mit, und die sitzt in 'Fallsteuerung'.
+    expect(groups.length).toBe(3); // Ueberblick, Fallsteuerung, Persoenlich
+    // Vier Eintraege: dashboard, faelle, mycases, viewprefs.
+    expect(items.length).toBe(4);
 
     // Aktive Sicht markiert.
     const active = nav.querySelector(".aiw-navitem.active");
@@ -378,7 +385,9 @@ describe("cockpit.js — policy-getriebene Navigation (Build 347)", () => {
     const tags = Array.from(nav.querySelectorAll(".aiw-scopetag")).map(
       (t) => t.textContent
     );
-    expect(tags.sort()).toEqual(["alle", "eigene"]);
+    // Build 574: ZWEIMAL 'alle' — 'dashboard' und 'faelle' haengen beide am
+    // Recht 'dashboard.view' und tragen deshalb beide dessen Scope-Marke.
+    expect(tags.sort()).toEqual(["alle", "alle", "eigene"]);
   });
 
   // CN11 -------------------------------------------------------------------

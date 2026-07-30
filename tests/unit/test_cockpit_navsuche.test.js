@@ -206,7 +206,8 @@ describe("Navigationssuche (Build 569)", () => {
       .filter((v) => !v.stichworte || String(v.stichworte).trim() === "")
       .map((v) => v.id);
     expect(ohne).toEqual([]);
-    expect(api.VIEW_CATALOG.length).toBe(42);
+    // Build 574: 43 (neu: 'faelle' — Fallübersicht).
+    expect(api.VIEW_CATALOG.length).toBe(43);
   });
 
   // NS11 --------------------------------------------------------------------

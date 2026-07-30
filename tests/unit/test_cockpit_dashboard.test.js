@@ -151,24 +151,44 @@ describe("cockpit_dashboard.js — Auswahl und Hinweise (Build 547)", () => {
 
 describe("cockpit_dashboard.js — Reduzierer (Build 547)", () => {
   // DB04 ---------------------------------------------------------------------
-  it("DB04: Fall-Uebersicht zaehlt, benennt Unbekanntes, behauptet keine Reduktion", () => {
+  it("DB04: Fall-Uebersicht zaehlt, benennt Unbekanntes UND benennt die Reduktion", () => {
     const D = _api();
     const m = D.reduceFallampel({
       scope: "alle",
       count: 4,
       cases: [
-        { ampel: "rot" }, { ampel: "gelb" }, { ampel: "gruen" },
-        { ampel: "violett" },
+        { ampel: "rot", username: "r1", priority: 1 },
+        { ampel: "gelb", username: "g1", priority: 2 },
+        { ampel: "gruen", username: "n1", priority: 3 },
+        { ampel: "violett", username: "v1", priority: 4 },
       ],
     });
     expect(m.kopf).toBe("4");
     expect(m.unterzeile).toContain("1 rot");
     // Ein unbekannter Ampelwert wird NICHT still unter 'gruen' verbucht.
     expect(m.unterzeile).toContain("1 ohne Einstufung");
-    // Die Kachel bettet die volle Tabelle ein -> KEIN Reduktionshinweis.
-    expect(m.hinweis).toBe("");
-    expect(m.gesamt).toBe(null);
-    expect(D.reduceFallampel({ count: 0, cases: [] }).leer).toBe(true);
+
+    // BUILD 574 - DIE ERWARTUNG HAT SICH UMGEKEHRT, und zwar aus einem Grund:
+    // bis Build 573 bettete diese Kachel die VOLLSTAENDIGE Falltabelle ein und
+    // schnitt daher nichts ab; ein Reduktionshinweis waere eine Behauptung
+    // ohne Sachverhalt gewesen (genau das prueft die alte Fassung dieser
+    // Zeile). Seit die Tabelle ihre eigene Sicht 'faelle' hat und die Kachel
+    // nur noch die drei dringendsten Faelle zeigt, SCHNEIDET sie ab - und
+    // dann MUSS der Hinweis erscheinen, sonst saehe ein Ausschnitt wie ein
+    // vollstaendiges Bild aus. Die Grundregel ist unveraendert; nur der
+    // Sachverhalt, auf den sie trifft, ist ein anderer.
+    expect(m.gesamt).toBe(4);
+    expect(m.zeilen.length).toBe(3);
+    expect(m.hinweis).toBe("3 von 4 angezeigt");
+    // Sortiert nach Ampel, dann Prioritaet — dieselbe Ordnung wie bei den
+    // eigenen Auftraegen. Dasselbe Wort darf nicht zweimal verschieden
+    // sortieren.
+    expect(m.zeilen.map((z) => z.stufe)).toEqual(["rot", "gelb", "gruen"]);
+
+    const leer = D.reduceFallampel({ count: 0, cases: [] });
+    expect(leer.leer).toBe(true);
+    // Ohne Faelle gibt es auch nichts abzuschneiden.
+    expect(leer.hinweis).toBe("");
   });
 
   // DB05 ---------------------------------------------------------------------

@@ -156,16 +156,38 @@
         // Unbekannte Ampelwerte werden GENANNT statt stillschweigend unter
         // 'grün' verbucht.
         if (z.sonst) { teile.push(z.sonst + ' ohne Einstufung'); }
-        // 'gesamt' BLEIBT null, und das ist kein Versehen: 'gesamt' ist die
-        // Grundgesamtheit der ZEILENLISTE, und diese Kachel hat keine — sie
-        // bettet die vollstaendige Tabelle ein. Mit 'gesamt: count' haette
-        // modell() den Hinweis "0 von 3 angezeigt" erzeugt und damit eine
-        // Reduktion behauptet, die gar nicht stattfindet. (Beim ersten
-        // Probelauf ist genau das passiert.)
+
+        // BUILD 574 - AUS DER TABELLENKACHEL WIRD EINE KOMPAKTUEBERSICHT.
+        //
+        // Bis hierher bettete diese Kachel die VOLLSTAENDIGE Falltabelle ein
+        // und schnitt daher nichts ab; 'gesamt' blieb bewusst null, damit
+        // modell() keinen Reduktionshinweis erzeugt, dem keine Reduktion
+        // entspricht. Diese Begruendung ist mit der Kompaktform ERLEDIGT:
+        // die Kachel zeigt jetzt die drei dringendsten Faelle von allen
+        // (Festlegung mc 2026-07-30), sie SCHNEIDET also ab - und dann MUSS
+        // der Hinweis '3 von 248 angezeigt' erscheinen, sonst saehe ein
+        // Ausschnitt wie ein vollstaendiges Bild aus (Grundregel 1).
+        //
+        // Die vollstaendige Tabelle steht in der Sicht 'faelle'.
+        //
+        // 'Dringlichkeit' ist dieselbe Ordnung wie bei den eigenen Auftraegen:
+        // Ampel zuerst, bei gleicher Ampel die Prioritaet. Zwei Kacheln mit
+        // demselben Wort duerfen nicht verschieden sortieren.
+        var dringend = faelle.slice().sort(function (a, b) {
+            var r = ampelRang(a.ampel) - ampelRang(b.ampel);
+            if (r !== 0) { return r; }
+            return zahl(a.priority) - zahl(b.priority);
+        });
         return modell({
             kopf: String(zahl(data.count)),
             unterzeile: teile.join(' · '),
-            zeilen: [], gesamt: null,
+            grundlage: faelle.length > MAX_ZEILEN
+                ? 'nach Ampel und Priorität' : '',
+            zeilen: dringend.slice(0, MAX_ZEILEN).map(function (c) {
+                return { text: (c.username || ('Fall ' + c.subject_id)),
+                         stufe: c.ampel };
+            }),
+            gesamt: faelle.length,
             leer: faelle.length === 0
         });
     }

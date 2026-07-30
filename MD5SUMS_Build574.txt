@@ -1,0 +1,10 @@
+fccf19d1a3f096a49fb8d8f341bff3eb  build.json
+0d9797b9d6f94b16e46e02a6443d86e0  management/server/static/cockpit.js
+8e898b072f078fab29710dece908fc1f  management/server/static/cockpit_dashboard.js
+dbd7fd1987e9cddeed6ff60cead5d5a3  management/server/static/cockpit.css
+a54e7987456e0f3dbef36f6b317cfaf8  management/viewprefs/viewpref_katalog.py
+44f6e4fb89ebb72352e1e9d7584f0543  management/export/view_export_catalog.py
+7101dd7e961c7161f9e03f24b5d6f2b2  tests/unit/test_cockpit_nav.test.js
+45fe39b68e3fb7970d7498edcfa0d960  tests/unit/test_cockpit_navsuche.test.js
+0a952b08030af87057ac0c3f81a686f6  tests/unit/test_cockpit_dashboard.test.js
+ee8ebfe53087cb18d7eeec2eee87e295  issue-tracker/eintraege_claude_Build574.json

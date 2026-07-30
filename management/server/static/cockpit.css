@@ -3242,3 +3242,10 @@ button.aiw-navgroup:focus-visible {
 @media (min-width: 1900px) {
     .aiw-db-raster { grid-auto-rows: 300px; }
 }
+
+/* --- Build 574: Sicht "Fallübersicht" ----------------------------------- */
+/* Die Tabelle bekommt hier den Platz, den sie in der Kachel nie hatte
+   (gemessen: 1001 Pixel für eine Kachel, also mehr als der halbe Bildschirm).
+   Kein Deckel und kein eigener Bildlauf — die Sicht selbst scrollt, seit
+   Build 567 in ihrer eigenen Fläche. */
+.aiw-faelle-tabelle { margin-top: 10px; }
