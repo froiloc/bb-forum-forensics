@@ -109,15 +109,15 @@ SPUREN = {
 # coordinator.db. mc hat den Befehl ausgefuehrt, 'bereits aktuell' gelesen und
 # nichts veraendert vorgefunden. Ein Werkzeug, das den falschen Weg weist, ist
 # schlimmer als eines, das schweigt.
+# Build 587: evidence und assets wendet dieses Werkzeug jetzt SELBST an
+# (ueber den MigrationRunner, der das massgebliche Register in der Datenbank
+# schreibt). Der Verweis auf die Flotten-Schicht ist entfallen - sie ist auf
+# dieser Anlage nicht in Betrieb, und migration.db existiert nicht.
+# Fuer coordinator.db bleibt der eigene Einstiegspunkt zustaendig: er baut
+# zusaetzlich das Audit-Log an (deployed_by) und ist der eingefuehrte Weg.
 BEFEHL = {
     "coordinator":
         "python3 -m management.migrate --deployed-by <KENNUNG>",
-    "evidence":
-        "python3 -m management.migration_fleet.migration_fleet_admin companion"
-        " --target evidence:{pfad}:{uid}",
-    "assets":
-        "python3 -m management.migration_fleet.migration_fleet_admin companion"
-        " --target assets:{pfad}:{uid}",
 }
 
 # Die fuenf Skripte der templates.db, in Anwendungsreihenfolge.
@@ -251,6 +251,41 @@ def templates_anwenden(pfad: Path, changed_by: str) -> List[str]:
     finally:
         con.close()
     return meldungen
+
+
+def fall_anwenden(pfad: Path, art: str) -> List[str]:
+    """
+    Wendet die Migrationen einer Fall-Datenbank an — ueber den vorhandenen
+    MigrationRunner (Build 587).
+
+    WARUM DIREKT UND NICHT UEBER DIE FLOTTEN-SCHICHT: die Flotte
+    (migration_fleet_admin) fuehrt zusaetzlich Katalog, Inventar und ein
+    Protokoll in einer eigenen Datei migration.db. Die ist auf dieser Anlage
+    NIE in Betrieb genommen worden - weder existiert sie, noch steht
+    paths.migration_db in der config.yaml. Ich habe in Build 586 trotzdem
+    dorthin verwiesen; der Befehl brach ab, und mc stand vor einer Datei, von
+    der er noch nie gehoert hatte. Das war mein Fehler.
+
+    Massgeblich ist ohnehin nicht die Flotte, sondern das Register IN der
+    jeweiligen Datenbank (schema_migrations) — so steht es im
+    Datenmigrationsleitfaden: 'migration.db ist abgeleitet und
+    rekonstruierbar (kein Single Point of Failure)'. Genau dieses Register
+    schreibt der MigrationRunner. Wer spaeter die Flotte in Betrieb nimmt,
+    kann ihren Stand daraus wiederherstellen.
+    """
+    from management.migrations.runner import MigrationRunner, discover
+    paket = __import__("management.migrations.%s" % art, fromlist=["x"])
+    module = discover(paket)
+
+    con = sqlite3.connect(str(pfad))
+    try:
+        angewandt = MigrationRunner(con, module).run()
+    finally:
+        con.close()
+    if not angewandt:
+        return ["  %-22s nichts anzuwenden" % pfad.name]
+    return ["  %-22s angewandt: %s"
+            % (pfad.name, ", ".join("v%03d" % v for v in angewandt))]
 
 
 def _kurz(res) -> str:
@@ -437,7 +472,25 @@ def main(argv=None) -> int:
             print("  ABGEBROCHEN: %s" % exc, file=sys.stderr)
             fehler += 1
 
-    andere = [d for d in offene_dbs if d != "templates"]
+    # --- Fall-Datenbanken: direkt ueber den MigrationRunner ---------------
+    for art in ("evidence", "assets"):
+        if art not in offene_dbs:
+            continue
+        pfad = data_dir / art / ("%s_%s.db" % (art, args.subject_id))
+        if not pfad.is_file():
+            continue
+        if not args.no_backup:
+            print("  Sicherung: %s" % sicherung(pfad).name)
+        try:
+            for zeile in fall_anwenden(pfad, art):
+                print(zeile)
+        except Exception as exc:                            # noqa: BLE001
+            print("  ABGEBROCHEN (%s): %s" % (pfad.name, exc),
+                  file=sys.stderr)
+            fehler += 1
+
+    andere = [d for d in offene_dbs if d not in ("templates", "evidence",
+                                                 "assets")]
     if andere:
         print()
         print("  Fuer %s ist ein eigener Weg zustaendig (er fuehrt das "

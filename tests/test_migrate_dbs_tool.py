@@ -267,16 +267,147 @@ class LageEindeutigTests(unittest.TestCase):
     # LG05 ---------------------------------------------------------------
     def test_lg05_zustaendiger_befehl(self):
         """
+        Die Geschichte dieser Pruefung in zwei Schritten:
+
         Build 585 nannte fuer evidence/assets 'python -m management.migrate' -
-        das behandelt aber NUR coordinator.db. mc hat den Befehl ausgefuehrt,
-        'bereits aktuell' gelesen und nichts veraendert vorgefunden.
+        das behandelt aber NUR coordinator.db. Build 586 korrigierte auf die
+        Flotten-Schicht - die auf der Anlage NIE in Betrieb genommen wurde
+        (migration.db fehlt). Build 587 zieht die Folgerung: fuer evidence und
+        assets wendet das Werkzeug SELBST an, also braucht es dort gar keinen
+        fremden Befehl mehr.
+
+        Geblieben ist nur coordinator.db mit ihrem eingefuehrten Weg.
         """
-        self.assertIn("migration_fleet", mdt.BEFEHL["evidence"])
-        self.assertIn("companion", mdt.BEFEHL["evidence"])
-        self.assertIn("migration_fleet", mdt.BEFEHL["assets"])
-        # Und fuer coordinator weiterhin der richtige.
+        self.assertEqual(sorted(mdt.BEFEHL), ["coordinator"])
         self.assertIn("management.migrate", mdt.BEFEHL["coordinator"])
         self.assertNotIn("migration_fleet", mdt.BEFEHL["coordinator"])
+
+
+class FallAnwendenTests(unittest.TestCase):
+    """
+    Build 587: die Fall-Datenbanken werden DIREKT ueber den MigrationRunner
+    nachgezogen.
+
+    Anlass: Build 586 verwies fuer evidence/assets auf die Flotten-Schicht
+    (migration_fleet_admin). Die ist auf der Anlage NIE in Betrieb genommen
+    worden - migration.db existiert nicht und steht nicht in der config.yaml.
+    Der Befehl brach ab, und mc stand vor einer Datei, von der er noch nie
+    gehoert hatte. Massgeblich ist ohnehin das Register IN der Datenbank
+    (schema_migrations), und genau das schreibt der MigrationRunner.
+
+    FA01 - evidence: die beiden fehlenden Tabellen entstehen, Register wird
+           geschrieben.
+    FA02 - IDEMPOTENZ: ein zweiter Lauf wendet nichts mehr an.
+    FA03 - vor der Anwendung entsteht eine Sicherung (ausser --no-backup).
+    FA04 - eine UNGUELTIGE Datenbank wird abgewiesen, ohne Teilzustand.
+    FA05 - der Verweis auf die nicht betriebene Flotten-Schicht ist entfallen.
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+        self.data = Path(self._tmp) / "data"
+        for unter in ("evidence", "assets", "forensic"):
+            (self.data / unter).mkdir(parents=True)
+
+    def _evidence(self):
+        pfad = self.data / "evidence" / "evidence_1488.db"
+        con = sqlite3.connect(str(pfad))
+        con.executescript(
+            "CREATE TABLE annotations (id INTEGER PRIMARY KEY, "
+            "  page_url TEXT NOT NULL);"
+            "CREATE TABLE reports (id INTEGER PRIMARY KEY, title TEXT);"
+            "CREATE TABLE report_blocks (block_id TEXT PRIMARY KEY, "
+            "  report_id INTEGER);")
+        con.commit()
+        con.close()
+        return pfad
+
+    def _tabellen(self, pfad):
+        con = sqlite3.connect(str(pfad))
+        try:
+            return {r[0] for r in con.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'")}
+        finally:
+            con.close()
+
+    # FA01 ---------------------------------------------------------------
+    def test_fa01_fehlende_tabellen_entstehen(self):
+        pfad = self._evidence()
+        self.assertNotIn("evidence_audit_log", self._tabellen(pfad))
+        code = mdt.main(["--data-dir", str(self.data), "--subject-id", "1488",
+                         "--apply", "--no-backup"])
+        self.assertEqual(code, 0)
+        tabellen = self._tabellen(pfad)
+        # evidence_audit_log ist die Hash-Kette der Beweismitteldatenbank -
+        # kein Beschleuniger, sondern ein forensisches Kernstueck.
+        self.assertIn("evidence_audit_log", tabellen)
+        self.assertIn("annotation_tatzeit", tabellen)
+        self.assertIn("schema_migrations", tabellen)
+        con = sqlite3.connect(str(pfad))
+        versionen = [r[0] for r in con.execute(
+            "SELECT version FROM schema_migrations ORDER BY version")]
+        con.close()
+        self.assertEqual(versionen, [1, 2, 3])
+
+    # FA02 ---------------------------------------------------------------
+    def test_fa02_zweiter_lauf_wendet_nichts_an(self):
+        self._evidence()
+        mdt.main(["--data-dir", str(self.data), "--subject-id", "1488",
+                  "--apply", "--no-backup"])
+        # Der zweite Lauf sieht 'aktuell' und tut nichts.
+        self.assertEqual(
+            mdt.main(["--data-dir", str(self.data), "--subject-id", "1488",
+                      "--apply", "--no-backup"]), 0)
+
+    # FA03 ---------------------------------------------------------------
+    def test_fa03_sicherung_vor_der_anwendung(self):
+        self._evidence()
+        mdt.main(["--data-dir", str(self.data), "--subject-id", "1488",
+                  "--apply"])
+        baks = list((self.data / "evidence").glob("*.bak"))
+        self.assertEqual(len(baks), 1)
+        # Die Sicherung ist der Stand VORHER: ohne die neuen Tabellen.
+        self.assertNotIn("evidence_audit_log", self._tabellen(baks[0]))
+
+    # FA04 ---------------------------------------------------------------
+    def test_fa04_ungueltige_db_wird_abgewiesen(self):
+        """
+        Die Baseline prueft, ob ueberhaupt eine fachliche Tabelle da ist. Eine
+        leere Datei ist keine gueltige Fall-Datenbank - und darf nicht
+        stillschweigend zu einer gemacht werden.
+        """
+        pfad = self.data / "assets" / "assets_1488.db"
+        sqlite3.connect(str(pfad)).close()
+        with self.assertRaises(Exception):
+            mdt.fall_anwenden(pfad, "assets")
+        # KEIN Teilzustand: das Register KANN bereits angelegt sein
+        # (ensure_registry laeuft vor der Transaktion) - aber es darf KEINE
+        # Version verzeichnet sein. Genau das ist die Zusicherung: entweder
+        # eine Migration gilt vollstaendig, oder gar nicht.
+        con = sqlite3.connect(str(pfad))
+        try:
+            versionen = [r[0] for r in con.execute(
+                "SELECT version FROM schema_migrations")]
+        except sqlite3.OperationalError:
+            versionen = []
+        finally:
+            con.close()
+        self.assertEqual(versionen, [])
+        # Und die fachlichen Tabellen sind nicht entstanden.
+        self.assertNotIn("annotation_tatzeit", self._tabellen(pfad))
+
+    # FA05 ---------------------------------------------------------------
+    def test_fa05_kein_verweis_auf_die_flotte(self):
+        quelle = (_WURZEL / "tools" / "migrate-dbs.py").read_text(
+            encoding="utf-8")
+        # In BEFEHL darf die Flotte nicht mehr auftauchen - sie ist auf der
+        # Anlage nicht in Betrieb (migration.db fehlt).
+        self.assertNotIn("evidence", mdt.BEFEHL)
+        self.assertNotIn("assets", mdt.BEFEHL)
+        self.assertIn("coordinator", mdt.BEFEHL)
+        # Der Grund steht im Quelltext, damit ihn niemand versehentlich
+        # zurueckbaut.
+        self.assertIn("migration.db", quelle)
 
 
 if __name__ == "__main__":

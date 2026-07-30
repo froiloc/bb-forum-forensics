@@ -2108,236 +2108,36 @@
     {
       "id": "e91d3b57-6a04-42f8-bc19-73f2506ea8d1",
       "type": "bug",
-      "status": "resolved",
+      "status": "open",
       "priority": "high",
       "severity": "major",
       "title": "evidence_1488.db fehlt die Hash-Kette (evidence_audit_log)",
       "affected_version": "0.8.586",
-      "resolved_in_version": "0.8.587",
-      "reported_at": "2026-07-30T21:30:00+00:00",
       "reporter": "Claude",
+      "reported_at": "2026-07-30T21:30:00+00:00",
       "assigned_to": "Alex",
       "tags": [
         "Betrieb",
         "Migration",
         "Beweissicherung"
       ],
+      "prerequisites": "Belegt durch '.tables' der Anlage am 2026-07-30.",
+      "description": "In evidence_1488.db fehlen die Tabellen annotation_tatzeit (m002) und evidence_audit_log (m003). Letztere ist die Hash-Kette der Beweismitteldatenbank - sie ist nicht bloss ein Beschleuniger. Die Migrationen sind sachlich nicht gelaufen; es fehlt nicht nur der Registereintrag.",
+      "expected_behavior": "Ueber den companion der Flotten-Schicht nachziehen: erst ohne --confirm (Vorpruefung und Plan), dann mit --confirm --backup-dir. Beide Migrationen sind als 'additive' deklariert.",
       "updates": [
         {
-          "timestamp": "2026-07-30T23:00:00+00:00",
+          "timestamp": "2026-07-30T21:30:00+00:00",
           "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "Build 587: tools/migrate-dbs.py --subject-id <uid> --apply zieht die Fall-Datenbanken jetzt SELBST nach, ueber den MigrationRunner (schreibt schema_migrations). Der Verweis auf die Flotten-Schicht ist entfallen - sie ist auf der Anlage nicht in Betrieb. Nachgemessen: v001-v003 angewandt, beide Tabellen entstehen, zweiter Lauf tut nichts. FA01-FA05."
+          "action": "comment",
+          "comment": "Betrifft vermutlich weitere Fall-Datenbanken - der Bericht mit --subject-id zeigt es je Fall."
+        },
+        {
+          "timestamp": "2026-07-30T17:28:12.864890+00:00",
+          "author": "merge-tool",
+          "action": "comment",
+          "comment": "Importiert aus eintraege_claude_Build586.json"
         }
       ]
-    },
-    {
-      "id": "2c9e0f41-58d7-4b13-a0c6-71e34f9d2085",
-      "type": "bug",
-      "status": "open",
-      "priority": "high",
-      "severity": "major",
-      "title": "Neue Fall-Datenbanken starten ohne Hash-Kette - Schritt im Ablauf fehlt",
-      "reporter": "Alex",
-      "assigned_to": "Alex",
-      "tags": [
-        "Prepper",
-        "Migration",
-        "Beweissicherung",
-        "Ablauf"
-      ],
-      "prerequisites": "Belegt am 2026-07-30: eine am selben Tag frisch mit dem Prepper erzeugte evidence_<uid>.db enthaelt weder annotation_tatzeit noch evidence_audit_log. Im Prepper-Repository finden sich beide Begriffe nicht.",
-      "description": "Es ist KEIN Prepper-Fehler im engeren Sinn: m001_baseline haelt ausdruecklich fest, dass die fachlichen Tabellen aus dem Prepper stammen und die Migrationen darauf aufbauen. annotation_tatzeit (m002) und evidence_audit_log (m003) sind also bewusst NICHT Teil des Grundschemas. Die Luecke liegt im ABLAUF: nach dem Anlegen einer Fall-Datenbank laeuft niemand die Migrationen. Jeder neue Fall startet dadurch ohne Hash-Kette in der Beweismitteldatenbank.",
-      "expected_behavior": "Entscheidung noetig, WER den Schritt uebernimmt: (a) der Prepper legt die Tabellen mit an - dann gehoeren sie ins Grundschema und m002/m003 werden fuer neue DBs zu No-ops; (b) die Fallanlage ruft nach dem Erzeugen tools/migrate-dbs.py --subject-id <uid> --apply auf; (c) der Webserver prueft beim Start und WARNT (Ticket 7b3c02e8) - faengt es auf, behebt es aber nicht. Empfehlung: (b) sofort, (a) als saubere Loesung.",
-      "actual_behavior": "Jede neue Fall-Datenbank ist ab Werk unvollstaendig; es faellt nur auf, wenn jemand nachsieht.",
-      "updates": [
-        {
-          "timestamp": "2026-07-30T23:00:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "Von mc entdeckt, weil eine taggleich erzeugte Datenbank denselben Mangel zeigte wie die alte. Betrifft damit ALLE Faelle, nicht nur 1488."
-        },
-        {
-          "timestamp": "2026-07-30T19:04:48.367963+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build587.json"
-        }
-      ],
-      "reported_at": "2026-07-30T23:00:00+00:00",
-      "affected_version": "0.8.587"
-    },
-    {
-      "id": "5d81a0c7-49f2-4e36-b7a5-0c93e28d461f",
-      "type": "feature_request",
-      "status": "open",
-      "priority": "high",
-      "severity": "major",
-      "title": "Schritt 1: block_type + block_data an report_modules (Migration)",
-      "target_version": "0.8.588",
-      "reporter": "Alex",
-      "assigned_to": "Claude",
-      "related_to": [
-        "64edd18a-e5b2-4da8-9d8c-53714207e73d",
-        "3d9016fe-7b24-42a5-88c1-05e73fa2b9d7"
-      ],
-      "tags": [
-        "Editor.js",
-        "Bausteinmodule",
-        "Migration",
-        "Hauptaufgabe"
-      ],
-      "description": "Ein Baustein ist heute IMMER ein Absatz: report_modules fuehrt keinen Blocktyp, und body ist Freitext. Fuer Tabellen-Bausteine (Schluessel-Wert-Paare, mc) muss der Baustein Blocktyp UND Blockdaten fuehren. Mit zu beheben: in report_editor.js verliert ein Baustein mit anderem Typ als paragraph seinen Inhalt (Ticket 3d9016fe).",
-      "expected_behavior": "Additive Migration auf templates.db, bestehende body-Inhalte verlustfrei als paragraph-Block uebernommen. Die Vorschau aus Build 577 ist darauf vorbereitet (blockAus nutzt block_type/block_data unveraendert, sobald vorhanden - BV03).",
-      "updates": [
-        {
-          "timestamp": "2026-07-30T23:00:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "Der EINZIGE Schritt der Reihe mit Datenrisiko - deshalb bewusst nach der Vorschau eingeplant."
-        },
-        {
-          "timestamp": "2026-07-30T19:04:48.368075+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build587.json"
-        }
-      ],
-      "reported_at": "2026-07-30T23:00:00+00:00",
-      "affected_version": "0.8.587"
-    },
-    {
-      "id": "8f2b64d9-0a51-4c78-93e6-15d07be4a3c2",
-      "type": "feature_request",
-      "status": "open",
-      "priority": "high",
-      "title": "Schritt 2: Editor.js als Eingabe im Management + Rohmodus",
-      "target_version": "0.8.589",
-      "reporter": "Alex",
-      "assigned_to": "Claude",
-      "related_to": [
-        "5d81a0c7-49f2-4e36-b7a5-0c93e28d461f"
-      ],
-      "tags": [
-        "Editor.js",
-        "Bausteinmodule",
-        "Hauptaufgabe"
-      ],
-      "description": "Vorschlag mc: Editor.js als WYSIWYG-Haupteingabe, dazu ein Alternativmodus mit Textarea und JSON-Syntaxpruefung fuer Feinarbeit. Damit entfaellt der Bau einer eigenen Eingabemaske.",
-      "expected_behavior": "Umschaltbar. Beim Wechsel vom Roh- in den Komfortmodus wird VERGLICHEN und werden Unterschiede GEMELDET, statt sie zu schlucken: Editor.js reicht block_data an das jeweilige Werkzeug durch, und was ein Werkzeug nicht kennt, ueberlebt ein save() moeglicherweise nicht. Praezedenzfall: UnknownBlock in html_renderer.py rendert einen sichtbaren Platzhalter statt still zu verwerfen. Rohmodus: Zeile/Spalte bei Fehlern, Klammerbilanz, Formatieren-Knopf. Syntax-Highlighting braucht eine weitere Bibliothek und ist ein eigenes, spaeteres Ticket.",
-      "updates": [
-        {
-          "timestamp": "2026-07-30T23:00:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "Setzt Schritt 1 voraus."
-        },
-        {
-          "timestamp": "2026-07-30T19:04:48.368123+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build587.json"
-        }
-      ],
-      "reported_at": "2026-07-30T23:00:00+00:00",
-      "affected_version": "0.8.587"
-    },
-    {
-      "id": "b47ce019-6d38-4a02-95f1-8e2064cba735",
-      "type": "feature_request",
-      "status": "open",
-      "priority": "medium",
-      "title": "Schritt 3: Editor.js-Vorschau und -Eingabe fuer Dokumentvorlagen",
-      "reporter": "Alex",
-      "assigned_to": "Claude",
-      "related_to": [
-        "8f2b64d9-0a51-4c78-93e6-15d07be4a3c2"
-      ],
-      "tags": [
-        "Editor.js",
-        "Dokumentvorlagen",
-        "Hauptaufgabe"
-      ],
-      "description": "Wunsch mc: was fuer die Bausteinmodule gebaut wird, soll anschliessend auch in der Sicht 'Dokumentvorlagen' zur Verfuegung stehen. Dort liegen die Bloecke bereits als blocks_json vor - die Vorschau kann sie ohne Umformung anzeigen.",
-      "updates": [
-        {
-          "timestamp": "2026-07-30T23:00:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "Nach Schritt 1 und 2."
-        },
-        {
-          "timestamp": "2026-07-30T19:04:48.368200+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build587.json"
-        }
-      ],
-      "reported_at": "2026-07-30T23:00:00+00:00",
-      "affected_version": "0.8.587"
-    },
-    {
-      "id": "9a05fd28-4c61-4b7e-a3d9-62f18e07c5b4",
-      "type": "improvement",
-      "status": "open",
-      "priority": "medium",
-      "title": "Uebersicht ueber ALLE Faelle im Migrationsbericht",
-      "reporter": "Claude",
-      "assigned_to": "Claude",
-      "tags": [
-        "Migration",
-        "Betrieb"
-      ],
-      "description": "tools/migrate-dbs.py prueft Fall-Datenbanken nur mit --subject-id, also einen Fall je Aufruf. Nach dem Befund zu den neuen Datenbanken (Ticket 2c9e0f41) ist absehbar, dass MEHRERE Faelle betroffen sind.",
-      "expected_behavior": "Ein Schalter --alle-faelle durchlaeuft data/evidence/ und data/assets/ und meldet je Fall die Lage. Ohne --apply bleibt es eine Trockenuebung.",
-      "updates": [
-        {
-          "timestamp": "2026-07-30T23:00:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "Kleiner Zusatz, sobald die Hauptaufgabe Luft laesst."
-        },
-        {
-          "timestamp": "2026-07-30T19:04:48.368242+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build587.json"
-        }
-      ],
-      "reported_at": "2026-07-30T23:00:00+00:00",
-      "affected_version": "0.8.587"
-    },
-    {
-      "id": "ac36e10b-7f45-4d29-8b0e-52719c4f3ea6",
-      "type": "improvement",
-      "status": "open",
-      "priority": "low",
-      "title": "Acht Altbausteine ohne module_key nachtragen",
-      "reporter": "Alex",
-      "assigned_to": "Alex",
-      "tags": [
-        "Bausteinmodule",
-        "Datenpflege"
-      ],
-      "description": "Seit Build 564/565 laesst sich die Kennung eines Bausteins ohne module_key in der Maske nachtragen. Acht Altzeilen sind noch offen und muessen einzeln angefasst werden - eine Sammelvergabe gibt es bewusst nicht, weil die Kennung nach der Vergabe endgueltig ist (mc).",
-      "updates": [
-        {
-          "timestamp": "2026-07-30T23:00:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "Merkposten aus Build 565, hier zusammengefasst, damit er im neuen Chat nicht verlorengeht."
-        },
-        {
-          "timestamp": "2026-07-30T19:04:48.368280+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eintraege_claude_Build587.json"
-        }
-      ],
-      "reported_at": "2026-07-30T23:00:00+00:00",
-      "affected_version": "0.8.587"
     }
   ]
 }
