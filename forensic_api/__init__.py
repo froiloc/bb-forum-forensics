@@ -320,6 +320,12 @@ class ForensicApi:
             "/_forensic/report_editor.js",      # B6 Phase 2 (umbenannt von editor.js)
             "/_forensic/report.css",            # B6 Phase 4 Stylesheet
             "/_forensic/placeholder_chips.js",  # B6 Phase 4 Chips
+            # Build 576: die Chip-Stile stehen nicht mehr in report.css,
+            # sondern in einer eigenen Datei - Modul und Stil bilden ein
+            # teilbares Paar, weil die Management-Oberflaeche sie ab
+            # Build 577 mitbenutzt. OHNE DIESE ZEILE waere der Chip im
+            # Berichtseditor unformatiert (404 auf das Stylesheet).
+            "/_forensic/placeholder_chips.css",  # Build 576: Chip-Stile
             # Build 493: drei bislang UNGEROUTETE Module nachgetragen (Server
             # lieferte 404 -> Features im Browser still tot). Beleg: Server-
             # Test tests/test_report_assets_routing.py.

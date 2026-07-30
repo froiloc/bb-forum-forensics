@@ -130,6 +130,9 @@ _EDITOR_HTML = """\
     <title>Bericht \u00b7 {subject} \u00b7 ID: {subject_id}</title>
     <link rel="stylesheet" href="/_forensic/userinfo.css">
     <link rel="stylesheet" href="/_forensic/report.css">
+    <!-- Build 576: Chip-Stile aus report.css herausgeloest, damit die
+         Management-Oberflaeche sie mitbenutzen kann. -->
+    <link rel="stylesheet" href="/_forensic/placeholder_chips.css">
   </head>
   <body id="report-editor-body"
         data-subject-id="{subject_id}"

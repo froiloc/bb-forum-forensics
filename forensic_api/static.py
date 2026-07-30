@@ -80,6 +80,17 @@ _RESOURCES: dict[str, tuple[str, str, Path]] = {
     "/_forensic/debug_events.js": ("debug_events.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
     # B6 Phase 4: Fenster-3-Stylesheet (report.css unveraendert)
     "/_forensic/report.css":   ("report.css",   "text/css; charset=utf-8",               _USERINFO_DIR),
+    # Build 576: die Chip-Stile stehen nicht mehr in report.css, sondern in
+    # einer eigenen Datei - Modul und Stil bilden ein teilbares Paar, weil
+    # die Management-Oberflaeche sie ab Build 577 mitbenutzt.
+    #
+    # ZWEI STELLEN, NICHT EINE: die Liste in forensic_api/__init__.py sagt,
+    # welche Adressen es GEBEN soll; DIESE Tabelle sagt, welche Datei
+    # dahinter liegt. Build 493 hat genau diese Falle schon einmal
+    # eingefangen ("in _RESOURCES, aber nie dispatcht") und dafuer
+    # tests/test_report_assets_routing.py angelegt - der Test hat mich hier
+    # sofort erwischt.
+    "/_forensic/placeholder_chips.css": ("placeholder_chips.css", "text/css; charset=utf-8", _USERINFO_DIR),
     # B6 Phase 4 (Chip-Rendering): Platzhalter-Parser
     "/_forensic/placeholder_chips.js": ("placeholder_chips.js", "application/javascript; charset=utf-8", _USERINFO_DIR),
     # Build 389: zentraler Katalog der Formatregeln (config.yaml -> validation.rules).

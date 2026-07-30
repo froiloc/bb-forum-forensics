@@ -465,101 +465,13 @@
  * --------------------------------------------------------------------------- */
 
 /* ---------------------------------------------------------------------------
- * 10. Platzhalter-Chips (§4.5)
- * Beleg: Bauplan B6 v0.3 §4.5, Ausdefinitionsgespraech 2026-05-05
+ * 10. Platzhalter-Chips (§4.5) — HERAUSGELÖST in Build 576
+ * Die Regeln stehen jetzt in userinfo/placeholder_chips.css, weil das
+ * Modul placeholder_chips.js auch von der Management-Oberflaeche
+ * benutzt wird. Modul und Stil bilden ein teilbares Paar; eine Kopie
+ * hier waere eigener Code in doppelter Ausfuehrung.
+ * Eingebunden wird die Datei in forensic_api/report.py.
  * --------------------------------------------------------------------------- */
-
-/* Basis-Chip */
-.ph-chip {
-  display: inline-block;
-  padding: 1px 7px;
-  border-radius: 10px;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.6;
-  cursor: default;
-  white-space: nowrap;
-  border: 1px solid transparent;
-  vertical-align: baseline;
-  transition: opacity .15s, box-shadow .15s;
-  /* Bug 2.50 Fix Build 137: user-select:none verhindert Textmarkierung
-   * im Chip. Zusammen mit contenteditable="false" am Element selbst wird
-   * das Schreiben in Chips vollstaendig unterbunden.
-   * Beleg: Bugfix Build 137, Projektgespraech 2026-05-09 */
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-/* Bug 2.50 Fix Build 137: Aufleuchten-Animation bei Klick auf einen Chip.
- * Visuelles Feedback: "dieser Bereich ist geschuetzt".
- * Ausgeloest per JS durch Hinzufuegen der Klasse .ph-chip--flash.
- * Beleg: Bugfix Build 137, Projektgespraech 2026-05-09 */
-@keyframes ph-chip-flash {
-  0%   { box-shadow: 0 0 0 0px rgba(255,152,0,0);   background-color: inherit; }
-  25%  { box-shadow: 0 0 0 3px rgba(255,152,0,.7);  background-color: #fff3e0; }
-  60%  { box-shadow: 0 0 0 5px rgba(255,152,0,.3); }
-  100% { box-shadow: 0 0 0 0px rgba(255,152,0,0);   background-color: inherit; }
-}
-.ph-chip--flash {
-  animation: ph-chip-flash .5s ease-out forwards;
-}
-
-/* Doppelklick-Cursor fuer editierbare Chips (Phase 5) */
-.ph-chip-mandatory.ph-chip-filled,
-.ph-chip-mandatory.ph-chip-empty,
-.ph-chip-optional.ph-chip-filled,
-.ph-chip-optional.ph-chip-empty {
-  cursor: pointer;
-}
-
-.ph-chip-mandatory.ph-chip-filled:hover,
-.ph-chip-optional.ph-chip-filled:hover,
-.ph-chip-optional.ph-chip-empty:hover {
-  box-shadow: 0 0 0 2px currentColor;
-  opacity: .9;
-}
-
-/* a: automatisch aufgeloest — gruen */
-.ph-chip-auto {
-  background: #e8f5e9;
-  color: #2e7d32;
-  border-color: #a5d6a7;
-  cursor: default;
-}
-
-/* m: Pflichtfeld ausgefuellt — blau */
-.ph-chip-mandatory.ph-chip-filled {
-  background: #e3f2fd;
-  color: #1565c0;
-  border-color: #90caf9;
-}
-
-/* m: Pflichtfeld leer — rot blinkend */
-.ph-chip-mandatory.ph-chip-empty {
-  background: #ffebee;
-  color: #c62828;
-  border-color: #ef9a9a;
-  animation: ph-blink 1.4s ease-in-out infinite;
-}
-
-@keyframes ph-blink {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: .45; }
-}
-
-/* o: optional ausgefuellt — blau (wie m: filled) */
-.ph-chip-optional.ph-chip-filled {
-  background: #e3f2fd;
-  color: #1565c0;
-  border-color: #90caf9;
-}
-
-/* o: optional leer — gelb */
-.ph-chip-optional.ph-chip-empty {
-  background: #fff8e1;
-  color: #e65100;
-  border-color: #ffe082;
-}
 
 /* ---------------------------------------------------------------------------
  * 11. Platzhalter-Wizard (§4.5)
@@ -1998,16 +1910,6 @@
 
   /* Status-Badge ausblenden im Druck */
   .report-paragraph-status-badge { display: none; }
-
-  /* Platzhalter-Chips: nur aufgeloesten Wert, kein visueller Chip */
-  .ph-chip {
-    background: none !important;
-    border: none !important;
-    padding: 0 !important;
-    color: inherit !important;
-    font-weight: 600;
-    animation: none !important;
-  }
 
   /* Paragraph-Inhalt */
   .report-paragraph-content {

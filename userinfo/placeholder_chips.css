@@ -1,0 +1,136 @@
+/* ===========================================================================
+ * userinfo/placeholder_chips.css
+ * IT-Forensisches Ermittlungswerkzeug — Platzhalter-Chips
+ * ===========================================================================
+ * Die Darstellung der Platzhalter-Chips, herausgelöst aus report.css
+ * (Abschnitt 10) in Build 576.
+ *
+ * WARUM EIGENSTÄNDIG: das Modul placeholder_chips.js wird ab Build 577 auch
+ * von der Management-Oberfläche benutzt (Vorschau eines Textbausteins). Ohne
+ * eigene Stildatei gäbe es zwei Möglichkeiten, und beide sind schlecht: das
+ * gesamte report.css in die Management-Oberfläche ziehen (und damit deren
+ * Aussehen umgestalten) oder die Chip-Regeln dorthin kopieren (und damit
+ * eigenen Code doppelt führen). Modul und Stil bilden jetzt ein teilbares
+ * Paar — eine Änderung wirkt an beiden Orten.
+ *
+ * Diese Datei wird eingebunden von:
+ *   - forensic_api/report.py            (Berichtseditor, Fenster 3)
+ *   - management/server/static/cockpit.html  (ab Build 577, über
+ *     /static/shared/placeholder_chips.css)
+ *
+ * Der Inhalt ist UNVERÄNDERT übernommen; die Belege der ursprünglichen
+ * Regeln stehen weiter in den Kommentaren. Die Druckregel am Ende stand in
+ * report.css innerhalb eines @media-print-Blocks und ist hier mit ihrem
+ * Rahmen mitgekommen — ohne ihn wäre sie wirkungslos geworden.
+ * =========================================================================== */
+
+/* ---------------------------------------------------------------------------
+ * 10. Platzhalter-Chips (§4.5)
+ * Beleg: Bauplan B6 v0.3 §4.5, Ausdefinitionsgespraech 2026-05-05
+ * --------------------------------------------------------------------------- */
+
+/* Basis-Chip */
+.ph-chip {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.6;
+  cursor: default;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  vertical-align: baseline;
+  transition: opacity .15s, box-shadow .15s;
+  /* Bug 2.50 Fix Build 137: user-select:none verhindert Textmarkierung
+   * im Chip. Zusammen mit contenteditable="false" am Element selbst wird
+   * das Schreiben in Chips vollstaendig unterbunden.
+   * Beleg: Bugfix Build 137, Projektgespraech 2026-05-09 */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Bug 2.50 Fix Build 137: Aufleuchten-Animation bei Klick auf einen Chip.
+ * Visuelles Feedback: "dieser Bereich ist geschuetzt".
+ * Ausgeloest per JS durch Hinzufuegen der Klasse .ph-chip--flash.
+ * Beleg: Bugfix Build 137, Projektgespraech 2026-05-09 */
+@keyframes ph-chip-flash {
+  0%   { box-shadow: 0 0 0 0px rgba(255,152,0,0);   background-color: inherit; }
+  25%  { box-shadow: 0 0 0 3px rgba(255,152,0,.7);  background-color: #fff3e0; }
+  60%  { box-shadow: 0 0 0 5px rgba(255,152,0,.3); }
+  100% { box-shadow: 0 0 0 0px rgba(255,152,0,0);   background-color: inherit; }
+}
+.ph-chip--flash {
+  animation: ph-chip-flash .5s ease-out forwards;
+}
+
+/* Doppelklick-Cursor fuer editierbare Chips (Phase 5) */
+.ph-chip-mandatory.ph-chip-filled,
+.ph-chip-mandatory.ph-chip-empty,
+.ph-chip-optional.ph-chip-filled,
+.ph-chip-optional.ph-chip-empty {
+  cursor: pointer;
+}
+
+.ph-chip-mandatory.ph-chip-filled:hover,
+.ph-chip-optional.ph-chip-filled:hover,
+.ph-chip-optional.ph-chip-empty:hover {
+  box-shadow: 0 0 0 2px currentColor;
+  opacity: .9;
+}
+
+/* a: automatisch aufgeloest — gruen */
+.ph-chip-auto {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-color: #a5d6a7;
+  cursor: default;
+}
+
+/* m: Pflichtfeld ausgefuellt — blau */
+.ph-chip-mandatory.ph-chip-filled {
+  background: #e3f2fd;
+  color: #1565c0;
+  border-color: #90caf9;
+}
+
+/* m: Pflichtfeld leer — rot blinkend */
+.ph-chip-mandatory.ph-chip-empty {
+  background: #ffebee;
+  color: #c62828;
+  border-color: #ef9a9a;
+  animation: ph-blink 1.4s ease-in-out infinite;
+}
+
+@keyframes ph-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: .45; }
+}
+
+/* o: optional ausgefuellt — blau (wie m: filled) */
+.ph-chip-optional.ph-chip-filled {
+  background: #e3f2fd;
+  color: #1565c0;
+  border-color: #90caf9;
+}
+
+/* o: optional leer — gelb */
+.ph-chip-optional.ph-chip-empty {
+  background: #fff8e1;
+  color: #e65100;
+  border-color: #ffe082;
+}
+
+/* --- Druck: nur der aufgelöste Wert, kein sichtbarer Chip --------------
+ * Stand in report.css im @media-print-Block; hier mit eigenem Rahmen. */
+@media print {
+  /* Platzhalter-Chips: nur aufgeloesten Wert, kein visueller Chip */
+  .ph-chip {
+    background: none !important;
+    border: none !important;
+    padding: 0 !important;
+    color: inherit !important;
+    font-weight: 600;
+    animation: none !important;
+  }
+}

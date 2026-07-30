@@ -368,6 +368,31 @@ from management.export.view_renderer import ViewExportRenderer, query_summary
 #: Liegt neben diesem Modul (management/server/static/).
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
+# ---------------------------------------------------------------------------
+# BUILD 576 - GETEILTE DATEIEN AUS BAUSTELLE 6.
+#
+# Die Vorschau eines Textbausteins (Build 577) soll zeigen, was der Ermittler
+# spaeter im Berichtseditor sieht - also Editor.js mit Platzhalter-Chips. Die
+# dafuer noetigen Dateien liegen in Baustelle 6. Sie zu KOPIEREN waere eigener
+# Code in doppelter Ausfuehrung; deshalb werden sie GETEILT ausgeliefert, ueber
+# eine exakte Positivliste in StaticAssets (dort ausfuehrlich begruendet).
+#
+# Die Pfade stehen HIER und nicht in static_assets.py, weil sie von der Lage
+# des Projektbaums abhaengen - StaticAssets soll nichts ueber das Projekt
+# wissen muessen, nur ueber Dateien.
+_REPO_WURZEL = Path(__file__).resolve().parents[2]
+GETEILTE_ASSETS = {
+    # Editor.js-Buendel (erzeugt von deployment/build_editor_bundle.py).
+    "shared/editor.bundle.js":
+        _REPO_WURZEL / "static" / "editor" / "editor.bundle.js",
+    # Chip-Renderer und die dazugehoerigen Stile - ein Paar, seit Build 576
+    # aus report.css herausgeloest.
+    "shared/placeholder_chips.js":
+        _REPO_WURZEL / "userinfo" / "placeholder_chips.js",
+    "shared/placeholder_chips.css":
+        _REPO_WURZEL / "userinfo" / "placeholder_chips.css",
+}
+
 #: Faehigkeits-Gates je Endpunkt (None = kein Gate, nur eigene Identitaet).
 CAP_OVERVIEW = "dashboard.view"
 CAP_INTEGRITY = "ops.view"
@@ -660,7 +685,16 @@ class ManagementApp:
         self._case_launcher = case_launcher or CaseLauncher()
         # Statische Auslieferung gekapselt (Grundregel 10). static_dir ist im
         # Test injizierbar; PROD nutzt STATIC_DIR neben diesem Modul.
-        self._static = StaticAssets(static_dir or STATIC_DIR)
+        self._static = StaticAssets(static_dir or STATIC_DIR,
+                                    geteilt=GETEILTE_ASSETS)
+        # KEIN STILLER FEHLSCHLAG: fehlt eine geteilte Datei, steht das im Log
+        # beim Start und nicht erst, wenn im Browser ein Modul fehlt. Genau
+        # dieser Unterschied hat in Build 570/571 einen Abend gekostet.
+        fehlend = self._static.fehlende_geteilte()
+        if fehlend:
+            for rel, pfad in sorted(fehlend.items()):
+                logger.error("Geteiltes Asset fehlt: /static/%s -> %s",
+                             rel, pfad)
         # Verzeichnis der evidence_<uid>.db (Berichts-Abnahme, Build 374).
         # Injizierbar (Test); sonst aus config.yaml (paths.evidence_db_dir).
         self._evidence_dir = evidence_dir or self._default_evidence_dir()

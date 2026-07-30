@@ -22,6 +22,7 @@
 import os
 import sys
 import tempfile
+import shutil
 import unittest
 from pathlib import Path
 
@@ -141,6 +142,149 @@ class StaticAssetsTests(unittest.TestCase):
         self.assertEqual(r.status, 200)
         self.assertIn("javascript", r.content_type)
         self.assertGreater(len(r.body), 1000)
+
+
+class GeteilteAssetsTests(unittest.TestCase):
+    """
+    Build 576: geteilte Dateien aus anderen Baustellen.
+
+    Die Management-Oberflaeche braucht das Editor.js-Buendel und das
+    Chip-Modul samt Stildatei, die in Baustelle 6 liegen. Ausgeliefert wird
+    ueber eine EXAKTE Positivliste - kein zweites durchsuchbares Wurzel-
+    verzeichnis. Diese Suite haelt genau das fest.
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+        self._basis = Path(self._tmp) / "static"
+        self._basis.mkdir()
+        (self._basis / "cockpit.js").write_text("// eigen\n", encoding="utf-8")
+        # Eine 'fremde' Datei ausserhalb des Basisverzeichnisses.
+        self._fremd = Path(self._tmp) / "fremd"
+        self._fremd.mkdir()
+        self._geteilt = self._fremd / "shared_modul.js"
+        self._geteilt.write_text("// geteilt\n", encoding="utf-8")
+        self._fehlt = self._fremd / "gibtsnicht.js"
+
+    def tearDown(self):
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def _assets(self, mit_fehlend=False):
+        geteilt = {"shared/modul.js": self._geteilt}
+        if mit_fehlend:
+            geteilt["shared/weg.js"] = self._fehlt
+        return StaticAssets(self._basis, geteilt=geteilt)
+
+    # GA01 ---------------------------------------------------------------
+    def test_GA01_geteilte_datei_wird_ausgeliefert(self):
+        st, ctype, body = self._assets().serve("shared/modul.js")
+        self.assertEqual(st, 200)
+        self.assertIn("javascript", ctype)
+        self.assertEqual(body, b"// geteilt\n")
+
+    # GA02 ---------------------------------------------------------------
+    def test_GA02_eigene_dateien_unveraendert(self):
+        """Die Positivliste darf den normalen Weg nicht stoeren."""
+        st, _, body = self._assets().serve("cockpit.js")
+        self.assertEqual(st, 200)
+        self.assertEqual(body, b"// eigen\n")
+
+    # GA03 ---------------------------------------------------------------
+    def test_GA03_nur_wortgleiche_schluessel(self):
+        """
+        DER KERN DER FORM: eine URL kann nur ein WORTGLEICHER Schluessel sein.
+        Kein Praefix, kein Verzeichnis, kein Muster - sonst waere aus der
+        Positivliste ein zweites durchsuchbares Wurzelverzeichnis geworden.
+        """
+        a = self._assets()
+        for pfad in ("shared/anderes.js", "shared/", "shared/sub/modul.js",
+                     "SHARED/modul.js", "shared/modul.js.js"):
+            st, _, _ = a.serve(pfad)
+            self.assertIn(st, (400, 404),
+                          "'%s' haette nicht ausgeliefert werden duerfen" % pfad)
+
+    # GA04 ---------------------------------------------------------------
+    def test_GA04_traversal_bleibt_abgewiesen(self):
+        """Die bestehende Abwehr wird durch die Positivliste nicht weicher."""
+        a = self._assets()
+        for pfad in ("../fremd/shared_modul.js", "shared/../../fremd/x.js",
+                     "/etc/passwd", "..\\fremd\\x.js"):
+            st, _, _ = a.serve(pfad)
+            self.assertIn(st, (400, 404), pfad)
+
+    # GA05 ---------------------------------------------------------------
+    def test_GA05_endungspruefung_gilt_auch_geteilt(self):
+        """Ein geteilter Eintrag mit unerlaubter Endung wird NICHT geliefert."""
+        heikel = self._fremd / "skript.exe"
+        heikel.write_bytes(b"MZ")
+        a = StaticAssets(self._basis, geteilt={"shared/skript.exe": heikel})
+        st, _, _ = a.serve("shared/skript.exe")
+        self.assertEqual(st, 404)
+
+    # GA06 ---------------------------------------------------------------
+    def test_GA06_fehlende_datei_wird_benannt(self):
+        """
+        Ein Eintrag ohne Datei ist ein EINRICHTUNGSFEHLER und muss auffallen -
+        beim Start, nicht erst wenn im Browser ein Modul fehlt. Genau dieser
+        Unterschied hat in Build 570/571 einen Abend gekostet.
+        """
+        a = self._assets(mit_fehlend=True)
+        fehlend = a.fehlende_geteilte()
+        self.assertEqual(list(fehlend), ["shared/weg.js"])
+        st, _, body = a.serve("shared/weg.js")
+        self.assertEqual(st, 404)
+        self.assertIn(b"Geteiltes Asset", body)
+        # Der vorhandene Eintrag bleibt davon unberuehrt.
+        self.assertEqual(a.serve("shared/modul.js")[0], 200)
+
+    # GA07 ---------------------------------------------------------------
+    def test_GA07_ohne_positivliste_wie_bisher(self):
+        """Rueckwaertskompatibel: der Aufruf ohne 'geteilt' verhaelt sich
+        unveraendert."""
+        a = StaticAssets(self._basis)
+        self.assertEqual(a.geteilte_pfade(), {})
+        self.assertEqual(a.serve("cockpit.js")[0], 200)
+        self.assertEqual(a.serve("shared/modul.js")[0], 404)
+
+
+class GeteilteAssetsProjektTests(unittest.TestCase):
+    """
+    Build 576: die Positivliste des ECHTEN Projekts. Diese Suite haelt die
+    Pfade gegen den Baum - ein verschobenes Modul faellt hier auf und nicht
+    im Browser.
+    """
+
+    def test_GA08_projektpfade_existieren(self):
+        from management.server.management_app import GETEILTE_ASSETS
+        fehlend = {rel: str(p) for rel, p in GETEILTE_ASSETS.items()
+                   if not p.is_file()}
+        self.assertEqual(fehlend, {},
+                         "Geteilte Datei(en) nicht am erwarteten Ort.")
+
+    def test_GA09_chip_stile_sind_herausgeloest(self):
+        """
+        Build 576 hat die Chip-Regeln aus report.css in eine eigene Datei
+        gezogen. Diese Pruefung haelt beides fest: die Regeln stehen in der
+        neuen Datei UND nicht mehr in report.css. Ohne sie koennte eine
+        spaetere Aenderung stillschweigend eine zweite Kopie anlegen.
+        """
+        import re
+        from management.server.management_app import _REPO_WURZEL
+        chips = (_REPO_WURZEL / "userinfo" / "placeholder_chips.css")
+        report = (_REPO_WURZEL / "userinfo" / "report.css")
+        self.assertTrue(chips.is_file(), "placeholder_chips.css fehlt.")
+        c = chips.read_text(encoding="utf-8")
+        r = report.read_text(encoding="utf-8")
+        sel_chips = set(re.findall(r"\.ph-chip[\w-]*", c))
+        sel_report = set(re.findall(r"\.ph-chip[\w-]*", r))
+        # Alle sieben Chip-Selektoren aus Build 576.
+        self.assertGreaterEqual(len(sel_chips), 7, sorted(sel_chips))
+        self.assertEqual(sel_report, set(),
+                         "Chip-Regeln stehen wieder in report.css: %s"
+                         % sorted(sel_report))
+        # Die Druckregel ist mit ihrem @media-Rahmen mitgekommen - ohne ihn
+        # waere sie wirkungslos.
+        self.assertIn("@media print", c)
 
 
 if __name__ == "__main__":
