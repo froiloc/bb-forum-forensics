@@ -551,6 +551,24 @@ class ForensicApi:
             self._get_templates_ep().handle_get(handler, url_path, params)
             return
 
+        # /_forensic/validation_rules (GET) — BUILD 578: NACHGETRAGEN.
+        #
+        # ValidationRulesEndpoint existiert seit Build 389, war aber NIE
+        # verdrahtet: weder instanziiert noch verteilt. Der Browser bekam 404,
+        # und validation_rules.js meldete brav "Katalog konnte nicht geladen
+        # werden ... Felder mit Formatregel werden im Browser NICHT geprueft".
+        # Das Feature war also still tot - genau die Bauart, die Build 493
+        # schon einmal fuer drei Module eingefangen hat.
+        #
+        # Folge fuer die Redaktion: Formatfehler fielen erst beim Einreichen
+        # auf, wenn der Server sie ablehnt, statt sofort im Formular.
+        if url_path == "/_forensic/validation_rules":
+            if method not in ("GET", "HEAD"):
+                self._method_not_allowed(handler)
+                return
+            self._get_validation_rules_ep().handle_get(handler)
+            return
+
         # /_forensic/search (GET) [KN-3]
         # Kontext-Navigator: gefilterte Seitenliste für Dropdown + Modal.
         # Beleg: Bauplan KN v0.6 §7.3, Build 070.
@@ -931,6 +949,16 @@ class ForensicApi:
             from forensic_api.templates_ep import TemplatesListEndpoint
             self._templates_ep = TemplatesListEndpoint(self._bundle, self._context, self._config)
         return self._templates_ep
+
+    def _get_validation_rules_ep(self):
+        """
+        Build 578: Lazy-Init fuer ValidationRulesEndpoint. Die Klasse gab es
+        seit Build 389; dieser Getter und der Verteilzweig fehlten.
+        """
+        if getattr(self, "_validation_rules_ep", None) is None:
+            from forensic_api.validation_rules_ep import ValidationRulesEndpoint
+            self._validation_rules_ep = ValidationRulesEndpoint(self._config)
+        return self._validation_rules_ep
 
     def _get_search(self):
         """[KN-3] Lazy-Init fuer SearchEndpoint. Beleg: Bauplan KN v0.6 §12 Phase KN-3."""

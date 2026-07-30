@@ -334,3 +334,122 @@ function setupDomForRenderPhase7() {
     };
     return { listEl, emptyEl, loadEl };
 }
+
+describe("ModulePanel — Ausfall der Quelle (Build 581)", () => {
+  /**
+   * Befund mc (2026-07-30): seit der Server einen Ausfall der templates.db
+   * meldet (Build 579/580), verschwanden in der Ansicht "Alle" auch die
+   * STANDARD-Bloecke — obwohl die als Konstante in der Datei stehen und keine
+   * Datenbank brauchen. Aus einem Teilausfall wurde ein Totalausfall: der
+   * Redakteur konnte nicht einmal mehr einen leeren Absatz einfuegen.
+   *
+   * Und: die "Einzeldaten" meldeten den Ausfall gar nicht, weil _fetchQueries
+   * jede Fehlerantwort zu einer leeren Liste machte.
+   */
+
+  const P = () => window.ModulePanel;
+  let _origFetch;
+
+  // Ein frueherer Block dieser Datei ersetzt document-Methoden durch Attrappen
+  // und stellt sie nicht vollstaendig wieder her. Das Original wird deshalb
+  // beim REGISTRIEREN gesichert - zu diesem Zeitpunkt ist jsdom noch
+  // unberuehrt - und vor jedem Test hier zurueckgesetzt. Sonst pruefte diese
+  // Suite gegen eine Attrappe statt gegen echtes DOM.
+  const _origCreate = document.createElement.bind(document);
+
+  beforeEach(() => {
+    _origFetch = global.fetch;
+    Object.defineProperty(document, "createElement", {
+      value: _origCreate, writable: true, configurable: true,
+    });
+  });
+  afterEach(() => { global.fetch = _origFetch; });
+
+  // MPA01 -------------------------------------------------------------------
+  it("MPA01: _fetchQueries schluckt einen Fehler nicht mehr", async () => {
+    global.fetch = async () => ({ ok: false, status: 503,
+                                  json: async () => ({}) });
+    // Vorher: return [] — eine leere Bibliothek und eine unerreichbare
+    // Bibliothek waren nicht unterscheidbar.
+    await expect(P()._fetchQueries("")).rejects.toThrow(/503/);
+  });
+
+  // MPA02 -------------------------------------------------------------------
+  it("MPA02: bei Erfolg liefert _fetchQueries die Liste", async () => {
+    global.fetch = async () => ({ ok: true, status: 200,
+                                  json: async () => [{ id: 1 }] });
+    await expect(P()._fetchQueries("")).resolves.toEqual([{ id: 1 }]);
+  });
+
+  // MPA03 -------------------------------------------------------------------
+  it("MPA03: Standard-Bloecke lassen sich unabhaengig anhaengen", () => {
+    const list = document.createElement("div");
+    document.body.appendChild(list);
+    try {
+      P()._appendStandardBlocks(list, P().STANDARD_BLOCKS);
+      const eintraege = list.querySelectorAll(".mp-item--standard");
+      // Genau die Bloecke, die ohne Datenbank nutzbar sind.
+      expect(eintraege.length).toBe(P().STANDARD_BLOCKS.length);
+      expect(eintraege.length).toBeGreaterThanOrEqual(6);
+      const typen = [...eintraege].map(
+        (e) => e.getAttribute("data-block-type"));
+      expect(typen).toContain("paragraph");
+      expect(typen).toContain("table");
+      // Ziehbar und einfuegbar muessen sie bleiben — sonst nuetzen sie nichts.
+      expect(eintraege[0].getAttribute("draggable")).toBe("true");
+      expect(list.querySelectorAll(".mp-btn-insert[data-std-type]").length)
+        .toBe(P().STANDARD_BLOCKS.length);
+    } finally {
+      list.remove();
+    }
+  });
+
+  // MPA05 -------------------------------------------------------------------
+  it("MPA05: die Meldung des Servers kommt in der Fehlermeldung an", async () => {
+    // Befund mc (2026-07-30): der Server erklaerte seit Build 582 genau, was
+    // zu tun ist - in der Konsole stand trotzdem nur 'Error: HTTP 503', weil
+    // der Antwortkoerper weggeworfen wurde. Ein Fehler, der die Ursache kennt
+    // und verschweigt, ist so gut wie keiner.
+    const koerper = {
+      error: "Datenbank 'templates.db' ist nicht erreichbar.",
+      code: "DB_UNAVAILABLE",
+      ursache: "fehler",
+      massnahme: "templates.db ist angebunden, aber die Kerntabelle "
+        + "'placeholders' fehlt. Abhilfe: "
+        + "management/migrate_templates_placeholders.py ausfuehren.",
+    };
+    global.fetch = async () => ({
+      ok: false, status: 503,
+      text: async () => JSON.stringify(koerper),
+    });
+    await expect(P()._fetchModules("", "")).rejects.toThrow(
+      /migrate_templates_placeholders\.py/);
+    await expect(P()._fetchTemplates("")).rejects.toThrow(/Kerntabelle/);
+    await expect(P()._fetchQueries("")).rejects.toThrow(/503/);
+  });
+
+  // MPA06 -------------------------------------------------------------------
+  it("MPA06: unlesbarer Koerper kostet nicht die Fehlermeldung", async () => {
+    global.fetch = async () => ({
+      ok: false, status: 500,
+      text: async () => { throw new Error("Strom weg"); },
+    });
+    // Ohne Koerper eben ohne Zusatz - aber der Fehler selbst bleibt.
+    await expect(P()._fetchModules("", "")).rejects.toThrow(/HTTP 500/);
+
+    // Und kein JSON: dann der Rohtext, gekuerzt.
+    global.fetch = async () => ({
+      ok: false, status: 500, text: async () => "<html>Serverfehler</html>",
+    });
+    await expect(P()._fetchModules("", "")).rejects.toThrow(/Serverfehler/);
+  });
+
+  // MPA04 -------------------------------------------------------------------
+  it("MPA04: leere Liste haengt nichts an und wirft nicht", () => {
+    const list = document.createElement("div");
+    expect(() => P()._appendStandardBlocks(list, [])).not.toThrow();
+    expect(() => P()._appendStandardBlocks(null, P().STANDARD_BLOCKS))
+      .not.toThrow();
+    expect(list.querySelectorAll(".mp-item--standard").length).toBe(0);
+  });
+});

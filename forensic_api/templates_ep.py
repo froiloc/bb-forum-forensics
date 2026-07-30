@@ -66,6 +66,83 @@ class TemplatesListEndpoint:
         """
         Routing fuer GET /_forensic/templates und /_forensic/templates/<id>.
         """
+        # BUILD 578: EINE HUELLE FUER ALLE FUENF ZWEIGE.
+        #
+        # Vorher rief jeder Handler die templates.db ohne Fehlerbehandlung.
+        # Fehlte die Datei, flog die Ausnahme aus dem Handler, die Verbindung
+        # starb, und der Browser meldete nur 'Failed to fetch' - ohne Status,
+        # ohne Hinweis. Genau das ist am 2026-07-30 passiert und hat eine
+        # Gespraechsrunde gekostet.
+        #
+        # Die Huelle sitzt am VERTEILER und nicht in jedem Handler: fuenf
+        # try/except waeren fuenf Stellen, an denen die naechste vergessen
+        # wird. Gefangen werden ausdruecklich NUR Datenbank- und
+        # Dateisystemfehler - ein Programmierfehler bleibt ein
+        # Programmierfehler (s. db_guard.py).
+        from forensic_api.db_guard import db_fehler_koerper, geschuetzt
+
+        # BUILD 579 - EHRLICHE ANTWORT STATT LEERER LISTE.
+        #
+        # Die Huelle aus Build 578 faengt Ausnahmen. Sie kam nie zum Zuge,
+        # weil TemplatesDb den Fehler eine Ebene tiefer SCHLUCKT und eine
+        # leere Liste zurueckgibt: eine fehlende templates.db ergab HTTP 200
+        # mit [] - fuer den Browser ununterscheidbar von 'keine Vorlagen
+        # angelegt'. Belegt am 2026-07-30 im Log von mc: 'GET
+        # /_forensic/templates ... 200'.
+        #
+        # Deshalb wird der Zustand VOR dem Verteilen gefragt. Ist die Quelle
+        # nicht lesbar, antwortet der Endpunkt benannt (503) - und der
+        # Redakteur sieht, dass er nicht 'nichts' hat, sondern 'nicht
+        # nachsehen kann'. Die Huelle bleibt als zweites Netz fuer echte
+        # Ausnahmen darunter.
+        zustand, meldung = self._quellzustand()
+        if zustand != "ok":
+            logger.error(
+                "GET %s: templates.db nicht nutzbar (%s: %s) — Pfad: %s",
+                url_path, zustand, meldung, self._templates_db_pfad() or "?")
+            handler.send_response_body(
+                503, db_fehler_koerper("templates.db", zustand,
+                                       massnahme=meldung),
+                content_type="application/json; charset=utf-8",
+            )
+            return
+
+        geschuetzt(handler, "templates.db",
+                   lambda: self._verteile(handler, url_path, params),
+                   pfad=self._templates_db_pfad())
+
+    def _quellzustand(self):
+        """
+        Zustand der templates.db, frisch geprueft. Kann die Quelle nichts
+        ueber sich sagen (aeltere Fassung ohne zustand()), wird 'ok'
+        angenommen - lieber die bisherige Auskunft als ein erfundener Fehler.
+        """
+        quelle = getattr(self._bundle, "templates", None)
+        if quelle is None or not hasattr(quelle, "zustand"):
+            return ("ok", "")
+        try:
+            return quelle.zustand()
+        except Exception as exc:                            # noqa: BLE001
+            return ("fehler", str(exc))
+
+    def _templates_db_pfad(self):
+        """
+        Der Pfad der templates.db, nur fuers PROTOKOLL. Faellt die Ermittlung
+        aus, ist das kein Grund zu scheitern - dann steht im Protokoll eben
+        kein Pfad, und die Antwort ist trotzdem brauchbar.
+        """
+        try:
+            return str(getattr(self._bundle.templates, "db_path", "") or "")
+        except Exception:                                    # noqa: BLE001
+            return ""
+
+    def _verteile(
+        self,
+        handler: "ForensicRequestHandler",
+        url_path: str,
+        params: dict,
+    ) -> None:
+        """Die eigentliche Verteilung (von handle_get umhuellt aufgerufen)."""
         if url_path == "/_forensic/templates":
             self._handle_list(handler, params)
         # Build 388: VORLAGEN (vollstaendige Berichtsgerueste).

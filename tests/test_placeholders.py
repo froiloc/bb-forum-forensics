@@ -307,6 +307,16 @@ class TestPlaceholdersEndpoint(unittest.TestCase):
 
         # list_queries direkt aufrufen via templates_db mock
         ep._bundle.templates.list_queries = MagicMock(return_value=[])
+        # BUILD 580: der Endpunkt fragt jetzt VOR dem Lesen, ob die Quelle
+        # ueberhaupt erreichbar ist - sonst haette eine fehlende templates.db
+        # eine leere Liste mit HTTP 200 ergeben (Befund mc 2026-07-30).
+        #
+        # Diese Vorrichtung legt ihre Tabellen in der HAUPTdatenbank an, nicht
+        # als 'tdb'. Die Quelle war hier also noch nie wirklich erreichbar; der
+        # Test lief nur durch, weil er list_queries ersetzt. Wer die Daten
+        # vortaeuscht, muss auch die Erreichbarkeit vortaeuschen - sonst prueft
+        # er einen Zustand, den es so nie gibt.
+        ep._bundle.templates.zustand = MagicMock(return_value=("ok", ""))
 
         handler = MagicMock()
         responses = []

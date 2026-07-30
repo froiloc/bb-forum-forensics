@@ -270,12 +270,54 @@ class PlaceholdersEndpoint:
             content_type="application/json; charset=utf-8",
         )
 
+    # ------------------------------------------------------------------
+    # BUILD 580 - QUELLE NICHT LESBAR? DANN SAG ES.
+    #
+    # Befund mc (2026-07-30): nach Build 579 meldeten 'Module' und 'Vorlagen'
+    # eine fehlende templates.db - die 'Einzeldaten' NICHT. Der Grund: dieser
+    # Endpunkt liest ebenfalls aus tdb (list_queries), hatte aber keine
+    # Zustandspruefung. TemplatesDb faengt den Fehler und gibt [] zurueck; die
+    # Bibliothek antwortete daher 200 mit leerer Liste - fuer den Ermittler
+    # ununterscheidbar von 'es sind keine Platzhalter angelegt'.
+    #
+    # Dieselbe Regel wie in templates_ep (Build 579): 'es gibt keine' und 'ich
+    # konnte nicht nachsehen' muessen unterscheidbar sein.
+    # ------------------------------------------------------------------
+    def _quelle_nicht_lesbar(self, handler, wofuer: str) -> bool:
+        """
+        -> True  wenn geantwortet wurde (503) und der Aufrufer abbrechen soll
+        -> False wenn die Quelle lesbar ist
+        """
+        quelle = getattr(self._bundle, "templates", None)
+        if quelle is None or not hasattr(quelle, "zustand"):
+            # Aeltere Quelle ohne Auskunft: lieber die bisherige Antwort als
+            # ein erfundener Fehler.
+            return False
+        try:
+            art, meldung = quelle.zustand()
+        except Exception as exc:                            # noqa: BLE001
+            art, meldung = ("fehler", str(exc))
+        if art == "ok":
+            return False
+
+        from forensic_api.db_guard import db_fehler_koerper
+        logger.error(
+            "%s: templates.db nicht nutzbar (%s: %s)", wofuer, art, meldung)
+        handler.send_response_body(
+            503, db_fehler_koerper("templates.db", art, massnahme=meldung),
+            content_type="application/json; charset=utf-8",
+        )
+        return True
+
     def handle_library(
         self,
         handler: "ForensicRequestHandler",
         params: dict,
     ) -> None:
         """GET /_forensic/placeholders/library?tags=...&search=..."""
+        if self._quelle_nicht_lesbar(handler,
+                                     "GET /_forensic/placeholders/library"):
+            return
         tags   = params.get("tags",   [None])[0]
         search = params.get("search", [None])[0]
 

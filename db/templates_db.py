@@ -138,6 +138,104 @@ class TemplatesDb:
         self._con = con
         self._available = self._check_available()
 
+    # ------------------------------------------------------------------
+    # BUILD 579 - ZUSTANDSAUSKUNFT.
+    #
+    # Anlass ist ein Befund vom 2026-07-30: templates.db wurde im laufenden
+    # Betrieb umbenannt. Die Folge war eine LEERE LISTE MIT HTTP 200 - fuer
+    # den Browser ununterscheidbar von 'es sind keine Vorlagen angelegt'.
+    # Drei Ursachen, alle hier:
+    #
+    #   A) Jede Lesemethode faengt sqlite3.OperationalError und gibt [] zurueck.
+    #      'Kein Absturz' war die Absicht; der Preis war eine unwahre Antwort.
+    #      In einem forensischen Werkzeug darf 'es gibt keine' nicht dasselbe
+    #      sein wie 'ich konnte nicht nachsehen'.
+    #   B) _available wurde EINMALIG beim Init ermittelt. Eine Datei, die
+    #      waehrend des Betriebs verschwindet, blieb damit unsichtbar.
+    #   C) Die Protokollmeldung RIET die Ursache ('Seed-Skript noch nicht
+    #      gelaufen'), obwohl die Datei schlicht weg war.
+    #
+    # Die Klasse stuerzt weiterhin nicht ab - das bleibt richtig, weil
+    # templates.db in einer frischen Anlage legitim fehlen kann. Aber der
+    # Zustand ist jetzt ABFRAGBAR, und der Endpunkt kann eine ehrliche
+    # Antwort geben statt einer leeren Liste.
+    # ------------------------------------------------------------------
+    ZUSTAND_OK = "ok"
+    ZUSTAND_NICHT_ANGEBUNDEN = "nicht_angebunden"
+    ZUSTAND_FEHLER = "fehler"
+
+    def zustand(self) -> tuple:
+        """
+        Der AKTUELLE Zustand der Quelle, frisch geprueft.
+
+        -> (ZUSTAND_OK, "")
+        -> (ZUSTAND_NICHT_ANGEBUNDEN, <Meldung>)   templates.db fehlt/leer
+        -> (ZUSTAND_FEHLER, <Meldung>)             angebunden, aber unlesbar
+
+        Bewusst bei JEDEM Aufruf geprueft und nicht gemerkt (Befund B): eine
+        Datei, die im Betrieb verschwindet, muss auffallen. Die Pruefung ist
+        eine einzelne LIMIT-1-Abfrage und damit billig.
+        """
+        try:
+            self._con.execute("SELECT 1 FROM tdb.placeholders LIMIT 1")
+            return (self.ZUSTAND_OK, "")
+        except sqlite3.OperationalError as exc:
+            # BUILD 582 - DREI FAELLE STATT ZWEI, weil sie VERSCHIEDENE
+            # MASSNAHMEN verlangen. Die Meldung aus Build 579 ('no such table:
+            # tdb.placeholders') war fuer mc nicht handhabbar: die Datei lag
+            # da, der Pfad stimmte, ein Neustart half nicht - und die Meldung
+            # klang trotzdem nach 'Datenbank fehlt'.
+            #
+            # Der Unterschied, auf den es ankommt:
+            #   - tdb ist GAR NICHT angebunden  -> Datei fehlt oder Pfad falsch
+            #   - tdb IST angebunden, aber ohne -> Migration nicht gelaufen
+            #     die Kerntabelle                 (Build 489 hat
+            #                                      placeholder_queries in
+            #                                      placeholders umbenannt)
+            # Ohne diese Trennung sucht man die Datei, obwohl sie da ist.
+            return self._zustand_genauer(str(exc))
+        except sqlite3.Error as exc:
+            return (self.ZUSTAND_FEHLER, str(exc))
+
+    def _zustand_genauer(self, urspruenglich: str) -> tuple:
+        """
+        Unterscheidet 'tdb nicht angebunden' von 'angebunden, Tabelle fehlt'.
+
+        Die Probe ist bewusst sqlite_master: sie existiert in JEDER
+        angebundenen Datenbank. Gelingt sie, liegt die Datei vor und ist
+        lesbar - dann fehlt nur der Inhalt.
+        """
+        try:
+            self._con.execute("SELECT 1 FROM tdb.sqlite_master LIMIT 1")
+        except sqlite3.Error:
+            return (self.ZUSTAND_NICHT_ANGEBUNDEN,
+                    "templates.db ist nicht angebunden (Datei fehlt oder Pfad "
+                    "in config.yaml 'paths.templates_db' stimmt nicht). "
+                    "Urspruenglicher Fehler: %s" % urspruenglich)
+
+        # tdb ist da. Welche Tabellen fehlen - und welche gibt es stattdessen?
+        vorhanden = []
+        try:
+            vorhanden = [r[0] for r in self._con.execute(
+                "SELECT name FROM tdb.sqlite_master WHERE type='table' "
+                "ORDER BY name").fetchall()]
+        except sqlite3.Error:
+            pass
+
+        alt_hinweis = ""
+        if "placeholder_queries" in vorhanden and "placeholders" not in vorhanden:
+            # Der haeufigste Fall - und der, der mc getroffen hat.
+            alt_hinweis = (
+                " Gefunden wurde die ALTE Tabelle 'placeholder_queries': "
+                "diese templates.db stammt aus der Zeit vor Build 489. "
+                "Abhilfe: management/migrate_templates_placeholders.py "
+                "ausfuehren."
+            )
+        return (self.ZUSTAND_FEHLER,
+                "templates.db ist angebunden, aber die Kerntabelle "
+                "'placeholders' fehlt.%s Vorhandene Tabellen: %s"
+                % (alt_hinweis, ", ".join(vorhanden) or "(keine)"))
+
     def _check_available(self) -> bool:
         """
         Prueft ob tdb angebunden und die Kerntabellen vorhanden sind.
@@ -152,11 +250,14 @@ class TemplatesDb:
             logger.debug("TemplatesDb: tdb verfuegbar und initialisiert.")
             return True
         except sqlite3.OperationalError as exc:
+            # Build 582: die alte Fassung nannte nur setup_templates.py und
+            # legte damit nahe, die Datei fehle. Bei mc lag sie vor - es fehlte
+            # die Kerntabelle. Die genaue Auskunft liefert zustand().
+            art, meldung = self.zustand()
             logger.warning(
-                "TemplatesDb: tdb nicht verfuegbar ('%s'). "
-                "Alle Methoden liefern leere Ergebnisse. "
-                "setup_templates.py ausfuehren um templates.db anzulegen.",
-                exc,
+                "TemplatesDb: tdb nicht verfuegbar ('%s'). Alle Methoden "
+                "liefern leere Ergebnisse. Befund: %s — %s",
+                exc, art, meldung,
             )
             return False
 
@@ -410,10 +511,17 @@ class TemplatesDb:
             rows = self._con.execute(sql, params).fetchall()
             return [self._row_to_template(r) for r in rows]
         except sqlite3.OperationalError as exc:
+            # Build 579: die Meldung RAET nicht mehr. Sie nennt den Fehler und
+            # die beiden moeglichen Ursachen, ohne sich auf eine festzulegen -
+            # am 2026-07-30 war es NICHT das Seed-Skript, sondern eine im
+            # Betrieb verschobene Datei, und die alte Formulierung hat die
+            # Fehlersuche in die falsche Richtung geschickt.
             logger.warning(
-                "TemplatesDb.list_templates fehlgeschlagen ('%s'). Vermutlich "
-                "ist das Seed-Skript management/migrate_templates_full_templates.py "
-                "noch nicht gelaufen.", exc,
+                "TemplatesDb.list_templates fehlgeschlagen ('%s'). Moegliche "
+                "Ursachen: templates.db ist nicht (mehr) am erwarteten Ort, "
+                "oder das Seed-Skript "
+                "management/migrate_templates_full_templates.py ist noch nicht "
+                "gelaufen. Zustand: %s", exc, self.zustand()[0],
             )
             return []
 

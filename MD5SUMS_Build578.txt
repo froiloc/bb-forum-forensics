@@ -1,0 +1,6 @@
+3683c11e7d8846a2e8a426b70e6e25b2  build.json
+19207bedb660fe1bf1d6e6b6fa3da4be  forensic_api/db_guard.py
+fb11be003f7b81ed772efe3310af525c  forensic_api/templates_ep.py
+83486b1afa57e7490c36056ea57fb97c  forensic_api/__init__.py
+ff081e8ccc3468339d065401788e638a  tests/test_db_guard.py
+26d3f5bc9dfb264aae4064ae9ac8dcf7  issue-tracker/eintraege_claude_Build578.json

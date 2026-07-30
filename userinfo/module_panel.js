@@ -184,13 +184,48 @@ let _justDropped = false;
 // API-Abfragen
 // ---------------------------------------------------------------------------
 
+/**
+ * _fehlerAusAntwort: baut eine Fehlermeldung, die den SERVER zu Wort kommen
+ * laesst (Build 583).
+ *
+ * BEFUND mc (2026-07-30): der Server erklaert seit Build 582 genau, was zu tun
+ * ist - bei einer nicht migrierten templates.db etwa 'die ALTE Tabelle
+ * placeholder_queries gefunden, migrate_templates_placeholders.py ausfuehren'.
+ * In der Konsole stand trotzdem nur 'Error: HTTP 503', weil alle drei Abrufer
+ * den ANTWORTKOERPER WEGWARFEN. Die Diagnose war da und kam nie an.
+ *
+ * Ein Fehler, der die Ursache kennt und verschweigt, ist so gut wie keiner.
+ */
+async function _fehlerAusAntwort(resp, was) {
+    let zusatz = '';
+    try {
+        const roh = await resp.text();
+        try {
+            const b = JSON.parse(roh);
+            // 'massnahme' ist die Handlungsanweisung, 'error'/'ursache' der
+            // Befund. Was da ist, wird genommen - nichts wird geraten.
+            zusatz = [b.massnahme, b.error, b.ursache]
+                .filter(Boolean).join(' — ');
+        } catch (e) {
+            zusatz = roh.slice(0, 300);
+        }
+    } catch (e) {
+        // Koerper nicht lesbar: dann eben ohne. Kein Grund, den Fehler
+        // seinerseits zu verschlucken.
+    }
+    return new Error(was + ' (HTTP ' + resp.status + ')'
+        + (zusatz ? ': ' + zusatz : ''));
+}
+
 async function _fetchModules(role, search) {
     const params = new URLSearchParams();
     if (role)   params.set('role',   role);
     if (search) params.set('search', search);
     const url = TEMPLATES_API + (params.toString() ? '?' + params.toString() : '');
     const resp = await fetch(url, { headers: { 'X-Forensic-Request': 'ajax' } });
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    if (!resp.ok) {
+        throw await _fehlerAusAntwort(resp, 'Bausteine konnten nicht geladen werden');
+    }
     return resp.json();
 }
 
@@ -211,7 +246,9 @@ async function _fetchTemplates(search) {
     const url = FULL_TEMPLATES_API + (search ? '?search=' + encodeURIComponent(search) : '');
     _dbg('_fetchTemplates:', url);
     const resp = await fetch(url, { headers: { 'X-Forensic-Request': 'ajax' } });
-    if (!resp.ok) throw new Error('Vorlagen konnten nicht geladen werden (HTTP ' + resp.status + ')');
+    if (!resp.ok) {
+        throw await _fehlerAusAntwort(resp, 'Vorlagen konnten nicht geladen werden');
+    }
     return await resp.json();
 }
 
@@ -220,7 +257,16 @@ async function _fetchQueries(search) {
     if (search) params.set('search', search);
     const url = LIBRARY_API + (params.toString() ? '?' + params.toString() : '');
     const resp = await fetch(url, { headers: { 'X-Forensic-Request': 'ajax' } });
-    if (!resp.ok) return [];
+    // BUILD 581: NICHT MEHR SCHLUCKEN.
+    // Bis hierher wurde JEDE Fehlerantwort zu einer leeren Liste - auch das
+    // 503 'Datenbank nicht erreichbar' aus Build 580. Deshalb meldeten
+    // 'Module' und 'Vorlagen' den Ausfall, die 'Einzeldaten' aber nicht
+    // (Befund mc 2026-07-30): die beiden anderen Abrufer werfen seit jeher,
+    // dieser eine nicht. Eine leere Bibliothek und eine unerreichbare
+    // Bibliothek sind zweierlei.
+    if (!resp.ok) {
+        throw await _fehlerAusAntwort(resp, 'Einzeldaten konnten nicht geladen werden');
+    }
     const data = await resp.json();
     return Array.isArray(data) ? data : [];
 }
@@ -496,6 +542,36 @@ async function _loadAndRender(forceReload = false) {
                 Die Bausteine konnten nicht geladen werden.
                 <br><small>${_esc(String(err && err.message ? err.message : err))}</small>
             </div>`;
+
+            // BUILD 581: WAS OHNE DATENBANK GEHT, BLEIBT NUTZBAR.
+            //
+            // Befund mc (2026-07-30): seit der Server einen Ausfall meldet
+            // (Build 579/580), verschwanden in der Ansicht 'Alle' auch die
+            // STANDARD-BLOECKE - Absatz, Ueberschrift, Liste, Tabelle, Zitat,
+            // Trennlinie. Die stehen als Konstante in dieser Datei und
+            // brauchen ueberhaupt keine Datenbank. Aus einem Teilausfall
+            // wurde so ein Totalausfall: der Redakteur konnte nicht einmal
+            // mehr einen leeren Absatz einfuegen.
+            //
+            // Richtig ist: zeigen, was da ist - und sagen, was fehlt. Beides,
+            // nicht eines davon.
+            if (_activeCategory === 'modules' && !_filterRole) {
+                const q = _filterSearch.toLowerCase();
+                const stdFiltered = q
+                    ? STANDARD_BLOCKS.filter(b =>
+                        b.title.toLowerCase().includes(q)
+                        || b.description.toLowerCase().includes(q))
+                    : STANDARD_BLOCKS;
+                if (stdFiltered.length) {
+                    const hinweis = document.createElement('div');
+                    hinweis.className = 'mp-hinweis';
+                    hinweis.textContent = 'Die Standard-Bausteine stehen '
+                        + 'weiterhin zur Verfuegung - sie brauchen keine '
+                        + 'Datenbank.';
+                    list.appendChild(hinweis);
+                    _appendStandardBlocks(list, stdFiltered);
+                }
+            }
         }
     }
 }
@@ -884,6 +960,55 @@ function _selectModule(id) {
     });
 }
 /**
+ * _appendStandardBlocks: haengt die Standard-Bloecke an eine Liste an.
+ *
+ * BUILD 581 - HERAUSGELOEST aus _renderListWithStandard, weil derselbe
+ * Aufbau jetzt an ZWEI Stellen gebraucht wird: im Normalfall und im
+ * Fehlerfall. Eine Kopie waere die naechste Drift gewesen - beim
+ * naechsten Umbau der Kacheln haette nur eine der beiden gewirkt.
+ */
+function _appendStandardBlocks(list, stdBlocks) {
+    if (!list || !stdBlocks || !stdBlocks.length) { return; }
+    const divider = document.createElement('div');
+    divider.className = 'mp-std-divider';
+    divider.textContent = 'Standard-Blöcke';
+    list.appendChild(divider);
+
+    const stdHolder = document.createElement('div');
+    stdHolder.className = 'mp-std-section';
+    list.appendChild(stdHolder);
+
+    // mp-item-preview hinzugefuegt (Bug 2.3 Fix Build 133)
+    // Bug 2.63 Fix Build 149: draggable="true" + data-block-type fehlten.
+    // Beleg: Bugfix Build 149, Projektgespraech 2026-05-10
+    stdHolder.innerHTML = stdBlocks.map(b => `
+        <div class="mp-item mp-item--standard" data-std-type="${_esc(b.block_type)}"
+             data-block-type="${_esc(b.block_type)}"
+             role="listitem" tabindex="0" draggable="true" title="${_esc(b.description)}">
+            <div class="mp-item-header">
+                <span class="mp-item-icon" aria-hidden="true">${_esc(b.icon)}</span>
+                <span class="mp-item-title">${_esc(b.title)}</span>
+            </div>
+            <div class="mp-item-preview">${_esc(b.description)}</div>
+            <button class="mp-btn-insert" type="button"
+                    data-std-type="${_esc(b.block_type)}"
+                    title="${_esc(b.title)} einfügen">+ Einfügen</button>
+        </div>
+    `).join('');
+
+    stdHolder.querySelectorAll('.mp-btn-insert[data-std-type]').forEach(btn => {
+        btn.addEventListener('click', (evt) => {
+            window._uevt?.(evt, 'module_panel', 'click:std-block-insert-secondary', { blockType: btn.dataset.stdType }); // B200
+            if (window._editor?.blocks?.insert) {
+                window._editor.blocks.insert(btn.dataset.stdType);
+                const idx = window._editor.blocks.getBlocksCount() - 1;
+                window._editor.caret.setToBlock(idx);
+            }
+        });
+    });
+}
+
+/**
  * Rendert Modulliste + Standard-Bloecke in #mp-list (fuer "Alle"-Ansicht).
  * Build 114: Standard-Bloecke werden nach den regulaeren Modulen angezeigt.
  *
@@ -922,45 +1047,7 @@ function _renderListWithStandard(modules, stdBlocks) {
     }
 
     // Standard-Trenner + Standard-Eintraege anhaengen
-    if (stdBlocks.length) {
-        const divider = document.createElement('div');
-        divider.className = 'mp-std-divider';
-        divider.textContent = 'Standard-Blöcke';
-        list.appendChild(divider);
-
-        const stdHolder = document.createElement('div');
-        stdHolder.className = 'mp-std-section';
-        list.appendChild(stdHolder);
-
-        // mp-item-preview hinzugefuegt (Bug 2.3 Fix Build 133)
-        // Bug 2.63 Fix Build 149: draggable="true" + data-block-type fehlten.
-        // Beleg: Bugfix Build 149, Projektgespraech 2026-05-10
-        stdHolder.innerHTML = stdBlocks.map(b => `
-            <div class="mp-item mp-item--standard" data-std-type="${_esc(b.block_type)}"
-                 data-block-type="${_esc(b.block_type)}"
-                 role="listitem" tabindex="0" draggable="true" title="${_esc(b.description)}">
-                <div class="mp-item-header">
-                    <span class="mp-item-icon" aria-hidden="true">${_esc(b.icon)}</span>
-                    <span class="mp-item-title">${_esc(b.title)}</span>
-                </div>
-                <div class="mp-item-preview">${_esc(b.description)}</div>
-                <button class="mp-btn-insert" type="button"
-                        data-std-type="${_esc(b.block_type)}"
-                        title="${_esc(b.title)} einfügen">+ Einfügen</button>
-            </div>
-        `).join('');
-
-        stdHolder.querySelectorAll('.mp-btn-insert[data-std-type]').forEach(btn => {
-            btn.addEventListener('click', (evt) => {
-                window._uevt?.(evt, 'module_panel', 'click:std-block-insert-secondary', { blockType: btn.dataset.stdType }); // B200
-                if (window._editor?.blocks?.insert) {
-                    window._editor.blocks.insert(btn.dataset.stdType);
-                    const idx = window._editor.blocks.getBlocksCount() - 1;
-                    window._editor.caret.setToBlock(idx);
-                }
-            });
-        });
-    }
+        _appendStandardBlocks(list, stdBlocks);
 }
 
 
@@ -1459,6 +1546,12 @@ window.ModulePanel = {
     // Interna
     _fetchModules,
     _fetchModuleBody,
+    // Build 581: pruefbar gemacht - der Aufbau der Standard-Bloecke wird
+    // seither an zwei Stellen gebraucht (Normal- und Fehlerfall).
+    _fetchQueries,
+    _fehlerAusAntwort,
+    _appendStandardBlocks,
+    STANDARD_BLOCKS,
     // Bug 2.57/2.64: Setter fuer Cursor-Range und Drop-Flag
     // Bug 2.120 Fix Build 231: lockId nach Bericht-Wechsel aktualisieren
     _refreshLockId: (lockId) => { _currentOpts.lockId = lockId || null; },

@@ -25,9 +25,9 @@ sse_layer.js:604 [SSELayer] EventSource öffnen: /_forensic/events?role=report
 editor_bootstrap.js:53 [editor_bootstrap] ReportLayer instanziiert
 editor_bootstrap.js:53 [editor_bootstrap] LockLayer instanziiert
 editor_bootstrap.js:53 [editor_bootstrap] DocumentLayer instanziiert
-report_editor.js:4560 [forensic] report_editor.js: v0.8.576 Build 576 | Exports auf window gesetzt
+report_editor.js:4560 [forensic] report_editor.js: v0.8.582 Build 582 | Exports auf window gesetzt
 sse_layer.js:604 [SSELayer] EventSource direkt öffnen (Preflight OK): /_forensic/events?role=report
-sse_layer.js:604 [SSELayer] client_id empfangen: 15ff6c96-5096-4c8b-b493-c158c9940a18 Zustand vorher: CONNECTING
+sse_layer.js:604 [SSELayer] client_id empfangen: ebdd9101-c877-4cb2-8327-9021268517cd Zustand vorher: CONNECTING
 sse_layer.js:604 [SSELayer] Zustandsübergang: CONNECTING → CONNECTED
 report_layer.js:406 [ReportLayer] Zustandsübergang: UNINITIALIZED → IDLE
 report_layer.js:406 [ReportLayer] ready — SSELayer ist bereit, ReportLayer in IDLE
@@ -43,11 +43,15 @@ report_editor.js:120 [forensic] _initColResizer: Schiebebalken initialisiert
 report_editor.js:120 [forensic] _initForumLinkInterceptor: BroadcastChannel bereit
 report_editor.js:4335 [Violation] Permissions policy violation: unload is not allowed in this document.
 _initForumLinkInterceptor @ report_editor.js:4335
-report_editor.js:120 [forensic] _initForumLinkInterceptor: aktiv (window_id= 8228237e-a05b-4119-bbf5-72a30b875355 )
+report_editor.js:120 [forensic] _initForumLinkInterceptor: aktiv (window_id= 9d015d3f-a7e4-4219-9f92-4ca888a0f3c5 )
 report_editor.js:120 [forensic] _initDragDrop: Drop-Zone registriert auf #editorjs-holder
 report_editor.js:120 [forensic] initReportSelector() gestartet
-validation_rules.js:115 [ValidationRules] Katalog konnte nicht geladen werden (HTTP 404). Felder mit Formatregel werden im Browser NICHT geprueft; der Server lehnt sie beim Einreichen ab.
-(anonymous) @ validation_rules.js:115
+validation_rules.js:71 [ValidationRules] Katalog geladen: Array(1)
+module_panel.js:495 module_panel.js: Laden fehlgeschlagen: Error: HTTP 503
+    at _fetchModules (module_panel.js:193:25)
+    at async _loadAndRender (module_panel.js:463:28)
+    at async Object.showPanel (module_panel.js:268:5)
+_loadAndRender @ module_panel.js:495
 report_editor.js:120 [forensic] loadReport() report_id= 3 type= addendum
 report_editor.js:120 [forensic] _loadReportImpl: Lock erwerben für Bericht 3
 report_editor.js:120 [forensic] _loadReportImpl: reportLayer.open() für Bericht 3
@@ -58,15 +62,17 @@ lock_layer.js:718 [LockLayer] ReportLayer OPENED — prüfe sessionStorage auf l
 report_layer.js:406 [ReportLayer] OPENED: report_id= 3
 lock_layer.js:718 [LockLayer] Zustandsübergang: IDLE → ACQUIRING
 lock_layer.js:718 [LockLayer] Zustandsübergang: ACQUIRING → MINE
-editor_bootstrap.js:53 [editor_bootstrap] LockLayer acquired: lockId= efad2399-bbcb-4133-abd7-47a69d9327c9
-lock_layer.js:718 [LockLayer] MINE: lock_id= efad2399-bbcb-4133-abd7-47a69d9327c9
+editor_bootstrap.js:53 [editor_bootstrap] LockLayer acquired: lockId= 6cf7b26a-3287-4d22-aa77-9cd71359aec3
+lock_layer.js:718 [LockLayer] MINE: lock_id= 6cf7b26a-3287-4d22-aa77-9cd71359aec3
 report_editor.js:120 [forensic] _loadReportImpl: Bloecke aus reportLayer ( 7 )
 report_editor.js:1028 report_editor.js: _knownBlockIds initialisiert, 7 Bloecke geladen.
 report_editor.js:120 [forensic] _initEditorJs(): window.EditorJS= true
 report_editor.js:120 [forensic] _initSidebarAccordion() gestartet
 report_editor.js:1614 report_editor.js: Editor bereit, report_id= 3 | readOnly= false
+module_panel.js:495 module_panel.js: Laden fehlgeschlagen: Error: HTTP 503
+    at _fetchModules (module_panel.js:193:25)
+    at async _loadAndRender (module_panel.js:463:28)
+    at async Object.showPanel (module_panel.js:268:5)
+_loadAndRender @ module_panel.js:495
 report_editor.js:1799 report_editor.js: Initialisierungs-Guard freigegeben.
-debug_events.js:162 [USER]     [module_panel] click:mp-cat-tab — Mouse
-debug_events.js:162 [USER]     [module_panel] click:mp-cat-tab — Mouse
-module_panel.js:77 [forensic] _fetchTemplates: /_forensic/templates/full
 debug_events.js:174 [USER]     [report_editor] mousedown:captureRange — Mouse
