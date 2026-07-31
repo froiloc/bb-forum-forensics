@@ -79,18 +79,52 @@ class CliBefehl:
 
 
 @dataclass(frozen=True)
+class CliBeispiel:
+    """
+    Ein Beispielaufruf - und der Nachweis, dass er gelaufen ist.
+
+    WARUM DAS FELD 'geprueft' PFLICHT IST (Grundregel 9, sinngemaess auf die
+    Dokumentation angewandt): Ein Beispiel, das nie gelaufen ist, kostet die
+    Zeit dessen, der ihm vertraut. Der Nachweis steht deshalb AM BEISPIEL und
+    nicht in einem Vermerk daneben - dort waere er beim naechsten Umbau
+    verloren.
+
+    aufruf   - die Zeile, so wie sie einzugeben ist.
+    wirkung  - was dabei herauskommt. Ein Beispiel ohne die erwartete Wirkung
+               laesst offen, ob es funktioniert hat.
+    geprueft - WO und WANN es gelaufen ist. Leer ist unzulaessig.
+    """
+    aufruf: str
+    wirkung: str
+    geprueft: str
+
+    def __post_init__(self) -> None:
+        for pflicht in ("aufruf", "wirkung", "geprueft"):
+            if not str(getattr(self, pflicht)).strip():
+                raise CliModellError(
+                    "Beispiel '%s': Pflichtfeld '%s' ist leer. Ein "
+                    "ungepruefter Beispielaufruf gehoert nicht in den "
+                    "Katalog." % (self.aufruf or "?", pflicht))
+
+
+@dataclass(frozen=True)
 class CliTiefe:
     """
     Die Tiefeninhalte eines Eintrags (H17/H18). In H15 durchgehend None.
 
-    beispiele  - Aufrufe, die VOR der Aufnahme tatsaechlich gefahren wurden
-                 (Grundregel 9, sinngemaess auf die Dokumentation angewandt).
+    beispiele  - Aufrufe, die VOR der Aufnahme tatsaechlich gefahren wurden.
     exit_codes - (Code, Bedeutung). Ein Exit-Code, der nicht 0 ist, ist nicht
                  zwingend ein Fehler; mehrere Werkzeuge melden damit einen
                  BEFUND.
     warnungen  - was schiefgehen kann und was dann gilt.
+
+    DIE DREI SIND EINZELN NACHGEHALTEN: Exit-Codes und Warnungen lassen sich
+    am Quelltext belegen, ein Beispiel muss GEFAHREN werden. Deshalb fuehrt
+    der Katalog zwei Fehllisten - eine fuer "gar keine Tiefe" und eine fuer
+    "Tiefe, aber ohne gepruefte Beispiele". Sonst saehe ein Eintrag mit
+    Exit-Codes fertig aus, obwohl der teuerste Teil noch fehlt.
     """
-    beispiele: Tuple[str, ...] = ()
+    beispiele: Tuple[CliBeispiel, ...] = ()
     exit_codes: Tuple[Tuple[int, str], ...] = ()
     warnungen: Tuple[str, ...] = ()
 
@@ -161,6 +195,10 @@ class CliEintrag:
         """Ob der Eintrag ueber den Grundeintrag hinaus ausgearbeitet ist."""
         t = self.tiefe
         return bool(t and (t.beispiele or t.exit_codes or t.warnungen))
+
+    def hat_beispiele(self) -> bool:
+        """Ob GEPRUEFTE Beispielaufrufe vorliegen."""
+        return bool(self.tiefe and self.tiefe.beispiele)
 
     def schreibt(self) -> bool:
         return self.art in ("schreibend", "gemischt")

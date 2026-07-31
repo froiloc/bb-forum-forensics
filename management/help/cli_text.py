@@ -291,8 +291,14 @@ def zeige_text(e: CliEintrag) -> str:
         if t.beispiele:
             zeilen.append("Beispiele")
             for bsp in t.beispiele:
-                zeilen.extend(umbrechen(bsp, BREITE, "    ", "  "))
-            zeilen.append("")
+                # DER AUFRUF WIRD NICHT UMBROCHEN. Eine ueber zwei Zeilen
+                # verteilte Befehlszeile laesst sich nicht kopieren, und
+                # genau dafuer steht sie da.
+                zeilen.append("  " + bsp.aufruf)
+                zeilen.extend(umbrechen(bsp.wirkung, BREITE, "      "))
+                zeilen.extend(umbrechen("geprueft: " + bsp.geprueft,
+                                        BREITE, "      "))
+                zeilen.append("")
         if t.exit_codes:
             zeilen.append("Rueckgabewerte")
             for code, bedeutung in t.exit_codes:

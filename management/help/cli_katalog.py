@@ -42,7 +42,9 @@ from __future__ import annotations
 
 from typing import Dict, Iterable, List, Optional, Tuple
 
-from management.help.cli_modell import CliBefehl, CliEintrag, CliModellError
+from management.help.cli_modell import (
+    CliBefehl, CliBeispiel, CliEintrag, CliModellError, CliTiefe,
+)
 
 #: Arbeitsbereiche, in der Reihenfolge der Ausgabe.
 GRUPPEN_REIHENFOLGE: Tuple[str, ...] = (
@@ -60,6 +62,17 @@ GRUPPEN_REIHENFOLGE: Tuple[str, ...] = (
 def _b(name: str, art: str, zweck: str) -> CliBefehl:
     """Kurzform fuer einen Unterbefehl."""
     return CliBefehl(name=name, art=art, zweck=zweck)
+
+
+#: Wo die Beispiele dieses Builds gefahren wurden. EINE Stelle, damit der
+#: Nachweis nicht in 60 Zeichenketten auseinanderlaeuft.
+_GEPRUEFT = ("Build 609, 2026-07-31, gegen einen Wegwerf-Bestand "
+             "(/tmp mit leeren Datenbanken), Python 3.13")
+
+
+def _bsp(aufruf: str, wirkung: str, geprueft: str = _GEPRUEFT) -> CliBeispiel:
+    """Kurzform fuer einen GEFAHRENEN Beispielaufruf."""
+    return CliBeispiel(aufruf=aufruf, wirkung=wirkung, geprueft=geprueft)
 
 
 CLI_KATALOG: Tuple[CliEintrag, ...] = (
@@ -302,6 +315,19 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         hinweis="Dies ist die einzige Stelle, an der die Zuordnung Rolle -> "
                 "Recht gepflegt wird; die Cockpit-Sicht 'Rechte / Policy' "
                 "zeigt sie nur an.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.rbac.rbac_admin catalog",
+                     "Gibt Rollen und Rechte aus, ohne eine Datenbank zu "
+                     "oeffnen. Im Versuch: 8 Rollen, danach die Rechte, "
+                     "Rueckgabewert 0."),
+            ),
+            exit_codes=((0, "erledigt"), (1, "Fehler")),
+            warnungen=(
+                "'revoke-grant' und 'revoke-role' loeschen nicht, sie "
+                "widerrufen. Die Zeile bleibt als Beleg erhalten.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="ad_sync_admin",
@@ -739,11 +765,15 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "Beweismittel",
                      "evidence_<uid>.db (lesend, mode=ro - technisch "
                      "gesperrt, nicht nur zugesagt)"),
-        betrieb="Der Lauf ist ein betrieblicher Vorgang mit messbaren Kosten "
-                "auf dem Netzlaufwerk und gehoert in die Hand derjenigen, "
-                "die die Anlage betreiben. Ob er neben dem laufenden Betrieb "
-                "unbedenklich ist, sagt der Bestand NICHT - diese Frage ist "
-                "offen und in H17 zu klaeren.",
+        betrieb="STUFE B - betriebsvertraeglich (Analyse Build 609). Der "
+                "Lauf schreibt ausschliesslich in search_index.db, die kein "
+                "anderer Dienst offen haelt; die evidence-Datenbanken werden "
+                "nur mit 'mode=ro' gelesen. Je Fall eine kurze Transaktion, "
+                "kein Zwischenzustand. ABER: der Lauf ist ein betrieblicher "
+                "Vorgang mit messbaren Kosten auf dem Netzlaufwerk (Faktor "
+                "rund 24 gegenueber der Entwicklung), und eine gerade "
+                "beschriebene evidence-Datei kann er nicht lesen - dann "
+                "bleibt dieser Fall unvollstaendig und der Lauf endet mit 2.",
         befehle=(
             _b("--status", "lesend", "Stand des Index ausgeben."),
             _b("--auffrischen", "schreibend",
@@ -754,6 +784,24 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "einen Fehltreffer der Kurzpruefung aufzuloesen. Der Lauf "
                 "erzeugt bewusst KEINEN Beleg: er ist keine "
                 "Ermittlungshandlung; die Handlung ist die Abfrage.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.search.index_cli --status",
+                     "Zeigt den Stand des Index je Fall. Im Versuch gegen "
+                     "ein leeres Verzeichnis: alle Zaehler 0, Gesamtbefund "
+                     "'NICHT belegt aktuell', Rueckgabewert 0."),
+            ),
+            exit_codes=((0, "gelaufen bzw. Stand ausgegeben"),
+                        (1, "Fehler"),
+                        (2, "gelaufen, ABER mindestens ein Fall ist "
+                            "unvollstaendig")),
+            warnungen=(
+                "Eine gerade beschriebene evidence-Datei laesst sich nicht "
+                "lesen. Der Fall bleibt dann unvollstaendig, und der Lauf "
+                "endet mit 2 - das ist ein Befund und kein Absturz.",
+                "'--voll' baut den Index neu auf und ist teuer.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="maintenance",
@@ -781,6 +829,37 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         ),
         hinweis="Geschrieben werden nur Steuerdateien im Wartungsverzeichnis "
                 "- an den Fachdaten aendert dieses Werkzeug nichts.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python tools/maintenance.py status --data-dir ./data",
+                     "Zeigt das Fenster und die angemeldeten Dienste. Im "
+                     "Versuch: 'Wartungsfenster: KEINES gesetzt.' mit 0."),
+                _bsp("python tools/maintenance.py enter --reason \"Migration "
+                     "templates.db\" --ziel coordinator --wait-timeout 60",
+                     "Setzt das Fenster und wartet auf Ruhe. Im Versuch "
+                     "gegen einen Bestand ohne Personentabelle brach der "
+                     "Aufruf mit 1 ab: die Rechtepruefung war nicht "
+                     "moeglich, und ohne Recht wird kein Fenster gesetzt."),
+                _bsp("python tools/maintenance.py exit --data-dir ./data",
+                     "Beendet das Fenster. Im Versuch: 'Kein Wartungsfenster "
+                     "gesetzt - nichts zu tun.' mit 0."),
+            ),
+            exit_codes=((0, "erledigt"),
+                        (1, "Berechtigung fehlt oder Aufruffehler"),
+                        (2, "Fenster gesetzt, aber NICHT vollstaendig "
+                            "bestaetigt - das ist KEIN freigegebenes "
+                            "Fenster")),
+            warnungen=(
+                "'--ziel all' erfasst NUR die Datenbanken der obersten "
+                "Ebene. Die Fall-Datenbanken in den Unterverzeichnissen "
+                "evidence/, forensic/ und assets/ sind NICHT dabei - fuer "
+                "sie ist das Ziel einzeln zu nennen (z. B. "
+                "'evidence:900001'). Ein mit 'all' gesetztes Fenster ist "
+                "also KEIN Nachweis fuer die Ruhe einer Fall-Datenbank.",
+                "Eine schreibgeschuetzte (versiegelte) Datei gilt als ruhig "
+                "- richtig, weil es dort keinen Schreiber geben kann.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="maintenance_kill",
@@ -799,9 +878,25 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             _b("--uuid", "schreibend", "Einen bestimmten Dienst beenden."),
             _b("--all", "schreibend", "Alle angemeldeten Dienste beenden."),
         ),
-        hinweis="Der Dateikopf spricht von Wartungs-TESTdiensten. Ob ein "
-                "regulaerer Dienst betroffen sein kann, sagt er NICHT - "
-                "diese Frage ist offen und in H17 zu klaeren.",
+        hinweis="GEKLAERT (Analyse Build 609): Ein REGULAERER Dienst ist "
+                "ueber diesen Weg NICHT erreichbar. Nur ein mit "
+                "--maintenance gestarteter Dienst legt eine Anmeldedatei an, "
+                "und nur er wertet die Kill-Anforderung aus; ein regulaerer "
+                "Dienst schreibt lediglich ein Lebenszeichen in ein anderes "
+                "Verzeichnis. ABER: '--all' nimmt ALLE Anmeldungen ohne "
+                "Filter nach Rechner oder Fenster - auf einem geteilten "
+                "Laufwerk trifft es auch die Wartungsdienste anderer.",
+        tiefe=CliTiefe(
+            exit_codes=((0, "erledigt"),
+                        (1, "Aufruffehler"),
+                        (2, "Nachzuegler - mindestens ein Dienst hat sich "
+                            "nicht abgemeldet")),
+            warnungen=(
+                "'--all' nimmt ALLE Anmeldungen ohne Filter nach Rechner "
+                "oder Fenster. Auf einem geteilten Laufwerk trifft es auch "
+                "die Wartungsdienste anderer.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="hilfe",
@@ -879,12 +974,35 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         zweck="Ausstehende Migrationen der coordinator.db anwenden.",
         art="schreibend",
         datenbanken=("coordinator.db (schreibend)",),
-        betrieb="Der Bestand sagt nichts ueber eine noetige Ruhigstellung - "
-                "diese Frage ist offen und in H17 zu klaeren.",
+        betrieb="STUFE A - WARTUNGSFENSTER ERFORDERLICH (Analyse Build "
+                "609). Die Migrationen bauen Tabellen der coordinator.db um "
+                "(neu anlegen, kopieren, alte loeschen, umbenennen) und "
+                "setzen Journalmodus und Kontrollpunkt. Genau diese Datei "
+                "haelt der Auswertungsdienst im Regelbetrieb SCHREIBEND "
+                "offen. Ein Backup legt das Werkzeug NICHT an.",
         beleg=True,
         hinweis="DER EINZIGE Weg fuer die coordinator.db. tools/migrate-dbs.py "
                 "verweist ausdruecklich hierher: zwei Wege, die dasselbe "
                 "schreiben, waeren zwei Wahrheiten ueber den Beleg.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.migrate --coordinator-db "
+                     "./data/coordinator.db --deployed-by KENNUNG",
+                     "Wendet die ausstehenden Migrationen an und prueft "
+                     "danach die Belegkette nach."),
+            ),
+            exit_codes=((0, "angewandt oder nichts zu tun"),
+                        (1, "Fehler - die betroffene Migration wurde "
+                            "zurueckgerollt")),
+            warnungen=(
+                "Es wird KEIN Backup angelegt. Eines ist vorher von Hand zu "
+                "erstellen (Datenmigrationsleitfaden).",
+                "Auf einer noch nicht eingerichteten coordinator.db bricht "
+                "der Lauf bei der zweiten Migration mit einer unbehandelten "
+                "Ausnahme ab (geprueft Build 609). Der vorgesehene "
+                "Ausgangspunkt ist eine bereits eingerichtete Datei.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="migrate-dbs",
@@ -902,8 +1020,15 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "nicht)",
                      "coordinator.db (nur gelesen; angewandt wird sie ueber "
                      "management.migrate)"),
-        betrieb="Der Bestand sagt nichts ueber eine noetige Ruhigstellung - "
-                "diese Frage ist offen und in H17 zu klaeren.",
+        betrieb="STUFE A - WARTUNGSFENSTER ERFORDERLICH (Analyse Build "
+                "609), sobald --apply gesetzt ist. Geschrieben werden "
+                "templates.db sowie evidence_<uid>.db und assets_<uid>.db; "
+                "die evidence-Datei haelt der Auswertungsdienst des "
+                "jeweiligen Falls schreibend offen. Es werden Tabellen "
+                "umgebaut. Eine Sicherungskopie legt das Werkzeug vorher an "
+                "(ausser mit --no-backup) - sie wird aber NICHT automatisch "
+                "zurueckgespielt. Ohne --apply ist der Lauf reine Anzeige "
+                "und jederzeit unbedenklich.",
         befehle=(
             _b("(ohne --apply)", "lesend",
                "Trockenuebung. Die Vorgabe - es wird nichts geschrieben."),
@@ -912,6 +1037,33 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         ),
         hinweis="Die versiegelte forensic-Datenbank bleibt unberuehrt. Das "
                 "ist keine Vorsichtsmassnahme, sondern eine Grenze.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python tools/migrate-dbs.py --data-dir ./data",
+                     "Trockenuebung ueber alle Datenbanken. Meldete im "
+                     "Versuch 'OFFEN in 2 Datenbank(en): coordinator, "
+                     "templates' und endete mit 1 - es wurde nichts "
+                     "geschrieben."),
+                _bsp("python tools/migrate-dbs.py --db templates --apply",
+                     "Wendet die templates-Schritte an; legt vorher eine "
+                     "Sicherungskopie neben der Datei an.",
+                     "Build 609: die Trockenuebung ist gefahren, das "
+                     "Scharfschalten NICHT - es haette den Wegwerf-Bestand "
+                     "veraendert und damit den naechsten Versuch entwertet."),
+            ),
+            exit_codes=((0, "alles auf Stand"),
+                        (1, "Migrationen offen bzw. Fehler beim Anwenden"),
+                        (2, "Abbruch waehrend des Anwendens")),
+            warnungen=(
+                "forensic_<uid>.db wird NIE geschrieben - auch mit --apply "
+                "nicht. Das ist eine Grenze und keine Vorsichtsmassnahme.",
+                "Die coordinator.db wendet dieses Werkzeug nicht selbst an; "
+                "dafuer gibt es 'python -m management.migrate'. Zwei Wege, "
+                "die dasselbe schreiben, waeren zwei Wahrheiten ueber den "
+                "Beleg.",
+                "Die Sicherungskopie wird NICHT automatisch zurueckgespielt.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="migration_fleet_admin",
@@ -927,10 +1079,15 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "catalog-sync und beim scharfen Lauf)",
                      "die benannten Fall-Datenbanken (nur beim scharfen "
                      "Lauf schreibend)"),
-        betrieb="Der Bestand sagt nichts ueber eine noetige Ruhigstellung - "
-                "diese Frage ist offen und in H17 zu klaeren. Vor dem "
-                "scharfen Lauf sind vier Tore zu passieren; eine Sicherung "
-                "ist Pflicht.",
+        betrieb="STUFE A - WARTUNGSFENSTER ERFORDERLICH (Analyse Build "
+                "609), sobald 'companion --confirm' gesetzt ist. Der "
+                "Rueckweg im Fehlerfall KOPIERT die Sicherung UEBER die "
+                "Originaldatei und setzt dabei voraus, dass keine andere "
+                "Verbindung offen ist - er prueft es aber nicht. Genau das "
+                "ist der Fall, in dem ein laufender Auswertungsdienst "
+                "Schaden nimmt. Vor dem scharfen Lauf sind vier Tore zu "
+                "passieren; eine Sicherung ist Pflicht. Ohne --confirm wird "
+                "nur vorgeprueft und geplant.",
         befehle=(
             _b("catalog-sync", "schreibend",
                "Den Migrationskatalog in das Laufbuch uebernehmen."),
@@ -945,6 +1102,29 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         hinweis="Der Beleg laeuft hier NICHT ueber das Protokollbuch: "
                 "Beweis-Datenbanken fuehren keines. Der forensische Beleg "
                 "ist das verkettete Laufbuch.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.migration_fleet."
+                     "migration_fleet_admin ledger-list",
+                     "Listet die Eintraege des Laufbuchs. Achtung: dieses "
+                     "Werkzeug kennt KEIN --data-dir; ein unbekanntes "
+                     "Argument endet mit 2 (im Versuch bestaetigt)."),
+            ),
+            exit_codes=((0, "erledigt"),
+                        (1, "Vorpruefung nicht bestanden oder Lauf "
+                            "gescheitert"),
+                        (2, "Aufruffehler")),
+            warnungen=(
+                "Der Rueckweg im Fehlerfall kopiert die Sicherung UEBER die "
+                "Originaldatei und setzt voraus, dass keine andere "
+                "Verbindung offen ist - er prueft es nicht.",
+                "Der Beleg laeuft nicht ueber das Protokollbuch: "
+                "Beweis-Datenbanken fuehren keines. Der Nachweis ist das "
+                "verkettete Laufbuch.",
+                "Ein unterbrochener Lauf blockiert den naechsten, bis er "
+                "geklaert ist.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="templates_db_status",
@@ -963,6 +1143,23 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         hinweis="Anlass war ein Fall, in dem zwei Migrationen nie gelaufen "
                 "waren: die Folge war kein Fehler, sondern Stille. "
                 "Exit 1 heisst 'Migration fehlt', Exit 2 'Datei unbrauchbar'.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python management/templates_db_status.py "
+                     "--templates-db ./data/templates.db",
+                     "Nennt angewandte und fehlende Migrationen samt dem "
+                     "Befehl, der die Luecke schliesst. Im Versuch gegen "
+                     "eine leere Datei: alle fuenf fehlen, Rueckgabewert 1."),
+            ),
+            exit_codes=((0, "vollstaendig"),
+                        (1, "Migration(en) fehlen"),
+                        (2, "Datei unbrauchbar")),
+            warnungen=(
+                "Die von diesem Werkzeug vorgeschlagenen Migrationen sind "
+                "laut seiner eigenen Ausgabe bei angehaltenem Dienst "
+                "auszufuehren.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="migrate_templates_module_key",
@@ -1082,10 +1279,30 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         art="schreibend",
         datenbanken=("default.db am Ziel (schreibend)",
                      "die Quell-Dateien (strikt lesend, mode=ro)"),
-        betrieb="Der Bestand sagt nichts ueber eine noetige Ruhigstellung - "
-                "diese Frage ist offen und in H17 zu klaeren.",
+        betrieb="STUFE A - WARTUNGSFENSTER ERFORDERLICH (Analyse Build "
+                "609). Zwei Gruende: (1) mit --overwrite wird die vorhandene "
+                "Ziel-default.db GELOESCHT, und zwar VOR der Transaktion - "
+                "ein Abbruch danach laesst gar keine default.db zurueck, das "
+                "Zuruckrollen holt sie nicht wieder. (2) Der ganze Lauf "
+                "haengt an EINER Transaktion ueber alle Quellen. Die "
+                "default.db haelt der Auswertungsdienst lesend offen. Ein "
+                "Backup legt das Werkzeug nicht an.",
         hinweis="Die Herkunft jeder uebernommenen Zeile wird im Ziel "
                 "vermerkt.",
+        tiefe=CliTiefe(
+            exit_codes=((0, "erledigt, auch mit aufgeloesten Konflikten"),
+                        (1, "harter Fehler - der ganze Lauf wurde "
+                            "zurueckgerollt")),
+            warnungen=(
+                "Mit --overwrite wird die vorhandene Ziel-default.db "
+                "GELOESCHT, und zwar VOR der Transaktion. Ein Abbruch danach "
+                "laesst gar keine default.db zurueck; das Zurueckrollen holt "
+                "sie nicht wieder.",
+                "Der ganze Lauf haengt an EINER Transaktion. Es gibt keinen "
+                "Wiederaufsetzpunkt - ein Abbruch bedeutet: von vorn.",
+                "Ein Backup legt das Werkzeug nicht an.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="convert_journal_mode",
@@ -1112,6 +1329,24 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "nach dem Vorgang verglichen. Weicht er ab, ist das ein "
                 "Siegelbruch und der Lauf bricht hart ab - er wird NICHT "
                 "uebersprungen.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python tools/convert_journal_mode.py --data-dir ./data",
+                     "Trockenlauf ueber alle Datenbanken. Meldete im Versuch "
+                     "'0 von 5 Datenbanken WUERDEN umgestempelt' und endete "
+                     "mit 0."),
+            ),
+            exit_codes=((0, "nichts zu tun oder erfolgreich umgestempelt"),
+                        (1, "mindestens eine Datei nicht umgestempelt"),
+                        (2, "Aufruffehler oder harter Abbruch")),
+            warnungen=(
+                "Ein SIEGELBRUCH - eine Abweichung des Inhalts-Hashes einer "
+                "forensic-Datei - wird NICHT uebersprungen. Der Lauf bricht "
+                "hart ab.",
+                "Der Vorgang braucht exklusiven Zugriff. Haelt ein Dienst "
+                "eine Datei offen, scheitert er sauber - aber er scheitert.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="forensic_index_upgrade",
@@ -1125,8 +1360,15 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
               "laeuft.",
         art="gemischt",
         datenbanken=("forensic_<uid>.db (mit --ausfuehren schreibend)",),
-        betrieb="Der Bestand sagt nichts ueber eine noetige Ruhigstellung - "
-                "diese Frage ist offen und in H17 zu klaeren.",
+        betrieb="STUFE A - WARTUNGSFENSTER ERFORDERLICH (Analyse Build "
+                "609), sobald --ausfuehren gesetzt ist. Geschrieben wird in "
+                "die VERSIEGELTE forensic_<uid>.db, die der "
+                "Auswertungsdienst lesend offen haelt; ein Leser blockiert "
+                "den noetigen Schreibzugriff. Das Werkzeug setzt keine "
+                "Wartezeit und legt kein Backup an - scheitert der Zugriff, "
+                "bekommt die Datei den Zustand 'fehler' und der Lauf macht "
+                "mit der naechsten weiter. Ohne --ausfuehren ist der Lauf "
+                "reine Anzeige.",
         befehle=(
             _b("(ohne --ausfuehren)", "lesend",
                "Trockenlauf. Die Vorgabe."),
@@ -1138,6 +1380,27 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "bereits auffaelligen Datei. Auf WAL-gestempelte Dateien "
                 "wird nicht geschrieben; die brauchen zuerst "
                 "tools/convert_journal_mode.py.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python tools/forensic_index_upgrade.py --forensic-dir "
+                     "./data/forensic",
+                     "Trockenlauf. Meldete im Versuch 'Dateien gefunden: 1 / "
+                     "aktuell: 1' und endete mit 0 - es wurde nichts "
+                     "geschrieben."),
+            ),
+            exit_codes=((0, "nichts zu tun oder alles erledigt"),
+                        (1, "mindestens eine Datei mit Zustand 'fehler'"),
+                        (2, "Aufruffehler")),
+            warnungen=(
+                "Die DATEI-Pruefsumme aendert sich, der INHALT nicht - das "
+                "wird vor und nach dem Lauf geprueft. Wer Pruefsummen "
+                "fuehrt, muss sie danach neu erheben.",
+                "Auf WAL-gestempelte Dateien wird nicht geschrieben; die "
+                "brauchen zuerst tools/convert_journal_mode.py.",
+                "Das Werkzeug nimmt nichts zurueck. Weicht die Nachpruefung "
+                "ab, wird das benannt - mehr nicht.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="pruefe_migrationskette",
@@ -1155,6 +1418,22 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         hinweis="Exit 2 meldet eine Luecke, Exit 3 eine Version, die das "
                 "Paket nicht kennt. Beides ist ein Befund, kein "
                 "Programmfehler.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python tools/pruefe_migrationskette.py --db "
+                     "./data/coordinator.db --art coordinator",
+                     "Vergleicht die im Paket vorhandenen Migrationen mit "
+                     "den angewandten. Im Versuch: 37 im Paket, 1 angewandt, "
+                     "36 ausstehend - Rueckgabewert 0, weil Ausstehendes "
+                     "beim naechsten Start nachlaeuft."),
+            ),
+            exit_codes=((0, "schluessig"),
+                        (1, "Aufruffehler"),
+                        (2, "Luecke - eine vorhandene Migration wurde "
+                            "uebersprungen"),
+                        (3, "die Registrierung kennt eine Version, die das "
+                            "Paket nicht hat")),
+        ),
     ),
     CliEintrag(
         schluessel="poc_m019_weg_a",
@@ -1399,6 +1678,18 @@ def suche(begriff: str) -> Tuple[CliEintrag, ...]:
         if b in heuhaufen:
             raus.append(e)
     return tuple(raus)
+
+
+def fehlliste_cli_beispiele() -> Tuple[str, ...]:
+    """
+    Die ABGELEITETE Fehlliste der Werkzeuge ohne GEPRUEFTE Beispielaufrufe.
+
+    WARUM NEBEN fehlliste_cli_tiefe() EINE ZWEITE LISTE: Exit-Codes und
+    Warnungen lassen sich am Quelltext belegen; ein Beispiel muss GEFAHREN
+    werden, und genau das ist der teure Teil. Ohne diese zweite Liste saehe
+    ein Eintrag mit Exit-Codes fertig aus, obwohl der Nachweis fehlt.
+    """
+    return tuple(e.schluessel for e in CLI_KATALOG if not e.hat_beispiele())
 
 
 def fehlliste_cli_tiefe() -> Tuple[str, ...]:

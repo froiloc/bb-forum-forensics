@@ -36,7 +36,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from management.help.cli_katalog import (                # noqa: E402
     CLI_KATALOG, CliKatalogError, eintrag, eintrag_zu_pfad,
-    fehlliste_cli_tiefe, gruppen, suche, verify_cli_abgedeckt,
+    fehlliste_cli_beispiele, fehlliste_cli_tiefe, gruppen, suche,
+    verify_cli_abgedeckt,
     verify_katalog_konsistent,
 )
 
@@ -386,3 +387,56 @@ def test_ck10_der_scan_sieht_die_ungeklaerten_weiterhin():
         verify_cli_abgedeckt(_dateien_roh())
     for name in vorhanden:
         assert name in str(exc.value)
+
+
+# --- CK11 ---------------------------------------------------------------------
+
+def test_ck11_fehlliste_beispiele_schrumpft_nur():
+    """
+    Die zweite Fehlliste: Werkzeuge ohne GEPRUEFTE Beispielaufrufe.
+
+    Sie ist die teurere von beiden. Exit-Codes und Warnungen kann man am
+    Quelltext belegen; ein Beispiel muss gefahren werden. Ohne diese Liste
+    saehe ein Eintrag mit Exit-Codes fertig aus, obwohl der Nachweis fehlt.
+    """
+    with open(STAND, encoding="utf-8") as fh:
+        stand = json.load(fh)
+    eingecheckt = set(stand.get("cli_ohne_beispiele", []))
+    assert eingecheckt, (
+        "Die eingecheckte Liste 'cli_ohne_beispiele' ist leer. Ab Build 609 "
+        "wird sie gefuehrt; leer hiesse, jedes Werkzeug haette ein "
+        "geprueftes Beispiel.")
+    neu = sorted(set(fehlliste_cli_beispiele()) - eingecheckt)
+    assert not neu, (
+        "Die Beispiel-Fehlliste ist GEWACHSEN um: %s." % ", ".join(neu))
+
+
+def test_ck12_jedes_beispiel_traegt_seinen_nachweis():
+    """
+    Ein Beispiel ohne Nachweis, dass es gelaufen ist, gehoert nicht in den
+    Katalog (Grundregel 9, sinngemaess). Das Modell erzwingt ein nichtleeres
+    Feld; hier wird zusaetzlich verlangt, dass der Nachweis eine Buildnummer
+    ODER ein Datum nennt - 'geprueft: ja' waere keiner.
+    """
+    import re as _re
+    duenn = []
+    for e in CLI_KATALOG:
+        if not e.hat_beispiele():
+            continue
+        for bsp in e.tiefe.beispiele:
+            if not _re.search(r"(Build\s*\d{3}|\d{4}-\d{2}-\d{2})",
+                              bsp.geprueft):
+                duenn.append("%s: %s" % (e.schluessel, bsp.geprueft[:60]))
+    assert not duenn, (
+        "Beispiele, deren Nachweis weder Build noch Datum nennt:\n  "
+        + "\n  ".join(duenn))
+
+
+def test_ck13_kein_beispiel_ohne_wirkung():
+    """Ein Beispiel ohne die erwartete Wirkung laesst offen, ob es klappte."""
+    for e in CLI_KATALOG:
+        if not e.hat_beispiele():
+            continue
+        for bsp in e.tiefe.beispiele:
+            assert len(bsp.wirkung.split()) >= 4, (
+                "%s: Wirkung zu knapp: %r" % (e.schluessel, bsp.wirkung))

@@ -195,10 +195,19 @@ def test_ct06_zeige_nennt_alle_pflichtangaben():
     assert hilfe_aufruf(e.aufruf) in text
     assert "Protokollbuch" in text
 
+    # rbac_admin hat seit Build 609 Tiefeninhalte - also stehen sie da.
+    for pflicht in ("Beispiele", "Rueckgabewerte", "Zu beachten"):
+        assert pflicht in text, "Abschnitt '%s' fehlt" % pflicht
+    assert "geprueft:" in text, (
+        "Ein Beispiel ohne seinen Nachweis waere ein ungepruefter Aufruf.")
+
     # DIE FEHLENDE TIEFE WIRD BENANNT, nicht weggelassen - sonst sieht ein
-    # Grundeintrag aus wie ein vollstaendiger (Grundregel 1).
-    assert "Ausarbeitung" in text
-    assert "noch nicht erfasst" in _flach(text)
+    # Grundeintrag aus wie ein vollstaendiger (Grundregel 1). Geprueft an
+    # einem Werkzeug, das (noch) keine hat.
+    ohne = next(e for e in CLI_KATALOG if not e.hat_tiefe())
+    text_ohne = zeige_text(ohne)
+    assert "Ausarbeitung" in text_ohne
+    assert "noch nicht erfasst" in _flach(text_ohne)
 
 
 def test_ct06b_zeige_laeuft_fuer_jeden_eintrag():
@@ -250,10 +259,18 @@ def test_ct09_zeilenbreite():
         for zeile in text.split("\n"):
             if len(zeile) <= BREITE:
                 continue
+            # AUSNAHME 1: ein einzelnes, unteilbares Wort (Pfad, Kennung).
             worte = zeile.split()
-            assert len(worte) == 1, (
-                "Zeile laenger als %d Zeichen und teilbar: %r"
-                % (BREITE, zeile))
+            if len(worte) == 1:
+                continue
+            # AUSNAHME 2: ein BEISPIELAUFRUF. Eine ueber zwei Zeilen
+            # verteilte Befehlszeile laesst sich nicht kopieren - und genau
+            # dafuer steht sie da. Die Ausnahme ist eng gefasst: nur eine
+            # eingerueckte Zeile, die mit 'python' beginnt.
+            if zeile.startswith("  python ") and zeile.strip() == zeile.lstrip():
+                continue
+            pytest.fail("Zeile laenger als %d Zeichen und teilbar: %r"
+                        % (BREITE, zeile))
 
 
 # --- CT10 ---------------------------------------------------------------------
