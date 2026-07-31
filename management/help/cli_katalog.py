@@ -804,6 +804,38 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "diese Frage ist offen und in H17 zu klaeren.",
     ),
     CliEintrag(
+        schluessel="hilfe",
+        pfad="tools/hilfe.py",
+        aufruf="python tools/hilfe.py liste|zeige <kennung>|suche <begriff>"
+               "|stand",
+        titel="Werkzeugverzeichnis",
+        gruppe="Betrieb und Sicherung",
+        zweck="Das Dach ueber alle Kommandozeilen-Werkzeuge: auflisten, ein "
+              "Werkzeug im Einzelnen zeigen, suchen, Ausarbeitungsstand.",
+        art="lesend",
+        datenbanken=("keine",),
+        betrieb="Zu jeder Zeit und in jedem Betriebszustand gefahrlos: es "
+                "gibt nur Text aus, fuehrt nichts aus, oeffnet nichts und "
+                "nimmt keine Sperre - auch mitten in einer Migration "
+                "aufrufbar.",
+        befehle=(
+            _b("liste", "lesend",
+               "Alle Werkzeuge, nach Arbeitsbereich gruppiert; "
+               "'--nur-schreibend' zeigt nur die aendernden."),
+            _b("zeige", "lesend",
+               "Ein Werkzeug im Einzelnen. Endet mit dem '--help'-Aufruf des "
+               "Zielwerkzeugs."),
+            _b("suche", "lesend",
+               "Volltextsuche ueber den Katalog. Rueckgabewert 1 bedeutet "
+               "'kein Treffer' - eine Auskunft, kein Fehler."),
+            _b("stand", "lesend",
+               "Wie weit der Katalog ausgearbeitet ist."),
+        ),
+        hinweis="Der Katalog sagt, WOZU ein Werkzeug da ist. Die "
+                "vollstaendige Liste der Optionen sagt das Werkzeug selbst - "
+                "ein hier abgeschriebener Optionsblock wuerde veralten.",
+    ),
+    CliEintrag(
         schluessel="hilfe_lektorat",
         pfad="tools/hilfe_lektorat.py",
         aufruf="python tools/hilfe_lektorat.py [--nur sicht1,sicht2] "

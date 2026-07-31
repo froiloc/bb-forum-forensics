@@ -67,6 +67,28 @@ Grundregel 9 sinngemäß auf die Dokumentation angewandt: **Kein Beispielaufruf 
 
 **Im Zweifel die strengere Stufe.** Eine tägliche Sicherung macht einen Datenverlust nicht harmlos, sie macht ihn nur reparabel — und das kostet Zeit, die im Ermittlungsbetrieb fehlt.
 
-## 8. epilog (H20/H21, noch nicht ausgerollt)
+## 8. Das Dachwerkzeug
+
+`python tools/hilfe.py` ist der Einstieg: `liste`, `zeige <kennung>`, `suche <begriff>`, `stand`.
+
+Es **führt nichts aus, öffnet nichts und nimmt keine Sperre** — es gibt Text aus, sonst nichts. Damit ist es in jedem Betriebszustand aufrufbar, auch mitten in einer Migration.
+*Durchsetzung:* `tests/test_help_cli_text.py` CT11 prüft am Quelltext, dass weder `sqlite3` noch `subprocess` noch `os.system` vorkommen — ein Verhaltenstest würde nur zeigen, dass bei *diesem* Aufruf nichts geöffnet wurde.
+
+**Jeder gezeigte Eintrag endet mit dem `--help`-Aufruf des Zielwerkzeugs.** Der Katalog sagt, wozu ein Werkzeug da ist; die vollständige Liste der Optionen sagt das Werkzeug selbst — und zwar immer aktuell, während ein abgeschriebener Optionsblock veralten würde.
+
+**Ein Leerbefund der Suche liefert Rückgabewert 1.** Ein Skript kann ihn damit erkennen, ohne die Ausgabe zu lesen; die Ausgabe sagt zusätzlich ausdrücklich, *worin* gesucht wurde — nämlich im Katalogtext und nicht im Quelltext der Werkzeuge.
+
+### Form der Ausgabe
+
+| Regel | Grund |
+|---|---|
+| **Reines ASCII** — keine Umlaute, kein ß | Die Windows-Eingabeaufforderung läuft nicht zwingend in UTF-8; ein Umlaut wird dort zum Kästchen. Der gesamte Katalog folgt dem Hausstil der argparse-Beschreibungen („Uebersicht", „gueltig"). |
+| **Keine Escape-Sequenzen** — keine Farben, kein Fettdruck | Die Ausgabe muss sich in eine Datei umleiten und in einen Vermerk einfügen lassen. |
+| **78 Zeichen** | Zwei weniger als die übliche Konsolenbreite, damit der Umbruch der Konsole nichts zerreißt. |
+| **Ein zu langes Wort wird nicht zerschnitten** | Eine zerschnittene Kennung oder ein zerschnittener Pfad ist unbrauchbar — dann lieber eine zu lange Zeile, die man kopieren kann. |
+
+*Durchsetzung:* CT08 (ASCII über alle erzeugbaren Ausgaben), CT09 (Breite, mit ausdrücklich geprüfter Ausnahme für unteilbare Wörter), CT01/CT02 (Umbruch und Spalten).
+
+## 9. epilog (H20/H21, noch nicht ausgerollt)
 
 Jedes Werkzeug bekommt in seinem argparse-Parser einen `epilog` mit ein bis drei Beispielaufrufen. Diese Beispiele stammen aus dem Katalog — kein dritter Bestand. Die Änderung ist rein additiv: kein Werkzeug ändert dabei Logik, Parameter oder Verhalten.
