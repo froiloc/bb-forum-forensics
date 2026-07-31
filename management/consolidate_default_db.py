@@ -20,10 +20,21 @@
 #   Der Abgleichbericht wird auf die Konsole und (append-only) in die
 #   Report-Datei geschrieben; Herkunft zusätzlich in default_meta.merge_provenance.
 #
-# Exit-Codes: 0 = ok (auch mit aufgelösten Konflikten), 1 = harter Fehler.
+# WARTUNGSVORBEHALT — STUFE A (Build 612):
+#   Mit --overwrite wird die vorhandene Ziel-Datei GELOESCHT, BEVOR die
+#   Transaktion beginnt; ein Abbruch danach laesst gar keine default.db
+#   zurueck, und ein Backup legt das Werkzeug nicht an. Es prueft deshalb vor
+#   dem Lauf Ziel UND Quellen auf Ruhe und faehrt ohne aktives
+#   Wartungsfenster nur nach Eingabe eines vollstaendigen Wortes fort
+#   (maintenance/wartungsvorbehalt.py). Einstufung:
+#   Vermerk_Wartungsvorbehalt_Analyse_K1_K8_v1_0.md, von mc bestaetigt am
+#   2026-07-31.
+#
+# Exit-Codes: 0 = ok (auch mit aufgelösten Konflikten) · 1 = harter Fehler
+#             3 = Wartungsvorbehalt, es wurde NICHTS geschrieben.
 #
 # Beleg: Projektgespräch 2026-07-01 (mc), Analyse default.db-Konsolidierung.
-# Version: v0.7.309 · Build: 309 · 2026-07-01
+# Version: v0.8.612 · Build: 612 · 2026-07-31
 # =============================================================================
 
 import argparse
@@ -34,6 +45,9 @@ from pathlib import Path
 
 from core.logger import get_logger
 from management.maintenance.default_db_merger import DefaultDbMerger, MergeError
+from maintenance.wartungsvorbehalt import (            # NEU Build 612
+    datenwurzel, wartungsvorbehalt,
+)
 
 logger = get_logger(__name__)
 
@@ -107,6 +121,29 @@ def main(argv=None) -> int:
 
     print(f"[consolidate] Ziel:    {target}")
     print(f"[consolidate] Quellen: {len(sources)}")
+
+    # --- WARTUNGSVORBEHALT (Stufe A, Build 612) --------------------------
+    # Zwei Gruende, und der erste allein genuegt: Mit --overwrite wird die
+    # vorhandene Ziel-Datei GELOESCHT, BEVOR die Transaktion beginnt. Bricht
+    # der Lauf danach ab, holt das Zurueckrollen sie nicht wieder — es bleibt
+    # gar keine default.db (Befund 2 des Vermerks, eigener Vorgang).
+    #
+    # GEPRUEFT WIRD AUCH AUF DIE QUELLEN, obwohl sie nur gelesen werden: Eine
+    # Quelle, die waehrend des Lesens beschrieben wird, ergibt eine
+    # zusammengefuehrte Datei, die niemandem auffaellt und trotzdem falsch
+    # ist. Ein Fehlalarm kostet einen zweiten Anlauf; ein stiller Fehlgriff
+    # kostet Vertrauen in die Vorlagen, die die Ermittelnden sehen.
+    befund = wartungsvorbehalt(
+        datenwurzel(target), [target] + list(sources),
+        werkzeug="consolidate_default_db",
+        was_geschieht=("fuehrt %d Quell-default.db in %s zusammen%s"
+                       % (len(sources), target,
+                          "; die vorhandene Ziel-Datei wird dabei ZUVOR "
+                          "geloescht (--overwrite) und es gibt kein Backup"
+                          if args.overwrite else "")))
+    print(befund.text)
+    if not befund.erlaubt:
+        return befund.rueckgabewert
 
     try:
         merger = DefaultDbMerger(

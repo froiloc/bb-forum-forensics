@@ -112,6 +112,10 @@ RUECKGABE_VORBEHALT = 3
 #: Zeilenbreite der Ausgabe (wie management/help/cli_text.BREITE).
 BREITE = 78
 
+#: Hoechstzahl namentlich aufgefuehrter Dateien je Block. Was darueber
+#: hinausgeht, wird nach Befund abgezaehlt - Begruendung in _dateiblock.
+LISTENGRENZE = 12
+
 #: Die moeglichen Ausgaenge. 'wortabfrage' ist ein Zwischenstand der reinen
 #: Entscheidungsfunktion und steht nie in einem fertigen Befund.
 ERGEBNIS_LAUF = "lauf"
@@ -416,12 +420,29 @@ def _dateiblock(zeilen: List[str], befunde: Sequence[Sperrbefund],
     Die geprueften Dateien mit ihrem Grund - je Datei zwei Zeilen.
 
     'zustand=None' zeigt alle. Sonst nur die eines Zustands.
+
+    BEI VIELEN DATEIEN WIRD GEKAPPT - aber nicht stillschweigend.
+    'forensic_index_upgrade' fasst einen Bestand von ueber 160 Dateien an;
+    eine Liste von 320 Zeilen liest niemand, und was niemand liest, wirkt
+    nicht. Deshalb: die ersten LISTENGRENZE namentlich, danach eine
+    Abzaehlung der uebrigen NACH BEFUND. Damit steht die Zahl da, die Gruende
+    stehen da, und nur die einzelnen Namen fehlen - das ist die einzige
+    Angabe, die sich aus dem Rest zurueckrechnen laesst (Grundregel 1).
     """
-    for b in befunde:
-        if zustand is not None and b.zustand != zustand:
-            continue
+    gewaehlt = [b for b in befunde
+                if zustand is None or b.zustand == zustand]
+    for b in gewaehlt[:LISTENGRENZE]:
         zeilen.append("  " + nur_ascii(b.pfad))
         zeilen.extend(umbrechen(nur_ascii(b.grund), BREITE, "      ", "      "))
+    rest = gewaehlt[LISTENGRENZE:]
+    if rest:
+        zeilen.append("  ... und %d weitere:" % len(rest))
+        gezaehlt: dict = {}
+        for b in rest:
+            gezaehlt[b.grund] = gezaehlt.get(b.grund, 0) + 1
+        for grund, anzahl in sorted(gezaehlt.items(), key=lambda kv: -kv[1]):
+            zeilen.extend(umbrechen("%dx %s" % (anzahl, nur_ascii(grund)),
+                                    BREITE, "          ", "      "))
     zeilen.append("")
 
 
@@ -659,6 +680,34 @@ def sperren_pruefen(dateien: Sequence[Path],
             zustand=ZUSTAND_RUHIG if ok else ZUSTAND_BELEGT,
             grund=grund))
     return tuple(befunde)
+
+
+def datenwurzel(start, tiefe: int = 4) -> Path:
+    """
+    Sucht von 'start' aufwaerts das Verzeichnis, in dem '_maintenance' liegt.
+
+    WARUM DAS NOETIG IST: Die fuenf Werkzeuge der Stufe A bekommen ganz
+    verschiedene Pfade genannt - einmal die coordinator.db, einmal das
+    Datenverzeichnis, einmal 'data/forensic'. Das Wartungsfenster liegt aber
+    immer an derselben Stelle. Jedes Werkzeug einzeln raten zu lassen, wo die
+    Wurzel liegt, waere fuenfmal dieselbe Annahme an fuenf Stellen - und beim
+    ersten abweichenden Aufbau vier stille Fehlgriffe.
+
+    Gefunden wird das ERSTE Verzeichnis auf dem Weg nach oben, das
+    '_maintenance' enthaelt. Wird keines gefunden, gilt der Ausgangspunkt.
+    Das ist der richtige Rueckfall: dann gibt es dort kein Fenster, und der
+    Vorbehalt fragt nach - er laesst nicht etwa durch.
+    """
+    p = Path(start)
+    if p.is_file():
+        p = p.parent
+    for _ in range(max(0, int(tiefe)) + 1):
+        if (p / MaintenancePaths.WURZEL_NAME).is_dir():
+            return p
+        if p.parent == p:
+            break
+        p = p.parent
+    return Path(start).parent if Path(start).is_file() else Path(start)
 
 
 def aktives_fenster(data_dir) -> Optional[WindowFlag]:

@@ -45,10 +45,27 @@
 #   python3 tools/migrate-dbs.py --apply             # scharf, mit Sicherung
 #   python3 tools/migrate-dbs.py --apply --no-backup # scharf, ohne Sicherung
 #
+# ── WARTUNGSVORBEHALT — STUFE A (Build 612) ─────────────────────────────────
+#
+#   Mit --apply baut das Werkzeug Tabellen um und schreibt in templates.db
+#   sowie in evidence_<uid>.db und assets_<uid>.db — Letztere stehen seit dem
+#   01.07.2026 unter dem Migrationsvorbehalt. Es sichert vorher (ausser bei
+#   --no-backup), aber es SPIELT NICHTS ZURUECK: nach einem Abbruch liegt die
+#   Sicherung da und muss von Hand eingesetzt werden.
+#
+#   Vor dem scharfen Lauf wird deshalb geprueft, ob die TATSAECHLICH
+#   betroffenen Dateien ruhig sind; ohne aktives Wartungsfenster geht es nur
+#   nach Eingabe eines vollstaendigen Wortes weiter
+#   (maintenance/wartungsvorbehalt.py). Die Trockenuebung ist davon NICHT
+#   betroffen — sie schreibt nichts und braucht keinen Vorbehalt.
+#   Einstufung: Vermerk_Wartungsvorbehalt_Analyse_K1_K8_v1_0.md, von mc
+#   bestaetigt am 2026-07-31.
+#
 # Rueckgabewert: 0 = alles aktuell (auch NACH einem erfolgreichen --apply)
 #                1 = es fehlt etwas · 2 = Fehler (Datei/Pfad/Zugriff)
+#                3 = Wartungsvorbehalt, es wurde NICHTS geschrieben
 #
-# Version: v0.8.585 · Build: 585 · 2026-07-30
+# Version: v0.8.612 · Build: 612 · 2026-07-31
 # =============================================================================
 
 import argparse
@@ -63,6 +80,8 @@ from typing import Dict, List, Optional, Tuple
 _WURZEL = Path(__file__).resolve().parent.parent
 if str(_WURZEL) not in sys.path:
     sys.path.insert(0, str(_WURZEL))
+
+from maintenance.wartungsvorbehalt import wartungsvorbehalt   # noqa: E402
 
 # Datenbanken MIT Register (schema_migrations + m###-Module).
 REGISTER_DBS = ("coordinator", "evidence", "forensic", "assets")
@@ -456,6 +475,40 @@ def main(argv=None) -> int:
         print()
         print("Nichts anzuwenden.")
         return 0
+
+    # --- WARTUNGSVORBEHALT (Stufe A, Build 612) --------------------------
+    # Das Werkzeug baut Tabellen um (Rebuild) und schreibt dabei in
+    # templates.db sowie in die Fall-Datenbanken evidence_<uid>.db und
+    # assets_<uid>.db — Letztere stehen seit dem 01.07.2026 unter dem
+    # Migrationsvorbehalt. Es sichert zwar vorher (ausser bei --no-backup),
+    # aber es SPIELT NICHTS ZURUECK: nach einem Abbruch liegt die Sicherung
+    # da und muss von Hand eingesetzt werden.
+    #
+    # GEPRUEFT WIRD NUR, WAS DIESER LAUF WIRKLICH ANFASST. Der Bericht oben
+    # hat bereits ermittelt, welche Datenbanken offen sind; coordinator und
+    # forensic wendet dieses Werkzeug ausdruecklich NICHT selbst an, also
+    # gehoeren sie hier auch nicht in die Pruefung. Eine Pruefung, die mehr
+    # meldet, als der Lauf anfasst, erzeugt Fehlalarme — und Fehlalarme
+    # bringen genau die Gewoehnung hervor, gegen die der Vorbehalt gebaut ist.
+    betroffen = []
+    if "templates" in offene_dbs:
+        betroffen.append(data_dir / "templates.db")
+    for art in ("evidence", "assets"):
+        if art in offene_dbs:
+            pfad = data_dir / art / ("%s_%s.db" % (art, args.subject_id))
+            if pfad.is_file():
+                betroffen.append(pfad)
+    if betroffen:
+        befund = wartungsvorbehalt(
+            data_dir, betroffen, werkzeug="migrate-dbs",
+            was_geschieht="wendet ausstehende Migrationen an und baut dabei "
+                          "Tabellen um. Eine Sicherung wird angelegt%s, aber "
+                          "nach einem Abbruch NICHT von selbst "
+                          "zurueckgespielt."
+                          % (" NICHT (--no-backup)" if args.no_backup else ""))
+        print(befund.text)
+        if not befund.erlaubt:
+            return befund.rueckgabewert
 
     # ------------------------------------------------------------- anwenden
     print()

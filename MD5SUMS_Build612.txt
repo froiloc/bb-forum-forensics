@@ -1,0 +1,11 @@
+754ac7202c377b102350fa57fe6ffe83  build.json
+6f0d6d1e34ffb013a4a7f2267b7d7c09  maintenance/wartungsvorbehalt.py
+6e4ba0c7b788219595fd08953dcd3be4  management/migrate.py
+6c24186b7c642a12a3fd5cb09a041cab  management/consolidate_default_db.py
+507707ff0280deaf90f3b925666e94c0  management/migration_fleet/migration_fleet_admin.py
+09ad0e5f1abcf23accfabcfe29757af8  tools/migrate-dbs.py
+ebedd259e904a74ddeb729b52dea3a08  tools/forensic_index_upgrade.py
+af9acdfc4e6cb0eb253881e5ed969709  management/help/cli_katalog.py
+8ba011cba3827017c4aa804824662df1  tests/test_wartungsvorbehalt_einbau.py
+61ecaa0a614aaa654a70620bfb35d2ba  tests/test_migrate_dbs_tool.py
+604bdfb5bcfffbc3928ba2e8ee51931b  documents/rules-cli.md

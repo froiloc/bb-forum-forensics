@@ -13,10 +13,20 @@
 #   python -m management.migrate [--coordinator-db PATH] [--config ./config.yaml]
 #                                [--deployed-by NAME]
 #
-# Nicht-fatal: klare Fehlermeldungen, definierte Exit-Codes (0 = ok, 1 = Fehler).
+# WARTUNGSVORBEHALT — STUFE A (Build 612):
+#   Das Werkzeug baut Tabellen der coordinator.db UM (Rebuild) und legt KEIN
+#   Backup an. Ein Abbruch mitten im Lauf hinterlaesst nichts, was sich
+#   zurueckspielen liesse. Es prueft deshalb vor dem scharfen Lauf, ob die
+#   Datei ruhig ist, und faehrt ohne aktives Wartungsfenster nur nach Eingabe
+#   eines vollstaendigen Wortes fort (maintenance/wartungsvorbehalt.py).
+#   Einstufung: Vermerk_Wartungsvorbehalt_Analyse_K1_K8_v1_0.md, von mc
+#   bestaetigt am 2026-07-31.
+#
+# Nicht-fatal: klare Fehlermeldungen, definierte Exit-Codes.
+#   0 = ok · 1 = Fehler · 3 = Wartungsvorbehalt, es wurde NICHTS geschrieben.
 #
 # Beleg: Bauplan B7 v0.3 §3.7, mc 2026-07-01.
-# Version: v0.7.307 · Build: 307 · 2026-07-01
+# Version: v0.8.612 · Build: 612 · 2026-07-31
 # =============================================================================
 
 import argparse
@@ -29,6 +39,9 @@ from management.audit.audit_log import AuditLog
 from management.migrations import coordinator as coordinator_pkg
 from management.migrations.runner import MigrationRunner, discover
 from db.journal_policy import apply_journal_mode  # NEU Build 408
+from maintenance.wartungsvorbehalt import (            # NEU Build 612
+    datenwurzel, wartungsvorbehalt,
+)
 
 
 def _resolve_db_path(args) -> str:
@@ -66,6 +79,22 @@ def main(argv=None) -> int:
         return 1
 
     deployed_by = args.deployed_by or getpass.getuser()
+
+    # --- WARTUNGSVORBEHALT (Stufe A, Build 612) --------------------------
+    # Dieses Werkzeug baut Tabellen der coordinator.db um (Rebuild, nicht nur
+    # ALTER) und legt KEIN Backup an. Bricht es mitten im Lauf ab, gibt es
+    # nichts zurueckzuspielen. Deshalb wird vorher geprueft, ob die Datei
+    # ruhig ist - und ohne Wartungsfenster nur nach ausdruecklicher Eingabe
+    # weitergemacht. Einstufung: Vermerk_Wartungsvorbehalt_Analyse_K1_K8_v1_0,
+    # von mc bestaetigt am 2026-07-31. Rueckgabewert 3 = nichts geschrieben.
+    befund = wartungsvorbehalt(
+        datenwurzel(db_path), [db_path], werkzeug="migrate",
+        was_geschieht="wendet ausstehende Migrationen auf die coordinator.db "
+                      "an; dabei werden Tabellen umgebaut. Es wird KEIN "
+                      "Backup angelegt.")
+    print(befund.text)
+    if not befund.erlaubt:
+        return befund.rueckgabewert
 
     con = sqlite3.connect(db_path)
     try:

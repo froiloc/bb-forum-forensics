@@ -19,8 +19,24 @@
 #
 # migration.db enthaelt keinen Beweisinhalt; Anlegen/Schreiben ist unbedenklich.
 #
+# WARTUNGSVORBEHALT — STUFE A (Build 612), NUR BEI 'companion --confirm':
+#   Der tragende Grund liegt im RUECKWEG. Scheitert eine Migration, kopiert
+#   _restore() die Sicherung UEBER die Originaldatei und setzt dabei voraus,
+#   dass keine Verbindung offen ist — der Quelltext nennt die Voraussetzung
+#   und prueft sie nicht (Befund 3 der Wartungsanalyse). Dieser Pfad laeuft
+#   genau dann, wenn ohnehin schon etwas schiefgegangen ist.
+#   Vor der Ausfuehrung wird deshalb geprueft, ob die Ziel-Datenbanken und
+#   migration.db ruhig sind (maintenance/wartungsvorbehalt.py). Alle uebrigen
+#   Unterbefehle — catalog-sync, reconcile, plan, ledger-* — sind davon NICHT
+#   betroffen; sie fassen keine Ziel-Datenbank an.
+#   Einstufung: Vermerk_Wartungsvorbehalt_Analyse_K1_K8_v1_0.md, von mc
+#   bestaetigt am 2026-07-31.
+#
+# Exit-Codes: 0 = ok · 1 = Drift/Fehler/Verweigerung
+#             3 = Wartungsvorbehalt, es wurde NICHTS ausgefuehrt.
+#
 # Beleg: Datenmigrationsleitfaden_AIW.md v0.2 Paragraph 6/9, mc 2026-07-03.
-# Version: v0.7.320 · Build: 320 · 2026-07-03 (companion-Subkommando ergaenzt)
+# Version: v0.8.612 · Build: 612 · 2026-07-31 (Wartungsvorbehalt eingebaut)
 # =============================================================================
 
 import argparse
@@ -34,6 +50,9 @@ from management.migration_fleet.ledger import MigrationLedger
 from management.migration_fleet.migration_db import MigrationDb
 from management.migration_fleet.planner import MigrationPlanner, TargetDb
 from db.journal_policy import apply_journal_mode  # NEU Build 408
+from maintenance.wartungsvorbehalt import (        # NEU Build 612
+    datenwurzel, wartungsvorbehalt,
+)
 
 
 def _resolve_migration_db_path(args) -> str:
@@ -246,6 +265,31 @@ def main(argv=None) -> int:
                 print("\n[migration_fleet] Kein --confirm — es wurde NICHTS "
                       "ausgefuehrt (nur Vorpruefung + Plan).")
                 return 0 if pf.ok else 1
+
+            # --- WARTUNGSVORBEHALT (Stufe A, Build 612) ------------------
+            # Der Grund liegt nicht im Hinweg, sondern im RUECKWEG: Scheitert
+            # eine Migration, kopiert _restore() die Sicherung UEBER die
+            # Originaldatei und setzt dabei voraus, dass keine Verbindung
+            # offen ist — geprueft wird das dort nicht (Befund 3 des
+            # Vermerks, eigener Vorgang). Dieser Pfad laeuft genau dann, wenn
+            # ohnehin schon etwas schiefgegangen ist.
+            #
+            # Geprueft werden die Ziel-Datenbanken UND migration.db: Letztere
+            # fuehrt das Laufbuch, und ein zerrissenes Laufbuch nimmt einem
+            # spaeteren Lauf die Grundlage.
+            befund = wartungsvorbehalt(
+                datenwurzel(db_path),
+                [t.path for t in targets] + [db_path],
+                werkzeug="migration_fleet_admin",
+                was_geschieht="fuehrt Migrationen auf %d Ziel-Datenbank(en) "
+                              "aus und schreibt das Laufbuch in migration.db. "
+                              "Scheitert eine Migration, wird die Sicherung "
+                              "ueber die Originaldatei zurueckkopiert."
+                              % len(targets))
+            print(befund.text)
+            if not befund.erlaubt:
+                return befund.rueckgabewert
+
             # Ausfuehrung (gated)
             result = comp.execute(targets, confirm=True, verifier=args.verifier)
             print("== Ausfuehrung ==")

@@ -979,7 +979,12 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "(neu anlegen, kopieren, alte loeschen, umbenennen) und "
                 "setzen Journalmodus und Kontrollpunkt. Genau diese Datei "
                 "haelt der Auswertungsdienst im Regelbetrieb SCHREIBEND "
-                "offen. Ein Backup legt das Werkzeug NICHT an.",
+                "offen. Ein Backup legt das Werkzeug NICHT an."
+                "SEIT BUILD 612 SETZT DAS WERKZEUG DAS SELBST DURCH: es prueft vor "
+                "dem scharfen Lauf, ob die betroffenen Dateien ruhig sind, bricht "
+                "bei einer belegten Datei ohne Rueckfrage ab und faehrt ohne "
+                "aktives Wartungsfenster nur nach Eingabe des Wortes 'OHNE "
+                "WARTUNGSFENSTER' fort.",
         beleg=True,
         hinweis="DER EINZIGE Weg fuer die coordinator.db. tools/migrate-dbs.py "
                 "verweist ausdruecklich hierher: zwei Wege, die dasselbe "
@@ -993,7 +998,8 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             ),
             exit_codes=((0, "angewandt oder nichts zu tun"),
                         (1, "Fehler - die betroffene Migration wurde "
-                            "zurueckgerollt")),
+                            "zurueckgerollt"),
+                        (3, "Wartungsvorbehalt - der Lauf wurde nicht ausgefuehrt; es wurde NICHTS geschrieben")),
             warnungen=(
                 "Es wird KEIN Backup angelegt. Eines ist vorher von Hand zu "
                 "erstellen (Datenmigrationsleitfaden).",
@@ -1028,7 +1034,12 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "umgebaut. Eine Sicherungskopie legt das Werkzeug vorher an "
                 "(ausser mit --no-backup) - sie wird aber NICHT automatisch "
                 "zurueckgespielt. Ohne --apply ist der Lauf reine Anzeige "
-                "und jederzeit unbedenklich.",
+                "und jederzeit unbedenklich."
+                "SEIT BUILD 612 SETZT DAS WERKZEUG DAS SELBST DURCH: es prueft vor "
+                "dem scharfen Lauf, ob die betroffenen Dateien ruhig sind, bricht "
+                "bei einer belegten Datei ohne Rueckfrage ab und faehrt ohne "
+                "aktives Wartungsfenster nur nach Eingabe des Wortes 'OHNE "
+                "WARTUNGSFENSTER' fort.",
         befehle=(
             _b("(ohne --apply)", "lesend",
                "Trockenuebung. Die Vorgabe - es wird nichts geschrieben."),
@@ -1053,7 +1064,8 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             ),
             exit_codes=((0, "alles auf Stand"),
                         (1, "Migrationen offen bzw. Fehler beim Anwenden"),
-                        (2, "Abbruch waehrend des Anwendens")),
+                        (2, "Abbruch waehrend des Anwendens"),
+                        (3, "Wartungsvorbehalt - der Lauf wurde nicht ausgefuehrt; es wurde NICHTS geschrieben")),
             warnungen=(
                 "forensic_<uid>.db wird NIE geschrieben - auch mit --apply "
                 "nicht. Das ist eine Grenze und keine Vorsichtsmassnahme.",
@@ -1087,7 +1099,12 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "ist der Fall, in dem ein laufender Auswertungsdienst "
                 "Schaden nimmt. Vor dem scharfen Lauf sind vier Tore zu "
                 "passieren; eine Sicherung ist Pflicht. Ohne --confirm wird "
-                "nur vorgeprueft und geplant.",
+                "nur vorgeprueft und geplant."
+                "SEIT BUILD 612 SETZT DAS WERKZEUG DAS SELBST DURCH: es prueft vor "
+                "dem scharfen Lauf, ob die betroffenen Dateien ruhig sind, bricht "
+                "bei einer belegten Datei ohne Rueckfrage ab und faehrt ohne "
+                "aktives Wartungsfenster nur nach Eingabe des Wortes 'OHNE "
+                "WARTUNGSFENSTER' fort.",
         befehle=(
             _b("catalog-sync", "schreibend",
                "Den Migrationskatalog in das Laufbuch uebernehmen."),
@@ -1113,7 +1130,8 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             exit_codes=((0, "erledigt"),
                         (1, "Vorpruefung nicht bestanden oder Lauf "
                             "gescheitert"),
-                        (2, "Aufruffehler")),
+                        (2, "Aufruffehler"),
+                        (3, "Wartungsvorbehalt - der Lauf wurde nicht ausgefuehrt; es wurde NICHTS geschrieben")),
             warnungen=(
                 "Der Rueckweg im Fehlerfall kopiert die Sicherung UEBER die "
                 "Originaldatei und setzt voraus, dass keine andere "
@@ -1286,13 +1304,19 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "Zuruckrollen holt sie nicht wieder. (2) Der ganze Lauf "
                 "haengt an EINER Transaktion ueber alle Quellen. Die "
                 "default.db haelt der Auswertungsdienst lesend offen. Ein "
-                "Backup legt das Werkzeug nicht an.",
+                "Backup legt das Werkzeug nicht an."
+                "SEIT BUILD 612 SETZT DAS WERKZEUG DAS SELBST DURCH: es prueft vor "
+                "dem scharfen Lauf, ob die betroffenen Dateien ruhig sind, bricht "
+                "bei einer belegten Datei ohne Rueckfrage ab und faehrt ohne "
+                "aktives Wartungsfenster nur nach Eingabe des Wortes 'OHNE "
+                "WARTUNGSFENSTER' fort.",
         hinweis="Die Herkunft jeder uebernommenen Zeile wird im Ziel "
                 "vermerkt.",
         tiefe=CliTiefe(
             exit_codes=((0, "erledigt, auch mit aufgeloesten Konflikten"),
                         (1, "harter Fehler - der ganze Lauf wurde "
-                            "zurueckgerollt")),
+                            "zurueckgerollt"),
+                        (3, "Wartungsvorbehalt - der Lauf wurde nicht ausgefuehrt; es wurde NICHTS geschrieben")),
             warnungen=(
                 "Mit --overwrite wird die vorhandene Ziel-default.db "
                 "GELOESCHT, und zwar VOR der Transaktion. Ein Abbruch danach "
@@ -1368,7 +1392,12 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "Wartezeit und legt kein Backup an - scheitert der Zugriff, "
                 "bekommt die Datei den Zustand 'fehler' und der Lauf macht "
                 "mit der naechsten weiter. Ohne --ausfuehren ist der Lauf "
-                "reine Anzeige.",
+                "reine Anzeige."
+                "SEIT BUILD 612 SETZT DAS WERKZEUG DAS SELBST DURCH: es prueft vor "
+                "dem scharfen Lauf, ob die betroffenen Dateien ruhig sind, bricht "
+                "bei einer belegten Datei ohne Rueckfrage ab und faehrt ohne "
+                "aktives Wartungsfenster nur nach Eingabe des Wortes 'OHNE "
+                "WARTUNGSFENSTER' fort.",
         befehle=(
             _b("(ohne --ausfuehren)", "lesend",
                "Trockenlauf. Die Vorgabe."),
@@ -1390,7 +1419,8 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             ),
             exit_codes=((0, "nichts zu tun oder alles erledigt"),
                         (1, "mindestens eine Datei mit Zustand 'fehler'"),
-                        (2, "Aufruffehler")),
+                        (2, "Aufruffehler"),
+                        (3, "Wartungsvorbehalt - der Lauf wurde nicht ausgefuehrt; es wurde NICHTS geschrieben")),
             warnungen=(
                 "Die DATEI-Pruefsumme aendert sich, der INHALT nicht - das "
                 "wird vor und nach dem Lauf geprueft. Wer Pruefsummen "

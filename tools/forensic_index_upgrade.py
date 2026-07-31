@@ -37,12 +37,28 @@
 #   * Die Zeile 'uebersprungen': WAL-gestempelte Dateien werden nicht
 #     angefasst. Sie brauchen zuerst tools/convert_journal_mode.py.
 #
+# WARTUNGSVORBEHALT — STUFE A (Build 612), NUR BEI --ausfuehren:
+#   Das Werkzeug schreibt in die VERSIEGELTEN forensic_<uid>.db und legt kein
+#   Backup an. Vor dem scharfen Lauf wird deshalb geprueft, ob der Bestand
+#   ruhig ist (maintenance/wartungsvorbehalt.py).
+#
+#   HIER WIRD VORAUSSICHTLICH IMMER NACHGEFRAGT, und das ist Absicht: Auf
+#   einer schreibgeschuetzten Datei ist die Sperrprobe blind — sie meldet dort
+#   auch dann Erfolg, wenn jemand die Datei geoeffnet haelt. Solche Dateien
+#   gelten deshalb als 'nicht pruefbar' und verlangen die Eingabe eines
+#   vollstaendigen Wortes, auch bei gesetztem Wartungsfenster. Ueber eine
+#   Datei, deren Ruhe niemand messen kann, muss ein Mensch entscheiden.
+#
+#   DER TROCKENLAUF IST NICHT BETROFFEN. Er schreibt nichts, und eine
+#   unbequeme Vorschau wird uebersprungen — das waere der falsche Preis.
+#
 # RUECKGABEWERTE (fuer Skripte):
 #   0 — Lauf sauber (auch der Trockenlauf).
 #   1 — mindestens eine Datei mit Zustand 'fehler'.
 #   2 — der Lauf war als Ganzes undurchfuehrbar (z. B. Verzeichnis fehlt).
+#   3 — Wartungsvorbehalt: es wurde NICHTS geschrieben.
 #
-# Version: v0.8.531 · Build: 531 · 2026-07-25 · Wartung, kein Serverbestandteil
+# Version: v0.8.612 · Build: 612 · 2026-07-31 · Wartung, kein Serverbestandteil
 # =============================================================================
 
 from __future__ import annotations
@@ -58,6 +74,9 @@ from management.maintenance.forensic_index_upgrade import (      # noqa: E402
     PRUEFTIEFEN,
     ForensicIndexUpgrade,
     ForensicIndexUpgradeError,
+)
+from maintenance.wartungsvorbehalt import (                      # noqa: E402
+    datenwurzel, wartungsvorbehalt,
 )
 
 #: Klartext je Zustand — damit die Ausgabe ohne Handbuch lesbar ist.
@@ -117,6 +136,36 @@ def main(argv=None) -> int:
                          "DAS ist das Beweisstueck, nicht die "
                          "Bildschirmausgabe.")
     args = ap.parse_args(argv)
+
+    # --- WARTUNGSVORBEHALT (Stufe A, Build 612) --------------------------
+    # Nur beim scharfen Lauf. Der Trockenlauf schreibt nichts und braucht
+    # keinen Vorbehalt — ihn zu verzoegern haette den Preis, dass die
+    # Vorschau unbequem wird, und eine unbequeme Vorschau wird uebersprungen.
+    #
+    # DIESES WERKZEUG IST DER GRUND, WARUM ES DEN ZUSTAND 'unpruefbar' GIBT.
+    # Es schreibt in die VERSIEGELTEN forensic_<uid>.db, und auf genau solchen
+    # Dateien ist die Sperrprobe blind (Befund aus mcs Regressionslauf zu
+    # Build 610; Issue 96f2b18f-a4a1-41af-871c-ae7a10087130). Es ist deshalb
+    # damit zu rechnen, dass hier IMMER nachgefragt wird — das ist kein
+    # Fehler, sondern die Aussage: ueber diese Dateien kann niemand messen,
+    # ob sie ruhig sind, also muss ein Mensch entscheiden.
+    #
+    # GEPRUEFT WIRD DER GANZE BESTAND des Verzeichnisses, nicht die von
+    # --grenze getroffene Auswahl: welche Dateien die Auswahl trifft, steht
+    # erst im Lauf fest, und bis dahin ist die Frage schon zu beantworten.
+    # Die Ausgabe fuehrt die ersten zwoelf namentlich auf und zaehlt den Rest
+    # nach Befund ab.
+    if args.ausfuehren:
+        kandidaten = sorted(Path(args.forensic_dir).glob("forensic_*.db"))
+        befund = wartungsvorbehalt(
+            datenwurzel(args.forensic_dir), kandidaten or [args.forensic_dir],
+            werkzeug="forensic_index_upgrade",
+            was_geschieht="legt Zeitindizes auf den forensic_<uid>.db an. Das "
+                          "sind versiegelte Beweismittel-Datenbanken; ein "
+                          "Backup legt dieses Werkzeug NICHT an.")
+        print(befund.text)
+        if not befund.erlaubt:
+            return befund.rueckgabewert
 
     try:
         werk = ForensicIndexUpgrade(args.forensic_dir,

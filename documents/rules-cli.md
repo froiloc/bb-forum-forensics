@@ -53,7 +53,7 @@ Grundregel 9 sinngemäß auf die Dokumentation angewandt: **Kein Beispielaufruf 
 
 ## 7. Wartungsvorbehalt
 
-> **Stand Build 611.** Die **Stufeneinteilung gilt** — mc hat sie am 2026-07-31 auf Grundlage von `Vermerk_Wartungsvorbehalt_Analyse_K1_K8_v1_0.md` bestätigt. Das **Bauteil** `maintenance/wartungsvorbehalt.py` ist gebaut und getestet. Der **Einbau in die fünf Werkzeuge der Stufe A steht noch aus**; bis dahin ist der Vorbehalt beschrieben, aber nicht durchgesetzt. Issue `da6c16d0-ef1e-4052-8eb1-526c647de613` bleibt so lange offen.
+> **Stand Build 612: dieser Abschnitt gilt.** Die Stufeneinteilung ist von mc am 2026-07-31 bestätigt (`Vermerk_Wartungsvorbehalt_Analyse_K1_K8_v1_0.md`), das Bauteil `maintenance/wartungsvorbehalt.py` ist gebaut, und alle fünf Werkzeuge der Stufe A setzen es ein. *Durchsetzung:* `tests/test_wartungsvorbehalt_einbau.py` — EB01–EB05 am Quelltext, EB06–EB10 am Verhalten.
 
 **Der Anlass:** Bei sieben Werkzeugen ließ sich aus dem Bestand nicht beantworten, ob sie neben dem laufenden Betrieb gefahrlos sind. Zwei andere sagen es ausdrücklich — `convert_journal_mode` („braucht exklusiven Zugriff"), `backup_admin` („für den laufenden Betrieb gebaut"). Dazwischen liegt eine Lücke, die geraten werden müsste, wenn man sie nicht klärt.
 
@@ -63,7 +63,13 @@ Grundregel 9 sinngemäß auf die Dokumentation angewandt: **Kein Beispielaufruf 
 - **Stufe B — betriebsverträglich.** Das Werkzeug schreibt, aber so, dass ein laufender Dienst nicht gestört wird (kurze Transaktionen, keine exklusiven Sperren, kein Dateiaustausch).
 - **Stufe C — rein lesend.** Kein Vorbehalt.
 
-**Die fünf Werkzeuge der Stufe A** (bestätigt 2026-07-31): `management/migrate.py`, `tools/migrate-dbs.py --apply`, `migration_fleet_admin companion --confirm`, `management/consolidate_default_db.py`, `tools/forensic_index_upgrade.py --ausfuehren`. **Stufe B:** `management/search/index_cli.py` — es schreibt ausschließlich in `search_index.db`, die kein anderer Dienst offen hält.
+**Die fünf Werkzeuge der Stufe A** (bestätigt 2026-07-31, eingebaut in Build 612): `management/migrate.py`, `tools/migrate-dbs.py --apply`, `migration_fleet_admin companion --confirm`, `management/consolidate_default_db.py`, `tools/forensic_index_upgrade.py --ausfuehren`. **Stufe B:** `management/search/index_cli.py` — es schreibt ausschließlich in `search_index.db`, die kein anderer Dienst offen hält.
+
+**Der Vorbehalt greift nur am scharfen Lauf.** Trockenübung, Vorschau und Plan bleiben frei. Das ist keine Bequemlichkeit, sondern Teil der Sicherung: eine Vorschau, die erst nach einer Rückfrage kommt, wird übersprungen — und dann sieht niemand mehr, was passieren würde. *Durchsetzung:* EB08 und EB09.
+
+**Und er greift nur, wo er hingehört.** Ein Vorbehalt an einer Stelle ohne Anlass erzeugt Rückfragen ohne Anlass, und wer oft ohne Anlass gefragt wird, tippt das Wort irgendwann, ohne zu lesen. Deshalb prüft EB04, dass `index_cli` (Stufe B) das Bauteil **nicht** aufruft.
+
+**Jedes Werkzeug nennt die betroffenen Dateien konkret**, nicht pauschal — `migrate-dbs` etwa nur die Datenbanken, die dieser Lauf wirklich anfasst, nicht alle offenen. Die Datenwurzel findet `datenwurzel()` für alle fünf einheitlich, statt sie fünfmal zu raten.
 
 ### Die Durchsetzung bei Stufe A
 

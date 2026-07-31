@@ -19,7 +19,16 @@
 # MD07 - forensic_<uid>.db wird als versiegelt AUSGEWIESEN und nie migriert.
 # MD08 - default.db/translations.db werden GENANNT, aber nicht bewertet.
 #
-# Version: v0.8.585 . Build: 585 . 2026-07-30
+# BUILD 612 - WARTUNGSVORBEHALT: '--apply' steht seit Build 612 unter dem
+# Wartungsvorbehalt (Stufe A). Jede setUp setzt deshalb ueber _wartungsfenster()
+# ein Fenster auf das Wegwerf-Datenverzeichnis - so, wie es auch in der Anlage
+# vor einer Migration gesetzt wird. Ohne Fenster und ohne Terminal braeche der
+# Lauf mit Rueckgabewert 3 ab und schriebe nichts; das ist richtig, denn ein
+# Test IST ein Aufruf ohne Menschen an der Konsole. Den Vorbehalt zu umgehen
+# waere die bequemere und die falsche Loesung: dann pruefte die Suite einen
+# Weg, den es in der Anlage nicht mehr gibt.
+#
+# Version: v0.8.612 . Build: 612 . 2026-07-31
 # =============================================================================
 
 import hashlib
@@ -50,6 +59,28 @@ def _schema_sql(mit_ci: bool) -> str:
     return sql
 
 
+def _wartungsfenster(data_dir: Path) -> None:
+    """
+    Setzt ein Wartungsfenster ueber das Wegwerf-Datenverzeichnis.
+
+    NOETIG SEIT BUILD 612: 'migrate-dbs --apply' steht unter dem
+    Wartungsvorbehalt (Stufe A). Ohne aktives Fenster und ohne Terminal
+    bricht der Lauf mit Rueckgabewert 3 ab und schreibt nichts - richtig so,
+    denn ein Test IST ein Aufruf ohne Menschen an der Konsole.
+
+    DIE TESTS BILDEN DAMIT DEN ECHTEN ABLAUF AB: wer migriert, setzt vorher
+    ein Fenster. Den Vorbehalt im Test zu umgehen waere die bequemere und
+    die falsche Loesung - dann pruefte die Suite einen Weg, den es in der
+    Anlage nicht mehr gibt.
+    """
+    from maintenance.paths import MaintenancePaths
+    from maintenance.window_flag import WindowFlag
+    pfade = MaintenancePaths(data_dir)
+    pfade.verzeichnisse_anlegen()
+    WindowFlag.neu(angefordert_von="test", grund="Regressionslauf",
+                   ziel=["all"]).schreiben(pfade)
+
+
 def _fingerabdruck(pfad: Path) -> str:
     con = sqlite3.connect(str(pfad))
     teile = []
@@ -74,6 +105,7 @@ class MigrateDbsToolTests(unittest.TestCase):
         self._tmp = tempfile.mkdtemp()
         self.data = Path(self._tmp) / "data"
         self.data.mkdir()
+        _wartungsfenster(self.data)
 
     def _templates(self, mit_ci: bool) -> Path:
         pfad = self.data / "templates.db"
@@ -202,6 +234,7 @@ class LageEindeutigTests(unittest.TestCase):
         self.data = Path(self._tmp) / "data"
         for unter in ("evidence", "assets", "forensic"):
             (self.data / unter).mkdir(parents=True)
+        _wartungsfenster(self.data)
 
     def _evidence(self, mit_tabellen: bool, mit_register: bool):
         pfad = self.data / "evidence" / "evidence_1488.db"
@@ -308,6 +341,7 @@ class FallAnwendenTests(unittest.TestCase):
         self.data = Path(self._tmp) / "data"
         for unter in ("evidence", "assets", "forensic"):
             (self.data / unter).mkdir(parents=True)
+        _wartungsfenster(self.data)
 
     def _evidence(self):
         pfad = self.data / "evidence" / "evidence_1488.db"
