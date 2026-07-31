@@ -109,6 +109,13 @@
         { title: 'Beleg', field: 'audit_seq' }
     ];
 
+    // _section: Abschnittsueberschrift + Behaelter.
+    //
+    // BUILD 604: gibt jetzt die UEBERSCHRIFT zurueck (der Behaelter wurde von
+    // keinem Aufrufer benutzt). Grund: die Hilfe-Kennung wird an der
+    // AUFRUFSTELLE gesetzt und nicht als Argument hereingereicht. Nur so steht
+    // sie woertlich neben dem Attributnamen, und nur so findet die
+    // Paritaetspruefung sie mit einer Textsuche (Konzept §4.2a).
     function _section(mainEl, titleText) {
         var h = document.createElement('h3');
         h.className = 'aiw-subhead';
@@ -116,7 +123,7 @@
         mainEl.appendChild(h);
         var container = document.createElement('div');
         mainEl.appendChild(container);
-        return container;
+        return h;
     }
 
     // _catalog: Rollen-/Faehigkeiten-Katalog als kompakte Referenzliste
@@ -125,6 +132,7 @@
         var h = document.createElement('h3');
         h.className = 'aiw-subhead';
         h.textContent = 'Katalog (Rollen / Faehigkeiten)';
+        h.setAttribute('data-hilfe-id', 'policy.abschnitt.katalog');
         mainEl.appendChild(h);
         var wrap = document.createElement('div');
         wrap.className = 'aiw-policy-catalog';
@@ -187,6 +195,8 @@
         var h = document.createElement('h2');
         h.className = 'aiw-pagehead';
         h.textContent = 'Rechte / Policy';
+        // Build 604 (Baustelle H / H13): literale Hilfe-Marken.
+        h.setAttribute('data-hilfe-id', 'policy.titel');
         mainEl.appendChild(h);
 
         var sub = document.createElement('p');
@@ -194,6 +204,7 @@
         sub.textContent = scopeText(scope) + ' ('
             + (counts.grants || 0) + ' Grants, '
             + (counts.assignments || 0) + ' Zuweisungen)';
+        sub.setAttribute('data-hilfe-id', 'policy.kennzeile');
         mainEl.appendChild(sub);
 
         var Ctor = opts.Tabulator
@@ -215,7 +226,8 @@
         // Hilfe-Anker UND gesicherten Bedienzustand und ueberschrieben sich
         // gegenseitig.
         var doc0 = mainEl.ownerDocument || document;
-        _section(mainEl, 'Grants (Rolle \u2192 Faehigkeit)');
+        _section(mainEl, 'Grants (Rolle \u2192 Faehigkeit)')
+            .setAttribute('data-hilfe-id', 'policy.abschnitt.grants');
         var grantsTable = _tk().tabelleAufbauen(doc0, mainEl, {
             sicht: 'policy_grants',
             rows: grantRows(data),
@@ -224,7 +236,8 @@
             tabulator: { height: '320px' }
         }).table;
 
-        _section(mainEl, 'Rollen-Zuweisungen (Person \u2192 Rolle)');
+        _section(mainEl, 'Rollen-Zuweisungen (Person \u2192 Rolle)')
+            .setAttribute('data-hilfe-id', 'policy.abschnitt.zuweisungen');
         var assignTable = _tk().tabelleAufbauen(doc0, mainEl, {
             sicht: 'policy_assign',
             rows: assignmentRows(data),

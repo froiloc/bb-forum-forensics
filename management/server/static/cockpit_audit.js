@@ -125,6 +125,8 @@
         var h = doc.createElement('h2');
         h.className = 'aiw-pagehead';
         h.textContent = 'Audit-/Revisions-Explorer';
+        // Build 604 (Baustelle H / H13): literale Hilfe-Marken.
+        h.setAttribute('data-hilfe-id', 'audit.titel');
         mainEl.appendChild(h);
 
         var sub = doc.createElement('p');
@@ -132,6 +134,7 @@
         sub.textContent = 'Durchsicht des hash-verketteten, append-only '
             + 'Audit-Logs. Rein lesend; der gerichtsfeste Export traegt '
             + 'Pruefsumme und Integritaets-Kettenspitze.';
+        sub.setAttribute('data-hilfe-id', 'audit.kennzeile');
         mainEl.appendChild(sub);
 
         // --- Filterleiste ----------------------------------------------------
@@ -143,6 +146,10 @@
                 (facets.event_types || []).map(function (e) {
                     return [e, e];
                 })), filters.event_type);
+        // Die Kennungen stehen an der AUFRUFSTELLE (siehe cockpit_integrity.js):
+        // woertlich neben dem Attributnamen, damit die Paritaetspruefung sie
+        // mit einer Textsuche findet.
+        selEvent.el.setAttribute('data-hilfe-id', 'audit.bedienung.ereignis');
         bar.appendChild(selEvent.label);
 
         var selActor = _select(doc, 'aiw-audit-actor', 'Akteur',
@@ -152,13 +159,17 @@
                         + (a.actor_username ? ' (' + a.actor_username + ')' : '');
                     return [String(a.actor_id), lbl];
                 })), filters.actor_id != null ? String(filters.actor_id) : '');
+        selActor.el.setAttribute('data-hilfe-id', 'audit.bedienung.akteur');
         bar.appendChild(selActor.label);
 
         var inTt = _input(doc, 'aiw-audit-tt', 'Ziel-Typ', filters.target_type);
+        inTt.el.setAttribute('data-hilfe-id', 'audit.bedienung.zieltyp');
         bar.appendChild(inTt.label);
         var inFrom = _input(doc, 'aiw-audit-from', 'seq ab', filters.seq_from);
+        inFrom.el.setAttribute('data-hilfe-id', 'audit.bedienung.seq_von');
         bar.appendChild(inFrom.label);
         var inTo = _input(doc, 'aiw-audit-to', 'seq bis', filters.seq_to);
+        inTo.el.setAttribute('data-hilfe-id', 'audit.bedienung.seq_bis');
         bar.appendChild(inTo.label);
 
         function currentFilters() {
@@ -176,6 +187,7 @@
         btnFilter.id = 'aiw-audit-filter';
         btnFilter.className = 'aiw-btn aiw-audit-btn';
         btnFilter.textContent = 'Filtern';
+        btnFilter.setAttribute('data-hilfe-id', 'audit.bedienung.filtern');
         btnFilter.addEventListener('click', function () {
             if (typeof opts.onFilter === 'function') {
                 opts.onFilter(currentFilters());
@@ -189,6 +201,7 @@
         exp.id = 'aiw-audit-export';
         exp.className = 'aiw-btn aiw-audit-btn aiw-audit-export';
         exp.textContent = 'Gerichtsfester Export';
+        exp.setAttribute('data-hilfe-id', 'audit.bedienung.export');
         exp.setAttribute('target', '_blank');
         exp.setAttribute('rel', 'noopener');
         var qs = buildQuery(filters);
@@ -206,6 +219,7 @@
         var von = total === 0 ? 0 : (offset + 1);
         var bis = Math.min(offset + rows(data).length, total);
         info.textContent = total + ' Treffer — Zeige ' + von + '–' + bis + '.';
+        info.setAttribute('data-hilfe-id', 'audit.trefferzeile');
         mainEl.appendChild(info);
 
         // --- Tabelle ---------------------------------------------------------
@@ -243,6 +257,7 @@
         prev.id = 'aiw-audit-prev';
         prev.className = 'aiw-btn aiw-audit-btn';
         prev.textContent = '‹ Neuere';
+        prev.setAttribute('data-hilfe-id', 'audit.bedienung.neuere');
         prev.disabled = (offset <= 0);
         prev.addEventListener('click', function () {
             if (typeof opts.onPage === 'function') {
@@ -255,6 +270,7 @@
         next.id = 'aiw-audit-next';
         next.className = 'aiw-btn aiw-audit-btn';
         next.textContent = 'Aeltere ›';
+        next.setAttribute('data-hilfe-id', 'audit.bedienung.aeltere');
         next.disabled = !data.has_more;
         next.addEventListener('click', function () {
             if (typeof opts.onPage === 'function') {

@@ -204,12 +204,15 @@
         mainEl.textContent = '';
 
         var h = doc.createElement('h2');
+        // Build 604 (Baustelle H / H13): literale Hilfe-Marken.
         h.className = 'aiw-pagehead';
+        h.setAttribute('data-hilfe-id', 'merge.titel');
         h.textContent = 'Identitäts-Gruppen — Zusammenführen und Trennen';
         mainEl.appendChild(h);
 
         var sub = doc.createElement('p');
         sub.className = 'aiw-pagesub';
+        sub.setAttribute('data-hilfe-id', 'merge.kennzeile');
         sub.textContent = 'Mehrere Forenkonten, die von derselben natürlichen '
             + 'Person betrieben werden. Eine Zusammenführung ist eine '
             + 'Hypothese: sie ist umkehrbar, und jede Trennung wird ebenso '
@@ -218,6 +221,7 @@
 
         var head = doc.createElement('p');
         head.className = 'aiw-merge-counts';
+        head.setAttribute('data-hilfe-id', 'merge.zahlen');
         head.textContent = countsText(data);
         mainEl.appendChild(head);
 
@@ -237,6 +241,7 @@
         if (data && data.group) {
             var g = doc.createElement('p');
             g.className = 'aiw-merge-group';
+        g.setAttribute('data-hilfe-id', 'merge.gruppenbefund');
             g.textContent = groupText(data.group);
             mainEl.appendChild(g);
         }
@@ -311,6 +316,7 @@
         var inp = doc.createElement('input');
         inp.type = 'text';
         inp.id = 'aiw-merge-q';
+        inp.setAttribute('data-hilfe-id', 'merge.bedienung.suche');
         inp.className = 'aiw-merge-input';
         inp.value = opts.query || '';
         lbl.appendChild(inp);
@@ -331,6 +337,7 @@
         var clear = doc.createElement('button');
         clear.type = 'button';
         clear.id = 'aiw-merge-clear-btn';
+        clear.setAttribute('data-hilfe-id', 'merge.bedienung.alle');
         clear.className = 'aiw-btn aiw-merge-btn';
         clear.textContent = 'Alle';
         clear.addEventListener('click', function () {
@@ -343,6 +350,7 @@
         var cb = doc.createElement('input');
         cb.type = 'checkbox';
         cb.id = 'aiw-merge-incl';
+        cb.setAttribute('data-hilfe-id', 'merge.bedienung.getrennte');
         cb.checked = opts.includeSplit === true;
         cb.addEventListener('change', function () {
             if (typeof opts.onToggleSplit === 'function') {
@@ -390,6 +398,7 @@
         var btn = doc.createElement('button');
         btn.type = 'button';
         btn.id = 'aiw-merge-add';
+        btn.setAttribute('data-hilfe-id', 'merge.bedienung.zusammenfuehren');
         btn.className = 'aiw-btn aiw-merge-btn';
         btn.textContent = 'Zusammenführen';
         btn.addEventListener('click', function () {
@@ -489,6 +498,7 @@
         b.className = 'aiw-btn aiw-merge-btn aiw-merge-revise';
         b.setAttribute('data-merge-id', String(e.id));
         b.textContent = 'Revidieren';
+        b.setAttribute('data-hilfe-id', 'merge.bedienung.revidieren');
         b.addEventListener('click', function () {
             var row = b.parentNode && b.parentNode.parentNode;
             if (!row || row.getAttribute('data-editing') === '1') { return; }
@@ -553,6 +563,7 @@
         b.className = 'aiw-btn aiw-merge-btn aiw-merge-split';
         b.setAttribute('data-merge-id', String(e.id));
         b.textContent = 'Trennen';
+        b.setAttribute('data-hilfe-id', 'merge.bedienung.trennen');
         b.addEventListener('click', function () {
             var row = b.parentNode && b.parentNode.parentNode;
             if (!row || row.getAttribute('data-splitting') === '1') { return; }
@@ -601,6 +612,7 @@
         b.className = 'aiw-btn aiw-merge-btn aiw-merge-remerge';
         b.setAttribute('data-merge-id', String(e.id));
         b.textContent = 'Trennung zurücknehmen';
+        b.setAttribute('data-hilfe-id', 'merge.bedienung.trennung_zuruecknehmen');
         b.addEventListener('click', function () {
             setResult('Nehme Trennung zurück …', null);
             if (typeof opts.onRemerge === 'function') {

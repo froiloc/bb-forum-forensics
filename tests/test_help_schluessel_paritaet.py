@@ -34,6 +34,11 @@
 #        columnDefs() und lassen sich hier statisch lesen. Die Liste der so
 #        geprueften Sichten waechst je Inhaltswelle - sie ist ausdruecklich
 #        und nicht abgeleitet, damit eine vergessene Sicht auffaellt.
+# SP08 - Build 604: jedes woertliche BILDSCHIRMZITAT, das Regel H-1
+#        aushebelt, kommt WIRKLICH als sichtbarer Text im Bestand vor.
+#        Ohne diese Pruefung waere die Zitatliste ein Schlupfloch: man
+#        koennte jeden Jargon hineinschreiben und behaupten, er stehe
+#        auf dem Bildschirm.
 #
 # Version: v0.8.592 - Build: 592 - 2026-07-31
 # =============================================================================
@@ -50,6 +55,7 @@ from management.help.anker_katalog import (             # noqa: E402
     ANKER_PRAEFIXE, SHELL, verify_praefixe,
 )
 from management.help.inhalt import lade_register        # noqa: E402
+from management.help.pruefung import BILDSCHIRMZITATE   # noqa: E402
 from management.help.modell import schluessel_gueltig   # noqa: E402
 
 STATIC = os.path.join(os.path.dirname(__file__), "..",
@@ -113,6 +119,11 @@ SPALTEN_QUELLEN = {
     # wird die Sicht gerendert und im DOM nachgesehen. Das ist die staerkere
     # Messung - sie trifft die Wahrheit statt sie vorherzusagen.
     "mentoring": ("cockpit_mentoring.js", "mentoring"),
+    # Build 604 (H13). 'policy' fehlt hier bewusst: die Sicht fuehrt ZWEI
+    # Tabellen mit VERSCHIEDENEN Spalten in EINER Datei, und eine Feldliste je
+    # Datei kann das nicht trennen (dieselbe Lage wie bei der
+    # Kapazitaetspflege). Sie ist von UX11 gedeckt - dort wird gerendert.
+    "crossref": ("cockpit_crossref.js", "crossref"),
 }
 
 #: Feldnamen aus den literalen columnDefs-Eintraegen.
@@ -301,3 +312,32 @@ def test_sp07_jede_spalte_hat_einen_text(register):
                                    % (schluessel, sicht_id, feld))
     assert not fehlend, (
         "Spalten ohne Kontexttext:\n  " + "\n  ".join(fehlend))
+
+
+# --- SP08 ---------------------------------------------------------------------
+
+def test_sp08_bildschirmzitate_stehen_wirklich_auf_dem_schirm():
+    """
+    Die Ausnahme von Regel H-1 gilt nur fuer WOERTLICHE Zitate.
+
+    Geprueft wird der Kern des Zitats - der Text zwischen den deutschen
+    Anfuehrungszeichen - gegen den sichtbaren Bestand. Steht er dort nicht,
+    ist er kein Zitat, sondern Jargon mit Anfuehrungszeichen.
+    """
+    assert BILDSCHIRMZITATE, "Die Zitatliste ist leer - dann bitte auch die "\
+        "Ausnahme in verify_anwendersprache entfernen."
+
+    inhalte = []
+    for pfad in _dateien():
+        with open(pfad, encoding="utf-8") as fh:
+            inhalte.append((os.path.basename(pfad), fh.read()))
+
+    fehlend = []
+    for zitat in BILDSCHIRMZITATE:
+        kern = zitat.strip("\u201e\u201c\u201d\"'")
+        assert kern, "Leeres Zitat in BILDSCHIRMZITATE"
+        if not any(kern in inhalt for _name, inhalt in inhalte):
+            fehlend.append(zitat)
+    assert not fehlend, (
+        "Bildschirmzitate ohne Entsprechung im Bestand (also kein Zitat, "
+        "sondern Jargon): %s" % ", ".join(fehlend))

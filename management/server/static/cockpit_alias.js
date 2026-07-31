@@ -285,12 +285,15 @@
         mainEl.textContent = '';
 
         var h = doc.createElement('h2');
+        // Build 604 (Baustelle H / H13): literale Hilfe-Marken.
         h.className = 'aiw-pagehead';
+        h.setAttribute('data-hilfe-id', 'alias.titel');
         h.textContent = 'Aliasse — globaler Namenskatalog';
         mainEl.appendChild(h);
 
         var sub = doc.createElement('p');
         sub.className = 'aiw-pagesub';
+        sub.setAttribute('data-hilfe-id', 'alias.kennzeile');
         sub.textContent = 'Weitere Namen/Handles eines Forenkontos, '
             + 'fallübergreifend. Gross-/Kleinschreibung wird beim Abgleich '
             + 'nicht unterschieden. Jede Anlage, Änderung und jeder Widerruf '
@@ -299,6 +302,7 @@
 
         var head = doc.createElement('p');
         head.className = 'aiw-alias-counts';
+        head.setAttribute('data-hilfe-id', 'alias.zahlen');
         head.textContent = countsText(data);
         mainEl.appendChild(head);
 
@@ -397,6 +401,7 @@
         var inp = doc.createElement('input');
         inp.type = 'text';
         inp.id = 'aiw-alias-q';
+        inp.setAttribute('data-hilfe-id', 'alias.bedienung.suche');
         inp.className = 'aiw-alias-input';
         inp.value = opts.query || '';
         lbl.appendChild(inp);
@@ -417,6 +422,7 @@
         var clear = doc.createElement('button');
         clear.type = 'button';
         clear.id = 'aiw-alias-clear-btn';
+        clear.setAttribute('data-hilfe-id', 'alias.bedienung.ganzer_katalog');
         clear.className = 'aiw-btn aiw-alias-btn';
         clear.textContent = 'Ganzer Katalog';
         clear.addEventListener('click', function () {
@@ -429,6 +435,7 @@
         var cb = doc.createElement('input');
         cb.type = 'checkbox';
         cb.id = 'aiw-alias-incl';
+        cb.setAttribute('data-hilfe-id', 'alias.bedienung.widerrufene');
         cb.checked = opts.includeRetracted === true;
         cb.addEventListener('change', function () {
             if (typeof opts.onToggleRetracted === 'function') {
@@ -456,6 +463,8 @@
         var kopf = doc.createElement('div');
         kopf.className = 'aiw-alias-namen-kopf';
         kopf.textContent = 'Namensauflösung: ' + kaskadenText(daten);
+        kopf.setAttribute('data-hilfe-id',
+                          'alias.abschnitt.namensaufloesung');
         box.appendChild(kopf);
 
         (daten.treffer || []).forEach(function (t) {
@@ -501,6 +510,7 @@
         var sidName = doc.createElement('div');
         sidName.className = 'aiw-alias-sidname';
         sidName.id = 'aiw-alias-sidname';
+        sidName.setAttribute('data-hilfe-id', 'alias.aufloesung');
         box.appendChild(sidName);
 
         function zeigeAufloesung(daten) {
@@ -555,6 +565,7 @@
         var btnSuche = doc.createElement('button');
         btnSuche.type = 'button';
         btnSuche.id = 'aiw-alias-namesearch-btn';
+        btnSuche.setAttribute('data-hilfe-id', 'alias.bedienung.kontosuche');
         btnSuche.className = 'aiw-btn aiw-alias-btn';
         btnSuche.textContent = 'Konto suchen';
         suchBox.appendChild(btnSuche);
@@ -629,6 +640,7 @@
         lblK.textContent = 'Art: ';
         var selK = doc.createElement('select');
         selK.id = 'aiw-alias-kind';
+        selK.setAttribute('data-hilfe-id', 'alias.bedienung.art');
         selK.className = 'aiw-alias-input';
         kindList.forEach(function (k) {
             var o = doc.createElement('option');
@@ -647,6 +659,7 @@
         var btn = doc.createElement('button');
         btn.type = 'button';
         btn.id = 'aiw-alias-add';
+        btn.setAttribute('data-hilfe-id', 'alias.bedienung.erfassen');
         btn.className = 'aiw-btn aiw-alias-btn';
         btn.textContent = 'Alias erfassen';
         btn.addEventListener('click', function () {
@@ -752,6 +765,7 @@
         b.className = 'aiw-btn aiw-alias-btn aiw-alias-change';
         b.setAttribute('data-alias-id', String(e.id));
         b.textContent = 'Ändern';
+        b.setAttribute('data-hilfe-id', 'alias.bedienung.aendern');
         b.addEventListener('click', function () {
             var row = b.parentNode && b.parentNode.parentNode;
             if (!row || row.getAttribute('data-editing') === '1') { return; }
@@ -820,6 +834,7 @@
         b.className = 'aiw-btn aiw-alias-btn aiw-alias-retract';
         b.setAttribute('data-alias-id', String(e.id));
         b.textContent = 'Widerrufen';
+        b.setAttribute('data-hilfe-id', 'alias.bedienung.widerrufen');
         b.addEventListener('click', function () {
             var row = b.parentNode && b.parentNode.parentNode;
             if (!row || row.getAttribute('data-retracting') === '1') { return; }
@@ -867,6 +882,7 @@
         b.className = 'aiw-btn aiw-alias-btn aiw-alias-reinstate';
         b.setAttribute('data-alias-id', String(e.id));
         b.textContent = 'Zurücknehmen';
+        b.setAttribute('data-hilfe-id', 'alias.bedienung.zuruecknehmen');
         b.addEventListener('click', function () {
             setResult('Nehme Widerruf zurück …', null);
             if (typeof opts.onReinstate === 'function') {

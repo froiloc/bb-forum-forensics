@@ -170,6 +170,8 @@
         var h = doc.createElement('h2');
         h.className = 'aiw-pagehead';
         h.textContent = 'Querfunde — fallübergreifende Funde';
+        // Build 604 (Baustelle H / H13): literale Hilfe-Marken.
+        h.setAttribute('data-hilfe-id', 'crossfindings.titel');
         mainEl.appendChild(h);
 
         var sub = doc.createElement('p');
@@ -177,6 +179,7 @@
         sub.textContent = 'Funde über ein anderes Subjekt (B), die bei der '
             + 'Ermittlung im Fall A entstanden sind. Erfassung und Transport '
             + 'laufen automatisch — diese Sicht ist rein lesend.';
+        sub.setAttribute('data-hilfe-id', 'crossfindings.kennzeile');
         mainEl.appendChild(sub);
 
         // --- Steuerleiste: zwei Filter + Aktualisieren -----------------------
@@ -201,6 +204,7 @@
         head.textContent = 'Transport — offen: ' + (counts.offen || 0)
             + '  ·  integriert: ' + (counts.integriert || 0)
             + '  ·  gesamt: ' + (counts.total || 0);
+        head.setAttribute('data-hilfe-id', 'crossfindings.zahlen_transport');
         mainEl.appendChild(head);
 
         // Rueckkanal-Kopfzeile (Build 508). Nur, wenn der Server sie liefert —
@@ -211,6 +215,8 @@
             var fbHead = doc.createElement('div');
             fbHead.className = 'aiw-cf-counts aiw-cff-counts';
             fbHead.textContent = fbText;
+            fbHead.setAttribute('data-hilfe-id',
+                                'crossfindings.zahlen_rueckkanal');
             mainEl.appendChild(fbHead);
         }
 
@@ -289,6 +295,7 @@
         var cb = doc.createElement('input');
         cb.type = 'checkbox';
         cb.id = 'aiw-cf-onlyopen';
+        cb.setAttribute('data-hilfe-id', 'crossfindings.bedienung.nur_offen');
         cb.checked = onlyOpen;
         cb.addEventListener('change', function () {
             fire(cb.checked === true, onlyUnack);
@@ -302,6 +309,8 @@
         var cb2 = doc.createElement('input');
         cb2.type = 'checkbox';
         cb2.id = 'aiw-cf-onlyunack';
+        cb2.setAttribute('data-hilfe-id',
+                         'crossfindings.bedienung.nur_unquittiert');
         cb2.checked = onlyUnack;
         cb2.addEventListener('change', function () {
             fire(onlyOpen, cb2.checked === true);
@@ -313,6 +322,8 @@
         var btn = doc.createElement('button');
         btn.type = 'button';
         btn.id = 'aiw-cf-refresh';
+        btn.setAttribute('data-hilfe-id',
+                         'crossfindings.bedienung.aktualisieren');
         btn.className = 'aiw-btn aiw-cf-btn';
         btn.textContent = 'Aktualisieren';
         btn.addEventListener('click', function () {
@@ -413,6 +424,7 @@
         b.className = 'aiw-btn aiw-cf-btn aiw-cff-decide';
         b.setAttribute('data-finding-id', String(f.id));
         b.textContent = 'Bewerten';
+        b.setAttribute('data-hilfe-id', 'crossfindings.bedienung.bewerten');
         b.addEventListener('click', function () {
             var row = b.parentNode && b.parentNode.parentNode;
             if (!row || row.getAttribute('data-deciding') === '1') { return; }
@@ -474,6 +486,8 @@
         go.type = 'button';
         go.className = 'aiw-btn aiw-cf-btn aiw-cff-decide-go';
         go.textContent = 'Entscheidung belegen';
+        go.setAttribute('data-hilfe-id',
+                        'crossfindings.bedienung.entscheidung_belegen');
         go.addEventListener('click', function () {
             var spec = currentSpec();
             var reason = String(inR.value || '').trim();

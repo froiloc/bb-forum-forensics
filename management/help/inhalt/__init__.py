@@ -36,6 +36,8 @@ from management.help.inhalt.redaktion import REDAKTION
 from management.help.inhalt.persoenlich import PERSOENLICH
 from management.help.inhalt.betreuung import BETREUUNG
 from management.help.inhalt.personal import PERSONAL
+from management.help.inhalt.identitaeten import IDENTITAETEN
+from management.help.inhalt.administration import ADMINISTRATION
 
 # --- Teilbestaende ------------------------------------------------------------
 # Reihenfolge = Kapitelreihenfolge im Handbuch. Sie folgt der Nav-Gruppenfolge
@@ -61,6 +63,10 @@ _TEILBESTAENDE: Tuple[Tuple[str, Tuple[Sichthilfe, ...]], ...] = (
     # H12 (Build 603): die Gruppen "Betreuung" und "Personal".
     ("management/help/inhalt/betreuung.py", BETREUUNG),
     ("management/help/inhalt/personal.py", PERSONAL),
+    # H13 (Build 604): "Identitaeten" vollstaendig, "Administration" zu
+    # drei von sieben Sichten (der Rest folgt in H14 in derselben Datei).
+    ("management/help/inhalt/identitaeten.py", IDENTITAETEN),
+    ("management/help/inhalt/administration.py", ADMINISTRATION),
 )
 
 #: Der Pfad des Shell-Bestands (kein Kapitel, aber redaktionell zu lesen).

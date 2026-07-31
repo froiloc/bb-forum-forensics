@@ -225,12 +225,17 @@ const REGISTER = [
     name: "policy (Grants)", datei: "cockpit_policy.js",
     global: "AIWCockpitPolicy", render: "renderPolicy",
     sicht: "policy_grants", zeilen: 2, index: 0,
+    // Build 604: Ueberschrift, Umfangszeile und die drei
+    // Abschnittsueberschriften gehoeren zur SICHT ('policy'); die beiden
+    // Tabellen behalten ihre eigenen Kennungen.
+    weiterePraefixe: ["policy"],
     daten: () => _policyDaten(),
   },
   {
     name: "policy (Zuweisungen)", datei: "cockpit_policy.js",
     global: "AIWCockpitPolicy", render: "renderPolicy",
     sicht: "policy_assign", zeilen: 1, index: 1,
+    weiterePraefixe: ["policy"],
     daten: () => _policyDaten(),
   },
   {

@@ -216,6 +216,8 @@
         var h = doc.createElement('h2');
         h.className = 'aiw-pagehead';
         h.textContent = 'Kreuzbezug — identifizierte Personen';
+        // Build 604 (Baustelle H / H13): literale Hilfe-Marken.
+        h.setAttribute('data-hilfe-id', 'crossref.titel');
         mainEl.appendChild(h);
 
         var sub = doc.createElement('p');
@@ -223,6 +225,7 @@
         sub.textContent = 'Zuordnung eines Forenkontos (subject_id) zu einer '
             + 'realen Person mit Konfidenzstufe. Jede Anlage/Revision wird '
             + 'auditiert.';
+        sub.setAttribute('data-hilfe-id', 'crossref.kennzeile');
         mainEl.appendChild(sub);
 
         // --- Ergebniszeile ---------------------------------------------------
@@ -408,6 +411,7 @@
         btn.id = 'aiw-xref-save';
         btn.className = 'aiw-btn aiw-xref-btn';
         btn.textContent = 'Zuordnung speichern';
+        btn.setAttribute('data-hilfe-id', 'crossref.bedienung.speichern');
         btn.addEventListener('click', function () {
             var body = buildPayload({
                 subject_id: inSid.value,

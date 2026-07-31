@@ -351,6 +351,25 @@ _JARGON_KOMPILIERT: Tuple[Tuple["re.Pattern", str, str], ...] = tuple(
     (re.compile(muster), muster, rat) for muster, rat in JARGON)
 
 
+#: WOERTLICHE BILDSCHIRMZITATE - die einzige zulaessige Ausnahme von Regel H-1.
+#:
+#: ANLASS (Build 604, Gruppe "Administration"): die Rechte-Sicht fuehrt zwei
+#: Spalten, die auf dem Bildschirm "Faehigkeit" und "Scope" heissen. Regel H-1
+#: verbietet beide Woerter - zu Recht, denn in der HILFE sind sie Jargon. Aber
+#: eine Hilfe, die eine Spalte anders nennt als der Bildschirm, ist schlechter
+#: als eine mit Jargon: die suchende Person findet die Spalte dann gar nicht.
+#:
+#: Deshalb duerfen diese Woerter stehen, wenn sie ALS ZITAT gekennzeichnet sind
+#: - in deutschen Anfuehrungszeichen, genau so geschrieben wie auf dem Schirm.
+#: Der Fliesstext daneben benutzt weiterhin die Anwendersprache ("Recht",
+#: "Umfang"). Damit die Liste kein Schlupfloch wird, prueft SP08, dass jedes
+#: Zitat WIRKLICH als sichtbarer Text im Bestand vorkommt.
+BILDSCHIRMZITATE: Tuple[str, ...] = (
+    "„Faehigkeit“",
+    "„Scope“",
+)
+
+
 def verify_anwendersprache(register: HilfeRegister) -> None:
     """
     Regel H-1: Hilfetexte sind in Anwendersprache verfasst.
@@ -359,11 +378,17 @@ def verify_anwendersprache(register: HilfeRegister) -> None:
     Kapiteltitel, Rechtelage, Abschnittsueberschriften, Absaetze, Listenpunkte
     und die Popup-Texte. Nicht geprueft werden Quelltext-Kommentare - dort ist
     Entwicklersprache richtig.
+
+    Woertliche Bildschirmzitate (BILDSCHIRMZITATE) werden vor der Pruefung
+    entfernt: sie benennen, was auf dem Schirm steht, und sind damit keine
+    Sprachwahl der Hilfe, sondern eine Ortsangabe.
     """
     fehler: List[str] = []
     for herkunft, text in _texte(register):
         if not text:
             continue
+        for zitat in BILDSCHIRMZITATE:
+            text = text.replace(zitat, "")
         for muster, roh, rat in _JARGON_KOMPILIERT:
             treffer = muster.search(text)
             if treffer is None:

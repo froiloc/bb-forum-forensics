@@ -87,12 +87,15 @@
         var h = document.createElement('h2');
         h.className = 'aiw-pagehead';
         h.textContent = 'Integritaet / Betrieb';
+        // Build 604 (Baustelle H / H13): literale Hilfe-Marken.
+        h.setAttribute('data-hilfe-id', 'integrity.titel');
         mainEl.appendChild(h);
 
         var sub = document.createElement('p');
         sub.className = 'aiw-pagesub';
         sub.textContent = 'Unversehrtheit der auditierten, hash-verketteten '
             + 'Ereigniskette (audit_log).';
+        sub.setAttribute('data-hilfe-id', 'integrity.kennzeile');
         mainEl.appendChild(sub);
 
         var card = document.createElement('div');
@@ -107,13 +110,25 @@
         statusTxt.textContent = data.ok
             ? ' Status: Kette intakt' : ' Status: KETTENBRUCH';
         statusRow.appendChild(statusTxt);
+        statusRow.setAttribute('data-hilfe-id', 'integrity.status');
         card.appendChild(statusRow);
 
-        card.appendChild(_kv('Ketten-Spitze (tip_seq)',
-            data.tip_seq != null ? String(data.tip_seq) : EM_DASH));
-        card.appendChild(_kv('Erster fehlerhafter Sequenz-Punkt',
-            data.first_bad_seq != null ? String(data.first_bad_seq) : EM_DASH));
-        card.appendChild(_kv('Detail', data.detail || EM_DASH));
+        // DIE KENNUNG STEHT AN DER AUFRUFSTELLE, nicht im Helfer: nur so
+        // steht sie WOERTLICH neben dem Attributnamen und die
+        // Paritaetspruefung findet sie mit einer Textsuche (Konzept §4.2a).
+        var kvSpitze = _kv('Ketten-Spitze (tip_seq)',
+            data.tip_seq != null ? String(data.tip_seq) : EM_DASH);
+        kvSpitze.setAttribute('data-hilfe-id', 'integrity.kettenspitze');
+        card.appendChild(kvSpitze);
+
+        var kvBruch = _kv('Erster fehlerhafter Sequenz-Punkt',
+            data.first_bad_seq != null ? String(data.first_bad_seq) : EM_DASH);
+        kvBruch.setAttribute('data-hilfe-id', 'integrity.erster_fehler');
+        card.appendChild(kvBruch);
+
+        var kvDetail = _kv('Detail', data.detail || EM_DASH);
+        kvDetail.setAttribute('data-hilfe-id', 'integrity.detail');
+        card.appendChild(kvDetail);
 
         mainEl.appendChild(card);
         log('renderIntegrity: ok =', !!data.ok, 'tip', data.tip_seq);
