@@ -1,0 +1,16 @@
+881eb16899871bb2d5b19695cc6966db  build.json
+e8af3627e1bc97a69071c59f474a4c58  management/help/inhalt/ueberblick.py
+fb42df2934fa3fd3c16acc17e4ae8eeb  management/help/inhalt/persoenlich.py
+bcdc2921ee70dcce0b9d78cf7040d48a  management/help/inhalt/fallsteuerung.py
+644191bbc008f65c8d429c57baadfc6f  management/help/inhalt/__init__.py
+a4fb1637053c0a126b57e171657f6af3  management/help/anker_katalog.py
+906f31fb4da4cf436e52202778368a12  management/server/static/cockpit_dashboard.js
+ee0ecfc039643e8d241fabbb9a4f414f  management/server/static/cockpit_calendar.js
+b8f25c95c9fca55c75de71e5fb8f8004  management/server/static/cockpit_escalation.js
+914160b84940202af631efad5ac780d4  management/server/static/cockpit_nextactions.js
+7557f9302140f6988d3f412683668681  management/server/static/cockpit_assignment.js
+77474a88121bfa3b1efb2c837a96f5c0  management/server/static/cockpit_cases.js
+583de4f383f7c20db62e303fdfe93755  management/server/static/cockpit_viewprefs.js
+60fb442bb8632087727c12e9afb79b51  tests/hilfe_fehlliste_stand.json
+dd9432ddc2ec46b7a669c233bf69f2b3  tests/test_help_schluessel_paritaet.py
+5e8b537fedd3e7ef79fc08277b59ce91  tests/unit/test_help_anker_paritaet.test.js
