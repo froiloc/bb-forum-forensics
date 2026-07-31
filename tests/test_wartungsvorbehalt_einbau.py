@@ -1,12 +1,12 @@
 # =============================================================================
 # tests/test_wartungsvorbehalt_einbau.py
-# IT-Forensisches Ermittlungswerkzeug - Wartungsvorbehalt (Build 612)
+# IT-Forensisches Ermittlungswerkzeug - Wartungsvorbehalt (Build 612/615)
 # =============================================================================
 # Prueft, dass JEDES Werkzeug der Stufe A den Wartungsvorbehalt tatsaechlich
 # aufruft - und dass er wirkt.
 #
 # WARUM ES DIESEN TEST BRAUCHT, obwohl der Einbau doch gerade gemacht wurde:
-#   Ein Bauteil, das nur an fuenf Stellen aufgerufen wird, verschwindet beim
+#   Ein Bauteil, das nur an einer Handvoll Stellen aufgerufen wird, verschwindet beim
 #   naechsten Umbau still. Kein Fehler, keine Meldung - es faellt nur eine
 #   Zeile weg, und die Sicherung ist weg. Genau das ist der Grund, aus dem
 #   der Vorbehalt ueberhaupt gebaut wurde: was man sich merken muss, vergisst
@@ -17,7 +17,7 @@
 #              ausgewertet. Das faengt den Fall "jemand hat die Zeile
 #              geloescht" - auch dann, wenn es fuer das Werkzeug gerade
 #              keinen ausfuehrbaren Testaufbau gibt.
-#   EB06-EB09  AM VERHALTEN: das Werkzeug wird mit einer BELEGTEN Datei
+#   EB06-EB11  AM VERHALTEN: das Werkzeug wird mit einer BELEGTEN Datei
 #              aufgerufen und muss 3 zurueckgeben, ohne etwas anzufassen.
 #              Das faengt den Fall "der Aufruf steht da, wirkt aber nicht"
 #              - etwa weil er hinter dem scharfen Lauf gelandet ist.
@@ -27,7 +27,13 @@
 # vollstaendiger Aufbau (migration.db, Katalog, Sicherungsverzeichnis) mehr
 # Gestell als Aussage waere. Zusammen decken sie beide Richtungen ab.
 #
-# Version: v0.8.612 - Build: 612 - 2026-07-31
+# BUILD 615: convert_journal_mode ist nachtraeglich aufgenommen worden. Es war
+# in der Analyse K1-K8 nicht dabei, weil sein Dateikopf die Frage schon zu
+# beantworten schien - eine Zusage im Kommentar ist aber keine Sperre. mc hat
+# das am 2026-07-31 angestossen ("das benoetigt den Wartungsmodus, sonst kann
+# die Aenderung nicht zurueckgeschrieben werden").
+#
+# Version: v0.8.615 - Build: 615 - 2026-07-31
 # =============================================================================
 
 import importlib.util
@@ -53,7 +59,8 @@ from maintenance.wartungsvorbehalt import (               # noqa: E402
 # Sie steht hier und nirgends sonst, damit sie EINE Fassung hat. Grundlage ist
 # 'Vermerk_Wartungsvorbehalt_Analyse_K1_K8_v1_0.md', Einstufung von mc
 # bestaetigt am 2026-07-31: fuenfmal A, einmal B (index_cli - betriebs-
-# vertraeglich, schreibt nur in ein Hilfsmittel).
+# vertraeglich, schreibt nur in ein Hilfsmittel). Build 615 hat einen sechsten
+# Eintrag ergaenzt, der in jener Analyse nicht untersucht worden war.
 #
 # WER HIER DAZUKOMMT, kommt nicht in eine Fehlliste: er wird eingebaut. Eine
 # Fehlliste waere hier das falsche Mittel - sie ist gut fuer Inhalte, die noch
@@ -70,6 +77,15 @@ STUFE_A = {
         "--overwrite loescht die Ziel-Datei vor der Transaktion",
     "tools/forensic_index_upgrade.py":
         "--ausfuehren schreibt in die versiegelte forensic_<uid>.db",
+    # BUILD 615 - NACHTRAG, angestossen von mc am 2026-07-31.
+    # Es war in der Analyse K1-K8 nicht dabei, weil sein Dateikopf die Frage
+    # schon zu beantworten schien ("braucht exklusiven Zugriff"). Eine Zusage
+    # im Kommentar ist aber keine Sperre - dasselbe Muster wie bei den zwei
+    # Auswertungswerkzeugen, die die coordinator.db schreibfaehig oeffnen,
+    # obwohl ihr Kopf das Gegenteil zusichert (Issue 906ede75).
+    "tools/convert_journal_mode.py":
+        "--apply aendert den Dateikopf (Journalstempel), nimmt "
+        "locking_mode=EXCLUSIVE und hebt dafuer den Schreibschutz auf",
 }
 
 #: Werkzeuge, die der Vermerk ausdruecklich NICHT als Stufe A einstuft. Sie
@@ -196,13 +212,14 @@ def test_eb04_abgrenzung_ist_geprueft_und_nicht_behauptet(relpfad):
 
 def test_eb05_die_liste_deckt_sich_mit_dem_vermerk():
     """
-    EB05 - Fuenf Stufe-A-Werkzeuge, und alle fuenf gibt es wirklich.
+    EB05 - Sechs Stufe-A-Werkzeuge, und alle sechs gibt es wirklich.
 
     Ein Eintrag, der auf keine Datei zeigt, waere eine Sicherung, die niemand
     vermisst - der Test ueber ihn liefe gruen, weil er nichts findet.
     """
-    assert len(STUFE_A) == 5, \
-        "Der Vermerk stuft fuenf Werkzeuge als Stufe A ein."
+    assert len(STUFE_A) == 6, (
+        "Fuenf Werkzeuge aus dem Vermerk zu Build 609, dazu "
+        "convert_journal_mode als Nachtrag aus Build 615.")
     for relpfad in list(STUFE_A) + list(NICHT_STUFE_A):
         assert (_WURZEL / relpfad).is_file(), \
             "%s ist eingetragen, existiert aber nicht." % relpfad
@@ -332,3 +349,36 @@ def test_eb10_datenwurzel_findet_das_wartungsverzeichnis(anlage, tmp_path):
     fremd = tmp_path / "woanders"
     fremd.mkdir()
     assert datenwurzel(fremd) == fremd
+
+
+def test_eb11_convert_journal_mode_bricht_bei_belegter_datei_ab(anlage,
+                                                                capsys):
+    """
+    EB11 - tools/convert_journal_mode.py --apply gibt 3 zurueck und stempelt
+    nichts um.
+
+    Zusaetzlich die Gegenprobe: der TROCKENLAUF bleibt frei. Er ist der Weg,
+    auf dem man vorher sieht, welche Dateien ueberhaupt umzustempeln waeren -
+    ihn hinter eine Rueckfrage zu setzen, hiesse ihn abzuschaffen.
+    """
+    db = _db(anlage / "coordinator.db")
+    werkzeug = _lade("tools/convert_journal_mode.py", "cjm_einbau")
+    stempel_vorher = werkzeug.header_stempel(db)
+
+    with _Halter(db):
+        rc = werkzeug.main(["--data-dir", str(anlage), "--apply"])
+        assert rc == RUECKGABE_VORBEHALT
+        ausgabe = capsys.readouterr().out
+        assert "WARTUNGSVORBEHALT" in ausgabe
+        assert "coordinator.db" in ausgabe
+        # Es darf nicht einmal begonnen haben.
+        assert "FERTIG:" not in ausgabe
+
+        rc_trocken = werkzeug.main(["--data-dir", str(anlage)])
+    trocken = capsys.readouterr().out
+    assert rc_trocken != RUECKGABE_VORBEHALT
+    assert "WARTUNGSVORBEHALT" not in trocken, \
+        "Der Trockenlauf darf keinen Vorbehalt ausloesen."
+    assert werkzeug.header_stempel(db) == stempel_vorher, \
+        "Der Journalstempel wurde veraendert, obwohl der Vorbehalt griff."
+

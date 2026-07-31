@@ -12,18 +12,126 @@
 #   Das Siegel der Beweismitteldatenbank bleibt gueltig — weil es inhaltsbasiert
 #   ist (core/startup_checks.py, _compute_content_sha256).
 #
-# Version: v0.7.408 · Build: 408 · 2026-07-14
+# BUILD 615 — WARTUNGSVORBEHALT: '--apply' steht seit Build 615 unter dem
+# Wartungsvorbehalt (Stufe A). Jeder Testaufbau setzt deshalb ueber
+# _wartungsfenster() ein Fenster auf das Wegwerf-Datenverzeichnis - so, wie es
+# in der Anlage vor einer Umstempelung gesetzt wird.
+#
+# BUILD 616 — EIN FENSTER ALLEIN GENUEGT HIER NICHT, und das hat mcs
+# Regressionslauf gezeigt: Der Staging-Weg ist per Definition der Weg fuer
+# SCHREIBGESCHUETZTE Dateien, und auf genau solchen kann die Sperrprobe nicht
+# messen. Der Vorbehalt fuehrt sie als 'nicht pruefbar' und verlangt die
+# Wortabfrage - auch bei gesetztem Fenster. Im Bau-Container faellt das nicht
+# auf (root uebergeht den Schreibschutz), unter einem gewoehnlichen Konto
+# schon.
+#
+# DIE ANTWORT IST DIE GESTELLTE KONSOLE (_Konsole, konsole_mit_bestaetigung),
+# nicht das Wegschalten des Vorbehalts. Ausserdem erzwingen drei eigene Tests
+# am Ende dieser Datei den Zweig DETERMINISTISCH, damit er auf jedem System
+# geprueft wird und der Befund nicht noch einmal erst aus der VM kommt.
+# Nachgewiesen am 2026-07-31: 17 von 17 gruen, gefahren als Nicht-root-Konto.
+#
+# Version: v0.8.616 · Build: 616 · 2026-07-31
 # =============================================================================
 
 import importlib.util
+import io
 import sqlite3
+import sys
 from pathlib import Path
 
 import pytest
 
 from core.startup_checks import StartupChecker
+from maintenance.wartungsvorbehalt import (
+    BESTAETIGUNGSWORT, RUECKGABE_VORBEHALT,
+)
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _wartungsfenster(data_dir: Path) -> None:
+    """
+    Setzt ein Wartungsfenster ueber das Wegwerf-Datenverzeichnis.
+
+    NOETIG SEIT BUILD 615: '--apply' steht unter dem Wartungsvorbehalt
+    (Stufe A). Ohne aktives Fenster und ohne Terminal bricht der Lauf mit
+    Rueckgabewert 3 ab und stempelt nichts um - richtig so, denn ein Test IST
+    ein Aufruf ohne Menschen an der Konsole.
+
+    DER TEST BILDET DAMIT DEN ECHTEN ABLAUF AB: wer umstempelt, setzt vorher
+    ein Fenster. Den Vorbehalt zu umgehen waere die bequemere und die falsche
+    Loesung - dann pruefte die Suite einen Weg, den es in der Anlage nicht
+    mehr gibt.
+
+    EINE EINSCHRAENKUNG, die hier stehen muss: Laeuft die Suite mit Rechten,
+    die den Schreibschutz uebergehen (root unter Linux, wie im Bau-Container),
+    gilt die versiegelte forensic-Datei als 'ruhig' und das Fenster traegt.
+    Laeuft sie unter einem gewoehnlichen Konto, gilt sie als 'nicht pruefbar'
+    und der Vorbehalt verlangt die Wortabfrage - die im Test niemand
+    beantworten kann. In dem Fall schlagen die Tests an, die die versiegelte
+    Datei mit '--apply' anfassen. Das waere kein Testfehler, sondern die
+    richtige Auskunft: fuer diese Datei laesst sich die Ruhe nicht messen.
+    Sollte das in der VM eintreten, ist es hier zu vermerken und nicht
+    wegzuschalten.
+    """
+    from maintenance.paths import MaintenancePaths
+    from maintenance.window_flag import WindowFlag
+    pfade = MaintenancePaths(data_dir)
+    pfade.verzeichnisse_anlegen()
+    WindowFlag.neu(angefordert_von="test", grund="Regressionslauf",
+                   ziel=["all"]).schreiben(pfade)
+
+
+class _Konsole(io.StringIO):
+    """
+    Eine STANDARDEINGABE, die sich als Terminal ausgibt und auf Nachfrage das
+    Bestaetigungswort liefert.
+
+    WARUM DAS NOETIG IST - UND WARUM ES KEINE UMGEHUNG IST:
+      mcs Regressionslauf zu Build 615 hat zwei Staging-Tests rot gemeldet.
+      Der Grund ist richtig und war vorhergesagt: Der Staging-Weg ist per
+      Definition der Weg fuer SCHREIBGESCHUETZTE Dateien, und auf genau
+      solchen kann die Sperrprobe nicht messen (Befund aus Build 611). Der
+      Wartungsvorbehalt fuehrt sie deshalb als 'nicht pruefbar' und verlangt
+      die Wortabfrage - auch bei gesetztem Fenster. Im Testlauf sitzt aber
+      niemand an der Konsole, also brach er mit 3 ab.
+
+      DIE ANTWORT IST NICHT, DEN VORBEHALT WEGZUSCHALTEN. Sie ist, den Test
+      so zu fahren, wie ein Mensch den Vorgang faehrt: mit der Bestaetigung.
+      Das Bauteil hat dafuer keine Option und soll auch keine bekommen - der
+      Weg fuehrt ueber die Standardeingabe, und genau die wird hier gestellt.
+
+      DER TEST WIRD DADURCH STAERKER, nicht schwaecher: er belegt jetzt
+      zusaetzlich, dass die Wortabfrage im ECHTEN Werkzeug ankommt und dass
+      sie mit dem richtigen Wort durchgeht. Bisher war das nur am Bauteil
+      geprueft.
+
+      AUF BEIDEN SYSTEMEN DERSELBE WEG: Laeuft die Suite mit Rechten, die den
+      Schreibschutz uebergehen (root im Bau-Container), gilt die Datei als
+      ruhig, das Fenster traegt, und es wird gar nicht gefragt - die gestellte
+      Konsole bleibt dann ungenutzt und schadet nicht. Laeuft sie unter einem
+      gewoehnlichen Konto (mcs VM), wird gefragt und beantwortet. Beide Wege
+      sind gruen, und keiner ist geschoent.
+    """
+
+    def isatty(self) -> bool:
+        return True
+
+
+@pytest.fixture(autouse=True)
+def konsole_mit_bestaetigung(monkeypatch):
+    """
+    Stellt fuer JEDEN Test dieses Moduls eine Konsole bereit, an der jemand
+    sitzt und das Bestaetigungswort tippt.
+
+    Autouse, weil sonst bei jedem neuen '--apply'-Test wieder daran zu denken
+    waere - und was man sich merken muss, vergisst man. Wer den Gegenfall
+    braucht (falsches Wort, keine Konsole), setzt sie im Test selbst um; siehe
+    test_vorbehalt_ohne_bestaetigung_bricht_ab.
+    """
+    monkeypatch.setattr(
+        sys, "stdin", _Konsole(BESTAETIGUNGSWORT + "\n"), raising=False)
 
 
 def _lade_werkzeug():
@@ -58,6 +166,7 @@ def datenverzeichnis(tmp_path):
     data = tmp_path / "data"
     (data / "forensic").mkdir(parents=True)
     (data / "evidence").mkdir()
+    _wartungsfenster(data)
 
     forensic = data / "forensic" / "forensic_9.db"
     con = sqlite3.connect(str(forensic))
@@ -351,6 +460,7 @@ def _baue_versiegelte_wal_db(ziel_db, mit_gefuelltem_wal, sha256_wert=None):
 def test_staging_konvertiert_versiegelte_wal_db(tmp_path, capsys, monkeypatch):
     monkeypatch.setattr(werkzeug, "ist_schreibgeschuetzt", _mode_ro)
     data = tmp_path / "data" / "forensic"; data.mkdir(parents=True)
+    _wartungsfenster(tmp_path / "data")
     db = data / "forensic_1488.db"
     siegel = _baue_versiegelte_wal_db(db, mit_gefuelltem_wal=True)
 
@@ -382,6 +492,7 @@ def test_staging_konvertiert_versiegelte_wal_db(tmp_path, capsys, monkeypatch):
 def test_staging_trockenlauf_schreibt_nichts(tmp_path, capsys, monkeypatch):
     monkeypatch.setattr(werkzeug, "ist_schreibgeschuetzt", _mode_ro)
     data = tmp_path / "data" / "forensic"; data.mkdir(parents=True)
+    _wartungsfenster(tmp_path / "data")
     db = data / "forensic_7.db"
     _baue_versiegelte_wal_db(db, mit_gefuelltem_wal=True)
     vorher = db.read_bytes()
@@ -397,6 +508,7 @@ def test_staging_trockenlauf_schreibt_nichts(tmp_path, capsys, monkeypatch):
 def test_staging_siegel_mismatch_schreibt_nicht_zurueck(tmp_path, capsys, monkeypatch):
     monkeypatch.setattr(werkzeug, "ist_schreibgeschuetzt", _mode_ro)
     data = tmp_path / "data" / "forensic"; data.mkdir(parents=True)
+    _wartungsfenster(tmp_path / "data")
     db = data / "forensic_5.db"
     _baue_versiegelte_wal_db(db, mit_gefuelltem_wal=False, sha256_wert="0" * 64)
 
@@ -406,3 +518,89 @@ def test_staging_siegel_mismatch_schreibt_nicht_zurueck(tmp_path, capsys, monkey
     assert _stempel(db) == 2                              # Original UNBERUEHRT
     assert not (data / "forensic_5.db.konvertiert").exists()
     assert "SIEGEL" in capsys.readouterr().err
+
+
+# =============================================================================
+# WARTUNGSVORBEHALT AM WERKZEUG (Build 616)
+#
+# Die folgenden drei Tests erzwingen den Zweig, den mcs Regressionslauf zu
+# Build 615 aufgedeckt hat - und zwar UNABHAENGIG von den Rechten des
+# ausfuehrenden Kontos. Im Bau-Container laeuft die Suite als root und die
+# versiegelte Datei gilt dort als ruhig; ohne diese drei Tests waere der
+# Zweig hier also gar nicht pruefbar, und derselbe Befund kaeme beim naechsten
+# Mal wieder aus der VM statt aus dem Bau.
+# =============================================================================
+
+def _erzwinge_unpruefbar(monkeypatch, treffer=lambda p: True):
+    """
+    Laesst die Sperrprobe die Datei als 'nicht pruefbar' fuehren, so wie sie
+    es unter einem gewoehnlichen Konto bei einer schreibgeschuetzten Datei
+    tut. Gestellt wird die ERKENNUNG, nicht die Entscheidung - geprueft wird
+    also das Verhalten des Bauteils und nicht das des Betriebssystems.
+    """
+    import maintenance.wartungsvorbehalt as wv
+    monkeypatch.setattr(wv, "ist_versiegelt", treffer)
+
+
+def test_vorbehalt_fragt_bei_versiegelter_datei_trotz_fenster(
+        datenverzeichnis, monkeypatch, capsys):
+    """
+    DER FALL AUS MCS REGRESSIONSLAUF, hier deterministisch nachgestellt.
+
+    Ein Wartungsfenster ist gesetzt (die Vorrichtung tut das immer) und deckt
+    alles ab. Trotzdem MUSS gefragt werden: ueber eine Datei, deren Ruhe
+    niemand messen kann, hat auch das Fenster nichts ausgesagt.
+    """
+    _erzwinge_unpruefbar(monkeypatch)
+    rc = werkzeug.main(["--data-dir", str(datenverzeichnis["data"]), "--apply"])
+    ausgabe = capsys.readouterr().out
+
+    assert "NICHT PRUEFBAR" in ausgabe, \
+        "Der Vorbehalt hat die unpruefbare Datei nicht benannt."
+    assert BESTAETIGUNGSWORT in ausgabe, \
+        "Es wurde nicht nach der Bestaetigung gefragt."
+    assert rc == 0, \
+        "Mit erteilter Bestaetigung muss der Lauf durchgehen (rc=%s)." % rc
+    assert "Vermerk: bei" in ausgabe and "NICHT messbar" in ausgabe, \
+        "Die Freigabe verschweigt, worauf sie sich nicht stuetzt."
+
+
+def test_vorbehalt_ohne_bestaetigung_bricht_ab(datenverzeichnis, monkeypatch,
+                                               capsys):
+    """
+    Die Gegenprobe: falsches Wort - und es wird NICHTS umgestempelt.
+
+    Hier wird die gestellte Konsole ausdruecklich ueberschrieben. Der Test
+    prueft am Ende den JOURNALSTEMPEL der Datei und nicht nur den
+    Rueckgabewert: ein Werkzeug, das trotz Abbruch schon geschrieben hat,
+    wuerde sonst durchgehen.
+    """
+    _erzwinge_unpruefbar(monkeypatch)
+    monkeypatch.setattr(sys, "stdin", _Konsole("ja\n"), raising=False)
+    db = datenverzeichnis["forensic"]
+    vorher = _stempel(db)
+
+    rc = werkzeug.main(["--data-dir", str(datenverzeichnis["data"]), "--apply"])
+
+    assert rc == RUECKGABE_VORBEHALT
+    assert "NICHT ausgefuehrt" in capsys.readouterr().out
+    assert _stempel(db) == vorher, \
+        "Der Journalstempel wurde veraendert, obwohl der Vorbehalt griff."
+
+
+def test_trockenlauf_bleibt_auch_bei_unpruefbarer_datei_frei(
+        datenverzeichnis, monkeypatch, capsys):
+    """
+    Der Trockenlauf fragt nicht - auch nicht bei unpruefbaren Dateien.
+
+    Er schreibt nichts, und er ist der Weg, auf dem man VORHER sieht, was zu
+    tun waere. Ihn hinter eine Rueckfrage zu setzen, hiesse ihn abzuschaffen.
+    """
+    _erzwinge_unpruefbar(monkeypatch)
+    monkeypatch.setattr(sys, "stdin", _Konsole(""), raising=False)
+
+    rc = werkzeug.main(["--data-dir", str(datenverzeichnis["data"])])
+
+    assert rc == 0
+    assert "WARTUNGSVORBEHALT" not in capsys.readouterr().out
+

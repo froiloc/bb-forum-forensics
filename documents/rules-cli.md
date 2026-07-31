@@ -63,7 +63,11 @@ Grundregel 9 sinngemäß auf die Dokumentation angewandt: **Kein Beispielaufruf 
 - **Stufe B — betriebsverträglich.** Das Werkzeug schreibt, aber so, dass ein laufender Dienst nicht gestört wird (kurze Transaktionen, keine exklusiven Sperren, kein Dateiaustausch).
 - **Stufe C — rein lesend.** Kein Vorbehalt.
 
-**Die fünf Werkzeuge der Stufe A** (bestätigt 2026-07-31, eingebaut in Build 612): `management/migrate.py`, `tools/migrate-dbs.py --apply`, `migration_fleet_admin companion --confirm`, `management/consolidate_default_db.py`, `tools/forensic_index_upgrade.py --ausfuehren`. **Stufe B:** `management/search/index_cli.py` — es schreibt ausschließlich in `search_index.db`, die kein anderer Dienst offen hält.
+**Die sechs Werkzeuge der Stufe A** (fünf bestätigt 2026-07-31 und eingebaut in Build 612, das sechste nachgetragen in Build 615): `management/migrate.py`, `tools/migrate-dbs.py --apply`, `migration_fleet_admin companion --confirm`, `management/consolidate_default_db.py`, `tools/forensic_index_upgrade.py --ausfuehren`, `tools/convert_journal_mode.py --apply`. **Stufe B:** `management/search/index_cli.py` — es schreibt ausschließlich in `search_index.db`, die kein anderer Dienst offen hält.
+
+> **Warum das sechste erst nachträglich kam — und was daraus folgt.** Die Analyse K1–K8 untersuchte die sieben Werkzeuge, bei denen sich die Frage *nicht* aus dem Bestand beantworten ließ. `convert_journal_mode` war nicht darunter, weil sein Dateikopf die Antwort zu geben schien: „braucht exklusiven Zugriff". **Eine Zusage im Kommentar ist aber keine technische Sperre.** Genau dieser Befundtyp liegt schon einmal im Eingang (Issue `906ede75`: zwei Auswertungswerkzeuge öffnen die `coordinator.db` schreibfähig, obwohl ihr Kopf das Gegenteil zusichert).
+>
+> **Die Lehre für künftige Einstufungen:** Ein Werkzeug ist nicht deshalb geklärt, weil es *sagt*, was es braucht. Die Frage lautet nicht „steht es im Kopf?", sondern „greift es?". Für `backup_admin` — das andere Werkzeug, das sich selbst einordnet („für den laufenden Betrieb gebaut") — ist die Gegenrichtung zu prüfen: dort ist die Zusage entlastend, und auch sie ist bislang nur eine Zusage.
 
 **Der Vorbehalt greift nur am scharfen Lauf.** Trockenübung, Vorschau und Plan bleiben frei. Das ist keine Bequemlichkeit, sondern Teil der Sicherung: eine Vorschau, die erst nach einer Rückfrage kommt, wird übersprungen — und dann sieht niemand mehr, was passieren würde. *Durchsetzung:* EB08 und EB09.
 

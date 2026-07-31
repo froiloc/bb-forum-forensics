@@ -75,11 +75,36 @@
 #   python tools/convert_journal_mode.py --db D:\lokal\forensic_1488.db --apply
 #   python tools/convert_journal_mode.py --data-dir .\data --staging-dir C:\temp\conv --apply
 #
+# WARTUNGSVORBEHALT — STUFE A (Build 615), NUR BEI --apply:
+#   Dieses Werkzeug war in der Wartungsanalyse K1-K8 (Build 609) NICHT dabei.
+#   Untersucht wurden damals die sieben Werkzeuge, bei denen sich die Frage
+#   nicht aus dem Bestand beantworten liess; hier stand die Antwort im
+#   Dateikopf ("braucht exklusiven Zugriff"), und deshalb galt sie als
+#   geklaert. SIE WAR ES NICHT — eine Zusage im Kommentar ist keine
+#   technische Sperre. Angestossen hat die Klaerung mc am 2026-07-31.
+#
+#   Die Stufe-A-Merkmale treffen saemtlich zu: 'locking_mode=EXCLUSIVE' (K1),
+#   Aenderung des DATEIKOPFES (K3 — die Bytes 18/19 sind der Journalstempel),
+#   voruebergehendes Aufheben des Schreibschutzes, und der Zugriff auf
+#   forensic_<uid>.db, also auf Beweismittel.
+#
+#   ZUM VERHAELTNIS GEGENUEBER --skip-on-error: Der Schalter wurde in Build
+#   433 eingefuehrt, weil ein Lauf an der ERSTEN gesperrten Datenbank hart
+#   abbrach und die eigentlich zu konvertierenden Nutzer-DBs nie erreichte.
+#   Genau diesen Fall gibt es jetzt nicht mehr: Der Vorbehalt prueft VOR dem
+#   Lauf ALLE betroffenen Dateien und nennt in EINEM Durchgang, welche belegt
+#   sind. Wer das liest, weiss, welche Dienste zu beenden sind, statt nach
+#   jedem Versuch erneut anzulaufen. --skip-on-error bleibt unveraendert
+#   zustaendig fuer operative Fehler WAEHREND des Laufs.
+#
+#   Der Trockenlauf ist nicht betroffen — er schreibt nichts.
+#
 # Exitcodes: 0 = alles gut / Trockenlauf ok
 #            1 = harter Abbruch (Siegelbruch ODER Fehler ohne --skip-on-error)
 #            2 = Lauf beendet, aber >=1 DB wegen Fehler uebersprungen (--skip-on-error)
+#            3 = Wartungsvorbehalt: es wurde NICHTS geschrieben
 # Abhaengigkeiten: sqlite3, hashlib (indirekt), pathlib, shutil — Stdlib + core.startup_checks
-# Version: v0.7.434 · Build: 434 · 2026-07-19
+# Version: v0.8.615 · Build: 615 · 2026-07-31
 # =============================================================================
 
 from __future__ import annotations
@@ -99,6 +124,9 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from core.startup_checks import StartupChecker  # noqa: E402
+from maintenance.wartungsvorbehalt import (                       # noqa: E402
+    datenwurzel, wartungsvorbehalt,                               # NEU B615
+)
 
 # Rollback-Modi (Header-Stempel 1) gegenueber WAL (Header-Stempel 2).
 ROLLBACK_MODES = ("delete", "truncate", "persist")
@@ -611,6 +639,45 @@ def main(argv: Optional[list[str]] = None) -> int:
     if not dbs:
         print("Keine *.db gefunden — nichts zu tun.")
         return 0
+
+    # --- WARTUNGSVORBEHALT (Stufe A, Build 615) --------------------------
+    # DIESES WERKZEUG WAR IN DER ANALYSE K1-K8 (Build 609) GAR NICHT DABEI.
+    # Der Grund war ein guter und trug trotzdem nicht: Untersucht wurden die
+    # sieben Werkzeuge, bei denen sich die Frage NICHT aus dem Bestand
+    # beantworten liess. Hier stand die Antwort im Dateikopf - "braucht
+    # exklusiven Zugriff" -, und deshalb galt die Frage als geklaert.
+    #
+    # SIE WAR ES NICHT. Eine Zusage im Kommentar ist keine technische Sperre.
+    # Genau dieser Befundtyp steht schon einmal im Eingang: zwei
+    # Auswertungswerkzeuge oeffnen die coordinator.db schreibfaehig, obwohl
+    # ihr Kopf das Gegenteil zusichert (Issue 906ede75). Hier ist es dasselbe
+    # Muster mit groesserem Einsatz.
+    #
+    # DIE STUFE-A-MERKMALE TREFFEN SAEMTLICH ZU: das Werkzeug nimmt
+    # 'PRAGMA locking_mode=EXCLUSIVE' (K1), es aendert den DATEIKOPF - die
+    # Bytes 18/19 sind der Journalstempel (K3) -, es hebt dafuer den
+    # Schreibschutz auf und stellt ihn wieder her, und es fasst
+    # forensic_<uid>.db an, also Beweismittel.
+    #
+    # BELEGT IST AUCH, DASS ES SCHON NEBEN LAUFENDEN DIENSTEN GEFAHREN WURDE:
+    # Der Nachtrag zu Build 433 haelt fest, dass ein Lauf ueber das
+    # Verzeichnis an der ersten gesperrten Datei abbrach, weil "mehrere Server
+    # dieselbe coordinator.db offen halten". Die damalige Antwort war
+    # '--skip-on-error'. Der Vorbehalt setzt davor an: er sagt VOR dem Lauf
+    # und VOLLSTAENDIG, was belegt ist, statt an der ersten Sperre zu
+    # scheitern - siehe die Anmerkung zu '--skip-on-error' im Dateikopf.
+    #
+    # NUR BEIM SCHARFEN LAUF. Der Trockenlauf schreibt nichts.
+    if args.apply:
+        befund = wartungsvorbehalt(
+            datenwurzel(dbs[0]), dbs, werkzeug="convert_journal_mode",
+            was_geschieht="stempelt %d Datenbank(en) auf den Journalmodus "
+                          "'%s' um. Dabei wird der DATEIKOPF geaendert; fuer "
+                          "versiegelte Dateien wird der Schreibschutz "
+                          "voruebergehend aufgehoben." % (len(dbs), args.to))
+        print(befund.text)
+        if not befund.erlaubt:
+            return befund.rueckgabewert
 
     geaendert = 0
     # Uebersprungene Dateien werden gesammelt und am Ende NAMENTLICH gemeldet

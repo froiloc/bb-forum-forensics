@@ -1,0 +1,5 @@
+feb788ae837858ea3d5f1efcf39d9a14  build.json
+9b71b60e17ec3de489dc650235d75658  tests/test_convert_journal_mode.py
+1226977b1a3db101681752fe5ed0d5ff  management/help/cli_katalog.py
+22f90cb7fe75dacf07a5b20042ba6371  tests/hilfe_fehlliste_stand.json
+a50213041286f4caa1ca2dcafaa80a3f  issue-tracker/eingang_claude_Build616.json

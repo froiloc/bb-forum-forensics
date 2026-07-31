@@ -921,18 +921,80 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         datenbanken=("coordinator.db (run schreibend, plan/list lesend)",
                      "alle uebrigen Datenbanken werden zur Sicherung "
                      "AUSSCHLIESSLICH gelesen und dabei nicht veraendert"),
-        betrieb="Ausdruecklich fuer den laufenden Betrieb gebaut: die "
-                "Sicherung blockiert den Zugriff nicht.",
+        betrieb="TEILWEISE betriebsvertraeglich - die Einstufung ist am "
+                "2026-07-31 nachgeprueft und RICHTIGGESTELLT worden (Build "
+                "616). 'plan' ist rein lesend und jederzeit unbedenklich. "
+                "'run' veraendert die Quellen NICHT (es kopiert mit 'VACUUM "
+                "INTO'), aber die frueher hier stehende Zusage 'blockiert "
+                "den Zugriff nicht' traegt so nicht: unter dem Rollback-"
+                "Journal, das seit dem WAL-Verbot ueberall gilt, schliessen "
+                "Leser und Schreiber einander aus. Vor allem aber ist der "
+                "Sicherungs-SATZ nicht punktgleich - die Datenbanken werden "
+                "nacheinander gesichert, jede fuer sich stimmig, der Satz "
+                "als Ganzes nicht. Fuer eine wiederherstellbare Sicherung "
+                "sollte kein Schreiber offen sein. Einzelheiten und "
+                "Vorgaenge: siehe Warnungen.",
         beleg=True,
         befehle=(
             _b("plan", "lesend",
                "Was gesichert wuerde, samt Platzbedarf. Schreibt nichts."),
             _b("run", "schreibend",
                "Sicherung ausfuehren und den Lauf belegen."),
-            _b("list", "lesend", "Vergangene Laeufe auflisten."),
+            _b("list", "lesend", "Vergangene Laeufe auflisten. ACHTUNG - "
+               "es oeffnet die coordinator.db trotz dieser Einstufung "
+               "SCHREIBFAEHIG und setzt dabei ein Journalmodus-PRAGMA; "
+               "geschrieben werden keine Nutzdaten. Vorgang eroeffnet."),
         ),
         ausgabe="Sicherungsdateien und ein Manifest im Sicherungsverzeichnis "
                 "(bei 'run').",
+        tiefe=CliTiefe(
+            exit_codes=((0, "'plan': Vorabpruefung bestanden. 'run': ALLE "
+                            "Datenbanken gesichert UND integer. 'list': "
+                            "ausgegeben - IMMER, siehe Warnung"),
+                        (1, "'run': mindestens eine Sicherung ist "
+                            "fehlgeschlagen oder nicht integer"),
+                        (2, "'plan'/'run': die Vorabpruefung ist "
+                            "fehlgeschlagen (etwa zu wenig Platz); bei "
+                            "'run' wurde dann NICHTS gesichert")),
+            warnungen=(
+                "DIE AUFBEWAHRUNG SIEHT NICHT AUF DIE INTEGRITAET. Die "
+                "Aufraeumung behaelt je Datenbank die neuesten Generationen "
+                "allein nach dem Zeitstempel im Dateinamen; ob eine Kopie "
+                "die Integritaetspruefung bestanden hat, geht NICHT ein. "
+                "Eine als defekt erkannte Sicherung zaehlt damit als "
+                "juengste Generation und verdraengt die aelteste gute. Das "
+                "ist der schwerste der bei der Nachpruefung gefundenen "
+                "Punkte - Vorgang eroeffnet.",
+                "DER SICHERUNGSSATZ IST NICHT PUNKTGLEICH. Die Datenbanken "
+                "werden NACHEINANDER gesichert. Jede Kopie ist fuer sich "
+                "transaktional stimmig; zwischen zweien kann der Betrieb "
+                "einen Fall anlegen oder eine Zuweisung aendern. Aus einem "
+                "solchen Satz wiederhergestellt entsteht ein Zustand, den es "
+                "nie gegeben hat. Das Manifest fuehrt EINEN Zeitstempel fuer "
+                "den ganzen Lauf, der Versatz ist daraus nicht ablesbar.",
+                "'list' LIEFERT IMMER 0 - auch dann, wenn jede aufgefuehrte "
+                "Sicherung 'integrity=FEHLER' traegt. Eine Ueberwachung, die "
+                "nur den Rueckgabewert auswertet, sieht dauerhaft gruen. Die "
+                "Spalte 'integrity' ist zu LESEN.",
+                "FUER DIE HIER ERZEUGTEN SICHERUNGEN GIBT ES KEINEN "
+                "RUECKWEG. Das Werkzeug kennt kein 'restore', und im Bestand "
+                "ist keiner vorgesehen und keiner erprobt. Eine Sicherung, "
+                "deren Rueckweg nie gefahren wurde, ist eine Vermutung.",
+                "Die Pruefsumme jeder Kopie wird ERHOBEN und im Register "
+                "abgelegt, aber nie wieder GEPRUEFT. Die vorhandene "
+                "Pruefroutine hat keinen produktiven Aufrufer. Eine "
+                "Sicherung altert damit unbeobachtet.",
+                "Eine Fall-Datenbank, die WAEHREND des Laufs neu entsteht, "
+                "wird nicht gesichert und erscheint auch nicht unter den "
+                "fehlenden - das Verzeichnis wird einmal vor dem Lauf "
+                "gelesen.",
+                "Es ist keine Wartezeit auf belegte Datenbanken gesetzt. Es "
+                "gilt der Vorgabewert der Python-Anbindung von fuenf "
+                "Sekunden; danach meldet die betroffene Datenbank "
+                "'database is locked' und hat in diesem Lauf KEINE "
+                "Sicherung. Der Lauf endet dann mit 1.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="storage_admin",
@@ -1639,9 +1701,16 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         datenbanken=("ALLE Datenbanken im Datenverzeichnis, einschliesslich "
                      "der versiegelten forensic_<uid>.db (mit --apply "
                      "schreibend)",),
-        betrieb="BRAUCHT EXKLUSIVEN ZUGRIFF. Haelt ein Dienst eine Datenbank "
-                "offen, scheitert der Vorgang - sauber, aber er scheitert. "
-                "Vorher ein Wartungsfenster setzen.",
+        betrieb="STUFE A - WARTUNGSFENSTER ERFORDERLICH (Nachtrag Build "
+                "615). Das Werkzeug nimmt 'locking_mode=EXCLUSIVE', aendert "
+                "den DATEIKOPF - die Bytes 18 und 19 sind der Journalstempel "
+                "- und hebt dafuer den Schreibschutz voruebergehend auf. Es "
+                "fasst dabei auch die versiegelten forensic_<uid>.db an. SEIT "
+                "BUILD 615 SETZT ES DAS SELBST DURCH: '--apply' prueft vor "
+                "dem Lauf, ob die betroffenen Dateien ruhig sind, bricht bei "
+                "einer belegten Datei ohne Rueckfrage ab und faehrt ohne "
+                "aktives Wartungsfenster nur nach Eingabe des Wortes 'OHNE "
+                "WARTUNGSFENSTER' fort. Der Trockenlauf bleibt frei.",
         befehle=(
             _b("(ohne --apply)", "lesend",
                "Trockenlauf. Die Vorgabe - es wird nichts geschrieben."),
@@ -1659,14 +1728,38 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "mit 0."),
             ),
             exit_codes=((0, "nichts zu tun oder erfolgreich umgestempelt"),
-                        (1, "mindestens eine Datei nicht umgestempelt"),
-                        (2, "Aufruffehler oder harter Abbruch")),
+                        (1, "HARTER ABBRUCH - Siegelbruch, oder ein Fehler "
+                            "ohne '--skip-on-error'. Es wurden KEINE "
+                            "weiteren Dateien angefasst"),
+                        (2, "der Lauf ist durchgelaufen, aber mindestens "
+                            "eine Datenbank wurde wegen eines Fehlers "
+                            "UEBERSPRUNGEN ('--skip-on-error'). Sie ist "
+                            "NICHT konvertiert"),
+                        (3, "Wartungsvorbehalt - der Lauf wurde nicht "
+                            "ausgefuehrt; es wurde NICHTS geschrieben")),
             warnungen=(
                 "Ein SIEGELBRUCH - eine Abweichung des Inhalts-Hashes einer "
                 "forensic-Datei - wird NICHT uebersprungen. Der Lauf bricht "
                 "hart ab.",
-                "Der Vorgang braucht exklusiven Zugriff. Haelt ein Dienst "
-                "eine Datei offen, scheitert er sauber - aber er scheitert.",
+                "DIE RUECKGABEWERTE 1 UND 2 STANDEN BIS BUILD 614 IN "
+                "DIESEM KATALOG VERTAUSCHT. Massgeblich ist: 1 heisst "
+                "harter Abbruch, es wurde nichts weiter angefasst; 2 heisst, "
+                "der Lauf ist durchgelaufen und hat dabei Dateien "
+                "uebersprungen. Wer die 2 fuer einen Aufruffehler haelt, "
+                "haelt einen unvollstaendigen Lauf fuer einen fehlgeschlagenen "
+                "- und zieht die uebersprungenen Dateien nie nach.",
+                "'--skip-on-error' ueberspringt operative Fehler WAEHREND des "
+                "Laufs. Es hebt den Wartungsvorbehalt nicht auf: der prueft "
+                "VOR dem Lauf und nennt in einem Durchgang alle belegten "
+                "Dateien. Das ist die Antwort auf den Anlass von Build 433 - "
+                "damals brach ein Lauf an der ersten gesperrten Datenbank ab, "
+                "und die eigentlich zu konvertierenden Dateien wurden nie "
+                "erreicht.",
+                "Bei versiegelten Dateien meldet der Vorbehalt 'nicht "
+                "pruefbar' und fragt nach - auch bei gesetztem "
+                "Wartungsfenster. Das ist hier der Regelfall und kein "
+                "Fehler: auf einer schreibgeschuetzten Datei kann die "
+                "Sperrprobe nicht messen.",
             ),
         ),
     ),

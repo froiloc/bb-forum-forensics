@@ -1,7 +1,7 @@
 {
   "_beschreibung": "Eingecheckter Stand der Hilfe-Fehllisten (Baustelle H, Konzept Hilfesysteme §3.1). Ein Regressionstest vergleicht die ABGELEITETEN Fehllisten mit diesem Stand und laesst sie nur SCHRUMPFEN. Jede Welle schreibt die Datei bewusst fort - das ist der Abnahmenachweis der Welle.",
   "_regel": "Eintraege duerfen entfernt werden (Hilfe wurde geschrieben). Ein NEUER Eintrag ist ein Befund, kein Pflegevorgang: entweder ist eine Sicht ohne Hilfe hinzugekommen oder ein Kapitel verlorengegangen.",
-  "stand_build": 614,
+  "stand_build": 616,
   "stand_datum": "2026-07-31",
   "sichten_ohne_hilfe": [],
   "cli_ohne_tiefe": [
@@ -27,7 +27,6 @@
     "ausschleus_admin",
     "lkae_admin",
     "promotion_admin",
-    "backup_admin",
     "storage_admin",
     "retention_admin",
     "migrate_templates_module_key",
