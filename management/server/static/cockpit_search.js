@@ -262,6 +262,9 @@
 
     function renderKopf(wrap, data) {
         var kopf = el('div', 'aiw-search-stand');
+        // Build 599 (Baustelle H / H10): der Indexstand ist die wichtigste
+        // Einordnung dieser Sicht und bekommt deshalb eine eigene Erklaerung.
+        kopf.setAttribute('data-hilfe-id', 'search.indexstand');
         if (standIstWarnung(data.indexstand)) {
             kopf.className += ' aiw-search-stand--warn';
         }
@@ -425,7 +428,10 @@
         if (!mainEl) { return { state: 'kein_ziel', count: 0 }; }
         mainEl.textContent = '';
         var wrap = el('section', 'aiw-search');
-        wrap.appendChild(el('h2', null, 'Fallübergreifende Volltextsuche'));
+        // Build 599 (Baustelle H / H10): literale Hilfe-Marken.
+        var suKopf = el('h2', null, 'Fallübergreifende Volltextsuche');
+        suKopf.setAttribute('data-hilfe-id', 'search.titel');
+        wrap.appendChild(suKopf);
 
         if (data && data.error) {
             wrap.appendChild(el('p', 'aiw-search-warn',

@@ -284,19 +284,25 @@
         var charts = [];
 
         // --- Kopf ------------------------------------------------------------
-        mainEl.appendChild(_el(doc, 'h2', 'aiw-pagehead', 'Ermittlungsergebnis'));
+        // Build 599 (Baustelle H / H10): literale Hilfe-Marken.
+        var resKopf = _el(doc, 'h2', 'aiw-pagehead', 'Ermittlungsergebnis');
+        resKopf.setAttribute('data-hilfe-id', 'results.titel');
+        mainEl.appendChild(resKopf);
 
         // DIE HAUPTAUSSAGE. Rot, wenn es blinde Flecken gibt.
         var head = _el(doc, 'div',
                        'aiw-res-headline' + (hasBlindSpots(cov) ? ' warn' : ''),
                        headline(cov));
         head.id = 'aiw-res-headline';
+        head.setAttribute('data-hilfe-id', 'results.hauptaussage');
         mainEl.appendChild(head);
 
-        mainEl.appendChild(_el(doc, 'p', 'aiw-pagesub',
+        var resSub = _el(doc, 'p', 'aiw-pagesub',
             'Katalogversion ' + ((cov && cov.catalog_version) || '?')
             + ' \u00b7 Abdeckung bezieht sich auf das Extrem "schwerste" '
-            + '(die Priorisierungsachse); "beste" wird separat ausgewiesen.'));
+            + '(die Priorisierungsachse); "beste" wird separat ausgewiesen.');
+        resSub.setAttribute('data-hilfe-id', 'results.katalogstand');
+        mainEl.appendChild(resSub);
 
         // --- Filterleiste ----------------------------------------------------
         var c = counts(rows);

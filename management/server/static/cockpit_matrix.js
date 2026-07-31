@@ -533,8 +533,11 @@
         if (!doc) { return null; }
 
         mainEl.textContent = '';
-        mainEl.appendChild(_el(doc, 'h2', 'aiw-pagehead',
-            'Dringlichkeit & Erkenntnislage'));
+        // Build 599 (Baustelle H / H10): literale Hilfe-Marken.
+        var mxKopf = _el(doc, 'h2', 'aiw-pagehead',
+            'Dringlichkeit & Erkenntnislage');
+        mxKopf.setAttribute('data-hilfe-id', 'matrix.titel');
+        mainEl.appendChild(mxKopf);
 
         // FEHLER: ausdruecklich als solcher — NICHT als leere Liste. Bei einer
         // Rangfolge ist das besonders wichtig: eine leere Liste liesse sich
@@ -551,9 +554,11 @@
         // (1) DIE ZWECKBINDUNG — ganz oben, wortgleich aus dem
         //     Gewichtungssatz. Sie ist der Grund, aus dem diese Sicht
         //     ueberhaupt verantwortbar ist.
-        mainEl.appendChild(_el(doc, 'div',
+        var mxZweck = _el(doc, 'div',
             'aiw-mx-zweck ' + (zweckbindungOk(data) ? 'is-ok' : 'is-fehlt'),
-            zweckbindungText(data)));
+            zweckbindungText(data));
+        mxZweck.setAttribute('data-hilfe-id', 'matrix.zweckbindung');
+        mainEl.appendChild(mxZweck);
 
         // (2) Die zweite Zusicherung: kein Schreiben von Prioritaeten.
         mainEl.appendChild(_el(doc, 'div',

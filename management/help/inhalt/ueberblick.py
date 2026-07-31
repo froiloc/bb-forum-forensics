@@ -713,12 +713,13 @@ NEXTACTIONS = Sichthilfe(
             verweis="nextactions#zahlen"),
         Kontexthilfe(
             "nextactions.spalte.zuweisung", "Spalte „Zuweisung“",
-            "Klartext statt Häkchen: „zugewiesen“ oder „NICHT zugewiesen“. "
+            "WEr kümmert sich um diesen Fall? „Zugewiesen“ oder " 
+            "„NICHT zugewiesen“. "
             "Letzteres ist die Aussage, auf die es in dieser Sicht ankommt."),
         Kontexthilfe(
             "nextactions.spalte.aktivitaet", "Spalte „Letzte Aktivität“",
             "Zeitpunkt des letzten Fallereignisses. Ein Gedankenstrich "
-            "bedeutet: es liegt keines vor — nicht etwa das Jahr 1970."),
+            "bedeutet: es liegt keines vor."),
     ),
 )
 

@@ -477,8 +477,11 @@
         if (!doc) { return null; }
 
         mainEl.textContent = '';
-        mainEl.appendChild(_el(doc, 'h2', 'aiw-pagehead',
-            'Fristen (Verjährung §§ 78 ff. StGB)'));
+        // Build 599 (Baustelle H / H10): literale Hilfe-Marken.
+        var limKopf = _el(doc, 'h2', 'aiw-pagehead',
+            'Fristen (Verjährung §§ 78 ff. StGB)');
+        limKopf.setAttribute('data-hilfe-id', 'limitation.titel');
+        mainEl.appendChild(limKopf);
 
         // FEHLER: ausdruecklich als solcher — NICHT als leere Liste. Bei einer
         // Fristsicht ist das besonders wichtig: eine leere Liste liesse sich
@@ -493,9 +496,11 @@
         }
 
         // (1) DER VERJAEHRUNGSVORBEHALT — ganz oben, eigene Auszeichnung.
-        mainEl.appendChild(_el(doc, 'div',
+        var limVorbehalt = _el(doc, 'div',
             'aiw-lim-vorbehalt ' + (vorbehaltOk(data) ? 'is-ok' : 'is-fehlt'),
-            vorbehaltText(data)));
+            vorbehaltText(data));
+        limVorbehalt.setAttribute('data-hilfe-id', 'limitation.vorbehalt');
+        mainEl.appendChild(limVorbehalt);
 
         // (2) Der Grund, wenn die Sicht stumm ist.
         var stumm = stummText(data);

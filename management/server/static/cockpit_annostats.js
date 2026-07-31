@@ -84,10 +84,13 @@
         var h = document.createElement('h2');
         h.className = 'aiw-pagehead';
         h.textContent = 'Annotations-Statistik';
+        // Build 599 (Baustelle H / H10): literale Hilfe-Marken.
+        h.setAttribute('data-hilfe-id', 'annostats.titel');
         mainEl.appendChild(h);
 
         var sub = document.createElement('p');
         sub.className = 'aiw-pagesub';
+        sub.setAttribute('data-hilfe-id', 'annostats.zusammenfassung');
         sub.textContent = summaryText(data);
         mainEl.appendChild(sub);
 
