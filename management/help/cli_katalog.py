@@ -69,6 +69,16 @@ def _b(name: str, art: str, zweck: str) -> CliBefehl:
 _GEPRUEFT = ("Build 609, 2026-07-31, gegen einen Wegwerf-Bestand "
              "(/tmp mit leeren Datenbanken), Python 3.13")
 
+#: Der Nachweis fuer die Beispiele aus H18 (Build 613). Der Wegwerf-Bestand
+#: ist diesmal VOLL EINGERICHTET und nicht bloss leer: erst
+#: 'setup_coordinator_dev.py', dann 'python -m management.migrate' (alle 37
+#: Migrationen angewandt, Belegkette 38 Eintraege). Auf einer nur angelegten,
+#: nicht eingerichteten Datei brechen die Auswertungen mit 'no such table' ab -
+#: ein Beispiel, das gegen einen solchen Bestand 'lief', haette nichts belegt.
+_GEPRUEFT_613 = ("Build 613, 2026-07-31, gegen einen eingerichteten "
+                 "Wegwerf-Bestand (/tmp, setup_coordinator_dev + alle 37 "
+                 "Migrationen, keine Faelle), Python 3.13")
+
 
 def _bsp(aufruf: str, wirkung: str, geprueft: str = _GEPRUEFT) -> CliBeispiel:
     """Kurzform fuer einen GEFAHRENEN Beispielaufruf."""
@@ -474,6 +484,36 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "evidence_<uid>.db (lesend, mode=ro)"),
         betrieb="Der Betrieb darf weiterlaufen; die Fall-Datenbanken werden "
                 "ausschliesslich lesend geoeffnet.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.stats.annotation_stats_admin "
+                     "--coordinator-db ./data/coordinator.db --evidence-dir "
+                     "./data/evidence --json",
+                     "Gab die Verteilung als JSON aus. Auf dem eingerichteten "
+                     "Wegwerf-Bestand: cases_total 0, cases_with_evidence 0, "
+                     "cases_without_evidence 0. Rueckgabewert 0.",
+                     _GEPRUEFT_613),
+            ),
+            exit_codes=((0, "ausgegeben"),
+                        (1, "kein coordinator.db-Pfad - weder ueber "
+                            "--coordinator-db noch aus der config.yaml")),
+            warnungen=(
+                "OHNE --coordinator-db UND --evidence-dir greift das Werkzeug "
+                "auf ./data/... zu, und zwar relativ zum aktuellen "
+                "Verzeichnis. Wer es aus der Bestandswurzel aufruft, wertet "
+                "damit den PRODUKTIVEN Bestand aus - lesend zwar, aber "
+                "unbeabsichtigt.",
+                "Eine fehlende evidence_<uid>.db ist KEIN Fehler: der Fall "
+                "wird als 'ohne Beweismittel-Datenbank' gezaehlt und im Kopf "
+                "der Ausgabe ausgewiesen. Er verschwindet nicht still.",
+                "'--scope eigene' ohne --person-id liefert null Faelle. Das "
+                "ist kein Fehler und sieht wie ein Ergebnis aus - es ist "
+                "keines.",
+                "Die Laufzeit waechst mit der Fallzahl: je Fall wird eine "
+                "eigene Datei geoeffnet. Auf einem Netzlaufwerk ist das "
+                "spuerbar.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="forecast_admin",
@@ -486,6 +526,31 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         art="lesend",
         datenbanken=("coordinator.db (lesend, mode=ro)",),
         betrieb="Der Betrieb darf weiterlaufen.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.stats.forecast_admin "
+                     "--coordinator-db ./data/coordinator.db --no-capacity "
+                     "--json",
+                     "Gab die drei Szenarien als JSON aus. Auf dem leeren "
+                     "Bestand: Rueckstand 0, beobachtete Rate 0,0, "
+                     "Beobachtungsfenster 30 Tage. Rueckgabewert 0.",
+                     _GEPRUEFT_613),
+            ),
+            exit_codes=((0, "ausgegeben"),
+                        (1, "kein coordinator.db-Pfad, oder "
+                            "--lookback-days 0 bzw. negativ")),
+            warnungen=(
+                "KEIN RUECKGABEWERT MELDET 'keine belastbare Prognose'. Das "
+                "steht nur im Text bzw. als data_sufficient=false im JSON. "
+                "Wer allein den Rueckgabewert auswertet, haelt ein "
+                "Nullergebnis fuer einen Erfolg.",
+                "Der Kapazitaetsteil ist ausdruecklich 'nach bestem "
+                "Vermoegen': fehlende Kapazitaetsdaten lassen den Lauf "
+                "durchgehen und werden nur als Annahme vermerkt. "
+                "--no-capacity schaltet ihn ganz ab und macht den Lauf "
+                "schneller.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="forecast_report_admin",
@@ -500,6 +565,34 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         betrieb="Fuer den Stapelbetrieb gedacht und ohne Browsersitzung "
                 "lauffaehig; der Betrieb darf weiterlaufen.",
         ausgabe="HTML- oder PDF-Datei (--out).",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.stats.forecast_report_admin "
+                     "--coordinator-db ./data/coordinator.db --out "
+                     "./prognose.html --format html",
+                     "Schrieb den Bericht. Die Schlusszeile nannte "
+                     "ausdruecklich die Datenlage: 'Backlog 0, KEINE "
+                     "belastbare Prognose (keine Abschluesse im Fenster)'. "
+                     "Rueckgabewert 0.",
+                     _GEPRUEFT_613),
+            ),
+            exit_codes=((0, "Bericht geschrieben - AUCH DANN, wenn die "
+                            "Datenlage keine Prognose traegt"),
+                        (1, "kein coordinator.db-Pfad, --lookback-days 0 "
+                            "bzw. negativ, oder reportlab fehlt (nur bei "
+                            "--format pdf)")),
+            warnungen=(
+                "DAS VORGABEFORMAT IST PDF und setzt reportlab voraus. Fuer "
+                "einen Lauf ohne diese Abhaengigkeit '--format html' "
+                "angeben.",
+                "FAELLT DER ERZEUGUNGSRAHMEN AUS, ENTSTEHT DER BERICHT "
+                "TROTZDEM - mit Buildnummer 0 und Ersteller 'unbekannt', und "
+                "zwar ohne Meldung. Bei einem Bericht, der aus dem Haus geht, "
+                "ist der Erzeugungsvermerk deshalb vor der Weitergabe "
+                "anzusehen.",
+                "--out ueberschreibt eine vorhandene Datei wortlos.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="gantt_admin",
@@ -512,6 +605,25 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         art="lesend",
         datenbanken=("coordinator.db (lesend, mode=ro)",),
         betrieb="Der Betrieb darf weiterlaufen.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.stats.gantt_admin "
+                     "--coordinator-db ./data/coordinator.db --json",
+                     "Gab die Balken als JSON aus. Auf dem leeren Bestand: "
+                     "total_bars 0, lanes leer, range_start und range_end "
+                     "beide null. Rueckgabewert 0.",
+                     _GEPRUEFT_613),
+            ),
+            exit_codes=((0, "ausgegeben"),
+                        (1, "kein coordinator.db-Pfad")),
+            warnungen=(
+                "Die Konsolenausgabe ist EINE ZEILE JE FALL. Bei realer "
+                "Fallzahl ist das nichts zum Ueberfliegen - fuer die "
+                "Weiterverarbeitung '--json' verwenden.",
+                "Faelle ohne Zuweisung erscheinen in einer eigenen Spur. Sie "
+                "fehlen nicht, sie stehen nur nicht bei einer Person.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="glossary_admin",
@@ -536,6 +648,35 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Eigenstaendiges Glossar-HTML erzeugen (--out)."),
         ),
         ausgabe="HTML-Datei bei export-html (--out).",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.stats.glossary_admin check",
+                     "Meldete 'OK - jede erzeugte Kennzahl ist definiert' und "
+                     "nannte die Zahl der Eintraege. Rueckgabewert 0.",
+                     _GEPRUEFT_613),
+                _bsp("python -m management.stats.glossary_admin export-html "
+                     "--out ./glossar.html --coordinator-db "
+                     "./data/coordinator.db",
+                     "Schrieb die Definitionen als eigenstaendige HTML-Datei "
+                     "(ohne aeussere Verweise) und nannte ihre Zahl. "
+                     "Rueckgabewert 0.",
+                     _GEPRUEFT_613),
+            ),
+            exit_codes=((0, "ausgegeben bzw. geschrieben"),
+                        (1, "BEFUND: mindestens eine erzeugte Kennzahl hat "
+                            "keine Definition. Das ist kein Programmfehler, "
+                            "sondern die Luecke, die dieses Werkzeug suchen "
+                            "soll")),
+            warnungen=(
+                "'list' und 'check' oeffnen GAR KEINE Datenbank - sie pruefen "
+                "den Bestand statisch. Sie sind damit in jedem "
+                "Betriebszustand aufrufbar.",
+                "'export-html' liest die coordinator.db nur, wenn "
+                "--coordinator-db gesetzt ist. Ohne die Angabe entsteht die "
+                "Datei OHNE Kettenspitze; das steht dann auf der "
+                "Fehlerausgabe, aendert den Rueckgabewert aber nicht.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="status_report_admin",
@@ -550,6 +691,31 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         datenbanken=("coordinator.db (lesend, mode=ro)",),
         betrieb="Der Betrieb darf weiterlaufen.",
         ausgabe="HTML- oder PDF-Datei (--out).",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.stats.status_report_admin "
+                     "--coordinator-db ./data/coordinator.db --out "
+                     "./bericht.html --format html",
+                     "Schrieb den Bericht; die Schlusszeile nannte die Zahl "
+                     "der beruecksichtigten Faelle (hier '0 Faelle'). "
+                     "Rueckgabewert 0.",
+                     _GEPRUEFT_613),
+            ),
+            exit_codes=((0, "Bericht geschrieben"),
+                        (1, "kein coordinator.db-Pfad, oder reportlab fehlt "
+                            "(nur bei --format pdf)")),
+            warnungen=(
+                "DAS VORGABEFORMAT IST PDF und setzt reportlab voraus.",
+                "Wie beim Prognosebericht: FAELLT DER ERZEUGUNGSRAHMEN AUS, "
+                "entsteht der Bericht trotzdem - mit Buildnummer 0 und "
+                "Ersteller 'unbekannt', ohne Meldung.",
+                "FEHLT EINE TABELLE, gibt es hier einen rohen Programmabbruch "
+                "und nicht die handlungsleitende Meldung, die "
+                "'export_admin' in derselben Lage ausgibt. Der Bestand ist "
+                "dann zuerst zu migrieren.",
+                "--person-id schaltet den Umfang auf die Faelle EINER Person.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="export_admin",
@@ -571,6 +737,42 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         hinweis="Der Erzeugungsvermerk nennt den Stand der Belegkette; vor "
                 "einem produktiven Lauf sind die Pruefsummen der "
                 "eingesetzten Dateien zu bestaetigen.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.export.export_admin "
+                     "case-status-xlsx --coordinator-db "
+                     "./data/coordinator.db --out ./faelle.xlsx --actor "
+                     "KENNUNG",
+                     "Schrieb die Mappe (im Versuch 5774 Bytes, mit "
+                     "Datendigest im Blatt) und nannte die Zahl der Faelle. "
+                     "Rueckgabewert 0. Auf der FEHLERAUSGABE stand "
+                     "zusaetzlich, dass die angegebene Kennung keinem "
+                     "Personendatensatz zugeordnet ist - der Lauf ging "
+                     "trotzdem durch.",
+                     _GEPRUEFT_613),
+            ),
+            exit_codes=((0, "Mappe geschrieben"),
+                        (1, "kein coordinator.db-Pfad, eine benoetigte "
+                            "Tabelle fehlt (mit Hinweis auf die Migration), "
+                            "oder openpyxl fehlt"),
+                        (2, "Aufruffehler - der Unterbefehl fehlt")),
+            warnungen=(
+                "EINE GEBROCHENE BELEGKETTE AENDERT DEN RUECKGABEWERT NICHT. "
+                "Sie erscheint auf der Fehlerausgabe, der Export laeuft und "
+                "endet mit 0. Wer den Export weitergibt, muss die "
+                "Fehlerausgabe gelesen haben - der Rueckgabewert allein sagt "
+                "es nicht.",
+                "OHNE --actor und ohne passenden Personendatensatz steht "
+                "'unbekannt' im Erzeugungsvermerk der Mappe. Der Export "
+                "laeuft trotzdem.",
+                "openpyxl ist Voraussetzung. Fehlt es, bricht der Lauf mit 1 "
+                "ab - die Mappe entsteht dann gar nicht.",
+                "Die Buildnummer im Vermerk kommt aus der build.json der "
+                "Bestandswurzel. Wird das Werkzeug ausserhalb der Struktur "
+                "aufgerufen, steht dort 0.",
+                "--out ueberschreibt eine vorhandene Datei wortlos.",
+            ),
+        ),
     ),
 
     # -------------------------------------------------- Identitaeten, Externe
@@ -929,6 +1131,39 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         hinweis="Der Katalog sagt, WOZU ein Werkzeug da ist. Die "
                 "vollstaendige Liste der Optionen sagt das Werkzeug selbst - "
                 "ein hier abgeschriebener Optionsblock wuerde veralten.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python tools/hilfe.py suche sicherung",
+                     "Fuehrte die Werkzeuge auf, deren Katalogtext den "
+                     "Begriff enthaelt - hier unter anderem 'backup_admin'. "
+                     "Rueckgabewert 0.",
+                     _GEPRUEFT_613),
+                _bsp("python tools/hilfe.py suche zzzgibtsnicht",
+                     "LEERBEFUND: 'Kein Treffer' samt der Angabe, WORIN "
+                     "gesucht wurde (Kennung, Titel, Zweck, Aufrufform). "
+                     "Rueckgabewert 1 - damit ein Skript den Leerbefund "
+                     "erkennt, ohne die Ausgabe zu lesen.",
+                     _GEPRUEFT_613),
+                _bsp("python tools/hilfe.py stand",
+                     "Nannte die Gesamtzahl der Werkzeuge und wie viele davon "
+                     "ueber den Grundeintrag hinaus ausgearbeitet sind. "
+                     "Rueckgabewert 0.",
+                     _GEPRUEFT_613),
+            ),
+            exit_codes=((0, "ausgegeben"),
+                        (1, "unbekanntes Werkzeug (mit Vorschlaegen auf der "
+                            "Fehlerausgabe) bzw. Suche ohne Treffer - beides "
+                            "eine Auskunft und kein Fehler"),
+                        (2, "Aufruffehler bzw. kein Unterbefehl angegeben")),
+            warnungen=(
+                "Das Werkzeug FUEHRT NICHTS AUS, oeffnet keine Datenbank und "
+                "nimmt keine Sperre. Es ist damit in jedem Betriebszustand "
+                "aufrufbar, auch mitten in einer Migration.",
+                "Bei einem unbekannten Werkzeug geht die Meldung auf die "
+                "FEHLERAUSGABE - wer die Ausgabe in eine Datei umleitet, hat "
+                "dort keinen Fehlertext stehen.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="hilfe_lektorat",
@@ -945,6 +1180,28 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         betrieb="Der Betrieb darf weiterlaufen; gelesen wird nur der "
                 "Hilfebestand im Paket.",
         ausgabe="HTML-Datei (--ziel).",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python tools/hilfe_lektorat.py --ziel ./lektorat.html",
+                     "Schrieb die Lektoratsfassung der gesamten Hilfe in eine "
+                     "Datei und nannte die Zahl der Kapitel und der "
+                     "Einblendtexte. Rueckgabewert 0.",
+                     _GEPRUEFT_613),
+                _bsp("python tools/hilfe_lektorat.py --nur gibtsnicht",
+                     "Brach ab und nannte auf der Fehlerausgabe ALLE "
+                     "verfassten Kapitelkennungen. Rueckgabewert 1.",
+                     _GEPRUEFT_613),
+            ),
+            exit_codes=((0, "Datei geschrieben"),
+                        (1, "in --nur steht eine Kennung, zu der es kein "
+                            "verfasstes Kapitel gibt")),
+            warnungen=(
+                "EIN TIPPFEHLER IN --nur BRICHT AB, statt eine leere Fassung "
+                "zu schreiben. Das ist Absicht: eine stillschweigend leere "
+                "Lektoratsfassung saehe aus wie 'nichts zu tun'.",
+                "--ziel ueberschreibt eine vorhandene Datei wortlos.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="pruefe_auslieferung",
@@ -962,6 +1219,39 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         hinweis="Bei relativen Pfaden ist ein gleichmaessig verschobener "
                 "Baum in sich stimmig - dieser Fehler ist ausschliesslich "
                 "von der Wurzel aus sichtbar.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python tools/pruefe_auslieferung.py",
+                     "Prueft die Liste zum Build aus der build.json. Im "
+                     "Versuch: 'Alle 11 Dateien in Ordnung', Rueckgabewert 0.",
+                     _GEPRUEFT_613),
+                _bsp("python tools/pruefe_auslieferung.py "
+                     "MD5SUMS_Build609.txt",
+                     "Prueft eine AELTERE Liste gegen den heutigen Bestand. "
+                     "Im Versuch: '5 von 7 Dateien in Ordnung' samt "
+                     "Nennung der abweichenden Datei mit erwarteter und "
+                     "gefundener Pruefsumme, Rueckgabewert 1. Die Abweichung "
+                     "ist hier RICHTIG - die Dateien wurden seither "
+                     "geaendert.",
+                     _GEPRUEFT_613),
+            ),
+            exit_codes=((0, "alle geprueften Dateien stimmen"),
+                        (1, "mindestens eine Datei fehlt oder weicht ab"),
+                        (2, "falsches Arbeitsverzeichnis oder Aufrufproblem")),
+            warnungen=(
+                "OHNE ARGUMENT wird NUR die Liste zum Build aus der "
+                "build.json geprueft. Eine Liste beschreibt den Stand ZUM "
+                "ZEITPUNKT IHRES BUILDS; alle Listen gegen den heutigen "
+                "Bestand zu pruefen erzeugte lauter richtige Abweichungen - "
+                "und in diesem Rauschen ginge der eine echte Befund unter.",
+                "Das Werkzeug WEIGERT SICH, wenn es nicht in der Wurzel des "
+                "Bestands laeuft. Der Grund ist ein Befund vom 2026-07-31: "
+                "zwei Archive wurden eine Ebene zu tief entpackt, und weil "
+                "die Pfade in der Liste relativ sind, war der verschobene "
+                "Baum in sich stimmig - sichtbar wird der Fehler nur von der "
+                "Wurzel aus.",
+            ),
+        ),
     ),
 
     # ---------------------------------------------- Migration und Reparatur
