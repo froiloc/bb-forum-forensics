@@ -79,6 +79,14 @@ _GEPRUEFT_613 = ("Build 613, 2026-07-31, gegen einen eingerichteten "
                  "Wegwerf-Bestand (/tmp, setup_coordinator_dev + alle 37 "
                  "Migrationen, keine Faelle), Python 3.13")
 
+#: Der Nachweis fuer H18 Teil 2 (Build 614). Fuer die Diagnosewerkzeuge ist
+#: derselbe eingerichtete Wegwerf-Bestand verwendet worden; die beiden
+#: Netzlaufwerks-Diagnosen liefen zusaetzlich gegen ein eigenes Wegwerf-
+#: Verzeichnis mit einer Attrappen-evidence-Datenbank.
+_GEPRUEFT_614 = ("Build 614, 2026-07-31, gegen einen eingerichteten "
+                 "Wegwerf-Bestand unter /tmp, Python 3.13, Linux - KEIN "
+                 "Netzlaufwerk")
+
 
 def _bsp(aufruf: str, wirkung: str, geprueft: str = _GEPRUEFT) -> CliBeispiel:
     """Kurzform fuer einen GEFAHRENEN Beispielaufruf."""
@@ -1786,6 +1794,42 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         betrieb="Im laufenden Betrieb gefahrlos. Mit --url muss der Dienst "
                 "laufen und die aufrufende Person das Leserecht haben.",
         hinweis="Diagnose, nicht Teil des Produktivsystems.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python tools/diag_limitation_laufzeit.py "
+                     "--coordinator-db ./data/coordinator.db --forensic-dir "
+                     "./data/forensic --evidence-dir ./data/evidence --runs 1",
+                     "Mass den Fristenmonitor und gab am Ende den Block "
+                     "'ERGEBNIS ZUM ZURUECKMELDEN' aus, der KEINE Fallinhalte "
+                     "enthaelt. Auf dem leeren Wegwerf-Bestand: Faelle 0, "
+                     "erster Lauf 948 us. Rueckgabewert 0.",
+                     _GEPRUEFT_614),
+            ),
+            exit_codes=((0, "gemessen"),
+                        (2, "coordinator.db nicht gefunden")),
+            warnungen=(
+                "KEIN RUECKGABEWERT MELDET EINEN BEFUND. Auch 'keine "
+                "Zeitkandidaten gefunden' - laut dem Werkzeug selbst ein "
+                "wichtiger Befund - und Lesefehler enden mit 0. Die Aussage "
+                "steht ausschliesslich im Text.",
+                "DER TEUERSTE TEIL IST DIE SCHEMA-SONDE: sie rechnet je "
+                "Spalte je Tabelle ueber die Stichprobe, und die Stichprobe "
+                "enthaelt ausdruecklich die GROESSTEN Dateien. Auf einem "
+                "Netzlaufwerk sind das vollstaendige Tabellendurchlaeufe auf "
+                "Dateien im Gigabyte-Bereich.",
+                "Der Docstring der Stichprobe sagt an einer Stelle noch, es "
+                "wuerden die KLEINSTEN Dateien genommen; das trifft seit der "
+                "vierten Fassung nicht mehr zu. Massgeblich ist die "
+                "Groessenspanne einschliesslich der groessten Dateien.",
+                "'--schema-dateien' ist eine MINDESTZAHL, keine Obergrenze - "
+                "wer 1 angibt, bekommt trotzdem bis zu 15 Dateien.",
+                "Die Zahl 'Faelle ohne Datei' ist eine Differenz aus Fallzahl "
+                "und Dateizahl, keine Pruefung je Fall. Ueberzaehlige "
+                "forensic-Dateien ohne Fall druecken sie nach unten.",
+                "'--url' sendet KEINE Anmeldung. Ein 403 heisst hier "
+                "regelmaessig: das Recht 'limitation.view' fehlt.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="diag_matrix_laufzeit",
@@ -1800,6 +1844,37 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "(alle lesend, mode=ro)",),
         betrieb="Im laufenden Betrieb gefahrlos.",
         hinweis="Diagnose, nicht Teil des Produktivsystems.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python tools/diag_matrix_laufzeit.py --coordinator-db "
+                     "./data/coordinator.db --forensic-dir ./data/forensic "
+                     "--evidence-dir ./data/evidence --runs 1",
+                     "Mass die Matrix zweimal - mit und ohne Fristkomponente - "
+                     "und nannte den Faktor zwischen beiden. Auf dem leeren "
+                     "Wegwerf-Bestand: ohne Frist 1,7 ms, mit Frist 9,3 ms, "
+                     "Faktor 5,6x. Rueckgabewert 0.",
+                     _GEPRUEFT_614),
+            ),
+            exit_codes=((0, "gemessen"),
+                        (2, "coordinator.db nicht gefunden")),
+            warnungen=(
+                "EIN GESCHEITERTER LAUF AENDERT DEN RUECKGABEWERT NICHT. "
+                "Messfehler werden gedruckt, das Werkzeug endet trotzdem "
+                "mit 0.",
+                "MIT '--url' BLOCKIERT DER AUFRUF BIS ZU 600 SEKUNDEN JE "
+                "ABRUF, ohne dass zwischendurch etwas ausgegeben wird. Bei "
+                "'--runs 3' koennen daraus eine halbe Stunde werden.",
+                "Die Selbstmessung der Antwort steht NEBEN der Stoppuhr und "
+                "ersetzt sie nicht. Eine Abweichung zwischen beiden ist eine "
+                "eigene Aussage und kein Widerspruch.",
+                "Die Zeile mit dem Faktor fehlt kommentarlos, wenn die "
+                "Vergleichsmessung 0 ergibt - bei sehr kleinem Bestand ist "
+                "das der Regelfall.",
+                "Gebraucht wird mehr als die Tabelle 'cases': die Matrix "
+                "liest eine Sicht, die erst eine Migration anlegt. Eine von "
+                "Hand gebaute Datei genuegt hier nicht.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="diag_sqlite_netdrive",
@@ -1815,6 +1890,46 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "Probedateien",),
         betrieb="Legt Probedateien und eine Protokolldatei im "
                 "Datenverzeichnis an und raeumt die Probedateien wieder weg.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python tools/diag_sqlite_netdrive.py --data-dir "
+                     "./data --skip-local",
+                     "Nahm den Bestand auf und fuhr die fuenf Journalmodi "
+                     "gegen eigene Probedateien. Auf einem LOKALEN "
+                     "Dateisystem waren alle fuenf gruen (WAL, WAL+exklusiv, "
+                     "DELETE, TRUNCATE, PERSIST), je mit Schreiben und "
+                     "Ruecklesen belegt. Rueckgabewert 0. Die Protokolldatei "
+                     "diag_sqlite_netdrive.log blieb im aufrufenden "
+                     "Verzeichnis liegen.",
+                     _GEPRUEFT_614),
+            ),
+            exit_codes=((0, "durchgelaufen - AUCH DANN, wenn kein einziger "
+                            "Modus getragen hat, wenn das Datenverzeichnis "
+                            "fehlt oder wenn gar keine Datenbank gefunden "
+                            "wurde"),),
+            warnungen=(
+                "ES GIBT NUR DEN RUECKGABEWERT 0. Der Befund steht "
+                "ausschliesslich im Text bzw. in der Protokolldatei. Fuer "
+                "eine automatische Auswertung taugt das Werkzeug nicht.",
+                "EXISTIERT DAS DATENVERZEICHNIS NICHT, wird BEIDES "
+                "uebersprungen - Bestandsaufnahme und Messung. Das Werkzeug "
+                "laeuft dann 'erfolgreich' durch und hat nichts gemessen.",
+                "AUSSERHALB VON WINDOWS entfaellt die Kernaussage: der Beleg "
+                "'dies ist ein Netzlaufwerk' laesst sich dort nicht "
+                "erheben, und alle Modi sind trivialerweise gruen. Der Lauf "
+                "erzeugt dann nur die Vergleichsgruppe 'lokal'.",
+                "ES SCHREIBT - auch wenn es als lesend gefuehrt ist: fuenf "
+                "Probedatenbanken im Datenverzeichnis (aufgeraeumt, auch im "
+                "Fehlerfall) und eine Protokolldatei im AUFRUFENDEN "
+                "Verzeichnis, die liegen bleibt. Die echten Datenbanken "
+                "bleiben unberuehrt.",
+                "Bei einem harten Abbruch bleiben Probedateien mit dem "
+                "Praefix '_probe_' im Datenverzeichnis liegen.",
+                "Ein gruenes PRAGMA gilt bewusst NICHT als Beleg. Erst "
+                "Schreiben und Ruecklesen zaehlen - das ist der Grund, aus "
+                "dem dieses Werkzeug ueberhaupt gebaut wurde.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="diag_sqlite_netdrive2",
@@ -1830,6 +1945,58 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "veraendert; die grosse default.db wird nur gelesen",),
         betrieb="Braucht Platz in Groesse der gewaehlten Datenbank fuer die "
                 "Kopie; die Kopie wird danach entfernt.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python tools/diag_sqlite_netdrive2.py --data-dir ./data "
+                     "--db ./data/evidence/evidence_1000001.db",
+                     "Fuhr die sieben Kandidaten gegen eine Vollkopie der "
+                     "angegebenen Datei. Auf einem LOKALEN Dateisystem waren "
+                     "alle sieben gruen. Rueckgabewert 0; nach dem Lauf lagen "
+                     "keine Kopien mehr im Verzeichnis, die Protokolldatei "
+                     "blieb liegen.",
+                     _GEPRUEFT_614),
+                _bsp("python tools/diag_sqlite_netdrive2.py --data-dir ./data",
+                     "VERWEIGERUNG bei mehreren evidence-Dateien: das "
+                     "Werkzeug fuehrte alle gefundenen samt Journalstempel "
+                     "auf und verlangte '--db'. Rueckgabewert 1. Das ist kein "
+                     "Fehler, sondern die Lehre aus der ersten Fassung, die "
+                     "sich still die alphabetisch erste Datei genommen und "
+                     "damit die falsche vermessen hatte.",
+                     _GEPRUEFT_614),
+            ),
+            exit_codes=((0, "durchgelaufen - AUCH DANN, wenn jeder Kandidat "
+                            "gescheitert ist"),
+                        (1, "'--db' fehlt bei mehreren evidence-Dateien "
+                            "(bewusste Verweigerung), die angegebene Datei "
+                            "fehlt, es wurde gar keine gefunden, oder die "
+                            "Kopie liess sich nicht anlegen")),
+            warnungen=(
+                "ES LEGT SIEBEN VOLLKOPIEN DER GEWAEHLTEN "
+                "BEWEISMITTEL-DATENBANK AN - eine je Testfall, nacheinander, "
+                "im selben Verzeichnis - und setzt auf jede Kopie Lese- UND "
+                "SCHREIBRECHT FUER ALLE. Auf einem geteilten Laufwerk ist das "
+                "nicht auf die aufrufende Person beschraenkt. Vorgang: siehe "
+                "Issue-Tracker.",
+                "Platzbedarf und I/O-Last betragen das SIEBENFACHE der "
+                "gewaehlten Datei (immer nur eine Kopie gleichzeitig, aber "
+                "siebenmal nacheinander). Der Kopiervorgang blockiert ohne "
+                "Fortschrittsanzeige.",
+                "Bei einem harten Abbruch bleibt eine Kopie mit dem Praefix "
+                "'_probe2_' liegen - und das Schwesterwerkzeug "
+                "diag_sqlite_netdrive schliesst beim Bestandsdurchgang nur "
+                "'_probe_' aus, nicht '_probe2_'. Es wuerde die "
+                "liegengebliebene Kopie also wie eine regulaere Datenbank "
+                "mitvermessen.",
+                "AUF EINEM LOKALEN DATEISYSTEM SIND ALLE SIEBEN KANDIDATEN "
+                "TRIVIALERWEISE GRUEN. Die Frage, fuer die das Werkzeug "
+                "gebaut wurde, laesst sich nur auf dem echten Share "
+                "beantworten.",
+                "Die Zeile 'Schreibgeschuetzt' bezieht sich auf das ORIGINAL; "
+                "die Tests laufen auf der Kopie. Nicht verwechseln.",
+                "default.db wird ausdruecklich NICHT kopiert - sie ist dafuer "
+                "zu gross. Sie wird nur lesend abgefragt.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="diag_migrationsluecke",
@@ -1844,6 +2011,33 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "Arbeitsspeicher",),
         betrieb="Ueberall gefahrlos; es wird keine Datei angefasst.",
         hinweis="Ein BELEG, kein Produktivcode. Ohne Argumente aufzurufen.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python tools/diag_migrationsluecke.py",
+                     "Fuehrte den Nachweis im Arbeitsspeicher: 'Lauf 1: [40]', "
+                     "'Lauf 2: []', 'registrierte Versionen: [40]'. Die "
+                     "nachgelieferten niedrigeren Migrationen wurden also "
+                     "uebersprungen - ohne Fehler und ohne Registereintrag. "
+                     "Rueckgabewert 0.",
+                     _GEPRUEFT_614),
+            ),
+            exit_codes=((0, "durchgelaufen - AUCH DANN, wenn die Luecke "
+                            "reproduziert wurde"),),
+            warnungen=(
+                "DER NACHGEWIESENE MANGEL SCHLAEGT SICH NICHT IM "
+                "RUECKGABEWERT NIEDER. Das Werkzeug ist ein Beleg zum Lesen "
+                "und keine Pruefung fuer eine Kette; wer es in einen "
+                "Regressionslauf haengt, bekommt immer 'gruen'.",
+                "DIE VERSIONSNUMMERN 33 BIS 40 SIND ATTRAPPEN und haengen an "
+                "keiner echten Migrationsdatei. Sie werden bewusst nicht "
+                "nachgezogen - ein Beleg, der rueckwirkend umgeschrieben "
+                "wird, ist kein Beleg mehr. Wer daraus den aktuellen "
+                "Nummernstand ablesen will, liest falsch.",
+                "Die Umnummerierung hat die KONKRETE Luecke beseitigt, nicht "
+                "die Ursache im Migrations-Ausfuehrer. Der Befund gilt "
+                "weiter; der Lauf zu Build 614 hat das bestaetigt.",
+            ),
+        ),
     ),
 
     # ------------------------------------------------- Start und Einrichtung
@@ -1860,6 +2054,33 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         betrieb="Der Normalbetrieb. Mit --maintenance ist der Start NUR bei "
                 "aktivem Wartungsfenster erlaubt.",
         hinweis="Keine Schreibpfade: der Dienst liest.",
+        tiefe=CliTiefe(
+            exit_codes=((0, "sauber beendet"),
+                        (1, "kein coordinator.db-Pfad, Datei nicht gefunden, "
+                            "kein freier Port, '--maintenance' ohne aktives "
+                            "Wartungsfenster, unvollstaendiger "
+                            "Rechtekatalog, Identitaet nicht aufloesbar, "
+                            "oder die Adresse liess sich nicht belegen")),
+            warnungen=(
+                "ES LAEUFT DAUERHAFT und kehrt erst nach dem Beenden "
+                "zurueck. Vorgabe ist 127.0.0.1:8090.",
+                "DER OS-BENUTZERNAME MUSS IN DER PERSONENTABELLE STEHEN, "
+                "sonst startet es nicht. Fuer eine Erprobung gibt es "
+                "'--as-user'.",
+                "OHNE VOLLSTAENDIGEN RECHTEKATALOG IN DER DATENBANK bricht "
+                "der Start ab. Ein blosser Entwicklungs-Bootstrap genuegt "
+                "dafuer nicht.",
+                "ES MIGRIERT BEWUSST NICHT SELBST. Es meldet den "
+                "Migrationsstand und nennt den zustaendigen Aufruf - zwei "
+                "Wege, die dasselbe schreiben, waeren zwei Wahrheiten ueber "
+                "den Beleg.",
+                "Eine Adresse ausserhalb von localhost erzeugt nur eine "
+                "Warnung und keinen Abbruch.",
+                "'--config' wird RELATIV ZUM AKTUELLEN VERZEICHNIS gesucht - "
+                "anders als beim Auswertungsdienst, der neben seiner eigenen "
+                "Datei nachsieht.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="main",
@@ -1883,6 +2104,38 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         hinweis="Die versiegelte forensic-Datenbank wird IMMER nur lesend "
                 "geoeffnet. Jeder Fehler beim Start fuehrt zum harten "
                 "Abbruch - kein stiller Betrieb unter unklaren Bedingungen.",
+        tiefe=CliTiefe(
+            exit_codes=((0, "sauber beendet"),
+                        (1, "Konfiguration, Protokollierung, Systembenutzer, "
+                            "Startmodus, Wartungsfenster, Startpruefung, "
+                            "hosts-Eintrag, Datenbankverbindungen, freier "
+                            "Port oder Adressbelegung - jeder dieser "
+                            "Startschritte kann abbrechen, jeweils mit "
+                            "eigener Meldung")),
+            warnungen=(
+                "ES LAEUFT DAUERHAFT und kehrt erst nach dem Beenden "
+                "zurueck. Vorgabe ist 127.0.0.2:8080.",
+                "IN DEN MODI 'cli' UND 'support' IST '--subject-id' ODER "
+                "'--username' PFLICHT, obwohl beide formal Wahloptionen "
+                "sind. Fehlt beides, bricht die Modusaufloesung ab.",
+                "DIE VORGABE DES MODUS STEHT NICHT IM CODE, SONDERN IN DER "
+                "config.yaml. Der im Code hinterlegte Rueckfall lautet "
+                "'job', die ausgelieferte Konfiguration setzt aber 'cli' - "
+                "und die Konfiguration hat Vorrang.",
+                "forensic_<uid>.db und default.db MUESSEN VORHANDEN SEIN. "
+                "evidence_<uid>.db dagegen wird angelegt, wenn sie fehlt.",
+                "Der Journalmodus wird beim Start auf evidence_<uid>.db und "
+                "coordinator.db gesetzt - das ist ein Schreibvorgang auf "
+                "bestehende Dateien.",
+                "Protokolldatei und Einfrier-Abzug gehen dorthin, wo die "
+                "Konfiguration es sagt (Vorgabe './logs/'), RELATIV ZUM "
+                "AUFRUFENDEN VERZEICHNIS. Eine Kommandozeilenoption dafuer "
+                "gibt es nicht.",
+                "Der hosts-Eintrag wird nur angefasst, wenn die "
+                "Konfiguration das ausdruecklich erlaubt; in der "
+                "ausgelieferten Fassung ist das abgeschaltet.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="run_tests",
@@ -1896,6 +2149,35 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         datenbanken=("keine der Produktivdatenbanken; die Tests arbeiten mit "
                      "eigenen Wegwerfdaten",),
         betrieb="Vor jeder Uebergabe zu fahren.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python run_tests.py",
+                     "Fuhr beide Suiten und fasste sie zusammen. Im "
+                     "Bau-Container zu diesem Build: pytest bestanden, vitest "
+                     "bestanden, 'Alle Testsuites bestanden'. Rueckgabewert "
+                     "0. Laufzeit rund acht Minuten.",
+                     _GEPRUEFT_614),
+            ),
+            exit_codes=((0, "alle gefahrenen Suiten bestanden"),
+                        (1, "mindestens eine Suite ist gescheitert oder war "
+                            "nicht ausfuehrbar")),
+            warnungen=(
+                "DER TESTPFAD IST FEST VERDRAHTET ('tests/' bzw. "
+                "'tests/unit/'). Es gibt keine Option, einzelne Dateien oder "
+                "Muster zu waehlen - dafuer ist pytest unmittelbar "
+                "aufzurufen.",
+                "FEHLT 'node_modules', WIRD 'npm install' VON SELBST "
+                "AUSGEFUEHRT. Auf einer Maschine ohne Internetzugang "
+                "scheitert der Lauf dann an dieser Stelle und nicht an einem "
+                "Test.",
+                "Ein UEBERSPRUNGENES Testmodul sagt das nicht von selbst. "
+                "Fehlt eine Zusatzbibliothek, zaehlt die Zusammenfassung ein "
+                "einziges 'skipped' - dahinter koennen zehn Tests stehen. Wer "
+                "eine Zahl mit einem frueheren Lauf vergleicht, sollte "
+                "zusaetzlich 'pytest -rs' fahren.",
+                "Die Suite setzt Python 3.12 oder neuer voraus.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="install",
@@ -1908,6 +2190,42 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         datenbanken=("keine",),
         betrieb="Vor der Inbetriebnahme. Schreibt ins Dateisystem, nicht in "
                 "Datenbanken.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python install.py --target dev --os linux",
+                     "Gefahren in einem WEGWERF-VENV, damit die Systemumgebung "
+                     "unberuehrt bleibt. Der Lauf brach ab: 'Could not find a "
+                     "version that satisfies the requirement pyyaml (from "
+                     "versions: none)', Rueckgabewert 1 - das "
+                     "Offline-Verzeichnis setup/linux64/wheels enthaelt zum "
+                     "Zeitpunkt dieses Builds nur ein einziges Rad. Das "
+                     "Werkzeug hat richtig gemeldet; der Mangel liegt beim "
+                     "Erzeugen des Pakets (siehe Issue-Tracker).",
+                     _GEPRUEFT_614),
+            ),
+            exit_codes=((0, "installiert und nachgeprueft"),
+                        (1, "Python zu alt, 'pip install' gescheitert, oder "
+                            "ein Paket war nach der Installation nicht "
+                            "einlesbar")),
+            warnungen=(
+                "ES INSTALLIERT IN DEN GERADE LAUFENDEN INTERPRETER - kein "
+                "venv, kein '--user', kein Zielverzeichnis. Wer es "
+                "ausprobieren will, aktiviert vorher eine Wegwerf-Umgebung.",
+                "'--upgrade' KANN VORHANDENE PAKETVERSIONEN ANHEBEN. Das ist "
+                "nicht von selbst rueckholbar, und ein zweiter Lauf ist "
+                "nicht versionsstabil.",
+                "DIE OFFLINE-RAEDER SIND AN EINE PYTHON-NEBENVERSION "
+                "GEBUNDEN (gebaut fuer 3.14). Unter einer anderen "
+                "Nebenversion meldet pip 'No matching distribution found' - "
+                "auch dann, wenn die Datei im Verzeichnis liegt. Die Meldung "
+                "weist dabei auf das erste fehlende Paket und nicht auf die "
+                "Versionsbindung.",
+                "Fehlt das Rad-Verzeichnis ganz, wird STILL auf eine "
+                "Online-Installation umgeschaltet. Auf einer Maschine ohne "
+                "Internetzugang scheitert die dann.",
+                "Node wird nur GEPRUEFT, nicht installiert.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="prepare_deployment",
@@ -1920,6 +2238,32 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         datenbanken=("keine",),
         betrieb="Laeuft auf einem Rechner MIT Internetzugang - nicht auf der "
                 "Anlage.",
+        tiefe=CliTiefe(
+            exit_codes=((0, "durchgelaufen - AUCH DANN, wenn der "
+                            "Rad-Download vollstaendig gescheitert ist"),
+                        (1, "das Bundle-Skript fehlt oder der Bundle-Bau ist "
+                            "gescheitert")),
+            warnungen=(
+                "EIN GESCHEITERTER RAD-DOWNLOAD AENDERT DEN RUECKGABEWERT "
+                "NICHT. Er erscheint als 'WARNUNG', und der Lauf endet mit 0. "
+                "Das Ergebnis liegt im Bestand: setup/win64/wheels ist "
+                "vollstaendig, setup/linux64/wheels enthaelt ein einziges "
+                "Rad. Vorgang: siehe Issue-Tracker.",
+                "ES UEBERSCHREIBT IM ARBEITSBESTAND, und es gibt KEINE Option, "
+                "das Ziel zu verlegen: die Editor-Buendel unter "
+                "static/editor/, beide setup/README.txt und das "
+                "deployment_manifest.json. Ein gefahrloser Probelauf ist "
+                "damit nicht moeglich - auch nicht mit '--skip-bundle "
+                "--skip-wheels'.",
+                "Das Rad-Verzeichnis wird NICHT geleert. Ueber mehrere "
+                "Versionen sammeln sich dort verschiedene Staende derselben "
+                "Pakete an.",
+                "Es braucht Node und einen Internetzugang. Schlaegt der "
+                "versionsgenaue Download fehl, greift ein Rueckfall ohne "
+                "Plattformbindung - der kann Raeder der FALSCHEN Plattform "
+                "ablegen.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="setup_coordinator_dev",
@@ -1935,6 +2279,39 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         hinweis="ABGEKUENDIGT: hat keine regulaere Verwendung mehr und wird "
                 "mittelfristig entfernt. Der Eintrag steht hier, damit das "
                 "Werkzeug nicht unbemerkt liegen bleibt.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python setup_coordinator_dev.py --db "
+                     "/tmp/wegwerf/coordinator.db",
+                     "Legte die Datei samt Verzeichnis an, erzeugte die "
+                     "Minimaltabellen, drei Dummy-Ermittler und einen "
+                     "DEV-Job und schloss mit 'Abgeschlossen - keine Fehler'. "
+                     "Rueckgabewert 0. Erst danach laeuft 'python -m "
+                     "management.migrate' durch - auf einer nur angelegten "
+                     "Datei bricht es bei der zweiten Migration ab.",
+                     _GEPRUEFT_614),
+            ),
+            exit_codes=((0, "angelegt bzw. bereits vorhanden"),
+                        (1, "unbehandelte Ausnahme - etwa wenn eine "
+                            "erwartete Spalte nach dem Anlegen fehlt")),
+            warnungen=(
+                "ES IST ABGEKUENDIGT und baut ABSICHTLICH einen alten "
+                "Schemastand (Tabelle 'investigators' statt 'person', Spalte "
+                "'user_id' statt 'subject_id'). Das ist kein Versehen: die "
+                "nachfolgenden Migrationen finden so ihren Anker und "
+                "benennen verlustfrei um. Wer daraus den aktuellen "
+                "Schemastand ablesen will, liest falsch.",
+                "OHNE '--db' TRIFFT ES './data/coordinator.db' RELATIV ZUM "
+                "AKTUELLEN VERZEICHNIS. Auf einer echten coordinator.db "
+                "spielt es drei erfundene Personen und einen Schein-Job ein, "
+                "die nur von Hand wieder herauszubekommen sind.",
+                "Es ist wiederholbar aufrufbar; die Eintraege entstehen nur "
+                "einmal. Ein 'ALTER TABLE' laesst sich aber nicht "
+                "zuruecknehmen.",
+                "Es muss aus der Wurzel des Bestands aufgerufen werden - es "
+                "biegt den Suchpfad nicht selbst zurecht.",
+            ),
+        ),
     ),
 )
 
