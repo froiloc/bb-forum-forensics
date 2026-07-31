@@ -2528,6 +2528,162 @@
           "comment": "Issue erstellt"
         }
       ]
+    },
+    {
+      "id": "906ede75-a898-405c-8d80-1548e8b5b553",
+      "type": "bug",
+      "title": "coordinator.db in zwei Auswertungswerkzeugen schreibfaehig geoeffnet",
+      "affected_version": "0.8.606",
+      "reporter": "Claude",
+      "reported_at": "2026-07-31T15:45:00+00:00",
+      "prerequisites": "Management-System laeuft",
+      "description": "Beim Erstellen des CLI-Katalogs (Build 606) wurde geprueft, wie jedes Werkzeug seine Datenbanken oeffnet. Zwei Werkzeuge oeffnen coordinator.db OHNE 'mode=ro', obwohl ihr eigener Dateikopf das Gegenteil zusichert:\\n\\n  * management/workload/workload_admin.py, Z. 179 (sqlite3.connect(db_path)); Dateikopf Z. 21: 'coordinator.db wird AUSSCHLIESSLICH gelesen.'\\n  * management/support_overview/support_overview_admin.py, Z. 216 (sqlite3.connect(db_path)); Dateikopf Z. 21: 'coordinator.db wird AUSSCHLIESSLICH gelesen (Produktivbetrieb-Regel).'\\n\\nTATSAECHLICH GESCHRIEBEN WIRD NICHTS - beide Repos enthalten kein INSERT/UPDATE/DELETE und kein commit. Der Befund ist also kein Datenverlust, sondern eine fehlende DURCHSETZUNG einer Zusicherung: die Sperre ist eine Absichtserklaerung im Kommentar statt eine technische Sperre. Alle uebrigen lesenden Auswertungswerkzeuge (escalation_admin, handover_admin, next_actions_admin, retention_admin, qs_admin, die stats-Werkzeuge) machen es richtig und oeffnen mit 'file:...?mode=ro'.\\n\\nRISIKO: Solange die Verbindung schreibfaehig ist, kann eine kuenftige Aenderung an den Repos unbemerkt einen unauditierten Schreibweg eroeffnen - genau den Nebeneingang, den qs_admin in seinem Kopf ausdruecklich ausschliesst.",
+      "expected_behavior": "Beide Werkzeuge oeffnen coordinator.db mit sqlite3.connect(\"file:%s?mode=ro\" % db_path, uri=True) - wie die uebrigen lesenden Werkzeuge. Ein versehentlicher Schreibversuch scheitert dann technisch und nicht erst im Gegenlesen.",
+      "actual_behavior": "Beide oeffnen schreibfaehig; die Zusicherung steht nur im Kommentar.",
+      "status": "open",
+      "priority": "high",
+      "severity": "minor",
+      "assigned_to": "",
+      "related_to": [],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14"
+      },
+      "tags": [
+        "cli",
+        "rbac",
+        "produktivbetrieb",
+        "readonly",
+        "coordinator"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-07-31T15:45:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Eintrag erstellt (Befund aus dem CLI-Katalog, Baustelle H / H15, Build 606)."
+        }
+      ]
+    },
+    {
+      "id": "da6c16d0-ef1e-4052-8eb1-526c647de613",
+      "type": "improvement",
+      "title": "Wartungsvorbehalt fuer schreibende Werkzeuge klaeren und durchsetzen",
+      "affected_version": "0.8.606",
+      "reporter": "Claude",
+      "reported_at": "2026-07-31T15:45:00+00:00",
+      "prerequisites": "Management-System laeuft",
+      "description": "Beim Erstellen des CLI-Katalogs (Build 606) liess sich bei sieben Werkzeugen NICHT aus dem Bestand beantworten, ob sie neben dem laufenden Betrieb gefahrlos sind. Der Katalog vermerkt das als offen, statt es zu raten.\\n\\nBETROFFEN:\\n  1. management/search/index_cli.py (--auffrischen)\\n  2. management/migrate.py\\n  3. tools/migrate-dbs.py (--apply)\\n  4. management/migration_fleet/migration_fleet_admin.py (catalog-sync, companion --confirm)\\n  5. management/consolidate_default_db.py\\n  6. tools/forensic_index_upgrade.py (--ausfuehren)\\n  7. tools/maintenance_kill.py (Frage: kann ein REGULAERER Dienst betroffen sein, oder nur ein Wartungs-Testdienst?)\\n\\nZUM VERGLEICH: tools/convert_journal_mode.py sagt es ausdruecklich ('BRAUCHT EXKLUSIVEN ZUGRIFF'), und backup_admin sagt ebenso ausdruecklich das Gegenteil ('fuer den laufenden Betrieb gebaut'). Beide Aussagen stehen im Code und sind belegt. Bei den sieben oben steht nichts - weder das eine noch das andere.\\n\\nVORGEHEN (Vorschlag mc/Claude 2026-07-31): (a) Analyse je Werkzeug anhand fester Kriterien und Einstufung in drei Stufen; (b) ein gemeinsames Bauteil 'Wartungsvorbehalt', das bei Stufe A das aktive Wartungsfenster PRUEFT und ohne Fenster nur nach Eingabe eines WORTES fortfaehrt (kein blosser Tastendruck), sonst abbricht; (c) im Zweifel die strengere Stufe. Einzelheiten im Projektdokument 'Klaerung_Wartungsvorbehalt_CLI_v0_1.md'.",
+      "expected_behavior": "Jedes schreibende Werkzeug sagt im Katalog UND im eigenen Kopf, ob es ein aktives Wartungsfenster braucht, und setzt das bei Stufe A selbst durch.",
+      "actual_behavior": "Bei sieben Werkzeugen ist die Frage offen; die Durchsetzung fehlt durchgehend.",
+      "status": "open",
+      "priority": "high",
+      "severity": "major",
+      "assigned_to": "",
+      "related_to": [],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14"
+      },
+      "tags": [
+        "cli",
+        "wartung",
+        "betrieb",
+        "migration",
+        "datensicherheit"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-07-31T15:45:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Eintrag erstellt (Befund aus dem CLI-Katalog, Baustelle H / H15, Build 606)."
+        }
+      ]
+    },
+    {
+      "id": "9ec0fed8-bf8c-45df-b94d-fb5432f3393d",
+      "type": "documentation",
+      "title": "anon_html.py liegt in der Anlage, fehlt im Paket und im Katalog",
+      "affected_version": "0.8.606",
+      "reporter": "Claude",
+      "reported_at": "2026-07-31T15:45:00+00:00",
+      "prerequisites": "Management-System laeuft",
+      "description": "Der Vollzaehligkeitstest des CLI-Katalogs (CK02) hat im Regressionslauf von mc am 2026-07-31 eine Datei gemeldet, die es im Paket nicht gibt: 'anon_html.py' im Wurzelverzeichnis. In der Versionsverwaltung ist sie nicht vorhanden (git log --all liefert keinen Treffer, Stand Build 606); .gitignore schliesst *.py nicht aus.\\n\\nDer Test hat damit genau das getan, wofuer er gebaut wurde. Bis zur Klaerung steht die Datei auf der ausdruecklichen Liste UNGEKLAERT in tests/test_help_cli_katalog.py - benannt, begruendet und nicht blockierend, aber weiterhin sichtbar (CK09/CK10).\\n\\nZUR KLAERUNG BENOETIGT: der Dateikopf von anon_html.py (die ersten 40 Zeilen sowie der argparse-Block). Danach eines von dreien: Eintrag in den CLI-Katalog, Aufnahme in die Ausnahmeliste mit Begruendung, oder Einchecken ins Paket.",
+      "expected_behavior": "Jede Datei im Bestand ist eingeordnet: Katalogeintrag, begruendete Ausnahme oder Loeschung. Die Liste UNGEKLAERT ist bis H22 leer.",
+      "actual_behavior": "anon_html.py ist weder katalogisiert noch ausgenommen noch eingecheckt.",
+      "status": "open",
+      "priority": "medium",
+      "severity": "minor",
+      "assigned_to": "",
+      "related_to": [],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14"
+      },
+      "tags": [
+        "cli",
+        "katalog",
+        "vollzaehligkeit"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-07-31T15:45:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Eintrag erstellt (Befund aus dem CLI-Katalog, Baustelle H / H15, Build 606)."
+        }
+      ]
+    },
+    {
+      "id": "1e5db27b-e5c2-4d5d-8d5a-9342564762bb",
+      "type": "improvement",
+      "title": "Kreuzbezug: Aktionsspalte ohne Kopftext zeigt 'aktion'",
+      "affected_version": "0.8.606",
+      "reporter": "Claude",
+      "reported_at": "2026-07-31T15:45:00+00:00",
+      "prerequisites": "Management-System laeuft",
+      "description": "In management/server/static/cockpit_crossref.js traegt die letzte Spalte title: '' (leer). Das gemeinsame Tabellen-Werkzeug faellt dann auf den FELDNAMEN zurueck, und im Spaltenkopf steht sichtbar 'aktion' - klein geschrieben und ohne Bezug zur uebrigen Beschriftung. Andere Sichten schreiben dort 'Aktion' (z. B. promotion_admin-Sicht) oder lassen die Spalte bewusst ohne Kopf.\\n\\nAufgefallen beim Verfassen des Hilfekapitels 'Kreuzbezug' (Build 604). Nicht mitbehoben, weil eine Aenderung an einem ANGEZEIGTEN Text eine eigene Abnahme braucht und nicht in eine Inhaltswelle gehoert. Der Hilfetext ist deshalb neutral formuliert ('Aktionsspalte').",
+      "expected_behavior": "Der Spaltenkopf zeigt 'Aktion' oder bleibt bewusst leer.",
+      "actual_behavior": "Der Spaltenkopf zeigt den Feldnamen 'aktion'.",
+      "status": "open",
+      "priority": "low",
+      "severity": "trivial",
+      "assigned_to": "",
+      "related_to": [],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14"
+      },
+      "tags": [
+        "ux",
+        "cockpit",
+        "crossref"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-07-31T15:45:00+00:00",
+          "author": "Claude",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Eintrag erstellt (Befund aus dem CLI-Katalog, Baustelle H / H15, Build 606)."
+        }
+      ]
     }
   ]
 }

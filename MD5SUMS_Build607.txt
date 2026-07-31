@@ -1,0 +1,9 @@
+a32122ec0c20873a0a6f3aed11830370  build.json
+fb6d85d93b2aa59f874a82bb9c4c67f3  tests/test_help_cli_katalog.py
+210a41e11ce7c1c21d3538c2e259f455  issue-tracker/data/issues.json
+e3d7cdf6360b149d7bb4a584c36e157a  documents/rules-index.md
+d72d0b7d2b9491ff1291b4733a65aec5  documents/rules-projekt.md
+46d13ee68ec64325eb63202c543836a1  documents/rules-coding.md
+5f2d0af3460d8fefd69d2c196ea2b9c3  documents/rules-ux.md
+37b96d522ed4116d7acac29d7ba8a84f  documents/rules-help.md
+c132ba052ae29286a07fd0167985ae97  documents/rules-cli.md
