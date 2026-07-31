@@ -68,6 +68,10 @@ SPALTEN_QUELLEN = {
     # Build 596 (H8)
     "mycases": ("cockpit_mycases.js", "mycases"),
     "myhistory": ("cockpit_myhistory.js", "myhistory"),
+    # Build 598 (H9)
+    "reports": ("cockpit_reports.js", "reports"),
+    "lectorate": ("cockpit_lectorate.js", "lectorate"),
+    "approval": ("cockpit_approval.js", "approval"),
 }
 
 #: Feldnamen aus den literalen columnDefs-Eintraegen.

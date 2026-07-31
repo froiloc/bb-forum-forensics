@@ -390,11 +390,14 @@
 
         var h = document.createElement('h2');
         h.textContent = 'Lektorat — Gegenlesen';
+        // Build 598 (Baustelle H / H9): literale Hilfe-Marken.
+        h.setAttribute('data-hilfe-id', 'lectorate.titel');
         wrap.appendChild(h);
 
         // Scope-Hinweis (der Server filtert scope-korrekt; wir benennen ihn).
         var meta = document.createElement('p');
         meta.className = 'aiw-lectorate-meta';
+        meta.setAttribute('data-hilfe-id', 'lectorate.umfang');
         meta.textContent = 'Sichtbarer Umfang: ' + ((data && data.scope)
             || 'unbekannt') + '. Vorgelegt zum Gegenlesen sind Berichte im '
             + 'Status „Zur Abnahme vorgelegt".';

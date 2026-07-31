@@ -29,6 +29,8 @@ from management.help.modell import HilfeRegister, Sichthilfe
 from management.help.inhalt.shell import SHELL_KONTEXT
 from management.help.inhalt.ueberblick import UEBERBLICK
 from management.help.inhalt.fallsteuerung import FALLSTEUERUNG
+from management.help.inhalt.abnahme import ABNAHME
+from management.help.inhalt.redaktion import REDAKTION
 from management.help.inhalt.persoenlich import PERSOENLICH
 
 # --- Teilbestaende ------------------------------------------------------------
@@ -47,6 +49,8 @@ from management.help.inhalt.persoenlich import PERSOENLICH
 _TEILBESTAENDE: Tuple[Tuple[str, Tuple[Sichthilfe, ...]], ...] = (
     ("management/help/inhalt/ueberblick.py", UEBERBLICK),
     ("management/help/inhalt/fallsteuerung.py", FALLSTEUERUNG),
+    ("management/help/inhalt/abnahme.py", ABNAHME),
+    ("management/help/inhalt/redaktion.py", REDAKTION),
     ("management/help/inhalt/persoenlich.py", PERSOENLICH),
 )
 

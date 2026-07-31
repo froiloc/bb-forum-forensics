@@ -584,9 +584,12 @@
         var h = document.createElement('h2');
         h.className = 'aiw-pagetitle';
         h.textContent = 'Platzhalter & Queries';
+        // Build 598 (Baustelle H / H9): literale Hilfe-Marken.
+        h.setAttribute('data-hilfe-id', 'templates.titel');
         wrap.appendChild(h);
         var sub = document.createElement('p');
         sub.className = 'aiw-pagesub';
+        sub.setAttribute('data-hilfe-id', 'templates.hinweis');
         sub.textContent = 'Platzhalter fuer Berichte pflegen — automatisch '
             + '({{a:}}, SQL-Query), verpflichtend ({{m:}}) und optional '
             + '({{o:}}, je mit optionaler Eingabe-Validierung). SQL darf NUR '

@@ -532,9 +532,12 @@
         var h = document.createElement('h2');
         h.className = 'aiw-pagetitle';
         h.textContent = 'Baustein-Module';
+        // Build 598 (Baustelle H / H9): literale Hilfe-Marken.
+        h.setAttribute('data-hilfe-id', 'modules.titel');
         wrap.appendChild(h);
         var sub = document.createElement('p');
         sub.className = 'aiw-pagesub';
+        sub.setAttribute('data-hilfe-id', 'modules.hinweis');
         sub.textContent = 'Wiederverwendbare Textbausteine pflegen. Der Text '
             + '(body) ist Freitext und darf Platzhalter wie {{a:name}} / '
             + '{{m:name}} / {{o:name}} enthalten; diese werden erst beim Rendern '

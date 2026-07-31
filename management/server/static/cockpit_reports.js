@@ -284,10 +284,13 @@
         var h = doc.createElement('h2');
         h.className = 'aiw-pagehead';
         h.textContent = 'Berichts-Abnahme';
+        // Build 598 (Baustelle H / H9): literale Hilfe-Marken.
+        h.setAttribute('data-hilfe-id', 'reports.titel');
         mainEl.appendChild(h);
 
         var sub = doc.createElement('p');
         sub.className = 'aiw-pagesub';
+        sub.setAttribute('data-hilfe-id', 'reports.scaninfo');
         sub.id = 'aiw-reports-scaninfo';
         sub.textContent = scanInfoText(data);
         mainEl.appendChild(sub);

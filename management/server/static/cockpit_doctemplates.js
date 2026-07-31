@@ -636,9 +636,12 @@
         var h = document.createElement('h2');
         h.className = 'aiw-pagetitle';
         h.textContent = 'Dokumentvorlagen';
+        // Build 598 (Baustelle H / H9): literale Hilfe-Marken.
+        h.setAttribute('data-hilfe-id', 'doctemplates.titel');
         wrap.appendChild(h);
         var sub = document.createElement('p');
         sub.className = 'aiw-pagesub';
+        sub.setAttribute('data-hilfe-id', 'doctemplates.hinweis');
         sub.textContent = 'Wiederverwendbare Berichts-Gerueste pflegen. Eine '
             + 'Vorlage besteht aus Bloecken (Typ + block_data als JSON-Objekt). '
             + 'Platzhalter wie {{a:name}} bleiben im Text stehen und werden erst '

@@ -844,10 +844,13 @@
 
         var h = document.createElement('h2');
         h.textContent = 'Chef-Freigabe — Berichte abnehmen';
+        // Build 598 (Baustelle H / H9): literale Hilfe-Marken.
+        h.setAttribute('data-hilfe-id', 'approval.titel');
         wrap.appendChild(h);
 
         var meta = document.createElement('p');
         meta.className = 'aiw-approval-meta';
+        meta.setAttribute('data-hilfe-id', 'approval.umfang');
         meta.textContent = 'Sichtbarer Umfang: ' + ((data && data.scope)
             || 'unbekannt') + '. Freigabe & Versiegelung sind unwiderruflich; '
             + 'inhaltliche Maengel gehen als Rueckweisung an den Entwurf zurueck.';

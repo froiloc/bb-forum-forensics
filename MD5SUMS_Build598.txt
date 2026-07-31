@@ -1,0 +1,12 @@
+fe1dc25363a723309248a32915b86e6b  build.json
+0e214b5f4d417fa71526010a7832fb09  management/help/inhalt/abnahme.py
+d4abac385ffc6b6670d2ad8ba485b75e  management/help/inhalt/redaktion.py
+eda9f9877f64bdc7fcd285f052378a7d  management/help/inhalt/__init__.py
+36eeb40cd19dc14a3cd6e43dd1e92678  management/server/static/cockpit_reports.js
+f12c5df7581751cb6474748426830091  management/server/static/cockpit_lectorate.js
+1dc3e8f65c086fb470d4642d07d070e3  management/server/static/cockpit_approval.js
+5275f017cd097e0031d5357b52681936  management/server/static/cockpit_templates.js
+ff8cebb9c35c590b637698a2e389d60c  management/server/static/cockpit_doctemplates.js
+61294b7dbbc08040a0deaf26e033ef09  management/server/static/cockpit_modules.js
+4011d6a5ff155328f91cf52c9dc5eed7  tests/hilfe_fehlliste_stand.json
+fa0a5947f8d51d845e3ecca599c2fe94  tests/test_help_schluessel_paritaet.py
