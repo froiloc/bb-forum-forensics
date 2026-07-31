@@ -1,0 +1,363 @@
+/* ==========================================================================
+   management/server/static/help.css
+   IT-Forensisches Ermittlungswerkzeug - Baustelle H: Hilfesysteme (H2)
+   ==========================================================================
+   Zweck:
+     Die Vollhilfe (/help) ist ein LESE-Dokument, kein Arbeitswerkzeug. Sie
+     wird in einem eigenen Fenster geoeffnet und ist zugleich das druckbare
+     Handbuch. Beides praegt die Gestaltung:
+
+       * Lesbreite begrenzt (ca. 34em Textspalte). Eine ueber die volle
+         Fensterbreite laufende Zeile ist auf einem 27-Zoll-Bildschirm nicht
+         mehr lesbar - das Auge verliert beim Ruecksprung die Zeile.
+       * ruhige Farben, keine Interaktionsfarben. Wer hier liest, sucht keine
+         Schaltflaechen.
+       * die Druckfassung ist ab H6 ausgebaut; hier steht bereits das
+         Noetigste, damit ein Ausdruck aus H2 nicht unbrauchbar ist.
+
+     Die Datei ist bewusst EIGENSTAENDIG und erbt nichts von cockpit.css: die
+     Hilfeseite laeuft in einem eigenen Fenster ohne die Cockpit-Shell.
+
+   Build 593 (H6) ergaenzt: zweispaltiges Layout (Verzeichnis links,
+     Kapitel rechts), Suchfeld, Blaetterleiste und die ausgebaute
+     Druckfassung.
+
+   Version: v0.8.593 - Build: 593 - 2026-07-31
+   ========================================================================== */
+
+:root {
+    --aiw-h-text: #1c1c1c;
+    --aiw-h-grau: #5a5a5a;
+    --aiw-h-linie: #d6d6d6;
+    --aiw-h-flaeche: #f7f7f5;
+    --aiw-h-akzent: #1f4e79;   /* dieselbe Aktenfarbe wie im Export-Band */
+    --aiw-h-offen: #8a5a00;    /* dieselbe Warnfarbe wie im Glossar-Hinweis */
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+}
+
+body.aiw-h {
+    background: #fff;
+    color: var(--aiw-h-text);
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 16px;
+    line-height: 1.55;
+}
+
+/* --- Kopf ---------------------------------------------------------------- */
+.aiw-h-kopf {
+    display: flex;
+    align-items: center;
+    gap: .75em;
+    background: var(--aiw-h-akzent);
+    color: #fff;
+    padding: .6em 1.2em;
+}
+
+.aiw-h-kopf h1 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+/* Die Einstufung gehoert sichtbar auf jede Seite, die gedruckt werden kann. */
+.aiw-h-badge {
+    border: 1px solid rgba(255, 255, 255, .7);
+    border-radius: 3px;
+    font-size: .75rem;
+    letter-spacing: .05em;
+    padding: .1em .5em;
+}
+
+/* --- Aufbaustand-Hinweis -------------------------------------------------- */
+.aiw-h-hinweis {
+    background: #fff8e8;
+    border-left: 4px solid var(--aiw-h-offen);
+    color: var(--aiw-h-offen);
+    margin: 1em 1.2em 0;
+    padding: .6em .9em;
+}
+
+/* --- Inhaltsverzeichnis --------------------------------------------------- */
+.aiw-h-verzeichnis {
+    background: var(--aiw-h-flaeche);
+    border-bottom: 1px solid var(--aiw-h-linie);
+    padding: 1em 1.2em;
+}
+
+.aiw-h-verzeichnis h2 {
+    font-size: 1rem;
+    margin: 0 0 .4em;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--aiw-h-grau);
+}
+
+.aiw-h-verzeichnis h3 {
+    font-size: .9rem;
+    margin: .9em 0 .2em;
+    color: var(--aiw-h-akzent);
+}
+
+.aiw-h-verzeichnis ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    columns: 2;
+}
+
+.aiw-h-verzeichnis li {
+    break-inside: avoid;
+    padding: .1em 0;
+}
+
+.aiw-h-verzeichnis a {
+    color: var(--aiw-h-text);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+}
+
+.aiw-h-verzeichnis a:hover,
+.aiw-h-verzeichnis a:focus {
+    border-bottom-color: var(--aiw-h-akzent);
+}
+
+/* --- Inhalt --------------------------------------------------------------- */
+.aiw-h-inhalt {
+    max-width: 46em;
+    padding: 0 1.2em 3em;
+}
+
+.aiw-h-kapitel {
+    border-top: 1px solid var(--aiw-h-linie);
+    padding-top: 1.2em;
+    margin-top: 1.6em;
+}
+
+.aiw-h-kapitel h2 {
+    color: var(--aiw-h-akzent);
+    font-size: 1.35rem;
+    margin: 0 0 .3em;
+}
+
+/* Die Rechtelage steht prominent im Kapitelkopf (Entscheidung E1). */
+.aiw-h-recht {
+    background: var(--aiw-h-flaeche);
+    border-left: 3px solid var(--aiw-h-akzent);
+    font-size: .92rem;
+    margin: 0 0 1em;
+    padding: .4em .7em;
+}
+
+.aiw-h-abschnitt h3 {
+    font-size: 1.05rem;
+    margin: 1.3em 0 .3em;
+}
+
+.aiw-h-abschnitt p {
+    margin: .5em 0;
+}
+
+.aiw-h-abschnitt li {
+    margin: .25em 0;
+}
+
+/* Sprungziel sichtbar machen: wer aus der Kontexthilfe kommt, soll sehen,
+   wo er gelandet ist. Ohne diese Markierung ist ein Ankersprung in einem
+   langen Dokument eine Zumutung. */
+.aiw-h-abschnitt:target {
+    background: #fffbe6;
+    box-shadow: -.6em 0 0 #fffbe6, .6em 0 0 #fffbe6;
+}
+
+.aiw-h-offen {
+    color: var(--aiw-h-offen);
+    font-style: italic;
+}
+
+.aiw-h-stand {
+    color: var(--aiw-h-grau);
+    font-size: .82rem;
+    margin-top: 1.4em;
+}
+
+/* --- Fuss ----------------------------------------------------------------- */
+.aiw-h-fuss {
+    border-top: 1px solid var(--aiw-h-linie);
+    color: var(--aiw-h-grau);
+    font-size: .8rem;
+    padding: .8em 1.2em 2em;
+}
+
+/* --- Druck ---------------------------------------------------------------- */
+/* Die Vollhilfe IST das Handbuch (Konzept §3.3). Ausgebaut wird die
+   Druckfassung in H6; hier steht das Minimum, damit ein Ausdruck jetzt schon
+   brauchbar ist: keine Farbflaechen, Verzeichnis einspaltig, Umbrueche vor
+   Kapiteln. */
+@media print {
+    body.aiw-h {
+        font-size: 11pt;
+    }
+
+    .aiw-h-kopf {
+        background: none;
+        border-bottom: 1pt solid #000;
+        color: #000;
+    }
+
+    .aiw-h-badge {
+        border-color: #000;
+    }
+
+    .aiw-h-verzeichnis {
+        background: none;
+    }
+
+    .aiw-h-verzeichnis ul {
+        columns: 1;
+    }
+
+    .aiw-h-kapitel {
+        break-before: page;
+    }
+
+    .aiw-h-recht {
+        background: none;
+        border-left: 2pt solid #000;
+    }
+
+    .aiw-h-abschnitt:target {
+        background: none;
+        box-shadow: none;
+    }
+}
+
+
+/* ==========================================================================
+ * Build 593 (Baustelle H / H6) — LAYOUT, SUCHE, BLAETTERN, DRUCK.
+ * ========================================================================== */
+
+/* Zweispaltig ab genuegend Breite: das Verzeichnis bleibt beim Lesen stehen.
+ * In einem Handbuch mit 43 Kapiteln ist der staendige Rueckweg nach oben die
+ * groesste Zumutung — deshalb klebt die Spalte (position: sticky) und rollt
+ * nur mit, wenn sie selbst zu lang wird. */
+.aiw-h-rahmen {
+    display: block;
+}
+
+@media screen and (min-width: 62em) {
+    .aiw-h-rahmen {
+        display: grid;
+        grid-template-columns: 20em 1fr;
+        align-items: start;
+        gap: 0;
+    }
+
+    .aiw-h-verzeichnis {
+        position: sticky;
+        top: 0;
+        max-height: 100vh;
+        overflow-y: auto;
+        border-bottom: 0;
+        border-right: 1px solid var(--aiw-h-linie);
+    }
+
+    .aiw-h-verzeichnis ul {
+        columns: 1;
+    }
+}
+
+/* --- Suchfeld ------------------------------------------------------------- */
+/* Im Markup 'hidden'; help.js blendet es ein. Ohne JavaScript bliebe es ein
+ * totes Eingabefeld — und das waere schlechter als gar keines. */
+.aiw-h-suchfeld {
+    display: block;
+    margin: 0 0 .8em;
+}
+
+.aiw-h-suchfeld[hidden] { display: none; }
+
+.aiw-h-suchfeld label {
+    display: block;
+    font-size: .78rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--aiw-h-grau);
+    margin-bottom: .25em;
+}
+
+.aiw-h-suchfeld input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: .35em .5em;
+    border: 1px solid var(--aiw-h-linie);
+    border-radius: 3px;
+    font: inherit;
+    font-size: .9rem;
+}
+
+.aiw-h-suchfeld input:focus {
+    outline: 2px solid var(--aiw-h-akzent);
+    outline-offset: 1px;
+}
+
+.aiw-h-suchzahl {
+    display: block;
+    margin-top: .25em;
+    font-size: .78rem;
+    color: var(--aiw-h-grau);
+}
+
+/* --- Blaetterleiste ------------------------------------------------------- */
+.aiw-h-blaettern {
+    display: flex;
+    justify-content: space-between;
+    gap: 1em;
+    margin-top: 2em;
+    padding-top: .8em;
+    border-top: 1px dotted var(--aiw-h-linie);
+    font-size: .85rem;
+}
+
+.aiw-h-blaettern a {
+    color: var(--aiw-h-akzent);
+    text-decoration: none;
+}
+
+.aiw-h-blaettern a:hover { text-decoration: underline; }
+
+/* Ist nur ein Nachbar da, soll er trotzdem auf seiner Seite stehen. */
+.aiw-h-blaettern .aiw-h-zurueck:only-child { margin-left: auto; }
+
+/* --- Druck: die Vollhilfe IST das Handbuch -------------------------------- */
+@media print {
+    .aiw-h-rahmen { display: block; }
+
+    .aiw-h-verzeichnis {
+        position: static;
+        max-height: none;
+        overflow: visible;
+        border-right: 0;
+        break-after: page;
+    }
+
+    /* Suche und Blaetterleiste sind Bildschirmwerkzeuge. Auf Papier ist ein
+     * Suchfeld sinnlos und ein '#anker'-Verweis unbrauchbar. */
+    .aiw-h-suchfeld,
+    .aiw-h-blaettern { display: none; }
+
+    /* Ein Kapitel soll nicht mit der Ueberschrift allein am Seitenende
+     * stehen. */
+    .aiw-h-kapitel h2 { break-after: avoid; }
+    .aiw-h-abschnitt h3 { break-after: avoid; }
+    .aiw-h-abschnitt { break-inside: avoid; }
+
+    /* Die Einstufung gehoert auf JEDE Seite eines Ausdrucks. CSS kann das
+     * ohne Seitenrand-Bereiche nicht zuverlaessig; deshalb steht sie
+     * wenigstens im Kopf und in der Fusszeile, und die Fusszeile wird
+     * nicht abgeschnitten. */
+    .aiw-h-fuss { break-before: avoid; }
+}

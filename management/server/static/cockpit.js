@@ -4466,6 +4466,16 @@
             }
         }
         state.activeId = viewId;
+        // Build 590 (Baustelle H / H3): den Hilfemodus beim Sichtwechsel
+        // verlassen und dem Modul die neue Sicht nennen. Die Hilfe-Schluessel
+        // sind sichtbezogen; ein ueber den Wechsel hinweg bestehender Modus
+        // zeigte auf der neuen Sicht lauter abgedunkelte Elemente ohne
+        // erkennbaren Grund. Defensiv: fehlt das Modul, laeuft alles weiter.
+        var hilfeModul = (typeof window !== 'undefined')
+            ? window.AIWCockpitHilfe : null;
+        if (hilfeModul && typeof hilfeModul.sichtGewechselt === 'function') {
+            hilfeModul.sichtGewechselt(viewId);
+        }
         cleanupView();  // beim Sichtwechsel offene Tabelle/Diagramm abbauen
         var navEl = document.getElementById('aiw-nav');
         var mainEl = document.getElementById('aiw-main');
@@ -4905,6 +4915,19 @@
                         selectView('faelle');
                     }
                 });
+            }
+
+            // Build 590 (Baustelle H / H3): Hilfemodus initialisieren. Das
+            // Modul bindet dabei Knopf und Tastatur (Shift+F1). Es kennt den
+            // VIEW_CATALOG nicht — es bekommt die aktive Sicht ueber
+            // sichtGewechselt() gesagt (Entkopplung wie bei der Palette).
+            var hilfe = (typeof window !== 'undefined')
+                ? window.AIWCockpitHilfe : null;
+            if (hilfe && typeof hilfe.init === 'function') {
+                hilfe.init({});
+                if (typeof hilfe.sichtGewechselt === 'function') {
+                    hilfe.sichtGewechselt(state.activeId);
+                }
             }
 
             log('boot() fertig:', views.length, 'Sichten');

@@ -1,0 +1,10 @@
+bd5dd5d1232e0bcdff0c17d02a9ecc96  build.json
+5625f6dff62b0b55e8c2204e2dbc8a99  management/help/__init__.py
+4bf361ad4cec8d4612b69a3a5e25a5f9  management/help/sicht_katalog.py
+3046dbaac9857c146a79a047f5889fae  management/help/modell.py
+58fcdfa93e3636304e54a7af80276a2d  management/help/pruefung.py
+67d270c77644550bbfe9bde734ae76d2  management/help/inhalt/__init__.py
+9568acecb5ca6652146583aff959b6f9  tools/md5sums_build.sh
+f5b21ed449861a2468fad9dbf257c2df  tests/test_help_register.py
+4b0199ecdc49b5d12d011a01e7d8f3ad  tests/test_help_katalog_paritaet.py
+67916c901f0a69cfd751c250343f0400  tests/hilfe_fehlliste_stand.json

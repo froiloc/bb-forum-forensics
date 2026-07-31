@@ -217,6 +217,11 @@
      bereits fuer die Betreuungs-Notizen vendort ist (Build 407) — kein
      zweites Zieh-Werkzeug im Baum. -->
 <script src="/static/cockpit_viewprefs.js" defer></script>
+<!-- Build 590 (Baustelle H / H3): Hilfemodus. MUSS VOR cockpit.js geladen
+     sein, weil cockpit.js das Modul beim Hochfahren initialisiert und bei
+     jedem Sichtwechsel benachrichtigt. Fehlt es, laeuft das Cockpit
+     unveraendert weiter - die Verdrahtung ist bewusst defensiv. -->
+<script src="/static/cockpit_hilfe.js" defer></script>
 <script src="/static/cockpit.js" defer></script>
 </head>
 <body>
@@ -234,20 +239,36 @@
     stehen. rel=noopener aus Prinzip (kein window.opener-Zugriff).
   -->
   <a class="aiw-export-btn" id="aiw-export-btn" target="_blank"
-     rel="noopener" style="display:none">Akten-Export</a>
+     rel="noopener" style="display:none"
+     data-hilfe-id="shell.aktenexport">Akten-Export</a>
+  <!--
+    Build 590 (Baustelle H / H3): HILFEMODUS. Derselbe Gedanke wie beim
+    Akten-Export daneben - EIN Knopf in der Shell statt 43 Knoepfe in 43
+    Sichten; so kann eine kuenftige Sicht ihn nicht vergessen, und er steht
+    in jeder Sicht an derselben Stelle (genau das fordert Issue 3eff6110).
+    Der Knopf ist ein <button> und kein <a>: er navigiert nicht, er schaltet
+    einen Zustand um - aria-pressed sagt das auch der Sprachausgabe.
+    Der Tastaturweg Shift+F1 steht im title, weil ihn sonst niemand faende.
+  -->
+  <button type="button" class="aiw-hilfe-btn" id="aiw-hilfe-btn"
+          aria-pressed="false"
+          title="Hilfemodus ein/aus (Shift+F1)"
+          data-hilfe-id="shell.hilfeknopf">Hilfe</button>
   <!-- Wird von cockpit.js aus /api/whoami gefuellt (display_name via textContent). -->
-  <span class="aiw-who" id="aiw-who">&hellip;</span>
+  <span class="aiw-who" id="aiw-who" data-hilfe-id="shell.kennung">&hellip;</span>
 </header>
 
 <!--
   Integritaets-Banner. Ab Build 349 global an /api/integrity gebunden (sofern
   ops.view); ohne ops.view bleibt der Banner still (Klasse aiw-integrity-hidden).
 -->
-<div class="aiw-integrity" id="aiw-integrity">Integritaet: wird geladen &hellip;</div>
+<div class="aiw-integrity" id="aiw-integrity"
+     data-hilfe-id="shell.integritaet">Integritaet: wird geladen &hellip;</div>
 
 <div class="aiw-frame">
   <!-- Policy-getriebene Navigation; von cockpit.js aus /api/whoami aufgebaut. -->
-  <nav class="aiw-side" id="aiw-nav" aria-label="Bereiche"></nav>
+  <nav class="aiw-side" id="aiw-nav" aria-label="Bereiche"
+       data-hilfe-id="shell.navigation"></nav>
   <main class="aiw-main" id="aiw-main"></main>
 </div>
 

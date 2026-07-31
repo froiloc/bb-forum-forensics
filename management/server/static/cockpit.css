@@ -3302,3 +3302,184 @@ button.aiw-navgroup:focus-visible {
    und nicht eine eigene Gestaltung erfindet. */
 .aiw-mod-vorschau .codex-editor__redactor { padding-bottom: 0 !important; }
 .aiw-mod-vorschau .ce-block:first-child { margin-top: 0; }
+
+/* ==========================================================================
+ * Build 590 (Baustelle H / H3) — HILFEMODUS.
+ *
+ * Issue 3eff6110 wuenscht: "alle Elemente, die keine Kontexthilfe haben,
+ * werden abgedunkelt". mc hat am 2026-07-30 entschieden (F3): abdunkeln per
+ * opacity/Grau, KEIN blur() — blur ist auf den grossen Falltabellen
+ * renderteuer und flimmert beim Scrollen.
+ *
+ * WIE DAS TECHNISCH GEHT, und warum nicht anders (gesicherte Erkenntnis):
+ * `opacity` auf einem Vorfahren laesst sich am Nachfahren NICHT
+ * zuruecknehmen — die Deckkraft der Gruppe wirkt auf alles darin. Ein
+ * "alles ausser den markierten Elementen blass" ist damit ueber
+ * Vererbung nicht erreichbar. Der gangbare Weg ist eine DECKSCHICHT: eine
+ * halbtransparente graue Flaeche ueber der Oberflaeche, aus der die
+ * markierten Elemente per z-index herausgehoben werden. Das Ergebnis ist
+ * genau der entschiedene Effekt (abgedunkelt/entsaettigt, kein blur), und
+ * es kostet den Browser eine einzige zusaetzliche Ebene.
+ *
+ * Die Deckschicht ist `pointer-events: none` — sie faengt keine Klicks. Das
+ * Abfangen erledigt der Capture-Listener in cockpit_hilfe.js; eine Sperre,
+ * die an einer CSS-Eigenschaft haengt, waere zu leicht zu umgehen.
+ * ======================================================================== */
+
+.aiw-hilfe-btn {
+    display: inline-block;
+    margin-right: 12px;
+    padding: 3px 10px;
+    border: 1px solid var(--linie, #b9c2cc);
+    border-radius: 3px;
+    background: var(--flaeche-2, #f4f6fb);
+    color: var(--ink, #1c1e21);
+    font-family: inherit;
+    font-size: 13px;
+    cursor: help;
+    white-space: nowrap;
+}
+.aiw-hilfe-btn:hover { background: var(--flaeche-3, #e6ebf5); }
+.aiw-hilfe-btn:focus-visible { outline: 2px solid var(--akzent, #3a6ea5); }
+
+/* Der Knopf zeigt an, dass der Modus laeuft — sonst weiss man nach einem
+ * Sichtwechsel oder einem Shift+F1 im Vorbeigehen nicht, in welchem Zustand
+ * die Oberflaeche gerade ist. */
+.aiw-hilfe-btn.aiw-hilfe-an {
+    background: #1f4e79;
+    border-color: #1f4e79;
+    color: #fff;
+}
+
+/* Die Deckschicht. `position: fixed` deckt auch den gescrollten Bereich;
+ * `z-index` liegt unter den markierten Elementen (901) und unter der
+ * Kopfzeile (902), damit der Ausschalt-Knopf immer erreichbar bleibt. */
+body.aiw-hilfe-modus { cursor: help; }
+
+body.aiw-hilfe-modus::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 900;
+    pointer-events: none;
+    background: rgba(236, 238, 240, .62);
+    /* Entsaettigung als Verbesserung, wo der Browser sie kann. Faellt sie
+     * aus, bleibt die Abdunkelung — der Effekt ist also nie ganz weg. */
+    backdrop-filter: grayscale(.85);
+    -webkit-backdrop-filter: grayscale(.85);
+}
+
+/* Die Kopfzeile bleibt klar: dort steht der Knopf, mit dem man den Modus
+ * wieder verlaesst. Einen Ausgang abzudunkeln waere schlechte Fuehrung. */
+body.aiw-hilfe-modus .aiw-top {
+    position: relative;
+    z-index: 902;
+}
+
+/* Die markierten Elemente werden aus der Deckschicht herausgehoben und
+ * bekommen eine dezente Umrandung — das ist die im Issue zuerst genannte
+ * Variante, hier zusaetzlich zur Abdunkelung, weil beides zusammen am
+ * schnellsten erfassbar ist. */
+body.aiw-hilfe-modus [data-hilfe-id] {
+    position: relative;
+    z-index: 901;
+    cursor: pointer;
+    border-radius: 3px;
+    box-shadow: 0 0 0 2px #1f4e79, 0 2px 8px rgba(31, 78, 121, .25);
+}
+
+body.aiw-hilfe-modus [data-hilfe-id]:hover {
+    box-shadow: 0 0 0 3px #1f4e79, 0 3px 10px rgba(31, 78, 121, .35);
+}
+
+/* Der Hilfemodus ist ein Bildschirmzustand. Auf Papier hat er nichts zu
+ * suchen (und die Deckschicht wuerde eine graue Seite drucken). */
+@media print {
+    body.aiw-hilfe-modus::after { display: none; }
+    body.aiw-hilfe-modus [data-hilfe-id] { box-shadow: none; }
+}
+
+/* ==========================================================================
+ * Build 591 (Baustelle H / H4) — DAS KONTEXT-POPUP.
+ *
+ * Klein, ruhig, ueber allem. z-index 950 liegt UEBER der Deckschicht (900)
+ * und ueber den herausgehobenen Elementen (901), aber unter der Kopfzeile
+ * (902) — der Ausschalt-Knopf bleibt damit auch bei offenem Popup sichtbar.
+ *
+ * position: absolute (nicht fixed): das Popup gehoert zum Element, an dem es
+ * haengt. Beim Scrollen soll es mitwandern und nicht auf dem Bildschirm
+ * kleben bleiben — sonst zeigt es nach zwei Radumdrehungen auf etwas
+ * anderes. cockpit_hilfe.js rechnet die Lage deshalb in Dokumentkoordinaten.
+ *
+ * Die Breite steht auch in cockpit_hilfe.js (POPUP_BREITE = 320). Sie steht
+ * an zwei Stellen, weil das JS sie VOR dem ersten Messen braucht; der Wert
+ * dort ist nur ein Rueckfall, gemessen wird die tatsaechliche Breite.
+ * ======================================================================== */
+
+.aiw-hilfe-popup {
+    position: absolute;
+    z-index: 950;
+    width: 320px;
+    max-width: calc(100vw - 24px);
+    box-sizing: border-box;
+    padding: 10px 12px 12px;
+    background: #fff;
+    border: 1px solid #1f4e79;
+    border-radius: 4px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, .22);
+    color: var(--ink, #1c1e21);
+    font-size: 13px;
+    line-height: 1.5;
+    cursor: default;
+}
+
+.aiw-hilfe-popup-kopf {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.aiw-hilfe-popup-kopf strong {
+    color: #1f4e79;
+    flex: 1;
+    font-size: 13px;
+}
+
+.aiw-hilfe-popup-zu {
+    background: none;
+    border: 0;
+    color: var(--muted, #6b7680);
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    padding: 0 2px;
+}
+.aiw-hilfe-popup-zu:hover { color: #b03a2e; }
+
+.aiw-hilfe-popup-text { margin: 0; }
+
+.aiw-hilfe-popup-mehr {
+    display: inline-block;
+    margin-top: 8px;
+    color: #1f4e79;
+    font-size: 12px;
+    text-decoration: none;
+    border-bottom: 1px solid currentColor;
+}
+
+/* Fehlt der Text noch, sagt das Popup das mit derselben Warnfarbe, in der
+ * auch die Vollhilfe ihre offenen Kapitel markiert — ein Zustand, EINE
+ * Farbe, an beiden Orten. */
+.aiw-hilfe-popup-offen {
+    border-color: #8a5a00;
+}
+.aiw-hilfe-popup-offen .aiw-hilfe-popup-kopf strong,
+.aiw-hilfe-popup-offen .aiw-hilfe-popup-text {
+    color: #8a5a00;
+    font-style: italic;
+}
+
+@media print {
+    .aiw-hilfe-popup { display: none; }
+}

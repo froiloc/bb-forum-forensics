@@ -363,6 +363,17 @@ from management.export.export_envelope import ExportEnvelope
 # Rechtepruefung der jeweiligen Sicht — es entsteht KEIN zweiter Lesepfad.
 from management.export.view_export_catalog import known_view_ids, spec_for
 from management.export.view_renderer import ViewExportRenderer, query_summary
+# Build 589 (Baustelle H / H2): die drei Hilfe-Routen. Das Register ist reine
+# Daten + reine Funktionen (management/help/) - hier wird es nur verdrahtet
+# und, das ist der Kern dieses Builds, VOR dem Rendern nach Capabilities
+# gefiltert (Entscheidung E1, mc 2026-07-30).
+from management.help import render_html as help_render
+from management.help.inhalt import lade_register as lade_hilfe_register
+from management.help.sicht_katalog import sicht as hilfe_katalog_sicht
+from management.help.sichtbarkeit import (
+    capabilities_aus_policy,
+    darf_kapitel,
+)
 
 #: Basisverzeichnis der statischen Cockpit-Assets (cockpit.* + Vendor).
 #: Liegt neben diesem Modul (management/server/static/).
@@ -1065,6 +1076,23 @@ class ManagementApp:
         # braucht - und den Rechner bei jedem Tastendruck laufen zu lassen.
         if path == "/api/capacity/stammdaten":
             return self._capacity_stammdaten(person_id, query)
+        # --- Build 589 (Baustelle H / H2): die drei Hilfe-Routen -----------
+        # ALLE DREI SIND REIN LESEND und liefern NUR das, was die Person auch
+        # in der Navigation saehe (E1, default-deny). Die Filterung liegt in
+        # management/help/sichtbarkeit.py und laeuft VOR dem Rendern.
+        #
+        # Warum '/help' und nicht '/static/help.html': die Seite wird aus dem
+        # Register GERENDERT und ist je Person verschieden. Eine statische
+        # Datei koennte das nicht - und waere zudem an der Rechtepruefung
+        # vorbei abrufbar.
+        if path == "/help":
+            return self._help_seite(person_id)
+        if path == "/api/help/kontext":
+            return self._help_kontext(person_id, query)
+        if path.startswith("/api/help/sicht/"):
+            return self._help_sicht(person_id,
+                                    path[len("/api/help/sicht/"):])
+
         if path.startswith("/static/"):
             return self._serve_static(path[len("/static/"):])
         return Response.json(404, {"error": "not_found", "path": path})
@@ -1139,6 +1167,101 @@ class ManagementApp:
             # Schreib-Token (Build 372): nur ueber diesen authentifizierten
             # GET erreichbar; das Cockpit sendet ihn bei POSTs zurueck.
             "write_token": self._write_token,
+        })
+
+    # ----------------------------------------------------------------- Hilfe
+    # Build 589 (Baustelle H / H2). Drei Routen, ein Bestand:
+    #   GET /help                      - die Vollhilfe als eigene Seite
+    #   GET /api/help/kontext?sicht=x  - die Kontexttexte EINER Sicht (Popups)
+    #   GET /api/help/sicht/<id>       - EIN Kapitel als JSON (Direktzugriff)
+    #
+    # GEMEINSAME REGEL (E1): ausgeliefert wird nur, was die Person auch in der
+    # Navigation saehe. Die Entscheidung darueber faellt in der reinen
+    # Funktion sichtbarkeit.darf_kapitel / .sichtbare_sicht_ids - hier steht
+    # nur die Verdrahtung und die Unterscheidung der Fehlerlagen:
+    #   unbekannte Sicht -> 404 ("gibt es nicht")
+    #   bekannte Sicht ohne Recht -> 403 ("gibt es, geht dich nichts an")
+    # Beide Faelle werden ausdruecklich beantwortet, keiner still (GR1).
+
+    def _hilfe_capabilities(self, person_id: int) -> Tuple[str, ...]:
+        """Die Rechte-Codes der Person - eine Aufloesung je Anfrage."""
+        return capabilities_aus_policy(self.resolve_policy(person_id))
+
+    def _help_seite(self, person_id: int) -> Response:
+        """
+        GET /help - die Vollhilfe. Gerendert aus dem Register, gefiltert nach
+        den Rechten dieser Person, als eigenstaendige HTML-Seite (sie wird im
+        benannten Fenster 'aiw_hilfe' geoeffnet, Konzept §3.3).
+        """
+        # BuildInfo bewusst JE ANFRAGE gelesen und nicht beim Start
+        # zwischengespeichert: die Fusszeile soll den Stand nennen, der
+        # wirklich ausgeliefert ist. Die Datei ist wenige hundert Byte gross.
+        from core.build_info import BuildInfo
+
+        info = BuildInfo(Path(__file__).resolve().parents[2])
+        gliederung = help_render.baue_gliederung(
+            lade_hilfe_register(), self._hilfe_capabilities(person_id))
+        seite = help_render.render_hilfe_seite(
+            gliederung, version=info.version, build=info.build,
+            stand_datum=info.date)
+        return Response(status=200,
+                        content_type="text/html; charset=utf-8",
+                        body=seite.encode("utf-8"))
+
+    def _help_kontext(self, person_id: int,
+                      query: Optional[Dict[str, List[str]]]) -> Response:
+        """
+        GET /api/help/kontext?sicht=<id> - die Kontexttexte EINER Sicht,
+        gebuendelt. Ein Fetch je Sichtaktivierung statt einer je Element
+        (Konzept §3.2): 8-15 Popups pro Sicht waeren sonst 8-15 Anfragen.
+        """
+        sicht_id = self._q1(query, "sicht")
+        if not sicht_id:
+            return Response.json(400, {"error": "sicht_fehlt"})
+        if hilfe_katalog_sicht(sicht_id) is None:
+            return Response.json(404, {"error": "unbekannte_sicht",
+                                       "sicht": sicht_id})
+        if not darf_kapitel(sicht_id, self._hilfe_capabilities(person_id)):
+            return self._forbidden("hilfe:%s" % sicht_id)
+        return Response.json(
+            200, help_render.kontext_nutzlast(lade_hilfe_register(), sicht_id))
+
+    def _help_sicht(self, person_id: int, sicht_id: str) -> Response:
+        """
+        GET /api/help/sicht/<id> - ein Kapitel als JSON. Gedacht fuer den
+        Direktzugriff und fuer Pruefungen; die Seite /help rendert selbst.
+        """
+        sicht_id = (sicht_id or "").strip("/")
+        eintrag = hilfe_katalog_sicht(sicht_id)
+        if eintrag is None:
+            return Response.json(404, {"error": "unbekannte_sicht",
+                                       "sicht": sicht_id})
+        if not darf_kapitel(sicht_id, self._hilfe_capabilities(person_id)):
+            return self._forbidden("hilfe:%s" % sicht_id)
+
+        kapitel = lade_hilfe_register().get(sicht_id)
+        if kapitel is None:
+            # EHRLICHER PLATZHALTER statt 404: die Sicht gibt es, das Recht
+            # ist da - nur der Text fehlt noch. Ein 404 waere hier eine Luege
+            # ueber den Grund (Grundregel 1).
+            return Response.json(200, {
+                "sicht": sicht_id, "label": eintrag.label,
+                "gruppe": eintrag.gruppe, "vorhanden": False,
+                "hinweis": help_render.PLATZHALTER_TEXT})
+        return Response.json(200, {
+            "sicht": kapitel.sicht, "label": eintrag.label,
+            "gruppe": eintrag.gruppe, "vorhanden": True,
+            "titel": kapitel.titel, "recht": kapitel.recht_klartext,
+            "stand": kapitel.stand,
+            "abschnitte": [
+                {"anker": a.anker, "titel": a.titel,
+                 "absaetze": list(a.absaetze), "liste": list(a.liste),
+                 "geordnet": a.geordnet}
+                for a in kapitel.abschnitte],
+            "kontext": [
+                {"schluessel": k.schluessel, "titel": k.titel,
+                 "text": k.text, "verweis": k.verweis}
+                for k in kapitel.kontext],
         })
 
     def _overview(self, person_id: int) -> Response:

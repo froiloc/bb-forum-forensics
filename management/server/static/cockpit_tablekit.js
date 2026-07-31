@@ -588,6 +588,36 @@
         return typeof id === 'string' && HILFE_MUSTER.test(id);
     }
 
+    // hilfeIdNormieren (Build 592, Baustelle H / H5): FEHLERBEHEBUNG.
+    //
+    // BEFUND: Die Anker der Spaltenkoepfe werden berechnet —
+    //     sicht + '.spalte.' + String(c.field).toLowerCase()
+    // — und Tabulator-Felder, die eine ABGELEITETE Groesse tragen, heissen im
+    // ganzen Bestand mit fuehrendem Unterstrich ('_rank', '_assignee',
+    // '_sinceDays', '_support', '_supporter', '_started', '_ended',
+    // '_aktion'). HILFE_MUSTER verlangt aber, dass jeder Abschnitt mit einem
+    // BUCHSTABEN beginnt. Ergebnis seit Build 548: fuer diese Spalten wurde
+    // gar kein Anker gesetzt, sondern nur eine Warnung in die Browser-Konsole
+    // geschrieben. Auf der Fall-Uebersicht betraf das 4 von 10 Spalten —
+    // darunter ausgerechnet die Ampel, also die erklaerungsbeduerftigste.
+    //
+    // Nachgemessen mit dem echten Muster:
+    //     'overview.spalte._rank'      -> verworfen
+    //     'overview.spalte.priority'   -> gesetzt
+    //
+    // BEHEBUNG AN EINER STELLE statt in fuenfzehn Sichten: der fuehrende
+    // Unterstrich wird je Abschnitt abgeschnitten. '_rank' -> 'rank'. Es
+    // gehen dabei KEINE bestehenden Anker verloren, denn die betroffenen
+    // wurden ja nie gesetzt. Die Kennung bleibt lesbar und bleibt eindeutig:
+    // ein Feld 'rank' und ein Feld '_rank' gibt es in keiner Tabelle
+    // nebeneinander (geprueft ueber alle columnDefs des Bestands).
+    function hilfeIdNormieren(id) {
+        if (typeof id !== 'string') { return id; }
+        return id.split('.').map(function (teil) {
+            return teil.replace(/^_+/, '');
+        }).join('.');
+    }
+
     // hilfeAnker: haengt die Kennung an ein Element und gibt es zurueck.
     //
     // EINE UNGUELTIGE KENNUNG WIRD NICHT GESETZT, sondern gemeldet. Ein
@@ -597,6 +627,7 @@
     // Rahmen als ein Rahmen ohne Inhalt.
     function hilfeAnker(el, id) {
         if (!el) { return el; }
+        id = hilfeIdNormieren(id);
         if (!hilfeGueltig(id)) {
             // eslint-disable-next-line no-console
             if (typeof console !== 'undefined' && console.warn) {
@@ -944,6 +975,7 @@
         // Build 548: Anker fuer die spaetere Schnellhilfe.
         HILFE_MUSTER: HILFE_MUSTER,
         hilfeGueltig: hilfeGueltig,
+        hilfeIdNormieren: hilfeIdNormieren,
         hilfeAnker: hilfeAnker,
         hilfeIds: hilfeIds,
         titelMitHilfe: titelMitHilfe,

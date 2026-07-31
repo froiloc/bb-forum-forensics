@@ -97,11 +97,22 @@ function _fakeTabulator(doc) {
 /** REGISTER der umgebauten Listensichten.
  *  datei/global/render = wie die Sicht heisst und wie sie gezeichnet wird.
  *  sicht  = Kennung (Praefix der Hilfe-Anker, Schluessel der Sicherung).
+ *  weiterePraefixe = weitere zulaessige Ankerpraefixe derselben Datei
+ *           (Build 592: die Sicht-Kennung aus dem VIEW_CATALOG, wenn die
+ *           Tabelle anders heisst als die Sicht).
  *  zeilen = erwartete Zeilenzahl aus 'daten'. */
 const REGISTER = [
   {
     name: "overview", datei: "cockpit_overview.js",
     global: "AIWCockpitOverview", render: "renderOverview", sicht: "overview",
+    // Build 592 (Baustelle H / H5): Die Datei traegt ZWEI Praefixe. Die
+    // Tabellenanker heissen weiterhin 'overview.*' (so heisst die Tabelle
+    // seit Build 548, und daran haengt auch der gespeicherte Bedienzustand);
+    // die beiden Marken der Sicht selbst — Ueberschrift und Umfangszeile —
+    // tragen dagegen die SICHT-Kennung 'faelle' aus dem VIEW_CATALOG, denn
+    // sie gehoeren zur Sicht und nicht zur Tabelle. Die Zuordnung beider
+    // Praefixe zur Sicht 'faelle' steht in management/help/anker_katalog.py.
+    weiterePraefixe: ["faelle"],
     zeilen: 2,
     daten: () => ({
       scope: "alle", count: 2,
@@ -696,7 +707,9 @@ describe("Konformitaet der Listensichten (Build 549)", () => {
         // dieser Pruefung hat genau das uebersehen.
         const erlaubtePraefixe = REGISTER
           .filter((x) => x.datei === e.datei)
-          .map((x) => x.sicht);
+          .reduce(
+            (acc, x) => acc.concat([x.sicht], x.weiterePraefixe || []),
+            []);
         ids.forEach((id) => {
           expect(TK.hilfeGueltig(id), e.name + ": " + id).toBe(true);
           expect(

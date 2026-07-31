@@ -1,0 +1,8 @@
+1af3eb585493718f943e96d9b34e4a18  build.json
+9b7fa9f19aa311af7f9da40575073af7  management/help/sichtbarkeit.py
+38642c3cca5d6b742b91681d60c74f05  management/help/render_html.py
+883cdbef17022723013c409fa5a8f851  management/server/static/help.css
+ff1717b25d2be5886a352b68e1f6f5f2  management/server/management_app.py
+59c5639a498f82998826c9ae4a7e4cec  tests/test_help_sichtbarkeit.py
+6deb0447e10e6795d070a9b04489cdc6  tests/test_help_render.py
+c09175398487a671fd2b0670560f900e  tests/test_help_api.py

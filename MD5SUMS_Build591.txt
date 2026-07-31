@@ -1,0 +1,12 @@
+5bf06639f1a083b595bbf1f5a4d2e8b6  build.json
+ead508fe8fd92f6cb472e15413dc42b2  management/help/inhalt/shell.py
+cb0d5851456f454576ba04eb587d1a62  management/help/modell.py
+72c6d5ef440328860775717e5dfa3e75  management/help/pruefung.py
+7d8def16bd9de389d4b593281ec9c3bf  management/help/render_html.py
+50bd0263a8fb46a7114f89ff2c1a94b2  management/help/inhalt/__init__.py
+1ead2913073dccade8b469bbec6d8b18  management/server/static/cockpit_hilfe.js
+8257768490da7126accfb979b79c1d2c  management/server/static/cockpit.css
+aa2927b9a7f9510b9cbedb0b2ea6cf0e  management/server/static/cockpit.html
+3e735b873f977d051e22f0018196abe2  tests/test_help_register.py
+b75ae6a28fd2f6f6fbc0e4682d96b818  tests/test_help_api.py
+0ea2ae174b5a1ecb5f63fe00f6c88351  tests/unit/test_cockpit_hilfe.test.js

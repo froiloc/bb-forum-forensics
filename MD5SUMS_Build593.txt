@@ -1,0 +1,6 @@
+000322ee3f3a30b65c42649c15053157  build.json
+a78941db03485153e0e71d9a9b1f1fb0  management/help/render_html.py
+fdf43711952656d4eac900a790175619  management/server/static/help.js
+67cdd603f58357d53a88c4ba59262404  management/server/static/help.css
+24e1c4371d269377298f7d4e964e8436  tests/test_help_render.py
+6825ebc1e83490d4b8caa9d39b87a183  tests/unit/test_help_suche.test.js

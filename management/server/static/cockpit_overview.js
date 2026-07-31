@@ -241,11 +241,18 @@
         // Sache in zwei Schreibweisen, und die Navigation nannte sie anders
         // als die Seite selbst.
         h.textContent = 'Fallübersicht';
+        // Build 592 (Baustelle H / H5): LITERALE Hilfe-Marken fuer Kopf und
+        // Umfangszeile. Literal und nicht berechnet - genau darauf beruht der
+        // Paritaetstest, der Marke und Registertext gegeneinander haelt
+        // (Konzept §4.2a). Die Spaltenkoepfe bekommen ihre Anker weiterhin
+        // vom gemeinsamen Tabellen-Werkzeug (Build 548).
+        h.setAttribute('data-hilfe-id', 'faelle.titel');
         mainEl.appendChild(h);
 
         var sub = document.createElement('p');
         sub.className = 'aiw-pagesub';
         sub.textContent = scopeText(scope) + ' (' + cases.length + ' Faelle)';
+        sub.setAttribute('data-hilfe-id', 'faelle.umfang');
         mainEl.appendChild(sub);
 
         // Build 549 (UX): Aufbau ueber das gemeinsame Tabellen-Werkzeug.

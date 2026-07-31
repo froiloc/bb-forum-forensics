@@ -1,0 +1,6 @@
+9a40968ac1c5c1f74725ea2cbbbf2f77  build.json
+e37c4288b4eb2476938a74f1974e050d  management/server/static/cockpit_hilfe.js
+57c37f5a45191c113e104b34fd8d59d0  management/server/static/cockpit.html
+09227a0109304e7335ac659f80eaf3fc  management/server/static/cockpit.css
+41710742ea8964d69b75595730254590  management/server/static/cockpit.js
+09beb0924f3b1883322a60164be0b8f1  tests/unit/test_cockpit_hilfe.test.js
