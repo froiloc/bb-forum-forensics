@@ -285,16 +285,20 @@
         var h = doc.createElement('h2');
         h.className = 'aiw-pagehead';
         h.textContent = 'Fall-Erkennung';
+        // Build 596 (Baustelle H / H8): literale Hilfe-Marken.
+        h.setAttribute('data-hilfe-id', 'cases.titel');
         mainEl.appendChild(h);
 
         var sub = doc.createElement('p');
         sub.className = 'aiw-pagesub';
         sub.id = 'aiw-cases-counts';
+        sub.setAttribute('data-hilfe-id', 'cases.zahlen');
         sub.textContent = countsText(data);
         mainEl.appendChild(sub);
 
         var dirs = doc.createElement('p');
         dirs.className = 'aiw-pagesub aiw-cases-dirs';
+        dirs.setAttribute('data-hilfe-id', 'cases.verzeichnisse');
         dirs.id = 'aiw-cases-dirs';
         dirs.textContent = dirsText(data);
         mainEl.appendChild(dirs);

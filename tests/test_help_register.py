@@ -31,6 +31,11 @@
 # HR18 - Shell-Verweise werden mitgeprueft (kein Verweis ins Leere)
 # HR19 - Shell-Texte unterliegen Regel H-0 wie alle anderen
 #
+# Build 597 (Regel H-1, Anwendersprache - mc 2026-07-31):
+# HR20 - der Auslieferungsbestand ist frei von Entwicklersprache
+# HR21 - jeder Begriff der Verbotsliste schlaegt auch wirklich an
+# HR22 - die Meldung nennt Fundstelle UND was stattdessen dastehen soll
+#
 # Version: v0.8.588 - Build: 588 - 2026-07-31
 # =============================================================================
 
@@ -51,8 +56,9 @@ from management.help.pruefung import (                  # noqa: E402
     HilfeFehllisteError, HilfeInhaltError, HilfePruefungError,
     HilfeUnvollstaendigError, HilfeVerweisError, fehlliste_sichten,
     verify_alles, verify_fallinhaltsfrei, verify_fehlliste_monoton,
-    verify_gliederung, verify_kontextschluessel, verify_shell_kontext,
-    verify_sichten_abgedeckt, verify_verweise,
+    verify_anwendersprache, verify_gliederung, verify_kontextschluessel,
+    verify_shell_kontext, verify_sichten_abgedeckt, verify_verweise,
+    HilfeSpracheError, JARGON,
 )
 from management.help.inhalt.shell import (              # noqa: E402
     SHELL_KONTEXT, SHELL_PRAEFIX,
@@ -345,3 +351,51 @@ def test_hr19_shell_texte_unterliegen_regel_h0():
     assert "h012345" in str(exc.value)
     # der Auslieferungsbestand selbst ist sauber
     verify_fallinhaltsfrei(HilfeRegister(shell=SHELL_KONTEXT))
+
+
+# --- HR20 bis HR22 (Build 597): Regel H-1, Anwendersprache -------------------
+
+def test_hr20_auslieferungsbestand_ist_in_anwendersprache():
+    """
+    Die Regel im Wortlaut des Auftrags (mc 2026-07-31): "Technische Begriffe
+    wie 'Build', 'Backend' oder 'Wahrheitsquelle' haben hier nichts zu
+    suchen." Dieser Test ist der Grund, warum das kein guter Vorsatz bleibt.
+    """
+    verify_anwendersprache(lade_register())
+
+
+@pytest.mark.parametrize("probe", [
+    "Seit Build 534 geht das anders.",
+    "Die Reihenfolge kommt aus dem Backend.",
+    "Das waere eine zweite Wahrheitsquelle.",
+    "Der Endpunkt /api/overview liefert die Daten.",
+    "Mit Scope „alle“ sehen Sie alles.",
+    "Die Hash-Kette des audit_log ist lueckenlos.",
+    "Migration M027 ist noch nicht angewandt.",
+    "Der vollstaendige Text steht als Tooltip daran.",
+    "Der Server prueft das noch einmal.",
+    "Die Datei heisst evidence_900001.db.",
+    "Dazu braucht es die Faehigkeit reports.approve.",
+    "Die Arbeitsschlange ist nach Dringlichkeit geordnet.",
+])
+def test_hr21_verbotsliste_schlaegt_an(probe):
+    reg = HilfeRegister((
+        _kapitel("faelle", zusatz=[Abschnitt("probe", "Probe", (probe,))]),))
+    with pytest.raises(HilfeSpracheError):
+        verify_anwendersprache(reg)
+
+
+def test_hr22_meldung_nennt_fundstelle_und_ersatz():
+    reg = HilfeRegister((
+        _kapitel("faelle",
+                 zusatz=[Abschnitt("probe", "Probe",
+                                   ("Das kommt aus dem Backend.",))]),))
+    with pytest.raises(HilfeSpracheError) as exc:
+        verify_anwendersprache(reg)
+    text = str(exc.value)
+    assert "faelle#probe" in text            # WO
+    assert "Backend" in text                 # WAS
+    assert "Werkzeug" in text                # WAS STATTDESSEN
+    # Die Liste ist nicht leer und traegt zu jedem Muster einen Rat.
+    assert len(JARGON) >= 10
+    assert all(rat.strip() for _muster, rat in JARGON)

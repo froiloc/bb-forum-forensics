@@ -23,23 +23,35 @@
 
 from __future__ import annotations
 
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 from management.help.modell import HilfeRegister, Sichthilfe
 from management.help.inhalt.shell import SHELL_KONTEXT
+from management.help.inhalt.ueberblick import UEBERBLICK
 from management.help.inhalt.fallsteuerung import FALLSTEUERUNG
+from management.help.inhalt.persoenlich import PERSOENLICH
 
 # --- Teilbestaende ------------------------------------------------------------
 # Reihenfolge = Kapitelreihenfolge im Handbuch. Sie folgt der Nav-Gruppenfolge
 # des VIEW_CATALOG (GRUPPEN_REIHENFOLGE), damit Handbuch und Navigation
 # dieselbe Ordnung haben. Jede Inhaltswelle traegt hier ihre Datei nach.
 #
-# H1: noch leer. H4 (Build 591) bringt die Shell-Kontexthilfe (kein Kapitel,
-# sondern Texte fuer die Bedienelemente, die in JEDER Sicht stehen).
-# H5 (Build 592): die Pilotsicht 'faelle' in der Gruppe Fallsteuerung.
-_TEILBESTAENDE: Tuple[Tuple[Sichthilfe, ...], ...] = (
-    FALLSTEUERUNG,
+# JE EINTRAG STEHT DER DATEIPFAD DABEI, und zwar nicht als Kommentar, sondern
+# als Wert (Anlass: mc 2026-07-31, "es waere super, wenn bei den Abschnitten
+# auch der relative Dateipfad aufgefuehrt wird"). Wer beim Gegenlesen eine
+# Formulierung aendern will, soll nicht suchen muessen, in welcher der vier
+# Dateien sie steht - die Lektoratsfassung nennt sie je Kapitel.
+#
+# Ein Kommentar haette das nicht geleistet: er waere beim Verschieben eines
+# Kapitels stehengeblieben. Als Wert wandert der Pfad mit.
+_TEILBESTAENDE: Tuple[Tuple[str, Tuple[Sichthilfe, ...]], ...] = (
+    ("management/help/inhalt/ueberblick.py", UEBERBLICK),
+    ("management/help/inhalt/fallsteuerung.py", FALLSTEUERUNG),
+    ("management/help/inhalt/persoenlich.py", PERSOENLICH),
 )
+
+#: Der Pfad des Shell-Bestands (kein Kapitel, aber redaktionell zu lesen).
+SHELL_QUELLE = "management/help/inhalt/shell.py"
 
 
 def lade_register() -> HilfeRegister:
@@ -49,9 +61,29 @@ def lade_register() -> HilfeRegister:
     eine weitere Stelle, an der etwas veralten kann.
     """
     sichten: List[Sichthilfe] = []
-    for teil in _TEILBESTAENDE:
+    for _pfad, teil in _TEILBESTAENDE:
         sichten.extend(teil)
     return HilfeRegister(sichten=tuple(sichten), shell=SHELL_KONTEXT)
+
+
+def quelle_je_sicht() -> Dict[str, str]:
+    """
+    Sicht-ID -> relativer Pfad der Datei, in der ihr Kapitel steht.
+
+    Wird von der Lektoratsfassung benutzt und von einem Test, der erzwingt,
+    dass hier keine Sicht fehlt: ein Kapitel ohne Pfadangabe waere beim
+    Gegenlesen genau die Sucherei, die diese Angabe vermeiden soll.
+    """
+    raus: Dict[str, str] = {}
+    for pfad, teil in _TEILBESTAENDE:
+        for s in teil:
+            raus[s.sicht] = pfad
+    return raus
+
+
+def quellen() -> Tuple[str, ...]:
+    """Alle Inhaltsdateien in Ladereihenfolge, Shell zuerst."""
+    return (SHELL_QUELLE,) + tuple(p for p, _ in _TEILBESTAENDE)
 
 
 # Die Sichten, die (noch) kein Kapitel haben, werden NICHT hier gefuehrt -

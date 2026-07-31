@@ -99,8 +99,8 @@ DASHBOARD = Sichthilfe(
                 "Sie nennt bis zu drei Dinge: die Grundlage der Zahl, einen "
                 "Reduktionshinweis (die Kachel zeigt nur die obersten "
                 "Einträge) und einen Vorbehalt (etwa den Verjährungsvorbehalt "
-                "der Fristen-Kachel). Der vollständige Wortlaut steht als "
-                "Tooltip an der Fußzeile.",
+                "der Fristen-Kachel). Den vollständigen Wortlaut zeigt ein "
+                "Kurzhinweis, wenn Sie mit der Maus darauf zeigen.",
             ),
             liste=(
                 "„Es liegt nichts an.“ — ein echter Leerbefund: es wurde "
@@ -238,9 +238,10 @@ CALENDAR = Sichthilfe(
     sicht="calendar",
     titel="Kalender & Wiedervorlage",
     recht_klartext=(
-        "Recht: external.view. Die Sicht bedient BEIDE Rollen: mit Scope "
-        "„alle“ sehen Sie die Fälligkeiten der Dienststelle, mit Scope "
-        "„eigene“ die Ihres Falls. Das Anlegen, Verschieben und Abschließen "
+        "Recht: external.view. Die Sicht bedient BEIDE Rollen: mit dem "
+        "Umfang „alle“ sehen Sie die Fälligkeiten der Dienststelle, mit "
+        "„eigene“ die der eigenen Fälle. Das Anlegen, Verschieben und "
+        "Abschließen "
         "eines Vorgangs setzt zusätzlich das Schreibrecht voraus; ohne dieses "
         "ist die Sicht rein lesend."
     ),
@@ -263,7 +264,8 @@ CALENDAR = Sichthilfe(
         Abschnitt(
             "rechte", "Rechtelage",
             (
-                "Die Sicht hängt an external.view. Der Scope entscheidet, "
+                "Die Sicht hängt an external.view. Der zugeteilte Umfang "
+                "entscheidet, "
                 "wessen Fälligkeiten Sie sehen: „alle“ die der Dienststelle, "
                 "„eigene“ die der eigenen Fälle. Schreibende Vorgänge "
                 "(anlegen, verschieben, abschließen) werden protokolliert und "
@@ -401,7 +403,8 @@ ESCALATION = Sichthilfe(
     sicht="escalation",
     titel="Eskalationen",
     recht_klartext=(
-        "Recht: escalation.view — BEWUSST OHNE Scope. Die Sicht ist nicht auf "
+        "Recht: escalation.view — BEWUSST OHNE Einschränkung des Umfangs. "
+        "Die Sicht ist nicht auf "
         "„eigene“ verengbar, weil die wichtigste Meldung (der Rückstau) zu "
         "keinem Fall und damit zu keiner Person gehört; auf „eigene“ verengt "
         "hätte die Sicht genau die Fälle ausgeblendet, um derentwillen es sie "
@@ -421,11 +424,13 @@ ESCALATION = Sichthilfe(
         Abschnitt(
             "rechte", "Rechtelage",
             (
-                "Ansehen: escalation.view, ohne Scope. Quittieren: "
+                "Ansehen: escalation.view, ohne Einschränkung des Umfangs. "
+                "Quittieren: "
                 "zusätzlich escalation.ack. Fehlt das Quittierrecht, sagt die "
                 "Sicht das ausdrücklich — sie zeigt nicht wortlos keinen "
                 "Knopf. Ebenso unterscheidet sie „die Struktur fehlt“ "
-                "(Migration M027 nicht angewandt) von „Sie haben dieses Recht "
+                "(die Vorbereitung dafür ist auf dieser Anlage noch nicht "
+                "erfolgt) von „Sie haben dieses Recht "
                 "nicht“. Das sind zwei verschiedene Aussagen.",
             ),
         ),
@@ -569,10 +574,11 @@ NEXTACTIONS = Sichthilfe(
     sicht="nextactions",
     titel="Nächstbeste Aktion",
     recht_klartext=(
-        "Recht: nextactions.view, SCOPE-BEHAFTET. Mit Scope „eigene“ ist es "
-        "Ihre eigene Arbeitsschlange, mit Scope „alle“ die Verteilsicht der "
+        "Recht: nextactions.view. DER ZUGETEILTE UMFANG ENTSCHEIDET: mit "
+        "„eigene“ ist es "
+        "Ihre eigene Auftragsliste, mit „alle“ die Verteilsicht der "
         "Leitung. Welcher Umfang gerade gilt, steht über der Liste — sonst "
-        "läse sich eine kurze eigene Schlange wie eine leere Dienststelle."
+        "läse sich eine kurze eigene Liste wie eine leere Dienststelle."
     ),
     stand=_STAND,
     abschnitte=(
@@ -583,17 +589,18 @@ NEXTACTIONS = Sichthilfe(
                 "Handlung — und dazu die Begründung, warum gerade diese. Sie "
                 "beantwortet „was tue ich als Nächstes?“.",
                 "Die Begründung ist die Hauptsache, nicht die Handlung. Eine "
-                "Arbeitsschlange, die nur sagt „Fall bearbeiten“, ist ein "
+                "Auftragsliste, die nur sagt „Fall bearbeiten“, ist ein "
                 "Befehl. Eine, die sagt „rote Ampel, seit 34 Tagen keine "
                 "Aktivität“, ist ein Beleg. Deshalb steht die Begründung als "
-                "eigene, breite Spalte und nicht als Tooltip, den niemand "
+                "eigene, breite Spalte und nicht als Kurzhinweis, den niemand "
                 "aufklappt.",
             ),
         ),
         Abschnitt(
             "rechte", "Rechtelage",
             (
-                "nextactions.view mit Scope. „eigene“ und „alle“ beantworten "
+                "nextactions.view, mit zugeteiltem Umfang. „eigene“ und „alle“ "
+                "beantworten "
                 "verschiedene Fragen: Selbstorganisation gegenüber "
                 "Verteilung. Der geltende Umfang wird deshalb immer benannt.",
             ),
@@ -602,7 +609,7 @@ NEXTACTIONS = Sichthilfe(
             "aufbau", "Aufbau der Sicht",
             (
                 "Überschrift, darunter Umfang und Zählzeile, darunter die "
-                "Tabelle. Die Reihenfolge kommt aus dem Backend: "
+                "Tabelle. Die Reihenfolge ist fest vorgegeben: "
                 "Dringlichkeit, dann Priorität, dann letzte Aktivität, dann "
                 "Subject-ID.",
             ),
@@ -615,7 +622,7 @@ NEXTACTIONS = Sichthilfe(
                 "und wie viele abgeschlossen und deshalb nicht aufgeführt "
                 "sind.",
                 "Die Zahl der handlungsbedürftigen Fälle allein wäre "
-                "irreführend — eine kurze Schlange bei vielen Fällen sähe wie "
+                "irreführend — eine kurze Liste bei vielen Fällen sähe wie "
                 "ein Datenfehler aus. Erst zu dritt sind die Zahlen eine "
                 "Aussage.",
             ),
@@ -626,7 +633,7 @@ NEXTACTIONS = Sichthilfe(
             liste=(
                 "Eigene Arbeitsrunde: von oben nach unten abarbeiten. Die "
                 "Reihenfolge ist bereits die Empfehlung.",
-                "Verteilen (Scope „alle“): die Einträge mit „NICHT "
+                "Verteilen (Umfang „alle“): die Einträge mit „NICHT "
                 "zugewiesen“ heraussuchen und in der Sicht „Zuweisung“ "
                 "verteilen.",
                 "Eine Empfehlung prüfen: die Spalte „Begründung“ lesen. Sie "
@@ -638,9 +645,9 @@ NEXTACTIONS = Sichthilfe(
             (
                 "Die Sicht ist REIN LESEND. Sie weist nicht zu und ändert "
                 "nichts; sie schlägt vor und belegt den Vorschlag.",
-                "Es wird im Browser NICHT neu sortiert. Die Ordnung stammt "
-                "vom Backend; eine zweite Sortierung wäre eine zweite "
-                "Wahrheitsquelle.",
+                "Die Liste wird hier NICHT neu sortiert. Die Ordnung ist "
+                "fest vorgegeben; eine Sortierung hier wäre eine Verzerrung der "
+                "Wahrheit.",
                 "Drei Zustände sind unterscheidbar: Fehler („derzeit nicht "
                 "verfügbar — dies ist KEIN Leerbefund“), echter Leerbefund "
                 "(„nichts zu tun“, mit der geprüften Grundgesamtheit) und "
@@ -669,14 +676,14 @@ NEXTACTIONS = Sichthilfe(
             verweis="nextactions#zweck"),
         Kontexthilfe(
             "nextactions.zahlen", "Umfang und Zählzeile",
-            "Nennt zuerst, wessen Schlange hier steht (eigene oder alle), "
+            "Nennt zuerst, wessen Aufträge hier stehen (eigene oder alle), "
             "dann alle drei Zahlen: handlungsbedürftig, Fälle insgesamt und "
             "abgeschlossen-und-deshalb-nicht-aufgeführt.",
             verweis="nextactions#zahlen"),
         Kontexthilfe(
             "nextactions.spalte.dringlichkeit", "Spalte „Dringlichkeit“",
-            "Die Einstufung, nach der die Schlange geordnet ist. Sie stammt "
-            "aus dem Backend und wird im Browser nicht verändert.",
+            "Die Einstufung, nach der die Auftragsliste geordnet ist. Sie ist "
+            "fest vorgegeben und wird hier nicht verändert.",
             verweis="nextactions#grenzen"),
         Kontexthilfe(
             "nextactions.spalte.fall", "Spalte „Fall“",
@@ -690,7 +697,7 @@ NEXTACTIONS = Sichthilfe(
         Kontexthilfe(
             "nextactions.spalte.begruendung", "Spalte „Begründung“",
             "Die Signale, auf denen der Vorschlag beruht — wörtlich aus dem "
-            "Backend. Das ist die wichtigste Spalte dieser Sicht.",
+            "der Auswertung. Das ist die wichtigste Spalte dieser Sicht.",
             verweis="nextactions#zweck"),
         Kontexthilfe(
             "nextactions.spalte.ampel", "Spalte „Ampel“",

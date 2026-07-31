@@ -40,7 +40,7 @@ MYCASES = Sichthilfe(
     titel="Meine Aufträge",
     recht_klartext=(
         "Recht: mycases.view. Die Sicht zeigt ausschließlich Fälle, die IHNEM "
-        "Konto zugewiesen sind — unabhängig vom Scope. Sie ist damit die "
+        "Konto zugewiesen sind. Sie ist damit die "
         "einzige Fallliste, deren Umfang nicht von einer Rechteeinstellung "
         "abhängt, sondern von der Zuweisung."
     ),
@@ -62,8 +62,8 @@ MYCASES = Sichthilfe(
             "rechte", "Rechtelage",
             (
                 "mycases.view. Der Umfang ergibt sich aus der Zuweisung, "
-                "nicht aus einem Scope: Sie sehen hier Ihre Fälle, und nur "
-                "die. Auch eine Leitung mit Scope „alle“ sieht in DIESER "
+                "nicht aus dem zugeteilten Umfang: Sie sehen hier Ihre Fälle, und nur "
+                "die. Auch eine Leitung mit dem Umfang „alle“ sieht in DIESER "
                 "Sicht ausschließlich ihre eigenen Zuweisungen.",
             ),
         ),
@@ -208,8 +208,8 @@ MYHISTORY = Sichthilfe(
             (
                 "Die Sicht ist REIN LESEND und zeigt nur EIGENE Belege. Sie "
                 "kann nichts löschen und nichts ändern — das Protokollbuch "
-                "ist eine Hash-Kette; ein nachträglich veränderter Eintrag "
-                "würde die Kettenprüfung brechen.",
+                "ist lückenlos verkettet; ein nachträglich veränderter Eintrag "
+                "würde bei der nächsten Prüfung auffallen.",
                 "Eine leere Liste heißt: es liegt kein Beleg auf Ihre "
                 "Kennung vor. Sie heißt nicht, dass das Protokollbuch leer "
                 "ist.",
@@ -221,7 +221,7 @@ MYHISTORY = Sichthilfe(
             liste=(
                 "Audit-Explorer — dieselbe Quelle, ohne die Beschränkung auf "
                 "die eigene Kennung (Recht ops.view).",
-                "Integrität / Betrieb — der Zustand der Hash-Kette.",
+                "Integrität / Betrieb — der Zustand des Protokollbuchs.",
                 "Übergabe-Protokoll — die Lesart derselben Kette entlang der "
                 "Zuständigkeitswechsel.",
             ),

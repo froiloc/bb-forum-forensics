@@ -38,7 +38,9 @@
 #
 # Exit-Codes: 0 = geschrieben, 1 = Fehler (unbekannte Sicht o. ae.)
 #
-# Version: v0.8.596 - Build: 596 - 2026-07-31
+# Build 597: je Kapitel steht der relative Dateipfad dabei (mc 2026-07-31).
+#
+# Version: v0.8.597 - Build: 597 - 2026-07-31
 # =============================================================================
 
 from __future__ import annotations
@@ -51,7 +53,9 @@ from typing import List, Optional, Sequence
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from management.help.inhalt import lade_register            # noqa: E402
+from management.help.inhalt import (                        # noqa: E402
+    SHELL_QUELLE, lade_register, quelle_je_sicht,
+)
 from management.help.modell import HilfeRegister, Sichthilfe  # noqa: E402
 from management.help.pruefung import fehlliste_sichten      # noqa: E402
 from management.help.sicht_katalog import (                 # noqa: E402
@@ -81,7 +85,9 @@ header.kopf h1{font-size:1.15rem;margin:0;font-weight:600}
 .toc a:hover{border-bottom-color:var(--a)}
 article{border-top:2px solid var(--l);padding-top:1.4em;margin-top:2.4em}
 article h2{color:var(--a);font-size:1.4rem;margin:0 0 .1em}
-.kennung{color:var(--g);font-size:.8rem;margin:0 0 .8em;font-family:monospace}
+.kennung{color:var(--g);font-size:.8rem;margin:0 0 .3em;font-family:monospace}
+.quelle{color:var(--g);font-size:.8rem;margin:0 0 .9em;font-family:monospace}
+.quelle b{color:var(--a);font-weight:600}
 .recht{background:var(--f);border-left:3px solid var(--a);padding:.5em .8em;
  margin:0 0 1.2em;font-size:.93rem}
 section{margin:1.4em 0}
@@ -167,6 +173,7 @@ def baue_lektoratsfassung(register: HilfeRegister,
     # Handbuch. Wer nach dem Lesen etwas wiederfinden will, sucht es dort,
     # wo es auch im Werkzeug steht.
     auswahl = set(nur) if nur else None
+    quellen = quelle_je_sicht()
     kapitel = [register.get(e.id) for e in SICHT_KATALOG
                if register.get(e.id) is not None
                and (auswahl is None or e.id in auswahl)]
@@ -212,6 +219,8 @@ def baue_lektoratsfassung(register: HilfeRegister,
         teile.append("<h2>Bedienelemente der Oberfläche (Shell)</h2>")
         teile.append('<p class="kennung">kein Kapitel &ndash; nur '
                      "Kontexthilfe; gilt in jeder Sicht</p>")
+        teile.append('<p class="quelle">Text steht in: <b>%s</b></p>'
+                     % _e(SHELL_QUELLE))
         teile.extend(_kontext_html(
             register.shell,
             "Popup-Texte der Shell (erscheinen in JEDER Sicht)"))
@@ -223,11 +232,16 @@ def baue_lektoratsfassung(register: HilfeRegister,
         teile.append("<h2>%s</h2>" % _e(k.titel))
         teile.append('<p class="kennung">Sicht <code>%s</code> &middot; '
                      "Gruppe %s &middot; Ankerpräfixe: %s &middot; "
-                     "Stand: Build %s</p>"
+                     "Stand: Fassung %s</p>"
                      % (_e(k.sicht),
                         _e(e.gruppe if e is not None else "?"),
                         _e(", ".join(k.praefixe())),
                         _e(str(k.stand))))
+        # Der Dateipfad je Kapitel (mc 2026-07-31): wer beim Gegenlesen eine
+        # Formulierung aendern will, soll nicht suchen muessen, in welcher
+        # der Inhaltsdateien sie steht.
+        teile.append('<p class="quelle">Text steht in: <b>%s</b></p>'
+                     % _e(quellen.get(k.sicht, "(unbekannt)")))
         teile.append('<p class="recht"><strong>Rechtelage:</strong> %s</p>'
                      % _e(k.recht_klartext))
         teile.extend(_abschnitt_html(k))

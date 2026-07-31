@@ -22,6 +22,9 @@
 # LK08 - unbekannte Sicht in --nur -> Exit 1 MIT Nennung, keine leere Fassung
 # LK09 - die Fusszeile nennt die noch offenen Sichten namentlich
 # LK10 - die Einstufung steht im Kopf UND in der Fusszeile
+# LK12 - Build 597: JEDES Kapitel nennt die Datei, in der sein Text steht
+#        (mc 2026-07-31) - und der Shell-Block ebenso
+# LK13 - quelle_je_sicht() ist vollzaehlig: kein Kapitel ohne Pfadangabe
 #
 # Version: v0.8.596 - Build: 596 - 2026-07-31
 # =============================================================================
@@ -40,6 +43,9 @@ from management.help.modell import (                        # noqa: E402
 )
 from management.help.pruefung import fehlliste_sichten      # noqa: E402
 from management.help.sicht_katalog import SICHT_KATALOG     # noqa: E402
+from management.help.inhalt import (                        # noqa: E402
+    SHELL_QUELLE, quelle_je_sicht,
+)
 from tools.hilfe_lektorat import (                          # noqa: E402
     baue_lektoratsfassung, main,
 )
@@ -197,3 +203,36 @@ def test_lk11_schreibt_die_datei(tmp_path, capsys):
     inhalt = ziel.read_text(encoding="utf-8")
     assert inhalt.startswith("<!DOCTYPE html>")
     assert "Geschrieben:" in capsys.readouterr().out
+
+
+# --- LK12 / LK13 (Build 597) --------------------------------------------------
+
+def test_lk12_jedes_kapitel_nennt_seine_datei(echt):
+    """
+    Ohne diese Angabe muesste beim Gegenlesen jede Formulierung erst in vier
+    Dateien gesucht werden. Genau das soll die Lektoratsfassung ersparen.
+    """
+    reg, doc = echt
+    quellen = quelle_je_sicht()
+    for s in reg.sichten:
+        pfad = quellen.get(s.sicht)
+        assert pfad, "Kapitel '%s' ohne Pfadangabe" % s.sicht
+        # Der Pfad muss im Dokument NEBEN dem Kapitel stehen.
+        beginn = doc.index('<article id="%s">' % s.sicht)
+        ende = doc.index("</article>", beginn)
+        assert pfad in doc[beginn:ende], (
+            "Kapitel '%s' nennt seine Datei '%s' nicht." % (s.sicht, pfad))
+    # ... und der Shell-Block nennt seine.
+    beginn = doc.index('<article id="shell">')
+    ende = doc.index("</article>", beginn)
+    assert SHELL_QUELLE in doc[beginn:ende]
+
+
+def test_lk13_pfadangabe_ist_vollzaehlig(echt):
+    reg, _ = echt
+    quellen = quelle_je_sicht()
+    ohne = sorted(set(reg.ids()) - set(quellen))
+    assert not ohne, "Kapitel ohne Eintrag in quelle_je_sicht(): %s" % ohne
+    # Umgekehrt kein Eintrag ins Leere.
+    waisen = sorted(set(quellen) - set(reg.ids()))
+    assert not waisen, "Pfadangabe zu Kapiteln, die es nicht gibt: %s" % waisen

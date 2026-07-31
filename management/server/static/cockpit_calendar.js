@@ -413,13 +413,19 @@
         var rows = toMatterRows(ext);
 
         // --- Kopf ------------------------------------------------------------
-        mainEl.appendChild(_el(doc, 'h2', 'aiw-pagehead',
-                               'Kalender & Wiedervorlage'));
+        // Build 595 (Baustelle H / H7): literale Hilfe-Marken fuer Kopf und
+        // Stichtagszeile. Die Spaltenkoepfe der Tabelle bekommen ihre Anker
+        // vom gemeinsamen Tabellen-Werkzeug (Praefix 'calendar').
+        var kopfEl = _el(doc, 'h2', 'aiw-pagehead',
+                         'Kalender & Wiedervorlage');
+        kopfEl.setAttribute('data-hilfe-id', 'calendar.titel');
+        mainEl.appendChild(kopfEl);
 
         // DIE RECHENGRUNDLAGE. Steht sichtbar, damit eine falsche Uhr auffaellt.
         var st = _el(doc, 'p', 'aiw-pagesub aiw-cal-stichtag',
                      (cal && cal.stichtag_text) || '');
         st.id = 'aiw-cal-stichtag';
+        st.setAttribute('data-hilfe-id', 'calendar.stichtag');
         mainEl.appendChild(st);
 
         // --- HINWEISE: der Kalender sagt, wenn er schweigt --------------------

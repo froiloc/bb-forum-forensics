@@ -33,6 +33,9 @@
 # HD15 - Blaetterleiste: erstes Kapitel ohne Rueckweg, letztes ohne Weiter
 # HD16 - help.js wird eingebunden; das Suchfeld ist ohne JavaScript verborgen
 #
+# Build 597: HD04 und HD07 pruefen zusaetzlich, dass auf der Anwenderseite
+#        NIRGENDS das Wort 'Build' steht (Regel H-1, Anwendersprache).
+#
 # Version: v0.8.589 - Build: 589 - 2026-07-31
 # =============================================================================
 
@@ -104,7 +107,10 @@ def test_hd04_kapitel_html():
     for a in PFLICHT_ANKER:
         assert 'id="dashboard-%s"' % a in html
     assert 'id="dashboard-ampel"' in html
-    assert "Stand: Build 589" in html
+    # Build 597: auf der Anwenderseite steht kein Wort "Build" mehr
+    # (Regel H-1). Die Zahl bleibt dieselbe, sie heisst nur anders.
+    assert "Stand dieser Hilfe: Fassung 589" in html
+    assert "Build" not in html
 
 
 # --- HD05 / HD06 --------------------------------------------------------------
@@ -139,6 +145,8 @@ def test_hd07_fusszeile():
     assert "0.8.589" in html
     assert "589" in html
     assert "fallinhaltsfrei" in html
+    # Regel H-1 gilt auch fuer die Fusszeile.
+    assert "Build" not in html
 
 
 def test_hd08_aufbauhinweis_nur_solange_offen():

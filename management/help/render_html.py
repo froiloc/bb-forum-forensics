@@ -172,7 +172,11 @@ def _kapitel_html(eintrag: Kapiteleintrag,
     for a in k.abschnitte:
         kopf.append(_abschnitt_html(k.sicht, a))
     if k.stand:
-        kopf.append('<p class="aiw-h-stand">Stand: Build %d</p>' % k.stand)
+        # Build 597: KEIN Wort "Build" auf der Anwenderseite (Regel H-1).
+        # Die Nachvollziehbarkeit bleibt - die Zahl ist dieselbe -, aber sie
+        # heisst jetzt so, wie eine anwendende Person sie lesen kann.
+        kopf.append('<p class="aiw-h-stand">Stand dieser Hilfe: Fassung %d</p>'
+                    % k.stand)
     kopf.append(_blaetterleiste(vorher, nachher))
     kopf.append("</article>")
     return "\n".join(kopf)
@@ -311,7 +315,7 @@ def render_hilfe_seite(gliederung: Gliederung,
         + kapitel
         + "\n</main>\n</div>\n"
         + '<footer class="aiw-h-fuss">%s</footer>\n'
-          % _e("AIW-Verwaltung %s (Build %s)%s - Hilfe ist fallinhaltsfrei "
+          % _e("AIW-Verwaltung, Fassung %s (%s)%s - Hilfe ist fallinhaltsfrei "
                "(Regel H-0): sie beschreibt das Werkzeug, niemals Falldaten."
                % (version or "?", build or "?",
                   " - Stand %s" % stand_datum if stand_datum else ""))

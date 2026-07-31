@@ -285,6 +285,97 @@ def verify_fallinhaltsfrei(register: HilfeRegister) -> None:
 
 
 # -----------------------------------------------------------------------------
+# 4b) ANWENDERSPRACHE (Regel H-1, mc 2026-07-31)
+# -----------------------------------------------------------------------------
+#
+# DIE REGEL IM WORTLAUT DES AUFTRAGS:
+#   "Die Texte richten sich im Regelfall an den Endanwender. Dieser hat keinen
+#   technischen Hintergrund, und fuer ihn ist das Werkzeug ein
+#   Anwendungsgegenstand und kein Softwareprojekt. Dem Endanwender ist es egal,
+#   wie die Historie der Entwicklung war. Ihn interessiert der Ist-Stand: 'Was
+#   kann ich damit machen?' Technische Begriffe wie 'Build', 'Backend' oder
+#   'Wahrheitsquelle' haben hier nichts zu suchen."
+#
+# WARUM DAS EINE MASCHINELLE PRUEFUNG WIRD UND KEIN GUTER VORSATZ:
+#   Ich habe diese Begriffe beim Verfassen der ersten zehn Kapitel an 35
+#   Stellen benutzt, ohne es zu bemerken - weil ich beim Schreiben in den
+#   Quelltext geschaut habe, aus dem die Texte belegt sind. Ein Vorsatz haette
+#   denselben Fehler in den restlichen 33 Kapiteln wiederholt. Eine Liste, die
+#   den Lauf bricht, tut das nicht.
+#
+# WAS DIE LISTE NICHT KANN: Sie faengt WOERTER, nicht HALTUNG. Ein Satz kann
+#   ohne ein einziges verbotenes Wort trotzdem aus der Entwicklersicht
+#   geschrieben sein. Die Liste ist ein Netz gegen den Rueckfall, kein Ersatz
+#   fuer die Redaktion - genauso wie bei Regel H-0.
+
+class HilfeSpracheError(HilfePruefungError):
+    """Ein Hilfetext benutzt Entwicklersprache statt Anwendersprache."""
+
+
+#: Begriff -> was stattdessen dasteht. Der zweite Teil ist kein Schmuck: Wer
+#: den Fehler behebt, soll nicht raten muessen, was gemeint war.
+JARGON: Tuple[Tuple[str, str], ...] = (
+    (r"\bBuilds?\b",
+     "Entwicklungsstand - fuer den Anwender bedeutungslos; die Aussage ohne "
+     "den Verweis formulieren"),
+    (r"\bBack-?[Ee]nd\b|\bFront-?[Ee]nd\b",
+     "wo etwas gerechnet wird, ist Anwendersache nicht; 'das Werkzeug' oder "
+     "die Aussage ohne Ortsangabe"),
+    (r"\bWahrheitsquelle\b",
+     "'massgeblich' oder 'verbindlich'"),
+    (r"\bEndpunkt\b|/api/",
+     "die Schnittstelle nicht nennen; die Sicht oder die Angabe benennen"),
+    (r"\bScope\b",
+     "'Umfang' - so heisst es auch in der Oberflaeche"),
+    (r"\bHash\b|\baudit_log\b",
+     "'Protokollbuch' und 'lueckenlose Kette'"),
+    (r"\bMigration\b|\bM0\d\d\b",
+     "'die Vorbereitung fehlt noch' o. ae."),
+    (r"\bTooltip\b",
+     "'Kurzhinweis, wenn Sie mit der Maus darauf zeigen'"),
+    (r"(?i)\bserver\w*\b",
+     "'das Werkzeug'"),
+    (r"\bF(?:ä|ae)higkeit(?:en)?\b",
+     "'Recht' - so heisst es in der Oberflaeche und in der Rechteverwaltung"),
+    (r"\bArbeitsschlange\b|\bSchlange\b",
+     "'Auftragsliste' (Festlegung mc 2026-07-31)"),
+    (r"\bRepository\b|\bCommit\b|\bAPI\b|\bJSON\b|\bCache\b",
+     "Entwicklerbegriff - ohne Entsprechung in der Anwendersprache"),
+    (r"_<uid>\.db|\.db\b",
+     "Dateinamen nicht nennen; 'die Falldateien des Kontos'"),
+    (r"\blocalStorage\b|\bDOM\b|\bRegex\b",
+     "Entwicklerbegriff"),
+)
+
+_JARGON_KOMPILIERT: Tuple[Tuple["re.Pattern", str, str], ...] = tuple(
+    (re.compile(muster), muster, rat) for muster, rat in JARGON)
+
+
+def verify_anwendersprache(register: HilfeRegister) -> None:
+    """
+    Regel H-1: Hilfetexte sind in Anwendersprache verfasst.
+
+    Geprueft werden ALLE Texte, die eine anwendende Person zu sehen bekommt:
+    Kapiteltitel, Rechtelage, Abschnittsueberschriften, Absaetze, Listenpunkte
+    und die Popup-Texte. Nicht geprueft werden Quelltext-Kommentare - dort ist
+    Entwicklersprache richtig.
+    """
+    fehler: List[str] = []
+    for herkunft, text in _texte(register):
+        if not text:
+            continue
+        for muster, roh, rat in _JARGON_KOMPILIERT:
+            treffer = muster.search(text)
+            if treffer is None:
+                continue
+            fehler.append("%s: '%s' -> %s"
+                          % (herkunft, treffer.group(0), rat))
+    if fehler:
+        raise HilfeSpracheError(
+            "Regel H-1 verletzt (Anwendersprache): %s" % "; ".join(fehler))
+
+
+# -----------------------------------------------------------------------------
 # 5) Sammelpruefung
 # -----------------------------------------------------------------------------
 
@@ -332,6 +423,7 @@ def verify_alles(register: HilfeRegister,
     verify_shell_kontext(register, sicht_ids)
     verify_verweise(register)
     verify_fallinhaltsfrei(register)
+    verify_anwendersprache(register)
 
 
 def katalog_bezug(sicht_id: str) -> Dict[str, object]:

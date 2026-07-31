@@ -155,7 +155,14 @@
         if (!doc) { return null; }
 
         mainEl.textContent = '';
-        mainEl.appendChild(_el(doc, 'h2', 'aiw-pagehead', 'Nächstbeste Aktion'));
+        // Build 595 (Baustelle H / H7): literale Hilfe-Marken. Diese Sicht
+        // baut ihre Tabelle von Hand (feste Spaltenmenge, Reihenfolge aus dem
+        // Backend), bekommt die Anker also nicht vom gemeinsamen
+        // Tabellen-Werkzeug. Sie werden hier gesetzt - literal, damit der
+        // Paritaetstest sie findet.
+        var kopf = _el(doc, 'h2', 'aiw-pagehead', 'Nächstbeste Aktion');
+        kopf.setAttribute('data-hilfe-id', 'nextactions.titel');
+        mainEl.appendChild(kopf);
 
         // FEHLER: ausdruecklich als solcher — NICHT als leere Schlange.
         if (data && data.error) {
@@ -167,8 +174,10 @@
             return { state: 'error' };
         }
 
-        mainEl.appendChild(_el(doc, 'p', 'aiw-pagesub',
-            scopeText(data) + ' ' + countsText(data)));
+        var unter = _el(doc, 'p', 'aiw-pagesub',
+            scopeText(data) + ' ' + countsText(data));
+        unter.setAttribute('data-hilfe-id', 'nextactions.zahlen');
+        mainEl.appendChild(unter);
 
         var liste = items(data);
         if (!liste.length) {
@@ -182,10 +191,19 @@
             var tbl = _el(doc, 'table', 'aiw-na-table');
             var thead = doc.createElement('thead');
             var trh = doc.createElement('tr');
-            ['Dringlichkeit', 'Fall', 'Nächste Handlung', 'Begründung',
-             'Ampel', 'Status', 'Zuweisung', 'Letzte Aktivität']
+            // Kopfzeile mit Hilfe-Marken. Der zweite Eintrag je Paar ist
+            // die Ankerkennung; sie steht neben dem Titel, damit ein
+            // umbenannter Spaltentitel nicht stillschweigend seinen Anker
+            // verliert.
+            [['Dringlichkeit', 'dringlichkeit'], ['Fall', 'fall'],
+             ['Nächste Handlung', 'handlung'], ['Begründung', 'begruendung'],
+             ['Ampel', 'ampel'], ['Status', 'status'],
+             ['Zuweisung', 'zuweisung'], ['Letzte Aktivität', 'aktivitaet']]
                 .forEach(function (h) {
-                    trh.appendChild(_el(doc, 'th', null, h));
+                    var th = _el(doc, 'th', null, h[0]);
+                    th.setAttribute('data-hilfe-id',
+                        'nextactions.spalte.' + h[1]);
+                    trh.appendChild(th);
                 });
             thead.appendChild(trh);
             tbl.appendChild(thead);

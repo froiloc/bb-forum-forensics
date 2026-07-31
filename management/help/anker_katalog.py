@@ -64,6 +64,13 @@ ANKER_PRAEFIXE: Dict[str, str] = {
 
     # --- namensgleich (Praefix = Sicht-ID) --------------------------------
     "approval": "approval",
+    # Build 595 (H7): die Sichten der Gruppe 'Ueberblick' setzen ihre Marken
+    # selbst (handgebaute Tabellen bzw. Kacheln) und benutzen dafuer ihre
+    # eigene Sicht-Kennung.
+    "dashboard": "dashboard",
+    "escalation": "escalation",
+    "nextactions": "nextactions",
+    "faelle": "faelle",
     "calendar": "calendar",
     "capacity_pflege": "capacity_pflege",
     "crossref": "crossref",

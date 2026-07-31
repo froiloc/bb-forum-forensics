@@ -334,7 +334,11 @@
         if (!doc) { return null; }
 
         mainEl.textContent = '';
-        mainEl.appendChild(_el(doc, 'h2', 'aiw-pagehead', 'Eskalationen'));
+        // Build 595 (Baustelle H / H7): literale Hilfe-Marken (handgebaute
+        // Tabelle, daher keine Anker vom gemeinsamen Tabellen-Werkzeug).
+        var kopfEl = _el(doc, 'h2', 'aiw-pagehead', 'Eskalationen');
+        kopfEl.setAttribute('data-hilfe-id', 'escalation.titel');
+        mainEl.appendChild(kopfEl);
 
         // Rueckmeldeleiste: sie existiert IMMER, damit eine Meldung nicht
         // durch einen Neuaufbau der Sicht verlorengeht.
@@ -355,7 +359,9 @@
             return { state: 'error', setResult: setResult };
         }
 
-        mainEl.appendChild(_el(doc, 'p', 'aiw-pagesub', countsText(data)));
+        var zahlenEl = _el(doc, 'p', 'aiw-pagesub', countsText(data));
+        zahlenEl.setAttribute('data-hilfe-id', 'escalation.zahlen');
+        mainEl.appendChild(zahlenEl);
         mainEl.appendChild(res);
         if (opts.message && opts.message.text) {
             setResult(opts.message.text, opts.message.error === true);
@@ -374,9 +380,14 @@
             var tbl = _el(doc, 'table', 'aiw-esk-table');
             var thead = doc.createElement('thead');
             var trh = doc.createElement('tr');
-            ['Schwere', 'Regel', 'Bezug', 'Inaktiv', 'Begründung', 'Vermerk']
+            [['Schwere', 'schwere'], ['Regel', 'regel'], ['Bezug', 'bezug'],
+             ['Inaktiv', 'inaktiv'], ['Begründung', 'begruendung'],
+             ['Vermerk', 'vermerk']]
                 .forEach(function (h) {
-                    trh.appendChild(_el(doc, 'th', null, h));
+                    var th = _el(doc, 'th', null, h[0]);
+                    th.setAttribute('data-hilfe-id',
+                        'escalation.spalte.' + h[1]);
+                    trh.appendChild(th);
                 });
             thead.appendChild(trh);
             tbl.appendChild(thead);

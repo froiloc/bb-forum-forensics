@@ -26,6 +26,11 @@
  * AP05 — eine Kennung, die auch nach dem Normieren unzulaessig ist, wird
  *        weiterhin verworfen statt falsch gesetzt.
  * AP06 — Anker sind im gerenderten Baum eindeutig.
+ * AP07 — Build 595: JEDE Kachel des Ueberblicks traegt eine Marke, und jede
+ *        dieser Marken hat einen Text im Register. Die Kachelmarken werden
+ *        aus dem Kachelschluessel BERECHNET (die Kachelmenge stammt aus der
+ *        persoenlichen Ansichtseinstellung) — eine Textsuche kann sie
+ *        grundsaetzlich nicht finden, dieser Test dagegen schon.
  */
 
 import { describe, it, expect } from "vitest";
@@ -36,6 +41,8 @@ const TABLEKIT = readFileSync(
   "management/server/static/cockpit_tablekit.js", "utf-8");
 const OVERVIEW = readFileSync(
   "management/server/static/cockpit_overview.js", "utf-8");
+const DASHBOARD = readFileSync(
+  "management/server/static/cockpit_dashboard.js", "utf-8");
 
 /**
  * Die Kontextschluessel des Registers. Sie stehen als LITERALE Zeichenketten
@@ -169,5 +176,48 @@ describe("Hilfe-Anker — Paritaet am gerenderten Baum", () => {
     const anker = dom.window.AIWTableKit.hilfeIds(dom.window.document.body);
     const doppelt = anker.filter((a, i) => anker.indexOf(a) !== i);
     expect(doppelt, `doppelte Anker: ${doppelt.join(", ")}`).toEqual([]);
+  });
+});
+
+
+describe("Hilfe-Anker — Kacheln des Ueberblicks (Build 595)", () => {
+  /** Rendert die Kachelflaeche mit allen acht Kacheln des Katalogs. */
+  function rendereUeberblick() {
+    const dom = new JSDOM(
+      "<!DOCTYPE html><html><body><main id='m'></main></body></html>",
+      { runScripts: "dangerously", url: "http://localhost" });
+    dom.window.eval(DASHBOARD);
+    const api = dom.window.AIWCockpitDashboard
+      || dom.window.AIWDashboard || dom.window.AIWCockpitUeberblick;
+    return { dom, api };
+  }
+
+  it("AP07 — jede Kachel traegt eine Marke mit Text im Register", () => {
+    const { dom, api } = rendereUeberblick();
+    expect(api, "Dashboard-Modul nicht unter dem erwarteten Namen exportiert")
+      .toBeTruthy();
+
+    // Die Kachelschluessel stammen aus viewpref_katalog.WIDGETS. Sie hier
+    // NOCHMALS aufzuschreiben waere eine zweite Wahrheit — deshalb werden
+    // sie aus der Python-Quelle gelesen, genau wie die Registerschluessel.
+    const kat = readFileSync(
+      "management/viewprefs/viewpref_katalog.py", "utf-8");
+    const keys = [];
+    const re = /WidgetSpec\(\s*\n?\s*key="([a-z0-9_]+)"/g;
+    let m;
+    while ((m = re.exec(kat)) !== null) { keys.push(m[1]); }
+    expect(keys.length).toBeGreaterThan(5);
+
+    const bekannt = registerSchluessel();
+    const ohneText = keys
+      .map((k) => "dashboard.kachel." + k)
+      .filter((s) => !bekannt.has(s));
+    expect(ohneText, `Kacheln ohne Text im Register: ${ohneText.join(", ")}`)
+      .toEqual([]);
+
+    // Und die Marke wird auch wirklich gesetzt: das Modul bildet sie aus dem
+    // Kachelschluessel. Beleg im Quelltext statt Annahme.
+    expect(DASHBOARD).toContain("'dashboard.kachel.' + w.key");
+    dom.window.close();
   });
 });

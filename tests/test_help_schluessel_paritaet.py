@@ -28,6 +28,12 @@
 #        einer Sicht zugeordnet
 # SP05 - anker_katalog ist in sich stimmig (Sichten existieren, 'shell' fehlt)
 # SP06 - keine Marke doppelt mit verschiedener Bedeutung (Eindeutigkeit)
+# SP07 - Build 595: fuer die Sichten, deren Tabelle das gemeinsame Werkzeug
+#        baut, hat JEDE Spalte mit Feld einen Registertext. Die Anker selbst
+#        entstehen erst beim Rendern; die FELDNAMEN aber stehen literal in
+#        columnDefs() und lassen sich hier statisch lesen. Die Liste der so
+#        geprueften Sichten waechst je Inhaltswelle - sie ist ausdruecklich
+#        und nicht abgeleitet, damit eine vergessene Sicht auffaellt.
 #
 # Version: v0.8.592 - Build: 592 - 2026-07-31
 # =============================================================================
@@ -52,6 +58,21 @@ STATIC = os.path.join(os.path.dirname(__file__), "..",
 #: Literale Marken: data-hilfe-id="..." bzw. 'data-hilfe-id', '...'
 _LITERAL = re.compile(r"""data-hilfe-id["']?\s*[=,]\s*["']([a-z0-9_.]+)["']""")
 
+#: Sichten, deren Spaltenanker das gemeinsame Tabellen-Werkzeug erzeugt und
+#: deren Texte bereits verfasst sind: Sicht-ID -> (Datei, Ankerpraefix).
+#: JE INHALTSWELLE kommt hier ein Eintrag dazu. Steht eine Sicht hier, muss
+#: jede ihrer Spalten einen Text haben - kein "fast fertig".
+SPALTEN_QUELLEN = {
+    "faelle": ("cockpit_overview.js", "overview"),
+    "calendar": ("cockpit_calendar.js", "calendar"),
+    # Build 596 (H8)
+    "mycases": ("cockpit_mycases.js", "mycases"),
+    "myhistory": ("cockpit_myhistory.js", "myhistory"),
+}
+
+#: Feldnamen aus den literalen columnDefs-Eintraegen.
+_FELD = re.compile(r"""field:\s*['"]([A-Za-z0-9_]+)['"]""")
+
 #: Berechnete Anker erkennt dieser Test bewusst NICHT (siehe Kopf). Er sammelt
 #: aber die dabei benutzten PRAEFIXE, damit SP04 sie pruefen kann.
 _PRAEFIX_AUS_BERECHNUNG = re.compile(
@@ -72,6 +93,13 @@ def _literale_marken():
         with open(pfad, encoding="utf-8") as fh:
             inhalt = fh.read()
         for treffer in _LITERAL.findall(inhalt):
+            # Ein Treffer, der auf einen Punkt endet, ist KEINE Marke,
+            # sondern der literale ANFANG einer berechneten Marke
+            # ("'dashboard.kachel.' + w.key"). Er gehoert nicht in diese
+            # Sammlung - sonst pruefte SP03 eine Zeichenkette, die so nie im
+            # DOM steht. Gefunden werden solche Anker vom vitest-Gegentest.
+            if treffer.endswith("."):
+                continue
             gefunden.setdefault(treffer, set()).add(os.path.basename(pfad))
     return gefunden
 
@@ -131,7 +159,7 @@ def test_sp02_kein_text_ins_leere(register):
     marken = set(_literale_marken())
     # Die berechneten Bereiche sind hier ausgenommen und namentlich benannt,
     # nicht stillschweigend uebergangen (Grundregel 1).
-    berechnete_bereiche = ("spalte", "werkzeug", "bedienung")
+    berechnete_bereiche = ("spalte", "werkzeug", "bedienung", "kachel")
 
     tot = []
     for schluessel in register.kontext_schluessel():
@@ -191,3 +219,31 @@ def test_sp06_marken_eindeutig():
         "Marken in mehr als zwei Dateien - meinen sie ueberall dasselbe? %s"
         % "; ".join("%s: %s" % (m, ", ".join(sorted(q)))
                     for m, q in sorted(verstreut.items())))
+
+
+# --- SP07 --------------------------------------------------------------------
+
+def test_sp07_jede_spalte_hat_einen_text(register):
+    """
+    Fuer die Sichten, deren Texte verfasst sind: jede Tabellenspalte mit Feld
+    braucht einen Registertext.
+
+    Der Feldname wird um fuehrende Unterstriche gekuerzt und kleingeschrieben -
+    genau so bildet cockpit_tablekit.hilfeIdNormieren den Anker (Build 592).
+    Wuerde hier anders normiert, pruefte der Test etwas anderes, als im
+    Browser entsteht.
+    """
+    bekannt = set(register.kontext_schluessel())
+    fehlend = []
+    for sicht_id, (datei, praefix) in sorted(SPALTEN_QUELLEN.items()):
+        pfad = os.path.join(STATIC, datei)
+        with open(pfad, encoding="utf-8") as fh:
+            inhalt = fh.read()
+        felder = sorted(set(_FELD.findall(inhalt)))
+        assert felder, "%s: keine Spaltenfelder gefunden" % datei
+        for feld in felder:
+            schluessel = "%s.spalte.%s" % (praefix, feld.lstrip("_").lower())
+            if schluessel not in bekannt:
+                fehlend.append("%s (%s, Feld %s)" % (schluessel, sicht_id, feld))
+    assert not fehlend, (
+        "Spalten ohne Kontexttext:\n  " + "\n  ".join(fehlend))

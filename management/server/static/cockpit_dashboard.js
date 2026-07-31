@@ -479,7 +479,10 @@
         var modelle = data.modelle || {};
 
         var kopf = el('div', 'aiw-db-kopf');
-        kopf.appendChild(el('h2', 'aiw-pagehead', 'Überblick'));
+        // Build 595 (Baustelle H / H7): Hilfe-Marke der Ueberschrift.
+        var kopfEl = el('h2', 'aiw-pagehead', 'Überblick');
+        kopfEl.setAttribute('data-hilfe-id', 'dashboard.titel');
+        kopf.appendChild(kopfEl);
         var btn = el('button', 'aiw-btn', 'Kacheln wählen');
         btn.setAttribute('type', 'button');
         kopf.appendChild(btn);
@@ -525,6 +528,13 @@
                 + (m.fehler ? ' is-fehler' : '')
                 + (m.tonung ? ' ton-' + m.tonung : ''));
             kachel.setAttribute('data-widget-key', w.key);
+            // Build 595 (Baustelle H / H7): JEDE Kachel traegt eine eigene
+            // Hilfe-Marke. Sie wird aus dem Kachelschluessel gebildet - die
+            // Kacheln sind zur Bauzeit nicht bekannt (sie stammen aus der
+            // persoenlichen Ansichtseinstellung), eine literale Liste hier
+            // waere also eine zweite Wahrheit neben viewpref_katalog.WIDGETS.
+            // Der Paritaetstest liest sie deshalb aus dem gerenderten Baum.
+            kachel.setAttribute('data-hilfe-id', 'dashboard.kachel.' + w.key);
             kachel.appendChild(el('div', 'aiw-kachel-titel', w.label));
 
             if (m.fehler) {

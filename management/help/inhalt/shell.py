@@ -57,9 +57,9 @@ SHELL_KONTEXT: Tuple[Kontexthilfe, ...] = (
     Kontexthilfe(
         "shell.integritaet",
         "Integritätsanzeige",
-        "Zeigt, ob die Hash-Kette des Protokollbuchs (audit_log) "
-        "lückenlos ist. „In Ordnung“ heißt: jeder Eintrag ist mit seinem "
-        "Vorgänger verkettet und seit dem Schreiben unverändert. Eine "
+        "Zeigt, ob das Protokollbuch lückenlos ist. „In Ordnung“ heißt: "
+        "jeder Eintrag hängt nachweisbar an seinem Vorgänger und ist seit "
+        "dem Schreiben unverändert. Eine "
         "Meldung hier ist ein Betriebsvorfall und gehört gemeldet, nicht "
         "weggeklickt.",
     ),

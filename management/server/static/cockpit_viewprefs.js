@@ -390,11 +390,16 @@
             }
         }
 
-        mainEl.appendChild(el('h2', 'aiw-pagehead', 'Ansicht anpassen'));
-        mainEl.appendChild(el('p', 'aiw-pagesub',
+        // Build 596 (Baustelle H / H8): literale Hilfe-Marken.
+        var vpKopf = el('h2', 'aiw-pagehead', 'Ansicht anpassen');
+        vpKopf.setAttribute('data-hilfe-id', 'viewprefs.titel');
+        mainEl.appendChild(vpKopf);
+        var vpUnter = el('p', 'aiw-pagesub',
             'Reihenfolge und Sichtbarkeit der Bereiche in der linken '
             + 'Navigation — Gruppen untereinander, Bereiche innerhalb ihrer '
-            + 'Gruppe. Die Einstellung gilt nur für Sie.'));
+            + 'Gruppe. Die Einstellung gilt nur für Sie.');
+        vpUnter.setAttribute('data-hilfe-id', 'viewprefs.hinweis');
+        mainEl.appendChild(vpUnter);
 
         // Kein stiller Fehlpfad: ein fehlgeschlagener Abruf sieht NICHT aus
         // wie "nichts eingestellt".
