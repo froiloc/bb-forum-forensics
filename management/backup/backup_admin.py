@@ -26,7 +26,9 @@ from typing import Dict, Optional
 
 from management.audit.audit_log import AuditLog
 from management.backup.backup_config import BackupConfig
-from management.backup.backup_executor import BackupExecutor
+from management.backup.backup_executor import (
+    PUNKTGLEICH_VERMERK, BackupExecutor,
+)
 from management.backup.backup_planner import BackupPlanner
 from management.backup.backups_repo import BackupsRepo
 from management.gateway.coordinator_writer import CoordinatorWriter
@@ -102,6 +104,23 @@ def cmd_plan(args) -> int:
     return 0 if plan.ok else 2
 
 
+def _umbruch(text: str, breite: int):
+    """
+    Bricht einen Fliesstext um. Bewusst hier von Hand und ohne Rueckgriff auf
+    das Hilfesystem: dieses Werkzeug soll ohne den CLI-Katalog auskommen.
+    """
+    zeilen, aktuell = [], ""
+    for wort in (text or "").split():
+        if aktuell and len(aktuell) + 1 + len(wort) > breite:
+            zeilen.append(aktuell)
+            aktuell = wort
+        else:
+            aktuell = (aktuell + " " + wort) if aktuell else wort
+    if aktuell:
+        zeilen.append(aktuell)
+    return zeilen
+
+
 def cmd_run(args) -> int:
     cfg = _load_cfg(args.config)
     bcfg = BackupConfig.from_loader(cfg)
@@ -133,8 +152,35 @@ def cmd_run(args) -> int:
     for r in run.results:
         status = "ok" if (r.error is None and r.integrity_ok) else \
             ("FEHLER: " + (r.error or "integrity"))
-        print("    - %-16s %s" % (r.label, status))
+        # Der Zeitpunkt JE DATENBANK steht mit in der Zeile - erst damit ist
+        # der Versatz zwischen den Kopien ohne Blick ins Manifest zu sehen.
+        print("    - %-16s %s%s"
+              % (r.label, status,
+                 ("   [%s .. %s]" % (r.begonnen_ts, r.beendet_ts))
+                 if r.begonnen_ts else ""))
     print("  Manifest: %s" % run.manifest_path)
+
+    # WAEHREND DES LAUFS ENTSTANDEN und deshalb NICHT gesichert. Leer ist der
+    # Regelfall; steht hier etwas, fehlt es im Satz - und das gehoert gesagt
+    # und nicht nur ins Manifest geschrieben (Grundregel 1).
+    if run.nachzuegler:
+        print("")
+        print("  NICHT GESICHERT - waehrend des Laufs entstanden (%d):"
+              % len(run.nachzuegler))
+        for pfad in run.nachzuegler:
+            print("    %s" % pfad)
+        print("  Sie fehlen in diesem Satz und sind beim naechsten Lauf "
+              "dabei.")
+
+    # --- DER VERMERK ZUR PUNKTGLEICHHEIT (Build 617) ---------------------
+    # Er steht auf der KONSOLE und nicht nur im Manifest. Ein Hinweis, den
+    # man erst findet, wenn man ihn sucht, erreicht denjenigen nicht, der
+    # sich im Ernstfall auf den Satz verlaesst. Entscheidung mc 2026-07-31:
+    # Kennzeichnung statt Wartungsfenster - damit gehoert die Einschraenkung
+    # in jede Ausgabe.
+    print("")
+    for zeile in _umbruch(PUNKTGLEICH_VERMERK, 76):
+        print("  " + zeile)
     return 0 if run.ok else 1
 
 

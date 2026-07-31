@@ -165,5 +165,136 @@ class BackupExecutorTests(unittest.TestCase):
         self.assertGreaterEqual(len(run.pruned), 1)
 
 
+    # =========================================================================
+    # BUILD 617 - DIE KENNZEICHNUNG DES SATZES
+    #
+    # Entscheidung mc, 2026-07-31: Der Sicherungssatz bleibt NICHT punktgleich
+    # (eine taegliche Sicherung soll nebenher laufen koennen), wird aber als
+    # solcher gekennzeichnet. Der Preis dieser Entscheidung ist, dass jeder,
+    # der den Satz benutzt, von der Einschraenkung WISSEN muss - und deshalb
+    # pruefen die folgenden Tests, dass die Kennzeichnung wirklich ankommt und
+    # nicht nur irgendwo abgelegt ist.
+    # =========================================================================
+
+    def test_be05_manifest_kennzeichnet_den_satz_als_nicht_punktgleich(self):
+        """
+        BE05 - Das Manifest sagt ausdruecklich, dass der Satz keinen
+        gemeinsamen Zeitpunkt abbildet, und begruendet es.
+
+        Ein Feld 'punktgleich: false' allein waere zu wenig: wer das Manifest
+        im Ernstfall liest, hat keine Zeit, sich die Folge selbst
+        herzuleiten. Der Klartext gehoert dazu.
+        """
+        cfg = self._cfg(include_shared_dbs=True)
+        run = BackupExecutor(cfg).run(self._plan(cfg))
+        self.assertTrue(run.ok, run.reason)
+
+        with open(run.manifest_path, encoding="ascii") as fh:
+            manifest = json.load(fh)
+
+        self.assertIs(manifest["punktgleich"], False)
+        self.assertIn("NICHT PUNKTGLEICH", manifest["punktgleich_hinweis"])
+        self.assertIn("ruhiger Zustand",
+                      manifest["punktgleich_hinweis"])
+        # Die Spanne des Satzes ist ablesbar.
+        self.assertIn("satz_von", manifest)
+        self.assertIn("satz_bis", manifest)
+        self.assertLessEqual(manifest["satz_von"], manifest["satz_bis"])
+
+    def test_be06_jede_datenbank_traegt_einen_eigenen_zeitpunkt(self):
+        """
+        BE06 - Der Versatz zwischen den Kopien ist ABLESBAR.
+
+        Bis Build 616 trug das Manifest nur EINEN Zeitstempel fuer den ganzen
+        Lauf. Damit sah der Satz punktgleich aus, ohne es zu sein - das ist
+        die schlechteste aller Lagen: eine falsche Auskunft, die wie eine
+        richtige aussieht.
+        """
+        cfg = self._cfg(include_shared_dbs=True)
+        run = BackupExecutor(cfg).run(self._plan(cfg))
+        self.assertTrue(run.ok, run.reason)
+        self.assertGreater(len(run.results), 1,
+                           "Der Test braucht mehr als eine Quelle.")
+
+        for r in run.results:
+            self.assertTrue(r.begonnen_ts, "%s ohne Beginn" % r.label)
+            self.assertTrue(r.beendet_ts, "%s ohne Ende" % r.label)
+            self.assertLessEqual(r.begonnen_ts, r.beendet_ts)
+
+        # Und die Zeitpunkte stehen auch im Manifest, nicht nur im Ergebnis.
+        with open(run.manifest_path, encoding="ascii") as fh:
+            manifest = json.load(fh)
+        for eintrag in manifest["results"]:
+            self.assertTrue(eintrag["begonnen_ts"])
+            self.assertTrue(eintrag["beendet_ts"])
+
+    def test_be07_waehrend_des_laufs_entstandene_db_wird_benannt(self):
+        """
+        BE07 - Eine Fall-Datenbank, die es beim Planen noch nicht gab, wird
+        NICHT gesichert - aber sie wird GENANNT.
+
+        Bis Build 616 verschwand sie still: der Planer liest die Verzeichnisse
+        einmal vorher, und in die Liste der fehlenden Dateien kam sie nicht.
+        Gesichert wird sie auch jetzt nicht - das machte den Satz noch
+        ungleichzeitiger und der Lauf haette kein definiertes Ende. Aber
+        Grundregel 1 verlangt, dass sie nicht unbemerkt fehlt.
+        """
+        cfg = self._cfg(include_shared_dbs=False)
+        plan = self._plan(cfg)
+        # Sie entsteht NACH dem Planen - genau der Fall aus der Nachpruefung.
+        spaet = Path(self._tmp) / "data" / "evidence" / "evidence_99.db"
+        _mkdb(spaet)
+
+        run = BackupExecutor(cfg).run(plan)
+
+        self.assertEqual([os.path.abspath(str(spaet))], run.nachzuegler)
+        gesichert = {r.label for r in run.results}
+        self.assertNotIn("evidence_99", gesichert,
+                         "Der Nachzuegler darf NICHT gesichert werden.")
+        with open(run.manifest_path, encoding="ascii") as fh:
+            manifest = json.load(fh)
+        self.assertEqual([os.path.abspath(str(spaet))],
+                         manifest["nicht_gesichert_weil_neu"])
+
+    def test_be09_die_kennzeichnung_erreicht_auch_die_konsole(self):
+        """
+        BE09 - Der Vermerk steht in der AUSGABE von 'run', nicht nur im
+        Manifest.
+
+        Geprueft am Quelltext und nicht am Verhalten: ein vollstaendiger
+        cmd_run-Lauf braucht eine eingerichtete coordinator.db samt
+        Belegkette und Personendatensatz - mehr Gestell als Aussage. Was hier
+        zu sichern ist, ist eine einzige Frage: geht der Vermerk auf die
+        Konsole? Dasselbe Verfahren wie CT11 beim Dachwerkzeug.
+
+        WARUM DAS NICHT NEBENSAECHLICH IST: mc hat sich fuer die
+        Kennzeichnung und gegen ein Wartungsfenster entschieden. Der Preis
+        dieser Entscheidung ist, dass die Einschraenkung jeden erreicht, der
+        den Satz benutzt. Ein Hinweis, den man erst findet, wenn man ihn
+        sucht, erreicht im Ernstfall niemanden.
+        """
+        quelle = (Path(__file__).resolve().parent.parent
+                  / "management" / "backup" / "backup_admin.py"
+                  ).read_text(encoding="utf-8")
+        self.assertIn("PUNKTGLEICH_VERMERK", quelle,
+                      "backup_admin gibt den Vermerk nicht aus.")
+        self.assertIn("run.nachzuegler", quelle,
+                      "backup_admin nennt die Nachzuegler nicht.")
+        # Und der Vermerk kommt aus EINER Quelle - sonst laufen Manifest und
+        # Konsole auseinander.
+        self.assertNotIn("NICHT PUNKTGLEICH:", quelle,
+                         "Der Vermerktext ist in backup_admin abgeschrieben "
+                         "statt eingebunden.")
+
+    def test_be08_ohne_nachzuegler_bleibt_die_liste_leer(self):
+        """
+        BE08 - Die Gegenprobe. Eine Meldung, die immer kommt, wird nicht
+        gelesen; der Regelfall muss still sein.
+        """
+        cfg = self._cfg(include_shared_dbs=True)
+        run = BackupExecutor(cfg).run(self._plan(cfg))
+        self.assertEqual([], run.nachzuegler)
+
+
 if __name__ == "__main__":
     unittest.main()
