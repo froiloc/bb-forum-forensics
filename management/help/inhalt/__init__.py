@@ -31,6 +31,7 @@ from management.help.inhalt.ueberblick import UEBERBLICK
 from management.help.inhalt.fallsteuerung import FALLSTEUERUNG
 from management.help.inhalt.abnahme import ABNAHME
 from management.help.inhalt.auswertung import AUSWERTUNG
+from management.help.inhalt.kennzahlen import KENNZAHLEN
 from management.help.inhalt.redaktion import REDAKTION
 from management.help.inhalt.persoenlich import PERSOENLICH
 
@@ -53,6 +54,7 @@ _TEILBESTAENDE: Tuple[Tuple[str, Tuple[Sichthilfe, ...]], ...] = (
     ("management/help/inhalt/abnahme.py", ABNAHME),
     ("management/help/inhalt/redaktion.py", REDAKTION),
     ("management/help/inhalt/auswertung.py", AUSWERTUNG),
+    ("management/help/inhalt/kennzahlen.py", KENNZAHLEN),
     ("management/help/inhalt/persoenlich.py", PERSOENLICH),
 )
 

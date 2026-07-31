@@ -167,10 +167,13 @@
         var h = doc.createElement('h2');
         h.className = 'aiw-pagehead';
         h.textContent = 'Statistiken (StA/Fuehrung)';
+        // Build 602 (Baustelle H / H11): literale Hilfe-Marken.
+        h.setAttribute('data-hilfe-id', 'stats.titel');
         mainEl.appendChild(h);
 
         var sub = doc.createElement('p');
         sub.className = 'aiw-pagesub';
+        sub.setAttribute('data-hilfe-id', 'stats.kennzeile');
         sub.textContent = totalsText(data)
             + (data && data.scope === 'eigene'
                 ? ' (nur eigene Faelle)' : ' (alle Faelle)');

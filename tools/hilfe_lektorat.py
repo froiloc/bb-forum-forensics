@@ -296,8 +296,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     text = baue_lektoratsfassung(register, nur, build, datum)
     ziel = Path(args.ziel)
     ziel.write_text(text, encoding="utf-8")
+
+    # BEFUND Build 602: die Meldung nannte bisher IMMER den Umfang des ganzen
+    # Registers - auch bei --nur. Wer eine Teilfassung erzeugte, las dann
+    # "27 Kapitel" und hatte sechs in der Hand. Eine Zahl, die etwas anderes
+    # zaehlt als das erzeugte Dokument, ist eine Falschauskunft; gezaehlt wird
+    # jetzt, was WIRKLICH in der Datei steht.
+    gewaehlt = [s for s in register.sichten
+                if not nur or s.sicht in set(nur)]
+    popups = sum(len(s.kontext) for s in gewaehlt)
+    if not nur:
+        popups = len(register.kontext_schluessel())      # samt Shell-Texten
     print("Geschrieben: %s (%d Kapitel, %d Popup-Texte)"
-          % (ziel, len(register.ids()), len(register.kontext_schluessel())))
+          % (ziel, len(gewaehlt), popups))
     return 0
 
 

@@ -534,7 +534,10 @@
         if (!doc) { return null; }
 
         mainEl.textContent = '';
-        mainEl.appendChild(_el(doc, 'h2', 'aiw-pagehead', 'QS & Metriken'));
+        // Build 602 (Baustelle H / H11): literale Hilfe-Marken.
+        var qsKopf = _el(doc, 'h2', 'aiw-pagehead', 'QS & Metriken');
+        qsKopf.setAttribute('data-hilfe-id', 'qs.titel');
+        mainEl.appendChild(qsKopf);
 
         if (data && data.error) {
             mainEl.appendChild(_el(doc, 'p', 'aiw-pagesub',
@@ -546,13 +549,17 @@
         }
 
         // (1) DIE ZWECKBINDUNG DER QS — ganz oben.
-        mainEl.appendChild(_el(doc, 'div',
+        var qsZweck = _el(doc, 'div',
             'aiw-qs-zweck ' + (zweckOk(data) ? 'is-ok' : 'is-fehlt'),
-            zweckText(data, 'QS-Stichprobe')));
+            zweckText(data, 'QS-Stichprobe'));
+        qsZweck.setAttribute('data-hilfe-id', 'qs.zweckbindung');
+        mainEl.appendChild(qsZweck);
 
         // (2) Der Vorschlagscharakter der Ziehung.
-        mainEl.appendChild(_el(doc, 'div', 'aiw-qs-vorschlag',
-            vorschlagText(data)));
+        var qsVorschlag = _el(doc, 'div', 'aiw-qs-vorschlag',
+            vorschlagText(data));
+        qsVorschlag.setAttribute('data-hilfe-id', 'qs.vorschlag');
+        mainEl.appendChild(qsVorschlag);
 
         // (3) Ein fehlgeschlagener Schreibversuch steht OBEN und bleibt
         //     stehen, bis der naechste Versuch laeuft. Ein 403 aus der

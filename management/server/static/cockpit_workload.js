@@ -294,10 +294,13 @@
         var h = document.createElement('h2');
         h.className = 'aiw-pagehead';
         h.textContent = 'Lastverteilung';
+        // Build 602 (Baustelle H / H11): literale Hilfe-Marken.
+        h.setAttribute('data-hilfe-id', 'workload.titel');
         mainEl.appendChild(h);
 
         var sub = document.createElement('p');
         sub.className = 'aiw-pagesub';
+        sub.setAttribute('data-hilfe-id', 'workload.kennzeile');
         sub.textContent = scopeText(scope) + ' (' + loads.length + ' Zeilen)';
         mainEl.appendChild(sub);
 

@@ -205,12 +205,18 @@ const REGISTER = [
     name: "support (meine)", zeilenklick: true, datei: "cockpit_support.js",
     global: "AIWCockpitSupport", render: "renderSupport",
     sicht: "support_mine", zeilen: 2, index: 0,
+    // Build 602: die Ueberschrift der Sicht traegt die literale Hilfe-Marke
+    // 'support.titel' — sie gehoert zur SICHT, nicht zu einem der drei
+    // Abschnitte. Sie hier zu nennen ist keine Aufweichung der Pruefung: der
+    // Praefix bleibt ausdruecklich, nur eben ein anderer als der der Tabelle.
+    weiterePraefixe: ["support"],
     daten: () => _supportDaten(),
   },
   {
     name: "support (an meinen Faellen)", zeilenklick: true, datei: "cockpit_support.js",
     global: "AIWCockpitSupport", render: "renderSupport",
     sicht: "support_oncase", zeilen: 1, index: 1,
+    weiterePraefixe: ["support"],
     daten: () => _supportDaten(),
   },
   {
@@ -341,6 +347,9 @@ const REGISTER = [
     name: "stats (Ermittler)", datei: "cockpit_stats.js",
     global: "AIWCockpitStats", render: "renderStats",
     sicht: "stats_assign", zeilen: 3,
+    // Build 602: 'stats.titel' und 'stats.kennzeile' gehoeren zur Sicht, die
+    // Tabelle des Reiters 'Ermittler' fuehrt weiterhin 'stats_assign'.
+    weiterePraefixe: ["stats"],
     daten: () => ({
       scope: "alle", generated_at: 1000,
       totals: { cases: 4, assigned: 3, unassigned: 1, events: 12 },

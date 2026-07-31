@@ -74,6 +74,18 @@ SPALTEN_QUELLEN = {
     "approval": ("cockpit_approval.js", "approval"),
     # Build 599 (H10)
     "results": ("cockpit_results.js", "results"),
+    # Build 602 (H11). Zwei Besonderheiten, beide belegt am Bestand:
+    #  - 'stats' fuehrt ihre Tabelle unter der Kennung 'stats_assign'
+    #    (cockpit_stats.js, tabelleAufbauen({sicht: 'stats_assign'})).
+    #  - 'support' fuehrt DREI Tabellen mit DREI Kennungen (cockpit_support.js,
+    #    Build 550). Dieselben sieben Spalten tragen dort drei verschiedene
+    #    Praefixe; jeder braucht seinen Text, sonst bleibt eine der drei
+    #    Tabellen stumm. Deshalb darf der zweite Wert ab hier auch ein Tupel
+    #    von Praefixen sein - eine Sicht mit mehreren Tabellen ist kein
+    #    Sonderfall, sondern kam bisher nur noch nicht vor.
+    "stats": ("cockpit_stats.js", "stats_assign"),
+    "support": ("cockpit_support.js",
+                ("support_mine", "support_oncase", "support_weitere")),
 }
 
 #: Feldnamen aus den literalen columnDefs-Eintraegen.
@@ -241,15 +253,23 @@ def test_sp07_jede_spalte_hat_einen_text(register):
     """
     bekannt = set(register.kontext_schluessel())
     fehlend = []
-    for sicht_id, (datei, praefix) in sorted(SPALTEN_QUELLEN.items()):
+    for sicht_id, (datei, praefixe) in sorted(SPALTEN_QUELLEN.items()):
+        # Ein einzelner Praefix wird wie ein Tupel mit einem Element behandelt;
+        # so bleibt der haeufige Fall kurz geschrieben, ohne dass der Test zwei
+        # Wege kennt.
+        if isinstance(praefixe, str):
+            praefixe = (praefixe,)
         pfad = os.path.join(STATIC, datei)
         with open(pfad, encoding="utf-8") as fh:
             inhalt = fh.read()
         felder = sorted(set(_FELD.findall(inhalt)))
         assert felder, "%s: keine Spaltenfelder gefunden" % datei
-        for feld in felder:
-            schluessel = "%s.spalte.%s" % (praefix, feld.lstrip("_").lower())
-            if schluessel not in bekannt:
-                fehlend.append("%s (%s, Feld %s)" % (schluessel, sicht_id, feld))
+        for praefix in praefixe:
+            for feld in felder:
+                schluessel = "%s.spalte.%s" % (praefix,
+                                               feld.lstrip("_").lower())
+                if schluessel not in bekannt:
+                    fehlend.append("%s (%s, Feld %s)"
+                                   % (schluessel, sicht_id, feld))
     assert not fehlend, (
         "Spalten ohne Kontexttext:\n  " + "\n  ".join(fehlend))

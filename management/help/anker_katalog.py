@@ -61,6 +61,18 @@ ANKER_PRAEFIXE: Dict[str, str] = {
     "policy_assign": "policy",
     # Sicht 'stats' fuehrt eine Zuweisungstabelle mit eigenem Praefix.
     "stats_assign": "stats",
+    # Sicht 'support' fuehrt DREI Tabellen (Build 550): "Meine Sitzungen",
+    # "An meinen Faellen", "Weitere Sitzungen". Jede hat eine eigene Kennung,
+    # weil die Kennung zugleich der Schluessel der Zustandssicherung ist -
+    # teilten sich die drei eine, ueberschriebe die zuletzt gezeichnete
+    # Sortierung und Filter der beiden anderen. Alle drei zeigen auf dasselbe
+    # Kapitel. (Nachgetragen Build 602 beim Verfassen der Kapitel; die
+    # Kennungen werden in cockpit_support.js nicht als 'sicht: ...' gesetzt,
+    # sondern als Feld einer Abschnittsliste - SP04 konnte sie deshalb nicht
+    # von selbst finden.)
+    "support_mine": "support",
+    "support_oncase": "support",
+    "support_weitere": "support",
 
     # --- namensgleich (Praefix = Sicht-ID) --------------------------------
     "approval": "approval",

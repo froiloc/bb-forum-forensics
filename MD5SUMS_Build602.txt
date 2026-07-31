@@ -1,0 +1,14 @@
+d328a7c7f44d1eca346d822e5d8e99d3  build.json
+ed65a215970c74bee83532a45e0440f9  management/help/anker_katalog.py
+5698b7f5436f90f8d39062502d534b6b  management/help/inhalt/__init__.py
+b08976835c894d2d2d64244c7214940a  management/help/inhalt/kennzahlen.py
+ac40293aeddbd5e8ffd5dd2eb40ef147  management/server/static/cockpit_capacity.js
+d7c4188854804a73873eda64ff1d22d2  management/server/static/cockpit_planung.js
+1f4abe616e0740c09edc16ed018e7a9d  management/server/static/cockpit_qs.js
+423852c7adedb3310e4c59a6bb48aac1  management/server/static/cockpit_stats.js
+a9f6bd3e779619fd3bd08f465adfbf38  management/server/static/cockpit_support.js
+95e2fbd3cd6c5bbb7463b8f6d595a299  management/server/static/cockpit_workload.js
+a6a23120c59af89b5f92fc2c8ee01332  tests/hilfe_fehlliste_stand.json
+a4a71a1cfd3d6d2b4a3a7c8c0a629ce4  tests/test_help_schluessel_paritaet.py
+8c128384bee3a0e935c47443576c5175  tests/unit/test_cockpit_tabellen_ux.test.js
+da6c2b12e0b3b36840aac55ca4d625f5  tools/hilfe_lektorat.py

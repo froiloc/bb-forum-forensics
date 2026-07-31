@@ -229,12 +229,15 @@
         var h = document.createElement('h2');
         h.className = 'aiw-pagehead';
         h.textContent = 'Prognose & Gantt';
+        // Build 602 (Baustelle H / H11): literale Hilfe-Marken.
+        h.setAttribute('data-hilfe-id', 'planung.titel');
         mainEl.appendChild(h);
 
         var sub = document.createElement('p');
         sub.className = 'aiw-pagesub';
         var rate = (forecast.observed_rate_per_day !== undefined)
             ? forecast.observed_rate_per_day : 0;
+        sub.setAttribute('data-hilfe-id', 'planung.kennzeile');
         sub.textContent = 'Backlog: ' + (forecast.backlog || 0)
             + ' offene Faelle · beobachtete Rate: ' + rate + ' Faelle/Tag'
             + (forecast.data_sufficient ? '' : ' · keine belastbare Prognose');
