@@ -493,8 +493,8 @@ ESCALATION = Sichthilfe(
                 "Fall per Klick unauffällig machen, ohne dass sich an ihm "
                 "etwas ändert.",
                 "Die Sicht filtert und sortiert NICHTS um. Die Reihenfolge "
-                "kommt aus dem Backend; eine zweite Sortierung hier wäre eine "
-                "zweite Wahrheitsquelle.",
+                "ist fix; eine Sortierung hier wäre eine "
+                "Verzerrung der Wahrheit.",
                 "Drei Zustände sind unterscheidbar: Fehler („derzeit nicht "
                 "verfügbar“), echter Leerbefund („keine Eskalation — bewertet "
                 "wurden N Fälle“) und Befund. Eine leere Liste im Fehlerfall "
