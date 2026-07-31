@@ -2490,6 +2490,44 @@
           "comment": "Importiert aus eintraege_claude_Prepper_Build127.json"
         }
       ]
+    },
+    {
+      "id": "60fe72fb-b0bb-4c29-9a80-3ac1996bba78",
+      "type": "improvement",
+      "title": "Änderung des Rechts dashboard.view",
+      "affected_version": "0.8.596",
+      "reporter": "Alex",
+      "reported_at": "2026-07-31T10:24:46.568560+00:00",
+      "prerequisites": "Es gibt das bestehende Recht dashboard.view. Das Dashboard wurde geändert. Es besteht nun nicht mehr nur aus der Fallübersicht, sondern aus einem Kachelsystem.",
+      "description": "Mit der Änderung des Dashboards auf das Kachelsystem ergibt es keinen Sinn mehr dieses Recht and die Fallübersicht zu koppeln.\r\nDas Recht dashboard.view sollte daher auf die Anzeige des Kachel-Dashboards beschränkt werden. Und für die Sicht \"Fallübersicht\" sollte ein Recht caseoverview.view eingeführt werden. Dieses Recht sollte für die Kachel \"Fall-Übersicht (Ampel)\" und die Sicht \"Fallübersicht\" gelten.",
+      "expected_behavior": "Das Recht dashboard.view gilt nur noch für das Kachel-Dashboard.\r\nDas neue Recht caseoverview.view gilt für die Fallübersicht und die einzelne Kachel",
+      "actual_behavior": "",
+      "status": "open",
+      "priority": "high",
+      "severity": "major",
+      "assigned_to": "Claude",
+      "related_to": [],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14",
+        "database": "coordinator.db"
+      },
+      "tags": [
+        "Dashboard",
+        "Rechte"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-07-31T10:24:46.568588+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Issue erstellt"
+        }
+      ]
     }
   ]
 }
