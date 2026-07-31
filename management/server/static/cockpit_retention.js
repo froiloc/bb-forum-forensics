@@ -165,8 +165,11 @@
         if (!doc) { return null; }
 
         mainEl.textContent = '';
-        mainEl.appendChild(_el(doc, 'h2', 'aiw-pagehead',
-            'Aufbewahrungsfristen'));
+        // Build 605 (Baustelle H / H14): literale Hilfe-Marken an der
+        // Aufrufstelle.
+        var kopf = _el(doc, 'h2', 'aiw-pagehead', 'Aufbewahrungsfristen');
+        kopf.setAttribute('data-hilfe-id', 'retention.titel');
+        mainEl.appendChild(kopf);
 
         // FEHLER: ausdruecklich als solcher — NICHT als leere Liste.
         if (data && data.error) {
@@ -179,11 +182,15 @@
         }
 
         // DER LOESCHVORBEHALT — ganz oben, in eigener Auszeichnung.
-        mainEl.appendChild(_el(doc, 'div',
+        var vorbehalt = _el(doc, 'div',
             'aiw-rt-vorbehalt ' + (vorbehaltOk(data) ? 'is-ok' : 'is-fehlt'),
-            vorbehaltText(data)));
+            vorbehaltText(data));
+        vorbehalt.setAttribute('data-hilfe-id', 'retention.vorbehalt');
+        mainEl.appendChild(vorbehalt);
 
-        mainEl.appendChild(_el(doc, 'p', 'aiw-pagesub', countsText(data)));
+        var kennzeile = _el(doc, 'p', 'aiw-pagesub', countsText(data));
+        kennzeile.setAttribute('data-hilfe-id', 'retention.kennzeile');
+        mainEl.appendChild(kennzeile);
 
         var liste = candidates(data);
         if (!liste.length) {
@@ -233,7 +240,9 @@
 
         // Die angewandte Frist steht IMMER da — auch beim Leerbefund, denn
         // ohne Massstab sagt auch ein Leerbefund nichts aus.
-        mainEl.appendChild(_el(doc, 'div', 'aiw-rt-foot', fristText(data)));
+        var fuss = _el(doc, 'div', 'aiw-rt-foot', fristText(data));
+        fuss.setAttribute('data-hilfe-id', 'retention.frist');
+        mainEl.appendChild(fuss);
 
         log('gerendert:', liste.length, 'Kandidaten');
         return {

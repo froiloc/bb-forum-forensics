@@ -3,10 +3,12 @@
 # IT-Forensisches Ermittlungswerkzeug - Baustelle H: Hilfesysteme (H13)
 # =============================================================================
 # Zweck:
-#   Die Hilfetexte der Nav-Gruppe "Administration". H13 (Build 604) verfasst
-#   die ersten drei Kapitel: policy, integrity, audit. Die uebrigen Sichten
-#   der Gruppe (handover, retention, promotion, releases) folgen in H14 und
-#   kommen in DIESE Datei - eine Gruppe, eine Datei.
+#   Die Hilfetexte der Nav-Gruppe "Administration" - VOLLSTAENDIG seit Build
+#   605: policy, integrity, audit (H13) sowie handover, retention, promotion,
+#   releases (H14). Eine Gruppe, eine Datei.
+#
+#   MIT DIESER DATEI IST DIE FEHLLISTE LEER: alle 43 Sichten haben ein
+#   Kapitel.
 #
 #   DAS DURCHGEHENDE THEMA DIESER DREI: das Protokollbuch. Die
 #   Integritaetssicht sagt, ob es lueckenlos ist; der Explorer laesst es
@@ -30,7 +32,7 @@
 #
 # REGEL H-0: kein Falldatum, keine echte Kennung.
 #
-# Version: v0.8.604 - Build: 604 - 2026-07-31
+# Version: v0.8.605 - Build: 605 - 2026-07-31
 # =============================================================================
 
 from __future__ import annotations
@@ -40,6 +42,9 @@ from typing import Tuple
 from management.help.modell import Abschnitt, Kontexthilfe, Sichthilfe
 
 _STAND = 604
+
+#: H14 (Build 605): die vier nachgetragenen Kapitel dieser Gruppe.
+_STAND_H14 = 605
 
 
 # =============================================================================
@@ -495,7 +500,594 @@ AUDIT = Sichthilfe(
 )
 
 
-#: Der Teilbestand dieser Nav-Gruppe. H13 (Build 604) verfasst die ersten
-#: drei Kapitel; handover, retention, promotion und releases folgen in H14
-#: und kommen in diese Datei.
-ADMINISTRATION: Tuple[Sichthilfe, ...] = (POLICY, INTEGRITY, AUDIT)
+
+# =============================================================================
+# 4) handover - "Uebergabe-Protokoll"
+# =============================================================================
+
+HANDOVER = Sichthilfe(
+    sicht="handover",
+    titel="Übergabe-Protokoll",
+    recht_klartext=(
+        "Recht: handover.view. Die Sicht ist rein lesend; sie übergibt keinen "
+        "Fall und ändert keine Zuständigkeit."
+    ),
+    stand=_STAND_H14,
+    abschnitte=(
+        Abschnitt(
+            "zweck", "Zweck und Motivation",
+            (
+                "Das Protokoll beantwortet: Wer hat wann welchen Fall an wen "
+                "übergeben — und wer hat es veranlasst?",
+                "Es wird bei jedem Aufruf NEU aus dem Protokollbuch "
+                "zusammengesetzt. Es gibt kein zweites Verzeichnis, das von "
+                "der Fallakte abweichen könnte, und nichts an dieser Liste "
+                "lässt sich nachträglich zurechtrücken.",
+                "Jede Zeile trägt ihre Belegnummer. Das macht sie prüfbar: "
+                "mit dieser Nummer lässt sich der Vorgang im Protokollbuch "
+                "aufschlagen.",
+            ),
+        ),
+        Abschnitt(
+            "rechte", "Rechtelage",
+            (
+                "handover.view. Das Protokoll umfasst alle Fälle; es ist "
+                "nicht auf die eigene Zuständigkeit eingeschränkt.",
+            ),
+        ),
+        Abschnitt(
+            "aufbau", "Aufbau der Sicht",
+            (
+                "Überschrift, darunter eine Zeile, die den gezeigten "
+                "Ausschnitt benennt und die beiden Zahlen nennt. Dann die "
+                "Einschränkung auf eine Fallnummer und die Liste.",
+                "Die Liste hat sieben Spalten: Beleg, Zeitpunkt, Fall, Art, "
+                "von, an und „veranlasst von“. Die JÜNGSTE Übergabe steht "
+                "oben.",
+                "Es gibt drei Arten: Erstzuweisung, Übergabe und Rückgabe in "
+                "den Rückstau. Unter der Liste steht, woher die Angaben "
+                "stammen.",
+            ),
+        ),
+        Abschnitt(
+            "ablaeufe", "Arbeitsabläufe",
+            (),
+            liste=(
+                "Einen Fall verfolgen: die Fallnummer eintragen und "
+                "„Einschränken“. Sie sehen dann seine ganze Kette.",
+                "Zur Gesamtsicht zurück: „Alle Fälle“.",
+                "Eine Angabe belegen: die Belegnummer der Zeile im "
+                "Protokollbuch aufschlagen.",
+                "„Wer hat das entschieden?“ — die letzte Spalte lesen. Sie "
+                "nennt oft eine dritte Person: die Leitung, die die Übergabe "
+                "veranlasst hat.",
+            ),
+        ),
+        Abschnitt(
+            "grenzen", "Grenzen und Zusicherungen",
+            (
+                "EINE LEERE SPALTE „VON“ IST KEINE LÜCKE. Bei einer "
+                "Erstzuweisung gab es keinen Vorgänger; dort steht „(aus dem "
+                "Rückstau)“. Ebenso bei einer Rückgabe: dort gibt es keinen "
+                "Empfänger.",
+                "EIN EINGESCHRÄNKTES PROTOKOLL IST EIN AUSSCHNITT. Die Zeile "
+                "über der Liste sagt das, und die beiden Zahlen beziehen sich "
+                "dann ausdrücklich nur auf diesen Ausschnitt — sonst sähe ein "
+                "Ausschnitt wie ein vollständiges Protokoll mit wenigen "
+                "Einträgen aus.",
+                "„KEINE ÜBERGABE ZU DIESEM FALL“ HEISST NICHT, DASS ES DEN "
+                "FALL NICHT GIBT. Es heißt: zu ihm ist kein Zuweisungsbeleg "
+                "eingetragen.",
+                "Lässt sich das Protokoll nicht abrufen, sagt die Sicht das "
+                "ausdrücklich. Das ist KEIN Leerbefund — es ist dann "
+                "unbekannt, ob Übergaben stattgefunden haben.",
+                "Die Reihenfolge wird nicht verändert. Sie ist die des "
+                "Protokollbuchs, und eine zweite Sortierung wäre eine zweite "
+                "Auskunft über dieselbe Sache.",
+            ),
+        ),
+        Abschnitt(
+            "verweise", "Querverweise",
+            (),
+            liste=(
+                "Zuweisung — wo Zuständigkeiten geändert werden.",
+                "Protokollbuch — der Beleg zu jeder Zeile.",
+                "Onboarding / Offboarding — warum eine Übergabe nötig wurde.",
+            ),
+        ),
+    ),
+    kontext=(
+        Kontexthilfe(
+            "handover.titel", "Übergabe-Protokoll",
+            "Wer hat wann welchen Fall an wen übergeben. Aus dem "
+            "Protokollbuch zusammengesetzt und deshalb nicht nachträglich "
+            "veränderbar.",
+            verweis="handover#zweck"),
+        Kontexthilfe(
+            "handover.kennzeile", "Ausschnitt und Zahlen",
+            "Nennt, ob Sie alle Fälle oder nur einen sehen — und wie viele "
+            "Übergaben in wie vielen Fällen im GEZEIGTEN AUSSCHNITT liegen.",
+            verweis="handover#grenzen"),
+        Kontexthilfe(
+            "handover.bedienung.fallnummer", "Fallnummer",
+            "Schränkt das Protokoll auf einen einzelnen Fall ein. Der "
+            "Ausschnitt wird nie stillschweigend gewechselt.",
+            verweis="handover#ablaeufe"),
+        Kontexthilfe(
+            "handover.bedienung.einschraenken", "Einschränken",
+            "Wendet die eingetragene Fallnummer an."),
+        Kontexthilfe(
+            "handover.bedienung.alle", "Alle Fälle",
+            "Hebt die Einschränkung auf und zeigt wieder das ganze "
+            "Protokoll."),
+        Kontexthilfe(
+            "handover.herkunft", "Herkunft der Angaben",
+            "Erklärt, warum dieses Protokoll nicht manipulierbar ist: es wird "
+            "bei jedem Aufruf neu aus dem Protokollbuch zusammengesetzt.",
+            verweis="handover#zweck"),
+    ),
+)
+
+
+# =============================================================================
+# 5) retention - "Aufbewahrungsfristen"
+# =============================================================================
+
+RETENTION = Sichthilfe(
+    sicht="retention",
+    titel="Aufbewahrungsfristen",
+    recht_klartext=(
+        "Recht: retention.view. Die Sicht ist rein lesend — und zwar "
+        "notwendigerweise: sie hat keinen Weg, etwas zu löschen."
+    ),
+    stand=_STAND_H14,
+    abschnitte=(
+        Abschnitt(
+            "zweck", "Zweck und Motivation",
+            (
+                "DIESE SICHT IST EIN PRÜFVORSCHLAG. Sie zeigt, welche "
+                "abgeschlossenen Fälle die Aufbewahrungsfrist überschritten "
+                "haben. SIE LÖSCHT NICHTS UND KANN NICHTS LÖSCHEN: dafür gibt "
+                "es im Werkzeug keinen Weg.",
+                "Das Löschen von Beweismitteln ist eine Entscheidung "
+                "außerhalb dieses Werkzeugs. Diese Liste ist eine Vorlage für "
+                "diese Entscheidung — kein Arbeitsauftrag.",
+                "Der Vorbehalt steht deshalb ganz oben in der Sicht und nicht "
+                "als Fußnote. Fehlt er einmal, MELDET die Sicht das "
+                "ausdrücklich: eine unbelegte Beruhigung wäre hier schlimmer "
+                "als gar keine.",
+            ),
+        ),
+        Abschnitt(
+            "rechte", "Rechtelage",
+            (
+                "retention.view. Es gibt kein zugehöriges Änderungsrecht, "
+                "weil es keine Änderung gibt.",
+            ),
+        ),
+        Abschnitt(
+            "aufbau", "Aufbau der Sicht",
+            (
+                "Überschrift, darunter der Löschvorbehalt in eigener "
+                "Auszeichnung, dann die Zahlenzeile und die Liste. Ganz unten "
+                "die angewandte Frist.",
+                "Die Liste hat sechs Spalten: Fall, Status, Bezugsfeld, "
+                "Bezugszeitpunkt, aufbewahrt und „über der Frist“. Die "
+                "stärkste Überschreitung steht oben.",
+            ),
+        ),
+        Abschnitt(
+            "ablaeufe", "Arbeitsabläufe",
+            (),
+            liste=(
+                "Die Liste durchsehen und der Ermittlungsleitung als Vorlage "
+                "geben.",
+                "Vor jeder Bewertung die Zahl der UNGEPRÜFTEN Fälle lesen — "
+                "sie steht in der Zahlenzeile.",
+                "Bei einer Zeile prüfen, ab welchem Zeitpunkt gerechnet "
+                "wurde: das Bezugsfeld steht daneben.",
+                "Die angewandte Frist unten mitlesen. „742 Tage aufbewahrt“ "
+                "ist erst zusammen mit ihr eine Aussage.",
+            ),
+        ),
+        Abschnitt(
+            "grenzen", "Grenzen und Zusicherungen",
+            (
+                "HIER WIRD NICHTS GELÖSCHT UND HIER KANN NICHTS GELÖSCHT "
+                "WERDEN. Es gibt keinen Knopf, keine Auswahl und keinen "
+                "Schreibweg.",
+                "„OHNE ERMITTELBAREN BEZUGSZEITPUNKT“ HEISST UNGEPRÜFT — "
+                "weder Kandidat noch unverdächtig. Diese Zahl ist die "
+                "wichtigste der Sicht: ohne sie sähe eine kurze Liste wie "
+                "eine vollständige Prüfung aus.",
+                "EIN LEERBEFUND IST NICHT „ALLES IN ORDNUNG“. Er heißt: kein "
+                "Fall über der Frist — bei den Fällen, die sich prüfen "
+                "ließen. Die Sicht nennt beim Leerbefund ausdrücklich, wie "
+                "viele sich NICHT prüfen ließen.",
+                "DAS BEZUGSFELD ÄNDERT DAS ERGEBNIS. Ob die Frist ab der "
+                "Freigabe oder ab der letzten Änderung läuft, ist eine "
+                "nachprüfbare Tatsache und keine Nebensache; sie steht "
+                "deshalb in jeder Zeile.",
+                "Lässt sich die Übersicht nicht abrufen, sagt die Sicht das "
+                "ausdrücklich. Es ist dann UNBEKANNT, ob Fristen "
+                "überschritten sind.",
+            ),
+        ),
+        Abschnitt(
+            "verweise", "Querverweise",
+            (),
+            liste=(
+                "Fallübersicht — der Stand der Fälle.",
+                "Fristen (Verjährung) — die andere Frist, die dieses Werkzeug "
+                "kennt; sie hat mit dieser nichts zu tun.",
+                "Protokollbuch — wann ein Fall abgeschlossen wurde.",
+            ),
+        ),
+    ),
+    kontext=(
+        Kontexthilfe(
+            "retention.titel", "Aufbewahrungsfristen",
+            "Zeigt, welche abgeschlossenen Fälle die Aufbewahrungsfrist "
+            "überschritten haben. Ein Prüfvorschlag — kein Arbeitsauftrag.",
+            verweis="retention#zweck"),
+        Kontexthilfe(
+            "retention.vorbehalt", "Löschvorbehalt",
+            "Die Zusicherung, dass diese Sicht nichts löscht und nichts "
+            "löschen kann. Steht dort stattdessen eine Warnung, ist die "
+            "Herkunft der Liste zu klären, BEVOR jemand mit ihr arbeitet.",
+            verweis="retention#grenzen"),
+        Kontexthilfe(
+            "retention.kennzeile", "Die vier Zahlen",
+            "Wie viele Fälle über der Frist liegen, wie viele sich MANGELS "
+            "BEZUGSZEITPUNKT NICHT PRÜFEN LIESSEN, wie viele abgeschlossen "
+            "sind und wie viele es insgesamt gibt.",
+            verweis="retention#grenzen"),
+        Kontexthilfe(
+            "retention.frist", "Angewandte Frist",
+            "Der Maßstab, gegen den gerechnet wurde. Ohne ihn ist keine "
+            "Angabe dieser Sicht einzuordnen — auch ein Leerbefund nicht.",
+            verweis="retention#ablaeufe"),
+    ),
+)
+
+
+# =============================================================================
+# 6) promotion - "Fremdforum-Promotion"
+# =============================================================================
+
+PROMOTION = Sichthilfe(
+    sicht="promotion",
+    titel="Fremdforum-Promotion",
+    recht_klartext=(
+        "Rechte: ops.view zum Lesen, ops.promote zum Entscheiden. Ohne das "
+        "Entscheidungsrecht zeigt die Sicht den Stand, bietet aber keine "
+        "Aktion an."
+    ),
+    stand=_STAND_H14,
+    abschnitte=(
+        Abschnitt(
+            "zweck", "Zweck und Motivation",
+            (
+                "Ein Kandidat ist ein Fall, zu dem die Aufbereitung Material "
+                "geliefert hat, zu dem es aber noch keinen Arbeitsstand gibt. "
+                "Jemand muss entscheiden, ob er in die eigene Ermittlung "
+                "übernommen wird.",
+                "Diese Entscheidung wurde bisher stillschweigend getroffen — "
+                "dadurch, dass jemand anfing zu arbeiten oder eben nicht. "
+                "Hier wird sie sichtbar, begründet und festgehalten.",
+                "ZWEI ZUSTÄNDE SIND ENDGÜLTIG: „in Ermittlung übernommen“ und "
+                "„fremdzuständig“. Aus ihnen führt kein Weg zurück. Ein "
+                "Irrtum wird durch eine NEUE Entscheidung berichtigt, nicht "
+                "durch Zurücknehmen.",
+            ),
+        ),
+        Abschnitt(
+            "rechte", "Rechtelage",
+            (
+                "ops.view zum Lesen. Das Entscheiden braucht ops.promote — es "
+                "ist eine Leitungshandlung. Ohne dieses Recht steht in der "
+                "Aktionsspalte kein Knopf, und die Sicht sagt das ausdrücklich.",
+            ),
+        ),
+        Abschnitt(
+            "aufbau", "Aufbau der Sicht",
+            (
+                "Überschrift, Hinweiszeile, dann fünf Zähler — einer je "
+                "Zustand. Darunter die Zeile für Rückmeldungen, das "
+                "Entscheidungsfeld und die Liste.",
+                "DIE LISTE IST NACH HANDLUNGSBEDARF GEORDNET: offen, "
+                "gesichtet, zurückgestellt, übernommen, fremdzuständig. Das "
+                "ist keine alphabetische Ordnung, und das ist Absicht — "
+                "alphabetisch stünde der Endzustand vor dem Handlungsbedarf.",
+            ),
+        ),
+        Abschnitt(
+            "ablaeufe", "Arbeitsabläufe",
+            (),
+            liste=(
+                "Durchsicht: die offenen Kandidaten von oben abarbeiten.",
+                "Vormerken: „Als gesichtet markieren“ — das hält fest, dass "
+                "jemand hingesehen hat, ohne schon zu entscheiden.",
+                "Übernehmen oder abgeben: „Uebernehmen“ bzw. "
+                "„Fremdzustaendig“. Beides ist ENDGÜLTIG; die Sicht warnt vor "
+                "dem Bestätigen ausdrücklich.",
+                "Vertagen: „Zurueckstellen“, mit Pflichtgrund. Dieser Zustand "
+                "lässt sich später ändern.",
+                "Die Herkunft eintragen, wenn sie bekannt ist — sie sagt "
+                "später, woher das Material stammte.",
+            ),
+        ),
+        Abschnitt(
+            "grenzen", "Grenzen und Zusicherungen",
+            (
+                "ZWEI ZUSTÄNDE SIND ENDGÜLTIG. Was übernommen oder als "
+                "fremdzuständig eingestuft ist, lässt sich nicht "
+                "zurücknehmen. Diese Entscheidung ist vor dem Bestätigen zu "
+                "prüfen, nicht danach.",
+                "DER GRUND IST PFLICHT bei „Zurueckstellen“ und "
+                "„Fremdzustaendig“. Ohne ihn wird nichts geschrieben. Eine "
+                "abgegebene Zuständigkeit ohne Begründung wäre später nicht "
+                "zu verteidigen.",
+                "DIE SICHT ÜBERNIMMT KEINEN FALL. Sie hält die Entscheidung "
+                "fest; die Bearbeitung beginnt danach an anderer Stelle.",
+                "Ein Zustand, den das Werkzeug nicht kennt, verschwindet "
+                "nicht — er wird angezeigt und ans Ende sortiert. Angeboten "
+                "wird dann keine Aktion: lieber gar keine als eine geratene.",
+                "Eine leere Liste heißt, dass es zurzeit keinen Kandidaten "
+                "gibt. Die Sicht sagt auch, was das bedeutet.",
+            ),
+        ),
+        Abschnitt(
+            "verweise", "Querverweise",
+            (),
+            liste=(
+                "Fallübersicht — die Fälle, die bereits in Bearbeitung sind.",
+                "Zuweisung — wer den übernommenen Fall bekommt.",
+                "Protokollbuch — der Beleg zu jeder Entscheidung.",
+            ),
+        ),
+    ),
+    kontext=(
+        Kontexthilfe(
+            "promotion.titel", "Fremdforum-Promotion",
+            "Fälle, zu denen Material vorliegt, aber noch kein Arbeitsstand. "
+            "Hier wird entschieden, ob sie übernommen werden.",
+            verweis="promotion#zweck"),
+        Kontexthilfe(
+            "promotion.kennzeile", "Was ein Kandidat ist",
+            "Erklärt die Lage dieser Fälle und weist darauf hin, dass "
+            "„übernommen“ und „fremdzuständig“ endgültig sind.",
+            verweis="promotion#grenzen"),
+        Kontexthilfe(
+            "promotion.zahlen", "Zähler je Zustand",
+            "Wie viele Kandidaten in welchem Zustand sind — von "
+            "handlungsbedürftig bis abgeschlossen."),
+        Kontexthilfe(
+            "promotion.warnung", "Warnung vor einer endgültigen Entscheidung",
+            "Erscheint, wenn der gewählte Zustand endgültig ist. Es gibt "
+            "danach keinen Weg zurück; ein Irrtum wird durch eine neue "
+            "Entscheidung berichtigt.",
+            verweis="promotion#grenzen"),
+        Kontexthilfe(
+            "promotion.bedienung.entscheiden", "Entscheidung wählen",
+            "Öffnet das Feld für diese Entscheidung. Angeboten wird nur, was "
+            "vom jetzigen Zustand aus zulässig ist.",
+            verweis="promotion#ablaeufe"),
+        Kontexthilfe(
+            "promotion.bedienung.bestaetigen", "Bestätigen",
+            "Schreibt die Entscheidung fest. Fehlt ein pflichtiger Grund, "
+            "wird nichts geschrieben.",
+            verweis="promotion#grenzen"),
+        Kontexthilfe(
+            "promotion.bedienung.abbrechen", "Abbrechen",
+            "Schließt das Feld. Es wird nichts geschrieben."),
+        Kontexthilfe(
+            "promotion.spalte.subject_id", "Spalte „Fall (subject_id)“",
+            "Der Ermittlungsschlüssel des Falls."),
+        Kontexthilfe(
+            "promotion.spalte.zustand", "Spalte „Zustand“",
+            "Der Stand der Entscheidung. Die Spalte sortiert nach "
+            "HANDLUNGSBEDARF und nicht alphabetisch — sonst stünde der "
+            "Endzustand vor dem, was noch zu tun ist.",
+            verweis="promotion#aufbau"),
+        Kontexthilfe(
+            "promotion.spalte.grund", "Spalte „Grund“",
+            "Die Begründung der Entscheidung. Bei „zurückgestellt“ und "
+            "„fremdzuständig“ ist sie Pflicht."),
+        Kontexthilfe(
+            "promotion.spalte.herkunft", "Spalte „Herkunft“",
+            "Woher das Material stammt, soweit hinterlegt. Die Angabe ist "
+            "freiwillig."),
+        Kontexthilfe(
+            "promotion.spalte.aktion", "Aktionsspalte",
+            "Die von hier aus zulässigen Entscheidungen. „endgueltig“ heißt: "
+            "der Fall ist entschieden.",
+            verweis="promotion#grenzen"),
+        Kontexthilfe(
+            "promotion.werkzeug.filter_entfernen", "Filter zurücksetzen",
+            "Entfernt alle Spaltenfilter dieser Sicht auf einmal."),
+        Kontexthilfe(
+            "promotion.werkzeug.trefferzahl", "Trefferanzeige",
+            "Nennt, wie viele Zeilen sichtbar sind; bei gesetztem Filter "
+            "„sichtbar von gesamt“."),
+    ),
+)
+
+
+# =============================================================================
+# 7) releases - "Externe Fallfreigabe"
+# =============================================================================
+
+RELEASES = Sichthilfe(
+    sicht="releases",
+    titel="Externe Fallfreigabe",
+    recht_klartext=(
+        "Rechte: release.view zum Lesen, release.grant zum Freigeben und "
+        "Widerrufen. Ohne das Schreibrecht fehlen das Formular und der "
+        "Widerrufsknopf."
+    ),
+    stand=_STAND_H14,
+    abschnitte=(
+        Abschnitt(
+            "zweck", "Zweck und Motivation",
+            (
+                "Eine Freigabe macht einen Fall einer bestätigten Person "
+                "außerhalb der eigenen Dienststelle zugänglich — belegt, "
+                "geprüft und widerrufbar.",
+                "DREI BEDINGUNGEN MÜSSEN ERFÜLLT SEIN, und keine davon lässt "
+                "sich hier umgehen: die empfangende Person muss in der "
+                "hinterlegten Liste stehen, die Unbedenklichkeit muss "
+                "begründet sein, und der Vorgang wird festgehalten.",
+                "EINE FREIGABE ENDET NICHT VON SELBST. Es gibt keine Frist "
+                "und kein Ablaufdatum — der Zugriff besteht, bis ihn jemand "
+                "widerruft.",
+            ),
+        ),
+        Abschnitt(
+            "rechte", "Rechtelage",
+            (
+                "release.view zum Lesen. Das Erteilen und das Widerrufen "
+                "brauchen release.grant; beides ist eine Leitungshandlung.",
+                "Die empfangende Person muss in der hinterlegten Liste "
+                "stehen. Ist die Liste leer, sagt die Sicht das ausdrücklich "
+                "und bietet gar kein Formular an — im Zweifel wird nicht "
+                "freigegeben.",
+            ),
+        ),
+        Abschnitt(
+            "aufbau", "Aufbau der Sicht",
+            (
+                "Überschrift mit dem Hinweis, welche Gruppe empfangen darf. "
+                "Darunter zwei Zähler: freigegeben und widerrufen.",
+                "Mit Schreibrecht folgt das Formular „Neue Freigabe“ mit vier "
+                "Angaben: Fall, Empfänger, Umfang und die "
+                "Unbedenklichkeits-Grundlage. Dann die Rückmeldezeile und die "
+                "Liste.",
+                "Der Umfang sagt, WAS freigegeben wird — der gesiegelte "
+                "Bericht, die vollständige Akte oder ein geprüfter Auszug. Er "
+                "ist die eigentliche Entscheidung über die Weitergabetiefe.",
+            ),
+        ),
+        Abschnitt(
+            "ablaeufe", "Arbeitsabläufe",
+            (),
+            liste=(
+                "Freigeben: Fall, Empfänger und Umfang wählen, die "
+                "Unbedenklichkeit begründen, „Freigeben“.",
+                "Widerrufen: „Widerrufen“ in der Zeile, Grund eintragen, "
+                "bestätigen.",
+                "Regelmäßig durchsehen: Was hier als freigegeben steht, IST "
+                "freigegeben — auch Monate später. Es läuft nichts von selbst "
+                "aus.",
+            ),
+        ),
+        Abschnitt(
+            "grenzen", "Grenzen und Zusicherungen",
+            (
+                "ES GIBT KEINE BEFRISTUNG. Eine Freigabe bleibt bestehen, bis "
+                "sie widerrufen wird. Wer sie zeitlich begrenzen will, muss "
+                "den Widerruf selbst veranlassen — das Werkzeug erinnert "
+                "nicht daran.",
+                "DIE UNBEDENKLICHKEITS-GRUNDLAGE IST PFLICHT. Ohne sie wird "
+                "nichts freigegeben. Sie ist der Nachweis, dass geprüft wurde "
+                "— nicht eine Formalie.",
+                "EIN WIDERRUF IST ENDGÜLTIG. Er lässt sich nicht "
+                "zurücknehmen; eine erneute Freigabe ist ein NEUER Vorgang "
+                "mit eigener Prüfung und eigenem Beleg. Auch der Widerruf "
+                "braucht einen Grund.",
+                "OHNE BERECHTIGTE EMPFÄNGER GIBT ES KEIN FORMULAR. Das ist "
+                "kein Fehler, sondern der Grundsatz: was nicht ausdrücklich "
+                "erlaubt ist, ist nicht erlaubt.",
+                "Die Liste kann sich ändern, ohne dass Sie etwas tun — auch "
+                "eine andere Person kann freigeben oder widerrufen.",
+            ),
+        ),
+        Abschnitt(
+            "verweise", "Querverweise",
+            (),
+            liste=(
+                "Berichte — was als gesiegelter Bericht freigegeben werden "
+                "kann.",
+                "Chef-Freigabe — die Abnahme VOR der Weitergabe.",
+                "Protokollbuch — der Beleg zu jeder Freigabe und jedem "
+                "Widerruf.",
+            ),
+        ),
+    ),
+    kontext=(
+        Kontexthilfe(
+            "releases.titel", "Externe Fallfreigabe",
+            "Weitergabe eines Falls an eine bestätigte Person außerhalb der "
+            "Dienststelle — geprüft, belegt und widerrufbar.",
+            verweis="releases#zweck"),
+        Kontexthilfe(
+            "releases.kennzeile", "Bedingungen der Weitergabe",
+            "Nennt die Voraussetzungen und die Gruppe, aus der Empfänger "
+            "stammen dürfen.",
+            verweis="releases#rechte"),
+        Kontexthilfe(
+            "releases.zahlen", "Zähler",
+            "Wie viele Freigaben aktiv sind und wie viele widerrufen wurden. "
+            "Aktive Freigaben bestehen, bis jemand sie widerruft.",
+            verweis="releases#grenzen"),
+        Kontexthilfe(
+            "releases.abschnitt.neue_freigabe", "Neue Freigabe",
+            "Das Formular für eine Weitergabe. Alle vier Angaben werden "
+            "festgehalten und sind später nachprüfbar."),
+        Kontexthilfe(
+            "releases.hinweis.keine_empfaenger", "Keine berechtigten Empfänger",
+            "Es ist keine empfangsberechtigte Stelle hinterlegt — deshalb "
+            "gibt es kein Formular. Das ist der Grundsatz und kein Fehler: "
+            "was nicht ausdrücklich erlaubt ist, ist nicht erlaubt.",
+            verweis="releases#grenzen"),
+        Kontexthilfe(
+            "releases.bedienung.fall", "Fall",
+            "Der Ermittlungsschlüssel des freizugebenden Falls."),
+        Kontexthilfe(
+            "releases.bedienung.empfaenger", "Empfänger",
+            "Die empfangende Person. Angeboten wird nur, wer hinterlegt ist.",
+            verweis="releases#rechte"),
+        Kontexthilfe(
+            "releases.bedienung.umfang", "Umfang",
+            "WAS weitergegeben wird: der gesiegelte Bericht, die vollständige "
+            "Akte oder ein geprüfter Auszug. Das ist die Entscheidung über "
+            "die Weitergabetiefe.",
+            verweis="releases#aufbau"),
+        Kontexthilfe(
+            "releases.bedienung.grundlage", "Unbedenklichkeit — Grundlage",
+            "Worauf sich die Unbedenklichkeit stützt. Pflichtangabe: ohne sie "
+            "wird nichts freigegeben.",
+            verweis="releases#grenzen"),
+        Kontexthilfe(
+            "releases.bedienung.freigeben", "Freigeben",
+            "Erteilt die Freigabe. Sie gilt ab sofort und OHNE Frist — bis "
+            "jemand sie widerruft.",
+            verweis="releases#grenzen"),
+        Kontexthilfe(
+            "releases.bedienung.widerrufen", "Widerrufen",
+            "Öffnet den Widerruf dieser Freigabe. Der Knopf erscheint nur an "
+            "aktiven Freigaben."),
+        Kontexthilfe(
+            "releases.warnung", "Warnung vor dem Widerruf",
+            "Ein Widerruf lässt sich nicht zurücknehmen. Eine erneute "
+            "Freigabe ist ein neuer Vorgang mit eigener Prüfung.",
+            verweis="releases#grenzen"),
+        Kontexthilfe(
+            "releases.bedienung.widerrufsgrund", "Grund des Widerrufs",
+            "Pflichtangabe. Ein Widerruf ohne nachvollziehbaren Grund wäre "
+            "später nicht einzuordnen."),
+        Kontexthilfe(
+            "releases.bedienung.widerruf_bestaetigen", "Widerruf bestätigen",
+            "Beendet den externen Zugriff. Endgültig."),
+        Kontexthilfe(
+            "releases.bedienung.abbrechen", "Abbrechen",
+            "Schließt den Widerruf. Es wird nichts geschrieben."),
+    ),
+)
+
+
+#: Der Teilbestand dieser Nav-Gruppe - VOLLSTAENDIG seit Build 605.
+#: Reihenfolge = Katalogreihenfolge des VIEW_CATALOG.
+ADMINISTRATION: Tuple[Sichthilfe, ...] = (
+    POLICY, INTEGRITY, AUDIT, HANDOVER, RETENTION, PROMOTION, RELEASES,
+)

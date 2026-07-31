@@ -173,8 +173,12 @@
         if (!doc) { return null; }
 
         mainEl.textContent = '';
-        mainEl.appendChild(_el(doc, 'h2', 'aiw-pagehead',
-            'Übergabe-Protokoll'));
+        // Build 605 (Baustelle H / H14): literale Hilfe-Marken. Die Kennung
+        // steht an der AUFRUFSTELLE, damit die Paritaetspruefung sie im
+        // Quelltext findet (Konzept §4.2a).
+        var kopf = _el(doc, 'h2', 'aiw-pagehead', 'Übergabe-Protokoll');
+        kopf.setAttribute('data-hilfe-id', 'handover.titel');
+        mainEl.appendChild(kopf);
 
         // FEHLER: ausdruecklich als solcher — NICHT als leeres Protokoll.
         if (data && data.error) {
@@ -186,8 +190,10 @@
             return { state: 'error' };
         }
 
-        mainEl.appendChild(_el(doc, 'p', 'aiw-pagesub',
-            filterText(data) + ' ' + countsText(data)));
+        var kennzeile = _el(doc, 'p', 'aiw-pagesub',
+            filterText(data) + ' ' + countsText(data));
+        kennzeile.setAttribute('data-hilfe-id', 'handover.kennzeile');
+        mainEl.appendChild(kennzeile);
 
         // Filterleiste: EIN Feld fuer die Fallnummer plus ein Knopf zum
         // Aufheben. Der Ausschnitt wird nie stillschweigend gewechselt.
@@ -197,11 +203,13 @@
         feld.className = 'aiw-hv-filter';
         feld.placeholder = 'Fallnummer (subject_id)';
         feld.setAttribute('aria-label', 'Auf eine Fallnummer einschränken');
+        feld.setAttribute('data-hilfe-id', 'handover.bedienung.fallnummer');
         var f = data && data.filter_subject_id;
         feld.value = (f === null || f === undefined) ? '' : String(f);
 
         var go = _el(doc, 'button', 'aiw-hv-btn', 'Einschränken');
         go.type = 'button';
+        go.setAttribute('data-hilfe-id', 'handover.bedienung.einschraenken');
         go.addEventListener('click', function () {
             var v = (feld.value || '').trim();
             if (typeof opts.onFilter !== 'function') { return; }
@@ -209,6 +217,7 @@
         });
         var alle = _el(doc, 'button', 'aiw-hv-btn', 'Alle Fälle');
         alle.type = 'button';
+        alle.setAttribute('data-hilfe-id', 'handover.bedienung.alle');
         alle.addEventListener('click', function () {
             if (typeof opts.onFilter === 'function') { opts.onFilter(null); }
         });
@@ -261,11 +270,13 @@
 
         // Herkunftsvermerk: er gehoert unter jede Fassung dieser Sicht, weil
         // er erklaert, warum sie nicht manipulierbar ist.
-        mainEl.appendChild(_el(doc, 'div', 'aiw-hv-foot',
+        var fuss = _el(doc, 'div', 'aiw-hv-foot',
             'Quelle: die unveränderliche Audit-Kette (Ereignistyp '
             + '„case_assigned“). Dieses Protokoll wird bei jedem Aufruf neu '
             + 'rekonstruiert — es gibt kein zweites Register, das von der '
-            + 'Fallakte abweichen könnte.'));
+            + 'Fallakte abweichen könnte.');
+        fuss.setAttribute('data-hilfe-id', 'handover.herkunft');
+        mainEl.appendChild(fuss);
 
         log('gerendert:', liste.length, 'Eintraege, Filter', f);
         return { state: liste.length ? 'befund' : 'leer', count: liste.length };

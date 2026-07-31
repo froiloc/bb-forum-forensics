@@ -124,6 +124,10 @@ SPALTEN_QUELLEN = {
     # Datei kann das nicht trennen (dieselbe Lage wie bei der
     # Kapazitaetspflege). Sie ist von UX11 gedeckt - dort wird gerendert.
     "crossref": ("cockpit_crossref.js", "crossref"),
+    # Build 605 (H14). 'handover', 'retention' und 'releases' bauen ihre
+    # Tabellen von Hand und haben deshalb gar keine berechneten Spaltenanker -
+    # ihre Marken sind literal und damit von SP01/SP02 gedeckt.
+    "promotion": ("cockpit_promotion.js", "promotion"),
 }
 
 #: Feldnamen aus den literalen columnDefs-Eintraegen.

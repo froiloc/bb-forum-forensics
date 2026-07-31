@@ -119,12 +119,15 @@
 
         // --- Kopf ------------------------------------------------------------
         var h = doc.createElement('h2');
+        // Build 605 (Baustelle H / H14): literale Hilfe-Marken.
         h.className = 'aiw-pagehead';
+        h.setAttribute('data-hilfe-id', 'releases.titel');
         h.textContent = 'Externe Fallfreigabe';
         mainEl.appendChild(h);
 
         var sub = doc.createElement('p');
         sub.className = 'aiw-pagesub';
+        sub.setAttribute('data-hilfe-id', 'releases.kennzeile');
         var grp = data.ad_group ? (' Berechtigte Gruppe: ' + data.ad_group + '.')
             : '';
         sub.textContent = 'Weitergabe eines Falls an einen bestaetigten '
@@ -135,6 +138,7 @@
         // --- Kennzahlen ------------------------------------------------------
         var counts = doc.createElement('div');
         counts.className = 'aiw-rel-counts';
+        counts.setAttribute('data-hilfe-id', 'releases.zahlen');
         countsModel(data).forEach(function (c) {
             var badge = doc.createElement('span');
             badge.className = 'aiw-badge aiw-rel-badge';
@@ -194,6 +198,7 @@
 
             var warn = doc.createElement('div');
             warn.className = 'aiw-rel-warn';
+            warn.setAttribute('data-hilfe-id', 'releases.warnung');
             warn.textContent = 'Endgueltig — ein Widerruf kann nicht '
                 + 'zurueckgenommen werden. Eine erneute Freigabe ist ein neuer '
                 + 'Vorgang.';
@@ -205,6 +210,7 @@
             var inG = doc.createElement('input');
             inG.type = 'text';
             inG.id = 'aiw-rel-revoke-grund';
+            inG.setAttribute('data-hilfe-id', 'releases.bedienung.widerrufsgrund');
             inG.className = 'aiw-rel-input';
             lbl.appendChild(inG);
             panel.appendChild(lbl);
@@ -212,6 +218,7 @@
             var ok = doc.createElement('button');
             ok.type = 'button';
             ok.id = 'aiw-rel-revoke-confirm';
+            ok.setAttribute('data-hilfe-id', 'releases.bedienung.widerruf_bestaetigen');
             ok.className = 'aiw-btn aiw-rel-btn';
             ok.textContent = 'Widerrufen';
             ok.addEventListener('click', function () {
@@ -234,6 +241,7 @@
             var cancel = doc.createElement('button');
             cancel.type = 'button';
             cancel.id = 'aiw-rel-revoke-cancel';
+            cancel.setAttribute('data-hilfe-id', 'releases.bedienung.abbrechen');
             cancel.className = 'aiw-btn aiw-rel-btn';
             cancel.textContent = 'Abbrechen';
             cancel.addEventListener('click', function () {
@@ -286,6 +294,7 @@
 
         var title = doc.createElement('div');
         title.className = 'aiw-rel-grant-title';
+        title.setAttribute('data-hilfe-id', 'releases.abschnitt.neue_freigabe');
         title.textContent = 'Neue Freigabe';
         box.appendChild(title);
 
@@ -293,6 +302,7 @@
         if (!recipients.length) {
             var hint = doc.createElement('div');
             hint.className = 'aiw-rel-warn';
+            hint.setAttribute('data-hilfe-id', 'releases.hinweis.keine_empfaenger');
             hint.textContent = 'Keine berechtigten Empfaenger konfiguriert '
                 + '(ad.release_recipients in config.yaml) — Freigabe nicht '
                 + 'moeglich (Default-Deny).';
@@ -307,6 +317,7 @@
         var inU = doc.createElement('input');
         inU.type = 'text';
         inU.id = 'aiw-rel-grant-user';
+        inU.setAttribute('data-hilfe-id', 'releases.bedienung.fall');
         inU.className = 'aiw-rel-input';
         lblU.appendChild(inU);
         box.appendChild(lblU);
@@ -317,6 +328,7 @@
         lblR.textContent = 'Empfaenger (NRW): ';
         var selR = doc.createElement('select');
         selR.id = 'aiw-rel-grant-recipient';
+        selR.setAttribute('data-hilfe-id', 'releases.bedienung.empfaenger');
         selR.className = 'aiw-rel-input';
         recipients.forEach(function (r) {
             var o = doc.createElement('option');
@@ -333,6 +345,7 @@
         lblM.textContent = 'Umfang: ';
         var selM = doc.createElement('select');
         selM.id = 'aiw-rel-grant-umfang';
+        selM.setAttribute('data-hilfe-id', 'releases.bedienung.umfang');
         selM.className = 'aiw-rel-input';
         umfangOptions(data).forEach(function (u) {
             var o = doc.createElement('option');
@@ -350,6 +363,7 @@
         var inG = doc.createElement('input');
         inG.type = 'text';
         inG.id = 'aiw-rel-grant-grundlage';
+        inG.setAttribute('data-hilfe-id', 'releases.bedienung.grundlage');
         inG.className = 'aiw-rel-input aiw-rel-input-wide';
         lblG.appendChild(inG);
         box.appendChild(lblG);
@@ -357,6 +371,7 @@
         var btn = doc.createElement('button');
         btn.type = 'button';
         btn.id = 'aiw-rel-grant-submit';
+        btn.setAttribute('data-hilfe-id', 'releases.bedienung.freigeben');
         btn.className = 'aiw-btn aiw-rel-btn';
         btn.textContent = 'Freigeben';
         btn.addEventListener('click', function () {
@@ -426,6 +441,7 @@
             b.className = 'aiw-btn aiw-rel-btn';
             b.setAttribute('data-id', String(row.id));
             b.setAttribute('data-act', 'revoke');
+            b.setAttribute('data-hilfe-id', 'releases.bedienung.widerrufen');
             b.textContent = 'Widerrufen';
             b.addEventListener('click', function () { openRevoke(row); });
             tdAct.appendChild(b);

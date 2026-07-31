@@ -300,12 +300,15 @@
 
         // --- Kopf ------------------------------------------------------------
         var h = doc.createElement('h2');
+        // Build 605 (Baustelle H / H14): literale Hilfe-Marken.
         h.className = 'aiw-pagehead';
+        h.setAttribute('data-hilfe-id', 'promotion.titel');
         h.textContent = 'Fremdforum-Promotion';
         mainEl.appendChild(h);
 
         var sub = doc.createElement('p');
         sub.className = 'aiw-pagesub';
+        sub.setAttribute('data-hilfe-id', 'promotion.kennzeile');
         sub.textContent = 'Faelle mit forensic-Datei, aber ohne Arbeitsstand '
             + '(evidence). Jede Entscheidung wird auditiert; '
             + '„uebernommen“ und „fremdzustaendig“ sind '
@@ -315,6 +318,7 @@
         // --- Kennzahlen ------------------------------------------------------
         var counts = doc.createElement('div');
         counts.className = 'aiw-promo-counts';
+        counts.setAttribute('data-hilfe-id', 'promotion.zahlen');
         countsModel(data).forEach(function (c) {
             var badge = doc.createElement('span');
             badge.className = 'aiw-badge aiw-promo-badge';
@@ -371,6 +375,7 @@
             if (isFinal(target)) {
                 var warn = doc.createElement('div');
                 warn.className = 'aiw-promo-warn';
+                warn.setAttribute('data-hilfe-id', 'promotion.warnung');
                 warn.textContent = 'Endgueltig — kein Weg zurueck. '
                     + 'Ein Irrtum wird durch eine neue Entscheidung korrigiert.';
                 panel.appendChild(warn);
@@ -403,6 +408,7 @@
             var ok = doc.createElement('button');
             ok.type = 'button';
             ok.id = 'aiw-promo-confirm';
+            ok.setAttribute('data-hilfe-id', 'promotion.bedienung.bestaetigen');
             ok.className = 'aiw-btn aiw-promo-btn';
             ok.textContent = 'Bestaetigen';
             ok.addEventListener('click', function () {
@@ -430,6 +436,7 @@
             var cancel = doc.createElement('button');
             cancel.type = 'button';
             cancel.id = 'aiw-promo-cancel';
+            cancel.setAttribute('data-hilfe-id', 'promotion.bedienung.abbrechen');
             cancel.className = 'aiw-btn aiw-promo-btn';
             cancel.textContent = 'Abbrechen';
             cancel.addEventListener('click', function () {
