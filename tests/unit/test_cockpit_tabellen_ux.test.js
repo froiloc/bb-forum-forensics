@@ -32,6 +32,8 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "fs";
 import { JSDOM } from "jsdom";
+import { registerSchluessel, verfasstePraefixe }
+  from "./_hilfe_schluessel.js";
 
 const _tkSrc = readFileSync(
   "management/server/static/cockpit_tablekit.js",
@@ -395,6 +397,10 @@ const REGISTER = [
     datei: "cockpit_capacity_pflege.js",
     global: "AIWCockpitCapacityPflege", render: "renderCapacityPflege",
     sicht: "capacity_worktime", zeilen: 2, index: 0,
+    // Build 603: die Ueberschrift und die Umfangszeile der SICHT tragen
+    // die Sicht-Kennung 'capacity_pflege'; die vier Tabellen behalten
+    // ihre eigenen Kennungen.
+    weiterePraefixe: ["capacity_pflege"],
     daten: () => _cappDaten(),
   },
   {
@@ -402,6 +408,7 @@ const REGISTER = [
     datei: "cockpit_capacity_pflege.js",
     global: "AIWCockpitCapacityPflege", render: "renderCapacityPflege",
     sicht: "capacity_availability", zeilen: 1, index: 1,
+    weiterePraefixe: ["capacity_pflege"],
     daten: () => _cappDaten(),
   },
   {
@@ -409,6 +416,7 @@ const REGISTER = [
     datei: "cockpit_capacity_pflege.js",
     global: "AIWCockpitCapacityPflege", render: "renderCapacityPflege",
     sicht: "capacity_holiday", zeilen: 1, index: 2,
+    weiterePraefixe: ["capacity_pflege"],
     daten: () => _cappDaten(),
   },
   {
@@ -416,6 +424,7 @@ const REGISTER = [
     datei: "cockpit_capacity_pflege.js",
     global: "AIWCockpitCapacityPflege", render: "renderCapacityPflege",
     sicht: "capacity_reason", zeilen: 2, index: 3,
+    weiterePraefixe: ["capacity_pflege"],
     daten: () => _cappDaten(),
   },
 ];
@@ -788,6 +797,55 @@ describe("Konformitaet der Listensichten (Build 549)", () => {
             e.name + ": kein rowClick-Handler angehaengt"
           ).toBe("function");
         }
+      });
+
+      // UX11 -----------------------------------------------------------------
+      it("UX11: jeder Anker einer verfassten Sicht hat einen Hilfetext", () => {
+        // BEFUND, DER ZU DIESER PRUEFUNG GEFUEHRT HAT (Build 602): Fuer die
+        // Support-Historie waren Spaltentexte unter dem Praefix 'support'
+        // verfasst worden — die drei Tabellen der Sicht heissen aber
+        // 'support_mine', 'support_oncase' und 'support_weitere'. Die Texte
+        // waeren an KEINER Tabelle je erschienen, und keine Pruefung haette
+        // es gemeldet: die Python-Paritaet nimmt die Bereiche 'spalte' und
+        // 'werkzeug' ausdruecklich aus, weil diese Anker erst beim Rendern
+        // entstehen. Sie entstehen HIER. Also wird hier gemessen.
+        //
+        // GEPRUEFT WIRD NUR, WAS FERTIG IST. Waehrend der Inhaltswellen ist
+        // eine Marke ohne Text richtig — sie zeigt "Hilfe folgt". Erst wenn
+        // das Kapitel einer Sicht verfasst ist, wird eine Luecke zum Fehler.
+        // Welche Sichten verfasst sind, sagt das Register selbst.
+        const verfasst = verfasstePraefixe();
+        const bekannt = registerSchluessel();
+
+        const win = _ctx(e.datei);
+        const TK = win.AIWTableKit;
+        const main = win.document.createElement("div");
+        win.document.body.appendChild(main);
+        const view = _zeichne(e, win, main, true);
+
+        const ids = new Set(TK.hilfeIds(main));
+
+        // Die Anker der SPALTENKOEPFE entstehen im titleFormatter. Die
+        // Tabellen-Attrappe dieser Datei ruft nur die Zell-Formatter — sonst
+        // fehlte hier genau die Haelfte der Anker, und die Pruefung waere ein
+        // halbes Netz, das sich fuer ein ganzes ausgibt.
+        const table = _tabelleVon(e, view, win);
+        (table.options.columns || []).forEach((c) => {
+          if (typeof c.titleFormatter !== "function") { return; }
+          const host = win.document.createElement("div");
+          let knoten = null;
+          try { knoten = c.titleFormatter(); } catch (err) { knoten = null; }
+          if (knoten && knoten.nodeType) { host.appendChild(knoten); }
+          TK.hilfeIds(host).forEach((i) => ids.add(i));
+        });
+
+        const ohneText = [...ids]
+          .filter((i) => verfasst.has(i.split(".")[0]))
+          .filter((i) => !bekannt.has(i));
+        expect(
+          ohneText,
+          e.name + ": Anker ohne Text im Hilferegister: " + ohneText.join(", ")
+        ).toEqual([]);
       });
     });
   });

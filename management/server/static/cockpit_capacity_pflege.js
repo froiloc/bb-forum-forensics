@@ -353,10 +353,17 @@
     // Ueberschrift bekommt einen Hilfe-Anker (Build 548), damit die spaetere
     // Hilfsdokumente-Bibliothek (AP-3H/B540) hier andocken kann, ohne dass
     // jede Sicht noch einmal angefasst werden muss.
-    function _abschnitt(mainEl, sicht, titel, erklaerung, tk) {
+    //
+    // BUILD 603: die Kennung wird VOLLSTAENDIG uebergeben und nicht mehr aus
+    // der Abschnittskennung zusammengesetzt. Der Unterschied ist keine
+    // Kosmetik: eine zusammengesetzte Kennung steht nirgends woertlich im
+    // Quelltext, und die Paritaetspruefung (SP02) kann dann nicht sehen, dass
+    // es zu einem Hilfetext auch eine Marke gibt. Das Konzept (§4.2a)
+    // verlangt literale Marken genau aus diesem Grund.
+    function _abschnitt(mainEl, ankerId, titel, erklaerung, tk) {
         var h = _el('h3', 'aiw-sectionhead', titel);
         if (tk && typeof tk.hilfeAnker === 'function') {
-            tk.hilfeAnker(h, sicht + '.titel');
+            tk.hilfeAnker(h, ankerId);
         }
         mainEl.appendChild(h);
         if (erklaerung) {
@@ -420,8 +427,12 @@
         var wtVorgabe = f.worktime || {};
 
         var h = _el('h2', 'aiw-pagehead', 'Kapazitaetspflege');
+        // Build 603 (Baustelle H / H12): literale Hilfe-Marken.
+        h.setAttribute('data-hilfe-id', 'capacity_pflege.titel');
         mainEl.appendChild(h);
-        mainEl.appendChild(_el('p', 'aiw-pagesub', scopeText(scope)));
+        var umfangEl = _el('p', 'aiw-pagesub', scopeText(scope));
+        umfangEl.setAttribute('data-hilfe-id', 'capacity_pflege.kennzeile');
+        mainEl.appendChild(umfangEl);
 
         // Ergebniszeile: EIN Ort fuer alle Rueckmeldungen, damit eine Meldung
         // nicht im jeweiligen Formular verschwindet, aus dem sie stammt.
@@ -445,6 +456,8 @@
         schalter.type = 'checkbox';
         schalter.id = 'aiw-capp-entfernte';
         schalter.checked = zeigeEntfernte;
+        schalter.setAttribute('data-hilfe-id',
+                              'capacity_pflege.bedienung.entfernte');
         schalter.addEventListener('change', function () {
             if (typeof opts.onEntfernteUmschalten === 'function') {
                 opts.onEntfernteUmschalten(schalter.checked);
@@ -531,7 +544,7 @@
         }
 
         // ------------------------------------------------- 1) Arbeitszeiten
-        var boxWt = _abschnitt(mainEl, 'capacity_worktime',
+        var boxWt = _abschnitt(mainEl, 'capacity_worktime.titel',
             'Regel-Arbeitszeiten',
             'Minuten je Wochentag, gueltig ab einem Stichtag. Eine Korrektur '
             + 'legt eine NEUE Zeile an — die bisherige bleibt stehen, weil sie '
@@ -691,7 +704,7 @@
               'Arbeitszeit-Regeln', [], entferntZahlen.worktimes);
 
         // -------------------------------------------------- 2) Abwesenheiten
-        var boxAv = _abschnitt(mainEl, 'capacity_availability',
+        var boxAv = _abschnitt(mainEl, 'capacity_availability.titel',
             'Abwesenheiten und Garantien',
             'RECHENART und GRUND sind zweierlei. Die Rechenart entscheidet, '
             + 'WIE gerechnet wird (Einschraenkung = Abzug, Garantie = '
@@ -774,7 +787,7 @@
               spaltenAv, 'Abwesenheiten', [], entferntZahlen.availability);
 
         // ------------------------------------------------------ 3) Feiertage
-        var boxHo = _abschnitt(mainEl, 'capacity_holiday', 'Feiertage',
+        var boxHo = _abschnitt(mainEl, 'capacity_holiday.titel', 'Feiertage',
             anlagenweit
                 ? 'Ein Feiertag entfernt den Tag aus der Basis ALLER Personen.'
                 : 'Feiertage wirken auf alle Personen und sind deshalb nur '
@@ -822,7 +835,7 @@
               'Feiertage', [], entferntZahlen.holidays);
 
         // ------------------------------------------------------- 4) Gruende
-        var boxRe = _abschnitt(mainEl, 'capacity_reason',
+        var boxRe = _abschnitt(mainEl, 'capacity_reason.titel',
             'Abwesenheitsgruende',
             anlagenweit
                 ? 'Der Katalog ist frei erweiterbar: welche Abwesenheitsarten '
@@ -908,6 +921,8 @@
                 });
             });
         knopfRechner.classList.add('aiw-btn-klein');
+        knopfRechner.setAttribute('data-hilfe-id',
+                                  'capacity_pflege.bedienung.rechner');
         h.appendChild(knopfRechner);
 
         log('gerendert: scope', scope, '/ Tabellen', tables.length,

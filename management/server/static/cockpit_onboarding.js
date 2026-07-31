@@ -95,12 +95,15 @@
         var h = doc.createElement('h2');
         h.className = 'aiw-pagehead';
         h.textContent = 'Onboarding / Offboarding';
+        // Build 603 (Baustelle H / H12): literale Hilfe-Marken.
+        h.setAttribute('data-hilfe-id', 'onboarding.titel');
         mainEl.appendChild(h);
 
         var sub = doc.createElement('p');
         sub.className = 'aiw-pagesub';
         sub.textContent = 'Belegpflichtige Schritte bei Aufnahme und Ausscheiden '
             + 'einer Mitarbeiter:in. Jede Aenderung wird auditiert.';
+        sub.setAttribute('data-hilfe-id', 'onboarding.kennzeile');
         mainEl.appendChild(sub);
 
         // --- Auswahl (immer) -------------------------------------------------
@@ -168,6 +171,7 @@
                 + data.open_case_load
                 + (data.open_case_load > 0
                     ? ' — vor dem Offboarding umverteilen.' : '.');
+            load.setAttribute('data-hilfe-id', 'onboarding.fallast');
             mainEl.appendChild(load);
         }
 

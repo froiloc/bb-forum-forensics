@@ -225,9 +225,12 @@
 
         // --- Kopfzeile: Titel + Rueckmeldung + Archiv-Umschalter + Neu -------
         var head = el('div', 'aiw-notes-head');
-        head.appendChild(el('h2', 'aiw-notes-title',
+        // Build 603 (Baustelle H / H12): literale Hilfe-Marken.
+        var titelEl = el('h2', 'aiw-notes-title',
             archived ? 'Betreuungs-Notizen — Archiv'
-                     : 'Betreuungs-Notizen'));
+                     : 'Betreuungs-Notizen');
+        titelEl.setAttribute('data-hilfe-id', 'notes.titel');
+        head.appendChild(titelEl);
 
         var msg = el('span', 'aiw-notes-msg');
         if (cb.pendingMsg) {
@@ -310,11 +313,13 @@
         // countLine: zeigt, wie viele Karten der Filter durchlaesst (Grundregel
         // 1: kein stiller Leerzustand — man sieht, dass gefiltert wird).
         var countLine = el('div', 'aiw-notes-count');
+        countLine.setAttribute('data-hilfe-id', 'notes.kennzeile');
         wrap.appendChild(countLine);
 
         // dragHint: erklaert, WARUM das Sortieren gerade (nicht) geht — statt
         // einer stummen, unerklaerten Sperre.
         var dragHint = el('div', 'aiw-notes-draghint');
+        dragHint.setAttribute('data-hilfe-id', 'notes.ordnungshinweis');
         wrap.appendChild(dragHint);
 
         mainEl.appendChild(wrap);

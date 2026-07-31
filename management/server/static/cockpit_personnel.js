@@ -381,6 +381,8 @@
         var h = doc.createElement('h2');
         h.className = 'aiw-pagehead';
         h.textContent = 'Personalverwaltung';
+        // Build 603 (Baustelle H / H12): literale Hilfe-Marken.
+        h.setAttribute('data-hilfe-id', 'personnel.titel');
         mainEl.appendChild(h);
 
         var sub = doc.createElement('p');
@@ -389,6 +391,7 @@
             + 'Rollenzuweisungen. Jede Aenderung wird auditiert; die eigene '
             + 'Person ist hier unantastbar (Lockout-Schutz), die Grants der '
             + 'Rollen-Matrix pflegt weiterhin die CLI (policy_admin).';
+        sub.setAttribute('data-hilfe-id', 'personnel.kennzeile');
         mainEl.appendChild(sub);
 
         // --- Ergebniszeile ---------------------------------------------------
@@ -463,6 +466,7 @@
             var h3 = doc.createElement('h3');
             h3.className = 'aiw-pers-sect';
             h3.textContent = 'AD-Abgleich';
+            h3.setAttribute('data-hilfe-id', 'personnel.abschnitt.adsync');
             mainEl.appendChild(h3);
 
             var hint = doc.createElement('p');
@@ -477,6 +481,8 @@
             loadBtn.type = 'button';
             loadBtn.className = 'aiw-adsync-btn aiw-pers-adsync-load';
             loadBtn.textContent = 'AD-Vorschau laden';
+            loadBtn.setAttribute('data-hilfe-id',
+                                 'personnel.bedienung.adsync_laden');
             loadBtn.addEventListener('click', function () {
                 loadBtn.disabled = true;  // Doppelklick-Schutz
                 if (typeof opts.onAdsyncLoad === 'function') {

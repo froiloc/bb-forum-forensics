@@ -35,6 +35,7 @@
 # =============================================================================
 
 import argparse
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -100,9 +101,18 @@ def run_js_tests() -> bool:
             return False
 
     # vitest ausfuehren.
+    #
+    # AIW_PYTHON (Build 603): die JavaScript-Seite muss fuer die Hilfe-Paritaet
+    # das Hilferegister lesen und ruft dafuer Python auf. Ohne diesen Hinweis
+    # muesste sie 'python3'/'python' raten - und traefe im ungluecklichen Fall
+    # einen anderen Interpreter als die pytest-Seite, also womoeglich einen
+    # anderen Stand des Registers. Hier ist der richtige bekannt.
+    umgebung = dict(os.environ)
+    umgebung["AIW_PYTHON"] = sys.executable
     result = subprocess.run(
         ["npm", "test"],
         cwd=str(PROJECT_ROOT),
+        env=umgebung,
     )
     return result.returncode == 0
 

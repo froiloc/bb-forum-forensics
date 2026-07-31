@@ -34,7 +34,14 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { readFileSync, readdirSync } from "fs";
+import { readFileSync } from "fs";
+// Build 603: die Schluessel kommen aus dem REGISTER SELBST und nicht mehr
+// aus einem regulaeren Ausdruck ueber die Quelltexte. Warum, steht im Kopf
+// von tests/unit/_hilfe_schluessel.js — kurz: berechnete Schluessel (die
+// Support-Historie erzeugt ihre Spaltentexte in einer Schleife) stehen
+// nirgends woertlich da, und ein Ausdruck, der sie nicht findet, meldet
+// Fehlendes, das es gibt.
+import { registerSchluessel } from "./_hilfe_schluessel.js";
 import { JSDOM } from "jsdom";
 
 const TABLEKIT = readFileSync(
@@ -44,29 +51,6 @@ const OVERVIEW = readFileSync(
 const DASHBOARD = readFileSync(
   "management/server/static/cockpit_dashboard.js", "utf-8");
 
-/**
- * Die Kontextschluessel des Registers. Sie stehen als LITERALE Zeichenketten
- * im ersten Argument jedes Kontexthilfe(...)-Aufrufs. Das per Regex zu lesen
- * ist unschoen, aber ehrlich: die Alternative waere ein generiertes
- * Zwischenartefakt — also eine dritte Stelle, an der etwas veralten kann.
- * Der Bauplan verbietet genau solche Zwischenbestaende (Konzept §2.1).
- */
-function registerSchluessel() {
-  const verz = "management/help/inhalt";
-  const raus = new Set();
-  for (const datei of readdirSync(verz)) {
-    if (!datei.endsWith(".py")) { continue; }
-    const text = readFileSync(`${verz}/${datei}`, "utf-8");
-    // Kontexthilfe(  "faelle.titel", ...   /   Kontexthilfe(\n  "%s.spalte.x" % _P
-    const re = /Kontexthilfe\(\s*(?:"([a-z0-9_.]+)"|"(%s[a-z0-9_.]+)"\s*%\s*_P)/g;
-    let m;
-    while ((m = re.exec(text)) !== null) {
-      if (m[1]) { raus.add(m[1]); }
-      if (m[2]) { raus.add(m[2].replace("%s", "overview")); }
-    }
-  }
-  return raus;
-}
 
 /** Tabulator-Attrappe: baut die Spaltenkoepfe ueber titleFormatter selbst. */
 function macheFakeTabulator(win) {

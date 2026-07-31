@@ -58,6 +58,21 @@ STATIC = os.path.join(os.path.dirname(__file__), "..",
 #: Literale Marken: data-hilfe-id="..." bzw. 'data-hilfe-id', '...'
 _LITERAL = re.compile(r"""data-hilfe-id["']?\s*[=,]\s*["']([a-z0-9_.]+)["']""")
 
+#: ZWEITE FORM EINER LITERALEN MARKE (Build 603): die Kapazitaetspflege baut
+#: ihre vier Abschnittsueberschriften mit einem eigenen kleinen Helfer und
+#: uebergibt ihm die Kennung als ZEICHENKETTE - '_abschnitt(mainEl,
+#: 'capacity_worktime.titel', ...)'. Das Attribut selbst setzt danach das
+#: gemeinsame Tabellen-Werkzeug (samt Formpruefung), es steht also nicht
+#: woertlich in der Datei.
+#:
+#: Fuer die Sache ist das genauso literal wie ein geschriebenes Attribut: die
+#: Kennung steht im Quelltext und wandert nicht. Nur dieser Test musste die
+#: Form erst kennen. Sie ist bewusst an den HELFERNAMEN gebunden und nicht
+#: allgemein an "Zeichenkette mit Punkt" - sonst hielte der Test jeden
+#: Dateinamen ('cockpit_stats.js') fuer eine Hilfe-Marke.
+_LITERAL_ABSCHNITT = re.compile(
+    r"""_abschnitt\([^,]+,\s*['"]([a-z0-9_.]+)['"]""")
+
 #: Sichten, deren Spaltenanker das gemeinsame Tabellen-Werkzeug erzeugt und
 #: deren Texte bereits verfasst sind: Sicht-ID -> (Datei, Ankerpraefix).
 #: JE INHALTSWELLE kommt hier ein Eintrag dazu. Steht eine Sicht hier, muss
@@ -86,6 +101,18 @@ SPALTEN_QUELLEN = {
     "stats": ("cockpit_stats.js", "stats_assign"),
     "support": ("cockpit_support.js",
                 ("support_mine", "support_oncase", "support_weitere")),
+    # Build 603 (H12). NUR 'mentoring' kommt hier dazu, und das ist eine
+    # bewusste Auswahl, kein Vergessen:
+    #  - 'personnel' benennt seine Spaltenanker NICHT nach dem Feld
+    #    ('system_username' -> 'personnel.spalte.kennung'). Der Feldname taugt
+    #    dort also nicht als Vorhersage; dieser Test wuerde etwas anderes
+    #    pruefen, als im Browser entsteht.
+    #  - 'capacity_pflege' fuehrt vier Tabellen mit VERSCHIEDENEN Spalten in
+    #    EINER Datei. Eine Feldliste je Datei kann das nicht trennen.
+    # Beide sind stattdessen von UX11 in der Konformitaetssuite gedeckt: dort
+    # wird die Sicht gerendert und im DOM nachgesehen. Das ist die staerkere
+    # Messung - sie trifft die Wahrheit statt sie vorherzusagen.
+    "mentoring": ("cockpit_mentoring.js", "mentoring"),
 }
 
 #: Feldnamen aus den literalen columnDefs-Eintraegen.
@@ -110,7 +137,8 @@ def _literale_marken():
     for pfad in _dateien():
         with open(pfad, encoding="utf-8") as fh:
             inhalt = fh.read()
-        for treffer in _LITERAL.findall(inhalt):
+        gefundene = _LITERAL.findall(inhalt) + _LITERAL_ABSCHNITT.findall(inhalt)
+        for treffer in gefundene:
             # Ein Treffer, der auf einen Punkt endet, ist KEINE Marke,
             # sondern der literale ANFANG einer berechneten Marke
             # ("'dashboard.kachel.' + w.key"). Er gehoert nicht in diese

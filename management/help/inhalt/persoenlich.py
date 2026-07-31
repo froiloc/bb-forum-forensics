@@ -39,7 +39,7 @@ MYCASES = Sichthilfe(
     sicht="mycases",
     titel="Meine Aufträge",
     recht_klartext=(
-        "Recht: mycases.view. Die Sicht zeigt ausschließlich Fälle, die IHNEM "
+        "Recht: mycases.view. Die Sicht zeigt ausschließlich Fälle, die IHREM "
         "Konto zugewiesen sind. Sie ist damit die "
         "einzige Fallliste, deren Umfang nicht von einer Rechteeinstellung "
         "abhängt, sondern von der Zuweisung."

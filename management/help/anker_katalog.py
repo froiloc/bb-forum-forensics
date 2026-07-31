@@ -73,6 +73,17 @@ ANKER_PRAEFIXE: Dict[str, str] = {
     "support_mine": "support",
     "support_oncase": "support",
     "support_weitere": "support",
+    # Sicht 'capacity_pflege' fuehrt VIER Tabellen mit vier Kennungen
+    # (Build 559): Arbeitszeiten, Abwesenheiten, Feiertage, Gruende. Die
+    # Ueberschrift jedes Abschnitts und die Werkzeugleiste jeder Tabelle
+    # tragen diese Kennungen. Nachgetragen Build 603 beim Verfassen der
+    # Kapitel; die Kennungen werden in cockpit_capacity_pflege.js als
+    # ARGUMENT uebergeben (bauen('capacity_worktime', ...)) und nicht als
+    # 'sicht: ...' geschrieben - SP04 konnte sie deshalb nicht finden.
+    "capacity_worktime": "capacity_pflege",
+    "capacity_availability": "capacity_pflege",
+    "capacity_holiday": "capacity_pflege",
+    "capacity_reason": "capacity_pflege",
 
     # --- namensgleich (Praefix = Sicht-ID) --------------------------------
     "approval": "approval",

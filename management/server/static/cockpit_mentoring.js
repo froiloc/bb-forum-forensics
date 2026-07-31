@@ -140,6 +140,8 @@
         var h = doc.createElement('h2');
         h.className = 'aiw-pagehead';
         h.textContent = 'Ermittler-Betreuung';
+        // Build 603 (Baustelle H / H12): literale Hilfe-Marken.
+        h.setAttribute('data-hilfe-id', 'mentoring.titel');
         mainEl.appendChild(h);
 
         var sub = doc.createElement('p');
@@ -147,6 +149,7 @@
         sub.textContent = sessions.length + ' laufende Support-Sitzung(en), '
             + stale + ' betreuungsbeduerftig (stale). '
             + 'Aktualisiert automatisch.';
+        sub.setAttribute('data-hilfe-id', 'mentoring.kennzeile');
         mainEl.appendChild(sub);
 
         log('renderMentoring:', sessions.length, 'laufend,', stale, 'stale');

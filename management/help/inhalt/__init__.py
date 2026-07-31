@@ -34,6 +34,8 @@ from management.help.inhalt.auswertung import AUSWERTUNG
 from management.help.inhalt.kennzahlen import KENNZAHLEN
 from management.help.inhalt.redaktion import REDAKTION
 from management.help.inhalt.persoenlich import PERSOENLICH
+from management.help.inhalt.betreuung import BETREUUNG
+from management.help.inhalt.personal import PERSONAL
 
 # --- Teilbestaende ------------------------------------------------------------
 # Reihenfolge = Kapitelreihenfolge im Handbuch. Sie folgt der Nav-Gruppenfolge
@@ -56,6 +58,9 @@ _TEILBESTAENDE: Tuple[Tuple[str, Tuple[Sichthilfe, ...]], ...] = (
     ("management/help/inhalt/auswertung.py", AUSWERTUNG),
     ("management/help/inhalt/kennzahlen.py", KENNZAHLEN),
     ("management/help/inhalt/persoenlich.py", PERSOENLICH),
+    # H12 (Build 603): die Gruppen "Betreuung" und "Personal".
+    ("management/help/inhalt/betreuung.py", BETREUUNG),
+    ("management/help/inhalt/personal.py", PERSONAL),
 )
 
 #: Der Pfad des Shell-Bestands (kein Kapitel, aber redaktionell zu lesen).
