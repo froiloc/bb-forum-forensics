@@ -1,0 +1,5 @@
+9116795f743131aa7b172ad3e47e6f23  build.json
+3e635a9bc09ba844eed08eddfec0e37d  maintenance/wartungsvorbehalt.py
+d7f5db784c7a37fc12678340dfdfcf7c  tests/test_maintenance_wartungsvorbehalt.py
+f50e27094b230cb228b2f87d8b2dd389  documents/rules-cli.md
+31ea389a1320551d532fe9a411e34d35  issue-tracker/eintraege_claude_Build610.json

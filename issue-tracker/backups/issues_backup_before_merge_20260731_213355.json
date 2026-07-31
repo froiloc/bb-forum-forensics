@@ -2825,55 +2825,6 @@
           "comment": "Importiert aus eintraege_claude_Build610.json"
         }
       ]
-    },
-    {
-      "id": "96f2b18f-a4a1-41af-871c-ae7a10087130",
-      "type": "bug",
-      "title": "exklusiv_pruefen ist auf schreibgeschuetzten Dateien blind",
-      "affected_version": "0.8.610",
-      "reporter": "Claude",
-      "reported_at": "2026-07-31T20:10:00+00:00",
-      "prerequisites": "Eine schreibgeschuetzte (versiegelte) SQLite-Datei, z. B. eine forensic_<uid>.db, und ein Konto ohne Rechte, den Schreibschutz zu uebergehen (also NICHT root)",
-      "description": "GEFUNDEN DURCH mc: Der Regressionslauf zu Build 610 hat den damals neuen Test WV22 rot gemeldet. Der Test pruefte eine Vermutung aus 'Vermerk_Wartungsvorbehalt_Analyse_K1_K8_v1_0.md' Abschnitt 6 - naemlich dass eine versiegelte Datei mit 'attempt to write a readonly database' antwortet und deshalb zu Recht als ruhig gilt. Die Vermutung war falsch. Die Ehre fuer den Fund gebuehrt dem Regressionslauf, nicht mir.\\n\\nDER BEFUND, nachgestellt am 2026-07-31 als Nicht-root-Eigentuemer, Journalmodus 'delete':\\n\\n  schreibbar, ein LESER haelt SHARED    -> (False, 'database is locked')   richtig\\n  versiegelt, ein LESER haelt SHARED    -> (True,  'exklusiv erhalten')    BLIND\\n  versiegelt, ein SCHREIBER haelt EX    -> (True,  'exklusiv erhalten')    BLIND\\n\\nURSACHE: sqlite3.connect() oeffnet eine nicht beschreibbare Datei still nur lesend. Eine nur lesende Verbindung nimmt beim 'BEGIN EXCLUSIVE' ueberhaupt keine Sperre - der Befehl gelingt folgenlos. Der read-only-Zweig von exklusiv_pruefen wird dabei nie erreicht; die Funktion meldet den Erfolgsfall.\\n\\nWARUM DAS SCHWER WIEGT: exklusiv_pruefen ist der BEWEIS DER RUHIGSTELLUNG des gesamten Wartungsmodus - 'Die Bestaetigung allein ist nicht der Nachweis, die Sperre ist es.' Auf versiegelten Dateien ist dieser Beweis kein Beweis, sondern eine Zusage ohne Messung. Betroffen sind genau die forensic_<uid>.db, also genau die Dateien, die 'forensic_index_upgrade --ausfuehren' entsiegelt und beschreibt.\\n\\nBETROFFENE AUFRUFSTELLEN: tools/maintenance.py (cmd_status und der Ruhenachweis beim Setzen eines Fensters) sowie jede kuenftige Verwendung. maintenance/wartungsvorbehalt.py (Build 611) umgeht den Mangel BEI SICH SELBST, indem es schreibgeschuetzte Dateien gar nicht erst probt, sie als 'unpruefbar' fuehrt, benennt und die Wortabfrage erzwingt - die gemeinsame Funktion ist damit NICHT repariert.\\n\\nNICHT GEPRUEFT: das Verhalten unter Windows und im WAL-Journalmodus. Beides ist zu erwarten, aber nicht belegt.",
-      "expected_behavior": "exklusiv_pruefen unterscheidet drei Ergebnisse statt zwei: ruhig, belegt und 'nicht messbar'. Fuer eine Datei, die der ausfuehrende Benutzer nicht beschreiben kann, liefert es 'nicht messbar' mit Begruendung, statt einen Erfolg zu melden, den es nicht gemessen hat. Die Aufrufstellen in tools/maintenance.py stufen 'nicht messbar' sichtbar ein und verbuchen es nicht als Ruhe.",
-      "actual_behavior": "Auf einer schreibgeschuetzten Datei liefert exklusiv_pruefen immer (True, 'exklusiv erhalten') - auch waehrend ein Leser oder ein Schreiber die Datei haelt.",
-      "status": "open",
-      "priority": "high",
-      "severity": "major",
-      "assigned_to": "",
-      "related_to": [
-        "da6c16d0-ef1e-4052-8eb1-526c647de613"
-      ],
-      "resolved_in_version": null,
-      "target_version": null,
-      "environment": {
-        "python_version": "3.14"
-      },
-      "tags": [
-        "maintenance",
-        "cli",
-        "wartungsvorbehalt",
-        "forensic",
-        "produktivbetrieb",
-        "sperre"
-      ],
-      "attachments": [],
-      "updates": [
-        {
-          "timestamp": "2026-07-31T20:10:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "Eintrag erstellt. Befund aus mcs Regressionslauf zu Build 610, nachgestellt und belegt. In Build 611 nur im Wartungsvorbehalt umgangen; die gemeinsame Funktion ist unveraendert, weil eine Aenderung dort das Verhalten von tools/maintenance.py aendert und eine eigene Entscheidung ist."
-        },
-        {
-          "timestamp": "2026-07-31T19:33:55.540488+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eingang_claude_Build611.json"
-        }
-      ]
     }
   ]
 }

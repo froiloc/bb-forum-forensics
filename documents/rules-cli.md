@@ -51,9 +51,9 @@ Der Katalogeintrag nennt sie, damit niemand einen Befund für einen Absturz häl
 
 Grundregel 9 sinngemäß auf die Dokumentation angewandt: **Kein Beispielaufruf kommt in den Katalog, der nicht vorher gegen Wegwerf-Testdaten tatsächlich gelaufen ist.** Ein Beispiel, das nicht funktioniert, ist schlimmer als keines — es kostet die Zeit dessen, der ihm vertraut.
 
-## 7. Wartungsvorbehalt — VORSCHLAG, noch nicht entschieden
+## 7. Wartungsvorbehalt
 
-> Dieser Abschnitt beschreibt einen **Vorschlag**. Er wird verbindlich, wenn Issue `da6c16d0-ef1e-4052-8eb1-526c647de613` entschieden ist. Bis dahin ist er als Vorschlag zu lesen und nicht als geltende Regel.
+> **Stand Build 611.** Die **Stufeneinteilung gilt** — mc hat sie am 2026-07-31 auf Grundlage von `Vermerk_Wartungsvorbehalt_Analyse_K1_K8_v1_0.md` bestätigt. Das **Bauteil** `maintenance/wartungsvorbehalt.py` ist gebaut und getestet. Der **Einbau in die fünf Werkzeuge der Stufe A steht noch aus**; bis dahin ist der Vorbehalt beschrieben, aber nicht durchgesetzt. Issue `da6c16d0-ef1e-4052-8eb1-526c647de613` bleibt so lange offen.
 
 **Der Anlass:** Bei sieben Werkzeugen ließ sich aus dem Bestand nicht beantworten, ob sie neben dem laufenden Betrieb gefahrlos sind. Zwei andere sagen es ausdrücklich — `convert_journal_mode` („braucht exklusiven Zugriff"), `backup_admin` („für den laufenden Betrieb gebaut"). Dazwischen liegt eine Lücke, die geraten werden müsste, wenn man sie nicht klärt.
 
@@ -63,7 +63,52 @@ Grundregel 9 sinngemäß auf die Dokumentation angewandt: **Kein Beispielaufruf 
 - **Stufe B — betriebsverträglich.** Das Werkzeug schreibt, aber so, dass ein laufender Dienst nicht gestört wird (kurze Transaktionen, keine exklusiven Sperren, kein Dateiaustausch).
 - **Stufe C — rein lesend.** Kein Vorbehalt.
 
-**Die Durchsetzung bei Stufe A** (Vorschlag): ein gemeinsames Bauteil prüft vor dem scharfen Lauf, ob ein Wartungsfenster aktiv ist. Ist es aktiv, läuft das Werkzeug. Ist es **nicht** aktiv, bricht es ab — es sei denn, die aufrufende Person tippt ein vollständiges Wort zur Bestätigung. Kein bloßer Tastendruck: ein Tastendruck ist eine Reflexbewegung, ein getipptes Wort ist eine Entscheidung.
+**Die fünf Werkzeuge der Stufe A** (bestätigt 2026-07-31): `management/migrate.py`, `tools/migrate-dbs.py --apply`, `migration_fleet_admin companion --confirm`, `management/consolidate_default_db.py`, `tools/forensic_index_upgrade.py --ausfuehren`. **Stufe B:** `management/search/index_cli.py` — es schreibt ausschließlich in `search_index.db`, die kein anderer Dienst offen hält.
+
+### Die Durchsetzung bei Stufe A
+
+Das gemeinsame Bauteil ist `maintenance/wartungsvorbehalt.py`. Ein Werkzeug ruft es mit den **konkret betroffenen Dateien** auf und wertet drei Felder aus:
+
+```python
+befund = wartungsvorbehalt(data_dir, betroffene, werkzeug="migrate",
+                           was_geschieht="baut Tabellen der coordinator.db um")
+print(befund.text)
+if not befund.erlaubt:
+    return befund.rueckgabewert
+```
+
+Der Ablauf in der Reihenfolge, in der er stattfindet:
+
+Die Sperrprobe kennt **drei** Zustände je Datei, nicht zwei: `ruhig`, `belegt`, `unpruefbar`.
+
+1. **Sperrprobe zuerst, immer.** Jede betroffene Datei wird einzeln probeweise exklusiv gesperrt (`BEGIN EXCLUSIVE` und sofortiges Zurückrollen). Ist auch nur eine **belegt**: **Abbruch unter Nennung der Datei, ohne Rückfrage.** Dass eine Datei belegt ist, ist ein Messwert und keine Ermessensfrage.
+2. **Alle ruhig, keine unprüfbar, und ein Wartungsfenster deckt sie ab:** durchlaufen.
+3. **Sonst:** Sachlage ausgeben, dann das Wort `OHNE WARTUNGSFENSTER` abfragen. Ein Tastendruck ist eine Reflexbewegung, ein getipptes Wort ist eine Entscheidung. **Ein Versuch**, keine Wiederholung — sonst wird aus der Entscheidung ein Geschicklichkeitsspiel.
+4. **Kein Terminal** (Skript, geplante Aufgabe): immer Abbruch.
+
+**Warum die Sperrprobe vor der Fensterfrage steht:** `maintenance.py enter --ziel all` löst `all` nur auf die Datenbanken der **obersten** Ebene auf; die Fall-Datenbanken in `evidence/`, `forensic/` und `assets/` sind nicht dabei (Befund 1 des Vermerks). Ein gesetztes Fenster ist damit kein Nachweis dafür, dass eine `evidence_<uid>.db` ruhig ist. **Das Fenster belegt die Absicht, die Sperre belegt die Ruhe — und nur die Ruhe darf entscheiden.**
+
+### Der dritte Zustand: `unpruefbar` (Build 611)
+
+**Auf einer schreibgeschützten Datei ist die Sperrprobe blind.** Sie meldet dort *immer* „exklusiv erhalten" — auch dann, wenn ein Leser oder sogar ein Schreiber die Datei hält. SQLite stuft eine nicht beschreibbare Datei still auf nur-lesend zurück, und eine nur lesende Verbindung nimmt beim `BEGIN EXCLUSIVE` keine Sperre; der Befehl gelingt folgenlos. Nachgestellt am 2026-07-31 als Nicht-root-Eigentümer, Journalmodus `delete`:
+
+| Datei | Halter | Ergebnis der Probe | |
+|---|---|---|---|
+| schreibbar | Leser (SHARED) | `(False, 'database is locked')` | richtig |
+| versiegelt | Leser (SHARED) | `(True, 'exklusiv erhalten')` | **blind** |
+| versiegelt | Schreiber (EXCLUSIVE) | `(True, 'exklusiv erhalten')` | **blind** |
+
+Betroffen sind genau die versiegelten `forensic_<uid>.db` — also genau die Dateien, die `forensic_index_upgrade --ausfuehren` entsiegelt und beschreibt.
+
+**Folge:** Eine schreibgeschützte Datei wird gar nicht erst geprobt (eine Probe, deren Ergebnis feststeht, ist keine), sondern als `unpruefbar` geführt, unter eigener Überschrift benannt — und sie **erzwingt die Wortabfrage auch bei gesetztem Wartungsfenster**. Über eine Datei, deren Ruhe niemand messen kann, hat auch das Fenster nichts ausgesagt. Die Freigabezeile vermerkt das ausdrücklich, damit im Protokoll erkennbar bleibt, dass dort eine Entscheidung getroffen und kein Messwert abgelesen wurde.
+
+*Durchsetzung:* WV22 hält den Befund selbst als Test fest — er schlägt an, wenn SQLite sich eines Tages anders verhält, und dann darf die Sonderbehandlung wieder verschwinden. WV25–WV29 decken die Folge auf jedem System ab.
+
+**Der Befund betrifft `exklusiv_pruefen` selbst**, also auch `tools/maintenance.py enter/status`. Dort ist er **nicht** behoben: eine Änderung an der gemeinsamen Funktion würde das Verhalten eines produktiven Werkzeugs ändern und ist eine eigene Entscheidung. Vorgang: siehe Issue-Tracker.
+
+**Rückgabewert 3** für alle drei Abbruchgründe, mit derselben Zusicherung: es wurde nichts geschrieben. Getrennte Werte lüden dazu ein, den Fall „nur das Wort fehlte" im Skript automatisch zu wiederholen — genau der Automatismus, den die Wortabfrage verhindern soll. Der Grund steht im Text, nicht im Zahlenwert.
+
+**Was das Bauteil bewusst nicht hat:** keine Option zum Überspringen (`--ja`, `--force`) — eine Option wandert in ein Skript, und dort wäre der Vorbehalt wirkungslos. Keinen Schreibzugriff — es läuft, wenn noch nichts entschieden ist, und importiert nicht einmal `sqlite3` (`tests/test_maintenance_wartungsvorbehalt.py` WV18 prüft das am Quelltext). Und die Bestätigung ist an die **Standardeingabe** gebunden, nicht an die Ausgabe: sonst genügte `echo "OHNE WARTUNGSFENSTER" | python …`.
 
 **Im Zweifel die strengere Stufe.** Eine tägliche Sicherung macht einen Datenverlust nicht harmlos, sie macht ihn nur reparabel — und das kostet Zeit, die im Ermittlungsbetrieb fehlt.
 
