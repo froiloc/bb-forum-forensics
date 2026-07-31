@@ -296,8 +296,7 @@ ASSIGNMENT = Sichthilfe(
     recht_klartext=(
         "Recht: assignment.edit. Dies ist eine SCHREIBSICHT: jede Änderung "
         "geht sofort an den auditierten Schreibpfad und erzeugt einen Beleg "
-        "im Protokollbuch. Ohne dieses Recht erscheint die Sicht in der "
-        "Navigation gar nicht."
+        "im Protokollbuch."
     ),
     stand=596,
     abschnitte=(
@@ -306,14 +305,12 @@ ASSIGNMENT = Sichthilfe(
             (
                 "Hier werden Fälle verteilt: Ermittler zuordnen, Priorität "
                 "setzen, Status ändern. Es ist die Gegenstelle zur "
-                "Fallübersicht — die zeigt den Bestand, diese Sicht verändert "
-                "ihn.",
-                "Der Sammelmodus stammt aus einem belegten Missstand: Eine "
-                "Leitung musste über 80 Fälle einzeln zuweisen, und die Seite "
-                "baute sich nach jeder Änderung neu und anders sortiert auf — "
-                "der nächste Klick traf dann eine andere Zeile als gemeint. "
-                "Das war eine Fehlbedienungsfalle, die die Oberfläche gebaut "
-                "hatte, nicht der Anwender.",
+                "Fallübersicht — jene zeigt den Bestand, hiesige Sicht "
+                "verändert ihn.",
+                "Der Sammelmodus ermögicht es, die Zuweisung von Fällen an "
+                "einen einzelnen Ermittler zu beschleunigen. Mit einer "
+                "komfortablen Mehrfachauswahl können alle gewünschten "
+                "Fälle mit einer Aktion zugewiesen werden.",
             ),
         ),
         Abschnitt(
