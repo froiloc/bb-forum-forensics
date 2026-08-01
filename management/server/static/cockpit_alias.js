@@ -70,7 +70,14 @@
 //   Hinweis, dass ein Leerbefund 'in den abgefragten Quellen nicht
 //   gefunden' heisst und nicht 'gibt es nicht' (Grundregel 1).
 //
-// Version: v0.8.600 · 2026-07-26
+// Build 634 (Vorgang 17200856, Welle B2): HILFE-MARKEN fuer die zehn weitere
+//   Bedienelemente dieser Sicht - damit tragen alle eine. Die Texte
+//   stehen in management/help/inhalt/identitaeten.py. Die Eingabezeilen
+//   stammen aus der Fabrik '_field'; ihre Marken sitzen deshalb an den
+//   ABNAHMESTELLEN und nicht in der Fabrik - eine Fabrik kann nur EINE
+//   Kennung setzen, und die Felder meinen Verschiedenes (Fabrikregel,
+//   tests/_bedienelemente.py, Build 633).
+// Version: v0.8.634 · Build: 634 · 2026-08-01
 //   Build 505: Erstfassung der Sicht (AP-2A, Idee 8)
 // =============================================================================
 
@@ -412,6 +419,9 @@
         btn.id = 'aiw-alias-search-btn';
         btn.className = 'aiw-btn aiw-alias-btn';
         btn.textContent = 'Suchen';
+        // Build 634 (Vorgang 17200856): Hilfe-Marke, LITERAL gesetzt.
+        // Text in management/help/inhalt/identitaeten.py.
+        btn.setAttribute('data-hilfe-id', 'alias.bedienung.suchen');
         btn.addEventListener('click', function () {
             if (typeof opts.onSearch === 'function') {
                 opts.onSearch(inp.value);
@@ -474,6 +484,7 @@
             b.setAttribute('data-subject-id', String(t.subject_id));
             b.textContent = trefferLabel(t);
             b.title = String(t.detail || '');
+            b.setAttribute('data-hilfe-id', 'alias.bedienung.treffer');
             b.addEventListener('click', function () {
                 if (typeof opts.onSubject === 'function') {
                     opts.onSubject(t.subject_id);
@@ -503,6 +514,12 @@
 
         var inSid = _field(doc, box, 'subject_id (Forenkonto): ',
             'aiw-alias-sid', 'text');
+        // Die Marken der Eingabezeilen sitzen an den ABNAHMESTELLEN und nicht
+        // in der Fabrik '_field': dieselbe Fabrik baut fuenf verschiedene
+        // Felder, und die brauchen fuenf verschiedene Texte. Die Erhebung
+        // folgt diesem Weg seit Build 633 (Fabrikregel) - sie verlangt
+        // allerdings, dass JEDE Abnahmestelle markiert ist.
+        inSid.setAttribute('data-hilfe-id', 'alias.bedienung.konto');
 
         // --- Build 600: RUECKWAERTS — Kennung eingetippt, Name darunter --
         // Reine Kontrollanzeige, kein Pflichtfeld. Sie sagt dem Ermittler, ob
@@ -561,6 +578,7 @@
 
         var inSuche = _field(doc, suchBox, 'Konto über den Namen suchen: ',
             'aiw-alias-namesearch', 'text');
+        inSuche.setAttribute('data-hilfe-id', 'alias.bedienung.namenssuche');
 
         var btnSuche = doc.createElement('button');
         btnSuche.type = 'button';
@@ -597,6 +615,8 @@
                 b.setAttribute('data-subject-id', String(t.subject_id));
                 b.textContent = trefferLabel(t);
                 b.title = String(t.detail || '');
+                b.setAttribute('data-hilfe-id',
+                    'alias.bedienung.treffer_uebernehmen');
                 b.addEventListener('click', function () {
                     // Uebernehmen heisst: Kennung setzen UND sofort
                     // rueckwaerts bestaetigen. Der Ermittler sieht damit an
@@ -634,6 +654,7 @@
 
         var inAlias = _field(doc, box, 'Alias/Name: ', 'aiw-alias-name',
             'text');
+        inAlias.setAttribute('data-hilfe-id', 'alias.bedienung.aliastext');
 
         var lblK = doc.createElement('label');
         lblK.className = 'aiw-alias-lbl';
@@ -653,8 +674,10 @@
 
         var inBasis = _field(doc, box, 'Basis (Fundgrundlage): ',
             'aiw-alias-basis', 'text');
+        inBasis.setAttribute('data-hilfe-id', 'alias.bedienung.basis');
         var inNote = _field(doc, box, 'Notiz (optional): ', 'aiw-alias-note',
             'text');
+        inNote.setAttribute('data-hilfe-id', 'alias.bedienung.notiz');
 
         var btn = doc.createElement('button');
         btn.type = 'button';
@@ -777,6 +800,7 @@
 
             var selK = doc.createElement('select');
             selK.className = 'aiw-alias-input aiw-alias-edit-kind';
+            selK.setAttribute('data-hilfe-id', 'alias.bedienung.edit_art');
             kindList.forEach(function (k) {
                 var o = doc.createElement('option');
                 o.value = k.code;
@@ -787,15 +811,18 @@
             var inB = doc.createElement('input');
             inB.type = 'text';
             inB.className = 'aiw-alias-input aiw-alias-edit-basis';
+            inB.setAttribute('data-hilfe-id', 'alias.bedienung.edit_basis');
             inB.value = e.basis || '';
             var inN = doc.createElement('input');
             inN.type = 'text';
             inN.className = 'aiw-alias-input aiw-alias-edit-note';
+            inN.setAttribute('data-hilfe-id', 'alias.bedienung.edit_notiz');
             inN.value = e.note || '';
             var save = doc.createElement('button');
             save.type = 'button';
             save.className = 'aiw-btn aiw-alias-btn aiw-alias-edit-save';
             save.textContent = 'Speichern';
+            save.setAttribute('data-hilfe-id', 'alias.bedienung.edit_speichern');
             save.addEventListener('click', function () {
                 setResult('Speichere Änderung …', null);
                 if (typeof opts.onUpdate === 'function') {
@@ -847,10 +874,13 @@
             inR.type = 'text';
             inR.className = 'aiw-alias-input aiw-alias-reason';
             inR.setAttribute('placeholder', 'Grund des Widerrufs (Pflicht)');
+            inR.setAttribute('data-hilfe-id',
+                'alias.bedienung.widerrufsgrund');
             var go = doc.createElement('button');
             go.type = 'button';
             go.className = 'aiw-btn aiw-alias-btn aiw-alias-retract-go';
             go.textContent = 'Widerruf belegen';
+            go.setAttribute('data-hilfe-id', 'alias.bedienung.widerruf_belegen');
             go.addEventListener('click', function () {
                 var reason = String(inR.value || '').trim();
                 if (!reason) {

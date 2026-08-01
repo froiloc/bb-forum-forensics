@@ -47,7 +47,14 @@
 //   zuerst, und das ist eine Aussage. Die Tabelle bekommt deshalb bewusst
 //   KEIN 'initialSort'.
 //
-// Version: v0.8.555 · Build: 555 · 2026-07-26 (Tabulator + tablekit)
+// Build 634 (Vorgang 17200856, Welle B2): HILFE-MARKEN fuer die drei weitere
+//   Bedienelemente dieser Sicht - damit tragen alle eine. Die Texte
+//   stehen in management/help/inhalt/identitaeten.py. Die Eingabezeilen
+//   stammen aus der Fabrik '_field'; ihre Marken sitzen deshalb an den
+//   ABNAHMESTELLEN und nicht in der Fabrik - eine Fabrik kann nur EINE
+//   Kennung setzen, und die Felder meinen Verschiedenes (Fabrikregel,
+//   tests/_bedienelemente.py, Build 633).
+// Version: v0.8.634 · Build: 634 · 2026-08-01
 //   Build 471: Erstfassung (handgebaute Tabelle).
 // =============================================================================
 
@@ -354,6 +361,15 @@
                     b.className = 'aiw-btn aiw-xref-btn aiw-xref-revise';
                     b.setAttribute('data-subject', String(d.subject_id));
                     b.textContent = 'Revidieren';
+                    // Build 634 (Vorgang 17200856): Hilfe-Marke, LITERAL.
+                    // DER TEXT GAB ES SCHON - 'crossref.bedienung.revidieren'
+                    // steht seit Build 604 im Register und beschreibt genau
+                    // diesen Knopf ("Fuellt das Erfassungsfeld mit dem Stand
+                    // dieser Zeile"). Er war nur nie an ein Element
+                    // gebunden, also unerreichbar. Deshalb hier KEIN neuer
+                    // Schluessel, sondern der vorhandene.
+                    b.setAttribute('data-hilfe-id',
+                        'crossref.bedienung.revidieren');
                     b.setAttribute('aria-label',
                         'Zuordnung für subject_id ' + d.subject_id
                         + ' revidieren');
@@ -382,8 +398,12 @@
 
         var inSid = _field(doc, box, 'subject_id (Forenkonto): ',
             'aiw-xref-sid', 'text');
+        // Marken an den ABNAHMESTELLEN der Fabrik '_field' - vier
+        // verschiedene Felder aus einer Fabrik (Fabrikregel, Build 633).
+        inSid.setAttribute('data-hilfe-id', 'crossref.bedienung.konto');
         var inReal = _field(doc, box, 'reale Person: ',
             'aiw-xref-real', 'text');
+        inReal.setAttribute('data-hilfe-id', 'crossref.bedienung.person');
 
         // Konfidenz-Auswahl
         var lblC = doc.createElement('label');
@@ -391,6 +411,7 @@
         lblC.textContent = 'Konfidenz: ';
         var selC = doc.createElement('select');
         selC.id = 'aiw-xref-conf';
+        selC.setAttribute('data-hilfe-id', 'crossref.bedienung.konfidenz');
         selC.className = 'aiw-xref-input';
         CONFIDENCE.forEach(function (c) {
             var o = doc.createElement('option');
@@ -403,8 +424,10 @@
 
         var inBasis = _field(doc, box, 'Basis (Fundgrundlage): ',
             'aiw-xref-basis', 'text');
+        inBasis.setAttribute('data-hilfe-id', 'crossref.bedienung.basis');
         var inNote = _field(doc, box, 'Notiz (optional): ',
             'aiw-xref-note', 'text');
+        inNote.setAttribute('data-hilfe-id', 'crossref.bedienung.notiz');
 
         var btn = doc.createElement('button');
         btn.type = 'button';

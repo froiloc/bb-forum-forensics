@@ -126,3 +126,9 @@ Zwei Fallstricke, beide in Build 632 aufgetreten und beide leicht zu vermeiden:
 Baut eine **Fabrik** das Element und gibt es zurück, gehört die Marke an die *Abnahmestelle* und nicht in die Fabrik — zwei Aufrufer meinen zwei verschiedene Bedienelemente und brauchen zwei Texte. Die Erhebung folgt diesem Weg seit Build 633, verlangt dabei aber, dass **jede** Abnahmestelle markiert ist; eine einzige unmarkierte, und das Element gilt als offen (Gegenproben BD05d/BD05e).
 
 Entstehen zwei Schaltflächen in **einer Schleife** und sagen Verschiedenes, dann bekommen sie zwei literale Zweige statt einer gerechneten Kennung — so gelöst bei „Als erledigt“ / „Verwerfen“ im Lektorat.
+
+**Kein Text ohne Bedienelement — die Gegenrichtung.** Ein Popup-Text, zu dem es kein Element gibt, kostet Pflege, wird gegengelesen, steht in der Lektoratsfassung und erscheint nie. Die Paritätsprüfung SP02 nimmt den Bereich `bedienung` aus — das war richtig, solange die Ausnahmeliste die *berechneten* Bereiche meinte (`spalte`, `werkzeug`, `kachel`), aber `bedienung` ist literal. In dieser Lücke lagen bis Build 634 sechs tote Texte.
+
+*Durchsetzung:* BD09. Was heute noch ohne Marke ist, steht namentlich unter `_texte_ohne_marke` im Stand und darf nur weniger werden; ein erledigter Eintrag muss dort verschwinden (TE6).
+
+Bevor Sie für ein Element einen neuen Schlüssel erfinden: **sehen Sie nach, ob es den Text schon gibt.** `crossref.bedienung.revidieren` beschrieb seit Build 604 genau den Zeilenknopf „Revidieren" und war nur nie an ihn gebunden.

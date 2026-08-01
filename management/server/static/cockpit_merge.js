@@ -48,7 +48,14 @@
 //   fassen NIE das DOM an -> vitest; opts.doc injizierbar (JSDOM).
 // SICHERHEIT (XSS): alle variablen Texte via textContent.
 //
-// Version: v0.8.510 · Build: 510 · 2026-07-24
+// Build 634 (Vorgang 17200856, Welle B2): HILFE-MARKEN fuer die acht weitere
+//   Bedienelemente dieser Sicht - damit tragen alle eine. Die Texte
+//   stehen in management/help/inhalt/identitaeten.py. Die Eingabezeilen
+//   stammen aus der Fabrik '_field'; ihre Marken sitzen deshalb an den
+//   ABNAHMESTELLEN und nicht in der Fabrik - eine Fabrik kann nur EINE
+//   Kennung setzen, und die Felder meinen Verschiedenes (Fabrikregel,
+//   tests/_bedienelemente.py, Build 633).
+// Version: v0.8.634 · Build: 634 · 2026-08-01
 // =============================================================================
 
 (function () {
@@ -327,6 +334,9 @@
         btn.id = 'aiw-merge-search-btn';
         btn.className = 'aiw-btn aiw-merge-btn';
         btn.textContent = 'Gruppe zeigen';
+        // Build 634 (Vorgang 17200856): Hilfe-Marke, LITERAL gesetzt.
+        // Text in management/help/inhalt/identitaeten.py.
+        btn.setAttribute('data-hilfe-id', 'merge.bedienung.gruppe_zeigen');
         btn.addEventListener('click', function () {
             if (typeof opts.onSearch === 'function') {
                 opts.onSearch(inp.value);
@@ -376,13 +386,18 @@
 
         var inP = _field(doc, box, 'Primärkonto (führend): ',
             'aiw-merge-primary');
+        // Marken an den ABNAHMESTELLEN der Fabrik '_field' - dieselbe Fabrik
+        // baut drei verschiedene Felder (Fabrikregel, Build 633).
+        inP.setAttribute('data-hilfe-id', 'merge.bedienung.primaerkonto');
         var inM = _field(doc, box, 'einzugliedern: ', 'aiw-merge-merged');
+        inM.setAttribute('data-hilfe-id', 'merge.bedienung.zweitkonto');
 
         var lblC = doc.createElement('label');
         lblC.className = 'aiw-merge-lbl';
         lblC.textContent = 'Konfidenz: ';
         var selC = doc.createElement('select');
         selC.id = 'aiw-merge-conf';
+        selC.setAttribute('data-hilfe-id', 'merge.bedienung.konfidenz');
         selC.className = 'aiw-merge-input';
         confList.forEach(function (c) {
             var o = doc.createElement('option');
@@ -394,6 +409,7 @@
         box.appendChild(lblC);
 
         var inB = _field(doc, box, 'Basis (Indizien): ', 'aiw-merge-basis');
+        inB.setAttribute('data-hilfe-id', 'merge.bedienung.basis');
 
         var btn = doc.createElement('button');
         btn.type = 'button';
@@ -510,6 +526,8 @@
 
             var selC = doc.createElement('select');
             selC.className = 'aiw-merge-input aiw-merge-edit-conf';
+            selC.setAttribute('data-hilfe-id',
+                'merge.bedienung.edit_konfidenz');
             confList.forEach(function (c) {
                 var o = doc.createElement('option');
                 o.value = c.code;
@@ -520,11 +538,14 @@
             var inB = doc.createElement('input');
             inB.type = 'text';
             inB.className = 'aiw-merge-input aiw-merge-edit-basis';
+            inB.setAttribute('data-hilfe-id', 'merge.bedienung.edit_basis');
             inB.value = e.basis || '';
             var save = doc.createElement('button');
             save.type = 'button';
             save.className = 'aiw-btn aiw-merge-btn aiw-merge-edit-save';
             save.textContent = 'Speichern';
+            save.setAttribute('data-hilfe-id',
+                'merge.bedienung.edit_speichern');
             save.addEventListener('click', function () {
                 var basis = String(inB.value || '').trim();
                 if (!basis) {
@@ -577,10 +598,12 @@
             inR.className = 'aiw-merge-input aiw-merge-reason';
             inR.setAttribute('placeholder',
                 'Grund der Trennung (Pflicht)');
+            inR.setAttribute('data-hilfe-id', 'merge.bedienung.trennungsgrund');
             var go = doc.createElement('button');
             go.type = 'button';
             go.className = 'aiw-btn aiw-merge-btn aiw-merge-split-go';
             go.textContent = 'Trennung belegen';
+            go.setAttribute('data-hilfe-id', 'merge.bedienung.trennung_belegen');
             go.addEventListener('click', function () {
                 var reason = String(inR.value || '').trim();
                 if (!reason) {

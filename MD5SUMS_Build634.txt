@@ -1,0 +1,10 @@
+aa79f30776dd6e433b71cc6d211c333d  build.json
+292a1c530f6086b158715dc63b16fea2  documents/rules-help.md
+0f20c52b3b621b630dfdb0b1205781ee  issue-tracker/eingang_claude_Build634.json
+d064eb1a805348378bccf837cda22600  management/help/inhalt/identitaeten.py
+634026fb2a40979bee08b8272e2e6f41  management/server/static/cockpit_alias.js
+55d43dddd553e0292be6655b2153a196  management/server/static/cockpit_crossfindings.js
+e09ae2b23d11f376ac404732713563ec  management/server/static/cockpit_crossref.js
+bd50d24ac424bf2abe2bc49d4e76f583  management/server/static/cockpit_merge.js
+62930a1719a426135a81fe52628acae9  tests/hilfe_bedienung_stand.json
+607b3044abdf3987be52e276ea819305  tests/test_help_bedienelemente.py

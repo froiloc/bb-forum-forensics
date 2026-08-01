@@ -54,7 +54,14 @@
 // KAPSELUNG / GEBOTE: IIFE + 'use strict'; DEV-Logging; ausfuehrliche
 //   Kommentare; reine Helfer ohne DOM (vitest); UMD-Export. XSS: textContent.
 //
-// Version: v0.8.508 · Build: 508 · 2026-07-24 (Rueckkanal, Idee 7)
+// Build 634 (Vorgang 17200856, Welle B2): HILFE-MARKEN fuer die zwei weitere
+//   Bedienelemente dieser Sicht - damit tragen alle eine. Die Texte
+//   stehen in management/help/inhalt/identitaeten.py. Die Eingabezeilen
+//   stammen aus der Fabrik '_field'; ihre Marken sitzen deshalb an den
+//   ABNAHMESTELLEN und nicht in der Fabrik - eine Fabrik kann nur EINE
+//   Kennung setzen, und die Felder meinen Verschiedenes (Fabrikregel,
+//   tests/_bedienelemente.py, Build 633).
+// Version: v0.8.634 · Build: 634 · 2026-08-01
 // =============================================================================
 
 (function () {
@@ -448,6 +455,9 @@
 
         var sel = doc.createElement('select');
         sel.className = 'aiw-cf-input aiw-cff-target';
+        // Build 634 (Vorgang 17200856): Hilfe-Marke, LITERAL gesetzt.
+        // Text in management/help/inhalt/identitaeten.py.
+        sel.setAttribute('data-hilfe-id', 'crossfindings.bedienung.folgezustand');
         next.forEach(function (n) {
             var o = doc.createElement('option');
             o.value = n.code;
@@ -462,6 +472,7 @@
         var inR = doc.createElement('input');
         inR.type = 'text';
         inR.className = 'aiw-cf-input aiw-cff-reasoninput';
+        inR.setAttribute('data-hilfe-id', 'crossfindings.bedienung.begruendung');
         lblReason.appendChild(inR);
 
         function currentSpec() {

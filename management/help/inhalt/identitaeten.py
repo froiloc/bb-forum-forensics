@@ -45,6 +45,9 @@ from management.help.modell import Abschnitt, Kontexthilfe, Sichthilfe
 
 _STAND = 604
 
+#: Redaktionsstand der in Welle B2 (Build 634) nachredigierten Kapitel.
+_STAND_B2 = 634
+
 #: Die Zusicherung dieser Gruppe, wortgleich in allen vier Kapiteln.
 _HYPOTHESE = (
     "Was hier steht, ist eine BELEGTE ANNAHME mit einer Konfidenzstufe — kein "
@@ -72,7 +75,7 @@ CROSSREF = Sichthilfe(
         "Katalog gilt fallübergreifend; er ist nicht auf die eigenen Fälle "
         "eingeschränkt."
     ),
-    stand=_STAND,
+    stand=_STAND_B2,
     abschnitte=(
         Abschnitt(
             "zweck", "Zweck und Motivation",
@@ -202,6 +205,40 @@ CROSSREF = Sichthilfe(
             "Füllt das Erfassungsfeld mit dem Stand dieser Zeile. Es wird "
             "dabei NICHTS gespeichert — erst das Speichern schreibt.",
             verweis="crossref#ablaeufe"),
+        # Die vier Felder des Erfassungsblocks (Build 634, Welle B2).
+        # 'crossref.bedienung.revidieren' und '.speichern' gab es schon;
+        # 'revidieren' war allerdings an KEIN Element gebunden - der Text
+        # stand seit Build 604 im Register und war nie erreichbar. Die Marke
+        # sitzt jetzt am Zeilenknopf, der Schluessel blieb.
+        Kontexthilfe(
+            "crossref.bedienung.konto", "Konto (subject_id)",
+            "Der Ermittlungsschlüssel des Forenkontos, um das es geht. Eine "
+            "unvollständige Nummer wird abgewiesen und NICHT stillschweigend "
+            "gekürzt gelesen — das wäre ein anderes Konto.",
+            verweis="crossref#grenzen"),
+        Kontexthilfe(
+            "crossref.bedienung.person", "Reale Person",
+            "Der Mensch, dem Sie das Konto zuordnen. Diese Angabe ist eine "
+            "belegte Annahme und kein Beweis; sie ist personenbezogen und "
+            "wird nur denen gezeigt, die das Recht dafür haben.",
+            verweis="crossref#grenzen"),
+        Kontexthilfe(
+            "crossref.bedienung.konfidenz", "Konfidenz",
+            "Wie stark die Zuordnung belegt ist: Verdacht, wahrscheinlich, "
+            "gesichert. Setzen Sie hier lieber zu niedrig als zu hoch — eine "
+            "Konfidenz lässt sich später anheben, eine falsche Sicherheit "
+            "ist im Verfahren nur schwer wieder einzufangen.",
+            verweis="crossref#ablaeufe"),
+        Kontexthilfe(
+            "crossref.bedienung.basis", "Basis (Fundgrundlage)",
+            "Worauf die Zuordnung beruht. Das ist der eigentliche Wert des "
+            "Eintrags: Ein Name ohne Grundlage ist im weiteren Verfahren "
+            "nicht verwendbar, weil niemand prüfen kann, worauf er beruht.",
+            verweis="crossref#grenzen"),
+        Kontexthilfe(
+            "crossref.bedienung.notiz", "Notiz",
+            "Platz für eine Bemerkung zur Zuordnung — freiwillig. Sie ersetzt "
+            "die Fundgrundlage nicht."),
         Kontexthilfe(
             "crossref.werkzeug.filter_entfernen", "Filter zurücksetzen",
             "Entfernt alle Spaltenfilter dieser Sicht auf einmal."),
@@ -225,7 +262,7 @@ CROSSFINDINGS = Sichthilfe(
         "das Bewertungsrecht zeigt die Sicht den Stand, bietet aber keine "
         "Aktion an."
     ),
-    stand=_STAND,
+    stand=_STAND_B2,
     abschnitte=(
         Abschnitt(
             "zweck", "Zweck und Motivation",
@@ -357,6 +394,21 @@ CROSSFINDINGS = Sichthilfe(
             "Schreibt den gewählten Stand fest. Verlangt der Stand eine "
             "Angabe, wird ohne sie nichts geschrieben.",
             verweis="crossfindings#ablaeufe"),
+        # Die beiden Felder der Bewertung (Build 634, Welle B2).
+        Kontexthilfe(
+            "crossfindings.bedienung.folgezustand", "Nächster Stand",
+            "Der Stand, auf den Sie diesen Fund setzen. Angeboten wird NUR, "
+            "was vom heutigen Stand aus zulässig ist — eine kurze Liste ist "
+            "hier kein Mangel, sondern die Auskunft, dass es nicht mehr "
+            "Wege gibt.",
+            verweis="crossfindings#grenzen"),
+        Kontexthilfe(
+            "crossfindings.bedienung.begruendung", "Angabe zum Stand",
+            "Manche Stände verlangen eine Angabe — je nach Stand eine "
+            "Grundlage oder einen Grund; die Beschriftung sagt, was gemeint "
+            "ist. Das Feld erscheint nur dann, und ohne die Angabe wird "
+            "nichts geschrieben.",
+            verweis="crossfindings#ablaeufe"),
     ),
 )
 
@@ -372,7 +424,7 @@ ALIAS = Sichthilfe(
         "Rechte: crossref.view zum Lesen, crossref.edit zum Pflegen. Der "
         "Katalog gilt fallübergreifend."
     ),
-    stand=_STAND,
+    stand=_STAND_B2,
     abschnitte=(
         Abschnitt(
             "zweck", "Zweck und Motivation",
@@ -530,6 +582,88 @@ ALIAS = Sichthilfe(
         Kontexthilfe(
             "alias.bedienung.zuruecknehmen", "Zurücknehmen",
             "Macht den Widerruf rückgängig; der Eintrag gilt wieder."),
+
+        # ------------------------------------------------------------------
+        # Die restlichen Bedienelemente (Build 634, Welle B2). Neun von
+        # neunzehn waren schon erklaert - diese Sicht war das Vorbild und
+        # trotzdem nicht fertig. Die Eingabezeilen stammen alle aus der
+        # Fabrik '_field'; ihre Marken sitzen an den Abnahmestellen.
+        # ------------------------------------------------------------------
+        Kontexthilfe(
+            "alias.bedienung.suchen", "Suchen",
+            "Führt die Suche im Katalog aus. Ein Leerbefund heißt „in den "
+            "abgefragten Quellen nicht gefunden“ — nicht „gibt es nicht“.",
+            verweis="alias#grenzen"),
+        Kontexthilfe(
+            "alias.bedienung.treffer", "Treffer der Namensauflösung",
+            "Ein gefundenes Konto. Der Klick sucht den Katalog nach GENAU "
+            "diesem Konto ab — die Brücke vom Namen zum Konto. Geschrieben "
+            "wird dabei nichts.",
+            verweis="alias#ablaeufe"),
+        Kontexthilfe(
+            "alias.bedienung.treffer_uebernehmen", "Treffer übernehmen",
+            "Setzt die Nummer dieses Kontos in das Erfassungsfeld darüber. "
+            "Das ist der Weg für alle, die die Nummern nicht im Kopf haben. "
+            "Die Übernahme schreibt NICHTS.",
+            verweis="alias#ablaeufe"),
+        Kontexthilfe(
+            "alias.bedienung.konto", "Konto (subject_id)",
+            "Der Ermittlungsschlüssel des Forenkontos, zu dem der Alias "
+            "gehört. Darunter erscheint zur Kontrolle der Name des "
+            "eingetragenen Kontos — sehen Sie hin, bevor Sie einen Beleg "
+            "erzeugen.",
+            verweis="alias#grenzen"),
+        Kontexthilfe(
+            "alias.bedienung.namenssuche", "Name des gesuchten Kontos",
+            "Der Name, zu dem Sie das Konto suchen. Die Eingabetaste löst die "
+            "Suche ebenso aus wie der Knopf daneben.",
+            verweis="alias#ablaeufe"),
+        Kontexthilfe(
+            "alias.bedienung.aliastext", "Alias / Name",
+            "Der weitere Name selbst. ER IST SPÄTER NICHT MEHR ÄNDERBAR: ein "
+            "anderer Name ist eine andere Erkenntnis und entsteht durch "
+            "Widerruf und Neuanlage. Lesen Sie ihn vor dem Erfassen noch "
+            "einmal.",
+            verweis="alias#grenzen"),
+        Kontexthilfe(
+            "alias.bedienung.basis", "Basis (Fundgrundlage)",
+            "Wo Sie diesen Namen gefunden haben. Ohne Grundlage ist ein Name "
+            "im weiteren Verfahren nicht verwendbar, weil niemand prüfen "
+            "kann, worauf er beruht.",
+            verweis="alias#grenzen"),
+        Kontexthilfe(
+            "alias.bedienung.notiz", "Notiz",
+            "Platz für eine Bemerkung zum Eintrag — freiwillig. Sie ersetzt "
+            "die Fundgrundlage nicht."),
+        Kontexthilfe(
+            "alias.bedienung.edit_art", "Art (Berichtigung)",
+            "Ändert die Art des vorhandenen Eintrags. Der Name bleibt, wie er "
+            "ist.",
+            verweis="alias#ablaeufe"),
+        Kontexthilfe(
+            "alias.bedienung.edit_basis", "Basis (Berichtigung)",
+            "Ändert die Fundgrundlage des vorhandenen Eintrags — etwa, wenn "
+            "sich die Quelle genauer benennen lässt."),
+        Kontexthilfe(
+            "alias.bedienung.edit_notiz", "Notiz (Berichtigung)",
+            "Ändert die Bemerkung zum vorhandenen Eintrag."),
+        Kontexthilfe(
+            "alias.bedienung.edit_speichern", "Speichern",
+            "Schreibt die Berichtigung von Art, Grundlage und Notiz. Der Name "
+            "des Eintrags bleibt unverändert; auch die Berichtigung wird "
+            "festgehalten.",
+            verweis="alias#ablaeufe"),
+        Kontexthilfe(
+            "alias.bedienung.widerrufsgrund", "Grund des Widerrufs",
+            "PFLICHTANGABE. Ohne Grund wird nicht widerrufen — ein stilles "
+            "Aussortieren ist genau das, was dieses Werkzeug verhindern soll.",
+            verweis="alias#grenzen"),
+        Kontexthilfe(
+            "alias.bedienung.widerruf_belegen", "Widerruf belegen",
+            "Führt den Widerruf aus. Der Eintrag verschwindet nicht, sondern "
+            "wird gedämpft dargestellt und trägt seinen Grund. „Zurücknehmen“ "
+            "macht ihn später wieder gültig.",
+            verweis="alias#grenzen"),
     ),
 )
 
@@ -545,7 +679,7 @@ MERGE = Sichthilfe(
         "Rechte: crossref.view zum Lesen, crossref.edit zum Zusammenführen "
         "und Trennen. Die Gruppen gelten fallübergreifend."
     ),
-    stand=_STAND,
+    stand=_STAND_B2,
     abschnitte=(
         Abschnitt(
             "zweck", "Zweck und Motivation",
@@ -687,6 +821,69 @@ MERGE = Sichthilfe(
             "widersprechende Zuordnungen wären schlimmer als eine abgelehnte "
             "Rücknahme.",
             verweis="merge#ablaeufe"),
+
+        # ------------------------------------------------------------------
+        # Die restlichen Bedienelemente (Build 634, Welle B2). Die drei
+        # Eingabezeilen des Formulars stammen aus der Fabrik '_field'; ihre
+        # Marken sitzen an den Abnahmestellen.
+        # ------------------------------------------------------------------
+        Kontexthilfe(
+            "merge.bedienung.gruppe_zeigen", "Gruppe zeigen",
+            "Sucht die Gruppe des eingetragenen Kontos. „Keiner Gruppe "
+            "zugeordnet“ ist ein Befund und kein Leerbefund — das Konto ist "
+            "dann seine eigene Gruppe.",
+            verweis="merge#grenzen"),
+        Kontexthilfe(
+            "merge.bedienung.primaerkonto", "Primärkonto (führend)",
+            "Das Konto, das die Gruppe führt. Die Richtung ist nicht "
+            "gleichgültig: Ein zugeordnetes Konto kann nicht selbst führend "
+            "sein, weil die Auflösung sonst mehrdeutig wäre.",
+            verweis="merge#aufbau"),
+        Kontexthilfe(
+            "merge.bedienung.zweitkonto", "Einzugliederndes Konto",
+            "Das Konto, das dem führenden zugeordnet wird. Weist das Werkzeug "
+            "die Zusammenführung zurück, nennt die Meldung die beteiligten "
+            "Konten und den gangbaren Weg — lesen Sie sie vollständig.",
+            verweis="merge#grenzen"),
+        Kontexthilfe(
+            "merge.bedienung.konfidenz", "Konfidenz",
+            "Wie stark die Annahme belegt ist, dass beide Konten derselben "
+            "Person gehören. Sie lässt sich später über „Revidieren“ "
+            "anheben; setzen Sie im Zweifel niedriger an.",
+            verweis="merge#ablaeufe"),
+        Kontexthilfe(
+            "merge.bedienung.basis", "Basis (Indizien)",
+            "Worauf die Annahme beruht — PFLICHTANGABE. Eine Zusammenführung "
+            "ohne Indizien wäre eine Behauptung ohne Grundlage und ließe sich "
+            "später weder prüfen noch verteidigen.",
+            verweis="merge#grenzen"),
+        Kontexthilfe(
+            "merge.bedienung.edit_konfidenz", "Konfidenz (Überarbeitung)",
+            "Hebt die Konfidenz der vorhandenen Zusammenführung an oder senkt "
+            "sie. Die beteiligten Konten bleiben, wie sie sind.",
+            verweis="merge#grenzen"),
+        Kontexthilfe(
+            "merge.bedienung.edit_basis", "Basis (Überarbeitung)",
+            "Ändert die Indizien der vorhandenen Zusammenführung. Das Feld "
+            "darf nicht GELEERT werden — die Annahme braucht ihre Indizien "
+            "auch nach der Überarbeitung.",
+            verweis="merge#grenzen"),
+        Kontexthilfe(
+            "merge.bedienung.edit_speichern", "Speichern",
+            "Schreibt die Überarbeitung von Konfidenz und Indizien. Auch sie "
+            "wird festgehalten; der bisherige Stand geht nicht verloren.",
+            verweis="merge#ablaeufe"),
+        Kontexthilfe(
+            "merge.bedienung.trennungsgrund", "Grund der Trennung",
+            "PFLICHTANGABE. Eine Trennung muss so belegt sein wie die "
+            "Zusammenführung — sonst bliebe offen, ob die Annahme widerlegt "
+            "oder nur aufgegeben wurde.",
+            verweis="merge#grenzen"),
+        Kontexthilfe(
+            "merge.bedienung.trennung_belegen", "Trennung belegen",
+            "Führt die Trennung aus. Die Zeile verschwindet nicht, sondern "
+            "bleibt als Beleg erhalten und trägt ihren Grund.",
+            verweis="merge#grenzen"),
     ),
 )
 

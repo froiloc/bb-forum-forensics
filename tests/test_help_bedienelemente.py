@@ -42,6 +42,10 @@
 # BD06 - 'releases' und 'handover' sind vollstaendig und bleiben es
 # BD07 - jede Ausnahme ist begruendet und gibt es wirklich (TE6)
 # BD08 - der Stand nennt sein Verfahren UND seine Grenzen (TE4)
+# BD09 - Build 634, DIE GEGENRICHTUNG: kein Bedienungs-TEXT ohne Marke. Was
+#        heute noch ohne ist, steht namentlich im Stand und darf nur weniger
+#        werden. SP02 nimmt den Bereich 'bedienung' aus - zu Unrecht, denn
+#        diese Marken sind literal. Genau dort lagen sechs tote Texte.
 #
 # WAS DIESE SUITE NICHT KANN (TE4): Sie zaehlt am Quelltext. Die Zahl ist
 #   eine UNTERGRENZE - sie kann zu niedrig sein, nie zu hoch. Die Grenzen im
@@ -49,7 +53,7 @@
 #   '_grenzen' des Standes. Am gerenderten Baum misst UX11, aber nur fuer die
 #   acht Sichten seines REGISTERs.
 #
-# Version: v0.8.633 - Build: 633 - 2026-08-01
+# Version: v0.8.634 - Build: 634 - 2026-08-01
 # =============================================================================
 
 import json
@@ -329,6 +333,58 @@ class BedienelementeTests(unittest.TestCase):
             self.assertGreater(len(stand[feld].strip()), 80, feld)
         self.assertIn("UNTERGRENZE", stand["_grenzen"].upper())
         self.assertIn("UX11", stand["_grenzen"])
+
+
+    # --- BD09 ---------------------------------------------------------------
+    def test_bd09_kein_bedienungstext_ohne_marke(self):
+        """
+        DAS GEGENSTUECK ZU BD02. Ein Knopf ohne Text ist der Befund des
+        Vorgangs; ein TEXT OHNE KNOPF ist der stille Zwilling davon - er
+        kostet Pflege, wird gegengelesen, steht in der Lektoratsfassung und
+        erscheint nie.
+
+        Warum das durchgerutscht ist: SP02 ('kein Text ins Leere') nimmt den
+        Bereich 'bedienung' aus. Das war richtig, als die Liste der
+        BERECHNETEN Bereiche entstand (spalte, werkzeug, kachel) - nur ist
+        'bedienung' eben nicht berechnet, sondern literal. Die Ausnahme hat
+        sechs tote Texte gedeckt.
+
+        Die Liste im Stand ist gedeckelt und darf nur schrumpfen.
+        """
+        import re as _re
+        LITERAL = _re.compile(
+            r"""data-hilfe-id["']?\s*[=,]\s*["']([a-z0-9_.]+)["']""")
+        marken = set()
+        for pfad in list(STATIC.glob("cockpit*.js")) + [STATIC / "cockpit.html"]:
+            if pfad.is_file():
+                marken |= set(
+                    LITERAL.findall(pfad.read_text(encoding="utf-8")))
+
+        sys.path.insert(0, str(WURZEL))
+        from management.help.inhalt import lade_register
+        register = lade_register()
+        erlaubt = dict(_stand().get("_texte_ohne_marke", {}))
+
+        tot = sorted(
+            k.schluessel for s in register.sichten for k in s.kontext
+            if ".bedienung." in k.schluessel and k.schluessel not in marken)
+        neu = [s for s in tot if s not in erlaubt]
+        self.assertEqual(
+            [], neu,
+            "Popup-Texte fuer Bedienelemente, die es im Browser nicht gibt "
+            "(toter Bestand): %s" % ", ".join(neu))
+
+        # TE6: und die Ausnahmeliste wird gegen die Wirklichkeit geprueft -
+        # ein Eintrag, der laengst erledigt ist, gehoert weg.
+        veraltet = sorted(set(erlaubt) - set(tot))
+        self.assertEqual(
+            [], veraltet,
+            "Diese Texte haben laengst eine Marke - die Eintraege in "
+            "'_texte_ohne_marke' sind ueberholt: %s" % ", ".join(veraltet))
+        for schluessel, grund in sorted(erlaubt.items()):
+            self.assertGreater(
+                len(grund.strip()), 8,
+                "%s: eine Ausnahme braucht einen Grund" % schluessel)
 
 
 if __name__ == "__main__":
