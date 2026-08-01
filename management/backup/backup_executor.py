@@ -231,7 +231,20 @@ class BackupRun:
 
 
 class BackupExecutor:
-    """Fuehrt einen geprueften BackupPlan aus (schreibend, Quelle read-only)."""
+    """
+    Fuehrt einen geprueften BackupPlan aus.
+
+    ZUR QUELLE, seit Build 627 genau statt pauschal: Sie wird NUR GELESEN -
+    mit EINER Ausnahme, dem optionalen 'wal_checkpoint(PASSIVE)'. Der
+    schreibt naturgemaess und ist deshalb die einzige schreibfaehige
+    Verbindung im ganzen Sicherungspfad; die Begruendung steht bei
+    _checkpoint_passive. Alle uebrigen Zugriffe - Merkmale lesen und
+    'VACUUM INTO' - laufen ueber 'file:...?mode=ro'.
+
+    Bis Build 626 stand hier die Pauschale 'Quelle read-only'. Technisch
+    verhindert hat sie nichts: die Verbindungen waren schreibfaehig, und die
+    Zusage stand allein im Kommentar (Vorgang e9522fe2).
+    """
 
     def __init__(self, backup_cfg: BackupConfig) -> None:
         self._cfg = backup_cfg
@@ -341,6 +354,24 @@ class BackupExecutor:
 
     # ------------------------------------------------------------- helpers
     def _checkpoint_passive(self, src_path: str) -> None:
+        """
+        DIE EINE STELLE, AN DER DIE QUELLE SCHREIBFAEHIG GEOEFFNET WIRD -
+        und das ist keine Nachlaessigkeit, sondern die Natur der Sache: ein
+        Checkpoint SCHREIBT, er traegt den Inhalt des WAL in die Datenbank
+        zurueck. Eine nur-lesende Verbindung koennte ihn nicht ausfuehren.
+
+        GEMESSEN am 2026-08-01: auf einer mit 'mode=ro' geoeffneten
+        Verbindung wirft 'PRAGMA wal_checkpoint(PASSIVE)' NICHT, sondern
+        liefert (0, 0, 0) - es tut also STILL NICHTS. Ein stiller Nichtlauf
+        waere hier das schlechteste Ergebnis: die Sicherung liefe weiter, und
+        niemand wuesste, dass der Checkpoint ausgefallen ist. Deshalb bleibt
+        die Verbindung hier ausdruecklich schreibfaehig.
+
+        WER DAS NICHT WILL, setzt 'backup.checkpoint' auf etwas anderes als
+        'passive' - dann wird die Quelle im ganzen Lauf nur gelesen. Die
+        Sicherung selbst braucht den Checkpoint nicht: 'VACUUM INTO' liest
+        ohnehin konsistent ueber das WAL hinweg.
+        """
         con = sqlite3.connect(src_path)
         try:
             con.isolation_level = None
@@ -349,7 +380,7 @@ class BackupExecutor:
             con.close()
 
     def _user_version(self, src_path: str) -> int:
-        con = sqlite3.connect(src_path)
+        con = sqlite3.connect("file:%s?mode=ro" % src_path, uri=True)
         try:
             row = con.execute("PRAGMA user_version").fetchone()
             return int(row[0]) if row else 0
@@ -371,7 +402,7 @@ class BackupExecutor:
         Fehlalarm bei einer Sicherung kostet eine Nachschau; die Gegenrichtung
         kostet die Sicherung.
         """
-        con = sqlite3.connect(src_path)
+        con = sqlite3.connect("file:%s?mode=ro" % src_path, uri=True)
         try:
             uv = int(con.execute("PRAGMA user_version").fetchone()[0])
             seiten = int(con.execute("PRAGMA page_count").fetchone()[0])
@@ -404,7 +435,12 @@ class BackupExecutor:
           * die Zahl der Schemaobjekte stimmt ueberein.
         """
         try:
-            con = sqlite3.connect(backup_path)
+            # BUILD 627: auch die KOPIE wird nur-lesend angesehen. Sie ist
+            # gerade erst entstanden, ein heisses Journal ist hier also nicht
+            # zu erwarten - aber die Regel soll ohne Ausnahmen auskommen:
+            # in diesem Modul oeffnet nichts schreibfaehig ausser dem
+            # Checkpoint. Eine Regel mit zwei Ausnahmen prueft niemand nach.
+            con = sqlite3.connect("file:%s?mode=ro" % backup_path, uri=True)
             try:
                 rows = con.execute("PRAGMA integrity_check").fetchall()
                 seiten = int(con.execute("PRAGMA page_count").fetchone()[0])

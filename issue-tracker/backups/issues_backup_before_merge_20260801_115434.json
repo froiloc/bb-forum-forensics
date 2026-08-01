@@ -3621,55 +3621,6 @@
           "comment": "Issue erstellt"
         }
       ]
-    },
-    {
-      "id": "f51fd838-c9f5-458f-8778-ea219689c441",
-      "type": "documentation",
-      "title": "Muster: Zusage im Kommentar ist keine technische Sperre",
-      "affected_version": "0.8.627",
-      "reporter": "Claude",
-      "reported_at": "2026-08-01T09:40:02.719243+00:00",
-      "prerequisites": "",
-      "description": "KEIN EINZELBEFUND, SONDERN EIN MUSTER. Es ist im Bestand jetzt viermal aufgetreten, und dreimal davon in dieser Sitzung.\n\n1) Issue 906ede75: zwei Auswertungswerkzeuge oeffnen die coordinator.db schreibfaehig, obwohl ihr Kopf das Gegenteil zusichert.\n2) rules-cli.md, Wartungsvorbehalt: 'convert_journal_mode' galt als geklaert, weil sein Dateikopf 'braucht exklusiven Zugriff' sagte. Eine Zusage im Kommentar ist aber keine technische Sperre.\n3) Vorgang e9522fe2, zweiter Teil (Build 627): backup_executor.py sicherte seit Build 353 zu 'Quelle read-only' - alle Verbindungen waren schreibfaehig. Behoben.\n4) NEU UND VON MIR SELBST VERURSACHT: Build 625 fuehrte _traegt_inhalt ein, um eine unbrauchbare Sicherung zu erkennen, OHNE sie zu loeschen - ausdruecklich, damit die Teildatei als Beleg erhalten bleibt. Die Funktion oeffnete die Datei gewoehnlich. Liegt daneben ein heisses Journal, spielt SQLite es beim Oeffnen zurueck und verkuerzt die Teildatei auf 0 Byte. Der Beleg wurde also von genau der Funktion vernichtet, die ihn erhalten sollte. In Build 626 behoben.\n\nDAS BESONDERE AN SQLITE: Bei einer gewoehnlichen Datei ist Lesen folgenlos. Bei SQLite ist es das NICHT - das blosse Oeffnen kann ein Journal zurueckspielen, einen Journalmodus setzen oder eine Datei ANLEGEN, die es nicht gab. Wer 'ich lese nur' meint, muss 'file:...?mode=ro' schreiben.\n\nGEMESSEN am 2026-08-01 (Python 3.13):\n  * 'VACUUM INTO' GELINGT auf einer mit mode=ro geoeffneten Quelle - die Zusage laesst sich also einloesen, sie kostet nichts.\n  * 'PRAGMA wal_checkpoint(PASSIVE)' auf mode=ro wirft NICHT, sondern liefert (0,0,0) - es tut STILL NICHTS. Ein Checkpoint gehoert deshalb ausdruecklich auf eine schreibfaehige Verbindung, sonst faellt er unbemerkt aus.\n  * sqlite3.connect() auf einen nicht vorhandenen Pfad LEGT DIE DATEI AN; mit mode=ro scheitert es mit 'unable to open database file'.\n  * Auf einer Datei mit heissem Journal antwortet mode=ro mit 'attempt to write a readonly database' und LAESST DIE DATEI IN RUHE.",
-      "expected_behavior": "Aufnahme in documents/rules-coding.md als Regel: Wer eine Verbindung als lesend fuehrt, oeffnet sie mit 'file:...?mode=ro'. Wer davon abweicht, begruendet es an der Aufrufstelle. Durchgesetzt wird das je Modul ueber den Syntaxbaum, nicht ueber eine Textsuche - Muster: tests/test_backup_executor.py BR02.\n\nZu pruefen waere ausserdem, wo im uebrigen Bestand noch lesende Verbindungen schreibfaehig geoeffnet werden. Der Sicherungspfad ist mit Build 627 sauber; 906ede75 ist offen; der Rest ist nicht erhoben.",
-      "actual_behavior": "Die Regel steht bisher nirgends; jeder Fall wird einzeln gefunden.",
-      "status": "open",
-      "priority": "medium",
-      "severity": "major",
-      "assigned_to": "",
-      "related_to": [
-        "906ede75",
-        "e9522fe2",
-        "c3f80e54"
-      ],
-      "resolved_in_version": null,
-      "target_version": null,
-      "environment": {
-        "python_version": "3.14"
-      },
-      "tags": [
-        "SQLite",
-        "Muster",
-        "Regelwerk",
-        "gemessen"
-      ],
-      "attachments": [],
-      "updates": [
-        {
-          "timestamp": "2026-08-01T09:40:02.719243+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "Beim Abschluss von e9522fe2 (Build 627) aufgeschrieben. Der vierte Fall ist mein eigener aus Build 625 - er zeigt, dass auch das Wissen um das Muster nicht davor schuetzt, solange es keine Regel und keine Pruefung gibt."
-        },
-        {
-          "timestamp": "2026-08-01T09:54:34.428748+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eingang_claude_Build627.json"
-        }
-      ]
     }
   ]
 }

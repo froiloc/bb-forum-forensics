@@ -71,6 +71,10 @@ def _coordinator_db(args, cfg) -> str:
 
 
 def _open_con(db_path: str) -> sqlite3.Connection:
+    """
+    Die SCHREIBENDE Verbindung. Nur 'run' braucht sie - dort wird der Lauf
+    registriert und ein Beleg geschrieben.
+    """
     con = sqlite3.connect(db_path)
     con.isolation_level = None
     con.row_factory = sqlite3.Row
@@ -78,6 +82,29 @@ def _open_con(db_path: str) -> sqlite3.Connection:
     # 'auto' = WAL bevorzugen, bei Fehlschlag (z.B. Netzlaufwerk: WAL braucht
     # maschinenlokales Shared Memory) protokollierter Rueckfall auf DELETE.
     apply_journal_mode(con, db_path)
+    return con
+
+
+def _open_con_ro(db_path: str) -> sqlite3.Connection:
+    """
+    Die NUR LESENDE Verbindung - fuer 'list' und 'pruefen'.
+
+    BUILD 627 (Vorgang e9522fe2, zweiter Teil). Bis Build 626 benutzten auch
+    die lesenden Unterbefehle _open_con: die coordinator.db wurde
+    SCHREIBFAEHIG geoeffnet, und apply_journal_mode setzte dabei ein
+    Journalmodus-PRAGMA. Nutzdaten wurden keine geschrieben - aber die
+    Einstufung 'lesend' im Katalog war damit eine Zusage, die nichts
+    durchsetzte. Genau derselbe Befundtyp steht im Eingang noch einmal
+    (906ede75).
+
+    KEIN apply_journal_mode HIER. Der Journalmodus ist eine Eigenschaft der
+    DATEI, nicht der Verbindung; ihn zu setzen ist ein Schreibvorgang, und
+    eine lesende Verbindung hat daran nichts zu aendern. Auf einer Datei, die
+    bereits im WAL-Modus liegt, kann auch nur-lesend gelesen werden.
+    """
+    con = sqlite3.connect("file:%s?mode=ro" % db_path, uri=True)
+    con.isolation_level = None
+    con.row_factory = sqlite3.Row
     return con
 
 
@@ -233,7 +260,7 @@ def cmd_run(args) -> int:
 def cmd_list(args) -> int:
     cfg = _load_cfg(args.config)
     db_path = _coordinator_db(args, cfg)
-    con = _open_con(db_path)
+    con = _open_con_ro(db_path)          # Build 627: 'list' liest nur
     try:
         rows = BackupsRepo(con, None).list_backups(
             db_label=args.db_label, limit=args.limit)
@@ -292,7 +319,7 @@ def cmd_pruefen(args) -> int:
     registrierte: Dict[str, Optional[str]] = {}
     hinweis = ""
     try:
-        con = _open_con(_coordinator_db(args, cfg))
+        con = _open_con_ro(_coordinator_db(args, cfg))
         try:
             for r in BackupsRepo(con, None).list_backups(limit=100000):
                 if r["backup_path"]:

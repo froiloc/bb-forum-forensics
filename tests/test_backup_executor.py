@@ -616,3 +616,155 @@ class AufbewahrungTests(unittest.TestCase):
                         "das Journal gehoert mit zur Seite")
         self.assertTrue(any("heisses Journal" in e
                             for e in run.beiseite_gelegt), run.beiseite_gelegt)
+
+
+# =============================================================================
+# BUILD 627 - DIE ZUSAGE 'QUELLE READ-ONLY' WIRD DURCHGESETZT
+#
+# Vorgang e9522fe2, zweiter Teil. Der Kopf von backup_executor.py sicherte
+# seit Build 353 zu, die Quelle werde nicht veraendert - technisch verhindert
+# hat das nichts: die Verbindungen waren schreibfaehig, und die Zusage stand
+# allein im Kommentar. Derselbe Befundtyp liegt im Eingang noch einmal
+# (906ede75).
+#
+# BR01 - der Sicherungspfad oeffnet die Quelle NUR LESEND: eine
+#        schreibgeschuetzte Quelle laesst sich sichern
+# BR02 - Gegenprobe am Quelltext: ausser dem Checkpoint gibt es im
+#        Sicherungspfad kein schreibfaehiges connect auf die Quelle
+# BR03 - eine NICHT VORHANDENE Quelle wird nicht mehr stillschweigend
+#        angelegt
+# =============================================================================
+
+class QuelleNurLesendTests(unittest.TestCase):
+
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+        base = Path(self._tmp)
+        (base / "data").mkdir()
+        for d in ("evidence", "forensic", "assets"):
+            (base / "data" / d).mkdir()
+        self._dest = str(base / "backups")
+        os.mkdir(self._dest)
+        _mkdb(base / "data" / "coordinator.db", user_version=5)
+        self._base = base
+        self._paths = {
+            "coordinator_db": str(base / "data" / "coordinator.db"),
+            "forensic_db_dir": str(base / "data" / "forensic"),
+            "evidence_db_dir": str(base / "data" / "evidence"),
+            "assets_db_dir": str(base / "data" / "assets"),
+        }
+
+    def tearDown(self):
+        for root, dirs, files in os.walk(self._tmp, topdown=False):
+            for f in files:
+                os.chmod(os.path.join(root, f), 0o644)
+                os.remove(os.path.join(root, f))
+            for d in dirs:
+                os.rmdir(os.path.join(root, d))
+        os.rmdir(self._tmp)
+
+    def _cfg(self, **over):
+        base = dict(dest_dir=self._dest, retention_count=7,
+                    min_free_factor=1.3, checkpoint="none",
+                    include_shared_dbs=False)
+        base.update(over)
+        return BackupConfig(**base)
+
+    # --- BR01 ---------------------------------------------------------------
+    def test_br01_schreibgeschuetzte_quelle_laesst_sich_sichern(self):
+        """
+        DER MESSBARE BELEG. Eine Quelle, auf die das Dateisystem keinen
+        Schreibzugriff zulaesst, kann nur gesichert werden, wenn der ganze
+        Pfad sie nur-lesend oeffnet. Vor Build 627 waere spaetestens
+        'VACUUM INTO' auf einer schreibfaehigen Verbindung gescheitert.
+
+        Der Checkpoint ist hier abgeschaltet ('checkpoint': 'none') - er ist
+        die eine Stelle, die naturgemaess schreibt, und BR02 haelt fest, dass
+        es bei dieser einen bleibt.
+        """
+        quelle = self._base / "data" / "coordinator.db"
+        os.chmod(quelle, 0o444)
+        cfg = self._cfg()
+        run = BackupExecutor(cfg).run(BackupPlanner(self._paths, cfg).plan())
+
+        self.assertTrue(run.ok, run.reason)
+        ergebnis = [r for r in run.results if r.label == "coordinator"][0]
+        self.assertTrue(ergebnis.integrity_ok, ergebnis.error)
+        self.assertEqual(5, ergebnis.user_version)
+        self.assertTrue(os.path.isfile(ergebnis.backup_path))
+
+    # --- BR02 ---------------------------------------------------------------
+    def test_br02_kein_schreibfaehiges_connect_ausser_dem_checkpoint(self):
+        """
+        Gegenprobe AM QUELLTEXT. Ein Verhaltenstest zeigt nur, dass bei
+        DIESEM Aufruf nichts geschrieben wurde; die Baumsuche zeigt, dass es
+        keinen Weg dorthin gibt. Dieselbe Ueberlegung wie bei CT11 fuer
+        tools/hilfe.py.
+
+        UEBER DEN SYNTAXBAUM UND NICHT ZEILENWEISE: die erste Fassung dieses
+        Tests suchte den Text 'sqlite3.connect(' und fand dabei den KOMMENTAR,
+        der die Aenderung erklaert. Eine Pruefung, die ihre eigene Begruendung
+        fuer einen Befund haelt, ist unbrauchbar.
+        """
+        import ast as _ast
+
+        def _offene_verbindungen(pfad):
+            """(Zeilennummer, umgebende Funktion) je schreibfaehigem connect."""
+            with open(pfad, encoding="utf-8") as fh:
+                baum = _ast.parse(fh.read())
+            eltern = {}
+            for knoten in _ast.walk(baum):
+                for kind in _ast.iter_child_nodes(knoten):
+                    eltern[kind] = knoten
+            raus = []
+            for knoten in _ast.walk(baum):
+                if not isinstance(knoten, _ast.Call):
+                    continue
+                f = knoten.func
+                if not (isinstance(f, _ast.Attribute) and f.attr == "connect"
+                        and isinstance(f.value, _ast.Name)
+                        and f.value.id == "sqlite3"):
+                    continue
+                erstes = knoten.args[0] if knoten.args else None
+                roh = _ast.unparse(erstes) if erstes is not None else ""
+                if "mode=ro" in roh:
+                    continue
+                # Die umgebende Funktion suchen - sie benennt die Ausnahme.
+                p = eltern.get(knoten)
+                while p is not None and not isinstance(
+                        p, (_ast.FunctionDef, _ast.AsyncFunctionDef)):
+                    p = eltern.get(p)
+                raus.append((knoten.lineno,
+                             p.name if p is not None else "(Modulebene)"))
+            return raus
+
+        wurzel = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+        offen = _offene_verbindungen(
+            os.path.join(wurzel, "management/backup/backup_executor.py"))
+        self.assertEqual(1, len(offen),
+                         "erwartet ist GENAU eine Ausnahme: %s" % offen)
+        self.assertEqual("_checkpoint_passive", offen[0][1],
+                         "die Ausnahme steht nicht beim Checkpoint: %s" % offen)
+
+        self.assertEqual([], _offene_verbindungen(
+            os.path.join(wurzel,
+                         "management/migration_fleet/harness/backup.py")))
+        self.assertEqual([], _offene_verbindungen(
+            os.path.join(wurzel, "management/backup/backup_pruefer.py")))
+
+    # --- BR03 ---------------------------------------------------------------
+    def test_br03_fehlende_quelle_wird_nicht_stillschweigend_angelegt(self):
+        """
+        EIN GEWINN, DER BEIM MESSEN AUFFIEL: sqlite3.connect() auf einen
+        nicht vorhandenen Pfad LEGT DIE DATEI AN. Eine Sicherung einer
+        verschwundenen Quelle waere damit als leere Datei entstanden. Mit
+        'mode=ro' scheitert der Aufruf stattdessen - und ein Fehlschlag ist
+        hier die richtige Antwort.
+        """
+        weg = os.path.join(self._tmp, "gibtsnicht.db")
+        with self.assertRaises(sqlite3.OperationalError):
+            BackupTool.create_backup(weg, self._dest, db_label="weg",
+                                     version=1)
+        self.assertFalse(os.path.exists(weg),
+                         "die fehlende Quelle wurde angelegt")

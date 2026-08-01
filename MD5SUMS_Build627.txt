@@ -1,0 +1,7 @@
+d8bcb4179dd4834ca6f3e6e5ab029813  build.json
+84aa3bd62eac5eb286c320f0b9e133b4  issue-tracker/eingang_claude_Build627.json
+76dc42ea811e47cb9d3f97b39a9e4fc4  management/backup/backup_admin.py
+1cce2a368ea8a0fd9604f0ecbcdefe92  management/backup/backup_executor.py
+af59e5ff90b391f5aaa67e7f5b44cd45  management/help/cli_katalog.py
+a9f59733bf3abb38e760d0497946d2f7  management/migration_fleet/harness/backup.py
+982fb4b5ea55f139861597c2bbd4a369  tests/test_backup_executor.py

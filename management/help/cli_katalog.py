@@ -1266,9 +1266,16 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         zweck="Die auditierte Datensicherung planen, ausfuehren und die "
               "vergangenen Laeufe auflisten.",
         art="gemischt",
-        datenbanken=("coordinator.db (run schreibend, plan/list lesend)",
+        datenbanken=("coordinator.db (run schreibend; plan/list/pruefen "
+                     "lesend, seit Build 627 mit 'mode=ro' erzwungen)",
                      "alle uebrigen Datenbanken werden zur Sicherung "
-                     "AUSSCHLIESSLICH gelesen und dabei nicht veraendert"),
+                     "AUSSCHLIESSLICH gelesen - seit Build 627 auch technisch "
+                     "erzwungen ('mode=ro'). EINE AUSNAHME: der optionale "
+                     "'wal_checkpoint(PASSIVE)' schreibt naturgemaess in die "
+                     "Quelle; wer das nicht will, setzt backup.checkpoint auf "
+                     "etwas anderes als 'passive' - die Sicherung braucht ihn "
+                     "nicht, 'VACUUM INTO' liest ohnehin konsistent ueber das "
+                     "WAL hinweg"),
         betrieb="TEILWEISE betriebsvertraeglich - die Einstufung ist am "
                 "2026-07-31 nachgeprueft und RICHTIGGESTELLT worden (Build "
                 "616). 'plan' ist rein lesend und jederzeit unbedenklich. "
@@ -1291,10 +1298,10 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             _b("list", "lesend", "Die REGISTRIERTEN Laeufe auflisten - was "
                "geschehen ist, nicht was heute im Ordner liegt. Seit Build "
                "626 Rueckgabewert 1, wenn mindestens eine Sicherung als "
-               "nicht integer vermerkt ist. ACHTUNG - es oeffnet die "
-               "coordinator.db trotz dieser Einstufung SCHREIBFAEHIG und "
-               "setzt dabei ein Journalmodus-PRAGMA; geschrieben werden "
-               "keine Nutzdaten. Vorgang eroeffnet."),
+               "nicht integer vermerkt ist. Seit Build 627 oeffnet es die "
+               "coordinator.db wirklich nur lesend ('mode=ro', kein "
+               "Journalmodus-PRAGMA) - bis Build 626 war die Einstufung "
+               "'lesend' eine Zusage, die nichts durchsetzte."),
             _b("pruefen", "lesend", "Den SICHERUNGSORDNER ansehen und je "
                "Datenbank sagen, wie viele BRAUCHBARE Generationen uebrig "
                "sind (Build 626). Rein lesend - eine Datei mit heissem "

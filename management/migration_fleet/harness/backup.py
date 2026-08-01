@@ -66,7 +66,25 @@ class BackupTool:
         dest = str(Path(dest_dir) / BackupTool.backup_filename(
             db_label, version, host, ts))
 
-        con = sqlite3.connect(str(src))
+        # BUILD 627 (Vorgang e9522fe2, zweiter Teil): DIE QUELLE WIRD
+        # NUR-LESEND GEOEFFNET. Der Kopf dieser Datei sichert seit Build 317
+        # zu, dass die Quelle nicht veraendert wird - technisch verhindert
+        # hat das bisher nichts: die Verbindung war schreibfaehig, und die
+        # Zusage stand allein im Kommentar. Genau dieser Befundtyp liegt im
+        # Eingang gleich zweimal (e9522fe2, 906ede75).
+        #
+        # GEMESSEN am 2026-08-01: 'VACUUM INTO' gelingt auf einer mit
+        # 'mode=ro' geoeffneten Verbindung - es schreibt ja in die ZIELdatei,
+        # nicht in die Quelle. Die Zusage laesst sich also einloesen, statt
+        # sie nur zu behaupten.
+        #
+        # EIN ZWEITER GEWINN, der beim Messen auffiel: Ein gewoehnliches
+        # sqlite3.connect() auf einen NICHT VORHANDENEN Pfad LEGT DIE DATEI
+        # AN. Eine Sicherung einer verschwundenen Quelle waere damit als
+        # leere Datei entstanden. Mit 'mode=ro' scheitert der Aufruf
+        # stattdessen mit 'unable to open database file' - und ein Fehlschlag
+        # ist hier die richtige Antwort.
+        con = sqlite3.connect("file:%s?mode=ro" % src, uri=True)
         try:
             # VACUUM darf nicht in einer offenen Transaktion laufen -> Autocommit.
             con.isolation_level = None
