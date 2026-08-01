@@ -1,0 +1,4 @@
+69f99ef481a29d008701c80b830b037b  build.json
+96ec1b0417d7a0a408474419624a5a6b  tests/_bedienelemente.py
+14ab338f80fd52b356b2993bb2eddbf5  tests/hilfe_bedienung_stand.json
+cf914632e916cd0937e98f3dc44dfce3  tests/test_help_bedienelemente.py
