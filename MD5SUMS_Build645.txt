@@ -1,0 +1,8 @@
+7f817501254011eec7f9ebc1f17bb3e7  build.json
+dcc7843ffd504ca6344b178f4fe50647  issue-tracker/server.py
+523ffdc904e265a6cda49e1b0fa2232e  issue-tracker/templates/base.html
+e3202cd2c50bd59ea75165d277dd811f  issue-tracker/templates/index.html
+9c5dccf008abd85f9b2f9995415fd5ca  issue-tracker/templates/issue_form.html
+0807c9af546005625f5e14e5b9c4fc86  issue-tracker/eingang_claude_Build645.json
+f9e84317c51a21a256052dcd851b823d  tests/test_issue_tracker_oberflaeche.py
+8ff250a03cfbd7af6df04284ec0bf217  tests/test_build_json_gestalt.py

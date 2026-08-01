@@ -75,6 +75,58 @@
     {% endfor %}
 </ul>
 
+{#
+  BUILD 645 - BLAETTER-BEDIENUNG.
+
+  server.py hat 'pagination' (current_page, total_pages, total_issues) schon
+  immer uebergeben; diese Vorlage hat es nie ausgegeben. Bei ITEMS_PER_PAGE=50
+  und 126 Vorgaengen hiess das: 76 Vorgaenge waren ueber die Oberflaeche NICHT
+  erreichbar - nur, wenn jemand '?page=2' von Hand in die Adresszeile tippte.
+  Gemessen: GET / lieferte 50 Eintraege, die Kachel 'Gesamt' sagte 126, und
+  die Zeichenfolge 'page=' kam im ausgelieferten HTML nicht vor.
+
+  DIE FILTER MUESSEN MITWANDERN. Ein Blaettern, das die Auswahl vergisst,
+  waere die naechste Falle: man filtert auf 'offen', blaettert weiter und
+  steht wieder im gesamten Bestand, ohne dass es auffaellt. Deshalb wird jeder
+  gesetzte Filter als verstecktes Feld an den Verweis angehaengt.
+#}
+{% set filter_query %}
+{%- if current_filters.status %}&status_filter={{ current_filters.status|urlencode }}{% endif -%}
+{%- if current_filters.type %}&type_filter={{ current_filters.type|urlencode }}{% endif -%}
+{%- if current_filters.priority %}&priority_filter={{ current_filters.priority|urlencode }}{% endif -%}
+{%- if current_filters.assigned_to %}&assigned_to={{ current_filters.assigned_to|urlencode }}{% endif -%}
+{%- if current_filters.search %}&search={{ current_filters.search|urlencode }}{% endif -%}
+{% endset %}
+
+{% if pagination and pagination.total_pages > 1 %}
+<nav class="pagination" aria-label="Seiten">
+    {% if pagination.current_page > 1 %}
+    <a class="btn btn-sm" href="/?page=1{{ filter_query }}" title="Erste Seite">&laquo; Erste</a>
+    <a class="btn btn-sm" href="/?page={{ pagination.current_page - 1 }}{{ filter_query }}">&lsaquo; Zurück</a>
+    {% else %}
+    <span class="btn btn-sm pagination-off">&laquo; Erste</span>
+    <span class="btn btn-sm pagination-off">&lsaquo; Zurück</span>
+    {% endif %}
+
+    <span class="pagination-status">
+        Seite {{ pagination.current_page }} von {{ pagination.total_pages }}
+        &mdash; {{ pagination.total_issues }} Vorgänge in der Auswahl
+    </span>
+
+    {% if pagination.current_page < pagination.total_pages %}
+    <a class="btn btn-sm" href="/?page={{ pagination.current_page + 1 }}{{ filter_query }}">Weiter &rsaquo;</a>
+    <a class="btn btn-sm" href="/?page={{ pagination.total_pages }}{{ filter_query }}" title="Letzte Seite">Letzte &raquo;</a>
+    {% else %}
+    <span class="btn btn-sm pagination-off">Weiter &rsaquo;</span>
+    <span class="btn btn-sm pagination-off">Letzte &raquo;</span>
+    {% endif %}
+</nav>
+{% elif pagination %}
+{# Eine einzige Seite: die Zahl trotzdem nennen, damit man sieht, dass nichts
+   fehlt. Eine Liste ohne Angabe laesst offen, ob sie vollstaendig ist. #}
+<p class="pagination-status">{{ pagination.total_issues }} Vorgänge in der Auswahl &mdash; eine Seite.</p>
+{% endif %}
+
 {% if not issues %}
 <div class="card">
     <p>Keine Issues gefunden. <a href="/issue/new">Ersten Issue erstellen</a></p>

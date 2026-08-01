@@ -507,7 +507,20 @@ async def save_issue(
     assigned_to: str = Form(""),
     target_version: str = Form(""),
     tags: str = Form(""),
-    related_to: str = Form(""),
+    # BUILD 645 - 'None' STATT '""' ALS VORGABE, UND DAS IST DER GANZE PUNKT.
+    #
+    # Bis Build 644 stand hier 'Form("")'. Damit war 'kein Feld abgeschickt'
+    # nicht von 'Feld abgeschickt und leer' zu unterscheiden - beides kam als
+    # "" an. Da issue_form.html gar kein Feld 'related_to' fuehrte, hiess das:
+    # JEDE Bearbeitung ueber die Weboberflaeche loeschte SAEMTLICHE Verweise
+    # des Vorgangs. Gemessen an f51fd838: ['906ede75','e9522fe2','c3f80e54']
+    # -> [] nach einem einzigen Speichern, ohne Meldung und ohne Eintrag im
+    # Verlauf.
+    #
+    # Mit 'Form(None)' sind die beiden Faelle unterscheidbar:
+    #   None -> das Formular hat nichts dazu gesagt  -> Bestand behalten
+    #   ""   -> jemand hat das Feld ausdruecklich geleert -> leeren
+    related_to: Optional[str] = Form(None),
     estimated_hours: str = Form(""),
     os: str = Form(""),
     browser: str = Form(""),
@@ -520,17 +533,53 @@ async def save_issue(
     # Tags verarbeiten
     tag_list = [t.strip() for t in tags.split(",") if t.strip()]
     
-    # Verwandte Issues
-    related_list = [r.strip() for r in related_to.split(",") if r.strip()]
-    # Validiere UUIDs
-    valid_relations = []
-    existing_ids = {i["id"] for i in issues}
-    for rel_id in related_list:
-        if rel_id in existing_ids:
-            valid_relations.append(rel_id)
-        else:
-            logger.warning(f"Verwandte Issue-ID nicht gefunden: {rel_id}")
-    
+    # -----------------------------------------------------------------------
+    # VERWANDTE VORGAENGE - BUILD 645 VOLLSTAENDIG UMGEBAUT.
+    #
+    # Der bisherige Bestand des Vorgangs ist der Massstab. Er wird zuerst
+    # ermittelt, denn er entscheidet zwei Dinge:
+    #   (1) was gilt, wenn das Formular nichts geschickt hat, und
+    #   (2) was NICHT verworfen werden darf, auch wenn es die Pruefung nicht
+    #       besteht.
+    #
+    # ZU (2), UND DAS IST DIE ZWEITE HAELFTE DES FEHLERS: Die alte Pruefung
+    # liess nur durch, was als volle ID im Bestand vorkommt. Fuer die fuenf
+    # Verweise, die als 8-Zeichen-Kurzform in der Datei stehen (Vorgang
+    # 6da63d8b), heisst das: selbst MIT verstecktem Feld waeren sie beim
+    # Speichern herausgefiltert worden - die Reparatur haette den Fehler nur
+    # verschoben. Was bereits gespeichert IST, wird deshalb durchgelassen.
+    # Die Oberflaeche ist nicht der Ort, an dem Altlasten stillschweigend
+    # verschwinden; dafuer gibt es repair_related_ids.py, das ansagt, was es
+    # tut.
+    # -----------------------------------------------------------------------
+    bestehende_verweise: List[str] = []
+    verworfene_verweise: List[str] = []
+    if issue_id:
+        _vorgang = next((i for i in issues if i.get("id") == issue_id), None)
+        if _vorgang:
+            bestehende_verweise = list(_vorgang.get("related_to") or [])
+
+    if related_to is None:
+        # Das Formular hat zu den Verweisen nichts gesagt. Ein Formular, das
+        # ein Feld nicht kennt, ist keine Aussage ueber dieses Feld.
+        valid_relations = bestehende_verweise
+        if bestehende_verweise:
+            logger.info(
+                "Kein Feld 'related_to' im Formular - %d bestehende Verweise "
+                "unveraendert uebernommen", len(bestehende_verweise)
+            )
+    else:
+        related_list = [r.strip() for r in related_to.split(",") if r.strip()]
+        valid_relations = []
+        existing_ids = {i["id"] for i in issues}
+        for rel_id in related_list:
+            if rel_id in existing_ids or rel_id in bestehende_verweise:
+                valid_relations.append(rel_id)
+            else:
+                verworfene_verweise.append(rel_id)
+                logger.warning(f"Verwandte Issue-ID nicht gefunden: {rel_id}")
+
+
     # Umgebungsinformationen
     environment = {}
     env_fields = {"os": os, "browser": browser, "python_version": python_version, "database": database}
@@ -581,7 +630,21 @@ async def save_issue(
             action="comment",
             comment="Issue aktualisiert" + (f": {', '.join(changes)}" if changes else "")
         ))
-        
+
+        # BUILD 645: Was die Oberflaeche nicht uebernehmen konnte, steht ab
+        # jetzt IM VORGANG und nicht nur im Protokoll des Servers. Ein
+        # Protokolleintrag ist kein Beleg fuer den, der spaeter die Akte liest.
+        if verworfene_verweise:
+            issue["updates"].append(create_update_entry(
+                author=reporter,
+                action="comment",
+                comment=(
+                    "HINWEIS: Diese Verweise wurden beim Speichern nicht "
+                    "uebernommen, weil zu ihnen kein Vorgang gefunden wurde: "
+                    + ", ".join(verworfene_verweise)
+                )
+            ))
+
         logger.info(f"Issue {issue_id} aktualisiert")
         
     else:  # Neu erstellen
@@ -620,6 +683,18 @@ async def save_issue(
             except ValueError:
                 pass
         
+        # BUILD 645: derselbe Vermerk wie beim Bearbeiten - siehe dort.
+        if verworfene_verweise:
+            new_issue["updates"].append(create_update_entry(
+                author=reporter,
+                action="comment",
+                comment=(
+                    "HINWEIS: Diese Verweise wurden beim Anlegen nicht "
+                    "uebernommen, weil zu ihnen kein Vorgang gefunden wurde: "
+                    + ", ".join(verworfene_verweise)
+                )
+            ))
+
         issues.append(new_issue)
         logger.info(f"Neuer Issue erstellt: {new_issue['id']}")
     

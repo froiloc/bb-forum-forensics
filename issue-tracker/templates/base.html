@@ -285,6 +285,40 @@
             border-radius: 8px;
             margin-top: 1rem;
         }
+
+        /* Build 645: Blaetter-Bedienung. Bis Build 644 gab es keine - bei
+           126 Vorgaengen und 50 je Seite waren 76 nicht erreichbar. */
+        .pagination {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin: 1.5rem 0;
+        }
+
+        .pagination .btn {
+            background: white;
+            color: #2c3e50;
+            border: 1px solid #ddd;
+        }
+
+        .pagination .btn:hover {
+            background: #ecf0f1;
+        }
+
+        /* Abgeblendet statt weggelassen: die Bedienung behaelt ihre Form,
+           und man sieht, dass man am Anfang bzw. am Ende steht. */
+        .pagination-off {
+            background: #f5f7fa;
+            color: #b2bec3;
+            border: 1px solid #eee;
+            cursor: default;
+        }
+
+        .pagination-status {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 <body>

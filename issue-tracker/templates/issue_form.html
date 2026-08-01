@@ -10,6 +10,26 @@
         {% if issue %}
         <input type="hidden" name="issue_id" value="{{ issue.id }}">
         {% endif %}
+
+        {#
+          BUILD 645 - DIESES FELD IST EINE SPERRE GEGEN DATENVERLUST.
+
+          Bis Build 644 kannte dieses Formular kein 'related_to'. server.py
+          las das Feld trotzdem und schrieb das Ergebnis unbedingt zurueck -
+          also loeschte JEDES Speichern ueber diese Maske saemtliche Verweise
+          des Vorgangs. Gemessen am laufenden Tracker mit f51fd838:
+          ['906ede75','e9522fe2','c3f80e54'] -> [] nach einem Klick, ohne
+          Meldung und ohne Eintrag im Verlauf.
+
+          Das Feld ist versteckt, weil das Bearbeiten von Verweisen eine
+          eigene Bedienung braucht (eigener Vorgang). Es traegt hier nur den
+          BESTAND unveraendert wieder zurueck. server.py haelt ausserdem den
+          Fall aus, dass das Feld ganz fehlt (Form(None)) - beide Haelften
+          zusammen, damit die Zusicherung nicht an einer einzigen Zeile in
+          einer Vorlage haengt.
+        #}
+        <input type="hidden" name="related_to"
+               value="{{ issue.related_to|join(', ') if issue and issue.related_to else '' }}">
         
         <div class="form-row">
             <div class="form-group">
