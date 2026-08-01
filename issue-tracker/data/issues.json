@@ -3864,6 +3864,119 @@
           "comment": "Issue erstellt"
         }
       ]
+    },
+    {
+      "id": "2d692c67-d664-42bf-9cc9-59cc72e7dbb7",
+      "type": "improvement",
+      "title": "Issue-Tracker Tabs als Cloud visualisieren.",
+      "affected_version": "0.8.641",
+      "reporter": "Alex",
+      "reported_at": "2026-08-01T17:09:15.510777+00:00",
+      "prerequisites": "Im Issue-Tracker gibt es Tickets mit Tags.",
+      "description": "Ich pflege zwar Tags im Issue-Tracker, aber weder werden die im Dashboard angezeigt, noch kann ich nach diesen filtern oder suchen.\r\nIch möchte eine Visualisierung der Tags haben.",
+      "expected_behavior": "Tags werden in einer Tag-Cloud dargestellt. Diese agiert auch gleichzeitig als Filter für die Tickets.",
+      "actual_behavior": "",
+      "status": "open",
+      "priority": "medium",
+      "severity": "major",
+      "assigned_to": "Claude",
+      "related_to": [],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14"
+      },
+      "tags": [
+        "Issue-Tracker",
+        "Tags",
+        "Tag-Cloud"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-01T17:09:15.510804+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Issue erstellt"
+        }
+      ]
+    },
+    {
+      "id": "7571d4de-5519-4421-a462-427cca413c87",
+      "type": "improvement",
+      "title": "Issue-Tracker - Im Dashboard alle möglichen Status als Filter erlauben",
+      "affected_version": "0.8.641",
+      "reporter": "Alex",
+      "reported_at": "2026-08-01T17:12:09.842976+00:00",
+      "prerequisites": "Ein Ticket hat den Status in Progress.",
+      "description": "Nach dem Ticket kann nicht gefiltert werden.",
+      "expected_behavior": "Ich kann nach Tickets in jedem beliebigen Status filtern.",
+      "actual_behavior": "Derzeit kann ich nur, Offen, geschlossen, in Bearbeitung und Gelöst filtern",
+      "status": "open",
+      "priority": "high",
+      "severity": "trivial",
+      "assigned_to": "Claude",
+      "related_to": [],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14"
+      },
+      "tags": [
+        "Issue-Tracker",
+        "Tags",
+        "Filter"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-01T17:12:09.843008+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Issue erstellt"
+        }
+      ]
+    },
+    {
+      "id": "d2ade5dc-ab51-419e-8274-4f996562a352",
+      "type": "bug",
+      "title": "Issue-Tracker - Zeilenumbruch \\n in <br> übersetzen",
+      "affected_version": "0.8.641",
+      "reporter": "Alex",
+      "reported_at": "2026-08-01T17:16:57.182779+00:00",
+      "prerequisites": "Ein Eintrag zu einem Ticket hat einen Zeilenumbruch. Dieser wird als \\n gespeichert.",
+      "description": "Zeilenumbrüche sollen durch HTML visualisiert werden.",
+      "expected_behavior": "\\n wird durch <br> ersetzt. Gern mit CSS unterstützung, so dass die nachfolgende Zeile erst nach 1,5 Zeilenhöhen beginnt, der Zeilenabstand also 1,5 Zeilen bei einem Zeilenumbruch hoch ist.",
+      "actual_behavior": "Derzeit wird \\n angezeigt.",
+      "status": "open",
+      "priority": "critical",
+      "severity": "minor",
+      "assigned_to": "Claude",
+      "related_to": [],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14"
+      },
+      "tags": [
+        "Issue-Tracker",
+        "Layout"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-01T17:16:57.182803+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Issue erstellt"
+        }
+      ]
     }
   ]
 }

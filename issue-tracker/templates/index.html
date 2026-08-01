@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Issue Dashboard{% endblock %}
+
+{% block content %}
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-number">{{ stats.total }}</div>
+        <div class="stat-label">Gesamt</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ stats.open }}</div>
+        <div class="stat-label">Offen</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ stats.in_progress }}</div>
+        <div class="stat-label">In Bearbeitung</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ stats.resolved }}</div>
+        <div class="stat-label">Gelöst</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ stats.bugs }}</div>
+        <div class="stat-label">Bugs</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ stats.features }}</div>
+        <div class="stat-label">Features</div>
+    </div>
+</div>
+
+<form id="filter-form" method="GET" class="filters">
+    <select name="status_filter" onchange="filterIssues()">
+        <option value="">Alle Status</option>
+        <option value="open" {% if current_filters.status == 'open' %}selected{% endif %}>Offen</option>
+        <option value="in_progress" {% if current_filters.status == 'in_progress' %}selected{% endif %}>In Bearbeitung</option>
+        <option value="resolved" {% if current_filters.status == 'resolved' %}selected{% endif %}>Gelöst</option>
+        <option value="closed" {% if current_filters.status == 'closed' %}selected{% endif %}>Geschlossen</option>
+    </select>
+    
+    <select name="type_filter" onchange="filterIssues()">
+        <option value="">Alle Typen</option>
+        <option value="bug" {% if current_filters.type == 'bug' %}selected{% endif %}>Bug</option>
+        <option value="feature_request" {% if current_filters.type == 'feature_request' %}selected{% endif %}>Feature Request</option>
+        <option value="improvement" {% if current_filters.type == 'improvement' %}selected{% endif %}>Verbesserung</option>
+    </select>
+    
+    <select name="priority_filter" onchange="filterIssues()">
+        <option value="">Alle Prioritäten</option>
+        <option value="critical" {% if current_filters.priority == 'critical' %}selected{% endif %}>Kritisch</option>
+        <option value="high" {% if current_filters.priority == 'high' %}selected{% endif %}>Hoch</option>
+        <option value="medium" {% if current_filters.priority == 'medium' %}selected{% endif %}>Mittel</option>
+        <option value="low" {% if current_filters.priority == 'low' %}selected{% endif %}>Niedrig</option>
+    </select>
+    
+    <input type="text" name="search" placeholder="Suche..." value="{{ current_filters.search or '' }}">
+    <button type="submit" class="btn btn-primary">Filtern</button>
+</form>
+
+<ul class="issue-list">
+    {% for issue in issues %}
+    <li class="issue-item">
+        <div class="issue-main">
+            <a href="/issue/{{ issue.id }}" class="issue-title">{{ issue.title }}</a>
+            <div class="issue-meta">
+                <span class="badge badge-{{ issue.type }}">{{ issue.type }}</span>
+                <span class="badge badge-{{ issue.status }}">{{ issue.status }}</span>
+                <span class="badge badge-{{ issue.priority }}">{{ issue.priority }}</span>
+                #{{ issue.id[:8] }} | {{ issue.reporter }} | {{ issue.reported_at[:10] }}
+            </div>
+        </div>
+        <a href="/issue/{{ issue.id }}/edit" class="btn btn-warning btn-sm">✏️</a>
+    </li>
+    {% endfor %}
+</ul>
+
+{% if not issues %}
+<div class="card">
+    <p>Keine Issues gefunden. <a href="/issue/new">Ersten Issue erstellen</a></p>
+</div>
+{% endif %}
+{% endblock %}

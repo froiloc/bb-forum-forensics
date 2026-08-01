@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}{{ issue.title }}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: start;">
+        <div>
+            <h2>{{ issue.title }}</h2>
+            <div style="margin: 1rem 0;">
+                <span class="badge badge-{{ issue.type }}">{{ issue.type }}</span>
+                <span class="badge badge-{{ issue.status }}">{{ issue.status }}</span>
+                <span class="badge badge-{{ issue.priority }}">{{ issue.priority }}</span>
+                <span class="badge badge-{{ issue.severity }}">{{ issue.severity }}</span>
+            </div>
+        </div>
+        <div>
+            <a href="/issue/{{ issue.id }}/edit" class="btn btn-warning">Bearbeiten</a>
+        </div>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.5rem 0;">
+        <div>
+            <strong>ID:</strong> {{ issue.id }}
+        </div>
+        <div>
+            <strong>Betroffene Version:</strong> {{ issue.affected_version }}
+        </div>
+        <div>
+            <strong>Reporter:</strong> {{ issue.reporter }}
+        </div>
+        <div>
+            <strong>Gemeldet am:</strong> {{ issue.reported_at }}
+        </div>
+        <div>
+            <strong>Zugewiesen an:</strong> {{ issue.assigned_to or 'Nicht zugewiesen' }}
+        </div>
+        <div>
+            <strong>Zielversion:</strong> {{ issue.target_version or 'Keine' }}
+        </div>
+        {% if issue.resolved_in_version %}
+        <div>
+            <strong>Gelöst in Version:</strong> {{ issue.resolved_in_version }}
+        </div>
+        {% endif %}
+    </div>
+    
+    {% if issue.tags %}
+    <div style="margin: 1rem 0;">
+        <strong>Tags:</strong>
+        {% for tag in issue.tags %}
+        <span class="badge" style="background: #95a5a6; color: white;">{{ tag }}</span>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    {% if issue.prerequisites %}
+    <div style="margin: 1.5rem 0;">
+        <h3>Voraussetzungen</h3>
+        <p>{{ issue.prerequisites }}</p>
+    </div>
+    {% endif %}
+    
+    <div style="margin: 1.5rem 0;">
+        <h3>Beschreibung</h3>
+        <p>{{ issue.description }}</p>
+    </div>
+    
+    {% if issue.expected_behavior %}
+    <div style="margin: 1.5rem 0;">
+        <h3>Erwartetes Verhalten</h3>
+        <p>{{ issue.expected_behavior }}</p>
+    </div>
+    {% endif %}
+    
+    {% if issue.actual_behavior %}
+    <div style="margin: 1.5rem 0;">
+        <h3>Tatsächliches Verhalten</h3>
+        <p>{{ issue.actual_behavior }}</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Quick Actions für häufige Statuswechsel -->
+{% if issue.status in ['open', 'in_progress'] %}
+<div class="card" style="background: #e8f5e9; margin-top: 1rem;">
+    <h4>⚡ Quick Actions</h4>
+    <form method="POST" action="/issue/{{ issue.id }}/status" style="display: inline;">
+        <input type="hidden" name="new_status" value="resolved">
+        <input type="hidden" name="author" value="{{ config.DEFAULT_REPORTER }}">
+        <input type="hidden" name="comment" value="Schnell als gelöst markiert">
+        <button type="submit" class="btn btn-success btn-sm"
+                onclick="return confirm('Issue als gelöst markieren?')">
+            ✅ Als gelöst markieren
+        </button>
+    </form>
+
+    <form method="POST" action="/issue/{{ issue.id }}/status" style="display: inline;">
+        <input type="hidden" name="new_status" value="closed">
+        <input type="hidden" name="author" value="{{ config.DEFAULT_REPORTER }}">
+        <input type="hidden" name="comment" value="Schnell geschlossen">
+        <button type="submit" class="btn btn-danger btn-sm"
+                onclick="return confirm('Issue wirklich schließen?')">
+            🔒 Schließen
+        </button>
+    </form>
+</div>
+{% endif %}
+
+<!-- Status-Updates und Kommentare -->
+<div class="card" style="margin-top: 2rem;">
+    <h3>Status aktualisieren</h3>
+    {% if next_statuses %}
+    <form method="POST" action="/issue/{{ issue.id }}/status" style="margin-bottom: 2rem;">
+        <div class="form-row">
+            <div class="form-group">
+                <label>Neuer Status</label>
+                <select name="new_status">
+                    {% for status in next_statuses %}
+                    <option value="{{ status }}">{{ status }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Autor</label>
+                <input type="text" name="author" required>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Kommentar</label>
+            <textarea name="comment" placeholder="Grund für Statusänderung..."></textarea>
+        </div>
+        <div class="form-group">
+            <label>Gelöst in Version (bei resolved/closed)</label>
+            <input type="text" name="resolved_version" placeholder="z.B. 1.2.1">
+        </div>
+        <button type="submit" class="btn btn-primary">Status aktualisieren</button>
+    </form>
+    {% else %}
+    <p>Status kann nicht mehr geändert werden ({{ issue.status }}).</p>
+    {% endif %}
+    
+    <h3>Kommentar hinzufügen</h3>
+    <form method="POST" action="/issue/{{ issue.id }}/comment">
+        <div class="form-row">
+            <div class="form-group">
+                <label>Autor</label>
+                <input type="text" name="author" required>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Kommentar</label>
+            <textarea name="comment" required></textarea>
+        </div>
+        <button type="submit" class="btn btn-success">Kommentar senden</button>
+    </form>
+</div>
+
+<!-- Zeitstrahl -->
+<div class="card" style="margin-top: 2rem;">
+    <h3>Verlauf</h3>
+    <div class="timeline">
+        {% for update in issue.updates|reverse %}
+        <div class="timeline-item">
+            <div class="timeline-header">
+                {{ update.author }}
+                {% if update.action == 'status_change' %}
+                Status geändert von <span class="badge badge-{{ update.old_value }}">{{ update.old_value }}</span> 
+                zu <span class="badge badge-{{ update.new_value }}">{{ update.new_value }}</span>
+                {% elif update.action == 'comment' %}
+                kommentierte
+                {% else %}
+                {{ update.action }}
+                {% endif %}
+            </div>
+            {% if update.comment %}
+            <p>{{ update.comment }}</p>
+            {% endif %}
+            <div class="timeline-time">{{ update.timestamp }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% if related_issues %}
+<div class="card related-issues" style="margin-top: 2rem;">
+    <h3>Verknüpfte Issues</h3>
+    <ul>
+        {% for related in related_issues %}
+        <li>
+            <a href="/issue/{{ related.id }}">{{ related.title }}</a>
+            <span class="badge badge-{{ related.status }}">{{ related.status }}</span>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+{% endblock %}
