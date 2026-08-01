@@ -120,6 +120,15 @@ _GEPRUEFT_623 = ("Build 623, 2026-08-01, im Bestand selbst - das Werkzeug "
                  "oeffnet keine Datenbank; Ziel unter /tmp, Python 3.13")
 
 
+#: Build 626. Gefahren gegen einen Wegwerf-Sicherungsordner unter /tmp, in
+#: dem ein ECHTER Abbruchrest liegt: eine 'VACUUM INTO'-Kopie einer 68-MB-
+#: Quelle, nach 0,30 s mit SIGKILL abgebrochen. Genau die Lage also, um deren
+#: Erkennung es geht - nicht eine nachgebaute.
+_GEPRUEFT_626 = ("Build 626, 2026-08-01, gegen einen Wegwerf-Bestand unter "
+                 "/tmp mit einem echten Abbruchrest (VACUUM INTO nach 0,30 s "
+                 "mit SIGKILL beendet), Python 3.13")
+
+
 def _bsp(aufruf: str, wirkung: str, geprueft: str = _GEPRUEFT) -> CliBeispiel:
     """Kurzform fuer einen GEFAHRENEN Beispielaufruf."""
     return CliBeispiel(aufruf=aufruf, wirkung=wirkung, geprueft=geprueft)
@@ -1251,7 +1260,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
     CliEintrag(
         schluessel="backup_admin",
         pfad="management/backup/backup_admin.py",
-        aufruf="python -m management.backup.backup_admin plan|run|list",
+        aufruf="python -m management.backup.backup_admin plan|run|list|pruefen",
         titel="Datensicherung",
         gruppe="Betrieb und Sicherung",
         zweck="Die auditierte Datensicherung planen, ausfuehren und die "
@@ -1279,22 +1288,57 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Was gesichert wuerde, samt Platzbedarf. Schreibt nichts."),
             _b("run", "schreibend",
                "Sicherung ausfuehren und den Lauf belegen."),
-            _b("list", "lesend", "Vergangene Laeufe auflisten. ACHTUNG - "
-               "es oeffnet die coordinator.db trotz dieser Einstufung "
-               "SCHREIBFAEHIG und setzt dabei ein Journalmodus-PRAGMA; "
-               "geschrieben werden keine Nutzdaten. Vorgang eroeffnet."),
+            _b("list", "lesend", "Die REGISTRIERTEN Laeufe auflisten - was "
+               "geschehen ist, nicht was heute im Ordner liegt. Seit Build "
+               "626 Rueckgabewert 1, wenn mindestens eine Sicherung als "
+               "nicht integer vermerkt ist. ACHTUNG - es oeffnet die "
+               "coordinator.db trotz dieser Einstufung SCHREIBFAEHIG und "
+               "setzt dabei ein Journalmodus-PRAGMA; geschrieben werden "
+               "keine Nutzdaten. Vorgang eroeffnet."),
+            _b("pruefen", "lesend", "Den SICHERUNGSORDNER ansehen und je "
+               "Datenbank sagen, wie viele BRAUCHBARE Generationen uebrig "
+               "sind (Build 626). Rein lesend - eine Datei mit heissem "
+               "Journal wird nicht einmal geoeffnet, weil SQLite sie dabei "
+               "auf 0 Byte verkuerzen wuerde. Rueckgabewert 2 heisst: "
+               "mindestens eine Datenbank hat KEINE brauchbare Sicherung."),
         ),
         ausgabe="Sicherungsdateien und ein Manifest im Sicherungsverzeichnis "
                 "(bei 'run').",
         tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.backup.backup_admin pruefen "
+                     "--config ./cfg.yaml",
+                     "Sah den Sicherungsordner durch. Im Versuch: "
+                     "'coordinator 2 brauchbar, 1 unbrauchbar' - der "
+                     "Abbruchrest wurde am heissen Journal erkannt und NICHT "
+                     "geoeffnet; er lag danach unveraendert da (37.158.912 "
+                     "Byte). Rueckgabewert 1.",
+                     _GEPRUEFT_626),
+                _bsp("python -m management.backup.backup_admin pruefen "
+                     "--config ./cfg.yaml",
+                     "Derselbe Ordner, nachdem die beiden brauchbaren "
+                     "Generationen entfernt worden waren: 'OHNE BRAUCHBARE "
+                     "SICHERUNG (1): coordinator', zusaetzlich auf der "
+                     "Fehlerausgabe. Rueckgabewert 2 - der Ernstfall.",
+                     _GEPRUEFT_626),
+            ),
             exit_codes=((0, "'plan': Vorabpruefung bestanden. 'run': ALLE "
                             "Datenbanken gesichert UND integer. 'list': "
-                            "ausgegeben - IMMER, siehe Warnung"),
+                            "ausgegeben, keine als defekt vermerkt. "
+                            "'pruefen': nichts zu beanstanden"),
                         (1, "'run': mindestens eine Sicherung ist "
-                            "fehlgeschlagen oder nicht integer"),
+                            "fehlgeschlagen oder nicht integer. 'list': "
+                            "mindestens eine registrierte Sicherung ist als "
+                            "nicht integer vermerkt. 'pruefen': Befunde im "
+                            "Ordner, aber jede Datenbank hat noch mindestens "
+                            "eine brauchbare Generation"),
                         (2, "'plan'/'run': die Vorabpruefung ist "
                             "fehlgeschlagen (etwa zu wenig Platz); bei "
-                            "'run' wurde dann NICHTS gesichert")),
+                            "'run' wurde dann NICHTS gesichert. 'pruefen': "
+                            "DER ERNSTFALL - mindestens eine Datenbank hat "
+                            "KEINE brauchbare Sicherung"),
+                        (3, "'pruefen': das Sicherungsverzeichnis ist nicht "
+                            "lesbar - es ist gar nichts festgestellt")),
             warnungen=(
                 "DIE AUFBEWAHRUNG ZAEHLT SEIT BUILD 625 NUR BRAUCHBARE "
                 "GENERATIONEN. Bis Build 624 behielt die Aufraeumung je "

@@ -583,3 +583,36 @@ class AufbewahrungTests(unittest.TestCase):
         self.assertEqual([], run.aufraeum_fehler)
         self.assertEqual(2, len(self._zaehlende()))
         self.assertEqual(2, len(run.pruned), run.pruned)
+
+    # --- BE18 (Build 626) ---------------------------------------------------
+    def test_be18_heisses_journal_wird_nicht_zurueckgerollt(self):
+        """
+        EIN FEHLER AUS BUILD 625, IN BUILD 626 BEHOBEN.
+
+        _traegt_inhalt oeffnete die Datei gewoehnlich. Liegt daneben ein
+        heisses Journal - die Signatur einer abgebrochenen Sicherung -, dann
+        SPIELT SQLITE ES BEIM OEFFNEN ZURUECK und verkuerzt die Teildatei
+        dabei auf 0 Byte. Build 625 hat also genau den Beleg vernichtet, den
+        es mit dem Umbenennen nach '.defekt' erhalten wollte.
+
+        Jetzt wird eine Datei mit heissem Journal gar nicht erst geoeffnet;
+        das Journal ist die Antwort. Geprueft wird an der GROESSE nach dem
+        Lauf: bliebe die Datei bei 0 Byte, waere sie zurueckgerollt worden.
+        """
+        teil = Path(self._dest) / "coordinator_v5_20260103T000000Z_h.backup.db"
+        _mkdb(teil, user_version=5, rows=200)
+        vorher = teil.stat().st_size
+        self.assertGreater(vorher, 0)
+        (Path(str(teil) + "-journal")).write_bytes(b"\x00" * 1024)
+
+        cfg = self._cfg(retention_count=2)
+        run = BackupExecutor(cfg).run(self._plan(cfg))
+
+        beiseite = Path(str(teil) + DEFEKT_ENDUNG)
+        self.assertTrue(beiseite.exists(), run.beiseite_gelegt)
+        self.assertEqual(vorher, beiseite.stat().st_size,
+                         "der Beleg wurde beim Ansehen verkuerzt")
+        self.assertTrue((Path(str(beiseite) + "-journal")).exists(),
+                        "das Journal gehoert mit zur Seite")
+        self.assertTrue(any("heisses Journal" in e
+                            for e in run.beiseite_gelegt), run.beiseite_gelegt)

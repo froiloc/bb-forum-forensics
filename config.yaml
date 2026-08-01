@@ -73,7 +73,8 @@ backup:
   # Backup-Ziel, z.B. "\\\\prod01\\dfs\\backups\\". Das Verzeichnis (oder sein
   # Elternverzeichnis) muss erreichbar sein; die Vorabpruefung meldet sonst
   # einen klaren Fehler, bevor irgendetwas geschrieben wird.
-  dest_dir: "./backups/"
+  #dest_dir: "./backups/"
+  dest_dir: "/media/paul/3rd/aiw/backups/"
 
   # Aufbewahrung: wie viele Backup-GENERATIONEN je Datenbank behalten werden.
   # Aeltere Generationen werden erst vom Executor (Build 353) beschnitten.

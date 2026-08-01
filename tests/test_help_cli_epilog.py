@@ -52,7 +52,7 @@ from management.help.cli_epilog import (                    # noqa: E402
     verify_epilog_abgedeckt,
 )
 from management.help.cli_katalog import (                   # noqa: E402
-    CLI_KATALOG, CLI_PFADE, eintrag,
+    CLI_KATALOG, CLI_PFADE, eintrag, fehlliste_cli_beispiele,
 )
 from management.help.cli_modell import (                    # noqa: E402
     CliBefehl, CliBeispiel, CliEintrag, CliTiefe,
@@ -113,7 +113,17 @@ def test_ce01_beispiele_mit_aufruf_und_wirkung():
 
 
 def test_ce02_ohne_beispiel_steht_der_grund_da():
-    e = eintrag("backup_admin")
+    """
+    DER EINTRAG WIRD NICHT MEHR BEIM NAMEN GENANNT. Bis Build 625 stand hier
+    'backup_admin' - in Build 626 hat es Beispiele bekommen, und der Test
+    fiel um. Das ist die Sorte Test, die davon lebt, dass etwas unfertig
+    bleibt. Er nimmt sich den Eintrag jetzt aus der gerechneten Fehlliste und
+    baut sich sonst selbst einen; damit haengt die Aussage nicht mehr am
+    Fortschritt der Baustelle. (Dieselbe Berichtigung wie bei CT06 in Build
+    620.)
+    """
+    ohne = fehlliste_cli_beispiele()
+    e = eintrag(ohne[0]) if ohne else _kunst("ohne_beispiel")
     assert not e.hat_beispiele()
     text = epilog_text(e)
     assert text.startswith("Beispiele"), "die Ueberschrift fehlt"

@@ -3583,6 +3583,44 @@
           "comment": "Importiert aus eingang_claude_Build625.json"
         }
       ]
+    },
+    {
+      "id": "60e4236e-db84-4841-af91-1ccaaeb1863c",
+      "type": "improvement",
+      "title": "Hilfe mind, bei CLI-Hilfe um verwendete Einträge in config.yaml erweitern",
+      "affected_version": "0.8.626",
+      "reporter": "Alex",
+      "reported_at": "2026-08-01T09:15:37.390978+00:00",
+      "prerequisites": "Die Hilfen für CLI sind vorhanden.",
+      "description": "Es ist hilfreich gewisse zentrale Einstellungspunkte zu kennen. Beispielsweise für `backup_admin` wäre es hilfreich, wenn die Konfiguration in `config.yaml` die genutzt wird erklärt würde.",
+      "expected_behavior": "Auch Konfigurationsmöglichkeiten in `config.yaml` werden erklärt.",
+      "actual_behavior": "`config.yaml` wird derzeit nicht erwähnt.",
+      "status": "open",
+      "priority": "high",
+      "severity": "trivial",
+      "assigned_to": "Claude",
+      "related_to": [],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14",
+        "database": "coordinator.db"
+      },
+      "tags": [
+        "CLI-Hilfe",
+        "config.yaml"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-01T09:15:37.391003+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Issue erstellt"
+        }
+      ]
     }
   ]
 }

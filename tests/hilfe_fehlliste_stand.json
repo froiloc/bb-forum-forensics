@@ -1,13 +1,12 @@
 {
   "_beschreibung": "Eingecheckter Stand der Hilfe-Fehllisten (Baustelle H, Konzept Hilfesysteme §3.1). Ein Regressionstest vergleicht die ABGELEITETEN Fehllisten mit diesem Stand und laesst sie nur SCHRUMPFEN. Jede Welle schreibt die Datei bewusst fort - das ist der Abnahmenachweis der Welle.",
   "_regel": "Eintraege duerfen entfernt werden (Hilfe wurde geschrieben). Ein NEUER Eintrag ist ein Befund, kein Pflegevorgang: entweder ist eine Sicht ohne Hilfe hinzugekommen oder ein Kapitel verlorengegangen.",
-  "stand_build": 620,
-  "stand_datum": "2026-07-31",
+  "stand_build": 626,
+  "stand_datum": "2026-08-01",
   "sichten_ohne_hilfe": [],
   "cli_ohne_tiefe": [],
   "_cli_hinweis": "cli_ohne_tiefe: Werkzeuge ohne Exit-Codes/Warnungen/Beispiele. cli_ohne_beispiele: Werkzeuge ohne GEPRUEFTE Beispielaufrufe - die zweite Liste ist die teurere, weil ein Beispiel gefahren werden muss (Grundregel 9, sinngemaess auf die Dokumentation angewandt). Beide duerfen nur schrumpfen. Erstbefuellung Build 606 bzw. 609.",
   "cli_ohne_beispiele": [
-    "backup_admin",
     "maintenance_kill",
     "consolidate_default_db",
     "management",

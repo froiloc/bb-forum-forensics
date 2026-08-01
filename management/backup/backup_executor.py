@@ -484,13 +484,40 @@ class BackupExecutor:
         'PRAGMA page_count' liest den Dateikopf, keinen Vollscan - das ist
         auch bei einer mehrere Gigabyte grossen Sicherung eine Sache von
         Millisekunden. Damit faellt auch eine ALTLAST auf, die vor Build 625
-        in den Ordner geraten ist; ihre Merkmale gegen die Quelle zu halten
-        ist nachtraeglich nicht mehr moeglich, aber 'leer' ist es allemal.
+        in den Ordner geraten ist.
+
+        ZWEI VORSICHTSMASSNAHMEN, beide am 2026-08-01 gemessen und beide
+        noetig, weil das blosse ANSEHEN einer Datei sie sonst veraendert:
+
+        1) EIN HEISSES JOURNAL WIRD NICHT ANGEFASST. Liegt neben der Datei
+           ein '-journal' oder '-wal', dann ist der Schreibvorgang
+           abgebrochen worden. Oeffnet man sie jetzt gewoehnlich, SPIELT
+           SQLITE DAS JOURNAL ZURUECK - aus 34 MB Teildatei werden 0 Byte,
+           und der Beleg, an dem man den Umfang des Abbruchs abgelesen
+           haette, ist weg. Das Journal IST hier der Befund; die Datei muss
+           dafuer gar nicht geoeffnet werden.
+
+        2) GEOEFFNET WIRD NUR-LESEND ('mode=ro'). Damit kann diese Nachschau
+           unter keinen Umstaenden etwas schreiben. Gemessen: auf einer
+           Datei mit heissem Journal antwortet SQLite dann 'attempt to write
+           a readonly database' und LAESST DIE DATEI IN RUHE - genau das
+           gewuenschte Verhalten.
         """
         try:
             if os.path.getsize(pfad) == 0:
                 return False, "0 Byte"
-            con = sqlite3.connect(pfad)
+        except OSError as exc:
+            return False, "nicht lesbar: %s" % exc
+
+        heiss = [a for a in ("-journal", "-wal") if os.path.exists(pfad + a)]
+        if heiss:
+            return False, ("abgebrochene Sicherung - heisses Journal (%s) "
+                           "liegt daneben; die Datei wurde NICHT geoeffnet, "
+                           "damit der Beleg erhalten bleibt"
+                           % ", ".join(heiss))
+
+        try:
+            con = sqlite3.connect("file:%s?mode=ro" % pfad, uri=True)
             try:
                 seiten = int(con.execute("PRAGMA page_count").fetchone()[0])
             finally:

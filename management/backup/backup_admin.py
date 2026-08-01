@@ -10,16 +10,25 @@
 #           Vorabpruefung), registriert den Lauf auditiert (BACKUP_CREATED)
 #           in coordinator.db und zeigt eine Zusammenfassung.
 #   list  — zeigt die registrierten Backups (Registry), optional je db_label.
+#   pruefen — sieht den SICHERUNGSORDNER durch und sagt je Datenbank, wie
+#           viele BRAUCHBARE Generationen uebrig sind (Build 626, rein
+#           lesend). 'list' liest die Registrierung und sagt, was GESCHEHEN
+#           IST; 'pruefen' sieht auf die Platte und sagt, was DA IST.
 #
 # Pfade und Rahmenbedingungen kommen aus config.yaml (paths.* / backup.*),
 # override per --coordinator-db moeglich. Muster wie rbac_admin.
 #
 # Beleg: Bauplan B7 v1.1 §11; mc 2026-07-10.
-# Version: v0.7.354 · Build: 354 · 2026-07-10
+#
+# Build 625: 'run' legt Rechenschaft ueber die Aufbewahrung ab.
+# Build 626: 'pruefen' kommt hinzu; 'list' liefert bei defekt vermerkten
+#   Sicherungen 1 statt immer 0 (Vorgang e9522fe2).
+# Version: v0.8.626 · Build: 626 · 2026-08-01
 # =============================================================================
 
 import argparse
 import getpass
+import json
 import sqlite3
 import sys
 from typing import Dict, Optional
@@ -30,6 +39,9 @@ from management.backup.backup_executor import (
     PUNKTGLEICH_VERMERK, BackupExecutor,
 )
 from management.backup.backup_planner import BackupPlanner
+from management.backup.backup_pruefer import (
+    SicherungsPruefer, bericht_json, bericht_text,
+)
 from management.backup.backups_repo import BackupsRepo
 from management.gateway.coordinator_writer import CoordinatorWriter
 from db.journal_policy import apply_journal_mode  # NEU Build 408
@@ -232,12 +244,88 @@ def cmd_list(args) -> int:
         print("[backup_admin] Keine registrierten Backups.")
         return 0
     print("[backup_admin] %d registrierte(s) Backup(s):" % len(rows))
+    defekt = 0
     for r in rows:
+        if not r["integrity_ok"]:
+            defekt += 1
         print("  #%d  %s  %-16s  integrity=%s  seq=%s  %s"
               % (r["id"], r["run_ts"], r["db_label"],
                  "ok" if r["integrity_ok"] else "FEHLER",
                  r["audit_seq"], r["backup_path"] or "(kein)"))
+
+    # BUILD 626 (Vorgang e9522fe2): 'list' lieferte IMMER 0 - auch dann, wenn
+    # jede aufgefuehrte Sicherung 'integrity=FEHLER' trug. Eine Ueberwachung,
+    # die nur den Rueckgabewert auswertet, sah dauerhaft gruen. Jetzt ist der
+    # Leerbefund von einem Befund unterscheidbar, ohne die Ausgabe zu lesen.
+    #
+    # DIE 1 IST EINE AUSKUNFT UND KEIN PROGRAMMFEHLER - dieselbe Auffassung
+    # wie bei 'hilfe.py suche' ohne Treffer. Sie wird deshalb auch
+    # ausgesprochen und nicht nur zurueckgegeben.
+    if defekt:
+        print("")
+        print("  BEFUND: %d von %d registrierten Sicherungen sind als NICHT "
+              "integer" % (defekt, len(rows)))
+        print("  vermerkt. Was hier steht, ist die Lage BEIM SICHERN - was "
+              "heute im")
+        print("  Ordner liegt, sagt 'backup_admin pruefen'.")
+        return 1
     return 0
+
+
+def cmd_pruefen(args) -> int:
+    """
+    Den Sicherungsordner ansehen: was liegt da, und wie viel davon ist
+    brauchbar?
+
+    REIN LESEND - kein Umbenennen, kein Loeschen, keine Registrierung. Ein
+    Werkzeug, das eine Lage beurteilen soll, darf sie nicht veraendern.
+
+    DIE REGISTRIERUNG WIRD NUR GELESEN, und auch das nur, um die
+    Pruefsummen und die Gegenrichtung ('registriert, aber nicht da')
+    beisteuern zu koennen. Ist die coordinator.db nicht erreichbar, laeuft
+    die Pruefung trotzdem - sie ist dann nur um diese eine Angabe aermer,
+    und das steht in der Ausgabe.
+    """
+    cfg = _load_cfg(args.config)
+    bcfg = BackupConfig.from_loader(cfg)
+
+    registrierte: Dict[str, Optional[str]] = {}
+    hinweis = ""
+    try:
+        con = _open_con(_coordinator_db(args, cfg))
+        try:
+            for r in BackupsRepo(con, None).list_backups(limit=100000):
+                if r["backup_path"]:
+                    registrierte[r["backup_path"]] = r["sha512"]
+        finally:
+            con.close()
+    except Exception as exc:                       # pragma: no cover
+        hinweis = ("Die Registrierung war nicht lesbar (%s). Geprueft wurde "
+                   "allein, was im Ordner liegt; Pruefsummen und der Abgleich "
+                   "'registriert, aber nicht da' fehlen." % exc)
+
+    befund = SicherungsPruefer(bcfg.dest_dir).pruefen(
+        registrierte=registrierte, mit_pruefsummen=args.pruefsummen)
+
+    if args.json:
+        daten = bericht_json(befund)
+        if hinweis:
+            daten["hinweis"] = hinweis
+        print(json.dumps(daten, ensure_ascii=True, indent=2))
+    else:
+        print(bericht_text(befund))
+        if hinweis:
+            print("")
+            for zeile in _umbruch("HINWEIS: " + hinweis, 78):
+                print(zeile)
+
+    # Der Ernstfall geht zusaetzlich auf die FEHLERAUSGABE. Wer die Ausgabe in
+    # eine Datei umleitet und nur bei Fehlern hinsieht, muss ihn trotzdem
+    # bemerken.
+    if befund.ohne_sicherung:
+        print("[backup_admin] OHNE BRAUCHBARE SICHERUNG: %s"
+              % ", ".join(befund.ohne_sicherung), file=sys.stderr)
+    return befund.rueckgabewert()
 
 
 # ---------------------------------------------------------------- arg parser
@@ -255,6 +343,20 @@ def _build_parser() -> argparse.ArgumentParser:
     sub.add_parser("plan", parents=[common],
                    help="Trockenlauf: Quellen + Speicherplatz-Vorabpruefung.")
 
+    # BUILD 626: die Nachschau im Sicherungsordner. Sie steht bei 'plan' und
+    # nicht bei 'run', weil sie zu den LESENDEN Unterbefehlen gehoert - und
+    # weil man sie vor einem Lauf ansieht, nicht danach.
+    p_pruefen = sub.add_parser(
+        "pruefen", parents=[common],
+        help="Sicherungsordner ansehen: was liegt da, und wie viel davon "
+             "ist brauchbar? Rein lesend.")
+    p_pruefen.add_argument(
+        "--pruefsummen", action="store_true",
+        help="Die beim Sichern erhobenen Pruefsummen gegenrechnen. LIEST "
+             "JEDE DATEI GANZ - bei grossen Bestaenden dauert das.")
+    p_pruefen.add_argument("--json", action="store_true",
+                           help="Befund als JSON statt als Text.")
+
     p_run = sub.add_parser("run", parents=[common],
                            help="Sicherung ausfuehren + auditiert registrieren.")
     p_run.add_argument("--actor", default=None,
@@ -270,7 +372,8 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def main(argv=None) -> int:
     args = _build_parser().parse_args(argv)
-    return {"plan": cmd_plan, "run": cmd_run, "list": cmd_list}[args.action](args)
+    return {"plan": cmd_plan, "run": cmd_run, "list": cmd_list,
+            "pruefen": cmd_pruefen}[args.action](args)
 
 
 if __name__ == "__main__":  # pragma: no cover
