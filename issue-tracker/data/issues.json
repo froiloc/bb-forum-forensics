@@ -3762,6 +3762,44 @@
           "comment": "Importiert aus eingang_claude_Build630.json"
         }
       ]
+    },
+    {
+      "id": "317481d3-9c21-4407-b825-654ee848c9dc",
+      "type": "bug",
+      "title": "Lektorat - Kommentare können nicht verankert werden",
+      "affected_version": "0.8.637",
+      "reporter": "Alex",
+      "reported_at": "2026-08-01T14:40:18.474709+00:00",
+      "prerequisites": "Es gibt bestehende Reporte, egal welchen Status'. Der Bericht wird im Lektorat angezeigt. Der Komentare-Bereich wird sichtbar.",
+      "description": "Es gibt zwar eine Möglichkeit die `Block-ID` einzutragen, um den Kommentar zu verankern, aber es ist überhaupt nicht klar, wie diese Block-IDs heißen. Hier bedarf es eines Auswahlfeldes statt eines freien Inputfeldes. Das System ist in der Lage die Block-IDs herauszufinden und darzulegen, worum es geht, der Anwender aber nicht. Die Block-IDs sind diesem verborgen.",
+      "expected_behavior": "Es gibt ein Dropdown-Menü in welchem der tatsächlichen Reihenfolge nach die einzelnen Blöcke aufgeführt sind. Am besten mit einer führenden Ordnungszahl und den ersten 20(?) Zeichen des abgebildeten Texts. Vielleicht auch mit dem Typ des Blocks. So kann der Anwender auswählen für welchen Block der Kommentar gelten soll.\r\n\r\nAußerdem ist fraglich, ob es wirklich optional ist. Kann man Kommentare überhaupt an das Gesamtdokument hängen? Wo würde das dann im Berichtseditor (Baustelle 6) überhaupt angezeigt werden?",
+      "actual_behavior": "Das Feld ist ein Freitextfeld. Wie es zu befüllen ist, ist unklar.",
+      "status": "open",
+      "priority": "critical",
+      "severity": "blocker",
+      "assigned_to": "Claude",
+      "related_to": [],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14",
+        "database": "evidence_<uid>.db"
+      },
+      "tags": [
+        "Lektorat",
+        "Kommentar"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-01T14:40:18.474730+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Issue erstellt"
+        }
+      ]
     }
   ]
 }
