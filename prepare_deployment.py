@@ -38,6 +38,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from management.help import cli_epilog  # noqa: E402
 
 SCRIPT_DIR   = Path(__file__).resolve().parent
 SETUP_WIN    = SCRIPT_DIR / "setup" / "win64"
@@ -277,7 +278,9 @@ def _write_manifest() -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Deployment-Vorbereitung: Bundle + Wheels + Setup-Struktur."
+        description="Deployment-Vorbereitung: Bundle + Wheels + Setup-Struktur.",
+        epilog=cli_epilog.epilog("prepare_deployment"),
+        formatter_class=cli_epilog.HilfeFormat,
     )
     parser.add_argument(
         "--skip-bundle", action="store_true",

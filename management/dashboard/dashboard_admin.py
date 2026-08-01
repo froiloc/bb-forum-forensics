@@ -32,6 +32,7 @@ from management.dashboard.dashboard_repo import (
     DashboardSchemaError,
     ampel_thresholds_from_config,
 )
+from management.help import cli_epilog  # noqa: E402
 
 
 def _load_config(args):
@@ -117,7 +118,9 @@ def _do_export_html(rows, out_path, con=None, db_path=None,
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
-        description="Ampel-Dashboard (Backend-Sicht, nur lesend)."
+        description="Ampel-Dashboard (Backend-Sicht, nur lesend).",
+        epilog=cli_epilog.epilog("dashboard_admin"),
+        formatter_class=cli_epilog.HilfeFormat,
     )
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--coordinator-db", default=None)

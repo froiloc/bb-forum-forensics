@@ -1,6 +1,6 @@
 # Regelwerk AIW — Kommandozeilen-Werkzeuge
 
-**Stand:** Build 607 · 2026-07-31
+**Stand:** Build 624 · 2026-08-01
 
 ## 1. Adressat
 
@@ -144,6 +144,36 @@ Es **führt nichts aus, öffnet nichts und nimmt keine Sperre** — es gibt Text
 
 *Durchsetzung:* CT08 (ASCII über alle erzeugbaren Ausgaben), CT09 (Breite, mit ausdrücklich geprüfter Ausnahme für unteilbare Wörter), CT01/CT02 (Umbruch und Spalten).
 
-## 9. epilog (H20/H21, noch nicht ausgerollt)
+## 9. epilog — die Beispiele in der eingebauten Hilfe (seit Build 624)
 
-Jedes Werkzeug bekommt in seinem argparse-Parser einen `epilog` mit ein bis drei Beispielaufrufen. Diese Beispiele stammen aus dem Katalog — kein dritter Bestand. Die Änderung ist rein additiv: kein Werkzeug ändert dabei Logik, Parameter oder Verhalten.
+Jedes Werkzeug trägt in seinem argparse-Parser einen `epilog` aus `management/help/cli_epilog.py`. Die Beispiele stammen aus dem Katalog — **kein vierter Bestand**. Die Änderung ist rein additiv: kein Werkzeug ändert Logik, Parameter oder Verhalten.
+
+**Der Anlass:** Seit H15 gibt es zu jedem Werkzeug gefahrene Beispielaufrufe. Zu sehen bekam man sie nur über `python tools/hilfe.py zeige <kennung>`. Wer den naheliegenden Weg ging — `--help` am Werkzeug selbst —, sah eine Optionsliste und kein einziges Beispiel. Die teuerste Auskunft des Katalogs stand an der Stelle, an der am wenigsten gesucht wird.
+
+**So wird verdrahtet:**
+
+```python
+from management.help import cli_epilog
+
+p = argparse.ArgumentParser(
+    prog="...", description="...",
+    epilog=cli_epilog.epilog("<kennung>"),
+    formatter_class=cli_epilog.HilfeFormat)
+```
+
+`HilfeFormat` umbricht die **Beschreibung** wie bisher, den **Epilog** nicht. `argparse.RawDescriptionHelpFormatter` wäre die naheliegende Wahl, nimmt aber auch die Beschreibung vom Umbruch aus — und die ist in allen Werkzeugen als ein langer Satz geschrieben, der dann als eine überlange Zeile erschiene. *Einzige Ausnahme:* `main.py` behält `RawDescriptionHelpFormatter`, weil seine Beschreibung einen gesetzten Zeilenumbruch enthält.
+
+**Was im Epilog steht:** die gefahrenen Beispielaufrufe und die Rückgabewerte — die beiden Auskünfte, die man vor dem Drücken der Eingabetaste braucht und die argparse nicht kennt.
+
+**Was nicht darin steht:** Warnhinweise und Prüfnachweise. Nicht weil sie unwichtig wären, sondern weil sie bei manchen Werkzeugen mehr als eine Bildschirmseite füllen; eine `--help`-Ausgabe, die man scrollen muss, um die Optionen zu sehen, hat ihren Zweck verfehlt. **Sie werden aber gezählt und benannt** — der Epilog sagt, wie viele Warnhinweise es gibt und wo sie stehen. Niemand soll aus dem Fehlen schließen, es gäbe keine. Werkzeuge, die etwas verändern, tragen zusätzlich eine ACHTUNG-Zeile.
+
+**Zwei Ausnahmelisten, beide mit Begründung je Eintrag:**
+
+- `OHNE_EPILOG` — Werkzeuge, die **keinen** Epilog bekommen. Heute zwei: `pruefe_auslieferung` (das Werkzeug, das eine Auslieferung prüft, darf nicht davon abhängen, dass die Auslieferung heil ist — ein Epilog zwänge ihm einen Import aus `management/` auf) und `diag_migrationsluecke` (kein Parameter, keine `main()`; der ganze Ablauf steht auf Modulebene).
+- `EPILOG_OHNE_ARGPARSE` — Werkzeuge, die den Epilog haben, ihn aber nicht über argparse ausgeben. Heute eines: `poc_m019_weg_a`. Es bekommt ihn trotzdem, weil es das gefährlichste Werkzeug im Bestand ist; `-h`/`--help` werden abgefangen, **bevor** irgendetwas geöffnet wird.
+
+**Die Vollzähligkeit ist maschinell erzwungen, und zwar gegen den Bestand.** `verify_epilog_abgedeckt()` verlangt, dass jedes der 65 Werkzeuge entweder verdrahtet ist oder begründet in einer der Listen steht — ein Drittes gibt es nicht. Gemessen wird der Quelltext (Textsuche nach dem wörtlichen Aufruf), nicht eine gepflegte Liste: eine Liste könnte behaupten, ein Werkzeug sei verdrahtet, während es das nicht ist.
+
+*Durchsetzung:* `tests/test_help_cli_epilog.py`. **CE11 ist der Kern:** es startet jedes verdrahtete Werkzeug in einem eigenen Prozess mit `--help` und liest nach, ob der Epilog wirklich erscheint. Die Textbildung kann stimmen und der Epilog trotzdem nie ankommen — etwa weil der Import fehlschlägt. Das sieht man nur, wenn man das Werkzeug startet. CE12 prüft, dass der Epilog hinter dem Optionsteil steht und nicht in ihn hineinreicht.
+
+**Nebenbefund aus dem Rollout:** Sechs Werkzeuge, die als Skript aufgerufen werden (`python tools/x.py`, `python management/x.py`), hatten keinen Eingriff in `sys.path` und konnten deshalb nichts aus `management/` importieren. Sie haben ihn jetzt — nach dem Muster aus `tools/hilfe.py`.

@@ -46,6 +46,15 @@ import sqlite3
 import sys
 from pathlib import Path
 
+# Direktaufruf als Skript: das Paketverzeichnis muss im Suchpfad liegen,
+# sonst findet der Import aus "management/" nichts (Muster aus
+# tools/hilfe.py). Build 624 - noetig geworden mit dem Epilog-Import.
+_WURZEL = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if _WURZEL not in sys.path:
+    sys.path.insert(0, _WURZEL)
+
+from management.help import cli_epilog  # noqa: E402
+
 LOGLINES: list[str] = []
 
 
@@ -123,7 +132,9 @@ def testfall(kopie: Path, name: str, pragmas: list[str], schreiben: bool) -> Non
 
 def main() -> int:
     ap = argparse.ArgumentParser(
-        description="Diagnose 2: mmap vs. locking auf dem Netzlaufwerk (nicht-destruktiv)"
+        description="Diagnose 2: mmap vs. locking auf dem Netzlaufwerk (nicht-destruktiv)",
+        epilog=cli_epilog.epilog("diag_sqlite_netdrive2"),
+        formatter_class=cli_epilog.HilfeFormat,
     )
     ap.add_argument("--data-dir", default="./data")
     ap.add_argument(

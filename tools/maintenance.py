@@ -42,6 +42,7 @@ from maintenance import (MaintenancePaths, PresenceBeacon,  # noqa: E402
 from maintenance.cli_support import (exklusiv_pruefen,  # noqa: E402
                                      pruefe_wartungsberechtigung,
                                      quiesce_status, ziel_pfade)
+from management.help import cli_epilog  # noqa: E402
 
 
 def _resolve_data_dir(args) -> Path:
@@ -226,7 +227,9 @@ def _add_common(sp) -> None:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(
-        description="Steuert ein Wartungsfenster (enter/exit/status).")
+        description="Steuert ein Wartungsfenster (enter/exit/status).",
+        epilog=cli_epilog.epilog("maintenance"),
+        formatter_class=cli_epilog.HilfeFormat)
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     e = sub.add_parser("enter", help="Wartungsfenster setzen und auf Ruhe warten.")

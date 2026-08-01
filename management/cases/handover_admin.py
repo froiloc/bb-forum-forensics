@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 
 from management.cases.handover_log import handover_to_dict
 from management.cases.handover_repo import HandoverRepo
+from management.help import cli_epilog  # noqa: E402
 
 
 def _load_config(args):
@@ -53,7 +54,9 @@ def _fmt(ts) -> str:
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
         prog="handover_admin",
-        description="Uebergabe-/Umverteilungsprotokoll je Fall (nur lesend).")
+        description="Uebergabe-/Umverteilungsprotokoll je Fall (nur lesend).",
+        epilog=cli_epilog.epilog("handover_admin"),
+        formatter_class=cli_epilog.HilfeFormat)
     p.add_argument("--coordinator-db", default=None)
     p.add_argument("--config", default="./config.yaml")
     p.add_argument("--subject-id", type=int, default=None)

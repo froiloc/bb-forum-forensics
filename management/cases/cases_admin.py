@@ -35,6 +35,7 @@ from management.audit.audit_log import AuditLog
 from management.cases.cases_repo import CasesError, CasesRepo
 from management.gateway.coordinator_writer import CoordinatorWriter
 from db.journal_policy import apply_journal_mode  # NEU Build 408
+from management.help import cli_epilog  # noqa: E402
 
 
 def _resolve_db_path(args) -> str:
@@ -69,7 +70,9 @@ def _lookup_investigator_id(con: sqlite3.Connection, system_username: str):
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
-        description="Auditierte Verwaltung der Fallakten (cases)."
+        description="Auditierte Verwaltung der Fallakten (cases).",
+        epilog=cli_epilog.epilog("cases_admin"),
+        formatter_class=cli_epilog.HilfeFormat,
     )
     parser.add_argument("--subject-id", type=int, required=True)
     parser.add_argument("--username", default=None,

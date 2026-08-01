@@ -59,6 +59,7 @@ import os
 import sys
 from pathlib import Path
 import subprocess
+from management.help import cli_epilog  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Projektroot in sys.path eintragen, damit alle Modul-Imports funktionieren
@@ -82,7 +83,14 @@ def _parse_args() -> argparse.Namespace:
             "IT-Forensisches Ermittlungswerkzeug — FluxBB/PunBB-Forum NRW.\n"
             "Forensischer Webserver zur Auswertung beschlagnahmter Forumsdaten."
         ),
+        # BUILD 624: der Formatierer bleibt RawDescriptionHelpFormatter und
+        # wird NICHT durch cli_epilog.HilfeFormat ersetzt. Die Beschreibung
+        # oben enthaelt einen gesetzten Zeilenumbruch; HilfeFormat wuerde sie
+        # umbrechen und die beiden Zeilen zu einer machen. Der Raw-Formatierer
+        # laesst ohnehin auch den Epilog in Ruhe - genau das, was HilfeFormat
+        # sonst herstellt. Das ist der einzige Fall dieser Art im Bestand.
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=cli_epilog.epilog("main"),
     )
 
     parser.add_argument(

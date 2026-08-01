@@ -54,6 +54,7 @@ import sqlite3
 import sys
 import time
 from typing import Any, Dict, Optional
+from management.help import cli_epilog  # noqa: E402
 
 # Kanonische DDL der neuen Tabelle. Die CHECKs erzwingen die mc-Regeln
 # (Bauplan §3.1): a braucht sql_query und darf KEINE Validierung tragen;
@@ -292,7 +293,9 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         description="Ersetzt placeholder_queries durch die einheitliche "
                     "Tabelle placeholders (a/m/o + Validierung); idempotent, "
-                    "verlustfrei, mit Backup.")
+                    "verlustfrei, mit Backup.",
+        epilog=cli_epilog.epilog("migrate_templates_placeholders"),
+        formatter_class=cli_epilog.HilfeFormat)
     parser.add_argument("--templates-db", help="Pfad zur templates.db")
     parser.add_argument("--config", default="./config.yaml",
                         help="config.yaml (Fallback fuer den Pfad)")

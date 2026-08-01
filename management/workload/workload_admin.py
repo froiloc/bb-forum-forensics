@@ -39,6 +39,7 @@ from management.dashboard.dashboard_repo import (
 )
 from management.workload.investigator_load import BACKLOG_LABEL
 from management.workload.workload_repo import WorkloadRepo, WorkloadSchemaError
+from management.help import cli_epilog  # noqa: E402
 
 
 def _load_config(args):
@@ -144,7 +145,9 @@ def _do_list(rows) -> int:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
-        description="Ermittler-Lastverteilung (nur lesend)."
+        description="Ermittler-Lastverteilung (nur lesend).",
+        epilog=cli_epilog.epilog("workload_admin"),
+        formatter_class=cli_epilog.HilfeFormat,
     )
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--coordinator-db", default=None)

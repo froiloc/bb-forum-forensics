@@ -34,6 +34,7 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from maintenance import MaintenancePaths, ServerRegistration  # noqa: E402
+from management.help import cli_epilog  # noqa: E402
 
 
 def _resolve_data_dir(args) -> Path:
@@ -107,7 +108,9 @@ def cmd_kill(paths: MaintenancePaths, uuids, alle: bool,
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(
         description="Beendet --maintenance-Test-Server ueber den dateivermittelten "
-                    "Kill-Kanal.")
+                    "Kill-Kanal.",
+        epilog=cli_epilog.epilog("maintenance_kill"),
+        formatter_class=cli_epilog.HilfeFormat)
     ap.add_argument("--data-dir", default="./data",
                     help="Verzeichnis mit _maintenance/ (Default ./data).")
     ap.add_argument("--coordinator-db", default=None,

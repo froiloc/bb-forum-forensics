@@ -41,6 +41,7 @@ import platform
 import subprocess
 import sys
 from pathlib import Path
+from management.help import cli_epilog  # noqa: E402
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 
@@ -169,7 +170,9 @@ def _verify_installation(packages: list[str]) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="aiw_webserver installieren (AP-E2)."
+        description="aiw_webserver installieren (AP-E2).",
+        epilog=cli_epilog.epilog("install"),
+        formatter_class=cli_epilog.HilfeFormat,
     )
     parser.add_argument(
         "--target",

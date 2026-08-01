@@ -43,6 +43,7 @@ from management.deadlines.limitation_params import (
     LimitationParamsError,
     load_params,
 )
+from management.help import cli_epilog  # noqa: E402
 
 
 def _tag_zu_ts(tag: str) -> int:
@@ -145,7 +146,9 @@ def cmd_rechnen(args) -> int:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(
         prog="limitation_admin",
-        description="Verjaehrungs-Parametersatz pruefen, zeigen, nachrechnen.")
+        description="Verjaehrungs-Parametersatz pruefen, zeigen, nachrechnen.",
+        epilog=cli_epilog.epilog("limitation_admin"),
+        formatter_class=cli_epilog.HilfeFormat)
     ap.add_argument("--params", default=None,
                     help="Pfad zum Parametersatz (Vorgabe: neben dem Modul).")
     sub = ap.add_subparsers(dest="cmd", required=True)

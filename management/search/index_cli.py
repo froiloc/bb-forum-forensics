@@ -60,6 +60,7 @@ if __package__ in (None, ""):  # pragma: no cover — nur beim Direktaufruf
 from db.search_index_db import SearchIndexDb, SearchIndexFehler  # noqa: E402
 from management.search.index_builder import SearchIndexBuilder  # noqa: E402
 from management.search.index_status import SearchIndexStatus  # noqa: E402
+from management.help import cli_epilog  # noqa: E402
 
 logger = logging.getLogger("management.search.index_cli")
 
@@ -178,7 +179,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         description="Suchindex (AP-3E) aufbauen, auffrischen und pruefen. "
                     "Liest die evidence-Datenbanken ausschliesslich "
                     "read-only; schreibt ausschliesslich in search_index.db "
-                    "(Hilfsmittel, kein Beweismittel).")
+                    "(Hilfsmittel, kein Beweismittel).",
+        epilog=cli_epilog.epilog("index_cli"),
+        formatter_class=cli_epilog.HilfeFormat)
     p.add_argument("--index-db", default=STANDARD_INDEX_PFAD,
                    help="Pfad der Indexdatei (Standard: %s)"
                         % STANDARD_INDEX_PFAD)

@@ -32,6 +32,7 @@ from management.capacity.reason_repo import ReasonRepo
 from management.capacity.worktime_repo import WorktimeRepo
 from management.gateway.coordinator_writer import CoordinatorWriter
 from db.journal_policy import apply_journal_mode  # NEU Build 408
+from management.help import cli_epilog  # noqa: E402
 
 
 def _resolve_db_path(args) -> str:
@@ -279,7 +280,9 @@ def cmd_list_availability(con, args) -> int:
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Auditierte Verwaltung der Kapazitaets-Datenbasis "
-                    "(Arbeitszeit/Feiertage).")
+                    "(Arbeitszeit/Feiertage).",
+        epilog=cli_epilog.epilog("capacity_admin"),
+        formatter_class=cli_epilog.HilfeFormat)
     sub = parser.add_subparsers(dest="action", required=True)
 
     common = argparse.ArgumentParser(add_help=False)

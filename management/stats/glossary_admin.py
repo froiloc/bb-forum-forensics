@@ -28,6 +28,7 @@ from pathlib import Path
 
 from management.stats.glossary import KpiGlossary, GlossaryIncompleteError
 from management.export.export_envelope import ExportContext, DEFAULT_KLASSIFIKATION
+from management.help import cli_epilog  # noqa: E402
 
 
 def _now_utc() -> str:
@@ -93,7 +94,9 @@ def _do_export_html(args) -> int:
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="glossary_admin",
-        description="Kennzahlen-Glossar (list/check/export-html).")
+        description="Kennzahlen-Glossar (list/check/export-html).",
+        epilog=cli_epilog.epilog("glossary_admin"),
+        formatter_class=cli_epilog.HilfeFormat)
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("list", help="Definitionen ausgeben").set_defaults(func=_do_list)
     sub.add_parser("check", help="Vollstaendigkeit pruefen").set_defaults(func=_do_check)

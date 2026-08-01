@@ -42,6 +42,7 @@ from db.journal_policy import apply_journal_mode  # NEU Build 408
 from maintenance.wartungsvorbehalt import (            # NEU Build 612
     datenwurzel, wartungsvorbehalt,
 )
+from management.help import cli_epilog  # noqa: E402
 
 
 def _resolve_db_path(args) -> str:
@@ -64,7 +65,9 @@ def _resolve_db_path(args) -> str:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
-        description="Wendet ausstehende coordinator.db-Migrationen an."
+        description="Wendet ausstehende coordinator.db-Migrationen an.",
+        epilog=cli_epilog.epilog("migrate"),
+        formatter_class=cli_epilog.HilfeFormat,
     )
     parser.add_argument("--coordinator-db", help="Pfad zur coordinator.db")
     parser.add_argument("--config", default="./config.yaml",

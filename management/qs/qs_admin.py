@@ -47,6 +47,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from management.qs.qs_repo import QsError, QsRepo          # noqa: E402
 from management.qs.qs_vokabular import ZWECKBINDUNG        # noqa: E402
+from management.help import cli_epilog  # noqa: E402
 
 
 #: Rueckfallwert fuer '--db'. Er steht an EINER Stelle (s. main()).
@@ -197,7 +198,9 @@ def main(argv=None) -> int:
 
     p = argparse.ArgumentParser(
         prog="qs_admin", parents=[gemeinsam],
-        description="QS-Stichprobe ansehen und nachrechnen. REIN LESEND.")
+        description="QS-Stichprobe ansehen und nachrechnen. REIN LESEND.",
+        epilog=cli_epilog.epilog("qs_admin"),
+        formatter_class=cli_epilog.HilfeFormat)
     sub = p.add_subparsers(dest="befehl", required=True)
 
     a = sub.add_parser("liste", parents=[gemeinsam],

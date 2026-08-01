@@ -30,6 +30,7 @@ import os
 import sqlite3
 import sys
 from typing import Any, Dict, Optional
+from management.help import cli_epilog  # noqa: E402
 
 # Ziel-DDL der neu aufgebauten Audit-Tabelle (CHECK um 'template' erweitert).
 _NEW_DDL = """
@@ -124,7 +125,9 @@ def _resolve_db_path(args) -> str:
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         description="Erweitert templates_audit_log.target_type-CHECK um "
-                    "'template' (idempotent, verlustfreier Rebuild).")
+                    "'template' (idempotent, verlustfreier Rebuild).",
+        epilog=cli_epilog.epilog("migrate_templates_audit_check"),
+        formatter_class=cli_epilog.HilfeFormat)
     parser.add_argument("--templates-db", help="Pfad zur templates.db")
     parser.add_argument("--config", default="./config.yaml",
                         help="config.yaml (Fallback fuer den Pfad)")

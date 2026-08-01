@@ -22,6 +22,7 @@ import sys
 import time
 
 from management.stats.annotation_stats_repo import AnnotationStatsRepo
+from management.help import cli_epilog  # noqa: E402
 
 
 def _load_config(args):
@@ -62,7 +63,9 @@ def _resolve_evidence_dir(args, cfg) -> str:
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
         prog="annotation_stats_admin",
-        description="Annotations-Tortenstatistik (Kategorie/Tag, nur lesend).")
+        description="Annotations-Tortenstatistik (Kategorie/Tag, nur lesend).",
+        epilog=cli_epilog.epilog("annotation_stats_admin"),
+        formatter_class=cli_epilog.HilfeFormat)
     p.add_argument("--coordinator-db", default=None)
     p.add_argument("--evidence-dir", default=None)
     p.add_argument("--config", default="./config.yaml")

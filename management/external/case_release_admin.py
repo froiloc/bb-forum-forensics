@@ -37,6 +37,7 @@ from management.external.case_release_repo import (
 )
 from management.external.release_status import STATUSES, umfang_catalog, UMFANG_ORDER
 from management.gateway.coordinator_writer import CoordinatorWriter
+from management.help import cli_epilog  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +103,9 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     ap = argparse.ArgumentParser(
         prog="case_release_admin",
-        description="Externe Fallfreigabe an NRW-Ermittler (coordinator.db).")
+        description="Externe Fallfreigabe an NRW-Ermittler (coordinator.db).",
+        epilog=cli_epilog.epilog("case_release_admin"),
+        formatter_class=cli_epilog.HilfeFormat)
     ap.add_argument("--db", default=None, help="Pfad zur coordinator.db")
     ap.add_argument("--config", default="./config.yaml")
     sub = ap.add_subparsers(dest="cmd", required=True)

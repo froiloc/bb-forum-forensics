@@ -50,6 +50,7 @@ from management.ad_sync.sync_executor import (
 )
 from management.ad_sync.sync_plan import AdSyncPlanError, SyncPlan
 from management.external.ldap_group_reader import LdapError, LdapGroupReader
+from management.help import cli_epilog  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -191,7 +192,9 @@ def main(argv: Optional[List[str]] = None, *,
 
     ap = argparse.ArgumentParser(
         prog="ad_sync_admin",
-        description="AD-Abgleich der Ermittlerstammdaten (coordinator.db).")
+        description="AD-Abgleich der Ermittlerstammdaten (coordinator.db).",
+        epilog=cli_epilog.epilog("ad_sync_admin"),
+        formatter_class=cli_epilog.HilfeFormat)
     ap.add_argument("--db", default=None, help="Pfad zur coordinator.db")
     ap.add_argument("--config", default="./config.yaml")
     sub = ap.add_subparsers(dest="cmd", required=True)

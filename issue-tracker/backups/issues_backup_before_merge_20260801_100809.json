@@ -3491,51 +3491,6 @@
           "comment": "Issue erstellt"
         }
       ]
-    },
-    {
-      "id": "9e1ba63e-8d6b-4fcc-819b-91b059d9c713",
-      "type": "bug",
-      "title": "hilfe_aufruf() verweist teils auf Hilfe von UNTERBEFEHL statt auf Werkzeug",
-      "affected_version": "0.8.624",
-      "reporter": "Claude",
-      "reported_at": "2026-08-01T08:00:46.413509+00:00",
-      "prerequisites": "Bestand ab Build 606 (CLI-Katalog vorhanden).",
-      "description": "management/help/cli_text.hilfe_aufruf() bildet aus der Aufrufform des Katalogs den Vorschlag '<werkzeug> --help'. Es schneidet ab dem ersten Bestandteil ab, der ein Platzhalter ('<x>'), eine Option ('--x') oder eine Alternative ('a|b') ist.\n\nEin als BLOSSES WORT geschriebener Unterbefehl faellt durch dieses Raster und bleibt stehen. Beispiele aus dem Bestand:\n  export_admin  Aufrufform 'python -m management.export.export_admin case-status-xlsx --out fall.xlsx'\n                -> Vorschlag '... export_admin case-status-xlsx --help'\n  lkae_admin    Aufrufform 'python -m management.distribution.lkae_admin build --target D --freigabe'\n                -> Vorschlag '... lkae_admin build --help'\n\nBei backup_admin passiert es NICHT, weil die Aufrufform dort 'plan|run|list' schreibt und am '|' abgeschnitten wird. Die Ungleichbehandlung haengt also allein an der Schreibweise der Aufrufform im Katalog, nicht an einer Eigenschaft des Werkzeugs.\n\nAUFGEFALLEN beim Rollout des Epilogs (Build 624, H20): der Testfall CE11 fuhr die von hilfe_aufruf() gebildete Zeile und landete bei diesen beiden Werkzeugen auf der Hilfe des Unterbefehls, in der der Epilog nicht steht. Der Test bildet den Aufruf deshalb jetzt selbst aus Modul bzw. Dateipfad (tests/test_help_cli_epilog.py, _werkzeug_aufruf).\n\nWIRKUNG: Die Zeile 'Vollstaendige Optionen nennt das Werkzeug selbst' in 'hilfe.py zeige' und im Betriebskapitel der Vollhilfe fuehrt bei diesen Werkzeugen zur Optionsliste EINES Unterbefehls. Das ist nicht falsch, aber es ist nicht, was die Zeile ankuendigt - und es ist nicht das, was dieselbe Zeile bei den uebrigen Werkzeugen liefert.",
-      "expected_behavior": "Der Vorschlag nennt das Werkzeug selbst: 'python -m management.export.export_admin --help'. Alternativ wird ausdruecklich festgelegt, dass der Unterbefehl stehen bleiben soll - dann aber einheitlich, und die Aufrufformen mit 'a|b' waeren nachzuziehen.",
-      "actual_behavior": "Der Vorschlag nennt Werkzeug UND Unterbefehl, aber nur bei den Werkzeugen, deren Aufrufform den Unterbefehl als einzelnes Wort schreibt.",
-      "status": "open",
-      "priority": "low",
-      "severity": "minor",
-      "assigned_to": "",
-      "related_to": [],
-      "resolved_in_version": null,
-      "target_version": null,
-      "environment": {
-        "python_version": "3.14"
-      },
-      "tags": [
-        "Hilfe",
-        "CLI",
-        "Katalog",
-        "H20"
-      ],
-      "attachments": [],
-      "updates": [
-        {
-          "timestamp": "2026-08-01T08:00:46.413509+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "Beim Epilog-Rollout (Build 624) aufgefallen und am Bestand belegt. Nicht in diesem Build behoben: eine Aenderung an hilfe_aufruf() aendert den Text in 'hilfe.py zeige', in der Vollhilfe und in den Tests CT-Reihe - das ist eine eigene Entscheidung und kein Nebenzug eines additiven Builds."
-        },
-        {
-          "timestamp": "2026-08-01T08:09:40.753841+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eingang_claude_Build624.json"
-        }
-      ]
     }
   ]
 }

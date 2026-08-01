@@ -82,6 +82,7 @@ if str(_WURZEL) not in sys.path:
     sys.path.insert(0, str(_WURZEL))
 
 from maintenance.wartungsvorbehalt import wartungsvorbehalt   # noqa: E402
+from management.help import cli_epilog  # noqa: E402
 
 # Datenbanken MIT Register (schema_migrations + m###-Module).
 REGISTER_DBS = ("coordinator", "evidence", "forensic", "assets")
@@ -440,7 +441,9 @@ def bericht(data_dir: Path, subject_id: Optional[int],
 # ----------------------------------------------------------------------- main
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
-        description="Migrationsstand aller Datenbanken pruefen und anwenden.")
+        description="Migrationsstand aller Datenbanken pruefen und anwenden.",
+        epilog=cli_epilog.epilog("migrate-dbs"),
+        formatter_class=cli_epilog.HilfeFormat)
     p.add_argument("--data-dir", default="./data")
     p.add_argument("--db", choices=("coordinator", "templates", "evidence",
                                     "assets", "forensic"),

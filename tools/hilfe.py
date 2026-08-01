@@ -56,9 +56,11 @@ from management.help.cli_katalog import (                 # noqa: E402
     CLI_KATALOG, eintrag, fehlliste_cli_tiefe,
 )
 from management.help.cli_text import (                    # noqa: E402
-    liste_text, suche_text, unbekannt_text, zeige_text,
+    liste_text, suche_text, umbrechen, unbekannt_text, zeige_text,
 )
 from management.help.cli_modell import CliEintrag         # noqa: E402
+from management.help import cli_epilog                   # noqa: E402
+from management.help.cli_epilog import OHNE_EPILOG       # noqa: E402
 
 
 def baue_parser() -> argparse.ArgumentParser:
@@ -66,6 +68,8 @@ def baue_parser() -> argparse.ArgumentParser:
         prog="python tools/hilfe.py",
         description="Uebersicht ueber die Kommandozeilen-Werkzeuge der "
                     "Anlage. Gibt nur Text aus - fuehrt nichts aus.",
+        epilog=cli_epilog.epilog("hilfe"),
+        formatter_class=cli_epilog.HilfeFormat,
     )
     unter = p.add_subparsers(dest="befehl")
 
@@ -120,6 +124,26 @@ def stand_text() -> str:
         zeilen.append(zeile.rstrip().rstrip(","))
     else:
         zeilen.append("Alle Werkzeuge sind vollstaendig ausgearbeitet.")
+
+    # Build 624 (H20): die Werkzeuge, die BEWUSST keinen Epilog in ihrer
+    # eingebauten Hilfe bekommen. Sie stehen hier namentlich MIT GRUND -
+    # sonst waere von aussen nicht zu unterscheiden, ob sie uebersehen
+    # wurden oder ausgenommen sind (Grundregel 1).
+    #
+    # WARUM HIER NICHT DIE VOLLE FEHLLISTE STEHT: um zu sagen, WELCHE
+    # Werkzeuge verdrahtet sind, muesste dieses Werkzeug den Quelltext des
+    # Bestands durchsuchen. Es liest heute nichts ausser dem Katalog, und
+    # das soll so bleiben - es ist in jedem Betriebszustand gefahrlos
+    # aufrufbar, auch mitten in einer Migration. Die vollstaendige
+    # Gegenprobe gegen den Bestand macht der Regressionslauf
+    # (cli_epilog.verify_epilog_abgedeckt, test_help_cli_epilog.py CE10).
+    if OHNE_EPILOG:
+        zeilen.append("")
+        zeilen.append("Ohne Beispiele in der eingebauten Hilfe (--help), "
+                      "mit Grund:")
+        for kennung in sorted(OHNE_EPILOG):
+            zeilen.append("  " + kennung)
+            zeilen.extend(umbrechen(OHNE_EPILOG[kennung], 78, "      "))
     return "\n".join(zeilen)
 
 

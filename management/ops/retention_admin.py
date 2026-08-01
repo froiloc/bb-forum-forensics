@@ -24,6 +24,7 @@ from management.ops.retention import (
     RetentionRepo, RetentionThresholds, retention_thresholds_from_config,
     retention_to_dict,
 )
+from management.help import cli_epilog
 
 
 def _load_config(args):
@@ -56,7 +57,9 @@ def main(argv=None) -> int:
     p = argparse.ArgumentParser(
         prog="retention_admin",
         description="Aufbewahrungs-/Loeschfristen-Uebersicht (nur lesend, "
-                    "loescht NICHTS).")
+                    "loescht NICHTS).",
+        epilog=cli_epilog.epilog("retention_admin"),
+        formatter_class=cli_epilog.HilfeFormat)
     p.add_argument("--coordinator-db", default=None)
     p.add_argument("--config", default="./config.yaml")
     p.add_argument("--retention-days", type=int, default=None)

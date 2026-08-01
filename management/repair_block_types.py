@@ -48,6 +48,7 @@ import os
 import sqlite3
 import sys
 import time
+from management.help import cli_epilog  # noqa: E402
 
 
 # =============================================================================
@@ -193,7 +194,9 @@ def _resolve_evidence_dir(args) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Build 392: verlorene block_type-Werte wiederherstellen."
+        description="Build 392: verlorene block_type-Werte wiederherstellen.",
+        epilog=cli_epilog.epilog("repair_block_types"),
+        formatter_class=cli_epilog.HilfeFormat,
     )
     parser.add_argument("--evidence-dir", default=None,
                         help="Verzeichnis mit den evidence_<uid>.db")

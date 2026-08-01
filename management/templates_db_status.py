@@ -42,6 +42,15 @@ import sqlite3
 import sys
 from typing import List, Optional, Tuple
 
+# Direktaufruf als Skript: das Paketverzeichnis muss im Suchpfad liegen,
+# sonst findet der Import aus "management/" nichts (Muster aus
+# tools/hilfe.py). Build 624 - noetig geworden mit dem Epilog-Import.
+_WURZEL = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if _WURZEL not in sys.path:
+    sys.path.insert(0, _WURZEL)
+
+from management.help import cli_epilog  # noqa: E402
+
 
 # Je Migration: (Bezeichnung, Build, Spur, Befehl)
 # 'Spur' ist ein Paar (art, wert):
@@ -141,7 +150,9 @@ def _db_aus_config(pfad: str) -> Optional[str]:
 
 def main() -> int:
     p = argparse.ArgumentParser(
-        description="Migrationsstand der templates.db anzeigen.")
+        description="Migrationsstand der templates.db anzeigen.",
+        epilog=cli_epilog.epilog("templates_db_status"),
+        formatter_class=cli_epilog.HilfeFormat)
     p.add_argument("--templates-db", help="Pfad zur templates.db")
     p.add_argument("--config", default="./config.yaml")
     args = p.parse_args()

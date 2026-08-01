@@ -37,6 +37,7 @@ from pathlib import Path
 from management.server.identity import IdentityError, IdentityResolver
 from management.server.management_app import ManagementApp
 from management.server.management_handler import ManagementHTTPServer
+from management.help import cli_epilog  # noqa: E402
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8090
@@ -44,7 +45,9 @@ DEFAULT_PORT = 8090
 
 def _parse_args(argv=None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
-        description="AIW Management-Server (read-only, localhost).")
+        description="AIW Management-Server (read-only, localhost).",
+        epilog=cli_epilog.epilog("management"),
+        formatter_class=cli_epilog.HilfeFormat)
     p.add_argument("--coordinator-db", default=None,
                    help="Pfad zur coordinator.db (sonst aus config.yaml).")
     p.add_argument("--config", default="./config.yaml")

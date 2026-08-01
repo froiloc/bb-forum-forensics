@@ -61,6 +61,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from management.migrations.runner import discover  # noqa: E402
+from management.help import cli_epilog  # noqa: E402
 
 #: Die drei Migrationsketten des Werkzeugs. 'forensic'/'assets' teilen sich
 #  keine Kette mit evidence — jede Datenbankart hat ihre eigene.
@@ -98,7 +99,9 @@ def main(argv=None) -> int:
     p = argparse.ArgumentParser(
         prog="python tools/pruefe_migrationskette.py",
         description="Prueft, ob jede im Paket vorhandene Migration in der "
-                    "Datenbank angewandt ist. Rein lesend.")
+                    "Datenbank angewandt ist. Rein lesend.",
+        epilog=cli_epilog.epilog("pruefe_migrationskette"),
+        formatter_class=cli_epilog.HilfeFormat)
     p.add_argument("--db", required=True, help="Pfad der zu pruefenden Datei")
     p.add_argument("--art", default="coordinator", choices=sorted(PAKETE),
                    help="Migrationskette (Standard: coordinator)")

@@ -48,6 +48,7 @@ from management.maintenance.default_db_merger import DefaultDbMerger, MergeError
 from maintenance.wartungsvorbehalt import (            # NEU Build 612
     datenwurzel, wartungsvorbehalt,
 )
+from management.help import cli_epilog  # noqa: E402
 
 logger = get_logger(__name__)
 
@@ -96,7 +97,9 @@ def _write_report_file(report_path: Path, text: str) -> None:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
-        description="Konsolidiert mehrere default.db verlustfrei in eine zentrale."
+        description="Konsolidiert mehrere default.db verlustfrei in eine zentrale.",
+        epilog=cli_epilog.epilog("consolidate_default_db"),
+        formatter_class=cli_epilog.HilfeFormat,
     )
     parser.add_argument("--target", help="Ziel-default.db (Fallback: config.yaml)")
     parser.add_argument("--source", action="append", metavar="PATH",

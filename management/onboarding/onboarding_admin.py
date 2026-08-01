@@ -35,6 +35,7 @@ from management.onboarding.checklist_status import (
     STATUS_ORDER,
 )
 from management.onboarding.onboarding_repo import OnboardingError, OnboardingRepo
+from management.help import cli_epilog  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +90,9 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     ap = argparse.ArgumentParser(
         prog="onboarding_admin",
-        description="Onboarding-/Offboarding-Checkliste (coordinator.db).")
+        description="Onboarding-/Offboarding-Checkliste (coordinator.db).",
+        epilog=cli_epilog.epilog("onboarding_admin"),
+        formatter_class=cli_epilog.HilfeFormat)
     ap.add_argument("--db", default=None, help="Pfad zur coordinator.db")
     ap.add_argument("--config", default="./config.yaml")
     sub = ap.add_subparsers(dest="cmd", required=True)

@@ -35,6 +35,7 @@ from management.audit.audit_log import AuditLog
 from management.case_events.case_events_repo import CaseEventsError, CaseEventsRepo
 from management.gateway.coordinator_writer import CoordinatorWriter
 from db.journal_policy import apply_journal_mode  # NEU Build 408
+from management.help import cli_epilog  # noqa: E402
 
 
 def _resolve_db_path(args) -> str:
@@ -84,7 +85,9 @@ def _fmt_ts(ts: int) -> str:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
-        description="Ereigniszeitstrahl je Fall (case_events) anzeigen/ergänzen."
+        description="Ereigniszeitstrahl je Fall (case_events) anzeigen/ergänzen.",
+        epilog=cli_epilog.epilog("case_events_admin"),
+        formatter_class=cli_epilog.HilfeFormat,
     )
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--subject-id", type=int, required=True)

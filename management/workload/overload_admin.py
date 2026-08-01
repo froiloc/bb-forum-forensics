@@ -22,6 +22,7 @@ import time
 from management.workload.overload import (
     OverloadEvaluator, overload_thresholds_from_config, overload_to_dict,
 )
+from management.help import cli_epilog  # noqa: E402
 
 
 def _load_config(args):
@@ -49,7 +50,9 @@ def _resolve_db_path(args, cfg) -> str:
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
         prog="overload_admin",
-        description="Aktive Ueberlastwarnung je Ermittler (nur lesend).")
+        description="Aktive Ueberlastwarnung je Ermittler (nur lesend).",
+        epilog=cli_epilog.epilog("overload_admin"),
+        formatter_class=cli_epilog.HilfeFormat)
     p.add_argument("--coordinator-db", default=None)
     p.add_argument("--config", default="./config.yaml")
     p.add_argument("--json", action="store_true")

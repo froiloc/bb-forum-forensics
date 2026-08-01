@@ -45,6 +45,7 @@ from management.results.assessment_catalog_repo import (
     AssessmentCatalogRepo,
     CatalogError,
 )
+from management.help import cli_epilog  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +98,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap = argparse.ArgumentParser(
         prog="catalog_admin",
         description="Bewertungs-Katalog pflegen (auditiert, append-only, "
-                    "OHNE Migration).")
+                    "OHNE Migration).",
+        epilog=cli_epilog.epilog("catalog_admin"),
+        formatter_class=cli_epilog.HilfeFormat)
     ap.add_argument("--db", default=None)
     ap.add_argument("--config", default="./config.yaml")
     sub = ap.add_subparsers(dest="cmd", required=True)

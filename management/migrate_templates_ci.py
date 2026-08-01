@@ -42,6 +42,15 @@ import sys
 import time
 from typing import Any, Dict, Optional
 
+# Direktaufruf als Skript: das Paketverzeichnis muss im Suchpfad liegen,
+# sonst findet der Import aus "management/" nichts (Muster aus
+# tools/hilfe.py). Build 624 - noetig geworden mit dem Epilog-Import.
+_WURZEL = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if _WURZEL not in sys.path:
+    sys.path.insert(0, _WURZEL)
+
+from management.help import cli_epilog  # noqa: E402
+
 COLUMN_NAME = "validation_ci"
 ADD_COLUMN_SQL = (
     "ALTER TABLE placeholders "
@@ -123,7 +132,9 @@ def _resolve_db_path(args) -> str:
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         description="Ergaenzt templates.db.placeholders um validation_ci "
-                    "(case-insensitive Validierung); idempotent, mit Backup.")
+                    "(case-insensitive Validierung); idempotent, mit Backup.",
+        epilog=cli_epilog.epilog("migrate_templates_ci"),
+        formatter_class=cli_epilog.HilfeFormat)
     parser.add_argument("--templates-db", help="Pfad zur templates.db")
     parser.add_argument("--config", default="./config.yaml",
                         help="config.yaml (Fallback fuer den Pfad)")

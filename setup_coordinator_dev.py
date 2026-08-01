@@ -62,6 +62,7 @@ import sys
 import time
 from pathlib import Path
 from db.journal_policy import apply_journal_mode  # NEU Build 408
+from management.help import cli_epilog  # noqa: E402
 
 # Standardpfad passend zu config.yaml ("coordinator_db: ./data/coordinator.db")
 DEFAULT_DB_PATH = Path("./data/coordinator.db")
@@ -338,7 +339,9 @@ def setup(db_path: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="coordinator.db DEV-Bootstrap (Baustelle 5/7 Vorarbeit)"
+        description="coordinator.db DEV-Bootstrap (Baustelle 5/7 Vorarbeit)",
+        epilog=cli_epilog.epilog("setup_coordinator_dev"),
+        formatter_class=cli_epilog.HilfeFormat,
     )
     parser.add_argument(
         "--db",

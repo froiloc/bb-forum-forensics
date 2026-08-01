@@ -27,6 +27,7 @@ import os
 import sqlite3
 import sys
 import time
+from management.help import cli_epilog  # noqa: E402
 
 MODULE_KEY = "legal.ki_uebersetzung"
 
@@ -121,7 +122,9 @@ def _resolve_db_path(args) -> str:
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         description="Migriert templates.db: module_key + Rechts-Baustein "
-                    "legal.ki_uebersetzung (idempotent)."
+                    "legal.ki_uebersetzung (idempotent).",
+        epilog=cli_epilog.epilog("migrate_templates_module_key"),
+        formatter_class=cli_epilog.HilfeFormat,
     )
     parser.add_argument("--templates-db", help="Pfad zur templates.db")
     parser.add_argument("--config", default="./config.yaml",

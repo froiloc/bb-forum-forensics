@@ -75,6 +75,7 @@ from management.help import cli_html                        # noqa: E402
 from management.help.cli_html import (                      # noqa: E402
     CLI_RECHT, Betriebsgliederung,
 )
+from management.help import cli_epilog                    # noqa: E402
 from management.help.inhalt import (                        # noqa: E402
     SHELL_QUELLE, lade_register, quelle_je_sicht,
 )
@@ -429,7 +430,9 @@ def baue_lektoratsfassung(register: HilfeRegister,
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     p = argparse.ArgumentParser(
-        description="Erzeugt die Lektoratsfassung der Hilfe (ein HTML).")
+        description="Erzeugt die Lektoratsfassung der Hilfe (ein HTML).",
+        epilog=cli_epilog.epilog("hilfe_lektorat"),
+        formatter_class=cli_epilog.HilfeFormat)
     p.add_argument("--ziel", default=STANDARD_ZIEL,
                    help="Zieldatei (Vorgabe: %s)" % STANDARD_ZIEL)
     p.add_argument("--nur", default="",

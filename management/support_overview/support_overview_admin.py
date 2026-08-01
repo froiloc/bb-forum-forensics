@@ -40,6 +40,7 @@ from management.support_overview.support_session_record import (
     STATUS_ENDED_ORPHAN,
     STATUS_OPEN,
 )
+from management.help import cli_epilog  # noqa: E402
 
 
 def _load_config(args):
@@ -188,7 +189,9 @@ def _do_list(rows) -> int:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
-        description="Support-Sitzungs-Historie (nur lesend, aus audit_log)."
+        description="Support-Sitzungs-Historie (nur lesend, aus audit_log).",
+        epilog=cli_epilog.epilog("support_overview_admin"),
+        formatter_class=cli_epilog.HilfeFormat,
     )
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--coordinator-db", default=None)

@@ -40,6 +40,7 @@ from management.stats.forecast_report import (
     build_forecast_report_html,
     build_forecast_report_pdf,
 )
+from management.help import cli_epilog  # noqa: E402
 
 
 def _now_utc() -> str:
@@ -74,7 +75,9 @@ def _resolve_db_path(args, cfg) -> str:
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
         prog="forecast_report_admin",
-        description="Prognosebericht (3 Szenarien) als HTML/PDF.")
+        description="Prognosebericht (3 Szenarien) als HTML/PDF.",
+        epilog=cli_epilog.epilog("forecast_report_admin"),
+        formatter_class=cli_epilog.HilfeFormat)
     p.add_argument("--out", required=True)
     p.add_argument("--format", choices=["html", "pdf"], default="pdf")
     p.add_argument("--coordinator-db", default=None)

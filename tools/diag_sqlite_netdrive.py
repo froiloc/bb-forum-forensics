@@ -37,6 +37,15 @@ import sys
 import tempfile
 from pathlib import Path
 
+# Direktaufruf als Skript: das Paketverzeichnis muss im Suchpfad liegen,
+# sonst findet der Import aus "management/" nichts (Muster aus
+# tools/hilfe.py). Build 624 - noetig geworden mit dem Epilog-Import.
+_WURZEL = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if _WURZEL not in sys.path:
+    sys.path.insert(0, _WURZEL)
+
+from management.help import cli_epilog  # noqa: E402
+
 LOGLINES: list[str] = []
 
 
@@ -234,7 +243,9 @@ def probe_matrix(directory: Path, label: str) -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser(
-        description="Diagnose: SQLite-Journalmodi auf Netzlaufwerk (nicht-destruktiv)"
+        description="Diagnose: SQLite-Journalmodi auf Netzlaufwerk (nicht-destruktiv)",
+        epilog=cli_epilog.epilog("diag_sqlite_netdrive"),
+        formatter_class=cli_epilog.HilfeFormat,
     )
     ap.add_argument("--data-dir", default="./data",
                     help="Datenverzeichnis des Webservers (Default: ./data)")

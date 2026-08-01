@@ -45,6 +45,7 @@ from management.export.excel_case_status import (
     ExcelUnavailable,
 )
 from management.export.export_envelope import ExportContext, DEFAULT_KLASSIFIKATION
+from management.help import cli_epilog  # noqa: E402
 
 _DEFAULT_BEHOERDE = "Polizei NRW"
 
@@ -182,7 +183,9 @@ def _do_case_status_xlsx(args) -> int:
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="export_admin",
-        description="Management-Exporte ueber das einheitliche Export-Framework.")
+        description="Management-Exporte ueber das einheitliche Export-Framework.",
+        epilog=cli_epilog.epilog("export_admin"),
+        formatter_class=cli_epilog.HilfeFormat)
     sub = p.add_subparsers(dest="cmd", required=True)
 
     x = sub.add_parser("case-status-xlsx",

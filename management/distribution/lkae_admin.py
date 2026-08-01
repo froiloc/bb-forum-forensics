@@ -26,6 +26,7 @@ from typing import List, Optional
 
 from management.distribution import lkae_dist
 from management.distribution.lkae_dist import LkaeDistributionError
+from management.help import cli_epilog  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +56,9 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     ap = argparse.ArgumentParser(
         prog="lkae_admin",
-        description="LKAe-Demo-Paket bauen/pruefen (NICHT PROD).")
+        description="LKAe-Demo-Paket bauen/pruefen (NICHT PROD).",
+        epilog=cli_epilog.epilog("lkae_admin"),
+        formatter_class=cli_epilog.HilfeFormat)
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p = sub.add_parser("build", help="Demo-Paket bauen")

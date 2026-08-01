@@ -127,6 +127,7 @@ from core.startup_checks import StartupChecker  # noqa: E402
 from maintenance.wartungsvorbehalt import (                       # noqa: E402
     datenwurzel, wartungsvorbehalt,                               # NEU B615
 )
+from management.help import cli_epilog  # noqa: E402
 
 # Rollback-Modi (Header-Stempel 1) gegenueber WAL (Header-Stempel 2).
 ROLLBACK_MODES = ("delete", "truncate", "persist")
@@ -581,7 +582,9 @@ def verarbeite_via_staging(db: Path, ziel: str, apply: bool,
 def main(argv: Optional[list[str]] = None) -> int:
     ap = argparse.ArgumentParser(
         description="Stempelt SQLite-DBs zwischen WAL und Rollback-Journal um "
-                    "(Trockenlauf ist Default)."
+                    "(Trockenlauf ist Default).",
+        epilog=cli_epilog.epilog("convert_journal_mode"),
+        formatter_class=cli_epilog.HilfeFormat,
     )
     ap.add_argument("--data-dir", default="./data",
                     help="Verzeichnis mit den *.db-Dateien (Default: ./data). "

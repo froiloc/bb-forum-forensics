@@ -33,6 +33,7 @@ from management.export.staging import (
     StagingArea, StagingError, UnbedenklichkeitError,
 )
 from management.export.export_envelope import ExportContext, DEFAULT_KLASSIFIKATION
+from management.help import cli_epilog  # noqa: E402
 
 
 def _now_utc() -> str:
@@ -113,7 +114,9 @@ def _do_verify(args) -> int:
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="ausschleus_admin",
-        description="StA-Ausschleus-Verzeichnis (Sammeln/Finalisieren/Verifizieren).")
+        description="StA-Ausschleus-Verzeichnis (Sammeln/Finalisieren/Verifizieren).",
+        epilog=cli_epilog.epilog("ausschleus_admin"),
+        formatter_class=cli_epilog.HilfeFormat)
     sub = p.add_subparsers(dest="cmd", required=True)
 
     a = sub.add_parser("add", help="Gepruefte Datei aufnehmen (Fallregel 3).")

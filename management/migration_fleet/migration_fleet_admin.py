@@ -53,6 +53,7 @@ from db.journal_policy import apply_journal_mode  # NEU Build 408
 from maintenance.wartungsvorbehalt import (        # NEU Build 612
     datenwurzel, wartungsvorbehalt,
 )
+from management.help import cli_epilog  # noqa: E402
 
 
 def _resolve_migration_db_path(args) -> str:
@@ -125,7 +126,9 @@ def _open_mdb(db_path: str, create: bool) -> sqlite3.Connection:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
-        description="Flotten-Migration: Katalog, Abgleich, Dry-Run-Plan."
+        description="Flotten-Migration: Katalog, Abgleich, Dry-Run-Plan.",
+        epilog=cli_epilog.epilog("migration_fleet_admin"),
+        formatter_class=cli_epilog.HilfeFormat,
     )
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--migration-db", default=None)

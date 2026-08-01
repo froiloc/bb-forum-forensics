@@ -82,6 +82,15 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+# Direktaufruf als Skript: das Paketverzeichnis muss im Suchpfad liegen,
+# sonst findet der Import aus "management/" nichts (Muster aus
+# tools/hilfe.py). Build 624 - noetig geworden mit dem Epilog-Import.
+_WURZEL = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if _WURZEL not in sys.path:
+    sys.path.insert(0, _WURZEL)
+
+from management.help import cli_epilog  # noqa: E402
+
 # Das Werkzeug laeuft aus dem Projektverzeichnis (wie tools/maintenance.py).
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -556,7 +565,9 @@ def messung_http(basis_url: str, runs: int) -> dict:
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
         prog="diag_limitation_laufzeit",
-        description="Misst die Laufzeit des Fristenmonitors. REIN LESEND.")
+        description="Misst die Laufzeit des Fristenmonitors. REIN LESEND.",
+        epilog=cli_epilog.epilog("diag_limitation_laufzeit"),
+        formatter_class=cli_epilog.HilfeFormat)
     p.add_argument("--coordinator-db", default=None)
     p.add_argument("--forensic-dir", default=None)
     # Build 535: das evidence-Verzeichnis gehoert in die Messung. Ohne es

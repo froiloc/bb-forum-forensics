@@ -25,8 +25,18 @@
 # Aufruf VM (Produktionskopie, OHNE --seed!):  python tools\poc_m019_weg_a.py kopie.db
 # Version: v0.7.469 · Build: 469 · 2026-07-20
 # =============================================================================
+import os
 import sqlite3
 import sys
+
+# Direktaufruf als Skript: das Paketverzeichnis muss im Suchpfad liegen
+# (Muster aus tools/hilfe.py). Build 624 - noetig geworden mit dem
+# Epilog-Import.
+_WURZEL = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if _WURZEL not in sys.path:
+    sys.path.insert(0, _WURZEL)
+
+from management.help import cli_epilog  # noqa: E402
 
 TABLES = ("cases", "case_events", "external_matters", "investigation_results",
           "case_release", "scrape_jobs", "support_sessions",
@@ -83,6 +93,18 @@ def snapshot(con, col):
 
 
 def main():
+    # BUILD 624 (H20): DIESES SKRIPT HAT KEIN argparse - sein ganzer
+    # Aufrufteil sind die drei Zeilen hier, und daran wird nichts geaendert.
+    # Es bekommt trotzdem die Beispiele und Rueckgabewerte aus dem Katalog,
+    # weil es das gefaehrlichste Werkzeug im Bestand ist: es benennt Spalten
+    # in einer coordinator.db um und hat KEINE eingebaute Pruefung, dass die
+    # uebergebene Datei wirklich eine Kopie ist (siehe Katalog-Hinweis). Wer
+    # hier '--help' tippt, soll nicht in die Ausfuehrung laufen.
+    if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
+        log("Aufruf: python tools/poc_m019_weg_a.py <kopie.db> [--seed]")
+        log("")
+        log(str(cli_epilog.epilog("poc_m019_weg_a")))
+        return 0
     if len(sys.argv) < 2:
         log("Aufruf: python3 poc_weg_a.py <kopie.db> [--seed]")
         return 2

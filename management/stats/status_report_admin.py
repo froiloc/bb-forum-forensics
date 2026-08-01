@@ -27,6 +27,7 @@ from management.stats.status_report import (
     build_status_report_html, build_status_report_pdf, StatusReportUnavailable,
 )
 from management.export.export_envelope import ExportContext, DEFAULT_KLASSIFIKATION
+from management.help import cli_epilog  # noqa: E402
 
 
 def _now_utc() -> str:
@@ -59,7 +60,9 @@ def _resolve_db_path(args, cfg) -> str:
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
         prog="status_report_admin",
-        description="StA-Statusbericht (HTML/PDF) aus den Kennzahlen.")
+        description="StA-Statusbericht (HTML/PDF) aus den Kennzahlen.",
+        epilog=cli_epilog.epilog("status_report_admin"),
+        formatter_class=cli_epilog.HilfeFormat)
     p.add_argument("--out", required=True)
     p.add_argument("--format", choices=["html", "pdf"], default="pdf")
     p.add_argument("--coordinator-db", default=None)

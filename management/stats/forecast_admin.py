@@ -22,6 +22,7 @@ import time
 from pathlib import Path
 
 from management.stats.forecast import Forecaster, forecast_to_dict
+from management.help import cli_epilog  # noqa: E402
 
 
 def _load_config(args):
@@ -49,7 +50,9 @@ def _resolve_db_path(args, cfg) -> str:
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
         prog="forecast_admin",
-        description="Backlog-Abbau-Prognose (3 Szenarien, transparent).")
+        description="Backlog-Abbau-Prognose (3 Szenarien, transparent).",
+        epilog=cli_epilog.epilog("forecast_admin"),
+        formatter_class=cli_epilog.HilfeFormat)
     p.add_argument("--coordinator-db", default=None)
     p.add_argument("--config", default="./config.yaml")
     p.add_argument("--lookback-days", type=int, default=30)

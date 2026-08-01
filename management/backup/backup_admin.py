@@ -33,6 +33,7 @@ from management.backup.backup_planner import BackupPlanner
 from management.backup.backups_repo import BackupsRepo
 from management.gateway.coordinator_writer import CoordinatorWriter
 from db.journal_policy import apply_journal_mode  # NEU Build 408
+from management.help import cli_epilog
 
 _PATH_KEYS = ("coordinator_db", "forensic_db_dir", "evidence_db_dir",
               "assets_db_dir", "default_db", "templates_db", "translations_db")
@@ -209,7 +210,9 @@ def cmd_list(args) -> int:
 # ---------------------------------------------------------------- arg parser
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Auditierte Datensicherung (plan/run/list).")
+        description="Auditierte Datensicherung (plan/run/list).",
+        epilog=cli_epilog.epilog("backup_admin"),
+        formatter_class=cli_epilog.HilfeFormat)
     sub = parser.add_subparsers(dest="action", required=True)
 
     common = argparse.ArgumentParser(add_help=False)

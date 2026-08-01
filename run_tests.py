@@ -39,6 +39,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from management.help import cli_epilog  # noqa: E402
 
 # Projektroot: Verzeichnis in dem diese Datei liegt.
 PROJECT_ROOT = Path(__file__).parent.resolve()
@@ -120,6 +121,8 @@ def run_js_tests() -> bool:
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Unified Testrunner: Python (pytest) + JavaScript (vitest).",
+        epilog=cli_epilog.epilog("run_tests"),
+        formatter_class=cli_epilog.HilfeFormat,
     )
     parser.add_argument(
         "--python-only",

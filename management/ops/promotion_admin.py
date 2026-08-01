@@ -39,6 +39,7 @@ from management.gateway.coordinator_writer import CoordinatorWriter
 from management.ops.promotion_repo import PromotionError, PromotionRepo
 from management.ops.promotion_status import STORED_STATUSES
 from management.ops.storage_overview import StorageOverview
+from management.help import cli_epilog  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -124,7 +125,9 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     ap = argparse.ArgumentParser(
         prog="promotion_admin",
-        description="Fremdforum-Promotion (coordinator.db).")
+        description="Fremdforum-Promotion (coordinator.db).",
+        epilog=cli_epilog.epilog("promotion_admin"),
+        formatter_class=cli_epilog.HilfeFormat)
     ap.add_argument("--db", default=None, help="Pfad zur coordinator.db")
     ap.add_argument("--config", default="./config.yaml")
     sub = ap.add_subparsers(dest="cmd", required=True)

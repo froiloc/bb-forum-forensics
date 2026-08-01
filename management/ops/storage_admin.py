@@ -19,6 +19,7 @@ import sys
 import time
 
 from management.ops.storage_overview import StorageOverview, storage_to_dict
+from management.help import cli_epilog
 
 
 def _cfg_get(cfg, key, default):
@@ -45,7 +46,9 @@ def _human(n):
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
         prog="storage_admin",
-        description="Speicher-/data/-Uebersicht (Systemzustand, nur lesend).")
+        description="Speicher-/data/-Uebersicht (Systemzustand, nur lesend).",
+        epilog=cli_epilog.epilog("storage_admin"),
+        formatter_class=cli_epilog.HilfeFormat)
     p.add_argument("--config", default="./config.yaml")
     p.add_argument("--forensic-dir", default=None)
     p.add_argument("--evidence-dir", default=None)

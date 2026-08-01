@@ -40,6 +40,7 @@ import os
 import sqlite3
 import sys
 import time
+from management.help import cli_epilog  # noqa: E402
 
 TEMPLATE_KEY = "vermerk.nicht_identifiziert"
 
@@ -425,7 +426,9 @@ def _resolve_db_path(args) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Build 388: report_templates + Spurenvermerk-Vorlage seeden."
+        description="Build 388: report_templates + Spurenvermerk-Vorlage seeden.",
+        epilog=cli_epilog.epilog("migrate_templates_full_templates"),
+        formatter_class=cli_epilog.HilfeFormat,
     )
     parser.add_argument("--templates-db", default=None,
                         help="Pfad zur templates.db")

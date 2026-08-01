@@ -21,6 +21,7 @@ import time
 from datetime import datetime, timezone
 
 from management.stats.gantt import GanttModel, gantt_to_dict
+from management.help import cli_epilog  # noqa: E402
 
 
 def _load_config(args):
@@ -54,7 +55,9 @@ def _fmt(ts) -> str:
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
         prog="gantt_admin",
-        description="Gantt-Read-Model (Fall-Balken je Ermittler, nur lesend).")
+        description="Gantt-Read-Model (Fall-Balken je Ermittler, nur lesend).",
+        epilog=cli_epilog.epilog("gantt_admin"),
+        formatter_class=cli_epilog.HilfeFormat)
     p.add_argument("--coordinator-db", default=None)
     p.add_argument("--config", default="./config.yaml")
     p.add_argument("--json", action="store_true")

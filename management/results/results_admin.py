@@ -36,6 +36,7 @@ from management.results.assessment_catalog_repo import (
 from management.results.coverage_repo import CoverageRepo
 from management.results.priority_scorer import PriorityScorer
 from management.results.results_repo import ResultsError, ResultsRepo
+from management.help import cli_epilog  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +116,9 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     ap = argparse.ArgumentParser(
         prog="results_admin",
-        description="Bewertung des Ermittlungsergebnisses (append-only).")
+        description="Bewertung des Ermittlungsergebnisses (append-only).",
+        epilog=cli_epilog.epilog("results_admin"),
+        formatter_class=cli_epilog.HilfeFormat)
     ap.add_argument("--db", default=None)
     ap.add_argument("--config", default="./config.yaml")
     sub = ap.add_subparsers(dest="cmd", required=True)

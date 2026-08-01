@@ -59,6 +59,17 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import os
+
+# Direktaufruf als Skript: das Paketverzeichnis muss im Suchpfad liegen,
+# sonst findet der Import aus "management/" nichts (Muster aus
+# tools/hilfe.py). Build 624 - noetig geworden mit dem Epilog-Import.
+_WURZEL = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if _WURZEL not in sys.path:
+    sys.path.insert(0, _WURZEL)
+
+from management.help import cli_epilog  # noqa: E402
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
@@ -269,7 +280,9 @@ def main(argv=None) -> int:
     p = argparse.ArgumentParser(
         prog="diag_matrix_laufzeit",
         description="Misst die Laufzeit der Matrix mit und ohne Fristen. "
-                    "REIN LESEND.")
+                    "REIN LESEND.",
+        epilog=cli_epilog.epilog("diag_matrix_laufzeit"),
+        formatter_class=cli_epilog.HilfeFormat)
     p.add_argument("--coordinator-db", default=None)
     p.add_argument("--forensic-dir", default=None)
     p.add_argument("--evidence-dir", default=None)

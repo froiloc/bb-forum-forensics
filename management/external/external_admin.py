@@ -47,6 +47,7 @@ from management.external.external_matters_repo import (
 )
 from management.external.matter_status import STATUS_ORDER, OPEN_STATUSES
 from management.gateway.coordinator_writer import CoordinatorWriter
+from management.help import cli_epilog  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -135,7 +136,9 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     ap = argparse.ArgumentParser(
         prog="external_admin",
-        description="Wiedervorlage externer Vorgaenge (coordinator.db).")
+        description="Wiedervorlage externer Vorgaenge (coordinator.db).",
+        epilog=cli_epilog.epilog("external_admin"),
+        formatter_class=cli_epilog.HilfeFormat)
     ap.add_argument("--db", default=None, help="Pfad zur coordinator.db")
     ap.add_argument("--config", default="./config.yaml")
     sub = ap.add_subparsers(dest="cmd", required=True)

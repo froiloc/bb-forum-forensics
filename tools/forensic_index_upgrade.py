@@ -78,6 +78,7 @@ from management.maintenance.forensic_index_upgrade import (      # noqa: E402
 from maintenance.wartungsvorbehalt import (                      # noqa: E402
     datenwurzel, wartungsvorbehalt,
 )
+from management.help import cli_epilog  # noqa: E402
 
 #: Klartext je Zustand — damit die Ausgabe ohne Handbuch lesbar ist.
 ZUSTAND_TEXT = {
@@ -115,7 +116,9 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(
         prog="forensic_index_upgrade",
         description="Legt fehlende Zeitindizes auf forensic_<uid>.db an. "
-                    "TROCKENLAUF ist die Vorgabe.")
+                    "TROCKENLAUF ist die Vorgabe.",
+        epilog=cli_epilog.epilog("forensic_index_upgrade"),
+        formatter_class=cli_epilog.HilfeFormat)
     ap.add_argument("--forensic-dir", required=True,
                     help="Verzeichnis mit den forensic_<uid>.db")
     ap.add_argument("--ausfuehren", action="store_true",

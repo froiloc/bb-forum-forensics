@@ -55,6 +55,7 @@ from management.gateway.coordinator_writer import CoordinatorWriter
 from management.rbac import catalog
 from management.rbac.rbac_repo import RbacError, RbacRepo
 from db.journal_policy import apply_journal_mode  # NEU Build 408
+from management.help import cli_epilog  # noqa: E402
 
 
 def _resolve_db_path(args) -> str:
@@ -107,7 +108,9 @@ def _resolve_actor(con: sqlite3.Connection, actor):
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Auditierte Verwaltung der RBAC-Matrix (Grants/Rollen).")
+        description="Auditierte Verwaltung der RBAC-Matrix (Grants/Rollen).",
+        epilog=cli_epilog.epilog("rbac_admin"),
+        formatter_class=cli_epilog.HilfeFormat)
     sub = parser.add_subparsers(dest="action", required=True)
 
     common = argparse.ArgumentParser(add_help=False)

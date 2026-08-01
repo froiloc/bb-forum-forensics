@@ -20,6 +20,7 @@ import time
 
 from management.cases.next_actions import queue_to_dict
 from management.cases.next_actions_repo import NextActionsRepo
+from management.help import cli_epilog  # noqa: E402
 
 
 def _load_config(args):
@@ -47,7 +48,9 @@ def _resolve_db_path(args, cfg) -> str:
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
         prog="next_actions_admin",
-        description="Naechstbeste-Aktion-Warteschlange (nur lesend).")
+        description="Naechstbeste-Aktion-Warteschlange (nur lesend).",
+        epilog=cli_epilog.epilog("next_actions_admin"),
+        formatter_class=cli_epilog.HilfeFormat)
     p.add_argument("--coordinator-db", default=None)
     p.add_argument("--config", default="./config.yaml")
     p.add_argument("--scope", choices=["alle", "eigene"], default="alle")
