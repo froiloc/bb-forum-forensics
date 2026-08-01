@@ -35,14 +35,14 @@
 #   python tools/hilfe_lektorat.py                      -> Hilfe_Lektorat.html
 #   python tools/hilfe_lektorat.py --ziel <pfad.html>
 #   python tools/hilfe_lektorat.py --nur faelle,escalation
-#   python tools/hilfe_lektorat.py --nur-betrieb        (nur die 65 Werkzeuge)
+#   python tools/hilfe_lektorat.py --nur-betrieb        (nur die Werkzeuge)
 #
 # Exit-Codes: 0 = geschrieben, 1 = Fehler (unbekannte Sicht o. ae.)
 #
 # Build 597: je Kapitel steht der relative Dateipfad dabei (mc 2026-07-31).
 #
 # BUILD 623 (H19 NACHTRAG): DIE BETRIEBSKAPITEL GEHOEREN HIER HINEIN.
-#   Mit Build 622 sind 65 Kapitel in die Vollhilfe gekommen, die dieses
+#   Mit Build 622 sind die Werkzeugkapitel in die Vollhilfe gekommen, die dieses
 #   Werkzeug nicht kannte - es liest das SICHT-Register, und die
 #   Betriebskapitel stehen nicht darin. Damit waren sie ausgeliefert, aber
 #   nicht gegengelesen.
@@ -440,7 +440,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                         "(Vorgabe: alle verfassten). Der Betriebsteil "
                         "entfaellt dabei.")
     p.add_argument("--nur-betrieb", action="store_true",
-                   help="NUR die Betriebskapitel (die 65 Werkzeuge der "
+                   help="NUR die Betriebskapitel (die Werkzeuge der "
                         "Kommandozeile), ohne die Sichtkapitel.")
     p.add_argument("--ohne-betrieb", action="store_true",
                    help="Die Betriebskapitel weglassen (Fassung wie vor "

@@ -1,0 +1,14 @@
+8e488ebbe3ab44484d12c7593dbb0734  build.json
+1c5258f01e8fd4f61f8bc35de83e0fee  documents/rules-cli.md
+c5e07e9c954b47e7805ffbad17019bf7  documents/rules-help.md
+97db53bdac633533178fb3d8b15e5c25  issue-tracker/eingang_claude_Build630.json
+5d1434cedc3456831ea5b6b68daa6356  management/help/cli_epilog.py
+5836ad76210430878b93929c32bf5d8b  management/help/cli_katalog.py
+93514662fc0fe8df4bc4ec04c0118f5c  tests/hilfe_fehlliste_stand.json
+c4100c7558bc5ba9ca45e72f9650602f  tests/test_help_api.py
+09aaac46758e6e3633d6e91fa932061b  tests/test_help_cli_epilog.py
+45a6ed6b59346429014f2ee82f911f73  tests/test_help_cli_katalog.py
+b98b4ac4693912a62c5340d652e1e456  tests/test_help_lektorat.py
+e8804275d17371345279901c36c1d7f3  tools/anon_html.py
+6db7586d00ffb5bc2aad17cb4ae073e4  tools/hilfe.py
+e487fefd9b064792f2e77be412c23fe7  tools/hilfe_lektorat.py

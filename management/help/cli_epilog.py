@@ -71,7 +71,7 @@ from management.help.cli_text import BREITE, umbrechen
 #: ihnen nicht geht. DIESE LISTE IST DER EHRLICHE TEIL DES BAUTEILS: ohne sie
 #: waere aus dem Bestand nicht zu erkennen, ob ein Werkzeug uebersehen wurde
 #: oder bewusst aussen vor bleibt (Grundregel 1). verify_epilog_abgedeckt()
-#: erzwingt, dass jedes der 65 Werkzeuge entweder verdrahtet ist oder hier
+#: erzwingt, dass JEDES Werkzeug des Katalogs entweder verdrahtet ist oder hier
 #: mit Begruendung steht.
 OHNE_EPILOG: Dict[str, str] = {
     "pruefe_auslieferung":

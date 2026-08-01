@@ -30,7 +30,7 @@
 #        Person ohnehin vor sich sieht)
 #
 # Build 622 (H19) - der Betriebsteil an der lebenden Route:
-# HA13 - mit 'ops.view' stehen ALLE 65 Betriebskapitel in der Antwort
+# HA13 - mit 'ops.view' stehen ALLE Betriebskapitel in der Antwort
 # HA14 - ohne 'ops.view' steht von ihnen NICHTS darin - weder Kapitel noch
 #        Verzeichniseintrag noch Suchindex-Eintrag
 # HA15 - das ausgelieferte Stylesheet kennt die Klassen des Betriebsteils
@@ -271,7 +271,7 @@ class HilfeApiTest(unittest.TestCase):
 
     def test_ha13_betriebsteil_mit_ops_view(self):
         """
-        Person 1 hat 'ops.view'. Alle 65 Werkzeuge muessen als Kapitel in der
+        Person 1 hat 'ops.view'. ALLE Werkzeuge muessen als Kapitel in der
         Antwort stehen - geprueft wird VOLLZAEHLIG und nicht stichprobenhaft:
         ein einzelnes fehlendes Kapitel faellt im Handbuch niemandem auf.
         """

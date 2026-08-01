@@ -7,7 +7,16 @@ with blind text of the same length.
 import argparse
 import sys
 import os
-from lxml import html, etree
+
+# Direktaufruf als Skript: das Paketverzeichnis muss im Suchpfad liegen
+# (Muster aus tools/hilfe.py). Build 630 - noetig geworden mit dem
+# Epilog-Import.
+_WURZEL = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if _WURZEL not in sys.path:
+    sys.path.insert(0, _WURZEL)
+
+from lxml import html, etree  # noqa: E402
+from management.help import cli_epilog  # noqa: E402
 
 def anonymize_text(text):
     """Replace each non-space character with 'X', keep spaces and line breaks."""
@@ -35,7 +44,18 @@ def process_element(elem, xpath_expr, verbose, dry_run, file_obj_for_verbose):
     return False
 
 def main():
-    parser = argparse.ArgumentParser(add_help=False)
+    # BUILD 630: Beispiele und Rueckgabewerte aus dem Werkzeugkatalog.
+    # 'add_help=False' bleibt, weil dieses Werkzeug '-h' selbst anmeldet
+    # (Zeile weiter unten) - daran wird nichts geaendert. Ergaenzt sind nur
+    # 'epilog' und 'formatter_class'; die Begruendung fuer den eigenen
+    # Formatierer steht im Kopf von management/help/cli_epilog.py.
+    parser = argparse.ArgumentParser(
+        add_help=False,
+        description="Ersetzt den Text der ueber XPath ausgewaehlten Elemente "
+                    "durch gleich langen Blindtext und schreibt das Ergebnis "
+                    "als NEUE Datei.",
+        epilog=cli_epilog.epilog("anon_html"),
+        formatter_class=cli_epilog.HilfeFormat)
     parser.add_argument("html_file", help="Path of the HTML file")
     parser.add_argument("-v", "--verbose", action="store_true", help="Show what is replaced")
     parser.add_argument("-d", "--dry-run", action="store_true", help="Show what would be executed")

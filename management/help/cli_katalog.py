@@ -4,7 +4,7 @@
 # =============================================================================
 # Zweck:
 #   Der Katalog der Kommandozeilen-Werkzeuge. EIN Grundeintrag je Werkzeug,
-#   vollzaehlig: 64 Eintraege - 35 Verwaltungswerkzeuge unter management/,
+#   vollzaehlig: 66 Eintraege (Stand Build 630) - 35 Verwaltungswerkzeuge
 #   14 Werkzeuge unter tools/, 9 Einzelskripte unmittelbar unter management/
 #   und 6 Startskripte im Wurzelverzeichnis.
 #
@@ -127,6 +127,13 @@ _GEPRUEFT_623 = ("Build 623, 2026-08-01, im Bestand selbst - das Werkzeug "
 _GEPRUEFT_626 = ("Build 626, 2026-08-01, gegen einen Wegwerf-Bestand unter "
                  "/tmp mit einem echten Abbruchrest (VACUUM INTO nach 0,30 s "
                  "mit SIGKILL beendet), Python 3.13")
+
+
+#: Build 630. Gefahren gegen eigens gebaute Wegwerf-HTML-Dateien unter
+#: /tmp - das Werkzeug beruehrt keine Datenbank und keinen Bestand; es
+#: liest eine HTML-Datei und schreibt eine neue daneben.
+_GEPRUEFT_630 = ("Build 630, 2026-08-01, gegen Wegwerf-HTML-Dateien unter "
+                 "/tmp, Python 3.13, lxml")
 
 
 def _bsp(aufruf: str, wirkung: str, geprueft: str = _GEPRUEFT) -> CliBeispiel:
@@ -1257,6 +1264,85 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         ),
     ),
 
+    CliEintrag(
+        schluessel="anon_html",
+        pfad="tools/anon_html.py",
+        aufruf="python tools/anon_html.py <datei.html> -x <xpath> [-o ziel.html] "
+               "[-d] [-v]",
+        titel="HTML unverfaenglich machen",
+        gruppe="Identitaeten und Externe",
+        zweck="In einer HTML-Datei den Text der ueber XPath ausgewaehlten "
+              "Elemente durch gleich langen Blindtext ('X') ersetzen und das "
+              "Ergebnis als NEUE Datei schreiben.",
+        art="lesend",
+        datenbanken=(),
+        betrieb="Der Betrieb darf weiterlaufen. Das Werkzeug oeffnet keine "
+                "Datenbank und beruehrt den Bestand nicht - es liest eine "
+                "HTML-Datei und schreibt eine zweite daneben.",
+        ausgabe="HTML-Datei (--output; ohne Angabe '<original>.new.html').",
+        hinweis="ES IST EIN HANDWERKZEUG, KEIN VERFAHREN. Es ersetzt "
+                "ausschliesslich den unmittelbaren Text der getroffenen "
+                "Elemente - nicht den Text in deren Kindelementen. Wer damit "
+                "Material fuer die Weitergabe vorbereitet, muss das Ergebnis "
+                "MIT DEN AUGEN gegenlesen; die beiden Warnungen unten sind "
+                "nicht theoretisch, sie sind gemessen.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python tools/anon_html.py probe.html "
+                     "-x \"//div[@class='postmsg']\" --dry-run",
+                     "Zeigt je Treffer Original und Blindtext und schreibt "
+                     "NICHTS. Im Versuch: zwei Absaetze, 'Processed 2 text "
+                     "nodes.', Rueckgabewert 0.",
+                     _GEPRUEFT_630),
+                _bsp("python tools/anon_html.py probe.html "
+                     "-x \"//div[@class='postmsg']\" -o anonym.html",
+                     "Schrieb anonym.html; die Beitragstexte standen darin "
+                     "als 'XXX XXXXXXXXXXXX ...' bei erhaltener Wortlaenge "
+                     "und Wortgrenze. Rueckgabewert 0.",
+                     _GEPRUEFT_630),
+                _bsp("python tools/anon_html.py probe.html",
+                     "Bricht ab: 'ERROR: Either --xpath-file or --xpath must "
+                     "be provided.' Rueckgabewert 1.",
+                     _GEPRUEFT_630),
+            ),
+            exit_codes=((0, "durchgelaufen - AUCH DANN, wenn kein einziges "
+                            "Element getroffen wurde (siehe Warnung)"),
+                        (1, "Aufruffehler (kein XPath, beide XPath-Optionen "
+                            "zugleich), Eingabedatei fehlt, XPath ungueltig, "
+                            "HTML nicht lesbar oder Ausgabe nicht "
+                            "schreibbar")),
+            warnungen=(
+                "ES WIRD NUR DER UNMITTELBARE TEXT DES ELEMENTS ERSETZT - "
+                "NICHT DER IN KINDELEMENTEN und nicht der Text HINTER einem "
+                "Kindelement. GEMESSEN am 2026-08-01: aus '<div>Vorname "
+                "<b>Nachname</b> wohnt in Musterstadt.</div>' wird '<div>"
+                "XXXXXXX <b>Nachname</b> wohnt in Musterstadt.</div>' - der "
+                "Name und der Ort bleiben im Klartext stehen. Ein Element, "
+                "dessen gesamter Inhalt in einem Kindelement steckt, wird GAR "
+                "NICHT anonymisiert. Beitraege eines Forums enthalten "
+                "regelmaessig <a>, <b>, <em> und <br>; in der Praxis "
+                "ueberlebt damit ein grosser Teil des Textes.",
+                "OHNE TREFFER ENDET DER LAUF MIT 0. Mit '-v' schreibt er "
+                "dabei sogar eine UNVERAENDERTE Kopie und meldet 'Written "
+                "anonymized HTML to: ...'. GEMESSEN am 2026-08-01. Eine "
+                "Datei, die 'anonymized' heisst und den Originaltext "
+                "enthaelt, ist die gefaehrlichste Ausgabe, die dieses "
+                "Werkzeug hat. Der Rueckgabewert unterscheidet 'anonymisiert' "
+                "nicht von 'nichts getroffen' - die Zeile 'Processed N text "
+                "nodes.' ist zu LESEN, und N muss zur Erwartung passen.",
+                "DIE AUSGABEDATEI WIRD WORTLOS UEBERSCHRIEBEN, auch die "
+                "Vorgabe '<original>.new.html'.",
+                "DER BLINDTEXT ERHAELT WORTLAENGEN UND WORTGRENZEN. Das ist "
+                "gewollt (die Gestalt der Seite bleibt beurteilbar), heisst "
+                "aber auch: die Laenge jedes Wortes bleibt ablesbar. Fuer "
+                "eine Weitergabe, bei der auch das nicht stehen bleiben soll, "
+                "taugt das Ergebnis nicht.",
+                "'lxml' ist eine zusaetzliche Abhaengigkeit (requirements.txt "
+                "Zeile 7). Ohne sie bricht das Werkzeug beim Import ab.",
+            ),
+        ),
+    ),
+
     # ------------------------------------------------- Betrieb und Sicherung
     CliEintrag(
         schluessel="backup_admin",
@@ -1697,7 +1783,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         betrieb="Der Betrieb darf weiterlaufen; gelesen wird nur der "
                 "Hilfebestand im Paket.",
         ausgabe="HTML-Datei (--ziel).",
-        hinweis="Seit Build 623 stehen auch die 65 Betriebskapitel in der "
+        hinweis="Seit Build 623 stehen auch die Betriebskapitel in der "
                 "Fassung - OHNE Rechtefilter, wie der ganze Rest. Die Sperre "
                 "gilt fuer die ausgelieferte Hilfe unter /help, nicht fuer "
                 "die Redaktion des Bestands.",
@@ -3106,21 +3192,37 @@ def verify_cli_abgedeckt(gefundene_pfade: Iterable[str]) -> None:
     unsichtbar - und ein Eintrag zu einer geloeschten Datei liesse die
     Uebersicht laenger aussehen, als sie ist. Beides faellt hier auf, und
     zwar beim Bauen und nicht im Betrieb.
+
+    BUILD 630: BEIDE RICHTUNGEN WERDEN IN EINER MELDUNG GENANNT. Bis Build
+    629 kehrte die Funktion nach der ersten Richtung um; wer eine Datei
+    zuviel UND eine zuwenig hatte, sah nur die eine und nach dem Beheben die
+    andere.
+
+    AUFGEFALLEN AN MCS REGRESSIONSLAUF ZU BUILD 629: 'tools/anon_html.py'
+    war neu im Bestand und hatte keinen Katalogeintrag. Das meldete CK02 -
+    und CK02b fiel gleich mit um, weil es denselben Aufruf benutzt und die
+    ZWEITE Richtung erwartete, die nie erreicht wurde. Zwei Fehlermeldungen,
+    ein Grund, und die zweite war irrefuehrend: sie sah aus wie ein zweiter
+    Befund.
     """
     gefunden = {p.replace("\\", "/") for p in gefundene_pfade}
     im_katalog = set(CLI_PFADE)
 
+    befunde = []
     ohne_eintrag = sorted(gefunden - im_katalog)
     if ohne_eintrag:
-        raise CliKatalogError(
+        befunde.append(
             "Werkzeuge im Bestand OHNE Katalogeintrag: %s. Jedes Werkzeug "
             "braucht einen Eintrag - sonst weiss niemand, dass es es gibt."
             % ", ".join(ohne_eintrag))
 
     ohne_datei = sorted(im_katalog - gefunden)
     if ohne_datei:
-        raise CliKatalogError(
+        befunde.append(
             "Katalogeintraege OHNE Datei im Bestand: %s. Entweder ist die "
             "Datei entfallen (dann gehoert der Eintrag weg) oder sie wurde "
             "verschoben (dann gehoert der Pfad nachgezogen)."
             % ", ".join(ohne_datei))
+
+    if befunde:
+        raise CliKatalogError(" | ".join(befunde))

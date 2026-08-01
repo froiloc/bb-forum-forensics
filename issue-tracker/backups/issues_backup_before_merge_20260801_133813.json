@@ -3710,50 +3710,6 @@
           "comment": "Importiert aus eingang_claude_Build629.json"
         }
       ]
-    },
-    {
-      "id": "ad88708d-fbe8-4ed8-9aa5-34c1b5c67368",
-      "type": "bug",
-      "title": "anon_html laesst Text in Kindelementen im Klartext stehen",
-      "affected_version": "0.8.630",
-      "reporter": "Claude",
-      "reported_at": "2026-08-01T11:30:28.304318+00:00",
-      "prerequisites": "tools/anon_html.py, HTML mit verschachtelten Elementen.",
-      "description": "GEMESSEN am 2026-08-01 gegen Wegwerf-HTML unter /tmp (Python 3.13, lxml). Aufgefallen beim Aufnehmen des Werkzeugs in den CLI-Katalog (Build 630).\n\nBEFUND 1 - NUR DER UNMITTELBARE TEXT WIRD ERSETZT. process_element() arbeitet ausschliesslich auf 'elem.text'. Der Text in KINDELEMENTEN und der Text HINTER einem Kindelement ('tail') bleiben unangetastet.\n\n  Eingabe : <div class=\"postmsg\">Vorname <b>Nachname</b> wohnt in Musterstadt.</div>\n  Ausgabe : <div class=\"postmsg\">XXXXXXX <b>Nachname</b> wohnt in Musterstadt.</div>\n\n  Eingabe : <div class=\"postmsg\"><span>Nur im Kindelement: Klarname</span></div>\n  Ausgabe : UNVERAENDERT - gar nicht anonymisiert.\n\nBeitraege eines FluxBB-Forums enthalten regelmaessig <a>, <b>, <em> und <br>. In der Praxis ueberlebt damit ein grosser Teil des Textes.\n\nBEFUND 2 - OHNE TREFFER MELDET DER LAUF ERFOLG. Trifft der XPath kein Element, endet der Lauf mit 0. Mit '-v' faellt er ausserdem NICHT in den frueh gesetzten sys.exit(0) (Bedingung: 'not dry_run and not verbose') und schreibt eine UNVERAENDERTE Kopie mit der Meldung 'Written anonymized HTML to: ...'. Eine Datei, die 'anonymized' heisst und den Originaltext enthaelt, ist die gefaehrlichste Ausgabe dieses Werkzeugs.\n\nWARUM DAS SCHWER WIEGT: Die Projektregel lautet, dass Inhalte nur nach Pruefung auf Unverfaenglichkeit geteilt werden. Dieses Werkzeug sieht aus, als leiste es genau das. Wer sich darauf verlassen hat, hat moeglicherweise Material weitergegeben, das noch Klartext enthielt. Ob das geschehen ist, kann ich nicht beurteilen - das Werkzeug wurde nach Auskunft mc vor etwa drei Monaten benutzt.",
-      "expected_behavior": "1) Der gesamte Textinhalt des getroffenen Teilbaums wird ersetzt - elem.text, der text jedes Nachfahren und jeder tail. lxml bietet dafuer elem.iter().\n2) Kein Treffer ist ein BEFUND: Rueckgabewert ungleich 0, und es wird keine Datei geschrieben. Ein 'anonymisiertes' Ergebnis ohne eine einzige Ersetzung darf nicht entstehen.\n3) Eine vorhandene Ausgabedatei wird nicht wortlos ueberschrieben.\n4) Eine Gegenprobe: nach dem Lauf darf keiner der Ausgangstexte mehr im Ergebnis vorkommen. Das laesst sich messen und waere der eigentliche Beleg der Unverfaenglichkeit.",
-      "actual_behavior": "Nur elem.text wird ersetzt; ohne Treffer meldet der Lauf 0 und schreibt mit '-v' eine unveraenderte Kopie.",
-      "status": "open",
-      "priority": "high",
-      "severity": "critical",
-      "assigned_to": "",
-      "related_to": [],
-      "resolved_in_version": null,
-      "target_version": null,
-      "environment": {
-        "python_version": "3.14"
-      },
-      "tags": [
-        "Anonymisierung",
-        "Weitergabe",
-        "gemessen"
-      ],
-      "attachments": [],
-      "updates": [
-        {
-          "timestamp": "2026-08-01T11:30:28.304318+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "Beim Aufnehmen in den CLI-Katalog gefunden (Build 630). Am Werkzeug ist NICHTS geaendert worden ausser dem Epilog - eine Anonymisierung umzubauen ist eine eigene Entscheidung und kein Nebenzug eines Katalogeintrags. Beide Befunde stehen ab Build 630 als Warnung im Katalog und damit in 'hilfe.py zeige anon_html', im Betriebskapitel der Vollhilfe und in '--help'."
-        },
-        {
-          "timestamp": "2026-08-01T11:38:13.281411+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eingang_claude_Build630.json"
-        }
-      ]
     }
   ]
 }

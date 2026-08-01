@@ -88,15 +88,21 @@ AUSGENOMMEN = {
 #   (c) Die Datei gehoert ins Paket, fehlt dort aber -> einchecken.
 # -----------------------------------------------------------------------------
 
-UNGEKLAERT = {
-    "anon_html.py": (
-        "Liegt in der Anlage, ist im Paket nicht vorhanden (kein Eintrag in "
-        "der Versionsverwaltung, Stand Build 606). Der Name legt ein "
-        "Werkzeug zur Unverfaenglichmachung von HTML nahe - das waere ein "
-        "Werkzeug mit Katalogeintrag. Geklaert wird das anhand des "
-        "Dateikopfes; siehe Issue 'anon_html.py ohne Katalogeintrag'."
-    ),
-}
+#: LEER SEIT BUILD 630 - und das ist der Abschluss von H22.
+#:
+#: DER EINE EINTRAG, DER HIER STAND, war 'anon_html.py'. Er ist am
+#: 2026-08-01 geklaert worden, und zwar auf dem Weg (c) des Merkzettels
+#: oben: die Datei gehoerte ins Paket und fehlte dort. Sie lag drei Monate
+#: lang in der Anlage und in .gitignore (Auskunft mc); jetzt liegt sie unter
+#: tools/anon_html.py im Bestand und hat einen Katalogeintrag.
+#:
+#: DIE LISTE BLEIBT STEHEN, obwohl sie leer ist. Sie ist keine Altlast,
+#: sondern der vorgesehene Ort fuer den naechsten Fall - und CK09 verlangt
+#: ab jetzt, dass sie leer BLEIBT. Ein neuer Eintrag ist damit ein Befund
+#: und kein Pflegevorgang. Genau dieselbe Wendung wie bei der Fehlliste der
+#: Hilfetexte in Build 620: bis zum Abschluss hiess 'leer' = 'nie gefuehrt',
+#: ab dem Abschluss heisst es das Gegenteil.
+UNGEKLAERT = {}
 
 
 def _dateien():
@@ -351,55 +357,99 @@ def test_ck08_gruppen_und_suche():
 
 # --- CK09 ---------------------------------------------------------------------
 
-def test_ck09_ungeklaerte_dateien_sind_benannt_und_schrumpfen():
+def test_ck09_die_liste_der_ungeklaerten_bleibt_leer():
     """
-    Die Fehlliste der ungeklaerten Dateien ist ehrlich und wird kleiner.
+    SEIT BUILD 630 IST DIE LISTE LEER, UND DAS IST JETZT DIE FORDERUNG.
 
-    Sie darf existieren - eine offene Einordnung ist ein normaler
-    Zwischenstand. Sie darf nur nicht STILL sein: jeder Eintrag traegt eine
-    Begruendung, und ein Eintrag, dessen Datei es gar nicht mehr gibt, ist
-    ein veralteter Freibrief und faellt hier auf.
+    Bis Build 629 hiess die Regel 'sie darf nur schrumpfen' - ein normaler
+    Zwischenstand, solange die Baustelle lief. Mit dem Abschluss von H22 hat
+    sich die Aussage UMGEDREHT, genau wie bei der Fehlliste der Hilfetexte in
+    Build 620: bis dahin hiess 'leer' = 'sie wurde nie gefuehrt', ab dem
+    Abschluss heisst 'leer' = 'es gibt nichts Ungeklaertes'.
+
+    EINE LEERE LISTE OHNE FORDERUNG WAERE EIN TEST, DER NICHTS PRUEFT. Er
+    liefe fuer immer gruen durch, ohne je eine Aussage zu machen - und der
+    naechste ungeklaerte Fall koennte still hinzukommen.
+
+    WER WIRKLICH EINEN EINTRAG BRAUCHT, aendert diesen Test mit. Das ist
+    Absicht: die Aenderung steht dann im Diff, hat einen Build und eine
+    Begruendung. Ein Ablageort fuer Vergessenes soll die Liste nicht wieder
+    werden.
     """
-    # WARUM HIER NICHT AUF EXISTENZ GEPRUEFT WIRD: Der Anlass dieser Liste
-    # ist gerade eine Datei, die in der ANLAGE liegt und im PAKET fehlt. Sie
-    # ist also je nach Installation da oder nicht. Eine Existenzpruefung
-    # waere in der einen Umgebung gruen und in der anderen rot - und damit
-    # kein Test, sondern ein Wuerfel.
-    #
-    # Was stattdessen erzwungen wird: jeder Eintrag traegt eine Begruendung
-    # UND einen Verweis auf den Vorgang, unter dem er geklaert wird. Ohne
-    # diesen Verweis waere die Liste ein Ablageort fuer Vergessenes.
+    assert UNGEKLAERT == {}, (
+        "Die Liste der ungeklaerten Dateien ist seit Build 630 leer (H22 "
+        "abgeschlossen). Ein neuer Eintrag ist ein BEFUND: entweder ist eine "
+        "Datei ohne Einordnung in den Bestand gekommen, oder eine "
+        "eingeordnete ist verschwunden. Neu darin: %s"
+        % ", ".join(sorted(UNGEKLAERT)))
+
+
+def test_ck09b_ein_eintrag_muesste_begruendet_und_verfolgt_sein():
+    """
+    Die Anforderung an einen EINTRAG bleibt bestehen, auch wenn es gerade
+    keinen gibt - sonst waere sie beim naechsten Mal vergessen.
+
+    Geprueft wird sie an einem gedachten Eintrag und an den echten (falls es
+    je wieder welche gibt). Beides mit derselben Regel: eine Begruendung, die
+    traegt, und ein Verweis auf den Vorgang, unter dem geklaert wird. Ohne
+    den Verweis waere die Liste ein Ablageort fuer Vergessenes.
+    """
+    def _prueffaehig(grund):
+        return bool(grund.strip()) and "Issue" in grund
+
+    # Am gedachten Eintrag - damit die Regel auch bei leerer Liste geprueft
+    # ist und nicht bloss dasteht.
+    assert not _prueffaehig("")
+    assert not _prueffaehig("Historisch so gewachsen.")
+    assert _prueffaehig("Noch nicht eingeordnet; siehe Issue 9ec0fed8.")
+
+    # Und an den echten, falls es welche gibt.
     for name, grund in UNGEKLAERT.items():
-        assert grund.strip(), (
-            "%s steht ohne Begruendung auf der Liste der ungeklaerten "
-            "Dateien. Eine Ausnahme ohne Grund ist eine Luecke." % name)
-        assert "Issue" in grund, (
-            "%s steht auf der Liste der ungeklaerten Dateien, ohne einen "
-            "Vorgang zu nennen, unter dem die Klaerung laeuft. Ohne diesen "
-            "Verweis wird die Liste zum Ablageort fuer Vergessenes." % name)
-
-    # Die ungeklaerten sind AUSSERHALB des Katalogs - sonst waeren sie ja
-    # geklaert, und der Eintrag hier waere eine Doppelfuehrung.
-    doppelt = sorted(set(UNGEKLAERT) & set(_dateien()))
-    assert not doppelt, (
-        "Diese Dateien stehen als ungeklaert UND werden vom Scan gefunden: "
-        "%s" % ", ".join(doppelt))
+        assert _prueffaehig(grund), (
+            "%s: eine Ausnahme braucht eine Begruendung UND einen Verweis "
+            "auf den Vorgang, unter dem sie geklaert wird." % name)
 
 
-def test_ck10_der_scan_sieht_die_ungeklaerten_weiterhin():
+# --- CK10 ---------------------------------------------------------------------
+
+def test_ck10_der_scan_sieht_eine_unbekannte_datei_weiterhin():
     """
-    Gegenprobe: die ungeklaerten Dateien verschwinden nicht aus der Welt,
-    sie sind nur nicht blockierend. Wer sie mitzaehlt, bekommt weiterhin
-    den Befund - das ist der Beweis, dass hier nichts stillgelegt wurde.
+    Gegenprobe AM VERFAHREN, nicht an einem zufaellig vorhandenen Fall.
+
+    Bis Build 629 nahm dieser Test die tatsaechlich ungeklaerten Dateien und
+    uebersprang sich, wenn es keine gab. Seit H22 gibt es keine mehr - der
+    Test waere damit dauerhaft uebersprungen, also tot. Ein toter Test sieht
+    im Lauf aus wie ein bestandener.
+
+    Gezeigt wird deshalb dasselbe an einer erfundenen Datei: wer sie
+    mitzaehlt, bekommt den Befund. Damit ist belegt, dass hier nichts
+    stillgelegt wurde, und der Beleg haengt nicht mehr davon ab, dass gerade
+    etwas offen ist.
     """
-    vorhanden = [n for n in UNGEKLAERT
-                 if os.path.exists(os.path.join(WURZEL, n))]
-    if not vorhanden:
-        pytest.skip("Keine ungeklaerte Datei im Bestand - nichts zu zeigen.")
     with pytest.raises(CliKatalogError) as exc:
-        verify_cli_abgedeckt(_dateien_roh())
-    for name in vorhanden:
-        assert name in str(exc.value)
+        verify_cli_abgedeckt(list(_dateien_roh()) + ["tools/nie_gesehen.py"])
+    assert "tools/nie_gesehen.py" in str(exc.value)
+    assert "OHNE Katalogeintrag" in str(exc.value)
+
+
+def test_ck10b_der_scan_meldet_beide_richtungen_zugleich():
+    """
+    BUILD 630: verify_cli_abgedeckt meldete bisher nur die ERSTE der beiden
+    Richtungen und kehrte dann um. Wer eine Datei zuviel UND eine zuwenig
+    hatte, sah nur die eine - und nach dem Beheben die andere.
+
+    Aufgefallen ist das an mcs Regressionslauf zu Build 629: 'anon_html.py'
+    ohne Katalogeintrag verdeckte, dass die Gegenprobe CK02b denselben Aufruf
+    benutzt und deshalb ebenfalls umfiel. Zwei Meldungen, ein Grund - und der
+    zweite Befund war keiner.
+    """
+    zu_wenig = [p for p in _dateien_roh()
+                if p != "management/rbac/rbac_admin.py"]
+    with pytest.raises(CliKatalogError) as exc:
+        verify_cli_abgedeckt(zu_wenig + ["tools/nie_gesehen.py"])
+    text = str(exc.value)
+    assert "tools/nie_gesehen.py" in text, text
+    assert "management/rbac/rbac_admin.py" in text, text
 
 
 # --- CK11 ---------------------------------------------------------------------

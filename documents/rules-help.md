@@ -52,7 +52,7 @@ Seit Build 622 steht der CLI-Katalog **zusätzlich** als Betriebsteil in der Vol
 
 Damit stehen **zwei Adressaten in einem Dokument**. Das ist nur unter drei Bedingungen zulässig, und alle drei sind maschinell nachgehalten:
 
-1. **Kennzeichnung.** Jedes Betriebskapitel trägt im Kopf die Marke „Betriebskapitel", die Klasse `aiw-h-betrieb` und seine Rechtelage; davor steht ein Vorspann, der den Adressatenwechsel ausspricht. *Durchsetzung:* CH06 — für **jedes** der 65 Kapitel, nicht stichprobenhaft.
+1. **Kennzeichnung.** Jedes Betriebskapitel trägt im Kopf die Marke „Betriebskapitel", die Klasse `aiw-h-betrieb` und seine Rechtelage; davor steht ein Vorspann, der den Adressatenwechsel ausspricht. *Durchsetzung:* CH06 — für **jedes** Betriebskapitel, nicht stichprobenhaft.
 2. **Eigenes Recht.** Der gesamte Betriebsteil hängt an `ops.view` (Entscheidung mc 2026-08-01). Begründung: Ein Betriebskapitel gehört zu keiner Sicht und kann darum kein Recht erben — die vorhandene Sperre hätte hier nichts, woran sie greift. Gewählt ist das Recht der Sichten mit demselben Adressaten (Integrität/Betrieb, Audit-Explorer, Fremdforum-Promotion). Ohne dieses Recht ist der Teil **leer**: kein Verzeichniseintrag, kein Kapitel, kein Suchindex-Eintrag. *Durchsetzung:* CH01, CH15e, HD20, HA14.
 3. **Keine Rückwirkung nach oben.** Die Betriebssprache darf nicht in die Sichtkapitel durchschlagen. *Durchsetzung:* HD19 misst den Seitenteil oberhalb des Betriebsvorspanns gegen „Build", „coordinator.db", „python -m" und „.py".
 

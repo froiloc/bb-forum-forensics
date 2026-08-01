@@ -27,7 +27,7 @@
 # LK13 - quelle_je_sicht() ist vollzaehlig: kein Kapitel ohne Pfadangabe
 #
 # Build 623 (H19 Nachtrag), am Ende der Datei - der Betriebsteil:
-# LK14 - jedes der 65 Werkzeuge hat ein Kapitel in der Vorlage
+# LK14 - JEDES Werkzeug des Katalogs hat ein Kapitel in der Vorlage
 # LK15 - jeder Beispielaufruf, Nachweis, Rueckgabewert und Warnhinweis steht
 #        darin (was fehlt, wird nicht gegengelesen)
 # LK16 - kein Rechtefilter, mit Gegenprobe
@@ -253,12 +253,12 @@ def test_lk13_pfadangabe_ist_vollzaehlig(echt):
 # =============================================================================
 # Build 623 (H19 Nachtrag) - DIE BETRIEBSKAPITEL IN DER LESEVORLAGE.
 #
-# WORUM ES GEHT: Mit Build 622 sind 65 Kapitel in die Vollhilfe gekommen, die
+# WORUM ES GEHT: Mit Build 622 sind die Werkzeugkapitel in die Vollhilfe gekommen, die
 # dieses Werkzeug nicht kannte. Sie waren ausgeliefert, aber nicht
 # gegengelesen - genau der Fehler, gegen den es die Lektoratsfassung gibt.
 # Der wichtigste Test ist deshalb auch hier die VOLLZAEHLIGKEIT (LK14/LK15).
 #
-# LK14 - JEDES der 65 Werkzeuge hat ein Kapitel in der Vorlage
+# LK14 - JEDES Werkzeug des Katalogs hat ein Kapitel in der Vorlage
 # LK15 - jeder Beispielaufruf, jeder Pruefnachweis, jede Warnung und jeder
 #        Rueckgabewert steht darin - was fehlt, wird nicht gegengelesen
 # LK16 - KEIN Rechtefilter: der Betriebsteil ist ohne 'ops.view' aufrufbar,

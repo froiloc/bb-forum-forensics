@@ -4,7 +4,7 @@
 # IT-Forensisches Ermittlungswerkzeug - Baustelle H: Hilfesysteme (H16)
 # =============================================================================
 # Zweck:
-#   Das Dach ueber die 64 Kommandozeilen-Werkzeuge der Anlage. Es beantwortet
+#   Das Dach ueber die Kommandozeilen-Werkzeuge der Anlage. Es beantwortet
 #   die drei Fragen, die man vor dem ersten Aufruf hat:
 #
 #     python tools/hilfe.py liste                 Welche Werkzeuge gibt es?
@@ -12,7 +12,7 @@
 #     python tools/hilfe.py suche sicherung       Womit mache ich X?
 #
 # WARUM ES DIESES WERKZEUG BRAUCHT:
-#   Die Anlage hat 64 Kommandozeilen-Werkzeuge, verteilt ueber vier
+#   Die Anlage hat Dutzende Kommandozeilen-Werkzeuge, verteilt ueber vier
 #   Verzeichnisebenen. Jedes einzelne kann '--help'. Aber '--help' setzt
 #   voraus, dass man den Namen schon kennt - und genau den kennt man nicht,
 #   wenn man sucht. Ohne dieses Dach ist die Suche ein Verzeichnisbaum.

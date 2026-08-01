@@ -26,7 +26,7 @@
 # CE08 - HilfeFormat laesst den Epilog roh und umbricht die Beschreibung
 # CE09 - OHNE_EPILOG: jede Ausnahme hat eine Begruendung und eine Kennung,
 #        die es im Katalog gibt
-# CE10 - verify_epilog_abgedeckt gegen den BESTAND: jedes der 65 Werkzeuge
+# CE10 - verify_epilog_abgedeckt gegen den BESTAND: JEDES Werkzeug
 #        ist verdrahtet oder begruendet ausgenommen - kein drittes
 # CE11 - GEGENPROBE AM LEBENDEN WERKZEUG: '--help' laeuft, endet mit 0 und
 #        zeigt den Epilog wirklich an
