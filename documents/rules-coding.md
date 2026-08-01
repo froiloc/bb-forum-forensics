@@ -1,6 +1,6 @@
 # Regelwerk AIW — Code
 
-**Stand:** Build 628 · 2026-08-01
+**Stand:** Build 629 · 2026-08-01
 
 ## 1. JavaScript
 
@@ -53,7 +53,7 @@ Oberstes Gebot bei der Fehlersuche (Festlegung mc): **erst** Konsolenausgabe fü
 
 **PY4 — Lesend heißt technisch lesend.**
 Wer nur liest, öffnet mit `sqlite3.connect("file:%s?mode=ro" % pfad, uri=True)`. Eine Zusicherung im Kommentar ist keine Sperre.
-*Befund 2026-07-31:* `workload_admin` und `support_overview_admin` sichern im Kopf zu, ausschließlich zu lesen, öffnen aber schreibfähig. Sie schreiben nichts — aber die Zusicherung ist nicht durchgesetzt (Issue `906ede75-a898-405c-8d80-1548e8b5b553`).
+*Befund 2026-07-31:* `workload_admin` und `support_overview_admin` sichern im Kopf zu, ausschließlich zu lesen, öffnen aber schreibfähig. Sie schreiben nichts — aber die Zusicherung ist nicht durchgesetzt (Issue `906ede75-a898-405c-8d80-1548e8b5b553`). **Behoben in Build 629, samt zwei weiteren Fällen, die erst die Erhebung zutage brachte.**
 
 ### PY4 im Einzelnen — bei SQLite ist Lesen nicht folgenlos
 
@@ -73,8 +73,22 @@ Daraus folgen drei Anwendungsregeln:
 2. **Ein Checkpoint gehört ausdrücklich auf eine schreibfähige Verbindung.** Er schreibt naturgemäß; read-only fällt er *still* aus, und ein stiller Nichtlauf ist das schlechteste Ergebnis. Das ist die einzige begründete Ausnahme im Sicherungspfad — sie steht bei `BackupExecutor._checkpoint_passive`.
 3. **Wer eine Datei nur beurteilen will, sieht erst nach, ob ein `-journal` oder `-wal` daneben liegt** — und öffnet sie dann gar nicht. Das Journal *ist* in dem Fall schon die Antwort.
 
-**Durchgesetzt wird PY4 je Modul über den Syntaxbaum**, nicht über eine Textsuche. Muster: `tests/test_backup_executor.py` BR02 — es sammelt alle `sqlite3.connect`-Aufrufe ohne `mode=ro` und verlangt für den Sicherungspfad: in `harness/backup.py` und `backup_pruefer.py` **keinen**, in `backup_executor.py` **genau einen**, und der muss in `_checkpoint_passive` stehen.
-*Warum nicht per Textsuche:* Die erste Fassung von BR02 suchte die Zeichenfolge `sqlite3.connect(` — und fand dabei den **Kommentar**, der die Änderung erklärt. Eine Prüfung, die ihre eigene Begründung für einen Befund hält, ist unbrauchbar.
+### Durchsetzung von PY4 (seit Build 629 bestandsweit)
+
+**Der Maßstab ist der CLI-Katalog, nicht eine Liste im Test.** Jedes Werkzeug mit `art="lesend"` darf keine schreibfähige `sqlite3.connect`-Verbindung haben. Die Einstufung „lesend" ist eine Zusage an die Betriebsseite — sie steht im Katalog, in der Konsolenhilfe und im Betriebskapitel der Vollhilfe. Wer sie gibt, muß sie halten.
+
+*Durchsetzung:* `tests/test_py4_lesend.py` (PY01–PY06), Suche in `tests/_lesende_verbindungen.py`. Für den Sicherungspfad zusätzlich `tests/test_backup_executor.py` BR02 — mit derselben Suche, nicht mit einer zweiten Abschrift.
+
+**Die Suche geht über den Syntaxbaum, nicht über den Text**, und sie löst einfache Variablen auf:
+
+- *Warum nicht per Textsuche:* Die erste Fassung (Build 627) suchte die Zeichenfolge `sqlite3.connect(` — und fand dabei den **Kommentar**, der die Änderung erklärt. Eine Prüfung, die ihre eigene Begründung für einen Befund hält, ist unbrauchbar.
+- *Warum Variablen aufgelöst werden:* Das Hausmuster baut die URI eine Zeile vorher zusammen (`uri = "file:" + … + "?mode=ro"`). Bei der Erhebung für Build 629 waren **zwei von zehn** Fundstellen genau dieser Fall. Ohne Auflösung wäre die Ausnahmeliste um zwei unwahre Einträge länger — und um genausoviel weniger wert.
+
+**Was die Erhebung ergab (Build 629):** Vorgang `906ede75` nannte **zwei** Werkzeuge. Dieselbe Suche fand **zwei weitere** — `dashboard_admin` und `templates_db_status`, beide seit Build 606 als `lesend` geführt, beide ohne einen einzigen Schreibvorgang im Quelltext, beide mit schreibfähiger Verbindung. *Ein Vorgang, der zwei Fälle nennt, hat zwei Fälle gefunden; er sagt nichts darüber, wie viele es gibt.* Alle vier sind behoben.
+
+**Drei begründete Ausnahmen**, alle Diagnosewerkzeuge, bei allen ist das Schreiben *der Gegenstand der Messung*: `diag_migrationsluecke` (`:memory:`), `diag_sqlite_netdrive` und `diag_sqlite_netdrive2` (legen eigene Probe-Datenbanken an und schreiben hinein — ein PRAGMA allein wäre kein Beleg). Sie sind zu Recht als `lesend` geführt: sie verändern keine Datenbank *des Bestandes*.
+
+**Offen und benannt:** Werkzeuge mit `art="gemischt"` prüft PY01 nicht — dort ist eine schreibfähige Verbindung erlaubt, und ob sie beim *lesenden* Unterbefehl vermieden wird, ist am Quelltext nicht ohne Weiteres zu entscheiden. Ebenso ungeprüft: Werkzeuge, die ihre Verbindung über ein Repo in einem anderen Modul öffnen.
 
 **Der Befund, der zu dieser Verschärfung führte — und er ist meiner.** Build 625 führte `_traegt_inhalt` ein, um eine unbrauchbare Sicherung zu erkennen, **ohne sie zu löschen** — ausdrücklich, damit die Teildatei als Beleg erhalten bleibt. Die Funktion öffnete gewöhnlich. Bei einem heißen Journal hat also genau die Funktion, die den Beleg erhalten sollte, ihn beim Ansehen vernichtet. Behoben in Build 626.
 

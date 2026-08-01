@@ -698,60 +698,46 @@ class QuelleNurLesendTests(unittest.TestCase):
         """
         Gegenprobe AM QUELLTEXT. Ein Verhaltenstest zeigt nur, dass bei
         DIESEM Aufruf nichts geschrieben wurde; die Baumsuche zeigt, dass es
-        keinen Weg dorthin gibt. Dieselbe Ueberlegung wie bei CT11 fuer
-        tools/hilfe.py.
+        keinen Weg dorthin gibt.
 
-        UEBER DEN SYNTAXBAUM UND NICHT ZEILENWEISE: die erste Fassung dieses
-        Tests suchte den Text 'sqlite3.connect(' und fand dabei den KOMMENTAR,
-        der die Aenderung erklaert. Eine Pruefung, die ihre eigene Begruendung
-        fuer einen Befund haelt, ist unbrauchbar.
+        BUILD 629: die Suche steht jetzt in tests/_lesende_verbindungen.py
+        und wird von test_py4_lesend.py bestandsweit benutzt. Zwei
+        Abschriften waeren binnen zweier Builds auseinandergelaufen - und die
+        Ausbesserung von Build 627 (Baumsuche statt Textsuche, weil die
+        Textsuche den erklaerenden KOMMENTAR fand) haette man dann zweimal
+        machen muessen.
         """
-        import ast as _ast
-
-        def _offene_verbindungen(pfad):
-            """(Zeilennummer, umgebende Funktion) je schreibfaehigem connect."""
-            with open(pfad, encoding="utf-8") as fh:
-                baum = _ast.parse(fh.read())
-            eltern = {}
-            for knoten in _ast.walk(baum):
-                for kind in _ast.iter_child_nodes(knoten):
-                    eltern[kind] = knoten
-            raus = []
-            for knoten in _ast.walk(baum):
-                if not isinstance(knoten, _ast.Call):
-                    continue
-                f = knoten.func
-                if not (isinstance(f, _ast.Attribute) and f.attr == "connect"
-                        and isinstance(f.value, _ast.Name)
-                        and f.value.id == "sqlite3"):
-                    continue
-                erstes = knoten.args[0] if knoten.args else None
-                roh = _ast.unparse(erstes) if erstes is not None else ""
-                if "mode=ro" in roh:
-                    continue
-                # Die umgebende Funktion suchen - sie benennt die Ausnahme.
-                p = eltern.get(knoten)
-                while p is not None and not isinstance(
-                        p, (_ast.FunctionDef, _ast.AsyncFunctionDef)):
-                    p = eltern.get(p)
-                raus.append((knoten.lineno,
-                             p.name if p is not None else "(Modulebene)"))
-            return raus
+        from tests._lesende_verbindungen import offene_verbindungen
 
         wurzel = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-        offen = _offene_verbindungen(
+        offen = offene_verbindungen(
             os.path.join(wurzel, "management/backup/backup_executor.py"))
         self.assertEqual(1, len(offen),
-                         "erwartet ist GENAU eine Ausnahme: %s" % offen)
-        self.assertEqual("_checkpoint_passive", offen[0][1],
-                         "die Ausnahme steht nicht beim Checkpoint: %s" % offen)
+                         "erwartet ist GENAU eine Ausnahme: %s"
+                         % [str(f) for f in offen])
+        self.assertEqual("_checkpoint_passive", offen[0].funktion,
+                         "die Ausnahme steht nicht beim Checkpoint: %s"
+                         % offen[0])
 
-        self.assertEqual([], _offene_verbindungen(
-            os.path.join(wurzel,
-                         "management/migration_fleet/harness/backup.py")))
-        self.assertEqual([], _offene_verbindungen(
-            os.path.join(wurzel, "management/backup/backup_pruefer.py")))
+        for modul in ("management/migration_fleet/harness/backup.py",
+                      "management/backup/backup_pruefer.py"):
+            self.assertEqual(
+                [], offene_verbindungen(os.path.join(wurzel, modul)),
+                "%s oeffnet schreibfaehig" % modul)
+
+        # backup_admin ist 'gemischt' und MUSS eine schreibfaehige Verbindung
+        # haben - 'run' registriert den Lauf und schreibt einen Beleg. Auch
+        # hier gilt aber: genau eine, und an der benannten Stelle. Die erste
+        # Fassung dieser Zeile verlangte 'gar keine' und lag damit falsch -
+        # eine Pruefung, die zu viel verbietet, wird beim naechsten Mal
+        # entschaerft statt gelesen.
+        offen_admin = offene_verbindungen(
+            os.path.join(wurzel, "management/backup/backup_admin.py"))
+        self.assertEqual(1, len(offen_admin),
+                         [str(f) for f in offen_admin])
+        self.assertEqual("_open_con", offen_admin[0].funktion,
+                         str(offen_admin[0]))
 
     # --- BR03 ---------------------------------------------------------------
     def test_br03_fehlende_quelle_wird_nicht_stillschweigend_angelegt(self):

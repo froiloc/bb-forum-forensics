@@ -179,7 +179,13 @@ def main(argv=None) -> int:
         print("[workload_admin] %s" % exc, file=sys.stderr)
         return 1
 
-    con = sqlite3.connect(db_path)
+    # BUILD 629 (Regel PY4, Vorgang 906ede75): Die coordinator.db wird
+    # NUR-LESEND geoeffnet. Der Dateikopf sichert das seit jeher zu -
+    # durchgesetzt hat es bis Build 628 nichts: die Verbindung war
+    # schreibfaehig, und die Zusage stand allein im Kommentar. Ein
+    # versehentlicher Schreibversuch scheitert jetzt technisch und nicht
+    # erst im Gegenlesen.
+    con = sqlite3.connect("file:%s?mode=ro" % db_path, uri=True)
     try:
         con.row_factory = sqlite3.Row
         repo = WorkloadRepo(con)

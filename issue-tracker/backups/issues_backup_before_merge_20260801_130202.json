@@ -3664,52 +3664,6 @@
           "comment": "Beim Abschluss von e9522fe2 (Build 627) aufgeschrieben. Der vierte Fall ist mein eigener aus Build 625 - er zeigt, dass auch das Wissen um das Muster nicht davor schuetzt, solange es keine Regel und keine Pruefung gibt."
         }
       ]
-    },
-    {
-      "id": "88dc129b-ad30-4ae8-948e-9d8cd99bb9a2",
-      "type": "improvement",
-      "title": "PY4 fuer 'gemischte' Werkzeuge und fuer Verbindungen aus Repos",
-      "affected_version": "0.8.629",
-      "reporter": "Claude",
-      "reported_at": "2026-08-01T10:22:28.513295+00:00",
-      "prerequisites": "Build 629 (bestandsweite PY4-Pruefung vorhanden).",
-      "description": "Die Pruefung aus Build 629 (tests/test_py4_lesend.py) deckt Regel PY4 fuer alle Werkzeuge mit art='lesend' ab. ZWEI LUECKEN BLEIBEN, und beide sind hier benannt statt stillschweigend hingenommen.\n\n1) WERKZEUGE MIT art='gemischt' WERDEN NICHT GEPRUEFT. Dort ist eine schreibfaehige Verbindung erlaubt - der schreibende Unterbefehl braucht sie. Ob der LESENDE Unterbefehl desselben Werkzeugs sie vermeidet, ist am Quelltext nicht ohne Weiteres zu entscheiden: es haengt am Ablaufweg, nicht an der Datei. backup_admin ist der Fall, an dem es sichtbar wurde - dort ist es seit Build 627 sauber getrennt (_open_con schreibend, _open_con_ro lesend), und diese Trennung waere das Muster fuer die uebrigen.\n\n2) VERBINDUNGEN, DIE IN EINEM ANDEREN MODUL GEOEFFNET WERDEN, sieht die Suche nicht. Sie liest je Werkzeug nur dessen eigene Datei. Der Bestand reicht die Verbindung ueberwiegend HEREIN (die *_repo-Klassen bekommen sie im Konstruktor), aber ausgeschlossen ist das Gegenteil nicht.\n\n3) Auch nicht geprueft: Zugriffe an sqlite3 vorbei.\n\nERHOBEN, NICHT VERMUTET: Die Zahlen aus Build 629 - 65 Werkzeuge im Katalog, davon mit art='lesend' die geprueften; gefunden wurden vier echte Verstoesse (zwei aus Vorgang 906ede75, zwei neu) und drei begruendete Ausnahmen.",
-      "expected_behavior": "Fuer gemischte Werkzeuge das Muster aus backup_admin uebernehmen: zwei Oeffner, einer schreibend und einer nur-lesend, und der lesende Unterbefehl nimmt den lesenden. Danach laesst sich auch fuer sie eine Pruefung schreiben, die am Quelltext greift.\n\nFuer die Repo-Luecke: erheben, ob es den Fall ueberhaupt gibt, bevor eine Pruefung dafuer gebaut wird.",
-      "actual_behavior": "PY01 prueft nur art='lesend' und nur die Werkzeugdatei selbst.",
-      "status": "open",
-      "priority": "low",
-      "severity": "minor",
-      "assigned_to": "",
-      "related_to": [
-        "906ede75"
-      ],
-      "resolved_in_version": null,
-      "target_version": null,
-      "environment": {
-        "python_version": "3.14"
-      },
-      "tags": [
-        "SQLite",
-        "PY4",
-        "Regelwerk"
-      ],
-      "attachments": [],
-      "updates": [
-        {
-          "timestamp": "2026-08-01T10:22:28.513295+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "Beim Abschluss von 906ede75 (Build 629) aufgeschrieben. Die Luecken stehen auch im Kopf von tests/test_py4_lesend.py und in rules-coding.md - ein halbes Netz, das sich fuer ein ganzes ausgibt, ist gefaehrlicher als gar keines (TE4)."
-        },
-        {
-          "timestamp": "2026-08-01T11:02:02.644293+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eingang_claude_Build629.json"
-        }
-      ]
     }
   ]
 }

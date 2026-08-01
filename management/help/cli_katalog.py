@@ -671,9 +671,9 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         zweck="Die Historie der Unterstuetzungssitzungen ausgeben oder als "
               "HTML erzeugen; die Angaben stammen aus dem Protokollbuch.",
         art="lesend",
-        datenbanken=("coordinator.db (nur gelesen; die Verbindung ist "
-                     "technisch schreibfaehig, es wird aber nichts "
-                     "geschrieben)",),
+        datenbanken=("coordinator.db (lesend - seit Build 629 mit 'mode=ro' "
+                     "erzwungen; bis Build 628 war die Verbindung "
+                     "technisch schreibfaehig, Vorgang 906ede75)",),
         betrieb="Der Betrieb darf weiterlaufen. 'export-html' rechnet die "
                 "gesamte Belegkette nach; bei grossen Bestaenden dauert das.",
         befehle=(
@@ -706,8 +706,9 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         zweck="Die Fallverteilung je ermittelnder Person ausgeben oder als "
               "HTML erzeugen.",
         art="lesend",
-        datenbanken=("coordinator.db (nur gelesen; Verbindung technisch "
-                     "schreibfaehig, ohne Schreibvorgang)",),
+        datenbanken=("coordinator.db (lesend - seit Build 629 mit 'mode=ro' "
+                     "erzwungen; bis Build 628 war die Verbindung "
+                     "technisch schreibfaehig, Vorgang 906ede75)",),
         betrieb="Der Betrieb darf weiterlaufen. 'export-html' rechnet die "
                 "gesamte Belegkette nach.",
         befehle=(
