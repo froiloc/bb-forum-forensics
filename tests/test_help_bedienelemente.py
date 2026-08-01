@@ -9,9 +9,12 @@
 #   ist das ein eklatanter Mangel. Wie soll der Anwender wissen, was er tun
 #   soll, wenn es ihm nicht definiert und erklaert wird?"
 #
-# DIE ERHEBUNG GIBT IHM RECHT, und sie beziffert es: 170 Bedienelemente,
-#   davon 34 erklaert, 136 OFFEN. Zwei Sichten sind vollstaendig
-#   ('releases', 'handover'), 33 Dateien haben eine Luecke.
+# DIE ERHEBUNG GAB IHM RECHT, und sie bezifferte es: 170 Bedienelemente,
+#   davon 34 erklaert, 136 OFFEN. Zwei Sichten waren vollstaendig
+#   ('releases', 'handover'), 33 Dateien hatten eine Luecke.
+#
+# SEIT BUILD 637 IST DIE LISTE LEER: 170 von 170. Damit wechselt diese Suite
+#   ihre Aufgabe - sie war eine Fehlliste, jetzt ist sie eine SPERRE (BD10).
 #
 # WARUM KEINE VORHANDENE PRUEFUNG DAS GEFUNDEN HAT - das ist der Kern des
 #   Befundes und der Grund fuer diese Datei: Die Paritaetspruefungen
@@ -47,6 +50,8 @@
 # BD06 - 'releases' und 'handover' sind vollstaendig und bleiben es
 # BD07 - jede Ausnahme ist begruendet und gibt es wirklich (TE6)
 # BD08 - der Stand nennt sein Verfahren UND seine Grenzen (TE4)
+# BD10 - Build 637: die Fehlliste ist LEER und bleibt es. Kein Bedienelement
+#        ohne Text - ohne Einschraenkung, ohne Ausnahmeliste
 # BD09 - Build 634, DIE GEGENRICHTUNG: kein Bedienungs-TEXT ohne Marke. Was
 #        heute noch ohne ist, steht namentlich im Stand und darf nur weniger
 #        werden. SP02 nimmt den Bereich 'bedienung' aus - zu Unrecht, denn
@@ -58,7 +63,7 @@
 #   '_grenzen' des Standes. Am gerenderten Baum misst UX11, aber nur fuer die
 #   acht Sichten seines REGISTERs.
 #
-# Version: v0.8.636 - Build: 636 - 2026-08-01
+# Version: v0.8.637 - Build: 637 - 2026-08-01
 # =============================================================================
 
 import json
@@ -463,6 +468,30 @@ class BedienelementeTests(unittest.TestCase):
             self.assertGreater(
                 len(grund.strip()), 8,
                 "%s: eine Ausnahme braucht einen Grund" % schluessel)
+
+
+    # --- BD10 ---------------------------------------------------------------
+    def test_bd10_die_fehlliste_bleibt_leer(self):
+        """
+        BUILD 637 - DIE HAERTESTE FASSUNG VON BD01/BD02, moeglich geworden,
+        weil die Liste leer IST. Solange sie Eintraege hatte, konnten die
+        beiden Pruefungen nur verlangen, dass es nicht schlechter wird. Jetzt
+        gilt der Satz ohne Einschraenkung: KEIN Bedienelement ohne Text.
+
+        Wer diese Pruefung rot sieht, hat ein 'button', 'input', 'select'
+        oder 'textarea' gebaut und den Hilfetext nicht dazugeschrieben. Die
+        Regel steht in documents/rules-help.md unter 'Vollstaendigkeit'; die
+        Meldung unten nennt Datei und Zeile.
+        """
+        offen = sorted(str(e) for b in _lage().values() for e in b.offen)
+        self.assertEqual(
+            [], offen,
+            "Bedienelemente ohne Hilfetext:\n  " + "\n  ".join(offen))
+        stand = _stand()
+        self.assertEqual({}, stand["offen_je_datei"])
+        self.assertEqual(0, stand["davon_offen"])
+        self.assertEqual(stand["bedienelemente_gesamt"],
+                         stand["davon_erklaert"])
 
 
 if __name__ == "__main__":

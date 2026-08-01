@@ -32,7 +32,7 @@
 #   ausdrueckliche Zuordnung an EINER Stelle, maschinell gegen den Bestand
 #   geprueft.
 #
-# Version: v0.8.592 - Build: 592 - 2026-07-31
+# Version: v0.8.637 - Build: 637 - 2026-08-01
 # =============================================================================
 
 from __future__ import annotations
@@ -61,6 +61,18 @@ ANKER_PRAEFIXE: Dict[str, str] = {
     "policy_assign": "policy",
     # Sicht 'stats' fuehrt eine Zuweisungstabelle mit eigenem Praefix.
     "stats_assign": "stats",
+    # Build 637 (Vorgang 17200856): Vier Sichten hatten bisher NUR Anker der
+    # Form '<sicht>.<name>' (Titel, Kennzeile) und deshalb keinen Eintrag im
+    # Verzeichnis der TABELLEN-Praefixe. Mit den Bedienungs-Marken tragen sie
+    # jetzt auch '<sicht>.bedienung.<name>' - und SP04 verlangt zu Recht,
+    # dass jeder benutzte Praefix hier zugeordnet ist. Praefix und Sicht-ID
+    # stimmen bei allen vier ueberein; 'stats' kommt hinzu, weil die Sicht
+    # neben ihrer Tabelle ('stats_assign') jetzt auch eigene Bedienelemente
+    # hat.
+    "capacity": "capacity",
+    "qs": "qs",
+    "stats": "stats",
+    "viewprefs": "viewprefs",
     # Sicht 'support' fuehrt DREI Tabellen (Build 550): "Meine Sitzungen",
     # "An meinen Faellen", "Weitere Sitzungen". Jede hat eine eigene Kennung,
     # weil die Kennung zugleich der Schluessel der Zustandssicherung ist -

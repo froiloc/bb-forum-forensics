@@ -151,6 +151,12 @@ MYCASES = Sichthilfe(
             "mycases.werkzeug.trefferzahl", "Trefferanzeige",
             "Nennt, wie viele Zeilen sichtbar sind; bei gesetztem Filter "
             "„sichtbar von gesamt“."),
+
+        # Build 637 (Welle B5).
+        Kontexthilfe(
+            "mycases.bedienung.fall_starten", "Fall starten",
+            "Öffnet die Ermittlungsansicht dieses Falls. Das ist der Weg von "
+            "der Liste in die eigentliche Arbeit."),
     ),
 )
 
@@ -351,6 +357,16 @@ VIEWPREFS = Sichthilfe(
             "Gruppen werden untereinander geordnet, Bereiche innerhalb ihrer "
             "Gruppe. Ausblenden heißt nicht sperren: ein ausgeblendeter "
             "Bereich bleibt über die Kommandopalette erreichbar.",
+            verweis="viewprefs#grenzen"),
+
+        # Build 637 (Welle B5).
+        Kontexthilfe(
+            "viewprefs.bedienung.sichtbar", "Bereich anzeigen",
+            "Blendet diesen Bereich in Ihrer Navigation ein oder aus. Die "
+            "Einstellung gilt NUR für Ihr Konto und nimmt Ihnen kein Recht: "
+            "Ein ausgeblendeter Bereich bleibt über die Kommandopalette "
+            "erreichbar, und die Navigation nennt dauerhaft, wie viele Sie "
+            "ausgeblendet haben.",
             verweis="viewprefs#grenzen"),
     ),
 )

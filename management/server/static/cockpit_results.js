@@ -39,7 +39,9 @@
 //   Tabulator-Plaintext.
 //
 // Build 469: Schluesselumstellung user_id -> subject_id (M019)
-// Version: v0.7.469 · Build: 469 · 2026-07-20
+// Build 637 (Vorgang 17200856, Welle B5 - die letzte): HILFE-MARKEN
+//   fuer die eine verbliebenen Bedienelemente dieser Sicht.
+// Version: v0.8.637 · Build: 637 · 2026-08-01
 // =============================================================================
 
 (function () {
@@ -309,6 +311,8 @@
         var bar = _el(doc, 'div', 'aiw-res-bar');
         var sel = doc.createElement('select');
         sel.id = 'aiw-res-filter';
+        // Build 637 (Vorgang 17200856): Hilfe-Marke, LITERAL.
+        sel.setAttribute('data-hilfe-id', 'results.bedienung.abdeckungsfilter');
         FILTER.forEach(function (f) {
             var o = doc.createElement('option');
             o.value = f.code;

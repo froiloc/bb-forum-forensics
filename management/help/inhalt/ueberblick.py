@@ -226,6 +226,13 @@ DASHBOARD = Sichthilfe(
             "Protokollbuchs — der Betriebsblick. Recht: ops.view. Eine "
             "Meldung hier ist ein Betriebsvorfall.",
             verweis="dashboard#kachel"),
+
+        # Build 637 (Welle B5).
+        Kontexthilfe(
+            "dashboard.bedienung.kachelwahl", "Kachel anzeigen",
+            "Nimmt diese Kachel in Ihre Übersicht auf oder heraus. Die "
+            "Auswahl gilt nur für Ihr Konto.",
+            verweis="dashboard#waehler"),
     ),
 )
 
@@ -661,6 +668,15 @@ ESCALATION = Sichthilfe(
             "welcher Begründung. Ein überholter Vermerk ist als solcher "
             "gekennzeichnet — dann ruht der Fall heute länger als bei der "
             "Quittierung.",
+            verweis="escalation#quittung"),
+
+        # Build 637 (Welle B5).
+        Kontexthilfe(
+            "escalation.bedienung.pflichttext", "Pflichttext",
+            "PFLICHTANGABE — und je nach Lage zweierlei: Bei einer offenen "
+            "Meldung „was wurde veranlasst?“, bei einer bereits quittierten "
+            "der Grund des Widerrufs. Die Beschriftung sagt, was gerade "
+            "gemeint ist. Ohne Text wird nichts geschrieben.",
             verweis="escalation#quittung"),
     ),
 )

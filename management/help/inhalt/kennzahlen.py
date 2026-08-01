@@ -231,6 +231,29 @@ STATS = Sichthilfe(
             "stats_assign.werkzeug.trefferzahl", "Trefferanzeige",
             "Nennt, wie viele Zeilen sichtbar sind; bei gesetztem Filter "
             "„sichtbar von gesamt“."),
+
+        # Build 637 (Welle B5).
+        Kontexthilfe(
+            "stats.bedienung.tabelle_laden", "Tabelle herunterladen",
+            "Speichert die Zahlen als Tabelle zum Weiterrechnen. Der "
+            "Zeitpunkt und der Zuschnitt stehen mit in der Datei — eine Zahl "
+            "ohne Stichtag ist später nicht einzuordnen."),
+        Kontexthilfe(
+            "stats.bedienung.daten_laden", "Daten herunterladen",
+            "Speichert dieselben Zahlen in maschinenlesbarer Form — für die "
+            "Weitergabe an ein anderes Werkzeug."),
+        Kontexthilfe(
+            "stats.bedienung.reiter_verteilungen", "Reiter „Verteilungen“",
+            "Wie sich der Bestand auf Zustände und Prioritäten verteilt."),
+        Kontexthilfe(
+            "stats.bedienung.reiter_durchsatz", "Reiter „Durchsatz“",
+            "Wie viel im Zeitverlauf hinzugekommen und abgeschlossen wurde."),
+        Kontexthilfe(
+            "stats.bedienung.reiter_ermittler", "Reiter „Ermittler“",
+            "Wie viele Fälle bei wem liegen. DAS IST EINE LASTVERTEILUNG UND "
+            "KEINE LEISTUNGSMESSUNG: Fälle sind verschieden schwer, und die "
+            "Zahl sagt darüber nichts.",
+            verweis="stats#grenzen"),
     ),
 )
 
@@ -479,6 +502,21 @@ QS = Sichthilfe(
             "zulässig und wird protokolliert; ein Ergebnis zu einem nicht "
             "gezogenen Fall erscheint eigens ausgewiesen.",
             verweis="qs#vorschlag"),
+
+        # Build 637 (Welle B5).
+        Kontexthilfe(
+            "qs.bedienung.ergebnis", "Prüfergebnis",
+            "Wie die Prüfung dieser Fallakte ausgegangen ist. Die Auswahl "
+            "erscheint nur mit dem Prüfrecht und nur an Fällen, die nicht "
+            "gesperrt sind — ein Bedienelement ohne Wirkung wäre schlimmer "
+            "als keines.",
+            verweis="qs#rechte"),
+        Kontexthilfe(
+            "qs.bedienung.begruendung", "Begründung",
+            "PFLICHTANGABE: was trägt und was fehlt. Ein Prüfergebnis ohne "
+            "Begründung ist für die geprüfte Person keine Rückmeldung und für "
+            "die Akte kein Beleg.",
+            verweis="qs#zweckbindung"),
     ),
 )
 
@@ -687,6 +725,22 @@ CAPACITY = Sichthilfe(
             "welchen Zeitraum gerechnet wurde. Ohne den Zeitraum ist jede "
             "Stundenzahl darunter nicht einzuordnen.",
             verweis="capacity#basis_netto"),
+
+        # Build 637 (Welle B5).
+        Kontexthilfe(
+            "capacity.bedienung.von", "Zeitraum von",
+            "Der erste Tag des ausgewerteten Zeitraums. Er wirkt erst mit "
+            "„Aktualisieren“."),
+        Kontexthilfe(
+            "capacity.bedienung.bis", "Zeitraum bis",
+            "Der letzte Tag des ausgewerteten Zeitraums. Ein sehr kurzer "
+            "Zeitraum trifft leicht eine einzelne Abwesenheit und verzerrt "
+            "das Bild.",
+            verweis="capacity#grenzen"),
+        Kontexthilfe(
+            "capacity.bedienung.aktualisieren", "Aktualisieren",
+            "Berechnet die Kapazität für den eingestellten Zeitraum neu. Bis "
+            "dahin gilt der Zeitraum, der oben genannt ist."),
     ),
 )
 
@@ -773,6 +827,11 @@ SUPPORT = Sichthilfe(
             "Nennt, welche Sitzungen Ihnen angezeigt werden, und weist "
             "darauf hin, dass eine Zeile die Einzelheiten öffnet.",
             verweis="support#rechte"),
+        # Build 637 (Welle B5).
+        Kontexthilfe(
+            "support.bedienung.dialog_zu", "Schließen",
+            "Schließt die Sitzungs-Details. Es wird nichts geändert; die "
+            "Sitzung bleibt davon unberührt."),
     ) + _support_kontext(),
 )
 

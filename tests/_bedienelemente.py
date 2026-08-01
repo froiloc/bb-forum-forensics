@@ -137,6 +137,12 @@ def _huelle_muster(var: str) -> re.Pattern:
     return re.compile(r"(\w+)\.appendChild\(\s*%s\s*\)" % re.escape(var))
 
 
+def _buendel_muster(var: str) -> re.Pattern:
+    """'return { label: label, el: sel };' - die Fabrik gibt ein BUENDEL aus
+    Huelle und Bedienelement zurueck. Die Abnahmestelle greift mit '.el' zu."""
+    return re.compile(r"return\s*\{[^}]*\b%s\b[^}]*\}" % re.escape(var))
+
+
 def _marke_muster_weit(var: str) -> re.Pattern:
     """
     Wie _marke_muster, aber der Weg vom Alias zum Element darf einen Schritt
@@ -263,7 +269,14 @@ def untersuche(pfad: Path) -> Sichtbefund:
             # jedes beschriftete Feld - <label> mit Text und Eingabe darin.
             huellen = [m.group(1) for m in _huelle_muster(var).finditer(bereich)]
             if not any(_rueckgabe_muster(h).search(bereich) for h in huellen):
-                return ""
+                # BUENDEL-RUECKGABE (Build 637): manche Fabrik gibt beides
+                # heraus - 'return { label: label, el: sel };'. Die
+                # Abnahmestelle greift dann mit '.el' auf das Bedienelement
+                # zu. Das ist derselbe Fall wie die Huelle, nur anders
+                # verpackt; cockpit_audit.js macht es seit Build 604 so und
+                # markiert vorbildlich JEDE Abnahmestelle.
+                if not _buendel_muster(var).search(bereich):
+                    return ""
             weit = True
         fname = _funktionsname(i)
         if not fname:

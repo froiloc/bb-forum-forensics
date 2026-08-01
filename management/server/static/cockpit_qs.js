@@ -76,7 +76,9 @@
 //   textContent (Kontonamen sind beliebiger UTF-8 aus einem multilingualen
 //   Forum, Begruendungen sind Freitext von Menschen).
 //
-// Version: v0.8.543 · Build: 543 · 2026-07-26
+// Build 637 (Vorgang 17200856, Welle B5 - die letzte): HILFE-MARKEN
+//   fuer die zwei verbliebenen Bedienelemente dieser Sicht.
+// Version: v0.8.637 · Build: 637 · 2026-08-01
 // =============================================================================
 
 (function () {
@@ -332,6 +334,8 @@
         // Benennung — er ist in der Testvorrichtung zu Build 543
         // aufgefallen (querySelector traf die Zelle statt der Auswahl).
         sel.className = 'aiw-qs-ergebnis-wahl';
+        // Build 637 (Vorgang 17200856): Hilfe-Marken, LITERAL gesetzt.
+        sel.setAttribute('data-hilfe-id', 'qs.bedienung.ergebnis');
         Object.keys(ERGEBNIS).forEach(function (code) {
             var o = doc.createElement('option');
             o.value = code;
@@ -343,6 +347,7 @@
         ta.setAttribute('rows', '2');
         ta.setAttribute('placeholder',
             'Begründung (Pflicht) — was trägt, was fehlt?');
+        ta.setAttribute('data-hilfe-id', 'qs.bedienung.begruendung');
         var knopf = _el(doc, 'button', 'aiw-qs-speichern', 'Ergebnis erfassen');
         knopf.setAttribute('type', 'button');
         var fehler = _el(doc, 'div', 'aiw-qs-formfehler', '');

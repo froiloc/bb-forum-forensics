@@ -216,6 +216,14 @@ RESULTS = Sichthilfe(
             "results.werkzeug.trefferzahl", "Trefferanzeige",
             "Nennt, wie viele Zeilen sichtbar sind; bei gesetztem Filter "
             "„sichtbar von gesamt“."),
+
+        # Build 637 (Welle B5).
+        Kontexthilfe(
+            "results.bedienung.abdeckungsfilter", "Abdeckung",
+            "Zeigt nur Fälle einer Abdeckungsstufe; in Klammern steht die "
+            "Anzahl. Am wichtigsten ist der Eintrag für die noch gar nicht "
+            "bewerteten Fälle — das ist der Arbeitsvorrat.",
+            verweis="results#blinde_flecken"),
     ),
 )
 

@@ -24,7 +24,9 @@
 //
 // XSS: nur textContent / Tabulator-plaintext (kein innerHTML).
 //
-// Version: v0.7.371 · Build: 371 · 2026-07-10
+// Build 637 (Vorgang 17200856, Welle B5 - die letzte): HILFE-MARKEN
+//   fuer die fuenf verbliebenen Bedienelemente dieser Sicht.
+// Version: v0.8.637 · Build: 637 · 2026-08-01
 // =============================================================================
 
 (function () {
@@ -182,18 +184,25 @@
         // Download-Leiste.
         var dl = doc.createElement('div');
         dl.className = 'aiw-stats-downloads';
-        dl.appendChild(_btn(doc, 'aiw-stats-csv', 'CSV herunterladen',
+        // Build 637 (Vorgang 17200856): frueher direkt in appendChild. Eine
+        // Abnahmestelle ohne Variable kann keine Marke tragen - beide
+        // Knoepfe waeren stumm geblieben.
+        var btnCsv = _btn(doc, 'aiw-stats-csv', 'CSV herunterladen',
             function () {
                 if (typeof opts.onDownloadCsv === 'function') {
                     opts.onDownloadCsv();
                 }
-            }));
-        dl.appendChild(_btn(doc, 'aiw-stats-json', 'JSON herunterladen',
+            });
+        btnCsv.setAttribute('data-hilfe-id', 'stats.bedienung.tabelle_laden');
+        dl.appendChild(btnCsv);
+        var btnJson = _btn(doc, 'aiw-stats-json', 'JSON herunterladen',
             function () {
                 if (typeof opts.onDownloadJson === 'function') {
                     opts.onDownloadJson(data);
                 }
-            }));
+            });
+        btnJson.setAttribute('data-hilfe-id', 'stats.bedienung.daten_laden');
+        dl.appendChild(btnJson);
         mainEl.appendChild(dl);
 
         // Reiter-Struktur.
@@ -212,6 +221,18 @@
             b.className = 'aiw-tab' + (i === 0 ? ' active' : '');
             b.textContent = t.label;
             b.setAttribute('data-tab', t.id);
+            // Drei Reiter aus einer Schleife, drei Bedeutungen, drei Texte
+            // - und drei literale Zweige statt einer gerechneten Kennung.
+            if (t.id === 'dist') {
+                b.setAttribute('data-hilfe-id',
+                    'stats.bedienung.reiter_verteilungen');
+            } else if (t.id === 'flow') {
+                b.setAttribute('data-hilfe-id',
+                    'stats.bedienung.reiter_durchsatz');
+            } else {
+                b.setAttribute('data-hilfe-id',
+                    'stats.bedienung.reiter_ermittler');
+            }
             bar.appendChild(b);
             buttons[t.id] = b;
             var c = doc.createElement('div');

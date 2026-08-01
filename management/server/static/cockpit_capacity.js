@@ -21,7 +21,9 @@
 // FARB-VERTRAG: Ampelfarben spiegeln cockpit.css (--rot/--gelb/--gruen);
 //   Grau fuer "keine Basis" (keine Regel-Arbeitszeit).
 //
-// Version: v0.7.360 · Build: 360 · 2026-07-10
+// Build 637 (Vorgang 17200856, Welle B5 - die letzte): HILFE-MARKEN
+//   fuer die drei verbliebenen Bedienelemente dieser Sicht.
+// Version: v0.8.637 · Build: 637 · 2026-08-01
 // =============================================================================
 
 (function () {
@@ -175,12 +177,17 @@
         var ctrl = document.createElement('div');
         ctrl.className = 'aiw-capacity-controls';
         var inStart = _dateInput('aiw-cap-start', data && data.start);
+        // Build 637 (Vorgang 17200856): Hilfe-Marken, LITERAL an den
+        // Abnahmestellen der Fabrik '_dateInput' (Fabrikregel, Build 633).
+        inStart.setAttribute('data-hilfe-id', 'capacity.bedienung.von');
         var inEnd = _dateInput('aiw-cap-end', data && data.end);
+        inEnd.setAttribute('data-hilfe-id', 'capacity.bedienung.bis');
         var btn = document.createElement('button');
         btn.type = 'button';
         btn.id = 'aiw-cap-reload';
         btn.className = 'aiw-btn';
         btn.textContent = 'Aktualisieren';
+        btn.setAttribute('data-hilfe-id', 'capacity.bedienung.aktualisieren');
         btn.addEventListener('click', function () {
             if (typeof opts.onPeriodChange === 'function') {
                 opts.onPeriodChange(inStart.value, inEnd.value);

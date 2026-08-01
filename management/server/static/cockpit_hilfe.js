@@ -52,7 +52,9 @@
 //     still (Grundregel 1): ein Element, das als erklaert markiert ist, aber
 //     keinen Text hat, ist ein Befund und soll auffallen.
 //
-// Version: v0.8.591 · Build: 591 · 2026-07-31
+// Build 637 (Vorgang 17200856, Welle B5 - die letzte): HILFE-MARKEN
+//   fuer die eine verbliebenen Bedienelemente dieser Sicht.
+// Version: v0.8.637 · Build: 637 · 2026-08-01
 // =============================================================================
 
 (function () {
@@ -467,6 +469,10 @@
         zu.type = 'button';
         zu.className = 'aiw-hilfe-popup-zu';
         zu.setAttribute('aria-label', 'Hilfe schließen');
+        // Build 637 (Vorgang 17200856): Hilfe-Marke, LITERAL - auch das
+        // Hilfesystem selbst erklaert seine Bedienelemente. Der Praefix
+        // 'shell.' stimmt: das Popup gehoert zu keiner einzelnen Sicht.
+        zu.setAttribute('data-hilfe-id', 'shell.bedienung.popup_schliessen');
         zu.textContent = '×';
         zu.addEventListener('click', function (ev) {
             ev.preventDefault();

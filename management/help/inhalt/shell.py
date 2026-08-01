@@ -107,6 +107,21 @@ SHELL_KONTEXT: Tuple[Kontexthilfe, ...] = (
         "Erreichbar bleiben ausgeblendete Bereiche über die Kommandopalette.",
     ),
     Kontexthilfe(
+        "shell.bedienung.palette",
+        "Kommandopalette",
+        "Springt über den eingetippten Namen in einen Bereich — auch in "
+        "einen, den Sie sich in der Navigation ausgeblendet haben. Zu "
+        "erreichen mit Strg-K von jeder Ansicht aus. Was Ihnen nicht "
+        "zugeteilt ist, erscheint auch hier nicht.",
+    ),
+    Kontexthilfe(
+        "shell.bedienung.popup_schliessen",
+        "Erklärung schließen",
+        "Schließt dieses Erklärungsfenster. Der Hilfemodus bleibt dabei an; "
+        "er endet mit Esc, mit einem erneuten Klick auf den Hilfeknopf oder "
+        "mit einem Bereichswechsel.",
+    ),
+    Kontexthilfe(
         "shell.kennung",
         "Angemeldete Person",
         "Nennt das Windows-Konto, unter dem dieses Werkzeug läuft. Alle "

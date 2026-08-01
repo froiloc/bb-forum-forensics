@@ -36,7 +36,9 @@
 //   sah weiter das alte Ziel und erfuhr erst beim Uebernehmen, wohin der Wert
 //   ging (Befund mc).
 //
-// Version: v0.8.565 · Build: 565 · 2026-07-29
+// Build 637 (Vorgang 17200856, Welle B5 - die letzte): HILFE-MARKEN
+//   fuer die eine verbliebenen Bedienelemente dieser Sicht.
+// Version: v0.8.637 · Build: 637 · 2026-08-01
 // =============================================================================
 
 (function () {
@@ -159,6 +161,13 @@
         i.className = 'aiw-input';     // liefert '' (Chrome) - beides waere ein
         i.placeholder = platzhalter || '';   // stiller Verlust der Eingabe.
         if (wert !== undefined) { i.value = wert; }
+        // Build 637 (Vorgang 17200856): Die Marke steht HIER in der Fabrik
+        // und nicht an den Abnahmestellen: Alle Felder dieses Rechners
+        // meinen dasselbe - eine Zeitangabe, die auch mit Komma stimmt.
+        // Der Praefix ist 'capacity_pflege': Der Rechner ist keine eigene
+        // Sicht, sondern ein Werkzeug der Kapazitaetspflege - nur von dort
+        // wird er geoeffnet (AIWMinutenrechner.oeffnen).
+        i.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.rechner_zeitangabe');
         return i;
     }
 

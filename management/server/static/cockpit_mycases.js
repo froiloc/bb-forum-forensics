@@ -26,7 +26,9 @@
 //
 // Build 500: Aktionsspalte "Fall starten" + Rueckmeldebanner (onLaunch/pendingMsg)
 // Build 469: Schluesselumstellung user_id -> subject_id (M019)
-// Version: v0.8.500 · Build: 500 · 2026-07-22
+// Build 637 (Vorgang 17200856, Welle B5 - die letzte): HILFE-MARKEN
+//   fuer die eine verbliebenen Bedienelemente dieser Sicht.
+// Version: v0.8.637 · Build: 637 · 2026-08-01
 // =============================================================================
 
 (function () {
@@ -112,6 +114,9 @@
                 btn.type = 'button';
                 btn.className = 'aiw-mycases-btn';
                 btn.textContent = 'Fall starten';
+                // Build 637 (Vorgang 17200856): Hilfe-Marke, LITERAL.
+                btn.setAttribute('data-hilfe-id',
+                    'mycases.bedienung.fall_starten');
                 btn.setAttribute('data-subject-id', String(sid));
                 btn.addEventListener('click', function (ev) {
                     // Zellenklick nicht weiterreichen (kein Zeilen-Select o.ae.).

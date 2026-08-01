@@ -79,7 +79,9 @@
 //   Alle Texte ueber textContent (kein innerHTML): die Meldungen und die
 //   Vermerke enthalten Namen und Freitexte aus ungepruefter Quelle.
 //
-// Version: v0.8.518 · Build: 518 · 2026-07-24
+// Build 637 (Vorgang 17200856, Welle B5 - die letzte): HILFE-MARKEN
+//   fuer die eine verbliebenen Bedienelemente dieser Sicht.
+// Version: v0.8.637 · Build: 637 · 2026-08-01
 // =============================================================================
 
 (function () {
@@ -274,6 +276,9 @@
             ? 'Grund des Widerrufs (Pflicht)'
             : 'Was wurde veranlasst? (Pflicht)';
         feld.setAttribute('aria-label', feld.placeholder);
+        // Build 637 (Vorgang 17200856): Hilfe-Marke, LITERAL. Ein Feld,
+        // zwei Bedeutungen (Quittung oder Widerruf) - der Text nennt beide.
+        feld.setAttribute('data-hilfe-id', 'escalation.bedienung.pflichttext');
 
         var knopf = _el(doc, 'button', 'aiw-esk-btn',
             istWiderruf ? 'Vermerk widerrufen' : 'Quittieren');

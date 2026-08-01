@@ -469,6 +469,147 @@ CAPACITY_PFLEGE = Sichthilfe(
             "Öffnet eine kleine Rechenhilfe für Minutenangaben. Ihr Ergebnis "
             "geht in das Minutenfeld, das zuletzt angeklickt wurde.",
             verweis="capacity_pflege#aufbau"),
+        # ------------------------------------------------------------------
+        # Die Bedienelemente (Build 637, Welle B5 - die letzte). Die Erhebung
+        # zaehlte hier DREI: Die Sicht baut Felder, Auswahllisten und Knoepfe
+        # in drei Fabriken, und eine Fabrik zaehlt einmal. Tatsaechlich sind
+        # es siebenundzwanzig, und alle bekommen hier ihren Text.
+        # ------------------------------------------------------------------
+        Kontexthilfe(
+            "capacity_pflege.bedienung.entfernen", "Entfernen",
+            "Legt diesen Eintrag still. GELÖSCHT WIRD NICHTS: Die Zeile "
+            "bleibt als Beleg erhalten und lässt sich über „Auch entfernte "
+            "Zeilen anzeigen“ wieder ansehen.",
+            verweis="capacity_pflege#grenzen"),
+        Kontexthilfe(
+            "capacity_pflege.bedienung.wt_person", "Person",
+            "Wessen Arbeitszeit eingetragen wird. Das Feld erscheint nur bei "
+            "vollem Pflegeumfang; wer nur die eigene pflegt, sieht es nicht.",
+            verweis="capacity_pflege#rechte"),
+        Kontexthilfe(
+            "capacity_pflege.bedienung.wt_ab", "Gültig ab",
+            "Der Stichtag, ab dem diese Arbeitszeit gilt. Je Person und "
+            "Stichtag gibt es GENAU EINE Zeile; eine zweite zum selben "
+            "Stichtag wird abgewiesen. Für eine Korrektur ist „Bearbeiten“ "
+            "der richtige Weg.",
+            verweis="capacity_pflege#grenzen"),
+        Kontexthilfe(
+            "capacity_pflege.bedienung.wt_minuten", "Minuten je Wochentag",
+            "Die Arbeitszeit dieses Wochentags in Minuten — sieben Felder, "
+            "eines je Tag. 0 heißt „kein Arbeitstag“. Wer lieber in Stunden "
+            "denkt, benutzt den Minutenrechner."),
+        Kontexthilfe(
+            "capacity_pflege.bedienung.wt_vorgabe",
+            "Übliche Wochenarbeitszeit",
+            "Trägt eine gebräuchliche Arbeitszeit in einem Griff ein: Montag "
+            "bis Freitag auf den genannten Wert, Samstag und Sonntag auf 0. "
+            "Abweichungen sind zulässig — die Felder lassen sich danach "
+            "einzeln ändern."),
+        Kontexthilfe(
+            "capacity_pflege.bedienung.wt_bearbeiten", "Bearbeiten",
+            "Füllt das Formular mit dieser Zeile und schaltet auf Ersetzen "
+            "um. ES WIRD DABEI NICHTS GESCHRIEBEN. Das ist der einzige Weg, "
+            "eine Arbeitszeit zum selben Stichtag zu berichtigen.",
+            verweis="capacity_pflege#ablaeufe"),
+        Kontexthilfe(
+            "capacity_pflege.bedienung.wt_entfernen", "Entfernen",
+            "Legt diese Arbeitszeit still. Sie bleibt als Beleg erhalten; an "
+            "einer bereits stillgelegten Zeile erscheint der Knopf nicht "
+            "mehr.",
+            verweis="capacity_pflege#grenzen"),
+        Kontexthilfe(
+            "capacity_pflege.bedienung.wt_abbrechen", "Bearbeitung abbrechen",
+            "Verlässt den Ersetzen-Modus. Die vorhandene Zeile bleibt, wie "
+            "sie ist; geschrieben wurde nichts."),
+        Kontexthilfe(
+            "capacity_pflege.bedienung.wt_speichern", "Arbeitszeit speichern",
+            "Schreibt die Arbeitszeit fest. Im Ersetzen-Modus heißt der Knopf "
+            "„Zeile ersetzen“ und tut auch das: Die alte Zeile wird "
+            "stillgelegt und bleibt als Beleg erhalten.",
+            verweis="capacity_pflege#ablaeufe"),
+        Kontexthilfe(
+            "capacity_pflege.bedienung.av_person", "Person",
+            "Wessen Abwesenheit eingetragen wird — nur bei vollem "
+            "Pflegeumfang.",
+            verweis="capacity_pflege#rechte"),
+        Kontexthilfe(
+            "capacity_pflege.bedienung.av_von", "Von",
+            "Erster Tag der Abwesenheit."),
+        Kontexthilfe(
+            "capacity_pflege.bedienung.av_bis", "Bis",
+            "Letzter Tag der Abwesenheit, einschließlich."),
+        Kontexthilfe(
+            "capacity_pflege.bedienung.av_rechenart", "Rechenart",
+            "WIE die Abwesenheit auf die Kapazität wirkt: abziehen oder "
+            "einen Mindestboden setzen. Das ist etwas anderes als der "
+            "Grund — der sagt, WARUM.",
+            verweis="capacity_pflege#grenzen"),
+        Kontexthilfe(
+            "capacity_pflege.bedienung.av_grund", "Grund",
+            "Warum die Person abwesend ist — freiwillig. Die Gründe werden "
+            "weiter unten auf derselben Seite gepflegt."),
+        Kontexthilfe(
+            "capacity_pflege.bedienung.av_prozent", "Prozent",
+            "Der Anteil, um den die Kapazität sinkt. GENAU EINES von Prozent "
+            "oder Minuten ausfüllen — beides zugleich wird abgewiesen, und "
+            "das ist eine Regel der Sache und kein Formularfehler.",
+            verweis="capacity_pflege#grenzen"),
+        Kontexthilfe(
+            "capacity_pflege.bedienung.av_minuten", "Minuten",
+            "Die Kürzung in Minuten je Tag. Auch hier: entweder Prozent oder "
+            "Minuten, nie beides. Ein LEERES Feld ist keine Angabe — eine 0 "
+            "wäre eine.",
+            verweis="capacity_pflege#grenzen"),
+        Kontexthilfe(
+            "capacity_pflege.bedienung.av_notiz", "Notiz",
+            "Eine Bemerkung zur Abwesenheit — freiwillig."),
+        Kontexthilfe(
+            "capacity_pflege.bedienung.av_speichern", "Abwesenheit speichern",
+            "Schreibt die Abwesenheit fest. Fehlt eine Pflichtangabe oder "
+            "sind Prozent und Minuten beide gesetzt, wird nichts "
+            "geschrieben.",
+            verweis="capacity_pflege#grenzen"),
+        Kontexthilfe(
+            "capacity_pflege.bedienung.ho_tag", "Tag",
+            "Das Datum des Feiertags. Feiertage gelten für alle und werden "
+            "deshalb nur bei vollem Pflegeumfang angelegt.",
+            verweis="capacity_pflege#grenzen"),
+        Kontexthilfe(
+            "capacity_pflege.bedienung.ho_bezeichnung", "Bezeichnung",
+            "Der Name des Feiertags. Er erscheint später in der Liste — ohne "
+            "ihn steht dort nur ein Datum."),
+        Kontexthilfe(
+            "capacity_pflege.bedienung.ho_region", "Region",
+            "Für welchen Landesteil der Tag gilt — freiwillig. Leer heißt: "
+            "für alle."),
+        Kontexthilfe(
+            "capacity_pflege.bedienung.ho_anlegen", "Feiertag anlegen",
+            "Trägt den Feiertag ein. Er wirkt ab sofort auf die Berechnung "
+            "der Kapazität aller Personen.",
+            verweis="capacity_pflege#grenzen"),
+        Kontexthilfe(
+            "capacity_pflege.bedienung.re_code", "Code",
+            "Das Kürzel, unter dem der Grund geführt wird. Es ist die "
+            "Verbindung zu den bereits eingetragenen Abwesenheiten."),
+        Kontexthilfe(
+            "capacity_pflege.bedienung.re_bezeichnung", "Bezeichnung",
+            "Wie der Grund in der Auswahlliste heißt."),
+        Kontexthilfe(
+            "capacity_pflege.bedienung.re_reihung", "Reihung",
+            "Bestimmt die Reihenfolge in der Auswahlliste. Ein kleinerer "
+            "Wert steht weiter oben."),
+        Kontexthilfe(
+            "capacity_pflege.bedienung.re_anlegen", "Grund anlegen",
+            "Trägt den Abwesenheitsgrund ein. Er steht danach in der Auswahl "
+            "des Abwesenheits-Formulars zur Verfügung."),
+        Kontexthilfe(
+            "capacity_pflege.bedienung.rechner_zeitangabe", "Zeitangabe",
+            "Eine Zeit in der Schreibweise, die Ihnen liegt — auch mit "
+            "Komma. Das Feld nimmt ausdrücklich Text entgegen und nicht nur "
+            "Zahlen: Ein Zahlenfeld verwirft ein Komma je nach Browser "
+            "stillschweigend, und ein still verworfener Wert ist schlimmer "
+            "als eine Fehlermeldung.",
+            verweis="capacity_pflege#aufbau"),
     ) + _abschnitt_kontext(),
 )
 

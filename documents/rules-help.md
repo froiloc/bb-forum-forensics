@@ -1,6 +1,6 @@
 # Regelwerk AIW — Hilfesysteme
 
-**Stand:** Build 622 · 2026-08-01 · **Baustelle H**
+**Stand:** Build 637 · 2026-08-01 · **Baustelle H**
 
 Das Werkzeug hat **drei** Hilfesysteme mit **zwei verschiedenen Adressaten**. Das ist der Schlüssel zu allen Regeln dieses Blattes.
 
@@ -116,7 +116,7 @@ Damit UX11 messen kann, liest die JavaScript-Seite das Hilferegister vom Registe
 
 Wer ein `button`, `input`, `select` oder `textarea` baut, setzt im selben Build die Marke `<sicht>.bedienung.<name>` und schreibt den Text nach `management/help/inhalt/`.
 
-*Durchsetzung:* `tests/test_help_bedienelemente.py` (BD01–BD08) gegen `tests/hilfe_bedienung_stand.json`; die Zahlen dürfen nur sinken, und eine neue Datei mit Lücke ist ein Befund.
+*Durchsetzung:* `tests/test_help_bedienelemente.py` gegen `tests/hilfe_bedienung_stand.json`. **Seit Build 637 ist die Fehlliste leer**, und BD10 hält sie leer — der Satz gilt damit ohne Einschränkung und ohne Ausnahmeliste. BD01 (Zahlen dürfen nur sinken) und BD02 (keine neue Datei mit Lücke) bleiben als zweites Netz stehen.
 
 Zwei Fallstricke, beide in Build 632 aufgetreten und beide leicht zu vermeiden:
 

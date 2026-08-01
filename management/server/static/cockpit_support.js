@@ -25,7 +25,9 @@
 // XSS: ausschliesslich textContent / Tabulator-plaintext (kein innerHTML).
 //
 // Build 469: Schluesselumstellung user_id -> subject_id (M019)
-// Version: v0.7.469 · Build: 469 · 2026-07-20
+// Build 637 (Vorgang 17200856, Welle B5 - die letzte): HILFE-MARKEN
+//   fuer die eine verbliebenen Bedienelemente dieser Sicht.
+// Version: v0.8.637 · Build: 637 · 2026-08-01
 // =============================================================================
 
 (function () {
@@ -176,6 +178,8 @@
         close.type = 'button';
         close.className = 'aiw-modal-close';
         close.textContent = 'Schliessen';
+        // Build 637 (Vorgang 17200856): Hilfe-Marke, LITERAL.
+        close.setAttribute('data-hilfe-id', 'support.bedienung.dialog_zu');
         head.appendChild(title);
         head.appendChild(close);
         var body = doc.createElement('div');

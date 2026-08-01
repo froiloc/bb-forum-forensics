@@ -77,7 +77,9 @@
 //   unkritisch, werden aber wie aller variable Text ausschliesslich via
 //   textContent gesetzt — nie via innerHTML.
 //
-// Version: v0.8.546 · Build: 546 · 2026-07-26
+// Build 637 (Vorgang 17200856, Welle B5 - die letzte): HILFE-MARKEN
+//   fuer die eine verbliebenen Bedienelemente dieser Sicht.
+// Version: v0.8.637 · Build: 637 · 2026-08-01
 // =============================================================================
 
 (function () {
@@ -521,6 +523,9 @@
                 cb2.id = 'aiw-vp-cb-' + r.id;
                 cb2.setAttribute('aria-label',
                     'Bereich "' + r.label + '" anzeigen');
+                // Build 637 (Vorgang 17200856): Hilfe-Marke, LITERAL.
+                cb2.setAttribute('data-hilfe-id',
+                    'viewprefs.bedienung.sichtbar');
                 cb2.addEventListener('change', function () {
                     rows = umschalten(rows, r.id);
                     zeichne();

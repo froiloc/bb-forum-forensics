@@ -57,7 +57,9 @@
 //   stammen aus Forumsdaten bzw. dem AD und sind fremdbestimmt — saemtlicher
 //   variabler Text wird via textContent gesetzt, NIE via innerHTML.
 //
-// Version: v0.8.547 · Build: 547 · 2026-07-26
+// Build 637 (Vorgang 17200856, Welle B5 - die letzte): HILFE-MARKEN
+//   fuer die eine verbliebenen Bedienelemente dieser Sicht.
+// Version: v0.8.637 · Build: 637 · 2026-08-01
 // =============================================================================
 
 (function () {
@@ -680,6 +682,9 @@
                     box.type = 'checkbox';
                     box.checked = aktiv.indexOf(key) !== -1;
                     box.id = 'aiw-db-cb-' + key;
+                    // Build 637 (Vorgang 17200856): Hilfe-Marke, LITERAL.
+                    box.setAttribute('data-hilfe-id',
+                        'dashboard.bedienung.kachelwahl');
                     box.addEventListener('change', function () {
                         var i = aktiv.indexOf(key);
                         if (box.checked && i === -1) { aktiv.push(key); }

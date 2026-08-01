@@ -86,7 +86,9 @@
 //   Aktionsknoepfe entfallen, weil ein zweites Entfernen ohnehin abgewiesen
 //   wuerde und 'Bearbeiten' eine stillgelegte Zeile ersetzen wollte.
 //
-// Version: v0.8.563 · Build: 563 · 2026-07-29
+// Build 637 (Vorgang 17200856, Welle B5 - die letzte): HILFE-MARKEN
+//   fuer die siebenundzwanzig verbliebenen Bedienelemente dieser Sicht.
+// Version: v0.8.637 · Build: 637 · 2026-08-01
 // =============================================================================
 
 (function () {
@@ -389,6 +391,9 @@
                 var b = _knopf('', 'Entfernen', function () {
                     if (typeof onClick === 'function') { onClick(d[idFeld]); }
                 });
+                // Build 637 (Vorgang 17200856): Hilfe-Marke, LITERAL an der
+                // Abnahmestelle der Fabrik '_knopf' (Fabrikregel, Build 633).
+                b.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.entfernen');
                 b.setAttribute('data-id', String(d[idFeld]));
                 b.classList.add('aiw-btn-klein');
                 return b;
@@ -575,9 +580,17 @@
         var ersetztId = (f.worktime && f.worktime._ersetzt_id) || null;
 
         var formWt = _el('div', 'aiw-capp-form');
-        var wtPerson = anlagenweit
-            ? _auswahl('aiw-capp-wt-person', personen, 'id', 'display_name')
-            : null;
+        // Build 637: aus dem Fragezeichen-Ausdruck eine Zuweisung gemacht.
+        // Eine Abnahmestelle, die nicht mit 'var X =' beginnt, kann die
+        // Erhebung nicht als solche erkennen - und dann gilt die ganze
+        // Fabrik als unmarkiert. Am Verhalten aendert sich nichts.
+        var wtPerson = null;
+        if (anlagenweit) {
+            var wtPersonFeld = _auswahl('aiw-capp-wt-person', personen, 'id',
+                                        'display_name');
+            wtPersonFeld.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.wt_person');
+            wtPerson = wtPersonFeld;
+        }
         if (wtPerson) {
             wtPerson.setAttribute('data-feld', 'person_id');
             if (wtVorgabe.person_id !== undefined
@@ -589,6 +602,7 @@
         }
         var wtAb = _feld('date', 'aiw-capp-wt-ab', 'gueltig ab',
                          wtVorgabe.effective_from || heuteIso());
+        wtAb.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.wt_ab');
         wtAb.setAttribute('data-feld', 'effective_from');
         formWt.appendChild(_el('label', 'aiw-label', 'Gueltig ab'));
         formWt.appendChild(wtAb);
@@ -598,11 +612,12 @@
             var v = (wtVorgabe[t.feld] === undefined
                      || wtVorgabe[t.feld] === null)
                 ? '0' : String(wtVorgabe[t.feld]);
-            wtFelder[t.feld] = _feld('number', 'aiw-capp-wt-' + t.feld,
-                                     'min', v);
-            wtFelder[t.feld].setAttribute('data-feld', t.feld);
-            wtFelder[t.feld].classList.add('aiw-minutenfeld');
-            formWt.appendChild(wtFelder[t.feld]);
+            var wtFeld = _feld('number', 'aiw-capp-wt-' + t.feld, 'min', v);
+            wtFeld.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.wt_minuten');
+            wtFeld.setAttribute('data-feld', t.feld);
+            wtFeld.classList.add('aiw-minutenfeld');
+            wtFelder[t.feld] = wtFeld;
+            formWt.appendChild(wtFeld);
         });
 
         // Tagesvorgaben: Hinweis UND Griff. Wer die Zahl liest, traegt sie
@@ -614,14 +629,18 @@
                 return v.label + ' ' + v.minuten + ' min/Tag';
             }).join(', ') + '. Abweichungen sind zulaessig.'));
         VORGABEN.forEach(function (v) {
-            hinweis.appendChild(_knopf('aiw-capp-wt-vorgabe-' + v.code,
+            // Build 637: frueher direkt in appendChild. Eine Abnahmestelle
+            // ohne Variable kann keine Marke tragen - der Knopf waere stumm.
+            var bVorgabe = _knopf('aiw-capp-wt-vorgabe-' + v.code,
                 v.label + ' (' + v.minuten + ')', function () {
                     TAGE.forEach(function (t) {
                         var werktag = t.feld !== 'sat_min'
                             && t.feld !== 'sun_min';
                         wtFelder[t.feld].value = werktag ? String(v.minuten) : '0';
                     });
-                }));
+                });
+            bVorgabe.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.wt_vorgabe');
+            hinweis.appendChild(bVorgabe);
         });
         formWt.appendChild(hinweis);
 
@@ -643,15 +662,17 @@
                 + '. Die alte Zeile wird stillgelegt und bleibt als Beleg '
                 + 'erhalten.');
             formWt.appendChild(warnung);
-            formWt.appendChild(_knopf('aiw-capp-wt-abbrechen',
+            var bWtAb = _knopf('aiw-capp-wt-abbrechen',
                 'Bearbeitung abbrechen', function () {
                     if (typeof opts.onWorktimeEditAbort === 'function') {
                         opts.onWorktimeEditAbort();
                     }
-                }));
+                });
+            bWtAb.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.wt_abbrechen');
+            formWt.appendChild(bWtAb);
         }
 
-        formWt.appendChild(_knopf('aiw-capp-wt-save',
+        var bWtSave = _knopf('aiw-capp-wt-save',
             ersetztId ? 'Zeile ersetzen' : 'Arbeitszeit speichern',
             function () {
                 var body = wtNutzlast();
@@ -663,7 +684,9 @@
                 } else if (typeof opts.onWorktimeSet === 'function') {
                     opts.onWorktimeSet(body);
                 }
-            }));
+            });
+        bWtSave.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.wt_speichern');
+        formWt.appendChild(bWtSave);
         boxWt.appendChild(formWt);
 
         // Aktionsspalte: Bearbeiten UND Entfernen. 'Bearbeiten' schreibt
@@ -686,6 +709,7 @@
                     }
                 });
                 bE.classList.add('aiw-btn-klein');
+                bE.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.wt_bearbeiten');
                 bE.setAttribute('data-id', String(d.id));
                 var bX = _knopf('', 'Entfernen', function () {
                     if (typeof opts.onWorktimeRemove === 'function') {
@@ -693,6 +717,7 @@
                     }
                 });
                 bX.classList.add('aiw-btn-klein');
+                bX.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.wt_entfernen');
                 bX.setAttribute('data-id', String(d.id));
                 box.appendChild(bE);
                 box.appendChild(bX);
@@ -727,28 +752,39 @@
         ];
 
         var formAv = _el('div', 'aiw-capp-form');
-        var avPerson = anlagenweit
-            ? _auswahl('aiw-capp-av-person', personen, 'id', 'display_name')
-            : null;
+        var avPerson = null;
+        if (anlagenweit) {
+            var avPersonFeld = _auswahl('aiw-capp-av-person', personen, 'id',
+                                        'display_name');
+            avPersonFeld.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.av_person');
+            avPerson = avPersonFeld;
+        }
         if (avPerson) {
             formAv.appendChild(_el('label', 'aiw-label', 'Person'));
             formAv.appendChild(avPerson);
         }
         var avVon = _feld('date', 'aiw-capp-av-von');
+        avVon.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.av_von');
         avVon.setAttribute('data-feld', 'period_start');
         var avBis = _feld('date', 'aiw-capp-av-bis');
+        avBis.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.av_bis');
         avBis.setAttribute('data-feld', 'period_end');
         // Die Rechenarten kommen VOM SERVER (data.kinds) — keine zweite Kopie.
         var avArt = _auswahl('aiw-capp-av-art', kinds, 'code', 'label');
+        avArt.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.av_rechenart');
         var avGrund = _auswahl('aiw-capp-av-grund',
             [{ code: '', label: '(kein Grund)' }].concat(reasons),
             'code', 'label');
+        avGrund.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.av_grund');
         var avPct = _feld('number', 'aiw-capp-av-pct', 'Prozent');
+        avPct.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.av_prozent');
         avPct.setAttribute('data-feld', 'value_pct');
         var avMin = _feld('number', 'aiw-capp-av-min', 'Minuten');
+        avMin.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.av_minuten');
         avMin.setAttribute('data-feld', 'value_minutes');
         avMin.classList.add('aiw-minutenfeld');
         var avNotiz = _feld('text', 'aiw-capp-av-note', 'Notiz');
+        avNotiz.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.av_notiz');
         [['Von', avVon], ['Bis', avBis], ['Rechenart', avArt],
          ['Grund', avGrund], ['Prozent', avPct], ['Minuten', avMin],
          ['Notiz', avNotiz]].forEach(function (paar) {
@@ -758,7 +794,7 @@
         formAv.appendChild(_el('p', 'aiw-hint',
             'Genau EINES von Prozent oder Minuten ausfuellen — beides zugleich '
             + 'weist der Server zurueck (Schema-Regel, kein Formularfehler).'));
-        formAv.appendChild(_knopf('aiw-capp-av-save', 'Abwesenheit speichern',
+        var bAvSave = _knopf('aiw-capp-av-save', 'Abwesenheit speichern',
             function () {
                 var body = {
                     person_id: avPerson ? Number(avPerson.value)
@@ -777,7 +813,10 @@
                 if (typeof opts.onAvailabilitySet === 'function') {
                     opts.onAvailabilitySet(body);
                 }
-            }));
+            });
+        bAvSave.setAttribute('data-hilfe-id',
+                             'capacity_pflege.bedienung.av_speichern');
+        formAv.appendChild(bAvSave);
         boxAv.appendChild(formAv);
         if (zeigeEntfernte) {
             spaltenAv.splice(spaltenAv.length - 1, 0,
@@ -808,15 +847,18 @@
         if (anlagenweit) {
             var formHo = _el('div', 'aiw-capp-form');
             var hoTag = _feld('date', 'aiw-capp-ho-tag');
+            hoTag.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.ho_tag');
             var hoLabel = _feld('text', 'aiw-capp-ho-label', 'Bezeichnung');
+            hoLabel.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.ho_bezeichnung');
             var hoRegion = _feld('text', 'aiw-capp-ho-region',
                                  'Region (optional)');
+            hoRegion.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.ho_region');
             [['Tag', hoTag], ['Bezeichnung', hoLabel],
              ['Region', hoRegion]].forEach(function (paar) {
                 formHo.appendChild(_el('label', 'aiw-label', paar[0]));
                 formHo.appendChild(paar[1]);
             });
-            formHo.appendChild(_knopf('aiw-capp-ho-save', 'Feiertag anlegen',
+            var bHoSave = _knopf('aiw-capp-ho-save', 'Feiertag anlegen',
                 function () {
                     if (typeof opts.onHolidayAdd === 'function') {
                         opts.onHolidayAdd({
@@ -824,7 +866,9 @@
                             region: hoRegion.value || null
                         });
                     }
-                }));
+                });
+            bHoSave.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.ho_anlegen');
+            formHo.appendChild(bHoSave);
             boxHo.appendChild(formHo);
         }
         if (zeigeEntfernte) {
@@ -854,14 +898,17 @@
         if (anlagenweit) {
             var formRe = _el('div', 'aiw-capp-form');
             var reCode = _feld('text', 'aiw-capp-re-code', 'Code (z. B. urlaub)');
+            reCode.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.re_code');
             var reLabel = _feld('text', 'aiw-capp-re-label', 'Bezeichnung');
+            reLabel.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.re_bezeichnung');
             var reSort = _feld('number', 'aiw-capp-re-sort', 'Reihung', '0');
+            reSort.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.re_reihung');
             [['Code', reCode], ['Bezeichnung', reLabel],
              ['Reihung', reSort]].forEach(function (paar) {
                 formRe.appendChild(_el('label', 'aiw-label', paar[0]));
                 formRe.appendChild(paar[1]);
             });
-            formRe.appendChild(_knopf('aiw-capp-re-save', 'Grund anlegen',
+            var bReSave = _knopf('aiw-capp-re-save', 'Grund anlegen',
                 function () {
                     if (typeof opts.onReasonAdd === 'function') {
                         opts.onReasonAdd({
@@ -869,7 +916,9 @@
                             sort: Number(reSort.value || 0)
                         });
                     }
-                }));
+                });
+            bReSave.setAttribute('data-hilfe-id', 'capacity_pflege.bedienung.re_anlegen');
+            formRe.appendChild(bReSave);
             boxRe.appendChild(formRe);
         }
         if (zeigeEntfernte) {

@@ -3395,12 +3395,12 @@
       "description": "Die Kontexthilfe ist viel zu oberflächlich.",
       "expected_behavior": "Die Kontexthilfe ist für jede Schaltfläche und jedes Inputfeld sowie die Liste der verfügbaren, fertigen Elemente nutzbar. Jedes Element wird bezüglich seines Zwecks erklärt.\r\n\r\nInsbesondere die Wechselschaltflächen \"Rohansicht\" und \"Vorschau\" müssen erklärt werden.",
       "actual_behavior": "Alle tätsächlich wichtigen Punkte werden nicht erklärt.",
-      "status": "resolved",
+      "status": "open",
       "priority": "critical",
       "severity": "blocker",
       "assigned_to": "Claude",
       "related_to": [],
-      "resolved_in_version": "0.8.637",
+      "resolved_in_version": null,
       "target_version": null,
       "environment": {
         "python_version": "3.14",
@@ -3419,14 +3419,6 @@
           "old_value": "",
           "new_value": "",
           "comment": "Issue erstellt"
-        },
-        {
-          "timestamp": "2026-08-01T14:20:00.000000+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "Build 637 - WELLE B5 IST ABGESCHLOSSEN UND DAMIT DER GANZE VORGANG. DIE FEHLLISTE IST LEER: 170 gezaehlte Bedienelemente, 170 erklaert, 0 offen. Zum Vergleich der Stand von Build 631, als die Erhebung die Lage zum ersten Mal bezifferte: 34 von 170.\n\nDIE ZAHL 170 IST DABEI EINE UNTERGRENZE, und das ist wichtig fuer die Bewertung: Wo eine Fabrik mehrere Bedienelemente baut, zaehlt sie einmal. In der Terminueberwachung waren es tatsaechlich zwanzig statt vier, in der Kapazitaetspflege siebenundzwanzig statt drei. Beide Sichten sind VOLLSTAENDIG erklaert und nicht nur ihre gezaehlten Vertreter - die Zahl der wirklich geschriebenen Texte liegt deutlich ueber 170 (rund 250).\n\nDIE SUITE WECHSELT IHRE AUFGABE. Sie war eine Fehlliste; jetzt ist sie eine SPERRE. Neu ist BD10: kein Bedienelement ohne Text - ohne Einschraenkung, ohne Ausnahmeliste. Dazu BD02 (keine neue Datei mit Luecke), BD01 (keine steigende Zahl) und BD09 (kein Text ohne Marke). Wer kuenftig einen Knopf baut und den Text vergisst, faellt im naechsten Regressionslauf auf, am selben Tag.\n\nWAS DER VORGANG UEBER DIE 250 TEXTE HINAUS GEBRACHT HAT - vier Befunde, die ohne ihn nicht aufgefallen waeren: (1) Die Paritaetspruefungen waren gruen, waehrend vier von fuenf Bedienelementen stumm blieben - ein Knopf ohne Marke kam in ihrer Welt nicht vor. (2) Sechs Popup-Texte hingen an keinem Element, alle wegen einer GERECHNETEN Kennung - genau das, wovor das Regelblatt seit Build 604 warnt. (3) Drei Kapitel behaupteten Falsches: die Chef-Freigabe verschwieg eine Schreibstelle, das Lektorat sein Kommentarformular, die Zuweisung den Unterschied zwischen '(nicht aendern)' und '(nicht zugewiesen)'. (4) Die Erhebung selbst musste dreimal nach OBEN korrigiert werden (Umbruch, Fabrik, Huelle) - jedes Mal hatte sie zu schwarz gemalt. Alle vier sind im jeweiligen Build dokumentiert und nicht weggeglaettet.\n\nNICHT ERLEDIGT und ausdruecklich benannt: Eine VOLLPRUEFUNG der Texte durch Menschen steht aus. Die Vier-Augen-Lesung laeuft ueber die Lektoratsfassung (tools/hilfe_lektorat.py), die jeden dieser Texte enthaelt. Maschinell geprueft sind Vollzaehligkeit, Anwendersprache (H-1), Fallinhaltsfreiheit (H-0) und die Verweise - nicht die fachliche Richtigkeit jedes einzelnen Satzes."
         }
       ]
     },

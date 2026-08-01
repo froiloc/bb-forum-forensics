@@ -23,7 +23,9 @@
 //   die Palette zeigt nur, was die Nav auch zeigt).
 //
 // Build 469: Schluesselumstellung user_id -> subject_id (M019)
-// Version: v0.7.469 · Build: 469 · 2026-07-20
+// Build 637 (Vorgang 17200856, Welle B5 - die letzte): HILFE-MARKEN
+//   fuer die eine verbliebenen Bedienelemente dieser Sicht.
+// Version: v0.8.637 · Build: 637 · 2026-08-01
 // =============================================================================
 
 (function () {
@@ -96,6 +98,9 @@
         input.type = 'text';
         input.className = 'aiw-palette-input';
         input.setAttribute('placeholder', 'Sicht suchen … (Strg-K)');
+        // Build 637 (Vorgang 17200856): Hilfe-Marke, LITERAL. Die
+        // Kommandopalette gehoert zu keiner Sicht - Praefix 'shell.'.
+        input.setAttribute('data-hilfe-id', 'shell.bedienung.palette');
         input.setAttribute('autocomplete', 'off');
 
         var list = document.createElement('ul');
