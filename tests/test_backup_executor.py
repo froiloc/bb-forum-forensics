@@ -11,7 +11,30 @@
 # BE04 — Pro-DB-Fehlerisolation: kaputte DB -> error, andere ok, Gesamt=nicht ok.
 # BE05 — Retention: je Label bleiben retention_count neueste; aeltere geloescht.
 #
-# Version: v0.7.353 · Build: 353 · 2026-07-10
+# Build 625 — DIE AUFBEWAHRUNG ZAEHLT NUR BRAUCHBARE GENERATIONEN
+# (Vorgang 651e6d84, kritisch; dazu der beim Messen gefundene zweite Befund):
+#
+# BE10 — eine nicht belegte Kopie verdraengt KEINE gute Generation
+# BE11 — sie wird beiseitegelegt statt geloescht, und das Namensmuster
+#        erfasst sie danach nicht mehr
+# BE12 — GEMESSENER BEFUND: eine 0-Byte-Datei unter dem zaehlenden Namen
+#        besteht 'integrity_check', zaehlt aber trotzdem nicht als Generation
+# BE13 — ein Label ohne belegte Kopie in diesem Lauf wird nicht beschnitten
+#        und steht namentlich im Manifest
+# BE14 — ein misslungenes Aufraeumen wird gemeldet, nicht verschluckt
+# BE15 — auch die beiseitegelegten Dateien bleiben begrenzt
+# BE16 — das Manifest legt ueber das Aufraeumen Rechenschaft ab
+#
+# ZUR TESTVORRICHTUNG VON BE05: sie schrieb bis Build 624 den Text 'alt' in
+# die Dateien, die alte Generationen darstellen sollten. Das sind keine
+# SQLite-Dateien - eine Sicherung ist eine. Mit der Nachschau aus Build 625
+# faellt das auf, und der Test schlug fehl. Die Vorrichtung legt jetzt
+# richtige Sicherungen an. Das ist keine Anpassung an den Code, sondern die
+# Beseitigung genau des Musters, das Vorgang c3f80e54 beschreibt: eine
+# schwache Pruefung erlaubt eine unwirkliche Vorrichtung, und die verdeckt
+# dann, was die Pruefung haette finden sollen.
+#
+# Version: v0.8.625 · Build: 625 · 2026-08-01
 # =============================================================================
 
 import json
@@ -26,7 +49,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from management.backup.backup_config import BackupConfig
 from management.backup.backup_planner import BackupPlanner
-from management.backup.backup_executor import BackupExecutor
+from management.backup.backup_executor import (
+    DEFEKT_ENDUNG, BackupExecutor, Quellmerkmale,
+)
 from management.migration_fleet.harness.backup import BackupTool
 
 
@@ -148,8 +173,10 @@ class BackupExecutorTests(unittest.TestCase):
                   "20260103T000000Z", "20260104T000000Z"]
         for ts in old_ts:
             name = "coordinator_v5_%s_host.backup.db" % ts
-            with open(os.path.join(self._dest, name), "wb") as fh:
-                fh.write(b"alt")
+            # ECHTE Sicherungsdateien: eine Generation ist eine SQLite-Datei.
+            # Mit einem Textschnipsel liesse sich seit Build 625 nichts mehr
+            # belegen - und mit ihm liesse sich auch nichts mehr WIDERLEGEN.
+            _mkdb(Path(self._dest) / name, user_version=5)
         cfg = self._cfg(retention_count=2, include_shared_dbs=False)
         run = BackupExecutor(cfg).run(self._plan(cfg))
         self.assertTrue(run.ok, run.reason)
@@ -298,3 +325,261 @@ class BackupExecutorTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# =============================================================================
+# BUILD 625 - DIE AUFBEWAHRUNG ZAEHLT NUR BRAUCHBARE GENERATIONEN
+#
+# Vorgang 651e6d84 (kritisch): _prune sortierte allein nach dem Zeitstempel im
+# Dateinamen. Eine defekte Kopie zaehlte als juengste Generation und
+# verdraengte die aelteste gute - nach retention_count solchen Laeufen war von
+# der betroffenen Datenbank keine brauchbare Sicherung mehr da.
+#
+# Beim Messen dazugekommen: 'PRAGMA integrity_check' allein zertifiziert
+# nichts. Eine abgebrochene 'VACUUM INTO' hinterlaesst eine Teildatei, die
+# beim ersten Oeffnen auf 0 Byte zurueckgerollt wird - und darauf meldet
+# integrity_check 'ok'.
+# =============================================================================
+
+class _ExecutorMitFalschenMerkmalen(BackupExecutor):
+    """
+    Ein Executor, der die QUELLE falsch vermisst.
+
+    So entsteht der Fall 'Kopie erzeugt, aber nicht belegbar' OHNE die
+    Beurteilung selbst zu faelschen: _kopie_beurteilen laeuft unveraendert
+    und stellt die Abweichung wirklich fest. Ein gefaelschtes Urteil haette
+    nur die Verdrahtung geprueft, nicht die Pruefung.
+    """
+
+    def _quellmerkmale(self, src_path):
+        echt = super()._quellmerkmale(src_path)
+        return Quellmerkmale(user_version=echt.user_version + 1000,
+                             seiten=echt.seiten,
+                             schema_objekte=echt.schema_objekte)
+
+
+class AufbewahrungTests(unittest.TestCase):
+    """Dieselbe Vorrichtung wie oben, aber auf die Aufbewahrung gerichtet."""
+
+    def setUp(self):
+        self._tmp = tempfile.mkdtemp()
+        base = Path(self._tmp)
+        (base / "data").mkdir()
+        for d in ("evidence", "forensic", "assets"):
+            (base / "data" / d).mkdir()
+        self._dest = str(base / "backups")
+        os.mkdir(self._dest)
+        _mkdb(base / "data" / "coordinator.db", user_version=5)
+        self._base = base
+        self._paths = {
+            "coordinator_db": str(base / "data" / "coordinator.db"),
+            "forensic_db_dir": str(base / "data" / "forensic"),
+            "evidence_db_dir": str(base / "data" / "evidence"),
+            "assets_db_dir": str(base / "data" / "assets"),
+        }
+
+    def tearDown(self):
+        for root, dirs, files in os.walk(self._tmp, topdown=False):
+            for f in files:
+                os.remove(os.path.join(root, f))
+            for d in dirs:
+                os.rmdir(os.path.join(root, d))
+        os.rmdir(self._tmp)
+
+    def _cfg(self, **over):
+        base = dict(dest_dir=self._dest, retention_count=2,
+                    min_free_factor=1.3, checkpoint="passive",
+                    include_shared_dbs=False)
+        base.update(over)
+        return BackupConfig(**base)
+
+    def _plan(self, cfg):
+        return BackupPlanner(self._paths, cfg).plan()
+
+    def _alte_generationen(self, *ts_liste, label="coordinator", version=5):
+        for ts in ts_liste:
+            _mkdb(Path(self._dest) / ("%s_v%d_%s_host.backup.db"
+                                      % (label, version, ts)),
+                  user_version=version)
+
+    def _zaehlende(self, label="coordinator"):
+        return sorted(n for n in os.listdir(self._dest)
+                      if n.startswith(label + "_v")
+                      and n.endswith(".backup.db"))
+
+    # --- BE10 ---------------------------------------------------------------
+    def test_be10_nicht_belegte_kopie_verdraengt_keine_gute_generation(self):
+        """
+        DER KERN DES VORGANGS 651e6d84. Zwei gute Generationen liegen da,
+        retention_count ist 2. Der Lauf erzeugt eine Kopie, die sich nicht
+        belegen laesst. Vorher waere die aeltere gute Generation dafuer
+        geloescht worden.
+        """
+        self._alte_generationen("20260101T000000Z", "20260102T000000Z")
+        cfg = self._cfg(retention_count=2)
+        run = _ExecutorMitFalschenMerkmalen(cfg).run(self._plan(cfg))
+
+        self.assertFalse(run.ok)
+        behalten = self._zaehlende()
+        self.assertEqual(len(behalten), 2, behalten)
+        self.assertTrue(any("20260101" in n for n in behalten),
+                        "die aelteste GUTE Generation wurde verdraengt")
+        self.assertTrue(any("20260102" in n for n in behalten))
+        self.assertEqual([], run.pruned, "es wurde etwas geloescht")
+
+    # --- BE11 ---------------------------------------------------------------
+    def test_be11_nicht_belegte_kopie_wird_beiseitegelegt_nicht_geloescht(self):
+        """
+        Sie bleibt als Beleg liegen - an einer Teildatei sieht man, woran der
+        Lauf gescheitert ist -, traegt aber den zaehlenden Namen nicht mehr.
+        """
+        cfg = self._cfg()
+        run = _ExecutorMitFalschenMerkmalen(cfg).run(self._plan(cfg))
+        ergebnis = [r for r in run.results if r.label == "coordinator"][0]
+
+        self.assertFalse(ergebnis.integrity_ok)
+        self.assertIn("user_version", ergebnis.error or "")
+        self.assertTrue(ergebnis.backup_path.endswith(DEFEKT_ENDUNG),
+                        ergebnis.backup_path)
+        self.assertTrue(os.path.isfile(ergebnis.backup_path),
+                        "der Beleg wurde geloescht statt beiseitegelegt")
+        self.assertEqual([], self._zaehlende(),
+                         "sie traegt weiter den zaehlenden Namen")
+
+    # --- BE12 ---------------------------------------------------------------
+    def test_be12_leere_datei_besteht_integrity_check_zaehlt_aber_nicht(self):
+        """
+        DER GEMESSENE BEFUND (2026-08-01). Erst wird belegt, dass eine leere
+        SQLite-Datei 'integrity_check' BESTEHT - sonst waere die Pruefung
+        dahinter nur eine Behauptung. Dann, dass sie trotzdem nicht als
+        Generation zaehlt.
+        """
+        leer = Path(self._dest) / "coordinator_v5_20260103T000000Z_host.backup.db"
+        leer.write_bytes(b"")
+
+        con = sqlite3.connect(str(leer))
+        try:
+            befund = con.execute("PRAGMA integrity_check").fetchall()
+        finally:
+            con.close()
+        self.assertEqual([("ok",)], befund,
+                         "Vorbedingung: integrity_check meldet auf einer "
+                         "leeren Datei 'ok'")
+
+        self._alte_generationen("20260101T000000Z", "20260102T000000Z")
+        cfg = self._cfg(retention_count=2)
+        run = BackupExecutor(cfg).run(self._plan(cfg))
+
+        self.assertTrue(run.ok, run.reason)
+        self.assertTrue(any(str(leer) in e for e in run.beiseite_gelegt),
+                        run.beiseite_gelegt)
+        self.assertFalse(leer.exists())
+        self.assertTrue((Path(str(leer) + DEFEKT_ENDUNG)).exists())
+        # Und die beiden guten Altgenerationen? Eine davon darf weichen - der
+        # Lauf hat eine belegte Kopie erzeugt, also ist Beschneiden richtig.
+        behalten = self._zaehlende()
+        self.assertEqual(len(behalten), 2, behalten)
+        self.assertTrue(any("20260102" in n for n in behalten),
+                        "die juengere gute Generation fehlt")
+
+    # --- BE13 ---------------------------------------------------------------
+    def test_be13_label_ohne_neue_kopie_wird_nicht_beschnitten(self):
+        """
+        Aufbewahrung heisst 'die N neuesten behalten'. Wer keine hinzufuegt,
+        muss auch keine wegnehmen - sonst schrumpft der Bestand eines Falls,
+        dessen Datenbank es nicht mehr gibt, bis auf null.
+        """
+        self._alte_generationen("20260101T000000Z", "20260102T000000Z",
+                                "20260103T000000Z", label="evidence_99",
+                                version=3)
+        cfg = self._cfg(retention_count=1)
+        run = BackupExecutor(cfg).run(self._plan(cfg))
+
+        self.assertTrue(run.ok, run.reason)
+        self.assertEqual(3, len(self._zaehlende("evidence_99")))
+        self.assertTrue(any("evidence_99" in e for e in run.nicht_beschnitten),
+                        run.nicht_beschnitten)
+        # Das eigene Label wurde sehr wohl beschnitten.
+        self.assertEqual(1, len(self._zaehlende("coordinator")))
+
+    # --- BE14 ---------------------------------------------------------------
+    def test_be14_misslungenes_aufraeumen_wird_gemeldet(self):
+        """
+        Bis Build 624 stand hier 'pass'. Ein Loeschen, das nicht klappt, ist
+        eine Auskunft - vor allem, wenn eine nicht belegte Datei deshalb
+        unter dem zaehlenden Namen liegen bleibt.
+        """
+        cfg = self._cfg(retention_count=1)
+        ex = BackupExecutor(cfg)
+        gestoert = []
+
+        def _kaputt(pfad, erg):
+            gestoert.append(pfad)
+            erg.fehler.append("'%s' konnte nicht geloescht werden: Probe"
+                              % os.path.basename(pfad))
+
+        ex._loeschen = _kaputt
+        self._alte_generationen("20260101T000000Z", "20260102T000000Z")
+        run = ex.run(self._plan(cfg))
+
+        self.assertTrue(gestoert, "die Vorrichtung hat nicht gegriffen")
+        self.assertTrue(run.aufraeum_fehler)
+        self.assertIn("Aufraeumen unvollstaendig", run.reason)
+
+    # --- BE15 ---------------------------------------------------------------
+    def test_be15_auch_die_beiseitegelegten_bleiben_begrenzt(self):
+        """
+        Ein unbegrenzt wachsender Sicherungsordner laesst die
+        Platzvorabpruefung irgendwann JEDEN Lauf verweigern - aus dem Verlust
+        einzelner Generationen wuerde der Verlust der Sicherung ueberhaupt.
+        """
+        for ts in ("20260101T000000Z", "20260102T000000Z",
+                   "20260103T000000Z", "20260104T000000Z"):
+            (Path(self._dest) / ("coordinator_v5_%s_host.backup.db%s"
+                                 % (ts, DEFEKT_ENDUNG))).write_bytes(b"rest")
+        cfg = self._cfg(retention_count=2)
+        run = BackupExecutor(cfg).run(self._plan(cfg))
+
+        uebrig = sorted(n for n in os.listdir(self._dest)
+                        if n.endswith(DEFEKT_ENDUNG))
+        self.assertEqual(2, len(uebrig), uebrig)
+        self.assertTrue(all("20260101" not in n and "20260102" not in n
+                            for n in uebrig), uebrig)
+        self.assertGreaterEqual(len(run.pruned), 2)
+
+    # --- BE16 ---------------------------------------------------------------
+    def test_be16_manifest_legt_rechenschaft_ab(self):
+        self._alte_generationen("20260101T000000Z", "20260102T000000Z",
+                                label="evidence_99", version=3)
+        (Path(self._dest)
+         / "coordinator_v5_20260103T000000Z_host.backup.db").write_bytes(b"")
+        cfg = self._cfg(retention_count=1)
+        run = BackupExecutor(cfg).run(self._plan(cfg))
+
+        with open(run.manifest_path, encoding="ascii") as fh:
+            m = json.load(fh)
+        for feld in ("beiseite_gelegt", "nicht_beschnitten",
+                     "aufraeum_fehler", "aufbewahrung_hinweis"):
+            self.assertIn(feld, m)
+        self.assertTrue(m["beiseite_gelegt"], m)
+        self.assertTrue(any("evidence_99" in e for e in m["nicht_beschnitten"]))
+        self.assertIn(DEFEKT_ENDUNG, m["aufbewahrung_hinweis"])
+
+    # --- BE17 ---------------------------------------------------------------
+    def test_be17_der_gute_fall_bleibt_unveraendert(self):
+        """
+        Gegenprobe: ohne Befund tut die Aufbewahrung genau das, was sie
+        vorher tat - sonst waere die Verschaerfung eine Verhaltensaenderung
+        und keine Absicherung.
+        """
+        self._alte_generationen("20260101T000000Z", "20260102T000000Z",
+                                "20260103T000000Z")
+        cfg = self._cfg(retention_count=2)
+        run = BackupExecutor(cfg).run(self._plan(cfg))
+
+        self.assertTrue(run.ok, run.reason)
+        self.assertEqual([], run.beiseite_gelegt)
+        self.assertEqual([], run.nicht_beschnitten)
+        self.assertEqual([], run.aufraeum_fehler)
+        self.assertEqual(2, len(self._zaehlende()))
+        self.assertEqual(2, len(run.pruned), run.pruned)

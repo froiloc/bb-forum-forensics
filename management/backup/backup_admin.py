@@ -161,6 +161,39 @@ def cmd_run(args) -> int:
                  if r.begonnen_ts else ""))
     print("  Manifest: %s" % run.manifest_path)
 
+    # --- WAS DIE AUFBEWAHRUNG GETAN UND WAS SIE GELASSEN HAT (Build 625) ---
+    # Alle drei Angaben stehen auch im Manifest. Sie gehoeren aber auf die
+    # Konsole: der Anlass fuer diesen Umbau war ein Befund, den man nur
+    # bemerkt hat, weil jemand den Quelltext gelesen hat - im Betrieb waere
+    # er unsichtbar geblieben, bis die Sicherungen gebraucht worden waeren.
+    if run.beiseite_gelegt:
+        print("")
+        print("  BEISEITEGELEGT - nicht als Sicherung belegt (%d):"
+              % len(run.beiseite_gelegt))
+        for eintrag in run.beiseite_gelegt:
+            print("    %s" % eintrag)
+        print("  Sie zaehlen nicht mehr als Generation und verdraengen "
+              "nichts. Geloescht wurden sie nicht: an ihnen ist zu sehen, "
+              "woran es gescheitert ist.")
+
+    if run.nicht_beschnitten:
+        print("")
+        print("  NICHT BESCHNITTEN - kein belegter Lauf in diesem Durchgang "
+              "(%d):" % len(run.nicht_beschnitten))
+        for eintrag in run.nicht_beschnitten:
+            print("    %s" % eintrag)
+
+    if run.aufraeum_fehler:
+        # AUF DIE FEHLERAUSGABE. Bleibt eine nicht belegte Datei unter dem
+        # zaehlenden Namen liegen, kann sie eine gute Generation verdraengen -
+        # das ist genau der Zustand, den dieser Build verhindern soll, und er
+        # darf in keiner Protokollauswertung untergehen.
+        print("")
+        print("  AUFRAEUMEN UNVOLLSTAENDIG (%d):" % len(run.aufraeum_fehler),
+              file=sys.stderr)
+        for eintrag in run.aufraeum_fehler:
+            print("    %s" % eintrag, file=sys.stderr)
+
     # WAEHREND DES LAUFS ENTSTANDEN und deshalb NICHT gesichert. Leer ist der
     # Regelfall; steht hier etwas, fehlt es im Satz - und das gehoert gesagt
     # und nicht nur ins Manifest geschrieben (Grundregel 1).

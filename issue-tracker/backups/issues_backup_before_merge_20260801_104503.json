@@ -3536,53 +3536,6 @@
           "comment": "Importiert aus eingang_claude_Build624.json"
         }
       ]
-    },
-    {
-      "id": "d79671f9-04d4-47f5-aa81-67fbdf53921e",
-      "type": "bug",
-      "title": "PRAGMA integrity_check leere Datei als integer - abgebrochene Sicherung als gut",
-      "affected_version": "0.8.624",
-      "reporter": "Claude",
-      "reported_at": "2026-08-01T08:24:56.508742+00:00",
-      "prerequisites": "Ein Abbruch mitten in 'VACUUM INTO' (Stromausfall, SIGKILL, volle Platte).",
-      "description": "GEMESSEN am 2026-08-01 im Container (Python 3.13, SQLite der Standardbibliothek). Aufgefallen beim Beheben von Vorgang 651e6d84; der dort als 'nicht entscheidbar' festgehaltene Punkt ist damit beantwortet - und die Antwort ist schlechter als die Vermutung.\n\nVERSUCHSAUFBAU: Quelle 91.258.880 Byte (200.000 Zeilen). 'VACUUM INTO ziel.backup.db' gestartet und nach 0,35 s mit SIGKILL abgebrochen.\n\nBEFUND, in dieser Reihenfolge:\n1) Am Ziel liegt eine Teildatei von 42.287.104 Byte - MIT dem zaehlenden Namen der Aufbewahrung -, daneben 'ziel.backup.db-journal'.\n2) Beim ERSTEN Oeffnen rollt SQLite das Journal zurueck. Die Datei ist danach 0 Byte gross, das Journal ist weg.\n3) 'PRAGMA integrity_check' auf dieser 0-Byte-Datei liefert 'ok'.\n\nGegenueberstellung (Groesse / user_version / Tabellen / page_count):\n  Quelle              91258880 / 37 / 1 / 22280\n  Teildatei nach dem Oeffnen  0 /  0 / 0 /     0   integrity_check: ok\n  frische leere Datei         0 /  0 / 0 /     0   integrity_check: ok\n  vollstaendige Kopie 91258880 / 37 / 1 / 22280   integrity_check: ok\n\nEINE LEERE SQLITE-DATEI IST FORMAL FEHLERFREI. Die bisherige Zertifizierung des BackupExecutor bestand ausschliesslich aus 'PRAGMA integrity_check' auf der Kopie - sie haette das Nichts bestaetigt, integrity_ok=True gesetzt, und die Datei waere als vollwertige Generation in die Aufbewahrung eingegangen.\n\nVERHAELTNIS ZU 651e6d84: Dort verdraengte eine ALS DEFEKT ERKANNTE Kopie eine gute Generation - immerhin stand der Fehlschlag im Manifest. Hier wird die unbrauchbare Kopie als GUT ausgewiesen. Das ist der schwerere Fall, und er lief durch dieselbe Luecke.",
-      "expected_behavior": "Eine Kopie gilt erst als Sicherung, wenn sie der Quelle entspricht. 'VACUUM INTO' erhaelt user_version und Schema; die Groesse darf abweichen, weil VACUUM verdichtet. Zu pruefen sind daher: integrity_check UND user_version UND Zahl der Schemaobjekte UND dass die Kopie nicht leer ist, wenn die Quelle es nicht war.",
-      "actual_behavior": "Geprueft wurde allein 'PRAGMA integrity_check' auf der Kopie. Eine leere Datei besteht diese Pruefung.",
-      "status": "resolved",
-      "priority": "critical",
-      "severity": "critical",
-      "assigned_to": "",
-      "related_to": [
-        "651e6d84"
-      ],
-      "resolved_in_version": "0.8.625",
-      "target_version": "0.8.625",
-      "environment": {
-        "python_version": "3.14"
-      },
-      "tags": [
-        "Backup",
-        "Datensicherheit",
-        "SQLite",
-        "gemessen"
-      ],
-      "attachments": [],
-      "updates": [
-        {
-          "timestamp": "2026-08-01T08:24:56.508742+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "In Build 625 behoben: management/backup/backup_executor.py misst die Kopie gegen die Quelle (_quellmerkmale / _kopie_beurteilen). Testfall BE12 belegt ZUERST, dass integrity_check auf einer leeren Datei 'ok' meldet - sonst waere die Pruefung dahinter nur eine Behauptung - und DANN, dass die Datei trotzdem nicht als Generation zaehlt. OFFEN BLEIBT eine Frage fuer mc: ob im Sicherungsordner der PROD-Umgebung bereits solche Altlasten liegen. Sie fallen ab Build 625 beim naechsten Lauf auf und werden beiseitegelegt; sie sind aber auch jetzt schon mit 'PRAGMA page_count' je Datei zu finden."
-        },
-        {
-          "timestamp": "2026-08-01T08:45:54.853672+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eingang_claude_Build625.json"
-        }
-      ]
     }
   ]
 }
