@@ -40,45 +40,61 @@ from management.ops.promotion_repo import PromotionError, PromotionRepo
 from management.ops.promotion_status import STORED_STATUSES
 from management.ops.storage_overview import StorageOverview
 from management.help import cli_epilog  # noqa: E402
+# Build 645: Vorrangregel an EINER Stelle (Ticket 15429c75).
+from core import werkzeug_konfig  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
 
-def _cfg(config_path: str):
-    from core.config_loader import ConfigLoader
-    return ConfigLoader(config_path=config_path)
+def _konfig(args):
+    """
+    Der Aufloeser fuer diesen Aufruf - EINMAL gebaut und weitergereicht.
+
+    BEFUND, DER BEI DER UMSTELLUNG AUFGEFALLEN IST (Build 645): Bis hierher
+    hat dieses Werkzeug die config.yaml ZWEIMAL geladen - einmal in
+    _resolve_db_path und noch einmal in _data_dirs, beide ueber '_cfg'. Wer
+    zwischen den beiden Lesevorgaengen speichert, bekommt einen Lauf, dessen
+    Fallpfad und dessen Datenverzeichnisse aus verschiedenen Staenden
+    derselben Datei stammen. Aufgefallen ist das nicht durch einen Vorfall,
+    sondern weil die Umstellung die Frage gestellt hat, wo die Datei gelesen
+    wird. Jetzt wird sie einmal gelesen.
+    """
+    if not hasattr(args, "_aufloeser"):
+        args._aufloeser = werkzeug_konfig.resolver(args)
+    return args._aufloeser
 
 
 def _resolve_db_path(args) -> str:
-    """DB-Pfad: --db > config.yaml > Abbruch (wie external_admin)."""
-    if args.db:
-        return args.db
-    try:
-        path = _cfg(args.config).get("paths.coordinator_db")
-        if path:
-            return str(path)
-    except Exception as exc:  # pragma: no cover
-        print("[promotion_admin] config.yaml nicht lesbar: %s" % exc,
-              file=sys.stderr)
-    raise SystemExit(
-        "[promotion_admin] Kein coordinator.db-Pfad: --db oder "
-        "paths.coordinator_db in config.yaml.")
+    """
+    coordinator.db-Pfad: Argument --db > paths.coordinator_db > Abbruch.
+
+    BUILD 645: Die Aufloesung steht in core/werkzeug_konfig.py. Verhalten
+    unveraendert; die Abbruchmeldung nennt jetzt beide Wege.
+    """
+    return werkzeug_konfig.db_pfad(
+        "promotion_admin", args, arg_attribut="db", arg_name="--db",
+        config_schluessel="paths.coordinator_db", name="coordinator_db",
+        r=_konfig(args))
 
 
 def _data_dirs(args):
-    """(forensic_dir, evidence_dir, assets_dir) aus config.yaml (mit Defaults)."""
-    fore = evi = ass = None
-    try:
-        cfg = _cfg(args.config)
-        fore = cfg.get("paths.forensic_db_dir")
-        evi = cfg.get("paths.evidence_db_dir")
-        ass = cfg.get("paths.assets_db_dir")
-    except Exception:  # pragma: no cover
-        pass
-    return (str(fore or "./data/forensic/"),
-            str(evi or "./data/evidence/"),
-            str(ass or "./data/assets/"))
+    """
+    (forensic_dir, evidence_dir, assets_dir) aus config.yaml, mit
+    Vorgabewerten.
 
+    HIER WIRD NICHT ABGEBROCHEN, und das ist der Unterschied zur Funktion
+    darueber: Diese drei Verzeichnisse haben Rueckfallwerte. Der Fallpfad hat
+    keinen - deshalb 'wert' hier und 'db_pfad' dort. Am Aufruf soll man
+    sehen, welcher der beiden Faelle vorliegt.
+    """
+    r = _konfig(args)
+    hole = lambda attr, schluessel, vorgabe: werkzeug_konfig.wert(
+        "promotion_admin", args, arg_attribut=attr, arg_name="(kein Argument)",
+        config_schluessel=schluessel, default=vorgabe, name=attr,
+        wandler=str, r=r)
+    return (hole("forensic_dir", "paths.forensic_db_dir", "./data/forensic/"),
+            hole("evidence_dir", "paths.evidence_db_dir", "./data/evidence/"),
+            hole("assets_dir", "paths.assets_db_dir", "./data/assets/"))
 
 def _con(path: str) -> sqlite3.Connection:
     con = sqlite3.connect(path)

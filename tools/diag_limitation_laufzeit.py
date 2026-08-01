@@ -90,6 +90,8 @@ if _WURZEL not in sys.path:
     sys.path.insert(0, _WURZEL)
 
 from management.help import cli_epilog  # noqa: E402
+# Build 645: Vorrangregel an EINER Stelle (Ticket 15429c75).
+from core import werkzeug_konfig  # noqa: E402
 
 # Das Werkzeug laeuft aus dem Projektverzeichnis (wie tools/maintenance.py).
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -107,13 +109,48 @@ def _ro(pfad: str) -> sqlite3.Connection:
 
 
 def _cfg(schluessel: str, vorgabe: str) -> str:
-    try:
-        from core.config_loader import ConfigLoader
-        wert = ConfigLoader().get(schluessel)
-        return str(wert) if wert else vorgabe
-    except Exception:
-        return vorgabe
+    """
+    Ein Pfad aus config.yaml - mit Vorgabewert, ohne Abbruch.
 
+    BUILD 645: Die Aufloesung steht in core/werkzeug_konfig.py. Zwei Dinge
+    aendern sich dabei NICHT: Es wird weiterhin nichts abgebrochen (bei einer
+    MESSUNG ist ein stiller Rueckfall vertretbar - sie veraendert nichts und
+    meldet ohnehin, welchen Bestand sie angesehen hat), und es gibt weiterhin
+    kein '--config': gelesen wird './config.yaml' im Arbeitsverzeichnis.
+
+    WAS SICH AENDERT: Bis Build 644 baute JEDER Aufruf dieser Funktion einen
+    EIGENEN ConfigLoader - bei drei Pfaden also drei Lesungen derselben Datei
+    je Lauf. Jetzt ist es eine.
+    """
+    return werkzeug_konfig.wert(
+        "diag_limitation_laufzeit", _KEINE_ARGUMENTE, arg_attribut="(nicht ueber ein Argument)",
+        arg_name="(kein Argument)", config_schluessel=schluessel,
+        default=vorgabe, name=schluessel.split(".")[-1], wandler=str,
+        r=_aufloeser())
+
+
+#: Der Aufloeser dieses Laufs. Er wird beim ersten Zugriff gebaut und danach
+#: wiederverwendet - eine Lesung der config.yaml je Lauf.
+_AUFLOESER = []
+
+
+class _KeineArgumente:
+    """
+    Platzhalter fuer das argparse-Ergebnis.
+
+    Diese Funktion wird an Stellen aufgerufen, an denen die Argumente nicht
+    zur Hand sind; sie liest ohnehin keines. Ein leeres Objekt ist ehrlicher
+    als ein durchgereichtes 'args', das nie benutzt wird.
+    """
+
+
+_KEINE_ARGUMENTE = _KeineArgumente()
+
+
+def _aufloeser():
+    if not _AUFLOESER:
+        _AUFLOESER.append(werkzeug_konfig.resolver(_KEINE_ARGUMENTE))
+    return _AUFLOESER[0]
 
 def _fmt(sek: float) -> str:
     """

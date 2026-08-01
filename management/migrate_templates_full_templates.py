@@ -41,6 +41,8 @@ import sqlite3
 import sys
 import time
 from management.help import cli_epilog  # noqa: E402
+# Build 646: Vorrangregel an EINER Stelle (Ticket 15429c75).
+from core import werkzeug_konfig  # noqa: E402
 
 TEMPLATE_KEY = "vermerk.nicht_identifiziert"
 
@@ -411,18 +413,34 @@ def apply_migration(con: sqlite3.Connection, dry_run: bool = False) -> dict:
 
 
 def _resolve_db_path(args) -> str:
-    if args.templates_db:
-        return args.templates_db
-    # Aus config.yaml lesen (ohne den ConfigLoader zu importieren, damit das
-    # Skript auch ausserhalb des Serverkontexts laeuft).
-    import yaml  # type: ignore
-    with open(args.config, "r", encoding="utf-8") as fh:
-        cfg = yaml.safe_load(fh) or {}
-    path = (cfg.get("paths", {}) or {}).get("templates_db")
-    if not path:
-        raise SystemExit("paths.templates_db fehlt in %s" % args.config)
-    return path
+    """
+    Die Vorlagen-Datenbank: Argument --templates-db > paths.templates_db > Abbruch.
 
+    BUILD 646 - UMGESTELLT, UND DIE BEGRUENDUNG DAFUER GEHOERT HIERHER.
+    Bis Build 645 las diese Funktion die config.yaml UNMITTELBAR mit
+    'yaml.safe_load', am ConfigLoader vorbei. Der Kommentar nannte als Grund,
+    das Skript ohne den Paket-Import lauffaehig zu halten.
+
+    DIESER GRUND TRAEGT NICHT MEHR: Seit dem Rollout des Epilogs (Build 624)
+    importiert diese Datei ohnehin 'management.help.cli_epilog' - sie laeuft
+    also schon lange nicht mehr ohne das Paket. Die Sonderbehandlung war
+    damit eine Abweichung ohne Nutzen, aber mit Preis: zwei Wege, dieselbe
+    Frage zu beantworten.
+
+    WAS SICH NICHT AENDERT - und das war die Sorge bei dieser Umstellung:
+    Der Abbruch bei fehlendem Eintrag BLEIBT. Die Coded Defaults des
+    ConfigLoaders greifen hier NICHT durch, weil die Aufloesung ueber
+    'stammt_aus_datei' geht und nicht ueber 'get': Es zaehlt nur, was in der
+    DATEI steht. Ein Werkzeug, das den Bestand veraendert, darf nicht
+    stillschweigend auf './data/...' ausweichen.
+
+    WAS BESSER WIRD: Eine fehlende config.yaml fuehrte bisher zu einem
+    FileNotFoundError mitsamt Rueckverfolgung; jetzt ist es ein Abbruch mit
+    Klartext, der beide Wege nennt.
+    """
+    return werkzeug_konfig.db_pfad(
+        "migrate_templates_full_templates", args, arg_attribut="templates_db", arg_name="--templates-db",
+        config_schluessel="paths.templates_db", name="templates_db")
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(

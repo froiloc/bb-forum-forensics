@@ -32,7 +32,40 @@ logger = logging.getLogger(__name__)
 
 
 def _prod_paths(config_path: str) -> List[str]:
-    """PROD-Datenpfade aus config.yaml (best effort; leer bei Ausfall)."""
+    """
+    PROD-Datenpfade aus config.yaml - die SPERRLISTE, gegen die das
+    Zielverzeichnis des Demo-Pakets geprueft wird (best effort).
+
+    =========================================================================
+    DIESE FUNKTION IST IN BUILD 646 BEWUSST *NICHT* AUF core/werkzeug_konfig
+    UMGESTELLT WORDEN. Wer sie spaeter "nachzieht", macht den Schutz
+    schwaecher - deshalb steht der Grund hier und nicht in einem Vermerk.
+    =========================================================================
+
+    core/werkzeug_konfig loest die Frage "WELCHEN Pfad benutze ich?" nach der
+    Vorrangregel auf. Hier steht eine ANDERE Frage: "WELCHE Pfade muss ich
+    MEIDEN?" Fuer sie gilt die Vorrangregel nicht, und zwar aus einem Grund,
+    der sich am Verhalten festmachen laesst:
+
+      * Die Vorrangregel zaehlt nur, was in der DATEI steht
+        (ConfigLoader.stammt_aus_datei). Ein Schluessel, den die Datei nicht
+        nennt, faellt dort auf den Vorgabewert des Werkzeugs - bei einer
+        Sperrliste hiesse das: EIN EINTRAG WENIGER AUF DER LISTE.
+      * 'cfg.get(k)' hier liest dagegen durch die Coded Defaults hindurch.
+        Fehlt 'paths.assets_db_dir' in der Datei, steht trotzdem
+        './data/assets/' auf der Sperrliste.
+
+    Bei jeder anderen Frage waere das Durchgreifen der Coded Defaults ein
+    Mangel (eine Herkunftsangabe 'aus config.yaml' waere dort falsch). Bei
+    einer Sperrliste ist es die sichere Seite: eine zu LANGE Sperrliste
+    verhindert hoechstens ein zulaessiges Zielverzeichnis, eine zu KURZE
+    laesst ein Demo-Paket in die Produktivdaten.
+
+    Dasselbe gilt fuer das Verhalten bei Ausfall: Ist die Datei nicht lesbar,
+    wird die Liste NICHT leer, sondern faellt auf zwei Standardpfade zurueck.
+    Der Schutz wird dabei schwaecher, aber er verschwindet nicht - und das
+    Werkzeug sagt es auf der Fehlerausgabe.
+    """
     keys = ("paths.coordinator_db", "paths.evidence_db_dir",
             "paths.forensic_db_dir", "paths.assets_db_dir",
             "paths.templates_db", "paths.default_db")

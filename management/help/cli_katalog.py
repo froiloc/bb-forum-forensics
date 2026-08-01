@@ -1647,16 +1647,16 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Die Datenbank, in der die Uebernahme belegt wird.",
                "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
                "Werkzeug mit Klartext ab.",
-               "management/ops/promotion_admin.py, Z. 53-65", "--db"),
+               "management/ops/promotion_admin.py; die Aufloesung selbst in core/werkzeug_konfig.py (Build 645)", "--db"),
             _k("paths.forensic_db_dir",
                "Verzeichnis der forensic_<uid>.db.", "./data/forensic/",
-               "management/ops/promotion_admin.py, _data_dirs() Z. 68-80"),
+               "management/ops/promotion_admin.py; die Aufloesung selbst in core/werkzeug_konfig.py (Build 645)"),
             _k("paths.evidence_db_dir",
                "Verzeichnis der evidence_<uid>.db.", "./data/evidence/",
-               "management/ops/promotion_admin.py, _data_dirs() Z. 68-80"),
+               "management/ops/promotion_admin.py; die Aufloesung selbst in core/werkzeug_konfig.py (Build 645)"),
             _k("paths.assets_db_dir",
                "Verzeichnis der assets_<uid>.db.", "./data/assets/",
-               "management/ops/promotion_admin.py, _data_dirs() Z. 68-80"),
+               "management/ops/promotion_admin.py; die Aufloesung selbst in core/werkzeug_konfig.py (Build 645)"),
         ),
         tiefe=CliTiefe(
             beispiele=(
@@ -1858,35 +1858,35 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Die Datenbank, in der der Lauf registriert und belegt wird - "
                "und zugleich eine der gesicherten Quellen.",
                "./data/coordinator.db",
-               "management/backup/backup_admin.py, _coordinator_db() Z. 63-70",
+               "management/backup/backup_admin.py; die Aufloesung selbst in core/werkzeug_konfig.py (Build 646)",
                "--coordinator-db"),
             _k("paths.forensic_db_dir",
                "Verzeichnis der forensic_<uid>.db - Quellen der Sicherung.",
                "./data/forensic/",
-               "management/backup/backup_admin.py, _paths_from_cfg() Z. 60"),
+               "management/backup/backup_admin.py; die Aufloesung selbst in core/werkzeug_konfig.py (Build 646)"),
             _k("paths.evidence_db_dir",
                "Verzeichnis der evidence_<uid>.db - Quellen der Sicherung.",
                "./data/evidence/",
-               "management/backup/backup_admin.py, _paths_from_cfg() Z. 60"),
+               "management/backup/backup_admin.py; die Aufloesung selbst in core/werkzeug_konfig.py (Build 646)"),
             _k("paths.assets_db_dir",
                "Verzeichnis der assets_<uid>.db - Quellen der Sicherung.",
                "./data/assets/",
-               "management/backup/backup_admin.py, _paths_from_cfg() Z. 60"),
+               "management/backup/backup_admin.py; die Aufloesung selbst in core/werkzeug_konfig.py (Build 646)"),
             _k("paths.default_db",
                "Die default.db - Quelle der Sicherung, sofern "
                "backup.include_shared_dbs gesetzt ist.",
                "./data/default.db",
-               "management/backup/backup_admin.py, _paths_from_cfg() Z. 60"),
+               "management/backup/backup_admin.py; die Aufloesung selbst in core/werkzeug_konfig.py (Build 646)"),
             _k("paths.templates_db",
                "Die templates.db - Quelle der Sicherung, sofern "
                "backup.include_shared_dbs gesetzt ist.",
                "./data/templates.db",
-               "management/backup/backup_admin.py, _paths_from_cfg() Z. 60"),
+               "management/backup/backup_admin.py; die Aufloesung selbst in core/werkzeug_konfig.py (Build 646)"),
             _k("paths.translations_db",
                "Die translations.db - Quelle der Sicherung, sofern "
                "backup.include_shared_dbs gesetzt ist.",
                "./data/translations.db",
-               "management/backup/backup_admin.py, _paths_from_cfg() Z. 60"),
+               "management/backup/backup_admin.py; die Aufloesung selbst in core/werkzeug_konfig.py (Build 646)"),
         ),
         tiefe=CliTiefe(
             beispiele=(
@@ -2008,23 +2008,23 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         # Rueckfallwert; das Werkzeug bricht nie ab, weil ein Pfad fehlt.
         konfiguration=(
             _k("paths.forensic_db_dir", "Verzeichnis der forensic_<uid>.db.",
-               "./data/forensic/", "management/ops/storage_admin.py, Z. 66",
+               "./data/forensic/", "management/ops/storage_admin.py; die Aufloesung selbst in core/werkzeug_konfig.py (Build 645)",
                "--forensic-dir"),
             _k("paths.evidence_db_dir", "Verzeichnis der evidence_<uid>.db.",
-               "./data/evidence/", "management/ops/storage_admin.py, Z. 67",
+               "./data/evidence/", "management/ops/storage_admin.py; die Aufloesung selbst in core/werkzeug_konfig.py (Build 645)",
                "--evidence-dir"),
             _k("paths.assets_db_dir", "Verzeichnis der assets_<uid>.db.",
-               "./data/assets/", "management/ops/storage_admin.py, Z. 68",
+               "./data/assets/", "management/ops/storage_admin.py; die Aufloesung selbst in core/werkzeug_konfig.py (Build 645)",
                "--assets-dir"),
             _k("paths.coordinator_db", "Wird in der Groessenaufstellung "
                "mitgezaehlt.", "./data/coordinator.db",
-               "management/ops/storage_admin.py, Z. 70"),
+               "management/ops/storage_admin.py; die Aufloesung selbst in core/werkzeug_konfig.py (Build 645)"),
             _k("paths.default_db", "Wird in der Groessenaufstellung "
                "mitgezaehlt.", "./data/default.db",
-               "management/ops/storage_admin.py, Z. 71"),
+               "management/ops/storage_admin.py; die Aufloesung selbst in core/werkzeug_konfig.py (Build 645)"),
             _k("paths.templates_db", "Wird in der Groessenaufstellung "
                "mitgezaehlt.", "./data/templates.db",
-               "management/ops/storage_admin.py, Z. 72"),
+               "management/ops/storage_admin.py; die Aufloesung selbst in core/werkzeug_konfig.py (Build 645)"),
         ),
         tiefe=CliTiefe(
             beispiele=(
@@ -2137,7 +2137,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "gebaut wird.",
                "./data/evidence/ - und der Rueckfall wird protokolliert, nicht "
                "still genommen",
-               "management/search/index_cli.py, Z. 68-88", "--evidence-dir"),
+               "management/search/index_cli.py; die Aufloesung selbst in core/werkzeug_konfig.py (Build 646)", "--evidence-dir"),
         ),
         tiefe=CliTiefe(
             beispiele=(
@@ -2793,7 +2793,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Die Vorlagen-Datenbank, deren Migrationsstand angezeigt wird.",
                "./data/templates.db - dieses Werkzeug hat als einziges der "
                "Vorlagen-Werkzeuge einen Rueckfallwert und bricht nicht ab.",
-               "management/templates_db_status.py, _db_aus_config() Z. 135-162",
+               "management/templates_db_status.py; die Aufloesung selbst in core/werkzeug_konfig.py (Build 646)",
                "--templates-db"),
         ),
         tiefe=CliTiefe(
@@ -2883,7 +2883,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Die Vorlagen-Datenbank, auf die die Migration angewandt wird.",
                "KEIN Vorgabewert. Der Eintrag muss in der DATEI stehen; die "
                "Coded Defaults des ConfigLoaders greifen hier nicht.",
-               "management/migrate_templates_full_templates.py, Z. 414-425",
+               "management/migrate_templates_full_templates.py; die Aufloesung selbst in core/werkzeug_konfig.py (Build 646)",
                "--templates-db"),
         ),
         tiefe=CliTiefe(
@@ -3049,7 +3049,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Bausteinarten wiederhergestellt werden.",
                "KEIN Vorgabewert. Der Eintrag muss in der DATEI stehen; sonst "
                "bricht das Werkzeug mit 'paths.evidence_db_dir fehlt' ab.",
-               "management/repair_block_types.py, _resolve_evidence_dir() Z. 183-192",
+               "management/repair_block_types.py; die Aufloesung selbst in core/werkzeug_konfig.py (Build 646)",
                "--evidence-dir"),
         ),
         tiefe=CliTiefe(
@@ -3101,7 +3101,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "wird.",
                "KEIN Vorgabewert - ohne Eintrag und ohne '--target' bricht das "
                "Werkzeug mit Klartext ab.",
-               "management/consolidate_default_db.py, Z. 56-70", "--target"),
+               "management/consolidate_default_db.py; die Aufloesung selbst in core/werkzeug_konfig.py (Build 646)", "--target"),
         ),
         tiefe=CliTiefe(
             exit_codes=((0, "erledigt, auch mit aufgeloesten Konflikten"),
@@ -3353,7 +3353,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         betrieb="Im laufenden Betrieb gefahrlos. Mit --url muss der Dienst "
                 "laufen und die aufrufende Person das Leserecht haben.",
         hinweis="Diagnose, nicht Teil des Produktivsystems.",
-        # Build 640 (Welle 6): geprueft an tools/diag_limitation_laufzeit.py, Z. 109-115/588-596.
+        # Build 640 (Welle 6): geprueft an tools/diag_limitation_laufzeit.py; die Aufloesung selbst in core/werkzeug_konfig.py (Build 645).
         # Alle drei Pfade sind ausfallsicher: ist die config.yaml nicht
         # lesbar, gilt still der Vorgabewert ('except Exception: return
         # vorgabe'). Bei einer MESSUNG ist das vertretbar - sie veraendert
@@ -3361,13 +3361,13 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         konfiguration=(
             _k("paths.coordinator_db",
                "Die Datenbank, aus der die Faelle fuer die Messung stammen.",
-               "./data/coordinator.db", "tools/diag_limitation_laufzeit.py, Z. 109-115/588-596", "--coordinator-db"),
+               "./data/coordinator.db", "tools/diag_limitation_laufzeit.py; die Aufloesung selbst in core/werkzeug_konfig.py (Build 645)", "--coordinator-db"),
             _k("paths.forensic_db_dir",
                "Verzeichnis der forensic_<uid>.db.", "./data/forensic/",
-               "tools/diag_limitation_laufzeit.py, Z. 109-115/588-596", "--forensic-dir"),
+               "tools/diag_limitation_laufzeit.py; die Aufloesung selbst in core/werkzeug_konfig.py (Build 645)", "--forensic-dir"),
             _k("paths.evidence_db_dir",
                "Verzeichnis der evidence_<uid>.db.", "./data/evidence/",
-               "tools/diag_limitation_laufzeit.py, Z. 109-115/588-596", "--evidence-dir"),
+               "tools/diag_limitation_laufzeit.py; die Aufloesung selbst in core/werkzeug_konfig.py (Build 645)", "--evidence-dir"),
         ),
         tiefe=CliTiefe(
             beispiele=(
@@ -3485,7 +3485,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "(alle lesend, mode=ro)",),
         betrieb="Im laufenden Betrieb gefahrlos.",
         hinweis="Diagnose, nicht Teil des Produktivsystems.",
-        # Build 640 (Welle 6): geprueft an tools/diag_matrix_laufzeit.py, Z. 83-90/298-306.
+        # Build 640 (Welle 6): geprueft an tools/diag_matrix_laufzeit.py; die Aufloesung selbst in core/werkzeug_konfig.py (Build 645).
         # Alle drei Pfade sind ausfallsicher: ist die config.yaml nicht
         # lesbar, gilt still der Vorgabewert ('except Exception: return
         # vorgabe'). Bei einer MESSUNG ist das vertretbar - sie veraendert
@@ -3493,13 +3493,13 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         konfiguration=(
             _k("paths.coordinator_db",
                "Die Datenbank, aus der die Faelle fuer die Messung stammen.",
-               "./data/coordinator.db", "tools/diag_matrix_laufzeit.py, Z. 83-90/298-306", "--coordinator-db"),
+               "./data/coordinator.db", "tools/diag_matrix_laufzeit.py; die Aufloesung selbst in core/werkzeug_konfig.py (Build 645)", "--coordinator-db"),
             _k("paths.forensic_db_dir",
                "Verzeichnis der forensic_<uid>.db.", "./data/forensic/",
-               "tools/diag_matrix_laufzeit.py, Z. 83-90/298-306", "--forensic-dir"),
+               "tools/diag_matrix_laufzeit.py; die Aufloesung selbst in core/werkzeug_konfig.py (Build 645)", "--forensic-dir"),
             _k("paths.evidence_db_dir",
                "Verzeichnis der evidence_<uid>.db.", "./data/evidence/",
-               "tools/diag_matrix_laufzeit.py, Z. 83-90/298-306", "--evidence-dir"),
+               "tools/diag_matrix_laufzeit.py; die Aufloesung selbst in core/werkzeug_konfig.py (Build 645)", "--evidence-dir"),
         ),
         tiefe=CliTiefe(
             beispiele=(

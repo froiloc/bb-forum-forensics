@@ -61,6 +61,8 @@ from db.search_index_db import SearchIndexDb, SearchIndexFehler  # noqa: E402
 from management.search.index_builder import SearchIndexBuilder  # noqa: E402
 from management.search.index_status import SearchIndexStatus  # noqa: E402
 from management.help import cli_epilog  # noqa: E402
+# Build 646: Vorrangregel an EINER Stelle (Ticket 15429c75).
+from core import werkzeug_konfig  # noqa: E402
 
 logger = logging.getLogger("management.search.index_cli")
 
@@ -71,20 +73,39 @@ STANDARD_INDEX_PFAD = "./data/search_index.db"
 
 def _evidence_dir_aus_config() -> str:
     """
-    paths.evidence_db_dir aus config.yaml (Muster
-    management/server/management_app.py:649-660).
+    paths.evidence_db_dir aus config.yaml.
 
-    Faellt die Konfiguration aus, wird der Standard benutzt UND der Fehler
-    protokolliert — kein stilles Verschlucken (Grundregel 1).
+    BUILD 646: Die Aufloesung steht in core/werkzeug_konfig.py. Unveraendert
+    bleiben beide Eigenheiten dieses Werkzeugs: es hat KEIN '--config'
+    (gelesen wird './config.yaml' im Arbeitsverzeichnis), und ein Ausfall der
+    Konfiguration fuehrt NICHT zum Abbruch, sondern zum Standard - der
+    Rueckfall wird dabei protokolliert und nicht verschluckt (Grundregel 1).
+
+    DER ZWEITE PFAD DIESES WERKZEUGS BLEIBT BEWUSST AUSSEN VOR: Der Ort des
+    Suchindex kommt aus dem fest verdrahteten Vorgabewert von '--index-db'
+    (STANDARD_INDEX_PFAD), NICHT aus 'paths.search_index_db' - waehrend der
+    Verwaltungsserver fuer denselben Index eben diesen Eintrag liest. Wer den
+    Index per config.yaml verlegt, verlegt ihn also nur fuer den Server. Das
+    ist ein bekannter Befund (Erhebung zu 60e4236e, Build 641) und keine
+    Sache, die im Vorbeigehen einer Umstellung zu entscheiden waere: sie
+    aendert, wohin ein bestehender Index geschrieben wird.
     """
-    try:
-        from core.config_loader import ConfigLoader
-        return str(ConfigLoader().get("paths.evidence_db_dir"))
-    except Exception as exc:  # pragma: no cover — Konfig-Ausfall
-        logger.warning("evidence_db_dir nicht aus config.yaml lesbar (%s) — "
-                       "Standard './data/evidence/'.", exc)
-        return "./data/evidence/"
+    r = werkzeug_konfig.resolver(_KEINE_ARGUMENTE)
+    if r.config_meldung:
+        logger.warning("evidence_db_dir nicht aus config.yaml lesbar (%s) - "
+                       "Standard './data/evidence/'.", r.config_meldung)
+    return werkzeug_konfig.wert(
+        "index_cli", _KEINE_ARGUMENTE,
+        arg_attribut="(nicht ueber ein Argument)", arg_name="--evidence-dir",
+        config_schluessel="paths.evidence_db_dir",
+        default="./data/evidence/", name="evidence_db_dir", wandler=str, r=r)
 
+
+class _KeineArgumente:
+    """Platzhalter: dieses Werkzeug hat kein '--config'."""
+
+
+_KEINE_ARGUMENTE = _KeineArgumente()
 
 def _zeit(ts: Optional[object]) -> str:
     """Unix-Sekunden als lesbare Ortszeit; None -> '—'."""

@@ -49,26 +49,23 @@ from maintenance.wartungsvorbehalt import (            # NEU Build 612
     datenwurzel, wartungsvorbehalt,
 )
 from management.help import cli_epilog  # noqa: E402
+# Build 646: Vorrangregel an EINER Stelle (Ticket 15429c75).
+from core import werkzeug_konfig  # noqa: E402
 
 logger = get_logger(__name__)
 
 
 def _resolve_target(args) -> str:
-    if args.target:
-        return args.target
-    try:
-        from core.config_loader import ConfigLoader
-        cfg = ConfigLoader(config_path=args.config)
-        path = cfg.get("paths.default_db")
-        if path:
-            return str(path)
-    except Exception as exc:  # pragma: no cover — Konfig-Randfall
-        print(f"[consolidate] config.yaml nicht lesbar: {exc}", file=sys.stderr)
-    raise SystemExit(
-        "[consolidate] Kein Ziel: --target angeben oder paths.default_db "
-        "in config.yaml setzen."
-    )
+    """
+    Ziel-default.db: Argument --target > paths.default_db > Abbruch.
 
+    BUILD 646: Aufloesung in core/werkzeug_konfig.py, Verhalten unveraendert.
+    Kein Vorgabewert - dieses Werkzeug FUEHRT ZUSAMMEN, und ein erratenes
+    Ziel waere hier besonders teuer.
+    """
+    return werkzeug_konfig.db_pfad(
+        "consolidate", args, arg_attribut="target", arg_name="--target",
+        config_schluessel="paths.default_db", name="default_db")
 
 def _collect_sources(args) -> list:
     sources: list = list(args.source or [])

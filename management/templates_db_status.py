@@ -50,6 +50,8 @@ if _WURZEL not in sys.path:
     sys.path.insert(0, _WURZEL)
 
 from management.help import cli_epilog  # noqa: E402
+# Build 646: Vorrangregel an EINER Stelle (Ticket 15429c75).
+from core import werkzeug_konfig  # noqa: E402
 
 
 # Je Migration: (Bezeichnung, Build, Spur, Befehl)
@@ -134,19 +136,46 @@ def bericht(con: sqlite3.Connection, db_pfad: str) -> Tuple[int, List[str]]:
 
 
 def _db_aus_config(pfad: str) -> Optional[str]:
-    """Liest paths.templates_db aus der config.yaml — ohne YAML-Abhaengigkeit."""
-    try:
-        with open(pfad, "r", encoding="utf-8") as fh:
-            for zeile in fh:
-                if "templates_db:" in zeile and not zeile.strip().startswith("#"):
-                    teil = zeile.split(":", 1)[1].strip()
-                    teil = teil.split("#", 1)[0].strip().strip('"').strip("'")
-                    if teil:
-                        return teil
-    except OSError:
-        return None
-    return None
+    """
+    paths.templates_db aus der config.yaml.
 
+    BUILD 646 - DIE TEXTSUCHE IST WEG. Bis Build 645 hat diese Funktion die
+    Datei ZEILENWEISE nach der Zeichenfolge 'templates_db:' durchsucht und
+    genommen, was dahinter stand; der Kommentar nannte als Grund, ohne
+    YAML-Abhaengigkeit auszukommen.
+
+    ZWEI GRUENDE, DAS ZU BEENDEN:
+      1) Der Grund traegt nicht. 'pyyaml' steht als LAUFZEIT-Abhaengigkeit in
+         requirements.txt, nicht unter den Test-Abhaengigkeiten - ohne sie
+         laeuft die Anlage ohnehin nicht. Und diese Datei importiert seit dem
+         Rollout des Epilogs (Build 624) 'management.help.cli_epilog'.
+      2) Die Suche kannte KEINE ABSCHNITTE. Sie traf die erste nicht
+         auskommentierte Zeile, die 'templates_db:' enthaelt - gleich unter
+         welchem Abschnitt und mit welcher Einrueckung sie stand. Fuer eine
+         Statusanzeige war das tragbar; richtig war es nie.
+
+    WAS UNVERAENDERT BLEIBT: Es wird nicht abgebrochen. Dieses Werkzeug hat
+    als einziges der Vorlagen-Werkzeuge einen Vorgabewert
+    ('./data/templates.db'), und dabei bleibt es - es zeigt einen Stand an
+    und veraendert nichts.
+    """
+    return werkzeug_konfig.wert(
+        "templates_db_status", _Args(pfad),
+        arg_attribut="(nicht ueber ein Argument)", arg_name="--templates-db",
+        config_schluessel="paths.templates_db", default=None,
+        name="templates_db", wandler=str)
+
+
+class _Args:
+    """
+    Traegt den config.yaml-Pfad in der Form, die werkzeug_konfig erwartet.
+
+    Diese Funktion bekommt historisch nur den Pfad und nicht das
+    argparse-Ergebnis; die Aufrufstelle bleibt deshalb unangetastet.
+    """
+
+    def __init__(self, config: str) -> None:
+        self.config = config
 
 def main() -> int:
     p = argparse.ArgumentParser(

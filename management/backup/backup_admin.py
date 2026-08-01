@@ -46,12 +46,23 @@ from management.backup.backups_repo import BackupsRepo
 from management.gateway.coordinator_writer import CoordinatorWriter
 from db.journal_policy import apply_journal_mode  # NEU Build 408
 from management.help import cli_epilog
+# Build 646: Vorrangregel an EINER Stelle (Ticket 15429c75).
+from core import werkzeug_konfig  # noqa: E402
 
 _PATH_KEYS = ("coordinator_db", "forensic_db_dir", "evidence_db_dir",
               "assets_db_dir", "default_db", "templates_db", "translations_db")
 
 
 def _load_cfg(config_path: str):
+    """
+    Die Konfiguration dieses Laufs.
+
+    UNVERAENDERT: Ein Fehlschlag ist hier ein ABBRUCH und kein Rueckfall -
+    die ConfigLoader-Ausnahme wird bewusst nicht gefangen. Ohne lesbare
+    Konfiguration weiss ein Sicherungswerkzeug weder, WAS es sichern soll,
+    noch WOHIN; ein Lauf auf Vorgabewerten waere hier die gefaehrlichste
+    aller Antworten.
+    """
     from core.config_loader import ConfigLoader
     return ConfigLoader(config_path=config_path)
 
@@ -61,13 +72,26 @@ def _paths_from_cfg(cfg) -> Dict[str, str]:
 
 
 def _coordinator_db(args, cfg) -> str:
-    if getattr(args, "coordinator_db", None):
-        return args.coordinator_db
-    path = cfg.get("paths.coordinator_db")
-    if path:
-        return str(path)
-    raise SystemExit("[backup_admin] Kein coordinator.db-Pfad "
-                     "(--coordinator-db oder paths.coordinator_db).")
+    """
+    coordinator.db-Pfad: Argument --coordinator-db > paths.coordinator_db
+    > Abbruch.
+
+    BUILD 646: Aufloesung in core/werkzeug_konfig.py. Der Aufloeser wird UM
+    die bereits geladene Konfiguration gebaut - dieses Werkzeug liest die
+    Datei einmal und braucht sie an mehreren Stellen (Quellpfade,
+    Sicherungsziel, Aufbewahrung). Zwei Lesungen koennten im Grenzfall
+    verschiedene Staende erwischen; bei einer Sicherung waere das ein Satz
+    aus zwei Konfigurationen.
+
+    KEIN VORGABEWERT: Die coordinator.db ist hier zugleich Ziel der
+    Registrierung UND eine der gesicherten Quellen. Ein erratener Pfad
+    hiesse, den Lauf gegen einen anderen Bestand zu belegen als den
+    gesicherten.
+    """
+    return werkzeug_konfig.db_pfad(
+        "backup_admin", args, arg_attribut="coordinator_db",
+        arg_name="--coordinator-db", config_schluessel="paths.coordinator_db",
+        name="coordinator_db", r=werkzeug_konfig.resolver_aus_loader(cfg))
 
 
 def _open_con(db_path: str) -> sqlite3.Connection:

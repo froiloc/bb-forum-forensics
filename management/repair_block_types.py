@@ -49,6 +49,8 @@ import sqlite3
 import sys
 import time
 from management.help import cli_epilog  # noqa: E402
+# Build 646: Vorrangregel an EINER Stelle (Ticket 15429c75).
+from core import werkzeug_konfig  # noqa: E402
 
 
 # =============================================================================
@@ -181,16 +183,34 @@ def repair_db(db_path: str, funde: list[dict]) -> int:
 # =============================================================================
 
 def _resolve_evidence_dir(args) -> str:
-    if args.evidence_dir:
-        return args.evidence_dir
-    import yaml  # type: ignore
-    with open(args.config, "r", encoding="utf-8") as fh:
-        cfg = yaml.safe_load(fh) or {}
-    path = (cfg.get("paths", {}) or {}).get("evidence_db_dir")
-    if not path:
-        raise SystemExit("paths.evidence_db_dir fehlt in %s" % args.config)
-    return path
+    """
+    Verzeichnis der evidence_<uid>.db: Argument --evidence-dir > paths.evidence_db_dir > Abbruch.
 
+    BUILD 646 - UMGESTELLT, UND DIE BEGRUENDUNG DAFUER GEHOERT HIERHER.
+    Bis Build 645 las diese Funktion die config.yaml UNMITTELBAR mit
+    'yaml.safe_load', am ConfigLoader vorbei. Der Kommentar nannte als Grund,
+    das Skript ohne den Paket-Import lauffaehig zu halten.
+
+    DIESER GRUND TRAEGT NICHT MEHR: Seit dem Rollout des Epilogs (Build 624)
+    importiert diese Datei ohnehin 'management.help.cli_epilog' - sie laeuft
+    also schon lange nicht mehr ohne das Paket. Die Sonderbehandlung war
+    damit eine Abweichung ohne Nutzen, aber mit Preis: zwei Wege, dieselbe
+    Frage zu beantworten.
+
+    WAS SICH NICHT AENDERT - und das war die Sorge bei dieser Umstellung:
+    Der Abbruch bei fehlendem Eintrag BLEIBT. Die Coded Defaults des
+    ConfigLoaders greifen hier NICHT durch, weil die Aufloesung ueber
+    'stammt_aus_datei' geht und nicht ueber 'get': Es zaehlt nur, was in der
+    DATEI steht. Ein Werkzeug, das den Bestand veraendert, darf nicht
+    stillschweigend auf './data/...' ausweichen.
+
+    WAS BESSER WIRD: Eine fehlende config.yaml fuehrte bisher zu einem
+    FileNotFoundError mitsamt Rueckverfolgung; jetzt ist es ein Abbruch mit
+    Klartext, der beide Wege nennt.
+    """
+    return werkzeug_konfig.db_pfad(
+        "repair_block_types", args, arg_attribut="evidence_dir", arg_name="--evidence-dir",
+        config_schluessel="paths.evidence_db_dir", name="evidence_dir")
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(

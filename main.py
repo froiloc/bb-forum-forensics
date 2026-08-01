@@ -343,6 +343,34 @@ def main() -> None:
     # ------------------------------------------------------------------
     # Schritt 2: ConfigLoader
     # ------------------------------------------------------------------
+    # =================================================================
+    # BUILD 646 - DIESER SERVER IST *NICHT* AUF core/werkzeug_konfig
+    # UMGESTELLT WORDEN, UND DAS IST EINE ENTSCHEIDUNG, KEIN REST.
+    #
+    # Zwischen Build 643 und 646 sind 33 Werkzeuge auf das gemeinsame
+    # Bauteil umgestellt worden, weil sie die Vorrangregel jeweils von Hand
+    # nachgebaut hatten. main.py hat sie NIE nachgebaut: Es uebergibt die
+    # Kommandozeilen-Werte als 'cli_overrides' AN den ConfigLoader, und der
+    # loest die Kette selbst auf (CLI > config.yaml > Coded Default). Das
+    # ist der urspruengliche, im Kopf von core/config_loader.py
+    # niedergeschriebene Weg - die 33 Abschriften waren die Abweichung
+    # davon, nicht dieser hier.
+    #
+    # UND EIN UMBAU WAERE HIER SCHAEDLICH, nicht nur unnoetig: Die Overrides
+    # werden IN das Konfigurationsobjekt geschrieben. Alles, was danach
+    # kommt - core/mode_resolver.py, core/logger.py, db/connection_manager.py,
+    # die Ablaufsteuerung - liest 'config.get(...)' und sieht damit die
+    # Kommandozeilen-Werte MIT. Wuerde main.py seine Pfade daneben und fuer
+    # sich aufloesen, bekaeme der Server einen Pfad und jedes nachgelagerte
+    # Bauteil einen anderen. Das waere genau der Fehler, dessentwegen
+    # Ticket 15429c75 aufgemacht wurde - nur an einer schlimmeren Stelle.
+    #
+    # OFFEN BLEIBT EINE SACHE, und sie ist zu nennen: Der Server kann nicht
+    # sagen, WOHER ein Wert stammt. Die umgestellten Werkzeuge koennen das
+    # seit Build 643 (AIW_KONFIG_HERKUNFT=1). Hier fehlt es. Der Weg dorthin
+    # fuehrt ueber den ConfigLoader (er kennt seit Build 638 die Herkunft
+    # ueber 'stammt_aus_datei') und nicht ueber einen zweiten Aufloeser.
+    # =================================================================
     from core.config_loader import ConfigLoader, ConfigLoaderError
 
     config_path = args.config or str(_PROJECT_ROOT / "config.yaml")

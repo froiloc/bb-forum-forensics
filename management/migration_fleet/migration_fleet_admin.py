@@ -54,45 +54,53 @@ from maintenance.wartungsvorbehalt import (        # NEU Build 612
     datenwurzel, wartungsvorbehalt,
 )
 from management.help import cli_epilog  # noqa: E402
+# Build 646: Vorrangregel an EINER Stelle (Ticket 15429c75).
+from core import werkzeug_konfig  # noqa: E402
+
+
+def _konfig(args):
+    """Der Aufloeser dieses Aufrufs - EINMAL gebaut, fuer beide Pfade."""
+    if not hasattr(args, "_aufloeser"):
+        args._aufloeser = werkzeug_konfig.resolver(args)
+    return args._aufloeser
 
 
 def _resolve_migration_db_path(args) -> str:
-    """migration.db-Pfad aus --migration-db oder config.yaml (paths.migration_db)."""
-    if args.migration_db:
-        return args.migration_db
-    try:
-        from core.config_loader import ConfigLoader
-        cfg = ConfigLoader(config_path=args.config)
-        path = cfg.get("paths.migration_db")
-        if path:
-            return str(path)
-    except Exception as exc:  # pragma: no cover
-        print("[migration_fleet] config.yaml nicht lesbar: %s" % exc,
-              file=sys.stderr)
-    raise SystemExit(
-        "[migration_fleet] Kein migration.db-Pfad: --migration-db angeben oder "
-        "paths.migration_db in config.yaml setzen."
-    )
+    """
+    migration.db-Pfad: Argument --migration-db > paths.migration_db > Abbruch.
+
+    BUILD 646: Aufloesung in core/werkzeug_konfig.py, Verhalten unveraendert.
+    KEIN Vorgabewert, und das ist hier besonders wichtig: Eine Migration soll
+    nicht gegen eine erfundene Steuerdatei laufen.
+    """
+    return werkzeug_konfig.db_pfad(
+        "migration_fleet", args, arg_attribut="migration_db",
+        arg_name="--migration-db", config_schluessel="paths.migration_db",
+        name="migration_db", r=_konfig(args))
 
 
 def _resolve_backup_dir(args):
     """
-    Backup-Zielverzeichnis aus --backup-dir oder config.yaml (paths.backup_dir).
-    Rueckgabe None, wenn nicht gesetzt (die Ausfuehrung wird dann vom Companion
-    ueber das Tor KEIN_BACKUP_DIR verweigert).
-    """
-    if getattr(args, "backup_dir", None):
-        return args.backup_dir
-    try:
-        from core.config_loader import ConfigLoader
-        cfg = ConfigLoader(config_path=args.config)
-        path = cfg.get("paths.backup_dir")
-        if path:
-            return str(path)
-    except Exception:  # pragma: no cover
-        pass
-    return None
+    Sicherungsziel aus --backup-dir oder paths.backup_dir.
 
+    DIESER FALL PASST IN KEINE DER BEIDEN FUNKTIONEN von werkzeug_konfig, und
+    deshalb steht er hier von Hand: Er bricht NICHT ab (wie 'db_pfad') und er
+    hat auch KEINEN Vorgabewert (wie 'wert'). Er liefert None - und die
+    Verweigerung spricht dann der Companion aus, ueber das Tor
+    'KEIN_BACKUP_DIR'. Diese Arbeitsteilung ist gewollt: Ob eine Migration
+    ohne Sicherung laufen darf, entscheidet nicht das Werkzeug, das die
+    Argumente liest.
+
+    Aufgeloest wird trotzdem ueber den GEMEINSAMEN Aufloeser - damit die
+    config.yaml einmal gelesen wird und die Herkunft im selben Protokoll
+    steht. 'None' als Vorgabewert heisst hier: nicht gesetzt, und das ist
+    eine gueltige Antwort.
+    """
+    wert = werkzeug_konfig.wert(
+        "migration_fleet", args, arg_attribut="backup_dir",
+        arg_name="--backup-dir", config_schluessel="paths.backup_dir",
+        default=None, name="backup_dir", r=_konfig(args))
+    return str(wert) if wert else None
 
 def _parse_target(spec: str) -> TargetDb:
     """

@@ -20,17 +20,29 @@ import time
 
 from management.ops.storage_overview import StorageOverview, storage_to_dict
 from management.help import cli_epilog
+# Build 645: Vorrangregel an EINER Stelle (Ticket 15429c75).
+from core import werkzeug_konfig  # noqa: E402
 
 
-def _cfg_get(cfg, key, default):
-    if cfg is None:
-        return default
-    try:
-        node = cfg.get("paths", {}) or {}
-        return str(node.get(key, default))
-    except Exception:  # pragma: no cover
-        return default
+def _pfad(args, r, key, default):
+    """
+    Ein Verzeichnis bzw. eine Datei aus 'paths.<key>' - mit Vorgabewert.
 
+    BUILD 645: Frueher '_cfg_get(cfg, key, default)'. Es las
+    cfg.get("paths", {}).get(key, default) und griff damit auch auf die Coded
+    Defaults des ConfigLoaders durch. GEPRUEFT: Fuer alle sechs hier
+    verwendeten Schluessel sind die Coded Defaults ZEICHENGLEICH mit den
+    Vorgabewerten, die dieses Werkzeug selbst mitbringt - das Ergebnis ist
+    also dasselbe. Die Herkunftsangabe ist es NICHT: 'aus config.yaml' waere
+    dort falsch gewesen, wo nur ein fest verdrahteter Wert gegriffen hat.
+
+    DIESES WERKZEUG BRICHT NIE AB. Es soll sagen, was der Bestand belegt;
+    ein fehlender Eintrag ist dafuer kein Grund aufzuhoeren.
+    """
+    return werkzeug_konfig.wert(
+        "storage_admin", args, arg_attribut="(nicht ueber ein Argument)",
+        arg_name="(kein Argument)", config_schluessel="paths." + key,
+        default=default, name=key, wandler=str, r=r)
 
 def _human(n):
     if n is None:
@@ -57,19 +69,16 @@ def main(argv=None) -> int:
     p.add_argument("--json", action="store_true")
     args = p.parse_args(argv)
 
-    try:
-        from core.config_loader import ConfigLoader
-        cfg = ConfigLoader(config_path=args.config)
-    except Exception:
-        cfg = None
+    # Build 645: EIN Aufloeser fuer alle sechs Pfade - eine Lesung der Datei.
+    r = werkzeug_konfig.resolver(args)
 
-    forensic = args.forensic_dir or _cfg_get(cfg, "forensic_db_dir", "./data/forensic/")
-    evidence = args.evidence_dir or _cfg_get(cfg, "evidence_db_dir", "./data/evidence/")
-    assets = args.assets_dir or _cfg_get(cfg, "assets_db_dir", "./data/assets/")
+    forensic = args.forensic_dir or _pfad(args, r, "forensic_db_dir", "./data/forensic/")
+    evidence = args.evidence_dir or _pfad(args, r, "evidence_db_dir", "./data/evidence/")
+    assets = args.assets_dir or _pfad(args, r, "assets_db_dir", "./data/assets/")
     extra = [
-        _cfg_get(cfg, "coordinator_db", "./data/coordinator.db"),
-        _cfg_get(cfg, "default_db", "./data/default.db"),
-        _cfg_get(cfg, "templates_db", "./data/templates.db"),
+        _pfad(args, r, "coordinator_db", "./data/coordinator.db"),
+        _pfad(args, r, "default_db", "./data/default.db"),
+        _pfad(args, r, "templates_db", "./data/templates.db"),
     ]
 
     ov = StorageOverview(forensic_dir=forensic, evidence_dir=evidence,
