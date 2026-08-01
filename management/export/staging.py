@@ -183,10 +183,41 @@ class StagingArea:
     def verify(self) -> dict:
         """
         Rechnet jede im Manifest gefuehrte Datei nach und meldet Abweichungen.
-        Liefert {'ok': bool, 'mismatched': [...], 'missing': [...], 'extra': [...]}.
+
+        Liefert {'ok': bool, 'kein_manifest': bool, 'mismatched': [...],
+                 'missing': [...], 'extra': [...]}.
         'extra' = Dateien im Verzeichnis, die NICHT im Manifest stehen (ausser
         den reservierten) — auch das ist ein Befund (GR1: nichts uebersehen).
+
+        =====================================================================
+        BUILD 647 (Vorgang d30b3d95): 'kein_manifest' IST NEU, UND ES IST DER
+        KERN DES VORGANGS.
+        =====================================================================
+        Bis Build 646 lief hier 'self.load()', das bei FEHLENDEM Manifest ein
+        frisches Grundgeruest mit LEERER Artefaktliste zurueckgibt. Danach
+        waren 'mismatched', 'missing' und 'extra' saemtlich leer, und 'ok'
+        wurde True. GEMESSEN: 'verify --dir /tmp/leer' auf ein frisch
+        angelegtes, leeres Verzeichnis meldete "OK — alle Artefakte stimmen
+        mit dem Manifest ueberein" und den Rueckgabewert 0.
+
+        AUS "ES GIBT NICHTS ZU PRUEFEN" WURDE "ALLES GEPRUEFT UND IN ORDNUNG".
+        Die Ausschleusung ist der Weg, auf dem Material das Haus verlaesst;
+        wer 'verify' auf ein Verzeichnis anwendet, in dem das Paket in
+        Wahrheit nie erzeugt wurde, bekam eine Bestaetigung fuer etwas, das
+        nicht existiert.
+
+        DREI LAGEN, NICHT ZWEI - und die dritte ist von der ersten sauber zu
+        trennen:
+          * Manifest da, alles stimmt          -> ok=True,  kein_manifest=False
+          * Manifest da, Abweichung            -> ok=False, kein_manifest=False
+          * KEIN Manifest                      -> ok=False, kein_manifest=True
+
+        EIN LEERES PAKET MIT MANIFEST BLEIBT GUELTIG. Das ist ungewoehnlich,
+        aber es ist eine Aussage: jemand hat ein Paket erzeugt, das keine
+        Artefakte enthaelt. Es unterscheidet sich von "hier wurde nie etwas
+        erzeugt", und genau diese Unterscheidung war verlorengegangen.
         """
+        kein_manifest = not self.manifest_path.exists()
         manifest = self.load()
         mismatched: List[str] = []
         missing: List[str] = []
@@ -203,6 +234,10 @@ class StagingArea:
             f.name for f in self._dir.iterdir()
             if f.is_file() and f.name not in _RESERVED and f.name not in listed
         ]
-        ok = not (mismatched or missing or extra)
-        return {"ok": ok, "mismatched": sorted(mismatched),
+        # Ohne Manifest ist 'ok' NIE True - auch dann nicht, wenn die drei
+        # Listen leer sind. Sie sind es dann naemlich nur, weil nichts da war,
+        # woran man haette messen koennen.
+        ok = (not kein_manifest) and not (mismatched or missing or extra)
+        return {"ok": ok, "kein_manifest": kein_manifest,
+                "mismatched": sorted(mismatched),
                 "missing": sorted(missing), "extra": sorted(extra)}

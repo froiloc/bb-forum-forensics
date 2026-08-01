@@ -1,5 +1,20 @@
 {% extends "base.html" %}
 
+{#
+  BUILD 647 - ZEILENUMBRUECHE (Vorgang d2ade5dc, mc, Prioritaet 'critical').
+
+  Die fuenf Textfelder dieser Ansicht laufen jetzt durch den Filter 'zeilen'
+  und tragen die Klasse 'textblock'. Der Filter MASKIERT ZUERST und setzt
+  danach die <br> - er ist kein '|safe' mit anderem Namen. Die Begruendung
+  steht ausfuehrlich am Filter in server.py: die Inhalte dieses Werkzeugs
+  stammen aus einem beschlagnahmten Forum, und ein '|safe' auf Benutzertext
+  waere dort keine theoretische Sorge.
+
+  Ohne den Filter fasste HTML jede Folge von Leerraum zu einem Leerzeichen
+  zusammen; 13 Vorgaenge und ein Kommentar im Bestand fuehren echte
+  Zeilenumbrueche und standen in der Ansicht als ein Block.
+#}
+
 {% block title %}{{ issue.title }}{% endblock %}
 
 {% block content %}
@@ -57,26 +72,26 @@
     {% if issue.prerequisites %}
     <div style="margin: 1.5rem 0;">
         <h3>Voraussetzungen</h3>
-        <p>{{ issue.prerequisites }}</p>
+        <p class="textblock">{{ issue.prerequisites|zeilen }}</p>
     </div>
     {% endif %}
     
     <div style="margin: 1.5rem 0;">
         <h3>Beschreibung</h3>
-        <p>{{ issue.description }}</p>
+        <p class="textblock">{{ issue.description|zeilen }}</p>
     </div>
     
     {% if issue.expected_behavior %}
     <div style="margin: 1.5rem 0;">
         <h3>Erwartetes Verhalten</h3>
-        <p>{{ issue.expected_behavior }}</p>
+        <p class="textblock">{{ issue.expected_behavior|zeilen }}</p>
     </div>
     {% endif %}
     
     {% if issue.actual_behavior %}
     <div style="margin: 1.5rem 0;">
         <h3>Tatsächliches Verhalten</h3>
-        <p>{{ issue.actual_behavior }}</p>
+        <p class="textblock">{{ issue.actual_behavior|zeilen }}</p>
     </div>
     {% endif %}
 </div>
@@ -174,7 +189,7 @@
                 {% endif %}
             </div>
             {% if update.comment %}
-            <p>{{ update.comment }}</p>
+            <p class="textblock">{{ update.comment|zeilen }}</p>
             {% endif %}
             <div class="timeline-time">{{ update.timestamp }}</div>
         </div>

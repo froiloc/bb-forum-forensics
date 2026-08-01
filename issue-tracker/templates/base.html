@@ -120,6 +120,36 @@
         .badge-wont_fix { background: #e74c3c; color: white; }
         .badge-duplicate { background: #34495e; color: white; }
         
+        /* ------------------------------------------------------------------
+           Build 647 - DIE FEHLENDEN PLAKETTEN (Vorgang ab603249).
+           index.html und issue_detail.html setzen 'badge badge-{{ type }}'
+           und 'badge badge-{{ severity }}'; fuer neun im Bestand
+           vorkommende Werte gab es keine Klasse - sie erschienen als Pillen
+           ohne Hintergrund. ABGEGLICHEN wurden die Klassen dieser Datei
+           gegen die tatsaechlich vorkommenden Werte.
+
+           Die Typen bekommen einen eigenen, zurueckhaltenden Farbkreis
+           (Blaugrau-Toene): sie sind eine Einordnung, keine Warnung, und
+           duerfen neben Status und Prioritaet nicht um Aufmerksamkeit
+           konkurrieren. */
+        .badge-bug { background: #c0392b; color: white; }
+        .badge-feature_request { background: #16a085; color: white; }
+        .badge-improvement { background: #2980b9; color: white; }
+        .badge-documentation { background: #8e44ad; color: white; }
+        .badge-refactoring { background: #7f8c8d; color: white; }
+
+        /* Schweregrade. 'badge-critical' und 'badge-blocker' teilen sich die
+           Warnfarbe der Prioritaet - das ist hingenommen und benannt: eine
+           eigene Farbe fuer den Schweregrad 'critical' waere von der
+           Prioritaet 'critical' nicht zu unterscheiden, solange beide
+           nebeneinander stehen. Die uebrigen sind bewusst blass, damit die
+           Prioritaet die auffaelligere Angabe bleibt. */
+        .badge-blocker { background: #922b21; color: white; }
+        .badge-major { background: #d5a6a0; color: #4a1f1a; }
+        .badge-minor { background: #d6dbdf; color: #34495e; }
+        .badge-trivial { background: #eaeded; color: #7f8c8d; }
+        .badge-enhancement { background: #d1f2eb; color: #0e6251; }
+
         .badge-critical { background: #e74c3c; color: white; }
         .badge-high { background: #e67e22; color: white; }
         .badge-medium { background: #f1c40f; color: #333; }
@@ -318,6 +348,124 @@
         .pagination-status {
             color: #7f8c8d;
             font-size: 0.9rem;
+        }
+
+        /* ------------------------------------------------------------------
+           Build 647 - TEXTBLOECKE MIT ZEILENUMBRUECHEN.
+           Vorgang d2ade5dc (mc, 'critical'): "\n wird durch <br> ersetzt.
+           Gern mit CSS-Unterstuetzung, so dass die nachfolgende Zeile erst
+           nach 1,5 Zeilenhoehen beginnt."
+
+           DER ZWEITE TEIL DES WUNSCHES IST MIT <br> NICHT ZU HABEN - das ist
+           gemessen, nicht vermutet. Im Browser (Chromium 1194, headless,
+           Abstand der Grundlinien ueber den Umbruch hinweg) ergaben FUENF
+           Schreibweisen des CSS immer denselben Wert:
+
+             br{content:'';display:block;margin-top:.75em}   1.00 Zeilenhoehen
+             dasselbe ohne white-space:pre-line              1.00
+             br{display:block;margin-top:.75em}              1.00
+             p{white-space:pre-line;line-height:1.5}         1.00
+             br::after{content:'';display:block;margin-top:} 1.00
+             Zeile als eigener Block mit margin-top          1.50  <-- nur das
+
+           Ein <br> ist im Layout kein Kasten; Aussenabstaende greifen daran
+           nicht. Deshalb setzt der Filter 'zeilen' in server.py jede Zeile
+           in ein <span class="zeile">, und der Abstand kommt aus den Regeln
+           unten: 24px Zeilenhoehe + 12px = 36px = genau 1,5 Zeilen.
+                      ------------------------------------------------------------------ */
+        .textblock {
+            line-height: 1.5;
+        }
+
+        /* Jede Zeile ist ein eigener Block - nur so greift ein Abstand.
+           GEMESSEN (Chromium 1194, headless, Abstand der Grundlinien ueber
+           den Umbruch): 24px Zeilenhoehe + 12px Aussenabstand = 36px, also
+           genau die gewuenschten 1,5 Zeilenhoehen. Mit <br> waren es in
+           fuenf verschiedenen CSS-Schreibweisen immer 1,00 - ein <br> ist
+           im Layout kein Kasten, Aussenabstaende greifen daran nicht. */
+        .textblock .zeile {
+            display: block;
+        }
+
+        .textblock .zeile + .zeile {
+            margin-top: 0.75em;
+        }
+
+        /* Eine LEERE Zeile im Text (also zwei Umbrueche hintereinander) soll
+           nicht zusaetzlich aufreissen - sie hat ohnehin schon den Abstand
+           der Regel darueber. */
+        .textblock .zeile:empty {
+            display: none;
+        }
+
+        /* ------------------------------------------------------------------
+           Build 647 - TAG-WOLKE (Vorgang 2d692c67).
+           Fuenf Groessenstufen; die Stufe kommt aus dem Server
+           (IssueManager.get_tag_cloud), damit gleiche Haeufigkeit immer
+           gleich aussieht.
+           ------------------------------------------------------------------ */
+        .tag-cloud-box {
+            background: white;
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .tag-cloud-box summary {
+            cursor: pointer;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .tag-cloud {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 0.4rem 0.6rem;
+            margin-top: 1rem;
+        }
+
+        .tag-cloud .tag {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 0.25rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 12px;
+            background: #ecf0f1;
+            color: #2c3e50;
+            text-decoration: none;
+            line-height: 1.4;
+        }
+
+        .tag-cloud .tag:hover {
+            background: #d6dbdf;
+        }
+
+        /* Die Stufen. Bewusst ein enger Bereich (0.8 bis 1.5rem): eine Wolke,
+           in der die groessten Tags dreimal so hoch sind wie die kleinsten,
+           liest sich nicht mehr als Liste. */
+        .tag-stufe-0 { font-size: 0.80rem; color: #7f8c8d; }
+        .tag-stufe-1 { font-size: 0.92rem; }
+        .tag-stufe-2 { font-size: 1.05rem; }
+        .tag-stufe-3 { font-size: 1.25rem; font-weight: 600; }
+        .tag-stufe-4 { font-size: 1.50rem; font-weight: 700; }
+
+        .tag-cloud .tag-aktiv {
+            background: #3498db;
+            color: white;
+        }
+
+        .tag-anzahl {
+            font-size: 0.7em;
+            opacity: 0.75;
+        }
+
+        .bereichstitel {
+            font-size: 1.1rem;
+            color: #7f8c8d;
+            font-weight: normal;
+            margin-bottom: 0.75rem;
         }
     </style>
 </head>

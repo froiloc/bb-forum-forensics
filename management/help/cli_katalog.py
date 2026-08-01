@@ -152,6 +152,14 @@ _GEPRUEFT_642 = ("Build 642, 2026-08-01, gegen Wegwerf-Verzeichnisse unter "
                  "/tmp, Python 3.13")
 
 
+#: Build 647. Gefahren im Container (Python 3.13) gegen Wegwerf-Verzeichnisse
+#: unter /tmp; bei prepare_deployment gegen den Bestand selbst mit
+#: '--skip-bundle --skip-wheels' - also OHNE Netzzugriff und ohne etwas an den
+#: Auslieferungsverzeichnissen zu aendern.
+_GEPRUEFT_647 = ("Build 647, 2026-08-01, im Container (Python 3.13), "
+                 "Wegwerf-Verzeichnisse unter /tmp")
+
+
 def _bsp(aufruf: str, wirkung: str, geprueft: str = _GEPRUEFT) -> CliBeispiel:
     """Kurzform fuer einen GEFAHRENEN Beispielaufruf."""
     return CliBeispiel(aufruf=aufruf, wirkung=wirkung, geprueft=geprueft)
@@ -1528,9 +1536,9 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                      "Rechnet jede Datei gegen das Manifest nach. Im Versuch auf einem LEEREN Verzeichnis: '[ausschleus] OK - alle Artefakte stimmen mit dem Manifest ueberein', Rueckgabewert 0 - siehe die erste Warnung, das ist ein Befund und keine Zusicherung.",
                      _GEPRUEFT_618),
             ),
-            exit_codes=((0, "'add' aufgenommen, 'finalize' geschrieben, 'verify' Paket stimmt"), (1, "'verify' BEFUND: das Paket weicht vom Manifest ab (veraendert, fehlend oder zusaetzlich) - kein Programmfehler; sonst Staging-Fehler"), (2, "'add' BEFUND: die Unbedenklichkeit ist nicht bestaetigt, das Artefakt wurde NICHT aufgenommen"),),
+            exit_codes=((0, "'add' aufgenommen, 'finalize' geschrieben, 'verify' Paket stimmt - AUCH bei einem LEEREN Paket MIT Manifest; das ist eine gueltige, wenn auch ungewoehnliche Lage"), (1, "'verify' BEFUND: das Paket weicht vom Manifest ab (veraendert, fehlend oder zusaetzlich) - kein Programmfehler; sonst Staging-Fehler"), (2, "'add' BEFUND: die Unbedenklichkeit ist nicht bestaetigt, das Artefakt wurde NICHT aufgenommen; 'verify' KEIN PAKET: in diesem Verzeichnis liegt kein manifest.json - hier ist nichts ausgeschleust worden, es gibt nichts zu pruefen (NEU Build 647, Vorgang d30b3d95)"),),
             warnungen=(
-                "'verify' MELDET AUF EINEM VERZEICHNIS OHNE MANIFEST 'OK' MIT RUECKGABEWERT 0. Gemessen am 2026-07-31. Ein Leerbefund wird damit als Erfolgsmeldung ausgegeben: 'es gibt nichts zu pruefen' wird zu 'alles geprueft'. Vor einer Ausschleusung ist deshalb zusaetzlich zu sehen, ob ueberhaupt ein Paket da ist. Vorgang eroeffnet.",
+                "BEHOBEN IN BUILD 647 (Vorgang d30b3d95), hier festgehalten, weil aeltere Staende im Umlauf sind: Bis Build 646 meldete 'verify' auf einem Verzeichnis OHNE Manifest 'OK' mit Rueckgabewert 0 - ein Leerbefund wurde als Erfolgsmeldung ausgegeben. Seit Build 647 liefert dieser Fall den Rueckgabewert 2 und die Meldung 'KEIN PAKET'. WER EINEN AELTEREN STAND BEDIENT, sieht vor einer Ausschleusung zusaetzlich nach, ob ueberhaupt ein manifest.json da ist.",
                 "'--unbedenklich' ist ein ausdruecklicher Freigabeschalter. Ohne ihn wird nichts aufgenommen, und eine leere Angabe bei '--cleared-by' wird ebenfalls abgewiesen - die Unbedenklichkeit braucht einen Namen.",
                 "KEIN STILLES UEBERSCHREIBEN: ein bereits vorhandener Dateiname fuehrt zum Abbruch.",
                 "Nur 'finalize' liest die coordinator.db, und zwar ausdruecklich nur lesend. Ist sie nicht erreichbar, entsteht das Paket trotzdem - dann ohne Kettenspitze im Erzeugungsvermerk.",
@@ -4068,16 +4076,50 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         # auf der Zielanlage.
         konfiguration=KONFIG_KEINE,
         tiefe=CliTiefe(
-            exit_codes=((0, "durchgelaufen - AUCH DANN, wenn der "
-                            "Rad-Download vollstaendig gescheitert ist"),
-                        (1, "das Bundle-Skript fehlt oder der Bundle-Bau ist "
-                            "gescheitert")),
+            beispiele=(
+                _bsp("python prepare_deployment.py --skip-bundle --skip-wheels",
+                     "Schreibt die beiden README.txt und das "
+                     "deployment_manifest.json neu, ohne etwas "
+                     "herunterzuladen. Im Versuch: Rueckgabewert 0 mit dem "
+                     "ausdruecklichen Satz, dass dieser Lauf ueber die "
+                     "Vollzaehligkeit der Offline-Pakete NICHTS aussagt - "
+                     "'--skip-wheels' war gesetzt. VORSICHT: Auch dieser "
+                     "Aufruf ueberschreibt im Arbeitsbestand (siehe unten).",
+                     _GEPRUEFT_647),
+            ),
+            exit_codes=((0, "durchgelaufen UND die Raeder sind vollzaehlig - "
+                            "oder '--skip-wheels' war gesetzt, dann sagt der "
+                            "Lauf ueber die Vollzaehligkeit ausdruecklich "
+                            "nichts"),
+                        (1, "das Bundle-Skript fehlt bzw. der Bundle-Bau ist "
+                            "gescheitert; ODER (NEU Build 647) ein Download "
+                            "ist fehlgeschlagen bzw. es fehlt fuer mindestens "
+                            "ein Paket ein Rad - die Pakete stehen namentlich "
+                            "in der Schlussbilanz")),
             warnungen=(
-                "EIN GESCHEITERTER RAD-DOWNLOAD AENDERT DEN RUECKGABEWERT "
-                "NICHT. Er erscheint als 'WARNUNG', und der Lauf endet mit 0. "
-                "Das Ergebnis liegt im Bestand: setup/win64/wheels ist "
-                "vollstaendig, setup/linux64/wheels enthaelt ein einziges "
-                "Rad. Vorgang: siehe Issue-Tracker.",
+                "BEHOBEN IN BUILD 647 (Vorgang 0329896b): Bis Build 646 "
+                "aenderte ein gescheiterter Rad-Download den Rueckgabewert "
+                "NICHT - er erschien als 'WARNUNG', und der Lauf endete mit 0. "
+                "Genau so ist ein unvollstaendiges Offline-Paket in den "
+                "Bestand gekommen und dort liegengeblieben. Seit Build 647 "
+                "prueft der Lauf je Zielverzeichnis, ob fuer JEDES verlangte "
+                "Paket ein Rad vorliegt, nennt die fehlenden beim Namen und "
+                "endet mit 1.",
+                "DER BESTAND IST STAND BUILD 647 NICHT VOLLZAEHLIG: In "
+                "setup/win64/wheels und setup/linux64/wheels fehlen "
+                "'pyeditorjs', 'python-docx' und 'reportlab' - also der "
+                "DOCX-Export, der PDF-Export und der serverseitige "
+                "Editor.js-Export. Gemessen am 2026-08-01 mit der neuen "
+                "Pruefung. Ein Lauf OHNE '--skip-wheels' auf einem Rechner "
+                "mit Internetzugang holt sie nach; der Download der drei "
+                "Pakete fuer cp314 ist am selben Tag erprobt worden.",
+                "DIE RAEDER SIND FUER EINE BESTIMMTE PYTHON-NEBENVERSION "
+                "GEBAUT (cp314, also Python 3.14). Unter einer anderen "
+                "Nebenversion findet pip sie NICHT - auch dann nicht, wenn "
+                "die Datei im Verzeichnis liegt; die Meldung lautet dann 'No "
+                "matching distribution found' und nennt das PAKET, nicht die "
+                "Version. Seit Build 647 steht die geforderte Version in "
+                "beiden README.txt und im deployment_manifest.json.",
                 "ES UEBERSCHREIBT IM ARBEITSBESTAND, und es gibt KEINE Option, "
                 "das Ziel zu verlegen: die Editor-Buendel unter "
                 "static/editor/, beide setup/README.txt und das "

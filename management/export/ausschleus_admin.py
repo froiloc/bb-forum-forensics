@@ -96,8 +96,28 @@ def _do_finalize(args) -> int:
 
 
 def _do_verify(args) -> int:
+    """
+    Prueft ein Ausschleusungspaket gegen sein Manifest.
+
+    BUILD 647 (Vorgang d30b3d95) - DREI RUECKGABEWERTE STATT ZWEI:
+      0  Manifest vorhanden, alles stimmt.
+      1  Manifest vorhanden, Abweichung - sie wird namentlich genannt.
+      2  KEIN Manifest. In diesem Verzeichnis liegt kein Ausschleusungspaket.
+
+    WARUM DIE 2 EIGENS: Bis Build 646 lieferte dieser Fall eine 0 mit der
+    Meldung "OK - alle Artefakte stimmen mit dem Manifest ueberein" (gemessen
+    auf einem leeren Verzeichnis). Wer ein Paket ausschleust, das nie erzeugt
+    wurde, bekam eine Bestaetigung dafuer. Die 2 unterscheidet den Leerbefund
+    vom Befund, ohne dass jemand die Ausgabe lesen muss.
+    """
     area = StagingArea(args.dir)
     res = area.verify()
+    if res.get("kein_manifest"):
+        print("[ausschleus] KEIN PAKET — in '%s' liegt kein manifest.json. "
+              "Hier ist nichts ausgeschleust worden; es gibt nichts zu "
+              "pruefen. (Ein LEERES Paket mit Manifest waere etwas anderes "
+              "und wuerde mit 0 bestaetigt.)" % args.dir, file=sys.stderr)
+        return 2
     if res["ok"]:
         print("[ausschleus] OK — alle Artefakte stimmen mit dem Manifest ueberein.")
         return 0

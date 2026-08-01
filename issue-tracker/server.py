@@ -18,6 +18,10 @@ from fastapi import FastAPI, Request, Form, HTTPException, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+# Build 647: fuer den nl2br-Filter. 'escape' maskiert, 'Markup' erklaert eine
+# Zeichenkette fuer bereits maskiert - beides ausdruecklich und an genau einer
+# Stelle, siehe die Begruendung am Filter selbst.
+from markupsafe import Markup, escape
 
 # ---------------------------------------------------------------------------
 # Eigene Bausteine (Build 642).
@@ -34,6 +38,8 @@ from fastapi.templating import Jinja2Templates
 # zugleich Grundregel 10.
 # ---------------------------------------------------------------------------
 from json_safe_writer import JsonSafeWriter
+from textformat import zeilen_html
+from tag_cloud import tag_wolke, STUFEN as TAG_STUFEN
 from backup_names import (
     SERVER_MUSTER,
     SUCH_GLOB,
@@ -142,6 +148,29 @@ templates = Jinja2Templates(directory=str(config.TEMPLATES_DIR))
 
 # Globale Template-Variablen
 templates.env.globals["config"] = config
+
+
+# ============================================================================
+# Jinja-Filter - BUILD 647
+# ============================================================================
+
+def zeilen(text: Any) -> Markup:
+    """
+    Jinja-Filter: mehrzeiliger Text -> Zeilen-Bloecke, sicher maskiert.
+
+    DIE ARBEIT STEHT IN textformat.py, nicht hier. Grund: server.py setzt
+    'fastapi' voraus und ist in der Regression nicht importierbar; die
+    Maskierung ist aber die einzige Stelle, an der aus Daten HTML wird, und
+    muss geprueft werden koennen. Dort steht auch die Begruendung dafuer,
+    dass KEIN <br> herauskommt (gemessen im Browser: mit <br> sind die von
+    mc gewuenschten 1,5 Zeilenhoehen nicht zu erreichen).
+
+    Hier bleibt nur die Zusage an Jinja: 'dieses HTML ist fertig maskiert'.
+    """
+    return Markup(zeilen_html(text))
+
+
+templates.env.filters["zeilen"] = zeilen
 
 # ============================================================================
 # Daten-Management
@@ -262,6 +291,23 @@ class IssueManager:
         backups = sorted(config.BACKUP_DIR.glob(SUCH_GLOB), reverse=True)
         return backups[0] if backups else None
     
+    #: Anzahl der Stufen in der Tag-Wolke. Die Begruendung steht bei der
+    #: Vorgabe in tag_cloud.py; hier wird sie nur uebernommen, damit es
+    #: NICHT zwei Zahlen gibt, die auseinanderlaufen koennen.
+    WOLKEN_STUFEN = TAG_STUFEN
+
+    def get_tag_cloud(self, issues: List[Dict]) -> List[Dict[str, Any]]:
+        """
+        Tag-Wolke fuer das Dashboard (Vorgang 2d692c67).
+
+        DIE ARBEIT STEHT IN tag_cloud.py - aus demselben Grund wie beim
+        Filter 'zeilen': ein Baustein, der in server.py steht, ist ohne
+        'fastapi' nicht pruefbar. Dort stehen auch die drei Entscheidungen
+        (Gross-/Kleinschreibung, ein Tag je Vorgang einmal, logarithmische
+        Stufung) und der Befund, der zur logarithmischen Stufung gefuehrt hat.
+        """
+        return tag_wolke(issues, self.WOLKEN_STUFEN)
+
     def get_statistics(self, issues: List[Dict]) -> Dict[str, int]:
         """Berechnet Statistiken"""
         return {
@@ -347,6 +393,53 @@ STATUS_LABELS = {
 }
 
 # ============================================================================
+# BUILD 647 - DIE AUSWAHLLISTEN DES DASHBOARDS STEHEN AB JETZT HIER.
+#
+# ANLASS: Vorgang 7571d4de (mc, Prioritaet 'high') - "Im Dashboard alle
+#   moeglichen Status als Filter erlauben". index.html hatte die Werte fest
+#   verdrahtet und kannte 4 der 9 Status, 3 der 5 Typen und 4 der 5
+#   Prioritaeten. GEZAEHLT am Bestand von Build 646 (140 Vorgaenge): 3 in
+#   nicht waehlbaren Status, 8 vom Typ 'documentation', 1 mit Prioritaet
+#   'wishlist' - zusammen 12 Vorgaenge, die ueber die Filter nicht auffindbar
+#   waren. Dass es sie gibt, sah man nirgends.
+#
+# WARUM IM SERVER UND NICHT IN DER VORLAGE: Eine Aufzaehlung, die an zwei
+#   Orten gepflegt wird, laeuft auseinander - sie ist genau so
+#   auseinandergelaufen. STATUS_LABELS gab es die ganze Zeit; die Vorlage hat
+#   nur nie hineingesehen. Ab jetzt gibt es EINE Quelle, und die Vorlage
+#   baut ihre Auswahlfelder daraus. Wer einen Wert ergaenzt, ergaenzt ihn
+#   hier - und er steht sofort im Filter.
+#
+# Die Aufzaehlungen sind woertlich dieselben wie in
+# issue-tracker.schema.json und in merge.py (IssueValidator).
+# ============================================================================
+
+TYPE_LABELS = {
+    "bug": "Bug",
+    "feature_request": "Feature Request",
+    "improvement": "Verbesserung",
+    "documentation": "Dokumentation",
+    "refactoring": "Refactoring",
+}
+
+PRIORITY_LABELS = {
+    "critical": "Kritisch",
+    "high": "Hoch",
+    "medium": "Mittel",
+    "low": "Niedrig",
+    "wishlist": "Wunschliste",
+}
+
+SEVERITY_LABELS = {
+    "blocker": "Blocker",
+    "critical": "Kritisch",
+    "major": "Schwerwiegend",
+    "minor": "Gering",
+    "trivial": "Trivial",
+    "enhancement": "Erweiterung",
+}
+
+# ============================================================================
 # Hilfsfunktionen
 # ============================================================================
 
@@ -374,11 +467,30 @@ async def index(
     priority_filter: Optional[str] = None,
     search: Optional[str] = None,
     assigned_to: Optional[str] = None,
+    tag_filter: Optional[str] = None,
     page: int = 1
 ):
     """Hauptseite mit Issue-Liste und Filterung"""
-    issues = issue_manager.load()
-    
+    # -----------------------------------------------------------------------
+    # BUILD 647 - DER GESAMTBESTAND WIRD FESTGEHALTEN, BEVOR GEFILTERT WIRD.
+    #
+    # ANLASS: Vorgang 05f65255. Bis Build 646 wurde 'issues' beim Filtern
+    # ueberschrieben, und ALLES, was danach kam, beschrieb nur noch die
+    # Auswahl: die Kennzahlenleiste und die Liste der Zustaendigen. Wer nach
+    # 'status=open' filterte, sah eine Leiste, in der 'offen' gleich 'gesamt'
+    # war und alles andere null - die Zahlen sahen aus wie Bestandszahlen und
+    # waren Auswahlzahlen.
+    #
+    # Mit der Tag-Wolke (Vorgang 2d692c67) waere derselbe Fehler noch
+    # aergerlicher geworden: eine Wolke, die sich bei jedem Klick auf das
+    # reduziert, was gerade uebrig ist, kann man nicht als Filter benutzen -
+    # nach dem ersten Klick waere jeder andere Weg verschwunden.
+    #
+    # Deshalb: 'alle_issues' bleibt der Bestand, 'issues' ist die Auswahl.
+    # -----------------------------------------------------------------------
+    alle_issues = issue_manager.load()
+    issues = list(alle_issues)
+
     # Filter anwenden
     if status_filter:
         issues = [i for i in issues if i.get("status") == status_filter]
@@ -388,16 +500,39 @@ async def index(
         issues = [i for i in issues if i.get("priority") == priority_filter]
     if assigned_to:
         issues = [i for i in issues if i.get("assigned_to") == assigned_to]
+    if tag_filter:
+        # BUILD 647 (Vorgang 2d692c67): Der Klick in der Tag-Wolke landet
+        # hier. Verglichen wird ohne Ruecksicht auf Gross- und
+        # Kleinschreibung: die Tags sind von Hand gepflegt, und 'Migration'
+        # und 'migration' sind dasselbe Thema.
+        gesucht = tag_filter.strip().lower()
+        issues = [i for i in issues
+                  if any(str(t).strip().lower() == gesucht for t in (i.get("tags") or []))]
     if search:
+        # BUILD 647 (Vorgang 18204843): Die Suche erfasst jetzt auch TAGS
+        # sowie erwartetes und tatsaechliches Verhalten. Bis Build 646 sah sie
+        # in Titel, Beschreibung und ID - ausgerechnet das Merkmal, nach dem
+        # in diesem Projekt gearbeitet wird ('alle Vorgaenge zum Thema
+        # Issue-Tracker'), blieb aussen vor.
         search_lower = search.lower()
-        issues = [i for i in issues if 
-                 search_lower in i.get("title", "").lower() or 
-                 search_lower in i.get("description", "").lower() or
-                 search_lower in i.get("id", "").lower()]
-    
+
+        def _trifft(i: Dict[str, Any]) -> bool:
+            felder = (
+                i.get("title", ""),
+                i.get("description", ""),
+                i.get("id", ""),
+                i.get("expected_behavior", ""),
+                i.get("actual_behavior", ""),
+            )
+            if any(search_lower in str(f).lower() for f in felder):
+                return True
+            return any(search_lower in str(t).lower() for t in (i.get("tags") or []))
+
+        issues = [i for i in issues if _trifft(i)]
+
     # Sortierung: neueste zuerst
     issues.sort(key=lambda x: x.get("reported_at", ""), reverse=True)
-    
+
     # Paginierung
     total_issues = len(issues)
     total_pages = max(1, (total_issues + config.ITEMS_PER_PAGE - 1) // config.ITEMS_PER_PAGE)
@@ -405,29 +540,41 @@ async def index(
     start_idx = (page - 1) * config.ITEMS_PER_PAGE
     end_idx = start_idx + config.ITEMS_PER_PAGE
     paged_issues = issues[start_idx:end_idx]
-    
-    # Statistiken
-    stats = issue_manager.get_statistics(issues)
-    
-    # Eindeutige Zugewiesene für Filter
-    assignees = list(set(i.get("assigned_to", "") for i in issues if i.get("assigned_to")))
-    
+
+    # -----------------------------------------------------------------------
+    # KENNZAHLEN UND AUSWAHLLISTEN - AUS DEM BESTAND, NICHT AUS DER AUSWAHL.
+    # -----------------------------------------------------------------------
+    stats = issue_manager.get_statistics(alle_issues)
+
+    # Eindeutige Zugewiesene für Filter (Vorgang e2d1f0ae: die Liste wurde
+    # gebildet und von der Vorlage nie angezeigt - jetzt wird sie angezeigt,
+    # und sie schrumpft beim Filtern nicht mehr weg).
+    assignees = sorted({i.get("assigned_to", "") for i in alle_issues if i.get("assigned_to")})
+
     return templates.TemplateResponse("index.html", {
         "request": request,
         "issues": paged_issues,
         "stats": stats,
         "assignees": assignees,
+        # BUILD 647: Die Auswahlfelder werden aus EINER Quelle gebaut (siehe
+        # die Aufzaehlungen oben), nicht mehr in der Vorlage verdrahtet.
+        "status_labels": STATUS_LABELS,
+        "type_labels": TYPE_LABELS,
+        "priority_labels": PRIORITY_LABELS,
+        "tag_cloud": issue_manager.get_tag_cloud(alle_issues),
         "current_filters": {
             "status": status_filter,
             "type": type_filter,
             "priority": priority_filter,
             "search": search,
-            "assigned_to": assigned_to
+            "assigned_to": assigned_to,
+            "tag": tag_filter,
         },
         "pagination": {
             "current_page": page,
             "total_pages": total_pages,
-            "total_issues": total_issues
+            "total_issues": total_issues,
+            "total_bestand": len(alle_issues),
         }
     })
 

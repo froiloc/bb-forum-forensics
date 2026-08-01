@@ -1,0 +1,9 @@
+102269368406ca4eae591f8e9b1a8710  documents/rules-leerbefund.md
+6f6dfaa932f67b5ec506dfcc8c7d0a07  tests/test_leerbefund.py
+dbac22d5262948137259ab98292f973e  management/export/staging.py
+2a6227c1ac1f9720253e8ca74b969cd7  management/export/ausschleus_admin.py
+afb0cab78f752ce180dd2e069366a111  prepare_deployment.py
+60db7bd7be822b197d5506b0a87a10c1  management/help/cli_katalog.py
+9d89f15a0add6416c96236cf6d40b6f6  tests/hilfe_fehlliste_stand.json
+2cc908be1025732bcf16480496d165fe  issue-tracker/eingang_claude_Build647.json
+8be319fba7b5eeb52fd5300d42dad5e0  build.json

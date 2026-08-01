@@ -3,6 +3,18 @@
 {% block title %}Issue Dashboard{% endblock %}
 
 {% block content %}
+{#
+  BUILD 647 (Vorgang 05f65255): Diese Kacheln beschreiben ab jetzt den
+  GESAMTBESTAND und nicht mehr die gerade sichtbare Auswahl. Bis Build 646
+  wurden sie aus der gefilterten Menge gebildet - wer nach 'offen' filterte,
+  sah eine Leiste, in der 'Offen' gleich 'Gesamt' war und alles andere null.
+  Die Zahlen sahen aus wie Bestandszahlen und waren Auswahlzahlen.
+
+  Damit man beide Zahlen auseinanderhalten kann, sagt die Ueberschrift jetzt,
+  worauf sie sich bezieht; die Zahl der AUSWAHL steht bei der
+  Blaetter-Bedienung ganz unten.
+#}
+<h2 class="bereichstitel">Bestand</h2>
 <div class="stats-grid">
     <div class="stat-card">
         <div class="stat-number">{{ stats.total }}</div>
@@ -30,33 +42,100 @@
     </div>
 </div>
 
+{#
+  BUILD 647 - DIE AUSWAHLFELDER WERDEN AUS DEN LISTEN DES SERVERS GEBAUT.
+
+  Vorgang 7571d4de (mc, Prioritaet 'high'): "Im Dashboard alle moeglichen
+  Status als Filter erlauben". Bis Build 646 standen die Werte hier fest
+  verdrahtet - 4 der 9 Status, 3 der 5 Typen, 4 der 5 Prioritaeten. GEZAEHLT
+  am Bestand: 12 Vorgaenge waren ueber die Filter nicht auffindbar (3 in
+  nicht waehlbaren Status, 8 vom Typ 'documentation', 1 mit Prioritaet
+  'wishlist'), und dass es sie gibt, sah man nirgends.
+
+  STATUS_LABELS gab es im Server die ganze Zeit; diese Vorlage hat nur nie
+  hineingesehen. Jetzt kommen alle drei Listen von dort. Wer einen Wert
+  ergaenzt, ergaenzt ihn an EINER Stelle - und er steht sofort im Filter.
+#}
 <form id="filter-form" method="GET" class="filters">
     <select name="status_filter" onchange="filterIssues()">
         <option value="">Alle Status</option>
-        <option value="open" {% if current_filters.status == 'open' %}selected{% endif %}>Offen</option>
-        <option value="in_progress" {% if current_filters.status == 'in_progress' %}selected{% endif %}>In Bearbeitung</option>
-        <option value="resolved" {% if current_filters.status == 'resolved' %}selected{% endif %}>Gelöst</option>
-        <option value="closed" {% if current_filters.status == 'closed' %}selected{% endif %}>Geschlossen</option>
+        {% for wert, beschriftung in status_labels.items() %}
+        <option value="{{ wert }}" {% if current_filters.status == wert %}selected{% endif %}>{{ beschriftung }}</option>
+        {% endfor %}
     </select>
-    
+
     <select name="type_filter" onchange="filterIssues()">
         <option value="">Alle Typen</option>
-        <option value="bug" {% if current_filters.type == 'bug' %}selected{% endif %}>Bug</option>
-        <option value="feature_request" {% if current_filters.type == 'feature_request' %}selected{% endif %}>Feature Request</option>
-        <option value="improvement" {% if current_filters.type == 'improvement' %}selected{% endif %}>Verbesserung</option>
+        {% for wert, beschriftung in type_labels.items() %}
+        <option value="{{ wert }}" {% if current_filters.type == wert %}selected{% endif %}>{{ beschriftung }}</option>
+        {% endfor %}
     </select>
-    
+
     <select name="priority_filter" onchange="filterIssues()">
         <option value="">Alle Prioritäten</option>
-        <option value="critical" {% if current_filters.priority == 'critical' %}selected{% endif %}>Kritisch</option>
-        <option value="high" {% if current_filters.priority == 'high' %}selected{% endif %}>Hoch</option>
-        <option value="medium" {% if current_filters.priority == 'medium' %}selected{% endif %}>Mittel</option>
-        <option value="low" {% if current_filters.priority == 'low' %}selected{% endif %}>Niedrig</option>
+        {% for wert, beschriftung in priority_labels.items() %}
+        <option value="{{ wert }}" {% if current_filters.priority == wert %}selected{% endif %}>{{ beschriftung }}</option>
+        {% endfor %}
     </select>
-    
-    <input type="text" name="search" placeholder="Suche..." value="{{ current_filters.search or '' }}">
+
+    {# Vorgang e2d1f0ae: 'assignees' wurde berechnet und nie angezeigt. #}
+    {% if assignees %}
+    <select name="assigned_to" onchange="filterIssues()">
+        <option value="">Alle Zuständigen</option>
+        {% for name in assignees %}
+        <option value="{{ name }}" {% if current_filters.assigned_to == name %}selected{% endif %}>{{ name }}</option>
+        {% endfor %}
+    </select>
+    {% endif %}
+
+    <input type="text" name="search" placeholder="Suche (auch in Tags)…" value="{{ current_filters.search or '' }}">
+
+    {# Das Tag aus der Wolke muss das Formular ueberleben - sonst hebt jeder
+       Klick auf 'Filtern' die Tag-Auswahl auf, ohne dass es jemand merkt. #}
+    {% if current_filters.tag %}
+    <input type="hidden" name="tag_filter" value="{{ current_filters.tag }}">
+    {% endif %}
+
     <button type="submit" class="btn btn-primary">Filtern</button>
 </form>
+
+{#
+  BUILD 647 - DIE TAG-WOLKE. Vorgang 2d692c67 (mc):
+  "Ich pflege zwar Tags im Issue-Tracker, aber weder werden die im Dashboard
+   angezeigt, noch kann ich nach diesen filtern oder suchen."
+
+  Die Wolke wird aus dem GESAMTBESTAND gebildet, nicht aus der Auswahl. Sonst
+  schrumpfte sie bei jedem Klick auf das, was gerade uebrig ist, und nach dem
+  ersten Klick waere jeder andere Weg verschwunden - eine Sackgasse statt
+  einer Bedienung.
+
+  Sortiert ist alphabetisch, weil eine Wolke zum SUCHEN da ist; die Groesse
+  zeigt die Haeufigkeit (fuenf Stufen, logarithmisch - gleiche Anzahl ergibt
+  immer dieselbe Stufe).
+#}
+{% if tag_cloud %}
+{# Offen als Vorgabe: der Wunsch aus 2d692c67 war ausdruecklich, dass die
+   Tags im Dashboard ANGEZEIGT werden. Ein zugeklapptes Feld zeigt nichts.
+   Zuklappen kann man es trotzdem - deshalb <details> und nicht <div>. #}
+<details class="tag-cloud-box" open>
+    <summary>
+        Tags ({{ tag_cloud|length }})
+        {% if current_filters.tag %}
+        &mdash; gefiltert nach <strong>{{ current_filters.tag }}</strong>
+        {% endif %}
+    </summary>
+    <div class="tag-cloud">
+        {% for eintrag in tag_cloud %}
+        <a class="tag tag-stufe-{{ eintrag.stufe }}{% if current_filters.tag and current_filters.tag|lower == eintrag.tag|lower %} tag-aktiv{% endif %}"
+           href="/?tag_filter={{ eintrag.tag|urlencode }}"
+           title="{{ eintrag.anzahl }} Vorgänge mit diesem Tag">{{ eintrag.tag }}<span class="tag-anzahl">{{ eintrag.anzahl }}</span></a>
+        {% endfor %}
+    </div>
+    {% if current_filters.tag %}
+    <p><a class="btn btn-sm" href="/">Tag-Filter aufheben</a></p>
+    {% endif %}
+</details>
+{% endif %}
 
 <ul class="issue-list">
     {% for issue in issues %}
@@ -96,6 +175,7 @@
 {%- if current_filters.priority %}&priority_filter={{ current_filters.priority|urlencode }}{% endif -%}
 {%- if current_filters.assigned_to %}&assigned_to={{ current_filters.assigned_to|urlencode }}{% endif -%}
 {%- if current_filters.search %}&search={{ current_filters.search|urlencode }}{% endif -%}
+{%- if current_filters.tag %}&tag_filter={{ current_filters.tag|urlencode }}{% endif -%}
 {% endset %}
 
 {% if pagination and pagination.total_pages > 1 %}

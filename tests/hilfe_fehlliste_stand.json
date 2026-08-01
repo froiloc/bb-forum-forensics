@@ -1,7 +1,7 @@
 {
   "_beschreibung": "Eingecheckter Stand der Hilfe-Fehllisten (Baustelle H, Konzept Hilfesysteme §3.1). Ein Regressionstest vergleicht die ABGELEITETEN Fehllisten mit diesem Stand und laesst sie nur SCHRUMPFEN. Jede Welle schreibt die Datei bewusst fort - das ist der Abnahmenachweis der Welle.",
   "_regel": "Eintraege duerfen entfernt werden (Hilfe wurde geschrieben). Ein NEUER Eintrag ist ein Befund, kein Pflegevorgang: entweder ist eine Sicht ohne Hilfe hinzugekommen oder ein Kapitel verlorengegangen.",
-  "stand_build": 641,
+  "stand_build": 647,
   "stand_datum": "2026-08-01",
   "sichten_ohne_hilfe": [],
   "cli_ohne_tiefe": [],
@@ -10,8 +10,7 @@
     "maintenance_kill",
     "consolidate_default_db",
     "management",
-    "main",
-    "prepare_deployment"
+    "main"
   ],
   "_cli_konfiguration_hinweis": "cli_ohne_konfiguration: Werkzeuge, bei denen NOCH NICHT ERHOBEN ist, welche Eintraege aus config.yaml sie auswerten (Ticket 60e4236e). NICHT dasselbe wie 'liest keine': ein geprueftes Werkzeug ohne Eintraege traegt KONFIG_KEINE und steht hier NICHT. Erstbefuellung Build 639 mit 63 Eintraegen; SEIT BUILD 641 IST DIE LISTE LEER - ab dem Standbuild 641 verlangt KF08 nicht mehr nur, dass sie schrumpft, sondern dass sie leer BLEIBT.",
   "cli_ohne_konfiguration": []
