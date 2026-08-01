@@ -531,13 +531,26 @@ def test_wv20_umschrift_ersetzt_sichtbar():
 #   Vermutung.
 # -----------------------------------------------------------------------------
 
-def test_wv21_readonly_meldung_gilt_als_ruhig(monkeypatch):
+def test_wv21_readonly_meldung_ist_KEINE_ruhe(monkeypatch):
     """
-    WV21 - MELDET die Sperrprobe 'readonly', dann gilt das als ruhig.
+    WV21 - MELDET die Sperrprobe 'readonly', dann ist das NICHT MESSBAR.
 
-    Dieser Zweig existiert in exklusiv_pruefen und ist damit gedeckt. Ob eine
-    versiegelte Datei ihn ueberhaupt erreicht, ist eine andere Frage - die
-    Antwort darauf steht in WV22, und sie lautet nein.
+    ================================================================
+    DIESER TEST IST IN BUILD 648 UMGEDREHT WORDEN (Vorgang 96f2b18f).
+    ================================================================
+    Bis Build 647 hiess er 'readonly_meldung_gilt_als_ruhig' und verlangte
+    ok is True. Er bildete damit die WIDERLEGTE VERMUTUNG aus dem Vermerk zu
+    Build 609 ab: eine versiegelte Datei melde 'readonly' und gelte deshalb
+    zu Recht als ruhig.
+
+    Beide Haelften des Satzes sind falsch. Die zweite zuerst: Eine Meldung
+    'readonly' heisst, dass NICHT GEMESSEN werden konnte - nicht, dass
+    niemand die Datei haelt. Ein Beweis, der auch dann gelingt, wenn gar
+    nicht gemessen wurde, ist keiner.
+
+    (Die erste Haelfte - dass eine versiegelte Datei ueberhaupt 'readonly'
+    meldet - war ebenfalls falsch; sie meldete 'exklusiv erhalten'. Das ist
+    der Gegenstand von WV22.)
 
     Geprueft mit einer gestellten Meldung, damit die Aussage auf jedem System
     dieselbe ist: hier geht es um die EINORDNUNG der Meldung, nicht um das
@@ -549,20 +562,28 @@ def test_wv21_readonly_meldung_gilt_als_ruhig(monkeypatch):
         raise sqlite3.OperationalError("attempt to write a readonly database")
 
     monkeypatch.setattr(cs.sqlite3, "connect", _wirft)
-    ok, grund = cs.exklusiv_pruefen(_QUELLE)      # existierende Datei
-    assert ok is True
-    assert "read-only" in grund and "versiegelt" in grund
+    befund = cs.exklusiv_beurteilen(_QUELLE)      # existierende Datei
+    assert befund.zustand == "nicht_messbar"
+    assert befund.ist_ruhig is False
+    assert "readonly" in befund.grund.lower()
+    # Und die alte, zweiwertige Form sagt jetzt ebenfalls 'nicht frei' -
+    # die sichere Seite fuer Aufrufer, die die Dreiwertigkeit nicht kennen.
+    assert cs.exklusiv_pruefen(_QUELLE)[0] is False
 
 
-def test_wv22_sperrprobe_ist_auf_schreibgeschuetzten_dateien_blind(tmp_path):
+def test_wv22_sperrprobe_ist_auf_schreibgeschuetzten_dateien_nicht_mehr_blind(tmp_path):
     """
-    WV22 - DER BEFUND SELBST, festgehalten als Test.
+    WV22 - AUS DEM BEFUND IST DIE BEHEBUNG GEWORDEN (Build 648).
 
-    Er prueft nicht, dass etwas richtig funktioniert, sondern dass ein
-    bekannter Mangel noch besteht - und zwar genau so, wie er dokumentiert
-    ist. Wuerde SQLite oder cli_support das eines Tages aendern, faellt
-    dieser Test auf, und dann darf (und soll) die Sonderbehandlung in
-    sperren_pruefen wieder verschwinden.
+    Bis Build 647 hielt dieser Test den MANGEL fest: Er verlangte, dass die
+    Sperrprobe auf einer schreibgeschuetzten Datei 'exklusiv erhalten'
+    meldet, obwohl ein Leser sie haelt. Sein eigener Kopf sagte dazu: "Wuerde
+    SQLite oder cli_support das eines Tages aendern, faellt dieser Test auf."
+
+    GENAU DAS IST EINGETRETEN - nicht durch SQLite, sondern durch die
+    Behebung von 96f2b18f. Der Test verlangt jetzt das Gegenteil: eine
+    Datei, die der ausfuehrende Prozess nicht beschreiben kann, ist NICHT
+    MESSBAR und zaehlt nicht als Ruhe.
 
     Setzt das ausfuehrende Konto den Schreibschutz nicht durch (root unter
     Linux uebergeht die Rechtebits des Eigentuemers), wird die Pruefung mit
@@ -594,11 +615,10 @@ def test_wv22_sperrprobe_ist_auf_schreibgeschuetzten_dateien_blind(tmp_path):
             leser.rollback()
             leser.close()
 
-        assert ok is True and "exklusiv erhalten" in grund, (
-            "Der Befund hat sich geaendert: die Sperrprobe meldet auf einer "
-            "schreibgeschuetzten Datei jetzt %r statt einer folgenlosen "
-            "Zusage. Dann ist die Sonderbehandlung in sperren_pruefen zu "
-            "ueberdenken." % (grund,))
+        assert ok is False, (
+            "Die Sperrprobe meldet auf einer schreibgeschuetzten Datei "
+            "wieder eine folgenlose Zusage (%r). Das ist der Rueckfall in "
+            "96f2b18f." % (grund,))
         assert ist_versiegelt(db) is True
     finally:
         os.chmod(db, stat.S_IRUSR | stat.S_IWUSR)
@@ -693,13 +713,17 @@ def test_wv28_versiegelte_datei_wird_gar_nicht_erst_geprobt(data_dir,
     monkeypatch.setattr(wv, "ist_versiegelt",
                         lambda p: Path(p).name.startswith("forensic_"))
     geprobt = []
-    echt = wv.exklusiv_pruefen
+    # BUILD 648: Die Sperrprobe heisst jetzt 'exklusiv_beurteilen' und
+    # liefert drei Zustaende. DIE AUSSAGE DIESES TESTS BLEIBT DIESELBE -
+    # eine versiegelte Datei wird gar nicht erst angefasst; nur der
+    # ueberwachte Name hat sich geaendert.
+    echt = wv.exklusiv_beurteilen
 
     def _mitschreiben(pfad, **kw):
         geprobt.append(Path(pfad).name)
         return echt(pfad, **kw)
 
-    monkeypatch.setattr(wv, "exklusiv_pruefen", _mitschreiben)
+    monkeypatch.setattr(wv, "exklusiv_beurteilen", _mitschreiben)
 
     # Ein Fenster ist gesetzt und deckt alles ab - es hilft trotzdem nicht.
     WindowFlag.neu(angefordert_von="pruefer", grund="Test",

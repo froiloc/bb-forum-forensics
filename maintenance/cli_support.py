@@ -29,6 +29,7 @@
 
 from __future__ import annotations
 
+import os
 import sqlite3
 from pathlib import Path
 from typing import Optional
@@ -36,6 +37,8 @@ from typing import Optional
 from maintenance.ack_file import AckFile
 from maintenance.atomic_io import jetzt_epoch
 from maintenance.paths import MaintenancePaths
+from maintenance.exklusiv_befund import (BELEGT, NICHT_MESSBAR,
+                                         RUHIG, ExklusivBefund)
 from maintenance.presence_beacon import PresenceBeacon
 
 # Nutzerspezifische DBs liegen in Unterverzeichnissen; geteilte DBs top-level.
@@ -80,40 +83,151 @@ def ziel_pfade(data_dir, ziel) -> list:
     return pfade
 
 
-def exklusiv_pruefen(db_path, timeout_s: float = 2.0) -> tuple:
+def _warum_unmessbar(p: Path) -> str:
     """
-    Beweist die Ruhigstellung: versucht, einen EXCLUSIVE-Lock zu erhalten.
+    Warum ein GELUNGENES 'BEGIN EXCLUSIVE' hier nichts beweist - oder "".
 
-    Returns (ok, grund):
-      ok=True  -> exklusiv erhalten (niemand haelt mehr eine Sperre) ODER Datei
-                  nicht vorhanden ODER read-only/versiegelt (kein Schreiber).
-      ok=False -> 'database is locked' (noch von jemandem gehalten) oder ein
-                  anderer Pruefungsfehler.
+    Gefragt wird das Betriebssystem (os.access) und nicht der Dateimodus:
+    Eigentuemerschaft, Gruppen und ACLs entscheiden mit, und root darf
+    ohnehin. Das Verzeichnis zaehlt mit, weil SQLite fuer das
+    Rollback-Journal dort eine Datei anlegen muss.
+    """
+    if not os.access(str(p), os.W_OK):
+        return ("kein Schreibrecht an der Datei — SQLite oeffnet sie dann nur "
+                "lesend, und eine nur lesende Verbindung nimmt beim "
+                "'BEGIN EXCLUSIVE' gar keine Sperre. Der Befehl gelingt hier "
+                "folgenlos und beweist NICHTS. Abhilfe: die Probe unter dem "
+                "Konto fahren, dem die Datei gehoert, oder die Versiegelung "
+                "fuer die Dauer der Wartung aufheben.")
+    if not os.access(str(p.parent), os.W_OK):
+        return ("kein Schreibrecht am Verzeichnis '%s' — SQLite kann dort das "
+                "Rollback-Journal nicht anlegen. Auch hier ist ein gelungenes "
+                "'BEGIN EXCLUSIVE' kein Nachweis." % p.parent)
+    return ""
+
+
+def exklusiv_beurteilen(db_path, timeout_s: float = 2.0) -> ExklusivBefund:
+    """
+    DIE SPERRPROBE - mit drei Ergebnissen statt zwei (NEU Build 648).
+
+    Sie ist der Nachweis der Ruhigstellung: "Die Bestaetigung allein ist nicht
+    der Beweis - der Exklusiv-Lock-Erwerb ist es."
+
+    ============================================================================
+    VORGANG 96f2b18f - WARUM DIESE FUNKTION UMGEBAUT WERDEN MUSSTE
+    ============================================================================
+    Bis Build 647 kannte sie zwei Ausgaenge: erhalten oder gesperrt. Ein
+    dritter Fall wurde dabei dem ERSTEN zugeschlagen, obwohl er das Gegenteil
+    bedeutet - der Fall, in dem gar nicht gemessen werden konnte.
+
+    Kann der ausfuehrende Prozess die Datei nicht BESCHREIBEN, oeffnet SQLite
+    sie still nur lesend. Eine nur lesende Verbindung nimmt beim
+    'BEGIN EXCLUSIVE' UEBERHAUPT KEINE SPERRE; der Befehl gelingt folgenlos,
+    und die Funktion meldete 'exklusiv erhalten'.
+
+    GEMESSEN AM 2026-08-01 (Container, SQLite 3.45.1, Journalmodus 'delete',
+    als Fremdbenutzer 'nobody', KEIN Halter auf der Datei):
+        Datei 0444 (versiegelt)          -> (True, 'exklusiv erhalten')
+        Datei 0644 (voellig gewoehnlich) -> (True, 'exklusiv erhalten')
+    Beide Male hat niemand die Datei gehalten, und beide Male war die Meldung
+    unverdient.
+
+    DAMIT IST DER MANGEL BREITER ALS GEMELDET. Der Vorgang nannte die
+    versiegelten forensic_<uid>.db. Entscheidend ist aber nicht die
+    Versiegelung, sondern das SCHREIBRECHT DES MESSENDEN PROZESSES. Auf einem
+    geteilten Laufwerk, auf dem der Dienst unter einem anderen Konto laeuft
+    als die Wartung, ist das der Normalfall.
+
+    ZWEI GEGENPROBEN, ebenfalls gemessen, weil sie den Mangel eingrenzen:
+      * Haelt ein SCHREIBER eine EXCLUSIVE-Sperre, meldet die Probe auch ohne
+        Schreibrecht 'belegt' - eine EXCLUSIVE-Sperre blockiert schon das
+        Lesen. Dieser Fall war nie blind.
+      * Haelt ein LESER eine SHARED-Sperre, bleibt er unbemerkt: eine nur
+        lesende Verbindung stoert ihn nicht. Ausgerechnet der HAEUFIGSTE Fall
+        - jemand liest noch - war der uebersehene.
+
+    WIE 'nicht messbar' FESTGESTELLT WIRD: ERST wird gemessen, DANN wird nur
+    dem ERFOLG misstraut. 'Gesperrt' ist eine Messung und bleibt eine - auch
+    ohne Schreibrecht. Nur ein gelungenes 'BEGIN EXCLUSIVE' wird gegen das
+    Schreibrecht an Datei und Verzeichnis gehalten (siehe _warum_unmessbar).
+
+    Die erste Fassung hat das Recht VOR der Messung geprueft und dabei die
+    echte Auskunft 'jemand haelt sie' weggeworfen. Aufgefallen ist das an der
+    eigenen Gegenprobe SP05, nicht im Betrieb.
+
+    Returns:
+        ExklusivBefund mit zustand RUHIG | BELEGT | NICHT_MESSBAR.
     """
     p = Path(db_path)
     if not p.exists():
-        return (True, "Datei nicht vorhanden — nichts zu sperren")
+        return ExklusivBefund(str(p), RUHIG,
+                              "Datei nicht vorhanden — nichts zu sperren")
+
+    # =====================================================================
+    # ERST MESSEN, DANN DEM ERGEBNIS MISSTRAUEN - und zwar NUR dem Erfolg.
+    #
+    # Die erste Fassung dieser Behebung hat das Schreibrecht VOR der Messung
+    # geprueft und bei fehlendem Recht sofort 'nicht messbar' gemeldet. Das
+    # war zu grob, und die eigene Gegenprobe SP05 hat es gezeigt: Haelt ein
+    # SCHREIBER eine EXCLUSIVE-Sperre, dann erfaehrt man das AUCH ohne
+    # Schreibrecht - eine EXCLUSIVE-Sperre blockiert schon das Lesen. Die
+    # Vorabpruefung hat diese echte Auskunft weggeworfen und durch ein
+    # 'weiss nicht' ersetzt.
+    #
+    # MISSTRAUEN GEHOERT NUR DEM ERFOLGSFALL: 'gesperrt' ist eine Messung
+    # und bleibt eine. Nur ein GELUNGENES 'BEGIN EXCLUSIVE' ist zu
+    # hinterfragen - denn genau das gelingt auf einer nur lesend geoeffneten
+    # Datei folgenlos.
+    # =====================================================================
     con = None
     try:
         con = sqlite3.connect(str(p), timeout=timeout_s)
         con.execute("BEGIN EXCLUSIVE")
         con.execute("ROLLBACK")
-        return (True, "exklusiv erhalten")
+        unmessbar = _warum_unmessbar(p)
+        if unmessbar:
+            return ExklusivBefund(str(p), NICHT_MESSBAR, unmessbar)
+        return ExklusivBefund(str(p), RUHIG, "exklusiv erhalten")
     except sqlite3.OperationalError as exc:
         msg = str(exc).lower()
         if "locked" in msg or "busy" in msg:
-            return (False, "database is locked — noch von jemandem gehalten")
+            return ExklusivBefund(str(p), BELEGT,
+                                  "database is locked — noch von jemandem gehalten")
         if "readonly" in msg or "read-only" in msg:
-            return (True, "read-only (versiegelt) — kein Schreiber vorhanden")
-        return (False, f"nicht pruefbar: {exc}")
+            # Wir haben oben Schreibrecht festgestellt und bekommen trotzdem
+            # 'readonly' - dann liegt es an etwas anderem (Dateisystem nur
+            # lesend eingehaengt, Netzlaufwerk). Das ist KEINE Ruhe.
+            return ExklusivBefund(
+                str(p), NICHT_MESSBAR,
+                "SQLite meldet 'readonly', obwohl das Betriebssystem "
+                "Schreibrecht ausweist (%s). Moeglich bei nur lesend "
+                "eingehaengten Dateisystemen oder Netzlaufwerken. Nicht "
+                "gemessen — und damit kein Nachweis." % exc)
+        return ExklusivBefund(str(p), NICHT_MESSBAR,
+                              "nicht pruefbar: %s" % exc)
     except sqlite3.Error as exc:
-        return (False, f"nicht pruefbar: {exc}")
+        return ExklusivBefund(str(p), NICHT_MESSBAR,
+                              "nicht pruefbar: %s" % exc)
     finally:
         if con is not None:
             try:
                 con.close()
             except sqlite3.Error:
                 pass
+
+
+def exklusiv_pruefen(db_path, timeout_s: float = 2.0) -> tuple:
+    """
+    Die alte, zweiwertige Form '(ok, grund)' — sie bleibt fuer Aufrufer, die
+    die Dreiwertigkeit nicht auswerten.
+
+    ACHTUNG, DAS VERHALTEN HAT SICH GEAENDERT (Build 648): 'nicht messbar'
+    liefert hier jetzt False. Das ist die sichere Seite und der Kern der
+    Behebung von 96f2b18f - lieber ein 'nicht frei' zu viel als eine Ruhe,
+    die nie gemessen wurde. Wer die drei Zustaende unterscheiden will, ruft
+    exklusiv_beurteilen().
+    """
+    return exklusiv_beurteilen(db_path, timeout_s).als_tupel()
 
 
 def quiesce_status(paths: MaintenancePaths, window_id: str, stale_s: int,

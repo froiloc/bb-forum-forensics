@@ -60,7 +60,7 @@ from core.setting_resolver import SettingResolverError  # noqa: E402
 from maintenance.cli_config import (herkunft_ausgeben,  # noqa: E402
                                     pfade_aufloesen, resolver_bauen,
                                     wert_aufloesen)
-from maintenance.cli_support import (exklusiv_pruefen,  # noqa: E402
+from maintenance.cli_support import (exklusiv_beurteilen,  # noqa: E402
                                      pruefe_wartungsberechtigung,
                                      quiesce_status, ziel_pfade)
 from management.help import cli_epilog  # noqa: E402
@@ -152,8 +152,10 @@ def cmd_enter(args) -> int:
     bereit = False
     while True:
         st = quiesce_status(paths, window.window_id, stale)
-        db_stat = [(p,) + exklusiv_pruefen(p) for p in dbs]
-        alle_db_ok = all(ok for (_p, ok, _grund) in db_stat)
+        # BUILD 648 (Vorgang 96f2b18f): dreiwertig. 'nicht messbar' zaehlt
+        # NICHT als Ruhe - eine Ruhe, die nie gemessen wurde, ist keine.
+        db_stat = [exklusiv_beurteilen(p) for p in dbs]
+        alle_db_ok = all(b.ist_ruhig for b in db_stat)
         bereit = (not st["offen"]) and alle_db_ok
         if bereit or time.monotonic() >= frist:
             break
@@ -171,8 +173,19 @@ def cmd_enter(args) -> int:
         print(f"  FEHLER Steuerdatei {pfad}: {grund}")
 
     print("\n--- Ziel-DBs (Exklusiv-Lock-Beweis) ---")
-    for pfad, ok, grund in db_stat:
-        print(f"  {'FREI ' if ok else 'BELEGT'} {pfad} — {grund}")
+    for b in db_stat:
+        print(f"  {b.marke} {b.pfad} — {b.grund}")
+    # DIE UNMESSBAREN WERDEN EIGENS HERAUSGESTELLT (Build 648). Sie stehen
+    # oben schon mit 'UNKLAR' in der Liste, aber wer eine lange Liste
+    # ueberfliegt, sieht ein 'UNKLAR' zwischen lauter 'FREI' leicht nicht -
+    # und genau dieses eine ist der Grund, warum das Fenster nicht
+    # freigegeben wird.
+    unklar = [b for b in db_stat if b.zustand == "nicht_messbar"]
+    if unklar:
+        print("\n--- NICHT MESSBAR (%d) — das ist KEINE Ruhe ---" % len(unklar))
+        for b in unklar:
+            print(f"  {b.pfad}")
+            print(f"     {b.grund}")
 
     print("\n" + "=" * 78)
     if bereit:

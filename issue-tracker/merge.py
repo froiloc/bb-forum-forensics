@@ -39,6 +39,7 @@ import textwrap
 # ---------------------------------------------------------------------------
 from json_safe_writer import JsonSafeWriter
 from backup_names import merge_sicherungsname
+from literal_newline_repair import TEXTFELDER, LITERAL, ist_erwaehnung
 
 
 # ============================================================================
@@ -685,6 +686,48 @@ class IssueMergeEngine:
                 valid_sources.append(issue)
 
         print(f"   ✅ {len(valid_sources)} gültige Issues zum Importieren")
+
+        # -------------------------------------------------------------------
+        # BUILD 648 - WARNUNG VOR VERLORENEN ZEILENUMBRUECHEN.
+        #
+        # DER ANLASS: In frueheren Eingangsdateien ist in Zeichenketten '\\n'
+        # statt '\n' geschrieben worden. Dadurch stehen in 22 Vorgaengen
+        # Backslash+n als TEXT statt als Umbruch - gefunden hat das mc, in der
+        # fertigen Anzeige (Vorgang 651e6d84). Der Fehler entsteht beim
+        # ERZEUGEN der Datei, also hier am Eingang, und faellt sonst erst
+        # auf, wenn jemand die Seite liest.
+        #
+        # WARUM NUR EINE WARNUNG UND KEIN ABBRUCH: Die Unterscheidung ist
+        # verlaesslich, aber nicht unfehlbar. Ein Windows-Pfad wie 'C:\neu'
+        # traegt dieselbe Zeichenfolge voellig zu Recht. Ein Abbruch waere
+        # hier also eine Sperre gegen gueltige Eingaben; eine Warnung, die
+        # jede Fundstelle nennt, reicht fuer einen Fehler, der ohnehin nur
+        # beim Erzeugen entsteht.
+        # -------------------------------------------------------------------
+        umbruchverdacht = []
+        for issue in valid_sources:
+            texte = [(f, issue.get(f)) for f in TEXTFELDER]
+            texte += [(f"update[{n}].comment", u.get("comment"))
+                      for n, u in enumerate(issue.get("updates") or [])]
+            for feld, text in texte:
+                if not isinstance(text, str):
+                    continue
+                stelle = text.find(LITERAL)
+                while stelle != -1:
+                    if not ist_erwaehnung(text, stelle):
+                        umbruchverdacht.append((issue.get("id", "?"), feld, stelle))
+                    stelle = text.find(LITERAL, stelle + len(LITERAL))
+
+        if umbruchverdacht:
+            hinweis = (f"{len(umbruchverdacht)} mal steht Backslash+n als TEXT "
+                       f"im Inhalt - vermutlich ein verlorener Zeilenumbruch")
+            self.result.warnings.append(hinweis)
+            print(f"\n   ⚠️  {hinweis}:")
+            for kennung, feld, _stelle in umbruchverdacht[:20]:
+                print(f"        {str(kennung)[:8]}  {feld}")
+            if len(umbruchverdacht) > 20:
+                print(f"        ... und {len(umbruchverdacht) - 20} weitere")
+            print("        Pruefen mit:  python repair_literal_newlines.py")
 
         # -------------------------------------------------------------------
         # BUILD 642 - ABBRUCH STATT TEILIMPORT.

@@ -91,7 +91,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, List, Optional, Sequence, Tuple
 
-from maintenance.cli_support import exklusiv_pruefen
+from maintenance.cli_support import (exklusiv_beurteilen,
+                                     exklusiv_pruefen)
+from maintenance.exklusiv_befund import BELEGT as SPERRE_BELEGT
+from maintenance.exklusiv_befund import (
+    NICHT_MESSBAR as SPERRE_NICHT_MESSBAR)
+from maintenance.exklusiv_befund import RUHIG as SPERRE_RUHIG
 from maintenance.paths import MaintenancePaths
 from maintenance.window_flag import WindowFlag
 
@@ -665,6 +670,26 @@ def sperren_pruefen(dateien: Sequence[Path],
 
     Eine schreibgeschuetzte Datei wird GAR NICHT ERST geprobt und als
     UNPRUEFBAR gefuehrt - eine Probe, deren Ergebnis feststeht, ist keine.
+
+    BUILD 648 (Vorgang 96f2b18f) - DIE UEBERSETZUNG WIRD EINE ZUORDNUNG.
+    Bis Build 647 kannte die gemeinsame Sperrprobe nur zwei Ausgaenge, und
+    dieses Bauteil hat den dritten Zustand deshalb SELBST hergestellt: Es
+    fragte vorab 'ist_versiegelt' und fuehrte solche Dateien als unpruefbar,
+    ohne sie zu proben. Das war eine Umgehung des Mangels bei sich selbst -
+    die gemeinsame Funktion blieb kaputt (so stand es auch im Vorgang).
+
+    Jetzt kennt die Sperrprobe die drei Zustaende selbst, und hier wird nur
+    noch zugeordnet. DAS IST MEHR ALS AUFRAEUMEN: Die Vorabfrage kannte
+    genau EINEN Grund fuer Unmessbarkeit - den Schreibschutz an der DATEI.
+    Die Sperrprobe kennt inzwischen auch das nicht beschreibbare
+    VERZEICHNIS (ohne das SQLite kein Rollback-Journal anlegen kann), das
+    nur lesend eingehaengte Dateisystem und jeden sonstigen Fehler. Diese
+    Faelle waeren hier bis Build 647 als RUHIG durchgegangen.
+
+    DIE VORABFRAGE BLEIBT TROTZDEM STEHEN, und zwar mit Absicht: Sie
+    verhindert, dass ueberhaupt eine Verbindung geoeffnet wird. Auf einer
+    versiegelten Beweismittel-Datei ist es besser, gar nicht erst
+    hinzufassen - das Ergebnis stuende ohnehin fest.
     """
     befunde: List[Sperrbefund] = []
     for pfad in dateien:
@@ -674,11 +699,13 @@ def sperren_pruefen(dateien: Sequence[Path],
                 grund="schreibgeschuetzt - die Sperrprobe kann hier nicht "
                       "messen, ob jemand die Datei geoeffnet haelt"))
             continue
-        ok, grund = exklusiv_pruefen(pfad, timeout_s=timeout_s)
+        b = exklusiv_beurteilen(pfad, timeout_s=timeout_s)
         befunde.append(Sperrbefund(
             pfad=str(pfad),
-            zustand=ZUSTAND_RUHIG if ok else ZUSTAND_BELEGT,
-            grund=grund))
+            zustand={SPERRE_RUHIG: ZUSTAND_RUHIG,
+                     SPERRE_BELEGT: ZUSTAND_BELEGT,
+                     SPERRE_NICHT_MESSBAR: ZUSTAND_UNPRUEFBAR}[b.zustand],
+            grund=b.grund))
     return tuple(befunde)
 
 

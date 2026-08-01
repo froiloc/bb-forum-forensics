@@ -2574,15 +2574,15 @@
       "reporter": "Claude",
       "reported_at": "2026-07-31T15:45:00+00:00",
       "prerequisites": "Management-System laeuft",
-      "description": "Beim Erstellen des CLI-Katalogs (Build 606) wurde geprueft, wie jedes Werkzeug seine Datenbanken oeffnet. Zwei Werkzeuge oeffnen coordinator.db OHNE 'mode=ro', obwohl ihr eigener Dateikopf das Gegenteil zusichert:\\n\\n  * management/workload/workload_admin.py, Z. 179 (sqlite3.connect(db_path)); Dateikopf Z. 21: 'coordinator.db wird AUSSCHLIESSLICH gelesen.'\\n  * management/support_overview/support_overview_admin.py, Z. 216 (sqlite3.connect(db_path)); Dateikopf Z. 21: 'coordinator.db wird AUSSCHLIESSLICH gelesen (Produktivbetrieb-Regel).'\\n\\nTATSAECHLICH GESCHRIEBEN WIRD NICHTS - beide Repos enthalten kein INSERT/UPDATE/DELETE und kein commit. Der Befund ist also kein Datenverlust, sondern eine fehlende DURCHSETZUNG einer Zusicherung: die Sperre ist eine Absichtserklaerung im Kommentar statt eine technische Sperre. Alle uebrigen lesenden Auswertungswerkzeuge (escalation_admin, handover_admin, next_actions_admin, retention_admin, qs_admin, die stats-Werkzeuge) machen es richtig und oeffnen mit 'file:...?mode=ro'.\\n\\nRISIKO: Solange die Verbindung schreibfaehig ist, kann eine kuenftige Aenderung an den Repos unbemerkt einen unauditierten Schreibweg eroeffnen - genau den Nebeneingang, den qs_admin in seinem Kopf ausdruecklich ausschliesst.",
+      "description": "Beim Erstellen des CLI-Katalogs (Build 606) wurde geprueft, wie jedes Werkzeug seine Datenbanken oeffnet. Zwei Werkzeuge oeffnen coordinator.db OHNE 'mode=ro', obwohl ihr eigener Dateikopf das Gegenteil zusichert:\n\n  * management/workload/workload_admin.py, Z. 179 (sqlite3.connect(db_path)); Dateikopf Z. 21: 'coordinator.db wird AUSSCHLIESSLICH gelesen.'\n  * management/support_overview/support_overview_admin.py, Z. 216 (sqlite3.connect(db_path)); Dateikopf Z. 21: 'coordinator.db wird AUSSCHLIESSLICH gelesen (Produktivbetrieb-Regel).'\n\nTATSAECHLICH GESCHRIEBEN WIRD NICHTS - beide Repos enthalten kein INSERT/UPDATE/DELETE und kein commit. Der Befund ist also kein Datenverlust, sondern eine fehlende DURCHSETZUNG einer Zusicherung: die Sperre ist eine Absichtserklaerung im Kommentar statt eine technische Sperre. Alle uebrigen lesenden Auswertungswerkzeuge (escalation_admin, handover_admin, next_actions_admin, retention_admin, qs_admin, die stats-Werkzeuge) machen es richtig und oeffnen mit 'file:...?mode=ro'.\n\nRISIKO: Solange die Verbindung schreibfaehig ist, kann eine kuenftige Aenderung an den Repos unbemerkt einen unauditierten Schreibweg eroeffnen - genau den Nebeneingang, den qs_admin in seinem Kopf ausdruecklich ausschliesst.",
       "expected_behavior": "Beide Werkzeuge oeffnen coordinator.db mit sqlite3.connect(\"file:%s?mode=ro\" % db_path, uri=True) - wie die uebrigen lesenden Werkzeuge. Ein versehentlicher Schreibversuch scheitert dann technisch und nicht erst im Gegenlesen.",
       "actual_behavior": "Beide oeffnen schreibfaehig; die Zusicherung steht nur im Kommentar.",
-      "status": "resolved",
+      "status": "open",
       "priority": "high",
       "severity": "minor",
-      "assigned_to": "Claude",
+      "assigned_to": "",
       "related_to": [],
-      "resolved_in_version": "0.8.629",
+      "resolved_in_version": null,
       "target_version": null,
       "environment": {
         "python_version": "3.14"
@@ -2603,28 +2603,6 @@
           "old_value": "",
           "new_value": "",
           "comment": "Eintrag erstellt (Befund aus dem CLI-Katalog, Baustelle H / H15, Build 606)."
-        },
-        {
-          "timestamp": "2026-08-01T20:35:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "NACHGEPRUEFT und geschlossen. WAR BEREITS BEHOBEN - am Quelltext festgestellt, nicht angenommen:\\n  management/workload/workload_admin.py Z. 205: sqlite3.connect(\\\"file:%s?mode=ro\\\" % db_path, uri=True)\\n  management/support_overview/support_overview_admin.py Z. 241: dasselbe.\\n\\nBeide sind in Build 629 umgestellt worden - im selben Build, in dem tests/test_py4_lesend.py entstanden ist. DIESER VORGANG WAR DER ANLASS FUER JENE SUITE: Der Vorgang nannte ZWEI Werkzeuge; die Erhebung fuer Build 629 fand mit demselben Verfahren ZWEI WEITERE (dashboard_admin, templates_db_status). Ein Vorgang, der zwei Faelle nennt, hat zwei Faelle GEFUNDEN - er sagt nichts darueber, wie viele es gibt. Genau das war die Lehre.\\n\\nDIE BEHEBUNG IST MASCHINELL NACHGEHALTEN, und zwar nicht ueber eine gepflegte Liste, sondern gegen den KATALOG: PY01 geht jedes als 'lesend' gefuehrte Werkzeug durch und verlangt, dass es seine Datenbanken auch technisch nur lesend oeffnet. Beide Werkzeuge dieses Vorgangs fallen darunter. Der Massstab kommt damit aus derselben Quelle wie die Zusage an die Betriebsseite - eine zweite Liste im Test waere binnen zweier Builds von der ersten abgewichen.\\n\\nOFFEN BLEIBT, ausdruecklich und als eigener Vorgang: PY01 prueft NICHT die Werkzeuge mit art='gemischt' und nicht die Verbindungen, die aus einem Repo statt aus der Werkzeugdatei geoeffnet werden. Das ist 88dc129b."
-        },
-        {
-          "timestamp": "2026-08-01T20:35:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "War in 0.8.629 behoben; maschinell nachgehalten ueber PY01 gegen den CLI-Katalog."
-        },
-        {
-          "timestamp": "2026-08-01T20:35:00+00:00",
-          "author": "Claude",
-          "action": "version_update",
-          "old_value": "",
-          "new_value": "0.8.629",
-          "comment": "resolved_in_version auf den Build gesetzt, in dem es tatsaechlich behoben wurde."
         }
       ]
     },
@@ -2847,17 +2825,17 @@
       "reporter": "Claude",
       "reported_at": "2026-07-31T19:20:00+00:00",
       "prerequisites": "Geteiltes Datenlaufwerk, auf dem mehr als eine Person Wartungsdienste startet",
-      "description": "Befund aus der Wartungsanalyse zu Build 609 (Vermerk_Wartungsvorbehalt_Analyse_K1_K8_v1_0.md, Abschnitt 4).\\n\\nGEKLAERT UND UNBEDENKLICH: Ein REGULAERER Dienst ist ueber tools/maintenance_kill.py nicht erreichbar. Nur ein mit --maintenance gestarteter Dienst legt eine Anmeldedatei in _maintenance/servers/ an, und nur er wertet die Kill-Anforderung aus; ein regulaerer Dienst schreibt sein Lebenszeichen in ein anderes Verzeichnis und erreicht den zustaendigen Zweig nie.\\n\\nWAS OFFEN BLEIBT: '--all' nimmt ALLE Anmeldungen, ohne Filter nach Rechner, Fenster oder Fall. Auf einem geteilten Laufwerk beendet es damit auch die Wartungsdienste anderer Personen - und zwar ohne dass die aufrufende Person das vorher sieht. Das ist keine Datensicherheitsfrage (ein Wartungsdienst haelt keine unbestaetigten Ergebnisse), sondern eine Frage der Zusammenarbeit: die andere Person steht ohne Ansage vor einem abgebrochenen Lauf.",
+      "description": "Befund aus der Wartungsanalyse zu Build 609 (Vermerk_Wartungsvorbehalt_Analyse_K1_K8_v1_0.md, Abschnitt 4).\n\nGEKLAERT UND UNBEDENKLICH: Ein REGULAERER Dienst ist ueber tools/maintenance_kill.py nicht erreichbar. Nur ein mit --maintenance gestarteter Dienst legt eine Anmeldedatei in _maintenance/servers/ an, und nur er wertet die Kill-Anforderung aus; ein regulaerer Dienst schreibt sein Lebenszeichen in ein anderes Verzeichnis und erreicht den zustaendigen Zweig nie.\n\nWAS OFFEN BLEIBT: '--all' nimmt ALLE Anmeldungen, ohne Filter nach Rechner, Fenster oder Fall. Auf einem geteilten Laufwerk beendet es damit auch die Wartungsdienste anderer Personen - und zwar ohne dass die aufrufende Person das vorher sieht. Das ist keine Datensicherheitsfrage (ein Wartungsdienst haelt keine unbestaetigten Ergebnisse), sondern eine Frage der Zusammenarbeit: die andere Person steht ohne Ansage vor einem abgebrochenen Lauf.",
       "expected_behavior": "Entweder ein Filter (--host, --window-id) oder - einfacher und wahrscheinlich ausreichend - eine Auflistung der betroffenen Anmeldungen VOR der Ausfuehrung, mit Rechnername und Fenster-ID, und eine Bestaetigung, wenn mehr als der eigene Rechner betroffen ist.",
       "actual_behavior": "--all beendet alle angemeldeten Wartungsdienste ohne vorherige Auflistung und ohne Filtermoeglichkeit.",
-      "status": "resolved",
+      "status": "open",
       "priority": "low",
       "severity": "minor",
-      "assigned_to": "Claude",
+      "assigned_to": "",
       "related_to": [
         "da6c16d0-ef1e-4052-8eb1-526c647de613"
       ],
-      "resolved_in_version": "0.8.648",
+      "resolved_in_version": null,
       "target_version": null,
       "environment": {
         "python_version": "3.14"
@@ -2882,28 +2860,6 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eintraege_claude_Build610.json"
-        },
-        {
-          "timestamp": "2026-08-01T20:35:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "BEHOBEN in Build 0.8.648 - nach dem zweiten der beiden im Vorgang genannten Wege ('eine Auflistung der betroffenen Anmeldungen VOR der Ausfuehrung ... und eine Bestaetigung, wenn mehr als der eigene Rechner betroffen ist'). Einen Filter nach Rechner oder Fenster gibt es weiterhin NICHT; das ist ausdruecklich so und steht als Warnung im Katalog.\\n\\nDIE AUFLISTUNG STEHT IMMER DA, auch bei '--uuid' und auch mit '--ja': Rechnername, Rolle, PID, Build und Fenster-Kennung je Anmeldung. Sie ist zugleich der Beleg im Sitzungsprotokoll darueber, wessen Lauf abgebrochen wurde.\\n\\nDIE RUECKFRAGE GILT NUR FUER '--all'. Das ist eine Abgrenzung und keine Nachlaessigkeit: Wer '--uuid' angibt, hat eine bestimmte Anmeldung BENANNT - er hat sie vorher in '--list' gesehen und sich entschieden. Der Vorgang richtet sich gegen den ungesehenen Rundumschlag, nicht gegen die bewusste Einzelentscheidung. Eine Rueckfrage bei jedem Aufruf waere binnen einer Woche eine Taste (Gegenprobe MK05).\\n\\nBESTAETIGT WIRD MIT DEM WORT 'FREMDE BEENDEN'. Ein blosses 'j' tippt man versehentlich; dieses Wort nicht - dieselbe Ueberlegung wie bei der Wortabfrage des Wartungsvorbehalts.\\n\\nDER RECHNERVERGLEICH IST UNEMPFINDLICH gegen Gross-/Kleinschreibung und gegen einen angehaengten Domaenenteil ('KK31-PC7' gegen 'kk31-pc7.polizei.example.nrw'). Auf einem geteilten Laufwerk melden sich Rechner nicht zwingend unter demselben Namen an, unter dem der aufrufende sich selbst kennt; ein Vergleich auf Zeichengleichheit haette JEDEN Rechner fuer fremd gehalten und die Rueckfrage zur Gewohnheit gemacht. Im Zweifel gilt ein Rechner als FREMD - eine zu vorsichtige Rueckfrage kostet eine Eingabe, eine unterlassene kostet jemand anderem seinen Lauf.\\n\\nOHNE TERMINAL WIRD NICHT GEFRAGT, SONDERN ABGEBROCHEN - dieselbe Haltung wie beim Wartungsvorbehalt (ERGEBNIS_KEIN_TERMINAL). Eine Rueckfrage, die niemand beantworten kann, ist keine Sicherung, sondern ein Absturz mit anderem Namen. Fuer Skripte gibt es '--ja'.\\n\\nPRUEFUNGEN: MK01-MK05 in tests/test_sperrprobe_dreiwertig.py. MK03 ist die Gegenprobe (nur eigener Rechner -> KEINE Rueckfrage), MK05 die zweite ('--uuid' -> keine Rueckfrage).\\n\\nEIN FEHLER IN MEINEN EIGENEN PRUEFUNGEN, der hierher gehoert: Die erste Fassung hat 'ServerRegistration.alle_laden' durch ZUWEISUNG ersetzt statt ueber monkeypatch. Die Ersetzung blieb bis zum Ende des Testlaufs stehen und hat drei fremde Tests umgebracht - aufgefallen erst im Vollauf, nicht im Einzellauf. Behoben und im Quelltext vermerkt."
-        },
-        {
-          "timestamp": "2026-08-01T20:35:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "Behoben in 0.8.648 (Auflistung + Rueckfrage bei fremden Rechnern)."
-        },
-        {
-          "timestamp": "2026-08-01T20:35:00+00:00",
-          "author": "Claude",
-          "action": "version_update",
-          "old_value": "",
-          "new_value": "0.8.648",
-          "comment": "resolved_in_version gesetzt."
         }
       ]
     },
@@ -2915,17 +2871,17 @@
       "reporter": "Claude",
       "reported_at": "2026-07-31T20:10:00+00:00",
       "prerequisites": "Eine schreibgeschuetzte (versiegelte) SQLite-Datei, z. B. eine forensic_<uid>.db, und ein Konto ohne Rechte, den Schreibschutz zu uebergehen (also NICHT root)",
-      "description": "GEFUNDEN DURCH mc: Der Regressionslauf zu Build 610 hat den damals neuen Test WV22 rot gemeldet. Der Test pruefte eine Vermutung aus 'Vermerk_Wartungsvorbehalt_Analyse_K1_K8_v1_0.md' Abschnitt 6 - naemlich dass eine versiegelte Datei mit 'attempt to write a readonly database' antwortet und deshalb zu Recht als ruhig gilt. Die Vermutung war falsch. Die Ehre fuer den Fund gebuehrt dem Regressionslauf, nicht mir.\\n\\nDER BEFUND, nachgestellt am 2026-07-31 als Nicht-root-Eigentuemer, Journalmodus 'delete':\\n\\n  schreibbar, ein LESER haelt SHARED    -> (False, 'database is locked')   richtig\\n  versiegelt, ein LESER haelt SHARED    -> (True,  'exklusiv erhalten')    BLIND\\n  versiegelt, ein SCHREIBER haelt EX    -> (True,  'exklusiv erhalten')    BLIND\\n\\nURSACHE: sqlite3.connect() oeffnet eine nicht beschreibbare Datei still nur lesend. Eine nur lesende Verbindung nimmt beim 'BEGIN EXCLUSIVE' ueberhaupt keine Sperre - der Befehl gelingt folgenlos. Der read-only-Zweig von exklusiv_pruefen wird dabei nie erreicht; die Funktion meldet den Erfolgsfall.\\n\\nWARUM DAS SCHWER WIEGT: exklusiv_pruefen ist der BEWEIS DER RUHIGSTELLUNG des gesamten Wartungsmodus - 'Die Bestaetigung allein ist nicht der Nachweis, die Sperre ist es.' Auf versiegelten Dateien ist dieser Beweis kein Beweis, sondern eine Zusage ohne Messung. Betroffen sind genau die forensic_<uid>.db, also genau die Dateien, die 'forensic_index_upgrade --ausfuehren' entsiegelt und beschreibt.\\n\\nBETROFFENE AUFRUFSTELLEN: tools/maintenance.py (cmd_status und der Ruhenachweis beim Setzen eines Fensters) sowie jede kuenftige Verwendung. maintenance/wartungsvorbehalt.py (Build 611) umgeht den Mangel BEI SICH SELBST, indem es schreibgeschuetzte Dateien gar nicht erst probt, sie als 'unpruefbar' fuehrt, benennt und die Wortabfrage erzwingt - die gemeinsame Funktion ist damit NICHT repariert.\\n\\nNICHT GEPRUEFT: das Verhalten unter Windows und im WAL-Journalmodus. Beides ist zu erwarten, aber nicht belegt.",
+      "description": "GEFUNDEN DURCH mc: Der Regressionslauf zu Build 610 hat den damals neuen Test WV22 rot gemeldet. Der Test pruefte eine Vermutung aus 'Vermerk_Wartungsvorbehalt_Analyse_K1_K8_v1_0.md' Abschnitt 6 - naemlich dass eine versiegelte Datei mit 'attempt to write a readonly database' antwortet und deshalb zu Recht als ruhig gilt. Die Vermutung war falsch. Die Ehre fuer den Fund gebuehrt dem Regressionslauf, nicht mir.\n\nDER BEFUND, nachgestellt am 2026-07-31 als Nicht-root-Eigentuemer, Journalmodus 'delete':\n\n  schreibbar, ein LESER haelt SHARED    -> (False, 'database is locked')   richtig\n  versiegelt, ein LESER haelt SHARED    -> (True,  'exklusiv erhalten')    BLIND\n  versiegelt, ein SCHREIBER haelt EX    -> (True,  'exklusiv erhalten')    BLIND\n\nURSACHE: sqlite3.connect() oeffnet eine nicht beschreibbare Datei still nur lesend. Eine nur lesende Verbindung nimmt beim 'BEGIN EXCLUSIVE' ueberhaupt keine Sperre - der Befehl gelingt folgenlos. Der read-only-Zweig von exklusiv_pruefen wird dabei nie erreicht; die Funktion meldet den Erfolgsfall.\n\nWARUM DAS SCHWER WIEGT: exklusiv_pruefen ist der BEWEIS DER RUHIGSTELLUNG des gesamten Wartungsmodus - 'Die Bestaetigung allein ist nicht der Nachweis, die Sperre ist es.' Auf versiegelten Dateien ist dieser Beweis kein Beweis, sondern eine Zusage ohne Messung. Betroffen sind genau die forensic_<uid>.db, also genau die Dateien, die 'forensic_index_upgrade --ausfuehren' entsiegelt und beschreibt.\n\nBETROFFENE AUFRUFSTELLEN: tools/maintenance.py (cmd_status und der Ruhenachweis beim Setzen eines Fensters) sowie jede kuenftige Verwendung. maintenance/wartungsvorbehalt.py (Build 611) umgeht den Mangel BEI SICH SELBST, indem es schreibgeschuetzte Dateien gar nicht erst probt, sie als 'unpruefbar' fuehrt, benennt und die Wortabfrage erzwingt - die gemeinsame Funktion ist damit NICHT repariert.\n\nNICHT GEPRUEFT: das Verhalten unter Windows und im WAL-Journalmodus. Beides ist zu erwarten, aber nicht belegt.",
       "expected_behavior": "exklusiv_pruefen unterscheidet drei Ergebnisse statt zwei: ruhig, belegt und 'nicht messbar'. Fuer eine Datei, die der ausfuehrende Benutzer nicht beschreiben kann, liefert es 'nicht messbar' mit Begruendung, statt einen Erfolg zu melden, den es nicht gemessen hat. Die Aufrufstellen in tools/maintenance.py stufen 'nicht messbar' sichtbar ein und verbuchen es nicht als Ruhe.",
       "actual_behavior": "Auf einer schreibgeschuetzten Datei liefert exklusiv_pruefen immer (True, 'exklusiv erhalten') - auch waehrend ein Leser oder ein Schreiber die Datei haelt.",
-      "status": "resolved",
+      "status": "open",
       "priority": "high",
       "severity": "major",
-      "assigned_to": "Claude",
+      "assigned_to": "",
       "related_to": [
         "da6c16d0-ef1e-4052-8eb1-526c647de613"
       ],
-      "resolved_in_version": "0.8.648",
+      "resolved_in_version": null,
       "target_version": null,
       "environment": {
         "python_version": "3.14"
@@ -2953,28 +2909,6 @@
           "author": "merge-tool",
           "action": "comment",
           "comment": "Importiert aus eingang_claude_Build611.json"
-        },
-        {
-          "timestamp": "2026-08-01T20:35:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "comment": "BEHOBEN in Build 0.8.648 - UND DER BEFUND IST BREITER ALS GEMELDET.\\n\\nERST DIE NACHSTELLUNG, UND SIE IST BEIM ERSTEN MAL MISSLUNGEN: Mein erster Versuch lief als root und zeigte durchgehend das GUTE Verhalten - er haette den Vorgang als unbegruendet erscheinen lassen. Der Grund: root schreibt auch auf eine Datei mit 0444, den fraglichen Zustand gibt es unter root gar nicht. Erst der Wechsel auf einen fremden Benutzer ('nobody', im Unterprozess) hat ihn sichtbar gemacht. Das ist das Muster aus Vorgang c3f80e54 in freier Wildbahn, und es steht jetzt im Kopf der neuen Testsuite.\\n\\nGEMESSEN (Container, SQLite 3.45.1, Journalmodus 'delete', als 'nobody'):\\n  Datei 0444 (versiegelt), KEIN Halter          -> (True, 'exklusiv erhalten')\\n  Datei 0644 (voellig gewoehnlich), KEIN Halter -> (True, 'exklusiv erhalten')\\n\\nDAMIT IST DER MANGEL BREITER ALS IM VORGANG BESCHRIEBEN. Er nannte die versiegelten forensic_<uid>.db. Entscheidend ist aber nicht die Versiegelung, sondern das SCHREIBRECHT DES MESSENDEN PROZESSES. Auf einem geteilten Laufwerk, auf dem der Dienst unter einem anderen Konto laeuft als die Wartung, ist eine ganz gewoehnliche 0644-Datei betroffen - das ist dort der Normalfall und nicht die Ausnahme.\\n\\nEINE ANGABE DES VORGANGS TRIFFT DAGEGEN NICHT ZU, und das gehoert dazu: 'versiegelt, ein SCHREIBER haelt EX -> (True, exklusiv erhalten) BLIND'. Nachgemessen meldet die Probe hier 'belegt' - eine EXCLUSIVE-Sperre blockiert schon das Lesen. Dieser Fall war nie blind. Eine Behebung, die ihn mit umgebaut haette, haette etwas repariert, das nicht kaputt war.\\n\\nDIE BEHEBUNG: Neu ist maintenance/exklusiv_befund.py mit DREI Zustaenden (ruhig / belegt / nicht_messbar) und der Eigenschaft 'ist_ruhig', die nur bei 'ruhig' True liefert - das ist die ganze Behebung in einer Zeile. cli_support bekommt 'exklusiv_beurteilen'; 'exklusiv_pruefen' bleibt als zweiwertige Form bestehen und liefert bei 'nicht messbar' jetzt False (die sichere Seite).\\n\\nEIN ENTWURFSFEHLER VON MIR, den die eigene Gegenprobe gefunden hat: Die erste Fassung prueft das Schreibrecht VOR der Messung und meldet dann sofort 'nicht messbar'. SP05 hat gezeigt, dass damit eine ECHTE Auskunft verlorengeht - der Fall 'ein Schreiber haelt sie' wurde zu 'weiss nicht'. Jetzt wird ERST GEMESSEN und nur dem ERFOLG misstraut: 'gesperrt' ist eine Messung und bleibt eine; nur ein gelungenes 'BEGIN EXCLUSIVE' wird gegen das Schreibrecht gehalten.\\n\\nDIE AUFRUFSTELLEN: tools/maintenance.py stuft dreiwertig ein, zaehlt 'nicht messbar' NICHT als Ruhe und stellt die unmessbaren Dateien am Ende eigens heraus - wer eine lange Liste ueberfliegt, sieht ein einzelnes 'UNKLAR' zwischen lauter 'FREI' sonst nicht, und genau dieses eine ist der Grund, warum das Fenster nicht freigegeben wird.\\n\\nmaintenance/wartungsvorbehalt.py ordnet jetzt nur noch zu, statt den dritten Zustand selbst herzustellen. DAS IST MEHR ALS AUFRAEUMEN: Seine Vorabfrage kannte genau EINEN Grund fuer Unmessbarkeit - den Schreibschutz an der DATEI. Die Sperrprobe kennt inzwischen auch das nicht beschreibbare VERZEICHNIS (ohne das SQLite kein Rollback-Journal anlegen kann) und das nur lesend eingehaengte Dateisystem. Diese Faelle waeren dort bis Build 647 als RUHIG durchgegangen. Die Vorabfrage bleibt trotzdem stehen: auf einer versiegelten Beweismittel-Datei ist es besser, gar nicht erst hinzufassen.\\n\\nZWEI BESTEHENDE TESTS SIND UMGEDREHT WORDEN, und das ist hier die Behebung und keine Anpassung: WV21 hiess 'readonly_meldung_gilt_als_ruhig' und bildete die im Vorgang widerlegte Vermutung ab; er heisst jetzt 'ist_KEINE_ruhe'. WV22 hielt den MANGEL als Test fest und sagte in seinem eigenen Kopf voraus, dass er auffaellt, wenn sich das Verhalten aendert - genau das ist eingetreten. WV28 ueberwachte den alten Funktionsnamen; seine Aussage ist unveraendert.\\n\\nNEUE SUITE: tests/test_sperrprobe_dreiwertig.py, SP01-SP08. Die heiklen Faelle laufen im Unterprozess als 'nobody'; geht das nicht (kein root, kein 'nobody', Windows), wird UEBERSPRUNGEN - mit Grund und namentlich.\\n\\nNICHT GEPRUEFT, wie im Vorgang vermerkt: Windows und der WAL-Journalmodus. WAL ist projektweit verboten (Build 499), Windows steht aus."
-        },
-        {
-          "timestamp": "2026-08-01T20:35:00+00:00",
-          "author": "Claude",
-          "action": "status_change",
-          "old_value": "open",
-          "new_value": "resolved",
-          "comment": "Behoben in 0.8.648, gemessen unter fremden Rechten (SP01-SP08)."
-        },
-        {
-          "timestamp": "2026-08-01T20:35:00+00:00",
-          "author": "Claude",
-          "action": "version_update",
-          "old_value": "",
-          "new_value": "0.8.648",
-          "comment": "resolved_in_version gesetzt."
         }
       ]
     },
@@ -5752,90 +5686,6 @@
           "old_value": "",
           "new_value": "",
           "comment": "Issue erstellt"
-        }
-      ]
-    },
-    {
-      "id": "01fedc41-59ea-45c3-9067-3a2fce209599",
-      "type": "improvement",
-      "title": "Issue-Tracker Tag-Cloud soll ebenfalls filtersensitiv sein.",
-      "affected_version": "0.8.648",
-      "reporter": "Alex",
-      "reported_at": "2026-08-01T20:35:44.127202+00:00",
-      "prerequisites": "Die Tagcloud ist vorhanden. Es sind Filter in der Auswahl gesetzt.",
-      "description": "Es werden in der Tag-Cloud noch immer alle Tags angezeigt, auch jede, die nicht mehr relevant sind, weil sie nicht zu den durch die gesetzten Filter noch verbliebenen Tickets abgedeckt sind.",
-      "expected_behavior": "Mit dem Setzen der Hauptfilter, sollen auch die Elemente in der Tag-Cloud aktualisiert (und reduziert werden).",
-      "actual_behavior": "Die Tag-Cloud bezieht sich noch immer auf die Gesamtheit aller, in allen Tickets verwendeten Tags.",
-      "status": "open",
-      "priority": "low",
-      "severity": "minor",
-      "assigned_to": "Claude",
-      "related_to": [],
-      "resolved_in_version": null,
-      "target_version": null,
-      "environment": {
-        "python_version": "3.14"
-      },
-      "tags": [
-        "Issue-Tracker",
-        "Tag-Cloud",
-        "Filter"
-      ],
-      "attachments": [],
-      "updates": [
-        {
-          "timestamp": "2026-08-01T20:35:44.127242+00:00",
-          "author": "Alex",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "Issue erstellt"
-        }
-      ]
-    },
-    {
-      "id": "9fa53246-cc58-50a2-941c-45c1e2fd6830",
-      "reporter": "Claude",
-      "reported_at": "2026-08-01T22:30:00+00:00",
-      "assigned_to": "Alex",
-      "type": "bug",
-      "status": "in_progress",
-      "priority": "high",
-      "severity": "major",
-      "title": "Zeilenumbrueche stehen als Zeichenfolge im Text - 22 Vorgaenge",
-      "affected_version": "0.8.647",
-      "resolved_in_version": null,
-      "target_version": "0.8.648",
-      "tags": [
-        "Issue-Tracker",
-        "Daten",
-        "Grundregel1",
-        "gemessen"
-      ],
-      "prerequisites": "",
-      "description": "Gemeldet von mc am 2026-08-01 an Vorgang 651e6d84: 'hat im Feld Beschreibung \\n und das wird nicht in <br> uebersetzt. Es wird nach wie vor als \\n angezeigt.'\n\nDIE ANZEIGE IST NICHT SCHULD - DIE DATEN SIND ES, UND ZWAR DURCH MICH. In 651e6d84 steht im Feld 'description' kein Zeilenumbruch, sondern die zwei Zeichen Backslash und n als Text. Der Filter 'zeilen' aus Build 647 zeigt sie korrekt als das an, was sie sind. Entstanden ist das beim Erzeugen einer Eingangsdatei in einer frueheren Sitzung: dort wurde in einer Zeichenkette der Backslash verdoppelt (zwei Backslash und n statt einem).\n\nGEMESSEN am Bestand von Build 647: 22 von 140 Vorgaengen, 320 Vorkommen. 19 der 22 Vorgaenge stammen von mir, 3 von mc. Betroffen sind 'description', 'expected_behavior' und die Kommentare im Verlauf.",
-      "expected_behavior": "Ein Zeilenumbruch steht als Zeilenumbruch in den Daten und wird in der Detailansicht als solcher dargestellt.",
-      "actual_behavior": "In 22 Vorgaengen steht die Zeichenfolge Backslash+n im Fliesstext. Die Gliederung dieser Texte ist in der Anzeige nicht zu erkennen; stattdessen stehen dort die zwei Zeichen Backslash und n.",
-      "related_to": [
-        "651e6d84-7ebc-4905-ab21-9f324021ec1d"
-      ],
-      "environment": {
-        "python_version": "3.14"
-      },
-      "updates": [
-        {
-          "timestamp": "2026-08-01T22:30:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "BUILD 648 - WERKZEUG GELIEFERT, DATEN NOCH NICHT GEAENDERT.\n\nZUM VORSCHLAG VON mc, das mit sed zu erledigen: Die erste Fassung (einfache Verdopplung im Muster) zerstoert die Datei - auf einer Kopie ausprobiert, 'JSONDecodeError: Invalid control character at: line 347 column 130', die Datei wuchs von 5458 auf 5886 Zeilen. Der Grund: in der DATEI steht ein echter Zeilenumbruch bereits als Backslash und n, das ist seine JSON-Kodierung; das Muster traf also die SCHON RICHTIGEN Umbrueche. mc hat daraufhin die richtige Fassung genannt (vierfacher Backslash im Muster, doppelter in der Ersetzung), und DIE STIMMT: ebenfalls auf einer Kopie geprueft, JSON bleibt gueltig, 651e6d84 bekommt seine acht Umbrueche, 0 literale Vorkommen bleiben uebrig.\n\nDER EINE UNTERSCHIED, DER BLEIBT - und er ist gemessen: derselbe sed-Lauf hat auch d2ade5dc umgeschrieben. Dort ist die Zeichenfolge an drei Stellen WOERTLICH gemeint, weil der Vorgang von ihr handelt; nach dem Lauf stand in 'Derzeit wird ... angezeigt.' ein echter Umbruch, und der Satz ergibt keinen Sinn mehr. sed kann das nicht unterscheiden - im Ergebnis waren alle 320 Vorkommen weg, auch die drei richtigen.\n\nDIE UNTERSCHEIDUNGSREGEL, an den Daten abgelesen und nicht erdacht: Ein verlorener Umbruch KLEBT am Satz - unmittelbar hinter dem Punkt folgt die Zeichenfolge und dann das naechste Wort. Eine woertliche Erwaehnung steht FREI im Satz, mit Leerzeichen davor ( ... wird als \\n gespeichert). Also: Leerzeichen oder Textanfang vor dem Backslash -> Erwaehnung, alles andere -> Umbruch. GEGENGEPRUEFT am gesamten Bestand: die Regel trennt 317 Umbrueche von 3 Erwaehnungen, und alle drei Erwaehnungen liegen in d2ade5dc - genau dort, wo die Zeichenfolge das Thema ist. Sie irrt ausserdem in die sichere Richtung: im Zweifel bleibt stehen.\n\nGELIEFERT: issue-tracker/repair_literal_newlines.py (+ literal_newline_repair.py) - Trockenlauf als Vorgabe, '--apply' sichert vorher und schreibt atomar, '--nur <id>' fasst einen einzelnen Vorgang an, '--alle-zeigen' zeigt jede Fundstelle mit Umgebung. Die Erwaehnungen werden IMMER einzeln aufgelistet - was das Werkzeug nicht anfasst, muss man nachsehen koennen.\n\nAUSSERDEM: merge.py warnt ab jetzt beim Einpflegen, wenn in einer Eingangsdatei Backslash+n als Text steht und nach der Regel ein Umbruch sein muesste. Nur eine Warnung, kein Abbruch - ein Windows-Pfad, dessen naechster Ordner mit n beginnt, traegt dieselbe Zeichenfolge voellig zu Recht.\n\nDER VORGANG SCHLIESST, sobald 'python repair_literal_newlines.py --apply' gelaufen ist. Danach bitte STAND_UMBRUECHE in tests/test_issue_tracker_umbruchreparatur.py auf 0 setzen - dann wird aus der Obergrenze eine Sperre. Der Test sagt die Zahl im Lauf selbst an.\n\nZU d2ade5dc, damit es niemanden spaeter verwirrt: Dieser Vorgang enthaelt an drei Stellen die Zeichenfolge als TEXT - in 'expected_behavior', 'actual_behavior' und 'prerequisites'. Das ist RICHTIG SO, denn der Vorgang handelt von ihr. Das Reparaturwerkzeug laesst genau diese drei Stellen stehen und fuehrt sie bei jedem Lauf unter 'woertlich gemeint' auf. Ein eigener Vermerk AN d2ade5dc waere der naheliegende Ort gewesen - er geht hier aber nicht: der Vorgang steht schon in eingang_claude_Build647.json, und zwei Eingangsdateien mit derselben Kennung sind unzulaessig (IE04). Aufgefallen ist mir das im Regressionslauf, nicht beim Schreiben."
-        },
-        {
-          "timestamp": "2026-08-01T20:41:54.022539+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eingang_claude_Build648.json"
         }
       ]
     }

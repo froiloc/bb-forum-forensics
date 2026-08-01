@@ -2344,7 +2344,17 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             warnungen=(
                 "'--all' nimmt ALLE Anmeldungen ohne Filter nach Rechner "
                 "oder Fenster. Auf einem geteilten Laufwerk trifft es auch "
-                "die Wartungsdienste anderer.",
+                "die Wartungsdienste anderer. ENTSCHAERFT IN BUILD 648 "
+                "(Vorgang 1155da11), aber NICHT aufgehoben: Das Werkzeug "
+                "listet die betroffenen Anmeldungen jetzt VOR der Wirkung "
+                "auf - mit Rechnername und Fenster-Kennung - und fragt "
+                "zurueck, sobald ein FREMDER Rechner dabei ist. Zu "
+                "bestaetigen ist mit dem Wort 'FREMDE BEENDEN'; ein blosses "
+                "'j' tippt man versehentlich, dieses Wort nicht. Einen "
+                "Filter nach Rechner oder Fenster gibt es weiterhin nicht.",
+                "'--ja' uebergeht die Rueckfrage - fuer Skripte. Die "
+                "AUFLISTUNG bleibt dabei stehen: sie ist der Beleg im "
+                "Sitzungsprotokoll darueber, wessen Lauf abgebrochen wurde.",
             ),
         ),
     ),

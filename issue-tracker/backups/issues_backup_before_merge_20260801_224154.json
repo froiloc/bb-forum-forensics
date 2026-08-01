@@ -5792,52 +5792,6 @@
           "comment": "Issue erstellt"
         }
       ]
-    },
-    {
-      "id": "9fa53246-cc58-50a2-941c-45c1e2fd6830",
-      "reporter": "Claude",
-      "reported_at": "2026-08-01T22:30:00+00:00",
-      "assigned_to": "Alex",
-      "type": "bug",
-      "status": "in_progress",
-      "priority": "high",
-      "severity": "major",
-      "title": "Zeilenumbrueche stehen als Zeichenfolge im Text - 22 Vorgaenge",
-      "affected_version": "0.8.647",
-      "resolved_in_version": null,
-      "target_version": "0.8.648",
-      "tags": [
-        "Issue-Tracker",
-        "Daten",
-        "Grundregel1",
-        "gemessen"
-      ],
-      "prerequisites": "",
-      "description": "Gemeldet von mc am 2026-08-01 an Vorgang 651e6d84: 'hat im Feld Beschreibung \\n und das wird nicht in <br> uebersetzt. Es wird nach wie vor als \\n angezeigt.'\n\nDIE ANZEIGE IST NICHT SCHULD - DIE DATEN SIND ES, UND ZWAR DURCH MICH. In 651e6d84 steht im Feld 'description' kein Zeilenumbruch, sondern die zwei Zeichen Backslash und n als Text. Der Filter 'zeilen' aus Build 647 zeigt sie korrekt als das an, was sie sind. Entstanden ist das beim Erzeugen einer Eingangsdatei in einer frueheren Sitzung: dort wurde in einer Zeichenkette der Backslash verdoppelt (zwei Backslash und n statt einem).\n\nGEMESSEN am Bestand von Build 647: 22 von 140 Vorgaengen, 320 Vorkommen. 19 der 22 Vorgaenge stammen von mir, 3 von mc. Betroffen sind 'description', 'expected_behavior' und die Kommentare im Verlauf.",
-      "expected_behavior": "Ein Zeilenumbruch steht als Zeilenumbruch in den Daten und wird in der Detailansicht als solcher dargestellt.",
-      "actual_behavior": "In 22 Vorgaengen steht die Zeichenfolge Backslash+n im Fliesstext. Die Gliederung dieser Texte ist in der Anzeige nicht zu erkennen; stattdessen stehen dort die zwei Zeichen Backslash und n.",
-      "related_to": [
-        "651e6d84-7ebc-4905-ab21-9f324021ec1d"
-      ],
-      "environment": {
-        "python_version": "3.14"
-      },
-      "updates": [
-        {
-          "timestamp": "2026-08-01T22:30:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "BUILD 648 - WERKZEUG GELIEFERT, DATEN NOCH NICHT GEAENDERT.\n\nZUM VORSCHLAG VON mc, das mit sed zu erledigen: Die erste Fassung (einfache Verdopplung im Muster) zerstoert die Datei - auf einer Kopie ausprobiert, 'JSONDecodeError: Invalid control character at: line 347 column 130', die Datei wuchs von 5458 auf 5886 Zeilen. Der Grund: in der DATEI steht ein echter Zeilenumbruch bereits als Backslash und n, das ist seine JSON-Kodierung; das Muster traf also die SCHON RICHTIGEN Umbrueche. mc hat daraufhin die richtige Fassung genannt (vierfacher Backslash im Muster, doppelter in der Ersetzung), und DIE STIMMT: ebenfalls auf einer Kopie geprueft, JSON bleibt gueltig, 651e6d84 bekommt seine acht Umbrueche, 0 literale Vorkommen bleiben uebrig.\n\nDER EINE UNTERSCHIED, DER BLEIBT - und er ist gemessen: derselbe sed-Lauf hat auch d2ade5dc umgeschrieben. Dort ist die Zeichenfolge an drei Stellen WOERTLICH gemeint, weil der Vorgang von ihr handelt; nach dem Lauf stand in 'Derzeit wird ... angezeigt.' ein echter Umbruch, und der Satz ergibt keinen Sinn mehr. sed kann das nicht unterscheiden - im Ergebnis waren alle 320 Vorkommen weg, auch die drei richtigen.\n\nDIE UNTERSCHEIDUNGSREGEL, an den Daten abgelesen und nicht erdacht: Ein verlorener Umbruch KLEBT am Satz - unmittelbar hinter dem Punkt folgt die Zeichenfolge und dann das naechste Wort. Eine woertliche Erwaehnung steht FREI im Satz, mit Leerzeichen davor ( ... wird als \\n gespeichert). Also: Leerzeichen oder Textanfang vor dem Backslash -> Erwaehnung, alles andere -> Umbruch. GEGENGEPRUEFT am gesamten Bestand: die Regel trennt 317 Umbrueche von 3 Erwaehnungen, und alle drei Erwaehnungen liegen in d2ade5dc - genau dort, wo die Zeichenfolge das Thema ist. Sie irrt ausserdem in die sichere Richtung: im Zweifel bleibt stehen.\n\nGELIEFERT: issue-tracker/repair_literal_newlines.py (+ literal_newline_repair.py) - Trockenlauf als Vorgabe, '--apply' sichert vorher und schreibt atomar, '--nur <id>' fasst einen einzelnen Vorgang an, '--alle-zeigen' zeigt jede Fundstelle mit Umgebung. Die Erwaehnungen werden IMMER einzeln aufgelistet - was das Werkzeug nicht anfasst, muss man nachsehen koennen.\n\nAUSSERDEM: merge.py warnt ab jetzt beim Einpflegen, wenn in einer Eingangsdatei Backslash+n als Text steht und nach der Regel ein Umbruch sein muesste. Nur eine Warnung, kein Abbruch - ein Windows-Pfad, dessen naechster Ordner mit n beginnt, traegt dieselbe Zeichenfolge voellig zu Recht.\n\nDER VORGANG SCHLIESST, sobald 'python repair_literal_newlines.py --apply' gelaufen ist. Danach bitte STAND_UMBRUECHE in tests/test_issue_tracker_umbruchreparatur.py auf 0 setzen - dann wird aus der Obergrenze eine Sperre. Der Test sagt die Zahl im Lauf selbst an.\n\nZU d2ade5dc, damit es niemanden spaeter verwirrt: Dieser Vorgang enthaelt an drei Stellen die Zeichenfolge als TEXT - in 'expected_behavior', 'actual_behavior' und 'prerequisites'. Das ist RICHTIG SO, denn der Vorgang handelt von ihr. Das Reparaturwerkzeug laesst genau diese drei Stellen stehen und fuehrt sie bei jedem Lauf unter 'woertlich gemeint' auf. Ein eigener Vermerk AN d2ade5dc waere der naheliegende Ort gewesen - er geht hier aber nicht: der Vorgang steht schon in eingang_claude_Build647.json, und zwei Eingangsdateien mit derselben Kennung sind unzulaessig (IE04). Aufgefallen ist mir das im Regressionslauf, nicht beim Schreiben."
-        },
-        {
-          "timestamp": "2026-08-01T20:41:54.022539+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eingang_claude_Build648.json"
-        }
-      ]
     }
   ]
 }

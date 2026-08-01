@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import argparse
 import getpass
+import socket
 import sys
 import time
 from pathlib import Path
@@ -46,6 +47,10 @@ from maintenance.cli_config import (herkunft_ausgeben,  # noqa: E402
                                     wert_aufloesen)
 from management.help import cli_epilog  # noqa: E402
 
+#: Das Wort, mit dem eine rechneruebergreifende Beendigung zu bestaetigen ist.
+#: Ein blosses 'j' tippt man versehentlich; dieses Wort nicht.
+BESTAETIGUNG = "FREMDE BEENDEN"
+
 
 def cmd_list(paths: MaintenancePaths) -> int:
     regs = ServerRegistration.alle_laden(paths)
@@ -60,8 +65,27 @@ def cmd_list(paths: MaintenancePaths) -> int:
     return 0
 
 
+def _fremde_rechner(regs, ziel_uuids, eigener: str) -> list:
+    """
+    Die betroffenen Anmeldungen auf ANDEREN Rechnern (Vorgang 1155da11).
+
+    Der Vergleich ist unempfindlich gegen Gross-/Kleinschreibung und gegen
+    einen angehaengten Domaenenteil ('KK31-PC7' vs. 'kk31-pc7.polizei.nrw'):
+    Auf einem geteilten Laufwerk melden sich Rechner nicht zwingend unter
+    demselben Namen an, unter dem der aufrufende Rechner sich selbst kennt.
+    Im Zweifel gilt ein Rechner als FREMD - eine zu vorsichtige Rueckfrage
+    kostet eine Eingabe, eine unterlassene kostet jemand anderem seinen Lauf.
+    """
+    def kurz(name: str) -> str:
+        return str(name or "").strip().lower().split(".")[0]
+
+    ich = kurz(eigener)
+    return sorted({regs[u].host for u in ziel_uuids if kurz(regs[u].host) != ich})
+
+
 def cmd_kill(paths: MaintenancePaths, uuids, alle: bool,
-             wait_timeout: int, von: str) -> int:
+             wait_timeout: int, von: str, bestaetigt: bool = False,
+             eingabe=None) -> int:
     regs = {r.uuid: r for r in ServerRegistration.alle_laden(paths)}
     if not regs:
         print("Keine --maintenance-Server angemeldet — nichts zu beenden.")
@@ -80,6 +104,55 @@ def cmd_kill(paths: MaintenancePaths, uuids, alle: bool,
         if not ziel_uuids:
             print("[FEHLER] Keine der angegebenen UUIDs ist angemeldet.",
                   file=sys.stderr)
+            return 1
+
+    # =====================================================================
+    # BUILD 648 (Vorgang 1155da11) - ERST ZEIGEN, DANN HANDELN.
+    #
+    # '--all' nahm ALLE Anmeldungen ohne Filter nach Rechner oder Fenster.
+    # Auf einem geteilten Laufwerk beendet das auch die Wartungsdienste
+    # ANDERER PERSONEN - und zwar ohne dass die aufrufende Person das vorher
+    # sieht. Das ist keine Frage der Datensicherheit (ein Wartungsdienst
+    # haelt keine unbestaetigten Ergebnisse), sondern der Zusammenarbeit: die
+    # andere Person stand ohne Ansage vor einem abgebrochenen Lauf.
+    #
+    # DIE AUFLISTUNG STEHT JETZT IMMER DA, auch bei '--uuid'. Wer ein
+    # Werkzeug bedient, das Prozesse beendet, soll VOR der Wirkung lesen
+    # koennen, was gleich geschieht.
+    # =====================================================================
+    print("\nBetroffene Anmeldungen (%d):" % len(ziel_uuids))
+    for u in sorted(ziel_uuids):
+        r = regs[u]
+        print("  %-36s %-18s %s/%s  build=%s  window=%s"
+              % (u, r.role, r.host, r.pid, r.build, r.window_id))
+
+    # DIE RUECKFRAGE GILT NUR FUER '--all', und das ist eine Abgrenzung und
+    # keine Nachlaessigkeit: Wer '--uuid' angibt, hat eine bestimmte
+    # Anmeldung BENANNT - er hat sie vorher in '--list' gesehen und sich
+    # entschieden. Der Vorgang 1155da11 richtet sich gegen den ungesehenen
+    # Rundumschlag, nicht gegen die bewusste Einzelentscheidung. Eine
+    # Rueckfrage bei jedem Aufruf waere binnen einer Woche eine Taste.
+    fremde = _fremde_rechner(regs, ziel_uuids, socket.gethostname()) if alle else []
+    if fremde and not bestaetigt:
+        print("")
+        print("ACHTUNG: Betroffen sind Dienste auf ANDEREN RECHNERN: %s"
+              % ", ".join(fremde))
+        print("Dieser Rechner ist '%s'. Wer dort gerade eine Wartung faehrt,"
+              % socket.gethostname())
+        print("steht danach vor einem abgebrochenen Lauf - ohne Ansage.")
+        if eingabe is None and not sys.stdin.isatty():
+            # OHNE TERMINAL WIRD NICHT GEFRAGT, SONDERN ABGEBROCHEN - dieselbe
+            # Haltung wie beim Wartungsvorbehalt (ERGEBNIS_KEIN_TERMINAL).
+            # Eine Rueckfrage, die niemand beantworten kann, ist keine
+            # Sicherung; sie waere nur ein Absturz mit anderem Namen.
+            print("[ABGEBROCHEN] Kein Terminal fuer die Rueckfrage. Wer das "
+                  "in einem Skript braucht, gibt '--ja' an und traegt die "
+                  "Entscheidung ausdruecklich.", file=sys.stderr)
+            return 1
+        antwort = (eingabe or input)(
+            "Trotzdem beenden? Dann '%s' eingeben: " % BESTAETIGUNG)
+        if str(antwort).strip() != BESTAETIGUNG:
+            print("[ABGEBROCHEN] Nichts beendet.", file=sys.stderr)
             return 1
 
     for u in ziel_uuids:
@@ -132,6 +205,9 @@ def main(argv=None) -> int:
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument("--list", action="store_true", help="Angemeldete Server auflisten.")
     g.add_argument("--all", action="store_true", help="ALLE angemeldeten Server beenden.")
+    ap.add_argument("--ja", action="store_true",
+                    help="Die Rueckfrage bei Diensten auf ANDEREN Rechnern "
+                         "uebergehen (fuer Skripte). Ohne sie wird gefragt.")
     g.add_argument("--uuid", action="append", default=[],
                    help="UUID eines zu beendenden Servers (mehrfach moeglich).")
     ap.add_argument("--wait-timeout", type=int, default=None,
@@ -170,7 +246,7 @@ def main(argv=None) -> int:
         return 1
 
     return cmd_kill(paths, args.uuid, args.all, wait_timeout,
-                    von=getpass.getuser())
+                    von=getpass.getuser(), bestaetigt=args.ja)
 
 
 if __name__ == "__main__":
