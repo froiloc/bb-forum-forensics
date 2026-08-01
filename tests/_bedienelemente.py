@@ -49,13 +49,25 @@
 #   Element entsteht, bis zum Ende der umgebenden Funktion - Elemente werden
 #   im Bestand durchgehend erzeugt, konfiguriert und dann eingehaengt.
 #
+# UEBER ZEILENGRENZEN HINWEG (Build 632, nachgebessert): Gesucht wird im
+#   ZUSAMMENHAENGENDEN Text dieses Bereichs, nicht Zeile fuer Zeile. Der
+#   Grund ist eine Luecke, die beim ersten Setzen von Marken aufgefallen ist:
+#       note.setAttribute('data-hilfe-id',
+#           'approval.bedienung.bewertungsvermerk');
+#   ist eine voellig gewoehnliche Umbruchstelle (die Fassung in einer Zeile
+#   waere 82 Zeichen breit). Die zeilenweise Suche haette diese Marke NICHT
+#   gefunden und das Element als unerklaert gemeldet - eine Zahl also, die zu
+#   HOCH ist. Das widerspraeche der Zusicherung "Untergrenze" unten, und eine
+#   Fehlliste, die zu schwarz malt, wird beim naechsten Mal nicht geglaubt.
+#   Der Gegentest BD05c haelt den Fall fest.
+#
 # BELEGT AN ZWEI SICHTEN VON HAND (Build 631): 'alias' (die Sicht, die es
 #   richtig macht) und 'approval' (eine, die es nicht macht). Die Zahlen der
 #   Suche sind dort gegen den Quelltext nachgezaehlt worden; der Test
 #   BD05/BD06 haelt beide Faelle fest, damit die Suche nicht unbemerkt
 #   abdriftet.
 #
-# Version: v0.8.631 - Build: 631 - 2026-08-01
+# Version: v0.8.632 - Build: 632 - 2026-08-01
 # =============================================================================
 
 from __future__ import annotations
@@ -151,12 +163,11 @@ def untersuche(pfad: Path) -> Sichtbefund:
         if art not in BEDIENARTEN:
             continue
         muster = _marke_muster(var)
-        marke = ""
-        for z in zeilen[i:_ende_der_funktion(i)]:
-            treffer = muster.search(z)
-            if treffer:
-                marke = treffer.group(1) or treffer.group(2) or ""
-                break
+        # Der Suchbereich als EIN Text: die Marke darf umgebrochen sein
+        # (siehe Kopf, Build 632). Die '\s*' im Muster fangen den Umbruch.
+        bereich = "\n".join(zeilen[i:_ende_der_funktion(i)])
+        treffer = muster.search(bereich)
+        marke = (treffer.group(1) or treffer.group(2) or "") if treffer else ""
         gefunden.append(Element(datei=pfad.name, zeile=i + 1, art=art,
                                 variable=var, marke=marke))
     return Sichtbefund(datei=pfad.name, elemente=tuple(gefunden))

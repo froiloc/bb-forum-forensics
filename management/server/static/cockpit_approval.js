@@ -47,7 +47,19 @@
  *   'rowClick' ist in Tabulator v6.4.0 KEINE Konstruktor-Option; Handler nun via
  *   table.on('rowClick', ...). (b) Typ-Dropdown exakter Full-Match ueber
  *   headerFilterFunc '=' (Teilstring 'Vermerk' traf sonst 'Ergänzungsvermerk').
- * Version: v0.8.486 · Build: 486 · 2026-07-21
+ * Build 632 (Vorgang 17200856, Welle B1): HILFE-MARKEN fuer alle zwoelf
+ *   Bedienelemente dieser Sicht. Vorher trug KEINES eine Marke - in der
+ *   Sicht, in der eine Freigabe UNWIDERRUFLICH erteilt wird. mc woertlich:
+ *   "Wie soll der Anwender wissen, was er tun soll, wenn es ihm nicht
+ *   definiert und erklaert wird?" Die Texte stehen in
+ *   management/help/inhalt/abnahme.py (Praefix 'approval.bedienung.').
+ *   Die Kennung steht LITERAL im Quelltext und wird NICHT zusammengesetzt -
+ *   nur so koennen die Paritaetspruefungen SP01/SP02 beide Seiten sehen.
+ *   Achtung beim Nachziehen (Fallstrick, hier aufgetreten): die Marke von
+ *   qualSel muss VOR der Funktion _refillQuality stehen, weil die Erhebung
+ *   in tests/_bedienelemente.py nur bis zum Beginn der naechsten Funktion
+ *   sucht.
+ * Version: v0.8.632 · Build: 632 · 2026-08-01
  */
 (function () {
     'use strict';
@@ -618,12 +630,17 @@
         // Kriterium.
         var critSel = document.createElement('select');
         critSel.className = 'aiw-approval-assess-crit';
+        // Build 632 (Vorgang 17200856): Hilfe-Marke. Die Kennung steht
+        // LITERAL hier - nur so kann der Abgleich Marke<->Registertext
+        // (SP01/SP02) beide Seiten sehen. Text: help/inhalt/abnahme.py.
+        critSel.setAttribute('data-hilfe-id', 'approval.bedienung.kriterium');
         _fillSelect(critSel, catalog.criteria, 'code');
         _field('Kriterium:', critSel);
 
         // Extrem.
         var extSel = document.createElement('select');
         extSel.className = 'aiw-approval-assess-extrem';
+        extSel.setAttribute('data-hilfe-id', 'approval.bedienung.auspraegung');
         _fillSelect(extSel, (catalog.extreme || ['schwerste', 'beste'])
             .map(function (e) { return { code: e }; }), 'code',
             function (it) { return extremLabel(it.code); });
@@ -632,12 +649,17 @@
         // Konfidenz.
         var confSel = document.createElement('select');
         confSel.className = 'aiw-approval-assess-conf';
+        confSel.setAttribute('data-hilfe-id', 'approval.bedienung.konfidenz');
         _fillSelect(confSel, catalog.confidence_items, 'code');
         _field('Konfidenz:', confSel);
 
         // Qualitaet (optional; abhaengig vom Kriterium). Erste Option 'keine'.
         var qualSel = document.createElement('select');
         qualSel.className = 'aiw-approval-assess-qual';
+        // Die Marke steht VOR _refillQuality - nicht aus Stilgruenden: die
+        // Erhebung (tests/_bedienelemente.py) sucht die Marke nur bis zum
+        // Beginn der naechsten Funktion, und das ist hier die naechste Zeile.
+        qualSel.setAttribute('data-hilfe-id', 'approval.bedienung.qualitaet');
         function _refillQuality() {
             var items = qualityItemsFor(catalog, critSel.value);
             var withEmpty = [{ code: '', label: '— (keine Qualitaet)' }]
@@ -655,12 +677,16 @@
         note.className = 'aiw-approval-assess-note';
         note.setAttribute('rows', '2');
         note.setAttribute('placeholder', 'Vermerk (optional)');
+        note.setAttribute('data-hilfe-id',
+            'approval.bedienung.bewertungsvermerk');
         form.appendChild(note);
 
         var submit = document.createElement('button');
         submit.type = 'submit';
         submit.className = 'aiw-approval-assess-submit';
         submit.textContent = 'Bewertung erfassen';
+        submit.setAttribute('data-hilfe-id',
+            'approval.bedienung.bewertung_erfassen');
         form.appendChild(submit);
 
         var err = document.createElement('div');
@@ -707,6 +733,7 @@
         vbtn.type = 'button';
         vbtn.className = 'aiw-approval-verify';
         vbtn.textContent = 'Siegel pruefen';
+        vbtn.setAttribute('data-hilfe-id', 'approval.bedienung.siegel_pruefen');
         vbtn.addEventListener('click', function () {
             verifyLoading();
             if (typeof opts.onVerify === 'function') {
@@ -746,6 +773,8 @@
         noteA.className = 'aiw-approval-note';
         noteA.setAttribute('rows', '2');
         noteA.setAttribute('placeholder', 'Freigabevermerk (optional)');
+        noteA.setAttribute('data-hilfe-id',
+            'approval.bedienung.freigabevermerk');
         appBox.appendChild(noteA);
 
         var finalLbl = document.createElement('label');
@@ -753,6 +782,8 @@
         var finalCb = document.createElement('input');
         finalCb.type = 'checkbox';
         finalCb.className = 'aiw-approval-isfinal';
+        finalCb.setAttribute('data-hilfe-id',
+            'approval.bedienung.abschlussvermerk');
         finalLbl.appendChild(finalCb);
         finalLbl.appendChild(document.createTextNode(
             ' Als Abschlussbericht/versandt kennzeichnen (is_final)'));
@@ -762,6 +793,7 @@
         appBtn.type = 'button';
         appBtn.className = 'aiw-approval-approvebtn';
         appBtn.textContent = 'Freigeben & versiegeln';
+        appBtn.setAttribute('data-hilfe-id', 'approval.bedienung.freigeben');
         appBtn.addEventListener('click', function () {
             var body = {
                 subject_id: r.subject_id, report_id: r.id,
@@ -781,11 +813,15 @@
         retNote.className = 'aiw-approval-returnnote';
         retNote.setAttribute('rows', '2');
         retNote.setAttribute('placeholder', 'Grund der Rueckweisung (optional)');
+        retNote.setAttribute('data-hilfe-id',
+            'approval.bedienung.rueckweisungsgrund');
         retBox.appendChild(retNote);
         var retBtn = document.createElement('button');
         retBtn.type = 'button';
         retBtn.className = 'aiw-approval-returnbtn';
         retBtn.textContent = 'Zurueckweisen (an Entwurf)';
+        retBtn.setAttribute('data-hilfe-id',
+            'approval.bedienung.zurueckweisen');
         retBtn.addEventListener('click', function () {
             var body = {
                 subject_id: r.subject_id, report_id: r.id,

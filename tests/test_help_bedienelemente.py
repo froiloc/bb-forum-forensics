@@ -2,7 +2,7 @@
 # tests/test_help_bedienelemente.py
 # IT-Forensisches Ermittlungswerkzeug - Vorgang 17200856
 # =============================================================================
-# Testsuite fuer Build 631: die Bedienelemente der Sichten und ihre Hilfe.
+# Testsuite ab Build 631: die Bedienelemente der Sichten und ihre Hilfe.
 #
 # DER VORGANG (mc, woertlich): "Die Sichten haben sehr viele Schaltflaechen
 #   und Eingabezeilen, aber keine einzige wird erklaert. Meiner Meinung nach
@@ -33,6 +33,8 @@
 # BD03 - der Stand luegt nicht: die Summen passen zu den Einzelzahlen
 # BD04 - GEGENPROBE: die Suche findet ein unmarkiertes Bedienelement
 # BD05 - GEGENPROBE: sie erkennt beide Schreibweisen der Marke
+# BD05c- GEGENPROBE (Build 632): auch eine UMGEBROCHENE Marke - die
+#        zeilenweise Suche uebersah sie und zaehlte zu hoch
 # BD06 - 'releases' und 'handover' sind vollstaendig und bleiben es
 # BD07 - jede Ausnahme ist begruendet und gibt es wirklich (TE6)
 # BD08 - der Stand nennt sein Verfahren UND seine Grenzen (TE4)
@@ -43,7 +45,7 @@
 #   '_grenzen' des Standes. Am gerenderten Baum misst UX11, aber nur fuer die
 #   acht Sichten seines REGISTERs.
 #
-# Version: v0.8.631 - Build: 631 - 2026-08-01
+# Version: v0.8.632 - Build: 632 - 2026-08-01
 # =============================================================================
 
 import json
@@ -184,6 +186,36 @@ class BedienelementeTests(unittest.TestCase):
         self.assertEqual(("textarea",), tuple(e.art for e in b.offen))
         marken = sorted(e.marke for e in b.elemente if e.marke)
         self.assertEqual(["probe.bedienung.a", "probe.bedienung.b"], marken)
+
+    def test_bd05c_eine_umgebrochene_marke_wird_erkannt(self):
+        """
+        BUILD 632, GEGENPROBE ZU EINER GEFUNDENEN LUECKE. Bis Build 631 suchte
+        die Erhebung ZEILENWEISE. Eine Marke, die - voellig gewoehnlich - am
+        Komma umgebrochen ist, blieb damit unsichtbar, und das Element galt
+        als unerklaert.
+
+        Das ist der gefaehrlichere Fehler von beiden: die Zahl waere zu HOCH
+        gewesen. Eine Fehlliste, die zu schwarz malt, bringt Arbeit in Gang,
+        die es nicht braucht - und beim naechsten Befund glaubt sie niemand
+        mehr. Der Anlass war echt: die Marke der Bewertungs-Notiz in der
+        Chef-Freigabe waere in einer Zeile 82 Zeichen breit.
+        """
+        p = _js("(function () {\n"
+                "    function zeichne(doc) {\n"
+                "        var note = doc.createElement('textarea');\n"
+                "        note.setAttribute('data-hilfe-id',\n"
+                "            'probe.bedienung.bewertungsvermerk');\n"
+                "        return note;\n"
+                "    }\n"
+                "})();\n")
+        b = untersuche(p)
+        self.assertEqual(1, b.gesamt)
+        self.assertEqual(
+            1, b.erklaert,
+            "Eine ueber zwei Zeilen umgebrochene Marke wurde nicht erkannt - "
+            "die Erhebung meldete das Element faelschlich als offen.")
+        self.assertEqual("probe.bedienung.bewertungsvermerk",
+                         b.elemente[0].marke)
 
     def test_bd05b_alle_vier_arten_werden_erfasst(self):
         p = _js("(function () {\n"

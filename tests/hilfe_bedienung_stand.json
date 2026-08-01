@@ -6,23 +6,22 @@
   "_ausnahmen": {
     "cockpit_tablekit.js": "Keine Sicht, sondern die Werkzeugkiste. Ihre beiden Bedienelemente entstehen in Fabriken (_btn, spaltenwahl) und bekommen ihre Marke erst beim Einbau, ueber eine ZUSAMMENGESETZTE Kennung (hilfeAnker(el, sicht + '.werkzeug.' + teil), Zeile 695). Die Quelltextsuche kann eine zusammengesetzte Kennung nicht sehen - genau deshalb misst UX11 am gerenderten Baum. Dort sind diese Elemente erfasst."
   },
-  "stand_build": 631,
+  "stand_build": 632,
   "stand_datum": "2026-08-01",
   "bedienelemente_gesamt": 170,
-  "davon_erklaert": 34,
-  "davon_offen": 136,
+  "davon_erklaert": 51,
+  "davon_offen": 119,
   "offen_je_datei": {
     "cockpit.js": 4,
     "cockpit_adsync.js": 4,
     "cockpit_alias.js": 10,
-    "cockpit_approval.js": 12,
     "cockpit_assignment.js": 6,
     "cockpit_audit.js": 2,
     "cockpit_calendar.js": 4,
     "cockpit_capacity.js": 2,
-    "cockpit_capacity_pflege.js": 4,
+    "cockpit_capacity_pflege.js": 3,
     "cockpit_cases.js": 5,
-    "cockpit_crossfindings.js": 5,
+    "cockpit_crossfindings.js": 2,
     "cockpit_crossref.js": 3,
     "cockpit_dashboard.js": 1,
     "cockpit_doctemplates.js": 11,
@@ -35,7 +34,7 @@
     "cockpit_mycases.js": 1,
     "cockpit_onboarding.js": 7,
     "cockpit_palette.js": 1,
-    "cockpit_personnel.js": 4,
+    "cockpit_personnel.js": 3,
     "cockpit_promotion.js": 3,
     "cockpit_qs.js": 2,
     "cockpit_reports.js": 3,
@@ -45,5 +44,6 @@
     "cockpit_support.js": 1,
     "cockpit_templates.js": 8,
     "cockpit_viewprefs.js": 1
-  }
+  },
+  "_korrektur_632": "BUILD 632, EINE KORREKTUR NACH OBEN: Die Erhebung suchte bis Build 631 ZEILENWEISE. Eine Marke, die am Komma umgebrochen ist, blieb dabei unsichtbar, und das Element galt als offen. Der Stand von Build 631 zaehlte deshalb FUENF Elemente zu viel als offen: cockpit_capacity_pflege.js (1), cockpit_crossfindings.js (3), cockpit_personnel.js (1). Sie waren laengst erklaert. Die Suche liest den Bereich jetzt zusammenhaengend; die Gegenprobe dazu ist BD05c. Die Zusicherung 'Untergrenze' in '_grenzen' galt damit fuer Build 631 NICHT - der Fehler ging in die andere Richtung. Das steht hier, weil eine stillschweigend berichtigte Zahl schlimmer waere als die falsche (Grundregel 1)."
 }

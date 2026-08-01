@@ -1,0 +1,8 @@
+667f5b4106df7993ae64b42a95a6b8d2  build.json
+967c36d763532c99bb68ce3c4d3e9f09  documents/rules-help.md
+9b33c58023acedc760e6ca84e8191ec1  issue-tracker/eingang_claude_Build632.json
+b5c3f3effc03ab843f65d1b814f03774  management/help/inhalt/abnahme.py
+ab46aee15d669829ff4635241ebf10f6  management/server/static/cockpit_approval.js
+33b4e1ba4df2685edbcaed85d9560fb7  tests/_bedienelemente.py
+cc6e5d1dd5b3f309082355c297d755e7  tests/hilfe_bedienung_stand.json
+13551777548a515fa6f23f0099f2f6eb  tests/test_help_bedienelemente.py

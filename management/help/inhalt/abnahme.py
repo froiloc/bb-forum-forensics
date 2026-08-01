@@ -18,7 +18,16 @@
 # REGEL H-1 (Anwendersprache): keine Entwicklerbegriffe, keine
 #   Entwicklungshistorie. REGEL H-0: keine Falldaten.
 #
-# Version: v0.8.598 - Build: 598 - 2026-07-31
+# BUILD 632 (Vorgang 17200856, Welle B1): Die Chef-Freigabe hatte zwoelf
+#   Bedienelemente und keinen einzigen Text dazu - in der Sicht, in der eine
+#   Freigabe UNWIDERRUFLICH erteilt wird. Nachgetragen sind: die zwoelf
+#   Kontexthilfen, ein Abschnitt 'bewertung' und die Berichtigung des
+#   Abschnitts 'aufbau'. Der sagte bisher, die Zusatzbereiche seien
+#   "ausschliesslich lesend" - das Bewertungsformular schreibt aber, und zwar
+#   in die Ermittlungsdaten des Falls. Eine Hilfe, die eine Schreibstelle
+#   verschweigt, ist schlechter als keine.
+#
+# Version: v0.8.632 - Build: 632 - 2026-08-01
 # =============================================================================
 
 from __future__ import annotations
@@ -28,6 +37,12 @@ from typing import Tuple
 from management.help.modell import Abschnitt, Kontexthilfe, Sichthilfe
 
 _STAND = 598
+
+#: Die Chef-Freigabe ist in Build 632 nachredigiert worden (Vorgang 17200856):
+#: ihre zwoelf Bedienelemente hatten keinen einzigen Hilfetext, und das Kapitel
+#: verschwieg, dass in dieser Sicht neben dem Entscheiden auch BEWERTET werden
+#: kann. Beides ist hier nachgetragen; deshalb ein eigener Redaktionsstand.
+_STAND_APPROVAL = 632
 
 # Die vier Zustaende eines Vermerks - woertlich die Beschriftungen der
 # Oberflaeche. Sie stehen in allen drei Kapiteln gleich, damit niemand zwei
@@ -388,7 +403,7 @@ APPROVAL = Sichthilfe(
         "Umfang „alle“ — eine Freigabe ist eine Leitungsentscheidung über den "
         "Fall einer anderen Person und nicht über den eigenen."
     ),
-    stand=_STAND,
+    stand=_STAND_APPROVAL,
     abschnitte=(
         Abschnitt(
             "zweck", "Zweck und Motivation",
@@ -420,6 +435,12 @@ APPROVAL = Sichthilfe(
                 "Zu einem gewählten Vermerk lassen sich zusätzlich die Belege "
                 "und die Anmerkungen des Lektorats einsehen — beides "
                 "ausschließlich lesend.",
+                "Ganz unten steht das Ermittlungsergebnis des Falls: die "
+                "bereits vergebenen Bewertungen und, ausdrücklich benannt, "
+                "die noch nicht bewerteten Kriterien. Wer das Recht zum "
+                "Bewerten hat, findet darunter das Erfassungsformular. Das "
+                "ist die EINZIGE Stelle dieser Sicht, an der etwas "
+                "geschrieben wird, das nicht die Entscheidung selbst ist.",
             ),
         ),
         Abschnitt(
@@ -450,6 +471,36 @@ APPROVAL = Sichthilfe(
             ),
         ),
         Abschnitt(
+            "bewertung", "Das Ermittlungsergebnis bewerten",
+            (
+                "Unter dem Vermerk steht das Ermittlungsergebnis des Falls. "
+                "Es besteht aus Bewertungen: je Kriterium wird festgehalten, "
+                "wie schwer die gravierendste und wie belastbar die am besten "
+                "belegte Erkenntnis ist. Wer das Recht zum Bewerten hat, kann "
+                "hier eine Bewertung nachtragen, ohne die Sicht zu wechseln — "
+                "das ist der Sinn: man liest den Vermerk und sieht sofort, "
+                "worauf er sich stützt und was noch offen ist.",
+                "Eine Bewertung besteht aus vier Angaben. KRITERIUM: worum es "
+                "geht. AUSPRÄGUNG: ob die gravierendste oder die am besten "
+                "belegte Erkenntnis gemeint ist — beide werden getrennt "
+                "geführt und nicht miteinander verrechnet. KONFIDENZ: wie "
+                "sicher die Aussage ist; dieselbe Abstufung für alle "
+                "Kriterien. QUALITÄT: wie tief geprüft wurde; diese "
+                "Abstufung gehört zum jeweiligen Kriterium und fehlt bei "
+                "manchen ganz.",
+                "JEDE BEWERTUNG WIRD ANGEFÜGT, KEINE ÜBERSCHRIEBEN. Eine "
+                "Korrektur ist eine neue Bewertung; die frühere bleibt "
+                "lesbar. Das ist gewollt, denn der Verlauf zeigt die "
+                "Ermittlungsleistung — wie aus einem Verdacht eine "
+                "belastbare Aussage wurde. Ein Löschen ist nicht vorgesehen "
+                "und wird auch nicht durch einen Umweg möglich.",
+                "Die Zeile „Noch nicht bewertet“ ist die wichtigste des "
+                "Abschnitts. Sie benennt die blinden Flecken; ein Kriterium "
+                "ohne Bewertung ist NICHT dasselbe wie ein Kriterium ohne "
+                "Befund.",
+            ),
+        ),
+        Abschnitt(
             "ablaeufe", "Arbeitsabläufe",
             (),
             liste=(
@@ -460,6 +511,9 @@ APPROVAL = Sichthilfe(
                 "die verfassende Person zur Nachbesserung in der Hand hat.",
                 "Nachträglich prüfen: bei einem freigegebenen Vermerk die "
                 "Siegelprüfung aufrufen.",
+                "Bewerten beim Lesen: unten das Ermittlungsergebnis ansehen, "
+                "die Zeile „Noch nicht bewertet“ lesen und eine fehlende "
+                "Bewertung gleich hier nachtragen.",
             ),
         ),
         Abschnitt(
@@ -475,6 +529,12 @@ APPROVAL = Sichthilfe(
                 "Wer entscheidet, kommentiert nicht zugleich — sonst wäre "
                 "nicht mehr unterscheidbar, was Hinweis und was Entscheidung "
                 "war.",
+                "EINE BEWERTUNG IST KEINE FREIGABE und eine Freigabe keine "
+                "Bewertung. Beides steht hier untereinander und wird getrennt "
+                "festgehalten: Wer bewertet, sagt etwas über den Fall; wer "
+                "freigibt, entscheidet über den Vermerk. Das Bewerten hängt "
+                "an einem eigenen Recht — ohne dieses Recht erscheint das "
+                "Formular nicht, und das ist kein Fehler.",
             ),
         ),
         Abschnitt(
@@ -539,6 +599,103 @@ APPROVAL = Sichthilfe(
             "approval.werkzeug.trefferzahl", "Trefferanzeige",
             "Nennt, wie viele Zeilen sichtbar sind; bei gesetztem Filter "
             "„sichtbar von gesamt“."),
+
+        # ------------------------------------------------------------------
+        # Die zwoelf Bedienelemente (Build 632, Vorgang 17200856).
+        #
+        # ANLASS, woertlich (mc): "Die Sichten haben sehr viele
+        # Schaltflaechen und Eingabezeilen, aber keine einzige wird erklaert.
+        # Wie soll der Anwender wissen, was er tun soll, wenn es ihm nicht
+        # definiert und erklaert wird?" Diese Sicht stand bei null von zwoelf
+        # und ist die, in der eine Freigabe UNWIDERRUFLICH erteilt wird -
+        # deshalb zuerst.
+        #
+        # Erst die sechs Felder des Bewertungsformulars in der Reihenfolge
+        # des Formulars, dann die sechs der Entscheidung.
+        # ------------------------------------------------------------------
+        Kontexthilfe(
+            "approval.bedienung.kriterium", "Kriterium",
+            "Worum es bei dieser Bewertung geht. Die Auswahl kommt aus dem "
+            "Kriterienkatalog; ausser Dienst gestellte Kriterien werden nicht "
+            "mehr angeboten, bleiben in alten Bewertungen aber lesbar.",
+            verweis="approval#bewertung"),
+        Kontexthilfe(
+            "approval.bedienung.auspraegung", "Ausprägung",
+            "Welche der beiden Seiten Sie bewerten: die GRAVIERENDSTE "
+            "Erkenntnis zu diesem Kriterium oder die am BESTEN BELEGTE. "
+            "Beide werden getrennt geführt und nicht miteinander verrechnet "
+            "— eine einzelne schwere Feststellung soll nicht durch viele "
+            "harmlose verschwinden.",
+            verweis="approval#bewertung"),
+        Kontexthilfe(
+            "approval.bedienung.konfidenz", "Konfidenz",
+            "Wie sicher die Aussage ist. Die Abstufung ist für alle Kriterien "
+            "dieselbe, damit Bewertungen vergleichbar bleiben. Pflichtangabe: "
+            "eine Bewertung ohne Sicherheitsgrad wäre nicht einzuordnen.",
+            verweis="approval#bewertung"),
+        Kontexthilfe(
+            "approval.bedienung.qualitaet", "Qualität",
+            "Wie tief geprüft wurde. Diese Abstufung gehört zum jeweiligen "
+            "Kriterium und wechselt deshalb mit, sobald Sie ein anderes "
+            "wählen. Sie ist freiwillig; bei Kriterien ohne eigene Abstufung "
+            "steht hier nur „keine Qualitaet“.",
+            verweis="approval#bewertung"),
+        Kontexthilfe(
+            "approval.bedienung.bewertungsvermerk", "Vermerk zur Bewertung",
+            "Freitext zur Begründung dieser einen Bewertung — freiwillig, "
+            "aber die einzige Stelle, an der Sie festhalten können, WARUM Sie "
+            "so eingestuft haben. Der Text gehört zur Bewertung und wird mit "
+            "ihr aufbewahrt.",
+            verweis="approval#bewertung"),
+        Kontexthilfe(
+            "approval.bedienung.bewertung_erfassen", "Bewertung erfassen",
+            "Trägt die Bewertung ein. Kriterium, Ausprägung und Konfidenz "
+            "müssen gesetzt sein. Die Bewertung wird ANGEFÜGT: eine frühere "
+            "zum selben Kriterium bleibt bestehen und lesbar, denn der "
+            "Verlauf ist die Ermittlungsleistung.",
+            verweis="approval#bewertung"),
+        Kontexthilfe(
+            "approval.bedienung.siegel_pruefen", "Siegel prüfen",
+            "Vergleicht den heutigen Inhalt des Vermerks mit dem Stand, der "
+            "bei der Freigabe festgehalten wurde. Meldet die Prüfung eine "
+            "Abweichung, ist das ein Manipulationsverdacht und muss verfolgt "
+            "werden. Die Prüfung steht auch ohne Freigaberecht offen.",
+            verweis="approval#siegel"),
+        Kontexthilfe(
+            "approval.bedienung.freigabevermerk", "Freigabevermerk",
+            "Ihre Anmerkung zur Freigabe — freiwillig. Sie wird mit der "
+            "Freigabe festgehalten und ist später der einzige Hinweis "
+            "darauf, unter welcher Erwägung Sie abgenommen haben.",
+            verweis="approval#entscheidung"),
+        Kontexthilfe(
+            "approval.bedienung.abschlussvermerk",
+            "Als Abschlussbericht kennzeichnen",
+            "Vermerkt, dass dieser Vermerk die Dienststelle verlässt. Das ist "
+            "KEINE höhere Freigabestufe, sondern die Feststellung des "
+            "Versands. Im Zweifel lassen Sie das Feld leer — der Vermerk "
+            "lässt sich später gesondert als versandt kennzeichnen.",
+            verweis="approval#entscheidung"),
+        Kontexthilfe(
+            "approval.bedienung.freigeben", "Freigeben & versiegeln",
+            "Nimmt den Vermerk ab und versiegelt ihn. DAS IST "
+            "UNWIDERRUFLICH: es gibt keinen Weg, eine Freigabe "
+            "zurückzunehmen. Bei inhaltlichen Mängeln gehört der Vermerk "
+            "nicht freigegeben, sondern zurückgewiesen. Vor dem Ausführen "
+            "wird nachgefragt.",
+            verweis="approval#entscheidung"),
+        Kontexthilfe(
+            "approval.bedienung.rueckweisungsgrund", "Grund der Rückweisung",
+            "Was nachzubessern ist. Der Eintrag ist freiwillig — aber er ist "
+            "das Einzige, was die verfassende Person zur Nachbesserung in der "
+            "Hand hat. Eine Rückweisung ohne Grund kostet beide Seiten einen "
+            "zweiten Durchgang.",
+            verweis="approval#entscheidung"),
+        Kontexthilfe(
+            "approval.bedienung.zurueckweisen", "Zurückweisen (an Entwurf)",
+            "Schickt den Vermerk als Entwurf an die verfassende Person "
+            "zurück. Das ist der Weg für inhaltliche Mängel und der einzige, "
+            "der eine Änderung am Text noch zulässt.",
+            verweis="approval#entscheidung"),
     ),
 )
 

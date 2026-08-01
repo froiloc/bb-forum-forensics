@@ -111,3 +111,14 @@ Damit UX11 messen kann, liest die JavaScript-Seite das Hilferegister vom Registe
 ## Pflicht bei jeder Änderung
 
 **Keine Änderung und keine Neuerung ohne Anpassung oder Ergänzung in der Hilfe.** Wer ein Feature, eine Funktion oder eine Komponente der Verwaltung ändert, ändert im selben Build den zugehörigen Hilfetext.
+
+**Kein Bedienelement ohne Text.** Seit Build 631 wird nicht mehr nur geprüft, ob eine *vorhandene* Marke einen Text hat, sondern ob ein Bedienelement überhaupt eine Marke bekommen hat. Das war die Lücke, in der Vorgang 17200856 saß: Die Paritätsprüfungen waren grün, während vier von fünf Schaltflächen stumm blieben — ein Knopf ohne Marke kam in ihrer Welt schlicht nicht vor.
+
+Wer ein `button`, `input`, `select` oder `textarea` baut, setzt im selben Build die Marke `<sicht>.bedienung.<name>` und schreibt den Text nach `management/help/inhalt/`.
+
+*Durchsetzung:* `tests/test_help_bedienelemente.py` (BD01–BD08) gegen `tests/hilfe_bedienung_stand.json`; die Zahlen dürfen nur sinken, und eine neue Datei mit Lücke ist ein Befund.
+
+Zwei Fallstricke, beide in Build 632 aufgetreten und beide leicht zu vermeiden:
+
+- Die Marke muss **innerhalb desselben Funktionsrumpfs** stehen wie das `createElement` — die Erhebung sucht nur bis zum Beginn der nächsten Funktion. Steht direkt hinter dem Element eine Hilfsfunktion, gehört die Marke davor.
+- Die Kennung steht **literal** im Quelltext, nie zusammengesetzt. Ein Umbruch nach dem Komma ist erlaubt (Gegenprobe BD05c), eine berechnete Kennung nicht: SP01/SP02 sähen sie nicht.
