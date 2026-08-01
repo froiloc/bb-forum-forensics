@@ -1,6 +1,6 @@
 # Regelwerk AIW — Code
 
-**Stand:** Build 607 · 2026-07-31
+**Stand:** Build 628 · 2026-08-01
 
 ## 1. JavaScript
 
@@ -55,6 +55,31 @@ Oberstes Gebot bei der Fehlersuche (Festlegung mc): **erst** Konsolenausgabe fü
 Wer nur liest, öffnet mit `sqlite3.connect("file:%s?mode=ro" % pfad, uri=True)`. Eine Zusicherung im Kommentar ist keine Sperre.
 *Befund 2026-07-31:* `workload_admin` und `support_overview_admin` sichern im Kopf zu, ausschließlich zu lesen, öffnen aber schreibfähig. Sie schreiben nichts — aber die Zusicherung ist nicht durchgesetzt (Issue `906ede75-a898-405c-8d80-1548e8b5b553`).
 
+### PY4 im Einzelnen — bei SQLite ist Lesen nicht folgenlos
+
+**Das ist der Grund, warum PY4 strenger ist als bei anderen Dateien.** Bei einer gewöhnlichen Datei ist Öffnen ohne Wirkung. Bei SQLite kann das bloße `connect()` **schreiben**. Gemessen am 2026-08-01 (Python 3.13):
+
+| Lage | gewöhnliches `connect()` | mit `mode=ro` |
+|---|---|---|
+| Datei mit heißem `-journal` | SQLite **spielt das Journal zurück** — aus 34 MB Teildatei werden 0 Byte | `attempt to write a readonly database`, **Datei bleibt unberührt** |
+| Pfad existiert nicht | **legt die Datei an** (0 Byte) | `unable to open database file` |
+| `apply_journal_mode` auf der Verbindung | setzt ein PRAGMA — ein Schreibvorgang an der Datei | entfällt |
+| `VACUUM INTO` | gelingt | **gelingt ebenfalls** — die Zusage kostet nichts |
+| `wal_checkpoint(PASSIVE)` | führt aus | liefert still `(0,0,0)` — **tut nichts** |
+
+Daraus folgen drei Anwendungsregeln:
+
+1. **Der Journalmodus gehört nicht auf eine lesende Verbindung.** Er ist eine Eigenschaft der *Datei*, nicht der Verbindung, und ihn zu setzen ist ein Schreibvorgang.
+2. **Ein Checkpoint gehört ausdrücklich auf eine schreibfähige Verbindung.** Er schreibt naturgemäß; read-only fällt er *still* aus, und ein stiller Nichtlauf ist das schlechteste Ergebnis. Das ist die einzige begründete Ausnahme im Sicherungspfad — sie steht bei `BackupExecutor._checkpoint_passive`.
+3. **Wer eine Datei nur beurteilen will, sieht erst nach, ob ein `-journal` oder `-wal` daneben liegt** — und öffnet sie dann gar nicht. Das Journal *ist* in dem Fall schon die Antwort.
+
+**Durchgesetzt wird PY4 je Modul über den Syntaxbaum**, nicht über eine Textsuche. Muster: `tests/test_backup_executor.py` BR02 — es sammelt alle `sqlite3.connect`-Aufrufe ohne `mode=ro` und verlangt für den Sicherungspfad: in `harness/backup.py` und `backup_pruefer.py` **keinen**, in `backup_executor.py` **genau einen**, und der muss in `_checkpoint_passive` stehen.
+*Warum nicht per Textsuche:* Die erste Fassung von BR02 suchte die Zeichenfolge `sqlite3.connect(` — und fand dabei den **Kommentar**, der die Änderung erklärt. Eine Prüfung, die ihre eigene Begründung für einen Befund hält, ist unbrauchbar.
+
+**Der Befund, der zu dieser Verschärfung führte — und er ist meiner.** Build 625 führte `_traegt_inhalt` ein, um eine unbrauchbare Sicherung zu erkennen, **ohne sie zu löschen** — ausdrücklich, damit die Teildatei als Beleg erhalten bleibt. Die Funktion öffnete gewöhnlich. Bei einem heißen Journal hat also genau die Funktion, die den Beleg erhalten sollte, ihn beim Ansehen vernichtet. Behoben in Build 626.
+
+**Damit ist das Muster im Bestand viermal aufgetreten:** `906ede75`, der Wartungsvorbehalt bei `convert_journal_mode` („eine Zusage im Kommentar ist keine technische Sperre"), `e9522fe2` zweiter Teil (Build 627) — und der Fall aus Build 625. Der letzte zeigt: **das Wissen um das Muster schützt nicht davor, solange es keine Prüfung gibt.** PY4 stand seit Build 607 in diesem Blatt.
+
 **PY5 — Jeder Schreibweg läuft über das Gateway.**
 `CoordinatorWriter(con, AuditLog(con))`. Damit entsteht zu jeder Änderung ein Beleg in der lückenlosen Kette. Ein Schreibweg daran vorbei wäre ein unauditierter Nebeneingang.
 
@@ -100,3 +125,17 @@ Vor jeder Übergabe:
 4. `MD5SUMS_Build<N>.txt` erzeugen (GR8) und mit `tools/pruefe_auslieferung.py` prüfen
 5. Auslieferung als `.zip` mit Originalstruktur, nur die berührten Dateien (GR7)
 6. Ankerdelta vermerken (Katalog, Gruppen, Rechte)
+7. **Liegt eine Eingangsdatei für den Vorgangstracker bei:**
+   `cd issue-tracker && python merge.py --validate-only eingang_<name>.json`
+
+### AB1 — Eine Eingangsdatei wird geprüft, bevor sie jemand einspielt
+
+`merge.py --validate-only` ist der maßgebliche Weg (Hinweis mc, 2026-08-01). Er wertet das Schema aus — **einschließlich `maxLength: 80` für den Titel**.
+
+*Befund 2026-08-01:* Drei von mir gelieferte Vorgänge hatten Titel von 107, 109 und 90 Zeichen. mc mußte sie vor dem Einpflegen von Hand kürzen. Die Grenze stand die ganze Zeit im Schema; meine Prüfung war auf „nur die Pflichtfelder" zurückgefallen, weil das Paket `jsonschema` im Container fehlte — und ich habe diesen Rückfall hingenommen, statt ihn zu beheben.
+
+**Ein Rückfall auf die halbe Prüfung ist ein Befund, keine Umgehung.** Wer eine Prüfung abschwächt, weil ein Werkzeug fehlt, hat die Prüfung abgeschafft und merkt es nur später.
+
+*Durchsetzung im Regressionslauf:* `tests/test_issue_eingang_schema.py`. IE02 hält die Titellänge **ohne** `jsonschema` — die Grenze wird dabei aus dem Schema gelesen und nicht abgeschrieben (IE05), sonst gäbe es zwei Wahrheiten. IE01 prüft vollständig gegen das Schema und wird sichtbar übersprungen, wenn das Paket fehlt; ein übersprungener Test steht im Lauf, ein stillschweigend weggelassener nicht.
+
+**Der Titel ist eine Überschrift, kein Satz.** Was nicht in 80 Zeichen paßt, gehört in `description` — und beim Kürzen geht nichts verloren: der ursprüngliche Wortlaut wandert dorthin.
