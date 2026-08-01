@@ -90,7 +90,9 @@
 //   ERSETZT 'adsync' — der AD-Abgleich ist jetzt LAZY-Abschnitt der
 //   Personal-Seite (_adsyncInto, Wiederverwendung von AIWCockpitAdSync).
 //   SSE-Reload laedt nur die Personenliste, nie den AD-Abschnitt.
-// Version: v0.8.503 · Build: 503 · 2026-07-24
+// Build 636 (Vorgang 17200856, Welle B4): HILFE-MARKEN fuer die
+//   vier Bedienelemente der Navigation (Praefix 'shell.') dieser Sicht.
+// Version: v0.8.636 · Build: 636 · 2026-08-01
 // =============================================================================
 
 (function () {
@@ -745,6 +747,10 @@
             feld.setAttribute('aria-label',
                               'Sichten nach Begriff oder Stichwort filtern');
             feld.setAttribute('autocomplete', 'off');
+            // Build 636 (Vorgang 17200856): Hilfe-Marke, LITERAL gesetzt.
+            // Die Shell gehoert zu keiner Sicht - ihre Texte stehen in
+            // management/help/inhalt/shell.py unter dem Praefix 'shell.'.
+            feld.setAttribute('data-hilfe-id', 'shell.bedienung.navsuche');
             fach.appendChild(feld);
             var info = document.createElement('div');
             info.className = 'aiw-navsuche-info';
@@ -835,6 +841,7 @@
             if (v.group !== lastGroup) {
                 var g = document.createElement('button');
                 g.className = 'aiw-navgroup';
+                g.setAttribute('data-hilfe-id', 'shell.bedienung.navgruppe');
                 g.setAttribute('type', 'button');
                 g.setAttribute('data-group', v.group);
                 var zuGeklappt = zu[v.group] === true;
@@ -866,6 +873,7 @@
             }
             var b = document.createElement('button');
             b.className = 'aiw-navitem' + (v.id === activeId ? ' active' : '');
+            b.setAttribute('data-hilfe-id', 'shell.bedienung.navsicht');
             b.setAttribute('type', 'button');
             b.setAttribute('data-view-id', v.id);
 
@@ -932,6 +940,8 @@
         if (typeof versteckt === 'number' && versteckt > 0) {
             var hint = document.createElement('button');
             hint.className = 'aiw-navhidden';
+            hint.setAttribute('data-hilfe-id',
+                'shell.bedienung.ausgeblendet');
             hint.setAttribute('type', 'button');
             hint.textContent = versteckt === 1
                 ? '1 Sicht ausgeblendet'

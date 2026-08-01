@@ -39,6 +39,11 @@
 #        Element wird beim Abnehmer markiert und gilt dann als erklaert
 # BD05e- GEGENPROBE dazu: EINE unmarkierte Abnahmestelle genuegt, und das
 #        Element bleibt offen. Sonst waere die Fabrikregel ein Schlupfloch
+# BD05f- GEGENPROBE (Build 636): die HUELLENREGEL - gibt die Fabrik das
+#        <label> statt der Eingabe zurueck, wird die Marke trotzdem gefunden
+# BD05g- GEGENPROBE dazu: auch hier genuegt EINE unmarkierte Abnahmestelle
+# BD05h- GEGENPROBE (Build 636): eine Abnahmestelle OHNE Variable kann keine
+#        Marke tragen - sie darf nicht uebergangen werden
 # BD06 - 'releases' und 'handover' sind vollstaendig und bleiben es
 # BD07 - jede Ausnahme ist begruendet und gibt es wirklich (TE6)
 # BD08 - der Stand nennt sein Verfahren UND seine Grenzen (TE4)
@@ -53,7 +58,7 @@
 #   '_grenzen' des Standes. Am gerenderten Baum misst UX11, aber nur fuer die
 #   acht Sichten seines REGISTERs.
 #
-# Version: v0.8.634 - Build: 634 - 2026-08-01
+# Version: v0.8.636 - Build: 636 - 2026-08-01
 # =============================================================================
 
 import json
@@ -276,6 +281,79 @@ class BedienelementeTests(unittest.TestCase):
             0, b.erklaert,
             "Eine unmarkierte Abnahmestelle wurde uebersehen - die "
             "Fabrikregel waere damit ein Schlupfloch.")
+
+    _HUELLE = ("(function () {\n"
+               "    function _feld(doc, id, text) {\n"
+               "        var wrap = doc.createElement('label');\n"
+               "        var inp = doc.createElement('input');\n"
+               "        inp.id = id;\n"
+               "        wrap.appendChild(inp);\n"
+               "        return wrap;\n"
+               "    }\n"
+               "    function zeichne(doc) {\n"
+               "        var fa = _feld(doc, 'a', 'A');\n"
+               "%s"
+               "        var fb = _feld(doc, 'b', 'B');\n"
+               "%s"
+               "        return [fa, fb];\n"
+               "    }\n"
+               "})();\n")
+    _H_A = ("        fa.eingabe.setAttribute('data-hilfe-id',\n"
+            "            'probe.bedienung.a');\n")
+    _H_B = ("        fb.eingabe.setAttribute('data-hilfe-id',\n"
+            "            'probe.bedienung.b');\n")
+
+    def test_bd05f_die_huellenregel(self):
+        """
+        BUILD 636, DRITTE MESSKORREKTUR. Der Bestand baut beschriftete Felder
+        fast immer so: eine Funktion erzeugt <label>, Beschriftung und
+        Eingabe, haengt die Eingabe in das Label und gibt DAS LABEL zurueck.
+        Die Abnahmestelle haelt damit die Huelle in der Hand, nicht das
+        Bedienelement - und setzt die Marke einen Schritt weiter innen.
+
+        Die Fabrikregel aus Build 633 verlangte 'return <element>;' und griff
+        deshalb hier nicht. Elf Felder allein in der Terminsicht galten so als
+        unerklaert, obwohl jedes eine literale Marke traegt. Wieder die
+        alarmierende Richtung.
+        """
+        b = untersuche(_js(self._HUELLE % (self._H_A, self._H_B)))
+        self.assertEqual(1, b.gesamt)
+        self.assertEqual(1, b.erklaert,
+                         "Die Marke an der Huelle wurde nicht gefunden.")
+
+    def test_bd05g_auch_die_huellenregel_bleibt_streng(self):
+        """Eine unmarkierte Abnahmestelle genuegt - wie bei BD05e."""
+        b = untersuche(_js(self._HUELLE % (self._H_A, "")))
+        self.assertEqual(0, b.erklaert)
+
+    def test_bd05h_eine_abnahmestelle_ohne_variable_zaehlt_nicht_als_erklaert(self):
+        """
+        DAS SCHLUPFLOCH, DAS DIE FABRIKREGEL SONST HAETTE. Reicht ein
+        Aufrufer das Ergebnis DIREKT weiter ('leiste.appendChild(_knopf(...))'),
+        kann er keine Marke setzen - das Bedienelement ist dort stumm. Die
+        Regel darf ihn deshalb nicht einfach uebergehen, nur weil die
+        uebrigen Abnahmestellen sauber sind.
+        """
+        p = _js("(function () {\n"
+                "    function _knopf(doc, text) {\n"
+                "        var b = doc.createElement('button');\n"
+                "        b.textContent = text;\n"
+                "        return b;\n"
+                "    }\n"
+                "    function zeichne(doc, leiste) {\n"
+                "        var eins = _knopf(doc, 'eins');\n"
+                "        eins.setAttribute('data-hilfe-id',\n"
+                "            'probe.bedienung.eins');\n"
+                "        leiste.appendChild(_knopf(doc, 'zwei'));\n"
+                "        return eins;\n"
+                "    }\n"
+                "})();\n")
+        b = untersuche(p)
+        self.assertEqual(1, b.gesamt)
+        self.assertEqual(
+            0, b.erklaert,
+            "Eine Abnahmestelle ohne Variable kann keine Marke tragen - das "
+            "Element gilt trotzdem als erklaert. Das ist das Schlupfloch.")
 
     def test_bd05b_alle_vier_arten_werden_erfasst(self):
         p = _js("(function () {\n"

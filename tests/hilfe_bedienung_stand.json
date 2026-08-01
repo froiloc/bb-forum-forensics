@@ -6,25 +6,15 @@
   "_ausnahmen": {
     "cockpit_tablekit.js": "Keine Sicht, sondern die Werkzeugkiste. Ihre beiden Bedienelemente entstehen in Fabriken (_btn, spaltenwahl) und bekommen ihre Marke erst beim Einbau, ueber eine ZUSAMMENGESETZTE Kennung (hilfeAnker(el, sicht + '.werkzeug.' + teil), Zeile 695). Die Quelltextsuche kann eine zusammengesetzte Kennung nicht sehen - genau deshalb misst UX11 am gerenderten Baum. Dort sind diese Elemente erfasst."
   },
-  "_befund_634_texte_ohne_marke": "BUILD 634, EIN BEFUND IN DER ANDEREN RICHTUNG: Es gibt auch das Gegenteil eines Knopfes ohne Text - einen TEXT OHNE KNOPF. Die Paritaetspruefung SP02 ('kein Text ins Leere') nimmt den Bereich 'bedienung' ausdruecklich aus, weil er urspruenglich mit den BERECHNETEN Bereichen (spalte, werkzeug, kachel) in eine Liste geraten ist. Bedienungsmarken sind aber LITERAL - sie koennten geprueft werden. In dieser Luecke lagen sechs Popup-Texte, die niemand je zu sehen bekommt. Einer davon, 'crossref.bedienung.revidieren', beschreibt seit Build 604 genau den Zeilenknopf 'Revidieren' - er ist in diesem Build an sein Element gebunden worden, statt einen zweiten Schluessel zu erfinden. Die uebrigen fuenf stehen unten und gehoeren zu Wellen, die noch kommen. BD09 deckelt die Liste: sie darf nur schrumpfen.",
-  "_texte_ohne_marke": {
-    "personnel.bedienung.flag_investigator": "Welle B3 (cockpit_personnel.js): Kennzeichen 'Ermittler' in der Zeile.",
-    "personnel.bedienung.flag_supervisor": "Welle B3 (cockpit_personnel.js): Kennzeichen 'Leitung' in der Zeile.",
-    "personnel.bedienung.flag_support": "Welle B3 (cockpit_personnel.js): Kennzeichen 'Unterstuetzung'.",
-    "personnel.bedienung.rolle_zuweisen": "Welle B3 (cockpit_personnel.js): Knopf zum Zuweisen einer Rolle.",
-    "personnel.bedienung.rolle_widerrufen": "Welle B3 (cockpit_personnel.js): Knopf zum Widerrufen einer Rolle.",
-    "promotion.bedienung.entscheiden": "Welle B4 (cockpit_promotion.js): Auswahl der Entscheidung."
-  },
-  "stand_build": 635,
+  "_befund_634_texte_ohne_marke": "BUILD 634, EIN BEFUND IN DER ANDEREN RICHTUNG: Es gibt auch das Gegenteil eines Knopfes ohne Text - einen TEXT OHNE KNOPF. Die Paritaetspruefung SP02 ('kein Text ins Leere') nimmt den Bereich 'bedienung' ausdruecklich aus, weil er urspruenglich mit den BERECHNETEN Bereichen (spalte, werkzeug, kachel) in eine Liste geraten ist. Bedienungsmarken sind aber LITERAL - sie koennten geprueft werden. In dieser Luecke lagen sechs Popup-Texte, die niemand je zu sehen bekommt. Einer davon, 'crossref.bedienung.revidieren', beschreibt seit Build 604 genau den Zeilenknopf 'Revidieren' - er ist in diesem Build an sein Element gebunden worden, statt einen zweiten Schluessel zu erfinden. Die uebrigen fuenf stehen unten und gehoeren zu Wellen, die noch kommen. BD09 deckelt die Liste: sie darf nur schrumpfen. ERLEDIGT IN BUILD 636: alle sechs sind an ihre Elemente gebunden. Die Ursache war in allen sechs Faellen dieselbe - eine GERECHNETE Kennung (anker(cb, SICHT + '.bedienung.' + ...) bzw. TK.hilfeAnker(b, SICHT + '.bedienung.entscheiden')). Die Texte gab es seit Build 603/604; erreichbar waren sie nie. Die Liste ist jetzt leer und BD09 haelt sie leer.",
+  "_texte_ohne_marke": {},
+  "stand_build": 636,
   "stand_datum": "2026-08-01",
   "bedienelemente_gesamt": 170,
-  "davon_erklaert": 121,
-  "davon_offen": 49,
+  "davon_erklaert": 150,
+  "davon_offen": 20,
   "offen_je_datei": {
-    "cockpit.js": 4,
-    "cockpit_adsync.js": 4,
     "cockpit_audit.js": 2,
-    "cockpit_calendar.js": 4,
     "cockpit_capacity.js": 2,
     "cockpit_capacity_pflege.js": 3,
     "cockpit_dashboard.js": 1,
@@ -32,17 +22,14 @@
     "cockpit_hilfe.js": 1,
     "cockpit_minutenrechner.js": 1,
     "cockpit_mycases.js": 1,
-    "cockpit_onboarding.js": 7,
     "cockpit_palette.js": 1,
-    "cockpit_personnel.js": 3,
-    "cockpit_promotion.js": 3,
     "cockpit_qs.js": 2,
     "cockpit_results.js": 1,
-    "cockpit_search.js": 4,
     "cockpit_stats.js": 2,
     "cockpit_support.js": 1,
     "cockpit_viewprefs.js": 1
   },
   "_korrektur_632": "BUILD 632, EINE KORREKTUR NACH OBEN: Die Erhebung suchte bis Build 631 ZEILENWEISE. Eine Marke, die am Komma umgebrochen ist, blieb dabei unsichtbar, und das Element galt als offen. Der Stand von Build 631 zaehlte deshalb FUENF Elemente zu viel als offen: cockpit_capacity_pflege.js (1), cockpit_crossfindings.js (3), cockpit_personnel.js (1). Sie waren laengst erklaert. Die Suche liest den Bereich jetzt zusammenhaengend; die Gegenprobe dazu ist BD05c. Die Zusicherung 'Untergrenze' in '_grenzen' galt damit fuer Build 631 NICHT - der Fehler ging in die andere Richtung. Das steht hier, weil eine stillschweigend berichtigte Zahl schlimmer waere als die falsche (Grundregel 1).",
-  "_korrektur_633": "BUILD 633, ZWEITE KORREKTUR NACH OBEN - DIE FABRIKREGEL: Ein Element, das seine Funktion mit 'return' verlaesst, wird nicht dort markiert, wo es entsteht, sondern bei jedem Abnehmer, und dort auch verschieden. Bis Build 632 galt es als unerklaert. Die Suche folgt dem Weg jetzt: Rueckgabe -> Funktionsname -> 'var X = name(' -> Marke auf X. STRENG bleibt sie: erklaert ist das Element nur, wenn JEDE Abnahmestelle markiert ist; eine einzige unmarkierte genuegt und es bleibt offen (Gegenproben BD05d und BD05e). Betroffen war '_select' in cockpit_assignment.js. Auch das war die alarmierende Fehlerrichtung: zu HOCH gezaehlt, fuer Code, der es richtig macht."
+  "_korrektur_633": "BUILD 633, ZWEITE KORREKTUR NACH OBEN - DIE FABRIKREGEL: Ein Element, das seine Funktion mit 'return' verlaesst, wird nicht dort markiert, wo es entsteht, sondern bei jedem Abnehmer, und dort auch verschieden. Bis Build 632 galt es als unerklaert. Die Suche folgt dem Weg jetzt: Rueckgabe -> Funktionsname -> 'var X = name(' -> Marke auf X. STRENG bleibt sie: erklaert ist das Element nur, wenn JEDE Abnahmestelle markiert ist; eine einzige unmarkierte genuegt und es bleibt offen (Gegenproben BD05d und BD05e). Betroffen war '_select' in cockpit_assignment.js. Auch das war die alarmierende Fehlerrichtung: zu HOCH gezaehlt, fuer Code, der es richtig macht.",
+  "_korrektur_636": "BUILD 636, DRITTE KORREKTUR NACH OBEN - DIE HUELLENREGEL, und eine VERSCHAERFUNG. (a) HUELLENREGEL: Der Bestand baut beschriftete Felder fast immer so, dass eine Fabrik <label>, Beschriftung und Eingabe erzeugt, die Eingabe in das Label haengt und DAS LABEL zurueckgibt. Die Fabrikregel aus Build 633 verlangte 'return <element>;' und griff hier nicht; elf Felder allein in der Terminsicht galten so als unerklaert. Die Suche folgt jetzt auch diesem Weg (Gegenproben BD05f/BD05g). (b) VERSCHAERFUNG: Reicht auch nur EINE Abnahmestelle das Fabrikergebnis direkt weiter ('leiste.appendChild(_knopf(...))'), kann sie keine Marke tragen - das Bedienelement ist dort stumm. Solche Faelle gelten jetzt als offen, statt von den sauberen Abnahmestellen mitgetragen zu werden (Gegenprobe BD05h). Ohne diese Verschaerfung waere die Fabrikregel ein Schlupfloch gewesen."
 }

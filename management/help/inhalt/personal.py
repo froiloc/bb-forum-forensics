@@ -231,6 +231,47 @@ PERSONNEL = Sichthilfe(
             "Holt den Stand aus dem Verzeichnisdienst. Das geschieht erst "
             "auf Anforderung, weil die Abfrage je nach Lage dauern kann.",
             verweis="personnel#ablaeufe"),
+
+        # Die sechs Bedienelemente des AD-Abschnitts (Build 636, Welle B4).
+        # Er ist seit Build 512 Teil DIESER Sicht und keine eigene - deshalb
+        # tragen seine Marken den Praefix 'personnel.'.
+        Kontexthilfe(
+            "personnel.bedienung.adsync_vollzug",
+            "Automatische Schritte vollziehen",
+            "Führt die unstrittigen Schritte in einem Zug aus: neue Anwender "
+            "aufnehmen und geänderte Namen nachziehen. Was in der "
+            "Beschriftung steht, wird auch getan — und nur das. Alles "
+            "Weitere verlangt eine Einzelentscheidung darunter.",
+            verweis="personnel#ablaeufe"),
+        Kontexthilfe(
+            "personnel.bedienung.adsync_wort", "Bestätigungswort",
+            "Das Wort, das genau so eingetippt werden muss, wie es in der "
+            "Überschrift steht. Es ist die Sicherung gegen den Fehlklick: "
+            "Eine Deaktivierung nimmt einem Menschen den Zugang, und das soll "
+            "nicht versehentlich geschehen.",
+            verweis="personnel#grenzen"),
+        Kontexthilfe(
+            "personnel.bedienung.adsync_notiz", "Notiz / Grund",
+            "Die Begründung für den Abbruch — sie geht in den Beleg ein. Ohne "
+            "sie bliebe offen, warum ein vorgeschlagener Schritt nicht "
+            "vollzogen wurde."),
+        Kontexthilfe(
+            "personnel.bedienung.adsync_deaktivieren", "Deaktivieren",
+            "Setzt diesen Anwender inaktiv, weil er im Verzeichnisdienst "
+            "nicht mehr geführt wird. Nur mit dem richtig eingetippten "
+            "Bestätigungswort; die Rollen bleiben als Beleg erhalten.",
+            verweis="personnel#grenzen"),
+        Kontexthilfe(
+            "personnel.bedienung.adsync_abbruch", "Abbruch protokollieren",
+            "Hält fest, dass der vorgeschlagene Schritt bewusst NICHT "
+            "vollzogen wird. Das ist keine Untätigkeit, sondern eine "
+            "Entscheidung — und sie gehört belegt."),
+        Kontexthilfe(
+            "personnel.bedienung.adsync_reaktivieren", "Reaktivieren",
+            "Nimmt einen zurückgekehrten Anwender wieder in Betrieb. Seine "
+            "früheren Rollen werden dabei WIEDER WIRKSAM — prüfen Sie, ob das "
+            "noch passt.",
+            verweis="personnel#grenzen"),
         Kontexthilfe(
             "personnel.werkzeug.filter_entfernen", "Filter zurücksetzen",
             "Entfernt alle Spaltenfilter dieser Sicht auf einmal."),

@@ -45,7 +45,9 @@
 //   XSS: ausschliesslich textContent.
 //
 // Build 469: Schluesselumstellung user_id -> subject_id (M019)
-// Version: v0.7.469 · Build: 469 · 2026-07-20
+// Build 636 (Vorgang 17200856, Welle B4): HILFE-MARKEN fuer die
+//   zwanzig Bedienelemente dieser Sicht.
+// Version: v0.8.636 · Build: 636 · 2026-08-01
 // =============================================================================
 
 (function () {
@@ -370,6 +372,11 @@
         inp.id = id;
         if (value !== undefined && value !== null) { inp.value = value; }
         wrap.appendChild(inp);
+        // Build 636 (Vorgang 17200856): Die Fabrik gibt die HUELLE zurueck
+        // (das <label> mit Beschriftung und Feld). Die Abnahmestelle braucht
+        // aber das Feld, um die Hilfe-Marke LITERAL zu setzen - eine Fabrik
+        // koennte nur EINE Kennung fuer alle elf Felder vergeben.
+        wrap.eingabe = inp;
         return wrap;
     }
 
@@ -468,8 +475,11 @@
         // --- Monatsnavigation -------------------------------------------------
         var nav = _el(doc, 'div', 'aiw-cal-nav');
         var prev = _btn(doc, 'aiw-cal-prev', '\u2039 Vormonat');
+        prev.setAttribute('data-hilfe-id', 'calendar.bedienung.vormonat');
         var next = _btn(doc, 'aiw-cal-next', 'Folgemonat \u203a');
+        next.setAttribute('data-hilfe-id', 'calendar.bedienung.folgemonat');
         var heute = _btn(doc, 'aiw-cal-today', 'Heute');
+        heute.setAttribute('data-hilfe-id', 'calendar.bedienung.heute');
         var titel = _el(doc, 'span', 'aiw-cal-month', monthLabel(ym));
         titel.id = 'aiw-cal-month';
 
@@ -544,6 +554,7 @@
         var bar = _el(doc, 'div', 'aiw-cal-bar');
         var sel = doc.createElement('select');
         sel.id = 'aiw-cal-filter';
+        sel.setAttribute('data-hilfe-id', 'calendar.bedienung.ampelfilter');
         var oa = doc.createElement('option');
         oa.value = '';
         oa.text = 'alle Ampeln (' + rows.length + ')';
@@ -557,7 +568,12 @@
         bar.appendChild(sel);
 
         if (canEdit) {
-            bar.appendChild(_btn(doc, 'aiw-cal-new', 'Neuer Vorgang'));
+            // Build 636: frueher direkt in appendChild. Eine Abnahmestelle
+            // ohne Variable kann keine Marke tragen - der Knopf waere stumm.
+            var neuBtn = _btn(doc, 'aiw-cal-new', 'Neuer Vorgang');
+            neuBtn.setAttribute('data-hilfe-id',
+                                'calendar.bedienung.neuer_vorgang');
+            bar.appendChild(neuBtn);
         }
         mainEl.appendChild(bar);
 
@@ -604,10 +620,12 @@
             felder.forEach(function (f) { box.appendChild(f); });
 
             var yes = _btn(doc, 'aiw-cal-confirm-yes', 'Ja, ausfuehren');
+            yes.setAttribute('data-hilfe-id', 'calendar.bedienung.bestaetigen');
             yes.addEventListener('click', function () { onYes(); });
             box.appendChild(yes);
 
             var no = _btn(doc, 'aiw-cal-confirm-no', 'Abbrechen');
+            no.setAttribute('data-hilfe-id', 'calendar.bedienung.abbrechen');
             no.addEventListener('click', function () {
                 panel.textContent = '';
                 selectRow(selected);
@@ -642,13 +660,18 @@
             var btns = _el(doc, 'div', 'aiw-cal-btns');
             acts.forEach(function (a) {
                 var b = _btn(doc, 'aiw-cal-act-' + a.kind, a.label);
+                b.setAttribute('data-hilfe-id', 'calendar.bedienung.aktion');
                 b.addEventListener('click', function () {
                     if (a.kind === 'defer') {
                         var dIn = _field(doc, 'aiw-cal-defer-datum',
                                          'Neues Wiedervorlagedatum', 'date',
                                          r.wiedervorlage_am);
+                        dIn.eingabe.setAttribute('data-hilfe-id',
+                            'calendar.bedienung.neues_datum');
                         var gIn = _field(doc, 'aiw-cal-defer-grund',
                                          'Grund (Pflicht)', 'text', '');
+                        gIn.eingabe.setAttribute('data-hilfe-id',
+                            'calendar.bedienung.verschiebegrund');
                         askConfirm('defer', r, [dIn, gIn], function () {
                             send(deferRequest(
                                 r.id,
@@ -661,6 +684,8 @@
                     if (a.kind === 'answer') {
                         var eIn = _field(doc, 'aiw-cal-answer-erg',
                                          'Ergebnis (optional)', 'text', '');
+                        eIn.eingabe.setAttribute('data-hilfe-id',
+                            'calendar.bedienung.antwortergebnis');
                         askConfirm('answer', r, [eIn], function () {
                             send(answerRequest(
                                 r.id,
@@ -672,6 +697,8 @@
                     var cIn = _field(doc, 'aiw-cal-close-erg',
                                      'Ergebnis / Begruendung', 'text',
                                      r.ergebnis || '');
+                    cIn.eingabe.setAttribute('data-hilfe-id',
+                        'calendar.bedienung.abschlussergebnis');
                     askConfirm(a.kind, r, [cIn], function () {
                         send(closeRequest(
                             r.id, a.kind,
@@ -706,10 +733,13 @@
             var fw = _field(doc, 'aiw-cal-new-fall',
                             'Fall (subject_id) \u2014 Pflicht', 'number',
                             (selected ? String(selected.subject_id) : ''));
+            fw.eingabe.setAttribute('data-hilfe-id',
+                                    'calendar.bedienung.fall');
             form.appendChild(fw);
 
             var art = doc.createElement('select');
             art.id = 'aiw-cal-new-kind';
+            art.setAttribute('data-hilfe-id', 'calendar.bedienung.vorgangsart');
             ((ext && ext.kinds) || []).forEach(function (k) {
                 var o = doc.createElement('option');
                 o.value = k.code;
@@ -721,18 +751,37 @@
             aw.appendChild(art);
             form.appendChild(aw);
 
-            form.appendChild(_field(doc, 'aiw-cal-new-betreff',
-                                    'Betreff (Pflicht)', 'text', ''));
-            form.appendChild(_field(doc, 'aiw-cal-new-adressat',
-                                    'Adressat', 'text', ''));
-            form.appendChild(_field(doc, 'aiw-cal-new-az',
-                                    'Aktenzeichen (extern)', 'text', ''));
-            form.appendChild(_field(doc, 'aiw-cal-new-wv',
-                                    'Wiedervorlage (Pflicht)', 'date', ''));
-            form.appendChild(_field(doc, 'aiw-cal-new-frist',
-                                    'Vorwarnfrist (Tage)', 'number', '7'));
+            // Build 636: frueher fuenfmal direkt in appendChild. Ohne
+            // Variable kann keine Marke gesetzt werden - die Felder waeren
+            // stumm geblieben.
+            var fBetreff = _field(doc, 'aiw-cal-new-betreff',
+                                  'Betreff (Pflicht)', 'text', '');
+            fBetreff.eingabe.setAttribute('data-hilfe-id',
+                                          'calendar.bedienung.betreff');
+            form.appendChild(fBetreff);
+            var fAdressat = _field(doc, 'aiw-cal-new-adressat',
+                                   'Adressat', 'text', '');
+            fAdressat.eingabe.setAttribute('data-hilfe-id',
+                                           'calendar.bedienung.adressat');
+            form.appendChild(fAdressat);
+            var fAz = _field(doc, 'aiw-cal-new-az',
+                             'Aktenzeichen (extern)', 'text', '');
+            fAz.eingabe.setAttribute('data-hilfe-id',
+                                     'calendar.bedienung.aktenzeichen');
+            form.appendChild(fAz);
+            var fWv = _field(doc, 'aiw-cal-new-wv',
+                             'Wiedervorlage (Pflicht)', 'date', '');
+            fWv.eingabe.setAttribute('data-hilfe-id',
+                                     'calendar.bedienung.wiedervorlage');
+            form.appendChild(fWv);
+            var fFrist = _field(doc, 'aiw-cal-new-frist',
+                                'Vorwarnfrist (Tage)', 'number', '7');
+            fFrist.eingabe.setAttribute('data-hilfe-id',
+                                        'calendar.bedienung.vorwarnfrist');
+            form.appendChild(fFrist);
 
             var ok = _btn(doc, 'aiw-cal-new-save', 'Anlegen');
+            ok.setAttribute('data-hilfe-id', 'calendar.bedienung.anlegen');
             ok.addEventListener('click', function () {
                 send(createRequest({
                     subject_id: doc.getElementById('aiw-cal-new-fall').value,
@@ -748,6 +797,8 @@
             form.appendChild(ok);
 
             var ab = _btn(doc, 'aiw-cal-new-cancel', 'Abbrechen');
+            ab.setAttribute('data-hilfe-id',
+                            'calendar.bedienung.formular_abbrechen');
             ab.addEventListener('click', function () {
                 form.textContent = '';
                 setResult('Abgebrochen. Es wurde nichts geschrieben.', false);

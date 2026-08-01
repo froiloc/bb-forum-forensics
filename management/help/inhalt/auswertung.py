@@ -735,6 +735,35 @@ SEARCH = Sichthilfe(
             "liefert eine alte Trefferlage; ist er nicht belastbar, wird die "
             "Zeile hervorgehoben — dann ist ein Leerbefund keine Auskunft.",
             verweis="search#indexstand"),
+
+        # Die vier Bedienelemente der Suchmaske (Build 636, Welle B4).
+        Kontexthilfe(
+            "search.bedienung.begriff", "Suchbegriff",
+            "Wonach gesucht wird — meist ein Kontoname. Ein Leerbefund heißt "
+            "„im durchsuchten Bestand nicht gefunden“ und nicht „kommt nicht "
+            "vor“; wie aktuell dieser Bestand ist, sagt die Zeile darüber.",
+            verweis="search#indexstand"),
+        Kontexthilfe(
+            "search.bedienung.suchart", "Suchart",
+            "Wortsuche findet den Begriff als eigenes Wort. Die Teilstring-"
+            "Suche findet ihn auch inmitten längerer Zeichenfolgen — sie "
+            "findet also auch Verklebtes, liefert dafür aber mehr "
+            "Zufallstreffer. Bei einem kurzen Namen lohnt beides "
+            "nacheinander.",
+            verweis="search#zwei_stufen"),
+        Kontexthilfe(
+            "search.bedienung.zweck", "Zweck der Abfrage",
+            "PFLICHTANGABE. Jede Suche wird mit ihrem Zweck protokolliert — "
+            "auch der Leerbefund. Das ist keine Überwachung der Suchenden, "
+            "sondern die Nachvollziehbarkeit eines Zugriffs auf fremde "
+            "Verfahren.",
+            verweis="search#grenzen"),
+        Kontexthilfe(
+            "search.bedienung.begruendung", "Begründung",
+            "Freitext zum Zweck. Das Feld ist gesperrt, solange der gewählte "
+            "Zweck keine Begründung verlangt, und wird bei „Sonstiges“ zur "
+            "Pflicht — ein Zweck, der alles abdeckt, deckt sonst nichts ab.",
+            verweis="search#grenzen"),
     ),
 )
 

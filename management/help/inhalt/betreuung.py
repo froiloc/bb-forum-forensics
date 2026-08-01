@@ -419,6 +419,53 @@ ONBOARDING = Sichthilfe(
             "Ausscheiden sind sie zu verteilen — sonst hat am Ende niemand "
             "die Zuständigkeit.",
             verweis="onboarding#ablaeufe"),
+
+        # Die neun Bedienelemente (Build 636, Welle B4).
+        Kontexthilfe(
+            "onboarding.bedienung.person", "Person",
+            "Wessen Checkliste angezeigt wird. Erwartet wird die Kennung der "
+            "Person; eine Eingabe, die keine reine Zahl ist, wird abgewiesen "
+            "und nicht stillschweigend zurechtgebogen."),
+        Kontexthilfe(
+            "onboarding.bedienung.checkliste", "Checkliste",
+            "Aufnahme oder Ausscheiden. Die beiden Listen sind getrennt: Eine "
+            "Person kann beides durchlaufen haben, und die Stände dürfen sich "
+            "nicht vermischen."),
+        Kontexthilfe(
+            "onboarding.bedienung.anzeigen", "Anzeigen",
+            "Lädt die gewählte Checkliste. Ein Ladevorgang — geschrieben wird "
+            "nichts."),
+        Kontexthilfe(
+            "onboarding.bedienung.erledigt", "Erledigt",
+            "Hält fest, dass dieser Schritt ausgeführt wurde. DIE SICHT FÜHRT "
+            "IHN NICHT AUS: Sie hält den Stand fest, getan wird der Schritt "
+            "an anderer Stelle. Wer hier abhakt, erklärt etwas — er bewirkt "
+            "es nicht.",
+            verweis="onboarding#grenzen"),
+        Kontexthilfe(
+            "onboarding.bedienung.nicht_zutreffend", "Nicht zutreffend",
+            "Nimmt den Schritt aus der Liste heraus, weil er in diesem Fall "
+            "keinen Sinn ergibt. Öffnet dafür die Grundangabe — ohne Grund "
+            "geschieht nichts.",
+            verweis="onboarding#ablaeufe"),
+        Kontexthilfe(
+            "onboarding.bedienung.zuruecksetzen", "Zurücksetzen",
+            "Setzt den Schritt wieder auf offen — etwa, wenn er versehentlich "
+            "abgehakt wurde. Auch das wird festgehalten; der bisherige Stand "
+            "geht nicht verloren."),
+        Kontexthilfe(
+            "onboarding.bedienung.grund", "Grund (Pflicht)",
+            "Warum dieser Schritt nicht zutrifft. PFLICHTANGABE: Ein "
+            "übersprungener Schritt ohne Begründung ist später nicht von "
+            "einem vergessenen zu unterscheiden.",
+            verweis="onboarding#grenzen"),
+        Kontexthilfe(
+            "onboarding.bedienung.grund_bestaetigen", "Bestätigen",
+            "Schreibt den Schritt als „nicht zutreffend“ samt Grund fest. "
+            "Ohne Grund geschieht nichts."),
+        Kontexthilfe(
+            "onboarding.bedienung.grund_abbrechen", "Abbrechen",
+            "Schließt die Grundangabe. Der Schritt bleibt, wie er war."),
     ),
 )
 

@@ -74,7 +74,9 @@
 //   stabile Kennungen fuer die spaetere Schnellhilfe. Sie kosten jetzt fast
 //   nichts; spaeter waeren dafuer alle Sichten ein zweites Mal anzufassen.
 //
-// Version: v0.8.548 · Build: 548 · 2026-07-26 (Tabulator + tablekit)
+// Build 636 (Vorgang 17200856, Welle B4): HILFE-MARKEN fuer die
+//   fuenf Bedienelemente mit GERECHNETER Kennung dieser Sicht.
+// Version: v0.8.636 · Build: 636 · 2026-08-01
 //   Build 503: Erstfassung (handgebaute Tabelle).
 // =============================================================================
 
@@ -274,8 +276,22 @@
                     // brauchen spaeter verschiedene Erklaerungen. Ein
                     // gemeinsamer Anker haette drei Begriffe in einen Text
                     // gezwungen.
-                    anker(cb, SICHT + '.bedienung.'
-                        + f.key.replace('is_', 'flag_'));
+                    // Build 636 (Vorgang 17200856): Die Kennung war
+                    // GERECHNET (SICHT + '.bedienung.' + f.key...). Die drei
+                    // Texte gab es seit Build 603 im Register - erreichbar
+                    // waren sie nie, denn weder die Paritaetspruefung
+                    // SP01/SP02 noch die Erhebung sieht eine gerechnete
+                    // Kennung. Jetzt drei literale Zweige.
+                    if (f.key === 'is_investigator') {
+                        cb.setAttribute('data-hilfe-id',
+                            'personnel.bedienung.flag_investigator');
+                    } else if (f.key === 'is_supervisor') {
+                        cb.setAttribute('data-hilfe-id',
+                            'personnel.bedienung.flag_supervisor');
+                    } else {
+                        cb.setAttribute('data-hilfe-id',
+                            'personnel.bedienung.flag_support');
+                    }
                     cb.addEventListener('click', function (e) {
                         e.stopPropagation();
                     });
@@ -318,7 +334,8 @@
                             + 'Soft-Revoke)';
                         x.setAttribute('aria-label',
                             'Rolle ' + r.role_code + ' widerrufen');
-                        anker(x, SICHT + '.bedienung.rolle_widerrufen');
+                        x.setAttribute('data-hilfe-id',
+                            'personnel.bedienung.rolle_widerrufen');
                         x.addEventListener('click', function (e) {
                             e.stopPropagation();
                             if (typeof opts.onRevoke === 'function') {
@@ -339,7 +356,8 @@
                         sel.className = 'aiw-pers-assign-sel';
                         sel.setAttribute('aria-label',
                             'Rolle zuweisen für ' + d.system_username);
-                        anker(sel, SICHT + '.bedienung.rolle_zuweisen');
+                        sel.setAttribute('data-hilfe-id',
+                            'personnel.bedienung.rolle_zuweisen');
                         var ph = doc.createElement('option');
                         ph.value = '';
                         ph.textContent = 'Rolle zuweisen …';

@@ -39,7 +39,9 @@
 //   textContent gesetzt, nie via innerHTML.
 //
 // Build 469: Schluesselumstellung user_id -> subject_id (M019)
-// Version: v0.7.469 · Build: 469 · 2026-07-20
+// Build 636 (Vorgang 17200856, Welle B4): HILFE-MARKEN fuer die
+//   drei Bedienelemente dieser Sicht.
+// Version: v0.8.636 · Build: 636 · 2026-08-01
 // =============================================================================
 
 (function () {
@@ -266,10 +268,13 @@
                         b.setAttribute('data-uid', String(d.subject_id));
                         b.setAttribute('data-target', target);
                         b.textContent = ACTION_LABEL[target] || target;
-                        var TK = _tk();
-                        if (TK && TK.hilfeAnker) {
-                            TK.hilfeAnker(b, SICHT + '.bedienung.entscheiden');
-                        }
+                        // Build 636 (Vorgang 17200856): Die Kennung war
+                        // GERECHNET (SICHT + '.bedienung.entscheiden'). Den
+                        // Text gab es seit Build 604 im Register, erreichbar
+                        // war er nie - weder SP01/SP02 noch die Erhebung
+                        // sehen eine gerechnete Kennung. Jetzt literal.
+                        b.setAttribute('data-hilfe-id',
+                            'promotion.bedienung.entscheiden');
                         b.addEventListener('click', function (ev) {
                             if (ev && typeof ev.stopPropagation === 'function') {
                                 ev.stopPropagation();
@@ -389,6 +394,7 @@
             inH.type = 'text';
             inH.id = 'aiw-promo-herkunft';
             inH.className = 'aiw-promo-input';
+            inH.setAttribute('data-hilfe-id', 'promotion.bedienung.herkunft');
             if (row.herkunft) { inH.value = row.herkunft; }
             lblH.appendChild(inH);
             panel.appendChild(lblH);
@@ -402,6 +408,7 @@
             inG.type = 'text';
             inG.id = 'aiw-promo-grund';
             inG.className = 'aiw-promo-input';
+            inG.setAttribute('data-hilfe-id', 'promotion.bedienung.grund');
             lblG.appendChild(inG);
             panel.appendChild(lblG);
 

@@ -24,7 +24,7 @@
 #   REGEL H-0 gilt unveraendert: kein Falldatum, kein Beispiel aus dem
 #   Betrieb.
 #
-# Version: v0.8.591 - Build: 591 - 2026-07-31
+# Version: v0.8.636 - Build: 636 - 2026-08-01
 # =============================================================================
 
 from __future__ import annotations
@@ -70,6 +70,41 @@ SHELL_KONTEXT: Tuple[Kontexthilfe, ...] = (
         "Kopfzeile, Erzeugungsvermerk und Prüfsumme. Der Knopf erscheint nur "
         "bei Sichten, für die ein Export festgelegt ist, und exportiert genau "
         "das, was Sie sehen — einschließlich der gesetzten Filter.",
+    ),
+    # -----------------------------------------------------------------
+    # Die vier Bedienelemente der Navigation (Build 636, Welle B4).
+    # -----------------------------------------------------------------
+    Kontexthilfe(
+        "shell.bedienung.navsuche",
+        "Sichtsuche",
+        "Filtert die Bereichsliste nach Begriff oder Stichwort. Die Suche "
+        "klappt eingeklappte Gruppen auf und zeigt auch Bereiche, die Sie "
+        "sich ausgeblendet haben — solche sind gekennzeichnet. Was Ihnen "
+        "nicht zugeteilt ist, findet auch die Suche nicht.",
+    ),
+    Kontexthilfe(
+        "shell.bedienung.navgruppe",
+        "Bereichsgruppe",
+        "Klappt die Gruppe auf oder zu. Der Zustand bleibt für Ihr Konto "
+        "erhalten. Eine zugeklappte Gruppe, in der der gerade geöffnete "
+        "Bereich liegt, wird trotzdem aufgeklappt — sonst behauptete die "
+        "Leiste stillschweigend, es gebe ihn nicht.",
+    ),
+    Kontexthilfe(
+        "shell.bedienung.navsicht",
+        "Bereich öffnen",
+        "Wechselt in diesen Bereich. Nicht gespeicherte Eingaben in der "
+        "aktuellen Ansicht gehen dabei verloren — das Werkzeug führt keinen "
+        "Entwurf über einen Wechsel hinweg mit.",
+    ),
+    Kontexthilfe(
+        "shell.bedienung.ausgeblendet",
+        "Ausgeblendete Bereiche",
+        "Nennt, wie viele Bereiche Sie sich ausgeblendet haben, und führt "
+        "mit einem Klick dorthin, wo sich das rückgängig machen lässt. Die "
+        "Zeile steht dauerhaft da: Ein ausgeblendeter Bereich darf nicht "
+        "still verschwinden — er könnte etwas Übersehenes enthalten. "
+        "Erreichbar bleiben ausgeblendete Bereiche über die Kommandopalette.",
     ),
     Kontexthilfe(
         "shell.kennung",

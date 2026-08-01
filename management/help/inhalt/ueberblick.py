@@ -384,6 +384,106 @@ CALENDAR = Sichthilfe(
             "calendar.spalte.ampel_grund", "Spalte „Begründung“",
             "Warum die Ampel so steht, wie sie steht — im Klartext. Ohne "
             "diese Spalte wäre die Farbe eine unbelegte Behauptung."),
+        # ------------------------------------------------------------------
+        # Die Bedienelemente (Build 636, Welle B4). Die Erhebung zaehlte hier
+        # nur VIER - die Sicht baut ihre Knoepfe und Felder in zwei Fabriken
+        # ('_btn', '_field'), und eine Fabrik zaehlt einmal. Tatsaechlich
+        # sind es zwanzig, und alle zwanzig bekommen hier ihren Text.
+        # ------------------------------------------------------------------
+        Kontexthilfe(
+            "calendar.bedienung.vormonat", "Vormonat",
+            "Blättert einen Monat zurück. Die Liste unter dem Kalender folgt "
+            "der Monatsanzeige."),
+        Kontexthilfe(
+            "calendar.bedienung.folgemonat", "Folgemonat",
+            "Blättert einen Monat vor. Fristen, die im Folgemonat fällig "
+            "werden, sehen Sie so, bevor sie drücken."),
+        Kontexthilfe(
+            "calendar.bedienung.heute", "Heute",
+            "Springt zum laufenden Monat zurück."),
+        Kontexthilfe(
+            "calendar.bedienung.ampelfilter", "Ampel",
+            "Zeigt nur Vorgänge einer Ampelstufe; in Klammern steht die "
+            "Anzahl. Der Filter verbirgt Zeilen — er ändert nichts an den "
+            "Fristen.",
+            verweis="calendar#stichtag"),
+        Kontexthilfe(
+            "calendar.bedienung.neuer_vorgang", "Neuer Vorgang",
+            "Öffnet das Formular für einen externen Vorgang. Der Knopf "
+            "erscheint nur mit dem Recht zum Ändern.",
+            verweis="calendar#rechte"),
+        Kontexthilfe(
+            "calendar.bedienung.aktion", "Aktion am Vorgang",
+            "Führt den nächsten Schritt aus — je nach Zustand verschieben, "
+            "beantworten oder abschließen. Angeboten wird nur, was von hier "
+            "aus zulässig ist. Vor der Ausführung kommt immer eine Rückfrage.",
+            verweis="calendar#grenzen"),
+        Kontexthilfe(
+            "calendar.bedienung.bestaetigen", "Ja, ausführen",
+            "Führt die gewählte Aktion aus und schreibt sie fest. Was bis "
+            "dahin in den Feldern steht, wird mitgeschrieben."),
+        Kontexthilfe(
+            "calendar.bedienung.abbrechen", "Abbrechen",
+            "Schließt die Rückfrage. Es wird nichts geschrieben."),
+        Kontexthilfe(
+            "calendar.bedienung.neues_datum", "Neues Wiedervorlagedatum",
+            "Der Tag, an dem der Vorgang wieder auf den Tisch kommt. Das "
+            "Verschieben ändert die Wiedervorlage, NICHT die Frist selbst.",
+            verweis="calendar#grenzen"),
+        Kontexthilfe(
+            "calendar.bedienung.verschiebegrund", "Grund der Verschiebung",
+            "PFLICHTANGABE. Eine verschobene Wiedervorlage ohne Grund ist "
+            "später nicht von einem Versäumnis zu unterscheiden."),
+        Kontexthilfe(
+            "calendar.bedienung.antwortergebnis", "Ergebnis der Antwort",
+            "Was die angeschriebene Stelle mitgeteilt hat — freiwillig, aber "
+            "die einzige Stelle, an der es festgehalten wird."),
+        Kontexthilfe(
+            "calendar.bedienung.abschlussergebnis", "Ergebnis / Begründung",
+            "Womit der Vorgang endet. Ein abgeschlossener Vorgang lässt sich "
+            "NICHT wieder öffnen; ein Irrtum wird durch einen neuen Vorgang "
+            "berichtigt.",
+            verweis="calendar#grenzen"),
+        Kontexthilfe(
+            "calendar.bedienung.fall", "Fall (Pflicht)",
+            "Der Ermittlungsschlüssel des Falls, zu dem der Vorgang gehört. "
+            "Das Werkzeug prüft die Angabe: ein unbekannter Fall wird "
+            "abgewiesen, ein nicht zugewiesener ebenfalls."),
+        Kontexthilfe(
+            "calendar.bedienung.vorgangsart", "Vorgangsart",
+            "Um welche Art von externem Vorgang es sich handelt. Die Art "
+            "bestimmt mit, wie der Vorgang später gelesen wird."),
+        Kontexthilfe(
+            "calendar.bedienung.betreff", "Betreff (Pflicht)",
+            "Worum es geht, in einer Zeile. Er steht später in der Liste — "
+            "schreiben Sie ihn so, dass er dort allein trägt."),
+        Kontexthilfe(
+            "calendar.bedienung.adressat", "Adressat",
+            "An wen der Vorgang gerichtet ist. Freiwillig, aber ohne diese "
+            "Angabe lässt sich später nicht nachvollziehen, wo nachzufassen "
+            "wäre."),
+        Kontexthilfe(
+            "calendar.bedienung.aktenzeichen", "Aktenzeichen (extern)",
+            "Das Zeichen der EMPFANGENDEN Stelle — nicht das eigene. Es ist "
+            "der Faden, an dem eine Rückfrage hängt."),
+        Kontexthilfe(
+            "calendar.bedienung.wiedervorlage", "Wiedervorlage (Pflicht)",
+            "Der Tag, an dem der Vorgang wieder vorgelegt wird. Aus ihm und "
+            "der Vorwarnfrist ergibt sich die Ampel.",
+            verweis="calendar#stichtag"),
+        Kontexthilfe(
+            "calendar.bedienung.vorwarnfrist", "Vorwarnfrist (Tage)",
+            "Wie viele Tage vor der Wiedervorlage die Ampel auf Gelb "
+            "springt. Bei einer Stelle, die erfahrungsgemäß lange braucht, "
+            "lohnt eine längere Vorwarnung.",
+            verweis="calendar#stichtag"),
+        Kontexthilfe(
+            "calendar.bedienung.anlegen", "Anlegen",
+            "Legt den Vorgang an. Pflicht sind Fall, Betreff und "
+            "Wiedervorlage; fehlt eines, wird nichts geschrieben."),
+        Kontexthilfe(
+            "calendar.bedienung.formular_abbrechen", "Abbrechen",
+            "Schließt das Formular. Es wird nichts geschrieben."),
         Kontexthilfe(
             "calendar.werkzeug.filter_entfernen", "Filter zurücksetzen",
             "Entfernt alle Spaltenfilter dieser Sicht auf einmal."),

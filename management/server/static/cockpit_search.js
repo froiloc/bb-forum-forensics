@@ -56,7 +56,9 @@
 //   textContent (kein innerHTML) — der Bestand ist multilingual und enthaelt
 //   von Beschuldigten geschriebene Zeichenfolgen.
 //
-// Version: v0.8.563 · Build: 563 · 2026-07-26
+// Build 636 (Vorgang 17200856, Welle B4): HILFE-MARKEN fuer die
+//   vier Bedienelemente der Suchmaske dieser Sicht.
+// Version: v0.8.636 · Build: 636 · 2026-08-01
 // =============================================================================
 
 (function () {
@@ -289,12 +291,16 @@
         feld.className = 'aiw-search-begriff';
         feld.value = zustand.begriff || '';
         feld.setAttribute('aria-label', 'Suchbegriff');
+        // Build 636 (Vorgang 17200856): Hilfe-Marke, LITERAL gesetzt.
+        // Text in management/help/inhalt/ueberblick.py.
+        feld.setAttribute('data-hilfe-id', 'search.bedienung.begriff');
         feld.placeholder = 'Nickname oder Begriff';
         form.appendChild(feld);
 
         var modus = document.createElement('select');
         modus.className = 'aiw-search-modus';
         modus.setAttribute('aria-label', 'Suchart');
+        modus.setAttribute('data-hilfe-id', 'search.bedienung.suchart');
         [['wort', 'Wortsuche'],
          ['teilstring', 'Teilstring (findet auch Verklebtes)']]
             .forEach(function (p) {
@@ -309,6 +315,7 @@
         var zweck = document.createElement('select');
         zweck.className = 'aiw-search-zweck';
         zweck.setAttribute('aria-label', 'Zweck der Abfrage (Pflicht)');
+        zweck.setAttribute('data-hilfe-id', 'search.bedienung.zweck');
         var leer = document.createElement('option');
         leer.value = '';
         leer.textContent = '— Zweck wählen (Pflicht) —';
@@ -328,6 +335,7 @@
         frei.className = 'aiw-search-freitext';
         frei.placeholder = 'Begründung (bei "Sonstiges" Pflicht)';
         frei.setAttribute('aria-label', 'Begründung');
+        frei.setAttribute('data-hilfe-id', 'search.bedienung.begruendung');
         frei.value = zustand.zweck_freitext || '';
         frei.disabled = !zweckBrauchtFreitext(zwecke, zustand.zweck_code);
         form.appendChild(frei);

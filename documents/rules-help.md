@@ -132,3 +132,9 @@ Entstehen zwei Schaltflächen in **einer Schleife** und sagen Verschiedenes, dan
 *Durchsetzung:* BD09. Was heute noch ohne Marke ist, steht namentlich unter `_texte_ohne_marke` im Stand und darf nur weniger werden; ein erledigter Eintrag muss dort verschwinden (TE6).
 
 Bevor Sie für ein Element einen neuen Schlüssel erfinden: **sehen Sie nach, ob es den Text schon gibt.** `crossref.bedienung.revidieren` beschrieb seit Build 604 genau den Zeilenknopf „Revidieren" und war nur nie an ihn gebunden.
+
+**Eine Fabrik, mehrere Bedienelemente.** Baut eine Hilfsfunktion das Element und gibt es zurück — oder gibt sie das umschließende `<label>` zurück, wie es bei beschrifteten Feldern die Regel ist —, dann gehört die Marke an *jede* Abnahmestelle. Zwei Aufrufer meinen zwei verschiedene Bedienelemente und brauchen zwei Texte.
+
+Daraus folgt eine Konsequenz für den Aufrufstil: **das Ergebnis einer solchen Fabrik nie direkt weiterreichen.** `leiste.appendChild(_knopf(doc, 'Neu'))` lässt keinen Platz für eine Marke — der Knopf bleibt stumm. Erst in eine Variable, dann markieren, dann einhängen.
+
+*Durchsetzung:* die Fabrik- und die Hüllenregel in `tests/_bedienelemente.py`, mit den Gegenproben BD05d–BD05h. Eine einzige unmarkierte Abnahmestelle genügt, und das Element gilt als offen.

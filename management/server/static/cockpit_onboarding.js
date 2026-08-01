@@ -31,7 +31,9 @@
 //   fassen NIE das DOM an -> vitest; opts.doc injizierbar (JSDOM).
 // SICHERHEIT (XSS): alle variablen Texte via textContent.
 //
-// Version: v0.7.465 · Build: 465 · 2026-07-20
+// Build 636 (Vorgang 17200856, Welle B4): HILFE-MARKEN fuer die
+//   neun Bedienelemente dieser Sicht.
+// Version: v0.8.636 · Build: 636 · 2026-08-01
 // =============================================================================
 
 (function () {
@@ -218,6 +220,10 @@
             inG.type = 'text';
             inG.id = 'aiw-onb-reason';
             inG.className = 'aiw-onb-input';
+            // Build 636 (Vorgang 17200856): Hilfe-Marke, LITERAL gesetzt.
+            // Text in management/help/inhalt/personal.py.
+            inG.setAttribute('data-hilfe-id',
+                'onboarding.bedienung.grund');
             lbl.appendChild(inG);
             panel.appendChild(lbl);
 
@@ -226,6 +232,8 @@
             ok.id = 'aiw-onb-reason-confirm';
             ok.className = 'aiw-btn aiw-onb-btn';
             ok.textContent = 'Bestaetigen';
+            ok.setAttribute('data-hilfe-id',
+                'onboarding.bedienung.grund_bestaetigen');
             ok.addEventListener('click', function () {
                 var grund = (inG.value || '').trim();
                 if (!grund) {
@@ -243,6 +251,8 @@
             cancel.id = 'aiw-onb-reason-cancel';
             cancel.className = 'aiw-btn aiw-onb-btn';
             cancel.textContent = 'Abbrechen';
+            cancel.setAttribute('data-hilfe-id',
+                'onboarding.bedienung.grund_abbrechen');
             cancel.addEventListener('click', function () {
                 closePanel();
                 setResult('Abgebrochen.', false);
@@ -288,6 +298,7 @@
         inP.type = 'text';
         inP.id = 'aiw-onb-person';
         inP.className = 'aiw-onb-input';
+        inP.setAttribute('data-hilfe-id', 'onboarding.bedienung.person');
         inP.value = curPerson || '';
         lblP.appendChild(inP);
         box.appendChild(lblP);
@@ -297,6 +308,7 @@
         lblK.textContent = 'Checkliste: ';
         var selK = doc.createElement('select');
         selK.id = 'aiw-onb-kind';
+        selK.setAttribute('data-hilfe-id', 'onboarding.bedienung.checkliste');
         selK.className = 'aiw-onb-input';
         KINDS.forEach(function (k) {
             var o = doc.createElement('option');
@@ -313,6 +325,7 @@
         btn.id = 'aiw-onb-show';
         btn.className = 'aiw-btn aiw-onb-btn';
         btn.textContent = 'Anzeigen';
+        btn.setAttribute('data-hilfe-id', 'onboarding.bedienung.anzeigen');
         btn.addEventListener('click', function () {
             var raw = (inP.value || '').trim();
             var pid = parseInt(raw, 10);
@@ -364,6 +377,20 @@
                 b.textContent = (target === 'erledigt') ? 'Erledigt'
                     : (target === 'nicht_zutreffend') ? 'Nicht zutreffend'
                         : 'Zuruecksetzen';
+                // Build 636: DREI Knoepfe aus EINER Schleife, drei
+                // Bedeutungen, drei Texte. Die Kennung wird NICHT aus
+                // 'target' gerechnet - eine gerechnete saehe weder SP01/SP02
+                // noch die Erhebung in tests/_bedienelemente.py.
+                if (target === 'erledigt') {
+                    b.setAttribute('data-hilfe-id',
+                        'onboarding.bedienung.erledigt');
+                } else if (target === 'nicht_zutreffend') {
+                    b.setAttribute('data-hilfe-id',
+                        'onboarding.bedienung.nicht_zutreffend');
+                } else {
+                    b.setAttribute('data-hilfe-id',
+                        'onboarding.bedienung.zuruecksetzen');
+                }
                 b.addEventListener('click', function () {
                     // 'nicht_zutreffend' braucht einen Grund -> Panel; sonst
                     // sofort feuern (erledigt/offen).

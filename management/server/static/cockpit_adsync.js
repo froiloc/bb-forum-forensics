@@ -44,7 +44,9 @@
 //   fassen NIE das DOM an -> vitest; opts.doc injizierbar (JSDOM).
 // SICHERHEIT (XSS): alle variablen Texte via textContent.
 //
-// Version: v0.8.502 · Build: 502 · 2026-07-24
+// Build 636 (Vorgang 17200856, Welle B4): HILFE-MARKEN fuer die
+//   sechs Bedienelemente (Praefix 'personnel.') dieser Sicht.
+// Version: v0.8.636 · Build: 636 · 2026-08-01
 // =============================================================================
 
 (function () {
@@ -172,6 +174,12 @@
             applyBtn.textContent = 'Automatische Schritte vollziehen ('
                 + counts(data).create + ' Neuaufnahmen als investigator, '
                 + counts(data).rename + ' Namensaenderungen)';
+            // Build 636 (Vorgang 17200856): Hilfe-Marke, LITERAL gesetzt.
+            // Text in management/help/inhalt/personal.py. Der AD-Abgleich
+            // ist seit Build 512 ein Abschnitt der Personal-Sicht und keine
+            // eigene - deshalb traegt er den Praefix 'personnel.'.
+            applyBtn.setAttribute('data-hilfe-id',
+                'personnel.bedienung.adsync_vollzug');
             applyBtn.addEventListener('click', function () {
                 applyBtn.disabled = true;  // Doppelklick-Schutz
                 if (typeof opts.onApply === 'function') { opts.onApply(); }
@@ -230,6 +238,11 @@
         input.className = 'aiw-adsync-word';
         input.placeholder = placeholder;
         input.setAttribute('autocomplete', 'off');
+        // Die Marken stehen HIER in der Fabrik und nicht an der
+        // Abnahmestelle: Beide Aufrufer meinen dasselbe Bedienelement
+        // (das Bestaetigungswort), nur mit anderem Wortlaut.
+        input.setAttribute('data-hilfe-id',
+            'personnel.bedienung.adsync_wort');
         row.appendChild(input);
 
         var note = null;
@@ -238,6 +251,8 @@
             note.type = 'text';
             note.className = 'aiw-adsync-note';
             note.placeholder = 'Notiz / Grund (fuer den Abbruch-Beleg)';
+            note.setAttribute('data-hilfe-id',
+                'personnel.bedienung.adsync_notiz');
             row.appendChild(note);
         }
 
@@ -246,6 +261,19 @@
             btn.type = 'button';
             btn.className = 'aiw-adsync-btn ' + b.cls;
             btn.textContent = b.label;
+            // DREI Knoepfe aus EINER Schleife, drei Bedeutungen, drei
+            // Texte - und drei literale Zweige statt einer gerechneten
+            // Kennung (die saehe keine Pruefung).
+            if (b.cls === 'aiw-adsync-deact') {
+                btn.setAttribute('data-hilfe-id',
+                    'personnel.bedienung.adsync_deaktivieren');
+            } else if (b.cls === 'aiw-adsync-abort') {
+                btn.setAttribute('data-hilfe-id',
+                    'personnel.bedienung.adsync_abbruch');
+            } else {
+                btn.setAttribute('data-hilfe-id',
+                    'personnel.bedienung.adsync_reaktivieren');
+            }
             btn.addEventListener('click', function () {
                 b.onClick(input.value, note ? note.value : '');
             });

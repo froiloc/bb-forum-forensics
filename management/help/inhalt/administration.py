@@ -881,6 +881,18 @@ PROMOTION = Sichthilfe(
         Kontexthilfe(
             "promotion.bedienung.abbrechen", "Abbrechen",
             "Schließt das Feld. Es wird nichts geschrieben."),
+        # Die beiden Eingabezeilen des Entscheidungsfeldes (Build 636).
+        Kontexthilfe(
+            "promotion.bedienung.herkunft", "Herkunft",
+            "Aus welchem Forum der Hinweis stammt — freiwillig. Die Angabe "
+            "ist die einzige Spur zurück zur Quelle; ohne sie lässt sich eine "
+            "Rückfrage später nicht mehr stellen."),
+        Kontexthilfe(
+            "promotion.bedienung.grund", "Grund",
+            "Warum so entschieden wird. Bei „zurückgestellt“ und "
+            "„fremdzuständig“ ist die Angabe PFLICHT: Beides sieht später wie "
+            "Untätigkeit aus, wenn der Grund fehlt.",
+            verweis="promotion#grenzen"),
         Kontexthilfe(
             "promotion.spalte.subject_id", "Spalte „Fall (subject_id)“",
             "Der Ermittlungsschlüssel des Falls."),

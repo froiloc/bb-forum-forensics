@@ -128,10 +128,51 @@ def _rueckgabe_muster(var: str) -> re.Pattern:
     return re.compile(r"^\s*return\s+%s\s*;" % re.escape(var), re.M)
 
 
+def _huelle_muster(var: str) -> re.Pattern:
+    """
+    'wrap.appendChild(inp)' - das Kennzeichen einer HUELLENFABRIK: Die
+    Funktion gibt nicht das Bedienelement zurueck, sondern seine Umhuellung
+    (im Bestand fast immer ein <label> mit Beschriftung und Feld darin).
+    """
+    return re.compile(r"(\w+)\.appendChild\(\s*%s\s*\)" % re.escape(var))
+
+
+def _marke_muster_weit(var: str) -> re.Pattern:
+    """
+    Wie _marke_muster, aber der Weg vom Alias zum Element darf einen Schritt
+    weit sein: 'fw.eingabe.setAttribute(...)' oder
+    'fw.querySelector("input").setAttribute(...)'. Gebraucht bei einer
+    Huellenfabrik - dort haelt die Abnahmestelle die Huelle in der Hand und
+    nicht das Bedienelement.
+    """
+    return re.compile(
+        r"%s\b[^;]{0,80}?\.setAttribute\(\s*['\"]data-hilfe-id['\"]\s*,\s*"
+        r"['\"]([a-z0-9_.]+)['\"]" % re.escape(var))
+
+
 def _aufruf_muster(funktion: str) -> re.Pattern:
-    """'var kopfPerson = _select(' - eine Abnahmestelle der Fabrik."""
+    """'var kopfPerson = _select(' - eine Abnahmestelle MIT Variablen."""
     return re.compile(
         r"(?:var|let|const)\s+(\w+)\s*=\s*%s\(" % re.escape(funktion))
+
+
+def _jeder_aufruf_muster(funktion: str) -> re.Pattern:
+    """
+    JEDE Verwendung der Fabrik, auch die ohne Variable
+    ('bar.appendChild(_btn(doc, ...))'). Gebraucht, damit die Fabrikregel
+    kein Schlupfloch wird: Eine Abnahmestelle, die das Ergebnis direkt
+    weiterreicht, kann keine Marke tragen - und dann ist das Bedienelement
+    dort STUMM, egal wie gut die uebrigen markiert sind.
+    """
+    return re.compile(r"(?<![\w.])%s\s*\(" % re.escape(funktion))
+
+
+def _kennung(treffer: "re.Match") -> str:
+    """Die erste nicht-leere Gruppe eines Markentreffers."""
+    for g in treffer.groups():
+        if g:
+            return g
+    return ""
 
 
 @dataclass(frozen=True)
@@ -215,20 +256,36 @@ def untersuche(pfad: Path) -> Sichtbefund:
         (das Ergebnis wandert direkt in einen Aufruf), greift die Regel nicht;
         dann bleibt es beim alten Befund.
         """
+        weit = False
         if not _rueckgabe_muster(var).search(bereich):
-            return ""
+            # HUELLENFABRIK (Build 636): nicht das Element wird
+            # zurueckgegeben, sondern seine Umhuellung. Der Bestand baut so
+            # jedes beschriftete Feld - <label> mit Text und Eingabe darin.
+            huellen = [m.group(1) for m in _huelle_muster(var).finditer(bereich)]
+            if not any(_rueckgabe_muster(h).search(bereich) for h in huellen):
+                return ""
+            weit = True
         fname = _funktionsname(i)
         if not fname:
             return ""
         aliase = [m.group(1) for m in _aufruf_muster(fname).finditer(ganzer_text)]
         if not aliase:
             return ""
+        # Build 636: JEDE Verwendung zaehlen, nicht nur die mit Variable.
+        # Der erste Treffer ist die Deklaration der Fabrik selbst, deshalb -1.
+        # Reicht auch nur EINE Abnahmestelle das Ergebnis direkt weiter
+        # ('bar.appendChild(_btn(...))'), kann sie keine Marke tragen; das
+        # Bedienelement ist dort stumm, und der Befund bleibt offen.
+        alle = len(_jeder_aufruf_muster(fname).findall(ganzer_text)) - 1
+        if alle > len(aliase):
+            return ""
         marken = []
         for alias in aliase:
-            t = _marke_muster(alias).search(ganzer_text)
+            muster = _marke_muster_weit(alias) if weit else _marke_muster(alias)
+            t = muster.search(ganzer_text)
             if not t:
                 return ""            # eine Abnahmestelle ohne Marke genuegt
-            marken.append(t.group(1) or t.group(2) or "")
+            marken.append(_kennung(t))
         return marken[0]
 
     gefunden: List[Element] = []
@@ -244,7 +301,7 @@ def untersuche(pfad: Path) -> Sichtbefund:
         # (siehe Kopf, Build 632). Die '\s*' im Muster fangen den Umbruch.
         bereich = "\n".join(zeilen[i:_ende_der_funktion(i)])
         treffer = muster.search(bereich)
-        marke = (treffer.group(1) or treffer.group(2) or "") if treffer else ""
+        marke = _kennung(treffer) if treffer else ""
         if not marke:
             marke = _marke_ueber_fabrik(var, i, bereich)
         gefunden.append(Element(datei=pfad.name, zeile=i + 1, art=art,
