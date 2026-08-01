@@ -29,6 +29,9 @@ from management.help.modell import Abschnitt, Kontexthilfe, Sichthilfe
 
 _STAND = 598
 
+#: Redaktionsstand der in Welle B3 (Build 635) nachredigierten Kapitel.
+_STAND_B3 = 635
+
 #: Die drei Platzhalterarten - woertlich gleich in allen drei Kapiteln.
 _ARTEN = (
     "{{a:name}} — AUTOMATISCH. Der Wert wird beim Schreiben des Vermerks aus "
@@ -61,7 +64,7 @@ TEMPLATES = Sichthilfe(
         "Redaktionsarbeit und werden nicht getrennt zugeteilt. Jede Änderung "
         "wird protokolliert."
     ),
-    stand=_STAND,
+    stand=_STAND_B3,
     abschnitte=(
         Abschnitt(
             "zweck", "Zweck und Motivation",
@@ -161,6 +164,107 @@ TEMPLATES = Sichthilfe(
             "Platzhalter: Die Abfrage darf nur lesen und bezieht sich auf "
             "genau einen Fall. Vor dem Speichern ausprobieren.",
             verweis="templates#arten"),
+
+        # ------------------------------------------------------------------
+        # Die Bedienelemente (Build 635, Welle B3). Die Eingabefelder
+        # stammen alle aus der Fabrik '_labeledField'; ihre Marken sitzen an
+        # den Abnahmestellen (Fabrikregel, Build 633).
+        # ------------------------------------------------------------------
+        Kontexthilfe(
+            "templates.bedienung.neu", "Neuer Platzhalter",
+            "Leert die Maske für eine Neuanlage. Ein bereits geladener "
+            "Platzhalter wird dabei nicht verändert — geschrieben wird erst "
+            "mit „Speichern“."),
+        Kontexthilfe(
+            "templates.bedienung.waehlen", "Platzhalter aus der Liste",
+            "Lädt diesen Platzhalter in die Maske. Das ist ein Ladevorgang "
+            "und kein Schreibvorgang."),
+        Kontexthilfe(
+            "templates.bedienung.kennung", "Name des Platzhalters",
+            "Der Name, unter dem der Platzhalter in Bausteinen und Vorlagen "
+            "steht. ER IST DIE VERBINDUNG: Wer ihn ändert, trennt sie — die "
+            "Stellen, die ihn benutzen, finden ihn dann nicht mehr.",
+            verweis="templates#ablaeufe"),
+        Kontexthilfe(
+            "templates.bedienung.titel", "Titel",
+            "Die Bezeichnung für Menschen. Sie steht in der Liste links und "
+            "hat auf die Auflösung keinen Einfluss."),
+        Kontexthilfe(
+            "templates.bedienung.beschreibung", "Beschreibung",
+            "Wofür dieser Platzhalter gedacht ist. Ein Satz hier erspart der "
+            "nächsten Person die Rückfrage, ob sie den richtigen erwischt "
+            "hat."),
+        Kontexthilfe(
+            "templates.bedienung.typ", "Art des Platzhalters",
+            "Automatisch, verpflichtend oder optional. Das ist die "
+            "eigentliche Festlegung: Ein automatischer Platzhalter holt "
+            "seinen Wert selbst, die anderen beiden verlangen ihn von der "
+            "schreibenden Person.",
+            verweis="templates#arten"),
+        Kontexthilfe(
+            "templates.bedienung.abfrage", "Abfrage",
+            "Die Abfrage, aus der ein automatischer Platzhalter seinen Wert "
+            "holt. Sie darf AUSSCHLIESSLICH LESEN und bezieht sich immer auf "
+            "genau einen Fall — eine Zusammenfassung über Fälle hinweg wäre "
+            "eine Auswertung und gehört nicht in einen Platzhalter.",
+            verweis="templates#grenzen"),
+        Kontexthilfe(
+            "templates.bedienung.rueckgabetyp", "Art des Ergebnisses",
+            "Was die Abfrage liefern soll — ein einzelner Wert oder eine "
+            "Aufstellung. Die Angabe entscheidet darüber, wie das Ergebnis "
+            "im Vermerk erscheint."),
+        Kontexthilfe(
+            "templates.bedienung.schlagworte", "Schlagworte",
+            "Freiwillige Stichworte zum Wiederfinden. Sie wirken sich auf die "
+            "Auflösung nicht aus."),
+        Kontexthilfe(
+            "templates.bedienung.vorgabewert", "Vorgabewert",
+            "Der Wert, der voreingetragen erscheint, wenn die schreibende "
+            "Person nichts angibt — freiwillig. Bei einem verpflichtenden "
+            "Platzhalter ersetzt er die Eingabe NICHT."),
+        Kontexthilfe(
+            "templates.bedienung.pruefart", "Prüfart",
+            "Wie die Eingabe geprüft wird: mit einem Suchmuster, gegen eine "
+            "Liste erlaubter Werte oder mit einem einfachen Vergleichsmuster. "
+            "Welche Schreibweise die gewählte Art erwartet, steht als "
+            "Kurzhinweis unter dem Feld.",
+            verweis="templates#grenzen"),
+        Kontexthilfe(
+            "templates.bedienung.pruefregel", "Prüfregel",
+            "Die Regel selbst, in der Schreibweise der gewählten Prüfart. "
+            "Unter dem Feld wird sofort gemeldet, ob die Regel überhaupt "
+            "gültig ist — eine fehlerhafte Regel würde sonst erst beim "
+            "Schreiben eines Vermerks auffallen."),
+        Kontexthilfe(
+            "templates.bedienung.schreibweise",
+            "Groß- und Kleinschreibung ignorieren",
+            "Lässt die Prüfung Groß- und Kleinschreibung außer Acht. Gilt für "
+            "alle drei Prüfarten. Im Zweifel einschalten: Eine Eingabe, die "
+            "nur wegen eines großen Anfangsbuchstabens abgewiesen wird, "
+            "wirkt auf die schreibende Person wie ein Fehler des Werkzeugs."),
+        Kontexthilfe(
+            "templates.bedienung.testeingabe", "Testfeld",
+            "Ein Beispielwert, der sofort gegen die Prüfregel gehalten wird. "
+            "Er wird nirgends gespeichert — das Feld dient nur dazu, die "
+            "Regel auszuprobieren, bevor sie gilt."),
+        Kontexthilfe(
+            "templates.bedienung.probe_konto", "Beispiel-Fall für die Probe",
+            "Der Fall, gegen den die Probeauswertung läuft. Wählen Sie einen, "
+            "bei dem Sie das erwartete Ergebnis kennen — sonst sagt die Probe "
+            "wenig.",
+            verweis="templates#probe"),
+        Kontexthilfe(
+            "templates.bedienung.probelauf", "Probeauswertung",
+            "Führt die Abfrage gegen den angegebenen Beispiel-Fall aus und "
+            "zeigt, was herauskäme. SIE SCHREIBT NICHTS — weder an der "
+            "Beispielakte noch am Platzhalter.",
+            verweis="templates#probe"),
+        Kontexthilfe(
+            "templates.bedienung.speichern", "Speichern",
+            "Schreibt den Platzhalter fest; der Vorgang wird protokolliert. "
+            "Bedenken Sie vorher, dass ein geänderter Platzhalter überall "
+            "wirkt, wo er schon benutzt wird.",
+            verweis="templates#ablaeufe"),
     ),
 )
 
@@ -176,7 +280,7 @@ DOCTEMPLATES = Sichthilfe(
         "Recht: templates.edit — dasselbe wie für Platzhalter und Bausteine. "
         "Jede Änderung wird protokolliert."
     ),
-    stand=_STAND,
+    stand=_STAND_B3,
     abschnitte=(
         Abschnitt(
             "zweck", "Zweck und Motivation",
@@ -273,6 +377,81 @@ DOCTEMPLATES = Sichthilfe(
             "stehen und werden erst beim Schreiben des konkreten Vermerks "
             "eingesetzt. Vor dem Speichern die Strukturvorschau fahren.",
             verweis="doctemplates#vorschau"),
+
+        # Die elf Bedienelemente (Build 635, Welle B3).
+        Kontexthilfe(
+            "doctemplates.bedienung.neue_vorlage", "Neue Vorlage",
+            "Leert die Maske für eine Neuanlage. Eine bereits geladene "
+            "Vorlage wird dabei nicht verändert."),
+        Kontexthilfe(
+            "doctemplates.bedienung.vorlage_waehlen", "Vorlage aus der Liste",
+            "Lädt diese Vorlage in die Maske. Ein Ladevorgang, kein "
+            "Schreibvorgang."),
+        Kontexthilfe(
+            "doctemplates.bedienung.schluessel", "Kennung der Vorlage",
+            "Die feste Kennung, unter der die Vorlage geladen wird. SIE IST "
+            "DIE VERBINDUNG zum Berichtseditor: Wer sie ändert, trennt sie. "
+            "Eine Vorlage außer Gebrauch nehmen heißt deshalb NICHT, die "
+            "Kennung zu ändern, sondern eine neue anzulegen.",
+            verweis="doctemplates#ablaeufe"),
+        Kontexthilfe(
+            "doctemplates.bedienung.vorlagentitel", "Titel der Vorlage",
+            "Die Bezeichnung für Menschen. Sie steht in der Liste links."),
+        Kontexthilfe(
+            "doctemplates.bedienung.beschreibung", "Beschreibung",
+            "Wofür diese Vorlage gedacht ist — freiwillig, aber die "
+            "einfachste Art, ein Verwechseln zweier ähnlicher Vorlagen zu "
+            "verhindern."),
+        Kontexthilfe(
+            "doctemplates.bedienung.vermerkstyp", "Vermerkstyp",
+            "Für welche Art von Schriftstück die Vorlage gedacht ist: "
+            "Vermerk, Ergänzungsvermerk oder Abschlussbericht."),
+        Kontexthilfe(
+            "doctemplates.bedienung.sortierung", "Sortierung",
+            "Bestimmt die Reihenfolge in der Auswahl beim Anlegen eines "
+            "Vermerks. Ein kleinerer Wert steht weiter oben."),
+        Kontexthilfe(
+            "doctemplates.bedienung.blockart", "Art des Blocks",
+            "Was für ein Baustein an dieser Stelle steht — Absatz, "
+            "Überschrift, Aufzählung und so fort. Beim Wechsel wird ein noch "
+            "leerer Inhalt durch ein passendes Gerüst ersetzt; ein "
+            "ausgefüllter bleibt unangetastet."),
+        Kontexthilfe(
+            "doctemplates.bedienung.blockdaten", "Inhalt des Blocks",
+            "Die Angaben dieses Blocks in strukturierter Schreibweise. "
+            "Platzhalter darin bleiben stehen und werden erst beim Schreiben "
+            "des konkreten Vermerks eingesetzt. Ob die Zusammenstellung "
+            "stimmt, sagt die Strukturvorschau.",
+            verweis="doctemplates#vorschau"),
+        Kontexthilfe(
+            "doctemplates.bedienung.block_hoch", "Block nach oben",
+            "Tauscht diesen Block mit dem darüber. Die Reihenfolge der Blöcke "
+            "ist die Reihenfolge im späteren Vermerk."),
+        Kontexthilfe(
+            "doctemplates.bedienung.block_runter", "Block nach unten",
+            "Tauscht diesen Block mit dem darunter."),
+        Kontexthilfe(
+            "doctemplates.bedienung.block_entfernen", "Block entfernen",
+            "Nimmt diesen Block aus der Vorlage. Das wirkt nur auf die "
+            "Vorlage in der Maske; geschrieben wird erst mit „Speichern“, und "
+            "bereits verfasste Vermerke bleiben unberührt.",
+            verweis="doctemplates#grenzen"),
+        Kontexthilfe(
+            "doctemplates.bedienung.block_hinzufuegen", "Block hinzufügen",
+            "Hängt einen weiteren Block an das Ende der Vorlage. Verschieben "
+            "lässt er sich anschließend mit den Pfeilen in seiner Zeile."),
+        Kontexthilfe(
+            "doctemplates.bedienung.strukturvorschau", "Strukturvorschau",
+            "Prüft die Zusammenstellung: welche Blockarten in welcher Zahl "
+            "vorkommen und ob etwas nicht zusammenpasst. SIE SCHREIBT NICHTS "
+            "und legt nichts an.",
+            verweis="doctemplates#vorschau"),
+        Kontexthilfe(
+            "doctemplates.bedienung.speichern", "Speichern",
+            "Schreibt die Vorlage fest; der Vorgang wird protokolliert. Die "
+            "Änderung wirkt NUR AUF KÜNFTIGE Vermerke — bereits geschriebene "
+            "bleiben, wie sie sind.",
+            verweis="doctemplates#grenzen"),
     ),
 )
 
@@ -288,7 +467,7 @@ MODULES = Sichthilfe(
         "Recht: templates.edit — dasselbe wie für Platzhalter und "
         "Dokumentvorlagen. Jede Änderung wird protokolliert."
     ),
-    stand=_STAND,
+    stand=_STAND_B3,
     abschnitte=(
         Abschnitt(
             "zweck", "Zweck und Motivation",
@@ -385,6 +564,71 @@ MODULES = Sichthilfe(
             "bleiben stehen und werden erst beim Schreiben des konkreten "
             "Vermerks eingesetzt. Vor dem Speichern die Vorschau fahren.",
             verweis="modules#vorschau"),
+
+        # Die acht Bedienelemente (Build 635, Welle B3). Der Umschalter
+        # 'Rohansicht / Vorschau' steht woertlich im Vorgang 17200856.
+        Kontexthilfe(
+            "modules.bedienung.ansicht", "Rohansicht / Vorschau",
+            "Wechselt zwischen der Ansicht, die die schreibende Person "
+            "später im Berichtseditor sieht, und dem genauen Text mit allen "
+            "Platzhaltern. BEIDES IST NUR EINE ANSICHT — am Baustein ändert "
+            "der Wechsel nichts, und er wird auch nicht gemerkt: Beim "
+            "nächsten Öffnen steht wieder die Vorschau.",
+            verweis="modules#vorschau"),
+        Kontexthilfe(
+            "modules.bedienung.neu", "Neuer Baustein",
+            "Leert die Maske für eine Neuanlage. Ein bereits geladener "
+            "Baustein wird dabei nicht verändert."),
+        Kontexthilfe(
+            "modules.bedienung.waehlen", "Baustein aus der Liste",
+            "Lädt diesen Baustein in die Maske. Ein Ladevorgang, kein "
+            "Schreibvorgang."),
+        Kontexthilfe(
+            "modules.bedienung.schluessel", "Kennung des Bausteins",
+            "Die feste Kennung, unter der der Baustein gefunden wird. Ob das "
+            "Feld gerade offen oder gesperrt ist, sagt die Zeile direkt "
+            "darunter — ein Feld, das mal geht und mal nicht, ohne dass "
+            "jemand sagt warum, wirkt kaputt."),
+        Kontexthilfe(
+            "modules.bedienung.titel", "Titel",
+            "Die Bezeichnung für Menschen. Sie steht in der Liste links und "
+            "in der Auswahl des Berichtseditors."),
+        Kontexthilfe(
+            "modules.bedienung.rolle", "Rolle",
+            "Für welche Aufgabe der Baustein gedacht ist. Die Angabe ordnet "
+            "ihn ein und schränkt nicht ein, wer ihn benutzen darf."),
+        Kontexthilfe(
+            "modules.bedienung.thema", "Thema",
+            "Ein Stichwort zum Gruppieren verwandter Bausteine — freiwillig, "
+            "aber bei wachsendem Bestand der Unterschied zwischen Finden und "
+            "Suchen."),
+        Kontexthilfe(
+            "modules.bedienung.beschreibung", "Beschreibung",
+            "Wofür dieser Baustein gedacht ist. Ein Satz hier erspart der "
+            "nächsten Person die Rückfrage."),
+        Kontexthilfe(
+            "modules.bedienung.bausteintext", "Bausteintext",
+            "Der Text selbst. Er ist Freitext und darf Platzhalter enthalten; "
+            "diese bleiben stehen und werden erst beim Schreiben des "
+            "konkreten Vermerks eingesetzt. Wie er wirkt, zeigt die Vorschau "
+            "darüber.",
+            verweis="modules#vorschau"),
+        Kontexthilfe(
+            "modules.bedienung.sortierung", "Sortierung",
+            "Bestimmt die Reihenfolge in der Auswahl des Berichtseditors. Ein "
+            "kleinerer Wert steht weiter oben."),
+        Kontexthilfe(
+            "modules.bedienung.probelauf", "Vorschau (schreibfrei)",
+            "Prüft den Baustein und zeigt das Ergebnis, ohne etwas zu "
+            "speichern. Der Unterschied zur Vorschau darüber: Diese hier "
+            "prüft auch, ob die Platzhalter auflösbar sind.",
+            verweis="modules#vorschau"),
+        Kontexthilfe(
+            "modules.bedienung.speichern", "Speichern",
+            "Schreibt den Baustein fest; der Vorgang wird protokolliert. Ein "
+            "geänderter Baustein wirkt dort, wo er künftig eingefügt wird — "
+            "bereits geschriebene Vermerke bleiben unberührt.",
+            verweis="modules#grenzen"),
     ),
 )
 

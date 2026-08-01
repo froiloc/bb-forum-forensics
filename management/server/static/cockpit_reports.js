@@ -33,7 +33,13 @@
 // Build 380: Rueckgabe zur Nachbesserung (submitted -> draft) + korrigierte
 //   Beschriftung fuer 'final' (= an StA versandt, nicht 'hoehere Freigabestufe').
 // Build 469: Schluesselumstellung user_id -> subject_id (M019)
-// Version: v0.7.469 · Build: 469 · 2026-07-20
+// Build 635 (Vorgang 17200856, Welle B3): HILFE-MARKEN fuer die drei
+//   Bedienelemente dieser Sicht - damit tragen alle eine. Die Texte
+//   stehen in management/help/inhalt/abnahme.py.
+//   Die vier Knoepfe des Aktionsfeldes entstehen in EINER Schleife und
+//   sagen Verschiedenes; sie bekommen vier literale Zweige statt einer
+//   gerechneten Kennung ('...' + a.kind) - die saehe keine Pruefung.
+// Version: v0.8.635 · Build: 635 · 2026-08-01
 // =============================================================================
 
 (function () {
@@ -301,6 +307,9 @@
 
         var sel = doc.createElement('select');
         sel.id = 'aiw-reports-filter';
+        // Build 635 (Vorgang 17200856): Hilfe-Marke, LITERAL gesetzt.
+        // Text in management/help/inhalt/abnahme.py.
+        sel.setAttribute('data-hilfe-id', 'reports.bedienung.zustandsfilter');
         var optAll = doc.createElement('option');
         optAll.value = '';
         optAll.text = 'alle Status (' + rows.length + ')';
@@ -318,6 +327,7 @@
         btn.id = 'aiw-reports-rescan';
         btn.className = 'aiw-btn';
         btn.textContent = 'Neu einlesen';
+        btn.setAttribute('data-hilfe-id', 'reports.bedienung.neu_einlesen');
         btn.addEventListener('click', function () {
             if (typeof opts.onForceRescan === 'function') {
                 opts.onForceRescan();
@@ -390,6 +400,24 @@
                 b.className = 'aiw-btn';
                 b.id = 'aiw-report-' + a.kind;
                 b.textContent = a.label;
+                // Build 635: VIER Knoepfe aus EINER Schleife, und sie sagen
+                // Verschiedenes - also vier Texte. Die Kennung wird trotzdem
+                // nicht gerechnet ('...' + a.kind waere bequem): weder die
+                // Paritaetspruefung SP01/SP02 noch die Erhebung in
+                // tests/_bedienelemente.py saehe eine gerechnete Kennung.
+                if (a.kind === 'approve') {
+                    b.setAttribute('data-hilfe-id',
+                        'reports.bedienung.freigeben');
+                } else if (a.kind === 'return') {
+                    b.setAttribute('data-hilfe-id',
+                        'reports.bedienung.zurueckgeben');
+                } else if (a.kind === 'final') {
+                    b.setAttribute('data-hilfe-id',
+                        'reports.bedienung.versandt');
+                } else {
+                    b.setAttribute('data-hilfe-id',
+                        'reports.bedienung.siegel_pruefen');
+                }
                 b.addEventListener('click', function () {
                     if (a.kind === 'verify') {
                         if (typeof opts.onVerify === 'function') {

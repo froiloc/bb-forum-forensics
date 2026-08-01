@@ -33,7 +33,12 @@
  *   Editor-Entwurfs (analog Dokumentvorlagen Build 487): jede Nutzer-Eingabe
  *   wird gesichert, beim Betreten/Neuladen wiederhergestellt, nach erfolgreichem
  *   Speichern verworfen. Eigener Schluessel DRAFT_KEY, nur Client, migrationsneutral.
- * Version: v0.8.488 · Build: 488 · 2026-07-21
+* Build 635 (Vorgang 17200856, Welle B3): HILFE-MARKEN fuer die acht
+*   Bedienelemente dieser Sicht - damit tragen alle eine. Die Texte
+*   stehen in management/help/inhalt/redaktion.py.
+*   Darunter der Umschalter 'Rohansicht / Vorschau', den mc im Vorgang
+*   woertlich benannt hat.
+ * Version: v0.8.635 · Build: 635 · 2026-08-01
  */
 (function () {
     'use strict';
@@ -312,6 +317,11 @@
         schalter.className = 'aiw-btn aiw-btn-klein';
         schalter.id = 'aiw-mod-vorschau-schalter';
         schalter.textContent = 'Rohansicht';
+        // Build 635 (Vorgang 17200856): Hilfe-Marke, LITERAL gesetzt.
+        // mc hat DIESEN Schalter im Vorgang ausdruecklich benannt:
+        // "Insbesondere die Wechselschaltflaechen 'Rohansicht' und
+        // 'Vorschau' muessen erklaert werden."
+        schalter.setAttribute('data-hilfe-id', 'modules.bedienung.ansicht');
         kopf.appendChild(schalter);
         form.appendChild(kopf);
 
@@ -555,6 +565,7 @@
         newBtn.type = 'button';
         newBtn.className = 'aiw-mod-new';
         newBtn.textContent = '+ Neuer Baustein';
+        newBtn.setAttribute('data-hilfe-id', 'modules.bedienung.neu');
         newBtn.addEventListener('click', function () {
             _fillForm(null);
             _persistDraft();   // Build 488: Neu-Modus als aktuellen Entwurf sichern.
@@ -575,6 +586,7 @@
             var it = document.createElement('button');
             it.type = 'button';
             it.className = 'aiw-mod-item';
+            it.setAttribute('data-hilfe-id', 'modules.bedienung.waehlen');
             // Altzeilen haben keinen Schluessel - dann traegt der
             // Eintrag seine id, damit die Markierung nicht auf dem
             // Text 'null' beruht.
@@ -594,8 +606,12 @@
         var form = document.createElement('div');
         form.className = 'aiw-mod-form';
 
+        // Marken an den ABNAHMESTELLEN der Fabrik '_labeledField' - sieben
+        // verschiedene Felder aus einer Fabrik (Fabrikregel, Build 633).
         var fKey = _labeledField(form, 'module_key (A-Z a-z 0-9 . _ -)', 'text',
             'aiw-mod-key');
+        fKey.setAttribute('data-hilfe-id',
+            'modules.bedienung.schluessel');
         // Build 565: Hinweiszeile DIREKT unter dem Feld. Sie sagt, warum das
         // Feld gerade gesperrt oder offen ist - ein Feld, das mal geht und mal
         // nicht, ohne dass jemand sagt warum, wirkt kaputt.
@@ -607,7 +623,11 @@
         _state.vorschau = null;
         _state.vorschauAn = true;
         var fTitle = _labeledField(form, 'Titel', 'text', 'aiw-mod-title');
+        fTitle.setAttribute('data-hilfe-id',
+            'modules.bedienung.titel');
         var fRole = _labeledField(form, 'Rolle', 'select', 'aiw-mod-role');
+        fRole.setAttribute('data-hilfe-id',
+            'modules.bedienung.rolle');
         ROLES.forEach(function (r) {
             var opt = document.createElement('option');
             opt.value = r;
@@ -615,12 +635,20 @@
             fRole.appendChild(opt);
         });
         var fTopic = _labeledField(form, 'Thema (topic)', 'text', 'aiw-mod-topic');
+        fTopic.setAttribute('data-hilfe-id',
+            'modules.bedienung.thema');
         var fDesc = _labeledField(form, 'Beschreibung (optional)', 'textarea',
             'aiw-mod-desc');
+        fDesc.setAttribute('data-hilfe-id',
+            'modules.bedienung.beschreibung');
         fDesc.rows = 2;
         var fBody = _labeledField(form, 'Bausteintext (body)', 'textarea',
             'aiw-mod-bodytext');
+        fBody.setAttribute('data-hilfe-id',
+            'modules.bedienung.bausteintext');
         var fSort = _labeledField(form, 'Sortierung', 'number', 'aiw-mod-sort');
+        fSort.setAttribute('data-hilfe-id',
+            'modules.bedienung.sortierung');
 
         // Aktionen: Vorschau + Speichern + Rueckmeldung + Ausgabe.
         var actions = document.createElement('div');
@@ -629,11 +657,13 @@
         dryBtn.type = 'button';
         dryBtn.className = 'aiw-mod-drybtn';
         dryBtn.textContent = 'Vorschau (schreibfrei)';
+        dryBtn.setAttribute('data-hilfe-id', 'modules.bedienung.probelauf');
         actions.appendChild(dryBtn);
         var saveBtn = document.createElement('button');
         saveBtn.type = 'button';
         saveBtn.className = 'aiw-mod-save';
         saveBtn.textContent = 'Speichern (auditiert)';
+        saveBtn.setAttribute('data-hilfe-id', 'modules.bedienung.speichern');
         actions.appendChild(saveBtn);
         var msg = document.createElement('span');
         msg.className = 'aiw-mod-msg';

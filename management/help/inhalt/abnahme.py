@@ -57,6 +57,10 @@ _STAND_APPROVAL = 632
 #: das Kapitel erwaehnte weder das Kommentarformular noch den Uebernahmeknopf.
 _STAND_LECTORATE = 633
 
+#: Und dasselbe fuer die Berichts-Abnahme in Build 635 (Welle B3): sechs
+#: Bedienelemente, kein Text - darunter die Freigabe, die unwiderruflich ist.
+_STAND_REPORTS = 635
+
 # Die vier Zustaende eines Vermerks - woertlich die Beschriftungen der
 # Oberflaeche. Sie stehen in allen drei Kapiteln gleich, damit niemand zwei
 # Vokabulare lernen muss.
@@ -83,7 +87,7 @@ REPORTS = Sichthilfe(
         "beiden Sie besitzen und in welchem Zustand der Vermerk ist. Freigeben "
         "und Versenden verlangen reports.approve."
     ),
-    stand=_STAND,
+    stand=_STAND_REPORTS,
     abschnitte=(
         Abschnitt(
             "zweck", "Zweck und Motivation",
@@ -256,6 +260,52 @@ REPORTS = Sichthilfe(
             "reports.werkzeug.trefferzahl", "Trefferanzeige",
             "Nennt, wie viele Zeilen sichtbar sind; bei gesetztem Filter "
             "„sichtbar von gesamt“."),
+
+        # ------------------------------------------------------------------
+        # Die sechs Bedienelemente (Build 635, Welle B3). Die vier Knoepfe
+        # des Aktionsfeldes entstehen in EINER Schleife und erscheinen je
+        # nach Zustand und Recht - jeder bekommt trotzdem seinen eigenen
+        # Text, denn sie sagen Verschiedenes.
+        # ------------------------------------------------------------------
+        Kontexthilfe(
+            "reports.bedienung.zustandsfilter", "Zustand",
+            "Zeigt nur Vermerke eines Zustands; in Klammern steht die "
+            "Anzahl. „eingereicht“ ist der Arbeitsvorrat der Abnahme.",
+            verweis="reports#zustaende"),
+        Kontexthilfe(
+            "reports.bedienung.neu_einlesen", "Neu einlesen",
+            "Liest die Fallakten erneut ein. Unveränderte werden sonst nicht "
+            "noch einmal durchsucht — nach einer Änderung an den Akten zeigt "
+            "die Sicht ohne diesen Knopf den zuletzt gelesenen Stand.",
+            verweis="reports#ablaeufe"),
+        Kontexthilfe(
+            "reports.bedienung.freigeben", "Freigeben (versiegeln)",
+            "Nimmt den Vermerk ab und versiegelt ihn. DAS IST "
+            "UNWIDERRUFLICH. Der Knopf erscheint nur bei eingereichten "
+            "Vermerken und nur mit dem Recht zur Freigabe. Wer vor der "
+            "Entscheidung den Text lesen will, tut das in der Chef-Freigabe.",
+            verweis="reports#siegel"),
+        Kontexthilfe(
+            "reports.bedienung.zurueckgeben", "Zur Nachbesserung zurückgeben",
+            "Schickt den Vermerk als Entwurf an die verfassende Person "
+            "zurück — der Weg für inhaltliche Mängel. Gegenlesende und "
+            "Leitung dürfen das; die verfassende Person kann sich ihren "
+            "Vermerk nicht selbst zurückholen.",
+            verweis="reports#zustaende"),
+        Kontexthilfe(
+            "reports.bedienung.versandt",
+            "Als versandt/abgeschlossen kennzeichnen",
+            "Vermerkt, dass der freigegebene Vermerk die Dienststelle "
+            "verlassen hat. Das ist KEINE höhere Freigabestufe, sondern die "
+            "Feststellung des Versands.",
+            verweis="reports#zustaende"),
+        Kontexthilfe(
+            "reports.bedienung.siegel_pruefen", "Siegel prüfen",
+            "Vergleicht den heutigen Inhalt mit dem freigegebenen Stand. Die "
+            "Prüfung steht auch denen offen, die nur lesen dürfen — eine "
+            "Kontrolle, die nur der Freigebende ausführen darf, wäre keine. "
+            "Meldet sie eine ABWEICHUNG, ist das ein Manipulationsverdacht.",
+            verweis="reports#siegel"),
     ),
 )
 

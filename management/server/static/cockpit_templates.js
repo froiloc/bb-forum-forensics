@@ -57,7 +57,10 @@
  *   buildPayload/_currentFields/_fillForm/_restoreDraft/testRule/likeToRegExp
  *   beruecksichtigen ihn; deckungsgleich zu validation_rules.js (Ermittler) und
  *   Server. Beleg: mc 2026-07-22.
- * Version: v0.8.497 · Build: 497 · 2026-07-22
+* Build 635 (Vorgang 17200856, Welle B3): HILFE-MARKEN fuer die acht
+*   Bedienelemente dieser Sicht - damit tragen alle eine. Die Texte
+*   stehen in management/help/inhalt/redaktion.py.
+ * Version: v0.8.635 · Build: 635 · 2026-08-01
  */
 (function () {
     'use strict';
@@ -608,6 +611,9 @@
         newBtn.type = 'button';
         newBtn.className = 'aiw-btn aiw-tpl-new';
         newBtn.textContent = '+ Neue Query';
+        // Build 635 (Vorgang 17200856): Hilfe-Marke, LITERAL gesetzt.
+        // Text in management/help/inhalt/redaktion.py.
+        newBtn.setAttribute('data-hilfe-id', 'templates.bedienung.neu');
         newBtn.addEventListener('click', function () {
             _fillForm(null);
             _persistDraft();   // Build 488: Neu-Modus als aktuellen Entwurf sichern.
@@ -629,6 +635,7 @@
             var it = document.createElement('button');
             it.type = 'button';
             it.className = 'aiw-tpl-item';
+            it.setAttribute('data-hilfe-id', 'templates.bedienung.waehlen');
             it.setAttribute('data-id', String(q.id));
             it.textContent = queryLabel(q);
             it.addEventListener('click', function () {
@@ -644,15 +651,25 @@
         var form = document.createElement('div');
         form.className = 'aiw-tpl-form';
 
+        // Marken an den ABNAHMESTELLEN der Fabrik '_labeledField' - elf
+        // verschiedene Felder aus einer Fabrik (Fabrikregel, Build 633).
         var fId = _labeledField(form, 'id (A-Z a-z 0-9 . _ -)', 'text',
             'aiw-tpl-id');
+        fId.setAttribute('data-hilfe-id',
+            'templates.bedienung.kennung');
         var fTitle = _labeledField(form, 'Titel', 'text', 'aiw-tpl-title');
+        fTitle.setAttribute('data-hilfe-id',
+            'templates.bedienung.titel');
         var fDesc = _labeledField(form, 'Beschreibung', 'textarea',
             'aiw-tpl-desc');
+        fDesc.setAttribute('data-hilfe-id',
+            'templates.bedienung.beschreibung');
         fDesc.rows = 2;
 
         // --- Typ (Build 490): bestimmt die Feldlogik der Maske. -----------
         var fType = _labeledField(form, 'Typ', 'select', 'aiw-tpl-type');
+        fType.setAttribute('data-hilfe-id',
+            'templates.bedienung.typ');
         [['a', typeLabel('a')], ['m', typeLabel('m')], ['o', typeLabel('o')]]
             .forEach(function (o) {
                 var opt = document.createElement('option');
@@ -663,9 +680,12 @@
 
         var fSql = _labeledField(form, 'SQL (SELECT ... :uid ...)', 'textarea',
             'aiw-tpl-sql');
+        fSql.setAttribute('data-hilfe-id', 'templates.bedienung.abfrage');
         // Referenz auf den Beschriftungs-Span (Label wechselt je Typ).
         var fSqlLabel = fSql.parentNode.querySelector('.aiw-tpl-label');
         var fRt = _labeledField(form, 'Rueckgabetyp', 'select', 'aiw-tpl-rt');
+        fRt.setAttribute('data-hilfe-id',
+            'templates.bedienung.rueckgabetyp');
         [['scalar', returnTypeLabel('scalar')],
          ['list', returnTypeLabel('list')],
          ['table', returnTypeLabel('table')]].forEach(function (o) {
@@ -676,14 +696,20 @@
         });
         var fTags = _labeledField(form, 'Tags (optional)', 'text',
             'aiw-tpl-tags');
+        fTags.setAttribute('data-hilfe-id',
+            'templates.bedienung.schlagworte');
 
         // --- Default + Validierung (Build 490, NUR m/o) --------------------
         var fDefault = _labeledField(form, 'Default-Wert (optional)', 'text',
             'aiw-tpl-default');
+        fDefault.setAttribute('data-hilfe-id',
+            'templates.bedienung.vorgabewert');
 
         var valWrap = document.createElement('div');
         valWrap.className = 'aiw-tpl-valwrap';
         var fVt = _labeledField(valWrap, 'Pruefart', 'select', 'aiw-tpl-vtype');
+        fVt.setAttribute('data-hilfe-id',
+            'templates.bedienung.pruefart');
         [['', 'keine Pruefung'],
          ['regex', 'Regex (JavaScript-Dialekt)'],
          ['list', 'Werteliste (JSON-Array)'],
@@ -695,6 +721,7 @@
         });
         var fVal = _labeledField(valWrap, 'Validierungsregel (Klartext)',
             'textarea', 'aiw-tpl-validation');
+        fVal.setAttribute('data-hilfe-id', 'templates.bedienung.pruefregel');
         fVal.rows = 3;
         fVal.title = 'Regex im JavaScript-Dialekt (ECMAScript); Pruefung per '
             + 'RegExp.test() — Anker ^ und $ bei Bedarf selbst setzen.';
@@ -716,6 +743,7 @@
         var fCi = document.createElement('input');
         fCi.type = 'checkbox';
         fCi.className = 'aiw-tpl-vci';
+        fCi.setAttribute('data-hilfe-id', 'templates.bedienung.schreibweise');
         ciLabel.appendChild(fCi);
         ciLabel.appendChild(document.createTextNode(
             ' Gross-/Kleinschreibung ignorieren (regex/list/like)'));
@@ -727,6 +755,8 @@
         // Testfeld: Beispiel-Eingabe live gegen die Regel pruefen.
         var testIn = _labeledField(valWrap, 'Testfeld: Beispiel-Eingabe',
             'text', 'aiw-tpl-valtest');
+        testIn.setAttribute('data-hilfe-id',
+            'templates.bedienung.testeingabe');
         var testOut = document.createElement('div');
         testOut.className = 'aiw-tpl-valtestout';
         valWrap.appendChild(testOut);
@@ -737,10 +767,13 @@
         dryRow.className = 'aiw-tpl-dryrow';
         var fTest = _labeledField(dryRow, 'Beispiel-Nutzer-ID (:uid) fuer Dry-Run',
             'number', 'aiw-tpl-testuid');
+        fTest.setAttribute('data-hilfe-id',
+            'templates.bedienung.probe_konto');
         var dryBtn = document.createElement('button');
         dryBtn.type = 'button';
         dryBtn.className = 'aiw-btn aiw-tpl-drybtn';
         dryBtn.textContent = 'Dry-Run (schreibfrei)';
+        dryBtn.setAttribute('data-hilfe-id', 'templates.bedienung.probelauf');
         dryRow.appendChild(dryBtn);
         form.appendChild(dryRow);
 
@@ -757,6 +790,7 @@
         saveBtn.type = 'button';
         saveBtn.className = 'aiw-btn aiw-tpl-save';
         saveBtn.textContent = 'Speichern (auditiert)';
+        saveBtn.setAttribute('data-hilfe-id', 'templates.bedienung.speichern');
         actions.appendChild(saveBtn);
         var msg = document.createElement('span');
         msg.className = 'aiw-tpl-msg';

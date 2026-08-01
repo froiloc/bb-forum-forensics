@@ -36,7 +36,10 @@
  *   Nutzer-Aenderung wird gesichert, beim Betreten der Sicht wiederhergestellt,
  *   nach erfolgreichem Speichern verworfen (Schluessel DRAFT_KEY, nur Client,
  *   migrationsneutral). Zudem: Block-Textarea jetzt 5 Zeilen hoch (statt 2).
- * Version: v0.8.487 · Build: 487 · 2026-07-15
+* Build 635 (Vorgang 17200856, Welle B3): HILFE-MARKEN fuer die elf
+*   Bedienelemente dieser Sicht - damit tragen alle eine. Die Texte
+*   stehen in management/help/inhalt/redaktion.py.
+ * Version: v0.8.635 · Build: 635 · 2026-08-01
  */
 (function () {
     'use strict';
@@ -294,6 +297,9 @@
 
             var sel = document.createElement('select');
             sel.className = 'aiw-dtpl-btype';
+            // Build 635 (Vorgang 17200856): Hilfe-Marke, LITERAL gesetzt.
+            // Text in management/help/inhalt/redaktion.py.
+            sel.setAttribute('data-hilfe-id', 'doctemplates.bedienung.blockart');
             BLOCK_TYPES.forEach(function (bt) {
                 var opt = document.createElement('option');
                 opt.value = bt;
@@ -313,6 +319,8 @@
 
             var data = document.createElement('textarea');
             data.className = 'aiw-dtpl-bdata';
+            data.setAttribute('data-hilfe-id',
+                'doctemplates.bedienung.blockdaten');
             data.rows = 5;   // Build 487 (mc-Wunsch): mind. 5 Zeilen hoch.
             data.value = blk.dataText || '';
             data.addEventListener('input', function () {
@@ -322,17 +330,32 @@
 
             var ctr = document.createElement('div');
             ctr.className = 'aiw-dtpl-bctrl';
-            ctr.appendChild(_ctrlBtn('↑', 'nach oben', function () {
+            // Build 635: Die drei Steuerknoepfe stammen aus der Fabrik
+            // '_ctrlBtn' und wanderten bisher direkt in appendChild. Sie
+            // bekommen je eine Variable, damit die Marke LITERAL am
+            // EINZELNEN Knopf stehen kann - eine Fabrik koennte nur eine
+            // Kennung fuer alle drei setzen, und die drei sagen
+            // Verschiedenes. Am Verhalten aendert sich nichts.
+            var bHoch = _ctrlBtn('↑', 'nach oben', function () {
                 _moveBlock(idx, -1);
-            }));
-            ctr.appendChild(_ctrlBtn('↓', 'nach unten', function () {
+            });
+            bHoch.setAttribute('data-hilfe-id',
+                'doctemplates.bedienung.block_hoch');
+            ctr.appendChild(bHoch);
+            var bRunter = _ctrlBtn('↓', 'nach unten', function () {
                 _moveBlock(idx, 1);
-            }));
-            ctr.appendChild(_ctrlBtn('✕', 'entfernen', function () {
+            });
+            bRunter.setAttribute('data-hilfe-id',
+                'doctemplates.bedienung.block_runter');
+            ctr.appendChild(bRunter);
+            var bWeg = _ctrlBtn('✕', 'entfernen', function () {
                 _state.blocks.splice(idx, 1);
                 _renderBlocks();
                 _persistDraft();   // Build 487: Strukturaenderung sichern.
-            }));
+            });
+            bWeg.setAttribute('data-hilfe-id',
+                'doctemplates.bedienung.block_entfernen');
+            ctr.appendChild(bWeg);
             row.appendChild(ctr);
 
             host.appendChild(row);
@@ -659,6 +682,8 @@
         newBtn.type = 'button';
         newBtn.className = 'aiw-dtpl-new';
         newBtn.textContent = '+ Neue Vorlage';
+        newBtn.setAttribute('data-hilfe-id',
+            'doctemplates.bedienung.neue_vorlage');
         newBtn.addEventListener('click', function () {
             _fillForm(null);
             _persistDraft();   // Build 487: Neu-Modus als aktuellen Entwurf sichern.
@@ -679,6 +704,8 @@
             var it = document.createElement('button');
             it.type = 'button';
             it.className = 'aiw-dtpl-item';
+            it.setAttribute('data-hilfe-id',
+                'doctemplates.bedienung.vorlage_waehlen');
             it.setAttribute('data-key', String(t.template_key));
             it.textContent = templateLabel(t);
             it.addEventListener('click', function () {
@@ -696,10 +723,18 @@
 
         var fKey = _labeledField(form, 'template_key (A-Z a-z 0-9 . _ -)',
             'text', 'aiw-dtpl-key');
+        // Marken an den ABNAHMESTELLEN der Fabrik '_labeledField' - fuenf
+        // verschiedene Felder aus einer Fabrik (Fabrikregel, Build 633).
+        fKey.setAttribute('data-hilfe-id', 'doctemplates.bedienung.schluessel');
         var fTitle = _labeledField(form, 'Titel', 'text', 'aiw-dtpl-title');
+        fTitle.setAttribute('data-hilfe-id',
+            'doctemplates.bedienung.vorlagentitel');
         var fDesc = _labeledField(form, 'Beschreibung (optional)', 'textarea',
             'aiw-dtpl-desc');
+        fDesc.setAttribute('data-hilfe-id',
+            'doctemplates.bedienung.beschreibung');
         var fRt = _labeledField(form, 'Vermerkstyp', 'select', 'aiw-dtpl-rt');
+        fRt.setAttribute('data-hilfe-id', 'doctemplates.bedienung.vermerkstyp');
         // Build 473: Reihenfolge interim -> addendum -> final (Abschlussbericht zuletzt).
         [['interim', reportTypeLabel('interim')],
          ['addendum', reportTypeLabel('addendum')],
@@ -711,6 +746,7 @@
         });
         var fSort = _labeledField(form, 'Sortierung', 'number',
             'aiw-dtpl-sort');
+        fSort.setAttribute('data-hilfe-id', 'doctemplates.bedienung.sortierung');
 
         // Blocklisten-Editor.
         var blkHead = document.createElement('div');
@@ -723,6 +759,8 @@
         addBtn.type = 'button';
         addBtn.className = 'aiw-dtpl-addblock';
         addBtn.textContent = '+ Block';
+        addBtn.setAttribute('data-hilfe-id',
+            'doctemplates.bedienung.block_hinzufuegen');
         addBtn.addEventListener('click', function () {
             _state.blocks.push({ type: 'paragraph',
                 dataText: _DATA_TEMPLATE.paragraph });
@@ -744,11 +782,15 @@
         dryBtn.type = 'button';
         dryBtn.className = 'aiw-dtpl-drybtn';
         dryBtn.textContent = 'Struktur-Vorschau (schreibfrei)';
+        dryBtn.setAttribute('data-hilfe-id',
+            'doctemplates.bedienung.strukturvorschau');
         actions.appendChild(dryBtn);
         var saveBtn = document.createElement('button');
         saveBtn.type = 'button';
         saveBtn.className = 'aiw-dtpl-save';
         saveBtn.textContent = 'Speichern (auditiert)';
+        saveBtn.setAttribute('data-hilfe-id',
+            'doctemplates.bedienung.speichern');
         actions.appendChild(saveBtn);
         var msg = document.createElement('span');
         msg.className = 'aiw-dtpl-msg';

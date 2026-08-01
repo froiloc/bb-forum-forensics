@@ -1,0 +1,9 @@
+e626de06ec89910fa45220e8256e68c8  build.json
+38e07c673f1e3bc0e6799469abac2cfd  issue-tracker/eingang_claude_Build635.json
+20b094aaccf1731249a444ae1f6f6ea5  management/help/inhalt/abnahme.py
+511109cfb2b8f681275a6e6eb9f1c07a  management/help/inhalt/redaktion.py
+d0139cc380966b88b52079e8c8650c57  management/server/static/cockpit_doctemplates.js
+0ab2465c15e3b99a98a5b54f322c7ddc  management/server/static/cockpit_modules.js
+26f26f424941460e83c00607912202bb  management/server/static/cockpit_reports.js
+e7600b9d553fb033b003fc361e4cebc7  management/server/static/cockpit_templates.js
+c5bf94fc508d3c8f6f8db987346df304  tests/hilfe_bedienung_stand.json
