@@ -30,6 +30,7 @@ import os
 import sys
 
 import pytest
+from dataclasses import replace
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -204,7 +205,13 @@ def test_ct06_zeige_nennt_alle_pflichtangaben():
     # DIE FEHLENDE TIEFE WIRD BENANNT, nicht weggelassen - sonst sieht ein
     # Grundeintrag aus wie ein vollstaendiger (Grundregel 1). Geprueft an
     # einem Werkzeug, das (noch) keine hat.
-    ohne = next(e for e in CLI_KATALOG if not e.hat_tiefe())
+    # BUILD 620: Seit H18 abgeschlossen ist, gibt es KEINEN Eintrag ohne
+    # Tiefe mehr - der Test lief hier in einen Abbruch. Geprueft wird die
+    # Darstellung jetzt an einem eigens gebauten Eintrag statt an einem
+    # zufaellig noch unfertigen. Das ist sogar der bessere Weg: die Aussage
+    # 'ein Grundeintrag sieht nicht aus wie ein vollstaendiger' haengt damit
+    # nicht mehr davon ab, dass es gerade einen unfertigen gibt.
+    ohne = replace(CLI_KATALOG[0], tiefe=None)
     text_ohne = zeige_text(ohne)
     assert "Ausarbeitung" in text_ohne
     assert "noch nicht erfasst" in _flach(text_ohne)

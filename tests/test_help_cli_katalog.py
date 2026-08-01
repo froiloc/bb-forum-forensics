@@ -307,10 +307,23 @@ def test_ck07_fehlliste_tiefe_ist_abgeleitet_und_schrumpft():
     eingecheckt = set(stand.get("cli_ohne_tiefe", []))
     aktuell = set(fehlliste_cli_tiefe())
 
-    assert eingecheckt, (
-        "Die eingecheckte CLI-Fehlliste ist leer. Ab Build 606 ist sie "
-        "gefuehrt; eine leere Liste hiesse, dass alle Werkzeuge "
-        "ausgearbeitet sind.")
+    # BUILD 620 - DAS ZIEL IST ERREICHT, und der Test musste es lernen.
+    # Bis hierher hat er verlangt, dass die eingecheckte Liste NICHT leer ist:
+    # bis Build 606 hiess eine leere Liste 'es wurde noch keines gefuehrt' und
+    # war damit eine stille Unwahrheit. Seit H18 abgeschlossen ist, heisst sie
+    # das Gegenteil - JEDES Werkzeug ist ausgearbeitet.
+    #
+    # Unterschieden wird am STANDBUILD. Der Schrumpfvergleich darunter bleibt
+    # unveraendert in Kraft: eine spaeter wieder wachsende Liste faellt
+    # weiterhin auf, und genau dafuer ist er da.
+    if stand.get("stand_build", 0) < 620:
+        assert eingecheckt, (
+            "Die eingecheckte CLI-Fehlliste ist leer. Bis Build 619 hiesse "
+            "das, dass sie nie gefuehrt wurde.")
+    else:
+        assert not aktuell, (
+            "Der Stand ist ab Build 620 eingecheckt, aber es gibt wieder "
+            "Werkzeuge ohne Tiefeninhalt: %s" % ", ".join(sorted(aktuell)))
 
     neu = sorted(aktuell - eingecheckt)
     assert not neu, (

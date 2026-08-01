@@ -100,6 +100,16 @@ _GEPRUEFT_619 = ("Build 619, 2026-08-01, gegen einen eingerichteten "
                  "Wegwerf-Bestand unter /tmp (setup_coordinator_dev + alle "
                  "37 Migrationen, KEINE Faelle), Python 3.13")
 
+#: H18 Teil 5 (Build 620) - der Abschluss. Fuer die Vorlagen-Migrationen ist
+#: eine eigene Wegwerf-templates.db aus tests/fixtures_templates_schema.sql
+#: gebaut worden; sie bildet den Zustand NACH allen fuenf Migrationen ab.
+#: Damit belegen die Beispiele die IDEMPOTENZ - jedes der fuenf Skripte
+#: erkennt seinen eigenen Endzustand und tut nichts. Das ist die Eigenschaft,
+#: auf die es beim zweiten Lauf ankommt.
+_GEPRUEFT_620 = ("Build 620, 2026-08-01, gegen Wegwerf-Bestaende unter /tmp "
+                 "(templates.db aus tests/fixtures_templates_schema.sql = "
+                 "Zustand nach allen Migrationen), Python 3.13")
+
 
 def _bsp(aufruf: str, wirkung: str, geprueft: str = _GEPRUEFT) -> CliBeispiel:
     """Kurzform fuer einen GEFAHRENEN Beispielaufruf."""
@@ -1340,6 +1350,20 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         datenbanken=("keine - die Dateien werden nur gezaehlt und gemessen, "
                      "nicht geoeffnet",),
         betrieb="Der Betrieb darf weiterlaufen.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.ops.storage_admin --forensic-dir ./data/forensic --evidence-dir ./data/evidence --assets-dir ./data/assets",
+                     "Gibt die Speicheruebersicht je Verzeichnis aus und kennzeichnet fehlende ausdruecklich mit '[fehlt]'. Auf dem Wegwerf-Bestand: 'Speicheruebersicht (gesamt 0.0 B)'. Rueckgabewert 0.",
+                     _GEPRUEFT_620),
+            ),
+            exit_codes=((0, "ausgegeben - AUCH bei ausgeloestem Platzalarm"),),
+            warnungen=(
+                "ES GIBT NUR DEN RUECKGABEWERT 0. Der Platzalarm und die Fremdforum-Kandidaten stehen ausschliesslich in der Ausgabe.",
+                "ES OEFFNET KEINE EINZIGE DATENBANK. Die genannten Dateien werden nur VERMESSEN - die Zahlen sagen nichts ueber ihren Inhalt und nichts darueber, ob sie lesbar sind.",
+                "Ein fehlendes Verzeichnis wird mit '[fehlt]' gekennzeichnet und nicht stillschweigend als 'leer' gefuehrt.",
+                "Die Grenze fuer den Platzalarm laesst sich mit '--low-disk-pct' verschieben (Vorgabe 10 Prozent).",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="retention_admin",
@@ -1355,6 +1379,20 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         hinweis="LOESCHT NICHTS und kann nichts loeschen. Die Ausgabe ist "
                 "ein Pruefvorschlag; das Loeschen von Beweismitteln ist eine "
                 "Entscheidung ausserhalb dieser Anlage.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.ops.retention_admin --coordinator-db ./data/coordinator.db",
+                     "Auf dem leeren Bestand: 'Aufbewahrung (Frist 730 Tage): 0 abgeschlossene Faelle, 0 Kandidat(en) zur Loeschpruefung' samt dem Hinweis, dass dies nur ein Pruefvorschlag ist. Rueckgabewert 0.",
+                     _GEPRUEFT_620),
+            ),
+            exit_codes=((0, "ausgegeben - AUCH wenn Kandidaten gefunden wurden"),),
+            warnungen=(
+                "ES LOESCHT NICHTS UND KANN NICHTS LOESCHEN. Die Ausgabe ist ein Pruefvorschlag; das Loeschen ist eine auditierte Entscheidung und geht einen anderen Weg. Der Hinweis steht bei jedem Lauf dabei.",
+                "ES GIBT NUR DEN RUECKGABEWERT 0. Gefundene Kandidaten stehen nur im Text bzw. in der JSON-Ausgabe.",
+                "'--retention-days' UEBERSCHREIBT die Frist aus der Konfiguration vollstaendig - die ausgegebene Fristangabe ist deshalb mitzulesen.",
+                "Es oeffnet die coordinator.db ausdruecklich nur lesend.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="index_cli",
@@ -1886,6 +1924,19 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "dieses Skript laeuft eigenstaendig.",
         hinweis="EINMALIGE Altmigration. Mehrfaches Ausfuehren ist "
                 "unschaedlich - ist die Kennung vorhanden, geschieht nichts.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.migrate_templates_module_key --templates-db ./data/templates.db",
+                     "Auf einem bereits migrierten Bestand: 'fertig: Spalte module_key bereits vorhanden; Index ok; Baustein legal.ki_uebersetzung geseedet.' Rueckgabewert 0 - der zweite Lauf ist unschaedlich.",
+                     _GEPRUEFT_620),
+            ),
+            exit_codes=((0, "fertig ODER bereits vorhanden - beides meldet 0, der Unterschied steht nur im Text"), (2, "templates.db nicht gefunden"),),
+            warnungen=(
+                "ES LEGT KEINE SICHERUNG AN. Eine Kopie der templates.db ist VOR dem Lauf von Hand zu erstellen.",
+                "DER RUECKGABEWERT UNTERSCHEIDET NICHT, ob etwas geaendert wurde oder ob alles schon so war. Wer wissen will, was geschehen ist, muss die Zeile lesen.",
+                "Es ist wiederholbar aufrufbar: Spalte, Index und Baustein werden je einzeln geprueft, bevor sie angelegt werden.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="migrate_templates_full_templates",
@@ -1905,6 +1956,20 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         ),
         hinweis="EINMALIGE Altmigration. Mehrfaches Ausfuehren ist "
                 "unschaedlich.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.migrate_templates_full_templates --templates-db ./data/templates.db --dry-run",
+                     "TROCKENLAUF - das einzige der fuenf Skripte, das einen hat. Auf einem migrierten Bestand meldete er, welche Abfragen und Vorlagen er aufnehmen WUERDE, und schrieb nichts. Rueckgabewert 0.",
+                     _GEPRUEFT_620),
+            ),
+            exit_codes=((0, "Lauf beendet - der Ergebnisbericht darunter beeinflusst den Wert NICHT"), (1, "die Tabelle 'placeholders' fehlt - dann ist zuerst migrate_templates_placeholders zu fahren"), (2, "templates.db nicht gefunden"),),
+            warnungen=(
+                "ES LEGT KEINE SICHERUNG AN. Eine Kopie der templates.db ist VOR dem Lauf von Hand zu erstellen. Der Trockenlauf ist der Ersatz - und er ist zu benutzen.",
+                "ACHTUNG BEI DER REIHENFOLGE: Dieses Skript traegt die niedrigere Buildnummer (388), verlangt aber die Tabelle 'placeholders', die erst Build 489 anlegt. Auf einem Bestand, der noch vor 489 steht, bricht es ab. Die Reihenfolge nach Buildnummer ist hier also NICHT die Reihenfolge der Ausfuehrung.",
+                "Vorhandene Abfragen und Vorlagen werden NICHT ueberschrieben - das Skript laesst sie stehen und nimmt nur Fehlendes auf.",
+                "Der Ergebnisbericht am Ende ist zu lesen: er nennt, was aufgenommen wurde und was bereits bestand.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="migrate_templates_audit_check",
@@ -1921,6 +1986,20 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "anzulegen. Das Skript legt selbst keines an.",
         hinweis="EINMALIGE Altmigration. Ist die Regel bereits erweitert, "
                 "geschieht nichts.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.migrate_templates_audit_check --templates-db ./data/templates.db",
+                     "Auf einem bereits migrierten Bestand: 'CHECK bereits erweitert (template) - No-op.' Rueckgabewert 0.",
+                     _GEPRUEFT_620),
+            ),
+            exit_codes=((0, "erweitert ODER bereits erweitert"), (1, "die Tabelle templates_audit_log fehlt - dann ist es vermutlich die falsche Datei"), (2, "templates.db nicht gefunden"),),
+            warnungen=(
+                "ES LEGT KEINE SICHERUNG AN. Eine Kopie der templates.db ist VOR dem Lauf von Hand zu erstellen. Bei diesem Skript wiegt das schwerer als bei den uebrigen: es BAUT DIE TABELLE NEU auf (anlegen, umkopieren, alte loeschen, umbenennen), weil eine CHECK-Bedingung in SQLite nicht nachtraeglich zu aendern ist.",
+                "Fremdschluessel werden fuer den Umbau abgeschaltet und nicht nachgezogen. Verweise auf die Protokolltabelle waeren davon betroffen.",
+                "Eine bereits vorhandene Tabelle mit dem Arbeitsnamen wird ungefragt entfernt.",
+                "Ist die CHECK-Bedingung nach dem Umbau nicht wirksam, bricht das Skript mit einem Programmabbruch ab, statt einen halben Zustand zu hinterlassen.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="migrate_templates_placeholders",
@@ -1937,6 +2016,20 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         hinweis="EINMALIGE Altmigration - und die einzige mit einem "
                 "loeschenden Schritt: die alte Tabelle wird entfernt. Das "
                 "geschieht in EINER Transaktion und verlustfrei.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.migrate_templates_placeholders --templates-db ./data/templates.db",
+                     "Auf einem bereits migrierten Bestand: 'bereits migriert - No-op.' Rueckgabewert 0, und es wird keine Sicherung angelegt - die entsteht nur, wenn wirklich etwas zu tun ist.",
+                     _GEPRUEFT_620),
+            ),
+            exit_codes=((0, "migriert ODER bereits migriert"), (1, "weder die alte noch die neue Tabelle vorhanden; ODER BEIDE vorhanden - dann ist der Zustand von Hand zu pruefen; ODER die Protokolltabelle fehlt"), (2, "templates.db nicht gefunden"),),
+            warnungen=(
+                "DAS EINZIGE DER FUENF SKRIPTE, DAS ETWAS LOESCHT: die alte Tabelle wird nach dem Umkopieren entfernt. Deshalb legt es als einziges VON SELBST eine Sicherung an ('.pre489.bak'), sofern nicht '--no-backup' gesetzt ist.",
+                "SIND BEIDE TABELLEN VORHANDEN, bricht es ab und verlangt eine Pruefung von Hand. Das ist der Zustand nach einem Abbruch mitten im Lauf - und die richtige Antwort darauf ist nicht, es noch einmal zu versuchen.",
+                "Die Zeilenzahl wird vor und nach dem Umkopieren verglichen; weicht sie ab, bricht der Lauf ab und rollt zurueck.",
+                "'--no-backup' nimmt die einzige Sicherung heraus, die dieses Skript hat.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="migrate_templates_ci",
@@ -1952,6 +2045,20 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "abschaltet, und prueft die Datei danach nach.",
         hinweis="EINMALIGE Altmigration. Ist die Spalte vorhanden, geschieht "
                 "nichts.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python management/migrate_templates_ci.py --templates-db ./data/templates.db",
+                     "Auf einem bereits migrierten Bestand: 'Spalte validation_ci vorhanden - No-op.' Rueckgabewert 0.",
+                     _GEPRUEFT_620),
+            ),
+            exit_codes=((0, "ergaenzt ODER bereits vorhanden"), (2, "templates.db nicht gefunden"),),
+            warnungen=(
+                "Es legt VON SELBST eine Sicherung an ('.pre497.bak'), sofern nicht '--no-backup' gesetzt ist - und nur dann, wenn wirklich etwas zu tun ist.",
+                "ES BAUT BEWUSST KEINE TABELLE NEU, sondern haengt nur eine Spalte an. Das ist der risikoaermste der fuenf Schritte.",
+                "ES SETZT DEN STAND VON BUILD 489 VORAUS. Fehlt die Tabelle 'placeholders', bricht es mit einem Programmabbruch ab und nennt das zustaendige Skript.",
+                "Nach dem Lauf wird die Datei mit einer Vollpruefung nachgeprueft.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="repair_block_types",
@@ -1976,6 +2083,20 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         ),
         hinweis="Zweifelsfaelle werden NICHT angefasst, sondern als unklar "
                 "gemeldet.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.repair_block_types --evidence-dir ./data/evidence",
+                     "TROCKENLAUF - er ist die Vorgabe. Auf einem leeren Verzeichnis: 'Keine evidence_*.db in ... gefunden.' Rueckgabewert 0.",
+                     _GEPRUEFT_620),
+            ),
+            exit_codes=((0, "Lauf beendet - AUCH wenn defekte Bloecke gefunden wurden"), (2, "das Verzeichnis wurde nicht gefunden"), (3, "'--apply' wurde ohne die Bestaetigung '--ja-backup-vorhanden' angegeben - es wurde NICHTS geaendert"),),
+            warnungen=(
+                "DIE FUNDE AENDERN DEN RUECKGABEWERT NICHT. 'eindeutig defekt' und 'unklar' stehen nur im Text. Wer das Werkzeug in eine Ueberwachung haengt, muss die Ausgabe auswerten.",
+                "ES FASST ERMITTLERDATEN AN. Deshalb verlangt '--apply' zusaetzlich die ausdrueckliche Bestaetigung, dass eine gepruefte Sicherung vorliegt - eine Sicherung legt es NICHT selbst an.",
+                "ZWEIFELSFAELLE WERDEN GEMELDET UND NICHT ANGEFASST. Sie sind von Hand zu pruefen; das Werkzeug raet nicht.",
+                "Ein zweiter Lauf findet die bereits reparierten Bloecke nicht mehr - er ist unschaedlich.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="consolidate_default_db",
@@ -2203,6 +2324,20 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                 "Datei wirklich eine Kopie ist - der Schutz ist "
                 "organisatorisch. '--seed' fuellt Testzeilen ein und gehoert "
                 "NICHT auf eine Kopie mit echten Daten.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python tools/poc_m019_weg_a.py /tmp/kopie.db",
+                     "Auf einer Kopie, die M019 BEREITS hinter sich hat: 'FEHLER: no such column: user_id -> ROLLBACK. Weg A NICHT gangbar.' Rueckgabewert 1. Das ist kein Programmfehler, sondern die zutreffende Auskunft - und es belegt zugleich, dass ein zweiter Lauf auf derselben Datei nicht funktioniert.",
+                     _GEPRUEFT_620),
+            ),
+            exit_codes=((0, "BEFUND: Weg A ist gangbar"), (1, "BEFUND: Weg A ist nicht gangbar, es braucht den Rebuild - ODER ein Programmabbruch. Beides meldet 1"), (2, "Aufruf ohne Pfadangabe"),),
+            warnungen=(
+                "ES SCHREIBT IMMER. Es gibt keinen Trockenlauf, und es prueft NICHT nach, ob die angegebene Datei wirklich eine Kopie ist. Der Schutz davor ist rein organisatorisch - der Pfad ist vor der Eingabetaste zu lesen.",
+                "ES IST NICHT WIEDERHOLBAR. Nach einem gelungenen Lauf gibt es die alte Spalte nicht mehr; ein zweiter Lauf schlaegt fehl. Fuer eine weitere Probe braucht es eine frische Kopie.",
+                "'--seed' schreibt Testzeilen und gehoert NIE auf eine Kopie mit echten Daten.",
+                "Der Rueckgabewert 1 hat zwei Bedeutungen - Befund oder Abbruch. Welche zutrifft, steht im Text darueber.",
+            ),
+        ),
     ),
 
     # ---------------------------------------------------------------- Diagnose
