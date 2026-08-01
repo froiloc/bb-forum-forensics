@@ -23,6 +23,9 @@ import time
 
 from management.stats.annotation_stats_repo import AnnotationStatsRepo
 from management.help import cli_epilog  # noqa: E402
+# Build 644: die Vorrangregel Argument > config.yaml > Vorgabewert
+# steht seit Build 643 an EINER Stelle (Ticket 15429c75).
+from core import werkzeug_konfig  # noqa: E402
 
 
 def _load_config(args):
@@ -34,31 +37,48 @@ def _load_config(args):
 
 
 def _resolve_db_path(args, cfg) -> str:
-    if args.coordinator_db:
-        return args.coordinator_db
-    if cfg is not None:
-        try:
-            p = cfg.get("paths", {}).get("coordinator_db")
-            if p:
-                return str(p)
-        except Exception:  # pragma: no cover
-            pass
-    raise SystemExit("[annotation_stats] Kein coordinator.db-Pfad "
-                     "(--coordinator-db oder paths.coordinator_db).")
+    """
+    coordinator.db-Pfad: Argument --coordinator-db > paths.coordinator_db
+    > Abbruch.
+
+    BUILD 644 - DIE AUFLOESUNG IST UMGEZOGEN, das Verhalten NICHT.
+    Sie steht jetzt in core/werkzeug_konfig.py; die Begruendung fuer den
+    Umzug steht im Kopf jener Datei.
+
+    'cfg' BLEIBT PARAMETER, und das ist der Kern dieser Umstellung: Dieses
+    Werkzeug laedt die config.yaml EINMAL (_load_config) und reicht sie
+    weiter - fuer den Pfad UND fuer seine uebrigen Werte. Wuerde die
+    Aufloesung sich hier ihre eigene Kopie holen, koennten beide im
+    Grenzfall aus VERSCHIEDENEN Staenden derselben Datei stammen. Der
+    Aufloeser wird deshalb UM den vorhandenen Loader gebaut, nicht neben ihn.
+
+    UNVERAENDERT bleiben: die Reihenfolge, das Fehlen eines Vorgabewerts,
+    der Abbruch mit dem Praefix '[annotation_stats_admin]' - nur nennt die Meldung jetzt
+    BEIDE Wege statt nur einen. Die Meldung ueber eine unlesbare config.yaml
+    gibt weiterhin _load_config aus; cfg ist dann None.
+    """
+    return werkzeug_konfig.db_pfad(
+        "annotation_stats_admin", args, arg_attribut="coordinator_db",
+        arg_name="--coordinator-db", config_schluessel="paths.coordinator_db",
+        name="coordinator_db", r=werkzeug_konfig.resolver_aus_loader(cfg))
 
 
 def _resolve_evidence_dir(args, cfg) -> str:
-    if args.evidence_dir:
-        return args.evidence_dir
-    if cfg is not None:
-        try:
-            p = cfg.get("paths", {}).get("evidence_db_dir")
-            if p:
-                return str(p)
-        except Exception:  # pragma: no cover
-            pass
-    return "./data/evidence/"
+    """
+    Verzeichnis der evidence_<uid>.db: Argument --evidence-dir >
+    paths.evidence_db_dir > './data/evidence/'.
 
+    BUILD 644: dieselbe Aufloesung wie oben, aber ueber 'wert' statt
+    'db_pfad' - und der Unterschied ist betrieblich und nicht kosmetisch:
+    Hier GIBT es einen Vorgabewert, hier wird also NICHT abgebrochen. Wer
+    beide Faelle durch dieselbe Funktion schickte, saehe am Aufruf nicht
+    mehr, welcher von beiden vorliegt.
+    """
+    return werkzeug_konfig.wert(
+        "annotation_stats_admin", args, arg_attribut="evidence_dir",
+        arg_name="--evidence-dir", config_schluessel="paths.evidence_db_dir",
+        default="./data/evidence/", name="evidence_dir", wandler=str,
+        r=werkzeug_konfig.resolver_aus_loader(cfg))
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(

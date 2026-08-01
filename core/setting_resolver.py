@@ -136,6 +136,35 @@ class SettingResolver:
                     "auswertbar: %s: %s"
                     % (config_path, type(exc).__name__, exc)) from exc
 
+    @classmethod
+    def aus_loader(cls, loader) -> "SettingResolver":
+        """
+        Baut einen Aufloeser um eine BEREITS GELADENE Konfiguration
+        (NEU Build 644). 'loader' darf None sein - das heisst dann: es gibt
+        keine auswertbare Konfiguration, es greifen Argument und Vorgabewert.
+
+        WOFUER, und das ist keine Bequemlichkeit: Rund vierzehn
+        Verwaltungswerkzeuge laden die config.yaml EINMAL und reichen sie
+        weiter - fuer den Datenbankpfad UND fuer ihre Schwellenwerte. Der
+        Grund steht seit Build 315 im Quelltext von dashboard_admin: "daher
+        EINMAL laden und weiterreichen, statt sie mehrfach zu oeffnen". Wuerde
+        der Aufloeser sich seine eigene Kopie holen, koennten Pfad und
+        Schwelle im Grenzfall aus VERSCHIEDENEN Staenden derselben Datei
+        stammen - jemand speichert sie zwischen den beiden Lesevorgaengen.
+        Bei einem Werkzeug, das einen Befund erhebt, waere das ein Befund
+        ueber zwei Zustaende, den es so nie gab.
+
+        Es wird hier NICHTS geladen und NICHTS geprueft; 'config_meldung'
+        bleibt leer, weil der Aufrufer das Laden schon verantwortet hat und
+        einen Fehlschlag bereits gemeldet haben wird.
+        """
+        selbst = cls.__new__(cls)
+        selbst._config = loader
+        selbst._config_pfad = getattr(loader, "config_path", None)
+        selbst._config_meldung = None
+        selbst._protokoll = []
+        return selbst
+
     # ------------------------------------------------------------------
     # Auskunft ueber die Konfigurationsdatei
     # ------------------------------------------------------------------

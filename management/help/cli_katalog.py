@@ -264,7 +264,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Die Fall-Datenbank, aus der der Fallzustand gelesen wird.",
                "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
                "Werkzeug mit Klartext ab.",
-               "management/cases/escalation_admin.py, _resolve_db_path() Z. 35-46",
+               "management/cases/escalation_admin.py, _resolve_db_path(); die Aufloesung selbst in core/werkzeug_konfig.py (Build 644)",
                "--coordinator-db"),
             _k("escalation.red_overdue_days",
                "Offener Fall, Ampel rot UND so viele Tage ohne Aktivitaet: "
@@ -317,7 +317,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             _k("paths.coordinator_db",
                "Die Fall-Datenbank, mit der das Werkzeug arbeitet.",
                "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad waere schlimmer als ein Abbruch.",
-               "management/cases/handover_admin.py, _resolve_db_path() Z. 35-46", "--coordinator-db"),
+               "management/cases/handover_admin.py, _resolve_db_path(); die Aufloesung selbst in core/werkzeug_konfig.py (Build 644)", "--coordinator-db"),
         ),
         tiefe=CliTiefe(
             beispiele=(
@@ -350,7 +350,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             _k("paths.coordinator_db",
                "Die Fall-Datenbank, mit der das Werkzeug arbeitet.",
                "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad waere schlimmer als ein Abbruch.",
-               "management/cases/next_actions_admin.py, _resolve_db_path() Z. 34-45", "--coordinator-db"),
+               "management/cases/next_actions_admin.py, _resolve_db_path(); die Aufloesung selbst in core/werkzeug_konfig.py (Build 644)", "--coordinator-db"),
         ),
         tiefe=CliTiefe(
             beispiele=(
@@ -394,7 +394,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Die Fall-Datenbank, aus der die Uebersicht gebildet wird.",
                "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
                "Werkzeug mit Klartext ab.",
-               "management/dashboard/dashboard_admin.py, _resolve_db_path() Z. 55-70",
+               "management/dashboard/dashboard_admin.py, _resolve_db_path(); die Aufloesung selbst in core/werkzeug_konfig.py (Build 644)",
                "--coordinator-db"),
             _k("dashboard.ampel.amber_idle_days",
                "Ab so vielen Tagen ohne Fall-Aktivitaet wird die Ampel GELB.",
@@ -881,7 +881,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
                "Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad "
                "waere schlimmer als ein Abbruch.",
-               "management/support_overview/support_overview_admin.py, _resolve_db_path() Z. 60-71", "--coordinator-db"),
+               "management/support_overview/support_overview_admin.py, _resolve_db_path(); die Aufloesung selbst in core/werkzeug_konfig.py (Build 644)", "--coordinator-db"),
         ),
         tiefe=CliTiefe(
             beispiele=(
@@ -928,7 +928,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Die Datenbank, aus der die Auslastung je Person gebildet wird.",
                "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
                "Werkzeug mit Klartext ab.",
-               "management/workload/workload_admin.py, _resolve_db_path() Z. 54-64",
+               "management/workload/workload_admin.py, _resolve_db_path(); die Aufloesung selbst in core/werkzeug_konfig.py (Build 644)",
                "--coordinator-db"),
             _k("dashboard.ampel.amber_idle_days",
                "Ab so vielen Tagen ohne Fall-Aktivitaet gilt ein Fall als GELB "
@@ -980,7 +980,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Die Datenbank, aus der Fallbestand und Rueckstau gelesen werden.",
                "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
                "Werkzeug mit Klartext ab.",
-               "management/workload/overload_admin.py, _resolve_db_path() Z. 35-47",
+               "management/workload/overload_admin.py, _resolve_db_path(); die Aufloesung selbst in core/werkzeug_konfig.py (Build 644)",
                "--coordinator-db"),
             _k("workload.overload.max_active_cases",
                "Aktive Faelle (Status offen oder in Arbeit) je Ermittler:in, "
@@ -1035,14 +1035,14 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "werden.",
                "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
                "Werkzeug mit Klartext ab.",
-               "management/stats/annotation_stats_admin.py, _resolve_db_path() Z. 36-47",
+               "management/stats/annotation_stats_admin.py, _resolve_db_path(); die Aufloesung selbst in core/werkzeug_konfig.py (Build 644)",
                "--coordinator-db"),
             _k("paths.evidence_db_dir",
                "Das Verzeichnis der evidence_<uid>.db, aus denen die "
                "Annotationen je Fall gezaehlt werden.",
                "./data/evidence/ - hier gibt es einen Rueckfallwert, anders "
                "als beim Pfad darueber.",
-               "management/stats/annotation_stats_admin.py, _resolve_evidence_dir() Z. 50-60",
+               "management/stats/annotation_stats_admin.py, _resolve_evidence_dir(); die Aufloesung selbst in core/werkzeug_konfig.py (Build 644)",
                "--evidence-dir"),
         ),
         tiefe=CliTiefe(
@@ -1095,7 +1095,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
                "Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad "
                "waere schlimmer als ein Abbruch.",
-               "management/stats/forecast_admin.py, _resolve_db_path() Z. 35-47", "--coordinator-db"),
+               "management/stats/forecast_admin.py, _resolve_db_path(); die Aufloesung selbst in core/werkzeug_konfig.py (Build 644)", "--coordinator-db"),
         ),
         tiefe=CliTiefe(
             beispiele=(
@@ -1144,7 +1144,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
                "Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad "
                "waere schlimmer als ein Abbruch.",
-               "management/stats/forecast_report_admin.py, _resolve_db_path() Z. 59-71", "--coordinator-db"),
+               "management/stats/forecast_report_admin.py, _resolve_db_path(); die Aufloesung selbst in core/werkzeug_konfig.py (Build 644)", "--coordinator-db"),
         ),
         tiefe=CliTiefe(
             beispiele=(
@@ -1194,7 +1194,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
                "Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad "
                "waere schlimmer als ein Abbruch.",
-               "management/stats/gantt_admin.py, _resolve_db_path() Z. 34-46", "--coordinator-db"),
+               "management/stats/gantt_admin.py, _resolve_db_path(); die Aufloesung selbst in core/werkzeug_konfig.py (Build 644)", "--coordinator-db"),
         ),
         tiefe=CliTiefe(
             beispiele=(
@@ -1296,7 +1296,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
                "Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad "
                "waere schlimmer als ein Abbruch.",
-               "management/stats/status_report_admin.py, _resolve_db_path() Z. 45-57", "--coordinator-db"),
+               "management/stats/status_report_admin.py, _resolve_db_path(); die Aufloesung selbst in core/werkzeug_konfig.py (Build 644)", "--coordinator-db"),
         ),
         tiefe=CliTiefe(
             beispiele=(
@@ -1352,7 +1352,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
                "Werkzeug mit Klartext ab. Das ist Absicht: ein erratener Pfad "
                "waere schlimmer als ein Abbruch.",
-               "management/export/export_admin.py, _resolve_db_path() Z. 62-75", "--coordinator-db"),
+               "management/export/export_admin.py, _resolve_db_path(); die Aufloesung selbst in core/werkzeug_konfig.py (Build 644)", "--coordinator-db"),
         ),
         tiefe=CliTiefe(
             beispiele=(
@@ -2065,7 +2065,7 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "werden.",
                "KEIN Vorgabewert - ohne Eintrag und ohne Argument bricht das "
                "Werkzeug mit Klartext ab.",
-               "management/ops/retention_admin.py, _resolve_db_path() Z. 37-48",
+               "management/ops/retention_admin.py, _resolve_db_path(); die Aufloesung selbst in core/werkzeug_konfig.py (Build 644)",
                "--coordinator-db"),
             _k("retention.retention_days",
                "Aufbewahrungsfrist in Tagen. Was aelter ist, erscheint als "

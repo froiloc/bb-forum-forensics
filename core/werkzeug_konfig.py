@@ -100,6 +100,23 @@ def resolver(args) -> SettingResolver:
     return SettingResolver(config_path=getattr(args, "config", None))
 
 
+def resolver_aus_loader(loader) -> SettingResolver:
+    """
+    Ein Aufloeser um eine BEREITS geladene config.yaml (NEU Build 644).
+
+    Fuer die Werkzeuge der zweiten Form: sie laden die Datei einmal in
+    '_load_config(args)' und reichen sie weiter — fuer den Datenbankpfad UND
+    fuer ihre Schwellenwerte. Diese Aufteilung bleibt bestehen; nur die
+    AUFLOESUNG des Pfades wandert hierher. Naeheres bei
+    SettingResolver.aus_loader.
+
+    'loader' darf None sein: dann gibt es keine auswertbare Konfiguration,
+    der Aufrufer hat das bereits gemeldet, und es bleiben Argument und
+    Vorgabewert.
+    """
+    return SettingResolver.aus_loader(loader)
+
+
 def herkunft_ausgeben(werkzeug: str, r: SettingResolver) -> None:
     """
     Schreibt die Herkunftszeilen nach stderr — nur wenn angefordert.

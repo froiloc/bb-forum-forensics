@@ -25,6 +25,9 @@ from management.ops.retention import (
     retention_to_dict,
 )
 from management.help import cli_epilog
+# Build 644: die Vorrangregel Argument > config.yaml > Vorgabewert
+# steht seit Build 643 an EINER Stelle (Ticket 15429c75).
+from core import werkzeug_konfig  # noqa: E402
 
 
 def _load_config(args):
@@ -36,17 +39,30 @@ def _load_config(args):
 
 
 def _resolve_db_path(args, cfg) -> str:
-    if args.coordinator_db:
-        return args.coordinator_db
-    if cfg is not None:
-        try:
-            p = cfg.get("paths", {}).get("coordinator_db")
-            if p:
-                return str(p)
-        except Exception:  # pragma: no cover
-            pass
-    raise SystemExit("[retention] Kein coordinator.db-Pfad (--coordinator-db "
-                     "oder paths.coordinator_db in config.yaml).")
+    """
+    coordinator.db-Pfad: Argument --coordinator-db > paths.coordinator_db
+    > Abbruch.
+
+    BUILD 644 - DIE AUFLOESUNG IST UMGEZOGEN, das Verhalten NICHT.
+    Sie steht jetzt in core/werkzeug_konfig.py; die Begruendung fuer den
+    Umzug steht im Kopf jener Datei.
+
+    'cfg' BLEIBT PARAMETER, und das ist der Kern dieser Umstellung: Dieses
+    Werkzeug laedt die config.yaml EINMAL (_load_config) und reicht sie
+    weiter - fuer den Pfad UND fuer seine uebrigen Werte. Wuerde die
+    Aufloesung sich hier ihre eigene Kopie holen, koennten beide im
+    Grenzfall aus VERSCHIEDENEN Staenden derselben Datei stammen. Der
+    Aufloeser wird deshalb UM den vorhandenen Loader gebaut, nicht neben ihn.
+
+    UNVERAENDERT bleiben: die Reihenfolge, das Fehlen eines Vorgabewerts,
+    der Abbruch mit dem Praefix '[retention_admin]' - nur nennt die Meldung jetzt
+    BEIDE Wege statt nur einen. Die Meldung ueber eine unlesbare config.yaml
+    gibt weiterhin _load_config aus; cfg ist dann None.
+    """
+    return werkzeug_konfig.db_pfad(
+        "retention_admin", args, arg_attribut="coordinator_db",
+        arg_name="--coordinator-db", config_schluessel="paths.coordinator_db",
+        name="coordinator_db", r=werkzeug_konfig.resolver_aus_loader(cfg))
 
 
 def _fmt(ts) -> str:
