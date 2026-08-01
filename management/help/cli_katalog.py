@@ -87,6 +87,11 @@ _GEPRUEFT_614 = ("Build 614, 2026-07-31, gegen einen eingerichteten "
                  "Wegwerf-Bestand unter /tmp, Python 3.13, Linux - KEIN "
                  "Netzlaufwerk")
 
+#: H18 Teil 3 (Build 618). Derselbe eingerichtete Wegwerf-Bestand.
+_GEPRUEFT_618 = ("Build 618, 2026-07-31, gegen einen eingerichteten "
+                 "Wegwerf-Bestand unter /tmp (setup_coordinator_dev + alle "
+                 "37 Migrationen, keine Faelle), Python 3.13")
+
 
 def _bsp(aufruf: str, wirkung: str, geprueft: str = _GEPRUEFT) -> CliBeispiel:
     """Kurzform fuer einen GEFAHRENEN Beispielaufruf."""
@@ -302,6 +307,19 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             _b("create", "schreibend", "Person anlegen."),
             _b("update", "schreibend", "Stammdaten aendern."),
         ),
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.person.person_admin list --coordinator-db ./data/coordinator.db",
+                     "Fuehrte die hinterlegten Personen mit Rollen auf. Im Versuch drei Eintraege aus dem Entwicklungs-Bootstrap. Rueckgabewert 0.",
+                     _GEPRUEFT_618),
+            ),
+            exit_codes=((0, "ausgegeben bzw. angelegt/geaendert"), (1, "coordinator.db nicht gefunden, Fachfehler oder unbekannte Aktion"),),
+            warnungen=(
+                "ES GIBT KEIN LOESCHEN, und die Anmeldekennung wird nie geaendert. Wer ausscheidet, wird stillgelegt ('--set-investigator 0'). Das ist Absicht: eine geloeschte Person hinterliesse Belegzeilen ohne Urheber.",
+                "OHNE '--actor' wird als Urheber NULL protokolliert und der Systembenutzer im Beleg vermerkt. Das ist fuer den ersten Eintrag gedacht, mit dem ueberhaupt jemand angelegt wird - im laufenden Betrieb gehoert '--actor' dazu.",
+                "Auch 'list' oeffnet die Datenbank schreibfaehig UND setzt den Journalmodus. Das ist ein Schreibzugriff auf die Datei, obwohl nur gelesen wird.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="rbac_admin",
@@ -367,6 +385,20 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         ),
         hinweis="Braucht Zugriff auf das Verzeichnis (LDAP); die Abfrage "
                 "kann dauern.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.ad_sync.ad_sync_admin --db ./data/coordinator.db preview",
+                     "OHNE ERREICHBARES VERZEICHNIS: 'FEHLER: AD-Abgleich nicht konfiguriert' mit Nennung aller vier fehlenden Pflichtwerte, Rueckgabewert 1. Das ist der Regelfall auf einem Rechner ohne Verzeichnisanbindung - die Vorschau braucht die Quelle genauso wie die Ausfuehrung.",
+                     _GEPRUEFT_618),
+            ),
+            exit_codes=((0, "Vorschau ausgegeben bzw. Abgleich ausgefuehrt"), (1, "Verzeichnis nicht erreichbar oder nicht konfiguriert, Planungs- oder Fachfehler"),),
+            warnungen=(
+                "AUCH DIE VORSCHAU BRAUCHT DAS VERZEICHNIS. 'preview' ist lesend, aber nicht 'ohne Netz' - es holt die Gruppenmitglieder genauso wie 'apply'.",
+                "'--actor' MUSS EIN AKTIVER SUPERVISOR SEIN, sonst bricht der Aufruf ab.",
+                "'apply' IST INTERAKTIV: je Person ist wortwoertlich 'Entfernen' bzw. 'Reaktivieren' einzugeben. Jede andere Eingabe ist ein protokollierter Abbruch. Aus einem Skript heraus laesst sich das nicht fahren - und das ist Absicht.",
+                "Es wird niemand geloescht, nur stillgelegt.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="capacity_admin",
@@ -400,6 +432,20 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Abwesenheit stilllegen."),
             _b("list-availability", "lesend", "Abwesenheiten auflisten."),
         ),
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.capacity.capacity_admin list-reasons --coordinator-db ./data/coordinator.db",
+                     "Fuehrte die hinterlegten Abwesenheitsgruende auf. Auf dem leeren Bestand: 'Keine Gruende.' Rueckgabewert 0.",
+                     _GEPRUEFT_618),
+            ),
+            exit_codes=((0, "ausgegeben bzw. eingetragen"), (2, "FACHLICHE ABLEHNUNG - etwa eine Dublette zum selben Stichtag. KEIN Absturz"),),
+            warnungen=(
+                "ES GIBT KEINEN RUECKGABEWERT 1. Eine fachliche Ablehnung meldet 2. Wer nur auf 1 prueft, haelt eine Ablehnung fuer einen Erfolg.",
+                "EINE KORREKTUR ZUM SELBEN STICHTAG MUSS UEBER 'replace-worktime' LAUFEN - 'set-worktime' scheitert dann an der Dublettensperre. Das ist gewollt: eine stillschweigend ueberschriebene Arbeitszeit waere im Nachhinein nicht mehr nachvollziehbar.",
+                "Loeschungen sind keine: die Zeile bleibt mit Loeschzeitpunkt erhalten und ist mit '--all' wieder sichtbar.",
+                "Kein Pfad wird auf Vorhandensein geprueft - ein Tippfehler legt eine leere Datenbank an.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="onboarding_admin",
@@ -421,6 +467,19 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             _b("set", "schreibend",
                "Einen Schritt setzen. 'offen' setzt ihn zurueck und "
                "entfernt die Zeile."),
+        ),
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.onboarding.onboarding_admin steps --kind onboarding",
+                     "Fuehrte die Schritte des Einarbeitungswegs mit Kennung und Klartext auf. Rueckgabewert 0. Dieser Unterbefehl oeffnet GAR KEINE Datenbank und ist damit jederzeit aufrufbar.",
+                     _GEPRUEFT_618),
+            ),
+            exit_codes=((0, "ausgegeben bzw. gesetzt"), (1, "Fach- oder Aufruffehler"),),
+            warnungen=(
+                "'--status offen' LOESCHT DIE ZEILE und setzt den Schritt zurueck. Das ist die einzige Stelle, an der hier etwas verschwindet - die Ausgabe sagt 'zurueckgesetzt'.",
+                "Bei '--kind offboarding' zeigt 'show' zusaetzlich, wie viele Faelle der Person noch zugewiesen sind. Diese Zahl ist vor dem Abschluss zu lesen.",
+                "'steps' braucht keine Datenbank; 'show' und 'set' oeffnen sie schreibfaehig.",
+            ),
         ),
     ),
     CliEintrag(
@@ -444,6 +503,20 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Eigenstaendiges HTML mit Erzeugungsvermerk (--out)."),
         ),
         ausgabe="HTML-Datei bei export-html (--out).",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.support_overview.support_overview_admin list --coordinator-db ./data/coordinator.db",
+                     "Fuehrte die Support-Sitzungen aus dem Protokollbuch auf. Auf dem leeren Bestand: 'Keine Support-Sitzungen im audit_log.' Rueckgabewert 0.",
+                     _GEPRUEFT_618),
+            ),
+            exit_codes=((0, "ausgegeben bzw. geschrieben - AUCH bei gebrochener Belegkette"), (1, "coordinator.db nicht gefunden oder eine benoetigte Tabelle fehlt"),),
+            warnungen=(
+                "EINE GEBROCHENE BELEGKETTE AENDERT DEN RUECKGABEWERT NICHT. Sie erscheint als Warnung auf der Fehlerausgabe und als Banner in der Ausgabe; der Lauf endet mit 0. Wer den Bericht weitergibt, muss die Fehlerausgabe gelesen haben.",
+                "Die Datenquelle ist das PROTOKOLLBUCH - die Historie wird daraus rekonstruiert. Was dort nicht steht, gibt es hier nicht.",
+                "'--out' ueberschreibt eine vorhandene Datei wortlos.",
+                "Der Dateikopf sichert zu, die coordinator.db werde AUSSCHLIESSLICH gelesen - die Verbindung wird trotzdem schreibfaehig geoeffnet. Vorgang eroeffnet (Issue 906ede75).",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="workload_admin",
@@ -464,6 +537,20 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
                "Eigenstaendiges HTML mit Erzeugungsvermerk (--out)."),
         ),
         ausgabe="HTML-Datei bei export-html (--out).",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.workload.workload_admin list --coordinator-db ./data/coordinator.db",
+                     "Gab die Auslastung je ermittelnder Person als Tabelle aus - Faelle, Ampelverteilung, letzte Aktion. Rueckgabewert 0.",
+                     _GEPRUEFT_618),
+            ),
+            exit_codes=((0, "ausgegeben bzw. geschrieben - AUCH bei gebrochener Belegkette"), (1, "coordinator.db nicht gefunden, Konfigurationsfehler oder eine benoetigte Tabelle fehlt"),),
+            warnungen=(
+                "EINE GEBROCHENE BELEGKETTE AENDERT DEN RUECKGABEWERT NICHT - wie beim Support-Ueberblick nur eine Warnung auf der Fehlerausgabe.",
+                "DIE AMPELSCHWELLEN KOMMEN AUS DER KONFIGURATION (Vorgabe 7 und 21 Tage). DIESELBE DATENBANK LIEFERT MIT EINER ANDEREN KONFIGURATION ANDERE AMPELZAHLEN. Wer zwei Ausgaben vergleicht, muss dieselbe Konfiguration benutzt haben.",
+                "Die Zeile fuer den Rueckstau (Faelle ohne Zuweisung) ist eine Sammelzeile ohne Rollen und ohne Aktionen - sie steht fuer niemanden.",
+                "Der Dateikopf sichert nur-lesenden Zugriff zu; die Verbindung ist trotzdem schreibfaehig. Vorgang eroeffnet (Issue 906ede75).",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="overload_admin",
@@ -476,6 +563,19 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         art="lesend",
         datenbanken=("coordinator.db (lesend, mode=ro)",),
         betrieb="Der Betrieb darf weiterlaufen.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.workload.overload_admin --coordinator-db ./data/coordinator.db",
+                     "Gab die Ueberlastwarnung samt der geltenden Grenzen aus. Im Versuch: 'Grenzen: aktive<=10, rote<=3, Rueckstau-Alarm>=5', overload 0, warn 0, Rueckstau 0. Rueckgabewert 0.",
+                     _GEPRUEFT_618),
+            ),
+            exit_codes=((0, "ausgegeben - AUCH bei ausgeloestem Alarm"),),
+            warnungen=(
+                "ES GIBT NUR DEN RUECKGABEWERT 0. Der Ueberlast- und Rueckstau-Alarm steht ausschliesslich in der Ausgabe. Eine Ueberwachung muss den Text oder die JSON-Ausgabe auswerten; auf den Rueckgabewert kann sie sich nicht stuetzen.",
+                "DIE GRENZEN STEHEN IN JEDER AUSGABE und sind mitzulesen: ist die Konfiguration nicht lesbar, gelten die Vorgabewerte, und dieselbe Datenbank ergibt dann eine andere Bewertung.",
+                "Es ist das einzige Werkzeug dieser beiden Gruppen, das die coordinator.db ausdruecklich NUR LESEND oeffnet. Deshalb muss die Datei vorhanden sein - ein falscher Pfad meldet einen Datenbankfehler, statt eine leere Datei anzulegen.",
+            ),
+        ),
     ),
 
     # ------------------------------------------------- Kennzahlen und Berichte
@@ -809,6 +909,20 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         ),
         hinweis="Eine Freigabe endet NICHT von selbst - es gibt keine Frist. "
                 "Sie besteht, bis sie widerrufen wird.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.external.case_release_admin --db ./data/coordinator.db list",
+                     "Fuehrte die erteilten Freigaben auf. Auf dem leeren Bestand: 'Keine Freigaben.' Rueckgabewert 0.",
+                     _GEPRUEFT_618),
+            ),
+            exit_codes=((0, "ausgegeben bzw. erteilt/entzogen"), (1, "Fach- oder Aufruffehler"),),
+            warnungen=(
+                "Der Empfaenger wird gegen die Verzeichnis-Freigabeliste geprueft. IST DIE KONFIGURATION NICHT LESBAR, wird eine LEERE Liste benutzt - dann wird alles abgelehnt. Das ist die sichere Richtung, sieht aber aus wie 'der Empfaenger ist unzulaessig' und nicht wie 'die Konfiguration fehlt'.",
+                "Die Kennung hinter '--actor' muss als Person hinterlegt sein, sonst bricht der Aufruf ab.",
+                "EIN TIPPFEHLER IM DATENBANKPFAD LEGT EINE LEERE DATEI AN, statt abzubrechen: die Verbindung wird schreibfaehig geoeffnet und die Datei nicht vorher auf Vorhandensein geprueft. Wer dann 'Keine Freigaben' liest, hat eine frische leere Datenbank vor sich und nicht den Bestand.",
+                "'recipients' und 'umfang' oeffnen gar keine Datenbank - sie geben die zulaessigen Werte aus.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="external_admin",
@@ -832,6 +946,20 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             _b("answer", "schreibend", "Antwort eingegangen."),
             _b("close", "schreibend", "Endgueltig abschliessen."),
             _b("kinds", "lesend", "Katalog der Vorgangsarten."),
+        ),
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.external.external_admin --db ./data/coordinator.db list",
+                     "Fuehrte die externen Vorgaenge auf. Auf dem leeren Bestand: 'Keine externen Vorgaenge.' Rueckgabewert 0.",
+                     _GEPRUEFT_618),
+            ),
+            exit_codes=((0, "ausgegeben, keine rote Ampel"), (1, "Fach- oder Aufruffehler"), (2, "BEFUND: mindestens ein Vorgang steht auf rot - ueberfaellig oder verwaist. KEIN Fehler"),),
+            warnungen=(
+                "DER RUECKGABEWERT 2 IST NORMALBETRIEB und kein Absturz. Ein Skript, das ihn als Fehler behandelt, meldet einen Programmfehler, wo eine Wiedervorlage faellig ist.",
+                "'close' ist ENDGUELTIG - das sagt das Werkzeug auch so.",
+                "'--offen' UEBERSCHREIBT ein gleichzeitig angegebenes '--status'. Wer beides setzt, bekommt nicht, was er meint.",
+                "'list' oeffnet die coordinator.db schreibfaehig, obwohl es nur liest. Vorgang eroeffnet (Muster wie Issue 906ede75).",
+            ),
         ),
     ),
     CliEintrag(
@@ -860,6 +988,20 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         ),
         ausgabe="Dateien im Ausschleus-Verzeichnis (Kopien, Manifest, "
                 "UEBERGABE.txt).",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.export.ausschleus_admin verify --dir ./ausschleusung",
+                     "Rechnet jede Datei gegen das Manifest nach. Im Versuch auf einem LEEREN Verzeichnis: '[ausschleus] OK - alle Artefakte stimmen mit dem Manifest ueberein', Rueckgabewert 0 - siehe die erste Warnung, das ist ein Befund und keine Zusicherung.",
+                     _GEPRUEFT_618),
+            ),
+            exit_codes=((0, "'add' aufgenommen, 'finalize' geschrieben, 'verify' Paket stimmt"), (1, "'verify' BEFUND: das Paket weicht vom Manifest ab (veraendert, fehlend oder zusaetzlich) - kein Programmfehler; sonst Staging-Fehler"), (2, "'add' BEFUND: die Unbedenklichkeit ist nicht bestaetigt, das Artefakt wurde NICHT aufgenommen"),),
+            warnungen=(
+                "'verify' MELDET AUF EINEM VERZEICHNIS OHNE MANIFEST 'OK' MIT RUECKGABEWERT 0. Gemessen am 2026-07-31. Ein Leerbefund wird damit als Erfolgsmeldung ausgegeben: 'es gibt nichts zu pruefen' wird zu 'alles geprueft'. Vor einer Ausschleusung ist deshalb zusaetzlich zu sehen, ob ueberhaupt ein Paket da ist. Vorgang eroeffnet.",
+                "'--unbedenklich' ist ein ausdruecklicher Freigabeschalter. Ohne ihn wird nichts aufgenommen, und eine leere Angabe bei '--cleared-by' wird ebenfalls abgewiesen - die Unbedenklichkeit braucht einen Namen.",
+                "KEIN STILLES UEBERSCHREIBEN: ein bereits vorhandener Dateiname fuehrt zum Abbruch.",
+                "Nur 'finalize' liest die coordinator.db, und zwar ausdruecklich nur lesend. Ist sie nicht erreichbar, entsteht das Paket trotzdem - dann ohne Kettenspitze im Erzeugungsvermerk.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="lkae_admin",
@@ -883,6 +1025,20 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         ),
         hinweis="NICHT fuer den Produktivbetrieb. Die Daten des Pakets sind "
                 "erfunden.",
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.distribution.lkae_admin verify --target ./lkae-paket",
+                     "Prueft ein gebautes Paket gegen sein Manifest. Im Versuch gegen ein leeres Verzeichnis: 'FEHLER: Kein manifest.json in ...' auf der Fehlerausgabe, Rueckgabewert 1. Anders als bei ausschleus_admin wird das fehlende Manifest hier also erkannt.",
+                     _GEPRUEFT_618),
+            ),
+            exit_codes=((0, "gebaut bzw. Paket stimmt"), (1, "Verteilungsfehler - etwa ein fehlendes Manifest"), (2, "BEFUND: 'verify' fand eine Abweichung zum Manifest - kein Programmfehler"),),
+            warnungen=(
+                "NICHT FUER DEN PRODUKTIVBETRIEB. Das sagt der Dateikopf ausdruecklich.",
+                "'--freigabe' ist Pflicht-Freigabeschalter fuer 'build'. Ohne ihn wird nicht gebaut.",
+                "'build' VERWEIGERT, wenn das Ziel eine produktive Datenablage ueberlappt oder wenn es nicht leer ist. IST DIE KONFIGURATION NICHT LESBAR, greift nur noch der Schutz ueber die Standardpfade - der Ueberlappungsschutz ist dann schwaecher.",
+                "Es oeffnet keine Datenbank; die Konfiguration wird nur gelesen, um die produktiven Pfade zu kennen.",
+            ),
+        ),
     ),
     CliEintrag(
         schluessel="promotion_admin",
@@ -905,6 +1061,19 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             _b("decide", "schreibend",
                "Entscheidung erfassen. 'uebernommen' und 'fremdzustaendig' "
                "sind ENDGUELTIG."),
+        ),
+        tiefe=CliTiefe(
+            beispiele=(
+                _bsp("python -m management.ops.promotion_admin --db ./data/coordinator.db list",
+                     "Fuehrte die Uebernahmeentscheidungen auf. Auf dem leeren Bestand: 'Keine Eintraege.' Rueckgabewert 0.",
+                     _GEPRUEFT_618),
+            ),
+            exit_codes=((0, "ausgegeben bzw. entschieden"), (1, "Fach- oder Aufruffehler"),),
+            warnungen=(
+                "'--force' UEBERGEHT DIE KANDIDATENPRUEFUNG. Danach schuetzt nur noch die Zustandsmaschine. Der Schalter ist fuer den Ausnahmefall gedacht und nicht fuer den Regelbetrieb.",
+                "'candidates' braucht die Pfade zu den Fall-Verzeichnissen. IST DIE KONFIGURATION NICHT LESBAR, werden stillschweigend die Standardpfade unter './data/' benutzt - das Ergebnis kann dann leer sein, OHNE dass ein Fehler erscheint. Eine leere Kandidatenliste ist deshalb erst dann eine Aussage, wenn die Pfade stimmen.",
+                "'candidates' und 'list' oeffnen die coordinator.db schreibfaehig, obwohl sie nur lesen.",
+            ),
         ),
     ),
 
