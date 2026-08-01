@@ -1,0 +1,3 @@
+b539fd23bbb71743b3008517a5ee8e93  build.json
+4f03978ca333ae83f789a13d19bf0293  management/help/cli_html.py
+33dc7932a2ff1ec269494b485a6c0640  tests/test_help_cli_html.py

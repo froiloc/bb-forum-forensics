@@ -3337,52 +3337,6 @@
           "comment": "Importiert aus eingang_claude_Build618.json"
         }
       ]
-    },
-    {
-      "id": "1bfb124e-e3dd-43e1-9d05-d9d9e1ca43f0",
-      "type": "bug",
-      "title": "migrate-dbs --apply bricht auf einem Bestand vor Build 489 ab",
-      "affected_version": "0.8.620",
-      "reporter": "Claude",
-      "reported_at": "2026-08-01T01:30:00+00:00",
-      "prerequisites": "Eine templates.db, die noch VOR Build 489 steht - also mit der alten Tabelle 'placeholder_queries' statt 'placeholders'. Auf einem Bestand, der 489 schon hinter sich hat, tritt der Fehler NICHT auf (siehe unten, Abschnitt 'WARUM ES NIE AUFGEFALLEN IST').",
-      "description": "VORBEMERKUNG IN EIGENER SACHE: Ich habe mc am 2026-08-01 eine korrigierte Reihenfolge VORGESCHLAGEN, OHNE sie gemessen zu haben. mc hat das zu Recht bezweifelt. Die Messungen unten sind daraufhin nachgeholt worden. Sie stuetzen den Vorschlag - aber der Vorschlag war zum Zeitpunkt seiner Aeusserung nicht belegt, und das gehoert hierher.\\n\\nDER BEFUND, GEMESSEN am 2026-08-01 im Bau-Container (Python 3.13, SQLite 3.45.1):\\n\\n  python tools/migrate-dbs.py --data-dir <VOR-489-BESTAND> --apply --no-backup\\n  -> SCHARFGESCHALTET - wende an:\\n     [migrate-full-templates] Tabelle 'placeholders' fehlt - bitte zuerst\\n     'python -m management.migrate_templates_placeholders' ausfuehren (Build 489).\\n  -> Rueckgabewert 1\\n\\nBuild 341 laeuft, Build 388 bricht ab, und die Schritte 421, 489 und 497 LAUFEN NIE. Das Werkzeug, das gebaut wurde, damit man sich die fuenf Skripte nicht merken muss (Anlass Build 585: 'was man sich merken muss, vergisst man'), kommt auf einem solchen Bestand nicht durch.\\n\\nURSACHE 1 - DIE REIHENFOLGE: TEMPLATES_SCHRITTE in tools/migrate-dbs.py (Z. 145-151) folgt der BUILDNUMMER: 341, 388, 421, 489, 497. Build 388 (migrate_templates_full_templates) verlangt aber die Tabelle 'placeholders', die erst Build 489 anlegt - belegt in management/migrate_templates_full_templates.py Z. 332-340 (SystemExit mit genau der obigen Meldung). Die Reihenfolge nach Buildnummer ist hier also nicht die Reihenfolge der Ausfuehrung.\\n\\nURSACHE 2 - DIE FEHLERBEHANDLUNG: templates_anwenden (tools/migrate-dbs.py Z. 246-272) faengt mit 'except Exception'. Die Migration wirft aber SystemExit, und das erbt von BaseException, NICHT von Exception. Folge: das Rollback in Z. 266 laeuft nicht, die vorgesehene Zeile 'FEHLER: ...' (Z. 267-268) erscheint nicht, und die Nachpruefung 'Stand danach' am Ende von main() (Z. 494-500) wird uebersprungen. Der Lauf endet stattdessen roh mit 1. Das ist ein eigener Mangel, unabhaengig von der Reihenfolge - jeder SystemExit aus einer der fuenf Migrationen laeuft so durch.\\n\\nWARUM ES NIE AUFGEFALLEN IST - und warum die Dringlichkeit begrenzt ist: Der Fehler greift NUR, wenn der Bestand noch vor Build 489 steht. Auf der Anlage fehlten laut Build 585 die templates-Migrationen 'seit dem 21./22. Juli' - dort war 'placeholders' also laengst vorhanden, Build 388 war ein No-op, und der Lauf ging durch. GEGENPROBE gefahren: auf einem Bestand, der nur 341 hinter sich hat und ansonsten dem Nach-Zustand entspricht, meldet die Trockenuebung '1 von 5, OFFEN: 388, 421, 489, 497' - erst der wirkliche Vor-489-Zustand bricht.",
-      "expected_behavior": "DIE MESSUNGEN, damit die Pruefung schnell einzusteigen ist. Wegwerf-templates.db im Vor-Zustand bauen (Anleitung ganz unten), dann die Skripte von Hand in der jeweiligen Folge fahren:\\n\\nKANDIDAT A - 341 -> 421 -> 489 -> 497 -> 388  ALLE FUENF rc=0:\\n  module_key     rc=0  'Spalte module_key angelegt; Index ok; Baustein geseedet'\\n  audit_check    rc=0  'templates_audit_log neu aufgebaut, CHECK um template erweitert'\\n  placeholders   rc=0  'Backup: <db>.pre489.bak' (dann migriert)\\n  ci             rc=0  'Backup: <db>.pre497.bak'\\n  full_templates rc=0  'Vorlage vermerk.nicht_identifiziert: aufgenommen'\\n\\nKANDIDAT B - 341 -> 489 -> 497 -> 388, also OHNE 421 vorweg  EBENFALLS ALLE rc=0.\\n  Danach 421 nachgefahren: '[migrate-audit] CHECK bereits erweitert (template) - No-op.'\\n  DARAUS FOLGT: Build 489 zieht den Audit-CHECK von 421 SELBST nach (Beleg: migrate_templates_placeholders.py Z. 149-161 und der No-op-Zweig Z. 182-193). 421 ist danach ueberfluessig. Das ist der Grund, aus dem beide Kandidaten funktionieren - und der Punkt, an dem eine Gegenprueferin ansetzen sollte.\\n\\nWAS ICH NICHT GEPRUEFT HABE und was vor einer Korrektur zu klaeren waere:\\n  1. Ob 388 ausser 'placeholders' noch etwas von 421 braucht. 388 schreibt Audit-Zeilen mit target_type 'template' (full_templates.py Z. 362-368, 394-405) - das verlangt den ERWEITERTEN CHECK. In Kandidat B kam der ueber 489. Ob das in jedem denkbaren Zwischenzustand so ist, ist NICHT belegt.\\n  2. Ob es Zwischenzustaende gibt, die keiner der beiden Kandidaten aufloest - etwa: 421 gelaufen, 489 nicht, 388 nicht.\\n  3. Ob die Reihenfolge irgendwo SONST festgeschrieben ist (Datenmigrationsleitfaden, Betriebsanweisung). Eine Aenderung nur in migrate-dbs.py wuerde dann zwei Wahrheiten erzeugen.\\n  4. Das Verhalten unter Python 3.14 in der VM. Gemessen wurde mit 3.13.\\n\\nVORSCHLAG (NICHT umgesetzt, ausdruecklich zur Pruefung gestellt):\\n  (a) TEMPLATES_SCHRITTE auf 341 -> 421 -> 489 -> 497 -> 388 umstellen UND im Kommentar dort begruenden, warum die Folge von der Buildnummer abweicht - sonst 'korrigiert' sie der naechste zurueck.\\n  (b) In templates_anwenden zusaetzlich SystemExit fangen (oder BaseException mit erneutem Werfen bei KeyboardInterrupt), damit Rollback und Meldung greifen. Das ist unabhaengig von (a) und meines Erachtens der wichtigere der beiden Punkte.\\n  (c) Einen Test, der genau diesen Vor-489-Bestand durchfaehrt. Ohne ihn faellt eine spaetere Umsortierung wieder nicht auf.\\n\\nSO BAUT MAN DEN VOR-ZUSTAND (gefahren, funktioniert): tests/fixtures_templates_schema.sql einlesen, nur die CREATE-Anweisungen nehmen, davon 'report_templates' und 'placeholders' WEGLASSEN, in report_modules die Spalte 'module_key' streichen, den Index 'ux_report_modules_key' weglassen, im CHECK von templates_audit_log 'template','placeholder' entfernen - und stattdessen die alte Tabelle placeholder_queries anlegen (DDL in tests/test_migrate_templates_placeholders.py Z. 29-37).",
-      "actual_behavior": "Auf einem Bestand vor Build 489 bricht 'migrate-dbs --apply' nach Build 341 ab; 421, 489 und 497 laufen nie. Der Abbruch umgeht wegen SystemExit das Rollback, die vorgesehene Fehlermeldung und die Nachpruefung.",
-      "status": "open",
-      "priority": "medium",
-      "severity": "major",
-      "assigned_to": "",
-      "related_to": [],
-      "resolved_in_version": null,
-      "target_version": null,
-      "environment": {
-        "python_version": "3.13 (Bau-Container; VM laeuft 3.14)"
-      },
-      "tags": [
-        "cli",
-        "migration",
-        "templates",
-        "migrate-dbs",
-        "reihenfolge"
-      ],
-      "attachments": [],
-      "updates": [
-        {
-          "timestamp": "2026-08-01T01:30:00+00:00",
-          "author": "Claude",
-          "action": "comment",
-          "old_value": "",
-          "new_value": "",
-          "comment": "Eintrag auf Weisung von mc erstellt. Die Arbeit daran ist ABGEBROCHEN worden - es wird nichts korrigiert, bis mc die Reihenfolge selbst geprueft hat. Meine urspruengliche Empfehlung war ungeprueft; die nachgeholten Messungen stehen unter 'expected_behavior'."
-        },
-        {
-          "timestamp": "2026-08-01T00:57:27.631191+00:00",
-          "author": "merge-tool",
-          "action": "comment",
-          "comment": "Importiert aus eingang_claude_Build621.json"
-        }
-      ]
     }
   ]
 }
