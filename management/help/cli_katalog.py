@@ -111,6 +111,15 @@ _GEPRUEFT_620 = ("Build 620, 2026-08-01, gegen Wegwerf-Bestaende unter /tmp "
                  "Zustand nach allen Migrationen), Python 3.13")
 
 
+#: Build 623 (H19 Nachtrag). Diese Laeufe brauchten KEINEN Wegwerf-Bestand,
+#: und das ist keine Nachlaessigkeit, sondern die Eigenschaft des Werkzeugs:
+#: tools/hilfe_lektorat.py oeffnet keine Datenbank. Es liest das Hilferegister
+#: und diesen Katalog aus dem Paket und schreibt eine HTML-Datei nach --ziel.
+#: Gefahren wurde deshalb im Bestand selbst, mit einem Ziel unter /tmp.
+_GEPRUEFT_623 = ("Build 623, 2026-08-01, im Bestand selbst - das Werkzeug "
+                 "oeffnet keine Datenbank; Ziel unter /tmp, Python 3.13")
+
+
 def _bsp(aufruf: str, wirkung: str, geprueft: str = _GEPRUEFT) -> CliBeispiel:
     """Kurzform fuer einen GEFAHRENEN Beispielaufruf."""
     return CliBeispiel(aufruf=aufruf, wirkung=wirkung, geprueft=geprueft)
@@ -1609,24 +1618,40 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
         schluessel="hilfe_lektorat",
         pfad="tools/hilfe_lektorat.py",
         aufruf="python tools/hilfe_lektorat.py [--nur sicht1,sicht2] "
-               "[--ziel datei.html]",
+               "[--nur-betrieb|--ohne-betrieb] [--ziel datei.html]",
         titel="Lektoratsfassung der Hilfe",
         gruppe="Betrieb und Sicherung",
-        zweck="Alle Hilfetexte in EIN lesbares HTML schreiben, damit sie "
-              "gegengelesen werden koennen, ohne jedes Element einzeln "
-              "anzuklicken.",
+        zweck="Alle Hilfetexte in EIN lesbares HTML schreiben - die "
+              "Sichtkapitel, ihre Einblendtexte UND die Betriebskapitel zu "
+              "den Werkzeugen -, damit sie gegengelesen werden koennen, ohne "
+              "jedes Element einzeln anzuklicken.",
         art="lesend",
         datenbanken=("keine",),
         betrieb="Der Betrieb darf weiterlaufen; gelesen wird nur der "
                 "Hilfebestand im Paket.",
         ausgabe="HTML-Datei (--ziel).",
+        hinweis="Seit Build 623 stehen auch die 65 Betriebskapitel in der "
+                "Fassung - OHNE Rechtefilter, wie der ganze Rest. Die Sperre "
+                "gilt fuer die ausgelieferte Hilfe unter /help, nicht fuer "
+                "die Redaktion des Bestands.",
         tiefe=CliTiefe(
             beispiele=(
                 _bsp("python tools/hilfe_lektorat.py --ziel ./lektorat.html",
                      "Schrieb die Lektoratsfassung der gesamten Hilfe in eine "
-                     "Datei und nannte die Zahl der Kapitel und der "
-                     "Einblendtexte. Rueckgabewert 0.",
-                     _GEPRUEFT_613),
+                     "Datei. Im Versuch: '43 Kapitel, 366 Popup-Texte, 65 "
+                     "Betriebskapitel'. Rueckgabewert 0.",
+                     _GEPRUEFT_623),
+                _bsp("python tools/hilfe_lektorat.py --nur-betrieb "
+                     "--ziel ./nur_werkzeuge.html",
+                     "Nur die Werkzeugkapitel, ohne die Sichtkapitel. Im "
+                     "Versuch: '0 Kapitel, 0 Popup-Texte, 65 "
+                     "Betriebskapitel'. Rueckgabewert 0.",
+                     _GEPRUEFT_623),
+                _bsp("python tools/hilfe_lektorat.py --nur-betrieb "
+                     "--ohne-betrieb",
+                     "Wies die einander widersprechenden Schalter zurueck, "
+                     "ohne eine Datei zu schreiben. Rueckgabewert 2.",
+                     _GEPRUEFT_623),
                 _bsp("python tools/hilfe_lektorat.py --nur gibtsnicht",
                      "Brach ab und nannte auf der Fehlerausgabe ALLE "
                      "verfassten Kapitelkennungen. Rueckgabewert 1.",
@@ -1634,11 +1659,21 @@ CLI_KATALOG: Tuple[CliEintrag, ...] = (
             ),
             exit_codes=((0, "Datei geschrieben"),
                         (1, "in --nur steht eine Kennung, zu der es kein "
-                            "verfasstes Kapitel gibt")),
+                            "verfasstes Kapitel gibt"),
+                        (2, "einander ausschliessende Schalter "
+                            "(--nur-betrieb zusammen mit --ohne-betrieb oder "
+                            "mit --nur)")),
             warnungen=(
                 "EIN TIPPFEHLER IN --nur BRICHT AB, statt eine leere Fassung "
                 "zu schreiben. Das ist Absicht: eine stillschweigend leere "
                 "Lektoratsfassung saehe aus wie 'nichts zu tun'.",
+                "--nur GRENZT AUF SICHTEN EIN und laesst den Betriebsteil "
+                "weg - so wie es auch die Shell-Texte weglaesst. Wer die "
+                "Werkzeuge gegenlesen will, nimmt --nur-betrieb.",
+                "WIDERSPRUECHLICHE SCHALTER WERDEN ZURUECKGEWIESEN und nicht "
+                "ausgelegt. Eine Vorrangregel muesste man sich merken, und "
+                "wer sich vertut, bekaeme wortlos eine Fassung, die er nicht "
+                "wollte.",
                 "--ziel ueberschreibt eine vorhandene Datei wortlos.",
             ),
         ),

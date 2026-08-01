@@ -35,12 +35,30 @@
 #   python tools/hilfe_lektorat.py                      -> Hilfe_Lektorat.html
 #   python tools/hilfe_lektorat.py --ziel <pfad.html>
 #   python tools/hilfe_lektorat.py --nur faelle,escalation
+#   python tools/hilfe_lektorat.py --nur-betrieb        (nur die 65 Werkzeuge)
 #
 # Exit-Codes: 0 = geschrieben, 1 = Fehler (unbekannte Sicht o. ae.)
 #
 # Build 597: je Kapitel steht der relative Dateipfad dabei (mc 2026-07-31).
 #
-# Version: v0.8.597 - Build: 597 - 2026-07-31
+# BUILD 623 (H19 NACHTRAG): DIE BETRIEBSKAPITEL GEHOEREN HIER HINEIN.
+#   Mit Build 622 sind 65 Kapitel in die Vollhilfe gekommen, die dieses
+#   Werkzeug nicht kannte - es liest das SICHT-Register, und die
+#   Betriebskapitel stehen nicht darin. Damit waren sie ausgeliefert, aber
+#   nicht gegengelesen.
+#
+#   DAS IST GENAU DER FEHLER, GEGEN DEN ES DIESES WERKZEUG GIBT. Der Satz
+#   oben - "ein Text, der es nicht in dieses Dokument schafft, wird auch
+#   nicht gegengelesen" - galt fuer sie ebenso. Ein Werkzeug fuer die
+#   Vollstaendigkeitspruefung, das selbst einen Teil des Bestands nicht
+#   sieht, ist schlimmer als keines: es erzeugt den Eindruck, alles sei
+#   gelesen worden.
+#
+#   OHNE RECHTEFILTER, wie der Rest dieser Fassung: der Betriebsteil wird
+#   ausdruecklich MIT 'ops.view' gebaut. Die Sperre gilt fuer die
+#   ausgelieferte Hilfe unter /help, nicht fuer die Redaktion des Bestands.
+#
+# Version: v0.8.623 - Build: 623 - 2026-08-01
 # =============================================================================
 
 from __future__ import annotations
@@ -53,6 +71,10 @@ from typing import List, Optional, Sequence
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from management.help import cli_html                        # noqa: E402
+from management.help.cli_html import (                      # noqa: E402
+    CLI_RECHT, Betriebsgliederung,
+)
 from management.help.inhalt import (                        # noqa: E402
     SHELL_QUELLE, lade_register, quelle_je_sicht,
 )
@@ -63,6 +85,12 @@ from management.help.sicht_katalog import (                 # noqa: E402
 )
 
 STANDARD_ZIEL = "Hilfe_Lektorat.html"
+
+#: Die Quelle der Betriebskapitel - fuer die Angabe "Text steht in:" je
+#: Kapitel. Sie sind kein Kapitel je Datei wie die Sichttexte, sondern
+#: stammen alle aus EINEM Katalog; das ist beim Gegenlesen die wichtigere
+#: Auskunft, weil eine Korrektur dort und nur dort einzutragen ist.
+CLI_QUELLE = "management/help/cli_katalog.py"
 
 _CSS = """
 :root{--t:#1c1c1c;--g:#5a5a5a;--l:#d6d6d6;--f:#f7f7f5;--a:#1f4e79;--o:#8a5a00}
@@ -118,6 +146,65 @@ footer{border-top:1px solid var(--l);color:var(--g);font-size:.82rem;
 }
 """
 
+#: Die Regeln fuer den Betriebsteil - EIN EIGENER BLOCK, der nur dann in das
+#: Dokument kommt, wenn auch Betriebskapitel darin stehen.
+#:
+#: WARUM NICHT EINFACH ANHAENGEN: Ohne diese Trennung enthielte auch eine
+#: Fassung ohne Betriebsteil die Klassennamen 'aiw-h-cli-...' - im
+#: Stylesheet, aber sichtbar in der Datei. Eine Pruefung "steht hier
+#: irgendwo etwas vom Betriebsteil?" haette dann immer angeschlagen, und
+#: '--ohne-betrieb' waere nicht mehr zeichengleich mit der Fassung von
+#: Build 622. Totes CSS ist ausserdem genau die Sorte Rest, die spaeter
+#: niemand mehr zuzuordnen weiss.
+_CSS_BETRIEB = """
+/* --- Build 623: der Betriebsteil ------------------------------------------
+ * Die Kapitel kommen UNVERAENDERT aus management/help/cli_html.py - dieselbe
+ * Funktion, die auch /help beliefert. Nur die Gestaltung ist hier eine
+ * andere, weil diese Fassung eigenstaendig ist und help.css nicht laedt.
+ * Genau so gehoert es: gegengelesen wird der TEXT, und der muss derselbe
+ * sein; wie er eingefaerbt ist, darf sich unterscheiden. */
+.betriebsvorspann{border-top:3px double var(--a);margin-top:3em;
+ padding-top:1.4em}
+.betriebsvorspann h2{color:var(--a);font-size:1.5rem;margin:0 0 .4em}
+article.aiw-h-betrieb{border-left:3px solid var(--l);padding-left:1em}
+article.aiw-h-betrieb h2 code{font-size:.85em}
+.aiw-h-betrieb-titel{color:var(--g);font-size:.75em;font-weight:400}
+.aiw-h-betrieb-marke{color:var(--g);font-size:.75rem;letter-spacing:.04em;
+ text-transform:uppercase;margin:0 0 .5em}
+.aiw-h-recht{background:var(--f);border-left:3px solid var(--a);
+ padding:.5em .8em;margin:0 0 1.2em;font-size:.93rem}
+.aiw-h-abschnitt{margin:1.4em 0}
+.aiw-h-abschnitt h3{font-size:1.06rem;margin:0 0 .3em}
+.aiw-h-cli-aufruf code,.aiw-h-cli-beispiel pre{display:block;
+ background:var(--f);border:1px solid var(--l);border-radius:3px;
+ padding:.4em .6em;font-size:.86rem;white-space:pre-wrap;
+ word-break:break-word;overflow-wrap:anywhere;margin:0 0 .4em}
+.aiw-h-cli-beispiel{margin:1em 0}
+.aiw-h-cli-nachweis{color:var(--g);font-size:.8rem;margin:0}
+.aiw-h-cli-hinweis{background:var(--f);border-left:3px solid var(--o);
+ padding:.4em .7em}
+.aiw-h-cli-tabelle{border-collapse:collapse;width:100%;font-size:.9rem;
+ margin:.6em 0}
+.aiw-h-cli-tabelle th,.aiw-h-cli-tabelle td{border:1px solid var(--l);
+ padding:.35em .55em;text-align:left;vertical-align:top}
+.aiw-h-cli-tabelle th{background:var(--f);font-size:.8rem}
+.aiw-h-cli-art-schreibend{color:var(--o);font-weight:600}
+.aiw-h-cli-art-lesend{color:var(--g)}
+.aiw-h-offen{color:var(--o);font-style:italic}
+/* Die Blaetterleiste ist ein Bildschirmwerkzeug. In einer Lesevorlage, die
+ * am Stueck durchgegangen wird, ist sie nur Stoerung. */
+.aiw-h-blaettern{display:none}
+@media print{
+ .betriebsvorspann{break-before:page}
+ .aiw-h-cli-aufruf code,.aiw-h-cli-beispiel pre{background:none;
+  border:1pt solid #000}
+ .aiw-h-cli-hinweis{background:none;border-left:2pt solid #000}
+ .aiw-h-cli-tabelle th{background:none}
+ .aiw-h-cli-art-schreibend{color:#000;text-transform:uppercase}
+ .aiw-h-cli-beispiel,.aiw-h-cli-tabelle tr{break-inside:avoid}
+}
+"""
+
 
 def _e(text: Optional[str]) -> str:
     return html.escape(text or "", quote=True)
@@ -161,13 +248,35 @@ def _kontext_html(eintraege, ueberschrift: str) -> List[str]:
     return teile
 
 
+def betriebsteil_fuer_lektorat(einbeziehen: bool = True) -> Betriebsgliederung:
+    """
+    Der Betriebsteil fuer die Lesevorlage - AUSDRUECKLICH MIT DEM RECHT.
+
+    Die Lektoratsfassung kennt keinen Rechtefilter (Kopf dieser Datei). Sie
+    hier zu filtern hiesse, den Teil des Bestands ungelesen zu lassen, der am
+    ehesten Schaden anrichtet, wenn er falsch beschrieben ist - die Aufrufe,
+    die etwas veraendern.
+
+    Der Aufruf steht in einer EIGENEN Funktion und nicht mitten im Bau, damit
+    diese Absicht eine Stelle hat, an der man sie sieht und pruefen kann.
+    """
+    if not einbeziehen:
+        return Betriebsgliederung()
+    return cli_html.baue_betriebsgliederung((CLI_RECHT,))
+
+
 def baue_lektoratsfassung(register: HilfeRegister,
                           nur: Sequence[str] = (),
                           build: int = 0,
-                          datum: str = "") -> str:
+                          datum: str = "",
+                          betrieb: Optional[Betriebsgliederung] = None) -> str:
     """
-    Reine Funktion: Register -> eigenstaendiges HTML. Kein Datei- und kein
-    Netzzugriff, damit sie testbar bleibt.
+    Reine Funktion: Register (+ Betriebsteil) -> eigenstaendiges HTML. Kein
+    Datei- und kein Netzzugriff, damit sie testbar bleibt.
+
+    'betrieb' ist wie in render_html.render_hilfe_seite ein bereits
+    zusammengestellter Teil und standardmaessig None - dann entsteht
+    zeichengleich die Fassung von Build 622.
     """
     # Kapitel in KATALOGREIHENFOLGE - dieselbe Ordnung wie Navigation und
     # Handbuch. Wer nach dem Lesen etwas wiederfinden will, sucht es dort,
@@ -178,13 +287,19 @@ def baue_lektoratsfassung(register: HilfeRegister,
                if register.get(e.id) is not None
                and (auswahl is None or e.id in auswahl)]
 
+    betriebs_eintraege = (betrieb.eintraege()
+                          if betrieb is not None and not betrieb.leer()
+                          else ())
+
     offen = fehlliste_sichten(register)
     teile: List[str] = [
         "<!DOCTYPE html>", '<html lang="de">', "<head>",
         '<meta charset="utf-8">',
         '<meta name="viewport" content="width=device-width, initial-scale=1">',
         "<title>AIW &ndash; Hilfe, Lektoratsfassung</title>",
-        "<style>%s</style>" % _CSS, "</head>", "<body>",
+        "<style>%s%s</style>" % (
+            _CSS, _CSS_BETRIEB if betriebs_eintraege else ""),
+        "</head>", "<body>",
         '<header class="kopf"><h1>AIW &ndash; Hilfe: Lektoratsfassung</h1>',
         '<span class="badge">VS-NfD</span>',
         "<span>Build %s%s</span></header>"
@@ -197,8 +312,17 @@ def baue_lektoratsfassung(register: HilfeRegister,
         "<code>/help</code> stehen; die Tabellen darunter enthalten die "
         "<strong>Popup-Texte</strong>, die im Werkzeug nur im Hilfemodus am "
         "jeweiligen Element sichtbar sind. "
-        "Stand: %d von %d Sichten verfasst, %d noch offen.</p>"
-        % (len(register.ids()), len(SICHT_KATALOG), len(offen)),
+        "Stand: %d von %d Sichten verfasst, %d noch offen.%s</p>"
+        % (len(register.ids()), len(SICHT_KATALOG), len(offen),
+           # Build 623: der Betriebsteil wird IM KOPF genannt und nicht erst
+           # dort, wo er anfaengt. Wer die Vorlage aufschlaegt, muss wissen,
+           # dass hier zwei Bestaende mit zwei Adressaten zu lesen sind -
+           # und dass fuer den zweiten eine andere Sprachregel gilt.
+           (" Dazu %d <strong>Betriebskapitel</strong> zu den Werkzeugen der "
+            "Kommandozeile: für sie gilt Regel H-2 (Betriebssprache), nicht "
+            "Regel H-1. Sie stehen alle in <code>%s</code>."
+            % (len(betriebs_eintraege), _e(CLI_QUELLE)))
+           if betriebs_eintraege else ""),
     ]
 
     # Inhaltsverzeichnis
@@ -208,6 +332,11 @@ def baue_lektoratsfassung(register: HilfeRegister,
         gruppe = e.gruppe if e is not None else "?"
         teile.append('<li><a href="#%s">%s</a> <small>(%s)</small></li>'
                      % (_e(k.sicht), _e(k.titel), _e(gruppe)))
+    for e2 in betriebs_eintraege:
+        teile.append('<li><a href="#%s"><code>%s</code></a> '
+                     "<small>(Betrieb / %s)</small></li>"
+                     % (_e(cli_html.kapitel_id(e2.schluessel)),
+                        _e(e2.schluessel), _e(e2.gruppe)))
     teile.append("</ol></nav>")
 
     teile.append('<main class="inhalt">')
@@ -250,6 +379,32 @@ def baue_lektoratsfassung(register: HilfeRegister,
             "Popup-Texte dieser Sicht (%d)" % len(k.kontext)))
         teile.append("</article>")
 
+    # --- Der Betriebsteil ---------------------------------------------------
+    # Die Kapitel kommen UNVERAENDERT aus cli_html - derselbe Aufruf, der
+    # auch /help beliefert. Waere hier eine zweite Erzeugung, koennte die
+    # Lesevorlage etwas anderes zeigen als die ausgelieferte Seite, und die
+    # Abnahme haette dann den falschen Text abgenommen.
+    if betriebs_eintraege:
+        teile.append('<div class="betriebsvorspann">')
+        teile.append("<h2>Betriebskapitel &ndash; die Werkzeuge der "
+                     "Kommandozeile (%d)</h2>" % len(betriebs_eintraege))
+        teile.append(
+            '<p class="quelle">Text steht in: <b>%s</b> &ndash; '
+            "alle %d Kapitel, ein Eintrag je Werkzeug. Eine Korrektur ist "
+            "dort einzutragen und nirgends sonst.</p>"
+            % (_e(CLI_QUELLE), len(betriebs_eintraege)))
+        teile.append(
+            "<p><strong>Beim Gegenlesen zu beachten:</strong> Für diese "
+            "Kapitel gilt Regel H-1 <em>nicht</em>. Dateinamen, "
+            "Datenbanknamen und Aufrufe sind hier richtig und sollen so "
+            "stehen bleiben (Regel H-2). Zu prüfen ist etwas anderes: ob die "
+            "Angabe <em>lesend</em> oder <em>schreibend</em> stimmt, ob die "
+            "genannten Datenbanken vollständig sind, ob die "
+            "Betriebsvoraussetzung zutrifft &ndash; und ob jeder "
+            "Beispielaufruf einen Prüfnachweis trägt.</p>")
+        teile.append("</div>")
+        teile.append(cli_html.kapitel_alle_html(betrieb))
+
     teile.append("</main>")
 
     if offen:
@@ -257,10 +412,19 @@ def baue_lektoratsfassung(register: HilfeRegister,
                      % (len(offen), _e(", ".join(offen))))
     else:
         teile.append("<footer>Alle Sichten haben ein Kapitel.")
+    if betrieb is not None and not betrieb.leer():
+        # Der Leerbefund wird AUSGESPROCHEN, nicht weggelassen: 'keine
+        # Aufzaehlung' und 'es gibt nichts aufzuzaehlen' sehen sonst gleich
+        # aus (Grundregel 1).
+        ohne = betrieb.ohne_beispiele()
+        teile.append(
+            "<br><strong>Betriebskapitel ohne gefahrenen Beispielaufruf "
+            "(%d):</strong> %s"
+            % (len(ohne), _e(", ".join(ohne)) if ohne else "keine"))
     teile.append("<br>VS-NUR FÜR DEN DIENSTGEBRAUCH &middot; Regel H-0: die "
                  "Hilfe beschreibt das Werkzeug, niemals Falldaten.</footer>")
     teile.append("</body></html>")
-    return "\n".join(teile)
+    return "\n".join(t for t in teile if t)
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
@@ -270,8 +434,27 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                    help="Zieldatei (Vorgabe: %s)" % STANDARD_ZIEL)
     p.add_argument("--nur", default="",
                    help="nur diese Sichten, kommagetrennt "
-                        "(Vorgabe: alle verfassten)")
+                        "(Vorgabe: alle verfassten). Der Betriebsteil "
+                        "entfaellt dabei.")
+    p.add_argument("--nur-betrieb", action="store_true",
+                   help="NUR die Betriebskapitel (die 65 Werkzeuge der "
+                        "Kommandozeile), ohne die Sichtkapitel.")
+    p.add_argument("--ohne-betrieb", action="store_true",
+                   help="Die Betriebskapitel weglassen (Fassung wie vor "
+                        "Build 623).")
     args = p.parse_args(argv)
+
+    # ZWEI GEGENSAETZLICHE SCHALTER WERDEN NICHT AUSGELEGT, sondern
+    # zurueckgewiesen. Eine Vorrangregel muesste man sich merken - und wer
+    # sich vertut, bekaeme wortlos eine Fassung, die er nicht wollte.
+    if args.nur_betrieb and args.ohne_betrieb:
+        print("--nur-betrieb und --ohne-betrieb schliessen einander aus.",
+              file=sys.stderr)
+        return 2
+    if args.nur_betrieb and args.nur:
+        print("--nur-betrieb und --nur schliessen einander aus.",
+              file=sys.stderr)
+        return 2
 
     register = lade_register()
     nur = [s.strip() for s in args.nur.split(",") if s.strip()]
@@ -293,7 +476,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     except Exception as exc:                      # pragma: no cover
         print("Hinweis: build.json nicht lesbar (%s)" % exc, file=sys.stderr)
 
-    text = baue_lektoratsfassung(register, nur, build, datum)
+    # Der Betriebsteil entfaellt bei --nur: wer auf einzelne Sichten
+    # eingrenzt, meint die Sichten - genau wie die Shell-Texte heute schon
+    # entfallen. Mit --nur-betrieb entfaellt umgekehrt alles andere.
+    if args.nur_betrieb:
+        register_fuer_ausgabe = HilfeRegister(())
+        nur = []
+    else:
+        register_fuer_ausgabe = register
+    betrieb = betriebsteil_fuer_lektorat(
+        einbeziehen=not args.ohne_betrieb and not nur)
+
+    text = baue_lektoratsfassung(register_fuer_ausgabe, nur, build, datum,
+                                 betrieb=betrieb)
     ziel = Path(args.ziel)
     ziel.write_text(text, encoding="utf-8")
 
@@ -301,14 +496,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # Registers - auch bei --nur. Wer eine Teilfassung erzeugte, las dann
     # "27 Kapitel" und hatte sechs in der Hand. Eine Zahl, die etwas anderes
     # zaehlt als das erzeugte Dokument, ist eine Falschauskunft; gezaehlt wird
-    # jetzt, was WIRKLICH in der Datei steht.
-    gewaehlt = [s for s in register.sichten
+    # jetzt, was WIRKLICH in der Datei steht. Build 623 zieht das fuer den
+    # Betriebsteil nach - aus demselben Grund.
+    gewaehlt = [s for s in register_fuer_ausgabe.sichten
                 if not nur or s.sicht in set(nur)]
     popups = sum(len(s.kontext) for s in gewaehlt)
-    if not nur:
+    if not nur and not args.nur_betrieb:
         popups = len(register.kontext_schluessel())      # samt Shell-Texten
-    print("Geschrieben: %s (%d Kapitel, %d Popup-Texte)"
-          % (ziel, len(gewaehlt), popups))
+    print("Geschrieben: %s (%d Kapitel, %d Popup-Texte, %d Betriebskapitel)"
+          % (ziel, len(gewaehlt), popups, len(betrieb.eintraege())))
     return 0
 
 

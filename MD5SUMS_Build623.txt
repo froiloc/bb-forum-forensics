@@ -1,0 +1,4 @@
+9df6aaf707f7a4144b2c81938dc90f7e  build.json
+52b30a6fbc63d00aa9c3664f1be4a4be  management/help/cli_katalog.py
+45ad65869c7e32a1fcb629979b8d505b  tools/hilfe_lektorat.py
+570b036aa02e1b2e2fe64f62be9f021c  tests/test_help_lektorat.py

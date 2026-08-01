@@ -26,7 +26,19 @@
 #        (mc 2026-07-31) - und der Shell-Block ebenso
 # LK13 - quelle_je_sicht() ist vollzaehlig: kein Kapitel ohne Pfadangabe
 #
-# Version: v0.8.596 - Build: 596 - 2026-07-31
+# Build 623 (H19 Nachtrag), am Ende der Datei - der Betriebsteil:
+# LK14 - jedes der 65 Werkzeuge hat ein Kapitel in der Vorlage
+# LK15 - jeder Beispielaufruf, Nachweis, Rueckgabewert und Warnhinweis steht
+#        darin (was fehlt, wird nicht gegengelesen)
+# LK16 - kein Rechtefilter, mit Gegenprobe
+# LK17 - Kopf, Vorspann und Fusszeile sagen, was beim Gegenlesen zu
+#        beachten ist - hier gilt Regel H-2 und nicht H-1
+# LK18 - ohne Betriebsteil ist die Fassung ZEICHENGLEICH die von Build 622
+# LK19 - --nur-betrieb / --ohne-betrieb / --nur; Widersprueche -> Exit 2
+# LK20 - die Meldung zaehlt, was wirklich in der Datei steht
+# LK21 - das Verzeichnis fuehrt jedes Betriebskapitel
+#
+# Version: v0.8.623 - Build: 623 - 2026-08-01
 # =============================================================================
 
 import os
@@ -236,3 +248,191 @@ def test_lk13_pfadangabe_ist_vollzaehlig(echt):
     # Umgekehrt kein Eintrag ins Leere.
     waisen = sorted(set(quellen) - set(reg.ids()))
     assert not waisen, "Pfadangabe zu Kapiteln, die es nicht gibt: %s" % waisen
+
+
+# =============================================================================
+# Build 623 (H19 Nachtrag) - DIE BETRIEBSKAPITEL IN DER LESEVORLAGE.
+#
+# WORUM ES GEHT: Mit Build 622 sind 65 Kapitel in die Vollhilfe gekommen, die
+# dieses Werkzeug nicht kannte. Sie waren ausgeliefert, aber nicht
+# gegengelesen - genau der Fehler, gegen den es die Lektoratsfassung gibt.
+# Der wichtigste Test ist deshalb auch hier die VOLLZAEHLIGKEIT (LK14/LK15).
+#
+# LK14 - JEDES der 65 Werkzeuge hat ein Kapitel in der Vorlage
+# LK15 - jeder Beispielaufruf, jeder Pruefnachweis, jede Warnung und jeder
+#        Rueckgabewert steht darin - was fehlt, wird nicht gegengelesen
+# LK16 - KEIN Rechtefilter: der Betriebsteil ist ohne 'ops.view' aufrufbar,
+#        weil die Sperre fuer /help gilt und nicht fuer die Redaktion
+# LK17 - der Kopf nennt den Adressatenwechsel; die Fusszeile nennt die
+#        Werkzeuge ohne Beispiellauf namentlich
+# LK18 - ohne Betriebsteil ist die Fassung inhaltlich die von Build 622
+# LK19 - --nur-betrieb liefert NUR die Werkzeuge, --ohne-betrieb keines;
+#        widerspruechliche Schalter werden zurueckgewiesen (Exit 2)
+# LK20 - die Meldung zaehlt, was WIRKLICH in der Datei steht (Befund 602,
+#        fuer den Betriebsteil nachgezogen)
+# LK21 - das Verzeichnis fuehrt jedes Betriebskapitel und verweist richtig
+# =============================================================================
+
+from management.help import cli_html as _cli_html            # noqa: E402
+from management.help.cli_katalog import CLI_KATALOG          # noqa: E402
+from tools.hilfe_lektorat import (                           # noqa: E402
+    CLI_QUELLE, betriebsteil_fuer_lektorat,
+)
+
+
+def _vorlage_mit_betrieb():
+    return baue_lektoratsfassung(lade_register(), build=623, datum="2026-08-01",
+                                 betrieb=betriebsteil_fuer_lektorat())
+
+
+def test_lk14_jedes_werkzeug_hat_ein_kapitel_in_der_vorlage():
+    doc = _vorlage_mit_betrieb()
+    fehlend = [e.schluessel for e in CLI_KATALOG
+               if 'id="cli-%s"' % e.schluessel not in doc]
+    assert not fehlend, ("nicht gegenlesbar, weil nicht in der Vorlage: %s"
+                         % ", ".join(fehlend))
+
+
+def test_lk15_jeder_tiefeninhalt_steht_in_der_vorlage():
+    """
+    Beispiele, Nachweise, Rueckgabewerte und Warnungen sind der Teil des
+    Katalogs, bei dem ein Fehler am teuersten ist - er kostet die Zeit
+    dessen, der dem Beispiel folgt. Genau er muss gegengelesen werden.
+    """
+    import html as _html
+
+    doc = _vorlage_mit_betrieb()
+    fehlend = []
+    for e in CLI_KATALOG:
+        if e.tiefe is None:
+            continue
+        for bsp in e.tiefe.beispiele:
+            for wert in (bsp.aufruf, bsp.wirkung, bsp.geprueft):
+                if _html.escape(wert, quote=True) not in doc:
+                    fehlend.append("%s/beispiel" % e.schluessel)
+        for _, bedeutung in e.tiefe.exit_codes:
+            if _html.escape(bedeutung, quote=True) not in doc:
+                fehlend.append("%s/rueckgabe" % e.schluessel)
+        for w in e.tiefe.warnungen:
+            if _html.escape(w, quote=True) not in doc:
+                fehlend.append("%s/warnung" % e.schluessel)
+    assert not fehlend, "fehlt: %s" % ", ".join(sorted(set(fehlend)))
+
+
+def test_lk16_kein_rechtefilter_in_der_lesevorlage():
+    """
+    Die Sperre (E1) gilt fuer die ausgelieferte Hilfe, nicht fuer die
+    Redaktion des Bestands - so wie diese Fassung auch Sichtkapitel zeigt,
+    die eine lesende Person im Betrieb nicht saehe (LK05).
+    """
+    teil = betriebsteil_fuer_lektorat()
+    assert not teil.leer()
+    assert len(teil.eintraege()) == len(CLI_KATALOG)
+    # ... und die Gegenprobe: ohne das Recht liefert dieselbe Funktion in
+    # cli_html nichts. Der Unterschied ist also nicht zufaellig.
+    assert _cli_html.baue_betriebsgliederung(("dashboard.view",)).leer()
+
+
+def test_lk16b_abschaltbar():
+    assert betriebsteil_fuer_lektorat(einbeziehen=False).leer()
+
+
+def test_lk17_kopf_und_fusszeile_sagen_das_noetige():
+    doc = _vorlage_mit_betrieb()
+    kopf = doc[:doc.index('<nav class="toc"')]
+    assert "Betriebskapitel" in kopf
+    assert "H-2" in kopf and "H-1" in kopf
+    assert CLI_QUELLE in kopf
+
+    fuss = doc[doc.rindex("<footer"):]
+    ohne = betriebsteil_fuer_lektorat().ohne_beispiele()
+    assert "ohne gefahrenen Beispielaufruf" in fuss
+    for schluessel in ohne:
+        assert schluessel in fuss, schluessel
+
+
+def test_lk17b_lesehinweis_nennt_was_zu_pruefen_ist():
+    """
+    Regel H-1 gilt hier nicht - wer das beim Gegenlesen nicht weiss,
+    'korrigiert' die Dateinamen weg. Der Hinweis steht deshalb unmittelbar
+    vor dem ersten Betriebskapitel und nicht nur im Kopf.
+    """
+    doc = _vorlage_mit_betrieb()
+    vorspann = doc[doc.index('<div class="betriebsvorspann">'):
+                   doc.index('id="cli-vorspann"')]
+    assert "Regel H-1" in vorspann
+    assert "schreibend" in vorspann
+    assert "Prüfnachweis" in vorspann
+
+
+def test_lk18_ohne_betriebsteil_ist_die_fassung_die_alte():
+    """
+    ZEICHENGLEICH mit Build 622 - auch im Stylesheet. Die Regeln fuer den
+    Betriebsteil stehen in einem eigenen Block, der nur mitkommt, wenn auch
+    Kapitel da sind. Sonst waere selbst eine Fassung ohne Betriebsteil an
+    den Klassennamen im CSS als 'nach 623' erkennbar gewesen, und dieser
+    Vergleich haette nur noch halb getragen.
+    """
+    reg = lade_register()
+    alt = baue_lektoratsfassung(reg, build=623, datum="2026-08-01")
+    neu = baue_lektoratsfassung(reg, build=623, datum="2026-08-01",
+                                betrieb=betriebsteil_fuer_lektorat(False))
+    assert alt == neu
+    assert "Betriebskapitel" not in alt
+    assert "cli-" not in alt
+    assert "aiw-h-" not in alt
+
+
+def test_lk19_schalter(tmp_path, capsys):
+    ziel = tmp_path / "l.html"
+
+    assert main(["--nur-betrieb", "--ziel", str(ziel)]) == 0
+    doc = ziel.read_text(encoding="utf-8")
+    assert 'id="cli-backup_admin"' in doc
+    assert 'id="dashboard"' not in doc
+
+    assert main(["--ohne-betrieb", "--ziel", str(ziel)]) == 0
+    doc = ziel.read_text(encoding="utf-8")
+    assert 'id="dashboard"' in doc
+    assert 'id="cli-backup_admin"' not in doc
+
+    # --nur meint die Sichten; der Betriebsteil entfaellt dann - genau wie
+    # die Shell-Texte heute schon (LK07).
+    assert main(["--nur", "faelle", "--ziel", str(ziel)]) == 0
+    assert "cli-" not in ziel.read_text(encoding="utf-8")
+
+
+def test_lk19b_widerspruechliche_schalter_werden_zurueckgewiesen(tmp_path):
+    """
+    Nicht ausgelegt, sondern zurueckgewiesen: eine Vorrangregel muesste man
+    sich merken, und wer sich vertut, bekaeme wortlos eine Fassung, die er
+    nicht wollte.
+    """
+    ziel = str(tmp_path / "l.html")
+    assert main(["--nur-betrieb", "--ohne-betrieb", "--ziel", ziel]) == 2
+    assert main(["--nur-betrieb", "--nur", "faelle", "--ziel", ziel]) == 2
+
+
+def test_lk20_meldung_zaehlt_was_in_der_datei_steht(tmp_path, capsys):
+    ziel = tmp_path / "l.html"
+
+    main(["--ziel", str(ziel)])
+    zeile = capsys.readouterr().out
+    assert "%d Betriebskapitel" % len(CLI_KATALOG) in zeile
+
+    main(["--ohne-betrieb", "--ziel", str(ziel)])
+    assert "0 Betriebskapitel" in capsys.readouterr().out
+
+    main(["--nur-betrieb", "--ziel", str(ziel)])
+    aus = capsys.readouterr().out
+    assert "0 Kapitel" in aus
+    assert "%d Betriebskapitel" % len(CLI_KATALOG) in aus
+
+
+def test_lk21_verzeichnis_fuehrt_jedes_betriebskapitel():
+    doc = _vorlage_mit_betrieb()
+    toc = doc[doc.index('<nav class="toc"'):doc.index("</nav>")]
+    for e in CLI_KATALOG:
+        marke = _cli_html.kapitel_id(e.schluessel)
+        assert 'href="#%s"' % marke in toc, e.schluessel
+        assert 'id="%s"' % marke in doc, e.schluessel
