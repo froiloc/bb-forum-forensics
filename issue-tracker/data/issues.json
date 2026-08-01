@@ -3383,6 +3383,114 @@
           "comment": "Importiert aus eingang_claude_Build621.json"
         }
       ]
+    },
+    {
+      "id": "17200856-f197-4b78-b7c6-1814f70d2afa",
+      "type": "improvement",
+      "title": "Alle Schaltflächen und Inputs beschreiben",
+      "affected_version": "0.8.622",
+      "reporter": "Alex",
+      "reported_at": "2026-08-01T07:15:56.824233+00:00",
+      "prerequisites": "Die Kontexthilfe ist umgesetzt. Das Recht zur Redaktion von Vorlagen, Bausteinen und Platzhaltern bei der aktuellen Rolle vorhanden. Eine der Sichten \"Baustein-Module\", \"Dokumentenvorlagen\" oder \"Platzhalter und Queries\" ist geöffnet.",
+      "description": "Die Kontexthilfe ist viel zu oberflächlich.",
+      "expected_behavior": "Die Kontexthilfe ist für jede Schaltfläche und jedes Inputfeld sowie die Liste der verfügbaren, fertigen Elemente nutzbar. Jedes Element wird bezüglich seines Zwecks erklärt.\r\n\r\nInsbesondere die Wechselschaltflächen \"Rohansicht\" und \"Vorschau\" müssen erklärt werden.",
+      "actual_behavior": "Alle tätsächlich wichtigen Punkte werden nicht erklärt.",
+      "status": "open",
+      "priority": "critical",
+      "severity": "blocker",
+      "assigned_to": "Claude",
+      "related_to": [],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14",
+        "database": "templates.db"
+      },
+      "tags": [
+        "Kontexthilfe",
+        "Redaktion"
+      ],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-01T07:15:56.824255+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Issue erstellt"
+        }
+      ]
+    },
+    {
+      "id": "d60e893a-6486-46bd-bf94-28a48524fddb",
+      "type": "improvement",
+      "title": "Listen in Redaktion auf tabulator.js umstellen",
+      "affected_version": "0.8.622",
+      "reporter": "Alex",
+      "reported_at": "2026-08-01T07:20:48.329995+00:00",
+      "prerequisites": "Tabulator.js ist integriert. Es gibt eine hinreichend große Anzahl an Vorlagen, Platzhaltern oder Baustein-Modulen.",
+      "description": "Um das Finden von fertigen Elementen zu ermöglichen und auch die Ordnung zu bewahren, soll das Layout in den Sichten der Redaktion verbessert werden.",
+      "expected_behavior": "Die bisherige Liste auf der linken Seite soll durch tabulator.js ersetzt werden. Ggf. sollte diese Tabelle analog zu anderen Sichten mit einer Maximalhöhe und Pagination in den oberen Bereich verschoben werden.",
+      "actual_behavior": "Bei einer großen Anzahl an fertigen Elementen wird die Liste unüberschaubar und schwer zu nutzen.",
+      "status": "open",
+      "priority": "high",
+      "severity": "major",
+      "assigned_to": "Claude",
+      "related_to": [],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14",
+        "database": "templates.db"
+      },
+      "tags": [],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-01T07:20:48.330028+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Issue erstellt"
+        }
+      ]
+    },
+    {
+      "id": "3508ad71-e48c-4831-8ccd-5220a4e79f1d",
+      "type": "improvement",
+      "title": "Editor.js-Vorschau rechts neben Eingabemaske verschieben",
+      "affected_version": "0.8.622",
+      "reporter": "Alex",
+      "reported_at": "2026-08-01T07:27:43.758416+00:00",
+      "prerequisites": "Die Module im Redaktionsbereich sind vorhanden.",
+      "description": "Das Layout soll aufgeräumt werden. Die Vorschau soll zum immer sichbaren Standard werden. Sie soll auch auf die Dokumentenvorlage und möglicherweise die Platzhalter, falls sinnvoll, ausgeweitet werden. Bei den Platzhaltern könnte sie in Verbindung mit dem Bereich Prüfung verschoben werden.",
+      "expected_behavior": "Die Editor.js Vorschau soll auf in einen eigenen Bereich rechts neben die Eingabemaske verschoben werden. Sie soll dauerhaft eingeblendet sein. Damit entfällt die Notwendigkeit für die Schaltfläche \"Rohansicht/Vorschau\".\r\n\r\nDer neue Vorschau-Bereich soll aber flexibel sein und nur an die rechte Seite gehen, falls dort auch Platz ist, sonst kommt er nach wie vor unter die Eingabemaske.",
+      "actual_behavior": "Das Vorschaufenster klebt unten an der Eingabemaske.",
+      "status": "open",
+      "priority": "high",
+      "severity": "major",
+      "assigned_to": "Claude",
+      "related_to": [],
+      "resolved_in_version": null,
+      "target_version": null,
+      "environment": {
+        "python_version": "3.14",
+        "database": "templates.db"
+      },
+      "tags": [],
+      "attachments": [],
+      "updates": [
+        {
+          "timestamp": "2026-08-01T07:27:43.758440+00:00",
+          "author": "Alex",
+          "action": "comment",
+          "old_value": "",
+          "new_value": "",
+          "comment": "Issue erstellt"
+        }
+      ]
     }
   ]
 }

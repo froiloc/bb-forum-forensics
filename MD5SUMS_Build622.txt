@@ -1,0 +1,7 @@
+7a92ea2ad7279a6eeff6807b23a9fbf1  build.json
+73988c0ca8cfb0cee7060415ad7a5ea7  management/help/render_html.py
+e79da46ad523a80a2048e0a7071668a7  management/server/management_app.py
+ca4e1b962051349f51884d2559b2329c  management/server/static/help.css
+a754fccee0fdf92d69462fe12639c52b  tests/test_help_render.py
+6f3aae943739390baeafb2ec71232ddf  tests/test_help_api.py
+6a284d8bbe49ff7584f69c84604be39d  documents/rules-help.md

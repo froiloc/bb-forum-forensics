@@ -29,7 +29,14 @@
 #        unterliegt keiner Sperre (sie erklaert Bedienelemente, die jede
 #        Person ohnehin vor sich sieht)
 #
-# Version: v0.8.589 - Build: 589 - 2026-07-31
+# Build 622 (H19) - der Betriebsteil an der lebenden Route:
+# HA13 - mit 'ops.view' stehen ALLE 65 Betriebskapitel in der Antwort
+# HA14 - ohne 'ops.view' steht von ihnen NICHTS darin - weder Kapitel noch
+#        Verzeichniseintrag noch Suchindex-Eintrag
+# HA15 - das ausgelieferte Stylesheet kennt die Klassen des Betriebsteils
+# HA16 - der Betriebsteil aendert nichts an der Belegkette
+#
+# Version: v0.8.622 - Build: 622 - 2026-08-01
 # =============================================================================
 
 import json
@@ -252,6 +259,58 @@ class HilfeApiTest(unittest.TestCase):
         self.assertEqual(200, resp.status)
         self.assertIn("text/css", resp.content_type)
         self.assertIn(b"aiw-h-kapitel", resp.body)
+
+    # --- Build 622 (H19): der Betriebsteil an der lebenden Route ----------
+    # HA13 - mit 'ops.view' liefert /help die Betriebskapitel mit aus
+    # HA14 - OHNE 'ops.view' ist von ihnen NICHTS in der Antwort - der Kern
+    #        von E1, hier an der Route und nicht nur an der reinen Funktion
+    # HA15 - das Stylesheet traegt die Regeln fuer den Betriebsteil (ein
+    #        ausgeliefertes Markup ohne die zugehoerige Gestaltung waere ein
+    #        halber Einbau)
+    # HA16 - der Betriebsteil aendert nichts: /help schreibt weiterhin nicht
+
+    def test_ha13_betriebsteil_mit_ops_view(self):
+        """
+        Person 1 hat 'ops.view'. Alle 65 Werkzeuge muessen als Kapitel in der
+        Antwort stehen - geprueft wird VOLLZAEHLIG und nicht stichprobenhaft:
+        ein einzelnes fehlendes Kapitel faellt im Handbuch niemandem auf.
+        """
+        from management.help.cli_katalog import CLI_KATALOG
+
+        html = self._get("/help").body.decode("utf-8")
+        self.assertIn("Betriebskapitel", html)
+        self.assertIn('id="cli-vorspann"', html)
+        fehlend = [e.schluessel for e in CLI_KATALOG
+                   if 'id="cli-%s"' % e.schluessel not in html]
+        self.assertEqual([], fehlend, "ohne Kapitel: %s" % fehlend)
+
+    def test_ha14_ohne_ops_view_kein_betriebsteil(self):
+        """
+        Person 2 hat kein einziges Recht. Von den Betriebskapiteln darf
+        nichts durchkommen: keine Kennung, kein Verzeichniseintrag, kein
+        Suchindex-Eintrag. Ein durchsuchbarer Index waere die Luecke, durch
+        die eine Sperre am haeufigsten faellt.
+        """
+        html = self._get_als(2, "/help").body.decode("utf-8")
+        self.assertNotIn("Betriebskapitel", html)
+        self.assertNotIn("cli-", html)
+        self.assertNotIn("backup_admin", html)
+        self.assertNotIn("coordinator.db", html)
+
+    def test_ha15_stylesheet_kennt_den_betriebsteil(self):
+        resp = self._get("/static/help.css")
+        self.assertIn(b"aiw-h-betrieb", resp.body)
+        self.assertIn(b"aiw-h-cli-tabelle", resp.body)
+
+    def test_ha16_betriebsteil_schreibt_nichts(self):
+        """
+        /help war lesend und bleibt es. Gemessen an der Spitze der
+        Belegkette - dieselbe Messung wie HA09.
+        """
+        vorher = self._spitze()
+        self._get("/help")
+        self._get_als(2, "/help")
+        self.assertEqual(vorher, self._spitze())
 
 
 if __name__ == "__main__":

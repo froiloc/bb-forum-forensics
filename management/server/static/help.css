@@ -22,7 +22,13 @@
      Kapitel rechts), Suchfeld, Blaetterleiste und die ausgebaute
      Druckfassung.
 
-   Version: v0.8.593 - Build: 593 - 2026-07-31
+   Build 622 (H19) ergaenzt: der BETRIEBSTEIL - die Kapitel zu den
+     Werkzeugen der Kommandozeile. Sie haben einen anderen Adressaten
+     als die Kapitel darueber (Regel H-2), und man muss ihnen das
+     ansehen, bevor man den ersten Satz gelesen hat. Der Block steht
+     am Ende dieser Datei.
+
+   Version: v0.8.622 - Build: 622 - 2026-08-01
    ========================================================================== */
 
 :root {
@@ -360,4 +366,202 @@ body.aiw-h {
      * wenigstens im Kopf und in der Fusszeile, und die Fusszeile wird
      * nicht abgeschnitten. */
     .aiw-h-fuss { break-before: avoid; }
+}
+
+
+/* ==========================================================================
+ * Build 622 (Baustelle H / H19) — DER BETRIEBSTEIL.
+ * ==========================================================================
+ * Die Betriebskapitel beschreiben die Werkzeuge der Kommandozeile. Sie haben
+ * einen ANDEREN ADRESSATEN als die Kapitel darueber (Regel H-2), und genau
+ * das muss man ihnen ansehen, bevor man den ersten Satz gelesen hat. Die
+ * Unterscheidung ist deshalb NICHT nur ein Wort im Text, sondern eine
+ * durchgehende optische Marke: eine Randlinie am Kapitel, eine eigene
+ * Ueberschrift im Verzeichnis, Festbreitenschrift fuer alles, was man
+ * eintippt.
+ *
+ * KEINE NEUE FARBE. Verwendet werden die vier Variablen, die oben schon
+ * stehen. Eine fuenfte Farbe fuer 'Betrieb' waere eine Bedeutung, die man
+ * erst lernen muss — die Randlinie ist selbsterklaerend.
+ * ========================================================================== */
+
+/* --- Verzeichnisteil ------------------------------------------------------ */
+.aiw-h-verzeichnis-betrieb {
+    margin-top: 1.6em;
+    padding-top: .9em;
+    border-top: 2px solid var(--aiw-h-linie);
+}
+
+.aiw-h-verzeichnis-betrieb h2 {
+    /* Wie die Ueberschrift 'Inhalt' darueber — es ist die zweite Haelfte
+       desselben Verzeichnisses und keine zweite Navigation. */
+    font-size: 1rem;
+    margin: 0 0 .4em;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--aiw-h-grau);
+}
+
+/* Die Kennungen stehen in Festbreitenschrift: man tippt sie ab. */
+.aiw-h-verzeichnis-betrieb li code {
+    font-size: .88em;
+}
+
+/* --- Kapitelkopf ---------------------------------------------------------- */
+/* Die Randlinie laeuft ueber die ganze Kapitelhoehe und ist die eigentliche
+   Kennzeichnung: sie trennt den Betriebsteil sichtbar ab, ohne dass eine
+   Farbe etwas bedeuten muesste. */
+.aiw-h-kapitel.aiw-h-betrieb {
+    border-left: 3px solid var(--aiw-h-linie);
+    padding-left: 1em;
+}
+
+.aiw-h-betrieb h2 code {
+    font-size: .9em;
+}
+
+/* Der Titel im Klartext steht kleiner neben der Kennung — gesucht wird ein
+   Werkzeug unter dem Namen, den man eintippt, nicht unter seiner
+   Beschreibung. */
+.aiw-h-betrieb-titel {
+    color: var(--aiw-h-grau);
+    font-size: .8em;
+    font-weight: 400;
+}
+
+.aiw-h-betrieb-marke {
+    font-size: .78rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--aiw-h-grau);
+    margin: 0 0 .6em;
+}
+
+/* --- Vorspann ------------------------------------------------------------- */
+.aiw-h-betrieb-vorspann {
+    border-top: 2px solid var(--aiw-h-akzent);
+    margin-top: 2.4em;
+    padding-top: 1.2em;
+}
+
+.aiw-h-betrieb-vorspann h2 {
+    color: var(--aiw-h-akzent);
+    font-size: 1.35rem;
+    margin: 0 0 .4em;
+}
+
+/* --- Aufrufe und Beispiele ------------------------------------------------ */
+.aiw-h-cli-aufruf code,
+.aiw-h-cli-beispiel pre {
+    background: var(--aiw-h-flaeche);
+    border: 1px solid var(--aiw-h-linie);
+    border-radius: 3px;
+    display: block;
+    padding: .4em .6em;
+    font-size: .88rem;
+    /* Umbruch ERLAUBT, aber nicht erzwungen: eine Befehlszeile soll sich
+       kopieren lassen; abgeschnitten waere sie unbrauchbar, und ein
+       Waagerecht-Rollbalken im Ausdruck erst recht. */
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+}
+
+.aiw-h-cli-beispiel {
+    margin: 1em 0;
+}
+
+.aiw-h-cli-beispiel pre {
+    margin: 0 0 .4em;
+}
+
+/* Der Pruefnachweis steht am Beispiel (cli_modell.CliBeispiel) — leise, aber
+   nicht versteckt: er ist der Grund, warum man dem Beispiel trauen darf. */
+.aiw-h-cli-nachweis {
+    color: var(--aiw-h-grau);
+    font-size: .8rem;
+    margin: 0;
+}
+
+.aiw-h-cli-hinweis {
+    background: var(--aiw-h-flaeche);
+    border-left: 3px solid var(--aiw-h-offen);
+    padding: .4em .7em;
+}
+
+.aiw-h-cli-warnungen li {
+    margin: .35em 0;
+}
+
+/* --- Tabellen (Unterbefehle, Rueckgabewerte) ------------------------------ */
+.aiw-h-cli-tabelle {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: .9rem;
+    margin: .6em 0;
+}
+
+.aiw-h-cli-tabelle th,
+.aiw-h-cli-tabelle td {
+    border: 1px solid var(--aiw-h-linie);
+    padding: .35em .55em;
+    text-align: left;
+    vertical-align: top;
+}
+
+.aiw-h-cli-tabelle th {
+    background: var(--aiw-h-flaeche);
+    font-size: .8rem;
+    letter-spacing: .03em;
+}
+
+/* 'schreibend' ist die Auskunft, wegen der man die Tabelle ueberhaupt liest.
+   Sie wird hervorgehoben — aber ueber Schriftschnitt und die vorhandene
+   Warnfarbe, nicht ueber Farbe ALLEIN: eine Aussage, die nur farbig ist, ist
+   im Schwarzweissdruck und fuer farbfehlsichtige Personen keine. */
+.aiw-h-cli-art-schreibend {
+    color: var(--aiw-h-offen);
+    font-weight: 600;
+}
+
+.aiw-h-cli-art-lesend {
+    color: var(--aiw-h-grau);
+}
+
+/* --- Druck ---------------------------------------------------------------- */
+@media print {
+    .aiw-h-betrieb-vorspann {
+        break-before: page;
+        border-top: 1pt solid #000;
+    }
+
+    .aiw-h-kapitel.aiw-h-betrieb {
+        border-left: 1pt solid #000;
+    }
+
+    .aiw-h-cli-aufruf code,
+    .aiw-h-cli-beispiel pre {
+        background: none;
+        border: 1pt solid #000;
+    }
+
+    .aiw-h-cli-hinweis {
+        background: none;
+        border-left: 2pt solid #000;
+    }
+
+    .aiw-h-cli-tabelle th {
+        background: none;
+    }
+
+    /* Im Schwarzweissdruck traegt allein der Schriftschnitt. */
+    .aiw-h-cli-art-schreibend {
+        color: #000;
+        text-transform: uppercase;
+    }
+
+    .aiw-h-cli-beispiel,
+    .aiw-h-cli-tabelle tr {
+        break-inside: avoid;
+    }
 }

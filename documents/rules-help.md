@@ -1,6 +1,6 @@
 # Regelwerk AIW — Hilfesysteme
 
-**Stand:** Build 607 · 2026-07-31 · **Baustelle H**
+**Stand:** Build 622 · 2026-08-01 · **Baustelle H**
 
 Das Werkzeug hat **drei** Hilfesysteme mit **zwei verschiedenen Adressaten**. Das ist der Schlüssel zu allen Regeln dieses Blattes.
 
@@ -8,7 +8,7 @@ Das Werkzeug hat **drei** Hilfesysteme mit **zwei verschiedenen Adressaten**. Da
 |---|---|---|
 | Kontexthilfe | Popup im Hilfemodus (Shift+F1) | Ermittelnde |
 | Vollhilfe | eigenes Fenster, `/help` | Ermittelnde |
-| CLI-Hilfe | Kommandozeile, ab H19 auch als Betriebskapitel in der Vollhilfe | Betriebsseite |
+| CLI-Hilfe | Kommandozeile; seit Build 622 **auch** als Betriebskapitel in der Vollhilfe | Betriebsseite |
 
 ## Regel H-0 — Fallinhaltsfrei
 
@@ -44,7 +44,19 @@ Der Fließtext daneben benutzt weiterhin die Anwendersprache („Recht", „Umfa
 
 Der Adressat der CLI-Hilfe ist eine technisch versierte Person, die Systeme aufsetzt, betreut und in einem einsatztauglichen Zustand hält, die mit dem Betriebssystem und mit Python vertraut ist und komplexe Systemanbindungen und Datenmigrationen durchführt (Festlegung mc 2026-07-31). Für sie ist `coordinator.db` der Name der Sache. Ein Katalog, der die Datei „die Falldateien des Kontos" nennt, wäre in dem Moment unbrauchbar, in dem jemand sie sichern will.
 
-**Die Trennung ist strukturell, nicht nur redaktionell:** Der CLI-Katalog (`management/help/cli_katalog.py`) ist ein eigener Bestand. Er wird von `verify_anwendersprache()` nicht erfasst, weil er nicht Teil des Sicht-Registers ist — und er fließt auch nirgends dort hinein. Die Betriebskapitel, die ab H19 in der Vollhilfe aus ihm entstehen, sind als solche gekennzeichnet.
+**Die Trennung ist strukturell, nicht nur redaktionell:** Der CLI-Katalog (`management/help/cli_katalog.py`) ist ein eigener Bestand. Er wird von `verify_anwendersprache()` nicht erfasst, weil er nicht Teil des Sicht-Registers ist — und er fließt auch nirgends dort hinein.
+
+### Die Betriebskapitel in der Vollhilfe (seit Build 622)
+
+Seit Build 622 steht der CLI-Katalog **zusätzlich** als Betriebsteil in der Vollhilfe: ein Kapitel je Werkzeug, 65 Stück, hinter den Sichtkapiteln, gerendert von `management/help/cli_html.py` aus **demselben** Katalog wie die Konsolenausgabe. Ein dritter Autorenbestand entsteht nicht; `test_help_cli_html.py` CH18 geht den Katalog Feld für Feld durch und verlangt jede Angabe im erzeugten HTML wieder.
+
+Damit stehen **zwei Adressaten in einem Dokument**. Das ist nur unter drei Bedingungen zulässig, und alle drei sind maschinell nachgehalten:
+
+1. **Kennzeichnung.** Jedes Betriebskapitel trägt im Kopf die Marke „Betriebskapitel", die Klasse `aiw-h-betrieb` und seine Rechtelage; davor steht ein Vorspann, der den Adressatenwechsel ausspricht. *Durchsetzung:* CH06 — für **jedes** der 65 Kapitel, nicht stichprobenhaft.
+2. **Eigenes Recht.** Der gesamte Betriebsteil hängt an `ops.view` (Entscheidung mc 2026-08-01). Begründung: Ein Betriebskapitel gehört zu keiner Sicht und kann darum kein Recht erben — die vorhandene Sperre hätte hier nichts, woran sie greift. Gewählt ist das Recht der Sichten mit demselben Adressaten (Integrität/Betrieb, Audit-Explorer, Fremdforum-Promotion). Ohne dieses Recht ist der Teil **leer**: kein Verzeichniseintrag, kein Kapitel, kein Suchindex-Eintrag. *Durchsetzung:* CH01, CH15e, HD20, HA14.
+3. **Keine Rückwirkung nach oben.** Die Betriebssprache darf nicht in die Sichtkapitel durchschlagen. *Durchsetzung:* HD19 misst den Seitenteil oberhalb des Betriebsvorspanns gegen „Build", „coordinator.db", „python -m" und „.py".
+
+**Regel H-1 gilt für die Betriebskapitel nicht, Regel H-0 sehr wohl.** Der Katalog beschreibt Werkzeuge, keine Fälle; Beispielaufrufe laufen gegen Wegwerf-Bestände.
 
 ## Gliederung eines Vollhilfe-Kapitels
 

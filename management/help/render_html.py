@@ -28,7 +28,27 @@
 #   was die Person nicht sehen darf, ist auch nicht durchsuchbar. Ein
 #   clientseitig gefilterter Index haette den vollen Bestand ausgeliefert.
 #
-# Version: v0.8.593 - Build: 593 - 2026-07-31
+# BUILD 622 (H19) ERGAENZT: DER BETRIEBSTEIL.
+#   Hinter die Sichtkapitel treten die BETRIEBSKAPITEL - der CLI-Katalog,
+#   gerendert von management/help/cli_html.py. Sie kommen aus DEMSELBEN
+#   Bestand wie die Konsolenausgabe; es gibt keinen dritten Autorenbestand.
+#
+#   DER PARAMETER 'betrieb' IST OPTIONAL UND STANDARDMAESSIG None. Ohne ihn
+#   erzeugt diese Datei zeichengleich dasselbe Dokument wie bisher. Das ist
+#   kein Zufall, sondern die Bedingung, unter der eine Ergaenzung an einer
+#   ausgelieferten Seite zu verantworten ist: der alte Weg bleibt messbar
+#   unveraendert, und die Tests aus Build 589/593 pruefen ihn weiter.
+#
+#   ZWEI ADRESSATEN IN EINEM DOKUMENT - und was daraus folgt: Fuer die
+#   Sichtkapitel gilt Regel H-1 (Anwendersprache), fuer die Betriebskapitel
+#   ausdruecklich NICHT (Regel H-2, documents/rules-help.md). Beides in einer
+#   Datei zu haben ist nur zulaessig, weil der Betriebsteil GEKENNZEICHNET
+#   ist und hinter einem eigenen Recht liegt. Wer 'ops.view' nicht hat,
+#   bekommt exakt die Seite von vorher. Der Test HD19 haelt fest, dass die
+#   Sichtkapitel auch weiterhin frei von Betriebssprache bleiben - die
+#   Ausnahme darf nicht nach oben durchschlagen.
+#
+# Version: v0.8.622 - Build: 622 - 2026-08-01
 # =============================================================================
 
 from __future__ import annotations
@@ -37,6 +57,8 @@ import html
 from dataclasses import dataclass
 from typing import Iterable, List, Optional, Sequence, Tuple
 
+from management.help import cli_html
+from management.help.cli_html import Betriebsgliederung
 from management.help.modell import Abschnitt, HilfeRegister, Sichthilfe
 from management.help.sichtbarkeit import sichtbare_sicht_ids
 from management.help.sicht_katalog import SICHT_KATALOG, SichtEintrag, sicht as katalog_sicht
@@ -225,7 +247,8 @@ def suchindex(gliederung: Gliederung) -> List[dict]:
     return raus
 
 
-def _verzeichnis_html(gliederung: Gliederung) -> str:
+def _verzeichnis_html(gliederung: Gliederung,
+                      betrieb: Optional[Betriebsgliederung] = None) -> str:
     teile = ['<nav class="aiw-h-verzeichnis" aria-label="Inhalt">',
              "<h2>Inhalt</h2>",
              # Build 593: das Suchfeld sitzt IM Verzeichnis und nicht in der
@@ -249,11 +272,19 @@ def _verzeichnis_html(gliederung: Gliederung) -> str:
             teile.append('<li data-sicht="%s"><a href="#%s">%s</a>%s</li>'
                          % (_e(e.sicht_id), _e(e.sicht_id), _e(e.label), marke))
         teile.append("</ul>")
+    # Der Betriebsteil steht am ENDE des Verzeichnisses, unter einer eigenen
+    # Ueberschrift. Er kommt zuletzt, weil das Handbuch fuer die
+    # Ermittlungsarbeit geschrieben ist und die Betriebskapitel der Anhang
+    # dazu sind - nicht umgekehrt. Ohne 'ops.view' liefert cli_html hier den
+    # leeren Text, und das Verzeichnis sieht aus wie vorher.
+    if betrieb is not None:
+        teile.append(cli_html.verzeichnis_html(betrieb))
     teile.append("</nav>")
-    return "\n".join(teile)
+    return "\n".join(t for t in teile if t)
 
 
-def _index_html(gliederung: Gliederung) -> str:
+def _index_html(gliederung: Gliederung,
+                betrieb: Optional[Betriebsgliederung] = None) -> str:
     """
     Der Suchindex als eingebettetes JSON.
 
@@ -261,9 +292,20 @@ def _index_html(gliederung: Gliederung) -> str:
     Inhalt ist reine Nutzlast. Trotzdem wird '<' maskiert: ein '</script>' im
     Text wuerde den Block sonst vorzeitig beenden. Das ist der einzige
     Ausbruch, den ein JSON-Block in HTML hat, und er wird hier geschlossen.
+
+    BUILD 622: EIN Index fuer beide Teile, nicht zwei. help.js liest genau
+    einen Block und zaehlt seine Laenge als Gesamtzahl der Kapitel ('12 von
+    58 Kapiteln'). Ein zweiter Block waere von der vorhandenen Suche gar
+    nicht gefunden worden - der Betriebsteil waere dann zwar sichtbar, aber
+    unauffindbar gewesen, und beim Filtern waere jeder seiner
+    Verzeichniseintraege dauerhaft ausgeblendet geblieben (help.js blendet
+    aus, was nicht im Index steht).
     """
     import json
-    roh = json.dumps(suchindex(gliederung), ensure_ascii=False)
+    eintraege = suchindex(gliederung)
+    if betrieb is not None:
+        eintraege = eintraege + cli_html.suchindex(betrieb)
+    roh = json.dumps(eintraege, ensure_ascii=False)
     roh = roh.replace("<", "\\u003c").replace(">", "\\u003e")
     return ('<script type="application/json" id="aiw-h-index">%s</script>'
             % roh)
@@ -272,13 +314,21 @@ def _index_html(gliederung: Gliederung) -> str:
 def render_hilfe_seite(gliederung: Gliederung,
                        version: str = "",
                        build: int = 0,
-                       stand_datum: str = "") -> str:
+                       stand_datum: str = "",
+                       betrieb: Optional[Betriebsgliederung] = None) -> str:
     """
     Die vollstaendige, eigenstaendige Hilfeseite.
 
     Die Fusszeile nennt Version und Buildnummer (Bauplan H2). Das ist kein
     Schmuck: Wer einen Hilfeausdruck in der Hand haelt, muss sagen koennen,
     zu welchem Stand des Werkzeugs er gehoert.
+
+    'betrieb' (Build 622) ist der bereits GEFILTERTE Betriebsteil. Wie bei
+    der Gliederung faellt die Rechteentscheidung vorher, in
+    cli_html.baue_betriebsgliederung - diese Funktion sieht die ungefilterten
+    Daten nie. None und ein leerer Betriebsteil ergeben dasselbe Dokument;
+    unterschieden wird trotzdem, damit ein vergessener Parameter nicht
+    aussieht wie eine wirkende Sperre.
     """
     eintraege = gliederung.eintraege()
     stuecke = []
@@ -287,7 +337,13 @@ def render_hilfe_seite(gliederung: Gliederung,
             e,
             vorher=eintraege[i - 1] if i > 0 else None,
             nachher=eintraege[i + 1] if i + 1 < len(eintraege) else None))
-    kapitel = "\n".join(stuecke)
+    # Der Betriebsteil wird ANGEHAENGT, nicht eingeflochten: die
+    # Blaetterketten der beiden Teile bleiben getrennt (Begruendung in
+    # cli_html._blaetterleiste), und ein Ausdruck laesst sich an der Grenze
+    # teilen.
+    if betrieb is not None:
+        stuecke.append(cli_html.kapitel_alle_html(betrieb))
+    kapitel = "\n".join(s for s in stuecke if s)
 
     offen = gliederung.offene()
     hinweis = ""
@@ -310,7 +366,7 @@ def render_hilfe_seite(gliederung: Gliederung,
         "</header>\n"
         + hinweis
         + '<div class="aiw-h-rahmen">\n'
-        + _verzeichnis_html(gliederung)
+        + _verzeichnis_html(gliederung, betrieb)
         + '\n<main class="aiw-h-inhalt">\n'
         + kapitel
         + "\n</main>\n</div>\n"
@@ -319,7 +375,7 @@ def render_hilfe_seite(gliederung: Gliederung,
                "(Regel H-0): sie beschreibt das Werkzeug, niemals Falldaten."
                % (version or "?", build or "?",
                   " - Stand %s" % stand_datum if stand_datum else ""))
-        + _index_html(gliederung) + "\n"
+        + _index_html(gliederung, betrieb) + "\n"
         + '<script src="/static/help.js"></script>\n'
         + "</body>\n</html>\n"
     )

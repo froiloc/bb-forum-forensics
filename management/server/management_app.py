@@ -1197,13 +1197,22 @@ class ManagementApp:
         # zwischengespeichert: die Fusszeile soll den Stand nennen, der
         # wirklich ausgeliefert ist. Die Datei ist wenige hundert Byte gross.
         from core.build_info import BuildInfo
+        from management.help import cli_html
 
         info = BuildInfo(Path(__file__).resolve().parents[2])
-        gliederung = help_render.baue_gliederung(
-            lade_hilfe_register(), self._hilfe_capabilities(person_id))
+        caps = self._hilfe_capabilities(person_id)
+        gliederung = help_render.baue_gliederung(lade_hilfe_register(), caps)
+        # BUILD 622 (H19): der Betriebsteil - der Katalog der
+        # Kommandozeilen-Werkzeuge als Kapitel im selben Handbuch. Die
+        # Rechteentscheidung faellt HIER, vor dem Rendern, in derselben
+        # reinen Funktion, gegen die die Rechte-Matrix geprueft wird
+        # (cli_html.baue_betriebsgliederung, Recht 'ops.view' = CAP_OPS_VIEW).
+        # Ohne dieses Recht liefert sie einen leeren Teil, und die Seite ist
+        # zeichengleich die von Build 621.
+        betrieb = cli_html.baue_betriebsgliederung(caps)
         seite = help_render.render_hilfe_seite(
             gliederung, version=info.version, build=info.build,
-            stand_datum=info.date)
+            stand_datum=info.date, betrieb=betrieb)
         return Response(status=200,
                         content_type="text/html; charset=utf-8",
                         body=seite.encode("utf-8"))

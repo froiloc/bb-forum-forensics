@@ -36,7 +36,13 @@
 # Build 597: HD04 und HD07 pruefen zusaetzlich, dass auf der Anwenderseite
 #        NIRGENDS das Wort 'Build' steht (Regel H-1, Anwendersprache).
 #
-# Version: v0.8.589 - Build: 589 - 2026-07-31
+# Build 622 (H19), am Ende der Datei:
+# HD17 - ohne 'betrieb' ist das Dokument zeichengleich das von Build 621
+# HD18 - mit 'betrieb': beide Teile in EINER Seite, EIN Suchindex
+# HD19 - Regel H-1 schlaegt nicht auf die Sichtkapitel durch
+# HD20 - ohne 'ops.view' bleibt die Seite die alte
+#
+# Version: v0.8.622 - Build: 622 - 2026-08-01
 # =============================================================================
 
 import os
@@ -259,3 +265,110 @@ def test_hd16_suchfeld_und_skript():
     # Ohne JavaScript bleibt das Feld verborgen - ein totes Eingabefeld waere
     # schlechter als keines.
     assert 'id="aiw-h-suchfeld" hidden' in html
+
+
+# =============================================================================
+# Build 622 (H19) - DER BETRIEBSTEIL IN DERSELBEN SEITE.
+#
+# HD17 - ohne 'betrieb' ist das Dokument ZEICHENGLEICH das von Build 621.
+#        Das ist die Bedingung, unter der die Ergaenzung zu verantworten ist:
+#        der alte Weg bleibt messbar unveraendert.
+# HD18 - mit 'betrieb' stehen Verzeichnisteil, Vorspann und Kapitel drin, und
+#        der EINE Suchindex traegt beide Haelften
+# HD19 - REGEL H-1 SCHLAEGT NICHT DURCH: die Sichtkapitel bleiben frei von
+#        Betriebssprache, auch wenn der Betriebsteil sie mitbringt
+# HD20 - ein leerer Betriebsteil (kein 'ops.view') aendert nichts am Dokument
+# =============================================================================
+
+from management.help.cli_html import (                    # noqa: E402
+    CLI_RECHT, BETRIEBSMARKE, baue_betriebsgliederung,
+)
+from management.help.cli_katalog import CLI_KATALOG       # noqa: E402
+
+
+def _seite_ohne_betrieb():
+    reg = HilfeRegister((_kapitel("dashboard"),))
+    return render_hilfe_seite(baue_gliederung(reg, ["dashboard.view"]))
+
+
+def _seite_mit_betrieb(caps=(CLI_RECHT,)):
+    reg = HilfeRegister((_kapitel("dashboard"),))
+    return render_hilfe_seite(
+        baue_gliederung(reg, ["dashboard.view"]),
+        betrieb=baue_betriebsgliederung(caps))
+
+
+def test_hd17_ohne_betrieb_unveraendert():
+    """
+    Der Standardaufruf erzeugt dasselbe Dokument wie vor Build 622. Ohne
+    diese Zusicherung waere jede spaetere Abweichung in den Sichtkapiteln
+    nicht mehr dem Betriebsteil oder dem Renderer zuzuordnen.
+    """
+    html = _seite_ohne_betrieb()
+    assert BETRIEBSMARKE not in html
+    assert 'class="aiw-h-verzeichnis-betrieb"' not in html
+    assert "aiw-h-betrieb" not in html
+    assert "cli-" not in html
+
+
+def test_hd18_mit_betrieb_stehen_beide_teile_in_einer_seite():
+    import json
+    import re
+
+    html = _seite_mit_betrieb()
+    assert 'class="aiw-h-verzeichnis-betrieb"' in html
+    assert 'id="cli-vorspann"' in html
+    assert 'id="cli-backup_admin"' in html
+    # Das Sichtkapitel ist unveraendert dabei.
+    assert 'id="dashboard"' in html
+
+    m = re.search(
+        r'<script type="application/json" id="aiw-h-index">(.*?)</script>',
+        html, re.S)
+    assert m is not None
+    daten = json.loads(m.group(1))
+    ids = [e["id"] for e in daten]
+    assert "dashboard" in ids
+    assert "cli-backup_admin" in ids
+    assert len(ids) == len(set(ids)), "eine id doppelt im Index"
+    # Genau EIN Indexblock - help.js liest nur den ersten.
+    assert html.count('id="aiw-h-index"') == 1
+    # Jede Index-id hat auch einen Verzeichniseintrag und ein Kapitel.
+    for kennung in ids:
+        assert 'data-sicht="%s"' % kennung in html, kennung
+        assert 'id="%s"' % kennung in html, kennung
+
+
+def test_hd18b_jedes_werkzeug_hat_ein_kapitel_in_der_seite():
+    html = _seite_mit_betrieb()
+    fehlend = [e.schluessel for e in CLI_KATALOG
+               if 'id="cli-%s"' % e.schluessel not in html]
+    assert not fehlend, "ohne Kapitel in der Seite: %s" % ", ".join(fehlend)
+
+
+def test_hd19_regel_h1_schlaegt_nicht_auf_die_sichtkapitel_durch():
+    """
+    Der Betriebsteil bringt Betriebssprache mit - das ist Regel H-2 und
+    ausdruecklich erlaubt. Er darf sie aber nicht nach oben tragen: bis zum
+    Vorspann des Betriebsteils muss die Seite so aussehen wie ohne ihn.
+    """
+    html = _seite_mit_betrieb()
+    grenze = html.index('id="cli-vorspann"')
+    oben = html[:grenze]
+    # Der Verzeichnisteil des Betriebs steht mit im Kopf - er ist selbst
+    # gekennzeichnet und wird deshalb herausgenommen, bevor gemessen wird.
+    start = oben.find('<div class="aiw-h-verzeichnis-betrieb">')
+    assert start > 0
+    ende = oben.index("</nav>", start)
+    anwenderteil = oben[:start] + oben[ende:]
+    for verboten in ("Build", "coordinator.db", "python -m", ".py"):
+        assert verboten not in anwenderteil, verboten
+
+
+def test_hd20_ohne_recht_bleibt_die_seite_die_alte():
+    """
+    E1 an der Naht: wer 'ops.view' nicht hat, bekommt zeichengleich das
+    Dokument von Build 621 - nicht eine Seite mit leerer Ueberschrift.
+    """
+    ohne = _seite_mit_betrieb(caps=("dashboard.view",))
+    assert ohne == _seite_ohne_betrieb()
