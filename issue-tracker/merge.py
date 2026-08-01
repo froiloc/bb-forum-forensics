@@ -28,8 +28,17 @@ from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
 import argparse
+import re
 from difflib import unified_diff
 import textwrap
+
+# ---------------------------------------------------------------------------
+# Eigene Bausteine (Build 642) - siehe die Kopfkommentare der beiden Dateien.
+# Beide liegen im selben Verzeichnis; das Skriptverzeichnis steht bei
+# 'python merge.py' von sich aus in sys.path.
+# ---------------------------------------------------------------------------
+from json_safe_writer import JsonSafeWriter
+from backup_names import merge_sicherungsname
 
 
 # ============================================================================
@@ -87,15 +96,28 @@ class MergeResult:
 
 class IssueValidator:
     """Validiert Issues gegen das Schema"""
-    
+
     REQUIRED_FIELDS = ["id", "title", "type", "affected_version", "reporter", "reported_at", "status"]
-    
+
     VALID_TYPES = ["bug", "feature_request", "improvement", "documentation", "refactoring"]
-    VALID_STATUSES = ["open", "in_progress", "review", "testing", "resolved", "closed", 
+    VALID_STATUSES = ["open", "in_progress", "review", "testing", "resolved", "closed",
                       "wont_fix", "duplicate", "cannot_reproduce"]
     VALID_PRIORITIES = ["critical", "high", "medium", "low", "wishlist"]
     VALID_SEVERITIES = ["blocker", "critical", "major", "minor", "trivial", "enhancement"]
-    
+
+    #: Versionsmuster - WOERTLICH aus issue-tracker.schema.json uebernommen
+    #: (Eigenschaften affected_version / resolved_in_version / target_version,
+    #: dort als "^\\d+\\.\\d+\\.\\d+[a-z]?$"). Das Suffix stammt aus Vorgang
+    #: b67f7424 (Zwischenstaende wie '0.8.560a').
+    #:
+    #: WARUM HIER NOCHMAL: Das Schema ist eine Datei, die niemand ausfuehrt.
+    #: 'merge.py --validate-only' ist nach Build 628 DER massgebliche Weg vor
+    #: dem Einpflegen - dann muss er auch pruefen, was das Schema zusagt.
+    #: Bis Build 641 pruefte er Pflichtfelder, UUID, Titellaenge und die
+    #: Aufzaehlungen, aber KEINE Versionsangabe.
+    VERSIONS_MUSTER = re.compile(r"^\d+\.\d+\.\d+[a-z]?$")
+    VERSION_FIELDS = ("affected_version", "resolved_in_version", "target_version")
+
     @classmethod
     def validate(cls, issue: Dict[str, Any]) -> List[str]:
         """Validiert einen Issue und gibt Liste von Fehlern zurück"""
@@ -137,7 +159,58 @@ class IssueValidator:
                     datetime.fromisoformat(issue[date_field].replace("Z", "+00:00"))
                 except (ValueError, AttributeError):
                     errors.append(f"Ungültiges Datumsformat in {date_field}: {issue.get(date_field)}")
-        
+
+        # -------------------------------------------------------------------
+        # BUILD 642 - VERSIONSANGABEN. Das Schema verlangt das Muster; bis
+        # Build 641 hat der massgebliche Pruefweg es nicht ausgewertet.
+        # null ist zugelassen (Schema: type ["string","null"]), '' nicht -
+        # eine leere Zeichenkette ist keine Version, sondern eine vergessene
+        # Angabe, und die soll auffallen.
+        # -------------------------------------------------------------------
+        for version_field in cls.VERSION_FIELDS:
+            if version_field not in issue:
+                continue
+            wert = issue[version_field]
+            if wert is None:
+                continue
+            if not isinstance(wert, str) or not cls.VERSIONS_MUSTER.match(wert):
+                errors.append(
+                    f"Ungültige Versionsangabe in {version_field}: {wert!r} "
+                    f"(erwartet z.B. '0.8.642' oder '0.8.642a')"
+                )
+
+        # -------------------------------------------------------------------
+        # BUILD 642 - VERWEISE. related_to muss VOLLE UUIDs fuehren.
+        #
+        # DER BEFUND: Im Live-Bestand stehen fuenf Verweise als 8-Zeichen-
+        # Kurzform ('651e6d84' statt '651e6d84-7ebc-4905-ab21-9f324021ec1d').
+        # Sie sind entstanden, weil die Kurzform ueberall in der Ausgabe
+        # auftaucht (id[:8]) und deshalb naheliegt.
+        #
+        # WARUM DAS EIN FEHLER IST UND KEINE SCHREIBWEISE: server.py loest
+        # Verweise ueber exakte Gleichheit auf (view_issue, Z. 403/406). Eine
+        # Kurzform trifft nie. Der Verweis steht in der Datei, wird aber in
+        # der Ansicht STILLSCHWEIGEND nicht angezeigt - ein Beleg, der da ist
+        # und den niemand sieht. Genau das verbietet Grundregel 1.
+        #
+        # Das Schema sagt "format": "uuid"; 'format' ist in JSON Schema aber
+        # standardmaessig eine Anmerkung ohne Pruefwirkung. Deshalb hier.
+        # -------------------------------------------------------------------
+        verweise = issue.get("related_to")
+        if verweise is not None:
+            if not isinstance(verweise, list):
+                errors.append(f"related_to muss eine Liste sein, ist: {type(verweise).__name__}")
+            else:
+                for verweis in verweise:
+                    try:
+                        uuid.UUID(str(verweis))
+                    except (ValueError, AttributeError):
+                        errors.append(
+                            f"Ungültiger Verweis in related_to: {verweis!r} - "
+                            f"es muss die VOLLE UUID stehen, nicht die Kurzform "
+                            f"(Reparatur: python repair_related_ids.py)"
+                        )
+
         return errors
 
 
@@ -207,10 +280,16 @@ class IssueDiffer:
 class IssueMergeEngine:
     """Haupt-Engine für das Mergen von Issues"""
     
-    def __init__(self, target_file: Path, auto_resolve: Optional[str] = None, 
-                 dry_run: bool = False, verbose: bool = False, 
-                 force: bool = False, no_backup: bool = False):
+    def __init__(self, target_file: Path, auto_resolve: Optional[str] = None,
+                 dry_run: bool = False, verbose: bool = False,
+                 force: bool = False, no_backup: bool = False,
+                 output_file: Optional[Path] = None):
         self.target_file = target_file
+        # BUILD 642: Das Ausgabeziel ist jetzt ein eigener Zustand. Bis
+        # Build 641 hat main() bei '--output' ZUERST in die Zieldatei
+        # geschrieben und danach kopiert - der Bestand war also schon
+        # veraendert, obwohl der Aufrufer ausdruecklich woandershin wollte.
+        self.output_file = output_file
         self.auto_resolve = auto_resolve
         self.dry_run = dry_run
         self.verbose = verbose
@@ -218,7 +297,28 @@ class IssueMergeEngine:
         self.no_backup = no_backup
         self.result = MergeResult()
         self.differ = IssueDiffer()
-    
+        # EIN Schreibweg fuer alle - atomar (json_safe_writer.py).
+        self.writer = JsonSafeWriter()
+        #: Pfad der in diesem Lauf angelegten Sicherung - oder None. Wird nur
+        #: fuer die Schlussmeldung gebraucht (siehe _print_summary).
+        self.letzte_sicherung: Optional[Path] = None
+
+    @property
+    def schreibziel(self) -> Path:
+        """
+        Die Datei, die dieser Lauf tatsaechlich veraendert.
+
+        Ohne '--output' ist das die Zieldatei, mit '--output' ausschliesslich
+        die angegebene Ausgabedatei. Es gibt keinen Weg, auf dem beide
+        geschrieben werden.
+        """
+        return self.output_file if self.output_file else self.target_file
+
+    @property
+    def veraendert_bestand(self) -> bool:
+        """Wahr, wenn dieser Lauf die Zieldatei selbst anfasst."""
+        return self.output_file is None
+
     def load_file(self, file_path: Path) -> List[Dict[str, Any]]:
         """Lädt Issues aus einer JSON-Datei"""
         try:
@@ -242,27 +342,71 @@ class IssueMergeEngine:
             sys.exit(1)
     
     def save_file(self, file_path: Path, issues: List[Dict[str, Any]]):
-        """Speichert Issues in JSON-Datei"""
-        with open(file_path, "w", encoding="utf-8") as f:
-            json.dump({"issues": issues}, f, indent=2, ensure_ascii=False)
-    
+        """
+        Speichert Issues in JSON-Datei.
+
+        BUILD 642 - ATOMAR. Bis Build 641 stand hier ein unmittelbares
+        open(file_path, "w"); das kuerzt die Datei auf null Byte, bevor der
+        erste Vorgang geschrieben ist. Begruendung ausfuehrlich in
+        json_safe_writer.py.
+        """
+        self.writer.write(file_path, {"issues": issues})
+
+    def sicherungsverzeichnis(self) -> Path:
+        """
+        Wohin die Sicherung gehoert.
+
+        BUILD 642 - AM ZIEL AUSGERICHTET, NICHT AM ARBEITSVERZEICHNIS.
+        Bis Build 641 stand hier fest './backups', also ein Pfad relativ zum
+        Arbeitsverzeichnis des Aufrufers. Wer merge.py aus dem Wurzel-
+        verzeichnis mit '--target issue-tracker/data/issues.json' aufrief,
+        legte seine Sicherung in einem 'backups' NEBEN dem Wurzelverzeichnis
+        ab - dort sucht sie niemand, und der Server findet sie beim
+        Wiederherstellen nicht.
+
+        Jetzt gilt: BACKUP_DIR aus der Umgebung, sonst das Verzeichnis
+        'backups' NEBEN dem Datenverzeichnis der Zieldatei. Bei der
+        Standardlage 'issue-tracker/data/issues.json' ist das
+        'issue-tracker/backups' - genau dort, wo die uebrigen liegen.
+        """
+        aus_umgebung = os.getenv("BACKUP_DIR")
+        if aus_umgebung:
+            return Path(aus_umgebung)
+        return self.target_file.resolve().parent.parent / "backups"
+
     def create_backup(self):
-        """Erstellt ein Backup der Target-Datei"""
+        """
+        Erstellt ein Backup der Target-Datei.
+
+        BUILD 642: Wird nur noch aufgerufen, wenn dieser Lauf die Zieldatei
+        auch wirklich anfasst (siehe merge()). Eine Sicherung fuer einen
+        Vorgang, der nichts veraendert, waere Rauschen - und Rauschen
+        verdraengt in einem begrenzten Sicherungsvorrat echte Staende.
+        """
         if self.no_backup:
             return
-        
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        BACKUP_DIR: Path = Path(os.getenv("BACKUP_DIR", "./backups"))
-        backup_path = BACKUP_DIR / f"issues_backup_before_merge_{timestamp}.json"
-        
+
+        backup_dir = self.sicherungsverzeichnis()
+        backup_path = backup_dir / merge_sicherungsname(datetime.now())
+
         try:
+            # Verzeichnis anlegen, falls es fehlt: eine Sicherung darf nicht
+            # daran scheitern, dass ein Ordner nicht existiert.
+            backup_dir.mkdir(parents=True, exist_ok=True)
             shutil.copy2(self.target_file, backup_path)
-            print(f"💾 Backup erstellt: {backup_path.name}")
+            self.letzte_sicherung = backup_path
+            print(f"💾 Backup erstellt: {backup_path}")
         except Exception as e:
             print(f"⚠️  Backup konnte nicht erstellt werden: {e}")
             if not self.force:
                 if input("Ohne Backup fortfahren? (j/N): ").lower() != 'j':
                     sys.exit(1)
+            else:
+                # '--force' heisst 'ohne Rueckfragen', nicht 'ohne Vermerk'.
+                # Ein Lauf ohne Sicherung muss im Ergebnis stehen.
+                self.result.warnings.append(
+                    f"Ohne Sicherung fortgefahren (--force): {e}"
+                )
     
     def detect_conflicts(self, target_issues: List[Dict], 
                          source_issues: List[Dict]) -> List[Conflict]:
@@ -292,14 +436,14 @@ class IssueMergeEngine:
                     conflicting_fields.append(field)
             
             if conflicting_fields:
-                # Zeitstempel vergleichen
-                target_time = datetime.fromisoformat(
-                    target_issue.get("reported_at", "2000-01-01T00:00:00").replace("Z", "+00:00")
-                )
-                source_time = datetime.fromisoformat(
-                    source_issue.get("reported_at", "2000-01-01T00:00:00").replace("Z", "+00:00")
-                )
-                
+                # BUILD 642 - HIER STANDEN ZWEI TOTE ZEILEN: 'target_time' und
+                # 'source_time' wurden aus 'reported_at' gebildet und danach
+                # nie gelesen; verglichen wurde (richtigerweise) mit dem
+                # letzten Update. Die beiden Aufrufe konnten aber bei einer
+                # krummen Datumsangabe einen ValueError werfen und damit den
+                # ganzen Lauf abbrechen - ein Absturzrisiko ohne jeden Nutzen.
+                # Ersatzlos entfernt.
+
                 # Letztes Update-Datum finden
                 target_last_update = self._get_last_update_time(target_issue)
                 source_last_update = self._get_last_update_time(source_issue)
@@ -328,18 +472,44 @@ class IssueMergeEngine:
         
         return conflicts
     
+    @staticmethod
+    def _zeitzone_ergaenzen(zeitpunkt: datetime) -> datetime:
+        """
+        Macht aus einem zeitzonenlosen Zeitpunkt einen mit UTC.
+
+        BUILD 642 - WARUM DAS NOETIG IST: Python weigert sich, einen
+        zeitzonenlosen mit einem zeitzonenbehafteten Zeitpunkt zu vergleichen
+        ('can't compare offset-naive and offset-aware datetimes' - TypeError,
+        kein Sonderfall, ein Abbruch). Der Tracker schreibt selbst immer mit
+        Zeitzone (server.py, create_update_entry: datetime.now(timezone.utc)),
+        eine von Hand gepflegte Eingangsdatei aber muss das nicht. Traf beides
+        aufeinander, brach der Vergleich in detect_conflicts bzw.
+        auto_resolve_conflict den ganzen Lauf ab.
+
+        UTC ist die richtige Annahme, weil jeder Zeitstempel im Bestand auf
+        UTC lautet. Die Annahme wird hier benannt und nicht stillschweigend
+        getroffen.
+        """
+        if zeitpunkt.tzinfo is None:
+            return zeitpunkt.replace(tzinfo=timezone.utc)
+        return zeitpunkt
+
     def _get_last_update_time(self, issue: Dict) -> datetime:
         """Ermittelt den Zeitpunkt der letzten Aktualisierung"""
         updates = issue.get("updates", [])
         if updates:
             try:
-                return datetime.fromisoformat(updates[-1]["timestamp"].replace("Z", "+00:00"))
-            except (KeyError, ValueError):
+                return self._zeitzone_ergaenzen(
+                    datetime.fromisoformat(updates[-1]["timestamp"].replace("Z", "+00:00"))
+                )
+            except (KeyError, ValueError, AttributeError, TypeError, IndexError):
                 pass
-        
+
         try:
-            return datetime.fromisoformat(issue.get("reported_at", "").replace("Z", "+00:00"))
-        except (ValueError, AttributeError):
+            return self._zeitzone_ergaenzen(
+                datetime.fromisoformat(issue.get("reported_at", "").replace("Z", "+00:00"))
+            )
+        except (ValueError, AttributeError, TypeError):
             return datetime.min.replace(tzinfo=timezone.utc)
     
     def resolve_conflict_interactively(self, conflict: Conflict) -> ResolutionStrategy:
@@ -502,18 +672,62 @@ class IssueMergeEngine:
         # Quell-Issues validieren
         print("\n🔍 Validiere Quell-Issues...")
         valid_sources = []
+        ungueltige = []
         for issue in source_issues:
             errors = IssueValidator.validate(issue)
             if errors:
+                ungueltige.append((issue, errors))
                 self.result.errors.append(
                     f"Validation-Fehler in Issue {issue.get('id', '?')[:8]}: {', '.join(errors)}"
                 )
-                print(f"   ⚠️  Issue {issue.get('id', '?')[:8]}... übersprungen: {errors[0]}")
+                print(f"   ❌ Issue {issue.get('id', '?')[:8]}...: {errors[0]}")
             else:
                 valid_sources.append(issue)
-        
+
         print(f"   ✅ {len(valid_sources)} gültige Issues zum Importieren")
-        
+
+        # -------------------------------------------------------------------
+        # BUILD 642 - ABBRUCH STATT TEILIMPORT.
+        #
+        # BIS BUILD 641: ein ungueltiger Vorgang wurde mit einer Warnzeile
+        # uebersprungen - und der Merge lief weiter und SPEICHERTE. Der
+        # Aufrufer bekam am Ende '✅ MERGE ABGESCHLOSSEN', einen Exit-Code 1
+        # und einen Bestand, in dem ein Teil seiner Eingangsdatei fehlte. Wer
+        # die Ausgabe nicht Zeile fuer Zeile las (und die Ausgabe ist lang),
+        # hielt den Vorgang fuer vollstaendig eingepflegt.
+        #
+        # DAS IST GENAU DER FALL, DEN GRUNDREGEL 1 MEINT: kein Beleg darf
+        # still uebersprungen werden. Der Lauf bricht deshalb AB, BEVOR
+        # irgendetwas geschrieben wird. Die Eingangsdatei wird berichtigt und
+        # der Lauf wiederholt - das kostet eine Minute und kann nichts
+        # verlieren.
+        #
+        # '--force' bleibt der ausdrueckliche Ausweg fuer den Fall, dass
+        # jemand den Rest wirklich einpflegen will. Dann steht es als
+        # Warnung im Ergebnis und nicht nur in einer Zeile weiter oben.
+        # -------------------------------------------------------------------
+        if ungueltige and not self.force:
+            print("\n" + "=" * 70)
+            print("⛔ ABBRUCH - die Quelldatei enthält ungültige Vorgänge")
+            print("=" * 70)
+            for issue, errors in ungueltige:
+                print(f"\n   • {issue.get('id', '?')[:8]}... "
+                      f"{str(issue.get('title', '?'))[:60]}")
+                for error in errors:
+                    print(f"       - {error}")
+            print("\n   Es wurde NICHTS geschrieben; der Bestand ist unverändert.")
+            print("   Prüfen mit:  python merge.py --validate-only <datei>")
+            print("   Trotzdem einpflegen (Rest ohne die obigen):  --force")
+            return self.result
+
+        if ungueltige and self.force:
+            hinweis = (f"{len(ungueltige)} ungültige Vorgänge wurden auf "
+                       f"ausdrückliches --force NICHT eingepflegt")
+            self.result.warnings.append(hinweis)
+            self.result.skipped_issues += len(ungueltige)
+            print(f"   ⚠️  {hinweis}")
+
+
         # Konflikte erkennen
         print("\n🔍 Erkenne Konflikte...")
         conflicts = self.detect_conflicts(target_issues, valid_sources)
@@ -598,16 +812,25 @@ class IssueMergeEngine:
                 target_issues.append(issue)
                 print(f"   ✅ {issue['id'][:8]}... hinzugefügt: {issue.get('title', '?')[:50]}")
         
-        # Ergebnis speichern
+        # -------------------------------------------------------------------
+        # ERGEBNIS SPEICHERN - BUILD 642.
+        #
+        # Geschrieben wird GENAU EINE Datei: mit '--output' die Ausgabedatei,
+        # sonst die Zieldatei. Gesichert wird nur, wenn die Zieldatei selbst
+        # angefasst wird - bei '--output' bleibt sie unberuehrt, und eine
+        # Sicherung von etwas Unberuehrtem waere irrefuehrend.
+        # -------------------------------------------------------------------
         if not self.dry_run:
-            # Backup erstellen
-            self.create_backup()
-            
-            # Speichern
-            print(f"\n💾 Speichere {len(target_issues)} Issues...")
-            self.save_file(self.target_file, target_issues)
+            if self.veraendert_bestand:
+                self.create_backup()
+            else:
+                print(f"\n🛡️  Zieldatei bleibt unverändert: {self.target_file}")
+
+            print(f"\n💾 Speichere {len(target_issues)} Issues nach {self.schreibziel} ...")
+            self.save_file(self.schreibziel, target_issues)
             print("   ✅ Erfolgreich gespeichert")
-        
+
+
         self.result.total_imported = self.result.new_issues + self.result.updated_issues
         self._print_summary()
         
@@ -658,7 +881,13 @@ class IssueMergeEngine:
             for warning in self.result.warnings[:5]:
                 print(f"   • {warning}")
         
-        print(f"\n💡 Tipp: Bei Problemen kann das automatische Backup wiederhergestellt werden.")
+        # BUILD 642: Der Hinweis auf die Sicherung steht nur noch da, wenn es
+        # eine gibt. Bis Build 641 erschien er auch bei '--dry-run', bei
+        # '--no-backup' und bei '--output' - also gerade in den Faellen, in
+        # denen nichts gesichert wurde. Ein Hinweis, der nicht stimmt, ist
+        # schlimmer als keiner: er beruhigt.
+        if self.letzte_sicherung:
+            print(f"\n💡 Tipp: Zurueck geht es ueber {self.letzte_sicherung}")
 
 
 # ============================================================================
@@ -808,31 +1037,40 @@ def main():
         print(f"\n✅ {valid_count}/{len(issues)} Issues sind gültig")
         sys.exit(0 if valid_count == len(issues) else 1)
     
-    # Merge durchführen
+    # -----------------------------------------------------------------------
+    # MERGE DURCHFUEHREN - BUILD 642, HIER LAGEN ZWEI FEHLER.
+    #
+    # (1) '--output' SCHRIEB TROTZDEM INS ZIEL. Der alte Weg setzte
+    #     'engine.target_file = target_file', liess den Merge laufen - der
+    #     dabei die ZIELDATEI ueberschrieb - und kopierte das Ergebnis
+    #     anschliessend zur Ausgabedatei. Wer 'data/issues.json' bewusst
+    #     schonen wollte und deshalb '--output' waehlte, hat sie genau damit
+    #     veraendert. Die Hilfe sagte das Gegenteil ('optional, sonst wird
+    #     Ziel ueberschrieben'). Jetzt kennt die Engine das Ausgabeziel
+    #     selbst und fasst die Zieldatei nicht an.
+    #
+    # (2) '--output' ZUSAMMEN MIT '--dry-run' STUERZTE AB. Der Zweig lief nur
+    #     'if not args.dry_run'; bei einem Trockenlauf mit Ausgabedatei blieb
+    #     'result' ununbelegt, und die Auswertung des Exit-Codes weiter unten
+    #     endete in 'NameError: name 'result' is not defined'. Ausgerechnet
+    #     die vorsichtigste aller Aufrufarten - anschauen, nichts anfassen -
+    #     war die einzige, die krachte. Jetzt gibt es nur noch EINEN Aufruf.
+    # -----------------------------------------------------------------------
     engine = IssueMergeEngine(
         target_file=target_file,
+        output_file=Path(args.output) if args.output else None,
         auto_resolve=args.auto_resolve,
         dry_run=args.dry_run,
         verbose=args.verbose,
         force=args.force,
         no_backup=args.no_backup
     )
-    
-    # Output-Datei
-    if args.output:
-        output_file = Path(args.output)
-        # Merge in temporäre Datei, dann kopieren
-        temp_target = target_file
-        engine.target_file = temp_target
-        
-        if not args.dry_run:
-            # Erst mergen, dann zum Output kopieren
-            result = engine.merge(source_file)
-            shutil.copy2(temp_target, output_file)
-            print(f"📂 Ergebnis gespeichert in: {output_file}")
-    else:
-        result = engine.merge(source_file)
-    
+
+    result = engine.merge(source_file)
+
+    if args.output and not args.dry_run:
+        print(f"📂 Ergebnis gespeichert in: {args.output}")
+
     # Temporäre Datei aufräumen
     if args.stdin:
         temp_file = Path("temp_import.json")

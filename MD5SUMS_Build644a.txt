@@ -1,0 +1,13 @@
+f893d75b50b55826c83f55a5c7a52cb3  .gitignore
+181fa02c62e4456177f6ab43b11801a2  build.json
+05a428ce99ecc1cd230058cfbfacf3e0  issue-tracker/backup_names.py
+11c397ec3b35755565786c60b7b2b18e  issue-tracker/json_safe_writer.py
+e4aceb0c290d4331e67d8d07f267fa4b  issue-tracker/related_id_repair.py
+1e0ce670b85f37e371286d5a9b767cbd  issue-tracker/repair_related_ids.py
+662369d5608cc5458229ea4146c1740d  issue-tracker/merge.py
+bea72b62e404105239a95d0f00e50c62  issue-tracker/server.py
+c8d62a9fed61942e03177d8040dd95aa  issue-tracker/readme.md
+295263b3e18477a4d9de693d724900f7  issue-tracker/eingang_claude_Build642.json
+c22b09d1bfa1bcdde0cba1d237216472  tests/test_issue_tracker_schreibweg.py
+2a885d888f879ba439621e3a5580adbd  tests/test_issue_tracker_merge.py
+4c663efa274ea3892a450e892737dabb  tests/test_issue_tracker_verweise.py

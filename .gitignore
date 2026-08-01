@@ -57,4 +57,31 @@ debug/test_2_91_console.js
 !management/*.html
 !issue-tracker/
 !issue-tracker/data
+
+# -----------------------------------------------------------------------------
+# BUILD 642 - DIE OBERFLAECHE DES ISSUE-TRACKERS.
+#
+# BEFUND: 'issue-tracker/templates/*.html' faellt unter die Regel '*.html'
+# weiter oben (Z. 40) und ist deshalb NICHT im Repository. server.py setzt
+# diese Vorlagen aber voraus - Jinja2Templates(directory=TEMPLATES_DIR), und
+# jede der fuenf Ansichten ruft eine davon auf (index.html, issue_form.html,
+# issue_detail.html). Ohne sie startet der Tracker zwar, liefert aber auf
+# jeder Seite einen Fehler.
+#
+# ZWEI FOLGEN, beide unerwuenscht:
+#   (1) Ein frischer Klon des Repositories ergibt KEINEN lauffaehigen
+#       Tracker - das verstoesst gegen Grundregel 2.
+#   (2) Die Oberflaeche ist der Pruefung nicht zugaenglich. Fehler, die in
+#       den Vorlagen sitzen, sind von aussen nicht auffindbar.
+#
+# Es ist derselbe Fall wie bei 'data/issues.json' (Vorgang 042e10ef) und bei
+# 'tools/anon_html.py' (Build 630) - eine Datei, die zum Bestand gehoert und
+# durch eine allgemeine Regel unsichtbar wurde.
+#
+# Nach dem Eintragen dieser Ausnahme muessen die Dateien EINMAL von Hand
+# hinzugefuegt werden: git add -f issue-tracker/templates issue-tracker/static
+# -----------------------------------------------------------------------------
+!issue-tracker/templates/
 !issue-tracker/templates/*.html
+!issue-tracker/static/
+!issue-tracker/static/**

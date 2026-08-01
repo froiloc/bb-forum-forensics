@@ -1,3 +1,43 @@
+# Was sich in Build 642 geändert hat
+
+Vier Punkte, die den Umgang mit dem Werkzeug betreffen:
+
+1. **`--output` fasst die Zieldatei nicht mehr an.** Bis Build 641 hat
+   `merge.py --output ergebnis.json` zuerst `data/issues.json` überschrieben und
+   das Ergebnis danach kopiert. Wer die Bestandsdatei schonen wollte, hat sie
+   genau damit verändert. Jetzt wird ausschließlich die Ausgabedatei
+   geschrieben; eine Sicherung entsteht in diesem Fall nicht, weil es nichts zu
+   sichern gibt.
+
+2. **Eine ungültige Eingangsdatei bricht den Merge ab, bevor etwas geschrieben
+   wird.** Bis Build 641 wurde der ungültige Vorgang übersprungen und der Rest
+   gespeichert — mit `✅ MERGE ABGESCHLOSSEN` am Ende. Das verstößt gegen
+   Grundregel 1. Wer den Rest trotzdem einpflegen will, sagt `--force`; dann
+   steht die Auslassung als Warnung im Ergebnis.
+
+3. **Der Validator prüft mehr:** die Versionsmuster aus dem Schema und die
+   Verweise in `related_to`. Verweise müssen die **volle UUID** führen, nicht
+   die 8-Zeichen-Kurzform aus der Bildschirmausgabe. Eine Kurzform wird von der
+   Weboberfläche nie aufgelöst — der Verweis steht dann in der Datei und ist
+   nirgends zu sehen.
+
+4. **Geschrieben wird atomar** (`json_safe_writer.py`), und **jeder räumt nur
+   seine eigenen Sicherungen ab** (`backup_names.py`). Der Server hat bis
+   Build 641 auch die `issues_backup_before_merge_*.json` gelöscht.
+
+## Verkürzte Verweise reparieren
+
+```
+cd issue-tracker
+python repair_related_ids.py            # Trockenlauf - ändert nichts
+python repair_related_ids.py --apply    # sichert, dann ändert
+```
+
+Aufgelöst wird nur, was **eindeutig** ist. Mehrdeutige und unbekannte Verweise
+bleiben stehen und werden einzeln benannt — geraten wird nicht.
+
+Exit-Codes: `0` sauber bzw. behoben, `1` Mängel offen, `2` technischer Fehler.
+
 # Anlegen neuer Einträge
 
 Bitte nicht die Datei `issue-tracker/data/issues.json` direkt bearbeiten. Diese kann jederzeit von anderen geändert werden.

@@ -19,6 +19,28 @@ from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+# ---------------------------------------------------------------------------
+# Eigene Bausteine (Build 642).
+#
+# Beide liegen im selben Verzeichnis wie diese Datei; Python nimmt das
+# Skriptverzeichnis von sich aus in sys.path auf, sowohl bei 'python server.py'
+# als auch bei 'uvicorn server:app' aus diesem Verzeichnis.
+#
+# WARUM AUSGELAGERT: Ein Baustein, der 'fastapi' voraussetzt, ist in der
+# Regression nicht pruefbar - das Paket ist keine Abhaengigkeit der Testumgebung
+# (vgl. die Begruendung in tests/test_issue_tracker_schema.py zu 'jsonschema').
+# Der Schreibweg und die Namensregel der Sicherungen sind aber genau das, was
+# geprueft werden MUSS. Also stehen sie in eigenen Dateien - das entspricht
+# zugleich Grundregel 10.
+# ---------------------------------------------------------------------------
+from json_safe_writer import JsonSafeWriter
+from backup_names import (
+    SERVER_MUSTER,
+    SUCH_GLOB,
+    eigene_sicherungen,
+    server_sicherungsname,
+)
+
 # ============================================================================
 # Konfiguration laden
 # ============================================================================
@@ -131,6 +153,9 @@ class IssueManager:
     def __init__(self, file_path: Path):
         self.file_path = file_path
         self.last_backup: Optional[datetime] = None
+        # Build 642: EIN Schreibweg, und der ist atomar. Siehe
+        # json_safe_writer.py fuer die Begruendung.
+        self.writer = JsonSafeWriter()
     
     def load(self) -> List[Dict[str, Any]]:
         """Lädt Issues aus JSON-Datei"""
@@ -159,20 +184,33 @@ class IssueManager:
             return []
     
     def save(self, issues: List[Dict[str, Any]]) -> bool:
-        """Speichert Issues in JSON-Datei"""
+        """
+        Speichert Issues in JSON-Datei.
+
+        BUILD 642 - ATOMAR. Bis Build 641 stand hier ein unmittelbares
+        open(self.file_path, "w"). Das kuerzt die Datei auf null Byte, BEVOR
+        der erste Vorgang geschrieben ist; jeder Ausfall in diesem Fenster
+        loeschte den gesamten Bestand. Jetzt wird in eine Nachbardatei
+        geschrieben und erst am Ende umgehaengt: entweder steht der alte
+        vollstaendige Stand da oder der neue vollstaendige - nie etwas
+        dazwischen.
+        """
         try:
             # Vor dem Speichern Backup erstellen
             if config.AUTO_BACKUP:
                 self._create_backup()
-            
-            # Daten schreiben
-            with open(self.file_path, "w", encoding="utf-8") as f:
-                json.dump({"issues": issues}, f, indent=2, ensure_ascii=False)
-            
+
+            # Daten schreiben - atomar (json_safe_writer.py)
+            self.writer.write(self.file_path, {"issues": issues})
+
             logger.info(f"{len(issues)} Issues gespeichert")
             return True
         except Exception as e:
-            logger.error(f"Fehler beim Speichern: {e}")
+            # Der Bestand ist in diesem Fall UNVERAENDERT - das ist die
+            # eigentliche Zusage des atomaren Schreibens. Deshalb steht es
+            # auch im Protokoll: wer die Zeile liest, soll wissen, dass er
+            # nichts wiederherstellen muss.
+            logger.error(f"Fehler beim Speichern (Bestand unveraendert): {e}")
             return False
     
     def _create_backup(self):
@@ -185,26 +223,43 @@ class IssueManager:
         if self.last_backup and (now - self.last_backup) < timedelta(hours=config.BACKUP_INTERVAL_HOURS):
             return
         
-        timestamp = now.strftime("%Y%m%d_%H%M%S")
-        backup_file = config.BACKUP_DIR / f"issues_backup_{timestamp}.json"
-        
+        backup_file = config.BACKUP_DIR / server_sicherungsname(now)
+
         try:
             shutil.copy2(self.file_path, backup_file)
             self.last_backup = now
             logger.info(f"Backup erstellt: {backup_file}")
-            
-            # Alte Backups bereinigen (nur die letzten 10 behalten)
-            backups = sorted(config.BACKUP_DIR.glob("issues_backup_*.json"))
-            if len(backups) > 10:
-                for old_backup in backups[:-10]:
+
+            # ---------------------------------------------------------------
+            # BEREINIGUNG - BUILD 642: NUR NOCH DIE EIGENEN.
+            #
+            # Bis Build 641 stand hier ein Glob 'issues_backup_*.json'. Der
+            # passt AUCH auf 'issues_backup_before_merge_*.json', also auf die
+            # Sicherungen des Merge-Werkzeugs. Der Server durfte damit fremde
+            # Sicherungen loeschen - und zwar ausgerechnet die, die den Stand
+            # unmittelbar vor einer Zusammenfuehrung festhalten.
+            #
+            # Jetzt wird nach dem Muster des EIGENEN Erzeugers ausgewaehlt
+            # (backup_names.SERVER_MUSTER). Was diesem Muster nicht entspricht,
+            # gehoert jemand anderem und bleibt liegen.
+            # ---------------------------------------------------------------
+            eigene = eigene_sicherungen(config.BACKUP_DIR, SERVER_MUSTER)
+            if len(eigene) > 10:
+                for old_backup in eigene[:-10]:
                     old_backup.unlink()
-                    logger.debug(f"Altes Backup gelöscht: {old_backup}")
+                    logger.debug(f"Altes eigenes Backup gelöscht: {old_backup}")
         except Exception as e:
             logger.error(f"Backup fehlgeschlagen: {e}")
     
     def _find_latest_backup(self) -> Optional[Path]:
-        """Findet das neueste Backup"""
-        backups = sorted(config.BACKUP_DIR.glob("issues_backup_*.json"), reverse=True)
+        """
+        Findet das neueste Backup.
+
+        HIER IST DER WEITE GLOB RICHTIG und bleibt deshalb stehen: zum LESEN
+        ist jede Sicherung recht, gleich wer sie angelegt hat. Eng wird nur
+        die Auswahl zum LOESCHEN (siehe _create_backup).
+        """
+        backups = sorted(config.BACKUP_DIR.glob(SUCH_GLOB), reverse=True)
         return backups[0] if backups else None
     
     def get_statistics(self, issues: List[Dict]) -> Dict[str, int]:
