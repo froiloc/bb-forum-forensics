@@ -1,5 +1,5 @@
 {
-  "build": 644a,
+  "build": "644a",
   "version": "0.8.644a",
   "date": "2026-08-01",
   "arbeitspaket": "Issue-Tracker: der Schreibweg zur issues.json. Sieben Fehler behoben, davon drei mit Verlustpotenzial fuer den gesamten Vorgangsbestand. Zwoelf weitere Befunde aufgenommen und NICHT behoben - sie stehen als Vorgaenge im Tracker. Der eine offene Vorgang zum Thema (042e10ef) ist belegt erledigt.",
